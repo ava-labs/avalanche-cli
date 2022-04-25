@@ -14,13 +14,11 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
-	"strconv"
 
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 )
 
@@ -56,91 +54,24 @@ func init() {
 	createCmd.Flags().BoolVarP(&fast, "fast", "z", false, "use default values to minimize configuration")
 }
 
-func validateInt(input string) error {
-	_, err := strconv.ParseInt(input, 10, 64)
-	if err != nil {
-		return errors.New("Invalid number")
-	}
-	return nil
-}
-
-func validateBigInt(input string) error {
-	n := new(big.Int)
-	n, ok := n.SetString(input, 10)
-	if !ok {
-		return errors.New("Invalid number")
-	}
-	return nil
-}
-
-func validateAddress(input string) error {
-	if !common.IsHexAddress(input) {
-		return errors.New("Invalid address")
-	}
-	return nil
-}
-
-func captureAddress(promptStr string) (common.Address, error) {
-	prompt := promptui.Prompt{
-		Label:    promptStr,
-		Validate: validateAddress,
-	}
-
-	addressStr, err := prompt.Run()
-	if err != nil {
-		return common.Address{}, err
-	}
-
-	addressHex := common.HexToAddress(addressStr)
-	return addressHex, nil
-}
-
-func captureYesNo(promptStr string) (bool, error) {
-	const yes = "Yes"
-	const no = "No"
-	prompt := promptui.Select{
-		Label: promptStr,
-		Items: []string{yes, no},
-	}
-
-	_, decision, err := prompt.Run()
-	if err != nil {
-		return false, err
-	}
-	return decision == yes, nil
-}
-
 func getChainId() (*big.Int, error) {
-	// TODO check positivity
 	// TODO check against known chain ids and provide warning
 	fmt.Println("Select your subnet's ChainId. It can be any positive integer.")
 
-	// Set chainId
-	prompt := promptui.Prompt{
-		Label:    "ChainId",
-		Validate: validateInt,
-	}
-
-	chainIdStr, err := prompt.Run()
+	chainId, err := capturePositiveBigInt("ChainId")
 	if err != nil {
 		return nil, err
 	}
 
-	chainIdInt, err := strconv.ParseInt(chainIdStr, 10, 64)
-	if err != nil {
-		// should never reach here
-		return nil, err
-	}
-	return big.NewInt(chainIdInt), nil
+	return chainId, nil
 }
 
 func getAllocation() (core.GenesisAlloc, error) {
-	done := false
 	first := true
 
 	allocation := core.GenesisAlloc{}
 
-	for !done {
+	for {
 		firstStr := "Would you like to airdrop tokens?"
 		secondStr := "Would you like to airdrop more tokens?"
 
@@ -150,54 +81,36 @@ func getAllocation() (core.GenesisAlloc, error) {
 			first = false
 		}
 
-		prompt1 := promptui.Select{
-			Label: promptStr,
-			Items: []string{"Yes", "No"},
-		}
-
-		_, decision, err := prompt1.Run()
+		continueAirdrop, err := captureYesNo(promptStr)
 		if err != nil {
 			return nil, err
 		}
 
-		if decision == "Yes" {
+		if continueAirdrop {
 			addressHex, err := captureAddress("Address")
 			if err != nil {
 				return nil, err
 			}
 
-			prompt3 := promptui.Prompt{
-				Label:    "Amount (in wei)",
-				Validate: validateBigInt,
-			}
-
-			amountStr, err := prompt3.Run()
+			amount, err := capturePositiveBigInt("Amount (in wei)")
 			if err != nil {
 				return nil, err
 			}
 
-			amountInt := new(big.Int)
-			amountInt, ok := amountInt.SetString(amountStr, 10)
-			if !ok {
-				return nil, errors.New("SetString: error")
-			}
-
 			account := core.GenesisAccount{
-				Balance: amountInt,
+				Balance: amount,
 			}
 
 			allocation[addressHex] = account
 
 		} else {
-			done = true
+			return allocation, nil
 		}
 	}
-	return allocation, nil
 }
 
 func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, error) {
 	addAdmin := "Add admin"
-	// addWhitelist := "Add whitelisted"
 	preview := "Preview"
 	doneMsg := "Done"
 
@@ -208,12 +121,10 @@ func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, e
 	}
 
 	for {
-		prompt2 := promptui.Select{
-			Label: "Configure contract deployment allow list:",
-			Items: []string{addAdmin, preview, doneMsg},
-		}
-
-		_, listDecision, err := prompt2.Run()
+		listDecision, err := captureList(
+			"Configure contract deployment allow list:",
+			[]string{addAdmin, preview, doneMsg},
+		)
 		if err != nil {
 			return config, err
 		}
@@ -239,6 +150,15 @@ func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, e
 	}
 }
 
+func removePrecompile(arr []string, s string) ([]string, error) {
+	for i, val := range arr {
+		if val == s {
+			return append(arr[:i], arr[i+1:]...), nil
+		}
+	}
+	return arr, errors.New("String not in array")
+}
+
 func getPrecompiles(config params.ChainConfig) (params.ChainConfig, error) {
 	const nativeMint = "Native Minting"
 	const contractAllowList = "Contract deployment whitelist"
@@ -246,6 +166,8 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, error) {
 	const cancel = "Cancel"
 
 	first := true
+
+	remainingPrecompiles := []string{nativeMint, contractAllowList, txAllowList, cancel}
 
 	for {
 		firstStr := "Would you like to add a custom precompile?"
@@ -263,12 +185,10 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, error) {
 		}
 
 		if addPrecompile {
-			prompt2 := promptui.Select{
-				Label: "Choose precompile:",
-				Items: []string{nativeMint, contractAllowList, txAllowList, cancel},
-			}
-
-			_, precompileDecision, err := prompt2.Run()
+			precompileDecision, err := captureList(
+				"Choose precompile:",
+				remainingPrecompiles,
+			)
 			if err != nil {
 				return config, err
 			}
@@ -276,15 +196,31 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, error) {
 			switch precompileDecision {
 			case nativeMint:
 				fmt.Println("TODO")
+				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, nativeMint)
+				if err != nil {
+					return config, err
+				}
 			case contractAllowList:
 				contractConfig, err := configureContractAllowList()
 				if err != nil {
 					return config, err
 				}
 				config.ContractDeployerAllowListConfig = contractConfig
+				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, contractAllowList)
+				if err != nil {
+					return config, err
+				}
 			case txAllowList:
 				fmt.Println("TODO")
+				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, txAllowList)
+				if err != nil {
+					return config, err
+				}
 			case cancel:
+				return config, nil
+			}
+
+			if len(remainingPrecompiles) == 1 {
 				return config, nil
 			}
 
@@ -296,13 +232,10 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, error) {
 
 func createGenesis(cmd *cobra.Command, args []string) {
 	fmt.Println("creating subnet", args[0])
-	// fmt.Println(*cmd)
 
 	if filename == "" {
-		fmt.Println("Let's create a genesis")
 		genesis := core.Genesis{}
 		conf := params.SubnetEVMDefaultChainConfig
-		// conf.SetDefaults()
 
 		chainId, err := getChainId()
 		if err != nil {
