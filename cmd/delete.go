@@ -45,7 +45,7 @@ func init() {
 func deleteGenesis(cmd *cobra.Command, args []string) {
 	usr, _ := user.Current()
 	// TODO sanitize this input
-	genesis := filepath.Join(usr.HomeDir, ".avalanche-cli", args[0]+genesis_suffix)
+	genesis := filepath.Join(usr.HomeDir, BaseDir, args[0]+genesis_suffix)
 
 	if _, err := os.Stat(genesis); err == nil {
 		// exists

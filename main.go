@@ -13,13 +13,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd"
 )
 
-var BaseDir string
-
 func init() {
 	usr, _ := user.Current()
-	newpath := filepath.Join(usr.HomeDir, ".avalanche-cli")
-	BaseDir = newpath
-	err := os.MkdirAll(BaseDir, os.ModePerm)
+	basePath := filepath.Join(usr.HomeDir, cmd.BaseDir)
+	err := os.MkdirAll(basePath, os.ModePerm)
 	if err != nil {
 		fmt.Println(err)
 		return

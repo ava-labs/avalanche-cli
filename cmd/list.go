@@ -47,7 +47,7 @@ const genesis_suffix = "_genesis.json"
 func listGenesis(cmd *cobra.Command, args []string) {
 	fmt.Println("Created subnet genesis files:")
 	usr, _ := user.Current()
-	mainDir := filepath.Join(usr.HomeDir, ".avalanche-cli")
+	mainDir := filepath.Join(usr.HomeDir, BaseDir)
 	files, err := ioutil.ReadDir(mainDir)
 	if err != nil {
 		log.Fatal(err)

@@ -44,7 +44,7 @@ func init() {
 
 func readGenesis(cmd *cobra.Command, args []string) {
 	usr, _ := user.Current()
-	genesisFile := filepath.Join(usr.HomeDir, ".avalanche-cli", args[0]+genesis_suffix)
+	genesisFile := filepath.Join(usr.HomeDir, BaseDir, args[0]+genesis_suffix)
 	gen, err := os.ReadFile(genesisFile)
 	// files, err := ioutil.ReadDir(mainDir)
 	if err != nil {
