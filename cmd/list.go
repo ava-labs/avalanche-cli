@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -33,19 +34,17 @@ to quickly create a Cobra application.`,
 
 func init() {
 	subnetCmd.AddCommand(listCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// listCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// listCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 const genesis_suffix = "_genesis.json"
+
+type subnetMatrix [][]string
+
+func (c subnetMatrix) Len() int      { return len(c) }
+func (c subnetMatrix) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
+
+// Compare strings by first key of the sub-slice
+func (c subnetMatrix) Less(i, j int) bool { return strings.Compare(c[i][0], c[j][0]) == -1 }
 
 func listGenesis(cmd *cobra.Command, args []string) {
 	header := []string{"subnet", "chain", "type"}
@@ -61,6 +60,8 @@ func listGenesis(cmd *cobra.Command, args []string) {
 		fmt.Println(err)
 		return
 	}
+
+	rows := subnetMatrix{}
 
 	for _, f := range files {
 		if strings.Contains(f.Name(), sidecar_suffix) {
@@ -79,10 +80,12 @@ func listGenesis(cmd *cobra.Command, args []string) {
 				return
 			}
 
-			// prefixLen := len(f.Name()) - len(sidecar_suffix)
-			// fmt.Println(f.Name()[:prefixLen])
-			table.Append([]string{sc.Name, sc.Name, string(sc.Vm)})
+			rows = append(rows, []string{sc.Subnet, sc.Name, string(sc.Vm)})
 		}
+	}
+	sort.Sort(rows)
+	for _, row := range rows {
+		table.Append(row)
 	}
 	table.Render()
 }

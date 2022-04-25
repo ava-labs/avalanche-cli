@@ -118,3 +118,22 @@ func CaptureList(promptStr string, options []string) (string, error) {
 	}
 	return listDecision, nil
 }
+
+func CaptureString(promptStr string) (string, error) {
+	prompt := promptui.Prompt{
+		Label: promptStr,
+		Validate: func(input string) error {
+			if input == "" {
+				return errors.New("String cannot be empty")
+			}
+			return nil
+		},
+	}
+
+	str, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return str, nil
+}

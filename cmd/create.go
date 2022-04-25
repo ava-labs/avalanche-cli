@@ -90,8 +90,9 @@ const sidecar_suffix = "_sidecar.json"
 
 func createSidecar(subnetName string, vm models.VmType) error {
 	sc := models.Sidecar{
-		Name: subnetName,
-		Vm:   vm,
+		Name:   subnetName,
+		Vm:     vm,
+		Subnet: subnetName,
 	}
 
 	scBytes, err := json.MarshalIndent(sc, "", "    ")
