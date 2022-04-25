@@ -10,6 +10,8 @@ import (
 	"os/user"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/cmd/prompts"
+	"github.com/ava-labs/avalanche-cli/cmd/vm"
 	"github.com/spf13/cobra"
 )
 
@@ -129,7 +131,7 @@ func createGenesis(cmd *cobra.Command, args []string) {
 
 		if subnetType == "" {
 
-			subnetType, err = captureList(
+			subnetType, err = prompts.CaptureList(
 				"Choose your VM",
 				[]string{subnetEvm, spacesVm, blobVm, timestampVm, customVm},
 			)
@@ -143,13 +145,13 @@ func createGenesis(cmd *cobra.Command, args []string) {
 
 		switch subnetType {
 		case subnetEvm:
-			genesisBytes, err = createEvmGenesis(args[0])
+			genesisBytes, err = vm.CreateEvmGenesis(args[0])
 			if err != nil {
 				fmt.Println(err)
 				return
 			}
 		case customVm:
-			genesisBytes, err = createCustomGenesis(args[0])
+			genesisBytes, err = vm.CreateCustomGenesis(args[0])
 			if err != nil {
 				fmt.Println(err)
 				return

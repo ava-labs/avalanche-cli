@@ -2,17 +2,19 @@
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 
 */
-package cmd
+package vm
 
 import (
 	"fmt"
 	"os"
+
+	"github.com/ava-labs/avalanche-cli/cmd/prompts"
 )
 
-func createCustomGenesis(name string) ([]byte, error) {
+func CreateCustomGenesis(name string) ([]byte, error) {
 	fmt.Println("creating custom VM subnet", name)
 
-	genesisPath, err := captureExistingFilepath("Enter path to custom genesis")
+	genesisPath, err := prompts.CaptureExistingFilepath("Enter path to custom genesis")
 	if err != nil {
 		return []byte{}, err
 	}

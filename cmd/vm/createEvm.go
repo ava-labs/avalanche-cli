@@ -2,7 +2,7 @@
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 
 */
-package cmd
+package vm
 
 import (
 	"bytes"
@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ava-labs/avalanche-cli/cmd/prompts"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile"
@@ -21,7 +22,7 @@ func getChainId() (*big.Int, error) {
 	// TODO check against known chain ids and provide warning
 	fmt.Println("Select your subnet's ChainId. It can be any positive integer.")
 
-	chainId, err := capturePositiveBigInt("ChainId")
+	chainId, err := prompts.CapturePositiveBigInt("ChainId")
 	if err != nil {
 		return nil, err
 	}
@@ -44,18 +45,18 @@ func getAllocation() (core.GenesisAlloc, error) {
 			first = false
 		}
 
-		continueAirdrop, err := captureYesNo(promptStr)
+		continueAirdrop, err := prompts.CaptureYesNo(promptStr)
 		if err != nil {
 			return nil, err
 		}
 
 		if continueAirdrop {
-			addressHex, err := captureAddress("Address")
+			addressHex, err := prompts.CaptureAddress("Address")
 			if err != nil {
 				return nil, err
 			}
 
-			amount, err := capturePositiveBigInt("Amount (in wei)")
+			amount, err := prompts.CapturePositiveBigInt("Amount (in wei)")
 			if err != nil {
 				return nil, err
 			}
@@ -84,7 +85,7 @@ func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, e
 	}
 
 	for {
-		listDecision, err := captureList(
+		listDecision, err := prompts.CaptureList(
 			"Configure contract deployment allow list:",
 			[]string{addAdmin, preview, doneMsg},
 		)
@@ -94,7 +95,7 @@ func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, e
 
 		switch listDecision {
 		case addAdmin:
-			adminAddr, err := captureAddress("Admin Address")
+			adminAddr, err := prompts.CaptureAddress("Admin Address")
 			if err != nil {
 				return config, err
 			}
@@ -142,13 +143,13 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, error) {
 			first = false
 		}
 
-		addPrecompile, err := captureYesNo(promptStr)
+		addPrecompile, err := prompts.CaptureYesNo(promptStr)
 		if err != nil {
 			return config, err
 		}
 
 		if addPrecompile {
-			precompileDecision, err := captureList(
+			precompileDecision, err := prompts.CaptureList(
 				"Choose precompile:",
 				remainingPrecompiles,
 			)
@@ -193,7 +194,7 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, error) {
 	}
 }
 
-func createEvmGenesis(name string) ([]byte, error) {
+func CreateEvmGenesis(name string) ([]byte, error) {
 	fmt.Println("creating subnet", name)
 
 	genesis := core.Genesis{}

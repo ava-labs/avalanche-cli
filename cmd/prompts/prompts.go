@@ -1,4 +1,4 @@
-package cmd
+package prompts
 
 import (
 	"errors"
@@ -43,7 +43,7 @@ func validateExistingFilepath(input string) error {
 	return errors.New("File doesn't exist")
 }
 
-func capturePositiveBigInt(promptStr string) (*big.Int, error) {
+func CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validatePositiveBigInt,
@@ -62,7 +62,7 @@ func capturePositiveBigInt(promptStr string) (*big.Int, error) {
 	return amountInt, nil
 }
 
-func captureAddress(promptStr string) (common.Address, error) {
+func CaptureAddress(promptStr string) (common.Address, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validateAddress,
@@ -77,7 +77,7 @@ func captureAddress(promptStr string) (common.Address, error) {
 	return addressHex, nil
 }
 
-func captureExistingFilepath(promptStr string) (string, error) {
+func CaptureExistingFilepath(promptStr string) (string, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validateExistingFilepath,
@@ -91,7 +91,7 @@ func captureExistingFilepath(promptStr string) (string, error) {
 	return pathStr, nil
 }
 
-func captureYesNo(promptStr string) (bool, error) {
+func CaptureYesNo(promptStr string) (bool, error) {
 	const yes = "Yes"
 	const no = "No"
 	prompt := promptui.Select{
@@ -106,7 +106,7 @@ func captureYesNo(promptStr string) (bool, error) {
 	return decision == yes, nil
 }
 
-func captureList(promptStr string, options []string) (string, error) {
+func CaptureList(promptStr string, options []string) (string, error) {
 	prompt := promptui.Select{
 		Label: "Configure contract deployment allow list:",
 		Items: options,
