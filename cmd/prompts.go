@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"math/big"
+	"os"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/manifoldco/promptui"
@@ -33,6 +34,13 @@ func validateAddress(input string) error {
 		return errors.New("Invalid address")
 	}
 	return nil
+}
+
+func validateExistingFilepath(input string) error {
+	if fileInfo, err := os.Stat(input); err == nil && !fileInfo.IsDir() {
+		return nil
+	}
+	return errors.New("File doesn't exist")
 }
 
 func capturePositiveBigInt(promptStr string) (*big.Int, error) {
@@ -67,6 +75,20 @@ func captureAddress(promptStr string) (common.Address, error) {
 
 	addressHex := common.HexToAddress(addressStr)
 	return addressHex, nil
+}
+
+func captureExistingFilepath(promptStr string) (string, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateExistingFilepath,
+	}
+
+	pathStr, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return pathStr, nil
 }
 
 func captureYesNo(promptStr string) (bool, error) {
