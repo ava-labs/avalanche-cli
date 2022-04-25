@@ -76,6 +76,7 @@ func getAllocation() (core.GenesisAlloc, error) {
 func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, error) {
 	addAdmin := "Add admin"
 	preview := "Preview"
+	moreInfo := "More info"
 	doneMsg := "Done"
 
 	config := precompile.ContractDeployerAllowListConfig{}
@@ -87,7 +88,7 @@ func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, e
 	for {
 		listDecision, err := prompts.CaptureList(
 			"Configure contract deployment allow list:",
-			[]string{addAdmin, preview, doneMsg},
+			[]string{addAdmin, preview, moreInfo, doneMsg},
 		)
 		if err != nil {
 			return config, err
@@ -108,6 +109,10 @@ func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, e
 		case doneMsg:
 			config.AllowListConfig = allowList
 			return config, nil
+		case moreInfo:
+			fmt.Printf("\nThis precompile restricts who has the ability to deploy contracts " +
+				"on your subnet.\nFor more information visit https://github.com/ava-labs/subnet-" +
+				"evm#restricting-smart-contract-deployers.\n\n")
 		default:
 			return config, errors.New("Unexpected option")
 		}
