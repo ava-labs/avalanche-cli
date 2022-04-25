@@ -5,6 +5,7 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/user"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
 	"github.com/ava-labs/avalanche-cli/cmd/vm"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/spf13/cobra"
 )
 
@@ -82,7 +84,25 @@ func copyGenesisFile(inputFilename string, subnetName string) error {
 	genesisPath := filepath.Join(usr.HomeDir, BaseDir, subnetName+genesis_suffix)
 	err = os.WriteFile(genesisPath, genesisBytes, 0644)
 	return err
+}
 
+const sidecar_suffix = "_sidecar.json"
+
+func createSidecar(subnetName string, vm models.VmType) error {
+	sc := models.Sidecar{
+		Name: subnetName,
+		Vm:   vm,
+	}
+
+	scBytes, err := json.MarshalIndent(sc, "", "    ")
+	if err != nil {
+		return nil
+	}
+
+	usr, _ := user.Current()
+	sidecarPath := filepath.Join(usr.HomeDir, BaseDir, subnetName+sidecar_suffix)
+	err = os.WriteFile(sidecarPath, scBytes, 0644)
+	return err
 }
 
 func moreThanOneVmSelected() bool {
@@ -98,21 +118,21 @@ func moreThanOneVmSelected() bool {
 	return false
 }
 
-func getVmFromFlag() string {
+func getVmFromFlag() models.VmType {
 	if *useSubnetEvm {
-		return subnetEvm
+		return models.SubnetEvm
 	}
 	if *useSpaces {
-		return spacesVm
+		return models.SpacesVm
 	}
 	if *useBlob {
-		return blobVm
+		return models.BlobVm
 	}
 	if *useTimestamp {
-		return timestampVm
+		return models.TimestampVm
 	}
 	if *useCustom {
-		return customVm
+		return models.CustomVm
 	}
 	return ""
 }
@@ -125,13 +145,13 @@ func createGenesis(cmd *cobra.Command, args []string) {
 
 	if filename == "" {
 
-		var subnetType string
+		var subnetType models.VmType
 		var err error
 		subnetType = getVmFromFlag()
 
 		if subnetType == "" {
 
-			subnetType, err = prompts.CaptureList(
+			subnetTypeStr, err := prompts.CaptureList(
 				"Choose your VM",
 				[]string{subnetEvm, spacesVm, blobVm, timestampVm, customVm},
 			)
@@ -139,6 +159,7 @@ func createGenesis(cmd *cobra.Command, args []string) {
 				fmt.Println(err)
 				return
 			}
+			subnetType = models.VmTypeFromString(subnetTypeStr)
 		}
 
 		var genesisBytes []byte
@@ -150,8 +171,19 @@ func createGenesis(cmd *cobra.Command, args []string) {
 				fmt.Println(err)
 				return
 			}
+
+			err = createSidecar(args[0], models.SubnetEvm)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
 		case customVm:
 			genesisBytes, err = vm.CreateCustomGenesis(args[0])
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			err = createSidecar(args[0], models.CustomVm)
 			if err != nil {
 				fmt.Println(err)
 				return
@@ -170,6 +202,26 @@ func createGenesis(cmd *cobra.Command, args []string) {
 	} else {
 		fmt.Println("Using specified genesis")
 		err := copyGenesisFile(filename, args[0])
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		var subnetType models.VmType
+		subnetType = getVmFromFlag()
+
+		if subnetType == "" {
+			subnetTypeStr, err := prompts.CaptureList(
+				"What VM does your genesis use?",
+				[]string{subnetEvm, spacesVm, blobVm, timestampVm, customVm},
+			)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			subnetType = models.VmTypeFromString(subnetTypeStr)
+		}
+		err = createSidecar(args[0], subnetType)
 		if err != nil {
 			fmt.Println(err)
 			return

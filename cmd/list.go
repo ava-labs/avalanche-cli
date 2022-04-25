@@ -5,13 +5,16 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
+	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
 
@@ -45,18 +48,41 @@ func init() {
 const genesis_suffix = "_genesis.json"
 
 func listGenesis(cmd *cobra.Command, args []string) {
-	fmt.Println("Created subnet genesis files:")
+	header := []string{"subnet", "chain", "type"}
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(header)
+	table.SetAutoMergeCellsByColumnIndex([]int{0})
+	table.SetRowLine(true)
+
 	usr, _ := user.Current()
 	mainDir := filepath.Join(usr.HomeDir, BaseDir)
 	files, err := ioutil.ReadDir(mainDir)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 
 	for _, f := range files {
-		if strings.Contains(f.Name(), genesis_suffix) {
-			prefixLen := len(f.Name()) - len(genesis_suffix)
-			fmt.Println(f.Name()[:prefixLen])
+		if strings.Contains(f.Name(), sidecar_suffix) {
+			// read in sidecar file
+			path := filepath.Join(mainDir, f.Name())
+			jsonBytes, err := os.ReadFile(path)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			var sc models.Sidecar
+			err = json.Unmarshal(jsonBytes, &sc)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			// prefixLen := len(f.Name()) - len(sidecar_suffix)
+			// fmt.Println(f.Name()[:prefixLen])
+			table.Append([]string{sc.Name, sc.Name, string(sc.Vm)})
 		}
 	}
+	table.Render()
 }

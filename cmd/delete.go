@@ -46,14 +46,29 @@ func deleteGenesis(cmd *cobra.Command, args []string) {
 	usr, _ := user.Current()
 	// TODO sanitize this input
 	genesis := filepath.Join(usr.HomeDir, BaseDir, args[0]+genesis_suffix)
+	sidecar := filepath.Join(usr.HomeDir, BaseDir, args[0]+sidecar_suffix)
 
 	if _, err := os.Stat(genesis); err == nil {
 		// exists
 		os.Remove(genesis)
-		fmt.Println("Deleted subnet")
+		os.Remove(sidecar)
 	} else if errors.Is(err, os.ErrNotExist) {
 		// does *not* exist
 		fmt.Println("Specified genesis does not exist")
+	} else {
+		// Schrodinger: file may or may not exist. See err for details.
+
+		// Therefore, do *NOT* use !os.IsNotExist(err) to test for file existence
+		fmt.Println(err)
+	}
+
+	if _, err := os.Stat(sidecar); err == nil {
+		// exists
+		os.Remove(sidecar)
+		fmt.Println("Deleted subnet")
+	} else if errors.Is(err, os.ErrNotExist) {
+		// does *not* exist
+		fmt.Println("Specified sidecar does not exist")
 	} else {
 		// Schrodinger: file may or may not exist. See err for details.
 
