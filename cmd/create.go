@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
-	"github.com/ava-labs/avalanche-cli/cmd/vm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/spf13/cobra"
 )
 

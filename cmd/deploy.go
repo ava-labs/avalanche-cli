@@ -113,5 +113,13 @@ func deploySubnet(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Println("Deploying", chains, "to", network.String())
+	// TODO
+	switch network {
+	case models.Local:
+		// WRITE CODE HERE
+		fmt.Println("Deploy local")
+	default:
+		fmt.Println("Not implemented")
+	}
 
 }
