@@ -51,10 +51,8 @@ const (
 )
 
 var (
-	deployLocal         *bool
-	force               *bool
-	localgRPCOutputFile string
-	localgRPCPid        int
+	deployLocal *bool
+	force       *bool
 )
 
 func init() {
@@ -156,8 +154,16 @@ func deployToLocalNetwork(chain string) error {
 	return doDeploy(chain)
 }
 
+func setupLocalEnv() {
+}
+
 func doDeploy(chain string) error {
 	//	curl -X POST -k http://localhost:8081/v1/control/start -d '{"execPath":"'${AVALANCHEGO_EXEC_PATH}'","numNodes":5,"logLevel":"INFO","pluginDir":"'${AVALANCHEGO_PLUGIN_PATH}'","customVms":{"subnetevm":"/tmp/subnet-evm.genesis.json"}}'
+	setupLocalEnv()
+
+	pluginDir := "/home/fabio/go/src/github.com/ava-labs/avalanchego/build/plugins"
+	avalancheGoBinPath := "/home/fabio/go/src/github.com/ava-labs/avalanchego/build/avalanchego"
+
 	requestTimeout := 3 * time.Minute
 
 	cli, err := client.New(client.Config{
@@ -169,9 +175,6 @@ func doDeploy(chain string) error {
 		return err
 	}
 	defer cli.Close()
-
-	pluginDir := "/home/fabio/go/src/github.com/ava-labs/avalanchego/build/plugins"
-	avalancheGoBinPath := "/home/fabio/go/src/github.com/ava-labs/avalanchego/build/avalanchego"
 
 	chain_genesis := fmt.Sprintf("/home/fabio/.avalanche-cli/%s_genesis.json", chain)
 
@@ -217,38 +220,66 @@ func doDeploy(chain string) error {
 	fmt.Println(info)
 	fmt.Println("network has been booted. wait until healthy...")
 
-	if err := waitForHealthy(cli, ctx); err != nil {
+	endpoints, err := waitForHealthy(cli, ctx)
+	if err != nil {
 		fmt.Printf("failed to query network health: %s\n", err)
 		return err
 	}
 
-	uris, err := cli.URIs(ctx)
-	if err != nil {
-		fmt.Printf("failed to query uri endpoints: %s\n", err)
-		return err
-	}
-
 	fmt.Println("network ready to use. local network node endpoints:")
-	for _, u := range uris {
+	for _, u := range endpoints {
 		fmt.Println(u)
 	}
 	return nil
 }
 
-func waitForHealthy(cli client.Client, ctx context.Context) error {
+func printWait(cancel chan struct{}) {
+	for {
+		select {
+		case <-time.After(1 * time.Second):
+			fmt.Print(".")
+		case <-cancel:
+			return
+		}
+	}
+}
+
+func waitForHealthy(cli client.Client, ctx context.Context) ([]string, error) {
+	cancel := make(chan struct{})
+	go printWait(cancel)
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			cancel <- struct{}{}
+			return nil, ctx.Err()
 		case <-time.After(10 * time.Second):
+			cancel <- struct{}{}
+			fmt.Println()
 			fmt.Println("polling for health...")
-			_, err := cli.Health(ctx)
+			resp, err := cli.Health(ctx)
 			if err != nil {
 				fmt.Println("not yet")
 				continue
 			}
+			if resp.ClusterInfo == nil {
+				fmt.Println("warning: ClusterInfo is nil. trying again...")
+				continue
+			}
+			if len(resp.ClusterInfo.CustomVms) == 0 {
+				fmt.Println("network is up but custom VMs are not installed yet. polling again...")
+				// TODO: Health call seems to hang in this phase...
+				go printWait(cancel)
+				time.Sleep(25 * time.Second)
+				continue
+			}
+			endpoints := []string{}
+			for _, nodeInfo := range resp.ClusterInfo.NodeInfos {
+				for vmID, vmInfo := range resp.ClusterInfo.CustomVms {
+					endpoints = append(endpoints, fmt.Sprintf("[blockchain RPC for %q] \"%s/ext/bc/%s\"{{/}}\n", vmID, nodeInfo.GetUri(), vmInfo.BlockchainId))
+				}
+			}
 			fmt.Println("all good!")
-			return nil
+			return endpoints, nil
 		}
 	}
 }
