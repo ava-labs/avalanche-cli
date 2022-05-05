@@ -53,7 +53,8 @@ func init() {
 }
 
 func moreThanOneVmSelected() bool {
-	vmVars := []bool{*useSubnetEvm, *useSpaces, *useBlob, *useTimestamp, *useCustom}
+	// vmVars := []bool{*useSubnetEvm, *useSpaces, *useBlob, *useTimestamp, *useCustom}
+	vmVars := []bool{*useSubnetEvm, *useCustom}
 	firstSelect := false
 	for _, val := range vmVars {
 		if firstSelect && val {
@@ -69,15 +70,15 @@ func getVmFromFlag() models.VmType {
 	if *useSubnetEvm {
 		return models.SubnetEvm
 	}
-	if *useSpaces {
-		return models.SpacesVm
-	}
-	if *useBlob {
-		return models.BlobVm
-	}
-	if *useTimestamp {
-		return models.TimestampVm
-	}
+	// if *useSpaces {
+	// 	return models.SpacesVm
+	// }
+	// if *useBlob {
+	// 	return models.BlobVm
+	// }
+	// if *useTimestamp {
+	// 	return models.TimestampVm
+	// }
 	if *useCustom {
 		return models.CustomVm
 	}

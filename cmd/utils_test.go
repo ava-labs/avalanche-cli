@@ -140,3 +140,43 @@ func Test_loadSidecar_success(t *testing.T) {
 	err = os.Remove(sidecarPath)
 	assert.NoError(t, err)
 }
+
+func Test_loadSidecar_failure_notFound(t *testing.T) {
+	subnetName := "TEST_subnet"
+	sidecarFile := subnetName + sidecar_suffix
+	const vm = models.SubnetEvm
+
+	// Assert file doesn't exist at start
+	usr, _ := user.Current()
+	sidecarPath := filepath.Join(usr.HomeDir, BaseDir, sidecarFile)
+	_, err := os.Stat(sidecarPath)
+	assert.Error(t, err)
+
+	_, err = loadSidecar(subnetName)
+	assert.Error(t, err)
+}
+
+func Test_loadSidecar_failure_malformed(t *testing.T) {
+	subnetName := "TEST_subnet"
+	sidecarFile := subnetName + sidecar_suffix
+	const vm = models.SubnetEvm
+
+	// Write sidecar
+	sidecarBytes := []byte("bad_sidecar")
+	usr, _ := user.Current()
+	sidecarPath := filepath.Join(usr.HomeDir, BaseDir, sidecarFile)
+	err := os.WriteFile(sidecarPath, sidecarBytes, 0644)
+	assert.NoError(t, err)
+
+	// Check file exists
+	_, err = os.Stat(sidecarPath)
+	assert.NoError(t, err)
+
+	// Check contents
+	_, err = loadSidecar(subnetName)
+	assert.Error(t, err)
+
+	// Cleanup file
+	err = os.Remove(sidecarPath)
+	assert.NoError(t, err)
+}
