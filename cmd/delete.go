@@ -51,7 +51,6 @@ func deleteGenesis(cmd *cobra.Command, args []string) {
 	if _, err := os.Stat(genesis); err == nil {
 		// exists
 		os.Remove(genesis)
-		os.Remove(sidecar)
 	} else if errors.Is(err, os.ErrNotExist) {
 		// does *not* exist
 		fmt.Println("Specified genesis does not exist")

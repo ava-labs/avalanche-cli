@@ -5,11 +5,7 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-	"os/user"
-	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -19,18 +15,12 @@ import (
 
 var filename string
 
-// var fast bool
+var forceCreate *bool
 var useSubnetEvm *bool
 var useSpaces *bool
 var useBlob *bool
 var useTimestamp *bool
 var useCustom *bool
-
-const subnetEvm = "SubnetEVM"
-const spacesVm = "Spaces VM"
-const blobVm = "Blob VM"
-const timestampVm = "Timestamp VM"
-const customVm = "Custom"
 
 // createCmd represents the create command
 var createCmd = &cobra.Command{
@@ -49,61 +39,17 @@ to quickly create a Cobra application.`,
 func init() {
 	subnetCmd.AddCommand(createCmd)
 
-	// Here you will define your flags and configuration settings.
+	createCmd.Flags().StringVar(&filename, "file", "", "filepath of genesis to use")
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// createCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	createCmd.Flags().StringVarP(&filename, "filename", "f", "", "filepath of genesis to use")
-	// createCmd.Flags().BoolVarP(&fast, "fast", "z", false, "use default values to minimize configuration")
 	useSubnetEvm = createCmd.Flags().Bool("evm", false, "use the SubnetEVM as your VM")
-	useSpaces = createCmd.Flags().Bool("spaces", false, "use the Spaces VM as your VM")
-	useBlob = createCmd.Flags().Bool("blob", false, "use the Blob VM as your VM")
-	useTimestamp = createCmd.Flags().Bool("timestamp", false, "use the Timestamp VM as your VM")
 	useCustom = createCmd.Flags().Bool("custom", false, "use your own custom VM as your VM")
-}
 
-const BaseDir = ".avalanche-cli"
+	forceCreate = createCmd.Flags().BoolP("force", "f", false, "overwrite the existing genesis if one exists")
 
-func writeGenesisFile(subnetName string, genesisBytes []byte) error {
-	usr, _ := user.Current()
-	genesisPath := filepath.Join(usr.HomeDir, BaseDir, subnetName+genesis_suffix)
-	err := os.WriteFile(genesisPath, genesisBytes, 0644)
-	return err
-}
+	// useSpaces = createCmd.Flags().Bool("spaces", false, "use the Spaces VM as your VM")
+	// useBlob = createCmd.Flags().Bool("blob", false, "use the Blob VM as your VM")
+	// useTimestamp = createCmd.Flags().Bool("timestamp", false, "use the Timestamp VM as your VM")
 
-func copyGenesisFile(inputFilename string, subnetName string) error {
-	genesisBytes, err := os.ReadFile(inputFilename)
-	if err != nil {
-		return err
-	}
-	usr, _ := user.Current()
-	genesisPath := filepath.Join(usr.HomeDir, BaseDir, subnetName+genesis_suffix)
-	err = os.WriteFile(genesisPath, genesisBytes, 0644)
-	return err
-}
-
-const sidecar_suffix = "_sidecar.json"
-
-func createSidecar(subnetName string, vm models.VmType) error {
-	sc := models.Sidecar{
-		Name:   subnetName,
-		Vm:     vm,
-		Subnet: subnetName,
-	}
-
-	scBytes, err := json.MarshalIndent(sc, "", "    ")
-	if err != nil {
-		return nil
-	}
-
-	usr, _ := user.Current()
-	sidecarPath := filepath.Join(usr.HomeDir, BaseDir, subnetName+sidecar_suffix)
-	err = os.WriteFile(sidecarPath, scBytes, 0644)
-	return err
 }
 
 func moreThanOneVmSelected() bool {

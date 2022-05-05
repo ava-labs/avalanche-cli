@@ -18,6 +18,28 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+var WagmiFeeConfig = params.FeeConfig{
+	GasLimit:                 big.NewInt(20000000),
+	MinBaseFee:               big.NewInt(1000000000),
+	TargetGas:                big.NewInt(100000000),
+	BaseFeeChangeDenominator: big.NewInt(48),
+	MinBlockGasCost:          big.NewInt(0),
+	MaxBlockGasCost:          big.NewInt(10000000),
+	TargetBlockRate:          2,
+	BlockGasCostStep:         big.NewInt(500000),
+}
+
+var CChainFeeConfig = params.FeeConfig{
+	GasLimit:                 big.NewInt(20000000),
+	MinBaseFee:               big.NewInt(1000000000),
+	TargetGas:                big.NewInt(100000000),
+	BaseFeeChangeDenominator: big.NewInt(48),
+	MinBlockGasCost:          big.NewInt(0),
+	MaxBlockGasCost:          big.NewInt(10000000),
+	TargetBlockRate:          2,
+	BlockGasCostStep:         big.NewInt(500000),
+}
+
 func getChainId() (*big.Int, error) {
 	// TODO check against known chain ids and provide warning
 	fmt.Println("Select your subnet's ChainId. It can be any positive integer.")
@@ -128,6 +150,99 @@ func removePrecompile(arr []string, s string) ([]string, error) {
 	return arr, errors.New("String not in array")
 }
 
+func getFeeConfig(config params.ChainConfig) (params.ChainConfig, error) {
+	const useWagmi = "Use WAGMI defaults"
+	const useCChain = "Use C-Chain defaults"
+	const customFee = "Customize fee config"
+
+	const setGasLimit = "Set gas limit"
+	const setBlockRate = "Set target block rate"
+	const setMinBaseFee = "Set min base fee"
+	const setTargetGas = "Set target gas"
+	const setBaseFeeChangeDenominator = "Set base fee change denominator"
+	const setMinBlockGas = "Set min block gas cost"
+	const setMaxBlockGas = "Set max block gas cost"
+	const setGasStep = "Set block gas cost step"
+
+	feeConfigOptions := []string{useWagmi, useCChain, customFee}
+
+	feeDefault, err := prompts.CaptureList(
+		"How would you like to set fees",
+		feeConfigOptions,
+	)
+	if err != nil {
+		return config, err
+	}
+
+	switch feeDefault {
+	case useWagmi:
+		fmt.Println("Using Wagmi config")
+		config.FeeConfig = &WagmiFeeConfig
+		return config, nil
+	case useCChain:
+		fmt.Println("Using C-Chain config")
+		config.FeeConfig = &CChainFeeConfig
+		return config, nil
+	default:
+		fmt.Println("Customizing fee config")
+	}
+
+	gasLimit, err := prompts.CapturePositiveBigInt(setGasLimit)
+	if err != nil {
+		return config, err
+	}
+
+	blockRate, err := prompts.CapturePositiveBigInt(setBlockRate)
+	if err != nil {
+		return config, err
+	}
+
+	minBaseFee, err := prompts.CapturePositiveBigInt(setMinBaseFee)
+	if err != nil {
+		return config, err
+	}
+
+	targetGas, err := prompts.CapturePositiveBigInt(setTargetGas)
+	if err != nil {
+		return config, err
+	}
+
+	baseDenominator, err := prompts.CapturePositiveBigInt(setBaseFeeChangeDenominator)
+	if err != nil {
+		return config, err
+	}
+
+	minBlockGas, err := prompts.CapturePositiveBigInt(setMinBlockGas)
+	if err != nil {
+		return config, err
+	}
+
+	maxBlockGas, err := prompts.CapturePositiveBigInt(setMaxBlockGas)
+	if err != nil {
+		return config, err
+	}
+
+	gasStep, err := prompts.CapturePositiveBigInt(setGasStep)
+	if err != nil {
+		return config, err
+	}
+
+	feeConf := params.FeeConfig{
+		GasLimit:                 gasLimit,
+		TargetBlockRate:          blockRate.Uint64(),
+		MinBaseFee:               minBaseFee,
+		TargetGas:                targetGas,
+		BaseFeeChangeDenominator: baseDenominator,
+		MinBlockGasCost:          minBlockGas,
+		MaxBlockGasCost:          maxBlockGas,
+		BlockGasCostStep:         gasStep,
+	}
+
+	config.FeeConfig = &feeConf
+
+	return config, nil
+}
+
 func getPrecompiles(config params.ChainConfig) (params.ChainConfig, error) {
 	const nativeMint = "Native Minting"
 	const contractAllowList = "Contract deployment whitelist"
@@ -210,6 +325,11 @@ func CreateEvmGenesis(name string) ([]byte, error) {
 		return []byte{}, err
 	}
 	conf.ChainID = chainId
+
+	*conf, err = getFeeConfig(*conf)
+	if err != nil {
+		return []byte{}, err
+	}
 
 	allocation, err := getAllocation()
 	if err != nil {

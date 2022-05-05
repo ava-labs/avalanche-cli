@@ -5,7 +5,6 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -14,7 +13,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
@@ -35,8 +33,6 @@ to quickly create a Cobra application.`,
 func init() {
 	subnetCmd.AddCommand(listCmd)
 }
-
-const genesis_suffix = "_genesis.json"
 
 type subnetMatrix [][]string
 
@@ -66,15 +62,7 @@ func listGenesis(cmd *cobra.Command, args []string) {
 	for _, f := range files {
 		if strings.Contains(f.Name(), sidecar_suffix) {
 			// read in sidecar file
-			path := filepath.Join(mainDir, f.Name())
-			jsonBytes, err := os.ReadFile(path)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-
-			var sc models.Sidecar
-			err = json.Unmarshal(jsonBytes, &sc)
+			sc, err := loadSidecar(strings.TrimSuffix(f.Name(), sidecar_suffix))
 			if err != nil {
 				fmt.Println(err)
 				return
