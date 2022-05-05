@@ -9,7 +9,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/user"
@@ -22,6 +25,7 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/spf13/cobra"
 	// "github.com/ava-labs/avalanche-network-runner/cmd/avalanche-network-runner/server"
@@ -41,9 +45,16 @@ to quickly create a Cobra application.`,
 	Args: cobra.ExactArgs(1),
 }
 
+const (
+	binaryServerURL = "http://3.84.91.164:8998"
+	serverRun       = "/tmp/gRPCserver.run"
+)
+
 var (
-	deployLocal *bool
-	force       *bool
+	deployLocal         *bool
+	force               *bool
+	localgRPCOutputFile string
+	localgRPCPid        int
 )
 
 func init() {
@@ -187,7 +198,8 @@ func doDeploy(chain string) error {
 		return err
 	}
 	fmt.Printf("this VM will get ID: %s\n", vmID.String())
-	if err := buildVM(chain, vmID, pluginDir); err != nil {
+	// if err := buildVM(chain, vmID, pluginDir); err != nil {
+	if err := getVMBinary(vmID, pluginDir); err != nil {
 		return err
 	}
 
@@ -198,14 +210,103 @@ func doDeploy(chain string) error {
 		opts...,
 	)
 	if err != nil {
+		fmt.Printf("failed to start network :%s\n", err)
 		return err
 	}
-	fmt.Println("network is up and running")
+
 	fmt.Println(info)
+	fmt.Println("network has been booted. wait until healthy...")
+
+	if err := waitForHealthy(cli, ctx); err != nil {
+		fmt.Printf("failed to query network health: %s\n", err)
+		return err
+	}
+
+	uris, err := cli.URIs(ctx)
+	if err != nil {
+		fmt.Printf("failed to query uri endpoints: %s\n", err)
+		return err
+	}
+
+	fmt.Println("network ready to use. local network node endpoints:")
+	for _, u := range uris {
+		fmt.Println(u)
+	}
 	return nil
 }
 
-func getVMBinary(id ids.ID) error {
+func waitForHealthy(cli client.Client, ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(10 * time.Second):
+			fmt.Println("polling for health...")
+			_, err := cli.Health(ctx)
+			if err != nil {
+				fmt.Println("not yet")
+				continue
+			}
+			fmt.Println("all good!")
+			return nil
+		}
+	}
+}
+
+func getVMBinary(id ids.ID, pluginDir string) error {
+	vmID := id.String()
+	binaryPath := filepath.Join(pluginDir, vmID)
+	info, err := os.Stat(binaryPath)
+	if err == nil {
+		if !info.IsDir() {
+			fmt.Println("binary already exists, skipping download")
+		}
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+
+	fmt.Println("binary does not exist locally, starting download...")
+
+	base, err := url.Parse(binaryServerURL)
+	if err != nil {
+		return err
+	}
+
+	// Path params
+	// base.Path += "this will get automatically encoded"
+
+	// Query params
+	params := url.Values{}
+	params.Add("vmid", vmID)
+	base.RawQuery = params.Encode()
+
+	fmt.Printf("starting download from %s...\n\n", base.String())
+
+	resp, err := http.Get(base.String())
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		fmt.Println("download successful. installing binary...")
+		return installBinary(bodyBytes, binaryPath)
+
+	} else {
+		return fmt.Errorf("downloading binary failed, status code: %d", resp.StatusCode)
+	}
+}
+
+func installBinary(binary []byte, binaryPath string) error {
+	if err := os.WriteFile(binaryPath, binary, perms.ReadWriteExecute); err != nil {
+		return err
+	}
+	fmt.Println("binary installed. ready to go.")
 	return nil
 }
 
@@ -264,6 +365,12 @@ func startServerProcess() error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
+
 	fmt.Printf("Backend controller started, pid: %d, output at: %s\n", cmd.Process.Pid, outputFile.Name())
+	content := fmt.Sprintf("gRPC server output file: %s\ngRPC server PID: %d\n", outputFile.Name(), cmd.Process.Pid)
+	err = os.WriteFile(serverRun, []byte(content), perms.ReadWrite)
+	if err != nil {
+		fmt.Printf("WARN: Could not write gRPC process info to file: %s\n", err)
+	}
 	return nil
 }
