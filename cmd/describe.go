@@ -58,7 +58,8 @@ func printGenesis(subnetName string) error {
 }
 
 func printGasTable(genesis core.Genesis) {
-
+	// Generated here with BIG font
+	// https://patorjk.com/software/taag/#p=display&f=Big&t=Precompiles
 	const art = `
   _____              _____             __ _
  / ____|            / ____|           / _(_)

@@ -344,6 +344,7 @@ func CreateEvmGenesis(name string) ([]byte, error) {
 	genesis.Alloc = allocation
 	genesis.Config = conf
 	genesis.Difficulty = big.NewInt(0)
+	genesis.GasLimit = 8000000
 
 	jsonBytes, err := genesis.MarshalJSON()
 	if err != nil {
