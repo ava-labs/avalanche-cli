@@ -5,6 +5,10 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"archive/tar"
+	"archive/zip"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -17,6 +21,8 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -26,9 +32,10 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/perms"
+	"github.com/ava-labs/avalanchego/utils/storage"
+	"github.com/coreos/go-semver/semver"
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/spf13/cobra"
-	// "github.com/ava-labs/avalanche-network-runner/cmd/avalanche-network-runner/server"
 )
 
 // deployCmd represents the deploy command
@@ -46,8 +53,10 @@ to quickly create a Cobra application.`,
 }
 
 const (
-	binaryServerURL = "http://3.84.91.164:8998"
-	serverRun       = "/tmp/gRPCserver.run"
+	latestAvagoReleaseURL = "https://api.github.com/repos/ava-labs/avalanchego/releases/latest"
+	binaryServerURL       = "http://3.84.91.164:8998"
+	serverRun             = "/tmp/gRPCserver.run"
+	binDir                = "bin"
 )
 
 var (
@@ -154,15 +163,247 @@ func deployToLocalNetwork(chain string) error {
 	return doDeploy(chain)
 }
 
-func setupLocalEnv() {
+func avagoExists(binDir string) (bool, string, error) {
+	// TODO this still has loads of potential pit falls
+	// Should prob check for existing binary and plugin dir too
+	match, err := filepath.Glob(filepath.Join(binDir, "avalanchego") + "*")
+	if err != nil {
+		return false, "", err
+	}
+	var latest string
+	switch len(match) {
+	case 0:
+		return false, "", nil
+	case 1:
+		latest = match[0]
+	default:
+		semVers := make(semver.Versions, len(match))
+		for i, v := range match {
+			base := filepath.Base(v)
+			semVers[i] = semver.New(base[1:])
+		}
+
+		sort.Sort(sort.Reverse(semVers))
+		choose := fmt.Sprintf("v%s", semVers[0])
+		for _, m := range match {
+			if strings.Contains(m, choose) {
+				latest = m
+				break
+			}
+		}
+	}
+	return true, latest, nil
+}
+
+func setupLocalEnv() (string, error) {
+	usr, _ := user.Current()
+	binDir := filepath.Join(usr.HomeDir, BaseDir, binDir)
+
+	exists, latest, err := avagoExists(binDir)
+	if err != nil {
+		return "", err
+	}
+	if exists {
+		fmt.Println("local avalanchego found. skipping installation")
+		return latest, nil
+	}
+
+	fmt.Println("installing latest avalanchego version...")
+
+	// TODO: Question if there is a less error prone (= simpler) way to install latest avalanchego
+	// Maybe the binary package manager should also allow the actual avalanchego binary for download
+	resp, err := http.Get(latestAvagoReleaseURL)
+	if err != nil {
+		return "", err
+	}
+
+	jsonBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var jsonStr map[string]interface{}
+	if err := json.Unmarshal(jsonBytes, &jsonStr); err != nil {
+		return "", err
+	}
+
+	version := jsonStr["tag_name"].(string)
+	if version == "" || version[0] != 'v' {
+		return "", fmt.Errorf("invalid version string: %s", version)
+	}
+	resp.Body.Close()
+
+	fmt.Printf("latest avalanchego version is: %s\n", version)
+
+	arch := runtime.GOARCH
+	goos := runtime.GOOS
+	avalanchegoURL := fmt.Sprintf("https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-linux-%s-%s.tar.gz", version, arch, version)
+	if goos == "darwin" {
+		avalanchegoURL = fmt.Sprintf("https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-macos-%s.zip", version, version)
+	}
+	// EXPERMENTAL WIN, no support
+	if goos == "windows" {
+		avalanchegoURL = fmt.Sprintf("https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-win-%s-experimental.zip", version, version)
+	}
+
+	fmt.Printf("starting download from %s...\n", avalanchegoURL)
+
+	resp, err = http.Get(avalanchegoURL)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	archive, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Println("download successful. installing archive...")
+	if err := installArchive(goos, archive, binDir); err != nil {
+		return "", err
+	}
+	return filepath.Join(binDir, "avalanchego-"+version), nil
+}
+
+func installArchive(goos string, archive []byte, binDir string) error {
+	if goos == "darwin" || goos == "windows" {
+		return installZipArchive(archive, binDir)
+	}
+	return installTarGzArchive(archive, binDir)
+}
+
+func installZipArchive(zipfile []byte, binDir string) error {
+	bytesReader := bytes.NewReader(zipfile)
+	zipReader, err := zip.NewReader(bytesReader, int64(len(zipfile)))
+	if err != nil {
+		return err
+	}
+
+	if err := os.MkdirAll(binDir, 0755); err != nil {
+		return err
+	}
+
+	// Closure to address file descriptors issue with all the deferred .Close() methods
+	extractAndWriteFile := func(f *zip.File) error {
+		rc, err := f.Open()
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err := rc.Close(); err != nil {
+				panic(err)
+			}
+		}()
+
+		path := filepath.Join(binDir, f.Name)
+		// Check for ZipSlip (Directory traversal)
+		if !strings.HasPrefix(path, filepath.Clean(binDir)+string(os.PathSeparator)) {
+			return fmt.Errorf("illegal file path: %s", path)
+		}
+
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(path, f.Mode())
+		} else {
+			os.MkdirAll(filepath.Dir(path), f.Mode())
+			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if err := f.Close(); err != nil {
+					panic(err)
+				}
+			}()
+
+			_, err = io.Copy(f, rc)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	for _, f := range zipReader.File {
+		err := extractAndWriteFile(f)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func installTarGzArchive(targz []byte, binDir string) error {
+	byteReader := bytes.NewReader(targz)
+	uncompressedStream, err := gzip.NewReader(byteReader)
+	if err != nil {
+		return fmt.Errorf("ExtractTarGz: NewReader failed: %s", err)
+	}
+
+	tarReader := tar.NewReader(uncompressedStream)
+	for {
+		header, err := tarReader.Next()
+		switch {
+		// if no more files are found return
+		case err == io.EOF:
+			return nil
+		case err != nil:
+			return err
+		// if the header is nil, just skip it (not sure how this happens)
+		case header == nil:
+			continue
+		}
+		// the target location where the dir/file should be created
+		target := filepath.Join(binDir, header.Name)
+
+		// check the file type
+		switch header.Typeflag {
+		// if its a dir and it doesn't exist create it
+		case tar.TypeDir:
+			if _, err := os.Stat(target); err != nil {
+				if err := os.MkdirAll(target, 0755); err != nil {
+					return err
+				}
+			}
+		// if it's a file create it
+		case tar.TypeReg:
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+			if err != nil {
+				return err
+			}
+			// copy over contents
+			if _, err := io.Copy(f, tarReader); err != nil {
+				return err
+			}
+			// manually close here after each file operation; defering would cause each file close
+			// to wait until all operations have completed.
+			f.Close()
+		}
+	}
 }
 
 func doDeploy(chain string) error {
-	//	curl -X POST -k http://localhost:8081/v1/control/start -d '{"execPath":"'${AVALANCHEGO_EXEC_PATH}'","numNodes":5,"logLevel":"INFO","pluginDir":"'${AVALANCHEGO_PLUGIN_PATH}'","customVms":{"subnetevm":"/tmp/subnet-evm.genesis.json"}}'
-	setupLocalEnv()
+	avagoDir, err := setupLocalEnv()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
 
-	pluginDir := "/home/fabio/go/src/github.com/ava-labs/avalanchego/build/plugins"
-	avalancheGoBinPath := "/home/fabio/go/src/github.com/ava-labs/avalanchego/build/avalanchego"
+	fmt.Println("avalanchego installation successful")
+
+	pluginDir := filepath.Join(avagoDir, "plugins")
+	avalancheGoBinPath := filepath.Join(avagoDir, "avalanchego")
+
+	exists, err := storage.FolderExists(pluginDir)
+	if !exists || err != nil {
+		return fmt.Errorf("evaluated pluginDir to be %s but it does not exist.", pluginDir)
+	}
+
+	exists, err = storage.FileExists(avalancheGoBinPath)
+	if !exists || err != nil {
+		return fmt.Errorf("evaluated avalancheGoBinPath to be %s but it does not exist.", avalancheGoBinPath)
+	}
 
 	requestTimeout := 3 * time.Minute
 
@@ -188,15 +429,7 @@ func doDeploy(chain string) error {
 		client.WithCustomVMs(customVMs),
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	// don't call since "start" is async
-	// and the top-level context here "ctx" is passed
-	// to all underlying function calls
-	// just set the timeout to halt "Start" async ops
-	// when the deadline is reached
-	_ = cancel
-
-	vmID, err := utils.VMID("subnet-evm")
+	vmID, err := utils.VMID(chain)
 	if err != nil {
 		return err
 	}
@@ -205,6 +438,14 @@ func doDeploy(chain string) error {
 	if err := getVMBinary(vmID, pluginDir); err != nil {
 		return err
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	// don't call since "start" is async
+	// and the top-level context here "ctx" is passed
+	// to all underlying function calls
+	// just set the timeout to halt "Start" async ops
+	// when the deadline is reached
+	_ = cancel
 
 	fmt.Println("VM ready. Trying to boot network...")
 	info, err := cli.Start(
@@ -220,7 +461,7 @@ func doDeploy(chain string) error {
 	fmt.Println(info)
 	fmt.Println("network has been booted. wait until healthy...")
 
-	endpoints, err := waitForHealthy(cli, ctx)
+	endpoints, err := waitForHealthy(ctx, cli)
 	if err != nil {
 		fmt.Printf("failed to query network health: %s\n", err)
 		return err
@@ -244,7 +485,7 @@ func printWait(cancel chan struct{}) {
 	}
 }
 
-func waitForHealthy(cli client.Client, ctx context.Context) ([]string, error) {
+func waitForHealthy(ctx context.Context, cli client.Client) ([]string, error) {
 	cancel := make(chan struct{})
 	go printWait(cancel)
 	for {
@@ -257,7 +498,12 @@ func waitForHealthy(cli client.Client, ctx context.Context) ([]string, error) {
 			fmt.Println()
 			fmt.Println("polling for health...")
 			resp, err := cli.Health(ctx)
+			// TODO sometimes it hangs here!
+			fmt.Println("health call returned")
 			if err != nil {
+				if strings.Contains(err.Error(), "context deadline exceeded") {
+					return nil, err
+				}
 				fmt.Println("not yet")
 				continue
 			}
@@ -267,9 +513,8 @@ func waitForHealthy(cli client.Client, ctx context.Context) ([]string, error) {
 			}
 			if len(resp.ClusterInfo.CustomVms) == 0 {
 				fmt.Println("network is up but custom VMs are not installed yet. polling again...")
-				// TODO: Health call seems to hang in this phase...
 				go printWait(cancel)
-				time.Sleep(25 * time.Second)
+				time.Sleep(90 * time.Second)
 				continue
 			}
 			endpoints := []string{}
@@ -297,7 +542,7 @@ func getVMBinary(id ids.ID, pluginDir string) error {
 		return err
 	}
 
-	fmt.Println("binary does not exist locally, starting download...")
+	fmt.Println("VM binary does not exist locally, starting download...")
 
 	base, err := url.Parse(binaryServerURL)
 	if err != nil {
@@ -334,7 +579,7 @@ func getVMBinary(id ids.ID, pluginDir string) error {
 }
 
 func installBinary(binary []byte, binaryPath string) error {
-	if err := os.WriteFile(binaryPath, binary, perms.ReadWriteExecute); err != nil {
+	if err := os.WriteFile(binaryPath, binary, 0o755); err != nil {
 		return err
 	}
 	fmt.Println("binary installed. ready to go.")
