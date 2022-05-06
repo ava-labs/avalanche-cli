@@ -17,9 +17,10 @@ var filename string
 
 var forceCreate *bool
 var useSubnetEvm *bool
-var useSpaces *bool
-var useBlob *bool
-var useTimestamp *bool
+
+// var useSpaces *bool
+// var useBlob *bool
+// var useTimestamp *bool
 var useCustom *bool
 
 // createCmd represents the create command

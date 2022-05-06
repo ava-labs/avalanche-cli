@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/subnet-evm/core"
 )
 
 func writeGenesisFile(subnetName string, genesisBytes []byte) error {
@@ -25,6 +26,22 @@ func copyGenesisFile(inputFilename string, subnetName string) error {
 	genesisPath := filepath.Join(usr.HomeDir, BaseDir, subnetName+genesis_suffix)
 	err = os.WriteFile(genesisPath, genesisBytes, 0644)
 	return err
+}
+
+func loadEvmGenesis(subnetName string) (core.Genesis, error) {
+	usr, _ := user.Current()
+	genesisPath := filepath.Join(usr.HomeDir, BaseDir, subnetName+genesis_suffix)
+	jsonBytes, err := os.ReadFile(genesisPath)
+	if err != nil {
+		return core.Genesis{}, err
+	}
+
+	var gen core.Genesis
+	err = json.Unmarshal(jsonBytes, &gen)
+	if err != nil {
+		return core.Genesis{}, err
+	}
+	return gen, nil
 }
 
 func createSidecar(subnetName string, vm models.VmType) error {
