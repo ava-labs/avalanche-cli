@@ -195,9 +195,8 @@ func avagoExists(binDir string) (bool, string, error) {
 	return true, latest, nil
 }
 
-func setupLocalEnv() (string, error) {
-	usr, _ := user.Current()
-	binDir := filepath.Join(usr.HomeDir, BaseDir, binDir)
+func setupLocalEnv(homeDir string) (string, error) {
+	binDir := filepath.Join(homeDir, BaseDir, binDir)
 
 	exists, latest, err := avagoExists(binDir)
 	if err != nil {
@@ -384,7 +383,11 @@ func installTarGzArchive(targz []byte, binDir string) error {
 }
 
 func doDeploy(chain string) error {
-	avagoDir, err := setupLocalEnv()
+	usr, err := user.Current()
+	if err != nil {
+		return err
+	}
+	avagoDir, err := setupLocalEnv(usr.HomeDir)
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -417,7 +420,11 @@ func doDeploy(chain string) error {
 	}
 	defer cli.Close()
 
-	chain_genesis := fmt.Sprintf("/home/fabio/.avalanche-cli/%s_genesis.json", chain)
+	chain_genesis := filepath.Join(usr.HomeDir, BaseDir, fmt.Sprintf("%s_genesis.json", chain))
+	exists, err = storage.FileExists(chain_genesis)
+	if !exists || err != nil {
+		return fmt.Errorf("evaluated chain genesis file to be at %s but it does not seem to exist.", chain_genesis)
+	}
 
 	customVMs := map[string]string{
 		chain: chain_genesis,
