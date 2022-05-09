@@ -75,6 +75,23 @@ func restartNode(ctx context.Context, nodeName string, whitelistedSubnets string
 	return nil
 }
 
+func checkBlockchain(ctx context.Context, blockchainID ids.ID) error {
+	cli, err := client.New(client.Config{
+		LogLevel:    logLevel,
+		Endpoint:    endpoint,
+		DialTimeout: dialTimeout,
+	})
+	if err != nil {
+		return err
+	}
+	defer cli.Close()
+	_, err = cli.CheckBlockchain(ctx, blockchainID.String())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func getNodeURIs(ctx context.Context) ([]string, error) {
 	cli, err := client.New(client.Config{
 		LogLevel:    logLevel,
@@ -180,7 +197,29 @@ func installVMs(
 	return vmNameToSubnetID, vmNameToBlockchainID, nil
 }
 
-func waitForVMsReady(ctx context.Context, blockchainIDs []ids.ID) error {
+func waitForVMsReady(ctx context.Context, vmNameToBlockchainID map[string]ids.ID) error {
+	nodeURIs, err := getNodeURIs(ctx)
+	if err != nil {
+		return err
+	}
+	for vmName := range vmNameToBlockchainID {
+		vmID, err := utils.VMID(vmName)
+		if err != nil {
+			return err
+		}
+		blockchainID := vmNameToBlockchainID[vmName]
+		zap.L().Info("checking blockchain is ready for all",
+			zap.String("vm-name", vmName),
+			zap.String("vm-id", vmID.String()),
+			zap.String("blockchain-id", blockchainID.String()),
+		)
+        if err := checkBlockchain(ctx, blockchainID); err != nil {
+            return err
+        }
+		for _, nodeURI := range nodeURIs {
+			color.Outf("{{blue}}{{bold}}[blockchain RPC for %q] \"%s/ext/bc/%s\"{{/}}\n", vmID, nodeURI, blockchainID.String())
+		}
+	}
 	return nil
 }
 

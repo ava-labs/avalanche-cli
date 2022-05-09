@@ -3,11 +3,14 @@ module github.com/ava-labs/avalanche-cli
 go 1.17
 
 require (
+	github.com/ava-labs/avalanche-network-runner v1.0.14-0.20220509212722-11ba320b11d0
+	github.com/ava-labs/avalanchego v1.7.11-0.20220416161358-8755486a274e
 	github.com/ava-labs/subnet-evm v0.2.1
 	github.com/ethereum/go-ethereum v1.10.16
 	github.com/manifoldco/promptui v0.9.0
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/viper v1.11.0
+	go.uber.org/zap v1.21.0
 )
 
 require (
@@ -15,8 +18,6 @@ require (
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/VictoriaMetrics/fastcache v1.9.0 // indirect
-	github.com/ava-labs/avalanche-network-runner v1.0.11 // indirect
-	github.com/ava-labs/avalanchego v1.7.11-0.20220416161358-8755486a274e // indirect
 	github.com/ava-labs/coreth v0.8.9-rc.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd v0.21.0-beta // indirect
@@ -94,7 +95,6 @@ require (
 	github.com/tyler-smith/go-bip39 v1.0.2 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
-	go.uber.org/zap v1.21.0 // indirect
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
 	golang.org/x/net v0.0.0-20220412020605-290c469a71a5 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
@@ -112,5 +112,3 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
-
-replace github.com/ava-labs/avalanche-network-runner v1.0.11 => ../avalanche-network-runner

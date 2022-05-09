@@ -80,6 +80,8 @@ github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kd
 github.com/apache/arrow/go/arrow v0.0.0-20191024131854-af6fa24be0db/go.mod h1:VTxUBvSJ3s3eHAg65PNgrsn5BtqCRPdmyXh6rAfdxN0=
 github.com/ava-labs/avalanche-network-runner v1.0.11 h1:O942pleCPqVavUyALO/GOHk/i+c5LzRBo8VKrA3C+5g=
 github.com/ava-labs/avalanche-network-runner v1.0.11/go.mod h1:dHfVBTpVIBiSb+ybhPRXcXxejpgI56Q7p+/nUG3seyY=
+github.com/ava-labs/avalanche-network-runner v1.0.14-0.20220509212722-11ba320b11d0 h1:AU4HH3Iw5TK4CiIIV5IUuBUdXfQ/2NBSjTT4k1Eyj0o=
+github.com/ava-labs/avalanche-network-runner v1.0.14-0.20220509212722-11ba320b11d0/go.mod h1:39dBZRt88bGpOQU5YsjH0sshnd33FK3bMpX3dG9pMP8=
 github.com/ava-labs/avalanchego v1.7.10 h1:OeLRHgE4YPQGFPETt3FLc8MNLEozqU1ehfOFQVYIhBU=
 github.com/ava-labs/avalanchego v1.7.10/go.mod h1:QVjeerfAaeS//G34swRgfrZu77SRpcprOkvkrJ+MeVE=
 github.com/ava-labs/avalanchego v1.7.11-0.20220416161358-8755486a274e h1:BC9sVeGLUgT/hPiQQs8WSD6jLlck1r51J8SM4ihJhg4=
