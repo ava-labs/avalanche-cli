@@ -6,16 +6,16 @@ package networkmanager
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-network-runner/pkg/color"
-	"github.com/ava-labs/avalanche-network-runner/rpcpb"
-	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanche-network-runner/client"
+	"github.com/ava-labs/avalanche-network-runner/network"
+	"github.com/ava-labs/avalanche-network-runner/pkg/color"
+	"github.com/ava-labs/avalanche-network-runner/pkg/logutil"
+	"github.com/ava-labs/avalanche-network-runner/utils"
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/constants"
@@ -27,19 +27,20 @@ import (
 )
 
 var (
-    logLevel string
-    endpoint string
-    dialTimeout time.Duration
-    requestTimeout time.Duration
+	logLevel       string
+	endpoint       string
+	dialTimeout    time.Duration
+	requestTimeout time.Duration
 )
 
 func init() {
-    logLevel = logutil.DefaultLogLevel
-    endPoint = "0.0.0.0:8080"
-    dialTimeout = 10*time.Second
-    requestTimeout = 3*time.Minute
+	logLevel = logutil.DefaultLogLevel
+	endpoint = "0.0.0.0:8080"
+	dialTimeout = 10 * time.Second
+	requestTimeout = 3 * time.Minute
 }
 
+// depends on cli.Health to wait for network readiness check loop
 func waitForNetworkReady(ctx context.Context) error {
 	cli, err := client.New(client.Config{
 		LogLevel:    logLevel,
@@ -50,7 +51,7 @@ func waitForNetworkReady(ctx context.Context) error {
 		return err
 	}
 	defer cli.Close()
-    _, err := cli.Health(ctx)
+	_, err = cli.Health(ctx)
 	if err != nil {
 		return err
 	}
@@ -67,14 +68,14 @@ func restartNode(ctx context.Context, nodeName string, whitelistedSubnets string
 		return err
 	}
 	defer cli.Close()
-    _, err := cli.RestartNode(ctx, client.WithWhitelistedSubnets(whitelistedSubnets))
+	_, err = cli.RestartNode(ctx, nodeName, client.WithWhitelistedSubnets(whitelistedSubnets))
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func getNodeURIs(ctx context.Context) []string, error {
+func getNodeURIs(ctx context.Context) ([]string, error) {
 	cli, err := client.New(client.Config{
 		LogLevel:    logLevel,
 		Endpoint:    endpoint,
@@ -92,151 +93,94 @@ func getNodeURIs(ctx context.Context) []string, error {
 }
 
 func getNodeIDs(ctx context.Context, nodeURIs []string) ([]ids.ShortID, error) {
-	nodeIDs = make([]ids.ShortID, 0, len(nodeURIs))
-    for i, nodeURI := nodeURIs {
-        infoCli := info.NewClient(nodeURI)
-        nodeIDs[i], err := infoCli.GetNodeID(ctx)
-        if err != nil {
-            return nil, err
-        }
-    }
-    return nodeIDs
+	nodeIDs := make([]ids.ShortID, 0, len(nodeURIs))
+	for i, nodeURI := range nodeURIs {
+		infoCli := info.NewClient(nodeURI)
+		nodeIDStr, err := infoCli.GetNodeID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		nodeIDs[i], err = ids.ShortFromPrefixedString(nodeIDStr, constants.NodeIDPrefix)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return nodeIDs, nil
 }
 
 // provisions local cluster and install custom VMs if applicable
 // assumes the local cluster is already set up and healthy
-func installCustomVMs(ctx context.Context, customVMNameToGenesis map[string]byte, nwConfig network.Config) error {
+func installVMs(
+	ctx context.Context,
+	vmNameToGenesis map[string][]byte,
+	nwConfig network.Config,
+) (map[string]ids.ID, map[string]ids.ID, error) {
 	println()
 	color.Outf("{{blue}}{{bold}}create and install custom VMs{{/}}\n")
 
-    nodeURIs, err := getNodeUris(ctx)
-    if err != nil {
-        return err
-    }
+	nodeURIs, err := getNodeURIs(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	httpRPCEp := nodeURIs[0]
 	platformCli := platformvm.NewClient(httpRPCEp)
 
 	baseWallet, avaxAssetID, testKeyAddr, err := setupWallet(ctx, httpRPCEp)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-    validatorIDs, err := getNodeIDs(ctx, nodeURIs)
+	validatorIDs, err := getNodeIDs(ctx, nodeURIs)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	if err := checkValidators(ctx, platformCli, baseWallet, testKeyAddr, validatorIDs); err != nil {
-		return err
+		return nil, nil, err
 	}
-    customVMNameTosubnetID, err := createSubnets(ctx, baseWallet, testKeyAddr, customVMNameToGenesis); err != nil {
+	vmNameToSubnetID, err := createSubnets(ctx, baseWallet, testKeyAddr, vmNameToGenesis)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	if err = restartNodesWithWhitelistedSubnets(ctx, customVMNameToSubnetID, nwConfig); err != nil {
-		return err
+	if err = restartNodesWithWhitelistedSubnets(ctx, vmNameToSubnetID, nwConfig); err != nil {
+		return nil, nil, err
 	}
 
 	println()
 	color.Outf("{{green}}refreshing the wallet with the new URIs after restarts{{/}}\n")
-    nodeURIs, err := getNodeUris(ctx)
-    if err != nil {
-        return err
-    }
-	httpRPCEp := nodeURIs[0]
+	nodeURIs, err = getNodeURIs(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	httpRPCEp = nodeURIs[0]
 	baseWallet.refresh(httpRPCEp)
 	zap.L().Info("set up base wallet with pre-funded test key",
 		zap.String("http-rpc-endpoint", httpRPCEp),
 		zap.String("address", testKeyAddr.String()),
 	)
 
-	if err = addSubnetValidators(ctx, baseWallet, validatorIDs, customVMNameToSubnetID); err != nil {
-		return err
+	if err = addSubnetValidators(ctx, baseWallet, validatorIDs, vmNameToSubnetID); err != nil {
+		return nil, nil, err
 	}
-	if err = createBlockchains(ctx, baseWallet, testKeyAddr, customVMNameToGenesis, customVMNameToSubnetID); err != nil {
-		return err
+	vmNameToBlockchainID, err := createBlockchains(ctx, baseWallet, testKeyAddr, vmNameToGenesis, vmNameToSubnetID)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	println()
 	color.Outf("{{green}}checking the remaining balance of the base wallet{{/}}\n")
 	balances, err := baseWallet.P().Builder().GetBalance()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	zap.L().Info("base wallet AVAX balance",
 		zap.String("address", testKeyAddr.String()),
 		zap.Uint64("balance", balances[avaxAssetID]),
 	)
 
-	return nil
+	return vmNameToSubnetID, vmNameToBlockchainID, nil
 }
 
-func waitForCustomVMsReady(ctx context.Context) error {
-	println()
-	color.Outf("{{blue}}{{bold}}waiting for custom VMs to report healthy...{{/}}\n")
-
-	hc := lc.nw.Healthy(ctx)
-	select {
-	case <-lc.stopc:
-		return errAborted
-	case <-ctx.Done():
-		return ctx.Err()
-	case err := <-hc:
-		if err != nil {
-			return err
-		}
-	}
-
-	for nodeName, nodeInfo := range lc.nodeInfos {
-		zap.L().Info("inspecting node log directory for custom VM logs",
-			zap.String("node-name", nodeName),
-			zap.String("log-dir", nodeInfo.LogDir),
-		)
-		for _, vmInfo := range lc.customVMIDToInfo {
-			p := filepath.Join(nodeInfo.LogDir, vmInfo.info.BlockchainId+".log")
-			zap.L().Info("checking log",
-				zap.String("vm-id", vmInfo.info.VmId),
-				zap.String("subnet-id", vmInfo.info.SubnetId),
-				zap.String("blockchain-id", vmInfo.info.BlockchainId),
-				zap.String("log-path", p),
-			)
-			for {
-				_, err := os.Stat(p)
-				if err == nil {
-					zap.L().Info("found the log", zap.String("log-path", p))
-					break
-				}
-
-				zap.L().Info("log not found yet, retrying...",
-					zap.String("vm-id", vmInfo.info.VmId),
-					zap.String("subnet-id", vmInfo.info.SubnetId),
-					zap.String("blockchain-id", vmInfo.info.BlockchainId),
-					zap.String("log-path", p),
-					zap.Error(err),
-				)
-				select {
-				case <-lc.stopc:
-					return errAborted
-				case <-ctx.Done():
-					return ctx.Err()
-				case <-time.After(10 * time.Second):
-				}
-			}
-		}
-	}
-
-	println()
-	color.Outf("{{green}}{{bold}}all custom VMs are running!!!{{/}}\n")
-	for _, i := range lc.nodeInfos {
-		for vmID, vmInfo := range lc.customVMIDToInfo {
-			color.Outf("{{blue}}{{bold}}[blockchain RPC for %q] \"%s/ext/bc/%s\"{{/}}\n", vmID, i.GetUri(), vmInfo.blockchainID.String())
-		}
-	}
-
-	lc.customVMsReadycCloseOnce.Do(func() {
-		println()
-		color.Outf("{{green}}{{bold}}all custom VMs are ready on RPC server-side -- network-runner RPC client can poll and query the cluster status{{/}}\n")
-		close(lc.customVMsReadyc)
-	})
+func waitForVMsReady(ctx context.Context, blockchainIDs []ids.ID) error {
 	return nil
 }
 
@@ -278,12 +222,12 @@ func setupWallet(ctx context.Context, httpRPCEp string) (baseWallet *refreshable
 }
 
 func checkValidators(
-    ctx context.Context,
-    platformCli platformvm.Client,
-    baseWallet *refreshableWallet,
-    testKeyAddr ids.ShortID,
+	ctx context.Context,
+	platformCli platformvm.Client,
+	baseWallet *refreshableWallet,
+	testKeyAddr ids.ShortID,
 	validatorIDs []ids.ShortID,
-) err error {
+) error {
 	println()
 	color.Outf("{{green}}fetching all nodes from the existing cluster to make sure all nodes are validating the primary network/subnet{{/}}\n")
 	// ref. https://docs.avax.network/build/avalanchego-apis/p-chain/#platformgetcurrentvalidators
@@ -354,15 +298,15 @@ func checkValidators(
 }
 
 func createSubnets(
-    ctx context.Context,
-    baseWallet *refreshableWallet,
-    testKeyAddr ids.ShortID,
-    customVMNameToGenesis map[string]byte,
-) ([]ids.ID, error) {
+	ctx context.Context,
+	baseWallet *refreshableWallet,
+	testKeyAddr ids.ShortID,
+	vmNameToGenesis map[string][]byte,
+) (map[string]ids.ID, error) {
 	println()
 	color.Outf("{{green}}creating subnet for each custom VM{{/}}\n")
-    customVMNameToSubnetID := map[string]ids.ID{}
-	for vmName := range customVMNameToGenesis {
+	vmNameToSubnetID := map[string]ids.ID{}
+	for vmName := range vmNameToGenesis {
 		vmID, err := utils.VMID(vmName)
 		if err != nil {
 			return nil, err
@@ -389,27 +333,27 @@ func createSubnets(
 			zap.String("vm-id", vmID.String()),
 			zap.String("subnet-id", subnetID.String()),
 		)
-        customVMNameToSubnetID[vmName] = subnetID
+		vmNameToSubnetID[vmName] = subnetID
 	}
-	return customVMNameToSubnetID, nil
+	return vmNameToSubnetID, nil
 }
 
 // TODO: make this "restart" pattern more generic, so it can be used for "Restart" RPC
 func restartNodesWithWhitelistedSubnets(
-    ctx context.Context,
-    customVMNameToSubnetID map[string]ids.ID,
-    nwConfig network.Config
+	ctx context.Context,
+	vmNameToSubnetID map[string]ids.ID,
+	nwConfig network.Config,
 ) (err error) {
 	println()
 	color.Outf("{{green}}restarting each node with --whitelisted-subnets{{/}}\n")
-	whitelistedSubnetIDs := make([]string, 0, len(customVMNameToSubnetID))
-	for _, subnetID := range customVMNameToSubnetID {
+	whitelistedSubnetIDs := make([]string, 0, len(vmNameToSubnetID))
+	for _, subnetID := range vmNameToSubnetID {
 		whitelistedSubnetIDs = append(whitelistedSubnetIDs, subnetID.String())
 	}
 	sort.Strings(whitelistedSubnetIDs)
 	whitelistedSubnets := strings.Join(whitelistedSubnetIDs, ",")
 	for i := range nwConfig.NodeConfigs {
-		nodeName := mwConfig.NodeConfigs[i].Name
+		nodeName := nwConfig.NodeConfigs[i].Name
 
 		zap.L().Info("updating node config and info",
 			zap.String("node-name", nodeName),
@@ -429,7 +373,7 @@ func restartNodesWithWhitelistedSubnets(
 		nodeName := nodeConfig.Name
 
 		zap.L().Info("removing and adding back the node for whitelisted subnets", zap.String("node-name", nodeName))
-        if err := restartNode(ctx, nodeName, whitelistedSubnets); err != nil {
+		if err := restartNode(ctx, nodeName, whitelistedSubnets); err != nil {
 			return err
 		}
 		zap.L().Info("waiting for local cluster readiness after restart", zap.String("node-name", nodeName))
@@ -441,19 +385,19 @@ func restartNodesWithWhitelistedSubnets(
 }
 
 func addSubnetValidators(
-    ctx context.Context,
-    baseWallet *refreshableWallet,
+	ctx context.Context,
+	baseWallet *refreshableWallet,
 	validatorIDs []ids.ShortID,
-    customVMNameToSubnetID map[string]ids.ID,
+	vmNameToSubnetID map[string]ids.ID,
 ) error {
 	println()
 	color.Outf("{{green}}adding all nodes as subnet validator for each subnet{{/}}\n")
-	for vmName := range customVMNameToSubnetID {
+	for vmName := range vmNameToSubnetID {
 		vmID, err := utils.VMID(vmName)
 		if err != nil {
-			return nil, err
+			return err
 		}
-	    subnetID := customVMNameToSubnetID[vmName]
+		subnetID := vmNameToSubnetID[vmName]
 		zap.L().Info("adding all nodes as subnet validator",
 			zap.String("vm-name", vmName),
 			zap.String("vm-id", vmID.String()),
@@ -481,8 +425,8 @@ func addSubnetValidators(
 				return err
 			}
 			zap.L().Info("added the node as a subnet validator",
-                zap.String("vm-name", vmName),
-                zap.String("vm-id", vmID.String()),
+				zap.String("vm-name", vmName),
+				zap.String("vm-id", vmID.String()),
 				zap.String("subnet-id", subnetID.String()),
 				zap.String("node-id", validatorID.String()),
 				zap.String("tx-id", txID.String()),
@@ -493,21 +437,22 @@ func addSubnetValidators(
 }
 
 func createBlockchains(
-    ctx context.Context,
-    baseWallet *refreshableWallet,
-    testKeyAddr ids.ShortID,
-    customVMNameToGenesis map[string]byte,
-    customVMNameToSubnetID map[string]ids.ID,
-) error {
+	ctx context.Context,
+	baseWallet *refreshableWallet,
+	testKeyAddr ids.ShortID,
+	vmNameToGenesis map[string][]byte,
+	vmNameToSubnetID map[string]ids.ID,
+) (map[string]ids.ID, error) {
 	println()
 	color.Outf("{{green}}creating blockchain for each custom VM{{/}}\n")
-	for vmName := range customVMNameToSubnetID {
+	vmNameToBlockchainID := map[string]ids.ID{}
+	for vmName := range vmNameToSubnetID {
 		vmID, err := utils.VMID(vmName)
 		if err != nil {
 			return nil, err
 		}
-	    subnetID := customVMNameToSubnetID[vmName]
-		vmGenesisBytes := customVMNameToGenesis[vmName]
+		subnetID := vmNameToSubnetID[vmName]
+		vmGenesisBytes := vmNameToGenesis[vmName]
 
 		zap.L().Info("creating blockchain tx",
 			zap.String("vm-name", vmName),
@@ -516,7 +461,7 @@ func createBlockchains(
 		)
 		cctx, cancel := createDefaultCtx(ctx)
 		blockchainID, err := baseWallet.P().IssueCreateChainTx(
-			vmInfo.subnetID,
+			subnetID,
 			vmGenesisBytes,
 			vmID,
 			nil,
@@ -526,16 +471,17 @@ func createBlockchains(
 		)
 		cancel()
 		if err != nil {
-			return err
+			return nil, err
 		}
 
+		vmNameToBlockchainID[vmName] = blockchainID
 		zap.L().Info("created a new blockchain",
 			zap.String("vm-name", vmName),
 			zap.String("vm-id", vmID.String()),
 			zap.String("blockchain-id", blockchainID.String()),
 		)
 	}
-	return nil
+	return vmNameToBlockchainID, nil
 }
 
 var defaultPoll = common.WithPollFrequency(5 * time.Second)
