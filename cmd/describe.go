@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strconv"
 
@@ -29,26 +28,14 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run:  readGenesis,
+	RunE: readGenesis,
 	Args: cobra.ExactArgs(1),
 }
 
-var printGenesisOnly *bool
-
-func init() {
-	subnetCmd.AddCommand(readCmd)
-
-	printGenesisOnly = readCmd.Flags().BoolP(
-		"genesis",
-		"g",
-		false,
-		"Print the genesis to the console directly instead of the summary",
-	)
-}
+var printGenesisOnly bool
 
 func printGenesis(subnetName string) error {
-	usr, _ := user.Current()
-	genesisFile := filepath.Join(usr.HomeDir, BaseDir, subnetName+genesis_suffix)
+	genesisFile := filepath.Join(baseDir, subnetName+genesis_suffix)
 	gen, err := os.ReadFile(genesisFile)
 	if err != nil {
 		return err
@@ -177,20 +164,18 @@ func describeSubnetEvmGenesis(subnetName string, sc models.Sidecar) error {
 	return nil
 }
 
-func readGenesis(cmd *cobra.Command, args []string) {
+func readGenesis(cmd *cobra.Command, args []string) error {
 	subnetName := args[0]
-	if *printGenesisOnly {
+	if printGenesisOnly {
 		err := printGenesis(subnetName)
 		if err != nil {
-			fmt.Println(err)
-			return
+			return err
 		}
 	} else {
 		// read in sidecar
 		sc, err := loadSidecar(subnetName)
 		if err != nil {
-			fmt.Println(err)
-			return
+			return err
 		}
 
 		switch sc.Vm {
@@ -202,7 +187,8 @@ func readGenesis(cmd *cobra.Command, args []string) {
 			err = printGenesis(subnetName)
 		}
 		if err != nil {
-			fmt.Println(err)
+			return err
 		}
 	}
+	return nil
 }

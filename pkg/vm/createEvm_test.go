@@ -1,36 +1,54 @@
 package vm
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_removePrecompile_success(t *testing.T) {
-	precompile1 := "allow list"
-	precompile2 := "minter"
-	precompileList := []string{precompile1, precompile2}
+func Test_removePrecompile(t *testing.T) {
+	allowList := "allow list"
+	minter := "minter"
 
-	shortenedList, err := removePrecompile(precompileList, precompile1)
-	assert.NoError(t, err)
-	assert.Equal(t, shortenedList, []string{precompile2})
-}
+	type test struct {
+		name           string
+		precompileList []string
+		toRemove       string
+		expectedResult []string
+		expectedErr    error
+	}
+	tests := []test{
+		{
+			name:           "Success",
+			precompileList: []string{allowList, minter},
+			toRemove:       allowList,
+			expectedResult: []string{minter},
+			expectedErr:    nil,
+		},
+		{
+			name:           "Success reverse",
+			precompileList: []string{allowList, minter},
+			toRemove:       minter,
+			expectedResult: []string{allowList},
+			expectedErr:    nil,
+		},
+		{
+			name:           "Failure",
+			precompileList: []string{minter},
+			toRemove:       allowList,
+			expectedResult: []string{minter},
+			expectedErr:    errors.New("String not in array"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
 
-func Test_removePrecompile_success_reverse(t *testing.T) {
-	precompile1 := "allow list"
-	precompile2 := "minter"
-	precompileList := []string{precompile1, precompile2}
-
-	shortenedList, err := removePrecompile(precompileList, precompile2)
-	assert.NoError(t, err)
-	assert.Equal(t, shortenedList, []string{precompile1})
-}
-
-func Test_removePrecompile_failure(t *testing.T) {
-	precompile1 := "allow list"
-	precompile2 := "minter"
-	precompileList := []string{precompile1}
-
-	_, err := removePrecompile(precompileList, precompile2)
-	assert.EqualError(t, err, "String not in array")
+			// Check how many selected
+			shortenedList, err := removePrecompile(tt.precompileList, tt.toRemove)
+			assert.Equal(tt.expectedResult, shortenedList)
+			assert.Equal(tt.expectedErr, err)
+		})
+	}
 }

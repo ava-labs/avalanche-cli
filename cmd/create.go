@@ -5,6 +5,7 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
@@ -15,13 +16,13 @@ import (
 
 var filename string
 
-var forceCreate *bool
-var useSubnetEvm *bool
+var forceCreate bool
+var useSubnetEvm bool
 
 // var useSpaces *bool
 // var useBlob *bool
 // var useTimestamp *bool
-var useCustom *bool
+var useCustom bool
 
 // createCmd represents the create command
 var createCmd = &cobra.Command{
@@ -34,28 +35,11 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Args: cobra.ExactArgs(1),
-	Run:  createGenesis,
-}
-
-func init() {
-	subnetCmd.AddCommand(createCmd)
-
-	createCmd.Flags().StringVar(&filename, "file", "", "filepath of genesis to use")
-
-	useSubnetEvm = createCmd.Flags().Bool("evm", false, "use the SubnetEVM as your VM")
-	useCustom = createCmd.Flags().Bool("custom", false, "use your own custom VM as your VM")
-
-	forceCreate = createCmd.Flags().BoolP("force", "f", false, "overwrite the existing genesis if one exists")
-
-	// useSpaces = createCmd.Flags().Bool("spaces", false, "use the Spaces VM as your VM")
-	// useBlob = createCmd.Flags().Bool("blob", false, "use the Blob VM as your VM")
-	// useTimestamp = createCmd.Flags().Bool("timestamp", false, "use the Timestamp VM as your VM")
-
+	RunE: createGenesis,
 }
 
 func moreThanOneVmSelected() bool {
-	// vmVars := []bool{*useSubnetEvm, *useSpaces, *useBlob, *useTimestamp, *useCustom}
-	vmVars := []bool{*useSubnetEvm, *useCustom}
+	vmVars := []bool{useSubnetEvm, useCustom}
 	firstSelect := false
 	for _, val := range vmVars {
 		if firstSelect && val {
@@ -68,28 +52,18 @@ func moreThanOneVmSelected() bool {
 }
 
 func getVmFromFlag() models.VmType {
-	if *useSubnetEvm {
+	if useSubnetEvm {
 		return models.SubnetEvm
 	}
-	// if *useSpaces {
-	// 	return models.SpacesVm
-	// }
-	// if *useBlob {
-	// 	return models.BlobVm
-	// }
-	// if *useTimestamp {
-	// 	return models.TimestampVm
-	// }
-	if *useCustom {
+	if useCustom {
 		return models.CustomVm
 	}
 	return ""
 }
 
-func createGenesis(cmd *cobra.Command, args []string) {
+func createGenesis(cmd *cobra.Command, args []string) error {
 	if moreThanOneVmSelected() {
-		fmt.Println("Too many VMs selected. Provide at most one VM selection flag.")
-		return
+		return errors.New("Too many VMs selected. Provide at most one VM selection flag.")
 	}
 
 	if filename == "" {
@@ -105,8 +79,7 @@ func createGenesis(cmd *cobra.Command, args []string) {
 				[]string{subnetEvm, spacesVm, blobVm, timestampVm, customVm},
 			)
 			if err != nil {
-				fmt.Println(err)
-				return
+				return err
 			}
 			subnetType = models.VmTypeFromString(subnetTypeStr)
 		}
@@ -117,43 +90,36 @@ func createGenesis(cmd *cobra.Command, args []string) {
 		case subnetEvm:
 			genesisBytes, err = vm.CreateEvmGenesis(args[0])
 			if err != nil {
-				fmt.Println(err)
-				return
+				return err
 			}
 
 			err = createSidecar(args[0], models.SubnetEvm)
 			if err != nil {
-				fmt.Println(err)
-				return
+				return err
 			}
 		case customVm:
 			genesisBytes, err = vm.CreateCustomGenesis(args[0])
 			if err != nil {
-				fmt.Println(err)
-				return
+				return err
 			}
 			err = createSidecar(args[0], models.CustomVm)
 			if err != nil {
-				fmt.Println(err)
-				return
+				return err
 			}
 		default:
-			fmt.Println("Not implemented")
-			return
+			return errors.New("Not implemented")
 		}
 
 		err = writeGenesisFile(args[0], genesisBytes)
 		if err != nil {
-			fmt.Println(err)
-			return
+			return err
 		}
 		fmt.Println("Successfully created genesis")
 	} else {
 		fmt.Println("Using specified genesis")
 		err := copyGenesisFile(filename, args[0])
 		if err != nil {
-			fmt.Println(err)
-			return
+			return err
 		}
 
 		var subnetType models.VmType
@@ -165,16 +131,15 @@ func createGenesis(cmd *cobra.Command, args []string) {
 				[]string{subnetEvm, spacesVm, blobVm, timestampVm, customVm},
 			)
 			if err != nil {
-				fmt.Println(err)
-				return
+				return err
 			}
 			subnetType = models.VmTypeFromString(subnetTypeStr)
 		}
 		err = createSidecar(args[0], subnetType)
 		if err != nil {
-			fmt.Println(err)
-			return
+			return err
 		}
 		fmt.Println("Successfully created genesis")
 	}
+	return nil
 }

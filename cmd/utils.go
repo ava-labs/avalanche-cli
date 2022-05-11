@@ -3,18 +3,17 @@ package cmd
 import (
 	"encoding/json"
 	"os"
-	"os/user"
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/subnet-evm/core"
 )
 
+const WRITE_READ_READ_PERMS = 0644
+
 func writeGenesisFile(subnetName string, genesisBytes []byte) error {
-	usr, _ := user.Current()
-	genesisPath := filepath.Join(usr.HomeDir, BaseDir, subnetName+genesis_suffix)
-	err := os.WriteFile(genesisPath, genesisBytes, 0644)
-	return err
+	genesisPath := filepath.Join(baseDir, subnetName+genesis_suffix)
+	return os.WriteFile(genesisPath, genesisBytes, WRITE_READ_READ_PERMS)
 }
 
 func copyGenesisFile(inputFilename string, subnetName string) error {
@@ -22,15 +21,12 @@ func copyGenesisFile(inputFilename string, subnetName string) error {
 	if err != nil {
 		return err
 	}
-	usr, _ := user.Current()
-	genesisPath := filepath.Join(usr.HomeDir, BaseDir, subnetName+genesis_suffix)
-	err = os.WriteFile(genesisPath, genesisBytes, 0644)
-	return err
+	genesisPath := filepath.Join(baseDir, subnetName+genesis_suffix)
+	return os.WriteFile(genesisPath, genesisBytes, WRITE_READ_READ_PERMS)
 }
 
 func loadEvmGenesis(subnetName string) (core.Genesis, error) {
-	usr, _ := user.Current()
-	genesisPath := filepath.Join(usr.HomeDir, BaseDir, subnetName+genesis_suffix)
+	genesisPath := filepath.Join(baseDir, subnetName+genesis_suffix)
 	jsonBytes, err := os.ReadFile(genesisPath)
 	if err != nil {
 		return core.Genesis{}, err
@@ -38,10 +34,7 @@ func loadEvmGenesis(subnetName string) (core.Genesis, error) {
 
 	var gen core.Genesis
 	err = json.Unmarshal(jsonBytes, &gen)
-	if err != nil {
-		return core.Genesis{}, err
-	}
-	return gen, nil
+	return gen, err
 }
 
 func createSidecar(subnetName string, vm models.VmType) error {
@@ -56,15 +49,12 @@ func createSidecar(subnetName string, vm models.VmType) error {
 		return nil
 	}
 
-	usr, _ := user.Current()
-	sidecarPath := filepath.Join(usr.HomeDir, BaseDir, subnetName+sidecar_suffix)
-	err = os.WriteFile(sidecarPath, scBytes, 0644)
-	return err
+	sidecarPath := filepath.Join(baseDir, subnetName+sidecar_suffix)
+	return os.WriteFile(sidecarPath, scBytes, WRITE_READ_READ_PERMS)
 }
 
 func loadSidecar(subnetName string) (models.Sidecar, error) {
-	usr, _ := user.Current()
-	sidecarPath := filepath.Join(usr.HomeDir, BaseDir, subnetName+sidecar_suffix)
+	sidecarPath := filepath.Join(baseDir, subnetName+sidecar_suffix)
 	jsonBytes, err := os.ReadFile(sidecarPath)
 	if err != nil {
 		return models.Sidecar{}, err
@@ -72,8 +62,5 @@ func loadSidecar(subnetName string) (models.Sidecar, error) {
 
 	var sc models.Sidecar
 	err = json.Unmarshal(jsonBytes, &sc)
-	if err != nil {
-		return models.Sidecar{}, err
-	}
-	return sc, nil
+	return sc, err
 }

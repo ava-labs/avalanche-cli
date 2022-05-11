@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"os"
-	"os/user"
 	"path/filepath"
 	"testing"
 
@@ -20,8 +19,7 @@ func Test_writeGenesisFile_success(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check file exists
-	usr, _ := user.Current()
-	createdPath := filepath.Join(usr.HomeDir, BaseDir, genesisFile)
+	createdPath := filepath.Join(baseDir, genesisFile)
 	_, err = os.Stat(createdPath)
 	assert.NoError(t, err)
 
@@ -42,13 +40,12 @@ func Test_copyGenesisFile_success(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Copy genesis
-	usr, _ := user.Current()
-	createdGenesis := filepath.Join(usr.HomeDir, BaseDir, genesisFile1)
+	createdGenesis := filepath.Join(baseDir, genesisFile1)
 	err = copyGenesisFile(createdGenesis, subnetName2)
 	assert.NoError(t, err)
 
 	// Check copied file exists
-	copiedGenesis := filepath.Join(usr.HomeDir, BaseDir, genesisFile2)
+	copiedGenesis := filepath.Join(baseDir, genesisFile2)
 	_, err = os.Stat(copiedGenesis)
 	assert.NoError(t, err)
 
@@ -67,13 +64,12 @@ func Test_copyGenesisFile_failure(t *testing.T) {
 	genesisFile2 := subnetName2 + genesis_suffix
 
 	// Copy genesis
-	usr, _ := user.Current()
-	createdGenesis := filepath.Join(usr.HomeDir, BaseDir, genesisFile1)
+	createdGenesis := filepath.Join(baseDir, genesisFile1)
 	err := copyGenesisFile(createdGenesis, subnetName2)
 	assert.Error(t, err)
 
 	// Check no copied file exists
-	copiedGenesis := filepath.Join(usr.HomeDir, BaseDir, genesisFile2)
+	copiedGenesis := filepath.Join(baseDir, genesisFile2)
 	_, err = os.Stat(copiedGenesis)
 	assert.Error(t, err)
 }
@@ -88,8 +84,7 @@ func Test_createSidecar_success(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check file exists
-	usr, _ := user.Current()
-	createdPath := filepath.Join(usr.HomeDir, BaseDir, sidecarFile)
+	createdPath := filepath.Join(baseDir, sidecarFile)
 	_, err = os.Stat(createdPath)
 	assert.NoError(t, err)
 
@@ -116,8 +111,7 @@ func Test_loadSidecar_success(t *testing.T) {
 
 	// Write sidecar
 	sidecarBytes := []byte("{  \"Name\": \"TEST_subnet\",\n  \"Vm\": \"SubnetEVM\",\n  \"Subnet\": \"TEST_subnet\"\n  }")
-	usr, _ := user.Current()
-	sidecarPath := filepath.Join(usr.HomeDir, BaseDir, sidecarFile)
+	sidecarPath := filepath.Join(baseDir, sidecarFile)
 	err := os.WriteFile(sidecarPath, sidecarBytes, 0644)
 	assert.NoError(t, err)
 
@@ -147,8 +141,7 @@ func Test_loadSidecar_failure_notFound(t *testing.T) {
 	const vm = models.SubnetEvm
 
 	// Assert file doesn't exist at start
-	usr, _ := user.Current()
-	sidecarPath := filepath.Join(usr.HomeDir, BaseDir, sidecarFile)
+	sidecarPath := filepath.Join(baseDir, sidecarFile)
 	_, err := os.Stat(sidecarPath)
 	assert.Error(t, err)
 
@@ -163,8 +156,7 @@ func Test_loadSidecar_failure_malformed(t *testing.T) {
 
 	// Write sidecar
 	sidecarBytes := []byte("bad_sidecar")
-	usr, _ := user.Current()
-	sidecarPath := filepath.Join(usr.HomeDir, BaseDir, sidecarFile)
+	sidecarPath := filepath.Join(baseDir, sidecarFile)
 	err := os.WriteFile(sidecarPath, sidecarBytes, 0644)
 	assert.NoError(t, err)
 

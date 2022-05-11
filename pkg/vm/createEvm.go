@@ -18,6 +18,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+const GasLimit = 8000000
+
+var Difficulty = big.NewInt(0)
+
 var WagmiFeeConfig = params.FeeConfig{
 	GasLimit:                 big.NewInt(20000000),
 	MinBaseFee:               big.NewInt(1000000000),
@@ -343,8 +347,8 @@ func CreateEvmGenesis(name string) ([]byte, error) {
 
 	genesis.Alloc = allocation
 	genesis.Config = conf
-	genesis.Difficulty = big.NewInt(0)
-	genesis.GasLimit = 8000000
+	genesis.Difficulty = Difficulty
+	genesis.GasLimit = GasLimit
 
 	jsonBytes, err := genesis.MarshalJSON()
 	if err != nil {

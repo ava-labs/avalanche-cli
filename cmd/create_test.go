@@ -6,46 +6,50 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_moreThanOneVmSelected_success(t *testing.T) {
-	*useSubnetEvm = true
-	// *useSpaces = false
-	// *useBlob = false
-	// *useTimestamp = false
-	*useCustom = false
+func Test_moreThanOneVmSelected(t *testing.T) {
+	type test struct {
+		name           string
+		useSubnetVm    bool
+		useCustomVm    bool
+		expectedResult bool
+	}
+	tests := []test{
+		{
+			name:           "One Selected",
+			useSubnetVm:    true,
+			useCustomVm:    false,
+			expectedResult: false,
+		},
+		{
+			name:           "One Selected Reverse",
+			useSubnetVm:    true,
+			useCustomVm:    false,
+			expectedResult: false,
+		},
+		{
+			name:           "None Selected",
+			useSubnetVm:    false,
+			useCustomVm:    false,
+			expectedResult: false,
+		},
+		{
+			name:           "Multiple Selected",
+			useSubnetVm:    true,
+			useCustomVm:    true,
+			expectedResult: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
 
-	result := moreThanOneVmSelected()
-	assert.False(t, result)
-}
+			// Set vars
+			useSubnetEvm = tt.useSubnetVm
+			useCustom = tt.useCustomVm
 
-func Test_moreThanOneVmSelected_success_reverse(t *testing.T) {
-	*useSubnetEvm = false
-	// *useSpaces = false
-	// *useBlob = false
-	// *useTimestamp = false
-	*useCustom = true
-
-	result := moreThanOneVmSelected()
-	assert.False(t, result)
-}
-
-func Test_moreThanOneVmSelected_success_none(t *testing.T) {
-	*useSubnetEvm = false
-	// *useSpaces = false
-	// *useBlob = false
-	// *useTimestamp = false
-	*useCustom = false
-
-	result := moreThanOneVmSelected()
-	assert.False(t, result)
-}
-
-func Test_moreThanOneVmSelected_failure(t *testing.T) {
-	*useSubnetEvm = true
-	// *useSpaces = false
-	// *useBlob = false
-	// *useTimestamp = false
-	*useCustom = true
-
-	result := moreThanOneVmSelected()
-	assert.True(t, result)
+			// Check how many selected
+			result := moreThanOneVmSelected()
+			assert.Equal(tt.expectedResult, result)
+		})
+	}
 }
