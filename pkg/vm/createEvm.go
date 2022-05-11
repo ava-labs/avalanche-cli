@@ -361,6 +361,5 @@ func CreateEvmGenesis(name string) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	fmt.Println(string(prettyJSON.Bytes()))
 	return prettyJSON.Bytes(), nil
 }
