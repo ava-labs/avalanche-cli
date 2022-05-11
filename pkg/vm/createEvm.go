@@ -18,6 +18,32 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+const GasLimit = 8000000
+
+var Difficulty = big.NewInt(0)
+
+var WagmiFeeConfig = params.FeeConfig{
+	GasLimit:                 big.NewInt(20000000),
+	MinBaseFee:               big.NewInt(1000000000),
+	TargetGas:                big.NewInt(100000000),
+	BaseFeeChangeDenominator: big.NewInt(48),
+	MinBlockGasCost:          big.NewInt(0),
+	MaxBlockGasCost:          big.NewInt(10000000),
+	TargetBlockRate:          2,
+	BlockGasCostStep:         big.NewInt(500000),
+}
+
+var CChainFeeConfig = params.FeeConfig{
+	GasLimit:                 big.NewInt(20000000),
+	MinBaseFee:               big.NewInt(1000000000),
+	TargetGas:                big.NewInt(100000000),
+	BaseFeeChangeDenominator: big.NewInt(48),
+	MinBlockGasCost:          big.NewInt(0),
+	MaxBlockGasCost:          big.NewInt(10000000),
+	TargetBlockRate:          2,
+	BlockGasCostStep:         big.NewInt(500000),
+}
+
 func getChainId() (*big.Int, error) {
 	// TODO check against known chain ids and provide warning
 	fmt.Println("Select your subnet's ChainId. It can be any positive integer.")
@@ -74,10 +100,12 @@ func getAllocation() (core.GenesisAlloc, error) {
 }
 
 func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, error) {
-	addAdmin := "Add admin"
-	preview := "Preview"
-	moreInfo := "More info"
-	doneMsg := "Done"
+	const (
+		addAdmin = "Add admin"
+		preview  = "Preview"
+		moreInfo = "More info"
+		doneMsg  = "Done"
+	)
 
 	config := precompile.ContractDeployerAllowListConfig{}
 	allowList := precompile.AllowListConfig{
@@ -128,11 +156,108 @@ func removePrecompile(arr []string, s string) ([]string, error) {
 	return arr, errors.New("String not in array")
 }
 
+func getFeeConfig(config params.ChainConfig) (params.ChainConfig, error) {
+	const (
+		useWagmi  = "Use WAGMI defaults"
+		useCChain = "Use C-Chain defaults"
+		customFee = "Customize fee config"
+
+		setGasLimit                 = "Set gas limit"
+		setBlockRate                = "Set target block rate"
+		setMinBaseFee               = "Set min base fee"
+		setTargetGas                = "Set target gas"
+		setBaseFeeChangeDenominator = "Set base fee change denominator"
+		setMinBlockGas              = "Set min block gas cost"
+		setMaxBlockGas              = "Set max block gas cost"
+		setGasStep                  = "Set block gas cost step"
+	)
+
+	feeConfigOptions := []string{useWagmi, useCChain, customFee}
+
+	feeDefault, err := prompts.CaptureList(
+		"How would you like to set fees",
+		feeConfigOptions,
+	)
+	if err != nil {
+		return config, err
+	}
+
+	switch feeDefault {
+	case useWagmi:
+		fmt.Println("Using Wagmi config")
+		config.FeeConfig = &WagmiFeeConfig
+		return config, nil
+	case useCChain:
+		fmt.Println("Using C-Chain config")
+		config.FeeConfig = &CChainFeeConfig
+		return config, nil
+	default:
+		fmt.Println("Customizing fee config")
+	}
+
+	gasLimit, err := prompts.CapturePositiveBigInt(setGasLimit)
+	if err != nil {
+		return config, err
+	}
+
+	blockRate, err := prompts.CapturePositiveBigInt(setBlockRate)
+	if err != nil {
+		return config, err
+	}
+
+	minBaseFee, err := prompts.CapturePositiveBigInt(setMinBaseFee)
+	if err != nil {
+		return config, err
+	}
+
+	targetGas, err := prompts.CapturePositiveBigInt(setTargetGas)
+	if err != nil {
+		return config, err
+	}
+
+	baseDenominator, err := prompts.CapturePositiveBigInt(setBaseFeeChangeDenominator)
+	if err != nil {
+		return config, err
+	}
+
+	minBlockGas, err := prompts.CapturePositiveBigInt(setMinBlockGas)
+	if err != nil {
+		return config, err
+	}
+
+	maxBlockGas, err := prompts.CapturePositiveBigInt(setMaxBlockGas)
+	if err != nil {
+		return config, err
+	}
+
+	gasStep, err := prompts.CapturePositiveBigInt(setGasStep)
+	if err != nil {
+		return config, err
+	}
+
+	feeConf := params.FeeConfig{
+		GasLimit:                 gasLimit,
+		TargetBlockRate:          blockRate.Uint64(),
+		MinBaseFee:               minBaseFee,
+		TargetGas:                targetGas,
+		BaseFeeChangeDenominator: baseDenominator,
+		MinBlockGasCost:          minBlockGas,
+		MaxBlockGasCost:          maxBlockGas,
+		BlockGasCostStep:         gasStep,
+	}
+
+	config.FeeConfig = &feeConf
+
+	return config, nil
+}
+
 func getPrecompiles(config params.ChainConfig) (params.ChainConfig, error) {
-	const nativeMint = "Native Minting"
-	const contractAllowList = "Contract deployment whitelist"
-	const txAllowList = "Transaction allow list"
-	const cancel = "Cancel"
+	const (
+		nativeMint        = "Native Minting"
+		contractAllowList = "Contract deployment whitelist"
+		txAllowList       = "Transaction allow list"
+		cancel            = "Cancel"
+	)
 
 	first := true
 
@@ -211,6 +336,11 @@ func CreateEvmGenesis(name string) ([]byte, error) {
 	}
 	conf.ChainID = chainId
 
+	*conf, err = getFeeConfig(*conf)
+	if err != nil {
+		return []byte{}, err
+	}
+
 	allocation, err := getAllocation()
 	if err != nil {
 		return []byte{}, err
@@ -222,8 +352,9 @@ func CreateEvmGenesis(name string) ([]byte, error) {
 	}
 
 	genesis.Alloc = allocation
-
 	genesis.Config = conf
+	genesis.Difficulty = Difficulty
+	genesis.GasLimit = GasLimit
 
 	jsonBytes, err := genesis.MarshalJSON()
 	if err != nil {
@@ -236,6 +367,5 @@ func CreateEvmGenesis(name string) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	fmt.Println(string(prettyJSON.Bytes()))
 	return prettyJSON.Bytes(), nil
 }

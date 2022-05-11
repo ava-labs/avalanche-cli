@@ -7,11 +7,14 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/user"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
+var baseDir string
 var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
@@ -41,6 +44,21 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
+	// Set base dir
+	usr, err := user.Current()
+	if err != nil {
+		fmt.Println("Error: Unable to get system user")
+		os.Exit(1)
+	}
+	baseDir = filepath.Join(usr.HomeDir, BaseDirName)
+
+	// Create base dir if it doesn't exist
+	err = os.MkdirAll(baseDir, os.ModePerm)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
@@ -50,6 +68,34 @@ func init() {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
+	// subnet create
+	subnetCmd.AddCommand(createCmd)
+	createCmd.Flags().StringVar(&filename, "file", "", "filepath of genesis to use")
+	createCmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the SubnetEVM as your VM")
+	createCmd.Flags().BoolVar(&useCustom, "custom", false, "use your own custom VM as your VM")
+	createCmd.Flags().BoolVarP(&forceCreate, "force", "f", false, "overwrite the existing genesis if one exists")
+
+	// subnet delete
+	subnetCmd.AddCommand(deleteCmd)
+
+	// subnet deploy
+	subnetCmd.AddCommand(deployCmd)
+	deployCmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "Deploy subnet locally")
+	deployCmd.Flags().BoolVarP(&force, "force", "f", false, "Deploy without asking for confirmation")
+
+	// subnet describe
+	subnetCmd.AddCommand(readCmd)
+	readCmd.Flags().BoolVarP(
+		&printGenesisOnly,
+		"genesis",
+		"g",
+		false,
+		"Print the genesis to the console directly instead of the summary",
+	)
+
+	// subnet list
+	subnetCmd.AddCommand(listCmd)
 }
 
 // initConfig reads in config file and ENV variables if set.
