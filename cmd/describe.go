@@ -167,8 +167,7 @@ func describeSubnetEvmGenesis(subnetName string, sc models.Sidecar) error {
 func readGenesis(cmd *cobra.Command, args []string) error {
 	subnetName := args[0]
 	if printGenesisOnly {
-		err := printGenesis(subnetName)
-		if err != nil {
+		if err := printGenesis(subnetName); err != nil {
 			return err
 		}
 	} else {
