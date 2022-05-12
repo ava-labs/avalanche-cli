@@ -2,38 +2,34 @@ name: Lint + Unit Tests
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
+
+env:
+  OS: ubuntu-20.04
+  GO_VERSION: "1.17"
 
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-18.04
+    runs-on: ${{ OS }}
     steps:
       - uses: actions/checkout@v2
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
-          version: latest
+          version: v1.29
           working-directory: .
-          args: --timeout 3m
+          args: --timeout 1m
   test:
-    name: Golang Unit Tests v${{ matrix.go }} (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        go: ["1.17"]
-        os: [ubuntu-20.04]
+    name: Golang Unit Tests v${{ GO_VERSION }} (${{ OS }})
+    runs-on: ${{ OS }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v1
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
         with:
-          go-version: ${{ matrix.go }}
+          go-version: ${{ GO_VERSION }}
       - run: go mod download
-        shell: bash
       - run: go build -v ./...
-        shell: bash
       - run: go test -v -coverprofile=coverage.out ./...
-        shell: bash
       - run: go tool cover -func=coverage.out
-        shell: bash
