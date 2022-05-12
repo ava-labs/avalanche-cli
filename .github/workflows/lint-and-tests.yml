@@ -2,7 +2,7 @@ name: Lint + Unit Tests
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
 
 env:
@@ -12,7 +12,7 @@ env:
 jobs:
   lint:
     name: Lint
-    runs-on: ${{ OS }}
+    runs-on: ${{ env.OS }}
     steps:
       - uses: actions/checkout@v2
       - name: golangci-lint
@@ -22,13 +22,13 @@ jobs:
           working-directory: .
           args: --timeout 1m
   test:
-    name: Golang Unit Tests v${{ GO_VERSION }} (${{ OS }})
-    runs-on: ${{ OS }}
+    name: Golang Unit Tests v${{ env.GO_VERSION }} (${{ env.OS }})
+    runs-on: ${{ env.OS }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
         with:
-          go-version: ${{ GO_VERSION }}
+          go-version: ${{ env.GO_VERSION }}
       - run: go mod download
       - run: go build -v ./...
       - run: go test -v -coverprofile=coverage.out ./...
