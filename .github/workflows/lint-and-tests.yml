@@ -12,7 +12,7 @@ env:
 jobs:
   lint:
     name: Lint
-    runs-on: ${{ env.OS }}
+    runs-on: ${{ OS }}
     steps:
       - uses: actions/checkout@v2
       - name: golangci-lint
@@ -22,7 +22,7 @@ jobs:
           working-directory: .
           args: --timeout 1m
   test:
-    name: Golang Unit Tests v${{ env.GO_VERSION }} (${{ env.OS }})
+    name: Golang Unit Tests v${{ GO_VERSION }} (${{ OS }})
     runs-on: ${{ env.OS }}
     steps:
       - uses: actions/checkout@v3
