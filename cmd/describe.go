@@ -50,7 +50,7 @@ func printGasTable(genesis core.Genesis) {
                                             |___/
 `
 
-	fmt.Printf(art)
+	fmt.Print(art)
 	table := tablewriter.NewWriter(os.Stdout)
 	header := []string{"Gas Parameter", "Value"}
 	table.SetHeader(header)
@@ -79,7 +79,7 @@ func printAirdropTable(genesis core.Genesis) {
                                | |
                                |_|
 `
-	fmt.Printf(art)
+	fmt.Print(art)
 	if len(genesis.Alloc) > 0 {
 		table := tablewriter.NewWriter(os.Stdout)
 		header := []string{"Address", "Airdrop Amount (10^18)", "Airdrop Amount (wei)"}
@@ -111,7 +111,7 @@ func printPrecompileTable(genesis core.Genesis) {
                                     |_|
 
 `
-	fmt.Printf(art)
+	fmt.Print(art)
 
 	table := tablewriter.NewWriter(os.Stdout)
 	header := []string{"Precompile", "Admin"}

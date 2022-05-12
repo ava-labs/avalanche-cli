@@ -111,7 +111,7 @@ func getAllocation() (core.GenesisAlloc, error) {
 		secondStr := "Would you like to airdrop more tokens?"
 
 		var promptStr string
-		if promptStr = secondStr; first == true {
+		if promptStr = secondStr; first {
 			promptStr = firstStr
 			first = false
 		}
@@ -313,7 +313,7 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, error) {
 		secondStr := "Would you like to add additional precompiles?"
 
 		var promptStr string
-		if promptStr = secondStr; first == true {
+		if promptStr = secondStr; first {
 			promptStr = firstStr
 			first = false
 		}
