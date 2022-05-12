@@ -60,29 +60,12 @@ const (
 )
 
 var (
-	deployLocal *bool
-	force       *bool
+	deployLocal bool
+	force       bool
 )
 
-func init() {
-	subnetCmd.AddCommand(deployCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// deployCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	deployLocal = deployCmd.Flags().BoolP("local", "l", false, "Deploy subnet locally")
-	force = deployCmd.Flags().BoolP("force", "f", false, "Deploy without asking for confirmation")
-}
-
 func getChainsInSubnet(subnetName string) ([]string, error) {
-	usr, _ := user.Current()
-	mainDir := filepath.Join(usr.HomeDir, BaseDir)
-	files, err := ioutil.ReadDir(mainDir)
+	files, err := ioutil.ReadDir(baseDir)
 	if err != nil {
 		return []string{}, err
 	}
@@ -92,7 +75,7 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 	for _, f := range files {
 		if strings.Contains(f.Name(), sidecar_suffix) {
 			// read in sidecar file
-			path := filepath.Join(mainDir, f.Name())
+			path := filepath.Join(baseDir, f.Name())
 			jsonBytes, err := os.ReadFile(path)
 			if err != nil {
 				return []string{}, err
@@ -120,11 +103,11 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(chains) == 0 {
-		return fmt.Errorf("Invalid subnet: %s", args[0])
+		return errors.New("Invalid subnet " + args[0])
 	}
 
 	var network models.Network
-	if *deployLocal {
+	if deployLocal {
 		network = models.Local
 	} else {
 		networkStr, err := prompts.CaptureList(
@@ -196,7 +179,7 @@ func avagoExists(binDir string) (bool, string, error) {
 }
 
 func setupLocalEnv(homeDir string) (string, error) {
-	binDir := filepath.Join(homeDir, BaseDir, binDir)
+	binDir := filepath.Join(homeDir, BaseDirName, binDir)
 
 	exists, latest, err := avagoExists(binDir)
 	if err != nil {
@@ -420,7 +403,7 @@ func doDeploy(chain string) error {
 	}
 	defer cli.Close()
 
-	chain_genesis := filepath.Join(usr.HomeDir, BaseDir, fmt.Sprintf("%s_genesis.json", chain))
+	chain_genesis := filepath.Join(usr.HomeDir, BaseDirName, fmt.Sprintf("%s_genesis.json", chain))
 	exists, err = storage.FileExists(chain_genesis)
 	if !exists || err != nil {
 		return fmt.Errorf("evaluated chain genesis file to be at %s but it does not seem to exist.", chain_genesis)
@@ -588,46 +571,6 @@ func installBinary(binary []byte, binaryPath string) error {
 		return err
 	}
 	fmt.Println("binary installed. ready to go.")
-	return nil
-}
-
-// this is NOT viable. Too many things can go wrong.
-// i.e. cloning with git might require the ssh password...
-func buildVM(chain string, id ids.ID, pluginDir string) error {
-	fmt.Println("cloning subnet-evm...")
-	subnetEVMRepo := "https://github.com/ava-labs/subnet-evm"
-	// fatal: destination path '/home/fabio/go/src/github.com/ava-labs' already exists and is not an empty directory.
-	// dest := "$HOME/go/src/github.com/ava-labs"
-	dest := "/tmp/subnet-evm"
-	args := []string{"clone", subnetEVMRepo, dest}
-	// TODO git could not be installed...we need binaries
-	clone := exec.Command("git", args...)
-	clone.Stdout = os.Stdout
-	clone.Stderr = os.Stderr
-	if err := clone.Run(); err != nil {
-		return err
-	}
-
-	fmt.Println("done. building...")
-	// subnetEVMPath := "$HOME/go/src/github.com/ava-labs/subnet-evm/"
-	buildPath := filepath.Join(dest, "scripts/build.sh")
-	buildDest := filepath.Join("build", id.String())
-	build := exec.Command(buildPath, buildDest)
-	build.Stdout = os.Stdout
-	build.Stderr = os.Stderr
-	if err := build.Run(); err != nil {
-		return err
-	}
-	fmt.Println("done. copying to avalanchego plugin path...")
-	binPath := filepath.Join(dest, buildDest)
-	cpArgs := []string{binPath, pluginDir}
-	cp := exec.Command("cp", cpArgs...)
-	cp.Stdout = os.Stdout
-	cp.Stderr = os.Stderr
-	if err := cp.Run(); err != nil {
-		return err
-	}
-	fmt.Println("all good")
 	return nil
 }
 

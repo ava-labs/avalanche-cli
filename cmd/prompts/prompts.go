@@ -9,14 +9,6 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
-// func validateInt(input string) error {
-// 	_, err := strconv.ParseInt(input, 10, 64)
-// 	if err != nil {
-// 		return errors.New("Invalid number")
-// 	}
-// 	return nil
-// }
-
 func validatePositiveBigInt(input string) error {
 	n := new(big.Int)
 	n, ok := n.SetString(input, 10)
@@ -108,7 +100,7 @@ func CaptureYesNo(promptStr string) (bool, error) {
 
 func CaptureList(promptStr string, options []string) (string, error) {
 	prompt := promptui.Select{
-		Label: "Configure contract deployment allow list:",
+		Label: promptStr,
 		Items: options,
 	}
 

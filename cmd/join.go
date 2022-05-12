@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/user"
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
@@ -41,9 +40,8 @@ func init() {
 
 func joinSubnets(cmd *cobra.Command, args []string) {
 	// Check all subnets exist so that we don't do a partial modification
-	usr, _ := user.Current()
 	for _, subnetName := range args {
-		sidecar := filepath.Join(usr.HomeDir, BaseDir, subnetName+sidecar_suffix)
+		sidecar := filepath.Join(baseDir, subnetName+sidecar_suffix)
 		if _, err := os.Stat(sidecar); err != nil {
 			fmt.Println("Could not find subnet", subnetName)
 			return
@@ -63,7 +61,7 @@ func joinSubnets(cmd *cobra.Command, args []string) {
 
 	// Add chains to subnet
 	for _, subnetName := range args {
-		sidecar := filepath.Join(usr.HomeDir, BaseDir, subnetName+sidecar_suffix)
+		sidecar := filepath.Join(baseDir, subnetName+sidecar_suffix)
 
 		// Read sidecar
 		jsonBytes, err := os.ReadFile(sidecar)
