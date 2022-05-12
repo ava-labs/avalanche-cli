@@ -504,9 +504,9 @@ func waitForHealthy(ctx context.Context, cli client.Client) ([]string, error) {
 			cancel <- struct{}{}
 			fmt.Println()
 			fmt.Println("polling for health...")
+			go printWait(cancel)
 			resp, err := cli.Health(ctx)
 			// TODO sometimes it hangs here!
-			fmt.Println("health call returned")
 			if err != nil {
 				if strings.Contains(err.Error(), "context deadline exceeded") {
 					return nil, err
@@ -520,8 +520,6 @@ func waitForHealthy(ctx context.Context, cli client.Client) ([]string, error) {
 			}
 			if len(resp.ClusterInfo.CustomVms) == 0 {
 				fmt.Println("network is up but custom VMs are not installed yet. polling again...")
-				go printWait(cancel)
-				time.Sleep(90 * time.Second)
 				continue
 			}
 			endpoints := []string{}

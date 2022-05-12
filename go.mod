@@ -3,7 +3,7 @@ module github.com/ava-labs/avalanche-cli
 go 1.17
 
 require (
-	github.com/ava-labs/avalanche-network-runner v1.0.12
+	github.com/ava-labs/avalanche-network-runner v1.0.15
 	github.com/ava-labs/avalanchego v1.7.11-0.20220416161358-8755486a274e
 	github.com/ava-labs/subnet-evm v0.2.1
 	github.com/coreos/go-semver v0.3.0
@@ -14,7 +14,7 @@ require (
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/viper v1.11.0
-	go.uber.org/zap v1.19.0
+	go.uber.org/zap v1.21.0
 )
 
 require (
@@ -95,8 +95,8 @@ require (
 	github.com/tklauser/go-sysconf v0.3.5 // indirect
 	github.com/tklauser/numcpus v0.2.2 // indirect
 	github.com/tyler-smith/go-bip39 v1.0.2 // indirect
-	go.uber.org/atomic v1.7.0 // indirect
-	go.uber.org/multierr v1.6.0 // indirect
+	go.uber.org/atomic v1.9.0 // indirect
+	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
 	golang.org/x/net v0.0.0-20220412020605-290c469a71a5 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
@@ -113,5 +113,3 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
-
-replace github.com/ava-labs/avalanche-network-runner v1.0.11 => ../avalanche-network-runner
