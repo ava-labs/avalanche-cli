@@ -2,7 +2,6 @@
 *~
 .DS_Store
 
-awscpu
 
 # Binaries for programs and plugins
 *.exe
@@ -24,19 +23,6 @@ awscpu
 *logs/
 
 .vscode*
-
-*.pb*
-
-*cpu[0-9]*
-*mem[0-9]*
-*lock[0-9]*
-*.profile
-*.swp
-*.aux
-*.fdb*
-*.fls
-*.gz
-*.pdf
 
 .coverage
 
