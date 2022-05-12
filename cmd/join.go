@@ -1,7 +1,5 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
-*/
+// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
 package cmd
 
 import (
@@ -27,7 +25,7 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run:  joinSubnets,
+	RunE: joinSubnets,
 	Args: cobra.MinimumNArgs(2),
 }
 
@@ -38,13 +36,12 @@ func init() {
 		"specify a name for the subnet containing this group of chains")
 }
 
-func joinSubnets(cmd *cobra.Command, args []string) {
+func joinSubnets(cmd *cobra.Command, args []string) error {
 	// Check all subnets exist so that we don't do a partial modification
 	for _, subnetName := range args {
 		sidecar := filepath.Join(baseDir, subnetName+sidecar_suffix)
 		if _, err := os.Stat(sidecar); err != nil {
-			fmt.Println("Could not find subnet", subnetName)
-			return
+			return fmt.Errorf("Could not find subnet %s", subnetName)
 		}
 	}
 	// All subnets exist
@@ -54,8 +51,7 @@ func joinSubnets(cmd *cobra.Command, args []string) {
 		var err error
 		*subnetGroupName, err = prompts.CaptureString("Choose a name for your subnet")
 		if err != nil {
-			fmt.Println(err)
-			return
+			return fmt.Errorf("failed capturing subnet name %s", err)
 		}
 	}
 
@@ -66,15 +62,13 @@ func joinSubnets(cmd *cobra.Command, args []string) {
 		// Read sidecar
 		jsonBytes, err := os.ReadFile(sidecar)
 		if err != nil {
-			fmt.Println(err)
-			return
+			return fmt.Errorf("failed reading sidecar file: %s", err)
 		}
 
 		var sc models.Sidecar
 		err = json.Unmarshal(jsonBytes, &sc)
 		if err != nil {
-			fmt.Println(err)
-			return
+			return fmt.Errorf("failed unmarshalling sidecar file content: %s", err)
 		}
 
 		// Modify sidecar
@@ -83,15 +77,14 @@ func joinSubnets(cmd *cobra.Command, args []string) {
 		// Write sidecar
 		scBytes, err := json.MarshalIndent(sc, "", "    ")
 		if err != nil {
-			fmt.Println(err)
-			return
+			return fmt.Errorf("failed marshalling content %s", err)
 		}
 
 		err = os.WriteFile(sidecar, scBytes, 0644)
 		if err != nil {
-			fmt.Println(err)
-			return
+			return fmt.Errorf("failed writing sidecar file: %s", err)
 		}
 	}
 
+	return nil
 }

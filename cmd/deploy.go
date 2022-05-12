@@ -1,28 +1,18 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
-*/
+// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
 package cmd
 
 import (
-	"archive/tar"
-	"archive/zip"
-	"bytes"
-	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"strings"
 	"time"
 
@@ -30,11 +20,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/utils"
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/perms"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/storage"
-	"github.com/coreos/go-semver/semver"
-	"github.com/docker/docker/pkg/reexec"
 	"github.com/spf13/cobra"
 )
 
@@ -42,22 +29,11 @@ import (
 var deployCmd = &cobra.Command{
 	Use:   "deploy",
 	Short: "Deploy your subnet to a network",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Long: `Deploy your subnet to a network. Currently supports local network only. 
+Starts an avalanche-network-runner in the background and deploys your subnet there.`,
 	RunE: deploySubnet,
 	Args: cobra.ExactArgs(1),
 }
-
-const (
-	latestAvagoReleaseURL = "https://api.github.com/repos/ava-labs/avalanchego/releases/latest"
-	binaryServerURL       = "http://3.84.91.164:8998"
-	serverRun             = "/tmp/gRPCserver.run"
-	binDir                = "bin"
-)
 
 var (
 	deployLocal bool
@@ -67,7 +43,7 @@ var (
 func getChainsInSubnet(subnetName string) ([]string, error) {
 	files, err := ioutil.ReadDir(baseDir)
 	if err != nil {
-		return []string{}, err
+		return []string{}, fmt.Errorf("failed to read baseDir :%w", err)
 	}
 
 	chains := []string{}
@@ -78,13 +54,13 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 			path := filepath.Join(baseDir, f.Name())
 			jsonBytes, err := os.ReadFile(path)
 			if err != nil {
-				return []string{}, err
+				return []string{}, fmt.Errorf("failed reading file %s: %w", path, err)
 			}
 
 			var sc models.Sidecar
 			err = json.Unmarshal(jsonBytes, &sc)
 			if err != nil {
-				return []string{}, err
+				return []string{}, fmt.Errorf("failed unmarshaling file %s: %w", path, err)
 			}
 			if sc.Subnet == subnetName {
 				chains = append(chains, sc.Name)
@@ -94,12 +70,13 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 	return chains, nil
 }
 
+// deploySubnet is the cobra command run for deploying subnets
 func deploySubnet(cmd *cobra.Command, args []string) error {
 	// Check subnet exists
 	// TODO create a file that lists chains by subnet for fast querying
 	chains, err := getChainsInSubnet(args[0])
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to getChainsInSubnet: %w", err)
 	}
 
 	if len(chains) == 0 {
@@ -120,263 +97,46 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		network = models.NetworkFromString(networkStr)
 	}
 
-	fmt.Println("Deploying", chains, "to", network.String())
+	log.Info("Deploying %s to %s", chains, network.String())
 	// TODO
 	switch network {
 	case models.Local:
-		// WRITE CODE HERE
-		fmt.Println("Deploy local")
+		log.Debug("Deploy local")
 		return deployToLocalNetwork(chains[0])
 	default:
 		return errors.New("Not implemented")
 	}
 }
 
+// deployToLocalNetwork does the heavy lifting:
+// * it checks the gRPC is running, if not, it starts it
+// * kicks off the actual deployment
 func deployToLocalNetwork(chain string) error {
 	isRunning, err := IsServerProcessRunning()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed querying if server process is running: %w", err)
 	}
 	if !isRunning {
-		fmt.Println("gRPC server is not running")
+		log.Debug("gRPC server is not running")
 		if err := startServerProcess(); err != nil {
-			return err
+			return fmt.Errorf("failed starting gRPC server process: %w", err)
 		}
 	}
 	return doDeploy(chain)
 }
 
-func avagoExists(binDir string) (bool, string, error) {
-	// TODO this still has loads of potential pit falls
-	// Should prob check for existing binary and plugin dir too
-	match, err := filepath.Glob(filepath.Join(binDir, "avalanchego") + "*")
-	if err != nil {
-		return false, "", err
-	}
-	var latest string
-	switch len(match) {
-	case 0:
-		return false, "", nil
-	case 1:
-		latest = match[0]
-	default:
-		semVers := make(semver.Versions, len(match))
-		for i, v := range match {
-			base := filepath.Base(v)
-			semVers[i] = semver.New(base[1:])
-		}
-
-		sort.Sort(sort.Reverse(semVers))
-		choose := fmt.Sprintf("v%s", semVers[0])
-		for _, m := range match {
-			if strings.Contains(m, choose) {
-				latest = m
-				break
-			}
-		}
-	}
-	return true, latest, nil
-}
-
-func setupLocalEnv(homeDir string) (string, error) {
-	binDir := filepath.Join(homeDir, BaseDirName, binDir)
-
-	exists, latest, err := avagoExists(binDir)
-	if err != nil {
-		return "", err
-	}
-	if exists {
-		fmt.Println("local avalanchego found. skipping installation")
-		return latest, nil
-	}
-
-	fmt.Println("installing latest avalanchego version...")
-
-	// TODO: Question if there is a less error prone (= simpler) way to install latest avalanchego
-	// Maybe the binary package manager should also allow the actual avalanchego binary for download
-	resp, err := http.Get(latestAvagoReleaseURL)
-	if err != nil {
-		return "", err
-	}
-
-	jsonBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	var jsonStr map[string]interface{}
-	if err := json.Unmarshal(jsonBytes, &jsonStr); err != nil {
-		return "", err
-	}
-
-	version := jsonStr["tag_name"].(string)
-	if version == "" || version[0] != 'v' {
-		return "", fmt.Errorf("invalid version string: %s", version)
-	}
-	resp.Body.Close()
-
-	fmt.Printf("latest avalanchego version is: %s\n", version)
-
-	arch := runtime.GOARCH
-	goos := runtime.GOOS
-	avalanchegoURL := fmt.Sprintf("https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-linux-%s-%s.tar.gz", version, arch, version)
-	if goos == "darwin" {
-		avalanchegoURL = fmt.Sprintf("https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-macos-%s.zip", version, version)
-	}
-	// EXPERMENTAL WIN, no support
-	if goos == "windows" {
-		avalanchegoURL = fmt.Sprintf("https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-win-%s-experimental.zip", version, version)
-	}
-
-	fmt.Printf("starting download from %s...\n", avalanchegoURL)
-
-	resp, err = http.Get(avalanchegoURL)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	archive, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	fmt.Println("download successful. installing archive...")
-	if err := installArchive(goos, archive, binDir); err != nil {
-		return "", err
-	}
-	return filepath.Join(binDir, "avalanchego-"+version), nil
-}
-
-func installArchive(goos string, archive []byte, binDir string) error {
-	if goos == "darwin" || goos == "windows" {
-		return installZipArchive(archive, binDir)
-	}
-	return installTarGzArchive(archive, binDir)
-}
-
-func installZipArchive(zipfile []byte, binDir string) error {
-	bytesReader := bytes.NewReader(zipfile)
-	zipReader, err := zip.NewReader(bytesReader, int64(len(zipfile)))
-	if err != nil {
-		return err
-	}
-
-	if err := os.MkdirAll(binDir, 0755); err != nil {
-		return err
-	}
-
-	// Closure to address file descriptors issue with all the deferred .Close() methods
-	extractAndWriteFile := func(f *zip.File) error {
-		rc, err := f.Open()
-		if err != nil {
-			return err
-		}
-		defer func() {
-			if err := rc.Close(); err != nil {
-				panic(err)
-			}
-		}()
-
-		path := filepath.Join(binDir, f.Name)
-		// Check for ZipSlip (Directory traversal)
-		if !strings.HasPrefix(path, filepath.Clean(binDir)+string(os.PathSeparator)) {
-			return fmt.Errorf("illegal file path: %s", path)
-		}
-
-		if f.FileInfo().IsDir() {
-			os.MkdirAll(path, f.Mode())
-		} else {
-			os.MkdirAll(filepath.Dir(path), f.Mode())
-			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
-			if err != nil {
-				return err
-			}
-			defer func() {
-				if err := f.Close(); err != nil {
-					panic(err)
-				}
-			}()
-
-			_, err = io.Copy(f, rc)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	for _, f := range zipReader.File {
-		err := extractAndWriteFile(f)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func installTarGzArchive(targz []byte, binDir string) error {
-	byteReader := bytes.NewReader(targz)
-	uncompressedStream, err := gzip.NewReader(byteReader)
-	if err != nil {
-		return fmt.Errorf("ExtractTarGz: NewReader failed: %s", err)
-	}
-
-	tarReader := tar.NewReader(uncompressedStream)
-	for {
-		header, err := tarReader.Next()
-		switch {
-		// if no more files are found return
-		case err == io.EOF:
-			return nil
-		case err != nil:
-			return err
-		// if the header is nil, just skip it (not sure how this happens)
-		case header == nil:
-			continue
-		}
-		// the target location where the dir/file should be created
-		target := filepath.Join(binDir, header.Name)
-
-		// check the file type
-		switch header.Typeflag {
-		// if its a dir and it doesn't exist create it
-		case tar.TypeDir:
-			if _, err := os.Stat(target); err != nil {
-				if err := os.MkdirAll(target, 0755); err != nil {
-					return err
-				}
-			}
-		// if it's a file create it
-		case tar.TypeReg:
-			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
-			if err != nil {
-				return err
-			}
-			// copy over contents
-			if _, err := io.Copy(f, tarReader); err != nil {
-				return err
-			}
-			// manually close here after each file operation; defering would cause each file close
-			// to wait until all operations have completed.
-			f.Close()
-		}
-	}
-}
-
+// doDeploy the actual deployment to the network runner
 func doDeploy(chain string) error {
 	usr, err := user.Current()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed getting current user: %w", err)
 	}
 	avagoDir, err := setupLocalEnv(usr.HomeDir)
 	if err != nil {
-		fmt.Println(err)
-		return err
+		return fmt.Errorf("failed setting up local environment: %w", err)
 	}
 
-	fmt.Println("avalanchego installation successful")
+	log.Info("Avalanchego installation successful")
 
 	pluginDir := filepath.Join(avagoDir, "plugins")
 	avalancheGoBinPath := filepath.Join(avagoDir, "avalanchego")
@@ -394,12 +154,12 @@ func doDeploy(chain string) error {
 	requestTimeout := 3 * time.Minute
 
 	cli, err := client.New(client.Config{
-		LogLevel:    "info",
-		Endpoint:    "0.0.0.0:8097",
-		DialTimeout: 10 * time.Second,
+		LogLevel:    gRPCClientLogLevel,
+		Endpoint:    gRPCServerEndpoint,
+		DialTimeout: gRPCDialTimeout,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed creating gRPC Client: %w", err)
 	}
 	defer cli.Close()
 
@@ -421,10 +181,10 @@ func doDeploy(chain string) error {
 
 	vmID, err := utils.VMID(chain)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
-	fmt.Printf("this VM will get ID: %s\n", vmID.String())
-	// if err := buildVM(chain, vmID, pluginDir); err != nil {
+	log.Debug("this VM will get ID: %s", vmID.String())
+
 	if err := getVMBinary(vmID, pluginDir); err != nil {
 		return err
 	}
@@ -437,44 +197,107 @@ func doDeploy(chain string) error {
 	// when the deadline is reached
 	_ = cancel
 
-	fmt.Println("VM ready. Trying to boot network...")
+	log.Info("VM ready. Trying to boot network...")
 	info, err := cli.Start(
 		ctx,
 		avalancheGoBinPath,
 		opts...,
 	)
 	if err != nil {
-		fmt.Printf("failed to start network :%s\n", err)
-		return err
+		return fmt.Errorf("failed to start network :%s", err)
 	}
 
-	fmt.Println(info)
-	fmt.Println("network has been booted. wait until healthy...")
+	log.Debug(info.String())
+	log.Info("Network has been booted. Wait until healthy. Please be patient, this will take some time...")
 
 	endpoints, err := waitForHealthy(ctx, cli)
 	if err != nil {
-		fmt.Printf("failed to query network health: %s\n", err)
-		return err
+		return fmt.Errorf("failed to query network health: %s", err)
 	}
 
-	fmt.Println("network ready to use. local network node endpoints:")
+	fmt.Println()
+	log.Info("Network ready to use. Local network node endpoints:")
 	for _, u := range endpoints {
 		fmt.Println(u)
 	}
 	return nil
 }
 
-func printWait(cancel chan struct{}) {
-	for {
-		select {
-		case <-time.After(1 * time.Second):
-			fmt.Print(".")
-		case <-cancel:
-			return
-		}
+// setupLocalEnv also does some heavy lifting:
+// * checks if avalanchego is installed in the local binary path
+// * if not, it downloads it and installs it (os - and archive dependent)
+// * returns the location of the avalanchego path
+func setupLocalEnv(homeDir string) (string, error) {
+	binDir := filepath.Join(homeDir, BaseDirName, avalancheCliBinDir)
+
+	exists, latest, err := avagoExists(binDir)
+	if err != nil {
+		return "", fmt.Errorf("the avalanchego binary could not be found anywhere in %s", binDir)
 	}
+	if exists {
+		log.Debug("local avalanchego found. skipping installation")
+		return latest, nil
+	}
+
+	log.Info("Installing latest avalanchego version...")
+
+	// TODO: Question if there is a less error prone (= simpler) way to install latest avalanchego
+	// Maybe the binary package manager should also allow the actual avalanchego binary for download
+	resp, err := http.Get(latestAvagoReleaseURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to download avalanchego binary: %w", err)
+	}
+
+	jsonBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to get latest avalanchego version: %w", err)
+	}
+
+	var jsonStr map[string]interface{}
+	if err := json.Unmarshal(jsonBytes, &jsonStr); err != nil {
+		return "", fmt.Errorf("failed to unmarshal avalanchego json version string: %w", err)
+	}
+
+	version := jsonStr["tag_name"].(string)
+	if version == "" || version[0] != 'v' {
+		return "", fmt.Errorf("invalid version string: %s", version)
+	}
+	resp.Body.Close()
+
+	log.Info("Latest avalanchego version is: %s", version)
+
+	arch := runtime.GOARCH
+	goos := runtime.GOOS
+	avalanchegoURL := fmt.Sprintf("https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-linux-%s-%s.tar.gz", version, arch, version)
+	if goos == "darwin" {
+		avalanchegoURL = fmt.Sprintf("https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-macos-%s.zip", version, version)
+	}
+	// EXPERMENTAL WIN, no support
+	if goos == "windows" {
+		avalanchegoURL = fmt.Sprintf("https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-win-%s-experimental.zip", version, version)
+	}
+
+	log.Debug("starting download from %s...", avalanchegoURL)
+
+	resp, err = http.Get(avalanchegoURL)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	archive, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	log.Debug("download successful. installing archive...")
+	if err := installArchive(goos, archive, binDir); err != nil {
+		return "", err
+	}
+	return filepath.Join(binDir, "avalanchego-"+version), nil
 }
 
+// waitForHealthy polls continuously until the network is ready to be used
 func waitForHealthy(ctx context.Context, cli client.Client) ([]string, error) {
 	cancel := make(chan struct{})
 	go printWait(cancel)
@@ -485,8 +308,7 @@ func waitForHealthy(ctx context.Context, cli client.Client) ([]string, error) {
 			return nil, ctx.Err()
 		case <-time.After(10 * time.Second):
 			cancel <- struct{}{}
-			fmt.Println()
-			fmt.Println("polling for health...")
+			log.Debug("polling for health...")
 			go printWait(cancel)
 			resp, err := cli.Health(ctx)
 			// TODO sometimes it hangs here!
@@ -494,107 +316,50 @@ func waitForHealthy(ctx context.Context, cli client.Client) ([]string, error) {
 				if strings.Contains(err.Error(), "context deadline exceeded") {
 					return nil, err
 				}
-				fmt.Println("not yet")
+				if log.GetDisplayLevel() > logging.Info {
+					fmt.Println()
+				}
+				log.Debug("health call failed, retrying: %w", err)
 				continue
 			}
 			if resp.ClusterInfo == nil {
-				fmt.Println("warning: ClusterInfo is nil. trying again...")
+				if log.GetDisplayLevel() > logging.Info {
+					fmt.Println()
+				}
+				log.Debug("warning: ClusterInfo is nil. trying again...")
 				continue
 			}
 			if len(resp.ClusterInfo.CustomVms) == 0 {
-				fmt.Println("network is up but custom VMs are not installed yet. polling again...")
+				if log.GetDisplayLevel() > logging.Info {
+					fmt.Println()
+				}
+				log.Debug("network is up but custom VMs are not installed yet. polling again...")
 				continue
 			}
 			endpoints := []string{}
 			for _, nodeInfo := range resp.ClusterInfo.NodeInfos {
 				for vmID, vmInfo := range resp.ClusterInfo.CustomVms {
-					endpoints = append(endpoints, fmt.Sprintf("[blockchain RPC for %q] \"%s/ext/bc/%s\"{{/}}\n", vmID, nodeInfo.GetUri(), vmInfo.BlockchainId))
+					endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q: %s/ext/bc/%s", nodeInfo.Name, vmID, nodeInfo.GetUri(), vmInfo.BlockchainId))
 				}
 			}
-			fmt.Println("all good!")
+			log.Debug("all good!")
+			close(cancel)
 			return endpoints, nil
 		}
 	}
 }
 
-func getVMBinary(id ids.ID, pluginDir string) error {
-	vmID := id.String()
-	binaryPath := filepath.Join(pluginDir, vmID)
-	info, err := os.Stat(binaryPath)
-	if err == nil {
-		if !info.IsDir() {
-			fmt.Println("binary already exists, skipping download")
+// printWait does some dot printing to entertain the user
+func printWait(cancel chan struct{}) {
+	for {
+		select {
+		case <-time.After(1 * time.Second):
+			fmt.Print(".")
+		case <-cancel:
+			if log.GetDisplayLevel() != logging.Info {
+				fmt.Println()
+			}
+			return
 		}
 	}
-	if !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-
-	fmt.Println("VM binary does not exist locally, starting download...")
-
-	base, err := url.Parse(binaryServerURL)
-	if err != nil {
-		return err
-	}
-
-	// Path params
-	// base.Path += "this will get automatically encoded"
-
-	// Query params
-	params := url.Values{}
-	params.Add("vmid", vmID)
-	base.RawQuery = params.Encode()
-
-	fmt.Printf("starting download from %s...\n\n", base.String())
-
-	resp, err := http.Get(base.String())
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusOK {
-		bodyBytes, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		fmt.Println("download successful. installing binary...")
-		return installBinary(bodyBytes, binaryPath)
-
-	} else {
-		return fmt.Errorf("downloading binary failed, status code: %d", resp.StatusCode)
-	}
-}
-
-func installBinary(binary []byte, binaryPath string) error {
-	if err := os.WriteFile(binaryPath, binary, 0o755); err != nil {
-		return err
-	}
-	fmt.Println("binary installed. ready to go.")
-	return nil
-}
-
-func startServerProcess() error {
-	thisBin := reexec.Self()
-
-	args := []string{"backend", "start"}
-	cmd := exec.Command(thisBin, args...)
-	outputFile, err := os.CreateTemp("", "avalanche-cli-backend*")
-	if err != nil {
-		return err
-	}
-	cmd.Stdout = outputFile
-	cmd.Stderr = outputFile
-
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-
-	fmt.Printf("Backend controller started, pid: %d, output at: %s\n", cmd.Process.Pid, outputFile.Name())
-	content := fmt.Sprintf("gRPC server output file: %s\ngRPC server PID: %d\n", outputFile.Name(), cmd.Process.Pid)
-	err = os.WriteFile(serverRun, []byte(content), perms.ReadWrite)
-	if err != nil {
-		fmt.Printf("WARN: Could not write gRPC process info to file: %s\n", err)
-	}
-	return nil
 }

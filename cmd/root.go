@@ -1,7 +1,5 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
-*/
+// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
 package cmd
 
 import (
@@ -10,26 +8,46 @@ import (
 	"os/user"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-var baseDir string
-var cfgFile string
+var (
+	baseDir  string
+	cfgFile  string
+	logLevel string
 
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:   "avalanche",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+	log logging.Logger
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	// rootCmd represents the base command when called without any subcommands
+	rootCmd = &cobra.Command{
+		Use:               "avalanche",
+		Short:             "A brief description of your application",
+		Version:           "0.0.1",
+		PersistentPreRunE: setupLogging,
+	}
+)
+
+func setupLogging(cmd *cobra.Command, args []string) error {
+	var err error
+
+	config := logging.DefaultConfig
+	config.DisplayLevel, err = logging.ToLevel(logLevel)
+	if err != nil {
+		return fmt.Errorf("invalid log level configured: %s", logLevel)
+	}
+	config.Directory = filepath.Join(baseDir, "logs")
+	if err := os.MkdirAll(config.Directory, perms.ReadWriteExecute); err != nil {
+		return fmt.Errorf("failed creating log directory: %w", err)
+	}
+	factory := logging.NewFactory(config)
+	log, err = factory.Make("main")
+	if err != nil {
+		factory.Close()
+	}
+	return nil
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -47,7 +65,8 @@ func init() {
 	// Set base dir
 	usr, err := user.Current()
 	if err != nil {
-		fmt.Println("Error: Unable to get system user")
+		// no logger here yet
+		fmt.Printf("unable to get system user %s\n", err)
 		os.Exit(1)
 	}
 	baseDir = filepath.Join(usr.HomeDir, BaseDirName)
@@ -55,19 +74,20 @@ func init() {
 	// Create base dir if it doesn't exist
 	err = os.MkdirAll(baseDir, os.ModePerm)
 	if err != nil {
-		fmt.Println(err)
+		// no logger here yet
+		fmt.Printf("failed creating the basedir %s: %s\n", baseDir, err)
 		os.Exit(1)
 	}
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.avalanche-cli.yaml)")
+	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "INFO", "log level for the application")
 
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
+	// add sub commands
+	rootCmd.AddCommand(backendCmd)
+	rootCmd.AddCommand(cleanCmd)
+	rootCmd.AddCommand(subnetCmd)
 
 	// subnet create
 	subnetCmd.AddCommand(createCmd)

@@ -1,3 +1,5 @@
+// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
 package cmd
 
 import (
@@ -13,24 +15,13 @@ import (
 	"go.uber.org/zap"
 )
 
-// deployCmd represents the deploy command
+// backendCmd is the command to run the backend gRPC process
 var backendCmd = &cobra.Command{
 	Use:   "backend",
-	Short: "Deploy your subnet to a network",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	RunE: backendController,
-	Args: cobra.ExactArgs(1),
-}
-
-func init() {
-	rootCmd.AddCommand(backendCmd)
-
-	// Here you will define your flags and configuration settings.
+	Short: "Run the backend server",
+	Long:  "This tool requires a backend process to run; this command starts it",
+	RunE:  backendController,
+	Args:  cobra.ExactArgs(1),
 }
 
 func backendController(cmd *cobra.Command, args []string) error {

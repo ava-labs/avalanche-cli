@@ -1,12 +1,9 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
-*/
+// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
 package cmd
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -37,7 +34,7 @@ func deleteGenesis(cmd *cobra.Command, args []string) error {
 		os.Remove(genesis)
 	} else if errors.Is(err, os.ErrNotExist) {
 		// does *not* exist
-		fmt.Println("Specified genesis does not exist")
+		log.Error("Specified genesis does not exist")
 	} else {
 		// Schrodinger: file may or may not exist. See err for details.
 
@@ -48,10 +45,10 @@ func deleteGenesis(cmd *cobra.Command, args []string) error {
 	if _, err := os.Stat(sidecar); err == nil {
 		// exists
 		os.Remove(sidecar)
-		fmt.Println("Deleted subnet")
+		log.Info("Deleted subnet")
 	} else if errors.Is(err, os.ErrNotExist) {
 		// does *not* exist
-		fmt.Println("Specified sidecar does not exist")
+		log.Error("Specified sidecar does not exist")
 	} else {
 		// Schrodinger: file may or may not exist. See err for details.
 

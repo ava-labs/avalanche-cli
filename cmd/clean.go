@@ -1,3 +1,5 @@
+// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
 package cmd
 
 import (
@@ -12,10 +14,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	rootCmd.AddCommand(cleanCmd)
-}
-
 var cleanCmd = &cobra.Command{
 	Use:   "clean",
 	Short: "Clean up your deploy",
@@ -26,20 +24,20 @@ var cleanCmd = &cobra.Command{
 }
 
 func clean(cmd *cobra.Command, args []string) {
-	fmt.Println("killing gRPC server process...")
+	log.Info("killing gRPC server process...")
 	if err := killgRPCServerProcess(); err != nil {
-		fmt.Printf("WARN: failed killing server process: %s\n", err)
+		log.Warn("failed killing server process: %s\n", err)
 	}
-	fmt.Println("process terminated.")
+	log.Info("process terminated.")
 }
 
 func killgRPCServerProcess() error {
 	requestTimeout := 3 * time.Minute
 
 	cli, err := client.New(client.Config{
-		LogLevel:    "info",
-		Endpoint:    "0.0.0.0:8097",
-		DialTimeout: 10 * time.Second,
+		LogLevel:    gRPCClientLogLevel,
+		Endpoint:    gRPCServerEndpoint,
+		DialTimeout: gRPCDialTimeout,
 	})
 	if err != nil {
 		return err
@@ -56,13 +54,12 @@ func killgRPCServerProcess() error {
 
 	_, err = cli.Stop(ctx)
 	if err != nil {
-		fmt.Printf("failed stopping server process: %s\n", err)
+		log.Error("failed stopping gRPC server process: %s\n", err)
 	}
 
 	runFile, err := os.ReadFile(serverRun)
 	if err != nil {
-		fmt.Printf("failed reading process info file at %s: %s\n", serverRun, err)
-		return err
+		return fmt.Errorf("failed reading process info file at %s: %s\n", serverRun, err)
 	}
 	str := string(runFile)
 	pidIndex := strings.Index(str, "PID:")
@@ -70,17 +67,14 @@ func killgRPCServerProcess() error {
 	pidstr := str[pidStart:strings.LastIndex(str, "\n")]
 	pid, err := strconv.Atoi(strings.TrimSpace(pidstr))
 	if err != nil {
-		fmt.Printf("failed reading pid from info file at %s: %s\n", serverRun, err)
-		return err
+		return fmt.Errorf("failed reading pid from info file at %s: %s\n", serverRun, err)
 	}
 	proc, err := os.FindProcess(pid)
 	if err != nil {
-		fmt.Printf("could not find process with pid %d: %s\n", pid, err)
-		return err
+		return fmt.Errorf("could not find process with pid %d: %s\n", pid, err)
 	}
 	if err := proc.Kill(); err != nil {
-		fmt.Printf("failed killing process with pid %d: %s\n", pid, err)
-		return err
+		return fmt.Errorf("failed killing process with pid %d: %s\n", pid, err)
 	}
 
 	return nil
