@@ -138,7 +138,6 @@ func Test_loadSidecar_success(t *testing.T) {
 func Test_loadSidecar_failure_notFound(t *testing.T) {
 	subnetName := "TEST_subnet"
 	sidecarFile := subnetName + sidecar_suffix
-	const vm = models.SubnetEvm
 
 	// Assert file doesn't exist at start
 	sidecarPath := filepath.Join(baseDir, sidecarFile)
@@ -152,7 +151,6 @@ func Test_loadSidecar_failure_notFound(t *testing.T) {
 func Test_loadSidecar_failure_malformed(t *testing.T) {
 	subnetName := "TEST_subnet"
 	sidecarFile := subnetName + sidecar_suffix
-	const vm = models.SubnetEvm
 
 	// Write sidecar
 	sidecarBytes := []byte("bad_sidecar")

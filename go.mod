@@ -1,6 +1,6 @@
 module github.com/ava-labs/avalanche-cli
 
-go 1.18
+go 1.17
 
 require (
 	github.com/ava-labs/subnet-evm v0.2.1
