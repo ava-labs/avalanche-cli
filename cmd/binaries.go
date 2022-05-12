@@ -21,6 +21,27 @@ import (
 	"github.com/coreos/go-semver/semver"
 )
 
+type BinaryDownloader interface {
+	Download(ids.ID, string) error
+}
+
+type BinaryChecker interface {
+	Exists(name string) (bool, string, error)
+}
+
+type (
+	avagoBinaryChecker     struct{}
+	pluginBinaryDownloader struct{}
+)
+
+func NewAvagoBinaryChecker() *avagoBinaryChecker {
+	return &avagoBinaryChecker{}
+}
+
+func newBinaryDownloader() BinaryDownloader {
+	return &pluginBinaryDownloader{}
+}
+
 // installArchive installs the binary archive downloaded in a os-dependent way
 func installArchive(goos string, archive []byte, binDir string) error {
 	if goos == "darwin" || goos == "windows" {
@@ -147,7 +168,7 @@ func installTarGzArchive(targz []byte, binDir string) error {
 
 // avagoExists returns true if avalanchego can be found and at what path
 // or false, if it can not be found (or an error if applies)
-func avagoExists(binDir string) (bool, string, error) {
+func (abc *avagoBinaryChecker) Exists(binDir string) (bool, string, error) {
 	// TODO this still has loads of potential pit falls
 	// Should prob check for existing binary and plugin dir too
 	match, err := filepath.Glob(filepath.Join(binDir, "avalanchego") + "*")
@@ -180,7 +201,7 @@ func avagoExists(binDir string) (bool, string, error) {
 }
 
 // getVMBinary downloads the binary from the binary server URL
-func getVMBinary(id ids.ID, pluginDir string) error {
+func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir string) error {
 	vmID := id.String()
 	binaryPath := filepath.Join(pluginDir, vmID)
 	info, err := os.Stat(binaryPath)

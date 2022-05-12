@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"os/user"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -39,6 +38,34 @@ var (
 	deployLocal bool
 	force       bool
 )
+
+type subnetDeployer struct {
+	procChecker         ProcessChecker
+	binChecker          BinaryChecker
+	getClientFunc       getGRPCClientFunc
+	binaryDownloader    BinaryDownloader
+	healthCheckInterval time.Duration
+}
+
+func newDefaultSubnetDeployer() *subnetDeployer {
+	return &subnetDeployer{
+		procChecker:         NewProcessChecker(),
+		binChecker:          NewAvagoBinaryChecker(),
+		getClientFunc:       newGRPCClient,
+		binaryDownloader:    newBinaryDownloader(),
+		healthCheckInterval: 10 * time.Second,
+	}
+}
+
+type getGRPCClientFunc func() (client.Client, error)
+
+func newGRPCClient() (client.Client, error) {
+	return client.New(client.Config{
+		LogLevel:    gRPCClientLogLevel,
+		Endpoint:    gRPCServerEndpoint,
+		DialTimeout: gRPCDialTimeout,
+	})
+}
 
 func getChainsInSubnet(subnetName string) ([]string, error) {
 	files, err := ioutil.ReadDir(baseDir)
@@ -102,7 +129,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	switch network {
 	case models.Local:
 		log.Debug("Deploy local")
-		return deployToLocalNetwork(chains[0])
+		deployer := newDefaultSubnetDeployer()
+		chain := chains[0]
+		chain_genesis := filepath.Join(baseDir, fmt.Sprintf("%s_genesis.json", chain))
+		return deployer.deployToLocalNetwork(chain, chain_genesis)
 	default:
 		return errors.New("Not implemented")
 	}
@@ -111,8 +141,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 // deployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
-func deployToLocalNetwork(chain string) error {
-	isRunning, err := IsServerProcessRunning()
+func (d *subnetDeployer) deployToLocalNetwork(chain string, chain_genesis string) error {
+	isRunning, err := d.procChecker.IsServerProcessRunning()
 	if err != nil {
 		return fmt.Errorf("failed querying if server process is running: %w", err)
 	}
@@ -122,16 +152,12 @@ func deployToLocalNetwork(chain string) error {
 			return fmt.Errorf("failed starting gRPC server process: %w", err)
 		}
 	}
-	return doDeploy(chain)
+	return d.doDeploy(chain, chain_genesis)
 }
 
 // doDeploy the actual deployment to the network runner
-func doDeploy(chain string) error {
-	usr, err := user.Current()
-	if err != nil {
-		return fmt.Errorf("failed getting current user: %w", err)
-	}
-	avagoDir, err := setupLocalEnv(usr.HomeDir)
+func (d *subnetDeployer) doDeploy(chain string, chain_genesis string) error {
+	avagoDir, err := d.setupLocalEnv()
 	if err != nil {
 		return fmt.Errorf("failed setting up local environment: %w", err)
 	}
@@ -153,17 +179,12 @@ func doDeploy(chain string) error {
 
 	requestTimeout := 3 * time.Minute
 
-	cli, err := client.New(client.Config{
-		LogLevel:    gRPCClientLogLevel,
-		Endpoint:    gRPCServerEndpoint,
-		DialTimeout: gRPCDialTimeout,
-	})
+	cli, err := d.getClientFunc()
 	if err != nil {
-		return fmt.Errorf("failed creating gRPC Client: %w", err)
+		return fmt.Errorf("error creating gRPC Client: %s", err)
 	}
 	defer cli.Close()
 
-	chain_genesis := filepath.Join(usr.HomeDir, BaseDirName, fmt.Sprintf("%s_genesis.json", chain))
 	exists, err = storage.FileExists(chain_genesis)
 	if !exists || err != nil {
 		return fmt.Errorf("evaluated chain genesis file to be at %s but it does not seem to exist.", chain_genesis)
@@ -185,7 +206,7 @@ func doDeploy(chain string) error {
 	}
 	log.Debug("this VM will get ID: %s", vmID.String())
 
-	if err := getVMBinary(vmID, pluginDir); err != nil {
+	if err := d.binaryDownloader.Download(vmID, pluginDir); err != nil {
 		return err
 	}
 
@@ -210,7 +231,7 @@ func doDeploy(chain string) error {
 	log.Debug(info.String())
 	log.Info("Network has been booted. Wait until healthy. Please be patient, this will take some time...")
 
-	endpoints, err := waitForHealthy(ctx, cli)
+	endpoints, err := waitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
 		return fmt.Errorf("failed to query network health: %s", err)
 	}
@@ -227,10 +248,10 @@ func doDeploy(chain string) error {
 // * checks if avalanchego is installed in the local binary path
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path
-func setupLocalEnv(homeDir string) (string, error) {
-	binDir := filepath.Join(homeDir, BaseDirName, avalancheCliBinDir)
+func (d *subnetDeployer) setupLocalEnv() (string, error) {
+	binDir := filepath.Join(baseDir, avalancheCliBinDir)
 
-	exists, latest, err := avagoExists(binDir)
+	exists, latest, err := d.binChecker.Exists(binDir)
 	if err != nil {
 		return "", fmt.Errorf("the avalanchego binary could not be found anywhere in %s", binDir)
 	}
@@ -298,7 +319,7 @@ func setupLocalEnv(homeDir string) (string, error) {
 }
 
 // waitForHealthy polls continuously until the network is ready to be used
-func waitForHealthy(ctx context.Context, cli client.Client) ([]string, error) {
+func waitForHealthy(ctx context.Context, cli client.Client, healthCheckInterval time.Duration) ([]string, error) {
 	cancel := make(chan struct{})
 	go printWait(cancel)
 	for {
@@ -306,7 +327,7 @@ func waitForHealthy(ctx context.Context, cli client.Client) ([]string, error) {
 		case <-ctx.Done():
 			cancel <- struct{}{}
 			return nil, ctx.Err()
-		case <-time.After(10 * time.Second):
+		case <-time.After(healthCheckInterval):
 			cancel <- struct{}{}
 			log.Debug("polling for health...")
 			go printWait(cancel)

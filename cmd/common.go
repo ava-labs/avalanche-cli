@@ -17,9 +17,21 @@ const (
 	procName = "backend start"
 )
 
+type ProcessChecker interface {
+	// IsServerProcessRunning returns true if the gRPC server is running,
+	// or false if not
+	IsServerProcessRunning() (bool, error)
+}
+
+type realProcessRunner struct{}
+
+func NewProcessChecker() ProcessChecker {
+	return &realProcessRunner{}
+}
+
 // IsServerProcessRunning returns true if the gRPC server is running,
 // or false if not
-func IsServerProcessRunning() (bool, error) {
+func (rpr *realProcessRunner) IsServerProcessRunning() (bool, error) {
 	// get OS process list
 	procs, err := process.Processes()
 	if err != nil {
