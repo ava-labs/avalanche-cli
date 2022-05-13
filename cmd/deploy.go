@@ -43,11 +43,11 @@ type subnetDeployer struct {
 	procChecker         ProcessChecker
 	binChecker          BinaryChecker
 	getClientFunc       getGRPCClientFunc
-	binaryDownloader    BinaryDownloader
+	binaryDownloader    PluginBinaryDownloader
 	healthCheckInterval time.Duration
 }
 
-func newDefaultSubnetDeployer() *subnetDeployer {
+func newLocalSubnetDeployer() *subnetDeployer {
 	return &subnetDeployer{
 		procChecker:         NewProcessChecker(),
 		binChecker:          NewAvagoBinaryChecker(),
@@ -129,7 +129,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	switch network {
 	case models.Local:
 		log.Debug("Deploy local")
-		deployer := newDefaultSubnetDeployer()
+		deployer := newLocalSubnetDeployer()
 		chain := chains[0]
 		chain_genesis := filepath.Join(baseDir, fmt.Sprintf("%s_genesis.json", chain))
 		return deployer.deployToLocalNetwork(chain, chain_genesis)
@@ -262,28 +262,10 @@ func (d *subnetDeployer) setupLocalEnv() (string, error) {
 
 	log.Info("Installing latest avalanchego version...")
 
-	// TODO: Question if there is a less error prone (= simpler) way to install latest avalanchego
-	// Maybe the binary package manager should also allow the actual avalanchego binary for download
-	resp, err := http.Get(latestAvagoReleaseURL)
+	version, err := getLatestAvagoVersion(latestAvagoReleaseURL)
 	if err != nil {
-		return "", fmt.Errorf("failed to download avalanchego binary: %w", err)
+		return "", fmt.Errorf("failed to get latest avalanchego version: %s", err)
 	}
-
-	jsonBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to get latest avalanchego version: %w", err)
-	}
-
-	var jsonStr map[string]interface{}
-	if err := json.Unmarshal(jsonBytes, &jsonStr); err != nil {
-		return "", fmt.Errorf("failed to unmarshal avalanchego json version string: %w", err)
-	}
-
-	version := jsonStr["tag_name"].(string)
-	if version == "" || version[0] != 'v' {
-		return "", fmt.Errorf("invalid version string: %s", version)
-	}
-	resp.Body.Close()
 
 	log.Info("Latest avalanchego version is: %s", version)
 
@@ -300,7 +282,7 @@ func (d *subnetDeployer) setupLocalEnv() (string, error) {
 
 	log.Debug("starting download from %s...", avalanchegoURL)
 
-	resp, err = http.Get(avalanchegoURL)
+	resp, err := http.Get(avalanchegoURL)
 	if err != nil {
 		return "", err
 	}
@@ -316,6 +298,33 @@ func (d *subnetDeployer) setupLocalEnv() (string, error) {
 		return "", err
 	}
 	return filepath.Join(binDir, "avalanchego-"+version), nil
+}
+
+func getLatestAvagoVersion(releaseURL string) (string, error) {
+	// TODO: Question if there is a less error prone (= simpler) way to install latest avalanchego
+	// Maybe the binary package manager should also allow the actual avalanchego binary for download
+	resp, err := http.Get(releaseURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to download avalanchego binary: %w", err)
+	}
+	defer resp.Body.Close()
+
+	jsonBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to get latest avalanchego version: %w", err)
+	}
+
+	var jsonStr map[string]interface{}
+	if err := json.Unmarshal(jsonBytes, &jsonStr); err != nil {
+		return "", fmt.Errorf("failed to unmarshal avalanchego json version string: %w", err)
+	}
+
+	version := jsonStr["tag_name"].(string)
+	if version == "" || version[0] != 'v' {
+		return "", fmt.Errorf("invalid version string: %s", version)
+	}
+
+	return version, nil
 }
 
 // waitForHealthy polls continuously until the network is ready to be used

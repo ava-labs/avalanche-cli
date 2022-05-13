@@ -21,7 +21,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 )
 
-type BinaryDownloader interface {
+type PluginBinaryDownloader interface {
 	Download(ids.ID, string) error
 }
 
@@ -38,7 +38,7 @@ func NewAvagoBinaryChecker() *avagoBinaryChecker {
 	return &avagoBinaryChecker{}
 }
 
-func newBinaryDownloader() BinaryDownloader {
+func newBinaryDownloader() PluginBinaryDownloader {
 	return &pluginBinaryDownloader{}
 }
 
