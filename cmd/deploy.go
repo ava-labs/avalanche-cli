@@ -57,7 +57,7 @@ func newLocalSubnetDeployer() *subnetDeployer {
 	}
 }
 
-type getGRPCClientFunc func(string, string, time.Duration) (client.Client, error)
+type getGRPCClientFunc func() (client.Client, error)
 
 func getChainsInSubnet(subnetName string) ([]string, error) {
 	files, err := ioutil.ReadDir(baseDir)
@@ -171,7 +171,7 @@ func (d *subnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	requestTimeout := 3 * time.Minute
 
-	cli, err := d.getClientFunc(gRPCClientLogLevel, gRPCServerEndpoint, gRPCDialTimeout)
+	cli, err := d.getClientFunc()
 	if err != nil {
 		return fmt.Errorf("error creating gRPC Client: %s", err)
 	}

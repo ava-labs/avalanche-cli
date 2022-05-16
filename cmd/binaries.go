@@ -34,7 +34,7 @@ type (
 	pluginBinaryDownloader struct{}
 )
 
-func NewBinaryChecker() *binaryChecker {
+func NewBinaryChecker() BinaryChecker {
 	return &binaryChecker{}
 }
 
@@ -171,7 +171,8 @@ func installTarGzArchive(targz []byte, binDir string) error {
 func (abc *binaryChecker) ExistsWithLatestVersion(binDir string) (bool, string, error) {
 	// TODO this still has loads of potential pit falls
 	// Should prob check for existing binary and plugin dir too
-	match, err := filepath.Glob(filepath.Join(binDir, "avalanchego") + "*")
+	startsWith := "avalanchego-v"
+	match, err := filepath.Glob(filepath.Join(binDir, startsWith) + "*")
 	if err != nil {
 		return false, "", err
 	}
@@ -182,10 +183,16 @@ func (abc *binaryChecker) ExistsWithLatestVersion(binDir string) (bool, string, 
 	case 1:
 		latest = match[0]
 	default:
-		semVers := make(semver.Versions, len(match))
-		for i, v := range match {
+		var semVers semver.Versions
+		for _, v := range match {
 			base := filepath.Base(v)
-			semVers[i] = semver.New(base[1:])
+			newv, err := semver.NewVersion(base[len(startsWith):])
+			if err != nil {
+				// ignore this one, it might be in an unexpected format
+				// e.g. a dir which has nothing to do with this
+				continue
+			}
+			semVers = append(semVers, newv)
 		}
 
 		sort.Sort(sort.Reverse(semVers))

@@ -3,14 +3,18 @@
 package cmd
 
 import (
+	"archive/tar"
+	"archive/zip"
+	"compress/gzip"
 	"crypto/rand"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -66,6 +70,72 @@ func TestDeployToLocal(t *testing.T) {
 	assert.NoError(err)
 }
 
+func TestExistsWithLatestVersion(t *testing.T) {
+	assert := assert.New(t)
+	tmpDir := t.TempDir()
+	bc := NewBinaryChecker()
+
+	exists, latest, err := bc.ExistsWithLatestVersion(tmpDir)
+	assert.NoError(err)
+	assert.False(exists)
+	assert.Empty(latest)
+
+	fake := filepath.Join(tmpDir, "anything")
+	err = os.Mkdir(fake, perms.ReadWriteExecute)
+	assert.NoError(err)
+	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir)
+	assert.NoError(err)
+	assert.False(exists)
+	assert.Empty(latest)
+
+	avagoOnly := filepath.Join(tmpDir, "avalanchego")
+	err = os.Mkdir(avagoOnly, perms.ReadWriteExecute)
+	assert.NoError(err)
+	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir)
+	assert.NoError(err)
+	assert.False(exists)
+	assert.Empty(latest)
+
+	existsOneOnly := filepath.Join(tmpDir, "avalanchego-v1.7.10")
+	err = os.Mkdir(existsOneOnly, perms.ReadWriteExecute)
+	assert.NoError(err)
+	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir)
+	assert.NoError(err)
+	assert.True(exists)
+	assert.Equal(existsOneOnly, latest)
+
+	ver1 := filepath.Join(tmpDir, "avalanchego-v1.8.0")
+	ver2 := filepath.Join(tmpDir, "avalanchego-v1.18.0")
+	ver3 := filepath.Join(tmpDir, "avalanchego-v1.8.1")
+	ver4 := filepath.Join(tmpDir, "avalanchego-v0.8.0")
+	ver5 := filepath.Join(tmpDir, "avalanchego-v0.88.0")
+	ver6 := filepath.Join(tmpDir, "avalanchego-v0.1.0")
+	ver7 := filepath.Join(tmpDir, "avalanchego-v0.11.0")
+	ver8 := filepath.Join(tmpDir, "avalanchego-0.11.0")
+
+	err = os.Mkdir(ver1, perms.ReadWriteExecute)
+	assert.NoError(err)
+	err = os.Mkdir(ver2, perms.ReadWriteExecute)
+	assert.NoError(err)
+	err = os.Mkdir(ver3, perms.ReadWriteExecute)
+	assert.NoError(err)
+	err = os.Mkdir(ver4, perms.ReadWriteExecute)
+	assert.NoError(err)
+	err = os.Mkdir(ver5, perms.ReadWriteExecute)
+	assert.NoError(err)
+	err = os.Mkdir(ver6, perms.ReadWriteExecute)
+	assert.NoError(err)
+	err = os.Mkdir(ver7, perms.ReadWriteExecute)
+	assert.NoError(err)
+	err = os.Mkdir(ver8, perms.ReadWriteExecute)
+	assert.NoError(err)
+
+	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir)
+	assert.NoError(err)
+	assert.True(exists)
+	assert.Equal(ver2, latest)
+}
+
 func TestGetLatestAvagoVersion(t *testing.T) {
 	assert := assert.New(t)
 	testVersion := "v1.99.9999"
@@ -82,6 +152,31 @@ func TestGetLatestAvagoVersion(t *testing.T) {
 	assert.Equal(v, testVersion)
 }
 
+func TestInstallZipArchive(t *testing.T) {
+	assert := assert.New(t)
+
+	archivePath, checkFunc := createTestArchivePath(t, assert)
+
+	tmpDir := os.TempDir()
+	zip := filepath.Join(tmpDir, "testFile.zip")
+	defer os.Remove(zip)
+
+	createZip(assert, archivePath, zip)
+
+	// can't use t.TempDir here as that returns the same dir
+	installDir, err := ioutil.TempDir(tmpDir, "zip-test-dir")
+	assert.NoError(err)
+	defer os.RemoveAll(installDir)
+
+	zipBytes, err := os.ReadFile(zip)
+	assert.NoError(err)
+
+	err = installZipArchive(zipBytes, installDir)
+	assert.NoError(err)
+
+	checkFunc(archivePath)
+}
+
 func TestInstallGzipArchive(t *testing.T) {
 	assert := assert.New(t)
 
@@ -90,12 +185,8 @@ func TestInstallGzipArchive(t *testing.T) {
 	tmpDir := os.TempDir()
 	tgz := filepath.Join(tmpDir, "testFile.tar.gz")
 	defer os.Remove(tgz)
-	// TODO: Maybe we could just have a test tar.gz file around
-	// (tar should be installed on the system, but you never know...)
-	// That's why we can't test zip easily as that is most probably not installed
-	cmd := exec.Command("tar", "-zcf", tgz, archivePath)
-	err := cmd.Run()
-	assert.NoError(err)
+
+	createTarGz(assert, archivePath, tgz)
 
 	// can't use t.TempDir here as that returns the same dir
 	installDir, err := ioutil.TempDir(tmpDir, "gzip-test-dir")
@@ -108,8 +199,105 @@ func TestInstallGzipArchive(t *testing.T) {
 	err = installTarGzArchive(tgzBytes, installDir)
 	assert.NoError(err)
 
-	controlDir := filepath.Join(installDir, archivePath)
-	checkFunc(controlDir)
+	checkFunc(archivePath)
+}
+
+func createZip(assert *assert.Assertions, src string, dest string) {
+	zipf, err := os.Create(dest)
+	assert.NoError(err)
+	defer zipf.Close()
+
+	zipWriter := zip.NewWriter(zipf)
+	defer zipWriter.Close()
+
+	// 2. Go through all the files of the source
+	err = filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// 3. Create a local file header
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return err
+		}
+
+		// set compression
+		header.Method = zip.Deflate
+
+		// 4. Set relative path of a file as the header name
+		header.Name, err = filepath.Rel(filepath.Dir(src), path)
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			header.Name += "/"
+		}
+
+		// 5. Create writer for the file header and save content of the file
+		headerWriter, err := zipWriter.CreateHeader(header)
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		f, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		_, err = io.Copy(headerWriter, f)
+		return err
+	})
+
+	assert.NoError(err)
+}
+
+func createTarGz(assert *assert.Assertions, src string, dest string) {
+	tgz, err := os.Create(dest)
+	assert.NoError(err)
+	defer tgz.Close()
+
+	gw := gzip.NewWriter(tgz)
+	defer gw.Close()
+
+	tarball := tar.NewWriter(gw)
+	defer tarball.Close()
+
+	info, err := os.Stat(src)
+	assert.NoError(err)
+
+	var baseDir string
+	if info.IsDir() {
+		baseDir = filepath.Base(src)
+	}
+
+	err = filepath.Walk(src,
+		func(path string, info os.FileInfo, err error) error {
+			header, err := tar.FileInfoHeader(info, info.Name())
+
+			if baseDir != "" {
+				header.Name = filepath.Join(baseDir, strings.TrimPrefix(path, src))
+			}
+
+			if err := tarball.WriteHeader(header); err != nil {
+				return err
+			}
+
+			if info.IsDir() {
+				return nil
+			}
+
+			file, err := os.Open(path)
+			defer file.Close()
+			_, err = io.Copy(tarball, file)
+			return err
+		})
+	assert.NoError(err)
 }
 
 func createTestArchivePath(t *testing.T, assert *assert.Assertions) (string, func(string)) {
@@ -161,7 +349,7 @@ func createTestArchivePath(t *testing.T, assert *assert.Assertions) (string, fun
 	return testDir, checkFunc
 }
 
-func getTestClientFunc(logLevel string, endpoint string, timeout time.Duration) (client.Client, error) {
+func getTestClientFunc() (client.Client, error) {
 	c := &mocks.Client{}
 	fakeStartResponse := &rpcpb.StartResponse{}
 	c.On("Start", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fakeStartResponse, nil)

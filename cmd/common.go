@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/utils/perms"
@@ -28,11 +27,11 @@ func NewProcessChecker() ProcessChecker {
 	return &realProcessRunner{}
 }
 
-func NewGRPCClient(logLevel string, endpoint string, timeout time.Duration) (client.Client, error) {
+func NewGRPCClient() (client.Client, error) {
 	return client.New(client.Config{
-		LogLevel:    logLevel,
-		Endpoint:    endpoint,
-		DialTimeout: timeout,
+		LogLevel:    gRPCClientLogLevel,
+		Endpoint:    gRPCServerEndpoint,
+		DialTimeout: gRPCDialTimeout,
 	})
 }
 
