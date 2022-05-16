@@ -50,22 +50,14 @@ type subnetDeployer struct {
 func newLocalSubnetDeployer() *subnetDeployer {
 	return &subnetDeployer{
 		procChecker:         NewProcessChecker(),
-		binChecker:          NewAvagoBinaryChecker(),
-		getClientFunc:       newGRPCClient,
-		binaryDownloader:    newBinaryDownloader(),
+		binChecker:          NewBinaryChecker(),
+		getClientFunc:       NewGRPCClient,
+		binaryDownloader:    newPluginBinaryDownloader(),
 		healthCheckInterval: 10 * time.Second,
 	}
 }
 
-type getGRPCClientFunc func() (client.Client, error)
-
-func newGRPCClient() (client.Client, error) {
-	return client.New(client.Config{
-		LogLevel:    gRPCClientLogLevel,
-		Endpoint:    gRPCServerEndpoint,
-		DialTimeout: gRPCDialTimeout,
-	})
-}
+type getGRPCClientFunc func(string, string, time.Duration) (client.Client, error)
 
 func getChainsInSubnet(subnetName string) ([]string, error) {
 	files, err := ioutil.ReadDir(baseDir)
@@ -179,7 +171,7 @@ func (d *subnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	requestTimeout := 3 * time.Minute
 
-	cli, err := d.getClientFunc()
+	cli, err := d.getClientFunc(gRPCClientLogLevel, gRPCServerEndpoint, gRPCDialTimeout)
 	if err != nil {
 		return fmt.Errorf("error creating gRPC Client: %s", err)
 	}
@@ -251,7 +243,7 @@ func (d *subnetDeployer) doDeploy(chain string, chain_genesis string) error {
 func (d *subnetDeployer) setupLocalEnv() (string, error) {
 	binDir := filepath.Join(baseDir, avalancheCliBinDir)
 
-	exists, latest, err := d.binChecker.Exists(binDir)
+	exists, latest, err := d.binChecker.ExistsWithLatestVersion(binDir)
 	if err != nil {
 		return "", fmt.Errorf("the avalanchego binary could not be found anywhere in %s", binDir)
 	}

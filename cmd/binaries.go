@@ -26,19 +26,19 @@ type PluginBinaryDownloader interface {
 }
 
 type BinaryChecker interface {
-	Exists(name string) (bool, string, error)
+	ExistsWithLatestVersion(name string) (bool, string, error)
 }
 
 type (
-	avagoBinaryChecker     struct{}
+	binaryChecker          struct{}
 	pluginBinaryDownloader struct{}
 )
 
-func NewAvagoBinaryChecker() *avagoBinaryChecker {
-	return &avagoBinaryChecker{}
+func NewBinaryChecker() *binaryChecker {
+	return &binaryChecker{}
 }
 
-func newBinaryDownloader() PluginBinaryDownloader {
+func newPluginBinaryDownloader() PluginBinaryDownloader {
 	return &pluginBinaryDownloader{}
 }
 
@@ -58,7 +58,7 @@ func installZipArchive(zipfile []byte, binDir string) error {
 		return fmt.Errorf("failed creating zip reader from binary stream: %w", err)
 	}
 
-	if err := os.MkdirAll(binDir, 0755); err != nil {
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create app binary directory: %w", err)
 	}
 
@@ -145,7 +145,7 @@ func installTarGzArchive(targz []byte, binDir string) error {
 		// if its a dir and it doesn't exist create it
 		case tar.TypeDir:
 			if _, err := os.Stat(target); err != nil {
-				if err := os.MkdirAll(target, 0755); err != nil {
+				if err := os.MkdirAll(target, 0o755); err != nil {
 					return fmt.Errorf("failed creating directory from tar entry %w", err)
 				}
 			}
@@ -166,9 +166,9 @@ func installTarGzArchive(targz []byte, binDir string) error {
 	}
 }
 
-// avagoExists returns true if avalanchego can be found and at what path
+// ExistsWithLatestVersion returns true if avalanchego can be found and at what path
 // or false, if it can not be found (or an error if applies)
-func (abc *avagoBinaryChecker) Exists(binDir string) (bool, string, error) {
+func (abc *binaryChecker) ExistsWithLatestVersion(binDir string) (bool, string, error) {
 	// TODO this still has loads of potential pit falls
 	// Should prob check for existing binary and plugin dir too
 	match, err := filepath.Glob(filepath.Join(binDir, "avalanchego") + "*")

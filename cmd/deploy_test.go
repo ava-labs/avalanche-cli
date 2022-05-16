@@ -44,7 +44,7 @@ func TestDeployToLocal(t *testing.T) {
 		_ = f.Close()
 	}()
 
-	binChecker.On("Exists", mock.AnythingOfType("string")).Return(true, tmpDir, nil)
+	binChecker.On("ExistsWithLatestVersion", mock.AnythingOfType("string")).Return(true, tmpDir, nil)
 
 	binDownloader := &mocks.BinaryDownloader{}
 	binDownloader.On("Download", mock.AnythingOfType("ids.ID"), mock.AnythingOfType("string")).Return(nil)
@@ -161,7 +161,7 @@ func createTestArchivePath(t *testing.T, assert *assert.Assertions) (string, fun
 	return testDir, checkFunc
 }
 
-func getTestClientFunc() (client.Client, error) {
+func getTestClientFunc(logLevel string, endpoint string, timeout time.Duration) (client.Client, error) {
 	c := &mocks.Client{}
 	fakeStartResponse := &rpcpb.StartResponse{}
 	c.On("Start", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fakeStartResponse, nil)

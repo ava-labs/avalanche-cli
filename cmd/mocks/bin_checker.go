@@ -9,8 +9,8 @@ type BinaryChecker struct {
 	mock.Mock
 }
 
-// Exists provides a mock function with given fields: name
-func (_m *BinaryChecker) Exists(name string) (bool, string, error) {
+// ExistsWithLatestVersion provides a mock function with given fields: name
+func (_m *BinaryChecker) ExistsWithLatestVersion(name string) (bool, string, error) {
 	ret := _m.Called(name)
 
 	var r0 bool
