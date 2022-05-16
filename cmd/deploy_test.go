@@ -278,7 +278,13 @@ func createTarGz(assert *assert.Assertions, src string, dest string) {
 
 	err = filepath.Walk(src,
 		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
 			header, err := tar.FileInfoHeader(info, info.Name())
+			if err != nil {
+				return err
+			}
 
 			if baseDir != "" {
 				header.Name = filepath.Join(baseDir, strings.TrimPrefix(path, src))
@@ -293,7 +299,14 @@ func createTarGz(assert *assert.Assertions, src string, dest string) {
 			}
 
 			file, err := os.Open(path)
-			defer file.Close()
+			if err != nil {
+				return err
+			}
+
+			defer func() {
+				err := file.Close()
+				assert.NoError(err)
+			}()
 			_, err = io.Copy(tarball, file)
 			return err
 		})
