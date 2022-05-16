@@ -6,8 +6,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-network-runner/client"
@@ -57,18 +55,11 @@ func killgRPCServerProcess() error {
 		log.Error("failed stopping gRPC server process: %s\n", err)
 	}
 
-	runFile, err := os.ReadFile(serverRun)
+	pid, err := GetServerPID()
 	if err != nil {
-		return fmt.Errorf("failed reading process info file at %s: %s\n", serverRun, err)
+		log.Error("failed getting PID of gRPC server process: %s\n", err)
 	}
-	str := string(runFile)
-	pidIndex := strings.Index(str, "PID:")
-	pidStart := pidIndex + len("PID: ")
-	pidstr := str[pidStart:strings.LastIndex(str, "\n")]
-	pid, err := strconv.Atoi(strings.TrimSpace(pidstr))
-	if err != nil {
-		return fmt.Errorf("failed reading pid from info file at %s: %s\n", serverRun, err)
-	}
+
 	proc, err := os.FindProcess(pid)
 	if err != nil {
 		return fmt.Errorf("could not find process with pid %d: %s\n", pid, err)

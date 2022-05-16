@@ -6,39 +6,73 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
+	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/shirou/gopsutil/process"
 )
 
-const (
-	procName = "backend start"
-)
+type ProcessChecker interface {
+	// IsServerProcessRunning returns true if the gRPC server is running,
+	// or false if not
+	IsServerProcessRunning() (bool, error)
+}
+
+type realProcessRunner struct{}
+
+func NewProcessChecker() ProcessChecker {
+	return &realProcessRunner{}
+}
+
+func NewGRPCClient() (client.Client, error) {
+	return client.New(client.Config{
+		LogLevel:    gRPCClientLogLevel,
+		Endpoint:    gRPCServerEndpoint,
+		DialTimeout: gRPCDialTimeout,
+	})
+}
 
 // IsServerProcessRunning returns true if the gRPC server is running,
 // or false if not
-func IsServerProcessRunning() (bool, error) {
+func (rpr *realProcessRunner) IsServerProcessRunning() (bool, error) {
+	pid, err := GetServerPID()
+	if err != nil {
+		return false, err
+	}
+
 	// get OS process list
 	procs, err := process.Processes()
 	if err != nil {
 		return false, err
 	}
 
+	p32 := int32(pid)
 	// iterate all processes...
 	for _, p := range procs {
-		name, err := p.Cmdline()
-		if err != nil {
-			return false, err
-		}
-		// ... and string-compare
-		// TODO is there a better way to do this?
-		if strings.Contains(name, procName) {
+		if p.Pid == p32 {
 			return true, nil
 		}
 	}
 	return false, nil
+}
+
+func GetServerPID() (int, error) {
+	runFile, err := os.ReadFile(serverRun)
+	if err != nil {
+		return 0, fmt.Errorf("failed reading process info file at %s: %s\n", serverRun, err)
+	}
+	str := string(runFile)
+	pidIndex := strings.Index(str, "PID:")
+	pidStart := pidIndex + len("PID: ")
+	pidstr := str[pidStart:strings.LastIndex(str, "\n")]
+	pid, err := strconv.Atoi(strings.TrimSpace(pidstr))
+	if err != nil {
+		return 0, fmt.Errorf("failed reading pid from info file at %s: %s\n", serverRun, err)
+	}
+	return pid, nil
 }
 
 // start the gRPC server as a reentrant process of this binary

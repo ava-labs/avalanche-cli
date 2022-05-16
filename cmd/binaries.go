@@ -21,6 +21,27 @@ import (
 	"github.com/coreos/go-semver/semver"
 )
 
+type PluginBinaryDownloader interface {
+	Download(ids.ID, string) error
+}
+
+type BinaryChecker interface {
+	ExistsWithLatestVersion(name string) (bool, string, error)
+}
+
+type (
+	binaryChecker          struct{}
+	pluginBinaryDownloader struct{}
+)
+
+func NewBinaryChecker() BinaryChecker {
+	return &binaryChecker{}
+}
+
+func newPluginBinaryDownloader() PluginBinaryDownloader {
+	return &pluginBinaryDownloader{}
+}
+
 // installArchive installs the binary archive downloaded in a os-dependent way
 func installArchive(goos string, archive []byte, binDir string) error {
 	if goos == "darwin" || goos == "windows" {
@@ -37,7 +58,7 @@ func installZipArchive(zipfile []byte, binDir string) error {
 		return fmt.Errorf("failed creating zip reader from binary stream: %w", err)
 	}
 
-	if err := os.MkdirAll(binDir, 0755); err != nil {
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create app binary directory: %w", err)
 	}
 
@@ -124,7 +145,7 @@ func installTarGzArchive(targz []byte, binDir string) error {
 		// if its a dir and it doesn't exist create it
 		case tar.TypeDir:
 			if _, err := os.Stat(target); err != nil {
-				if err := os.MkdirAll(target, 0755); err != nil {
+				if err := os.MkdirAll(target, 0o755); err != nil {
 					return fmt.Errorf("failed creating directory from tar entry %w", err)
 				}
 			}
@@ -145,12 +166,13 @@ func installTarGzArchive(targz []byte, binDir string) error {
 	}
 }
 
-// avagoExists returns true if avalanchego can be found and at what path
+// ExistsWithLatestVersion returns true if avalanchego can be found and at what path
 // or false, if it can not be found (or an error if applies)
-func avagoExists(binDir string) (bool, string, error) {
+func (abc *binaryChecker) ExistsWithLatestVersion(binDir string) (bool, string, error) {
 	// TODO this still has loads of potential pit falls
 	// Should prob check for existing binary and plugin dir too
-	match, err := filepath.Glob(filepath.Join(binDir, "avalanchego") + "*")
+	startsWith := "avalanchego-v"
+	match, err := filepath.Glob(filepath.Join(binDir, startsWith) + "*")
 	if err != nil {
 		return false, "", err
 	}
@@ -161,10 +183,16 @@ func avagoExists(binDir string) (bool, string, error) {
 	case 1:
 		latest = match[0]
 	default:
-		semVers := make(semver.Versions, len(match))
-		for i, v := range match {
+		var semVers semver.Versions
+		for _, v := range match {
 			base := filepath.Base(v)
-			semVers[i] = semver.New(base[1:])
+			newv, err := semver.NewVersion(base[len(startsWith):])
+			if err != nil {
+				// ignore this one, it might be in an unexpected format
+				// e.g. a dir which has nothing to do with this
+				continue
+			}
+			semVers = append(semVers, newv)
 		}
 
 		sort.Sort(sort.Reverse(semVers))
@@ -180,7 +208,7 @@ func avagoExists(binDir string) (bool, string, error) {
 }
 
 // getVMBinary downloads the binary from the binary server URL
-func getVMBinary(id ids.ID, pluginDir string) error {
+func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir string) error {
 	vmID := id.String()
 	binaryPath := filepath.Join(pluginDir, vmID)
 	info, err := os.Stat(binaryPath)
