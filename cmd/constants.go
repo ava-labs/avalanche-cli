@@ -2,8 +2,6 @@
 // See the file LICENSE for licensing terms.
 package cmd
 
-import "time"
-
 const (
 	BaseDirName    = ".avalanche-cli"
 	sidecar_suffix = "_sidecar.json"
@@ -11,13 +9,4 @@ const (
 
 	subnetEvm = "SubnetEVM"
 	customVm  = "Custom"
-
-	latestAvagoReleaseURL = "https://api.github.com/repos/ava-labs/avalanchego/releases/latest"
-	binaryServerURL       = "http://3.84.91.164:8998"
-	serverRun             = "/tmp/gRPCserver.run"
-	avalancheCliBinDir    = "bin"
-
-	gRPCClientLogLevel = "error"
-	gRPCServerEndpoint = "0.0.0.0:8097"
-	gRPCDialTimeout    = 10 * time.Second
 )

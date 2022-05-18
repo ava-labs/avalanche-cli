@@ -3,24 +3,17 @@
 package cmd
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-network-runner/client"
-	"github.com/ava-labs/avalanche-network-runner/utils"
-	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/utils/storage"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/spf13/cobra"
 )
 
@@ -38,26 +31,6 @@ var (
 	deployLocal bool
 	force       bool
 )
-
-type subnetDeployer struct {
-	procChecker         ProcessChecker
-	binChecker          BinaryChecker
-	getClientFunc       getGRPCClientFunc
-	binaryDownloader    PluginBinaryDownloader
-	healthCheckInterval time.Duration
-}
-
-func newLocalSubnetDeployer() *subnetDeployer {
-	return &subnetDeployer{
-		procChecker:         NewProcessChecker(),
-		binChecker:          NewBinaryChecker(),
-		getClientFunc:       NewGRPCClient,
-		binaryDownloader:    newPluginBinaryDownloader(),
-		healthCheckInterval: 10 * time.Second,
-	}
-}
-
-type getGRPCClientFunc func() (client.Client, error)
 
 func getChainsInSubnet(subnetName string) ([]string, error) {
 	files, err := ioutil.ReadDir(baseDir)
@@ -121,267 +94,11 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	switch network {
 	case models.Local:
 		log.Debug("Deploy local")
-		deployer := newLocalSubnetDeployer()
+		deployer := subnet.NewLocalSubnetDeployer(log, BaseDirName)
 		chain := chains[0]
 		chain_genesis := filepath.Join(baseDir, fmt.Sprintf("%s_genesis.json", chain))
-		return deployer.deployToLocalNetwork(chain, chain_genesis)
+		return deployer.DeployToLocalNetwork(chain, chain_genesis)
 	default:
 		return errors.New("Not implemented")
-	}
-}
-
-// deployToLocalNetwork does the heavy lifting:
-// * it checks the gRPC is running, if not, it starts it
-// * kicks off the actual deployment
-func (d *subnetDeployer) deployToLocalNetwork(chain string, chain_genesis string) error {
-	isRunning, err := d.procChecker.IsServerProcessRunning()
-	if err != nil {
-		return fmt.Errorf("failed querying if server process is running: %w", err)
-	}
-	if !isRunning {
-		log.Debug("gRPC server is not running")
-		if err := startServerProcess(); err != nil {
-			return fmt.Errorf("failed starting gRPC server process: %w", err)
-		}
-	}
-	return d.doDeploy(chain, chain_genesis)
-}
-
-// doDeploy the actual deployment to the network runner
-func (d *subnetDeployer) doDeploy(chain string, chain_genesis string) error {
-	avagoDir, err := d.setupLocalEnv()
-	if err != nil {
-		return fmt.Errorf("failed setting up local environment: %w", err)
-	}
-
-	log.Info("Avalanchego installation successful")
-
-	pluginDir := filepath.Join(avagoDir, "plugins")
-	avalancheGoBinPath := filepath.Join(avagoDir, "avalanchego")
-
-	exists, err := storage.FolderExists(pluginDir)
-	if !exists || err != nil {
-		return fmt.Errorf("evaluated pluginDir to be %s but it does not exist.", pluginDir)
-	}
-
-	exists, err = storage.FileExists(avalancheGoBinPath)
-	if !exists || err != nil {
-		return fmt.Errorf("evaluated avalancheGoBinPath to be %s but it does not exist.", avalancheGoBinPath)
-	}
-
-	requestTimeout := 3 * time.Minute
-
-	cli, err := d.getClientFunc()
-	if err != nil {
-		return fmt.Errorf("error creating gRPC Client: %s", err)
-	}
-	defer cli.Close()
-
-	exists, err = storage.FileExists(chain_genesis)
-	if !exists || err != nil {
-		return fmt.Errorf("evaluated chain genesis file to be at %s but it does not seem to exist.", chain_genesis)
-	}
-
-	customVMs := map[string]string{
-		chain: chain_genesis,
-	}
-
-	opts := []client.OpOption{
-		// client.WithNumNodes(numNodes),
-		client.WithPluginDir(pluginDir),
-		client.WithCustomVMs(customVMs),
-	}
-
-	vmID, err := utils.VMID(chain)
-	if err != nil {
-		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
-	}
-	log.Debug("this VM will get ID: %s", vmID.String())
-
-	if err := d.binaryDownloader.Download(vmID, pluginDir); err != nil {
-		return err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	// don't call since "start" is async
-	// and the top-level context here "ctx" is passed
-	// to all underlying function calls
-	// just set the timeout to halt "Start" async ops
-	// when the deadline is reached
-	_ = cancel
-
-	log.Info("VM ready. Trying to boot network...")
-	info, err := cli.Start(
-		ctx,
-		avalancheGoBinPath,
-		opts...,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to start network :%s", err)
-	}
-
-	log.Debug(info.String())
-	log.Info("Network has been booted. Wait until healthy. Please be patient, this will take some time...")
-
-	endpoints, err := waitForHealthy(ctx, cli, d.healthCheckInterval)
-	if err != nil {
-		return fmt.Errorf("failed to query network health: %s", err)
-	}
-
-	fmt.Println()
-	log.Info("Network ready to use. Local network node endpoints:")
-	for _, u := range endpoints {
-		fmt.Println(u)
-	}
-	return nil
-}
-
-// setupLocalEnv also does some heavy lifting:
-// * checks if avalanchego is installed in the local binary path
-// * if not, it downloads it and installs it (os - and archive dependent)
-// * returns the location of the avalanchego path
-func (d *subnetDeployer) setupLocalEnv() (string, error) {
-	binDir := filepath.Join(baseDir, avalancheCliBinDir)
-
-	exists, latest, err := d.binChecker.ExistsWithLatestVersion(binDir)
-	if err != nil {
-		return "", fmt.Errorf("the avalanchego binary could not be found anywhere in %s", binDir)
-	}
-	if exists {
-		log.Debug("local avalanchego found. skipping installation")
-		return latest, nil
-	}
-
-	log.Info("Installing latest avalanchego version...")
-
-	version, err := getLatestAvagoVersion(latestAvagoReleaseURL)
-	if err != nil {
-		return "", fmt.Errorf("failed to get latest avalanchego version: %s", err)
-	}
-
-	log.Info("Latest avalanchego version is: %s", version)
-
-	arch := runtime.GOARCH
-	goos := runtime.GOOS
-	avalanchegoURL := fmt.Sprintf("https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-linux-%s-%s.tar.gz", version, arch, version)
-	if goos == "darwin" {
-		avalanchegoURL = fmt.Sprintf("https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-macos-%s.zip", version, version)
-	}
-	// EXPERMENTAL WIN, no support
-	if goos == "windows" {
-		avalanchegoURL = fmt.Sprintf("https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-win-%s-experimental.zip", version, version)
-	}
-
-	log.Debug("starting download from %s...", avalanchegoURL)
-
-	resp, err := http.Get(avalanchegoURL)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	archive, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	log.Debug("download successful. installing archive...")
-	if err := installArchive(goos, archive, binDir); err != nil {
-		return "", err
-	}
-	return filepath.Join(binDir, "avalanchego-"+version), nil
-}
-
-func getLatestAvagoVersion(releaseURL string) (string, error) {
-	// TODO: Question if there is a less error prone (= simpler) way to install latest avalanchego
-	// Maybe the binary package manager should also allow the actual avalanchego binary for download
-	resp, err := http.Get(releaseURL)
-	if err != nil {
-		return "", fmt.Errorf("failed to download avalanchego binary: %w", err)
-	}
-	defer resp.Body.Close()
-
-	jsonBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to get latest avalanchego version: %w", err)
-	}
-
-	var jsonStr map[string]interface{}
-	if err := json.Unmarshal(jsonBytes, &jsonStr); err != nil {
-		return "", fmt.Errorf("failed to unmarshal avalanchego json version string: %w", err)
-	}
-
-	version := jsonStr["tag_name"].(string)
-	if version == "" || version[0] != 'v' {
-		return "", fmt.Errorf("invalid version string: %s", version)
-	}
-
-	return version, nil
-}
-
-// waitForHealthy polls continuously until the network is ready to be used
-func waitForHealthy(ctx context.Context, cli client.Client, healthCheckInterval time.Duration) ([]string, error) {
-	cancel := make(chan struct{})
-	go printWait(cancel)
-	for {
-		select {
-		case <-ctx.Done():
-			cancel <- struct{}{}
-			return nil, ctx.Err()
-		case <-time.After(healthCheckInterval):
-			cancel <- struct{}{}
-			log.Debug("polling for health...")
-			go printWait(cancel)
-			resp, err := cli.Health(ctx)
-			// TODO sometimes it hangs here!
-			if err != nil {
-				if strings.Contains(err.Error(), "context deadline exceeded") {
-					return nil, err
-				}
-				if log.GetDisplayLevel() > logging.Info {
-					fmt.Println()
-				}
-				log.Debug("health call failed, retrying: %w", err)
-				continue
-			}
-			if resp.ClusterInfo == nil {
-				if log.GetDisplayLevel() > logging.Info {
-					fmt.Println()
-				}
-				log.Debug("warning: ClusterInfo is nil. trying again...")
-				continue
-			}
-			if len(resp.ClusterInfo.CustomVms) == 0 {
-				if log.GetDisplayLevel() > logging.Info {
-					fmt.Println()
-				}
-				log.Debug("network is up but custom VMs are not installed yet. polling again...")
-				continue
-			}
-			endpoints := []string{}
-			for _, nodeInfo := range resp.ClusterInfo.NodeInfos {
-				for vmID, vmInfo := range resp.ClusterInfo.CustomVms {
-					endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q: %s/ext/bc/%s", nodeInfo.Name, vmID, nodeInfo.GetUri(), vmInfo.BlockchainId))
-				}
-			}
-			log.Debug("all good!")
-			close(cancel)
-			return endpoints, nil
-		}
-	}
-}
-
-// printWait does some dot printing to entertain the user
-func printWait(cancel chan struct{}) {
-	for {
-		select {
-		case <-time.After(1 * time.Second):
-			fmt.Print(".")
-		case <-cancel:
-			if log.GetDisplayLevel() != logging.Info {
-				fmt.Println()
-			}
-			return
-		}
 	}
 }

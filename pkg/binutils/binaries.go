@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package cmd
+package binutils
 
 import (
 	"archive/tar"
@@ -17,7 +17,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/coreos/go-semver/semver"
 )
 
@@ -31,19 +33,23 @@ type BinaryChecker interface {
 
 type (
 	binaryChecker          struct{}
-	pluginBinaryDownloader struct{}
+	pluginBinaryDownloader struct {
+		log logging.Logger
+	}
 )
 
 func NewBinaryChecker() BinaryChecker {
 	return &binaryChecker{}
 }
 
-func newPluginBinaryDownloader() PluginBinaryDownloader {
-	return &pluginBinaryDownloader{}
+func NewPluginBinaryDownloader(log logging.Logger) PluginBinaryDownloader {
+	return &pluginBinaryDownloader{
+		log: log,
+	}
 }
 
-// installArchive installs the binary archive downloaded in a os-dependent way
-func installArchive(goos string, archive []byte, binDir string) error {
+// InstallArchive installs the binary archive downloaded in a os-dependent way
+func InstallArchive(goos string, archive []byte, binDir string) error {
 	if goos == "darwin" || goos == "windows" {
 		return installZipArchive(archive, binDir)
 	}
@@ -58,7 +64,7 @@ func installZipArchive(zipfile []byte, binDir string) error {
 		return fmt.Errorf("failed creating zip reader from binary stream: %w", err)
 	}
 
-	if err := os.MkdirAll(binDir, 0o755); err != nil {
+	if err := os.MkdirAll(binDir, constants.DefaultPerms755); err != nil {
 		return fmt.Errorf("failed to create app binary directory: %w", err)
 	}
 
@@ -68,11 +74,6 @@ func installZipArchive(zipfile []byte, binDir string) error {
 		if err != nil {
 			return fmt.Errorf("failed opening zip file: %w", err)
 		}
-		defer func() {
-			if err := rc.Close(); err != nil {
-				panic(err)
-			}
-		}()
 
 		path := filepath.Join(binDir, f.Name)
 		// Check for ZipSlip (Directory traversal)
@@ -92,16 +93,17 @@ func installZipArchive(zipfile []byte, binDir string) error {
 			if err != nil {
 				return fmt.Errorf("failed opening file from zip entry: %w", err)
 			}
-			defer func() {
-				if err := f.Close(); err != nil {
-					panic(err)
-				}
-			}()
 
 			_, err = io.Copy(f, rc)
 			if err != nil {
 				return fmt.Errorf("failed writing zip file entry to disk: %w", err)
 			}
+			if err := f.Close(); err != nil {
+				return err
+			}
+		}
+		if err := rc.Close(); err != nil {
+			return err
 		}
 		return nil
 	}
@@ -145,7 +147,7 @@ func installTarGzArchive(targz []byte, binDir string) error {
 		// if its a dir and it doesn't exist create it
 		case tar.TypeDir:
 			if _, err := os.Stat(target); err != nil {
-				if err := os.MkdirAll(target, 0o755); err != nil {
+				if err := os.MkdirAll(target, constants.DefaultPerms755); err != nil {
 					return fmt.Errorf("failed creating directory from tar entry %w", err)
 				}
 			}
@@ -161,7 +163,9 @@ func installTarGzArchive(targz []byte, binDir string) error {
 			}
 			// manually close here after each file operation; defering would cause each file close
 			// to wait until all operations have completed.
-			f.Close()
+			if err := f.Close(); err != nil {
+				return err
+			}
 		}
 	}
 }
@@ -214,16 +218,18 @@ func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir string) error {
 	info, err := os.Stat(binaryPath)
 	if err == nil {
 		if !info.IsDir() {
-			log.Debug("binary already exists, skipping download")
+			d.log.Debug("binary already exists, skipping download")
+			// TODO ????
+			return nil
 		}
 	}
 	if !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 
-	log.Info("VM binary does not exist locally, starting download...")
+	d.log.Info("VM binary does not exist locally, starting download...")
 
-	base, err := url.Parse(binaryServerURL)
+	base, err := url.Parse(constants.BinaryServerURL)
 	if err != nil {
 		return err
 	}
@@ -236,7 +242,7 @@ func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir string) error {
 	params.Add("vmid", vmID)
 	base.RawQuery = params.Encode()
 
-	log.Debug("starting download from %s...\n\n", base.String())
+	d.log.Debug("starting download from %s...\n\n", base.String())
 
 	resp, err := http.Get(base.String())
 	if err != nil {
@@ -249,8 +255,8 @@ func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir string) error {
 		if err != nil {
 			return err
 		}
-		log.Debug("download successful. installing binary...")
-		return installBinary(bodyBytes, binaryPath)
+		d.log.Debug("download successful. installing binary...")
+		return d.installBinary(bodyBytes, binaryPath)
 
 	} else {
 		return fmt.Errorf("downloading binary failed, status code: %d", resp.StatusCode)
@@ -258,10 +264,10 @@ func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir string) error {
 }
 
 // installBinary writes the binary as a byte array to the specified path
-func installBinary(binary []byte, binaryPath string) error {
-	if err := os.WriteFile(binaryPath, binary, 0o755); err != nil {
+func (d *pluginBinaryDownloader) installBinary(binary []byte, binaryPath string) error {
+	if err := os.WriteFile(binaryPath, binary, constants.DefaultPerms755); err != nil {
 		return err
 	}
-	log.Info("binary installed. ready to go.")
+	d.log.Info("binary installed. ready to go.")
 	return nil
 }

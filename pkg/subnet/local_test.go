@@ -1,0 +1,178 @@
+// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
+package subnet
+
+import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/ava-labs/avalanche-cli/cmd/mocks"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-network-runner/client"
+	"github.com/ava-labs/avalanche-network-runner/rpcpb"
+	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/perms"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+)
+
+func TestDeployToLocal(t *testing.T) {
+	assert := assert.New(t)
+
+	// fake-return true simulating the process is running
+	procChecker := &mocks.ProcessChecker{}
+	procChecker.On("IsServerProcessRunning").Return(true, nil)
+
+	// create a dummy plugins dir, deploy will check it exists
+	binChecker := &mocks.BinaryChecker{}
+	tmpDir := t.TempDir()
+	err := os.Mkdir(filepath.Join(tmpDir, "plugins"), perms.ReadWriteExecute)
+	assert.NoError(err)
+
+	// create a dummy avalanchego file, deploy will check it exists
+	f, err := os.Create(filepath.Join(tmpDir, "avalanchego"))
+	assert.NoError(err)
+	defer func() {
+		_ = f.Close()
+	}()
+
+	binChecker.On("ExistsWithLatestVersion", mock.AnythingOfType("string")).Return(true, tmpDir, nil)
+
+	binDownloader := &mocks.BinaryDownloader{}
+	binDownloader.On("Download", mock.AnythingOfType("ids.ID"), mock.AnythingOfType("string")).Return(nil)
+
+	testDeployer := &SubnetDeployer{
+		procChecker:         procChecker,
+		binChecker:          binChecker,
+		getClientFunc:       getTestClientFunc,
+		binaryDownloader:    binDownloader,
+		healthCheckInterval: 500 * time.Millisecond,
+		log:                 logging.NoLog{},
+	}
+
+	// create a dummy genesis file, deploy will check it exists
+	testGenesis, err := os.CreateTemp(tmpDir, "test-genesis.json")
+	assert.NoError(err)
+
+	// test actual deploy
+	err = testDeployer.DeployToLocalNetwork("test", testGenesis.Name())
+	assert.NoError(err)
+}
+
+func TestExistsWithLatestVersion(t *testing.T) {
+	assert := assert.New(t)
+	tmpDir := t.TempDir()
+	bc := binutils.NewBinaryChecker()
+
+	exists, latest, err := bc.ExistsWithLatestVersion(tmpDir)
+	assert.NoError(err)
+	assert.False(exists)
+	assert.Empty(latest)
+
+	fake := filepath.Join(tmpDir, "anything")
+	err = os.Mkdir(fake, perms.ReadWriteExecute)
+	assert.NoError(err)
+	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir)
+	assert.NoError(err)
+	assert.False(exists)
+	assert.Empty(latest)
+
+	avagoOnly := filepath.Join(tmpDir, "avalanchego")
+	err = os.Mkdir(avagoOnly, perms.ReadWriteExecute)
+	assert.NoError(err)
+	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir)
+	assert.NoError(err)
+	assert.False(exists)
+	assert.Empty(latest)
+
+	existsOneOnly := filepath.Join(tmpDir, "avalanchego-v1.7.10")
+	err = os.Mkdir(existsOneOnly, perms.ReadWriteExecute)
+	assert.NoError(err)
+	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir)
+	assert.NoError(err)
+	assert.True(exists)
+	assert.Equal(existsOneOnly, latest)
+
+	ver1 := filepath.Join(tmpDir, "avalanchego-v1.8.0")
+	ver2 := filepath.Join(tmpDir, "avalanchego-v1.18.0")
+	ver3 := filepath.Join(tmpDir, "avalanchego-v1.8.1")
+	ver4 := filepath.Join(tmpDir, "avalanchego-v0.8.0")
+	ver5 := filepath.Join(tmpDir, "avalanchego-v0.88.0")
+	ver6 := filepath.Join(tmpDir, "avalanchego-v0.1.0")
+	ver7 := filepath.Join(tmpDir, "avalanchego-v0.11.0")
+	ver8 := filepath.Join(tmpDir, "avalanchego-0.11.0")
+
+	err = os.Mkdir(ver1, perms.ReadWriteExecute)
+	assert.NoError(err)
+	err = os.Mkdir(ver2, perms.ReadWriteExecute)
+	assert.NoError(err)
+	err = os.Mkdir(ver3, perms.ReadWriteExecute)
+	assert.NoError(err)
+	err = os.Mkdir(ver4, perms.ReadWriteExecute)
+	assert.NoError(err)
+	err = os.Mkdir(ver5, perms.ReadWriteExecute)
+	assert.NoError(err)
+	err = os.Mkdir(ver6, perms.ReadWriteExecute)
+	assert.NoError(err)
+	err = os.Mkdir(ver7, perms.ReadWriteExecute)
+	assert.NoError(err)
+	err = os.Mkdir(ver8, perms.ReadWriteExecute)
+	assert.NoError(err)
+
+	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir)
+	assert.NoError(err)
+	assert.True(exists)
+	assert.Equal(ver2, latest)
+}
+
+func TestGetLatestAvagoVersion(t *testing.T) {
+	assert := assert.New(t)
+	testVersion := "v1.99.9999"
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := fmt.Sprintf(`{"some":"unimportant","fake":"data","tag_name":"%s","tag_name_was":"what we are interested in"}`, testVersion)
+		_, err := w.Write([]byte(resp))
+		assert.NoError(err)
+	})
+	s := httptest.NewServer(testHandler)
+	defer s.Close()
+
+	v, err := getLatestAvagoVersion(s.URL)
+	assert.NoError(err)
+	assert.Equal(v, testVersion)
+}
+
+func getTestClientFunc() (client.Client, error) {
+	c := &mocks.Client{}
+	fakeStartResponse := &rpcpb.StartResponse{}
+	c.On("Start", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fakeStartResponse, nil)
+	fakeHealthResponse := &rpcpb.HealthResponse{
+		ClusterInfo: &rpcpb.ClusterInfo{
+			NodeInfos: map[string]*rpcpb.NodeInfo{
+				"testNode1": {
+					Name: "testNode1",
+					Uri:  "http://fake.localhost:12345",
+				},
+				"testNode2": {
+					Name: "testNode2",
+					Uri:  "http://fake.localhost:12345",
+				},
+			},
+			CustomVms: map[string]*rpcpb.CustomVmInfo{
+				"vm1": {
+					BlockchainId: "abcd",
+				},
+				"vm2": {
+					BlockchainId: "efgh",
+				},
+			},
+		},
+	}
+	c.On("Health", mock.Anything).Return(fakeHealthResponse, nil)
+	c.On("Close").Return(nil)
+	return c, nil
+}

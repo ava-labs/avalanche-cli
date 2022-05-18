@@ -25,7 +25,6 @@ var (
 	rootCmd = &cobra.Command{
 		Use:               "avalanche",
 		Short:             "A brief description of your application",
-		Version:           "0.0.1",
 		PersistentPreRunE: setupLogging,
 	}
 )
@@ -46,6 +45,7 @@ func setupLogging(cmd *cobra.Command, args []string) error {
 	log, err = factory.Make("main")
 	if err != nil {
 		factory.Close()
+		return fmt.Errorf("failed setting up logging, exiting: %s", err)
 	}
 	return nil
 }
