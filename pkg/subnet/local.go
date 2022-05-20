@@ -80,6 +80,9 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 		return fmt.Errorf("evaluated pluginDir to be %s but it does not exist.", pluginDir)
 	}
 
+	// TODO: we need some better version management here
+	// * compare latest to local version
+	// * decide if force update or give user choice
 	exists, err = storage.FileExists(avalancheGoBinPath)
 	if !exists || err != nil {
 		return fmt.Errorf("evaluated avalancheGoBinPath to be %s but it does not exist.", avalancheGoBinPath)
@@ -294,7 +297,6 @@ func printWait(cancel chan struct{}) {
 		case <-time.After(1 * time.Second):
 			fmt.Print(".")
 		case <-cancel:
-			fmt.Println()
 			return
 		}
 	}

@@ -95,7 +95,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	switch network {
 	case models.Local:
 		log.Debug("Deploy local")
-		deployer := subnet.NewLocalSubnetDeployer(log, BaseDirName)
+		// TODO: Add signal management here. If we Ctrl-C this guy it can leave
+		// the gRPC server is a weird state. Should kill that too
+		deployer := subnet.NewLocalSubnetDeployer(log, baseDir)
 		chain := chains[0]
 		chain_genesis := filepath.Join(baseDir, fmt.Sprintf("%s_genesis.json", chain))
 		return deployer.DeployToLocalNetwork(chain, chain_genesis)

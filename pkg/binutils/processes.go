@@ -5,6 +5,7 @@ package binutils
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -55,7 +56,9 @@ func NewGRPCServer() (server.Server, error) {
 func (rpr *realProcessRunner) IsServerProcessRunning() (bool, error) {
 	pid, err := GetServerPID()
 	if err != nil {
-		return false, err
+		if errors.Is(err, os.ErrNotExist) {
+			return false, err
+		}
 	}
 
 	// get OS process list

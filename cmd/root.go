@@ -27,6 +27,7 @@ var (
 		Use:               "avalanche",
 		Short:             "A brief description of your application",
 		PersistentPreRunE: setupLogging,
+		Version:           Version,
 	}
 )
 
@@ -81,7 +82,7 @@ func init() {
 	}
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.avalanche-cli.yaml)")
-	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "INFO", "log level for the application")
+	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "ERROR", "log level for the application")
 
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
