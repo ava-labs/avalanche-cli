@@ -77,11 +77,11 @@ func (rpr *realProcessRunner) IsServerProcessRunning() (bool, error) {
 }
 
 type runFile struct {
-	Pid                uint32
-	GRPCserverFileName string
+	Pid                int    `json:"pid"`
+	GRPCserverFileName string `json:"gRPCserverFileName"`
 }
 
-func GetServerPID() (pid int, err error) {
+func GetServerPID() (int, error) {
 	var rf runFile
 	run, err := os.ReadFile(constants.ServerRunFile)
 	if err != nil {
@@ -94,7 +94,7 @@ func GetServerPID() (pid int, err error) {
 	if rf.Pid == 0 {
 		return 0, fmt.Errorf("failed reading pid from info file at %s: %s\n", constants.ServerRunFile, err)
 	}
-	return pid, nil
+	return rf.Pid, nil
 }
 
 // StartServerProcess starts the gRPC server as a reentrant process of this binary
@@ -118,12 +118,12 @@ func StartServerProcess(log logging.Logger) error {
 
 	ux.PrintToUser(fmt.Sprintf("Backend controller started, pid: %d, output at: %s", cmd.Process.Pid, outputFile.Name()), log)
 
-	rf := &runFile{
-		Pid:                uint32(cmd.Process.Pid),
+	rf := runFile{
+		Pid:                cmd.Process.Pid,
 		GRPCserverFileName: outputFile.Name(),
 	}
 
-	rfBytes, err := json.Marshal(rf)
+	rfBytes, err := json.Marshal(&rf)
 	if err != nil {
 		return err
 	}
@@ -157,6 +157,7 @@ func KillgRPCServerProcess() error {
 	ctx := GetAsyncContext()
 	_, err = cli.Stop(ctx)
 	if err != nil {
+		fmt.Println(err)
 		return fmt.Errorf("failed stopping gRPC server process: %s", err)
 	}
 
@@ -172,6 +173,9 @@ func KillgRPCServerProcess() error {
 		return fmt.Errorf("failed killing process with pid %d: %s", pid, err)
 	}
 
+	if err := os.Remove(constants.ServerRunFile); err != nil {
+		return fmt.Errorf("failed removing run file %s: %s", constants.ServerRunFile, err)
+	}
 	return nil
 }
 
