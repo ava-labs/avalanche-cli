@@ -19,7 +19,8 @@ var (
 	cfgFile  string
 	logLevel string
 
-	log logging.Logger
+	Version = ""
+	log     logging.Logger
 
 	// rootCmd represents the base command when called without any subcommands
 	rootCmd = &cobra.Command{
