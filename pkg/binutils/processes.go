@@ -77,8 +77,8 @@ func (rpr *realProcessRunner) IsServerProcessRunning() (bool, error) {
 }
 
 type runFile struct {
-	pid                uint32
-	gRPCserverFileName string
+	Pid                uint32
+	GRPCserverFileName string
 }
 
 func GetServerPID() (pid int, err error) {
@@ -91,7 +91,7 @@ func GetServerPID() (pid int, err error) {
 		return 0, fmt.Errorf("failed unmarshalling server run file at %s: %s\n", constants.ServerRunFile, err)
 	}
 
-	if rf.pid == 0 {
+	if rf.Pid == 0 {
 		return 0, fmt.Errorf("failed reading pid from info file at %s: %s\n", constants.ServerRunFile, err)
 	}
 	return pid, nil
@@ -119,8 +119,8 @@ func StartServerProcess(log logging.Logger) error {
 	ux.PrintToUser(fmt.Sprintf("Backend controller started, pid: %d, output at: %s", cmd.Process.Pid, outputFile.Name()), log)
 
 	rf := &runFile{
-		pid:                uint32(cmd.Process.Pid),
-		gRPCserverFileName: outputFile.Name(),
+		Pid:                uint32(cmd.Process.Pid),
+		GRPCserverFileName: outputFile.Name(),
 	}
 
 	rfBytes, err := json.Marshal(rf)
