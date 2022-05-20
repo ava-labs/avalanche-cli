@@ -20,7 +20,6 @@ import (
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/shirou/gopsutil/process"
-	"go.uber.org/zap"
 )
 
 type ProcessChecker interface {
@@ -181,11 +180,12 @@ func WatchServerProcess(serverCancel context.CancelFunc, errc chan error, log lo
 	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
 	select {
 	case sig := <-sigc:
-		log.Warn("signal received; closing server", zap.String("signal", sig.String()))
+		log.Warn("signal received: %s; closing server", sig.String())
 		serverCancel()
-		log.Warn("closed server", zap.Error(<-errc))
+		err := <-errc
+		log.Warn("closed server: %s", err)
 	case err := <-errc:
-		log.Warn("server closed", zap.Error(err))
+		log.Warn("server closed: %s", err)
 		serverCancel()
 	}
 }
