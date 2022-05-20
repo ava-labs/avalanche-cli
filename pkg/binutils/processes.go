@@ -4,16 +4,15 @@ package binutils
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
-	"strconv"
-	"strings"
 	"syscall"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -75,17 +74,22 @@ func (rpr *realProcessRunner) IsServerProcessRunning() (bool, error) {
 	return false, nil
 }
 
-func GetServerPID() (int, error) {
-	runFile, err := os.ReadFile(constants.ServerRunFile)
+type runFile struct {
+	pid                uint32
+	gRPCserverFileName string
+}
+
+func GetServerPID() (pid int, err error) {
+	var rf runFile
+	run, err := os.ReadFile(constants.ServerRunFile)
 	if err != nil {
 		return 0, fmt.Errorf("failed reading process info file at %s: %s\n", constants.ServerRunFile, err)
 	}
-	str := string(runFile)
-	pidIndex := strings.Index(str, "PID:")
-	pidStart := pidIndex + len("PID: ")
-	pidstr := str[pidStart:strings.LastIndex(str, "\n")]
-	pid, err := strconv.Atoi(strings.TrimSpace(pidstr))
-	if err != nil {
+	if err := json.Unmarshal(run, &rf); err != nil {
+		return 0, fmt.Errorf("failed unmarshalling server run file at %s: %s\n", constants.ServerRunFile, err)
+	}
+
+	if rf.pid == 0 {
 		return 0, fmt.Errorf("failed reading pid from info file at %s: %s\n", constants.ServerRunFile, err)
 	}
 	return pid, nil
@@ -110,25 +114,27 @@ func StartServerProcess(log logging.Logger) error {
 		return err
 	}
 
-	log.Info("Backend controller started, pid: %d, output at: %s", cmd.Process.Pid, outputFile.Name())
-	content := fmt.Sprintf("gRPC server output file: %s\ngRPC server PID: %d\n", outputFile.Name(), cmd.Process.Pid)
-	err = os.WriteFile(constants.ServerRunFile, []byte(content), perms.ReadWrite)
+	ux.PrintToUser(fmt.Sprintf("Backend controller started, pid: %d, output at: %s", cmd.Process.Pid, outputFile.Name()), log)
+
+	rf := &runFile{
+		pid:                uint32(cmd.Process.Pid),
+		gRPCserverFileName: outputFile.Name(),
+	}
+
+	rfBytes, err := json.Marshal(rf)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(constants.ServerRunFile, rfBytes, perms.ReadWrite)
 	if err != nil {
 		log.Warn("could not write gRPC process info to file: %s", err)
 	}
 	return nil
 }
 
-func KillgRPCServerProcess() error {
-	requestTimeout := 3 * time.Minute
-
-	cli, err := NewGRPCClient()
-	if err != nil {
-		return err
-	}
-	defer cli.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+// GetAsyncContext returns a timeout context with the cancel function suppressed
+func GetAsyncContext() context.Context {
+	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
 	// don't call since "start" is async
 	// and the top-level context here "ctx" is passed
 	// to all underlying function calls
@@ -136,22 +142,25 @@ func KillgRPCServerProcess() error {
 	// when the deadline is reached
 	_ = cancel
 
+	return ctx
+}
+
+func KillgRPCServerProcess() error {
+	cli, err := NewGRPCClient()
+	if err != nil {
+		return err
+	}
+	defer cli.Close()
+
+	ctx := GetAsyncContext()
 	_, err = cli.Stop(ctx)
 	if err != nil {
 		return fmt.Errorf("failed stopping gRPC server process: %s", err)
 	}
 
-	runFile, err := os.ReadFile(constants.ServerRunFile)
+	pid, err := GetServerPID()
 	if err != nil {
-		return fmt.Errorf("failed reading process info file at %s: %s", constants.ServerRunFile, err)
-	}
-	str := string(runFile)
-	pidIndex := strings.Index(str, "PID:")
-	pidStart := pidIndex + len("PID: ")
-	pidstr := str[pidStart:strings.LastIndex(str, "\n")]
-	pid, err := strconv.Atoi(strings.TrimSpace(pidstr))
-	if err != nil {
-		return fmt.Errorf("failed reading pid from info file at %s: %s", constants.ServerRunFile, err)
+		return fmt.Errorf("failed getting PID from run file: %s", err)
 	}
 	proc, err := os.FindProcess(pid)
 	if err != nil {
@@ -164,16 +173,16 @@ func KillgRPCServerProcess() error {
 	return nil
 }
 
-func WatchServerProcess(serverCancel context.CancelFunc, errc chan error) {
+func WatchServerProcess(serverCancel context.CancelFunc, errc chan error, log logging.Logger) {
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
 	select {
 	case sig := <-sigc:
-		zap.L().Warn("signal received; closing server", zap.String("signal", sig.String()))
+		log.Warn("signal received; closing server", zap.String("signal", sig.String()))
 		serverCancel()
-		zap.L().Warn("closed server", zap.Error(<-errc))
+		log.Warn("closed server", zap.Error(<-errc))
 	case err := <-errc:
-		zap.L().Warn("server closed", zap.Error(err))
+		log.Warn("server closed", zap.Error(err))
 		serverCancel()
 	}
 }

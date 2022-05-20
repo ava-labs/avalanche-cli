@@ -10,6 +10,7 @@ import (
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
+	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
@@ -44,7 +45,7 @@ var CChainFeeConfig = params.FeeConfig{
 }
 
 func CreateEvmGenesis(name string, log logging.Logger) ([]byte, error) {
-	log.Info("creating subnet %s", name)
+	ux.PrintToUser(fmt.Sprintf("creating subnet %s", name), log)
 
 	genesis := core.Genesis{}
 	conf := params.SubnetEVMDefaultChainConfig

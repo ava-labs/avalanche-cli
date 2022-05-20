@@ -8,6 +8,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/spf13/cobra"
 )
 
@@ -108,9 +109,9 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		log.Info("Successfully created genesis")
+		ux.PrintToUser("Successfully created genesis", log)
 	} else {
-		log.Info("Using specified genesis")
+		ux.PrintToUser("Using specified genesis", log)
 		err := copyGenesisFile(filename, args[0])
 		if err != nil {
 			return err
@@ -133,7 +134,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		log.Info("Successfully created genesis")
+		ux.PrintToUser("Successfully created genesis", log)
 	}
 	return nil
 }

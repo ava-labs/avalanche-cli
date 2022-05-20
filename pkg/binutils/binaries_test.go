@@ -6,7 +6,6 @@ import (
 	"compress/gzip"
 	"crypto/rand"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,7 +27,7 @@ func TestInstallZipArchive(t *testing.T) {
 	createZip(assert, archivePath, zip)
 
 	// can't use t.TempDir here as that returns the same dir
-	installDir, err := ioutil.TempDir(tmpDir, "zip-test-dir")
+	installDir, err := os.MkdirTemp(tmpDir, "zip-test-dir")
 	assert.NoError(err)
 	defer os.RemoveAll(installDir)
 
@@ -53,7 +52,7 @@ func TestInstallGzipArchive(t *testing.T) {
 	createTarGz(assert, archivePath, tgz)
 
 	// can't use t.TempDir here as that returns the same dir
-	installDir, err := ioutil.TempDir(tmpDir, "gzip-test-dir")
+	installDir, err := os.MkdirTemp(tmpDir, "gzip-test-dir")
 	assert.NoError(err)
 	defer os.RemoveAll(installDir)
 

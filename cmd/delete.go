@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/spf13/cobra"
 )
 
@@ -45,7 +46,7 @@ func deleteGenesis(cmd *cobra.Command, args []string) error {
 	if _, err := os.Stat(sidecar); err == nil {
 		// exists
 		os.Remove(sidecar)
-		log.Info("Deleted subnet")
+		ux.PrintToUser("Deleted subnet", log)
 	} else if errors.Is(err, os.ErrNotExist) {
 		// does *not* exist
 		log.Error("Specified sidecar does not exist")

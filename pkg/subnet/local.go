@@ -15,6 +15,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -69,7 +70,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 		return fmt.Errorf("failed setting up local environment: %w", err)
 	}
 
-	d.log.Info("Avalanchego installation successful")
+	ux.PrintToUser("Avalanchego installation successful", d.log)
 
 	pluginDir := filepath.Join(avagoDir, "plugins")
 	avalancheGoBinPath := filepath.Join(avagoDir, "avalanchego")
@@ -83,8 +84,6 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	if !exists || err != nil {
 		return fmt.Errorf("evaluated avalancheGoBinPath to be %s but it does not exist.", avalancheGoBinPath)
 	}
-
-	requestTimeout := 3 * time.Minute
 
 	cli, err := d.getClientFunc()
 	if err != nil {
@@ -117,15 +116,9 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	// don't call since "start" is async
-	// and the top-level context here "ctx" is passed
-	// to all underlying function calls
-	// just set the timeout to halt "Start" async ops
-	// when the deadline is reached
-	_ = cancel
+	ctx := binutils.GetAsyncContext()
 
-	d.log.Info("VM ready. Trying to boot network...")
+	ux.PrintToUser("VM ready. Trying to boot network...", d.log)
 	info, err := cli.Start(
 		ctx,
 		avalancheGoBinPath,
@@ -136,7 +129,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	}
 
 	d.log.Debug(info.String())
-	d.log.Info("Network has been booted. Wait until healthy. Please be patient, this will take some time...")
+	ux.PrintToUser("Network has been booted. Wait until healthy. Please be patient, this will take some time...", d.log)
 
 	endpoints, err := d.waitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
@@ -144,9 +137,9 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	}
 
 	fmt.Println()
-	d.log.Info("Network ready to use. Local network node endpoints:")
+	ux.PrintToUser("Network ready to use. Local network node endpoints:", d.log)
 	for _, u := range endpoints {
-		fmt.Println(u)
+		ux.PrintToUser(u, d.log)
 	}
 	return nil
 }
@@ -160,14 +153,14 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 
 	exists, latest, err := d.binChecker.ExistsWithLatestVersion(binDir)
 	if err != nil {
-		return "", fmt.Errorf("the avalanchego binary could not be found anywhere in %s", binDir)
+		return "", fmt.Errorf("failed trying to locate avalanchego binary: %s", binDir)
 	}
 	if exists {
 		d.log.Debug("local avalanchego found. skipping installation")
 		return latest, nil
 	}
 
-	d.log.Info("Installing latest avalanchego version...")
+	ux.PrintToUser("Installing latest avalanchego version...", d.log)
 
 	version, err := getLatestAvagoVersion(constants.LatestAvagoReleaseURL)
 	if err != nil {
@@ -270,23 +263,14 @@ func (d *SubnetDeployer) waitForHealthy(ctx context.Context, cli client.Client, 
 				if strings.Contains(err.Error(), "context deadline exceeded") {
 					return nil, err
 				}
-				if d.log.GetDisplayLevel() > logging.Info {
-					fmt.Println()
-				}
 				d.log.Debug("health call failed, retrying: %w", err)
 				continue
 			}
 			if resp.ClusterInfo == nil {
-				if d.log.GetDisplayLevel() > logging.Info {
-					fmt.Println()
-				}
 				d.log.Debug("warning: ClusterInfo is nil. trying again...")
 				continue
 			}
 			if len(resp.ClusterInfo.CustomVms) == 0 {
-				if d.log.GetDisplayLevel() > logging.Info {
-					fmt.Println()
-				}
 				d.log.Debug("network is up but custom VMs are not installed yet. polling again...")
 				continue
 			}
@@ -310,11 +294,7 @@ func printWait(cancel chan struct{}) {
 		case <-time.After(1 * time.Second):
 			fmt.Print(".")
 		case <-cancel:
-			/*
-				if log.GetDisplayLevel() != logging.Info {
-					fmt.Println()
-				}
-			*/
+			fmt.Println()
 			return
 		}
 	}

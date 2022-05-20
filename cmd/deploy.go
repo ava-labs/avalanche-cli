@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/spf13/cobra"
 )
 
@@ -89,7 +90,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		network = models.NetworkFromString(networkStr)
 	}
 
-	log.Info("Deploying %s to %s", chains, network.String())
+	ux.PrintToUser(fmt.Sprintf("Deploying %s to %s", chains, network.String()), log)
 	// TODO
 	switch network {
 	case models.Local:

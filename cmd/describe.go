@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/olekukonko/tablewriter"
@@ -137,7 +138,7 @@ func printPrecompileTable(genesis core.Genesis) {
 	if precompileSet {
 		table.Render()
 	} else {
-		log.Info("No precompiles set")
+		ux.PrintToUser("No precompiles set", log)
 	}
 }
 
@@ -174,7 +175,7 @@ func readGenesis(cmd *cobra.Command, args []string) error {
 			err = describeSubnetEvmGenesis(subnetName, sc)
 		default:
 			log.Warn("Unknown genesis format for", sc.Vm)
-			log.Info("Printing genesis")
+			ux.PrintToUser("Printing genesis", log)
 			err = printGenesis(subnetName)
 		}
 		if err != nil {

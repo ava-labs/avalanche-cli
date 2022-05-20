@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/ux"
 )
 
 var cleanCmd = &cobra.Command{
@@ -22,5 +23,5 @@ func clean(cmd *cobra.Command, args []string) {
 	if err := binutils.KillgRPCServerProcess(); err != nil {
 		log.Warn("failed killing server process: %s\n", err)
 	}
-	log.Info("process terminated.")
+	ux.PrintToUser("Process terminated.", log)
 }

@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/coreos/go-semver/semver"
@@ -227,7 +228,7 @@ func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir string) error {
 		return err
 	}
 
-	d.log.Info("VM binary does not exist locally, starting download...")
+	ux.PrintToUser("VM binary does not exist locally, starting download...", d.log)
 
 	base, err := url.Parse(constants.BinaryServerURL)
 	if err != nil {
@@ -268,6 +269,6 @@ func (d *pluginBinaryDownloader) installBinary(binary []byte, binaryPath string)
 	if err := os.WriteFile(binaryPath, binary, constants.DefaultPerms755); err != nil {
 		return err
 	}
-	d.log.Info("binary installed. ready to go.")
+	ux.PrintToUser("binary installed. ready to go.", d.log)
 	return nil
 }

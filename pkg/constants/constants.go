@@ -16,4 +16,6 @@ const (
 	GRPCServerEndpoint  = ":8097"
 	GRPCGatewayEndpoint = ":8098"
 	GRPCDialTimeout     = 10 * time.Second
+
+	RequestTimeout = 3 * time.Minute
 )
