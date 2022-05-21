@@ -90,7 +90,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		network = models.NetworkFromString(networkStr)
 	}
 
-	ux.PrintToUser(fmt.Sprintf("Deploying %s to %s", chains, network.String()), log)
+	ux.Logger.PrintToUser(fmt.Sprintf("Deploying %s to %s", chains, network.String()))
 	// TODO
 	switch network {
 	case models.Local:

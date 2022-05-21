@@ -46,7 +46,7 @@ func deleteGenesis(cmd *cobra.Command, args []string) error {
 	if _, err := os.Stat(sidecar); err == nil {
 		// exists
 		os.Remove(sidecar)
-		ux.PrintToUser("Deleted subnet", log)
+		ux.Logger.PrintToUser("Deleted subnet")
 	} else if errors.Is(err, os.ErrNotExist) {
 		// does *not* exist
 		log.Error("Specified sidecar does not exist")

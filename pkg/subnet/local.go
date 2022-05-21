@@ -70,7 +70,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 		return fmt.Errorf("failed setting up local environment: %w", err)
 	}
 
-	ux.PrintToUser("Avalanchego installation successful", d.log)
+	ux.Logger.PrintToUser("Avalanchego installation successful")
 
 	pluginDir := filepath.Join(avagoDir, "plugins")
 	avalancheGoBinPath := filepath.Join(avagoDir, "avalanchego")
@@ -121,7 +121,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	ctx := binutils.GetAsyncContext()
 
-	ux.PrintToUser("VM ready. Trying to boot network...", d.log)
+	ux.Logger.PrintToUser("VM ready. Trying to boot network...")
 	info, err := cli.Start(
 		ctx,
 		avalancheGoBinPath,
@@ -132,7 +132,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	}
 
 	d.log.Debug(info.String())
-	ux.PrintToUser("Network has been booted. Wait until healthy. Please be patient, this will take some time...", d.log)
+	ux.Logger.PrintToUser("Network has been booted. Wait until healthy. Please be patient, this will take some time...")
 
 	endpoints, err := d.waitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
@@ -140,9 +140,9 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	}
 
 	fmt.Println()
-	ux.PrintToUser("Network ready to use. Local network node endpoints:", d.log)
+	ux.Logger.PrintToUser("Network ready to use. Local network node endpoints:")
 	for _, u := range endpoints {
-		ux.PrintToUser(u, d.log)
+		ux.Logger.PrintToUser(u)
 	}
 	return nil
 }
@@ -163,7 +163,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 		return latest, nil
 	}
 
-	ux.PrintToUser("Installing latest avalanchego version...", d.log)
+	ux.Logger.PrintToUser("Installing latest avalanchego version...")
 
 	version, err := getLatestAvagoVersion(constants.LatestAvagoReleaseURL)
 	if err != nil {

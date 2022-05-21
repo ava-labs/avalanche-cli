@@ -138,7 +138,7 @@ func printPrecompileTable(genesis core.Genesis) {
 	if precompileSet {
 		table.Render()
 	} else {
-		ux.PrintToUser("No precompiles set", log)
+		ux.Logger.PrintToUser("No precompiles set")
 	}
 }
 
@@ -175,7 +175,7 @@ func readGenesis(cmd *cobra.Command, args []string) error {
 			err = describeSubnetEvmGenesis(subnetName, sc)
 		default:
 			log.Warn("Unknown genesis format for", sc.Vm)
-			ux.PrintToUser("Printing genesis", log)
+			ux.Logger.PrintToUser("Printing genesis")
 			err = printGenesis(subnetName)
 		}
 		if err != nil {

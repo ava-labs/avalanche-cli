@@ -4,6 +4,7 @@ package subnet
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -21,8 +23,14 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+func setupTest(t *testing.T) *assert.Assertions {
+	// use io.Discard to not print anything
+	ux.NewUserLog(logging.NoLog{}, io.Discard)
+	return assert.New(t)
+}
+
 func TestDeployToLocal(t *testing.T) {
-	assert := assert.New(t)
+	assert := setupTest(t)
 
 	// fake-return true simulating the process is running
 	procChecker := &mocks.ProcessChecker{}
@@ -65,7 +73,8 @@ func TestDeployToLocal(t *testing.T) {
 }
 
 func TestExistsWithLatestVersion(t *testing.T) {
-	assert := assert.New(t)
+	assert := setupTest(t)
+
 	tmpDir := t.TempDir()
 	bc := binutils.NewBinaryChecker()
 
@@ -131,7 +140,8 @@ func TestExistsWithLatestVersion(t *testing.T) {
 }
 
 func TestGetLatestAvagoVersion(t *testing.T) {
-	assert := assert.New(t)
+	assert := setupTest(t)
+
 	testVersion := "v1.99.9999"
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := fmt.Sprintf(`{"some":"unimportant","fake":"data","tag_name":"%s","tag_name_was":"what we are interested in"}`, testVersion)

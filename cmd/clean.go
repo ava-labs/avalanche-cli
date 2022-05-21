@@ -23,5 +23,5 @@ func clean(cmd *cobra.Command, args []string) {
 	if err := binutils.KillgRPCServerProcess(); err != nil {
 		log.Warn("failed killing server process: %s\n", err)
 	}
-	ux.PrintToUser("Process terminated.", log)
+	ux.Logger.PrintToUser("Process terminated.")
 }

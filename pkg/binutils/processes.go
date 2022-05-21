@@ -116,7 +116,7 @@ func StartServerProcess(log logging.Logger) error {
 		return err
 	}
 
-	ux.PrintToUser(fmt.Sprintf("Backend controller started, pid: %d, output at: %s", cmd.Process.Pid, outputFile.Name()), log)
+	ux.Logger.PrintToUser(fmt.Sprintf("Backend controller started, pid: %d, output at: %s", cmd.Process.Pid, outputFile.Name()))
 
 	rf := runFile{
 		Pid:                cmd.Process.Pid,

@@ -8,6 +8,7 @@ import (
 	"os/user"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/spf13/cobra"
@@ -20,7 +21,8 @@ var (
 	logLevel string
 
 	Version = ""
-	log     logging.Logger
+
+	log logging.Logger
 
 	// rootCmd represents the base command when called without any subcommands
 	rootCmd = &cobra.Command{
@@ -44,11 +46,13 @@ func setupLogging(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed creating log directory: %w", err)
 	}
 	factory := logging.NewFactory(config)
-	log, err = factory.Make("main")
+	log, err = factory.Make("avalanche")
 	if err != nil {
 		factory.Close()
 		return fmt.Errorf("failed setting up logging, exiting: %s", err)
 	}
+	// create the user facing logger as a global var
+	ux.NewUserLog(log, os.Stdout)
 	return nil
 }
 

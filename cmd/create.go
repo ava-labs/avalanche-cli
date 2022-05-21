@@ -109,9 +109,9 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		ux.PrintToUser("Successfully created genesis", log)
+		ux.Logger.PrintToUser("Successfully created genesis")
 	} else {
-		ux.PrintToUser("Using specified genesis", log)
+		ux.Logger.PrintToUser("Using specified genesis")
 		err := copyGenesisFile(filename, args[0])
 		if err != nil {
 			return err
@@ -134,7 +134,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		ux.PrintToUser("Successfully created genesis", log)
+		ux.Logger.PrintToUser("Successfully created genesis")
 	}
 	return nil
 }

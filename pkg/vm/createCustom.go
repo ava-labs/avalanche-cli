@@ -12,7 +12,7 @@ import (
 )
 
 func CreateCustomGenesis(name string, log logging.Logger) ([]byte, error) {
-	ux.PrintToUser(fmt.Sprintf("creating custom VM subnet %s", name), log)
+	ux.Logger.PrintToUser(fmt.Sprintf("creating custom VM subnet %s", name))
 
 	genesisPath, err := prompts.CaptureExistingFilepath("Enter path to custom genesis")
 	if err != nil {

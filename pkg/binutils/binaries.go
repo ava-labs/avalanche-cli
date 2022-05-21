@@ -228,7 +228,7 @@ func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir string) error {
 		return err
 	}
 
-	ux.PrintToUser("VM binary does not exist locally, starting download...", d.log)
+	ux.Logger.PrintToUser("VM binary does not exist locally, starting download...")
 
 	base, err := url.Parse(constants.BinaryServerURL)
 	if err != nil {
@@ -269,6 +269,6 @@ func (d *pluginBinaryDownloader) installBinary(binary []byte, binaryPath string)
 	if err := os.WriteFile(binaryPath, binary, constants.DefaultPerms755); err != nil {
 		return err
 	}
-	ux.PrintToUser("binary installed. ready to go.", d.log)
+	ux.Logger.PrintToUser("binary installed. ready to go.")
 	return nil
 }
