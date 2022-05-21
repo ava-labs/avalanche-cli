@@ -26,7 +26,7 @@ func NewUserLog(log logging.Logger, userwriter io.Writer) {
 }
 
 // PrintToUser prints msg directly on the screen, but also to log file
-func (ul *UserLog) PrintToUser(msg string) {
-	fmt.Fprintln(ul.writer, msg)
+func (ul *UserLog) PrintToUser(msg string, args ...interface{}) {
+	fmt.Fprintln(ul.writer, fmt.Sprintf(msg, args...))
 	ul.log.Info(msg)
 }

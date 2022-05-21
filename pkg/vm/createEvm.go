@@ -45,7 +45,7 @@ var CChainFeeConfig = params.FeeConfig{
 }
 
 func CreateEvmGenesis(name string, log logging.Logger) ([]byte, error) {
-	ux.Logger.PrintToUser(fmt.Sprintf("creating subnet %s", name))
+	ux.Logger.PrintToUser("creating subnet %s", name)
 
 	genesis := core.Genesis{}
 	conf := params.SubnetEVMDefaultChainConfig

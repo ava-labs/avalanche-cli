@@ -3,7 +3,6 @@
 package vm
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
@@ -12,7 +11,7 @@ import (
 )
 
 func CreateCustomGenesis(name string, log logging.Logger) ([]byte, error) {
-	ux.Logger.PrintToUser(fmt.Sprintf("creating custom VM subnet %s", name))
+	ux.Logger.PrintToUser("creating custom VM subnet %s", name)
 
 	genesisPath, err := prompts.CaptureExistingFilepath("Enter path to custom genesis")
 	if err != nil {

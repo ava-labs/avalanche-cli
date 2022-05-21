@@ -116,7 +116,7 @@ func StartServerProcess(log logging.Logger) error {
 		return err
 	}
 
-	ux.Logger.PrintToUser(fmt.Sprintf("Backend controller started, pid: %d, output at: %s", cmd.Process.Pid, outputFile.Name()))
+	ux.Logger.PrintToUser("Backend controller started, pid: %d, output at: %s", cmd.Process.Pid, outputFile.Name())
 
 	rf := runFile{
 		Pid:                cmd.Process.Pid,
@@ -169,7 +169,7 @@ func KillgRPCServerProcess() error {
 	if err != nil {
 		return fmt.Errorf("could not find process with pid %d: %s", pid, err)
 	}
-	if err := proc.Kill(); err != nil {
+	if err := proc.Signal(os.Interrupt); err != nil {
 		return fmt.Errorf("failed killing process with pid %d: %s", pid, err)
 	}
 

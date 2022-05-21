@@ -69,7 +69,7 @@ func installZipArchive(zipfile []byte, binDir string) error {
 		return fmt.Errorf("failed to create app binary directory: %w", err)
 	}
 
-	// Closure to address file descriptors issue with all the deferred .Close() methods
+	// Closure to address file descriptors issue, uses Close to to not leave open descriptors
 	extractAndWriteFile := func(f *zip.File) error {
 		rc, err := f.Open()
 		if err != nil {
@@ -218,11 +218,11 @@ func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir string) error {
 	binaryPath := filepath.Join(pluginDir, vmID)
 	info, err := os.Stat(binaryPath)
 	if err == nil {
-		if !info.IsDir() {
+		if info.Mode().IsRegular() {
 			d.log.Debug("binary already exists, skipping download")
-			// TODO ????
 			return nil
 		}
+		return fmt.Errorf("binary plugin path %q was found but is not a regular file", binaryPath)
 	}
 	if !errors.Is(err, os.ErrNotExist) {
 		return err
