@@ -20,17 +20,23 @@ import (
 
 // deployCmd represents the deploy command
 var deployCmd = &cobra.Command{
-	Use:   "deploy",
-	Short: "Deploy your subnet to a network",
-	Long: `Deploy your subnet to a network. Currently supports local network only. 
-Starts an avalanche-network-runner in the background and deploys your subnet there.`,
+	Use:   "deploy [subnetName]",
+	Short: "Deploys a subnet configuration with clean state",
+	Long: `The subnet deploy command deploys your subnet configuration locally, to
+Fuji Testnet, or to Mainnet. Currently, the beta release only support
+local deploys.
+
+At the end of the call, the command will print the RPC URL you can use
+to interact with the subnet.
+
+Subsequent calls of deploy using the same subnet configuration will
+redeploy the subnet and reset the chain state to genesis.`,
 	RunE: deploySubnet,
 	Args: cobra.ExactArgs(1),
 }
 
 var (
 	deployLocal bool
-	force       bool
 )
 
 func getChainsInSubnet(subnetName string) ([]string, error) {
