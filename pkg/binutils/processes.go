@@ -36,17 +36,17 @@ func NewProcessChecker() ProcessChecker {
 
 func NewGRPCClient() (client.Client, error) {
 	return client.New(client.Config{
-		LogLevel:    constants.GRPCClientLogLevel,
-		Endpoint:    constants.GRPCServerEndpoint,
-		DialTimeout: constants.GRPCDialTimeout,
+		LogLevel:    gRPCClientLogLevel,
+		Endpoint:    gRPCServerEndpoint,
+		DialTimeout: gRPCDialTimeout,
 	})
 }
 
 func NewGRPCServer() (server.Server, error) {
 	return server.New(server.Config{
-		Port:        constants.GRPCServerEndpoint,
-		GwPort:      constants.GRPCGatewayEndpoint,
-		DialTimeout: constants.GRPCDialTimeout,
+		Port:        gRPCServerEndpoint,
+		GwPort:      gRPCGatewayEndpoint,
+		DialTimeout: gRPCDialTimeout,
 	})
 }
 
