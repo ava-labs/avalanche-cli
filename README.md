@@ -77,6 +77,10 @@ To deploy, run
 
 Local deploys will start a multi-node Avalanche network in the background on your machine. To manage that network, see the `avalanche network` command tree.
 
+If you'd like some additional information on how you can deploy your subnet to Fuji Testnet, run
+
+`avalanche subnet instructions <subnetName>`
+
 ### Delete a subnet configuration
 
 To delete a created subnet configuration, run
@@ -112,3 +116,9 @@ To stop your local network and clear its state, run
 `avalanche network clean`
 
 This will delete all stored subnet state. You will need to redeploy your subnet configuration to use it again.
+
+### Checking network status
+
+If you'd like to determine whether or not a local Avalanche network is running on your macine, run
+
+`avalanche network status`
