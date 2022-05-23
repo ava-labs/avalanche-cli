@@ -85,7 +85,6 @@ func init() {
 	// Disable printing the completion command
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.avalanche-cli.yaml)")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "ERROR", "log level for the application")
 
 	// add sub commands
