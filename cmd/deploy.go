@@ -1,7 +1,5 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
-*/
+// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
 package cmd
 
 import (
@@ -15,31 +13,30 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/spf13/cobra"
-	// "github.com/ava-labs/avalanche-network-runner/cmd/avalanche-network-runner/server"
 )
 
 // deployCmd represents the deploy command
 var deployCmd = &cobra.Command{
 	Use:   "deploy",
 	Short: "Deploy your subnet to a network",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Long: `Deploy your subnet to a network. Currently supports local network only. 
+Starts an avalanche-network-runner in the background and deploys your subnet there.`,
 	RunE: deploySubnet,
 	Args: cobra.ExactArgs(1),
 }
 
-var deployLocal bool
-var force bool
+var (
+	deployLocal bool
+	force       bool
+)
 
 func getChainsInSubnet(subnetName string) ([]string, error) {
 	files, err := ioutil.ReadDir(baseDir)
 	if err != nil {
-		return []string{}, err
+		return []string{}, fmt.Errorf("failed to read baseDir :%w", err)
 	}
 
 	chains := []string{}
@@ -50,13 +47,13 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 			path := filepath.Join(baseDir, f.Name())
 			jsonBytes, err := os.ReadFile(path)
 			if err != nil {
-				return []string{}, err
+				return []string{}, fmt.Errorf("failed reading file %s: %w", path, err)
 			}
 
 			var sc models.Sidecar
 			err = json.Unmarshal(jsonBytes, &sc)
 			if err != nil {
-				return []string{}, err
+				return []string{}, fmt.Errorf("failed unmarshaling file %s: %w", path, err)
 			}
 			if sc.Subnet == subnetName {
 				chains = append(chains, sc.Name)
@@ -66,12 +63,13 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 	return chains, nil
 }
 
+// deploySubnet is the cobra command run for deploying subnets
 func deploySubnet(cmd *cobra.Command, args []string) error {
 	// Check subnet exists
 	// TODO create a file that lists chains by subnet for fast querying
 	chains, err := getChainsInSubnet(args[0])
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to getChainsInSubnet: %w", err)
 	}
 
 	if len(chains) == 0 {
@@ -92,14 +90,18 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		network = models.NetworkFromString(networkStr)
 	}
 
-	fmt.Println("Deploying", chains, "to", network.String())
+	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.String())
 	// TODO
 	switch network {
 	case models.Local:
-		// WRITE CODE HERE
-		fmt.Println("Deploy local")
+		log.Debug("Deploy local")
+		// TODO: Add signal management here. If we Ctrl-C this guy it can leave
+		// the gRPC server is a weird state. Should kill that too
+		deployer := subnet.NewLocalSubnetDeployer(log, baseDir)
+		chain := chains[0]
+		chain_genesis := filepath.Join(baseDir, fmt.Sprintf("%s_genesis.json", chain))
+		return deployer.DeployToLocalNetwork(chain, chain_genesis)
 	default:
-		fmt.Println("Not implemented")
+		return errors.New("Not implemented")
 	}
-	return nil
 }

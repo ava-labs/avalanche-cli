@@ -1,23 +1,23 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
-*/
+// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
 package cmd
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/spf13/cobra"
 )
 
 var filename string
 
-var forceCreate bool
-var useSubnetEvm bool
+var (
+	forceCreate  bool
+	useSubnetEvm bool
+)
 
 // var useSpaces *bool
 // var useBlob *bool
@@ -28,14 +28,9 @@ var useCustom bool
 var createCmd = &cobra.Command{
 	Use:   "create [subnetName]",
 	Short: "Create a new subnet genesis",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Args: cobra.ExactArgs(1),
-	RunE: createGenesis,
+	Long:  "Create a new subnet genesis",
+	Args:  cobra.ExactArgs(1),
+	RunE:  createGenesis,
 }
 
 func moreThanOneVmSelected() bool {
@@ -88,7 +83,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 
 		switch subnetType {
 		case subnetEvm:
-			genesisBytes, err = vm.CreateEvmGenesis(args[0])
+			genesisBytes, err = vm.CreateEvmGenesis(args[0], log)
 			if err != nil {
 				return err
 			}
@@ -98,7 +93,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		case customVm:
-			genesisBytes, err = vm.CreateCustomGenesis(args[0])
+			genesisBytes, err = vm.CreateCustomGenesis(args[0], log)
 			if err != nil {
 				return err
 			}
@@ -114,9 +109,9 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println("Successfully created genesis")
+		ux.Logger.PrintToUser("Successfully created genesis")
 	} else {
-		fmt.Println("Using specified genesis")
+		ux.Logger.PrintToUser("Using specified genesis")
 		err := copyGenesisFile(filename, args[0])
 		if err != nil {
 			return err
@@ -139,7 +134,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println("Successfully created genesis")
+		ux.Logger.PrintToUser("Successfully created genesis")
 	}
 	return nil
 }

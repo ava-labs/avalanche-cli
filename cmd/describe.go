@@ -1,7 +1,5 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
-*/
+// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
 package cmd
 
 import (
@@ -12,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/olekukonko/tablewriter"
@@ -22,14 +21,8 @@ import (
 var readCmd = &cobra.Command{
 	Use:   "describe",
 	Short: "Print a summary of the subnet’s configuration",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	RunE: readGenesis,
-	Args: cobra.ExactArgs(1),
+	RunE:  readGenesis,
+	Args:  cobra.ExactArgs(1),
 }
 
 var printGenesisOnly bool
@@ -145,7 +138,7 @@ func printPrecompileTable(genesis core.Genesis) {
 	if precompileSet {
 		table.Render()
 	} else {
-		fmt.Println("No precompiles set")
+		ux.Logger.PrintToUser("No precompiles set")
 	}
 }
 
@@ -181,8 +174,8 @@ func readGenesis(cmd *cobra.Command, args []string) error {
 		case models.SubnetEvm:
 			err = describeSubnetEvmGenesis(subnetName, sc)
 		default:
-			fmt.Println("Unknown genesis format for", sc.Vm)
-			fmt.Println("Printing genesis")
+			log.Warn("Unknown genesis format for", sc.Vm)
+			ux.Logger.PrintToUser("Printing genesis")
 			err = printGenesis(subnetName)
 		}
 		if err != nil {
