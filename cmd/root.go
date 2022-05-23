@@ -16,7 +16,6 @@ import (
 
 var (
 	baseDir  string
-	cfgFile  string
 	logLevel string
 
 	Version = ""
