@@ -2,6 +2,8 @@ module github.com/ava-labs/avalanche-cli
 
 go 1.17
 
+replace github.com/ava-labs/avalanche-network-runner => ../avalanche-network-runner
+
 require (
 	github.com/ava-labs/avalanche-network-runner v1.0.15
 	github.com/ava-labs/avalanchego v1.7.11-0.20220416161358-8755486a274e
@@ -73,6 +75,7 @@ require (
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d // indirect
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/onsi/ginkgo/v2 v2.1.3 // indirect
+	github.com/otiai10/copy v1.7.0 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.0-beta.8 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
