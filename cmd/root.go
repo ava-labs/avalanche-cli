@@ -27,7 +27,7 @@ var (
 	// rootCmd represents the base command when called without any subcommands
 	rootCmd = &cobra.Command{
 		Use:               "avalanche",
-		Short:             "A brief description of your application",
+		Short:             "Interactive command-line tool to create and interact with avalanche networks and subnets. Currently only supports local networks.",
 		PersistentPreRunE: setupLogging,
 		Version:           Version,
 	}
