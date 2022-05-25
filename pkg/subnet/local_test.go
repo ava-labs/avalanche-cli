@@ -162,6 +162,8 @@ func getTestClientFunc() (client.Client, error) {
 	c.On("Start", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fakeStartResponse, nil)
 	fakeHealthResponse := &rpcpb.HealthResponse{
 		ClusterInfo: &rpcpb.ClusterInfo{
+			Healthy:          true, // currently actually not checked, should it, if CustomVmsHealthy already is?
+			CustomVmsHealthy: true,
 			NodeInfos: map[string]*rpcpb.NodeInfo{
 				"testNode1": {
 					Name: "testNode1",
