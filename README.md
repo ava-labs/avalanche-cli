@@ -56,7 +56,11 @@ Subnet-EVM is a configurable Ethereum virtual machine designed for subnets. It s
 
 ### Create a Custom Subnet Configuration
 
-If you don't provide any arguments, the subnet creation wizard will walk you through the entire process. This will create a genesis file for your network. It contains all of the information you need to airdrop tokens, set a gas config, and enable any custom precompiles. You can read more about subnet configuration here: https://docs.avax.network/subnets/customize-a-subnet/. To use the wizard, run
+If you don't provide any arguments, the subnet creation wizard will walk you through the entire process. This will create a genesis file for your network. It contains all of the information you need to airdrop tokens, set a gas config, and enable any custom precompiles. You can read more about subnet configuration here: https://docs.avax.network/subnets/customize-a-subnet/.
+
+One special note: Every EVM-based chain has a parameter called the `chainId`. When choosing a `chainId` for your network, you should choose a unique value. Check https://chainlist.org/ to see if the value you'd like is already in use.
+
+To use the wizard, run
 
 `avalanche subnet create <subnetName>`
 
