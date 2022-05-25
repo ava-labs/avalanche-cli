@@ -124,6 +124,8 @@ To start or restart a stopped network, run
 
 `avalanche network start`
 
+Deploying a subnet locally will start the network automatically.
+
 ### Deleting the Local Network
 
 To stop your local network and clear its state, run
