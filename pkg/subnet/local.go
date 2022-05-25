@@ -272,6 +272,10 @@ func (d *SubnetDeployer) waitForHealthy(ctx context.Context, cli client.Client, 
 				d.log.Debug("network is up but custom VMs are not installed yet. polling again...")
 				continue
 			}
+			if !resp.ClusterInfo.CustomVmsHealthy {
+				d.log.Debug("network is up but custom VMs are not healthy. polling again...")
+				continue
+			}
 			endpoints := []string{}
 			for _, nodeInfo := range resp.ClusterInfo.NodeInfos {
 				for vmID, vmInfo := range resp.ClusterInfo.CustomVms {
