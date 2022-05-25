@@ -4,6 +4,8 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
+	"unicode"
 
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -17,6 +19,8 @@ var filename string
 var (
 	forceCreate  bool
 	useSubnetEvm bool
+
+	errIllegalNameCharacter = errors.New("illegal name character")
 )
 
 // var useSpaces *bool
@@ -57,6 +61,10 @@ func getVmFromFlag() models.VmType {
 }
 
 func createGenesis(cmd *cobra.Command, args []string) error {
+	if err := checkInvalidSubnetNames(args[0]); err != nil {
+		return fmt.Errorf("subnet name %s is invalid: %s", args[0], err)
+	}
+
 	if moreThanOneVmSelected() {
 		return errors.New("Too many VMs selected. Provide at most one VM selection flag.")
 	}
@@ -136,5 +144,16 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 		}
 		ux.Logger.PrintToUser("Successfully created genesis")
 	}
+	return nil
+}
+
+func checkInvalidSubnetNames(name string) error {
+	// this is currently exactly the same code as in avalanchego/vms/platformvm/create_chain_tx.go
+	for _, r := range name {
+		if r > unicode.MaxASCII || !(unicode.IsLetter(r) || unicode.IsNumber(r) || r == ' ') {
+			return errIllegalNameCharacter
+		}
+	}
+
 	return nil
 }
