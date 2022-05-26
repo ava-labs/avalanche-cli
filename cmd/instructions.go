@@ -21,5 +21,12 @@ production. As the tool matures, this command will be removed.`,
 }
 
 func subnetInstructions(cmd *cobra.Command, args []string) {
-	ux.Logger.PrintToUser("Unimplemented")
+	instr := `If you can't wait to for this tool's fuji integration, you can use the subnet-cli
+to deploy your subnet. Export your subnet's genesis file with
+
+avalanche subnet describe --genesis ` + args[0] + `
+
+Then use that genesis file to complete the instructions listed here:
+https://docs.avax.network/subnets/subnet-cli`
+	ux.Logger.PrintToUser(instr)
 }
