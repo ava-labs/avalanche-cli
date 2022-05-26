@@ -19,7 +19,7 @@ jobs:
         with:
           version: v1.29
           working-directory: .
-          args: --timeout 1m
+          args: --timeout 3m
   test:
     name: Golang Unit Tests v${{ matrix.go }} (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
