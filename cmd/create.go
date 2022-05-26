@@ -20,7 +20,8 @@ var (
 	forceCreate  bool
 	useSubnetEvm bool
 
-	errIllegalNameCharacter = errors.New("illegal name character")
+	errIllegalNameCharacter = errors.New(
+		"illegal name character: only letters, no special characters allowed")
 )
 
 // var useSpaces *bool
