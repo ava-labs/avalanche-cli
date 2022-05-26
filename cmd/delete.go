@@ -14,15 +14,10 @@ import (
 // deleteCmd represents the delete command
 var deleteCmd = &cobra.Command{
 	Use:   "delete",
-	Short: "Deletes a generated subnet genesis",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	RunE: deleteGenesis,
-	Args: cobra.ExactArgs(1),
+	Short: "Delete a subnet configuration",
+	Long:  "The subnet delete command deletes an existing subnet configuration.",
+	RunE:  deleteGenesis,
+	Args:  cobra.ExactArgs(1),
 }
 
 func deleteGenesis(cmd *cobra.Command, args []string) error {

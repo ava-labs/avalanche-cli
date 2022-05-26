@@ -21,8 +21,12 @@ import (
 var readCmd = &cobra.Command{
 	Use:   "describe",
 	Short: "Print a summary of the subnet’s configuration",
-	RunE:  readGenesis,
-	Args:  cobra.ExactArgs(1),
+	Long: `The subnet describe command prints the details of a subnet configuration
+to the console. By default, the command will print a summary of the
+configuration. By providing the --genesis flag, the command will instead
+print out the raw genesis file.`,
+	RunE: readGenesis,
+	Args: cobra.ExactArgs(1),
 }
 
 var printGenesisOnly bool
