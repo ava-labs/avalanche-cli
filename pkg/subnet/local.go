@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -263,11 +262,7 @@ func (d *SubnetDeployer) waitForHealthy(ctx context.Context, cli client.Client, 
 			go printWait(cancel)
 			resp, err := cli.Health(ctx)
 			if err != nil {
-				if strings.Contains(err.Error(), "context deadline exceeded") {
-					return nil, err
-				}
-				d.log.Debug("health call failed, retrying: %w", err)
-				continue
+				return nil, fmt.Errorf("the health check failed to complete. The server might be down or have crashed, check the logs! %s", err)
 			}
 			if resp.ClusterInfo == nil {
 				d.log.Debug("warning: ClusterInfo is nil. trying again...")
@@ -275,6 +270,10 @@ func (d *SubnetDeployer) waitForHealthy(ctx context.Context, cli client.Client, 
 			}
 			if len(resp.ClusterInfo.CustomVms) == 0 {
 				d.log.Debug("network is up but custom VMs are not installed yet. polling again...")
+				continue
+			}
+			if !resp.ClusterInfo.CustomVmsHealthy {
+				d.log.Debug("network is up but custom VMs are not healthy. polling again...")
 				continue
 			}
 			endpoints := []string{}
