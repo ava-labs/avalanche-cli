@@ -172,3 +172,26 @@ func Test_loadSidecar_failure_malformed(t *testing.T) {
 	err = os.Remove(sidecarPath)
 	assert.NoError(t, err)
 }
+
+func Test_genesisExists(t *testing.T) {
+	subnetName := "TEST_subnet"
+	genesisFile := subnetName + genesis_suffix
+
+	// Assert file doesn't exist at start
+	result := genesisExists(subnetName)
+	assert.False(t, result)
+
+	// Create genesis
+	genesisPath := filepath.Join(baseDir, genesisFile)
+	genesisBytes := []byte("genesis")
+	err := os.WriteFile(genesisPath, genesisBytes, 0644)
+	assert.NoError(t, err)
+
+	// Verify genesis exists
+	result = genesisExists(subnetName)
+	assert.True(t, result)
+
+	// Clean up created genesis
+	err = os.Remove(genesisPath)
+	assert.NoError(t, err)
+}

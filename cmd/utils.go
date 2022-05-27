@@ -18,6 +18,12 @@ func writeGenesisFile(subnetName string, genesisBytes []byte) error {
 	return os.WriteFile(genesisPath, genesisBytes, WRITE_READ_READ_PERMS)
 }
 
+func genesisExists(subnetName string) bool {
+	genesisPath := filepath.Join(baseDir, subnetName+genesis_suffix)
+	_, err := os.Stat(genesisPath)
+	return err == nil
+}
+
 func copyGenesisFile(inputFilename string, subnetName string) error {
 	genesisBytes, err := os.ReadFile(inputFilename)
 	if err != nil {
