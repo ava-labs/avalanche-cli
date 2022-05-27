@@ -11,4 +11,5 @@ const (
 	gRPCDialTimeout     = 10 * time.Second
 
 	subnetEVMReleaseURL = "https://api.github.com/repos/ava-labs/subnet-evm/releases/latest"
+	subnetEVMName       = "subnet-evm"
 )

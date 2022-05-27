@@ -4,7 +4,6 @@ package subnet
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -136,6 +135,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	endpoints, err := d.waitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
+		_ = binutils.KillgRPCServerProcess()
 		return fmt.Errorf("failed to query network health: %s", err)
 	}
 
@@ -153,8 +153,9 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 // * returns the location of the avalanchego path
 func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 	binDir := filepath.Join(d.baseDir, constants.AvalancheCliBinDir)
+	binPrefix := "avalanchego-v"
 
-	exists, latest, err := d.binChecker.ExistsWithLatestVersion(binDir)
+	exists, latest, err := d.binChecker.ExistsWithLatestVersion(binDir, binPrefix)
 	if err != nil {
 		return "", fmt.Errorf("failed trying to locate avalanchego binary: %s", binDir)
 	}
@@ -172,6 +173,13 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 
 	d.log.Info("Latest avalanchego version is: %s", version)
 
+	// TODO: would be nice if we could also here just use binutils.DownloadLatestReleaseVersion(),
+	// but unfortunately we don't have a consistent naming scheme between avalanchego and subnet-evm
+	// releases and names (and supported `goos`).
+	// Doing so therefore would require adding some questionable complexity.
+	// The goal MUST be to have some sort of mature binary management
+
+	// NOTE: if any of the underlying URLs change (github changes, release file names, etc.) this fails
 	arch := runtime.GOARCH
 	goos := runtime.GOOS
 	var avalanchegoURL string
@@ -221,37 +229,10 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 	return filepath.Join(binDir, "avalanchego-"+version), nil
 }
 
-func getLatestAvagoVersion(releaseURL string) (string, error) {
-	// TODO: Question if there is a less error prone (= simpler) way to install latest avalanchego
-	// Maybe the binary package manager should also allow the actual avalanchego binary for download
-	resp, err := http.Get(releaseURL)
-	if err != nil {
-		return "", fmt.Errorf("failed to download avalanchego binary: %w", err)
-	}
-	defer resp.Body.Close()
-
-	jsonBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to get latest avalanchego version: %w", err)
-	}
-
-	var jsonStr map[string]interface{}
-	if err := json.Unmarshal(jsonBytes, &jsonStr); err != nil {
-		return "", fmt.Errorf("failed to unmarshal avalanchego json version string: %w", err)
-	}
-
-	version := jsonStr["tag_name"].(string)
-	if version == "" || version[0] != 'v' {
-		return "", fmt.Errorf("invalid version string: %s", version)
-	}
-
-	return version, nil
-}
-
 // waitForHealthy polls continuously until the network is ready to be used
 func (d *SubnetDeployer) waitForHealthy(ctx context.Context, cli client.Client, healthCheckInterval time.Duration) ([]string, error) {
 	cancel := make(chan struct{})
-	go printWait(cancel)
+	go ux.PrintWait(cancel)
 	for {
 		select {
 		case <-ctx.Done():
@@ -260,7 +241,7 @@ func (d *SubnetDeployer) waitForHealthy(ctx context.Context, cli client.Client, 
 		case <-time.After(healthCheckInterval):
 			cancel <- struct{}{}
 			d.log.Debug("polling for health...")
-			go printWait(cancel)
+			go ux.PrintWait(cancel)
 			resp, err := cli.Health(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("the health check failed to complete. The server might be down or have crashed, check the logs! %s", err)
@@ -286,18 +267,6 @@ func (d *SubnetDeployer) waitForHealthy(ctx context.Context, cli client.Client, 
 			d.log.Debug("cluster is up, subnets deployed, VMs are installed!")
 			close(cancel)
 			return endpoints, nil
-		}
-	}
-}
-
-// printWait does some dot printing to entertain the user
-func printWait(cancel chan struct{}) {
-	for {
-		select {
-		case <-time.After(1 * time.Second):
-			fmt.Print(".")
-		case <-cancel:
-			return
 		}
 	}
 }

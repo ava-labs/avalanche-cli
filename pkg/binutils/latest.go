@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/perms"
 )
 
+// GetLatestReleaseVersion returns the latest available version from github
 func GetLatestReleaseVersion(releaseURL string) (string, error) {
 	// TODO: Question if there is a less error prone (= simpler) way to install latest avalanchego
 	// Maybe the binary package manager should also allow the actual avalanchego binary for download
@@ -42,6 +43,10 @@ func GetLatestReleaseVersion(releaseURL string) (string, error) {
 	return version, nil
 }
 
+// DownloadLatestReleaseVersion returns the latest available version from github for
+// the given repo and version, and installs it into the apps `bin` dir.
+// NOTE: If any of the underlying URLs change (github changes, release file names, etc.) this fails
+// The goal MUST be to have some sort of mature binary management
 func DownloadLatestReleaseVersion(
 	log logging.Logger,
 	repo string,
@@ -89,7 +94,7 @@ func DownloadLatestReleaseVersion(
 		return "", err
 	}
 
-	installDir := filepath.Join(binDir, "subnet-evm-"+version)
+	installDir := filepath.Join(binDir, subnetEVMName+"-"+version)
 	if err := os.MkdirAll(installDir, perms.ReadWriteExecute); err != nil {
 		return "", fmt.Errorf("failed creating subnet-evm installation directory: %s", err)
 	}
@@ -98,5 +103,5 @@ func DownloadLatestReleaseVersion(
 	if err := InstallArchive(goos, archive, installDir); err != nil {
 		return "", err
 	}
-	return filepath.Join(installDir, "subnet-evm"), nil
+	return installDir, nil
 }

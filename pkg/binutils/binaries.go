@@ -22,12 +22,18 @@ import (
 	"github.com/coreos/go-semver/semver"
 )
 
+var (
+	// interface compliance
+	_ PluginBinaryDownloader = (*pluginBinaryDownloader)(nil)
+	_ BinaryChecker          = (*binaryChecker)(nil)
+)
+
 type PluginBinaryDownloader interface {
 	Download(vmID ids.ID, pluginDir, binDir string) error
 }
 
 type BinaryChecker interface {
-	ExistsWithLatestVersion(name string) (bool, string, error)
+	ExistsWithLatestVersion(name, binaryPrefix string) (bool, string, error)
 }
 
 type (
@@ -171,11 +177,10 @@ func installTarGzArchive(targz []byte, binDir string) error {
 
 // ExistsWithLatestVersion returns true if avalanchego can be found and at what path
 // or false, if it can not be found (or an error if applies)
-func (abc *binaryChecker) ExistsWithLatestVersion(binDir string) (bool, string, error) {
+func (abc *binaryChecker) ExistsWithLatestVersion(binDir, binPrefix string) (bool, string, error) {
 	// TODO this still has loads of potential pit falls
 	// Should prob check for existing binary and plugin dir too
-	startsWith := "avalanchego-v"
-	match, err := filepath.Glob(filepath.Join(binDir, startsWith) + "*")
+	match, err := filepath.Glob(filepath.Join(binDir, binPrefix) + "*")
 	if err != nil {
 		return false, "", err
 	}
@@ -189,7 +194,7 @@ func (abc *binaryChecker) ExistsWithLatestVersion(binDir string) (bool, string, 
 		var semVers semver.Versions
 		for _, v := range match {
 			base := filepath.Base(v)
-			newv, err := semver.NewVersion(base[len(startsWith):])
+			newv, err := semver.NewVersion(base[len(binPrefix):])
 			if err != nil {
 				// ignore this one, it might be in an unexpected format
 				// e.g. a dir which has nothing to do with this
@@ -226,47 +231,35 @@ func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir, binDir string) e
 		return err
 	}
 
-	subnetEvmPath := filepath.Join(pluginDir, "subnet-evm")
-	info, err = os.Stat(subnetEvmPath)
-	if err == nil {
-		if info.Mode().IsRegular() {
-			d.log.Debug("evm already exists, just copying it to new VM id")
-			if err := createVMIDCopy(subnetEvmPath, binaryPath); err != nil {
-				return err
-			}
-			d.log.Debug("new VM id link created successfully.")
-			return nil
+	binChecker := NewBinaryChecker()
+	exists, latest, err := binChecker.ExistsWithLatestVersion(binDir, subnetEVMName+"-v")
+	if err != nil {
+		return fmt.Errorf("failed trying to locate avalanchego binary: %s", binDir)
+	}
+	if exists {
+		d.log.Debug("local subnet-evm found. skipping installation")
+	} else {
+		ux.Logger.PrintToUser("VM binary does not exist locally, starting download...")
+
+		cancel := make(chan struct{})
+		go ux.PrintWait(cancel)
+		latestVer, err := GetLatestReleaseVersion(subnetEVMReleaseURL)
+		if err != nil {
+			return fmt.Errorf("failed to get latest subnet-evm release version: %w", err)
 		}
-		return fmt.Errorf("subnet-evm plugin path %q was found but is not a regular file", subnetEvmPath)
-	}
-	if !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
 
-	ux.Logger.PrintToUser("VM binary does not exist locally, starting download...")
-
-	latestVer, err := GetLatestReleaseVersion(subnetEVMReleaseURL)
-	if err != nil {
-		return fmt.Errorf("failed to get latest subnet-evm release version: %w", err)
+		latest, err = DownloadLatestReleaseVersion(d.log, subnetEVMName, latestVer, binDir)
+		if err != nil {
+			return fmt.Errorf("failed downloading latest subnet-evm version: %w", err)
+		}
+		close(cancel)
+		fmt.Println()
 	}
 
-	evmInstPath, err := DownloadLatestReleaseVersion(d.log, "subnet-evm", latestVer, binDir)
-	if err != nil {
-		return fmt.Errorf("failed downloading latest subnet-evm version: %w", err)
-	}
+	evmPath := filepath.Join(latest, subnetEVMName)
 
-	if err := copyFile(evmInstPath, filepath.Join(pluginDir, "subnet-evm")); err != nil {
+	if err := copyFile(evmPath, binaryPath); err != nil {
 		return fmt.Errorf("failed copying latest subnet-evm to plugin dir: %w", err)
-	}
-	if err := createVMIDCopy(subnetEvmPath, binaryPath); err != nil {
-		return err
-	}
-	return nil
-}
-
-func createVMIDCopy(subnetEvmPath, binaryPath string) error {
-	if err := os.Link(subnetEvmPath, binaryPath); err != nil {
-		return fmt.Errorf("failed creating a hard-link to %s from %s", binaryPath, subnetEvmPath)
 	}
 	return nil
 }
@@ -290,7 +283,12 @@ func copyFile(src, dest string) error {
 	if _, err = io.Copy(out, in); err != nil {
 		return err
 	}
-	err = out.Sync()
+	if err = out.Sync(); err != nil {
+		return err
+	}
+	if err = out.Chmod(constants.DefaultPerms755); err != nil {
+		return err
+	}
 	return nil
 }
 
