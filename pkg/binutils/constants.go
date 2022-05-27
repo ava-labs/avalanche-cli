@@ -9,4 +9,6 @@ const (
 	gRPCServerEndpoint  = ":8097"
 	gRPCGatewayEndpoint = ":8098"
 	gRPCDialTimeout     = 10 * time.Second
+
+	subnetEVMReleaseURL = "https://api.github.com/repos/ava-labs/subnet-evm/releases/latest"
 )

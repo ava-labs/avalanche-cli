@@ -114,7 +114,8 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	}
 	d.log.Debug("this VM will get ID: %s", vmID.String())
 
-	if err := d.binaryDownloader.Download(vmID, pluginDir); err != nil {
+	binDir := filepath.Join(d.baseDir, constants.AvalancheCliBinDir)
+	if err := d.binaryDownloader.Download(vmID, pluginDir, binDir); err != nil {
 		return err
 	}
 
@@ -164,7 +165,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 
 	ux.Logger.PrintToUser("Installing latest avalanchego version...")
 
-	version, err := getLatestAvagoVersion(constants.LatestAvagoReleaseURL)
+	version, err := binutils.GetLatestReleaseVersion(constants.LatestAvagoReleaseURL)
 	if err != nil {
 		return "", fmt.Errorf("failed to get latest avalanchego version: %s", err)
 	}

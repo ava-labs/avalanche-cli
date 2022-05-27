@@ -10,8 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -25,7 +23,7 @@ import (
 )
 
 type PluginBinaryDownloader interface {
-	Download(ids.ID, string) error
+	Download(vmID ids.ID, pluginDir, binDir string) error
 }
 
 type BinaryChecker interface {
@@ -213,7 +211,7 @@ func (abc *binaryChecker) ExistsWithLatestVersion(binDir string) (bool, string, 
 }
 
 // getVMBinary downloads the binary from the binary server URL
-func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir string) error {
+func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir, binDir string) error {
 	vmID := id.String()
 	binaryPath := filepath.Join(pluginDir, vmID)
 	info, err := os.Stat(binaryPath)
@@ -228,40 +226,72 @@ func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir string) error {
 		return err
 	}
 
+	subnetEvmPath := filepath.Join(pluginDir, "subnet-evm")
+	info, err = os.Stat(subnetEvmPath)
+	if err == nil {
+		if info.Mode().IsRegular() {
+			d.log.Debug("evm already exists, just copying it to new VM id")
+			if err := createVMIDCopy(subnetEvmPath, binaryPath); err != nil {
+				return err
+			}
+			d.log.Debug("new VM id link created successfully.")
+			return nil
+		}
+		return fmt.Errorf("subnet-evm plugin path %q was found but is not a regular file", subnetEvmPath)
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+
 	ux.Logger.PrintToUser("VM binary does not exist locally, starting download...")
 
-	base, err := url.Parse(constants.BinaryServerURL)
+	latestVer, err := GetLatestReleaseVersion(subnetEVMReleaseURL)
+	if err != nil {
+		return fmt.Errorf("failed to get latest subnet-evm release version: %w", err)
+	}
+
+	evmInstPath, err := DownloadLatestReleaseVersion(d.log, "subnet-evm", latestVer, binDir)
+	if err != nil {
+		return fmt.Errorf("failed downloading latest subnet-evm version: %w", err)
+	}
+
+	if err := copyFile(evmInstPath, filepath.Join(pluginDir, "subnet-evm")); err != nil {
+		return fmt.Errorf("failed copying latest subnet-evm to plugin dir: %w", err)
+	}
+	if err := createVMIDCopy(subnetEvmPath, binaryPath); err != nil {
+		return err
+	}
+	return nil
+}
+
+func createVMIDCopy(subnetEvmPath, binaryPath string) error {
+	if err := os.Link(subnetEvmPath, binaryPath); err != nil {
+		return fmt.Errorf("failed creating a hard-link to %s from %s", binaryPath, subnetEvmPath)
+	}
+	return nil
+}
+
+func copyFile(src, dest string) error {
+	in, err := os.Open(src)
 	if err != nil {
 		return err
 	}
-
-	// Path params
-	// base.Path += "this will get automatically encoded"
-
-	// Query params
-	params := url.Values{}
-	params.Add("vmid", vmID)
-	base.RawQuery = params.Encode()
-
-	d.log.Debug("starting download from %s...\n\n", base.String())
-
-	resp, err := http.Get(base.String())
+	defer in.Close()
+	out, err := os.Create(dest)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusOK {
-		bodyBytes, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return err
+	defer func() {
+		cerr := out.Close()
+		if err == nil {
+			err = cerr
 		}
-		d.log.Debug("download successful. installing binary...")
-		return d.installBinary(bodyBytes, binaryPath)
-
-	} else {
-		return fmt.Errorf("downloading binary failed, status code: %d", resp.StatusCode)
+	}()
+	if _, err = io.Copy(out, in); err != nil {
+		return err
 	}
+	err = out.Sync()
+	return nil
 }
 
 // installBinary writes the binary as a byte array to the specified path
