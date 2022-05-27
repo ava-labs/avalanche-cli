@@ -291,12 +291,3 @@ func copyFile(src, dest string) error {
 	}
 	return nil
 }
-
-// installBinary writes the binary as a byte array to the specified path
-func (d *pluginBinaryDownloader) installBinary(binary []byte, binaryPath string) error {
-	if err := os.WriteFile(binaryPath, binary, constants.DefaultPerms755); err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("binary installed. ready to go.")
-	return nil
-}
