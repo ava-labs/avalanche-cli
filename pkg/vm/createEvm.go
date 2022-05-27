@@ -197,9 +197,9 @@ func removePrecompile(arr []string, s string) ([]string, error) {
 
 func getFeeConfig(config params.ChainConfig) (params.ChainConfig, error) {
 	const (
-		useFast   = "Fast   5 mil   gas/s"
-		useMedium = "Medium 2 mil   gas/s"
-		useSlow   = "Slow   1.5 mil gas/s (C-Chain's setting)"
+		useFast   = "High disk use   / High Throughput   5 mil   gas/s"
+		useMedium = "Medium disk use / Medium Throughput 2 mil   gas/s"
+		useSlow   = "Low disk use    / Low Throughput    1.5 mil gas/s (C-Chain's setting)"
 		customFee = "Customize fee config"
 
 		setGasLimit                 = "Set gas limit"
