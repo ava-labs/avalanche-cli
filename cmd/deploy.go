@@ -71,6 +71,11 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 
 // deploySubnet is the cobra command run for deploying subnets
 func deploySubnet(cmd *cobra.Command, args []string) error {
+	// this should not be necessary but some bright guy might just be creating
+	// the genesis by hand or something...
+	if err := checkInvalidSubnetNames(args[0]); err != nil {
+		return fmt.Errorf("subnet name %s is invalid: %s", args[0], err)
+	}
 	// Check subnet exists
 	// TODO create a file that lists chains by subnet for fast querying
 	chains, err := getChainsInSubnet(args[0])
