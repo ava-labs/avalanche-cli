@@ -4,3 +4,4 @@ linters-settings:
     list-type: blacklist
     packages-with-error-message:
       - io/ioutil: 'use package io or os instead'
+    include-go-root: true
