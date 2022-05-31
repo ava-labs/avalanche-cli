@@ -126,9 +126,6 @@ func init() {
 	// subnet list
 	subnetCmd.AddCommand(listCmd)
 
-	// subnet instructions
-	subnetCmd.AddCommand(instructionCmd)
-
 	// network
 	// network start
 	networkCmd.AddCommand(startCmd)
