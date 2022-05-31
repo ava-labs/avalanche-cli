@@ -48,8 +48,8 @@ func networkStatus(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("Number of nodes: %d", len(status.ClusterInfo.NodeNames))
 		ux.Logger.PrintToUser("Number of custom VMs: %d", len(status.ClusterInfo.CustomVms))
 		ux.Logger.PrintToUser("======================================== Node information ========================================")
-		for n, i := range status.ClusterInfo.NodeInfos {
-			ux.Logger.PrintToUser("%s has ID %s and endpoint %s: ", n, i.Id, i.Uri)
+		for n, nodeInfo := range status.ClusterInfo.NodeInfos {
+			ux.Logger.PrintToUser("%s has ID %s and endpoint %s: ", n, nodeInfo.Id, nodeInfo.Uri)
 		}
 		ux.Logger.PrintToUser("==================================== Custom VM information =======================================")
 		for _, nodeInfo := range status.ClusterInfo.NodeInfos {

@@ -13,11 +13,11 @@ import (
 )
 
 var stopCmd = &cobra.Command{
-	Use:   "stop",
+	Use:   "stop [subnetName]",
 	Short: "Stop the running local network and preserve state",
-	Long: `The network stop command shuts down your local, multi-node network. All
-the deployed subnets will shutdown gracefully and save their state. The
-network may be started again with network start.`,
+	Long: `The network stop command shuts down your local, multi-node network. 
+The deployed named subnet will shutdown gracefully and save its state. The
+network may be started again with network start [subnetName].`,
 
 	RunE: stopNetwork,
 	Args: cobra.ExactArgs(1),
@@ -29,6 +29,7 @@ func stopNetwork(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// snapshotName is currently the subnetName
 	snapshotName := args[0]
 
 	ctx := binutils.GetAsyncContext()

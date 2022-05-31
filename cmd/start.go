@@ -4,7 +4,6 @@ package cmd
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -13,11 +12,11 @@ import (
 )
 
 var startCmd = &cobra.Command{
-	Use:   "start",
+	Use:   "start [subnetName]",
 	Short: "Starts a stopped local network",
 	Long: `The network start command starts a local, multi-node Avalanche network
-on your machine. Any subnets that have been previously deployed will be
-resumed with their old state. The command may fail if the local network
+on your machine. The named subnet (that has been previously deployed) will be
+resumed with its old state. The command may fail if the local network
 is already running or if no subnets have been deployed.`,
 
 	RunE: startNetwork,
@@ -30,6 +29,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// snapshotName is currently the subnetName
 	snapshotName := args[0]
 
 	ctx := binutils.GetAsyncContext()
@@ -43,7 +43,6 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 	// TODO: this should probably be extracted from the deployer and
 	// used as an independent helper
 	sd := subnet.NewLocalSubnetDeployer(log, baseDir)
-	healthCheckInterval := 10 * time.Second
 	endpoints, err := sd.WaitForHealthy(ctx, cli, healthCheckInterval)
 	if err != nil {
 		return fmt.Errorf("failed waiting for network to become healthy: %s", err)
