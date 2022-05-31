@@ -100,6 +100,11 @@ If you'd like some additional information on how you can deploy your subnet to F
 
 `avalanche subnet instructions <subnetName>`
 
+### Deploying to Fuji
+If you can't wait to for this tool's fuji integration, you can use the `subnet-cli` tool to deploy your subnet.
+
+First, export your subnet's genesis file with `avalanche subnet describe --genesis <subnetName>`. Then, use that genesis file to complete the instructions listed here: https://docs.avax.network/subnets/subnet-cli.
+
 ### Delete a Subnet Configuration
 
 To delete a created subnet configuration, run
