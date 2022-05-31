@@ -1,8 +1,6 @@
 # https://golangci-lint.run/usage/configuration/
 linters-settings:
   depguard:
-    list-type: denylist
-    packages:
-      - io/ioutil
+    list-type: blacklist
     packages-with-error-message:
       - io/ioutil: 'use package io or os instead'
