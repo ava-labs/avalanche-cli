@@ -119,52 +119,86 @@ func getAllocation() (core.GenesisAlloc, error) {
 	}
 }
 
-func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, error) {
+func contains(list []common.Address, element common.Address) bool {
+	for _, val := range list {
+		if val == element {
+			return true
+		}
+	}
+	return false
+}
+
+func getAdminList(initialPrompt string, info string) ([]common.Address, error) {
 	const (
-		addAdmin = "Add admin"
-		preview  = "Preview"
-		moreInfo = "More info"
-		doneMsg  = "Done"
+		addAdmin    = "Add admin"
+		removeAdmin = "Remove admin"
+		preview     = "Preview"
+		moreInfo    = "More info"
+		doneMsg     = "Done"
 	)
 
-	config := precompile.ContractDeployerAllowListConfig{}
-	allowList := precompile.AllowListConfig{
-		BlockTimestamp:  big.NewInt(0),
-		AllowListAdmins: []common.Address{},
-	}
+	admins := []common.Address{}
 
 	for {
 		listDecision, err := prompts.CaptureList(
-			"Configure contract deployment allow list:",
-			[]string{addAdmin, preview, moreInfo, doneMsg},
+			initialPrompt,
+			[]string{addAdmin, removeAdmin, preview, moreInfo, doneMsg},
 		)
 		if err != nil {
-			return config, err
+			return []common.Address{}, err
 		}
 
 		switch listDecision {
 		case addAdmin:
 			adminAddr, err := prompts.CaptureAddress("Admin Address")
 			if err != nil {
-				return config, err
+				return []common.Address{}, err
 			}
-			allowList.AllowListAdmins = append(allowList.AllowListAdmins, adminAddr)
+			if contains(admins, adminAddr) {
+				fmt.Println("Address already an admin")
+				continue
+			}
+			admins = append(admins, adminAddr)
+		case removeAdmin:
+			index, err := prompts.CaptureIndex("Choose address to remove:", admins)
+			if err != nil {
+				return []common.Address{}, err
+			}
+			admins = append(admins[:index], admins[index+1:]...)
 		case preview:
 			fmt.Println("Admins:")
-			for i, addr := range allowList.AllowListAdmins {
+			for i, addr := range admins {
 				fmt.Printf("%d. %s\n", i, addr.Hex())
 			}
 		case doneMsg:
-			config.AllowListConfig = allowList
-			return config, nil
+			return admins, nil
 		case moreInfo:
-			fmt.Printf("\nThis precompile restricts who has the ability to deploy contracts " +
-				"on your subnet.\nFor more information visit https://github.com/ava-labs/subnet-" +
-				"evm#restricting-smart-contract-deployers.\n\n")
+			fmt.Print(info)
 		default:
-			return config, errors.New("Unexpected option")
+			return []common.Address{}, errors.New("Unexpected option")
 		}
 	}
+}
+
+func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, error) {
+	config := precompile.ContractDeployerAllowListConfig{}
+	prompt := "Configure contract deployment allow list:"
+	info := "\nThis precompile restricts who has the ability to deploy contracts " +
+		"on your subnet.\nFor more information visit https://github.com/ava-labs/subnet-" +
+		"evm#restricting-smart-contract-deployers.\n\n"
+
+	admins, err := getAdminList(prompt, info)
+	if err != nil {
+		return config, err
+	}
+
+	allowList := precompile.AllowListConfig{
+		BlockTimestamp:  big.NewInt(0),
+		AllowListAdmins: admins,
+	}
+
+	config.AllowListConfig = allowList
+	return config, nil
 }
 
 func removePrecompile(arr []string, s string) ([]string, error) {

@@ -23,6 +23,18 @@ func validatePositiveBigInt(input string) error {
 	return nil
 }
 
+func validateIndex(input string) error {
+	n := new(big.Int)
+	n, ok := n.SetString(input, 10)
+	if !ok {
+		return errors.New("Invalid number")
+	}
+	if n.Cmp(big.NewInt(0)) == -1 {
+		return errors.New("Invalid number")
+	}
+	return nil
+}
+
 func validateAddress(input string) error {
 	if !common.IsHexAddress(input) {
 		return errors.New("Invalid address")
@@ -130,4 +142,17 @@ func CaptureString(promptStr string) (string, error) {
 	}
 
 	return str, nil
+}
+
+func CaptureIndex(promptStr string, options []common.Address) (int, error) {
+	prompt := promptui.Select{
+		Label: promptStr,
+		Items: options,
+	}
+
+	listIndex, _, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+	return listIndex, nil
 }
