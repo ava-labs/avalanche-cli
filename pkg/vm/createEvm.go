@@ -18,25 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-const GasLimit = 8000000
-
-var Difficulty = big.NewInt(0)
-
-var slowLimit = big.NewInt(15000000)
-var mediumLimit = big.NewInt(20000000)
-var fastLimit = big.NewInt(50000000)
-
-var StarterFeeConfig = params.FeeConfig{
-	GasLimit:                 big.NewInt(8000000),
-	MinBaseFee:               big.NewInt(25000000000),
-	TargetGas:                big.NewInt(15000000),
-	BaseFeeChangeDenominator: big.NewInt(36),
-	MinBlockGasCost:          big.NewInt(0),
-	MaxBlockGasCost:          big.NewInt(1000000),
-	TargetBlockRate:          2,
-	BlockGasCostStep:         big.NewInt(200000),
-}
-
 func CreateEvmGenesis(name string, log logging.Logger) ([]byte, error) {
 	ux.Logger.PrintToUser("creating subnet %s", name)
 
@@ -224,15 +205,15 @@ func getFeeConfig(config params.ChainConfig) (params.ChainConfig, error) {
 
 	switch feeDefault {
 	case useFast:
-		StarterFeeConfig.TargetGas = fastLimit
+		StarterFeeConfig.TargetGas = fastTarget
 		config.FeeConfig = StarterFeeConfig
 		return config, nil
 	case useMedium:
-		StarterFeeConfig.TargetGas = mediumLimit
+		StarterFeeConfig.TargetGas = mediumTarget
 		config.FeeConfig = StarterFeeConfig
 		return config, nil
 	case useSlow:
-		StarterFeeConfig.TargetGas = slowLimit
+		StarterFeeConfig.TargetGas = slowTarget
 		config.FeeConfig = StarterFeeConfig
 		return config, nil
 	default:
