@@ -13,7 +13,7 @@ avalanche subnet deploy <subnetName>
 
 Shut down your local deployment with:
 ```bash
-avalanche network stop
+avalanche network stop [snapshotName]
 ```
 
 ## Disclaimer
@@ -100,6 +100,11 @@ If you'd like some additional information on how you can deploy your subnet to F
 
 `avalanche subnet instructions <subnetName>`
 
+### Deploying to Fuji
+If you can't wait to for this tool's fuji integration, you can use the `subnet-cli` tool to deploy your subnet.
+
+First, export your subnet's genesis file with `avalanche subnet describe --genesis <subnetName>`. Then, use that genesis file to complete the instructions listed here: https://docs.avax.network/subnets/subnet-cli.
+
 ### Delete a Subnet Configuration
 
 To delete a created subnet configuration, run
@@ -118,15 +123,22 @@ This network currently supports multiple, concurrently deployed subnets and will
 
 To stop a running local network, run
 
-`avalanche network stop`
+`avalanche network stop [snapshotName]`
 
 This graceful shutdown will preserve network state. When restarted, your subnet should resume at the same place it left off.
+`snapshotName` is optional, if provided, a named snapshot will be created which can later be started again with `avalanche network start snapshotName`.
+If not provided, a default snapshot will be created. The default snapshot will be overwritten at each `stop`.
 
 ### Starting/Restarting the Local Network
 
 To start or restart a stopped network, run
 
-`avalanche network start`
+`avalanche network start [snapshotName]`
+
+`snapshotName` is optional, if provided the named snapshot will be used to start the network (if found).
+If not provided, the last snapshot created with a unnamed `stop` will be used.
+
+If the default snapshot doesn't exist (because no `stop` has been run yet, and/or no subnet has been deployed yet), the command will fail.
 
 Deploying a subnet locally will start the network automatically.
 

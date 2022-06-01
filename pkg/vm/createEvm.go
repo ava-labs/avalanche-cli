@@ -231,11 +231,11 @@ func getFeeConfig(config params.ChainConfig) (params.ChainConfig, error) {
 	switch feeDefault {
 	case useWagmi:
 		fmt.Println("Using Wagmi config")
-		config.FeeConfig = &WagmiFeeConfig
+		config.FeeConfig = WagmiFeeConfig
 		return config, nil
 	case useCChain:
 		fmt.Println("Using C-Chain config")
-		config.FeeConfig = &CChainFeeConfig
+		config.FeeConfig = CChainFeeConfig
 		return config, nil
 	default:
 		fmt.Println("Customizing fee config")
@@ -292,7 +292,7 @@ func getFeeConfig(config params.ChainConfig) (params.ChainConfig, error) {
 		BlockGasCostStep:         gasStep,
 	}
 
-	config.FeeConfig = &feeConf
+	config.FeeConfig = feeConf
 
 	return config, nil
 }

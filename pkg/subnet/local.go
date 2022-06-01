@@ -133,7 +133,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	d.log.Debug(info.String())
 	ux.Logger.PrintToUser("Network has been booted. Wait until healthy. Please be patient, this will take some time...")
 
-	endpoints, err := d.waitForHealthy(ctx, cli, d.healthCheckInterval)
+	endpoints, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
 		_ = binutils.KillgRPCServerProcess()
 		return fmt.Errorf("failed to query network health: %s", err)
@@ -229,8 +229,8 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 	return filepath.Join(binDir, "avalanchego-"+version), nil
 }
 
-// waitForHealthy polls continuously until the network is ready to be used
-func (d *SubnetDeployer) waitForHealthy(ctx context.Context, cli client.Client, healthCheckInterval time.Duration) ([]string, error) {
+// WaitForHealthy polls continuously until the network is ready to be used
+func (d *SubnetDeployer) WaitForHealthy(ctx context.Context, cli client.Client, healthCheckInterval time.Duration) ([]string, error) {
 	cancel := make(chan struct{})
 	go ux.PrintWait(cancel)
 	for {

@@ -3,22 +3,57 @@
 package cmd
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/spf13/cobra"
 
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/ux"
 )
 
 var stopCmd = &cobra.Command{
-	Use:   "stop",
+	Use:   "stop [snapshotName]",
 	Short: "Stop the running local network and preserve state",
-	Long: `The network stop command shuts down your local, multi-node network. All
-the deployed subnets will shutdown gracefully and save their state. The
-network may be started again with network start.`,
+	Long: `The network stop command shuts down your local, multi-node network. 
+The deployed subnet will shutdown gracefully and save its state. 
+If "snapshotName" is provided, the state will be saved under this named snapshot, which then can be
+restarted with "network start <snapshotName>". Otherwise, the default snapshot will be created, or overwritten 
+if it exists. The default snapshot can then be restarted without parameter ("network start").`,
 
-	Run:  stopNetwork,
-	Args: cobra.ExactArgs(0),
+	RunE: stopNetwork,
+	Args: cobra.MaximumNArgs(1),
 }
 
-func stopNetwork(cmd *cobra.Command, args []string) {
-	ux.Logger.PrintToUser("Unimplemented")
+func stopNetwork(cmd *cobra.Command, args []string) error {
+	cli, err := binutils.NewGRPCClient()
+	if err != nil {
+		return err
+	}
+
+	var snapshotName string
+	if len(args) > 0 {
+		snapshotName = args[0]
+	} else {
+		snapshotName = defaultSnapshotName
+	}
+
+	ctx := binutils.GetAsyncContext()
+
+	_, err = cli.RemoveSnapshot(ctx, snapshotName)
+	if err != nil {
+		// TODO: when removing an existing snapshot we get an error, but in this case it is expected
+		// It might be nicer to have some special field set in the response though rather than having to parse
+		// the error string which is error prone
+		if !strings.Contains(err.Error(), fmt.Sprintf("snapshot %q does not exist", snapshotName)) {
+			return fmt.Errorf("failed stop network with a snapshot: %s", err)
+		}
+	}
+
+	_, err = cli.SaveSnapshot(ctx, snapshotName)
+	if err != nil {
+		return fmt.Errorf("failed to stop network with a snapshot: %s", err)
+	}
+	ux.Logger.PrintToUser("Network stopped successfully.")
+	return nil
 }

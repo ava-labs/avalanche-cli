@@ -39,7 +39,7 @@ in with avalanche subnet create myNewSubnet.`,
 func setupLogging(cmd *cobra.Command, args []string) error {
 	var err error
 
-	config := logging.DefaultConfig
+	config := logging.Config{}
 	config.DisplayLevel, err = logging.ToLevel(logLevel)
 	if err != nil {
 		return fmt.Errorf("invalid log level configured: %s", logLevel)
@@ -125,9 +125,6 @@ func init() {
 
 	// subnet list
 	subnetCmd.AddCommand(listCmd)
-
-	// subnet instructions
-	subnetCmd.AddCommand(instructionCmd)
 
 	// network
 	// network start

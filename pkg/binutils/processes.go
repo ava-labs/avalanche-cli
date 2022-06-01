@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -157,7 +158,10 @@ func KillgRPCServerProcess() error {
 	ctx := GetAsyncContext()
 	_, err = cli.Stop(ctx)
 	if err != nil {
-		fmt.Println(err)
+		if strings.Contains(err.Error(), "not bootstrapped") {
+			ux.Logger.PrintToUser("No local network running")
+			return nil
+		}
 		return fmt.Errorf("failed stopping gRPC server process: %s", err)
 	}
 
