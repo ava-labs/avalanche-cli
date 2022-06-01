@@ -86,6 +86,29 @@ func (_m *Client) Close() error {
 	return r0
 }
 
+// GetSnapshotNames provides a mock function with given fields: ctx
+func (_m *Client) GetSnapshotNames(ctx context.Context) ([]string, error) {
+	ret := _m.Called(ctx)
+
+	var r0 []string
+	if rf, ok := ret.Get(0).(func(context.Context) []string); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Health provides a mock function with given fields: ctx
 func (_m *Client) Health(ctx context.Context) (*rpcpb.HealthResponse, error) {
 	ret := _m.Called(ctx)
@@ -102,6 +125,29 @@ func (_m *Client) Health(ctx context.Context) (*rpcpb.HealthResponse, error) {
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
 		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// LoadSnapshot provides a mock function with given fields: ctx, snapshotName
+func (_m *Client) LoadSnapshot(ctx context.Context, snapshotName string) (*rpcpb.LoadSnapshotResponse, error) {
+	ret := _m.Called(ctx, snapshotName)
+
+	var r0 *rpcpb.LoadSnapshotResponse
+	if rf, ok := ret.Get(0).(func(context.Context, string) *rpcpb.LoadSnapshotResponse); ok {
+		r0 = rf(ctx, snapshotName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*rpcpb.LoadSnapshotResponse)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, snapshotName)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -155,6 +201,29 @@ func (_m *Client) RemoveNode(ctx context.Context, name string) (*rpcpb.RemoveNod
 	return r0, r1
 }
 
+// RemoveSnapshot provides a mock function with given fields: ctx, snapshotName
+func (_m *Client) RemoveSnapshot(ctx context.Context, snapshotName string) (*rpcpb.RemoveSnapshotResponse, error) {
+	ret := _m.Called(ctx, snapshotName)
+
+	var r0 *rpcpb.RemoveSnapshotResponse
+	if rf, ok := ret.Get(0).(func(context.Context, string) *rpcpb.RemoveSnapshotResponse); ok {
+		r0 = rf(ctx, snapshotName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*rpcpb.RemoveSnapshotResponse)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, snapshotName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // RestartNode provides a mock function with given fields: ctx, name, opts
 func (_m *Client) RestartNode(ctx context.Context, name string, opts ...client.OpOption) (*rpcpb.RestartNodeResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -178,6 +247,29 @@ func (_m *Client) RestartNode(ctx context.Context, name string, opts ...client.O
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, string, ...client.OpOption) error); ok {
 		r1 = rf(ctx, name, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SaveSnapshot provides a mock function with given fields: ctx, snapshotName
+func (_m *Client) SaveSnapshot(ctx context.Context, snapshotName string) (*rpcpb.SaveSnapshotResponse, error) {
+	ret := _m.Called(ctx, snapshotName)
+
+	var r0 *rpcpb.SaveSnapshotResponse
+	if rf, ok := ret.Get(0).(func(context.Context, string) *rpcpb.SaveSnapshotResponse); ok {
+		r0 = rf(ctx, snapshotName)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*rpcpb.SaveSnapshotResponse)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, snapshotName)
 	} else {
 		r1 = ret.Error(1)
 	}

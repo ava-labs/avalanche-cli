@@ -13,7 +13,7 @@ avalanche subnet deploy <subnetName>
 
 Shut down your local deployment with:
 ```bash
-avalanche network stop
+avalanche network stop [snapshotName]
 ```
 
 ## Disclaimer
@@ -123,15 +123,22 @@ This network currently supports multiple, concurrently deployed subnets and will
 
 To stop a running local network, run
 
-`avalanche network stop`
+`avalanche network stop [snapshotName]`
 
 This graceful shutdown will preserve network state. When restarted, your subnet should resume at the same place it left off.
+`snapshotName` is optional, if provided, a named snapshot will be created which can later be started again with `avalanche network start snapshotName`.
+If not provided, a default snapshot will be created. The default snapshot will be overwritten at each `stop`.
 
 ### Starting/Restarting the Local Network
 
 To start or restart a stopped network, run
 
-`avalanche network start`
+`avalanche network start [snapshotName]`
+
+`snapshotName` is optional, if provided the named snapshot will be used to start the network (if found).
+If not provided, the last snapshot created with a unnamed `stop` will be used.
+
+If the default snapshot doesn't exist (because no `stop` has been run yet, and/or no subnet has been deployed yet), the command will fail.
 
 Deploying a subnet locally will start the network automatically.
 
