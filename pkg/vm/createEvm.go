@@ -18,32 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-const GasLimit = 8000000
-
-var Difficulty = big.NewInt(0)
-
-var WagmiFeeConfig = params.FeeConfig{
-	GasLimit:                 big.NewInt(20000000),
-	MinBaseFee:               big.NewInt(1000000000),
-	TargetGas:                big.NewInt(100000000),
-	BaseFeeChangeDenominator: big.NewInt(48),
-	MinBlockGasCost:          big.NewInt(0),
-	MaxBlockGasCost:          big.NewInt(10000000),
-	TargetBlockRate:          2,
-	BlockGasCostStep:         big.NewInt(500000),
-}
-
-var CChainFeeConfig = params.FeeConfig{
-	GasLimit:                 big.NewInt(20000000),
-	MinBaseFee:               big.NewInt(1000000000),
-	TargetGas:                big.NewInt(100000000),
-	BaseFeeChangeDenominator: big.NewInt(48),
-	MinBlockGasCost:          big.NewInt(0),
-	MaxBlockGasCost:          big.NewInt(10000000),
-	TargetBlockRate:          2,
-	BlockGasCostStep:         big.NewInt(500000),
-}
-
 func CreateEvmGenesis(name string, log logging.Logger) ([]byte, error) {
 	ux.Logger.PrintToUser("creating subnet %s", name)
 
@@ -204,8 +178,9 @@ func removePrecompile(arr []string, s string) ([]string, error) {
 
 func getFeeConfig(config params.ChainConfig) (params.ChainConfig, error) {
 	const (
-		useWagmi  = "Use WAGMI defaults"
-		useCChain = "Use C-Chain defaults"
+		useFast   = "High disk use   / High Throughput   5 mil   gas/s"
+		useMedium = "Medium disk use / Medium Throughput 2 mil   gas/s"
+		useSlow   = "Low disk use    / Low Throughput    1.5 mil gas/s (C-Chain's setting)"
 		customFee = "Customize fee config"
 
 		setGasLimit                 = "Set gas limit"
@@ -218,7 +193,7 @@ func getFeeConfig(config params.ChainConfig) (params.ChainConfig, error) {
 		setGasStep                  = "Set block gas cost step"
 	)
 
-	feeConfigOptions := []string{useWagmi, useCChain, customFee}
+	feeConfigOptions := []string{useFast, useMedium, useSlow, customFee}
 
 	feeDefault, err := prompts.CaptureList(
 		"How would you like to set fees",
@@ -229,13 +204,17 @@ func getFeeConfig(config params.ChainConfig) (params.ChainConfig, error) {
 	}
 
 	switch feeDefault {
-	case useWagmi:
-		fmt.Println("Using Wagmi config")
-		config.FeeConfig = WagmiFeeConfig
+	case useFast:
+		StarterFeeConfig.TargetGas = fastTarget
+		config.FeeConfig = StarterFeeConfig
 		return config, nil
-	case useCChain:
-		fmt.Println("Using C-Chain config")
-		config.FeeConfig = CChainFeeConfig
+	case useMedium:
+		StarterFeeConfig.TargetGas = mediumTarget
+		config.FeeConfig = StarterFeeConfig
+		return config, nil
+	case useSlow:
+		StarterFeeConfig.TargetGas = slowTarget
+		config.FeeConfig = StarterFeeConfig
 		return config, nil
 	default:
 		fmt.Println("Customizing fee config")
