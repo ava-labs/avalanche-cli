@@ -106,6 +106,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	opts := []client.OpOption{
 		client.WithPluginDir(pluginDir),
 		client.WithCustomVMs(customVMs),
+		client.WithGlobalNodeConfig("{\"log-level\":\"debug\", \"log-display-level\":\"debug\"}"),
 	}
 
 	vmID, err := utils.VMID(chain)
