@@ -225,15 +225,15 @@ func getFeeConfig(config params.ChainConfig) (params.ChainConfig, error) {
 	switch feeDefault {
 	case useFast:
 		StarterFeeConfig.TargetGas = fastLimit
-		config.FeeConfig = &StarterFeeConfig
+		config.FeeConfig = StarterFeeConfig
 		return config, nil
 	case useMedium:
 		StarterFeeConfig.TargetGas = mediumLimit
-		config.FeeConfig = &StarterFeeConfig
+		config.FeeConfig = StarterFeeConfig
 		return config, nil
 	case useSlow:
 		StarterFeeConfig.TargetGas = slowLimit
-		config.FeeConfig = &StarterFeeConfig
+		config.FeeConfig = StarterFeeConfig
 		return config, nil
 	default:
 		fmt.Println("Customizing fee config")
