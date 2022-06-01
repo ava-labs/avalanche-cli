@@ -21,18 +21,18 @@ func GetLatestReleaseVersion(releaseURL string) (string, error) {
 	// Maybe the binary package manager should also allow the actual avalanchego binary for download
 	resp, err := http.Get(releaseURL)
 	if err != nil {
-		return "", fmt.Errorf("failed to download avalanchego binary: %w", err)
+		return "", fmt.Errorf("failed to download binary from %s: %w", releaseURL, err)
 	}
 	defer resp.Body.Close()
 
 	jsonBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to get latest avalanchego version: %w", err)
+		return "", fmt.Errorf("failed to get latest binary version from %s: %w", releaseURL, err)
 	}
 
 	var jsonStr map[string]interface{}
 	if err := json.Unmarshal(jsonBytes, &jsonStr); err != nil {
-		return "", fmt.Errorf("failed to unmarshal avalanchego json version string: %w", err)
+		return "", fmt.Errorf("failed to unmarshal binary json version string: %w", err)
 	}
 
 	version := jsonStr["tag_name"].(string)
@@ -49,8 +49,8 @@ func GetLatestReleaseVersion(releaseURL string) (string, error) {
 // The goal MUST be to have some sort of mature binary management
 func DownloadLatestReleaseVersion(
 	log logging.Logger,
-	repo string,
-	version string,
+	repo,
+	version,
 	binDir string,
 ) (string, error) {
 	arch := runtime.GOARCH
@@ -94,9 +94,9 @@ func DownloadLatestReleaseVersion(
 		return "", err
 	}
 
-	installDir := filepath.Join(binDir, subnetEVMName+"-"+version)
+	installDir := filepath.Join(binDir, repo+"-"+version)
 	if err := os.MkdirAll(installDir, perms.ReadWriteExecute); err != nil {
-		return "", fmt.Errorf("failed creating subnet-evm installation directory: %s", err)
+		return "", fmt.Errorf("failed creating %s installation directory: %s", repo, err)
 	}
 
 	log.Debug("download successful. installing archive...")

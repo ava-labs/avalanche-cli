@@ -234,10 +234,10 @@ func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir, binDir string) e
 	binChecker := NewBinaryChecker()
 	exists, latest, err := binChecker.ExistsWithLatestVersion(binDir, subnetEVMName+"-v")
 	if err != nil {
-		return fmt.Errorf("failed trying to locate avalanchego binary: %s", binDir)
+		return fmt.Errorf("failed trying to locate plugin binary: %s", binDir)
 	}
 	if exists {
-		d.log.Debug("local subnet-evm found. skipping installation")
+		d.log.Debug("local plugin binary found. skipping installation")
 	} else {
 		ux.Logger.PrintToUser("VM binary does not exist locally, starting download...")
 
