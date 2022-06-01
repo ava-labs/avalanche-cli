@@ -131,7 +131,7 @@ To start or restart a stopped network, run
 `avalanche network start [snapshotName]`
 
 `snapshotName` is optional, if provided the named snapshot will be used to start the network (if found).
-If not provided, the last snapshot created with a nameless `stop` will be used.
+If not provided, the last snapshot created with a unnamed `stop` will be used.
 
 If the default snapshot doesn't exist (because no `stop` has been run yet, and/or no subnet has been deployed yet), the command will fail.
 

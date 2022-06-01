@@ -18,8 +18,8 @@ var stopCmd = &cobra.Command{
 	Long: `The network stop command shuts down your local, multi-node network. 
 The deployed subnet will shutdown gracefully and save its state. 
 If "snapshotName" is provided, the state will be saved under this named snapshot, which then can be
-restarted with "network start <snapshotName>". Otherwise, the default snapshot will be used, which can
-be restarted without parameter ("network start"). The default snapshot will be overwritten on each stop.`,
+restarted with "network start <snapshotName>". Otherwise, the default snapshot will be created, or overwritten 
+if it exists. The default snapshot can then be restarted without parameter ("network start").`,
 
 	RunE: stopNetwork,
 	Args: cobra.MaximumNArgs(1),

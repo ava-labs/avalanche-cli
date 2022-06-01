@@ -16,7 +16,7 @@ var startCmd = &cobra.Command{
 	Short: "Starts a stopped local network",
 	Long: `The network start command starts a local, multi-node Avalanche network
 on your machine. If "snapshotName" is provided, that snapshot will be used for starting the network 
-if it can be found. Otherwise, the last saved snapshot will be used. The command may fail if the local network
+if it can be found. Otherwise, the last saved unnamed (default) snapshot will be used. The command may fail if the local network
 is already running or if no subnets have been deployed.`,
 
 	RunE: startNetwork,
@@ -29,16 +29,18 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var snapshotName string
+	var snapshotName, startMsg string
 	if len(args) > 0 {
 		snapshotName = args[0]
+		startMsg = fmt.Sprintf("Starting previously deployed and stopped snapshot %s...", snapshotName)
 	} else {
 		snapshotName = defaultSnapshotName
+		startMsg = "Starting previously deployed and stopped snapshot"
 	}
 
 	ctx := binutils.GetAsyncContext()
 
-	ux.Logger.PrintToUser("Starting previously deployed but stopped snapshot %s...", snapshotName)
+	ux.Logger.PrintToUser(startMsg)
 	_, err = cli.LoadSnapshot(ctx, snapshotName)
 	if err != nil {
 		return fmt.Errorf("failed to start network with the persisted snapshot: %s", err)
