@@ -12,5 +12,8 @@ const (
 	subnetEvm = "SubnetEVM"
 	customVm  = "Custom"
 
+	// it's unlikely anyone would want to name a snapshot `anr-snapshot-default`
+	// but let's add some more entropy
+	defaultSnapshotName = "anr-snapshot-default-3de082"
 	healthCheckInterval = 10 * time.Second
 )

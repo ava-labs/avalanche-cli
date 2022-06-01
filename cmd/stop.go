@@ -13,14 +13,16 @@ import (
 )
 
 var stopCmd = &cobra.Command{
-	Use:   "stop [subnetName]",
+	Use:   "stop [snapshotName]",
 	Short: "Stop the running local network and preserve state",
 	Long: `The network stop command shuts down your local, multi-node network. 
-The deployed named subnet will shutdown gracefully and save its state. The
-network may be started again with network start [subnetName].`,
+The deployed subnet will shutdown gracefully and save its state. 
+If "snapshotName" is provided, the state will be saved under this named snapshot, which then can be
+restarted with "network start <snapshotName>". Otherwise, the default snapshot will be used, which can
+be restarted without parameter ("network start"). The default snapshot will be overwritten on each stop.`,
 
 	RunE: stopNetwork,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.MaximumNArgs(1),
 }
 
 func stopNetwork(cmd *cobra.Command, args []string) error {
@@ -29,8 +31,12 @@ func stopNetwork(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// snapshotName is currently the subnetName
-	snapshotName := args[0]
+	var snapshotName string
+	if len(args) > 0 {
+		snapshotName = args[0]
+	} else {
+		snapshotName = defaultSnapshotName
+	}
 
 	ctx := binutils.GetAsyncContext()
 
@@ -39,8 +45,8 @@ func stopNetwork(cmd *cobra.Command, args []string) error {
 		// TODO: when removing an existing snapshot we get an error, but in this case it is expected
 		// It might be nicer to have some special field set in the response though rather than having to parse
 		// the error string which is error prone
-		if !strings.Contains(err.Error(), fmt.Sprintf("snapshot %s already exists", snapshotName)) {
-			return fmt.Errorf("failed op network with a snapshot: %s", err)
+		if !strings.Contains(err.Error(), fmt.Sprintf("snapshot %q does not exist", snapshotName)) {
+			return fmt.Errorf("failed stop network with a snapshot: %s", err)
 		}
 	}
 
