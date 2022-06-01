@@ -19,7 +19,7 @@ jobs:
         with:
           version: v1.43
           working-directory: .
-          args: --timeout 3m -v
+          args: --timeout 3m
       - name: Install license check
         run: go install github.com/google/addlicense@v1.0.0
       - name: Check license

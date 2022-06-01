@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -40,7 +39,7 @@ var (
 )
 
 func getChainsInSubnet(subnetName string) ([]string, error) {
-	files, err := ioutil.ReadDir(baseDir)
+	files, err := os.ReadDir(baseDir)
 	if err != nil {
 		return []string{}, fmt.Errorf("failed to read baseDir :%w", err)
 	}

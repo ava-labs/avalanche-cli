@@ -3,7 +3,6 @@
 package cmd
 
 import (
-	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
@@ -36,7 +35,7 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	table.SetRowLine(true)
 
-	files, err := ioutil.ReadDir(baseDir)
+	files, err := os.ReadDir(baseDir)
 	if err != nil {
 		return err
 	}

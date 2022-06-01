@@ -11,13 +11,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const testSubnetName = "TEST_subnet"
+
 func Test_writeGenesisFile_success(t *testing.T) {
 	genesisBytes := []byte("genesis")
-	subnetName := "TEST_subnet"
-	genesisFile := subnetName + genesis_suffix
+	genesisFile := testSubnetName + genesis_suffix
 
 	// Write genesis
-	err := writeGenesisFile(subnetName, genesisBytes)
+	err := writeGenesisFile(testSubnetName, genesisBytes)
 	assert.NoError(t, err)
 
 	// Check file exists
@@ -77,7 +78,6 @@ func Test_copyGenesisFile_failure(t *testing.T) {
 }
 
 func Test_createSidecar_success(t *testing.T) {
-	subnetName := "TEST_subnet"
 	sidecarFile := subnetName + sidecar_suffix
 	const vm = models.SubnetEvm
 
@@ -107,7 +107,6 @@ func Test_createSidecar_success(t *testing.T) {
 }
 
 func Test_loadSidecar_success(t *testing.T) {
-	subnetName := "TEST_subnet"
 	sidecarFile := subnetName + sidecar_suffix
 	const vm = models.SubnetEvm
 
@@ -138,7 +137,6 @@ func Test_loadSidecar_success(t *testing.T) {
 }
 
 func Test_loadSidecar_failure_notFound(t *testing.T) {
-	subnetName := "TEST_subnet"
 	sidecarFile := subnetName + sidecar_suffix
 
 	// Assert file doesn't exist at start
@@ -151,7 +149,6 @@ func Test_loadSidecar_failure_notFound(t *testing.T) {
 }
 
 func Test_loadSidecar_failure_malformed(t *testing.T) {
-	subnetName := "TEST_subnet"
 	sidecarFile := subnetName + sidecar_suffix
 
 	// Write sidecar
