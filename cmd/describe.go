@@ -41,6 +41,27 @@ func printGenesis(subnetName string) error {
 	return nil
 }
 
+func printDetails(genesis core.Genesis, subnetName string) {
+	const art = `
+ _____       _        _ _
+|  __ \     | |      (_) |
+| |  | | ___| |_ __ _ _| |___
+| |  | |/ _ \ __/ _` + `  | | / __|
+| |__| |  __/ || (_| | | \__ \
+|_____/ \___|\__\__,_|_|_|___/
+`
+	fmt.Print(art)
+	table := tablewriter.NewWriter(os.Stdout)
+	header := []string{"Parameter", "Value"}
+	table.SetHeader(header)
+	table.SetRowLine(true)
+
+	table.Append([]string{"Subnet Name", subnetName})
+	table.Append([]string{"ChainId", genesis.Config.ChainID.String()})
+
+	table.Render()
+}
+
 func printGasTable(genesis core.Genesis) {
 	// Generated here with BIG font
 	// https://patorjk.com/software/taag/#p=display&f=Big&t=Precompiles
@@ -153,6 +174,7 @@ func describeSubnetEvmGenesis(subnetName string, sc models.Sidecar) error {
 		return err
 	}
 
+	printDetails(genesis, subnetName)
 	// Write gas table
 	printGasTable(genesis)
 	// fmt.Printf("\n\n")
