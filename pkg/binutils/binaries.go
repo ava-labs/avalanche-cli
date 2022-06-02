@@ -53,9 +53,9 @@ func NewPluginBinaryDownloader(log logging.Logger) PluginBinaryDownloader {
 	}
 }
 
-// InstallArchive installs the binary archive downloaded in a os-dependent way
-func InstallArchive(goos string, archive []byte, binDir string) error {
-	if goos == "darwin" || goos == "windows" {
+// InstallArchive installs the binary archive downloaded
+func InstallArchive(ext string, archive []byte, binDir string) error {
+	if ext == "zip" {
 		return installZipArchive(archive, binDir)
 	}
 	return installTarGzArchive(archive, binDir)

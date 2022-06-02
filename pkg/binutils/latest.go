@@ -56,6 +56,7 @@ func DownloadReleaseVersion(
 	arch := runtime.GOARCH
 	goos := runtime.GOOS
 	var downloadURL string
+	var ext string
 
 	switch goos {
 	case "linux":
@@ -67,6 +68,7 @@ func DownloadReleaseVersion(
 			version[1:], // WARN subnet-evm isn't consistent in its release naming, it's omitting the v in the file name...
 			arch,
 		)
+		ext = "tar.gz"
 	case "darwin":
 		downloadURL = fmt.Sprintf(
 			"https://github.com/ava-labs/%s/releases/download/%s/%s_%s_darwin_%s.tar.gz",
@@ -77,6 +79,7 @@ func DownloadReleaseVersion(
 			arch,
 		)
 		// subnet-evm supports darwin and linux only
+		ext = "tar.gz"
 	default:
 		return "", fmt.Errorf("OS not supported: %s", goos)
 	}
@@ -100,7 +103,7 @@ func DownloadReleaseVersion(
 	}
 
 	log.Debug("download successful. installing archive...")
-	if err := InstallArchive(goos, archive, installDir); err != nil {
+	if err := InstallArchive(ext, archive, installDir); err != nil {
 		return "", err
 	}
 	return installDir, nil

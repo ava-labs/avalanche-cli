@@ -193,6 +193,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 	arch := runtime.GOARCH
 	goos := runtime.GOOS
 	var avalanchegoURL string
+	var ext string
 
 	switch goos {
 	case "linux":
@@ -202,12 +203,14 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 			arch,
 			version,
 		)
+		ext = "tar.gz"
 	case "darwin":
 		avalanchegoURL = fmt.Sprintf(
 			"https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-macos-%s.zip",
 			version,
 			version,
 		)
+		ext = "zip"
 		// EXPERMENTAL WIN, no support
 	case "windows":
 		avalanchegoURL = fmt.Sprintf(
@@ -215,6 +218,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 			version,
 			version,
 		)
+		ext = "zip"
 	default:
 		return "", fmt.Errorf("OS not supported: %s", goos)
 	}
@@ -233,7 +237,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 	}
 
 	d.log.Debug("download successful. installing archive...")
-	if err := binutils.InstallArchive(goos, archive, binDir); err != nil {
+	if err := binutils.InstallArchive(ext, archive, binDir); err != nil {
 		return "", err
 	}
 	avagoSubDir := "avalanchego-" + version
