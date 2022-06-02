@@ -54,9 +54,13 @@ func NewPluginBinaryDownloader(log logging.Logger) PluginBinaryDownloader {
 }
 
 // InstallArchive installs the binary archive downloaded in a os-dependent way
-func InstallArchive(goos string, archive []byte, binDir string) error {
+func InstallArchive(goos string, archive []byte, binDir string, avagoSubDir string) error {
 	if goos == "darwin" || goos == "windows" {
-		return installZipArchive(archive, binDir)
+		if err := installZipArchive(archive, binDir); err != nil {
+			return err
+		}
+		// zip contains a build subdir instead of the avagoSubDir expected from tar.gz
+		return os.Rename(filepath.Join(binDir, "build"), filepath.Join(binDir, avagoSubDir))
 	}
 	return installTarGzArchive(archive, binDir)
 }

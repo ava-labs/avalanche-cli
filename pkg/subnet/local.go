@@ -232,10 +232,11 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 	}
 
 	d.log.Debug("download successful. installing archive...")
-	if err := binutils.InstallArchive(goos, archive, binDir); err != nil {
+	avagoSubDir := "avalanchego-" + version
+	if err := binutils.InstallArchive(goos, archive, binDir, avagoSubDir); err != nil {
 		return "", err
 	}
-	return filepath.Join(binDir, "avalanchego-"+version), nil
+	return filepath.Join(binDir, avagoSubDir), nil
 }
 
 // WaitForHealthy polls continuously until the network is ready to be used
