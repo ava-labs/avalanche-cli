@@ -193,7 +193,7 @@ func getFeeConfig(config params.ChainConfig) (params.ChainConfig, error) {
 		setGasStep                  = "Set block gas cost step"
 	)
 
-	feeConfigOptions := []string{useFast, useMedium, useSlow, customFee}
+	feeConfigOptions := []string{useSlow, useMedium, useFast, customFee}
 
 	feeDefault, err := prompts.CaptureList(
 		"How would you like to set fees",
