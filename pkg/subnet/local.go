@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"runtime"
 	"time"
@@ -235,7 +236,14 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 	if err := binutils.InstallArchive(goos, archive, binDir); err != nil {
 		return "", err
 	}
-	return filepath.Join(binDir, "avalanchego-"+version), nil
+	avagoSubDir := "avalanchego-" + version
+	if goos == "darwin" || goos == "windows" {
+		// zip contains a build subdir instead of the avagoSubDir expected from tar.gz
+		if err := os.Rename(filepath.Join(binDir, "build"), filepath.Join(binDir, avagoSubDir)); err != nil {
+			return "", err
+		}
+	}
+	return filepath.Join(binDir, avagoSubDir), nil
 }
 
 // WaitForHealthy polls continuously until the network is ready to be used
