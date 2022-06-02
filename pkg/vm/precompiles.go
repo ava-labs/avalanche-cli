@@ -20,7 +20,7 @@ func contains(list []common.Address, element common.Address) bool {
 	return false
 }
 
-func getAdminList(initialPrompt string, info string) ([]common.Address, error) {
+func getAdminList(initialPrompt string, info string) ([]common.Address, bool, error) {
 	const (
 		addAdmin    = "Add admin"
 		removeAdmin = "Remove admin"
@@ -38,14 +38,14 @@ func getAdminList(initialPrompt string, info string) ([]common.Address, error) {
 			[]string{addAdmin, removeAdmin, preview, moreInfo, doneMsg, cancelMsg},
 		)
 		if err != nil {
-			return []common.Address{}, err
+			return []common.Address{}, false, err
 		}
 
 		switch listDecision {
 		case addAdmin:
 			adminAddr, err := prompts.CaptureAddress("Admin Address")
 			if err != nil {
-				return []common.Address{}, err
+				return []common.Address{}, false, err
 			}
 			if contains(admins, adminAddr) {
 				fmt.Println("Address already an admin")
@@ -55,7 +55,7 @@ func getAdminList(initialPrompt string, info string) ([]common.Address, error) {
 		case removeAdmin:
 			index, err := prompts.CaptureIndex("Choose address to remove:", admins)
 			if err != nil {
-				return []common.Address{}, err
+				return []common.Address{}, false, err
 			}
 			admins = append(admins[:index], admins[index+1:]...)
 		case preview:
@@ -64,13 +64,14 @@ func getAdminList(initialPrompt string, info string) ([]common.Address, error) {
 				fmt.Printf("%d. %s\n", i, addr.Hex())
 			}
 		case doneMsg:
-			return admins, nil
+			cancelled := len(admins) == 0
+			return admins, cancelled, nil
 		case moreInfo:
 			fmt.Print(info)
 		case cancelMsg:
-			return []common.Address{}, nil
+			return []common.Address{}, true, nil
 		default:
-			return []common.Address{}, errors.New("Unexpected option")
+			return []common.Address{}, false, errors.New("Unexpected option")
 		}
 	}
 }
@@ -82,18 +83,16 @@ func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, b
 		"on your subnet.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet/#restricting-smart-contract-deployers\n\n"
 
-	admins, err := getAdminList(prompt, info)
+	admins, cancelled, err := getAdminList(prompt, info)
 	if err != nil {
 		return config, false, err
 	}
-	cancelled := len(admins) == 0
 
-	allowList := precompile.AllowListConfig{
+	config.AllowListConfig = precompile.AllowListConfig{
 		BlockTimestamp:  big.NewInt(0),
 		AllowListAdmins: admins,
 	}
 
-	config.AllowListConfig = allowList
 	return config, cancelled, nil
 }
 
@@ -104,18 +103,16 @@ func configureTransactionAllowList() (precompile.TxAllowListConfig, bool, error)
 		"on your subnet.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet/#restricting-who-can-submit-transactions\n\n"
 
-	admins, err := getAdminList(prompt, info)
+	admins, cancelled, err := getAdminList(prompt, info)
 	if err != nil {
 		return config, false, err
 	}
-	cancelled := len(admins) == 0
 
-	allowList := precompile.AllowListConfig{
+	config.AllowListConfig = precompile.AllowListConfig{
 		BlockTimestamp:  big.NewInt(0),
 		AllowListAdmins: admins,
 	}
 
-	config.AllowListConfig = allowList
 	return config, cancelled, nil
 }
 
@@ -126,19 +123,15 @@ func configureMinterList() (precompile.ContractNativeMinterConfig, bool, error) 
 		"on your subnet.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet#minting-native-coins\n\n"
 
-	admins, err := getAdminList(prompt, info)
+	admins, cancelled, err := getAdminList(prompt, info)
 	if err != nil {
 		return config, false, err
 	}
 
-	cancelled := len(admins) == 0
-
-	allowList := precompile.AllowListConfig{
+	config.AllowListConfig = precompile.AllowListConfig{
 		BlockTimestamp:  big.NewInt(0),
 		AllowListAdmins: admins,
 	}
-
-	config.AllowListConfig = allowList
 
 	return config, cancelled, nil
 }
