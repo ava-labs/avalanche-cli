@@ -131,3 +131,16 @@ func CaptureString(promptStr string) (string, error) {
 
 	return str, nil
 }
+
+func CaptureIndex(promptStr string, options []common.Address) (int, error) {
+	prompt := promptui.Select{
+		Label: promptStr,
+		Items: options,
+	}
+
+	listIndex, _, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+	return listIndex, nil
+}

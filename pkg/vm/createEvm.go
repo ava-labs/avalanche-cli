@@ -5,7 +5,6 @@ package vm
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 
@@ -14,8 +13,6 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
-	"github.com/ava-labs/subnet-evm/precompile"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 func CreateEvmGenesis(name string, log logging.Logger) ([]byte, error) {
@@ -119,63 +116,6 @@ func getAllocation() (core.GenesisAlloc, error) {
 	}
 }
 
-func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, error) {
-	const (
-		addAdmin = "Add admin"
-		preview  = "Preview"
-		moreInfo = "More info"
-		doneMsg  = "Done"
-	)
-
-	config := precompile.ContractDeployerAllowListConfig{}
-	allowList := precompile.AllowListConfig{
-		BlockTimestamp:  big.NewInt(0),
-		AllowListAdmins: []common.Address{},
-	}
-
-	for {
-		listDecision, err := prompts.CaptureList(
-			"Configure contract deployment allow list:",
-			[]string{addAdmin, preview, moreInfo, doneMsg},
-		)
-		if err != nil {
-			return config, err
-		}
-
-		switch listDecision {
-		case addAdmin:
-			adminAddr, err := prompts.CaptureAddress("Admin Address")
-			if err != nil {
-				return config, err
-			}
-			allowList.AllowListAdmins = append(allowList.AllowListAdmins, adminAddr)
-		case preview:
-			fmt.Println("Admins:")
-			for i, addr := range allowList.AllowListAdmins {
-				fmt.Printf("%d. %s\n", i, addr.Hex())
-			}
-		case doneMsg:
-			config.AllowListConfig = allowList
-			return config, nil
-		case moreInfo:
-			fmt.Printf("\nThis precompile restricts who has the ability to deploy contracts " +
-				"on your subnet.\nFor more information visit https://github.com/ava-labs/subnet-" +
-				"evm#restricting-smart-contract-deployers.\n\n")
-		default:
-			return config, errors.New("Unexpected option")
-		}
-	}
-}
-
-func removePrecompile(arr []string, s string) ([]string, error) {
-	for i, val := range arr {
-		if val == s {
-			return append(arr[:i], arr[i+1:]...), nil
-		}
-	}
-	return arr, errors.New("String not in array")
-}
-
 func getFeeConfig(config params.ChainConfig) (params.ChainConfig, error) {
 	const (
 		useFast   = "High disk use   / High Throughput   5 mil   gas/s"
@@ -274,77 +214,4 @@ func getFeeConfig(config params.ChainConfig) (params.ChainConfig, error) {
 	config.FeeConfig = feeConf
 
 	return config, nil
-}
-
-func getPrecompiles(config params.ChainConfig) (params.ChainConfig, error) {
-	const (
-		nativeMint        = "Native Minting"
-		contractAllowList = "Contract deployment whitelist"
-		txAllowList       = "Transaction allow list"
-		cancel            = "Cancel"
-	)
-
-	first := true
-
-	remainingPrecompiles := []string{nativeMint, contractAllowList, txAllowList, cancel}
-
-	for {
-		firstStr := "Would you like to add a custom precompile?"
-		secondStr := "Would you like to add additional precompiles?"
-
-		var promptStr string
-		if promptStr = secondStr; first {
-			promptStr = firstStr
-			first = false
-		}
-
-		addPrecompile, err := prompts.CaptureYesNo(promptStr)
-		if err != nil {
-			return config, err
-		}
-
-		if addPrecompile {
-			precompileDecision, err := prompts.CaptureList(
-				"Choose precompile:",
-				remainingPrecompiles,
-			)
-			if err != nil {
-				return config, err
-			}
-
-			switch precompileDecision {
-			case nativeMint:
-				fmt.Println("TODO")
-				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, nativeMint)
-				if err != nil {
-					return config, err
-				}
-			case contractAllowList:
-				contractConfig, err := configureContractAllowList()
-				if err != nil {
-					return config, err
-				}
-				config.ContractDeployerAllowListConfig = contractConfig
-				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, contractAllowList)
-				if err != nil {
-					return config, err
-				}
-			case txAllowList:
-				fmt.Println("TODO")
-				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, txAllowList)
-				if err != nil {
-					return config, err
-				}
-			case cancel:
-				return config, nil
-			}
-
-			if len(remainingPrecompiles) == 1 {
-				return config, nil
-			}
-
-		} else {
-			return config, nil
-		}
-	}
 }
