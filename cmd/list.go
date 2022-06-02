@@ -18,7 +18,8 @@ var listCmd = &cobra.Command{
 	Short: "List all created subnet configurations",
 	Long: `The subnet list command prints the names of all created subnet
 configurations.`,
-	RunE: listGenesis,
+	RunE:         listGenesis,
+	SilenceUsage: true,
 }
 
 type subnetMatrix [][]string

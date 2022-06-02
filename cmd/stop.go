@@ -21,8 +21,9 @@ If "snapshotName" is provided, the state will be saved under this named snapshot
 restarted with "network start <snapshotName>". Otherwise, the default snapshot will be created, or overwritten 
 if it exists. The default snapshot can then be restarted without parameter ("network start").`,
 
-	RunE: stopNetwork,
-	Args: cobra.MaximumNArgs(1),
+	RunE:         stopNetwork,
+	Args:         cobra.MaximumNArgs(1),
+	SilenceUsage: true,
 }
 
 func stopNetwork(cmd *cobra.Command, args []string) error {

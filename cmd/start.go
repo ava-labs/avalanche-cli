@@ -19,8 +19,9 @@ on your machine. If "snapshotName" is provided, that snapshot will be used for s
 if it can be found. Otherwise, the last saved unnamed (default) snapshot will be used. The command may fail if the local network
 is already running or if no subnets have been deployed.`,
 
-	RunE: startNetwork,
-	Args: cobra.MaximumNArgs(1),
+	RunE:         startNetwork,
+	Args:         cobra.MaximumNArgs(1),
+	SilenceUsage: true,
 }
 
 func startNetwork(cmd *cobra.Command, args []string) error {
