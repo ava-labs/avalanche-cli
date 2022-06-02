@@ -3,8 +3,6 @@
 package cmd
 
 import (
-	"context"
-	"errors"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -28,9 +26,6 @@ is already running or if no subnets have been deployed.`,
 func startNetwork(cmd *cobra.Command, args []string) error {
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			return gRPCTimeout
-		}
 		return err
 	}
 

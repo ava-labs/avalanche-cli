@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/ux"
@@ -110,11 +109,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		deployer := subnet.NewLocalSubnetDeployer(log, baseDir)
 		chain := chains[0]
 		chain_genesis := filepath.Join(baseDir, fmt.Sprintf("%s_genesis.json", chain))
-		err := deployer.DeployToLocalNetwork(chain, chain_genesis)
-		if innererr := binutils.KillgRPCServerProcess(); innererr != nil {
-			log.Error("failed killing gRPC server proc: %w", err)
-		}
-		return err
+		return deployer.DeployToLocalNetwork(chain, chain_genesis)
 	default:
 		return errors.New("Not implemented")
 	}
