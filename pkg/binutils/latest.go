@@ -43,11 +43,11 @@ func GetLatestReleaseVersion(releaseURL string) (string, error) {
 	return version, nil
 }
 
-// DownloadLatestReleaseVersion returns the latest available version from github for
+// DownloadReleaseVersion returns the latest available version from github for
 // the given repo and version, and installs it into the apps `bin` dir.
 // NOTE: If any of the underlying URLs change (github changes, release file names, etc.) this fails
 // The goal MUST be to have some sort of mature binary management
-func DownloadLatestReleaseVersion(
+func DownloadReleaseVersion(
 	log logging.Logger,
 	repo,
 	version,

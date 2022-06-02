@@ -223,6 +223,10 @@ func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir, binDir string) e
 	if err == nil {
 		if info.Mode().IsRegular() {
 			d.log.Debug("binary already exists, skipping download")
+			// remove all other plugins other than this one and `evm` for now.
+			if err := cleanupPluginDir(vmID, pluginDir); err != nil {
+				return err
+			}
 			return nil
 		}
 		return fmt.Errorf("binary plugin path %q was found but is not a regular file", binaryPath)
@@ -243,12 +247,18 @@ func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir, binDir string) e
 
 		cancel := make(chan struct{})
 		go ux.PrintWait(cancel)
-		latestVer, err := GetLatestReleaseVersion(subnetEVMReleaseURL)
-		if err != nil {
-			return fmt.Errorf("failed to get latest subnet-evm release version: %w", err)
-		}
+		// TODO: we are hardcoding the release version at this point to 0.2.2
+		// until we have a better binary, dependency and version management
+		// as per https://github.com/ava-labs/avalanche-cli/pull/17#discussion_r887164924
+		latestVer := "v0.2.2"
+		/*
+			latestVer, err := GetLatestReleaseVersion(constants.SubnetEVMReleaseURL)
+			if err != nil {
+				return fmt.Errorf("failed to get latest subnet-evm release version: %w", err)
+			}
+		*/
 
-		latest, err = DownloadLatestReleaseVersion(d.log, subnetEVMName, latestVer, binDir)
+		latest, err = DownloadReleaseVersion(d.log, subnetEVMName, latestVer, binDir)
 		if err != nil {
 			return fmt.Errorf("failed downloading latest subnet-evm version: %w", err)
 		}
@@ -261,6 +271,40 @@ func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir, binDir string) e
 	if err := copyFile(evmPath, binaryPath); err != nil {
 		return fmt.Errorf("failed copying latest subnet-evm to plugin dir: %w", err)
 	}
+
+	// remove all other plugins other than this one and `evm` for now.
+	if err := cleanupPluginDir(vmID, pluginDir); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// cleanupPluginDir removes all other plugins other than the given one and `evm` for now.
+// TODO: this is only acceptable at this stage where ANR can't run multiple plugins anyways
+// but should be later REMOVED if we support multiple plugins (with the caveat of a new
+// tricky situation about to decide when and how to remove plugins from the plugin dir)
+func cleanupPluginDir(vmID, pluginDir string) error {
+	// list all plugins
+	entries, err := os.ReadDir(pluginDir)
+	if err != nil {
+		return err
+	}
+
+	pluginWhiteList := map[string]struct{}{
+		"evm": {},
+		vmID:  {},
+	}
+
+	for _, e := range entries {
+		name := e.Name()
+		if _, ok := pluginWhiteList[name]; !ok {
+			if err := os.Remove(filepath.Join(pluginDir, name)); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 

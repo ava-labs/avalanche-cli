@@ -40,6 +40,7 @@ func setupLogging(cmd *cobra.Command, args []string) error {
 	var err error
 
 	config := logging.Config{}
+	config.LogLevel = logging.Info
 	config.DisplayLevel, err = logging.ToLevel(logLevel)
 	if err != nil {
 		return fmt.Errorf("invalid log level configured: %s", logLevel)
@@ -48,6 +49,13 @@ func setupLogging(cmd *cobra.Command, args []string) error {
 	if err := os.MkdirAll(config.Directory, perms.ReadWriteExecute); err != nil {
 		return fmt.Errorf("failed creating log directory: %w", err)
 	}
+
+	// some logging config params
+	config.LogFormat = logging.Colors
+	config.MaxSize = maxLogFileSize
+	config.MaxFiles = maxNumOfLogFiles
+	config.MaxAge = retainOldFiles
+
 	factory := logging.NewFactory(config)
 	log, err = factory.Make("avalanche")
 	if err != nil {
