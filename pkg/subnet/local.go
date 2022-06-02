@@ -241,7 +241,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 		return "", err
 	}
 	avagoSubDir := "avalanchego-" + version
-	if goos == "darwin" || goos == "windows" {
+	if ext == "zip" {
 		// zip contains a build subdir instead of the avagoSubDir expected from tar.gz
 		if err := os.Rename(filepath.Join(binDir, "build"), filepath.Join(binDir, avagoSubDir)); err != nil {
 			return "", err
