@@ -28,6 +28,7 @@ type SubnetDeployer struct {
 	healthCheckInterval time.Duration
 	log                 logging.Logger
 	baseDir             string
+	backendStartedHere  bool
 }
 
 func NewLocalSubnetDeployer(log logging.Logger, baseDir string) *SubnetDeployer {
@@ -57,8 +58,15 @@ func (d *SubnetDeployer) DeployToLocalNetwork(chain string, chain_genesis string
 		if err := binutils.StartServerProcess(d.log); err != nil {
 			return fmt.Errorf("failed starting gRPC server process: %w", err)
 		}
+		d.backendStartedHere = true
 	}
 	return d.doDeploy(chain, chain_genesis)
+}
+
+// BackendStartedHere returns true if the backend was started by this run,
+// or false if it found it there already
+func (d *SubnetDeployer) BackendStartedHere() bool {
+	return d.backendStartedHere
 }
 
 // doDeploy the actual deployment to the network runner
