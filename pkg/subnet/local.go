@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"runtime"
 	"time"
@@ -192,6 +193,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 	arch := runtime.GOARCH
 	goos := runtime.GOOS
 	var avalanchegoURL string
+	var ext string
 
 	switch goos {
 	case "linux":
@@ -201,12 +203,14 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 			arch,
 			version,
 		)
+		ext = "tar.gz"
 	case "darwin":
 		avalanchegoURL = fmt.Sprintf(
 			"https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-macos-%s.zip",
 			version,
 			version,
 		)
+		ext = "zip"
 		// EXPERMENTAL WIN, no support
 	case "windows":
 		avalanchegoURL = fmt.Sprintf(
@@ -214,6 +218,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 			version,
 			version,
 		)
+		ext = "zip"
 	default:
 		return "", fmt.Errorf("OS not supported: %s", goos)
 	}
@@ -232,10 +237,17 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 	}
 
 	d.log.Debug("download successful. installing archive...")
-	if err := binutils.InstallArchive(goos, archive, binDir); err != nil {
+	if err := binutils.InstallArchive(ext, archive, binDir); err != nil {
 		return "", err
 	}
-	return filepath.Join(binDir, "avalanchego-"+version), nil
+	avagoSubDir := "avalanchego-" + version
+	if ext == "zip" {
+		// zip contains a build subdir instead of the avagoSubDir expected from tar.gz
+		if err := os.Rename(filepath.Join(binDir, "build"), filepath.Join(binDir, avagoSubDir)); err != nil {
+			return "", err
+		}
+	}
+	return filepath.Join(binDir, avagoSubDir), nil
 }
 
 // WaitForHealthy polls continuously until the network is ready to be used
