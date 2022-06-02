@@ -75,7 +75,7 @@ func getAdminList(initialPrompt string, info string) ([]common.Address, error) {
 	}
 }
 
-func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, error) {
+func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, bool, error) {
 	config := precompile.ContractDeployerAllowListConfig{}
 	prompt := "Configure contract deployment allow list"
 	info := "\nThis precompile restricts who has the ability to deploy contracts " +
@@ -84,8 +84,9 @@ func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, e
 
 	admins, err := getAdminList(prompt, info)
 	if err != nil {
-		return config, err
+		return config, false, err
 	}
+	cancelled := len(admins) == 0
 
 	allowList := precompile.AllowListConfig{
 		BlockTimestamp:  big.NewInt(0),
@@ -93,10 +94,10 @@ func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, e
 	}
 
 	config.AllowListConfig = allowList
-	return config, nil
+	return config, cancelled, nil
 }
 
-func configureTransactionAllowList() (precompile.TxAllowListConfig, error) {
+func configureTransactionAllowList() (precompile.TxAllowListConfig, bool, error) {
 	config := precompile.TxAllowListConfig{}
 	prompt := "Configure transaction allow list"
 	info := "\nThis precompile restricts who has the ability to issue transactions " +
@@ -105,8 +106,9 @@ func configureTransactionAllowList() (precompile.TxAllowListConfig, error) {
 
 	admins, err := getAdminList(prompt, info)
 	if err != nil {
-		return config, err
+		return config, false, err
 	}
+	cancelled := len(admins) == 0
 
 	allowList := precompile.AllowListConfig{
 		BlockTimestamp:  big.NewInt(0),
@@ -114,10 +116,10 @@ func configureTransactionAllowList() (precompile.TxAllowListConfig, error) {
 	}
 
 	config.AllowListConfig = allowList
-	return config, nil
+	return config, cancelled, nil
 }
 
-func configureMinterList() (precompile.ContractNativeMinterConfig, error) {
+func configureMinterList() (precompile.ContractNativeMinterConfig, bool, error) {
 	config := precompile.ContractNativeMinterConfig{}
 	prompt := "Configure native minting allow list"
 	info := "\nThis precompile allows admins to permit designated contracts to mint the native token " +
@@ -126,8 +128,10 @@ func configureMinterList() (precompile.ContractNativeMinterConfig, error) {
 
 	admins, err := getAdminList(prompt, info)
 	if err != nil {
-		return config, err
+		return config, false, err
 	}
+
+	cancelled := len(admins) == 0
 
 	allowList := precompile.AllowListConfig{
 		BlockTimestamp:  big.NewInt(0),
@@ -135,7 +139,8 @@ func configureMinterList() (precompile.ContractNativeMinterConfig, error) {
 	}
 
 	config.AllowListConfig = allowList
-	return config, nil
+
+	return config, cancelled, nil
 }
 
 func removePrecompile(arr []string, s string) ([]string, error) {
@@ -185,40 +190,40 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, error) {
 
 			switch precompileDecision {
 			case nativeMint:
-				mintConfig, err := configureMinterList()
+				mintConfig, cancelled, err := configureMinterList()
 				if err != nil {
 					return config, err
 				}
-				if len(mintConfig.AllowListAdmins) > 0 {
+				if !cancelled {
 					config.ContractNativeMinterConfig = mintConfig
 					remainingPrecompiles, err = removePrecompile(remainingPrecompiles, nativeMint)
-				}
-				if err != nil {
-					return config, err
+					if err != nil {
+						return config, err
+					}
 				}
 			case contractAllowList:
-				contractConfig, err := configureContractAllowList()
+				contractConfig, cancelled, err := configureContractAllowList()
 				if err != nil {
 					return config, err
 				}
-				if len(contractConfig.AllowListAdmins) > 0 {
+				if !cancelled {
 					config.ContractDeployerAllowListConfig = contractConfig
 					remainingPrecompiles, err = removePrecompile(remainingPrecompiles, contractAllowList)
-				}
-				if err != nil {
-					return config, err
+					if err != nil {
+						return config, err
+					}
 				}
 			case txAllowList:
-				txConfig, err := configureTransactionAllowList()
+				txConfig, cancelled, err := configureTransactionAllowList()
 				if err != nil {
 					return config, err
 				}
-				if len(txConfig.AllowListAdmins) > 0 {
+				if !cancelled {
 					config.TxAllowListConfig = txConfig
 					remainingPrecompiles, err = removePrecompile(remainingPrecompiles, txAllowList)
-				}
-				if err != nil {
-					return config, err
+					if err != nil {
+						return config, err
+					}
 				}
 			case cancel:
 				return config, nil
