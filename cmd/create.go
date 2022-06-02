@@ -73,11 +73,11 @@ func getVmFromFlag() models.VmType {
 func createGenesis(cmd *cobra.Command, args []string) error {
 	subnetName := args[0]
 	if genesisExists(subnetName) && !forceCreate {
-		return errors.New("Configuration already exists. Use --force parameter to overwrite")
+		return errors.New("Configuration already exists. Use --" + forceFlag + " parameter to overwrite")
 	}
 
 	if err := checkInvalidSubnetNames(subnetName); err != nil {
-		return fmt.Errorf("Subnet name %s is invalid: %s", subnetName, err)
+		return fmt.Errorf("Subnet name %q is invalid: %w", subnetName, err)
 	}
 
 	if moreThanOneVmSelected() {

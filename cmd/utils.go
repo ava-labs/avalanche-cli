@@ -13,13 +13,21 @@ import (
 
 const WRITE_READ_READ_PERMS = 0644
 
+func getGenesisPath(subnetName string) string {
+	return filepath.Join(baseDir, subnetName+genesis_suffix)
+}
+
+func getSidecarPath(subnetName string) string {
+	return filepath.Join(baseDir, subnetName+sidecar_suffix)
+}
+
 func writeGenesisFile(subnetName string, genesisBytes []byte) error {
-	genesisPath := filepath.Join(baseDir, subnetName+genesis_suffix)
+	genesisPath := getGenesisPath(subnetName)
 	return os.WriteFile(genesisPath, genesisBytes, WRITE_READ_READ_PERMS)
 }
 
 func genesisExists(subnetName string) bool {
-	genesisPath := filepath.Join(baseDir, subnetName+genesis_suffix)
+	genesisPath := getGenesisPath(subnetName)
 	_, err := os.Stat(genesisPath)
 	return err == nil
 }
@@ -29,12 +37,12 @@ func copyGenesisFile(inputFilename string, subnetName string) error {
 	if err != nil {
 		return err
 	}
-	genesisPath := filepath.Join(baseDir, subnetName+genesis_suffix)
+	genesisPath := getGenesisPath(subnetName)
 	return os.WriteFile(genesisPath, genesisBytes, WRITE_READ_READ_PERMS)
 }
 
 func loadEvmGenesis(subnetName string) (core.Genesis, error) {
-	genesisPath := filepath.Join(baseDir, subnetName+genesis_suffix)
+	genesisPath := getGenesisPath(subnetName)
 	jsonBytes, err := os.ReadFile(genesisPath)
 	if err != nil {
 		return core.Genesis{}, err
@@ -57,12 +65,12 @@ func createSidecar(subnetName string, vm models.VmType) error {
 		return nil
 	}
 
-	sidecarPath := filepath.Join(baseDir, subnetName+sidecar_suffix)
+	sidecarPath := getSidecarPath(subnetName)
 	return os.WriteFile(sidecarPath, scBytes, WRITE_READ_READ_PERMS)
 }
 
 func loadSidecar(subnetName string) (models.Sidecar, error) {
-	sidecarPath := filepath.Join(baseDir, subnetName+sidecar_suffix)
+	sidecarPath := getSidecarPath(subnetName)
 	jsonBytes, err := os.ReadFile(sidecarPath)
 	if err != nil {
 		return models.Sidecar{}, err
