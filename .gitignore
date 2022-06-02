@@ -31,3 +31,5 @@ bin/
 build/
 avalanche-cli
 avalanche
+
+dist/
