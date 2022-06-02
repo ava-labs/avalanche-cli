@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -34,6 +35,8 @@ in with avalanche subnet create myNewSubnet.`,
 		PersistentPreRunE: setupLogging,
 		Version:           Version,
 	}
+
+	gRPCTimeout = errors.New("Timed out trying to contact backend controller, it is most probably not running.")
 )
 
 func setupLogging(cmd *cobra.Command, args []string) error {
