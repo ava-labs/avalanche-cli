@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"path/filepath"
 	"strconv"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -32,7 +31,7 @@ print out the raw genesis file.`,
 var printGenesisOnly bool
 
 func printGenesis(subnetName string) error {
-	genesisFile := filepath.Join(baseDir, subnetName+genesis_suffix)
+	genesisFile := getGenesisPath(subnetName)
 	gen, err := os.ReadFile(genesisFile)
 	if err != nil {
 		return err
