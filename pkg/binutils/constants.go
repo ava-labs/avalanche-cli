@@ -9,4 +9,6 @@ const (
 	gRPCServerEndpoint  = ":8097"
 	gRPCGatewayEndpoint = ":8098"
 	gRPCDialTimeout     = 10 * time.Second
+
+	subnetEVMName = "subnet-evm"
 )

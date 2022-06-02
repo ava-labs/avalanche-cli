@@ -23,6 +23,10 @@ import (
 	"github.com/shirou/gopsutil/process"
 )
 
+// gRPCTimeout is a common error message if the gRPC server can't be reached
+var gRPCTimeout = errors.New("Timed out trying to contact backend controller, it is most probably not running.")
+
+// ProcessChecker is responsible for checking if the gRPC server is running
 type ProcessChecker interface {
 	// IsServerProcessRunning returns true if the gRPC server is running,
 	// or false if not
@@ -31,18 +35,25 @@ type ProcessChecker interface {
 
 type realProcessRunner struct{}
 
+// NewProcessChecker creates a new process checker which can respond if the server is running
 func NewProcessChecker() ProcessChecker {
 	return &realProcessRunner{}
 }
 
+// NewGRPCClient hides away the details (params) of creating a gRPC server connection
 func NewGRPCClient() (client.Client, error) {
-	return client.New(client.Config{
+	client, err := client.New(client.Config{
 		LogLevel:    gRPCClientLogLevel,
 		Endpoint:    gRPCServerEndpoint,
 		DialTimeout: gRPCDialTimeout,
 	})
+	if errors.Is(err, context.DeadlineExceeded) {
+		err = gRPCTimeout
+	}
+	return client, err
 }
 
+// NewGRPCClient hides away the details (params) of creating a gRPC server
 func NewGRPCServer() (server.Server, error) {
 	return server.New(server.Config{
 		Port:        gRPCServerEndpoint,

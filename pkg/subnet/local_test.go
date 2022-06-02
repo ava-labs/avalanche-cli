@@ -49,10 +49,10 @@ func TestDeployToLocal(t *testing.T) {
 		_ = f.Close()
 	}()
 
-	binChecker.On("ExistsWithLatestVersion", mock.AnythingOfType("string")).Return(true, tmpDir, nil)
+	binChecker.On("ExistsWithLatestVersion", mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(true, tmpDir, nil)
 
-	binDownloader := &mocks.BinaryDownloader{}
-	binDownloader.On("Download", mock.AnythingOfType("ids.ID"), mock.AnythingOfType("string")).Return(nil)
+	binDownloader := &mocks.PluginBinaryDownloader{}
+	binDownloader.On("Download", mock.AnythingOfType("ids.ID"), mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil)
 
 	testDeployer := &SubnetDeployer{
 		procChecker:         procChecker,
@@ -78,7 +78,7 @@ func TestExistsWithLatestVersion(t *testing.T) {
 	tmpDir := t.TempDir()
 	bc := binutils.NewBinaryChecker()
 
-	exists, latest, err := bc.ExistsWithLatestVersion(tmpDir)
+	exists, latest, err := bc.ExistsWithLatestVersion(tmpDir, "avalanchego-v")
 	assert.NoError(err)
 	assert.False(exists)
 	assert.Empty(latest)
@@ -86,7 +86,7 @@ func TestExistsWithLatestVersion(t *testing.T) {
 	fake := filepath.Join(tmpDir, "anything")
 	err = os.Mkdir(fake, perms.ReadWriteExecute)
 	assert.NoError(err)
-	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir)
+	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir, "avalanchego-v")
 	assert.NoError(err)
 	assert.False(exists)
 	assert.Empty(latest)
@@ -94,7 +94,7 @@ func TestExistsWithLatestVersion(t *testing.T) {
 	avagoOnly := filepath.Join(tmpDir, "avalanchego")
 	err = os.Mkdir(avagoOnly, perms.ReadWriteExecute)
 	assert.NoError(err)
-	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir)
+	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir, "avalanchego-v")
 	assert.NoError(err)
 	assert.False(exists)
 	assert.Empty(latest)
@@ -102,7 +102,7 @@ func TestExistsWithLatestVersion(t *testing.T) {
 	existsOneOnly := filepath.Join(tmpDir, "avalanchego-v1.7.10")
 	err = os.Mkdir(existsOneOnly, perms.ReadWriteExecute)
 	assert.NoError(err)
-	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir)
+	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir, "avalanchego-v")
 	assert.NoError(err)
 	assert.True(exists)
 	assert.Equal(existsOneOnly, latest)
@@ -133,7 +133,7 @@ func TestExistsWithLatestVersion(t *testing.T) {
 	err = os.Mkdir(ver8, perms.ReadWriteExecute)
 	assert.NoError(err)
 
-	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir)
+	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir, "avalanchego-v")
 	assert.NoError(err)
 	assert.True(exists)
 	assert.Equal(ver2, latest)
@@ -151,7 +151,7 @@ func TestGetLatestAvagoVersion(t *testing.T) {
 	s := httptest.NewServer(testHandler)
 	defer s.Close()
 
-	v, err := getLatestAvagoVersion(s.URL)
+	v, err := binutils.GetLatestReleaseVersion(s.URL)
 	assert.NoError(err)
 	assert.Equal(v, testVersion)
 }

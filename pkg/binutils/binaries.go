@@ -10,8 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -24,12 +22,18 @@ import (
 	"github.com/coreos/go-semver/semver"
 )
 
+var (
+	// interface compliance
+	_ PluginBinaryDownloader = (*pluginBinaryDownloader)(nil)
+	_ BinaryChecker          = (*binaryChecker)(nil)
+)
+
 type PluginBinaryDownloader interface {
-	Download(ids.ID, string) error
+	Download(vmID ids.ID, pluginDir, binDir string) error
 }
 
 type BinaryChecker interface {
-	ExistsWithLatestVersion(name string) (bool, string, error)
+	ExistsWithLatestVersion(name, binaryPrefix string) (bool, string, error)
 }
 
 type (
@@ -173,11 +177,10 @@ func installTarGzArchive(targz []byte, binDir string) error {
 
 // ExistsWithLatestVersion returns true if avalanchego can be found and at what path
 // or false, if it can not be found (or an error if applies)
-func (abc *binaryChecker) ExistsWithLatestVersion(binDir string) (bool, string, error) {
+func (abc *binaryChecker) ExistsWithLatestVersion(binDir, binPrefix string) (bool, string, error) {
 	// TODO this still has loads of potential pit falls
 	// Should prob check for existing binary and plugin dir too
-	startsWith := "avalanchego-v"
-	match, err := filepath.Glob(filepath.Join(binDir, startsWith) + "*")
+	match, err := filepath.Glob(filepath.Join(binDir, binPrefix) + "*")
 	if err != nil {
 		return false, "", err
 	}
@@ -191,7 +194,7 @@ func (abc *binaryChecker) ExistsWithLatestVersion(binDir string) (bool, string, 
 		var semVers semver.Versions
 		for _, v := range match {
 			base := filepath.Base(v)
-			newv, err := semver.NewVersion(base[len(startsWith):])
+			newv, err := semver.NewVersion(base[len(binPrefix):])
 			if err != nil {
 				// ignore this one, it might be in an unexpected format
 				// e.g. a dir which has nothing to do with this
@@ -213,13 +216,17 @@ func (abc *binaryChecker) ExistsWithLatestVersion(binDir string) (bool, string, 
 }
 
 // getVMBinary downloads the binary from the binary server URL
-func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir string) error {
+func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir, binDir string) error {
 	vmID := id.String()
 	binaryPath := filepath.Join(pluginDir, vmID)
 	info, err := os.Stat(binaryPath)
 	if err == nil {
 		if info.Mode().IsRegular() {
 			d.log.Debug("binary already exists, skipping download")
+			// remove all other plugins other than this one and `evm` for now.
+			if err := cleanupPluginDir(vmID, pluginDir); err != nil {
+				return err
+			}
 			return nil
 		}
 		return fmt.Errorf("binary plugin path %q was found but is not a regular file", binaryPath)
@@ -228,47 +235,103 @@ func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir string) error {
 		return err
 	}
 
-	ux.Logger.PrintToUser("VM binary does not exist locally, starting download...")
-
-	base, err := url.Parse(constants.BinaryServerURL)
+	binChecker := NewBinaryChecker()
+	exists, latest, err := binChecker.ExistsWithLatestVersion(binDir, subnetEVMName+"-v")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed trying to locate plugin binary: %s", binDir)
 	}
-
-	// Path params
-	// base.Path += "this will get automatically encoded"
-
-	// Query params
-	params := url.Values{}
-	params.Add("vmid", vmID)
-	base.RawQuery = params.Encode()
-
-	d.log.Debug("starting download from %s...\n\n", base.String())
-
-	resp, err := http.Get(base.String())
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusOK {
-		bodyBytes, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		d.log.Debug("download successful. installing binary...")
-		return d.installBinary(bodyBytes, binaryPath)
-
+	if exists {
+		d.log.Debug("local plugin binary found. skipping installation")
 	} else {
-		return fmt.Errorf("downloading binary failed, status code: %d", resp.StatusCode)
+		ux.Logger.PrintToUser("VM binary does not exist locally, starting download...")
+
+		cancel := make(chan struct{})
+		go ux.PrintWait(cancel)
+		// TODO: we are hardcoding the release version at this point to 0.2.2
+		// until we have a better binary, dependency and version management
+		// as per https://github.com/ava-labs/avalanche-cli/pull/17#discussion_r887164924
+		latestVer := "v0.2.2"
+		/*
+			latestVer, err := GetLatestReleaseVersion(constants.SubnetEVMReleaseURL)
+			if err != nil {
+				return fmt.Errorf("failed to get latest subnet-evm release version: %w", err)
+			}
+		*/
+
+		latest, err = DownloadReleaseVersion(d.log, subnetEVMName, latestVer, binDir)
+		if err != nil {
+			return fmt.Errorf("failed downloading latest subnet-evm version: %w", err)
+		}
+		close(cancel)
+		fmt.Println()
 	}
+
+	evmPath := filepath.Join(latest, subnetEVMName)
+
+	if err := copyFile(evmPath, binaryPath); err != nil {
+		return fmt.Errorf("failed copying latest subnet-evm to plugin dir: %w", err)
+	}
+
+	// remove all other plugins other than this one and `evm` for now.
+	if err := cleanupPluginDir(vmID, pluginDir); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-// installBinary writes the binary as a byte array to the specified path
-func (d *pluginBinaryDownloader) installBinary(binary []byte, binaryPath string) error {
-	if err := os.WriteFile(binaryPath, binary, constants.DefaultPerms755); err != nil {
+// cleanupPluginDir removes all other plugins other than the given one and `evm` for now.
+// TODO: this is only acceptable at this stage where ANR can't run multiple plugins anyways
+// but should be later REMOVED if we support multiple plugins (with the caveat of a new
+// tricky situation about to decide when and how to remove plugins from the plugin dir)
+func cleanupPluginDir(vmID, pluginDir string) error {
+	// list all plugins
+	entries, err := os.ReadDir(pluginDir)
+	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("binary installed. ready to go.")
+
+	pluginWhiteList := map[string]struct{}{
+		"evm": {},
+		vmID:  {},
+	}
+
+	for _, e := range entries {
+		name := e.Name()
+		if _, ok := pluginWhiteList[name]; !ok {
+			if err := os.Remove(filepath.Join(pluginDir, name)); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func copyFile(src, dest string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	out, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		cerr := out.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
+	if _, err = io.Copy(out, in); err != nil {
+		return err
+	}
+	if err = out.Sync(); err != nil {
+		return err
+	}
+	if err = out.Chmod(constants.DefaultPerms755); err != nil {
+		return err
+	}
 	return nil
 }
