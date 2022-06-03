@@ -158,7 +158,7 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, error) {
 	remainingPrecompiles := []string{nativeMint, contractAllowList, txAllowList, cancel}
 
 	for {
-		firstStr := "Would you like to add a custom precompile?"
+		firstStr := "Advanced: Would you like to add a custom precompile to modify the EVM?"
 		secondStr := "Would you like to add additional precompiles?"
 
 		var promptStr string
@@ -167,7 +167,7 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, error) {
 			first = false
 		}
 
-		addPrecompile, err := prompts.CaptureYesNo(promptStr)
+		addPrecompile, err := prompts.CaptureNoYes(promptStr)
 		if err != nil {
 			return config, err
 		}
