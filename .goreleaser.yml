@@ -1,0 +1,21 @@
+# ref. https://goreleaser.com/customization/build/
+builds:
+  - id: avalanche-cli
+    main: ./main.go
+    binary: avalanche 
+    flags:
+      - -v
+    # windows is ignored by default, as the `goos` field by default only
+    # contains linux and darwin
+    ignore:
+      - goos: darwin
+        goarch: 386
+      - goos: linux
+        goarch: 386
+
+release:
+  # Repo in which the release will be created.
+  # Default is extracted from the origin remote URL or empty if its private hosted.
+  github:
+    owner: ava-labs
+    name: avalanche-cli 
