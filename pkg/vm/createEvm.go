@@ -81,11 +81,9 @@ func getDefaultAllocation() (core.GenesisAlloc, error) {
 		return allocation, errors.New("Unable to decode default allocation")
 	}
 
-	account := core.GenesisAccount{
+	allocation[ewokAddress] = core.GenesisAccount{
 		Balance: defaultAmount,
 	}
-
-	allocation[ewokAddress] = account
 	return allocation, nil
 }
 
@@ -114,7 +112,7 @@ func getAllocation() (core.GenesisAlloc, error) {
 			return nil, err
 		}
 
-		amount, err := prompts.CapturePositiveBigInt("Amount to airdrop (in 10^18 units)")
+		amount, err := prompts.CapturePositiveBigInt("Amount to airdrop (in AVAX units)")
 		if err != nil {
 			return nil, err
 		}
