@@ -65,7 +65,7 @@ func TestDeployToLocal(t *testing.T) {
 	}
 
 	// create a simple genesis for the test
-	genesis := `{"config":{"chainId":9999}}`
+	genesis := `{"config":{"chainId":9999},"gasLimit":"0x0","difficulty":"0x0","alloc":{}}`
 	// create a dummy genesis file, deploy will check it exists
 	testGenesis, err := os.CreateTemp(tmpDir, "test-genesis.json")
 	assert.NoError(err)
