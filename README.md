@@ -13,12 +13,12 @@ avalanche subnet deploy <subnetName>
 
 Shut down your local deployment with:
 ```bash
-avalanche network stop [snapshotName]
+avalanche network stop
 ```
 
 Restart your local deployment (from where you left off) with:
 ```bash
-avalanche network start [snapshotName]
+avalanche network start
 ```
 
 ## Disclaimer
