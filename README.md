@@ -16,6 +16,11 @@ Shut down your local deployment with:
 avalanche network stop [snapshotName]
 ```
 
+Restart your local deployment (from where you left off) with:
+```bash
+avalanche network start [snapshotName]
+```
+
 ## Disclaimer
 
 **This beta project is very early in its lifecycle. It will evolve rapidly over the coming weeks and months. Until we achieve our first mature release, we are not committed to preserving backwards compatibility. Commands may be renamed or removed in future versions.**
@@ -31,7 +36,7 @@ avalanche network stop [snapshotName]
 
 ## Installation
 
-### Comptatibility
+### Compatibility
 The tool has been tested on Linux and Mac. Windows is currently not supported.
 
 ### Instructions
