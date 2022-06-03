@@ -5,14 +5,12 @@ builds:
     binary: avalanche 
     flags:
       - -v
+    # windows is ignored by default, as the `goos` field by default only
+    # contains linux and darwin
     ignore:
       - goos: darwin
         goarch: 386
       - goos: linux
-        goarch: 386
-      - goos: windows
-        goarch: 386
-      - goos: freebsd
         goarch: 386
 
 release:
