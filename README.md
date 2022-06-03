@@ -96,10 +96,6 @@ To deploy, run
 
 Local deploys will start a multi-node Avalanche network in the background on your machine. To manage that network, see the `avalanche network` command tree.
 
-If you'd like some additional information on how you can deploy your subnet to Fuji Testnet, run
-
-`avalanche subnet instructions <subnetName>`
-
 ### Deploying to Fuji
 If you can't wait to for this tool's fuji integration, you can use the `subnet-cli` tool to deploy your subnet.
 
