@@ -11,8 +11,10 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
-const yes = "Yes"
-const no = "No"
+const (
+	yes = "Yes"
+	no  = "No"
+)
 
 func validatePositiveBigInt(input string) error {
 	n := new(big.Int)

@@ -92,7 +92,7 @@ func getDefaultAllocation() (core.GenesisAlloc, error) {
 func getAllocation() (core.GenesisAlloc, error) {
 	allocation := core.GenesisAlloc{}
 
-	defaultAirdrop := "Airdrop 1 mil tokens to the default address (do not use in production)"
+	defaultAirdrop := "Airdrop 1 million tokens to the default address (do not use in production)"
 	customAirdrop := "Customize your airdrop"
 	extendAirdrop := "Would you like to airdrop more tokens?"
 
@@ -127,7 +127,7 @@ func getAllocation() (core.GenesisAlloc, error) {
 
 		allocation[addressHex] = account
 
-		continueAirdrop, err := prompts.CaptureYesNo(extendAirdrop)
+		continueAirdrop, err := prompts.CaptureNoYes(extendAirdrop)
 		if err != nil {
 			return nil, err
 		}
