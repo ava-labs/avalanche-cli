@@ -81,7 +81,7 @@ func getDefaultAllocation() (core.GenesisAlloc, error) {
 		return allocation, errors.New("Unable to decode default allocation")
 	}
 
-	allocation[ewokAddress] = core.GenesisAccount{
+	allocation[Prefunded_ewoq_Address] = core.GenesisAccount{
 		Balance: defaultAmount,
 	}
 	return allocation, nil

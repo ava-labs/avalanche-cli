@@ -14,6 +14,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
@@ -63,10 +64,14 @@ func TestDeployToLocal(t *testing.T) {
 		log:                 logging.NoLog{},
 	}
 
+	// create a simple genesis for the test
+	genesis := `{"config":{"chainId":9999}}`
 	// create a dummy genesis file, deploy will check it exists
 	testGenesis, err := os.CreateTemp(tmpDir, "test-genesis.json")
 	assert.NoError(err)
 
+	err = os.WriteFile(testGenesis.Name(), []byte(genesis), constants.DefaultPerms755)
+	assert.NoError(err)
 	// test actual deploy
 	err = testDeployer.DeployToLocalNetwork("test", testGenesis.Name())
 	assert.NoError(err)

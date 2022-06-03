@@ -4,16 +4,20 @@ package subnet
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/utils"
@@ -107,6 +111,13 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 			"evaluated chain genesis file to be at %s but it does not seem to exist.", chain_genesis)
 	}
 
+	// we need the chainID just later, but it would be ugly to fail the whole deployment
+	// for a JSON unmarshalling error, so let's do it here already
+	chainID, err := getChainIdFromGenesis(chain_genesis)
+	if err != nil {
+		return fmt.Errorf("failed to unpack chain ID from genesis: %w", err)
+	}
+
 	customVMs := map[string]string{
 		chain: chain_genesis,
 	}
@@ -154,6 +165,14 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	for _, u := range endpoints {
 		ux.Logger.PrintToUser(u)
 	}
+	fmt.Println()
+	firstURL := endpoints[0]
+	ux.Logger.PrintToUser("Metamask connection details (any node URL from above works):")
+	ux.Logger.PrintToUser("RPC URL:          %s", firstURL[strings.LastIndex(firstURL, "http"):])
+	ux.Logger.PrintToUser("Funded address:   %s", vm.Prefunded_ewoq_Address)
+	ux.Logger.PrintToUser("Network name:     %s", chain)
+	ux.Logger.PrintToUser("Chain ID:         %s", chainID)
+	ux.Logger.PrintToUser("Currency Symbol:  LEVM")
 	return nil
 }
 
@@ -290,4 +309,35 @@ func (d *SubnetDeployer) WaitForHealthy(ctx context.Context, cli client.Client, 
 			return endpoints, nil
 		}
 	}
+}
+
+// getChainIdFromGenesis extracts the chain ID from the provided genesis file
+// we don't need to check the existence of the file as we already did before
+// TODO: We should probably store this in some global object when asking the user so we don't need
+// to unpack this here anymore. The sidecar seems the best candidate
+func getChainIdFromGenesis(genesis string) (string, error) {
+	genBytes, err := os.ReadFile(genesis)
+	if err != nil {
+		return "", err
+	}
+	var (
+		decodedGenesis, decodedConfig map[string]interface{}
+		ok                            bool
+	)
+
+	if err := json.Unmarshal(genBytes, &decodedGenesis); err != nil {
+		return "", err
+	}
+
+	config := decodedGenesis["config"]
+	if decodedConfig, ok = config.(map[string]interface{}); !ok {
+		return "", errors.New("decoding the config struct failed")
+	}
+
+	chainID := decodedConfig["chainId"].(float64)
+	if chainID == 0 {
+		return "", errors.New("couldn't find chain ID in genesis")
+	}
+
+	return fmt.Sprint(chainID), nil
 }
