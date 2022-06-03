@@ -5,6 +5,7 @@ package vm
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -63,7 +64,7 @@ func CreateEvmGenesis(name string, log logging.Logger) ([]byte, error) {
 
 func getChainId() (*big.Int, error) {
 	// TODO check against known chain ids and provide warning
-	fmt.Println("Select your subnet's ChainId. It can be any positive integer.")
+	fmt.Println("Enter your subnet's ChainId. It can be any positive integer.")
 
 	chainId, err := prompts.CapturePositiveBigInt("ChainId")
 	if err != nil {
@@ -73,44 +74,64 @@ func getChainId() (*big.Int, error) {
 	return chainId, nil
 }
 
-func getAllocation() (core.GenesisAlloc, error) {
-	first := true
+func getDefaultAllocation() (core.GenesisAlloc, error) {
+	allocation := core.GenesisAlloc{}
+	defaultAmount, ok := new(big.Int).SetString(defaultAirdropAmount, 10)
+	if !ok {
+		return allocation, errors.New("Unable to decode default allocation")
+	}
 
+	account := core.GenesisAccount{
+		Balance: defaultAmount,
+	}
+
+	allocation[ewokAddress] = account
+	return allocation, nil
+}
+
+func getAllocation() (core.GenesisAlloc, error) {
 	allocation := core.GenesisAlloc{}
 
+	defaultAirdrop := "Airdrop 1 mil tokens to the default address (do not use in production)"
+	customAirdrop := "Customize your airdrop"
+	extendAirdrop := "Would you like to airdrop more tokens?"
+
+	airdropType, err := prompts.CaptureList(
+		"How would you like to distribute funds",
+		[]string{defaultAirdrop, customAirdrop},
+	)
+	if err != nil {
+		return allocation, err
+	}
+
+	if airdropType == defaultAirdrop {
+		return getDefaultAllocation()
+	}
+
 	for {
-		firstStr := "Would you like to airdrop tokens?"
-		secondStr := "Would you like to airdrop more tokens?"
-
-		var promptStr string
-		if promptStr = secondStr; first {
-			promptStr = firstStr
-			first = false
-		}
-
-		continueAirdrop, err := prompts.CaptureYesNo(promptStr)
+		addressHex, err := prompts.CaptureAddress("Address to airdrop to")
 		if err != nil {
 			return nil, err
 		}
 
-		if continueAirdrop {
-			addressHex, err := prompts.CaptureAddress("Address")
-			if err != nil {
-				return nil, err
-			}
+		amount, err := prompts.CapturePositiveBigInt("Amount to airdrop (in 10^18 units)")
+		if err != nil {
+			return nil, err
+		}
 
-			amount, err := prompts.CapturePositiveBigInt("Amount (in wei)")
-			if err != nil {
-				return nil, err
-			}
+		amount = amount.Mul(amount, oneAvax)
 
-			account := core.GenesisAccount{
-				Balance: amount,
-			}
+		account := core.GenesisAccount{
+			Balance: amount,
+		}
 
-			allocation[addressHex] = account
+		allocation[addressHex] = account
 
-		} else {
+		continueAirdrop, err := prompts.CaptureYesNo(extendAirdrop)
+		if err != nil {
+			return nil, err
+		}
+		if !continueAirdrop {
 			return allocation, nil
 		}
 	}

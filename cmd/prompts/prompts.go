@@ -11,6 +11,9 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
+const yes = "Yes"
+const no = "No"
+
 func validatePositiveBigInt(input string) error {
 	n := new(big.Int)
 	n, ok := n.SetString(input, 10)
@@ -85,12 +88,10 @@ func CaptureExistingFilepath(promptStr string) (string, error) {
 	return pathStr, nil
 }
 
-func CaptureYesNo(promptStr string) (bool, error) {
-	const yes = "Yes"
-	const no = "No"
+func yesNoBase(promptStr string, orderedOptions []string) (bool, error) {
 	prompt := promptui.Select{
 		Label: promptStr,
-		Items: []string{yes, no},
+		Items: orderedOptions,
 	}
 
 	_, decision, err := prompt.Run()
@@ -98,6 +99,14 @@ func CaptureYesNo(promptStr string) (bool, error) {
 		return false, err
 	}
 	return decision == yes, nil
+}
+
+func CaptureYesNo(promptStr string) (bool, error) {
+	return yesNoBase(promptStr, []string{yes, no})
+}
+
+func CaptureNoYes(promptStr string) (bool, error) {
+	return yesNoBase(promptStr, []string{no, yes})
 }
 
 func CaptureList(promptStr string, options []string) (string, error) {
