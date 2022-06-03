@@ -4,21 +4,28 @@ package subnet
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/utils"
+	avago_genesis "github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/storage"
+	"github.com/ava-labs/coreth/core"
+	"github.com/ava-labs/coreth/params"
 )
 
 type SubnetDeployer struct {
@@ -107,6 +114,14 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 			"evaluated chain genesis file to be at %s but it does not seem to exist.", chain_genesis)
 	}
 
+	// we need the chainID just later, but it would be ugly to fail the whole deployment
+	// for a JSON unmarshalling error, so let's do it here already
+	genesis, err := getGenesis(chain_genesis)
+	if err != nil {
+		return fmt.Errorf("failed to unpack chain ID from genesis: %w", err)
+	}
+	chainID := genesis.Config.ChainID
+
 	customVMs := map[string]string{
 		chain: chain_genesis,
 	}
@@ -154,6 +169,24 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	for _, u := range endpoints {
 		ux.Logger.PrintToUser(u)
 	}
+	fmt.Println()
+	firstURL := endpoints[0]
+
+	ux.Logger.PrintToUser("Metamask connection details (any node URL from above works):")
+	ux.Logger.PrintToUser("RPC URL:          %s", firstURL[strings.LastIndex(firstURL, "http"):])
+	for address := range genesis.Alloc {
+		amount := genesis.Alloc[address].Balance
+		formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
+		if address == vm.Prefunded_ewoq_Address {
+			ux.Logger.PrintToUser("Funded address:   %s with %s (10^18) - private key: %s", address, formattedAmount.String(), avago_genesis.EWOQKeyStr)
+		} else {
+			ux.Logger.PrintToUser("Funded address:   %s with %s", address, formattedAmount.String())
+		}
+	}
+
+	ux.Logger.PrintToUser("Network name:     %s", chain)
+	ux.Logger.PrintToUser("Chain ID:         %s", chainID)
+	ux.Logger.PrintToUser("Currency Symbol:  TEST")
 	return nil
 }
 
@@ -290,4 +323,20 @@ func (d *SubnetDeployer) WaitForHealthy(ctx context.Context, cli client.Client, 
 			return endpoints, nil
 		}
 	}
+}
+
+// getGenesis extracts the chain genesis from the provided genesis file
+// we don't need to check the existence of the file as we already did before
+// TODO: We should probably store this in some global object when asking the user so we don't need
+// to unpack this here anymore. The sidecar seems the best candidate
+func getGenesis(genesisFile string) (core.Genesis, error) {
+	var genesis core.Genesis
+	genBytes, err := os.ReadFile(genesisFile)
+	if err != nil {
+		return genesis, err
+	}
+	if err := json.Unmarshal(genBytes, &genesis); err != nil {
+		return genesis, err
+	}
+	return genesis, nil
 }
