@@ -46,7 +46,7 @@ func NewLocalSubnetDeployer(log logging.Logger, baseDir string) *SubnetDeployer 
 		binChecker:          binutils.NewBinaryChecker(),
 		getClientFunc:       binutils.NewGRPCClient,
 		binaryDownloader:    binutils.NewPluginBinaryDownloader(log),
-		healthCheckInterval: 10 * time.Second,
+		healthCheckInterval: 100 * time.Millisecond,
 		log:                 log,
 		baseDir:             baseDir,
 	}
@@ -154,19 +154,17 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	ux.Logger.PrintToUser("Network has been booted. Wait until healthy...")
 
-	resp, err := cli.Health(ctx)
+	subnetIDs, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval, true)
 	if err != nil {
-		return fmt.Errorf("the health check failed to complete. The server might be down or have crashed, check the logs! %s", err)
+		_ = binutils.KillgRPCServerProcess()
+		return fmt.Errorf("failed to query network health: %s", err)
 	}
-	fmt.Printf("%v\n", resp.ClusterInfo.Healthy)
-	fmt.Printf("%v\n", resp.ClusterInfo.Subnets)
 
-	subnetId := ""
 	blockchainSpecs := []*rpcpb.BlockchainSpec{
 		{
 			VmName:   chain,
 			Genesis:  chain_genesis,
-			SubnetId: &subnetId,
+			SubnetId: &subnetIDs[0],
 		},
 	}
 	deployBlockchainsOpts := []client.OpOption{
@@ -184,7 +182,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	d.log.Debug(deployBlockchainsInfo.String())
 
-	endpoints, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
+	endpoints, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval, false)
 	if err != nil {
 		_ = binutils.KillgRPCServerProcess()
 		return fmt.Errorf("failed to query network health: %s", err)
@@ -310,7 +308,12 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 }
 
 // WaitForHealthy polls continuously until the network is ready to be used
-func (d *SubnetDeployer) WaitForHealthy(ctx context.Context, cli client.Client, healthCheckInterval time.Duration) ([]string, error) {
+func (d *SubnetDeployer) WaitForHealthy(
+	ctx context.Context,
+	cli client.Client,
+	healthCheckInterval time.Duration,
+	returnSubnetIDs bool,
+) ([]string, error) {
 	cancel := make(chan struct{})
 	go ux.PrintWait(cancel)
 	for {
@@ -330,12 +333,20 @@ func (d *SubnetDeployer) WaitForHealthy(ctx context.Context, cli client.Client, 
 				d.log.Debug("warning: ClusterInfo is nil. trying again...")
 				continue
 			}
-			if len(resp.ClusterInfo.CustomVms) == 0 {
-				d.log.Debug("network is up but custom VMs are not installed yet. polling again...")
+			if !resp.ClusterInfo.Healthy {
+				d.log.Debug("network is not healthy. polling again...")
 				continue
 			}
 			if !resp.ClusterInfo.CustomVmsHealthy {
 				d.log.Debug("network is up but custom VMs are not healthy. polling again...")
+				continue
+			}
+			if returnSubnetIDs {
+				close(cancel)
+				return resp.ClusterInfo.Subnets, nil
+			}
+			if len(resp.ClusterInfo.CustomVms) == 0 {
+				d.log.Debug("network is up but custom VMs are not installed yet. polling again...")
 				continue
 			}
 			endpoints := []string{}
