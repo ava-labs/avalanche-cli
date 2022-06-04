@@ -19,4 +19,6 @@ const (
 	retainOldFiles   = 0 // retain all old log files
 
 	healthCheckInterval = 10 * time.Second
+
+	snapshotsDirName = "snapshots"
 )

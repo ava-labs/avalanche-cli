@@ -34,6 +34,8 @@ in with avalanche subnet create myNewSubnet.`,
 		PersistentPreRunE: setupLogging,
 		Version:           Version,
 	}
+
+	snapshotsDir string
 )
 
 func setupLogging(cmd *cobra.Command, args []string) error {
@@ -91,6 +93,17 @@ func init() {
 	if err != nil {
 		// no logger here yet
 		fmt.Printf("failed creating the basedir %s: %s\n", baseDir, err)
+		os.Exit(1)
+	}
+
+	// Set snapshots dir
+	snapshotsDir = filepath.Join(baseDir, snapshotsDirName)
+
+	// Create snapshots dir if it doesn't exist
+	err = os.MkdirAll(snapshotsDir, os.ModePerm)
+	if err != nil {
+		// no logger here yet
+		fmt.Printf("failed creating the snapshots dir %s: %s\n", snapshotsDir, err)
 		os.Exit(1)
 	}
 

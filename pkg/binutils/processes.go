@@ -54,11 +54,13 @@ func NewGRPCClient() (client.Client, error) {
 }
 
 // NewGRPCClient hides away the details (params) of creating a gRPC server
-func NewGRPCServer() (server.Server, error) {
+func NewGRPCServer(snapshotsDir string) (server.Server, error) {
 	return server.New(server.Config{
-		Port:        gRPCServerEndpoint,
-		GwPort:      gRPCGatewayEndpoint,
-		DialTimeout: gRPCDialTimeout,
+		Port:                gRPCServerEndpoint,
+		GwPort:              gRPCGatewayEndpoint,
+		DialTimeout:         gRPCDialTimeout,
+		SnapshotsDir:        snapshotsDir,
+		RedirectNodesOutput: false,
 	})
 }
 
