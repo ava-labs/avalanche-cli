@@ -182,7 +182,6 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	// choose next subnetID
 	sort.Strings(subnetIDs)
 	subnetId := subnetIDs[len(blockchainsInfo)%len(subnetIDs)]
-	fmt.Printf("USANDO %s\n", subnetId)
 
 	blockchainSpecs := []*rpcpb.BlockchainSpec{
 		{
@@ -238,6 +237,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	ux.Logger.PrintToUser("Network name:     %s", chain)
 	ux.Logger.PrintToUser("Chain ID:         %s", chainID)
 	ux.Logger.PrintToUser("Currency Symbol:  TEST")
+	fmt.Printf("USANDO %s\n", subnetId)
 	return nil
 }
 
