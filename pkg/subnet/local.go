@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -172,17 +173,22 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	d.log.Debug(loadSnapshotsInfo.String())
 
-	subnetIDs, _, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
+	subnetIDs, blockchainsInfo, _, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
 		_ = binutils.KillgRPCServerProcess()
 		return fmt.Errorf("failed to query network health: %s", err)
 	}
 
+	// choose next subnetID
+	sort.Strings(subnetIDs)
+	subnetId := subnetIDs[len(blockchainsInfo)%len(subnetIDs)]
+	fmt.Printf("USANDO %s\n", subnetId)
+
 	blockchainSpecs := []*rpcpb.BlockchainSpec{
 		{
 			VmName:   chain,
 			Genesis:  chain_genesis,
-			SubnetId: &subnetIDs[0],
+			SubnetId: &subnetId,
 		},
 	}
 	deployBlockchainsOpts := []client.OpOption{
@@ -203,7 +209,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	fmt.Println()
 	ux.Logger.PrintToUser("Blockchain has been deployed. Wail until network acknowledges...")
 
-	_, endpoints, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
+	_, _, endpoints, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
 		_ = binutils.KillgRPCServerProcess()
 		return fmt.Errorf("failed to query network health: %s", err)
@@ -334,21 +340,21 @@ func (d *SubnetDeployer) WaitForHealthy(
 	ctx context.Context,
 	cli client.Client,
 	healthCheckInterval time.Duration,
-) ([]string, []string, error) {
+) ([]string, []string, []string, error) {
 	cancel := make(chan struct{})
 	go ux.PrintWait(cancel)
 	for {
 		select {
 		case <-ctx.Done():
 			cancel <- struct{}{}
-			return nil, nil, ctx.Err()
+			return nil, nil, nil, ctx.Err()
 		case <-time.After(healthCheckInterval):
 			cancel <- struct{}{}
 			d.log.Debug("polling for health...")
 			go ux.PrintWait(cancel)
 			resp, err := cli.Health(ctx)
 			if err != nil {
-				return nil, nil, fmt.Errorf("the health check failed to complete. The server might be down or have crashed, check the logs! %s", err)
+				return nil, nil, nil, fmt.Errorf("the health check failed to complete. The server might be down or have crashed, check the logs! %s", err)
 			}
 			if resp.ClusterInfo == nil {
 				d.log.Debug("warning: ClusterInfo is nil. trying again...")
@@ -363,6 +369,10 @@ func (d *SubnetDeployer) WaitForHealthy(
 				continue
 			}
 			d.log.Debug("network is up and custom VMs are up")
+			blockchains := []string{}
+			for vmID, vmInfo := range resp.ClusterInfo.CustomVms {
+				blockchains = append(blockchains, fmt.Sprintf("%s/%s/%s", vmID, vmInfo.BlockchainId, vmInfo.SubnetId))
+			}
 			endpoints := []string{}
 			for _, nodeInfo := range resp.ClusterInfo.NodeInfos {
 				for vmID, vmInfo := range resp.ClusterInfo.CustomVms {
@@ -370,7 +380,7 @@ func (d *SubnetDeployer) WaitForHealthy(
 				}
 			}
 			close(cancel)
-			return resp.ClusterInfo.Subnets, endpoints, nil
+			return resp.ClusterInfo.Subnets, blockchains, endpoints, nil
 		}
 	}
 }

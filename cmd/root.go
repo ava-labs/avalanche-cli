@@ -115,11 +115,11 @@ func init() {
 	if _, err := os.Stat(defaultSnapshotPath); os.IsNotExist(err) {
 		defaultSnapshotBytes, err := ioutil.ReadFile("defaultSnapshot.tar.gz")
 		if err != nil {
-			fmt.Printf("failed reading initial default snapshot: %w\n", err)
+			fmt.Printf("failed reading initial default snapshot: %s\n", err)
 			os.Exit(1)
 		}
 		if err := binutils.InstallArchive("tar.gz", defaultSnapshotBytes, snapshotsDir); err != nil {
-			fmt.Printf("failed installing initial default snapshot: %w\n", err)
+			fmt.Printf("failed installing initial default snapshot: %s\n", err)
 			os.Exit(1)
 		}
 	}
