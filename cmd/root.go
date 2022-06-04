@@ -4,10 +4,13 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
@@ -105,6 +108,20 @@ func init() {
 		// no logger here yet
 		fmt.Printf("failed creating the snapshots dir %s: %s\n", snapshotsDir, err)
 		os.Exit(1)
+	}
+
+	// Copy default snapshot if not present
+	defaultSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.DefaultSnapshotName)
+	if _, err := os.Stat(defaultSnapshotPath); os.IsNotExist(err) {
+		defaultSnapshotBytes, err := ioutil.ReadFile("defaultSnapshot.tar.gz")
+		if err != nil {
+			fmt.Printf("failed reading initial default snapshot: %w\n", err)
+			os.Exit(1)
+		}
+		if err := binutils.InstallArchive("tar.gz", defaultSnapshotBytes, snapshotsDir); err != nil {
+			fmt.Printf("failed installing initial default snapshot: %w\n", err)
+			os.Exit(1)
+		}
 	}
 
 	// Disable printing the completion command

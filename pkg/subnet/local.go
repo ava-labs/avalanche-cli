@@ -165,11 +165,12 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 		if !strings.Contains(err.Error(), "already bootstrapped") {
 			return fmt.Errorf("failed to start network :%s", err)
 		}
+		ux.Logger.PrintToUser("Network has already been booted. Wait until healthy...")
+	} else {
+		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 	}
 
 	d.log.Debug(loadSnapshotsInfo.String())
-
-	ux.Logger.PrintToUser("Network has been booted. Wait until healthy...")
 
 	subnetIDs, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval, true)
 	if err != nil {
