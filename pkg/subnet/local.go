@@ -182,6 +182,9 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	d.log.Debug(deployBlockchainsInfo.String())
 
+	fmt.Println()
+	ux.Logger.PrintToUser("Blockchain has been deployed. Wail until network acknowledges...")
+
 	endpoints, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval, false)
 	if err != nil {
 		_ = binutils.KillgRPCServerProcess()
