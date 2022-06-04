@@ -71,7 +71,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 		}
 		ux.Logger.PrintToUser("Network has already been booted. Wait until healthy...")
 	} else {
-		ux.Logger.PrintToUser("Network has been booted. Wait until healthy...")
+		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 	}
 
 	// TODO: this should probably be extracted from the deployer and
@@ -82,9 +82,14 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println()
-	ux.Logger.PrintToUser("Network ready to use. Local network node endpoints:")
-	for _, u := range endpoints {
-		ux.Logger.PrintToUser(u)
+	if len(endpoints) == 0 {
+		ux.Logger.PrintToUser("Network ready to use. No local network node endpoints")
+	} else {
+		ux.Logger.PrintToUser("Network ready to use. Local network node endpoints:")
+		for _, u := range endpoints {
+			ux.Logger.PrintToUser(u)
+		}
 	}
+
 	return nil
 }

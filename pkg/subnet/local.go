@@ -91,8 +91,6 @@ func (d *SubnetDeployer) GetBinPaths() (string, string, error) {
 		return "", "", fmt.Errorf("failed setting up local environment: %w", err)
 	}
 
-	ux.Logger.PrintToUser("Avalanchego installation successful")
-
 	pluginDir := filepath.Join(avagoDir, "plugins")
 	avalancheGoBinPath := filepath.Join(avagoDir, "avalanchego")
 
@@ -326,6 +324,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 			return "", err
 		}
 	}
+	ux.Logger.PrintToUser("Avalanchego installation successful")
 	return filepath.Join(binDir, avagoSubDir), nil
 }
 
