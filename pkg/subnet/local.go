@@ -58,6 +58,13 @@ type getGRPCClientFunc func() (client.Client, error)
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
 func (d *SubnetDeployer) DeployToLocalNetwork(chain string, chain_genesis string) error {
+	if err := d.StartServer(); err != nil {
+		return err
+	}
+	return d.doDeploy(chain, chain_genesis)
+}
+
+func (d *SubnetDeployer) StartServer() error {
 	isRunning, err := d.procChecker.IsServerProcessRunning()
 	if err != nil {
 		return fmt.Errorf("failed querying if server process is running: %w", err)
@@ -69,7 +76,7 @@ func (d *SubnetDeployer) DeployToLocalNetwork(chain string, chain_genesis string
 		}
 		d.backendStartedHere = true
 	}
-	return d.doDeploy(chain, chain_genesis)
+	return nil
 }
 
 // BackendStartedHere returns true if the backend was started by this run,
@@ -78,11 +85,10 @@ func (d *SubnetDeployer) BackendStartedHere() bool {
 	return d.backendStartedHere
 }
 
-// doDeploy the actual deployment to the network runner
-func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
+func (d *SubnetDeployer) GetBinPaths() (string, string, error) {
 	avagoDir, err := d.setupLocalEnv()
 	if err != nil {
-		return fmt.Errorf("failed setting up local environment: %w", err)
+		return "", "", fmt.Errorf("failed setting up local environment: %w", err)
 	}
 
 	ux.Logger.PrintToUser("Avalanchego installation successful")
@@ -92,7 +98,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	exists, err := storage.FolderExists(pluginDir)
 	if !exists || err != nil {
-		return fmt.Errorf("evaluated pluginDir to be %s but it does not exist.", pluginDir)
+		return "", "", fmt.Errorf("evaluated pluginDir to be %s but it does not exist.", pluginDir)
 	}
 
 	// TODO: we need some better version management here
@@ -100,7 +106,18 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	// * decide if force update or give user choice
 	exists, err = storage.FileExists(avalancheGoBinPath)
 	if !exists || err != nil {
-		return fmt.Errorf("evaluated avalancheGoBinPath to be %s but it does not exist.", avalancheGoBinPath)
+		return "", "", fmt.Errorf("evaluated avalancheGoBinPath to be %s but it does not exist.", avalancheGoBinPath)
+	}
+
+	return avalancheGoBinPath, pluginDir, nil
+}
+
+// doDeploy the actual deployment to the network runner
+func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
+
+	avalancheGoBinPath, pluginDir, err := d.GetBinPaths()
+	if err != nil {
+		return err
 	}
 
 	cli, err := d.getClientFunc()
@@ -109,7 +126,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	}
 	defer cli.Close()
 
-	exists, err = storage.FileExists(chain_genesis)
+	exists, err := storage.FileExists(chain_genesis)
 	if !exists || err != nil {
 		return fmt.Errorf(
 			"evaluated chain genesis file to be at %s but it does not seem to exist.", chain_genesis)

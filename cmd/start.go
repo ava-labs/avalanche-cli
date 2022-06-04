@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/spf13/cobra"
 )
 
@@ -27,6 +28,17 @@ is already running or if no subnets have been deployed.`,
 }
 
 func startNetwork(cmd *cobra.Command, args []string) error {
+	sd := subnet.NewLocalSubnetDeployer(log, baseDir)
+
+	if err := sd.StartServer(); err != nil {
+		return err
+	}
+
+	avalancheGoBinPath, pluginDir, err := sd.GetBinPaths()
+	if err != nil {
+		return err
+	}
+
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
 		return err
@@ -44,7 +56,15 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 	ctx := binutils.GetAsyncContext()
 
 	ux.Logger.PrintToUser(startMsg)
-	_, err = cli.LoadSnapshot(ctx, snapshotName)
+	loadSnapshotOpts := []client.OpOption{
+		client.WithPluginDir(pluginDir),
+		client.WithExecPath(avalancheGoBinPath),
+	}
+	_, err = cli.LoadSnapshot(
+		ctx,
+		snapshotName,
+		loadSnapshotOpts...,
+	)
 	if err != nil {
 		if !strings.Contains(err.Error(), "already bootstrapped") {
 			return fmt.Errorf("failed to start network with the persisted snapshot: %s", err)
@@ -56,7 +76,6 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 
 	// TODO: this should probably be extracted from the deployer and
 	// used as an independent helper
-	sd := subnet.NewLocalSubnetDeployer(log, baseDir)
 	endpoints, err := sd.WaitForHealthy(ctx, cli, healthCheckInterval, false)
 	if err != nil {
 		return fmt.Errorf("failed waiting for network to become healthy: %s", err)
