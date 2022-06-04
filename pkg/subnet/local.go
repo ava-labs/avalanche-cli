@@ -20,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
+	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	avago_genesis "github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -122,15 +123,6 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	}
 	chainID := genesis.Config.ChainID
 
-	loadSnapshotOpts := []client.OpOption{
-		client.WithPluginDir(pluginDir),
-		client.WithExecPath(avalancheGoBinPath),
-	}
-	//customVMs := map[string]string{
-	//	chain: chain_genesis,
-	//}
-	// client.WithCustomVMs(customVMs),
-
 	vmID, err := utils.VMID(chain)
 	if err != nil {
 		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
@@ -145,7 +137,11 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	ctx := binutils.GetAsyncContext()
 
 	ux.Logger.PrintToUser("VM ready. Trying to boot network...")
-	info, err := cli.LoadSnapshot(
+	loadSnapshotOpts := []client.OpOption{
+		client.WithPluginDir(pluginDir),
+		client.WithExecPath(avalancheGoBinPath),
+	}
+	loadSnapshotsInfo, err := cli.LoadSnapshot(
 		ctx,
 		constants.DefaultSnapshotName,
 		loadSnapshotOpts...,
@@ -154,8 +150,39 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 		return fmt.Errorf("failed to start network :%s", err)
 	}
 
-	d.log.Debug(info.String())
-	ux.Logger.PrintToUser("Network has been booted. Wait until healthy. Please be patient, this will take some time...")
+	d.log.Debug(loadSnapshotsInfo.String())
+
+	ux.Logger.PrintToUser("Network has been booted. Wait until healthy...")
+
+	resp, err := cli.Health(ctx)
+	if err != nil {
+		return fmt.Errorf("the health check failed to complete. The server might be down or have crashed, check the logs! %s", err)
+	}
+	fmt.Printf("%v\n", resp.ClusterInfo.Healthy)
+	fmt.Printf("%v\n", resp.ClusterInfo.Subnets)
+
+	subnetId := ""
+	blockchainSpecs := []*rpcpb.BlockchainSpec{
+		{
+			VmName:   chain,
+			Genesis:  chain_genesis,
+			SubnetId: &subnetId,
+		},
+	}
+	deployBlockchainsOpts := []client.OpOption{
+		client.WithPluginDir(pluginDir),
+		client.WithBlockchainSpecs(blockchainSpecs),
+	}
+
+	deployBlockchainsInfo, err := cli.DeployBlockchains(
+		ctx,
+		deployBlockchainsOpts...,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to deploy blockchain :%s", err)
+	}
+
+	d.log.Debug(deployBlockchainsInfo.String())
 
 	endpoints, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
