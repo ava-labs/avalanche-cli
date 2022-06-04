@@ -237,7 +237,6 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	ux.Logger.PrintToUser("Network name:     %s", chain)
 	ux.Logger.PrintToUser("Chain ID:         %s", chainID)
 	ux.Logger.PrintToUser("Currency Symbol:  TEST")
-	fmt.Printf("USANDO %s\n", subnetId)
 	return nil
 }
 
