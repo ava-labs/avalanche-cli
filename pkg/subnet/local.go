@@ -147,7 +147,9 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 		loadSnapshotOpts...,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to start network :%s", err)
+		if !strings.Contains(err.Error(), "already bootstrapped") {
+			return fmt.Errorf("failed to start network :%s", err)
+		}
 	}
 
 	d.log.Debug(loadSnapshotsInfo.String())
