@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -45,13 +46,18 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser(startMsg)
 	_, err = cli.LoadSnapshot(ctx, snapshotName)
 	if err != nil {
-		return fmt.Errorf("failed to start network with the persisted snapshot: %s", err)
+		if !strings.Contains(err.Error(), "already bootstrapped") {
+			return fmt.Errorf("failed to start network with the persisted snapshot: %s", err)
+		}
+		ux.Logger.PrintToUser("Network has already been booted. Wait until healthy...")
+	} else {
+		ux.Logger.PrintToUser("Network has been booted. Wait until healthy...")
 	}
 
 	// TODO: this should probably be extracted from the deployer and
 	// used as an independent helper
 	sd := subnet.NewLocalSubnetDeployer(log, baseDir)
-	endpoints, err := sd.WaitForHealthy(ctx, cli, healthCheckInterval, true)
+	endpoints, err := sd.WaitForHealthy(ctx, cli, healthCheckInterval, false)
 	if err != nil {
 		return fmt.Errorf("failed waiting for network to become healthy: %s", err)
 	}

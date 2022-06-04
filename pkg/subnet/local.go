@@ -346,13 +346,10 @@ func (d *SubnetDeployer) WaitForHealthy(
 				d.log.Debug("network is up but custom VMs are not healthy. polling again...")
 				continue
 			}
+			d.log.Debug("network is up and custom VMs are up")
 			if returnSubnetIDs {
 				close(cancel)
 				return resp.ClusterInfo.Subnets, nil
-			}
-			if len(resp.ClusterInfo.CustomVms) == 0 {
-				d.log.Debug("network is up but custom VMs are not installed yet. polling again...")
-				continue
 			}
 			endpoints := []string{}
 			for _, nodeInfo := range resp.ClusterInfo.NodeInfos {
@@ -360,7 +357,6 @@ func (d *SubnetDeployer) WaitForHealthy(
 					endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q: %s/ext/bc/%s/rpc", nodeInfo.Name, vmID, nodeInfo.GetUri(), vmInfo.BlockchainId))
 				}
 			}
-			d.log.Debug("cluster is up, subnets deployed, VMs are installed!")
 			close(cancel)
 			return endpoints, nil
 		}
