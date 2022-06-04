@@ -13,4 +13,8 @@ const (
 	AvalancheCliBinDir    = "bin"
 
 	RequestTimeout = 3 * time.Minute
+
+	// it's unlikely anyone would want to name a snapshot `default`
+	// but let's add some more entropy
+	DefaultSnapshotName = "default-1654102509"
 )

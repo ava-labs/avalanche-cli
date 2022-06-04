@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/ux"
 )
 
@@ -36,7 +37,7 @@ func stopNetwork(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		snapshotName = args[0]
 	} else {
-		snapshotName = defaultSnapshotName
+		snapshotName = constants.DefaultSnapshotName
 	}
 
 	ctx := binutils.GetAsyncContext()

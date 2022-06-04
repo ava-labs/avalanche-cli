@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/spf13/cobra"
@@ -35,7 +36,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 		snapshotName = args[0]
 		startMsg = fmt.Sprintf("Starting previously deployed and stopped snapshot %s...", snapshotName)
 	} else {
-		snapshotName = defaultSnapshotName
+		snapshotName = constants.DefaultSnapshotName
 		startMsg = "Starting previously deployed and stopped snapshot"
 	}
 

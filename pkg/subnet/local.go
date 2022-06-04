@@ -122,15 +122,14 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	}
 	chainID := genesis.Config.ChainID
 
-	customVMs := map[string]string{
-		chain: chain_genesis,
-	}
-
-	opts := []client.OpOption{
+	loadSnapshotOpts := []client.OpOption{
 		client.WithPluginDir(pluginDir),
-		client.WithCustomVMs(customVMs),
-		client.WithGlobalNodeConfig("{\"log-level\":\"debug\", \"log-display-level\":\"debug\"}"),
+		client.WithExecPath(avalancheGoBinPath),
 	}
+	//customVMs := map[string]string{
+	//	chain: chain_genesis,
+	//}
+	// client.WithCustomVMs(customVMs),
 
 	vmID, err := utils.VMID(chain)
 	if err != nil {
@@ -146,10 +145,10 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	ctx := binutils.GetAsyncContext()
 
 	ux.Logger.PrintToUser("VM ready. Trying to boot network...")
-	info, err := cli.Start(
+	info, err := cli.LoadSnapshot(
 		ctx,
-		avalancheGoBinPath,
-		opts...,
+		constants.DefaultSnapshotName,
+		loadSnapshotOpts...,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to start network :%s", err)
