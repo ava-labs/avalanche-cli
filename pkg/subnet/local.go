@@ -172,7 +172,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	d.log.Debug(loadSnapshotsInfo.String())
 
-	subnetIDs, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval, true)
+	subnetIDs, _, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
 		_ = binutils.KillgRPCServerProcess()
 		return fmt.Errorf("failed to query network health: %s", err)
@@ -203,7 +203,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	fmt.Println()
 	ux.Logger.PrintToUser("Blockchain has been deployed. Wail until network acknowledges...")
 
-	endpoints, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval, false)
+	_, endpoints, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
 		_ = binutils.KillgRPCServerProcess()
 		return fmt.Errorf("failed to query network health: %s", err)
@@ -334,22 +334,21 @@ func (d *SubnetDeployer) WaitForHealthy(
 	ctx context.Context,
 	cli client.Client,
 	healthCheckInterval time.Duration,
-	returnSubnetIDs bool,
-) ([]string, error) {
+) ([]string, []string, error) {
 	cancel := make(chan struct{})
 	go ux.PrintWait(cancel)
 	for {
 		select {
 		case <-ctx.Done():
 			cancel <- struct{}{}
-			return nil, ctx.Err()
+			return nil, nil, ctx.Err()
 		case <-time.After(healthCheckInterval):
 			cancel <- struct{}{}
 			d.log.Debug("polling for health...")
 			go ux.PrintWait(cancel)
 			resp, err := cli.Health(ctx)
 			if err != nil {
-				return nil, fmt.Errorf("the health check failed to complete. The server might be down or have crashed, check the logs! %s", err)
+				return nil, nil, fmt.Errorf("the health check failed to complete. The server might be down or have crashed, check the logs! %s", err)
 			}
 			if resp.ClusterInfo == nil {
 				d.log.Debug("warning: ClusterInfo is nil. trying again...")
@@ -364,10 +363,6 @@ func (d *SubnetDeployer) WaitForHealthy(
 				continue
 			}
 			d.log.Debug("network is up and custom VMs are up")
-			if returnSubnetIDs {
-				close(cancel)
-				return resp.ClusterInfo.Subnets, nil
-			}
 			endpoints := []string{}
 			for _, nodeInfo := range resp.ClusterInfo.NodeInfos {
 				for vmID, vmInfo := range resp.ClusterInfo.CustomVms {
@@ -375,7 +370,7 @@ func (d *SubnetDeployer) WaitForHealthy(
 				}
 			}
 			close(cancel)
-			return endpoints, nil
+			return resp.ClusterInfo.Subnets, endpoints, nil
 		}
 	}
 }
