@@ -181,7 +181,10 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	// choose next subnetID
 	sort.Strings(subnetIDs)
-	subnetId := subnetIDs[len(blockchainsInfo)%len(subnetIDs)]
+	subnetId := ""
+	if len(subnetIDs) > 0 {
+		subnetId = subnetIDs[len(blockchainsInfo)%len(subnetIDs)]
+	}
 
 	blockchainSpecs := []*rpcpb.BlockchainSpec{
 		{
