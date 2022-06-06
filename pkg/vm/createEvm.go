@@ -14,7 +14,7 @@ import (
 	"github.com/ava-labs/subnet-evm/params"
 )
 
-func CreateEvmGenesis(name string, log logging.Logger) ([]byte, error) {
+func CreateEvmGenesis(name string, log logging.Logger) ([]byte, string, error) {
 	ux.Logger.PrintToUser("creating subnet %s", name)
 
 	genesis := core.Genesis{}
@@ -42,7 +42,7 @@ func CreateEvmGenesis(name string, log logging.Logger) ([]byte, error) {
 			*conf, stage, err = getPrecompiles(*conf)
 		}
 		if err != nil {
-			return []byte{}, err
+			return []byte{}, "", err
 		}
 	}
 
@@ -55,14 +55,14 @@ func CreateEvmGenesis(name string, log logging.Logger) ([]byte, error) {
 
 	jsonBytes, err := genesis.MarshalJSON()
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, "", err
 	}
 
 	var prettyJSON bytes.Buffer
 	err = json.Indent(&prettyJSON, jsonBytes, "", "    ")
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, "", err
 	}
 
-	return prettyJSON.Bytes(), nil
+	return prettyJSON.Bytes(), tokenName, nil
 }

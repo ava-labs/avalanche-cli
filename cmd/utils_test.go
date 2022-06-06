@@ -78,11 +78,12 @@ func Test_copyGenesisFile_failure(t *testing.T) {
 
 func Test_createSidecar_success(t *testing.T) {
 	subnetName := "TEST_subnet"
+	tokenName := "TEST"
 	sidecarFile := subnetName + sidecar_suffix
 	const vm = models.SubnetEvm
 
 	// Write sidecar
-	err := createSidecar(subnetName, vm)
+	err := createSidecar(subnetName, vm, tokenName)
 	assert.NoError(t, err)
 
 	// Check file exists
@@ -92,9 +93,10 @@ func Test_createSidecar_success(t *testing.T) {
 
 	// Check contents
 	expectedSc := models.Sidecar{
-		Name:   subnetName,
-		Vm:     vm,
-		Subnet: subnetName,
+		Name:      subnetName,
+		Vm:        vm,
+		Subnet:    subnetName,
+		TokenName: tokenName,
 	}
 
 	sc, err := loadSidecar(subnetName)
