@@ -11,6 +11,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+const stageAfterPrecompile = doneStage
+const stageBeforePrecompile = airdropStage
+
 func contains(list []common.Address, element common.Address) bool {
 	for _, val := range list {
 		if val == element {
@@ -145,7 +148,7 @@ func removePrecompile(arr []string, s string) ([]string, error) {
 	return arr, errors.New("String not in array")
 }
 
-func getPrecompiles(config params.ChainConfig) (params.ChainConfig, error) {
+func getPrecompiles(config params.ChainConfig) (params.ChainConfig, creationStage, error) {
 	const (
 		nativeMint        = "Native Minting"
 		contractAllowList = "Contract deployment whitelist"
@@ -167,67 +170,70 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, error) {
 			first = false
 		}
 
-		addPrecompile, err := prompts.CaptureNoYes(promptStr)
+		addPrecompile, err := prompts.CaptureList(promptStr, []string{prompts.No, prompts.Yes, goBackMsg})
 		if err != nil {
-			return config, err
+			return config, errored, err
 		}
 
-		if addPrecompile {
-			precompileDecision, err := prompts.CaptureList(
-				"Choose precompile",
-				remainingPrecompiles,
-			)
+		switch addPrecompile {
+		case prompts.No:
+			return config, stageAfterPrecompile, nil
+		case goBackMsg:
+			return config, stageBeforePrecompile, nil
+		}
+
+		precompileDecision, err := prompts.CaptureList(
+			"Choose precompile",
+			remainingPrecompiles,
+		)
+		if err != nil {
+			return config, errored, err
+		}
+
+		switch precompileDecision {
+		case nativeMint:
+			mintConfig, cancelled, err := configureMinterList()
 			if err != nil {
-				return config, err
+				return config, errored, err
 			}
-
-			switch precompileDecision {
-			case nativeMint:
-				mintConfig, cancelled, err := configureMinterList()
+			if !cancelled {
+				config.ContractNativeMinterConfig = mintConfig
+				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, nativeMint)
 				if err != nil {
-					return config, err
+					return config, errored, err
 				}
-				if !cancelled {
-					config.ContractNativeMinterConfig = mintConfig
-					remainingPrecompiles, err = removePrecompile(remainingPrecompiles, nativeMint)
-					if err != nil {
-						return config, err
-					}
-				}
-			case contractAllowList:
-				contractConfig, cancelled, err := configureContractAllowList()
-				if err != nil {
-					return config, err
-				}
-				if !cancelled {
-					config.ContractDeployerAllowListConfig = contractConfig
-					remainingPrecompiles, err = removePrecompile(remainingPrecompiles, contractAllowList)
-					if err != nil {
-						return config, err
-					}
-				}
-			case txAllowList:
-				txConfig, cancelled, err := configureTransactionAllowList()
-				if err != nil {
-					return config, err
-				}
-				if !cancelled {
-					config.TxAllowListConfig = txConfig
-					remainingPrecompiles, err = removePrecompile(remainingPrecompiles, txAllowList)
-					if err != nil {
-						return config, err
-					}
-				}
-			case cancel:
-				return config, nil
 			}
-
-			if len(remainingPrecompiles) == 1 {
-				return config, nil
+		case contractAllowList:
+			contractConfig, cancelled, err := configureContractAllowList()
+			if err != nil {
+				return config, errored, err
 			}
-
-		} else {
-			return config, nil
+			if !cancelled {
+				config.ContractDeployerAllowListConfig = contractConfig
+				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, contractAllowList)
+				if err != nil {
+					return config, errored, err
+				}
+			}
+		case txAllowList:
+			txConfig, cancelled, err := configureTransactionAllowList()
+			if err != nil {
+				return config, errored, err
+			}
+			if !cancelled {
+				config.TxAllowListConfig = txConfig
+				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, txAllowList)
+				if err != nil {
+					return config, errored, err
+				}
+			}
+		case cancel:
+			return config, stageAfterPrecompile, nil
 		}
+
+		if len(remainingPrecompiles) == 1 {
+			return config, stageAfterPrecompile, nil
+		}
+
 	}
 }

@@ -12,18 +12,19 @@ const (
 	GasLimit = 8_000_000
 
 	defaultAirdropAmount = "1000000000000000000000000"
+	goBackMsg            = "Go back to previous step"
 )
 
-type CreationStage int64
+type creationStage int64
 
 const (
-	Start CreationStage = iota
-	ChainId
-	TokenName
-	Gas
-	Airdrop
-	Precompile
-	Done
+	startStage creationStage = iota
+	descriptorStage
+	feeStage
+	airdropStage
+	precompileStage
+	doneStage
+	errored
 )
 
 var (

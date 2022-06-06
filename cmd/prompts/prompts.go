@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	yes = "Yes"
-	no  = "No"
+	Yes = "Yes"
+	No  = "No"
 )
 
 func validatePositiveBigInt(input string) error {
@@ -100,15 +100,15 @@ func yesNoBase(promptStr string, orderedOptions []string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return decision == yes, nil
+	return decision == Yes, nil
 }
 
 func CaptureYesNo(promptStr string) (bool, error) {
-	return yesNoBase(promptStr, []string{yes, no})
+	return yesNoBase(promptStr, []string{Yes, No})
 }
 
 func CaptureNoYes(promptStr string) (bool, error) {
-	return yesNoBase(promptStr, []string{no, yes})
+	return yesNoBase(promptStr, []string{No, Yes})
 }
 
 func CaptureList(promptStr string, options []string) (string, error) {

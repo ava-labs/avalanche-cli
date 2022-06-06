@@ -5,6 +5,8 @@ package vm
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -18,26 +20,33 @@ func CreateEvmGenesis(name string, log logging.Logger) ([]byte, error) {
 	genesis := core.Genesis{}
 	conf := params.SubnetEVMDefaultChainConfig
 
-	chainId, err := getChainId()
-	if err != nil {
-		return []byte{}, err
+	stage := startStage
+
+	var chainId *big.Int
+	var tokenName string
+	var allocation core.GenesisAlloc
+	var err error
+
+	for stage != doneStage {
+		switch stage {
+		case startStage:
+			stage = descriptorStage
+		case descriptorStage:
+			chainId, tokenName, stage, err = getDescriptors()
+			fmt.Println("Creating token", tokenName)
+		case feeStage:
+			*conf, stage, err = getFeeConfig(*conf)
+		case airdropStage:
+			allocation, stage, err = getAllocation()
+		case precompileStage:
+			*conf, stage, err = getPrecompiles(*conf)
+		}
+		if err != nil {
+			return []byte{}, err
+		}
 	}
+
 	conf.ChainID = chainId
-
-	*conf, err = getFeeConfig(*conf)
-	if err != nil {
-		return []byte{}, err
-	}
-
-	allocation, err := getAllocation()
-	if err != nil {
-		return []byte{}, err
-	}
-
-	*conf, err = getPrecompiles(*conf)
-	if err != nil {
-		return []byte{}, err
-	}
 
 	genesis.Alloc = allocation
 	genesis.Config = conf
