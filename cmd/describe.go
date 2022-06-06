@@ -18,7 +18,7 @@ import (
 
 // listCmd represents the list command
 var readCmd = &cobra.Command{
-	Use:   "describe",
+	Use:   "describe [subnetName]",
 	Short: "Print a summary of the subnet’s configuration",
 	Long: `The subnet describe command prints the details of a subnet configuration
 to the console. By default, the command will print a summary of the

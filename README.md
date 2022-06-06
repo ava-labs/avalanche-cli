@@ -149,7 +149,7 @@ To stop your local network and clear its state, run
 
 `avalanche network clean`
 
-This will delete all stored state for all local subnets. You will need to redeploy your subnet configurations one by one to use them again.
+This will delete all stored deploy state for all local subnet deployments. This will not delete any of your subnet configurations. You will need to redeploy your subnet configurations one by one to use them again.
 
 ### Checking Network Status
 
