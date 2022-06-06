@@ -12,6 +12,13 @@ The binary will be installed inside the `./bin` directory (relative to where the
 
 _Downloading binaries from the Github UI will cause permission errors on Mac._
 
+To add the binary to your path, run
+```
+cd bin
+export PATH=$PWD:$PATH
+```
+To add it to your path permanently, add an export command to your shell initialization script (ex: .bashrc).
+
 ### Installing in Custom Location
 To download the binary into a specific directory, run:
 ```
