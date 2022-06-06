@@ -2,11 +2,39 @@
 
 Avalanche CLI is a command line tool that gives developers access to everything Avalanche. This beta release specializes in helping developers develop and test subnets.
 
+## Installation
+
+### Compatibility
+The tool has been tested on Linux and Mac. Windows is currently not supported.
+
+### Instructions
+
+To download a binary for the latest release, run:
+```
+curl -sSfL https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh | sh -s
+```
+
+The binary will be installed inside the `./bin` directory (relative to where the install command was run).
+
+_Downloading binaries from the Github UI will cause permission errors on Mac._
+
+To add the binary to your path, run
+```
+cd bin
+export PATH=$PWD:$PATH
+```
+To add it to your path permanently, add an export command to your shell initialization script (ex: .bashrc).
+
+### Installing in Custom Location
+To download the binary into a specific directory, run:
+```
+curl -sSfL https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh | sh -s -- -b <relative directory>
+```
+
 ## Quickstart
 
-Launch your own custom subnet:
+After installing, launch your own custom subnet:
 ```bash
-go install github.com/ava-labs/avalanche-cli@latest
 avalanche subnet create <subnetName>
 avalanche subnet deploy <subnetName>
 ```
@@ -33,19 +61,6 @@ avalanche network start
 
 ### Notable Missing Features
 - Fuji and mainnet Subnet-EVM deploys
-
-## Installation
-
-### Compatibility
-The tool has been tested on Linux and Mac. Windows is currently not supported.
-
-### Instructions
-
-To use Avalanche-CLI, you'll first need to install golang. Follow the instructions here: https://go.dev/doc/install.
-
-Once go is installed, install the latest version with
-
-`go install github.com/ava-labs/avalanche-cli@latest`
 
 ## Subnets
 
