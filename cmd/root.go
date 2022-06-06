@@ -115,8 +115,13 @@ func init() {
 	if _, err := os.Stat(defaultSnapshotPath); os.IsNotExist(err) {
 		defaultSnapshotBytes, err := ioutil.ReadFile("defaultSnapshotPath.tar.gz")
 		if err != nil {
-			// workaround for different CWD if executing from go run or go test
-			defaultSnapshotBytes, err = ioutil.ReadFile("../defaultSnapshotPath.tar.gz")
+			// workaround for different WD if executing from test
+			wd, err := os.Getwd()
+			if err != nil {
+				fmt.Printf("failed obtaining current working directory: %s\n", err)
+				os.Exit(1)
+			}
+			defaultSnapshotBytes, err = ioutil.ReadFile(filepath.Join(filepath.Dir(wd), "defaultSnapshotPath.tar.gz"))
 			if err != nil {
 				fmt.Printf("failed reading initial default snapshot: %s\n", err)
 				os.Exit(1)
