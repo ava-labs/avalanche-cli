@@ -39,5 +39,6 @@ jobs:
           go-version: ${{ matrix.go }}
       - run: go mod download
       - run: scripts/build.sh
+      - run: ls -l
       - run: go test -v -coverprofile=coverage.out ./...
       - run: go tool cover -func=coverage.out
