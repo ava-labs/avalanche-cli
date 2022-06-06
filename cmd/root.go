@@ -113,7 +113,7 @@ func init() {
 	// Copy default snapshot if not present
 	defaultSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.DefaultSnapshotName)
 	if _, err := os.Stat(defaultSnapshotPath); os.IsNotExist(err) {
-		defaultSnapshotBytes, err := ioutil.ReadFile("defaultSnapshotPath.tar.gz")
+		defaultSnapshotBytes, err := ioutil.ReadFile("defaultSnapshot.tar.gz")
 		if err != nil {
 			// workaround for different WD if executing from test
 			wd, err := os.Getwd()
@@ -121,7 +121,7 @@ func init() {
 				fmt.Printf("failed obtaining current working directory: %s\n", err)
 				os.Exit(1)
 			}
-			defaultSnapshotBytes, err = ioutil.ReadFile(filepath.Join(filepath.Dir(wd), "defaultSnapshotPath.tar.gz"))
+			defaultSnapshotBytes, err = ioutil.ReadFile(filepath.Join(filepath.Dir(wd), "defaultSnapshot.tar.gz"))
 			if err != nil {
 				fmt.Printf("failed reading initial default snapshot: %s\n", err)
 				os.Exit(1)
