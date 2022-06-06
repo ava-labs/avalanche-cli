@@ -14,6 +14,18 @@ const (
 	defaultAirdropAmount = "1000000000000000000000000"
 )
 
+type CreationStage int64
+
+const (
+	Start CreationStage = iota
+	ChainId
+	TokenName
+	Gas
+	Airdrop
+	Precompile
+	Done
+)
+
 var (
 	Difficulty = big.NewInt(0)
 
