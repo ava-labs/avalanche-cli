@@ -113,7 +113,13 @@ func init() {
 	// Copy default snapshot if not present
 	defaultSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.DefaultSnapshotName)
 	if _, err := os.Stat(defaultSnapshotPath); os.IsNotExist(err) {
-		defaultSnapshotBytes, err := ioutil.ReadFile("defaultSnapshot.tar.gz")
+		ex, err := os.Executable()
+		if err != nil {
+			fmt.Printf("failed reading initial default snapshot: %s\n", err)
+			os.Exit(1)
+		}
+		defaultSnapshotPath := filepath.Join(filepath.Dir(ex), "defaultSnapshot.tar.gz")
+		defaultSnapshotBytes, err := ioutil.ReadFile(defaultSnapshotPath)
 		if err != nil {
 			fmt.Printf("failed reading initial default snapshot: %s\n", err)
 			os.Exit(1)
