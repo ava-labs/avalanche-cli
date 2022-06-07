@@ -29,15 +29,15 @@ func getTokenName() (string, error) {
 	return tokenName, nil
 }
 
-func getDescriptors() (*big.Int, string, wizardState, error) {
+func getDescriptors() (*big.Int, string, stateDirection, error) {
 	chainId, err := getChainId()
 	if err != nil {
-		return nil, "", errored, err
+		return nil, "", kill, err
 	}
 
 	tokenName, err := getTokenName()
 	if err != nil {
-		return nil, "", errored, err
+		return nil, "", kill, err
 	}
-	return chainId, tokenName, stageAfterDescriptors, nil
+	return chainId, tokenName, forward, nil
 }

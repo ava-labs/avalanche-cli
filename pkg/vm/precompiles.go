@@ -145,7 +145,7 @@ func removePrecompile(arr []string, s string) ([]string, error) {
 	return arr, errors.New("String not in array")
 }
 
-func getPrecompiles(config params.ChainConfig) (params.ChainConfig, wizardState, error) {
+func getPrecompiles(config params.ChainConfig) (params.ChainConfig, stateDirection, error) {
 	const (
 		nativeMint        = "Native Minting"
 		contractAllowList = "Contract deployment whitelist"
@@ -169,14 +169,14 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, wizardState,
 
 		addPrecompile, err := prompts.CaptureList(promptStr, []string{prompts.No, prompts.Yes, goBackMsg})
 		if err != nil {
-			return config, errored, err
+			return config, kill, err
 		}
 
 		switch addPrecompile {
 		case prompts.No:
-			return config, stageAfterPrecompile, nil
+			return config, forward, nil
 		case goBackMsg:
-			return config, stageBeforePrecompile, nil
+			return config, backward, nil
 		}
 
 		precompileDecision, err := prompts.CaptureList(
@@ -184,54 +184,54 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, wizardState,
 			remainingPrecompiles,
 		)
 		if err != nil {
-			return config, errored, err
+			return config, kill, err
 		}
 
 		switch precompileDecision {
 		case nativeMint:
 			mintConfig, cancelled, err := configureMinterList()
 			if err != nil {
-				return config, errored, err
+				return config, kill, err
 			}
 			if !cancelled {
 				config.ContractNativeMinterConfig = mintConfig
 				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, nativeMint)
 				if err != nil {
-					return config, errored, err
+					return config, kill, err
 				}
 			}
 		case contractAllowList:
 			contractConfig, cancelled, err := configureContractAllowList()
 			if err != nil {
-				return config, errored, err
+				return config, kill, err
 			}
 			if !cancelled {
 				config.ContractDeployerAllowListConfig = contractConfig
 				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, contractAllowList)
 				if err != nil {
-					return config, errored, err
+					return config, kill, err
 				}
 			}
 		case txAllowList:
 			txConfig, cancelled, err := configureTransactionAllowList()
 			if err != nil {
-				return config, errored, err
+				return config, kill, err
 			}
 			if !cancelled {
 				config.TxAllowListConfig = txConfig
 				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, txAllowList)
 				if err != nil {
-					return config, errored, err
+					return config, kill, err
 				}
 			}
 		case cancel:
-			return config, stageAfterPrecompile, nil
+			return config, forward, nil
 		}
 
 		// When all precompiles have been added, the len of remainingPrecompiles will be 1
 		// (the cancel option stays in the list). Safe to return.
 		if len(remainingPrecompiles) == 1 {
-			return config, stageAfterPrecompile, nil
+			return config, forward, nil
 		}
 
 	}

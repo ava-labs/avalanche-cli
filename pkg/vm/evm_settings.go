@@ -27,18 +27,12 @@ const (
 	errored
 )
 
-// Define state machine order
+type stateDirection int64
+
 const (
-	stageAfterDescriptors = feeStage
-
-	stageBeforeFees = descriptorStage
-	stageAfterFees  = airdropStage
-
-	stageBeforeAirdrop = feeStage
-	stageAfterAirdrop  = precompileStage
-
-	stageBeforePrecompile = airdropStage
-	stageAfterPrecompile  = doneStage
+	forward stateDirection = iota
+	backward
+	kill
 )
 
 var (
