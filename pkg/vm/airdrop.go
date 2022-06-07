@@ -33,7 +33,7 @@ func getAllocation() (core.GenesisAlloc, stateDirection, error) {
 		[]string{defaultAirdrop, customAirdrop, goBackMsg},
 	)
 	if err != nil {
-		return allocation, kill, err
+		return allocation, stop, err
 	}
 
 	if airdropType == defaultAirdrop {
@@ -48,12 +48,12 @@ func getAllocation() (core.GenesisAlloc, stateDirection, error) {
 	for {
 		addressHex, err := prompts.CaptureAddress("Address to airdrop to")
 		if err != nil {
-			return nil, kill, err
+			return nil, stop, err
 		}
 
 		amount, err := prompts.CapturePositiveBigInt("Amount to airdrop (in AVAX units)")
 		if err != nil {
-			return nil, kill, err
+			return nil, stop, err
 		}
 
 		amount = amount.Mul(amount, oneAvax)
@@ -66,7 +66,7 @@ func getAllocation() (core.GenesisAlloc, stateDirection, error) {
 
 		continueAirdrop, err := prompts.CaptureNoYes(extendAirdrop)
 		if err != nil {
-			return nil, kill, err
+			return nil, stop, err
 		}
 		if !continueAirdrop {
 			return allocation, forward, nil

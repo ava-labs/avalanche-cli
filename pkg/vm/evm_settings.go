@@ -15,26 +15,6 @@ const (
 	goBackMsg            = "Go back to previous step"
 )
 
-type wizardState int64
-
-const (
-	startStage wizardState = iota
-	descriptorStage
-	feeStage
-	airdropStage
-	precompileStage
-	doneStage
-	errored
-)
-
-type stateDirection int64
-
-const (
-	forward stateDirection = iota
-	backward
-	kill
-)
-
 var (
 	Difficulty = big.NewInt(0)
 

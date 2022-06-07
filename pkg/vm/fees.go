@@ -30,7 +30,7 @@ func getFeeConfig(config params.ChainConfig) (params.ChainConfig, stateDirection
 		feeConfigOptions,
 	)
 	if err != nil {
-		return config, kill, err
+		return config, stop, err
 	}
 
 	switch feeDefault {
@@ -54,42 +54,42 @@ func getFeeConfig(config params.ChainConfig) (params.ChainConfig, stateDirection
 
 	gasLimit, err := prompts.CapturePositiveBigInt(setGasLimit)
 	if err != nil {
-		return config, kill, err
+		return config, stop, err
 	}
 
 	blockRate, err := prompts.CapturePositiveBigInt(setBlockRate)
 	if err != nil {
-		return config, kill, err
+		return config, stop, err
 	}
 
 	minBaseFee, err := prompts.CapturePositiveBigInt(setMinBaseFee)
 	if err != nil {
-		return config, kill, err
+		return config, stop, err
 	}
 
 	targetGas, err := prompts.CapturePositiveBigInt(setTargetGas)
 	if err != nil {
-		return config, kill, err
+		return config, stop, err
 	}
 
 	baseDenominator, err := prompts.CapturePositiveBigInt(setBaseFeeChangeDenominator)
 	if err != nil {
-		return config, kill, err
+		return config, stop, err
 	}
 
 	minBlockGas, err := prompts.CapturePositiveBigInt(setMinBlockGas)
 	if err != nil {
-		return config, kill, err
+		return config, stop, err
 	}
 
 	maxBlockGas, err := prompts.CapturePositiveBigInt(setMaxBlockGas)
 	if err != nil {
-		return config, kill, err
+		return config, stop, err
 	}
 
 	gasStep, err := prompts.CapturePositiveBigInt(setGasStep)
 	if err != nil {
-		return config, kill, err
+		return config, stop, err
 	}
 
 	feeConf := params.FeeConfig{

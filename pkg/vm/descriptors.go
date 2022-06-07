@@ -32,12 +32,12 @@ func getTokenName() (string, error) {
 func getDescriptors() (*big.Int, string, stateDirection, error) {
 	chainId, err := getChainId()
 	if err != nil {
-		return nil, "", kill, err
+		return nil, "", stop, err
 	}
 
 	tokenName, err := getTokenName()
 	if err != nil {
-		return nil, "", kill, err
+		return nil, "", stop, err
 	}
 	return chainId, tokenName, forward, nil
 }

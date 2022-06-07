@@ -14,6 +14,26 @@ import (
 	"github.com/ava-labs/subnet-evm/params"
 )
 
+type wizardState int64
+
+const (
+	startStage wizardState = iota
+	descriptorStage
+	feeStage
+	airdropStage
+	precompileStage
+	doneStage
+	errored
+)
+
+type stateDirection int64
+
+const (
+	forward stateDirection = iota
+	backward
+	stop
+)
+
 func nextStage(currentState wizardState, direction stateDirection) wizardState {
 	switch direction {
 	case forward:
