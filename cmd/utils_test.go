@@ -77,35 +77,61 @@ func Test_copyGenesisFile_failure(t *testing.T) {
 }
 
 func Test_createSidecar_success(t *testing.T) {
-	subnetName := "TEST_subnet"
-	tokenName := "TEST"
-	sidecarFile := subnetName + sidecar_suffix
-	const vm = models.SubnetEvm
 
-	// Write sidecar
-	err := createSidecar(subnetName, vm, tokenName)
-	assert.NoError(t, err)
-
-	// Check file exists
-	createdPath := filepath.Join(baseDir, sidecarFile)
-	_, err = os.Stat(createdPath)
-	assert.NoError(t, err)
-
-	// Check contents
-	expectedSc := models.Sidecar{
-		Name:      subnetName,
-		Vm:        vm,
-		Subnet:    subnetName,
-		TokenName: tokenName,
+	type test struct {
+		name              string
+		subnetName        string
+		tokenName         string
+		expectedTokenName string
 	}
 
-	sc, err := loadSidecar(subnetName)
-	assert.NoError(t, err)
-	assert.Equal(t, sc, expectedSc)
+	tests := []test{
+		{
+			name:              "Success",
+			subnetName:        "TEST_subnet",
+			tokenName:         "TOKEN",
+			expectedTokenName: "TOKEN",
+		},
+		{
+			name:              "no token name",
+			subnetName:        "TEST_subnet",
+			tokenName:         "",
+			expectedTokenName: "TEST",
+		},
+	}
 
-	// Cleanup file
-	err = os.Remove(createdPath)
-	assert.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			sidecarFile := tt.subnetName + sidecar_suffix
+			const vm = models.SubnetEvm
+
+			// Write sidecar
+			err := createSidecar(tt.subnetName, vm, tt.tokenName)
+			assert.NoError(err)
+
+			// Check file exists
+			createdPath := filepath.Join(baseDir, sidecarFile)
+			_, err = os.Stat(createdPath)
+			assert.NoError(err)
+
+			// Check contents
+			expectedSc := models.Sidecar{
+				Name:      tt.subnetName,
+				Vm:        vm,
+				Subnet:    tt.subnetName,
+				TokenName: tt.expectedTokenName,
+			}
+
+			sc, err := loadSidecar(tt.subnetName)
+			assert.NoError(err)
+			assert.Equal(sc, expectedSc)
+
+			// Cleanup file
+			err = os.Remove(createdPath)
+			assert.NoError(err)
+		})
+	}
 }
 
 func Test_loadSidecar_success(t *testing.T) {

@@ -54,6 +54,9 @@ func loadEvmGenesis(subnetName string) (core.Genesis, error) {
 }
 
 func createSidecar(subnetName string, vm models.VmType, tokenName string) error {
+	if tokenName == "" {
+		tokenName = "TEST"
+	}
 	sc := models.Sidecar{
 		Name:      subnetName,
 		Vm:        vm,
