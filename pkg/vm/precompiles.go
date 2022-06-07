@@ -11,9 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-const stageAfterPrecompile = doneStage
-const stageBeforePrecompile = airdropStage
-
 func contains(list []common.Address, element common.Address) bool {
 	for _, val := range list {
 		if val == element {
@@ -148,7 +145,7 @@ func removePrecompile(arr []string, s string) ([]string, error) {
 	return arr, errors.New("String not in array")
 }
 
-func getPrecompiles(config params.ChainConfig) (params.ChainConfig, creationStage, error) {
+func getPrecompiles(config params.ChainConfig) (params.ChainConfig, wizardState, error) {
 	const (
 		nativeMint        = "Native Minting"
 		contractAllowList = "Contract deployment whitelist"
@@ -231,6 +228,8 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, creationStag
 			return config, stageAfterPrecompile, nil
 		}
 
+		// When all precompiles have been added, the len of remainingPrecompiles will be 1
+		// (the cancel option stays in the list). Safe to return.
 		if len(remainingPrecompiles) == 1 {
 			return config, stageAfterPrecompile, nil
 		}

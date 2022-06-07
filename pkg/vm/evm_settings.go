@@ -15,16 +15,30 @@ const (
 	goBackMsg            = "Go back to previous step"
 )
 
-type creationStage int64
+type wizardState int64
 
 const (
-	startStage creationStage = iota
+	startStage wizardState = iota
 	descriptorStage
 	feeStage
 	airdropStage
 	precompileStage
 	doneStage
 	errored
+)
+
+// Define state machine order
+const (
+	stageAfterDescriptors = feeStage
+
+	stageBeforeFees = descriptorStage
+	stageAfterFees  = airdropStage
+
+	stageBeforeAirdrop = feeStage
+	stageAfterAirdrop  = precompileStage
+
+	stageBeforePrecompile = airdropStage
+	stageAfterPrecompile  = doneStage
 )
 
 var (

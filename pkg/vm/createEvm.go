@@ -5,7 +5,7 @@ package vm
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/ux"
@@ -22,10 +22,12 @@ func CreateEvmGenesis(name string, log logging.Logger) ([]byte, string, error) {
 
 	stage := startStage
 
-	var chainId *big.Int
-	var tokenName string
-	var allocation core.GenesisAlloc
-	var err error
+	var (
+		chainId    *big.Int
+		tokenName  string
+		allocation core.GenesisAlloc
+		err        error
+	)
 
 	for stage != doneStage {
 		switch stage {
@@ -33,13 +35,14 @@ func CreateEvmGenesis(name string, log logging.Logger) ([]byte, string, error) {
 			stage = descriptorStage
 		case descriptorStage:
 			chainId, tokenName, stage, err = getDescriptors()
-			fmt.Println("Creating token", tokenName)
 		case feeStage:
 			*conf, stage, err = getFeeConfig(*conf)
 		case airdropStage:
 			allocation, stage, err = getAllocation()
 		case precompileStage:
 			*conf, stage, err = getPrecompiles(*conf)
+		default:
+			err = errors.New("Invalid creation stage")
 		}
 		if err != nil {
 			return []byte{}, "", err

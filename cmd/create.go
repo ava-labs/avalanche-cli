@@ -112,8 +112,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 				return err
 			}
 
-			err = createSidecar(subnetName, models.SubnetEvm, tokenName)
-			if err != nil {
+			if err = createSidecar(subnetName, models.SubnetEvm, tokenName); err != nil {
 				return err
 			}
 		case customVm:
@@ -121,16 +120,14 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			err = createSidecar(subnetName, models.CustomVm, "")
-			if err != nil {
+			if err = createSidecar(subnetName, models.CustomVm, ""); err != nil {
 				return err
 			}
 		default:
 			return errors.New("Not implemented")
 		}
 
-		err = writeGenesisFile(subnetName, genesisBytes)
-		if err != nil {
+		if err = writeGenesisFile(subnetName, genesisBytes); err != nil {
 			return err
 		}
 		ux.Logger.PrintToUser("Successfully created genesis")
@@ -154,8 +151,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 			}
 			subnetType = models.VmTypeFromString(subnetTypeStr)
 		}
-		err = createSidecar(subnetName, subnetType, "")
-		if err != nil {
+		if err = createSidecar(subnetName, subnetType, ""); err != nil {
 			return err
 		}
 		ux.Logger.PrintToUser("Successfully created genesis")

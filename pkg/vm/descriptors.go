@@ -1,17 +1,15 @@
 package vm
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
+	"github.com/ava-labs/avalanche-cli/ux"
 )
-
-const stageAfterDescriptors = feeStage
 
 func getChainId() (*big.Int, error) {
 	// TODO check against known chain ids and provide warning
-	fmt.Println("Enter your subnet's ChainId. It can be any positive integer.")
+	ux.Logger.PrintToUser("Enter your subnet's ChainId. It can be any positive integer.")
 
 	chainId, err := prompts.CapturePositiveBigInt("ChainId")
 	if err != nil {
@@ -22,7 +20,7 @@ func getChainId() (*big.Int, error) {
 }
 
 func getTokenName() (string, error) {
-	fmt.Println("Select a symbol for your subnet's native token")
+	ux.Logger.PrintToUser("Select a symbol for your subnet's native token")
 	tokenName, err := prompts.CaptureString("Token symbol")
 	if err != nil {
 		return "", err
@@ -31,7 +29,7 @@ func getTokenName() (string, error) {
 	return tokenName, nil
 }
 
-func getDescriptors() (*big.Int, string, creationStage, error) {
+func getDescriptors() (*big.Int, string, wizardState, error) {
 	chainId, err := getChainId()
 	if err != nil {
 		return nil, "", errored, err

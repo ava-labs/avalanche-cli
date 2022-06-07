@@ -8,9 +8,6 @@ import (
 	"github.com/ava-labs/subnet-evm/core"
 )
 
-const stageAfterAirdrop = precompileStage
-const stageBeforeAirdrop = feeStage
-
 func getDefaultAllocation() (core.GenesisAlloc, error) {
 	allocation := core.GenesisAlloc{}
 	defaultAmount, ok := new(big.Int).SetString(defaultAirdropAmount, 10)
@@ -24,7 +21,7 @@ func getDefaultAllocation() (core.GenesisAlloc, error) {
 	return allocation, nil
 }
 
-func getAllocation() (core.GenesisAlloc, creationStage, error) {
+func getAllocation() (core.GenesisAlloc, wizardState, error) {
 	allocation := core.GenesisAlloc{}
 
 	defaultAirdrop := "Airdrop 1 million tokens to the default address (do not use in production)"

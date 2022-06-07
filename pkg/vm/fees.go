@@ -1,16 +1,12 @@
 package vm
 
 import (
-	"fmt"
-
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
+	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/subnet-evm/params"
 )
 
-const stageAfterFees = airdropStage
-const stageBeforeFees = descriptorStage
-
-func getFeeConfig(config params.ChainConfig) (params.ChainConfig, creationStage, error) {
+func getFeeConfig(config params.ChainConfig) (params.ChainConfig, wizardState, error) {
 	const (
 		useFast   = "High disk use   / High Throughput   5 mil   gas/s"
 		useMedium = "Medium disk use / Medium Throughput 2 mil   gas/s"
@@ -53,7 +49,7 @@ func getFeeConfig(config params.ChainConfig) (params.ChainConfig, creationStage,
 	case goBackMsg:
 		return config, stageBeforeFees, nil
 	default:
-		fmt.Println("Customizing fee config")
+		ux.Logger.PrintToUser("Customizing fee config")
 	}
 
 	gasLimit, err := prompts.CapturePositiveBigInt(setGasLimit)
