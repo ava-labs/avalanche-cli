@@ -168,6 +168,6 @@ This will delete all stored deploy state for all local subnet deployments. This 
 
 ### Checking Network Status
 
-If you'd like to determine whether or not a local Avalanche network is running on your macine, run
+If you'd like to determine whether or not a local Avalanche network is running on your machine, run
 
 `avalanche network status`
