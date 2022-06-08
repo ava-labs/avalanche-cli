@@ -24,7 +24,7 @@ func clean(cmd *cobra.Command, args []string) {
 	log.Info("killing gRPC server process...")
 	if err := binutils.KillgRPCServerProcess(); err != nil {
 		log.Warn("failed killing server process: %s\n", err)
-		ux.Logger.PrintToUser("Unable to terminate process. Most probably has already been terminated.")
+		ux.Logger.PrintToUser("Unable to shut down network. Network not running.")
 	} else {
 		ux.Logger.PrintToUser("Process terminated.")
 	}
