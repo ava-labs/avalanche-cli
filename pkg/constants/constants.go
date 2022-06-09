@@ -18,5 +18,5 @@ const (
 	// but let's add some more entropy
 	SnapshotsDirName     = "snapshots"
 	DefaultSnapshotName  = "default-1654102509"
-	BootstrapSnapshotURL = "https://github.com/ava-labs/avalanche-cli/raw/fast-deploy-with-default-snapshot/defaultSnapshot.tar.gz"
+	BootstrapSnapshotURL = "https://github.com/ava-labs/avalanche-cli/raw/fast-deploy-with-default-snapshot/assets/bootstrapSnapshot.tar.gz"
 )
