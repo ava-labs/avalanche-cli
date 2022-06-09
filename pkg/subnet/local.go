@@ -262,7 +262,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 		return "", err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("unexpected http status code: %v", resp.StatusCode)
+		return "", fmt.Errorf("unexpected http status code: %d", resp.StatusCode)
 	}
 	defer resp.Body.Close()
 
