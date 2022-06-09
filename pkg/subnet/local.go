@@ -208,10 +208,14 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 
 	ux.Logger.PrintToUser("Installing latest avalanchego version...")
 
-	version, err := binutils.GetLatestReleaseVersion(constants.LatestAvagoReleaseURL)
-	if err != nil {
-		return "", fmt.Errorf("failed to get latest avalanchego version: %s", err)
-	}
+	// TODO: using hardcoded version. integrate with future dependency management scheme
+	version := constants.AvalancheGoReleaseVersion
+	/*
+		version, err := binutils.GetLatestReleaseVersion(constants.LatestAvagoReleaseURL)
+		if err != nil {
+			return "", fmt.Errorf("failed to get latest avalanchego version: %s", err)
+		}
+	*/
 
 	d.log.Info("Latest avalanchego version is: %s", version)
 

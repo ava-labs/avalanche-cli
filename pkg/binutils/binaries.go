@@ -247,18 +247,19 @@ func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir, binDir string) e
 
 		cancel := make(chan struct{})
 		go ux.PrintWait(cancel)
-		// TODO: we are hardcoding the release version at this point to 0.2.2
+
+		// TODO: we are hardcoding the release version
 		// until we have a better binary, dependency and version management
 		// as per https://github.com/ava-labs/avalanche-cli/pull/17#discussion_r887164924
-		latestVer := "v0.2.2"
+		version := constants.SubnetEVMReleaseVersion
 		/*
-			latestVer, err := GetLatestReleaseVersion(constants.SubnetEVMReleaseURL)
+			version, err := GetLatestReleaseVersion(constants.SubnetEVMReleaseURL)
 			if err != nil {
 				return fmt.Errorf("failed to get latest subnet-evm release version: %w", err)
 			}
 		*/
 
-		latest, err = DownloadReleaseVersion(d.log, subnetEVMName, latestVer, binDir)
+		latest, err = DownloadReleaseVersion(d.log, subnetEVMName, version, binDir)
 		if err != nil {
 			return fmt.Errorf("failed downloading latest subnet-evm version: %w", err)
 		}
