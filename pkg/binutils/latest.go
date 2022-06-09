@@ -87,8 +87,11 @@ func DownloadReleaseVersion(
 	log.Debug("starting download from %s...", downloadURL)
 
 	resp, err := http.Get(downloadURL)
-	if err != nil || resp.StatusCode != http.StatusOK {
+	if err != nil {
 		return "", err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected http status code: %v", resp.StatusCode)
 	}
 	defer resp.Body.Close()
 

@@ -261,6 +261,9 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected http status code: %v", resp.StatusCode)
+	}
 	defer resp.Body.Close()
 
 	archive, err := ioutil.ReadAll(resp.Body)
