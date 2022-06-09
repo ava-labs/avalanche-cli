@@ -206,7 +206,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 		return avagoDir, nil
 	}
 
-	ux.Logger.PrintToUser("Installing avalanchego version...")
+	ux.Logger.PrintToUser("Installing avalanchego...")
 
 	// TODO: we are hardcoding the release version
 	// until we have a better binary, dependency and version management

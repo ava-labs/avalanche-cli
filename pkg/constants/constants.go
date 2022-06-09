@@ -7,8 +7,8 @@ import "time"
 const (
 	DefaultPerms755 = 0o755
 
-	SubnetEVMReleaseVersion   = "v0.2.2"
-	AvalancheGoReleaseVersion = "v1.7.12"
+	SubnetEVMReleaseVersion   = "v0.2.3"
+	AvalancheGoReleaseVersion = "v1.7.13"
 
 	LatestAvagoReleaseURL = "https://api.github.com/repos/ava-labs/avalanchego/releases/latest"
 	SubnetEVMReleaseURL   = "https://api.github.com/repos/ava-labs/subnet-evm/releases/latest"
