@@ -197,23 +197,29 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 	binDir := filepath.Join(d.baseDir, constants.AvalancheCliBinDir)
 	binPrefix := "avalanchego-v"
 
-	exists, latest, err := d.binChecker.ExistsWithLatestVersion(binDir, binPrefix)
+	exists, avagoDir, err := d.binChecker.ExistsWithLatestVersion(binDir, binPrefix)
 	if err != nil {
 		return "", fmt.Errorf("failed trying to locate avalanchego binary: %s", binDir)
 	}
 	if exists {
 		d.log.Debug("local avalanchego found. skipping installation")
-		return latest, nil
+		return avagoDir, nil
 	}
 
-	ux.Logger.PrintToUser("Installing latest avalanchego version...")
+	ux.Logger.PrintToUser("Installing avalanchego...")
 
-	version, err := binutils.GetLatestReleaseVersion(constants.LatestAvagoReleaseURL)
-	if err != nil {
-		return "", fmt.Errorf("failed to get latest avalanchego version: %s", err)
-	}
+	// TODO: we are hardcoding the release version
+	// until we have a better binary, dependency and version management
+	// as per https://github.com/ava-labs/avalanche-cli/pull/17#discussion_r887164924
+	version := constants.AvalancheGoReleaseVersion
+	/*
+		version, err := binutils.GetLatestReleaseVersion(constants.LatestAvagoReleaseURL)
+		if err != nil {
+			return "", fmt.Errorf("failed to get latest avalanchego version: %s", err)
+		}
+	*/
 
-	d.log.Info("Latest avalanchego version is: %s", version)
+	d.log.Info("Avalanchego version is: %s", version)
 
 	// TODO: would be nice if we could also here just use binutils.DownloadLatestReleaseVersion(),
 	// but unfortunately we don't have a consistent naming scheme between avalanchego and subnet-evm
