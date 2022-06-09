@@ -98,7 +98,7 @@ func init() {
 	}
 
 	// Create snapshots dir if it doesn't exist
-	snapshotsDir := filepath.Join(baseDir, constants.SnapshotsDirName)
+	snapshotsDir = filepath.Join(baseDir, constants.SnapshotsDirName)
 	err = os.MkdirAll(snapshotsDir, os.ModePerm)
 	if err != nil {
 		fmt.Printf("failed creating the snapshots dir %s: %s\n", snapshotsDir, err)
