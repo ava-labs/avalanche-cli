@@ -314,7 +314,7 @@ func (d *SubnetDeployer) WaitForHealthy(ctx context.Context, cli client.Client, 
 			endpoints := []string{}
 			for _, nodeInfo := range resp.ClusterInfo.NodeInfos {
 				for vmID, vmInfo := range resp.ClusterInfo.CustomVms {
-					endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q: %s/ext/bc/%s/rpc", nodeInfo.Name, vmID, nodeInfo.GetUri(), vmInfo.BlockchainId))
+					endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %s with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, vmInfo.BlockchainId, vmID, nodeInfo.GetUri(), vmInfo.BlockchainId))
 				}
 			}
 			d.log.Debug("cluster is up, subnets deployed, VMs are installed!")
