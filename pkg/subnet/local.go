@@ -238,6 +238,12 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path and plugin
 func (d *SubnetDeployer) SetupLocalEnv() (string, string, error) {
+
+	err := SetDefaultSnapshot(d.baseDir)
+	if err != nil {
+		return "", "", fmt.Errorf("failed setting up snapshots: %w", err)
+	}
+
 	avagoDir, err := d.setupLocalEnv()
 	if err != nil {
 		return "", "", fmt.Errorf("failed setting up local environment: %w", err)
@@ -406,4 +412,27 @@ func getGenesis(genesisFile string) (core.Genesis, error) {
 		return genesis, err
 	}
 	return genesis, nil
+}
+
+// Initialize default snapshot with bootstrap snapshot archive
+func SetDefaultSnapshot(baseDir string) error {
+	snapshotsDir := filepath.Join(baseDir, constants.SnapshotsDirName)
+	defaultSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.DefaultSnapshotName)
+	if _, err := os.Stat(defaultSnapshotPath); os.IsNotExist(err) {
+		fmt.Println("BAJANDO")
+		resp, err := http.Get(constants.BootstrapSnapshotURL)
+		if err != nil {
+			return fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
+		}
+		defer resp.Body.Close()
+		bootstrapSnapshotBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
+		}
+		if err := binutils.InstallArchive("tar.gz", bootstrapSnapshotBytes, snapshotsDir); err != nil {
+			return fmt.Errorf("failed installing bootstrap snapshot: %w", err)
+		}
+		fmt.Println("FIN")
+	}
+	return nil
 }

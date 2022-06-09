@@ -16,5 +16,7 @@ const (
 
 	// it's unlikely anyone would want to name a snapshot `default`
 	// but let's add some more entropy
-	DefaultSnapshotName = "default-1654102509"
+	SnapshotsDirName     = "snapshots"
+	DefaultSnapshotName  = "default-1654102509"
+	BootstrapSnapshotURL = "https://github.com/ava-labs/avalanche-cli/raw/fast-deploy-with-default-snapshot/defaultSnapshot.tar.gz"
 )
