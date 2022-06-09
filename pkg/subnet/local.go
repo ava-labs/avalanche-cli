@@ -209,7 +209,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	d.log.Debug(deployBlockchainsInfo.String())
 
 	fmt.Println()
-	ux.Logger.PrintToUser("Blockchain has been deployed. Wail until network acknowledges...")
+	ux.Logger.PrintToUser("Blockchain has been deployed. Wait until network acknowledges...")
 
 	_, _, endpoints, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
