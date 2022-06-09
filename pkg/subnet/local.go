@@ -86,35 +86,10 @@ func (d *SubnetDeployer) BackendStartedHere() bool {
 	return d.backendStartedHere
 }
 
-func (d *SubnetDeployer) GetBinPaths() (string, string, error) {
-	avagoDir, err := d.setupLocalEnv()
-	if err != nil {
-		return "", "", fmt.Errorf("failed setting up local environment: %w", err)
-	}
-
-	pluginDir := filepath.Join(avagoDir, "plugins")
-	avalancheGoBinPath := filepath.Join(avagoDir, "avalanchego")
-
-	exists, err := storage.FolderExists(pluginDir)
-	if !exists || err != nil {
-		return "", "", fmt.Errorf("evaluated pluginDir to be %s but it does not exist.", pluginDir)
-	}
-
-	// TODO: we need some better version management here
-	// * compare latest to local version
-	// * decide if force update or give user choice
-	exists, err = storage.FileExists(avalancheGoBinPath)
-	if !exists || err != nil {
-		return "", "", fmt.Errorf("evaluated avalancheGoBinPath to be %s but it does not exist.", avalancheGoBinPath)
-	}
-
-	return avalancheGoBinPath, pluginDir, nil
-}
-
 // doDeploy the actual deployment to the network runner
 func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
-	avalancheGoBinPath, pluginDir, err := d.GetBinPaths()
+	avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
 	if err != nil {
 		return err
 	}
@@ -163,6 +138,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 		loadSnapshotOpts...,
 	)
 	if err != nil {
+		// TODO: use error type not string comparison
 		if !strings.Contains(err.Error(), "already bootstrapped") {
 			return fmt.Errorf("failed to start network :%s", err)
 		}
@@ -173,17 +149,25 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	d.log.Debug(loadSnapshotsInfo.String())
 
-	subnetIDs, blockchainsInfo, _, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
+	clusterInfo, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
-		_ = binutils.KillgRPCServerProcess()
 		return fmt.Errorf("failed to query network health: %s", err)
 	}
+	subnetIDs := clusterInfo.Subnets
+	numBlockchains := len(clusterInfo.CustomVms)
 
-	// choose next subnetID
+	// in order to make subnet deploy faster, a set of validated subnet IDs is preloaded
+	// in the bootstrap snapshot
+	// we select one to be used for creating the next blockchain, for that we use the
+	// number of currently created blockchains as the index to select the next subnet ID,
+	// so we get incremental selection
 	sort.Strings(subnetIDs)
 	subnetId := ""
+	// in unit tests, there are no preloaded subnets IDs
+	// also, for the case the network does not contain subnet IDs, empty subnet ID
+	// will make ANR to create one when creating the blockchain
 	if len(subnetIDs) > 0 {
-		subnetId = subnetIDs[len(blockchainsInfo)%len(subnetIDs)]
+		subnetId = subnetIDs[numBlockchains%len(subnetIDs)]
 	}
 
 	blockchainSpecs := []*rpcpb.BlockchainSpec{
@@ -211,10 +195,16 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	fmt.Println()
 	ux.Logger.PrintToUser("Blockchain has been deployed. Wait until network acknowledges...")
 
-	_, _, endpoints, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
+	clusterInfo, err = d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
-		_ = binutils.KillgRPCServerProcess()
 		return fmt.Errorf("failed to query network health: %s", err)
+	}
+
+	endpoints := []string{}
+	for _, nodeInfo := range clusterInfo.NodeInfos {
+		for vmID, vmInfo := range clusterInfo.CustomVms {
+			endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q: %s/ext/bc/%s/rpc", nodeInfo.Name, vmID, nodeInfo.GetUri(), vmInfo.BlockchainId))
+		}
 	}
 
 	fmt.Println()
@@ -243,10 +233,35 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	return nil
 }
 
-// setupLocalEnv also does some heavy lifting:
+// SetupLocalEnv also does some heavy lifting:
 // * checks if avalanchego is installed in the local binary path
 // * if not, it downloads it and installs it (os - and archive dependent)
-// * returns the location of the avalanchego path
+// * returns the location of the avalanchego path and plugin
+func (d *SubnetDeployer) SetupLocalEnv() (string, string, error) {
+	avagoDir, err := d.setupLocalEnv()
+	if err != nil {
+		return "", "", fmt.Errorf("failed setting up local environment: %w", err)
+	}
+
+	pluginDir := filepath.Join(avagoDir, "plugins")
+	avalancheGoBinPath := filepath.Join(avagoDir, "avalanchego")
+
+	exists, err := storage.FolderExists(pluginDir)
+	if !exists || err != nil {
+		return "", "", fmt.Errorf("evaluated pluginDir to be %s but it does not exist.", pluginDir)
+	}
+
+	// TODO: we need some better version management here
+	// * compare latest to local version
+	// * decide if force update or give user choice
+	exists, err = storage.FileExists(avalancheGoBinPath)
+	if !exists || err != nil {
+		return "", "", fmt.Errorf("evaluated avalancheGoBinPath to be %s but it does not exist.", avalancheGoBinPath)
+	}
+
+	return avalancheGoBinPath, pluginDir, nil
+}
+
 func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 	binDir := filepath.Join(d.baseDir, constants.AvalancheCliBinDir)
 	binPrefix := "avalanchego-v"
@@ -342,21 +357,21 @@ func (d *SubnetDeployer) WaitForHealthy(
 	ctx context.Context,
 	cli client.Client,
 	healthCheckInterval time.Duration,
-) ([]string, []string, []string, error) {
+) (*rpcpb.ClusterInfo, error) {
 	cancel := make(chan struct{})
 	go ux.PrintWait(cancel)
 	for {
 		select {
 		case <-ctx.Done():
 			cancel <- struct{}{}
-			return nil, nil, nil, ctx.Err()
+			return nil, ctx.Err()
 		case <-time.After(healthCheckInterval):
 			cancel <- struct{}{}
 			d.log.Debug("polling for health...")
 			go ux.PrintWait(cancel)
 			resp, err := cli.Health(ctx)
 			if err != nil {
-				return nil, nil, nil, fmt.Errorf("the health check failed to complete. The server might be down or have crashed, check the logs! %s", err)
+				return nil, fmt.Errorf("the health check failed to complete. The server might be down or have crashed, check the logs! %s", err)
 			}
 			if resp.ClusterInfo == nil {
 				d.log.Debug("warning: ClusterInfo is nil. trying again...")
@@ -371,18 +386,8 @@ func (d *SubnetDeployer) WaitForHealthy(
 				continue
 			}
 			d.log.Debug("network is up and custom VMs are up")
-			blockchains := []string{}
-			for vmID, vmInfo := range resp.ClusterInfo.CustomVms {
-				blockchains = append(blockchains, fmt.Sprintf("%s/%s/%s", vmID, vmInfo.BlockchainId, vmInfo.SubnetId))
-			}
-			endpoints := []string{}
-			for _, nodeInfo := range resp.ClusterInfo.NodeInfos {
-				for vmID, vmInfo := range resp.ClusterInfo.CustomVms {
-					endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q: %s/ext/bc/%s/rpc", nodeInfo.Name, vmID, nodeInfo.GetUri(), vmInfo.BlockchainId))
-				}
-			}
 			close(cancel)
-			return resp.ClusterInfo.Subnets, blockchains, endpoints, nil
+			return resp.ClusterInfo, nil
 		}
 	}
 }

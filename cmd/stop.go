@@ -44,6 +44,7 @@ func stopNetwork(cmd *cobra.Command, args []string) error {
 
 	_, err = cli.RemoveSnapshot(ctx, snapshotName)
 	if err != nil {
+		// TODO: use error type not string comparison
 		if strings.Contains(err.Error(), "not bootstrapped") {
 			ux.Logger.PrintToUser("Network already stopped.")
 			return nil
@@ -51,6 +52,7 @@ func stopNetwork(cmd *cobra.Command, args []string) error {
 		// TODO: when removing an existing snapshot we get an error, but in this case it is expected
 		// It might be nicer to have some special field set in the response though rather than having to parse
 		// the error string which is error prone
+		// TODO: use error type not string comparison
 		if !strings.Contains(err.Error(), fmt.Sprintf("snapshot %q does not exist", snapshotName)) {
 			return fmt.Errorf("failed stop network with a snapshot: %s", err)
 		}

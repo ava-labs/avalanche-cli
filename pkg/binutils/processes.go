@@ -171,6 +171,7 @@ func KillgRPCServerProcess() error {
 	ctx := GetAsyncContext()
 	_, err = cli.Stop(ctx)
 	if err != nil {
+		// TODO: use error type not string comparison
 		if strings.Contains(err.Error(), "not bootstrapped") {
 			ux.Logger.PrintToUser("No local network running")
 			return nil

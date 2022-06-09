@@ -33,6 +33,7 @@ func networkStatus(cmd *cobra.Command, args []string) error {
 	ctx := binutils.GetAsyncContext()
 	status, err := cli.Status(ctx)
 	if err != nil {
+		// TODO: use error type not string comparison
 		if strings.Contains(err.Error(), "not bootstrapped") {
 			ux.Logger.PrintToUser("No local network running")
 			return nil
