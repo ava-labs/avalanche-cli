@@ -33,18 +33,17 @@ func getFeeConfig(config params.ChainConfig) (params.ChainConfig, stateDirection
 		return config, stop, err
 	}
 
+	config.FeeConfig = StarterFeeConfig
+
 	switch feeDefault {
 	case useFast:
-		StarterFeeConfig.TargetGas = fastTarget
-		config.FeeConfig = StarterFeeConfig
+		config.FeeConfig.TargetGas = fastTarget
 		return config, forward, nil
 	case useMedium:
-		StarterFeeConfig.TargetGas = mediumTarget
-		config.FeeConfig = StarterFeeConfig
+		config.FeeConfig.TargetGas = mediumTarget
 		return config, forward, nil
 	case useSlow:
-		StarterFeeConfig.TargetGas = slowTarget
-		config.FeeConfig = StarterFeeConfig
+		config.FeeConfig.TargetGas = slowTarget
 		return config, forward, nil
 	case goBackMsg:
 		return config, backward, nil
