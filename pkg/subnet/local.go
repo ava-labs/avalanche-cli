@@ -419,7 +419,6 @@ func SetDefaultSnapshot(baseDir string) error {
 	snapshotsDir := filepath.Join(baseDir, constants.SnapshotsDirName)
 	defaultSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.DefaultSnapshotName)
 	if _, err := os.Stat(defaultSnapshotPath); os.IsNotExist(err) {
-		fmt.Println("BAJANDO")
 		resp, err := http.Get(constants.BootstrapSnapshotURL)
 		if err != nil {
 			return fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
@@ -432,7 +431,6 @@ func SetDefaultSnapshot(baseDir string) error {
 		if err := binutils.InstallArchive("tar.gz", bootstrapSnapshotBytes, snapshotsDir); err != nil {
 			return fmt.Errorf("failed installing bootstrap snapshot: %w", err)
 		}
-		fmt.Println("FIN")
 	}
 	return nil
 }
