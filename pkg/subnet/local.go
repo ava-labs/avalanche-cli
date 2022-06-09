@@ -423,6 +423,9 @@ func SetDefaultSnapshot(baseDir string) error {
 		if err != nil {
 			return fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
 		}
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("failed downloading bootstrap snapshot: unexpected http status code: %v", resp.StatusCode)
+		}
 		defer resp.Body.Close()
 		bootstrapSnapshotBytes, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
