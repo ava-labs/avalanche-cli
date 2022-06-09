@@ -85,7 +85,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 	endpoints := []string{}
 	for _, nodeInfo := range clusterInfo.NodeInfos {
 		for vmID, vmInfo := range clusterInfo.CustomVms {
-			endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q: %s/ext/bc/%s/rpc", nodeInfo.Name, vmID, nodeInfo.GetUri(), vmInfo.BlockchainId))
+            endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, vmInfo.BlockchainId, vmID, nodeInfo.GetUri(), vmInfo.BlockchainId))
 		}
 	}
 

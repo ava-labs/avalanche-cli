@@ -33,3 +33,4 @@ avalanche-cli
 avalanche
 
 dist/
+bin/
