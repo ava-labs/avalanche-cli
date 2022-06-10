@@ -45,22 +45,24 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 
 	rows := subnetMatrix{}
 
+	deployedNames := map[string]struct{}{}
 	// if the server can not be contacted, or there is a problem with the query,
 	// DO NOT FAIL, just print No for deployed status
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
 		log.Warn("could not get connection to server: %w", err)
 	}
-	ctx := binutils.GetAsyncContext()
-	resp, err := cli.Status(ctx)
-	if err != nil {
-		log.Warn("failed to query server for status: %w", err)
-	}
+	if cli != nil {
+		ctx := binutils.GetAsyncContext()
+		resp, err := cli.Status(ctx)
+		if err != nil {
+			log.Warn("failed to query server for status: %w", err)
+		}
 
-	deployedNames := map[string]struct{}{}
-	if resp != nil {
-		for _, vm := range resp.GetClusterInfo().CustomVms {
-			deployedNames[vm.VmName] = struct{}{}
+		if resp != nil {
+			for _, vm := range resp.GetClusterInfo().CustomVms {
+				deployedNames[vm.VmName] = struct{}{}
+			}
 		}
 	}
 
