@@ -83,7 +83,7 @@ func printGasTable(genesis core.Genesis) {
 
 	table.Append([]string{"GasLimit", genesis.Config.FeeConfig.GasLimit.String()})
 	table.Append([]string{"MinBaseFee", genesis.Config.FeeConfig.MinBaseFee.String()})
-	table.Append([]string{"TargetGas", genesis.Config.FeeConfig.TargetGas.String()})
+	table.Append([]string{"TargetGas (per 10s)", genesis.Config.FeeConfig.TargetGas.String()})
 	table.Append([]string{"BaseFeeChangeDenominator", genesis.Config.FeeConfig.BaseFeeChangeDenominator.String()})
 	table.Append([]string{"MinBlockGasCost", genesis.Config.FeeConfig.MinBlockGasCost.String()})
 	table.Append([]string{"MaxBlockGasCost", genesis.Config.FeeConfig.MaxBlockGasCost.String()})

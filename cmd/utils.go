@@ -53,11 +53,15 @@ func loadEvmGenesis(subnetName string) (core.Genesis, error) {
 	return gen, err
 }
 
-func createSidecar(subnetName string, vm models.VmType) error {
+func createSidecar(subnetName string, vm models.VmType, tokenName string) error {
+	if tokenName == "" {
+		tokenName = "TEST"
+	}
 	sc := models.Sidecar{
-		Name:   subnetName,
-		Vm:     vm,
-		Subnet: subnetName,
+		Name:      subnetName,
+		Vm:        vm,
+		Subnet:    subnetName,
+		TokenName: tokenName,
 	}
 
 	scBytes, err := json.MarshalIndent(sc, "", "    ")
