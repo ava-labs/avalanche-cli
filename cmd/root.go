@@ -8,6 +8,7 @@ import (
 	"os/user"
 	"path/filepath"
 
+	this "github.com/ava-labs/avalanche-cli/pkg/app"
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
@@ -15,12 +16,10 @@ import (
 )
 
 var (
-	baseDir  string
+	app *this.Avalanche
+
 	logLevel string
-
-	Version = ""
-
-	log logging.Logger
+	Version  = ""
 
 	// rootCmd represents the base command when called without any subcommands
 	rootCmd = &cobra.Command{
@@ -31,69 +30,12 @@ build and test subnets.
 
 To get started, look at the documentation for the subcommands or jump right
 in with avalanche subnet create myNewSubnet.`,
-		PersistentPreRunE: setupLogging,
+		PersistentPreRunE: createApp,
 		Version:           Version,
 	}
 )
 
-func setupLogging(cmd *cobra.Command, args []string) error {
-	var err error
-
-	config := logging.Config{}
-	config.LogLevel = logging.Info
-	config.DisplayLevel, err = logging.ToLevel(logLevel)
-	if err != nil {
-		return fmt.Errorf("invalid log level configured: %s", logLevel)
-	}
-	config.Directory = filepath.Join(baseDir, "logs")
-	if err := os.MkdirAll(config.Directory, perms.ReadWriteExecute); err != nil {
-		return fmt.Errorf("failed creating log directory: %w", err)
-	}
-
-	// some logging config params
-	config.LogFormat = logging.Colors
-	config.MaxSize = maxLogFileSize
-	config.MaxFiles = maxNumOfLogFiles
-	config.MaxAge = retainOldFiles
-
-	factory := logging.NewFactory(config)
-	log, err = factory.Make("avalanche")
-	if err != nil {
-		factory.Close()
-		return fmt.Errorf("failed setting up logging, exiting: %s", err)
-	}
-	// create the user facing logger as a global var
-	ux.NewUserLog(log, os.Stdout)
-	return nil
-}
-
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
-	err := rootCmd.Execute()
-	if err != nil {
-		os.Exit(1)
-	}
-}
-
 func init() {
-	// Set base dir
-	usr, err := user.Current()
-	if err != nil {
-		// no logger here yet
-		fmt.Printf("unable to get system user %s\n", err)
-		os.Exit(1)
-	}
-	baseDir = filepath.Join(usr.HomeDir, BaseDirName)
-
-	// Create base dir if it doesn't exist
-	err = os.MkdirAll(baseDir, os.ModePerm)
-	if err != nil {
-		// no logger here yet
-		fmt.Printf("failed creating the basedir %s: %s\n", baseDir, err)
-		os.Exit(1)
-	}
-
 	// Disable printing the completion command
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
@@ -146,4 +88,77 @@ func init() {
 
 	// network status
 	networkCmd.AddCommand(statusCmd)
+}
+
+func createApp(cmd *cobra.Command, args []string) error {
+	baseDir, err := setupEnv()
+	if err != nil {
+		return err
+	}
+	log, err := setupLogging(baseDir)
+	if err != nil {
+		return err
+	}
+	app = this.New(baseDir, log)
+	return nil
+}
+
+func setupEnv() (string, error) {
+	// Set base dir
+	usr, err := user.Current()
+	if err != nil {
+		// no logger here yet
+		fmt.Printf("unable to get system user %s\n", err)
+		return "", err
+	}
+	baseDir := filepath.Join(usr.HomeDir, BaseDirName)
+
+	// Create base dir if it doesn't exist
+	err = os.MkdirAll(baseDir, os.ModePerm)
+	if err != nil {
+		// no logger here yet
+		fmt.Printf("failed creating the basedir %s: %s\n", baseDir, err)
+		return "", err
+	}
+	return baseDir, nil
+}
+
+func setupLogging(baseDir string) (logging.Logger, error) {
+	var err error
+
+	config := logging.Config{}
+	config.LogLevel = logging.Info
+	config.DisplayLevel, err = logging.ToLevel(logLevel)
+	if err != nil {
+		return nil, fmt.Errorf("invalid log level configured: %s", logLevel)
+	}
+	config.Directory = filepath.Join(baseDir, "logs")
+	if err := os.MkdirAll(config.Directory, perms.ReadWriteExecute); err != nil {
+		return nil, fmt.Errorf("failed creating log directory: %w", err)
+	}
+
+	// some logging config params
+	config.LogFormat = logging.Colors
+	config.MaxSize = maxLogFileSize
+	config.MaxFiles = maxNumOfLogFiles
+	config.MaxAge = retainOldFiles
+
+	factory := logging.NewFactory(config)
+	log, err := factory.Make("avalanche")
+	if err != nil {
+		factory.Close()
+		return nil, fmt.Errorf("failed setting up logging, exiting: %s", err)
+	}
+	// create the user facing logger as a global var
+	ux.NewUserLog(log, os.Stdout)
+	return log, nil
+}
+
+// Execute adds all child commands to the root command and sets flags appropriately.
+// This is called by main.main(). It only needs to happen once to the rootCmd.
+func Execute() {
+	err := rootCmd.Execute()
+	if err != nil {
+		os.Exit(1)
+	}
 }

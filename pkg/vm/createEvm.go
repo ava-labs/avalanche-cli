@@ -8,8 +8,9 @@ import (
 	"errors"
 	"math/big"
 
+	"github.com/ava-labs/avalanche-cli/pkg/app"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/ux"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
 )
@@ -46,7 +47,7 @@ func nextStage(currentState wizardState, direction stateDirection) wizardState {
 	return currentState
 }
 
-func CreateEvmGenesis(name string, log logging.Logger) ([]byte, string, error) {
+func CreateEvmGenesis(name string, app *app.Avalanche) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating subnet %s", name)
 
 	genesis := core.Genesis{}
@@ -67,7 +68,7 @@ func CreateEvmGenesis(name string, log logging.Logger) ([]byte, string, error) {
 		case startStage:
 			direction = forward
 		case descriptorStage:
-			chainId, tokenName, direction, err = getDescriptors()
+			chainId, tokenName, direction, err = getDescriptors(app)
 		case feeStage:
 			*conf, direction, err = getFeeConfig(*conf)
 		case airdropStage:
@@ -78,7 +79,7 @@ func CreateEvmGenesis(name string, log logging.Logger) ([]byte, string, error) {
 			err = errors.New("Invalid creation stage")
 		}
 		if err != nil {
-			return []byte{}, "", err
+			return []byte{}, nil, err
 		}
 		stage = nextStage(stage, direction)
 	}
@@ -92,14 +93,21 @@ func CreateEvmGenesis(name string, log logging.Logger) ([]byte, string, error) {
 
 	jsonBytes, err := genesis.MarshalJSON()
 	if err != nil {
-		return []byte{}, "", err
+		return []byte{}, nil, err
 	}
 
 	var prettyJSON bytes.Buffer
 	err = json.Indent(&prettyJSON, jsonBytes, "", "    ")
 	if err != nil {
-		return []byte{}, "", err
+		return []byte{}, nil, err
 	}
 
-	return prettyJSON.Bytes(), tokenName, nil
+	sc := &models.Sidecar{
+		Name:      name,
+		Vm:        models.SubnetEvm,
+		Subnet:    name,
+		TokenName: tokenName,
+	}
+
+	return prettyJSON.Bytes(), sc, nil
 }

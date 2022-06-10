@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
@@ -37,7 +38,7 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	table.SetRowLine(true)
 
-	files, err := ioutil.ReadDir(baseDir)
+	files, err := ioutil.ReadDir(app.GetBaseDir())
 	if err != nil {
 		return err
 	}
@@ -45,9 +46,9 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 	rows := subnetMatrix{}
 
 	for _, f := range files {
-		if strings.Contains(f.Name(), sidecar_suffix) {
+		if strings.Contains(f.Name(), constants.Sidecar_suffix) {
 			// read in sidecar file
-			sc, err := loadSidecar(strings.TrimSuffix(f.Name(), sidecar_suffix))
+			sc, err := app.LoadSidecar(strings.TrimSuffix(f.Name(), constants.Sidecar_suffix))
 			if err != nil {
 				return err
 			}

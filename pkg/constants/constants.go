@@ -15,6 +15,8 @@ const (
 
 	ServerRunFile      = "/tmp/gRPCserver.run"
 	AvalancheCliBinDir = "bin"
+	Sidecar_suffix     = "_sidecar.json"
+	Genesis_suffix     = "_genesis.json"
 
 	RequestTimeout = 3 * time.Minute
 )

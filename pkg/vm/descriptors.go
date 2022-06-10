@@ -4,19 +4,29 @@ import (
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/app"
 	"github.com/ava-labs/avalanche-cli/ux"
 )
 
-func getChainId() (*big.Int, error) {
+func getChainId(app *app.Avalanche) (*big.Int, error) {
 	// TODO check against known chain ids and provide warning
 	ux.Logger.PrintToUser("Enter your subnet's ChainId. It can be any positive integer.")
 
-	chainId, err := prompts.CapturePositiveBigInt("ChainId")
+	chainID, err := prompts.CapturePositiveBigInt("ChainId")
 	if err != nil {
 		return nil, err
 	}
 
-	return chainId, nil
+	exists, err := app.ChainIDExists(chainID.String())
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		ux.Logger.PrintToUser("The provided chain ID %q already exists! Try a different one:", chainID.String())
+		return getChainId(app)
+	}
+
+	return chainID, nil
 }
 
 func getTokenName() (string, error) {
@@ -29,8 +39,8 @@ func getTokenName() (string, error) {
 	return tokenName, nil
 }
 
-func getDescriptors() (*big.Int, string, stateDirection, error) {
-	chainId, err := getChainId()
+func getDescriptors(app *app.Avalanche) (*big.Int, string, stateDirection, error) {
+	chainId, err := getChainId(app)
 	if err != nil {
 		return nil, "", stop, err
 	}
