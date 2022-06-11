@@ -176,14 +176,10 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 			SubnetId: &subnetId,
 		},
 	}
-	deployBlockchainsOpts := []client.OpOption{
-		client.WithPluginDir(pluginDir),
-		client.WithBlockchainSpecs(blockchainSpecs),
-	}
 
-	deployBlockchainsInfo, err := cli.DeployBlockchains(
+	deployBlockchainsInfo, err := cli.CreateBlockchains(
 		ctx,
-		deployBlockchainsOpts...,
+		blockchainSpecs,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to deploy blockchain :%s", err)
@@ -364,16 +360,14 @@ func (d *SubnetDeployer) WaitForHealthy(
 	healthCheckInterval time.Duration,
 ) (*rpcpb.ClusterInfo, error) {
 	cancel := make(chan struct{})
+	defer close(cancel)
 	go ux.PrintWait(cancel)
 	for {
 		select {
 		case <-ctx.Done():
-			cancel <- struct{}{}
 			return nil, ctx.Err()
 		case <-time.After(healthCheckInterval):
-			cancel <- struct{}{}
 			d.log.Debug("polling for health...")
-			go ux.PrintWait(cancel)
 			resp, err := cli.Health(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("the health check failed to complete. The server might be down or have crashed, check the logs! %s", err)
@@ -391,7 +385,6 @@ func (d *SubnetDeployer) WaitForHealthy(
 				continue
 			}
 			d.log.Debug("network is up and custom VMs are up")
-			close(cancel)
 			return resp.ClusterInfo, nil
 		}
 	}
