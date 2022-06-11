@@ -119,6 +119,7 @@ func Test_createSidecar_success(t *testing.T) {
 				Name:      tt.subnetName,
 				Vm:        vm,
 				TokenName: tt.tokenName,
+				ChainID:   tt.chainID,
 			}
 
 			// Write sidecar
@@ -133,6 +134,8 @@ func Test_createSidecar_success(t *testing.T) {
 			control, err := ap.LoadSidecar(tt.subnetName)
 			assert.NoError(err)
 			assert.Equal(*sc, control)
+
+			assert.Equal(sc.TokenName, tt.expectedTokenName)
 
 			// Cleanup file
 			err = os.Remove(createdPath)
