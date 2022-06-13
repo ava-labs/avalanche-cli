@@ -6,12 +6,11 @@ import (
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
-	"github.com/ava-labs/avalanche-cli/pkg/app"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/ux"
 )
 
-func CreateCustomGenesis(name string, app *app.Avalanche) ([]byte, *models.Sidecar, error) {
+func CreateCustomGenesis(name string) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating custom VM subnet %s", name)
 
 	genesisPath, err := prompts.CaptureExistingFilepath("Enter path to custom genesis")

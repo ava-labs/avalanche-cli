@@ -115,7 +115,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		case customVm:
-			genesisBytes, sc, err = vm.CreateCustomGenesis(subnetName, app)
+			genesisBytes, sc, err = vm.CreateCustomGenesis(subnetName)
 			if err != nil {
 				return err
 			}

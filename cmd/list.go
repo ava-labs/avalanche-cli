@@ -81,10 +81,10 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 			// no chainID set
 			if chainID == "" {
 				sc, err := app.LoadEvmGenesis(carName)
-				if err != nil {
-					return err
+				// ignore the error in this case: just leave it to ""
+				if err == nil {
+					chainID = sc.Config.ChainID.String()
 				}
-				chainID = sc.Config.ChainID.String()
 			}
 
 			deployed := "No"
