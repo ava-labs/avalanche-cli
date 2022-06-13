@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
@@ -32,7 +33,7 @@ func (c subnetMatrix) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
 func (c subnetMatrix) Less(i, j int) bool { return strings.Compare(c[i][0], c[j][0]) == -1 }
 
 func listGenesis(cmd *cobra.Command, args []string) error {
-	header := []string{"subnet", "chain", "type"}
+	header := []string{"subnet", "chain", "type", "deployed"}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
@@ -45,6 +46,27 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 
 	rows := subnetMatrix{}
 
+	deployedNames := map[string]struct{}{}
+	// if the server can not be contacted, or there is a problem with the query,
+	// DO NOT FAIL, just print No for deployed status
+	cli, err := binutils.NewGRPCClient()
+	if err != nil {
+		app.Log.Warn("could not get connection to server: %w", err)
+	}
+	if cli != nil {
+		ctx := binutils.GetAsyncContext()
+		resp, err := cli.Status(ctx)
+		if err != nil {
+			app.Log.Warn("failed to query server for status: %w", err)
+		}
+
+		if resp != nil {
+			for _, vm := range resp.GetClusterInfo().CustomVms {
+				deployedNames[vm.VmName] = struct{}{}
+			}
+		}
+	}
+
 	for _, f := range files {
 		if strings.Contains(f.Name(), constants.Sidecar_suffix) {
 			// read in sidecar file
@@ -53,7 +75,11 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 				return err
 			}
 
-			rows = append(rows, []string{sc.Subnet, sc.Name, string(sc.Vm)})
+			deployed := "No"
+			if _, ok := deployedNames[sc.Subnet]; ok {
+				deployed = "Yes"
+			}
+			rows = append(rows, []string{sc.Subnet, sc.Name, string(sc.Vm), deployed})
 		}
 	}
 	sort.Sort(rows)
