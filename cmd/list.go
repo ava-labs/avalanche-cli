@@ -33,7 +33,7 @@ func (c subnetMatrix) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
 func (c subnetMatrix) Less(i, j int) bool { return strings.Compare(c[i][0], c[j][0]) == -1 }
 
 func listGenesis(cmd *cobra.Command, args []string) error {
-	header := []string{"subnet", "chain", "type", "deployed"}
+	header := []string{"subnet", "chain", "chain ID", "type", "deployed"}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
@@ -69,17 +69,29 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 
 	for _, f := range files {
 		if strings.Contains(f.Name(), constants.Sidecar_suffix) {
+			carName := strings.TrimSuffix(f.Name(), constants.Sidecar_suffix)
 			// read in sidecar file
-			sc, err := app.LoadSidecar(strings.TrimSuffix(f.Name(), constants.Sidecar_suffix))
+			sc, err := app.LoadSidecar(carName)
 			if err != nil {
 				return err
+			}
+
+			chainID := sc.ChainID
+			// for older sidecars, check in genesis if sidecar has
+			// no chainID set
+			if chainID == "" {
+				sc, err := app.LoadEvmGenesis(carName)
+				if err != nil {
+					return err
+				}
+				chainID = sc.Config.ChainID.String()
 			}
 
 			deployed := "No"
 			if _, ok := deployedNames[sc.Subnet]; ok {
 				deployed = "Yes"
 			}
-			rows = append(rows, []string{sc.Subnet, sc.Name, string(sc.Vm), deployed})
+			rows = append(rows, []string{sc.Subnet, sc.Name, chainID, string(sc.Vm), deployed})
 		}
 	}
 	sort.Sort(rows)
