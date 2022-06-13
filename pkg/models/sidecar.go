@@ -8,4 +8,5 @@ type Sidecar struct {
 	Subnet    string
 	TokenName string
 	ChainID   string
+	Version   string
 }

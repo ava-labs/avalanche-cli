@@ -90,6 +90,8 @@ func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 	if exists {
 		return errChainIDExists
 	}
+	// only apply the version on a write
+	sc.Version = constants.SidecarVersion
 	scBytes, err := json.MarshalIndent(sc, "", "    ")
 	if err != nil {
 		return nil
@@ -135,7 +137,17 @@ func (app *Avalanche) ChainIDExists(chainID string) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		if sc.ChainID == chainID {
+		existingChainID := sc.ChainID
+		// sidecar doesn't contain chain ID yet
+		// try loading it from genesis
+		if sc.ChainID == "" {
+			gen, err := app.LoadEvmGenesis(car)
+			if err != nil {
+				return false, err
+			}
+			existingChainID = gen.Config.ChainID.String()
+		}
+		if existingChainID == chainID {
 			return true, nil
 		}
 	}

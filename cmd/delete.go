@@ -5,9 +5,7 @@ package cmd
 import (
 	"errors"
 	"os"
-	"path/filepath"
 
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/spf13/cobra"
 )
@@ -23,8 +21,8 @@ var deleteCmd = &cobra.Command{
 
 func deleteGenesis(cmd *cobra.Command, args []string) error {
 	// TODO sanitize this input
-	genesis := filepath.Join(app.GetBaseDir(), args[0]+constants.Genesis_suffix)
-	sidecar := filepath.Join(app.GetBaseDir(), args[0]+constants.Sidecar_suffix)
+	sidecar := app.GetSidecarPath(args[0])
+	genesis := app.GetGenesisPath(args[0])
 
 	if _, err := os.Stat(genesis); err == nil {
 		// exists
