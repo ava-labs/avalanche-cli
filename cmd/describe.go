@@ -184,6 +184,10 @@ func describeSubnetEvmGenesis(subnetName string, sc models.Sidecar) error {
 
 func readGenesis(cmd *cobra.Command, args []string) error {
 	subnetName := args[0]
+	if !genesisExists(subnetName) {
+		ux.Logger.PrintToUser("The provided subnet name %q does not exist", subnetName)
+		return nil
+	}
 	if printGenesisOnly {
 		if err := printGenesis(subnetName); err != nil {
 			return err
