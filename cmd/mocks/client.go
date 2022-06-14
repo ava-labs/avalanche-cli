@@ -109,20 +109,20 @@ func (_m *Client) CreateBlockchains(ctx context.Context, blockchainSpecs []*rpcp
 	return r0, r1
 }
 
-// CreateSubnets provides a mock function with given fields: ctx, numSubnets, opts
-func (_m *Client) CreateSubnets(ctx context.Context, numSubnets uint32, opts ...client.OpOption) (*rpcpb.CreateSubnetsResponse, error) {
+// CreateSubnets provides a mock function with given fields: ctx, opts
+func (_m *Client) CreateSubnets(ctx context.Context, opts ...client.OpOption) (*rpcpb.CreateSubnetsResponse, error) {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
 	}
 	var _ca []interface{}
-	_ca = append(_ca, ctx, numSubnets)
+	_ca = append(_ca, ctx)
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
 	var r0 *rpcpb.CreateSubnetsResponse
-	if rf, ok := ret.Get(0).(func(context.Context, uint32, ...client.OpOption) *rpcpb.CreateSubnetsResponse); ok {
-		r0 = rf(ctx, numSubnets, opts...)
+	if rf, ok := ret.Get(0).(func(context.Context, ...client.OpOption) *rpcpb.CreateSubnetsResponse); ok {
+		r0 = rf(ctx, opts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*rpcpb.CreateSubnetsResponse)
@@ -130,8 +130,8 @@ func (_m *Client) CreateSubnets(ctx context.Context, numSubnets uint32, opts ...
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, uint32, ...client.OpOption) error); ok {
-		r1 = rf(ctx, numSubnets, opts...)
+	if rf, ok := ret.Get(1).(func(context.Context, ...client.OpOption) error); ok {
+		r1 = rf(ctx, opts...)
 	} else {
 		r1 = ret.Error(1)
 	}

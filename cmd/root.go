@@ -8,8 +8,8 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	this "github.com/ava-labs/avalanche-cli/pkg/app"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"

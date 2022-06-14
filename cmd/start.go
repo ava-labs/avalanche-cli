@@ -28,7 +28,7 @@ is already running or if no subnets have been deployed.`,
 }
 
 func startNetwork(cmd *cobra.Command, args []string) error {
-	sd := subnet.NewLocalSubnetDeployer(log, baseDir)
+	sd := subnet.NewLocalSubnetDeployer(app)
 
 	if err := sd.StartServer(); err != nil {
 		return err
@@ -77,7 +77,6 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 
 	// TODO: this should probably be extracted from the deployer and
 	// used as an independent helper
-	sd := subnet.NewLocalSubnetDeployer(app)
 	clusterInfo, err := sd.WaitForHealthy(ctx, cli, healthCheckInterval)
 	if err != nil {
 		return fmt.Errorf("failed waiting for network to become healthy: %s", err)
@@ -86,7 +85,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 	endpoints := []string{}
 	for _, nodeInfo := range clusterInfo.NodeInfos {
 		for vmID, vmInfo := range clusterInfo.CustomVms {
-            endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, vmInfo.BlockchainId, vmID, nodeInfo.GetUri(), vmInfo.BlockchainId))
+			endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, vmInfo.BlockchainId, vmID, nodeInfo.GetUri(), vmInfo.BlockchainId))
 		}
 	}
 
