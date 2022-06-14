@@ -10,7 +10,6 @@ import (
 	"math/big"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -112,8 +111,6 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 			"evaluated chain genesis file to be at %s but it does not seem to exist.", chain_genesis)
 	}
 
-	rootDataDir := path.Join(d.app.GetBaseDir(), "runs")
-
 	// we need the chainID just later, but it would be ugly to fail the whole deployment
 	// for a JSON unmarshalling error, so let's do it here already
 	genesis, err := getGenesis(chain_genesis)
@@ -130,7 +127,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 		client.WithPluginDir(pluginDir),
 		client.WithCustomVMs(customVMs),
 		client.WithGlobalNodeConfig("{\"log-level\":\"debug\", \"log-display-level\":\"debug\"}"),
-		client.WithRootDataDir(rootDataDir),
+		client.WithRootDataDir(d.app.GetRunDir()),
 	}
 
 	vmID, err := utils.VMID(chain)

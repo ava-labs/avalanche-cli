@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -17,6 +18,8 @@ import (
 
 const (
 	WriteReadReadPerms = 0o644
+
+	runDir = "runs"
 )
 
 var errChainIDExists = errors.New("The provided chain ID already exists! Try another one")
@@ -35,6 +38,10 @@ func New(baseDir string, log logging.Logger) *Avalanche {
 
 func (app *Avalanche) GetBaseDir() string {
 	return app.baseDir
+}
+
+func (app *Avalanche) GetRunDir() string {
+	return path.Join(app.baseDir, runDir)
 }
 
 func (app *Avalanche) GetGenesisPath(subnetName string) string {

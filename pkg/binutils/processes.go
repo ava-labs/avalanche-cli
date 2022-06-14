@@ -120,13 +120,12 @@ func StartServerProcess(app app.Avalanche) error {
 	args := []string{"backend", "start"}
 	cmd := exec.Command(thisBin, args...)
 
-	outputFilePrefix := path.Join(app.GetBaseDir(), "runs", "server")
+	outputFilePrefix := path.Join(app.GetRunDir(), "server")
 	outputFilePath, err := utils.MkDirWithTimestamp(outputFilePrefix)
 	if err != nil {
 		return err
 	}
 	outputFile, err := os.Create(path.Join(outputFilePath, "avalanche-cli-backend"))
-	// outputFile, err := os.CreateTemp("", "avalanche-cli-backend*")
 	if err != nil {
 		return err
 	}
