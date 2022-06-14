@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/app"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
@@ -38,15 +39,15 @@ type SubnetDeployer struct {
 	backendStartedHere  bool
 }
 
-func NewLocalSubnetDeployer(log logging.Logger, baseDir string) *SubnetDeployer {
+func NewLocalSubnetDeployer(app *app.Avalanche) *SubnetDeployer {
 	return &SubnetDeployer{
 		procChecker:         binutils.NewProcessChecker(),
 		binChecker:          binutils.NewBinaryChecker(),
 		getClientFunc:       binutils.NewGRPCClient,
-		binaryDownloader:    binutils.NewPluginBinaryDownloader(log),
+		binaryDownloader:    binutils.NewPluginBinaryDownloader(app.Log),
 		healthCheckInterval: 10 * time.Second,
-		log:                 log,
-		baseDir:             baseDir,
+		log:                 app.Log,
+		baseDir:             app.GetBaseDir(),
 	}
 }
 

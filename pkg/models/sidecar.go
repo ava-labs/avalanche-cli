@@ -7,4 +7,6 @@ type Sidecar struct {
 	Vm        VmType
 	Subnet    string
 	TokenName string
+	ChainID   string
+	Version   string
 }

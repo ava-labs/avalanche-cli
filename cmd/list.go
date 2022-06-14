@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
@@ -32,13 +33,13 @@ func (c subnetMatrix) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
 func (c subnetMatrix) Less(i, j int) bool { return strings.Compare(c[i][0], c[j][0]) == -1 }
 
 func listGenesis(cmd *cobra.Command, args []string) error {
-	header := []string{"subnet", "chain", "type", "deployed"}
+	header := []string{"subnet", "chain", "chain ID", "type", "deployed"}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	table.SetRowLine(true)
 
-	files, err := ioutil.ReadDir(baseDir)
+	files, err := ioutil.ReadDir(app.GetBaseDir())
 	if err != nil {
 		return err
 	}
@@ -50,13 +51,13 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 	// DO NOT FAIL, just print No for deployed status
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
-		log.Warn("could not get connection to server: %w", err)
+		app.Log.Warn("could not get connection to server: %w", err)
 	}
 	if cli != nil {
 		ctx := binutils.GetAsyncContext()
 		resp, err := cli.Status(ctx)
 		if err != nil {
-			log.Warn("failed to query server for status: %w", err)
+			app.Log.Warn("failed to query server for status: %w", err)
 		}
 
 		if resp != nil {
@@ -67,18 +68,30 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, f := range files {
-		if strings.Contains(f.Name(), sidecar_suffix) {
+		if strings.Contains(f.Name(), constants.Sidecar_suffix) {
+			carName := strings.TrimSuffix(f.Name(), constants.Sidecar_suffix)
 			// read in sidecar file
-			sc, err := loadSidecar(strings.TrimSuffix(f.Name(), sidecar_suffix))
+			sc, err := app.LoadSidecar(carName)
 			if err != nil {
 				return err
+			}
+
+			chainID := sc.ChainID
+			// for older sidecars, check in genesis if sidecar has
+			// no chainID set
+			if chainID == "" {
+				sc, err := app.LoadEvmGenesis(carName)
+				// ignore the error in this case: just leave it to ""
+				if err == nil {
+					chainID = sc.Config.ChainID.String()
+				}
 			}
 
 			deployed := "No"
 			if _, ok := deployedNames[sc.Subnet]; ok {
 				deployed = "Yes"
 			}
-			rows = append(rows, []string{sc.Subnet, sc.Name, string(sc.Vm), deployed})
+			rows = append(rows, []string{sc.Subnet, sc.Name, chainID, string(sc.Vm), deployed})
 		}
 	}
 	sort.Sort(rows)

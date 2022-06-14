@@ -13,6 +13,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/ux"
@@ -39,7 +40,7 @@ redeploy the subnet and reset the chain state to genesis.`,
 var deployLocal bool
 
 func getChainsInSubnet(subnetName string) ([]string, error) {
-	files, err := ioutil.ReadDir(baseDir)
+	files, err := ioutil.ReadDir(app.GetBaseDir())
 	if err != nil {
 		return []string{}, fmt.Errorf("failed to read baseDir :%w", err)
 	}
@@ -47,9 +48,9 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 	chains := []string{}
 
 	for _, f := range files {
-		if strings.Contains(f.Name(), sidecar_suffix) {
+		if strings.Contains(f.Name(), constants.Sidecar_suffix) {
 			// read in sidecar file
-			path := filepath.Join(baseDir, f.Name())
+			path := filepath.Join(app.GetBaseDir(), f.Name())
 			jsonBytes, err := os.ReadFile(path)
 			if err != nil {
 				return []string{}, fmt.Errorf("failed reading file %s: %w", path, err)
@@ -104,17 +105,17 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// TODO
 	switch network {
 	case models.Local:
-		log.Debug("Deploy local")
+		app.Log.Debug("Deploy local")
 		// TODO: Add signal management here. If we Ctrl-C this guy it can leave
 		// the gRPC server is a weird state. Should kill that too
-		deployer := subnet.NewLocalSubnetDeployer(log, baseDir)
+		deployer := subnet.NewLocalSubnetDeployer(app)
 		chain := chains[0]
-		chain_genesis := filepath.Join(baseDir, fmt.Sprintf("%s_genesis.json", chain))
+		chain_genesis := filepath.Join(app.GetBaseDir(), fmt.Sprintf("%s_genesis.json", chain))
 		err := deployer.DeployToLocalNetwork(chain, chain_genesis)
 		if err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(); innerErr != nil {
-					log.Warn("tried to kill the gRPC server process but it failed: %w", innerErr)
+					app.Log.Warn("tried to kill the gRPC server process but it failed: %w", innerErr)
 				}
 			}
 		}

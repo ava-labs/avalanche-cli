@@ -31,7 +31,7 @@ print out the raw genesis file.`,
 var printGenesisOnly bool
 
 func printGenesis(subnetName string) error {
-	genesisFile := getGenesisPath(subnetName)
+	genesisFile := app.GetGenesisPath(subnetName)
 	gen, err := os.ReadFile(genesisFile)
 	if err != nil {
 		return err
@@ -168,7 +168,7 @@ func printPrecompileTable(genesis core.Genesis) {
 
 func describeSubnetEvmGenesis(subnetName string, sc models.Sidecar) error {
 	// Load genesis
-	genesis, err := loadEvmGenesis(subnetName)
+	genesis, err := app.LoadEvmGenesis(subnetName)
 	if err != nil {
 		return err
 	}
@@ -184,7 +184,7 @@ func describeSubnetEvmGenesis(subnetName string, sc models.Sidecar) error {
 
 func readGenesis(cmd *cobra.Command, args []string) error {
 	subnetName := args[0]
-	if !genesisExists(subnetName) {
+	if !app.GenesisExists(subnetName) {
 		ux.Logger.PrintToUser("The provided subnet name %q does not exist", subnetName)
 		return nil
 	}
@@ -194,7 +194,7 @@ func readGenesis(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		// read in sidecar
-		sc, err := loadSidecar(subnetName)
+		sc, err := app.LoadSidecar(subnetName)
 		if err != nil {
 			return err
 		}
@@ -203,7 +203,7 @@ func readGenesis(cmd *cobra.Command, args []string) error {
 		case models.SubnetEvm:
 			err = describeSubnetEvmGenesis(subnetName, sc)
 		default:
-			log.Warn("Unknown genesis format for", sc.Vm)
+			app.Log.Warn("Unknown genesis format for", sc.Vm)
 			ux.Logger.PrintToUser("Printing genesis")
 			err = printGenesis(subnetName)
 		}
