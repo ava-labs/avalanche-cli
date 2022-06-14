@@ -39,7 +39,7 @@ curl -sSfL https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts
 
 ## Quickstart
 
-Launch your own custom subnet:
+After installing, launch your own custom subnet:
 
 ```bash
 avalanche subnet create <subnetName>
