@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/mocks"
+	"github.com/ava-labs/avalanche-cli/pkg/app"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/ux"
@@ -55,13 +56,17 @@ func TestDeployToLocal(t *testing.T) {
 	binDownloader := &mocks.PluginBinaryDownloader{}
 	binDownloader.On("Download", mock.AnythingOfType("ids.ID"), mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil)
 
+	app := app.Avalanche{
+		Log: logging.NoLog{},
+	}
+
 	testDeployer := &SubnetDeployer{
 		procChecker:         procChecker,
 		binChecker:          binChecker,
 		getClientFunc:       getTestClientFunc,
 		binaryDownloader:    binDownloader,
 		healthCheckInterval: 500 * time.Millisecond,
-		log:                 logging.NoLog{},
+		app:                 app,
 	}
 
 	// create a simple genesis for the test

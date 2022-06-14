@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"fmt"
+	"path"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -15,7 +16,7 @@ var startCmd = &cobra.Command{
 	Use:   "start [snapshotName]",
 	Short: "Starts a stopped local network",
 	Long: `The network start command starts a local, multi-node Avalanche network
-on your machine. If "snapshotName" is provided, that snapshot will be used for starting the network 
+on your machine. If "snapshotName" is provided, that snapshot will be used for starting the network
 if it can be found. Otherwise, the last saved unnamed (default) snapshot will be used. The command may fail if the local network
 is already running or if no subnets have been deployed.`,
 
@@ -42,7 +43,8 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 	ctx := binutils.GetAsyncContext()
 
 	ux.Logger.PrintToUser(startMsg)
-	_, err = cli.LoadSnapshot(ctx, snapshotName)
+	rootDataDir := path.Join(app.GetBaseDir(), "runs")
+	_, err = cli.LoadSnapshot(ctx, snapshotName, rootDataDir)
 	if err != nil {
 		return fmt.Errorf("failed to start network with the persisted snapshot: %s", err)
 	}

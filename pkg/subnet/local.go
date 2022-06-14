@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -22,7 +23,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/utils"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/coreth/core"
 	"github.com/ava-labs/coreth/params"
@@ -34,8 +34,7 @@ type SubnetDeployer struct {
 	getClientFunc       getGRPCClientFunc
 	binaryDownloader    binutils.PluginBinaryDownloader
 	healthCheckInterval time.Duration
-	log                 logging.Logger
-	baseDir             string
+	app                 app.Avalanche
 	backendStartedHere  bool
 }
 
@@ -46,8 +45,7 @@ func NewLocalSubnetDeployer(app *app.Avalanche) *SubnetDeployer {
 		getClientFunc:       binutils.NewGRPCClient,
 		binaryDownloader:    binutils.NewPluginBinaryDownloader(app.Log),
 		healthCheckInterval: 10 * time.Second,
-		log:                 app.Log,
-		baseDir:             app.GetBaseDir(),
+		app:                 *app,
 	}
 }
 
@@ -62,8 +60,8 @@ func (d *SubnetDeployer) DeployToLocalNetwork(chain string, chain_genesis string
 		return fmt.Errorf("failed querying if server process is running: %w", err)
 	}
 	if !isRunning {
-		d.log.Debug("gRPC server is not running")
-		if err := binutils.StartServerProcess(d.log); err != nil {
+		d.app.Log.Debug("gRPC server is not running")
+		if err := binutils.StartServerProcess(d.app); err != nil {
 			return fmt.Errorf("failed starting gRPC server process: %w", err)
 		}
 		d.backendStartedHere = true
@@ -114,6 +112,8 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 			"evaluated chain genesis file to be at %s but it does not seem to exist.", chain_genesis)
 	}
 
+	rootDataDir := path.Join(d.app.GetBaseDir(), "runs")
+
 	// we need the chainID just later, but it would be ugly to fail the whole deployment
 	// for a JSON unmarshalling error, so let's do it here already
 	genesis, err := getGenesis(chain_genesis)
@@ -130,15 +130,16 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 		client.WithPluginDir(pluginDir),
 		client.WithCustomVMs(customVMs),
 		client.WithGlobalNodeConfig("{\"log-level\":\"debug\", \"log-display-level\":\"debug\"}"),
+		client.WithRootDataDir(rootDataDir),
 	}
 
 	vmID, err := utils.VMID(chain)
 	if err != nil {
 		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
-	d.log.Debug("this VM will get ID: %s", vmID.String())
+	d.app.Log.Debug("this VM will get ID: %s", vmID.String())
 
-	binDir := filepath.Join(d.baseDir, constants.AvalancheCliBinDir)
+	binDir := filepath.Join(d.app.GetBaseDir(), constants.AvalancheCliBinDir)
 	if err := d.binaryDownloader.Download(vmID, pluginDir, binDir); err != nil {
 		return err
 	}
@@ -155,7 +156,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 		return fmt.Errorf("failed to start network :%s", err)
 	}
 
-	d.log.Debug(info.String())
+	d.app.Log.Debug(info.String())
 	ux.Logger.PrintToUser("Network has been booted. Wait until healthy. Please be patient, this will take some time...")
 
 	endpoints, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
@@ -195,7 +196,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path
 func (d *SubnetDeployer) setupLocalEnv() (string, error) {
-	binDir := filepath.Join(d.baseDir, constants.AvalancheCliBinDir)
+	binDir := filepath.Join(d.app.GetBaseDir(), constants.AvalancheCliBinDir)
 	binPrefix := "avalanchego-v"
 
 	exists, avagoDir, err := d.binChecker.ExistsWithLatestVersion(binDir, binPrefix)
@@ -203,7 +204,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 		return "", fmt.Errorf("failed trying to locate avalanchego binary: %s", binDir)
 	}
 	if exists {
-		d.log.Debug("local avalanchego found. skipping installation")
+		d.app.Log.Debug("local avalanchego found. skipping installation")
 		return avagoDir, nil
 	}
 
@@ -220,7 +221,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 		}
 	*/
 
-	d.log.Info("Avalanchego version is: %s", version)
+	d.app.Log.Info("Avalanchego version is: %s", version)
 
 	// TODO: would be nice if we could also here just use binutils.DownloadLatestReleaseVersion(),
 	// but unfortunately we don't have a consistent naming scheme between avalanchego and subnet-evm
@@ -262,7 +263,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 		return "", fmt.Errorf("OS not supported: %s", goos)
 	}
 
-	d.log.Debug("starting download from %s...", avalanchegoURL)
+	d.app.Log.Debug("starting download from %s...", avalanchegoURL)
 
 	resp, err := http.Get(avalanchegoURL)
 	if err != nil {
@@ -278,7 +279,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 		return "", err
 	}
 
-	d.log.Debug("download successful. installing archive...")
+	d.app.Log.Debug("download successful. installing archive...")
 	if err := binutils.InstallArchive(ext, archive, binDir); err != nil {
 		return "", err
 	}
@@ -303,22 +304,22 @@ func (d *SubnetDeployer) WaitForHealthy(ctx context.Context, cli client.Client, 
 			return nil, ctx.Err()
 		case <-time.After(healthCheckInterval):
 			cancel <- struct{}{}
-			d.log.Debug("polling for health...")
+			d.app.Log.Debug("polling for health...")
 			go ux.PrintWait(cancel)
 			resp, err := cli.Health(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("the health check failed to complete. The server might be down or have crashed, check the logs! %s", err)
 			}
 			if resp.ClusterInfo == nil {
-				d.log.Debug("warning: ClusterInfo is nil. trying again...")
+				d.app.Log.Debug("warning: ClusterInfo is nil. trying again...")
 				continue
 			}
 			if len(resp.ClusterInfo.CustomVms) == 0 {
-				d.log.Debug("network is up but custom VMs are not installed yet. polling again...")
+				d.app.Log.Debug("network is up but custom VMs are not installed yet. polling again...")
 				continue
 			}
 			if !resp.ClusterInfo.CustomVmsHealthy {
-				d.log.Debug("network is up but custom VMs are not healthy. polling again...")
+				d.app.Log.Debug("network is up but custom VMs are not healthy. polling again...")
 				continue
 			}
 			endpoints := []string{}
@@ -327,7 +328,7 @@ func (d *SubnetDeployer) WaitForHealthy(ctx context.Context, cli client.Client, 
 					endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, vmInfo.BlockchainId, vmID, nodeInfo.GetUri(), vmInfo.BlockchainId))
 				}
 			}
-			d.log.Debug("cluster is up, subnets deployed, VMs are installed!")
+			d.app.Log.Debug("cluster is up, subnets deployed, VMs are installed!")
 			close(cancel)
 			return endpoints, nil
 		}

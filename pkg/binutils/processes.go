@@ -10,13 +10,16 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
 	"strings"
 	"syscall"
 
+	"github.com/ava-labs/avalanche-cli/pkg/app"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/server"
+	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/docker/docker/pkg/reexec"
@@ -111,12 +114,19 @@ func GetServerPID() (int, error) {
 
 // StartServerProcess starts the gRPC server as a reentrant process of this binary
 // it just executes `avalanche-cli backend start`
-func StartServerProcess(log logging.Logger) error {
+func StartServerProcess(app app.Avalanche) error {
 	thisBin := reexec.Self()
 
 	args := []string{"backend", "start"}
 	cmd := exec.Command(thisBin, args...)
-	outputFile, err := os.CreateTemp("", "avalanche-cli-backend*")
+
+	outputFilePrefix := path.Join(app.GetBaseDir(), "runs", "server")
+	outputFilePath, err := utils.MkDirWithTimestamp(outputFilePrefix)
+	if err != nil {
+		return err
+	}
+	outputFile, err := os.Create(path.Join(outputFilePath, "avalanche-cli-backend"))
+	// outputFile, err := os.CreateTemp("", "avalanche-cli-backend*")
 	if err != nil {
 		return err
 	}
@@ -141,7 +151,7 @@ func StartServerProcess(log logging.Logger) error {
 	}
 	err = os.WriteFile(constants.ServerRunFile, rfBytes, perms.ReadWrite)
 	if err != nil {
-		log.Warn("could not write gRPC process info to file: %s", err)
+		app.Log.Warn("could not write gRPC process info to file: %s", err)
 	}
 	return nil
 }
