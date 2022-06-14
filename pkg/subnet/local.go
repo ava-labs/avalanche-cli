@@ -15,13 +15,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/app"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/utils"
-	avago_genesis "github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/coreth/core"
@@ -39,15 +39,15 @@ type SubnetDeployer struct {
 	backendStartedHere  bool
 }
 
-func NewLocalSubnetDeployer(log logging.Logger, baseDir string) *SubnetDeployer {
+func NewLocalSubnetDeployer(app *app.Avalanche) *SubnetDeployer {
 	return &SubnetDeployer{
 		procChecker:         binutils.NewProcessChecker(),
 		binChecker:          binutils.NewBinaryChecker(),
 		getClientFunc:       binutils.NewGRPCClient,
-		binaryDownloader:    binutils.NewPluginBinaryDownloader(log),
+		binaryDownloader:    binutils.NewPluginBinaryDownloader(app.Log),
 		healthCheckInterval: 10 * time.Second,
-		log:                 log,
-		baseDir:             baseDir,
+		log:                 app.Log,
+		baseDir:             app.GetBaseDir(),
 	}
 }
 
@@ -178,7 +178,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 		amount := genesis.Alloc[address].Balance
 		formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
 		if address == vm.Prefunded_ewoq_Address {
-			ux.Logger.PrintToUser("Funded address:   %s with %s (10^18) - private key: %s", address, formattedAmount.String(), avago_genesis.EWOQKeyStr)
+			ux.Logger.PrintToUser("Funded address:   %s with %s (10^18) - private key: %s", address, formattedAmount.String(), vm.PrefundedEwoqPrivate)
 		} else {
 			ux.Logger.PrintToUser("Funded address:   %s with %s", address, formattedAmount.String())
 		}
@@ -198,23 +198,29 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 	binDir := filepath.Join(d.baseDir, constants.AvalancheCliBinDir)
 	binPrefix := "avalanchego-v"
 
-	exists, latest, err := d.binChecker.ExistsWithLatestVersion(binDir, binPrefix)
+	exists, avagoDir, err := d.binChecker.ExistsWithLatestVersion(binDir, binPrefix)
 	if err != nil {
 		return "", fmt.Errorf("failed trying to locate avalanchego binary: %s", binDir)
 	}
 	if exists {
 		d.log.Debug("local avalanchego found. skipping installation")
-		return latest, nil
+		return avagoDir, nil
 	}
 
-	ux.Logger.PrintToUser("Installing latest avalanchego version...")
+	ux.Logger.PrintToUser("Installing avalanchego...")
 
-	version, err := binutils.GetLatestReleaseVersion(constants.LatestAvagoReleaseURL)
-	if err != nil {
-		return "", fmt.Errorf("failed to get latest avalanchego version: %s", err)
-	}
+	// TODO: we are hardcoding the release version
+	// until we have a better binary, dependency and version management
+	// as per https://github.com/ava-labs/avalanche-cli/pull/17#discussion_r887164924
+	version := constants.AvalancheGoReleaseVersion
+	/*
+		version, err := binutils.GetLatestReleaseVersion(constants.LatestAvagoReleaseURL)
+		if err != nil {
+			return "", fmt.Errorf("failed to get latest avalanchego version: %s", err)
+		}
+	*/
 
-	d.log.Info("Latest avalanchego version is: %s", version)
+	d.log.Info("Avalanchego version is: %s", version)
 
 	// TODO: would be nice if we could also here just use binutils.DownloadLatestReleaseVersion(),
 	// but unfortunately we don't have a consistent naming scheme between avalanchego and subnet-evm
@@ -261,6 +267,9 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 	resp, err := http.Get(avalanchegoURL)
 	if err != nil {
 		return "", err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected http status code: %d", resp.StatusCode)
 	}
 	defer resp.Body.Close()
 
@@ -315,7 +324,7 @@ func (d *SubnetDeployer) WaitForHealthy(ctx context.Context, cli client.Client, 
 			endpoints := []string{}
 			for _, nodeInfo := range resp.ClusterInfo.NodeInfos {
 				for vmID, vmInfo := range resp.ClusterInfo.CustomVms {
-					endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q: %s/ext/bc/%s/rpc", nodeInfo.Name, vmID, nodeInfo.GetUri(), vmInfo.BlockchainId))
+					endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, vmInfo.BlockchainId, vmID, nodeInfo.GetUri(), vmInfo.BlockchainId))
 				}
 			}
 			d.log.Debug("cluster is up, subnets deployed, VMs are installed!")

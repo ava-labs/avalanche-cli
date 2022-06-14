@@ -13,4 +13,4 @@ else
     VERSION=$1
 fi
 
-go build -v -ldflags="-X 'github.com/ava-labs/avalanche-cli/cmd.Version=$VERSION'" -o avalanche
+go build -v -ldflags="-X 'github.com/ava-labs/avalanche-cli/cmd.Version=$VERSION'" -o bin/avalanche

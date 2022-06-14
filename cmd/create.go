@@ -14,17 +14,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var filename string
-
 var (
 	forceCreate  bool
 	useSubnetEvm bool
+	filename     string
+	useCustom    bool
 
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
 )
-
-var useCustom bool
 
 // createCmd represents the create command
 var createCmd = &cobra.Command{
@@ -72,7 +70,7 @@ func getVmFromFlag() models.VmType {
 
 func createGenesis(cmd *cobra.Command, args []string) error {
 	subnetName := args[0]
-	if genesisExists(subnetName) && !forceCreate {
+	if app.GenesisExists(subnetName) && !forceCreate {
 		return errors.New("Configuration already exists. Use --" + forceFlag + " parameter to overwrite")
 	}
 
@@ -102,40 +100,39 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 			subnetType = models.VmTypeFromString(subnetTypeStr)
 		}
 
-		var genesisBytes []byte
+		var (
+			genesisBytes []byte
+			sc           *models.Sidecar
+		)
 
 		switch subnetType {
 		case subnetEvm:
-			genesisBytes, err = vm.CreateEvmGenesis(subnetName, log)
+			genesisBytes, sc, err = vm.CreateEvmGenesis(subnetName, app)
 			if err != nil {
 				return err
 			}
-
-			err = createSidecar(subnetName, models.SubnetEvm)
-			if err != nil {
+			if err = app.CreateSidecar(sc); err != nil {
 				return err
 			}
 		case customVm:
-			genesisBytes, err = vm.CreateCustomGenesis(subnetName, log)
+			genesisBytes, sc, err = vm.CreateCustomGenesis(subnetName)
 			if err != nil {
 				return err
 			}
-			err = createSidecar(subnetName, models.CustomVm)
-			if err != nil {
+			if err = app.CreateSidecar(sc); err != nil {
 				return err
 			}
 		default:
 			return errors.New("Not implemented")
 		}
 
-		err = writeGenesisFile(subnetName, genesisBytes)
-		if err != nil {
+		if err = app.WriteGenesisFile(subnetName, genesisBytes); err != nil {
 			return err
 		}
 		ux.Logger.PrintToUser("Successfully created genesis")
 	} else {
 		ux.Logger.PrintToUser("Using specified genesis")
-		err := copyGenesisFile(filename, subnetName)
+		err := app.CopyGenesisFile(filename, subnetName)
 		if err != nil {
 			return err
 		}
@@ -153,8 +150,14 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 			}
 			subnetType = models.VmTypeFromString(subnetTypeStr)
 		}
-		err = createSidecar(subnetName, subnetType)
-		if err != nil {
+		sc := &models.Sidecar{
+			Name:      subnetName,
+			Vm:        subnetType,
+			Subnet:    subnetName,
+			TokenName: "",
+		}
+
+		if err = app.CreateSidecar(sc); err != nil {
 			return err
 		}
 		ux.Logger.PrintToUser("Successfully created genesis")

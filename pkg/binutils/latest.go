@@ -21,7 +21,10 @@ func GetLatestReleaseVersion(releaseURL string) (string, error) {
 	// Maybe the binary package manager should also allow the actual avalanchego binary for download
 	resp, err := http.Get(releaseURL)
 	if err != nil {
-		return "", fmt.Errorf("failed to download binary from %s: %w", releaseURL, err)
+		return "", fmt.Errorf("failed to get latest version from %s: %w", releaseURL, err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to get latest version from %s: unexpected http status code: %d", releaseURL, resp.StatusCode)
 	}
 	defer resp.Body.Close()
 
@@ -87,8 +90,11 @@ func DownloadReleaseVersion(
 	log.Debug("starting download from %s...", downloadURL)
 
 	resp, err := http.Get(downloadURL)
-	if err != nil || resp.StatusCode != http.StatusOK {
+	if err != nil {
 		return "", err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected http status code: %d", resp.StatusCode)
 	}
 	defer resp.Body.Close()
 
