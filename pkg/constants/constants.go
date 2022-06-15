@@ -15,10 +15,12 @@ const (
 
 	ServerRunFile      = "/tmp/gRPCserver.run"
 	AvalancheCliBinDir = "bin"
-	Sidecar_suffix     = "_sidecar.json"
-	Genesis_suffix     = "_genesis.json"
+	SidecarSuffix      = "_sidecar.json"
+	GenesisSuffix      = "_genesis.json"
 
 	SidecarVersion = "1.0.0"
 
 	RequestTimeout = 3 * time.Minute
+
+	MaxCopy = 2147483648 // 2 GB
 )

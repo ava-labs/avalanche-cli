@@ -53,6 +53,16 @@ func NewPluginBinaryDownloader(log logging.Logger) PluginBinaryDownloader {
 	}
 }
 
+// Sanitize archive file pathing from "G305: Zip Slip vulnerability"
+func sanitizeArchivePath(d, t string) (v string, err error) {
+	v = filepath.Join(d, t)
+	if strings.HasPrefix(v, filepath.Clean(d)) {
+		return v, nil
+	}
+
+	return "", fmt.Errorf("%s: %s", "content filepath is tainted", t)
+}
+
 // InstallArchive installs the binary archive downloaded
 func InstallArchive(ext string, archive []byte, binDir string) error {
 	if ext == "zip" {
@@ -80,10 +90,10 @@ func installZipArchive(zipfile []byte, binDir string) error {
 			return fmt.Errorf("failed opening zip file: %w", err)
 		}
 
-		path := filepath.Join(binDir, f.Name)
-		// Check for ZipSlip (Directory traversal)
-		if !strings.HasPrefix(path, filepath.Clean(binDir)+string(os.PathSeparator)) {
-			return fmt.Errorf("illegal file path: %s", path)
+		// check for zip slip
+		path, err := sanitizeArchivePath(binDir, f.Name)
+		if err != nil {
+			return err
 		}
 
 		if f.FileInfo().IsDir() {
@@ -99,9 +109,11 @@ func installZipArchive(zipfile []byte, binDir string) error {
 				return fmt.Errorf("failed opening file from zip entry: %w", err)
 			}
 
-			_, err = io.Copy(f, rc)
+			_, err = io.CopyN(f, rc, constants.MaxCopy)
 			if err != nil {
-				return fmt.Errorf("failed writing zip file entry to disk: %w", err)
+				if err != io.EOF {
+					return fmt.Errorf("failed writing zip file entry to disk: %w", err)
+				}
 			}
 			if err := f.Close(); err != nil {
 				return err
@@ -144,8 +156,13 @@ func installTarGzArchive(targz []byte, binDir string) error {
 		case header == nil:
 			continue
 		}
+
 		// the target location where the dir/file should be created
-		target := filepath.Join(binDir, header.Name)
+		// check for zip slip
+		target, err := sanitizeArchivePath(binDir, header.Name)
+		if err != nil {
+			return err
+		}
 
 		// check the file type
 		switch header.Typeflag {
@@ -163,8 +180,10 @@ func installTarGzArchive(targz []byte, binDir string) error {
 				return fmt.Errorf("failed opening new file from tar entry %w", err)
 			}
 			// copy over contents
-			if _, err := io.Copy(f, tarReader); err != nil {
-				return fmt.Errorf("failed writing tar entry contents to disk: %w", err)
+			if _, err := io.CopyN(f, tarReader, constants.MaxCopy); err != nil {
+				if err != io.EOF {
+					return fmt.Errorf("failed writing tar entry contents to disk: %w", err)
+				}
 			}
 			// manually close here after each file operation; defering would cause each file close
 			// to wait until all operations have completed.

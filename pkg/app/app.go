@@ -7,7 +7,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -19,7 +18,7 @@ const (
 	WriteReadReadPerms = 0o644
 )
 
-var errChainIDExists = errors.New("The provided chain ID already exists! Try another one")
+var errChainIDExists = errors.New("the provided chain ID already exists! Try another one")
 
 type Avalanche struct {
 	Log     logging.Logger
@@ -38,11 +37,11 @@ func (app *Avalanche) GetBaseDir() string {
 }
 
 func (app *Avalanche) GetGenesisPath(subnetName string) string {
-	return filepath.Join(app.baseDir, subnetName+constants.Genesis_suffix)
+	return filepath.Join(app.baseDir, subnetName+constants.GenesisSuffix)
 }
 
 func (app *Avalanche) GetSidecarPath(subnetName string) string {
-	return filepath.Join(app.baseDir, subnetName+constants.Sidecar_suffix)
+	return filepath.Join(app.baseDir, subnetName+constants.SidecarSuffix)
 }
 
 func (app *Avalanche) WriteGenesisFile(subnetName string, genesisBytes []byte) error {
@@ -114,15 +113,15 @@ func (app *Avalanche) LoadSidecar(subnetName string) (models.Sidecar, error) {
 }
 
 func (app *Avalanche) listSideCarNames() ([]string, error) {
-	var names []string
-	matches, err := filepath.Glob(filepath.Join(app.baseDir, "*"+constants.Sidecar_suffix))
+	matches, err := filepath.Glob(filepath.Join(app.baseDir, "*"+constants.SidecarSuffix))
 	if err != nil {
 		return nil, err
 	}
-	for _, m := range matches {
+	names := make([]string, len(matches))
+	for i, m := range matches {
 		base := filepath.Base(m)
-		name := base[:strings.Index(base, constants.Sidecar_suffix)]
-		names = append(names, name)
+		name := base[:len(base)-len(constants.SidecarSuffix)]
+		names[i] = name
 	}
 	return names, nil
 }

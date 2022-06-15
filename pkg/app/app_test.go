@@ -17,14 +17,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const subnetName1 = "TEST_subnet"
+
 func Test_writeGenesisFile_success(t *testing.T) {
 	genesisBytes := []byte("genesis")
-	subnetName := "TEST_subnet"
-	genesisFile := subnetName + constants.Genesis_suffix
+	genesisFile := subnetName1 + constants.GenesisSuffix
 
 	ap := newTestApp(t)
 	// Write genesis
-	err := ap.WriteGenesisFile(subnetName, genesisBytes)
+	err := ap.WriteGenesisFile(subnetName1, genesisBytes)
 	assert.NoError(t, err)
 
 	// Check file exists
@@ -39,10 +40,9 @@ func Test_writeGenesisFile_success(t *testing.T) {
 
 func Test_copyGenesisFile_success(t *testing.T) {
 	genesisBytes := []byte("genesis")
-	subnetName1 := "TEST_subnet"
 	subnetName2 := "TEST_copied_subnet"
-	genesisFile1 := subnetName1 + constants.Genesis_suffix
-	genesisFile2 := subnetName2 + constants.Genesis_suffix
+	genesisFile1 := subnetName1 + constants.GenesisSuffix
+	genesisFile2 := subnetName2 + constants.GenesisSuffix
 
 	ap := newTestApp(t)
 	// Create original genesis
@@ -68,10 +68,9 @@ func Test_copyGenesisFile_success(t *testing.T) {
 
 func Test_copyGenesisFile_failure(t *testing.T) {
 	// copy genesis that doesn't exist
-	subnetName1 := "TEST_subnet"
 	subnetName2 := "TEST_copied_subnet"
-	genesisFile1 := subnetName1 + constants.Genesis_suffix
-	genesisFile2 := subnetName2 + constants.Genesis_suffix
+	genesisFile1 := subnetName1 + constants.GenesisSuffix
+	genesisFile2 := subnetName2 + constants.GenesisSuffix
 
 	ap := newTestApp(t)
 	// Copy genesis
@@ -116,12 +115,12 @@ func Test_createSidecar_success(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			sidecarFile := tt.subnetName + constants.Sidecar_suffix
+			sidecarFile := tt.subnetName + constants.SidecarSuffix
 			const vm = models.SubnetEvm
 
 			sc := &models.Sidecar{
 				Name:      tt.subnetName,
-				Vm:        vm,
+				VM:        vm,
 				TokenName: tt.tokenName,
 				ChainID:   tt.chainID,
 			}
@@ -149,16 +148,15 @@ func Test_createSidecar_success(t *testing.T) {
 }
 
 func Test_loadSidecar_success(t *testing.T) {
-	subnetName := "TEST_subnet"
-	sidecarFile := subnetName + constants.Sidecar_suffix
+	sidecarFile := subnetName1 + constants.SidecarSuffix
 	const vm = models.SubnetEvm
 
 	ap := newTestApp(t)
 
 	// Write sidecar
-	sidecarBytes := []byte("{  \"Name\": \"TEST_subnet\",\n  \"Vm\": \"SubnetEVM\",\n  \"Subnet\": \"TEST_subnet\"\n  }")
+	sidecarBytes := []byte("{  \"Name\": \"TEST_subnet\",\n  \"VM\": \"SubnetEVM\",\n  \"Subnet\": \"TEST_subnet\"\n  }")
 	sidecarPath := filepath.Join(ap.GetBaseDir(), sidecarFile)
-	err := os.WriteFile(sidecarPath, sidecarBytes, 0o644)
+	err := os.WriteFile(sidecarPath, sidecarBytes, 0o600)
 	assert.NoError(t, err)
 
 	// Check file exists
@@ -167,12 +165,12 @@ func Test_loadSidecar_success(t *testing.T) {
 
 	// Check contents
 	expectedSc := models.Sidecar{
-		Name:   subnetName,
-		Vm:     vm,
-		Subnet: subnetName,
+		Name:   subnetName1,
+		VM:     vm,
+		Subnet: subnetName1,
 	}
 
-	sc, err := ap.LoadSidecar(subnetName)
+	sc, err := ap.LoadSidecar(subnetName1)
 	assert.NoError(t, err)
 	assert.Equal(t, sc, expectedSc)
 
@@ -186,13 +184,13 @@ func TestChainIDExists(t *testing.T) {
 
 	sc1 := &models.Sidecar{
 		Name:      "sc1",
-		Vm:        models.SubnetEvm,
+		VM:        models.SubnetEvm,
 		TokenName: "TEST",
 	}
 
 	sc2 := &models.Sidecar{
 		Name:      "sc2",
-		Vm:        models.SubnetEvm,
+		VM:        models.SubnetEvm,
 		TokenName: "TEST",
 	}
 
@@ -328,14 +326,14 @@ func Test_failure_duplicateChainID(t *testing.T) {
 	assert := assert.New(t)
 	sc1 := &models.Sidecar{
 		Name:      "sc1",
-		Vm:        models.SubnetEvm,
+		VM:        models.SubnetEvm,
 		TokenName: "TEST",
 		ChainID:   "42",
 	}
 
 	sc2 := &models.Sidecar{
 		Name:      "sc2",
-		Vm:        models.SubnetEvm,
+		VM:        models.SubnetEvm,
 		TokenName: "TEST",
 		ChainID:   "42",
 	}
@@ -350,8 +348,7 @@ func Test_failure_duplicateChainID(t *testing.T) {
 }
 
 func Test_loadSidecar_failure_notFound(t *testing.T) {
-	subnetName := "TEST_subnet"
-	sidecarFile := subnetName + constants.Sidecar_suffix
+	sidecarFile := subnetName1 + constants.SidecarSuffix
 
 	ap := newTestApp(t)
 
@@ -360,20 +357,20 @@ func Test_loadSidecar_failure_notFound(t *testing.T) {
 	_, err := os.Stat(sidecarPath)
 	assert.Error(t, err)
 
-	_, err = ap.LoadSidecar(subnetName)
+	_, err = ap.LoadSidecar(subnetName1)
 	assert.Error(t, err)
 }
 
 func Test_loadSidecar_failure_malformed(t *testing.T) {
 	subnetName := "TEST_subnet"
-	sidecarFile := subnetName + constants.Sidecar_suffix
+	sidecarFile := subnetName + constants.SidecarSuffix
 
 	ap := newTestApp(t)
 
 	// Write sidecar
 	sidecarBytes := []byte("bad_sidecar")
 	sidecarPath := filepath.Join(ap.GetBaseDir(), sidecarFile)
-	err := os.WriteFile(sidecarPath, sidecarBytes, 0o644)
+	err := os.WriteFile(sidecarPath, sidecarBytes, 0o600)
 	assert.NoError(t, err)
 
 	// Check file exists
@@ -390,23 +387,22 @@ func Test_loadSidecar_failure_malformed(t *testing.T) {
 }
 
 func Test_genesisExists(t *testing.T) {
-	subnetName := "TEST_subnet"
-	genesisFile := subnetName + constants.Genesis_suffix
+	genesisFile := subnetName1 + constants.GenesisSuffix
 
 	ap := newTestApp(t)
 
 	// Assert file doesn't exist at start
-	result := ap.GenesisExists(subnetName)
+	result := ap.GenesisExists(subnetName1)
 	assert.False(t, result)
 
 	// Create genesis
 	genesisPath := filepath.Join(ap.GetBaseDir(), genesisFile)
 	genesisBytes := []byte("genesis")
-	err := os.WriteFile(genesisPath, genesisBytes, 0o644)
+	err := os.WriteFile(genesisPath, genesisBytes, 0o600)
 	assert.NoError(t, err)
 
 	// Verify genesis exists
-	result = ap.GenesisExists(subnetName)
+	result = ap.GenesisExists(subnetName1)
 	assert.True(t, result)
 
 	// Clean up created genesis

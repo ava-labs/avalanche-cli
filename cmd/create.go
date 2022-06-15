@@ -45,7 +45,7 @@ configuration, pass the -f flag.`,
 	RunE: createGenesis,
 }
 
-func moreThanOneVmSelected() bool {
+func moreThanOneVMSelected() bool {
 	vmVars := []bool{useSubnetEvm, useCustom}
 	firstSelect := false
 	for _, val := range vmVars {
@@ -58,12 +58,12 @@ func moreThanOneVmSelected() bool {
 	return false
 }
 
-func getVmFromFlag() models.VmType {
+func getVMFromFlag() models.VMType {
 	if useSubnetEvm {
 		return models.SubnetEvm
 	}
 	if useCustom {
-		return models.CustomVm
+		return models.CustomVM
 	}
 	return ""
 }
@@ -71,33 +71,31 @@ func getVmFromFlag() models.VmType {
 func createGenesis(cmd *cobra.Command, args []string) error {
 	subnetName := args[0]
 	if app.GenesisExists(subnetName) && !forceCreate {
-		return errors.New("Configuration already exists. Use --" + forceFlag + " parameter to overwrite")
+		return errors.New("configuration already exists. Use --" + forceFlag + " parameter to overwrite")
 	}
 
 	if err := checkInvalidSubnetNames(subnetName); err != nil {
-		return fmt.Errorf("Subnet name %q is invalid: %w", subnetName, err)
+		return fmt.Errorf("subnet name %q is invalid: %w", subnetName, err)
 	}
 
-	if moreThanOneVmSelected() {
-		return errors.New("Too many VMs selected. Provide at most one VM selection flag.")
+	if moreThanOneVMSelected() {
+		return errors.New("too many VMs selected. Provide at most one VM selection flag")
 	}
 
 	if filename == "" {
-
-		var subnetType models.VmType
+		var subnetType models.VMType
 		var err error
-		subnetType = getVmFromFlag()
+		subnetType = getVMFromFlag()
 
 		if subnetType == "" {
-
 			subnetTypeStr, err := prompts.CaptureList(
 				"Choose your VM",
-				[]string{subnetEvm, customVm},
+				[]string{subnetEvm, CustomVM},
 			)
 			if err != nil {
 				return err
 			}
-			subnetType = models.VmTypeFromString(subnetTypeStr)
+			subnetType = models.VMTypeFromString(subnetTypeStr)
 		}
 
 		var (
@@ -114,7 +112,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 			if err = app.CreateSidecar(sc); err != nil {
 				return err
 			}
-		case customVm:
+		case CustomVM:
 			genesisBytes, sc, err = vm.CreateCustomGenesis(subnetName)
 			if err != nil {
 				return err
@@ -123,7 +121,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		default:
-			return errors.New("Not implemented")
+			return errors.New("not implemented")
 		}
 
 		if err = app.WriteGenesisFile(subnetName, genesisBytes); err != nil {
@@ -137,22 +135,22 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		var subnetType models.VmType
-		subnetType = getVmFromFlag()
+		var subnetType models.VMType
+		subnetType = getVMFromFlag()
 
 		if subnetType == "" {
 			subnetTypeStr, err := prompts.CaptureList(
 				"What VM does your genesis use?",
-				[]string{subnetEvm, customVm},
+				[]string{subnetEvm, CustomVM},
 			)
 			if err != nil {
 				return err
 			}
-			subnetType = models.VmTypeFromString(subnetTypeStr)
+			subnetType = models.VMTypeFromString(subnetTypeStr)
 		}
 		sc := &models.Sidecar{
 			Name:      subnetName,
-			Vm:        subnetType,
+			VM:        subnetType,
 			Subnet:    subnetName,
 			TokenName: "",
 		}
