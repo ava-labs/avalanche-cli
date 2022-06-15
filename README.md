@@ -83,6 +83,8 @@ Once golang is installed, run:
 ./scripts/build.sh
 ```
 
+The binary will be called `./bin/avalanche`.
+
 ## Detailed Usage
 
 More detailed information on how to use Avalanche CLI can be found at [here](https://docs.avax.network/subnets/create-a-local-subnet#subnet).
