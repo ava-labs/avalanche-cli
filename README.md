@@ -73,6 +73,16 @@ avalanche network start
 
 - Fuji and mainnet Subnet-EVM deploys
 
+## Building Locally
+
+To build Avalanche-CLI, you'll first need to install golang. Follow the instructions here: https://go.dev/doc/install.
+
+Once golang is installed, run:
+
+```bash
+./scripts/build.sh
+```
+
 ## Detailed Usage
 
 More detailed information on how to use Avalanche CLI can be found at [here](https://docs.avax.network/subnets/create-a-local-subnet#subnet).
