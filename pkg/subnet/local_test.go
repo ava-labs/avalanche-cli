@@ -169,7 +169,7 @@ func TestGetLatestAvagoVersion(t *testing.T) {
 func getTestClientFunc() (client.Client, error) {
 	c := &mocks.Client{}
 	fakeStartResponse := &rpcpb.StartResponse{}
-	c.On("Start", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fakeStartResponse, nil)
+	c.On("Start", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fakeStartResponse, nil)
 	fakeHealthResponse := &rpcpb.HealthResponse{
 		ClusterInfo: &rpcpb.ClusterInfo{
 			Healthy:          true, // currently actually not checked, should it, if CustomVmsHealthy already is?
