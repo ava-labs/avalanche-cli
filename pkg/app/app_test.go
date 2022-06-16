@@ -152,7 +152,7 @@ func Test_createSidecar_success(t *testing.T) {
 
 func Test_loadSidecar_success(t *testing.T) {
 	assert := assert.New(t)
-  sidecarFile := subnetName1 + constants.SidecarSuffix
+	sidecarFile := subnetName1 + constants.SidecarSuffix
 	const vm = models.SubnetEvm
 
 	ap := newTestApp(t)
@@ -352,7 +352,7 @@ func Test_failure_duplicateChainID(t *testing.T) {
 }
 
 func Test_loadSidecar_failure_notFound(t *testing.T) {
-  assert := assert.New(t)
+	assert := assert.New(t)
 	sidecarFile := subnetName1 + constants.SidecarSuffix
 
 	ap := newTestApp(t)
@@ -393,7 +393,7 @@ func Test_loadSidecar_failure_malformed(t *testing.T) {
 }
 
 func Test_genesisExists(t *testing.T) {
-  assert := assert.New(t)
+	assert := assert.New(t)
 	genesisFile := subnetName1 + constants.GenesisSuffix
 
 	ap := newTestApp(t)

@@ -109,11 +109,9 @@ func installZipArchive(zipfile []byte, binDir string) error {
 				return fmt.Errorf("failed opening file from zip entry: %w", err)
 			}
 
-			_, err = io.CopyN(f, rc, constants.MaxCopy)
-			if err != nil {
-				if err != io.EOF {
-					return fmt.Errorf("failed writing zip file entry to disk: %w", err)
-				}
+			_, err = io.CopyN(f, rc, maxCopy)
+			if err != nil && err != io.EOF {
+				return fmt.Errorf("failed writing zip file entry to disk: %w", err)
 			}
 			if err := f.Close(); err != nil {
 				return err
@@ -180,10 +178,8 @@ func installTarGzArchive(targz []byte, binDir string) error {
 				return fmt.Errorf("failed opening new file from tar entry %w", err)
 			}
 			// copy over contents
-			if _, err := io.CopyN(f, tarReader, constants.MaxCopy); err != nil {
-				if err != io.EOF {
-					return fmt.Errorf("failed writing tar entry contents to disk: %w", err)
-				}
+			if _, err := io.CopyN(f, tarReader, maxCopy); err != nil && err != io.EOF {
+				return fmt.Errorf("failed writing tar entry contents to disk: %w", err)
 			}
 			// manually close here after each file operation; defering would cause each file close
 			// to wait until all operations have completed.

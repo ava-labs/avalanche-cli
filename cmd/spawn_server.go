@@ -26,7 +26,7 @@ func backendController(cmd *cobra.Command, args []string) error {
 	return fmt.Errorf("unsupported command")
 }
 
-func startBackend(cmd *cobra.Command) error { //nolint:unparam
+func startBackend(_ *cobra.Command) error {
 	s, err := binutils.NewGRPCServer()
 	if err != nil {
 		return err

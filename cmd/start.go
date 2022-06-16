@@ -15,7 +15,7 @@ var startCmd = &cobra.Command{
 	Use:   "start [snapshotName]",
 	Short: "Starts a stopped local network",
 	Long: `The network start command starts a local, multi-node Avalanche network
-on your machine. If "snapshotName" is provided, that snapshot will be used for starting the network 
+on your machine. If "snapshotName" is provided, that snapshot will be used for starting the network
 if it can be found. Otherwise, the last saved unnamed (default) snapshot will be used. The command may fail if the local network
 is already running or if no subnets have been deployed.`,
 
@@ -49,7 +49,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 
 	// TODO: this should probably be extracted from the deployer and
 	// used as an independent helper
-	sd := subnet.NewLocalSubnetDeployer(app)
+	sd := subnet.NewLocalDeployer(app)
 	endpoints, err := sd.WaitForHealthy(ctx, cli, healthCheckInterval)
 	if err != nil {
 		return fmt.Errorf("failed waiting for network to become healthy: %s", err)

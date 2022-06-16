@@ -90,7 +90,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 		if subnetType == "" {
 			subnetTypeStr, err := prompts.CaptureList(
 				"Choose your VM",
-				[]string{subnetEvm, CustomVM},
+				[]string{subnetEvm, customVM},
 			)
 			if err != nil {
 				return err
@@ -112,7 +112,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 			if err = app.CreateSidecar(sc); err != nil {
 				return err
 			}
-		case CustomVM:
+		case customVM:
 			genesisBytes, sc, err = vm.CreateCustomGenesis(subnetName)
 			if err != nil {
 				return err
@@ -141,7 +141,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 		if subnetType == "" {
 			subnetTypeStr, err := prompts.CaptureList(
 				"What VM does your genesis use?",
-				[]string{subnetEvm, CustomVM},
+				[]string{subnetEvm, customVM},
 			)
 			if err != nil {
 				return err

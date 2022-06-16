@@ -28,6 +28,10 @@ import (
 	"github.com/ava-labs/coreth/params"
 )
 
+const (
+	zipExtension = "zip"
+)
+
 type Deployer struct {
 	procChecker         binutils.ProcessChecker
 	binChecker          binutils.BinaryChecker
@@ -39,7 +43,7 @@ type Deployer struct {
 	backendStartedHere  bool
 }
 
-func NewLocalSubnetDeployer(app *app.Avalanche) *Deployer {
+func NewLocalDeployer(app *app.Avalanche) *Deployer {
 	return &Deployer{
 		procChecker:         binutils.NewProcessChecker(),
 		binChecker:          binutils.NewBinaryChecker(),
@@ -122,13 +126,13 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 	}
 	chainID := genesis.Config.ChainID
 
-	CustomVMs := map[string]string{
+	customVMs := map[string]string{
 		chain: chainGenesis,
 	}
 
 	opts := []client.OpOption{
 		client.WithPluginDir(pluginDir),
-		client.WithCustomVMs(CustomVMs),
+		client.WithCustomVMs(customVMs),
 		client.WithGlobalNodeConfig("{\"log-level\":\"debug\", \"log-display-level\":\"debug\"}"),
 	}
 
@@ -233,7 +237,6 @@ func (d *Deployer) setupLocalEnv() (string, error) {
 	goos := runtime.GOOS
 	var avalanchegoURL string
 	var ext string
-	zipExtension := "zip"
 
 	switch goos {
 	case "linux":
