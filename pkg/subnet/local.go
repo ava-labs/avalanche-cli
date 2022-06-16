@@ -179,6 +179,15 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 	fmt.Println()
 	firstURL := endpoints[0]
 
+	tokenName := "TEST"
+	sidecar, err := d.app.LoadSidecar(chain)
+	if err != nil {
+		// this isn't worth killing the whole deploy over
+		ux.Logger.PrintToUser("error reading sidecar, continuing %s", err)
+	} else {
+		tokenName = sidecar.TokenName
+	}
+
 	ux.Logger.PrintToUser("Metamask connection details (any node URL from above works):")
 	ux.Logger.PrintToUser("RPC URL:          %s", firstURL[strings.LastIndex(firstURL, "http"):])
 	for address := range genesis.Alloc {
@@ -193,7 +202,7 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 
 	ux.Logger.PrintToUser("Network name:     %s", chain)
 	ux.Logger.PrintToUser("Chain ID:         %s", chainID)
-	ux.Logger.PrintToUser("Currency Symbol:  TEST")
+	ux.Logger.PrintToUser("Currency Symbol:  %s", tokenName)
 	return nil
 }
 
