@@ -439,3 +439,27 @@ func SetDefaultSnapshot(baseDir string) error {
 	}
 	return nil
 }
+
+// Install bootstrap snapshot
+func InstallBootstrapSnapshot(baseDir string) error {
+	snapshotsDir := filepath.Join(baseDir, constants.SnapshotsDirName)
+	bootstrapSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.BootstrapSnapshotName)
+	if _, err := os.Stat(bootstrapSnapshotPath); os.IsNotExist(err) {
+		resp, err := http.Get(constants.BootstrapSnapshotURL)
+		if err != nil {
+			return fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("failed downloading bootstrap snapshot: unexpected http status code: %d", resp.StatusCode)
+		}
+		defer resp.Body.Close()
+		bootstrapSnapshotBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
+		}
+		if err := binutils.InstallArchive("tar.gz", bootstrapSnapshotBytes, snapshotsDir); err != nil {
+			return fmt.Errorf("failed installing bootstrap snapshot: %w", err)
+		}
+	}
+	return nil
+}
