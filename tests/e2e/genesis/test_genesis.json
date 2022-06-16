@@ -1,6 +1,6 @@
 {
   "config": {
-    "chainId": 65437654,
+    "chainId": 666,
     "homesteadBlock": 0,
     "eip150Block": 0,
     "eip150Hash": "0x2086799aeebeae135c246c65021c82b4e15a2c451340993aacfd2751886514f0",
@@ -16,7 +16,7 @@
       "gasLimit": 8000000,
       "targetBlockRate": 2,
       "minBaseFee": 25000000000,
-      "targetGas": 20000000,
+      "targetGas": 15000000,
       "baseFeeChangeDenominator": 36,
       "minBlockGasCost": 0,
       "maxBlockGasCost": 1000000,
@@ -39,7 +39,7 @@
   "timestamp": "0x0",
   "extraData": "0x",
   "gasLimit": "0x7a1200",
-  "difficulty": 0,
+  "difficulty": "0x0",
   "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "coinbase": "0x0000000000000000000000000000000000000000",
   "alloc": {
