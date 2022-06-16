@@ -17,7 +17,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const subnetName1 = "TEST_subnet"
+const (
+	subnetName1 = "TEST_subnet"
+	subnetName2 = "TEST_copied_subnet"
+)
 
 func Test_writeGenesisFile_success(t *testing.T) {
 	assert := assert.New(t)
@@ -42,7 +45,7 @@ func Test_writeGenesisFile_success(t *testing.T) {
 func Test_copyGenesisFile_success(t *testing.T) {
 	assert := assert.New(t)
 	genesisBytes := []byte("genesis")
-	subnetName2 := "TEST_copied_subnet"
+
 	genesisFile1 := subnetName1 + constants.GenesisSuffix
 	genesisFile2 := subnetName2 + constants.GenesisSuffix
 
@@ -71,7 +74,6 @@ func Test_copyGenesisFile_success(t *testing.T) {
 func Test_copyGenesisFile_failure(t *testing.T) {
 	assert := assert.New(t)
 	// copy genesis that doesn't exist
-	subnetName2 := "TEST_copied_subnet"
 	genesisFile1 := subnetName1 + constants.GenesisSuffix
 	genesisFile2 := subnetName2 + constants.GenesisSuffix
 
@@ -99,14 +101,14 @@ func Test_createSidecar_success(t *testing.T) {
 	tests := []test{
 		{
 			name:              "Success",
-			subnetName:        "TEST_subnet",
+			subnetName:        subnetName1,
 			tokenName:         "TOKEN",
 			expectedTokenName: "TOKEN",
 			chainID:           "999",
 		},
 		{
 			name:              "no token name",
-			subnetName:        "TEST_subnet",
+			subnetName:        subnetName1,
 			tokenName:         "",
 			expectedTokenName: "TEST",
 			chainID:           "888",
@@ -368,8 +370,7 @@ func Test_loadSidecar_failure_notFound(t *testing.T) {
 
 func Test_loadSidecar_failure_malformed(t *testing.T) {
 	assert := assert.New(t)
-	subnetName := "TEST_subnet"
-	sidecarFile := subnetName + constants.SidecarSuffix
+	sidecarFile := subnetName1 + constants.SidecarSuffix
 
 	ap := newTestApp(t)
 
@@ -384,7 +385,7 @@ func Test_loadSidecar_failure_malformed(t *testing.T) {
 	assert.NoError(err)
 
 	// Check contents
-	_, err = ap.LoadSidecar(subnetName)
+	_, err = ap.LoadSidecar(subnetName1)
 	assert.Error(err)
 
 	// Cleanup file
