@@ -72,6 +72,59 @@ func (_m *Client) AttachPeer(ctx context.Context, nodeName string) (*rpcpb.Attac
 	return r0, r1
 }
 
+// CreateBlockchains provides a mock function with given fields: ctx, blockchainSpecs
+func (_m *Client) CreateBlockchains(ctx context.Context, blockchainSpecs []*rpcpb.BlockchainSpec) (*rpcpb.CreateBlockchainsResponse, error) {
+	ret := _m.Called(ctx, blockchainSpecs)
+
+	var r0 *rpcpb.CreateBlockchainsResponse
+	if rf, ok := ret.Get(0).(func(context.Context, []*rpcpb.BlockchainSpec) *rpcpb.CreateBlockchainsResponse); ok {
+		r0 = rf(ctx, blockchainSpecs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*rpcpb.CreateBlockchainsResponse)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, []*rpcpb.BlockchainSpec) error); ok {
+		r1 = rf(ctx, blockchainSpecs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CreateSubnets provides a mock function with given fields: ctx, opts
+func (_m *Client) CreateSubnets(ctx context.Context, opts ...client.OpOption) (*rpcpb.CreateSubnetsResponse, error) {
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 *rpcpb.CreateSubnetsResponse
+	if rf, ok := ret.Get(0).(func(context.Context, ...client.OpOption) *rpcpb.CreateSubnetsResponse); ok {
+		r0 = rf(ctx, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*rpcpb.CreateSubnetsResponse)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, ...client.OpOption) error); ok {
+		r1 = rf(ctx, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Close provides a mock function with given fields:
 func (_m *Client) Close() error {
 	ret := _m.Called()
