@@ -4,11 +4,13 @@ package cmd
 
 import (
 	"fmt"
+	"path"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
+	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -43,7 +45,14 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 	ctx := binutils.GetAsyncContext()
 
 	ux.Logger.PrintToUser(startMsg)
-	_, err = cli.LoadSnapshot(ctx, snapshotName, client.WithRootDataDir(app.GetRunDir()))
+
+	outputDirPrefix := path.Join(app.GetRunDir(), "restart")
+	outputDir, err := utils.MkDirWithTimestamp(outputDirPrefix)
+	if err != nil {
+		return err
+	}
+
+	_, err = cli.LoadSnapshot(ctx, snapshotName, client.WithRootDataDir(outputDir))
 	if err != nil {
 		return fmt.Errorf("failed to start network with the persisted snapshot: %s", err)
 	}

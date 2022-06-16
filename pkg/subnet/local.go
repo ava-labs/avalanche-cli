@@ -123,11 +123,16 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 		chain: chain_genesis,
 	}
 
+	runDir := binutils.GetLatestRunDir()
+	if runDir == "" {
+		runDir = d.app.GetRunDir()
+	}
+
 	opts := []client.OpOption{
 		client.WithPluginDir(pluginDir),
 		client.WithCustomVMs(customVMs),
 		client.WithGlobalNodeConfig("{\"log-level\":\"debug\", \"log-display-level\":\"debug\"}"),
-		client.WithRootDataDir(d.app.GetRunDir()),
+		client.WithRootDataDir(runDir),
 	}
 
 	vmID, err := utils.VMID(chain)

@@ -29,6 +29,12 @@ import (
 // gRPCTimeout is a common error message if the gRPC server can't be reached
 var gRPCTimeout = errors.New("Timed out trying to contact backend controller, it is most probably not running.")
 
+var latestRunDir string
+
+func GetLatestRunDir() string {
+	return latestRunDir
+}
+
 // ProcessChecker is responsible for checking if the gRPC server is running
 type ProcessChecker interface {
 	// IsServerProcessRunning returns true if the gRPC server is running,
@@ -120,12 +126,16 @@ func StartServerProcess(app app.Avalanche) error {
 	args := []string{"backend", "start"}
 	cmd := exec.Command(thisBin, args...)
 
-	outputFilePrefix := path.Join(app.GetRunDir(), "server")
-	outputFilePath, err := utils.MkDirWithTimestamp(outputFilePrefix)
+	outputDirPrefix := path.Join(app.GetRunDir(), "deploy")
+	outputDir, err := utils.MkDirWithTimestamp(outputDirPrefix)
 	if err != nil {
 		return err
 	}
-	outputFile, err := os.Create(path.Join(outputFilePath, "avalanche-cli-backend"))
+
+	// Set latest run dir
+	latestRunDir = outputDir
+
+	outputFile, err := os.Create(path.Join(outputDir, "avalanche-cli-backend"))
 	if err != nil {
 		return err
 	}
@@ -148,7 +158,8 @@ func StartServerProcess(app app.Avalanche) error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(constants.ServerRunFile, rfBytes, perms.ReadWrite)
+	serverRunFile := path.Join(outputDir, constants.ServerRunFile)
+	err = os.WriteFile(serverRunFile, rfBytes, perms.ReadWrite)
 	if err != nil {
 		app.Log.Warn("could not write gRPC process info to file: %s", err)
 	}
