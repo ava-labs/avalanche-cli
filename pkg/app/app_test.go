@@ -18,6 +18,7 @@ import (
 )
 
 func Test_writeGenesisFile_success(t *testing.T) {
+	assert := assert.New(t)
 	genesisBytes := []byte("genesis")
 	subnetName := "TEST_subnet"
 	genesisFile := subnetName + constants.Genesis_suffix
@@ -25,19 +26,20 @@ func Test_writeGenesisFile_success(t *testing.T) {
 	ap := newTestApp(t)
 	// Write genesis
 	err := ap.WriteGenesisFile(subnetName, genesisBytes)
-	assert.NoError(t, err)
+	assert.NoError(err)
 
 	// Check file exists
 	createdPath := filepath.Join(ap.GetBaseDir(), genesisFile)
 	_, err = os.Stat(createdPath)
-	assert.NoError(t, err)
+	assert.NoError(err)
 
 	// Cleanup file
 	err = os.Remove(createdPath)
-	assert.NoError(t, err)
+	assert.NoError(err)
 }
 
 func Test_copyGenesisFile_success(t *testing.T) {
+	assert := assert.New(t)
 	genesisBytes := []byte("genesis")
 	subnetName1 := "TEST_subnet"
 	subnetName2 := "TEST_copied_subnet"
@@ -47,26 +49,27 @@ func Test_copyGenesisFile_success(t *testing.T) {
 	ap := newTestApp(t)
 	// Create original genesis
 	err := ap.WriteGenesisFile(subnetName1, genesisBytes)
-	assert.NoError(t, err)
+	assert.NoError(err)
 
 	// Copy genesis
 	createdGenesis := filepath.Join(ap.GetBaseDir(), genesisFile1)
 	err = ap.CopyGenesisFile(createdGenesis, subnetName2)
-	assert.NoError(t, err)
+	assert.NoError(err)
 
 	// Check copied file exists
 	copiedGenesis := filepath.Join(ap.GetBaseDir(), genesisFile2)
 	_, err = os.Stat(copiedGenesis)
-	assert.NoError(t, err)
+	assert.NoError(err)
 
 	// Cleanup files
 	err = os.Remove(createdGenesis)
-	assert.NoError(t, err)
+	assert.NoError(err)
 	err = os.Remove(copiedGenesis)
-	assert.NoError(t, err)
+	assert.NoError(err)
 }
 
 func Test_copyGenesisFile_failure(t *testing.T) {
+	assert := assert.New(t)
 	// copy genesis that doesn't exist
 	subnetName1 := "TEST_subnet"
 	subnetName2 := "TEST_copied_subnet"
@@ -77,12 +80,12 @@ func Test_copyGenesisFile_failure(t *testing.T) {
 	// Copy genesis
 	createdGenesis := filepath.Join(ap.GetBaseDir(), genesisFile1)
 	err := ap.CopyGenesisFile(createdGenesis, subnetName2)
-	assert.Error(t, err)
+	assert.Error(err)
 
 	// Check no copied file exists
 	copiedGenesis := filepath.Join(ap.GetBaseDir(), genesisFile2)
 	_, err = os.Stat(copiedGenesis)
-	assert.Error(t, err)
+	assert.Error(err)
 }
 
 func Test_createSidecar_success(t *testing.T) {
@@ -149,6 +152,7 @@ func Test_createSidecar_success(t *testing.T) {
 }
 
 func Test_loadSidecar_success(t *testing.T) {
+	assert := assert.New(t)
 	subnetName := "TEST_subnet"
 	sidecarFile := subnetName + constants.Sidecar_suffix
 	const vm = models.SubnetEvm
@@ -159,11 +163,11 @@ func Test_loadSidecar_success(t *testing.T) {
 	sidecarBytes := []byte("{  \"Name\": \"TEST_subnet\",\n  \"Vm\": \"SubnetEVM\",\n  \"Subnet\": \"TEST_subnet\"\n  }")
 	sidecarPath := filepath.Join(ap.GetBaseDir(), sidecarFile)
 	err := os.WriteFile(sidecarPath, sidecarBytes, 0o644)
-	assert.NoError(t, err)
+	assert.NoError(err)
 
 	// Check file exists
 	_, err = os.Stat(sidecarPath)
-	assert.NoError(t, err)
+	assert.NoError(err)
 
 	// Check contents
 	expectedSc := models.Sidecar{
@@ -173,12 +177,12 @@ func Test_loadSidecar_success(t *testing.T) {
 	}
 
 	sc, err := ap.LoadSidecar(subnetName)
-	assert.NoError(t, err)
-	assert.Equal(t, sc, expectedSc)
+	assert.NoError(err)
+	assert.Equal(sc, expectedSc)
 
 	// Cleanup file
 	err = os.Remove(sidecarPath)
-	assert.NoError(t, err)
+	assert.NoError(err)
 }
 
 func TestChainIDExists(t *testing.T) {
@@ -350,6 +354,7 @@ func Test_failure_duplicateChainID(t *testing.T) {
 }
 
 func Test_loadSidecar_failure_notFound(t *testing.T) {
+	assert := assert.New(t)
 	subnetName := "TEST_subnet"
 	sidecarFile := subnetName + constants.Sidecar_suffix
 
@@ -358,13 +363,14 @@ func Test_loadSidecar_failure_notFound(t *testing.T) {
 	// Assert file doesn't exist at start
 	sidecarPath := filepath.Join(ap.GetBaseDir(), sidecarFile)
 	_, err := os.Stat(sidecarPath)
-	assert.Error(t, err)
+	assert.Error(err)
 
 	_, err = ap.LoadSidecar(subnetName)
-	assert.Error(t, err)
+	assert.Error(err)
 }
 
 func Test_loadSidecar_failure_malformed(t *testing.T) {
+	assert := assert.New(t)
 	subnetName := "TEST_subnet"
 	sidecarFile := subnetName + constants.Sidecar_suffix
 
@@ -374,22 +380,23 @@ func Test_loadSidecar_failure_malformed(t *testing.T) {
 	sidecarBytes := []byte("bad_sidecar")
 	sidecarPath := filepath.Join(ap.GetBaseDir(), sidecarFile)
 	err := os.WriteFile(sidecarPath, sidecarBytes, 0o644)
-	assert.NoError(t, err)
+	assert.NoError(err)
 
 	// Check file exists
 	_, err = os.Stat(sidecarPath)
-	assert.NoError(t, err)
+	assert.NoError(err)
 
 	// Check contents
 	_, err = ap.LoadSidecar(subnetName)
-	assert.Error(t, err)
+	assert.Error(err)
 
 	// Cleanup file
 	err = os.Remove(sidecarPath)
-	assert.NoError(t, err)
+	assert.NoError(err)
 }
 
 func Test_genesisExists(t *testing.T) {
+	assert := assert.New(t)
 	subnetName := "TEST_subnet"
 	genesisFile := subnetName + constants.Genesis_suffix
 
@@ -397,21 +404,21 @@ func Test_genesisExists(t *testing.T) {
 
 	// Assert file doesn't exist at start
 	result := ap.GenesisExists(subnetName)
-	assert.False(t, result)
+	assert.False(result)
 
 	// Create genesis
 	genesisPath := filepath.Join(ap.GetBaseDir(), genesisFile)
 	genesisBytes := []byte("genesis")
 	err := os.WriteFile(genesisPath, genesisBytes, 0o644)
-	assert.NoError(t, err)
+	assert.NoError(err)
 
 	// Verify genesis exists
 	result = ap.GenesisExists(subnetName)
-	assert.True(t, result)
+	assert.True(result)
 
 	// Clean up created genesis
 	err = os.Remove(genesisPath)
-	assert.NoError(t, err)
+	assert.NoError(err)
 }
 
 func newTestApp(t *testing.T) *Avalanche {
