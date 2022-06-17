@@ -83,7 +83,7 @@ func (app *Avalanche) LoadEvmGenesis(subnetName string) (core.Genesis, error) {
 
 func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 	if sc.TokenName == "" {
-		sc.TokenName = "TEST"
+		sc.TokenName = constants.DefaultTokenName
 	}
 	// We should have caught this during the actual prompting,
 	// but better safe than sorry
@@ -114,7 +114,20 @@ func (app *Avalanche) LoadSidecar(subnetName string) (models.Sidecar, error) {
 
 	var sc models.Sidecar
 	err = json.Unmarshal(jsonBytes, &sc)
+
+	if sc.TokenName == "" {
+		sc.TokenName = constants.DefaultTokenName
+	}
+
 	return sc, err
+}
+
+func (app *Avalanche) GetTokenName(subnetName string) string {
+	sidecar, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return constants.DefaultTokenName
+	}
+	return sidecar.TokenName
 }
 
 func (app *Avalanche) listSideCarNames() ([]string, error) {

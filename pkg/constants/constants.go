@@ -22,4 +22,6 @@ const (
 	SidecarVersion = "1.0.0"
 
 	RequestTimeout = 3 * time.Minute
+
+	DefaultTokenName = "TEST"
 )
