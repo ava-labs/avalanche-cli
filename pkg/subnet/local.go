@@ -78,7 +78,7 @@ func (d *LocalSubnetDeployer) BackendStartedHere() bool {
 }
 
 func (d *LocalSubnetDeployer) setupBinaries(chain, chain_genesis string) (string, string, error) {
-	avagoDir, err := d.setupLocalEnv()
+	avagoDir, err := d.SetupLocalEnv()
 	if err != nil {
 		return "", "", fmt.Errorf("failed setting up local environment: %w", err)
 	}
@@ -198,11 +198,11 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chain_genesis string) error
 	return nil
 }
 
-// setupLocalEnv also does some heavy lifting:
+// SetupLocalEnv also does some heavy lifting:
 // * checks if avalanchego is installed in the local binary path
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path
-func (d *LocalSubnetDeployer) setupLocalEnv() (string, error) {
+func (d *LocalSubnetDeployer) SetupLocalEnv() (string, error) {
 	binDir := filepath.Join(d.baseDir, constants.AvalancheCliBinDir)
 	binPrefix := "avalanchego-v"
 

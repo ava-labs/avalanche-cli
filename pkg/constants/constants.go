@@ -21,4 +21,6 @@ const (
 	SidecarVersion = "1.0.0"
 
 	RequestTimeout = 3 * time.Minute
+
+	FujiAPIEndpoint = "https://api.avax-test.network"
 )

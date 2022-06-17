@@ -44,6 +44,10 @@ func init() {
 	// add sub commands
 	rootCmd.AddCommand(subnetCmd)
 	rootCmd.AddCommand(networkCmd)
+	rootCmd.AddCommand(validatorCmd)
+
+	rootCmd.AddCommand(createKeyCmd)
+	createKeyCmd.Flags().StringVar(&privKeyPath, "private-key-path", "", "path to private key")
 
 	// add hidden backend command
 	backendCmd.Hidden = true
@@ -88,6 +92,10 @@ func init() {
 
 	// network status
 	networkCmd.AddCommand(statusCmd)
+
+	// validator start
+	validatorCmd.AddCommand(validatorStartCmd)
+	validatorCmd.AddCommand(validatorStakeCmd)
 }
 
 func createApp(cmd *cobra.Command, args []string) error {
