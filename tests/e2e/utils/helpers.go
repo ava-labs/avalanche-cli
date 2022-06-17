@@ -56,7 +56,7 @@ func DeleteConfigs(subnetName string) error {
 		return err
 	}
 
-	// ignore error
+	// ignore error, file may not exist
 	os.Remove(genesis)
 
 	sidecar := path.Join(GetBaseDir(), subnetName+constants.SidecarSuffix)
@@ -65,7 +65,7 @@ func DeleteConfigs(subnetName string) error {
 		return err
 	}
 
-	// ignore error
+	// ignore error, file may not exist
 	os.Remove(sidecar)
 
 	return nil
@@ -121,23 +121,10 @@ func SetHardhatRPC(rpc string) error {
 func RunHardhatTests(test string) error {
 	cmd := exec.Command("npx", "hardhat", "test", test, "--network", "subnet")
 	cmd.Dir = hardhatDir
-	fmt.Println(cmd.String())
 	output, err := cmd.Output()
-	fmt.Println(string(output))
 	if err != nil {
+		fmt.Println(string(output))
 		fmt.Println(err)
 	}
 	return err
 }
-
-// func RunHardhatTests(test string) error {
-// 	cmd := exec.Command("npx", "hardhat", "run", "./scripts/deploy.ts", "--network", "subnet")
-// 	cmd.Dir = hardhatDir
-// 	fmt.Println(cmd.String())
-// 	output, err := cmd.Output()
-// 	fmt.Println(string(output))
-// 	if err != nil {
-// 		fmt.Println(err)
-// 	}
-// 	return err
-// }

@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"os/exec"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
@@ -65,6 +66,10 @@ func DeploySubnetLocally(subnetName string) string {
 		subnetName,
 	)
 	output, err := cmd.Output()
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+	}
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	return string(output)

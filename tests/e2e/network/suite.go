@@ -1,7 +1,7 @@
 package network
 
 import (
-	"fmt"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
@@ -30,7 +30,16 @@ var _ = ginkgo.Describe("[Network]", func() {
 		restartOutput := commands.StartNetwork()
 		rpc, err := utils.ParseRPCFromRestartOutput(restartOutput)
 		gomega.Expect(err).Should(gomega.BeNil())
-		fmt.Println(rpc)
+
+		err = utils.SetHardhatRPC(rpc)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// Subnet doesn't seem to accept JSON requests from hardhat right away
+		// Test fails without this
+		time.Sleep(60 * time.Second)
+
+		err = utils.RunHardhatTests(utils.BaseTest)
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		commands.DeleteSubnetConfig(subnetName)
 	})

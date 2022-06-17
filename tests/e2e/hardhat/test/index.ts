@@ -4,14 +4,9 @@ import config from "../hardhat.config"
 
 describe("Greeter", function () {
   it("Should return the new greeting once it's changed", async function () {
-    console.log("In test")
-    console.log(config.networks)
     const Greeter = await ethers.getContractFactory("Greeter")
-    console.log("In test 2")
     const greeter = await Greeter.deploy("Hello, world!")
-    console.log("In test 3")
     await greeter.deployed()
-    console.log("In test 4")
 
     expect(await greeter.greet()).to.equal("Hello, world!")
 
