@@ -114,7 +114,20 @@ func (app *Avalanche) LoadSidecar(subnetName string) (models.Sidecar, error) {
 
 	var sc models.Sidecar
 	err = json.Unmarshal(jsonBytes, &sc)
+
+	if sc.TokenName == "" {
+		sc.TokenName = "TEST"
+	}
+
 	return sc, err
+}
+
+func (app *Avalanche) GetTokenName(subnetName string) string {
+	sidecar, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return "TEST"
+	}
+	return sidecar.TokenName
 }
 
 func (app *Avalanche) listSideCarNames() ([]string, error) {

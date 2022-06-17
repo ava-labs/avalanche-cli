@@ -57,6 +57,7 @@ func printDetails(genesis core.Genesis, subnetName string) {
 
 	table.Append([]string{"Subnet Name", subnetName})
 	table.Append([]string{"ChainId", genesis.Config.ChainID.String()})
+	table.Append([]string{"Token Name", app.GetTokenName(subnetName)})
 
 	table.Render()
 }
