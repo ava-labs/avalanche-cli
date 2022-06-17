@@ -63,6 +63,7 @@ linters-settings:
   gosec:
     excludes:
       - G107 # https://securego.io/docs/rules/g107.html
+      - G204 # TODO remove
   depguard:
     list-type: blacklist
     packages-with-error-message:

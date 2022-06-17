@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/user"
@@ -23,7 +22,7 @@ func GetBaseDir() string {
 }
 
 func SubnetConfigExists(subnetName string) (bool, error) {
-	genesis := path.Join(GetBaseDir(), subnetName+constants.Genesis_suffix)
+	genesis := path.Join(GetBaseDir(), subnetName+constants.GenesisSuffix)
 	genesisExists := true
 	if _, err := os.Stat(genesis); errors.Is(err, os.ErrNotExist) {
 		// does *not* exist
@@ -33,7 +32,7 @@ func SubnetConfigExists(subnetName string) (bool, error) {
 		return false, err
 	}
 
-	sidecar := path.Join(GetBaseDir(), subnetName+constants.Sidecar_suffix)
+	sidecar := path.Join(GetBaseDir(), subnetName+constants.SidecarSuffix)
 	sidecarExists := true
 	if _, err := os.Stat(sidecar); errors.Is(err, os.ErrNotExist) {
 		// does *not* exist
@@ -51,21 +50,23 @@ func SubnetConfigExists(subnetName string) (bool, error) {
 }
 
 func DeleteConfigs(subnetName string) error {
-	genesis := path.Join(GetBaseDir(), subnetName+constants.Genesis_suffix)
+	genesis := path.Join(GetBaseDir(), subnetName+constants.GenesisSuffix)
 	if _, err := os.Stat(genesis); err != nil && !errors.Is(err, os.ErrNotExist) {
 		// Schrodinger: file may or may not exist. See err for details.
 		return err
-	} else {
-		os.Remove(genesis)
 	}
 
-	sidecar := path.Join(GetBaseDir(), subnetName+constants.Sidecar_suffix)
+	// ignore error
+	os.Remove(genesis)
+
+	sidecar := path.Join(GetBaseDir(), subnetName+constants.SidecarSuffix)
 	if _, err := os.Stat(sidecar); err != nil && !errors.Is(err, os.ErrNotExist) {
 		// Schrodinger: file may or may not exist. See err for details.
 		return err
-	} else {
-		os.Remove(sidecar)
 	}
+
+	// ignore error
+	os.Remove(sidecar)
 
 	return nil
 }
@@ -101,12 +102,12 @@ func ParseRPCFromRestartOutput(output string) (string, error) {
 }
 
 type rpcFile struct {
-	Rpc string `json:"rpc"`
+	RPC string `json:"rpc"`
 }
 
 func SetHardhatRPC(rpc string) error {
 	rpcFileData := rpcFile{
-		Rpc: rpc,
+		RPC: rpc,
 	}
 
 	file, err := json.MarshalIndent(rpcFileData, "", " ")
@@ -114,8 +115,7 @@ func SetHardhatRPC(rpc string) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(rpcFilePath, file, 0644)
-	return err
+	return os.WriteFile(rpcFilePath, file, 0o600)
 }
 
 func RunHardhatTests(test string) error {
