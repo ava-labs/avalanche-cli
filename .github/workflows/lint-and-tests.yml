@@ -39,7 +39,7 @@ jobs:
           go-version: ${{ matrix.go }}
       - run: go mod download
       - run: scripts/build.sh
-      - run: go test -v -coverprofile=coverage.out ./...
+      - run: go test -v -coverprofile=coverage.out $(go list ./... | grep -v /tests/)
       - run: go tool cover -func=coverage.out
   e2e_test:
     name: e2e tests
