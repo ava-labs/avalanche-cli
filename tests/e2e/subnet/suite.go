@@ -9,9 +9,16 @@ import (
 	"github.com/onsi/gomega"
 )
 
+const subnetName = "e2eSubnetTest"
+
 var _ = ginkgo.Describe("[Subnet]", func() {
+	// ginkgo.AfterEach(func() {
+	// 	commands.CleanNetwork()
+	// 	err := utils.DeleteConfigs(subnetName)
+	// 	gomega.Expect(err).Should(gomega.BeNil())
+	// })
+
 	ginkgo.It("can create and delete a subnet config", func() {
-		subnetName := "e2eSubnetTest"
 		genesis := "tests/e2e/genesis/test_genesis.json"
 
 		commands.CreateSubnetConfig(subnetName, genesis)
@@ -19,16 +26,18 @@ var _ = ginkgo.Describe("[Subnet]", func() {
 	})
 
 	ginkgo.It("can deploy a subnet", func() {
-		subnetName := "e2eSubnetTest"
 		genesis := "tests/e2e/genesis/test_genesis.json"
 
 		commands.CreateSubnetConfig(subnetName, genesis)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
-		rpc, err := utils.ParseRPCFromOutput(deployOutput)
+		rpc, err := utils.ParseRPCFromDeployOutput(deployOutput)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println("Found rpc", rpc)
 
-		commands.CleanNetwork()
+		err = utils.SetHardhatRPC(rpc)
+		gomega.Expect(err).Should(gomega.BeNil())
+		err = utils.RunHardhatTests(utils.BaseTest)
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		commands.DeleteSubnetConfig(subnetName)
 	})
