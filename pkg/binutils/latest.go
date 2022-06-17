@@ -5,7 +5,7 @@ package binutils
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -28,7 +28,7 @@ func GetLatestReleaseVersion(releaseURL string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	jsonBytes, err := ioutil.ReadAll(resp.Body)
+	jsonBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to get latest binary version from %s: %w", releaseURL, err)
 	}
@@ -98,7 +98,7 @@ func DownloadReleaseVersion(
 	}
 	defer resp.Body.Close()
 
-	archive, err := ioutil.ReadAll(resp.Body)
+	archive, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}

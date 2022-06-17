@@ -23,10 +23,10 @@ func backendController(cmd *cobra.Command, args []string) error {
 	if args[0] == "start" {
 		return startBackend(cmd)
 	}
-	return fmt.Errorf("Unsupported command")
+	return fmt.Errorf("unsupported command")
 }
 
-func startBackend(cmd *cobra.Command) error {
+func startBackend(_ *cobra.Command) error {
 	s, err := binutils.NewGRPCServer()
 	if err != nil {
 		return err

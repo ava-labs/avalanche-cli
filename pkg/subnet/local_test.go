@@ -56,11 +56,7 @@ func TestDeployToLocal(t *testing.T) {
 	binDownloader := &mocks.PluginBinaryDownloader{}
 	binDownloader.On("Download", mock.AnythingOfType("ids.ID"), mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil)
 
-	app := app.Avalanche{
-		Log: logging.NoLog{},
-	}
-
-	testDeployer := &SubnetDeployer{
+	testDeployer := &Deployer{
 		procChecker:         procChecker,
 		binChecker:          binChecker,
 		getClientFunc:       getTestClientFunc,
@@ -172,7 +168,7 @@ func getTestClientFunc() (client.Client, error) {
 	c.On("Start", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fakeStartResponse, nil)
 	fakeHealthResponse := &rpcpb.HealthResponse{
 		ClusterInfo: &rpcpb.ClusterInfo{
-			Healthy:          true, // currently actually not checked, should it, if CustomVmsHealthy already is?
+			Healthy:          true, // currently actually not checked, should it, if CustomVMsHealthy already is?
 			CustomVmsHealthy: true,
 			NodeInfos: map[string]*rpcpb.NodeInfo{
 				"testNode1": {
