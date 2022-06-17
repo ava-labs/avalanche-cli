@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/big"
 	"net/http"
 	"os"
@@ -28,7 +28,11 @@ import (
 	"github.com/ava-labs/coreth/params"
 )
 
-type SubnetDeployer struct {
+const (
+	zipExtension = "zip"
+)
+
+type Deployer struct {
 	procChecker         binutils.ProcessChecker
 	binChecker          binutils.BinaryChecker
 	getClientFunc       getGRPCClientFunc
@@ -39,8 +43,8 @@ type SubnetDeployer struct {
 	backendStartedHere  bool
 }
 
-func NewLocalSubnetDeployer(app *app.Avalanche) *SubnetDeployer {
-	return &SubnetDeployer{
+func NewLocalDeployer(app *app.Avalanche) *Deployer {
+	return &Deployer{
 		procChecker:         binutils.NewProcessChecker(),
 		binChecker:          binutils.NewBinaryChecker(),
 		getClientFunc:       binutils.NewGRPCClient,
@@ -56,7 +60,7 @@ type getGRPCClientFunc func() (client.Client, error)
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
-func (d *SubnetDeployer) DeployToLocalNetwork(chain string, chain_genesis string) error {
+func (d *Deployer) DeployToLocalNetwork(chain string, chainGenesis string) error {
 	isRunning, err := d.procChecker.IsServerProcessRunning()
 	if err != nil {
 		return fmt.Errorf("failed querying if server process is running: %w", err)
@@ -68,17 +72,17 @@ func (d *SubnetDeployer) DeployToLocalNetwork(chain string, chain_genesis string
 		}
 		d.backendStartedHere = true
 	}
-	return d.doDeploy(chain, chain_genesis)
+	return d.doDeploy(chain, chainGenesis)
 }
 
 // BackendStartedHere returns true if the backend was started by this run,
 // or false if it found it there already
-func (d *SubnetDeployer) BackendStartedHere() bool {
+func (d *Deployer) BackendStartedHere() bool {
 	return d.backendStartedHere
 }
 
 // doDeploy the actual deployment to the network runner
-func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
+func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 	avagoDir, err := d.setupLocalEnv()
 	if err != nil {
 		return fmt.Errorf("failed setting up local environment: %w", err)
@@ -91,7 +95,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	exists, err := storage.FolderExists(pluginDir)
 	if !exists || err != nil {
-		return fmt.Errorf("evaluated pluginDir to be %s but it does not exist.", pluginDir)
+		return fmt.Errorf("evaluated pluginDir to be %s but it does not exist", pluginDir)
 	}
 
 	// TODO: we need some better version management here
@@ -99,7 +103,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	// * decide if force update or give user choice
 	exists, err = storage.FileExists(avalancheGoBinPath)
 	if !exists || err != nil {
-		return fmt.Errorf("evaluated avalancheGoBinPath to be %s but it does not exist.", avalancheGoBinPath)
+		return fmt.Errorf("evaluated avalancheGoBinPath to be %s but it does not exist", avalancheGoBinPath)
 	}
 
 	cli, err := d.getClientFunc()
@@ -108,22 +112,22 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	}
 	defer cli.Close()
 
-	exists, err = storage.FileExists(chain_genesis)
+	exists, err = storage.FileExists(chainGenesis)
 	if !exists || err != nil {
 		return fmt.Errorf(
-			"evaluated chain genesis file to be at %s but it does not seem to exist.", chain_genesis)
+			"evaluated chain genesis file to be at %s but it does not seem to exist", chainGenesis)
 	}
 
 	// we need the chainID just later, but it would be ugly to fail the whole deployment
 	// for a JSON unmarshalling error, so let's do it here already
-	genesis, err := getGenesis(chain_genesis)
+	genesis, err := getGenesis(chainGenesis)
 	if err != nil {
 		return fmt.Errorf("failed to unpack chain ID from genesis: %w", err)
 	}
 	chainID := genesis.Config.ChainID
 
 	customVMs := map[string]string{
-		chain: chain_genesis,
+		chain: chainGenesis,
 	}
 
 	opts := []client.OpOption{
@@ -177,7 +181,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	for address := range genesis.Alloc {
 		amount := genesis.Alloc[address].Balance
 		formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
-		if address == vm.Prefunded_ewoq_Address {
+		if address == vm.PrefundedEwoqAddress {
 			ux.Logger.PrintToUser("Funded address:   %s with %s (10^18) - private key: %s", address, formattedAmount.String(), vm.PrefundedEwoqPrivate)
 		} else {
 			ux.Logger.PrintToUser("Funded address:   %s with %s", address, formattedAmount.String())
@@ -194,7 +198,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 // * checks if avalanchego is installed in the local binary path
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path
-func (d *SubnetDeployer) setupLocalEnv() (string, error) {
+func (d *Deployer) setupLocalEnv() (string, error) {
 	binDir := filepath.Join(d.baseDir, constants.AvalancheCliBinDir)
 	binPrefix := "avalanchego-v"
 
@@ -249,7 +253,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 			version,
 			version,
 		)
-		ext = "zip"
+		ext = zipExtension
 		// EXPERMENTAL WIN, no support
 	case "windows":
 		avalanchegoURL = fmt.Sprintf(
@@ -257,7 +261,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 			version,
 			version,
 		)
-		ext = "zip"
+		ext = zipExtension
 	default:
 		return "", fmt.Errorf("OS not supported: %s", goos)
 	}
@@ -273,7 +277,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 	}
 	defer resp.Body.Close()
 
-	archive, err := ioutil.ReadAll(resp.Body)
+	archive, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
@@ -283,7 +287,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 		return "", err
 	}
 	avagoSubDir := "avalanchego-" + version
-	if ext == "zip" {
+	if ext == zipExtension {
 		// zip contains a build subdir instead of the avagoSubDir expected from tar.gz
 		if err := os.Rename(filepath.Join(binDir, "build"), filepath.Join(binDir, avagoSubDir)); err != nil {
 			return "", err
@@ -293,7 +297,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 }
 
 // WaitForHealthy polls continuously until the network is ready to be used
-func (d *SubnetDeployer) WaitForHealthy(ctx context.Context, cli client.Client, healthCheckInterval time.Duration) ([]string, error) {
+func (d *Deployer) WaitForHealthy(ctx context.Context, cli client.Client, healthCheckInterval time.Duration) ([]string, error) {
 	cancel := make(chan struct{})
 	go ux.PrintWait(cancel)
 	for {

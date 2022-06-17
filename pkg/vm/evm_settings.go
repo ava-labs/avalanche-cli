@@ -34,8 +34,8 @@ var (
 		BlockGasCostStep:         big.NewInt(200_000),
 	}
 
-	Prefunded_ewoq_Address = common.HexToAddress("0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC")
-	PrefundedEwoqPrivate   = "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
+	PrefundedEwoqAddress = common.HexToAddress("0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC")
+	PrefundedEwoqPrivate = "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
 
 	oneAvax = new(big.Int).SetUint64(units.Avax)
 )

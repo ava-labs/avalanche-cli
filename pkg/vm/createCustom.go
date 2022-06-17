@@ -20,7 +20,7 @@ func CreateCustomGenesis(name string) ([]byte, *models.Sidecar, error) {
 
 	sc := &models.Sidecar{
 		Name:      name,
-		Vm:        models.CustomVm,
+		VM:        models.CustomVM,
 		Subnet:    name,
 		TokenName: "",
 	}

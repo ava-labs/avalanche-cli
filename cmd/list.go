@@ -3,7 +3,6 @@
 package cmd
 
 import (
-	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
@@ -39,7 +38,7 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	table.SetRowLine(true)
 
-	files, err := ioutil.ReadDir(app.GetBaseDir())
+	files, err := os.ReadDir(app.GetBaseDir())
 	if err != nil {
 		return err
 	}
@@ -68,8 +67,8 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, f := range files {
-		if strings.Contains(f.Name(), constants.Sidecar_suffix) {
-			carName := strings.TrimSuffix(f.Name(), constants.Sidecar_suffix)
+		if strings.Contains(f.Name(), constants.SidecarSuffix) {
+			carName := strings.TrimSuffix(f.Name(), constants.SidecarSuffix)
 			// read in sidecar file
 			sc, err := app.LoadSidecar(carName)
 			if err != nil {
@@ -91,7 +90,7 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 			if _, ok := deployedNames[sc.Subnet]; ok {
 				deployed = "Yes"
 			}
-			rows = append(rows, []string{sc.Subnet, sc.Name, chainID, string(sc.Vm), deployed})
+			rows = append(rows, []string{sc.Subnet, sc.Name, chainID, string(sc.VM), deployed})
 		}
 	}
 	sort.Sort(rows)

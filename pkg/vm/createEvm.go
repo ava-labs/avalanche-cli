@@ -38,9 +38,9 @@ const (
 func nextStage(currentState wizardState, direction stateDirection) wizardState {
 	switch direction {
 	case forward:
-		currentState += 1
+		currentState++
 	case backward:
-		currentState -= 1
+		currentState--
 	default:
 		return errored
 	}
@@ -56,7 +56,7 @@ func CreateEvmGenesis(name string, app *app.Avalanche) ([]byte, *models.Sidecar,
 	stage := startStage
 
 	var (
-		chainId    *big.Int
+		chainID    *big.Int
 		tokenName  string
 		allocation core.GenesisAlloc
 		direction  stateDirection
@@ -68,7 +68,7 @@ func CreateEvmGenesis(name string, app *app.Avalanche) ([]byte, *models.Sidecar,
 		case startStage:
 			direction = forward
 		case descriptorStage:
-			chainId, tokenName, direction, err = getDescriptors(app)
+			chainID, tokenName, direction, err = getDescriptors(app)
 		case feeStage:
 			*conf, direction, err = getFeeConfig(*conf)
 		case airdropStage:
@@ -76,7 +76,7 @@ func CreateEvmGenesis(name string, app *app.Avalanche) ([]byte, *models.Sidecar,
 		case precompileStage:
 			*conf, direction, err = getPrecompiles(*conf)
 		default:
-			err = errors.New("Invalid creation stage")
+			err = errors.New("invalid creation stage")
 		}
 		if err != nil {
 			return []byte{}, nil, err
@@ -84,7 +84,7 @@ func CreateEvmGenesis(name string, app *app.Avalanche) ([]byte, *models.Sidecar,
 		stage = nextStage(stage, direction)
 	}
 
-	conf.ChainID = chainId
+	conf.ChainID = chainID
 
 	genesis.Alloc = allocation
 	genesis.Config = conf
@@ -104,7 +104,7 @@ func CreateEvmGenesis(name string, app *app.Avalanche) ([]byte, *models.Sidecar,
 
 	sc := &models.Sidecar{
 		Name:      name,
-		Vm:        models.SubnetEvm,
+		VM:        models.SubnetEvm,
 		Subnet:    name,
 		TokenName: tokenName,
 	}

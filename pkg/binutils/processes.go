@@ -23,8 +23,8 @@ import (
 	"github.com/shirou/gopsutil/process"
 )
 
-// gRPCTimeout is a common error message if the gRPC server can't be reached
-var gRPCTimeout = errors.New("Timed out trying to contact backend controller, it is most probably not running.")
+// errGRPCTimeout is a common error message if the gRPC server can't be reached
+var errGRPCTimeout = errors.New("timed out trying to contact backend controller, it is most probably not running")
 
 // ProcessChecker is responsible for checking if the gRPC server is running
 type ProcessChecker interface {
@@ -48,7 +48,7 @@ func NewGRPCClient() (client.Client, error) {
 		DialTimeout: gRPCDialTimeout,
 	})
 	if errors.Is(err, context.DeadlineExceeded) {
-		err = gRPCTimeout
+		err = errGRPCTimeout
 	}
 	return client, err
 }
@@ -97,14 +97,14 @@ func GetServerPID() (int, error) {
 	var rf runFile
 	run, err := os.ReadFile(constants.ServerRunFile)
 	if err != nil {
-		return 0, fmt.Errorf("failed reading process info file at %s: %s\n", constants.ServerRunFile, err)
+		return 0, fmt.Errorf("failed reading process info file at %s: %s", constants.ServerRunFile, err)
 	}
 	if err := json.Unmarshal(run, &rf); err != nil {
-		return 0, fmt.Errorf("failed unmarshalling server run file at %s: %s\n", constants.ServerRunFile, err)
+		return 0, fmt.Errorf("failed unmarshalling server run file at %s: %s", constants.ServerRunFile, err)
 	}
 
 	if rf.Pid == 0 {
-		return 0, fmt.Errorf("failed reading pid from info file at %s: %s\n", constants.ServerRunFile, err)
+		return 0, fmt.Errorf("failed reading pid from info file at %s: %s", constants.ServerRunFile, err)
 	}
 	return rf.Pid, nil
 }

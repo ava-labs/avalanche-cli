@@ -3,7 +3,6 @@
 package cmd
 
 import (
-	"errors"
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/ux"
@@ -27,13 +26,7 @@ func deleteGenesis(cmd *cobra.Command, args []string) error {
 	if _, err := os.Stat(genesis); err == nil {
 		// exists
 		os.Remove(genesis)
-	} else if errors.Is(err, os.ErrNotExist) {
-		// does *not* exist
-		app.Log.Error("Specified genesis does not exist")
 	} else {
-		// Schrodinger: file may or may not exist. See err for details.
-
-		// Therefore, do *NOT* use !os.IsNotExist(err) to test for file existence
 		return err
 	}
 
@@ -41,13 +34,7 @@ func deleteGenesis(cmd *cobra.Command, args []string) error {
 		// exists
 		os.Remove(sidecar)
 		ux.Logger.PrintToUser("Deleted subnet")
-	} else if errors.Is(err, os.ErrNotExist) {
-		// does *not* exist
-		app.Log.Error("Specified sidecar does not exist")
 	} else {
-		// Schrodinger: file may or may not exist. See err for details.
-
-		// Therefore, do *NOT* use !os.IsNotExist(err) to test for file existence
 		return err
 	}
 	return nil
