@@ -1,4 +1,9 @@
+import { HardhatUserConfig, task } from "hardhat/config"
+import "@nomiclabs/hardhat-etherscan"
 import "@nomiclabs/hardhat-waffle"
+import "@typechain/hardhat"
+import "hardhat-gas-reporter"
+import "solidity-coverage"
 import { existsSync } from "fs"
 
 // Import the dynamic rpc url if the file exists
@@ -8,26 +13,11 @@ if (existsSync("./dynamic_rpc.json")) {
   rpcUrl = importedRpc.rpc
 }
 
-export default {
-  solidity: {
-    compilers: [
-      {
-        version: "0.5.16"
-      },
-      {
-        version: "0.6.2"
-      },
-      {
-        version: "0.6.4"
-      },
-      {
-        version: "0.7.0"
-      },
-      {
-        version: "0.8.0"
-      }
-    ]
-  },
+// You need to export an object to set up your config
+// Go to https://hardhat.org/config/ to learn more
+
+const config: HardhatUserConfig = {
+  solidity: "0.8.4",
   networks: {
     subnet: {
       //"http://{ip}:{port}/ext/bc/{chainID}/rpc
@@ -51,3 +41,5 @@ export default {
     timeout: 60000
   }
 }
+
+export default config

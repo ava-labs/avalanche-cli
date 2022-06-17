@@ -129,3 +129,15 @@ func RunHardhatTests(test string) error {
 	}
 	return err
 }
+
+// func RunHardhatTests(test string) error {
+// 	cmd := exec.Command("npx", "hardhat", "run", "./scripts/deploy.ts", "--network", "subnet")
+// 	cmd.Dir = hardhatDir
+// 	fmt.Println(cmd.String())
+// 	output, err := cmd.Output()
+// 	fmt.Println(string(output))
+// 	if err != nil {
+// 		fmt.Println(err)
+// 	}
+// 	return err
+// }
