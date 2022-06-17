@@ -56,6 +56,10 @@ func TestDeployToLocal(t *testing.T) {
 	binDownloader := &mocks.PluginBinaryDownloader{}
 	binDownloader.On("Download", mock.AnythingOfType("ids.ID"), mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil)
 
+	app := app.Avalanche{
+		Log: logging.NoLog{},
+	}
+
 	testDeployer := &Deployer{
 		procChecker:         procChecker,
 		binChecker:          binChecker,
