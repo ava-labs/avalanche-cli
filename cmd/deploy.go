@@ -102,6 +102,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.String())
+	chain := chains[0]
+	chain_genesis := filepath.Join(app.GetBaseDir(), fmt.Sprintf("%s_genesis.json", chain))
 	// TODO
 	switch network {
 	case models.Local:
@@ -109,8 +111,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		// TODO: Add signal management here. If we Ctrl-C this guy it can leave
 		// the gRPC server is a weird state. Should kill that too
 		deployer := subnet.NewLocalSubnetDeployer(app)
-		chain := chains[0]
-		chain_genesis := filepath.Join(app.GetBaseDir(), fmt.Sprintf("%s_genesis.json", chain))
 		err := deployer.DeployToLocalNetwork(chain, chain_genesis)
 		if err != nil {
 			if deployer.BackendStartedHere() {
@@ -120,6 +120,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			}
 		}
 		return err
+	case models.Fuji:
+		deployer := subnet.NewFujiSubnetDeployer(app)
+		return deployer.DeployToFuji(chain, chain_genesis, subnet.Local)
 	default:
 		return errors.New("Not implemented")
 	}

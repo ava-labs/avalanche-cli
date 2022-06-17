@@ -55,7 +55,7 @@ func TestDeployToLocal(t *testing.T) {
 	binDownloader := &mocks.PluginBinaryDownloader{}
 	binDownloader.On("Download", mock.AnythingOfType("ids.ID"), mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil)
 
-	testDeployer := &SubnetDeployer{
+	testDeployer := &LocalSubnetDeployer{
 		procChecker:         procChecker,
 		binChecker:          binChecker,
 		getClientFunc:       getTestClientFunc,

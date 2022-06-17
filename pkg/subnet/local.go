@@ -28,7 +28,7 @@ import (
 	"github.com/ava-labs/coreth/params"
 )
 
-type SubnetDeployer struct {
+type LocalSubnetDeployer struct {
 	procChecker         binutils.ProcessChecker
 	binChecker          binutils.BinaryChecker
 	getClientFunc       getGRPCClientFunc
@@ -39,8 +39,8 @@ type SubnetDeployer struct {
 	backendStartedHere  bool
 }
 
-func NewLocalSubnetDeployer(app *app.Avalanche) *SubnetDeployer {
-	return &SubnetDeployer{
+func NewLocalSubnetDeployer(app *app.Avalanche) *LocalSubnetDeployer {
+	return &LocalSubnetDeployer{
 		procChecker:         binutils.NewProcessChecker(),
 		binChecker:          binutils.NewBinaryChecker(),
 		getClientFunc:       binutils.NewGRPCClient,
@@ -56,7 +56,7 @@ type getGRPCClientFunc func() (client.Client, error)
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
-func (d *SubnetDeployer) DeployToLocalNetwork(chain string, chain_genesis string) error {
+func (d *LocalSubnetDeployer) DeployToLocalNetwork(chain string, chain_genesis string) error {
 	isRunning, err := d.procChecker.IsServerProcessRunning()
 	if err != nil {
 		return fmt.Errorf("failed querying if server process is running: %w", err)
@@ -73,15 +73,14 @@ func (d *SubnetDeployer) DeployToLocalNetwork(chain string, chain_genesis string
 
 // BackendStartedHere returns true if the backend was started by this run,
 // or false if it found it there already
-func (d *SubnetDeployer) BackendStartedHere() bool {
+func (d *LocalSubnetDeployer) BackendStartedHere() bool {
 	return d.backendStartedHere
 }
 
-// doDeploy the actual deployment to the network runner
-func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
+func (d *LocalSubnetDeployer) setupBinaries(chain, chain_genesis string) (string, string, error) {
 	avagoDir, err := d.setupLocalEnv()
 	if err != nil {
-		return fmt.Errorf("failed setting up local environment: %w", err)
+		return "", "", fmt.Errorf("failed setting up local environment: %w", err)
 	}
 
 	ux.Logger.PrintToUser("Avalanchego installation successful")
@@ -91,7 +90,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	exists, err := storage.FolderExists(pluginDir)
 	if !exists || err != nil {
-		return fmt.Errorf("evaluated pluginDir to be %s but it does not exist.", pluginDir)
+		return "", "", fmt.Errorf("evaluated pluginDir to be %s but it does not exist.", pluginDir)
 	}
 
 	// TODO: we need some better version management here
@@ -99,21 +98,31 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	// * decide if force update or give user choice
 	exists, err = storage.FileExists(avalancheGoBinPath)
 	if !exists || err != nil {
-		return fmt.Errorf("evaluated avalancheGoBinPath to be %s but it does not exist.", avalancheGoBinPath)
+		return "", "", fmt.Errorf("evaluated avalancheGoBinPath to be %s but it does not exist.", avalancheGoBinPath)
 	}
-
-	cli, err := d.getClientFunc()
-	if err != nil {
-		return fmt.Errorf("error creating gRPC Client: %s", err)
-	}
-	defer cli.Close()
 
 	exists, err = storage.FileExists(chain_genesis)
 	if !exists || err != nil {
-		return fmt.Errorf(
+		return "", "", fmt.Errorf(
 			"evaluated chain genesis file to be at %s but it does not seem to exist.", chain_genesis)
 	}
 
+	vmID, err := utils.VMID(chain)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
+	}
+	d.log.Debug("this VM will get ID: %s", vmID.String())
+
+	binDir := filepath.Join(d.baseDir, constants.AvalancheCliBinDir)
+	if err := d.binaryDownloader.Download(vmID, pluginDir, binDir); err != nil {
+		return "", "", err
+	}
+
+	return avalancheGoBinPath, pluginDir, nil
+}
+
+// doDeploy the actual deployment to the network runner
+func (d *LocalSubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	// we need the chainID just later, but it would be ugly to fail the whole deployment
 	// for a JSON unmarshalling error, so let's do it here already
 	genesis, err := getGenesis(chain_genesis)
@@ -126,24 +135,23 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 		chain: chain_genesis,
 	}
 
+	avalancheGoBinPath, pluginDir, err := d.setupBinaries(chain, chain_genesis)
+	if err != nil {
+		return err
+	}
+
 	opts := []client.OpOption{
 		client.WithPluginDir(pluginDir),
 		client.WithCustomVMs(customVMs),
 		client.WithGlobalNodeConfig("{\"log-level\":\"debug\", \"log-display-level\":\"debug\"}"),
 	}
-
-	vmID, err := utils.VMID(chain)
-	if err != nil {
-		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
-	}
-	d.log.Debug("this VM will get ID: %s", vmID.String())
-
-	binDir := filepath.Join(d.baseDir, constants.AvalancheCliBinDir)
-	if err := d.binaryDownloader.Download(vmID, pluginDir, binDir); err != nil {
-		return err
-	}
-
 	ctx := binutils.GetAsyncContext()
+
+	cli, err := d.getClientFunc()
+	if err != nil {
+		return fmt.Errorf("error creating gRPC Client: %s", err)
+	}
+	defer cli.Close()
 
 	ux.Logger.PrintToUser("VM ready. Trying to boot network...")
 	info, err := cli.Start(
@@ -194,7 +202,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 // * checks if avalanchego is installed in the local binary path
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path
-func (d *SubnetDeployer) setupLocalEnv() (string, error) {
+func (d *LocalSubnetDeployer) setupLocalEnv() (string, error) {
 	binDir := filepath.Join(d.baseDir, constants.AvalancheCliBinDir)
 	binPrefix := "avalanchego-v"
 
@@ -293,7 +301,7 @@ func (d *SubnetDeployer) setupLocalEnv() (string, error) {
 }
 
 // WaitForHealthy polls continuously until the network is ready to be used
-func (d *SubnetDeployer) WaitForHealthy(ctx context.Context, cli client.Client, healthCheckInterval time.Duration) ([]string, error) {
+func (d *LocalSubnetDeployer) WaitForHealthy(ctx context.Context, cli client.Client, healthCheckInterval time.Duration) ([]string, error) {
 	cancel := make(chan struct{})
 	go ux.PrintWait(cancel)
 	for {
