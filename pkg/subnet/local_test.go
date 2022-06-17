@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/mocks"
+	"github.com/ava-labs/avalanche-cli/pkg/app"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/ux"
@@ -55,13 +56,17 @@ func TestDeployToLocal(t *testing.T) {
 	binDownloader := &mocks.PluginBinaryDownloader{}
 	binDownloader.On("Download", mock.AnythingOfType("ids.ID"), mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil)
 
+	app := app.Avalanche{
+		Log: logging.NoLog{},
+	}
+
 	testDeployer := &Deployer{
 		procChecker:         procChecker,
 		binChecker:          binChecker,
 		getClientFunc:       getTestClientFunc,
 		binaryDownloader:    binDownloader,
 		healthCheckInterval: 500 * time.Millisecond,
-		log:                 logging.NoLog{},
+		app:                 app,
 	}
 
 	// create a simple genesis for the test
@@ -164,7 +169,7 @@ func TestGetLatestAvagoVersion(t *testing.T) {
 func getTestClientFunc() (client.Client, error) {
 	c := &mocks.Client{}
 	fakeStartResponse := &rpcpb.StartResponse{}
-	c.On("Start", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fakeStartResponse, nil)
+	c.On("Start", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fakeStartResponse, nil)
 	fakeHealthResponse := &rpcpb.HealthResponse{
 		ClusterInfo: &rpcpb.ClusterInfo{
 			Healthy:          true, // currently actually not checked, should it, if CustomVMsHealthy already is?

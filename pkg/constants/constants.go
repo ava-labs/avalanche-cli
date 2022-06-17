@@ -13,8 +13,9 @@ const (
 	LatestAvagoReleaseURL = "https://api.github.com/repos/ava-labs/avalanchego/releases/latest"
 	SubnetEVMReleaseURL   = "https://api.github.com/repos/ava-labs/subnet-evm/releases/latest"
 
-	ServerRunFile      = "/tmp/gRPCserver.run"
+	ServerRunFile      = "gRPCserver.run"
 	AvalancheCliBinDir = "bin"
+	RunDir             = "runs"
 	SidecarSuffix      = "_sidecar.json"
 	GenesisSuffix      = "_genesis.json"
 

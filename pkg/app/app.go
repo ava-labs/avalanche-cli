@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -34,6 +35,10 @@ func New(baseDir string, log logging.Logger) *Avalanche {
 
 func (app *Avalanche) GetBaseDir() string {
 	return app.baseDir
+}
+
+func (app *Avalanche) GetRunDir() string {
+	return path.Join(app.baseDir, constants.RunDir)
 }
 
 func (app *Avalanche) GetGenesisPath(subnetName string) string {

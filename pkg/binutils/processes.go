@@ -10,13 +10,16 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
 	"strings"
 	"syscall"
 
+	"github.com/ava-labs/avalanche-cli/pkg/app"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/server"
+	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/docker/docker/pkg/reexec"
@@ -25,6 +28,12 @@ import (
 
 // errGRPCTimeout is a common error message if the gRPC server can't be reached
 var errGRPCTimeout = errors.New("timed out trying to contact backend controller, it is most probably not running")
+
+var latestRunDir string
+
+func GetLatestRunDir() string {
+	return latestRunDir
+}
 
 // ProcessChecker is responsible for checking if the gRPC server is running
 type ProcessChecker interface {
@@ -111,12 +120,22 @@ func GetServerPID() (int, error) {
 
 // StartServerProcess starts the gRPC server as a reentrant process of this binary
 // it just executes `avalanche-cli backend start`
-func StartServerProcess(log logging.Logger) error {
+func StartServerProcess(app app.Avalanche) error {
 	thisBin := reexec.Self()
 
 	args := []string{"backend", "start"}
 	cmd := exec.Command(thisBin, args...)
-	outputFile, err := os.CreateTemp("", "avalanche-cli-backend*")
+
+	outputDirPrefix := path.Join(app.GetRunDir(), "deploy")
+	outputDir, err := utils.MkDirWithTimestamp(outputDirPrefix)
+	if err != nil {
+		return err
+	}
+
+	// Set latest run dir
+	latestRunDir = outputDir
+
+	outputFile, err := os.Create(path.Join(outputDir, "avalanche-cli-backend"))
 	if err != nil {
 		return err
 	}
@@ -139,9 +158,10 @@ func StartServerProcess(log logging.Logger) error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(constants.ServerRunFile, rfBytes, perms.ReadWrite)
+	serverRunFile := path.Join(outputDir, constants.ServerRunFile)
+	err = os.WriteFile(serverRunFile, rfBytes, perms.ReadWrite)
 	if err != nil {
-		log.Warn("could not write gRPC process info to file: %s", err)
+		app.Log.Warn("could not write gRPC process info to file: %s", err)
 	}
 	return nil
 }
