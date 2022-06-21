@@ -7,6 +7,7 @@ import (
 	"github.com/onsi/gomega"
 )
 
+/* #nosec G204 */
 func CleanNetwork() {
 	cmd := exec.Command(
 		utils.CLIBinary,
@@ -17,6 +18,7 @@ func CleanNetwork() {
 	gomega.Expect(err).Should(gomega.BeNil())
 }
 
+/* #nosec G204 */
 func StartNetwork() string {
 	cmd := exec.Command(
 		utils.CLIBinary,
@@ -28,6 +30,7 @@ func StartNetwork() string {
 	return string(output)
 }
 
+/* #nosec G204 */
 func StopNetwork() {
 	cmd := exec.Command(
 		utils.CLIBinary,

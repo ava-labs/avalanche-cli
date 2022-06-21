@@ -16,6 +16,7 @@ var _ = ginkgo.Describe("[Root]", func() {
 		expectedVersionStr := fmt.Sprintf("avalanche version %s\n", string(expectedVersion))
 		gomega.Expect(err).Should(gomega.BeNil())
 
+		/* #nosec G204 */
 		cmd := exec.Command(utils.CLIBinary, "--version")
 		out, err := cmd.Output()
 

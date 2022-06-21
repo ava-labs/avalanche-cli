@@ -8,6 +8,7 @@ import (
 	"github.com/onsi/gomega"
 )
 
+/* #nosec G204 */
 func CreateSubnetConfig(subnetName string, genesisPath string) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -33,6 +34,7 @@ func CreateSubnetConfig(subnetName string, genesisPath string) {
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
+/* #nosec G204 */
 func DeleteSubnetConfig(subnetName string) {
 	// Config should exist
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -51,6 +53,7 @@ func DeleteSubnetConfig(subnetName string) {
 }
 
 // Returns the deploy output
+/* #nosec G204 */
 func DeploySubnetLocally(subnetName string) string {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
