@@ -116,14 +116,24 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	ctx := binutils.GetAsyncContext()
 
-	// get already deployed VM IDs
-	deployedVMIDs := map[string]struct{}{}
+	// check for network and get VM info
+	needsStart := false
 	clusterInfo, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
-		return fmt.Errorf("failed to query network health: %s", err)
+		// TODO: use error type not string comparison
+		if strings.Contains(err.Error(), "not bootstrapped") {
+			needsStart = true
+		} else {
+			return fmt.Errorf("failed to query network health: %s", err)
+		}
 	}
-	for _, vmInfo := range clusterInfo.CustomVms {
-		deployedVMIDs[vmInfo.VmId] = struct{}{}
+
+	// find out already deployed VM IDs
+	deployedVMIDs := map[string]struct{}{}
+	if clusterInfo != nil {
+		for _, vmInfo := range clusterInfo.CustomVms {
+			deployedVMIDs[vmInfo.VmId] = struct{}{}
+		}
 	}
 
 	// get VM ID to deploy
@@ -133,48 +143,75 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	}
 	d.log.Debug("this VM will get ID: %s", toDeployVMID.String())
 
-	// we need to restart the network if the VM was not deployed previously
-	_, pluginAlreadyInstalled := deployedVMIDs[toDeployVMID.String()]
-
-	// VM IDs that need plugin
+	// install all needed plugins
 	toInstallVMIDs := map[string]struct{}{}
 	for vmID := range deployedVMIDs {
 		toInstallVMIDs[vmID] = struct{}{}
 	}
 	toInstallVMIDs[toDeployVMID.String()] = struct{}{}
-
 	binDir := filepath.Join(d.baseDir, constants.AvalancheCliBinDir)
 	if err := d.binaryDownloader.Download(toInstallVMIDs, pluginDir, binDir); err != nil {
 		return err
 	}
 
-	fmt.Println(deployedVMIDs)
-	fmt.Println(pluginAlreadyInstalled)
-	fmt.Println(toInstallVMIDs)
+	ux.Logger.PrintToUser("VM ready.")
 
-	return nil
-
-	ux.Logger.PrintToUser("VM ready. Trying to boot network...")
-	loadSnapshotOpts := []client.OpOption{
-		client.WithPluginDir(pluginDir),
-		client.WithExecPath(avalancheGoBinPath),
-	}
-	loadSnapshotsInfo, err := cli.LoadSnapshot(
-		ctx,
-		constants.DefaultSnapshotName,
-		loadSnapshotOpts...,
-	)
-	if err != nil {
-		// TODO: use error type not string comparison
-		if !strings.Contains(err.Error(), "already bootstrapped") {
+	// do start/restart as needed
+	if needsStart {
+		ux.Logger.PrintToUser("Starting network...")
+		loadSnapshotOpts := []client.OpOption{
+			client.WithPluginDir(pluginDir),
+			client.WithExecPath(avalancheGoBinPath),
+		}
+		loadSnapshotsInfo, err := cli.LoadSnapshot(
+			ctx,
+			constants.DefaultSnapshotName,
+			loadSnapshotOpts...,
+		)
+		if err != nil {
 			return fmt.Errorf("failed to start network :%s", err)
 		}
-		ux.Logger.PrintToUser("Network has already been booted. Wait until healthy...")
+		d.log.Debug(loadSnapshotsInfo.String())
 	} else {
-		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
-	}
+		// we need to restart the network if the VM was not deployed previously
+		needsRestart := false
+		_, ok := deployedVMIDs[toDeployVMID.String()]
+		if !ok {
+			needsRestart = true
+		}
 
-	d.log.Debug(loadSnapshotsInfo.String())
+		if needsRestart {
+			// make snapshot of current state and reload it again
+			tmpSnapshotName := fmt.Sprintf("restart-tmp-%d", time.Now().Unix())
+			ux.Logger.PrintToUser("Restarting network...")
+			_, err := cli.SaveSnapshot(
+				ctx,
+				tmpSnapshotName,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to save snapshot :%s", err)
+			}
+			loadSnapshotOpts := []client.OpOption{
+				client.WithPluginDir(pluginDir),
+				client.WithExecPath(avalancheGoBinPath),
+			}
+			_, err = cli.LoadSnapshot(
+				ctx,
+				tmpSnapshotName,
+				loadSnapshotOpts...,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to load snapshot :%s", err)
+			}
+			_, err = cli.RemoveSnapshot(
+				ctx,
+				tmpSnapshotName,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to remove snapshot :%s", err)
+			}
+		}
+	}
 
 	clusterInfo, err = d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
