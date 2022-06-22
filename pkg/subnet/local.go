@@ -28,7 +28,6 @@ import (
 	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/coreth/core"
 	"github.com/ava-labs/coreth/params"
-	cp "github.com/otiai10/copy"
 )
 
 type SubnetDeployer struct {
@@ -236,14 +235,9 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 // * returns the location of the avalanchego path and plugin
 func (d *SubnetDeployer) SetupLocalEnv() (string, string, error) {
 
-	err := InstallBootstrapSnapshot(d.baseDir)
+	err := SetDefaultSnapshot(d.baseDir)
 	if err != nil {
-		return "", "", fmt.Errorf("failed setting up bootstrap snapshot: %w", err)
-	}
-
-	err = SetDefaultSnapshot(d.baseDir)
-	if err != nil {
-		return "", "", fmt.Errorf("failed setting up default snapshot: %w", err)
+		return "", "", fmt.Errorf("failed setting up snapshots: %w", err)
 	}
 
 	avagoDir, err := d.setupLocalEnv()
@@ -425,22 +419,8 @@ func getGenesis(genesisFile string) (core.Genesis, error) {
 // Initialize default snapshot with bootstrap snapshot archive
 func SetDefaultSnapshot(baseDir string) error {
 	snapshotsDir := filepath.Join(baseDir, constants.SnapshotsDirName)
-	bootstrapSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.BootstrapSnapshotName)
 	defaultSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.DefaultSnapshotName)
 	if _, err := os.Stat(defaultSnapshotPath); os.IsNotExist(err) {
-		err = cp.Copy(bootstrapSnapshotPath, defaultSnapshotPath)
-		if err != nil {
-			return fmt.Errorf("failed setting default snapshot: %w", err)
-		}
-	}
-	return nil
-}
-
-// Install bootstrap snapshot
-func InstallBootstrapSnapshot(baseDir string) error {
-	snapshotsDir := filepath.Join(baseDir, constants.SnapshotsDirName)
-	bootstrapSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.BootstrapSnapshotName)
-	if _, err := os.Stat(bootstrapSnapshotPath); os.IsNotExist(err) {
 		resp, err := http.Get(constants.BootstrapSnapshotURL)
 		if err != nil {
 			return fmt.Errorf("failed downloading bootstrap snapshot: %w", err)

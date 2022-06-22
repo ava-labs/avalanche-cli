@@ -286,7 +286,6 @@ func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir, binDir string) e
 // but should be later REMOVED if we support multiple plugins (with the caveat of a new
 // tricky situation about to decide when and how to remove plugins from the plugin dir)
 func cleanupPluginDir(vmID, pluginDir string) error {
-	return nil
 	// list all plugins
 	entries, err := os.ReadDir(pluginDir)
 	if err != nil {
