@@ -53,7 +53,7 @@ func TestDeployToLocal(t *testing.T) {
 	binChecker.On("ExistsWithLatestVersion", mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(true, tmpDir, nil)
 
 	binDownloader := &mocks.PluginBinaryDownloader{}
-	binDownloader.On("Download", mock.AnythingOfType("ids.ID"), mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil)
+	binDownloader.On("Download", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil)
 
 	testDeployer := &SubnetDeployer{
 		procChecker:         procChecker,
