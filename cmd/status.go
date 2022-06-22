@@ -55,8 +55,8 @@ func networkStatus(cmd *cobra.Command, args []string) error {
 		}
 		ux.Logger.PrintToUser("==================================== Custom VM information =======================================")
 		for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-			for vmID, vmInfo := range status.ClusterInfo.CustomVms {
-				ux.Logger.PrintToUser("Endpoint at %s for blockchain %q: %s/ext/bc/%s/rpc", nodeInfo.Name, vmID, nodeInfo.GetUri(), vmInfo.BlockchainId)
+			for blockchainID := range status.ClusterInfo.CustomVms {
+				ux.Logger.PrintToUser("Endpoint at %s for blockchain %q: %s/ext/bc/%s/rpc", nodeInfo.Name, blockchainID, nodeInfo.GetUri(), blockchainID)
 			}
 		}
 
