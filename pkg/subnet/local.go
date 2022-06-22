@@ -114,18 +114,45 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	}
 	chainID := genesis.Config.ChainID
 
-	vmID, err := utils.VMID(chain)
+	ctx := binutils.GetAsyncContext()
+
+	// get already deployed VM IDs
+	deployedVMIDs := map[string]struct{}{}
+	clusterInfo, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
+	if err != nil {
+		return fmt.Errorf("failed to query network health: %s", err)
+	}
+	for _, vmInfo := range clusterInfo.CustomVms {
+		deployedVMIDs[vmInfo.VmId] = struct{}{}
+	}
+
+	// get VM ID to deploy
+	toDeployVMID, err := utils.VMID(chain)
 	if err != nil {
 		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
-	d.log.Debug("this VM will get ID: %s", vmID.String())
+	d.log.Debug("this VM will get ID: %s", toDeployVMID.String())
+
+	// we need to restart the network if the VM was not deployed previously
+	_, pluginAlreadyInstalled := deployedVMIDs[toDeployVMID.String()]
+
+	// VM IDs that need plugin
+	toInstallVMIDs := map[string]struct{}{}
+	for vmID := range deployedVMIDs {
+		toInstallVMIDs[vmID] = struct{}{}
+	}
+	toInstallVMIDs[toDeployVMID.String()] = struct{}{}
 
 	binDir := filepath.Join(d.baseDir, constants.AvalancheCliBinDir)
-	if err := d.binaryDownloader.Download(vmID, pluginDir, binDir); err != nil {
+	if err := d.binaryDownloader.Download(toInstallVMIDs, pluginDir, binDir); err != nil {
 		return err
 	}
 
-	ctx := binutils.GetAsyncContext()
+	fmt.Println(deployedVMIDs)
+	fmt.Println(pluginAlreadyInstalled)
+	fmt.Println(toInstallVMIDs)
+
+	return nil
 
 	ux.Logger.PrintToUser("VM ready. Trying to boot network...")
 	loadSnapshotOpts := []client.OpOption{
@@ -149,7 +176,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	d.log.Debug(loadSnapshotsInfo.String())
 
-	clusterInfo, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
+	clusterInfo, err = d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
 		return fmt.Errorf("failed to query network health: %s", err)
 	}

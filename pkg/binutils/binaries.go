@@ -17,7 +17,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/ux"
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/coreos/go-semver/semver"
 )
@@ -29,7 +28,7 @@ var (
 )
 
 type PluginBinaryDownloader interface {
-	Download(vmID ids.ID, pluginDir, binDir string) error
+	Download(vmIDs map[string]struct{}, pluginDir, binDir string) error
 }
 
 type BinaryChecker interface {
@@ -215,18 +214,27 @@ func (abc *binaryChecker) ExistsWithLatestVersion(binDir, binPrefix string) (boo
 	return true, latest, nil
 }
 
+func (d *pluginBinaryDownloader) Download(vmIDs map[string]struct{}, pluginDir, binDir string) error {
+	for id := range vmIDs {
+		err := d.DownloadVM(id, pluginDir, binDir)
+		if err != nil {
+			return err
+		}
+	}
+	// remove all other plugins other than the given and `evm`
+	if err := cleanupPluginDir(vmIDs, pluginDir); err != nil {
+		return err
+	}
+	return nil
+}
+
 // getVMBinary downloads the binary from the binary server URL
-func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir, binDir string) error {
-	vmID := id.String()
+func (d *pluginBinaryDownloader) DownloadVM(vmID string, pluginDir, binDir string) error {
 	binaryPath := filepath.Join(pluginDir, vmID)
 	info, err := os.Stat(binaryPath)
 	if err == nil {
 		if info.Mode().IsRegular() {
 			d.log.Debug("binary already exists, skipping download")
-			// remove all other plugins other than this one and `evm` for now.
-			if err := cleanupPluginDir(vmID, pluginDir); err != nil {
-				return err
-			}
 			return nil
 		}
 		return fmt.Errorf("binary plugin path %q was found but is not a regular file", binaryPath)
@@ -273,19 +281,11 @@ func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir, binDir string) e
 		return fmt.Errorf("failed copying subnet-evm to plugin dir: %w", err)
 	}
 
-	// remove all other plugins other than this one and `evm` for now.
-	if err := cleanupPluginDir(vmID, pluginDir); err != nil {
-		return err
-	}
-
 	return nil
 }
 
-// cleanupPluginDir removes all other plugins other than the given one and `evm` for now.
-// TODO: this is only acceptable at this stage where ANR can't run multiple plugins anyways
-// but should be later REMOVED if we support multiple plugins (with the caveat of a new
-// tricky situation about to decide when and how to remove plugins from the plugin dir)
-func cleanupPluginDir(vmID, pluginDir string) error {
+// cleanupPluginDir removes all other plugins other than the given and `evm`
+func cleanupPluginDir(vmIDs map[string]struct{}, pluginDir string) error {
 	// list all plugins
 	entries, err := os.ReadDir(pluginDir)
 	if err != nil {
@@ -294,7 +294,9 @@ func cleanupPluginDir(vmID, pluginDir string) error {
 
 	pluginWhiteList := map[string]struct{}{
 		"evm": {},
-		vmID:  {},
+	}
+	for vmID := range vmIDs {
+		pluginWhiteList[vmID] = struct{}{}
 	}
 
 	for _, e := range entries {
