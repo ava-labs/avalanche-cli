@@ -73,13 +73,6 @@ func DeleteConfigs(subnetName string) error {
 	return nil
 }
 
-func ClearBins() {
-	binDirPath := path.Join(GetBaseDir(), binDir)
-	fmt.Println("About to remove", binDirPath)
-	// ignore error, files may not exist
-	// os.RemoveAll(binDirPath)
-}
-
 func stdoutParser(output string, queue string, capture string) (string, error) {
 	// split output by newline
 	lines := strings.Split(output, "\n")
