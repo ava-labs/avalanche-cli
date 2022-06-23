@@ -55,12 +55,12 @@ func DeleteSubnetConfig(subnetName string) {
 // Returns the deploy output
 /* #nosec G204 */
 func DeploySubnetLocally(subnetName string) string {
-	// Check config does not already exist
+	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
-	// Create config
+	// Deploy subnet locally
 	cmd := exec.Command(
 		utils.CLIBinary,
 		SubnetCmd,

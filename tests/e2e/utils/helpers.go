@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/coreth/ethclient"
 )
 
 func GetBaseDir() string {
@@ -71,6 +73,21 @@ func DeleteConfigs(subnetName string) error {
 	return nil
 }
 
+func stdoutParser(output string, queue string, capture string) (string, error) {
+	// split output by newline
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, queue) {
+			index := strings.Index(line, capture)
+			if index == -1 {
+				return "", errors.New("capture string not available at queue")
+			}
+			return line[index:], nil
+		}
+	}
+	return "", errors.New("no queue string found")
+}
+
 func ParseRPCFromDeployOutput(output string) (string, error) {
 	// split output by newline
 	lines := strings.Split(output, "\n")
@@ -101,6 +118,24 @@ func ParseRPCFromRestartOutput(output string) (string, error) {
 	return "", errors.New("no rpc url found")
 }
 
+type greeterAddr struct {
+	Greeter string
+}
+
+func ParseGreeterAddress(output string) error {
+	addr, err := stdoutParser(output, "Greeter deployed to:", "0x")
+	if err != nil {
+		return err
+	}
+	greeter := greeterAddr{addr}
+	file, err := json.MarshalIndent(greeter, "", " ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(greeterFile, file, 0o600)
+}
+
 type rpcFile struct {
 	RPC string `json:"rpc"`
 }
@@ -127,4 +162,35 @@ func RunHardhatTests(test string) error {
 		fmt.Println(err)
 	}
 	return err
+}
+
+func RunHardhatScript(script string) (string, string, error) {
+	cmd := exec.Command("npx", "hardhat", "run", script, "--network", "subnet")
+	cmd.Dir = hardhatDir
+	output, err := cmd.Output()
+	exitErr, typeOk := err.(*exec.ExitError)
+	stderr := ""
+	if typeOk {
+		stderr = string(exitErr.Stderr)
+	}
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+	}
+	return string(output), stderr, err
+}
+
+func GetBlockHeight(rpc string) error {
+	client, err := ethclient.Dial(rpc)
+	if err != nil {
+		return err
+	}
+
+	number, err := client.BlockNumber(context.Background())
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Block height", number)
+	return nil
 }

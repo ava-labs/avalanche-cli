@@ -6,14 +6,16 @@ import (
 	"testing"
 
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/network"
-	_ "github.com/ava-labs/avalanche-cli/tests/e2e/root"
-	_ "github.com/ava-labs/avalanche-cli/tests/e2e/subnet"
+	// _ "github.com/ava-labs/avalanche-cli/tests/e2e/root"
+	// _ "github.com/ava-labs/avalanche-cli/tests/e2e/subnet"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	"github.com/onsi/gomega/format"
 )
 
 func TestE2e(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
+	format.UseStringerRepresentation = true
 	ginkgo.RunSpecs(t, "avalanche-cli e2e test suites")
 }
 
