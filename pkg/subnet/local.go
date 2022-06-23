@@ -25,6 +25,7 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/indexer"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/coreth/core"
@@ -118,38 +119,57 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	ctx := binutils.GetAsyncContext()
 
-    if false {
-    uris, err := cli.URIs(ctx)
-    if err != nil {
-        return err
-    }
-    uri := uris[0] + "/ext/index/P/block"
-
-    idxClient := indexer.NewClient(uri)
-    container, err := idxClient.GetLastAccepted(ctx)
-    if err != nil {
-        return err
-    }
-    lastIndex, err := idxClient.GetIndex(ctx, container.ID)
-    if err != nil {
-       return err
-    }
-    containers, err := idxClient.GetContainerRange(ctx, 0, int(lastIndex+1))
-    if err != nil {
-       return err
-    }
-    for i, blk := range containers {
-        parsedBlock, err := block.Parse(blk.Bytes)
+    if true {
+        uris, err := cli.URIs(ctx)
         if err != nil {
             return err
         }
-        signedParsedBlock, ok := parsedBlock.(block.SignedBlock)
-        if ok {
-            fmt.Printf("%v %v %v\n", i, signedParsedBlock.PChainHeight(), signedParsedBlock.Timestamp())
+        uri := uris[0] + "/ext/index/P/block"
+
+        idxClient := indexer.NewClient(uri)
+        container, err := idxClient.GetLastAccepted(ctx)
+        if err != nil {
+            return err
         }
+        lastIndex, err := idxClient.GetIndex(ctx, container.ID)
+        if err != nil {
+           return err
+        }
+        containers, err := idxClient.GetContainerRange(ctx, 0, int(lastIndex+1))
+        if err != nil {
+           return err
+        }
+        for _, blk := range containers {
+            parsedBlock, err := block.Parse(blk.Bytes)
+            if err != nil {
+                return err
+            }
+            signedParsedBlock, ok := parsedBlock.(block.SignedBlock)
+            if ok {
+                var platformBlock platformvm.Block
+                if _, err := platformvm.Codec.Unmarshal(signedParsedBlock.Block(), &platformBlock); err != nil {
+                    return err
+                }
+                b, ok := platformBlock.(*platformvm.StandardBlock)
+                if ok {
+                    tx := b.Txs[0]
+                    bs, err := platformvm.Codec.Marshal(platformvm.CodecVersion, &tx)
+                    if err != nil {
+                        return err
+                    }
+                    tx.Initialize(nil, bs)
+                    unsignedTx := b.Txs[0].UnsignedTx
+                    createChainTx, ok := unsignedTx.(*platformvm.UnsignedCreateChainTx)
+                    if ok {
+                        fmt.Println(tx.ID())
+                        fmt.Println(createChainTx.VMID)
+                        fmt.Println(createChainTx.SubnetID)
+                    }
+                }
+            }
+        }
+        return nil
     }
-    return nil
-}
 
 	// check for network and get VM info
 	needsStart := false
