@@ -24,10 +24,12 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/utils"
+	"github.com/ava-labs/avalanchego/indexer"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/coreth/core"
 	"github.com/ava-labs/coreth/params"
+    "github.com/ava-labs/avalanchego/vms/proposervm/block"
 )
 
 type SubnetDeployer struct {
@@ -115,6 +117,38 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	chainID := genesis.Config.ChainID
 
 	ctx := binutils.GetAsyncContext()
+
+    uris, err := cli.URIs(ctx)
+    if err != nil {
+        return err
+    }
+    uri := uris[0] + "/ext/index/P/block"
+
+    idxClient := indexer.NewClient(uri)
+    container, err := idxClient.GetLastAccepted(ctx)
+    if err != nil {
+        return err
+    }
+    lastIndex, err := idxClient.GetIndex(ctx, container.ID)
+    if err != nil {
+       return err
+    }
+    containers, err := idxClient.GetContainerRange(ctx, 0, int(lastIndex+1))
+    if err != nil {
+       return err
+    }
+    for i, blk := range containers {
+        parsedBlock, err := block.Parse(blk.Bytes)
+        if err != nil {
+            return err
+        }
+        signedParsedBlock, ok := parsedBlock.(block.SignedBlock)
+        if ok {
+            fmt.Printf("%v %v %v\n", i, signedParsedBlock.PChainHeight(), signedParsedBlock.Timestamp())
+        }
+    }
+
+    return nil
 
 	// check for network and get VM info
 	needsStart := false
