@@ -3,14 +3,13 @@ package commands
 import (
 	"os/exec"
 
-	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/onsi/gomega"
 )
 
 /* #nosec G204 */
 func CleanNetwork() {
 	cmd := exec.Command(
-		utils.CLIBinary,
+		CLIBinary,
 		NetworkCmd,
 		"clean",
 	)
@@ -21,7 +20,7 @@ func CleanNetwork() {
 /* #nosec G204 */
 func StartNetwork() string {
 	cmd := exec.Command(
-		utils.CLIBinary,
+		CLIBinary,
 		NetworkCmd,
 		"start",
 	)
@@ -33,7 +32,7 @@ func StartNetwork() string {
 /* #nosec G204 */
 func StopNetwork() {
 	cmd := exec.Command(
-		utils.CLIBinary,
+		CLIBinary,
 		NetworkCmd,
 		"stop",
 	)

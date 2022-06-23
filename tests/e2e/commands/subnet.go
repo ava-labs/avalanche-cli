@@ -17,7 +17,7 @@ func CreateSubnetConfig(subnetName string, genesisPath string) {
 
 	// Create config
 	cmd := exec.Command(
-		utils.CLIBinary,
+		CLIBinary,
 		SubnetCmd,
 		"create",
 		"--file",
@@ -42,7 +42,7 @@ func DeleteSubnetConfig(subnetName string) {
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
 	// Now delete config
-	cmd := exec.Command(utils.CLIBinary, SubnetCmd, "delete", subnetName)
+	cmd := exec.Command(CLIBinary, SubnetCmd, "delete", subnetName)
 	_, err = cmd.Output()
 	gomega.Expect(err).Should(gomega.BeNil())
 
@@ -62,7 +62,7 @@ func DeploySubnetLocally(subnetName string) string {
 
 	// Deploy subnet locally
 	cmd := exec.Command(
-		utils.CLIBinary,
+		CLIBinary,
 		SubnetCmd,
 		"deploy",
 		"--local",
