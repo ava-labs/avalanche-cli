@@ -118,6 +118,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	ctx := binutils.GetAsyncContext()
 
+    if false {
     uris, err := cli.URIs(ctx)
     if err != nil {
         return err
@@ -147,8 +148,8 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
             fmt.Printf("%v %v %v\n", i, signedParsedBlock.PChainHeight(), signedParsedBlock.Timestamp())
         }
     }
-
     return nil
+}
 
 	// check for network and get VM info
 	needsStart := false
