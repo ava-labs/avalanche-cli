@@ -250,7 +250,11 @@ func getTestIndexer(uri string) (indexer.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	containers := []indexer.Container{indexer.Container{Bytes: builtBlock.Bytes()}}
+	containers := []indexer.Container{
+		{
+			Bytes: builtBlock.Bytes(),
+		},
+	}
 	idx.On("GetContainerRange", mock.Anything, mock.Anything, mock.Anything).Return(containers, nil)
 	return idx, nil
 }

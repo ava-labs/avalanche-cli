@@ -4,8 +4,8 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 	"path"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -30,7 +30,7 @@ is already running or if no subnets have been deployed.`,
 }
 
 func startNetwork(cmd *cobra.Command, args []string) error {
-	sd := subnet.NewLocalSubnetDeployer(app)
+	sd := subnet.NewLocalDeployer(app)
 
 	if err := sd.StartServer(); err != nil {
 		return err
@@ -68,7 +68,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 	loadSnapshotOpts := []client.OpOption{
 		client.WithPluginDir(pluginDir),
 		client.WithExecPath(avalancheGoBinPath),
-        client.WithRootDataDir(outputDir),
+		client.WithRootDataDir(outputDir),
 	}
 	_, err = cli.LoadSnapshot(
 		ctx,
