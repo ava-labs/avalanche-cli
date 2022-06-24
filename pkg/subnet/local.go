@@ -119,7 +119,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	ctx := binutils.GetAsyncContext()
 
-    if true {
+    if false {
         uris, err := cli.URIs(ctx)
         if err != nil {
             return err
