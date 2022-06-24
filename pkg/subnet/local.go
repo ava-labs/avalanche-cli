@@ -552,16 +552,17 @@ func getLatestBlockchains(ctx context.Context, cli client.Client) (map[ids.ID]id
 			}
 			b, ok := platformBlock.(*platformvm.StandardBlock)
 			if ok {
-				tx := b.Txs[0]
-				bs, err := platformvm.Codec.Marshal(platformvm.CodecVersion, &tx)
-				if err != nil {
-					return nil, err
-				}
-				tx.Initialize(nil, bs)
-				unsignedTx := b.Txs[0].UnsignedTx
-				createChainTx, ok := unsignedTx.(*platformvm.UnsignedCreateChainTx)
-				if ok {
-					latestBlockchains[createChainTx.VMID] = tx.ID()
+				for _, tx := range b.Txs {
+					bs, err := platformvm.Codec.Marshal(platformvm.CodecVersion, &tx)
+					if err != nil {
+						return nil, err
+					}
+					tx.Initialize(nil, bs)
+					unsignedTx := tx.UnsignedTx
+					createChainTx, ok := unsignedTx.(*platformvm.UnsignedCreateChainTx)
+					if ok {
+						latestBlockchains[createChainTx.VMID] = tx.ID()
+					}
 				}
 			}
 		}
