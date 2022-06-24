@@ -61,7 +61,7 @@ func NewLocalSubnetDeployer(app *app.Avalanche) *SubnetDeployer {
 
 type getGRPCClientFunc func() (client.Client, error)
 
-type getIndexerFunc func(uri string) indexer.Client
+type getIndexerFunc func(uri string) (indexer.Client, error)
 
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
@@ -517,8 +517,8 @@ func SetDefaultSnapshot(baseDir string) error {
 	return nil
 }
 
-func GetIndexer(uri string) indexer.Client {
-	return indexer.NewClient(uri)
+func GetIndexer(uri string) (indexer.Client, error) {
+	return indexer.NewClient(uri), nil
 }
 
 // Get list of latest blockchain for each vm, by using indexer API
@@ -529,7 +529,10 @@ func GetLatestBlockchains(ctx context.Context, cli client.Client, getIdxFunc get
 	}
 	uri := uris[0] + "/ext/index/P/block"
 
-	idxClient := getIdxFunc(uri)
+	idxClient, err := getIdxFunc(uri)
+	if err != nil {
+		return nil, err
+	}
 
 	container, err := idxClient.GetLastAccepted(ctx)
 	if err != nil {
@@ -556,6 +559,7 @@ func GetLatestBlockchains(ctx context.Context, cli client.Client, getIdxFunc get
 				return nil, err
 			}
 			b, ok := platformBlock.(*platformvm.StandardBlock)
+			fmt.Println(ok)
 			if ok {
 				for _, tx := range b.Txs {
 					bs, err := platformvm.Codec.Marshal(platformvm.CodecVersion, &tx)

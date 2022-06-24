@@ -3,6 +3,7 @@
 package subnet
 
 import (
+	"crypto"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,9 +19,14 @@ import (
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/indexer"
+	"github.com/ava-labs/avalanchego/staking"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/proposervm/block"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -63,7 +69,7 @@ func TestDeployToLocal(t *testing.T) {
 		binaryDownloader:    binDownloader,
 		healthCheckInterval: 500 * time.Millisecond,
 		log:                 logging.NoLog{},
-        getIdxFunc:          getTestIndexer,
+		getIdxFunc:          getTestIndexer,
 	}
 
 	// create a simple genesis for the test
@@ -203,7 +209,48 @@ func getTestClientFunc() (client.Client, error) {
 	return c, nil
 }
 
-func getTestIndexer(uri string) indexer.Client {
-    idx := &mocks.IndexerClient{}
-	return idx
+func getTestIndexer(uri string) (indexer.Client, error) {
+	idx := &mocks.IndexerClient{}
+	idx.On("GetLastAccepted", mock.Anything).Return(indexer.Container{}, nil)
+	idx.On("GetIndex", mock.Anything, mock.Anything).Return(uint64(0), nil)
+	tx := platformvm.Tx{
+		UnsignedTx: &platformvm.UnsignedCreateChainTx{
+			SubnetAuth: &secp256k1fx.Credential{},
+		},
+	}
+	var platformBlock platformvm.Block = &platformvm.StandardBlock{
+		Txs: []*platformvm.Tx{
+			&tx,
+		},
+	}
+	stdBlockBytes, err := platformvm.Codec.Marshal(platformvm.CodecVersion, &platformBlock)
+	if err != nil {
+		return nil, err
+	}
+	parentID := ids.ID{1}
+	timestamp := time.Unix(123, 0)
+	pChainHeight := uint64(2)
+	chainID := ids.ID{4}
+	tlsCert, err := staking.NewTLSCert()
+	if err != nil {
+		return nil, err
+	}
+	cert := tlsCert.Leaf
+	key := tlsCert.PrivateKey.(crypto.Signer)
+	builtBlock, err := block.Build(
+		parentID,
+		timestamp,
+		pChainHeight,
+		cert,
+		stdBlockBytes,
+		chainID,
+		key,
+	)
+	if err != nil {
+		return nil, err
+	}
+	builtBlockBytes := builtBlock.Bytes()
+	containers := []indexer.Container{indexer.Container{Bytes: builtBlockBytes}}
+	idx.On("GetContainerRange", mock.Anything, mock.Anything, mock.Anything).Return(containers, nil)
+	return idx, nil
 }
