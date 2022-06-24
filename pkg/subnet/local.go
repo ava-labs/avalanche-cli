@@ -559,7 +559,6 @@ func GetLatestBlockchains(ctx context.Context, cli client.Client, getIdxFunc get
 				return nil, err
 			}
 			b, ok := platformBlock.(*platformvm.StandardBlock)
-			fmt.Println(ok)
 			if ok {
 				for _, tx := range b.Txs {
 					bs, err := platformvm.Codec.Marshal(platformvm.CodecVersion, &tx)
