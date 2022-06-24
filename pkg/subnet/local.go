@@ -37,7 +37,7 @@ type Deployer struct {
 	getClientFunc       getGRPCClientFunc
 	binaryDownloader    binutils.PluginBinaryDownloader
 	healthCheckInterval time.Duration
-	app                 app.Avalanche
+	app                 *app.Avalanche
 	backendStartedHere  bool
 }
 
@@ -48,7 +48,7 @@ func NewLocalDeployer(app *app.Avalanche) *Deployer {
 		getClientFunc:       binutils.NewGRPCClient,
 		binaryDownloader:    binutils.NewPluginBinaryDownloader(app.Log),
 		healthCheckInterval: 10 * time.Second,
-		app:                 *app,
+		app:                 app,
 	}
 }
 
@@ -58,7 +58,7 @@ type getGRPCClientFunc func() (client.Client, error)
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
 func (d *Deployer) DeployToLocalNetwork(chain string, chainGenesis string) error {
-	isRunning, err := d.procChecker.IsServerProcessRunning()
+	isRunning, err := d.procChecker.IsServerProcessRunning(d.app)
 	if err != nil {
 		return fmt.Errorf("failed querying if server process is running: %w", err)
 	}
@@ -167,7 +167,7 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 
 	endpoints, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
-		_ = binutils.KillgRPCServerProcess()
+		_ = binutils.KillgRPCServerProcess(d.app)
 		return fmt.Errorf("failed to query network health: %s", err)
 	}
 

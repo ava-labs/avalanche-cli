@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"testing"
 
@@ -14,6 +15,9 @@ import (
 )
 
 func TestE2e(t *testing.T) {
+	if os.Getenv("RUN_E2E") == "" {
+		t.Skip("Environment variable RUN_E2E not set; skipping E2E tests")
+	}
 	gomega.RegisterFailHandler(ginkgo.Fail)
 	format.UseStringerRepresentation = true
 	ginkgo.RunSpecs(t, "avalanche-cli e2e test suites")
