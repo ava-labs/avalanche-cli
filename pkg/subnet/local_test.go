@@ -180,7 +180,7 @@ func getTestClientFunc() (client.Client, error) {
 	fakeSaveSnapshotResponse := &rpcpb.SaveSnapshotResponse{}
 	fakeRemoveSnapshotResponse := &rpcpb.RemoveSnapshotResponse{}
 	fakeCreateBlockchainsResponse := &rpcpb.CreateBlockchainsResponse{}
-	c.On("LoadSnapshot", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fakeLoadSnapshotResponse, nil)
+	c.On("LoadSnapshot", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fakeLoadSnapshotResponse, nil)
 	c.On("SaveSnapshot", mock.Anything, mock.Anything).Return(fakeSaveSnapshotResponse, nil)
 	c.On("RemoveSnapshot", mock.Anything, mock.Anything).Return(fakeRemoveSnapshotResponse, nil)
 	c.On("CreateBlockchains", mock.Anything, mock.Anything, mock.Anything).Return(fakeCreateBlockchainsResponse, nil)
