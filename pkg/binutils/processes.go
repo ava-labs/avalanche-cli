@@ -39,7 +39,7 @@ func GetLatestRunDir() string {
 type ProcessChecker interface {
 	// IsServerProcessRunning returns true if the gRPC server is running,
 	// or false if not
-	IsServerProcessRunning() (bool, error)
+	IsServerProcessRunning(app *app.Avalanche) (bool, error)
 }
 
 type realProcessRunner struct{}
@@ -73,8 +73,8 @@ func NewGRPCServer() (server.Server, error) {
 
 // IsServerProcessRunning returns true if the gRPC server is running,
 // or false if not
-func (rpr *realProcessRunner) IsServerProcessRunning() (bool, error) {
-	pid, err := GetServerPID()
+func (rpr *realProcessRunner) IsServerProcessRunning(app *app.Avalanche) (bool, error) {
+	pid, err := GetServerPID(app)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return false, err
@@ -102,9 +102,9 @@ type runFile struct {
 	GRPCserverFileName string `json:"gRPCserverFileName"`
 }
 
-func GetServerPID() (int, error) {
+func GetServerPID(app *app.Avalanche) (int, error) {
 	var rf runFile
-	run, err := os.ReadFile(constants.ServerRunFile)
+	run, err := os.ReadFile(app.GetRunFile())
 	if err != nil {
 		return 0, fmt.Errorf("failed reading process info file at %s: %s", constants.ServerRunFile, err)
 	}
@@ -120,7 +120,7 @@ func GetServerPID() (int, error) {
 
 // StartServerProcess starts the gRPC server as a reentrant process of this binary
 // it just executes `avalanche-cli backend start`
-func StartServerProcess(app app.Avalanche) error {
+func StartServerProcess(app *app.Avalanche) error {
 	thisBin := reexec.Self()
 
 	args := []string{"backend", "start"}
@@ -159,6 +159,7 @@ func StartServerProcess(app app.Avalanche) error {
 		return err
 	}
 	serverRunFile := path.Join(outputDir, constants.ServerRunFile)
+	app.SetRunFile(serverRunFile)
 	err = os.WriteFile(serverRunFile, rfBytes, perms.ReadWrite)
 	if err != nil {
 		app.Log.Warn("could not write gRPC process info to file: %s", err)
@@ -179,7 +180,7 @@ func GetAsyncContext() context.Context {
 	return ctx
 }
 
-func KillgRPCServerProcess() error {
+func KillgRPCServerProcess(app *app.Avalanche) error {
 	cli, err := NewGRPCClient()
 	if err != nil {
 		return err
@@ -196,7 +197,7 @@ func KillgRPCServerProcess() error {
 		return fmt.Errorf("failed stopping gRPC server process: %s", err)
 	}
 
-	pid, err := GetServerPID()
+	pid, err := GetServerPID(app)
 	if err != nil {
 		return fmt.Errorf("failed getting PID from run file: %s", err)
 	}
@@ -208,7 +209,7 @@ func KillgRPCServerProcess() error {
 		return fmt.Errorf("failed killing process with pid %d: %s", pid, err)
 	}
 
-	if err := os.Remove(constants.ServerRunFile); err != nil {
+	if err := os.Remove(app.GetRunFile()); err != nil {
 		return fmt.Errorf("failed removing run file %s: %s", constants.ServerRunFile, err)
 	}
 	return nil

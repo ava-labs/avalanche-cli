@@ -1,10 +1,13 @@
 package utils
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/user"
@@ -192,5 +195,99 @@ func GetBlockHeight(rpc string) error {
 	}
 
 	fmt.Println("Block height", number)
+	return nil
+}
+
+func GetIsBootstrapped(rpc string, chain string) error {
+	type chainParams struct {
+		Chain string `json:"chain"`
+	}
+	type isBootstrappedReq struct {
+		JSONRPC string      `json:"jsonrpc"`
+		ID      uint        `json:"id"`
+		Method  string      `json:"method"`
+		Params  chainParams `json:"params"`
+	}
+	postBody, _ := json.Marshal(isBootstrappedReq{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "info.isBootstrapped",
+		Params:  chainParams{Chain: chain},
+	})
+	fmt.Println(string(postBody))
+	infoRPC, err := convertRPCToInfo(rpc)
+	if err != nil {
+		return err
+	}
+	responseBody := bytes.NewBuffer(postBody)
+	resp, err := http.Post(infoRPC, "application/json", responseBody)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	sb := string(body)
+	fmt.Println(sb)
+	return nil
+}
+
+func ParseChainFromRPC(rpc string) (string, error) {
+	// split output by newline
+	index := strings.Index(rpc, "bc/")
+	if index == -1 {
+		return "", errors.New("does not look like an rpc")
+	}
+	return rpc[index+3 : len(rpc)-4], nil
+}
+
+func convertRPCToInfo(rpc string) (string, error) {
+	// split output by newline
+	index := strings.Index(rpc, "bc/")
+	if index == -1 {
+		return "", errors.New("does not look like an rpc")
+	}
+	return rpc[:index] + "info", nil
+}
+
+func convertRPCToHealth(rpc string) (string, error) {
+	// split output by newline
+	index := strings.Index(rpc, "bc/")
+	if index == -1 {
+		return "", errors.New("does not look like an rpc")
+	}
+	return rpc[:index] + "health", nil
+}
+
+func GetHealth(rpc string) error {
+	type isBootstrappedReq struct {
+		JSONRPC string `json:"jsonrpc"`
+		ID      uint   `json:"id"`
+		Method  string `json:"method"`
+	}
+	postBody, _ := json.Marshal(isBootstrappedReq{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "health.health",
+	})
+	fmt.Println(string(postBody))
+	healthRPC, err := convertRPCToHealth(rpc)
+	if err != nil {
+		return err
+	}
+	responseBody := bytes.NewBuffer(postBody)
+	resp, err := http.Post(healthRPC, "application/json", responseBody)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	sb := string(body)
+	fmt.Println(sb)
 	return nil
 }

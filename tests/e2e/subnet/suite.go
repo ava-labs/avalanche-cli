@@ -1,6 +1,7 @@
 package subnet
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
@@ -36,9 +37,20 @@ var _ = ginkgo.Describe("[Subnet]", func() {
 		err = utils.SetHardhatRPC(rpc)
 		gomega.Expect(err).Should(gomega.BeNil())
 
+		chain, err := utils.ParseChainFromRPC(rpc)
+		gomega.Expect(err).Should(gomega.BeNil())
+		err = utils.GetIsBootstrapped(rpc, chain)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println("RPC:", rpc)
+		fmt.Println("Chain:", chain)
+		err = utils.GetHealth(rpc)
+		gomega.Expect(err).Should(gomega.BeNil())
+
 		// Subnet doesn't seem to accept JSON requests from hardhat right away
 		// Test fails without this
 		time.Sleep(60 * time.Second)
+		err = utils.GetIsBootstrapped(rpc, chain)
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		err = utils.RunHardhatTests(utils.BaseTest)
 		gomega.Expect(err).Should(gomega.BeNil())
