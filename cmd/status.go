@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/ux"
 )
 
@@ -41,6 +42,11 @@ func networkStatus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	latestBlockchains, err := subnet.GetLatestBlockchains(ctx, cli)
+	if err != nil {
+		return err
+	}
+
 	// TODO: This layout may break some screens, is there a "failsafe" way?
 	if status != nil && status.ClusterInfo != nil {
 		ux.Logger.PrintToUser("Network is Up. Network information:")
@@ -48,14 +54,14 @@ func networkStatus(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("Healthy: %t", status.ClusterInfo.Healthy)
 		ux.Logger.PrintToUser("Custom VMs healthy: %t", status.ClusterInfo.CustomVmsHealthy)
 		ux.Logger.PrintToUser("Number of nodes: %d", len(status.ClusterInfo.NodeNames))
-		ux.Logger.PrintToUser("Number of custom VMs: %d", len(status.ClusterInfo.CustomVms))
+		ux.Logger.PrintToUser("Number of custom VMs: %d", len(latestBlockchains))
 		ux.Logger.PrintToUser("======================================== Node information ========================================")
 		for n, nodeInfo := range status.ClusterInfo.NodeInfos {
 			ux.Logger.PrintToUser("%s has ID %s and endpoint %s: ", n, nodeInfo.Id, nodeInfo.Uri)
 		}
 		ux.Logger.PrintToUser("==================================== Custom VM information =======================================")
 		for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-			for blockchainID := range status.ClusterInfo.CustomVms {
+			for _, blockchainID := range latestBlockchains {
 				ux.Logger.PrintToUser("Endpoint at %s for blockchain %q: %s/ext/bc/%s/rpc", nodeInfo.Name, blockchainID, nodeInfo.GetUri(), blockchainID)
 			}
 		}

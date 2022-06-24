@@ -121,7 +121,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 	ctx := binutils.GetAsyncContext()
 
 	if true {
-		latestBlockchains, err := getLatestBlockchains(ctx, cli)
+		latestBlockchains, err := GetLatestBlockchains(ctx, cli)
 		if err != nil {
 			return err
 		}
@@ -518,7 +518,7 @@ func SetDefaultSnapshot(baseDir string) error {
 }
 
 // Get list of latest blockchain for each vm, by using indexer API
-func getLatestBlockchains(ctx context.Context, cli client.Client) (map[ids.ID]ids.ID, error) {
+func GetLatestBlockchains(ctx context.Context, cli client.Client) (map[ids.ID]ids.ID, error) {
 	uris, err := cli.URIs(ctx)
 	if err != nil {
 		return nil, err
