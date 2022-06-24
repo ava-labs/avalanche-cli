@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
+	"github.com/ava-labs/avalanchego/indexer"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/stretchr/testify/assert"
@@ -62,6 +63,7 @@ func TestDeployToLocal(t *testing.T) {
 		binaryDownloader:    binDownloader,
 		healthCheckInterval: 500 * time.Millisecond,
 		log:                 logging.NoLog{},
+        getIdxFunc:          getTestIndexer,
 	}
 
 	// create a simple genesis for the test
@@ -199,4 +201,9 @@ func getTestClientFunc() (client.Client, error) {
 	c.On("Health", mock.Anything).Return(fakeHealthResponse, nil)
 	c.On("Close").Return(nil)
 	return c, nil
+}
+
+func getTestIndexer(uri string) indexer.Client {
+    idx := &mocks.IndexerClient{}
+	return idx
 }
