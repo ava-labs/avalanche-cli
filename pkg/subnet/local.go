@@ -120,15 +120,6 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 
 	ctx := binutils.GetAsyncContext()
 
-	if true {
-		latestBlockchains, err := GetLatestBlockchains(ctx, cli)
-		if err != nil {
-			return err
-		}
-		fmt.Println(latestBlockchains)
-		return nil
-	}
-
 	// check for network and get VM info
 	needsStart := false
 	clusterInfo, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
@@ -273,10 +264,15 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 		return fmt.Errorf("failed to query network health: %s", err)
 	}
 
+	latestBlockchains, err := GetLatestBlockchains(ctx, cli)
+	if err != nil {
+		return err
+	}
+
 	endpoints := []string{}
 	for _, nodeInfo := range clusterInfo.NodeInfos {
-		for blockchainId, vmInfo := range clusterInfo.CustomVms {
-			endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, blockchainId, vmInfo.VmId, nodeInfo.GetUri(), blockchainId))
+		for vmID, blockchainID := range latestBlockchains {
+			endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, blockchainID, vmID, nodeInfo.GetUri(), blockchainID))
 		}
 	}
 
