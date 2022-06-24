@@ -223,14 +223,10 @@ func getTestIndexer(uri string) (indexer.Client, error) {
 			&tx,
 		},
 	}
-	stdBlockBytes, err := platformvm.Codec.Marshal(platformvm.CodecVersion, &platformBlock)
+	blockBytes, err := platformvm.Codec.Marshal(platformvm.CodecVersion, &platformBlock)
 	if err != nil {
 		return nil, err
 	}
-	parentID := ids.ID{1}
-	timestamp := time.Unix(123, 0)
-	pChainHeight := uint64(2)
-	chainID := ids.ID{4}
 	tlsCert, err := staking.NewTLSCert()
 	if err != nil {
 		return nil, err
@@ -238,19 +234,18 @@ func getTestIndexer(uri string) (indexer.Client, error) {
 	cert := tlsCert.Leaf
 	key := tlsCert.PrivateKey.(crypto.Signer)
 	builtBlock, err := block.Build(
-		parentID,
-		timestamp,
-		pChainHeight,
+		ids.ID{},
+		time.Time{},
+		0,
 		cert,
-		stdBlockBytes,
-		chainID,
+		blockBytes,
+		ids.ID{},
 		key,
 	)
 	if err != nil {
 		return nil, err
 	}
-	builtBlockBytes := builtBlock.Bytes()
-	containers := []indexer.Container{indexer.Container{Bytes: builtBlockBytes}}
+	containers := []indexer.Container{indexer.Container{Bytes: builtBlock.Bytes()}}
 	idx.On("GetContainerRange", mock.Anything, mock.Anything, mock.Anything).Return(containers, nil)
 	return idx, nil
 }
