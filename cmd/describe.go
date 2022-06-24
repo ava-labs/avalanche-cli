@@ -57,6 +57,7 @@ func printDetails(genesis core.Genesis, subnetName string) {
 
 	table.Append([]string{"Subnet Name", subnetName})
 	table.Append([]string{"ChainId", genesis.Config.ChainID.String()})
+	table.Append([]string{"Token Name", app.GetTokenName(subnetName)})
 
 	table.Render()
 }
@@ -166,7 +167,7 @@ func printPrecompileTable(genesis core.Genesis) {
 	}
 }
 
-func describeSubnetEvmGenesis(subnetName string, sc models.Sidecar) error {
+func describeSubnetEvmGenesis(subnetName string) error {
 	// Load genesis
 	genesis, err := app.LoadEvmGenesis(subnetName)
 	if err != nil {
@@ -199,11 +200,11 @@ func readGenesis(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		switch sc.Vm {
+		switch sc.VM {
 		case models.SubnetEvm:
-			err = describeSubnetEvmGenesis(subnetName, sc)
+			err = describeSubnetEvmGenesis(subnetName)
 		default:
-			app.Log.Warn("Unknown genesis format for", sc.Vm)
+			app.Log.Warn("Unknown genesis format for", sc.VM)
 			ux.Logger.PrintToUser("Printing genesis")
 			err = printGenesis(subnetName)
 		}

@@ -8,36 +8,36 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_moreThanOneVmSelected(t *testing.T) {
+func Test_moreThanOneVMSelected(t *testing.T) {
 	type test struct {
 		name           string
-		useSubnetVm    bool
-		useCustomVm    bool
+		useSubnetVM    bool
+		useCustomVM    bool
 		expectedResult bool
 	}
 	tests := []test{
 		{
 			name:           "One Selected",
-			useSubnetVm:    true,
-			useCustomVm:    false,
+			useSubnetVM:    true,
+			useCustomVM:    false,
 			expectedResult: false,
 		},
 		{
 			name:           "One Selected Reverse",
-			useSubnetVm:    true,
-			useCustomVm:    false,
+			useSubnetVM:    true,
+			useCustomVM:    false,
 			expectedResult: false,
 		},
 		{
 			name:           "None Selected",
-			useSubnetVm:    false,
-			useCustomVm:    false,
+			useSubnetVM:    false,
+			useCustomVM:    false,
 			expectedResult: false,
 		},
 		{
 			name:           "Multiple Selected",
-			useSubnetVm:    true,
-			useCustomVm:    true,
+			useSubnetVM:    true,
+			useCustomVM:    true,
 			expectedResult: true,
 		},
 	}
@@ -46,11 +46,11 @@ func Test_moreThanOneVmSelected(t *testing.T) {
 			assert := assert.New(t)
 
 			// Set vars
-			useSubnetEvm = tt.useSubnetVm
-			useCustom = tt.useCustomVm
+			useSubnetEvm = tt.useSubnetVM
+			useCustom = tt.useCustomVM
 
 			// Check how many selected
-			result := moreThanOneVmSelected()
+			result := moreThanOneVMSelected()
 			assert.Equal(tt.expectedResult, result)
 		})
 	}

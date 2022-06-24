@@ -2,27 +2,27 @@
 // See the file LICENSE for licensing terms.
 package models
 
-type VmType string
+type VMType string
 
 const (
 	SubnetEvm   = "SubnetEVM"
-	SpacesVm    = "Spaces VM"
-	BlobVm      = "Blob VM"
-	TimestampVm = "Timestamp VM"
-	CustomVm    = "Custom"
+	SpacesVM    = "Spaces VM"
+	BlobVM      = "Blob VM"
+	TimestampVM = "Timestamp VM"
+	CustomVM    = "Custom"
 )
 
-func VmTypeFromString(s string) VmType {
+func VMTypeFromString(s string) VMType {
 	switch s {
 	case SubnetEvm:
 		return SubnetEvm
-	case SpacesVm:
-		return SpacesVm
-	case BlobVm:
-		return BlobVm
-	case TimestampVm:
-		return TimestampVm
+	case SpacesVM:
+		return SpacesVM
+	case BlobVM:
+		return BlobVM
+	case TimestampVM:
+		return TimestampVM
 	default:
-		return CustomVm
+		return CustomVM
 	}
 }

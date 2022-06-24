@@ -13,10 +13,11 @@ const (
 	LatestAvagoReleaseURL = "https://api.github.com/repos/ava-labs/avalanchego/releases/latest"
 	SubnetEVMReleaseURL   = "https://api.github.com/repos/ava-labs/subnet-evm/releases/latest"
 
-	ServerRunFile      = "/tmp/gRPCserver.run"
+	ServerRunFile      = "gRPCserver.run"
 	AvalancheCliBinDir = "bin"
-	Sidecar_suffix     = "_sidecar.json"
-	Genesis_suffix     = "_genesis.json"
+	RunDir             = "runs"
+	SidecarSuffix      = "_sidecar.json"
+	GenesisSuffix      = "_genesis.json"
 
 	SidecarVersion = "1.0.0"
 
@@ -27,4 +28,5 @@ const (
 	SnapshotsDirName     = "snapshots"
 	DefaultSnapshotName  = "default-1654102509"
 	BootstrapSnapshotURL = "https://github.com/ava-labs/avalanche-cli/raw/fast-deploy-with-default-snapshot/assets/bootstrapSnapshot.tar.gz"
+	DefaultTokenName = "TEST"
 )

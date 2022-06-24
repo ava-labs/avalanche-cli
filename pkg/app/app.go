@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"path"
 	"path/filepath"
-	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -19,7 +19,7 @@ const (
 	WriteReadReadPerms = 0o644
 )
 
-var errChainIDExists = errors.New("The provided chain ID already exists! Try another one")
+var errChainIDExists = errors.New("the provided chain ID already exists! Try another one")
 
 type Avalanche struct {
 	Log     logging.Logger
@@ -37,12 +37,16 @@ func (app *Avalanche) GetBaseDir() string {
 	return app.baseDir
 }
 
+func (app *Avalanche) GetRunDir() string {
+	return path.Join(app.baseDir, constants.RunDir)
+}
+
 func (app *Avalanche) GetGenesisPath(subnetName string) string {
-	return filepath.Join(app.baseDir, subnetName+constants.Genesis_suffix)
+	return filepath.Join(app.baseDir, subnetName+constants.GenesisSuffix)
 }
 
 func (app *Avalanche) GetSidecarPath(subnetName string) string {
-	return filepath.Join(app.baseDir, subnetName+constants.Sidecar_suffix)
+	return filepath.Join(app.baseDir, subnetName+constants.SidecarSuffix)
 }
 
 func (app *Avalanche) WriteGenesisFile(subnetName string, genesisBytes []byte) error {
@@ -79,7 +83,7 @@ func (app *Avalanche) LoadEvmGenesis(subnetName string) (core.Genesis, error) {
 
 func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 	if sc.TokenName == "" {
-		sc.TokenName = "TEST"
+		sc.TokenName = constants.DefaultTokenName
 	}
 	// We should have caught this during the actual prompting,
 	// but better safe than sorry
@@ -110,19 +114,32 @@ func (app *Avalanche) LoadSidecar(subnetName string) (models.Sidecar, error) {
 
 	var sc models.Sidecar
 	err = json.Unmarshal(jsonBytes, &sc)
+
+	if sc.TokenName == "" {
+		sc.TokenName = constants.DefaultTokenName
+	}
+
 	return sc, err
 }
 
+func (app *Avalanche) GetTokenName(subnetName string) string {
+	sidecar, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return constants.DefaultTokenName
+	}
+	return sidecar.TokenName
+}
+
 func (app *Avalanche) listSideCarNames() ([]string, error) {
-	var names []string
-	matches, err := filepath.Glob(filepath.Join(app.baseDir, "*"+constants.Sidecar_suffix))
+	matches, err := filepath.Glob(filepath.Join(app.baseDir, "*"+constants.SidecarSuffix))
 	if err != nil {
 		return nil, err
 	}
-	for _, m := range matches {
+	names := make([]string, len(matches))
+	for i, m := range matches {
 		base := filepath.Base(m)
-		name := base[:strings.Index(base, constants.Sidecar_suffix)]
-		names = append(names, name)
+		name := base[:len(base)-len(constants.SidecarSuffix)]
+		names[i] = name
 	}
 	return names, nil
 }

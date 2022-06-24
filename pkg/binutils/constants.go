@@ -11,4 +11,5 @@ const (
 	gRPCDialTimeout     = 10 * time.Second
 
 	subnetEVMName = "subnet-evm"
+	maxCopy       = 2147483648 // 2 GB
 )

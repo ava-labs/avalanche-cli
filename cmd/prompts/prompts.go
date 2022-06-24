@@ -20,17 +20,17 @@ func validatePositiveBigInt(input string) error {
 	n := new(big.Int)
 	n, ok := n.SetString(input, 10)
 	if !ok {
-		return errors.New("Invalid number")
+		return errors.New("invalid number")
 	}
 	if n.Cmp(big.NewInt(0)) == -1 {
-		return errors.New("Invalid number")
+		return errors.New("invalid number")
 	}
 	return nil
 }
 
 func validateAddress(input string) error {
 	if !common.IsHexAddress(input) {
-		return errors.New("Invalid address")
+		return errors.New("invalid address")
 	}
 	return nil
 }
@@ -39,7 +39,7 @@ func validateExistingFilepath(input string) error {
 	if fileInfo, err := os.Stat(input); err == nil && !fileInfo.IsDir() {
 		return nil
 	}
-	return errors.New("File doesn't exist")
+	return errors.New("file doesn't exist")
 }
 
 func CapturePositiveBigInt(promptStr string) (*big.Int, error) {
@@ -129,7 +129,7 @@ func CaptureString(promptStr string) (string, error) {
 		Label: promptStr,
 		Validate: func(input string) error {
 			if input == "" {
-				return errors.New("String cannot be empty")
+				return errors.New("string cannot be empty")
 			}
 			return nil
 		},

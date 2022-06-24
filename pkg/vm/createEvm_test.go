@@ -40,7 +40,7 @@ func Test_removePrecompile(t *testing.T) {
 			precompileList: []string{minter},
 			toRemove:       allowList,
 			expectedResult: []string{minter},
-			expectedErr:    errors.New("String not in array"),
+			expectedErr:    errors.New("string not in array"),
 		},
 	}
 	for _, tt := range tests {

@@ -65,7 +65,6 @@ func networkStatus(cmd *cobra.Command, args []string) error {
 				ux.Logger.PrintToUser("Endpoint at %s for blockchain %q: %s/ext/bc/%s/rpc", nodeInfo.Name, blockchainID, nodeInfo.GetUri(), blockchainID)
 			}
 		}
-
 	} else {
 		ux.Logger.PrintToUser("No local network running")
 	}

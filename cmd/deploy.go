@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -41,7 +40,7 @@ redeploy the subnet and reset the chain state to genesis.`,
 var deployLocal bool
 
 func getChainsInSubnet(subnetName string) ([]string, error) {
-	files, err := ioutil.ReadDir(app.GetBaseDir())
+	files, err := os.ReadDir(app.GetBaseDir())
 	if err != nil {
 		return []string{}, fmt.Errorf("failed to read baseDir :%w", err)
 	}
@@ -49,7 +48,7 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 	chains := []string{}
 
 	for _, f := range files {
-		if strings.Contains(f.Name(), constants.Sidecar_suffix) {
+		if strings.Contains(f.Name(), constants.SidecarSuffix) {
 			// read in sidecar file
 			path := filepath.Join(app.GetBaseDir(), f.Name())
 			jsonBytes, err := os.ReadFile(path)
@@ -109,10 +108,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		app.Log.Debug("Deploy local")
 		// TODO: Add signal management here. If we Ctrl-C this guy it can leave
 		// the gRPC server is a weird state. Should kill that too
-		deployer := subnet.NewLocalSubnetDeployer(app)
+		deployer := subnet.NewLocalDeployer(app)
 		chain := chains[0]
-		chain_genesis := filepath.Join(app.GetBaseDir(), fmt.Sprintf("%s_genesis.json", chain))
-		err := deployer.DeployToLocalNetwork(chain, chain_genesis)
+		chainGenesis := filepath.Join(app.GetBaseDir(), fmt.Sprintf("%s_genesis.json", chain))
+		err := deployer.DeployToLocalNetwork(chain, chainGenesis)
 		if err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(); innerErr != nil {
@@ -122,6 +121,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	default:
-		return errors.New("Not implemented")
+		return errors.New("not implemented")
 	}
 }

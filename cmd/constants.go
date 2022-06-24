@@ -7,7 +7,7 @@ import "time"
 const (
 	BaseDirName = ".avalanche-cli"
 	subnetEvm   = "SubnetEVM"
-	customVm    = "Custom"
+	customVM    = "Custom"
 
 	forceFlag = "force"
 

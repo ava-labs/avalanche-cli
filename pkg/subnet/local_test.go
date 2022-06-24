@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/mocks"
+	"github.com/ava-labs/avalanche-cli/pkg/app"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/ux"
@@ -62,14 +63,18 @@ func TestDeployToLocal(t *testing.T) {
 	binDownloader := &mocks.PluginBinaryDownloader{}
 	binDownloader.On("Download", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil)
 
-	testDeployer := &SubnetDeployer{
+	app := app.Avalanche{
+		Log: logging.NoLog{},
+	}
+
+	testDeployer := &Deployer{
 		procChecker:         procChecker,
 		binChecker:          binChecker,
 		getClientFunc:       getTestClientFunc,
 		binaryDownloader:    binDownloader,
 		healthCheckInterval: 500 * time.Millisecond,
-		log:                 logging.NoLog{},
 		getIdxFunc:          getTestIndexer,
+		app:                 app,
 	}
 
 	// create a simple genesis for the test
@@ -182,7 +187,7 @@ func getTestClientFunc() (client.Client, error) {
 	c.On("URIs", mock.Anything).Return([]string{"fakeUri"}, nil)
 	fakeHealthResponse := &rpcpb.HealthResponse{
 		ClusterInfo: &rpcpb.ClusterInfo{
-			Healthy:          true, // currently actually not checked, should it, if CustomVmsHealthy already is?
+			Healthy:          true, // currently actually not checked, should it, if CustomVMsHealthy already is?
 			CustomVmsHealthy: true,
 			NodeInfos: map[string]*rpcpb.NodeInfo{
 				"testNode1": {
