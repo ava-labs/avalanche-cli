@@ -82,7 +82,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed waiting for network to become healthy: %s", err)
 	}
 
-	latestBlockchains, err := subnet.GetLatestBlockchains(ctx, cli)
+	latestBlockchains, err := subnet.GetLatestBlockchains(ctx, cli, subnet.GetIndexer)
 	if err != nil {
 		return err
 	}

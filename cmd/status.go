@@ -42,7 +42,7 @@ func networkStatus(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	latestBlockchains, err := subnet.GetLatestBlockchains(ctx, cli)
+	latestBlockchains, err := subnet.GetLatestBlockchains(ctx, cli, subnet.GetIndexer)
 	if err != nil {
 		return err
 	}

@@ -43,6 +43,7 @@ type SubnetDeployer struct {
 	log                 logging.Logger
 	baseDir             string
 	backendStartedHere  bool
+	getIdxFunc          getIndexerFunc
 }
 
 func NewLocalSubnetDeployer(app *app.Avalanche) *SubnetDeployer {
@@ -54,10 +55,13 @@ func NewLocalSubnetDeployer(app *app.Avalanche) *SubnetDeployer {
 		healthCheckInterval: 100 * time.Millisecond,
 		log:                 app.Log,
 		baseDir:             app.GetBaseDir(),
+		getIdxFunc:          GetIndexer,
 	}
 }
 
 type getGRPCClientFunc func() (client.Client, error)
+
+type getIndexerFunc func(uri string) indexer.Client
 
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
@@ -264,7 +268,7 @@ func (d *SubnetDeployer) doDeploy(chain string, chain_genesis string) error {
 		return fmt.Errorf("failed to query network health: %s", err)
 	}
 
-	latestBlockchains, err := GetLatestBlockchains(ctx, cli)
+	latestBlockchains, err := GetLatestBlockchains(ctx, cli, d.getIdxFunc)
 	if err != nil {
 		return err
 	}
@@ -513,15 +517,20 @@ func SetDefaultSnapshot(baseDir string) error {
 	return nil
 }
 
+func GetIndexer(uri string) indexer.Client {
+	return indexer.NewClient(uri)
+}
+
 // Get list of latest blockchain for each vm, by using indexer API
-func GetLatestBlockchains(ctx context.Context, cli client.Client) (map[ids.ID]ids.ID, error) {
+func GetLatestBlockchains(ctx context.Context, cli client.Client, getIdxFunc getIndexerFunc) (map[ids.ID]ids.ID, error) {
 	uris, err := cli.URIs(ctx)
 	if err != nil {
 		return nil, err
 	}
 	uri := uris[0] + "/ext/index/P/block"
 
-	idxClient := indexer.NewClient(uri)
+	idxClient := getIdxFunc(uri)
+
 	container, err := idxClient.GetLastAccepted(ctx)
 	if err != nil {
 		return nil, err
