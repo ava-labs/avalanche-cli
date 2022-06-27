@@ -5,7 +5,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/app"
-	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
 func getChainID(app *app.Avalanche) (*big.Int, error) {

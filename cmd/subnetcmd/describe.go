@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package cmd
+package subnetcmd
 
 import (
 	"fmt"
@@ -9,15 +9,15 @@ import (
 	"strconv"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
 
-// listCmd represents the list command
-var readCmd = &cobra.Command{
+// avalanche subnet describe
+var describeCmd = &cobra.Command{
 	Use:   "describe [subnetName]",
 	Short: "Print a summary of the subnet’s configuration",
 	Long: `The subnet describe command prints the details of a subnet configuration

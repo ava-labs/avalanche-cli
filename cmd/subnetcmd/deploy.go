@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package cmd
+package subnetcmd
 
 import (
 	"encoding/json"
@@ -15,11 +15,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
 
-// deployCmd represents the deploy command
+// avalanche subnet deploy
 var deployCmd = &cobra.Command{
 	Use:   "deploy [subnetName]",
 	Short: "Deploys a subnet configuration with clean state",

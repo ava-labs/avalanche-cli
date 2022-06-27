@@ -1,12 +1,15 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package cmd
+package networkcmd
 
 import (
 	"fmt"
 
+	this "github.com/ava-labs/avalanche-cli/pkg/app"
 	"github.com/spf13/cobra"
 )
+
+var app *this.Avalanche
 
 var networkCmd = &cobra.Command{
 	Use:   "network",
@@ -30,4 +33,21 @@ Expect more functionality in future releases.`,
 		}
 	},
 	Args: cobra.ExactArgs(0),
+}
+
+func SetupNetworkCmd(injectedApp *this.Avalanche) *cobra.Command {
+	app = injectedApp
+
+	// network start
+	networkCmd.AddCommand(startCmd)
+
+	// network stop
+	networkCmd.AddCommand(stopCmd)
+
+	// network clean
+	networkCmd.AddCommand(cleanCmd)
+
+	// network status
+	networkCmd.AddCommand(statusCmd)
+	return networkCmd
 }

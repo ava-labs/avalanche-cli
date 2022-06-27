@@ -1,16 +1,17 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package cmd
+package subnetcmd
 
 import (
 	"errors"
 	"fmt"
 	"unicode"
 
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +25,7 @@ var (
 		"illegal name character: only letters, no special characters allowed")
 )
 
-// createCmd represents the create command
+// avalanche subnet create
 var createCmd = &cobra.Command{
 	Use:   "create [subnetName]",
 	Short: "Create a new subnet configuration",
@@ -71,7 +72,7 @@ func getVMFromFlag() models.VMType {
 func createGenesis(cmd *cobra.Command, args []string) error {
 	subnetName := args[0]
 	if app.GenesisExists(subnetName) && !forceCreate {
-		return errors.New("configuration already exists. Use --" + forceFlag + " parameter to overwrite")
+		return errors.New("configuration already exists. Use --" + flags.ForceFlag + " parameter to overwrite")
 	}
 
 	if err := checkInvalidSubnetNames(subnetName); err != nil {

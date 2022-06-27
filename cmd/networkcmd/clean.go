@@ -1,12 +1,12 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package cmd
+package networkcmd
 
 import (
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
-	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
 var cleanCmd = &cobra.Command{

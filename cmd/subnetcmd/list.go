@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package cmd
+package subnetcmd
 
 import (
 	"os"
@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// listCmd represents the list command
+// avalanche subnet list
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all created subnet configurations",

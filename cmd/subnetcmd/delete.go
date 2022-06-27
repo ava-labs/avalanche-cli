@@ -1,15 +1,15 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package cmd
+package subnetcmd
 
 import (
 	"os"
 
-	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
 
-// deleteCmd represents the delete command
+// avalanche subnet delete
 var deleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete a subnet configuration",

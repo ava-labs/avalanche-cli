@@ -1,14 +1,15 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package cmd
+package networkcmd
 
 import (
 	"fmt"
 	"path"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/spf13/cobra"
@@ -38,7 +39,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 		snapshotName = args[0]
 		startMsg = fmt.Sprintf("Starting previously deployed and stopped snapshot %s...", snapshotName)
 	} else {
-		snapshotName = defaultSnapshotName
+		snapshotName = constants.DefaultSnapshotName
 		startMsg = "Starting previously deployed and stopped snapshot"
 	}
 
@@ -60,7 +61,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 	// TODO: this should probably be extracted from the deployer and
 	// used as an independent helper
 	sd := subnet.NewLocalDeployer(app)
-	endpoints, err := sd.WaitForHealthy(ctx, cli, healthCheckInterval)
+	endpoints, err := sd.WaitForHealthy(ctx, cli, constants.HealthCheckInterval)
 	if err != nil {
 		return fmt.Errorf("failed waiting for network to become healthy: %s", err)
 	}

@@ -8,8 +8,11 @@ import (
 	"os/user"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	this "github.com/ava-labs/avalanche-cli/pkg/app"
-	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/spf13/cobra"
@@ -42,52 +45,15 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "ERROR", "log level for the application")
 
 	// add sub commands
-	rootCmd.AddCommand(subnetCmd)
-	rootCmd.AddCommand(networkCmd)
+	subnet := subnetcmd.SetupSubnetCmd(app)
+	rootCmd.AddCommand(subnet)
+
+	network := networkcmd.SetupNetworkCmd(app)
+	rootCmd.AddCommand(network)
 
 	// add hidden backend command
-	backendCmd.Hidden = true
-	rootCmd.AddCommand(backendCmd)
-
-	// subnet create
-	subnetCmd.AddCommand(createCmd)
-	createCmd.Flags().StringVar(&filename, "file", "", "file path of genesis to use instead of the wizard")
-	createCmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the SubnetEVM as the base template")
-	createCmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
-	createCmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
-
-	// subnet delete
-	subnetCmd.AddCommand(deleteCmd)
-
-	// subnet deploy
-	subnetCmd.AddCommand(deployCmd)
-	deployCmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
-
-	// subnet describe
-	subnetCmd.AddCommand(readCmd)
-	readCmd.Flags().BoolVarP(
-		&printGenesisOnly,
-		"genesis",
-		"g",
-		false,
-		"Print the genesis to the console directly instead of the summary",
-	)
-
-	// subnet list
-	subnetCmd.AddCommand(listCmd)
-
-	// network
-	// network start
-	networkCmd.AddCommand(startCmd)
-
-	// network stop
-	networkCmd.AddCommand(stopCmd)
-
-	// network clean
-	networkCmd.AddCommand(cleanCmd)
-
-	// network status
-	networkCmd.AddCommand(statusCmd)
+	backend := backendcmd.SetupBackendCmd(app)
+	rootCmd.AddCommand(backend)
 }
 
 func createApp(cmd *cobra.Command, args []string) error {

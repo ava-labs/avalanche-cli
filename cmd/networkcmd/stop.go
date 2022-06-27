@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package cmd
+package networkcmd
 
 import (
 	"fmt"
@@ -9,16 +9,17 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
-	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
 var stopCmd = &cobra.Command{
 	Use:   "stop [snapshotName]",
 	Short: "Stop the running local network and preserve state",
-	Long: `The network stop command shuts down your local, multi-node network. 
-The deployed subnet will shutdown gracefully and save its state. 
+	Long: `The network stop command shuts down your local, multi-node network.
+The deployed subnet will shutdown gracefully and save its state.
 If "snapshotName" is provided, the state will be saved under this named snapshot, which then can be
-restarted with "network start <snapshotName>". Otherwise, the default snapshot will be created, or overwritten 
+restarted with "network start <snapshotName>". Otherwise, the default snapshot will be created, or overwritten
 if it exists. The default snapshot can then be restarted without parameter ("network start").`,
 
 	RunE:         stopNetwork,
@@ -36,7 +37,7 @@ func stopNetwork(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		snapshotName = args[0]
 	} else {
-		snapshotName = defaultSnapshotName
+		snapshotName = constants.DefaultSnapshotName
 	}
 
 	ctx := binutils.GetAsyncContext()

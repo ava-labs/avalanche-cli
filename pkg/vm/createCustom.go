@@ -7,7 +7,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
 func CreateCustomGenesis(name string) ([]byte, *models.Sidecar, error) {

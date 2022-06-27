@@ -24,4 +24,9 @@ const (
 	RequestTimeout = 3 * time.Minute
 
 	DefaultTokenName = "TEST"
+
+	// it's unlikely anyone would want to name a snapshot `default`
+	// but let's add some more entropy
+	DefaultSnapshotName = "default-1654102509"
+	HealthCheckInterval = 10 * time.Second
 )
