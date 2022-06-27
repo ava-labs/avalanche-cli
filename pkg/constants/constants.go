@@ -7,6 +7,8 @@ import "time"
 const (
 	DefaultPerms755 = 0o755
 
+	BaseDirName = ".avalanche-cli"
+
 	SubnetEVMReleaseVersion   = "v0.2.3"
 	AvalancheGoReleaseVersion = "v1.7.13"
 

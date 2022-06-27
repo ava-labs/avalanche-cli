@@ -5,14 +5,13 @@ package subnetcmd
 import (
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	this "github.com/ava-labs/avalanche-cli/pkg/app"
 	"github.com/spf13/cobra"
 )
 
-var app *this.Avalanche
+var app **this.Avalanche
 
-func SetupSubnetCmd(injectedApp *this.Avalanche) *cobra.Command {
+func SetupSubnetCmd(injectedApp **this.Avalanche) *cobra.Command {
 	app = injectedApp
 
 	// subnet create
@@ -20,7 +19,7 @@ func SetupSubnetCmd(injectedApp *this.Avalanche) *cobra.Command {
 	createCmd.Flags().StringVar(&filename, "file", "", "file path of genesis to use instead of the wizard")
 	createCmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the SubnetEVM as the base template")
 	createCmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
-	createCmd.Flags().BoolVarP(&forceCreate, flags.ForceFlag, "f", false, "overwrite the existing configuration if one exists")
+	createCmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
 
 	// subnet delete
 	subnetCmd.AddCommand(deleteCmd)

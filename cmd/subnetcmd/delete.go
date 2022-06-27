@@ -20,8 +20,8 @@ var deleteCmd = &cobra.Command{
 
 func deleteGenesis(cmd *cobra.Command, args []string) error {
 	// TODO sanitize this input
-	sidecar := app.GetSidecarPath(args[0])
-	genesis := app.GetGenesisPath(args[0])
+	sidecar := (*app).GetSidecarPath(args[0])
+	genesis := (*app).GetGenesisPath(args[0])
 
 	if _, err := os.Stat(genesis); err == nil {
 		// exists

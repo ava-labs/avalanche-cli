@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	this "github.com/ava-labs/avalanche-cli/pkg/app"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
@@ -45,14 +46,17 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "ERROR", "log level for the application")
 
 	// add sub commands
-	subnet := subnetcmd.SetupSubnetCmd(app)
+
+	// We need to pass double pointers to app into these functions since app
+	// has not been initialized yet
+	subnet := subnetcmd.SetupSubnetCmd(&app)
 	rootCmd.AddCommand(subnet)
 
-	network := networkcmd.SetupNetworkCmd(app)
+	network := networkcmd.SetupNetworkCmd(&app)
 	rootCmd.AddCommand(network)
 
 	// add hidden backend command
-	backend := backendcmd.SetupBackendCmd(app)
+	backend := backendcmd.SetupBackendCmd(&app)
 	rootCmd.AddCommand(backend)
 }
 
@@ -77,7 +81,7 @@ func setupEnv() (string, error) {
 		fmt.Printf("unable to get system user %s\n", err)
 		return "", err
 	}
-	baseDir := filepath.Join(usr.HomeDir, BaseDirName)
+	baseDir := filepath.Join(usr.HomeDir, constants.BaseDirName)
 
 	// Create base dir if it doesn't exist
 	err = os.MkdirAll(baseDir, os.ModePerm)

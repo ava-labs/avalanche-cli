@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var app *this.Avalanche
+var app **this.Avalanche
 
 // backendCmd is the command to run the backend gRPC process
 var backendCmd = &cobra.Command{
@@ -22,7 +22,7 @@ var backendCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 }
 
-func SetupBackendCmd(injectedApp *this.Avalanche) *cobra.Command {
+func SetupBackendCmd(injectedApp **this.Avalanche) *cobra.Command {
 	app = injectedApp
 
 	backendCmd.Hidden = true
@@ -45,7 +45,7 @@ func startBackend(_ *cobra.Command) error {
 	serverCtx, serverCancel := context.WithCancel(context.Background())
 	errc := make(chan error)
 	fmt.Println("starting server")
-	go binutils.WatchServerProcess(serverCancel, errc, app.Log)
+	go binutils.WatchServerProcess(serverCancel, errc, (*app).Log)
 	errc <- s.Run(serverCtx)
 
 	return nil

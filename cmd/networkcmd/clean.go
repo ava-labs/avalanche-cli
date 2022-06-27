@@ -21,9 +21,9 @@ may be started again by deploying a new subnet configuration.`,
 }
 
 func clean(cmd *cobra.Command, args []string) {
-	app.Log.Info("killing gRPC server process...")
+	(*app).Log.Info("killing gRPC server process...")
 	if err := binutils.KillgRPCServerProcess(); err != nil {
-		app.Log.Warn("failed killing server process: %s\n", err)
+		(*app).Log.Warn("failed killing server process: %s\n", err)
 	}
 	ux.Logger.PrintToUser("Process terminated.")
 }

@@ -47,7 +47,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 
 	ux.Logger.PrintToUser(startMsg)
 
-	outputDirPrefix := path.Join(app.GetRunDir(), "restart")
+	outputDirPrefix := path.Join((*app).GetRunDir(), "restart")
 	outputDir, err := utils.MkDirWithTimestamp(outputDirPrefix)
 	if err != nil {
 		return err
@@ -60,7 +60,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 
 	// TODO: this should probably be extracted from the deployer and
 	// used as an independent helper
-	sd := subnet.NewLocalDeployer(app)
+	sd := subnet.NewLocalDeployer(*app)
 	endpoints, err := sd.WaitForHealthy(ctx, cli, constants.HealthCheckInterval)
 	if err != nil {
 		return fmt.Errorf("failed waiting for network to become healthy: %s", err)
