@@ -108,6 +108,10 @@ func createApp(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	app = this.New(baseDir, log)
+
+	if privKeyPath == "" {
+		privKeyPath = app.GetDefaultKeyPath()
+	}
 	return nil
 }
 

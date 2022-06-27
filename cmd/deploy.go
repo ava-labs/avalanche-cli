@@ -120,10 +120,33 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			}
 		}
 		return err
-	case models.Fuji:
-		deployer := subnet.NewFujiSubnetDeployer(app)
-		return deployer.DeployToFuji(chain, chain_genesis, subnet.Local)
+	case models.Fuji: // just make the switch pass
+	case models.Mainnet: // just make the switch pass
 	default:
 		return errors.New("Not implemented")
 	}
+	controlKeys, threshold, err := getControlKeys()
+	if err != nil {
+		return err
+	}
+	deployer := subnet.NewPublicSubnetDeployer(app, privKeyPath, network)
+	return deployer.Deploy(controlKeys, threshold)
+}
+
+func getControlKeys() ([]string, uint32, error) {
+	controlKey, err := prompts.CapturePChainAddress(
+		"Enter the addresses which control who can add validators to this subnet",
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+	controlKeys := []string{controlKey}
+	threshold, err := prompts.CaptureUint64("Enter required number of control addresses to add validators")
+	if err != nil {
+		return nil, 0, err
+	}
+	if threshold < uint64(len(controlKeys)) {
+		return nil, 0, fmt.Errorf("The threshold can't be lower than the number of control addresses")
+	}
+	return controlKeys, uint32(threshold), err
 }

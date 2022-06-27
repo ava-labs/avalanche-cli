@@ -8,13 +8,11 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"strings"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto"
 	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -261,13 +259,6 @@ func (m *SoftKey) Encode() string {
 
 // Saves the private key to disk with hex encoding.
 func (m *SoftKey) Save(p string) error {
-	hrp := getHRP(constants.FujiID)
-	cAddr, err := address.Format("C", hrp, m.privKey.PublicKey().Address().Bytes())
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(cAddr)
 	return ioutil.WriteFile(p, []byte(m.privKeyEncoded), fsModeWrite)
 }
 

@@ -6,7 +6,9 @@ import (
 	"errors"
 	"math/big"
 	"os"
+	"strconv"
 
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/manifoldco/promptui"
 )
@@ -42,6 +44,23 @@ func validateExistingFilepath(input string) error {
 	return errors.New("File doesn't exist")
 }
 
+func CaptureUint64(promptStr string) (uint64, error) {
+	prompt := promptui.Prompt{
+		Label: promptStr,
+	}
+
+	amountStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	val, err := strconv.ParseUint(amountStr, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return val, nil
+}
+
 func CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
@@ -59,6 +78,26 @@ func CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 		return nil, errors.New("SetString: error")
 	}
 	return amountInt, nil
+}
+
+func validatePChainAddress(input string) error {
+	_, _, _, err := address.Parse(input)
+
+	return err
+}
+
+func CapturePChainAddress(promptStr string) (string, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validatePChainAddress,
+	}
+
+	addressStr, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return addressStr, nil
 }
 
 func CaptureAddress(promptStr string) (common.Address, error) {

@@ -17,10 +17,12 @@ const (
 	AvalancheCliBinDir = "bin"
 	Sidecar_suffix     = "_sidecar.json"
 	Genesis_suffix     = "_genesis.json"
+	DefaultKeyFileName = ".private-key.pk"
 
 	SidecarVersion = "1.0.0"
 
 	RequestTimeout = 3 * time.Minute
 
-	FujiAPIEndpoint = "https://api.avax-test.network"
+	FujiAPIEndpoint    = "https://api.avax-test.network"
+	MainnetAPIEndpoint = "https://api.avax.network"
 )

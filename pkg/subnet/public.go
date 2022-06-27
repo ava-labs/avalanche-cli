@@ -8,10 +8,13 @@ import (
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/app"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/wallet"
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/constants"
+	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
@@ -25,22 +28,26 @@ const (
 	Remote
 )
 
-type FujiSubnetDeployer struct {
+type PublicSubnetDeployer struct {
 	LocalSubnetDeployer
-	baseDir string
-	log     logging.Logger
+	baseDir     string
+	privKeyPath string
+	network     models.Network
+	log         logging.Logger
 }
 
-func NewFujiSubnetDeployer(app *app.Avalanche) *FujiSubnetDeployer {
-	return &FujiSubnetDeployer{
+func NewPublicSubnetDeployer(app *app.Avalanche, privKeyPath string, network models.Network) *PublicSubnetDeployer {
+	return &PublicSubnetDeployer{
 		LocalSubnetDeployer: *NewLocalSubnetDeployer(app),
 		baseDir:             app.GetBaseDir(),
+		privKeyPath:         privKeyPath,
 		log:                 app.Log,
+		network:             network,
 	}
 }
 
-func (d *FujiSubnetDeployer) DeployToFuji(chain, chain_genesis string, location DeployLocation) error {
-	txID, err := d.createSubnetTx()
+func (d *PublicSubnetDeployer) Deploy(controlKeys []string, threshold uint32) error {
+	txID, err := d.createSubnetTx(controlKeys, threshold)
 	if err != nil {
 		return err
 	}
@@ -48,31 +55,58 @@ func (d *FujiSubnetDeployer) DeployToFuji(chain, chain_genesis string, location 
 	return nil
 }
 
-func (d *FujiSubnetDeployer) createSubnetTx() (ids.ID, error) {
-	uri := "https://api.avax-test.network"
+func (d *PublicSubnetDeployer) createSubnetTx(controlKeys []string, threshold uint32) (ids.ID, error) {
 	ctx := context.Background()
-	keypath := "/tmp/fabkey"
-	netID := constants.FujiID
-	sf, err := wallet.LoadSoft(netID, keypath)
+
+	var (
+		api       string
+		networkID uint32
+	)
+
+	switch d.network {
+	case models.Fuji:
+		api = constants.FujiAPIEndpoint
+		networkID = avago_constants.FujiID
+	case models.Mainnet:
+		api = constants.MainnetAPIEndpoint
+		networkID = avago_constants.MainnetID
+	default:
+		return ids.Empty, fmt.Errorf("Unsupported public network")
+	}
+
+	sf, err := wallet.LoadSoft(networkID, d.privKeyPath)
 	if err != nil {
 		return ids.Empty, err
 	}
+
 	kc := sf.KeyChain()
-	walet, err := primary.NewWalletFromURI(ctx, uri, kc)
+
+	walet, err := primary.NewWalletFromURI(ctx, api, kc)
 	if err != nil {
 		return ids.Empty, err
 	}
-	// TODO empty owner => no controlkeys
-	owner := &secp256k1fx.OutputOwners{}
+
+	addrs := make([]ids.ShortID, len(controlKeys))
+	for i, c := range controlKeys {
+		addrs[i], err = address.ParseToID(c)
+		if err != nil {
+			return ids.Empty, err
+		}
+	}
+	owners := &secp256k1fx.OutputOwners{
+		Addrs:     addrs,
+		Threshold: threshold,
+		Locktime:  0,
+	}
 	opts := []common.Option{}
-	tx, err := walet.P().IssueCreateSubnetTx(owner, opts...)
+	tx, err := walet.P().IssueCreateSubnetTx(owners, opts...)
 	if err != nil {
 		return ids.Empty, err
 	}
 	return tx, nil
 }
 
-func (d *FujiSubnetDeployer) StartValidator(chain, chain_genesis string, location DeployLocation) error {
+func (d *PublicSubnetDeployer) StartValidator(chain, chain_genesis string, location DeployLocation) error {
 	switch location {
 	case Local:
 		if err := d.startLocalNode(chain, chain_genesis); err != nil {
@@ -84,7 +118,7 @@ func (d *FujiSubnetDeployer) StartValidator(chain, chain_genesis string, locatio
 	return nil
 }
 
-func (d *FujiSubnetDeployer) startLocalNode(chain, chain_genesis string) error {
+func (d *PublicSubnetDeployer) startLocalNode(chain, chain_genesis string) error {
 	avalancheGoBinPath, pluginDir, err := d.LocalSubnetDeployer.setupBinaries(chain, chain_genesis)
 	if err != nil {
 		return err

@@ -37,6 +37,10 @@ func (app *Avalanche) GetBaseDir() string {
 	return app.baseDir
 }
 
+func (app *Avalanche) GetDefaultKeyPath() string {
+	return filepath.Join(app.baseDir, constants.DefaultKeyFileName)
+}
+
 func (app *Avalanche) GetGenesisPath(subnetName string) string {
 	return filepath.Join(app.baseDir, subnetName+constants.Genesis_suffix)
 }
