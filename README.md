@@ -85,6 +85,19 @@ Once golang is installed, run:
 
 The binary will be called `./bin/avalanche`.
 
+## Docker
+
+To make Avalanche CLI working in a docker, adding this
+
+```json
+{
+  "ipv6": true,
+  "fixed-cidr-v6": "fd00::/80"
+}
+```
+
+to `/etc/docker/daemon.json` on the host, then restarting the docker service. This is because ipv6 is used to resolve local bootstrap IPs, and it is not enabled on a docker container by default.
+
 ## Detailed Usage
 
 More detailed information on how to use Avalanche CLI can be found at [here](https://docs.avax.network/subnets/create-a-local-subnet#subnet).
