@@ -150,52 +150,12 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 	ux.Logger.PrintToUser("VMs ready.")
 
 	if networkNotBootstrapped {
-		// start the network
-		ux.Logger.PrintToUser("Starting network...")
-		loadSnapshotOpts := []client.OpOption{
-			client.WithPluginDir(pluginDir),
-			client.WithExecPath(avalancheGoBinPath),
-			client.WithRootDataDir(runDir),
+		if err := startNetwork(ctx, cli, avalancheGoBinPath, pluginDir, runDir); err != nil {
+			return err
 		}
-		loadSnapshotsInfo, err := cli.LoadSnapshot(
-			ctx,
-			constants.DefaultSnapshotName,
-			loadSnapshotOpts...,
-		)
-		if err != nil {
-			return fmt.Errorf("failed to start network :%s", err)
-		}
-		d.app.Log.Debug(loadSnapshotsInfo.String())
 	} else {
-		// make snapshot of current state and reload it again
-		tmpSnapshotName := fmt.Sprintf("restart-tmp-%d", time.Now().Unix())
-		ux.Logger.PrintToUser("Restarting network...")
-		_, err := cli.SaveSnapshot(
-			ctx,
-			tmpSnapshotName,
-		)
-		if err != nil {
-			return fmt.Errorf("failed to save snapshot :%s", err)
-		}
-		loadSnapshotOpts := []client.OpOption{
-			client.WithPluginDir(pluginDir),
-			client.WithExecPath(avalancheGoBinPath),
-			client.WithRootDataDir(runDir),
-		}
-		_, err = cli.LoadSnapshot(
-			ctx,
-			tmpSnapshotName,
-			loadSnapshotOpts...,
-		)
-		if err != nil {
-			return fmt.Errorf("failed to load snapshot :%s", err)
-		}
-		_, err = cli.RemoveSnapshot(
-			ctx,
-			tmpSnapshotName,
-		)
-		if err != nil {
-			return fmt.Errorf("failed to remove snapshot :%s", err)
+		if err := restartNetwork(ctx, cli, avalancheGoBinPath, pluginDir, runDir); err != nil {
+			return err
 		}
 	}
 
@@ -535,6 +495,71 @@ func SetDefaultSnapshot(baseDir string, force bool) error {
 		if err := binutils.InstallArchive("tar.gz", bootstrapSnapshotBytes, snapshotsDir); err != nil {
 			return fmt.Errorf("failed installing bootstrap snapshot: %w", err)
 		}
+	}
+	return nil
+}
+
+// start the network
+func startNetwork(
+	ctx context.Context,
+	cli client.Client,
+	avalancheGoBinPath string,
+	pluginDir string,
+	runDir string,
+) error {
+	ux.Logger.PrintToUser("Starting network...")
+	loadSnapshotOpts := []client.OpOption{
+		client.WithPluginDir(pluginDir),
+		client.WithExecPath(avalancheGoBinPath),
+		client.WithRootDataDir(runDir),
+	}
+	_, err := cli.LoadSnapshot(
+		ctx,
+		constants.DefaultSnapshotName,
+		loadSnapshotOpts...,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to start network :%s", err)
+	}
+	return nil
+}
+
+// make snapshot of current state and reload it again
+func restartNetwork(
+	ctx context.Context,
+	cli client.Client,
+	avalancheGoBinPath string,
+	pluginDir string,
+	runDir string,
+) error {
+	tmpSnapshotName := fmt.Sprintf("restart-tmp-%d", time.Now().Unix())
+	ux.Logger.PrintToUser("Restarting network...")
+	_, err := cli.SaveSnapshot(
+		ctx,
+		tmpSnapshotName,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to save snapshot :%s", err)
+	}
+	loadSnapshotOpts := []client.OpOption{
+		client.WithPluginDir(pluginDir),
+		client.WithExecPath(avalancheGoBinPath),
+		client.WithRootDataDir(runDir),
+	}
+	_, err = cli.LoadSnapshot(
+		ctx,
+		tmpSnapshotName,
+		loadSnapshotOpts...,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to load snapshot :%s", err)
+	}
+	_, err = cli.RemoveSnapshot(
+		ctx,
+		tmpSnapshotName,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to remove snapshot :%s", err)
 	}
 	return nil
 }
