@@ -44,6 +44,7 @@ type Deployer struct {
 	healthCheckInterval time.Duration
 	app                 app.Avalanche
 	backendStartedHere  bool
+	setDefaultSnapshot  setDefaultSnapshotFunc
 }
 
 func NewLocalDeployer(app *app.Avalanche) *Deployer {
@@ -54,10 +55,13 @@ func NewLocalDeployer(app *app.Avalanche) *Deployer {
 		binaryDownloader:    binutils.NewPluginBinaryDownloader(app.Log),
 		healthCheckInterval: 100 * time.Millisecond,
 		app:                 *app,
+		setDefaultSnapshot:  SetDefaultSnapshot,
 	}
 }
 
 type getGRPCClientFunc func() (client.Client, error)
+
+type setDefaultSnapshotFunc func(string, bool) error
 
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
@@ -250,7 +254,7 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path and plugin
 func (d *Deployer) SetupLocalEnv() (string, string, error) {
-	err := SetDefaultSnapshot(d.app.GetBaseDir(), false)
+	err := d.setDefaultSnapshot(d.app.GetBaseDir(), false)
 	if err != nil {
 		return "", "", fmt.Errorf("failed setting up snapshots: %w", err)
 	}

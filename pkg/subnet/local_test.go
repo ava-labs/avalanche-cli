@@ -67,6 +67,7 @@ func TestDeployToLocal(t *testing.T) {
 		binaryDownloader:    binDownloader,
 		healthCheckInterval: 500 * time.Millisecond,
 		app:                 app,
+		setDefaultSnapshot:  fakeSetDefaultSnapshot,
 	}
 
 	// create a simple genesis for the test
@@ -205,4 +206,8 @@ func getTestClientFunc() (client.Client, error) {
 	c.On("Health", mock.Anything).Return(fakeHealthResponse, nil)
 	c.On("Close").Return(nil)
 	return c, nil
+}
+
+func fakeSetDefaultSnapshot(baseDir string, force bool) error {
+	return nil
 }
