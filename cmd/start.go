@@ -102,7 +102,6 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 
 	fmt.Println()
 	if len(endpoints) == 0 {
-		ux.Logger.PrintToUser("Network ready to use. No local network node endpoints")
 	} else {
 		ux.Logger.PrintToUser("Network ready to use. Local network node endpoints:")
 		for _, u := range endpoints {

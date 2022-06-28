@@ -32,9 +32,8 @@ to interact with the subnet.
 
 Subsequent calls of deploy using the same subnet configuration will
 redeploy the subnet and reset the chain state to genesis.`,
-	RunE:         deploySubnet,
-	Args:         cobra.ExactArgs(1),
-	SilenceUsage: true,
+	RunE: deploySubnet,
+	Args: cobra.ExactArgs(1),
 }
 
 var deployLocal bool

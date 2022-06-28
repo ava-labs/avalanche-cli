@@ -28,7 +28,6 @@ func clean(cmd *cobra.Command, args []string) {
 	}
 	if err := binutils.KillgRPCServerProcess(app); err != nil {
 		app.Log.Warn("failed killing server process: %s\n", err)
-		ux.Logger.PrintToUser("Unable to shut down network. Network not running.")
 	} else {
 		ux.Logger.PrintToUser("Process terminated.")
 	}

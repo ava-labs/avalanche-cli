@@ -126,8 +126,7 @@ func setupEnv() (string, error) {
 
 	// Create snapshots dir if it doesn't exist
 	snapshotsDir = filepath.Join(baseDir, constants.SnapshotsDirName)
-	err = os.MkdirAll(snapshotsDir, os.ModePerm)
-	if err != nil {
+	if err = os.MkdirAll(snapshotsDir, os.ModePerm); err != nil {
 		fmt.Printf("failed creating the snapshots dir %s: %s\n", snapshotsDir, err)
 		os.Exit(1)
 	}
