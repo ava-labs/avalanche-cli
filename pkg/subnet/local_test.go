@@ -36,7 +36,7 @@ func TestDeployToLocal(t *testing.T) {
 
 	// fake-return true simulating the process is running
 	procChecker := &mocks.ProcessChecker{}
-	procChecker.On("IsServerProcessRunning").Return(true, nil)
+	procChecker.On("IsServerProcessRunning", mock.Anything).Return(true, nil)
 
 	// create a dummy plugins dir, deploy will check it exists
 	binChecker := &mocks.BinaryChecker{}
