@@ -123,12 +123,12 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 	ctx := binutils.GetAsyncContext()
 
 	// check for network and get VM info
-	needsStart := false
+	networkNotBootstrapped := false
 	clusterInfo, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
 		// TODO: use error type not string comparison
 		if strings.Contains(err.Error(), "not bootstrapped") {
-			needsStart = true
+			networkNotBootstrapped = true
 		} else {
 			return fmt.Errorf("failed to query network health: %s", err)
 		}
@@ -149,6 +149,12 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 	}
 	d.app.Log.Debug("this VM will get ID: %s", toDeployVMID.String())
 
+	// can't redeploy
+	_, ok := deployedVMIDs[toDeployVMID.String()]
+	if ok {
+		return fmt.Errorf("subnet %s had already been deployed", chain)
+	}
+
 	// install all needed plugins
 	toInstallVMIDs := map[string]struct{}{}
 	for vmID := range deployedVMIDs {
@@ -162,8 +168,8 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 
 	ux.Logger.PrintToUser("VM ready.")
 
-	// do start/restart as needed
-	if needsStart {
+	if networkNotBootstrapped {
+		// start the network
 		ux.Logger.PrintToUser("Starting network...")
 		loadSnapshotOpts := []client.OpOption{
 			client.WithPluginDir(pluginDir),
@@ -180,44 +186,35 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 		}
 		d.app.Log.Debug(loadSnapshotsInfo.String())
 	} else {
-		// we need to restart the network if the VM was not deployed previously
-		needsRestart := false
-		_, ok := deployedVMIDs[toDeployVMID.String()]
-		if !ok {
-			needsRestart = true
+		// make snapshot of current state and reload it again
+		tmpSnapshotName := fmt.Sprintf("restart-tmp-%d", time.Now().Unix())
+		ux.Logger.PrintToUser("Restarting network...")
+		_, err := cli.SaveSnapshot(
+			ctx,
+			tmpSnapshotName,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to save snapshot :%s", err)
 		}
-
-		if needsRestart {
-			// make snapshot of current state and reload it again
-			tmpSnapshotName := fmt.Sprintf("restart-tmp-%d", time.Now().Unix())
-			ux.Logger.PrintToUser("Restarting network...")
-			_, err := cli.SaveSnapshot(
-				ctx,
-				tmpSnapshotName,
-			)
-			if err != nil {
-				return fmt.Errorf("failed to save snapshot :%s", err)
-			}
-			loadSnapshotOpts := []client.OpOption{
-				client.WithPluginDir(pluginDir),
-				client.WithExecPath(avalancheGoBinPath),
-				client.WithRootDataDir(runDir),
-			}
-			_, err = cli.LoadSnapshot(
-				ctx,
-				tmpSnapshotName,
-				loadSnapshotOpts...,
-			)
-			if err != nil {
-				return fmt.Errorf("failed to load snapshot :%s", err)
-			}
-			_, err = cli.RemoveSnapshot(
-				ctx,
-				tmpSnapshotName,
-			)
-			if err != nil {
-				return fmt.Errorf("failed to remove snapshot :%s", err)
-			}
+		loadSnapshotOpts := []client.OpOption{
+			client.WithPluginDir(pluginDir),
+			client.WithExecPath(avalancheGoBinPath),
+			client.WithRootDataDir(runDir),
+		}
+		_, err = cli.LoadSnapshot(
+			ctx,
+			tmpSnapshotName,
+			loadSnapshotOpts...,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to load snapshot :%s", err)
+		}
+		_, err = cli.RemoveSnapshot(
+			ctx,
+			tmpSnapshotName,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to remove snapshot :%s", err)
 		}
 	}
 
