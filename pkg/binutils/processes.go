@@ -30,12 +30,6 @@ import (
 // errGRPCTimeout is a common error message if the gRPC server can't be reached
 var errGRPCTimeout = errors.New("timed out trying to contact backend controller, it is most probably not running")
 
-var latestRunDir string
-
-func GetLatestRunDir() string {
-	return latestRunDir
-}
-
 // ProcessChecker is responsible for checking if the gRPC server is running
 type ProcessChecker interface {
 	// IsServerProcessRunning returns true if the gRPC server is running,
@@ -130,14 +124,11 @@ func StartServerProcess(app app.Avalanche) error {
 	args := []string{"backend", "start"}
 	cmd := exec.Command(thisBin, args...)
 
-	outputDirPrefix := path.Join(app.GetRunDir(), "deploy")
+	outputDirPrefix := path.Join(app.GetRunDir(), "server")
 	outputDir, err := utils.MkDirWithTimestamp(outputDirPrefix)
 	if err != nil {
 		return err
 	}
-
-	// Set latest run dir
-	latestRunDir = outputDir
 
 	outputFile, err := os.Create(path.Join(outputDir, "avalanche-cli-backend"))
 	if err != nil {
