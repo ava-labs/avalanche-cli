@@ -199,6 +199,7 @@ func getTestClientFunc() (client.Client, error) {
 					BlockchainId: "efgh",
 				},
 			},
+			Subnets: []string{"subnet1", "subnet2"},
 		},
 	}
 	c.On("Health", mock.Anything).Return(fakeHealthResponse, nil)

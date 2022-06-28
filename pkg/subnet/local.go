@@ -5,6 +5,7 @@ package subnet
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -90,6 +91,16 @@ func (d *Deployer) BackendStartedHere() bool {
 }
 
 // doDeploy the actual deployment to the network runner
+// steps:
+// - checks if the network has been started
+// - install all needed plugin binaries, for the the new VM, and the already deployed VMs
+// - either starts a network from the default snapshot if not started,
+//   or restarts the already available network while preserving state
+// - waits completion of operation
+// - get from the network an available subnet ID to be used in blockchain creation
+// - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
+// - waits completion of operation
+// - show status
 func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 	avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
 	if err != nil {
@@ -172,14 +183,13 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 	// number of currently created blockchains as the index to select the next subnet ID,
 	// so we get incremental selection
 	sort.Strings(subnetIDs)
-	subnetID := ""
-	// in unit tests, there are no preloaded subnets IDs
-	// also, for the case the network does not contain subnet IDs, empty subnet ID
-	// will make ANR to create one when creating the blockchain
-	if len(subnetIDs) > 0 {
-		subnetID = subnetIDs[numBlockchains%len(subnetIDs)]
+	if len(subnetIDs) == 0 {
+		return errors.New("the network has not preloaded subnet IDs")
 	}
+	subnetID := subnetIDs[numBlockchains%len(subnetIDs)]
 
+	// create a new blockchain on the already started network, associated to
+	// the given VM ID, genesis, and available subnet ID
 	blockchainSpecs := []*rpcpb.BlockchainSpec{
 		{
 			VmName:   chain,
@@ -187,7 +197,6 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 			SubnetId: &subnetID,
 		},
 	}
-
 	deployBlockchainsInfo, err := cli.CreateBlockchains(
 		ctx,
 		blockchainSpecs,
