@@ -24,6 +24,7 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/utils"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/coreth/core"
 	"github.com/ava-labs/coreth/params"
@@ -131,39 +132,21 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 		}
 	}
 
-	// find out already deployed VM IDs
-	deployedVMIDs := map[string]struct{}{}
-	if clusterInfo != nil {
-		for _, vmInfo := range clusterInfo.CustomVms {
-			deployedVMIDs[vmInfo.VmId] = struct{}{}
-		}
-	}
-
-	// get VM ID to deploy
-	toDeployVMID, err := utils.VMID(chain)
+	chainVMID, err := utils.VMID(chain)
 	if err != nil {
 		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
-	d.app.Log.Debug("this VM will get ID: %s", toDeployVMID.String())
+	d.app.Log.Debug("this VM will get ID: %s", chainVMID.String())
 
-	// can't redeploy
-	_, ok := deployedVMIDs[toDeployVMID.String()]
-	if ok {
-		return fmt.Errorf("subnet %s had already been deployed", chain)
+	if alreadyDeployed(chainVMID, clusterInfo) {
+		return fmt.Errorf("subnet %s has already been deployed", chain)
 	}
 
-	// install all needed plugins
-	toInstallVMIDs := map[string]struct{}{}
-	for vmID := range deployedVMIDs {
-		toInstallVMIDs[vmID] = struct{}{}
-	}
-	toInstallVMIDs[toDeployVMID.String()] = struct{}{}
-	binDir := filepath.Join(d.app.GetBaseDir(), constants.AvalancheCliBinDir)
-	if err := d.binaryDownloader.Download(toInstallVMIDs, pluginDir, binDir); err != nil {
+	if err := d.installNeededPlugins(chainVMID, clusterInfo, pluginDir); err != nil {
 		return err
 	}
 
-	ux.Logger.PrintToUser("VM ready.")
+	ux.Logger.PrintToUser("VMs ready.")
 
 	if networkNotBootstrapped {
 		// start the network
@@ -471,6 +454,34 @@ func GetEndpoints(clusterInfo *rpcpb.ClusterInfo) []string {
 		}
 	}
 	return endpoints
+}
+
+// return true if vm has already been deployed
+func alreadyDeployed(chainVMID ids.ID, clusterInfo *rpcpb.ClusterInfo) bool {
+	if clusterInfo != nil {
+		for _, vmInfo := range clusterInfo.CustomVms {
+			if vmInfo.VmId == chainVMID.String() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// get list of all needed plugins and install them
+func (d *Deployer) installNeededPlugins(chainVMID ids.ID, clusterInfo *rpcpb.ClusterInfo, pluginDir string) error {
+	toInstallVMIDs := map[string]struct{}{}
+	toInstallVMIDs[chainVMID.String()] = struct{}{}
+	if clusterInfo != nil {
+		for _, vmInfo := range clusterInfo.CustomVms {
+			toInstallVMIDs[vmInfo.VmId] = struct{}{}
+		}
+	}
+	binDir := filepath.Join(d.app.GetBaseDir(), constants.AvalancheCliBinDir)
+	if err := d.binaryDownloader.Download(toInstallVMIDs, pluginDir, binDir); err != nil {
+		return err
+	}
+	return nil
 }
 
 // getGenesis extracts the chain genesis from the provided genesis file
