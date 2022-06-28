@@ -262,12 +262,7 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 		return fmt.Errorf("failed to query network health: %s", err)
 	}
 
-	endpoints := []string{}
-	for _, nodeInfo := range clusterInfo.NodeInfos {
-		for blockchainID, vmInfo := range clusterInfo.CustomVms {
-			endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, blockchainID, vmInfo.VmId, nodeInfo.GetUri(), blockchainID))
-		}
-	}
+	endpoints := GetEndpoints(clusterInfo)
 
 	fmt.Println()
 	ux.Logger.PrintToUser("Network ready to use. Local network node endpoints:")
@@ -465,6 +460,17 @@ func (d *Deployer) WaitForHealthy(
 			return resp.ClusterInfo, nil
 		}
 	}
+}
+
+// GetEndpoints get a human readable list of endpoints from clusterinfo
+func GetEndpoints(clusterInfo *rpcpb.ClusterInfo) []string {
+	endpoints := []string{}
+	for _, nodeInfo := range clusterInfo.NodeInfos {
+		for blockchainID, vmInfo := range clusterInfo.CustomVms {
+			endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, blockchainID, vmInfo.VmId, nodeInfo.GetUri(), blockchainID))
+		}
+	}
+	return endpoints
 }
 
 // getGenesis extracts the chain genesis from the provided genesis file

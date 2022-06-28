@@ -93,12 +93,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed waiting for network to become healthy: %s", err)
 	}
 
-	endpoints := []string{}
-	for _, nodeInfo := range clusterInfo.NodeInfos {
-		for blockchainID, vmInfo := range clusterInfo.CustomVms {
-			endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, blockchainID, vmInfo.VmId, nodeInfo.GetUri(), blockchainID))
-		}
-	}
+	endpoints := subnet.GetEndpoints(clusterInfo)
 
 	fmt.Println()
 	if len(endpoints) == 0 {
