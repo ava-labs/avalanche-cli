@@ -4,6 +4,13 @@ set -e
 
 export RUN_E2E="true"
 
+if [ ! -d "tests/e2e/hardhat/node_modules" ]
+then
+    pushd tests/e2e/hardhat
+    yarn
+    popd
+fi
+
 go install -v github.com/onsi/ginkgo/v2/ginkgo@v2.1.3
 ACK_GINKGO_RC=true ginkgo build ./tests/e2e
 
