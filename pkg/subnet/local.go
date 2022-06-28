@@ -115,7 +115,7 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 	}
 	chainID := genesis.Config.ChainID
 
-	runDir = d.app.GetRunDir()
+	runDir := d.app.GetRunDir()
 
 	ctx := binutils.GetAsyncContext()
 
