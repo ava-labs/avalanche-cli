@@ -85,6 +85,16 @@ Once golang is installed, run:
 
 The binary will be called `./bin/avalanche`.
 
+### Running End-to-End Tests
+
+To run our suite of end-to-end tests, you'll need to install Node-JS and yarn. You can follow instructions to do that [here](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) and [here](https://classic.yarnpkg.com/lang/en/docs/install/).
+
+To run the tests, execute the following command from the repo's root directory:
+
+```bash
+./scripts/run.e2e.sh
+```
+
 ## Detailed Usage
 
 More detailed information on how to use Avalanche CLI can be found at [here](https://docs.avax.network/subnets/create-a-local-subnet#subnet).
