@@ -26,7 +26,7 @@ func clean(cmd *cobra.Command, args []string) {
 	if err := subnet.SetDefaultSnapshot(app.GetBaseDir(), true); err != nil {
 		app.Log.Warn("failed resetting default snapshot: %s\n", err)
 	}
-	if err := binutils.KillgRPCServerProcess(); err != nil {
+	if err := binutils.KillgRPCServerProcess(app); err != nil {
 		app.Log.Warn("failed killing server process: %s\n", err)
 		ux.Logger.PrintToUser("Unable to shut down network. Network not running.")
 	} else {

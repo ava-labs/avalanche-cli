@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -39,7 +40,7 @@ func GetLatestRunDir() string {
 type ProcessChecker interface {
 	// IsServerProcessRunning returns true if the gRPC server is running,
 	// or false if not
-	IsServerProcessRunning() (bool, error)
+	IsServerProcessRunning(app *app.Avalanche) (bool, error)
 }
 
 type realProcessRunner struct{}
@@ -75,8 +76,8 @@ func NewGRPCServer(snapshotsDir string) (server.Server, error) {
 
 // IsServerProcessRunning returns true if the gRPC server is running,
 // or false if not
-func (rpr *realProcessRunner) IsServerProcessRunning() (bool, error) {
-	pid, err := GetServerPID()
+func (rpr *realProcessRunner) IsServerProcessRunning(app *app.Avalanche) (bool, error) {
+	pid, err := GetServerPID(app)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return false, err
@@ -104,18 +105,19 @@ type runFile struct {
 	GRPCserverFileName string `json:"gRPCserverFileName"`
 }
 
-func GetServerPID() (int, error) {
+func GetServerPID(app *app.Avalanche) (int, error) {
 	var rf runFile
-	run, err := os.ReadFile(constants.ServerRunFile)
+	serverRunFilePath := filepath.Join(app.GetBaseDir(), constants.ServerRunFile)
+	run, err := os.ReadFile(serverRunFilePath)
 	if err != nil {
-		return 0, fmt.Errorf("failed reading process info file at %s: %s", constants.ServerRunFile, err)
+		return 0, fmt.Errorf("failed reading process info file at %s: %s", serverRunFilePath, err)
 	}
 	if err := json.Unmarshal(run, &rf); err != nil {
-		return 0, fmt.Errorf("failed unmarshalling server run file at %s: %s", constants.ServerRunFile, err)
+		return 0, fmt.Errorf("failed unmarshalling server run file at %s: %s", serverRunFilePath, err)
 	}
 
 	if rf.Pid == 0 {
-		return 0, fmt.Errorf("failed reading pid from info file at %s: %s", constants.ServerRunFile, err)
+		return 0, fmt.Errorf("failed reading pid from info file at %s: %s", serverRunFilePath, err)
 	}
 	return rf.Pid, nil
 }
@@ -160,8 +162,8 @@ func StartServerProcess(app app.Avalanche) error {
 	if err != nil {
 		return err
 	}
-	serverRunFile := path.Join(outputDir, constants.ServerRunFile)
-	err = os.WriteFile(serverRunFile, rfBytes, perms.ReadWrite)
+	serverRunFilePath := filepath.Join(app.GetBaseDir(), constants.ServerRunFile)
+	err = os.WriteFile(serverRunFilePath, rfBytes, perms.ReadWrite)
 	if err != nil {
 		app.Log.Warn("could not write gRPC process info to file: %s", err)
 	}
@@ -181,7 +183,7 @@ func GetAsyncContext() context.Context {
 	return ctx
 }
 
-func KillgRPCServerProcess() error {
+func KillgRPCServerProcess(app *app.Avalanche) error {
 	cli, err := NewGRPCClient()
 	if err != nil {
 		return err
@@ -199,7 +201,7 @@ func KillgRPCServerProcess() error {
 		return fmt.Errorf("failed stopping gRPC server process: %s", err)
 	}
 
-	pid, err := GetServerPID()
+	pid, err := GetServerPID(app)
 	if err != nil {
 		return fmt.Errorf("failed getting PID from run file: %s", err)
 	}
@@ -211,8 +213,9 @@ func KillgRPCServerProcess() error {
 		return fmt.Errorf("failed killing process with pid %d: %s", pid, err)
 	}
 
-	if err := os.Remove(constants.ServerRunFile); err != nil {
-		return fmt.Errorf("failed removing run file %s: %s", constants.ServerRunFile, err)
+	serverRunFilePath := filepath.Join(app.GetBaseDir(), constants.ServerRunFile)
+	if err := os.Remove(serverRunFilePath); err != nil {
+		return fmt.Errorf("failed removing run file %s: %s", serverRunFilePath, err)
 	}
 	return nil
 }

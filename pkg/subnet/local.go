@@ -68,7 +68,7 @@ func (d *Deployer) DeployToLocalNetwork(chain string, chainGenesis string) error
 }
 
 func (d *Deployer) StartServer() error {
-	isRunning, err := d.procChecker.IsServerProcessRunning()
+	isRunning, err := d.procChecker.IsServerProcessRunning(&d.app)
 	if err != nil {
 		return fmt.Errorf("failed querying if server process is running: %w", err)
 	}
