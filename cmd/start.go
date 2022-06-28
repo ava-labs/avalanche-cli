@@ -93,15 +93,10 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed waiting for network to become healthy: %s", err)
 	}
 
-	latestBlockchains, err := subnet.GetLatestBlockchains(ctx, cli, subnet.GetIndexer)
-	if err != nil {
-		return err
-	}
-
 	endpoints := []string{}
 	for _, nodeInfo := range clusterInfo.NodeInfos {
-		for vmID, blockchainID := range latestBlockchains {
-			endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, blockchainID, vmID, nodeInfo.GetUri(), blockchainID))
+		for blockchainID, vmInfo := range clusterInfo.CustomVms {
+			endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, blockchainID, vmInfo.VmId, nodeInfo.GetUri(), blockchainID))
 		}
 	}
 

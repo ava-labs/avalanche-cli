@@ -24,17 +24,14 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/utils"
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/indexer"
 	"github.com/ava-labs/avalanchego/utils/storage"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/avalanchego/vms/proposervm/block"
 	"github.com/ava-labs/coreth/core"
 	"github.com/ava-labs/coreth/params"
 )
 
 const (
-	zipExtension = "zip"
+	zipExtension       = "zip"
+	WriteReadReadPerms = 0o644
 )
 
 type Deployer struct {
@@ -45,7 +42,6 @@ type Deployer struct {
 	healthCheckInterval time.Duration
 	app                 app.Avalanche
 	backendStartedHere  bool
-	getIdxFunc          getIndexerFunc
 }
 
 func NewLocalDeployer(app *app.Avalanche) *Deployer {
@@ -55,14 +51,11 @@ func NewLocalDeployer(app *app.Avalanche) *Deployer {
 		getClientFunc:       binutils.NewGRPCClient,
 		binaryDownloader:    binutils.NewPluginBinaryDownloader(app.Log),
 		healthCheckInterval: 100 * time.Millisecond,
-		getIdxFunc:          GetIndexer,
 		app:                 *app,
 	}
 }
 
 type getGRPCClientFunc func() (client.Client, error)
-
-type getIndexerFunc func(uri string) (indexer.Client, error)
 
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
@@ -275,15 +268,10 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 		return fmt.Errorf("failed to query network health: %s", err)
 	}
 
-	latestBlockchains, err := GetLatestBlockchains(ctx, cli, d.getIdxFunc)
-	if err != nil {
-		return err
-	}
-
 	endpoints := []string{}
 	for _, nodeInfo := range clusterInfo.NodeInfos {
-		for vmID, blockchainID := range latestBlockchains {
-			endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, blockchainID, vmID, nodeInfo.GetUri(), blockchainID))
+		for blockchainID, vmInfo := range clusterInfo.CustomVms {
+			endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, blockchainID, vmInfo.VmId, nodeInfo.GetUri(), blockchainID))
 		}
 	}
 
@@ -320,7 +308,7 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path and plugin
 func (d *Deployer) SetupLocalEnv() (string, string, error) {
-	err := SetDefaultSnapshot(d.app.GetBaseDir())
+	err := SetDefaultSnapshot(d.app.GetBaseDir(), false)
 	if err != nil {
 		return "", "", fmt.Errorf("failed setting up snapshots: %w", err)
 	}
@@ -502,10 +490,11 @@ func getGenesis(genesisFile string) (core.Genesis, error) {
 }
 
 // Initialize default snapshot with bootstrap snapshot archive
-func SetDefaultSnapshot(baseDir string) error {
+// If force flag is set to true, overwrite the default snapshot if it exists
+func SetDefaultSnapshot(baseDir string, force bool) error {
 	snapshotsDir := filepath.Join(baseDir, constants.SnapshotsDirName)
-	defaultSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.DefaultSnapshotName)
-	if _, err := os.Stat(defaultSnapshotPath); os.IsNotExist(err) {
+	bootstrapSnapshotArchivePath := filepath.Join(snapshotsDir, constants.BootstrapSnapshotArchiveName)
+	if _, err := os.Stat(bootstrapSnapshotArchivePath); os.IsNotExist(err) {
 		resp, err := http.Get(constants.BootstrapSnapshotURL)
 		if err != nil {
 			return fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
@@ -518,71 +507,22 @@ func SetDefaultSnapshot(baseDir string) error {
 		if err != nil {
 			return fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
 		}
+		if err := os.WriteFile(bootstrapSnapshotArchivePath, bootstrapSnapshotBytes, WriteReadReadPerms); err != nil {
+			return fmt.Errorf("failed writing down bootstrap snapshot: %w", err)
+		}
+	}
+	defaultSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.DefaultSnapshotName)
+	if force {
+		os.RemoveAll(defaultSnapshotPath)
+	}
+	if _, err := os.Stat(defaultSnapshotPath); os.IsNotExist(err) {
+		bootstrapSnapshotBytes, err := os.ReadFile(bootstrapSnapshotArchivePath)
+		if err != nil {
+			return fmt.Errorf("failed reading bootstrap snapshot: %w", err)
+		}
 		if err := binutils.InstallArchive("tar.gz", bootstrapSnapshotBytes, snapshotsDir); err != nil {
 			return fmt.Errorf("failed installing bootstrap snapshot: %w", err)
 		}
 	}
 	return nil
-}
-
-func GetIndexer(uri string) (indexer.Client, error) {
-	return indexer.NewClient(uri), nil
-}
-
-// Get list of latest blockchain for each vm, by using indexer API
-func GetLatestBlockchains(ctx context.Context, cli client.Client, getIdxFunc getIndexerFunc) (map[ids.ID]ids.ID, error) {
-	uris, err := cli.URIs(ctx)
-	if err != nil {
-		return nil, err
-	}
-	uri := uris[0] + "/ext/index/P/block"
-
-	idxClient, err := getIdxFunc(uri)
-	if err != nil {
-		return nil, err
-	}
-
-	container, err := idxClient.GetLastAccepted(ctx)
-	if err != nil {
-		return nil, err
-	}
-	lastIndex, err := idxClient.GetIndex(ctx, container.ID)
-	if err != nil {
-		return nil, err
-	}
-	containers, err := idxClient.GetContainerRange(ctx, 0, int(lastIndex+1))
-	if err != nil {
-		return nil, err
-	}
-	latestBlockchains := map[ids.ID]ids.ID{}
-	for _, blk := range containers {
-		parsedBlock, err := block.Parse(blk.Bytes)
-		if err != nil {
-			return nil, err
-		}
-		signedParsedBlock, ok := parsedBlock.(block.SignedBlock)
-		if ok {
-			var platformBlock platformvm.Block
-			if _, err := platformvm.Codec.Unmarshal(signedParsedBlock.Block(), &platformBlock); err != nil {
-				return nil, err
-			}
-			b, ok := platformBlock.(*platformvm.StandardBlock)
-			if ok {
-				for _, tx := range b.Txs {
-					tx := tx
-					bs, err := platformvm.Codec.Marshal(platformvm.CodecVersion, &tx)
-					if err != nil {
-						return nil, err
-					}
-					tx.Initialize(nil, bs)
-					unsignedTx := tx.UnsignedTx
-					createChainTx, ok := unsignedTx.(*platformvm.UnsignedCreateChainTx)
-					if ok {
-						latestBlockchains[createChainTx.VMID] = tx.ID()
-					}
-				}
-			}
-		}
-	}
-	return latestBlockchains, nil
 }

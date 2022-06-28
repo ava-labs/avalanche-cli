@@ -3,7 +3,6 @@
 package subnet
 
 import (
-	"crypto"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,14 +19,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/indexer"
-	"github.com/ava-labs/avalanchego/staking"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/avalanchego/vms/proposervm/block"
-	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -73,7 +66,6 @@ func TestDeployToLocal(t *testing.T) {
 		getClientFunc:       getTestClientFunc,
 		binaryDownloader:    binDownloader,
 		healthCheckInterval: 500 * time.Millisecond,
-		getIdxFunc:          getTestIndexer,
 		app:                 app,
 	}
 
@@ -212,49 +204,4 @@ func getTestClientFunc() (client.Client, error) {
 	c.On("Health", mock.Anything).Return(fakeHealthResponse, nil)
 	c.On("Close").Return(nil)
 	return c, nil
-}
-
-func getTestIndexer(uri string) (indexer.Client, error) {
-	idx := &mocks.IndexerClient{}
-	idx.On("GetLastAccepted", mock.Anything).Return(indexer.Container{}, nil)
-	idx.On("GetIndex", mock.Anything, mock.Anything).Return(uint64(0), nil)
-	tx := platformvm.Tx{
-		UnsignedTx: &platformvm.UnsignedCreateChainTx{
-			SubnetAuth: &secp256k1fx.Credential{},
-		},
-	}
-	var platformBlock platformvm.Block = &platformvm.StandardBlock{
-		Txs: []*platformvm.Tx{
-			&tx,
-		},
-	}
-	blockBytes, err := platformvm.Codec.Marshal(platformvm.CodecVersion, &platformBlock)
-	if err != nil {
-		return nil, err
-	}
-	tlsCert, err := staking.NewTLSCert()
-	if err != nil {
-		return nil, err
-	}
-	cert := tlsCert.Leaf
-	key := tlsCert.PrivateKey.(crypto.Signer)
-	builtBlock, err := block.Build(
-		ids.ID{},
-		time.Time{},
-		0,
-		cert,
-		blockBytes,
-		ids.ID{},
-		key,
-	)
-	if err != nil {
-		return nil, err
-	}
-	containers := []indexer.Container{
-		{
-			Bytes: builtBlock.Bytes(),
-		},
-	}
-	idx.On("GetContainerRange", mock.Anything, mock.Anything, mock.Anything).Return(containers, nil)
-	return idx, nil
 }
