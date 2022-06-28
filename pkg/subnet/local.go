@@ -139,7 +139,8 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 	d.app.Log.Debug("this VM will get ID: %s", chainVMID.String())
 
 	if alreadyDeployed(chainVMID, clusterInfo) {
-		return fmt.Errorf("subnet %s has already been deployed", chain)
+		ux.Logger.PrintToUser("Subnet %s has already been deployed", chain)
+		return nil
 	}
 
 	if err := d.installNeededPlugins(chainVMID, clusterInfo, pluginDir); err != nil {
