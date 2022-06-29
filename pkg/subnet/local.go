@@ -250,6 +250,7 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 }
 
 // SetupLocalEnv also does some heavy lifting:
+// * sets up default snapshot if not installed
 // * checks if avalanchego is installed in the local binary path
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path and plugin
