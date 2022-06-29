@@ -27,7 +27,7 @@ func backendController(cmd *cobra.Command, args []string) error {
 }
 
 func startBackend(_ *cobra.Command) error {
-	s, err := binutils.NewGRPCServer()
+	s, err := binutils.NewGRPCServer(snapshotsDir)
 	if err != nil {
 		return err
 	}

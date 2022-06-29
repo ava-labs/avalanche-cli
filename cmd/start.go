@@ -5,8 +5,10 @@ package cmd
 import (
 	"fmt"
 	"path"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
@@ -28,6 +30,17 @@ is already running or if no subnets have been deployed.`,
 }
 
 func startNetwork(cmd *cobra.Command, args []string) error {
+	sd := subnet.NewLocalDeployer(app)
+
+	if err := sd.StartServer(); err != nil {
+		return err
+	}
+
+	avalancheGoBinPath, pluginDir, err := sd.SetupLocalEnv()
+	if err != nil {
+		return err
+	}
+
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
 		return err
@@ -38,7 +51,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 		snapshotName = args[0]
 		startMsg = fmt.Sprintf("Starting previously deployed and stopped snapshot %s...", snapshotName)
 	} else {
-		snapshotName = defaultSnapshotName
+		snapshotName = constants.DefaultSnapshotName
 		startMsg = "Starting previously deployed and stopped snapshot"
 	}
 
@@ -52,23 +65,43 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = cli.LoadSnapshot(ctx, snapshotName, client.WithRootDataDir(outputDir))
+	loadSnapshotOpts := []client.OpOption{
+		client.WithPluginDir(pluginDir),
+		client.WithExecPath(avalancheGoBinPath),
+		client.WithRootDataDir(outputDir),
+	}
+	_, err = cli.LoadSnapshot(
+		ctx,
+		snapshotName,
+		loadSnapshotOpts...,
+	)
+
 	if err != nil {
-		return fmt.Errorf("failed to start network with the persisted snapshot: %s", err)
+		// TODO: use error type not string comparison
+		if !strings.Contains(err.Error(), "already bootstrapped") {
+			return fmt.Errorf("failed to start network with the persisted snapshot: %s", err)
+		}
+		ux.Logger.PrintToUser("Network has already been booted. Wait until healthy...")
+	} else {
+		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 	}
 
 	// TODO: this should probably be extracted from the deployer and
 	// used as an independent helper
-	sd := subnet.NewLocalDeployer(app)
-	endpoints, err := sd.WaitForHealthy(ctx, cli, healthCheckInterval)
+	clusterInfo, err := sd.WaitForHealthy(ctx, cli, healthCheckInterval)
 	if err != nil {
 		return fmt.Errorf("failed waiting for network to become healthy: %s", err)
 	}
 
+	endpoints := subnet.GetEndpoints(clusterInfo)
+
 	fmt.Println()
-	ux.Logger.PrintToUser("Network ready to use. Local network node endpoints:")
-	for _, u := range endpoints {
-		ux.Logger.PrintToUser(u)
+	if len(endpoints) > 0 {
+		ux.Logger.PrintToUser("Network ready to use. Local network node endpoints:")
+		for _, u := range endpoints {
+			ux.Logger.PrintToUser(u)
+		}
 	}
+
 	return nil
 }

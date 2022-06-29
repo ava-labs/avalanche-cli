@@ -23,5 +23,11 @@ const (
 
 	RequestTimeout = 3 * time.Minute
 
-	DefaultTokenName = "TEST"
+	// it's unlikely anyone would want to name a snapshot `default`
+	// but let's add some more entropy
+	SnapshotsDirName             = "snapshots"
+	DefaultSnapshotName          = "default-1654102509"
+	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/bootstrapSnapshot.tar.gz"
+	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
+	DefaultTokenName             = "TEST"
 )
