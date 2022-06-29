@@ -136,12 +136,12 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 	ctx := binutils.GetAsyncContext()
 
 	// check for network and get VM info
-	networkNotBootstrapped := false
+	networkBooted := true
 	clusterInfo, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
 		// TODO: use error type not string comparison
 		if strings.Contains(err.Error(), "not bootstrapped") {
-			networkNotBootstrapped = true
+			networkBooted = false
 		} else {
 			return fmt.Errorf("failed to query network health: %s", err)
 		}
@@ -164,12 +164,12 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 
 	ux.Logger.PrintToUser("VMs ready.")
 
-	if networkNotBootstrapped {
-		if err := startNetwork(ctx, cli, avalancheGoBinPath, pluginDir, runDir); err != nil {
+	if networkBooted {
+		if err := restartNetwork(ctx, cli, avalancheGoBinPath, pluginDir, runDir); err != nil {
 			return err
 		}
 	} else {
-		if err := restartNetwork(ctx, cli, avalancheGoBinPath, pluginDir, runDir); err != nil {
+		if err := startNetwork(ctx, cli, avalancheGoBinPath, pluginDir, runDir); err != nil {
 			return err
 		}
 	}

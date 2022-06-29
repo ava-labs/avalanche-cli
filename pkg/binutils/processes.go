@@ -154,8 +154,7 @@ func StartServerProcess(app app.Avalanche) error {
 		return err
 	}
 	serverRunFilePath := filepath.Join(app.GetRunDir(), constants.ServerRunFile)
-	err = os.WriteFile(serverRunFilePath, rfBytes, perms.ReadWrite)
-	if err != nil {
+	if err := os.WriteFile(serverRunFilePath, rfBytes, perms.ReadWrite); err != nil {
 		app.Log.Warn("could not write gRPC process info to file: %s", err)
 	}
 	return nil
