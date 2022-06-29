@@ -103,7 +103,6 @@ func GetServerPID(app *app.Avalanche) (int, error) {
 	var rf runFile
 	serverRunFilePath := filepath.Join(app.GetRunDir(), constants.ServerRunFile)
 	run, err := os.ReadFile(serverRunFilePath)
-
 	if err != nil {
 		return 0, fmt.Errorf("failed reading process info file at %s: %s", serverRunFilePath, err)
 	}
@@ -204,7 +203,6 @@ func KillgRPCServerProcess(app *app.Avalanche) error {
 	if err := proc.Signal(os.Interrupt); err != nil {
 		return fmt.Errorf("failed killing process with pid %d: %s", pid, err)
 	}
-
 
 	serverRunFilePath := filepath.Join(app.GetRunDir(), constants.ServerRunFile)
 	if err := os.Remove(serverRunFilePath); err != nil {

@@ -19,9 +19,9 @@ import (
 var (
 	app *this.Avalanche
 
-	logLevel string
-	Version  = ""
-  snapshotsDir string
+	logLevel     string
+	Version      = ""
+	snapshotsDir string
 )
 
 func NewRootCmd() *cobra.Command {
