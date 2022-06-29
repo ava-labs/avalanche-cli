@@ -47,15 +47,28 @@ func NewPublicSubnetDeployer(app *app.Avalanche, privKeyPath string, network mod
 }
 
 func (d *PublicSubnetDeployer) Deploy(controlKeys []string, threshold uint32) error {
-	txID, err := d.createSubnetTx(controlKeys, threshold)
+	wallet, err := d.loadWallet()
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser(txID.String())
+
+	subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser(subnetID.String())
+
 	return nil
 }
 
-func (d *PublicSubnetDeployer) createSubnetTx(controlKeys []string, threshold uint32) (ids.ID, error) {
+func (d *PublicSubnetDeployer) createBlockchainTx(chainName string, vmID, subnetID ids.ID, genesis []byte, wallet primary.Wallet) (ids.ID, error) {
+	// TODO
+	options := []common.Option{}
+	fxIDs := make([]ids.ID, 0)
+	return wallet.P().IssueCreateChainTx(subnetID, genesis, vmID, fxIDs, chainName, options...)
+}
+
+func (d *PublicSubnetDeployer) loadWallet() (primary.Wallet, error) {
 	ctx := context.Background()
 
 	var (
@@ -71,20 +84,25 @@ func (d *PublicSubnetDeployer) createSubnetTx(controlKeys []string, threshold ui
 		api = constants.MainnetAPIEndpoint
 		networkID = avago_constants.MainnetID
 	default:
-		return ids.Empty, fmt.Errorf("Unsupported public network")
+		return nil, fmt.Errorf("Unsupported public network")
 	}
 
 	sf, err := wallet.LoadSoft(networkID, d.privKeyPath)
 	if err != nil {
-		return ids.Empty, err
+		return nil, err
 	}
 
 	kc := sf.KeyChain()
 
 	walet, err := primary.NewWalletFromURI(ctx, api, kc)
 	if err != nil {
-		return ids.Empty, err
+		return nil, err
 	}
+	return walet, nil
+}
+
+func (d *PublicSubnetDeployer) createSubnetTx(controlKeys []string, threshold uint32, wallet primary.Wallet) (ids.ID, error) {
+	var err error
 
 	addrs := make([]ids.ShortID, len(controlKeys))
 	for i, c := range controlKeys {
@@ -99,11 +117,7 @@ func (d *PublicSubnetDeployer) createSubnetTx(controlKeys []string, threshold ui
 		Locktime:  0,
 	}
 	opts := []common.Option{}
-	tx, err := walet.P().IssueCreateSubnetTx(owners, opts...)
-	if err != nil {
-		return ids.Empty, err
-	}
-	return tx, nil
+	return wallet.P().IssueCreateSubnetTx(owners, opts...)
 }
 
 func (d *PublicSubnetDeployer) StartValidator(chain, chain_genesis string, location DeployLocation) error {
