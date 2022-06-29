@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/ux"
 )
 
@@ -36,16 +37,22 @@ func stopNetwork(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		snapshotName = args[0]
 	} else {
-		snapshotName = defaultSnapshotName
+		snapshotName = constants.DefaultSnapshotName
 	}
 
 	ctx := binutils.GetAsyncContext()
 
 	_, err = cli.RemoveSnapshot(ctx, snapshotName)
 	if err != nil {
+		// TODO: use error type not string comparison
+		if strings.Contains(err.Error(), "not bootstrapped") {
+			ux.Logger.PrintToUser("Network already stopped.")
+			return nil
+		}
 		// TODO: when removing an existing snapshot we get an error, but in this case it is expected
 		// It might be nicer to have some special field set in the response though rather than having to parse
 		// the error string which is error prone
+		// TODO: use error type not string comparison
 		if !strings.Contains(err.Error(), fmt.Sprintf("snapshot %q does not exist", snapshotName)) {
 			return fmt.Errorf("failed stop network with a snapshot: %s", err)
 		}

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	this "github.com/ava-labs/avalanche-cli/pkg/app"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
@@ -20,6 +21,7 @@ var (
 
 	logLevel string
 	Version  = ""
+  snapshotsDir string
 )
 
 func NewRootCmd() *cobra.Command {
@@ -122,6 +124,14 @@ func setupEnv() (string, error) {
 		fmt.Printf("failed creating the basedir %s: %s\n", baseDir, err)
 		return "", err
 	}
+
+	// Create snapshots dir if it doesn't exist
+	snapshotsDir = filepath.Join(baseDir, constants.SnapshotsDirName)
+	if err = os.MkdirAll(snapshotsDir, os.ModePerm); err != nil {
+		fmt.Printf("failed creating the snapshots dir %s: %s\n", snapshotsDir, err)
+		os.Exit(1)
+	}
+
 	return baseDir, nil
 }
 
