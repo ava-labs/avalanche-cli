@@ -39,5 +39,27 @@ jobs:
           go-version: ${{ matrix.go }}
       - run: go mod download
       - run: scripts/build.sh
-      - run: go test -v -coverprofile=coverage.out ./...
+      - run: go test -v -coverprofile=coverage.out $(go list ./... | grep -v /tests/)
       - run: go tool cover -func=coverage.out
+  e2e_test:
+    name: e2e tests
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '14.x'
+      - name: Yarn install
+        run: yarn
+        working-directory: ./tests/e2e/hardhat
+      - name: Run e2e tests
+        shell: bash
+        run: scripts/run.e2e.sh

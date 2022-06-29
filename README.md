@@ -85,9 +85,9 @@ Once golang is installed, run:
 
 The binary will be called `./bin/avalanche`.
 
-## Docker
+### Docker
 
-To make Avalanche CLI working in a docker, add this
+To make Avalanche CLI work in a docker container, add this
 
 ```json
 {
@@ -97,6 +97,16 @@ To make Avalanche CLI working in a docker, add this
 ```
 
 to `/etc/docker/daemon.json` on the host, then restart the docker service. This is because ipv6 is used to resolve local bootstrap IPs, and it is not enabled on a docker container by default.
+
+### Running End-to-End Tests
+
+To run our suite of end-to-end tests, you'll need to install Node-JS and yarn. You can follow instructions to do that [here](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) and [here](https://classic.yarnpkg.com/lang/en/docs/install/).
+
+To run the tests, execute the following command from the repo's root directory:
+
+```bash
+./scripts/run.e2e.sh
+```
 
 ## Detailed Usage
 
