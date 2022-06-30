@@ -64,6 +64,7 @@ jobs:
         shell: bash
         run: scripts/run.e2e.sh
       - name: Check Snapshots
+        if: always()
         run: ls /home/runner/.avalanche-cli/snapshots
       - name: 'Upload Artifact'
         if: always()
