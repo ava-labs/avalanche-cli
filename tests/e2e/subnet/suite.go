@@ -1,6 +1,7 @@
 package subnet
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
@@ -31,6 +32,9 @@ var _ = ginkgo.Describe("[Subnet]", func() {
 		commands.CreateSubnetConfig(subnetName, genesis)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpc, err := utils.ParseRPCFromDeployOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		err = utils.SetHardhatRPC(rpc)
