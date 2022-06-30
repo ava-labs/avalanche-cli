@@ -8,6 +8,7 @@ import (
 
 	this "github.com/ava-labs/avalanche-cli/pkg/app"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/spf13/cobra"
 )
 
@@ -37,7 +38,7 @@ func backendController(cmd *cobra.Command, args []string) error {
 }
 
 func startBackend(_ *cobra.Command) error {
-	s, err := binutils.NewGRPCServer(snapshotsDir)
+	s, err := binutils.NewGRPCServer(constants.SnapshotsDirName)
 	if err != nil {
 		return err
 	}
