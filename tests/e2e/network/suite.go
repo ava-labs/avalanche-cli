@@ -25,6 +25,9 @@ var _ = ginkgo.Describe("[Network]", func() {
 		commands.CreateSubnetConfig(subnetName, genesis)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpc, err := utils.ParseRPCFromDeployOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		err = utils.SetHardhatRPC(rpc)
@@ -55,6 +58,9 @@ var _ = ginkgo.Describe("[Network]", func() {
 		commands.StopNetwork()
 		restartOutput := commands.StartNetwork()
 		rpc, err = utils.ParseRPCFromRestartOutput(restartOutput)
+		if err != nil {
+			fmt.Println(restartOutput)
+		}
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		err = utils.SetHardhatRPC(rpc)
