@@ -63,3 +63,9 @@ jobs:
       - name: Run e2e tests
         shell: bash
         run: scripts/run.e2e.sh
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v3
+        with:
+          name: cli-logs
+          path: $HOME/.avalanche-cli/
+          retention-days: 5
