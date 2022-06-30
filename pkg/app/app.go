@@ -23,7 +23,6 @@ var errChainIDExists = errors.New("the provided chain ID already exists! Try ano
 type Avalanche struct {
 	Log     logging.Logger
 	baseDir string
-	runFile string
 }
 
 func New(baseDir string, log logging.Logger) *Avalanche {
