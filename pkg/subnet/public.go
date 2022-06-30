@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/wallet"
 	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -46,10 +47,14 @@ func NewPublicSubnetDeployer(app *app.Avalanche, privKeyPath string, network mod
 	}
 }
 
-func (d *PublicSubnetDeployer) Deploy(controlKeys []string, threshold uint32) error {
-	wallet, err := d.loadWallet()
+func (d *PublicSubnetDeployer) Deploy(controlKeys []string, threshold uint32, chain, genesis string) error {
+	wallet, api, err := d.loadWallet()
 	if err != nil {
 		return err
+	}
+	vmID, err := utils.VMID(chain)
+	if err != nil {
+		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
 
 	subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
@@ -58,17 +63,15 @@ func (d *PublicSubnetDeployer) Deploy(controlKeys []string, threshold uint32) er
 	}
 	ux.Logger.PrintToUser(subnetID.String())
 
+	blockchainID, err := d.createBlockchainTx(chain, vmID, subnetID, []byte(genesis), wallet)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Endpoint for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", blockchainID.String(), vmID.String(), api, blockchainID.String())
 	return nil
 }
 
-func (d *PublicSubnetDeployer) createBlockchainTx(chainName string, vmID, subnetID ids.ID, genesis []byte, wallet primary.Wallet) (ids.ID, error) {
-	// TODO
-	options := []common.Option{}
-	fxIDs := make([]ids.ID, 0)
-	return wallet.P().IssueCreateChainTx(subnetID, genesis, vmID, fxIDs, chainName, options...)
-}
-
-func (d *PublicSubnetDeployer) loadWallet() (primary.Wallet, error) {
+func (d *PublicSubnetDeployer) loadWallet() (primary.Wallet, string, error) {
 	ctx := context.Background()
 
 	var (
@@ -84,21 +87,28 @@ func (d *PublicSubnetDeployer) loadWallet() (primary.Wallet, error) {
 		api = constants.MainnetAPIEndpoint
 		networkID = avago_constants.MainnetID
 	default:
-		return nil, fmt.Errorf("Unsupported public network")
+		return nil, "", fmt.Errorf("Unsupported public network")
 	}
 
 	sf, err := wallet.LoadSoft(networkID, d.privKeyPath)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	kc := sf.KeyChain()
 
 	walet, err := primary.NewWalletFromURI(ctx, api, kc)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return walet, nil
+	return walet, api, nil
+}
+
+func (d *PublicSubnetDeployer) createBlockchainTx(chainName string, vmID, subnetID ids.ID, genesis []byte, wallet primary.Wallet) (ids.ID, error) {
+	// TODO do we need any of these to be set?
+	options := []common.Option{}
+	fxIDs := make([]ids.ID, 0)
+	return wallet.P().IssueCreateChainTx(subnetID, genesis, vmID, fxIDs, chainName, options...)
 }
 
 func (d *PublicSubnetDeployer) createSubnetTx(controlKeys []string, threshold uint32, wallet primary.Wallet) (ids.ID, error) {

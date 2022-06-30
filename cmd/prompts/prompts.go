@@ -44,9 +44,21 @@ func validateExistingFilepath(input string) error {
 	return errors.New("File doesn't exist")
 }
 
+func validateBiggerThanZero(input string) error {
+	val, err := strconv.ParseUint(input, 10, 64)
+	if err != nil {
+		return err
+	}
+	if val == 0 {
+		return errors.New("The value must be bigger than zero")
+	}
+	return nil
+}
+
 func CaptureUint64(promptStr string) (uint64, error) {
 	prompt := promptui.Prompt{
-		Label: promptStr,
+		Label:    promptStr,
+		Validate: validateBiggerThanZero,
 	}
 
 	amountStr, err := prompt.Run()

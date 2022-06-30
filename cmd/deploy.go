@@ -33,8 +33,9 @@ to interact with the subnet.
 
 Subsequent calls of deploy using the same subnet configuration will
 redeploy the subnet and reset the chain state to genesis.`,
-	RunE: deploySubnet,
-	Args: cobra.ExactArgs(1),
+	RunE:         deploySubnet,
+	Args:         cobra.ExactArgs(1),
+	SilenceUsage: true,
 }
 
 var deployLocal bool
@@ -125,28 +126,115 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	default:
 		return errors.New("Not implemented")
 	}
-	controlKeys, threshold, err := getControlKeys()
+	controlKeys, cancelled, err := getControlKeys()
 	if err != nil {
 		return err
 	}
-	deployer := subnet.NewPublicSubnetDeployer(app, privKeyPath, network)
-	return deployer.Deploy(controlKeys, threshold)
+	if cancelled {
+		ux.Logger.PrintToUser("User cancelled. No subnet deployed")
+		return nil
+	}
+
+	var threshold uint32
+
+	if len(controlKeys) > 0 {
+		threshold, err = getThreshold(uint64(len(controlKeys)))
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Println(threshold)
+	fmt.Println(controlKeys)
+	/*
+		deployer := subnet.NewPublicSubnetDeployer(app, privKeyPath, network)
+		return deployer.Deploy(controlKeys, threshold, chain, chain_genesis)
+	*/
+	return nil
 }
 
-func getControlKeys() ([]string, uint32, error) {
-	controlKey, err := prompts.CapturePChainAddress(
-		"Enter the addresses which control who can add validators to this subnet",
-	)
-	if err != nil {
-		return nil, 0, err
+func getControlKeys() ([]string, bool, error) {
+	controlKeysPrompt := "Configure which addresses allow to add new validators"
+	noControlKeysPrompt := "You did not add any control key. This means anyone can add validators to your subnet. " +
+		"This is considered unsafe. Do you really want to continue?"
+
+	for {
+		controlKeys, cancelled, err := controlKeysLoop(controlKeysPrompt)
+		if err != nil {
+			return nil, false, err
+		}
+		if cancelled {
+			return nil, cancelled, nil
+		}
+		if len(controlKeys) == 0 {
+			yes, err := prompts.CaptureNoYes(noControlKeysPrompt)
+			if err != nil {
+				return nil, false, err
+			}
+			if yes {
+				return controlKeys, false, nil
+			}
+		} else {
+			return controlKeys, false, nil
+		}
 	}
-	controlKeys := []string{controlKey}
+}
+
+func controlKeysLoop(controlKeysPrompt string) ([]string, bool, error) {
+	const (
+		addCtrlKey = "Add control key"
+		doneMsg    = "Done"
+		cancelMsg  = "Cancel"
+	)
+
+	var controlKeys []string
+
+	for {
+		listDecision, err := prompts.CaptureList(
+			controlKeysPrompt, []string{addCtrlKey, doneMsg, cancelMsg},
+		)
+		if err != nil {
+			return nil, false, err
+		}
+
+		switch listDecision {
+		case addCtrlKey:
+			controlKey, err := prompts.CapturePChainAddress(
+				"Enter the addresses which control who can add validators to this subnet",
+			)
+			if err != nil {
+				return nil, false, err
+			}
+			if contains(controlKeys, controlKey) {
+				fmt.Println("Address already in list")
+				continue
+			}
+			controlKeys = append(controlKeys, controlKey)
+		case doneMsg:
+			return controlKeys, false, nil
+		case cancelMsg:
+			return nil, true, nil
+		default:
+			return nil, false, errors.New("unexpected option")
+		}
+	}
+}
+
+func getThreshold(minLen uint64) (uint32, error) {
 	threshold, err := prompts.CaptureUint64("Enter required number of control addresses to add validators")
 	if err != nil {
-		return nil, 0, err
+		return 0, err
 	}
-	if threshold < uint64(len(controlKeys)) {
-		return nil, 0, fmt.Errorf("The threshold can't be lower than the number of control addresses")
+	if threshold > minLen {
+		return 0, fmt.Errorf("The threshold can't be bigger than the number of control addresses")
 	}
-	return controlKeys, uint32(threshold), err
+	return uint32(threshold), err
+}
+
+func contains(list []string, element string) bool {
+	for _, val := range list {
+		if val == element {
+			return true
+		}
+	}
+	return false
 }
