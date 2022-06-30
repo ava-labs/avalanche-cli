@@ -67,6 +67,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: cli-logs
+          if: always()
           path: |
             /home/runner/.avalanche-cli/
             !/home/runner/.avalanche-cli/bin/
