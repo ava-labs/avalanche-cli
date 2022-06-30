@@ -67,5 +67,8 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: cli-logs
-          path: /home/runner/.avalanche-cli/
+          path: |
+            /home/runner/.avalanche-cli/
+            !/home/runner/.avalanche-cli/bin/
+            !/home/runner/.avalanche-cli/snapshots
           retention-days: 5
