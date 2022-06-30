@@ -36,6 +36,10 @@ func (app *Avalanche) GetRunFile() string {
 	return filepath.Join(app.GetRunDir(), constants.ServerRunFile)
 }
 
+func (app *Avalanche) GetSnapshotDir() string {
+	return filepath.Join(app.baseDir, constants.SnapshotsDirName)
+}
+
 func (app *Avalanche) GetBaseDir() string {
 	return app.baseDir
 }

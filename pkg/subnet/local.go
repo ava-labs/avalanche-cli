@@ -477,9 +477,8 @@ func getGenesis(genesisFile string) (core.Genesis, error) {
 
 // Initialize default snapshot with bootstrap snapshot archive
 // If force flag is set to true, overwrite the default snapshot if it exists
-func SetDefaultSnapshot(baseDir string, force bool) error {
-	snapshotsDir := filepath.Join(baseDir, constants.SnapshotsDirName)
-	bootstrapSnapshotArchivePath := filepath.Join(snapshotsDir, constants.BootstrapSnapshotArchiveName)
+func SetDefaultSnapshot(snapshotDir string, force bool) error {
+	bootstrapSnapshotArchivePath := filepath.Join(snapshotDir, constants.BootstrapSnapshotArchiveName)
 	if _, err := os.Stat(bootstrapSnapshotArchivePath); os.IsNotExist(err) {
 		resp, err := http.Get(constants.BootstrapSnapshotURL)
 		if err != nil {
@@ -497,7 +496,7 @@ func SetDefaultSnapshot(baseDir string, force bool) error {
 			return fmt.Errorf("failed writing down bootstrap snapshot: %w", err)
 		}
 	}
-	defaultSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.DefaultSnapshotName)
+	defaultSnapshotPath := filepath.Join(snapshotDir, "anr-snapshot-"+constants.DefaultSnapshotName)
 	if force {
 		os.RemoveAll(defaultSnapshotPath)
 	}
@@ -506,7 +505,7 @@ func SetDefaultSnapshot(baseDir string, force bool) error {
 		if err != nil {
 			return fmt.Errorf("failed reading bootstrap snapshot: %w", err)
 		}
-		if err := binutils.InstallArchive("tar.gz", bootstrapSnapshotBytes, snapshotsDir); err != nil {
+		if err := binutils.InstallArchive("tar.gz", bootstrapSnapshotBytes, snapshotDir); err != nil {
 			return fmt.Errorf("failed installing bootstrap snapshot: %w", err)
 		}
 	}

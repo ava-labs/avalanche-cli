@@ -24,7 +24,7 @@ may be started again by deploying a new subnet configuration.`,
 func clean(cmd *cobra.Command, args []string) {
 	(*app).Log.Info("killing gRPC server process...")
 
-	if err := subnet.SetDefaultSnapshot((*app).GetBaseDir(), true); err != nil {
+	if err := subnet.SetDefaultSnapshot((*app).GetSnapshotDir(), true); err != nil {
 		(*app).Log.Warn("failed resetting default snapshot: %s\n", err)
 	}
 
