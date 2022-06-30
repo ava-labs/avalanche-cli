@@ -82,6 +82,8 @@ github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kd
 github.com/apache/arrow/go/arrow v0.0.0-20191024131854-af6fa24be0db/go.mod h1:VTxUBvSJ3s3eHAg65PNgrsn5BtqCRPdmyXh6rAfdxN0=
 github.com/ava-labs/avalanche-network-runner v1.1.1 h1:nofZVOsbIDDXekPMc+2FHHpsaN6IU3NTtUE0Q9h5MHU=
 github.com/ava-labs/avalanche-network-runner v1.1.1/go.mod h1:7Wowcer7/2sMLCF6oI66wHX6rBKg9HyZlMAF5jw6OcQ=
+github.com/ava-labs/avalanche-network-runner v1.1.2-0.20220627191201-dc01ae797c3f h1:eikK1Ytj5jXw3HVsbNk66RENyqqRZoe6t+S7pJ+hJ3c=
+github.com/ava-labs/avalanche-network-runner v1.1.2-0.20220627191201-dc01ae797c3f/go.mod h1:7Wowcer7/2sMLCF6oI66wHX6rBKg9HyZlMAF5jw6OcQ=
 github.com/ava-labs/avalanchego v1.7.13 h1:Jh+BBoio6li+DRiRMEeipM+J3AA5TcrJGtR/X1ccMmA=
 github.com/ava-labs/avalanchego v1.7.13/go.mod h1:h1y5dOSGoHJjLMpsTQjO5fdesN24XgBM0fIOqUouuUg=
 github.com/ava-labs/coreth v0.8.12-rc.1 h1:kGRBhFuYsl1bNyJhygs6NdxXjHbcY4NxenWAPRyuyDA=
@@ -488,6 +490,7 @@ github.com/onsi/gomega v1.4.3/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1Cpa
 github.com/onsi/gomega v1.7.1/go.mod h1:XdKZgCCFLUoM/7CFJVPcG8C1xQ1AJ0vpAezJrB7JYyY=
 github.com/onsi/gomega v1.10.1/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1ybHNo=
 github.com/onsi/gomega v1.19.0 h1:4ieX6qQjPP/BfC3mpsAtIGGlxTWPeA3Inl/7DtXw1tw=
+github.com/onsi/gomega v1.19.0/go.mod h1:LY+I3pBVzYsTBU1AnDwOSxaYi9WoWiqgwooUqq9yPro=
 github.com/opentracing/opentracing-go v1.0.2/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=
 github.com/opentracing/opentracing-go v1.0.3-0.20180606204148-bd9c31933947/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=
 github.com/opentracing/opentracing-go v1.1.0/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=

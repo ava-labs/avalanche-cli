@@ -113,7 +113,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		err := deployer.DeployToLocalNetwork(chain, chainGenesis)
 		if err != nil {
 			if deployer.BackendStartedHere() {
-				if innerErr := binutils.KillgRPCServerProcess(); innerErr != nil {
+				if innerErr := binutils.KillgRPCServerProcess(*app); innerErr != nil {
 					(*app).Log.Warn("tried to kill the gRPC server process but it failed: %w", innerErr)
 				}
 			}

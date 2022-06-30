@@ -22,11 +22,14 @@ import (
 var (
 	app *this.Avalanche
 
-	logLevel string
-	Version  = ""
+	logLevel     string
+	Version      = ""
+	snapshotsDir string
+)
 
+func NewRootCmd() *cobra.Command {
 	// rootCmd represents the base command when called without any subcommands
-	rootCmd = &cobra.Command{
+	rootCmd := &cobra.Command{
 		Use: "avalanche",
 		Long: `Avalanche CLI is a command line tool that gives developers access to
 everything Avalanche. This beta release specializes in helping developers
@@ -37,9 +40,7 @@ in with avalanche subnet create myNewSubnet.`,
 		PersistentPreRunE: createApp,
 		Version:           Version,
 	}
-)
 
-func init() {
 	// Disable printing the completion command
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
@@ -58,6 +59,8 @@ func init() {
 	// add hidden backend command
 	backend := backendcmd.SetupBackendCmd(&app)
 	rootCmd.AddCommand(backend)
+
+	return rootCmd
 }
 
 func createApp(cmd *cobra.Command, args []string) error {
@@ -90,6 +93,14 @@ func setupEnv() (string, error) {
 		fmt.Printf("failed creating the basedir %s: %s\n", baseDir, err)
 		return "", err
 	}
+
+	// Create snapshots dir if it doesn't exist
+	snapshotsDir = filepath.Join(baseDir, constants.SnapshotsDirName)
+	if err = os.MkdirAll(snapshotsDir, os.ModePerm); err != nil {
+		fmt.Printf("failed creating the snapshots dir %s: %s\n", snapshotsDir, err)
+		os.Exit(1)
+	}
+
 	return baseDir, nil
 }
 
@@ -127,6 +138,7 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	rootCmd := NewRootCmd()
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
