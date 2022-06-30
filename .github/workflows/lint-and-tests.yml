@@ -64,10 +64,10 @@ jobs:
         shell: bash
         run: scripts/run.e2e.sh
       - name: 'Upload Artifact'
+        if: always()
         uses: actions/upload-artifact@v3
         with:
           name: cli-logs
-          if: always()
           path: |
             /home/runner/.avalanche-cli/
             !/home/runner/.avalanche-cli/bin/
