@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"path"
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -24,7 +23,6 @@ var errChainIDExists = errors.New("the provided chain ID already exists! Try ano
 type Avalanche struct {
 	Log     logging.Logger
 	baseDir string
-	runFile string
 }
 
 func New(baseDir string, log logging.Logger) *Avalanche {
@@ -34,12 +32,8 @@ func New(baseDir string, log logging.Logger) *Avalanche {
 	}
 }
 
-func (app *Avalanche) SetRunFile(runFile string) {
-	app.runFile = runFile
-}
-
 func (app *Avalanche) GetRunFile() string {
-	return app.runFile
+	return filepath.Join(app.GetRunDir(), constants.ServerRunFile)
 }
 
 func (app *Avalanche) GetBaseDir() string {
@@ -47,7 +41,7 @@ func (app *Avalanche) GetBaseDir() string {
 }
 
 func (app *Avalanche) GetRunDir() string {
-	return path.Join(app.baseDir, constants.RunDir)
+	return filepath.Join(app.baseDir, constants.RunDir)
 }
 
 func (app *Avalanche) GetGenesisPath(subnetName string) string {
