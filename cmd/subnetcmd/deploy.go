@@ -19,6 +19,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func newDeployCmd() *cobra.Command {
+	deployCmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
+	return deployCmd
+}
+
 // avalanche subnet deploy
 var deployCmd = &cobra.Command{
 	Use:   "deploy [subnetName]",

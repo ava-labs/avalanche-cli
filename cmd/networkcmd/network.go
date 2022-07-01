@@ -11,6 +11,23 @@ import (
 
 var app *application.Avalanche
 
+func NewNetworkCmd(injectedApp *application.Avalanche) *cobra.Command {
+	app = injectedApp
+
+	// network start
+	networkCmd.AddCommand(newStartCmd())
+
+	// network stop
+	networkCmd.AddCommand(newStopCmd())
+
+	// network clean
+	networkCmd.AddCommand(newCleanCmd())
+
+	// network status
+	networkCmd.AddCommand(newStatusCmd())
+	return networkCmd
+}
+
 var networkCmd = &cobra.Command{
 	Use:   "network",
 	Short: "Manage locally deployed subnets",
@@ -33,21 +50,4 @@ Expect more functionality in future releases.`,
 		}
 	},
 	Args: cobra.ExactArgs(0),
-}
-
-func SetupNetworkCmd(injectedApp *application.Avalanche) *cobra.Command {
-	app = injectedApp
-
-	// network start
-	networkCmd.AddCommand(startCmd)
-
-	// network stop
-	networkCmd.AddCommand(stopCmd)
-
-	// network clean
-	networkCmd.AddCommand(cleanCmd)
-
-	// network status
-	networkCmd.AddCommand(statusCmd)
-	return networkCmd
 }

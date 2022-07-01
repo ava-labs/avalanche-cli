@@ -13,6 +13,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
+func newStopCmd() *cobra.Command {
+	return stopCmd
+}
+
 var stopCmd = &cobra.Command{
 	Use:   "stop [snapshotName]",
 	Short: "Stop the running local network and preserve state",

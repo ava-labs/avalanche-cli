@@ -24,6 +24,15 @@ var (
 		"illegal name character: only letters, no special characters allowed")
 )
 
+func newCreateCmd() *cobra.Command {
+	createCmd.Flags().StringVar(&filename, "file", "", "file path of genesis to use instead of the wizard")
+	createCmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the SubnetEVM as the base template")
+	createCmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
+	createCmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
+
+	return createCmd
+}
+
 // avalanche subnet create
 var createCmd = &cobra.Command{
 	Use:   "create [subnetName]",

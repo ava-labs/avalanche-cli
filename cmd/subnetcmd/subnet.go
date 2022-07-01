@@ -11,35 +11,23 @@ import (
 
 var app *application.Avalanche
 
-func SetupSubnetCmd(injectedApp *application.Avalanche) *cobra.Command {
+func NewSubnetCmd(injectedApp *application.Avalanche) *cobra.Command {
 	app = injectedApp
 
 	// subnet create
-	subnetCmd.AddCommand(createCmd)
-	createCmd.Flags().StringVar(&filename, "file", "", "file path of genesis to use instead of the wizard")
-	createCmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the SubnetEVM as the base template")
-	createCmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
-	createCmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
+	subnetCmd.AddCommand(newCreateCmd())
 
 	// subnet delete
-	subnetCmd.AddCommand(deleteCmd)
+	subnetCmd.AddCommand(newDeleteCmd())
 
 	// subnet deploy
-	subnetCmd.AddCommand(deployCmd)
-	deployCmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
+	subnetCmd.AddCommand(newDeployCmd())
 
 	// subnet describe
-	subnetCmd.AddCommand(describeCmd)
-	describeCmd.Flags().BoolVarP(
-		&printGenesisOnly,
-		"genesis",
-		"g",
-		false,
-		"Print the genesis to the console directly instead of the summary",
-	)
+	subnetCmd.AddCommand(newDescribeCmd())
 
 	// subnet list
-	subnetCmd.AddCommand(listCmd)
+	subnetCmd.AddCommand(newListCmd())
 	return subnetCmd
 }
 

@@ -16,6 +16,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func newDescribeCmd() *cobra.Command {
+	describeCmd.Flags().BoolVarP(
+		&printGenesisOnly,
+		"genesis",
+		"g",
+		false,
+		"Print the genesis to the console directly instead of the summary",
+	)
+	return describeCmd
+}
+
 // avalanche subnet describe
 var describeCmd = &cobra.Command{
 	Use:   "describe [subnetName]",

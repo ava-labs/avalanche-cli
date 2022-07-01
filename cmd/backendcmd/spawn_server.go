@@ -22,7 +22,7 @@ var backendCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 }
 
-func SetupBackendCmd(injectedApp *application.Avalanche) *cobra.Command {
+func NewBackendCmd(injectedApp *application.Avalanche) *cobra.Command {
 	app = injectedApp
 
 	backendCmd.Hidden = true

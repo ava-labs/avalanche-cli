@@ -9,6 +9,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func newDeleteCmd() *cobra.Command {
+	return deleteCmd
+}
+
 // avalanche subnet delete
 var deleteCmd = &cobra.Command{
 	Use:   "delete",

@@ -13,6 +13,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func newListCmd() *cobra.Command {
+	return listCmd
+}
+
 // avalanche subnet list
 var listCmd = &cobra.Command{
 	Use:   "list",

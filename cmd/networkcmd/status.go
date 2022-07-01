@@ -11,6 +11,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
+func newStatusCmd() *cobra.Command {
+	return statusCmd
+}
+
 var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Prints the status of the local network",

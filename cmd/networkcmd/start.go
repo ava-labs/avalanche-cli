@@ -16,6 +16,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func newStartCmd() *cobra.Command {
+	return startCmd
+}
+
 var startCmd = &cobra.Command{
 	Use:   "start [snapshotName]",
 	Short: "Starts a stopped local network",

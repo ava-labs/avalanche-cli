@@ -10,6 +10,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
+func newCleanCmd() *cobra.Command {
+	return cleanCmd
+}
+
 var cleanCmd = &cobra.Command{
 	Use:   "clean",
 	Short: "Stop the running local network and delete state",

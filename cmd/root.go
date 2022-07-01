@@ -47,11 +47,11 @@ in with avalanche subnet create myNewSubnet.`,
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "ERROR", "log level for the application")
 
 	// add sub commands
-	rootCmd.AddCommand(subnetcmd.SetupSubnetCmd(app))
-	rootCmd.AddCommand(networkcmd.SetupNetworkCmd(app))
+	rootCmd.AddCommand(subnetcmd.NewSubnetCmd(app))
+	rootCmd.AddCommand(networkcmd.NewNetworkCmd(app))
 
 	// add hidden backend command
-	rootCmd.AddCommand(backendcmd.SetupBackendCmd(app))
+	rootCmd.AddCommand(backendcmd.NewBackendCmd(app))
 
 	return rootCmd
 }
