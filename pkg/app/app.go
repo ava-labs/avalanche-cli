@@ -25,11 +25,13 @@ type Avalanche struct {
 	baseDir string
 }
 
-func New(baseDir string, log logging.Logger) *Avalanche {
-	return &Avalanche{
-		baseDir: baseDir,
-		Log:     log,
-	}
+func New() *Avalanche {
+	return &Avalanche{}
+}
+
+func (app *Avalanche) Setup(baseDir string, log logging.Logger) {
+	app.baseDir = baseDir
+	app.Log = log
 }
 
 func (app *Avalanche) GetRunFile() string {

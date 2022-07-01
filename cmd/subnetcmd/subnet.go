@@ -9,9 +9,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var app **this.Avalanche
+var app *this.Avalanche
 
-func SetupSubnetCmd(injectedApp **this.Avalanche) *cobra.Command {
+func SetupSubnetCmd(injectedApp *this.Avalanche) *cobra.Command {
 	app = injectedApp
 
 	// subnet create

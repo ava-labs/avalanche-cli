@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var app **this.Avalanche
+var app *this.Avalanche
 
 var networkCmd = &cobra.Command{
 	Use:   "network",
@@ -35,7 +35,7 @@ Expect more functionality in future releases.`,
 	Args: cobra.ExactArgs(0),
 }
 
-func SetupNetworkCmd(injectedApp **this.Avalanche) *cobra.Command {
+func SetupNetworkCmd(injectedApp *this.Avalanche) *cobra.Command {
 	app = injectedApp
 
 	// network start

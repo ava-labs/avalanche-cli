@@ -50,14 +50,14 @@ in with avalanche subnet create myNewSubnet.`,
 
 	// We need to pass double pointers to app into these functions since app
 	// has not been initialized yet
-	subnet := subnetcmd.SetupSubnetCmd(&app)
+	subnet := subnetcmd.SetupSubnetCmd(app)
 	rootCmd.AddCommand(subnet)
 
-	network := networkcmd.SetupNetworkCmd(&app)
+	network := networkcmd.SetupNetworkCmd(app)
 	rootCmd.AddCommand(network)
 
 	// add hidden backend command
-	backend := backendcmd.SetupBackendCmd(&app)
+	backend := backendcmd.SetupBackendCmd(app)
 	rootCmd.AddCommand(backend)
 
 	return rootCmd
@@ -72,7 +72,7 @@ func createApp(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	app = this.New(baseDir, log)
+	app.Setup(baseDir, log)
 	return nil
 }
 
@@ -138,6 +138,7 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	app = this.New()
 	rootCmd := NewRootCmd()
 	err := rootCmd.Execute()
 	if err != nil {

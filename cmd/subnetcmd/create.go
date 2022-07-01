@@ -70,7 +70,7 @@ func getVMFromFlag() models.VMType {
 
 func createGenesis(cmd *cobra.Command, args []string) error {
 	subnetName := args[0]
-	if (*app).GenesisExists(subnetName) && !forceCreate {
+	if app.GenesisExists(subnetName) && !forceCreate {
 		return errors.New("configuration already exists. Use --" + forceFlag + " parameter to overwrite")
 	}
 
@@ -105,11 +105,11 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 
 		switch subnetType {
 		case subnetEvm:
-			genesisBytes, sc, err = vm.CreateEvmGenesis(subnetName, *app)
+			genesisBytes, sc, err = vm.CreateEvmGenesis(subnetName, app)
 			if err != nil {
 				return err
 			}
-			if err = (*app).CreateSidecar(sc); err != nil {
+			if err = app.CreateSidecar(sc); err != nil {
 				return err
 			}
 		case customVM:
@@ -117,20 +117,20 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			if err = (*app).CreateSidecar(sc); err != nil {
+			if err = app.CreateSidecar(sc); err != nil {
 				return err
 			}
 		default:
 			return errors.New("not implemented")
 		}
 
-		if err = (*app).WriteGenesisFile(subnetName, genesisBytes); err != nil {
+		if err = app.WriteGenesisFile(subnetName, genesisBytes); err != nil {
 			return err
 		}
 		ux.Logger.PrintToUser("Successfully created genesis")
 	} else {
 		ux.Logger.PrintToUser("Using specified genesis")
-		err := (*app).CopyGenesisFile(filename, subnetName)
+		err := app.CopyGenesisFile(filename, subnetName)
 		if err != nil {
 			return err
 		}
@@ -155,7 +155,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 			TokenName: "",
 		}
 
-		if err = (*app).CreateSidecar(sc); err != nil {
+		if err = app.CreateSidecar(sc); err != nil {
 			return err
 		}
 		ux.Logger.PrintToUser("Successfully created genesis")

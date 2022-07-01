@@ -30,7 +30,7 @@ is already running or if no subnets have been deployed.`,
 }
 
 func startNetwork(cmd *cobra.Command, args []string) error {
-	sd := subnet.NewLocalDeployer(*app)
+	sd := subnet.NewLocalDeployer(app)
 
 	if err := sd.StartServer(); err != nil {
 		return err
@@ -59,7 +59,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 
 	ux.Logger.PrintToUser(startMsg)
 
-	outputDirPrefix := path.Join((*app).GetRunDir(), "restart")
+	outputDirPrefix := path.Join(app.GetRunDir(), "restart")
 	outputDir, err := utils.MkDirWithTimestamp(outputDirPrefix)
 	if err != nil {
 		return err
