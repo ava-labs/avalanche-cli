@@ -143,13 +143,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	fmt.Println(threshold)
-	fmt.Println(controlKeys)
-	/*
-		deployer := subnet.NewPublicSubnetDeployer(app, privKeyPath, network)
-		return deployer.Deploy(controlKeys, threshold, chain, chain_genesis)
-	*/
-	return nil
+	deployer := subnet.NewPublicSubnetDeployer(app, privKeyPath, network)
+	return deployer.Deploy(controlKeys, threshold, chain, chain_genesis)
 }
 
 func getControlKeys() ([]string, bool, error) {
