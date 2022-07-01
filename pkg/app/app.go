@@ -56,6 +56,10 @@ func (app *Avalanche) GetSidecarPath(subnetName string) string {
 	return filepath.Join(app.baseDir, subnetName+constants.SidecarSuffix)
 }
 
+func (app *Avalanche) GetKeyDir() string {
+	return filepath.Join(app.baseDir, constants.KeyDir)
+}
+
 func (app *Avalanche) GetKeyPath(keyName string) string {
 	return filepath.Join(app.baseDir, constants.KeyDir, keyName+constants.KeySuffix)
 }

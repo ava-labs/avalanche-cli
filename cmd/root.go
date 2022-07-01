@@ -48,9 +48,6 @@ in with avalanche subnet create myNewSubnet.`,
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "ERROR", "log level for the application")
 
 	// add sub commands
-
-	// We need to pass double pointers to app into these functions since app
-	// has not been initialized yet
 	subnet := subnetcmd.SetupSubnetCmd(&app)
 	rootCmd.AddCommand(subnet)
 
@@ -106,9 +103,9 @@ func setupEnv() (string, error) {
 	}
 
 	// Create key dir if it doesn't exist
-	keyDir = app.
-	if err = os.MkdirAll(snapshotsDir, os.ModePerm); err != nil {
-		fmt.Printf("failed creating the snapshots dir %s: %s\n", snapshotsDir, err)
+	keyDir := app.GetKeyDir()
+	if err = os.MkdirAll(keyDir, os.ModePerm); err != nil {
+		fmt.Printf("failed creating the key dir %s: %s\n", keyDir, err)
 		os.Exit(1)
 	}
 
