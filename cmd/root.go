@@ -23,9 +23,8 @@ import (
 var (
 	app *this.Avalanche
 
-	logLevel     string
-	Version      = ""
-	snapshotsDir string
+	logLevel string
+	Version  = ""
 )
 
 func NewRootCmd() *cobra.Command {
@@ -96,14 +95,14 @@ func setupEnv() (string, error) {
 	}
 
 	// Create snapshots dir if it doesn't exist
-	snapshotsDir = filepath.Join(baseDir, constants.SnapshotsDirName)
+	snapshotsDir := filepath.Join(baseDir, constants.SnapshotsDirName)
 	if err = os.MkdirAll(snapshotsDir, os.ModePerm); err != nil {
 		fmt.Printf("failed creating the snapshots dir %s: %s\n", snapshotsDir, err)
 		os.Exit(1)
 	}
 
 	// Create key dir if it doesn't exist
-	keyDir := app.GetKeyDir()
+	keyDir := filepath.Join(baseDir, constants.KeyDir)
 	if err = os.MkdirAll(keyDir, os.ModePerm); err != nil {
 		fmt.Printf("failed creating the key dir %s: %s\n", keyDir, err)
 		os.Exit(1)
