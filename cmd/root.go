@@ -47,18 +47,11 @@ in with avalanche subnet create myNewSubnet.`,
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "ERROR", "log level for the application")
 
 	// add sub commands
-
-	// We need to pass double pointers to app into these functions since app
-	// has not been initialized yet
-	subnet := subnetcmd.SetupSubnetCmd(app)
-	rootCmd.AddCommand(subnet)
-
-	network := networkcmd.SetupNetworkCmd(app)
-	rootCmd.AddCommand(network)
+	rootCmd.AddCommand(subnetcmd.SetupSubnetCmd(app))
+	rootCmd.AddCommand(networkcmd.SetupNetworkCmd(app))
 
 	// add hidden backend command
-	backend := backendcmd.SetupBackendCmd(app)
-	rootCmd.AddCommand(backend)
+	rootCmd.AddCommand(backendcmd.SetupBackendCmd(app))
 
 	return rootCmd
 }
