@@ -23,6 +23,10 @@ const (
 
 	SidecarVersion = "1.0.0"
 
+	MaxLogFileSize   = 4
+	MaxNumOfLogFiles = 5
+	RetainOldFiles   = 0 // retain all old log files
+
 	RequestTimeout = 3 * time.Minute
 
 	DefaultTokenName = "TEST"

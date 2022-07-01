@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/internal/mocks"
-	"github.com/ava-labs/avalanche-cli/pkg/app"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -56,7 +56,7 @@ func TestDeployToLocal(t *testing.T) {
 	binDownloader := &mocks.PluginBinaryDownloader{}
 	binDownloader.On("Download", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil)
 
-	app := &app.Avalanche{
+	app := &application.Avalanche{
 		Log: logging.NoLog{},
 	}
 

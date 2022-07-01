@@ -8,7 +8,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/ava-labs/avalanche-cli/pkg/app"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/core"
@@ -47,7 +47,7 @@ func nextStage(currentState wizardState, direction stateDirection) wizardState {
 	return currentState
 }
 
-func CreateEvmGenesis(name string, app *app.Avalanche) ([]byte, *models.Sidecar, error) {
+func CreateEvmGenesis(name string, app *application.Avalanche) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating subnet %s", name)
 
 	genesis := core.Genesis{}

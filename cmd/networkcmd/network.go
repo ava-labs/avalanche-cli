@@ -5,11 +5,11 @@ package networkcmd
 import (
 	"fmt"
 
-	this "github.com/ava-labs/avalanche-cli/pkg/app"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/spf13/cobra"
 )
 
-var app *this.Avalanche
+var app *application.Avalanche
 
 var networkCmd = &cobra.Command{
 	Use:   "network",
@@ -35,7 +35,7 @@ Expect more functionality in future releases.`,
 	Args: cobra.ExactArgs(0),
 }
 
-func SetupNetworkCmd(injectedApp *this.Avalanche) *cobra.Command {
+func SetupNetworkCmd(injectedApp *application.Avalanche) *cobra.Command {
 	app = injectedApp
 
 	// network start

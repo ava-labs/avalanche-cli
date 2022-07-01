@@ -11,7 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
-	this "github.com/ava-labs/avalanche-cli/pkg/app"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -19,14 +19,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	maxLogFileSize   = 4
-	maxNumOfLogFiles = 5
-	retainOldFiles   = 0 // retain all old log files
-)
-
 var (
-	app *this.Avalanche
+	app *application.Avalanche
 
 	logLevel     string
 	Version      = ""
@@ -126,9 +120,9 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 
 	// some logging config params
 	config.LogFormat = logging.Colors
-	config.MaxSize = maxLogFileSize
-	config.MaxFiles = maxNumOfLogFiles
-	config.MaxAge = retainOldFiles
+	config.MaxSize = constants.MaxLogFileSize
+	config.MaxFiles = constants.MaxNumOfLogFiles
+	config.MaxAge = constants.RetainOldFiles
 
 	factory := logging.NewFactory(config)
 	log, err := factory.Make("avalanche")
@@ -144,7 +138,7 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	app = this.New()
+	app = application.New()
 	rootCmd := NewRootCmd()
 	err := rootCmd.Execute()
 	if err != nil {

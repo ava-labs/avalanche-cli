@@ -5,13 +5,13 @@ package subnetcmd
 import (
 	"fmt"
 
-	this "github.com/ava-labs/avalanche-cli/pkg/app"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/spf13/cobra"
 )
 
-var app *this.Avalanche
+var app *application.Avalanche
 
-func SetupSubnetCmd(injectedApp *this.Avalanche) *cobra.Command {
+func SetupSubnetCmd(injectedApp *application.Avalanche) *cobra.Command {
 	app = injectedApp
 
 	// subnet create

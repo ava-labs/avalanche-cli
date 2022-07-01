@@ -6,12 +6,12 @@ import (
 	"context"
 	"fmt"
 
-	this "github.com/ava-labs/avalanche-cli/pkg/app"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/spf13/cobra"
 )
 
-var app *this.Avalanche
+var app *application.Avalanche
 
 // backendCmd is the command to run the backend gRPC process
 var backendCmd = &cobra.Command{
@@ -22,7 +22,7 @@ var backendCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 }
 
-func SetupBackendCmd(injectedApp *this.Avalanche) *cobra.Command {
+func SetupBackendCmd(injectedApp *application.Avalanche) *cobra.Command {
 	app = injectedApp
 
 	backendCmd.Hidden = true
