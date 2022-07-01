@@ -19,6 +19,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	maxLogFileSize   = 4
+	maxNumOfLogFiles = 5
+	retainOldFiles   = 0 // retain all old log files
+)
+
 var (
 	app *this.Avalanche
 

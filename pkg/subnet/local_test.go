@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/cmd/mocks"
+	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/app"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
