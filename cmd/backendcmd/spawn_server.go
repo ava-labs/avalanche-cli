@@ -14,19 +14,16 @@ import (
 var app *application.Avalanche
 
 // backendCmd is the command to run the backend gRPC process
-var backendCmd = &cobra.Command{
-	Use:   "backend",
-	Short: "Run the backend server",
-	Long:  "This tool requires a backend process to run; this command starts it",
-	RunE:  backendController,
-	Args:  cobra.ExactArgs(1),
-}
-
-func NewBackendCmd(injectedApp *application.Avalanche) *cobra.Command {
+func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	app = injectedApp
-
-	backendCmd.Hidden = true
-	return backendCmd
+	return &cobra.Command{
+		Use:    "backend",
+		Short:  "Run the backend server",
+		Long:   "This tool requires a backend process to run; this command starts it",
+		RunE:   backendController,
+		Args:   cobra.ExactArgs(1),
+		Hidden: true,
+	}
 }
 
 func backendController(cmd *cobra.Command, args []string) error {

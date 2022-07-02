@@ -19,16 +19,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newDeployCmd() *cobra.Command {
-	deployCmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
-	return deployCmd
-}
-
 // avalanche subnet deploy
-var deployCmd = &cobra.Command{
-	Use:   "deploy [subnetName]",
-	Short: "Deploys a subnet configuration with clean state",
-	Long: `The subnet deploy command deploys your subnet configuration locally, to
+func newDeployCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "deploy [subnetName]",
+		Short: "Deploys a subnet configuration with clean state",
+		Long: `The subnet deploy command deploys your subnet configuration locally, to
 Fuji Testnet, or to Mainnet. Currently, the beta release only support
 local deploys.
 
@@ -37,8 +33,11 @@ to interact with the subnet.
 
 Subsequent calls of deploy using the same subnet configuration will
 redeploy the subnet and reset the chain state to genesis.`,
-	RunE: deploySubnet,
-	Args: cobra.ExactArgs(1),
+		RunE: deploySubnet,
+		Args: cobra.ExactArgs(1),
+	}
+	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
+	return cmd
 }
 
 var deployLocal bool

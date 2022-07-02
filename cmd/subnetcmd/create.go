@@ -24,20 +24,12 @@ var (
 		"illegal name character: only letters, no special characters allowed")
 )
 
-func newCreateCmd() *cobra.Command {
-	createCmd.Flags().StringVar(&filename, "file", "", "file path of genesis to use instead of the wizard")
-	createCmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the SubnetEVM as the base template")
-	createCmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
-	createCmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
-
-	return createCmd
-}
-
 // avalanche subnet create
-var createCmd = &cobra.Command{
-	Use:   "create [subnetName]",
-	Short: "Create a new subnet configuration",
-	Long: `The subnet create command builds a new genesis file to configure your subnet.
+func newCreateCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "create [subnetName]",
+		Short: "Create a new subnet configuration",
+		Long: `The subnet create command builds a new genesis file to configure your subnet.
 The command is structured as an interactive wizard. It will walk you through
 all the steps you need to create your first subnet.
 
@@ -50,8 +42,14 @@ SpacesVM.
 By default, running the command with a subnetName that already exists will
 cause the command to fail. If you’d like to overwrite an existing
 configuration, pass the -f flag.`,
-	Args: cobra.ExactArgs(1),
-	RunE: createGenesis,
+		Args: cobra.ExactArgs(1),
+		RunE: createGenesis,
+	}
+	cmd.Flags().StringVar(&filename, "file", "", "file path of genesis to use instead of the wizard")
+	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the SubnetEVM as the base template")
+	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
+	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
+	return cmd
 }
 
 func moreThanOneVMSelected() bool {
