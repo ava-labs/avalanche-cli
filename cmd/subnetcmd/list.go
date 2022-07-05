@@ -13,18 +13,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newListCmd() *cobra.Command {
-	return listCmd
-}
-
 // avalanche subnet list
-var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List all created subnet configurations",
-	Long: `The subnet list command prints the names of all created subnet
+func newListCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "List all created subnet configurations",
+		Long: `The subnet list command prints the names of all created subnet
 configurations.`,
-	RunE:         listGenesis,
-	SilenceUsage: true,
+		RunE:         listGenesis,
+		SilenceUsage: true,
+	}
 }
 
 type subnetMatrix [][]string

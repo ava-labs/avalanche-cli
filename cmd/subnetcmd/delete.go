@@ -9,17 +9,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newDeleteCmd() *cobra.Command {
-	return deleteCmd
-}
-
 // avalanche subnet delete
-var deleteCmd = &cobra.Command{
-	Use:   "delete",
-	Short: "Delete a subnet configuration",
-	Long:  "The subnet delete command deletes an existing subnet configuration.",
-	RunE:  deleteGenesis,
-	Args:  cobra.ExactArgs(1),
+func newDeleteCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "delete",
+		Short: "Delete a subnet configuration",
+		Long:  "The subnet delete command deletes an existing subnet configuration.",
+		RunE:  deleteGenesis,
+		Args:  cobra.ExactArgs(1),
+	}
 }
 
 func deleteGenesis(cmd *cobra.Command, args []string) error {

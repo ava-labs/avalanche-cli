@@ -11,27 +11,12 @@ import (
 
 var app *application.Avalanche
 
-func NewNetworkCmd(injectedApp *application.Avalanche) *cobra.Command {
+func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	app = injectedApp
-
-	// network start
-	networkCmd.AddCommand(newStartCmd())
-
-	// network stop
-	networkCmd.AddCommand(newStopCmd())
-
-	// network clean
-	networkCmd.AddCommand(newCleanCmd())
-
-	// network status
-	networkCmd.AddCommand(newStatusCmd())
-	return networkCmd
-}
-
-var networkCmd = &cobra.Command{
-	Use:   "network",
-	Short: "Manage locally deployed subnets",
-	Long: `The network command suite provides a collection of tools for managing
+	cmd := &cobra.Command{
+		Use:   "network",
+		Short: "Manage locally deployed subnets",
+		Long: `The network command suite provides a collection of tools for managing
 local subnet deployments.
 
 When a subnet is deployed locally, it runs on a local, multi-node
@@ -42,12 +27,21 @@ restart that network.
 This network currently supports multiple, concurrently deployed
 subnets and will eventually support nodes with varying configurations.
 Expect more functionality in future releases.`,
-
-	Run: func(cmd *cobra.Command, args []string) {
-		err := cmd.Help()
-		if err != nil {
-			fmt.Println(err)
-		}
-	},
-	Args: cobra.ExactArgs(0),
+		Run: func(cmd *cobra.Command, args []string) {
+			err := cmd.Help()
+			if err != nil {
+				fmt.Println(err)
+			}
+		},
+		Args: cobra.ExactArgs(0),
+	}
+	// network start
+	cmd.AddCommand(newStartCmd())
+	// network stop
+	cmd.AddCommand(newStopCmd())
+	// network clean
+	cmd.AddCommand(newCleanCmd())
+	// network status
+	cmd.AddCommand(newStatusCmd())
+	return cmd
 }

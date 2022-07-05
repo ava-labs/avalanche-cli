@@ -16,27 +16,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// avalanche subnet describe
 func newDescribeCmd() *cobra.Command {
-	describeCmd.Flags().BoolVarP(
+	cmd := &cobra.Command{
+		Use:   "describe [subnetName]",
+		Short: "Print a summary of the subnet’s configuration",
+		Long: `The subnet describe command prints the details of a subnet configuration
+to the console. By default, the command will print a summary of the
+configuration. By providing the --genesis flag, the command will instead
+print out the raw genesis file.`,
+		RunE: readGenesis,
+		Args: cobra.ExactArgs(1),
+	}
+	cmd.Flags().BoolVarP(
 		&printGenesisOnly,
 		"genesis",
 		"g",
 		false,
 		"Print the genesis to the console directly instead of the summary",
 	)
-	return describeCmd
-}
-
-// avalanche subnet describe
-var describeCmd = &cobra.Command{
-	Use:   "describe [subnetName]",
-	Short: "Print a summary of the subnet’s configuration",
-	Long: `The subnet describe command prints the details of a subnet configuration
-to the console. By default, the command will print a summary of the
-configuration. By providing the --genesis flag, the command will instead
-print out the raw genesis file.`,
-	RunE: readGenesis,
-	Args: cobra.ExactArgs(1),
+	return cmd
 }
 
 var printGenesisOnly bool

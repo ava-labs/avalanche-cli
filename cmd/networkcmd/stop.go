@@ -14,21 +14,19 @@ import (
 )
 
 func newStopCmd() *cobra.Command {
-	return stopCmd
-}
-
-var stopCmd = &cobra.Command{
-	Use:   "stop [snapshotName]",
-	Short: "Stop the running local network and preserve state",
-	Long: `The network stop command shuts down your local, multi-node network.
+	return &cobra.Command{
+		Use:   "stop [snapshotName]",
+		Short: "Stop the running local network and preserve state",
+		Long: `The network stop command shuts down your local, multi-node network.
 The deployed subnet will shutdown gracefully and save its state.
 If "snapshotName" is provided, the state will be saved under this named snapshot, which then can be
 restarted with "network start <snapshotName>". Otherwise, the default snapshot will be created, or overwritten
 if it exists. The default snapshot can then be restarted without parameter ("network start").`,
 
-	RunE:         stopNetwork,
-	Args:         cobra.MaximumNArgs(1),
-	SilenceUsage: true,
+		RunE:         stopNetwork,
+		Args:         cobra.MaximumNArgs(1),
+		SilenceUsage: true,
+	}
 }
 
 func stopNetwork(cmd *cobra.Command, args []string) error {

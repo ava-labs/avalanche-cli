@@ -11,41 +11,35 @@ import (
 
 var app *application.Avalanche
 
-func NewSubnetCmd(injectedApp *application.Avalanche) *cobra.Command {
-	app = injectedApp
-
-	// subnet create
-	subnetCmd.AddCommand(newCreateCmd())
-
-	// subnet delete
-	subnetCmd.AddCommand(newDeleteCmd())
-
-	// subnet deploy
-	subnetCmd.AddCommand(newDeployCmd())
-
-	// subnet describe
-	subnetCmd.AddCommand(newDescribeCmd())
-
-	// subnet list
-	subnetCmd.AddCommand(newListCmd())
-	return subnetCmd
-}
-
 // avalanche subnet
-var subnetCmd = &cobra.Command{
-	Use:   "subnet",
-	Short: "Create and deploy subnets",
-	Long: `The subnet command suite provides a collection of tools for developing
+func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "subnet",
+		Short: "Create and deploy subnets",
+		Long: `The subnet command suite provides a collection of tools for developing
 and deploying subnets.
 
 To get started, use the subnet create command wizard to walk through the
 configuration of your very first subnet. Then, go ahead and deploy it
 with the subnet deploy command. You can use the rest of the commands to
 manage your subnet configurations.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		err := cmd.Help()
-		if err != nil {
-			fmt.Println(err)
-		}
-	},
+		Run: func(cmd *cobra.Command, args []string) {
+			err := cmd.Help()
+			if err != nil {
+				fmt.Println(err)
+			}
+		},
+	}
+	app = injectedApp
+	// subnet create
+	cmd.AddCommand(newCreateCmd())
+	// subnet delete
+	cmd.AddCommand(newDeleteCmd())
+	// subnet deploy
+	cmd.AddCommand(newDeployCmd())
+	// subnet describe
+	cmd.AddCommand(newDescribeCmd())
+	// subnet list
+	cmd.AddCommand(newListCmd())
+	return cmd
 }

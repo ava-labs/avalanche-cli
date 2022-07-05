@@ -11,18 +11,15 @@ import (
 )
 
 func newCleanCmd() *cobra.Command {
-	return cleanCmd
-}
-
-var cleanCmd = &cobra.Command{
-	Use:   "clean",
-	Short: "Stop the running local network and delete state",
-	Long: `The network clean command shuts down your local, multi-node network. All
+	return &cobra.Command{
+		Use:   "clean",
+		Short: "Stop the running local network and delete state",
+		Long: `The network clean command shuts down your local, multi-node network. All
 the deployed subnets will shutdown and delete their state. The network
 may be started again by deploying a new subnet configuration.`,
-
-	Run:  clean,
-	Args: cobra.ExactArgs(0),
+		Run:  clean,
+		Args: cobra.ExactArgs(0),
+	}
 }
 
 func clean(cmd *cobra.Command, args []string) {
