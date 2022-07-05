@@ -9,7 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -144,7 +144,7 @@ func NewSoft(networkID uint32, opts ...SOpOption) (*SoftKey, error) {
 
 // LoadSoft loads the private key from disk and creates the corresponding SoftKey.
 func LoadSoft(networkID uint32, keyPath string) (*SoftKey, error) {
-	kb, err := ioutil.ReadFile(keyPath)
+	kb, err := os.ReadFile(keyPath)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +262,7 @@ func (m *SoftKey) Encode() string {
 // Saves the private key to disk with hex encoding.
 func (m *SoftKey) Save(p string) error {
 	k := hex.EncodeToString(m.privKeyRaw)
-	return ioutil.WriteFile(p, []byte(k), fsModeWrite)
+	return os.WriteFile(p, []byte(k), fsModeWrite)
 }
 
 func (m *SoftKey) P() []string { return []string{m.pAddr} }

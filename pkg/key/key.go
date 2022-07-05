@@ -12,8 +12,6 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 )
 
 var (
@@ -24,24 +22,6 @@ var (
 // Key defines methods for key manager interface.
 type Key interface {
 	// P returns all formatted P-Chain addresses.
-	P() []string
-	// Addresses returns the all raw ids.ShortID address.
-	Addresses() []ids.ShortID
-	// Match attempts to match a list of addresses up to the provided threshold.
-	Match(owners *secp256k1fx.OutputOwners, time uint64) ([]uint32, []ids.ShortID, bool)
-	// Spend attempts to spend all specified UTXOs (outputs)
-	// and returns the new UTXO inputs.
-	//
-	// If target amount is specified, it only uses the
-	// outputs until the total spending is below the target
-	// amount.
-	Spends(outputs []*avax.UTXO, opts ...OpOption) (
-		totalBalanceToSpend uint64,
-		inputs []*avax.TransferableInput,
-		signers [][]ids.ShortID,
-	)
-	// Sign generates [numSigs] signatures and attaches them to [pTx].
-	Sign(pTx *platformvm.Tx, signers [][]ids.ShortID) error
 }
 
 type Op struct {

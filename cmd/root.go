@@ -53,8 +53,7 @@ in with avalanche subnet create myNewSubnet.`,
 	network := networkcmd.SetupNetworkCmd(&app)
 	rootCmd.AddCommand(network)
 
-	key := keycmd.SetupKeyCmd(&app)
-	rootCmd.AddCommand(key)
+	rootCmd.AddCommand(keycmd.NewCmd(&app))
 
 	// add hidden backend command
 	backend := backendcmd.SetupBackendCmd(&app)
