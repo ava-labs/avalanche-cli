@@ -3,13 +3,13 @@ package keycmd
 import (
 	"fmt"
 
-	this "github.com/ava-labs/avalanche-cli/pkg/app"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/spf13/cobra"
 )
 
-var app **this.Avalanche
+var app *application.Avalanche
 
-func NewCmd(injectedApp **this.Avalanche) *cobra.Command {
+func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	app = injectedApp
 
 	cmd := &cobra.Command{
@@ -27,8 +27,7 @@ To get started, use the key create command.`,
 		},
 	}
 
-	// subnet create
+	// avalanche key create
 	cmd.AddCommand(newCreateCmd())
-
 	return cmd
 }

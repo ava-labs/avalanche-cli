@@ -59,7 +59,18 @@ func newCreateCmd() *cobra.Command {
 		SilenceUsage: true,
 	}
 
-	cmd.Flags().StringVar(&filename, "file", "", "file path of genesis to use instead of the wizard")
-	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
+	cmd.Flags().StringVar(
+		&filename,
+		"filename",
+		"",
+		"file path of genesis to use instead of the wizard",
+	)
+	cmd.Flags().BoolVarP(
+		&forceCreate,
+		forceFlag,
+		"f",
+		false,
+		"overwrite the existing configuration if one exists",
+	)
 	return cmd
 }

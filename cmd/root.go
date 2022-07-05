@@ -49,8 +49,7 @@ in with avalanche subnet create myNewSubnet.`,
 	// add sub commands
 	rootCmd.AddCommand(subnetcmd.NewCmd(app))
 	rootCmd.AddCommand(networkcmd.NewCmd(app))
-
-	rootCmd.AddCommand(keycmd.NewCmd(&app))
+	rootCmd.AddCommand(keycmd.NewCmd(app))
 
 	// add hidden backend command
 	rootCmd.AddCommand(backendcmd.NewCmd(app))
