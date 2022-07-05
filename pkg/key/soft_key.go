@@ -46,7 +46,7 @@ const (
 	privKeySize   = 64
 
 	rawEwoqPk      = "ewoqjP7PxY4yr3iLTpLisriqt94hdyDFNgchSxGGztUrTXtNN"
-	EwoqPrivateKey = "PrivateKey-" + rawEwoqPk
+	EwoqPrivateKey = privKeyEncPfx + rawEwoqPk
 )
 
 var keyFactory = new(crypto.FactorySECP256K1R)

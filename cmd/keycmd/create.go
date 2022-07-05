@@ -63,14 +63,14 @@ func newCreateCmd() *cobra.Command {
 		&filename,
 		"file",
 		"",
-		"file path of genesis to use instead of the wizard",
+		"import the key from an existing key file",
 	)
 	cmd.Flags().BoolVarP(
 		&forceCreate,
 		forceFlag,
 		"f",
 		false,
-		"overwrite the existing configuration if one exists",
+		"overwrite an existing key with the same name",
 	)
 	return cmd
 }
