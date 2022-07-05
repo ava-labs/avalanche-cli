@@ -88,6 +88,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return errors.New("Invalid subnet " + args[0])
 	}
 
+	// get the network to deploy to
 	var network models.Network
 	if deployLocal {
 		network = models.Local
@@ -102,6 +103,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		network = models.NetworkFromString(networkStr)
 	}
 
+	// deploy based on chosen network
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.String())
 	chain := chains[0]
 	chain_genesis := filepath.Join(app.GetBaseDir(), fmt.Sprintf("%s_genesis.json", chain))
@@ -109,11 +111,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	switch network {
 	case models.Local:
 		app.Log.Debug("Deploy local")
-		// TODO: Add signal management here. If we Ctrl-C this guy it can leave
-		// the gRPC server is a weird state. Should kill that too
 		deployer := subnet.NewLocalSubnetDeployer(app)
-		err := deployer.DeployToLocalNetwork(chain, chain_genesis)
-		if err != nil {
+		if err := deployer.DeployToLocalNetwork(chain, chain_genesis); err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(); innerErr != nil {
 					app.Log.Warn("tried to kill the gRPC server process but it failed: %w", innerErr)
@@ -122,10 +121,12 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	case models.Fuji: // just make the switch pass
-	case models.Mainnet: // just make the switch pass
+	case models.Mainnet: // just make the switch pass, fuij/main implementation is the same (for now)
 	default:
 		return errors.New("Not implemented")
 	}
+
+	// prompt for control keys
 	controlKeys, cancelled, err := getControlKeys()
 	if err != nil {
 		return err
@@ -135,6 +136,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	// prompt for threshold
 	var threshold uint32
 
 	if len(controlKeys) > 0 {
@@ -143,16 +145,33 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
+
+	// deploy to public network
 	deployer := subnet.NewPublicSubnetDeployer(app, privKeyPath, network)
-	return deployer.Deploy(controlKeys, threshold, chain, chain_genesis)
+	subnetID, blockchainID, err := deployer.Deploy(controlKeys, threshold, chain, chain_genesis)
+	if err != nil {
+		return err
+	}
+
+	// update sidecar
+	// TODO: need to do something for backwards compatibility?
+	sidecar, err := app.LoadSidecar(chain)
+	if err != nil {
+		return err
+	}
+	sidecar.SubnetID = subnetID
+	sidecar.BlockchainID = blockchainID
+	return app.UpdateSidecar(&sidecar)
 }
 
 func getControlKeys() ([]string, bool, error) {
 	controlKeysPrompt := "Configure which addresses allow to add new validators"
+	// TODO: is this text ok?
 	noControlKeysPrompt := "You did not add any control key. This means anyone can add validators to your subnet. " +
 		"This is considered unsafe. Do you really want to continue?"
 
 	for {
+		// ask in a loop so that if some condition is not met we can keep asking
 		controlKeys, cancelled, err := controlKeysLoop(controlKeysPrompt)
 		if err != nil {
 			return nil, false, err
@@ -161,19 +180,23 @@ func getControlKeys() ([]string, bool, error) {
 			return nil, cancelled, nil
 		}
 		if len(controlKeys) == 0 {
+			// we want to prompt if the user indeed wants to proceed without any control keys
 			yes, err := prompts.CaptureNoYes(noControlKeysPrompt)
 			if err != nil {
 				return nil, false, err
 			}
+			// the user confirms no control keys
 			if yes {
 				return controlKeys, false, nil
 			}
+			// otherwise we go back to the loop for asking
 		} else {
 			return controlKeys, false, nil
 		}
 	}
 }
 
+// controlKeysLoop asks as many controlkeys the user requires, until Done or Cancel is selected
 func controlKeysLoop(controlKeysPrompt string) ([]string, bool, error) {
 	const (
 		addCtrlKey = "Add control key"
@@ -214,6 +237,7 @@ func controlKeysLoop(controlKeysPrompt string) ([]string, bool, error) {
 	}
 }
 
+// getThreshold prompts for the threshold of addresses as a number
 func getThreshold(minLen uint64) (uint32, error) {
 	threshold, err := prompts.CaptureUint64("Enter required number of control addresses to add validators")
 	if err != nil {

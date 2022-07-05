@@ -3,9 +3,6 @@ package subnet
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/app"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -20,13 +17,6 @@ import (
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
-)
-
-type DeployLocation int
-
-const (
-	Local DeployLocation = iota
-	Remote
 )
 
 type PublicSubnetDeployer struct {
@@ -47,28 +37,28 @@ func NewPublicSubnetDeployer(app *app.Avalanche, privKeyPath string, network mod
 	}
 }
 
-func (d *PublicSubnetDeployer) Deploy(controlKeys []string, threshold uint32, chain, genesis string) error {
+func (d *PublicSubnetDeployer) Deploy(controlKeys []string, threshold uint32, chain, genesis string) (ids.ID, ids.ID, error) {
 	wallet, api, err := d.loadWallet()
 	if err != nil {
-		return err
+		return ids.Empty, ids.Empty, err
 	}
 	vmID, err := utils.VMID(chain)
 	if err != nil {
-		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
+		return ids.Empty, ids.Empty, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
 
 	subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
 	if err != nil {
-		return err
+		return ids.Empty, ids.Empty, err
 	}
 	ux.Logger.PrintToUser(subnetID.String())
 
 	blockchainID, err := d.createBlockchainTx(chain, vmID, subnetID, []byte(genesis), wallet)
 	if err != nil {
-		return err
+		return ids.Empty, ids.Empty, err
 	}
 	ux.Logger.PrintToUser("Endpoint for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", blockchainID.String(), vmID.String(), api, blockchainID.String())
-	return nil
+	return subnetID, blockchainID, nil
 }
 
 func (d *PublicSubnetDeployer) loadWallet() (primary.Wallet, string, error) {
@@ -128,40 +118,4 @@ func (d *PublicSubnetDeployer) createSubnetTx(controlKeys []string, threshold ui
 	}
 	opts := []common.Option{}
 	return wallet.P().IssueCreateSubnetTx(owners, opts...)
-}
-
-func (d *PublicSubnetDeployer) StartValidator(chain, chain_genesis string, location DeployLocation) error {
-	switch location {
-	case Local:
-		if err := d.startLocalNode(chain, chain_genesis); err != nil {
-			return err
-		}
-	default:
-		return fmt.Errorf("currently, only locally running avalanchego nodes supported")
-	}
-	return nil
-}
-
-func (d *PublicSubnetDeployer) startLocalNode(chain, chain_genesis string) error {
-	avalancheGoBinPath, pluginDir, err := d.LocalSubnetDeployer.setupBinaries(chain, chain_genesis)
-	if err != nil {
-		return err
-	}
-	buildDir := filepath.Base(pluginDir)
-	args := []string{"--network-id", "fuji", "--build-dir", buildDir}
-	startCmd := exec.Command(avalancheGoBinPath, args...)
-	fmt.Println("starting local fuji node...")
-	outputFile, err := os.CreateTemp("", "startCmd*")
-	if err != nil {
-		return err
-	}
-	fmt.Println(outputFile.Name())
-	// TODO: should this be redirected to this app's log file instead?
-	startCmd.Stdout = outputFile
-	startCmd.Stderr = outputFile
-	if err := startCmd.Start(); err != nil {
-		return err
-	}
-
-	return nil
 }

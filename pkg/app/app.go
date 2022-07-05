@@ -117,6 +117,16 @@ func (app *Avalanche) LoadSidecar(subnetName string) (models.Sidecar, error) {
 	return sc, err
 }
 
+func (app *Avalanche) UpdateSidecar(sc *models.Sidecar) error {
+	scBytes, err := json.MarshalIndent(sc, "", "    ")
+	if err != nil {
+		return nil
+	}
+
+	sidecarPath := app.GetSidecarPath(sc.Name)
+	return os.WriteFile(sidecarPath, scBytes, WriteReadReadPerms)
+}
+
 func (app *Avalanche) listSideCarNames() ([]string, error) {
 	var names []string
 	matches, err := filepath.Glob(filepath.Join(app.baseDir, "*"+constants.Sidecar_suffix))

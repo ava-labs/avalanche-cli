@@ -11,11 +11,38 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestUpdateSideCar(t *testing.T) {
+	assert := assert.New(t)
+	sc := &models.Sidecar{
+		Name:      "TEST",
+		Vm:        models.SubnetEvm,
+		TokenName: "TEST",
+		ChainID:   "42",
+	}
+
+	ap := newTestApp(t)
+
+	err := ap.CreateSidecar(sc)
+	assert.NoError(err)
+	control, err := ap.LoadSidecar(sc.Name)
+	assert.NoError(err)
+	assert.Equal(*sc, control)
+	sc.BlockchainID = ids.GenerateTestID()
+	sc.SubnetID = ids.GenerateTestID()
+
+	err = ap.UpdateSidecar(sc)
+	assert.NoError(err)
+	control, err = ap.LoadSidecar(sc.Name)
+	assert.NoError(err)
+	assert.Equal(*sc, control)
+}
 
 func Test_writeGenesisFile_success(t *testing.T) {
 	genesisBytes := []byte("genesis")
