@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package cmd
+package networkcmd
 
 import (
 	"fmt"
@@ -10,23 +10,25 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/spf13/cobra"
 )
 
-var startCmd = &cobra.Command{
-	Use:   "start [snapshotName]",
-	Short: "Starts a stopped local network",
-	Long: `The network start command starts a local, multi-node Avalanche network
+func newStartCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "start [snapshotName]",
+		Short: "Starts a stopped local network",
+		Long: `The network start command starts a local, multi-node Avalanche network
 on your machine. If "snapshotName" is provided, that snapshot will be used for starting the network
 if it can be found. Otherwise, the last saved unnamed (default) snapshot will be used. The command may fail if the local network
 is already running or if no subnets have been deployed.`,
 
-	RunE:         startNetwork,
-	Args:         cobra.MaximumNArgs(1),
-	SilenceUsage: true,
+		RunE:         startNetwork,
+		Args:         cobra.MaximumNArgs(1),
+		SilenceUsage: true,
+	}
 }
 
 func startNetwork(cmd *cobra.Command, args []string) error {
@@ -88,7 +90,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 
 	// TODO: this should probably be extracted from the deployer and
 	// used as an independent helper
-	clusterInfo, err := sd.WaitForHealthy(ctx, cli, healthCheckInterval)
+	clusterInfo, err := sd.WaitForHealthy(ctx, cli, constants.HealthCheckInterval)
 	if err != nil {
 		return fmt.Errorf("failed waiting for network to become healthy: %s", err)
 	}

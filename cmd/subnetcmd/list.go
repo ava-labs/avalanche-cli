@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package cmd
+package subnetcmd
 
 import (
 	"os"
@@ -13,14 +13,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// listCmd represents the list command
-var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List all created subnet configurations",
-	Long: `The subnet list command prints the names of all created subnet
+// avalanche subnet list
+func newListCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "List all created subnet configurations",
+		Long: `The subnet list command prints the names of all created subnet
 configurations.`,
-	RunE:         listGenesis,
-	SilenceUsage: true,
+		RunE:         listGenesis,
+		SilenceUsage: true,
+	}
 }
 
 type subnetMatrix [][]string

@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package cmd
+package subnetcmd
 
 import (
 	"fmt"
@@ -9,23 +9,33 @@ import (
 	"strconv"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
 
-// listCmd represents the list command
-var readCmd = &cobra.Command{
-	Use:   "describe [subnetName]",
-	Short: "Print a summary of the subnet’s configuration",
-	Long: `The subnet describe command prints the details of a subnet configuration
+// avalanche subnet describe
+func newDescribeCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "describe [subnetName]",
+		Short: "Print a summary of the subnet’s configuration",
+		Long: `The subnet describe command prints the details of a subnet configuration
 to the console. By default, the command will print a summary of the
 configuration. By providing the --genesis flag, the command will instead
 print out the raw genesis file.`,
-	RunE: readGenesis,
-	Args: cobra.ExactArgs(1),
+		RunE: readGenesis,
+		Args: cobra.ExactArgs(1),
+	}
+	cmd.Flags().BoolVarP(
+		&printGenesisOnly,
+		"genesis",
+		"g",
+		false,
+		"Print the genesis to the console directly instead of the summary",
+	)
+	return cmd
 }
 
 var printGenesisOnly bool

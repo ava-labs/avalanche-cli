@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package app
+package application
 
 import (
 	"encoding/json"
@@ -25,15 +25,21 @@ type Avalanche struct {
 	baseDir string
 }
 
-func New(baseDir string, log logging.Logger) *Avalanche {
-	return &Avalanche{
-		baseDir: baseDir,
-		Log:     log,
-	}
+func New() *Avalanche {
+	return &Avalanche{}
+}
+
+func (app *Avalanche) Setup(baseDir string, log logging.Logger) {
+	app.baseDir = baseDir
+	app.Log = log
 }
 
 func (app *Avalanche) GetRunFile() string {
 	return filepath.Join(app.GetRunDir(), constants.ServerRunFile)
+}
+
+func (app *Avalanche) GetSnapshotsDir() string {
+	return filepath.Join(app.baseDir, constants.SnapshotsDirName)
 }
 
 func (app *Avalanche) GetBaseDir() string {

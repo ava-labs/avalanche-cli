@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package cmd
+package subnetcmd
 
 import (
 	"encoding/json"
@@ -10,20 +10,21 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/cmd/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
 
-// deployCmd represents the deploy command
-var deployCmd = &cobra.Command{
-	Use:   "deploy [subnetName]",
-	Short: "Deploys a subnet configuration with clean state",
-	Long: `The subnet deploy command deploys your subnet configuration locally, to
+// avalanche subnet deploy
+func newDeployCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "deploy [subnetName]",
+		Short: "Deploys a subnet configuration with clean state",
+		Long: `The subnet deploy command deploys your subnet configuration locally, to
 Fuji Testnet, or to Mainnet. Currently, the beta release only support
 local deploys.
 
@@ -32,8 +33,11 @@ to interact with the subnet.
 
 Subsequent calls of deploy using the same subnet configuration will
 redeploy the subnet and reset the chain state to genesis.`,
-	RunE: deploySubnet,
-	Args: cobra.ExactArgs(1),
+		RunE: deploySubnet,
+		Args: cobra.ExactArgs(1),
+	}
+	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
+	return cmd
 }
 
 var deployLocal bool
