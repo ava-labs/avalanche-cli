@@ -20,7 +20,7 @@ var (
 func createKey(cmd *cobra.Command, args []string) error {
 	keyName := args[0]
 
-	if (*app).KeyExists(keyName) && !forceCreate {
+	if app.KeyExists(keyName) && !forceCreate {
 		return errors.New("key already exists. Use --" + forceFlag + " parameter to overwrite")
 	}
 
@@ -31,7 +31,7 @@ func createKey(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		keyPath := (*app).GetKeyPath(keyName)
+		keyPath := app.GetKeyPath(keyName)
 		if err := k.Save(keyPath); err != nil {
 			return err
 		}
@@ -40,7 +40,7 @@ func createKey(cmd *cobra.Command, args []string) error {
 		// Load key from file
 		// TODO add validation that key is legal
 		ux.Logger.PrintToUser("Loading user key...")
-		if err := (*app).CopyKeyFile(filename, keyName); err != nil {
+		if err := app.CopyKeyFile(filename, keyName); err != nil {
 			return err
 		}
 		ux.Logger.PrintToUser("Key loaded")
