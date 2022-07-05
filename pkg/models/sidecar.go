@@ -6,7 +6,7 @@ import "github.com/ava-labs/avalanchego/ids"
 
 type Sidecar struct {
 	Name         string
-	Vm           VmType
+	VM           VMType
 	Subnet       string
 	TokenName    string
 	ChainID      string

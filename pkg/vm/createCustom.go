@@ -5,9 +5,9 @@ package vm
 import (
 	"os"
 
-	"github.com/ava-labs/avalanche-cli/cmd/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
 func CreateCustomGenesis(name string) ([]byte, *models.Sidecar, error) {
@@ -20,7 +20,7 @@ func CreateCustomGenesis(name string) ([]byte, *models.Sidecar, error) {
 
 	sc := &models.Sidecar{
 		Name:      name,
-		Vm:        models.CustomVm,
+		VM:        models.CustomVM,
 		Subnet:    name,
 		TokenName: "",
 	}

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ava-labs/avalanche-cli/cmd/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile"
 	"github.com/ethereum/go-ethereum/common"
@@ -71,7 +71,7 @@ func getAdminList(initialPrompt string, info string) ([]common.Address, bool, er
 		case cancelMsg:
 			return []common.Address{}, true, nil
 		default:
-			return []common.Address{}, false, errors.New("Unexpected option")
+			return []common.Address{}, false, errors.New("unexpected option")
 		}
 	}
 }
@@ -142,7 +142,7 @@ func removePrecompile(arr []string, s string) ([]string, error) {
 			return append(arr[:i], arr[i+1:]...), nil
 		}
 	}
-	return arr, errors.New("String not in array")
+	return arr, errors.New("string not in array")
 }
 
 func getPrecompiles(config params.ChainConfig) (params.ChainConfig, stateDirection, error) {
@@ -233,6 +233,5 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, stateDirecti
 		if len(remainingPrecompiles) == 1 {
 			return config, forward, nil
 		}
-
 	}
 }

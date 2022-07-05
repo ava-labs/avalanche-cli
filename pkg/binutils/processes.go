@@ -10,27 +10,30 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
 	"strings"
 	"syscall"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/server"
+	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/shirou/gopsutil/process"
 )
 
-// gRPCTimeout is a common error message if the gRPC server can't be reached
-var gRPCTimeout = errors.New("Timed out trying to contact backend controller, it is most probably not running.")
+// errGRPCTimeout is a common error message if the gRPC server can't be reached
+var errGRPCTimeout = errors.New("timed out trying to contact backend controller, it is most probably not running")
 
 // ProcessChecker is responsible for checking if the gRPC server is running
 type ProcessChecker interface {
 	// IsServerProcessRunning returns true if the gRPC server is running,
 	// or false if not
-	IsServerProcessRunning() (bool, error)
+	IsServerProcessRunning(app *application.Avalanche) (bool, error)
 }
 
 type realProcessRunner struct{}
@@ -48,24 +51,26 @@ func NewGRPCClient() (client.Client, error) {
 		DialTimeout: gRPCDialTimeout,
 	})
 	if errors.Is(err, context.DeadlineExceeded) {
-		err = gRPCTimeout
+		err = errGRPCTimeout
 	}
 	return client, err
 }
 
 // NewGRPCClient hides away the details (params) of creating a gRPC server
-func NewGRPCServer() (server.Server, error) {
+func NewGRPCServer(snapshotsDir string) (server.Server, error) {
 	return server.New(server.Config{
-		Port:        gRPCServerEndpoint,
-		GwPort:      gRPCGatewayEndpoint,
-		DialTimeout: gRPCDialTimeout,
+		Port:                gRPCServerEndpoint,
+		GwPort:              gRPCGatewayEndpoint,
+		DialTimeout:         gRPCDialTimeout,
+		SnapshotsDir:        snapshotsDir,
+		RedirectNodesOutput: false,
 	})
 }
 
 // IsServerProcessRunning returns true if the gRPC server is running,
 // or false if not
-func (rpr *realProcessRunner) IsServerProcessRunning() (bool, error) {
-	pid, err := GetServerPID()
+func (rpr *realProcessRunner) IsServerProcessRunning(app *application.Avalanche) (bool, error) {
+	pid, err := GetServerPID(app)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return false, err
@@ -93,30 +98,38 @@ type runFile struct {
 	GRPCserverFileName string `json:"gRPCserverFileName"`
 }
 
-func GetServerPID() (int, error) {
+func GetServerPID(app *application.Avalanche) (int, error) {
 	var rf runFile
-	run, err := os.ReadFile(constants.ServerRunFile)
+	serverRunFilePath := app.GetRunFile()
+	run, err := os.ReadFile(serverRunFilePath)
 	if err != nil {
-		return 0, fmt.Errorf("failed reading process info file at %s: %s\n", constants.ServerRunFile, err)
+		return 0, fmt.Errorf("failed reading process info file at %s: %s", serverRunFilePath, err)
 	}
 	if err := json.Unmarshal(run, &rf); err != nil {
-		return 0, fmt.Errorf("failed unmarshalling server run file at %s: %s\n", constants.ServerRunFile, err)
+		return 0, fmt.Errorf("failed unmarshalling server run file at %s: %s", serverRunFilePath, err)
 	}
 
 	if rf.Pid == 0 {
-		return 0, fmt.Errorf("failed reading pid from info file at %s: %s\n", constants.ServerRunFile, err)
+		return 0, fmt.Errorf("failed reading pid from info file at %s: %s", serverRunFilePath, err)
 	}
 	return rf.Pid, nil
 }
 
 // StartServerProcess starts the gRPC server as a reentrant process of this binary
 // it just executes `avalanche-cli backend start`
-func StartServerProcess(log logging.Logger) error {
+func StartServerProcess(app *application.Avalanche) error {
 	thisBin := reexec.Self()
 
 	args := []string{"backend", "start"}
 	cmd := exec.Command(thisBin, args...)
-	outputFile, err := os.CreateTemp("", "avalanche-cli-backend*")
+
+	outputDirPrefix := path.Join(app.GetRunDir(), "server")
+	outputDir, err := utils.MkDirWithTimestamp(outputDirPrefix)
+	if err != nil {
+		return err
+	}
+
+	outputFile, err := os.Create(path.Join(outputDir, "avalanche-cli-backend"))
 	if err != nil {
 		return err
 	}
@@ -139,9 +152,9 @@ func StartServerProcess(log logging.Logger) error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(constants.ServerRunFile, rfBytes, perms.ReadWrite)
-	if err != nil {
-		log.Warn("could not write gRPC process info to file: %s", err)
+
+	if err := os.WriteFile(app.GetRunFile(), rfBytes, perms.ReadWrite); err != nil {
+		app.Log.Warn("could not write gRPC process info to file: %s", err)
 	}
 	return nil
 }
@@ -159,7 +172,7 @@ func GetAsyncContext() context.Context {
 	return ctx
 }
 
-func KillgRPCServerProcess() error {
+func KillgRPCServerProcess(app *application.Avalanche) error {
 	cli, err := NewGRPCClient()
 	if err != nil {
 		return err
@@ -169,6 +182,7 @@ func KillgRPCServerProcess() error {
 	ctx := GetAsyncContext()
 	_, err = cli.Stop(ctx)
 	if err != nil {
+		// TODO: use error type not string comparison
 		if strings.Contains(err.Error(), "not bootstrapped") {
 			ux.Logger.PrintToUser("No local network running")
 			return nil
@@ -176,7 +190,7 @@ func KillgRPCServerProcess() error {
 		return fmt.Errorf("failed stopping gRPC server process: %s", err)
 	}
 
-	pid, err := GetServerPID()
+	pid, err := GetServerPID(app)
 	if err != nil {
 		return fmt.Errorf("failed getting PID from run file: %s", err)
 	}
@@ -188,8 +202,9 @@ func KillgRPCServerProcess() error {
 		return fmt.Errorf("failed killing process with pid %d: %s", pid, err)
 	}
 
-	if err := os.Remove(constants.ServerRunFile); err != nil {
-		return fmt.Errorf("failed removing run file %s: %s", constants.ServerRunFile, err)
+	serverRunFilePath := app.GetRunFile()
+	if err := os.Remove(serverRunFilePath); err != nil {
+		return fmt.Errorf("failed removing run file %s: %s", serverRunFilePath, err)
 	}
 	return nil
 }

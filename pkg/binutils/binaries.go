@@ -16,8 +16,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/ux"
-	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/coreos/go-semver/semver"
 )
@@ -29,7 +28,7 @@ var (
 )
 
 type PluginBinaryDownloader interface {
-	Download(vmID ids.ID, pluginDir, binDir string) error
+	Download(vmIDs map[string]struct{}, pluginDir, binDir string) error
 }
 
 type BinaryChecker interface {
@@ -51,6 +50,16 @@ func NewPluginBinaryDownloader(log logging.Logger) PluginBinaryDownloader {
 	return &pluginBinaryDownloader{
 		log: log,
 	}
+}
+
+// Sanitize archive file pathing from "G305: Zip Slip vulnerability"
+func sanitizeArchivePath(d, t string) (v string, err error) {
+	v = filepath.Join(d, t)
+	if strings.HasPrefix(v, filepath.Clean(d)) {
+		return v, nil
+	}
+
+	return "", fmt.Errorf("%s: %s", "content filepath is tainted", t)
 }
 
 // InstallArchive installs the binary archive downloaded
@@ -80,10 +89,10 @@ func installZipArchive(zipfile []byte, binDir string) error {
 			return fmt.Errorf("failed opening zip file: %w", err)
 		}
 
-		path := filepath.Join(binDir, f.Name)
-		// Check for ZipSlip (Directory traversal)
-		if !strings.HasPrefix(path, filepath.Clean(binDir)+string(os.PathSeparator)) {
-			return fmt.Errorf("illegal file path: %s", path)
+		// check for zip slip
+		path, err := sanitizeArchivePath(binDir, f.Name)
+		if err != nil {
+			return err
 		}
 
 		if f.FileInfo().IsDir() {
@@ -99,8 +108,8 @@ func installZipArchive(zipfile []byte, binDir string) error {
 				return fmt.Errorf("failed opening file from zip entry: %w", err)
 			}
 
-			_, err = io.Copy(f, rc)
-			if err != nil {
+			_, err = io.CopyN(f, rc, maxCopy)
+			if err != nil && err != io.EOF {
 				return fmt.Errorf("failed writing zip file entry to disk: %w", err)
 			}
 			if err := f.Close(); err != nil {
@@ -144,8 +153,13 @@ func installTarGzArchive(targz []byte, binDir string) error {
 		case header == nil:
 			continue
 		}
+
 		// the target location where the dir/file should be created
-		target := filepath.Join(binDir, header.Name)
+		// check for zip slip
+		target, err := sanitizeArchivePath(binDir, header.Name)
+		if err != nil {
+			return err
+		}
 
 		// check the file type
 		switch header.Typeflag {
@@ -163,7 +177,7 @@ func installTarGzArchive(targz []byte, binDir string) error {
 				return fmt.Errorf("failed opening new file from tar entry %w", err)
 			}
 			// copy over contents
-			if _, err := io.Copy(f, tarReader); err != nil {
+			if _, err := io.CopyN(f, tarReader, maxCopy); err != nil && err != io.EOF {
 				return fmt.Errorf("failed writing tar entry contents to disk: %w", err)
 			}
 			// manually close here after each file operation; defering would cause each file close
@@ -215,18 +229,27 @@ func (abc *binaryChecker) ExistsWithLatestVersion(binDir, binPrefix string) (boo
 	return true, latest, nil
 }
 
+func (d *pluginBinaryDownloader) Download(vmIDs map[string]struct{}, pluginDir, binDir string) error {
+	for id := range vmIDs {
+		err := d.DownloadVM(id, pluginDir, binDir)
+		if err != nil {
+			return err
+		}
+	}
+	// remove all other plugins other than the given and `evm`
+	if err := cleanupPluginDir(vmIDs, pluginDir); err != nil {
+		return err
+	}
+	return nil
+}
+
 // getVMBinary downloads the binary from the binary server URL
-func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir, binDir string) error {
-	vmID := id.String()
+func (d *pluginBinaryDownloader) DownloadVM(vmID string, pluginDir, binDir string) error {
 	binaryPath := filepath.Join(pluginDir, vmID)
 	info, err := os.Stat(binaryPath)
 	if err == nil {
 		if info.Mode().IsRegular() {
 			d.log.Debug("binary already exists, skipping download")
-			// remove all other plugins other than this one and `evm` for now.
-			if err := cleanupPluginDir(vmID, pluginDir); err != nil {
-				return err
-			}
 			return nil
 		}
 		return fmt.Errorf("binary plugin path %q was found but is not a regular file", binaryPath)
@@ -273,19 +296,11 @@ func (d *pluginBinaryDownloader) Download(id ids.ID, pluginDir, binDir string) e
 		return fmt.Errorf("failed copying subnet-evm to plugin dir: %w", err)
 	}
 
-	// remove all other plugins other than this one and `evm` for now.
-	if err := cleanupPluginDir(vmID, pluginDir); err != nil {
-		return err
-	}
-
 	return nil
 }
 
-// cleanupPluginDir removes all other plugins other than the given one and `evm` for now.
-// TODO: this is only acceptable at this stage where ANR can't run multiple plugins anyways
-// but should be later REMOVED if we support multiple plugins (with the caveat of a new
-// tricky situation about to decide when and how to remove plugins from the plugin dir)
-func cleanupPluginDir(vmID, pluginDir string) error {
+// cleanupPluginDir removes all other plugins other than the given and `evm`
+func cleanupPluginDir(vmIDs map[string]struct{}, pluginDir string) error {
 	// list all plugins
 	entries, err := os.ReadDir(pluginDir)
 	if err != nil {
@@ -294,7 +309,9 @@ func cleanupPluginDir(vmID, pluginDir string) error {
 
 	pluginWhiteList := map[string]struct{}{
 		"evm": {},
-		vmID:  {},
+	}
+	for vmID := range vmIDs {
+		pluginWhiteList[vmID] = struct{}{}
 	}
 
 	for _, e := range entries {

@@ -8,21 +8,28 @@ import (
 	"os/user"
 	"path/filepath"
 
-	this "github.com/ava-labs/avalanche-cli/pkg/app"
-	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/spf13/cobra"
 )
 
 var (
-	app *this.Avalanche
+	app *application.Avalanche
 
-	logLevel string
-	Version  = ""
+	logLevel     string
+	Version      = ""
+	snapshotsDir string
+)
 
+func NewRootCmd() *cobra.Command {
 	// rootCmd represents the base command when called without any subcommands
-	rootCmd = &cobra.Command{
+	rootCmd := &cobra.Command{
 		Use: "avalanche",
 		Long: `Avalanche CLI is a command line tool that gives developers access to
 everything Avalanche. This beta release specializes in helping developers
@@ -33,64 +40,23 @@ in with avalanche subnet create myNewSubnet.`,
 		PersistentPreRunE: createApp,
 		Version:           Version,
 	}
-)
 
-func init() {
 	// Disable printing the completion command
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "ERROR", "log level for the application")
 
 	// add sub commands
-	rootCmd.AddCommand(subnetCmd)
-	rootCmd.AddCommand(networkCmd)
+	rootCmd.AddCommand(subnetcmd.NewCmd(app))
+	rootCmd.AddCommand(networkcmd.NewCmd(app))
 
 	rootCmd.AddCommand(createKeyCmd)
 	createKeyCmd.Flags().StringVar(&privKeyPath, "private-key-path", "", "path to private key")
 
 	// add hidden backend command
-	backendCmd.Hidden = true
-	rootCmd.AddCommand(backendCmd)
+	rootCmd.AddCommand(backendcmd.NewCmd(app))
 
-	// subnet create
-	subnetCmd.AddCommand(createCmd)
-	createCmd.Flags().StringVar(&filename, "file", "", "file path of genesis to use instead of the wizard")
-	createCmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the SubnetEVM as the base template")
-	createCmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
-	createCmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
-
-	// subnet delete
-	subnetCmd.AddCommand(deleteCmd)
-
-	// subnet deploy
-	subnetCmd.AddCommand(deployCmd)
-	deployCmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
-
-	// subnet describe
-	subnetCmd.AddCommand(readCmd)
-	readCmd.Flags().BoolVarP(
-		&printGenesisOnly,
-		"genesis",
-		"g",
-		false,
-		"Print the genesis to the console directly instead of the summary",
-	)
-
-	// subnet list
-	subnetCmd.AddCommand(listCmd)
-
-	// network
-	// network start
-	networkCmd.AddCommand(startCmd)
-
-	// network stop
-	networkCmd.AddCommand(stopCmd)
-
-	// network clean
-	networkCmd.AddCommand(cleanCmd)
-
-	// network status
-	networkCmd.AddCommand(statusCmd)
+	return rootCmd
 }
 
 func createApp(cmd *cobra.Command, args []string) error {
@@ -102,11 +68,7 @@ func createApp(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	app = this.New(baseDir, log)
-
-	if privKeyPath == "" {
-		privKeyPath = app.GetDefaultKeyPath()
-	}
+	app.Setup(baseDir, log)
 	return nil
 }
 
@@ -118,7 +80,7 @@ func setupEnv() (string, error) {
 		fmt.Printf("unable to get system user %s\n", err)
 		return "", err
 	}
-	baseDir := filepath.Join(usr.HomeDir, BaseDirName)
+	baseDir := filepath.Join(usr.HomeDir, constants.BaseDirName)
 
 	// Create base dir if it doesn't exist
 	err = os.MkdirAll(baseDir, os.ModePerm)
@@ -127,6 +89,14 @@ func setupEnv() (string, error) {
 		fmt.Printf("failed creating the basedir %s: %s\n", baseDir, err)
 		return "", err
 	}
+
+	// Create snapshots dir if it doesn't exist
+	snapshotsDir = filepath.Join(baseDir, constants.SnapshotsDirName)
+	if err = os.MkdirAll(snapshotsDir, os.ModePerm); err != nil {
+		fmt.Printf("failed creating the snapshots dir %s: %s\n", snapshotsDir, err)
+		os.Exit(1)
+	}
+
 	return baseDir, nil
 }
 
@@ -146,9 +116,9 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 
 	// some logging config params
 	config.LogFormat = logging.Colors
-	config.MaxSize = maxLogFileSize
-	config.MaxFiles = maxNumOfLogFiles
-	config.MaxAge = retainOldFiles
+	config.MaxSize = constants.MaxLogFileSize
+	config.MaxFiles = constants.MaxNumOfLogFiles
+	config.MaxAge = constants.RetainOldFiles
 
 	factory := logging.NewFactory(config)
 	log, err := factory.Make("avalanche")
@@ -164,6 +134,8 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	app = application.New()
+	rootCmd := NewRootCmd()
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)

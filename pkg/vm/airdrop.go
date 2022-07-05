@@ -4,7 +4,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/ava-labs/avalanche-cli/cmd/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/subnet-evm/core"
 )
 
@@ -12,10 +12,10 @@ func getDefaultAllocation() (core.GenesisAlloc, error) {
 	allocation := core.GenesisAlloc{}
 	defaultAmount, ok := new(big.Int).SetString(defaultAirdropAmount, 10)
 	if !ok {
-		return allocation, errors.New("Unable to decode default allocation")
+		return allocation, errors.New("unable to decode default allocation")
 	}
 
-	allocation[Prefunded_ewoq_Address] = core.GenesisAccount{
+	allocation[PrefundedEwoqAddress] = core.GenesisAccount{
 		Balance: defaultAmount,
 	}
 	return allocation, nil
