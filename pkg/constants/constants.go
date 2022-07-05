@@ -42,4 +42,7 @@ const (
 	DefaultSnapshotName          = "default-1654102509"
 	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/bootstrapSnapshot.tar.gz"
 	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
+
+	KeyDir    = "key"
+	KeySuffix = ".pk"
 )
