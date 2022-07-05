@@ -61,7 +61,7 @@ func newCreateCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(
 		&filename,
-		"filename",
+		"file",
 		"",
 		"file path of genesis to use instead of the wizard",
 	)

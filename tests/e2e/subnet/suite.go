@@ -9,7 +9,10 @@ import (
 	"github.com/onsi/gomega"
 )
 
-const subnetName = "e2eSubnetTest"
+const (
+	subnetName  = "e2eSubnetTest"
+	genesisPath = "tests/e2e/assets/test_genesis.json"
+)
 
 var _ = ginkgo.Describe("[Subnet]", func() {
 	ginkgo.AfterEach(func() {
@@ -19,16 +22,12 @@ var _ = ginkgo.Describe("[Subnet]", func() {
 	})
 
 	ginkgo.It("can create and delete a subnet config", func() {
-		genesis := "tests/e2e/genesis/test_genesis.json"
-
-		commands.CreateSubnetConfig(subnetName, genesis)
+		commands.CreateSubnetConfig(subnetName, genesisPath)
 		commands.DeleteSubnetConfig(subnetName)
 	})
 
 	ginkgo.It("can deploy a subnet", func() {
-		genesis := "tests/e2e/genesis/test_genesis.json"
-
-		commands.CreateSubnetConfig(subnetName, genesis)
+		commands.CreateSubnetConfig(subnetName, genesisPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpc, err := utils.ParseRPCFromDeployOutput(deployOutput)
 		if err != nil {

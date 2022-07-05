@@ -9,7 +9,10 @@ import (
 	"github.com/onsi/gomega"
 )
 
-const subnetName = "e2eSubnetTest"
+const (
+	subnetName  = "e2eSubnetTest"
+	genesisPath = "tests/e2e/assets/test_genesis.json"
+)
 
 var _ = ginkgo.Describe("[Network]", func() {
 	ginkgo.AfterEach(func() {
@@ -19,9 +22,7 @@ var _ = ginkgo.Describe("[Network]", func() {
 	})
 
 	ginkgo.It("can stop and restart a deployed subnet", func() {
-		genesis := "tests/e2e/genesis/test_genesis.json"
-
-		commands.CreateSubnetConfig(subnetName, genesis)
+		commands.CreateSubnetConfig(subnetName, genesisPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpc, err := utils.ParseRPCFromDeployOutput(deployOutput)
 		if err != nil {

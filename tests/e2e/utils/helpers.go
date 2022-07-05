@@ -49,6 +49,19 @@ func SubnetConfigExists(subnetName string) (bool, error) {
 	return genesisExists && sidecarExists, nil
 }
 
+func KeyExists(keyName string) (bool, error) {
+	keyPath := path.Join(GetBaseDir(), constants.KeyDir, keyName+constants.KeySuffix)
+	if _, err := os.Stat(keyPath); errors.Is(err, os.ErrNotExist) {
+		// does *not* exist
+		return false, nil
+	} else if err != nil {
+		// Schrodinger: file may or may not exist. See err for details.
+		return false, err
+	}
+
+	return true, nil
+}
+
 func DeleteConfigs(subnetName string) error {
 	genesis := path.Join(GetBaseDir(), subnetName+constants.GenesisSuffix)
 	if _, err := os.Stat(genesis); err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -67,6 +80,19 @@ func DeleteConfigs(subnetName string) error {
 
 	// ignore error, file may not exist
 	os.Remove(sidecar)
+
+	return nil
+}
+
+func DeleteKeys(keyName string) error {
+	keyPath := path.Join(GetBaseDir(), constants.KeyDir, keyName+constants.KeySuffix)
+	if _, err := os.Stat(keyPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		// Schrodinger: file may or may not exist. See err for details.
+		return err
+	}
+
+	// ignore error, file may not exist
+	os.Remove(keyPath)
 
 	return nil
 }
@@ -176,4 +202,25 @@ func RunHardhatScript(script string) (string, string, error) {
 		fmt.Println(err)
 	}
 	return string(output), stderr, err
+}
+
+func PrintStdErr(err error) {
+	exitErr, typeOk := err.(*exec.ExitError)
+	if typeOk {
+		fmt.Println(string(exitErr.Stderr))
+	}
+}
+
+func CheckKeyEquality(keyPath1, keyPath2 string) (bool, error) {
+	key1, err := os.ReadFile(keyPath1)
+	if err != nil {
+		return false, err
+	}
+
+	key2, err := os.ReadFile(keyPath2)
+	if err != nil {
+		return false, err
+	}
+
+	return string(key1) == string(key2), nil
 }
