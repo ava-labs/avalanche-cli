@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/app"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -42,12 +42,12 @@ type Deployer struct {
 	getClientFunc       getGRPCClientFunc
 	binaryDownloader    binutils.PluginBinaryDownloader
 	healthCheckInterval time.Duration
-	app                 *app.Avalanche
+	app                 *application.Avalanche
 	backendStartedHere  bool
 	setDefaultSnapshot  setDefaultSnapshotFunc
 }
 
-func NewLocalDeployer(app *app.Avalanche) *Deployer {
+func NewLocalDeployer(app *application.Avalanche) *Deployer {
 	return &Deployer{
 		procChecker:         binutils.NewProcessChecker(),
 		binChecker:          binutils.NewBinaryChecker(),

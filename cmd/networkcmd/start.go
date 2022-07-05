@@ -16,21 +16,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var startCmd = &cobra.Command{
-	Use:   "start [snapshotName]",
-	Short: "Starts a stopped local network",
-	Long: `The network start command starts a local, multi-node Avalanche network
+func newStartCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "start [snapshotName]",
+		Short: "Starts a stopped local network",
+		Long: `The network start command starts a local, multi-node Avalanche network
 on your machine. If "snapshotName" is provided, that snapshot will be used for starting the network
 if it can be found. Otherwise, the last saved unnamed (default) snapshot will be used. The command may fail if the local network
 is already running or if no subnets have been deployed.`,
 
-	RunE:         startNetwork,
-	Args:         cobra.MaximumNArgs(1),
-	SilenceUsage: true,
+		RunE:         startNetwork,
+		Args:         cobra.MaximumNArgs(1),
+		SilenceUsage: true,
+	}
 }
 
 func startNetwork(cmd *cobra.Command, args []string) error {
-	sd := subnet.NewLocalDeployer(*app)
+	sd := subnet.NewLocalDeployer(app)
 
 	if err := sd.StartServer(); err != nil {
 		return err
@@ -59,7 +61,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 
 	ux.Logger.PrintToUser(startMsg)
 
-	outputDirPrefix := path.Join((*app).GetRunDir(), "restart")
+	outputDirPrefix := path.Join(app.GetRunDir(), "restart")
 	outputDir, err := utils.MkDirWithTimestamp(outputDirPrefix)
 	if err != nil {
 		return err

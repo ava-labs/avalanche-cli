@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"unicode"
 
-	"github.com/ava-labs/avalanche-cli/cmd/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/spf13/cobra"
@@ -25,10 +25,11 @@ var (
 )
 
 // avalanche subnet create
-var createCmd = &cobra.Command{
-	Use:   "create [subnetName]",
-	Short: "Create a new subnet configuration",
-	Long: `The subnet create command builds a new genesis file to configure your subnet.
+func newCreateCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "create [subnetName]",
+		Short: "Create a new subnet configuration",
+		Long: `The subnet create command builds a new genesis file to configure your subnet.
 The command is structured as an interactive wizard. It will walk you through
 all the steps you need to create your first subnet.
 
@@ -41,8 +42,14 @@ SpacesVM.
 By default, running the command with a subnetName that already exists will
 cause the command to fail. If you’d like to overwrite an existing
 configuration, pass the -f flag.`,
-	Args: cobra.ExactArgs(1),
-	RunE: createGenesis,
+		Args: cobra.ExactArgs(1),
+		RunE: createGenesis,
+	}
+	cmd.Flags().StringVar(&filename, "file", "", "file path of genesis to use instead of the wizard")
+	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the SubnetEVM as the base template")
+	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
+	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
+	return cmd
 }
 
 func moreThanOneVMSelected() bool {
@@ -70,7 +77,7 @@ func getVMFromFlag() models.VMType {
 
 func createGenesis(cmd *cobra.Command, args []string) error {
 	subnetName := args[0]
-	if (*app).GenesisExists(subnetName) && !forceCreate {
+	if app.GenesisExists(subnetName) && !forceCreate {
 		return errors.New("configuration already exists. Use --" + forceFlag + " parameter to overwrite")
 	}
 
@@ -105,11 +112,11 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 
 		switch subnetType {
 		case subnetEvm:
-			genesisBytes, sc, err = vm.CreateEvmGenesis(subnetName, *app)
+			genesisBytes, sc, err = vm.CreateEvmGenesis(subnetName, app)
 			if err != nil {
 				return err
 			}
-			if err = (*app).CreateSidecar(sc); err != nil {
+			if err = app.CreateSidecar(sc); err != nil {
 				return err
 			}
 		case customVM:
@@ -117,20 +124,20 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			if err = (*app).CreateSidecar(sc); err != nil {
+			if err = app.CreateSidecar(sc); err != nil {
 				return err
 			}
 		default:
 			return errors.New("not implemented")
 		}
 
-		if err = (*app).WriteGenesisFile(subnetName, genesisBytes); err != nil {
+		if err = app.WriteGenesisFile(subnetName, genesisBytes); err != nil {
 			return err
 		}
 		ux.Logger.PrintToUser("Successfully created genesis")
 	} else {
 		ux.Logger.PrintToUser("Using specified genesis")
-		err := (*app).CopyGenesisFile(filename, subnetName)
+		err := app.CopyGenesisFile(filename, subnetName)
 		if err != nil {
 			return err
 		}
@@ -155,7 +162,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 			TokenName: "",
 		}
 
-		if err = (*app).CreateSidecar(sc); err != nil {
+		if err = app.CreateSidecar(sc); err != nil {
 			return err
 		}
 		ux.Logger.PrintToUser("Successfully created genesis")

@@ -12,7 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/keycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
-	this "github.com/ava-labs/avalanche-cli/pkg/app"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	app *this.Avalanche
+	app *application.Avalanche
 
 	logLevel string
 	Version  = ""
@@ -47,17 +47,13 @@ in with avalanche subnet create myNewSubnet.`,
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "ERROR", "log level for the application")
 
 	// add sub commands
-	subnet := subnetcmd.SetupSubnetCmd(&app)
-	rootCmd.AddCommand(subnet)
-
-	network := networkcmd.SetupNetworkCmd(&app)
-	rootCmd.AddCommand(network)
+	rootCmd.AddCommand(subnetcmd.NewCmd(app))
+	rootCmd.AddCommand(networkcmd.NewCmd(app))
 
 	rootCmd.AddCommand(keycmd.NewCmd(&app))
 
 	// add hidden backend command
-	backend := backendcmd.SetupBackendCmd(&app)
-	rootCmd.AddCommand(backend)
+	rootCmd.AddCommand(backendcmd.NewCmd(app))
 
 	return rootCmd
 }
@@ -71,7 +67,7 @@ func createApp(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	app = this.New(baseDir, log)
+	app.Setup(baseDir, log)
 	return nil
 }
 
@@ -126,9 +122,9 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 
 	// some logging config params
 	config.LogFormat = logging.Colors
-	config.MaxSize = maxLogFileSize
-	config.MaxFiles = maxNumOfLogFiles
-	config.MaxAge = retainOldFiles
+	config.MaxSize = constants.MaxLogFileSize
+	config.MaxFiles = constants.MaxNumOfLogFiles
+	config.MaxAge = constants.RetainOldFiles
 
 	factory := logging.NewFactory(config)
 	log, err := factory.Make("avalanche")
@@ -144,6 +140,7 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	app = application.New()
 	rootCmd := NewRootCmd()
 	err := rootCmd.Execute()
 	if err != nil {

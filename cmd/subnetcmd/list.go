@@ -14,13 +14,15 @@ import (
 )
 
 // avalanche subnet list
-var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List all created subnet configurations",
-	Long: `The subnet list command prints the names of all created subnet
+func newListCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "List all created subnet configurations",
+		Long: `The subnet list command prints the names of all created subnet
 configurations.`,
-	RunE:         listGenesis,
-	SilenceUsage: true,
+		RunE:         listGenesis,
+		SilenceUsage: true,
+	}
 }
 
 type subnetMatrix [][]string
@@ -38,7 +40,7 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	table.SetRowLine(true)
 
-	files, err := os.ReadDir((*app).GetBaseDir())
+	files, err := os.ReadDir(app.GetBaseDir())
 	if err != nil {
 		return err
 	}
@@ -50,13 +52,13 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 	// DO NOT FAIL, just print No for deployed status
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
-		(*app).Log.Warn("could not get connection to server: %w", err)
+		app.Log.Warn("could not get connection to server: %w", err)
 	}
 	if cli != nil {
 		ctx := binutils.GetAsyncContext()
 		resp, err := cli.Status(ctx)
 		if err != nil {
-			(*app).Log.Warn("failed to query server for status: %w", err)
+			app.Log.Warn("failed to query server for status: %w", err)
 		}
 
 		if resp != nil {
@@ -70,7 +72,7 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 		if strings.Contains(f.Name(), constants.SidecarSuffix) {
 			carName := strings.TrimSuffix(f.Name(), constants.SidecarSuffix)
 			// read in sidecar file
-			sc, err := (*app).LoadSidecar(carName)
+			sc, err := app.LoadSidecar(carName)
 			if err != nil {
 				return err
 			}
@@ -79,7 +81,7 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 			// for older sidecars, check in genesis if sidecar has
 			// no chainID set
 			if chainID == "" {
-				sc, err := (*app).LoadEvmGenesis(carName)
+				sc, err := app.LoadEvmGenesis(carName)
 				// ignore the error in this case: just leave it to ""
 				if err == nil {
 					chainID = sc.Config.ChainID.String()

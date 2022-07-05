@@ -10,20 +10,21 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/cmd/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
 
 // avalanche subnet deploy
-var deployCmd = &cobra.Command{
-	Use:   "deploy [subnetName]",
-	Short: "Deploys a subnet configuration with clean state",
-	Long: `The subnet deploy command deploys your subnet configuration locally, to
+func newDeployCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "deploy [subnetName]",
+		Short: "Deploys a subnet configuration with clean state",
+		Long: `The subnet deploy command deploys your subnet configuration locally, to
 Fuji Testnet, or to Mainnet. Currently, the beta release only support
 local deploys.
 
@@ -32,14 +33,17 @@ to interact with the subnet.
 
 Subsequent calls of deploy using the same subnet configuration will
 redeploy the subnet and reset the chain state to genesis.`,
-	RunE: deploySubnet,
-	Args: cobra.ExactArgs(1),
+		RunE: deploySubnet,
+		Args: cobra.ExactArgs(1),
+	}
+	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
+	return cmd
 }
 
 var deployLocal bool
 
 func getChainsInSubnet(subnetName string) ([]string, error) {
-	files, err := os.ReadDir((*app).GetBaseDir())
+	files, err := os.ReadDir(app.GetBaseDir())
 	if err != nil {
 		return []string{}, fmt.Errorf("failed to read baseDir :%w", err)
 	}
@@ -49,7 +53,7 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 	for _, f := range files {
 		if strings.Contains(f.Name(), constants.SidecarSuffix) {
 			// read in sidecar file
-			path := filepath.Join((*app).GetBaseDir(), f.Name())
+			path := filepath.Join(app.GetBaseDir(), f.Name())
 			jsonBytes, err := os.ReadFile(path)
 			if err != nil {
 				return []string{}, fmt.Errorf("failed reading file %s: %w", path, err)
@@ -104,17 +108,17 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// TODO
 	switch network {
 	case models.Local:
-		(*app).Log.Debug("Deploy local")
+		app.Log.Debug("Deploy local")
 		// TODO: Add signal management here. If we Ctrl-C this guy it can leave
 		// the gRPC server is a weird state. Should kill that too
-		deployer := subnet.NewLocalDeployer(*app)
+		deployer := subnet.NewLocalDeployer(app)
 		chain := chains[0]
-		chainGenesis := filepath.Join((*app).GetBaseDir(), fmt.Sprintf("%s_genesis.json", chain))
+		chainGenesis := filepath.Join(app.GetBaseDir(), fmt.Sprintf("%s_genesis.json", chain))
 		err := deployer.DeployToLocalNetwork(chain, chainGenesis)
 		if err != nil {
 			if deployer.BackendStartedHere() {
-				if innerErr := binutils.KillgRPCServerProcess(*app); innerErr != nil {
-					(*app).Log.Warn("tried to kill the gRPC server process but it failed: %w", innerErr)
+				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {
+					app.Log.Warn("tried to kill the gRPC server process but it failed: %w", innerErr)
 				}
 			}
 		}
