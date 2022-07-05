@@ -113,13 +113,13 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// deploy based on chosen network
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.String())
 	chain := chains[0]
-	chain_genesis := filepath.Join(app.GetBaseDir(), fmt.Sprintf("%s_genesis.json", chain))
+	chainGenesis := filepath.Join(app.GetBaseDir(), fmt.Sprintf("%s_genesis.json", chain))
 
 	switch network {
 	case models.Local:
 		app.Log.Debug("Deploy local")
 		deployer := subnet.NewLocalSubnetDeployer(app)
-		if err := deployer.DeployToLocalNetwork(chain, chain_genesis); err != nil {
+		if err := deployer.DeployToLocalNetwork(chain, chainGenesis); err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {
 					app.Log.Warn("tried to kill the gRPC server process but it failed: %w", innerErr)
@@ -159,7 +159,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// deploy to public network
 	deployer := subnet.NewPublicSubnetDeployer(app, app.GetKeyPath(keyName), network)
-	subnetID, blockchainID, err := deployer.Deploy(controlKeys, threshold, chain, chain_genesis)
+	subnetID, blockchainID, err := deployer.Deploy(controlKeys, threshold, chain, chainGenesis)
 	if err != nil {
 		return err
 	}
@@ -255,7 +255,7 @@ func getThreshold(minLen uint64) (uint32, error) {
 		return 0, err
 	}
 	if threshold > minLen {
-		return 0, fmt.Errorf("The threshold can't be bigger than the number of control addresses")
+		return 0, fmt.Errorf("the threshold can't be bigger than the number of control addresses")
 	}
 	return uint32(threshold), err
 }
