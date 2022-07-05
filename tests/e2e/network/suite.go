@@ -2,7 +2,6 @@ package network
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
@@ -33,10 +32,6 @@ var _ = ginkgo.Describe("[Network]", func() {
 		err = utils.SetHardhatRPC(rpc)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		// Subnet doesn't seem to accept JSON requests from hardhat right away
-		// Test fails without this
-		time.Sleep(60 * time.Second)
-
 		// Deploy greeter contract
 		scriptOutput, scriptErr, err := utils.RunHardhatScript(utils.GreeterScript)
 		if scriptErr != "" {
@@ -65,10 +60,6 @@ var _ = ginkgo.Describe("[Network]", func() {
 
 		err = utils.SetHardhatRPC(rpc)
 		gomega.Expect(err).Should(gomega.BeNil())
-
-		// Subnet doesn't seem to accept JSON requests from hardhat right away
-		// Test fails without this
-		time.Sleep(60 * time.Second)
 
 		// Check greeter contract has right value
 		scriptOutput, scriptErr, err = utils.RunHardhatScript(utils.GreeterCheck)
