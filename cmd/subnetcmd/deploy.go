@@ -19,6 +19,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	deployLocal bool
+	keyName     string
+)
+
 // avalanche subnet deploy
 func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -38,10 +43,9 @@ redeploy the subnet and reset the chain state to genesis.`,
 		Args:         cobra.ExactArgs(1),
 	}
 	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
+	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use")
 	return cmd
 }
-
-var deployLocal bool
 
 func getChainsInSubnet(subnetName string) ([]string, error) {
 	files, err := os.ReadDir(app.GetBaseDir())
@@ -110,7 +114,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.String())
 	chain := chains[0]
 	chain_genesis := filepath.Join(app.GetBaseDir(), fmt.Sprintf("%s_genesis.json", chain))
-	// TODO
+
 	switch network {
 	case models.Local:
 		app.Log.Debug("Deploy local")
@@ -124,6 +128,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	case models.Fuji: // just make the switch pass
+		if keyName == "" {
+			return errors.New("this command requires the name of the private key")
+		}
+
 	case models.Mainnet: // just make the switch pass, fuij/main implementation is the same (for now)
 	default:
 		return errors.New("not implemented")
@@ -150,7 +158,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	// deploy to public network
-	deployer := subnet.NewPublicSubnetDeployer(app, privKeyPath, network)
+	deployer := subnet.NewPublicSubnetDeployer(app, app.GetKeyPath(keyName), network)
 	subnetID, blockchainID, err := deployer.Deploy(controlKeys, threshold, chain, chain_genesis)
 	if err != nil {
 		return err

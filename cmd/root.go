@@ -51,9 +51,6 @@ in with avalanche subnet create myNewSubnet.`,
 	rootCmd.AddCommand(networkcmd.NewCmd(app))
 	rootCmd.AddCommand(keycmd.NewCmd(app))
 
-	rootCmd.AddCommand(createKeyCmd)
-	createKeyCmd.Flags().StringVar(&privKeyPath, "private-key-path", "", "path to private key")
-
 	// add hidden backend command
 	rootCmd.AddCommand(backendcmd.NewCmd(app))
 

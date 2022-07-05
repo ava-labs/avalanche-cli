@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/pkg/app"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/wallet"
-	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
@@ -27,7 +27,7 @@ type PublicSubnetDeployer struct {
 	log         logging.Logger
 }
 
-func NewPublicSubnetDeployer(app *app.Avalanche, privKeyPath string, network models.Network) *PublicSubnetDeployer {
+func NewPublicSubnetDeployer(app *application.Avalanche, privKeyPath string, network models.Network) *PublicSubnetDeployer {
 	return &PublicSubnetDeployer{
 		LocalSubnetDeployer: *NewLocalSubnetDeployer(app),
 		baseDir:             app.GetBaseDir(),
@@ -77,21 +77,21 @@ func (d *PublicSubnetDeployer) loadWallet() (primary.Wallet, string, error) {
 		api = constants.MainnetAPIEndpoint
 		networkID = avago_constants.MainnetID
 	default:
-		return nil, "", fmt.Errorf("Unsupported public network")
+		return nil, "", fmt.Errorf("unsupported public network")
 	}
 
-	sf, err := wallet.LoadSoft(networkID, d.privKeyPath)
+	sf, err := key.LoadSoft(networkID, d.privKeyPath)
 	if err != nil {
 		return nil, "", err
 	}
 
 	kc := sf.KeyChain()
 
-	walet, err := primary.NewWalletFromURI(ctx, api, kc)
+	wallet, err := primary.NewWalletFromURI(ctx, api, kc)
 	if err != nil {
 		return nil, "", err
 	}
-	return walet, api, nil
+	return wallet, api, nil
 }
 
 func (d *PublicSubnetDeployer) createBlockchainTx(chainName string, vmID, subnetID ids.ID, genesis []byte, wallet primary.Wallet) (ids.ID, error) {

@@ -244,6 +244,11 @@ func decodePrivateKey(enc string) (*crypto.PrivateKeySECP256K1R, error) {
 	return privKey, nil
 }
 
+// Returns the KeyChain
+func (m *SoftKey) KeyChain() *secp256k1fx.Keychain {
+	return m.keyChain
+}
+
 // Returns the private key.
 func (m *SoftKey) Key() *crypto.PrivateKeySECP256K1R {
 	return m.privKey

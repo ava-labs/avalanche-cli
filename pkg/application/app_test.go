@@ -27,7 +27,7 @@ func TestUpdateSideCar(t *testing.T) {
 	assert := assert.New(t)
 	sc := &models.Sidecar{
 		Name:      "TEST",
-		Vm:        models.SubnetEvm,
+		VM:        models.SubnetEvm,
 		TokenName: "TEST",
 		ChainID:   "42",
 	}
