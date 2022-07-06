@@ -141,7 +141,7 @@ var _ = ginkgo.Describe("[Key]", func() {
 
 		// The matcher for this test is a little weird. Instead of matching an exact
 		// string, we check that it contains all of a few necessary substrings. This
-		// is to facillitate running the test locally. If you have other keys in your
+		// is to facilitate running the test locally. If you have other keys in your
 		// key directory, they will be printed as well. It's impossible to check the
 		// list output for exact equality without removing pre-existing user keys.
 		// Hence, the matcher here.
