@@ -29,5 +29,7 @@ To get started, use the key create command.`,
 
 	// avalanche key create
 	cmd.AddCommand(newCreateCmd())
+	// avalanche key delete
+	cmd.AddCommand(newDeleteCmd())
 	return cmd
 }

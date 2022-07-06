@@ -47,3 +47,18 @@ func CreateKeyForce(keyName string) (string, error) {
 	out, err := cmd.Output()
 	return string(out), err
 }
+
+/* #nosec G204 */
+func DeleteKey(keyName string) (string, error) {
+	// Create config
+	cmd := exec.Command(
+		CLIBinary,
+		KeyCmd,
+		"delete",
+		keyName,
+		"--force",
+	)
+
+	out, err := cmd.Output()
+	return string(out), err
+}
