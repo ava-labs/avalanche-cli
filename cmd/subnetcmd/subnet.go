@@ -41,5 +41,7 @@ manage your subnet configurations.`,
 	cmd.AddCommand(newDescribeCmd())
 	// subnet list
 	cmd.AddCommand(newListCmd())
+	// subnet addValidator
+	cmd.AddCommand(newAddValidatorCmd())
 	return cmd
 }

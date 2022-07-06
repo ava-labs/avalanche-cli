@@ -3,6 +3,7 @@ package subnet
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -14,6 +15,7 @@ import (
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/vms/platformvm/validator"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
@@ -35,6 +37,29 @@ func NewPublicSubnetDeployer(app *application.Avalanche, privKeyPath string, net
 		log:                 app.Log,
 		network:             network,
 	}
+}
+
+func (d *PublicSubnetDeployer) AddValidator(subnet ids.ID, nodeID ids.NodeID, weight uint64, startTime time.Time, duration time.Duration) error {
+	wallet, _, err := d.loadWallet()
+	if err != nil {
+		return err
+	}
+	validator := &validator.SubnetValidator{
+		Validator: validator.Validator{
+			NodeID: nodeID,
+			Start:  uint64(startTime.Unix()),
+			End:    uint64(startTime.Add(duration).Unix()),
+			Wght:   weight,
+		},
+		Subnet: subnet,
+	}
+	options := []common.Option{}
+	id, err := wallet.P().IssueAddSubnetValidatorTx(validator, options...)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Transaction successful, transaction ID :%s", id)
+	return nil
 }
 
 func (d *PublicSubnetDeployer) Deploy(controlKeys []string, threshold uint32, chain, genesis string) (ids.ID, ids.ID, error) {

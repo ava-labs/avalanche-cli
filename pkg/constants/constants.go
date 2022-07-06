@@ -45,4 +45,10 @@ const (
 
 	KeyDir    = "key"
 	KeySuffix = ".pk"
+
+	TimeParseLayout  = "2006-01-02 15:04:05"
+	MinStakeDuration = 24 * 14 * time.Hour
+	MaxStakeDuration = 24 * 365 * time.Hour
+
+	StakingStartLeeTime = 10 * time.Second
 )

@@ -4,10 +4,14 @@ package prompts
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 	"os"
 	"strconv"
+	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/manifoldco/promptui"
@@ -30,6 +34,36 @@ func validatePositiveBigInt(input string) error {
 	return nil
 }
 
+func validateStakingDuration(input string) error {
+	d, err := time.ParseDuration(input)
+	if err != nil {
+		return err
+	}
+	if d > constants.MaxStakeDuration {
+		return errors.New("exceeds maximum staking duration of 1 year")
+	}
+	if d < constants.MinStakeDuration {
+		return errors.New("below the minimum staking duration of two weeks")
+	}
+	return nil
+}
+
+func validateTime(input string) error {
+	t, err := time.Parse(constants.TimeParseLayout, input)
+	if err != nil {
+		return err
+	}
+	if t.Before(time.Now().Add(constants.StakingStartLeeTime)) {
+		return fmt.Errorf("time should be at least start from now + %s", constants.StakingStartLeeTime)
+	}
+	return err
+}
+
+func validateNodeID(input string) error {
+	_, err := ids.NodeIDFromString(input)
+	return err
+}
+
 func validateAddress(input string) error {
 	if !common.IsHexAddress(input) {
 		return errors.New("invalid address")
@@ -44,6 +78,17 @@ func validateExistingFilepath(input string) error {
 	return errors.New("file doesn't exist")
 }
 
+func validateWeight(input string) error {
+	val, err := strconv.ParseUint(input, 10, 64)
+	if err != nil {
+		return err
+	}
+	if val < 1 || val > 100 {
+		return errors.New("the weight must be between 1 and 100")
+	}
+	return nil
+}
+
 func validateBiggerThanZero(input string) error {
 	val, err := strconv.ParseUint(input, 10, 64)
 	if err != nil {
@@ -53,6 +98,61 @@ func validateBiggerThanZero(input string) error {
 		return errors.New("the value must be bigger than zero")
 	}
 	return nil
+}
+
+func CaptureDuration(promptStr string) (time.Duration, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateStakingDuration,
+	}
+
+	durationStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	return time.ParseDuration(durationStr)
+}
+
+func CaptureDate(promptStr string) (time.Time, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateTime,
+	}
+
+	timeStr, err := prompt.Run()
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return time.Parse(constants.TimeParseLayout, timeStr)
+}
+
+func CaptureNodeID(promptStr string) (ids.NodeID, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateNodeID,
+	}
+
+	nodeIDStr, err := prompt.Run()
+	if err != nil {
+		return ids.EmptyNodeID, err
+	}
+	return ids.NodeIDFromString(nodeIDStr)
+}
+
+func CaptureWeight(promptStr string) (uint64, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateWeight,
+	}
+
+	amountStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	return strconv.ParseUint(amountStr, 10, 64)
 }
 
 func CaptureUint64(promptStr string) (uint64, error) {
@@ -66,11 +166,7 @@ func CaptureUint64(promptStr string) (uint64, error) {
 		return 0, err
 	}
 
-	val, err := strconv.ParseUint(amountStr, 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	return val, nil
+	return strconv.ParseUint(amountStr, 10, 64)
 }
 
 func CapturePositiveBigInt(promptStr string) (*big.Int, error) {
