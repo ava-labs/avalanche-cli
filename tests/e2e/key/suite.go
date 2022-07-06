@@ -119,9 +119,7 @@ var _ = ginkgo.Describe("[Key]", func() {
 	})
 
 	ginkgo.It("can list a created key", func() {
-		expectedLine1 := "+----------+"
-		expectedLine2 := "| KEY NAME |"
-		expectedLine3 := "| e2eKey   |"
+		regex := `(\+-+\+\n)\|\s+KEY\sNAME\s+\|\n(\+-+\+\n)((\|\s+\w+\s+\|\n)(\+-+\+(\n|$)))+`
 
 		// Create a key
 		output, err := commands.CreateKey(keyName)
@@ -140,13 +138,12 @@ var _ = ginkgo.Describe("[Key]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// The matcher for this test is a little weird. Instead of matching an exact
-		// string, we check that it contains all of a few necessary substrings. This
+		// string, we check that it matches a regex and contains created keyName. This
 		// is to facilitate running the test locally. If you have other keys in your
 		// key directory, they will be printed as well. It's impossible to check the
 		// list output for exact equality without removing pre-existing user keys.
 		// Hence, the matcher here.
-		gomega.Expect(output).Should(gomega.ContainSubstring(expectedLine1))
-		gomega.Expect(output).Should(gomega.ContainSubstring(expectedLine2))
-		gomega.Expect(output).Should(gomega.ContainSubstring(expectedLine3))
+		gomega.Expect(output).Should(gomega.MatchRegexp(regex))
+		gomega.Expect(output).Should(gomega.ContainSubstring(keyName))
 	})
 })
