@@ -17,11 +17,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/app"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	"github.com/ava-labs/avalanche-cli/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/utils"
@@ -42,12 +42,12 @@ type Deployer struct {
 	getClientFunc       getGRPCClientFunc
 	binaryDownloader    binutils.PluginBinaryDownloader
 	healthCheckInterval time.Duration
-	app                 *app.Avalanche
+	app                 *application.Avalanche
 	backendStartedHere  bool
 	setDefaultSnapshot  setDefaultSnapshotFunc
 }
 
-func NewLocalDeployer(app *app.Avalanche) *Deployer {
+func NewLocalDeployer(app *application.Avalanche) *Deployer {
 	return &Deployer{
 		procChecker:         binutils.NewProcessChecker(),
 		binChecker:          binutils.NewBinaryChecker(),
@@ -251,7 +251,7 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path and plugin
 func (d *Deployer) SetupLocalEnv() (string, string, error) {
-	err := d.setDefaultSnapshot(d.app.GetBaseDir(), false)
+	err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false)
 	if err != nil {
 		return "", "", fmt.Errorf("failed setting up snapshots: %w", err)
 	}
@@ -473,8 +473,7 @@ func getGenesis(genesisFile string) (core.Genesis, error) {
 
 // Initialize default snapshot with bootstrap snapshot archive
 // If force flag is set to true, overwrite the default snapshot if it exists
-func SetDefaultSnapshot(baseDir string, force bool) error {
-	snapshotsDir := filepath.Join(baseDir, constants.SnapshotsDirName)
+func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 	bootstrapSnapshotArchivePath := filepath.Join(snapshotsDir, constants.BootstrapSnapshotArchiveName)
 	if _, err := os.Stat(bootstrapSnapshotArchivePath); os.IsNotExist(err) {
 		resp, err := http.Get(constants.BootstrapSnapshotURL)

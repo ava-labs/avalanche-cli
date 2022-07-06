@@ -14,9 +14,9 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/ava-labs/avalanche-cli/pkg/app"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanche-network-runner/utils"
@@ -33,7 +33,7 @@ var errGRPCTimeout = errors.New("timed out trying to contact backend controller,
 type ProcessChecker interface {
 	// IsServerProcessRunning returns true if the gRPC server is running,
 	// or false if not
-	IsServerProcessRunning(app *app.Avalanche) (bool, error)
+	IsServerProcessRunning(app *application.Avalanche) (bool, error)
 }
 
 type realProcessRunner struct{}
@@ -69,7 +69,7 @@ func NewGRPCServer(snapshotsDir string) (server.Server, error) {
 
 // IsServerProcessRunning returns true if the gRPC server is running,
 // or false if not
-func (rpr *realProcessRunner) IsServerProcessRunning(app *app.Avalanche) (bool, error) {
+func (rpr *realProcessRunner) IsServerProcessRunning(app *application.Avalanche) (bool, error) {
 	pid, err := GetServerPID(app)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -98,7 +98,7 @@ type runFile struct {
 	GRPCserverFileName string `json:"gRPCserverFileName"`
 }
 
-func GetServerPID(app *app.Avalanche) (int, error) {
+func GetServerPID(app *application.Avalanche) (int, error) {
 	var rf runFile
 	serverRunFilePath := app.GetRunFile()
 	run, err := os.ReadFile(serverRunFilePath)
@@ -117,7 +117,7 @@ func GetServerPID(app *app.Avalanche) (int, error) {
 
 // StartServerProcess starts the gRPC server as a reentrant process of this binary
 // it just executes `avalanche-cli backend start`
-func StartServerProcess(app *app.Avalanche) error {
+func StartServerProcess(app *application.Avalanche) error {
 	thisBin := reexec.Self()
 
 	args := []string{"backend", "start"}
@@ -172,7 +172,7 @@ func GetAsyncContext() context.Context {
 	return ctx
 }
 
-func KillgRPCServerProcess(app *app.Avalanche) error {
+func KillgRPCServerProcess(app *application.Avalanche) error {
 	cli, err := NewGRPCClient()
 	if err != nil {
 		return err

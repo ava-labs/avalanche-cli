@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package cmd
+package networkcmd
 
 import (
 	"strings"
@@ -8,18 +8,20 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
-	"github.com/ava-labs/avalanche-cli/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
-var statusCmd = &cobra.Command{
-	Use:   "status",
-	Short: "Prints the status of the local network",
-	Long: `The network status command prints whether or not a local Avalanche
+func newStatusCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "status",
+		Short: "Prints the status of the local network",
+		Long: `The network status command prints whether or not a local Avalanche
 network is running and some basic stats about the network.`,
 
-	RunE:         networkStatus,
-	Args:         cobra.ExactArgs(0),
-	SilenceUsage: true,
+		RunE:         networkStatus,
+		Args:         cobra.ExactArgs(0),
+		SilenceUsage: true,
+	}
 }
 
 func networkStatus(cmd *cobra.Command, args []string) error {
