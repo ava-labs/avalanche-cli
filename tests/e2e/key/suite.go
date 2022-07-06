@@ -117,4 +117,36 @@ var _ = ginkgo.Describe("[Key]", func() {
 		_, err = commands.CreateKey(keyName)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 	})
+
+	ginkgo.It("can list a created key", func() {
+		expectedLine1 := "+----------+"
+		expectedLine2 := "| KEY NAME |"
+		expectedLine3 := "| e2eKey   |"
+
+		// Create a key
+		output, err := commands.CreateKey(keyName)
+		if err != nil {
+			fmt.Println(output)
+			utils.PrintStdErr(err)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// Call list cmd
+		output, err = commands.ListKeys()
+		if err != nil {
+			fmt.Println(output)
+			utils.PrintStdErr(err)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// The matcher for this test is a little weird. Instead of matching an exact
+		// string, we check that it contains all of a few necessary substrings. This
+		// is to facillitate running the test locally. If you have other keys in your
+		// key directory, they will be printed as well. It's impossible to check the
+		// list output for exact equality without removing pre-existing user keys.
+		// Hence, the matcher here.
+		gomega.Expect(output).Should(gomega.ContainSubstring(expectedLine1))
+		gomega.Expect(output).Should(gomega.ContainSubstring(expectedLine2))
+		gomega.Expect(output).Should(gomega.ContainSubstring(expectedLine3))
+	})
 })

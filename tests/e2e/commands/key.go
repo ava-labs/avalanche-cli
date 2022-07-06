@@ -47,3 +47,16 @@ func CreateKeyForce(keyName string) (string, error) {
 	out, err := cmd.Output()
 	return string(out), err
 }
+
+/* #nosec G204 */
+func ListKeys() (string, error) {
+	// Create config
+	cmd := exec.Command(
+		CLIBinary,
+		KeyCmd,
+		"list",
+	)
+
+	out, err := cmd.Output()
+	return string(out), err
+}
