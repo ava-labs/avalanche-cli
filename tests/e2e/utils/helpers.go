@@ -84,7 +84,7 @@ func DeleteConfigs(subnetName string) error {
 	return nil
 }
 
-func DeleteKeys(keyName string) error {
+func DeleteKey(keyName string) error {
 	keyPath := path.Join(GetBaseDir(), constants.KeyDir, keyName+constants.KeySuffix)
 	if _, err := os.Stat(keyPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 		// Schrodinger: file may or may not exist. See err for details.
