@@ -8,6 +8,8 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/manifoldco/promptui"
@@ -93,12 +95,18 @@ func CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 }
 
 func validatePChainAddress(input string) error {
-	_, _, _, err := address.Parse(input)
+	chainID, _, _, err := address.Parse(input)
+	if err != nil {
+		return err
+	}
 
-	return err
+	if chainID != "P" {
+		return errors.New("this is not a PChain address")
+	}
+	return nil
 }
 
-func CapturePChainAddress(promptStr string) (string, error) {
+func CapturePChainAddress(promptStr string, network models.Network) (string, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validatePChainAddress,
@@ -109,6 +117,26 @@ func CapturePChainAddress(promptStr string) (string, error) {
 		return "", err
 	}
 
+	_, hrp, _, err := address.Parse(addressStr)
+	if err != nil {
+		return "", err
+	}
+	switch network {
+	case models.Fuji:
+		if hrp != constants.FujiHRP {
+			return "", errors.New("this is not a fuji address")
+		}
+	case models.Mainnet:
+		if hrp != constants.MainnetHRP {
+			return "", errors.New("this is not a mainnet address")
+		}
+	case models.Local:
+		// ANR uses the `custom` HRP for local networks,
+		// but the `local` HRP also exists...
+		if hrp != constants.LocalHRP && hrp != constants.FallbackHRP {
+			return "", errors.New("this is not a local nor custom address")
+		}
+	}
 	return addressStr, nil
 }
 
