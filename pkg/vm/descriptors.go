@@ -8,11 +8,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
-func getChainID(app *application.Avalanche) (*big.Int, error) {
+func getChainID(prompter prompts.PromptCreateFunc, app *application.Avalanche) (*big.Int, error) {
 	// TODO check against known chain ids and provide warning
 	ux.Logger.PrintToUser("Enter your subnet's ChainId. It can be any positive integer.")
 
-	chainID, err := prompts.CapturePositiveBigInt("ChainId")
+	chainID, err := prompts.CapturePositiveBigInt(prompter("ChainId"))
 	if err != nil {
 		return nil, err
 	}
@@ -23,15 +23,15 @@ func getChainID(app *application.Avalanche) (*big.Int, error) {
 	}
 	if exists {
 		ux.Logger.PrintToUser("The provided chain ID %q already exists! Try a different one:", chainID.String())
-		return getChainID(app)
+		return getChainID(prompter, app)
 	}
 
 	return chainID, nil
 }
 
-func getTokenName() (string, error) {
+func getTokenName(prompter prompts.PromptCreateFunc) (string, error) {
 	ux.Logger.PrintToUser("Select a symbol for your subnet's native token")
-	tokenName, err := prompts.CaptureString("Token symbol")
+	tokenName, err := prompts.CaptureString(prompter("Token symbol"))
 	if err != nil {
 		return "", err
 	}
@@ -39,13 +39,13 @@ func getTokenName() (string, error) {
 	return tokenName, nil
 }
 
-func getDescriptors(app *application.Avalanche) (*big.Int, string, stateDirection, error) {
-	chainID, err := getChainID(app)
+func getDescriptors(app *application.Avalanche, prompter prompts.PromptCreateFunc) (*big.Int, string, stateDirection, error) {
+	chainID, err := getChainID(prompter, app)
 	if err != nil {
 		return nil, "", stop, err
 	}
 
-	tokenName, err := getTokenName()
+	tokenName, err := getTokenName(prompter)
 	if err != nil {
 		return nil, "", stop, err
 	}

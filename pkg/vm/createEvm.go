@@ -10,6 +10,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
@@ -48,6 +49,15 @@ func nextStage(currentState wizardState, direction stateDirection) wizardState {
 }
 
 func CreateEvmGenesis(name string, app *application.Avalanche) ([]byte, *models.Sidecar, error) {
+	return createEvmGenesis(prompts.NewPrompter, prompts.NewSelector, name, app)
+}
+
+func createEvmGenesis(
+	prompter prompts.PromptCreateFunc,
+	selector prompts.SelectCreateFunc,
+	name string,
+	app *application.Avalanche,
+) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating subnet %s", name)
 
 	genesis := core.Genesis{}
@@ -68,13 +78,13 @@ func CreateEvmGenesis(name string, app *application.Avalanche) ([]byte, *models.
 		case startStage:
 			direction = forward
 		case descriptorStage:
-			chainID, tokenName, direction, err = getDescriptors(app)
+			chainID, tokenName, direction, err = getDescriptors(app, prompter)
 		case feeStage:
-			*conf, direction, err = getFeeConfig(*conf)
+			*conf, direction, err = getFeeConfig(prompter, selector, *conf)
 		case airdropStage:
-			allocation, direction, err = getAllocation()
+			allocation, direction, err = getAllocation(prompter, selector)
 		case precompileStage:
-			*conf, direction, err = getPrecompiles(*conf)
+			*conf, direction, err = getPrecompiles(prompter, selector, *conf)
 		default:
 			err = errors.New("invalid creation stage")
 		}

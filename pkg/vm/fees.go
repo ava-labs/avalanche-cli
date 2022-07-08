@@ -6,7 +6,11 @@ import (
 	"github.com/ava-labs/subnet-evm/params"
 )
 
-func getFeeConfig(config params.ChainConfig) (params.ChainConfig, stateDirection, error) {
+func getFeeConfig(
+	prompter prompts.PromptCreateFunc,
+	selector prompts.SelectCreateFunc,
+	config params.ChainConfig,
+) (params.ChainConfig, stateDirection, error) {
 	const (
 		useFast   = "High disk use   / High Throughput   5 mil   gas/s"
 		useMedium = "Medium disk use / Medium Throughput 2 mil   gas/s"
@@ -26,8 +30,10 @@ func getFeeConfig(config params.ChainConfig) (params.ChainConfig, stateDirection
 	feeConfigOptions := []string{useSlow, useMedium, useFast, customFee, goBackMsg}
 
 	feeDefault, err := prompts.CaptureList(
-		"How would you like to set fees",
-		feeConfigOptions,
+		selector(
+			"How would you like to set fees",
+			feeConfigOptions,
+		),
 	)
 	if err != nil {
 		return config, stop, err
@@ -51,42 +57,42 @@ func getFeeConfig(config params.ChainConfig) (params.ChainConfig, stateDirection
 		ux.Logger.PrintToUser("Customizing fee config")
 	}
 
-	gasLimit, err := prompts.CapturePositiveBigInt(setGasLimit)
+	gasLimit, err := prompts.CapturePositiveBigInt(prompter(setGasLimit))
 	if err != nil {
 		return config, stop, err
 	}
 
-	blockRate, err := prompts.CapturePositiveBigInt(setBlockRate)
+	blockRate, err := prompts.CapturePositiveBigInt(prompter(setBlockRate))
 	if err != nil {
 		return config, stop, err
 	}
 
-	minBaseFee, err := prompts.CapturePositiveBigInt(setMinBaseFee)
+	minBaseFee, err := prompts.CapturePositiveBigInt(prompter(setMinBaseFee))
 	if err != nil {
 		return config, stop, err
 	}
 
-	targetGas, err := prompts.CapturePositiveBigInt(setTargetGas)
+	targetGas, err := prompts.CapturePositiveBigInt(prompter(setTargetGas))
 	if err != nil {
 		return config, stop, err
 	}
 
-	baseDenominator, err := prompts.CapturePositiveBigInt(setBaseFeeChangeDenominator)
+	baseDenominator, err := prompts.CapturePositiveBigInt(prompter(setBaseFeeChangeDenominator))
 	if err != nil {
 		return config, stop, err
 	}
 
-	minBlockGas, err := prompts.CapturePositiveBigInt(setMinBlockGas)
+	minBlockGas, err := prompts.CapturePositiveBigInt(prompter(setMinBlockGas))
 	if err != nil {
 		return config, stop, err
 	}
 
-	maxBlockGas, err := prompts.CapturePositiveBigInt(setMaxBlockGas)
+	maxBlockGas, err := prompts.CapturePositiveBigInt(prompter(setMaxBlockGas))
 	if err != nil {
 		return config, stop, err
 	}
 
-	gasStep, err := prompts.CapturePositiveBigInt(setGasStep)
+	gasStep, err := prompts.CapturePositiveBigInt(prompter(setGasStep))
 	if err != nil {
 		return config, stop, err
 	}

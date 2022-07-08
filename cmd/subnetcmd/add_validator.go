@@ -3,6 +3,7 @@
 package subnetcmd
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -20,6 +21,8 @@ var (
 	weightStr    string
 	startTimeStr string
 	duration     time.Duration
+
+	errNoSubnetID = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created?")
 )
 
 // avalanche subnet deploy
@@ -30,7 +33,7 @@ func newAddValidatorCmd() *cobra.Command {
 		Long: `The addValidator command prompts for start time, duration and weight for validating this subnet.
 It also prompts for the NodeID of the node which will be validating this subnet.`,
 		SilenceUsage: true,
-		RunE:         addValidator,
+		RunE:         addValidatorCmd,
 		Args:         cobra.ExactArgs(1),
 	}
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use")
@@ -41,7 +44,15 @@ It also prompts for the NodeID of the node which will be validating this subnet.
 	return cmd
 }
 
-func addValidator(cmd *cobra.Command, args []string) error {
+func addValidatorCmd(cmd *cobra.Command, args []string) error {
+	return addValidator(args, prompts.NewPrompter, prompts.NewSelector, subnet.NewPublicSubnetDeployer)
+}
+
+func addValidator(args []string,
+	prompter prompts.PromptCreateFunc,
+	selector prompts.SelectCreateFunc,
+	newDeployer subnet.NewDeployerFunc,
+) error {
 	var (
 		nodeID ids.NodeID
 		weight uint64
@@ -61,11 +72,11 @@ func addValidator(cmd *cobra.Command, args []string) error {
 
 	subnetID := sc.SubnetID
 	if subnetID == ids.Empty {
-		return fmt.Errorf("failed to find the subnet ID for this subnet, has it been deployed/created?")
+		return errNoSubnetID
 	}
 
 	if nodeIDStr == "" {
-		nodeID, err = promptNodeID()
+		nodeID, err = promptNodeID(prompter)
 		if err != nil {
 			return err
 		}
@@ -77,7 +88,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	if weightStr == "" {
-		weight, err = promptWeight()
+		weight, err = promptWeight(prompter)
 		if err != nil {
 			return err
 		}
@@ -89,7 +100,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	if startTimeStr == "" {
-		start, err = promptStart()
+		start, err = promptStart(prompter)
 		if err != nil {
 			return err
 		}
@@ -102,7 +113,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	if duration == 0 {
-		duration, err = promptDuration(start)
+		duration, err = promptDuration(prompter, selector, start)
 		if err != nil {
 			return err
 		}
@@ -111,28 +122,31 @@ func addValidator(cmd *cobra.Command, args []string) error {
 
 	var network models.Network
 	networkStr, err := prompts.CaptureList(
-		"Choose a network to deploy on",
-		[]string{models.Fuji.String(), models.Mainnet.String()},
+		selector(
+			"Choose a network to deploy on",
+			[]string{models.Fuji.String(), models.Mainnet.String()},
+		),
 	)
 	if err != nil {
 		return err
 	}
 	network = models.NetworkFromString(networkStr)
 
-	deployer := subnet.NewPublicSubnetDeployer(app, app.GetKeyPath(keyName), network)
+	deployer := newDeployer(app, app.GetKeyPath(keyName), network)
 	return deployer.AddValidator(subnetID, nodeID, weight, start, duration)
 }
 
-func promptDuration(start time.Time) (time.Duration, error) {
+func promptDuration(p prompts.PromptCreateFunc, s prompts.SelectCreateFunc, start time.Time) (time.Duration, error) {
 	for {
 		txt := "How long should this validator be validating? Enter a duration, e.g. 8760h"
-		d, err := prompts.CaptureDuration(txt)
+		prompt := p(txt)
+		d, err := prompts.CaptureDuration(prompt)
 		if err != nil {
 			return 0, err
 		}
 		end := start.Add(d)
 		confirm := fmt.Sprintf("Your validator will complete staking by %s", end.Format(constants.TimeParseLayout))
-		yes, err := prompts.CaptureYesNo(confirm)
+		yes, err := prompts.CaptureYesNo(s, confirm)
 		if err != nil {
 			return 0, err
 		}
@@ -142,17 +156,20 @@ func promptDuration(start time.Time) (time.Duration, error) {
 	}
 }
 
-func promptStart() (time.Time, error) {
+func promptStart(f prompts.PromptCreateFunc) (time.Time, error) {
 	txt := "When will the validator start validating? Enter a date in 'YYYY-MM-DD HH:MM:SS' format"
-	return prompts.CaptureDate(txt)
+	prompt := f(txt)
+	return prompts.CaptureDate(prompt)
 }
 
-func promptNodeID() (ids.NodeID, error) {
+func promptNodeID(f prompts.PromptCreateFunc) (ids.NodeID, error) {
 	txt := "What is the NodeID of the validator?"
-	return prompts.CaptureNodeID(txt)
+	prompt := f(txt)
+	return prompts.CaptureNodeID(prompt)
 }
 
-func promptWeight() (uint64, error) {
+func promptWeight(f prompts.PromptCreateFunc) (uint64, error) {
 	txt := "What is the staking weight of the validator?"
-	return prompts.CaptureWeight(txt)
+	prompt := f(txt)
+	return prompts.CaptureWeight(prompt)
 }

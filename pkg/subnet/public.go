@@ -21,6 +21,13 @@ import (
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 )
 
+type NewDeployerFunc func(*application.Avalanche, string, models.Network) PublicDeployer
+
+type PublicDeployer interface {
+	AddValidator(ids.ID, ids.NodeID, uint64, time.Time, time.Duration) error
+	Deploy(controlKeys []string, threshold uint32, chain, genesis string) (ids.ID, ids.ID, error)
+}
+
 type PublicSubnetDeployer struct {
 	LocalSubnetDeployer
 	baseDir     string
@@ -29,7 +36,7 @@ type PublicSubnetDeployer struct {
 	log         logging.Logger
 }
 
-func NewPublicSubnetDeployer(app *application.Avalanche, privKeyPath string, network models.Network) *PublicSubnetDeployer {
+func NewPublicSubnetDeployer(app *application.Avalanche, privKeyPath string, network models.Network) PublicDeployer {
 	return &PublicSubnetDeployer{
 		LocalSubnetDeployer: *NewLocalSubnetDeployer(app),
 		baseDir:             app.GetBaseDir(),

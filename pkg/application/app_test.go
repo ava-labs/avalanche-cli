@@ -12,7 +12,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +31,7 @@ func TestUpdateSideCar(t *testing.T) {
 		ChainID:   "42",
 	}
 
-	ap := newTestApp(t)
+	ap := NewTestApp(t)
 
 	err := ap.CreateSidecar(sc)
 	assert.NoError(err)
@@ -54,7 +53,7 @@ func Test_writeGenesisFile_success(t *testing.T) {
 	genesisBytes := []byte("genesis")
 	genesisFile := subnetName1 + constants.GenesisSuffix
 
-	ap := newTestApp(t)
+	ap := NewTestApp(t)
 	// Write genesis
 	err := ap.WriteGenesisFile(subnetName1, genesisBytes)
 	assert.NoError(err)
@@ -76,7 +75,7 @@ func Test_copyGenesisFile_success(t *testing.T) {
 	genesisFile1 := subnetName1 + constants.GenesisSuffix
 	genesisFile2 := subnetName2 + constants.GenesisSuffix
 
-	ap := newTestApp(t)
+	ap := NewTestApp(t)
 	// Create original genesis
 	err := ap.WriteGenesisFile(subnetName1, genesisBytes)
 	assert.NoError(err)
@@ -104,7 +103,7 @@ func Test_copyGenesisFile_failure(t *testing.T) {
 	genesisFile1 := subnetName1 + constants.GenesisSuffix
 	genesisFile2 := subnetName2 + constants.GenesisSuffix
 
-	ap := newTestApp(t)
+	ap := NewTestApp(t)
 	// Copy genesis
 	createdGenesis := filepath.Join(ap.GetBaseDir(), genesisFile1)
 	err := ap.CopyGenesisFile(createdGenesis, subnetName2)
@@ -142,7 +141,7 @@ func Test_createSidecar_success(t *testing.T) {
 		},
 	}
 
-	ap := newTestApp(t)
+	ap := NewTestApp(t)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -184,7 +183,7 @@ func Test_loadSidecar_success(t *testing.T) {
 	sidecarFile := subnetName1 + constants.SidecarSuffix
 	const vm = models.SubnetEvm
 
-	ap := newTestApp(t)
+	ap := NewTestApp(t)
 
 	// Write sidecar
 	sidecarBytes := []byte("{  \"Name\": \"TEST_subnet\",\n  \"VM\": \"SubnetEVM\",\n  \"Subnet\": \"TEST_subnet\"\n  }")
@@ -236,7 +235,7 @@ func TestChainIDExists(t *testing.T) {
 		sidecars    []*models.Sidecar
 	}
 
-	ap := newTestApp(t)
+	ap := NewTestApp(t)
 
 	tests := []test{
 		{
@@ -372,7 +371,7 @@ func Test_failure_duplicateChainID(t *testing.T) {
 		ChainID:   "42",
 	}
 
-	ap := newTestApp(t)
+	ap := NewTestApp(t)
 
 	err := ap.CreateSidecar(sc1)
 	assert.NoError(err)
@@ -385,7 +384,7 @@ func Test_loadSidecar_failure_notFound(t *testing.T) {
 	assert := assert.New(t)
 	sidecarFile := subnetName1 + constants.SidecarSuffix
 
-	ap := newTestApp(t)
+	ap := NewTestApp(t)
 
 	// Assert file doesn't exist at start
 	sidecarPath := filepath.Join(ap.GetBaseDir(), sidecarFile)
@@ -400,7 +399,7 @@ func Test_loadSidecar_failure_malformed(t *testing.T) {
 	assert := assert.New(t)
 	sidecarFile := subnetName1 + constants.SidecarSuffix
 
-	ap := newTestApp(t)
+	ap := NewTestApp(t)
 
 	// Write sidecar
 	sidecarBytes := []byte("bad_sidecar")
@@ -425,7 +424,7 @@ func Test_genesisExists(t *testing.T) {
 	assert := assert.New(t)
 	genesisFile := subnetName1 + constants.GenesisSuffix
 
-	ap := newTestApp(t)
+	ap := NewTestApp(t)
 
 	// Assert file doesn't exist at start
 	result := ap.GenesisExists(subnetName1)
@@ -444,12 +443,4 @@ func Test_genesisExists(t *testing.T) {
 	// Clean up created genesis
 	err = os.Remove(genesisPath)
 	assert.NoError(err)
-}
-
-func newTestApp(t *testing.T) *Avalanche {
-	tempDir := t.TempDir()
-	return &Avalanche{
-		baseDir: tempDir,
-		Log:     logging.NoLog{},
-	}
 }

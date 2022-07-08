@@ -21,7 +21,10 @@ func getDefaultAllocation() (core.GenesisAlloc, error) {
 	return allocation, nil
 }
 
-func getAllocation() (core.GenesisAlloc, stateDirection, error) {
+func getAllocation(
+	prompter prompts.PromptCreateFunc,
+	selector prompts.SelectCreateFunc,
+) (core.GenesisAlloc, stateDirection, error) {
 	allocation := core.GenesisAlloc{}
 
 	defaultAirdrop := "Airdrop 1 million tokens to the default address (do not use in production)"
@@ -29,8 +32,10 @@ func getAllocation() (core.GenesisAlloc, stateDirection, error) {
 	extendAirdrop := "Would you like to airdrop more tokens?"
 
 	airdropType, err := prompts.CaptureList(
-		"How would you like to distribute funds",
-		[]string{defaultAirdrop, customAirdrop, goBackMsg},
+		selector(
+			"How would you like to distribute funds",
+			[]string{defaultAirdrop, customAirdrop, goBackMsg},
+		),
 	)
 	if err != nil {
 		return allocation, stop, err
@@ -46,12 +51,12 @@ func getAllocation() (core.GenesisAlloc, stateDirection, error) {
 	}
 
 	for {
-		addressHex, err := prompts.CaptureAddress("Address to airdrop to")
+		addressHex, err := prompts.CaptureAddress(prompter("Address to airdrop to"))
 		if err != nil {
 			return nil, stop, err
 		}
 
-		amount, err := prompts.CapturePositiveBigInt("Amount to airdrop (in AVAX units)")
+		amount, err := prompts.CapturePositiveBigInt(prompter("Amount to airdrop (in AVAX units)"))
 		if err != nil {
 			return nil, stop, err
 		}
@@ -64,7 +69,7 @@ func getAllocation() (core.GenesisAlloc, stateDirection, error) {
 
 		allocation[addressHex] = account
 
-		continueAirdrop, err := prompts.CaptureNoYes(extendAirdrop)
+		continueAirdrop, err := prompts.CaptureNoYes(selector, extendAirdrop)
 		if err != nil {
 			return nil, stop, err
 		}

@@ -20,7 +20,12 @@ func contains(list []common.Address, element common.Address) bool {
 	return false
 }
 
-func getAdminList(initialPrompt string, info string) ([]common.Address, bool, error) {
+func getAdminList(
+	prompter prompts.PromptCreateFunc,
+	selector prompts.SelectCreateFunc,
+	initialPrompt string,
+	info string,
+) ([]common.Address, bool, error) {
 	const (
 		addAdmin    = "Add admin"
 		removeAdmin = "Remove admin"
@@ -34,8 +39,10 @@ func getAdminList(initialPrompt string, info string) ([]common.Address, bool, er
 
 	for {
 		listDecision, err := prompts.CaptureList(
-			initialPrompt,
-			[]string{addAdmin, removeAdmin, preview, moreInfo, doneMsg, cancelMsg},
+			selector(
+				initialPrompt,
+				[]string{addAdmin, removeAdmin, preview, moreInfo, doneMsg, cancelMsg},
+			),
 		)
 		if err != nil {
 			return []common.Address{}, false, err
@@ -43,7 +50,7 @@ func getAdminList(initialPrompt string, info string) ([]common.Address, bool, er
 
 		switch listDecision {
 		case addAdmin:
-			adminAddr, err := prompts.CaptureAddress("Admin Address")
+			adminAddr, err := prompts.CaptureAddress(prompter("Admin Address"))
 			if err != nil {
 				return []common.Address{}, false, err
 			}
@@ -53,7 +60,7 @@ func getAdminList(initialPrompt string, info string) ([]common.Address, bool, er
 			}
 			admins = append(admins, adminAddr)
 		case removeAdmin:
-			index, err := prompts.CaptureIndex("Choose address to remove:", admins)
+			index, err := prompts.CaptureIndex(selector("Choose address to remove:", admins))
 			if err != nil {
 				return []common.Address{}, false, err
 			}
@@ -76,14 +83,17 @@ func getAdminList(initialPrompt string, info string) ([]common.Address, bool, er
 	}
 }
 
-func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, bool, error) {
+func configureContractAllowList(
+	prompter prompts.PromptCreateFunc,
+	selector prompts.SelectCreateFunc,
+) (precompile.ContractDeployerAllowListConfig, bool, error) {
 	config := precompile.ContractDeployerAllowListConfig{}
 	prompt := "Configure contract deployment allow list"
 	info := "\nThis precompile restricts who has the ability to deploy contracts " +
 		"on your subnet.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet/#restricting-smart-contract-deployers\n\n"
 
-	admins, cancelled, err := getAdminList(prompt, info)
+	admins, cancelled, err := getAdminList(prompter, selector, prompt, info)
 	if err != nil {
 		return config, false, err
 	}
@@ -96,14 +106,17 @@ func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, b
 	return config, cancelled, nil
 }
 
-func configureTransactionAllowList() (precompile.TxAllowListConfig, bool, error) {
+func configureTransactionAllowList(
+	prompter prompts.PromptCreateFunc,
+	selector prompts.SelectCreateFunc,
+) (precompile.TxAllowListConfig, bool, error) {
 	config := precompile.TxAllowListConfig{}
 	prompt := "Configure transaction allow list"
 	info := "\nThis precompile restricts who has the ability to issue transactions " +
 		"on your subnet.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet/#restricting-who-can-submit-transactions\n\n"
 
-	admins, cancelled, err := getAdminList(prompt, info)
+	admins, cancelled, err := getAdminList(prompter, selector, prompt, info)
 	if err != nil {
 		return config, false, err
 	}
@@ -116,14 +129,17 @@ func configureTransactionAllowList() (precompile.TxAllowListConfig, bool, error)
 	return config, cancelled, nil
 }
 
-func configureMinterList() (precompile.ContractNativeMinterConfig, bool, error) {
+func configureMinterList(
+	prompter prompts.PromptCreateFunc,
+	selector prompts.SelectCreateFunc,
+) (precompile.ContractNativeMinterConfig, bool, error) {
 	config := precompile.ContractNativeMinterConfig{}
 	prompt := "Configure native minting allow list"
 	info := "\nThis precompile allows admins to permit designated contracts to mint the native token " +
 		"on your subnet.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet#minting-native-coins\n\n"
 
-	admins, cancelled, err := getAdminList(prompt, info)
+	admins, cancelled, err := getAdminList(prompter, selector, prompt, info)
 	if err != nil {
 		return config, false, err
 	}
@@ -145,7 +161,11 @@ func removePrecompile(arr []string, s string) ([]string, error) {
 	return arr, errors.New("string not in array")
 }
 
-func getPrecompiles(config params.ChainConfig) (params.ChainConfig, stateDirection, error) {
+func getPrecompiles(
+	prompter prompts.PromptCreateFunc,
+	selector prompts.SelectCreateFunc,
+	config params.ChainConfig,
+) (params.ChainConfig, stateDirection, error) {
 	const (
 		nativeMint        = "Native Minting"
 		contractAllowList = "Contract deployment whitelist"
@@ -167,7 +187,9 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, stateDirecti
 			first = false
 		}
 
-		addPrecompile, err := prompts.CaptureList(promptStr, []string{prompts.No, prompts.Yes, goBackMsg})
+		addPrecompile, err := prompts.CaptureList(
+			selector(promptStr, []string{prompts.No, prompts.Yes, goBackMsg}),
+		)
 		if err != nil {
 			return config, stop, err
 		}
@@ -180,8 +202,7 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, stateDirecti
 		}
 
 		precompileDecision, err := prompts.CaptureList(
-			"Choose precompile",
-			remainingPrecompiles,
+			selector("Choose precompile", remainingPrecompiles),
 		)
 		if err != nil {
 			return config, stop, err
@@ -189,7 +210,7 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, stateDirecti
 
 		switch precompileDecision {
 		case nativeMint:
-			mintConfig, cancelled, err := configureMinterList()
+			mintConfig, cancelled, err := configureMinterList(prompter, selector)
 			if err != nil {
 				return config, stop, err
 			}
@@ -201,7 +222,7 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, stateDirecti
 				}
 			}
 		case contractAllowList:
-			contractConfig, cancelled, err := configureContractAllowList()
+			contractConfig, cancelled, err := configureContractAllowList(prompter, selector)
 			if err != nil {
 				return config, stop, err
 			}
@@ -213,7 +234,7 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, stateDirecti
 				}
 			}
 		case txAllowList:
-			txConfig, cancelled, err := configureTransactionAllowList()
+			txConfig, cancelled, err := configureTransactionAllowList(prompter, selector)
 			if err != nil {
 				return config, stop, err
 			}

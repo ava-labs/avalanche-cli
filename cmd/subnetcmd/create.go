@@ -43,7 +43,7 @@ By default, running the command with a subnetName that already exists will
 cause the command to fail. If you’d like to overwrite an existing
 configuration, pass the -f flag.`,
 		Args: cobra.ExactArgs(1),
-		RunE: createGenesis,
+		RunE: createGenesisCmd,
 	}
 	cmd.Flags().StringVar(&filename, "file", "", "file path of genesis to use instead of the wizard")
 	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the SubnetEVM as the base template")
@@ -75,7 +75,15 @@ func getVMFromFlag() models.VMType {
 	return ""
 }
 
-func createGenesis(cmd *cobra.Command, args []string) error {
+func createGenesisCmd(cmd *cobra.Command, args []string) error {
+	return createGenesis(prompts.NewPrompter, prompts.NewSelector, args)
+}
+
+func createGenesis(
+	prompter prompts.PromptCreateFunc,
+	selector prompts.SelectCreateFunc,
+	args []string,
+) error {
 	subnetName := args[0]
 	if app.GenesisExists(subnetName) && !forceCreate {
 		return errors.New("configuration already exists. Use --" + forceFlag + " parameter to overwrite")
@@ -96,8 +104,10 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 
 		if subnetType == "" {
 			subnetTypeStr, err := prompts.CaptureList(
-				"Choose your VM",
-				[]string{subnetEvm, customVM},
+				selector(
+					"Choose your VM",
+					[]string{subnetEvm, customVM},
+				),
 			)
 			if err != nil {
 				return err
@@ -147,8 +157,10 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 
 		if subnetType == "" {
 			subnetTypeStr, err := prompts.CaptureList(
-				"What VM does your genesis use?",
-				[]string{subnetEvm, customVM},
+				selector(
+					"What VM does your genesis use?",
+					[]string{subnetEvm, customVM},
+				),
 			)
 			if err != nil {
 				return err

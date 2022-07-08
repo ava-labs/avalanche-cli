@@ -11,9 +11,13 @@ import (
 )
 
 func CreateCustomGenesis(name string) ([]byte, *models.Sidecar, error) {
+	return createCustomGenesis(prompts.NewPrompter, name)
+}
+
+func createCustomGenesis(prompter prompts.PromptCreateFunc, name string) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating custom VM subnet %s", name)
 
-	genesisPath, err := prompts.CaptureExistingFilepath("Enter path to custom genesis")
+	genesisPath, err := prompts.CaptureExistingFilepath(prompter("Enter path to custom genesis"))
 	if err != nil {
 		return []byte{}, nil, err
 	}

@@ -4,15 +4,12 @@ package prompts
 
 import (
 	"errors"
-	"fmt"
 	"math/big"
-	"os"
 	"strconv"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/manifoldco/promptui"
 )
@@ -22,89 +19,60 @@ const (
 	No  = "No"
 )
 
-func validatePositiveBigInt(input string) error {
-	n := new(big.Int)
-	n, ok := n.SetString(input, 10)
-	if !ok {
-		return errors.New("invalid number")
-	}
-	if n.Cmp(big.NewInt(0)) == -1 {
-		return errors.New("invalid number")
-	}
-	return nil
+type (
+	PromptCreateFunc func(string) PromptRunner
+	SelectCreateFunc func(string, interface{}) SelectRunner
+)
+
+// PromptRunner is an interface which allows to mock the promptui stuff
+type PromptRunner interface {
+	Run() (string, error)
+	SetValidation(func(string) error)
 }
 
-func validateStakingDuration(input string) error {
-	d, err := time.ParseDuration(input)
-	if err != nil {
-		return err
-	}
-	if d > constants.MaxStakeDuration {
-		return errors.New("exceeds maximum staking duration of 1 year")
-	}
-	if d < constants.MinStakeDuration {
-		return errors.New("below the minimum staking duration of two weeks")
-	}
-	return nil
+type SelectRunner interface {
+	Run() (int, string, error)
 }
 
-func validateTime(input string) error {
-	t, err := time.Parse(constants.TimeParseLayout, input)
-	if err != nil {
-		return err
-	}
-	if t.Before(time.Now().Add(constants.StakingStartLeeTime)) {
-		return fmt.Errorf("time should be at least start from now + %s", constants.StakingStartLeeTime)
-	}
-	return err
+type Prompter struct {
+	prompt promptui.Prompt
 }
 
-func validateNodeID(input string) error {
-	_, err := ids.NodeIDFromString(input)
-	return err
+type Selector struct {
+	selector promptui.Select
 }
 
-func validateAddress(input string) error {
-	if !common.IsHexAddress(input) {
-		return errors.New("invalid address")
+func NewPrompter(str string) PromptRunner {
+	return &Prompter{
+		prompt: promptui.Prompt{
+			Label: str,
+		},
 	}
-	return nil
 }
 
-func validateExistingFilepath(input string) error {
-	if fileInfo, err := os.Stat(input); err == nil && !fileInfo.IsDir() {
-		return nil
-	}
-	return errors.New("file doesn't exist")
+func (p *Prompter) SetValidation(valFunc func(string) error) {
+	p.prompt.Validate = valFunc
 }
 
-func validateWeight(input string) error {
-	val, err := strconv.ParseUint(input, 10, 64)
-	if err != nil {
-		return err
-	}
-	if val < 1 || val > 100 {
-		return errors.New("the weight must be between 1 and 100")
-	}
-	return nil
+func (p *Prompter) Run() (string, error) {
+	return p.prompt.Run()
 }
 
-func validateBiggerThanZero(input string) error {
-	val, err := strconv.ParseUint(input, 10, 64)
-	if err != nil {
-		return err
+func NewSelector(str string, items interface{}) SelectRunner {
+	return &Selector{
+		selector: promptui.Select{
+			Label: str,
+			Items: items,
+		},
 	}
-	if val == 0 {
-		return errors.New("the value must be bigger than zero")
-	}
-	return nil
 }
 
-func CaptureDuration(promptStr string) (time.Duration, error) {
-	prompt := promptui.Prompt{
-		Label:    promptStr,
-		Validate: validateStakingDuration,
-	}
+func (s *Selector) Run() (int, string, error) {
+	return s.selector.Run()
+}
+
+func CaptureDuration(prompt PromptRunner) (time.Duration, error) {
+	prompt.SetValidation(validateStakingDuration)
 
 	durationStr, err := prompt.Run()
 	if err != nil {
@@ -114,11 +82,8 @@ func CaptureDuration(promptStr string) (time.Duration, error) {
 	return time.ParseDuration(durationStr)
 }
 
-func CaptureDate(promptStr string) (time.Time, error) {
-	prompt := promptui.Prompt{
-		Label:    promptStr,
-		Validate: validateTime,
-	}
+func CaptureDate(prompt PromptRunner) (time.Time, error) {
+	prompt.SetValidation(validateTime)
 
 	timeStr, err := prompt.Run()
 	if err != nil {
@@ -128,11 +93,8 @@ func CaptureDate(promptStr string) (time.Time, error) {
 	return time.Parse(constants.TimeParseLayout, timeStr)
 }
 
-func CaptureNodeID(promptStr string) (ids.NodeID, error) {
-	prompt := promptui.Prompt{
-		Label:    promptStr,
-		Validate: validateNodeID,
-	}
+func CaptureNodeID(prompt PromptRunner) (ids.NodeID, error) {
+	prompt.SetValidation(validateNodeID)
 
 	nodeIDStr, err := prompt.Run()
 	if err != nil {
@@ -141,11 +103,8 @@ func CaptureNodeID(promptStr string) (ids.NodeID, error) {
 	return ids.NodeIDFromString(nodeIDStr)
 }
 
-func CaptureWeight(promptStr string) (uint64, error) {
-	prompt := promptui.Prompt{
-		Label:    promptStr,
-		Validate: validateWeight,
-	}
+func CaptureWeight(prompt PromptRunner) (uint64, error) {
+	prompt.SetValidation(validateWeight)
 
 	amountStr, err := prompt.Run()
 	if err != nil {
@@ -155,11 +114,8 @@ func CaptureWeight(promptStr string) (uint64, error) {
 	return strconv.ParseUint(amountStr, 10, 64)
 }
 
-func CaptureUint64(promptStr string) (uint64, error) {
-	prompt := promptui.Prompt{
-		Label:    promptStr,
-		Validate: validateBiggerThanZero,
-	}
+func CaptureUint64(prompt PromptRunner) (uint64, error) {
+	prompt.SetValidation(validateBiggerThanZero)
 
 	amountStr, err := prompt.Run()
 	if err != nil {
@@ -169,11 +125,8 @@ func CaptureUint64(promptStr string) (uint64, error) {
 	return strconv.ParseUint(amountStr, 10, 64)
 }
 
-func CapturePositiveBigInt(promptStr string) (*big.Int, error) {
-	prompt := promptui.Prompt{
-		Label:    promptStr,
-		Validate: validatePositiveBigInt,
-	}
+func CapturePositiveBigInt(prompt PromptRunner) (*big.Int, error) {
+	prompt.SetValidation(validatePositiveBigInt)
 
 	amountStr, err := prompt.Run()
 	if err != nil {
@@ -188,17 +141,8 @@ func CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 	return amountInt, nil
 }
 
-func validatePChainAddress(input string) error {
-	_, _, _, err := address.Parse(input)
-
-	return err
-}
-
-func CapturePChainAddress(promptStr string) (string, error) {
-	prompt := promptui.Prompt{
-		Label:    promptStr,
-		Validate: validatePChainAddress,
-	}
+func CapturePChainAddress(prompt PromptRunner) (string, error) {
+	prompt.SetValidation(validatePChainAddress)
 
 	addressStr, err := prompt.Run()
 	if err != nil {
@@ -208,11 +152,8 @@ func CapturePChainAddress(promptStr string) (string, error) {
 	return addressStr, nil
 }
 
-func CaptureAddress(promptStr string) (common.Address, error) {
-	prompt := promptui.Prompt{
-		Label:    promptStr,
-		Validate: validateAddress,
-	}
+func CaptureAddress(prompt PromptRunner) (common.Address, error) {
+	prompt.SetValidation(validateAddress)
 
 	addressStr, err := prompt.Run()
 	if err != nil {
@@ -223,11 +164,8 @@ func CaptureAddress(promptStr string) (common.Address, error) {
 	return addressHex, nil
 }
 
-func CaptureExistingFilepath(promptStr string) (string, error) {
-	prompt := promptui.Prompt{
-		Label:    promptStr,
-		Validate: validateExistingFilepath,
-	}
+func CaptureExistingFilepath(prompt PromptRunner) (string, error) {
+	prompt.SetValidation(validateExistingFilepath)
 
 	pathStr, err := prompt.Run()
 	if err != nil {
@@ -237,12 +175,7 @@ func CaptureExistingFilepath(promptStr string) (string, error) {
 	return pathStr, nil
 }
 
-func yesNoBase(promptStr string, orderedOptions []string) (bool, error) {
-	prompt := promptui.Select{
-		Label: promptStr,
-		Items: orderedOptions,
-	}
-
+func yesNoBase(prompt SelectRunner) (bool, error) {
 	_, decision, err := prompt.Run()
 	if err != nil {
 		return false, err
@@ -250,20 +183,15 @@ func yesNoBase(promptStr string, orderedOptions []string) (bool, error) {
 	return decision == Yes, nil
 }
 
-func CaptureYesNo(promptStr string) (bool, error) {
-	return yesNoBase(promptStr, []string{Yes, No})
+func CaptureYesNo(f SelectCreateFunc, promptStr string) (bool, error) {
+	return yesNoBase(f(promptStr, []string{Yes, No}))
 }
 
-func CaptureNoYes(promptStr string) (bool, error) {
-	return yesNoBase(promptStr, []string{No, Yes})
+func CaptureNoYes(f SelectCreateFunc, promptStr string) (bool, error) {
+	return yesNoBase(f(promptStr, []string{No, Yes}))
 }
 
-func CaptureList(promptStr string, options []string) (string, error) {
-	prompt := promptui.Select{
-		Label: promptStr,
-		Items: options,
-	}
-
+func CaptureList(prompt SelectRunner) (string, error) {
 	_, listDecision, err := prompt.Run()
 	if err != nil {
 		return "", err
@@ -271,16 +199,15 @@ func CaptureList(promptStr string, options []string) (string, error) {
 	return listDecision, nil
 }
 
-func CaptureString(promptStr string) (string, error) {
-	prompt := promptui.Prompt{
-		Label: promptStr,
-		Validate: func(input string) error {
+func CaptureString(prompt PromptRunner) (string, error) {
+	prompt.SetValidation(
+		func(input string) error {
 			if input == "" {
 				return errors.New("string cannot be empty")
 			}
 			return nil
 		},
-	}
+	)
 
 	str, err := prompt.Run()
 	if err != nil {
@@ -290,12 +217,7 @@ func CaptureString(promptStr string) (string, error) {
 	return str, nil
 }
 
-func CaptureIndex(promptStr string, options []common.Address) (int, error) {
-	prompt := promptui.Select{
-		Label: promptStr,
-		Items: options,
-	}
-
+func CaptureIndex(prompt SelectRunner) (int, error) {
 	listIndex, _, err := prompt.Run()
 	if err != nil {
 		return 0, err

@@ -39,7 +39,7 @@ to interact with the subnet.
 Subsequent calls of deploy using the same subnet configuration will
 redeploy the subnet and reset the chain state to genesis.`,
 		SilenceUsage: true,
-		RunE:         deploySubnet,
+		RunE:         deploySubnetCmd,
 		Args:         cobra.ExactArgs(1),
 	}
 	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
@@ -78,7 +78,15 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 }
 
 // deploySubnet is the cobra command run for deploying subnets
-func deploySubnet(cmd *cobra.Command, args []string) error {
+func deploySubnetCmd(cmd *cobra.Command, args []string) error {
+	return deploySubnet(prompts.NewPrompter, prompts.NewSelector, args)
+}
+
+func deploySubnet(
+	prompter prompts.PromptCreateFunc,
+	selector prompts.SelectCreateFunc,
+	args []string,
+) error {
 	chains, err := validateSubnetName(args)
 	if err != nil {
 		return err
@@ -90,8 +98,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		network = models.Local
 	} else {
 		networkStr, err := prompts.CaptureList(
-			"Choose a network to deploy on",
-			[]string{models.Local.String(), models.Fuji.String(), models.Mainnet.String()},
+			selector(
+				"Choose a network to deploy on",
+				[]string{models.Local.String(), models.Fuji.String(), models.Mainnet.String()},
+			),
 		)
 		if err != nil {
 			return err
@@ -127,7 +137,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	// prompt for control keys
-	controlKeys, cancelled, err := getControlKeys()
+	controlKeys, cancelled, err := getControlKeys(prompter, selector)
 	if err != nil {
 		return err
 	}
@@ -140,7 +150,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	var threshold uint32
 
 	if len(controlKeys) > 0 {
-		threshold, err = getThreshold(uint64(len(controlKeys)))
+		threshold, err = getThreshold(prompter, uint64(len(controlKeys)))
 		if err != nil {
 			return err
 		}
@@ -164,7 +174,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	return app.UpdateSidecar(&sidecar)
 }
 
-func getControlKeys() ([]string, bool, error) {
+func getControlKeys(
+	prompter prompts.PromptCreateFunc,
+	selector prompts.SelectCreateFunc,
+) ([]string, bool, error) {
 	controlKeysPrompt := "Configure which addresses allow to add new validators"
 	// TODO: is this text ok?
 	noControlKeysPrompt := "You did not add any control key. This means anyone can add validators to your subnet. " +
@@ -172,7 +185,7 @@ func getControlKeys() ([]string, bool, error) {
 
 	for {
 		// ask in a loop so that if some condition is not met we can keep asking
-		controlKeys, cancelled, err := controlKeysLoop(controlKeysPrompt)
+		controlKeys, cancelled, err := controlKeysLoop(prompter, selector, controlKeysPrompt)
 		if err != nil {
 			return nil, false, err
 		}
@@ -181,7 +194,7 @@ func getControlKeys() ([]string, bool, error) {
 		}
 		if len(controlKeys) == 0 {
 			// we want to prompt if the user indeed wants to proceed without any control keys
-			yes, err := prompts.CaptureNoYes(noControlKeysPrompt)
+			yes, err := prompts.CaptureNoYes(selector, noControlKeysPrompt)
 			if err != nil {
 				return nil, false, err
 			}
@@ -197,7 +210,11 @@ func getControlKeys() ([]string, bool, error) {
 }
 
 // controlKeysLoop asks as many controlkeys the user requires, until Done or Cancel is selected
-func controlKeysLoop(controlKeysPrompt string) ([]string, bool, error) {
+func controlKeysLoop(
+	prompter prompts.PromptCreateFunc,
+	selector prompts.SelectCreateFunc,
+	controlKeysPrompt string,
+) ([]string, bool, error) {
 	const (
 		addCtrlKey = "Add control key"
 		doneMsg    = "Done"
@@ -208,7 +225,7 @@ func controlKeysLoop(controlKeysPrompt string) ([]string, bool, error) {
 
 	for {
 		listDecision, err := prompts.CaptureList(
-			controlKeysPrompt, []string{addCtrlKey, doneMsg, cancelMsg},
+			selector(controlKeysPrompt, []string{addCtrlKey, doneMsg, cancelMsg}),
 		)
 		if err != nil {
 			return nil, false, err
@@ -217,7 +234,7 @@ func controlKeysLoop(controlKeysPrompt string) ([]string, bool, error) {
 		switch listDecision {
 		case addCtrlKey:
 			controlKey, err := prompts.CapturePChainAddress(
-				"Enter the addresses which control who can add validators to this subnet",
+				prompter("Enter the addresses which control who can add validators to this subnet"),
 			)
 			if err != nil {
 				return nil, false, err
@@ -238,8 +255,8 @@ func controlKeysLoop(controlKeysPrompt string) ([]string, bool, error) {
 }
 
 // getThreshold prompts for the threshold of addresses as a number
-func getThreshold(minLen uint64) (uint32, error) {
-	threshold, err := prompts.CaptureUint64("Enter required number of control addresses to add validators")
+func getThreshold(prompter prompts.PromptCreateFunc, minLen uint64) (uint32, error) {
+	threshold, err := prompts.CaptureUint64(prompter("Enter required number of control addresses to add validators"))
 	if err != nil {
 		return 0, err
 	}
