@@ -7,7 +7,6 @@ import (
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
@@ -15,7 +14,7 @@ func getChainID(app *application.Avalanche) (*big.Int, error) {
 	// TODO check against known chain ids and provide warning
 	ux.Logger.PrintToUser("Enter your subnet's ChainId. It can be any positive integer.")
 
-	chainID, err := prompts.CapturePositiveBigInt("ChainId")
+	chainID, err := app.Prompt.CapturePositiveBigInt("ChainId")
 	if err != nil {
 		return nil, err
 	}
@@ -32,9 +31,9 @@ func getChainID(app *application.Avalanche) (*big.Int, error) {
 	return chainID, nil
 }
 
-func getTokenName() (string, error) {
+func getTokenName(app *application.Avalanche) (string, error) {
 	ux.Logger.PrintToUser("Select a symbol for your subnet's native token")
-	tokenName, err := prompts.CaptureString("Token symbol")
+	tokenName, err := app.Prompt.CaptureString("Token symbol")
 	if err != nil {
 		return "", err
 	}
@@ -48,7 +47,7 @@ func getDescriptors(app *application.Avalanche) (*big.Int, string, stateDirectio
 		return nil, "", stop, err
 	}
 
-	tokenName, err := getTokenName()
+	tokenName, err := getTokenName(app)
 	if err != nil {
 		return nil, "", stop, err
 	}

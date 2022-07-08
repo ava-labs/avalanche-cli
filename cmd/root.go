@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
@@ -65,7 +66,7 @@ func createApp(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	app.Setup(baseDir, log)
+	app.Setup(baseDir, log, prompts.NewPrompter())
 	return nil
 }
 

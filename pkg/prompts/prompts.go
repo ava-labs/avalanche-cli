@@ -16,6 +16,24 @@ const (
 	No  = "No"
 )
 
+type Prompter interface {
+	CapturePositiveBigInt(promptStr string) (*big.Int, error)
+	CaptureAddress(promptStr string) (common.Address, error)
+	CaptureExistingFilepath(promptStr string) (string, error)
+	CaptureYesNo(promptStr string) (bool, error)
+	CaptureNoYes(promptStr string) (bool, error)
+	CaptureList(promptStr string, options []string) (string, error)
+	CaptureString(promptStr string) (string, error)
+	CaptureIndex(promptStr string, options []common.Address) (int, error)
+}
+
+type realPrompter struct{}
+
+// NewProcessChecker creates a new process checker which can respond if the server is running
+func NewPrompter() Prompter {
+	return &realPrompter{}
+}
+
 func validatePositiveBigInt(input string) error {
 	n := new(big.Int)
 	n, ok := n.SetString(input, 10)
@@ -42,7 +60,7 @@ func validateExistingFilepath(input string) error {
 	return errors.New("file doesn't exist")
 }
 
-func CapturePositiveBigInt(promptStr string) (*big.Int, error) {
+func (*realPrompter) CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validatePositiveBigInt,
@@ -61,7 +79,7 @@ func CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 	return amountInt, nil
 }
 
-func CaptureAddress(promptStr string) (common.Address, error) {
+func (*realPrompter) CaptureAddress(promptStr string) (common.Address, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validateAddress,
@@ -76,7 +94,7 @@ func CaptureAddress(promptStr string) (common.Address, error) {
 	return addressHex, nil
 }
 
-func CaptureExistingFilepath(promptStr string) (string, error) {
+func (*realPrompter) CaptureExistingFilepath(promptStr string) (string, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validateExistingFilepath,
@@ -103,15 +121,15 @@ func yesNoBase(promptStr string, orderedOptions []string) (bool, error) {
 	return decision == Yes, nil
 }
 
-func CaptureYesNo(promptStr string) (bool, error) {
+func (*realPrompter) CaptureYesNo(promptStr string) (bool, error) {
 	return yesNoBase(promptStr, []string{Yes, No})
 }
 
-func CaptureNoYes(promptStr string) (bool, error) {
+func (*realPrompter) CaptureNoYes(promptStr string) (bool, error) {
 	return yesNoBase(promptStr, []string{No, Yes})
 }
 
-func CaptureList(promptStr string, options []string) (string, error) {
+func (*realPrompter) CaptureList(promptStr string, options []string) (string, error) {
 	prompt := promptui.Select{
 		Label: promptStr,
 		Items: options,
@@ -124,7 +142,7 @@ func CaptureList(promptStr string, options []string) (string, error) {
 	return listDecision, nil
 }
 
-func CaptureString(promptStr string) (string, error) {
+func (*realPrompter) CaptureString(promptStr string) (string, error) {
 	prompt := promptui.Prompt{
 		Label: promptStr,
 		Validate: func(input string) error {
@@ -143,7 +161,7 @@ func CaptureString(promptStr string) (string, error) {
 	return str, nil
 }
 
-func CaptureIndex(promptStr string, options []common.Address) (int, error) {
+func (*realPrompter) CaptureIndex(promptStr string, options []common.Address) (int, error) {
 	prompt := promptui.Select{
 		Label: promptStr,
 		Items: options,

@@ -8,7 +8,6 @@ import (
 	"unicode"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/spf13/cobra"
@@ -95,7 +94,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 		subnetType = getVMFromFlag()
 
 		if subnetType == "" {
-			subnetTypeStr, err := prompts.CaptureList(
+			subnetTypeStr, err := app.Prompt.CaptureList(
 				"Choose your VM",
 				[]string{subnetEvm, customVM},
 			)
@@ -120,7 +119,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		case customVM:
-			genesisBytes, sc, err = vm.CreateCustomGenesis(subnetName)
+			genesisBytes, sc, err = vm.CreateCustomGenesis(subnetName, app)
 			if err != nil {
 				return err
 			}
@@ -146,7 +145,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 		subnetType = getVMFromFlag()
 
 		if subnetType == "" {
-			subnetTypeStr, err := prompts.CaptureList(
+			subnetTypeStr, err := app.Prompt.CaptureList(
 				"What VM does your genesis use?",
 				[]string{subnetEvm, customVM},
 			)
