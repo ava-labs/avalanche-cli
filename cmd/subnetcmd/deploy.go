@@ -22,6 +22,8 @@ import (
 var (
 	deployLocal bool
 	keyName     string
+
+	errNoKey = errors.New("this command requires the name of the private key")
 )
 
 // avalanche subnet deploy
@@ -118,7 +120,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	case models.Fuji: // just make the switch pass
 		if keyName == "" {
-			return errors.New("this command requires the name of the private key")
+			return errNoKey
 		}
 
 	case models.Mainnet: // just make the switch pass, fuij/main implementation is the same (for now)

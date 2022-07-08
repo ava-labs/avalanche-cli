@@ -76,7 +76,7 @@ func (d *PublicSubnetDeployer) Deploy(controlKeys []string, threshold uint32, ch
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
-	ux.Logger.PrintToUser(subnetID.String())
+	ux.Logger.PrintToUser("Subnet has been created with ID: %s. Now creating blockchain...", subnetID.String())
 
 	blockchainID, err := d.createBlockchainTx(chain, vmID, subnetID, []byte(genesis), wallet)
 	if err != nil {

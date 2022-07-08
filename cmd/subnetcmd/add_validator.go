@@ -3,6 +3,7 @@
 package subnetcmd
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 )
@@ -20,6 +22,8 @@ var (
 	weightStr    string
 	startTimeStr string
 	duration     time.Duration
+
+	errNoSubnetID = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created?")
 )
 
 // avalanche subnet deploy
@@ -49,6 +53,20 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		err    error
 	)
 
+	if keyName == "" {
+		return errNoKey
+	}
+
+	var network models.Network
+	networkStr, err := prompts.CaptureList(
+		"Choose a network to deploy on (this command only supports public networks)",
+		[]string{models.Fuji.String(), models.Mainnet.String()},
+	)
+	if err != nil {
+		return err
+	}
+	network = models.NetworkFromString(networkStr)
+
 	chains, err := validateSubnetName(args)
 	if err != nil {
 		return err
@@ -61,7 +79,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 
 	subnetID := sc.SubnetID
 	if subnetID == ids.Empty {
-		return fmt.Errorf("failed to find the subnet ID for this subnet, has it been deployed/created?")
+		return errNoSubnetID
 	}
 
 	if nodeIDStr == "" {
@@ -98,7 +116,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		// TODO validate this start time
+		// TODO validate this start time?
 	}
 
 	if duration == 0 {
@@ -107,18 +125,9 @@ func addValidator(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	// TODO validate this duration
+	// TODO validate this duration?
 
-	var network models.Network
-	networkStr, err := prompts.CaptureList(
-		"Choose a network to deploy on",
-		[]string{models.Fuji.String(), models.Mainnet.String()},
-	)
-	if err != nil {
-		return err
-	}
-	network = models.NetworkFromString(networkStr)
-
+	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 	deployer := subnet.NewPublicSubnetDeployer(app, app.GetKeyPath(keyName), network)
 	return deployer.AddValidator(subnetID, nodeID, weight, start, duration)
 }
