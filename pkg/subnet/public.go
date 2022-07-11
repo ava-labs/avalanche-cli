@@ -40,7 +40,7 @@ func NewPublicSubnetDeployer(app *application.Avalanche, privKeyPath string, net
 }
 
 func (d *PublicSubnetDeployer) AddValidator(subnet ids.ID, nodeID ids.NodeID, weight uint64, startTime time.Time, duration time.Duration) error {
-	wallet, _, err := d.loadWallet()
+	wallet, _, err := d.loadWallet(subnet)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func (d *PublicSubnetDeployer) Deploy(controlKeys []string, threshold uint32, ch
 	return subnetID, blockchainID, nil
 }
 
-func (d *PublicSubnetDeployer) loadWallet() (primary.Wallet, string, error) {
+func (d *PublicSubnetDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, string, error) {
 	ctx := context.Background()
 
 	var (
@@ -112,7 +112,7 @@ func (d *PublicSubnetDeployer) loadWallet() (primary.Wallet, string, error) {
 
 	kc := sf.KeyChain()
 
-	wallet, err := primary.NewWalletFromURI(ctx, api, kc)
+	wallet, err := primary.NewWalletWithTxs(ctx, api, kc, preloadTxs...)
 	if err != nil {
 		return nil, "", err
 	}

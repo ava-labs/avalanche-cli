@@ -13,11 +13,12 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/cb58"
 	"github.com/ava-labs/avalanchego/utils/crypto"
-	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"go.uber.org/zap"
 )
@@ -220,7 +221,7 @@ func checkKeyFileEnd(r io.ByteReader) error {
 
 func encodePrivateKey(pk *crypto.PrivateKeySECP256K1R) (string, error) {
 	privKeyRaw := pk.Bytes()
-	enc, err := formatting.EncodeWithChecksum(formatting.CB58, privKeyRaw)
+	enc, err := cb58.Encode(privKeyRaw)
 	if err != nil {
 		return "", err
 	}
@@ -229,11 +230,11 @@ func encodePrivateKey(pk *crypto.PrivateKeySECP256K1R) (string, error) {
 
 func decodePrivateKey(enc string) (*crypto.PrivateKeySECP256K1R, error) {
 	rawPk := strings.Replace(enc, privKeyEncPfx, "", 1)
-	skBytes, err := formatting.Decode(formatting.CB58, rawPk)
+	skStr, err := cb58.Decode(rawPk)
 	if err != nil {
 		return nil, err
 	}
-	rpk, err := keyFactory.ToPrivateKey(skBytes)
+	rpk, err := keyFactory.ToPrivateKey([]byte(skStr))
 	if err != nil {
 		return nil, err
 	}
@@ -332,7 +333,7 @@ func (m *SoftKey) Addresses() []ids.ShortID {
 	return []ids.ShortID{m.privKey.PublicKey().Address()}
 }
 
-func (m *SoftKey) Sign(pTx *platformvm.Tx, signers [][]ids.ShortID) error {
+func (m *SoftKey) Sign(pTx *txs.Tx, signers [][]ids.ShortID) error {
 	privsigners := make([][]*crypto.PrivateKeySECP256K1R, len(signers))
 	for i, inputSigners := range signers {
 		privsigners[i] = make([]*crypto.PrivateKeySECP256K1R, len(inputSigners))
