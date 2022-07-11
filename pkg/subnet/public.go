@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
@@ -21,18 +20,16 @@ import (
 
 type PublicDeployer struct {
 	LocalSubnetDeployer
-	baseDir     string
 	privKeyPath string
 	network     models.Network
-	log         logging.Logger
+	app         *application.Avalanche
 }
 
 func NewPublicDeployer(app *application.Avalanche, privKeyPath string, network models.Network) *PublicDeployer {
 	return &PublicDeployer{
 		LocalSubnetDeployer: *NewLocalSubnetDeployer(app),
-		baseDir:             app.GetBaseDir(),
+		app:                 app,
 		privKeyPath:         privKeyPath,
-		log:                 app.Log,
 		network:             network,
 	}
 }

@@ -94,50 +94,75 @@ func CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 	return amountInt, nil
 }
 
-func validatePChainAddress(input string) error {
-	chainID, _, _, err := address.Parse(input)
+func validatePChainAddress(input string) (string, error) {
+	chainID, hrp, _, err := address.Parse(input)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if chainID != "P" {
-		return errors.New("this is not a PChain address")
+		return "", errors.New("this is not a PChain address")
+	}
+	return hrp, nil
+}
+
+func validatePChainFujiAddress(input string) error {
+	hrp, err := validatePChainAddress(input)
+	if err != nil {
+		return err
+	}
+	if hrp != constants.FujiHRP {
+		return errors.New("this is not a fuji address")
 	}
 	return nil
+}
+
+func validatePChainMainAddress(input string) error {
+	hrp, err := validatePChainAddress(input)
+	if err != nil {
+		return err
+	}
+	if hrp != constants.MainnetHRP {
+		return errors.New("this is not a mainnet address")
+	}
+	return nil
+}
+
+func validatePChainLocalAddress(input string) error {
+	hrp, err := validatePChainAddress(input)
+	if err != nil {
+		return err
+	}
+	// ANR uses the `custom` HRP for local networks,
+	// but the `local` HRP also exists...
+	if hrp != constants.LocalHRP && hrp != constants.FallbackHRP {
+		return errors.New("this is not a local nor custom address")
+	}
+	return nil
+}
+
+func getPChainValidationFunc(network models.Network) func(string) error {
+	switch network {
+	case models.Fuji:
+		return validatePChainFujiAddress
+	case models.Mainnet:
+		return validatePChainMainAddress
+	case models.Local:
+		return validatePChainLocalAddress
+	default:
+		return func(string) error {
+			return errors.New("unsupported network")
+		}
+	}
 }
 
 func CapturePChainAddress(promptStr string, network models.Network) (string, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
-		Validate: validatePChainAddress,
+		Validate: getPChainValidationFunc(network),
 	}
 
-	addressStr, err := prompt.Run()
-	if err != nil {
-		return "", err
-	}
-
-	_, hrp, _, err := address.Parse(addressStr)
-	if err != nil {
-		return "", err
-	}
-	switch network {
-	case models.Fuji:
-		if hrp != constants.FujiHRP {
-			return "", errors.New("this is not a fuji address")
-		}
-	case models.Mainnet:
-		if hrp != constants.MainnetHRP {
-			return "", errors.New("this is not a mainnet address")
-		}
-	case models.Local:
-		// ANR uses the `custom` HRP for local networks,
-		// but the `local` HRP also exists...
-		if hrp != constants.LocalHRP && hrp != constants.FallbackHRP {
-			return "", errors.New("this is not a local nor custom address")
-		}
-	}
-	return addressStr, nil
+	return prompt.Run()
 }
 
 func CaptureAddress(promptStr string) (common.Address, error) {
