@@ -230,11 +230,11 @@ func encodePrivateKey(pk *crypto.PrivateKeySECP256K1R) (string, error) {
 
 func decodePrivateKey(enc string) (*crypto.PrivateKeySECP256K1R, error) {
 	rawPk := strings.Replace(enc, privKeyEncPfx, "", 1)
-	skStr, err := cb58.Decode(rawPk)
+	skBytes, err := cb58.Decode(rawPk)
 	if err != nil {
 		return nil, err
 	}
-	rpk, err := keyFactory.ToPrivateKey([]byte(skStr))
+	rpk, err := keyFactory.ToPrivateKey(skBytes)
 	if err != nil {
 		return nil, err
 	}
