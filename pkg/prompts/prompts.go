@@ -6,7 +6,11 @@ import (
 	"errors"
 	"math/big"
 	"os"
+	"strconv"
 
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/manifoldco/promptui"
 )
@@ -42,6 +46,35 @@ func validateExistingFilepath(input string) error {
 	return errors.New("file doesn't exist")
 }
 
+func validateBiggerThanZero(input string) error {
+	val, err := strconv.ParseUint(input, 10, 64)
+	if err != nil {
+		return err
+	}
+	if val == 0 {
+		return errors.New("the value must be bigger than zero")
+	}
+	return nil
+}
+
+func CaptureUint64(promptStr string) (uint64, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateBiggerThanZero,
+	}
+
+	amountStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	val, err := strconv.ParseUint(amountStr, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return val, nil
+}
+
 func CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
@@ -59,6 +92,77 @@ func CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 		return nil, errors.New("SetString: error")
 	}
 	return amountInt, nil
+}
+
+func validatePChainAddress(input string) (string, error) {
+	chainID, hrp, _, err := address.Parse(input)
+	if err != nil {
+		return "", err
+	}
+
+	if chainID != "P" {
+		return "", errors.New("this is not a PChain address")
+	}
+	return hrp, nil
+}
+
+func validatePChainFujiAddress(input string) error {
+	hrp, err := validatePChainAddress(input)
+	if err != nil {
+		return err
+	}
+	if hrp != constants.FujiHRP {
+		return errors.New("this is not a fuji address")
+	}
+	return nil
+}
+
+func validatePChainMainAddress(input string) error {
+	hrp, err := validatePChainAddress(input)
+	if err != nil {
+		return err
+	}
+	if hrp != constants.MainnetHRP {
+		return errors.New("this is not a mainnet address")
+	}
+	return nil
+}
+
+func validatePChainLocalAddress(input string) error {
+	hrp, err := validatePChainAddress(input)
+	if err != nil {
+		return err
+	}
+	// ANR uses the `custom` HRP for local networks,
+	// but the `local` HRP also exists...
+	if hrp != constants.LocalHRP && hrp != constants.FallbackHRP {
+		return errors.New("this is not a local nor custom address")
+	}
+	return nil
+}
+
+func getPChainValidationFunc(network models.Network) func(string) error {
+	switch network {
+	case models.Fuji:
+		return validatePChainFujiAddress
+	case models.Mainnet:
+		return validatePChainMainAddress
+	case models.Local:
+		return validatePChainLocalAddress
+	default:
+		return func(string) error {
+			return errors.New("unsupported network")
+		}
+	}
+}
+
+func CapturePChainAddress(promptStr string, network models.Network) (string, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: getPChainValidationFunc(network),
+	}
+
+	return prompt.Run()
 }
 
 func CaptureAddress(promptStr string) (common.Address, error) {

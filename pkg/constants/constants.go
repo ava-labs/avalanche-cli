@@ -29,6 +29,9 @@ const (
 
 	RequestTimeout = 3 * time.Minute
 
+	FujiAPIEndpoint    = "https://api.avax-test.network"
+	MainnetAPIEndpoint = "https://api.avax.network"
+
 	DefaultTokenName = "TEST"
 
 	HealthCheckInterval = 100 * time.Millisecond

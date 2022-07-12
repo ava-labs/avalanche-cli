@@ -36,7 +36,7 @@ const (
 	WriteReadReadPerms = 0o644
 )
 
-type Deployer struct {
+type LocalSubnetDeployer struct {
 	procChecker         binutils.ProcessChecker
 	binChecker          binutils.BinaryChecker
 	getClientFunc       getGRPCClientFunc
@@ -47,8 +47,8 @@ type Deployer struct {
 	setDefaultSnapshot  setDefaultSnapshotFunc
 }
 
-func NewLocalDeployer(app *application.Avalanche) *Deployer {
-	return &Deployer{
+func NewLocalSubnetDeployer(app *application.Avalanche) *LocalSubnetDeployer {
+	return &LocalSubnetDeployer{
 		procChecker:         binutils.NewProcessChecker(),
 		binChecker:          binutils.NewBinaryChecker(),
 		getClientFunc:       binutils.NewGRPCClient,
@@ -66,14 +66,14 @@ type setDefaultSnapshotFunc func(string, bool) error
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
-func (d *Deployer) DeployToLocalNetwork(chain string, chainGenesis string) error {
+func (d *LocalSubnetDeployer) DeployToLocalNetwork(chain string, chainGenesis string) error {
 	if err := d.StartServer(); err != nil {
 		return err
 	}
 	return d.doDeploy(chain, chainGenesis)
 }
 
-func (d *Deployer) StartServer() error {
+func (d *LocalSubnetDeployer) StartServer() error {
 	isRunning, err := d.procChecker.IsServerProcessRunning(d.app)
 	if err != nil {
 		return fmt.Errorf("failed querying if server process is running: %w", err)
@@ -90,7 +90,7 @@ func (d *Deployer) StartServer() error {
 
 // BackendStartedHere returns true if the backend was started by this run,
 // or false if it found it there already
-func (d *Deployer) BackendStartedHere() bool {
+func (d *LocalSubnetDeployer) BackendStartedHere() bool {
 	return d.backendStartedHere
 }
 
@@ -105,7 +105,7 @@ func (d *Deployer) BackendStartedHere() bool {
 // - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
 // - waits completion of operation
 // - show status
-func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
+func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) error {
 	avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
 	if err != nil {
 		return err
@@ -254,7 +254,7 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 // * checks if avalanchego is installed in the local binary path
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path and plugin
-func (d *Deployer) SetupLocalEnv() (string, string, error) {
+func (d *LocalSubnetDeployer) SetupLocalEnv() (string, string, error) {
 	err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false)
 	if err != nil {
 		return "", "", fmt.Errorf("failed setting up snapshots: %w", err)
@@ -284,7 +284,7 @@ func (d *Deployer) SetupLocalEnv() (string, string, error) {
 	return avalancheGoBinPath, pluginDir, nil
 }
 
-func (d *Deployer) setupLocalEnv() (string, error) {
+func (d *LocalSubnetDeployer) setupLocalEnv() (string, error) {
 	binDir := filepath.Join(d.app.GetBaseDir(), constants.AvalancheCliBinDir)
 	binPrefix := "avalanchego-v"
 
@@ -384,7 +384,7 @@ func (d *Deployer) setupLocalEnv() (string, error) {
 }
 
 // WaitForHealthy polls continuously until the network is ready to be used
-func (d *Deployer) WaitForHealthy(
+func (d *LocalSubnetDeployer) WaitForHealthy(
 	ctx context.Context,
 	cli client.Client,
 	healthCheckInterval time.Duration,
@@ -444,7 +444,7 @@ func alreadyDeployed(chainVMID ids.ID, clusterInfo *rpcpb.ClusterInfo) bool {
 }
 
 // get list of all needed plugins and install them
-func (d *Deployer) installNeededPlugins(chainVMID ids.ID, clusterInfo *rpcpb.ClusterInfo, pluginDir string) error {
+func (d *LocalSubnetDeployer) installNeededPlugins(chainVMID ids.ID, clusterInfo *rpcpb.ClusterInfo, pluginDir string) error {
 	toInstallVMIDs := map[string]struct{}{}
 	toInstallVMIDs[chainVMID.String()] = struct{}{}
 	if clusterInfo != nil {
