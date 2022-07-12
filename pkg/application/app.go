@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -179,4 +180,16 @@ func (app *Avalanche) ChainIDExists(chainID string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func (app *Avalanche) LoadNodeConfig() (string, error) {
+	globalConfigs := viper.GetStringMap("node-config")
+	if len(globalConfigs) == 0 {
+		return "", nil
+	}
+	configStr, err := json.Marshal(globalConfigs)
+	if err != nil {
+		return "", err
+	}
+	return string(configStr), nil
 }

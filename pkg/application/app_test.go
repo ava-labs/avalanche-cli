@@ -4,6 +4,7 @@ package application
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -419,10 +421,58 @@ func Test_genesisExists(t *testing.T) {
 	assert.NoError(err)
 }
 
+func Test_LoadNodeConfig(t *testing.T) {
+	assert := assert.New(t)
+	ap := newTestApp(t)
+
+	err := useViper("node-config-test")
+	assert.NoError(err)
+
+	config, err := ap.LoadNodeConfig()
+	assert.NoError(err)
+	fmt.Println("Config:", config)
+	testVal := viper.GetString("var")
+	fmt.Println("Test val", testVal)
+	assert.Equal("val", testVal)
+}
+
+func Test_LoadNodeConfig_EmptyConfig(t *testing.T) {
+	assert := assert.New(t)
+	ap := newTestApp(t)
+
+	err := useViper("empty-config")
+	assert.NoError(err)
+
+	config, err := ap.LoadNodeConfig()
+	assert.NoError(err)
+	assert.Empty(config)
+}
+
+func Test_LoadNodeConfig_NoConfig(t *testing.T) {
+	assert := assert.New(t)
+	ap := newTestApp(t)
+
+	err := useViper("")
+	// we want to make sure this errors and no config file is read
+	assert.Error(err)
+
+	config, err := ap.LoadNodeConfig()
+	assert.NoError(err)
+	assert.Empty(config)
+}
+
 func newTestApp(t *testing.T) *Avalanche {
 	tempDir := t.TempDir()
 	return &Avalanche{
 		baseDir: tempDir,
 		Log:     logging.NoLog{},
 	}
+}
+
+func useViper(configName string) error {
+	viper.SetConfigName(configName)
+	viper.SetConfigType("json")
+	viper.AddConfigPath("./../../tests/assets/")
+
+	return viper.ReadInConfig()
 }

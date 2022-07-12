@@ -29,6 +29,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/coreth/core"
 	"github.com/ava-labs/coreth/params"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -74,6 +75,8 @@ func (d *Deployer) DeployToLocalNetwork(chain string, chainGenesis string) error
 }
 
 func (d *Deployer) StartServer() error {
+	url := viper.GetString("config")
+	fmt.Println("Found config: ", url)
 	isRunning, err := d.procChecker.IsServerProcessRunning(d.app)
 	if err != nil {
 		return fmt.Errorf("failed querying if server process is running: %w", err)
@@ -165,7 +168,7 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 	ux.Logger.PrintToUser("VMs ready.")
 
 	if !networkBooted {
-		if err := startNetwork(ctx, cli, avalancheGoBinPath, pluginDir, runDir); err != nil {
+		if err := d.startNetwork(ctx, cli, avalancheGoBinPath, pluginDir, runDir); err != nil {
 			return err
 		}
 	}
@@ -509,7 +512,7 @@ func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 }
 
 // start the network
-func startNetwork(
+func (d *Deployer) startNetwork(
 	ctx context.Context,
 	cli client.Client,
 	avalancheGoBinPath string,
@@ -522,7 +525,18 @@ func startNetwork(
 		client.WithExecPath(avalancheGoBinPath),
 		client.WithRootDataDir(runDir),
 	}
-	_, err := cli.LoadSnapshot(
+
+	// load global node configs if they exist
+	configStr, err := d.app.LoadNodeConfig()
+	if err != nil {
+		return err
+	}
+	if configStr != "" {
+		fmt.Println("Using node config", configStr)
+		loadSnapshotOpts = append(loadSnapshotOpts, client.WithGlobalNodeConfig(configStr))
+	}
+
+	_, err = cli.LoadSnapshot(
 		ctx,
 		constants.DefaultSnapshotName,
 		loadSnapshotOpts...,
