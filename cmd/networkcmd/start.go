@@ -32,7 +32,7 @@ is already running or if no subnets have been deployed.`,
 }
 
 func startNetwork(cmd *cobra.Command, args []string) error {
-	sd := subnet.NewLocalDeployer(app)
+	sd := subnet.NewLocalSubnetDeployer(app)
 
 	if err := sd.StartServer(); err != nil {
 		return err

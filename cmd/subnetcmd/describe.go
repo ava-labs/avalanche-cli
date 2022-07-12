@@ -10,6 +10,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/olekukonko/tablewriter"
@@ -50,7 +51,7 @@ func printGenesis(subnetName string) error {
 	return nil
 }
 
-func printDetails(genesis core.Genesis, subnetName string) {
+func printDetails(genesis core.Genesis, sc models.Sidecar) {
 	const art = `
  _____       _        _ _
 |  __ \     | |      (_) |
@@ -65,10 +66,15 @@ func printDetails(genesis core.Genesis, subnetName string) {
 	table.SetHeader(header)
 	table.SetRowLine(true)
 
-	table.Append([]string{"Subnet Name", subnetName})
-	table.Append([]string{"ChainId", genesis.Config.ChainID.String()})
-	table.Append([]string{"Token Name", app.GetTokenName(subnetName)})
-
+	table.Append([]string{"Subnet Name", sc.Subnet})
+	table.Append([]string{"ChainID", genesis.Config.ChainID.String()})
+	table.Append([]string{"Token Name", app.GetTokenName(sc.Subnet)})
+	if sc.SubnetID != ids.Empty {
+		table.Append([]string{"SubnetID", sc.SubnetID.String()})
+	}
+	if sc.BlockchainID != ids.Empty {
+		table.Append([]string{"BlockchainID", sc.BlockchainID.String()})
+	}
 	table.Render()
 }
 
@@ -177,14 +183,14 @@ func printPrecompileTable(genesis core.Genesis) {
 	}
 }
 
-func describeSubnetEvmGenesis(subnetName string) error {
+func describeSubnetEvmGenesis(sc models.Sidecar) error {
 	// Load genesis
-	genesis, err := app.LoadEvmGenesis(subnetName)
+	genesis, err := app.LoadEvmGenesis(sc.Subnet)
 	if err != nil {
 		return err
 	}
 
-	printDetails(genesis, subnetName)
+	printDetails(genesis, sc)
 	// Write gas table
 	printGasTable(genesis)
 	// fmt.Printf("\n\n")
@@ -212,7 +218,7 @@ func readGenesis(cmd *cobra.Command, args []string) error {
 
 		switch sc.VM {
 		case models.SubnetEvm:
-			err = describeSubnetEvmGenesis(subnetName)
+			err = describeSubnetEvmGenesis(sc)
 		default:
 			app.Log.Warn("Unknown genesis format for", sc.VM)
 			ux.Logger.PrintToUser("Printing genesis")
