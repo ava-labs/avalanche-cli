@@ -45,6 +45,10 @@ If --avalanchego-config is provided, this command tries to edit the config file 
 }
 
 func joinCmd(cmd *cobra.Command, args []string) error {
+	if print && avagoConfigPath != "" {
+		return errors.New("--print and --avalanchego-config simultaneously is not supported")
+	}
+
 	/*
 		chains, err := validateSubnetName(args)
 		if err != nil {
@@ -115,9 +119,15 @@ but until the node is not whitelisted, it will not be able to validate this subn
 		if err != nil {
 			return err
 		}
-		if choice == choiceManual {
+		switch choice {
+		case choiceManual:
 			printJoinCmd(subnetIDstr, networkLower)
 			return nil
+		case choiceAutomatic:
+			avagoConfigPath, err = prompts.CaptureString("Path to your existing config file (or where it will be generated)")
+			if err != nil {
+				return err
+			}
 		}
 		// if choice is automatic, we just pass through this block,
 		// so we don't need another else if the the config path is not set
