@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanchego/ids"
+	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/manifoldco/promptui"
@@ -188,24 +190,75 @@ func CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 	return amountInt, nil
 }
 
-func validatePChainAddress(input string) error {
-	_, _, _, err := address.Parse(input)
-
-	return err
-}
-
-func CapturePChainAddress(promptStr string) (string, error) {
-	prompt := promptui.Prompt{
-		Label:    promptStr,
-		Validate: validatePChainAddress,
-	}
-
-	addressStr, err := prompt.Run()
+func validatePChainAddress(input string) (string, error) {
+	chainID, hrp, _, err := address.Parse(input)
 	if err != nil {
 		return "", err
 	}
 
-	return addressStr, nil
+	if chainID != "P" {
+		return "", errors.New("this is not a PChain address")
+	}
+	return hrp, nil
+}
+
+func validatePChainFujiAddress(input string) error {
+	hrp, err := validatePChainAddress(input)
+	if err != nil {
+		return err
+	}
+	if hrp != avago_constants.FujiHRP {
+		return errors.New("this is not a fuji address")
+	}
+	return nil
+}
+
+func validatePChainMainAddress(input string) error {
+	hrp, err := validatePChainAddress(input)
+	if err != nil {
+		return err
+	}
+	if hrp != avago_constants.MainnetHRP {
+		return errors.New("this is not a mainnet address")
+	}
+	return nil
+}
+
+func validatePChainLocalAddress(input string) error {
+	hrp, err := validatePChainAddress(input)
+	if err != nil {
+		return err
+	}
+	// ANR uses the `custom` HRP for local networks,
+	// but the `local` HRP also exists...
+	if hrp != avago_constants.LocalHRP && hrp != avago_constants.FallbackHRP {
+		return errors.New("this is not a local nor custom address")
+	}
+	return nil
+}
+
+func getPChainValidationFunc(network models.Network) func(string) error {
+	switch network {
+	case models.Fuji:
+		return validatePChainFujiAddress
+	case models.Mainnet:
+		return validatePChainMainAddress
+	case models.Local:
+		return validatePChainLocalAddress
+	default:
+		return func(string) error {
+			return errors.New("unsupported network")
+		}
+	}
+}
+
+func CapturePChainAddress(promptStr string, network models.Network) (string, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: getPChainValidationFunc(network),
+	}
+
+	return prompt.Run()
 }
 
 func CaptureAddress(promptStr string) (common.Address, error) {

@@ -128,7 +128,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	// TODO validate this duration?
 
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
-	deployer := subnet.NewPublicSubnetDeployer(app, app.GetKeyPath(keyName), network)
+	deployer := subnet.NewPublicDeployer(app, app.GetKeyPath(keyName), network)
 	return deployer.AddValidator(subnetID, nodeID, weight, start, duration)
 }
 

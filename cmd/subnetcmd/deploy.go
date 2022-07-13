@@ -120,7 +120,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	case models.Fuji: // just make the switch pass
 		if keyName == "" {
-			return errNoKey
+			keyName, err = prompts.CaptureString("Which private key should be used to issue the transaction? (Provide key name)")
+			if err != nil {
+				return err
+			}
 		}
 
 	case models.Mainnet: // just make the switch pass, fuij/main implementation is the same (for now)
@@ -128,8 +131,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return errors.New("not implemented")
 	}
 
+	// from here on we are assuming a public deploy
+
 	// prompt for control keys
-	controlKeys, cancelled, err := getControlKeys()
+	controlKeys, cancelled, err := getControlKeys(network)
 	if err != nil {
 		return err
 	}
@@ -149,7 +154,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	// deploy to public network
-	deployer := subnet.NewPublicSubnetDeployer(app, app.GetKeyPath(keyName), network)
+	deployer := subnet.NewPublicDeployer(app, app.GetKeyPath(keyName), network)
 	subnetID, blockchainID, err := deployer.Deploy(controlKeys, threshold, chain, chainGenesis)
 	if err != nil {
 		return err
@@ -166,15 +171,12 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	return app.UpdateSidecar(&sidecar)
 }
 
-func getControlKeys() ([]string, bool, error) {
+func getControlKeys(network models.Network) ([]string, bool, error) {
 	controlKeysPrompt := "Configure which addresses allow to add new validators"
-	// TODO: is this text ok?
-	noControlKeysPrompt := "You did not add any control key. This means anyone can add validators to your subnet. " +
-		"This is considered unsafe. Do you really want to continue?"
 
 	for {
 		// ask in a loop so that if some condition is not met we can keep asking
-		controlKeys, cancelled, err := controlKeysLoop(controlKeysPrompt)
+		controlKeys, cancelled, err := controlKeysLoop(controlKeysPrompt, network)
 		if err != nil {
 			return nil, false, err
 		}
@@ -182,16 +184,7 @@ func getControlKeys() ([]string, bool, error) {
 			return nil, cancelled, nil
 		}
 		if len(controlKeys) == 0 {
-			// we want to prompt if the user indeed wants to proceed without any control keys
-			yes, err := prompts.CaptureNoYes(noControlKeysPrompt)
-			if err != nil {
-				return nil, false, err
-			}
-			// the user confirms no control keys
-			if yes {
-				return controlKeys, false, nil
-			}
-			// otherwise we go back to the loop for asking
+			ux.Logger.PrintToUser("This tool does not allow to proceed without any control key set")
 		} else {
 			return controlKeys, false, nil
 		}
@@ -199,7 +192,7 @@ func getControlKeys() ([]string, bool, error) {
 }
 
 // controlKeysLoop asks as many controlkeys the user requires, until Done or Cancel is selected
-func controlKeysLoop(controlKeysPrompt string) ([]string, bool, error) {
+func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string, bool, error) {
 	const (
 		addCtrlKey = "Add control key"
 		doneMsg    = "Done"
@@ -219,7 +212,8 @@ func controlKeysLoop(controlKeysPrompt string) ([]string, bool, error) {
 		switch listDecision {
 		case addCtrlKey:
 			controlKey, err := prompts.CapturePChainAddress(
-				"Enter the addresses which control who can add validators to this subnet",
+				"Enter the P-Chain addresses which control who can add validators to this subnet (*must* be a PChain address: `P-...`)",
+				network,
 			)
 			if err != nil {
 				return nil, false, err
@@ -240,12 +234,12 @@ func controlKeysLoop(controlKeysPrompt string) ([]string, bool, error) {
 }
 
 // getThreshold prompts for the threshold of addresses as a number
-func getThreshold(minLen uint64) (uint32, error) {
+func getThreshold(maxLen uint64) (uint32, error) {
 	threshold, err := prompts.CaptureUint64("Enter required number of control addresses to add validators")
 	if err != nil {
 		return 0, err
 	}
-	if threshold > minLen {
+	if threshold > maxLen {
 		return 0, fmt.Errorf("the threshold can't be bigger than the number of control addresses")
 	}
 	return uint32(threshold), err
