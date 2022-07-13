@@ -54,7 +54,10 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	)
 
 	if keyName == "" {
-		return errNoKey
+		keyName, err = prompts.CaptureString("Which private key should be used to issue the transaction? (Provide key name)")
+		if err != nil {
+			return err
+		}
 	}
 
 	var network models.Network

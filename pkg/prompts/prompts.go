@@ -55,8 +55,8 @@ func validateTime(input string) error {
 	if err != nil {
 		return err
 	}
-	if t.Before(time.Now().Add(constants.StakingStartLeeTime)) {
-		return fmt.Errorf("time should be at least start from now + %s", constants.StakingStartLeeTime)
+	if t.Before(time.Now().Add(constants.StakingStartLeadTime)) {
+		return fmt.Errorf("time should be at least start from now + %s", constants.StakingStartLeadTime)
 	}
 	return err
 }
@@ -86,7 +86,7 @@ func validateWeight(input string) error {
 		return err
 	}
 	if val < 1 || val > 100 {
-		return errors.New("the weight must be between 1 and 100")
+		return errors.New("the weight must be an integer between 1 and 100")
 	}
 	return nil
 }
