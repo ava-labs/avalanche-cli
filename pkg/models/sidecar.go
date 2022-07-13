@@ -4,13 +4,17 @@ package models
 
 import "github.com/ava-labs/avalanchego/ids"
 
-type Sidecar struct {
-	Name         string
-	VM           VMType
-	Subnet       string
-	TokenName    string
-	ChainID      string
-	Version      string
+type NetworkData struct {
 	SubnetID     ids.ID
 	BlockchainID ids.ID
+}
+
+type Sidecar struct {
+	Name      string
+	VM        VMType
+	Subnet    string
+	TokenName string
+	ChainID   string
+	Version   string
+	Networks  map[string]NetworkData
 }
