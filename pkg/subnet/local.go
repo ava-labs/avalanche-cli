@@ -29,6 +29,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/coreth/core"
 	"github.com/ava-labs/coreth/params"
+	"github.com/olekukonko/tablewriter"
 )
 
 const (
@@ -223,9 +224,12 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) error 
 
 	fmt.Println()
 	ux.Logger.PrintToUser("Network ready to use. Local network node endpoints:")
-	for _, u := range endpoints {
-		ux.Logger.PrintToUser(u)
-	}
+	/*
+		for _, u := range endpoints {
+			ux.Logger.PrintToUser(u)
+		}
+	*/
+	PrintTableEndpoints(clusterInfo, chain)
 	fmt.Println()
 	firstURL := endpoints[0]
 
@@ -429,6 +433,20 @@ func GetEndpoints(clusterInfo *rpcpb.ClusterInfo) []string {
 		}
 	}
 	return endpoints
+}
+
+func PrintTableEndpoints(clusterInfo *rpcpb.ClusterInfo, chain string) {
+	table := tablewriter.NewWriter(os.Stdout)
+	header := []string{"node", "VM", "URL"}
+	table.SetHeader(header)
+	table.SetRowLine(true)
+
+	for _, nodeInfo := range clusterInfo.NodeInfos {
+		for blockchainID := range clusterInfo.CustomVms {
+			table.Append([]string{nodeInfo.Name, chain, fmt.Sprintf("%s/ext/bc/%s/rpc", nodeInfo.GetUri(), blockchainID)})
+		}
+	}
+	table.Render()
 }
 
 // return true if vm has already been deployed

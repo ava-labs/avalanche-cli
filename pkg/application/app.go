@@ -186,6 +186,10 @@ func (app *Avalanche) listSideCarNames() ([]string, error) {
 	return names, nil
 }
 
+func (app *Avalanche) GetSidecarNames() ([]string, error) {
+	return app.listSideCarNames()
+}
+
 func (app *Avalanche) ChainIDExists(chainID string) (bool, error) {
 	sidecars, err := app.listSideCarNames()
 	if err != nil {

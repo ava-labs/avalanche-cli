@@ -100,9 +100,32 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 	if len(endpoints) > 0 {
 		ux.Logger.PrintToUser("Network ready to use. Local network node endpoints:")
-		for _, u := range endpoints {
-			ux.Logger.PrintToUser(u)
+		/*
+			for _, u := range endpoints {
+				ux.Logger.PrintToUser(u)
+			}
+		*/
+		chainName := ""
+		sidecars, err := app.GetSidecarNames()
+		if err != nil {
+			// TODO do we want to return an error in this case?
+			// It's far fetched but if it occurs, we could just print the
+			// VM ID instead of the chain name
 		}
+		for _, s := range sidecars {
+			sc, err := app.LoadSidecar(s)
+			if err != nil {
+				// TODO same here - we could just try continue
+				continue
+			}
+			for blockchainID := range clusterInfo.CustomVms {
+				// if sc.Networks["local"] != nil {
+				if blockchainID == sc.Networks["local"].BlockchainID {
+					chainName = sc.Subnet
+				}
+			}
+		}
+		subnet.PrintTableEndpoints(clusterInfo, chainName)
 	}
 
 	return nil
