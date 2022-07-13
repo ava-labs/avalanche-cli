@@ -29,7 +29,6 @@ import (
 	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/coreth/core"
 	"github.com/ava-labs/coreth/params"
-	"github.com/spf13/viper"
 )
 
 const (
@@ -75,8 +74,6 @@ func (d *Deployer) DeployToLocalNetwork(chain string, chainGenesis string) error
 }
 
 func (d *Deployer) StartServer() error {
-	url := viper.GetString("config")
-	fmt.Println("Found config: ", url)
 	isRunning, err := d.procChecker.IsServerProcessRunning(d.app)
 	if err != nil {
 		return fmt.Errorf("failed querying if server process is running: %w", err)
@@ -532,7 +529,6 @@ func (d *Deployer) startNetwork(
 		return err
 	}
 	if configStr != "" {
-		fmt.Println("Using node config", configStr)
 		loadSnapshotOpts = append(loadSnapshotOpts, client.WithGlobalNodeConfig(configStr))
 	}
 

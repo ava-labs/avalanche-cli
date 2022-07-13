@@ -470,6 +470,7 @@ func newTestApp(t *testing.T) *Avalanche {
 }
 
 func useViper(configName string) error {
+	viper.Reset()
 	viper.SetConfigName(configName)
 	viper.SetConfigType("json")
 	viper.AddConfigPath("./../../tests/assets/")

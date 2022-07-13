@@ -79,7 +79,6 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if configStr != "" {
-		fmt.Println("Using node config", configStr)
 		loadSnapshotOpts = append(loadSnapshotOpts, client.WithGlobalNodeConfig(configStr))
 	}
 
