@@ -20,32 +20,35 @@ import (
 )
 
 var (
+	// path to avalanchego config file
 	avagoConfigPath string
-	print           bool
+	// if true, print the manual instructions to screen
+	printManual bool
 )
 
 // avalanche subnet deploy
 func newJoinCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "join [subnetName]",
-		Short: "Instruct a validator node to begin validating a new subnet",
+		Short: "Instruct a validator node to begin validating a new subnet.",
 		Long: `Instruct a validator node to begin validating a new subnet.
+Either it prints the necessary instructions to screen or attempts to edit/generate a config file automatically.
 The NodeID of that validator node must have been whitelisted by one of the 
 subnet's control keys for this to work.
 
 The node also needs to be restarted.
 If --avalanchego-config is provided, this command tries to edit the config file at that path
-(consider correct permissions).`,
+(requires the file to be readable and writable).`,
 		RunE: joinCmd,
 		Args: cobra.ExactArgs(1),
 	}
 	cmd.Flags().StringVar(&avagoConfigPath, "avalanchego-config", "", "file path of the avalanchego config file")
-	cmd.Flags().BoolVar(&print, "print", false, "if true, print the manual config without prompting")
+	cmd.Flags().BoolVar(&printManual, "print", false, "if true, print the manual config without prompting")
 	return cmd
 }
 
 func joinCmd(cmd *cobra.Command, args []string) error {
-	if print && avagoConfigPath != "" {
+	if printManual && avagoConfigPath != "" {
 		return errors.New("--print and --avalanchego-config simultaneously is not supported")
 	}
 
@@ -84,12 +87,13 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if yes {
-		isWhitelisted, err := checkIsWhitelisted(ids.GenerateTestID(), network)
+		// TODO use actual ID
+		isValidating, err := isNodeValidatingSubnet(ids.GenerateTestID(), network)
 		if err != nil {
 			return err
 		}
-		if !isWhitelisted {
-			ux.Logger.PrintToUser(`The node seems to not have been whitelisted. 
+		if !isValidating {
+			ux.Logger.PrintToUser(`The node is not whitelisted to validate this subnet. 
 You can continue with this command, generating a config file or printing the whitelisting configuration,
 but until the node is not whitelisted, it will not be able to validate this subnet.`)
 			y, err := prompts.CaptureYesNo("Do you wish to continue")
@@ -102,7 +106,7 @@ but until the node is not whitelisted, it will not be able to validate this subn
 		}
 	}
 
-	if print {
+	if printManual {
 		printJoinCmd(subnetIDstr, networkLower)
 		return nil
 	}
@@ -132,13 +136,13 @@ but until the node is not whitelisted, it will not be able to validate this subn
 		// if choice is automatic, we just pass through this block,
 		// so we don't need another else if the the config path is not set
 	}
-	if err := editConfigFile(subnetIDstr, networkLower); err != nil {
+	if err := editConfigFile(subnetIDstr, networkLower, avagoConfigPath); err != nil {
 		return err
 	}
 	return nil
 }
 
-func checkIsWhitelisted(subnetID ids.ID, network models.Network) (bool, error) {
+func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, error) {
 	/*
 		promptStr := "Please enter your node's ID (NodeID-...)"
 		nodeID, err := prompts.CaptureNodeID(promptStr)
@@ -171,7 +175,7 @@ func checkIsWhitelisted(subnetID ids.ID, network models.Network) (bool, error) {
 	return false, nil
 }
 
-func editConfigFile(subnetID string, networkID string) error {
+func editConfigFile(subnetID string, networkID string, configFile string) error {
 	warn := "WARNING: This will edit your existing config file if there is any, are you sure?"
 	yes, err := prompts.CaptureYesNo(warn)
 	if err != nil {
@@ -181,16 +185,16 @@ func editConfigFile(subnetID string, networkID string) error {
 		ux.Logger.PrintToUser("Canceled by user")
 		return nil
 	}
-	fileBytes, err := os.ReadFile(avagoConfigPath)
+	fileBytes, err := os.ReadFile(configFile)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("failed to load avalanchego config file %s: %w", avagoConfigPath, err)
+		return fmt.Errorf("failed to load avalanchego config file %s: %w", configFile, err)
 	}
 	if fileBytes == nil {
 		fileBytes = []byte("{}")
 	}
 	var avagoConfig map[string]interface{}
 	if err := json.Unmarshal(fileBytes, &avagoConfig); err != nil {
-		return fmt.Errorf("failed to unpack the config file %s to JSON: %w", avagoConfigPath, err)
+		return fmt.Errorf("failed to unpack the config file %s to JSON: %w", configFile, err)
 	}
 
 	// check the old entries in the config file for whitelisted subnets
@@ -200,7 +204,12 @@ func editConfigFile(subnetID string, networkID string) error {
 		// if an entry already exists, we check if the subnetID already is part
 		// of the whitelisted-subnets...
 		exists := false
-		elems := strings.Split(oldVal.(string), ",")
+		var oldValStr string
+		var ok bool
+		if oldValStr, ok = oldVal.(string); !ok {
+			return fmt.Errorf("expected a string value, but got %T", oldVal)
+		}
+		elems := strings.Split(oldValStr, ",")
 		for _, s := range elems {
 			if s == subnetID {
 				// ...if it is, we just don't need to update the value...
