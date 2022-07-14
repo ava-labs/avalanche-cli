@@ -154,6 +154,17 @@ func (app *Avalanche) LoadSidecar(subnetName string) (models.Sidecar, error) {
 	return sc, err
 }
 
+func (app *Avalanche) UpdateSidecar(sc *models.Sidecar) error {
+	sc.Version = constants.SidecarVersion
+	scBytes, err := json.MarshalIndent(sc, "", "    ")
+	if err != nil {
+		return nil
+	}
+
+	sidecarPath := app.GetSidecarPath(sc.Name)
+	return os.WriteFile(sidecarPath, scBytes, WriteReadReadPerms)
+}
+
 func (app *Avalanche) GetTokenName(subnetName string) string {
 	sidecar, err := app.LoadSidecar(subnetName)
 	if err != nil {

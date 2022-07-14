@@ -55,6 +55,36 @@ func ListKeys() (string, error) {
 		CLIBinary,
 		KeyCmd,
 		"list",
+    )
+
+	out, err := cmd.Output()
+	return string(out), err
+}
+
+/* #nosec G204 */
+func ExportKey(keyName string) (string, error) {
+	// Create config
+	cmd := exec.Command(
+		CLIBinary,
+		KeyCmd,
+		"export",
+		keyName,
+	)
+
+	out, err := cmd.Output()
+	return string(out), err
+}
+
+/* #nosec G204 */
+func ExportKeyToFile(keyName string, outputPath string) (string, error) {
+	// Create config
+	cmd := exec.Command(
+		CLIBinary,
+		KeyCmd,
+		"export",
+		keyName,
+		"-o",
+		outputPath,
 	)
 
 	out, err := cmd.Output()

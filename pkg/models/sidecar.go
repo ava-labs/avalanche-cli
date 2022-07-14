@@ -2,6 +2,13 @@
 // See the file LICENSE for licensing terms.
 package models
 
+import "github.com/ava-labs/avalanchego/ids"
+
+type NetworkData struct {
+	SubnetID     ids.ID
+	BlockchainID ids.ID
+}
+
 type Sidecar struct {
 	Name      string
 	VM        VMType
@@ -9,4 +16,5 @@ type Sidecar struct {
 	TokenName string
 	ChainID   string
 	Version   string
+	Networks  map[string]NetworkData
 }
