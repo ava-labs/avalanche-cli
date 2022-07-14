@@ -69,6 +69,7 @@ func createApp(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	app.Setup(baseDir, log)
+	cobra.OnInitialize(initConfig)
 	return nil
 }
 
@@ -159,7 +160,6 @@ func initConfig() {
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	app = application.New()
-	cobra.OnInitialize(initConfig)
 	rootCmd := NewRootCmd()
 	err := rootCmd.Execute()
 	if err != nil {
