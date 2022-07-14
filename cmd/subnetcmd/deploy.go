@@ -119,14 +119,31 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	case models.Local:
 		app.Log.Debug("Deploy local")
 		deployer := subnet.NewLocalSubnetDeployer(app)
-		if err := deployer.DeployToLocalNetwork(chain, chainGenesis); err != nil {
+		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis)
+		if err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {
 					app.Log.Warn("tried to kill the gRPC server process but it failed: %w", innerErr)
 				}
 			}
+			return err
 		}
-		return err
+		sc, err := app.LoadSidecar(chain)
+		if err != nil {
+			return fmt.Errorf("creation of chains and subnet was successful, but failed to load sidecar for update: %w", err)
+		}
+		if sc.Networks == nil {
+			sc.Networks = make(map[string]models.NetworkData)
+		}
+		sc.Networks[models.Local.String()] = models.NetworkData{
+			SubnetID:     subnetID,
+			BlockchainID: blockchainID,
+		}
+		if err := app.UpdateSidecar(&sc); err != nil {
+			return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)
+		}
+		return nil
+
 	case models.Fuji: // just make the switch pass
 		if keyName == "" {
 			keyName, err = prompts.CaptureString("Which private key should be used to issue the transaction? (Provide key name)")

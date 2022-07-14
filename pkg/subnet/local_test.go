@@ -78,7 +78,7 @@ func TestDeployToLocal(t *testing.T) {
 	err = os.WriteFile(testGenesis.Name(), []byte(genesis), constants.DefaultPerms755)
 	assert.NoError(err)
 	// test actual deploy
-	err = testDeployer.DeployToLocalNetwork("test", testGenesis.Name())
+	_, _, err = testDeployer.DeployToLocalNetwork("test", testGenesis.Name())
 	assert.NoError(err)
 }
 
