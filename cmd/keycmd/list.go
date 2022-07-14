@@ -39,7 +39,7 @@ func listKeys(cmd *cobra.Command, args []string) error {
 	for _, f := range files {
 		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
 			filename := f.Name()
-			rows = append(rows, []string{filename[:len(filename)-len(constants.KeySuffix)]})
+			rows = append(rows, []string{strings.TrimSuffix(filename, constants.KeySuffix)})
 		}
 	}
 	for _, row := range rows {
