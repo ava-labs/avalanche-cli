@@ -33,6 +33,9 @@ To get started, use the key create command.`,
 	// avalanche key list
 	cmd.AddCommand(newListCmd())
 
+	// avalanche key delete
+	cmd.AddCommand(newDeleteCmd())
+
 	// avalanche key export
 	cmd.AddCommand(newExportCmd())
 
