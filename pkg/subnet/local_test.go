@@ -59,8 +59,7 @@ func TestDeployToLocal(t *testing.T) {
 	app := &application.Avalanche{
 		Log: logging.NoLog{},
 	}
-
-	testDeployer := &Deployer{
+	testDeployer := &LocalSubnetDeployer{
 		procChecker:         procChecker,
 		binChecker:          binChecker,
 		getClientFunc:       getTestClientFunc,
