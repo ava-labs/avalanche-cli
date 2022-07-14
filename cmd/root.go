@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -68,7 +69,8 @@ func createApp(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	app.Setup(baseDir, log)
+	cf := config.New()
+	app.Setup(baseDir, log, cf)
 	cobra.OnInitialize(initConfig)
 	return nil
 }
@@ -142,8 +144,8 @@ func initConfig() {
 		home, err := os.UserHomeDir()
 		cobra.CheckErr(err)
 		viper.AddConfigPath(home)
-		viper.SetConfigType("json")
-		viper.SetConfigName(".avalanche-cli")
+		viper.SetConfigType(constants.DefaultConfigFileType)
+		viper.SetConfigName(constants.DefaultConfigFileName)
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

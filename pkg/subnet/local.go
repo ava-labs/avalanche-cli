@@ -524,7 +524,7 @@ func (d *Deployer) startNetwork(
 	}
 
 	// load global node configs if they exist
-	configStr, err := d.app.LoadNodeConfig()
+	configStr, err := d.app.Conf.LoadNodeConfig()
 	if err != nil {
 		return err
 	}

@@ -74,7 +74,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 	}
 
 	// load global node configs if they exist
-	configStr, err := app.LoadNodeConfig()
+	configStr, err := app.Conf.LoadNodeConfig()
 	if err != nil {
 		return err
 	}

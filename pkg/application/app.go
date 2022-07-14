@@ -8,11 +8,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
-	"github.com/spf13/viper"
 )
 
 const (
@@ -24,15 +24,17 @@ var errChainIDExists = errors.New("the provided chain ID already exists! Try ano
 type Avalanche struct {
 	Log     logging.Logger
 	baseDir string
+	Conf    *config.Config
 }
 
 func New() *Avalanche {
 	return &Avalanche{}
 }
 
-func (app *Avalanche) Setup(baseDir string, log logging.Logger) {
+func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Config) {
 	app.baseDir = baseDir
 	app.Log = log
+	app.Conf = conf
 }
 
 func (app *Avalanche) GetRunFile() string {
@@ -180,16 +182,4 @@ func (app *Avalanche) ChainIDExists(chainID string) (bool, error) {
 	}
 
 	return false, nil
-}
-
-func (app *Avalanche) LoadNodeConfig() (string, error) {
-	globalConfigs := viper.GetStringMap("node-config")
-	if len(globalConfigs) == 0 {
-		return "", nil
-	}
-	configStr, err := json.Marshal(globalConfigs)
-	if err != nil {
-		return "", err
-	}
-	return string(configStr), nil
 }
