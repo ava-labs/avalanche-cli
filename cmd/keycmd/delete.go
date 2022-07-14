@@ -17,8 +17,8 @@ var forceDelete bool
 func newDeleteCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "delete",
-		Short:        "Delete a subnet configuration",
-		Long:         "The subnet delete command deletes an existing subnet configuration.",
+		Short:        "Delete a signing key",
+		Long:         "The key delete command deletes an existing signing key.",
 		RunE:         deleteKey,
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
@@ -28,7 +28,7 @@ func newDeleteCmd() *cobra.Command {
 		forceFlag,
 		"f",
 		false,
-		"overwrite an existing key with the same name",
+		"allow overwrites of existing keys with the same name",
 	)
 	return cmd
 }
