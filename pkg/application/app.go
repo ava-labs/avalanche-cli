@@ -155,6 +155,7 @@ func (app *Avalanche) LoadSidecar(subnetName string) (models.Sidecar, error) {
 }
 
 func (app *Avalanche) UpdateSidecar(sc *models.Sidecar) error {
+	sc.Version = constants.SidecarVersion
 	scBytes, err := json.MarshalIndent(sc, "", "    ")
 	if err != nil {
 		return nil
