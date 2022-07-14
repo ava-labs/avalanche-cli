@@ -121,27 +121,27 @@ var _ = ginkgo.Describe("[Key]", func() {
 		_, err = commands.CreateKey(keyName)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 	})
-  
+
 	ginkgo.It("can list a created key", func() {
 		regex := `(\+-+\+\n)\|\s+KEY\sNAME\s+\|\n(\+-+\+\n)((\|\s+\w+\s+\|\n)(\+-+\+(\n|$)))+`
 
 		// Create a key
 		output, err := commands.CreateKey(keyName)
-    if err != nil {
+		if err != nil {
 			fmt.Println(output)
 			utils.PrintStdErr(err)
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
-    
-    // Call list cmd
+
+		// Call list cmd
 		output, err = commands.ListKeys()
-    if err != nil {
+		if err != nil {
 			fmt.Println(output)
 			utils.PrintStdErr(err)
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
-    
-    // The matcher for this test is a little weird. Instead of matching an exact
+
+		// The matcher for this test is a little weird. Instead of matching an exact
 		// string, we check that it matches a regex and contains created keyName. This
 		// is to facilitate running the test locally. If you have other keys in your
 		// key directory, they will be printed as well. It's impossible to check the
@@ -149,7 +149,7 @@ var _ = ginkgo.Describe("[Key]", func() {
 		// Hence, the matcher here.
 		gomega.Expect(output).Should(gomega.MatchRegexp(regex))
 		gomega.Expect(output).Should(gomega.ContainSubstring(keyName))
-    })
+	})
 
 	ginkgo.It("can export a key to stdout", func() {
 		// Create key
@@ -184,16 +184,16 @@ var _ = ginkgo.Describe("[Key]", func() {
 
 		// Create key
 		output, err := commands.CreateKeyFromPath(keyName, testKey)
-    if err != nil {
-			fmt.Println(exportedKey)
+		if err != nil {
+			fmt.Println(output)
 			utils.PrintStdErr(err)
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// Export the key
 		output, err = commands.ExportKeyToFile(keyName, outputKey)
-    if err != nil {
-			fmt.Println(exportedKey)
+		if err != nil {
+			fmt.Println(output)
 			utils.PrintStdErr(err)
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
