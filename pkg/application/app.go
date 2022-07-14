@@ -173,7 +173,7 @@ func (app *Avalanche) GetTokenName(subnetName string) string {
 	return sidecar.TokenName
 }
 
-func (app *Avalanche) listSideCarNames() ([]string, error) {
+func (app *Avalanche) GetSidecarNames() ([]string, error) {
 	matches, err := filepath.Glob(filepath.Join(app.baseDir, "*"+constants.SidecarSuffix))
 	if err != nil {
 		return nil, err
@@ -187,12 +187,8 @@ func (app *Avalanche) listSideCarNames() ([]string, error) {
 	return names, nil
 }
 
-func (app *Avalanche) GetSidecarNames() ([]string, error) {
-	return app.listSideCarNames()
-}
-
 func (app *Avalanche) ChainIDExists(chainID string) (bool, error) {
-	sidecars, err := app.listSideCarNames()
+	sidecars, err := app.GetSidecarNames()
 	if err != nil {
 		return false, err
 	}

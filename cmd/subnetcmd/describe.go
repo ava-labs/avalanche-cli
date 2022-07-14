@@ -65,6 +65,7 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 	header := []string{"Parameter", "Value"}
 	table.SetHeader(header)
 	table.SetRowLine(true)
+	table.SetAlignment(tablewriter.ALIGN_LEFT)
 
 	table.Append([]string{"Subnet Name", sc.Subnet})
 	table.Append([]string{"ChainID", genesis.Config.ChainID.String()})

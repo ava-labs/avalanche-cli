@@ -112,32 +112,19 @@ func stdoutParser(output string, queue string, capture string) (string, error) {
 	return "", errors.New("no queue string found")
 }
 
-func ParseRPCFromDeployOutput(output string) (string, error) {
+func ParseRPCFromOutput(output string) (string, error) {
 	// split output by newline
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
-		if strings.Contains(line, "RPC URL:") {
-			index := strings.Index(line, "http")
-			if index == -1 {
-				return "", errors.New("no url in RPC URL line")
-			}
-			return line[index:], nil
+		if !strings.Contains(line, "rpc") {
+			continue
 		}
-	}
-	return "", errors.New("no rpc url found")
-}
-
-func ParseRPCFromRestartOutput(output string) (string, error) {
-	// split output by newline
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "Endpoint at node") {
-			index := strings.Index(line, "http")
-			if index == -1 {
-				return "", errors.New("no url in RPC URL line")
-			}
-			return line[index:], nil
+		startIndex := strings.Index(line, "http")
+		if startIndex == -1 {
+			return "", errors.New("no url in RPC URL line")
 		}
+		endIndex := strings.LastIndex(line, "rpc")
+		return line[startIndex : endIndex+3], nil
 	}
 	return "", errors.New("no rpc url found")
 }

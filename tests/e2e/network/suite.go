@@ -24,7 +24,7 @@ var _ = ginkgo.Describe("[Network]", func() {
 	ginkgo.It("can stop and restart a deployed subnet", func() {
 		commands.CreateSubnetConfig(subnetName, genesisPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
-		rpc, err := utils.ParseRPCFromDeployOutput(deployOutput)
+		rpc, err := utils.ParseRPCFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
 		}
@@ -53,7 +53,7 @@ var _ = ginkgo.Describe("[Network]", func() {
 
 		commands.StopNetwork()
 		restartOutput := commands.StartNetwork()
-		rpc, err = utils.ParseRPCFromRestartOutput(restartOutput)
+		rpc, err = utils.ParseRPCFromOutput(restartOutput)
 		if err != nil {
 			fmt.Println(restartOutput)
 		}

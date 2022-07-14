@@ -248,9 +248,6 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) (ids.I
 	// we can safely ignore errors here as the subnets have already been generated
 	subnetID, _ := ids.FromString(subnetIDStr)
 	var blockchainID ids.ID
-	// TODO: the specs say CustomVms is a map by VM ID,
-	// but it appears the key is the blockchain ID.
-	// If that's a bug, then we'd only need to access the map via VM ID
 	for _, info := range clusterInfo.CustomVms {
 		if info.VmId == chainVMID.String() {
 			blockchainID, _ = ids.FromString(info.BlockchainId)

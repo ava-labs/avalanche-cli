@@ -19,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/stretchr/testify/assert"
@@ -78,8 +79,10 @@ func TestDeployToLocal(t *testing.T) {
 	err = os.WriteFile(testGenesis.Name(), []byte(genesis), constants.DefaultPerms755)
 	assert.NoError(err)
 	// test actual deploy
-	_, _, err = testDeployer.DeployToLocalNetwork("test", testGenesis.Name())
+	s, b, err := testDeployer.DeployToLocalNetwork("test", testGenesis.Name())
 	assert.NoError(err)
+	assert.Equal(ids.Empty, s)
+	assert.Equal(ids.Empty, b)
 }
 
 func TestExistsWithLatestVersion(t *testing.T) {
