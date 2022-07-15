@@ -7,4 +7,7 @@ fi
 
 go install github.com/vektra/mockery/v2@latest
 
-mockery --all --output ./internal/mocks
+mockery -r --output ./internal/mocks --case camel --name BinaryChecker
+mockery -r --output ./internal/mocks --case camel --name PluginBinaryDownloader
+mockery -r --output ./internal/mocks --case camel --name ProcessChecker
+mockery -r --output ./internal/mocks --case camel --name Prompter
