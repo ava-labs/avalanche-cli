@@ -19,6 +19,8 @@ import (
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
+
+	eth_crypto "github.com/ethereum/go-ethereum/crypto"
 	"go.uber.org/zap"
 )
 
@@ -242,6 +244,14 @@ func decodePrivateKey(enc string) (*crypto.PrivateKeySECP256K1R, error) {
 		return nil, ErrInvalidType
 	}
 	return privKey, nil
+}
+
+func (m *SoftKey) C() string {
+	ecdsaPrv := m.privKey.ToECDSA()
+	pub := ecdsaPrv.PublicKey
+
+	addr := eth_crypto.PubkeyToAddress(pub)
+	return addr.String()
 }
 
 // Returns the KeyChain

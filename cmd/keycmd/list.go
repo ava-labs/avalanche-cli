@@ -4,10 +4,10 @@ package keycmd
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
 
@@ -24,27 +24,17 @@ keys.`,
 }
 
 func listKeys(cmd *cobra.Command, args []string) error {
-	header := []string{"Key Name"}
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader(header)
-	table.SetRowLine(true)
-
 	files, err := os.ReadDir(app.GetKeyDir())
 	if err != nil {
 		return err
 	}
 
-	rows := [][]string{}
+	keyPaths := make([]string, len(files))
 
-	for _, f := range files {
+	for i, f := range files {
 		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
-			filename := f.Name()
-			rows = append(rows, []string{strings.TrimSuffix(filename, constants.KeySuffix)})
+			keyPaths[i] = filepath.Join(app.GetKeyDir(), f.Name())
 		}
 	}
-	for _, row := range rows {
-		table.Append(row)
-	}
-	table.Render()
-	return nil
+	return printAddresses(keyPaths)
 }
