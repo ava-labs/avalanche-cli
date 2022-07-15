@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
@@ -94,7 +93,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	if deployLocal {
 		network = models.Local
 	} else {
-		networkStr, err := prompts.CaptureList(
+		networkStr, err := app.Prompt.CaptureList(
 			"Choose a network to deploy on",
 			[]string{models.Local.String(), models.Fuji.String(), models.Mainnet.String()},
 		)

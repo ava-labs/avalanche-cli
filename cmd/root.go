@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
@@ -70,7 +71,7 @@ func createApp(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	cf := config.New()
-	app.Setup(baseDir, log, cf)
+	app.Setup(baseDir, log, cf, prompts.NewPrompter())
 	cobra.OnInitialize(initConfig)
 	return nil
 }

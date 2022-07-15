@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
 )
@@ -25,16 +26,19 @@ type Avalanche struct {
 	Log     logging.Logger
 	baseDir string
 	Conf    *config.Config
+	Prompt  prompts.Prompter
 }
 
 func New() *Avalanche {
 	return &Avalanche{}
 }
 
-func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Config) {
+
+func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Config, prompt prompts.Prompter) {
 	app.baseDir = baseDir
 	app.Log = log
 	app.Conf = conf
+	app.Prompt = prompt
 }
 
 func (app *Avalanche) GetRunFile() string {
