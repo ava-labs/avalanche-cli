@@ -5,6 +5,7 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -55,7 +56,7 @@ func useViper(configName string) error {
 	viper.Reset()
 	viper.SetConfigName(configName)
 	viper.SetConfigType("json")
-	viper.AddConfigPath("./../../tests/assets/")
+	viper.AddConfigPath(filepath.Join("..", "..", "tests", "assets"))
 
 	return viper.ReadInConfig()
 }
