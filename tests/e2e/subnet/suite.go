@@ -65,10 +65,10 @@ var _ = ginkgo.Describe("[Subnet]", func() {
 
 		deployOutput = commands.DeploySubnetLocally(subnetName)
 		rpcs, err = utils.ParseRPCsFromOutput(deployOutput)
-		if err != nil {
+		if err == nil {
 			fmt.Println(deployOutput)
 		}
-		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(rpcs).Should(gomega.HaveLen(0))
 		gomega.Expect(deployOutput).Should(gomega.ContainSubstring("has already been deployed"))
 	})

@@ -122,6 +122,9 @@ func ParseRPCsFromOutput(output string) ([]string, error) {
 			}
 		}
 	}
+	if len(rpcs) == 0 {
+		return nil, errors.New("no RPCs where found")
+	}
 	return rpcs, nil
 }
 
