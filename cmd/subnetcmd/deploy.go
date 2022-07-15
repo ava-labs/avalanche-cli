@@ -120,7 +120,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		app.Log.Debug("Deploy local")
 		sc, err := app.LoadSidecar(chain)
 		if err != nil {
-			return fmt.Errorf("creation of chains and subnet was successful, but failed to load sidecar for update: %w", err)
+			return fmt.Errorf("failed to load sidecar for later update: %w", err)
 		}
 		deployer := subnet.NewLocalSubnetDeployer(app)
 		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis)
