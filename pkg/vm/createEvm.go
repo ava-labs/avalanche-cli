@@ -70,11 +70,11 @@ func CreateEvmGenesis(name string, app *application.Avalanche) ([]byte, *models.
 		case descriptorStage:
 			chainID, tokenName, direction, err = getDescriptors(app)
 		case feeStage:
-			*conf, direction, err = getFeeConfig(*conf)
+			*conf, direction, err = getFeeConfig(*conf, app)
 		case airdropStage:
-			allocation, direction, err = getAllocation()
+			allocation, direction, err = getAllocation(app)
 		case precompileStage:
-			*conf, direction, err = getPrecompiles(*conf)
+			*conf, direction, err = getPrecompiles(*conf, app)
 		default:
 			err = errors.New("invalid creation stage")
 		}

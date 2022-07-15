@@ -7,7 +7,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/subnet-evm/core"
 )
 
@@ -24,14 +24,14 @@ func getDefaultAllocation() (core.GenesisAlloc, error) {
 	return allocation, nil
 }
 
-func getAllocation() (core.GenesisAlloc, stateDirection, error) {
+func getAllocation(app *application.Avalanche) (core.GenesisAlloc, stateDirection, error) {
 	allocation := core.GenesisAlloc{}
 
 	defaultAirdrop := "Airdrop 1 million tokens to the default address (do not use in production)"
 	customAirdrop := "Customize your airdrop"
 	extendAirdrop := "Would you like to airdrop more tokens?"
 
-	airdropType, err := prompts.CaptureList(
+	airdropType, err := app.Prompt.CaptureList(
 		"How would you like to distribute funds",
 		[]string{defaultAirdrop, customAirdrop, goBackMsg},
 	)
@@ -49,12 +49,12 @@ func getAllocation() (core.GenesisAlloc, stateDirection, error) {
 	}
 
 	for {
-		addressHex, err := prompts.CaptureAddress("Address to airdrop to")
+		addressHex, err := app.Prompt.CaptureAddress("Address to airdrop to")
 		if err != nil {
 			return nil, stop, err
 		}
 
-		amount, err := prompts.CapturePositiveBigInt("Amount to airdrop (in AVAX units)")
+		amount, err := app.Prompt.CapturePositiveBigInt("Amount to airdrop (in AVAX units)")
 		if err != nil {
 			return nil, stop, err
 		}
@@ -67,7 +67,7 @@ func getAllocation() (core.GenesisAlloc, stateDirection, error) {
 
 		allocation[addressHex] = account
 
-		continueAirdrop, err := prompts.CaptureNoYes(extendAirdrop)
+		continueAirdrop, err := app.Prompt.CaptureNoYes(extendAirdrop)
 		if err != nil {
 			return nil, stop, err
 		}
