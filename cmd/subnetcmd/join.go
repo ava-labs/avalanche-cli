@@ -95,7 +95,7 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 		if !isValidating {
 			ux.Logger.PrintToUser(`The node is not whitelisted to validate this subnet. 
 You can continue with this command, generating a config file or printing the whitelisting configuration,
-but until the node is not whitelisted, it will not be able to validate this subnet.`)
+but until the node is whitelisted, it will not be able to validate this subnet.`)
 			y, err := prompts.CaptureYesNo("Do you wish to continue")
 			if err != nil {
 				return err
