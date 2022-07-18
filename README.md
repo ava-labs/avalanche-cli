@@ -73,6 +73,36 @@ avalanche network start
 
 - Fuji and mainnet Subnet-EVM deploys
 
+## Modifying your Subnet Deployment
+
+You can provide a global node config to edit the way your local avalanchego nodes perform under the hood. To provide such a config, you need to create an avalanche-cli config file. By default, a config file is read in from $HOME/.avalanche-cli.json. If none exists, no error will occur. To provide a config from a custom location, run any command with the flag `--config <pathToConfig>`.
+
+To specify the global node config, provide it as a body for the `node-config` key. Ex:
+
+```json
+{
+  "network-peer-list-gossip-frequency":"250ms",
+  "network-max-reconnect-delay":"1s",
+  "public-ip":"127.0.0.1",
+  "health-check-frequency":"2s",
+  "api-admin-enabled":true,
+  "api-ipcs-enabled":true,
+  "index-enabled":true
+}
+```
+
+### Accessing your local subnet remotely
+
+You may wish to deploy your subnet on a cloud instance and access it remotely. If you'd like to do so, use this as your node config:
+
+```json
+{
+  "node-config": {
+    "http-host": "0.0.0.0"
+  }
+}
+```
+
 ## Building Locally
 
 To build Avalanche-CLI, you'll first need to install golang. Follow the instructions here: https://go.dev/doc/install.

@@ -12,12 +12,14 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -26,6 +28,7 @@ var (
 	logLevel     string
 	Version      = ""
 	snapshotsDir string
+	cfgFile      string
 )
 
 func NewRootCmd() *cobra.Command {
@@ -45,6 +48,7 @@ in with avalanche subnet create myNewSubnet.`,
 	// Disable printing the completion command
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.avalanche-cli.json)")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "ERROR", "log level for the application")
 
 	// add sub commands
@@ -66,7 +70,9 @@ func createApp(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	app.Setup(baseDir, log, prompts.NewPrompter())
+	cf := config.New()
+	app.Setup(baseDir, log, cf, prompts.NewPrompter())
+	cobra.OnInitialize(initConfig)
 	return nil
 }
 
@@ -127,6 +133,30 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 	// create the user facing logger as a global var
 	ux.NewUserLog(log, os.Stdout)
 	return log, nil
+}
+
+// initConfig reads in config file and ENV variables if set.
+func initConfig() {
+	if cfgFile != "" {
+		// Use config file from the flag.
+		viper.SetConfigFile(cfgFile)
+	} else {
+		// Search for default config.
+		home, err := os.UserHomeDir()
+		cobra.CheckErr(err)
+		viper.AddConfigPath(home)
+		viper.SetConfigType(constants.DefaultConfigFileType)
+		viper.SetConfigName(constants.DefaultConfigFileName)
+	}
+
+	viper.AutomaticEnv() // read in environment variables that match
+
+	// If a config file is found, read it in.
+	if err := viper.ReadInConfig(); err == nil {
+		app.Log.Info("Using config file: %s", viper.ConfigFileUsed())
+	} else {
+		app.Log.Info("No log file found")
+	}
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
