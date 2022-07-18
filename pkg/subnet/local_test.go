@@ -33,7 +33,8 @@ var (
 	testSubnetID1     = ids.GenerateTestID().String()
 	testSubnetID2     = ids.GenerateTestID().String()
 
-	testVMID = "tGBrM2SXkAdNsqzb3SaFZZWMNdzjjFEUKteheTa4dhUwnfQyu" // VM ID of "test"
+	testVMID   = "tGBrM2SXkAdNsqzb3SaFZZWMNdzjjFEUKteheTa4dhUwnfQyu" // VM ID of "test"
+	testVMName = "test"
 
 	fakeHealthResponse = &rpcpb.HealthResponse{
 		ClusterInfo: &rpcpb.ClusterInfo{
@@ -50,10 +51,10 @@ var (
 				},
 			},
 			CustomVms: map[string]*rpcpb.CustomVmInfo{
-				"vm1": {
+				"bchain1": {
 					BlockchainId: testBlockChainID1,
 				},
-				"vm2": {
+				"bchain2": {
 					BlockchainId: testBlockChainID2,
 				},
 			},
@@ -116,7 +117,7 @@ func TestDeployToLocal(t *testing.T) {
 	err = os.WriteFile(testGenesis.Name(), []byte(genesis), constants.DefaultPerms755)
 	assert.NoError(err)
 	// test actual deploy
-	s, b, err := testDeployer.DeployToLocalNetwork("test", testGenesis.Name())
+	s, b, err := testDeployer.DeployToLocalNetwork(testVMName, testGenesis.Name())
 	assert.NoError(err)
 	assert.Equal(testSubnetID2, s.String())
 	assert.Equal(testBlockChainID2, b.String())
@@ -225,9 +226,9 @@ func getTestClientFunc() (client.Client, error) {
 	c.On("Health", mock.Anything).Return(fakeHealthResponse, nil).Twice()
 	// Afterwards, change the VmId so that TestDeployToLocal has the correct ID to check
 	alteredFakeResponse := proto.Clone(fakeHealthResponse).(*rpcpb.HealthResponse) // new(rpcpb.HealthResponse)
-	alteredFakeResponse.ClusterInfo.CustomVms["vm2"].VmId = testVMID
-	alteredFakeResponse.ClusterInfo.CustomVms["vm2"].VmName = "test"
-	alteredFakeResponse.ClusterInfo.CustomVms["vm1"].VmName = "vm1"
+	alteredFakeResponse.ClusterInfo.CustomVms["bchain2"].VmId = testVMID
+	alteredFakeResponse.ClusterInfo.CustomVms["bchain2"].VmName = testVMName
+	alteredFakeResponse.ClusterInfo.CustomVms["bchain1"].VmName = "bchain1"
 	c.On("Health", mock.Anything).Return(alteredFakeResponse, nil)
 	c.On("Close").Return(nil)
 	return c, nil
