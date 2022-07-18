@@ -120,33 +120,36 @@ func stdoutParser(output string, queue string, capture string) (string, error) {
 	return "", errors.New("no queue string found")
 }
 
+<<<<<<< HEAD
 func ParseRPCsFromOutput(output string) ([]string, error) {
 	rpcs := []string{}
 	blockchainIDs := map[string]struct{}{}
 	// split output by newline
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
-		if strings.Contains(line, "Endpoint at node") {
-			index := strings.Index(line, "http")
-			if index == -1 {
-				return nil, errors.New("no url in RPC URL line")
-			}
-			rpc := line[index:]
-			rpcComponents := strings.Split(rpc, "/")
-			if len(rpcComponents) != expectedRPCComponentsLen {
-				return nil, fmt.Errorf("unexpected number of components in url %q: expected %d got %d",
-					rpc,
-					expectedRPCComponentsLen,
-					len(rpcComponents),
-				)
-			}
-			blockchainID := rpcComponents[blockchainIDPos]
-			_, ok := blockchainIDs[blockchainID]
-			if !ok {
-				blockchainIDs[blockchainID] = struct{}{}
-				rpcs = append(rpcs, rpc)
-			}
+		if !strings.Contains(line, "rpc") {
+			continue
 		}
+		startIndex := strings.Index(line, "http")
+		if startIndex == -1 {
+            return nil, errors.New("no url in RPC URL line")
+        }
+		endIndex := strings.LastIndex(line, "rpc")
+        rpc := line[startIndex : endIndex+3]
+        rpcComponents := strings.Split(rpc, "/")
+        if len(rpcComponents) != expectedRPCComponentsLen {
+            return nil, fmt.Errorf("unexpected number of components in url %q: expected %d got %d",
+                rpc,
+                expectedRPCComponentsLen,
+                len(rpcComponents),
+            )
+        }
+        blockchainID := rpcComponents[blockchainIDPos]
+        _, ok := blockchainIDs[blockchainID]
+        if !ok {
+            blockchainIDs[blockchainID] = struct{}{}
+            rpcs = append(rpcs, rpc)
+        }
 	}
 	if len(rpcs) == 0 {
 		return nil, errors.New("no RPCs where found")
