@@ -25,6 +25,8 @@ var (
 type Key interface {
 	// P returns all formatted P-Chain addresses.
 	P() []string
+	// C returns the C-Chain address in Ethereum format
+	C() string
 	// Addresses returns the all raw ids.ShortID address.
 	Addresses() []ids.ShortID
 	// Match attempts to match a list of addresses up to the provided threshold.
