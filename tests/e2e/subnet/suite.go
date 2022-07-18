@@ -29,7 +29,7 @@ var _ = ginkgo.Describe("[Subnet]", func() {
 	ginkgo.It("can deploy a subnet", func() {
 		commands.CreateSubnetConfig(subnetName, genesisPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
-		rpc, err := utils.ParseRPCFromDeployOutput(deployOutput)
+		rpc, err := utils.ParseRPCFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
 		}
