@@ -53,7 +53,7 @@ var _ = ginkgo.Describe("[Subnet]", func() {
 	})
 
 	ginkgo.It("can't deploy the same subnet twice", func() {
-		commands.CreateSubnetConfig(subnetName, genesis)
+		commands.CreateSubnetConfig(subnetName, genesisPath)
 
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
@@ -74,8 +74,8 @@ var _ = ginkgo.Describe("[Subnet]", func() {
 	})
 
 	ginkgo.It("can deploy multiple subnets", func() {
-		commands.CreateSubnetConfig(subnetName, genesis)
-		commands.CreateSubnetConfig(secondSubnetName, genesis)
+		commands.CreateSubnetConfig(subnetName, genesisPath)
+		commands.CreateSubnetConfig(secondSubnetName, genesisPath)
 
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
