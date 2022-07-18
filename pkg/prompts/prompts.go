@@ -12,6 +12,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -42,10 +43,10 @@ func validateStakingDuration(input string) error {
 		return err
 	}
 	if d > constants.MaxStakeDuration {
-		return errors.New("exceeds maximum staking duration of 1 year")
+		return fmt.Errorf("exceeds maximum staking duration of %s", ux.FormatDuration(constants.MaxStakeDuration))
 	}
 	if d < constants.MinStakeDuration {
-		return errors.New("below the minimum staking duration of two weeks")
+		return fmt.Errorf("below the minimum staking duration of %s", ux.FormatDuration(constants.MinStakeDuration))
 	}
 	return nil
 }

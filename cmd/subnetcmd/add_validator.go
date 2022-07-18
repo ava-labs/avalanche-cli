@@ -5,7 +5,9 @@ package subnetcmd
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -54,7 +56,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	)
 
 	if keyName == "" {
-		keyName, err = prompts.CaptureString("Which private key should be used to issue the transaction? (Provide key name)")
+		keyName, err = captureKeyName()
 		if err != nil {
 			return err
 		}
@@ -70,7 +72,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 	network = models.NetworkFromString(networkStr)
 
-	chains, err := validateSubnetName(args)
+	chains, err := validateSubnetNameAndGetChains(args)
 	if err != nil {
 		return err
 	}
@@ -80,7 +82,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	subnetID := sc.SubnetID
+	subnetID := sc.Networks[network.String()].SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
@@ -119,7 +121,9 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		// TODO validate this start time?
+		if start.Before(time.Now().Add(constants.StakingStartLeadTime)) {
+			return fmt.Errorf("time should be at least start from now + %s", constants.StakingStartLeadTime)
+		}
 	}
 
 	if duration == 0 {
@@ -167,4 +171,26 @@ func promptNodeID() (ids.NodeID, error) {
 func promptWeight() (uint64, error) {
 	txt := "What is the staking weight of the validator?"
 	return prompts.CaptureWeight(txt)
+}
+
+func captureKeyName() (string, error) {
+	files, err := os.ReadDir(app.GetKeyDir())
+	if err != nil {
+		return "", err
+	}
+
+	keys := make([]string, len(files))
+
+	for i, f := range files {
+		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
+			keys[i] = f.Name()
+		}
+	}
+
+	keyName, err = prompts.CaptureList("Which private key should be used to issue the transaction?", keys)
+	if err != nil {
+		return "", err
+	}
+
+	return keyName, nil
 }

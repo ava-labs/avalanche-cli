@@ -22,8 +22,6 @@ import (
 var (
 	deployLocal bool
 	keyName     string
-
-	errNoKey = errors.New("this command requires the name of the private key")
 )
 
 // avalanche subnet deploy
@@ -81,7 +79,7 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 
 // deploySubnet is the cobra command run for deploying subnets
 func deploySubnet(cmd *cobra.Command, args []string) error {
-	chains, err := validateSubnetName(args)
+	chains, err := validateSubnetNameAndGetChains(args)
 	if err != nil {
 		return err
 	}
@@ -120,7 +118,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	case models.Fuji: // just make the switch pass
 		if keyName == "" {
-			keyName, err = prompts.CaptureString("Which private key should be used to issue the transaction? (Provide key name)")
+			keyName, err = captureKeyName()
 			if err != nil {
 				return err
 			}
@@ -261,7 +259,7 @@ func contains(list []string, element string) bool {
 	return false
 }
 
-func validateSubnetName(args []string) ([]string, error) {
+func validateSubnetNameAndGetChains(args []string) ([]string, error) {
 	// this should not be necessary but some bright guy might just be creating
 	// the genesis by hand or something...
 	if err := checkInvalidSubnetNames(args[0]); err != nil {

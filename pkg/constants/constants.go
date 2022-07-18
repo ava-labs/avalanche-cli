@@ -50,5 +50,5 @@ const (
 	MinStakeDuration = 24 * 14 * time.Hour
 	MaxStakeDuration = 24 * 365 * time.Hour
 
-	StakingStartLeadTime = 10 * time.Second
+	StakingStartLeadTime = 25 * time.Second
 )

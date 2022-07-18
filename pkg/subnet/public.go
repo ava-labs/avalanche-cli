@@ -50,8 +50,7 @@ func (d *PublicDeployer) AddValidator(subnet ids.ID, nodeID ids.NodeID, weight u
 		},
 		Subnet: subnet,
 	}
-	options := []common.Option{}
-	id, err := wallet.P().IssueAddSubnetValidatorTx(validator, options...)
+	id, err := wallet.P().IssueAddSubnetValidatorTx(validator)
 	if err != nil {
 		return err
 	}
