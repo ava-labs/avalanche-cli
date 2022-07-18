@@ -15,7 +15,7 @@ import (
 const (
 	subnetName       = "e2eSubnetTest"
 	secondSubnetName = "e2eSecondSubnetTest"
-	genesis          = "tests/e2e/genesis/test_genesis.json"
+	genesisPath      = "tests/e2e/assets/test_genesis.json"
 )
 
 var _ = ginkgo.Describe("[Subnet]", func() {
@@ -28,12 +28,12 @@ var _ = ginkgo.Describe("[Subnet]", func() {
 	})
 
 	ginkgo.It("can create and delete a subnet config", func() {
-		commands.CreateSubnetConfig(subnetName, genesis)
+		commands.CreateSubnetConfig(subnetName, genesisPath)
 		commands.DeleteSubnetConfig(subnetName)
 	})
 
 	ginkgo.It("can deploy a subnet", func() {
-		commands.CreateSubnetConfig(subnetName, genesis)
+		commands.CreateSubnetConfig(subnetName, genesisPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {

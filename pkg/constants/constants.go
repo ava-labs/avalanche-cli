@@ -21,13 +21,16 @@ const (
 	SidecarSuffix      = "_sidecar.json"
 	GenesisSuffix      = "_genesis.json"
 
-	SidecarVersion = "1.0.0"
+	SidecarVersion = "1.1.0"
 
 	MaxLogFileSize   = 4
 	MaxNumOfLogFiles = 5
 	RetainOldFiles   = 0 // retain all old log files
 
 	RequestTimeout = 3 * time.Minute
+
+	FujiAPIEndpoint    = "https://api.avax-test.network"
+	MainnetAPIEndpoint = "https://api.avax.network"
 
 	DefaultTokenName = "TEST"
 
@@ -39,4 +42,7 @@ const (
 	DefaultSnapshotName          = "default-1654102509"
 	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/bootstrapSnapshot.tar.gz"
 	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
+
+	KeyDir    = "key"
+	KeySuffix = ".pk"
 )

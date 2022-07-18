@@ -58,6 +58,14 @@ func (app *Avalanche) GetSidecarPath(subnetName string) string {
 	return filepath.Join(app.baseDir, subnetName+constants.SidecarSuffix)
 }
 
+func (app *Avalanche) GetKeyDir() string {
+	return filepath.Join(app.baseDir, constants.KeyDir)
+}
+
+func (app *Avalanche) GetKeyPath(keyName string) string {
+	return filepath.Join(app.baseDir, constants.KeyDir, keyName+constants.KeySuffix)
+}
+
 func (app *Avalanche) WriteGenesisFile(subnetName string, genesisBytes []byte) error {
 	genesisPath := app.GetGenesisPath(subnetName)
 	return os.WriteFile(genesisPath, genesisBytes, WriteReadReadPerms)
@@ -69,6 +77,12 @@ func (app *Avalanche) GenesisExists(subnetName string) bool {
 	return err == nil
 }
 
+func (app *Avalanche) KeyExists(keyName string) bool {
+	keyPath := app.GetKeyPath(keyName)
+	_, err := os.Stat(keyPath)
+	return err == nil
+}
+
 func (app *Avalanche) CopyGenesisFile(inputFilename string, subnetName string) error {
 	genesisBytes, err := os.ReadFile(inputFilename)
 	if err != nil {
@@ -76,6 +90,15 @@ func (app *Avalanche) CopyGenesisFile(inputFilename string, subnetName string) e
 	}
 	genesisPath := app.GetGenesisPath(subnetName)
 	return os.WriteFile(genesisPath, genesisBytes, WriteReadReadPerms)
+}
+
+func (app *Avalanche) CopyKeyFile(inputFilename string, keyName string) error {
+	keyBytes, err := os.ReadFile(inputFilename)
+	if err != nil {
+		return err
+	}
+	keyPath := app.GetKeyPath(keyName)
+	return os.WriteFile(keyPath, keyBytes, WriteReadReadPerms)
 }
 
 func (app *Avalanche) LoadEvmGenesis(subnetName string) (core.Genesis, error) {
@@ -129,6 +152,17 @@ func (app *Avalanche) LoadSidecar(subnetName string) (models.Sidecar, error) {
 	}
 
 	return sc, err
+}
+
+func (app *Avalanche) UpdateSidecar(sc *models.Sidecar) error {
+	sc.Version = constants.SidecarVersion
+	scBytes, err := json.MarshalIndent(sc, "", "    ")
+	if err != nil {
+		return nil
+	}
+
+	sidecarPath := app.GetSidecarPath(sc.Name)
+	return os.WriteFile(sidecarPath, scBytes, WriteReadReadPerms)
 }
 
 func (app *Avalanche) GetTokenName(subnetName string) string {
