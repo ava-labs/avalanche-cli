@@ -123,7 +123,14 @@ var _ = ginkgo.Describe("[Key]", func() {
 	})
 
 	ginkgo.It("can list a created key", func() {
-		regex := `(\+-+\+\n)\|\s+KEY\sNAME\s+\|\n(\+-+\+\n)((\|\s+\w+\s+\|\n)(\+-+\+(\n|$)))+`
+		// this could prob be optimized but I think it also helps to clarity
+		// if there are independent regexes instead of one large one,
+		// difficult to understand (go regexes don't support Perl regex
+		// Go RE2 library doesn't support lookahead and lookbehind
+		regex1 := `.*KEY NAME.*CHAIN.*ADDRESS.*NETWORK`
+		regex2 := `.*e2eKey.*C-Chain.*0x[a-fA-F0-9]{40}`
+		regex3 := `.*P-Chain.*P-custom[a-zA-Z0-9]{39}`
+		regex4 := `.*P-fuji[a-zA-Z0-9]{39}`
 
 		// Create a key
 		output, err := commands.CreateKey(keyName)
@@ -147,7 +154,10 @@ var _ = ginkgo.Describe("[Key]", func() {
 		// key directory, they will be printed as well. It's impossible to check the
 		// list output for exact equality without removing pre-existing user keys.
 		// Hence, the matcher here.
-		gomega.Expect(output).Should(gomega.MatchRegexp(regex))
+		gomega.Expect(output).Should(gomega.MatchRegexp(regex1))
+		gomega.Expect(output).Should(gomega.MatchRegexp(regex2))
+		gomega.Expect(output).Should(gomega.MatchRegexp(regex3))
+		gomega.Expect(output).Should(gomega.MatchRegexp(regex4))
 		gomega.Expect(output).Should(gomega.ContainSubstring(keyName))
 	})
 

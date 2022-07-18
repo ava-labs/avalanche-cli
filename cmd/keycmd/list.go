@@ -4,9 +4,13 @@ package keycmd
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
@@ -24,27 +28,57 @@ keys.`,
 }
 
 func listKeys(cmd *cobra.Command, args []string) error {
-	header := []string{"Key Name"}
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader(header)
-	table.SetRowLine(true)
-
 	files, err := os.ReadDir(app.GetKeyDir())
 	if err != nil {
 		return err
 	}
 
-	rows := [][]string{}
+	keyPaths := make([]string, len(files))
 
-	for _, f := range files {
+	for i, f := range files {
 		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
-			filename := f.Name()
-			rows = append(rows, []string{strings.TrimSuffix(filename, constants.KeySuffix)})
+			keyPaths[i] = filepath.Join(app.GetKeyDir(), f.Name())
 		}
 	}
-	for _, row := range rows {
-		table.Append(row)
+	return printAddresses(keyPaths)
+}
+
+func printAddresses(keyPaths []string) error {
+	header := []string{"Key Name", "Chain", "Address", "Network"}
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(header)
+	table.SetRowLine(true)
+	table.SetAutoMergeCells(true)
+
+	supportedNetworks := map[string]uint32{
+		models.Local.String(): 0,
+		models.Fuji.String():  avago_constants.FujiID,
+		/*
+			Not enabled yet
+			models.Mainnet.String(): avago_constants.MainnetID,
+		*/
 	}
+	for _, keyPath := range keyPaths {
+		cAdded := false
+		keyName := strings.TrimSuffix(filepath.Base(keyPath), constants.KeySuffix)
+		for net, id := range supportedNetworks {
+			sk, err := key.LoadSoft(id, keyPath)
+			if err != nil {
+				return err
+			}
+			if !cAdded {
+				strC := sk.C()
+				table.Append([]string{keyName, "C-Chain (Ethereum hex format)", strC, "All"})
+			}
+			cAdded = true
+
+			strP := sk.P()
+			for _, p := range strP {
+				table.Append([]string{keyName, "P-Chain (Bech32 format)", p, net})
+			}
+		}
+	}
+
 	table.Render()
 	return nil
 }
