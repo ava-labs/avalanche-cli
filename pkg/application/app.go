@@ -33,7 +33,6 @@ func New() *Avalanche {
 	return &Avalanche{}
 }
 
-
 func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Config, prompt prompts.Prompter) {
 	app.baseDir = baseDir
 	app.Log = log
