@@ -183,7 +183,7 @@ func captureKeyName() (string, error) {
 
 	for i, f := range files {
 		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
-			keys[i] = f.Name()
+			keys[i] = strings.TrimSuffix(f.Name(), constants.KeySuffix)
 		}
 	}
 
