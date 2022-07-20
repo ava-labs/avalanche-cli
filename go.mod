@@ -6,7 +6,7 @@ require (
 	github.com/ava-labs/avalanche-network-runner v1.1.4-0.20220713181305-87781a188a27
 	github.com/ava-labs/avalanchego v1.7.14
 	github.com/ava-labs/coreth v0.8.13-rc.5
-	github.com/ava-labs/subnet-evm v0.2.4
+	github.com/ava-labs/subnet-evm v0.2.5
 	github.com/coreos/go-semver v0.3.0
 	github.com/docker/docker v1.6.2
 	github.com/ethereum/go-ethereum v1.10.20
@@ -32,7 +32,6 @@ require (
 	github.com/btcsuite/btcd/btcutil v1.1.1 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 // indirect
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
-	github.com/btcsuite/btcutil v1.0.2 // indirect
 	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd // indirect
 	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792 // indirect
 	github.com/btcsuite/winsvc v1.0.0 // indirect

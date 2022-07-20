@@ -170,6 +170,18 @@ func printPrecompileTable(genesis core.Genesis) {
 		precompileSet = true
 	}
 
+	// TX allow list
+	for _, address := range genesis.Config.TxAllowListConfig.AllowListAdmins {
+		table.Append([]string{"Tx Allow list", address.Hex()})
+		precompileSet = true
+	}
+
+	// Fee config allow list
+	for _, address := range genesis.Config.FeeManagerConfig.AllowListAdmins {
+		table.Append([]string{"Fee Config Allow list", address.Hex()})
+		precompileSet = true
+	}
+
 	if precompileSet {
 		table.Render()
 	} else {
