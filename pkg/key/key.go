@@ -12,7 +12,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 )
 
@@ -43,7 +43,7 @@ type Key interface {
 		signers [][]ids.ShortID,
 	)
 	// Sign generates [numSigs] signatures and attaches them to [pTx].
-	Sign(pTx *platformvm.Tx, signers [][]ids.ShortID) error
+	Sign(pTx *txs.Tx, signers [][]ids.ShortID) error
 }
 
 type Op struct {
