@@ -2,14 +2,10 @@ module github.com/ava-labs/avalanche-cli
 
 go 1.17
 
-replace github.com/ava-labs/avalanchego => ../avalanchego-internal
-
-replace github.com/ava-labs/avalanche-network-runner => ../avalanche-network-runner
-
 require (
-	github.com/ava-labs/avalanche-network-runner v1.1.2
-	github.com/ava-labs/avalanchego v1.7.14
-	github.com/ava-labs/coreth v0.8.13-rc.5
+	github.com/ava-labs/avalanche-network-runner v1.1.4
+	github.com/ava-labs/avalanchego v1.7.16
+	github.com/ava-labs/coreth v0.8.14-rc.0
 	github.com/ava-labs/subnet-evm v0.2.4
 	github.com/coreos/go-semver v0.3.0
 	github.com/docker/docker v1.6.2
@@ -57,6 +53,7 @@ require (
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/google/btree v1.1.2 // indirect
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/rpc v1.2.0 // indirect
@@ -94,11 +91,13 @@ require (
 	github.com/otiai10/copy v1.7.0 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.0-beta.8 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.12.2 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
+	github.com/prometheus/tsdb v0.10.0 // indirect
 	github.com/rjeczalik/notify v0.9.2 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
