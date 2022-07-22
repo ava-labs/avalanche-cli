@@ -1,3 +1,6 @@
+// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
+
 package utils
 
 import (
@@ -11,6 +14,11 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+)
+
+const (
+	expectedRPCComponentsLen = 7
+	blockchainIDPos          = 5
 )
 
 func GetBaseDir() string {
@@ -112,34 +120,40 @@ func stdoutParser(output string, queue string, capture string) (string, error) {
 	return "", errors.New("no queue string found")
 }
 
-func ParseRPCFromDeployOutput(output string) (string, error) {
+func ParseRPCsFromOutput(output string) ([]string, error) {
+	rpcs := []string{}
+	blockchainIDs := map[string]struct{}{}
 	// split output by newline
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
-		if strings.Contains(line, "RPC URL:") {
-			index := strings.Index(line, "http")
-			if index == -1 {
-				return "", errors.New("no url in RPC URL line")
-			}
-			return line[index:], nil
+		if !strings.Contains(line, "rpc") {
+			continue
+		}
+		startIndex := strings.Index(line, "http")
+		if startIndex == -1 {
+			return nil, errors.New("no url in RPC URL line")
+		}
+		endIndex := strings.LastIndex(line, "rpc")
+		rpc := line[startIndex : endIndex+3]
+		rpcComponents := strings.Split(rpc, "/")
+		if len(rpcComponents) != expectedRPCComponentsLen {
+			return nil, fmt.Errorf("unexpected number of components in url %q: expected %d got %d",
+				rpc,
+				expectedRPCComponentsLen,
+				len(rpcComponents),
+			)
+		}
+		blockchainID := rpcComponents[blockchainIDPos]
+		_, ok := blockchainIDs[blockchainID]
+		if !ok {
+			blockchainIDs[blockchainID] = struct{}{}
+			rpcs = append(rpcs, rpc)
 		}
 	}
-	return "", errors.New("no rpc url found")
-}
-
-func ParseRPCFromRestartOutput(output string) (string, error) {
-	// split output by newline
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "Endpoint at node") {
-			index := strings.Index(line, "http")
-			if index == -1 {
-				return "", errors.New("no url in RPC URL line")
-			}
-			return line[index:], nil
-		}
+	if len(rpcs) == 0 {
+		return nil, errors.New("no RPCs where found")
 	}
-	return "", errors.New("no rpc url found")
+	return rpcs, nil
 }
 
 type greeterAddr struct {

@@ -18,6 +18,7 @@ require (
 	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.7.2
 	go.uber.org/zap v1.21.0
+	google.golang.org/protobuf v1.28.0
 )
 
 require (
@@ -125,7 +126,6 @@ require (
 	gonum.org/v1/gonum v0.9.1 // indirect
 	google.golang.org/genproto v0.0.0-20220602131408-e326c6e8e9c8 // indirect
 	google.golang.org/grpc v1.47.0 // indirect
-	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/urfave/cli.v1 v1.20.0 // indirect
