@@ -79,20 +79,9 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 
 // deploySubnet is the cobra command run for deploying subnets
 func deploySubnet(cmd *cobra.Command, args []string) error {
-	// this should not be necessary but some bright guy might just be creating
-	// the genesis by hand or something...
-	if err := checkInvalidSubnetNames(args[0]); err != nil {
-		return fmt.Errorf("subnet name %s is invalid: %s", args[0], err)
-	}
-	// Check subnet exists
-	// TODO create a file that lists chains by subnet for fast querying
-	chains, err := getChainsInSubnet(args[0])
+	chains, err := validateSubnetNameAndGetChains(args)
 	if err != nil {
-		return fmt.Errorf("failed to getChainsInSubnet: %w", err)
-	}
-
-	if len(chains) == 0 {
-		return errors.New("Invalid subnet " + args[0])
+		return err
 	}
 
 	// get the network to deploy to
@@ -146,7 +135,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	case models.Fuji: // just make the switch pass
 		if keyName == "" {
-			keyName, err = prompts.CaptureString("Which private key should be used to issue the transaction? (Provide key name)")
+			keyName, err = captureKeyName()
 			if err != nil {
 				return err
 			}
@@ -285,4 +274,24 @@ func contains(list []string, element string) bool {
 		}
 	}
 	return false
+}
+
+func validateSubnetNameAndGetChains(args []string) ([]string, error) {
+	// this should not be necessary but some bright guy might just be creating
+	// the genesis by hand or something...
+	if err := checkInvalidSubnetNames(args[0]); err != nil {
+		return nil, fmt.Errorf("subnet name %s is invalid: %s", args[0], err)
+	}
+	// Check subnet exists
+	// TODO create a file that lists chains by subnet for fast querying
+	chains, err := getChainsInSubnet(args[0])
+	if err != nil {
+		return nil, fmt.Errorf("failed to getChainsInSubnet: %w", err)
+	}
+
+	if len(chains) == 0 {
+		return nil, errors.New("Invalid subnet " + args[0])
+	}
+
+	return chains, nil
 }

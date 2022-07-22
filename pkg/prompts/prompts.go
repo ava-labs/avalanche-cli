@@ -4,12 +4,17 @@ package prompts
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 	"os"
 	"strconv"
+	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/ids"
+	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/manifoldco/promptui"
@@ -32,6 +37,36 @@ func validatePositiveBigInt(input string) error {
 	return nil
 }
 
+func validateStakingDuration(input string) error {
+	d, err := time.ParseDuration(input)
+	if err != nil {
+		return err
+	}
+	if d > constants.MaxStakeDuration {
+		return fmt.Errorf("exceeds maximum staking duration of %s", ux.FormatDuration(constants.MaxStakeDuration))
+	}
+	if d < constants.MinStakeDuration {
+		return fmt.Errorf("below the minimum staking duration of %s", ux.FormatDuration(constants.MinStakeDuration))
+	}
+	return nil
+}
+
+func validateTime(input string) error {
+	t, err := time.Parse(constants.TimeParseLayout, input)
+	if err != nil {
+		return err
+	}
+	if t.Before(time.Now().Add(constants.StakingStartLeadTime)) {
+		return fmt.Errorf("time should be at least start from now + %s", constants.StakingStartLeadTime)
+	}
+	return err
+}
+
+func validateNodeID(input string) error {
+	_, err := ids.NodeIDFromString(input)
+	return err
+}
+
 func validateAddress(input string) error {
 	if !common.IsHexAddress(input) {
 		return errors.New("invalid address")
@@ -46,6 +81,17 @@ func validateExistingFilepath(input string) error {
 	return errors.New("file doesn't exist")
 }
 
+func validateWeight(input string) error {
+	val, err := strconv.ParseUint(input, 10, 64)
+	if err != nil {
+		return err
+	}
+	if val < 1 || val > 100 {
+		return errors.New("the weight must be an integer between 1 and 100")
+	}
+	return nil
+}
+
 func validateBiggerThanZero(input string) error {
 	val, err := strconv.ParseUint(input, 10, 64)
 	if err != nil {
@@ -55,6 +101,61 @@ func validateBiggerThanZero(input string) error {
 		return errors.New("the value must be bigger than zero")
 	}
 	return nil
+}
+
+func CaptureDuration(promptStr string) (time.Duration, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateStakingDuration,
+	}
+
+	durationStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	return time.ParseDuration(durationStr)
+}
+
+func CaptureDate(promptStr string) (time.Time, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateTime,
+	}
+
+	timeStr, err := prompt.Run()
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return time.Parse(constants.TimeParseLayout, timeStr)
+}
+
+func CaptureNodeID(promptStr string) (ids.NodeID, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateNodeID,
+	}
+
+	nodeIDStr, err := prompt.Run()
+	if err != nil {
+		return ids.EmptyNodeID, err
+	}
+	return ids.NodeIDFromString(nodeIDStr)
+}
+
+func CaptureWeight(promptStr string) (uint64, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateWeight,
+	}
+
+	amountStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	return strconv.ParseUint(amountStr, 10, 64)
 }
 
 func CaptureUint64(promptStr string) (uint64, error) {
@@ -68,11 +169,7 @@ func CaptureUint64(promptStr string) (uint64, error) {
 		return 0, err
 	}
 
-	val, err := strconv.ParseUint(amountStr, 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	return val, nil
+	return strconv.ParseUint(amountStr, 10, 64)
 }
 
 func CapturePositiveBigInt(promptStr string) (*big.Int, error) {
@@ -111,7 +208,7 @@ func validatePChainFujiAddress(input string) error {
 	if err != nil {
 		return err
 	}
-	if hrp != constants.FujiHRP {
+	if hrp != avago_constants.FujiHRP {
 		return errors.New("this is not a fuji address")
 	}
 	return nil
@@ -122,7 +219,7 @@ func validatePChainMainAddress(input string) error {
 	if err != nil {
 		return err
 	}
-	if hrp != constants.MainnetHRP {
+	if hrp != avago_constants.MainnetHRP {
 		return errors.New("this is not a mainnet address")
 	}
 	return nil
@@ -135,7 +232,7 @@ func validatePChainLocalAddress(input string) error {
 	}
 	// ANR uses the `custom` HRP for local networks,
 	// but the `local` HRP also exists...
-	if hrp != constants.LocalHRP && hrp != constants.FallbackHRP {
+	if hrp != avago_constants.LocalHRP && hrp != avago_constants.FallbackHRP {
 		return errors.New("this is not a local nor custom address")
 	}
 	return nil
