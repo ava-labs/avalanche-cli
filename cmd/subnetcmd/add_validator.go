@@ -25,7 +25,7 @@ var (
 	startTimeStr string
 	duration     time.Duration
 
-	errNoSubnetID    = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created?")
+	errNoSubnetID    = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 	startTimeDefault = time.Now().Add(constants.StakingStartLeadTime)
 )
 

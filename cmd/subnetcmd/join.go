@@ -52,24 +52,17 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 		return errors.New("--print and --avalanchego-config simultaneously is not supported")
 	}
 
-	/*
-		chains, err := validateSubnetName(args)
-		if err != nil {
-			return err
-		}
-		subnetName := chains[0]
+	chains, err := validateSubnetNameAndGetChains(args)
+	if err != nil {
+		return err
+	}
+	subnetName := chains[0]
 
-		sc, err := app.LoadSidecar(subnetName)
-		if err != nil {
-			return err
-		}
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
+	}
 
-		subnetID := sc.SubnetID
-		if subnetID == ids.Empty {
-			return errNoSubnetID
-		}
-	*/
-	subnetIDstr := "29Zd5yhP7Yb2cTebBbUVKUjHHNviHzgj1y9kKJsvMn2dyWnkpG"
 	var network models.Network
 	networkStr, err := prompts.CaptureList(
 		"Choose a network to deploy on (this command only supports public networks)",
@@ -81,14 +74,19 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 	network = models.NetworkFromString(networkStr)
 	networkLower := strings.ToLower(network.String())
 
+	subnetID := sc.Networks[network.String()].SubnetID
+	if subnetID == ids.Empty {
+		return errNoSubnetID
+	}
+	subnetIDStr := subnetID.String()
+
 	ask := "Would you like to check if your node is already whitelisted to join this subnet?"
 	yes, err := prompts.CaptureYesNo(ask)
 	if err != nil {
 		return err
 	}
 	if yes {
-		// TODO use actual ID
-		isValidating, err := isNodeValidatingSubnet(ids.GenerateTestID(), network)
+		isValidating, err := isNodeValidatingSubnet(subnetID, network)
 		if err != nil {
 			return err
 		}
@@ -107,7 +105,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	}
 
 	if printManual {
-		printJoinCmd(subnetIDstr, networkLower)
+		printJoinCmd(subnetIDStr, networkLower)
 		return nil
 	}
 
@@ -125,7 +123,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 		}
 		switch choice {
 		case choiceManual:
-			printJoinCmd(subnetIDstr, networkLower)
+			printJoinCmd(subnetIDStr, networkLower)
 			return nil
 		case choiceAutomatic:
 			avagoConfigPath, err = prompts.CaptureString("Path to your existing config file (or where it will be generated)")
@@ -136,20 +134,19 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 		// if choice is automatic, we just pass through this block,
 		// so we don't need another else if the the config path is not set
 	}
-	if err := editConfigFile(subnetIDstr, networkLower, avagoConfigPath); err != nil {
+	if err := editConfigFile(subnetIDStr, networkLower, avagoConfigPath); err != nil {
 		return err
 	}
 	return nil
 }
 
 func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, error) {
-	/*
-		promptStr := "Please enter your node's ID (NodeID-...)"
-		nodeID, err := prompts.CaptureNodeID(promptStr)
-		if err != nil {
-			return false, err		}
-	*/
-	nodeID := ids.GenerateTestNodeID()
+	promptStr := "Please enter your node's ID (NodeID-...)"
+	nodeID, err := prompts.CaptureNodeID(promptStr)
+	if err != nil {
+		return false, err
+	}
+
 	var api string
 	switch network {
 	case models.Fuji:
