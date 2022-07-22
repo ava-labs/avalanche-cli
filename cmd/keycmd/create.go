@@ -1,3 +1,5 @@
+// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
 package keycmd
 
 import (
@@ -36,6 +38,9 @@ func createKey(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.PrintToUser("Key created")
+		if err := printAddresses([]string{keyPath}); err != nil {
+			return err
+		}
 	} else {
 		// Load key from file
 		// TODO add validation that key is legal

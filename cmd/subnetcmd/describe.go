@@ -65,15 +65,18 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 	header := []string{"Parameter", "Value"}
 	table.SetHeader(header)
 	table.SetRowLine(true)
+	table.SetAlignment(tablewriter.ALIGN_LEFT)
 
 	table.Append([]string{"Subnet Name", sc.Subnet})
 	table.Append([]string{"ChainID", genesis.Config.ChainID.String()})
 	table.Append([]string{"Token Name", app.GetTokenName(sc.Subnet)})
-	if sc.SubnetID != ids.Empty {
-		table.Append([]string{"SubnetID", sc.SubnetID.String()})
-	}
-	if sc.BlockchainID != ids.Empty {
-		table.Append([]string{"BlockchainID", sc.BlockchainID.String()})
+	for net, data := range sc.Networks {
+		if data.SubnetID != ids.Empty {
+			table.Append([]string{fmt.Sprintf("%s SubnetID", net), data.SubnetID.String()})
+		}
+		if data.BlockchainID != ids.Empty {
+			table.Append([]string{fmt.Sprintf("%s BlockchainID", net), data.BlockchainID.String()})
+		}
 	}
 	table.Render()
 }

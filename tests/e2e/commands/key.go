@@ -1,3 +1,5 @@
+// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
 package commands
 
 import (
@@ -42,6 +44,64 @@ func CreateKeyForce(keyName string) (string, error) {
 		"create",
 		keyName,
 		"--force",
+	)
+
+	out, err := cmd.Output()
+	return string(out), err
+}
+
+/* #nosec G204 */
+func ListKeys() (string, error) {
+	// Create config
+	cmd := exec.Command(
+		CLIBinary,
+		KeyCmd,
+		"list",
+	)
+
+	out, err := cmd.Output()
+	return string(out), err
+}
+
+/* #nosec G204 */
+func DeleteKey(keyName string) (string, error) {
+	// Create config
+	cmd := exec.Command(
+		CLIBinary,
+		KeyCmd,
+		"delete",
+		keyName,
+		"--force",
+	)
+
+	out, err := cmd.Output()
+	return string(out), err
+}
+
+/* #nosec G204 */
+func ExportKey(keyName string) (string, error) {
+	// Create config
+	cmd := exec.Command(
+		CLIBinary,
+		KeyCmd,
+		"export",
+		keyName,
+	)
+
+	out, err := cmd.Output()
+	return string(out), err
+}
+
+/* #nosec G204 */
+func ExportKeyToFile(keyName string, outputPath string) (string, error) {
+	// Create config
+	cmd := exec.Command(
+		CLIBinary,
+		KeyCmd,
+		"export",
+		keyName,
+		"-o",
+		outputPath,
 	)
 
 	out, err := cmd.Output()

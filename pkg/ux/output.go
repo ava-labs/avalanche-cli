@@ -5,9 +5,12 @@ package ux
 import (
 	"fmt"
 	"io"
+	"os"
 	"time"
 
+	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/olekukonko/tablewriter"
 )
 
 var Logger *UserLog
@@ -42,4 +45,19 @@ func PrintWait(cancel chan struct{}) {
 			return
 		}
 	}
+}
+
+// PrintTableEndpoints prints the endpoints coming from the healthy call
+func PrintTableEndpoints(clusterInfo *rpcpb.ClusterInfo) {
+	table := tablewriter.NewWriter(os.Stdout)
+	header := []string{"node", "VM", "URL"}
+	table.SetHeader(header)
+	table.SetRowLine(true)
+
+	for _, nodeInfo := range clusterInfo.NodeInfos {
+		for blockchainID, vmInfo := range clusterInfo.CustomVms {
+			table.Append([]string{nodeInfo.Name, vmInfo.VmName, fmt.Sprintf("%s/ext/bc/%s/rpc", nodeInfo.GetUri(), blockchainID)})
+		}
+	}
+	table.Render()
 }

@@ -39,8 +39,11 @@ func TestUpdateSideCar(t *testing.T) {
 	control, err := ap.LoadSidecar(sc.Name)
 	assert.NoError(err)
 	assert.Equal(*sc, control)
-	sc.BlockchainID = ids.GenerateTestID()
-	sc.SubnetID = ids.GenerateTestID()
+	sc.Networks = make(map[string]models.NetworkData)
+	sc.Networks["local"] = models.NetworkData{
+		BlockchainID: ids.GenerateTestID(),
+		SubnetID:     ids.GenerateTestID(),
+	}
 
 	err = ap.UpdateSidecar(sc)
 	assert.NoError(err)

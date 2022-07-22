@@ -66,9 +66,9 @@ type setDefaultSnapshotFunc func(string, bool) error
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
-func (d *LocalSubnetDeployer) DeployToLocalNetwork(chain string, chainGenesis string) error {
+func (d *LocalSubnetDeployer) DeployToLocalNetwork(chain string, chainGenesis string) (ids.ID, ids.ID, error) {
 	if err := d.StartServer(); err != nil {
-		return err
+		return ids.Empty, ids.Empty, err
 	}
 	return d.doDeploy(chain, chainGenesis)
 }
@@ -105,21 +105,21 @@ func (d *LocalSubnetDeployer) BackendStartedHere() bool {
 // - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
 // - waits completion of operation
 // - show status
-func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) error {
+func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) (ids.ID, ids.ID, error) {
 	avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
 	if err != nil {
-		return err
+		return ids.Empty, ids.Empty, err
 	}
 
 	cli, err := d.getClientFunc()
 	if err != nil {
-		return fmt.Errorf("error creating gRPC Client: %s", err)
+		return ids.Empty, ids.Empty, fmt.Errorf("error creating gRPC Client: %s", err)
 	}
 	defer cli.Close()
 
 	exists, err := storage.FileExists(chainGenesis)
 	if !exists || err != nil {
-		return fmt.Errorf(
+		return ids.Empty, ids.Empty, fmt.Errorf(
 			"evaluated chain genesis file to be at %s but it does not seem to exist", chainGenesis)
 	}
 
@@ -127,7 +127,7 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) error 
 	// for a JSON unmarshalling error, so let's do it here already
 	genesis, err := getGenesis(chainGenesis)
 	if err != nil {
-		return fmt.Errorf("failed to unpack chain ID from genesis: %w", err)
+		return ids.Empty, ids.Empty, fmt.Errorf("failed to unpack chain ID from genesis: %w", err)
 	}
 	chainID := genesis.Config.ChainID
 
@@ -143,40 +143,36 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) error 
 		if strings.Contains(err.Error(), "not bootstrapped") {
 			networkBooted = false
 		} else {
-			return fmt.Errorf("failed to query network health: %s", err)
+			return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %s", err)
 		}
 	}
 
 	chainVMID, err := utils.VMID(chain)
 	if err != nil {
-		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
+		return ids.Empty, ids.Empty, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
 	d.app.Log.Debug("this VM will get ID: %s", chainVMID.String())
 
 	if alreadyDeployed(chainVMID, clusterInfo) {
 		ux.Logger.PrintToUser("Subnet %s has already been deployed", chain)
-		return nil
+		return ids.Empty, ids.Empty, nil
 	}
 
 	if err := d.installNeededPlugins(chainVMID, clusterInfo, pluginDir); err != nil {
-		return err
+		return ids.Empty, ids.Empty, err
 	}
 
 	ux.Logger.PrintToUser("VMs ready.")
 
-	if networkBooted {
-		if err := restartNetwork(ctx, cli, avalancheGoBinPath, pluginDir, runDir); err != nil {
-			return err
-		}
-	} else {
+	if !networkBooted {
 		if err := startNetwork(ctx, cli, avalancheGoBinPath, pluginDir, runDir); err != nil {
-			return err
+			return ids.Empty, ids.Empty, err
 		}
 	}
 
 	clusterInfo, err = d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
-		return fmt.Errorf("failed to query network health: %s", err)
+		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %s", err)
 	}
 	subnetIDs := clusterInfo.Subnets
 	numBlockchains := len(clusterInfo.CustomVms)
@@ -188,9 +184,9 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) error 
 	// so we get incremental selection
 	sort.Strings(subnetIDs)
 	if len(subnetIDs) == 0 {
-		return errors.New("the network has not preloaded subnet IDs")
+		return ids.Empty, ids.Empty, errors.New("the network has not preloaded subnet IDs")
 	}
-	subnetID := subnetIDs[numBlockchains%len(subnetIDs)]
+	subnetIDStr := subnetIDs[numBlockchains%len(subnetIDs)]
 
 	// create a new blockchain on the already started network, associated to
 	// the given VM ID, genesis, and available subnet ID
@@ -198,7 +194,7 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) error 
 		{
 			VmName:   chain,
 			Genesis:  chainGenesis,
-			SubnetId: &subnetID,
+			SubnetId: &subnetIDStr,
 		},
 	}
 	deployBlockchainsInfo, err := cli.CreateBlockchains(
@@ -206,7 +202,7 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) error 
 		blockchainSpecs,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to deploy blockchain :%s", err)
+		return ids.Empty, ids.Empty, fmt.Errorf("failed to deploy blockchain :%s", err)
 	}
 
 	d.app.Log.Debug(deployBlockchainsInfo.String())
@@ -216,19 +212,17 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) error 
 
 	clusterInfo, err = d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
-		return fmt.Errorf("failed to query network health: %s", err)
+		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %s", err)
 	}
 
 	endpoints := GetEndpoints(clusterInfo)
 
 	fmt.Println()
 	ux.Logger.PrintToUser("Network ready to use. Local network node endpoints:")
-	for _, u := range endpoints {
-		ux.Logger.PrintToUser(u)
-	}
+	ux.PrintTableEndpoints(clusterInfo)
 	fmt.Println()
-	firstURL := endpoints[0]
 
+	firstURL := endpoints[0]
 	tokenName := d.app.GetTokenName(chain)
 
 	ux.Logger.PrintToUser("Metamask connection details (any node URL from above works):")
@@ -246,7 +240,16 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) error 
 	ux.Logger.PrintToUser("Network name:     %s", chain)
 	ux.Logger.PrintToUser("Chain ID:         %s", chainID)
 	ux.Logger.PrintToUser("Currency Symbol:  %s", tokenName)
-	return nil
+
+	// we can safely ignore errors here as the subnets have already been generated
+	subnetID, _ := ids.FromString(subnetIDStr)
+	var blockchainID ids.ID
+	for _, info := range clusterInfo.CustomVms {
+		if info.VmId == chainVMID.String() {
+			blockchainID, _ = ids.FromString(info.BlockchainId)
+		}
+	}
+	return subnetID, blockchainID, nil
 }
 
 // SetupLocalEnv also does some heavy lifting:
@@ -533,46 +536,6 @@ func startNetwork(
 	)
 	if err != nil {
 		return fmt.Errorf("failed to start network :%s", err)
-	}
-	return nil
-}
-
-// make snapshot of current state and reload it again
-func restartNetwork(
-	ctx context.Context,
-	cli client.Client,
-	avalancheGoBinPath string,
-	pluginDir string,
-	runDir string,
-) error {
-	tmpSnapshotName := fmt.Sprintf("restart-tmp-%d", time.Now().Unix())
-	ux.Logger.PrintToUser("Restarting network...")
-	_, err := cli.SaveSnapshot(
-		ctx,
-		tmpSnapshotName,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to save snapshot :%s", err)
-	}
-	loadSnapshotOpts := []client.OpOption{
-		client.WithPluginDir(pluginDir),
-		client.WithExecPath(avalancheGoBinPath),
-		client.WithRootDataDir(runDir),
-	}
-	_, err = cli.LoadSnapshot(
-		ctx,
-		tmpSnapshotName,
-		loadSnapshotOpts...,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to load snapshot :%s", err)
-	}
-	_, err = cli.RemoveSnapshot(
-		ctx,
-		tmpSnapshotName,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to remove snapshot :%s", err)
 	}
 	return nil
 }
