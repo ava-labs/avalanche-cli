@@ -25,7 +25,8 @@ var (
 	startTimeStr string
 	duration     time.Duration
 
-	errNoSubnetID = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created?")
+	errNoSubnetID    = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created?")
+	startTimeDefault = time.Now().Add(constants.StakingStartLeadTime)
 )
 
 // avalanche subnet deploy
@@ -42,8 +43,8 @@ It also prompts for the NodeID of the node which will be validating this subnet.
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
 	cmd.Flags().StringVar(&weightStr, "weight", "", "set the staking weight of the validator to add")
-	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
-	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
+	cmd.Flags().StringVar(&startTimeStr, "start-time", startTimeDefault.Format(constants.TimeParseLayout), "start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
+	cmd.Flags().DurationVar(&duration, "staking-period", constants.MaxStakeDuration, "how long this validator will be staking")
 	return cmd
 }
 
