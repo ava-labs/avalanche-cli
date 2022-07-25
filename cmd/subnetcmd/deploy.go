@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
@@ -89,7 +88,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	if deployLocal {
 		network = models.Local
 	} else {
-		networkStr, err := prompts.CaptureList(
+		networkStr, err := app.Prompt.CaptureList(
 			"Choose a network to deploy on",
 			[]string{models.Local.String(), models.Fuji.String(), models.Mainnet.String()},
 		)
@@ -224,7 +223,7 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 	var controlKeys []string
 
 	for {
-		listDecision, err := prompts.CaptureList(
+		listDecision, err := app.Prompt.CaptureList(
 			controlKeysPrompt, []string{addCtrlKey, doneMsg, cancelMsg},
 		)
 		if err != nil {
@@ -233,7 +232,7 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 
 		switch listDecision {
 		case addCtrlKey:
-			controlKey, err := prompts.CapturePChainAddress(
+			controlKey, err := app.Prompt.CapturePChainAddress(
 				"Enter the P-Chain addresses which control who can add validators to this subnet (*must* be a PChain address: `P-...`)",
 				network,
 			)
@@ -257,7 +256,7 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 
 // getThreshold prompts for the threshold of addresses as a number
 func getThreshold(maxLen uint64) (uint32, error) {
-	threshold, err := prompts.CaptureUint64("Enter required number of control addresses to add validators")
+	threshold, err := app.Prompt.CaptureUint64("Enter required number of control addresses to add validators")
 	if err != nil {
 		return 0, err
 	}

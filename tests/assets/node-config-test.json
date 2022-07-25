@@ -1,0 +1,12 @@
+{
+  "node-config": {
+    "network-peer-list-gossip-frequency": "250ms",
+    "network-max-reconnect-delay": "1s",
+    "http-host": "0.0.0.0",
+    "health-check-frequency": "2s",
+    "api-admin-enabled": true,
+    "api-ipcs-enabled": true,
+    "index-enabled": true
+  },
+  "var": "val"
+}

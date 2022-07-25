@@ -12,7 +12,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -33,7 +32,7 @@ func newJoinCmd() *cobra.Command {
 		Short: "Instruct a validator node to begin validating a new subnet.",
 		Long: `Instruct a validator node to begin validating a new subnet.
 Either it prints the necessary instructions to screen or attempts to edit/generate a config file automatically.
-The NodeID of that validator node must have been whitelisted by one of the 
+The NodeID of that validator node must have been whitelisted by one of the
 subnet's control keys for this to work.
 
 The node also needs to be restarted.
@@ -64,7 +63,7 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	var network models.Network
-	networkStr, err := prompts.CaptureList(
+	networkStr, err := app.Prompt.CaptureList(
 		"Choose a network to deploy on (this command only supports public networks)",
 		[]string{models.Fuji.String(), models.Mainnet.String()},
 	)
@@ -81,7 +80,7 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 	subnetIDStr := subnetID.String()
 
 	ask := "Would you like to check if your node is already whitelisted to join this subnet?"
-	yes, err := prompts.CaptureYesNo(ask)
+	yes, err := app.Prompt.CaptureYesNo(ask)
 	if err != nil {
 		return err
 	}
@@ -91,10 +90,10 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		if !isValidating {
-			ux.Logger.PrintToUser(`The node is not whitelisted to validate this subnet. 
+			ux.Logger.PrintToUser(`The node is not whitelisted to validate this subnet.
 You can continue with this command, generating a config file or printing the whitelisting configuration,
 but until the node is whitelisted, it will not be able to validate this subnet.`)
-			y, err := prompts.CaptureYesNo("Do you wish to continue")
+			y, err := app.Prompt.CaptureYesNo("Do you wish to continue")
 			if err != nil {
 				return err
 			}
@@ -114,7 +113,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 			choiceManual    = "Manual"
 			choiceAutomatic = "Automatic"
 		)
-		choice, err := prompts.CaptureList(
+		choice, err := app.Prompt.CaptureList(
 			"How would you like to update the avalanchego config?",
 			[]string{choiceManual, choiceAutomatic},
 		)
@@ -126,7 +125,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 			printJoinCmd(subnetIDStr, networkLower)
 			return nil
 		case choiceAutomatic:
-			avagoConfigPath, err = prompts.CaptureString("Path to your existing config file (or where it will be generated)")
+			avagoConfigPath, err = app.Prompt.CaptureString("Path to your existing config file (or where it will be generated)")
 			if err != nil {
 				return err
 			}
@@ -142,7 +141,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 
 func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, error) {
 	promptStr := "Please enter your node's ID (NodeID-...)"
-	nodeID, err := prompts.CaptureNodeID(promptStr)
+	nodeID, err := app.Prompt.CaptureNodeID(promptStr)
 	if err != nil {
 		return false, err
 	}
@@ -174,7 +173,7 @@ func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, erro
 
 func editConfigFile(subnetID string, networkID string, configFile string) error {
 	warn := "WARNING: This will edit your existing config file if there is any, are you sure?"
-	yes, err := prompts.CaptureYesNo(warn)
+	yes, err := app.Prompt.CaptureYesNo(warn)
 	if err != nil {
 		return err
 	}

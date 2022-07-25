@@ -16,6 +16,7 @@ require (
 	github.com/onsi/gomega v1.19.0
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible
 	github.com/spf13/cobra v1.4.0
+	github.com/spf13/viper v1.11.0
 	github.com/stretchr/testify v1.7.2
 	go.uber.org/zap v1.21.0
 	google.golang.org/protobuf v1.28.0
@@ -106,7 +107,6 @@ require (
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/spf13/viper v1.11.0 // indirect
 	github.com/status-im/keycard-go v0.0.0-20200402102358-957c09536969 // indirect
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect

@@ -165,7 +165,7 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) (ids.I
 	ux.Logger.PrintToUser("VMs ready.")
 
 	if !networkBooted {
-		if err := startNetwork(ctx, cli, avalancheGoBinPath, pluginDir, runDir); err != nil {
+		if err := d.startNetwork(ctx, cli, avalancheGoBinPath, pluginDir, runDir); err != nil {
 			return ids.Empty, ids.Empty, err
 		}
 	}
@@ -516,7 +516,7 @@ func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 }
 
 // start the network
-func startNetwork(
+func (d *LocalSubnetDeployer) startNetwork(
 	ctx context.Context,
 	cli client.Client,
 	avalancheGoBinPath string,
@@ -529,7 +529,17 @@ func startNetwork(
 		client.WithExecPath(avalancheGoBinPath),
 		client.WithRootDataDir(runDir),
 	}
-	_, err := cli.LoadSnapshot(
+
+	// load global node configs if they exist
+	configStr, err := d.app.Conf.LoadNodeConfig()
+	if err != nil {
+		return err
+	}
+	if configStr != "" {
+		loadSnapshotOpts = append(loadSnapshotOpts, client.WithGlobalNodeConfig(configStr))
+	}
+
+	_, err = cli.LoadSnapshot(
 		ctx,
 		constants.DefaultSnapshotName,
 		loadSnapshotOpts...,

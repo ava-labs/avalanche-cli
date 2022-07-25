@@ -6,7 +6,6 @@ import (
 	"errors"
 	"os"
 
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
@@ -45,7 +44,7 @@ func deleteKey(cmd *cobra.Command, args []string) error {
 
 	if !forceDelete {
 		confStr := "Are you sure you want to delete " + keyName + "?"
-		conf, err := prompts.CaptureNoYes(confStr)
+		conf, err := app.Prompt.CaptureNoYes(confStr)
 		if err != nil {
 			return err
 		}

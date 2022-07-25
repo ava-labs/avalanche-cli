@@ -72,6 +72,16 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 		client.WithExecPath(avalancheGoBinPath),
 		client.WithRootDataDir(outputDir),
 	}
+
+	// load global node configs if they exist
+	configStr, err := app.Conf.LoadNodeConfig()
+	if err != nil {
+		return err
+	}
+	if configStr != "" {
+		loadSnapshotOpts = append(loadSnapshotOpts, client.WithGlobalNodeConfig(configStr))
+	}
+
 	_, err = cli.LoadSnapshot(
 		ctx,
 		snapshotName,

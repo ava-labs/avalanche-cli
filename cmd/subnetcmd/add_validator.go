@@ -12,7 +12,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
@@ -64,7 +63,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	var network models.Network
-	networkStr, err := prompts.CaptureList(
+	networkStr, err := app.Prompt.CaptureList(
 		"Choose a network to deploy on (this command only supports public networks)",
 		[]string{models.Fuji.String(), models.Mainnet.String()},
 	)
@@ -143,13 +142,13 @@ func addValidator(cmd *cobra.Command, args []string) error {
 func promptDuration(start time.Time) (time.Duration, error) {
 	for {
 		txt := "How long should this validator be validating? Enter a duration, e.g. 8760h"
-		d, err := prompts.CaptureDuration(txt)
+		d, err := app.Prompt.CaptureDuration(txt)
 		if err != nil {
 			return 0, err
 		}
 		end := start.Add(d)
 		confirm := fmt.Sprintf("Your validator will complete staking by %s", end.Format(constants.TimeParseLayout))
-		yes, err := prompts.CaptureYesNo(confirm)
+		yes, err := app.Prompt.CaptureYesNo(confirm)
 		if err != nil {
 			return 0, err
 		}
@@ -161,17 +160,17 @@ func promptDuration(start time.Time) (time.Duration, error) {
 
 func promptStart() (time.Time, error) {
 	txt := "When will the validator start validating? Enter a date in 'YYYY-MM-DD HH:MM:SS' format"
-	return prompts.CaptureDate(txt)
+	return app.Prompt.CaptureDate(txt)
 }
 
 func promptNodeID() (ids.NodeID, error) {
 	txt := "What is the NodeID of the validator?"
-	return prompts.CaptureNodeID(txt)
+	return app.Prompt.CaptureNodeID(txt)
 }
 
 func promptWeight() (uint64, error) {
 	txt := "What is the staking weight of the validator?"
-	return prompts.CaptureWeight(txt)
+	return app.Prompt.CaptureWeight(txt)
 }
 
 func captureKeyName() (string, error) {
@@ -188,7 +187,7 @@ func captureKeyName() (string, error) {
 		}
 	}
 
-	keyName, err = prompts.CaptureList("Which private key should be used to issue the transaction?", keys)
+	keyName, err = app.Prompt.CaptureList("Which private key should be used to issue the transaction?", keys)
 	if err != nil {
 		return "", err
 	}
