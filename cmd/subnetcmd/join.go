@@ -29,15 +29,24 @@ var (
 func newJoinCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "join [subnetName]",
-		Short: "Instruct a validator node to begin validating a new subnet.",
-		Long: `Instruct a validator node to begin validating a new subnet.
-Either it prints the necessary instructions to screen or attempts to edit/generate a config file automatically.
-The NodeID of that validator node must have been whitelisted by one of the
-subnet's control keys for this to work.
+		Short: "Configure your validator node to begin validating a new subnet",
+		Long: `The subnet join command configures your validator node to begin validating
+a new subnet.
 
-The node also needs to be restarted.
-If --avalanchego-config is provided, this command tries to edit the config file at that path
-(requires the file to be readable and writable).`,
+To use this command, you must have access to the machine running your
+validator. If the CLI is running on the same machine as your validator,
+it can generate or update your node's config file automatically.
+Alternatively, the command can print the necessary instructions to
+update your node manually. To complete the validation process, the
+NodeID of your validator node must have been whitelisted by one of the
+subnet's control keys.
+
+After you update your validator's config, you will need to restart your
+validator manually. If the --avalanchego-config flag is provided, this
+command attempts to edit the config file at that path (requires the file
+to be readable and writable).
+
+This command currently only supports subnets deployed on the Fuji testnet.`,
 		RunE: joinCmd,
 		Args: cobra.ExactArgs(1),
 	}
@@ -79,7 +88,8 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 	}
 	subnetIDStr := subnetID.String()
 
-	ask := "Would you like to check if your node is already whitelisted to join this subnet?"
+	ask := "Would you like to check if your node is allowed to join this subnet?\n" +
+		"If not, the subnet's control key holder must call avalanche subnet addValidator with your NodeID."
 	yes, err := app.Prompt.CaptureYesNo(ask)
 	if err != nil {
 		return err
@@ -172,7 +182,8 @@ func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, erro
 }
 
 func editConfigFile(subnetID string, networkID string, configFile string) error {
-	warn := "WARNING: This will edit your existing config file if there is any, are you sure?"
+	warn := "This will edit your existing config file. This edit is nondestructive,\n" +
+		"but it's always good to have a backup. Proceed?"
 	yes, err := app.Prompt.CaptureYesNo(warn)
 	if err != nil {
 		return err
@@ -242,11 +253,12 @@ func editConfigFile(subnetID string, networkID string, configFile string) error 
 
 func printJoinCmd(subnetID string, networkID string) {
 	msg := `
-If you start your node from the command line WITHOUT a config file (e.g. via command line or systemd script),
-add the following flag to your node's startup command:
+If you start your node from the command line WITHOUT a config file (e.g. via command
+line or systemd script), add the following flag to your node's startup command:
 
 --whitelisted-subnets=%s
-(if the node already has a whitelisted-subnets config, just add the new value to it).
+(if the node already has a whitelisted-subnets config, append the new value by
+comma-separating it).
 
 For example:
 ./build/avalanchego --network-id=%s --whitelisted-subnets=%s
@@ -255,7 +267,10 @@ If you start the node via a JSON config file, add this to your config file:
 whitelisted-subnets: %s
 
 TIP: Try this command with the --avalanchego-config flag pointing to your config file,
-this tool will try to update the file automatically (make sure it can write to it).`
+this tool will try to update the file automatically (make sure it can write to it).
+
+After you update your config, you will need to restart your node for the changes to
+take effect.`
 
 	ux.Logger.PrintToUser(msg, subnetID, networkID, subnetID, subnetID)
 }

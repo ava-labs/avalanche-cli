@@ -27,22 +27,27 @@ var (
 func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy [subnetName]",
-		Short: "Deploys a subnet configuration with clean state",
+		Short: "Deploys a subnet configuration",
 		Long: `The subnet deploy command deploys your subnet configuration locally, to
-Fuji Testnet, or to Mainnet. Currently, the beta release only support
-local deploys.
+Fuji Testnet, or to Mainnet. Currently, the beta release only supports
+local and Fuji deploys.
 
 At the end of the call, the command will print the RPC URL you can use
 to interact with the subnet.
 
-Subsequent calls of deploy using the same subnet configuration will
-redeploy the subnet and reset the chain state to genesis.`,
+Subnets may only be deployed once. Subsequent calls of deploy to the
+same network (local, Fuji, Mainnet) are not allowed. If you'd like to
+redeploy a subnet locally for testing, you must first call avalanche
+network clean to reset all deployed chain state. Subsequent local
+deploys will redeploy the chain with fresh state. The same subnet can
+be deployed to multiple networks, so you can take your locally tested
+subnet and deploy it on Fuji or Mainnet.`,
 		SilenceUsage: true,
 		RunE:         deploySubnet,
 		Args:         cobra.ExactArgs(1),
 	}
 	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
-	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use")
+	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use for fuji deploys")
 	return cmd
 }
 
@@ -193,7 +198,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 }
 
 func getControlKeys(network models.Network) ([]string, bool, error) {
-	controlKeysPrompt := "Configure which addresses allow to add new validators"
+	controlKeysPrompt := "Configure which addresses may add new validators to the subnet.\n" +
+		"These addresses are known as your control keys. You will also\n" +
+		"set how many control keys are required to add a validator."
 
 	for {
 		// ask in a loop so that if some condition is not met we can keep asking
@@ -233,7 +240,7 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 		switch listDecision {
 		case addCtrlKey:
 			controlKey, err := app.Prompt.CapturePChainAddress(
-				"Enter the P-Chain addresses which control who can add validators to this subnet (*must* be a PChain address: `P-...`)",
+				"Enter the P-Chain addresses which can add validators to this subnet (*must* be a PChain address: `P-...`)",
 				network,
 			)
 			if err != nil {
@@ -256,12 +263,12 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 
 // getThreshold prompts for the threshold of addresses as a number
 func getThreshold(maxLen uint64) (uint32, error) {
-	threshold, err := app.Prompt.CaptureUint64("Enter required number of control addresses to add validators")
+	threshold, err := app.Prompt.CaptureUint64("Enter required number of control key signatures to add a validator")
 	if err != nil {
 		return 0, err
 	}
 	if threshold > maxLen {
-		return 0, fmt.Errorf("the threshold can't be bigger than the number of control addresses")
+		return 0, fmt.Errorf("the threshold can't be bigger than the number of control keys")
 	}
 	return uint32(threshold), err
 }
