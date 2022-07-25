@@ -11,6 +11,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
@@ -21,6 +22,35 @@ const (
 	subnetName1 = "TEST_subnet"
 	subnetName2 = "TEST_copied_subnet"
 )
+
+func TestUpdateSideCar(t *testing.T) {
+	assert := assert.New(t)
+	sc := &models.Sidecar{
+		Name:      "TEST",
+		VM:        models.SubnetEvm,
+		TokenName: "TEST",
+		ChainID:   "42",
+	}
+
+	ap := newTestApp(t)
+
+	err := ap.CreateSidecar(sc)
+	assert.NoError(err)
+	control, err := ap.LoadSidecar(sc.Name)
+	assert.NoError(err)
+	assert.Equal(*sc, control)
+	sc.Networks = make(map[string]models.NetworkData)
+	sc.Networks["local"] = models.NetworkData{
+		BlockchainID: ids.GenerateTestID(),
+		SubnetID:     ids.GenerateTestID(),
+	}
+
+	err = ap.UpdateSidecar(sc)
+	assert.NoError(err)
+	control, err = ap.LoadSidecar(sc.Name)
+	assert.NoError(err)
+	assert.Equal(*sc, control)
+}
 
 func Test_writeGenesisFile_success(t *testing.T) {
 	assert := assert.New(t)

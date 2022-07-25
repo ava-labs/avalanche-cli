@@ -32,7 +32,7 @@ is already running or if no subnets have been deployed.`,
 }
 
 func startNetwork(cmd *cobra.Command, args []string) error {
-	sd := subnet.NewLocalDeployer(app)
+	sd := subnet.NewLocalSubnetDeployer(app)
 
 	if err := sd.StartServer(); err != nil {
 		return err
@@ -110,9 +110,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 	if len(endpoints) > 0 {
 		ux.Logger.PrintToUser("Network ready to use. Local network node endpoints:")
-		for _, u := range endpoints {
-			ux.Logger.PrintToUser(u)
-		}
+		ux.PrintTableEndpoints(clusterInfo)
 	}
 
 	return nil

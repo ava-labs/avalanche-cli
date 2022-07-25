@@ -36,7 +36,7 @@ const (
 	WriteReadReadPerms = 0o644
 )
 
-type Deployer struct {
+type LocalSubnetDeployer struct {
 	procChecker         binutils.ProcessChecker
 	binChecker          binutils.BinaryChecker
 	getClientFunc       getGRPCClientFunc
@@ -47,8 +47,8 @@ type Deployer struct {
 	setDefaultSnapshot  setDefaultSnapshotFunc
 }
 
-func NewLocalDeployer(app *application.Avalanche) *Deployer {
-	return &Deployer{
+func NewLocalSubnetDeployer(app *application.Avalanche) *LocalSubnetDeployer {
+	return &LocalSubnetDeployer{
 		procChecker:         binutils.NewProcessChecker(),
 		binChecker:          binutils.NewBinaryChecker(),
 		getClientFunc:       binutils.NewGRPCClient,
@@ -66,14 +66,14 @@ type setDefaultSnapshotFunc func(string, bool) error
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
-func (d *Deployer) DeployToLocalNetwork(chain string, chainGenesis string) error {
+func (d *LocalSubnetDeployer) DeployToLocalNetwork(chain string, chainGenesis string) (ids.ID, ids.ID, error) {
 	if err := d.StartServer(); err != nil {
-		return err
+		return ids.Empty, ids.Empty, err
 	}
 	return d.doDeploy(chain, chainGenesis)
 }
 
-func (d *Deployer) StartServer() error {
+func (d *LocalSubnetDeployer) StartServer() error {
 	isRunning, err := d.procChecker.IsServerProcessRunning(d.app)
 	if err != nil {
 		return fmt.Errorf("failed querying if server process is running: %w", err)
@@ -90,7 +90,7 @@ func (d *Deployer) StartServer() error {
 
 // BackendStartedHere returns true if the backend was started by this run,
 // or false if it found it there already
-func (d *Deployer) BackendStartedHere() bool {
+func (d *LocalSubnetDeployer) BackendStartedHere() bool {
 	return d.backendStartedHere
 }
 
@@ -105,21 +105,21 @@ func (d *Deployer) BackendStartedHere() bool {
 // - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
 // - waits completion of operation
 // - show status
-func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
+func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) (ids.ID, ids.ID, error) {
 	avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
 	if err != nil {
-		return err
+		return ids.Empty, ids.Empty, err
 	}
 
 	cli, err := d.getClientFunc()
 	if err != nil {
-		return fmt.Errorf("error creating gRPC Client: %s", err)
+		return ids.Empty, ids.Empty, fmt.Errorf("error creating gRPC Client: %s", err)
 	}
 	defer cli.Close()
 
 	exists, err := storage.FileExists(chainGenesis)
 	if !exists || err != nil {
-		return fmt.Errorf(
+		return ids.Empty, ids.Empty, fmt.Errorf(
 			"evaluated chain genesis file to be at %s but it does not seem to exist", chainGenesis)
 	}
 
@@ -127,7 +127,7 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 	// for a JSON unmarshalling error, so let's do it here already
 	genesis, err := getGenesis(chainGenesis)
 	if err != nil {
-		return fmt.Errorf("failed to unpack chain ID from genesis: %w", err)
+		return ids.Empty, ids.Empty, fmt.Errorf("failed to unpack chain ID from genesis: %w", err)
 	}
 	chainID := genesis.Config.ChainID
 
@@ -143,36 +143,36 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 		if strings.Contains(err.Error(), "not bootstrapped") {
 			networkBooted = false
 		} else {
-			return fmt.Errorf("failed to query network health: %s", err)
+			return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %s", err)
 		}
 	}
 
 	chainVMID, err := utils.VMID(chain)
 	if err != nil {
-		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
+		return ids.Empty, ids.Empty, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
 	d.app.Log.Debug("this VM will get ID: %s", chainVMID.String())
 
 	if alreadyDeployed(chainVMID, clusterInfo) {
 		ux.Logger.PrintToUser("Subnet %s has already been deployed", chain)
-		return nil
+		return ids.Empty, ids.Empty, nil
 	}
 
 	if err := d.installNeededPlugins(chainVMID, clusterInfo, pluginDir); err != nil {
-		return err
+		return ids.Empty, ids.Empty, err
 	}
 
 	ux.Logger.PrintToUser("VMs ready.")
 
 	if !networkBooted {
 		if err := d.startNetwork(ctx, cli, avalancheGoBinPath, pluginDir, runDir); err != nil {
-			return err
+			return ids.Empty, ids.Empty, err
 		}
 	}
 
 	clusterInfo, err = d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
-		return fmt.Errorf("failed to query network health: %s", err)
+		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %s", err)
 	}
 	subnetIDs := clusterInfo.Subnets
 	numBlockchains := len(clusterInfo.CustomVms)
@@ -184,9 +184,9 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 	// so we get incremental selection
 	sort.Strings(subnetIDs)
 	if len(subnetIDs) == 0 {
-		return errors.New("the network has not preloaded subnet IDs")
+		return ids.Empty, ids.Empty, errors.New("the network has not preloaded subnet IDs")
 	}
-	subnetID := subnetIDs[numBlockchains%len(subnetIDs)]
+	subnetIDStr := subnetIDs[numBlockchains%len(subnetIDs)]
 
 	// create a new blockchain on the already started network, associated to
 	// the given VM ID, genesis, and available subnet ID
@@ -194,7 +194,7 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 		{
 			VmName:   chain,
 			Genesis:  chainGenesis,
-			SubnetId: &subnetID,
+			SubnetId: &subnetIDStr,
 		},
 	}
 	deployBlockchainsInfo, err := cli.CreateBlockchains(
@@ -202,7 +202,7 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 		blockchainSpecs,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to deploy blockchain :%s", err)
+		return ids.Empty, ids.Empty, fmt.Errorf("failed to deploy blockchain :%s", err)
 	}
 
 	d.app.Log.Debug(deployBlockchainsInfo.String())
@@ -212,19 +212,17 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 
 	clusterInfo, err = d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
-		return fmt.Errorf("failed to query network health: %s", err)
+		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %s", err)
 	}
 
 	endpoints := GetEndpoints(clusterInfo)
 
 	fmt.Println()
 	ux.Logger.PrintToUser("Network ready to use. Local network node endpoints:")
-	for _, u := range endpoints {
-		ux.Logger.PrintToUser(u)
-	}
+	ux.PrintTableEndpoints(clusterInfo)
 	fmt.Println()
-	firstURL := endpoints[0]
 
+	firstURL := endpoints[0]
 	tokenName := d.app.GetTokenName(chain)
 
 	ux.Logger.PrintToUser("Metamask connection details (any node URL from above works):")
@@ -242,7 +240,16 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 	ux.Logger.PrintToUser("Network name:     %s", chain)
 	ux.Logger.PrintToUser("Chain ID:         %s", chainID)
 	ux.Logger.PrintToUser("Currency Symbol:  %s", tokenName)
-	return nil
+
+	// we can safely ignore errors here as the subnets have already been generated
+	subnetID, _ := ids.FromString(subnetIDStr)
+	var blockchainID ids.ID
+	for _, info := range clusterInfo.CustomVms {
+		if info.VmId == chainVMID.String() {
+			blockchainID, _ = ids.FromString(info.BlockchainId)
+		}
+	}
+	return subnetID, blockchainID, nil
 }
 
 // SetupLocalEnv also does some heavy lifting:
@@ -250,7 +257,7 @@ func (d *Deployer) doDeploy(chain string, chainGenesis string) error {
 // * checks if avalanchego is installed in the local binary path
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path and plugin
-func (d *Deployer) SetupLocalEnv() (string, string, error) {
+func (d *LocalSubnetDeployer) SetupLocalEnv() (string, string, error) {
 	err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false)
 	if err != nil {
 		return "", "", fmt.Errorf("failed setting up snapshots: %w", err)
@@ -280,7 +287,7 @@ func (d *Deployer) SetupLocalEnv() (string, string, error) {
 	return avalancheGoBinPath, pluginDir, nil
 }
 
-func (d *Deployer) setupLocalEnv() (string, error) {
+func (d *LocalSubnetDeployer) setupLocalEnv() (string, error) {
 	binDir := filepath.Join(d.app.GetBaseDir(), constants.AvalancheCliBinDir)
 	binPrefix := "avalanchego-v"
 
@@ -380,7 +387,7 @@ func (d *Deployer) setupLocalEnv() (string, error) {
 }
 
 // WaitForHealthy polls continuously until the network is ready to be used
-func (d *Deployer) WaitForHealthy(
+func (d *LocalSubnetDeployer) WaitForHealthy(
 	ctx context.Context,
 	cli client.Client,
 	healthCheckInterval time.Duration,
@@ -440,7 +447,7 @@ func alreadyDeployed(chainVMID ids.ID, clusterInfo *rpcpb.ClusterInfo) bool {
 }
 
 // get list of all needed plugins and install them
-func (d *Deployer) installNeededPlugins(chainVMID ids.ID, clusterInfo *rpcpb.ClusterInfo, pluginDir string) error {
+func (d *LocalSubnetDeployer) installNeededPlugins(chainVMID ids.ID, clusterInfo *rpcpb.ClusterInfo, pluginDir string) error {
 	toInstallVMIDs := map[string]struct{}{}
 	toInstallVMIDs[chainVMID.String()] = struct{}{}
 	if clusterInfo != nil {
@@ -509,7 +516,7 @@ func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 }
 
 // start the network
-func (d *Deployer) startNetwork(
+func (d *LocalSubnetDeployer) startNetwork(
 	ctx context.Context,
 	cli client.Client,
 	avalancheGoBinPath string,

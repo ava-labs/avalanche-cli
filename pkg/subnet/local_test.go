@@ -19,10 +19,48 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"google.golang.org/protobuf/proto"
+)
+
+var (
+	testBlockChainID1 = ids.GenerateTestID().String()
+	testBlockChainID2 = ids.GenerateTestID().String()
+	testSubnetID1     = ids.GenerateTestID().String()
+	testSubnetID2     = ids.GenerateTestID().String()
+
+	testVMID   = "tGBrM2SXkAdNsqzb3SaFZZWMNdzjjFEUKteheTa4dhUwnfQyu" // VM ID of "test"
+	testVMName = "test"
+
+	fakeHealthResponse = &rpcpb.HealthResponse{
+		ClusterInfo: &rpcpb.ClusterInfo{
+			Healthy:          true, // currently actually not checked, should it, if CustomVMsHealthy already is?
+			CustomVmsHealthy: true,
+			NodeInfos: map[string]*rpcpb.NodeInfo{
+				"testNode1": {
+					Name: "testNode1",
+					Uri:  "http://fake.localhost:12345",
+				},
+				"testNode2": {
+					Name: "testNode2",
+					Uri:  "http://fake.localhost:12345",
+				},
+			},
+			CustomVms: map[string]*rpcpb.CustomVmInfo{
+				"bchain1": {
+					BlockchainId: testBlockChainID1,
+				},
+				"bchain2": {
+					BlockchainId: testBlockChainID2,
+				},
+			},
+			Subnets: []string{testSubnetID1, testSubnetID2},
+		},
+	}
 )
 
 func setupTest(t *testing.T) *assert.Assertions {
@@ -60,7 +98,7 @@ func TestDeployToLocal(t *testing.T) {
 		Log: logging.NoLog{},
 	}
 
-	testDeployer := &Deployer{
+	testDeployer := &LocalSubnetDeployer{
 		procChecker:         procChecker,
 		binChecker:          binChecker,
 		getClientFunc:       getTestClientFunc,
@@ -79,8 +117,10 @@ func TestDeployToLocal(t *testing.T) {
 	err = os.WriteFile(testGenesis.Name(), []byte(genesis), constants.DefaultPerms755)
 	assert.NoError(err)
 	// test actual deploy
-	err = testDeployer.DeployToLocalNetwork("test", testGenesis.Name())
+	s, b, err := testDeployer.DeployToLocalNetwork(testVMName, testGenesis.Name())
 	assert.NoError(err)
+	assert.Equal(testSubnetID2, s.String())
+	assert.Equal(testBlockChainID2, b.String())
 }
 
 func TestExistsWithLatestVersion(t *testing.T) {
@@ -178,32 +218,18 @@ func getTestClientFunc() (client.Client, error) {
 	c.On("RemoveSnapshot", mock.Anything, mock.Anything).Return(fakeRemoveSnapshotResponse, nil)
 	c.On("CreateBlockchains", mock.Anything, mock.Anything, mock.Anything).Return(fakeCreateBlockchainsResponse, nil)
 	c.On("URIs", mock.Anything).Return([]string{"fakeUri"}, nil)
-	fakeHealthResponse := &rpcpb.HealthResponse{
-		ClusterInfo: &rpcpb.ClusterInfo{
-			Healthy:          true, // currently actually not checked, should it, if CustomVMsHealthy already is?
-			CustomVmsHealthy: true,
-			NodeInfos: map[string]*rpcpb.NodeInfo{
-				"testNode1": {
-					Name: "testNode1",
-					Uri:  "http://fake.localhost:12345",
-				},
-				"testNode2": {
-					Name: "testNode2",
-					Uri:  "http://fake.localhost:12345",
-				},
-			},
-			CustomVms: map[string]*rpcpb.CustomVmInfo{
-				"vm1": {
-					BlockchainId: "abcd",
-				},
-				"vm2": {
-					BlockchainId: "efgh",
-				},
-			},
-			Subnets: []string{"subnet1", "subnet2"},
-		},
-	}
-	c.On("Health", mock.Anything).Return(fakeHealthResponse, nil)
+	// When fake deploying, the first response needs to have a bogus subnet ID, because
+	// otherwise the doDeploy function "aborts" when checking if the subnet had already been deployed.
+	// Afterwards, we can set the actual VM ID so that the test returns an expected subnet ID...
+
+	// Return a fake health response twice
+	c.On("Health", mock.Anything).Return(fakeHealthResponse, nil).Twice()
+	// Afterwards, change the VmId so that TestDeployToLocal has the correct ID to check
+	alteredFakeResponse := proto.Clone(fakeHealthResponse).(*rpcpb.HealthResponse) // new(rpcpb.HealthResponse)
+	alteredFakeResponse.ClusterInfo.CustomVms["bchain2"].VmId = testVMID
+	alteredFakeResponse.ClusterInfo.CustomVms["bchain2"].VmName = testVMName
+	alteredFakeResponse.ClusterInfo.CustomVms["bchain1"].VmName = "bchain1"
+	c.On("Health", mock.Anything).Return(alteredFakeResponse, nil)
 	c.On("Close").Return(nil)
 	return c, nil
 }
