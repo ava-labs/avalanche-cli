@@ -26,10 +26,9 @@ import (
 var (
 	app *application.Avalanche
 
-	logLevel     string
-	Version      = ""
-	snapshotsDir string
-	cfgFile      string
+	logLevel string
+	Version  = ""
+	cfgFile  string
 )
 
 func NewRootCmd() *cobra.Command {
