@@ -45,9 +45,10 @@ type Deployer struct {
 	app                 *application.Avalanche
 	backendStartedHere  bool
 	setDefaultSnapshot  setDefaultSnapshotFunc
+	avagoVersion        string
 }
 
-func NewLocalDeployer(app *application.Avalanche) *Deployer {
+func NewLocalDeployer(app *application.Avalanche, avagoVersion string) *Deployer {
 	return &Deployer{
 		procChecker:         binutils.NewProcessChecker(),
 		binChecker:          binutils.NewBinaryChecker(),
@@ -56,6 +57,7 @@ func NewLocalDeployer(app *application.Avalanche) *Deployer {
 		healthCheckInterval: 100 * time.Millisecond,
 		app:                 app,
 		setDefaultSnapshot:  SetDefaultSnapshot,
+		avagoVersion:        avagoVersion,
 	}
 }
 
@@ -281,24 +283,37 @@ func (d *Deployer) SetupLocalEnv() (string, string, error) {
 }
 
 func (d *Deployer) setupLocalEnv() (string, error) {
-	binDir := filepath.Join(d.app.GetBaseDir(), constants.AvalancheCliBinDir)
-	binPrefix := "avalanchego-v"
+	binDir := filepath.Join(d.app.GetBaseDir(), constants.AvalancheCliBinDir, "avalanchego")
+	binPrefix := "avalanchego-"
 
-	exists, avagoDir, err := d.binChecker.ExistsWithLatestVersion(binDir, binPrefix)
+	fmt.Println("Using version", d.avagoVersion)
+
+	if d.avagoVersion == "" {
+		// get latest version
+		var err error
+		d.avagoVersion, err = binutils.GetLatestReleaseVersion(binutils.GetGithubReleaseURL("ava-labs", "avalanchego"))
+		if err != nil {
+			return "", err
+		}
+	} else if d.avagoVersion[0] != 'v' {
+		return "", fmt.Errorf("invalid version string. Version must start with v, ex: v1.7.14: %s", d.avagoVersion)
+	}
+
+	exists, avagoDir, err := d.binChecker.ExistsWithVersion(binDir, binPrefix, d.avagoVersion)
 	if err != nil {
 		return "", fmt.Errorf("failed trying to locate avalanchego binary: %s", binDir)
 	}
 	if exists {
-		d.app.Log.Debug("local avalanchego found. skipping installation")
+		d.app.Log.Debug("avalanchego " + d.avagoVersion + " found. Skipping installation")
 		return avagoDir, nil
 	}
 
-	ux.Logger.PrintToUser("Installing avalanchego...")
+	ux.Logger.PrintToUser("Installing avalanchego " + d.avagoVersion + "...")
 
 	// TODO: we are hardcoding the release version
 	// until we have a better binary, dependency and version management
 	// as per https://github.com/ava-labs/avalanche-cli/pull/17#discussion_r887164924
-	version := constants.AvalancheGoReleaseVersion
+	// version := constants.AvalancheGoReleaseVersion
 	/*
 		version, err := binutils.GetLatestReleaseVersion(constants.LatestAvagoReleaseURL)
 		if err != nil {
@@ -306,7 +321,7 @@ func (d *Deployer) setupLocalEnv() (string, error) {
 		}
 	*/
 
-	d.app.Log.Info("Avalanchego version is: %s", version)
+	// d.app.Log.Info("Avalanchego version is: %s", version)
 
 	// TODO: would be nice if we could also here just use binutils.DownloadLatestReleaseVersion(),
 	// but unfortunately we don't have a consistent naming scheme between avalanchego and subnet-evm
@@ -324,24 +339,24 @@ func (d *Deployer) setupLocalEnv() (string, error) {
 	case "linux":
 		avalanchegoURL = fmt.Sprintf(
 			"https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-linux-%s-%s.tar.gz",
-			version,
+			d.avagoVersion,
 			arch,
-			version,
+			d.avagoVersion,
 		)
 		ext = "tar.gz"
 	case "darwin":
 		avalanchegoURL = fmt.Sprintf(
 			"https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-macos-%s.zip",
-			version,
-			version,
+			d.avagoVersion,
+			d.avagoVersion,
 		)
 		ext = zipExtension
 		// EXPERMENTAL WIN, no support
 	case "windows":
 		avalanchegoURL = fmt.Sprintf(
 			"https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-win-%s-experimental.zip",
-			version,
-			version,
+			d.avagoVersion,
+			d.avagoVersion,
 		)
 		ext = zipExtension
 	default:
@@ -368,7 +383,7 @@ func (d *Deployer) setupLocalEnv() (string, error) {
 	if err := binutils.InstallArchive(ext, archive, binDir); err != nil {
 		return "", err
 	}
-	avagoSubDir := "avalanchego-" + version
+	avagoSubDir := "avalanchego-" + d.avagoVersion
 	if ext == zipExtension {
 		// zip contains a build subdir instead of the avagoSubDir expected from tar.gz
 		if err := os.Rename(filepath.Join(binDir, "build"), filepath.Join(binDir, avagoSubDir)); err != nil {

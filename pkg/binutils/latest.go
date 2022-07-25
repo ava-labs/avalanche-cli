@@ -15,6 +15,10 @@ import (
 	"github.com/ava-labs/avalanchego/utils/perms"
 )
 
+func GetGithubReleaseURL(org, repo string) string {
+	return "https://api.github.com/repos/" + org + "/" + repo + "/releases/latest"
+}
+
 // GetLatestReleaseVersion returns the latest available version from github
 func GetLatestReleaseVersion(releaseURL string) (string, error) {
 	// TODO: Question if there is a less error prone (= simpler) way to install latest avalanchego

@@ -33,6 +33,7 @@ type PluginBinaryDownloader interface {
 
 type BinaryChecker interface {
 	ExistsWithLatestVersion(name, binaryPrefix string) (bool, string, error)
+	ExistsWithVersion(name, binaryPrefix, version string) (bool, string, error)
 }
 
 type (
@@ -195,6 +196,46 @@ func (abc *binaryChecker) ExistsWithLatestVersion(binDir, binPrefix string) (boo
 	// TODO this still has loads of potential pit falls
 	// Should prob check for existing binary and plugin dir too
 	match, err := filepath.Glob(filepath.Join(binDir, binPrefix) + "*")
+	if err != nil {
+		return false, "", err
+	}
+	var latest string
+	switch len(match) {
+	case 0:
+		return false, "", nil
+	case 1:
+		latest = match[0]
+	default:
+		var semVers semver.Versions
+		for _, v := range match {
+			base := filepath.Base(v)
+			newv, err := semver.NewVersion(base[len(binPrefix):])
+			if err != nil {
+				// ignore this one, it might be in an unexpected format
+				// e.g. a dir which has nothing to do with this
+				continue
+			}
+			semVers = append(semVers, newv)
+		}
+
+		sort.Sort(sort.Reverse(semVers))
+		choose := fmt.Sprintf("v%s", semVers[0])
+		for _, m := range match {
+			if strings.Contains(m, choose) {
+				latest = m
+				break
+			}
+		}
+	}
+	return true, latest, nil
+}
+
+// ExistsWithLatestVersion returns true if avalanchego can be found and at what path
+// or false, if it can not be found (or an error if applies)
+func (abc *binaryChecker) ExistsWithVersion(binDir, binPrefix, version string) (bool, string, error) {
+	// TODO this still has loads of potential pit falls
+	// Should prob check for existing binary and plugin dir too
+	match, err := filepath.Glob(filepath.Join(binDir, binPrefix) + version)
 	if err != nil {
 		return false, "", err
 	}

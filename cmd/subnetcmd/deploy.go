@@ -36,10 +36,14 @@ redeploy the subnet and reset the chain state to genesis.`,
 		Args: cobra.ExactArgs(1),
 	}
 	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
+	cmd.Flags().StringVar(&avagoVersion, "avalanchego-version", "", "use this version of avalanchego")
 	return cmd
 }
 
-var deployLocal bool
+var (
+	deployLocal  bool
+	avagoVersion string
+)
 
 func getChainsInSubnet(subnetName string) ([]string, error) {
 	files, err := os.ReadDir(app.GetBaseDir())
@@ -110,7 +114,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		app.Log.Debug("Deploy local")
 		// TODO: Add signal management here. If we Ctrl-C this guy it can leave
 		// the gRPC server is a weird state. Should kill that too
-		deployer := subnet.NewLocalDeployer(app)
+		deployer := subnet.NewLocalDeployer(app, avagoVersion)
 		chain := chains[0]
 		chainGenesis := filepath.Join(app.GetBaseDir(), fmt.Sprintf("%s_genesis.json", chain))
 		err := deployer.DeployToLocalNetwork(chain, chainGenesis)

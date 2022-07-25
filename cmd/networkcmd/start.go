@@ -16,8 +16,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var avagoVersion string
+
 func newStartCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "start [snapshotName]",
 		Short: "Starts a stopped local network",
 		Long: `The network start command starts a local, multi-node Avalanche network
@@ -29,10 +31,13 @@ is already running or if no subnets have been deployed.`,
 		Args:         cobra.MaximumNArgs(1),
 		SilenceUsage: true,
 	}
+	cmd.Flags().StringVar(&avagoVersion, "avalanchego-version", "", "use this version of avalanchego")
+
+	return cmd
 }
 
 func startNetwork(cmd *cobra.Command, args []string) error {
-	sd := subnet.NewLocalDeployer(app)
+	sd := subnet.NewLocalDeployer(app, avagoVersion)
 
 	if err := sd.StartServer(); err != nil {
 		return err
