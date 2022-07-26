@@ -198,10 +198,12 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 }
 
 func getControlKeys(network models.Network) ([]string, bool, error) {
-	controlKeysPrompt := "Configure which addresses may add new validators to the subnet.\n" +
+	controlKeysInitialPrompt := "Configure which addresses may add new validators to the subnet.\n" +
 		"These addresses are known as your control keys. You will also\n" +
 		"set how many control keys are required to add a validator."
+	controlKeysPrompt := "Set control keys"
 
+	ux.Logger.PrintToUser(controlKeysInitialPrompt)
 	for {
 		// ask in a loop so that if some condition is not met we can keep asking
 		controlKeys, cancelled, err := controlKeysLoop(controlKeysPrompt, network)
@@ -240,7 +242,7 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 		switch listDecision {
 		case addCtrlKey:
 			controlKey, err := app.Prompt.CapturePChainAddress(
-				"Enter the P-Chain addresses which can add validators to this subnet (*must* be a PChain address: `P-...`)",
+				"Enter P-Chain address (Ex: `P-...`)",
 				network,
 			)
 			if err != nil {
