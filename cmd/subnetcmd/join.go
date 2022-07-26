@@ -144,8 +144,10 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 		return err
 	}
 
+	vmPath := filepath.Join(pluginDir, chainVMID.String())
+
 	if printManual {
-		printJoinCmd(subnetIDStr, networkLower, chainVMID.String())
+		printJoinCmd(subnetIDStr, networkLower, vmPath)
 		return nil
 	}
 
@@ -163,7 +165,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 		}
 		switch choice {
 		case choiceManual:
-			printJoinCmd(subnetIDStr, networkLower, chainVMID.String())
+			printJoinCmd(subnetIDStr, networkLower, vmPath)
 			return nil
 		case choiceAutomatic:
 			avagoConfigPath, err = app.Prompt.CaptureString("Path to your existing config file (or where it will be generated)")
