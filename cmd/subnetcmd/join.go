@@ -61,16 +61,6 @@ This command currently only supports subnets deployed on the Fuji testnet.`,
 	return cmd
 }
 
-func createPlugin(chainVMID string, pluginDir string) error {
-	downloader := binutils.NewPluginBinaryDownloader(app.Log)
-
-	binDir := filepath.Join(app.GetBaseDir(), constants.AvalancheCliBinDir)
-	if err := downloader.DownloadVM(chainVMID, pluginDir, binDir); err != nil {
-		return err
-	}
-	return nil
-}
-
 func joinCmd(cmd *cobra.Command, args []string) error {
 	if printManual && (avagoConfigPath != "" || pluginDir != "") {
 		return errors.New("--print cannot be used with --avalanchego-config or --plugin-dir")
@@ -131,27 +121,17 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 		}
 	}
 
-	if pluginDir == "" {
-		pluginDir = app.GetPluginDir()
-	}
-
-	// Make sure binary is available
-	chainVMID, err := utils.VMID(sc.Name)
-	if err != nil {
-		return fmt.Errorf("failed to create VM ID from %s: %w", sc.Name, err)
-	}
-	if err := createPlugin(chainVMID.String(), pluginDir); err != nil {
-		return err
-	}
-
-	vmPath := filepath.Join(pluginDir, chainVMID.String())
-
 	if printManual {
+		pluginDir = app.GetPluginDir()
+		vmPath, err := createPlugin(sc.Name, pluginDir)
+		if err != nil {
+			return err
+		}
 		printJoinCmd(subnetIDStr, networkLower, vmPath)
 		return nil
 	}
 
-	if avagoConfigPath == "" {
+	if avagoConfigPath == "" && pluginDir == "" {
 		const (
 			choiceManual    = "Manual"
 			choiceAutomatic = "Automatic"
@@ -163,19 +143,35 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 		if err != nil {
 			return err
 		}
-		switch choice {
-		case choiceManual:
-			printJoinCmd(subnetIDStr, networkLower, vmPath)
-			return nil
-		case choiceAutomatic:
-			avagoConfigPath, err = app.Prompt.CaptureString("Path to your existing config file (or where it will be generated)")
+		if choice == choiceManual {
+			vmPath, err := createPlugin(sc.Name, pluginDir)
 			if err != nil {
 				return err
 			}
+			printJoinCmd(subnetIDStr, networkLower, vmPath)
+			return nil
 		}
-		// if choice is automatic, we just pass through this block,
-		// so we don't need another else if the the config path is not set
 	}
+
+	// if choice is automatic, we just pass through this block
+	if avagoConfigPath == "" {
+		avagoConfigPath, err = app.Prompt.CaptureString("Path to your existing config file (or where it will be generated)")
+		if err != nil {
+			return err
+		}
+	}
+
+	if pluginDir == "" {
+		pluginDir, err = app.Prompt.CaptureString("Path to your avalanchego plugin dir (likely avalanchego/build/plugins)")
+		if err != nil {
+			return err
+		}
+	}
+
+	if _, err = createPlugin(sc.Name, pluginDir); err != nil {
+		return err
+	}
+
 	if err := editConfigFile(subnetIDStr, networkLower, avagoConfigPath); err != nil {
 		return err
 	}
@@ -317,4 +313,21 @@ After you update your config, you will need to restart your node for the changes
 take effect.`
 
 	ux.Logger.PrintToUser(msg, vmPath, subnetID, networkID, subnetID, subnetID)
+}
+
+func createPlugin(subnetName string, pluginDir string) (string, error) {
+	chainVMID, err := utils.VMID(subnetName)
+	if err != nil {
+		return "", fmt.Errorf("failed to create VM ID from %s: %w", subnetName, err)
+	}
+
+	downloader := binutils.NewPluginBinaryDownloader(app.Log)
+
+	binDir := filepath.Join(app.GetBaseDir(), constants.AvalancheCliBinDir)
+	if err := downloader.DownloadVM(chainVMID.String(), pluginDir, binDir); err != nil {
+		return "", err
+	}
+
+	vmPath := filepath.Join(pluginDir, chainVMID.String())
+	return vmPath, nil
 }
