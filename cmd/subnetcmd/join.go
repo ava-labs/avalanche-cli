@@ -8,11 +8,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/spf13/cobra"
@@ -21,6 +24,8 @@ import (
 var (
 	// path to avalanchego config file
 	avagoConfigPath string
+	// path to avalanchego plugin dir
+	pluginDir string
 	// if true, print the manual instructions to screen
 	printManual bool
 )
@@ -33,7 +38,7 @@ func newJoinCmd() *cobra.Command {
 		Long: `The subnet join command configures your validator node to begin validating
 a new subnet.
 
-To use this command, you must have access to the machine running your
+To complete this process, you must have access to the machine running your
 validator. If the CLI is running on the same machine as your validator,
 it can generate or update your node's config file automatically.
 Alternatively, the command can print the necessary instructions to
@@ -51,13 +56,24 @@ This command currently only supports subnets deployed on the Fuji testnet.`,
 		Args: cobra.ExactArgs(1),
 	}
 	cmd.Flags().StringVar(&avagoConfigPath, "avalanchego-config", "", "file path of the avalanchego config file")
+	cmd.Flags().StringVar(&pluginDir, "plugin-dir", "", "file path of avalanchego's plugin directory")
 	cmd.Flags().BoolVar(&printManual, "print", false, "if true, print the manual config without prompting")
 	return cmd
 }
 
+func createPlugin(chainVMID string, pluginDir string) error {
+	downloader := binutils.NewPluginBinaryDownloader(app.Log)
+
+	binDir := filepath.Join(app.GetBaseDir(), constants.AvalancheCliBinDir)
+	if err := downloader.DownloadVM(chainVMID, pluginDir, binDir); err != nil {
+		return err
+	}
+	return nil
+}
+
 func joinCmd(cmd *cobra.Command, args []string) error {
-	if printManual && avagoConfigPath != "" {
-		return errors.New("--print and --avalanchego-config simultaneously is not supported")
+	if printManual && (avagoConfigPath != "" || pluginDir != "") {
+		return errors.New("--print cannot be used with --avalanchego-config or --plugin-dir")
 	}
 
 	chains, err := validateSubnetNameAndGetChains(args)
@@ -73,7 +89,7 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 
 	var network models.Network
 	networkStr, err := app.Prompt.CaptureList(
-		"Choose a network to deploy on (this command only supports public networks)",
+		"Choose a network to validate on (this command only supports public networks)",
 		[]string{models.Fuji.String(), models.Mainnet.String()},
 	)
 	if err != nil {
@@ -113,8 +129,21 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 		}
 	}
 
+	if pluginDir == "" {
+		pluginDir = app.GetDefaultPluginDir()
+	}
+
+	// Make sure binary is available
+	chainVMID, err := utils.VMID(sc.Name)
+	if err != nil {
+		return fmt.Errorf("failed to create VM ID from %s: %w", sc.Name, err)
+	}
+	if err := createPlugin(chainVMID.String(), pluginDir); err != nil {
+		return err
+	}
+
 	if printManual {
-		printJoinCmd(subnetIDStr, networkLower)
+		printJoinCmd(subnetIDStr, networkLower, chainVMID.String())
 		return nil
 	}
 
@@ -132,7 +161,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 		}
 		switch choice {
 		case choiceManual:
-			printJoinCmd(subnetIDStr, networkLower)
+			printJoinCmd(subnetIDStr, networkLower, chainVMID.String())
 			return nil
 		case choiceAutomatic:
 			avagoConfigPath, err = app.Prompt.CaptureString("Path to your existing config file (or where it will be generated)")
@@ -251,8 +280,18 @@ func editConfigFile(subnetID string, networkID string, configFile string) error 
 	return nil
 }
 
-func printJoinCmd(subnetID string, networkID string) {
+func printJoinCmd(subnetID string, networkID string, vmPath string) {
 	msg := `
+To setup your node, you must do two things:
+
+1. Add your VM binary to your node's plugin directory
+2. Update your node config to start validating the subnet
+
+To add the VM to your plugin directory, copy or scp %s
+
+If you installed avalanchego manually, your plugin directory is likely
+avalanchego/build/plugins.
+
 If you start your node from the command line WITHOUT a config file (e.g. via command
 line or systemd script), add the following flag to your node's startup command:
 
@@ -272,5 +311,5 @@ this tool will try to update the file automatically (make sure it can write to i
 After you update your config, you will need to restart your node for the changes to
 take effect.`
 
-	ux.Logger.PrintToUser(msg, subnetID, networkID, subnetID, subnetID)
+	ux.Logger.PrintToUser(msg, vmPath, subnetID, networkID, subnetID, subnetID)
 }

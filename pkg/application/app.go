@@ -68,6 +68,10 @@ func (app *Avalanche) GetKeyDir() string {
 	return filepath.Join(app.baseDir, constants.KeyDir)
 }
 
+func (app *Avalanche) GetDefaultPluginDir() string {
+	return filepath.Join(app.baseDir, constants.DefaultPluginDir)
+}
+
 func (app *Avalanche) GetKeyPath(keyName string) string {
 	return filepath.Join(app.baseDir, constants.KeyDir, keyName+constants.KeySuffix)
 }
