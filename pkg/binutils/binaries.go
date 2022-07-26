@@ -29,6 +29,7 @@ var (
 
 type PluginBinaryDownloader interface {
 	Download(vmIDs map[string]struct{}, pluginDir, binDir string) error
+	DownloadVM(vmID string, pluginDir, binDir string) error
 }
 
 type BinaryChecker interface {

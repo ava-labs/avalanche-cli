@@ -23,6 +23,20 @@ func (_m *PluginBinaryDownloader) Download(vmIDs map[string]struct{}, pluginDir 
 	return r0
 }
 
+// DownloadVM provides a mock function with given fields: vmID, pluginDir, binDir
+func (_m *PluginBinaryDownloader) DownloadVM(vmID string, pluginDir string, binDir string) error {
+	ret := _m.Called(vmID, pluginDir, binDir)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, string) error); ok {
+		r0 = rf(vmID, pluginDir, binDir)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 type mockConstructorTestingTNewPluginBinaryDownloader interface {
 	mock.TestingT
 	Cleanup(func())
