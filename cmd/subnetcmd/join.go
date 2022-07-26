@@ -90,7 +90,8 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 
 	ask := "Would you like to check if your node is allowed to join this subnet?\n" +
 		"If not, the subnet's control key holder must call avalanche subnet addValidator with your NodeID."
-	yes, err := app.Prompt.CaptureYesNo(ask)
+	ux.Logger.PrintToUser(ask)
+	yes, err := app.Prompt.CaptureYesNo("Check whitelist?")
 	if err != nil {
 		return err
 	}
