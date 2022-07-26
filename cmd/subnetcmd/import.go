@@ -18,12 +18,14 @@ var overwriteImport bool
 func newImportCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "import [subnetPath]",
-		Short:        "List all created subnet configurations",
+		Short:        "Import an existing subnet config",
 		RunE:         importSubnet,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
-		Long: `The subnet list command prints the names of all created subnet
-configurations.`,
+		Long: `The subnet import command accepts an exported subnet config file.
+
+By default, an imported subnet will not overwrite an existing subnet
+with the same name. To allow overwrites, provide the --force flag.`,
 	}
 	cmd.Flags().BoolVarP(&overwriteImport, "force", "f", false, "overwrite the existing configuration if one exists")
 	return cmd
