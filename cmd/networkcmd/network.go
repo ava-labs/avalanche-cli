@@ -21,12 +21,11 @@ local subnet deployments.
 
 When a subnet is deployed locally, it runs on a local, multi-node
 Avalanche network. Deploying a subnet locally will start this network
-in the background. This command suite allows you to shutdown and
-restart that network.
+in the background. This command suite allows you to shutdown,
+restart, and clear that network.
 
 This network currently supports multiple, concurrently deployed
-subnets and will eventually support nodes with varying configurations.
-Expect more functionality in future releases.`,
+subnets.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			err := cmd.Help()
 			if err != nil {

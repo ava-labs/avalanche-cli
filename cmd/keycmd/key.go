@@ -17,8 +17,10 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "key",
 		Short: "Create and manage testnet signing keys",
-		Long: `The key command suite provides a collection of tools for creating signing
-keys. You can use these keys to deploy subnets to the Fuji testnet.
+		Long: `The key command suite provides a collection of tools for creating and managing
+signing keys. You can use these keys to deploy subnets to the Fuji testnet,
+but these keys are NOT suitable to use in production environments. DO NOT use
+these keys on mainnet.
 
 To get started, use the key create command.`,
 		Run: func(cmd *cobra.Command, args []string) {

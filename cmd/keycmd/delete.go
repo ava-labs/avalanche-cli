@@ -15,9 +15,12 @@ var forceDelete bool
 // avalanche key delete
 func newDeleteCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "delete",
-		Short:        "Delete a signing key",
-		Long:         "The key delete command deletes an existing signing key.",
+		Use:   "delete [keyName]",
+		Short: "Delete a signing key",
+		Long: `The key delete command deletes an existing signing key.
+
+To delete a key, provide the keyName. The command will prompt for confirmation
+before deleting the key. To skip the confirmation, provide the --force flag.`,
 		RunE:         deleteKey,
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
@@ -27,7 +30,7 @@ func newDeleteCmd() *cobra.Command {
 		forceFlag,
 		"f",
 		false,
-		"allow overwrites of existing keys with the same name",
+		"delete the key without confirmation",
 	)
 	return cmd
 }

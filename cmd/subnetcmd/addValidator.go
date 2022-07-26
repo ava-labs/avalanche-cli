@@ -32,9 +32,16 @@ var (
 func newAddValidatorCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "addValidator [subnetName]",
-		Short: "Allow a validator to stake on the given subnet",
-		Long: `The addValidator command prompts for start time, duration and weight for validating this subnet.
-It also prompts for the NodeID of the node which will be validating this subnet.`,
+		Short: "Allow a validator to validate your subnet",
+		Long: `The subnet addValidator command whitelists a primary network validator to
+validate the provided deployed subnet.
+
+To add the validator to the subnet's allow list, you first need to provide
+the subnetName and the validator's unique NodeID. The command then prompts
+for the validation start time, duration and stake weight. These values can
+all be collected with flags instead of prompts.
+
+This command currently only works on subnets deployed to the Fuji testnet.`,
 		SilenceUsage: true,
 		RunE:         addValidator,
 		Args:         cobra.ExactArgs(1),
@@ -64,8 +71,8 @@ func addValidator(cmd *cobra.Command, args []string) error {
 
 	var network models.Network
 	networkStr, err := app.Prompt.CaptureList(
-		"Choose a network to deploy on (this command only supports public networks)",
-		[]string{models.Fuji.String(), models.Mainnet.String()},
+		"Choose a network to deploy on. This command only supports Fuji currently.",
+		[]string{models.Fuji.String(), models.Mainnet.String() + " (coming soon)"},
 	)
 	if err != nil {
 		return err
@@ -122,7 +129,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		if start.Before(time.Now().Add(constants.StakingStartLeadTime)) {
-			return fmt.Errorf("time should be at least start from now + %s", constants.StakingStartLeadTime)
+			return fmt.Errorf("time should be at least %s in the future ", constants.StakingStartLeadTime)
 		}
 	}
 
@@ -147,7 +154,7 @@ func promptDuration(start time.Time) (time.Duration, error) {
 			return 0, err
 		}
 		end := start.Add(d)
-		confirm := fmt.Sprintf("Your validator will complete staking by %s", end.Format(constants.TimeParseLayout))
+		confirm := fmt.Sprintf("Your validator will finish staking by %s", end.Format(constants.TimeParseLayout))
 		yes, err := app.Prompt.CaptureYesNo(confirm)
 		if err != nil {
 			return 0, err
@@ -159,17 +166,17 @@ func promptDuration(start time.Time) (time.Duration, error) {
 }
 
 func promptStart() (time.Time, error) {
-	txt := "When will the validator start validating? Enter a date in 'YYYY-MM-DD HH:MM:SS' format"
+	txt := "When should the validator start validating? Enter a date in 'YYYY-MM-DD HH:MM:SS' format"
 	return app.Prompt.CaptureDate(txt)
 }
 
 func promptNodeID() (ids.NodeID, error) {
-	txt := "What is the NodeID of the validator?"
+	txt := "What is the NodeID of the validator you'd like to whitelist?"
 	return app.Prompt.CaptureNodeID(txt)
 }
 
 func promptWeight() (uint64, error) {
-	txt := "What is the staking weight of the validator?"
+	txt := "What stake weight would you like to assign to the validator?"
 	return app.Prompt.CaptureWeight(txt)
 }
 
