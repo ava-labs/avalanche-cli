@@ -168,9 +168,12 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 		}
 	}
 
-	if _, err = createPlugin(sc.Name, pluginDir); err != nil {
+	vmPath, err := createPlugin(sc.Name, pluginDir)
+	if err != nil {
 		return err
 	}
+
+	ux.Logger.PrintToUser("VM binary written to %s", vmPath)
 
 	if err := editConfigFile(subnetIDStr, networkLower, avagoConfigPath); err != nil {
 		return err
@@ -288,7 +291,7 @@ To setup your node, you must do two things:
 1. Add your VM binary to your node's plugin directory
 2. Update your node config to start validating the subnet
 
-To add the VM to your plugin directory, copy or scp %s
+To add the VM to your plugin directory, copy or scp from %s
 
 If you installed avalanchego manually, your plugin directory is likely
 avalanchego/build/plugins.
