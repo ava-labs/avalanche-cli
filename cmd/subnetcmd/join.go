@@ -89,8 +89,10 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 	subnetIDStr := subnetID.String()
 
 	ask := "Would you like to check if your node is allowed to join this subnet?\n" +
-		"If not, the subnet's control key holder must call avalanche subnet addValidator with your NodeID."
-	yes, err := app.Prompt.CaptureYesNo(ask)
+		"If not, the subnet's control key holder must call avalanche subnet\n" +
+		"addValidator with your NodeID."
+	ux.Logger.PrintToUser(ask)
+	yes, err := app.Prompt.CaptureYesNo("Check whitelist?")
 	if err != nil {
 		return err
 	}
@@ -183,8 +185,9 @@ func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, erro
 
 func editConfigFile(subnetID string, networkID string, configFile string) error {
 	warn := "This will edit your existing config file. This edit is nondestructive,\n" +
-		"but it's always good to have a backup. Proceed?"
-	yes, err := app.Prompt.CaptureYesNo(warn)
+		"but it's always good to have a backup."
+	ux.Logger.PrintToUser(warn)
+	yes, err := app.Prompt.CaptureYesNo("Proceed?")
 	if err != nil {
 		return err
 	}
