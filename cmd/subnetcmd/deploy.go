@@ -242,7 +242,7 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 		switch listDecision {
 		case addCtrlKey:
 			controlKey, err := app.Prompt.CapturePChainAddress(
-				"Enter the P-Chain addresses which can add validators to this subnet (*must* be a PChain address: `P-...`)",
+				"Enter P-Chain address (Ex: `P-...`)",
 				network,
 			)
 			if err != nil {
