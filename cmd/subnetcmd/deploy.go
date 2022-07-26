@@ -198,10 +198,12 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 }
 
 func getControlKeys(network models.Network) ([]string, bool, error) {
-	controlKeysPrompt := "Configure which addresses may add new validators to the subnet.\n" +
+	controlKeysInitialPrompt := "Configure which addresses may add new validators to the subnet.\n" +
 		"These addresses are known as your control keys. You will also\n" +
 		"set how many control keys are required to add a validator."
+	controlKeysPrompt := "Set control keys"
 
+	ux.Logger.PrintToUser(controlKeysInitialPrompt)
 	for {
 		// ask in a loop so that if some condition is not met we can keep asking
 		controlKeys, cancelled, err := controlKeysLoop(controlKeysPrompt, network)
