@@ -132,7 +132,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	}
 
 	if pluginDir == "" {
-		pluginDir = app.GetDefaultPluginDir()
+		pluginDir = app.GetPluginDir()
 	}
 
 	// Make sure binary is available
