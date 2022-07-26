@@ -53,6 +53,4 @@ const (
 
 	DefaultConfigFileName = ".avalanche-cli"
 	DefaultConfigFileType = "json"
-
-	DefaultPluginDir = "plugins"
 )

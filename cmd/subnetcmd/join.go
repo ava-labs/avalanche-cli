@@ -122,7 +122,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	}
 
 	if printManual {
-		pluginDir = app.GetPluginDir()
+		pluginDir = app.GetTmpPluginDir()
 		vmPath, err := createPlugin(sc.Name, pluginDir)
 		if err != nil {
 			return err
