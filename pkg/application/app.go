@@ -123,6 +123,16 @@ func (app *Avalanche) LoadEvmGenesis(subnetName string) (core.Genesis, error) {
 	return gen, err
 }
 
+func (app *Avalanche) LoadRawGenesis(subnetName string) ([]byte, error) {
+	genesisPath := app.GetGenesisPath(subnetName)
+	genesisBytes, err := os.ReadFile(genesisPath)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return genesisBytes, err
+}
+
 func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 	if sc.TokenName == "" {
 		sc.TokenName = constants.DefaultTokenName
