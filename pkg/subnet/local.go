@@ -457,22 +457,6 @@ func (d *LocalSubnetDeployer) installNeededPlugins(chainVMID ids.ID, clusterInfo
 	return nil
 }
 
-// getGenesis extracts the chain genesis from the provided genesis file
-// we don't need to check the existence of the file as we already did before
-// TODO: We should probably store this in some global object when asking the user so we don't need
-// to unpack this here anymore. The sidecar seems the best candidate
-func getGenesis(genesisFile string) (core.Genesis, error) {
-	var genesis core.Genesis
-	genBytes, err := os.ReadFile(genesisFile)
-	if err != nil {
-		return genesis, err
-	}
-	if err := json.Unmarshal(genBytes, &genesis); err != nil {
-		return genesis, err
-	}
-	return genesis, nil
-}
-
 // Initialize default snapshot with bootstrap snapshot archive
 // If force flag is set to true, overwrite the default snapshot if it exists
 func SetDefaultSnapshot(snapshotsDir string, force bool) error {
