@@ -163,11 +163,21 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 		}
 	}
 
+	avagoConfigPath, err := sanitizePath(avagoConfigPath)
+	if err != nil {
+		return err
+	}
+
 	if pluginDir == "" {
 		pluginDir, err = app.Prompt.CaptureString("Path to your avalanchego plugin dir (likely avalanchego/build/plugins)")
 		if err != nil {
 			return err
 		}
+	}
+
+	pluginDir, err := sanitizePath(pluginDir)
+	if err != nil {
+		return err
 	}
 
 	vmPath, err := createPlugin(sc.Name, pluginDir)
@@ -321,20 +331,6 @@ take effect.`
 }
 
 func createPlugin(subnetName string, pluginDir string) (string, error) {
-	usr, err := user.Current()
-	if err != nil {
-		return "", err
-	}
-	homeDir := usr.HomeDir
-	if pluginDir == "~" {
-		// In case of "~", which won't be caught by the "else if"
-		pluginDir = homeDir
-	} else if strings.HasPrefix(pluginDir, "~/") {
-		pluginDir = filepath.Join(homeDir, pluginDir[2:])
-	}
-
-	fmt.Println("Plugin Dir", pluginDir)
-
 	chainVMID, err := utils.VMID(subnetName)
 	if err != nil {
 		return "", fmt.Errorf("failed to create VM ID from %s: %w", subnetName, err)
@@ -349,4 +345,19 @@ func createPlugin(subnetName string, pluginDir string) (string, error) {
 
 	vmPath := filepath.Join(pluginDir, chainVMID.String())
 	return vmPath, nil
+}
+
+func sanitizePath(path string) (string, error) {
+	usr, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	homeDir := usr.HomeDir
+	if path == "~" {
+		// In case of "~", which won't be caught by the "else if"
+		path = homeDir
+	} else if strings.HasPrefix(path, "~/") {
+		path = filepath.Join(homeDir, path[2:])
+	}
+	return path, nil
 }
