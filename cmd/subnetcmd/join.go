@@ -19,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/spf13/cobra"
+	"google.golang.org/appengine/user"
 )
 
 var (
@@ -320,6 +321,14 @@ take effect.`
 }
 
 func createPlugin(subnetName string, pluginDir string) (string, error) {
+	homeDir := user.Current().HomeDir
+	if pluginDir == "~" {
+		// In case of "~", which won't be caught by the "else if"
+		pluginDir = homeDir
+	} else if strings.HasPrefix(pluginDir, "~/") {
+		pluginDir = filepath.Join(homeDir, pluginDir[2:])
+	}
+
 	chainVMID, err := utils.VMID(subnetName)
 	if err != nil {
 		return "", fmt.Errorf("failed to create VM ID from %s: %w", subnetName, err)
