@@ -66,11 +66,11 @@ type setDefaultSnapshotFunc func(string, bool) error
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
-func (d *LocalSubnetDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte) (ids.ID, ids.ID, error) {
+func (d *LocalSubnetDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, error) {
 	if err := d.StartServer(); err != nil {
 		return ids.Empty, ids.Empty, err
 	}
-	return d.doDeploy(chain, chainGenesis)
+	return d.doDeploy(chain, chainGenesis, genesisPath)
 }
 
 func (d *LocalSubnetDeployer) StartServer() error {
@@ -105,7 +105,7 @@ func (d *LocalSubnetDeployer) BackendStartedHere() bool {
 // - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
 // - waits completion of operation
 // - show status
-func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis []byte) (ids.ID, ids.ID, error) {
+func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, error) {
 	avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
 	if err != nil {
 		return ids.Empty, ids.Empty, err
@@ -183,14 +183,12 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis []byte) (ids.I
 	}
 	subnetIDStr := subnetIDs[numBlockchains%len(subnetIDs)]
 
-	genesisStr := string(chainGenesis)
-
 	// create a new blockchain on the already started network, associated to
 	// the given VM ID, genesis, and available subnet ID
 	blockchainSpecs := []*rpcpb.BlockchainSpec{
 		{
 			VmName:   chain,
-			Genesis:  genesisStr,
+			Genesis:  genesisPath,
 			SubnetId: &subnetIDStr,
 		},
 	}
