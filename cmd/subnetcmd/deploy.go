@@ -106,7 +106,12 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// deploy based on chosen network
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.String())
 	chain := chains[0]
-	chainGenesis := filepath.Join(app.GetBaseDir(), fmt.Sprintf("%s_genesis.json", chain))
+	chainGenesis, err := app.LoadRawGenesis(chain)
+	if err != nil {
+		return err
+	}
+
+	genesisPath := app.GetGenesisPath(chain)
 
 	switch network {
 	case models.Local:
@@ -116,7 +121,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to load sidecar for later update: %w", err)
 		}
 		deployer := subnet.NewLocalSubnetDeployer(app)
-		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis)
+		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
 		if err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {

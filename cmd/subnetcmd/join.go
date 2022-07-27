@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 
@@ -162,11 +163,21 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 		}
 	}
 
+	avagoConfigPath, err := sanitizePath(avagoConfigPath)
+	if err != nil {
+		return err
+	}
+
 	if pluginDir == "" {
 		pluginDir, err = app.Prompt.CaptureString("Path to your avalanchego plugin dir (likely avalanchego/build/plugins)")
 		if err != nil {
 			return err
 		}
+	}
+
+	pluginDir, err := sanitizePath(pluginDir)
+	if err != nil {
+		return err
 	}
 
 	vmPath, err := createPlugin(sc.Name, pluginDir)
@@ -273,7 +284,7 @@ func editConfigFile(subnetID string, networkID string, configFile string) error 
 	if err != nil {
 		return fmt.Errorf("failed to pack JSON to bytes for the config file: %w", err)
 	}
-	if err := os.WriteFile(avagoConfigPath, writeBytes, constants.DefaultPerms755); err != nil {
+	if err := os.WriteFile(configFile, writeBytes, constants.DefaultPerms755); err != nil {
 		return fmt.Errorf("failed to write JSON config file, check permissions? %w", err)
 	}
 	msg := `The config file has been edited. To use it, make sure to start the node with the '--config-file' option, e.g.
@@ -334,4 +345,19 @@ func createPlugin(subnetName string, pluginDir string) (string, error) {
 
 	vmPath := filepath.Join(pluginDir, chainVMID.String())
 	return vmPath, nil
+}
+
+func sanitizePath(path string) (string, error) {
+	usr, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	homeDir := usr.HomeDir
+	if path == "~" {
+		// In case of "~", which won't be caught by the "else if"
+		path = homeDir
+	} else if strings.HasPrefix(path, "~/") {
+		path = filepath.Join(homeDir, path[2:])
+	}
+	return path, nil
 }

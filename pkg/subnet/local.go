@@ -66,11 +66,11 @@ type setDefaultSnapshotFunc func(string, bool) error
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
-func (d *LocalSubnetDeployer) DeployToLocalNetwork(chain string, chainGenesis string) (ids.ID, ids.ID, error) {
+func (d *LocalSubnetDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, error) {
 	if err := d.StartServer(); err != nil {
 		return ids.Empty, ids.Empty, err
 	}
-	return d.doDeploy(chain, chainGenesis)
+	return d.doDeploy(chain, chainGenesis, genesisPath)
 }
 
 func (d *LocalSubnetDeployer) StartServer() error {
@@ -105,7 +105,7 @@ func (d *LocalSubnetDeployer) BackendStartedHere() bool {
 // - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
 // - waits completion of operation
 // - show status
-func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) (ids.ID, ids.ID, error) {
+func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, error) {
 	avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
 	if err != nil {
 		return ids.Empty, ids.Empty, err
@@ -117,15 +117,10 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) (ids.I
 	}
 	defer cli.Close()
 
-	exists, err := storage.FileExists(chainGenesis)
-	if !exists || err != nil {
-		return ids.Empty, ids.Empty, fmt.Errorf(
-			"evaluated chain genesis file to be at %s but it does not seem to exist", chainGenesis)
-	}
-
 	// we need the chainID just later, but it would be ugly to fail the whole deployment
 	// for a JSON unmarshalling error, so let's do it here already
-	genesis, err := getGenesis(chainGenesis)
+	var genesis core.Genesis
+	err = json.Unmarshal(chainGenesis, &genesis)
 	if err != nil {
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to unpack chain ID from genesis: %w", err)
 	}
@@ -193,7 +188,7 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) (ids.I
 	blockchainSpecs := []*rpcpb.BlockchainSpec{
 		{
 			VmName:   chain,
-			Genesis:  chainGenesis,
+			Genesis:  genesisPath,
 			SubnetId: &subnetIDStr,
 		},
 	}
@@ -460,22 +455,6 @@ func (d *LocalSubnetDeployer) installNeededPlugins(chainVMID ids.ID, clusterInfo
 		return err
 	}
 	return nil
-}
-
-// getGenesis extracts the chain genesis from the provided genesis file
-// we don't need to check the existence of the file as we already did before
-// TODO: We should probably store this in some global object when asking the user so we don't need
-// to unpack this here anymore. The sidecar seems the best candidate
-func getGenesis(genesisFile string) (core.Genesis, error) {
-	var genesis core.Genesis
-	genBytes, err := os.ReadFile(genesisFile)
-	if err != nil {
-		return genesis, err
-	}
-	if err := json.Unmarshal(genBytes, &genesis); err != nil {
-		return genesis, err
-	}
-	return genesis, nil
 }
 
 // Initialize default snapshot with bootstrap snapshot archive

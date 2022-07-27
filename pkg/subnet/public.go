@@ -60,7 +60,7 @@ func (d *PublicDeployer) AddValidator(subnet ids.ID, nodeID ids.NodeID, weight u
 	return nil
 }
 
-func (d *PublicDeployer) Deploy(controlKeys []string, threshold uint32, chain, genesis string) (ids.ID, ids.ID, error) {
+func (d *PublicDeployer) Deploy(controlKeys []string, threshold uint32, chain string, genesis []byte) (ids.ID, ids.ID, error) {
 	wallet, api, err := d.loadWallet()
 	if err != nil {
 		return ids.Empty, ids.Empty, err
@@ -76,7 +76,7 @@ func (d *PublicDeployer) Deploy(controlKeys []string, threshold uint32, chain, g
 	}
 	ux.Logger.PrintToUser("Subnet has been created with ID: %s. Now creating blockchain...", subnetID.String())
 
-	blockchainID, err := d.createBlockchainTx(chain, vmID, subnetID, []byte(genesis), wallet)
+	blockchainID, err := d.createBlockchainTx(chain, vmID, subnetID, genesis, wallet)
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
