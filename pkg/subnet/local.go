@@ -66,7 +66,7 @@ type setDefaultSnapshotFunc func(string, bool) error
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
-func (d *LocalSubnetDeployer) DeployToLocalNetwork(chain string, chainGenesis string) (ids.ID, ids.ID, error) {
+func (d *LocalSubnetDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte) (ids.ID, ids.ID, error) {
 	if err := d.StartServer(); err != nil {
 		return ids.Empty, ids.Empty, err
 	}
@@ -105,7 +105,7 @@ func (d *LocalSubnetDeployer) BackendStartedHere() bool {
 // - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
 // - waits completion of operation
 // - show status
-func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) (ids.ID, ids.ID, error) {
+func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis []byte) (ids.ID, ids.ID, error) {
 	avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
 	if err != nil {
 		return ids.Empty, ids.Empty, err
@@ -117,15 +117,10 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) (ids.I
 	}
 	defer cli.Close()
 
-	exists, err := storage.FileExists(chainGenesis)
-	if !exists || err != nil {
-		return ids.Empty, ids.Empty, fmt.Errorf(
-			"evaluated chain genesis file to be at %s but it does not seem to exist", chainGenesis)
-	}
-
 	// we need the chainID just later, but it would be ugly to fail the whole deployment
 	// for a JSON unmarshalling error, so let's do it here already
-	genesis, err := getGenesis(chainGenesis)
+	var genesis core.Genesis
+	err = json.Unmarshal(chainGenesis, &genesis)
 	if err != nil {
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to unpack chain ID from genesis: %w", err)
 	}
@@ -188,12 +183,14 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) (ids.I
 	}
 	subnetIDStr := subnetIDs[numBlockchains%len(subnetIDs)]
 
+	genesisStr := string(chainGenesis)
+
 	// create a new blockchain on the already started network, associated to
 	// the given VM ID, genesis, and available subnet ID
 	blockchainSpecs := []*rpcpb.BlockchainSpec{
 		{
 			VmName:   chain,
-			Genesis:  chainGenesis,
+			Genesis:  genesisStr,
 			SubnetId: &subnetIDStr,
 		},
 	}

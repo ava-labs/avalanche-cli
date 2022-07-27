@@ -106,7 +106,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// deploy based on chosen network
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.String())
 	chain := chains[0]
-	chainGenesis := filepath.Join(app.GetBaseDir(), fmt.Sprintf("%s_genesis.json", chain))
+	chainGenesis, err := app.LoadRawGenesis(chain)
+	if err != nil {
+		return err
+	}
 
 	switch network {
 	case models.Local:
