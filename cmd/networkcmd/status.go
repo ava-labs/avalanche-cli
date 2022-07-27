@@ -3,12 +3,10 @@
 package networkcmd
 
 import (
-	"strings"
-
-	"github.com/spf13/cobra"
-
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-network-runner/server"
+	"github.com/spf13/cobra"
 )
 
 func newStatusCmd() *cobra.Command {
@@ -35,8 +33,7 @@ func networkStatus(cmd *cobra.Command, args []string) error {
 	ctx := binutils.GetAsyncContext()
 	status, err := cli.Status(ctx)
 	if err != nil {
-		// TODO: use error type not string comparison
-		if strings.Contains(err.Error(), "not bootstrapped") {
+		if server.IsServerError(err, server.ErrNotBootstrapped) {
 			ux.Logger.PrintToUser("No local network running")
 			return nil
 		}

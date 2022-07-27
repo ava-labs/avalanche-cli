@@ -3,7 +3,7 @@ module github.com/ava-labs/avalanche-cli
 go 1.17
 
 require (
-	github.com/ava-labs/avalanche-network-runner v1.1.4
+	github.com/ava-labs/avalanche-network-runner v1.1.5-0.20220727192537-a00b887ffbf0
 	github.com/ava-labs/avalanchego v1.7.16
 	github.com/ava-labs/coreth v0.8.14-rc.0
 	github.com/ava-labs/subnet-evm v0.2.4

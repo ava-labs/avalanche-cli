@@ -5,13 +5,13 @@ package networkcmd
 import (
 	"fmt"
 	"path"
-	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
+	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/spf13/cobra"
 )
@@ -92,8 +92,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 	)
 
 	if err != nil {
-		// TODO: use error type not string comparison
-		if !strings.Contains(err.Error(), "already bootstrapped") {
+		if server.IsServerError(err, server.ErrAlreadyBootstrapped) {
 			return fmt.Errorf("failed to start network with the persisted snapshot: %s", err)
 		}
 		ux.Logger.PrintToUser("Network has already been booted. Wait until healthy...")

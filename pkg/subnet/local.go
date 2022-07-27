@@ -24,6 +24,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
+	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/storage"
@@ -139,8 +140,7 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis string) (ids.I
 	networkBooted := true
 	clusterInfo, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
-		// TODO: use error type not string comparison
-		if strings.Contains(err.Error(), "not bootstrapped") {
+		if server.IsServerError(err, server.ErrNotBootstrapped) {
 			networkBooted = false
 		} else {
 			return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %s", err)
