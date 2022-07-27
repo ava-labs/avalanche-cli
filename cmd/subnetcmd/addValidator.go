@@ -22,12 +22,11 @@ import (
 
 var (
 	nodeIDStr    string
-	weight       int64
+	weight       uint64
 	startTimeStr string
 	duration     time.Duration
 
-	errNoSubnetID    = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
-	startTimeDefault = time.Now().Add(constants.StakingStartLeadTime)
+	errNoSubnetID = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 )
 
 // avalanche subnet deploy
@@ -50,7 +49,7 @@ This command currently only works on subnets deployed to the Fuji testnet.`,
 	}
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
-	cmd.Flags().Int64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
+	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
 	return cmd
@@ -59,7 +58,6 @@ This command currently only works on subnets deployed to the Fuji testnet.`,
 func addValidator(cmd *cobra.Command, args []string) error {
 	var (
 		nodeID ids.NodeID
-		weight int64
 		start  time.Time
 		err    error
 	)
@@ -129,7 +127,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Weight: %d", weight)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 	deployer := subnet.NewPublicDeployer(app, app.GetKeyPath(keyName), network)
-	return deployer.AddValidator(subnetID, nodeID, uint64(weight), start, duration)
+	return deployer.AddValidator(subnetID, nodeID, weight, start, duration)
 }
 
 func promptDuration(start time.Time) (time.Duration, error) {
@@ -181,7 +179,7 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID) (time.Time, ti
 	)
 
 	const (
-		defaultStartOption    = "Start in five minutes"
+		defaultStartOption    = "Start in one minute"
 		defaultDurationOption = "Until primary network validator expires"
 		custom                = "Custom"
 	)
@@ -198,7 +196,7 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID) (time.Time, ti
 
 		switch startTimeOption {
 		case defaultStartOption:
-			start = startTimeDefault
+			start = time.Now().Add(constants.StakingStartLeadTime)
 		default:
 			start, err = promptStart()
 			if err != nil {
@@ -249,8 +247,8 @@ func promptNodeID() (ids.NodeID, error) {
 	return app.Prompt.CaptureNodeID(txt)
 }
 
-func promptWeight() (int64, error) {
-	defaultWeight := fmt.Sprintf("Default (%d)", constants.DefaultWeight)
+func promptWeight() (uint64, error) {
+	defaultWeight := fmt.Sprintf("Default (%d)", constants.DefaultStakeWeight)
 	txt := "What stake weight would you like to assign to the validator?"
 	weightOptions := []string{defaultWeight, "Custom"}
 
@@ -261,7 +259,7 @@ func promptWeight() (int64, error) {
 
 	switch weightOption {
 	case defaultWeight:
-		return constants.DefaultWeight, nil
+		return constants.DefaultStakeWeight, nil
 	default:
 		return app.Prompt.CaptureWeight(txt)
 	}
