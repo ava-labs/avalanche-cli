@@ -284,7 +284,7 @@ func editConfigFile(subnetID string, networkID string, configFile string) error 
 	if err != nil {
 		return fmt.Errorf("failed to pack JSON to bytes for the config file: %w", err)
 	}
-	if err := os.WriteFile(avagoConfigPath, writeBytes, constants.DefaultPerms755); err != nil {
+	if err := os.WriteFile(configFile, writeBytes, constants.DefaultPerms755); err != nil {
 		return fmt.Errorf("failed to write JSON config file, check permissions? %w", err)
 	}
 	msg := `The config file has been edited. To use it, make sure to start the node with the '--config-file' option, e.g.
