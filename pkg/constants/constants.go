@@ -55,7 +55,7 @@ const (
 
 	// The absolute minimum is 25 seconds, but set to 5 minutes to allow for
 	// time to go through the command
-	StakingStartLeadTime   = 5 * time.Minute
+	StakingStartLeadTime   = 1 * time.Minute
 	StakingMinimumLeadTime = 25 * time.Second
 
 	DefaultConfigFileName = ".avalanche-cli"
