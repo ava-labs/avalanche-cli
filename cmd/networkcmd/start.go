@@ -92,7 +92,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 	)
 
 	if err != nil {
-		if server.IsServerError(err, server.ErrAlreadyBootstrapped) {
+		if !server.IsServerError(err, server.ErrAlreadyBootstrapped) {
 			return fmt.Errorf("failed to start network with the persisted snapshot: %s", err)
 		}
 		ux.Logger.PrintToUser("Network has already been booted. Wait until healthy...")
