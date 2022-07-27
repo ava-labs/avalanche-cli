@@ -138,7 +138,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 		)
 		choice, err := app.Prompt.CaptureList(
 			"How would you like to update the avalanchego config?",
-			[]string{choiceManual, choiceAutomatic},
+			[]string{choiceAutomatic, choiceManual},
 		)
 		if err != nil {
 			return err
