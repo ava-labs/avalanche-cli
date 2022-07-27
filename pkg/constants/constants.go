@@ -51,7 +51,7 @@ const (
 	MaxStakeDuration = 24 * 365 * time.Hour
 	MaxStakeWeight   = 100
 	MinStakeWeight   = 1
-	DefaultWeight
+	DefaultWeight    = 20
 
 	// The absolute minimum is 25 seconds, but set to 5 minutes to allow for
 	// time to go through the command
