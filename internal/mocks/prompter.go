@@ -279,14 +279,14 @@ func (_m *Prompter) CaptureUint64(promptStr string) (uint64, error) {
 }
 
 // CaptureWeight provides a mock function with given fields: promptStr
-func (_m *Prompter) CaptureWeight(promptStr string) (uint64, error) {
+func (_m *Prompter) CaptureWeight(promptStr string) (int64, error) {
 	ret := _m.Called(promptStr)
 
-	var r0 uint64
-	if rf, ok := ret.Get(0).(func(string) uint64); ok {
+	var r0 int64
+	if rf, ok := ret.Get(0).(func(string) int64); ok {
 		r0 = rf(promptStr)
 	} else {
-		r0 = ret.Get(0).(uint64)
+		r0 = ret.Get(0).(int64)
 	}
 
 	var r1 error
