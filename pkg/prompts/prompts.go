@@ -37,7 +37,7 @@ type Prompter interface {
 	CaptureDuration(promptStr string) (time.Duration, error)
 	CaptureDate(promptStr string) (time.Time, error)
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
-	CaptureWeight(promptStr string) (uint64, error)
+	CaptureWeight(promptStr string) (int64, error)
 	CaptureUint64(promptStr string) (uint64, error)
 	CapturePChainAddress(promptStr string, network models.Network) (string, error)
 }
@@ -110,7 +110,7 @@ func validateWeight(input string) error {
 	if err != nil {
 		return err
 	}
-	if val < 1 || val > 100 {
+	if val < constants.MinStakeWeight || val > constants.MaxStakeWeight {
 		return errors.New("the weight must be an integer between 1 and 100")
 	}
 	return nil
@@ -168,7 +168,7 @@ func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 	return ids.NodeIDFromString(nodeIDStr)
 }
 
-func (*realPrompter) CaptureWeight(promptStr string) (uint64, error) {
+func (*realPrompter) CaptureWeight(promptStr string) (int64, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validateWeight,
@@ -179,7 +179,7 @@ func (*realPrompter) CaptureWeight(promptStr string) (uint64, error) {
 		return 0, err
 	}
 
-	return strconv.ParseUint(amountStr, 10, 64)
+	return strconv.ParseInt(amountStr, 10, 64)
 }
 
 func (*realPrompter) CaptureUint64(promptStr string) (uint64, error) {

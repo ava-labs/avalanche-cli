@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -22,7 +21,7 @@ import (
 
 var (
 	nodeIDStr    string
-	weightStr    string
+	weight       int64
 	startTimeStr string
 	duration     time.Duration
 
@@ -50,8 +49,8 @@ This command currently only works on subnets deployed to the Fuji testnet.`,
 	}
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
-	cmd.Flags().StringVar(&weightStr, "weight", "", "set the staking weight of the validator to add")
-	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
+	cmd.Flags().Int64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
+	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
 	return cmd
 }
@@ -59,7 +58,7 @@ This command currently only works on subnets deployed to the Fuji testnet.`,
 func addValidator(cmd *cobra.Command, args []string) error {
 	var (
 		nodeID ids.NodeID
-		weight uint64
+		weight int64
 		start  time.Time
 		err    error
 	)
@@ -108,16 +107,13 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if weightStr == "" {
+	if weight == 0 {
 		weight, err = promptWeight()
 		if err != nil {
 			return err
 		}
-	} else {
-		weight, err = strconv.ParseUint(weightStr, 10, 64)
-		if err != nil {
-			return err
-		}
+	} else if weight < constants.MinStakeWeight || weight > constants.MaxStakeWeight {
+		return fmt.Errorf("illegal weight, must be between 1 and 100 inclusive: %d", weight)
 	}
 
 	start, duration, err = getTimeParameters(network, nodeID)
@@ -126,6 +122,8 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
+	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
+	ux.Logger.PrintToUser("Network: %s", network.String())
 	ux.Logger.PrintToUser("Start time: %s", start.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("End time: %s", start.Add(duration).Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("Weight: %d", weight)
@@ -242,7 +240,7 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID) (time.Time, ti
 }
 
 func promptStart() (time.Time, error) {
-	txt := "When should the validator start validating? Enter a date in 'YYYY-MM-DD HH:MM:SS' format"
+	txt := "When should the validator start validating? Enter a UTC datetime in 'YYYY-MM-DD HH:MM:SS' format"
 	return app.Prompt.CaptureDate(txt)
 }
 
@@ -251,9 +249,22 @@ func promptNodeID() (ids.NodeID, error) {
 	return app.Prompt.CaptureNodeID(txt)
 }
 
-func promptWeight() (uint64, error) {
+func promptWeight() (int64, error) {
+	defaultWeight := fmt.Sprintf("Default (%d)", constants.DefaultWeight)
 	txt := "What stake weight would you like to assign to the validator?"
-	return app.Prompt.CaptureWeight(txt)
+	weightOptions := []string{defaultWeight, "Custom"}
+
+	weightOption, err := app.Prompt.CaptureList(txt, weightOptions)
+	if err != nil {
+		return 0, err
+	}
+
+	switch weightOption {
+	case defaultWeight:
+		return constants.DefaultWeight, nil
+	default:
+		return app.Prompt.CaptureWeight(txt)
+	}
 }
 
 func captureKeyName() (string, error) {

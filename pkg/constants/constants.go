@@ -49,6 +49,9 @@ const (
 	TimeParseLayout  = "2006-01-02 15:04:05"
 	MinStakeDuration = 24 * 14 * time.Hour
 	MaxStakeDuration = 24 * 365 * time.Hour
+	MaxStakeWeight   = 100
+	MinStakeWeight   = 1
+	DefaultWeight
 
 	// The absolute minimum is 25 seconds, but set to 5 minutes to allow for
 	// time to go through the command
