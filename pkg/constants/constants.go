@@ -46,10 +46,17 @@ const (
 	KeyDir    = "key"
 	KeySuffix = ".pk"
 
-	TimeParseLayout      = "2006-01-02 15:04:05"
-	MinStakeDuration     = 24 * 14 * time.Hour
-	MaxStakeDuration     = 24 * 365 * time.Hour
-	StakingStartLeadTime = 25 * time.Second
+	TimeParseLayout    = "2006-01-02 15:04:05"
+	MinStakeDuration   = 24 * 14 * time.Hour
+	MaxStakeDuration   = 24 * 365 * time.Hour
+	MaxStakeWeight     = 100
+	MinStakeWeight     = 1
+	DefaultStakeWeight = 20
+
+	// The absolute minimum is 25 seconds, but set to 1 minute to allow for
+	// time to go through the command
+	StakingStartLeadTime   = 1 * time.Minute
+	StakingMinimumLeadTime = 25 * time.Second
 
 	DefaultConfigFileName = ".avalanche-cli"
 	DefaultConfigFileType = "json"
