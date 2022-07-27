@@ -403,7 +403,7 @@ func (d *LocalSubnetDeployer) WaitForHealthy(
 			d.app.Log.Debug("polling for health...")
 			resp, err := cli.Health(ctx)
 			if err != nil {
-				return nil, fmt.Errorf("the health check failed to complete. The server might be down or have crashed, check the logs! %s", err)
+				return nil, err
 			}
 			if resp.ClusterInfo == nil {
 				d.app.Log.Debug("warning: ClusterInfo is nil. trying again...")
