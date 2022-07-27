@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 
@@ -19,7 +20,6 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/spf13/cobra"
-	"google.golang.org/appengine/user"
 )
 
 var (
@@ -321,13 +321,19 @@ take effect.`
 }
 
 func createPlugin(subnetName string, pluginDir string) (string, error) {
-	homeDir := user.Current().HomeDir
+	usr, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	homeDir := usr.HomeDir
 	if pluginDir == "~" {
 		// In case of "~", which won't be caught by the "else if"
 		pluginDir = homeDir
 	} else if strings.HasPrefix(pluginDir, "~/") {
 		pluginDir = filepath.Join(homeDir, pluginDir[2:])
 	}
+
+	fmt.Println("Plugin Dir", pluginDir)
 
 	chainVMID, err := utils.VMID(subnetName)
 	if err != nil {
