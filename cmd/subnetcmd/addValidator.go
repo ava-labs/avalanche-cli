@@ -126,6 +126,9 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
+	ux.Logger.PrintToUser("Start time: %s", start.Format(constants.TimeParseLayout))
+	ux.Logger.PrintToUser("End time: %s", start.Add(duration).Format(constants.TimeParseLayout))
+	ux.Logger.PrintToUser("Weight: %d", weight)
 	return nil
 	// deployer := subnet.NewPublicDeployer(app, app.GetKeyPath(keyName), network)
 	// return deployer.AddValidator(subnetID, nodeID, weight, start, duration)
