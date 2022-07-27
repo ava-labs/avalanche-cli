@@ -12,6 +12,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
@@ -121,15 +122,14 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
 	ux.Logger.PrintToUser("Network: %s", network.String())
 	ux.Logger.PrintToUser("Start time: %s", start.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("End time: %s", start.Add(duration).Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("Weight: %d", weight)
-	return nil
-	// deployer := subnet.NewPublicDeployer(app, app.GetKeyPath(keyName), network)
-	// return deployer.AddValidator(subnetID, nodeID, weight, start, duration)
+	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
+	deployer := subnet.NewPublicDeployer(app, app.GetKeyPath(keyName), network)
+	return deployer.AddValidator(subnetID, nodeID, uint64(weight), start, duration)
 }
 
 func promptDuration(start time.Time) (time.Duration, error) {
