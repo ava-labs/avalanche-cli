@@ -3,6 +3,7 @@
 package subnetcmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -12,9 +13,10 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
+	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/spf13/cobra"
 )
 
@@ -49,8 +51,8 @@ This command currently only works on subnets deployed to the Fuji testnet.`,
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
 	cmd.Flags().StringVar(&weightStr, "weight", "", "set the staking weight of the validator to add")
-	cmd.Flags().StringVar(&startTimeStr, "start-time", startTimeDefault.Format(constants.TimeParseLayout), "start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
-	cmd.Flags().DurationVar(&duration, "staking-period", constants.MaxStakeDuration, "how long this validator will be staking")
+	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
+	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
 	return cmd
 }
 
@@ -118,32 +120,15 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if startTimeStr == "" {
-		start, err = promptStart()
-		if err != nil {
-			return err
-		}
-	} else {
-		start, err = time.Parse(constants.TimeParseLayout, startTimeStr)
-		if err != nil {
-			return err
-		}
-		if start.Before(time.Now().Add(constants.StakingStartLeadTime)) {
-			return fmt.Errorf("time should be at least %s in the future ", constants.StakingStartLeadTime)
-		}
+	start, duration, err = getTimeParameters(network, nodeID)
+	if err != nil {
+		return err
 	}
-
-	if duration == 0 {
-		duration, err = promptDuration(start)
-		if err != nil {
-			return err
-		}
-	}
-	// TODO validate this duration?
 
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
-	deployer := subnet.NewPublicDeployer(app, app.GetKeyPath(keyName), network)
-	return deployer.AddValidator(subnetID, nodeID, weight, start, duration)
+	return nil
+	// deployer := subnet.NewPublicDeployer(app, app.GetKeyPath(keyName), network)
+	// return deployer.AddValidator(subnetID, nodeID, weight, start, duration)
 }
 
 func promptDuration(start time.Time) (time.Duration, error) {
@@ -163,6 +148,94 @@ func promptDuration(start time.Time) (time.Duration, error) {
 			return d, nil
 		}
 	}
+}
+
+func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime time.Time) (time.Duration, error) {
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
+
+	uri := constants.MainnetAPIEndpoint
+	if network == models.Fuji {
+		uri = constants.FujiAPIEndpoint
+	}
+
+	platformCli := platformvm.NewClient(uri)
+	vs, err := platformCli.GetCurrentValidators(ctx, avago_constants.PrimaryNetworkID, nil)
+	cancel()
+	if err != nil {
+		return 0, err
+	}
+	for _, v := range vs {
+		if v.NodeID == nodeID {
+			return time.Unix(int64(v.EndTime), 0).Sub(startTime), nil
+		}
+	}
+	return 0, errors.New("nodeID not found in validator set: " + nodeID.String())
+}
+
+func getTimeParameters(network models.Network, nodeID ids.NodeID) (time.Time, time.Duration, error) {
+	var (
+		start time.Time
+		err   error
+	)
+
+	const (
+		defaultStartOption    = "Start in five minutes"
+		defaultDurationOption = "Until primary network validator expires"
+		custom                = "Custom"
+	)
+
+	if startTimeStr == "" {
+		ux.Logger.PrintToUser("When should your validator start validating?\n" +
+			"If you validator is not ready by this time, subnet downtime can occur.")
+
+		startTimeOptions := []string{defaultStartOption, custom}
+		startTimeOption, err := app.Prompt.CaptureList("Start time", startTimeOptions)
+		if err != nil {
+			return time.Time{}, 0, err
+		}
+
+		switch startTimeOption {
+		case defaultStartOption:
+			start = startTimeDefault
+		default:
+			start, err = promptStart()
+			if err != nil {
+				return time.Time{}, 0, err
+			}
+		}
+	} else {
+		start, err = time.Parse(constants.TimeParseLayout, startTimeStr)
+		if err != nil {
+			return time.Time{}, 0, err
+		}
+		if start.Before(time.Now().Add(constants.StakingMinimumLeadTime)) {
+			return time.Time{}, 0, fmt.Errorf("time should be at least %s in the future ", constants.StakingMinimumLeadTime)
+		}
+	}
+
+	if duration == 0 {
+		msg := "How long should your validator validate for?"
+		durationOptions := []string{defaultDurationOption, custom}
+		durationOption, err := app.Prompt.CaptureList(msg, durationOptions)
+		if err != nil {
+			return time.Time{}, 0, err
+		}
+
+		switch durationOption {
+		case defaultDurationOption:
+			duration, err = getMaxValidationTime(network, nodeID, start)
+			if err != nil {
+				return time.Time{}, 0, err
+			}
+		default:
+			duration, err = promptDuration(start)
+			if err != nil {
+				return time.Time{}, 0, err
+			}
+		}
+	}
+	return start, duration, nil
 }
 
 func promptStart() (time.Time, error) {

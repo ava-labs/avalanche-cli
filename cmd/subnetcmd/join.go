@@ -144,6 +144,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 			return err
 		}
 		if choice == choiceManual {
+			pluginDir = app.GetTmpPluginDir()
 			vmPath, err := createPlugin(sc.Name, pluginDir)
 			if err != nil {
 				return err
