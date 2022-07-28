@@ -159,7 +159,7 @@ func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 	// but better safe than sorry
 	exists, err := app.ChainIDExists(sc.ChainID)
 	if err != nil {
-		return fmt.Errorf("unable to determine if chainID is unique: %s", err)
+		return fmt.Errorf("unable to determine if chainID is unique: %w", err)
 	}
 	if exists {
 		return errChainIDExists
