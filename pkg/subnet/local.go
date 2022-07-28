@@ -52,7 +52,7 @@ func NewLocalSubnetDeployer(app *application.Avalanche) *LocalSubnetDeployer {
 		procChecker:         binutils.NewProcessChecker(),
 		binChecker:          binutils.NewBinaryChecker(),
 		getClientFunc:       binutils.NewGRPCClient,
-		binaryDownloader:    binutils.NewPluginBinaryDownloader(app.Log),
+		binaryDownloader:    binutils.NewPluginBinaryDownloader(app),
 		healthCheckInterval: 100 * time.Millisecond,
 		app:                 app,
 		setDefaultSnapshot:  SetDefaultSnapshot,
@@ -153,7 +153,7 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis []byte, genesi
 		return ids.Empty, ids.Empty, nil
 	}
 
-	if err := d.installNeededPlugins(chainVMID, clusterInfo, pluginDir); err != nil {
+	if err := d.installNeededPlugins(chain, chainVMID, clusterInfo, pluginDir); err != nil {
 		return ids.Empty, ids.Empty, err
 	}
 
@@ -442,12 +442,17 @@ func alreadyDeployed(chainVMID ids.ID, clusterInfo *rpcpb.ClusterInfo) bool {
 }
 
 // get list of all needed plugins and install them
-func (d *LocalSubnetDeployer) installNeededPlugins(chainVMID ids.ID, clusterInfo *rpcpb.ClusterInfo, pluginDir string) error {
-	toInstallVMIDs := map[string]struct{}{}
-	toInstallVMIDs[chainVMID.String()] = struct{}{}
+func (d *LocalSubnetDeployer) installNeededPlugins(
+	chain string,
+	chainVMID ids.ID,
+	clusterInfo *rpcpb.ClusterInfo,
+	pluginDir string,
+) error {
+	toInstallVMIDs := map[string]string{}
+	toInstallVMIDs[chain] = chainVMID.String()
 	if clusterInfo != nil {
 		for _, vmInfo := range clusterInfo.CustomVms {
-			toInstallVMIDs[vmInfo.VmId] = struct{}{}
+			toInstallVMIDs[vmInfo.VmName] = vmInfo.VmId
 		}
 	}
 	binDir := filepath.Join(d.app.GetBaseDir(), constants.AvalancheCliBinDir)
