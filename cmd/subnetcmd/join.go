@@ -336,10 +336,10 @@ func createPlugin(subnetName string, pluginDir string) (string, error) {
 		return "", fmt.Errorf("failed to create VM ID from %s: %w", subnetName, err)
 	}
 
-	downloader := binutils.NewPluginBinaryDownloader(app.Log)
+	downloader := binutils.NewPluginBinaryDownloader(app)
 
 	binDir := filepath.Join(app.GetBaseDir(), constants.AvalancheCliBinDir)
-	if err := downloader.DownloadVM(chainVMID.String(), pluginDir, binDir); err != nil {
+	if err := downloader.DownloadVM(subnetName, chainVMID.String(), pluginDir, binDir); err != nil {
 		return "", err
 	}
 
