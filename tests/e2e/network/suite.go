@@ -12,7 +12,10 @@ import (
 	"github.com/onsi/gomega"
 )
 
-const subnetName = "e2eSubnetTest"
+const (
+	subnetName  = "e2eSubnetTest"
+	genesisPath = "tests/e2e/assets/test_genesis.json"
+)
 
 var _ = ginkgo.Describe("[Network]", func() {
 	ginkgo.AfterEach(func() {
@@ -22,15 +25,15 @@ var _ = ginkgo.Describe("[Network]", func() {
 	})
 
 	ginkgo.It("can stop and restart a deployed subnet", func() {
-		genesis := "tests/e2e/genesis/test_genesis.json"
-
-		commands.CreateSubnetConfig(subnetName, genesis)
+		commands.CreateSubnetConfig(subnetName, genesisPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
-		rpc, err := utils.ParseRPCFromDeployOutput(deployOutput)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+		rpc := rpcs[0]
 
 		err = utils.SetHardhatRPC(rpc)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -55,11 +58,13 @@ var _ = ginkgo.Describe("[Network]", func() {
 
 		commands.StopNetwork()
 		restartOutput := commands.StartNetwork()
-		rpc, err = utils.ParseRPCFromRestartOutput(restartOutput)
+		rpcs, err = utils.ParseRPCsFromOutput(restartOutput)
 		if err != nil {
 			fmt.Println(restartOutput)
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+		rpc = rpcs[0]
 
 		err = utils.SetHardhatRPC(rpc)
 		gomega.Expect(err).Should(gomega.BeNil())
