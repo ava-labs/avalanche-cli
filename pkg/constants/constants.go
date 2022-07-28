@@ -60,4 +60,6 @@ const (
 
 	DefaultConfigFileName = ".avalanche-cli"
 	DefaultConfigFileType = "json"
+
+	CustomVMDir = "vms"
 )

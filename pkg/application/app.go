@@ -5,6 +5,7 @@ package application
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -56,6 +57,14 @@ func (app *Avalanche) GetRunDir() string {
 	return filepath.Join(app.baseDir, constants.RunDir)
 }
 
+func (app *Avalanche) GetCustomVMDir() string {
+	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.CustomVMDir)
+}
+
+func (app *Avalanche) GetCustomVMPath(subnetName string) string {
+	return filepath.Join(app.GetCustomVMDir(), subnetName)
+}
+
 func (app *Avalanche) GetGenesisPath(subnetName string) string {
 	return filepath.Join(app.baseDir, subnetName+constants.GenesisSuffix)
 }
@@ -102,6 +111,15 @@ func (app *Avalanche) CopyGenesisFile(inputFilename string, subnetName string) e
 	return os.WriteFile(genesisPath, genesisBytes, WriteReadReadPerms)
 }
 
+func (app *Avalanche) CopyVMBinary(inputFilename string, subnetName string) error {
+	vmBytes, err := os.ReadFile(inputFilename)
+	if err != nil {
+		return err
+	}
+	vmPath := app.GetCustomVMPath(subnetName)
+	return os.WriteFile(vmPath, vmBytes, WriteReadReadPerms)
+}
+
 func (app *Avalanche) CopyKeyFile(inputFilename string, keyName string) error {
 	keyBytes, err := os.ReadFile(inputFilename)
 	if err != nil {
@@ -141,7 +159,7 @@ func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 	// but better safe than sorry
 	exists, err := app.ChainIDExists(sc.ChainID)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to determine if chainID is unique: %s", err)
 	}
 	if exists {
 		return errChainIDExists
@@ -223,7 +241,8 @@ func (app *Avalanche) ChainIDExists(chainID string) (bool, error) {
 		if sc.ChainID == "" {
 			gen, err := app.LoadEvmGenesis(car)
 			if err != nil {
-				return false, err
+				// unable to find chain id, skip
+				continue
 			}
 			existingChainID = gen.Config.ChainID.String()
 		}

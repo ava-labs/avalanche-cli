@@ -16,7 +16,8 @@ import (
 var (
 	forceCreate  bool
 	useSubnetEvm bool
-	filename     string
+	genesisFile  string
+	vmFile       string
 	useCustom    bool
 
 	errIllegalNameCharacter = errors.New(
@@ -32,11 +33,11 @@ func newCreateCmd() *cobra.Command {
 The command is structured as an interactive wizard. It will walk you through
 all the steps you need to create your first subnet.
 
-Currently, the tool supports using the Subnet-EVM as your base genesis
-template. You can also provide a custom, user-generated genesis by inputing
-a file path with the --file flag. As more subnets reach maturity, you'll be
-able to use this tool to generate additional VM templates, such as the
-SpacesVM.
+Currently, the tool supports deploying Subnet-EVM and Subnet-EVM forks. You
+can create a custom, user-generated genesis with a custom vm by providing
+the path to your genesis and vm binarires with the --genesis and --vm flags.
+As more subnets reach maturity, you'll be able to use this tool to generate
+additional VM templates, such as the SpacesVM.
 
 By default, running the command with a subnetName that already exists will
 cause the command to fail. If you’d like to overwrite an existing
@@ -44,7 +45,8 @@ configuration, pass the -f flag.`,
 		Args: cobra.ExactArgs(1),
 		RunE: createGenesis,
 	}
-	cmd.Flags().StringVar(&filename, "file", "", "file path of genesis to use instead of the wizard")
+	cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
+	cmd.Flags().StringVar(&vmFile, "vm", "", "file path of custom vm to use")
 	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the SubnetEVM as the base template")
 	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
 	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
@@ -88,84 +90,49 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 		return errors.New("too many VMs selected. Provide at most one VM selection flag")
 	}
 
-	if filename == "" {
-		var subnetType models.VMType
-		var err error
-		subnetType = getVMFromFlag()
+	subnetType := getVMFromFlag()
 
-		if subnetType == "" {
-			subnetTypeStr, err := app.Prompt.CaptureList(
-				"Choose your VM",
-				[]string{subnetEvm, customVM},
-			)
-			if err != nil {
-				return err
-			}
-			subnetType = models.VMTypeFromString(subnetTypeStr)
-		}
-
-		var (
-			genesisBytes []byte
-			sc           *models.Sidecar
+	if subnetType == "" {
+		subnetTypeStr, err := app.Prompt.CaptureList(
+			"Choose your VM",
+			[]string{subnetEvm, customVM},
 		)
-
-		switch subnetType {
-		case subnetEvm:
-			genesisBytes, sc, err = vm.CreateEvmGenesis(subnetName, app)
-			if err != nil {
-				return err
-			}
-			if err = app.CreateSidecar(sc); err != nil {
-				return err
-			}
-		case customVM:
-			genesisBytes, sc, err = vm.CreateCustomGenesis(subnetName, app)
-			if err != nil {
-				return err
-			}
-			if err = app.CreateSidecar(sc); err != nil {
-				return err
-			}
-		default:
-			return errors.New("not implemented")
-		}
-
-		if err = app.WriteGenesisFile(subnetName, genesisBytes); err != nil {
-			return err
-		}
-		ux.Logger.PrintToUser("Successfully created genesis")
-	} else {
-		ux.Logger.PrintToUser("Using specified genesis")
-		err := app.CopyGenesisFile(filename, subnetName)
 		if err != nil {
 			return err
 		}
+		subnetType = models.VMTypeFromString(subnetTypeStr)
+	}
 
-		var subnetType models.VMType
-		subnetType = getVMFromFlag()
+	var (
+		genesisBytes []byte
+		sc           *models.Sidecar
+		err          error
+	)
 
-		if subnetType == "" {
-			subnetTypeStr, err := app.Prompt.CaptureList(
-				"What VM does your genesis use?",
-				[]string{subnetEvm, customVM},
-			)
-			if err != nil {
-				return err
-			}
-			subnetType = models.VMTypeFromString(subnetTypeStr)
-		}
-		sc := &models.Sidecar{
-			Name:      subnetName,
-			VM:        subnetType,
-			Subnet:    subnetName,
-			TokenName: "",
-		}
-
-		if err = app.CreateSidecar(sc); err != nil {
+	switch subnetType {
+	case subnetEvm:
+		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(app, subnetName, genesisFile)
+		if err != nil {
 			return err
 		}
-		ux.Logger.PrintToUser("Successfully created genesis")
+	case customVM:
+		genesisBytes, sc, err = vm.CreateCustomSubnetConfig(app, subnetName, genesisFile, vmFile)
+		if err != nil {
+			return err
+		}
+	default:
+		return errors.New("not implemented")
 	}
+
+	if err = app.WriteGenesisFile(subnetName, genesisBytes); err != nil {
+		return err
+	}
+
+	if err = app.CreateSidecar(sc); err != nil {
+		return err
+	}
+
+	ux.Logger.PrintToUser("Successfully created subnet configuration")
 	return nil
 }
 
