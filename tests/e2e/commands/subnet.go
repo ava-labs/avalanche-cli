@@ -23,7 +23,7 @@ func CreateSubnetConfig(subnetName string, genesisPath string) {
 		CLIBinary,
 		SubnetCmd,
 		"create",
-		"--file",
+		"--genesis",
 		genesisPath,
 		"--evm",
 		subnetName,
