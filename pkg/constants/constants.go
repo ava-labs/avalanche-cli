@@ -9,8 +9,8 @@ const (
 
 	BaseDirName = ".avalanche-cli"
 
-	SubnetEVMReleaseVersion   = "v0.2.5"
-	AvalancheGoReleaseVersion = "v1.7.14"
+	SubnetEVMReleaseVersion   = "v0.2.7"
+	AvalancheGoReleaseVersion = "v1.7.16"
 
 	LatestAvagoReleaseURL = "https://api.github.com/repos/ava-labs/avalanchego/releases/latest"
 	SubnetEVMReleaseURL   = "https://api.github.com/repos/ava-labs/subnet-evm/releases/latest"
