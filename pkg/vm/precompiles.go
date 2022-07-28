@@ -172,8 +172,8 @@ func removePrecompile(arr []string, s string) ([]string, error) {
 func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (params.ChainConfig, stateDirection, error) {
 	const (
 		nativeMint        = "Native Minting"
-		contractAllowList = "Contract deployment whitelist"
-		txAllowList       = "Transaction allow list"
+		contractAllowList = "Contract Deployment Allow List"
+		txAllowList       = "Transaction Allow List"
 		feeManager        = "Manage Fee Settings"
 		cancel            = "Cancel"
 	)
