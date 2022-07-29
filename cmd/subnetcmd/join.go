@@ -19,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
+	platformapi "github.com/ava-labs/avalanchego/vms/platformvm/api"
 	"github.com/spf13/cobra"
 )
 
@@ -209,19 +210,45 @@ func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, erro
 	default:
 		return false, fmt.Errorf("network not supported")
 	}
-	ctx := context.Background()
-	nodeIDs := []ids.NodeID{nodeID}
 
 	pClient := platformvm.NewClient(api)
+
+	return checkIsValidating(subnetID, nodeID, pClient)
+}
+
+func checkIsValidating(subnetID ids.ID, nodeID ids.NodeID, pClient platformvm.Client) (bool, error) {
+	// first check if the node is already an accepted validator on the subnet
+	ctx := context.Background()
+	nodeIDs := []ids.NodeID{nodeID}
 	vals, err := pClient.GetCurrentValidators(ctx, subnetID, nodeIDs)
 	if err != nil {
 		return false, err
 	}
 	for _, v := range vals {
+		// strictly this is not needed, as we are providing the nodeID as param
+		// just a double check
 		if v.NodeID == nodeID {
 			return true, nil
 		}
 	}
+
+	// if not, also check the pending validator set
+	pVals, _, err := pClient.GetPendingValidators(ctx, subnetID, nodeIDs)
+	if err != nil {
+		return false, err
+	}
+	// pVals is an array of interfaces as it can be of different types
+	// we are only interested in SubnetValidator here
+	for _, iv := range pVals {
+		if v, ok := iv.(platformapi.SubnetValidator); ok {
+			// strictly this is not needed, as we are providing the nodeID as param
+			// just a double check
+			if v.NodeID == nodeID {
+				return true, nil
+			}
+		}
+	}
+
 	return false, nil
 }
 
