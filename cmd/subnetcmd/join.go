@@ -19,7 +19,6 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
-	platformapi "github.com/ava-labs/avalanchego/vms/platformvm/api"
 	"github.com/spf13/cobra"
 )
 
@@ -121,6 +120,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 				return nil
 			}
 		}
+		ux.Logger.PrintToUser("The node is already whitelisted! You are good to go.")
 	}
 
 	if printManual {
@@ -238,12 +238,12 @@ func checkIsValidating(subnetID ids.ID, nodeID ids.NodeID, pClient platformvm.Cl
 		return false, err
 	}
 	// pVals is an array of interfaces as it can be of different types
-	// we are only interested in SubnetValidator here
+	// but it's content is a JSON map[string]interface{}
 	for _, iv := range pVals {
-		if v, ok := iv.(platformapi.SubnetValidator); ok {
+		if v, ok := iv.(map[string]interface{}); ok {
 			// strictly this is not needed, as we are providing the nodeID as param
 			// just a double check
-			if v.NodeID == nodeID {
+			if v["nodeID"] == nodeID.String() {
 				return true, nil
 			}
 		}
