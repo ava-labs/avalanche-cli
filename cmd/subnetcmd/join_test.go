@@ -8,7 +8,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/avalanchego/vms/platformvm/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -33,10 +32,8 @@ func TestIsNodeValidatingSubnet(t *testing.T) {
 		[]interface{}{}, nil, nil).Once()
 
 	interfaceReturn := make([]interface{}, 1)
-	val := api.SubnetValidator{
-		Staker: api.Staker{
-			NodeID: nonValidator,
-		},
+	val := map[string]interface{}{
+		"nodeID": nonValidator.String(),
 	}
 	interfaceReturn[0] = val
 	pClient.On("GetPendingValidators", mock.Anything, mock.Anything, mock.Anything).Return(interfaceReturn, nil, nil)
