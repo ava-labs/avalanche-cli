@@ -31,7 +31,7 @@ func startValidator(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := validator.StartLocalNodeAsService(models.Fuji, avagoBinDir); err != nil {
+	if err := validator.StartLocalNodeAsService(models.Fuji, avagoBinDir, app); err != nil {
 		return err
 	}
 	return nil

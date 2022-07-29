@@ -13,7 +13,7 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	app = injectedApp
 
 	cmd := &cobra.Command{
-		Use:   "key",
+		Use:   "validator",
 		Short: "Create and manage testnet signing keys",
 		Long: `The key command suite provides a collection of tools for creating signing
 keys. You can use these keys to deploy subnets to the Fuji testnet.
@@ -28,13 +28,15 @@ To get started, use the key create command.`,
 	}
 
 	// avalanche key create
-	cmd.AddCommand(newStartCmd())
+	cmd.AddCommand(newStartCmd(app))
 
 	// avalanche key list
-	cmd.AddCommand(newStopCmd())
+	cmd.AddCommand(newStopCmd(app))
 
 	// avalanche key delete
-	cmd.AddCommand(newStatusCmd())
+	cmd.AddCommand(newStatusCmd(app))
 
+	// avalanche key delete
+	cmd.AddCommand(newInstallCmd(app))
 	return cmd
 }

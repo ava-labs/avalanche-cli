@@ -4,9 +4,6 @@ package validatorcmd
 
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/validator"
 	"github.com/spf13/cobra"
 )
 
@@ -23,13 +20,5 @@ func newStopCmd(injectedApp *application.Avalanche) *cobra.Command {
 }
 
 func stopValidator(cmd *cobra.Command, args []string) error {
-	d := subnet.NewLocalSubnetDeployer(app)
-	avagoBinDir, _, err := d.SetupLocalEnv()
-	if err != nil {
-		return err
-	}
-	if err := validator.StartLocalNodeAsService(models.Fuji, avagoBinDir); err != nil {
-		return err
-	}
 	return nil
 }

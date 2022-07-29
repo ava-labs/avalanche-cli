@@ -46,6 +46,10 @@ func (app *Avalanche) GetBaseDir() string {
 	return app.baseDir
 }
 
+func (app *Avalanche) GetServiceDir() string {
+	return filepath.Join(app.baseDir, constants.ServiceDir)
+}
+
 func (app *Avalanche) GetRunDir() string {
 	return filepath.Join(app.baseDir, constants.RunDir)
 }

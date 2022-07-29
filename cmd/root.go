@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/keycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/validatorcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -53,6 +54,8 @@ in with avalanche subnet create myNewSubnet.`,
 
 	// add hidden backend command
 	rootCmd.AddCommand(backendcmd.NewCmd(app))
+
+	rootCmd.AddCommand(validatorcmd.NewCmd(app))
 
 	return rootCmd
 }

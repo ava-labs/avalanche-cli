@@ -5,6 +5,8 @@ package validatorcmd
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/validator"
 	"github.com/kardianos/service"
 	"github.com/spf13/cobra"
 )
@@ -22,10 +24,12 @@ func newInstallCmd(injectedApp *application.Avalanche) *cobra.Command {
 }
 
 func installValidator(cmd *cobra.Command, args []string) error {
-	if err := svc.Install(); err != nil {
+	d := subnet.NewLocalSubnetDeployer(app)
+	avagoBinDir, _, err := d.SetupLocalEnv()
+	if err != nil {
 		return err
 	}
-	return nil
+	return validator.InstallAsAService(models.Fuji, avagoBinDir, app)
 }
 
 func getServiceDef(network models.Network) service.Config {
