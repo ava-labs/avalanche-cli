@@ -47,8 +47,8 @@ func printGenesis(subnetName string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(gen))
-	return nil
+
+	return ux.PrintPrettyCode("json", string(gen))
 }
 
 func printDetails(genesis core.Genesis, sc models.Sidecar) {
