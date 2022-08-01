@@ -16,6 +16,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
+const (
+	expectedRPCComponentsLen = 7
+	blockchainIDPos          = 5
+)
+
 func GetBaseDir() string {
 	usr, err := user.Current()
 	if err != nil {
@@ -52,6 +57,19 @@ func SubnetConfigExists(subnetName string) (bool, error) {
 	return genesisExists && sidecarExists, nil
 }
 
+func KeyExists(keyName string) (bool, error) {
+	keyPath := path.Join(GetBaseDir(), constants.KeyDir, keyName+constants.KeySuffix)
+	if _, err := os.Stat(keyPath); errors.Is(err, os.ErrNotExist) {
+		// does *not* exist
+		return false, nil
+	} else if err != nil {
+		// Schrodinger: file may or may not exist. See err for details.
+		return false, err
+	}
+
+	return true, nil
+}
+
 func DeleteConfigs(subnetName string) error {
 	genesis := path.Join(GetBaseDir(), subnetName+constants.GenesisSuffix)
 	if _, err := os.Stat(genesis); err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -74,6 +92,19 @@ func DeleteConfigs(subnetName string) error {
 	return nil
 }
 
+func DeleteKey(keyName string) error {
+	keyPath := path.Join(GetBaseDir(), constants.KeyDir, keyName+constants.KeySuffix)
+	if _, err := os.Stat(keyPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		// Schrodinger: file may or may not exist. See err for details.
+		return err
+	}
+
+	// ignore error, file may not exist
+	os.Remove(keyPath)
+
+	return nil
+}
+
 func stdoutParser(output string, queue string, capture string) (string, error) {
 	// split output by newline
 	lines := strings.Split(output, "\n")
@@ -89,34 +120,40 @@ func stdoutParser(output string, queue string, capture string) (string, error) {
 	return "", errors.New("no queue string found")
 }
 
-func ParseRPCFromDeployOutput(output string) (string, error) {
+func ParseRPCsFromOutput(output string) ([]string, error) {
+	rpcs := []string{}
+	blockchainIDs := map[string]struct{}{}
 	// split output by newline
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
-		if strings.Contains(line, "RPC URL:") {
-			index := strings.Index(line, "http")
-			if index == -1 {
-				return "", errors.New("no url in RPC URL line")
-			}
-			return line[index:], nil
+		if !strings.Contains(line, "rpc") {
+			continue
+		}
+		startIndex := strings.Index(line, "http")
+		if startIndex == -1 {
+			return nil, errors.New("no url in RPC URL line")
+		}
+		endIndex := strings.LastIndex(line, "rpc")
+		rpc := line[startIndex : endIndex+3]
+		rpcComponents := strings.Split(rpc, "/")
+		if len(rpcComponents) != expectedRPCComponentsLen {
+			return nil, fmt.Errorf("unexpected number of components in url %q: expected %d got %d",
+				rpc,
+				expectedRPCComponentsLen,
+				len(rpcComponents),
+			)
+		}
+		blockchainID := rpcComponents[blockchainIDPos]
+		_, ok := blockchainIDs[blockchainID]
+		if !ok {
+			blockchainIDs[blockchainID] = struct{}{}
+			rpcs = append(rpcs, rpc)
 		}
 	}
-	return "", errors.New("no rpc url found")
-}
-
-func ParseRPCFromRestartOutput(output string) (string, error) {
-	// split output by newline
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "Endpoint at node") {
-			index := strings.Index(line, "http")
-			if index == -1 {
-				return "", errors.New("no url in RPC URL line")
-			}
-			return line[index:], nil
-		}
+	if len(rpcs) == 0 {
+		return nil, errors.New("no RPCs where found")
 	}
-	return "", errors.New("no rpc url found")
+	return rpcs, nil
 }
 
 type greeterAddr struct {
@@ -179,4 +216,25 @@ func RunHardhatScript(script string) (string, string, error) {
 		fmt.Println(err)
 	}
 	return string(output), stderr, err
+}
+
+func PrintStdErr(err error) {
+	exitErr, typeOk := err.(*exec.ExitError)
+	if typeOk {
+		fmt.Println(string(exitErr.Stderr))
+	}
+}
+
+func CheckKeyEquality(keyPath1, keyPath2 string) (bool, error) {
+	key1, err := os.ReadFile(keyPath1)
+	if err != nil {
+		return false, err
+	}
+
+	key2, err := os.ReadFile(keyPath2)
+	if err != nil {
+		return false, err
+	}
+
+	return string(key1) == string(key2), nil
 }

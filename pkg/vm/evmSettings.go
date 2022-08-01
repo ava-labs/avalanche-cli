@@ -7,7 +7,7 @@ import (
 	"math/big"
 
 	"github.com/ava-labs/avalanchego/utils/units"
-	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ava-labs/subnet-evm/commontype"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -26,7 +26,7 @@ var (
 	fastTarget   = big.NewInt(50_000_000)
 
 	// This is the current c-chain gas config
-	StarterFeeConfig = params.FeeConfig{
+	StarterFeeConfig = commontype.FeeConfig{
 		GasLimit:                 big.NewInt(8_000_000),
 		MinBaseFee:               big.NewInt(25_000_000_000),
 		TargetGas:                big.NewInt(15_000_000),

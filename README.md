@@ -66,12 +66,13 @@ avalanche network start
 
 ### Currently Supported Functionality
 
-- Creation of Subnet-EVM configs
+- Creation of Subnet-EVM configs and Subnet-EVM forks
 - Local deployment of Subnet-EVM based subnets
+- Fuji deployment of Subnet-EVM based subnets
 
 ### Notable Missing Features
 
-- Fuji and mainnet Subnet-EVM deploys
+- Mainnet Subnet-EVM deploys
 
 ## Modifying your Subnet Deployment
 

@@ -140,6 +140,26 @@ func configureMinterList(app *application.Avalanche) (precompile.ContractNativeM
 	return config, cancelled, nil
 }
 
+func configureFeeConfigAllowList(app *application.Avalanche) (precompile.FeeConfigManagerConfig, bool, error) {
+	config := precompile.FeeConfigManagerConfig{}
+	prompt := "Configure fee manager allow list"
+	info := "\nThis precompile allows admins to adjust chain gas and fee parameters without " +
+		"performing a hardfork.\nFor more information visit " +
+		"https://docs.avax.network/subnets/customize-a-subnet#configuring-dynamic-fees\n\n"
+
+	admins, cancelled, err := getAdminList(prompt, info, app)
+	if err != nil {
+		return config, false, err
+	}
+
+	config.AllowListConfig = precompile.AllowListConfig{
+		BlockTimestamp:  big.NewInt(0),
+		AllowListAdmins: admins,
+	}
+
+	return config, cancelled, nil
+}
+
 func removePrecompile(arr []string, s string) ([]string, error) {
 	for i, val := range arr {
 		if val == s {
@@ -152,14 +172,15 @@ func removePrecompile(arr []string, s string) ([]string, error) {
 func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (params.ChainConfig, stateDirection, error) {
 	const (
 		nativeMint        = "Native Minting"
-		contractAllowList = "Contract deployment whitelist"
-		txAllowList       = "Transaction allow list"
+		contractAllowList = "Contract Deployment Allow List"
+		txAllowList       = "Transaction Allow List"
+		feeManager        = "Manage Fee Settings"
 		cancel            = "Cancel"
 	)
 
 	first := true
 
-	remainingPrecompiles := []string{nativeMint, contractAllowList, txAllowList, cancel}
+	remainingPrecompiles := []string{nativeMint, contractAllowList, txAllowList, feeManager, cancel}
 
 	for {
 		firstStr := "Advanced: Would you like to add a custom precompile to modify the EVM?"
@@ -224,6 +245,18 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (para
 			if !cancelled {
 				config.TxAllowListConfig = txConfig
 				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, txAllowList)
+				if err != nil {
+					return config, stop, err
+				}
+			}
+		case feeManager:
+			feeConfig, cancelled, err := configureFeeConfigAllowList(app)
+			if err != nil {
+				return config, stop, err
+			}
+			if !cancelled {
+				config.FeeManagerConfig = feeConfig
+				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, feeManager)
 				if err != nil {
 					return config, stop, err
 				}

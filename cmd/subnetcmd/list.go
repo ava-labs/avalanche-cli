@@ -69,7 +69,7 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, f := range files {
-		if strings.Contains(f.Name(), constants.SidecarSuffix) {
+		if strings.HasSuffix(f.Name(), constants.SidecarSuffix) {
 			carName := strings.TrimSuffix(f.Name(), constants.SidecarSuffix)
 			// read in sidecar file
 			sc, err := app.LoadSidecar(carName)

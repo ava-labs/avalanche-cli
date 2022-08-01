@@ -15,9 +15,10 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/coreos/go-semver/semver"
 )
 
@@ -28,7 +29,8 @@ var (
 )
 
 type PluginBinaryDownloader interface {
-	Download(vmIDs map[string]struct{}, pluginDir, binDir string) error
+	Download(vmIDs map[string]string, pluginDir, binDir string) error
+	DownloadVM(vmName string, vmID string, pluginDir, binDir string) error
 }
 
 type BinaryChecker interface {
@@ -39,7 +41,7 @@ type BinaryChecker interface {
 type (
 	binaryChecker          struct{}
 	pluginBinaryDownloader struct {
-		log logging.Logger
+		app *application.Avalanche
 	}
 )
 
@@ -47,9 +49,9 @@ func NewBinaryChecker() BinaryChecker {
 	return &binaryChecker{}
 }
 
-func NewPluginBinaryDownloader(log logging.Logger) PluginBinaryDownloader {
+func NewPluginBinaryDownloader(app *application.Avalanche) PluginBinaryDownloader {
 	return &pluginBinaryDownloader{
-		log: log,
+		app: app,
 	}
 }
 
@@ -270,9 +272,9 @@ func (abc *binaryChecker) ExistsWithVersion(binDir, binPrefix, version string) (
 	return true, latest, nil
 }
 
-func (d *pluginBinaryDownloader) Download(vmIDs map[string]struct{}, pluginDir, binDir string) error {
-	for id := range vmIDs {
-		err := d.DownloadVM(id, pluginDir, binDir)
+func (d *pluginBinaryDownloader) Download(vmIDs map[string]string, pluginDir, binDir string) error {
+	for name, id := range vmIDs {
+		err := d.DownloadVM(name, id, pluginDir, binDir)
 		if err != nil {
 			return err
 		}
@@ -285,12 +287,15 @@ func (d *pluginBinaryDownloader) Download(vmIDs map[string]struct{}, pluginDir, 
 }
 
 // getVMBinary downloads the binary from the binary server URL
-func (d *pluginBinaryDownloader) DownloadVM(vmID string, pluginDir, binDir string) error {
+func (d *pluginBinaryDownloader) DownloadVM(name string, vmID string, pluginDir, binDir string) error {
+	// target of VM install
 	binaryPath := filepath.Join(pluginDir, vmID)
+
+	// check if binary is already present
 	info, err := os.Stat(binaryPath)
 	if err == nil {
 		if info.Mode().IsRegular() {
-			d.log.Debug("binary already exists, skipping download")
+			d.app.Log.Debug("binary already exists, skipping download")
 			return nil
 		}
 		return fmt.Errorf("binary plugin path %q was found but is not a regular file", binaryPath)
@@ -299,13 +304,27 @@ func (d *pluginBinaryDownloader) DownloadVM(vmID string, pluginDir, binDir strin
 		return err
 	}
 
+	// if custom, copy binary from app vm location
+	sidecar, err := d.app.LoadSidecar(name)
+	if err != nil {
+		return err
+	}
+	if sidecar.VM == models.CustomVM {
+		from := d.app.GetCustomVMPath(name)
+		if err := copyFile(from, binaryPath); err != nil {
+			return fmt.Errorf("failed copying custom vm to plugin dir: %w", err)
+		}
+		return nil
+	}
+
+	// not custom, download or copy subnet evm
 	binChecker := NewBinaryChecker()
 	exists, subnetEVMDir, err := binChecker.ExistsWithLatestVersion(binDir, subnetEVMName+"-v")
 	if err != nil {
 		return fmt.Errorf("failed trying to locate plugin binary: %s", binDir)
 	}
 	if exists {
-		d.log.Debug("local plugin binary found. skipping installation")
+		d.app.Log.Debug("local plugin binary found. skipping installation")
 	} else {
 		ux.Logger.PrintToUser("VM binary does not exist locally, starting download...")
 
@@ -323,7 +342,7 @@ func (d *pluginBinaryDownloader) DownloadVM(vmID string, pluginDir, binDir strin
 			}
 		*/
 
-		subnetEVMDir, err = DownloadReleaseVersion(d.log, subnetEVMName, version, binDir)
+		subnetEVMDir, err = DownloadReleaseVersion(d.app.Log, subnetEVMName, version, binDir)
 		if err != nil {
 			return fmt.Errorf("failed downloading subnet-evm version: %w", err)
 		}
@@ -341,7 +360,7 @@ func (d *pluginBinaryDownloader) DownloadVM(vmID string, pluginDir, binDir strin
 }
 
 // cleanupPluginDir removes all other plugins other than the given and `evm`
-func cleanupPluginDir(vmIDs map[string]struct{}, pluginDir string) error {
+func cleanupPluginDir(vmIDs map[string]string, pluginDir string) error {
 	// list all plugins
 	entries, err := os.ReadDir(pluginDir)
 	if err != nil {
@@ -351,7 +370,7 @@ func cleanupPluginDir(vmIDs map[string]struct{}, pluginDir string) error {
 	pluginWhiteList := map[string]struct{}{
 		"evm": {},
 	}
-	for vmID := range vmIDs {
+	for _, vmID := range vmIDs {
 		pluginWhiteList[vmID] = struct{}{}
 	}
 

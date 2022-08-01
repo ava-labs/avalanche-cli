@@ -5,6 +5,7 @@ package application
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -56,12 +57,32 @@ func (app *Avalanche) GetRunDir() string {
 	return filepath.Join(app.baseDir, constants.RunDir)
 }
 
+func (app *Avalanche) GetCustomVMDir() string {
+	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.CustomVMDir)
+}
+
+func (app *Avalanche) GetCustomVMPath(subnetName string) string {
+	return filepath.Join(app.GetCustomVMDir(), subnetName)
+}
+
 func (app *Avalanche) GetGenesisPath(subnetName string) string {
 	return filepath.Join(app.baseDir, subnetName+constants.GenesisSuffix)
 }
 
 func (app *Avalanche) GetSidecarPath(subnetName string) string {
 	return filepath.Join(app.baseDir, subnetName+constants.SidecarSuffix)
+}
+
+func (app *Avalanche) GetKeyDir() string {
+	return filepath.Join(app.baseDir, constants.KeyDir)
+}
+
+func (app *Avalanche) GetTmpPluginDir() string {
+	return os.TempDir()
+}
+
+func (app *Avalanche) GetKeyPath(keyName string) string {
+	return filepath.Join(app.baseDir, constants.KeyDir, keyName+constants.KeySuffix)
 }
 
 func (app *Avalanche) WriteGenesisFile(subnetName string, genesisBytes []byte) error {
@@ -75,6 +96,12 @@ func (app *Avalanche) GenesisExists(subnetName string) bool {
 	return err == nil
 }
 
+func (app *Avalanche) KeyExists(keyName string) bool {
+	keyPath := app.GetKeyPath(keyName)
+	_, err := os.Stat(keyPath)
+	return err == nil
+}
+
 func (app *Avalanche) CopyGenesisFile(inputFilename string, subnetName string) error {
 	genesisBytes, err := os.ReadFile(inputFilename)
 	if err != nil {
@@ -82,6 +109,24 @@ func (app *Avalanche) CopyGenesisFile(inputFilename string, subnetName string) e
 	}
 	genesisPath := app.GetGenesisPath(subnetName)
 	return os.WriteFile(genesisPath, genesisBytes, WriteReadReadPerms)
+}
+
+func (app *Avalanche) CopyVMBinary(inputFilename string, subnetName string) error {
+	vmBytes, err := os.ReadFile(inputFilename)
+	if err != nil {
+		return err
+	}
+	vmPath := app.GetCustomVMPath(subnetName)
+	return os.WriteFile(vmPath, vmBytes, WriteReadReadPerms)
+}
+
+func (app *Avalanche) CopyKeyFile(inputFilename string, keyName string) error {
+	keyBytes, err := os.ReadFile(inputFilename)
+	if err != nil {
+		return err
+	}
+	keyPath := app.GetKeyPath(keyName)
+	return os.WriteFile(keyPath, keyBytes, WriteReadReadPerms)
 }
 
 func (app *Avalanche) LoadEvmGenesis(subnetName string) (core.Genesis, error) {
@@ -96,6 +141,16 @@ func (app *Avalanche) LoadEvmGenesis(subnetName string) (core.Genesis, error) {
 	return gen, err
 }
 
+func (app *Avalanche) LoadRawGenesis(subnetName string) ([]byte, error) {
+	genesisPath := app.GetGenesisPath(subnetName)
+	genesisBytes, err := os.ReadFile(genesisPath)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return genesisBytes, err
+}
+
 func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 	if sc.TokenName == "" {
 		sc.TokenName = constants.DefaultTokenName
@@ -104,7 +159,7 @@ func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 	// but better safe than sorry
 	exists, err := app.ChainIDExists(sc.ChainID)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to determine if chainID is unique: %w", err)
 	}
 	if exists {
 		return errChainIDExists
@@ -137,6 +192,17 @@ func (app *Avalanche) LoadSidecar(subnetName string) (models.Sidecar, error) {
 	return sc, err
 }
 
+func (app *Avalanche) UpdateSidecar(sc *models.Sidecar) error {
+	sc.Version = constants.SidecarVersion
+	scBytes, err := json.MarshalIndent(sc, "", "    ")
+	if err != nil {
+		return nil
+	}
+
+	sidecarPath := app.GetSidecarPath(sc.Name)
+	return os.WriteFile(sidecarPath, scBytes, WriteReadReadPerms)
+}
+
 func (app *Avalanche) GetTokenName(subnetName string) string {
 	sidecar, err := app.LoadSidecar(subnetName)
 	if err != nil {
@@ -145,7 +211,7 @@ func (app *Avalanche) GetTokenName(subnetName string) string {
 	return sidecar.TokenName
 }
 
-func (app *Avalanche) listSideCarNames() ([]string, error) {
+func (app *Avalanche) GetSidecarNames() ([]string, error) {
 	matches, err := filepath.Glob(filepath.Join(app.baseDir, "*"+constants.SidecarSuffix))
 	if err != nil {
 		return nil, err
@@ -160,7 +226,7 @@ func (app *Avalanche) listSideCarNames() ([]string, error) {
 }
 
 func (app *Avalanche) ChainIDExists(chainID string) (bool, error) {
-	sidecars, err := app.listSideCarNames()
+	sidecars, err := app.GetSidecarNames()
 	if err != nil {
 		return false, err
 	}
@@ -175,7 +241,8 @@ func (app *Avalanche) ChainIDExists(chainID string) (bool, error) {
 		if sc.ChainID == "" {
 			gen, err := app.LoadEvmGenesis(car)
 			if err != nil {
-				return false, err
+				// unable to find chain id, skip
+				continue
 			}
 			existingChainID = gen.Config.ChainID.String()
 		}
