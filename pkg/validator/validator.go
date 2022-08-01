@@ -24,6 +24,7 @@ func (a *AvalanchegoValidator) Start(svc service.Service) error {
 }
 
 func (a *AvalanchegoValidator) Stop(svc service.Service) error {
+	svc.Stop()
 	return nil
 }
 
@@ -84,7 +85,6 @@ func GetStatus(app *application.Avalanche) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		service.Control(svc, "status")
 		status, err := svc.Status()
 		if err != nil {
 			return "", nil
@@ -101,7 +101,7 @@ func GetStatus(app *application.Avalanche) (string, error) {
 	return "service not installed", nil
 }
 
-func getServiceFile(network models.Network, buildDir string, app *application.Avalanche) (*service.Config, error) {
+func getServiceFile(network models.Network, bin string, app *application.Avalanche) (*service.Config, error) {
 	exists, err := serviceFileExists(app)
 	if err != nil {
 		return nil, err
@@ -113,7 +113,7 @@ func getServiceFile(network models.Network, buildDir string, app *application.Av
 			return nil, err
 		}
 	} else {
-		bin := filepath.Join(buildDir, "avalanchego")
+		buildDir := filepath.Dir(bin)
 		args := []string{"--network-id", strings.ToLower(network.String()), "--build-dir", buildDir}
 		opts := map[string]interface{}{
 			"UserService": true,
