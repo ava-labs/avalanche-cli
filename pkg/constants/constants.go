@@ -65,6 +65,8 @@ const (
 
 	AvaLabsOrg          = "ava-labs"
 	AvalancheGoRepoName = "avalanchego"
+	SubnetEVMRepoName   = "subnet-evm"
 
 	AvalancheGoInstallDir = "avalanchego"
+	SubnetEVMInstallDir   = "subnet-evm"
 )

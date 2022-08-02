@@ -81,8 +81,7 @@ func Test_getAvalancheGoURL(t *testing.T) {
 }
 
 func Test_installAvalancheGoWithVersion(t *testing.T) {
-	assert := assert.New(t)
-	setupTest(t)
+	assert := setupTest(t)
 
 	version := "v1.17.1"
 	avagoBinary := []byte{0xde, 0xad, 0xbe, 0xef}
@@ -124,8 +123,7 @@ func Test_installAvalancheGoWithVersion(t *testing.T) {
 }
 
 func Test_installAvalancheGoWithVersion_MultipleCoinstalls(t *testing.T) {
-	assert := assert.New(t)
-	setupTest(t)
+	assert := setupTest(t)
 
 	version1 := "v1.17.1"
 	version2 := "v1.18.1"

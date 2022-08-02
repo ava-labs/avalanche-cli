@@ -87,7 +87,7 @@ func SetupAvalanchego(app *application.Avalanche, avagoVersion string) (string, 
 	if avagoVersion == "" {
 		// get latest version
 		var err error
-		avagoVersion, err = GetLatestReleaseVersion(GetGithubReleaseURL(
+		avagoVersion, err = GetLatestReleaseVersion(GetGithubLatestReleaseURL(
 			constants.AvaLabsOrg,
 			constants.AvalancheGoRepoName,
 		))
