@@ -122,3 +122,54 @@ func Test_installAvalancheGoWithVersion(t *testing.T) {
 	assert.Equal(expectedDir, binDir)
 	assert.NoError(err)
 }
+
+func Test_installAvalancheGoWithVersion_MultipleCoinstalls(t *testing.T) {
+	assert := assert.New(t)
+	setupTest(t)
+
+	version1 := "v1.17.1"
+	version2 := "v1.18.1"
+	avagoBinary := []byte{0xde, 0xad, 0xbe, 0xef}
+
+	// create dummy binary
+	sourceDir, err := os.MkdirTemp(os.TempDir(), "binutils-source")
+	assert.NoError(err)
+	defer os.RemoveAll(sourceDir)
+	zipDir := filepath.Join(sourceDir, "build")
+	err = os.Mkdir(zipDir, 0o700)
+	assert.NoError(err)
+	binFilename := "avalanchego"
+	binPath := filepath.Join(zipDir, binFilename)
+	err = os.WriteFile(binPath, avagoBinary, 0o600)
+	assert.NoError(err)
+
+	// Put into zip
+	zipFile := "/tmp/avago.zip"
+	createZip(assert, zipDir, zipFile)
+	zipBytes, err := os.ReadFile(zipFile)
+	assert.NoError(err)
+
+	rootDir, err := os.MkdirTemp(os.TempDir(), "binutils-tests")
+	assert.NoError(err)
+	defer os.RemoveAll(rootDir)
+
+	app := application.New()
+	app.Setup(rootDir, logging.NoLog{}, &config.Config{}, prompts.NewPrompter())
+
+	mockInstaller := &mocks.Installer{}
+	mockInstaller.On("GetArch").Return("amd64", "darwin")
+	mockInstaller.On("DownloadRelease", mock.Anything).Return(zipBytes, nil)
+
+	expectedDir1 := filepath.Join(app.GetAvalanchegoBinDir(), avalanchegoBinPrefix+version1)
+	expectedDir2 := filepath.Join(app.GetAvalanchegoBinDir(), avalanchegoBinPrefix+version2)
+
+	binDir1, err := installAvalancheGoWithVersion(app, version1, mockInstaller)
+	assert.Equal(expectedDir1, binDir1)
+	assert.NoError(err)
+
+	binDir2, err := installAvalancheGoWithVersion(app, version2, mockInstaller)
+	assert.Equal(expectedDir2, binDir2)
+	assert.NoError(err)
+
+	assert.NotEqual(binDir1, binDir2)
+}
