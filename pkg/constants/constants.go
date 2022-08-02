@@ -62,4 +62,9 @@ const (
 	DefaultConfigFileType = "json"
 
 	CustomVMDir = "vms"
+
+	AvaLabsOrg          = "ava-labs"
+	AvalancheGoRepoName = "avalanchego"
+
+	AvalancheGoInstallDir = "avalanchego"
 )
