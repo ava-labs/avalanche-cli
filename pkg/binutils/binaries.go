@@ -30,6 +30,7 @@ var (
 
 type PluginBinaryDownloader interface {
 	Download(vmIDs map[string]string, pluginDir, binDir string) error
+	InstallVM(vmID, vmBin, pluginDir string) error
 	DownloadVM(vmName string, vmID string, pluginDir, binDir string) error
 }
 
@@ -67,6 +68,12 @@ func sanitizeArchivePath(d, t string) (v string, err error) {
 
 // InstallArchive installs the binary archive downloaded
 func InstallArchive(ext string, archive []byte, binDir string) error {
+	// create binDir if it doesn't exist
+	if err := os.MkdirAll(binDir, 0o700); err != nil {
+		return err
+	}
+
+	fmt.Println("Install to", binDir)
 	if ext == "zip" {
 		return installZipArchive(archive, binDir)
 	}
@@ -284,6 +291,37 @@ func (d *pluginBinaryDownloader) Download(vmIDs map[string]string, pluginDir, bi
 		return err
 	}
 	return nil
+}
+
+func (d *pluginBinaryDownloader) InstallVM(vmID, vmBin, pluginDir string) error {
+	// for name, id := range vmIDs {
+	// 	err := d.DownloadVM(name, id, pluginDir, binDir)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
+
+	// target of VM install
+	binaryPath := filepath.Join(pluginDir, vmID)
+
+	// check if binary is already present, this should never happen
+	if _, err := os.Stat(binaryPath); err == nil {
+		return errors.New("vm binary already exists, invariant broken")
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+
+	if err := copyFile(vmBin, binaryPath); err != nil {
+		return fmt.Errorf("failed copying custom vm to plugin dir: %w", err)
+	}
+	return nil
+
+	// TODO Handle this with clean
+	// // remove all other plugins other than the given and `evm`
+	// if err := cleanupPluginDir(vmIDs, pluginDir); err != nil {
+	// 	return err
+	// }
+	// return nil
 }
 
 // getVMBinary downloads the binary from the binary server URL

@@ -37,6 +37,20 @@ func (_m *PluginBinaryDownloader) DownloadVM(vmName string, vmID string, pluginD
 	return r0
 }
 
+// InstallVM provides a mock function with given fields: vmID, vmBin, pluginDir
+func (_m *PluginBinaryDownloader) InstallVM(vmID string, vmBin string, pluginDir string) error {
+	ret := _m.Called(vmID, vmBin, pluginDir)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, string) error); ok {
+		r0 = rf(vmID, vmBin, pluginDir)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 type mockConstructorTestingTNewPluginBinaryDownloader interface {
 	mock.TestingT
 	Cleanup(func())

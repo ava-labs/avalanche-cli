@@ -89,6 +89,7 @@ func createEvmGenesis(app *application.Avalanche, subnetName string) ([]byte, *m
 	var (
 		chainID    *big.Int
 		tokenName  string
+		vmVersion  string
 		allocation core.GenesisAlloc
 		direction  stateDirection
 		err        error
@@ -99,7 +100,7 @@ func createEvmGenesis(app *application.Avalanche, subnetName string) ([]byte, *m
 		case startStage:
 			direction = forward
 		case descriptorStage:
-			chainID, tokenName, direction, err = getDescriptors(app)
+			chainID, tokenName, vmVersion, direction, err = getDescriptors(app)
 		case feeStage:
 			*conf, direction, err = getFeeConfig(*conf, app)
 		case airdropStage:
@@ -136,6 +137,7 @@ func createEvmGenesis(app *application.Avalanche, subnetName string) ([]byte, *m
 	sc := &models.Sidecar{
 		Name:      subnetName,
 		VM:        models.SubnetEvm,
+		VMVersion: vmVersion,
 		Subnet:    subnetName,
 		TokenName: tokenName,
 	}

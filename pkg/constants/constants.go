@@ -21,7 +21,7 @@ const (
 	SidecarSuffix      = "_sidecar.json"
 	GenesisSuffix      = "_genesis.json"
 
-	SidecarVersion = "1.1.0"
+	SidecarVersion = "1.2.0"
 
 	MaxLogFileSize   = 4
 	MaxNumOfLogFiles = 5

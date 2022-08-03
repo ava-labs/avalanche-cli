@@ -40,7 +40,7 @@ running.`,
 }
 
 func startNetwork(cmd *cobra.Command, args []string) error {
-	sd := subnet.NewLocalDeployer(app, avagoVersion)
+	sd := subnet.NewLocalDeployer(app, avagoVersion, "")
 
 	if err := sd.StartServer(); err != nil {
 		return err

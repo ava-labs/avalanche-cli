@@ -122,7 +122,20 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to load sidecar for later update: %w", err)
 		}
-		deployer := subnet.NewLocalDeployer(app, avagoVersion)
+
+		var vmDir string
+
+		// download subnet-evm if necessary
+		if sc.VM == subnetEvm {
+			vmDir, err = binutils.SetupSubnetEVM(app, sc.VMVersion)
+			if err != nil {
+				return fmt.Errorf("failed to install subnet-evm: %w", err)
+			}
+		} else {
+			vmDir = app.GetCustomVMPath(chain)
+		}
+
+		deployer := subnet.NewLocalDeployer(app, avagoVersion, vmDir)
 		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
 		if err != nil {
 			if deployer.BackendStartedHere() {
