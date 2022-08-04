@@ -350,27 +350,6 @@ func alreadyDeployed(chainVMID ids.ID, clusterInfo *rpcpb.ClusterInfo) bool {
 }
 
 // get list of all needed plugins and install them
-func (d *LocalDeployer) installNeededPlugins(
-	chain string,
-	chainVMID ids.ID,
-	clusterInfo *rpcpb.ClusterInfo,
-	pluginDir string,
-) error {
-	toInstallVMIDs := map[string]string{}
-	toInstallVMIDs[chain] = chainVMID.String()
-	if clusterInfo != nil {
-		for _, vmInfo := range clusterInfo.CustomVms {
-			toInstallVMIDs[vmInfo.VmName] = vmInfo.VmId
-		}
-	}
-	binDir := filepath.Join(d.app.GetBaseDir(), constants.AvalancheCliBinDir)
-	if err := d.binaryDownloader.Download(toInstallVMIDs, pluginDir, binDir); err != nil {
-		return err
-	}
-	return nil
-}
-
-// get list of all needed plugins and install them
 func (d *LocalDeployer) installPlugin(
 	vmID ids.ID,
 	vmBin string,

@@ -61,13 +61,13 @@ func InstallBinary(
 	app *application.Avalanche,
 	version string,
 	binDir string,
+	installDir string,
 	binPrefix,
 	org,
 	repo string,
 	downloader GithubDownloader,
 	installer Installer,
 ) (string, error) {
-
 	fmt.Println("Bin dir", binDir)
 
 	if version == "" {
@@ -87,16 +87,17 @@ func InstallBinary(
 
 	binChecker := NewBinaryChecker()
 
-	exists, installDir, err := binChecker.ExistsWithVersion(binDir, binPrefix, version)
+	fmt.Println("Checking", binDir, binPrefix, version)
+	exists, previousInstallDir, err := binChecker.ExistsWithVersion(binDir, binPrefix, version)
 	if err != nil {
 		return "", fmt.Errorf("failed trying to locate binary %s-%s: %s", binPrefix, version, binDir)
 	}
 	if exists {
 		app.Log.Debug(binPrefix + version + " found. Skipping installation")
-		return installDir, nil
+		return previousInstallDir, nil
 	}
 
 	app.Log.Info("Using binary version: %s", version)
 
-	return installBinaryWithVersion(app, version, binDir, binPrefix, downloader, installer)
+	return installBinaryWithVersion(app, version, installDir, binPrefix, downloader, installer)
 }

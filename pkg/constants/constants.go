@@ -69,4 +69,6 @@ const (
 
 	AvalancheGoInstallDir = "avalanchego"
 	SubnetEVMInstallDir   = "subnet-evm"
+
+	EVMPlugin = "evm"
 )
