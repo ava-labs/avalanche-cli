@@ -4,6 +4,8 @@ package validatorcmd
 
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/validator"
 	"github.com/spf13/cobra"
 )
 
@@ -20,5 +22,5 @@ func newStopCmd(injectedApp *application.Avalanche) *cobra.Command {
 }
 
 func stopValidator(cmd *cobra.Command, args []string) error {
-	return nil
+	return validator.StopLocalNodeAsService(models.Fuji, "", app)
 }

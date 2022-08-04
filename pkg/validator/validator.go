@@ -3,6 +3,7 @@ package validator
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -19,12 +20,34 @@ type AvalanchegoValidator struct {
 }
 
 func (a *AvalanchegoValidator) Start(svc service.Service) error {
-	svc.Start()
 	return nil
 }
 
 func (a *AvalanchegoValidator) Stop(svc service.Service) error {
 	svc.Stop()
+	return nil
+}
+
+func StopLocalNodeAsService(network models.Network, buildDir string, app *application.Avalanche) error {
+	avago := &AvalanchegoValidator{
+		Network:  network,
+		buildDir: buildDir,
+	}
+
+	svcConfig, err := getServiceFile(network, buildDir, app)
+	if err != nil {
+		return err
+	}
+
+	svc, err := service.New(avago, svcConfig)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("stopping avalanchego node...", network.String())
+	if err := service.Control(svc, "stop"); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("node stopped")
 	return nil
 }
 
@@ -70,33 +93,26 @@ func InstallAsAService(network models.Network, buildDir string, app *application
 }
 
 func GetStatus(app *application.Avalanche) (string, error) {
-	avago := &AvalanchegoValidator{}
+	// avago := &AvalanchegoValidator{}
 	exists, err := serviceFileExists(app)
 	if err != nil {
 		return "service not installed", nil
 	}
-	var svcConfig *service.Config
+	// var svcConfig *service.Config
 	if exists {
-		svcConfig, err = loadServiceConfig(app)
-		if err != nil {
-			return "", err
-		}
-		svc, err := service.New(avago, svcConfig)
-		if err != nil {
-			return "", err
-		}
-		status, err := svc.Status()
-		if err != nil {
-			return "", nil
-		}
-		switch status {
-		case service.StatusRunning:
-			return "running", nil
-		case service.StatusStopped:
-			return "stopped", nil
-		case service.StatusUnknown:
-			return "unknown", nil
-		}
+		/*
+			svcConfig, err = loadServiceConfig(app)
+			if err != nil {
+				return "", err
+			}
+			svc, err := service.New(avago, svcConfig)
+			if err != nil {
+				return "", err
+			}
+		*/
+		cmd := exec.Command("systemctl", "--user", "status", "avalanchego")
+		output, _ := cmd.Output()
+		return string(output), nil
 	}
 	return "service not installed", nil
 }
