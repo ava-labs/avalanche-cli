@@ -6,12 +6,20 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
+const (
+	linux   = "linux"
+	darwin  = "darwin"
+	windows = "windows"
+)
+
 type GithubDownloader interface {
 	GetDownloadURL(version string, installer Installer) (string, string, error)
 }
 
-type subnetEVMDownloader struct{}
-type avalancheGoDownloader struct{}
+type (
+	subnetEVMDownloader   struct{}
+	avalancheGoDownloader struct{}
+)
 
 func GetGithubLatestReleaseURL(org, repo string) string {
 	return "https://api.github.com/repos/" + org + "/" + repo + "/releases/latest"
@@ -29,25 +37,31 @@ func (avalancheGoDownloader) GetDownloadURL(version string, installer Installer)
 	var ext string
 
 	switch goos {
-	case "linux":
+	case linux:
 		avalanchegoURL = fmt.Sprintf(
-			"https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-linux-%s-%s.tar.gz",
+			"https://github.com/%s/%s/releases/download/%s/avalanchego-linux-%s-%s.tar.gz",
+			constants.AvaLabsOrg,
+			constants.AvalancheGoRepoName,
 			version,
 			goarch,
 			version,
 		)
 		ext = tarExtension
-	case "darwin":
+	case darwin:
 		avalanchegoURL = fmt.Sprintf(
-			"https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-macos-%s.zip",
+			"https://github.com/%s/%s/releases/download/%s/avalanchego-macos-%s.zip",
+			constants.AvaLabsOrg,
+			constants.AvalancheGoRepoName,
 			version,
 			version,
 		)
 		ext = zipExtension
 		// EXPERMENTAL WIN, no support
-	case "windows":
+	case windows:
 		avalanchegoURL = fmt.Sprintf(
-			"https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-win-%s-experimental.zip",
+			"https://github.com/%s/%s/releases/download/%s/avalanchego-win-%s-experimental.zip",
+			constants.AvaLabsOrg,
+			constants.AvalancheGoRepoName,
 			version,
 			version,
 		)
@@ -68,10 +82,10 @@ func (subnetEVMDownloader) GetDownloadURL(version string, installer Installer) (
 	goarch, goos := installer.GetArch()
 
 	var subnetEVMURL string
-	var ext = "tar.gz"
+	ext := tarExtension
 
 	switch goos {
-	case "linux":
+	case linux:
 		subnetEVMURL = fmt.Sprintf(
 			"https://github.com/%s/%s/releases/download/%s/%s_%s_linux_%s.tar.gz",
 			constants.AvaLabsOrg,
@@ -81,7 +95,7 @@ func (subnetEVMDownloader) GetDownloadURL(version string, installer Installer) (
 			version[1:], // WARN subnet-evm isn't consistent in its release naming, it's omitting the v in the file name...
 			goarch,
 		)
-	case "darwin":
+	case darwin:
 		subnetEVMURL = fmt.Sprintf(
 			"https://github.com/%s/%s/releases/download/%s/%s_%s_darwin_%s.tar.gz",
 			constants.AvaLabsOrg,
