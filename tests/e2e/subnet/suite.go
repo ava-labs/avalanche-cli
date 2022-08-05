@@ -22,8 +22,14 @@ var _ = ginkgo.Describe("[Subnet]", func() {
 	ginkgo.AfterEach(func() {
 		commands.CleanNetwork()
 		err := utils.DeleteConfigs(subnetName)
+		if err != nil {
+			fmt.Println("Clean network error:", err)
+		}
 		gomega.Expect(err).Should(gomega.BeNil())
 		err = utils.DeleteConfigs(secondSubnetName)
+		if err != nil {
+			fmt.Println("Delete config error:", err)
+		}
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 

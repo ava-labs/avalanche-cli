@@ -73,7 +73,6 @@ func InstallArchive(ext string, archive []byte, binDir string) error {
 		return err
 	}
 
-	fmt.Println("Install to", binDir)
 	if ext == "zip" {
 		return installZipArchive(archive, binDir)
 	}
