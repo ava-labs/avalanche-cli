@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"path"
-	"strings"
 	"syscall"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -182,8 +181,7 @@ func KillgRPCServerProcess(app *application.Avalanche) error {
 	ctx := GetAsyncContext()
 	_, err = cli.Stop(ctx)
 	if err != nil {
-		// TODO: use error type not string comparison
-		if strings.Contains(err.Error(), "not bootstrapped") {
+		if server.IsServerError(err, server.ErrNotBootstrapped) {
 			ux.Logger.PrintToUser("No local network running")
 			return nil
 		}

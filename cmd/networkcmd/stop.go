@@ -4,13 +4,13 @@ package networkcmd
 
 import (
 	"fmt"
-	"strings"
-
-	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-network-runner/local"
+	"github.com/ava-labs/avalanche-network-runner/server"
+	"github.com/spf13/cobra"
 )
 
 func newStopCmd() *cobra.Command {
@@ -50,16 +50,13 @@ func stopNetwork(cmd *cobra.Command, args []string) error {
 
 	_, err = cli.RemoveSnapshot(ctx, snapshotName)
 	if err != nil {
-		// TODO: use error type not string comparison
-		if strings.Contains(err.Error(), "not bootstrapped") {
+		if server.IsServerError(err, server.ErrNotBootstrapped) {
 			ux.Logger.PrintToUser("Network already stopped.")
 			return nil
 		}
-		// TODO: when removing an existing snapshot we get an error, but in this case it is expected
-		// It might be nicer to have some special field set in the response though rather than having to parse
-		// the error string which is error prone
-		// TODO: use error type not string comparison
-		if !strings.Contains(err.Error(), fmt.Sprintf("snapshot %q does not exist", snapshotName)) {
+		// it we try to stop a network with a new snapshot name, remove snapshot
+		// will fail, so we cover here that expected case
+		if !server.IsServerError(err, local.ErrSnapshotNotFound) {
 			return fmt.Errorf("failed stop network with a snapshot: %s", err)
 		}
 	}

@@ -67,8 +67,8 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 		}
 
 		if resp != nil {
-			for _, vm := range resp.GetClusterInfo().CustomVms {
-				deployedNames[vm.VmName] = struct{}{}
+			for _, chain := range resp.GetClusterInfo().CustomChains {
+				deployedNames[chain.ChainName] = struct{}{}
 			}
 		}
 	}
