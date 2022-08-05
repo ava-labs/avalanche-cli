@@ -3,9 +3,10 @@
 package validatorcmd
 
 import (
-	"fmt"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validator"
 	"github.com/spf13/cobra"
 )
@@ -30,6 +31,12 @@ func validatorStatus(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(status)
+	if strings.Contains(status, "Active: inactive") {
+		ux.Logger.PrintToUser("not running")
+	} else if strings.Contains(status, "Active: active (running)") {
+		ux.Logger.PrintToUser("running")
+	} else {
+		ux.Logger.PrintToUser("status unknown")
+	}
 	return nil
 }

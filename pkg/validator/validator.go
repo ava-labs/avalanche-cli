@@ -43,7 +43,7 @@ func StopLocalNodeAsService(network models.Network, buildDir string, app *applic
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("stopping avalanchego node...", network.String())
+	ux.Logger.PrintToUser("stopping avalanchego %s node...", network.String())
 	if err := service.Control(svc, "stop"); err != nil {
 		return err
 	}
