@@ -260,3 +260,15 @@ func CheckKeyEquality(keyPath1, keyPath2 string) (bool, error) {
 
 	return string(key1) == string(key2), nil
 }
+
+func CheckSubnetEVMExists(version string) bool {
+	subevmPath := path.Join(GetBaseDir(), constants.AvalancheCliBinDir, constants.SubnetEVMInstallDir, "subnet-evm-"+version)
+	_, err := os.Stat(subevmPath)
+	return err == nil
+}
+
+func CheckAvalancheGoExists(version string) bool {
+	avagoPath := path.Join(GetBaseDir(), constants.AvalancheCliBinDir, constants.AvalancheGoInstallDir, "avalanchego-"+version)
+	_, err := os.Stat(avagoPath)
+	return err == nil
+}
