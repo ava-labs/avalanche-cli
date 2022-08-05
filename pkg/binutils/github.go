@@ -10,6 +10,9 @@ const (
 	linux   = "linux"
 	darwin  = "darwin"
 	windows = "windows"
+
+	zipExtension = "zip"
+	tarExtension = "tar.gz"
 )
 
 type GithubDownloader interface {
@@ -19,6 +22,11 @@ type GithubDownloader interface {
 type (
 	subnetEVMDownloader   struct{}
 	avalancheGoDownloader struct{}
+)
+
+var (
+	_ GithubDownloader = (*subnetEVMDownloader)(nil)
+	_ GithubDownloader = (*avalancheGoDownloader)(nil)
 )
 
 func GetGithubLatestReleaseURL(org, repo string) string {
