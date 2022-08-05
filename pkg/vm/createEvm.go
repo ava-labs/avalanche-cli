@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"math/big"
+	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -35,6 +36,36 @@ const (
 	stop
 )
 
+func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesisPath string) ([]byte, *models.Sidecar, error) {
+	var (
+		genesisBytes []byte
+		sc           *models.Sidecar
+		err          error
+	)
+
+	if genesisPath == "" {
+		genesisBytes, sc, err = createEvmGenesis(app, subnetName)
+		if err != nil {
+			return []byte{}, &models.Sidecar{}, err
+		}
+	} else {
+		ux.Logger.PrintToUser("Importing genesis")
+		genesisBytes, err = os.ReadFile(genesisPath)
+		if err != nil {
+			return []byte{}, &models.Sidecar{}, err
+		}
+
+		sc = &models.Sidecar{
+			Name:      subnetName,
+			VM:        models.SubnetEvm,
+			Subnet:    subnetName,
+			TokenName: "",
+		}
+	}
+
+	return genesisBytes, sc, nil
+}
+
 func nextStage(currentState wizardState, direction stateDirection) wizardState {
 	switch direction {
 	case forward:
@@ -47,8 +78,8 @@ func nextStage(currentState wizardState, direction stateDirection) wizardState {
 	return currentState
 }
 
-func CreateEvmGenesis(name string, app *application.Avalanche) ([]byte, *models.Sidecar, error) {
-	ux.Logger.PrintToUser("creating subnet %s", name)
+func createEvmGenesis(app *application.Avalanche, subnetName string) ([]byte, *models.Sidecar, error) {
+	ux.Logger.PrintToUser("creating subnet %s", subnetName)
 
 	genesis := core.Genesis{}
 	conf := params.SubnetEVMDefaultChainConfig
@@ -103,9 +134,9 @@ func CreateEvmGenesis(name string, app *application.Avalanche) ([]byte, *models.
 	}
 
 	sc := &models.Sidecar{
-		Name:      name,
+		Name:      subnetName,
 		VM:        models.SubnetEvm,
-		Subnet:    name,
+		Subnet:    subnetName,
 		TokenName: tokenName,
 	}
 

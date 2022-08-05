@@ -117,7 +117,7 @@ func TestDeployToLocal(t *testing.T) {
 	err = os.WriteFile(testGenesis.Name(), []byte(genesis), constants.DefaultPerms755)
 	assert.NoError(err)
 	// test actual deploy
-	s, b, err := testDeployer.DeployToLocalNetwork(testVMName, testGenesis.Name())
+	s, b, err := testDeployer.DeployToLocalNetwork(testVMName, []byte(genesis), testGenesis.Name())
 	assert.NoError(err)
 	assert.Equal(testSubnetID2, s.String())
 	assert.Equal(testBlockChainID2, b.String())

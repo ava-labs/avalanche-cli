@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 
@@ -119,6 +120,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 				return nil
 			}
 		}
+		ux.Logger.PrintToUser("The node is already whitelisted! You are good to go.")
 	}
 
 	if printManual {
@@ -138,12 +140,13 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 		)
 		choice, err := app.Prompt.CaptureList(
 			"How would you like to update the avalanchego config?",
-			[]string{choiceManual, choiceAutomatic},
+			[]string{choiceAutomatic, choiceManual},
 		)
 		if err != nil {
 			return err
 		}
 		if choice == choiceManual {
+			pluginDir = app.GetTmpPluginDir()
 			vmPath, err := createPlugin(sc.Name, pluginDir)
 			if err != nil {
 				return err
@@ -161,11 +164,21 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 		}
 	}
 
+	avagoConfigPath, err := sanitizePath(avagoConfigPath)
+	if err != nil {
+		return err
+	}
+
 	if pluginDir == "" {
 		pluginDir, err = app.Prompt.CaptureString("Path to your avalanchego plugin dir (likely avalanchego/build/plugins)")
 		if err != nil {
 			return err
 		}
+	}
+
+	pluginDir, err := sanitizePath(pluginDir)
+	if err != nil {
+		return err
 	}
 
 	vmPath, err := createPlugin(sc.Name, pluginDir)
@@ -197,19 +210,45 @@ func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, erro
 	default:
 		return false, fmt.Errorf("network not supported")
 	}
-	ctx := context.Background()
-	nodeIDs := []ids.NodeID{nodeID}
 
 	pClient := platformvm.NewClient(api)
+
+	return checkIsValidating(subnetID, nodeID, pClient)
+}
+
+func checkIsValidating(subnetID ids.ID, nodeID ids.NodeID, pClient platformvm.Client) (bool, error) {
+	// first check if the node is already an accepted validator on the subnet
+	ctx := context.Background()
+	nodeIDs := []ids.NodeID{nodeID}
 	vals, err := pClient.GetCurrentValidators(ctx, subnetID, nodeIDs)
 	if err != nil {
 		return false, err
 	}
 	for _, v := range vals {
+		// strictly this is not needed, as we are providing the nodeID as param
+		// just a double check
 		if v.NodeID == nodeID {
 			return true, nil
 		}
 	}
+
+	// if not, also check the pending validator set
+	pVals, _, err := pClient.GetPendingValidators(ctx, subnetID, nodeIDs)
+	if err != nil {
+		return false, err
+	}
+	// pVals is an array of interfaces as it can be of different types
+	// but it's content is a JSON map[string]interface{}
+	for _, iv := range pVals {
+		if v, ok := iv.(map[string]interface{}); ok {
+			// strictly this is not needed, as we are providing the nodeID as param
+			// just a double check
+			if v["nodeID"] == nodeID.String() {
+				return true, nil
+			}
+		}
+	}
+
 	return false, nil
 }
 
@@ -272,7 +311,7 @@ func editConfigFile(subnetID string, networkID string, configFile string) error 
 	if err != nil {
 		return fmt.Errorf("failed to pack JSON to bytes for the config file: %w", err)
 	}
-	if err := os.WriteFile(avagoConfigPath, writeBytes, constants.DefaultPerms755); err != nil {
+	if err := os.WriteFile(configFile, writeBytes, constants.DefaultPerms755); err != nil {
 		return fmt.Errorf("failed to write JSON config file, check permissions? %w", err)
 	}
 	msg := `The config file has been edited. To use it, make sure to start the node with the '--config-file' option, e.g.
@@ -324,13 +363,28 @@ func createPlugin(subnetName string, pluginDir string) (string, error) {
 		return "", fmt.Errorf("failed to create VM ID from %s: %w", subnetName, err)
 	}
 
-	downloader := binutils.NewPluginBinaryDownloader(app.Log)
+	downloader := binutils.NewPluginBinaryDownloader(app)
 
 	binDir := filepath.Join(app.GetBaseDir(), constants.AvalancheCliBinDir)
-	if err := downloader.DownloadVM(chainVMID.String(), pluginDir, binDir); err != nil {
+	if err := downloader.DownloadVM(subnetName, chainVMID.String(), pluginDir, binDir); err != nil {
 		return "", err
 	}
 
 	vmPath := filepath.Join(pluginDir, chainVMID.String())
 	return vmPath, nil
+}
+
+func sanitizePath(path string) (string, error) {
+	usr, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	homeDir := usr.HomeDir
+	if path == "~" {
+		// In case of "~", which won't be caught by the "else if"
+		path = homeDir
+	} else if strings.HasPrefix(path, "~/") {
+		path = filepath.Join(homeDir, path[2:])
+	}
+	return path, nil
 }

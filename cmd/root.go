@@ -109,6 +109,13 @@ func setupEnv() (string, error) {
 		os.Exit(1)
 	}
 
+	// Create custom vm dir if it doesn't exist
+	vmDir := filepath.Join(baseDir, constants.AvalancheCliBinDir, constants.CustomVMDir)
+	if err = os.MkdirAll(vmDir, os.ModePerm); err != nil {
+		fmt.Printf("failed creating the vm dir %s: %s\n", vmDir, err)
+		os.Exit(1)
+	}
+
 	return baseDir, nil
 }
 

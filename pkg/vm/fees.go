@@ -6,6 +6,7 @@ package vm
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/subnet-evm/commontype"
 	"github.com/ava-labs/subnet-evm/params"
 )
 
@@ -94,7 +95,7 @@ func getFeeConfig(config params.ChainConfig, app *application.Avalanche) (params
 		return config, stop, err
 	}
 
-	feeConf := params.FeeConfig{
+	feeConf := commontype.FeeConfig{
 		GasLimit:                 gasLimit,
 		TargetBlockRate:          blockRate.Uint64(),
 		MinBaseFee:               minBaseFee,
