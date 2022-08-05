@@ -36,7 +36,7 @@ const (
 	stop
 )
 
-func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesisPath string) ([]byte, *models.Sidecar, error) {
+func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesisPath string, subnetEVMVersion string) ([]byte, *models.Sidecar, error) {
 	var (
 		genesisBytes []byte
 		sc           *models.Sidecar
@@ -44,7 +44,7 @@ func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesi
 	)
 
 	if genesisPath == "" {
-		genesisBytes, sc, err = createEvmGenesis(app, subnetName)
+		genesisBytes, sc, err = createEvmGenesis(app, subnetName, subnetEVMVersion)
 		if err != nil {
 			return []byte{}, &models.Sidecar{}, err
 		}
@@ -55,9 +55,17 @@ func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesi
 			return []byte{}, &models.Sidecar{}, err
 		}
 
+		if subnetEVMVersion == "" {
+			subnetEVMVersion, err = getSubnetEVMVersion(app)
+			if err != nil {
+				return []byte{}, &models.Sidecar{}, err
+			}
+		}
+
 		sc = &models.Sidecar{
 			Name:      subnetName,
 			VM:        models.SubnetEvm,
+			VMVersion: subnetEVMVersion,
 			Subnet:    subnetName,
 			TokenName: "",
 		}
@@ -78,7 +86,7 @@ func nextStage(currentState wizardState, direction stateDirection) wizardState {
 	return currentState
 }
 
-func createEvmGenesis(app *application.Avalanche, subnetName string) ([]byte, *models.Sidecar, error) {
+func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVersion string) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating subnet %s", subnetName)
 
 	genesis := core.Genesis{}
@@ -100,7 +108,7 @@ func createEvmGenesis(app *application.Avalanche, subnetName string) ([]byte, *m
 		case startStage:
 			direction = forward
 		case descriptorStage:
-			chainID, tokenName, vmVersion, direction, err = getDescriptors(app)
+			chainID, tokenName, vmVersion, direction, err = getDescriptors(app, subnetEVMVersion)
 		case feeStage:
 			*conf, direction, err = getFeeConfig(*conf, app)
 		case airdropStage:

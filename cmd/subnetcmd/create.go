@@ -14,11 +14,12 @@ import (
 )
 
 var (
-	forceCreate  bool
-	useSubnetEvm bool
-	genesisFile  string
-	vmFile       string
-	useCustom    bool
+	forceCreate      bool
+	useSubnetEvm     bool
+	genesisFile      string
+	vmFile           string
+	useCustom        bool
+	subnetEvmVersion string
 
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
@@ -48,6 +49,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
 	cmd.Flags().StringVar(&vmFile, "vm", "", "file path of custom vm to use")
 	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the SubnetEVM as the base template")
+	cmd.Flags().StringVar(&subnetEvmVersion, "subnet-evm", "", "version of subnet-evm to use")
 	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
 	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
 	return cmd
@@ -111,7 +113,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 
 	switch subnetType {
 	case subnetEvm:
-		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(app, subnetName, genesisFile)
+		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(app, subnetName, genesisFile, subnetEvmVersion)
 		if err != nil {
 			return err
 		}

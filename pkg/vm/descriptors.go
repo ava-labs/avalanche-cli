@@ -73,7 +73,7 @@ func getSubnetEVMVersion(app *application.Avalanche) (string, error) {
 	return "", errors.New("Unimplemented")
 }
 
-func getDescriptors(app *application.Avalanche) (*big.Int, string, string, stateDirection, error) {
+func getDescriptors(app *application.Avalanche, subnetEVMVersion string) (*big.Int, string, string, stateDirection, error) {
 	chainID, err := getChainID(app)
 	if err != nil {
 		return nil, "", "", stop, err
@@ -84,10 +84,12 @@ func getDescriptors(app *application.Avalanche) (*big.Int, string, string, state
 		return nil, "", "", stop, err
 	}
 
-	vmVersion, err := getSubnetEVMVersion(app)
-	if err != nil {
-		return nil, "", "", stop, err
+	if subnetEVMVersion == "" {
+		subnetEVMVersion, err = getSubnetEVMVersion(app)
+		if err != nil {
+			return nil, "", "", stop, err
+		}
 	}
 
-	return chainID, tokenName, vmVersion, forward, nil
+	return chainID, tokenName, subnetEVMVersion, forward, nil
 }

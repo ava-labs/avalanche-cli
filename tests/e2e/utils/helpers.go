@@ -105,6 +105,28 @@ func DeleteKey(keyName string) error {
 	return nil
 }
 
+func DeleteBins() error {
+	avagoPath := path.Join(GetBaseDir(), constants.AvalancheCliBinDir, constants.AvalancheGoInstallDir)
+	if _, err := os.Stat(avagoPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		// Schrodinger: file may or may not exist. See err for details.
+		return err
+	}
+
+	// ignore error, file may not exist
+	os.RemoveAll(avagoPath)
+
+	subevmPath := path.Join(GetBaseDir(), constants.AvalancheCliBinDir, constants.SubnetEVMInstallDir)
+	if _, err := os.Stat(subevmPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		// Schrodinger: file may or may not exist. See err for details.
+		return err
+	}
+
+	// ignore error, file may not exist
+	os.RemoveAll(subevmPath)
+
+	return nil
+}
+
 func stdoutParser(output string, queue string, capture string) (string, error) {
 	// split output by newline
 	lines := strings.Split(output, "\n")

@@ -27,6 +27,8 @@ func CreateSubnetConfig(subnetName string, genesisPath string) {
 		genesisPath,
 		"--evm",
 		subnetName,
+		"--subnet-evm",
+		"v0.2.8",
 	)
 	_, err = cmd.Output()
 	gomega.Expect(err).Should(gomega.BeNil())
