@@ -34,7 +34,7 @@ var (
 	testSubnetID2     = ids.GenerateTestID().String()
 
 	testVMID   = "tGBrM2SXkAdNsqzb3SaFZZWMNdzjjFEUKteheTa4dhUwnfQyu" // VM ID of "test"
-	testVMName = "test"
+	testChainName = "test"
 
 	fakeHealthResponse = &rpcpb.HealthResponse{
 		ClusterInfo: &rpcpb.ClusterInfo{
@@ -117,7 +117,7 @@ func TestDeployToLocal(t *testing.T) {
 	err = os.WriteFile(testGenesis.Name(), []byte(genesis), constants.DefaultPerms755)
 	assert.NoError(err)
 	// test actual deploy
-	s, b, err := testDeployer.DeployToLocalNetwork(testVMName, []byte(genesis), testGenesis.Name())
+	s, b, err := testDeployer.DeployToLocalNetwork(testChainName, []byte(genesis), testGenesis.Name())
 	assert.NoError(err)
 	assert.Equal(testSubnetID2, s.String())
 	assert.Equal(testBlockChainID2, b.String())
@@ -227,7 +227,7 @@ func getTestClientFunc() (client.Client, error) {
 	// Afterwards, change the VmId so that TestDeployToLocal has the correct ID to check
 	alteredFakeResponse := proto.Clone(fakeHealthResponse).(*rpcpb.HealthResponse) // new(rpcpb.HealthResponse)
 	alteredFakeResponse.ClusterInfo.CustomChains["bchain2"].VmId = testVMID
-	alteredFakeResponse.ClusterInfo.CustomChains["bchain2"].ChainName = testVMName
+	alteredFakeResponse.ClusterInfo.CustomChains["bchain2"].ChainName = testChainName
 	alteredFakeResponse.ClusterInfo.CustomChains["bchain1"].ChainName = "bchain1"
 	c.On("Health", mock.Anything).Return(alteredFakeResponse, nil)
 	c.On("Close").Return(nil)
