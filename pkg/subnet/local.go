@@ -170,7 +170,7 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis []byte, genesi
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %s", err)
 	}
 	subnetIDs := clusterInfo.Subnets
-	numBlockchains := len(clusterInfo.CustomVms)
+	numBlockchains := len(clusterInfo.CustomChains)
 
 	// in order to make subnet deploy faster, a set of validated subnet IDs is preloaded
 	// in the bootstrap snapshot
@@ -239,9 +239,9 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis []byte, genesi
 	// we can safely ignore errors here as the subnets have already been generated
 	subnetID, _ := ids.FromString(subnetIDStr)
 	var blockchainID ids.ID
-	for _, info := range clusterInfo.CustomVms {
+	for _, info := range clusterInfo.CustomChains {
 		if info.VmId == chainVMID.String() {
-			blockchainID, _ = ids.FromString(info.BlockchainId)
+			blockchainID, _ = ids.FromString(info.ChainId)
 		}
 	}
 	return subnetID, blockchainID, nil
@@ -408,7 +408,7 @@ func (d *LocalSubnetDeployer) WaitForHealthy(
 				d.app.Log.Debug("network is not healthy. polling again...")
 				continue
 			}
-			if !resp.ClusterInfo.CustomVmsHealthy {
+			if !resp.ClusterInfo.CustomChainsHealthy {
 				d.app.Log.Debug("network is up but custom VMs are not healthy. polling again...")
 				continue
 			}
@@ -422,8 +422,8 @@ func (d *LocalSubnetDeployer) WaitForHealthy(
 func GetEndpoints(clusterInfo *rpcpb.ClusterInfo) []string {
 	endpoints := []string{}
 	for _, nodeInfo := range clusterInfo.NodeInfos {
-		for blockchainID, vmInfo := range clusterInfo.CustomVms {
-			endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, blockchainID, vmInfo.VmId, nodeInfo.GetUri(), blockchainID))
+		for blockchainID, chainInfo := range clusterInfo.CustomChains {
+			endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, blockchainID, chainInfo.VmId, nodeInfo.GetUri(), blockchainID))
 		}
 	}
 	return endpoints
@@ -432,8 +432,8 @@ func GetEndpoints(clusterInfo *rpcpb.ClusterInfo) []string {
 // return true if vm has already been deployed
 func alreadyDeployed(chainVMID ids.ID, clusterInfo *rpcpb.ClusterInfo) bool {
 	if clusterInfo != nil {
-		for _, vmInfo := range clusterInfo.CustomVms {
-			if vmInfo.VmId == chainVMID.String() {
+		for _, chainInfo := range clusterInfo.CustomChains {
+			if chainInfo.VmId == chainVMID.String() {
 				return true
 			}
 		}
@@ -451,8 +451,8 @@ func (d *LocalSubnetDeployer) installNeededPlugins(
 	toInstallVMIDs := map[string]string{}
 	toInstallVMIDs[chain] = chainVMID.String()
 	if clusterInfo != nil {
-		for _, vmInfo := range clusterInfo.CustomVms {
-			toInstallVMIDs[vmInfo.VmName] = vmInfo.VmId
+		for _, chainInfo := range clusterInfo.CustomChains {
+			toInstallVMIDs[chainInfo.ChainName] = chainInfo.VmId
 		}
 	}
 	binDir := filepath.Join(d.app.GetBaseDir(), constants.AvalancheCliBinDir)
