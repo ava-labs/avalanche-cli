@@ -61,5 +61,5 @@ func cleanBins(dir string) {
 	if err := os.RemoveAll(dir); err != nil {
 		ux.Logger.PrintToUser("Removal failed: %s", err)
 	}
-	ux.Logger.PrintToUser("All existing binaries removed. To continue using the tool, install latest binaries again.")
+	ux.Logger.PrintToUser("All existing binaries removed.")
 }
