@@ -182,6 +182,11 @@ func installTarGzArchive(targz []byte, binDir string) error {
 			}
 		// if it's a file create it
 		case tar.TypeReg:
+			// if the containing directory doesn't exist yet, create it
+			containingDir := filepath.Dir(target)
+			if err := os.MkdirAll(containingDir, constants.DefaultPerms755); err != nil {
+				return fmt.Errorf("failed creating directory from tar entry %w", err)
+			}
 			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 			if err != nil {
 				return fmt.Errorf("failed opening new file from tar entry %w", err)

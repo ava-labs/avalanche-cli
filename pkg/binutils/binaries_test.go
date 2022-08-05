@@ -8,6 +8,7 @@ import (
 	"archive/zip"
 	"compress/gzip"
 	"crypto/rand"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -52,7 +53,7 @@ func TestInstallGzipArchive(t *testing.T) {
 	tgz := filepath.Join(tmpDir, "testFile.tar.gz")
 	defer os.Remove(tgz)
 
-	createTarGz(assert, archivePath, tgz)
+	createTarGz(assert, archivePath, tgz, true)
 
 	// can't use t.TempDir here as that returns the same dir
 	installDir, err := os.MkdirTemp(tmpDir, "gzip-test-dir")
@@ -123,7 +124,7 @@ func createZip(assert *assert.Assertions, src string, dest string) {
 	assert.NoError(err)
 }
 
-func createTarGz(assert *assert.Assertions, src string, dest string) {
+func createTarGz(assert *assert.Assertions, src string, dest string, includeTopLevel bool) {
 	tgz, err := os.Create(dest)
 	assert.NoError(err)
 	defer tgz.Close()
@@ -138,8 +139,10 @@ func createTarGz(assert *assert.Assertions, src string, dest string) {
 	assert.NoError(err)
 
 	var baseDir string
-	if info.IsDir() {
+	if includeTopLevel && info.IsDir() {
 		baseDir = filepath.Base(src)
+	} else {
+		baseDir = ""
 	}
 
 	err = filepath.Walk(src,
@@ -154,6 +157,13 @@ func createTarGz(assert *assert.Assertions, src string, dest string) {
 
 			if baseDir != "" {
 				header.Name = filepath.Join(baseDir, strings.TrimPrefix(path, src))
+			}
+
+			fmt.Println("Base dir", baseDir)
+			fmt.Println("Header:", header.Name)
+			if strings.TrimSuffix(header.Name, "/") == filepath.Base(src) {
+				fmt.Println("Hit condition")
+				return nil
 			}
 
 			if err := tarball.WriteHeader(header); err != nil {
