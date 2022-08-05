@@ -5,13 +5,12 @@ package validatorcmd
 import (
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validator"
 	"github.com/spf13/cobra"
 )
 
-func newStatusCmd(injectedApp *application.Avalanche) *cobra.Command {
+func newStatusCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status [subnet]",
 		Short: "Starts a validator",
@@ -31,11 +30,12 @@ func validatorStatus(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if strings.Contains(status, "Active: inactive") {
+	switch {
+	case strings.Contains(status, "Active: inactive"):
 		ux.Logger.PrintToUser("not running")
-	} else if strings.Contains(status, "Active: active (running)") {
+	case strings.Contains(status, "Active: active (running)"):
 		ux.Logger.PrintToUser("running")
-	} else {
+	default:
 		ux.Logger.PrintToUser("status unknown")
 	}
 	return nil

@@ -24,7 +24,6 @@ func (a *AvalanchegoValidator) Start(svc service.Service) error {
 }
 
 func (a *AvalanchegoValidator) Stop(svc service.Service) error {
-	svc.Stop()
 	return nil
 }
 

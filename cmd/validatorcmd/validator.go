@@ -28,15 +28,15 @@ To get started, use the key create command.`,
 	}
 
 	// avalanche key create
-	cmd.AddCommand(newStartCmd(app))
+	cmd.AddCommand(newStartCmd())
 
 	// avalanche key list
-	cmd.AddCommand(newStopCmd(app))
+	cmd.AddCommand(newStopCmd())
 
 	// avalanche key delete
-	cmd.AddCommand(newStatusCmd(app))
+	cmd.AddCommand(newStatusCmd())
 
 	// avalanche key delete
-	cmd.AddCommand(newInstallCmd(app))
+	cmd.AddCommand(newInstallCmd())
 	return cmd
 }

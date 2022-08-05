@@ -3,15 +3,13 @@
 package validatorcmd
 
 import (
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/validator"
-	"github.com/kardianos/service"
 	"github.com/spf13/cobra"
 )
 
-func newInstallCmd(injectedApp *application.Avalanche) *cobra.Command {
+func newInstallCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "install",
 		Short: "Installs a validator",
@@ -30,12 +28,4 @@ func installValidator(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	return validator.InstallAsAService(models.Fuji, avagoBinDir, app)
-}
-
-func getServiceDef(network models.Network) service.Config {
-	return service.Config{}
-}
-
-func saveServiceDef(serviceDef service.Config) error {
-	return nil
 }

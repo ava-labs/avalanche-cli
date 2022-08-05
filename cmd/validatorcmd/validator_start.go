@@ -3,14 +3,13 @@
 package validatorcmd
 
 import (
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/validator"
 	"github.com/spf13/cobra"
 )
 
-func newStartCmd(injectedApp *application.Avalanche) *cobra.Command {
+func newStartCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "start [subnet]",
 		Short: "Starts a validator",

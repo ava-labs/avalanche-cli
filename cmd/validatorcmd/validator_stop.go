@@ -3,13 +3,12 @@
 package validatorcmd
 
 import (
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/validator"
 	"github.com/spf13/cobra"
 )
 
-func newStopCmd(injectedApp *application.Avalanche) *cobra.Command {
+func newStopCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "stop",
 		Short: "Stops a validator",
