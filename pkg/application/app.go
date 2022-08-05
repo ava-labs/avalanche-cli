@@ -5,11 +5,14 @@ package application
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
 )
@@ -23,15 +26,19 @@ var errChainIDExists = errors.New("the provided chain ID already exists! Try ano
 type Avalanche struct {
 	Log     logging.Logger
 	baseDir string
+	Conf    *config.Config
+	Prompt  prompts.Prompter
 }
 
 func New() *Avalanche {
 	return &Avalanche{}
 }
 
-func (app *Avalanche) Setup(baseDir string, log logging.Logger) {
+func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Config, prompt prompts.Prompter) {
 	app.baseDir = baseDir
 	app.Log = log
+	app.Conf = conf
+	app.Prompt = prompt
 }
 
 func (app *Avalanche) GetRunFile() string {
@@ -54,6 +61,14 @@ func (app *Avalanche) GetRunDir() string {
 	return filepath.Join(app.baseDir, constants.RunDir)
 }
 
+func (app *Avalanche) GetCustomVMDir() string {
+	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.CustomVMDir)
+}
+
+func (app *Avalanche) GetCustomVMPath(subnetName string) string {
+	return filepath.Join(app.GetCustomVMDir(), subnetName)
+}
+
 func (app *Avalanche) GetGenesisPath(subnetName string) string {
 	return filepath.Join(app.baseDir, subnetName+constants.GenesisSuffix)
 }
@@ -64,6 +79,10 @@ func (app *Avalanche) GetSidecarPath(subnetName string) string {
 
 func (app *Avalanche) GetKeyDir() string {
 	return filepath.Join(app.baseDir, constants.KeyDir)
+}
+
+func (app *Avalanche) GetTmpPluginDir() string {
+	return os.TempDir()
 }
 
 func (app *Avalanche) GetKeyPath(keyName string) string {
@@ -96,6 +115,15 @@ func (app *Avalanche) CopyGenesisFile(inputFilename string, subnetName string) e
 	return os.WriteFile(genesisPath, genesisBytes, WriteReadReadPerms)
 }
 
+func (app *Avalanche) CopyVMBinary(inputFilename string, subnetName string) error {
+	vmBytes, err := os.ReadFile(inputFilename)
+	if err != nil {
+		return err
+	}
+	vmPath := app.GetCustomVMPath(subnetName)
+	return os.WriteFile(vmPath, vmBytes, WriteReadReadPerms)
+}
+
 func (app *Avalanche) CopyKeyFile(inputFilename string, keyName string) error {
 	keyBytes, err := os.ReadFile(inputFilename)
 	if err != nil {
@@ -117,6 +145,16 @@ func (app *Avalanche) LoadEvmGenesis(subnetName string) (core.Genesis, error) {
 	return gen, err
 }
 
+func (app *Avalanche) LoadRawGenesis(subnetName string) ([]byte, error) {
+	genesisPath := app.GetGenesisPath(subnetName)
+	genesisBytes, err := os.ReadFile(genesisPath)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return genesisBytes, err
+}
+
 func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 	if sc.TokenName == "" {
 		sc.TokenName = constants.DefaultTokenName
@@ -125,7 +163,7 @@ func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 	// but better safe than sorry
 	exists, err := app.ChainIDExists(sc.ChainID)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to determine if chainID is unique: %w", err)
 	}
 	if exists {
 		return errChainIDExists
@@ -207,7 +245,8 @@ func (app *Avalanche) ChainIDExists(chainID string) (bool, error) {
 		if sc.ChainID == "" {
 			gen, err := app.LoadEvmGenesis(car)
 			if err != nil {
-				return false, err
+				// unable to find chain id, skip
+				continue
 			}
 			existingChainID = gen.Config.ChainID.String()
 		}

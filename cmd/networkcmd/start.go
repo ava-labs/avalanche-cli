@@ -19,11 +19,14 @@ import (
 func newStartCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "start [snapshotName]",
-		Short: "Starts a stopped local network",
+		Short: "Starts a local network",
 		Long: `The network start command starts a local, multi-node Avalanche network
-on your machine. If "snapshotName" is provided, that snapshot will be used for starting the network
-if it can be found. Otherwise, the last saved unnamed (default) snapshot will be used. The command may fail if the local network
-is already running or if no subnets have been deployed.`,
+on your machine.
+
+By default, the command loads the default snapshot. If "snapshotName"
+is provided, that snapshot will be used for starting the network if
+it can be found. The command may fail if the local network is already
+running.`,
 
 		RunE:         startNetwork,
 		Args:         cobra.MaximumNArgs(1),
@@ -72,6 +75,16 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 		client.WithExecPath(avalancheGoBinPath),
 		client.WithRootDataDir(outputDir),
 	}
+
+	// load global node configs if they exist
+	configStr, err := app.Conf.LoadNodeConfig()
+	if err != nil {
+		return err
+	}
+	if configStr != "" {
+		loadSnapshotOpts = append(loadSnapshotOpts, client.WithGlobalNodeConfig(configStr))
+	}
+
 	_, err = cli.LoadSnapshot(
 		ctx,
 		snapshotName,

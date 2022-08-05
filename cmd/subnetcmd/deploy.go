@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
@@ -28,22 +27,27 @@ var (
 func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy [subnetName]",
-		Short: "Deploys a subnet configuration with clean state",
+		Short: "Deploys a subnet configuration",
 		Long: `The subnet deploy command deploys your subnet configuration locally, to
-Fuji Testnet, or to Mainnet. Currently, the beta release only support
-local deploys.
+Fuji Testnet, or to Mainnet. Currently, the beta release only supports
+local and Fuji deploys.
 
 At the end of the call, the command will print the RPC URL you can use
 to interact with the subnet.
 
-Subsequent calls of deploy using the same subnet configuration will
-redeploy the subnet and reset the chain state to genesis.`,
+Subnets may only be deployed once. Subsequent calls of deploy to the
+same network (local, Fuji, Mainnet) are not allowed. If you'd like to
+redeploy a subnet locally for testing, you must first call avalanche
+network clean to reset all deployed chain state. Subsequent local
+deploys will redeploy the chain with fresh state. The same subnet can
+be deployed to multiple networks, so you can take your locally tested
+subnet and deploy it on Fuji or Mainnet.`,
 		SilenceUsage: true,
 		RunE:         deploySubnet,
 		Args:         cobra.ExactArgs(1),
 	}
 	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
-	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use")
+	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use for fuji deploys")
 	return cmd
 }
 
@@ -79,20 +83,9 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 
 // deploySubnet is the cobra command run for deploying subnets
 func deploySubnet(cmd *cobra.Command, args []string) error {
-	// this should not be necessary but some bright guy might just be creating
-	// the genesis by hand or something...
-	if err := checkInvalidSubnetNames(args[0]); err != nil {
-		return fmt.Errorf("subnet name %s is invalid: %s", args[0], err)
-	}
-	// Check subnet exists
-	// TODO create a file that lists chains by subnet for fast querying
-	chains, err := getChainsInSubnet(args[0])
+	chains, err := validateSubnetNameAndGetChains(args)
 	if err != nil {
-		return fmt.Errorf("failed to getChainsInSubnet: %w", err)
-	}
-
-	if len(chains) == 0 {
-		return errors.New("Invalid subnet " + args[0])
+		return err
 	}
 
 	// get the network to deploy to
@@ -100,7 +93,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	if deployLocal {
 		network = models.Local
 	} else {
-		networkStr, err := prompts.CaptureList(
+		networkStr, err := app.Prompt.CaptureList(
 			"Choose a network to deploy on",
 			[]string{models.Local.String(), models.Fuji.String(), models.Mainnet.String()},
 		)
@@ -113,7 +106,12 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// deploy based on chosen network
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.String())
 	chain := chains[0]
-	chainGenesis := filepath.Join(app.GetBaseDir(), fmt.Sprintf("%s_genesis.json", chain))
+	chainGenesis, err := app.LoadRawGenesis(chain)
+	if err != nil {
+		return err
+	}
+
+	genesisPath := app.GetGenesisPath(chain)
 
 	switch network {
 	case models.Local:
@@ -123,7 +121,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to load sidecar for later update: %w", err)
 		}
 		deployer := subnet.NewLocalSubnetDeployer(app)
-		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis)
+		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
 		if err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {
@@ -146,7 +144,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	case models.Fuji: // just make the switch pass
 		if keyName == "" {
-			keyName, err = prompts.CaptureString("Which private key should be used to issue the transaction? (Provide key name)")
+			keyName, err = captureKeyName()
 			if err != nil {
 				return err
 			}
@@ -205,8 +203,12 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 }
 
 func getControlKeys(network models.Network) ([]string, bool, error) {
-	controlKeysPrompt := "Configure which addresses allow to add new validators"
+	controlKeysInitialPrompt := "Configure which addresses may add new validators to the subnet.\n" +
+		"These addresses are known as your control keys. You will also\n" +
+		"set how many control keys are required to add a validator."
+	controlKeysPrompt := "Set control keys"
 
+	ux.Logger.PrintToUser(controlKeysInitialPrompt)
 	for {
 		// ask in a loop so that if some condition is not met we can keep asking
 		controlKeys, cancelled, err := controlKeysLoop(controlKeysPrompt, network)
@@ -235,7 +237,7 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 	var controlKeys []string
 
 	for {
-		listDecision, err := prompts.CaptureList(
+		listDecision, err := app.Prompt.CaptureList(
 			controlKeysPrompt, []string{addCtrlKey, doneMsg, cancelMsg},
 		)
 		if err != nil {
@@ -244,8 +246,8 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 
 		switch listDecision {
 		case addCtrlKey:
-			controlKey, err := prompts.CapturePChainAddress(
-				"Enter the P-Chain addresses which control who can add validators to this subnet (*must* be a PChain address: `P-...`)",
+			controlKey, err := app.Prompt.CapturePChainAddress(
+				"Enter P-Chain address (Ex: `P-...`)",
 				network,
 			)
 			if err != nil {
@@ -268,12 +270,12 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 
 // getThreshold prompts for the threshold of addresses as a number
 func getThreshold(maxLen uint64) (uint32, error) {
-	threshold, err := prompts.CaptureUint64("Enter required number of control addresses to add validators")
+	threshold, err := app.Prompt.CaptureUint64("Enter required number of control key signatures to add a validator")
 	if err != nil {
 		return 0, err
 	}
 	if threshold > maxLen {
-		return 0, fmt.Errorf("the threshold can't be bigger than the number of control addresses")
+		return 0, fmt.Errorf("the threshold can't be bigger than the number of control keys")
 	}
 	return uint32(threshold), err
 }
@@ -285,4 +287,24 @@ func contains(list []string, element string) bool {
 		}
 	}
 	return false
+}
+
+func validateSubnetNameAndGetChains(args []string) ([]string, error) {
+	// this should not be necessary but some bright guy might just be creating
+	// the genesis by hand or something...
+	if err := checkInvalidSubnetNames(args[0]); err != nil {
+		return nil, fmt.Errorf("subnet name %s is invalid: %s", args[0], err)
+	}
+	// Check subnet exists
+	// TODO create a file that lists chains by subnet for fast querying
+	chains, err := getChainsInSubnet(args[0])
+	if err != nil {
+		return nil, fmt.Errorf("failed to getChainsInSubnet: %w", err)
+	}
+
+	if len(chains) == 0 {
+		return nil, errors.New("Invalid subnet " + args[0])
+	}
+
+	return chains, nil
 }

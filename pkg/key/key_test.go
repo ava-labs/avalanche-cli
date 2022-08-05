@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ava-labs/avalanchego/utils/cb58"
 	"github.com/ava-labs/avalanchego/utils/crypto"
-	"github.com/ava-labs/avalanchego/utils/formatting"
 )
 
 const (
@@ -51,7 +51,7 @@ func TestNewKeyEwoq(t *testing.T) {
 func TestNewKey(t *testing.T) {
 	t.Parallel()
 
-	skBytes, err := formatting.Decode(formatting.CB58, rawEwoqPk)
+	skBytes, err := cb58.Decode(rawEwoqPk)
 	if err != nil {
 		t.Fatal(err)
 	}

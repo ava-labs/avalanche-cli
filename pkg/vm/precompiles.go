@@ -1,3 +1,6 @@
+// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
+
 package vm
 
 import (
@@ -5,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile"
@@ -20,7 +24,7 @@ func contains(list []common.Address, element common.Address) bool {
 	return false
 }
 
-func getAdminList(initialPrompt string, info string) ([]common.Address, bool, error) {
+func getAdminList(initialPrompt string, info string, app *application.Avalanche) ([]common.Address, bool, error) {
 	const (
 		addAdmin    = "Add admin"
 		removeAdmin = "Remove admin"
@@ -33,7 +37,7 @@ func getAdminList(initialPrompt string, info string) ([]common.Address, bool, er
 	admins := []common.Address{}
 
 	for {
-		listDecision, err := prompts.CaptureList(
+		listDecision, err := app.Prompt.CaptureList(
 			initialPrompt,
 			[]string{addAdmin, removeAdmin, preview, moreInfo, doneMsg, cancelMsg},
 		)
@@ -43,7 +47,7 @@ func getAdminList(initialPrompt string, info string) ([]common.Address, bool, er
 
 		switch listDecision {
 		case addAdmin:
-			adminAddr, err := prompts.CaptureAddress("Admin Address")
+			adminAddr, err := app.Prompt.CaptureAddress("Admin Address")
 			if err != nil {
 				return []common.Address{}, false, err
 			}
@@ -53,7 +57,7 @@ func getAdminList(initialPrompt string, info string) ([]common.Address, bool, er
 			}
 			admins = append(admins, adminAddr)
 		case removeAdmin:
-			index, err := prompts.CaptureIndex("Choose address to remove:", admins)
+			index, err := app.Prompt.CaptureIndex("Choose address to remove:", admins)
 			if err != nil {
 				return []common.Address{}, false, err
 			}
@@ -76,14 +80,14 @@ func getAdminList(initialPrompt string, info string) ([]common.Address, bool, er
 	}
 }
 
-func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, bool, error) {
+func configureContractAllowList(app *application.Avalanche) (precompile.ContractDeployerAllowListConfig, bool, error) {
 	config := precompile.ContractDeployerAllowListConfig{}
 	prompt := "Configure contract deployment allow list"
 	info := "\nThis precompile restricts who has the ability to deploy contracts " +
 		"on your subnet.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet/#restricting-smart-contract-deployers\n\n"
 
-	admins, cancelled, err := getAdminList(prompt, info)
+	admins, cancelled, err := getAdminList(prompt, info, app)
 	if err != nil {
 		return config, false, err
 	}
@@ -96,14 +100,14 @@ func configureContractAllowList() (precompile.ContractDeployerAllowListConfig, b
 	return config, cancelled, nil
 }
 
-func configureTransactionAllowList() (precompile.TxAllowListConfig, bool, error) {
+func configureTransactionAllowList(app *application.Avalanche) (precompile.TxAllowListConfig, bool, error) {
 	config := precompile.TxAllowListConfig{}
 	prompt := "Configure transaction allow list"
 	info := "\nThis precompile restricts who has the ability to issue transactions " +
 		"on your subnet.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet/#restricting-who-can-submit-transactions\n\n"
 
-	admins, cancelled, err := getAdminList(prompt, info)
+	admins, cancelled, err := getAdminList(prompt, info, app)
 	if err != nil {
 		return config, false, err
 	}
@@ -116,14 +120,34 @@ func configureTransactionAllowList() (precompile.TxAllowListConfig, bool, error)
 	return config, cancelled, nil
 }
 
-func configureMinterList() (precompile.ContractNativeMinterConfig, bool, error) {
+func configureMinterList(app *application.Avalanche) (precompile.ContractNativeMinterConfig, bool, error) {
 	config := precompile.ContractNativeMinterConfig{}
 	prompt := "Configure native minting allow list"
 	info := "\nThis precompile allows admins to permit designated contracts to mint the native token " +
 		"on your subnet.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet#minting-native-coins\n\n"
 
-	admins, cancelled, err := getAdminList(prompt, info)
+	admins, cancelled, err := getAdminList(prompt, info, app)
+	if err != nil {
+		return config, false, err
+	}
+
+	config.AllowListConfig = precompile.AllowListConfig{
+		BlockTimestamp:  big.NewInt(0),
+		AllowListAdmins: admins,
+	}
+
+	return config, cancelled, nil
+}
+
+func configureFeeConfigAllowList(app *application.Avalanche) (precompile.FeeConfigManagerConfig, bool, error) {
+	config := precompile.FeeConfigManagerConfig{}
+	prompt := "Configure fee manager allow list"
+	info := "\nThis precompile allows admins to adjust chain gas and fee parameters without " +
+		"performing a hardfork.\nFor more information visit " +
+		"https://docs.avax.network/subnets/customize-a-subnet#configuring-dynamic-fees\n\n"
+
+	admins, cancelled, err := getAdminList(prompt, info, app)
 	if err != nil {
 		return config, false, err
 	}
@@ -145,17 +169,18 @@ func removePrecompile(arr []string, s string) ([]string, error) {
 	return arr, errors.New("string not in array")
 }
 
-func getPrecompiles(config params.ChainConfig) (params.ChainConfig, stateDirection, error) {
+func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (params.ChainConfig, stateDirection, error) {
 	const (
 		nativeMint        = "Native Minting"
-		contractAllowList = "Contract deployment whitelist"
-		txAllowList       = "Transaction allow list"
+		contractAllowList = "Contract Deployment Allow List"
+		txAllowList       = "Transaction Allow List"
+		feeManager        = "Manage Fee Settings"
 		cancel            = "Cancel"
 	)
 
 	first := true
 
-	remainingPrecompiles := []string{nativeMint, contractAllowList, txAllowList, cancel}
+	remainingPrecompiles := []string{nativeMint, contractAllowList, txAllowList, feeManager, cancel}
 
 	for {
 		firstStr := "Advanced: Would you like to add a custom precompile to modify the EVM?"
@@ -167,7 +192,7 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, stateDirecti
 			first = false
 		}
 
-		addPrecompile, err := prompts.CaptureList(promptStr, []string{prompts.No, prompts.Yes, goBackMsg})
+		addPrecompile, err := app.Prompt.CaptureList(promptStr, []string{prompts.No, prompts.Yes, goBackMsg})
 		if err != nil {
 			return config, stop, err
 		}
@@ -179,7 +204,7 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, stateDirecti
 			return config, backward, nil
 		}
 
-		precompileDecision, err := prompts.CaptureList(
+		precompileDecision, err := app.Prompt.CaptureList(
 			"Choose precompile",
 			remainingPrecompiles,
 		)
@@ -189,7 +214,7 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, stateDirecti
 
 		switch precompileDecision {
 		case nativeMint:
-			mintConfig, cancelled, err := configureMinterList()
+			mintConfig, cancelled, err := configureMinterList(app)
 			if err != nil {
 				return config, stop, err
 			}
@@ -201,7 +226,7 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, stateDirecti
 				}
 			}
 		case contractAllowList:
-			contractConfig, cancelled, err := configureContractAllowList()
+			contractConfig, cancelled, err := configureContractAllowList(app)
 			if err != nil {
 				return config, stop, err
 			}
@@ -213,13 +238,25 @@ func getPrecompiles(config params.ChainConfig) (params.ChainConfig, stateDirecti
 				}
 			}
 		case txAllowList:
-			txConfig, cancelled, err := configureTransactionAllowList()
+			txConfig, cancelled, err := configureTransactionAllowList(app)
 			if err != nil {
 				return config, stop, err
 			}
 			if !cancelled {
 				config.TxAllowListConfig = txConfig
 				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, txAllowList)
+				if err != nil {
+					return config, stop, err
+				}
+			}
+		case feeManager:
+			feeConfig, cancelled, err := configureFeeConfigAllowList(app)
+			if err != nil {
+				return config, stop, err
+			}
+			if !cancelled {
+				config.FeeManagerConfig = feeConfig
+				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, feeManager)
 				if err != nil {
 					return config, stop, err
 				}

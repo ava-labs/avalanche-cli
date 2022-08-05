@@ -5,6 +5,7 @@ package subnetcmd
 import (
 	"os"
 
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
@@ -15,29 +16,45 @@ func newDeleteCmd() *cobra.Command {
 		Use:   "delete",
 		Short: "Delete a subnet configuration",
 		Long:  "The subnet delete command deletes an existing subnet configuration.",
-		RunE:  deleteGenesis,
+		RunE:  deleteSubnet,
 		Args:  cobra.ExactArgs(1),
 	}
 }
 
-func deleteGenesis(cmd *cobra.Command, args []string) error {
+func deleteSubnet(cmd *cobra.Command, args []string) error {
 	// TODO sanitize this input
-	sidecar := app.GetSidecarPath(args[0])
-	genesis := app.GetGenesisPath(args[0])
+	sidecarPath := app.GetSidecarPath(args[0])
+	genesisPath := app.GetGenesisPath(args[0])
+	customVMPath := app.GetCustomVMPath(args[0])
 
-	if _, err := os.Stat(genesis); err == nil {
+	sidecar, err := app.LoadSidecar(args[0])
+	if err != nil {
+		return err
+	}
+
+	if sidecar.VM == models.CustomVM {
+		if _, err := os.Stat(customVMPath); err == nil {
+			// exists
+			os.Remove(customVMPath)
+		} else {
+			return err
+		}
+	}
+
+	if _, err := os.Stat(genesisPath); err == nil {
 		// exists
-		os.Remove(genesis)
+		os.Remove(genesisPath)
 	} else {
 		return err
 	}
 
-	if _, err := os.Stat(sidecar); err == nil {
+	if _, err := os.Stat(sidecarPath); err == nil {
 		// exists
-		os.Remove(sidecar)
+		os.Remove(sidecarPath)
 		ux.Logger.PrintToUser("Deleted subnet")
 	} else {
 		return err
 	}
+
 	return nil
 }

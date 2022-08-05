@@ -1,8 +1,11 @@
+// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
 package subnet
 
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -13,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/avalanchego/vms/platformvm/validator"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
@@ -34,7 +38,29 @@ func NewPublicDeployer(app *application.Avalanche, privKeyPath string, network m
 	}
 }
 
-func (d *PublicDeployer) Deploy(controlKeys []string, threshold uint32, chain, genesis string) (ids.ID, ids.ID, error) {
+func (d *PublicDeployer) AddValidator(subnet ids.ID, nodeID ids.NodeID, weight uint64, startTime time.Time, duration time.Duration) error {
+	wallet, _, err := d.loadWallet(subnet)
+	if err != nil {
+		return err
+	}
+	validator := &validator.SubnetValidator{
+		Validator: validator.Validator{
+			NodeID: nodeID,
+			Start:  uint64(startTime.Unix()),
+			End:    uint64(startTime.Add(duration).Unix()),
+			Wght:   weight,
+		},
+		Subnet: subnet,
+	}
+	id, err := wallet.P().IssueAddSubnetValidatorTx(validator)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Transaction successful, transaction ID :%s", id)
+	return nil
+}
+
+func (d *PublicDeployer) Deploy(controlKeys []string, threshold uint32, chain string, genesis []byte) (ids.ID, ids.ID, error) {
 	wallet, api, err := d.loadWallet()
 	if err != nil {
 		return ids.Empty, ids.Empty, err
@@ -48,9 +74,9 @@ func (d *PublicDeployer) Deploy(controlKeys []string, threshold uint32, chain, g
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
-	ux.Logger.PrintToUser(subnetID.String())
+	ux.Logger.PrintToUser("Subnet has been created with ID: %s. Now creating blockchain...", subnetID.String())
 
-	blockchainID, err := d.createBlockchainTx(chain, vmID, subnetID, []byte(genesis), wallet)
+	blockchainID, err := d.createBlockchainTx(chain, vmID, subnetID, genesis, wallet)
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
@@ -58,7 +84,7 @@ func (d *PublicDeployer) Deploy(controlKeys []string, threshold uint32, chain, g
 	return subnetID, blockchainID, nil
 }
 
-func (d *PublicDeployer) loadWallet() (primary.Wallet, string, error) {
+func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, string, error) {
 	ctx := context.Background()
 
 	var (
@@ -84,7 +110,7 @@ func (d *PublicDeployer) loadWallet() (primary.Wallet, string, error) {
 
 	kc := sf.KeyChain()
 
-	wallet, err := primary.NewWalletFromURI(ctx, api, kc)
+	wallet, err := primary.NewWalletWithTxs(ctx, api, kc, preloadTxs...)
 	if err != nil {
 		return nil, "", err
 	}

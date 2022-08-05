@@ -4,12 +4,17 @@ package prompts
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 	"os"
 	"strconv"
+	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/ids"
+	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/manifoldco/promptui"
@@ -19,6 +24,30 @@ const (
 	Yes = "Yes"
 	No  = "No"
 )
+
+type Prompter interface {
+	CapturePositiveBigInt(promptStr string) (*big.Int, error)
+	CaptureAddress(promptStr string) (common.Address, error)
+	CaptureExistingFilepath(promptStr string) (string, error)
+	CaptureYesNo(promptStr string) (bool, error)
+	CaptureNoYes(promptStr string) (bool, error)
+	CaptureList(promptStr string, options []string) (string, error)
+	CaptureString(promptStr string) (string, error)
+	CaptureIndex(promptStr string, options []common.Address) (int, error)
+	CaptureDuration(promptStr string) (time.Duration, error)
+	CaptureDate(promptStr string) (time.Time, error)
+	CaptureNodeID(promptStr string) (ids.NodeID, error)
+	CaptureWeight(promptStr string) (uint64, error)
+	CaptureUint64(promptStr string) (uint64, error)
+	CapturePChainAddress(promptStr string, network models.Network) (string, error)
+}
+
+type realPrompter struct{}
+
+// NewProcessChecker creates a new process checker which can respond if the server is running
+func NewPrompter() Prompter {
+	return &realPrompter{}
+}
 
 func validatePositiveBigInt(input string) error {
 	n := new(big.Int)
@@ -30,6 +59,36 @@ func validatePositiveBigInt(input string) error {
 		return errors.New("invalid number")
 	}
 	return nil
+}
+
+func validateStakingDuration(input string) error {
+	d, err := time.ParseDuration(input)
+	if err != nil {
+		return err
+	}
+	if d > constants.MaxStakeDuration {
+		return fmt.Errorf("exceeds maximum staking duration of %s", ux.FormatDuration(constants.MaxStakeDuration))
+	}
+	if d < constants.MinStakeDuration {
+		return fmt.Errorf("below the minimum staking duration of %s", ux.FormatDuration(constants.MinStakeDuration))
+	}
+	return nil
+}
+
+func validateTime(input string) error {
+	t, err := time.Parse(constants.TimeParseLayout, input)
+	if err != nil {
+		return err
+	}
+	if t.Before(time.Now().Add(constants.StakingStartLeadTime)) {
+		return fmt.Errorf("time should be at least start from now + %s", constants.StakingStartLeadTime)
+	}
+	return err
+}
+
+func validateNodeID(input string) error {
+	_, err := ids.NodeIDFromString(input)
+	return err
 }
 
 func validateAddress(input string) error {
@@ -46,6 +105,17 @@ func validateExistingFilepath(input string) error {
 	return errors.New("file doesn't exist")
 }
 
+func validateWeight(input string) error {
+	val, err := strconv.ParseUint(input, 10, 64)
+	if err != nil {
+		return err
+	}
+	if val < constants.MinStakeWeight || val > constants.MaxStakeWeight {
+		return errors.New("the weight must be an integer between 1 and 100")
+	}
+	return nil
+}
+
 func validateBiggerThanZero(input string) error {
 	val, err := strconv.ParseUint(input, 10, 64)
 	if err != nil {
@@ -57,7 +127,62 @@ func validateBiggerThanZero(input string) error {
 	return nil
 }
 
-func CaptureUint64(promptStr string) (uint64, error) {
+func (*realPrompter) CaptureDuration(promptStr string) (time.Duration, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateStakingDuration,
+	}
+
+	durationStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	return time.ParseDuration(durationStr)
+}
+
+func (*realPrompter) CaptureDate(promptStr string) (time.Time, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateTime,
+	}
+
+	timeStr, err := prompt.Run()
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return time.Parse(constants.TimeParseLayout, timeStr)
+}
+
+func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateNodeID,
+	}
+
+	nodeIDStr, err := prompt.Run()
+	if err != nil {
+		return ids.EmptyNodeID, err
+	}
+	return ids.NodeIDFromString(nodeIDStr)
+}
+
+func (*realPrompter) CaptureWeight(promptStr string) (uint64, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateWeight,
+	}
+
+	amountStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	return strconv.ParseUint(amountStr, 10, 64)
+}
+
+func (*realPrompter) CaptureUint64(promptStr string) (uint64, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validateBiggerThanZero,
@@ -68,14 +193,10 @@ func CaptureUint64(promptStr string) (uint64, error) {
 		return 0, err
 	}
 
-	val, err := strconv.ParseUint(amountStr, 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	return val, nil
+	return strconv.ParseUint(amountStr, 10, 64)
 }
 
-func CapturePositiveBigInt(promptStr string) (*big.Int, error) {
+func (*realPrompter) CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validatePositiveBigInt,
@@ -111,7 +232,7 @@ func validatePChainFujiAddress(input string) error {
 	if err != nil {
 		return err
 	}
-	if hrp != constants.FujiHRP {
+	if hrp != avago_constants.FujiHRP {
 		return errors.New("this is not a fuji address")
 	}
 	return nil
@@ -122,7 +243,7 @@ func validatePChainMainAddress(input string) error {
 	if err != nil {
 		return err
 	}
-	if hrp != constants.MainnetHRP {
+	if hrp != avago_constants.MainnetHRP {
 		return errors.New("this is not a mainnet address")
 	}
 	return nil
@@ -135,7 +256,7 @@ func validatePChainLocalAddress(input string) error {
 	}
 	// ANR uses the `custom` HRP for local networks,
 	// but the `local` HRP also exists...
-	if hrp != constants.LocalHRP && hrp != constants.FallbackHRP {
+	if hrp != avago_constants.LocalHRP && hrp != avago_constants.FallbackHRP {
 		return errors.New("this is not a local nor custom address")
 	}
 	return nil
@@ -156,7 +277,7 @@ func getPChainValidationFunc(network models.Network) func(string) error {
 	}
 }
 
-func CapturePChainAddress(promptStr string, network models.Network) (string, error) {
+func (*realPrompter) CapturePChainAddress(promptStr string, network models.Network) (string, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: getPChainValidationFunc(network),
@@ -165,7 +286,7 @@ func CapturePChainAddress(promptStr string, network models.Network) (string, err
 	return prompt.Run()
 }
 
-func CaptureAddress(promptStr string) (common.Address, error) {
+func (*realPrompter) CaptureAddress(promptStr string) (common.Address, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validateAddress,
@@ -180,7 +301,7 @@ func CaptureAddress(promptStr string) (common.Address, error) {
 	return addressHex, nil
 }
 
-func CaptureExistingFilepath(promptStr string) (string, error) {
+func (*realPrompter) CaptureExistingFilepath(promptStr string) (string, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validateExistingFilepath,
@@ -207,15 +328,15 @@ func yesNoBase(promptStr string, orderedOptions []string) (bool, error) {
 	return decision == Yes, nil
 }
 
-func CaptureYesNo(promptStr string) (bool, error) {
+func (*realPrompter) CaptureYesNo(promptStr string) (bool, error) {
 	return yesNoBase(promptStr, []string{Yes, No})
 }
 
-func CaptureNoYes(promptStr string) (bool, error) {
+func (*realPrompter) CaptureNoYes(promptStr string) (bool, error) {
 	return yesNoBase(promptStr, []string{No, Yes})
 }
 
-func CaptureList(promptStr string, options []string) (string, error) {
+func (*realPrompter) CaptureList(promptStr string, options []string) (string, error) {
 	prompt := promptui.Select{
 		Label: promptStr,
 		Items: options,
@@ -228,7 +349,7 @@ func CaptureList(promptStr string, options []string) (string, error) {
 	return listDecision, nil
 }
 
-func CaptureString(promptStr string) (string, error) {
+func (*realPrompter) CaptureString(promptStr string) (string, error) {
 	prompt := promptui.Prompt{
 		Label: promptStr,
 		Validate: func(input string) error {
@@ -247,7 +368,7 @@ func CaptureString(promptStr string) (string, error) {
 	return str, nil
 }
 
-func CaptureIndex(promptStr string, options []common.Address) (int, error) {
+func (*realPrompter) CaptureIndex(promptStr string, options []common.Address) (int, error) {
 	prompt := promptui.Select{
 		Label: promptStr,
 		Items: options,

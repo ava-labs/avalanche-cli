@@ -1,3 +1,6 @@
+// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
+
 package commands
 
 import (
@@ -20,7 +23,7 @@ func CreateSubnetConfig(subnetName string, genesisPath string) {
 		CLIBinary,
 		SubnetCmd,
 		"create",
-		"--file",
+		"--genesis",
 		genesisPath,
 		"--evm",
 		subnetName,

@@ -1,11 +1,9 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-package subnetcmd
+package models
 
-const (
-	subnetEvm = "SubnetEVM"
-	customVM  = "Custom"
-
-	forceFlag = "force"
-)
+type Exportable struct {
+	Sidecar Sidecar
+	Genesis []byte
+}
