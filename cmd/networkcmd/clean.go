@@ -3,15 +3,21 @@
 package networkcmd
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
+var hard bool
+
 func newCleanCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "clean",
 		Short: "Stop the running local network and delete state",
 		Long: `The network clean command shuts down your local, multi-node network. All
@@ -20,6 +26,15 @@ may be started again by deploying a new subnet configuration.`,
 		Run:  clean,
 		Args: cobra.ExactArgs(0),
 	}
+
+	cmd.Flags().BoolVar(
+		&hard,
+		"hard",
+		false,
+		"Also clean downloaded avalanchego and plugin binaries",
+	)
+
+	return cmd
 }
 
 func clean(cmd *cobra.Command, args []string) {
@@ -34,4 +49,17 @@ func clean(cmd *cobra.Command, args []string) {
 	} else {
 		ux.Logger.PrintToUser("Process terminated.")
 	}
+
+	if hard {
+		ux.Logger.PrintToUser("hard clean requested via flag, removing all downloaded avalanchego and plugin binaries")
+		binDir := filepath.Join(app.GetBaseDir(), constants.AvalancheCliBinDir)
+		cleanBins(binDir)
+	}
+}
+
+func cleanBins(dir string) {
+	if err := os.RemoveAll(dir); err != nil {
+		ux.Logger.PrintToUser("Removal failed: %s", err)
+	}
+	ux.Logger.PrintToUser("All existing binaries removed.")
 }
