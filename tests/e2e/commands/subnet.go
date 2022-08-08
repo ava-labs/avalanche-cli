@@ -69,7 +69,7 @@ func DeploySubnetLocally(subnetName string) string {
 		SubnetCmd,
 		"deploy",
 		"--network",
-		"--local",
+		"local",
 		subnetName,
 	)
 	output, err := cmd.Output()
