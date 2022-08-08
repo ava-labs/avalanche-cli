@@ -19,8 +19,8 @@ import (
 )
 
 var (
-	deployLocal bool
-	keyName     string
+	deployNetwork string
+	keyName       string
 )
 
 // avalanche subnet deploy
@@ -46,7 +46,7 @@ subnet and deploy it on Fuji or Mainnet.`,
 		RunE:         deploySubnet,
 		Args:         cobra.ExactArgs(1),
 	}
-	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
+	cmd.Flags().StringVarP(&deployNetwork, "network", "n", "", "network to which to deploy to (one of 'local' or 'fuji')")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use for fuji deploys")
 	return cmd
 }
@@ -90,8 +90,15 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// get the network to deploy to
 	var network models.Network
-	if deployLocal {
-		network = models.Local
+	if deployNetwork != "" {
+		switch deployNetwork {
+		case strings.ToLower(models.Fuji.String()):
+			network = models.Fuji
+		case "local":
+			network = models.Local
+		default:
+			return errors.New("unsupported network")
+		}
 	} else {
 		networkStr, err := app.Prompt.CaptureList(
 			"Choose a network to deploy on",
