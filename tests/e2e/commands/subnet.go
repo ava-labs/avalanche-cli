@@ -68,6 +68,7 @@ func DeploySubnetLocally(subnetName string) string {
 		CLIBinary,
 		SubnetCmd,
 		"deploy",
+		"--network",
 		"--local",
 		subnetName,
 	)
