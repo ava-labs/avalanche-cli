@@ -230,6 +230,8 @@ func getControlKeys(network models.Network) ([]string, bool, error) {
 func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string, bool, error) {
 	const (
 		addCtrlKey = "Add control key"
+		delCtrlKey = "Remove control key"
+		preview    = "Preview"
 		doneMsg    = "Done"
 		cancelMsg  = "Cancel"
 	)
@@ -238,7 +240,7 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 
 	for {
 		listDecision, err := app.Prompt.CaptureList(
-			controlKeysPrompt, []string{addCtrlKey, doneMsg, cancelMsg},
+			controlKeysPrompt, []string{addCtrlKey, delCtrlKey, preview, doneMsg, cancelMsg},
 		)
 		if err != nil {
 			return nil, false, err
@@ -258,6 +260,25 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 				continue
 			}
 			controlKeys = append(controlKeys, controlKey)
+		case delCtrlKey:
+			if len(controlKeys) == 0 {
+				fmt.Println("no keys added yet")
+				continue
+			}
+			ifaceK := make([]interface{}, len(controlKeys))
+			for i, v := range controlKeys {
+				ifaceK[i] = v
+			}
+			index, err := app.Prompt.CaptureIndex("Choose key to remove:", ifaceK)
+			if err != nil {
+				return nil, false, err
+			}
+			controlKeys = append(controlKeys[:index], controlKeys[index+1:]...)
+		case preview:
+			fmt.Println("Control keys:")
+			for i, k := range controlKeys {
+				fmt.Printf("%d. %s\n", i, k)
+			}
 		case doneMsg:
 			return controlKeys, false, nil
 		case cancelMsg:
