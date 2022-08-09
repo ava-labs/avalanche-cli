@@ -12,6 +12,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -158,7 +159,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// from here on we are assuming a public deploy
 
 	// prompt for control keys
-	controlKeys, cancelled, err := getControlKeys(network)
+	controlKeys, cancelled, err := getControlKeys(network, keyName)
 	if err != nil {
 		return err
 	}
@@ -167,10 +168,13 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// prompt for threshold
-	var threshold uint32
+	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
 
-	if len(controlKeys) > 0 {
+	// prompt for threshold
+	threshold := uint32(1)
+
+	// if there's only one ctrl key we don't need to ask
+	if len(controlKeys) > 1 {
 		threshold, err = getThreshold(uint64(len(controlKeys)))
 		if err != nil {
 			return err
@@ -202,13 +206,160 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	return app.UpdateSidecar(&sidecar)
 }
 
-func getControlKeys(network models.Network) ([]string, bool, error) {
+func getControlKeys(network models.Network, keyName string) ([]string, bool, error) {
 	controlKeysInitialPrompt := "Configure which addresses may add new validators to the subnet.\n" +
 		"These addresses are known as your control keys. You will also\n" +
-		"set how many control keys are required to add a validator."
-	controlKeysPrompt := "Set control keys"
+		"set how many control keys are required to add a validator (the threshold)."
+	moreKeysPrompt := "P-Chain addresses from your private key will be added by default to the control key set. Would you like to add more?"
 
 	ux.Logger.PrintToUser(controlKeysInitialPrompt)
+
+	keyPath := filepath.Join(app.GetKeyPath(keyName))
+	sk, err := key.LoadSoft(network.NetworkID(), keyPath)
+	if err != nil {
+		return nil, false, err
+	}
+
+	thisKeyAddresses := sk.P()
+
+	yes, err := app.Prompt.CaptureNoYes(moreKeysPrompt)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if !yes {
+		return thisKeyAddresses, false, nil
+	}
+
+	const (
+		fromList = "Select from key list"
+		custom   = "Custom P-Chain address"
+	)
+
+	listDecision, err := app.Prompt.CaptureList(
+		"How do you want to add control keys?", []string{fromList, custom},
+	)
+	if err != nil {
+		return nil, false, err
+	}
+
+	var (
+		keys      []string
+		cancelled bool
+	)
+
+	switch listDecision {
+	case fromList:
+		keys, cancelled, err = pickCtrlKeysFromList(network, keyName)
+	case custom:
+		keys, cancelled, err = enterCustomKeys(network)
+	}
+
+	if err != nil {
+		return nil, false, nil
+	}
+	if cancelled {
+		return nil, true, nil
+	}
+	return append(keys, thisKeyAddresses...), false, nil
+}
+
+func pickCtrlKeysFromList(network models.Network, keyName string) ([]string, bool, error) {
+	initialPrompt := "Select keys from your key list"
+
+	const (
+		addKey    = "Add key"
+		removeKey = "Remove key"
+		preview   = "Preview"
+		doneMsg   = "Done"
+		cancelMsg = "Cancel"
+	)
+
+	existing := []string{}
+	selected := []string{}
+
+	files, err := os.ReadDir(app.GetKeyDir())
+	if err != nil {
+		return nil, false, err
+	}
+
+	keyPaths := make([]string, len(files)-1)
+
+	for i, f := range files {
+		// we already have the address for this key
+		if keyName == strings.TrimSuffix(f.Name(), constants.KeySuffix) {
+			continue
+		}
+		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
+			keyPaths[i] = filepath.Join(app.GetKeyDir(), f.Name())
+		}
+	}
+
+	for _, p := range keyPaths {
+		k, err := key.LoadSoft(network.NetworkID(), p)
+		if err != nil {
+			return nil, false, err
+		}
+		existing = append(existing, k.P()...)
+	}
+
+	for {
+		listDecision, err := app.Prompt.CaptureList(
+			initialPrompt,
+			[]string{addKey, removeKey, preview, doneMsg, cancelMsg},
+		)
+		if err != nil {
+			return nil, false, err
+		}
+
+		switch listDecision {
+		case addKey:
+			key, err := app.Prompt.CaptureList("Pick address", existing)
+			if err != nil {
+				return nil, false, err
+			}
+			if contains(selected, key) {
+				fmt.Println("Key already added")
+				continue
+			}
+			selected = append(selected, key)
+			for i, k := range existing {
+				if k == key {
+					// remove this key from the existing ones so it doesn't get picked more than once
+					existing = append(existing[:i], existing[i+1:]...)
+				}
+			}
+		case removeKey:
+			ifaceK := make([]interface{}, len(selected))
+			for i, k := range selected {
+				ifaceK[i] = k
+			}
+			index, err := app.Prompt.CaptureIndex("Choose address to remove:", ifaceK)
+			if err != nil {
+				return nil, false, err
+			}
+			k := selected[index]
+			selected = append(selected[:index], selected[index+1:]...)
+			// add it back to the existing list
+			existing = append(existing, k)
+		case preview:
+			fmt.Println("Keys:")
+			for i, key := range selected {
+				fmt.Printf("%d. %s\n", i, key)
+			}
+		case doneMsg:
+			cancelled := len(selected) == 0
+			return selected, cancelled, nil
+		case cancelMsg:
+			return nil, true, nil
+		default:
+			return nil, false, errors.New("unexpected option")
+		}
+	}
+}
+
+func enterCustomKeys(network models.Network) ([]string, bool, error) {
+	controlKeysPrompt := "Enter control keys"
 	for {
 		// ask in a loop so that if some condition is not met we can keep asking
 		controlKeys, cancelled, err := controlKeysLoop(controlKeysPrompt, network)
@@ -234,7 +385,7 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 		cancelMsg  = "Cancel"
 	)
 
-	var controlKeys []string
+	controlKeys := []string{}
 
 	for {
 		listDecision, err := app.Prompt.CaptureList(
@@ -246,8 +397,19 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 
 		switch listDecision {
 		case addCtrlKey:
+			var tmpl string
+			switch network {
+			case models.Fuji:
+				tmpl = "fuji"
+			case models.Mainnet:
+				tmpl = "avax"
+			case models.Local:
+				tmpl = "custom"
+				// we don't need to check for invalid network as this
+				// has been checked before
+			}
 			controlKey, err := app.Prompt.CapturePChainAddress(
-				"Enter P-Chain address (Ex: `P-...`)",
+				fmt.Sprintf("Enter P-Chain address (Ex: `P-%s...`)", tmpl),
 				network,
 			)
 			if err != nil {

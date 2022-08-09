@@ -57,7 +57,11 @@ func getAdminList(initialPrompt string, info string, app *application.Avalanche)
 			}
 			admins = append(admins, adminAddr)
 		case removeAdmin:
-			index, err := app.Prompt.CaptureIndex("Choose address to remove:", admins)
+			ifaceA := make([]interface{}, len(admins))
+			for i, k := range admins {
+				ifaceA[i] = k
+			}
+			index, err := app.Prompt.CaptureIndex("Choose address to remove:", ifaceA)
 			if err != nil {
 				return []common.Address{}, false, err
 			}

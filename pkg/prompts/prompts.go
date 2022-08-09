@@ -33,7 +33,7 @@ type Prompter interface {
 	CaptureNoYes(promptStr string) (bool, error)
 	CaptureList(promptStr string, options []string) (string, error)
 	CaptureString(promptStr string) (string, error)
-	CaptureIndex(promptStr string, options []common.Address) (int, error)
+	CaptureIndex(promptStr string, options []interface{}) (int, error)
 	CaptureDuration(promptStr string) (time.Duration, error)
 	CaptureDate(promptStr string) (time.Time, error)
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
@@ -368,7 +368,7 @@ func (*realPrompter) CaptureString(promptStr string) (string, error) {
 	return str, nil
 }
 
-func (*realPrompter) CaptureIndex(promptStr string, options []common.Address) (int, error) {
+func (*realPrompter) CaptureIndex(promptStr string, options []interface{}) (int, error) {
 	prompt := promptui.Select{
 		Label: promptStr,
 		Items: options,
