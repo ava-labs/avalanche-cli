@@ -33,6 +33,32 @@ parse_args() {
   shift $((OPTIND - 1))
   TAG=$1
 }
+
+clean() {
+  # this would prob fail on windows
+  # only ask to delete if the bin folder already exists
+  # which means this is probably an update and not a first install
+  if [ -d "$HOME/.avalanche-cli/bin" ]; then 
+    while true; do
+      read -p "Should the installer clean your installed binaries? " yn
+      case $yn in
+          [Yy]* ) doClean; break;;
+          [Nn]* ) exit;;
+          * ) echo "Please answer yes or no.";;
+      esac
+    done
+  fi
+}
+
+doClean() {
+  bin="${BINDIR}/avalanche"
+  if [ "$OS" = "windows" ]; then
+    bin="${bin}.exe"
+  fi
+  
+  ${bin} network clean --hard
+}
+
 # this function wraps all the destructive operations
 # if a curl|bash cuts off the end of the script due to
 # network, either nothing will happen or will syntax error
@@ -370,3 +396,6 @@ CHECKSUM_URL=${GITHUB_DOWNLOAD}/${TAG}/${CHECKSUM}
 
 
 execute
+
+#optionally clean the binaries
+clean
