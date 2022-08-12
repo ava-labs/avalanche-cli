@@ -39,7 +39,7 @@ func NewPublicDeployer(app *application.Avalanche, privKeyPath string, network m
 }
 
 func (d *PublicDeployer) AddValidator(subnet ids.ID, nodeID ids.NodeID, weight uint64, startTime time.Time, duration time.Duration) error {
-	wallet, _, err := d.loadWallet(subnet)
+	wallet, err := d.loadWallet(subnet)
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func (d *PublicDeployer) AddValidator(subnet ids.ID, nodeID ids.NodeID, weight u
 }
 
 func (d *PublicDeployer) Deploy(controlKeys []string, threshold uint32, chain string, genesis []byte) (ids.ID, ids.ID, error) {
-	wallet, api, err := d.loadWallet()
+	wallet, err := d.loadWallet()
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
@@ -80,11 +80,16 @@ func (d *PublicDeployer) Deploy(controlKeys []string, threshold uint32, chain st
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
-	ux.Logger.PrintToUser("Endpoint for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", blockchainID.String(), vmID.String(), api, blockchainID.String())
+
+	ux.Logger.PrintToUser("Endpoint for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc",
+		blockchainID.String(),
+		vmID.String(),
+		constants.DefaultNodeRunURL,
+		blockchainID.String())
 	return subnetID, blockchainID, nil
 }
 
-func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, string, error) {
+func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error) {
 	ctx := context.Background()
 
 	var (
@@ -100,21 +105,21 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, strin
 		api = constants.MainnetAPIEndpoint
 		networkID = avago_constants.MainnetID
 	default:
-		return nil, "", fmt.Errorf("unsupported public network")
+		return nil, fmt.Errorf("unsupported public network")
 	}
 
 	sf, err := key.LoadSoft(networkID, d.privKeyPath)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	kc := sf.KeyChain()
 
 	wallet, err := primary.NewWalletWithTxs(ctx, api, kc, preloadTxs...)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
-	return wallet, api, nil
+	return wallet, nil
 }
 
 func (d *PublicDeployer) createBlockchainTx(chainName string, vmID, subnetID ids.ID, genesis []byte, wallet primary.Wallet) (ids.ID, error) {

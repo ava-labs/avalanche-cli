@@ -62,4 +62,6 @@ const (
 	DefaultConfigFileType = "json"
 
 	CustomVMDir = "vms"
+
+	DefaultNodeRunURL = "http://127.0.0.1:9650"
 )
