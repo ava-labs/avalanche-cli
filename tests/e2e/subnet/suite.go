@@ -16,6 +16,7 @@ const (
 	subnetName       = "e2eSubnetTest"
 	secondSubnetName = "e2eSecondSubnetTest"
 	genesisPath      = "tests/e2e/assets/test_genesis.json"
+	customVMPath     = "tests/e2e/assets/test_vm.bin"
 )
 
 var _ = ginkgo.Describe("[Subnet]", func() {
@@ -30,6 +31,14 @@ var _ = ginkgo.Describe("[Subnet]", func() {
 	ginkgo.It("can create and delete a subnet config", func() {
 		commands.CreateSubnetConfig(subnetName, genesisPath)
 		commands.DeleteSubnetConfig(subnetName)
+	})
+
+	ginkgo.It("can create and delete a custom vm subnet config", func() {
+		commands.CreateCustomVMSubnetConfig(subnetName, genesisPath, customVMPath)
+		commands.DeleteSubnetConfig(subnetName)
+		exists, err := utils.SubnetCustomVMExists(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(exists).Should(gomega.BeFalse())
 	})
 
 	ginkgo.It("can deploy a subnet", func() {

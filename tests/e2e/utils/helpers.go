@@ -57,6 +57,19 @@ func SubnetConfigExists(subnetName string) (bool, error) {
 	return genesisExists && sidecarExists, nil
 }
 
+func SubnetCustomVMExists(subnetName string) (bool, error) {
+	vm := path.Join(GetBaseDir(), constants.CustomVMDir, subnetName)
+	vmExists := true
+	if _, err := os.Stat(vm); errors.Is(err, os.ErrNotExist) {
+		// does *not* exist
+		vmExists = false
+	} else if err != nil {
+		// Schrodinger: file may or may not exist. See err for details.
+		return false, err
+	}
+	return vmExists, nil
+}
+
 func KeyExists(keyName string) (bool, error) {
 	keyPath := path.Join(GetBaseDir(), constants.KeyDir, keyName+constants.KeySuffix)
 	if _, err := os.Stat(keyPath); errors.Is(err, os.ErrNotExist) {

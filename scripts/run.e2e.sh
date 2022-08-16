@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
 set -e
 
@@ -7,7 +7,7 @@ export RUN_E2E="true"
 if [ ! -d "tests/e2e/hardhat/node_modules" ]
 then
     pushd tests/e2e/hardhat
-    yarn
+    #yarn
     popd
 fi
 
