@@ -3,6 +3,8 @@
 package keycmd
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,7 +12,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
@@ -44,7 +49,7 @@ func listKeys(cmd *cobra.Command, args []string) error {
 }
 
 func printAddresses(keyPaths []string) error {
-	header := []string{"Key Name", "Chain", "Address", "Network"}
+	header := []string{"Key Name", "Chain", "Address", "Balance", "Network"}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetRowLine(true)
@@ -58,6 +63,10 @@ func printAddresses(keyPaths []string) error {
 			models.Mainnet.String(): avago_constants.MainnetID,
 		*/
 	}
+
+	rootCtx := context.Background()
+	fujiPClient := platformvm.NewClient(constants.FujiAPIEndpoint)
+
 	for _, keyPath := range keyPaths {
 		cAdded := false
 		keyName := strings.TrimSuffix(filepath.Base(keyPath), constants.KeySuffix)
@@ -68,13 +77,27 @@ func printAddresses(keyPaths []string) error {
 			}
 			if !cAdded {
 				strC := sk.C()
-				table.Append([]string{keyName, "C-Chain (Ethereum hex format)", strC, "All"})
+				table.Append([]string{keyName, "C-Chain (Ethereum hex format)", strC, "0", "All"})
 			}
 			cAdded = true
 
 			strP := sk.P()
 			for _, p := range strP {
-				table.Append([]string{keyName, "P-Chain (Bech32 format)", p, net})
+				pID, err := address.ParseToID(p)
+				if err != nil {
+					return err
+				}
+				balanceStr := ""
+				if net == models.Fuji.String() {
+					ctx, cancel := context.WithTimeout(rootCtx, constants.RequestTimeout)
+					resp, err := fujiPClient.GetBalance(ctx, []ids.ShortID{pID})
+					cancel()
+					if err != nil {
+						return err
+					}
+					balanceStr = fmt.Sprintf("%d", uint64(resp.Balance))
+				}
+				table.Append([]string{keyName, "P-Chain (Bech32 format)", p, balanceStr, net})
 			}
 		}
 	}
