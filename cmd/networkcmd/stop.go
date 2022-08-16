@@ -14,36 +14,31 @@ import (
 )
 
 func newStopCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "stop [snapshotName]",
+	cmd := &cobra.Command{
+		Use:   "stop",
 		Short: "Stop the running local network and preserve state",
 		Long: `The network stop command shuts down your local, multi-node network.
 
 All deployed subnets will shutdown gracefully and save their
-state. If "snapshotName" is provided, the state will be saved
+state. If snapshot-name flag is provided, the state will be saved
 under this named snapshot, which then can be restarted with
-"network start <snapshotName>". Otherwise, the default snapshot
+"network start --snapshot-name snapshotName". Otherwise, the default snapshot
 will be created, or overwritten if it exists. The default
 snapshot can then be restarted without parameter
 ("network start").`,
 
 		RunE:         stopNetwork,
-		Args:         cobra.MaximumNArgs(1),
+		Args:         cobra.ExactArgs(0),
 		SilenceUsage: true,
 	}
+	cmd.Flags().StringVar(&snapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to save network state into")
+	return cmd
 }
 
 func stopNetwork(cmd *cobra.Command, args []string) error {
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
 		return err
-	}
-
-	var snapshotName string
-	if len(args) > 0 {
-		snapshotName = args[0]
-	} else {
-		snapshotName = constants.DefaultSnapshotName
 	}
 
 	ctx := binutils.GetAsyncContext()
