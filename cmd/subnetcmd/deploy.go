@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -171,7 +172,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	var threshold uint32
 
 	if len(controlKeys) > 0 {
-		threshold, err = getThreshold(uint64(len(controlKeys)))
+		threshold, err = getThreshold(len(controlKeys))
 		if err != nil {
 			return err
 		}
@@ -269,15 +270,26 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 }
 
 // getThreshold prompts for the threshold of addresses as a number
-func getThreshold(maxLen uint64) (uint32, error) {
-	threshold, err := app.Prompt.CaptureUint64("Enter required number of control key signatures to add a validator")
+func getThreshold(maxLen int) (uint32, error) {
+	// create a list of indexes so the user only has the option to choose what is the theshold
+	// instead of entering
+	indexList := make([]string, maxLen)
+	for i := 0; i < maxLen; i++ {
+		indexList[i] = strconv.Itoa(i + 1)
+	}
+	threshold, err := app.Prompt.CaptureList("Select required number of control key signatures to add a validator", indexList)
 	if err != nil {
 		return 0, err
 	}
-	if threshold > maxLen {
+	intTh, err := strconv.Atoi(threshold)
+	if err != nil {
+		return 0, err
+	}
+	// this now should technically not happen anymore, but let's leave it as a double stitch
+	if intTh > maxLen {
 		return 0, fmt.Errorf("the threshold can't be bigger than the number of control keys")
 	}
-	return uint32(threshold), err
+	return uint32(intTh), err
 }
 
 func contains(list []string, element string) bool {
