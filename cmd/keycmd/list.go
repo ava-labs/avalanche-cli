@@ -64,7 +64,7 @@ func printAddresses(keyPaths []string) error {
 		*/
 	}
 
-	rootCtx := context.Background()
+	ctx := context.Background()
 	fujiPClient := platformvm.NewClient(constants.FujiAPIEndpoint)
 
 	for _, keyPath := range keyPaths {
@@ -83,19 +83,13 @@ func printAddresses(keyPaths []string) error {
 
 			strP := sk.P()
 			for _, p := range strP {
-				pID, err := address.ParseToID(p)
-				if err != nil {
-					return err
-				}
 				balanceStr := ""
 				if net == models.Fuji.String() {
-					ctx, cancel := context.WithTimeout(rootCtx, constants.RequestTimeout)
-					resp, err := fujiPClient.GetBalance(ctx, []ids.ShortID{pID})
-					cancel()
+					var err error
+					balanceStr, err = getBalanceStr(ctx, fujiPClient, p)
 					if err != nil {
 						return err
 					}
-					balanceStr = fmt.Sprintf("%d", uint64(resp.Balance))
 				}
 				table.Append([]string{keyName, "P-Chain (Bech32 format)", p, balanceStr, net})
 			}
@@ -104,4 +98,18 @@ func printAddresses(keyPaths []string) error {
 
 	table.Render()
 	return nil
+}
+
+func getBalanceStr(ctx context.Context, pClient platformvm.Client, addr string) (string, error) {
+	pID, err := address.ParseToID(addr)
+	if err != nil {
+		return "", err
+	}
+	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
+	resp, err := pClient.GetBalance(ctx, []ids.ShortID{pID})
+	cancel()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%d", uint64(resp.Balance)), nil
 }
