@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path"
+	"runtime"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -250,4 +251,8 @@ func CheckKeyEquality(keyPath1, keyPath2 string) (bool, error) {
 	}
 
 	return string(key1) == string(key2), nil
+}
+
+func GetCustomVMPath() string {
+	return fmt.Sprintf("tests/e2e/assets/test_vm_%s_%s.bin", runtime.GOOS, runtime.GOARCH)
 }
