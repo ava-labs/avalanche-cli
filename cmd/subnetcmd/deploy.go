@@ -11,6 +11,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ava-labs/avalanchego/genesis"
+	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -91,6 +94,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// get the network to deploy to
 	var network models.Network
+    /*
 	if deployLocal {
 		network = models.Local
 	} else {
@@ -103,6 +107,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 		network = models.NetworkFromString(networkStr)
 	}
+    */
+
+    network = models.Fuji
 
 	// deploy based on chosen network
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.String())
@@ -159,9 +166,12 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return errors.New("not implemented")
 	}
 
+	network = models.Local
+
 	// from here on we are assuming a public deploy
 
 	// prompt for control keys
+    /*
 	controlKeys, cancelled, err := getControlKeys(network)
 	if err != nil {
 		return err
@@ -170,16 +180,26 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("User cancelled. No subnet deployed")
 		return nil
 	}
+    */
+    //controlKeys := []string{"P-custom1xml56cvz305d4wwmt0m8j8c9erdgu052xxc35v"}
+    addr, err := address.Format("P", avago_constants.FallbackHRP, genesis.EWOQKey.PublicKey().Address().Bytes())
+    if err != nil {
+        return err
+    }
+    controlKeys := []string{addr}
 
 	// prompt for threshold
 	var threshold uint32
 
+    /*
 	if len(controlKeys) > 0 {
 		threshold, err = getThreshold(len(controlKeys))
 		if err != nil {
 			return err
 		}
 	}
+    */
+    threshold = 1
 
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, app.GetKeyPath(keyName), network)
