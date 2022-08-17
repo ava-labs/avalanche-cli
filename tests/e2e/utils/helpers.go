@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path"
+	"runtime"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -55,6 +56,19 @@ func SubnetConfigExists(subnetName string) (bool, error) {
 		return false, errors.New("config half exists")
 	}
 	return genesisExists && sidecarExists, nil
+}
+
+func SubnetCustomVMExists(subnetName string) (bool, error) {
+	vm := path.Join(GetBaseDir(), constants.CustomVMDir, subnetName)
+	vmExists := true
+	if _, err := os.Stat(vm); errors.Is(err, os.ErrNotExist) {
+		// does *not* exist
+		vmExists = false
+	} else if err != nil {
+		// Schrodinger: file may or may not exist. See err for details.
+		return false, err
+	}
+	return vmExists, nil
 }
 
 func KeyExists(keyName string) (bool, error) {
@@ -237,4 +251,8 @@ func CheckKeyEquality(keyPath1, keyPath2 string) (bool, error) {
 	}
 
 	return string(key1) == string(key2), nil
+}
+
+func GetCustomVMPath() string {
+	return fmt.Sprintf("tests/e2e/assets/test_vm_%s_%s.bin", runtime.GOOS, runtime.GOARCH)
 }
