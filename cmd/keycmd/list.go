@@ -20,9 +20,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const allNetworksFlag = "all-networks"
+
+var allNetworks bool
+
 // avalanche subnet list
 func newListCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List all created signing keys",
 		Long: `The key list command prints the names of all created signing
@@ -30,6 +34,14 @@ keys.`,
 		RunE:         listKeys,
 		SilenceUsage: true,
 	}
+	cmd.Flags().BoolVarP(
+		&allNetworks,
+		allNetworksFlag,
+		"a",
+		false,
+		"list also local network addresses",
+	)
+	return cmd
 }
 
 func listKeys(cmd *cobra.Command, args []string) error {
@@ -56,12 +68,15 @@ func printAddresses(keyPaths []string) error {
 	table.SetAutoMergeCells(true)
 
 	supportedNetworks := map[string]uint32{
-		models.Local.String(): 0,
-		models.Fuji.String():  avago_constants.FujiID,
+		models.Fuji.String(): avago_constants.FujiID,
 		/*
 			Not enabled yet
 			models.Mainnet.String(): avago_constants.MainnetID,
 		*/
+	}
+
+	if allNetworks {
+		supportedNetworks[models.Local.String()] = 0
 	}
 
 	ctx := context.Background()
