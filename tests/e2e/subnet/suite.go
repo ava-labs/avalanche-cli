@@ -36,6 +36,7 @@ var _ = ginkgo.Describe("[Subnet]", func() {
 
 	ginkgo.It("can create and delete a custom vm subnet config", func() {
 		customVMPath, err := utils.DownloadCustomVMBin()
+		gomega.Expect(err).Should(gomega.BeNil())
 		commands.CreateCustomVMSubnetConfig(subnetName, genesisPath, customVMPath)
 		commands.DeleteSubnetConfig(subnetName)
 		exists, err := utils.SubnetCustomVMExists(subnetName)
