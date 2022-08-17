@@ -228,65 +228,31 @@ func getControlKeys(network models.Network) ([]string, bool, error) {
 
 // controlKeysLoop asks as many controlkeys the user requires, until Done or Cancel is selected
 func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string, bool, error) {
-	const (
-		addCtrlKey = "Add control key"
-		delCtrlKey = "Remove control key"
-		preview    = "Preview"
-		doneMsg    = "Done"
-		cancelMsg  = "Cancel"
+	label := "Control key"
+	info := ""
+	arg := network
+	list, canceled, err := app.Prompt.CaptureListDecision(
+		app.Prompt, // we need this to be able to mock test
+		controlKeysPrompt,
+		app.Prompt.CapturePChainAddress,
+		"Enter P-Chain address (Example: P-...)",
+		label,
+		info,
+		arg,
 	)
 
-	var controlKeys []string
-
-	for {
-		listDecision, err := app.Prompt.CaptureList(
-			controlKeysPrompt, []string{addCtrlKey, delCtrlKey, preview, doneMsg, cancelMsg},
-		)
-		if err != nil {
-			return nil, false, err
+	ctrlKeys := make([]string, len(list))
+	var (
+		key string
+		ok  bool
+	)
+	for i, k := range list {
+		if key, ok = k.(string); !ok {
+			return nil, false, fmt.Errorf("expected string but got %T", key)
 		}
-
-		switch listDecision {
-		case addCtrlKey:
-			controlKey, err := app.Prompt.CapturePChainAddress(
-				"Enter P-Chain address (Ex: `P-...`)",
-				network,
-			)
-			if err != nil {
-				return nil, false, err
-			}
-			if contains(controlKeys, controlKey) {
-				fmt.Println("Address already in list")
-				continue
-			}
-			controlKeys = append(controlKeys, controlKey)
-		case delCtrlKey:
-			if len(controlKeys) == 0 {
-				fmt.Println("no keys added yet")
-				continue
-			}
-			ifaceK := make([]interface{}, len(controlKeys))
-			for i, v := range controlKeys {
-				ifaceK[i] = v
-			}
-			index, err := app.Prompt.CaptureIndex("Choose key to remove:", ifaceK)
-			if err != nil {
-				return nil, false, err
-			}
-			controlKeys = append(controlKeys[:index], controlKeys[index+1:]...)
-		case preview:
-			fmt.Println("Control keys:")
-			for i, k := range controlKeys {
-				fmt.Printf("%d. %s\n", i, k)
-			}
-		case doneMsg:
-			return controlKeys, false, nil
-		case cancelMsg:
-			return nil, true, nil
-		default:
-			return nil, false, errors.New("unexpected option")
-		}
+		ctrlKeys[i] = key
 	}
+	return ctrlKeys, canceled, err
 }
 
 // getThreshold prompts for the threshold of addresses as a number
@@ -299,15 +265,6 @@ func getThreshold(maxLen uint64) (uint32, error) {
 		return 0, fmt.Errorf("the threshold can't be bigger than the number of control keys")
 	}
 	return uint32(threshold), err
-}
-
-func contains(list []string, element string) bool {
-	for _, val := range list {
-		if val == element {
-			return true
-		}
-	}
-	return false
 }
 
 func validateSubnetNameAndGetChains(args []string) ([]string, error) {

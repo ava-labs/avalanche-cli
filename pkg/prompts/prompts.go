@@ -23,11 +23,18 @@ import (
 const (
 	Yes = "Yes"
 	No  = "No"
+
+	Add      = "Add"
+	Del      = "Del"
+	Preview  = "Preview"
+	MoreInfo = "More Info"
+	Done     = "Done"
+	Cancel   = "Cancel"
 )
 
 type Prompter interface {
 	CapturePositiveBigInt(promptStr string) (*big.Int, error)
-	CaptureAddress(promptStr string) (common.Address, error)
+	CaptureAddress(promptStr string, arg any) (any, error)
 	CaptureExistingFilepath(promptStr string) (string, error)
 	CaptureYesNo(promptStr string) (bool, error)
 	CaptureNoYes(promptStr string) (bool, error)
@@ -39,7 +46,16 @@ type Prompter interface {
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
 	CaptureWeight(promptStr string) (uint64, error)
 	CaptureUint64(promptStr string) (uint64, error)
-	CapturePChainAddress(promptStr string, network models.Network) (string, error)
+	CapturePChainAddress(promptStr string, network any) (any, error)
+	CaptureListDecision(
+		prompter Prompter, // we need this in order to be able to run mock tests
+		prompt string,
+		capture func(prompt string, args any) (any, error),
+		capturePrompt string,
+		label string,
+		info string,
+		arg any,
+	) ([]any, bool, error)
 }
 
 type realPrompter struct{}
@@ -125,6 +141,65 @@ func validateBiggerThanZero(input string) error {
 		return errors.New("the value must be bigger than zero")
 	}
 	return nil
+}
+
+func (r *realPrompter) CaptureListDecision(
+	prompter Prompter, // we need this in order to be able to run mock tests
+	prompt string,
+	capture func(prompt string, args any) (any, error),
+	capturePrompt string,
+	label string,
+	info string,
+	arg any,
+) ([]any, bool, error) {
+	finalList := []any{}
+	for {
+		listDecision, err := prompter.CaptureList(
+			prompt, []string{Add, Del, Preview, MoreInfo, Done, Cancel},
+		)
+		if err != nil {
+			return nil, false, err
+		}
+		switch listDecision {
+		case Add:
+			elem, err := capture(
+				capturePrompt,
+				arg,
+			)
+			if err != nil {
+				return nil, false, err
+			}
+			if contains(finalList, elem) {
+				fmt.Println(label + " already in list")
+				continue
+			}
+			finalList = append(finalList, elem)
+		case Del:
+			if len(finalList) == 0 {
+				fmt.Println("no " + label + " added yet")
+				continue
+			}
+			index, err := prompter.CaptureIndex("Choose element to remove:", finalList)
+			if err != nil {
+				return nil, false, err
+			}
+			finalList = append(finalList[:index], finalList[index+1:]...)
+		case Preview:
+			for i, k := range finalList {
+				fmt.Printf("%d. %s\n", i, k)
+			}
+		case MoreInfo:
+			if info != "" {
+				fmt.Println(info)
+			}
+		case Done:
+			return finalList, false, nil
+		case Cancel:
+			return nil, true, nil
+		default:
+			return nil, false, errors.New("unexpected option")
+		}
+	}
 }
 
 func (*realPrompter) CaptureDuration(promptStr string) (time.Duration, error) {
@@ -277,7 +352,8 @@ func getPChainValidationFunc(network models.Network) func(string) error {
 	}
 }
 
-func (*realPrompter) CapturePChainAddress(promptStr string, network models.Network) (string, error) {
+func (*realPrompter) CapturePChainAddress(promptStr string, net any) (any, error) {
+	network := net.(models.Network)
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: getPChainValidationFunc(network),
@@ -286,7 +362,7 @@ func (*realPrompter) CapturePChainAddress(promptStr string, network models.Netwo
 	return prompt.Run()
 }
 
-func (*realPrompter) CaptureAddress(promptStr string) (common.Address, error) {
+func (*realPrompter) CaptureAddress(promptStr string, arg any) (any, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validateAddress,
@@ -379,4 +455,13 @@ func (*realPrompter) CaptureIndex(promptStr string, options []interface{}) (int,
 		return 0, err
 	}
 	return listIndex, nil
+}
+
+func contains(list []any, element any) bool {
+	for _, val := range list {
+		if val == element {
+			return true
+		}
+	}
+	return false
 }
