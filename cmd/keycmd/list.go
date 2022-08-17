@@ -5,6 +5,7 @@ package keycmd
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,7 +16,10 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/coreth/ethclient"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
@@ -81,6 +85,10 @@ func printAddresses(keyPaths []string) error {
 
 	ctx := context.Background()
 	fujiPClient := platformvm.NewClient(constants.FujiAPIEndpoint)
+	fujiCClient, err := ethclient.Dial(fmt.Sprintf("%s/ext/bc/%s/rpc", constants.FujiAPIEndpoint, "C"))
+	if err != nil {
+		return err
+	}
 
 	for _, keyPath := range keyPaths {
 		cAdded := false
@@ -92,16 +100,20 @@ func printAddresses(keyPaths []string) error {
 			}
 			if !cAdded {
 				strC := sk.C()
-				table.Append([]string{keyName, "C-Chain (Ethereum hex format)", strC, "0", "All"})
+				balanceStr, err := getCChainBalanceStr(ctx, fujiCClient, strC)
+				if err != nil {
+					return err
+				}
+				table.Append([]string{keyName, "C-Chain (Ethereum hex format)", strC, balanceStr, "All"})
 			}
 			cAdded = true
 
 			strP := sk.P()
 			for _, p := range strP {
-				balanceStr := ""
+				balanceStr := "0"
 				if net == models.Fuji.String() {
 					var err error
-					balanceStr, err = getBalanceStr(ctx, fujiPClient, p)
+					balanceStr, err = getPChainBalanceStr(ctx, fujiPClient, p)
 					if err != nil {
 						return err
 					}
@@ -115,7 +127,22 @@ func printAddresses(keyPaths []string) error {
 	return nil
 }
 
-func getBalanceStr(ctx context.Context, pClient platformvm.Client, addr string) (string, error) {
+func getCChainBalanceStr(ctx context.Context, cClient ethclient.Client, addrStr string) (string, error) {
+	addr := common.HexToAddress(addrStr)
+	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
+	balance, err := cClient.BalanceAt(ctx, addr, nil)
+	cancel()
+	if err != nil {
+		return "", err
+	}
+	if balance.Cmp(big.NewInt(0)) == 0 {
+		return "0", nil
+	}
+	balance = balance.Div(balance, big.NewInt(int64(units.Avax)))
+	return fmt.Sprintf("%.9f", float64(balance.Uint64())/float64(units.Avax)), nil
+}
+
+func getPChainBalanceStr(ctx context.Context, pClient platformvm.Client, addr string) (string, error) {
 	pID, err := address.ParseToID(addr)
 	if err != nil {
 		return "", err
@@ -126,5 +153,8 @@ func getBalanceStr(ctx context.Context, pClient platformvm.Client, addr string) 
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%d", uint64(resp.Balance)), nil
+	if resp.Balance == 0 {
+		return "0", nil
+	}
+	return fmt.Sprintf("%.9f", float64(resp.Balance)/float64(units.Avax)), nil
 }
