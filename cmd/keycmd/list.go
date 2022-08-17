@@ -69,7 +69,7 @@ func printAddresses(keyPaths []string) error {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetRowLine(true)
-	table.SetAutoMergeCells(true)
+	table.SetAutoMergeCellsByColumnIndex([]int{0, 1})
 
 	supportedNetworks := map[string]uint32{
 		models.Fuji.String(): avago_constants.FujiID,
