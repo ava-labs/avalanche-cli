@@ -29,8 +29,6 @@ var (
 	pluginDir string
 	// if true, print the manual instructions to screen
 	printManual bool
-	// network
-	networkStr string
 	// skipWhitelistCheck if true doesn't prompt
 	skipWhitelistCheck bool
 	// if true, doesn't ask for overwriting the config file
@@ -64,7 +62,9 @@ This command currently only supports subnets deployed on the Fuji testnet.`,
 	}
 	cmd.Flags().StringVar(&avagoConfigPath, "avalanchego-config", "", "file path of the avalanchego config file")
 	cmd.Flags().StringVar(&pluginDir, "plugin-dir", "", "file path of avalanchego's plugin directory")
-	cmd.Flags().StringVar(&networkStr, "network", "", "avalanche network where the validator will be joining (either `fuji` or `mainnet`)")
+	cmd.Flags().BoolVar(&deployTestnet, "fuji", "join on `fuji` (alias for `testnet`)")
+	cmd.Flags().BoolVar(&deployTestnet, "testnet", "join on `testnet` (alias for `fuji`)")
+	cmd.Flags().BoolVar(&deployMainnet, "mainnet", "join on `mainnet`")
 	cmd.Flags().BoolVar(&printManual, "print", false, "if true, print the manual config without prompting")
 	cmd.Flags().BoolVar(&skipWhitelistCheck, "skip-whitelist-check", false, "if true, skip the whitelist check prompting")
 	cmd.Flags().BoolVar(&forceWrite, "force-write", false, "if true, skip to prompt to overwrite the config file")
@@ -87,24 +87,35 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if err := checkMutuallyExclusive(deployTestnet, deployMainnet, false); err != nil {
+		return errors.New("--fuji and --mainnet are mutually exclusive")
+	}
+
 	var network models.Network
-	if networkStr == "" {
-		networkStr, err = app.Prompt.CaptureList(
+	switch {
+	case deployTestnet:
+		network = models.Fuji
+	case deployMainnet:
+		network = models.Mainnet
+	}
+
+	if network == models.Undefined {
+		networkStr, err := app.Prompt.CaptureList(
 			"Choose a network to validate on (this command only supports public networks)",
 			[]string{models.Fuji.String(), models.Mainnet.String()},
 		)
 		if err != nil {
 			return err
 		}
-	} else {
 		// flag provided
 		networkStr = strings.Title(networkStr)
 		// as we are allowing a flag, we need to check if a supported network has been provided
 		if !(networkStr == models.Fuji.String() || networkStr == models.Mainnet.String()) {
 			return errors.New("unsupported network")
 		}
+		network = models.NetworkFromString(networkStr)
 	}
-	network = models.NetworkFromString(networkStr)
+
 	networkLower := strings.ToLower(network.String())
 
 	subnetID := sc.Networks[network.String()].SubnetID
