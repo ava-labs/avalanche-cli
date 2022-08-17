@@ -18,6 +18,8 @@ const (
 	genesisPath      = "tests/e2e/assets/test_genesis.json"
 )
 
+var customVMPath string
+
 var _ = ginkgo.Describe("[Subnet]", func() {
 	ginkgo.AfterEach(func() {
 		commands.CleanNetwork()
@@ -33,7 +35,8 @@ var _ = ginkgo.Describe("[Subnet]", func() {
 	})
 
 	ginkgo.It("can create and delete a custom vm subnet config", func() {
-		commands.CreateCustomVMSubnetConfig(subnetName, genesisPath, utils.GetCustomVMPath())
+		customVMPath, err := utils.DownloadCustomVMBin()
+		commands.CreateCustomVMSubnetConfig(subnetName, genesisPath, customVMPath)
 		commands.DeleteSubnetConfig(subnetName)
 		exists, err := utils.SubnetCustomVMExists(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -41,7 +44,7 @@ var _ = ginkgo.Describe("[Subnet]", func() {
 	})
 
 	ginkgo.It("can deploy a custom vm subnet", func() {
-		commands.CreateCustomVMSubnetConfig(subnetName, genesisPath, utils.GetCustomVMPath())
+		commands.CreateCustomVMSubnetConfig(subnetName, genesisPath, customVMPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {

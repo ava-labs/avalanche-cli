@@ -11,15 +11,18 @@ import (
 	"os/exec"
 	"os/user"
 	"path"
-	"runtime"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 const (
 	expectedRPCComponentsLen = 7
 	blockchainIDPos          = 5
+	subnetEVMName            = "subnet-evm"
+	subnetEVMVersion         = "v0.2.7"
 )
 
 func GetBaseDir() string {
@@ -253,6 +256,12 @@ func CheckKeyEquality(keyPath1, keyPath2 string) (bool, error) {
 	return string(key1) == string(key2), nil
 }
 
-func GetCustomVMPath() string {
-	return fmt.Sprintf("tests/e2e/assets/test_vm_%s_%s.bin", runtime.GOOS, runtime.GOARCH)
+// Currently downloads subnet-evm, but that suffices to test the custom vm functionality
+func DownloadCustomVMBin() (string, error) {
+	targetDir := os.TempDir()
+	subnetEVMDir, err := binutils.DownloadReleaseVersion(logging.NoLog{}, subnetEVMName, subnetEVMVersion, targetDir)
+	if err != nil {
+		return "", err
+	}
+	return path.Join(subnetEVMDir, subnetEVMName), nil
 }
