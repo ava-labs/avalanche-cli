@@ -25,7 +25,7 @@ const (
 	No  = "No"
 
 	Add      = "Add"
-	Del      = "Del"
+	Del      = "Delete"
 	Preview  = "Preview"
 	MoreInfo = "More Info"
 	Done     = "Done"
@@ -176,7 +176,7 @@ func (r *realPrompter) CaptureListDecision(
 			finalList = append(finalList, elem)
 		case Del:
 			if len(finalList) == 0 {
-				fmt.Println("no " + label + " added yet")
+				fmt.Println("No " + label + " added yet")
 				continue
 			}
 			index, err := prompter.CaptureIndex("Choose element to remove:", finalList)

@@ -229,7 +229,8 @@ func getControlKeys(network models.Network) ([]string, bool, error) {
 // controlKeysLoop asks as many controlkeys the user requires, until Done or Cancel is selected
 func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string, bool, error) {
 	label := "Control key"
-	info := ""
+	info := "Control keys are P-Chain addresses which have admin rights on the subnet.\n" +
+		"Only private keys which control such addresses are allowed to make changes on the subnet"
 	arg := network
 	list, canceled, err := app.Prompt.CaptureListDecision(
 		app.Prompt, // we need this to be able to mock test
