@@ -147,6 +147,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if keyName == "" {
 			keyName, err = captureKeyName()
 			if err != nil {
+				if err == errNoKeys {
+					ux.Logger.PrintToUser("No private keys have been found. Deployment to fuji without a private key is not possible. Create a new one with `avalanche key create`.")
+				}
 				return err
 			}
 		}
