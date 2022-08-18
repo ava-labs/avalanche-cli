@@ -13,9 +13,29 @@ import (
 
 /* #nosec G204 */
 func CreateSubnetConfig(subnetName string, genesisPath string) {
-	// TODO convert to latest
-	version := "v0.2.8"
-	CreateSubnetConfigWithVersion(subnetName, genesisPath, version)
+	// Check config does not already exist
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeFalse())
+
+	// Create config
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"create",
+		"--genesis",
+		genesisPath,
+		"--evm",
+		subnetName,
+		"--latest",
+	)
+	_, err = cmd.Output()
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	// Config should now exist
+	exists, err = utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
 /* #nosec G204 */
@@ -34,7 +54,7 @@ func CreateSubnetConfigWithVersion(subnetName string, genesisPath string, versio
 		genesisPath,
 		"--evm",
 		subnetName,
-		"--subnet-evm",
+		"--vm-version",
 		version,
 	)
 	_, err = cmd.Output()
