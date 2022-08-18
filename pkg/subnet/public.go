@@ -115,6 +115,7 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error
 		api = constants.MainnetAPIEndpoint
 		networkID = avago_constants.MainnetID
 	case models.Local:
+		// used for E2E testing of public related paths
 		api = constants.LocalAPIEndpoint
 		networkID = constants.LocalNetworkID
 	default:

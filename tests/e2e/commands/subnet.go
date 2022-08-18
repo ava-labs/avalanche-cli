@@ -5,8 +5,10 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/onsi/gomega"
 )
@@ -91,6 +93,8 @@ func DeploySubnetPubliclyLocalMock(
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
+	os.Setenv(constants.DeployPublickyLocalMockEnvVar, "true")
+
 	// Deploy subnet locally
 	cmd := exec.Command(
 		CLIBinary,
@@ -111,6 +115,8 @@ func DeploySubnetPubliclyLocalMock(
 		fmt.Println(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
+
+	os.Unsetenv(constants.DeployPublickyLocalMockEnvVar)
 
 	return string(output)
 }

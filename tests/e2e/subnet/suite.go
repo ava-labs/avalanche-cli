@@ -32,6 +32,7 @@ var _ = ginkgo.Describe("[Subnet]", func() {
 
 	ginkgo.It("can deploy a subnet to fake fuji", func() {
 		commands.CreateSubnetConfig(subnetName, genesisPath)
+		_ = utils.DeleteKey(keyName)
 		output, err := commands.CreateKeyFromPath(keyName, testKey)
 		if err != nil {
 			fmt.Println(output)

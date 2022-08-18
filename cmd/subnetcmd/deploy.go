@@ -172,7 +172,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return errors.New("not implemented")
 	}
 
-	network = models.Local
+	if os.Getenv(constants.DeployPublickyLocalMockEnvVar) != "" {
+		network = models.Local
+	}
 
 	// from here on we are assuming a public deploy
 
