@@ -27,6 +27,7 @@ var (
 	duration     time.Duration
 
 	errNoSubnetID = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
+	errNoKeys     = errors.New("no keys")
 )
 
 // avalanche subnet deploy
@@ -269,6 +270,10 @@ func captureKeyName() (string, error) {
 	files, err := os.ReadDir(app.GetKeyDir())
 	if err != nil {
 		return "", err
+	}
+
+	if len(files) < 1 {
+		return "", errNoKeys
 	}
 
 	keys := make([]string, len(files))
