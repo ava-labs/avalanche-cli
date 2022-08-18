@@ -40,7 +40,8 @@ func clean(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("Process terminated.")
 	}
 
-	// iterate over sub dirs
+	// iterate over all installed avalanchego versions and remove all plugins from their
+	// plugin dirs except for the c-chain plugin
 	installedVersions, err := os.ReadDir(app.GetAvalanchegoBinDir())
 	if err != nil {
 		return err

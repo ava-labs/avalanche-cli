@@ -4,7 +4,6 @@
 package vm
 
 import (
-	"errors"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -70,7 +69,12 @@ func getSubnetEVMVersion(app *application.Avalanche) (string, error) {
 	}
 
 	// prompt for version
-	return "", errors.New("Unimplemented")
+	version, err := app.Prompt.CaptureString("Subnet-EVM version")
+	if err != nil {
+		return "", err
+	}
+
+	return version, nil
 }
 
 func getDescriptors(app *application.Avalanche, subnetEVMVersion string) (*big.Int, string, string, stateDirection, error) {

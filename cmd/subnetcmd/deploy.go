@@ -48,7 +48,7 @@ subnet and deploy it on Fuji or Mainnet.`,
 		Args:         cobra.ExactArgs(1),
 	}
 	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
-	cmd.Flags().StringVar(&avagoVersion, "avalanchego-version", "", "use this version of avalanchego")
+	cmd.Flags().StringVar(&avagoVersion, "avalanchego-version", "", "use this version of avalanchego (ex: 1.17.12)")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use for fuji deploys")
 	return cmd
 }
@@ -126,13 +126,16 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		var vmDir string
 
 		// download subnet-evm if necessary
-		if sc.VM == subnetEvm {
+		switch sc.VM {
+		case subnetEvm:
 			vmDir, err = binutils.SetupSubnetEVM(app, sc.VMVersion)
 			if err != nil {
 				return fmt.Errorf("failed to install subnet-evm: %w", err)
 			}
-		} else {
-			vmDir = app.GetCustomVMPath(chain)
+		case customVM:
+			vmDir = binutils.SetupCustomBin(app, chain)
+		default:
+			return fmt.Errorf("unknown vm: %s", sc.VM)
 		}
 
 		deployer := subnet.NewLocalDeployer(app, avagoVersion, vmDir)

@@ -36,7 +36,7 @@ type PluginBinaryDownloader interface {
 
 type BinaryChecker interface {
 	ExistsWithLatestVersion(name, binaryPrefix string) (bool, string, error)
-	ExistsWithVersion(name, binaryPrefix, version string) (bool, string, error)
+	ExistsWithVersion(name, binaryPrefix, version string) (bool, error)
 }
 
 type (
@@ -69,7 +69,7 @@ func sanitizeArchivePath(d, t string) (v string, err error) {
 // InstallArchive installs the binary archive downloaded
 func InstallArchive(ext string, archive []byte, binDir string) error {
 	// create binDir if it doesn't exist
-	if err := os.MkdirAll(binDir, 0o700); err != nil {
+	if err := os.MkdirAll(binDir, constants.DefaultPerms755); err != nil {
 		return err
 	}
 
@@ -243,44 +243,13 @@ func (abc *binaryChecker) ExistsWithLatestVersion(binDir, binPrefix string) (boo
 	return true, latest, nil
 }
 
-// ExistsWithLatestVersion returns true if avalanchego can be found and at what path
-// or false, if it can not be found (or an error if applies)
-func (abc *binaryChecker) ExistsWithVersion(binDir, binPrefix, version string) (bool, string, error) {
-	// TODO this still has loads of potential pit falls
-	// Should prob check for existing binary and plugin dir too
+// ExistsWithVersion returns true if the supplied binary is installed with the supplied version
+func (abc *binaryChecker) ExistsWithVersion(binDir, binPrefix, version string) (bool, error) {
 	match, err := filepath.Glob(filepath.Join(binDir, binPrefix) + version)
 	if err != nil {
-		return false, "", err
+		return false, err
 	}
-	var latest string
-	switch len(match) {
-	case 0:
-		return false, "", nil
-	case 1:
-		latest = match[0]
-	default:
-		var semVers semver.Versions
-		for _, v := range match {
-			base := filepath.Base(v)
-			newv, err := semver.NewVersion(base[len(binPrefix):])
-			if err != nil {
-				// ignore this one, it might be in an unexpected format
-				// e.g. a dir which has nothing to do with this
-				continue
-			}
-			semVers = append(semVers, newv)
-		}
-
-		sort.Sort(sort.Reverse(semVers))
-		choose := fmt.Sprintf("v%s", semVers[0])
-		for _, m := range match {
-			if strings.Contains(m, choose) {
-				latest = m
-				break
-			}
-		}
-	}
-	return true, latest, nil
+	return len(match) != 0, nil
 }
 
 func (d *pluginBinaryDownloader) Download(vmIDs map[string]string, pluginDir, binDir string) error {
@@ -319,13 +288,6 @@ func (d *pluginBinaryDownloader) InstallVM(vmID, vmBin, pluginDir string) error 
 		return fmt.Errorf("failed copying custom vm to plugin dir: %w", err)
 	}
 	return nil
-
-	// TODO Handle this with clean
-	// // remove all other plugins other than the given and `evm`
-	// if err := cleanupPluginDir(vmIDs, pluginDir); err != nil {
-	// 	return err
-	// }
-	// return nil
 }
 
 // getVMBinary downloads the binary from the binary server URL
@@ -389,7 +351,6 @@ func (d *pluginBinaryDownloader) DownloadVM(name string, vmID string, pluginDir,
 			return fmt.Errorf("failed downloading subnet-evm version: %w", err)
 		}
 		close(cancel)
-		fmt.Println()
 	}
 
 	evmPath := filepath.Join(subnetEVMDir, subnetEVMName)

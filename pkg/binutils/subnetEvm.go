@@ -4,7 +4,6 @@
 package binutils
 
 import (
-	"fmt"
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -18,7 +17,16 @@ func SetupSubnetEVM(app *application.Avalanche, subnetEVMVersion string) (string
 
 	installer := NewInstaller()
 	downloader := NewSubnetEVMDownloader()
-	vmDir, err := InstallBinary(app, subnetEVMVersion, binDir, subDir, subnetEVMBinPrefix, constants.AvaLabsOrg, constants.SubnetEVMRepoName, downloader, installer)
-	fmt.Println("Installed to:", vmDir)
+	vmDir, err := InstallBinary(
+		app,
+		subnetEVMVersion,
+		binDir,
+		subDir,
+		subnetEVMBinPrefix,
+		constants.AvaLabsOrg,
+		constants.SubnetEVMRepoName,
+		downloader,
+		installer,
+	)
 	return filepath.Join(vmDir, "subnet-evm"), err
 }

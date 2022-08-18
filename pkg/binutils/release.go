@@ -24,26 +24,22 @@ func installBinaryWithVersion(
 
 	installURL, ext, err := downloader.GetDownloadURL(version, installer)
 	if err != nil {
-		return "", fmt.Errorf("unable to determine avalanchego install URL: %d", err)
+		return "", fmt.Errorf("unable to determine binary install URL: %d", err)
 	}
 
 	app.Log.Debug("starting download from %s ...", installURL)
 	archive, err := installer.DownloadRelease(installURL)
 	if err != nil {
-		return "", fmt.Errorf("unable to download subnet-evm: %d", err)
+		return "", fmt.Errorf("unable to download binary: %d", err)
 	}
 
 	app.Log.Debug("download successful. installing archive...")
 	if err := InstallArchive(ext, archive, binDir); err != nil {
-		fmt.Println("Returning early with err", err)
 		return "", err
 	}
 
-	fmt.Println("Finished installing archive")
-
 	if ext == zipExtension {
-		// zip contains a build subdir instead of the subnetEVMSubDir expected from tar.gz
-		// TODO definitely test this
+		// zip contains a build subdir instead of the toplevel expected from tar.gz
 		if err := os.Rename(filepath.Join(binDir, "build"), filepath.Join(binDir, binPrefix+version)); err != nil {
 			return "", err
 		}
@@ -68,8 +64,6 @@ func InstallBinary(
 	downloader GithubDownloader,
 	installer Installer,
 ) (string, error) {
-	fmt.Println("Bin dir", binDir)
-
 	if version == "" {
 		// get latest version
 		var err error
@@ -87,14 +81,13 @@ func InstallBinary(
 
 	binChecker := NewBinaryChecker()
 
-	fmt.Println("Checking", binDir, binPrefix, version)
-	exists, previousInstallDir, err := binChecker.ExistsWithVersion(binDir, binPrefix, version)
+	exists, err := binChecker.ExistsWithVersion(binDir, binPrefix, version)
 	if err != nil {
 		return "", fmt.Errorf("failed trying to locate binary %s-%s: %s", binPrefix, version, binDir)
 	}
 	if exists {
 		app.Log.Debug(binPrefix + version + " found. Skipping installation")
-		return previousInstallDir, nil
+		return filepath.Join(binDir, binPrefix+version), nil
 	}
 
 	app.Log.Info("Using binary version: %s", version)

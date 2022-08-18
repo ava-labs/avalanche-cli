@@ -8,7 +8,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -60,7 +59,6 @@ func verifyAvagoTarContents(assert *assert.Assertions, tarBytes []byte, version 
 			break
 		}
 		assert.NoError(err)
-		fmt.Println("Archive contains:", file.Name)
 		switch file.Name {
 		case topDir:
 			// we don't need to check the top dir, it is implied through other checks
@@ -97,7 +95,6 @@ func verifySubnetEVMTarContents(assert *assert.Assertions, tarBytes []byte) {
 			break
 		}
 		assert.NoError(err)
-		fmt.Println("Archive contains:", file.Name)
 		switch file.Name {
 		case subnetEVMBin:
 			binExists = true
@@ -129,7 +126,6 @@ func verifyAvagoZipContents(assert *assert.Assertions, zipFile string) {
 	assert.NoError(err)
 	defer reader.Close()
 	for _, file := range reader.File {
-		fmt.Println("Archive contains:", file.Name)
 		// Zip directories end in "/" which is annoying for string matching
 		switch strings.TrimSuffix(file.Name, "/") {
 		case topDir:

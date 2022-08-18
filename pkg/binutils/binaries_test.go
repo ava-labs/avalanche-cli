@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/ava-labs/avalanche-cli/internal/testutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -60,4 +61,53 @@ func TestInstallGzipArchive(t *testing.T) {
 	assert.NoError(err)
 
 	checkFunc(archivePath)
+}
+
+func TestExistsWithVersion(t *testing.T) {
+	binPrefix := "binary-"
+	binVersion := "1.4.3"
+
+	assert := assert.New(t)
+
+	installDir, err := os.MkdirTemp(os.TempDir(), "binutils-tests")
+	assert.NoError(err)
+	defer os.RemoveAll(installDir)
+
+	checker := NewBinaryChecker()
+
+	exists, err := checker.ExistsWithVersion(installDir, binPrefix, binVersion)
+	assert.NoError(err)
+	assert.False(exists)
+
+	err = os.Mkdir(filepath.Join(installDir, binPrefix+binVersion), constants.DefaultPerms755)
+	assert.NoError(err)
+
+	exists, err = checker.ExistsWithVersion(installDir, binPrefix, binVersion)
+	assert.NoError(err)
+	assert.True(exists)
+}
+
+func TestExistsWithVersion_Longer(t *testing.T) {
+	binPrefix := "binary-"
+	desiredVersion := "1.4.3"
+	actualVersion := "1.4.30"
+
+	assert := assert.New(t)
+
+	installDir, err := os.MkdirTemp(os.TempDir(), "binutils-tests")
+	assert.NoError(err)
+	defer os.RemoveAll(installDir)
+
+	checker := NewBinaryChecker()
+
+	exists, err := checker.ExistsWithVersion(installDir, binPrefix, desiredVersion)
+	assert.NoError(err)
+	assert.False(exists)
+
+	err = os.Mkdir(filepath.Join(installDir, binPrefix+actualVersion), constants.DefaultPerms755)
+	assert.NoError(err)
+
+	exists, err = checker.ExistsWithVersion(installDir, binPrefix, desiredVersion)
+	assert.NoError(err)
+	assert.False(exists)
 }

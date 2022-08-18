@@ -38,7 +38,7 @@ func (_m *BinaryChecker) ExistsWithLatestVersion(name string, binaryPrefix strin
 }
 
 // ExistsWithVersion provides a mock function with given fields: name, binaryPrefix, version
-func (_m *BinaryChecker) ExistsWithVersion(name string, binaryPrefix string, version string) (bool, string, error) {
+func (_m *BinaryChecker) ExistsWithVersion(name string, binaryPrefix string, version string) (bool, error) {
 	ret := _m.Called(name, binaryPrefix, version)
 
 	var r0 bool
@@ -48,21 +48,14 @@ func (_m *BinaryChecker) ExistsWithVersion(name string, binaryPrefix string, ver
 		r0 = ret.Get(0).(bool)
 	}
 
-	var r1 string
-	if rf, ok := ret.Get(1).(func(string, string, string) string); ok {
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, string, string) error); ok {
 		r1 = rf(name, binaryPrefix, version)
 	} else {
-		r1 = ret.Get(1).(string)
+		r1 = ret.Error(1)
 	}
 
-	var r2 error
-	if rf, ok := ret.Get(2).(func(string, string, string) error); ok {
-		r2 = rf(name, binaryPrefix, version)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
 type mockConstructorTestingTNewBinaryChecker interface {

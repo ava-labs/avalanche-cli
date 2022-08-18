@@ -8,7 +8,6 @@ import (
 	"archive/zip"
 	"compress/gzip"
 	"crypto/rand"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -109,10 +108,7 @@ func CreateTarGz(assert *assert.Assertions, src string, dest string, includeTopL
 				header.Name = filepath.Join(baseDir, strings.TrimPrefix(path, src))
 			}
 
-			fmt.Println("Base dir", baseDir)
-			fmt.Println("Header:", header.Name)
 			if strings.TrimSuffix(header.Name, "/") == filepath.Base(src) {
-				fmt.Println("Hit condition")
 				return nil
 			}
 

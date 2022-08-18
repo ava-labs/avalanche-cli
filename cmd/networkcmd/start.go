@@ -34,7 +34,7 @@ running.`,
 		Args:         cobra.MaximumNArgs(1),
 		SilenceUsage: true,
 	}
-	cmd.Flags().StringVar(&avagoVersion, "avalanchego-version", "", "use this version of avalanchego")
+	cmd.Flags().StringVar(&avagoVersion, "avalanchego-version", "", "use this version of avalanchego (ex: 1.17.12)")
 
 	return cmd
 }

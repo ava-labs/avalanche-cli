@@ -21,14 +21,14 @@ type urlTest struct {
 	expectedErr error
 }
 
-func Test_GetGIthubLatestReleaseURL(t *testing.T) {
+func TestGetGithubLatestReleaseURL(t *testing.T) {
 	assert := assert.New(t)
 	expected := "https://api.github.com/repos/ava-labs/avalanchego/releases/latest"
 	url := GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.AvalancheGoRepoName)
 	assert.Equal(expected, url)
 }
 
-func Test_GetDownloadURL_AvalancheGo(t *testing.T) {
+func TestGetDownloadURL_AvalancheGo(t *testing.T) {
 	tests := []urlTest{
 		{
 			version:     "v1.17.1",
@@ -78,7 +78,7 @@ func Test_GetDownloadURL_AvalancheGo(t *testing.T) {
 	}
 }
 
-func Test_GetDownloadURL_SubnetEVM(t *testing.T) {
+func TestGetDownloadURL_SubnetEVM(t *testing.T) {
 	tests := []urlTest{
 		{
 			version:     "v1.17.1",
