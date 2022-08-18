@@ -128,8 +128,6 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error
 
 	kc := sf.KeyChain()
 
-	//kc := secp256k1fx.NewKeychain(genesis.EWOQKey)
-
 	wallet, err := primary.NewWalletWithTxs(ctx, api, kc, preloadTxs...)
 	if err != nil {
 		return nil, err

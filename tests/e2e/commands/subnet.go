@@ -80,3 +80,37 @@ func DeploySubnetLocally(subnetName string) string {
 
 	return string(output)
 }
+
+func DeploySubnetPubliclyLocalMock(
+	subnetName string,
+	key string,
+	controlKeys string,
+) string {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// Deploy subnet locally
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"deploy",
+		"--fuji",
+		"--threshold",
+		"1",
+		"--key",
+		key,
+		"--control-keys",
+		controlKeys,
+		subnetName,
+	)
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	return string(output)
+}
