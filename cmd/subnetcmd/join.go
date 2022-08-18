@@ -59,6 +59,7 @@ This command currently only supports subnets deployed on the Fuji testnet.`,
 	cmd.Flags().StringVar(&avagoConfigPath, "avalanchego-config", "", "file path of the avalanchego config file")
 	cmd.Flags().StringVar(&pluginDir, "plugin-dir", "", "file path of avalanchego's plugin directory")
 	cmd.Flags().BoolVar(&printManual, "print", false, "if true, print the manual config without prompting")
+	cmd.Flags().BoolVarP(&useTestnet, "fuji", "f", false, "add validator to fuji")
 	return cmd
 }
 
@@ -79,14 +80,23 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	var network models.Network
-	networkStr, err := app.Prompt.CaptureList(
-		"Choose a network to validate on (this command only supports public networks)",
-		[]string{models.Fuji.String(), models.Mainnet.String()},
-	)
-	if err != nil {
-		return err
+	if useTestnet {
+		network = models.Fuji
+	} else {
+		networkStr, err := app.Prompt.CaptureList(
+			"Choose a network to validate on (this command only supports public networks)",
+			[]string{models.Fuji.String(), models.Mainnet.String()},
+		)
+		if err != nil {
+			return err
+		}
+		network = models.NetworkFromString(networkStr)
 	}
-	network = models.NetworkFromString(networkStr)
+
+	if os.Getenv(constants.DeployPublickyLocalMockEnvVar) != "" {
+		network = models.Local
+	}
+
 	networkLower := strings.ToLower(network.String())
 
 	subnetID := sc.Networks[network.String()].SubnetID
@@ -207,6 +217,8 @@ func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, erro
 		api = constants.FujiAPIEndpoint
 	case models.Mainnet:
 		api = constants.MainnetAPIEndpoint
+	case models.Local:
+		api = constants.LocalAPIEndpoint
 	default:
 		return false, fmt.Errorf("network not supported")
 	}
