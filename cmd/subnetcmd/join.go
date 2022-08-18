@@ -384,12 +384,7 @@ func createPlugin(subnetName string, pluginDir string) (string, error) {
 
 	vmDestPath := filepath.Join(pluginDir, chainVMID.String())
 
-	vmBytes, err := os.ReadFile(vmSourcePath)
-	if err != nil {
-		return "", err
-	}
-
-	return vmDestPath, os.WriteFile(vmDestPath, vmBytes, constants.DefaultPerms755)
+	return vmDestPath, binutils.CopyFile(vmSourcePath, vmDestPath)
 }
 
 func sanitizePath(path string) (string, error) {
