@@ -62,9 +62,9 @@ This command currently only supports subnets deployed on the Fuji testnet.`,
 	}
 	cmd.Flags().StringVar(&avagoConfigPath, "avalanchego-config", "", "file path of the avalanchego config file")
 	cmd.Flags().StringVar(&pluginDir, "plugin-dir", "", "file path of avalanchego's plugin directory")
-	cmd.Flags().BoolVar(&deployTestnet, "fuji", "join on `fuji` (alias for `testnet`)")
-	cmd.Flags().BoolVar(&deployTestnet, "testnet", "join on `testnet` (alias for `fuji`)")
-	cmd.Flags().BoolVar(&deployMainnet, "mainnet", "join on `mainnet`")
+	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "join on `fuji` (alias for `testnet`)")
+	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
+	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
 	cmd.Flags().BoolVar(&printManual, "print", false, "if true, print the manual config without prompting")
 	cmd.Flags().BoolVar(&skipWhitelistCheck, "skip-whitelist-check", false, "if true, skip the whitelist check prompting")
 	cmd.Flags().BoolVar(&forceWrite, "force-write", false, "if true, skip to prompt to overwrite the config file")
