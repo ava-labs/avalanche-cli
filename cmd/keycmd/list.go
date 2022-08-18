@@ -91,26 +91,26 @@ func printAddresses(keyPaths []string) error {
 	}
 
 	for _, keyPath := range keyPaths {
-		cAdded := false
 		keyName := strings.TrimSuffix(filepath.Base(keyPath), constants.KeySuffix)
 		for net, id := range supportedNetworks {
 			sk, err := key.LoadSoft(id, keyPath)
 			if err != nil {
 				return err
 			}
-			if !cAdded {
-				strC := sk.C()
-				balanceStr, err := getCChainBalanceStr(ctx, fujiCClient, strC)
+
+			strC := sk.C()
+			balanceStr := ""
+			if net == models.Fuji.String() {
+				balanceStr, err = getCChainBalanceStr(ctx, fujiCClient, strC)
 				if err != nil {
 					return err
 				}
-				table.Append([]string{keyName, "C-Chain (Ethereum hex format)", strC, balanceStr, "All"})
 			}
-			cAdded = true
+			table.Append([]string{keyName, "C-Chain (Ethereum hex format)", strC, balanceStr, net})
 
 			strP := sk.P()
 			for _, p := range strP {
-				balanceStr := "0"
+				balanceStr := ""
 				if net == models.Fuji.String() {
 					var err error
 					balanceStr, err = getPChainBalanceStr(ctx, fujiPClient, p)
@@ -135,10 +135,11 @@ func getCChainBalanceStr(ctx context.Context, cClient ethclient.Client, addrStr 
 	if err != nil {
 		return "", err
 	}
+	// convert to nAvax
+	balance = balance.Div(balance, big.NewInt(int64(units.Avax)))
 	if balance.Cmp(big.NewInt(0)) == 0 {
 		return "0", nil
 	}
-	balance = balance.Div(balance, big.NewInt(int64(units.Avax)))
 	return fmt.Sprintf("%.9f", float64(balance.Uint64())/float64(units.Avax)), nil
 }
 
