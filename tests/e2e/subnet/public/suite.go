@@ -57,7 +57,6 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 
 	ginkgo.It("add nodes as validators", func() {
 		for _, nodeID := range localNodes {
-			fmt.Println("adding node", nodeID, "as subnet validator")
 			start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
 			s := commands.AddValidatorPublicly(subnetName, keyName, nodeID, start, "24h", "20")
 			fmt.Println(s)

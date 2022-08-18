@@ -105,7 +105,7 @@ func DeploySubnetPublicly(
 		controlKeys,
 		subnetName,
 	)
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(string(output))
 		fmt.Println(err)
@@ -128,23 +128,6 @@ func AddValidatorPublicly(
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
-	fmt.Println(
-		CLIBinary,
-		SubnetCmd,
-		"addValidator",
-		"--fuji",
-		"--key",
-		key,
-		"--nodeID",
-		nodeID,
-		"--start-time",
-		start,
-		"--staking-period",
-		period,
-		"--weight",
-		weight,
-		subnetName,
-	)
 	cmd := exec.Command(
 		CLIBinary,
 		SubnetCmd,
