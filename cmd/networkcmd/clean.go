@@ -3,6 +3,7 @@
 package networkcmd
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -56,8 +57,15 @@ func clean(cmd *cobra.Command, args []string) error {
 		binDir := filepath.Join(app.GetBaseDir(), constants.AvalancheCliBinDir)
 		cleanBins(binDir)
 	} else {
-		// iterate over all installed avalanchego versions and remove all plugins from their
+		// Iterate over all installed avalanchego versions and remove all plugins from their
 		// plugin dirs except for the c-chain plugin
+
+		// Check if dir exists. If not, no work to be done
+		if _, err := os.Stat(app.GetAvalanchegoBinDir()); errors.Is(err, os.ErrNotExist) {
+			// path/to/whatever does *not* exist
+			return nil
+		}
+
 		installedVersions, err := os.ReadDir(app.GetAvalanchegoBinDir())
 		if err != nil {
 			return err
