@@ -13,11 +13,16 @@ import (
 )
 
 const (
-	subnetName  = "e2eSubnetTest"
-	genesisPath = "tests/e2e/assets/test_genesis.json"
-	controlKeys = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
-	testKey     = "tests/e2e/assets/ewoq_key.pk"
-	keyName     = "key1"
+	subnetName   = "e2eSubnetTest"
+	genesisPath  = "tests/e2e/assets/test_genesis.json"
+	controlKeys  = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
+	testKey      = "tests/e2e/assets/ewoq_key.pk"
+	keyName      = "key1"
+	LocalNode1ID = "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg"
+	LocalNode2ID = "NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ"
+	LocalNode3ID = "NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN"
+	LocalNode4ID = "NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu"
+	LocalNode5ID = "NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5"
 )
 
 var _ = ginkgo.Describe("[Public Subnet]", func() {

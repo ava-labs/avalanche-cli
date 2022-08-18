@@ -25,6 +25,7 @@ var (
 	weight       uint64
 	startTimeStr string
 	duration     time.Duration
+	useTestnet   bool
 
 	errNoSubnetID = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 	errNoKeys     = errors.New("no keys")
@@ -53,6 +54,7 @@ This command currently only works on subnets deployed to the Fuji testnet.`,
 	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
+	cmd.Flags().BoolVarP(&useTestnet, "fuji", "f", false, "add validator to fuji")
 	return cmd
 }
 
@@ -71,14 +73,22 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	var network models.Network
-	networkStr, err := app.Prompt.CaptureList(
-		"Choose a network to deploy on. This command only supports Fuji currently.",
-		[]string{models.Fuji.String(), models.Mainnet.String() + " (coming soon)"},
-	)
-	if err != nil {
-		return err
+	if useTestnet {
+		network = models.Fuji
+	} else {
+		networkStr, err := app.Prompt.CaptureList(
+			"Choose a network to deploy on. This command only supports Fuji currently.",
+			[]string{models.Fuji.String(), models.Mainnet.String() + " (coming soon)"},
+		)
+		if err != nil {
+			return err
+		}
+		network = models.NetworkFromString(networkStr)
 	}
-	network = models.NetworkFromString(networkStr)
+
+	if os.Getenv(constants.DeployPublickyLocalMockEnvVar) != "" {
+		network = models.Local
+	}
 
 	chains, err := validateSubnetNameAndGetChains(args)
 	if err != nil {
