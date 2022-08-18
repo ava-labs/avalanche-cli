@@ -20,8 +20,12 @@ import (
 )
 
 var (
-	deployLocal bool
-	keyName     string
+	deployLocal   bool
+	deployTestnet bool
+	deployMainnet bool
+	keyName       string
+
+	errMutuallyExlusive = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 )
 
 // avalanche subnet deploy
@@ -48,6 +52,9 @@ subnet and deploy it on Fuji or Mainnet.`,
 		Args:         cobra.ExactArgs(1),
 	}
 	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
+	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "deploy to testnet (alias to `fuji`)")
+	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "deploy to fuji (alias to `testnet`")
+	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "deploy to mainnet (not yet supported)")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use for fuji deploys")
 	return cmd
 }
@@ -91,9 +98,22 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// get the network to deploy to
 	var network models.Network
-	if deployLocal {
+
+	if err := checkMutuallyExclusive(deployLocal, deployTestnet, deployMainnet); err != nil {
+		return err
+	}
+
+	switch {
+	case deployLocal:
 		network = models.Local
-	} else {
+	case deployTestnet:
+		network = models.Fuji
+	case deployMainnet:
+		network = models.Mainnet
+	}
+
+	if network == models.Undefined {
+		// no flag was set, prompt user
 		networkStr, err := app.Prompt.CaptureList(
 			"Choose a network to deploy on",
 			[]string{models.Local.String(), models.Fuji.String(), models.Mainnet.String()},
@@ -154,7 +174,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-	case models.Mainnet: // just make the switch pass, fuij/main implementation is the same (for now)
+	case models.Mainnet: // in the future, just make the switch pass, fuij/main implementation is the same (for now)
+		return errors.New("deploying to mainnet is not yet supported") // for now not supported
 	default:
 		return errors.New("not implemented")
 	}
@@ -322,4 +343,11 @@ func validateSubnetNameAndGetChains(args []string) ([]string, error) {
 	}
 
 	return chains, nil
+}
+
+func checkMutuallyExclusive(flagA bool, flagB bool, flagC bool) error {
+	if flagA && flagB || flagB && flagC || flagA && flagC {
+		return errMutuallyExlusive
+	}
+	return nil
 }
