@@ -6,6 +6,7 @@ package subnet
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
@@ -15,17 +16,20 @@ import (
 )
 
 const (
-	subnetName   = "e2eSubnetTest"
-	genesisPath  = "tests/e2e/assets/test_genesis.json"
-	controlKeys  = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
-	testKey      = "tests/e2e/assets/ewoq_key.pk"
-	keyName      = "key1"
-	LocalNode1ID = "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg"
-	LocalNode2ID = "NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ"
-	LocalNode3ID = "NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN"
-	LocalNode4ID = "NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu"
-	LocalNode5ID = "NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5"
+	subnetName  = "e2eSubnetTest"
+	genesisPath = "tests/e2e/assets/test_genesis.json"
+	controlKeys = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
+	testKey     = "tests/e2e/assets/ewoq_key.pk"
+	keyName     = "key1"
 )
+
+var localNodes = []string{
+	"NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg",
+	"NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ",
+	"NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN",
+	"NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu",
+	"NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5",
+}
 
 var _ = ginkgo.Describe("[Public Subnet]", func() {
 
@@ -47,7 +51,17 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 	})
 
 	ginkgo.It("deploy a subnet to fuji", func() {
-		_ = commands.DeploySubnetPublicly(subnetName, keyName, controlKeys)
+		s := commands.DeploySubnetPublicly(subnetName, keyName, controlKeys)
+		fmt.Println(s)
+	})
+
+	ginkgo.It("add nodes as validators", func() {
+		for _, nodeID := range localNodes {
+			fmt.Println("adding node", nodeID, "as subnet validator")
+			start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
+			s := commands.AddValidatorPublicly(subnetName, keyName, nodeID, start, "24h", "20")
+			fmt.Println(s)
+		}
 	})
 
 	ginkgo.It("finalize fuji mock env", func() {

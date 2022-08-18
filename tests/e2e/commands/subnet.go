@@ -115,42 +115,59 @@ func DeploySubnetPublicly(
 	return string(output)
 }
 
-/*
-
 func AddValidatorPublicly(
 	subnetName string,
-    nodeID string,
+	key string,
+	nodeID string,
+	start string,
+	period string,
+	weight string,
 ) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
-	os.Setenv(constants.DeployPublickyLocalMockEnvVar, "true")
-
-	// Deploy subnet locally
+	fmt.Println(
+		CLIBinary,
+		SubnetCmd,
+		"addValidator",
+		"--fuji",
+		"--key",
+		key,
+		"--nodeID",
+		nodeID,
+		"--start-time",
+		start,
+		"--staking-period",
+		period,
+		"--weight",
+		weight,
+		subnetName,
+	)
 	cmd := exec.Command(
 		CLIBinary,
 		SubnetCmd,
-		"deploy",
+		"addValidator",
 		"--fuji",
-		"--threshold",
-		"1",
 		"--key",
 		key,
-		"--control-keys",
-		controlKeys,
+		"--nodeID",
+		nodeID,
+		"--start-time",
+		start,
+		"--staking-period",
+		period,
+		"--weight",
+		weight,
 		subnetName,
 	)
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(string(output))
 		fmt.Println(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 
-	os.Unsetenv(constants.DeployPublickyLocalMockEnvVar)
-
 	return string(output)
 }
-*/
