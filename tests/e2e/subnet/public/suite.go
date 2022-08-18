@@ -5,7 +5,9 @@ package subnet
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -26,25 +28,33 @@ const (
 )
 
 var _ = ginkgo.Describe("[Public Subnet]", func() {
-	ginkgo.It("can deploy a subnet to fuji", func() {
-		_ = utils.DeleteConfigs(subnetName)
-		_ = utils.DeleteKey(keyName)
 
-		commands.CreateSubnetConfig(subnetName, genesisPath)
+	ginkgo.It("initialize fuji mock env", func() {
+		// fuji mock
+		_ = commands.StartNetwork()
+		os.Setenv(constants.DeployPublickyLocalMockEnvVar, "true")
+		// key
+		_ = utils.DeleteKey(keyName)
 		output, err := commands.CreateKeyFromPath(keyName, testKey)
 		if err != nil {
 			fmt.Println(output)
 			utils.PrintStdErr(err)
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
+		// subnet config
+		_ = utils.DeleteConfigs(subnetName)
+		commands.CreateSubnetConfig(subnetName, genesisPath)
+	})
 
-		_ = commands.StartNetwork()
+	ginkgo.It("deploy a subnet to fuji", func() {
+		_ = commands.DeploySubnetPublicly(subnetName, keyName, controlKeys)
+	})
 
-		_ = commands.DeploySubnetPubliclyLocalMock(subnetName, keyName, controlKeys)
-
-		err = utils.DeleteKey(keyName)
-		gomega.Expect(err).Should(gomega.BeNil())
+	ginkgo.It("finalize fuji mock env", func() {
 		commands.DeleteSubnetConfig(subnetName)
+		err := utils.DeleteKey(keyName)
+		gomega.Expect(err).Should(gomega.BeNil())
 		commands.CleanNetwork()
+		os.Unsetenv(constants.DeployPublickyLocalMockEnvVar)
 	})
 })

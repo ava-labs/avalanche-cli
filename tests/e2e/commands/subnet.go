@@ -5,10 +5,8 @@ package commands
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/onsi/gomega"
 )
@@ -83,10 +81,45 @@ func DeploySubnetLocally(subnetName string) string {
 	return string(output)
 }
 
-func DeploySubnetPubliclyLocalMock(
+func DeploySubnetPublicly(
 	subnetName string,
 	key string,
 	controlKeys string,
+) string {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// Deploy subnet locally
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"deploy",
+		"--fuji",
+		"--threshold",
+		"1",
+		"--key",
+		key,
+		"--control-keys",
+		controlKeys,
+		subnetName,
+	)
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	return string(output)
+}
+
+/*
+
+func AddValidatorPublicly(
+	subnetName string,
+    nodeID string,
 ) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -120,3 +153,4 @@ func DeploySubnetPubliclyLocalMock(
 
 	return string(output)
 }
+*/
