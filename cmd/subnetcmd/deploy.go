@@ -20,8 +20,11 @@ import (
 )
 
 var (
-	deployLocal bool
-	keyName     string
+	deployLocal   bool
+	deployTestnet bool
+	keyName       string
+	threshold     uint32
+	controlKeys   []string
 )
 
 // avalanche subnet deploy
@@ -48,7 +51,10 @@ subnet and deploy it on Fuji or Mainnet.`,
 		Args:         cobra.ExactArgs(1),
 	}
 	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
-	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use for fuji deploys")
+	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "deploy to fuji")
+	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploys]")
+	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to add a validator [fuji deploys]")
+	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may add new validators to the subnet [fuji deploys]")
 	return cmd
 }
 
@@ -91,10 +97,16 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// get the network to deploy to
 	var network models.Network
-    /*
-	if deployLocal {
+
+	switch {
+	case deployLocal:
 		network = models.Local
-	} else {
+	case deployTestnet:
+		network = models.Fuji
+	}
+
+	if network == models.Undefined {
+		// no flag was set, prompt user
 		networkStr, err := app.Prompt.CaptureList(
 			"Choose a network to deploy on",
 			[]string{models.Local.String(), models.Fuji.String(), models.Mainnet.String()},
@@ -104,9 +116,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 		network = models.NetworkFromString(networkStr)
 	}
-    */
-
-    network = models.Fuji
 
 	// deploy based on chosen network
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.String())
@@ -168,38 +177,27 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// from here on we are assuming a public deploy
 
 	// prompt for control keys
-    /*
-	controlKeys, cancelled, err := getControlKeys(network)
-	if err != nil {
-		return err
+	if controlKeys == nil {
+		var cancelled bool
+		controlKeys, cancelled, err = getControlKeys(network)
+		if err != nil {
+			return err
+		}
+		if cancelled {
+			ux.Logger.PrintToUser("User cancelled. No subnet deployed")
+			return nil
+		}
 	}
-	if cancelled {
-		ux.Logger.PrintToUser("User cancelled. No subnet deployed")
-		return nil
-	}
-    */
-    //controlKeys := []string{"P-custom1xml56cvz305d4wwmt0m8j8c9erdgu052xxc35v"}
-    /*
-    addr, err := address.Format("P", avago_constants.FallbackHRP, genesis.EWOQKey.PublicKey().Address().Bytes())
-    if err != nil {
-        return err
-    }
-    */
 
-    controlKeys := []string{"P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"}
+	//	controlKeys := []string{"P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"}
 
 	// prompt for threshold
-	var threshold uint32
-
-    /*
-	if len(controlKeys) > 0 {
+	if len(controlKeys) > 0 && threshold == 0 {
 		threshold, err = getThreshold(len(controlKeys))
 		if err != nil {
 			return err
 		}
 	}
-    */
-    threshold = 1
 
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, app.GetKeyPath(keyName), network)
