@@ -263,5 +263,11 @@ func DownloadCustomVMBin() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return path.Join(subnetEVMDir, subnetEVMName), nil
+	subnetEVMBin := path.Join(subnetEVMDir, subnetEVMName)
+	if _, err := os.Stat(subnetEVMBin); errors.Is(err, os.ErrNotExist) {
+		return "", errors.New("subnet evm bin file was not created")
+	} else if err != nil {
+		return "", err
+	}
+	return subnetEVMBin, nil
 }
