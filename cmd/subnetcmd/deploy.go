@@ -11,9 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ava-labs/avalanchego/genesis"
-	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -182,11 +179,14 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
     */
     //controlKeys := []string{"P-custom1xml56cvz305d4wwmt0m8j8c9erdgu052xxc35v"}
+    /*
     addr, err := address.Format("P", avago_constants.FallbackHRP, genesis.EWOQKey.PublicKey().Address().Bytes())
     if err != nil {
         return err
     }
-    controlKeys := []string{addr}
+    */
+
+    controlKeys := []string{"P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"}
 
 	// prompt for threshold
 	var threshold uint32

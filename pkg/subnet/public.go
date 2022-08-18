@@ -10,13 +10,12 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	//"github.com/ava-labs/avalanche-cli/pkg/key"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/utils"
-	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
-	//avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/platformvm/validator"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -105,33 +104,31 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error
 
 	var (
 		api       string
-		//networkID uint32
+		networkID uint32
 	)
 
 	switch d.network {
 	case models.Fuji:
 		api = constants.FujiAPIEndpoint
-		//networkID = avago_constants.FujiID
+		networkID = avago_constants.FujiID
 	case models.Mainnet:
 		api = constants.MainnetAPIEndpoint
-		//networkID = avago_constants.MainnetID
+		networkID = avago_constants.MainnetID
 	case models.Local:
         api = "http://127.0.0.1:9650"
-		//networkID = 1337
+		networkID = 1337
 	default:
 		return nil, fmt.Errorf("unsupported public network")
 	}
 
-    /*
 	sf, err := key.LoadSoft(networkID, d.privKeyPath)
 	if err != nil {
 		return nil, err
 	}
 
 	kc := sf.KeyChain()
-    */
 
-	kc := secp256k1fx.NewKeychain(genesis.EWOQKey)
+	//kc := secp256k1fx.NewKeychain(genesis.EWOQKey)
 
 	wallet, err := primary.NewWalletWithTxs(ctx, api, kc, preloadTxs...)
 	if err != nil {
