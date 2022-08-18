@@ -32,6 +32,10 @@ const (
 	FujiAPIEndpoint    = "https://api.avax-test.network"
 	MainnetAPIEndpoint = "https://api.avax.network"
 
+	// this depends on bootstrap snapshot
+	LocalAPIEndpoint = "http://127.0.0.1:9650"
+	LocalNetworkID   = 1337
+
 	DefaultTokenName = "TEST"
 
 	HealthCheckInterval = 100 * time.Millisecond

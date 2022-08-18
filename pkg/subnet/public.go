@@ -115,8 +115,8 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error
 		api = constants.MainnetAPIEndpoint
 		networkID = avago_constants.MainnetID
 	case models.Local:
-		api = "http://127.0.0.1:9650"
-		networkID = 1337
+		api = constants.LocalAPIEndpoint
+		networkID = constants.LocalNetworkID
 	default:
 		return nil, fmt.Errorf("unsupported public network")
 	}
