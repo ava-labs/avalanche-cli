@@ -10,6 +10,8 @@ import (
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/core"
@@ -55,7 +57,15 @@ func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesi
 			return []byte{}, &models.Sidecar{}, err
 		}
 
-		if subnetEVMVersion == "" {
+		if subnetEVMVersion == "latest" {
+			subnetEVMVersion, err = binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+				constants.AvaLabsOrg,
+				constants.SubnetEVMRepoName,
+			))
+			if err != nil {
+				return []byte{}, &models.Sidecar{}, err
+			}
+		} else if subnetEVMVersion == "" {
 			subnetEVMVersion, err = getSubnetEVMVersion(app)
 			if err != nil {
 				return []byte{}, &models.Sidecar{}, err

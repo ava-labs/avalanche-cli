@@ -101,9 +101,15 @@ func DeploySubnetLocally(subnetName string) string {
 		subnetName,
 	)
 	output, err := cmd.Output()
+	exitErr, typeOk := err.(*exec.ExitError)
+	stderr := ""
+	if typeOk {
+		stderr = string(exitErr.Stderr)
+	}
 	if err != nil {
 		fmt.Println(string(output))
 		fmt.Println(err)
+		fmt.Println(stderr)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 
@@ -129,9 +135,15 @@ func DeploySubnetLocallyWithVersion(subnetName string, version string) string {
 		version,
 	)
 	output, err := cmd.Output()
+	exitErr, typeOk := err.(*exec.ExitError)
+	stderr := ""
+	if typeOk {
+		stderr = string(exitErr.Stderr)
+	}
 	if err != nil {
 		fmt.Println(string(output))
 		fmt.Println(err)
+		fmt.Println(stderr)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 
