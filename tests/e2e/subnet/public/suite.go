@@ -32,7 +32,6 @@ var localNodes = []string{
 }
 
 var _ = ginkgo.Describe("[Public Subnet]", func() {
-
 	ginkgo.It("initialize fuji mock env", func() {
 		// fuji mock
 		_ = commands.StartNetwork()
