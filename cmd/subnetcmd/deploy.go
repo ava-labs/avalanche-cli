@@ -189,8 +189,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	//	controlKeys := []string{"P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"}
-
 	// prompt for threshold
 	if len(controlKeys) > 0 && threshold == 0 {
 		threshold, err = getThreshold(len(controlKeys))
