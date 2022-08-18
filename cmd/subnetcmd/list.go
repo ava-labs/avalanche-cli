@@ -9,6 +9,8 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
@@ -34,10 +36,11 @@ func (c subnetMatrix) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
 func (c subnetMatrix) Less(i, j int) bool { return strings.Compare(c[i][0], c[j][0]) == -1 }
 
 func listGenesis(cmd *cobra.Command, args []string) error {
-	header := []string{"subnet", "chain", "chain ID", "type", "deployed"}
+	header := []string{"subnet", "chain", "chain ID", "type", "", "deployed", ""}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
+	table.SetAutoMergeCells(true)
 	table.SetRowLine(true)
 
 	files, err := os.ReadDir(app.GetBaseDir())
@@ -46,6 +49,8 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 	}
 
 	rows := subnetMatrix{}
+	// append a second "header" row for the networks
+	rows = append(rows, []string{"", "", "", "", "Local", "Fuji", "Mainnet"})
 
 	deployedNames := map[string]struct{}{}
 	// if the server can not be contacted, or there is a problem with the query,
@@ -62,8 +67,8 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 		}
 
 		if resp != nil {
-			for _, vm := range resp.GetClusterInfo().CustomVms {
-				deployedNames[vm.VmName] = struct{}{}
+			for _, chain := range resp.GetClusterInfo().CustomChains {
+				deployedNames[chain.ChainName] = struct{}{}
 			}
 		}
 	}
@@ -88,11 +93,18 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 				}
 			}
 
-			deployed := "No"
+			deployedLocal := "No"
 			if _, ok := deployedNames[sc.Subnet]; ok {
-				deployed = "Yes"
+				deployedLocal = "Yes"
 			}
-			rows = append(rows, []string{sc.Subnet, sc.Name, chainID, string(sc.VM), deployed})
+			deployedFuji := "No"
+			if _, ok := sc.Networks[models.Fuji.String()]; ok {
+				if sc.Networks[models.Fuji.String()].SubnetID != ids.Empty {
+					deployedFuji = "Yes"
+				}
+			}
+			deployedMain := "N/A"
+			rows = append(rows, []string{sc.Subnet, sc.Name, chainID, string(sc.VM), deployedLocal, deployedFuji, deployedMain})
 		}
 	}
 	sort.Sort(rows)

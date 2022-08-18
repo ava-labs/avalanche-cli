@@ -71,4 +71,6 @@ const (
 	SubnetEVMInstallDir   = "subnet-evm"
 
 	EVMPlugin = "evm"
+
+	DefaultNodeRunURL = "http://127.0.0.1:9650"
 )

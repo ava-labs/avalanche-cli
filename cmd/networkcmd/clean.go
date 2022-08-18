@@ -14,8 +14,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
+var hard bool
+
 func newCleanCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "clean",
 		Short: "Stop the running local network and delete state",
 		Long: `The network clean command shuts down your local, multi-node network. All
@@ -25,6 +27,15 @@ may be started again by deploying a new subnet configuration.`,
 		Args:         cobra.ExactArgs(0),
 		SilenceUsage: true,
 	}
+
+	cmd.Flags().BoolVar(
+		&hard,
+		"hard",
+		false,
+		"Also clean downloaded avalanchego and plugin binaries",
+	)
+
+	return cmd
 }
 
 func clean(cmd *cobra.Command, args []string) error {
@@ -40,27 +51,40 @@ func clean(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("Process terminated.")
 	}
 
-	// iterate over all installed avalanchego versions and remove all plugins from their
-	// plugin dirs except for the c-chain plugin
-	installedVersions, err := os.ReadDir(app.GetAvalanchegoBinDir())
-	if err != nil {
-		return err
-	}
-
-	for _, avagoDir := range installedVersions {
-		pluginDir := filepath.Join(app.GetAvalanchegoBinDir(), avagoDir.Name(), "plugins")
-		installedPlugins, err := os.ReadDir(pluginDir)
+	if hard {
+		ux.Logger.PrintToUser("hard clean requested via flag, removing all downloaded avalanchego and plugin binaries")
+		binDir := filepath.Join(app.GetBaseDir(), constants.AvalancheCliBinDir)
+		cleanBins(binDir)
+	} else {
+		// iterate over all installed avalanchego versions and remove all plugins from their
+		// plugin dirs except for the c-chain plugin
+		installedVersions, err := os.ReadDir(app.GetAvalanchegoBinDir())
 		if err != nil {
 			return err
 		}
-		for _, plugin := range installedPlugins {
-			if plugin.Name() != constants.EVMPlugin {
-				if err = os.Remove(filepath.Join(pluginDir, plugin.Name())); err != nil {
-					return err
+
+		for _, avagoDir := range installedVersions {
+			pluginDir := filepath.Join(app.GetAvalanchegoBinDir(), avagoDir.Name(), "plugins")
+			installedPlugins, err := os.ReadDir(pluginDir)
+			if err != nil {
+				return err
+			}
+			for _, plugin := range installedPlugins {
+				if plugin.Name() != constants.EVMPlugin {
+					if err = os.Remove(filepath.Join(pluginDir, plugin.Name())); err != nil {
+						return err
+					}
 				}
 			}
 		}
 	}
 
 	return nil
+}
+
+func cleanBins(dir string) {
+	if err := os.RemoveAll(dir); err != nil {
+		ux.Logger.PrintToUser("Removal failed: %s", err)
+	}
+	ux.Logger.PrintToUser("All existing binaries removed.")
 }

@@ -58,7 +58,7 @@ func (app *Avalanche) GetRunDir() string {
 }
 
 func (app *Avalanche) GetCustomVMDir() string {
-	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.CustomVMDir)
+	return filepath.Join(app.baseDir, constants.CustomVMDir)
 }
 
 func (app *Avalanche) GetAvalanchegoBinDir() string {

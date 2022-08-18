@@ -23,6 +23,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
+	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/storage"
@@ -136,8 +137,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	networkBooted := true
 	clusterInfo, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
-		// TODO: use error type not string comparison
-		if strings.Contains(err.Error(), "not bootstrapped") {
+		if server.IsServerError(err, server.ErrNotBootstrapped) {
 			networkBooted = false
 		} else {
 			return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %s", err)
@@ -172,7 +172,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %s", err)
 	}
 	subnetIDs := clusterInfo.Subnets
-	numBlockchains := len(clusterInfo.CustomVms)
+	numBlockchains := len(clusterInfo.CustomChains)
 
 	// in order to make subnet deploy faster, a set of validated subnet IDs is preloaded
 	// in the bootstrap snapshot
@@ -241,9 +241,9 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	// we can safely ignore errors here as the subnets have already been generated
 	subnetID, _ := ids.FromString(subnetIDStr)
 	var blockchainID ids.ID
-	for _, info := range clusterInfo.CustomVms {
+	for _, info := range clusterInfo.CustomChains {
 		if info.VmId == chainVMID.String() {
-			blockchainID, _ = ids.FromString(info.BlockchainId)
+			blockchainID, _ = ids.FromString(info.ChainId)
 		}
 	}
 	return subnetID, blockchainID, nil
@@ -306,7 +306,7 @@ func (d *LocalDeployer) WaitForHealthy(
 			d.app.Log.Debug("polling for health...")
 			resp, err := cli.Health(ctx)
 			if err != nil {
-				return nil, fmt.Errorf("the health check failed to complete. The server might be down or have crashed, check the logs! %s", err)
+				return nil, err
 			}
 			if resp.ClusterInfo == nil {
 				d.app.Log.Debug("warning: ClusterInfo is nil. trying again...")
@@ -316,7 +316,7 @@ func (d *LocalDeployer) WaitForHealthy(
 				d.app.Log.Debug("network is not healthy. polling again...")
 				continue
 			}
-			if !resp.ClusterInfo.CustomVmsHealthy {
+			if !resp.ClusterInfo.CustomChainsHealthy {
 				d.app.Log.Debug("network is up but custom VMs are not healthy. polling again...")
 				continue
 			}
@@ -330,8 +330,8 @@ func (d *LocalDeployer) WaitForHealthy(
 func GetEndpoints(clusterInfo *rpcpb.ClusterInfo) []string {
 	endpoints := []string{}
 	for _, nodeInfo := range clusterInfo.NodeInfos {
-		for blockchainID, vmInfo := range clusterInfo.CustomVms {
-			endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, blockchainID, vmInfo.VmId, nodeInfo.GetUri(), blockchainID))
+		for blockchainID, chainInfo := range clusterInfo.CustomChains {
+			endpoints = append(endpoints, fmt.Sprintf("Endpoint at node %s for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, blockchainID, chainInfo.VmId, nodeInfo.GetUri(), blockchainID))
 		}
 	}
 	return endpoints
@@ -340,8 +340,8 @@ func GetEndpoints(clusterInfo *rpcpb.ClusterInfo) []string {
 // return true if vm has already been deployed
 func alreadyDeployed(chainVMID ids.ID, clusterInfo *rpcpb.ClusterInfo) bool {
 	if clusterInfo != nil {
-		for _, vmInfo := range clusterInfo.CustomVms {
-			if vmInfo.VmId == chainVMID.String() {
+		for _, chainInfo := range clusterInfo.CustomChains {
+			if chainInfo.VmId == chainVMID.String() {
 				return true
 			}
 		}

@@ -3,12 +3,10 @@
 package networkcmd
 
 import (
-	"strings"
-
-	"github.com/spf13/cobra"
-
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-network-runner/server"
+	"github.com/spf13/cobra"
 )
 
 func newStatusCmd() *cobra.Command {
@@ -35,8 +33,7 @@ func networkStatus(cmd *cobra.Command, args []string) error {
 	ctx := binutils.GetAsyncContext()
 	status, err := cli.Status(ctx)
 	if err != nil {
-		// TODO: use error type not string comparison
-		if strings.Contains(err.Error(), "not bootstrapped") {
+		if server.IsServerError(err, server.ErrNotBootstrapped) {
 			ux.Logger.PrintToUser("No local network running")
 			return nil
 		}
@@ -48,16 +45,16 @@ func networkStatus(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("Network is Up. Network information:")
 		ux.Logger.PrintToUser("==================================================================================================")
 		ux.Logger.PrintToUser("Healthy: %t", status.ClusterInfo.Healthy)
-		ux.Logger.PrintToUser("Custom VMs healthy: %t", status.ClusterInfo.CustomVmsHealthy)
+		ux.Logger.PrintToUser("Custom VMs healthy: %t", status.ClusterInfo.CustomChainsHealthy)
 		ux.Logger.PrintToUser("Number of nodes: %d", len(status.ClusterInfo.NodeNames))
-		ux.Logger.PrintToUser("Number of custom VMs: %d", len(status.ClusterInfo.CustomVms))
+		ux.Logger.PrintToUser("Number of custom VMs: %d", len(status.ClusterInfo.CustomChains))
 		ux.Logger.PrintToUser("======================================== Node information ========================================")
 		for n, nodeInfo := range status.ClusterInfo.NodeInfos {
 			ux.Logger.PrintToUser("%s has ID %s and endpoint %s: ", n, nodeInfo.Id, nodeInfo.Uri)
 		}
 		ux.Logger.PrintToUser("==================================== Custom VM information =======================================")
 		for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-			for blockchainID := range status.ClusterInfo.CustomVms {
+			for blockchainID := range status.ClusterInfo.CustomChains {
 				ux.Logger.PrintToUser("Endpoint at %s for blockchain %q: %s/ext/bc/%s/rpc", nodeInfo.Name, blockchainID, nodeInfo.GetUri(), blockchainID)
 			}
 		}
