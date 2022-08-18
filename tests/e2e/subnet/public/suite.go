@@ -21,7 +21,7 @@ const (
 )
 
 var _ = ginkgo.Describe("[Public Subnet]", func() {
-	ginkgo.It("can deploy a subnet to fake fuji", func() {
+	ginkgo.It("can deploy a subnet to fuji", func() {
 		_ = utils.DeleteConfigs(subnetName)
 		_ = utils.DeleteKey(keyName)
 
