@@ -3,6 +3,9 @@
 package keycmd
 
 import (
+	"context"
+	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,7 +13,13 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/avalanchego/utils/units"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/coreth/ethclient"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
@@ -56,11 +65,11 @@ func listKeys(cmd *cobra.Command, args []string) error {
 }
 
 func printAddresses(keyPaths []string) error {
-	header := []string{"Key Name", "Chain", "Address", "Network"}
+	header := []string{"Key Name", "Chain", "Address", "Balance", "Network"}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetRowLine(true)
-	table.SetAutoMergeCells(true)
+	table.SetAutoMergeCellsByColumnIndex([]int{0, 1})
 
 	supportedNetworks := map[string]uint32{
 		models.Fuji.String(): avago_constants.FujiID,
@@ -69,31 +78,84 @@ func printAddresses(keyPaths []string) error {
 			models.Mainnet.String(): avago_constants.MainnetID,
 		*/
 	}
+
 	if allNetworks {
 		supportedNetworks[models.Local.String()] = 0
 	}
 
+	ctx := context.Background()
+	fujiPClient := platformvm.NewClient(constants.FujiAPIEndpoint)
+	fujiCClient, err := ethclient.Dial(fmt.Sprintf("%s/ext/bc/%s/rpc", constants.FujiAPIEndpoint, "C"))
+	if err != nil {
+		return err
+	}
+
 	for _, keyPath := range keyPaths {
-		cAdded := false
 		keyName := strings.TrimSuffix(filepath.Base(keyPath), constants.KeySuffix)
 		for net, id := range supportedNetworks {
 			sk, err := key.LoadSoft(id, keyPath)
 			if err != nil {
 				return err
 			}
-			if !cAdded {
-				strC := sk.C()
-				table.Append([]string{keyName, "C-Chain (Ethereum hex format)", strC, "All"})
+
+			strC := sk.C()
+			balanceStr := ""
+			if net == models.Fuji.String() {
+				balanceStr, err = getCChainBalanceStr(ctx, fujiCClient, strC)
+				if err != nil {
+					return err
+				}
 			}
-			cAdded = true
+			table.Append([]string{keyName, "C-Chain (Ethereum hex format)", strC, balanceStr, net})
 
 			strP := sk.P()
 			for _, p := range strP {
-				table.Append([]string{keyName, "P-Chain (Bech32 format)", p, net})
+				balanceStr := ""
+				if net == models.Fuji.String() {
+					var err error
+					balanceStr, err = getPChainBalanceStr(ctx, fujiPClient, p)
+					if err != nil {
+						return err
+					}
+				}
+				table.Append([]string{keyName, "P-Chain (Bech32 format)", p, balanceStr, net})
 			}
 		}
 	}
 
 	table.Render()
 	return nil
+}
+
+func getCChainBalanceStr(ctx context.Context, cClient ethclient.Client, addrStr string) (string, error) {
+	addr := common.HexToAddress(addrStr)
+	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
+	balance, err := cClient.BalanceAt(ctx, addr, nil)
+	cancel()
+	if err != nil {
+		return "", err
+	}
+	// convert to nAvax
+	balance = balance.Div(balance, big.NewInt(int64(units.Avax)))
+	if balance.Cmp(big.NewInt(0)) == 0 {
+		return "0", nil
+	}
+	return fmt.Sprintf("%.9f", float64(balance.Uint64())/float64(units.Avax)), nil
+}
+
+func getPChainBalanceStr(ctx context.Context, pClient platformvm.Client, addr string) (string, error) {
+	pID, err := address.ParseToID(addr)
+	if err != nil {
+		return "", err
+	}
+	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
+	resp, err := pClient.GetBalance(ctx, []ids.ShortID{pID})
+	cancel()
+	if err != nil {
+		return "", err
+	}
+	if resp.Balance == 0 {
+		return "0", nil
+	}
+	return fmt.Sprintf("%.9f", float64(resp.Balance)/float64(units.Avax)), nil
 }

@@ -25,7 +25,7 @@ import (
 )
 
 type PublicDeployer struct {
-	LocalSubnetDeployer
+	LocalDeployer
 	privKeyPath string
 	network     models.Network
 	app         *application.Avalanche
@@ -33,10 +33,10 @@ type PublicDeployer struct {
 
 func NewPublicDeployer(app *application.Avalanche, privKeyPath string, network models.Network) *PublicDeployer {
 	return &PublicDeployer{
-		LocalSubnetDeployer: *NewLocalSubnetDeployer(app),
-		app:                 app,
-		privKeyPath:         privKeyPath,
-		network:             network,
+		LocalDeployer: *NewLocalDeployer(app, "", ""),
+		app:           app,
+		privKeyPath:   privKeyPath,
+		network:       network,
 	}
 }
 
@@ -111,9 +111,6 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error
 	case models.Fuji:
 		api = constants.FujiAPIEndpoint
 		networkID = avago_constants.FujiID
-	case models.Mainnet:
-		api = constants.MainnetAPIEndpoint
-		networkID = avago_constants.MainnetID
 	case models.Local:
 		// used for E2E testing of public related paths
 		api = constants.LocalAPIEndpoint
@@ -144,6 +141,10 @@ func (d *PublicDeployer) createBlockchainTx(chainName string, vmID, subnetID ids
 }
 
 func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, wallet primary.Wallet) (ids.ID, error) {
+	err := d.validateWalletIsSubnetOwner(controlKeys, threshold)
+	if err != nil {
+		return ids.Empty, err
+	}
 	addrs, err := address.ParseToIDs(controlKeys)
 	if err != nil {
 		return ids.Empty, err
@@ -155,4 +156,39 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 	}
 	opts := []common.Option{}
 	return wallet.P().IssueCreateSubnetTx(owners, opts...)
+}
+
+func (d *PublicDeployer) validateWalletIsSubnetOwner(controlKeys []string, threshold uint32) error {
+	var networkID uint32
+
+	switch d.network {
+	case models.Fuji:
+		networkID = avago_constants.FujiID
+	default:
+		return fmt.Errorf("unsupported public network")
+	}
+
+	sf, err := key.LoadSoft(networkID, d.privKeyPath)
+	if err != nil {
+		return err
+	}
+
+	if threshold != 1 {
+		return fmt.Errorf("multisig subnets are currently unsupported")
+	}
+
+	walletAddrsStr := sf.P()
+	if len(walletAddrsStr) == 0 {
+		return fmt.Errorf("no wallet address specified")
+	}
+
+	walletAddrStr := walletAddrsStr[0]
+
+	for _, addr := range controlKeys {
+		if addr == walletAddrStr {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("wallet addr not listed in subnet owners")
 }

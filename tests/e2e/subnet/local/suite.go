@@ -22,9 +22,35 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 	ginkgo.AfterEach(func() {
 		commands.CleanNetwork()
 		err := utils.DeleteConfigs(subnetName)
+		if err != nil {
+			fmt.Println("Clean network error:", err)
+		}
 		gomega.Expect(err).Should(gomega.BeNil())
 		err = utils.DeleteConfigs(secondSubnetName)
+		if err != nil {
+			fmt.Println("Delete config error:", err)
+		}
 		gomega.Expect(err).Should(gomega.BeNil())
+	})
+
+	ginkgo.It("can deploy a custom vm subnet to local", func() {
+		commands.CreateCustomVMSubnetConfig(subnetName, genesisPath, customVMPath)
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+		rpc := rpcs[0]
+
+		err = utils.SetHardhatRPC(rpc)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		err = utils.RunHardhatTests(utils.BaseTest)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		commands.DeleteSubnetConfig(subnetName)
 	})
 
 	ginkgo.It("can deploy a subnet to local", func() {
@@ -103,4 +129,5 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 		commands.DeleteSubnetConfig(subnetName)
 		commands.DeleteSubnetConfig(secondSubnetName)
 	})
+
 })

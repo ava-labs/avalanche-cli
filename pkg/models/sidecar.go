@@ -12,6 +12,7 @@ type NetworkData struct {
 type Sidecar struct {
 	Name      string
 	VM        VMType
+	VMVersion string
 	Subnet    string
 	TokenName string
 	ChainID   string

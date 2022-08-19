@@ -15,7 +15,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
@@ -71,19 +73,31 @@ func setupTest(t *testing.T) *assert.Assertions {
 
 func TestDeployToLocal(t *testing.T) {
 	assert := setupTest(t)
+	avagoVersion := "v1.18.0"
 
 	// fake-return true simulating the process is running
 	procChecker := &mocks.ProcessChecker{}
 	procChecker.On("IsServerProcessRunning", mock.Anything).Return(true, nil)
 
+	tmpDir := os.TempDir()
+	testDir, err := os.MkdirTemp(tmpDir, "local-test")
+	assert.NoError(err)
+	defer func() {
+		os.RemoveAll(testDir)
+	}()
+
+	app := &application.Avalanche{}
+	app.Setup(testDir, logging.NoLog{}, config.New(), prompts.NewPrompter())
+
+	binDir := filepath.Join(app.GetAvalanchegoBinDir(), "avalanchego-"+avagoVersion)
+
 	// create a dummy plugins dir, deploy will check it exists
 	binChecker := &mocks.BinaryChecker{}
-	tmpDir := t.TempDir()
-	err := os.Mkdir(filepath.Join(tmpDir, "plugins"), perms.ReadWriteExecute)
+	err = os.MkdirAll(filepath.Join(binDir, "plugins"), perms.ReadWriteExecute)
 	assert.NoError(err)
 
 	// create a dummy avalanchego file, deploy will check it exists
-	f, err := os.Create(filepath.Join(tmpDir, "avalanchego"))
+	f, err := os.Create(filepath.Join(binDir, "avalanchego"))
 	assert.NoError(err)
 	defer func() {
 		_ = f.Close()
@@ -93,12 +107,9 @@ func TestDeployToLocal(t *testing.T) {
 
 	binDownloader := &mocks.PluginBinaryDownloader{}
 	binDownloader.On("Download", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil)
+	binDownloader.On("InstallVM", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-	app := &application.Avalanche{
-		Log: logging.NoLog{},
-	}
-
-	testDeployer := &LocalSubnetDeployer{
+	testDeployer := &LocalDeployer{
 		procChecker:         procChecker,
 		binChecker:          binChecker,
 		getClientFunc:       getTestClientFunc,
@@ -106,6 +117,7 @@ func TestDeployToLocal(t *testing.T) {
 		healthCheckInterval: 500 * time.Millisecond,
 		app:                 app,
 		setDefaultSnapshot:  fakeSetDefaultSnapshot,
+		avagoVersion:        avagoVersion,
 	}
 
 	// create a simple genesis for the test
@@ -121,73 +133,6 @@ func TestDeployToLocal(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(testSubnetID2, s.String())
 	assert.Equal(testBlockChainID2, b.String())
-}
-
-func TestExistsWithLatestVersion(t *testing.T) {
-	assert := setupTest(t)
-
-	tmpDir := t.TempDir()
-	bc := binutils.NewBinaryChecker()
-
-	exists, latest, err := bc.ExistsWithLatestVersion(tmpDir, "avalanchego-v")
-	assert.NoError(err)
-	assert.False(exists)
-	assert.Empty(latest)
-
-	fake := filepath.Join(tmpDir, "anything")
-	err = os.Mkdir(fake, perms.ReadWriteExecute)
-	assert.NoError(err)
-	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir, "avalanchego-v")
-	assert.NoError(err)
-	assert.False(exists)
-	assert.Empty(latest)
-
-	avagoOnly := filepath.Join(tmpDir, "avalanchego")
-	err = os.Mkdir(avagoOnly, perms.ReadWriteExecute)
-	assert.NoError(err)
-	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir, "avalanchego-v")
-	assert.NoError(err)
-	assert.False(exists)
-	assert.Empty(latest)
-
-	existsOneOnly := filepath.Join(tmpDir, "avalanchego-v1.7.10")
-	err = os.Mkdir(existsOneOnly, perms.ReadWriteExecute)
-	assert.NoError(err)
-	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir, "avalanchego-v")
-	assert.NoError(err)
-	assert.True(exists)
-	assert.Equal(existsOneOnly, latest)
-
-	ver1 := filepath.Join(tmpDir, "avalanchego-v1.8.0")
-	ver2 := filepath.Join(tmpDir, "avalanchego-v1.18.0")
-	ver3 := filepath.Join(tmpDir, "avalanchego-v1.8.1")
-	ver4 := filepath.Join(tmpDir, "avalanchego-v0.8.0")
-	ver5 := filepath.Join(tmpDir, "avalanchego-v0.88.0")
-	ver6 := filepath.Join(tmpDir, "avalanchego-v0.1.0")
-	ver7 := filepath.Join(tmpDir, "avalanchego-v0.11.0")
-	ver8 := filepath.Join(tmpDir, "avalanchego-0.11.0")
-
-	err = os.Mkdir(ver1, perms.ReadWriteExecute)
-	assert.NoError(err)
-	err = os.Mkdir(ver2, perms.ReadWriteExecute)
-	assert.NoError(err)
-	err = os.Mkdir(ver3, perms.ReadWriteExecute)
-	assert.NoError(err)
-	err = os.Mkdir(ver4, perms.ReadWriteExecute)
-	assert.NoError(err)
-	err = os.Mkdir(ver5, perms.ReadWriteExecute)
-	assert.NoError(err)
-	err = os.Mkdir(ver6, perms.ReadWriteExecute)
-	assert.NoError(err)
-	err = os.Mkdir(ver7, perms.ReadWriteExecute)
-	assert.NoError(err)
-	err = os.Mkdir(ver8, perms.ReadWriteExecute)
-	assert.NoError(err)
-
-	exists, latest, err = bc.ExistsWithLatestVersion(tmpDir, "avalanchego-v")
-	assert.NoError(err)
-	assert.True(exists)
-	assert.Equal(ver2, latest)
 }
 
 func TestGetLatestAvagoVersion(t *testing.T) {
