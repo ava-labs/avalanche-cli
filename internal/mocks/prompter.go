@@ -106,6 +106,27 @@ func (_m *Prompter) CaptureExistingFilepath(promptStr string) (string, error) {
 	return r0, r1
 }
 
+// CaptureIndex provides a mock function with given fields: promptStr, options
+func (_m *Prompter) CaptureIndex(promptStr string, options []interface{}) (int, error) {
+	ret := _m.Called(promptStr, options)
+
+	var r0 int
+	if rf, ok := ret.Get(0).(func(string, []interface{}) int); ok {
+		r0 = rf(promptStr, options)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, []interface{}) error); ok {
+		r1 = rf(promptStr, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // CaptureList provides a mock function with given fields: promptStr, options
 func (_m *Prompter) CaptureList(promptStr string, options []string) (string, error) {
 	ret := _m.Called(promptStr, options)

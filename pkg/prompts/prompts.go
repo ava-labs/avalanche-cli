@@ -35,6 +35,7 @@ const (
 type Prompter interface {
 	CapturePositiveBigInt(promptStr string) (*big.Int, error)
 	CaptureAddress(promptStr string) (common.Address, error)
+	CaptureIndex(promptStr string, options []any) (int, error)
 	CaptureExistingFilepath(promptStr string) (string, error)
 	CaptureYesNo(promptStr string) (bool, error)
 	CaptureNoYes(promptStr string) (bool, error)
@@ -176,7 +177,11 @@ func CaptureListDecision[T comparable](
 				fmt.Println("No " + label + " added yet")
 				continue
 			}
-			index, err := CaptureIndex("Choose element to remove:", finalList)
+			finalListAnyT := []any{}
+			for _, v := range finalList {
+				finalListAnyT = append(finalListAnyT, v)
+			}
+			index, err := prompter.CaptureIndex("Choose element to remove:", finalListAnyT)
 			if err != nil {
 				return nil, false, err
 			}
@@ -440,7 +445,7 @@ func (*realPrompter) CaptureString(promptStr string) (string, error) {
 	return str, nil
 }
 
-func CaptureIndex[T any](promptStr string, options []T) (int, error) {
+func (*realPrompter) CaptureIndex(promptStr string, options []any) (int, error) {
 	prompt := promptui.Select{
 		Label: promptStr,
 		Items: options,
