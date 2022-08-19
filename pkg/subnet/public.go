@@ -5,6 +5,7 @@ package subnet
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -20,10 +21,11 @@ import (
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
+	"github.com/olekukonko/tablewriter"
 )
 
 type PublicDeployer struct {
-	LocalSubnetDeployer
+	LocalDeployer
 	privKeyPath string
 	network     models.Network
 	app         *application.Avalanche
@@ -31,15 +33,15 @@ type PublicDeployer struct {
 
 func NewPublicDeployer(app *application.Avalanche, privKeyPath string, network models.Network) *PublicDeployer {
 	return &PublicDeployer{
-		LocalSubnetDeployer: *NewLocalSubnetDeployer(app),
-		app:                 app,
-		privKeyPath:         privKeyPath,
-		network:             network,
+		LocalDeployer: *NewLocalDeployer(app, "", ""),
+		app:           app,
+		privKeyPath:   privKeyPath,
+		network:       network,
 	}
 }
 
 func (d *PublicDeployer) AddValidator(subnet ids.ID, nodeID ids.NodeID, weight uint64, startTime time.Time, duration time.Duration) error {
-	wallet, _, err := d.loadWallet(subnet)
+	wallet, err := d.loadWallet(subnet)
 	if err != nil {
 		return err
 	}
@@ -61,7 +63,7 @@ func (d *PublicDeployer) AddValidator(subnet ids.ID, nodeID ids.NodeID, weight u
 }
 
 func (d *PublicDeployer) Deploy(controlKeys []string, threshold uint32, chain string, genesis []byte) (ids.ID, ids.ID, error) {
-	wallet, api, err := d.loadWallet()
+	wallet, err := d.loadWallet()
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
@@ -80,11 +82,24 @@ func (d *PublicDeployer) Deploy(controlKeys []string, threshold uint32, chain st
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
-	ux.Logger.PrintToUser("Endpoint for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", blockchainID.String(), vmID.String(), api, blockchainID.String())
+
+	header := []string{"Deployment results", ""}
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(header)
+	table.SetRowLine(true)
+	table.SetAutoMergeCells(true)
+	table.Append([]string{"Chain Name", chain})
+	table.Append([]string{"Subnet ID", subnetID.String()})
+	table.Append([]string{"Blockchain ID", blockchainID.String()})
+	table.Append([]string{"VM ID", vmID.String()})
+	table.Append([]string{"RPC URL", fmt.Sprintf("%s/ext/bc/%s/rpc", constants.DefaultNodeRunURL, blockchainID.String())})
+
+	table.Render()
+
 	return subnetID, blockchainID, nil
 }
 
-func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, string, error) {
+func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error) {
 	ctx := context.Background()
 
 	var (
@@ -100,21 +115,21 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, strin
 		api = constants.MainnetAPIEndpoint
 		networkID = avago_constants.MainnetID
 	default:
-		return nil, "", fmt.Errorf("unsupported public network")
+		return nil, fmt.Errorf("unsupported public network")
 	}
 
 	sf, err := key.LoadSoft(networkID, d.privKeyPath)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	kc := sf.KeyChain()
 
 	wallet, err := primary.NewWalletWithTxs(ctx, api, kc, preloadTxs...)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
-	return wallet, api, nil
+	return wallet, nil
 }
 
 func (d *PublicDeployer) createBlockchainTx(chainName string, vmID, subnetID ids.ID, genesis []byte, wallet primary.Wallet) (ids.ID, error) {

@@ -7,7 +7,6 @@ require (
 	github.com/ava-labs/avalanchego v1.7.16
 	github.com/ava-labs/coreth v0.8.14-rc.0
 	github.com/ava-labs/subnet-evm v0.2.7
-	github.com/coreos/go-semver v0.3.0
 	github.com/docker/docker v1.6.2
 	github.com/ethereum/go-ethereum v1.10.20
 	github.com/manifoldco/promptui v0.9.0
@@ -19,6 +18,7 @@ require (
 	github.com/spf13/viper v1.11.0
 	github.com/stretchr/testify v1.8.0
 	go.uber.org/zap v1.21.0
+	golang.org/x/mod v0.6.0-dev.0.20211013180041-c96bc1413d57
 	google.golang.org/protobuf v1.28.0
 )
 
