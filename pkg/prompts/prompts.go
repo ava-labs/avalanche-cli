@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/manifoldco/promptui"
+	"golang.org/x/mod/semver"
 )
 
 const (
@@ -373,10 +374,8 @@ func (*realPrompter) CaptureVersion(promptStr string) (string, error) {
 	prompt := promptui.Prompt{
 		Label: promptStr,
 		Validate: func(input string) error {
-			if input == "" {
-				return errors.New("string cannot be empty")
-			} else if string(input[0]) != "v" {
-				return errors.New("version string must start with 'v'")
+			if !semver.IsValid(input) {
+				return errors.New("version must be a legal semantic version (ex: v1.1.1)")
 			}
 			return nil
 		},
