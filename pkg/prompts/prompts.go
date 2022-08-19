@@ -33,6 +33,7 @@ type Prompter interface {
 	CaptureNoYes(promptStr string) (bool, error)
 	CaptureList(promptStr string, options []string) (string, error)
 	CaptureString(promptStr string) (string, error)
+	CaptureVersion(promptStr string) (string, error)
 	CaptureIndex(promptStr string, options []common.Address) (int, error)
 	CaptureDuration(promptStr string) (time.Duration, error)
 	CaptureDate(promptStr string) (time.Time, error)
@@ -355,6 +356,27 @@ func (*realPrompter) CaptureString(promptStr string) (string, error) {
 		Validate: func(input string) error {
 			if input == "" {
 				return errors.New("string cannot be empty")
+			}
+			return nil
+		},
+	}
+
+	str, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return str, nil
+}
+
+func (*realPrompter) CaptureVersion(promptStr string) (string, error) {
+	prompt := promptui.Prompt{
+		Label: promptStr,
+		Validate: func(input string) error {
+			if input == "" {
+				return errors.New("string cannot be empty")
+			} else if string(input[0]) != "v" {
+				return errors.New("version string must start with 'v'")
 			}
 			return nil
 		},

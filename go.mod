@@ -7,7 +7,6 @@ require (
 	github.com/ava-labs/avalanchego v1.7.16
 	github.com/ava-labs/coreth v0.8.14-rc.0
 	github.com/ava-labs/subnet-evm v0.2.7
-	github.com/coreos/go-semver v0.3.0
 	github.com/docker/docker v1.6.2
 	github.com/ethereum/go-ethereum v1.10.20
 	github.com/manifoldco/promptui v0.9.0

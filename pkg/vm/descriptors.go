@@ -69,7 +69,7 @@ func getSubnetEVMVersion(app *application.Avalanche) (string, error) {
 	}
 
 	// prompt for version
-	version, err := app.Prompt.CaptureString("Subnet-EVM version")
+	version, err := app.Prompt.CaptureVersion("Subnet-EVM version")
 	if err != nil {
 		return "", err
 	}
