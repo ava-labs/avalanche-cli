@@ -37,18 +37,3 @@ func NewPluginBinaryDownloader(t mockConstructorTestingTNewPluginBinaryDownloade
 
 	return mock
 }
-
-type mockConstructorTestingTNewPluginBinaryDownloader interface {
-	mock.TestingT
-	Cleanup(func())
-}
-
-// NewPluginBinaryDownloader creates a new instance of PluginBinaryDownloader. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewPluginBinaryDownloader(t mockConstructorTestingTNewPluginBinaryDownloader) *PluginBinaryDownloader {
-	mock := &PluginBinaryDownloader{}
-	mock.Mock.Test(t)
-
-	t.Cleanup(func() { mock.AssertExpectations(t) })
-
-	return mock
-}
