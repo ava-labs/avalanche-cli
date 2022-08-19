@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/spf13/cobra"
+	"golang.org/x/mod/semver"
 )
 
 var (
@@ -115,6 +116,10 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 
 	if useLatestVersion {
 		vmVersion = "latest"
+	}
+
+	if vmVersion != "latest" && !semver.IsValid(vmVersion) {
+		return fmt.Errorf("invalid version string, should be semantic version (ex: v1.1.1): %s", vmVersion)
 	}
 
 	switch subnetType {

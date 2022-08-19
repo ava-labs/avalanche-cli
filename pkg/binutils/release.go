@@ -10,6 +10,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"golang.org/x/mod/semver"
 )
 
 func installBinaryWithVersion(
@@ -74,9 +75,9 @@ func InstallBinary(
 		if err != nil {
 			return "", err
 		}
-	} else if version[0] != 'v' {
+	} else if !semver.IsValid(version) {
 		return "", fmt.Errorf(
-			"invalid version string. Version must start with v, ex: v1.7.14: %s", version)
+			"invalid version string. Must be semantic version ex: v1.7.14: %s", version)
 	}
 
 	binChecker := NewBinaryChecker()
