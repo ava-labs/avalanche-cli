@@ -5,8 +5,10 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/onsi/gomega"
 )
@@ -194,7 +196,8 @@ func DeploySubnetLocallyWithVersion(subnetName string, version string) string {
 	return string(output)
 }
 
-func DeploySubnetPublicly(
+// simulates fuji deploy execution path on a local network
+func SimulateDeploySubnetPublicly(
 	subnetName string,
 	key string,
 	controlKeys string,
@@ -203,6 +206,9 @@ func DeploySubnetPublicly(
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// enable simulation of public network execution paths on a local network
+	os.Setenv(constants.SimulatePublicDeploy, "true")
 
 	// Deploy subnet locally
 	cmd := exec.Command(
@@ -223,12 +229,17 @@ func DeploySubnetPublicly(
 		fmt.Println(string(output))
 		fmt.Println(err)
 	}
+
+	// disable simulation of public network execution paths on a local network
+	os.Unsetenv(constants.SimulatePublicDeploy)
+
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	return string(output)
 }
 
-func AddValidatorPublicly(
+// simulates fuji add validator execution path on a local network
+func SimulateAddValidatorPublicly(
 	subnetName string,
 	key string,
 	nodeID string,
@@ -240,6 +251,9 @@ func AddValidatorPublicly(
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// enable simulation of public network execution paths on a local network
+	os.Setenv(constants.SimulatePublicDeploy, "true")
 
 	cmd := exec.Command(
 		CLIBinary,
@@ -263,6 +277,10 @@ func AddValidatorPublicly(
 		fmt.Println(string(output))
 		fmt.Println(err)
 	}
+
+	// disable simulation of public network execution paths on a local network
+	os.Unsetenv(constants.SimulatePublicDeploy)
+
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	return string(output)

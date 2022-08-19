@@ -5,10 +5,8 @@ package subnet
 
 import (
 	"fmt"
-	"os"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -20,7 +18,7 @@ const (
 	genesisPath = "tests/e2e/assets/test_genesis.json"
 	controlKeys = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 	testKey     = "tests/e2e/assets/ewoq_key.pk"
-	keyName     = "key1"
+	keyName     = "ewoq"
 )
 
 var localNodes = []string{
@@ -35,7 +33,6 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 	ginkgo.It("initialize fuji mock env", func() {
 		// fuji mock
 		_ = commands.StartNetwork()
-		os.Setenv(constants.DeployPublickyLocalMockEnvVar, "true")
 		// key
 		_ = utils.DeleteKey(keyName)
 		output, err := commands.CreateKeyFromPath(keyName, testKey)
@@ -50,15 +47,13 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 	})
 
 	ginkgo.It("deploy a subnet to fuji", func() {
-		s := commands.DeploySubnetPublicly(subnetName, keyName, controlKeys)
-		fmt.Println(s)
+		_ = commands.SimulateDeploySubnetPublicly(subnetName, keyName, controlKeys)
 	})
 
 	ginkgo.It("add nodes as validators", func() {
 		for _, nodeID := range localNodes {
 			start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
-			s := commands.AddValidatorPublicly(subnetName, keyName, nodeID, start, "24h", "20")
-			fmt.Println(s)
+			_ = commands.SimulateAddValidatorPublicly(subnetName, keyName, nodeID, start, "24h", "20")
 		}
 	})
 
@@ -67,6 +62,5 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		err := utils.DeleteKey(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		commands.CleanNetwork()
-		os.Unsetenv(constants.DeployPublickyLocalMockEnvVar)
 	})
 })

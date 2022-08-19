@@ -116,7 +116,8 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 		network = models.NetworkFromString(networkStr)
 	}
 
-	if os.Getenv(constants.DeployPublickyLocalMockEnvVar) != "" {
+	// used in E2E to simulate public network execution paths on a local network
+	if os.Getenv(constants.SimulatePublicDeploy) != "" {
 		network = models.Local
 	}
 
