@@ -118,7 +118,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 		vmVersion = "latest"
 	}
 
-	if vmVersion != "latest" && !semver.IsValid(vmVersion) {
+	if vmVersion != "latest" && vmVersion != "" && !semver.IsValid(vmVersion) {
 		return fmt.Errorf("invalid version string, should be semantic version (ex: v1.1.1): %s", vmVersion)
 	}
 

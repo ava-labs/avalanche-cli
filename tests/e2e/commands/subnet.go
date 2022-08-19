@@ -89,8 +89,17 @@ func CreateCustomVMSubnetConfig(subnetName string, genesisPath string, vmPath st
 		"--custom",
 		subnetName,
 	)
-	_, err = cmd.Output()
-	gomega.Expect(err).Should(gomega.BeNil())
+	output, err := cmd.Output()
+	exitErr, typeOk := err.(*exec.ExitError)
+	stderr := ""
+	if typeOk {
+		stderr = string(exitErr.Stderr)
+	}
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+		fmt.Println(stderr)
+	}
 
 	// Config should now exist
 	exists, err = utils.SubnetConfigExists(subnetName)
