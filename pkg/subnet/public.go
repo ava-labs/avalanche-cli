@@ -25,7 +25,7 @@ import (
 )
 
 type PublicDeployer struct {
-	LocalSubnetDeployer
+	LocalDeployer
 	privKeyPath string
 	network     models.Network
 	app         *application.Avalanche
@@ -33,10 +33,10 @@ type PublicDeployer struct {
 
 func NewPublicDeployer(app *application.Avalanche, privKeyPath string, network models.Network) *PublicDeployer {
 	return &PublicDeployer{
-		LocalSubnetDeployer: *NewLocalSubnetDeployer(app),
-		app:                 app,
-		privKeyPath:         privKeyPath,
-		network:             network,
+		LocalDeployer: *NewLocalDeployer(app, "", ""),
+		app:           app,
+		privKeyPath:   privKeyPath,
+		network:       network,
 	}
 }
 

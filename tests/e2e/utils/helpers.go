@@ -122,6 +122,28 @@ func DeleteKey(keyName string) error {
 	return nil
 }
 
+func DeleteBins() error {
+	avagoPath := path.Join(GetBaseDir(), constants.AvalancheCliBinDir, constants.AvalancheGoInstallDir)
+	if _, err := os.Stat(avagoPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		// Schrodinger: file may or may not exist. See err for details.
+		return err
+	}
+
+	// ignore error, file may not exist
+	os.RemoveAll(avagoPath)
+
+	subevmPath := path.Join(GetBaseDir(), constants.AvalancheCliBinDir, constants.SubnetEVMInstallDir)
+	if _, err := os.Stat(subevmPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		// Schrodinger: file may or may not exist. See err for details.
+		return err
+	}
+
+	// ignore error, file may not exist
+	os.RemoveAll(subevmPath)
+
+	return nil
+}
+
 func stdoutParser(output string, queue string, capture string) (string, error) {
 	// split output by newline
 	lines := strings.Split(output, "\n")
@@ -254,6 +276,18 @@ func CheckKeyEquality(keyPath1, keyPath2 string) (bool, error) {
 	}
 
 	return string(key1) == string(key2), nil
+}
+
+func CheckSubnetEVMExists(version string) bool {
+	subevmPath := path.Join(GetBaseDir(), constants.AvalancheCliBinDir, constants.SubnetEVMInstallDir, "subnet-evm-"+version)
+	_, err := os.Stat(subevmPath)
+	return err == nil
+}
+
+func CheckAvalancheGoExists(version string) bool {
+	avagoPath := path.Join(GetBaseDir(), constants.AvalancheCliBinDir, constants.AvalancheGoInstallDir, "avalanchego-"+version)
+	_, err := os.Stat(avagoPath)
+	return err == nil
 }
 
 // Currently downloads subnet-evm, but that suffices to test the custom vm functionality

@@ -11,6 +11,7 @@ import (
 
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/key"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/network"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/packageman"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/root"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/subnet"
 	ginkgo "github.com/onsi/ginkgo/v2"

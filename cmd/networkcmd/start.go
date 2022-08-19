@@ -16,7 +16,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var snapshotName string
+var (
+	avagoVersion string
+	snapshotName string
+)
 
 func newStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -34,12 +37,15 @@ running.`,
 		Args:         cobra.ExactArgs(0),
 		SilenceUsage: true,
 	}
+
+	cmd.Flags().StringVar(&avagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
 	cmd.Flags().StringVar(&snapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to start the network from")
+
 	return cmd
 }
 
 func startNetwork(cmd *cobra.Command, args []string) error {
-	sd := subnet.NewLocalSubnetDeployer(app)
+	sd := subnet.NewLocalDeployer(app, avagoVersion, "")
 
 	if err := sd.StartServer(); err != nil {
 		return err

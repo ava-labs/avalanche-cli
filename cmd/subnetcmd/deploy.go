@@ -24,6 +24,7 @@ var (
 	deployTestnet bool
 	deployMainnet bool
 	keyName       string
+	avagoVersion  string
 
 	errMutuallyExlusive = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 )
@@ -55,6 +56,7 @@ subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "deploy to testnet (alias to `fuji`)")
 	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "deploy to fuji (alias to `testnet`")
 	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "deploy to mainnet (not yet supported)")
+	cmd.Flags().StringVar(&avagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use for fuji deploys")
 	return cmd
 }
@@ -141,7 +143,23 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to load sidecar for later update: %w", err)
 		}
-		deployer := subnet.NewLocalSubnetDeployer(app)
+
+		var vmDir string
+
+		// download subnet-evm if necessary
+		switch sc.VM {
+		case subnetEvm:
+			vmDir, err = binutils.SetupSubnetEVM(app, sc.VMVersion)
+			if err != nil {
+				return fmt.Errorf("failed to install subnet-evm: %w", err)
+			}
+		case customVM:
+			vmDir = binutils.SetupCustomBin(app, chain)
+		default:
+			return fmt.Errorf("unknown vm: %s", sc.VM)
+		}
+
+		deployer := subnet.NewLocalDeployer(app, avagoVersion, vmDir)
 		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
 		if err != nil {
 			if deployer.BackendStartedHere() {

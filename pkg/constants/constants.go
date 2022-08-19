@@ -21,7 +21,7 @@ const (
 	SidecarSuffix      = "_sidecar.json"
 	GenesisSuffix      = "_genesis.json"
 
-	SidecarVersion = "1.1.0"
+	SidecarVersion = "1.2.0"
 
 	MaxLogFileSize   = 4
 	MaxNumOfLogFiles = 5
@@ -62,6 +62,15 @@ const (
 	DefaultConfigFileType = "json"
 
 	CustomVMDir = "vms"
+
+	AvaLabsOrg          = "ava-labs"
+	AvalancheGoRepoName = "avalanchego"
+	SubnetEVMRepoName   = "subnet-evm"
+
+	AvalancheGoInstallDir = "avalanchego"
+	SubnetEVMInstallDir   = "subnet-evm"
+
+	EVMPlugin = "evm"
 
 	DefaultNodeRunURL = "http://127.0.0.1:9650"
 )

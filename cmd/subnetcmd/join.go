@@ -399,21 +399,34 @@ take effect.`
 	ux.Logger.PrintToUser(msg, vmPath, subnetID, networkID, subnetID, subnetID)
 }
 
+// Downloads the subnet's VM (if necessary) and copies it into the plugin directory
 func createPlugin(subnetName string, pluginDir string) (string, error) {
 	chainVMID, err := utils.VMID(subnetName)
 	if err != nil {
 		return "", fmt.Errorf("failed to create VM ID from %s: %w", subnetName, err)
 	}
 
-	downloader := binutils.NewPluginBinaryDownloader(app)
-
-	binDir := filepath.Join(app.GetBaseDir(), constants.AvalancheCliBinDir)
-	if err := downloader.DownloadVM(subnetName, chainVMID.String(), pluginDir, binDir); err != nil {
-		return "", err
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return "", fmt.Errorf("failed to load sidecar: %w", err)
 	}
 
-	vmPath := filepath.Join(pluginDir, chainVMID.String())
-	return vmPath, nil
+	var vmSourcePath string
+	switch sc.VM {
+	case subnetEvm:
+		vmSourcePath, err = binutils.SetupSubnetEVM(app, sc.VMVersion)
+		if err != nil {
+			return "", fmt.Errorf("failed to install subnet-evm: %w", err)
+		}
+	case customVM:
+		vmSourcePath = binutils.SetupCustomBin(app, subnetName)
+	default:
+		return "", fmt.Errorf("unknown vm: %s", sc.VM)
+	}
+
+	vmDestPath := filepath.Join(pluginDir, chainVMID.String())
+
+	return vmDestPath, binutils.CopyFile(vmSourcePath, vmDestPath)
 }
 
 func sanitizePath(path string) (string, error) {
