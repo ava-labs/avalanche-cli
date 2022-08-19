@@ -21,6 +21,18 @@ func CleanNetwork() {
 }
 
 /* #nosec G204 */
+func CleanNetworkHard() {
+	cmd := exec.Command(
+		CLIBinary,
+		NetworkCmd,
+		"clean",
+		"--hard",
+	)
+	_, err := cmd.Output()
+	gomega.Expect(err).Should(gomega.BeNil())
+}
+
+/* #nosec G204 */
 func StartNetwork() string {
 	cmd := exec.Command(
 		CLIBinary,

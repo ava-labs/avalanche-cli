@@ -25,8 +25,7 @@ const (
 
 var _ = ginkgo.Describe("[Package Management]", func() {
 	ginkgo.BeforeEach(func() {
-		err := utils.DeleteBins()
-		gomega.Expect(err).Should(gomega.BeNil())
+		commands.CleanNetworkHard()
 	})
 
 	ginkgo.AfterEach(func() {
@@ -34,8 +33,6 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 		err := utils.DeleteConfigs(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		err = utils.DeleteConfigs(secondSubnetName)
-		gomega.Expect(err).Should(gomega.BeNil())
-		err = utils.DeleteBins()
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
