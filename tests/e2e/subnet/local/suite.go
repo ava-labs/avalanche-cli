@@ -34,6 +34,8 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 	})
 
 	ginkgo.It("can deploy a custom vm subnet to local", func() {
+		customVMPath, err := utils.DownloadCustomVMBin()
+		gomega.Expect(err).Should(gomega.BeNil())
 		commands.CreateCustomVMSubnetConfig(subnetName, genesisPath, customVMPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
@@ -129,5 +131,4 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 		commands.DeleteSubnetConfig(subnetName)
 		commands.DeleteSubnetConfig(secondSubnetName)
 	})
-
 })
