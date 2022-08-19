@@ -40,7 +40,7 @@ type Prompter interface {
 	CaptureNoYes(promptStr string) (bool, error)
 	CaptureList(promptStr string, options []string) (string, error)
 	CaptureString(promptStr string) (string, error)
-	CaptureIndex(promptStr string, options []interface{}) (int, error)
+	CaptureIndex(promptStr string, options []any) (int, error)
 	CaptureDuration(promptStr string) (time.Duration, error)
 	CaptureDate(promptStr string) (time.Time, error)
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
@@ -48,12 +48,19 @@ type Prompter interface {
 	CaptureUint64(promptStr string) (uint64, error)
 	CapturePChainAddress(promptStr string, network any) (any, error)
 	CaptureListDecision(
-		prompter Prompter, // we need this in order to be able to run mock tests
+		// we need this in order to be able to run mock tests
+		prompter Prompter,
+		// the main prompt for entering address keys
 		prompt string,
+		// the Capture function to use
 		capture func(prompt string, args any) (any, error),
+		// the prompt for each address
 		capturePrompt string,
+		// label describes the entity we are prompting for (e.g. address, control key, etc.)
 		label string,
+		// optional parameter to allow the user to print the info string for more information
 		info string,
+		// optional parameter if the Capture function needs an argument (CapturePChainAddress requires network)
 		arg any,
 	) ([]any, bool, error)
 }
@@ -143,13 +150,25 @@ func validateBiggerThanZero(input string) error {
 	return nil
 }
 
+// CaptureListDecision runs a for loop and continuously asks the
+// user for a specific input (currently only `CapturePChainAddress`
+// and `CaptureAddress` is supported) until the user cancels or
+// chooses `Done`. It does also offer an optional `info` to print
+// (if provided) and a preview. Items can also be removed.
 func (r *realPrompter) CaptureListDecision(
-	prompter Prompter, // we need this in order to be able to run mock tests
+	// we need this in order to be able to run mock tests
+	prompter Prompter,
+	// the main prompt for entering address keys
 	prompt string,
+	// the Capture function to use
 	capture func(prompt string, args any) (any, error),
+	// the prompt for each address
 	capturePrompt string,
+	// label describes the entity we are prompting for (e.g. address, control key, etc.)
 	label string,
+	// optional parameter to allow the user to print the info string for more information
 	info string,
+	// optional parameter if the Capture function needs an argument (CapturePChainAddress requires network)
 	arg any,
 ) ([]any, bool, error) {
 	finalList := []any{}
@@ -444,7 +463,7 @@ func (*realPrompter) CaptureString(promptStr string) (string, error) {
 	return str, nil
 }
 
-func (*realPrompter) CaptureIndex(promptStr string, options []interface{}) (int, error) {
+func (*realPrompter) CaptureIndex(promptStr string, options []any) (int, error) {
 	prompt := promptui.Select{
 		Label: promptStr,
 		Items: options,

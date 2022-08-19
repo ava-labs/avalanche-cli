@@ -232,13 +232,21 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 	info := "Control keys are P-Chain addresses which have admin rights on the subnet.\n" +
 		"Only private keys which control such addresses are allowed to make changes on the subnet"
 	arg := network
+	addressPrompt := "Enter P-Chain address (Example: P-...)"
 	list, canceled, err := app.Prompt.CaptureListDecision(
-		app.Prompt, // we need this to be able to mock test
+		// we need this to be able to mock test
+		app.Prompt,
+		// the main prompt for entering address keys
 		controlKeysPrompt,
+		// the Capture function to use
 		app.Prompt.CapturePChainAddress,
-		"Enter P-Chain address (Example: P-...)",
+		// the prompt for each address
+		addressPrompt,
+		// label describes the entity we are prompting for (e.g. address, control key, etc.)
 		label,
+		// optional parameter to allow the user to print the info string for more information
 		info,
+		// optional parameter if the Capture function needs an argument (CapturePChainAddress requires network)
 		arg,
 	)
 
