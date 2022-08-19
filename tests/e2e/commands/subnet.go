@@ -208,7 +208,7 @@ func SimulateDeploySubnetPublicly(
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
 	// enable simulation of public network execution paths on a local network
-	os.Setenv(constants.SimulatePublicDeploy, "true")
+	os.Setenv(constants.SimulatePublicNetwork, "true")
 
 	// Deploy subnet locally
 	cmd := exec.Command(
@@ -231,7 +231,7 @@ func SimulateDeploySubnetPublicly(
 	}
 
 	// disable simulation of public network execution paths on a local network
-	os.Unsetenv(constants.SimulatePublicDeploy)
+	os.Unsetenv(constants.SimulatePublicNetwork)
 
 	gomega.Expect(err).Should(gomega.BeNil())
 
@@ -253,7 +253,7 @@ func SimulateAddValidatorPublicly(
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
 	// enable simulation of public network execution paths on a local network
-	os.Setenv(constants.SimulatePublicDeploy, "true")
+	os.Setenv(constants.SimulatePublicNetwork, "true")
 
 	cmd := exec.Command(
 		CLIBinary,
@@ -279,7 +279,7 @@ func SimulateAddValidatorPublicly(
 	}
 
 	// disable simulation of public network execution paths on a local network
-	os.Unsetenv(constants.SimulatePublicDeploy)
+	os.Unsetenv(constants.SimulatePublicNetwork)
 
 	gomega.Expect(err).Should(gomega.BeNil())
 

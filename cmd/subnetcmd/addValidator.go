@@ -93,7 +93,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicDeploy) != "" {
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
 		network = models.Local
 	}
 

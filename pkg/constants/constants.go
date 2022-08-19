@@ -29,9 +29,9 @@ const (
 
 	RequestTimeout = 3 * time.Minute
 
-	SimulatePublicDeploy = "SIMULATE_PUBLIC_DEPLOY"
-	FujiAPIEndpoint      = "https://api.avax-test.network"
-	MainnetAPIEndpoint   = "https://api.avax.network"
+	SimulatePublicNetwork = "SIMULATE_PUBLIC_NETWORK"
+	FujiAPIEndpoint       = "https://api.avax-test.network"
+	MainnetAPIEndpoint    = "https://api.avax.network"
 
 	// this depends on bootstrap snapshot
 	LocalAPIEndpoint = "http://127.0.0.1:9650"
