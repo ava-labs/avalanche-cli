@@ -15,7 +15,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
@@ -71,19 +73,31 @@ func setupTest(t *testing.T) *assert.Assertions {
 
 func TestDeployToLocal(t *testing.T) {
 	assert := setupTest(t)
+	avagoVersion := "v1.18.0"
 
 	// fake-return true simulating the process is running
 	procChecker := &mocks.ProcessChecker{}
 	procChecker.On("IsServerProcessRunning", mock.Anything).Return(true, nil)
 
+	tmpDir := os.TempDir()
+	testDir, err := os.MkdirTemp(tmpDir, "local-test")
+	assert.NoError(err)
+	defer func() {
+		os.RemoveAll(testDir)
+	}()
+
+	app := &application.Avalanche{}
+	app.Setup(testDir, logging.NoLog{}, config.New(), prompts.NewPrompter())
+
+	binDir := filepath.Join(app.GetAvalanchegoBinDir(), "avalanchego-"+avagoVersion)
+
 	// create a dummy plugins dir, deploy will check it exists
 	binChecker := &mocks.BinaryChecker{}
-	tmpDir := t.TempDir()
-	err := os.Mkdir(filepath.Join(tmpDir, "plugins"), perms.ReadWriteExecute)
+	err = os.MkdirAll(filepath.Join(binDir, "plugins"), perms.ReadWriteExecute)
 	assert.NoError(err)
 
 	// create a dummy avalanchego file, deploy will check it exists
-	f, err := os.Create(filepath.Join(tmpDir, "avalanchego"))
+	f, err := os.Create(filepath.Join(binDir, "avalanchego"))
 	assert.NoError(err)
 	defer func() {
 		_ = f.Close()
@@ -95,10 +109,6 @@ func TestDeployToLocal(t *testing.T) {
 	binDownloader.On("Download", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil)
 	binDownloader.On("InstallVM", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-	app := &application.Avalanche{
-		Log: logging.NoLog{},
-	}
-
 	testDeployer := &LocalDeployer{
 		procChecker:         procChecker,
 		binChecker:          binChecker,
@@ -107,6 +117,7 @@ func TestDeployToLocal(t *testing.T) {
 		healthCheckInterval: 500 * time.Millisecond,
 		app:                 app,
 		setDefaultSnapshot:  fakeSetDefaultSnapshot,
+		avagoVersion:        avagoVersion,
 	}
 
 	// create a simple genesis for the test
