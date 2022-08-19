@@ -110,9 +110,6 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, strin
 	case models.Fuji:
 		api = constants.FujiAPIEndpoint
 		networkID = avago_constants.FujiID
-	case models.Mainnet:
-		api = constants.MainnetAPIEndpoint
-		networkID = avago_constants.MainnetID
 	default:
 		return nil, "", fmt.Errorf("unsupported public network")
 	}
@@ -162,8 +159,6 @@ func (d *PublicDeployer) validateWalletIsSubnetOwner(controlKeys []string, thres
 	switch d.network {
 	case models.Fuji:
 		networkID = avago_constants.FujiID
-	case models.Mainnet:
-		networkID = avago_constants.MainnetID
 	default:
 		return fmt.Errorf("unsupported public network")
 	}
