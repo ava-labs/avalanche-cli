@@ -30,8 +30,8 @@ var localNodes = []string{
 }
 
 var _ = ginkgo.Describe("[Public Subnet]", func() {
-	ginkgo.It("initialize fuji mock env", func() {
-		// fuji mock
+	ginkgo.BeforeEach(func() {
+		// local network
 		_ = commands.StartNetwork()
 		// key
 		_ = utils.DeleteKey(keyName)
@@ -46,21 +46,22 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		commands.CreateSubnetConfig(subnetName, genesisPath)
 	})
 
+	ginkgo.AfterEach(func() {
+		commands.DeleteSubnetConfig(subnetName)
+		err := utils.DeleteKey(keyName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		commands.CleanNetwork()
+	})
+
 	ginkgo.It("deploy a subnet to fuji", func() {
 		_ = commands.SimulateDeploySubnetPublicly(subnetName, keyName, controlKeys)
 	})
 
 	ginkgo.It("add nodes as validators", func() {
+		_ = commands.SimulateDeploySubnetPublicly(subnetName, keyName, controlKeys)
 		for _, nodeID := range localNodes {
 			start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
 			_ = commands.SimulateAddValidatorPublicly(subnetName, keyName, nodeID, start, "24h", "20")
 		}
-	})
-
-	ginkgo.It("finalize fuji mock env", func() {
-		commands.DeleteSubnetConfig(subnetName)
-		err := utils.DeleteKey(keyName)
-		gomega.Expect(err).Should(gomega.BeNil())
-		commands.CleanNetwork()
 	})
 })
