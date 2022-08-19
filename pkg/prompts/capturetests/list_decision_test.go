@@ -49,6 +49,7 @@ func TestListDecision(t *testing.T) {
 	mockPrompt.On("CaptureAddress", mock.Anything, mock.Anything).Return(addr, nil).Once()
 	// do a preview (nothing changes, but prints 2 addrs on STDOUT)
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Preview, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
 	mockPrompt.On("CaptureAddress", mock.Anything, mock.Anything).Return(addr2, nil).Once()
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Done, nil).Once()
 
