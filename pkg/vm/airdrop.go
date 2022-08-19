@@ -5,10 +5,12 @@ package vm
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/subnet-evm/core"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func getDefaultAllocation() (core.GenesisAlloc, error) {
@@ -48,10 +50,19 @@ func getAllocation(app *application.Avalanche) (core.GenesisAlloc, stateDirectio
 		return allocation, backward, nil
 	}
 
+	var (
+		addressHex common.Address
+		ok         bool
+	)
+
 	for {
-		addressHex, err := app.Prompt.CaptureAddress("Address to airdrop to")
+		addressAny, err := app.Prompt.CaptureAddress("Address to airdrop to", nil)
 		if err != nil {
 			return nil, stop, err
+		}
+
+		if addressHex, ok = addressAny.(common.Address); !ok {
+			return nil, stop, fmt.Errorf("expected common.Address type but got %T", addressAny)
 		}
 
 		amount, err := app.Prompt.CapturePositiveBigInt("Amount to airdrop (in AVAX units)")
