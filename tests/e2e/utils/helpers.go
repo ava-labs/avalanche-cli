@@ -13,12 +13,16 @@ import (
 	"path"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 const (
 	expectedRPCComponentsLen = 7
 	blockchainIDPos          = 5
+	subnetEVMName            = "subnet-evm"
+	subnetEVMVersion         = "v0.2.7"
 )
 
 func GetBaseDir() string {
@@ -55,6 +59,19 @@ func SubnetConfigExists(subnetName string) (bool, error) {
 		return false, errors.New("config half exists")
 	}
 	return genesisExists && sidecarExists, nil
+}
+
+func SubnetCustomVMExists(subnetName string) (bool, error) {
+	vm := path.Join(GetBaseDir(), constants.CustomVMDir, subnetName)
+	vmExists := true
+	if _, err := os.Stat(vm); errors.Is(err, os.ErrNotExist) {
+		// does *not* exist
+		vmExists = false
+	} else if err != nil {
+		// Schrodinger: file may or may not exist. See err for details.
+		return false, err
+	}
+	return vmExists, nil
 }
 
 func KeyExists(keyName string) (bool, error) {
@@ -271,4 +288,20 @@ func CheckAvalancheGoExists(version string) bool {
 	avagoPath := path.Join(GetBaseDir(), constants.AvalancheCliBinDir, constants.AvalancheGoInstallDir, "avalanchego-"+version)
 	_, err := os.Stat(avagoPath)
 	return err == nil
+}
+
+// Currently downloads subnet-evm, but that suffices to test the custom vm functionality
+func DownloadCustomVMBin() (string, error) {
+	targetDir := os.TempDir()
+	subnetEVMDir, err := binutils.DownloadReleaseVersion(logging.NoLog{}, subnetEVMName, subnetEVMVersion, targetDir)
+	if err != nil {
+		return "", err
+	}
+	subnetEVMBin := path.Join(subnetEVMDir, subnetEVMName)
+	if _, err := os.Stat(subnetEVMBin); errors.Is(err, os.ErrNotExist) {
+		return "", errors.New("subnet evm bin file was not created")
+	} else if err != nil {
+		return "", err
+	}
+	return subnetEVMBin, nil
 }
