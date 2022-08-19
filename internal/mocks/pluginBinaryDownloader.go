@@ -9,34 +9,6 @@ type PluginBinaryDownloader struct {
 	mock.Mock
 }
 
-// Download provides a mock function with given fields: vmIDs, pluginDir, binDir
-func (_m *PluginBinaryDownloader) Download(vmIDs map[string]string, pluginDir string, binDir string) error {
-	ret := _m.Called(vmIDs, pluginDir, binDir)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(map[string]string, string, string) error); ok {
-		r0 = rf(vmIDs, pluginDir, binDir)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// DownloadVM provides a mock function with given fields: vmName, vmID, pluginDir, binDir
-func (_m *PluginBinaryDownloader) DownloadVM(vmName string, vmID string, pluginDir string, binDir string) error {
-	ret := _m.Called(vmName, vmID, pluginDir, binDir)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(string, string, string, string) error); ok {
-		r0 = rf(vmName, vmID, pluginDir, binDir)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // InstallVM provides a mock function with given fields: vmID, vmBin, pluginDir
 func (_m *PluginBinaryDownloader) InstallVM(vmID string, vmBin string, pluginDir string) error {
 	ret := _m.Called(vmID, vmBin, pluginDir)

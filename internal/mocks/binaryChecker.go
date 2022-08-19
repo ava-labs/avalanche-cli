@@ -9,34 +9,6 @@ type BinaryChecker struct {
 	mock.Mock
 }
 
-// ExistsWithLatestVersion provides a mock function with given fields: name, binaryPrefix
-func (_m *BinaryChecker) ExistsWithLatestVersion(name string, binaryPrefix string) (bool, string, error) {
-	ret := _m.Called(name, binaryPrefix)
-
-	var r0 bool
-	if rf, ok := ret.Get(0).(func(string, string) bool); ok {
-		r0 = rf(name, binaryPrefix)
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	var r1 string
-	if rf, ok := ret.Get(1).(func(string, string) string); ok {
-		r1 = rf(name, binaryPrefix)
-	} else {
-		r1 = ret.Get(1).(string)
-	}
-
-	var r2 error
-	if rf, ok := ret.Get(2).(func(string, string) error); ok {
-		r2 = rf(name, binaryPrefix)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
-}
-
 // ExistsWithVersion provides a mock function with given fields: name, binaryPrefix, version
 func (_m *BinaryChecker) ExistsWithVersion(name string, binaryPrefix string, version string) (bool, error) {
 	ret := _m.Called(name, binaryPrefix, version)
