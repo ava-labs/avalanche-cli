@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -20,8 +21,13 @@ import (
 )
 
 var (
-	deployLocal bool
-	keyName     string
+	deployLocal   bool
+	deployTestnet bool
+	deployMainnet bool
+	keyName       string
+	avagoVersion  string
+
+	errMutuallyExlusive = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 )
 
 // avalanche subnet deploy
@@ -48,6 +54,10 @@ subnet and deploy it on Fuji or Mainnet.`,
 		Args:         cobra.ExactArgs(1),
 	}
 	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
+	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "deploy to testnet (alias to `fuji`)")
+	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "deploy to fuji (alias to `testnet`")
+	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "deploy to mainnet (not yet supported)")
+	cmd.Flags().StringVar(&avagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use for fuji deploys")
 	return cmd
 }
@@ -91,9 +101,22 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// get the network to deploy to
 	var network models.Network
-	if deployLocal {
+
+	if err := checkMutuallyExclusive(deployLocal, deployTestnet, deployMainnet); err != nil {
+		return err
+	}
+
+	switch {
+	case deployLocal:
 		network = models.Local
-	} else {
+	case deployTestnet:
+		network = models.Fuji
+	case deployMainnet:
+		network = models.Mainnet
+	}
+
+	if network == models.Undefined {
+		// no flag was set, prompt user
 		networkStr, err := app.Prompt.CaptureList(
 			"Choose a network to deploy on",
 			[]string{models.Local.String(), models.Fuji.String(), models.Mainnet.String()},
@@ -121,7 +144,23 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to load sidecar for later update: %w", err)
 		}
-		deployer := subnet.NewLocalSubnetDeployer(app)
+
+		var vmDir string
+
+		// download subnet-evm if necessary
+		switch sc.VM {
+		case subnetEvm:
+			vmDir, err = binutils.SetupSubnetEVM(app, sc.VMVersion)
+			if err != nil {
+				return fmt.Errorf("failed to install subnet-evm: %w", err)
+			}
+		case customVM:
+			vmDir = binutils.SetupCustomBin(app, chain)
+		default:
+			return fmt.Errorf("unknown vm: %s", sc.VM)
+		}
+
+		deployer := subnet.NewLocalDeployer(app, avagoVersion, vmDir)
 		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
 		if err != nil {
 			if deployer.BackendStartedHere() {
@@ -147,11 +186,15 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if keyName == "" {
 			keyName, err = captureKeyName()
 			if err != nil {
+				if err == errNoKeys {
+					ux.Logger.PrintToUser("No private keys have been found. Deployment to fuji without a private key is not possible. Create a new one with `avalanche key create`.")
+				}
 				return err
 			}
 		}
 
-	case models.Mainnet: // just make the switch pass, fuij/main implementation is the same (for now)
+	case models.Mainnet: // in the future, just make the switch pass, fuij/main implementation is the same (for now)
+		return errors.New("deploying to mainnet is not yet supported") // for now not supported
 	default:
 		return errors.New("not implemented")
 	}
@@ -175,7 +218,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// if there's only one ctrl key we don't need to ask
 	if len(controlKeys) > 1 {
-		threshold, err = getThreshold(uint64(len(controlKeys)))
+		threshold, err = getThreshold(len(controlKeys))
 		if err != nil {
 			return err
 		}
@@ -379,76 +422,63 @@ func enterCustomKeys(network models.Network) ([]string, bool, error) {
 
 // controlKeysLoop asks as many controlkeys the user requires, until Done or Cancel is selected
 func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string, bool, error) {
-	const (
-		addCtrlKey = "Add control key"
-		doneMsg    = "Done"
-		cancelMsg  = "Cancel"
+	label := "Control key"
+	info := "Control keys are P-Chain addresses which have admin rights on the subnet.\n" +
+		"Only private keys which control such addresses are allowed to make changes on the subnet"
+	arg := network
+	addressPrompt := "Enter P-Chain address (Example: P-...)"
+	list, canceled, err := app.Prompt.CaptureListDecision(
+		// we need this to be able to mock test
+		app.Prompt,
+		// the main prompt for entering address keys
+		controlKeysPrompt,
+		// the Capture function to use
+		app.Prompt.CapturePChainAddress,
+		// the prompt for each address
+		addressPrompt,
+		// label describes the entity we are prompting for (e.g. address, control key, etc.)
+		label,
+		// optional parameter to allow the user to print the info string for more information
+		info,
+		// optional parameter if the Capture function needs an argument (CapturePChainAddress requires network)
+		arg,
 	)
 
-	controlKeys := []string{}
-
-	for {
-		listDecision, err := app.Prompt.CaptureList(
-			controlKeysPrompt, []string{addCtrlKey, doneMsg, cancelMsg},
-		)
-		if err != nil {
-			return nil, false, err
+	ctrlKeys := make([]string, len(list))
+	var (
+		key string
+		ok  bool
+	)
+	for i, k := range list {
+		if key, ok = k.(string); !ok {
+			return nil, false, fmt.Errorf("expected string but got %T", key)
 		}
-
-		switch listDecision {
-		case addCtrlKey:
-			var tmpl string
-			switch network {
-			case models.Fuji:
-				tmpl = "fuji"
-			case models.Mainnet:
-				tmpl = "avax"
-			case models.Local:
-				tmpl = "custom"
-				// we don't need to check for invalid network as this
-				// has been checked before
-			}
-			controlKey, err := app.Prompt.CapturePChainAddress(
-				fmt.Sprintf("Enter P-Chain address (Ex: `P-%s...`)", tmpl),
-				network,
-			)
-			if err != nil {
-				return nil, false, err
-			}
-			if contains(controlKeys, controlKey) {
-				fmt.Println("Address already in list")
-				continue
-			}
-			controlKeys = append(controlKeys, controlKey)
-		case doneMsg:
-			return controlKeys, false, nil
-		case cancelMsg:
-			return nil, true, nil
-		default:
-			return nil, false, errors.New("unexpected option")
-		}
+		ctrlKeys[i] = key
 	}
+	return ctrlKeys, canceled, err
 }
 
 // getThreshold prompts for the threshold of addresses as a number
-func getThreshold(maxLen uint64) (uint32, error) {
-	threshold, err := app.Prompt.CaptureUint64("Enter required number of control key signatures to add a validator")
+func getThreshold(maxLen int) (uint32, error) {
+	// create a list of indexes so the user only has the option to choose what is the theshold
+	// instead of entering
+	indexList := make([]string, maxLen)
+	for i := 0; i < maxLen; i++ {
+		indexList[i] = strconv.Itoa(i + 1)
+	}
+	threshold, err := app.Prompt.CaptureList("Select required number of control key signatures to add a validator", indexList)
 	if err != nil {
 		return 0, err
 	}
-	if threshold > maxLen {
+	intTh, err := strconv.Atoi(threshold)
+	if err != nil {
+		return 0, err
+	}
+	// this now should technically not happen anymore, but let's leave it as a double stitch
+	if intTh > maxLen {
 		return 0, fmt.Errorf("the threshold can't be bigger than the number of control keys")
 	}
-	return uint32(threshold), err
-}
-
-func contains(list []string, element string) bool {
-	for _, val := range list {
-		if val == element {
-			return true
-		}
-	}
-	return false
+	return uint32(intTh), err
 }
 
 func validateSubnetNameAndGetChains(args []string) ([]string, error) {
@@ -469,4 +499,11 @@ func validateSubnetNameAndGetChains(args []string) ([]string, error) {
 	}
 
 	return chains, nil
+}
+
+func checkMutuallyExclusive(flagA bool, flagB bool, flagC bool) error {
+	if flagA && flagB || flagB && flagC || flagA && flagC {
+		return errMutuallyExlusive
+	}
+	return nil
 }

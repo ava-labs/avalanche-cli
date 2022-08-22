@@ -15,73 +15,32 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-func contains(list []common.Address, element common.Address) bool {
-	for _, val := range list {
-		if val == element {
-			return true
-		}
-	}
-	return false
-}
-
 func getAdminList(initialPrompt string, info string, app *application.Avalanche) ([]common.Address, bool, error) {
-	const (
-		addAdmin    = "Add admin"
-		removeAdmin = "Remove admin"
-		preview     = "Preview"
-		moreInfo    = "More info"
-		doneMsg     = "Done"
-		cancelMsg   = "Cancel"
+	label := "Address"
+
+	list, canceled, err := app.Prompt.CaptureListDecision(
+		app.Prompt,
+		initialPrompt,
+		app.Prompt.CaptureAddress,
+		"Enter Address ",
+		label,
+		info,
+		nil,
 	)
 
-	admins := []common.Address{}
-
-	for {
-		listDecision, err := app.Prompt.CaptureList(
-			initialPrompt,
-			[]string{addAdmin, removeAdmin, preview, moreInfo, doneMsg, cancelMsg},
-		)
-		if err != nil {
-			return []common.Address{}, false, err
+	admins := make([]common.Address, len(list))
+	var (
+		addr common.Address
+		ok   bool
+	)
+	for i, a := range list {
+		if addr, ok = a.(common.Address); !ok {
+			return nil, false, fmt.Errorf("expected common.Address but got %T", addr)
 		}
-
-		switch listDecision {
-		case addAdmin:
-			adminAddr, err := app.Prompt.CaptureAddress("Admin Address")
-			if err != nil {
-				return []common.Address{}, false, err
-			}
-			if contains(admins, adminAddr) {
-				fmt.Println("Address already an admin")
-				continue
-			}
-			admins = append(admins, adminAddr)
-		case removeAdmin:
-			ifaceA := make([]interface{}, len(admins))
-			for i, k := range admins {
-				ifaceA[i] = k
-			}
-			index, err := app.Prompt.CaptureIndex("Choose address to remove:", ifaceA)
-			if err != nil {
-				return []common.Address{}, false, err
-			}
-			admins = append(admins[:index], admins[index+1:]...)
-		case preview:
-			fmt.Println("Admins:")
-			for i, addr := range admins {
-				fmt.Printf("%d. %s\n", i, addr.Hex())
-			}
-		case doneMsg:
-			cancelled := len(admins) == 0
-			return admins, cancelled, nil
-		case moreInfo:
-			fmt.Print(info)
-		case cancelMsg:
-			return []common.Address{}, true, nil
-		default:
-			return []common.Address{}, false, errors.New("unexpected option")
-		}
+		admins[i] = addr
 	}
+
+	return admins, canceled, err
 }
 
 func configureContractAllowList(app *application.Avalanche) (precompile.ContractDeployerAllowListConfig, bool, error) {

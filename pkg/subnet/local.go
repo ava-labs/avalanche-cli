@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -33,11 +32,10 @@ import (
 )
 
 const (
-	zipExtension       = "zip"
 	WriteReadReadPerms = 0o644
 )
 
-type LocalSubnetDeployer struct {
+type LocalDeployer struct {
 	procChecker         binutils.ProcessChecker
 	binChecker          binutils.BinaryChecker
 	getClientFunc       getGRPCClientFunc
@@ -46,10 +44,12 @@ type LocalSubnetDeployer struct {
 	app                 *application.Avalanche
 	backendStartedHere  bool
 	setDefaultSnapshot  setDefaultSnapshotFunc
+	avagoVersion        string
+	vmDir               string
 }
 
-func NewLocalSubnetDeployer(app *application.Avalanche) *LocalSubnetDeployer {
-	return &LocalSubnetDeployer{
+func NewLocalDeployer(app *application.Avalanche, avagoVersion string, vmDir string) *LocalDeployer {
+	return &LocalDeployer{
 		procChecker:         binutils.NewProcessChecker(),
 		binChecker:          binutils.NewBinaryChecker(),
 		getClientFunc:       binutils.NewGRPCClient,
@@ -57,6 +57,8 @@ func NewLocalSubnetDeployer(app *application.Avalanche) *LocalSubnetDeployer {
 		healthCheckInterval: 100 * time.Millisecond,
 		app:                 app,
 		setDefaultSnapshot:  SetDefaultSnapshot,
+		avagoVersion:        avagoVersion,
+		vmDir:               vmDir,
 	}
 }
 
@@ -67,14 +69,14 @@ type setDefaultSnapshotFunc func(string, bool) error
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
-func (d *LocalSubnetDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, error) {
+func (d *LocalDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, error) {
 	if err := d.StartServer(); err != nil {
 		return ids.Empty, ids.Empty, err
 	}
 	return d.doDeploy(chain, chainGenesis, genesisPath)
 }
 
-func (d *LocalSubnetDeployer) StartServer() error {
+func (d *LocalDeployer) StartServer() error {
 	isRunning, err := d.procChecker.IsServerProcessRunning(d.app)
 	if err != nil {
 		return fmt.Errorf("failed querying if server process is running: %w", err)
@@ -91,7 +93,7 @@ func (d *LocalSubnetDeployer) StartServer() error {
 
 // BackendStartedHere returns true if the backend was started by this run,
 // or false if it found it there already
-func (d *LocalSubnetDeployer) BackendStartedHere() bool {
+func (d *LocalDeployer) BackendStartedHere() bool {
 	return d.backendStartedHere
 }
 
@@ -106,7 +108,7 @@ func (d *LocalSubnetDeployer) BackendStartedHere() bool {
 // - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
 // - waits completion of operation
 // - show status
-func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, error) {
+func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, error) {
 	avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
 	if err != nil {
 		return ids.Empty, ids.Empty, err
@@ -153,7 +155,7 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis []byte, genesi
 		return ids.Empty, ids.Empty, nil
 	}
 
-	if err := d.installNeededPlugins(chain, chainVMID, clusterInfo, pluginDir); err != nil {
+	if err := d.installPlugin(chainVMID, d.vmDir, pluginDir); err != nil {
 		return ids.Empty, ids.Empty, err
 	}
 
@@ -252,7 +254,7 @@ func (d *LocalSubnetDeployer) doDeploy(chain string, chainGenesis []byte, genesi
 // * checks if avalanchego is installed in the local binary path
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path and plugin
-func (d *LocalSubnetDeployer) SetupLocalEnv() (string, string, error) {
+func (d *LocalDeployer) SetupLocalEnv() (string, string, error) {
 	err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false)
 	if err != nil {
 		return "", "", fmt.Errorf("failed setting up snapshots: %w", err)
@@ -276,113 +278,19 @@ func (d *LocalSubnetDeployer) SetupLocalEnv() (string, string, error) {
 	// * decide if force update or give user choice
 	exists, err = storage.FileExists(avalancheGoBinPath)
 	if !exists || err != nil {
-		return "", "", fmt.Errorf("evaluated avalancheGoBinPath to be %s but it does not exist", avalancheGoBinPath)
+		return "", "", fmt.Errorf(
+			"evaluated avalancheGoBinPath to be %s but it does not exist", avalancheGoBinPath)
 	}
 
 	return avalancheGoBinPath, pluginDir, nil
 }
 
-func (d *LocalSubnetDeployer) setupLocalEnv() (string, error) {
-	binDir := filepath.Join(d.app.GetBaseDir(), constants.AvalancheCliBinDir)
-	binPrefix := "avalanchego-v"
-
-	exists, avagoDir, err := d.binChecker.ExistsWithLatestVersion(binDir, binPrefix)
-	if err != nil {
-		return "", fmt.Errorf("failed trying to locate avalanchego binary: %s", binDir)
-	}
-	if exists {
-		d.app.Log.Debug("local avalanchego found. skipping installation")
-		return avagoDir, nil
-	}
-
-	ux.Logger.PrintToUser("Installing avalanchego...")
-
-	// TODO: we are hardcoding the release version
-	// until we have a better binary, dependency and version management
-	// as per https://github.com/ava-labs/avalanche-cli/pull/17#discussion_r887164924
-	version := constants.AvalancheGoReleaseVersion
-	/*
-		version, err := binutils.GetLatestReleaseVersion(constants.LatestAvagoReleaseURL)
-		if err != nil {
-			return "", fmt.Errorf("failed to get latest avalanchego version: %s", err)
-		}
-	*/
-
-	d.app.Log.Info("Avalanchego version is: %s", version)
-
-	// TODO: would be nice if we could also here just use binutils.DownloadLatestReleaseVersion(),
-	// but unfortunately we don't have a consistent naming scheme between avalanchego and subnet-evm
-	// releases and names (and supported `goos`).
-	// Doing so therefore would require adding some questionable complexity.
-	// The goal MUST be to have some sort of mature binary management
-
-	// NOTE: if any of the underlying URLs change (github changes, release file names, etc.) this fails
-	arch := runtime.GOARCH
-	goos := runtime.GOOS
-	var avalanchegoURL string
-	var ext string
-
-	switch goos {
-	case "linux":
-		avalanchegoURL = fmt.Sprintf(
-			"https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-linux-%s-%s.tar.gz",
-			version,
-			arch,
-			version,
-		)
-		ext = "tar.gz"
-	case "darwin":
-		avalanchegoURL = fmt.Sprintf(
-			"https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-macos-%s.zip",
-			version,
-			version,
-		)
-		ext = zipExtension
-		// EXPERMENTAL WIN, no support
-	case "windows":
-		avalanchegoURL = fmt.Sprintf(
-			"https://github.com/ava-labs/avalanchego/releases/download/%s/avalanchego-win-%s-experimental.zip",
-			version,
-			version,
-		)
-		ext = zipExtension
-	default:
-		return "", fmt.Errorf("OS not supported: %s", goos)
-	}
-
-	d.app.Log.Debug("starting download from %s...", avalanchegoURL)
-
-	resp, err := http.Get(avalanchegoURL)
-	if err != nil {
-		return "", err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("unexpected http status code: %d", resp.StatusCode)
-	}
-	defer resp.Body.Close()
-
-	archive, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	d.app.Log.Debug("download successful. installing archive...")
-	if err := binutils.InstallArchive(ext, archive, binDir); err != nil {
-		return "", err
-	}
-	avagoSubDir := "avalanchego-" + version
-	if ext == zipExtension {
-		// zip contains a build subdir instead of the avagoSubDir expected from tar.gz
-		if err := os.Rename(filepath.Join(binDir, "build"), filepath.Join(binDir, avagoSubDir)); err != nil {
-			return "", err
-		}
-	}
-	ux.Logger.PrintToUser("Avalanchego installation successful")
-	return filepath.Join(binDir, avagoSubDir), nil
+func (d *LocalDeployer) setupLocalEnv() (string, error) {
+	return binutils.SetupAvalanchego(d.app, d.avagoVersion)
 }
 
 // WaitForHealthy polls continuously until the network is ready to be used
-func (d *LocalSubnetDeployer) WaitForHealthy(
+func (d *LocalDeployer) WaitForHealthy(
 	ctx context.Context,
 	cli client.Client,
 	healthCheckInterval time.Duration,
@@ -442,24 +350,12 @@ func alreadyDeployed(chainVMID ids.ID, clusterInfo *rpcpb.ClusterInfo) bool {
 }
 
 // get list of all needed plugins and install them
-func (d *LocalSubnetDeployer) installNeededPlugins(
-	chain string,
-	chainVMID ids.ID,
-	clusterInfo *rpcpb.ClusterInfo,
+func (d *LocalDeployer) installPlugin(
+	vmID ids.ID,
+	vmBin string,
 	pluginDir string,
 ) error {
-	toInstallVMIDs := map[string]string{}
-	toInstallVMIDs[chain] = chainVMID.String()
-	if clusterInfo != nil {
-		for _, chainInfo := range clusterInfo.CustomChains {
-			toInstallVMIDs[chainInfo.ChainName] = chainInfo.VmId
-		}
-	}
-	binDir := filepath.Join(d.app.GetBaseDir(), constants.AvalancheCliBinDir)
-	if err := d.binaryDownloader.Download(toInstallVMIDs, pluginDir, binDir); err != nil {
-		return err
-	}
-	return nil
+	return d.binaryDownloader.InstallVM(vmID.String(), vmBin, pluginDir)
 }
 
 // Initialize default snapshot with bootstrap snapshot archive
@@ -500,7 +396,7 @@ func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 }
 
 // start the network
-func (d *LocalSubnetDeployer) startNetwork(
+func (d *LocalDeployer) startNetwork(
 	ctx context.Context,
 	cli client.Client,
 	avalancheGoBinPath string,
