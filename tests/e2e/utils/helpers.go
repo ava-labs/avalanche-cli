@@ -367,10 +367,10 @@ func UpdateNodesWhitelistedSubnets(whitelistedSubnets string) error {
 }
 
 type NodeInfo struct {
-	Id         string
+	ID         string
 	PluginDir  string
 	ConfigFile string
-	Uri        string
+	URI        string
 }
 
 func GetNodesInfo() (map[string]NodeInfo, error) {
@@ -388,10 +388,10 @@ func GetNodesInfo() (map[string]NodeInfo, error) {
 	nodesInfo := map[string]NodeInfo{}
 	for nodeName, nodeInfo := range resp.ClusterInfo.NodeInfos {
 		nodesInfo[nodeName] = NodeInfo{
-			Id:         nodeInfo.Id,
+			ID:         nodeInfo.Id,
 			PluginDir:  nodeInfo.PluginDir,
 			ConfigFile: path.Join(path.Dir(nodeInfo.LogDir), "config.json"),
-			Uri:        nodeInfo.Uri,
+			URI:        nodeInfo.Uri,
 		}
 	}
 	return nodesInfo, nil
@@ -417,7 +417,7 @@ func GetWhilelistedSubnetsFromConfigFile(configFile string) (string, error) {
 func WaitSubnetValidators(subnetIDStr string, nodeInfos map[string]NodeInfo) error {
 	var uri string
 	for _, nodeInfo := range nodeInfos {
-		uri = nodeInfo.Uri
+		uri = nodeInfo.URI
 		break
 	}
 	pClient := platformvm.NewClient(uri)
@@ -426,13 +426,13 @@ func WaitSubnetValidators(subnetIDStr string, nodeInfos map[string]NodeInfo) err
 		return err
 	}
 	mainCtx, mainCtxCancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer mainCtxCancel()
 	for {
 		ready := true
 		ctx, ctxCancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
 		vs, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
 		ctxCancel()
 		if err != nil {
-			mainCtxCancel()
 			return err
 		}
 		subnetValidators := map[string]struct{}{}
@@ -440,12 +440,11 @@ func WaitSubnetValidators(subnetIDStr string, nodeInfos map[string]NodeInfo) err
 			subnetValidators[v.NodeID.String()] = struct{}{}
 		}
 		for _, nodeInfo := range nodeInfos {
-			if _, isValidator := subnetValidators[nodeInfo.Id]; !isValidator {
+			if _, isValidator := subnetValidators[nodeInfo.ID]; !isValidator {
 				ready = false
 			}
 		}
 		if ready {
-			mainCtxCancel()
 			return nil
 		}
 		select {
