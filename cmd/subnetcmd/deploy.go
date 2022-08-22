@@ -257,7 +257,7 @@ func getControlKeys(network models.Network, keyName string) ([]string, bool, err
 
 	ux.Logger.PrintToUser(controlKeysInitialPrompt)
 
-	keyPath := filepath.Join(app.GetKeyPath(keyName))
+	keyPath := app.GetKeyPath(keyName)
 	sk, err := key.LoadSoft(network.NetworkID(), keyPath)
 	if err != nil {
 		return nil, false, err

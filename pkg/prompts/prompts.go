@@ -246,7 +246,7 @@ func removeExisting(existing []any, elem any) []any {
 	newList := []any{}
 	for i, e := range existing {
 		if e == elem {
-			newList = append(existing[:i], existing[i+1:]...)
+			newList = append(existing[:i], existing[i+1:]...) //nolint:gocritic
 			break
 		}
 	}
