@@ -73,7 +73,7 @@ func NewGRPCServer(snapshotsDir string) (server.Server, error) {
 		DisplayLevel: logging.Info,
 		LogLevel:     logging.Off,
 	})
-	log, err := logFactory.Make("grpc-client")
+	log, err := logFactory.Make("grpc-server")
 	if err != nil {
 		return nil, err
 	}
