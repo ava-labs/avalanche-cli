@@ -41,6 +41,29 @@ func (_m *Prompter) CaptureAddress(promptStr string, arg interface{}) (interface
 	return r0, r1
 }
 
+// CaptureAnyList provides a mock function with given fields: promptStr, options
+func (_m *Prompter) CaptureAnyList(promptStr string, options interface{}) (interface{}, error) {
+	ret := _m.Called(promptStr, options)
+
+	var r0 interface{}
+	if rf, ok := ret.Get(0).(func(string, interface{}) interface{}); ok {
+		r0 = rf(promptStr, options)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(interface{})
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, interface{}) error); ok {
+		r1 = rf(promptStr, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // CaptureDate provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureDate(promptStr string) (time.Time, error) {
 	ret := _m.Called(promptStr)

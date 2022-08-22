@@ -310,95 +310,66 @@ func getControlKeys(network models.Network, keyName string) ([]string, bool, err
 func pickCtrlKeysFromList(network models.Network, keyName string) ([]string, bool, error) {
 	initialPrompt := "Select keys from your key list"
 
-	const (
-		addKey    = "Add key"
-		removeKey = "Remove key"
-		preview   = "Preview"
-		doneMsg   = "Done"
-		cancelMsg = "Cancel"
-	)
-
-	existing := []string{}
-	selected := []string{}
+	existing := []any{}
 
 	files, err := os.ReadDir(app.GetKeyDir())
 	if err != nil {
 		return nil, false, err
 	}
 
-	keyPaths := make([]string, len(files)-1)
+	keyPaths := make([]string, 0, len(files)-1)
 
-	for i, f := range files {
+	for _, f := range files {
 		// we already have the address for this key
 		if keyName == strings.TrimSuffix(f.Name(), constants.KeySuffix) {
 			continue
 		}
 		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
-			keyPaths[i] = filepath.Join(app.GetKeyDir(), f.Name())
+			keyPaths = append(keyPaths, filepath.Join(app.GetKeyDir(), f.Name()))
 		}
 	}
 
-	for _, p := range keyPaths {
-		k, err := key.LoadSoft(network.NetworkID(), p)
-		if err != nil {
-			return nil, false, err
-		}
-		existing = append(existing, k.P()...)
-	}
-
-	for {
-		listDecision, err := app.Prompt.CaptureList(
-			initialPrompt,
-			[]string{addKey, removeKey, preview, doneMsg, cancelMsg},
-		)
+	for _, kp := range keyPaths {
+		k, err := key.LoadSoft(network.NetworkID(), kp)
 		if err != nil {
 			return nil, false, err
 		}
 
-		switch listDecision {
-		case addKey:
-			key, err := app.Prompt.CaptureList("Pick address", existing)
-			if err != nil {
-				return nil, false, err
-			}
-			if contains(selected, key) {
-				fmt.Println("Key already added")
-				continue
-			}
-			selected = append(selected, key)
-			for i, k := range existing {
-				if k == key {
-					// remove this key from the existing ones so it doesn't get picked more than once
-					existing = append(existing[:i], existing[i+1:]...)
-				}
-			}
-		case removeKey:
-			ifaceK := make([]interface{}, len(selected))
-			for i, k := range selected {
-				ifaceK[i] = k
-			}
-			index, err := app.Prompt.CaptureIndex("Choose address to remove:", ifaceK)
-			if err != nil {
-				return nil, false, err
-			}
-			k := selected[index]
-			selected = append(selected[:index], selected[index+1:]...)
-			// add it back to the existing list
-			existing = append(existing, k)
-		case preview:
-			fmt.Println("Keys:")
-			for i, key := range selected {
-				fmt.Printf("%d. %s\n", i, key)
-			}
-		case doneMsg:
-			cancelled := len(selected) == 0
-			return selected, cancelled, nil
-		case cancelMsg:
-			return nil, true, nil
-		default:
-			return nil, false, errors.New("unexpected option")
+		for _, p := range k.P() {
+			existing = append(existing, p)
 		}
 	}
+
+	capturePrompt := "Pick address"
+	label := "P-Chain address"
+	info := "P-Chain addresses controlled by your private keys are best candidates for control keys. This is a list of such addresses."
+
+	list, canceled, err := app.Prompt.CaptureListDecision(
+		app.Prompt,
+		initialPrompt,
+		app.Prompt.CaptureAnyList,
+		capturePrompt,
+		label,
+		info,
+		existing,
+	)
+
+	return convertCtrlKeys(list, canceled, err)
+}
+
+func convertCtrlKeys(list []any, canceled bool, err error) ([]string, bool, error) {
+	ctrlKeys := make([]string, len(list))
+	var (
+		key string
+		ok  bool
+	)
+	for i, k := range list {
+		if key, ok = k.(string); !ok {
+			return nil, false, fmt.Errorf("expected string but got %T", key)
+		}
+		ctrlKeys[i] = key
+	}
+	return ctrlKeys, canceled, err
 }
 
 func enterCustomKeys(network models.Network) ([]string, bool, error) {
@@ -444,18 +415,7 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 		arg,
 	)
 
-	ctrlKeys := make([]string, len(list))
-	var (
-		key string
-		ok  bool
-	)
-	for i, k := range list {
-		if key, ok = k.(string); !ok {
-			return nil, false, fmt.Errorf("expected string but got %T", key)
-		}
-		ctrlKeys[i] = key
-	}
-	return ctrlKeys, canceled, err
+	return convertCtrlKeys(list, canceled, err)
 }
 
 // getThreshold prompts for the threshold of addresses as a number
