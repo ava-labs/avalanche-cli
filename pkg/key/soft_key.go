@@ -17,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanchego/utils/crypto"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 
@@ -356,7 +355,7 @@ func (m *SoftKey) Sign(pTx *txs.Tx, signers [][]ids.ShortID) error {
 		}
 	}
 
-	return pTx.Sign(platformvm.Codec, privsigners)
+	return pTx.Sign(txs.Codec, privsigners)
 }
 
 func (m *SoftKey) Match(owners *secp256k1fx.OutputOwners, time uint64) ([]uint32, []ids.ShortID, bool) {

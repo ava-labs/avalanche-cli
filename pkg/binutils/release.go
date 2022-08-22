@@ -10,6 +10,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"go.uber.org/zap"
 	"golang.org/x/mod/semver"
 )
 
@@ -28,7 +29,7 @@ func installBinaryWithVersion(
 		return "", fmt.Errorf("unable to determine binary install URL: %d", err)
 	}
 
-	app.Log.Debug("starting download from %s ...", installURL)
+	app.Log.Debug("starting download...", zap.String("download-url", installURL))
 	archive, err := installer.DownloadRelease(installURL)
 	if err != nil {
 		return "", fmt.Errorf("unable to download binary: %d", err)
@@ -91,7 +92,7 @@ func InstallBinary(
 		return filepath.Join(binDir, binPrefix+version), nil
 	}
 
-	app.Log.Info("Using binary version: %s", version)
+	app.Log.Info("Using binary version", zap.String("version", version))
 
 	return installBinaryWithVersion(app, version, installDir, binPrefix, downloader, installer)
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 // avalanche subnet list
@@ -57,13 +58,13 @@ func listGenesis(cmd *cobra.Command, args []string) error {
 	// DO NOT FAIL, just print No for deployed status
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
-		app.Log.Warn("could not get connection to server: %w", err)
+		app.Log.Warn("could not get connection to server", zap.Error(err))
 	}
 	if cli != nil {
 		ctx := binutils.GetAsyncContext()
 		resp, err := cli.Status(ctx)
 		if err != nil {
-			app.Log.Warn("failed to query server for status: %w", err)
+			app.Log.Warn("failed to query server for status", zap.Error(err))
 		}
 
 		if resp != nil {
