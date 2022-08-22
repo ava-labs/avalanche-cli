@@ -53,15 +53,32 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		commands.CleanNetwork()
 	})
 
-	ginkgo.It("deploy a subnet to fuji", func() {
-		_ = commands.SimulateDeploySubnetPublicly(subnetName, keyName, controlKeys)
-	})
+	/*
 
-	ginkgo.It("add nodes as validators", func() {
-		_ = commands.SimulateDeploySubnetPublicly(subnetName, keyName, controlKeys)
+		ginkgo.It("deploy a subnet to fuji", func() {
+			_ = commands.SimulateDeploySubnetPublicly(subnetName, keyName, controlKeys)
+		})
+
+		ginkgo.It("add nodes as validators", func() {
+			_ = commands.SimulateDeploySubnetPublicly(subnetName, keyName, controlKeys)
+			for _, nodeID := range localNodes {
+				start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
+				_ = commands.SimulateAddValidatorPublicly(subnetName, keyName, nodeID, start, "24h", "20")
+			}
+		})
+
+	*/
+	ginkgo.It("deploy a subnet to fuji and interfact with it", func() {
+		s := commands.SimulateDeploySubnetPublicly(subnetName, keyName, controlKeys)
+		subnetID, err := utils.ParseSubnetIDFromAddValidatorOutput(s)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(subnetID)
 		for _, nodeID := range localNodes {
 			start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
 			_ = commands.SimulateAddValidatorPublicly(subnetName, keyName, nodeID, start, "24h", "20")
 		}
+		confPaths, err := utils.GetLocalNodeConfPaths()
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(confPaths)
 	})
 })

@@ -4,6 +4,7 @@
 package utils
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -304,4 +305,38 @@ func DownloadCustomVMBin() (string, error) {
 		return "", err
 	}
 	return subnetEVMBin, nil
+}
+
+func GetLocalNodeConfPaths() (map[string]string, error) {
+	client, err := binutils.NewGRPCClient()
+	if err != nil {
+		return nil, err
+	}
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
+	resp, err := client.Status(ctx)
+	cancel()
+	if err != nil {
+		return nil, err
+	}
+	confPaths := map[string]string{}
+	for _, nodeInfo := range resp.ClusterInfo.NodeInfos {
+		confPaths[nodeInfo.Id] = path.Join(path.Dir(nodeInfo.LogDir), "config.json")
+	}
+	return confPaths, nil
+}
+
+func ParseSubnetIDFromAddValidatorOutput(output string) (string, error) {
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		if !strings.Contains(line, "Subnet ID") {
+			continue
+		}
+		words := strings.Split(line, "|")
+		if len(words) != 4 {
+			return "", errors.New("error parsing Subnet ID from output: invalid number of words in line")
+		}
+		return strings.TrimSpace(words[2]), nil
+	}
+	return "", errors.New("Subnet ID not found in output")
 }
