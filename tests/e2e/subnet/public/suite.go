@@ -5,6 +5,7 @@ package subnet
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
@@ -20,14 +21,6 @@ const (
 	testKey     = "tests/e2e/assets/ewoq_key.pk"
 	keyName     = "ewoq"
 )
-
-var localNodes = []string{
-	"NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg",
-	"NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ",
-	"NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN",
-	"NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu",
-	"NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5",
-}
 
 var _ = ginkgo.Describe("[Public Subnet]", func() {
 	ginkgo.BeforeEach(func() {
@@ -53,32 +46,43 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		commands.CleanNetwork()
 	})
 
-	/*
-
-		ginkgo.It("deploy a subnet to fuji", func() {
-			_ = commands.SimulateDeploySubnetPublicly(subnetName, keyName, controlKeys)
-		})
-
-		ginkgo.It("add nodes as validators", func() {
-			_ = commands.SimulateDeploySubnetPublicly(subnetName, keyName, controlKeys)
-			for _, nodeID := range localNodes {
-				start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
-				_ = commands.SimulateAddValidatorPublicly(subnetName, keyName, nodeID, start, "24h", "20")
-			}
-		})
-
-	*/
-	ginkgo.It("deploy a subnet to fuji and interfact with it", func() {
+	ginkgo.It("deploy subnet to fuji", func() {
+		// deploy
 		s := commands.SimulateDeploySubnetPublicly(subnetName, keyName, controlKeys)
-		subnetID, err := utils.ParseSubnetIDFromAddValidatorOutput(s)
+		subnetID, rpcURL, err := utils.ParsePublicDeployOutput(s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(subnetID)
-		for _, nodeID := range localNodes {
-			start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
-			_ = commands.SimulateAddValidatorPublicly(subnetName, keyName, nodeID, start, "24h", "20")
-		}
-		confPaths, err := utils.GetLocalNodeConfPaths()
+		fmt.Println(rpcURL)
+		// add validators to subnet
+		nodeInfos, err := utils.GetNodesInfo()
 		gomega.Expect(err).Should(gomega.BeNil())
-		fmt.Println(confPaths)
+		for _, nodeInfo := range nodeInfos {
+			start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
+			_ = commands.SimulateAddValidatorPublicly(subnetName, keyName, nodeInfo.Id, start, "24h", "20")
+		}
+		// join to copy vm binary and update config file
+		for _, nodeInfo := range nodeInfos {
+			_ = commands.SimulateJoinPublicly(subnetName, nodeInfo.ConfigFile, nodeInfo.PluginDir)
+		}
+		// get and check whitelisted subnets from config file
+		var whitelistedSubnets string
+		for _, nodeInfo := range nodeInfos {
+			whitelistedSubnets, err = utils.GetWhilelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
+			gomega.Expect(err).Should(gomega.BeNil())
+			whitelistedSubnetsSlice := strings.Split(whitelistedSubnets, ",")
+			gomega.Expect(whitelistedSubnetsSlice).Should(gomega.ContainElement(subnetID))
+		}
+		// update nodes whitelisted subnets
+		err = utils.UpdateNodesWhitelistedSubnets(whitelistedSubnets)
+		gomega.Expect(err).Should(gomega.BeNil())
+		// wait for subnet walidators to be on
+		err = utils.WaitSubnetValidators(subnetID, nodeInfos)
+		gomega.Expect(err).Should(gomega.BeNil())
+		// hardhat
+		err = utils.SetHardhatRPC(rpcURL)
+		gomega.Expect(err).Should(gomega.BeNil())
+		err = utils.RunHardhatTests(utils.BaseTest)
+		gomega.Expect(err).Should(gomega.BeNil())
+
 	})
 })

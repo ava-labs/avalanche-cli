@@ -285,3 +285,44 @@ func SimulateAddValidatorPublicly(
 
 	return string(output)
 }
+
+// simulates fuji join execution path on a local network
+func SimulateJoinPublicly(
+	subnetName string,
+	avalanchegoConfig string,
+	pluginDir string,
+) string {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// enable simulation of public network execution paths on a local network
+	os.Setenv(constants.SimulatePublicNetwork, "true")
+
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"join",
+		"--fuji",
+		"--avalanchego-config",
+		avalanchegoConfig,
+		"--plugin-dir",
+		pluginDir,
+		"--skip-whitelist-check",
+		"--force-write",
+		subnetName,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+	}
+
+	// disable simulation of public network execution paths on a local network
+	os.Unsetenv(constants.SimulatePublicNetwork)
+
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	return string(output)
+}

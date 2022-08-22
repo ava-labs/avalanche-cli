@@ -32,7 +32,7 @@ func TestE2e(t *testing.T) {
 
 var _ = ginkgo.BeforeSuite(func() {
 	cmd := exec.Command("./scripts/build.sh")
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	fmt.Println(string(out))
 	gomega.Expect(err).Should(gomega.BeNil())
 })

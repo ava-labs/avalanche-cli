@@ -13,10 +13,14 @@ import (
 	"os/user"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-network-runner/client"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 )
 
 const (
@@ -307,36 +311,147 @@ func DownloadCustomVMBin() (string, error) {
 	return subnetEVMBin, nil
 }
 
-func GetLocalNodeConfPaths() (map[string]string, error) {
-	client, err := binutils.NewGRPCClient()
-	if err != nil {
-		return nil, err
-	}
-	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
-	resp, err := client.Status(ctx)
-	cancel()
-	if err != nil {
-		return nil, err
-	}
-	confPaths := map[string]string{}
-	for _, nodeInfo := range resp.ClusterInfo.NodeInfos {
-		confPaths[nodeInfo.Id] = path.Join(path.Dir(nodeInfo.LogDir), "config.json")
-	}
-	return confPaths, nil
-}
-
-func ParseSubnetIDFromAddValidatorOutput(output string) (string, error) {
+func ParsePublicDeployOutput(output string) (string, string, error) {
 	lines := strings.Split(output, "\n")
+	var (
+		subnetID string
+		rpcURL   string
+	)
 	for _, line := range lines {
-		if !strings.Contains(line, "Subnet ID") {
+		if !strings.Contains(line, "Subnet ID") && !strings.Contains(line, "RPC URL") {
 			continue
 		}
 		words := strings.Split(line, "|")
 		if len(words) != 4 {
-			return "", errors.New("error parsing Subnet ID from output: invalid number of words in line")
+			return "", "", errors.New("error parsing output: invalid number of words in line")
 		}
-		return strings.TrimSpace(words[2]), nil
+		if strings.Contains(line, "Subnet ID") {
+			subnetID = strings.TrimSpace(words[2])
+		} else {
+			rpcURL = strings.TrimSpace(words[2])
+		}
 	}
-	return "", errors.New("Subnet ID not found in output")
+	if subnetID == "" || rpcURL == "" {
+		return "", "", errors.New("information not found in output")
+	}
+	return subnetID, rpcURL, nil
+}
+
+func UpdateNodesWhitelistedSubnets(whitelistedSubnets string) error {
+	cli, err := binutils.NewGRPCClient()
+	if err != nil {
+		return err
+	}
+	rootCtx := context.Background()
+	ctx, cancel := context.WithTimeout(rootCtx, constants.RequestTimeout)
+	resp, err := cli.Status(ctx)
+	cancel()
+	if err != nil {
+		return err
+	}
+	for _, nodeName := range resp.ClusterInfo.NodeNames {
+		ctx, cancel := context.WithTimeout(rootCtx, constants.RequestTimeout)
+		_, err := cli.RestartNode(ctx, nodeName, client.WithWhitelistedSubnets(whitelistedSubnets))
+		cancel()
+		if err != nil {
+			return err
+		}
+	}
+	ctx, cancel = context.WithTimeout(rootCtx, constants.RequestTimeout)
+	_, err = cli.Health(ctx)
+	cancel()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type NodeInfo struct {
+	Id         string
+	PluginDir  string
+	ConfigFile string
+	Uri        string
+}
+
+func GetNodesInfo() (map[string]NodeInfo, error) {
+	cli, err := binutils.NewGRPCClient()
+	if err != nil {
+		return nil, err
+	}
+	rootCtx := context.Background()
+	ctx, cancel := context.WithTimeout(rootCtx, constants.RequestTimeout)
+	resp, err := cli.Status(ctx)
+	cancel()
+	if err != nil {
+		return nil, err
+	}
+	nodesInfo := map[string]NodeInfo{}
+	for nodeName, nodeInfo := range resp.ClusterInfo.NodeInfos {
+		nodesInfo[nodeName] = NodeInfo{
+			Id:         nodeInfo.Id,
+			PluginDir:  nodeInfo.PluginDir,
+			ConfigFile: path.Join(path.Dir(nodeInfo.LogDir), "config.json"),
+			Uri:        nodeInfo.Uri,
+		}
+	}
+	return nodesInfo, nil
+}
+
+func GetWhilelistedSubnetsFromConfigFile(configFile string) (string, error) {
+	fileBytes, err := os.ReadFile(configFile)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return "", fmt.Errorf("failed to load avalanchego config file %s: %w", configFile, err)
+	}
+	var avagoConfig map[string]interface{}
+	if err := json.Unmarshal(fileBytes, &avagoConfig); err != nil {
+		return "", fmt.Errorf("failed to unpack the config file %s to JSON: %w", configFile, err)
+	}
+	whitelistedSubnetsIntf := avagoConfig["whitelisted-subnets"]
+	whitelistedSubnets, ok := whitelistedSubnetsIntf.(string)
+	if !ok {
+		return "", fmt.Errorf("expected a string value, but got %T", whitelistedSubnetsIntf)
+	}
+	return whitelistedSubnets, nil
+}
+
+func WaitSubnetValidators(subnetIDStr string, nodeInfos map[string]NodeInfo) error {
+	var uri string
+	for _, nodeInfo := range nodeInfos {
+		uri = nodeInfo.Uri
+		break
+	}
+	pClient := platformvm.NewClient(uri)
+	subnetID, err := ids.FromString(subnetIDStr)
+	if err != nil {
+		return err
+	}
+	mainCtx, mainCtxCancel := context.WithTimeout(context.Background(), time.Second*30)
+	for {
+		ready := true
+		ctx, ctxCancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
+		vs, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
+		ctxCancel()
+		if err != nil {
+			mainCtxCancel()
+			return err
+		}
+		subnetValidators := map[string]struct{}{}
+		for _, v := range vs {
+			subnetValidators[v.NodeID.String()] = struct{}{}
+		}
+		for _, nodeInfo := range nodeInfos {
+			if _, isValidator := subnetValidators[nodeInfo.Id]; !isValidator {
+				ready = false
+			}
+		}
+		if ready {
+			mainCtxCancel()
+			return nil
+		}
+		select {
+		case <-mainCtx.Done():
+			return mainCtx.Err()
+		case <-time.After(time.Second * 1):
+		}
+	}
 }
