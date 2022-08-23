@@ -73,7 +73,7 @@ jobs:
         with:
           name: cli-logs
           path: |
-            /home/runner/.avalanche-cli/
-            !/home/runner/.avalanche-cli/bin/
-            !/home/runner/.avalanche-cli/snapshots
+            ${{ github.workspace }}/.avalanche-cli/
+            !${{ github.workspace }}/.avalanche-cli/bin/
+            !${{ github.workspace }}/.avalanche-cli/snapshots
           retention-days: 5
