@@ -16,6 +16,8 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -148,7 +150,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	if err != nil {
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
-	d.app.Log.Debug("this VM will get ID: %s", chainVMID.String())
+	d.app.Log.Debug("this VM will get ID", zap.String("vm-id", chainVMID.String()))
 
 	if alreadyDeployed(chainVMID, clusterInfo) {
 		ux.Logger.PrintToUser("Subnet %s has already been deployed", chain)

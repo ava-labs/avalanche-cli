@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 // avalanche subnet describe
@@ -235,7 +236,7 @@ func readGenesis(cmd *cobra.Command, args []string) error {
 		case models.SubnetEvm:
 			err = describeSubnetEvmGenesis(sc)
 		default:
-			app.Log.Warn("Unknown genesis format for", sc.VM)
+			app.Log.Warn("Unknown genesis format", zap.Any("vm-type", sc.VM))
 			ux.Logger.PrintToUser("Printing genesis")
 			err = printGenesis(subnetName)
 		}

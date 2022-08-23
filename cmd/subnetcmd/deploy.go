@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 var (
@@ -168,7 +169,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {
-					app.Log.Warn("tried to kill the gRPC server process but it failed: %w", innerErr)
+					app.Log.Warn("tried to kill the gRPC server process but it failed", zap.Error(innerErr))
 				}
 			}
 			return err
