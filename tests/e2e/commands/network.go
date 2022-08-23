@@ -4,6 +4,7 @@
 package commands
 
 import (
+	"fmt"
 	"os/exec"
 
 	"github.com/onsi/gomega"
@@ -16,7 +17,11 @@ func CleanNetwork() {
 		NetworkCmd,
 		"clean",
 	)
-	_, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+	}
 	gomega.Expect(err).Should(gomega.BeNil())
 }
 
@@ -28,7 +33,11 @@ func CleanNetworkHard() {
 		"clean",
 		"--hard",
 	)
-	_, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+	}
 	gomega.Expect(err).Should(gomega.BeNil())
 }
 
@@ -39,7 +48,11 @@ func StartNetwork() string {
 		NetworkCmd,
 		"start",
 	)
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+	}
 	gomega.Expect(err).Should(gomega.BeNil())
 	return string(output)
 }
@@ -51,6 +64,10 @@ func StopNetwork() {
 		NetworkCmd,
 		"stop",
 	)
-	_, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+	}
 	gomega.Expect(err).Should(gomega.BeNil())
 }
