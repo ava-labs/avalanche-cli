@@ -31,7 +31,7 @@ jobs:
     strategy:
       matrix:
         go: ["1.18"]
-        os: [ubuntu-20.04, macos-latest]
+        os: [ubuntu-20.04]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
@@ -47,7 +47,7 @@ jobs:
     strategy:
       matrix:
         go: ["1.18"]
-        os: [ubuntu-20.04, macos-latest]
+        os: [ubuntu-20.04]
     steps:
       - name: Git checkout
         uses: actions/checkout@v2
@@ -67,15 +67,13 @@ jobs:
       - name: Run e2e tests
         shell: bash
         run: scripts/run.e2e.sh
-      - name: Set home dir
-        run: echo GITHUB_HOME=$HOME >> $GITHUB_ENV
       - name: 'Upload Artifact'
         if: always()
         uses: actions/upload-artifact@v3
         with:
           name: cli-logs
           path: |
-            ${{ env.GITHUB_HOME }}.avalanche-cli/
-            !${{ env.GITHUB_HOME }}.avalanche-cli/bin/
-            !${{ env.GITHUB_HOME }}.avalanche-cli/snapshots
+            /home/runner/.avalanche-cli/
+            !/home/runner/.avalanche-cli/bin/
+            !/home/runner/.avalanche-cli/snapshots
           retention-days: 5
