@@ -13,6 +13,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
+	"go.uber.org/zap"
 )
 
 // GetLatestReleaseVersion returns the latest available version from github
@@ -87,7 +88,7 @@ func DownloadReleaseVersion(
 		return "", fmt.Errorf("OS not supported: %s", goos)
 	}
 
-	log.Debug("starting download from %s...", downloadURL)
+	log.Debug("starting download...", zap.String("download-url", downloadURL))
 
 	resp, err := http.Get(downloadURL)
 	if err != nil {

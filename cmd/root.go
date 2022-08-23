@@ -21,6 +21,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 )
 
 var (
@@ -168,7 +169,7 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		app.Log.Info("Using config file: %s", viper.ConfigFileUsed())
+		app.Log.Info("Using config file", zap.String("config-file", viper.ConfigFileUsed()))
 	} else {
 		app.Log.Info("No log file found")
 	}

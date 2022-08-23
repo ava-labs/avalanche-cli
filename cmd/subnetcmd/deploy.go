@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 var (
@@ -25,6 +26,8 @@ var (
 	deployTestnet bool
 	deployMainnet bool
 	keyName       string
+	threshold     uint32
+	controlKeys   []string
 	avagoVersion  string
 
 	errMutuallyExlusive = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
@@ -58,7 +61,9 @@ subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "deploy to fuji (alias to `testnet`")
 	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "deploy to mainnet (not yet supported)")
 	cmd.Flags().StringVar(&avagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
-	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use for fuji deploys")
+	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploys]")
+	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to add a validator [fuji deploys]")
+	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may add new validators to the subnet [fuji deploys]")
 	return cmd
 }
 
@@ -165,7 +170,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {
-					app.Log.Warn("tried to kill the gRPC server process but it failed: %w", innerErr)
+					app.Log.Warn("tried to kill the gRPC server process but it failed", zap.Error(innerErr))
 				}
 			}
 			return err
@@ -199,25 +204,29 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return errors.New("not implemented")
 	}
 
+	// used in E2E to simulate public network execution paths on a local network
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		network = models.Local
+	}
+
 	// from here on we are assuming a public deploy
 
 	// prompt for control keys
-	controlKeys, cancelled, err := getControlKeys(network, keyName)
-	if err != nil {
-		return err
-	}
-	if cancelled {
-		ux.Logger.PrintToUser("User cancelled. No subnet deployed")
-		return nil
+	if controlKeys == nil {
+		var cancelled bool
+		controlKeys, cancelled, err = getControlKeys(network, keyName)
+		if err != nil {
+			return err
+		}
+		if cancelled {
+			ux.Logger.PrintToUser("User cancelled. No subnet deployed")
+			return nil
+		}
 	}
 
 	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
-
 	// prompt for threshold
-	threshold := uint32(1)
-
-	// if there's only one ctrl key we don't need to ask
-	if len(controlKeys) > 1 {
+	if len(controlKeys) > 0 && threshold == 0 {
 		threshold, err = getThreshold(len(controlKeys))
 		if err != nil {
 			return err
