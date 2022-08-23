@@ -52,13 +52,13 @@ func stopNetwork(cmd *cobra.Command, args []string) error {
 		// it we try to stop a network with a new snapshot name, remove snapshot
 		// will fail, so we cover here that expected case
 		if !server.IsServerError(err, local.ErrSnapshotNotFound) {
-			return fmt.Errorf("failed stop network with a snapshot: %s", err)
+			return fmt.Errorf("failed stop network with a snapshot: %w", err)
 		}
 	}
 
 	_, err = cli.SaveSnapshot(ctx, snapshotName)
 	if err != nil {
-		return fmt.Errorf("failed to stop network with a snapshot: %s", err)
+		return fmt.Errorf("failed to stop network with a snapshot: %w", err)
 	}
 	ux.Logger.PrintToUser("Network stopped successfully.")
 	return nil

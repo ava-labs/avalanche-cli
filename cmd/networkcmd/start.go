@@ -100,7 +100,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 
 	if err != nil {
 		if !server.IsServerError(err, server.ErrAlreadyBootstrapped) {
-			return fmt.Errorf("failed to start network with the persisted snapshot: %s", err)
+			return fmt.Errorf("failed to start network with the persisted snapshot: %w", err)
 		}
 		ux.Logger.PrintToUser("Network has already been booted. Wait until healthy...")
 	} else {
@@ -111,7 +111,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 	// used as an independent helper
 	clusterInfo, err := sd.WaitForHealthy(ctx, cli, constants.HealthCheckInterval)
 	if err != nil {
-		return fmt.Errorf("failed waiting for network to become healthy: %s", err)
+		return fmt.Errorf("failed waiting for network to become healthy: %w", err)
 	}
 
 	endpoints := subnet.GetEndpoints(clusterInfo)

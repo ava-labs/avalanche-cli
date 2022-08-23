@@ -69,7 +69,7 @@ subnet and deploy it on Fuji or Mainnet.`,
 func getChainsInSubnet(subnetName string) ([]string, error) {
 	files, err := os.ReadDir(app.GetBaseDir())
 	if err != nil {
-		return []string{}, fmt.Errorf("failed to read baseDir :%w", err)
+		return []string{}, fmt.Errorf("failed to read baseDir: %w", err)
 	}
 
 	chains := []string{}
@@ -345,7 +345,7 @@ func validateSubnetNameAndGetChains(args []string) ([]string, error) {
 	// this should not be necessary but some bright guy might just be creating
 	// the genesis by hand or something...
 	if err := checkInvalidSubnetNames(args[0]); err != nil {
-		return nil, fmt.Errorf("subnet name %s is invalid: %s", args[0], err)
+		return nil, fmt.Errorf("subnet name %s is invalid: %w", args[0], err)
 	}
 	// Check subnet exists
 	// TODO create a file that lists chains by subnet for fast querying

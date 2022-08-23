@@ -106,7 +106,7 @@ func DownloadReleaseVersion(
 
 	installDir := filepath.Join(binDir, repo+"-"+version)
 	if err := os.MkdirAll(installDir, perms.ReadWriteExecute); err != nil {
-		return "", fmt.Errorf("failed creating %s installation directory: %s", repo, err)
+		return "", fmt.Errorf("failed creating %s installation directory: %w", repo, err)
 	}
 
 	log.Debug("download successful. installing archive...")
