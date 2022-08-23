@@ -4,7 +4,6 @@ package subnetcmd
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -12,11 +11,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/plugins"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/spf13/cobra"
@@ -161,7 +159,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 
 	if printManual {
 		pluginDir = app.GetTmpPluginDir()
-		vmPath, err := createPlugin(sc.Name, pluginDir)
+		vmPath, err := plugins.CreatePlugin(app, sc.Name, pluginDir)
 		if err != nil {
 			return err
 		}
@@ -186,7 +184,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 		}
 		if choice == choiceManual {
 			pluginDir = app.GetTmpPluginDir()
-			vmPath, err := createPlugin(sc.Name, pluginDir)
+			vmPath, err := plugins.CreatePlugin(app, sc.Name, pluginDir)
 			if err != nil {
 				return err
 			}
@@ -226,14 +224,14 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 		return err
 	}
 
-	vmPath, err := createPlugin(sc.Name, pluginDir)
+	vmPath, err := plugins.CreatePlugin(app, sc.Name, pluginDir)
 	if err != nil {
 		return err
 	}
 
 	ux.Logger.PrintToUser("VM binary written to %s", vmPath)
 
-	if err := editConfigFile(subnetIDStr, networkLower, avagoConfigPath, forceWrite); err != nil {
+	if err := plugins.EditConfigFile(app, subnetIDStr, networkLower, avagoConfigPath, forceWrite); err != nil {
 		return err
 	}
 	return nil
@@ -299,79 +297,6 @@ func checkIsValidating(subnetID ids.ID, nodeID ids.NodeID, pClient platformvm.Cl
 	return false, nil
 }
 
-func editConfigFile(subnetID string, networkID string, configFile string, forceWrite bool) error {
-	if !forceWrite {
-		warn := "This will edit your existing config file. This edit is nondestructive,\n" +
-			"but it's always good to have a backup."
-		ux.Logger.PrintToUser(warn)
-		yes, err := app.Prompt.CaptureYesNo("Proceed?")
-		if err != nil {
-			return err
-		}
-		if !yes {
-			ux.Logger.PrintToUser("Canceled by user")
-			return nil
-		}
-	}
-	fileBytes, err := os.ReadFile(configFile)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("failed to load avalanchego config file %s: %w", configFile, err)
-	}
-	if fileBytes == nil {
-		fileBytes = []byte("{}")
-	}
-	var avagoConfig map[string]interface{}
-	if err := json.Unmarshal(fileBytes, &avagoConfig); err != nil {
-		return fmt.Errorf("failed to unpack the config file %s to JSON: %w", configFile, err)
-	}
-
-	// check the old entries in the config file for whitelisted subnets
-	oldVal := avagoConfig["whitelisted-subnets"]
-	newVal := ""
-	if oldVal != nil {
-		// if an entry already exists, we check if the subnetID already is part
-		// of the whitelisted-subnets...
-		exists := false
-		var oldValStr string
-		var ok bool
-		if oldValStr, ok = oldVal.(string); !ok {
-			return fmt.Errorf("expected a string value, but got %T", oldVal)
-		}
-		elems := strings.Split(oldValStr, ",")
-		for _, s := range elems {
-			if s == subnetID {
-				// ...if it is, we just don't need to update the value...
-				newVal = oldVal.(string)
-				exists = true
-			}
-		}
-		// ...but if it is not, we concatenate the new subnet to the existing ones
-		if !exists {
-			newVal = strings.Join([]string{oldVal.(string), subnetID}, ",")
-		}
-	} else {
-		// there were no entries yet, so add this subnet as its new value
-		newVal = subnetID
-	}
-	avagoConfig["whitelisted-subnets"] = newVal
-	avagoConfig["network-id"] = networkID
-
-	writeBytes, err := json.MarshalIndent(avagoConfig, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to pack JSON to bytes for the config file: %w", err)
-	}
-	if err := os.WriteFile(configFile, writeBytes, constants.DefaultPerms755); err != nil {
-		return fmt.Errorf("failed to write JSON config file, check permissions? %w", err)
-	}
-	msg := `The config file has been edited. To use it, make sure to start the node with the '--config-file' option, e.g.
-
-./build/avalanchego --config-file %s
-
-(using your binary location). The node has to be restarted for the changes to take effect.`
-	ux.Logger.PrintToUser(msg, avagoConfigPath)
-	return nil
-}
-
 func printJoinCmd(subnetID string, networkID string, vmPath string) {
 	msg := `
 To setup your node, you must do two things:
@@ -404,36 +329,6 @@ After you update your config, you will need to restart your node for the changes
 take effect.`
 
 	ux.Logger.PrintToUser(msg, vmPath, subnetID, networkID, subnetID, subnetID)
-}
-
-// Downloads the subnet's VM (if necessary) and copies it into the plugin directory
-func createPlugin(subnetName string, pluginDir string) (string, error) {
-	chainVMID, err := utils.VMID(subnetName)
-	if err != nil {
-		return "", fmt.Errorf("failed to create VM ID from %s: %w", subnetName, err)
-	}
-
-	sc, err := app.LoadSidecar(subnetName)
-	if err != nil {
-		return "", fmt.Errorf("failed to load sidecar: %w", err)
-	}
-
-	var vmSourcePath string
-	switch sc.VM {
-	case subnetEvm:
-		vmSourcePath, err = binutils.SetupSubnetEVM(app, sc.VMVersion)
-		if err != nil {
-			return "", fmt.Errorf("failed to install subnet-evm: %w", err)
-		}
-	case customVM:
-		vmSourcePath = binutils.SetupCustomBin(app, subnetName)
-	default:
-		return "", fmt.Errorf("unknown vm: %s", sc.VM)
-	}
-
-	vmDestPath := filepath.Join(pluginDir, chainVMID.String())
-
-	return vmDestPath, binutils.CopyFile(vmSourcePath, vmDestPath)
 }
 
 func sanitizePath(path string) (string, error) {

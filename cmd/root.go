@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/keycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/apmintegration"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -74,6 +75,11 @@ func createApp(cmd *cobra.Command, args []string) error {
 	}
 	cf := config.New()
 	app.Setup(baseDir, log, cf, prompts.NewPrompter())
+	apmInstance, err := apmintegration.SetupApm()
+	if err != nil {
+		return err
+	}
+	app.Apm = apmInstance
 	cobra.OnInitialize(initConfig)
 	return nil
 }

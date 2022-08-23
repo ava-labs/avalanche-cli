@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/apm/apm"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -28,6 +29,7 @@ type Avalanche struct {
 	baseDir string
 	Conf    *config.Config
 	Prompt  prompts.Prompter
+	Apm     *apm.APM
 }
 
 func New() *Avalanche {
