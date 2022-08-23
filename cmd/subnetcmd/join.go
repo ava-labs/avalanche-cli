@@ -116,6 +116,11 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 		network = models.NetworkFromString(networkStr)
 	}
 
+	// used in E2E to simulate public network execution paths on a local network
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		network = models.Local
+	}
+
 	networkLower := strings.ToLower(network.String())
 
 	subnetID := sc.Networks[network.String()].SubnetID
@@ -247,6 +252,8 @@ func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, erro
 		api = constants.FujiAPIEndpoint
 	case models.Mainnet:
 		api = constants.MainnetAPIEndpoint
+	case models.Local:
+		api = constants.LocalAPIEndpoint
 	default:
 		return false, fmt.Errorf("network not supported")
 	}
