@@ -91,9 +91,10 @@ func NewGRPCServer(snapshotsDir string) (server.Server, error) {
 func (rpr *realProcessRunner) IsServerProcessRunning(app *application.Avalanche) (bool, error) {
 	pid, err := GetServerPID(app)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
+		if !errors.Is(err, os.ErrNotExist) {
 			return false, err
 		}
+		return false, nil
 	}
 
 	// get OS process list
