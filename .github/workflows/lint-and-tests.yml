@@ -47,7 +47,8 @@ jobs:
     strategy:
       matrix:
         go: ["1.18"]
-        os: [ubuntu-20.04, macos-latest]
+        os: [macos-latest]
+        #os: [ubuntu-20.04, macos-latest]
     steps:
       - name: Git checkout
         uses: actions/checkout@v2
@@ -73,7 +74,7 @@ jobs:
         with:
           name: cli-logs
           path: |
-            ${{ github.workspace }}/.avalanche-cli/
-            !${{ github.workspace }}/.avalanche-cli/bin/
-            !${{ github.workspace }}/.avalanche-cli/snapshots
+            ${{ github.workspace }}/../.avalanche-cli/
+            !${{ github.workspace }}/../.avalanche-cli/bin/
+            !${{ github.workspace }}/../.avalanche-cli/snapshots
           retention-days: 5
