@@ -4,6 +4,7 @@ package keycmd
 
 import (
 	"errors"
+	"regexp"
 
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -21,6 +22,10 @@ var (
 
 func createKey(cmd *cobra.Command, args []string) error {
 	keyName := args[0]
+
+	if match, _ := regexp.MatchString("\\s", keyName); match {
+		return errors.New("key name contains whitespace")
+	}
 
 	if app.KeyExists(keyName) && !forceCreate {
 		return errors.New("key already exists. Use --" + forceFlag + " parameter to overwrite")
