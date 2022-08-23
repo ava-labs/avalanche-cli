@@ -225,6 +225,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
+
 	// prompt for threshold
 	if len(controlKeys) > 0 && threshold == 0 {
 		threshold, err = getThreshold(len(controlKeys))
@@ -262,34 +263,18 @@ func getControlKeys(network models.Network, keyName string) ([]string, bool, err
 	controlKeysInitialPrompt := "Configure which addresses may add new validators to the subnet.\n" +
 		"These addresses are known as your control keys. You will also\n" +
 		"set how many control keys are required to add a validator (the threshold)."
-	moreKeysPrompt := "P-Chain addresses from your private key will be added by default to the control key set. Would you like to add more?"
+	moreKeysPrompt := "How would you like to set your control keys?"
 
 	ux.Logger.PrintToUser(controlKeysInitialPrompt)
 
-	keyPath := app.GetKeyPath(keyName)
-	sk, err := key.LoadSoft(network.NetworkID(), keyPath)
-	if err != nil {
-		return nil, false, err
-	}
-
-	thisKeyAddresses := sk.P()
-
-	yes, err := app.Prompt.CaptureNoYes(moreKeysPrompt)
-	if err != nil {
-		return nil, false, err
-	}
-
-	if !yes {
-		return thisKeyAddresses, false, nil
-	}
-
 	const (
-		fromList = "Select from key list"
-		custom   = "Custom P-Chain address"
+		useAll       = "Use all stored keys"
+		creationOnly = "Use creation key only"
+		custom       = "Custom list"
 	)
 
 	listDecision, err := app.Prompt.CaptureList(
-		"How do you want to add control keys?", []string{fromList, custom},
+		moreKeysPrompt, []string{useAll, creationOnly, custom},
 	)
 	if err != nil {
 		return nil, false, err
@@ -301,38 +286,33 @@ func getControlKeys(network models.Network, keyName string) ([]string, bool, err
 	)
 
 	switch listDecision {
-	case fromList:
-		keys, cancelled, err = pickCtrlKeysFromList(network, keyName)
+	case useAll:
+		keys, err = useAllKeys(network)
+	case creationOnly:
+		keys, err = loadCreationKey(network, keyName)
 	case custom:
 		keys, cancelled, err = enterCustomKeys(network)
 	}
-
 	if err != nil {
-		return nil, false, nil
+		return nil, false, err
 	}
 	if cancelled {
 		return nil, true, nil
 	}
-	return append(keys, thisKeyAddresses...), false, nil
+	return keys, false, nil
 }
 
-func pickCtrlKeysFromList(network models.Network, keyName string) ([]string, bool, error) {
-	initialPrompt := "Select keys from your key list"
-
-	existing := []any{}
+func useAllKeys(network models.Network) ([]string, error) {
+	existing := []string{}
 
 	files, err := os.ReadDir(app.GetKeyDir())
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
-	keyPaths := make([]string, 0, len(files)-1)
+	keyPaths := make([]string, 0, len(files))
 
 	for _, f := range files {
-		// we already have the address for this key
-		if keyName == strings.TrimSuffix(f.Name(), constants.KeySuffix) {
-			continue
-		}
 		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
 			keyPaths = append(keyPaths, filepath.Join(app.GetKeyDir(), f.Name()))
 		}
@@ -341,29 +321,23 @@ func pickCtrlKeysFromList(network models.Network, keyName string) ([]string, boo
 	for _, kp := range keyPaths {
 		k, err := key.LoadSoft(network.NetworkID(), kp)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 
-		for _, p := range k.P() {
-			existing = append(existing, p)
-		}
+		existing = append(existing, k.P()...)
 	}
 
-	capturePrompt := "Pick address"
-	label := "P-Chain address"
-	info := "P-Chain addresses controlled by your private keys are best candidates for control keys. This is a list of such addresses."
+	return existing, nil
+}
 
-	list, canceled, err := app.Prompt.CaptureListDecision(
-		app.Prompt,
-		initialPrompt,
-		app.Prompt.CaptureAnyList,
-		capturePrompt,
-		label,
-		info,
-		existing,
-	)
+func loadCreationKey(network models.Network, keyName string) ([]string, error) {
+	path := filepath.Join(app.GetKeyDir(), keyName+constants.KeySuffix)
+	k, err := key.LoadSoft(network.NetworkID(), path)
+	if err != nil {
+		return nil, err
+	}
 
-	return convertCtrlKeys(list, canceled, err)
+	return k.P(), nil
 }
 
 func convertCtrlKeys(list []any, canceled bool, err error) ([]string, bool, error) {

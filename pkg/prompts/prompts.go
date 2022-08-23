@@ -178,7 +178,11 @@ func (r *realPrompter) CaptureListDecision(
 ) ([]any, bool, error) {
 	list := []any{}
 
+	param := arg
 	existing, ok := arg.([]any)
+	if ok {
+		param = existing
+	}
 
 	for {
 		listDecision, err := prompter.CaptureList(
@@ -191,7 +195,7 @@ func (r *realPrompter) CaptureListDecision(
 		case Add:
 			elem, err := capture(
 				capturePrompt,
-				existing,
+				param,
 			)
 			if elem == Skip {
 				break
