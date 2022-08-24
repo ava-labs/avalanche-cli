@@ -60,7 +60,7 @@ jobs:
         run: |
           echo $GITHUB_HOME
           echo ${{ env.GITHUB_HOME }}
-          echo ${{ env.HOME }}
+          #echo ${{ env.HOME }}
           #echo ${{ HOME }}
       - name: Git checkout
         uses: actions/checkout@v2
