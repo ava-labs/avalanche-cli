@@ -68,13 +68,23 @@ jobs:
       - name: Run e2e tests
         shell: bash
         run: scripts/run.e2e.sh
-      - name: 'Upload Artifact'
-        if: always()
+      - name: 'Upload Macos Artifact'
+        if: matrix.os == macos-latest
         uses: actions/upload-artifact@v3
         with:
           name: cli-logs
           path: |
-            ${{ github.workspace }}/../.avalanche-cli/
-            !${{ github.workspace }}/../.avalanche-cli/bin/
-            !${{ github.workspace }}/../.avalanche-cli/snapshots
+            /Users/runner/.avalanche-cli/
+            !/Users/runner/.avalanche-cli/bin/
+            !/Users/runner/.avalanche-cli/snapshots
+          retention-days: 5
+      - name: 'Upload Ubuntu Artifact'
+        if: matrix.os == ubuntu-20.04
+        uses: actions/upload-artifact@v3
+        with:
+          name: cli-logs
+          path: |
+            /Users/runner/.avalanche-cli/
+            !/home/runner/.avalanche-cli/bin/
+            !/home/runner/.avalanche-cli/snapshots
           retention-days: 5
