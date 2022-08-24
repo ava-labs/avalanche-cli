@@ -4,11 +4,11 @@ package subnet
 
 import (
 	"context"
-	//"encoding/json"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	//"math/big"
+	"math/big"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -19,18 +19,19 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	//"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/storage"
-	//"github.com/ava-labs/coreth/core"
-	//"github.com/ava-labs/coreth/params"
+	"github.com/ava-labs/coreth/core"
+	"github.com/ava-labs/coreth/params"
 )
 
 const (
@@ -122,16 +123,22 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 	defer cli.Close()
 
-	// we need the chainID just later, but it would be ugly to fail the whole deployment
-	// for a JSON unmarshalling error, so let's do it here already
-    /*
-	var genesis core.Genesis
-	err = json.Unmarshal(chainGenesis, &genesis)
-	if err != nil {
-		return ids.Empty, ids.Empty, fmt.Errorf("failed to unpack chain ID from genesis: %w", err)
-	}
-	chainID := genesis.Config.ChainID
-    */
+    // Use the sidecar to get the model vm type
+    sc, err := d.app.LoadSidecar(chain)
+    if err != nil {
+        return ids.Empty, ids.Empty, fmt.Errorf("failed to load sidecar: %w", err)
+    }
+
+	var evmGenesis core.Genesis
+    if sc.VM == models.SubnetEvm {
+        // we need the genesis data just later, but it would be ugly to fail the whole deployment
+        // for a JSON unmarshalling error, so let's do it here already
+        if err := json.Unmarshal(chainGenesis, &evmGenesis); err != nil {
+            return ids.Empty, ids.Empty, fmt.Errorf("failed to unpack chain ID from genesis: %w", err)
+        }
+    }
+
+    return ids.Empty, ids.Empty, nil
 
 	runDir := d.app.GetRunDir()
 
@@ -224,25 +231,26 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	fmt.Println()
 
 	firstURL := endpoints[0]
-	tokenName := d.app.GetTokenName(chain)
 
 	ux.Logger.PrintToUser("Metamask connection details (any node URL from above works):")
 	ux.Logger.PrintToUser("RPC URL:          %s", firstURL[strings.LastIndex(firstURL, "http"):])
-    /*
-	for address := range genesis.Alloc {
-		amount := genesis.Alloc[address].Balance
-		formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
-		if address == vm.PrefundedEwoqAddress {
-			ux.Logger.PrintToUser("Funded address:   %s with %s (10^18) - private key: %s", address, formattedAmount.String(), vm.PrefundedEwoqPrivate)
-		} else {
-			ux.Logger.PrintToUser("Funded address:   %s with %s", address, formattedAmount.String())
-		}
-	}
-    */
+    if sc.VM == models.SubnetEvm {
+        for address := range evmGenesis.Alloc {
+            amount := evmGenesis.Alloc[address].Balance
+            formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
+            if address == vm.PrefundedEwoqAddress {
+                ux.Logger.PrintToUser("Funded address:   %s with %s (10^18) - private key: %s", address, formattedAmount.String(), vm.PrefundedEwoqPrivate)
+            } else {
+                ux.Logger.PrintToUser("Funded address:   %s with %s", address, formattedAmount.String())
+            }
+        }
+    }
 
 	ux.Logger.PrintToUser("Network name:     %s", chain)
-	//ux.Logger.PrintToUser("Chain ID:         %s", chainID)
-	ux.Logger.PrintToUser("Currency Symbol:  %s", tokenName)
+    if sc.VM == models.SubnetEvm {
+        ux.Logger.PrintToUser("Chain ID:         %s", evmGenesis.Config.ChainID)
+        ux.Logger.PrintToUser("Currency Symbol:  %s", d.app.GetTokenName(chain))
+    }
 
 	// we can safely ignore errors here as the subnets have already been generated
 	subnetID, _ := ids.FromString(subnetIDStr)
