@@ -2,6 +2,8 @@
 // See the file LICENSE for licensing terms.
 package models
 
+import "github.com/ava-labs/avalanchego/utils/constants"
+
 type Network int64
 
 const (
@@ -21,6 +23,18 @@ func (s Network) String() string {
 		return "Local Network"
 	}
 	return "Unknown Network"
+}
+
+func (s Network) NetworkID() uint32 {
+	switch s {
+	case Mainnet:
+		return constants.MainnetID
+	case Fuji:
+		return constants.FujiID
+	case Local:
+		return 0
+	}
+	return 0
 }
 
 func NetworkFromString(s string) Network {
