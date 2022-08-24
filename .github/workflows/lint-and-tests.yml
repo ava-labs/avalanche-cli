@@ -50,17 +50,6 @@ jobs:
         #os: [macos-latest]
         os: [ubuntu-20.04, macos-latest]
     steps:
-      - name: Test home var
-        run: |
-          echo $HOME
-          pwd
-      - name: set env
-        run: echo "GITHUB_HOME=$(echo $HOME)" >> $GITHUB_ENV
-      - name: get env
-        run: |
-          echo $GITHUB_HOME
-          echo ${{ env.GITHUB_HOME }}
-          echo ${{ env.HOME }}
       - name: Git checkout
         uses: actions/checkout@v2
         with:
@@ -79,23 +68,15 @@ jobs:
       - name: Run e2e tests
         shell: bash
         run: scripts/run.e2e.sh
-      - name: 'Upload Macos Artifact'
-        if: ${{ matrix.os }} == macos-latest
+      - name: set home var
+        run: echo "GITHUB_HOME=$(echo $HOME)" >> $GITHUB_ENV
+      - name: 'Upload Artifact'
+        if: always()
         uses: actions/upload-artifact@v3
         with:
           name: cli-logs
           path: |
-            /Users/runner/.avalanche-cli/
-            !/Users/runner/.avalanche-cli/bin/
-            !/Users/runner/.avalanche-cli/snapshots
-          retention-days: 5
-      - name: 'Upload Ubuntu Artifact'
-        if: ${{ matrix.os }} == ubuntu-20.04
-        uses: actions/upload-artifact@v3
-        with:
-          name: cli-logs
-          path: |
-            /Users/runner/.avalanche-cli/
-            !/home/runner/.avalanche-cli/bin/
-            !/home/runner/.avalanche-cli/snapshots
+            ${{ env.GITHUB_HOME }}/.avalanche-cli/
+            !${{ env.GITHUB_HOME }}/.avalanche-cli/bin/
+            !${{ env.GITHUB_HOME }}/.avalanche-cli/snapshots
           retention-days: 5
