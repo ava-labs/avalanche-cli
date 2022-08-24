@@ -68,15 +68,13 @@ jobs:
       - name: Run e2e tests
         shell: bash
         run: scripts/run.e2e.sh
-      - name: set home var
-        run: echo "GITHUB_HOME=$(echo $HOME)" >> $GITHUB_ENV
       - name: 'Upload Artifact'
         if: always()
         uses: actions/upload-artifact@v3
         with:
           name: cli-logs
           path: |
-            ${{ env.GITHUB_HOME }}/.avalanche-cli/
-            !${{ env.GITHUB_HOME }}/.avalanche-cli/bin/
-            !${{ env.GITHUB_HOME }}/.avalanche-cli/snapshots
+            ~/.avalanche-cli/
+            !~/.avalanche-cli/bin/
+            !~/.avalanche-cli/snapshots
           retention-days: 5
