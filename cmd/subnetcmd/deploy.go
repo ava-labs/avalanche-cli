@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/coreth/core"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -140,29 +141,43 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	sidecar, err := app.LoadSidecar(chain)
+	if err != nil {
+		return err
+	}
+
+	// validate genesis as far as possible previous to deploy
+	switch sidecar.VM {
+	case models.SubnetEvm:
+		var evmGenesis core.Genesis
+		if err := json.Unmarshal(chainGenesis, &evmGenesis); err != nil {
+			return fmt.Errorf("failed to validate genesis format: %w", err)
+		}
+	default:
+		var genesis map[string]interface{}
+		if err := json.Unmarshal(chainGenesis, &genesis); err != nil {
+			return fmt.Errorf("failed to validate genesis format: %w", err)
+		}
+	}
+
 	genesisPath := app.GetGenesisPath(chain)
 
 	switch network {
 	case models.Local:
 		app.Log.Debug("Deploy local")
-		sc, err := app.LoadSidecar(chain)
-		if err != nil {
-			return fmt.Errorf("failed to load sidecar for later update: %w", err)
-		}
-
-		var vmDir string
 
 		// download subnet-evm if necessary
-		switch sc.VM {
+		var vmDir string
+		switch sidecar.VM {
 		case subnetEvm:
-			vmDir, err = binutils.SetupSubnetEVM(app, sc.VMVersion)
+			vmDir, err = binutils.SetupSubnetEVM(app, sidecar.VMVersion)
 			if err != nil {
 				return fmt.Errorf("failed to install subnet-evm: %w", err)
 			}
 		case customVM:
 			vmDir = binutils.SetupCustomBin(app, chain)
 		default:
-			return fmt.Errorf("unknown vm: %s", sc.VM)
+			return fmt.Errorf("unknown vm: %s", sidecar.VM)
 		}
 
 		deployer := subnet.NewLocalDeployer(app, avagoVersion, vmDir)
@@ -175,14 +190,14 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			}
 			return err
 		}
-		if sc.Networks == nil {
-			sc.Networks = make(map[string]models.NetworkData)
+		if sidecar.Networks == nil {
+			sidecar.Networks = make(map[string]models.NetworkData)
 		}
-		sc.Networks[models.Local.String()] = models.NetworkData{
+		sidecar.Networks[models.Local.String()] = models.NetworkData{
 			SubnetID:     subnetID,
 			BlockchainID: blockchainID,
 		}
-		if err := app.UpdateSidecar(&sc); err != nil {
+		if err := app.UpdateSidecar(&sidecar); err != nil {
 			return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)
 		}
 		return nil
@@ -243,10 +258,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
-	sidecar, err := app.LoadSidecar(chain)
-	if err != nil {
-		return err
-	}
 	nets := sidecar.Networks
 	if nets == nil {
 		nets = make(map[string]models.NetworkData)

@@ -19,9 +19,9 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/client"
@@ -123,22 +123,6 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 	defer cli.Close()
 
-    // Use the sidecar to get the model vm type
-    sc, err := d.app.LoadSidecar(chain)
-    if err != nil {
-        return ids.Empty, ids.Empty, fmt.Errorf("failed to load sidecar: %w", err)
-    }
-
-    // Load evm genesis if needed
-	var evmGenesis core.Genesis
-    if sc.VM == models.SubnetEvm {
-        // we need the genesis data just later, but it would be ugly to fail the whole deployment
-        // for a JSON unmarshalling error, so let's do it here already
-        if err := json.Unmarshal(chainGenesis, &evmGenesis); err != nil {
-            return ids.Empty, ids.Empty, fmt.Errorf("failed to unpack chain ID from genesis: %w", err)
-        }
-    }
-
 	runDir := d.app.GetRunDir()
 
 	ctx := binutils.GetAsyncContext()
@@ -233,23 +217,18 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	ux.Logger.PrintToUser("Metamask connection details (any node URL from above works):")
 	ux.Logger.PrintToUser("RPC URL:          %s", firstURL[strings.LastIndex(firstURL, "http"):])
-    if sc.VM == models.SubnetEvm {
-        for address := range evmGenesis.Alloc {
-            amount := evmGenesis.Alloc[address].Balance
-            formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
-            if address == vm.PrefundedEwoqAddress {
-                ux.Logger.PrintToUser("Funded address:   %s with %s (10^18) - private key: %s", address, formattedAmount.String(), vm.PrefundedEwoqPrivate)
-            } else {
-                ux.Logger.PrintToUser("Funded address:   %s with %s", address, formattedAmount.String())
-            }
-        }
-    }
 
-	ux.Logger.PrintToUser("Network name:     %s", chain)
-    if sc.VM == models.SubnetEvm {
-        ux.Logger.PrintToUser("Chain ID:         %s", evmGenesis.Config.ChainID)
-        ux.Logger.PrintToUser("Currency Symbol:  %s", d.app.GetTokenName(chain))
-    }
+	// extra ux based on vm type
+	sc, err := d.app.LoadSidecar(chain)
+	if err != nil {
+		return ids.Empty, ids.Empty, fmt.Errorf("failed to load sidecar: %w", err)
+	}
+	if sc.VM == models.SubnetEvm {
+		if err := d.printExtraEvmInfo(chain, chainGenesis); err != nil {
+			// not supposed to happen due to genesis pre validation
+			return ids.Empty, ids.Empty, nil
+		}
+	}
 
 	// we can safely ignore errors here as the subnets have already been generated
 	subnetID, _ := ids.FromString(subnetIDStr)
@@ -260,6 +239,26 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 	}
 	return subnetID, blockchainID, nil
+}
+
+func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte) error {
+	var evmGenesis core.Genesis
+	if err := json.Unmarshal(chainGenesis, &evmGenesis); err != nil {
+		return fmt.Errorf("failed to unmarshall genesis: %w", err)
+	}
+	for address := range evmGenesis.Alloc {
+		amount := evmGenesis.Alloc[address].Balance
+		formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
+		if address == vm.PrefundedEwoqAddress {
+			ux.Logger.PrintToUser("Funded address:   %s with %s (10^18) - private key: %s", address, formattedAmount.String(), vm.PrefundedEwoqPrivate)
+		} else {
+			ux.Logger.PrintToUser("Funded address:   %s with %s", address, formattedAmount.String())
+		}
+	}
+	ux.Logger.PrintToUser("Network name:     %s", chain)
+	ux.Logger.PrintToUser("Chain ID:         %s", evmGenesis.Config.ChainID)
+	ux.Logger.PrintToUser("Currency Symbol:  %s", d.app.GetTokenName(chain))
+	return nil
 }
 
 // SetupLocalEnv also does some heavy lifting:
