@@ -47,7 +47,6 @@ jobs:
     strategy:
       matrix:
         go: ["1.18"]
-        #os: [macos-latest]
         os: [ubuntu-20.04, macos-latest]
     steps:
       - name: Git checkout
