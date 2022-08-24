@@ -75,11 +75,9 @@ func createApp(cmd *cobra.Command, args []string) error {
 	}
 	cf := config.New()
 	app.Setup(baseDir, log, cf, prompts.NewPrompter())
-	apmInstance, err := apmintegration.SetupApm()
-	if err != nil {
+	if err = apmintegration.SetupApm(app); err != nil {
 		return err
 	}
-	app.Apm = apmInstance
 	cobra.OnInitialize(initConfig)
 	return nil
 }
@@ -135,7 +133,7 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid log level configured: %s", logLevel)
 	}
-	config.Directory = filepath.Join(baseDir, "logs")
+	config.Directory = filepath.Join(baseDir, constants.LogDir)
 	if err := os.MkdirAll(config.Directory, perms.ReadWriteExecute); err != nil {
 		return nil, fmt.Errorf("failed creating log directory: %w", err)
 	}

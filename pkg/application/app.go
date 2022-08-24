@@ -30,6 +30,7 @@ type Avalanche struct {
 	Conf    *config.Config
 	Prompt  prompts.Prompter
 	Apm     *apm.APM
+	ApmDir  string
 }
 
 func New() *Avalanche {
@@ -89,6 +90,14 @@ func (app *Avalanche) GetKeyDir() string {
 
 func (app *Avalanche) GetTmpPluginDir() string {
 	return os.TempDir()
+}
+
+func (app *Avalanche) GetAPMLog() string {
+	return filepath.Join(app.baseDir, constants.LogDir, constants.APMLogName)
+}
+
+func (app *Avalanche) GetAPMPluginDir() string {
+	return filepath.Join(app.baseDir, constants.APMPluginDir)
 }
 
 func (app *Avalanche) GetKeyPath(keyName string) string {

@@ -1,10 +1,15 @@
 package apmintegration
 
 import (
+	"fmt"
 	"os"
+	"os/user"
+	"path/filepath"
 
 	"github.com/ava-labs/apm/apm"
 	"github.com/ava-labs/apm/config"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/spf13/afero"
 	"github.com/spf13/viper"
@@ -13,26 +18,59 @@ import (
 
 const (
 	apmPathKey          = "apm-path"
-	pluginPathKey       = "plugin-path"
 	credentialsFileKey  = "credentials-file"
 	adminAPIEndpointKey = "admin-api-endpoint"
 )
 
-func SetupApm() (*apm.APM, error) {
+func SetupApm(app *application.Avalanche) error {
 	credentials, err := initCredentials()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	fs := afero.NewOsFs()
 
-	return apm.New(apm.Config{
+	err = os.MkdirAll(app.GetAPMPluginDir(), constants.DefaultPerms755)
+	if err != nil {
+		return err
+	}
+
+	// The New() function has a lot of prints we'd like to hide from the user,
+	// so going to divert stdout to the log temporarily
+	stdOutHolder := os.Stdout
+	apmLog, err := os.OpenFile(app.GetAPMLog(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, constants.DefaultPerms755)
+	if err != nil {
+		return err
+	}
+	defer apmLog.Close()
+	fmt.Println("Logging to", app.GetAPMLog())
+	os.Stdout = apmLog
+	fmt.Println("testing log print")
+	apmConfig := apm.Config{
 		Directory:        viper.GetString(apmPathKey),
 		Auth:             credentials,
 		AdminAPIEndpoint: viper.GetString(adminAPIEndpointKey),
-		PluginDir:        viper.GetString(pluginPathKey),
+		PluginDir:        app.GetAPMPluginDir(),
 		Fs:               fs,
-	})
+	}
+	apmInstance, err := apm.New(apmConfig)
+	if err != nil {
+		return err
+	}
+	os.Stdout = stdOutHolder
+	app.Apm = apmInstance
+
+	// Set base dir
+	usr, err := user.Current()
+	if err != nil {
+		// no logger here yet
+		fmt.Printf("unable to get system user %s\n", err)
+		return err
+	}
+	apmDir := filepath.Join(usr.HomeDir, constants.APMDir)
+
+	app.ApmDir = apmDir
+	return err
 }
 
 // If we need to use custom git credentials (say for private repos).

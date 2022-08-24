@@ -1,50 +1,38 @@
 package apmintegration
 
 import (
-	"errors"
-	"fmt"
-	"path/filepath"
-	"strings"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
-func getGithubOrg(url string) (string, error) {
-	split := strings.Split(url, "/")
-
-	if len(split) < 3 {
-		return "", errors.New("unable to find organization")
-	}
-
-	return split[len(split)-2], nil
-}
-
-func getGithubRepo(url string) (string, error) {
-	base := filepath.Base(url)
-	if base[len(base)-4:] != ".git" {
-		return "", errors.New("unable to find repo name")
-	}
-	return base[:len(base)-4], nil
-}
-
-func getAlias(url string) (string, error) {
-	org, err := getGithubOrg(url)
-	if err != nil {
-		return "", fmt.Errorf("unable to create alias: %w", err)
-	}
-
-	repo, err := getGithubRepo(url)
-	if err != nil {
-		return "", fmt.Errorf("unable to create alias: %w", err)
-	}
-
-	return org + "/" + repo, nil
-}
-
-func AddRepo(app *application.Avalanche, repoURL string, branch string) error {
+// Returns alias
+func AddRepo(app *application.Avalanche, repoURL string, branch string) (string, error) {
 	alias, err := getAlias(repoURL)
+	if err != nil {
+		return "", err
+	}
+
+	if alias == constants.DefaultAvaLabsPackage {
+		ux.Logger.PrintToUser("Avalanche Plugins Core already installed, skipping...")
+		return "", nil
+	}
+
+	return alias, app.Apm.AddRepository(alias, repoURL, branch)
+}
+
+func InstallVM(app *application.Avalanche, subnet string) error {
+	vms, err := getVMsInSubnet(app, subnet)
 	if err != nil {
 		return err
 	}
-	return app.Apm.AddRepository(alias, repoURL, branch)
+
+	for _, vm := range vms {
+		err = app.Apm.Install(vm)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

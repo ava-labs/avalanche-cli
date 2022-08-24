@@ -8,6 +8,7 @@ const (
 	DefaultPerms755 = 0o755
 
 	BaseDirName = ".avalanche-cli"
+	LogDir      = "logs"
 
 	SubnetEVMReleaseVersion   = "v0.2.7"
 	AvalancheGoReleaseVersion = "v1.7.16"
@@ -78,4 +79,9 @@ const (
 	EVMPlugin = "evm"
 
 	DefaultNodeRunURL = "http://127.0.0.1:9650"
+
+	APMDir                = ".apm"
+	APMLogName            = "apm.log"
+	DefaultAvaLabsPackage = "ava-labs/avalanche-plugins-core"
+	APMPluginDir          = "apm_plugins"
 )
