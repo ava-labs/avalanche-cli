@@ -73,7 +73,7 @@ jobs:
         shell: bash
         run: scripts/run.e2e.sh
       - name: 'Upload Macos Artifact'
-        if: matrix.os == macos-latest
+        if: ${{ matrix.os }} == macos-latest
         uses: actions/upload-artifact@v3
         with:
           name: cli-logs
@@ -83,7 +83,7 @@ jobs:
             !/Users/runner/.avalanche-cli/snapshots
           retention-days: 5
       - name: 'Upload Ubuntu Artifact'
-        if: matrix.os == ubuntu-20.04
+        if: ${{ matrix.os }} == ubuntu-20.04
         uses: actions/upload-artifact@v3
         with:
           name: cli-logs
