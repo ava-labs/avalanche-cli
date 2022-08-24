@@ -55,7 +55,7 @@ jobs:
           echo $HOME
           pwd
       - name: set env
-        run: echo "GITHUB_HOME=$(echo HOME)" >> $GITHUB_ENV
+        run: echo "GITHUB_HOME=$(echo $HOME)" >> $GITHUB_ENV
       - name: get env
         run: |
           echo $GITHUB_HOME
