@@ -129,6 +129,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
         return ids.Empty, ids.Empty, fmt.Errorf("failed to load sidecar: %w", err)
     }
 
+    // Load evm genesis if needed
 	var evmGenesis core.Genesis
     if sc.VM == models.SubnetEvm {
         // we need the genesis data just later, but it would be ugly to fail the whole deployment
@@ -137,8 +138,6 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
             return ids.Empty, ids.Empty, fmt.Errorf("failed to unpack chain ID from genesis: %w", err)
         }
     }
-
-    return ids.Empty, ids.Empty, nil
 
 	runDir := d.app.GetRunDir()
 
