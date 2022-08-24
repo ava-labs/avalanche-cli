@@ -3,6 +3,7 @@ module github.com/ava-labs/avalanche-cli
 go 1.18
 
 require (
+	github.com/ava-labs/apm v0.0.4
 	github.com/ava-labs/avalanche-network-runner v1.2.1
 	github.com/ava-labs/avalanchego v1.7.18
 	github.com/ava-labs/coreth v0.8.16-rc.2
@@ -20,6 +21,7 @@ require (
 	go.uber.org/zap v1.21.0
 	golang.org/x/mod v0.6.0-dev.0.20211013180041-c96bc1413d57
 	google.golang.org/protobuf v1.28.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -48,6 +50,7 @@ require (
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08 // indirect
+	github.com/go-git/go-git/v5 v5.4.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang-jwt/jwt v3.2.1+incompatible // indirect
@@ -86,7 +89,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/pointerstructure v1.2.0 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
-	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d // indirect
+	github.com/nbutton23/zxcvbn-go v0.0.0-20210217022336-fa2cb2858354 // indirect
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/otiai10/copy v1.7.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
@@ -95,7 +98,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.12.2 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
-	github.com/prometheus/common v0.32.1 // indirect
+	github.com/prometheus/common v0.34.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/prometheus/tsdb v0.10.0 // indirect
 	github.com/rjeczalik/notify v0.9.2 // indirect
@@ -119,15 +122,14 @@ require (
 	golang.org/x/net v0.0.0-20220708220712-1185a9018129 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
-	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
+	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	gonum.org/v1/gonum v0.11.0 // indirect
 	google.golang.org/genproto v0.0.0-20220712132514-bdd2acd4974d // indirect
 	google.golang.org/grpc v1.50.0-dev // indirect
-	gopkg.in/ini.v1 v1.66.4 // indirect
+	gopkg.in/ini.v1 v1.66.6 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/urfave/cli.v1 v1.20.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
