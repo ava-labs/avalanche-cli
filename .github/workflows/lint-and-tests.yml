@@ -72,7 +72,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: cli-logs-${{ matrix.go }}
+          name: cli-logs-${{ matrix.os }}
           path: |
             ~/.avalanche-cli/
             !~/.avalanche-cli/bin/
