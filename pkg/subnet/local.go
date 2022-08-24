@@ -4,11 +4,11 @@ package subnet
 
 import (
 	"context"
-	"encoding/json"
+	//"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"math/big"
+	//"math/big"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -22,15 +22,15 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	//"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/storage"
-	"github.com/ava-labs/coreth/core"
-	"github.com/ava-labs/coreth/params"
+	//"github.com/ava-labs/coreth/core"
+	//"github.com/ava-labs/coreth/params"
 )
 
 const (
@@ -124,12 +124,14 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	// we need the chainID just later, but it would be ugly to fail the whole deployment
 	// for a JSON unmarshalling error, so let's do it here already
+    /*
 	var genesis core.Genesis
 	err = json.Unmarshal(chainGenesis, &genesis)
 	if err != nil {
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to unpack chain ID from genesis: %w", err)
 	}
 	chainID := genesis.Config.ChainID
+    */
 
 	runDir := d.app.GetRunDir()
 
@@ -226,6 +228,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	ux.Logger.PrintToUser("Metamask connection details (any node URL from above works):")
 	ux.Logger.PrintToUser("RPC URL:          %s", firstURL[strings.LastIndex(firstURL, "http"):])
+    /*
 	for address := range genesis.Alloc {
 		amount := genesis.Alloc[address].Balance
 		formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
@@ -235,9 +238,10 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			ux.Logger.PrintToUser("Funded address:   %s with %s", address, formattedAmount.String())
 		}
 	}
+    */
 
 	ux.Logger.PrintToUser("Network name:     %s", chain)
-	ux.Logger.PrintToUser("Chain ID:         %s", chainID)
+	//ux.Logger.PrintToUser("Chain ID:         %s", chainID)
 	ux.Logger.PrintToUser("Currency Symbol:  %s", tokenName)
 
 	// we can safely ignore errors here as the subnets have already been generated
