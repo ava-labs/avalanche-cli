@@ -54,6 +54,8 @@ jobs:
         run: |
           echo $HOME
           pwd
+      - name: set env
+        run: echo "GITHUB_HOME=$(echo HOME)" >> $GITHUB_ENV
       - name: Git checkout
         uses: actions/checkout@v2
         with:
