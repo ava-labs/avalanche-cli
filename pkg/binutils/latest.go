@@ -25,10 +25,8 @@ func GetLatestReleaseVersion(releaseURL string) (string, error) {
 		return "", fmt.Errorf("failed to get latest version from %s: %w", releaseURL, err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		fmt.Println(resp.Header)
 		return "", fmt.Errorf("failed to get latest version from %s: unexpected http status code: %d", releaseURL, resp.StatusCode)
 	}
-	fmt.Println(resp.Header)
 	defer resp.Body.Close()
 
 	jsonBytes, err := io.ReadAll(resp.Body)
