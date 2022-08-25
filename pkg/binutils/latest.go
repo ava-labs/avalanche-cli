@@ -37,6 +37,9 @@ func GetLatestReleaseVersion(releaseURL string) (string, error) {
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("failed to get latest version from %s: unexpected http status code: %d", releaseURL, resp.StatusCode)
 	}
+	fmt.Println("x-ratelimit-limit", resp.Header.Get("x-ratelimit-limit"))
+	fmt.Println("x-ratelimit-remaining", resp.Header.Get("x-ratelimit-remaining"))
+	fmt.Println("x-ratelimit-used", resp.Header.Get("x-ratelimit-used"))
 	fmt.Println(resp.Header)
 	defer resp.Body.Close()
 
