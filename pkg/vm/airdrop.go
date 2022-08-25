@@ -13,7 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-func getDefaultAllocation() (core.GenesisAlloc, error) {
+func getDefaultAllocation(defaultAirdropAmount string) (core.GenesisAlloc, error) {
 	allocation := core.GenesisAlloc{}
 	defaultAmount, ok := new(big.Int).SetString(defaultAirdropAmount, 10)
 	if !ok {
@@ -26,7 +26,7 @@ func getDefaultAllocation() (core.GenesisAlloc, error) {
 	return allocation, nil
 }
 
-func getAllocation(app *application.Avalanche) (core.GenesisAlloc, stateDirection, error) {
+func getAllocation(app *application.Avalanche, defaultAirdropAmount string) (core.GenesisAlloc, stateDirection, error) {
 	allocation := core.GenesisAlloc{}
 
 	defaultAirdrop := "Airdrop 1 million tokens to the default address (do not use in production)"
@@ -42,7 +42,7 @@ func getAllocation(app *application.Avalanche) (core.GenesisAlloc, stateDirectio
 	}
 
 	if airdropType == defaultAirdrop {
-		alloc, err := getDefaultAllocation()
+		alloc, err := getDefaultAllocation(defaultAirdropAmount)
 		return alloc, forward, err
 	}
 

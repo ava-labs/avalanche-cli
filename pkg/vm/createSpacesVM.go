@@ -11,8 +11,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/spacesvm/chain"
-	"github.com/ethereum/go-ethereum/common"
 )
+
+const defaultSpacesVMAirdropAmount = "1000000"
 
 func CreateSpacesVMSubnetConfig(
 	app *application.Avalanche,
@@ -68,37 +69,6 @@ func getMagic(app *application.Avalanche) (uint64, error) {
 func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spacesVMVersion string) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating subnet %s", subnetName)
 
-	customAllocs := []*chain.CustomAllocation{
-		{
-			Address: common.HexToAddress("0xF9370fa73846393798C2d23aa2a4aBA7489d9810"),
-			Balance: 10000000,
-		},
-		{
-			Address: common.HexToAddress("0x8Db3219F3f59b504BCF132EfB4B87Bf08c771d83"),
-			Balance: 10000000,
-		},
-		{
-			Address: common.HexToAddress("0x162a5fadfdd769f9a665701348FbeEd12A4FFce7"),
-			Balance: 10000000,
-		},
-		{
-			Address: common.HexToAddress("0x69fd199Aca8250d520F825d22F4ad9db4A58E9D9"),
-			Balance: 10000000,
-		},
-		{
-			Address: common.HexToAddress("0x454474642C32b19E370d9A55c20431d85833cDD6"),
-			Balance: 10000000,
-		},
-		{
-			Address: common.HexToAddress("0xeB4Fc761FAb7501abe8cD04b2d831a45E8913DdF"),
-			Balance: 10000000,
-		},
-		{
-			Address: common.HexToAddress("0xD23cbfA7eA985213aD81223309f588A7E66A246A"),
-			Balance: 10000000,
-		},
-	}
-
 	genesis := chain.DefaultGenesis()
 
 	magic, err := getMagic(app)
@@ -107,12 +77,26 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 	}
 	genesis.Magic = magic
 
-	genesis.CustomAllocation = customAllocs
-
 	spacesVMVersion, err = getVMVersion(app, "Spaces VM", constants.SpacesVMRepoName, spacesVMVersion)
 	if err != nil {
 		return []byte{}, &models.Sidecar{}, err
 	}
+
+	allocs, _, err := getAllocation(app, defaultSpacesVMAirdropAmount)
+	if err != nil {
+		return []byte{}, &models.Sidecar{}, err
+	}
+
+	customAllocs := []*chain.CustomAllocation{}
+	for address, account := range allocs {
+		alloc := chain.CustomAllocation{
+			Address: address,
+			Balance: account.Balance.Uint64(),
+		}
+		customAllocs = append(customAllocs, &alloc)
+	}
+
+	genesis.CustomAllocation = customAllocs
 
 	jsonBytes, err := json.MarshalIndent(genesis, "", "    ")
 	if err != nil {

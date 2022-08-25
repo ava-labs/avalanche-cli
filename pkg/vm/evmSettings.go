@@ -14,8 +14,8 @@ import (
 const (
 	GasLimit = 8_000_000
 
-	defaultAirdropAmount = "1000000000000000000000000"
-	goBackMsg            = "Go back to previous step"
+	defaultEvmAirdropAmount = "1000000000000000000000000"
+	goBackMsg               = "Go back to previous step"
 )
 
 var (

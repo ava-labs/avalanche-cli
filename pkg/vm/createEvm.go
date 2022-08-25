@@ -111,7 +111,7 @@ func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVe
 		case feeStage:
 			*conf, direction, err = getFeeConfig(*conf, app)
 		case airdropStage:
-			allocation, direction, err = getAllocation(app)
+			allocation, direction, err = getAllocation(app, defaultEvmAirdropAmount)
 		case precompileStage:
 			*conf, direction, err = getPrecompiles(*conf, app)
 		default:
