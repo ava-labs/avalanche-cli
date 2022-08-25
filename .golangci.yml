@@ -15,7 +15,6 @@ linters:
   disable-all: true
   enable:
     - asciicheck
-    - bodyclose
     - deadcode
     - depguard
     - errcheck
@@ -36,7 +35,6 @@ linters:
     - prealloc
     - stylecheck
     - unconvert
-    - unparam
     - unused
     - varcheck
     - unconvert
