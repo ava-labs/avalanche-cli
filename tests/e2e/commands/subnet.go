@@ -36,7 +36,6 @@ func CreateSubnetConfig(subnetName string, genesisPath string) {
 		fmt.Println(string(output))
 		fmt.Println(err)
 	}
-	fmt.Println(string(output))
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	// Config should now exist
