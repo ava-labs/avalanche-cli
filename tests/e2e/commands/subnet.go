@@ -14,7 +14,7 @@ import (
 )
 
 /* #nosec G204 */
-func CreateSubnetConfig(subnetName string, genesisPath string) {
+func CreateSubnetEvmConfig(subnetName string, genesisPath string) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -41,7 +41,34 @@ func CreateSubnetConfig(subnetName string, genesisPath string) {
 }
 
 /* #nosec G204 */
-func CreateSubnetConfigWithVersion(subnetName string, genesisPath string, version string) {
+func CreateSpacesVMConfig(subnetName string, genesisPath string) {
+	// Check config does not already exist
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeFalse())
+
+	// Create config
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"create",
+		"--genesis",
+		genesisPath,
+		"--spacesvm",
+		subnetName,
+		"--latest",
+	)
+	_, err = cmd.Output()
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	// Config should now exist
+	exists, err = utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+}
+
+/* #nosec G204 */
+func CreateSubnetEvmConfigWithVersion(subnetName string, genesisPath string, version string) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -69,7 +96,7 @@ func CreateSubnetConfigWithVersion(subnetName string, genesisPath string, versio
 }
 
 /* #nosec G204 */
-func CreateCustomVMSubnetConfig(subnetName string, genesisPath string, vmPath string) {
+func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())

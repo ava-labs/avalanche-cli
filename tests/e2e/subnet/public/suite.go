@@ -16,7 +16,6 @@ import (
 
 const (
 	subnetName  = "e2eSubnetTest"
-	genesisPath = "tests/e2e/assets/test_genesis.json"
 	controlKeys = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 	testKey     = "tests/e2e/assets/ewoq_key.pk"
 	keyName     = "ewoq"
@@ -36,7 +35,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		// subnet config
 		_ = utils.DeleteConfigs(subnetName)
-		commands.CreateSubnetConfig(subnetName, genesisPath)
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 	})
 
 	ginkgo.AfterEach(func() {
