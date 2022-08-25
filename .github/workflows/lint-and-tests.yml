@@ -65,7 +65,9 @@ jobs:
         run: yarn
         working-directory: ./tests/e2e/hardhat
       - name: Pre rate limit
-        run: curl https://api.github.com/rate_limit
+        run: |
+          curl https://api.github.com/rate_limit \
+          --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}'
       - name: Run e2e tests
         shell: bash
         run: scripts/run.e2e.sh
