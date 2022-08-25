@@ -72,8 +72,9 @@ jobs:
         shell: bash
         run: scripts/run.e2e.sh
       - name: Post rate limit
-        run: echo ${{ secrets.GITHUB_TOKEN }}
-          #run: curl https://api.github.com/rate_limit --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}'
+        run: |
+          curl https://api.github.com/rate_limit \
+          --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}'
       - name: 'Upload Artifact'
         if: always()
         uses: actions/upload-artifact@v3
