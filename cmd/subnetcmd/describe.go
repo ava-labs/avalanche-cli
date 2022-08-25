@@ -52,7 +52,7 @@ func printGenesis(subnetName string) error {
 	return nil
 }
 
-func printDetails(genesis core.Genesis, sc models.Sidecar) {
+func printDetails(genesis core.Genesis, sc models.Sidecar) error {
 	const art = `
  _____       _        _ _
 |  __ \     | |      (_) |
@@ -70,7 +70,11 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 
 	table.Append([]string{"Subnet Name", sc.Subnet})
 	table.Append([]string{"ChainID", genesis.Config.ChainID.String()})
-	table.Append([]string{"Token Name", app.GetTokenName(sc.Subnet)})
+	tokenName, err := app.GetTokenName(sc.Subnet)
+	if err != nil {
+		return err
+	}
+	table.Append([]string{"Token Name", tokenName})
 	for net, data := range sc.Networks {
 		if data.SubnetID != ids.Empty {
 			table.Append([]string{fmt.Sprintf("%s SubnetID", net), data.SubnetID.String()})
@@ -80,6 +84,7 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 		}
 	}
 	table.Render()
+	return nil
 }
 
 func printGasTable(genesis core.Genesis) {
@@ -206,7 +211,9 @@ func describeSubnetEvmGenesis(sc models.Sidecar) error {
 		return err
 	}
 
-	printDetails(genesis, sc)
+	if err := printDetails(genesis, sc); err != nil {
+		return err
+	}
 	// Write gas table
 	printGasTable(genesis)
 	// fmt.Printf("\n\n")
