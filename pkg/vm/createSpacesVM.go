@@ -4,6 +4,7 @@ package vm
 
 import (
 	"encoding/json"
+	"math/big"
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -82,7 +83,7 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 		return []byte{}, &models.Sidecar{}, err
 	}
 
-	allocs, _, err := getAllocation(app, defaultSpacesVMAirdropAmount)
+	allocs, _, err := getAllocation(app, defaultSpacesVMAirdropAmount, new(big.Int).SetUint64(1), "Amount to airdrop")
 	if err != nil {
 		return []byte{}, &models.Sidecar{}, err
 	}
