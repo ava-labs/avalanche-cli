@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"go.uber.org/zap"
@@ -20,13 +21,23 @@ import (
 func GetLatestReleaseVersion(releaseURL string) (string, error) {
 	// TODO: Question if there is a less error prone (= simpler) way to install latest avalanchego
 	// Maybe the binary package manager should also allow the actual avalanchego binary for download
-	resp, err := http.Get(releaseURL)
+	request, err := http.NewRequest("GET", releaseURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request for latest version from %s: %w", releaseURL, err)
+	}
+	token := os.Getenv(constants.GithubAPITokenEnvVarName)
+	if token != "" {
+		// avoid rate limitation issues at CI
+		request.Header.Set("authorization", fmt.Sprintf("Bearer %s", token))
+	}
+	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return "", fmt.Errorf("failed to get latest version from %s: %w", releaseURL, err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("failed to get latest version from %s: unexpected http status code: %d", releaseURL, resp.StatusCode)
 	}
+	fmt.Println(resp.Header)
 	defer resp.Body.Close()
 
 	jsonBytes, err := io.ReadAll(resp.Body)

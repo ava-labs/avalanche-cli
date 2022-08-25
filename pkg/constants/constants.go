@@ -72,4 +72,7 @@ const (
 	EVMPlugin = "evm"
 
 	DefaultNodeRunURL = "http://127.0.0.1:9650"
+
+	// #nosec G101
+	GithubAPITokenEnvVarName = "GITHUB_TOKEN"
 )

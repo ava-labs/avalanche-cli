@@ -70,7 +70,7 @@ jobs:
           --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}'
       - name: Run e2e tests
         shell: bash
-        run: scripts/run.e2e.sh
+        run: GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} scripts/run.e2e.sh
       - name: Post rate limit
         run: |
           curl https://api.github.com/rate_limit \
