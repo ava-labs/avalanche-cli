@@ -5,6 +5,7 @@ package subnetcmd
 import (
 	"errors"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -89,8 +90,16 @@ func publish(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	publisher := subnet.NewPublisher(repoURL)
-	return publisher.Publish(subnetYAML, vmYAML)
+	// TODO Create a helper method on app
+	repoDir := filepath.Join(app.GetBaseDir(), "repos")
+	publisher := subnet.NewPublisher(repoDir)
+	// TODO: only if repo does not exist
+	repo, err := publisher.AddRepo(repoURL)
+	if err != nil {
+		return err
+	}
+
+	return publisher.Publish(repoURL, repo, subnetName, vm.Alias, subnetYAML, vmYAML)
 }
 
 // loadYAMLFile loads a YAML file from disk into a concrete types.Definition object
@@ -104,12 +113,12 @@ func loadYAMLFile[T types.Definition](path string, defType T) error {
 }
 
 func getSubnetInfo(sc models.Sidecar) (*types.Subnet, error) {
-	homepage, err := app.Prompt.CaptureString("What is the homepage of the Subnet project?")
+	homepage, err := app.Prompt.CaptureEmpty("What is the homepage of the Subnet project?", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	desc, err := app.Prompt.CaptureString("Please provide a free-text description of the Subnet")
+	desc, err := app.Prompt.CaptureEmpty("Please provide a free-text description of the Subnet", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +126,7 @@ func getSubnetInfo(sc models.Sidecar) (*types.Subnet, error) {
 	maintrs, canceled, err := app.Prompt.CaptureListDecision(
 		app.Prompt,
 		"Who are the maintainers of the Subnet?",
-		app.Prompt.CaptureAnyList,
+		app.Prompt.CaptureEmail,
 		"Provide a maintainer",
 		"Maintainer",
 		"",
@@ -131,7 +140,7 @@ func getSubnetInfo(sc models.Sidecar) (*types.Subnet, error) {
 		return nil, errors.New("Canceled by user")
 	}
 
-	strMaintrs := []string{}
+	strMaintrs := make([]string, len(maintrs))
 	for i, m := range maintrs {
 		strMaintrs[i] = m.(string)
 	}
@@ -139,7 +148,7 @@ func getSubnetInfo(sc models.Sidecar) (*types.Subnet, error) {
 	vms, canceled, err := app.Prompt.CaptureListDecision(
 		app.Prompt,
 		"Provide a list of VMs this Subnet is running",
-		app.Prompt.CaptureAnyList,
+		app.Prompt.CaptureEmpty,
 		"Provide a VM",
 		"VM",
 		"VMs are instances of blockchains a given Subnet is running.",
@@ -153,7 +162,7 @@ func getSubnetInfo(sc models.Sidecar) (*types.Subnet, error) {
 		return nil, errors.New("Canceled by user")
 	}
 
-	strVMs := []string{}
+	strVMs := make([]string, len(vms))
 	for i, v := range vms {
 		strVMs[i] = v.(string)
 	}
@@ -161,8 +170,8 @@ func getSubnetInfo(sc models.Sidecar) (*types.Subnet, error) {
 	subnet := &types.Subnet{
 		ID:          sc.Networks[models.Fuji.String()].SubnetID.String(),
 		Alias:       sc.Name,
-		Homepage:    homepage,
-		Description: desc,
+		Homepage:    homepage.(string),
+		Description: desc.(string),
 		Maintainers: strMaintrs,
 		VMs:         strVMs,
 	}
@@ -172,8 +181,8 @@ func getSubnetInfo(sc models.Sidecar) (*types.Subnet, error) {
 
 func getVMInfo(sc models.Sidecar) (*types.VM, error) {
 	vm := &types.VM{
-		ID:            "",
-		Alias:         "",
+		ID:            sc.ChainID,                                // This needs to change
+		Alias:         sc.Networks["Fuji"].BlockchainID.String(), // Set to something meaningful
 		Homepage:      "",
 		Description:   "",
 		Maintainers:   []string{},

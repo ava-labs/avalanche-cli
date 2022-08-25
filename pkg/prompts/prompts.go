@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/mail"
 	"os"
 	"strconv"
 	"time"
@@ -44,6 +45,8 @@ type Prompter interface {
 	CaptureList(promptStr string, options []string) (string, error)
 	CaptureAnyList(promptStr string, options any) (any, error)
 	CaptureString(promptStr string) (string, error)
+	CaptureEmpty(promptStr string, arg any) (any, error)
+	CaptureEmail(promptStr string, arg any) (any, error)
 	CaptureIndex(promptStr string, options []any) (int, error)
 	CaptureVersion(promptStr string) (string, error)
 	CaptureDuration(promptStr string) (time.Duration, error)
@@ -75,6 +78,11 @@ type realPrompter struct{}
 // NewProcessChecker creates a new process checker which can respond if the server is running
 func NewPrompter() Prompter {
 	return &realPrompter{}
+}
+
+func validateEmail(input string) error {
+	_, err := mail.ParseAddress(input)
+	return err
 }
 
 func validatePositiveBigInt(input string) error {
@@ -498,6 +506,33 @@ func (r *realPrompter) CaptureAnyList(promptStr string, options any) (any, error
 	}
 
 	return r.CaptureList(promptStr, strArr)
+}
+
+func (*realPrompter) CaptureEmail(promptStr string, arg any) (any, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateEmail,
+	}
+
+	str, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return str, nil
+}
+
+func (*realPrompter) CaptureEmpty(promptStr string, arg any) (any, error) {
+	prompt := promptui.Prompt{
+		Label: promptStr,
+	}
+
+	str, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return str, nil
 }
 
 func (*realPrompter) CaptureString(promptStr string) (string, error) {
