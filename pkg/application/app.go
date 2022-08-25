@@ -4,8 +4,6 @@ package application
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -20,8 +18,6 @@ import (
 const (
 	WriteReadReadPerms = 0o644
 )
-
-var errChainIDExists = errors.New("the provided chain ID already exists! Try another one")
 
 type Avalanche struct {
 	Log     logging.Logger
@@ -166,15 +162,6 @@ func (app *Avalanche) LoadRawGenesis(subnetName string) ([]byte, error) {
 func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 	if sc.TokenName == "" {
 		sc.TokenName = constants.DefaultTokenName
-	}
-	// We should have caught this during the actual prompting,
-	// but better safe than sorry
-	exists, err := app.ChainIDExists(sc.ChainID)
-	if err != nil {
-		return fmt.Errorf("unable to determine if chainID is unique: %w", err)
-	}
-	if exists {
-		return errChainIDExists
 	}
 	// only apply the version on a write
 	sc.Version = constants.SidecarVersion

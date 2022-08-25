@@ -359,31 +359,6 @@ func TestChainIDExists(t *testing.T) {
 	}
 }
 
-func Test_failure_duplicateChainID(t *testing.T) {
-	assert := assert.New(t)
-	sc1 := &models.Sidecar{
-		Name:      "sc1",
-		VM:        models.SubnetEvm,
-		TokenName: "TEST",
-		ChainID:   "42",
-	}
-
-	sc2 := &models.Sidecar{
-		Name:      "sc2",
-		VM:        models.SubnetEvm,
-		TokenName: "TEST",
-		ChainID:   "42",
-	}
-
-	ap := newTestApp(t)
-
-	err := ap.CreateSidecar(sc1)
-	assert.NoError(err)
-
-	err = ap.CreateSidecar(sc2)
-	assert.ErrorIs(err, errChainIDExists)
-}
-
 func Test_loadSidecar_failure_notFound(t *testing.T) {
 	assert := assert.New(t)
 	sidecarFile := subnetName1 + constants.SidecarSuffix
