@@ -99,6 +99,13 @@ func getMagic(app *application.Avalanche) (uint64, error) {
 func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spacesVMVersion string) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating subnet %s", subnetName)
 
+	const (
+		startState      = "start"
+		descriptorState = "descriptor"
+		airdropState    = "airdrop"
+		doneState       = "done"
+	)
+
 	var (
 		magic     uint64
 		allocs    core.GenesisAlloc
@@ -107,24 +114,24 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 	)
 
 	spaceVMState := stateMachine{
-		states: []string{"start", "descriptor", "airdrop", "done"},
+		states: []string{startState, descriptorState, airdropState, doneState},
 	}
 
 	state, err := spaceVMState.currentState()
 	if err != nil {
 		return []byte{}, nil, err
 	}
-	for state != "done" {
+	for state != doneState {
 		switch state {
-		case "start":
+		case startState:
 			direction = forward
-		case "descriptor":
+		case descriptorState:
 			magic, err = getMagic(app)
 			if err == nil {
 				version, err = getVMVersion(app, "Spaces VM", constants.SpacesVMRepoName, spacesVMVersion)
 			}
 			direction = forward
-		case "airdrop":
+		case airdropState:
 			allocs, direction, err = getAllocation(app, defaultSpacesVMAirdropAmount, new(big.Int).SetUint64(1), "Amount to airdrop")
 		default:
 			err = errors.New("invalid creation stage")
