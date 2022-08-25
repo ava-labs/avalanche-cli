@@ -156,7 +156,7 @@ func importFromAPM() error {
 	}
 
 	subnetKey := repo + ":" + subnet
-	ux.Logger.PrintToUser("Selected subnet, installing" + subnetKey)
+	ux.Logger.PrintToUser("Selected subnet, installing " + subnetKey)
 
 	return apmintegration.InstallVM(app, subnetKey)
 }

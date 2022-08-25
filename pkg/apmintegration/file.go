@@ -1,10 +1,14 @@
 package apmintegration
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/ava-labs/apm/types"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"gopkg.in/yaml.v3"
 )
 
 func GetRepos(app *application.Avalanche) ([]string, error) {
@@ -44,10 +48,39 @@ func GetSubnets(app *application.Avalanche, repoAlias string) ([]string, error) 
 	return subnetOptions, nil
 }
 
-func getVMsInSubnet(app *application.Avalanche, repoAlias, subnetName string) ([]string, error) {
+type SubnetWrapper struct {
+	Subnet types.Subnet `yaml:"subnet"`
+}
+
+func getVMsInSubnet(app *application.Avalanche, subnetKey string) ([]string, error) {
 	// TODO
 	// Start here then fill out sidecar
-	subnetYamlPath := filepath.Join(app.ApmDir, "repositories", repoAlias, "subnets", subnetName)
+	splitSubnet := strings.Split(subnetKey, ":")
+	if len(splitSubnet) != 2 {
+		return []string{}, fmt.Errorf("invalid subnet key: %s", subnetKey)
+	}
+	repo := splitSubnet[0]
+	subnetName := splitSubnet[1]
 
-	return []string{}, nil
+	subnetYamlPath := filepath.Join(app.ApmDir, "repositories", repo, "subnets", subnetName+".yaml")
+	var subnetWrapper SubnetWrapper
+
+	subnetYamlBytes, err := os.ReadFile(subnetYamlPath)
+	if err != nil {
+		return []string{}, err
+	}
+
+	fmt.Println("File:", string(subnetYamlBytes))
+
+	err = yaml.Unmarshal(subnetYamlBytes, &subnetWrapper)
+	if err != nil {
+		return []string{}, err
+	}
+
+	subnet := subnetWrapper.Subnet
+
+	fmt.Println("Subnet", subnet)
+	fmt.Println("VMs", subnet.VMs)
+
+	return subnet.VMs, nil
 }

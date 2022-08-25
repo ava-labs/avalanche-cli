@@ -1,6 +1,8 @@
 package apmintegration
 
 import (
+	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -21,13 +23,16 @@ func AddRepo(app *application.Avalanche, repoURL string, branch string) (string,
 	return alias, app.Apm.AddRepository(alias, repoURL, branch)
 }
 
-func InstallVM(app *application.Avalanche, subnet string) error {
-	vms, err := getVMsInSubnet(app, subnet)
+func InstallVM(app *application.Avalanche, subnetKey string) error {
+	vms, err := getVMsInSubnet(app, subnetKey)
 	if err != nil {
 		return err
 	}
 
+	fmt.Println("Reached")
+
 	for _, vm := range vms {
+		fmt.Println("Installing vm:", vm)
 		err = app.Apm.Install(vm)
 		if err != nil {
 			return err
