@@ -92,6 +92,10 @@ func (app *Avalanche) GetTmpPluginDir() string {
 	return os.TempDir()
 }
 
+func (app *Avalanche) GetAPMBaseDir() string {
+	return filepath.Join(app.baseDir, "apm")
+}
+
 func (app *Avalanche) GetAPMLog() string {
 	return filepath.Join(app.baseDir, constants.LogDir, constants.APMLogName)
 }

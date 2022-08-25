@@ -142,6 +142,11 @@ func importFromAPM() error {
 		if err != nil {
 			return err
 		}
+
+		err = apmintegration.UpdateRepos(app)
+		if err != nil {
+			return err
+		}
 	}
 
 	subnets, err := apmintegration.GetSubnets(app, repo)

@@ -17,7 +17,6 @@ import (
 )
 
 const (
-	apmPathKey          = "apm-path"
 	credentialsFileKey  = "credentials-file"
 	adminAPIEndpointKey = "admin-api-endpoint"
 )
@@ -35,6 +34,14 @@ func SetupApm(app *application.Avalanche) error {
 		return err
 	}
 
+	usr, err := user.Current()
+	if err != nil {
+		// no logger here yet
+		fmt.Printf("unable to get system user %s\n", err)
+		return err
+	}
+	apmBaseDir := filepath.Join(usr.HomeDir, constants.APMDir)
+
 	// The New() function has a lot of prints we'd like to hide from the user,
 	// so going to divert stdout to the log temporarily
 	stdOutHolder := os.Stdout
@@ -47,7 +54,7 @@ func SetupApm(app *application.Avalanche) error {
 	os.Stdout = apmLog
 	fmt.Println("testing log print")
 	apmConfig := apm.Config{
-		Directory:        viper.GetString(apmPathKey),
+		Directory:        apmBaseDir,
 		Auth:             credentials,
 		AdminAPIEndpoint: viper.GetString(adminAPIEndpointKey),
 		PluginDir:        app.GetAPMPluginDir(),
@@ -60,16 +67,7 @@ func SetupApm(app *application.Avalanche) error {
 	os.Stdout = stdOutHolder
 	app.Apm = apmInstance
 
-	// Set base dir
-	usr, err := user.Current()
-	if err != nil {
-		// no logger here yet
-		fmt.Printf("unable to get system user %s\n", err)
-		return err
-	}
-	apmDir := filepath.Join(usr.HomeDir, constants.APMDir)
-
-	app.ApmDir = apmDir
+	app.ApmDir = apmBaseDir
 	return err
 }
 

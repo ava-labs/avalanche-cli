@@ -2,6 +2,7 @@ package apmintegration
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -20,7 +21,13 @@ func AddRepo(app *application.Avalanche, repoURL string, branch string) (string,
 		return "", nil
 	}
 
+	fmt.Println("Installing repo")
+
 	return alias, app.Apm.AddRepository(alias, repoURL, branch)
+}
+
+func UpdateRepos(app *application.Avalanche) error {
+	return app.Apm.Update()
 }
 
 func InstallVM(app *application.Avalanche, subnetKey string) error {
@@ -29,11 +36,17 @@ func InstallVM(app *application.Avalanche, subnetKey string) error {
 		return err
 	}
 
-	fmt.Println("Reached")
+	splitKey := strings.Split(subnetKey, ":")
+	if len(splitKey) != 2 {
+		return fmt.Errorf("invalid key: %s", subnetKey)
+	}
+
+	repo := splitKey[0]
 
 	for _, vm := range vms {
-		fmt.Println("Installing vm:", vm)
-		err = app.Apm.Install(vm)
+		toInstall := repo + ":" + vm
+		fmt.Println("Installing vm:", toInstall)
+		err = app.Apm.Install(toInstall)
 		if err != nil {
 			return err
 		}
