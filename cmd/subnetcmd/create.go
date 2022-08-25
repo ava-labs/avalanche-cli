@@ -133,7 +133,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-    case models.SpacesVM:
+	case models.SpacesVM:
 		genesisBytes, sc, err = vm.CreateSpacesVMSubnetConfig(app, subnetName, genesisFile, vmVersion)
 		if err != nil {
 			return err
@@ -147,7 +147,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return errors.New("not implemented")
 	}
 
-    return nil
+	return nil
 
 	if err = app.WriteGenesisFile(subnetName, genesisBytes); err != nil {
 		return err
