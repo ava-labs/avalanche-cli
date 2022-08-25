@@ -57,8 +57,6 @@ func CreateSpacesVMSubnetConfig(
 func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spacesVMVersion string) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating subnet %s", subnetName)
 
-	genesis := chain.DefaultGenesis()
-
 	customAllocs := []*chain.CustomAllocation{
 		{
 			Address: common.HexToAddress("0xF9370fa73846393798C2d23aa2a4aBA7489d9810"),
@@ -89,6 +87,11 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 			Balance: 10000000,
 		},
 	}
+
+	genesis := chain.DefaultGenesis()
+	genesis.Magic = 1
+	genesis.AirdropHash = "0xccbf8e430b30d08b5b3342208781c40b373d1b5885c1903828f367230a2568da"
+	genesis.AirdropUnits = 10000
 	genesis.CustomAllocation = customAllocs
 
 	var err error
