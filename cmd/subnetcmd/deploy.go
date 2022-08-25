@@ -413,12 +413,12 @@ func getThreshold(maxLen int) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	intTh, err := strconv.Atoi(threshold)
+	intTh, err := strconv.ParseUint(threshold, 0, 32)
 	if err != nil {
 		return 0, err
 	}
 	// this now should technically not happen anymore, but let's leave it as a double stitch
-	if intTh > maxLen {
+	if int(intTh) > maxLen {
 		return 0, fmt.Errorf("the threshold can't be bigger than the number of control keys")
 	}
 	return uint32(intTh), err
