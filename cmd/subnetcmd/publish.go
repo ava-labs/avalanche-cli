@@ -72,7 +72,7 @@ func publish(cmd *cobra.Command, args []string) error {
 	}
 
 	if vmDescPath == "" {
-		vm, err = getVMInfo(sc)
+		vm = getVMInfo(sc)
 	} else {
 		err = loadYAMLFile(vmDescPath, vm)
 	}
@@ -137,7 +137,7 @@ func getSubnetInfo(sc models.Sidecar) (*types.Subnet, error) {
 	}
 	if canceled {
 		ux.Logger.PrintToUser("Publishing aborted")
-		return nil, errors.New("Canceled by user")
+		return nil, errors.New("canceled by user")
 	}
 
 	strMaintrs := make([]string, len(maintrs))
@@ -159,7 +159,7 @@ func getSubnetInfo(sc models.Sidecar) (*types.Subnet, error) {
 	}
 	if canceled {
 		ux.Logger.PrintToUser("Publishing aborted")
-		return nil, errors.New("Canceled by user")
+		return nil, errors.New("canceled by user")
 	}
 
 	strVMs := make([]string, len(vms))
@@ -179,7 +179,7 @@ func getSubnetInfo(sc models.Sidecar) (*types.Subnet, error) {
 	return subnet, nil
 }
 
-func getVMInfo(sc models.Sidecar) (*types.VM, error) {
+func getVMInfo(sc models.Sidecar) *types.VM {
 	vm := &types.VM{
 		ID:            sc.ChainID,                                // This needs to change
 		Alias:         sc.Networks["Fuji"].BlockchainID.String(), // Set to something meaningful
@@ -197,5 +197,5 @@ func getVMInfo(sc models.Sidecar) (*types.VM, error) {
 		},
 	}
 
-	return vm, nil
+	return vm
 }

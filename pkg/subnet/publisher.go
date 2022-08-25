@@ -4,7 +4,6 @@ package subnet
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path"
@@ -73,12 +72,12 @@ func (p *publisherImpl) Publish(
 	// TODO: Use constants
 	subnetPath := filepath.Join(repoPath, "subnets", subnetName)
 	vmPath := filepath.Join(repoPath, "vms", vmName)
-	err = ioutil.WriteFile(subnetPath, subnetYAML, 0o644)
+	err = os.WriteFile(subnetPath, subnetYAML, 0o644) //nolint:gosec
 	if err != nil {
 		return err
 	}
 
-	err = ioutil.WriteFile(vmPath, vmYAML, 0o644)
+	err = os.WriteFile(vmPath, vmYAML, 0o644) //nolint:gosec
 	if err != nil {
 		return err
 	}
@@ -103,6 +102,9 @@ func (p *publisherImpl) Publish(
 			When:  now,
 		},
 	})
+	if err != nil {
+		return err
+	}
 
 	_, err = repo.CommitObject(commit)
 	if err != nil {
