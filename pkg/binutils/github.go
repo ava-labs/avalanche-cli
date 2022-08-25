@@ -24,11 +24,13 @@ type GithubDownloader interface {
 
 type (
 	subnetEVMDownloader   struct{}
+	spacesVMDownloader    struct{}
 	avalancheGoDownloader struct{}
 )
 
 var (
 	_ GithubDownloader = (*subnetEVMDownloader)(nil)
+	_ GithubDownloader = (*spacesVMDownloader)(nil)
 	_ GithubDownloader = (*avalancheGoDownloader)(nil)
 )
 
@@ -121,4 +123,43 @@ func (subnetEVMDownloader) GetDownloadURL(version string, installer Installer) (
 	}
 
 	return subnetEVMURL, ext, nil
+}
+
+func NewSpacesVMDownloader() GithubDownloader {
+	return &spacesVMDownloader{}
+}
+
+func (spacesVMDownloader) GetDownloadURL(version string, installer Installer) (string, string, error) {
+	// NOTE: if any of the underlying URLs change (github changes, release file names, etc.) this fails
+	goarch, goos := installer.GetArch()
+
+	var spacesVMURL string
+	ext := tarExtension
+
+	switch goos {
+	case linux:
+		spacesVMURL = fmt.Sprintf(
+			"https://github.com/%s/%s/releases/download/%s/%s_%s_linux_%s.tar.gz",
+			constants.AvaLabsOrg,
+			constants.SpacesVMRepoName,
+			version,
+			constants.SpacesVMRepoName,
+			version[1:], // WARN subnet-evm isn't consistent in its release naming, it's omitting the v in the file name...
+			goarch,
+		)
+	case darwin:
+		spacesVMURL = fmt.Sprintf(
+			"https://github.com/%s/%s/releases/download/%s/%s_%s_darwin_%s.tar.gz",
+			constants.AvaLabsOrg,
+			constants.SpacesVMRepoName,
+			version,
+			constants.SpacesVMRepoName,
+			version[1:],
+			goarch,
+		)
+	default:
+		return "", "", fmt.Errorf("OS not supported: %s", goos)
+	}
+
+	return spacesVMURL, ext, nil
 }

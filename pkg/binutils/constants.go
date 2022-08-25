@@ -12,5 +12,6 @@ const (
 
 	avalanchegoBinPrefix = "avalanchego-"
 	subnetEVMBinPrefix   = "subnet-evm-"
+	spacesVMBinPrefix    = "spaces-"
 	maxCopy              = 2147483648 // 2 GB
 )

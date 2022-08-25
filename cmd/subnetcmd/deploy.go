@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/coreth/core"
+	spacesvmchain "github.com/ava-labs/spacesvm/chain"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -149,8 +150,13 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// validate genesis as far as possible previous to deploy
 	switch sidecar.VM {
 	case models.SubnetEvm:
-		var evmGenesis core.Genesis
-		if err := json.Unmarshal(chainGenesis, &evmGenesis); err != nil {
+		var genesis core.Genesis
+		if err := json.Unmarshal(chainGenesis, &genesis); err != nil {
+			return fmt.Errorf("failed to validate genesis format: %w", err)
+		}
+	case models.SpacesVM:
+		var genesis spacesvmchain.Genesis
+		if err := json.Unmarshal(chainGenesis, &genesis); err != nil {
 			return fmt.Errorf("failed to validate genesis format: %w", err)
 		}
 	default:
@@ -169,10 +175,15 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		// download subnet-evm if necessary
 		var vmDir string
 		switch sidecar.VM {
-		case subnetEvm:
+		case models.SubnetEvm:
 			vmDir, err = binutils.SetupSubnetEVM(app, sidecar.VMVersion)
 			if err != nil {
 				return fmt.Errorf("failed to install subnet-evm: %w", err)
+			}
+		case models.SpacesVM:
+			vmDir, err = binutils.SetupSpacesVM(app, sidecar.VMVersion)
+			if err != nil {
+				return fmt.Errorf("failed to install spacesvm: %w", err)
 			}
 		case customVM:
 			vmDir = binutils.SetupCustomBin(app, chain)
