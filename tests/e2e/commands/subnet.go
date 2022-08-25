@@ -31,7 +31,11 @@ func CreateSubnetConfig(subnetName string, genesisPath string) {
 		subnetName,
 		"--latest",
 	)
-	_, err = cmd.Output()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+	}
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	// Config should now exist
@@ -59,7 +63,11 @@ func CreateSubnetConfigWithVersion(subnetName string, genesisPath string, versio
 		"--vm-version",
 		version,
 	)
-	_, err = cmd.Output()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+	}
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	// Config should now exist
@@ -91,7 +99,7 @@ func CreateCustomVMSubnetConfig(subnetName string, genesisPath string, vmPath st
 		"--custom",
 		subnetName,
 	)
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	exitErr, typeOk := err.(*exec.ExitError)
 	stderr := ""
 	if typeOk {
@@ -121,7 +129,11 @@ func DeleteSubnetConfig(subnetName string) {
 
 	// Now delete config
 	cmd := exec.Command(CLIBinary, SubnetCmd, "delete", subnetName)
-	_, err = cmd.Output()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+	}
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	// Config should no longer exist
@@ -146,7 +158,7 @@ func DeploySubnetLocally(subnetName string) string {
 		"--local",
 		subnetName,
 	)
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	exitErr, typeOk := err.(*exec.ExitError)
 	stderr := ""
 	if typeOk {
@@ -180,7 +192,7 @@ func DeploySubnetLocallyWithVersion(subnetName string, version string) string {
 		"--avalanchego-version",
 		version,
 	)
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	exitErr, typeOk := err.(*exec.ExitError)
 	stderr := ""
 	if typeOk {

@@ -26,13 +26,13 @@ func installBinaryWithVersion(
 
 	installURL, ext, err := downloader.GetDownloadURL(version, installer)
 	if err != nil {
-		return "", fmt.Errorf("unable to determine binary install URL: %d", err)
+		return "", fmt.Errorf("unable to determine binary install URL: %w", err)
 	}
 
 	app.Log.Debug("starting download...", zap.String("download-url", installURL))
 	archive, err := installer.DownloadRelease(installURL)
 	if err != nil {
-		return "", fmt.Errorf("unable to download binary: %d", err)
+		return "", fmt.Errorf("unable to download binary: %w", err)
 	}
 
 	app.Log.Debug("download successful. installing archive...")

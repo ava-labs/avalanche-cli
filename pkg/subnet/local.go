@@ -16,8 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"go.uber.org/zap"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -31,6 +29,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/coreth/core"
 	"github.com/ava-labs/coreth/params"
+	"go.uber.org/zap"
 )
 
 const (
@@ -101,15 +100,15 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 
 // doDeploy the actual deployment to the network runner
 // steps:
-// - checks if the network has been started
-// - install all needed plugin binaries, for the the new VM, and the already deployed VMs
-// - either starts a network from the default snapshot if not started,
-//   or restarts the already available network while preserving state
-// - waits completion of operation
-// - get from the network an available subnet ID to be used in blockchain creation
-// - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
-// - waits completion of operation
-// - show status
+// -checks if the network has been started
+// -install all needed plugin binaries, for the the new VM, and the already deployed VMs
+// -either starts a network from the default snapshot if not started,
+// or restarts the already available network while preserving state
+// -waits completion of operation
+// -get from the network an available subnet ID to be used in blockchain creation
+// -deploy a new blockchain for the given VM ID, genesis, and available subnet ID
+// -waits completion of operation
+// -show status
 func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, error) {
 	avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
 	if err != nil {
@@ -118,7 +117,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	cli, err := d.getClientFunc()
 	if err != nil {
-		return ids.Empty, ids.Empty, fmt.Errorf("error creating gRPC Client: %s", err)
+		return ids.Empty, ids.Empty, fmt.Errorf("error creating gRPC Client: %w", err)
 	}
 	defer cli.Close()
 
@@ -142,7 +141,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		if server.IsServerError(err, server.ErrNotBootstrapped) {
 			networkBooted = false
 		} else {
-			return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %s", err)
+			return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 		}
 	}
 
@@ -171,7 +170,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	clusterInfo, err = d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
-		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %s", err)
+		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 	}
 	subnetIDs := clusterInfo.Subnets
 	numBlockchains := len(clusterInfo.CustomChains)
@@ -201,7 +200,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		blockchainSpecs,
 	)
 	if err != nil {
-		return ids.Empty, ids.Empty, fmt.Errorf("failed to deploy blockchain :%s", err)
+		return ids.Empty, ids.Empty, fmt.Errorf("failed to deploy blockchain: %w", err)
 	}
 
 	d.app.Log.Debug(deployBlockchainsInfo.String())
@@ -211,7 +210,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	clusterInfo, err = d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
-		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %s", err)
+		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 	}
 
 	endpoints := GetEndpoints(clusterInfo)
@@ -427,7 +426,7 @@ func (d *LocalDeployer) startNetwork(
 		loadSnapshotOpts...,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to start network :%s", err)
+		return fmt.Errorf("failed to start network :%w", err)
 	}
 	return nil
 }

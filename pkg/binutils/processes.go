@@ -91,9 +91,10 @@ func NewGRPCServer(snapshotsDir string) (server.Server, error) {
 func (rpr *realProcessRunner) IsServerProcessRunning(app *application.Avalanche) (bool, error) {
 	pid, err := GetServerPID(app)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
+		if !errors.Is(err, os.ErrNotExist) {
 			return false, err
 		}
+		return false, nil
 	}
 
 	// get OS process list
@@ -122,14 +123,14 @@ func GetServerPID(app *application.Avalanche) (int, error) {
 	serverRunFilePath := app.GetRunFile()
 	run, err := os.ReadFile(serverRunFilePath)
 	if err != nil {
-		return 0, fmt.Errorf("failed reading process info file at %s: %s", serverRunFilePath, err)
+		return 0, fmt.Errorf("failed reading process info file at %s: %w", serverRunFilePath, err)
 	}
 	if err := json.Unmarshal(run, &rf); err != nil {
-		return 0, fmt.Errorf("failed unmarshalling server run file at %s: %s", serverRunFilePath, err)
+		return 0, fmt.Errorf("failed unmarshalling server run file at %s: %w", serverRunFilePath, err)
 	}
 
 	if rf.Pid == 0 {
-		return 0, fmt.Errorf("failed reading pid from info file at %s: %s", serverRunFilePath, err)
+		return 0, fmt.Errorf("failed reading pid from info file at %s: %w", serverRunFilePath, err)
 	}
 	return rf.Pid, nil
 }
@@ -205,24 +206,24 @@ func KillgRPCServerProcess(app *application.Avalanche) error {
 			ux.Logger.PrintToUser("No local network running")
 			return nil
 		}
-		return fmt.Errorf("failed stopping gRPC server process: %s", err)
+		return fmt.Errorf("failed stopping gRPC server process: %w", err)
 	}
 
 	pid, err := GetServerPID(app)
 	if err != nil {
-		return fmt.Errorf("failed getting PID from run file: %s", err)
+		return fmt.Errorf("failed getting PID from run file: %w", err)
 	}
 	proc, err := os.FindProcess(pid)
 	if err != nil {
-		return fmt.Errorf("could not find process with pid %d: %s", pid, err)
+		return fmt.Errorf("could not find process with pid %d: %w", pid, err)
 	}
 	if err := proc.Signal(os.Interrupt); err != nil {
-		return fmt.Errorf("failed killing process with pid %d: %s", pid, err)
+		return fmt.Errorf("failed killing process with pid %d: %w", pid, err)
 	}
 
 	serverRunFilePath := app.GetRunFile()
 	if err := os.Remove(serverRunFilePath); err != nil {
-		return fmt.Errorf("failed removing run file %s: %s", serverRunFilePath, err)
+		return fmt.Errorf("failed removing run file %s: %w", serverRunFilePath, err)
 	}
 	return nil
 }
