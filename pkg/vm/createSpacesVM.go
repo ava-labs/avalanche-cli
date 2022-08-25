@@ -54,6 +54,17 @@ func CreateSpacesVMSubnetConfig(
 	return genesisBytes, sc, nil
 }
 
+func getMagic(app *application.Avalanche) (uint64, error) {
+	ux.Logger.PrintToUser("Enter your spacevm's Magic. It should be a positive integer.")
+
+    magic, err := app.Prompt.CaptureUint64("Magic [Default: 1]", "1")
+	if err != nil {
+		return 0, err
+	}
+
+	return magic, nil
+}
+
 func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spacesVMVersion string) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating subnet %s", subnetName)
 
@@ -89,12 +100,17 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 	}
 
 	genesis := chain.DefaultGenesis()
-	genesis.Magic = 1
-	genesis.AirdropHash = "0xccbf8e430b30d08b5b3342208781c40b373d1b5885c1903828f367230a2568da"
-	genesis.AirdropUnits = 10000
+
+	magic, err := getMagic(app)
+	if err != nil {
+		return []byte{}, &models.Sidecar{}, err
+	}
+	genesis.Magic = magic
+
+	//genesis.AirdropHash = "0xccbf8e430b30d08b5b3342208781c40b373d1b5885c1903828f367230a2568da"
+	//genesis.AirdropUnits = 10000
 	genesis.CustomAllocation = customAllocs
 
-	var err error
 	spacesVMVersion, err = getVMVersion(app, "Spaces VM", constants.SpacesVMRepoName, spacesVMVersion)
 	if err != nil {
 		return []byte{}, &models.Sidecar{}, err

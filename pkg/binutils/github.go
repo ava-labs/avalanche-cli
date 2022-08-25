@@ -144,7 +144,7 @@ func (spacesVMDownloader) GetDownloadURL(version string, installer Installer) (s
 			constants.SpacesVMRepoName,
 			version,
 			constants.SpacesVMRepoName,
-			version[1:], // WARN subnet-evm isn't consistent in its release naming, it's omitting the v in the file name...
+			version[1:], // WARN spacesvm isn't consistent in its release naming, it's omitting the v in the file name...
 			goarch,
 		)
 	case darwin:
