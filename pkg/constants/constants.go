@@ -37,6 +37,8 @@ const (
 	LocalAPIEndpoint = "http://127.0.0.1:9650"
 	LocalNetworkID   = 1337
 
+	DefaultTokenName = "TEST"
+
 	HealthCheckInterval = 100 * time.Millisecond
 
 	// it's unlikely anyone would want to name a snapshot `default`

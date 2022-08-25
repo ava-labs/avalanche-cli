@@ -125,8 +125,13 @@ func TestDeployToLocal(t *testing.T) {
 	// create a dummy genesis file, deploy will check it exists
 	testGenesis, err := os.CreateTemp(tmpDir, "test-genesis.json")
 	assert.NoError(err)
-
 	err = os.WriteFile(testGenesis.Name(), []byte(genesis), constants.DefaultPerms755)
+	assert.NoError(err)
+	// create dummy sidecar file, also checked by deploy
+	sidecar := `{"VM": "SubnetEVM"}`
+	testSidecar, err := os.Create(filepath.Join(testDir, "test_sidecar.json"))
+	assert.NoError(err)
+	err = os.WriteFile(testSidecar.Name(), []byte(sidecar), constants.DefaultPerms755)
 	assert.NoError(err)
 	// test actual deploy
 	s, b, err := testDeployer.DeployToLocalNetwork(testChainName, []byte(genesis), testGenesis.Name())

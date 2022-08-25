@@ -201,9 +201,10 @@ func Test_loadSidecar_success(t *testing.T) {
 
 	// Check contents
 	expectedSc := models.Sidecar{
-		Name:   subnetName1,
-		VM:     vm,
-		Subnet: subnetName1,
+		Name:      subnetName1,
+		VM:        vm,
+		Subnet:    subnetName1,
+		TokenName: constants.DefaultTokenName,
 	}
 
 	sc, err := ap.LoadSidecar(subnetName1)

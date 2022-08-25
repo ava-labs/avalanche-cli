@@ -70,11 +70,7 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) error {
 
 	table.Append([]string{"Subnet Name", sc.Subnet})
 	table.Append([]string{"ChainID", genesis.Config.ChainID.String()})
-	tokenName, err := app.GetTokenName(sc.Subnet)
-	if err != nil {
-		return err
-	}
-	table.Append([]string{"Token Name", tokenName})
+	table.Append([]string{"Token Name", app.GetTokenName(sc.Subnet)})
 	for net, data := range sc.Networks {
 		if data.SubnetID != ids.Empty {
 			table.Append([]string{fmt.Sprintf("%s SubnetID", net), data.SubnetID.String()})

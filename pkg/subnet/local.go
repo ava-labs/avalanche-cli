@@ -282,11 +282,7 @@ func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte) err
 	}
 	ux.Logger.PrintToUser("Network name:     %s", chain)
 	ux.Logger.PrintToUser("Chain ID:         %s", evmGenesis.Config.ChainID)
-	tokenName, err := d.app.GetTokenName(chain)
-	if err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("Currency Symbol:  %s", tokenName)
+	ux.Logger.PrintToUser("Currency Symbol:  %s", d.app.GetTokenName(chain))
 	return nil
 }
 

@@ -164,6 +164,9 @@ func (app *Avalanche) LoadRawGenesis(subnetName string) ([]byte, error) {
 }
 
 func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
+	if sc.TokenName == "" {
+		sc.TokenName = constants.DefaultTokenName
+	}
 	// We should have caught this during the actual prompting,
 	// but better safe than sorry
 	exists, err := app.ChainIDExists(sc.ChainID)
@@ -194,6 +197,10 @@ func (app *Avalanche) LoadSidecar(subnetName string) (models.Sidecar, error) {
 	var sc models.Sidecar
 	err = json.Unmarshal(jsonBytes, &sc)
 
+	if sc.TokenName == "" {
+		sc.TokenName = constants.DefaultTokenName
+	}
+
 	return sc, err
 }
 
@@ -208,12 +215,12 @@ func (app *Avalanche) UpdateSidecar(sc *models.Sidecar) error {
 	return os.WriteFile(sidecarPath, scBytes, WriteReadReadPerms)
 }
 
-func (app *Avalanche) GetTokenName(subnetName string) (string, error) {
+func (app *Avalanche) GetTokenName(subnetName string) string {
 	sidecar, err := app.LoadSidecar(subnetName)
 	if err != nil {
-		return "", err
+		return constants.DefaultTokenName
 	}
-	return sidecar.TokenName, nil
+	return sidecar.TokenName
 }
 
 func (app *Avalanche) GetSidecarNames() ([]string, error) {
