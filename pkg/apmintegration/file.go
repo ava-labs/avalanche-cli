@@ -52,12 +52,14 @@ type SubnetWrapper struct {
 	Subnet types.Subnet `yaml:"subnet"`
 }
 
-func getVMsInSubnet(app *application.Avalanche, subnetKey string) ([]string, error) {
-	// TODO
-	// Start here then fill out sidecar
+type VMWrapper struct {
+	VM types.VM `yaml:"vm"`
+}
+
+func LoadSubnetFile(app *application.Avalanche, subnetKey string) (types.Subnet, error) {
 	splitSubnet := strings.Split(subnetKey, ":")
 	if len(splitSubnet) != 2 {
-		return []string{}, fmt.Errorf("invalid subnet key: %s", subnetKey)
+		return types.Subnet{}, fmt.Errorf("invalid subnet key: %s", subnetKey)
 	}
 	repo := splitSubnet[0]
 	subnetName := splitSubnet[1]
@@ -67,20 +69,39 @@ func getVMsInSubnet(app *application.Avalanche, subnetKey string) ([]string, err
 
 	subnetYamlBytes, err := os.ReadFile(subnetYamlPath)
 	if err != nil {
-		return []string{}, err
+		return types.Subnet{}, err
 	}
-
-	fmt.Println("File:", string(subnetYamlBytes))
 
 	err = yaml.Unmarshal(subnetYamlBytes, &subnetWrapper)
 	if err != nil {
-		return []string{}, err
+		return types.Subnet{}, err
 	}
 
-	subnet := subnetWrapper.Subnet
+	return subnetWrapper.Subnet, nil
+}
 
-	fmt.Println("Subnet", subnet)
-	fmt.Println("VMs", subnet.VMs)
+func LoadVMFile(app *application.Avalanche, repo, vm string) (types.VM, error) {
+	vmYamlPath := filepath.Join(app.ApmDir, "repositories", repo, "vms", vm+".yaml")
+	var vmWrapper VMWrapper
+
+	vmYamlBytes, err := os.ReadFile(vmYamlPath)
+	if err != nil {
+		return types.VM{}, err
+	}
+
+	err = yaml.Unmarshal(vmYamlBytes, &vmWrapper)
+	if err != nil {
+		return types.VM{}, err
+	}
+
+	return vmWrapper.VM, nil
+}
+
+func getVMsInSubnet(app *application.Avalanche, subnetKey string) ([]string, error) {
+	subnet, err := LoadSubnetFile(app, subnetKey)
+	if err != nil {
+		return []string{}, err
+	}
 
 	return subnet.VMs, nil
 }

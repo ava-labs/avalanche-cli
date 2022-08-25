@@ -76,6 +76,10 @@ func (app *Avalanche) GetCustomVMPath(subnetName string) string {
 	return filepath.Join(app.GetCustomVMDir(), subnetName)
 }
 
+func (app *Avalanche) GetAPMVMPath(vmid string) string {
+	return filepath.Join(app.GetAPMPluginDir(), vmid)
+}
+
 func (app *Avalanche) GetGenesisPath(subnetName string) string {
 	return filepath.Join(app.baseDir, subnetName+constants.GenesisSuffix)
 }
@@ -249,6 +253,9 @@ func (app *Avalanche) GetSidecarNames() ([]string, error) {
 }
 
 func (app *Avalanche) ChainIDExists(chainID string) (bool, error) {
+	if chainID == "" {
+		return false, nil
+	}
 	sidecars, err := app.GetSidecarNames()
 	if err != nil {
 		return false, err

@@ -5,9 +5,11 @@ package subnetcmd
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/apmintegration"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
@@ -161,7 +163,45 @@ func importFromAPM() error {
 	}
 
 	subnetKey := repo + ":" + subnet
+
+	// Populate the sidecar and create a genesis
+	subnetDescr, err := apmintegration.LoadSubnetFile(app, subnetKey)
+	if err != nil {
+		return err
+	}
+
+	var vmType models.VMType = models.CustomVM
+
+	vmDescr, err := apmintegration.LoadVMFile(app, repo, subnetDescr.VMs[0])
+	if err != nil {
+		return err
+	}
+
+	version := fmt.Sprintf("%d.%d.%d", vmDescr.Version.Major, vmDescr.Version.Minor, vmDescr.Version.Patch)
+
+	sidecar := models.Sidecar{
+		Name:            subnetDescr.Alias,
+		VM:              vmType,
+		VMVersion:       version,
+		Subnet:          subnetDescr.Alias,
+		TokenName:       constants.DefaultTokenName,
+		Version:         constants.SidecarVersion,
+		ImportedFromAPM: true,
+		ImportedVMID:    vmDescr.ID,
+	}
+
 	ux.Logger.PrintToUser("Selected subnet, installing " + subnetKey)
 
-	return apmintegration.InstallVM(app, subnetKey)
+	err = apmintegration.InstallVM(app, subnetKey)
+	if err != nil {
+		return err
+	}
+
+	err = app.CreateSidecar(&sidecar)
+	if err != nil {
+		return err
+	}
+
+	// Create an empty genesis
+	return app.WriteGenesisFile(subnetDescr.Alias, []byte{})
 }
