@@ -52,7 +52,7 @@ func printGenesis(subnetName string) error {
 	return nil
 }
 
-func printDetails(genesis core.Genesis, sc models.Sidecar) error {
+func printDetails(genesis core.Genesis, sc models.Sidecar) {
 	const art = `
  _____       _        _ _
 |  __ \     | |      (_) |
@@ -80,7 +80,6 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) error {
 		}
 	}
 	table.Render()
-	return nil
 }
 
 func printGasTable(genesis core.Genesis) {
@@ -207,9 +206,7 @@ func describeSubnetEvmGenesis(sc models.Sidecar) error {
 		return err
 	}
 
-	if err := printDetails(genesis, sc); err != nil {
-		return err
-	}
+	printDetails(genesis, sc)
 	// Write gas table
 	printGasTable(genesis)
 	// fmt.Printf("\n\n")
