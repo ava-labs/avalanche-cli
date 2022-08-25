@@ -5,6 +5,7 @@ package subnetcmd
 
 const (
 	subnetEvm = "SubnetEVM"
+	spacesVM = "Spaces VM"
 	customVM  = "Custom"
 
 	forceFlag = "force"
