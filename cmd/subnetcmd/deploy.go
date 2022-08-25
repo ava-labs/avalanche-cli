@@ -13,6 +13,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -69,7 +70,7 @@ subnet and deploy it on Fuji or Mainnet.`,
 func getChainsInSubnet(subnetName string) ([]string, error) {
 	files, err := os.ReadDir(app.GetBaseDir())
 	if err != nil {
-		return []string{}, fmt.Errorf("failed to read baseDir :%w", err)
+		return []string{}, fmt.Errorf("failed to read baseDir: %w", err)
 	}
 
 	chains := []string{}
@@ -219,7 +220,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// prompt for control keys
 	if controlKeys == nil {
 		var cancelled bool
-		controlKeys, cancelled, err = getControlKeys(network)
+		controlKeys, cancelled, err = getControlKeys(network, keyName)
 		if err != nil {
 			return err
 		}
@@ -228,6 +229,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 	}
+
+	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
 
 	// prompt for threshold
 	if len(controlKeys) > 0 && threshold == 0 {
@@ -262,13 +265,104 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	return app.UpdateSidecar(&sidecar)
 }
 
-func getControlKeys(network models.Network) ([]string, bool, error) {
+func getControlKeys(network models.Network, keyName string) ([]string, bool, error) {
 	controlKeysInitialPrompt := "Configure which addresses may add new validators to the subnet.\n" +
 		"These addresses are known as your control keys. You will also\n" +
-		"set how many control keys are required to add a validator."
-	controlKeysPrompt := "Set control keys"
+		"set how many control keys are required to add a validator (the threshold)."
+	moreKeysPrompt := "How would you like to set your control keys?"
 
 	ux.Logger.PrintToUser(controlKeysInitialPrompt)
+
+	const (
+		useAll       = "Use all stored keys"
+		creationOnly = "Use creation key only"
+		custom       = "Custom list"
+	)
+
+	listDecision, err := app.Prompt.CaptureList(
+		moreKeysPrompt, []string{useAll, creationOnly, custom},
+	)
+	if err != nil {
+		return nil, false, err
+	}
+
+	var (
+		keys      []string
+		cancelled bool
+	)
+
+	switch listDecision {
+	case useAll:
+		keys, err = useAllKeys(network)
+	case creationOnly:
+		keys, err = loadCreationKey(network, keyName)
+	case custom:
+		keys, cancelled, err = enterCustomKeys(network)
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	if cancelled {
+		return nil, true, nil
+	}
+	return keys, false, nil
+}
+
+func useAllKeys(network models.Network) ([]string, error) {
+	existing := []string{}
+
+	files, err := os.ReadDir(app.GetKeyDir())
+	if err != nil {
+		return nil, err
+	}
+
+	keyPaths := make([]string, 0, len(files))
+
+	for _, f := range files {
+		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
+			keyPaths = append(keyPaths, filepath.Join(app.GetKeyDir(), f.Name()))
+		}
+	}
+
+	for _, kp := range keyPaths {
+		k, err := key.LoadSoft(network.NetworkID(), kp)
+		if err != nil {
+			return nil, err
+		}
+
+		existing = append(existing, k.P()...)
+	}
+
+	return existing, nil
+}
+
+func loadCreationKey(network models.Network, keyName string) ([]string, error) {
+	path := filepath.Join(app.GetKeyDir(), keyName+constants.KeySuffix)
+	k, err := key.LoadSoft(network.NetworkID(), path)
+	if err != nil {
+		return nil, err
+	}
+
+	return k.P(), nil
+}
+
+func convertCtrlKeys(list []any, canceled bool, err error) ([]string, bool, error) {
+	ctrlKeys := make([]string, len(list))
+	var (
+		key string
+		ok  bool
+	)
+	for i, k := range list {
+		if key, ok = k.(string); !ok {
+			return nil, false, fmt.Errorf("expected string but got %T", key)
+		}
+		ctrlKeys[i] = key
+	}
+	return ctrlKeys, canceled, err
+}
+
+func enterCustomKeys(network models.Network) ([]string, bool, error) {
+	controlKeysPrompt := "Enter control keys"
 	for {
 		// ask in a loop so that if some condition is not met we can keep asking
 		controlKeys, cancelled, err := controlKeysLoop(controlKeysPrompt, network)
@@ -310,18 +404,7 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 		arg,
 	)
 
-	ctrlKeys := make([]string, len(list))
-	var (
-		key string
-		ok  bool
-	)
-	for i, k := range list {
-		if key, ok = k.(string); !ok {
-			return nil, false, fmt.Errorf("expected string but got %T", key)
-		}
-		ctrlKeys[i] = key
-	}
-	return ctrlKeys, canceled, err
+	return convertCtrlKeys(list, canceled, err)
 }
 
 // getThreshold prompts for the threshold of addresses as a number
@@ -351,7 +434,7 @@ func validateSubnetNameAndGetChains(args []string) ([]string, error) {
 	// this should not be necessary but some bright guy might just be creating
 	// the genesis by hand or something...
 	if err := checkInvalidSubnetNames(args[0]); err != nil {
-		return nil, fmt.Errorf("subnet name %s is invalid: %s", args[0], err)
+		return nil, fmt.Errorf("subnet name %s is invalid: %w", args[0], err)
 	}
 	// Check subnet exists
 	// TODO create a file that lists chains by subnet for fast querying

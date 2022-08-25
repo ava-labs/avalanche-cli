@@ -10,12 +10,6 @@ const (
 	BaseDirName = ".avalanche-cli"
 	LogDir      = "logs"
 
-	SubnetEVMReleaseVersion   = "v0.2.7"
-	AvalancheGoReleaseVersion = "v1.7.16"
-
-	LatestAvagoReleaseURL = "https://api.github.com/repos/ava-labs/avalanchego/releases/latest"
-	SubnetEVMReleaseURL   = "https://api.github.com/repos/ava-labs/subnet-evm/releases/latest"
-
 	ServerRunFile      = "gRPCserver.run"
 	AvalancheCliBinDir = "bin"
 	RunDir             = "runs"
@@ -84,4 +78,7 @@ const (
 	APMLogName            = "apm.log"
 	DefaultAvaLabsPackage = "ava-labs/avalanche-plugins-core"
 	APMPluginDir          = "apm_plugins"
+
+	// #nosec G101
+	GithubAPITokenEnvVarName = "GITHUB_TOKEN"
 )

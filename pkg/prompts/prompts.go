@@ -31,6 +31,8 @@ const (
 	MoreInfo = "More Info"
 	Done     = "Done"
 	Cancel   = "Cancel"
+
+	Skip = "Skip"
 )
 
 type Prompter interface {
@@ -40,6 +42,7 @@ type Prompter interface {
 	CaptureYesNo(promptStr string) (bool, error)
 	CaptureNoYes(promptStr string) (bool, error)
 	CaptureList(promptStr string, options []string) (string, error)
+	CaptureAnyList(promptStr string, options any) (any, error)
 	CaptureString(promptStr string) (string, error)
 	CaptureIndex(promptStr string, options []any) (int, error)
 	CaptureVersion(promptStr string) (string, error)
@@ -173,7 +176,14 @@ func (r *realPrompter) CaptureListDecision(
 	// optional parameter if the Capture function needs an argument (CapturePChainAddress requires network)
 	arg any,
 ) ([]any, bool, error) {
-	finalList := []any{}
+	list := []any{}
+
+	param := arg
+	existing, ok := arg.([]any)
+	if ok {
+		param = existing
+	}
+
 	for {
 		listDecision, err := prompter.CaptureList(
 			prompt, []string{Add, Del, Preview, MoreInfo, Done, Cancel},
@@ -185,28 +195,41 @@ func (r *realPrompter) CaptureListDecision(
 		case Add:
 			elem, err := capture(
 				capturePrompt,
-				arg,
+				param,
 			)
+			if elem == Skip {
+				break
+			}
 			if err != nil {
 				return nil, false, err
 			}
-			if contains(finalList, elem) {
+			if contains(list, elem) {
 				fmt.Println(label + " already in list")
 				continue
 			}
-			finalList = append(finalList, elem)
+			list = append(list, elem)
+			if ok {
+				existing = removeExisting(existing, elem)
+			}
 		case Del:
-			if len(finalList) == 0 {
+			if len(list) == 0 {
 				fmt.Println("No " + label + " added yet")
 				continue
 			}
-			index, err := prompter.CaptureIndex("Choose element to remove:", finalList)
+			index, err := prompter.CaptureIndex("Choose element to remove:", list)
 			if err != nil {
 				return nil, false, err
 			}
-			finalList = append(finalList[:index], finalList[index+1:]...)
+			if ok {
+				existing = addExisting(existing, list, index)
+			}
+			list = append(list[:index], list[index+1:]...)
 		case Preview:
-			for i, k := range finalList {
+			if len(list) == 0 {
+				fmt.Println("The list is empty")
+				break
+			}
+			for i, k := range list {
 				fmt.Printf("%d. %s\n", i, k)
 			}
 		case MoreInfo:
@@ -214,13 +237,29 @@ func (r *realPrompter) CaptureListDecision(
 				fmt.Println(info)
 			}
 		case Done:
-			return finalList, false, nil
+			return list, false, nil
 		case Cancel:
 			return nil, true, nil
 		default:
 			return nil, false, errors.New("unexpected option")
 		}
 	}
+}
+
+func removeExisting(existing []any, elem any) []any {
+	newList := []any{}
+	for i, e := range existing {
+		if e == elem {
+			newList = append(existing[:i], existing[i+1:]...) //nolint:gocritic
+			break
+		}
+	}
+	return newList
+}
+
+func addExisting(existing []any, list []any, index int) []any {
+	existing = append(existing, list[index])
+	return existing
 }
 
 func (*realPrompter) CaptureDuration(promptStr string) (time.Duration, error) {
@@ -444,6 +483,21 @@ func (*realPrompter) CaptureList(promptStr string, options []string) (string, er
 		return "", err
 	}
 	return listDecision, nil
+}
+
+func (r *realPrompter) CaptureAnyList(promptStr string, options any) (any, error) {
+	arr, ok := options.([]any)
+	if ok && len(arr) == 0 && !contains(arr, Add) {
+		fmt.Println("The option list is empty! Aborting.")
+		return Skip, nil
+	}
+
+	strArr := make([]string, len(arr))
+	for i, e := range arr {
+		strArr[i] = e.(string)
+	}
+
+	return r.CaptureList(promptStr, strArr)
 }
 
 func (*realPrompter) CaptureString(promptStr string) (string, error) {
