@@ -4,6 +4,7 @@ package vm
 
 import (
 	"encoding/json"
+	"errors"
 	"math/big"
 	"os"
 
@@ -12,9 +13,37 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/spacesvm/chain"
+	"github.com/ava-labs/subnet-evm/core"
 )
 
 const defaultSpacesVMAirdropAmount = "1000000"
+
+type stateMachine struct {
+	index  int
+	states []string
+}
+
+func (sm *stateMachine) currentState() (string, error) {
+	if sm.index < 0 || sm.index >= len(sm.states) {
+		return "", errors.New("invalid index")
+	}
+	return sm.states[sm.index], nil
+}
+
+func (sm *stateMachine) nextState(direction stateDirection) (string, error) {
+	switch direction {
+	case forward:
+		sm.index++
+	case backward:
+		sm.index--
+	default:
+		return "", errors.New("invalid direction")
+	}
+	if sm.index < 0 || sm.index >= len(sm.states) {
+		return "", errors.New("invalid index")
+	}
+	return sm.states[sm.index], nil
+}
 
 func CreateSpacesVMSubnetConfig(
 	app *application.Avalanche,
@@ -70,23 +99,47 @@ func getMagic(app *application.Avalanche) (uint64, error) {
 func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spacesVMVersion string) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating subnet %s", subnetName)
 
+	var (
+		magic     uint64
+		allocs    core.GenesisAlloc
+		direction stateDirection
+		version   string
+	)
+
+	spaceVMState := stateMachine{
+		states: []string{"start", "descriptor", "airdrop", "done"},
+	}
+
+	state, err := spaceVMState.currentState()
+	if err != nil {
+		return []byte{}, nil, err
+	}
+	for state != "done" {
+		switch state {
+		case "start":
+			direction = forward
+		case "descriptor":
+			magic, err = getMagic(app)
+			if err == nil {
+				version, err = getVMVersion(app, "Spaces VM", constants.SpacesVMRepoName, spacesVMVersion)
+			}
+			direction = forward
+		case "airdrop":
+			allocs, direction, err = getAllocation(app, defaultSpacesVMAirdropAmount, new(big.Int).SetUint64(1), "Amount to airdrop")
+		default:
+			err = errors.New("invalid creation stage")
+		}
+		if err != nil {
+			return []byte{}, nil, err
+		}
+		state, err = spaceVMState.nextState(direction)
+		if err != nil {
+			return []byte{}, nil, err
+		}
+	}
+
 	genesis := chain.DefaultGenesis()
-
-	magic, err := getMagic(app)
-	if err != nil {
-		return []byte{}, &models.Sidecar{}, err
-	}
 	genesis.Magic = magic
-
-	spacesVMVersion, err = getVMVersion(app, "Spaces VM", constants.SpacesVMRepoName, spacesVMVersion)
-	if err != nil {
-		return []byte{}, &models.Sidecar{}, err
-	}
-
-	allocs, _, err := getAllocation(app, defaultSpacesVMAirdropAmount, new(big.Int).SetUint64(1), "Amount to airdrop")
-	if err != nil {
-		return []byte{}, &models.Sidecar{}, err
-	}
 
 	customAllocs := []*chain.CustomAllocation{}
 	for address, account := range allocs {
@@ -96,7 +149,6 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 		}
 		customAllocs = append(customAllocs, &alloc)
 	}
-
 	genesis.CustomAllocation = customAllocs
 
 	jsonBytes, err := json.MarshalIndent(genesis, "", "    ")
@@ -107,7 +159,7 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 	sc := &models.Sidecar{
 		Name:      subnetName,
 		VM:        models.SpacesVM,
-		VMVersion: spacesVMVersion,
+		VMVersion: version,
 		Subnet:    subnetName,
 	}
 
