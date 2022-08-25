@@ -31,6 +31,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/coreth/params"
+	spacesvmchain "github.com/ava-labs/spacesvm/chain"
 	"github.com/ava-labs/subnet-evm/core"
 )
 
@@ -223,8 +224,14 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	if err != nil {
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to load sidecar: %w", err)
 	}
-	if sc.VM == models.SubnetEvm {
+	switch sc.VM {
+	case models.SubnetEvm:
 		if err := d.printExtraEvmInfo(chain, chainGenesis); err != nil {
+			// not supposed to happen due to genesis pre validation
+			return ids.Empty, ids.Empty, nil
+		}
+	case models.SpacesVM:
+		if err := d.printExtraSpacesVMInfo(chainGenesis); err != nil {
 			// not supposed to happen due to genesis pre validation
 			return ids.Empty, ids.Empty, nil
 		}
@@ -239,6 +246,24 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 	}
 	return subnetID, blockchainID, nil
+}
+
+func (d *LocalDeployer) printExtraSpacesVMInfo(chainGenesis []byte) error {
+	var genesis spacesvmchain.Genesis
+	if err := json.Unmarshal(chainGenesis, &genesis); err != nil {
+		return fmt.Errorf("failed to unmarshall genesis: %w", err)
+	}
+	for _, alloc := range genesis.CustomAllocation {
+		address := alloc.Address
+		amount := alloc.Balance
+		amountStr := fmt.Sprintf("%d", amount)
+		if address == vm.PrefundedEwoqAddress {
+			ux.Logger.PrintToUser("Funded address:   %s with %s - private key: %s", address, amountStr, vm.PrefundedEwoqPrivate)
+		} else {
+			ux.Logger.PrintToUser("Funded address:   %s with %s", address, amountStr)
+		}
+	}
+	return nil
 }
 
 func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte) error {

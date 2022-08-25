@@ -57,7 +57,7 @@ func CreateSpacesVMSubnetConfig(
 func getMagic(app *application.Avalanche) (uint64, error) {
 	ux.Logger.PrintToUser("Enter your spacevm's Magic. It should be a positive integer.")
 
-    magic, err := app.Prompt.CaptureUint64("Magic [Default: 1]", "1")
+	magic, err := app.Prompt.CaptureUint64("Magic [Default: 1]", "1")
 	if err != nil {
 		return 0, err
 	}
@@ -107,8 +107,6 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 	}
 	genesis.Magic = magic
 
-	//genesis.AirdropHash = "0xccbf8e430b30d08b5b3342208781c40b373d1b5885c1903828f367230a2568da"
-	//genesis.AirdropUnits = 10000
 	genesis.CustomAllocation = customAllocs
 
 	spacesVMVersion, err = getVMVersion(app, "Spaces VM", constants.SpacesVMRepoName, spacesVMVersion)
