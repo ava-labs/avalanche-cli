@@ -147,8 +147,6 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return errors.New("not implemented")
 	}
 
-	return nil
-
 	if err = app.WriteGenesisFile(subnetName, genesisBytes); err != nil {
 		return err
 	}

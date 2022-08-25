@@ -4,6 +4,7 @@
 package vm
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -43,12 +44,40 @@ func getTokenName(app *application.Avalanche) (string, error) {
 	return tokenName, nil
 }
 
-func getSubnetEVMVersion(app *application.Avalanche) (string, error) {
+func getVMVersion(
+	app *application.Avalanche,
+	vmName string,
+	repoName string,
+	vmVersion string,
+) (string, error) {
+	var err error
+	if vmVersion == "latest" {
+		vmVersion, err = binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+			constants.AvaLabsOrg,
+			repoName,
+		))
+		if err != nil {
+			return "", err
+		}
+	} else if vmVersion == "" {
+		vmVersion, err = getManualVMVersion(app, vmName, repoName)
+		if err != nil {
+			return "", err
+		}
+	}
+	return vmVersion, nil
+}
+
+func getManualVMVersion(
+	app *application.Avalanche,
+	vmName string,
+	repoName string,
+) (string, error) {
 	const (
-		useLatest     = "Use latest version"
-		useCustom     = "Specify custom version"
-		defaultPrompt = "What version of subnet-evm would you like?"
+		useLatest = "Use latest version"
+		useCustom = "Specify custom version"
 	)
+	defaultPrompt := fmt.Sprintf("What version of %s would you like?", vmName)
 
 	versionOptions := []string{useLatest, useCustom}
 
@@ -64,12 +93,12 @@ func getSubnetEVMVersion(app *application.Avalanche) (string, error) {
 		// Get and return latest version
 		return binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 			constants.AvaLabsOrg,
-			constants.SubnetEVMRepoName,
+			repoName,
 		))
 	}
 
 	// prompt for version
-	version, err := app.Prompt.CaptureVersion("Subnet-EVM version")
+	version, err := app.Prompt.CaptureVersion(fmt.Sprintf("%s version", vmName))
 	if err != nil {
 		return "", err
 	}
@@ -88,19 +117,9 @@ func getDescriptors(app *application.Avalanche, subnetEVMVersion string) (*big.I
 		return nil, "", "", stop, err
 	}
 
-	if subnetEVMVersion == "latest" {
-		subnetEVMVersion, err = binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
-			constants.AvaLabsOrg,
-			constants.SubnetEVMRepoName,
-		))
-		if err != nil {
-			return nil, "", "", stop, err
-		}
-	} else if subnetEVMVersion == "" {
-		subnetEVMVersion, err = getSubnetEVMVersion(app)
-		if err != nil {
-			return nil, "", "", stop, err
-		}
+	subnetEVMVersion, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion)
+	if err != nil {
+		return nil, "", "", stop, err
 	}
 
 	return chainID, tokenName, subnetEVMVersion, forward, nil
