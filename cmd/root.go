@@ -75,8 +75,14 @@ func createApp(cmd *cobra.Command, args []string) error {
 	}
 	cf := config.New()
 	app.Setup(baseDir, log, cf, prompts.NewPrompter())
-	if err = apmintegration.SetupApm(app); err != nil {
-		return err
+	// Setup APM, skip if running a hidden command
+	if !cmd.Hidden {
+		fmt.Println("Setting up APM")
+		if err = apmintegration.SetupApm(app); err != nil {
+			return err
+		}
+	} else {
+		fmt.Println("Skipping APM")
 	}
 	cobra.OnInitialize(initConfig)
 	return nil
