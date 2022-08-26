@@ -4,18 +4,10 @@
 package subnet
 
 import (
-	"context"
 	"fmt"
-	"os"
-	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/spacesvm/chain"
-	"github.com/ava-labs/spacesvm/client"
-	"github.com/ethereum/go-ethereum/crypto"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -23,7 +15,6 @@ import (
 const (
 	subnetName       = "e2eSubnetTest"
 	secondSubnetName = "e2eSecondSubnetTest"
-	testKey          = "tests/e2e/assets/ewoq_key.pk"
 )
 
 var _ = ginkgo.Describe("[Local Subnet]", func() {
@@ -96,82 +87,8 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
 		rpc := rpcs[0]
 
-		cli := client.New(strings.ReplaceAll(rpc, "/rpc", ""), constants.RequestTimeout)
-
-		// get genesis
-		_, err = cli.Genesis(context.Background())
+		err = utils.RunSpacesVMAPITest(rpc)
 		gomega.Expect(err).Should(gomega.BeNil())
-
-		// ping
-		ok, err := cli.Ping(context.Background())
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(ok).Should(gomega.BeTrue())
-
-		// network info
-		networkID, _, chainID, err := cli.Network(context.Background())
-		gomega.Expect(networkID).Should(gomega.Equal(uint32(constants.LocalNetworkID)))
-		gomega.Expect(chainID).ShouldNot(gomega.Equal(ids.Empty))
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		// get signing key
-		privHexBytes, err := os.ReadFile(testKey)
-		gomega.Expect(err).Should(gomega.BeNil())
-		priv, err := crypto.HexToECDSA(strings.TrimSpace(string(privHexBytes)))
-		gomega.Expect(err).Should(gomega.BeNil())
-		sender := crypto.PubkeyToAddress(priv.PublicKey)
-
-		// reserve space
-		space := "clispace"
-		claimTx := &chain.ClaimTx{
-			BaseTx: &chain.BaseTx{},
-			Space:  space,
-		}
-		claimed, err := cli.Claimed(context.Background(), space)
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(claimed).Should(gomega.BeFalse())
-		ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
-		_, _, err = client.SignIssueRawTx(
-			ctx,
-			cli,
-			claimTx,
-			priv,
-			client.WithPollTx(),
-			client.WithInfo(space),
-		)
-		cancel()
-		gomega.Expect(err).Should(gomega.BeNil())
-		claimed, err = cli.Claimed(context.Background(), space)
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(claimed).Should(gomega.BeTrue())
-		pf, _, err := cli.Info(context.Background(), space)
-		gomega.Expect(err).To(gomega.BeNil())
-		gomega.Expect(pf.Units).To(gomega.Equal(uint64(100)))
-		gomega.Expect(pf.Owner).To(gomega.Equal(sender))
-
-		// set key/val pair
-		k, v := "key", []byte("value")
-		setTx := &chain.SetTx{
-			BaseTx: &chain.BaseTx{},
-			Space:  space,
-			Key:    k,
-			Value:  v,
-		}
-		ctx, cancel = context.WithTimeout(context.Background(), constants.RequestTimeout)
-		_, _, err = client.SignIssueRawTx(
-			ctx,
-			cli,
-			setTx,
-			priv,
-			client.WithPollTx(),
-			client.WithInfo(space),
-		)
-		cancel()
-		gomega.Expect(err).To(gomega.BeNil())
-
-		// check key/val pair
-		_, rv, _, err := cli.Resolve(context.Background(), space+"/"+k)
-		gomega.Expect(err).To(gomega.BeNil())
-		gomega.Expect(rv).To(gomega.Equal(v))
 
 		commands.DeleteSubnetConfig(subnetName)
 	})

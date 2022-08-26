@@ -17,7 +17,6 @@ import (
 const (
 	subnetName  = "e2eSubnetTest"
 	controlKeys = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
-	testKey     = "tests/e2e/assets/ewoq_key.pk"
 	keyName     = "ewoq"
 )
 
@@ -27,7 +26,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		_ = commands.StartNetwork()
 		// key
 		_ = utils.DeleteKey(keyName)
-		output, err := commands.CreateKeyFromPath(keyName, testKey)
+		output, err := commands.CreateKeyFromPath(keyName, utils.EwoqKeyPath)
 		if err != nil {
 			fmt.Println(output)
 			utils.PrintStdErr(err)
