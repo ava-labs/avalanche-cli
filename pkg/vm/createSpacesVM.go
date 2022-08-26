@@ -124,6 +124,21 @@ func getMagic(app *application.Avalanche) (uint64, stateDirection, error) {
 	return magic, forward, nil
 }
 
+func getDefaultGenesisValues() (uint64, string, core.GenesisAlloc, error) {
+	version, err := binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+		constants.AvaLabsOrg,
+		constants.SpacesVMRepoName,
+	))
+	if err != nil {
+		return 0, "", nil, err
+	}
+	allocs, err := getDefaultAllocation(defaultSpacesVMAirdropAmount)
+	if err != nil {
+		return 0, "", nil, err
+	}
+	return defaultMagic, version, allocs, nil
+}
+
 func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spacesVMVersion string) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating subnet %s", subnetName)
 
@@ -157,14 +172,11 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 			var useDefault bool
 			useDefault, err = useDefaultGenesis(app)
 			if useDefault {
-				magic = defaultMagic
-				version, err = binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
-					constants.AvaLabsOrg,
-					constants.SpacesVMRepoName,
-				))
-				allocs, err = getDefaultAllocation(defaultSpacesVMAirdropAmount)
-				state = doneState
-				continue
+				magic, version, allocs, err = getDefaultGenesisValues()
+				if err == nil {
+					state = doneState
+					continue
+				}
 			}
 		case magicState:
 			magic, direction, err = getMagic(app)
