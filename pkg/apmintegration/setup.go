@@ -53,7 +53,6 @@ func SetupApm(app *application.Avalanche) error {
 		return err
 	}
 	defer apmLog.Close()
-	fmt.Println("Logging to", app.GetAPMLog())
 	os.Stdout = apmLog
 	fmt.Println("testing log print")
 	apmConfig := apm.Config{
