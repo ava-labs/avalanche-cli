@@ -41,3 +41,11 @@ func getAlias(url string) (string, error) {
 
 	return org + "/" + repo, nil
 }
+
+func makeAlias(org, repo string) string {
+	return org + "/" + repo
+}
+
+func makeKey(alias, subnet string) string {
+	return alias + ":" + subnet
+}

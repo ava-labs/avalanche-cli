@@ -32,6 +32,8 @@ func SetupApm(app *application.Avalanche) error {
 
 	fs := afero.NewOsFs()
 
+	fmt.Println("Plugin dir", app.GetAPMPluginDir())
+
 	err = os.MkdirAll(app.GetAPMPluginDir(), constants.DefaultPerms755)
 	if err != nil {
 		return err

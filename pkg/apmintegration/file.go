@@ -83,6 +83,15 @@ func LoadSubnetFile(app *application.Avalanche, subnetKey string) (types.Subnet,
 	return subnetWrapper.Subnet, nil
 }
 
+func getVMsInSubnet(app *application.Avalanche, subnetKey string) ([]string, error) {
+	subnet, err := LoadSubnetFile(app, subnetKey)
+	if err != nil {
+		return []string{}, err
+	}
+
+	return subnet.VMs, nil
+}
+
 func LoadVMFile(app *application.Avalanche, repo, vm string) (types.VM, error) {
 	vmYamlPath := filepath.Join(app.ApmDir, "repositories", repo, "vms", vm+".yaml")
 	var vmWrapper VMWrapper
@@ -98,13 +107,4 @@ func LoadVMFile(app *application.Avalanche, repo, vm string) (types.VM, error) {
 	}
 
 	return vmWrapper.VM, nil
-}
-
-func getVMsInSubnet(app *application.Avalanche, subnetKey string) ([]string, error) {
-	subnet, err := LoadSubnetFile(app, subnetKey)
-	if err != nil {
-		return []string{}, err
-	}
-
-	return subnet.VMs, nil
 }
