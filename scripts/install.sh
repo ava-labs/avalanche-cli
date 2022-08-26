@@ -373,7 +373,7 @@ execute
 sed_in_place() {
   expr=$1
   file=$2
-  if [ $(uname) == Darwin ]
+  if [ $(uname) = Darwin ]
   then
     sed -i "" "$expr" "$file"
   else
@@ -389,7 +389,7 @@ $BINDIR/$BINARY completion bash > $BASH_COMPLETION_SCRIPT_PATH
 touch $BASH_COMPLETION_MAIN
 sed_in_place "/.*# avalanche completion/d" $BASH_COMPLETION_MAIN
 echo "source $BASH_COMPLETION_SCRIPT_PATH # avalanche completion" >> $BASH_COMPLETION_MAIN
-if [ $(uname) == Darwin ]
+if [ $(uname) = Darwin ]
 then
     BASHRC=~/.bashrc
     touch $BASHRC
