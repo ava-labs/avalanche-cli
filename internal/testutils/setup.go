@@ -20,7 +20,7 @@ func SetupTest(t *testing.T) *assert.Assertions {
 }
 
 func SetupTempTestDir() (string, error) {
-	return os.MkdirTemp(os.TempDir(), "binutils-source")
+	return os.MkdirTemp(os.TempDir(), "cli-test")
 }
 
 func CleanTempTestDir(testDir string) {
