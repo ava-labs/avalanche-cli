@@ -6,8 +6,6 @@ package apmintegration
 import (
 	"fmt"
 	"os"
-	"os/user"
-	"path/filepath"
 
 	"github.com/ava-labs/apm/apm"
 	"github.com/ava-labs/apm/config"
@@ -24,7 +22,8 @@ const (
 	adminAPIEndpointKey = "admin-api-endpoint"
 )
 
-func SetupApm(app *application.Avalanche) error {
+// Note, you can only call this method once per run
+func SetupApm(app *application.Avalanche, apmBaseDir string) error {
 	credentials, err := initCredentials()
 	if err != nil {
 		return err
@@ -32,20 +31,10 @@ func SetupApm(app *application.Avalanche) error {
 
 	fs := afero.NewOsFs()
 
-	fmt.Println("Plugin dir", app.GetAPMPluginDir())
-
 	err = os.MkdirAll(app.GetAPMPluginDir(), constants.DefaultPerms755)
 	if err != nil {
 		return err
 	}
-
-	usr, err := user.Current()
-	if err != nil {
-		// no logger here yet
-		fmt.Printf("unable to get system user %s\n", err)
-		return err
-	}
-	apmBaseDir := filepath.Join(usr.HomeDir, constants.APMDir)
 
 	// The New() function has a lot of prints we'd like to hide from the user,
 	// so going to divert stdout to the log temporarily
@@ -77,6 +66,7 @@ func SetupApm(app *application.Avalanche) error {
 
 // If we need to use custom git credentials (say for private repos).
 // the zero value for credentials is safe to use.
+// Stolen from APM repo
 func initCredentials() (http.BasicAuth, error) {
 	result := http.BasicAuth{}
 
