@@ -5,10 +5,12 @@ package vm
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -16,7 +18,10 @@ import (
 	"github.com/ava-labs/subnet-evm/core"
 )
 
-const defaultSpacesVMAirdropAmount = "1000000"
+const (
+	defaultSpacesVMAirdropAmount = "1000000"
+	defaultMagic                 = uint64(1)
+)
 
 type stateMachine struct {
 	index  int
@@ -69,7 +74,7 @@ func CreateSpacesVMSubnetConfig(
 			return []byte{}, &models.Sidecar{}, err
 		}
 
-		spacesVMVersion, err = getVMVersion(app, "Spaces VM", constants.SpacesVMRepoName, spacesVMVersion)
+		spacesVMVersion, _, err = getVMVersion(app, "Spaces VM", constants.SpacesVMRepoName, spacesVMVersion, false)
 		if err != nil {
 			return []byte{}, &models.Sidecar{}, err
 		}
@@ -85,25 +90,50 @@ func CreateSpacesVMSubnetConfig(
 	return genesisBytes, sc, nil
 }
 
-func getMagic(app *application.Avalanche) (uint64, error) {
-	ux.Logger.PrintToUser("Enter your spacevm's Magic. It should be a positive integer.")
+func useDefaultGenesis(app *application.Avalanche) (bool, error) {
+	useDefault := "Yes"
+	useCustom := "Set custom"
 
-	magic, err := app.Prompt.CaptureUint64("Magic [Default: 1]", "1")
+	options := []string{useDefault, useCustom}
+	option, err := app.Prompt.CaptureList("Use default genesis?", options)
 	if err != nil {
-		return 0, err
+		return false, err
 	}
+	return option == useDefault, nil
+}
 
-	return magic, nil
+func getMagic(app *application.Avalanche) (uint64, stateDirection, error) {
+	useDefault := fmt.Sprintf("Use default (%d)", defaultMagic)
+	useCustom := "Set custom"
+
+	options := []string{useDefault, useCustom, goBackMsg}
+	option, err := app.Prompt.CaptureList("Set magic", options)
+	if err != nil {
+		return 0, stop, err
+	}
+	if option == goBackMsg {
+		return 0, backward, nil
+	}
+	if option == useDefault {
+		return defaultMagic, forward, nil
+	}
+	magic, err := app.Prompt.CaptureUint64("Custom Magic")
+	if err != nil {
+		return 0, stop, err
+	}
+	return magic, forward, nil
 }
 
 func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spacesVMVersion string) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating subnet %s", subnetName)
 
 	const (
-		startState      = "start"
-		descriptorState = "descriptor"
-		airdropState    = "airdrop"
-		doneState       = "done"
+		startState   = "start"
+		genesisState = "genesis"
+		magicState   = "magic"
+		versionState = "version"
+		airdropState = "airdrop"
+		doneState    = "done"
 	)
 
 	var (
@@ -114,23 +144,32 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 	)
 
 	spaceVMState := stateMachine{
-		states: []string{startState, descriptorState, airdropState, doneState},
+		states: []string{genesisState, magicState, versionState, airdropState, doneState},
 	}
-
 	state, err := spaceVMState.currentState()
 	if err != nil {
 		return []byte{}, nil, err
 	}
 	for state != doneState {
 		switch state {
-		case startState:
+		case genesisState:
 			direction = forward
-		case descriptorState:
-			magic, err = getMagic(app)
-			if err == nil {
-				version, err = getVMVersion(app, "Spaces VM", constants.SpacesVMRepoName, spacesVMVersion)
+			var useDefault bool
+			useDefault, err = useDefaultGenesis(app)
+			if useDefault {
+				magic = defaultMagic
+				version, err = binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+					constants.AvaLabsOrg,
+					constants.SpacesVMRepoName,
+				))
+				allocs, err = getDefaultAllocation(defaultSpacesVMAirdropAmount)
+				state = doneState
+				continue
 			}
-			direction = forward
+		case magicState:
+			magic, direction, err = getMagic(app)
+		case versionState:
+			version, direction, err = getVMVersion(app, "Spaces VM", constants.SpacesVMRepoName, spacesVMVersion, true)
 		case airdropState:
 			allocs, direction, err = getAllocation(app, defaultSpacesVMAirdropAmount, new(big.Int).SetUint64(1), "Amount to airdrop")
 		default:

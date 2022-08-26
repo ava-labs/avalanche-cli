@@ -310,20 +310,20 @@ func (_m *Prompter) CaptureString(promptStr string) (string, error) {
 	return r0, r1
 }
 
-// CaptureUint64 provides a mock function with given fields: promptStr, defaultVal
-func (_m *Prompter) CaptureUint64(promptStr string, defaultVal string) (uint64, error) {
-	ret := _m.Called(promptStr, defaultVal)
+// CaptureUint64 provides a mock function with given fields: promptStr
+func (_m *Prompter) CaptureUint64(promptStr string) (uint64, error) {
+	ret := _m.Called(promptStr)
 
 	var r0 uint64
-	if rf, ok := ret.Get(0).(func(string, string) uint64); ok {
-		r0 = rf(promptStr, defaultVal)
+	if rf, ok := ret.Get(0).(func(string) uint64); ok {
+		r0 = rf(promptStr)
 	} else {
 		r0 = ret.Get(0).(uint64)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(string, string) error); ok {
-		r1 = rf(promptStr, defaultVal)
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(promptStr)
 	} else {
 		r1 = ret.Error(1)
 	}

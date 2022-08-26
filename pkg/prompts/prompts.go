@@ -50,7 +50,7 @@ type Prompter interface {
 	CaptureDate(promptStr string) (time.Time, error)
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
 	CaptureWeight(promptStr string) (uint64, error)
-	CaptureUint64(promptStr string, defaultVal string) (uint64, error)
+	CaptureUint64(promptStr string) (uint64, error)
 	CapturePChainAddress(promptStr string, network any) (any, error)
 	CaptureListDecision(
 		// we need this in order to be able to run mock tests
@@ -317,11 +317,10 @@ func (*realPrompter) CaptureWeight(promptStr string) (uint64, error) {
 	return strconv.ParseUint(amountStr, 10, 64)
 }
 
-func (*realPrompter) CaptureUint64(promptStr string, defaultVal string) (uint64, error) {
+func (*realPrompter) CaptureUint64(promptStr string) (uint64, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validateBiggerThanZero,
-		Default:  defaultVal,
 	}
 
 	amountStr, err := prompt.Run()
