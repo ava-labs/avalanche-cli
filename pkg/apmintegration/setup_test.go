@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSetup(t *testing.T) {
+func TestSetupAPM(t *testing.T) {
 	assert := require.New(t)
 	testDir, err := testutils.SetupTempTestDir()
 	assert.NoError(err)
