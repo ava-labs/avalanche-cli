@@ -224,7 +224,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	firstURL := endpoints[0]
 	tokenName := d.app.GetTokenName(chain)
 
-	ux.Logger.PrintToUser("Metamask connection details (any node URL from above works):")
+	ux.Logger.PrintToUser("Browser Extension connection details (any node URL from above works):")
 	ux.Logger.PrintToUser("RPC URL:          %s", firstURL[strings.LastIndex(firstURL, "http"):])
 	for address := range genesis.Alloc {
 		amount := genesis.Alloc[address].Balance
