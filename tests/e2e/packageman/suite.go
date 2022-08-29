@@ -69,7 +69,7 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 		gomega.Expect(utils.CheckSubnetEVMExists(subnetEVMVersion2)).Should(gomega.BeFalse())
 
 		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
-		commands.CreateSubnetEvmConfigWithVersion(secondSubnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion2)
+		commands.CreateSubnetEvmConfigWithVersion(secondSubnetName, utils.SubnetEvmGenesis2Path, subnetEVMVersion2)
 
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)

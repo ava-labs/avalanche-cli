@@ -114,7 +114,7 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 
 	ginkgo.It("can deploy multiple subnets to local", func() {
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
-		commands.CreateSubnetEvmConfig(secondSubnetName, utils.SubnetEvmGenesisPath)
+		commands.CreateSubnetEvmConfig(secondSubnetName, utils.SubnetEvmGenesis2Path)
 
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
