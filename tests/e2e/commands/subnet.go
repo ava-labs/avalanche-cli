@@ -176,6 +176,40 @@ func DeploySubnetLocally(subnetName string) string {
 
 // Returns the deploy output
 /* #nosec G204 */
+func DeploySubnetLocallyWithViperConf(subnetName string, confPath string) string {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// Deploy subnet locally
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"deploy",
+		"--local",
+        "--config",
+        confPath,
+		subnetName,
+	)
+	output, err := cmd.CombinedOutput()
+	exitErr, typeOk := err.(*exec.ExitError)
+	stderr := ""
+	if typeOk {
+		stderr = string(exitErr.Stderr)
+	}
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+		fmt.Println(stderr)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	return string(output)
+}
+
+// Returns the deploy output
+/* #nosec G204 */
 func DeploySubnetLocallyWithVersion(subnetName string, version string) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
