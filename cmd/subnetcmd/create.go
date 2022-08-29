@@ -14,6 +14,8 @@ import (
 	"golang.org/x/mod/semver"
 )
 
+const forceFlag = "force"
+
 var (
 	forceCreate      bool
 	useSubnetEvm     bool
@@ -105,7 +107,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	if subnetType == "" {
 		subnetTypeStr, err := app.Prompt.CaptureList(
 			"Choose your VM",
-			[]string{subnetEvm, spacesVM, customVM},
+			[]string{models.SubnetEvm, models.SpacesVM, models.CustomVM},
 		)
 		if err != nil {
 			return err

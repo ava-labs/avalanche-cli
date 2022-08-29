@@ -22,7 +22,7 @@ func getChainID(app *application.Avalanche) (*big.Int, error) {
 		return nil, err
 	}
 
-	exists, err := app.ChainIDExists(chainID.String())
+	exists, err := app.SubnetEvmChainIDExists(chainID.String())
 	if err != nil {
 		return nil, err
 	}

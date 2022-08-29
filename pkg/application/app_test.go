@@ -333,7 +333,7 @@ func TestChainIDExists(t *testing.T) {
 				assert.NoError(err)
 			}
 
-			exists, err := ap.ChainIDExists("42")
+			exists, err := ap.SubnetEvmChainIDExists("42")
 			assert.NoError(err)
 			if tt.shouldExist {
 				assert.True(exists)

@@ -151,19 +151,16 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	switch sidecar.VM {
 	case models.SubnetEvm:
 		var genesis core.Genesis
-		if err := json.Unmarshal(chainGenesis, &genesis); err != nil {
-			return fmt.Errorf("failed to validate genesis format: %w", err)
-		}
+		err = json.Unmarshal(chainGenesis, &genesis)
 	case models.SpacesVM:
 		var genesis spacesvmchain.Genesis
-		if err := json.Unmarshal(chainGenesis, &genesis); err != nil {
-			return fmt.Errorf("failed to validate genesis format: %w", err)
-		}
+		err = json.Unmarshal(chainGenesis, &genesis)
 	default:
 		var genesis map[string]interface{}
-		if err := json.Unmarshal(chainGenesis, &genesis); err != nil {
-			return fmt.Errorf("failed to validate genesis format: %w", err)
-		}
+		err = json.Unmarshal(chainGenesis, &genesis)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to validate genesis format: %w", err)
 	}
 
 	genesisPath := app.GetGenesisPath(chain)
@@ -172,7 +169,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	case models.Local:
 		app.Log.Debug("Deploy local")
 
-		// download subnet-evm if necessary
+		// copy vm binary to the expected location, first downloading it if necessary
 		var vmDir string
 		switch sidecar.VM {
 		case models.SubnetEvm:
@@ -185,7 +182,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return fmt.Errorf("failed to install spacesvm: %w", err)
 			}
-		case customVM:
+		case models.CustomVM:
 			vmDir = binutils.SetupCustomBin(app, chain)
 		default:
 			return fmt.Errorf("unknown vm: %s", sidecar.VM)

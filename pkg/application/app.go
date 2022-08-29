@@ -4,6 +4,8 @@ package application
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -18,6 +20,8 @@ import (
 const (
 	WriteReadReadPerms = 0o644
 )
+
+var errSubnetEvmChainIDExists = errors.New("the provided subnet evm chain ID already exists! Try another one")
 
 type Avalanche struct {
 	Log     logging.Logger
@@ -163,6 +167,25 @@ func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 	if sc.TokenName == "" {
 		sc.TokenName = constants.DefaultTokenName
 	}
+	if sc.VM == models.SubnetEvm {
+		// We should have caught this during the actual prompting,
+		// but better safe than sorry
+		chainID := sc.ChainID
+		if chainID == "" {
+			gen, err := app.LoadEvmGenesis(sc.Name)
+			if err != nil {
+				return err
+			}
+			chainID = gen.Config.ChainID.String()
+		}
+		exists, err := app.SubnetEvmChainIDExists(chainID)
+		if err != nil {
+			return fmt.Errorf("unable to determine if subnet evm chainID is unique: %w", err)
+		}
+		if exists {
+			return errSubnetEvmChainIDExists
+		}
+	}
 	// only apply the version on a write
 	sc.Version = constants.SidecarVersion
 	scBytes, err := json.MarshalIndent(sc, "", "    ")
@@ -224,29 +247,31 @@ func (app *Avalanche) GetSidecarNames() ([]string, error) {
 	return names, nil
 }
 
-func (app *Avalanche) ChainIDExists(chainID string) (bool, error) {
-	sidecars, err := app.GetSidecarNames()
+func (app *Avalanche) SubnetEvmChainIDExists(chainID string) (bool, error) {
+	sidecarNames, err := app.GetSidecarNames()
 	if err != nil {
 		return false, err
 	}
-	for _, car := range sidecars {
-		sc, err := app.LoadSidecar(car)
+	for _, carName := range sidecarNames {
+		existingSc, err := app.LoadSidecar(carName)
 		if err != nil {
 			return false, err
 		}
-		existingChainID := sc.ChainID
-		// sidecar doesn't contain chain ID yet
-		// try loading it from genesis
-		if sc.ChainID == "" {
-			gen, err := app.LoadEvmGenesis(car)
-			if err != nil {
-				// unable to find chain id, skip
-				continue
+		if existingSc.VM == models.SubnetEvm {
+			existingChainID := existingSc.ChainID
+			// sidecar doesn't contain chain ID yet
+			// try loading it from genesis
+			if existingChainID == "" {
+				gen, err := app.LoadEvmGenesis(carName)
+				if err != nil {
+					// unable to find chain id, skip
+					continue
+				}
+				existingChainID = gen.Config.ChainID.String()
 			}
-			existingChainID = gen.Config.ChainID.String()
-		}
-		if existingChainID == chainID {
-			return true, nil
+			if existingChainID == chainID {
+				return true, nil
+			}
 		}
 	}
 
