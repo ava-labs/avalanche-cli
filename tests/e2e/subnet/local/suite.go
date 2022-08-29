@@ -16,7 +16,7 @@ const (
 	subnetName       = "e2eSubnetTest"
 	secondSubnetName = "e2eSecondSubnetTest"
 	genesisPath      = "tests/e2e/assets/test_genesis.json"
-    confPath         = "tests/e2e/assets/test_avalanche-cli.json"
+	confPath         = "tests/e2e/assets/test_avalanche-cli.json"
 )
 
 var _ = ginkgo.Describe("[Local Subnet]", func() {
@@ -86,7 +86,7 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
 		rpc := rpcs[0]
-        gomega.Expect(rpc).Should(gomega.HavePrefix("http://0.0.0.0:"))
+		gomega.Expect(rpc).Should(gomega.HavePrefix("http://0.0.0.0:"))
 
 		commands.DeleteSubnetConfig(subnetName)
 	})

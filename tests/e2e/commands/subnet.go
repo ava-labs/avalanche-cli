@@ -188,8 +188,8 @@ func DeploySubnetLocallyWithViperConf(subnetName string, confPath string) string
 		SubnetCmd,
 		"deploy",
 		"--local",
-        "--config",
-        confPath,
+		"--config",
+		confPath,
 		subnetName,
 	)
 	output, err := cmd.CombinedOutput()
