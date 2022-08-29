@@ -10,13 +10,14 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 type Publisher interface {
 	Publish(repoURL string, r *git.Repository, subnetName, vmName string, subnetYAML []byte, vmYAML []byte) error
-	AddRepo(url string) (*git.Repository, error)
+	GetRepo(url string) (*git.Repository, error)
 }
 
 type publisherImpl struct {
@@ -34,23 +35,24 @@ func NewPublisher(repoDir string) Publisher {
 }
 
 // TODO: this approach needs loading existing repos from disk
-func (p *publisherImpl) AddRepo(repoURL string) (*git.Repository, error) {
+func (p *publisherImpl) GetRepo(repoURL string) (repo *git.Repository, err error) {
 	name := GetRepoNameFromURL(repoURL)
 	u, err := url.Parse(repoURL)
 	if err != nil {
 		return nil, err
 	}
+	// TODO is this needed (or with different key/value)?
 	p.repos[name] = u
+
 	repoPath := filepath.Join(p.repoDir, name)
-	repo, err := git.PlainClone(repoPath, false, &git.CloneOptions{
+	// path exists
+	if _, err = os.Stat(repoPath); err == nil {
+		return git.PlainOpen(repoPath)
+	}
+	return git.PlainClone(repoPath, false, &git.CloneOptions{
 		URL:      repoURL,
 		Progress: os.Stdout,
 	})
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println("added")
-	return repo, nil
 }
 
 func (p *publisherImpl) Publish(
@@ -82,6 +84,8 @@ func (p *publisherImpl) Publish(
 		return err
 	}
 
+	ux.Logger.PrintToUser("Adding resources to local git repo...")
+
 	_, err = wt.Add("subnets")
 	if err != nil {
 		return err
@@ -92,6 +96,7 @@ func (p *publisherImpl) Publish(
 		return err
 	}
 
+	ux.Logger.PrintToUser("Committing resources to local git repo...")
 	now := time.Now()
 	commitStr := fmt.Sprintf("avalanche-commit-%s", now.String())
 	// TODO review these options
@@ -111,6 +116,7 @@ func (p *publisherImpl) Publish(
 		return err
 	}
 
+	ux.Logger.PrintToUser("Pushing to remote...")
 	return repo.Push(&git.PushOptions{})
 }
 

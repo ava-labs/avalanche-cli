@@ -62,6 +62,8 @@ func publish(cmd *cobra.Command, args []string) error {
 		vm      *types.VM
 	)
 
+	// TODO: Do we need to check if it has already been published?
+	// If yes, do we query the repo, do we write into the sidecar, ...?
 	if subnetDescPath == "" {
 		tsubnet, err = getSubnetInfo(sc)
 	} else {
@@ -93,13 +95,19 @@ func publish(cmd *cobra.Command, args []string) error {
 	// TODO Create a helper method on app
 	repoDir := filepath.Join(app.GetBaseDir(), "repos")
 	publisher := subnet.NewPublisher(repoDir)
-	// TODO: only if repo does not exist
-	repo, err := publisher.AddRepo(repoURL)
+	repo, err := publisher.GetRepo(repoURL)
 	if err != nil {
 		return err
 	}
 
-	return publisher.Publish(repoURL, repo, subnetName, vm.Alias, subnetYAML, vmYAML)
+	// TODO: if not published? New commit? Etc...
+	err = publisher.Publish(repoURL, repo, subnetName, vm.Alias, subnetYAML, vmYAML)
+	if err != nil {
+		return err
+	}
+
+	ux.Logger.PrintToUser("Successfully published")
+	return nil
 }
 
 // loadYAMLFile loads a YAML file from disk into a concrete types.Definition object
