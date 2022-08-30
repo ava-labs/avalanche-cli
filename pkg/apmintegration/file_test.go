@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/ava-labs/apm/types"
-	"github.com/ava-labs/avalanche-cli/internal/testutils"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -97,14 +96,11 @@ func TestGetRepos(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := require.New(t)
 
-			testDir, err := testutils.SetupTempTestDir()
-			assert.NoError(err)
-			defer testutils.CleanTempTestDir(testDir)
-
+			testDir := t.TempDir()
 			app := newTestApp(t, testDir)
 
 			repositoryDir := filepath.Join(testDir, "repositories")
-			err = os.Mkdir(repositoryDir, constants.DefaultPerms755)
+			err := os.Mkdir(repositoryDir, constants.DefaultPerms755)
 			assert.NoError(err)
 
 			// create repos
@@ -168,15 +164,12 @@ func TestGetSubnets(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := require.New(t)
 
-			testDir, err := testutils.SetupTempTestDir()
-			assert.NoError(err)
-			defer testutils.CleanTempTestDir(testDir)
-
+			testDir := t.TempDir()
 			app := newTestApp(t, testDir)
 
 			// Setup subnet directory
 			subnetPath := filepath.Join(testDir, "repositories", tt.org, tt.repo, "subnets")
-			err = os.MkdirAll(subnetPath, constants.DefaultPerms755)
+			err := os.MkdirAll(subnetPath, constants.DefaultPerms755)
 			assert.NoError(err)
 
 			// Create subnet files
@@ -201,15 +194,12 @@ func TestGetSubnets(t *testing.T) {
 func TestLoadSubnetFile_Success(t *testing.T) {
 	assert := require.New(t)
 
-	testDir, err := testutils.SetupTempTestDir()
-	assert.NoError(err)
-	defer testutils.CleanTempTestDir(testDir)
-
+	testDir := t.TempDir()
 	app := newTestApp(t, testDir)
 
 	// Setup subnet directory
 	subnetPath := filepath.Join(testDir, "repositories", org1, repo1, "subnets")
-	err = os.MkdirAll(subnetPath, constants.DefaultPerms755)
+	err := os.MkdirAll(subnetPath, constants.DefaultPerms755)
 	assert.NoError(err)
 
 	// Create subnet files
@@ -226,7 +216,7 @@ func TestLoadSubnetFile_Success(t *testing.T) {
 		VMs:         []string{"testvm1", "testvm2"},
 	}
 
-	loadedSubnet, err := LoadSubnetFile(app, makeKey(makeAlias(org1, repo1), subnet1))
+	loadedSubnet, err := LoadSubnetFile(app, MakeKey(makeAlias(org1, repo1), subnet1))
 	assert.NoError(err)
 	assert.Equal(expectedSubnet, loadedSubnet)
 }
@@ -234,15 +224,12 @@ func TestLoadSubnetFile_Success(t *testing.T) {
 func TestLoadSubnetFile_BadKey(t *testing.T) {
 	assert := require.New(t)
 
-	testDir, err := testutils.SetupTempTestDir()
-	assert.NoError(err)
-	defer testutils.CleanTempTestDir(testDir)
-
+	testDir := t.TempDir()
 	app := newTestApp(t, testDir)
 
 	// Setup subnet directory
 	subnetPath := filepath.Join(testDir, "repositories", org1, repo1, "subnets")
-	err = os.MkdirAll(subnetPath, constants.DefaultPerms755)
+	err := os.MkdirAll(subnetPath, constants.DefaultPerms755)
 	assert.NoError(err)
 
 	// Create subnet files
@@ -257,15 +244,12 @@ func TestLoadSubnetFile_BadKey(t *testing.T) {
 func TestGetVMsInSubnet(t *testing.T) {
 	assert := require.New(t)
 
-	testDir, err := testutils.SetupTempTestDir()
-	assert.NoError(err)
-	defer testutils.CleanTempTestDir(testDir)
-
+	testDir := t.TempDir()
 	app := newTestApp(t, testDir)
 
 	// Setup subnet directory
 	subnetPath := filepath.Join(testDir, "repositories", org1, repo1, "subnets")
-	err = os.MkdirAll(subnetPath, constants.DefaultPerms755)
+	err := os.MkdirAll(subnetPath, constants.DefaultPerms755)
 	assert.NoError(err)
 
 	// Create subnet files
@@ -275,7 +259,7 @@ func TestGetVMsInSubnet(t *testing.T) {
 
 	expectedVMs := []string{"testvm1", "testvm2"}
 
-	loadedVMs, err := getVMsInSubnet(app, makeKey(makeAlias(org1, repo1), subnet1))
+	loadedVMs, err := getVMsInSubnet(app, MakeKey(makeAlias(org1, repo1), subnet1))
 	assert.NoError(err)
 	assert.Equal(expectedVMs, loadedVMs)
 }
@@ -283,15 +267,12 @@ func TestGetVMsInSubnet(t *testing.T) {
 func TestLoadVMFile(t *testing.T) {
 	assert := require.New(t)
 
-	testDir, err := testutils.SetupTempTestDir()
-	assert.NoError(err)
-	defer testutils.CleanTempTestDir(testDir)
-
+	testDir := t.TempDir()
 	app := newTestApp(t, testDir)
 
 	// Setup vm directory
 	vmPath := filepath.Join(testDir, "repositories", org1, repo1, "vms")
-	err = os.MkdirAll(vmPath, constants.DefaultPerms755)
+	err := os.MkdirAll(vmPath, constants.DefaultPerms755)
 	assert.NoError(err)
 
 	// Create subnet files

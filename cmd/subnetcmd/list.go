@@ -24,7 +24,7 @@ func newListCmd() *cobra.Command {
 		Short: "List all created subnet configurations",
 		Long: `The subnet list command prints the names of all created subnet
 configurations.`,
-		RunE:         listGenesis,
+		RunE:         listSubnets,
 		SilenceUsage: true,
 	}
 }
@@ -37,7 +37,7 @@ func (c subnetMatrix) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
 // Compare strings by first key of the sub-slice
 func (c subnetMatrix) Less(i, j int) bool { return strings.Compare(c[i][0], c[j][0]) == -1 }
 
-func listGenesis(cmd *cobra.Command, args []string) error {
+func listSubnets(cmd *cobra.Command, args []string) error {
 	header := []string{"subnet", "chain", "chain ID", "type", "from repo", "", "deployed", ""}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)

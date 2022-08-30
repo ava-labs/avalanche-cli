@@ -127,6 +127,27 @@ func (_m *Prompter) CaptureExistingFilepath(promptStr string) (string, error) {
 	return r0, r1
 }
 
+// CaptureGitURL provides a mock function with given fields: promptStr
+func (_m *Prompter) CaptureGitURL(promptStr string) (string, error) {
+	ret := _m.Called(promptStr)
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(promptStr)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(promptStr)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // CaptureIndex provides a mock function with given fields: promptStr, options
 func (_m *Prompter) CaptureIndex(promptStr string, options []interface{}) (int, error) {
 	ret := _m.Called(promptStr, options)

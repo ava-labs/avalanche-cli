@@ -15,7 +15,14 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
-func EditConfigFile(app *application.Avalanche, subnetID string, networkID string, configFile string, forceWrite bool) error {
+// Edits an Avalanchego config file or creates one if it doesn't exist. Contains prompts unless forceWrite is set to true.
+func EditConfigFile(
+	app *application.Avalanche,
+	subnetID string,
+	networkID string,
+	configFile string,
+	forceWrite bool,
+) error {
 	if !forceWrite {
 		warn := "This will edit your existing config file. This edit is nondestructive,\n" +
 			"but it's always good to have a backup."

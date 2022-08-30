@@ -5,7 +5,6 @@ package testutils
 
 import (
 	"io"
-	"os"
 	"testing"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -17,12 +16,4 @@ func SetupTest(t *testing.T) *assert.Assertions {
 	// use io.Discard to not print anything
 	ux.NewUserLog(logging.NoLog{}, io.Discard)
 	return assert.New(t)
-}
-
-func SetupTempTestDir() (string, error) {
-	return os.MkdirTemp(os.TempDir(), "cli-test")
-}
-
-func CleanTempTestDir(testDir string) {
-	os.RemoveAll(testDir)
 }

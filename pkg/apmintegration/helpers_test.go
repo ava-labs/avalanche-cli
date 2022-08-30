@@ -25,6 +25,12 @@ func TestGetGithubOrg(t *testing.T) {
 			expectedErr: false,
 		},
 		{
+			name:        "Success",
+			url:         "github.com/ava-labs/avalanche-plugins-core.git",
+			expectedOrg: "ava-labs",
+			expectedErr: false,
+		},
+		{
 			name:        "No org",
 			url:         "avalanche-plugins-core",
 			expectedOrg: "",
@@ -35,7 +41,7 @@ func TestGetGithubOrg(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			org, err := getGithubOrg(tt.url)
+			org, err := getGitOrg(tt.url)
 			assert.Equal(tt.expectedOrg, org)
 			if tt.expectedErr {
 				assert.Error(err)
@@ -72,7 +78,7 @@ func TestGetGithubRepo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			repo, err := getGithubRepo(tt.url)
+			repo, err := getGitRepo(tt.url)
 			assert.Equal(tt.expectedRepo, repo)
 			if tt.expectedErr {
 				assert.Error(err)
@@ -92,4 +98,26 @@ func TestGetAlias(t *testing.T) {
 	alias, err := getAlias(url)
 	assert.NoError(err)
 	assert.Equal(expectedAlias, alias)
+}
+
+func TestSplitKey(t *testing.T) {
+	assert := assert.New(t)
+
+	key := "ava-labs/avalanche-plugins-core:wagmi"
+	expectedAlias := "ava-labs/avalanche-plugins-core"
+	expectedSubnet := "wagmi"
+
+	alias, subnet, err := splitKey(key)
+	assert.NoError(err)
+	assert.Equal(expectedAlias, alias)
+	assert.Equal(expectedSubnet, subnet)
+}
+
+func TestSplitKey_Errpr(t *testing.T) {
+	assert := assert.New(t)
+
+	key := "ava-labs/avalanche-plugins-core_wagmi"
+
+	_, _, err := splitKey(key)
+	assert.ErrorContains(err, "invalid subnet key:")
 }

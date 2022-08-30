@@ -4,7 +4,6 @@
 package apmintegration
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/ava-labs/apm/apm"
@@ -29,6 +28,7 @@ func SetupApm(app *application.Avalanche, apmBaseDir string) error {
 		return err
 	}
 
+	// Need to initialize a afero filesystem object to run apm
 	fs := afero.NewOsFs()
 
 	err = os.MkdirAll(app.GetAPMPluginDir(), constants.DefaultPerms755)
@@ -45,7 +45,6 @@ func SetupApm(app *application.Avalanche, apmBaseDir string) error {
 	}
 	defer apmLog.Close()
 	os.Stdout = apmLog
-	fmt.Println("testing log print")
 	apmConfig := apm.Config{
 		Directory:        apmBaseDir,
 		Auth:             credentials,

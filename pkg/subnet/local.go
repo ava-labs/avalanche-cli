@@ -101,15 +101,15 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 
 // doDeploy the actual deployment to the network runner
 // steps:
-// - checks if the network has been started
-// - install all needed plugin binaries, for the the new VM, and the already deployed VMs
-// - either starts a network from the default snapshot if not started,
-//   or restarts the already available network while preserving state
-// - waits completion of operation
-// - get from the network an available subnet ID to be used in blockchain creation
-// - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
-// - waits completion of operation
-// - show status
+//   - checks if the network has been started
+//   - install all needed plugin binaries, for the the new VM, and the already deployed VMs
+//   - either starts a network from the default snapshot if not started,
+//     or restarts the already available network while preserving state
+//   - waits completion of operation
+//   - get from the network an available subnet ID to be used in blockchain creation
+//   - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
+//   - waits completion of operation
+//   - show status
 func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, error) {
 	avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
 	if err != nil {

@@ -6,11 +6,11 @@ package apmintegration
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
+	"path"
 	"strings"
 )
 
-func getGithubOrg(url string) (string, error) {
+func getGitOrg(url string) (string, error) {
 	split := strings.Split(url, "/")
 
 	if len(split) < 3 {
@@ -20,32 +20,42 @@ func getGithubOrg(url string) (string, error) {
 	return split[len(split)-2], nil
 }
 
-func getGithubRepo(url string) (string, error) {
-	base := filepath.Base(url)
-	if base[len(base)-4:] != ".git" {
+func getGitRepo(url string) (string, error) {
+	base := path.Base(url)
+	if path.Ext(base) != ".git" {
 		return "", errors.New("unable to find repo name")
 	}
-	return base[:len(base)-4], nil
+	return strings.TrimSuffix(base, path.Ext(base)), nil
 }
 
 func getAlias(url string) (string, error) {
-	org, err := getGithubOrg(url)
+	org, err := getGitOrg(url)
 	if err != nil {
 		return "", fmt.Errorf("unable to create alias: %w", err)
 	}
 
-	repo, err := getGithubRepo(url)
+	repo, err := getGitRepo(url)
 	if err != nil {
 		return "", fmt.Errorf("unable to create alias: %w", err)
 	}
 
-	return org + "/" + repo, nil
+	return makeAlias(org, repo), nil
 }
 
 func makeAlias(org, repo string) string {
 	return org + "/" + repo
 }
 
-func makeKey(alias, subnet string) string {
+func MakeKey(alias, subnet string) string {
 	return alias + ":" + subnet
+}
+
+func splitKey(subnetKey string) (string, string, error) {
+	splitSubnet := strings.Split(subnetKey, ":")
+	if len(splitSubnet) != 2 {
+		return "", "", fmt.Errorf("invalid subnet key: %s", subnetKey)
+	}
+	repo := splitSubnet[0]
+	subnetName := splitSubnet[1]
+	return repo, subnetName, nil
 }

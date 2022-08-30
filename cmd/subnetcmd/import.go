@@ -118,14 +118,14 @@ func importFromAPM() error {
 	installedRepos = append(installedRepos, customRepo)
 
 	promptStr := "What repo would you like to import from"
-	repo, err := app.Prompt.CaptureList(promptStr, installedRepos)
+	repoAlias, err := app.Prompt.CaptureList(promptStr, installedRepos)
 	if err != nil {
 		return err
 	}
 
-	if repo == customRepo {
+	if repoAlias == customRepo {
 		promptStr = "Enter your repo URL"
-		repoURL, err := app.Prompt.CaptureString(promptStr)
+		repoURL, err := app.Prompt.CaptureGitURL(promptStr)
 		if err != nil {
 			return err
 		}
@@ -140,7 +140,7 @@ func importFromAPM() error {
 			return err
 		}
 
-		repo, err = apmintegration.AddRepo(app, repoURL, branch)
+		repoAlias, err = apmintegration.AddRepo(app, repoURL, branch)
 		if err != nil {
 			return err
 		}
@@ -151,7 +151,7 @@ func importFromAPM() error {
 		}
 	}
 
-	subnets, err := apmintegration.GetSubnets(app, repo)
+	subnets, err := apmintegration.GetSubnets(app, repoAlias)
 	if err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func importFromAPM() error {
 		return err
 	}
 
-	subnetKey := repo + ":" + subnet
+	subnetKey := apmintegration.MakeKey(repoAlias, subnet)
 
 	// Populate the sidecar and create a genesis
 	subnetDescr, err := apmintegration.LoadSubnetFile(app, subnetKey)
@@ -172,7 +172,13 @@ func importFromAPM() error {
 
 	var vmType models.VMType = models.CustomVM
 
-	vmDescr, err := apmintegration.LoadVMFile(app, repo, subnetDescr.VMs[0])
+	if len(subnetDescr.VMs) == 0 {
+		return errors.New("no vms found in the given subnet")
+	} else if len(subnetDescr.VMs) == 0 {
+		return errors.New("multiple vm subnets not supported")
+	}
+
+	vmDescr, err := apmintegration.LoadVMFile(app, repoAlias, subnetDescr.VMs[0])
 	if err != nil {
 		return err
 	}
@@ -192,8 +198,7 @@ func importFromAPM() error {
 
 	ux.Logger.PrintToUser("Selected subnet, installing " + subnetKey)
 
-	err = apmintegration.InstallVM(app, subnetKey)
-	if err != nil {
+	if err = apmintegration.InstallVM(app, subnetKey); err != nil {
 		return err
 	}
 

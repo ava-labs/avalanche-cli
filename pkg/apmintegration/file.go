@@ -4,7 +4,6 @@
 package apmintegration
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,7 +44,8 @@ func GetSubnets(app *application.Avalanche, repoAlias string) ([]string, error) 
 	}
 	subnetOptions := make([]string, len(subnets))
 	for i, subnet := range subnets {
-		subnetOptions[i] = subnet.Name()[:len(subnet.Name())-5]
+		// Remove the .yaml extension
+		subnetOptions[i] = strings.TrimSuffix(subnet.Name(), filepath.Ext(subnet.Name()))
 	}
 
 	return subnetOptions, nil
@@ -60,14 +60,12 @@ type VMWrapper struct {
 }
 
 func LoadSubnetFile(app *application.Avalanche, subnetKey string) (types.Subnet, error) {
-	splitSubnet := strings.Split(subnetKey, ":")
-	if len(splitSubnet) != 2 {
-		return types.Subnet{}, fmt.Errorf("invalid subnet key: %s", subnetKey)
+	repoAlias, subnetName, err := splitKey(subnetKey)
+	if err != nil {
+		return types.Subnet{}, err
 	}
-	repo := splitSubnet[0]
-	subnetName := splitSubnet[1]
 
-	subnetYamlPath := filepath.Join(app.ApmDir, "repositories", repo, "subnets", subnetName+".yaml")
+	subnetYamlPath := filepath.Join(app.ApmDir, "repositories", repoAlias, "subnets", subnetName+".yaml")
 	var subnetWrapper SubnetWrapper
 
 	subnetYamlBytes, err := os.ReadFile(subnetYamlPath)

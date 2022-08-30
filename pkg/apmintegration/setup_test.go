@@ -8,20 +8,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ava-labs/avalanche-cli/internal/testutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSetupAPM(t *testing.T) {
 	assert := require.New(t)
-	testDir, err := testutils.SetupTempTestDir()
-	assert.NoError(err)
-	defer testutils.CleanTempTestDir(testDir)
-
+	testDir := t.TempDir()
 	app := newTestApp(t, testDir)
 
-	err = os.MkdirAll(filepath.Dir(app.GetAPMLog()), constants.DefaultPerms755)
+	err := os.MkdirAll(filepath.Dir(app.GetAPMLog()), constants.DefaultPerms755)
 	assert.NoError(err)
 
 	err = SetupApm(app, testDir)
