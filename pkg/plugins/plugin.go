@@ -13,11 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/utils"
 )
 
-const (
-	subnetEvm = "SubnetEVM"
-	customVM  = "Custom"
-)
-
 // Downloads the subnet's VM (if necessary) and copies it into the plugin directory
 func CreatePlugin(app *application.Avalanche, subnetName string, pluginDir string) (string, error) {
 	sc, err := app.LoadSidecar(subnetName)

@@ -271,7 +271,6 @@ func (app *Avalanche) SubnetEvmChainIDExists(chainID string) (bool, error) {
 		return false, nil
 	}
 	sidecarNames, err := app.GetSidecarNames()
-
 	if err != nil {
 		return false, err
 	}
