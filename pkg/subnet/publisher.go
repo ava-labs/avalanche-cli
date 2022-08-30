@@ -63,12 +63,12 @@ func (p *publisherImpl) Publish(
 	// TODO: Use constants
 	subnetPath := filepath.Join(p.repoPath, "subnets", subnetName)
 	vmPath := filepath.Join(p.repoPath, "vms", vmName)
-	err = os.WriteFile(subnetPath, subnetYAML, constants.DefaultPerms755) //nolint:gosec
+	err = os.WriteFile(subnetPath, subnetYAML, constants.DefaultPerms755)
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile(vmPath, vmYAML, constants.DefaultPerms755) //nolint:gosec
+	err = os.WriteFile(vmPath, vmYAML, constants.DefaultPerms755)
 	if err != nil {
 		return err
 	}
