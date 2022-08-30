@@ -74,7 +74,7 @@ func createApp(cmd *cobra.Command, args []string) error {
 	}
 	cf := config.New()
 	app.Setup(baseDir, log, cf, prompts.NewPrompter())
-	cobra.OnInitialize(initConfig)
+	initConfig()
 	return nil
 }
 
@@ -144,7 +144,7 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 	log, err := factory.Make("avalanche")
 	if err != nil {
 		factory.Close()
-		return nil, fmt.Errorf("failed setting up logging, exiting: %s", err)
+		return nil, fmt.Errorf("failed setting up logging, exiting: %w", err)
 	}
 	// create the user facing logger as a global var
 	ux.NewUserLog(log, os.Stdout)

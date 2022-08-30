@@ -72,7 +72,7 @@ subnet and deploy it on Fuji or Mainnet.`,
 func getChainsInSubnet(subnetName string) ([]string, error) {
 	files, err := os.ReadDir(app.GetBaseDir())
 	if err != nil {
-		return []string{}, fmt.Errorf("failed to read baseDir :%w", err)
+		return []string{}, fmt.Errorf("failed to read baseDir: %w", err)
 	}
 
 	chains := []string{}
@@ -432,12 +432,12 @@ func getThreshold(maxLen int) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	intTh, err := strconv.Atoi(threshold)
+	intTh, err := strconv.ParseUint(threshold, 0, 32)
 	if err != nil {
 		return 0, err
 	}
 	// this now should technically not happen anymore, but let's leave it as a double stitch
-	if intTh > maxLen {
+	if int(intTh) > maxLen {
 		return 0, fmt.Errorf("the threshold can't be bigger than the number of control keys")
 	}
 	return uint32(intTh), err
@@ -447,7 +447,7 @@ func validateSubnetNameAndGetChains(args []string) ([]string, error) {
 	// this should not be necessary but some bright guy might just be creating
 	// the genesis by hand or something...
 	if err := checkInvalidSubnetNames(args[0]); err != nil {
-		return nil, fmt.Errorf("subnet name %s is invalid: %s", args[0], err)
+		return nil, fmt.Errorf("subnet name %s is invalid: %w", args[0], err)
 	}
 	// Check subnet exists
 	// TODO create a file that lists chains by subnet for fast querying
