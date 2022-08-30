@@ -187,7 +187,7 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 	genesis := chain.DefaultGenesis()
 	genesis.Magic = magic
 
-	customAllocs := []*chain.CustomAllocation{}
+	customAllocs := make([]*chain.CustomAllocation, 0, len(allocs))
 	for address, account := range allocs {
 		alloc := &chain.CustomAllocation{
 			Address: address,
