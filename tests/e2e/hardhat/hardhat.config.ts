@@ -6,9 +6,11 @@ import { existsSync } from "fs"
 
 // Import the dynamic rpc url if the file exists
 let rpcUrl = ""
-if (existsSync("./dynamic_rpc.json")) {
-  const importedRpc = require("./dynamic_rpc.json")
-  rpcUrl = importedRpc.rpc
+let chainIdStr = ""
+if (existsSync("./dynamic_conf.json")) {
+  const importedConf = require("./dynamic_conf.json")
+  rpcUrl = importedConf.rpc
+  chainIdStr = importedConf.chainID
 }
 
 // You need to export an object to set up your config
@@ -20,7 +22,7 @@ const config: HardhatUserConfig = {
     subnet: {
       //"http://{ip}:{port}/ext/bc/{chainID}/rpc
       url: rpcUrl,
-      chainId: 99999,
+      chainId: parseInt(chainIdStr, 10),
       accounts: [
         "0x56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027",
         "0x7b4198529994b0dc604278c99d153cfd069d594753d471171a1d102a10438e07",

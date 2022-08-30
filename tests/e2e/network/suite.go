@@ -13,8 +13,7 @@ import (
 )
 
 const (
-	subnetName  = "e2eSubnetTest"
-	genesisPath = "tests/e2e/assets/test_genesis.json"
+	subnetName = "e2eSubnetTest"
 )
 
 var _ = ginkgo.Describe("[Network]", func() {
@@ -25,7 +24,7 @@ var _ = ginkgo.Describe("[Network]", func() {
 	})
 
 	ginkgo.It("can stop and restart a deployed subnet", func() {
-		commands.CreateSubnetConfig(subnetName, genesisPath)
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {

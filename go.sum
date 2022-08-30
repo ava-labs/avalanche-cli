@@ -62,6 +62,8 @@ github.com/ava-labs/avalanchego v1.7.18 h1:x4PrTKIyUZkxhPjjf/a4hQLZDUB8netA6oFMw
 github.com/ava-labs/avalanchego v1.7.18/go.mod h1:Jo21X9sMxvkZNoo8B7GJbbelGrIJbwFPcMhwanink68=
 github.com/ava-labs/coreth v0.8.16-rc.2 h1:Yo6J5faqK9sdnp7yzTIIEGodZqPctvy9l4SLRTVTWck=
 github.com/ava-labs/coreth v0.8.16-rc.2/go.mod h1:iOB8EcOy/9yY1+/MAUqI2UM5GUIuIbX2MVKK1gCHqHs=
+github.com/ava-labs/spacesvm v0.0.7 h1:ogyKczgIpM9nx2kedYe94qrqVJXsS6TIFYr4LUjfe38=
+github.com/ava-labs/spacesvm v0.0.7/go.mod h1:tuPg2cE2MxJakRXXtwjRyTwxg+ZrseOVRG9e2J67USM=
 github.com/ava-labs/subnet-evm v0.2.7 h1:ZmiDR6s4TtwgQ7o3fUZ+3nSvxMsI9jdRnAfYZBKtRhs=
 github.com/ava-labs/subnet-evm v0.2.7/go.mod h1:TLmqEeA8T4qKFZqIV+Kl7Uoo7xFVutU+VHQhc0sdIRg=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
@@ -284,6 +286,8 @@ github.com/huin/goupnp v1.0.3/go.mod h1:ZxNlw5WqJj6wSsRK5+YfflQGXYfccj5VgQsMNixH
 github.com/huin/goutil v0.0.0-20170803182201-1ca381bf3150/go.mod h1:PpLOETDnJ0o3iZrZfqZzyLl6l7F3c6L1oWn7OICBi6o=
 github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
 github.com/ianlancetaylor/demangle v0.0.0-20200824232613-28f6c0f3b639/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
+github.com/inconshreveable/log15 v0.0.0-20201112154412-8562bdadbbac h1:n1DqxAo4oWPMvH1+v+DLYlMCecgumhhgnxAPdqDIFHI=
+github.com/inconshreveable/log15 v0.0.0-20201112154412-8562bdadbbac/go.mod h1:cOaXtrgN4ScfRrD9Bre7U1thNq5RtJ8ZoP4iXVGRj6o=
 github.com/inconshreveable/mousetrap v1.0.0 h1:Z8tu5sraLXCXIcARxBp/8cbvlwVa7Z1NHg9XEKhtSvM=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/jackpal/gateway v1.0.6 h1:/MJORKvJEwNVldtGVJC2p2cwCnsSoLn3hl3zxmZT7tk=

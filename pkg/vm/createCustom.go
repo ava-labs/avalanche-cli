@@ -15,7 +15,7 @@ func CreateCustomSubnetConfig(app *application.Avalanche, subnetName string, gen
 
 	genesisBytes, err := loadCustomGenesis(app, genesisPath)
 	if err != nil {
-		return []byte{}, &models.Sidecar{}, err
+		return nil, &models.Sidecar{}, err
 	}
 
 	sc := &models.Sidecar{
@@ -35,7 +35,7 @@ func loadCustomGenesis(app *application.Avalanche, genesisPath string) ([]byte, 
 	if genesisPath == "" {
 		genesisPath, err = app.Prompt.CaptureExistingFilepath("Enter path to custom genesis")
 		if err != nil {
-			return []byte{}, err
+			return nil, err
 		}
 	}
 

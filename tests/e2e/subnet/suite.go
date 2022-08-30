@@ -10,21 +10,23 @@ import (
 	"github.com/onsi/gomega"
 )
 
-const (
-	subnetName  = "e2eSubnetTest"
-	genesisPath = "tests/e2e/assets/test_genesis.json"
-)
+const subnetName = "e2eSubnetTest"
 
 var _ = ginkgo.Describe("[Subnet]", func() {
-	ginkgo.It("can create and delete a subnet config", func() {
-		commands.CreateSubnetConfig(subnetName, genesisPath)
+	ginkgo.It("can create and delete a subnet evm config", func() {
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+		commands.DeleteSubnetConfig(subnetName)
+	})
+
+	ginkgo.It("can create and delete a spacesvm config", func() {
+		commands.CreateSpacesVMConfig(subnetName, utils.SpacesVMGenesisPath)
 		commands.DeleteSubnetConfig(subnetName)
 	})
 
 	ginkgo.It("can create and delete a custom vm subnet config", func() {
 		customVMPath, err := utils.DownloadCustomVMBin()
 		gomega.Expect(err).Should(gomega.BeNil())
-		commands.CreateCustomVMSubnetConfig(subnetName, genesisPath, customVMPath)
+		commands.CreateCustomVMConfig(subnetName, utils.SubnetEvmGenesisPath, customVMPath)
 		commands.DeleteSubnetConfig(subnetName)
 		exists, err := utils.SubnetCustomVMExists(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())

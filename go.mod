@@ -27,6 +27,7 @@ require (
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/VictoriaMetrics/fastcache v1.10.0 // indirect
 	github.com/aead/siphash v1.0.1 // indirect
+	github.com/ava-labs/spacesvm v0.0.7 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd v0.23.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
@@ -70,6 +71,7 @@ require (
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
 	github.com/holiman/uint256 v1.2.0 // indirect
 	github.com/huin/goupnp v1.0.3 // indirect
+	github.com/inconshreveable/log15 v0.0.0-20201112154412-8562bdadbbac // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jackpal/gateway v1.0.6 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
