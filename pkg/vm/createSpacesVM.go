@@ -65,18 +65,19 @@ func CreateSpacesVMSubnetConfig(
 	if genesisPath == "" {
 		genesisBytes, sc, err = createSpacesVMGenesis(app, subnetName, spacesVMVersion)
 		if err != nil {
-			return []byte{}, &models.Sidecar{}, err
+			return nil, &models.Sidecar{}, err
 		}
 	} else {
 		ux.Logger.PrintToUser("Importing genesis")
 		genesisBytes, err = os.ReadFile(genesisPath)
 		if err != nil {
-			return []byte{}, &models.Sidecar{}, err
+			return nil, &models.Sidecar{}, err
 		}
 
+		// don't need the direction return value here, as we are not inside a state machine prompting loop
 		spacesVMVersion, _, err = getVMVersion(app, "Spaces VM", constants.SpacesVMRepoName, spacesVMVersion, false)
 		if err != nil {
-			return []byte{}, &models.Sidecar{}, err
+			return nil, &models.Sidecar{}, err
 		}
 
 		sc = &models.Sidecar{
@@ -88,18 +89,6 @@ func CreateSpacesVMSubnetConfig(
 	}
 
 	return genesisBytes, sc, nil
-}
-
-func useDefaultGenesis(app *application.Avalanche) (bool, error) {
-	useDefault := "Yes"
-	useCustom := "Set custom"
-
-	options := []string{useDefault, useCustom}
-	option, err := app.Prompt.CaptureList("Use default genesis?", options)
-	if err != nil {
-		return false, err
-	}
-	return option == useDefault, nil
 }
 
 func getMagic(app *application.Avalanche) (uint64, stateDirection, error) {
@@ -143,7 +132,6 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 	ux.Logger.PrintToUser("creating subnet %s", subnetName)
 
 	const (
-		startState   = "start"
 		genesisState = "genesis"
 		magicState   = "magic"
 		versionState = "version"
@@ -163,14 +151,14 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 	}
 	state, err := spaceVMState.currentState()
 	if err != nil {
-		return []byte{}, nil, err
+		return nil, nil, err
 	}
 	for state != doneState {
 		switch state {
 		case genesisState:
 			direction = forward
 			var useDefault bool
-			useDefault, err = useDefaultGenesis(app)
+			useDefault, err = app.Prompt.CaptureYesNo("Use default genesis?")
 			if useDefault {
 				magic, version, allocs, err = getDefaultGenesisValues()
 				if err == nil {
@@ -188,11 +176,11 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 			err = errors.New("invalid creation stage")
 		}
 		if err != nil {
-			return []byte{}, nil, err
+			return nil, nil, err
 		}
 		state, err = spaceVMState.nextState(direction)
 		if err != nil {
-			return []byte{}, nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -201,17 +189,17 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 
 	customAllocs := []*chain.CustomAllocation{}
 	for address, account := range allocs {
-		alloc := chain.CustomAllocation{
+		alloc := &chain.CustomAllocation{
 			Address: address,
 			Balance: account.Balance.Uint64(),
 		}
-		customAllocs = append(customAllocs, &alloc)
+		customAllocs = append(customAllocs, alloc)
 	}
 	genesis.CustomAllocation = customAllocs
 
 	jsonBytes, err := json.MarshalIndent(genesis, "", "    ")
 	if err != nil {
-		return []byte{}, nil, err
+		return nil, nil, err
 	}
 
 	sc := &models.Sidecar{

@@ -62,7 +62,7 @@ func getVMVersion(
 			return "", stop, err
 		}
 	} else if vmVersion == "" {
-		vmVersion, direction, err = getManualVMVersion(app, vmName, repoName, addGoBackOption)
+		vmVersion, direction, err = askForVMVersion(app, vmName, repoName, addGoBackOption)
 		if err != nil {
 			return "", stop, err
 		}
@@ -70,7 +70,7 @@ func getVMVersion(
 	return vmVersion, direction, nil
 }
 
-func getManualVMVersion(
+func askForVMVersion(
 	app *application.Avalanche,
 	vmName string,
 	repoName string,

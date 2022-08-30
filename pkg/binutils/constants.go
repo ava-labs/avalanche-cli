@@ -10,6 +10,9 @@ const (
 	gRPCGatewayEndpoint = ":8098"
 	gRPCDialTimeout     = 10 * time.Second
 
+	subnetEVMBin = "subnet-evm"
+	spacesVMBin  = "spacesvm"
+
 	avalanchegoBinPrefix = "avalanchego-"
 	subnetEVMBinPrefix   = "subnet-evm-"
 	spacesVMBinPrefix    = "spacesvm-"

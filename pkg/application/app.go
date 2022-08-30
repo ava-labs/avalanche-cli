@@ -157,7 +157,7 @@ func (app *Avalanche) LoadRawGenesis(subnetName string) ([]byte, error) {
 	genesisPath := app.GetGenesisPath(subnetName)
 	genesisBytes, err := os.ReadFile(genesisPath)
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
 
 	return genesisBytes, err

@@ -28,5 +28,5 @@ func SetupSpacesVM(app *application.Avalanche, spacesVMVersion string) (string, 
 		downloader,
 		installer,
 	)
-	return filepath.Join(vmDir, "spacesvm"), err
+	return filepath.Join(vmDir, spacesVMBin), err
 }

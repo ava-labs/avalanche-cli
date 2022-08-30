@@ -49,10 +49,10 @@ type LocalDeployer struct {
 	backendStartedHere  bool
 	setDefaultSnapshot  setDefaultSnapshotFunc
 	avagoVersion        string
-	vmDir               string
+	vmBin               string
 }
 
-func NewLocalDeployer(app *application.Avalanche, avagoVersion string, vmDir string) *LocalDeployer {
+func NewLocalDeployer(app *application.Avalanche, avagoVersion string, vmBin string) *LocalDeployer {
 	return &LocalDeployer{
 		procChecker:         binutils.NewProcessChecker(),
 		binChecker:          binutils.NewBinaryChecker(),
@@ -62,7 +62,7 @@ func NewLocalDeployer(app *application.Avalanche, avagoVersion string, vmDir str
 		app:                 app,
 		setDefaultSnapshot:  SetDefaultSnapshot,
 		avagoVersion:        avagoVersion,
-		vmDir:               vmDir,
+		vmBin:               vmBin,
 	}
 }
 
@@ -150,7 +150,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		return ids.Empty, ids.Empty, nil
 	}
 
-	if err := d.installPlugin(chainVMID, d.vmDir, pluginDir); err != nil {
+	if err := d.installPlugin(chainVMID, d.vmBin, pluginDir); err != nil {
 		return ids.Empty, ids.Empty, err
 	}
 

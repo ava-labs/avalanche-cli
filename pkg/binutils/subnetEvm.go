@@ -28,5 +28,5 @@ func SetupSubnetEVM(app *application.Avalanche, subnetEVMVersion string) (string
 		downloader,
 		installer,
 	)
-	return filepath.Join(vmDir, "subnet-evm"), err
+	return filepath.Join(vmDir, subnetEVMBin), err
 }

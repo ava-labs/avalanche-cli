@@ -47,18 +47,18 @@ func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesi
 	if genesisPath == "" {
 		genesisBytes, sc, err = createEvmGenesis(app, subnetName, subnetEVMVersion)
 		if err != nil {
-			return []byte{}, &models.Sidecar{}, err
+			return nil, &models.Sidecar{}, err
 		}
 	} else {
 		ux.Logger.PrintToUser("Importing genesis")
 		genesisBytes, err = os.ReadFile(genesisPath)
 		if err != nil {
-			return []byte{}, &models.Sidecar{}, err
+			return nil, &models.Sidecar{}, err
 		}
 
 		subnetEVMVersion, _, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion, false)
 		if err != nil {
-			return []byte{}, &models.Sidecar{}, err
+			return nil, &models.Sidecar{}, err
 		}
 
 		sc = &models.Sidecar{
@@ -118,7 +118,7 @@ func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVe
 			err = errors.New("invalid creation stage")
 		}
 		if err != nil {
-			return []byte{}, nil, err
+			return nil, nil, err
 		}
 		stage = nextStage(stage, direction)
 	}
@@ -132,13 +132,13 @@ func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVe
 
 	jsonBytes, err := genesis.MarshalJSON()
 	if err != nil {
-		return []byte{}, nil, err
+		return nil, nil, err
 	}
 
 	var prettyJSON bytes.Buffer
 	err = json.Indent(&prettyJSON, jsonBytes, "", "    ")
 	if err != nil {
-		return []byte{}, nil, err
+		return nil, nil, err
 	}
 
 	sc := &models.Sidecar{

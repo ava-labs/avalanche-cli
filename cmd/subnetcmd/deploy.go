@@ -72,7 +72,7 @@ subnet and deploy it on Fuji or Mainnet.`,
 func getChainsInSubnet(subnetName string) ([]string, error) {
 	files, err := os.ReadDir(app.GetBaseDir())
 	if err != nil {
-		return []string{}, fmt.Errorf("failed to read baseDir: %w", err)
+		return nil, fmt.Errorf("failed to read baseDir: %w", err)
 	}
 
 	chains := []string{}
@@ -83,13 +83,13 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 			path := filepath.Join(app.GetBaseDir(), f.Name())
 			jsonBytes, err := os.ReadFile(path)
 			if err != nil {
-				return []string{}, fmt.Errorf("failed reading file %s: %w", path, err)
+				return nil, fmt.Errorf("failed reading file %s: %w", path, err)
 			}
 
 			var sc models.Sidecar
 			err = json.Unmarshal(jsonBytes, &sc)
 			if err != nil {
-				return []string{}, fmt.Errorf("failed unmarshaling file %s: %w", path, err)
+				return nil, fmt.Errorf("failed unmarshaling file %s: %w", path, err)
 			}
 			if sc.Subnet == subnetName {
 				chains = append(chains, sc.Name)
@@ -170,25 +170,25 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		app.Log.Debug("Deploy local")
 
 		// copy vm binary to the expected location, first downloading it if necessary
-		var vmDir string
+		var vmBin string
 		switch sidecar.VM {
 		case models.SubnetEvm:
-			vmDir, err = binutils.SetupSubnetEVM(app, sidecar.VMVersion)
+			vmBin, err = binutils.SetupSubnetEVM(app, sidecar.VMVersion)
 			if err != nil {
 				return fmt.Errorf("failed to install subnet-evm: %w", err)
 			}
 		case models.SpacesVM:
-			vmDir, err = binutils.SetupSpacesVM(app, sidecar.VMVersion)
+			vmBin, err = binutils.SetupSpacesVM(app, sidecar.VMVersion)
 			if err != nil {
 				return fmt.Errorf("failed to install spacesvm: %w", err)
 			}
 		case models.CustomVM:
-			vmDir = binutils.SetupCustomBin(app, chain)
+			vmBin = binutils.SetupCustomBin(app, chain)
 		default:
 			return fmt.Errorf("unknown vm: %s", sidecar.VM)
 		}
 
-		deployer := subnet.NewLocalDeployer(app, avagoVersion, vmDir)
+		deployer := subnet.NewLocalDeployer(app, avagoVersion, vmBin)
 		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
 		if err != nil {
 			if deployer.BackendStartedHere() {
