@@ -4,59 +4,52 @@ package subnet
 
 import (
 	"fmt"
-	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 type Publisher interface {
-	Publish(repoURL string, r *git.Repository, subnetName, vmName string, subnetYAML []byte, vmYAML []byte) error
-	GetRepo(url string) (*git.Repository, error)
+	Publish(r *git.Repository, subnetName, vmName string, subnetYAML []byte, vmYAML []byte) error
+	GetRepo() (*git.Repository, error)
 }
 
 type publisherImpl struct {
-	repoDir string
-	repos   map[string]*url.URL
+	alias    string
+	repoDir  string
+	repoURL  string
+	repoPath string
 }
 
 var _ Publisher = &publisherImpl{}
 
-func NewPublisher(repoDir string) Publisher {
+func NewPublisher(repoDir, repoURL, alias string) Publisher {
+	repoPath := filepath.Join(repoDir, alias)
 	return &publisherImpl{
-		repos:   make(map[string]*url.URL),
-		repoDir: repoDir,
+		alias:    alias,
+		repoDir:  repoDir,
+		repoURL:  repoURL,
+		repoPath: repoPath,
 	}
 }
 
-// TODO: this approach needs loading existing repos from disk
-func (p *publisherImpl) GetRepo(repoURL string) (repo *git.Repository, err error) {
-	name := GetRepoNameFromURL(repoURL)
-	u, err := url.Parse(repoURL)
-	if err != nil {
-		return nil, err
-	}
-	// TODO is this needed (or with different key/value)?
-	p.repos[name] = u
-
-	repoPath := filepath.Join(p.repoDir, name)
+func (p *publisherImpl) GetRepo() (repo *git.Repository, err error) {
 	// path exists
-	if _, err = os.Stat(repoPath); err == nil {
-		return git.PlainOpen(repoPath)
+	if _, err = os.Stat(p.repoPath); err == nil {
+		return git.PlainOpen(p.repoPath)
 	}
-	return git.PlainClone(repoPath, false, &git.CloneOptions{
-		URL:      repoURL,
+	return git.PlainClone(p.repoPath, false, &git.CloneOptions{
+		URL:      p.repoURL,
 		Progress: os.Stdout,
 	})
 }
 
 func (p *publisherImpl) Publish(
-	repoURL string,
 	repo *git.Repository,
 	subnetName, vmName string,
 	subnetYAML []byte,
@@ -66,20 +59,16 @@ func (p *publisherImpl) Publish(
 	if err != nil {
 		return err
 	}
-
-	// TODO: There needs to be a better way to get to the repo path?
-	name := GetRepoNameFromURL(repoURL)
-	repoPath := filepath.Join(p.repoDir, name)
 	// TODO: This might not always be the right path!
 	// TODO: Use constants
-	subnetPath := filepath.Join(repoPath, "subnets", subnetName)
-	vmPath := filepath.Join(repoPath, "vms", vmName)
-	err = os.WriteFile(subnetPath, subnetYAML, 0o644) //nolint:gosec
+	subnetPath := filepath.Join(p.repoPath, "subnets", subnetName)
+	vmPath := filepath.Join(p.repoPath, "vms", vmName)
+	err = os.WriteFile(subnetPath, subnetYAML, constants.DefaultPerms755) //nolint:gosec
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile(vmPath, vmYAML, 0o644) //nolint:gosec
+	err = os.WriteFile(vmPath, vmYAML, constants.DefaultPerms755) //nolint:gosec
 	if err != nil {
 		return err
 	}
@@ -118,10 +107,4 @@ func (p *publisherImpl) Publish(
 
 	ux.Logger.PrintToUser("Pushing to remote...")
 	return repo.Push(&git.PushOptions{})
-}
-
-// TODO: Should we just prompt for a name instead?
-func GetRepoNameFromURL(url string) string {
-	// TODO: this isn't probably how we'd want to store this
-	return path.Base(url)
 }

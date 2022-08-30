@@ -75,4 +75,6 @@ const (
 
 	// #nosec G101
 	GithubAPITokenEnvVarName = "GITHUB_TOKEN"
+
+	ReposDir = "repos"
 )
