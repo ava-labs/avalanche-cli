@@ -9,6 +9,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 )
 
@@ -38,12 +39,12 @@ func CreatePlugin(app *application.Avalanche, subnetName string, pluginDir strin
 		}
 
 		switch sc.VM {
-		case subnetEvm:
+		case models.SubnetEvm:
 			vmSourcePath, err = binutils.SetupSubnetEVM(app, sc.VMVersion)
 			if err != nil {
 				return "", fmt.Errorf("failed to install subnet-evm: %w", err)
 			}
-		case customVM:
+		case models.CustomVM:
 			vmSourcePath = binutils.SetupCustomBin(app, subnetName)
 		default:
 			return "", fmt.Errorf("unknown vm: %s", sc.VM)

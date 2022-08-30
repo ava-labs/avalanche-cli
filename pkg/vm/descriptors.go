@@ -4,6 +4,7 @@
 package vm
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -21,7 +22,7 @@ func getChainID(app *application.Avalanche) (*big.Int, error) {
 		return nil, err
 	}
 
-	exists, err := app.ChainIDExists(chainID.String())
+	exists, err := app.SubnetEvmChainIDExists(chainID.String())
 	if err != nil {
 		return nil, err
 	}
@@ -43,38 +44,77 @@ func getTokenName(app *application.Avalanche) (string, error) {
 	return tokenName, nil
 }
 
-func getSubnetEVMVersion(app *application.Avalanche) (string, error) {
+func getVMVersion(
+	app *application.Avalanche,
+	vmName string,
+	repoName string,
+	vmVersion string,
+	addGoBackOption bool,
+) (string, stateDirection, error) {
+	var err error
+	direction := forward
+	if vmVersion == "latest" {
+		vmVersion, err = binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+			constants.AvaLabsOrg,
+			repoName,
+		))
+		if err != nil {
+			return "", stop, err
+		}
+	} else if vmVersion == "" {
+		vmVersion, direction, err = askForVMVersion(app, vmName, repoName, addGoBackOption)
+		if err != nil {
+			return "", stop, err
+		}
+	}
+	return vmVersion, direction, nil
+}
+
+func askForVMVersion(
+	app *application.Avalanche,
+	vmName string,
+	repoName string,
+	addGoBackOption bool,
+) (string, stateDirection, error) {
 	const (
-		useLatest     = "Use latest version"
-		useCustom     = "Specify custom version"
-		defaultPrompt = "What version of subnet-evm would you like?"
+		useLatest = "Use latest version"
+		useCustom = "Specify custom version"
 	)
+	defaultPrompt := fmt.Sprintf("What version of %s would you like?", vmName)
 
 	versionOptions := []string{useLatest, useCustom}
+	if addGoBackOption {
+		versionOptions = append(versionOptions, goBackMsg)
+	}
 
 	versionOption, err := app.Prompt.CaptureList(
 		defaultPrompt,
 		versionOptions,
 	)
 	if err != nil {
-		return "", err
+		return "", stop, err
+	}
+
+	if versionOption == goBackMsg {
+		return "", backward, err
 	}
 
 	if versionOption == useLatest {
 		// Get and return latest version
-		return binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+		version, err := binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 			constants.AvaLabsOrg,
-			constants.SubnetEVMRepoName,
+			repoName,
 		))
+		return version, forward, err
 	}
 
 	// prompt for version
-	version, err := app.Prompt.CaptureVersion("Subnet-EVM version")
+	version, err := app.Prompt.CaptureVersion(fmt.Sprintf("%s version", vmName))
 	if err != nil {
-		return "", err
+		return "", stop, err
 	}
 
-	return version, nil
+	return version, forward, nil
 }
 
 func getDescriptors(app *application.Avalanche, subnetEVMVersion string) (*big.Int, string, string, stateDirection, error) {
@@ -88,19 +128,9 @@ func getDescriptors(app *application.Avalanche, subnetEVMVersion string) (*big.I
 		return nil, "", "", stop, err
 	}
 
-	if subnetEVMVersion == "latest" {
-		subnetEVMVersion, err = binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
-			constants.AvaLabsOrg,
-			constants.SubnetEVMRepoName,
-		))
-		if err != nil {
-			return nil, "", "", stop, err
-		}
-	} else if subnetEVMVersion == "" {
-		subnetEVMVersion, err = getSubnetEVMVersion(app)
-		if err != nil {
-			return nil, "", "", stop, err
-		}
+	subnetEVMVersion, _, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion, false)
+	if err != nil {
+		return nil, "", "", stop, err
 	}
 
 	return chainID, tokenName, subnetEVMVersion, forward, nil

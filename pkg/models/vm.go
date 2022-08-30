@@ -6,7 +6,7 @@ type VMType string
 
 const (
 	SubnetEvm   = "SubnetEVM"
-	SpacesVM    = "Spaces VM"
+	SpacesVM    = "SpacesVM"
 	BlobVM      = "Blob VM"
 	TimestampVM = "Timestamp VM"
 	CustomVM    = "Custom"

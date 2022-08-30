@@ -7,6 +7,7 @@ require (
 	github.com/ava-labs/avalanche-network-runner v1.2.1
 	github.com/ava-labs/avalanchego v1.7.18
 	github.com/ava-labs/coreth v0.8.16-rc.2
+	github.com/ava-labs/spacesvm v0.0.7
 	github.com/ava-labs/subnet-evm v0.2.7
 	github.com/docker/docker v1.6.2
 	github.com/ethereum/go-ethereum v1.10.21
@@ -82,6 +83,7 @@ require (
 	github.com/holiman/uint256 v1.2.0 // indirect
 	github.com/huin/goupnp v1.0.3 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
+	github.com/inconshreveable/log15 v0.0.0-20201112154412-8562bdadbbac // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jackpal/gateway v1.0.6 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect

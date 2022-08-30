@@ -75,6 +75,7 @@ func createApp(cmd *cobra.Command, args []string) error {
 	}
 	cf := config.New()
 	app.Setup(baseDir, log, cf, prompts.NewPrompter())
+
 	// Setup APM, skip if running a hidden command
 	if !cmd.Hidden {
 		usr, err := user.Current()
@@ -87,7 +88,9 @@ func createApp(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	cobra.OnInitialize(initConfig)
+
+	initConfig()
+
 	return nil
 }
 

@@ -15,7 +15,7 @@ import (
 const (
 	subnetName       = "e2eSubnetTest"
 	secondSubnetName = "e2eSecondSubnetTest"
-	genesisPath      = "tests/e2e/assets/test_genesis.json"
+	confPath         = "tests/e2e/assets/test_avalanche-cli.json"
 )
 
 var _ = ginkgo.Describe("[Local Subnet]", func() {
@@ -36,7 +36,7 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 	ginkgo.It("can deploy a custom vm subnet to local", func() {
 		customVMPath, err := utils.DownloadCustomVMBin()
 		gomega.Expect(err).Should(gomega.BeNil())
-		commands.CreateCustomVMSubnetConfig(subnetName, genesisPath, customVMPath)
+		commands.CreateCustomVMConfig(subnetName, utils.SubnetEvmGenesisPath, customVMPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
@@ -55,8 +55,8 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 		commands.DeleteSubnetConfig(subnetName)
 	})
 
-	ginkgo.It("can deploy a subnet to local", func() {
-		commands.CreateSubnetConfig(subnetName, genesisPath)
+	ginkgo.It("can deploy a SubnetEvm subnet to local", func() {
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
@@ -71,12 +71,44 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 
 		err = utils.RunHardhatTests(utils.BaseTest)
 		gomega.Expect(err).Should(gomega.BeNil())
+
+		commands.DeleteSubnetConfig(subnetName)
+	})
+
+	ginkgo.It("can deploy a SpacesVM subnet to local", func() {
+		commands.CreateSpacesVMConfig(subnetName, utils.SpacesVMGenesisPath)
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+		rpc := rpcs[0]
+
+		err = utils.RunSpacesVMAPITest(rpc)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		commands.DeleteSubnetConfig(subnetName)
+	})
+
+	ginkgo.It("can load viper config and setup node properties for local deploy", func() {
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+		deployOutput := commands.DeploySubnetLocallyWithViperConf(subnetName, confPath)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+		rpc := rpcs[0]
+		gomega.Expect(rpc).Should(gomega.HavePrefix("http://0.0.0.0:"))
 
 		commands.DeleteSubnetConfig(subnetName)
 	})
 
 	ginkgo.It("can't deploy the same subnet twice to local", func() {
-		commands.CreateSubnetConfig(subnetName, genesisPath)
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
@@ -97,8 +129,8 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 	})
 
 	ginkgo.It("can deploy multiple subnets to local", func() {
-		commands.CreateSubnetConfig(subnetName, genesisPath)
-		commands.CreateSubnetConfig(secondSubnetName, genesisPath)
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+		commands.CreateSubnetEvmConfig(secondSubnetName, utils.SubnetEvmGenesis2Path)
 
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)

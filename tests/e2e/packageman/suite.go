@@ -15,7 +15,6 @@ import (
 const (
 	subnetName       = "e2eSubnetTest"
 	secondSubnetName = "e2eSecondSubnetTest"
-	genesisPath      = "tests/e2e/assets/test_genesis.json"
 
 	subnetEVMVersion1 = "v0.2.8"
 	subnetEVMVersion2 = "v0.2.7"
@@ -41,7 +40,7 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 		gomega.Expect(utils.CheckSubnetEVMExists(subnetEVMVersion1)).Should(gomega.BeFalse())
 		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion1)).Should(gomega.BeFalse())
 
-		commands.CreateSubnetConfigWithVersion(subnetName, genesisPath, subnetEVMVersion1)
+		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
 		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, avagoVersion1)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
@@ -69,8 +68,8 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 		gomega.Expect(utils.CheckSubnetEVMExists(subnetEVMVersion1)).Should(gomega.BeFalse())
 		gomega.Expect(utils.CheckSubnetEVMExists(subnetEVMVersion2)).Should(gomega.BeFalse())
 
-		commands.CreateSubnetConfigWithVersion(subnetName, genesisPath, subnetEVMVersion1)
-		commands.CreateSubnetConfigWithVersion(secondSubnetName, genesisPath, subnetEVMVersion2)
+		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
+		commands.CreateSubnetEvmConfigWithVersion(secondSubnetName, utils.SubnetEvmGenesis2Path, subnetEVMVersion2)
 
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
@@ -113,7 +112,7 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion1)).Should(gomega.BeFalse())
 		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion2)).Should(gomega.BeFalse())
 
-		commands.CreateSubnetConfig(subnetName, genesisPath)
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, avagoVersion1)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
