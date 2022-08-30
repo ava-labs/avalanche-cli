@@ -93,7 +93,7 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 	})
 
 	ginkgo.It("can load viper config and setup node properties for local deploy", func() {
-		commands.CreateSubnetConfig(subnetName, utils.SubnetEvmGenesisPath)
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 		deployOutput := commands.DeploySubnetLocallyWithViperConf(subnetName, confPath)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
