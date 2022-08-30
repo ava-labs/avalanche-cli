@@ -6,7 +6,7 @@ package utils
 const (
 	baseDir               = ".avalanche-cli"
 	hardhatDir            = "./tests/e2e/hardhat"
-	rpcFilePath           = hardhatDir + "/dynamic_rpc.json"
+	confFilePath          = hardhatDir + "/dynamic_conf.json"
 	BaseTest              = "./test/index.ts"
 	GreeterScript         = "./scripts/deploy.ts"
 	GreeterCheck          = "./scripts/checkGreeting.ts"

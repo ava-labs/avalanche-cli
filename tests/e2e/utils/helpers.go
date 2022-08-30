@@ -23,6 +23,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/spacesvm/chain"
 	spacesvmclient "github.com/ava-labs/spacesvm/client"
+	"github.com/ava-labs/subnet-evm/ethclient"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -221,27 +222,40 @@ func ParseGreeterAddress(output string) error {
 	return os.WriteFile(greeterFile, file, 0o600)
 }
 
-type rpcFile struct {
-	RPC string `json:"rpc"`
+type confFile struct {
+	RPC     string `json:"rpc"`
+	ChainID string `json:"chainID"`
 }
 
 func SetHardhatRPC(rpc string) error {
-	rpcFileData := rpcFile{
-		RPC: rpc,
+	client, err := ethclient.Dial(rpc)
+	if err != nil {
+		return err
 	}
-
-	file, err := json.MarshalIndent(rpcFileData, "", " ")
+	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
+	chainIDBig, err := client.ChainID(ctx)
+	cancel()
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(rpcFilePath, file, 0o600)
+	confFileData := confFile{
+		RPC:     rpc,
+		ChainID: chainIDBig.String(),
+	}
+
+	file, err := json.MarshalIndent(confFileData, "", " ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(confFilePath, file, 0o600)
 }
 
 func RunHardhatTests(test string) error {
 	cmd := exec.Command("npx", "hardhat", "test", test, "--network", "subnet")
 	cmd.Dir = hardhatDir
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(string(output))
 		fmt.Println(err)
@@ -252,7 +266,7 @@ func RunHardhatTests(test string) error {
 func RunHardhatScript(script string) (string, string, error) {
 	cmd := exec.Command("npx", "hardhat", "run", script, "--network", "subnet")
 	cmd.Dir = hardhatDir
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	exitErr, typeOk := err.(*exec.ExitError)
 	stderr := ""
 	if typeOk {
