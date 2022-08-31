@@ -240,7 +240,9 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 }
 
 func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, error) {
-	promptStr := "Please enter your node's ID (NodeID-...)"
+	promptStr := "Please enter your node's ID (NodeID-...)\n" +
+		"Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for how to query the NodeID from your node\n" +
+		"(Edit host IP address and port to match your deployment, if needed)."
 	nodeID, err := app.Prompt.CaptureNodeID(promptStr)
 	if err != nil {
 		return false, err

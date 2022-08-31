@@ -261,7 +261,9 @@ func promptStart() (time.Time, error) {
 }
 
 func promptNodeID() (ids.NodeID, error) {
-	txt := "What is the NodeID of the validator you'd like to whitelist?"
+	txt := "What is the NodeID of the validator you'd like to whitelist?\n" +
+		"Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for how to query the NodeID from your node\n" +
+		"(Edit host IP address and port to match your deployment, if needed)."
 	return app.Prompt.CaptureNodeID(txt)
 }
 
