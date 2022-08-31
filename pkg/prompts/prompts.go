@@ -8,7 +8,6 @@ import (
 	"math/big"
 	"net/url"
 	"os"
-	"path"
 	"strconv"
 	"time"
 
@@ -46,7 +45,7 @@ type Prompter interface {
 	CaptureList(promptStr string, options []string) (string, error)
 	CaptureAnyList(promptStr string, options any) (any, error)
 	CaptureString(promptStr string) (string, error)
-	CaptureGitURL(promptStr string) (string, error)
+	CaptureGitURL(promptStr string) (url.URL, error)
 	CaptureIndex(promptStr string, options []any) (int, error)
 	CaptureVersion(promptStr string) (string, error)
 	CaptureDuration(promptStr string) (time.Duration, error)
@@ -158,13 +157,10 @@ func validateBiggerThanZero(input string) error {
 	return nil
 }
 
-func validateGitURL(input string) error {
-	val, err := url.ParseRequestURI(input)
+func validateURL(input string) error {
+	_, err := url.ParseRequestURI(input)
 	if err != nil {
 		return err
-	}
-	if path.Ext(val.Path) != ".git" {
-		return errors.New("url must end in '.git'")
 	}
 	return nil
 }
@@ -533,18 +529,23 @@ func (*realPrompter) CaptureString(promptStr string) (string, error) {
 	return str, nil
 }
 
-func (*realPrompter) CaptureGitURL(promptStr string) (string, error) {
+func (*realPrompter) CaptureGitURL(promptStr string) (url.URL, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
-		Validate: validateGitURL,
+		Validate: validateURL,
 	}
 
 	str, err := prompt.Run()
 	if err != nil {
-		return "", err
+		return url.URL{}, err
 	}
 
-	return str, nil
+	parsedURL, err := url.ParseRequestURI(str)
+	if err != nil {
+		return url.URL{}, err
+	}
+
+	return *parsedURL, nil
 }
 
 func (*realPrompter) CaptureVersion(promptStr string) (string, error) {

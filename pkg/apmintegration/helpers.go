@@ -6,29 +6,42 @@ package apmintegration
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"path"
 	"strings"
 )
 
-func getGitOrg(url string) (string, error) {
-	split := strings.Split(url, "/")
-
-	if len(split) < 3 {
-		return "", errors.New("unable to find organization")
-	}
-
-	return split[len(split)-2], nil
+func removeSlashes(str string) string {
+	return strings.TrimSuffix(strings.TrimPrefix(str, "/"), "/")
 }
 
-func getGitRepo(url string) (string, error) {
-	base := path.Base(url)
-	if path.Ext(base) != ".git" {
-		return "", errors.New("unable to find repo name")
+func getGitOrg(gitURL url.URL) (string, error) {
+	org, repo := path.Split(gitURL.Path)
+
+	org = removeSlashes(org)
+	repo = removeSlashes(repo)
+
+	if org == "" || repo == "" {
+		return "", errors.New("invalid url format, unable to find org: " + gitURL.Path)
 	}
-	return strings.TrimSuffix(base, path.Ext(base)), nil
+
+	return org, nil
 }
 
-func getAlias(url string) (string, error) {
+func getGitRepo(gitURL url.URL) (string, error) {
+	org, repo := path.Split(gitURL.Path)
+
+	org = removeSlashes(org)
+	repo = removeSlashes(repo)
+
+	if org == "" || repo == "" {
+		return "", errors.New("invalid url format, unable to find repo name: " + gitURL.Path)
+	}
+
+	return strings.TrimSuffix(repo, gitExtension), nil
+}
+
+func getAlias(url url.URL) (string, error) {
 	org, err := getGitOrg(url)
 	if err != nil {
 		return "", fmt.Errorf("unable to create alias: %w", err)

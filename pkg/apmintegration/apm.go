@@ -5,6 +5,8 @@ package apmintegration
 
 import (
 	"fmt"
+	"net/url"
+	"path"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -12,8 +14,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
+const gitExtension = ".git"
+
 // Returns alias
-func AddRepo(app *application.Avalanche, repoURL string, branch string) (string, error) {
+func AddRepo(app *application.Avalanche, repoURL url.URL, branch string) (string, error) {
 	alias, err := getAlias(repoURL)
 	if err != nil {
 		return "", err
@@ -24,9 +28,15 @@ func AddRepo(app *application.Avalanche, repoURL string, branch string) (string,
 		return "", nil
 	}
 
+	repoStr := repoURL.String()
+
+	if path.Ext(repoStr) != gitExtension {
+		repoStr += gitExtension
+	}
+
 	fmt.Println("Installing repo")
 
-	return alias, app.Apm.AddRepository(alias, repoURL, branch)
+	return alias, app.Apm.AddRepository(alias, repoStr, branch)
 }
 
 func UpdateRepos(app *application.Avalanche) error {

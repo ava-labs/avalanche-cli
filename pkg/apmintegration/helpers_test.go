@@ -4,6 +4,7 @@
 package apmintegration
 
 import (
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,13 +27,19 @@ func TestGetGithubOrg(t *testing.T) {
 		},
 		{
 			name:        "Success",
-			url:         "github.com/ava-labs/avalanche-plugins-core.git",
+			url:         "https://github.com/ava-labs/avalanche-plugins-core",
 			expectedOrg: "ava-labs",
 			expectedErr: false,
 		},
 		{
 			name:        "No org",
-			url:         "avalanche-plugins-core",
+			url:         "https://github.com/avalanche-plugins-core",
+			expectedOrg: "",
+			expectedErr: true,
+		},
+		{
+			name:        "No url path",
+			url:         "https://github.com/",
 			expectedOrg: "",
 			expectedErr: true,
 		},
@@ -41,7 +48,9 @@ func TestGetGithubOrg(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			org, err := getGitOrg(tt.url)
+			parsedURL, err := url.ParseRequestURI(tt.url)
+			assert.NoError(err)
+			org, err := getGitOrg(*parsedURL)
 			assert.Equal(tt.expectedOrg, org)
 			if tt.expectedErr {
 				assert.Error(err)
@@ -68,8 +77,20 @@ func TestGetGithubRepo(t *testing.T) {
 			expectedErr:  false,
 		},
 		{
-			name:         "No repo",
-			url:          "avalanche-plugins-core",
+			name:         "Success",
+			url:          "https://github.com/ava-labs/avalanche-plugins-core",
+			expectedRepo: "avalanche-plugins-core",
+			expectedErr:  false,
+		},
+		{
+			name:         "No org",
+			url:          "https://github.com/avalanche-plugins-core",
+			expectedRepo: "",
+			expectedErr:  true,
+		},
+		{
+			name:         "No url path",
+			url:          "https://github.com/",
 			expectedRepo: "",
 			expectedErr:  true,
 		},
@@ -78,7 +99,9 @@ func TestGetGithubRepo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			repo, err := getGitRepo(tt.url)
+			parsedURL, err := url.ParseRequestURI(tt.url)
+			assert.NoError(err)
+			repo, err := getGitRepo(*parsedURL)
 			assert.Equal(tt.expectedRepo, repo)
 			if tt.expectedErr {
 				assert.Error(err)
@@ -90,14 +113,54 @@ func TestGetGithubRepo(t *testing.T) {
 }
 
 func TestGetAlias(t *testing.T) {
-	assert := assert.New(t)
+	type test struct {
+		name          string
+		url           string
+		expectedAlias string
+		expectedErr   bool
+	}
 
-	url := "https://github.com/ava-labs/avalanche-plugins-core.git"
-	expectedAlias := "ava-labs/avalanche-plugins-core"
+	tests := []test{
+		{
+			name:          "Success",
+			url:           "https://github.com/ava-labs/avalanche-plugins-core.git",
+			expectedAlias: "ava-labs/avalanche-plugins-core",
+			expectedErr:   false,
+		},
+		{
+			name:          "Success",
+			url:           "https://github.com/ava-labs/avalanche-plugins-core",
+			expectedAlias: "ava-labs/avalanche-plugins-core",
+			expectedErr:   false,
+		},
+		{
+			name:          "No org",
+			url:           "https://github.com/avalanche-plugins-core",
+			expectedAlias: "",
+			expectedErr:   true,
+		},
+		{
+			name:          "No url path",
+			url:           "https://github.com/",
+			expectedAlias: "",
+			expectedErr:   true,
+		},
+	}
 
-	alias, err := getAlias(url)
-	assert.NoError(err)
-	assert.Equal(expectedAlias, alias)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			parsedURL, err := url.ParseRequestURI(tt.url)
+			assert.NoError(err)
+			alias, err := getAlias(*parsedURL)
+			assert.Equal(tt.expectedAlias, alias)
+			if tt.expectedErr {
+				assert.Error(err)
+			} else {
+				assert.NoError(err)
+			}
+		})
+	}
 }
 
 func TestSplitKey(t *testing.T) {
