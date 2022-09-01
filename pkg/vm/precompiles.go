@@ -10,6 +10,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile"
 	"github.com/ethereum/go-ethereum/common"
@@ -132,7 +133,11 @@ func removePrecompile(arr []string, s string) ([]string, error) {
 	return arr, errors.New("string not in array")
 }
 
-func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (params.ChainConfig, stateDirection, error) {
+func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (
+	params.ChainConfig,
+	statemachine.StateDirection,
+	error,
+) {
 	const (
 		nativeMint        = "Native Minting"
 		contractAllowList = "Contract Deployment Allow List"
@@ -157,14 +162,14 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (para
 
 		addPrecompile, err := app.Prompt.CaptureList(promptStr, []string{prompts.No, prompts.Yes, goBackMsg})
 		if err != nil {
-			return config, stop, err
+			return config, statemachine.Stop, err
 		}
 
 		switch addPrecompile {
 		case prompts.No:
-			return config, forward, nil
+			return config, statemachine.Forward, nil
 		case goBackMsg:
-			return config, backward, nil
+			return config, statemachine.Backward, nil
 		}
 
 		precompileDecision, err := app.Prompt.CaptureList(
@@ -172,66 +177,66 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (para
 			remainingPrecompiles,
 		)
 		if err != nil {
-			return config, stop, err
+			return config, statemachine.Stop, err
 		}
 
 		switch precompileDecision {
 		case nativeMint:
 			mintConfig, cancelled, err := configureMinterList(app)
 			if err != nil {
-				return config, stop, err
+				return config, statemachine.Stop, err
 			}
 			if !cancelled {
 				config.ContractNativeMinterConfig = mintConfig
 				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, nativeMint)
 				if err != nil {
-					return config, stop, err
+					return config, statemachine.Stop, err
 				}
 			}
 		case contractAllowList:
 			contractConfig, cancelled, err := configureContractAllowList(app)
 			if err != nil {
-				return config, stop, err
+				return config, statemachine.Stop, err
 			}
 			if !cancelled {
 				config.ContractDeployerAllowListConfig = contractConfig
 				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, contractAllowList)
 				if err != nil {
-					return config, stop, err
+					return config, statemachine.Stop, err
 				}
 			}
 		case txAllowList:
 			txConfig, cancelled, err := configureTransactionAllowList(app)
 			if err != nil {
-				return config, stop, err
+				return config, statemachine.Stop, err
 			}
 			if !cancelled {
 				config.TxAllowListConfig = txConfig
 				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, txAllowList)
 				if err != nil {
-					return config, stop, err
+					return config, statemachine.Stop, err
 				}
 			}
 		case feeManager:
 			feeConfig, cancelled, err := configureFeeConfigAllowList(app)
 			if err != nil {
-				return config, stop, err
+				return config, statemachine.Stop, err
 			}
 			if !cancelled {
 				config.FeeManagerConfig = feeConfig
 				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, feeManager)
 				if err != nil {
-					return config, stop, err
+					return config, statemachine.Stop, err
 				}
 			}
 		case cancel:
-			return config, forward, nil
+			return config, statemachine.Forward, nil
 		}
 
 		// When all precompiles have been added, the len of remainingPrecompiles will be 1
 		// (the cancel option stays in the list). Safe to return.
 		if len(remainingPrecompiles) == 1 {
-			return config, forward, nil
+			return config, statemachine.Forward, nil
 		}
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -31,7 +32,7 @@ func getAllocation(
 	defaultAirdropAmount string,
 	multiplier *big.Int,
 	captureAmountLabel string,
-) (core.GenesisAlloc, stateDirection, error) {
+) (core.GenesisAlloc, statemachine.StateDirection, error) {
 	allocation := core.GenesisAlloc{}
 
 	defaultAirdrop := "Airdrop 1 million tokens to the default address (do not use in production)"
@@ -43,16 +44,16 @@ func getAllocation(
 		[]string{defaultAirdrop, customAirdrop, goBackMsg},
 	)
 	if err != nil {
-		return allocation, stop, err
+		return allocation, statemachine.Stop, err
 	}
 
 	if airdropType == defaultAirdrop {
 		alloc, err := getDefaultAllocation(defaultAirdropAmount)
-		return alloc, forward, err
+		return alloc, statemachine.Forward, err
 	}
 
 	if airdropType == goBackMsg {
-		return allocation, backward, nil
+		return allocation, statemachine.Backward, nil
 	}
 
 	var (
@@ -63,16 +64,16 @@ func getAllocation(
 	for {
 		addressAny, err := app.Prompt.CaptureAddress("Address to airdrop to", nil)
 		if err != nil {
-			return nil, stop, err
+			return nil, statemachine.Stop, err
 		}
 
 		if addressHex, ok = addressAny.(common.Address); !ok {
-			return nil, stop, fmt.Errorf("expected common.Address type but got %T", addressAny)
+			return nil, statemachine.Stop, fmt.Errorf("expected common.Address type but got %T", addressAny)
 		}
 
 		amount, err := app.Prompt.CapturePositiveBigInt(captureAmountLabel)
 		if err != nil {
-			return nil, stop, err
+			return nil, statemachine.Stop, err
 		}
 
 		amount = amount.Mul(amount, multiplier)
@@ -85,10 +86,10 @@ func getAllocation(
 
 		continueAirdrop, err := app.Prompt.CaptureNoYes(extendAirdrop)
 		if err != nil {
-			return nil, stop, err
+			return nil, statemachine.Stop, err
 		}
 		if !continueAirdrop {
-			return allocation, forward, nil
+			return allocation, statemachine.Forward, nil
 		}
 	}
 }
