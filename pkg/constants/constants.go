@@ -8,6 +8,7 @@ const (
 	DefaultPerms755 = 0o755
 
 	BaseDirName = ".avalanche-cli"
+	LogDir      = "logs"
 
 	ServerRunFile      = "gRPCserver.run"
 	AvalancheCliBinDir = "bin"
@@ -15,7 +16,7 @@ const (
 	SidecarSuffix      = "_sidecar.json"
 	GenesisSuffix      = "_genesis.json"
 
-	SidecarVersion = "1.2.0"
+	SidecarVersion = "1.2.1"
 
 	MaxLogFileSize   = 4
 	MaxNumOfLogFiles = 5
@@ -74,6 +75,11 @@ const (
 	EVMPlugin = "evm"
 
 	DefaultNodeRunURL = "http://127.0.0.1:9650"
+
+	APMDir                = ".apm"
+	APMLogName            = "apm.log"
+	DefaultAvaLabsPackage = "ava-labs/avalanche-plugins-core"
+	APMPluginDir          = "apm_plugins"
 
 	// #nosec G101
 	GithubAPITokenEnvVarName = "GITHUB_TOKEN"
