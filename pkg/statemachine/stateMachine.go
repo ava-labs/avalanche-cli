@@ -2,10 +2,6 @@
 // See the file LICENSE for licensing terms.
 package statemachine
 
-import (
-	"errors"
-)
-
 type StateDirection int64
 
 const (
@@ -15,8 +11,9 @@ const (
 )
 
 type stateMachine struct {
-	index  int
-	states []string
+	index    int
+	states   []string
+	finished bool
 }
 
 func NewStateMachine(states []string) *stateMachine {
@@ -25,21 +22,32 @@ func NewStateMachine(states []string) *stateMachine {
 	}
 }
 
-func (sm *stateMachine) CurrentState() (string, error) {
+func (sm *stateMachine) CurrentState() string {
 	if sm.index < 0 || sm.index >= len(sm.states) {
-		return "", errors.New("invalid state machine index")
+		return ""
 	}
-	return sm.states[sm.index], nil
+	return sm.states[sm.index]
 }
 
-func (sm *stateMachine) NextState(direction StateDirection) (string, error) {
+func (sm *stateMachine) NextState(direction StateDirection) string {
 	switch direction {
 	case Forward:
 		sm.index++
 	case Backward:
 		sm.index--
 	default:
-		return "", errors.New("invalid state machine direction")
+		return ""
+	}
+	if sm.index == len(sm.states) {
+		sm.Stop()
 	}
 	return sm.CurrentState()
+}
+
+func (sm *stateMachine) Running() bool {
+	return !sm.finished
+}
+
+func (sm *stateMachine) Stop() {
+	sm.finished = true
 }

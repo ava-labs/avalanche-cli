@@ -118,17 +118,14 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 		allocs    core.GenesisAlloc
 		direction statemachine.StateDirection
 		version   string
+		err       error
 	)
 
-	spaceVMState := statemachine.NewStateMachine(
+	spacesVMState := statemachine.NewStateMachine(
 		[]string{genesisState, magicState, versionState, airdropState, doneState},
 	)
-	state, err := spaceVMState.CurrentState()
-	if err != nil {
-		return nil, nil, err
-	}
-	for state != doneState {
-		switch state {
+	for spacesVMState.Running() {
+		switch spacesVMState.CurrentState() {
 		case genesisState:
 			direction = statemachine.Forward
 			var useDefault bool
@@ -136,8 +133,7 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 			if useDefault {
 				magic, version, allocs, err = getDefaultGenesisValues()
 				if err == nil {
-					state = doneState
-					continue
+					spacesVMState.Stop()
 				}
 			}
 		case magicState:
@@ -152,10 +148,7 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 		if err != nil {
 			return nil, nil, err
 		}
-		state, err = spaceVMState.NextState(direction)
-		if err != nil {
-			return nil, nil, err
-		}
+		spacesVMState.NextState(direction)
 	}
 
 	genesis := chain.DefaultGenesis()
