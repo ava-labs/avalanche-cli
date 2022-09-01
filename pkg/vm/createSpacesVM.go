@@ -122,7 +122,7 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 	)
 
 	spacesVMState := statemachine.NewStateMachine(
-		[]string{genesisState, magicState, versionState, airdropState, doneState},
+		[]string{genesisState, magicState, versionState, airdropState},
 	)
 	for spacesVMState.Running() {
 		switch spacesVMState.CurrentState() {
