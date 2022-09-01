@@ -10,26 +10,26 @@ const (
 	Stop
 )
 
-type stateMachine struct {
+type StateMachine struct {
 	index    int
 	states   []string
 	finished bool
 }
 
-func NewStateMachine(states []string) *stateMachine {
-	return &stateMachine{
+func NewStateMachine(states []string) *StateMachine {
+	return &StateMachine{
 		states: states,
 	}
 }
 
-func (sm *stateMachine) CurrentState() string {
+func (sm *StateMachine) CurrentState() string {
 	if sm.index < 0 || sm.index >= len(sm.states) {
 		return ""
 	}
 	return sm.states[sm.index]
 }
 
-func (sm *stateMachine) NextState(direction StateDirection) string {
+func (sm *StateMachine) NextState(direction StateDirection) string {
 	switch direction {
 	case Forward:
 		sm.index++
@@ -44,10 +44,10 @@ func (sm *stateMachine) NextState(direction StateDirection) string {
 	return sm.CurrentState()
 }
 
-func (sm *stateMachine) Running() bool {
+func (sm *StateMachine) Running() bool {
 	return !sm.finished
 }
 
-func (sm *stateMachine) Stop() {
+func (sm *StateMachine) Stop() {
 	sm.finished = true
 }
