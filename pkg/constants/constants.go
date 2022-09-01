@@ -76,5 +76,10 @@ const (
 	// #nosec G101
 	GithubAPITokenEnvVarName = "GITHUB_TOKEN"
 
-	ReposDir = "repos"
+	ReposDir  = "repos"
+	SubnetDir = "subnets"
+	VMDir     = "vms"
+
+	GitRepoCommitName  = "Avalanche-CLI"
+	GitRepoCommitEmail = "info@avax.network"
 )

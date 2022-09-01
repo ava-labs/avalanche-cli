@@ -4,6 +4,8 @@ package subnetcmd
 
 import (
 	"errors"
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -11,9 +13,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/apm/types"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/version"
 	"gopkg.in/yaml.v3"
 )
 
@@ -22,6 +26,7 @@ var (
 	repoURL        string
 	vmDescPath     string
 	subnetDescPath string
+	localOnly      bool
 )
 
 type newPublisherFunc func(string, string, string) subnet.Publisher
@@ -36,10 +41,12 @@ func newPublishCmd() *cobra.Command {
 		RunE:         publish,
 		Args:         cobra.ExactArgs(1),
 	}
-	cmd.Flags().StringVar(&alias, "alias", "", "An alias for the repo to publish to")
+	cmd.Flags().StringVar(&alias, "alias", "", "We publish to a remote repo, but identiy the repo locally under a user-provided alias (e.g. myrepo).")
 	cmd.Flags().StringVar(&repoURL, "repo-url", "", "The URL of the repo where we are publishing")
 	cmd.Flags().StringVar(&vmDescPath, "vm-file-path", "", "Path to the VM description file. If not given, a prompting sequence will be initiated.")
 	cmd.Flags().StringVar(&subnetDescPath, "subnet-file-path", "", "Path to the Subnet description file. If not given, a prompting sequence will be initiated.")
+	cmd.Flags().BoolVar(&forceWrite, forceFlag, false, "If true, ignores if the subnet has been published in the past, and attempts a forced publish.")
+	cmd.Flags().BoolVar(&localOnly, "--local-only", false, "If true, we actually don't push to a remote repo, just create a local repo structure and commit to it.")
 	return cmd
 }
 
@@ -72,8 +79,19 @@ func doPublish(sc *models.Sidecar, subnetName string, publisherCreateFunc newPub
 		tsubnet *types.Subnet
 		vm      *types.VM
 	)
-	// TODO: Do we need to check if it has already been published?
-	// If yes, do we query the local repo, the remote, do we write into the sidecar, ...?
+
+	if !forceWrite {
+		// if forceWrite is present, we don't need to check if it has been previously published, we just do
+		published, err := isAlreadyPublished(subnetName)
+		if err != nil {
+			return err
+		}
+		if published {
+			ux.Logger.PrintToUser("It appears this subnet has already been published, while no force flag has been detected.")
+			return errors.New("aborted")
+		}
+	}
+
 	if subnetDescPath == "" {
 		tsubnet, err = getSubnetInfo(sc)
 	} else {
@@ -116,6 +134,11 @@ func doPublish(sc *models.Sidecar, subnetName string, publisherCreateFunc newPub
 		return err
 	}
 
+	if localOnly {
+		ux.Logger.PrintToUser("`--local-only` is true. Created the local repo but did not push")
+		return nil
+	}
+
 	// TODO: if not published? New commit? Etc...
 	if err = publisher.Publish(repo, subnetName, vm.Alias, subnetYAML, vmYAML); err != nil {
 		return err
@@ -123,6 +146,29 @@ func doPublish(sc *models.Sidecar, subnetName string, publisherCreateFunc newPub
 
 	ux.Logger.PrintToUser("Successfully published")
 	return nil
+}
+
+// current simplistic approach:
+// just search any folder names `subnetName` inside the reposDir's `subnets` folder
+func isAlreadyPublished(subnetName string) (bool, error) {
+	reposDir := app.GetReposDir()
+
+	found := false
+
+	if err := filepath.WalkDir(reposDir, func(path string, d fs.DirEntry, err error) error {
+		if err == nil {
+			if filepath.Base(path) == constants.VMDir {
+				return filepath.SkipDir
+			}
+			if !d.IsDir() && d.Name() == subnetName {
+				found = true
+			}
+		}
+		return nil
+	}); err != nil {
+		return false, err
+	}
+	return found, nil
 }
 
 // iterate the reposDir to check what repos already exist locally
@@ -182,7 +228,7 @@ func getAlias(reposDir string) error {
 
 // ask for a new alias
 func getNewAlias() (string, error) {
-	return app.Prompt.CaptureString("Please provide an alias for the repository we are going to use")
+	return app.Prompt.CaptureString("Provide an alias for the repository we are going to use")
 }
 
 func getRepoURL(reposDir string) error {
@@ -202,18 +248,18 @@ func getRepoURL(reposDir string) error {
 			remotes := make([]string, len(conf.Remotes))
 			i := 0
 			for _, r := range conf.Remotes {
-				// TODO: Usually there's only one URL for a remote, but more are supported - should we too?
+				// NOTE: supporting only one remote for now
 				remotes[i] = r.URLs[0]
 				i++
 			}
 			repoURL, err = app.Prompt.CaptureList("Which is the remote URL for this repo?", remotes)
 			if err != nil {
-				// TODO Would we really want to abort here?
+				// should never happen
 				return err
 			}
 			return nil
 		}
-		repoURL, err = app.Prompt.CaptureString("Please provide the repository URL")
+		repoURL, err = app.Prompt.CaptureString("Provide the repository URL")
 		if err != nil {
 			return err
 		}
@@ -237,7 +283,7 @@ func getSubnetInfo(sc *models.Sidecar) (*types.Subnet, error) {
 		return nil, err
 	}
 
-	desc, err := app.Prompt.CaptureEmpty("Please provide a free-text description of the Subnet", nil)
+	desc, err := app.Prompt.CaptureEmpty("Provide a free-text description of the Subnet", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -264,18 +310,42 @@ func getSubnetInfo(sc *models.Sidecar) (*types.Subnet, error) {
 		strMaintrs[i] = m.(string)
 	}
 
-	// TODO: In this version, we are publishing 1 subnet and exactly 1 VM.
-	// 1. Will the VM list has to be editale in the future?
-	// 2. If yes, need to think about the whole process
-	// 3. Can VMs later be added independently?
-	/*
-		vms, canceled, err := app.Prompt.CaptureListDecision(
+	subnet := &types.Subnet{
+		ID:          sc.Networks[models.Fuji.String()].SubnetID.String(),
+		Alias:       sc.Name,
+		Homepage:    homepage.(string),
+		Description: desc.(string),
+		Maintainers: strMaintrs,
+		VMs:         []string{sc.Subnet},
+	}
+
+	return subnet, nil
+}
+
+func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
+	var (
+		vmID, desc any
+		strMaintrs []string
+		err        error
+	)
+
+	switch {
+	case sc.VM == models.CustomVM:
+		vmID, err = app.Prompt.CaptureEmpty("What is the ID of this VM?", nil)
+		if err != nil {
+			return nil, err
+		}
+		desc, err = app.Prompt.CaptureEmpty("Provide a description for this VM", nil)
+		if err != nil {
+			return nil, err
+		}
+		maintrs, canceled, err := app.Prompt.CaptureListDecision(
 			app.Prompt,
-			"Provide a list of VMs this Subnet is running",
-			app.Prompt.CaptureEmpty,
-			"Provide a VM",
-			"VM",
-			"VMs are instances of blockchains a given Subnet is running.",
+			"Who are the maintainers of the VM?",
+			app.Prompt.CaptureEmail,
+			"Provide a maintainer",
+			"Maintainer",
+			"",
 			nil,
 		)
 		if err != nil {
@@ -286,79 +356,48 @@ func getSubnetInfo(sc *models.Sidecar) (*types.Subnet, error) {
 			return nil, errors.New("canceled by user")
 		}
 
-		strVMs := make([]string, len(vms))
-		for i, v := range vms {
-			strVMs[i] = v.(string)
+		strMaintrs = make([]string, len(maintrs))
+		for i, m := range maintrs {
+			strMaintrs[i] = m.(string)
 		}
-	*/
 
-	subnet := &types.Subnet{
-		ID:          sc.Networks[models.Fuji.String()].SubnetID.String(),
-		Alias:       sc.Name,
-		Homepage:    homepage.(string),
-		Description: desc.(string),
-		Maintainers: strMaintrs,
-		// VMs:         strVMs,
-		VMs: nil,
+	case sc.VM == models.SpacesVM:
+		vmID = models.SpacesVM
+		desc = "Authenticated, hierarchical storage of arbitrary keys/values using any EIP-712 compatible wallet."
+		strMaintrs = []string{"ava-labs"}
+	case sc.VM == models.SubnetEvm:
+		vmID = models.SubnetEvm
+		desc = "Subnet EVM is a simplified version of Coreth VM (C-Chain). It implements the Ethereum Virtual Machine and supports Solidity smart contracts as well as most other Ethereum client functionality"
+		strMaintrs = []string{"ava-labs"}
+	default:
+		return nil, fmt.Errorf("unexpected error: unsupported VM type: %s", sc.VM)
 	}
 
-	return subnet, nil
-}
-
-func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
-	vmID, err := app.Prompt.CaptureEmpty("What is the ID of this VM?", nil)
+	scr, err := app.Prompt.CaptureEmpty("What scripts needs to run to install this VM? Needs to be an executable command to build the VM.", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	desc, err := app.Prompt.CaptureEmpty("Provide a description for this VM please", nil)
+	bin, err := app.Prompt.CaptureEmpty("What is the binary path? (This is the output of the build command)", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	maintrs, canceled, err := app.Prompt.CaptureListDecision(
-		app.Prompt,
-		"Who are the maintainers of the VM?",
-		app.Prompt.CaptureEmail,
-		"Provide a maintainer",
-		"Maintainer",
-		"",
-		nil,
-	)
-	if err != nil {
-		return nil, err
-	}
-	if canceled {
-		ux.Logger.PrintToUser("Publishing aborted")
-		return nil, errors.New("canceled by user")
-	}
-
-	strMaintrs := make([]string, len(maintrs))
-	for i, m := range maintrs {
-		strMaintrs[i] = m.(string)
-	}
-
-	scr, err := app.Prompt.CaptureEmpty("What scripts needs to run to install this VM?", nil)
+	url, err := app.Prompt.CaptureEmpty("Tell us the URL to download the source. Needs to be a fixed version, not `latest`.", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	bin, err := app.Prompt.CaptureEmpty("What is the binary path?", nil)
+	sha, err := app.Prompt.CaptureEmpty("For integrity checks, provide the sha256 commit for the used version", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	url, err := app.Prompt.CaptureEmpty("Tell us the URL to download the binary please", nil)
+	strVer, err := app.Prompt.CaptureVersion("This is the last question! What is the version being used? Use semantic versioning (v1.2.3)")
 	if err != nil {
 		return nil, err
 	}
-
-	sha, err := app.Prompt.CaptureEmpty("For integrity checks, please provide the sha256 commit for the used version", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	ver, err := app.Prompt.CaptureSemanticVersion("This is the last question! What is the version being used? Use semantic versioning (v1.2.3)")
+	ver, err := version.Parse(strVer)
 	if err != nil {
 		return nil, err
 	}

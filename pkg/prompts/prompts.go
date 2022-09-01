@@ -17,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
-	"github.com/ava-labs/avalanchego/version"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/manifoldco/promptui"
 	"golang.org/x/mod/semver"
@@ -56,7 +55,6 @@ type Prompter interface {
 	CaptureWeight(promptStr string) (uint64, error)
 	CaptureUint64(promptStr string) (uint64, error)
 	CapturePChainAddress(promptStr string, network any) (any, error)
-	CaptureSemanticVersion(promptStr string) (*version.Semantic, error)
 	CaptureListDecision(
 		// we need this in order to be able to run mock tests
 		prompter Prompter,
@@ -163,25 +161,6 @@ func validateBiggerThanZero(input string) error {
 		return errors.New("the value must be bigger than zero")
 	}
 	return nil
-}
-
-func validateSemanticVersion(input string) error {
-	_, err := version.Parse(input)
-	return err
-}
-
-func (r *realPrompter) CaptureSemanticVersion(promptStr string) (*version.Semantic, error) {
-	prompt := promptui.Prompt{
-		Label:    promptStr,
-		Validate: validateSemanticVersion,
-	}
-
-	ver, err := prompt.Run()
-	if err != nil {
-		return &version.Semantic{}, err
-	}
-
-	return version.Parse(ver)
 }
 
 // CaptureListDecision runs a for loop and continuously asks the

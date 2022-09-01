@@ -21,7 +21,6 @@ type Publisher interface {
 
 type publisherImpl struct {
 	alias    string
-	repoDir  string
 	repoURL  string
 	repoPath string
 }
@@ -32,7 +31,6 @@ func NewPublisher(repoDir, repoURL, alias string) Publisher {
 	repoPath := filepath.Join(repoDir, alias)
 	return &publisherImpl{
 		alias:    alias,
-		repoDir:  repoDir,
 		repoURL:  repoURL,
 		repoPath: repoPath,
 	}
@@ -60,28 +58,29 @@ func (p *publisherImpl) Publish(
 		return err
 	}
 	// TODO: This might not always be the right path!
-	// TODO: Use constants
-	subnetPath := filepath.Join(p.repoPath, "subnets", subnetName)
-	vmPath := filepath.Join(p.repoPath, "vms", vmName)
-	err = os.WriteFile(subnetPath, subnetYAML, constants.DefaultPerms755)
-	if err != nil {
+	subnetPath := filepath.Join(p.repoPath, constants.SubnetDir, subnetName)
+	if err := os.MkdirAll(filepath.Join(p.repoPath, constants.SubnetDir), constants.DefaultPerms755); err != nil {
+		return err
+	}
+	vmPath := filepath.Join(p.repoPath, constants.VMDir, vmName)
+	if err := os.MkdirAll(filepath.Join(p.repoPath, constants.VMDir), constants.DefaultPerms755); err != nil {
+		return err
+	}
+	if err = os.WriteFile(subnetPath, subnetYAML, constants.DefaultPerms755); err != nil {
 		return err
 	}
 
-	err = os.WriteFile(vmPath, vmYAML, constants.DefaultPerms755)
-	if err != nil {
+	if err = os.WriteFile(vmPath, vmYAML, constants.DefaultPerms755); err != nil {
 		return err
 	}
 
 	ux.Logger.PrintToUser("Adding resources to local git repo...")
 
-	_, err = wt.Add("subnets")
-	if err != nil {
+	if _, err = wt.Add("subnets"); err != nil {
 		return err
 	}
 
-	_, err = wt.Add("vms")
-	if err != nil {
+	if _, err = wt.Add("vms"); err != nil {
 		return err
 	}
 
@@ -91,8 +90,8 @@ func (p *publisherImpl) Publish(
 	// TODO review these options
 	commit, err := wt.Commit(commitStr, &git.CommitOptions{
 		Author: &object.Signature{
-			Name:  "Avalanche-CLI",
-			Email: "info@avax.network", // this obviously would have to change
+			Name:  constants.GitRepoCommitName,
+			Email: constants.GitRepoCommitEmail, // what are reasonable names here?
 			When:  now,
 		},
 	})
@@ -100,8 +99,7 @@ func (p *publisherImpl) Publish(
 		return err
 	}
 
-	_, err = repo.CommitObject(commit)
-	if err != nil {
+	if _, err = repo.CommitObject(commit); err != nil {
 		return err
 	}
 
