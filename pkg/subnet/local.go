@@ -19,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/client"
@@ -27,8 +28,9 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/storage"
-	"github.com/ava-labs/coreth/core"
 	"github.com/ava-labs/coreth/params"
+	spacesvmchain "github.com/ava-labs/spacesvm/chain"
+	"github.com/ava-labs/subnet-evm/core"
 	"go.uber.org/zap"
 )
 
@@ -46,10 +48,10 @@ type LocalDeployer struct {
 	backendStartedHere  bool
 	setDefaultSnapshot  setDefaultSnapshotFunc
 	avagoVersion        string
-	vmDir               string
+	vmBin               string
 }
 
-func NewLocalDeployer(app *application.Avalanche, avagoVersion string, vmDir string) *LocalDeployer {
+func NewLocalDeployer(app *application.Avalanche, avagoVersion string, vmBin string) *LocalDeployer {
 	return &LocalDeployer{
 		procChecker:         binutils.NewProcessChecker(),
 		binChecker:          binutils.NewBinaryChecker(),
@@ -59,7 +61,7 @@ func NewLocalDeployer(app *application.Avalanche, avagoVersion string, vmDir str
 		app:                 app,
 		setDefaultSnapshot:  SetDefaultSnapshot,
 		avagoVersion:        avagoVersion,
-		vmDir:               vmDir,
+		vmBin:               vmBin,
 	}
 }
 
@@ -121,15 +123,6 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 	defer cli.Close()
 
-	// we need the chainID just later, but it would be ugly to fail the whole deployment
-	// for a JSON unmarshalling error, so let's do it here already
-	var genesis core.Genesis
-	err = json.Unmarshal(chainGenesis, &genesis)
-	if err != nil {
-		return ids.Empty, ids.Empty, fmt.Errorf("failed to unpack chain ID from genesis: %w", err)
-	}
-	chainID := genesis.Config.ChainID
-
 	runDir := d.app.GetRunDir()
 
 	ctx := binutils.GetAsyncContext()
@@ -156,7 +149,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		return ids.Empty, ids.Empty, nil
 	}
 
-	if err := d.installPlugin(chainVMID, d.vmDir, pluginDir); err != nil {
+	if err := d.installPlugin(chainVMID, d.vmBin, pluginDir); err != nil {
 		return ids.Empty, ids.Empty, err
 	}
 
@@ -221,23 +214,27 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	fmt.Println()
 
 	firstURL := endpoints[0]
-	tokenName := d.app.GetTokenName(chain)
 
-	ux.Logger.PrintToUser("Metamask connection details (any node URL from above works):")
+	ux.Logger.PrintToUser("Browser Extension connection details (any node URL from above works):")
 	ux.Logger.PrintToUser("RPC URL:          %s", firstURL[strings.LastIndex(firstURL, "http"):])
-	for address := range genesis.Alloc {
-		amount := genesis.Alloc[address].Balance
-		formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
-		if address == vm.PrefundedEwoqAddress {
-			ux.Logger.PrintToUser("Funded address:   %s with %s (10^18) - private key: %s", address, formattedAmount.String(), vm.PrefundedEwoqPrivate)
-		} else {
-			ux.Logger.PrintToUser("Funded address:   %s with %s", address, formattedAmount.String())
+
+	// extra ux based on vm type
+	sc, err := d.app.LoadSidecar(chain)
+	if err != nil {
+		return ids.Empty, ids.Empty, fmt.Errorf("failed to load sidecar: %w", err)
+	}
+	switch sc.VM {
+	case models.SubnetEvm:
+		if err := d.printExtraEvmInfo(chain, chainGenesis); err != nil {
+			// not supposed to happen due to genesis pre validation
+			return ids.Empty, ids.Empty, nil
+		}
+	case models.SpacesVM:
+		if err := d.printExtraSpacesVMInfo(chainGenesis); err != nil {
+			// not supposed to happen due to genesis pre validation
+			return ids.Empty, ids.Empty, nil
 		}
 	}
-
-	ux.Logger.PrintToUser("Network name:     %s", chain)
-	ux.Logger.PrintToUser("Chain ID:         %s", chainID)
-	ux.Logger.PrintToUser("Currency Symbol:  %s", tokenName)
 
 	// we can safely ignore errors here as the subnets have already been generated
 	subnetID, _ := ids.FromString(subnetIDStr)
@@ -248,6 +245,44 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 	}
 	return subnetID, blockchainID, nil
+}
+
+func (d *LocalDeployer) printExtraSpacesVMInfo(chainGenesis []byte) error {
+	var genesis spacesvmchain.Genesis
+	if err := json.Unmarshal(chainGenesis, &genesis); err != nil {
+		return fmt.Errorf("failed to unmarshall genesis: %w", err)
+	}
+	for _, alloc := range genesis.CustomAllocation {
+		address := alloc.Address
+		amount := alloc.Balance
+		amountStr := fmt.Sprintf("%d", amount)
+		if address == vm.PrefundedEwoqAddress {
+			ux.Logger.PrintToUser("Funded address:   %s with %s - private key: %s", address, amountStr, vm.PrefundedEwoqPrivate)
+		} else {
+			ux.Logger.PrintToUser("Funded address:   %s with %s", address, amountStr)
+		}
+	}
+	return nil
+}
+
+func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte) error {
+	var evmGenesis core.Genesis
+	if err := json.Unmarshal(chainGenesis, &evmGenesis); err != nil {
+		return fmt.Errorf("failed to unmarshall genesis: %w", err)
+	}
+	for address := range evmGenesis.Alloc {
+		amount := evmGenesis.Alloc[address].Balance
+		formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
+		if address == vm.PrefundedEwoqAddress {
+			ux.Logger.PrintToUser("Funded address:   %s with %s (10^18) - private key: %s", address, formattedAmount.String(), vm.PrefundedEwoqPrivate)
+		} else {
+			ux.Logger.PrintToUser("Funded address:   %s with %s", address, formattedAmount.String())
+		}
+	}
+	ux.Logger.PrintToUser("Network name:     %s", chain)
+	ux.Logger.PrintToUser("Chain ID:         %s", evmGenesis.Config.ChainID)
+	ux.Logger.PrintToUser("Currency Symbol:  %s", d.app.GetTokenName(chain))
+	return nil
 }
 
 // SetupLocalEnv also does some heavy lifting:

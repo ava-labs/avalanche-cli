@@ -23,7 +23,6 @@ const (
 	version2 = "v1.18.1"
 
 	avalanchegoBin = "avalanchego"
-	subnetEVMBin   = "subnet-evm"
 )
 
 var (

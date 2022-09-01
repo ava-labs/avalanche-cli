@@ -28,16 +28,16 @@ func (installerImpl) GetArch() (string, string) {
 func (installerImpl) DownloadRelease(releaseURL string) ([]byte, error) {
 	resp, err := http.Get(releaseURL)
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return []byte{}, fmt.Errorf("unexpected http status code: %d", resp.StatusCode)
+		return nil, fmt.Errorf("unexpected http status code: %d", resp.StatusCode)
 	}
 	defer resp.Body.Close()
 
 	archive, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
 	return archive, nil
 }

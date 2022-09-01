@@ -420,12 +420,12 @@ func createPlugin(subnetName string, pluginDir string) (string, error) {
 
 	var vmSourcePath string
 	switch sc.VM {
-	case subnetEvm:
+	case models.SubnetEvm:
 		vmSourcePath, err = binutils.SetupSubnetEVM(app, sc.VMVersion)
 		if err != nil {
 			return "", fmt.Errorf("failed to install subnet-evm: %w", err)
 		}
-	case customVM:
+	case models.CustomVM:
 		vmSourcePath = binutils.SetupCustomBin(app, subnetName)
 	default:
 		return "", fmt.Errorf("unknown vm: %s", sc.VM)

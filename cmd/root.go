@@ -74,7 +74,7 @@ func createApp(cmd *cobra.Command, args []string) error {
 	}
 	cf := config.New()
 	app.Setup(baseDir, log, cf, prompts.NewPrompter())
-	cobra.OnInitialize(initConfig)
+	initConfig()
 	return nil
 }
 

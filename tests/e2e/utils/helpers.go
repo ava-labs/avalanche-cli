@@ -21,6 +21,10 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/spacesvm/chain"
+	spacesvmclient "github.com/ava-labs/spacesvm/client"
+	"github.com/ava-labs/subnet-evm/ethclient"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const (
@@ -218,27 +222,40 @@ func ParseGreeterAddress(output string) error {
 	return os.WriteFile(greeterFile, file, 0o600)
 }
 
-type rpcFile struct {
-	RPC string `json:"rpc"`
+type confFile struct {
+	RPC     string `json:"rpc"`
+	ChainID string `json:"chainID"`
 }
 
 func SetHardhatRPC(rpc string) error {
-	rpcFileData := rpcFile{
-		RPC: rpc,
+	client, err := ethclient.Dial(rpc)
+	if err != nil {
+		return err
 	}
-
-	file, err := json.MarshalIndent(rpcFileData, "", " ")
+	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
+	chainIDBig, err := client.ChainID(ctx)
+	cancel()
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(rpcFilePath, file, 0o600)
+	confFileData := confFile{
+		RPC:     rpc,
+		ChainID: chainIDBig.String(),
+	}
+
+	file, err := json.MarshalIndent(confFileData, "", " ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(confFilePath, file, 0o600)
 }
 
 func RunHardhatTests(test string) error {
 	cmd := exec.Command("npx", "hardhat", "test", test, "--network", "subnet")
 	cmd.Dir = hardhatDir
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(string(output))
 		fmt.Println(err)
@@ -249,7 +266,7 @@ func RunHardhatTests(test string) error {
 func RunHardhatScript(script string) (string, string, error) {
 	cmd := exec.Command("npx", "hardhat", "run", script, "--network", "subnet")
 	cmd.Dir = hardhatDir
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	exitErr, typeOk := err.(*exec.ExitError)
 	stderr := ""
 	if typeOk {
@@ -453,4 +470,69 @@ func WaitSubnetValidators(subnetIDStr string, nodeInfos map[string]NodeInfo) err
 		case <-time.After(time.Second * 1):
 		}
 	}
+}
+
+func RunSpacesVMAPITest(rpc string) error {
+	privHexBytes, err := os.ReadFile(EwoqKeyPath)
+	if err != nil {
+		return err
+	}
+	priv, err := crypto.HexToECDSA(strings.TrimSpace(string(privHexBytes)))
+	if err != nil {
+		return err
+	}
+
+	cli := spacesvmclient.New(strings.ReplaceAll(rpc, "/rpc", ""), constants.RequestTimeout)
+
+	// claim a space
+	space := "clispace"
+	claimTx := &chain.ClaimTx{
+		BaseTx: &chain.BaseTx{},
+		Space:  space,
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
+	_, _, err = spacesvmclient.SignIssueRawTx(
+		ctx,
+		cli,
+		claimTx,
+		priv,
+		spacesvmclient.WithPollTx(),
+		spacesvmclient.WithInfo(space),
+	)
+	cancel()
+	if err != nil {
+		return err
+	}
+
+	// set key/val pair
+	k, v := "key", []byte("value")
+	setTx := &chain.SetTx{
+		BaseTx: &chain.BaseTx{},
+		Space:  space,
+		Key:    k,
+		Value:  v,
+	}
+	ctx, cancel = context.WithTimeout(context.Background(), constants.RequestTimeout)
+	_, _, err = spacesvmclient.SignIssueRawTx(
+		ctx,
+		cli,
+		setTx,
+		priv,
+		spacesvmclient.WithPollTx(),
+		spacesvmclient.WithInfo(space),
+	)
+	cancel()
+	if err != nil {
+		return err
+	}
+
+	// check key/val pair
+	_, rv, _, err := cli.Resolve(context.Background(), space+"/"+k)
+	if err != nil {
+		return err
+	}
+	if string(rv) != string(v) {
+		return fmt.Errorf("expected value to be %q, got %q", v, rv)
+	}
+	return nil
 }
