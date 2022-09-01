@@ -110,7 +110,6 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 		magicState   = "magic"
 		versionState = "version"
 		airdropState = "airdrop"
-		doneState    = "done"
 	)
 
 	var (

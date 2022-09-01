@@ -65,7 +65,6 @@ func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVe
 		feeState         = "fee"
 		airdropState     = "airdrop"
 		precompilesState = "precompiles"
-		doneState        = "done"
 	)
 
 	var (
@@ -78,11 +77,10 @@ func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVe
 	)
 
 	subnetEvmState := statemachine.NewStateMachine(
-		[]string{descriptorsState, feeState, airdropState, precompilesState, doneState},
+		[]string{descriptorsState, feeState, airdropState, precompilesState},
 	)
-	state := subnetEvmState.CurrentState()
-	for state != doneState {
-		switch state {
+	for subnetEvmState.Running() {
+		switch subnetEvmState.CurrentState() {
 		case descriptorsState:
 			chainID, tokenName, vmVersion, direction, err = getDescriptors(app, subnetEVMVersion)
 		case feeState:
@@ -97,7 +95,7 @@ func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVe
 		if err != nil {
 			return nil, nil, err
 		}
-		state = subnetEvmState.NextState(direction)
+		subnetEvmState.NextState(direction)
 	}
 
 	conf.ChainID = chainID
