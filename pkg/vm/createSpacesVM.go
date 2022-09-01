@@ -143,7 +143,7 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 		case airdropState:
 			allocs, direction, err = getAllocation(app, defaultSpacesVMAirdropAmount, new(big.Int).SetUint64(1), "Amount to airdrop")
 		default:
-			err = errors.New("invalid creation stage")
+			err = errors.New("invalid creation state")
 		}
 		if err != nil {
 			return nil, nil, err
