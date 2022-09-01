@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -44,6 +45,7 @@ type Prompter interface {
 	CaptureList(promptStr string, options []string) (string, error)
 	CaptureAnyList(promptStr string, options any) (any, error)
 	CaptureString(promptStr string) (string, error)
+	CaptureGitURL(promptStr string) (url.URL, error)
 	CaptureIndex(promptStr string, options []any) (int, error)
 	CaptureVersion(promptStr string) (string, error)
 	CaptureDuration(promptStr string) (time.Duration, error)
@@ -151,6 +153,14 @@ func validateBiggerThanZero(input string) error {
 	}
 	if val == 0 {
 		return errors.New("the value must be bigger than zero")
+	}
+	return nil
+}
+
+func validateURL(input string) error {
+	_, err := url.ParseRequestURI(input)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -517,6 +527,25 @@ func (*realPrompter) CaptureString(promptStr string) (string, error) {
 	}
 
 	return str, nil
+}
+
+func (*realPrompter) CaptureGitURL(promptStr string) (url.URL, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateURL,
+	}
+
+	str, err := prompt.Run()
+	if err != nil {
+		return url.URL{}, err
+	}
+
+	parsedURL, err := url.ParseRequestURI(str)
+	if err != nil {
+		return url.URL{}, err
+	}
+
+	return *parsedURL, nil
 }
 
 func (*realPrompter) CaptureVersion(promptStr string) (string, error) {

@@ -106,6 +106,17 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	chain := chains[0]
+
+	sc, err := app.LoadSidecar(chain)
+	if err != nil {
+		return fmt.Errorf("failed to load sidecar for later update: %w", err)
+	}
+
+	if sc.ImportedFromAPM {
+		return errors.New("unable to deploy subnets imported from a repo")
+	}
+
 	// get the network to deploy to
 	var network models.Network
 
@@ -136,7 +147,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// deploy based on chosen network
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.String())
-	chain := chains[0]
 	chainGenesis, err := app.LoadRawGenesis(chain)
 	if err != nil {
 		return err

@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/keycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/apmintegration"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -74,7 +75,22 @@ func createApp(cmd *cobra.Command, args []string) error {
 	}
 	cf := config.New()
 	app.Setup(baseDir, log, cf, prompts.NewPrompter())
+
+	// Setup APM, skip if running a hidden command
+	if !cmd.Hidden {
+		usr, err := user.Current()
+		if err != nil {
+			app.Log.Error("unable to get system user")
+			return err
+		}
+		apmBaseDir := filepath.Join(usr.HomeDir, constants.APMDir)
+		if err = apmintegration.SetupApm(app, apmBaseDir); err != nil {
+			return err
+		}
+	}
+
 	initConfig()
+
 	return nil
 }
 
@@ -129,7 +145,7 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid log level configured: %s", logLevel)
 	}
-	config.Directory = filepath.Join(baseDir, "logs")
+	config.Directory = filepath.Join(baseDir, constants.LogDir)
 	if err := os.MkdirAll(config.Directory, perms.ReadWriteExecute); err != nil {
 		return nil, fmt.Errorf("failed creating log directory: %w", err)
 	}

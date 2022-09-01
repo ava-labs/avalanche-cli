@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/apm/apm"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -28,6 +29,8 @@ type Avalanche struct {
 	baseDir string
 	Conf    *config.Config
 	Prompt  prompts.Prompter
+	Apm     *apm.APM
+	ApmDir  string
 }
 
 func New() *Avalanche {
@@ -77,6 +80,10 @@ func (app *Avalanche) GetCustomVMPath(subnetName string) string {
 	return filepath.Join(app.GetCustomVMDir(), subnetName)
 }
 
+func (app *Avalanche) GetAPMVMPath(vmid string) string {
+	return filepath.Join(app.GetAPMPluginDir(), vmid)
+}
+
 func (app *Avalanche) GetGenesisPath(subnetName string) string {
 	return filepath.Join(app.baseDir, subnetName+constants.GenesisSuffix)
 }
@@ -91,6 +98,18 @@ func (app *Avalanche) GetKeyDir() string {
 
 func (app *Avalanche) GetTmpPluginDir() string {
 	return os.TempDir()
+}
+
+func (app *Avalanche) GetAPMBaseDir() string {
+	return filepath.Join(app.baseDir, "apm")
+}
+
+func (app *Avalanche) GetAPMLog() string {
+	return filepath.Join(app.baseDir, constants.LogDir, constants.APMLogName)
+}
+
+func (app *Avalanche) GetAPMPluginDir() string {
+	return filepath.Join(app.baseDir, constants.APMPluginDir)
 }
 
 func (app *Avalanche) GetKeyPath(keyName string) string {
@@ -248,6 +267,9 @@ func (app *Avalanche) GetSidecarNames() ([]string, error) {
 }
 
 func (app *Avalanche) SubnetEvmChainIDExists(chainID string) (bool, error) {
+	if chainID == "" {
+		return false, nil
+	}
 	sidecarNames, err := app.GetSidecarNames()
 	if err != nil {
 		return false, err

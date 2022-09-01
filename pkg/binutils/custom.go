@@ -9,3 +9,8 @@ func SetupCustomBin(app *application.Avalanche, subnetName string) string {
 	// Just need to get the path of the vm
 	return app.GetCustomVMPath(subnetName)
 }
+
+func SetupAPMBin(app *application.Avalanche, vmid string) string {
+	// Just need to get the path of the vm
+	return app.GetAPMVMPath(vmid)
+}
