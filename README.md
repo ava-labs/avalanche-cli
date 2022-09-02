@@ -141,11 +141,11 @@ To run the tests, execute the following command from the repo's root directory:
 
 ## Snapshots usage for local networks
 
-Network snapshots are used by the CLI in order to keep track of blockchain state, and to improve performance of local operations.
+Network snapshots are used by the CLI in order to keep track of blockchain state, and to improve performance of local deployments.
 
 They are the main way to persist subnets, blockchains, and blockchain operations, among different executions of the tool.
 
-Three different kind of snapshots are used:
+Three different kinds of snapshots are used:
 - The `bootstrap snapshot` is provided as the starting network state. It is never modified by CLI usage. 
 Designed for fast deploys. Enables full reset of the blockchain state.
 - The `default snapshot` is the main way to keep track of blockchain state. Used by default in the tools.
@@ -155,35 +155,35 @@ explicitely asked to do so.
 
 ### Local networks
 
-Usage of network for local operations:
-- The local network will be started only if it not already running
-- If the network is not running, both `network start` and `subnet deploy` will start it from the `default snapshot`. `subnet deploy`
-will also do the deploy on the started network.
+Usage of local networks:
+- The local network will be started in the background only if it is not already running
+- If the network is not running, both `network start` and `subnet deploy` will start it from the `default snapshot`. 
+`subnet deploy` will also do the deploy on the started network.
 - If the network is running, `network start` will do nothing, and `subnet deploy` will use the running one to do the deploy.
 - The local network will run until calling `network stop`, `network clean`, or until machine reboot
 
 ### Default snapshot
 
-Changes in `default snapshot` by local operations:
+How the CLI commands affect the `default snapshot`:
 - First call of `network start` or `subnet deploy` will initialize `default snapshot` from the `bootstrap snapshot`
-- Subnecuent calls to `subnet deploy` does not change the snapshot, only the running network
+- Subsequent calls to `subnet deploy` do not change the snapshot, only the running network
 - `network stop` persist the running network into the `default snapshot`
 - `network clean` copy again the `bootstrap snapshot` into the `default snapshot`, doing a reset of the state
 
-So tipically a user will want to do the deploy it needs, change the blockchain state in a specific way, and 
+So typically a user will want to do the deploy she needs, change the blockchain state in a specific way, and 
 after that execute `network stop` to preserve all the state. In a different session, `network start` or `subnet deploy`
 will recover that state.
 
 ### Custom snapshots
 
-Changes in `custom snapshots` by local operations:
-- `network stop` can be given an optional snapshot name, will be used instead of the default one, to save the state
-- `network start` can be given an optional snapshot name, will be used instead of the default one, to load the state
+How the CLI commands affect the `custom snapshots`:
+- `network stop` can be given an optional snapshot name. This will then be used instead of the default one to save the state
+- `network start` can be given an optional snapshot name. This will then be used instead of the default one to save the state
 - `subnet deploy` will take a running network if it is available, so there is a need to use `network start` previously to do
 deploys, if wanting to use custom snapshots
 - `network clean` does not change custom snapshots
 
-So tipically a user who want to use a custom snapshot will do the deploy it needs, change the blockchain state in a specific way, and 
+So typically a user who wants to use a custom snapshot will do the deploy she needs, change the blockchain state in a specific way, and 
 after that execute `network stop` with `--snapshot-name` flag to preserve all the state into the desired snapshot. 
 In a different session, `network start` with `--snapshot-name` flag will be called to load that specific snapshot, and after that
 `subnet deploy` can be used on top of it. Notice that you need to continue giving `--snapshot-name` flag to those commands if you
