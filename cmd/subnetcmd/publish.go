@@ -11,12 +11,14 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 
 	"github.com/ava-labs/apm/types"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/version"
 	"gopkg.in/yaml.v3"
 )
@@ -27,6 +29,8 @@ var (
 	vmDescPath     string
 	subnetDescPath string
 	localOnly      bool
+
+	errSubnetNotDeployed = errors.New("only subnets which have already been deployed to either testnet (fuji) or mainnet can be published")
 )
 
 type newPublisherFunc func(string, string, string) subnet.Publisher
@@ -41,7 +45,7 @@ func newPublishCmd() *cobra.Command {
 		RunE:         publish,
 		Args:         cobra.ExactArgs(1),
 	}
-	cmd.Flags().StringVar(&alias, "alias", "", "We publish to a remote repo, but identiy the repo locally under a user-provided alias (e.g. myrepo).")
+	cmd.Flags().StringVar(&alias, "alias", "", "We publish to a remote repo, but identify the repo locally under a user-provided alias (e.g. myrepo).")
 	cmd.Flags().StringVar(&repoURL, "repo-url", "", "The URL of the repo where we are publishing")
 	cmd.Flags().StringVar(&vmDescPath, "vm-file-path", "", "Path to the VM description file. If not given, a prompting sequence will be initiated.")
 	cmd.Flags().StringVar(&subnetDescPath, "subnet-file-path", "", "Path to the Subnet description file. If not given, a prompting sequence will be initiated.")
@@ -60,7 +64,23 @@ func publish(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if !isReadyToPublish(&sc) {
+		return errSubnetNotDeployed
+	}
 	return doPublish(&sc, subnetName, subnet.NewPublisher)
+}
+
+// isReadyToPublish currently means if deployed to fuji and/or main
+func isReadyToPublish(sc *models.Sidecar) bool {
+	if sc.Networks[models.Fuji.String()].SubnetID != ids.Empty &&
+		sc.Networks[models.Fuji.String()].BlockchainID != ids.Empty {
+		return true
+	}
+	if sc.Networks[models.Mainnet.String()].SubnetID != ids.Empty &&
+		sc.Networks[models.Mainnet.String()].BlockchainID != ids.Empty {
+		return true
+	}
+	return false
 }
 
 func doPublish(sc *models.Sidecar, subnetName string, publisherCreateFunc newPublisherFunc) (err error) {
@@ -236,8 +256,7 @@ func getRepoURL(reposDir string) error {
 		path := filepath.Join(reposDir, alias)
 		repo, err := git.PlainOpen(path)
 		if err != nil {
-			// TODO: probably a debug log; the alias might not have been created yet,
-			// so the repo might not exist, therefore just ignore it!
+			app.Log.Debug("opening repo failed - alias might have not been created yet, so ignore", zap.String("alias", alias), zap.Error(err))
 		} else {
 			// there is a repo already for this alias, let's try to figure out the remote URL from there
 			conf, err := repo.Config()
@@ -278,12 +297,12 @@ func loadYAMLFile[T types.Definition](path string, defType T) error {
 }
 
 func getSubnetInfo(sc *models.Sidecar) (*types.Subnet, error) {
-	homepage, err := app.Prompt.CaptureEmpty("What is the homepage of the Subnet project?", nil)
+	homepage, err := app.Prompt.CaptureStringAllowEmpty("What is the homepage of the Subnet project?")
 	if err != nil {
 		return nil, err
 	}
 
-	desc, err := app.Prompt.CaptureEmpty("Provide a free-text description of the Subnet", nil)
+	desc, err := app.Prompt.CaptureStringAllowEmpty("Provide a free-text description of the Subnet")
 	if err != nil {
 		return nil, err
 	}
@@ -331,11 +350,11 @@ func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 
 	switch {
 	case sc.VM == models.CustomVM:
-		vmID, err = app.Prompt.CaptureEmpty("What is the ID of this VM?", nil)
+		vmID, err = app.Prompt.CaptureStringAllowEmpty("What is the ID of this VM?")
 		if err != nil {
 			return nil, err
 		}
-		desc, err = app.Prompt.CaptureEmpty("Provide a description for this VM", nil)
+		desc, err = app.Prompt.CaptureStringAllowEmpty("Provide a description for this VM")
 		if err != nil {
 			return nil, err
 		}
@@ -373,22 +392,22 @@ func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 		return nil, fmt.Errorf("unexpected error: unsupported VM type: %s", sc.VM)
 	}
 
-	scr, err := app.Prompt.CaptureEmpty("What scripts needs to run to install this VM? Needs to be an executable command to build the VM.", nil)
+	scr, err := app.Prompt.CaptureStringAllowEmpty("What scripts needs to run to install this VM? Needs to be an executable command to build the VM.")
 	if err != nil {
 		return nil, err
 	}
 
-	bin, err := app.Prompt.CaptureEmpty("What is the binary path? (This is the output of the build command)", nil)
+	bin, err := app.Prompt.CaptureStringAllowEmpty("What is the binary path? (This is the output of the build command)")
 	if err != nil {
 		return nil, err
 	}
 
-	url, err := app.Prompt.CaptureEmpty("Tell us the URL to download the source. Needs to be a fixed version, not `latest`.", nil)
+	url, err := app.Prompt.CaptureStringAllowEmpty("Tell us the URL to download the source. Needs to be a fixed version, not `latest`.")
 	if err != nil {
 		return nil, err
 	}
 
-	sha, err := app.Prompt.CaptureEmpty("For integrity checks, provide the sha256 commit for the used version", nil)
+	sha, err := app.Prompt.CaptureStringAllowEmpty("For integrity checks, provide the sha256 commit for the used version")
 	if err != nil {
 		return nil, err
 	}
@@ -408,10 +427,10 @@ func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 		Homepage:      "",
 		Description:   desc.(string),
 		Maintainers:   strMaintrs,
-		InstallScript: scr.(string),
-		BinaryPath:    bin.(string),
-		URL:           url.(string),
-		SHA256:        sha.(string),
+		InstallScript: scr,
+		BinaryPath:    bin,
+		URL:           url,
+		SHA256:        sha,
 		Version:       *ver,
 	}
 

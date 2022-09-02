@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
@@ -38,7 +39,7 @@ func NewPublisher(repoDir, repoURL, alias string) Publisher {
 
 func (p *publisherImpl) GetRepo() (repo *git.Repository, err error) {
 	// path exists
-	if _, err = os.Stat(p.repoPath); err == nil {
+	if _, err := os.Stat(p.repoPath); err == nil {
 		return git.PlainOpen(p.repoPath)
 	}
 	return git.PlainClone(p.repoPath, false, &git.CloneOptions{
@@ -59,39 +60,48 @@ func (p *publisherImpl) Publish(
 	}
 	// TODO: This might not always be the right path!
 	subnetPath := filepath.Join(p.repoPath, constants.SubnetDir, subnetName)
-	if err := os.MkdirAll(filepath.Join(p.repoPath, constants.SubnetDir), constants.DefaultPerms755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(subnetPath), constants.DefaultPerms755); err != nil {
 		return err
 	}
 	vmPath := filepath.Join(p.repoPath, constants.VMDir, vmName)
-	if err := os.MkdirAll(filepath.Join(p.repoPath, constants.VMDir), constants.DefaultPerms755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(vmPath), constants.DefaultPerms755); err != nil {
 		return err
 	}
-	if err = os.WriteFile(subnetPath, subnetYAML, constants.DefaultPerms755); err != nil {
+	if err := os.WriteFile(subnetPath, subnetYAML, constants.DefaultPerms755); err != nil {
 		return err
 	}
 
-	if err = os.WriteFile(vmPath, vmYAML, constants.DefaultPerms755); err != nil {
+	if err := os.WriteFile(vmPath, vmYAML, constants.DefaultPerms755); err != nil {
 		return err
 	}
 
 	ux.Logger.PrintToUser("Adding resources to local git repo...")
 
-	if _, err = wt.Add("subnets"); err != nil {
+	if _, err := wt.Add("subnets"); err != nil {
 		return err
 	}
 
-	if _, err = wt.Add("vms"); err != nil {
+	if _, err := wt.Add("vms"); err != nil {
 		return err
 	}
 
 	ux.Logger.PrintToUser("Committing resources to local git repo...")
 	now := time.Now()
 	commitStr := fmt.Sprintf("avalanche-commit-%s", now.String())
-	// TODO review these options
+
+	// use the global git config to try identifying the author
+	conf, err := config.LoadConfig(config.GlobalScope)
+	authorName := conf.Author.Name
+	authorEmail := conf.Author.Email
+	if err != nil || authorName == "" || authorEmail == "" { // a commit must have both
+		authorName = constants.GitRepoCommitName
+		authorEmail = constants.GitRepoCommitEmail
+	}
+
 	commit, err := wt.Commit(commitStr, &git.CommitOptions{
 		Author: &object.Signature{
-			Name:  constants.GitRepoCommitName,
-			Email: constants.GitRepoCommitEmail, // what are reasonable names here?
+			Name:  authorName,
+			Email: authorEmail,
 			When:  now,
 		},
 	})
@@ -99,7 +109,7 @@ func (p *publisherImpl) Publish(
 		return err
 	}
 
-	if _, err = repo.CommitObject(commit); err != nil {
+	if _, err := repo.CommitObject(commit); err != nil {
 		return err
 	}
 

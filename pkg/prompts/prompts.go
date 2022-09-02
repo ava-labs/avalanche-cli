@@ -46,7 +46,7 @@ type Prompter interface {
 	CaptureList(promptStr string, options []string) (string, error)
 	CaptureAnyList(promptStr string, options any) (any, error)
 	CaptureString(promptStr string) (string, error)
-	CaptureEmpty(promptStr string, arg any) (any, error)
+	CaptureStringAllowEmpty(promptStr string) (string, error)
 	CaptureEmail(promptStr string, arg any) (any, error)
 	CaptureGitURL(promptStr string) (url.URL, error)
 	CaptureIndex(promptStr string, options []any) (int, error)
@@ -532,7 +532,7 @@ func (*realPrompter) CaptureEmail(promptStr string, arg any) (any, error) {
 	return str, nil
 }
 
-func (*realPrompter) CaptureEmpty(promptStr string, arg any) (any, error) {
+func (*realPrompter) CaptureStringAllowEmpty(promptStr string) (string, error) {
 	prompt := promptui.Prompt{
 		Label: promptStr,
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/go-git/go-git/v5"
 	"github.com/stretchr/testify/assert"
@@ -26,6 +27,111 @@ func newTestPublisher(string, string, string) subnet.Publisher {
 	mockPub.On("GetRepo").Return(&git.Repository{}, nil)
 	mockPub.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	return mockPub
+}
+
+func TestCanPublish(t *testing.T) {
+	assert, _ := setupTestEnv(t)
+	defer func() {
+		app = nil
+	}()
+
+	scCanPublishFuji := &models.Sidecar{
+		VM:     models.SubnetEvm,
+		Name:   "fuji",
+		Subnet: "fuji",
+		Networks: map[string]models.NetworkData{
+			models.Fuji.String(): {
+				SubnetID:     ids.GenerateTestID(),
+				BlockchainID: ids.GenerateTestID(),
+			},
+		},
+	}
+
+	scCanPublishMain := &models.Sidecar{
+		VM:     models.SubnetEvm,
+		Name:   "main",
+		Subnet: "main",
+		Networks: map[string]models.NetworkData{
+			models.Mainnet.String(): {
+				SubnetID:     ids.GenerateTestID(),
+				BlockchainID: ids.GenerateTestID(),
+			},
+		},
+	}
+
+	scCanPublishBoth := &models.Sidecar{
+		VM:     models.SubnetEvm,
+		Name:   "both",
+		Subnet: "both",
+		Networks: map[string]models.NetworkData{
+			models.Fuji.String(): {
+				SubnetID:     ids.GenerateTestID(),
+				BlockchainID: ids.GenerateTestID(),
+			},
+			models.Mainnet.String(): {
+				SubnetID:     ids.GenerateTestID(),
+				BlockchainID: ids.GenerateTestID(),
+			},
+		},
+	}
+
+	scCanNotPublishLocal := &models.Sidecar{
+		VM:     models.SubnetEvm,
+		Name:   "local",
+		Subnet: "local",
+		Networks: map[string]models.NetworkData{
+			models.Local.String(): {
+				SubnetID:     ids.GenerateTestID(),
+				BlockchainID: ids.GenerateTestID(),
+			},
+		},
+	}
+
+	scCanNotPublishUndefined := &models.Sidecar{
+		VM:     models.SubnetEvm,
+		Name:   "undefined",
+		Subnet: "undefined",
+		Networks: map[string]models.NetworkData{
+			models.Undefined.String(): {
+				SubnetID:     ids.GenerateTestID(),
+				BlockchainID: ids.GenerateTestID(),
+			},
+		},
+	}
+
+	scCanNotPublishBothInvalid := &models.Sidecar{
+		VM:     models.SubnetEvm,
+		Name:   "bothInvalid",
+		Subnet: "bothInvalid",
+		Networks: map[string]models.NetworkData{
+			models.Undefined.String(): {
+				SubnetID:     ids.GenerateTestID(),
+				BlockchainID: ids.GenerateTestID(),
+			},
+			models.Local.String(): {
+				SubnetID:     ids.GenerateTestID(),
+				BlockchainID: ids.GenerateTestID(),
+			},
+		},
+	}
+
+	sidecars := []*models.Sidecar{
+		scCanPublishFuji,
+		scCanPublishMain,
+		scCanPublishBoth,
+		scCanNotPublishLocal,
+		scCanNotPublishUndefined,
+		scCanNotPublishBothInvalid,
+	}
+
+	for i, sc := range sidecars {
+		ready := isReadyToPublish(sc)
+		if i < 3 {
+			assert.True(ready)
+		} else {
+			assert.False(ready)
+		}
+	}
 }
 
 func TestIsPublished(t *testing.T) {
