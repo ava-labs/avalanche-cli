@@ -45,6 +45,7 @@ func deleteSubnet(cmd *cobra.Command, args []string) error {
 	// is an APM subnet. We can't naively delete the binary because it
 	// may be used by multiple subnets. We should delete this binary,
 	// but only if no other subnet is using it.
+	// More info: https://github.com/ava-labs/avalanche-cli/issues/246
 
 	if _, err := os.Stat(genesisPath); err == nil {
 		// exists

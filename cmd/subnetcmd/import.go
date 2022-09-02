@@ -47,19 +47,19 @@ with the same name. To allow overwrites, provide the --force flag.`,
 		&repoOrURL,
 		"repo",
 		"",
-		"the repo or url to use",
+		"the repo to import (ex: ava-labs/avalanche-plugins-core) or url to download the repo from",
 	)
 	cmd.Flags().StringVar(
 		&branch,
 		"branch",
 		"",
-		"the repo branch to use",
+		"the repo branch to use if downloading a new repo",
 	)
 	cmd.Flags().StringVar(
 		&subnetAlias,
 		"subnet",
 		"",
-		"the subnet alias to use",
+		"the subnet configuration to import from the provided repo",
 	)
 	return cmd
 }

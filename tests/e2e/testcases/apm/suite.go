@@ -15,7 +15,7 @@ const (
 	vmid1   = "srEXiWaHuhNyGwPUi444Tu47ZEDwxTWrbQiuD7FmgSAQ6X7Dy"
 	vmid2   = "sqja3uK17MJxfC7AN8nGadBw9JK5BcrsNwNynsqP5Gih8M5Bm"
 
-	testRepo = "https://github.com/dasconnor/subnets-test"
+	testRepo = "https://github.com/ava-labs/test-subnet-configs"
 )
 
 var _ = ginkgo.Describe("[Local Subnet]", func() {
@@ -51,7 +51,7 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 	})
 
 	ginkgo.It("can import from url", func() {
-		branch := "main"
+		branch := "master"
 		subnet := "spaces"
 
 		commands.ImportSubnetConfigFromURL(testRepo, branch, subnet)
