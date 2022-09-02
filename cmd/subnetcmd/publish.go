@@ -332,8 +332,8 @@ func getSubnetInfo(sc *models.Sidecar) (*types.Subnet, error) {
 	subnet := &types.Subnet{
 		ID:          sc.Networks[models.Fuji.String()].SubnetID.String(),
 		Alias:       sc.Name,
-		Homepage:    homepage.(string),
-		Description: desc.(string),
+		Homepage:    homepage,
+		Description: desc,
 		Maintainers: strMaintrs,
 		VMs:         []string{sc.Subnet},
 	}

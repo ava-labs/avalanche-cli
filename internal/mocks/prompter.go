@@ -131,29 +131,6 @@ func (_m *Prompter) CaptureEmail(promptStr string, arg interface{}) (interface{}
 	return r0, r1
 }
 
-// CaptureEmpty provides a mock function with given fields: promptStr, arg
-func (_m *Prompter) CaptureEmpty(promptStr string, arg interface{}) (interface{}, error) {
-	ret := _m.Called(promptStr, arg)
-
-	var r0 interface{}
-	if rf, ok := ret.Get(0).(func(string, interface{}) interface{}); ok {
-		r0 = rf(promptStr, arg)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(interface{})
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(string, interface{}) error); ok {
-		r1 = rf(promptStr, arg)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // CaptureExistingFilepath provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureExistingFilepath(promptStr string) (string, error) {
 	ret := _m.Called(promptStr)
@@ -360,6 +337,27 @@ func (_m *Prompter) CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 
 // CaptureString provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureString(promptStr string) (string, error) {
+	ret := _m.Called(promptStr)
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(promptStr)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(promptStr)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CaptureStringAllowEmpty provides a mock function with given fields: promptStr
+func (_m *Prompter) CaptureStringAllowEmpty(promptStr string) (string, error) {
 	ret := _m.Called(promptStr)
 
 	var r0 string

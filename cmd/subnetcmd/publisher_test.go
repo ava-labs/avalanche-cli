@@ -192,8 +192,8 @@ func TestIsPublished(t *testing.T) {
 	assert.True(published)
 }
 
-// TestPublisher allows unit testing of the **normal** flow for publishing
-func TestPublisher(t *testing.T) {
+// TestPublishing allows unit testing of the **normal** flow for publishing
+func TestPublishing(t *testing.T) {
 	assert, mockPrompt := setupTestEnv(t)
 	defer func() {
 		app = nil
@@ -204,7 +204,7 @@ func TestPublisher(t *testing.T) {
 	// then the repo URL...
 	mockPrompt.On("CaptureString", mock.Anything).Return("https://localhost:12345", nil).Once()
 	// always provide an irrelevant response when empty is allowed...
-	mockPrompt.On("CaptureEmpty", mock.Anything, mock.Anything).Return("irrelevant", nil)
+	mockPrompt.On("CaptureStringAllowEmpty", mock.Anything).Return("irrelevant", nil)
 	// on the maintainers, return some array
 	mockPrompt.On("CaptureListDecision", mockPrompt, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]any{"dummy", "stuff"}, false, nil)
 	// finally return a semantic version
