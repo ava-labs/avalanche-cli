@@ -28,7 +28,7 @@ var (
 	repoURL        string
 	vmDescPath     string
 	subnetDescPath string
-	localOnly      bool
+	noRepoPath     string
 
 	errSubnetNotDeployed = errors.New("only subnets which have already been deployed to either testnet (fuji) or mainnet can be published")
 )
@@ -49,8 +49,8 @@ func newPublishCmd() *cobra.Command {
 	cmd.Flags().StringVar(&repoURL, "repo-url", "", "The URL of the repo where we are publishing")
 	cmd.Flags().StringVar(&vmDescPath, "vm-file-path", "", "Path to the VM description file. If not given, a prompting sequence will be initiated.")
 	cmd.Flags().StringVar(&subnetDescPath, "subnet-file-path", "", "Path to the Subnet description file. If not given, a prompting sequence will be initiated.")
+	cmd.Flags().StringVar(&noRepoPath, "no-repo-path", "", "Do not let the tool manage file publishing, but have it only generate the files and put them in the location given by this flag.")
 	cmd.Flags().BoolVar(&forceWrite, forceFlag, false, "If true, ignores if the subnet has been published in the past, and attempts a forced publish.")
-	cmd.Flags().BoolVar(&localOnly, "--local-only", false, "If true, we actually don't push to a remote repo, just create a local repo structure and commit to it.")
 	return cmd
 }
 
@@ -100,7 +100,7 @@ func doPublish(sc *models.Sidecar, subnetName string, publisherCreateFunc newPub
 		vm      *types.VM
 	)
 
-	if !forceWrite {
+	if !forceWrite && noRepoPath == "" {
 		// if forceWrite is present, we don't need to check if it has been previously published, we just do
 		published, err := isAlreadyPublished(subnetName)
 		if err != nil {
@@ -146,17 +146,42 @@ func doPublish(sc *models.Sidecar, subnetName string, publisherCreateFunc newPub
 		return err
 	}
 
+	if noRepoPath != "" {
+		ux.Logger.PrintToUser("Writing the file specs to the provided directory at: %s", noRepoPath)
+		// the directory does not exist
+		if _, err := os.Stat(noRepoPath); err != nil {
+			if err := os.MkdirAll(noRepoPath, constants.DefaultPerms755); err != nil {
+				return fmt.Errorf("attempted to create the given --no-repo-path directory at %s, but failed: %w", noRepoPath, err)
+			}
+			ux.Logger.PrintToUser("The given --no-repo-path at %s was not existing; created it with permissions %o", noRepoPath, constants.DefaultPerms755)
+		}
+		subnetFile := filepath.Join(noRepoPath, subnetName+constants.YAMLSuffix)
+		vmFile := filepath.Join(noRepoPath, vm.Alias+constants.YAMLSuffix)
+		if !forceWrite {
+			// do not automatically overwrite
+			if _, err := os.Stat(subnetFile); err == nil {
+				return fmt.Errorf("a file with the name %s already exists. If you wish to overwrite, provide the %s flag", subnetFile, forceFlag)
+			}
+			if _, err := os.Stat(vmFile); err == nil {
+				return fmt.Errorf("a file with the name %s already exists. If you wish to overwrite, provide the %s flag", vmFile, forceFlag)
+			}
+		}
+		if err := os.WriteFile(subnetFile, subnetYAML, constants.DefaultPerms755); err != nil {
+			return fmt.Errorf("failed creating the subnet description YAML file: %w", err)
+		}
+		if err := os.WriteFile(vmFile, vmYAML, constants.DefaultPerms755); err != nil {
+			return fmt.Errorf("failed creating the subnet description YAML file: %w", err)
+		}
+		ux.Logger.PrintToUser("YAML files written successfully to %s", noRepoPath)
+		return nil
+	}
+
 	ux.Logger.PrintToUser("Thanks! We got all the bits and pieces. Trying to publish on the provided repo...")
 
 	publisher := publisherCreateFunc(reposDir, repoURL, alias)
 	repo, err := publisher.GetRepo()
 	if err != nil {
 		return err
-	}
-
-	if localOnly {
-		ux.Logger.PrintToUser("`--local-only` is true. Created the local repo but did not push")
-		return nil
 	}
 
 	// TODO: if not published? New commit? Etc...

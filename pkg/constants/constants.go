@@ -43,8 +43,9 @@ const (
 	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/bootstrapSnapshot.tar.gz"
 	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
 
-	KeyDir    = "key"
-	KeySuffix = ".pk"
+	KeyDir     = "key"
+	KeySuffix  = ".pk"
+	YAMLSuffix = ".yml"
 
 	TimeParseLayout    = "2006-01-02 15:04:05"
 	MinStakeDuration   = 24 * 14 * time.Hour

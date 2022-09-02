@@ -29,6 +29,77 @@ func newTestPublisher(string, string, string) subnet.Publisher {
 	return mockPub
 }
 
+func TestNoRepoPath(t *testing.T) {
+	assert, mockPrompt := setupTestEnv(t)
+	defer func() {
+		app = nil
+		noRepoPath = ""
+		forceWrite = false
+	}()
+
+	testSubnet := "testSubnet"
+
+	configureMockPrompt(mockPrompt)
+
+	sc := &models.Sidecar{
+		VM:     models.SubnetEvm,
+		Name:   testSubnet,
+		Subnet: testSubnet,
+		Networks: map[string]models.NetworkData{
+			models.Fuji.String(): {
+				SubnetID:     ids.GenerateTestID(),
+				BlockchainID: ids.GenerateTestID(),
+			},
+		},
+	}
+
+	// first try with an impossible file
+	noRepoPath = "/path/to/nowhere"
+	err := doPublish(sc, testSubnet, newTestPublisher)
+	// should fail as it can't create that dir
+	assert.Error(err)
+	assert.ErrorContains(err, "failed")
+
+	// try with existing files
+	noRepoPath = t.TempDir()
+	expectedSubnetFile := filepath.Join(noRepoPath, testSubnet+constants.YAMLSuffix)
+	expectedVMFile := filepath.Join(noRepoPath, testSubnet+constants.YAMLSuffix)
+	_, err = os.Create(expectedSubnetFile)
+	assert.NoError(err)
+	err = doPublish(sc, testSubnet, newTestPublisher)
+	// should fail as no force flag
+	assert.Error(err)
+	assert.ErrorContains(err, "already exists")
+	err = os.Remove(expectedSubnetFile)
+	assert.NoError(err)
+	_, err = os.Create(expectedVMFile)
+	assert.NoError(err)
+	// should fail as no force flag (other file)
+	err = doPublish(sc, testSubnet, newTestPublisher)
+	assert.Error(err)
+	assert.ErrorContains(err, "already exists")
+	err = os.Remove(expectedVMFile)
+	assert.NoError(err)
+
+	// this now should succeed and the file exist
+	err = doPublish(sc, testSubnet, newTestPublisher)
+	assert.NoError(err)
+	assert.FileExists(expectedSubnetFile)
+	assert.FileExists(expectedVMFile)
+	// set force flag
+	forceWrite = true
+	// should also succeed and the file exist
+	err = doPublish(sc, testSubnet, newTestPublisher)
+	assert.NoError(err)
+	assert.FileExists(expectedSubnetFile)
+	assert.FileExists(expectedVMFile)
+
+	// reset expectations as TestPublishing also uses the same mocks
+	// but those are global so expectations get messed up
+	mockPrompt.Calls = nil
+	mockPrompt.ExpectedCalls = nil
+}
+
 func TestCanPublish(t *testing.T) {
 	assert, _ := setupTestEnv(t)
 	defer func() {
@@ -199,6 +270,21 @@ func TestPublishing(t *testing.T) {
 		app = nil
 	}()
 
+	configureMockPrompt(mockPrompt)
+
+	sc := &models.Sidecar{
+		VM: models.SubnetEvm,
+	}
+	err := doPublish(sc, "testSubnet", newTestPublisher)
+	assert.NoError(err)
+
+	// reset expectations as TestNoRepoPath also uses the same mocks
+	// but those are global so expectations get messed up
+	mockPrompt.Calls = nil
+	mockPrompt.ExpectedCalls = nil
+}
+
+func configureMockPrompt(mockPrompt *mocks.Prompter) {
 	// capture string for a repo alias...
 	mockPrompt.On("CaptureString", mock.Anything).Return("testAlias", nil).Once()
 	// then the repo URL...
@@ -209,12 +295,6 @@ func TestPublishing(t *testing.T) {
 	mockPrompt.On("CaptureListDecision", mockPrompt, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]any{"dummy", "stuff"}, false, nil)
 	// finally return a semantic version
 	mockPrompt.On("CaptureVersion", mock.Anything).Return("v0.9.99", nil)
-
-	sc := &models.Sidecar{
-		VM: models.SubnetEvm,
-	}
-	err := doPublish(sc, "testSubnet", newTestPublisher)
-	assert.NoError(err)
 }
 
 func setupTestEnv(t *testing.T) (*assert.Assertions, *mocks.Prompter) {

@@ -59,11 +59,11 @@ func (p *publisherImpl) Publish(
 		return err
 	}
 	// TODO: This might not always be the right path!
-	subnetPath := filepath.Join(p.repoPath, constants.SubnetDir, subnetName)
+	subnetPath := filepath.Join(p.repoPath, constants.SubnetDir, subnetName+constants.YAMLSuffix)
 	if err := os.MkdirAll(filepath.Dir(subnetPath), constants.DefaultPerms755); err != nil {
 		return err
 	}
-	vmPath := filepath.Join(p.repoPath, constants.VMDir, vmName)
+	vmPath := filepath.Join(p.repoPath, constants.VMDir, vmName+constants.YAMLSuffix)
 	if err := os.MkdirAll(filepath.Dir(vmPath), constants.DefaultPerms755); err != nil {
 		return err
 	}
