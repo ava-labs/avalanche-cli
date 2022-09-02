@@ -50,7 +50,7 @@ func TestGetGithubOrg(t *testing.T) {
 			assert := assert.New(t)
 			parsedURL, err := url.ParseRequestURI(tt.url)
 			assert.NoError(err)
-			org, err := getGitOrg(*parsedURL)
+			org, err := getGitOrg(parsedURL)
 			assert.Equal(tt.expectedOrg, org)
 			if tt.expectedErr {
 				assert.Error(err)
@@ -101,7 +101,7 @@ func TestGetGithubRepo(t *testing.T) {
 			assert := assert.New(t)
 			parsedURL, err := url.ParseRequestURI(tt.url)
 			assert.NoError(err)
-			repo, err := getGitRepo(*parsedURL)
+			repo, err := getGitRepo(parsedURL)
 			assert.Equal(tt.expectedRepo, repo)
 			if tt.expectedErr {
 				assert.Error(err)
@@ -152,7 +152,7 @@ func TestGetAlias(t *testing.T) {
 			assert := assert.New(t)
 			parsedURL, err := url.ParseRequestURI(tt.url)
 			assert.NoError(err)
-			alias, err := getAlias(*parsedURL)
+			alias, err := getAlias(parsedURL)
 			assert.Equal(tt.expectedAlias, alias)
 			if tt.expectedErr {
 				assert.Error(err)

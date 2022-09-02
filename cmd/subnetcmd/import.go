@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/apmintegration"
@@ -15,7 +16,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var overwriteImport bool
+var (
+	overwriteImport bool
+	repoOrURL       string
+	subnetAlias     string
+	branch          string
+)
 
 // avalanche subnet import
 func newImportCmd() *cobra.Command {
@@ -37,6 +43,24 @@ with the same name. To allow overwrites, provide the --force flag.`,
 		false,
 		"overwrite the existing configuration if one exists",
 	)
+	cmd.Flags().StringVar(
+		&repoOrURL,
+		"repo",
+		"",
+		"the repo or url to use",
+	)
+	cmd.Flags().StringVar(
+		&branch,
+		"branch",
+		"",
+		"the repo branch to use",
+	)
+	cmd.Flags().StringVar(
+		&subnetAlias,
+		"subnet",
+		"",
+		"the subnet alias to use",
+	)
 	return cmd
 }
 
@@ -46,17 +70,19 @@ func importSubnet(cmd *cobra.Command, args []string) error {
 		return importFromFile(importPath)
 	}
 
-	fileOption := "File"
-	apmOption := "Repository"
-	typeOptions := []string{fileOption, apmOption}
-	promptStr := "Would you like to import your subnet from a file or a repository?"
-	result, err := app.Prompt.CaptureList(promptStr, typeOptions)
-	if err != nil {
-		return err
-	}
+	if repoOrURL == "" && branch == "" && subnetAlias == "" {
+		fileOption := "File"
+		apmOption := "Repository"
+		typeOptions := []string{fileOption, apmOption}
+		promptStr := "Would you like to import your subnet from a file or a repository?"
+		result, err := app.Prompt.CaptureList(promptStr, typeOptions)
+		if err != nil {
+			return err
+		}
 
-	if result == fileOption {
-		return importFromFile("")
+		if result == fileOption {
+			return importFromFile("")
+		}
 	}
 
 	// Option must be APM
@@ -114,30 +140,58 @@ func importFromAPM() error {
 		return err
 	}
 
+	var repoAlias string
+	var repoURL *url.URL
+	var promptStr string
 	customRepo := "Download new repo"
-	installedRepos = append(installedRepos, customRepo)
 
-	promptStr := "What repo would you like to import from"
-	repoAlias, err := app.Prompt.CaptureList(promptStr, installedRepos)
-	if err != nil {
-		return err
+	if repoOrURL != "" {
+		fmt.Println("Looking for", repoOrURL)
+		for _, installedRepo := range installedRepos {
+			fmt.Println("checking against", installedRepo)
+			if repoOrURL == installedRepo {
+				repoAlias = installedRepo
+				break
+			}
+		}
+		if repoAlias == "" {
+			repoAlias = customRepo
+			repoURL, err = url.ParseRequestURI(repoOrURL)
+			if err != nil {
+				return fmt.Errorf("invalid url in flag: %w", err)
+			}
+		}
 	}
 
-	if repoAlias == customRepo {
-		promptStr = "Enter your repo URL"
-		repoURL, err := app.Prompt.CaptureGitURL(promptStr)
+	if repoAlias == "" {
+		installedRepos = append(installedRepos, customRepo)
+
+		promptStr := "What repo would you like to import from"
+		repoAlias, err = app.Prompt.CaptureList(promptStr, installedRepos)
 		if err != nil {
 			return err
 		}
+	}
 
-		mainBranch := "main"
-		masterBranch := "master"
-		customBranch := "custom"
-		branchList := []string{mainBranch, masterBranch, customBranch}
-		promptStr = "What branch would you like to import from"
-		branch, err := app.Prompt.CaptureList(promptStr, branchList)
-		if err != nil {
-			return err
+	if repoAlias == customRepo {
+		if repoURL == nil {
+			promptStr = "Enter your repo URL"
+			repoURL, err = app.Prompt.CaptureGitURL(promptStr)
+			if err != nil {
+				return err
+			}
+		}
+
+		if branch == "" {
+			mainBranch := "main"
+			masterBranch := "master"
+			customBranch := "custom"
+			branchList := []string{mainBranch, masterBranch, customBranch}
+			promptStr = "What branch would you like to import from"
+			branch, err = app.Prompt.CaptureList(promptStr, branchList)
+			if err != nil {
+				return err
+			}
 		}
 
 		repoAlias, err = apmintegration.AddRepo(app, repoURL, branch)
@@ -156,10 +210,23 @@ func importFromAPM() error {
 		return err
 	}
 
-	promptStr = "Select a subnet to import"
-	subnet, err := app.Prompt.CaptureList(promptStr, subnets)
-	if err != nil {
-		return err
+	var subnet string
+	if subnetAlias != "" {
+		for _, availableSubnet := range subnets {
+			if subnetAlias == availableSubnet {
+				subnet = subnetAlias
+				break
+			}
+		}
+		if subnet == "" {
+			return fmt.Errorf("unable to find subnet %s", subnetAlias)
+		}
+	} else {
+		promptStr = "Select a subnet to import"
+		subnet, err = app.Prompt.CaptureList(promptStr, subnets)
+		if err != nil {
+			return err
+		}
 	}
 
 	subnetKey := apmintegration.MakeKey(repoAlias, subnet)

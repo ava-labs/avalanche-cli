@@ -5,6 +5,7 @@ package utils
 
 const (
 	baseDir               = ".avalanche-cli"
+	baseAPMDir            = ".apm"
 	hardhatDir            = "./tests/e2e/hardhat"
 	confFilePath          = hardhatDir + "/dynamic_conf.json"
 	BaseTest              = "./test/index.ts"

@@ -399,3 +399,90 @@ func SimulateJoinPublicly(
 
 	return string(output)
 }
+
+/* #nosec G204 */
+func ImportSubnetConfig(repoAlias string, subnetName string) {
+	// Check config does not already exist
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeFalse())
+	// Check vm binary does not already exist
+	exists, err = utils.SubnetCustomVMExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeFalse())
+
+	// Create config
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"import",
+		"--repo",
+		repoAlias,
+		"--subnet",
+		subnetName,
+	)
+	fmt.Println(cmd.String())
+	output, err := cmd.CombinedOutput()
+	exitErr, typeOk := err.(*exec.ExitError)
+	stderr := ""
+	if typeOk {
+		stderr = string(exitErr.Stderr)
+	}
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+		fmt.Println(stderr)
+	}
+
+	// Config should now exist
+	exists, err = utils.APMConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+	exists, err = utils.SubnetAPMVMExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+}
+
+/* #nosec G204 */
+func ImportSubnetConfigFromURL(repoURL string, branch string, subnetName string) {
+	// Check config does not already exist
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeFalse())
+	// Check vm binary does not already exist
+	exists, err = utils.SubnetCustomVMExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeFalse())
+
+	// Create config
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"import",
+		"--repo",
+		repoURL,
+		"--branch",
+		branch,
+		"--subnet",
+		subnetName,
+	)
+	output, err := cmd.CombinedOutput()
+	exitErr, typeOk := err.(*exec.ExitError)
+	stderr := ""
+	if typeOk {
+		stderr = string(exitErr.Stderr)
+	}
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+		fmt.Println(stderr)
+	}
+
+	// Config should now exist
+	exists, err = utils.APMConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+	exists, err = utils.SubnetAPMVMExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+}
