@@ -9,7 +9,7 @@ require (
 	github.com/ava-labs/coreth v0.8.16-rc.2
 	github.com/ava-labs/spacesvm v0.0.7
 	github.com/ava-labs/subnet-evm v0.2.7
-	github.com/docker/docker v1.6.2
+	github.com/docker/docker v20.10.17+incompatible
 	github.com/ethereum/go-ethereum v1.10.21
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/manifoldco/promptui v0.9.0
@@ -147,4 +147,5 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/urfave/cli.v1 v1.20.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
+	gotest.tools/v3 v3.3.0 // indirect
 )
