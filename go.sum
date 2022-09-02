@@ -78,8 +78,8 @@ github.com/ava-labs/coreth v0.8.16-rc.2 h1:Yo6J5faqK9sdnp7yzTIIEGodZqPctvy9l4SLR
 github.com/ava-labs/coreth v0.8.16-rc.2/go.mod h1:iOB8EcOy/9yY1+/MAUqI2UM5GUIuIbX2MVKK1gCHqHs=
 github.com/ava-labs/spacesvm v0.0.7 h1:ogyKczgIpM9nx2kedYe94qrqVJXsS6TIFYr4LUjfe38=
 github.com/ava-labs/spacesvm v0.0.7/go.mod h1:tuPg2cE2MxJakRXXtwjRyTwxg+ZrseOVRG9e2J67USM=
-github.com/ava-labs/subnet-evm v0.2.7 h1:ZmiDR6s4TtwgQ7o3fUZ+3nSvxMsI9jdRnAfYZBKtRhs=
-github.com/ava-labs/subnet-evm v0.2.7/go.mod h1:TLmqEeA8T4qKFZqIV+Kl7Uoo7xFVutU+VHQhc0sdIRg=
+github.com/ava-labs/subnet-evm v0.2.9 h1:On1cftTc6fBN3etBOK7rXmGKfAhnKs3WtClDMGzijOI=
+github.com/ava-labs/subnet-evm v0.2.9/go.mod h1:XnTJwPHS4o1y0HvI8Y9uIdl+CIeI71BZSnMk+YjH+X8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
 github.com/benbjohnson/clock v1.3.0 h1:ip6w0uFQkncKQ979AypyG0ER7mqUSBdKLOgAle/AT8A=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
