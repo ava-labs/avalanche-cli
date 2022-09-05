@@ -42,9 +42,10 @@ func TestNoRepoPath(t *testing.T) {
 	configureMockPrompt(mockPrompt)
 
 	sc := &models.Sidecar{
-		VM:     models.SubnetEvm,
-		Name:   testSubnet,
-		Subnet: testSubnet,
+		VM:        models.SubnetEvm,
+		VMVersion: "v0.9.99",
+		Name:      testSubnet,
+		Subnet:    testSubnet,
 		Networks: map[string]models.NetworkData{
 			models.Fuji.String(): {
 				SubnetID:     ids.GenerateTestID(),
@@ -66,14 +67,23 @@ func TestNoRepoPath(t *testing.T) {
 	expectedVMFile := filepath.Join(noRepoPath, testSubnet+constants.YAMLSuffix)
 	_, err = os.Create(expectedSubnetFile)
 	assert.NoError(err)
-	err = doPublish(sc, testSubnet, newTestPublisher)
+	// For Sha256 calc we are accessing the subnet-evm binary
+	// So we're just `touch`ing that file so the code finds it
+	subnetDir := filepath.Join(app.GetSubnetEVMBinDir(), constants.SubnetEVMRepoName+"-"+sc.VMVersion)
+	err = os.MkdirAll(subnetDir, constants.DefaultPerms755)
+	assert.NoError(err)
+	_, err = os.Create(filepath.Join(subnetDir, constants.SubnetEVMBin))
+	assert.NoError(err)
+
 	// should fail as no force flag
+	err = doPublish(sc, testSubnet, newTestPublisher)
 	assert.Error(err)
 	assert.ErrorContains(err, "already exists")
 	err = os.Remove(expectedSubnetFile)
 	assert.NoError(err)
 	_, err = os.Create(expectedVMFile)
 	assert.NoError(err)
+
 	// should fail as no force flag (other file)
 	err = doPublish(sc, testSubnet, newTestPublisher)
 	assert.Error(err)
@@ -273,9 +283,18 @@ func TestPublishing(t *testing.T) {
 	configureMockPrompt(mockPrompt)
 
 	sc := &models.Sidecar{
-		VM: models.SubnetEvm,
+		VM:        models.SubnetEvm,
+		VMVersion: "v0.9.99",
 	}
-	err := doPublish(sc, "testSubnet", newTestPublisher)
+	// For Sha256 calc we are accessing the subnet-evm binary
+	// So we're just `touch`ing that file so the code finds it
+	subnetDir := filepath.Join(app.GetSubnetEVMBinDir(), constants.SubnetEVMRepoName+"-"+sc.VMVersion)
+	err := os.MkdirAll(subnetDir, constants.DefaultPerms755)
+	assert.NoError(err)
+	_, err = os.Create(filepath.Join(subnetDir, constants.SubnetEVMBin))
+	assert.NoError(err)
+
+	err = doPublish(sc, "testSubnet", newTestPublisher)
 	assert.NoError(err)
 
 	// reset expectations as TestNoRepoPath also uses the same mocks
