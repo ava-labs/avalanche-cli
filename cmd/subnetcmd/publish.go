@@ -153,10 +153,10 @@ func doPublish(sc *models.Sidecar, subnetName string, publisherCreateFunc newPub
 			if err := os.MkdirAll(noRepoPath, constants.DefaultPerms755); err != nil {
 				return fmt.Errorf("attempted to create the given --no-repo-path directory at %s, but failed: %w", noRepoPath, err)
 			}
-			ux.Logger.PrintToUser("The given --no-repo-path at %s was not existing; created it with permissions %o", noRepoPath, constants.DefaultPerms755)
+			ux.Logger.PrintToUser("The given --no-repo-path at %s did not exist; created it with permissions %o", noRepoPath, constants.DefaultPerms755)
 		}
-		subnetFile := filepath.Join(noRepoPath, subnetName+constants.YAMLSuffix)
-		vmFile := filepath.Join(noRepoPath, vm.Alias+constants.YAMLSuffix)
+		subnetFile := filepath.Join(noRepoPath, constants.SubnetDir, subnetName+constants.YAMLSuffix)
+		vmFile := filepath.Join(noRepoPath, constants.VMDir, vm.Alias+constants.YAMLSuffix)
 		if !forceWrite {
 			// do not automatically overwrite
 			if _, err := os.Stat(subnetFile); err == nil {
