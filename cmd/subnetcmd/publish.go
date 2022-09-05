@@ -447,8 +447,8 @@ func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 	}
 
 	vm := &types.VM{
-		ID:            vmID.(string),                             // This needs to change
-		Alias:         sc.Networks["Fuji"].BlockchainID.String(), // Set to something meaningful
+		ID:            vmID.(string),
+		Alias:         sc.Networks["Fuji"].BlockchainID.String(), // TODO: Do we have to query for this? Or write to sidecar on create?
 		Homepage:      "",
 		Description:   desc.(string),
 		Maintainers:   strMaintrs,
