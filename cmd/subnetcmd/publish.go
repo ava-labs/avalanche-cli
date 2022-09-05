@@ -3,6 +3,8 @@
 package subnetcmd
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -14,6 +16,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/ava-labs/apm/types"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -369,7 +372,9 @@ func getSubnetInfo(sc *models.Sidecar) (*types.Subnet, error) {
 func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 	var (
 		vmID, desc any
+		url, sha   string
 		strMaintrs []string
+		ver        *version.Semantic
 		err        error
 	)
 
@@ -404,44 +409,45 @@ func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 		for i, m := range maintrs {
 			strMaintrs[i] = m.(string)
 		}
+		url, err = app.Prompt.CaptureStringAllowEmpty("Tell us the URL to download the source. Needs to be a fixed version, not `latest`.")
+		if err != nil {
+			return nil, err
+		}
+
+		sha, err = app.Prompt.CaptureStringAllowEmpty("For integrity checks, provide the sha256 commit for the used version")
+		if err != nil {
+			return nil, err
+		}
+		strVer, err := app.Prompt.CaptureVersion("This is the last question! What is the version being used? Use semantic versioning (v1.2.3)")
+		if err != nil {
+			return nil, err
+		}
+		ver, err = version.Parse(strVer)
+		if err != nil {
+			return nil, err
+		}
 
 	case sc.VM == models.SpacesVM:
 		vmID = models.SpacesVM
 		desc = "Authenticated, hierarchical storage of arbitrary keys/values using any EIP-712 compatible wallet."
-		strMaintrs = []string{"ava-labs"}
+		strMaintrs, ver, url, sha, err = getInfoForKnownVMs(sc.VMVersion, constants.SpacesVMRepoName, app.GetSpacesVMBinDir(), constants.SpacesVMBin)
 	case sc.VM == models.SubnetEvm:
 		vmID = models.SubnetEvm
 		desc = "Subnet EVM is a simplified version of Coreth VM (C-Chain). It implements the Ethereum Virtual Machine and supports Solidity smart contracts as well as most other Ethereum client functionality"
-		strMaintrs = []string{"ava-labs"}
+		strMaintrs, ver, url, sha, err = getInfoForKnownVMs(sc.VMVersion, constants.SubnetEVMRepoName, app.GetSubnetEVMBinDir(), constants.SubnetEVMBin)
 	default:
 		return nil, fmt.Errorf("unexpected error: unsupported VM type: %s", sc.VM)
 	}
+	if err != nil {
+		return nil, err
+	}
 
-	scr, err := app.Prompt.CaptureStringAllowEmpty("What scripts needs to run to install this VM? Needs to be an executable command to build the VM.")
+	scr, err := app.Prompt.CaptureStringAllowEmpty("What scripts needs to run to install this VM? Needs to be an executable command to build the VM")
 	if err != nil {
 		return nil, err
 	}
 
 	bin, err := app.Prompt.CaptureStringAllowEmpty("What is the binary path? (This is the output of the build command)")
-	if err != nil {
-		return nil, err
-	}
-
-	url, err := app.Prompt.CaptureStringAllowEmpty("Tell us the URL to download the source. Needs to be a fixed version, not `latest`.")
-	if err != nil {
-		return nil, err
-	}
-
-	sha, err := app.Prompt.CaptureStringAllowEmpty("For integrity checks, provide the sha256 commit for the used version")
-	if err != nil {
-		return nil, err
-	}
-
-	strVer, err := app.Prompt.CaptureVersion("This is the last question! What is the version being used? Use semantic versioning (v1.2.3)")
-	if err != nil {
-		return nil, err
-	}
-	ver, err := version.Parse(strVer)
 	if err != nil {
 		return nil, err
 	}
@@ -460,4 +466,39 @@ func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 	}
 
 	return vm, nil
+}
+
+func getInfoForKnownVMs(strVer, repoName, vmBinDir, vmBin string) ([]string, *version.Semantic, string, string, error) {
+	strMaintrs := []string{"ava-labs"}
+	binPath := filepath.Join(vmBinDir, repoName+"-"+strVer, vmBin)
+	sha, err := getSHA256FromDisk(binPath)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	ver, err := version.Parse(strVer)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	dl := binutils.NewSubnetEVMDownloader()
+	inst := binutils.NewInstaller()
+	url, _, err := dl.GetDownloadURL(strVer, inst)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+
+	return strMaintrs, ver, url, sha, err
+}
+
+func getSHA256FromDisk(binPath string) (string, error) {
+	if _, err := os.Stat(binPath); err != nil {
+		return "", fmt.Errorf("failed looking up plugin binary at %s: %w", binPath, err)
+	}
+	hasher := sha256.New()
+	s, err := os.ReadFile(binPath)
+	hasher.Write(s)
+	if err != nil {
+		return "", fmt.Errorf("failed calculating the sha256 hash of the binary %s: %w", binPath, err)
+	}
+
+	return hex.EncodeToString(hasher.Sum(nil)), nil
 }

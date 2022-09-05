@@ -73,7 +73,9 @@ const (
 	SubnetEVMInstallDir   = "subnet-evm"
 	SpacesVMInstallDir    = "spacesvm"
 
-	EVMPlugin = "evm"
+	EVMPlugin    = "evm"
+	SubnetEVMBin = "subnet-evm"
+	SpacesVMBin  = "spacesvm"
 
 	DefaultNodeRunURL = "http://127.0.0.1:9650"
 
