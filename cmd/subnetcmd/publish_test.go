@@ -75,10 +75,10 @@ func TestNoRepoPath(t *testing.T) {
 	assert.NoError(err)
 	// For Sha256 calc we are accessing the subnet-evm binary
 	// So we're just `touch`ing that file so the code finds it
-	subnetDir := filepath.Join(app.GetSubnetEVMBinDir(), constants.SubnetEVMRepoName+"-"+sc.VMVersion)
-	err = os.MkdirAll(subnetDir, constants.DefaultPerms755)
+	appSubnetDir := filepath.Join(app.GetSubnetEVMBinDir(), constants.SubnetEVMRepoName+"-"+sc.VMVersion)
+	err = os.MkdirAll(appSubnetDir, constants.DefaultPerms755)
 	assert.NoError(err)
-	_, err = os.Create(filepath.Join(subnetDir, constants.SubnetEVMBin))
+	_, err = os.Create(filepath.Join(appSubnetDir, constants.SubnetEVMBin))
 	assert.NoError(err)
 
 	// should fail as no force flag
