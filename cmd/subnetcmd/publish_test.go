@@ -63,8 +63,14 @@ func TestNoRepoPath(t *testing.T) {
 
 	// try with existing files
 	noRepoPath = t.TempDir()
-	expectedSubnetFile := filepath.Join(noRepoPath, testSubnet+constants.YAMLSuffix)
-	expectedVMFile := filepath.Join(noRepoPath, testSubnet+constants.YAMLSuffix)
+	subnetDir := filepath.Join(noRepoPath, constants.SubnetDir)
+	vmDir := filepath.Join(noRepoPath, constants.VMDir)
+	err = os.MkdirAll(subnetDir, constants.DefaultPerms755)
+	assert.NoError(err)
+	err = os.MkdirAll(vmDir, constants.DefaultPerms755)
+	assert.NoError(err)
+	expectedSubnetFile := filepath.Join(subnetDir, testSubnet+constants.YAMLSuffix)
+	expectedVMFile := filepath.Join(vmDir, sc.Networks["Fuji"].BlockchainID.String()+constants.YAMLSuffix)
 	_, err = os.Create(expectedSubnetFile)
 	assert.NoError(err)
 	// For Sha256 calc we are accessing the subnet-evm binary
