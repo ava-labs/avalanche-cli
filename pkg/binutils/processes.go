@@ -23,6 +23,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/shirou/gopsutil/process"
+	"go.uber.org/zap"
 )
 
 // errGRPCTimeout is a common error message if the gRPC server can't be reached
@@ -44,11 +45,22 @@ func NewProcessChecker() ProcessChecker {
 
 // NewGRPCClient hides away the details (params) of creating a gRPC server connection
 func NewGRPCClient() (client.Client, error) {
+	logLevel, err := logging.ToLevel(gRPCClientLogLevel)
+	if err != nil {
+		return nil, err
+	}
+	logFactory := logging.NewFactory(logging.Config{
+		DisplayLevel: logLevel,
+		LogLevel:     logging.Off,
+	})
+	log, err := logFactory.Make("grpc-client")
+	if err != nil {
+		return nil, err
+	}
 	client, err := client.New(client.Config{
-		LogLevel:    gRPCClientLogLevel,
 		Endpoint:    gRPCServerEndpoint,
 		DialTimeout: gRPCDialTimeout,
-	})
+	}, log)
 	if errors.Is(err, context.DeadlineExceeded) {
 		err = errGRPCTimeout
 	}
@@ -57,13 +69,21 @@ func NewGRPCClient() (client.Client, error) {
 
 // NewGRPCClient hides away the details (params) of creating a gRPC server
 func NewGRPCServer(snapshotsDir string) (server.Server, error) {
+	logFactory := logging.NewFactory(logging.Config{
+		DisplayLevel: logging.Info,
+		LogLevel:     logging.Off,
+	})
+	log, err := logFactory.Make("grpc-server")
+	if err != nil {
+		return nil, err
+	}
 	return server.New(server.Config{
 		Port:                gRPCServerEndpoint,
 		GwPort:              gRPCGatewayEndpoint,
 		DialTimeout:         gRPCDialTimeout,
 		SnapshotsDir:        snapshotsDir,
 		RedirectNodesOutput: false,
-	})
+	}, log)
 }
 
 // IsServerProcessRunning returns true if the gRPC server is running,
@@ -71,9 +91,10 @@ func NewGRPCServer(snapshotsDir string) (server.Server, error) {
 func (rpr *realProcessRunner) IsServerProcessRunning(app *application.Avalanche) (bool, error) {
 	pid, err := GetServerPID(app)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
+		if !errors.Is(err, os.ErrNotExist) {
 			return false, err
 		}
+		return false, nil
 	}
 
 	// get OS process list
@@ -102,14 +123,14 @@ func GetServerPID(app *application.Avalanche) (int, error) {
 	serverRunFilePath := app.GetRunFile()
 	run, err := os.ReadFile(serverRunFilePath)
 	if err != nil {
-		return 0, fmt.Errorf("failed reading process info file at %s: %s", serverRunFilePath, err)
+		return 0, fmt.Errorf("failed reading process info file at %s: %w", serverRunFilePath, err)
 	}
 	if err := json.Unmarshal(run, &rf); err != nil {
-		return 0, fmt.Errorf("failed unmarshalling server run file at %s: %s", serverRunFilePath, err)
+		return 0, fmt.Errorf("failed unmarshalling server run file at %s: %w", serverRunFilePath, err)
 	}
 
 	if rf.Pid == 0 {
-		return 0, fmt.Errorf("failed reading pid from info file at %s: %s", serverRunFilePath, err)
+		return 0, fmt.Errorf("failed reading pid from info file at %s: %w", serverRunFilePath, err)
 	}
 	return rf.Pid, nil
 }
@@ -153,7 +174,7 @@ func StartServerProcess(app *application.Avalanche) error {
 	}
 
 	if err := os.WriteFile(app.GetRunFile(), rfBytes, perms.ReadWrite); err != nil {
-		app.Log.Warn("could not write gRPC process info to file: %s", err)
+		app.Log.Warn("could not write gRPC process info to file", zap.Error(err))
 	}
 	return nil
 }
@@ -185,24 +206,24 @@ func KillgRPCServerProcess(app *application.Avalanche) error {
 			ux.Logger.PrintToUser("No local network running")
 			return nil
 		}
-		return fmt.Errorf("failed stopping gRPC server process: %s", err)
+		return fmt.Errorf("failed stopping gRPC server process: %w", err)
 	}
 
 	pid, err := GetServerPID(app)
 	if err != nil {
-		return fmt.Errorf("failed getting PID from run file: %s", err)
+		return fmt.Errorf("failed getting PID from run file: %w", err)
 	}
 	proc, err := os.FindProcess(pid)
 	if err != nil {
-		return fmt.Errorf("could not find process with pid %d: %s", pid, err)
+		return fmt.Errorf("could not find process with pid %d: %w", pid, err)
 	}
 	if err := proc.Signal(os.Interrupt); err != nil {
-		return fmt.Errorf("failed killing process with pid %d: %s", pid, err)
+		return fmt.Errorf("failed killing process with pid %d: %w", pid, err)
 	}
 
 	serverRunFilePath := app.GetRunFile()
 	if err := os.Remove(serverRunFilePath); err != nil {
-		return fmt.Errorf("failed removing run file %s: %s", serverRunFilePath, err)
+		return fmt.Errorf("failed removing run file %s: %w", serverRunFilePath, err)
 	}
 	return nil
 }
@@ -212,12 +233,12 @@ func WatchServerProcess(serverCancel context.CancelFunc, errc chan error, log lo
 	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
 	select {
 	case sig := <-sigc:
-		log.Warn("signal received: %s; closing server", sig.String())
+		log.Warn("signal received: %s; closing server", zap.String("signal", sig.String()))
 		serverCancel()
 		err := <-errc
-		log.Warn("closed server: %s", err)
+		log.Warn("closed server: %s", zap.Error(err))
 	case err := <-errc:
-		log.Warn("server closed: %s", err)
+		log.Warn("server closed: %s", zap.Error(err))
 		serverCancel()
 	}
 }

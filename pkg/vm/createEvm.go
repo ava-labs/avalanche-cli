@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/core"
@@ -36,7 +37,7 @@ const (
 	stop
 )
 
-func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesisPath string) ([]byte, *models.Sidecar, error) {
+func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesisPath string, subnetEVMVersion string) ([]byte, *models.Sidecar, error) {
 	var (
 		genesisBytes []byte
 		sc           *models.Sidecar
@@ -44,20 +45,26 @@ func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesi
 	)
 
 	if genesisPath == "" {
-		genesisBytes, sc, err = createEvmGenesis(app, subnetName)
+		genesisBytes, sc, err = createEvmGenesis(app, subnetName, subnetEVMVersion)
 		if err != nil {
-			return []byte{}, &models.Sidecar{}, err
+			return nil, &models.Sidecar{}, err
 		}
 	} else {
 		ux.Logger.PrintToUser("Importing genesis")
 		genesisBytes, err = os.ReadFile(genesisPath)
 		if err != nil {
-			return []byte{}, &models.Sidecar{}, err
+			return nil, &models.Sidecar{}, err
+		}
+
+		subnetEVMVersion, _, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion, false)
+		if err != nil {
+			return nil, &models.Sidecar{}, err
 		}
 
 		sc = &models.Sidecar{
 			Name:      subnetName,
 			VM:        models.SubnetEvm,
+			VMVersion: subnetEVMVersion,
 			Subnet:    subnetName,
 			TokenName: "",
 		}
@@ -78,7 +85,7 @@ func nextStage(currentState wizardState, direction stateDirection) wizardState {
 	return currentState
 }
 
-func createEvmGenesis(app *application.Avalanche, subnetName string) ([]byte, *models.Sidecar, error) {
+func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVersion string) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating subnet %s", subnetName)
 
 	genesis := core.Genesis{}
@@ -89,6 +96,7 @@ func createEvmGenesis(app *application.Avalanche, subnetName string) ([]byte, *m
 	var (
 		chainID    *big.Int
 		tokenName  string
+		vmVersion  string
 		allocation core.GenesisAlloc
 		direction  stateDirection
 		err        error
@@ -99,18 +107,18 @@ func createEvmGenesis(app *application.Avalanche, subnetName string) ([]byte, *m
 		case startStage:
 			direction = forward
 		case descriptorStage:
-			chainID, tokenName, direction, err = getDescriptors(app)
+			chainID, tokenName, vmVersion, direction, err = getDescriptors(app, subnetEVMVersion)
 		case feeStage:
 			*conf, direction, err = getFeeConfig(*conf, app)
 		case airdropStage:
-			allocation, direction, err = getAllocation(app)
+			allocation, direction, err = getAllocation(app, defaultEvmAirdropAmount, oneAvax, "Amount to airdrop (in AVAX units)")
 		case precompileStage:
 			*conf, direction, err = getPrecompiles(*conf, app)
 		default:
 			err = errors.New("invalid creation stage")
 		}
 		if err != nil {
-			return []byte{}, nil, err
+			return nil, nil, err
 		}
 		stage = nextStage(stage, direction)
 	}
@@ -124,18 +132,19 @@ func createEvmGenesis(app *application.Avalanche, subnetName string) ([]byte, *m
 
 	jsonBytes, err := genesis.MarshalJSON()
 	if err != nil {
-		return []byte{}, nil, err
+		return nil, nil, err
 	}
 
 	var prettyJSON bytes.Buffer
 	err = json.Indent(&prettyJSON, jsonBytes, "", "    ")
 	if err != nil {
-		return []byte{}, nil, err
+		return nil, nil, err
 	}
 
 	sc := &models.Sidecar{
 		Name:      subnetName,
 		VM:        models.SubnetEvm,
+		VMVersion: vmVersion,
 		Subnet:    subnetName,
 		TokenName: tokenName,
 	}

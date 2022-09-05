@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/manifoldco/promptui"
+	"golang.org/x/mod/semver"
 )
 
 const (
@@ -40,7 +42,11 @@ type Prompter interface {
 	CaptureYesNo(promptStr string) (bool, error)
 	CaptureNoYes(promptStr string) (bool, error)
 	CaptureList(promptStr string, options []string) (string, error)
+	CaptureAnyList(promptStr string, options any) (any, error)
 	CaptureString(promptStr string) (string, error)
+	CaptureGitURL(promptStr string) (url.URL, error)
+	CaptureIndex(promptStr string, options []any) (int, error)
+	CaptureVersion(promptStr string) (string, error)
 	CaptureDuration(promptStr string) (time.Duration, error)
 	CaptureDate(promptStr string) (time.Time, error)
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
@@ -134,6 +140,14 @@ func validateBiggerThanZero(input string) error {
 	return nil
 }
 
+func validateURL(input string) error {
+	_, err := url.ParseRequestURI(input)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // CaptureListDecision runs a for loop and continuously asks the
 // user for a specific input (currently only `CapturePChainAddress`
 // and `CaptureAddress` is supported) until the user cancels or
@@ -185,8 +199,12 @@ func CaptureListDecision[T comparable](
 			if err != nil {
 				return nil, false, err
 			}
-			finalList = append(finalList[:index], finalList[index+1:]...)
+			list = append(list[:index], list[index+1:]...)
 		case Preview:
+			if len(finalList) == 0 {
+				fmt.Println("The list is empty")
+				break
+			}
 			for i, k := range finalList {
 				fmt.Printf("%d. %v\n", i, k)
 			}
@@ -432,6 +450,44 @@ func (*realPrompter) CaptureString(promptStr string) (string, error) {
 		Validate: func(input string) error {
 			if input == "" {
 				return errors.New("string cannot be empty")
+			}
+			return nil
+		},
+	}
+
+	str, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return str, nil
+}
+
+func (*realPrompter) CaptureGitURL(promptStr string) (url.URL, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateURL,
+	}
+
+	str, err := prompt.Run()
+	if err != nil {
+		return url.URL{}, err
+	}
+
+	parsedURL, err := url.ParseRequestURI(str)
+	if err != nil {
+		return url.URL{}, err
+	}
+
+	return *parsedURL, nil
+}
+
+func (*realPrompter) CaptureVersion(promptStr string) (string, error) {
+	prompt := promptui.Prompt{
+		Label: promptStr,
+		Validate: func(input string) error {
+			if !semver.IsValid(input) {
+				return errors.New("version must be a legal semantic version (ex: v1.1.1)")
 			}
 			return nil
 		},

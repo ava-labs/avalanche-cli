@@ -11,8 +11,11 @@ import (
 
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/key"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/network"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/packageman"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/root"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/subnet"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/subnet/local"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/subnet/public"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/format"
@@ -29,7 +32,7 @@ func TestE2e(t *testing.T) {
 
 var _ = ginkgo.BeforeSuite(func() {
 	cmd := exec.Command("./scripts/build.sh")
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	fmt.Println(string(out))
 	gomega.Expect(err).Should(gomega.BeNil())
 })

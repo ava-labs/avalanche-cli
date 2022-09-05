@@ -8,12 +8,7 @@ const (
 	DefaultPerms755 = 0o755
 
 	BaseDirName = ".avalanche-cli"
-
-	SubnetEVMReleaseVersion   = "v0.2.7"
-	AvalancheGoReleaseVersion = "v1.7.16"
-
-	LatestAvagoReleaseURL = "https://api.github.com/repos/ava-labs/avalanchego/releases/latest"
-	SubnetEVMReleaseURL   = "https://api.github.com/repos/ava-labs/subnet-evm/releases/latest"
+	LogDir      = "logs"
 
 	ServerRunFile      = "gRPCserver.run"
 	AvalancheCliBinDir = "bin"
@@ -21,7 +16,7 @@ const (
 	SidecarSuffix      = "_sidecar.json"
 	GenesisSuffix      = "_genesis.json"
 
-	SidecarVersion = "1.1.0"
+	SidecarVersion = "1.2.1"
 
 	MaxLogFileSize   = 4
 	MaxNumOfLogFiles = 5
@@ -29,8 +24,13 @@ const (
 
 	RequestTimeout = 3 * time.Minute
 
-	FujiAPIEndpoint    = "https://api.avax-test.network"
-	MainnetAPIEndpoint = "https://api.avax.network"
+	SimulatePublicNetwork = "SIMULATE_PUBLIC_NETWORK"
+	FujiAPIEndpoint       = "https://api.avax-test.network"
+	MainnetAPIEndpoint    = "https://api.avax.network"
+
+	// this depends on bootstrap snapshot
+	LocalAPIEndpoint = "http://127.0.0.1:9650"
+	LocalNetworkID   = 1337
 
 	DefaultTokenName = "TEST"
 
@@ -62,4 +62,25 @@ const (
 	DefaultConfigFileType = "json"
 
 	CustomVMDir = "vms"
+
+	AvaLabsOrg          = "ava-labs"
+	AvalancheGoRepoName = "avalanchego"
+	SubnetEVMRepoName   = "subnet-evm"
+	SpacesVMRepoName    = "spacesvm"
+
+	AvalancheGoInstallDir = "avalanchego"
+	SubnetEVMInstallDir   = "subnet-evm"
+	SpacesVMInstallDir    = "spacesvm"
+
+	EVMPlugin = "evm"
+
+	DefaultNodeRunURL = "http://127.0.0.1:9650"
+
+	APMDir                = ".apm"
+	APMLogName            = "apm.log"
+	DefaultAvaLabsPackage = "ava-labs/avalanche-plugins-core"
+	APMPluginDir          = "apm_plugins"
+
+	// #nosec G101
+	GithubAPITokenEnvVarName = "GITHUB_TOKEN"
 )

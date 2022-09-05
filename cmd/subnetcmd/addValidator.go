@@ -27,6 +27,7 @@ var (
 	duration     time.Duration
 
 	errNoSubnetID = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
+	errNoKeys     = errors.New("no keys")
 )
 
 // avalanche subnet deploy
@@ -52,6 +53,9 @@ This command currently only works on subnets deployed to the Fuji testnet.`,
 	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
+	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "join on `fuji` (alias for `testnet`)")
+	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
+	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
 	return cmd
 }
 
@@ -70,14 +74,28 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	var network models.Network
-	networkStr, err := app.Prompt.CaptureList(
-		"Choose a network to deploy on. This command only supports Fuji currently.",
-		[]string{models.Fuji.String(), models.Mainnet.String() + " (coming soon)"},
-	)
-	if err != nil {
-		return err
+	switch {
+	case deployTestnet:
+		network = models.Fuji
+	case deployMainnet:
+		network = models.Mainnet
 	}
-	network = models.NetworkFromString(networkStr)
+
+	if network == models.Undefined {
+		networkStr, err := app.Prompt.CaptureList(
+			"Choose a network to deploy on. This command only supports Fuji currently.",
+			[]string{models.Fuji.String(), models.Mainnet.String() + " (coming soon)"},
+		)
+		if err != nil {
+			return err
+		}
+		network = models.NetworkFromString(networkStr)
+	}
+
+	// used in E2E to simulate public network execution paths on a local network
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		network = models.Local
+	}
 
 	chains, err := validateSubnetNameAndGetChains(args)
 	if err != nil {
@@ -269,6 +287,10 @@ func captureKeyName() (string, error) {
 	files, err := os.ReadDir(app.GetKeyDir())
 	if err != nil {
 		return "", err
+	}
+
+	if len(files) < 1 {
+		return "", errNoKeys
 	}
 
 	keys := make([]string, len(files))

@@ -11,14 +11,20 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/spf13/cobra"
+	"golang.org/x/mod/semver"
 )
 
+const forceFlag = "force"
+
 var (
-	forceCreate  bool
-	useSubnetEvm bool
-	genesisFile  string
-	vmFile       string
-	useCustom    bool
+	forceCreate      bool
+	useSubnetEvm     bool
+	useSpacesVM      bool
+	genesisFile      string
+	vmFile           string
+	useCustom        bool
+	vmVersion        string
+	useLatestVersion bool
 
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
@@ -43,18 +49,21 @@ By default, running the command with a subnetName that already exists will
 cause the command to fail. If you’d like to overwrite an existing
 configuration, pass the -f flag.`,
 		Args: cobra.ExactArgs(1),
-		RunE: createGenesis,
+		RunE: createSubnetConfig,
 	}
 	cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
 	cmd.Flags().StringVar(&vmFile, "vm", "", "file path of custom vm to use")
 	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the SubnetEVM as the base template")
+	cmd.Flags().BoolVar(&useSpacesVM, "spacesvm", false, "use the SpacesVM as the base template")
+	cmd.Flags().StringVar(&vmVersion, "vm-version", "", "version of vm template to use")
 	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
+	cmd.Flags().BoolVar(&useLatestVersion, "latest", false, "use latest VM version, takes precedence over --vm-version")
 	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
 	return cmd
 }
 
 func moreThanOneVMSelected() bool {
-	vmVars := []bool{useSubnetEvm, useCustom}
+	vmVars := []bool{useSubnetEvm, useSpacesVM, useCustom}
 	firstSelect := false
 	for _, val := range vmVars {
 		if firstSelect && val {
@@ -70,13 +79,16 @@ func getVMFromFlag() models.VMType {
 	if useSubnetEvm {
 		return models.SubnetEvm
 	}
+	if useSpacesVM {
+		return models.SpacesVM
+	}
 	if useCustom {
 		return models.CustomVM
 	}
 	return ""
 }
 
-func createGenesis(cmd *cobra.Command, args []string) error {
+func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	subnetName := args[0]
 	if app.GenesisExists(subnetName) && !forceCreate {
 		return errors.New("configuration already exists. Use --" + forceFlag + " parameter to overwrite")
@@ -95,7 +107,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 	if subnetType == "" {
 		subnetTypeStr, err := app.Prompt.CaptureList(
 			"Choose your VM",
-			[]string{subnetEvm, customVM},
+			[]string{models.SubnetEvm, models.SpacesVM, models.CustomVM},
 		)
 		if err != nil {
 			return err
@@ -109,13 +121,26 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 		err          error
 	)
 
+	if useLatestVersion {
+		vmVersion = "latest"
+	}
+
+	if vmVersion != "latest" && vmVersion != "" && !semver.IsValid(vmVersion) {
+		return fmt.Errorf("invalid version string, should be semantic version (ex: v1.1.1): %s", vmVersion)
+	}
+
 	switch subnetType {
-	case subnetEvm:
-		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(app, subnetName, genesisFile)
+	case models.SubnetEvm:
+		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(app, subnetName, genesisFile, vmVersion)
 		if err != nil {
 			return err
 		}
-	case customVM:
+	case models.SpacesVM:
+		genesisBytes, sc, err = vm.CreateSpacesVMSubnetConfig(app, subnetName, genesisFile, vmVersion)
+		if err != nil {
+			return err
+		}
+	case models.CustomVM:
 		genesisBytes, sc, err = vm.CreateCustomSubnetConfig(app, subnetName, genesisFile, vmFile)
 		if err != nil {
 			return err
@@ -128,6 +153,7 @@ func createGenesis(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	sc.ImportedFromAPM = false
 	if err = app.CreateSidecar(sc); err != nil {
 		return err
 	}

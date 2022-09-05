@@ -10,11 +10,14 @@ type NetworkData struct {
 }
 
 type Sidecar struct {
-	Name      string
-	VM        VMType
-	Subnet    string
-	TokenName string
-	ChainID   string
-	Version   string
-	Networks  map[string]NetworkData
+	Name            string
+	VM              VMType
+	VMVersion       string
+	Subnet          string
+	TokenName       string
+	ChainID         string
+	Version         string
+	Networks        map[string]NetworkData
+	ImportedFromAPM bool
+	ImportedVMID    string
 }

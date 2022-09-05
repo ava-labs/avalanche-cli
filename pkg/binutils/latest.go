@@ -11,15 +11,26 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
+	"go.uber.org/zap"
 )
 
 // GetLatestReleaseVersion returns the latest available version from github
 func GetLatestReleaseVersion(releaseURL string) (string, error) {
 	// TODO: Question if there is a less error prone (= simpler) way to install latest avalanchego
 	// Maybe the binary package manager should also allow the actual avalanchego binary for download
-	resp, err := http.Get(releaseURL)
+	request, err := http.NewRequest("GET", releaseURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request for latest version from %s: %w", releaseURL, err)
+	}
+	token := os.Getenv(constants.GithubAPITokenEnvVarName)
+	if token != "" {
+		// avoid rate limitation issues at CI
+		request.Header.Set("authorization", fmt.Sprintf("Bearer %s", token))
+	}
+	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return "", fmt.Errorf("failed to get latest version from %s: %w", releaseURL, err)
 	}
@@ -87,7 +98,7 @@ func DownloadReleaseVersion(
 		return "", fmt.Errorf("OS not supported: %s", goos)
 	}
 
-	log.Debug("starting download from %s...", downloadURL)
+	log.Debug("starting download...", zap.String("download-url", downloadURL))
 
 	resp, err := http.Get(downloadURL)
 	if err != nil {
@@ -105,7 +116,7 @@ func DownloadReleaseVersion(
 
 	installDir := filepath.Join(binDir, repo+"-"+version)
 	if err := os.MkdirAll(installDir, perms.ReadWriteExecute); err != nil {
-		return "", fmt.Errorf("failed creating %s installation directory: %s", repo, err)
+		return "", fmt.Errorf("failed creating %s installation directory: %w", repo, err)
 	}
 
 	log.Debug("download successful. installing archive...")

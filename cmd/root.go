@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/keycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/apmintegration"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -21,6 +22,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 )
 
 var (
@@ -73,7 +75,22 @@ func createApp(cmd *cobra.Command, args []string) error {
 	}
 	cf := config.New()
 	app.Setup(baseDir, log, cf, prompts.NewPrompter())
-	cobra.OnInitialize(initConfig)
+
+	// Setup APM, skip if running a hidden command
+	if !cmd.Hidden {
+		usr, err := user.Current()
+		if err != nil {
+			app.Log.Error("unable to get system user")
+			return err
+		}
+		apmBaseDir := filepath.Join(usr.HomeDir, constants.APMDir)
+		if err = apmintegration.SetupApm(app, apmBaseDir); err != nil {
+			return err
+		}
+	}
+
+	initConfig()
+
 	return nil
 }
 
@@ -110,7 +127,7 @@ func setupEnv() (string, error) {
 	}
 
 	// Create custom vm dir if it doesn't exist
-	vmDir := filepath.Join(baseDir, constants.AvalancheCliBinDir, constants.CustomVMDir)
+	vmDir := filepath.Join(baseDir, constants.CustomVMDir)
 	if err = os.MkdirAll(vmDir, os.ModePerm); err != nil {
 		fmt.Printf("failed creating the vm dir %s: %s\n", vmDir, err)
 		os.Exit(1)
@@ -128,7 +145,7 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid log level configured: %s", logLevel)
 	}
-	config.Directory = filepath.Join(baseDir, "logs")
+	config.Directory = filepath.Join(baseDir, constants.LogDir)
 	if err := os.MkdirAll(config.Directory, perms.ReadWriteExecute); err != nil {
 		return nil, fmt.Errorf("failed creating log directory: %w", err)
 	}
@@ -143,7 +160,7 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 	log, err := factory.Make("avalanche")
 	if err != nil {
 		factory.Close()
-		return nil, fmt.Errorf("failed setting up logging, exiting: %s", err)
+		return nil, fmt.Errorf("failed setting up logging, exiting: %w", err)
 	}
 	// create the user facing logger as a global var
 	ux.NewUserLog(log, os.Stdout)
@@ -168,7 +185,7 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		app.Log.Info("Using config file: %s", viper.ConfigFileUsed())
+		app.Log.Info("Using config file", zap.String("config-file", viper.ConfigFileUsed()))
 	} else {
 		app.Log.Info("No log file found")
 	}

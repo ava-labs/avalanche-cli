@@ -8,20 +8,32 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/coreth/core"
+	spacesvmchain "github.com/ava-labs/spacesvm/chain"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 var (
-	deployLocal bool
-	keyName     string
+	deployLocal   bool
+	deployTestnet bool
+	deployMainnet bool
+	keyName       string
+	threshold     uint32
+	controlKeys   []string
+	avagoVersion  string
+
+	errMutuallyExlusive = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 )
 
 // avalanche subnet deploy
@@ -48,14 +60,20 @@ subnet and deploy it on Fuji or Mainnet.`,
 		Args:         cobra.ExactArgs(1),
 	}
 	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
-	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use for fuji deploys")
+	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "deploy to testnet (alias to `fuji`)")
+	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "deploy to fuji (alias to `testnet`")
+	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "deploy to mainnet (not yet supported)")
+	cmd.Flags().StringVar(&avagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
+	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploys]")
+	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to add a validator [fuji deploys]")
+	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may add new validators to the subnet [fuji deploys]")
 	return cmd
 }
 
 func getChainsInSubnet(subnetName string) ([]string, error) {
 	files, err := os.ReadDir(app.GetBaseDir())
 	if err != nil {
-		return []string{}, fmt.Errorf("failed to read baseDir :%w", err)
+		return nil, fmt.Errorf("failed to read baseDir: %w", err)
 	}
 
 	chains := []string{}
@@ -66,13 +84,13 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 			path := filepath.Join(app.GetBaseDir(), f.Name())
 			jsonBytes, err := os.ReadFile(path)
 			if err != nil {
-				return []string{}, fmt.Errorf("failed reading file %s: %w", path, err)
+				return nil, fmt.Errorf("failed reading file %s: %w", path, err)
 			}
 
 			var sc models.Sidecar
 			err = json.Unmarshal(jsonBytes, &sc)
 			if err != nil {
-				return []string{}, fmt.Errorf("failed unmarshaling file %s: %w", path, err)
+				return nil, fmt.Errorf("failed unmarshaling file %s: %w", path, err)
 			}
 			if sc.Subnet == subnetName {
 				chains = append(chains, sc.Name)
@@ -89,11 +107,35 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	chain := chains[0]
+
+	sc, err := app.LoadSidecar(chain)
+	if err != nil {
+		return fmt.Errorf("failed to load sidecar for later update: %w", err)
+	}
+
+	if sc.ImportedFromAPM {
+		return errors.New("unable to deploy subnets imported from a repo")
+	}
+
 	// get the network to deploy to
 	var network models.Network
-	if deployLocal {
+
+	if err := checkMutuallyExclusive(deployLocal, deployTestnet, deployMainnet); err != nil {
+		return err
+	}
+
+	switch {
+	case deployLocal:
 		network = models.Local
-	} else {
+	case deployTestnet:
+		network = models.Fuji
+	case deployMainnet:
+		network = models.Mainnet
+	}
+
+	if network == models.Undefined {
+		// no flag was set, prompt user
 		networkStr, err := app.Prompt.CaptureList(
 			"Choose a network to deploy on",
 			[]string{models.Local.String(), models.Fuji.String(), models.Mainnet.String()},
@@ -106,10 +148,30 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// deploy based on chosen network
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.String())
-	chain := chains[0]
 	chainGenesis, err := app.LoadRawGenesis(chain)
 	if err != nil {
 		return err
+	}
+
+	sidecar, err := app.LoadSidecar(chain)
+	if err != nil {
+		return err
+	}
+
+	// validate genesis as far as possible previous to deploy
+	switch sidecar.VM {
+	case models.SubnetEvm:
+		var genesis core.Genesis
+		err = json.Unmarshal(chainGenesis, &genesis)
+	case models.SpacesVM:
+		var genesis spacesvmchain.Genesis
+		err = json.Unmarshal(chainGenesis, &genesis)
+	default:
+		var genesis map[string]interface{}
+		err = json.Unmarshal(chainGenesis, &genesis)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to validate genesis format: %w", err)
 	}
 
 	genesisPath := app.GetGenesisPath(chain)
@@ -117,28 +179,44 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	switch network {
 	case models.Local:
 		app.Log.Debug("Deploy local")
-		sc, err := app.LoadSidecar(chain)
-		if err != nil {
-			return fmt.Errorf("failed to load sidecar for later update: %w", err)
+
+		// copy vm binary to the expected location, first downloading it if necessary
+		var vmBin string
+		switch sidecar.VM {
+		case models.SubnetEvm:
+			vmBin, err = binutils.SetupSubnetEVM(app, sidecar.VMVersion)
+			if err != nil {
+				return fmt.Errorf("failed to install subnet-evm: %w", err)
+			}
+		case models.SpacesVM:
+			vmBin, err = binutils.SetupSpacesVM(app, sidecar.VMVersion)
+			if err != nil {
+				return fmt.Errorf("failed to install spacesvm: %w", err)
+			}
+		case models.CustomVM:
+			vmBin = binutils.SetupCustomBin(app, chain)
+		default:
+			return fmt.Errorf("unknown vm: %s", sidecar.VM)
 		}
-		deployer := subnet.NewLocalSubnetDeployer(app)
+
+		deployer := subnet.NewLocalDeployer(app, avagoVersion, vmBin)
 		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
 		if err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {
-					app.Log.Warn("tried to kill the gRPC server process but it failed: %w", innerErr)
+					app.Log.Warn("tried to kill the gRPC server process but it failed", zap.Error(innerErr))
 				}
 			}
 			return err
 		}
-		if sc.Networks == nil {
-			sc.Networks = make(map[string]models.NetworkData)
+		if sidecar.Networks == nil {
+			sidecar.Networks = make(map[string]models.NetworkData)
 		}
-		sc.Networks[models.Local.String()] = models.NetworkData{
+		sidecar.Networks[models.Local.String()] = models.NetworkData{
 			SubnetID:     subnetID,
 			BlockchainID: blockchainID,
 		}
-		if err := app.UpdateSidecar(&sc); err != nil {
+		if err := app.UpdateSidecar(&sidecar); err != nil {
 			return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)
 		}
 		return nil
@@ -147,32 +225,44 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if keyName == "" {
 			keyName, err = captureKeyName()
 			if err != nil {
+				if err == errNoKeys {
+					ux.Logger.PrintToUser("No private keys have been found. Deployment to fuji without a private key is not possible. Create a new one with `avalanche key create`.")
+				}
 				return err
 			}
 		}
 
-	case models.Mainnet: // just make the switch pass, fuij/main implementation is the same (for now)
+	case models.Mainnet: // in the future, just make the switch pass, fuij/main implementation is the same (for now)
+		return errors.New("deploying to mainnet is not yet supported") // for now not supported
 	default:
 		return errors.New("not implemented")
+	}
+
+	// used in E2E to simulate public network execution paths on a local network
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		network = models.Local
 	}
 
 	// from here on we are assuming a public deploy
 
 	// prompt for control keys
-	controlKeys, cancelled, err := getControlKeys(network)
-	if err != nil {
-		return err
+	if controlKeys == nil {
+		var cancelled bool
+		controlKeys, cancelled, err = getControlKeys(network, keyName)
+		if err != nil {
+			return err
+		}
+		if cancelled {
+			ux.Logger.PrintToUser("User cancelled. No subnet deployed")
+			return nil
+		}
 	}
-	if cancelled {
-		ux.Logger.PrintToUser("User cancelled. No subnet deployed")
-		return nil
-	}
+
+	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
 
 	// prompt for threshold
-	var threshold uint32
-
-	if len(controlKeys) > 0 {
-		threshold, err = getThreshold(uint64(len(controlKeys)))
+	if len(controlKeys) > 0 && threshold == 0 {
+		threshold, err = getThreshold(len(controlKeys))
 		if err != nil {
 			return err
 		}
@@ -187,10 +277,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
-	sidecar, err := app.LoadSidecar(chain)
-	if err != nil {
-		return err
-	}
 	nets := sidecar.Networks
 	if nets == nil {
 		nets = make(map[string]models.NetworkData)
@@ -203,13 +289,89 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	return app.UpdateSidecar(&sidecar)
 }
 
-func getControlKeys(network models.Network) ([]string, bool, error) {
+func getControlKeys(network models.Network, keyName string) ([]string, bool, error) {
 	controlKeysInitialPrompt := "Configure which addresses may add new validators to the subnet.\n" +
 		"These addresses are known as your control keys. You will also\n" +
-		"set how many control keys are required to add a validator."
-	controlKeysPrompt := "Set control keys"
+		"set how many control keys are required to add a validator (the threshold)."
+	moreKeysPrompt := "How would you like to set your control keys?"
 
 	ux.Logger.PrintToUser(controlKeysInitialPrompt)
+
+	const (
+		useAll       = "Use all stored keys"
+		creationOnly = "Use creation key only"
+		custom       = "Custom list"
+	)
+
+	listDecision, err := app.Prompt.CaptureList(
+		moreKeysPrompt, []string{useAll, creationOnly, custom},
+	)
+	if err != nil {
+		return nil, false, err
+	}
+
+	var (
+		keys      []string
+		cancelled bool
+	)
+
+	switch listDecision {
+	case useAll:
+		keys, err = useAllKeys(network)
+	case creationOnly:
+		keys, err = loadCreationKey(network, keyName)
+	case custom:
+		keys, cancelled, err = enterCustomKeys(network)
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	if cancelled {
+		return nil, true, nil
+	}
+	return keys, false, nil
+}
+
+func useAllKeys(network models.Network) ([]string, error) {
+	existing := []string{}
+
+	files, err := os.ReadDir(app.GetKeyDir())
+	if err != nil {
+		return nil, err
+	}
+
+	keyPaths := make([]string, 0, len(files))
+
+	for _, f := range files {
+		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
+			keyPaths = append(keyPaths, filepath.Join(app.GetKeyDir(), f.Name()))
+		}
+	}
+
+	for _, kp := range keyPaths {
+		k, err := key.LoadSoft(network.NetworkID(), kp)
+		if err != nil {
+			return nil, err
+		}
+
+		existing = append(existing, k.P()...)
+	}
+
+	return existing, nil
+}
+
+func loadCreationKey(network models.Network, keyName string) ([]string, error) {
+	path := filepath.Join(app.GetKeyDir(), keyName+constants.KeySuffix)
+	k, err := key.LoadSoft(network.NetworkID(), path)
+	if err != nil {
+		return nil, err
+	}
+
+	return k.P(), nil
+}
+
+func enterCustomKeys(network models.Network) ([]string, bool, error) {
+	controlKeysPrompt := "Enter control keys"
 	for {
 		// ask in a loop so that if some condition is not met we can keep asking
 		controlKeys, cancelled, err := controlKeysLoop(controlKeysPrompt, network)
@@ -246,27 +408,37 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 		label,
 		// optional parameter to allow the user to print the info string for more information
 		info,
-		// optional parameter if the Capture function needs an argument (CapturePChainAddress requires network)
 	)
 }
 
 // getThreshold prompts for the threshold of addresses as a number
-func getThreshold(maxLen uint64) (uint32, error) {
-	threshold, err := app.Prompt.CaptureUint64("Enter required number of control key signatures to add a validator")
+func getThreshold(maxLen int) (uint32, error) {
+	// create a list of indexes so the user only has the option to choose what is the theshold
+	// instead of entering
+	indexList := make([]string, maxLen)
+	for i := 0; i < maxLen; i++ {
+		indexList[i] = strconv.Itoa(i + 1)
+	}
+	threshold, err := app.Prompt.CaptureList("Select required number of control key signatures to add a validator", indexList)
 	if err != nil {
 		return 0, err
 	}
-	if threshold > maxLen {
+	intTh, err := strconv.ParseUint(threshold, 0, 32)
+	if err != nil {
+		return 0, err
+	}
+	// this now should technically not happen anymore, but let's leave it as a double stitch
+	if int(intTh) > maxLen {
 		return 0, fmt.Errorf("the threshold can't be bigger than the number of control keys")
 	}
-	return uint32(threshold), err
+	return uint32(intTh), err
 }
 
 func validateSubnetNameAndGetChains(args []string) ([]string, error) {
 	// this should not be necessary but some bright guy might just be creating
 	// the genesis by hand or something...
 	if err := checkInvalidSubnetNames(args[0]); err != nil {
-		return nil, fmt.Errorf("subnet name %s is invalid: %s", args[0], err)
+		return nil, fmt.Errorf("subnet name %s is invalid: %w", args[0], err)
 	}
 	// Check subnet exists
 	// TODO create a file that lists chains by subnet for fast querying
@@ -280,4 +452,11 @@ func validateSubnetNameAndGetChains(args []string) ([]string, error) {
 	}
 
 	return chains, nil
+}
+
+func checkMutuallyExclusive(flagA bool, flagB bool, flagC bool) error {
+	if flagA && flagB || flagB && flagC || flagA && flagC {
+		return errMutuallyExlusive
+	}
+	return nil
 }
