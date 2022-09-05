@@ -79,7 +79,7 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
 
-		deployOutput := commands.DeploySubnetLocallyWithVersion(secondSubnetName, avagoVersion1)
+		deployOutput = commands.DeploySubnetLocallyWithVersion(secondSubnetName, avagoVersion1)
 		rpcs, err = utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
