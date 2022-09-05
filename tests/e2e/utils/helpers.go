@@ -31,7 +31,6 @@ const (
 	expectedRPCComponentsLen = 7
 	blockchainIDPos          = 5
 	subnetEVMName            = "subnet-evm"
-	subnetEVMVersion         = "v0.2.7"
 )
 
 func GetBaseDir() string {
@@ -315,6 +314,13 @@ func CheckAvalancheGoExists(version string) bool {
 // Currently downloads subnet-evm, but that suffices to test the custom vm functionality
 func DownloadCustomVMBin() (string, error) {
 	targetDir := os.TempDir()
+	subnetEVMVersion, err := binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+		constants.AvaLabsOrg,
+		subnetEVMName,
+	))
+	if err != nil {
+		return "", err
+	}
 	subnetEVMDir, err := binutils.DownloadReleaseVersion(logging.NoLog{}, subnetEVMName, subnetEVMVersion, targetDir)
 	if err != nil {
 		return "", err
