@@ -37,12 +37,10 @@ const (
 type Prompter interface {
 	CapturePositiveBigInt(promptStr string) (*big.Int, error)
 	CaptureAddress(promptStr string) (common.Address, error)
-	CaptureIndex(promptStr string, options []any) (int, error)
 	CaptureExistingFilepath(promptStr string) (string, error)
 	CaptureYesNo(promptStr string) (bool, error)
 	CaptureNoYes(promptStr string) (bool, error)
 	CaptureList(promptStr string, options []string) (string, error)
-	CaptureAnyList(promptStr string, options any) (any, error)
 	CaptureString(promptStr string) (string, error)
 	CaptureGitURL(promptStr string) (url.URL, error)
 	CaptureIndex(promptStr string, options []any) (int, error)
@@ -199,7 +197,7 @@ func CaptureListDecision[T comparable](
 			if err != nil {
 				return nil, false, err
 			}
-			list = append(list[:index], list[index+1:]...)
+			finalList = append(finalList[:index], finalList[index+1:]...)
 		case Preview:
 			if len(finalList) == 0 {
 				fmt.Println("The list is empty")
