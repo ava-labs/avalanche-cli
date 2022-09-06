@@ -16,8 +16,8 @@ const notRunningState = ""
 
 // keeps track of a lineal state sequence given by the non empty slice [states], which can
 // be updated with steps forward and backward by using NextState() with suitable direction.
-// starts in the first elem of [states] and ends either when Stop() is called, or
-// when state bypasses last elem of [states]
+// starts in the first elem of [states] and ends either when Stop() is called,
+// or when state bypasses last elem of [states]
 //
 // usage example:
 //
