@@ -5,7 +5,6 @@ package vm
 
 import (
 	"errors"
-	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -56,19 +55,12 @@ func getAllocation(
 		return allocation, statemachine.Backward, nil
 	}
 
-	var (
-		addressHex common.Address
-		ok         bool
-	)
+	var addressHex common.Address
 
 	for {
-		addressAny, err := app.Prompt.CaptureAddress("Address to airdrop to", nil)
+		addressHex, err = app.Prompt.CaptureAddress("Address to airdrop to")
 		if err != nil {
 			return nil, statemachine.Stop, err
-		}
-
-		if addressHex, ok = addressAny.(common.Address); !ok {
-			return nil, statemachine.Stop, fmt.Errorf("expected common.Address type but got %T", addressAny)
 		}
 
 		amount, err := app.Prompt.CapturePositiveBigInt(captureAmountLabel)

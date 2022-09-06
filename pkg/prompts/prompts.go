@@ -32,18 +32,15 @@ const (
 	MoreInfo = "More Info"
 	Done     = "Done"
 	Cancel   = "Cancel"
-
-	Skip = "Skip"
 )
 
 type Prompter interface {
 	CapturePositiveBigInt(promptStr string) (*big.Int, error)
-	CaptureAddress(promptStr string, arg any) (any, error)
+	CaptureAddress(promptStr string) (common.Address, error)
 	CaptureExistingFilepath(promptStr string) (string, error)
 	CaptureYesNo(promptStr string) (bool, error)
 	CaptureNoYes(promptStr string) (bool, error)
 	CaptureList(promptStr string, options []string) (string, error)
-	CaptureAnyList(promptStr string, options any) (any, error)
 	CaptureString(promptStr string) (string, error)
 	CaptureGitURL(promptStr string) (url.URL, error)
 	CaptureIndex(promptStr string, options []any) (int, error)
@@ -53,23 +50,7 @@ type Prompter interface {
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
 	CaptureWeight(promptStr string) (uint64, error)
 	CaptureUint64(promptStr string) (uint64, error)
-	CapturePChainAddress(promptStr string, network any) (any, error)
-	CaptureListDecision(
-		// we need this in order to be able to run mock tests
-		prompter Prompter,
-		// the main prompt for entering address keys
-		prompt string,
-		// the Capture function to use
-		capture func(prompt string, args any) (any, error),
-		// the prompt for each address
-		capturePrompt string,
-		// label describes the entity we are prompting for (e.g. address, control key, etc.)
-		label string,
-		// optional parameter to allow the user to print the info string for more information
-		info string,
-		// optional parameter if the Capture function needs an argument (CapturePChainAddress requires network)
-		arg any,
-	) ([]any, bool, error)
+	CapturePChainAddress(promptStr string, network models.Network) (string, error)
 }
 
 type realPrompter struct{}
@@ -170,30 +151,21 @@ func validateURL(input string) error {
 // and `CaptureAddress` is supported) until the user cancels or
 // chooses `Done`. It does also offer an optional `info` to print
 // (if provided) and a preview. Items can also be removed.
-func (r *realPrompter) CaptureListDecision(
+func CaptureListDecision[T comparable](
 	// we need this in order to be able to run mock tests
 	prompter Prompter,
 	// the main prompt for entering address keys
 	prompt string,
 	// the Capture function to use
-	capture func(prompt string, args any) (any, error),
+	capture func(prompt string) (T, error),
 	// the prompt for each address
 	capturePrompt string,
 	// label describes the entity we are prompting for (e.g. address, control key, etc.)
 	label string,
 	// optional parameter to allow the user to print the info string for more information
 	info string,
-	// optional parameter if the Capture function needs an argument (CapturePChainAddress requires network)
-	arg any,
-) ([]any, bool, error) {
-	list := []any{}
-
-	param := arg
-	existing, ok := arg.([]any)
-	if ok {
-		param = existing
-	}
-
+) ([]T, bool, error) {
+	finalList := []T{}
 	for {
 		listDecision, err := prompter.CaptureList(
 			prompt, []string{Add, Del, Preview, MoreInfo, Done, Cancel},
@@ -203,73 +175,49 @@ func (r *realPrompter) CaptureListDecision(
 		}
 		switch listDecision {
 		case Add:
-			elem, err := capture(
-				capturePrompt,
-				param,
-			)
-			if elem == Skip {
-				break
-			}
+			elem, err := capture(capturePrompt)
 			if err != nil {
 				return nil, false, err
 			}
-			if contains(list, elem) {
+			if contains(finalList, elem) {
 				fmt.Println(label + " already in list")
 				continue
 			}
-			list = append(list, elem)
-			if ok {
-				existing = removeExisting(existing, elem)
-			}
+			finalList = append(finalList, elem)
 		case Del:
-			if len(list) == 0 {
+			if len(finalList) == 0 {
 				fmt.Println("No " + label + " added yet")
 				continue
 			}
-			index, err := prompter.CaptureIndex("Choose element to remove:", list)
+			finalListAnyT := []any{}
+			for _, v := range finalList {
+				finalListAnyT = append(finalListAnyT, v)
+			}
+			index, err := prompter.CaptureIndex("Choose element to remove:", finalListAnyT)
 			if err != nil {
 				return nil, false, err
 			}
-			if ok {
-				existing = addExisting(existing, list, index)
-			}
-			list = append(list[:index], list[index+1:]...)
+			finalList = append(finalList[:index], finalList[index+1:]...)
 		case Preview:
-			if len(list) == 0 {
+			if len(finalList) == 0 {
 				fmt.Println("The list is empty")
 				break
 			}
-			for i, k := range list {
-				fmt.Printf("%d. %s\n", i, k)
+			for i, k := range finalList {
+				fmt.Printf("%d. %v\n", i, k)
 			}
 		case MoreInfo:
 			if info != "" {
 				fmt.Println(info)
 			}
 		case Done:
-			return list, false, nil
+			return finalList, false, nil
 		case Cancel:
 			return nil, true, nil
 		default:
 			return nil, false, errors.New("unexpected option")
 		}
 	}
-}
-
-func removeExisting(existing []any, elem any) []any {
-	newList := []any{}
-	for i, e := range existing {
-		if e == elem {
-			newList = append(existing[:i], existing[i+1:]...) //nolint:gocritic
-			break
-		}
-	}
-	return newList
-}
-
-func addExisting(existing []any, list []any, index int) []any {
-	existing = append(existing, list[index])
-	return existing
 }
 
 func (*realPrompter) CaptureDuration(promptStr string) (time.Duration, error) {
@@ -422,8 +370,7 @@ func getPChainValidationFunc(network models.Network) func(string) error {
 	}
 }
 
-func (*realPrompter) CapturePChainAddress(promptStr string, net any) (any, error) {
-	network := net.(models.Network)
+func (*realPrompter) CapturePChainAddress(promptStr string, network models.Network) (string, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: getPChainValidationFunc(network),
@@ -432,7 +379,7 @@ func (*realPrompter) CapturePChainAddress(promptStr string, net any) (any, error
 	return prompt.Run()
 }
 
-func (*realPrompter) CaptureAddress(promptStr string, arg any) (any, error) {
+func (*realPrompter) CaptureAddress(promptStr string) (common.Address, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validateAddress,
@@ -493,21 +440,6 @@ func (*realPrompter) CaptureList(promptStr string, options []string) (string, er
 		return "", err
 	}
 	return listDecision, nil
-}
-
-func (r *realPrompter) CaptureAnyList(promptStr string, options any) (any, error) {
-	arr, ok := options.([]any)
-	if ok && len(arr) == 0 && !contains(arr, Add) {
-		fmt.Println("The option list is empty! Aborting.")
-		return Skip, nil
-	}
-
-	strArr := make([]string, len(arr))
-	for i, e := range arr {
-		strArr[i] = e.(string)
-	}
-
-	return r.CaptureList(promptStr, strArr)
 }
 
 func (*realPrompter) CaptureString(promptStr string) (string, error) {
@@ -580,7 +512,7 @@ func (*realPrompter) CaptureIndex(promptStr string, options []any) (int, error) 
 	return listIndex, nil
 }
 
-func contains(list []any, element any) bool {
+func contains[T comparable](list []T, element T) bool {
 	for _, val := range list {
 		if val == element {
 			return true
