@@ -16,10 +16,14 @@ const (
 	subnetName       = "e2eSubnetTest"
 	secondSubnetName = "e2eSecondSubnetTest"
 
-	subnetEVMVersion1 = "v0.2.8"
-	subnetEVMVersion2 = "v0.2.7"
-	avagoVersion1     = "v1.7.16"
-	avagoVersion2     = "v1.7.15"
+	// TODO: Currently the subnetEVM versions are collapsed to just use one, because only v0.3.0
+	// is compatible with avago v1.8.x.
+	// This also means we should consider this for the future: How to handle hardforks which make
+	// this test break.:w
+	subnetEVMVersion1 = "v0.3.0"
+	subnetEVMVersion2 = "v0.3.0"
+	avagoVersion1     = "v1.8.0"
+	avagoVersion2     = "v1.8.1"
 )
 
 var _ = ginkgo.Describe("[Package Management]", func() {
@@ -71,7 +75,7 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
 		commands.CreateSubnetEvmConfigWithVersion(secondSubnetName, utils.SubnetEvmGenesis2Path, subnetEVMVersion2)
 
-		deployOutput := commands.DeploySubnetLocally(subnetName)
+		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, avagoVersion2)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -79,7 +83,7 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
 
-		deployOutput = commands.DeploySubnetLocally(secondSubnetName)
+		deployOutput = commands.DeploySubnetLocallyWithVersion(secondSubnetName, avagoVersion2)
 		rpcs, err = utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -112,7 +116,7 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion1)).Should(gomega.BeFalse())
 		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion2)).Should(gomega.BeFalse())
 
-		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
 		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, avagoVersion1)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {

@@ -45,29 +45,6 @@ func (_m *Prompter) CaptureAddress(promptStr string) (common.Address, error) {
 	return r0, r1
 }
 
-// CaptureAnyList provides a mock function with given fields: promptStr, options
-func (_m *Prompter) CaptureAnyList(promptStr string, options interface{}) (interface{}, error) {
-	ret := _m.Called(promptStr, options)
-
-	var r0 interface{}
-	if rf, ok := ret.Get(0).(func(string, interface{}) interface{}); ok {
-		r0 = rf(promptStr, options)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(interface{})
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(string, interface{}) error); ok {
-		r1 = rf(promptStr, options)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // CaptureDate provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureDate(promptStr string) (time.Time, error) {
 	ret := _m.Called(promptStr)
@@ -98,6 +75,27 @@ func (_m *Prompter) CaptureDuration(promptStr string) (time.Duration, error) {
 		r0 = rf(promptStr)
 	} else {
 		r0 = ret.Get(0).(time.Duration)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(promptStr)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CaptureEmail provides a mock function with given fields: promptStr
+func (_m *Prompter) CaptureEmail(promptStr string) (string, error) {
+	ret := _m.Called(promptStr)
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(promptStr)
+	} else {
+		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
@@ -284,6 +282,27 @@ func (_m *Prompter) CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 
 // CaptureString provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureString(promptStr string) (string, error) {
+	ret := _m.Called(promptStr)
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(promptStr)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(promptStr)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CaptureStringAllowEmpty provides a mock function with given fields: promptStr
+func (_m *Prompter) CaptureStringAllowEmpty(promptStr string) (string, error) {
 	ret := _m.Called(promptStr)
 
 	var r0 string
