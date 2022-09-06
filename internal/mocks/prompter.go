@@ -6,9 +6,11 @@ import (
 	big "math/big"
 
 	ids "github.com/ava-labs/avalanchego/ids"
+	common "github.com/ethereum/go-ethereum/common"
+
 	mock "github.com/stretchr/testify/mock"
 
-	prompts "github.com/ava-labs/avalanche-cli/pkg/prompts"
+	models "github.com/ava-labs/avalanche-cli/pkg/models"
 
 	time "time"
 
@@ -20,45 +22,22 @@ type Prompter struct {
 	mock.Mock
 }
 
-// CaptureAddress provides a mock function with given fields: promptStr, arg
-func (_m *Prompter) CaptureAddress(promptStr string, arg interface{}) (interface{}, error) {
-	ret := _m.Called(promptStr, arg)
+// CaptureAddress provides a mock function with given fields: promptStr
+func (_m *Prompter) CaptureAddress(promptStr string) (common.Address, error) {
+	ret := _m.Called(promptStr)
 
-	var r0 interface{}
-	if rf, ok := ret.Get(0).(func(string, interface{}) interface{}); ok {
-		r0 = rf(promptStr, arg)
+	var r0 common.Address
+	if rf, ok := ret.Get(0).(func(string) common.Address); ok {
+		r0 = rf(promptStr)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(interface{})
+			r0 = ret.Get(0).(common.Address)
 		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(string, interface{}) error); ok {
-		r1 = rf(promptStr, arg)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// CaptureAnyList provides a mock function with given fields: promptStr, options
-func (_m *Prompter) CaptureAnyList(promptStr string, options interface{}) (interface{}, error) {
-	ret := _m.Called(promptStr, options)
-
-	var r0 interface{}
-	if rf, ok := ret.Get(0).(func(string, interface{}) interface{}); ok {
-		r0 = rf(promptStr, options)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(interface{})
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(string, interface{}) error); ok {
-		r1 = rf(promptStr, options)
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(promptStr)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -96,6 +75,27 @@ func (_m *Prompter) CaptureDuration(promptStr string) (time.Duration, error) {
 		r0 = rf(promptStr)
 	} else {
 		r0 = ret.Get(0).(time.Duration)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(promptStr)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CaptureEmail provides a mock function with given fields: promptStr
+func (_m *Prompter) CaptureEmail(promptStr string) (string, error) {
+	ret := _m.Called(promptStr)
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(promptStr)
+	} else {
+		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
@@ -194,36 +194,6 @@ func (_m *Prompter) CaptureList(promptStr string, options []string) (string, err
 	return r0, r1
 }
 
-// CaptureListDecision provides a mock function with given fields: prompter, prompt, capture, capturePrompt, label, info, arg
-func (_m *Prompter) CaptureListDecision(prompter prompts.Prompter, prompt string, capture func(string, interface{}) (interface{}, error), capturePrompt string, label string, info string, arg interface{}) ([]interface{}, bool, error) {
-	ret := _m.Called(prompter, prompt, capture, capturePrompt, label, info, arg)
-
-	var r0 []interface{}
-	if rf, ok := ret.Get(0).(func(prompts.Prompter, string, func(string, interface{}) (interface{}, error), string, string, string, interface{}) []interface{}); ok {
-		r0 = rf(prompter, prompt, capture, capturePrompt, label, info, arg)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]interface{})
-		}
-	}
-
-	var r1 bool
-	if rf, ok := ret.Get(1).(func(prompts.Prompter, string, func(string, interface{}) (interface{}, error), string, string, string, interface{}) bool); ok {
-		r1 = rf(prompter, prompt, capture, capturePrompt, label, info, arg)
-	} else {
-		r1 = ret.Get(1).(bool)
-	}
-
-	var r2 error
-	if rf, ok := ret.Get(2).(func(prompts.Prompter, string, func(string, interface{}) (interface{}, error), string, string, string, interface{}) error); ok {
-		r2 = rf(prompter, prompt, capture, capturePrompt, label, info, arg)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
-}
-
 // CaptureNoYes provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureNoYes(promptStr string) (bool, error) {
 	ret := _m.Called(promptStr)
@@ -269,20 +239,18 @@ func (_m *Prompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 }
 
 // CapturePChainAddress provides a mock function with given fields: promptStr, network
-func (_m *Prompter) CapturePChainAddress(promptStr string, network interface{}) (interface{}, error) {
+func (_m *Prompter) CapturePChainAddress(promptStr string, network models.Network) (string, error) {
 	ret := _m.Called(promptStr, network)
 
-	var r0 interface{}
-	if rf, ok := ret.Get(0).(func(string, interface{}) interface{}); ok {
+	var r0 string
+	if rf, ok := ret.Get(0).(func(string, models.Network) string); ok {
 		r0 = rf(promptStr, network)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(interface{})
-		}
+		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(string, interface{}) error); ok {
+	if rf, ok := ret.Get(1).(func(string, models.Network) error); ok {
 		r1 = rf(promptStr, network)
 	} else {
 		r1 = ret.Error(1)
@@ -316,6 +284,27 @@ func (_m *Prompter) CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 
 // CaptureString provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureString(promptStr string) (string, error) {
+	ret := _m.Called(promptStr)
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(promptStr)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(promptStr)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CaptureStringAllowEmpty provides a mock function with given fields: promptStr
+func (_m *Prompter) CaptureStringAllowEmpty(promptStr string) (string, error) {
 	ret := _m.Called(promptStr)
 
 	var r0 string

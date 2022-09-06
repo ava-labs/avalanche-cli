@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/coreth/core"
@@ -369,21 +370,6 @@ func loadCreationKey(network models.Network, keyName string) ([]string, error) {
 	return k.P(), nil
 }
 
-func convertCtrlKeys(list []any, canceled bool, err error) ([]string, bool, error) {
-	ctrlKeys := make([]string, len(list))
-	var (
-		key string
-		ok  bool
-	)
-	for i, k := range list {
-		if key, ok = k.(string); !ok {
-			return nil, false, fmt.Errorf("expected string but got %T", key)
-		}
-		ctrlKeys[i] = key
-	}
-	return ctrlKeys, canceled, err
-}
-
 func enterCustomKeys(network models.Network) ([]string, bool, error) {
 	controlKeysPrompt := "Enter control keys"
 	for {
@@ -408,26 +394,21 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 	label := "Control key"
 	info := "Control keys are P-Chain addresses which have admin rights on the subnet.\n" +
 		"Only private keys which control such addresses are allowed to make changes on the subnet"
-	arg := network
 	addressPrompt := "Enter P-Chain address (Example: P-...)"
-	list, canceled, err := app.Prompt.CaptureListDecision(
+	return prompts.CaptureListDecision(
 		// we need this to be able to mock test
 		app.Prompt,
 		// the main prompt for entering address keys
 		controlKeysPrompt,
 		// the Capture function to use
-		app.Prompt.CapturePChainAddress,
+		func(s string) (string, error) { return app.Prompt.CapturePChainAddress(s, network) },
 		// the prompt for each address
 		addressPrompt,
 		// label describes the entity we are prompting for (e.g. address, control key, etc.)
 		label,
 		// optional parameter to allow the user to print the info string for more information
 		info,
-		// optional parameter if the Capture function needs an argument (CapturePChainAddress requires network)
-		arg,
 	)
-
-	return convertCtrlKeys(list, canceled, err)
 }
 
 // getThreshold prompts for the threshold of addresses as a number

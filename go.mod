@@ -9,13 +9,13 @@ require (
 	github.com/ava-labs/coreth v0.8.16-rc.2
 	github.com/ava-labs/spacesvm v0.0.7
 	github.com/ava-labs/subnet-evm v0.2.7
-	github.com/docker/docker v1.6.2
+	github.com/docker/docker v20.10.17+incompatible
 	github.com/ethereum/go-ethereum v1.10.21
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/manifoldco/promptui v0.9.0
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/onsi/ginkgo/v2 v2.1.4
-	github.com/onsi/gomega v1.19.0
+	github.com/onsi/ginkgo/v2 v2.1.6
+	github.com/onsi/gomega v1.20.2
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/afero v1.8.2
 	github.com/spf13/cobra v1.4.0
@@ -23,7 +23,7 @@ require (
 	github.com/stretchr/testify v1.8.0
 	go.uber.org/zap v1.21.0
 	golang.org/x/mod v0.6.0-dev.0.20211013180041-c96bc1413d57
-	google.golang.org/protobuf v1.28.0
+	google.golang.org/protobuf v1.28.1
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -67,6 +67,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.1.2 // indirect
+	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/rpc v1.2.0 // indirect
@@ -134,7 +135,7 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
-	golang.org/x/net v0.0.0-20220708220712-1185a9018129 // indirect
+	golang.org/x/net v0.0.0-20220722155237-a158d28d115b // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
 	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467 // indirect
@@ -147,4 +148,5 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/urfave/cli.v1 v1.20.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
+	gotest.tools/v3 v3.3.0 // indirect
 )
