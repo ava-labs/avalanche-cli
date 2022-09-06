@@ -76,9 +76,12 @@ func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVe
 		err        error
 	)
 
-	subnetEvmState := statemachine.NewStateMachine(
+	subnetEvmState, err := statemachine.NewStateMachine(
 		[]string{descriptorsState, feeState, airdropState, precompilesState},
 	)
+	if err != nil {
+		return nil, nil, err
+	}
 	for subnetEvmState.Running() {
 		switch subnetEvmState.CurrentState() {
 		case descriptorsState:
