@@ -31,10 +31,13 @@ func newImportCmd() *cobra.Command {
 		RunE:         importSubnet,
 		SilenceUsage: true,
 		Args:         cobra.MaximumNArgs(1),
-		Long: `The subnet import command accepts an exported subnet config file.
+		Long: `The subnet import command will import a subnet configuration from a file or a git repository.
 
-By default, an imported subnet will not overwrite an existing subnet
-with the same name. To allow overwrites, provide the --force flag.`,
+To import from a file, you can optionally provide the filepath as a command line argument.
+Alternatively, running the command without any arguments will trigger an interactive wizard.
+To import from a repo, go through the wizard. By default, an imported subnet will not
+overwrite an existing subnet with the same name. To allow overwrites, provide the --force
+flag.`,
 	}
 	cmd.Flags().BoolVarP(
 		&overwriteImport,
@@ -146,9 +149,7 @@ func importFromAPM() error {
 	customRepo := "Download new repo"
 
 	if repoOrURL != "" {
-		fmt.Println("Looking for", repoOrURL)
 		for _, installedRepo := range installedRepos {
-			fmt.Println("checking against", installedRepo)
 			if repoOrURL == installedRepo {
 				repoAlias = installedRepo
 				break

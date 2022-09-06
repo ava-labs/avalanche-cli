@@ -48,15 +48,11 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 
 	ginkgo.It("can import from avalanche-core", func() {
 		repo := "ava-labs/avalanche-plugins-core"
-		subnet := "wagmi"
-
-		commands.ImportSubnetConfig(repo, subnet)
+		commands.ImportSubnetConfig(repo, subnet1)
 	})
 
 	ginkgo.It("can import from url", func() {
 		branch := "master"
-		subnet := "spaces"
-
-		commands.ImportSubnetConfigFromURL(testRepo, branch, subnet)
+		commands.ImportSubnetConfigFromURL(testRepo, branch, subnet2)
 	})
 })

@@ -47,10 +47,10 @@ func GetAPMDir() string {
 	if err != nil {
 		panic(err)
 	}
-	return path.Join(usr.HomeDir, baseAPMDir)
+	return path.Join(usr.HomeDir, constants.APMDir)
 }
 
-func SubnetConfigExists(subnetName string) (bool, error) {
+func genesisExists(subnetName string) (bool, error) {
 	genesis := path.Join(GetBaseDir(), subnetName+constants.GenesisSuffix)
 	genesisExists := true
 	if _, err := os.Stat(genesis); errors.Is(err, os.ErrNotExist) {
@@ -60,25 +60,10 @@ func SubnetConfigExists(subnetName string) (bool, error) {
 		// Schrodinger: file may or may not exist. See err for details.
 		return false, err
 	}
-
-	sidecar := path.Join(GetBaseDir(), subnetName+constants.SidecarSuffix)
-	sidecarExists := true
-	if _, err := os.Stat(sidecar); errors.Is(err, os.ErrNotExist) {
-		// does *not* exist
-		sidecarExists = false
-	} else if err != nil {
-		// Schrodinger: file may or may not exist. See err for details.
-		return false, err
-	}
-
-	// do an xor
-	if (genesisExists || sidecarExists) && !(genesisExists && sidecarExists) {
-		return false, errors.New("config half exists")
-	}
-	return genesisExists && sidecarExists, nil
+	return genesisExists, nil
 }
 
-func APMConfigExists(subnetName string) (bool, error) {
+func sidecarExists(subnetName string) (bool, error) {
 	sidecar := path.Join(GetBaseDir(), subnetName+constants.SidecarSuffix)
 	sidecarExists := true
 	if _, err := os.Stat(sidecar); errors.Is(err, os.ErrNotExist) {
@@ -89,6 +74,28 @@ func APMConfigExists(subnetName string) (bool, error) {
 		return false, err
 	}
 	return sidecarExists, nil
+}
+
+func SubnetConfigExists(subnetName string) (bool, error) {
+	gen, err := genesisExists(subnetName)
+	if err != nil {
+		return false, err
+	}
+
+	sc, err := sidecarExists(subnetName)
+	if err != nil {
+		return false, err
+	}
+
+	// do an xor
+	if (gen || sc) && !(gen && sc) {
+		return false, errors.New("config half exists")
+	}
+	return gen && sc, nil
+}
+
+func APMConfigExists(subnetName string) (bool, error) {
+	return sidecarExists(subnetName)
 }
 
 func SubnetCustomVMExists(subnetName string) (bool, error) {

@@ -421,7 +421,6 @@ func ImportSubnetConfig(repoAlias string, subnetName string) {
 		"--subnet",
 		subnetName,
 	)
-	fmt.Println(cmd.String())
 	output, err := cmd.CombinedOutput()
 	exitErr, typeOk := err.(*exec.ExitError)
 	stderr := ""
