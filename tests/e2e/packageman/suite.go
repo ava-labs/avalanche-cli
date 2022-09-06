@@ -116,7 +116,7 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion1)).Should(gomega.BeFalse())
 		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion2)).Should(gomega.BeFalse())
 
-		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
 		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, avagoVersion1)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
