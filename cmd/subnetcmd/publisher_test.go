@@ -22,6 +22,10 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+const (
+	testSubnet = "testSubnet"
+)
+
 func newTestPublisher(string, string, string) subnet.Publisher {
 	mockPub := &mocks.Publisher{}
 	mockPub.On("GetRepo").Return(&git.Repository{}, nil)
@@ -36,8 +40,6 @@ func TestNoRepoPath(t *testing.T) {
 		noRepoPath = ""
 		forceWrite = false
 	}()
-
-	testSubnet := "testSubnet"
 
 	configureMockPrompt(mockPrompt)
 
@@ -217,8 +219,6 @@ func TestIsPublished(t *testing.T) {
 		app = nil
 	}()
 
-	testSubnet := "testSubnet"
-
 	published, err := isAlreadyPublished(testSubnet)
 	assert.NoError(err)
 	assert.False(published)
@@ -281,7 +281,7 @@ func TestPublishing(t *testing.T) {
 	sc := &models.Sidecar{
 		VM: models.SubnetEvm,
 	}
-	err := doPublish(sc, "testSubnet", newTestPublisher)
+	err := doPublish(sc, testSubnet, newTestPublisher)
 	assert.NoError(err)
 
 	// reset expectations as TestNoRepoPath also uses the same mocks
