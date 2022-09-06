@@ -17,6 +17,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -41,7 +42,15 @@ func GetBaseDir() string {
 	return path.Join(usr.HomeDir, baseDir)
 }
 
-func SubnetConfigExists(subnetName string) (bool, error) {
+func GetAPMDir() string {
+	usr, err := user.Current()
+	if err != nil {
+		panic(err)
+	}
+	return path.Join(usr.HomeDir, constants.APMDir)
+}
+
+func genesisExists(subnetName string) (bool, error) {
 	genesis := path.Join(GetBaseDir(), subnetName+constants.GenesisSuffix)
 	genesisExists := true
 	if _, err := os.Stat(genesis); errors.Is(err, os.ErrNotExist) {
@@ -51,7 +60,10 @@ func SubnetConfigExists(subnetName string) (bool, error) {
 		// Schrodinger: file may or may not exist. See err for details.
 		return false, err
 	}
+	return genesisExists, nil
+}
 
+func sidecarExists(subnetName string) (bool, error) {
 	sidecar := path.Join(GetBaseDir(), subnetName+constants.SidecarSuffix)
 	sidecarExists := true
 	if _, err := os.Stat(sidecar); errors.Is(err, os.ErrNotExist) {
@@ -61,16 +73,60 @@ func SubnetConfigExists(subnetName string) (bool, error) {
 		// Schrodinger: file may or may not exist. See err for details.
 		return false, err
 	}
+	return sidecarExists, nil
+}
+
+func SubnetConfigExists(subnetName string) (bool, error) {
+	gen, err := genesisExists(subnetName)
+	if err != nil {
+		return false, err
+	}
+
+	sc, err := sidecarExists(subnetName)
+	if err != nil {
+		return false, err
+	}
 
 	// do an xor
-	if (genesisExists || sidecarExists) && !(genesisExists && sidecarExists) {
+	if (gen || sc) && !(gen && sc) {
 		return false, errors.New("config half exists")
 	}
-	return genesisExists && sidecarExists, nil
+	return gen && sc, nil
+}
+
+func APMConfigExists(subnetName string) (bool, error) {
+	return sidecarExists(subnetName)
 }
 
 func SubnetCustomVMExists(subnetName string) (bool, error) {
 	vm := path.Join(GetBaseDir(), constants.CustomVMDir, subnetName)
+	vmExists := true
+	if _, err := os.Stat(vm); errors.Is(err, os.ErrNotExist) {
+		// does *not* exist
+		vmExists = false
+	} else if err != nil {
+		// Schrodinger: file may or may not exist. See err for details.
+		return false, err
+	}
+	return vmExists, nil
+}
+
+func SubnetAPMVMExists(subnetName string) (bool, error) {
+	sidecarPath := path.Join(GetBaseDir(), subnetName+constants.SidecarSuffix)
+	jsonBytes, err := os.ReadFile(sidecarPath)
+	if err != nil {
+		return false, err
+	}
+
+	var sc models.Sidecar
+	err = json.Unmarshal(jsonBytes, &sc)
+	if err != nil {
+		return false, err
+	}
+
+	vmid := sc.ImportedVMID
+
+	vm := path.Join(GetBaseDir(), constants.APMPluginDir, vmid)
 	vmExists := true
 	if _, err := os.Stat(vm); errors.Is(err, os.ErrNotExist) {
 		// does *not* exist
@@ -117,6 +173,10 @@ func DeleteConfigs(subnetName string) error {
 	return nil
 }
 
+func RemoveAPMRepo() {
+	os.RemoveAll(GetAPMDir())
+}
+
 func DeleteKey(keyName string) error {
 	keyPath := path.Join(GetBaseDir(), constants.KeyDir, keyName+constants.KeySuffix)
 	if _, err := os.Stat(keyPath); err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -150,6 +210,13 @@ func DeleteBins() error {
 	os.RemoveAll(subevmPath)
 
 	return nil
+}
+
+func DeleteAPMBin(vmid string) {
+	vmPath := path.Join(GetBaseDir(), constants.AvalancheCliBinDir, constants.APMPluginDir, vmid)
+
+	// ignore error, file may not exist
+	os.RemoveAll(vmPath)
 }
 
 func stdoutParser(output string, queue string, capture string) (string, error) {
