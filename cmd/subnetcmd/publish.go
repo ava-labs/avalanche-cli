@@ -349,17 +349,12 @@ func getSubnetInfo(sc *models.Sidecar) (*types.Subnet, error) {
 		return nil, errors.New("canceled by user")
 	}
 
-	strMaintrs := make([]string, len(maintrs))
-	for i, m := range maintrs {
-		strMaintrs[i] = m
-	}
-
 	subnet := &types.Subnet{
 		ID:          sc.Networks[models.Fuji.String()].SubnetID.String(),
 		Alias:       sc.Name,
 		Homepage:    homepage,
 		Description: desc,
-		Maintainers: strMaintrs,
+		Maintainers: maintrs,
 		VMs:         []string{sc.Subnet},
 	}
 
@@ -368,8 +363,9 @@ func getSubnetInfo(sc *models.Sidecar) (*types.Subnet, error) {
 
 func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 	var (
-		vmID, desc any
-		strMaintrs []string
+		maintrs    []string
+		vmID, desc string
+		canceled   bool
 		err        error
 	)
 
@@ -383,7 +379,7 @@ func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 		if err != nil {
 			return nil, err
 		}
-		maintrs, canceled, err := prompts.CaptureListDecision(
+		maintrs, canceled, err = prompts.CaptureListDecision(
 			app.Prompt,
 			"Who are the maintainers of the VM?",
 			app.Prompt.CaptureEmail,
@@ -399,19 +395,14 @@ func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 			return nil, errors.New("canceled by user")
 		}
 
-		strMaintrs = make([]string, len(maintrs))
-		for i, m := range maintrs {
-			strMaintrs[i] = m
-		}
-
 	case sc.VM == models.SpacesVM:
 		vmID = models.SpacesVM
 		desc = "Authenticated, hierarchical storage of arbitrary keys/values using any EIP-712 compatible wallet."
-		strMaintrs = []string{"ava-labs"}
+		maintrs = []string{"ava-labs"}
 	case sc.VM == models.SubnetEvm:
 		vmID = models.SubnetEvm
 		desc = "Subnet EVM is a simplified version of Coreth VM (C-Chain). It implements the Ethereum Virtual Machine and supports Solidity smart contracts as well as most other Ethereum client functionality"
-		strMaintrs = []string{"ava-labs"}
+		maintrs = []string{"ava-labs"}
 	default:
 		return nil, fmt.Errorf("unexpected error: unsupported VM type: %s", sc.VM)
 	}
@@ -446,11 +437,11 @@ func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 	}
 
 	vm := &types.VM{
-		ID:            vmID.(string),
+		ID:            vmID,
 		Alias:         sc.Networks["Fuji"].BlockchainID.String(), // TODO: Do we have to query for this? Or write to sidecar on create?
 		Homepage:      "",
-		Description:   desc.(string),
-		Maintainers:   strMaintrs,
+		Description:   desc,
+		Maintainers:   maintrs,
 		InstallScript: scr,
 		BinaryPath:    bin,
 		URL:           url,
