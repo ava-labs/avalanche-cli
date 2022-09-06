@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/apm/types"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
@@ -332,14 +333,13 @@ func getSubnetInfo(sc *models.Sidecar) (*types.Subnet, error) {
 		return nil, err
 	}
 
-	maintrs, canceled, err := app.Prompt.CaptureListDecision(
+	maintrs, canceled, err := prompts.CaptureListDecision(
 		app.Prompt,
 		"Who are the maintainers of the Subnet?",
 		app.Prompt.CaptureEmail,
 		"Provide a maintainer",
 		"Maintainer",
 		"",
-		nil,
 	)
 	if err != nil {
 		return nil, err
@@ -351,7 +351,7 @@ func getSubnetInfo(sc *models.Sidecar) (*types.Subnet, error) {
 
 	strMaintrs := make([]string, len(maintrs))
 	for i, m := range maintrs {
-		strMaintrs[i] = m.(string)
+		strMaintrs[i] = m
 	}
 
 	subnet := &types.Subnet{
@@ -383,14 +383,13 @@ func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 		if err != nil {
 			return nil, err
 		}
-		maintrs, canceled, err := app.Prompt.CaptureListDecision(
+		maintrs, canceled, err := prompts.CaptureListDecision(
 			app.Prompt,
 			"Who are the maintainers of the VM?",
 			app.Prompt.CaptureEmail,
 			"Provide a maintainer",
 			"Maintainer",
 			"",
-			nil,
 		)
 		if err != nil {
 			return nil, err
@@ -402,7 +401,7 @@ func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 
 		strMaintrs = make([]string, len(maintrs))
 		for i, m := range maintrs {
-			strMaintrs[i] = m.(string)
+			strMaintrs[i] = m
 		}
 
 	case sc.VM == models.SpacesVM:

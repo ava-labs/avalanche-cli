@@ -74,6 +74,13 @@ func TestNoRepoPath(t *testing.T) {
 	expectedVMFile := filepath.Join(vmDir, sc.Networks["Fuji"].BlockchainID.String()+constants.YAMLSuffix)
 	_, err = os.Create(expectedSubnetFile)
 	assert.NoError(err)
+
+	// reset expectations as this test (and TestPublishing) also uses the same mocks
+	// and the same sequence so expectations get messed up
+	mockPrompt.Calls = nil
+	mockPrompt.ExpectedCalls = nil
+	configureMockPrompt(mockPrompt)
+
 	err = doPublish(sc, testSubnet, newTestPublisher)
 	// should fail as no force flag
 	assert.Error(err)
@@ -82,7 +89,15 @@ func TestNoRepoPath(t *testing.T) {
 	assert.NoError(err)
 	_, err = os.Create(expectedVMFile)
 	assert.NoError(err)
-	// should fail as no force flag (other file)
+
+	// next should fail as no force flag (other file)
+
+	// reset expectations as this test (and TestPublishing) also uses the same mocks
+	// and the same sequence so expectations get messed up
+	mockPrompt.Calls = nil
+	mockPrompt.ExpectedCalls = nil
+	configureMockPrompt(mockPrompt)
+
 	err = doPublish(sc, testSubnet, newTestPublisher)
 	assert.Error(err)
 	assert.ErrorContains(err, "already exists")
@@ -90,13 +105,29 @@ func TestNoRepoPath(t *testing.T) {
 	assert.NoError(err)
 
 	// this now should succeed and the file exist
+
+	// reset expectations as this test (and TestPublishing) also uses the same mocks
+	// and the same sequence so expectations get messed up
+	mockPrompt.Calls = nil
+	mockPrompt.ExpectedCalls = nil
+	configureMockPrompt(mockPrompt)
+
 	err = doPublish(sc, testSubnet, newTestPublisher)
 	assert.NoError(err)
 	assert.FileExists(expectedSubnetFile)
 	assert.FileExists(expectedVMFile)
+
 	// set force flag
 	forceWrite = true
+
 	// should also succeed and the file exist
+
+	// reset expectations as this test (and TestPublishing) also uses the same mocks
+	// and the same sequence so expectations get messed up
+	mockPrompt.Calls = nil
+	mockPrompt.ExpectedCalls = nil
+	configureMockPrompt(mockPrompt)
+
 	err = doPublish(sc, testSubnet, newTestPublisher)
 	assert.NoError(err)
 	assert.FileExists(expectedSubnetFile)
@@ -291,14 +322,15 @@ func TestPublishing(t *testing.T) {
 }
 
 func configureMockPrompt(mockPrompt *mocks.Prompter) {
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return("Add", nil).Once()
+	mockPrompt.On("CaptureEmail", mock.Anything).Return("someone@somewhere.com", nil)
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return("Done", nil).Once()
 	// capture string for a repo alias...
 	mockPrompt.On("CaptureString", mock.Anything).Return("testAlias", nil).Once()
 	// then the repo URL...
 	mockPrompt.On("CaptureString", mock.Anything).Return("https://localhost:12345", nil).Once()
 	// always provide an irrelevant response when empty is allowed...
 	mockPrompt.On("CaptureStringAllowEmpty", mock.Anything).Return("irrelevant", nil)
-	// on the maintainers, return some array
-	mockPrompt.On("CaptureListDecision", mockPrompt, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]any{"dummy", "stuff"}, false, nil)
 	// finally return a semantic version
 	mockPrompt.On("CaptureVersion", mock.Anything).Return("v0.9.99", nil)
 }
