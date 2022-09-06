@@ -15,6 +15,7 @@ import (
 const (
 	subnetName       = "e2eSubnetTest"
 	secondSubnetName = "e2eSecondSubnetTest"
+	avagoVersion     = "v1.8.2"
 	confPath         = "tests/e2e/assets/test_avalanche-cli.json"
 )
 
@@ -37,7 +38,7 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 		customVMPath, err := utils.DownloadCustomVMBin()
 		gomega.Expect(err).Should(gomega.BeNil())
 		commands.CreateCustomVMConfig(subnetName, utils.SubnetEvmGenesisPath, customVMPath)
-		deployOutput := commands.DeploySubnetLocally(subnetName)
+		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, avagoVersion)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)

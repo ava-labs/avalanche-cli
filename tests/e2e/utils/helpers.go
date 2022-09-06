@@ -31,7 +31,7 @@ const (
 	expectedRPCComponentsLen = 7
 	blockchainIDPos          = 5
 	subnetEVMName            = "subnet-evm"
-	subnetEVMVersion         = "v0.2.7"
+	subnetEVMVersion         = "v0.3.0"
 )
 
 func GetBaseDir() string {
