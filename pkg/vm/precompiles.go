@@ -5,7 +5,6 @@ package vm
 
 import (
 	"errors"
-	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -18,29 +17,14 @@ import (
 func getAdminList(initialPrompt string, info string, app *application.Avalanche) ([]common.Address, bool, error) {
 	label := "Address"
 
-	list, canceled, err := app.Prompt.CaptureListDecision(
+	return prompts.CaptureListDecision(
 		app.Prompt,
 		initialPrompt,
 		app.Prompt.CaptureAddress,
 		"Enter Address ",
 		label,
 		info,
-		nil,
 	)
-
-	admins := make([]common.Address, len(list))
-	var (
-		addr common.Address
-		ok   bool
-	)
-	for i, a := range list {
-		if addr, ok = a.(common.Address); !ok {
-			return nil, false, fmt.Errorf("expected common.Address but got %T", addr)
-		}
-		admins[i] = addr
-	}
-
-	return admins, canceled, err
 }
 
 func configureContractAllowList(app *application.Avalanche) (precompile.ContractDeployerAllowListConfig, bool, error) {
