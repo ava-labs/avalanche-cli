@@ -40,8 +40,10 @@ func configureContractAllowList(app *application.Avalanche) (precompile.Contract
 	}
 
 	config.AllowListConfig = precompile.AllowListConfig{
-		BlockTimestamp:  big.NewInt(0),
 		AllowListAdmins: admins,
+	}
+	config.UpgradeableConfig = precompile.UpgradeableConfig{
+		BlockTimestamp: big.NewInt(0),
 	}
 
 	return config, cancelled, nil
@@ -60,8 +62,10 @@ func configureTransactionAllowList(app *application.Avalanche) (precompile.TxAll
 	}
 
 	config.AllowListConfig = precompile.AllowListConfig{
-		BlockTimestamp:  big.NewInt(0),
 		AllowListAdmins: admins,
+	}
+	config.UpgradeableConfig = precompile.UpgradeableConfig{
+		BlockTimestamp: big.NewInt(0),
 	}
 
 	return config, cancelled, nil
@@ -80,8 +84,10 @@ func configureMinterList(app *application.Avalanche) (precompile.ContractNativeM
 	}
 
 	config.AllowListConfig = precompile.AllowListConfig{
-		BlockTimestamp:  big.NewInt(0),
 		AllowListAdmins: admins,
+	}
+	config.UpgradeableConfig = precompile.UpgradeableConfig{
+		BlockTimestamp: big.NewInt(0),
 	}
 
 	return config, cancelled, nil
@@ -100,8 +106,10 @@ func configureFeeConfigAllowList(app *application.Avalanche) (precompile.FeeConf
 	}
 
 	config.AllowListConfig = precompile.AllowListConfig{
-		BlockTimestamp:  big.NewInt(0),
 		AllowListAdmins: admins,
+	}
+	config.UpgradeableConfig = precompile.UpgradeableConfig{
+		BlockTimestamp: big.NewInt(0),
 	}
 
 	return config, cancelled, nil
@@ -166,7 +174,7 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (para
 				return config, stop, err
 			}
 			if !cancelled {
-				config.ContractNativeMinterConfig = mintConfig
+				config.ContractNativeMinterConfig = &mintConfig
 				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, nativeMint)
 				if err != nil {
 					return config, stop, err
@@ -178,7 +186,7 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (para
 				return config, stop, err
 			}
 			if !cancelled {
-				config.ContractDeployerAllowListConfig = contractConfig
+				config.ContractDeployerAllowListConfig = &contractConfig
 				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, contractAllowList)
 				if err != nil {
 					return config, stop, err
@@ -190,7 +198,7 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (para
 				return config, stop, err
 			}
 			if !cancelled {
-				config.TxAllowListConfig = txConfig
+				config.TxAllowListConfig = &txConfig
 				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, txAllowList)
 				if err != nil {
 					return config, stop, err
@@ -202,7 +210,7 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (para
 				return config, stop, err
 			}
 			if !cancelled {
-				config.FeeManagerConfig = feeConfig
+				config.FeeManagerConfig = &feeConfig
 				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, feeManager)
 				if err != nil {
 					return config, stop, err
