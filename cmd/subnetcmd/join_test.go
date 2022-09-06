@@ -20,7 +20,7 @@ func TestIsNodeValidatingSubnet(t *testing.T) {
 
 	pClient := &mocks.PClient{}
 	pClient.On("GetCurrentValidators", mock.Anything, mock.Anything, mock.Anything).Return(
-		[]platformvm.ClientPrimaryValidator{
+		[]platformvm.ClientPermissionlessValidator{
 			{
 				ClientStaker: platformvm.ClientStaker{
 					NodeID: nodeID,
