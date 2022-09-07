@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/spacesvm/chain"
 	"github.com/ava-labs/subnet-evm/core"
@@ -22,33 +23,6 @@ const (
 	defaultSpacesVMAirdropAmount = "1000000"
 	defaultMagic                 = uint64(1)
 )
-
-type stateMachine struct {
-	index  int
-	states []string
-}
-
-func (sm *stateMachine) currentState() (string, error) {
-	if sm.index < 0 || sm.index >= len(sm.states) {
-		return "", errors.New("invalid index")
-	}
-	return sm.states[sm.index], nil
-}
-
-func (sm *stateMachine) nextState(direction stateDirection) (string, error) {
-	switch direction {
-	case forward:
-		sm.index++
-	case backward:
-		sm.index--
-	default:
-		return "", errors.New("invalid direction")
-	}
-	if sm.index < 0 || sm.index >= len(sm.states) {
-		return "", errors.New("invalid index")
-	}
-	return sm.states[sm.index], nil
-}
 
 func CreateSpacesVMSubnetConfig(
 	app *application.Avalanche,
@@ -91,26 +65,26 @@ func CreateSpacesVMSubnetConfig(
 	return genesisBytes, sc, nil
 }
 
-func getMagic(app *application.Avalanche) (uint64, stateDirection, error) {
+func getMagic(app *application.Avalanche) (uint64, statemachine.StateDirection, error) {
 	useDefault := fmt.Sprintf("Use default (%d)", defaultMagic)
 	useCustom := "Set custom"
 
 	options := []string{useDefault, useCustom, goBackMsg}
 	option, err := app.Prompt.CaptureList("Set magic", options)
 	if err != nil {
-		return 0, stop, err
+		return 0, statemachine.Stop, err
 	}
 	if option == goBackMsg {
-		return 0, backward, nil
+		return 0, statemachine.Backward, nil
 	}
 	if option == useDefault {
-		return defaultMagic, forward, nil
+		return defaultMagic, statemachine.Forward, nil
 	}
 	magic, err := app.Prompt.CaptureUint64("Custom Magic")
 	if err != nil {
-		return 0, stop, err
+		return 0, statemachine.Stop, err
 	}
-	return magic, forward, nil
+	return magic, statemachine.Forward, nil
 }
 
 func getDefaultGenesisValues() (uint64, string, core.GenesisAlloc, error) {
@@ -136,34 +110,32 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 		magicState   = "magic"
 		versionState = "version"
 		airdropState = "airdrop"
-		doneState    = "done"
 	)
 
 	var (
 		magic     uint64
 		allocs    core.GenesisAlloc
-		direction stateDirection
+		direction statemachine.StateDirection
 		version   string
+		err       error
 	)
 
-	spaceVMState := stateMachine{
-		states: []string{genesisState, magicState, versionState, airdropState, doneState},
-	}
-	state, err := spaceVMState.currentState()
+	spacesVMState, err := statemachine.NewStateMachine(
+		[]string{genesisState, magicState, versionState, airdropState},
+	)
 	if err != nil {
 		return nil, nil, err
 	}
-	for state != doneState {
-		switch state {
+	for spacesVMState.Running() {
+		switch spacesVMState.CurrentState() {
 		case genesisState:
-			direction = forward
+			direction = statemachine.Forward
 			var useDefault bool
 			useDefault, err = app.Prompt.CaptureYesNo("Use default genesis?")
 			if useDefault {
 				magic, version, allocs, err = getDefaultGenesisValues()
 				if err == nil {
-					state = doneState
-					continue
+					spacesVMState.Stop()
 				}
 			}
 		case magicState:
@@ -173,15 +145,12 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 		case airdropState:
 			allocs, direction, err = getAllocation(app, defaultSpacesVMAirdropAmount, new(big.Int).SetUint64(1), "Amount to airdrop")
 		default:
-			err = errors.New("invalid creation stage")
+			err = errors.New("invalid creation state")
 		}
 		if err != nil {
 			return nil, nil, err
 		}
-		state, err = spaceVMState.nextState(direction)
-		if err != nil {
-			return nil, nil, err
-		}
+		spacesVMState.NextState(direction)
 	}
 
 	genesis := chain.DefaultGenesis()

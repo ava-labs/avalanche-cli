@@ -5,12 +5,17 @@ package vm
 
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/commontype"
 	"github.com/ava-labs/subnet-evm/params"
 )
 
-func getFeeConfig(config params.ChainConfig, app *application.Avalanche) (params.ChainConfig, stateDirection, error) {
+func getFeeConfig(config params.ChainConfig, app *application.Avalanche) (
+	params.ChainConfig,
+	statemachine.StateDirection,
+	error,
+) {
 	const (
 		useFast   = "High disk use   / High Throughput   5 mil   gas/s"
 		useMedium = "Medium disk use / Medium Throughput 2 mil   gas/s"
@@ -34,7 +39,7 @@ func getFeeConfig(config params.ChainConfig, app *application.Avalanche) (params
 		feeConfigOptions,
 	)
 	if err != nil {
-		return config, stop, err
+		return config, statemachine.Stop, err
 	}
 
 	config.FeeConfig = StarterFeeConfig
@@ -42,57 +47,57 @@ func getFeeConfig(config params.ChainConfig, app *application.Avalanche) (params
 	switch feeDefault {
 	case useFast:
 		config.FeeConfig.TargetGas = fastTarget
-		return config, forward, nil
+		return config, statemachine.Forward, nil
 	case useMedium:
 		config.FeeConfig.TargetGas = mediumTarget
-		return config, forward, nil
+		return config, statemachine.Forward, nil
 	case useSlow:
 		config.FeeConfig.TargetGas = slowTarget
-		return config, forward, nil
+		return config, statemachine.Forward, nil
 	case goBackMsg:
-		return config, backward, nil
+		return config, statemachine.Backward, nil
 	default:
 		ux.Logger.PrintToUser("Customizing fee config")
 	}
 
 	gasLimit, err := app.Prompt.CapturePositiveBigInt(setGasLimit)
 	if err != nil {
-		return config, stop, err
+		return config, statemachine.Stop, err
 	}
 
 	blockRate, err := app.Prompt.CapturePositiveBigInt(setBlockRate)
 	if err != nil {
-		return config, stop, err
+		return config, statemachine.Stop, err
 	}
 
 	minBaseFee, err := app.Prompt.CapturePositiveBigInt(setMinBaseFee)
 	if err != nil {
-		return config, stop, err
+		return config, statemachine.Stop, err
 	}
 
 	targetGas, err := app.Prompt.CapturePositiveBigInt(setTargetGas)
 	if err != nil {
-		return config, stop, err
+		return config, statemachine.Stop, err
 	}
 
 	baseDenominator, err := app.Prompt.CapturePositiveBigInt(setBaseFeeChangeDenominator)
 	if err != nil {
-		return config, stop, err
+		return config, statemachine.Stop, err
 	}
 
 	minBlockGas, err := app.Prompt.CapturePositiveBigInt(setMinBlockGas)
 	if err != nil {
-		return config, stop, err
+		return config, statemachine.Stop, err
 	}
 
 	maxBlockGas, err := app.Prompt.CapturePositiveBigInt(setMaxBlockGas)
 	if err != nil {
-		return config, stop, err
+		return config, statemachine.Stop, err
 	}
 
 	gasStep, err := app.Prompt.CapturePositiveBigInt(setGasStep)
 	if err != nil {
-		return config, stop, err
+		return config, statemachine.Stop, err
 	}
 
 	feeConf := commontype.FeeConfig{
@@ -108,5 +113,5 @@ func getFeeConfig(config params.ChainConfig, app *application.Avalanche) (params
 
 	config.FeeConfig = feeConf
 
-	return config, forward, nil
+	return config, statemachine.Forward, nil
 }
