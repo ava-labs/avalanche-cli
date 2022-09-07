@@ -3,6 +3,8 @@
 package subnetcmd
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -14,6 +16,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/ava-labs/apm/types"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -31,7 +34,8 @@ var (
 	subnetDescPath string
 	noRepoPath     string
 
-	errSubnetNotDeployed = errors.New("only subnets which have already been deployed to either testnet (fuji) or mainnet can be published")
+	errSubnetNotDeployed = errors.New(
+		"only subnets which have already been deployed to either testnet (fuji) or mainnet can be published")
 )
 
 type newPublisherFunc func(string, string, string) subnet.Publisher
@@ -46,12 +50,17 @@ func newPublishCmd() *cobra.Command {
 		RunE:         publish,
 		Args:         cobra.ExactArgs(1),
 	}
-	cmd.Flags().StringVar(&alias, "alias", "", "We publish to a remote repo, but identify the repo locally under a user-provided alias (e.g. myrepo).")
+	cmd.Flags().StringVar(&alias, "alias", "",
+		"We publish to a remote repo, but identify the repo locally under a user-provided alias (e.g. myrepo).")
 	cmd.Flags().StringVar(&repoURL, "repo-url", "", "The URL of the repo where we are publishing")
-	cmd.Flags().StringVar(&vmDescPath, "vm-file-path", "", "Path to the VM description file. If not given, a prompting sequence will be initiated.")
-	cmd.Flags().StringVar(&subnetDescPath, "subnet-file-path", "", "Path to the Subnet description file. If not given, a prompting sequence will be initiated.")
-	cmd.Flags().StringVar(&noRepoPath, "no-repo-path", "", "Do not let the tool manage file publishing, but have it only generate the files and put them in the location given by this flag.")
-	cmd.Flags().BoolVar(&forceWrite, forceFlag, false, "If true, ignores if the subnet has been published in the past, and attempts a forced publish.")
+	cmd.Flags().StringVar(&vmDescPath, "vm-file-path", "",
+		"Path to the VM description file. If not given, a prompting sequence will be initiated.")
+	cmd.Flags().StringVar(&subnetDescPath, "subnet-file-path", "",
+		"Path to the Subnet description file. If not given, a prompting sequence will be initiated.")
+	cmd.Flags().StringVar(&noRepoPath, "no-repo-path", "",
+		"Do not let the tool manage file publishing, but have it only generate the files and put them in the location given by this flag.")
+	cmd.Flags().BoolVar(&forceWrite, forceFlag, false,
+		"If true, ignores if the subnet has been published in the past, and attempts a forced publish.")
 	return cmd
 }
 
@@ -108,7 +117,8 @@ func doPublish(sc *models.Sidecar, subnetName string, publisherCreateFunc newPub
 			return err
 		}
 		if published {
-			ux.Logger.PrintToUser("It appears this subnet has already been published, while no force flag has been detected.")
+			ux.Logger.PrintToUser(
+				"It appears this subnet has already been published, while no force flag has been detected.")
 			return errors.New("aborted")
 		}
 	}
@@ -148,23 +158,28 @@ func doPublish(sc *models.Sidecar, subnetName string, publisherCreateFunc newPub
 	}
 
 	if noRepoPath != "" {
-		ux.Logger.PrintToUser("Writing the file specs to the provided directory at: %s", noRepoPath)
+		ux.Logger.PrintToUser(
+			"Writing the file specs to the provided directory at: %s", noRepoPath)
 		// the directory does not exist
 		if _, err := os.Stat(noRepoPath); err != nil {
 			if err := os.MkdirAll(noRepoPath, constants.DefaultPerms755); err != nil {
-				return fmt.Errorf("attempted to create the given --no-repo-path directory at %s, but failed: %w", noRepoPath, err)
+				return fmt.Errorf(
+					"attempted to create the given --no-repo-path directory at %s, but failed: %w", noRepoPath, err)
 			}
-			ux.Logger.PrintToUser("The given --no-repo-path at %s did not exist; created it with permissions %o", noRepoPath, constants.DefaultPerms755)
+			ux.Logger.PrintToUser(
+				"The given --no-repo-path at %s did not exist; created it with permissions %o", noRepoPath, constants.DefaultPerms755)
 		}
 		subnetFile := filepath.Join(noRepoPath, constants.SubnetDir, subnetName+constants.YAMLSuffix)
 		vmFile := filepath.Join(noRepoPath, constants.VMDir, vm.Alias+constants.YAMLSuffix)
 		if !forceWrite {
 			// do not automatically overwrite
 			if _, err := os.Stat(subnetFile); err == nil {
-				return fmt.Errorf("a file with the name %s already exists. If you wish to overwrite, provide the %s flag", subnetFile, forceFlag)
+				return fmt.Errorf(
+					"a file with the name %s already exists. If you wish to overwrite, provide the %s flag", subnetFile, forceFlag)
 			}
 			if _, err := os.Stat(vmFile); err == nil {
-				return fmt.Errorf("a file with the name %s already exists. If you wish to overwrite, provide the %s flag", vmFile, forceFlag)
+				return fmt.Errorf(
+					"a file with the name %s already exists. If you wish to overwrite, provide the %s flag", vmFile, forceFlag)
 			}
 		}
 		if err := os.WriteFile(subnetFile, subnetYAML, constants.DefaultPerms755); err != nil {
@@ -235,7 +250,8 @@ func getAlias(reposDir string) error {
 		} else {
 			// there are already aliases, ask how to proceed
 			options := []string{"Provide a new alias", "Pick from list"}
-			choice, err := app.Prompt.CaptureList("Don't know which repo to publish to. How would you like to proceed?", options)
+			choice, err := app.Prompt.CaptureList(
+				"Don't know which repo to publish to. How would you like to proceed?", options)
 			if err != nil {
 				return err
 			}
@@ -247,7 +263,8 @@ func getAlias(reposDir string) error {
 				}
 				// double-check: actually this path exists...
 				if _, err := os.Stat(filepath.Join(reposDir, alias)); err == nil {
-					ux.Logger.PrintToUser("The repository with the given alias already exists locally. You may have already published this subnet there (the other explanation is that a different subnet has been published there).")
+					ux.Logger.PrintToUser(
+						"The repository with the given alias already exists locally. You may have already published this subnet there (the other explanation is that a different subnet has been published there).")
 					yes, err := app.Prompt.CaptureYesNo("Do you wish to continue?")
 					if err != nil {
 						return err
@@ -282,7 +299,8 @@ func getRepoURL(reposDir string) error {
 		path := filepath.Join(reposDir, alias)
 		repo, err := git.PlainOpen(path)
 		if err != nil {
-			app.Log.Debug("opening repo failed - alias might have not been created yet, so ignore", zap.String("alias", alias), zap.Error(err))
+			app.Log.Debug(
+				"opening repo failed - alias might have not been created yet, so ignore", zap.String("alias", alias), zap.Error(err))
 		} else {
 			// there is a repo already for this alias, let's try to figure out the remote URL from there
 			conf, err := repo.Config()
@@ -363,10 +381,11 @@ func getSubnetInfo(sc *models.Sidecar) (*types.Subnet, error) {
 
 func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 	var (
-		maintrs    []string
-		vmID, desc string
-		canceled   bool
-		err        error
+		maintrs              []string
+		vmID, desc, url, sha string
+		canceled             bool
+		ver                  *version.Semantic
+		err                  error
 	)
 
 	switch {
@@ -395,43 +414,64 @@ func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 			return nil, errors.New("canceled by user")
 		}
 
+		url, err = app.Prompt.CaptureStringAllowEmpty(
+			"Tell us the URL to download the source. Needs to be a fixed version, not `latest`.")
+		if err != nil {
+			return nil, err
+		}
+
+		sha, err = app.Prompt.CaptureStringAllowEmpty(
+			"For integrity checks, provide the sha256 commit for the used version")
+		if err != nil {
+			return nil, err
+		}
+		strVer, err := app.Prompt.CaptureVersion(
+			"This is the last question! What is the version being used? Use semantic versioning (v1.2.3)")
+		if err != nil {
+			return nil, err
+		}
+		ver, err = version.Parse(strVer)
+		if err != nil {
+			return nil, err
+		}
+
 	case sc.VM == models.SpacesVM:
 		vmID = models.SpacesVM
 		desc = "Authenticated, hierarchical storage of arbitrary keys/values using any EIP-712 compatible wallet."
-		maintrs = []string{"ava-labs"}
+		dl := binutils.NewSpacesVMDownloader()
+		maintrs, ver, url, sha, err = getInfoForKnownVMs(
+			sc.VMVersion,
+			constants.SpacesVMRepoName,
+			app.GetSpacesVMBinDir(),
+			constants.SpacesVMBin,
+			dl,
+		)
 	case sc.VM == models.SubnetEvm:
 		vmID = models.SubnetEvm
+		dl := binutils.NewSubnetEVMDownloader()
 		desc = "Subnet EVM is a simplified version of Coreth VM (C-Chain). It implements the Ethereum Virtual Machine and supports Solidity smart contracts as well as most other Ethereum client functionality"
-		maintrs = []string{"ava-labs"}
+		maintrs, ver, url, sha, err = getInfoForKnownVMs(
+			sc.VMVersion,
+			constants.SubnetEVMRepoName,
+			app.GetSubnetEVMBinDir(),
+			constants.SubnetEVMBin,
+			dl,
+		)
 	default:
 		return nil, fmt.Errorf("unexpected error: unsupported VM type: %s", sc.VM)
 	}
-
-	scr, err := app.Prompt.CaptureStringAllowEmpty("What scripts needs to run to install this VM? Needs to be an executable command to build the VM.")
 	if err != nil {
 		return nil, err
 	}
 
-	bin, err := app.Prompt.CaptureStringAllowEmpty("What is the binary path? (This is the output of the build command)")
+	scr, err := app.Prompt.CaptureStringAllowEmpty(
+		"What scripts needs to run to install this VM? Needs to be an executable command to build the VM")
 	if err != nil {
 		return nil, err
 	}
 
-	url, err := app.Prompt.CaptureStringAllowEmpty("Tell us the URL to download the source. Needs to be a fixed version, not `latest`.")
-	if err != nil {
-		return nil, err
-	}
-
-	sha, err := app.Prompt.CaptureStringAllowEmpty("For integrity checks, provide the sha256 commit for the used version")
-	if err != nil {
-		return nil, err
-	}
-
-	strVer, err := app.Prompt.CaptureVersion("This is the last question! What is the version being used? Use semantic versioning (v1.2.3)")
-	if err != nil {
-		return nil, err
-	}
-	ver, err := version.Parse(strVer)
+	bin, err := app.Prompt.CaptureStringAllowEmpty(
+		"What is the binary path? (This is the output of the build command)")
 	if err != nil {
 		return nil, err
 	}
@@ -450,4 +490,41 @@ func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 	}
 
 	return vm, nil
+}
+
+func getInfoForKnownVMs(
+	strVer, repoName, vmBinDir, vmBin string,
+	dl binutils.GithubDownloader,
+) ([]string, *version.Semantic, string, string, error) {
+	maintrs := []string{constants.AvaLabsMaintainers}
+	binPath := filepath.Join(vmBinDir, repoName+"-"+strVer, vmBin)
+	sha, err := getSHA256FromDisk(binPath)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	ver, err := version.Parse(strVer)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	inst := binutils.NewInstaller()
+	url, _, err := dl.GetDownloadURL(strVer, inst)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+
+	return maintrs, ver, url, sha, nil
+}
+
+func getSHA256FromDisk(binPath string) (string, error) {
+	if _, err := os.Stat(binPath); err != nil {
+		return "", fmt.Errorf("failed looking up plugin binary at %s: %w", binPath, err)
+	}
+	hasher := sha256.New()
+	s, err := os.ReadFile(binPath)
+	hasher.Write(s)
+	if err != nil {
+		return "", fmt.Errorf("failed calculating the sha256 hash of the binary %s: %w", binPath, err)
+	}
+
+	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
