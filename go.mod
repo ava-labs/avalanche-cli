@@ -17,7 +17,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.1.6
 	github.com/onsi/gomega v1.20.2
 	github.com/shirou/gopsutil v3.21.11+incompatible
-	github.com/spf13/afero v1.8.2
+	github.com/spf13/afero v1.9.2
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.13.0
 	github.com/stretchr/testify v1.8.0
