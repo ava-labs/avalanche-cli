@@ -27,23 +27,12 @@ func TestContains(t *testing.T) {
 		addr2,
 	}
 
-	anyStr := make([]any, len(strList))
-	anyAddr := make([]any, len(addrList))
+	assert.True(contains(strList, "test"))
+	assert.True(contains(strList, "capture"))
+	assert.True(contains(strList, "list"))
+	assert.False(contains(strList, "false"))
 
-	for i, s := range strList {
-		anyStr[i] = s
-	}
-
-	for i, a := range addrList {
-		anyAddr[i] = a
-	}
-
-	assert.True(contains(anyStr, "test"))
-	assert.True(contains(anyStr, "capture"))
-	assert.True(contains(anyStr, "list"))
-	assert.False(contains(anyStr, "false"))
-
-	assert.True(contains(anyAddr, addr1))
-	assert.True(contains(anyAddr, addr2))
-	assert.False(contains(anyAddr, addr3))
+	assert.True(contains(addrList, addr1))
+	assert.True(contains(addrList, addr2))
+	assert.False(contains(addrList, addr3))
 }

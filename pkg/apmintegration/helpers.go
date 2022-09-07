@@ -15,7 +15,7 @@ func removeSlashes(str string) string {
 	return strings.TrimSuffix(strings.TrimPrefix(str, "/"), "/")
 }
 
-func getGitOrg(gitURL url.URL) (string, error) {
+func getGitOrg(gitURL *url.URL) (string, error) {
 	org, repo := path.Split(gitURL.Path)
 
 	org = removeSlashes(org)
@@ -28,7 +28,7 @@ func getGitOrg(gitURL url.URL) (string, error) {
 	return org, nil
 }
 
-func getGitRepo(gitURL url.URL) (string, error) {
+func getGitRepo(gitURL *url.URL) (string, error) {
 	org, repo := path.Split(gitURL.Path)
 
 	org = removeSlashes(org)
@@ -41,7 +41,7 @@ func getGitRepo(gitURL url.URL) (string, error) {
 	return strings.TrimSuffix(repo, gitExtension), nil
 }
 
-func getAlias(url url.URL) (string, error) {
+func getAlias(url *url.URL) (string, error) {
 	org, err := getGitOrg(url)
 	if err != nil {
 		return "", fmt.Errorf("unable to create alias: %w", err)

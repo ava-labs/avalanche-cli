@@ -5,7 +5,6 @@ package vm
 
 import (
 	"errors"
-	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -18,29 +17,14 @@ import (
 func getAdminList(initialPrompt string, info string, app *application.Avalanche) ([]common.Address, bool, error) {
 	label := "Address"
 
-	list, canceled, err := app.Prompt.CaptureListDecision(
+	return prompts.CaptureListDecision(
 		app.Prompt,
 		initialPrompt,
 		app.Prompt.CaptureAddress,
 		"Enter Address ",
 		label,
 		info,
-		nil,
 	)
-
-	admins := make([]common.Address, len(list))
-	var (
-		addr common.Address
-		ok   bool
-	)
-	for i, a := range list {
-		if addr, ok = a.(common.Address); !ok {
-			return nil, false, fmt.Errorf("expected common.Address but got %T", addr)
-		}
-		admins[i] = addr
-	}
-
-	return admins, canceled, err
 }
 
 func configureContractAllowList(app *application.Avalanche) (precompile.ContractDeployerAllowListConfig, bool, error) {
@@ -56,8 +40,10 @@ func configureContractAllowList(app *application.Avalanche) (precompile.Contract
 	}
 
 	config.AllowListConfig = precompile.AllowListConfig{
-		BlockTimestamp:  big.NewInt(0),
 		AllowListAdmins: admins,
+	}
+	config.UpgradeableConfig = precompile.UpgradeableConfig{
+		BlockTimestamp: big.NewInt(0),
 	}
 
 	return config, cancelled, nil
@@ -76,8 +62,10 @@ func configureTransactionAllowList(app *application.Avalanche) (precompile.TxAll
 	}
 
 	config.AllowListConfig = precompile.AllowListConfig{
-		BlockTimestamp:  big.NewInt(0),
 		AllowListAdmins: admins,
+	}
+	config.UpgradeableConfig = precompile.UpgradeableConfig{
+		BlockTimestamp: big.NewInt(0),
 	}
 
 	return config, cancelled, nil
@@ -96,8 +84,10 @@ func configureMinterList(app *application.Avalanche) (precompile.ContractNativeM
 	}
 
 	config.AllowListConfig = precompile.AllowListConfig{
-		BlockTimestamp:  big.NewInt(0),
 		AllowListAdmins: admins,
+	}
+	config.UpgradeableConfig = precompile.UpgradeableConfig{
+		BlockTimestamp: big.NewInt(0),
 	}
 
 	return config, cancelled, nil
@@ -116,8 +106,10 @@ func configureFeeConfigAllowList(app *application.Avalanche) (precompile.FeeConf
 	}
 
 	config.AllowListConfig = precompile.AllowListConfig{
-		BlockTimestamp:  big.NewInt(0),
 		AllowListAdmins: admins,
+	}
+	config.UpgradeableConfig = precompile.UpgradeableConfig{
+		BlockTimestamp: big.NewInt(0),
 	}
 
 	return config, cancelled, nil
@@ -182,7 +174,7 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (para
 				return config, stop, err
 			}
 			if !cancelled {
-				config.ContractNativeMinterConfig = mintConfig
+				config.ContractNativeMinterConfig = &mintConfig
 				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, nativeMint)
 				if err != nil {
 					return config, stop, err
@@ -194,7 +186,7 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (para
 				return config, stop, err
 			}
 			if !cancelled {
-				config.ContractDeployerAllowListConfig = contractConfig
+				config.ContractDeployerAllowListConfig = &contractConfig
 				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, contractAllowList)
 				if err != nil {
 					return config, stop, err
@@ -206,7 +198,7 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (para
 				return config, stop, err
 			}
 			if !cancelled {
-				config.TxAllowListConfig = txConfig
+				config.TxAllowListConfig = &txConfig
 				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, txAllowList)
 				if err != nil {
 					return config, stop, err
@@ -218,7 +210,7 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (para
 				return config, stop, err
 			}
 			if !cancelled {
-				config.FeeManagerConfig = feeConfig
+				config.FeeManagerConfig = &feeConfig
 				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, feeManager)
 				if err != nil {
 					return config, stop, err

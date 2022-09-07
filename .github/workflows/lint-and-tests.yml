@@ -24,7 +24,7 @@ jobs:
       - name: Install license check
         run: go install github.com/google/addlicense@v1.0.0
       - name: Check license
-        run: addlicense -f ./LICENSE.header -check -v ./**/*.go ./**/**/*.go ./**/**/**/*.go
+        run: addlicense -f ./LICENSE.header -check -v ./**/*.go ./**/**/*.go ./**/**/**/*.go ./**/**/**/**/*.go
   test:
     name: Golang Unit Tests v${{ matrix.go }} (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
