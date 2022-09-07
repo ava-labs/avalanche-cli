@@ -4,12 +4,15 @@ package subnetcmd
 
 import (
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -17,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/version"
 	"github.com/go-git/go-git/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -26,11 +30,68 @@ const (
 	testSubnet = "testSubnet"
 )
 
-func newTestPublisher(string, string, string) subnet.Publisher {
-	mockPub := &mocks.Publisher{}
-	mockPub.On("GetRepo").Return(&git.Repository{}, nil)
-	mockPub.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	return mockPub
+func TestInfoKnownVMs(t *testing.T) {
+	assert := assert.New(t)
+	vmBinDir := t.TempDir()
+	expectedSHA := "a12871fee210fb8619291eaea194581cbd2531e4b23759d225f6806923f63222"
+
+	type testCase struct {
+		strVer   string
+		repoName string
+		vmBinDir string
+		vmBin    string
+		dl       binutils.GithubDownloader
+	}
+
+	cases := []testCase{
+		{
+			strVer:   "v0.9.99",
+			repoName: "spacesvm",
+			vmBinDir: vmBinDir,
+			vmBin:    "mySpacesVM",
+			dl:       binutils.NewSpacesVMDownloader(),
+		},
+		{
+			strVer:   "v0.9.99",
+			repoName: "subnet-evm",
+			vmBinDir: vmBinDir,
+			vmBin:    "mySubnetEVM",
+			dl:       binutils.NewSubnetEVMDownloader(),
+		},
+	}
+
+	for _, c := range cases {
+		binDir := filepath.Join(vmBinDir, c.repoName+"-"+c.strVer)
+		err := os.MkdirAll(binDir, constants.DefaultPerms755)
+		assert.NoError(err)
+		err = os.WriteFile(filepath.Join(binDir, c.vmBin), []byte{0x1, 0x2}, constants.DefaultPerms755)
+		assert.NoError(err)
+		maintrs, ver, resurl, sha, err := getInfoForKnownVMs(
+			c.strVer,
+			c.repoName,
+			c.vmBinDir,
+			c.vmBin,
+			c.dl,
+		)
+		assert.NoError(err)
+		assert.ElementsMatch([]string{constants.AvaLabsMaintainers}, maintrs)
+		assert.NoError(err)
+		_, err = url.Parse(resurl)
+		assert.NoError(err)
+		// it's kinda useless to create the URL by building it via downloader -
+		// would defeat the purpose of the test
+		expectedURL := "https://github.com/ava-labs/" +
+			c.repoName + "/releases/download/" +
+			c.strVer + "/" + c.repoName + "_" + c.strVer[1:] + "_" +
+			runtime.GOOS + "_" + runtime.GOARCH + ".tar.gz"
+		assert.Equal(expectedURL, resurl)
+		assert.Equal(&version.Semantic{
+			Major: 0,
+			Minor: 9,
+			Patch: 99,
+		}, ver)
+		assert.Equal(expectedSHA, sha)
+	}
 }
 
 func TestNoRepoPath(t *testing.T) {
@@ -364,4 +425,11 @@ func setupTestEnv(t *testing.T) (*assert.Assertions, *mocks.Prompter) {
 	app.Setup(testDir, logging.NoLog{}, config.New(), mockPrompt)
 
 	return assert, mockPrompt
+}
+
+func newTestPublisher(string, string, string) subnet.Publisher {
+	mockPub := &mocks.Publisher{}
+	mockPub.On("GetRepo").Return(&git.Repository{}, nil)
+	mockPub.On("Publish", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	return mockPub
 }
