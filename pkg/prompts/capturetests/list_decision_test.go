@@ -24,8 +24,6 @@ func TestListDecision(t *testing.T) {
 	assert := assert.New(t)
 	mockPrompt := &mocks.Prompter{}
 
-	p := prompts.NewPrompter()
-
 	pk, err := crypto.GenerateKey()
 	assert.NoError(err)
 	addr := crypto.PubkeyToAddress(pk.PublicKey)
@@ -51,6 +49,7 @@ func TestListDecision(t *testing.T) {
 	mockPrompt.On("CaptureAddress", mock.Anything, mock.Anything).Return(addr, nil).Once()
 	// do a preview (nothing changes, but prints 2 addrs on STDOUT)
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Preview, nil).Once()
+	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Add, nil).Once()
 	mockPrompt.On("CaptureAddress", mock.Anything, mock.Anything).Return(addr2, nil).Once()
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(prompts.Done, nil).Once()
 
@@ -72,31 +71,28 @@ func TestListDecision(t *testing.T) {
 	capturePrompt := "Enter address"
 	label := "Test"
 	info := "something"
-	arg := "doesn't matter"
 
 	// 1.cancel
-	list, cancel, err := p.CaptureListDecision(
+	list, cancel, err := prompts.CaptureListDecision(
 		mockPrompt,
 		prompt,
 		capture,
 		capturePrompt,
 		label,
 		info,
-		arg,
 	)
 	assert.NoError(err)
 	assert.True(cancel)
 	assert.Empty(list)
 
 	// 2. error
-	list, cancel, err = p.CaptureListDecision(
+	list, cancel, err = prompts.CaptureListDecision(
 		mockPrompt,
 		prompt,
 		capture,
 		capturePrompt,
 		label,
 		info,
-		arg,
 	)
 	assert.Error(err)
 	assert.ErrorContains(err, "fake error")
@@ -104,42 +100,39 @@ func TestListDecision(t *testing.T) {
 	assert.Empty(list)
 
 	// 3. add - 1 valid, 1 done
-	list, cancel, err = p.CaptureListDecision(
+	list, cancel, err = prompts.CaptureListDecision(
 		mockPrompt,
 		prompt,
 		capture,
 		capturePrompt,
 		label,
 		info,
-		arg,
 	)
 	assert.NoError(err)
 	assert.False(cancel)
 	assert.Exactly(1, len(list))
 
 	// 4. add - 1 valid, then add the same
-	list, cancel, err = p.CaptureListDecision(
+	list, cancel, err = prompts.CaptureListDecision(
 		mockPrompt,
 		prompt,
 		capture,
 		capturePrompt,
 		label,
 		info,
-		arg,
 	)
 	assert.NoError(err)
 	assert.False(cancel)
 	assert.Exactly(2, len(list))
 
 	// 5. add - 2 valid, then remove index 1, readd
-	list, cancel, err = p.CaptureListDecision(
+	list, cancel, err = prompts.CaptureListDecision(
 		mockPrompt,
 		prompt,
 		capture,
 		capturePrompt,
 		label,
 		info,
-		arg,
 	)
 	assert.NoError(err)
 	assert.False(cancel)

@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
@@ -50,21 +51,21 @@ func getVMVersion(
 	repoName string,
 	vmVersion string,
 	addGoBackOption bool,
-) (string, stateDirection, error) {
+) (string, statemachine.StateDirection, error) {
 	var err error
-	direction := forward
+	direction := statemachine.Forward
 	if vmVersion == "latest" {
 		vmVersion, err = binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 			constants.AvaLabsOrg,
 			repoName,
 		))
 		if err != nil {
-			return "", stop, err
+			return "", statemachine.Stop, err
 		}
 	} else if vmVersion == "" {
 		vmVersion, direction, err = askForVMVersion(app, vmName, repoName, addGoBackOption)
 		if err != nil {
-			return "", stop, err
+			return "", statemachine.Stop, err
 		}
 	}
 	return vmVersion, direction, nil
@@ -75,7 +76,7 @@ func askForVMVersion(
 	vmName string,
 	repoName string,
 	addGoBackOption bool,
-) (string, stateDirection, error) {
+) (string, statemachine.StateDirection, error) {
 	const (
 		useLatest = "Use latest version"
 		useCustom = "Specify custom version"
@@ -92,11 +93,11 @@ func askForVMVersion(
 		versionOptions,
 	)
 	if err != nil {
-		return "", stop, err
+		return "", statemachine.Stop, err
 	}
 
 	if versionOption == goBackMsg {
-		return "", backward, err
+		return "", statemachine.Backward, err
 	}
 
 	if versionOption == useLatest {
@@ -105,33 +106,39 @@ func askForVMVersion(
 			constants.AvaLabsOrg,
 			repoName,
 		))
-		return version, forward, err
+		return version, statemachine.Forward, err
 	}
 
 	// prompt for version
 	version, err := app.Prompt.CaptureVersion(fmt.Sprintf("%s version", vmName))
 	if err != nil {
-		return "", stop, err
+		return "", statemachine.Stop, err
 	}
 
-	return version, forward, nil
+	return version, statemachine.Forward, nil
 }
 
-func getDescriptors(app *application.Avalanche, subnetEVMVersion string) (*big.Int, string, string, stateDirection, error) {
+func getDescriptors(app *application.Avalanche, subnetEVMVersion string) (
+	*big.Int,
+	string,
+	string,
+	statemachine.StateDirection,
+	error,
+) {
 	chainID, err := getChainID(app)
 	if err != nil {
-		return nil, "", "", stop, err
+		return nil, "", "", statemachine.Stop, err
 	}
 
 	tokenName, err := getTokenName(app)
 	if err != nil {
-		return nil, "", "", stop, err
+		return nil, "", "", statemachine.Stop, err
 	}
 
 	subnetEVMVersion, _, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion, false)
 	if err != nil {
-		return nil, "", "", stop, err
+		return nil, "", "", statemachine.Stop, err
 	}
 
-	return chainID, tokenName, subnetEVMVersion, forward, nil
+	return chainID, tokenName, subnetEVMVersion, statemachine.Forward, nil
 }

@@ -255,7 +255,12 @@ func findAvagoConfigPath() (string, bool) {
 }
 
 func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, error) {
-	promptStr := "Please enter your node's ID (NodeID-...)"
+	ux.Logger.PrintToUser("Next, we need the NodeID of the validator you want to whitelist.")
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions about how to query the NodeID from your node")
+	ux.Logger.PrintToUser("(Edit host IP address and port to match your deployment, if needed).")
+
+	promptStr := "What is the NodeID of the validator you'd like to whitelist?"
 	nodeID, err := app.Prompt.CaptureNodeID(promptStr)
 	if err != nil {
 		return false, err

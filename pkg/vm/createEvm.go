@@ -12,29 +12,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
-)
-
-type wizardState int64
-
-const (
-	startStage wizardState = iota
-	descriptorStage
-	feeStage
-	airdropStage
-	precompileStage
-	doneStage
-	errored
-)
-
-type stateDirection int64
-
-const (
-	forward stateDirection = iota
-	backward
-	stop
 )
 
 func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesisPath string, subnetEVMVersion string) ([]byte, *models.Sidecar, error) {
@@ -73,46 +54,43 @@ func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesi
 	return genesisBytes, sc, nil
 }
 
-func nextStage(currentState wizardState, direction stateDirection) wizardState {
-	switch direction {
-	case forward:
-		currentState++
-	case backward:
-		currentState--
-	default:
-		return errored
-	}
-	return currentState
-}
-
 func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVersion string) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating subnet %s", subnetName)
 
 	genesis := core.Genesis{}
 	conf := params.SubnetEVMDefaultChainConfig
 
-	stage := startStage
+	const (
+		descriptorsState = "descriptors"
+		feeState         = "fee"
+		airdropState     = "airdrop"
+		precompilesState = "precompiles"
+	)
 
 	var (
 		chainID    *big.Int
 		tokenName  string
 		vmVersion  string
 		allocation core.GenesisAlloc
-		direction  stateDirection
+		direction  statemachine.StateDirection
 		err        error
 	)
 
-	for stage != doneStage {
-		switch stage {
-		case startStage:
-			direction = forward
-		case descriptorStage:
+	subnetEvmState, err := statemachine.NewStateMachine(
+		[]string{descriptorsState, feeState, airdropState, precompilesState},
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+	for subnetEvmState.Running() {
+		switch subnetEvmState.CurrentState() {
+		case descriptorsState:
 			chainID, tokenName, vmVersion, direction, err = getDescriptors(app, subnetEVMVersion)
-		case feeStage:
+		case feeState:
 			*conf, direction, err = getFeeConfig(*conf, app)
-		case airdropStage:
+		case airdropState:
 			allocation, direction, err = getAllocation(app, defaultEvmAirdropAmount, oneAvax, "Amount to airdrop (in AVAX units)")
-		case precompileStage:
+		case precompilesState:
 			*conf, direction, err = getPrecompiles(*conf, app)
 		default:
 			err = errors.New("invalid creation stage")
@@ -120,7 +98,7 @@ func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVe
 		if err != nil {
 			return nil, nil, err
 		}
-		stage = nextStage(stage, direction)
+		subnetEvmState.NextState(direction)
 	}
 
 	conf.ChainID = chainID

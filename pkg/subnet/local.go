@@ -16,8 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"go.uber.org/zap"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -33,6 +31,7 @@ import (
 	"github.com/ava-labs/coreth/params"
 	spacesvmchain "github.com/ava-labs/spacesvm/chain"
 	"github.com/ava-labs/subnet-evm/core"
+	"go.uber.org/zap"
 )
 
 const (

@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/internal/testutils"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/stretchr/testify/assert"
@@ -154,7 +155,7 @@ func Test_installSubnetEVMWithVersion(t *testing.T) {
 	assert.NoError(err)
 
 	// Check the installed binary
-	installedBin, err := os.ReadFile(filepath.Join(binDir, subnetEVMBin))
+	installedBin, err := os.ReadFile(filepath.Join(binDir, constants.SubnetEVMBin))
 	assert.NoError(err)
 	assert.Equal(binary1, installedBin)
 }
@@ -194,11 +195,11 @@ func Test_installSubnetEVMWithVersion_MultipleCoinstalls(t *testing.T) {
 	assert.NotEqual(binDir1, binDir2)
 
 	// Check the installed binary
-	installedBin1, err := os.ReadFile(filepath.Join(binDir1, subnetEVMBin))
+	installedBin1, err := os.ReadFile(filepath.Join(binDir1, constants.SubnetEVMBin))
 	assert.NoError(err)
 	assert.Equal(binary1, installedBin1)
 
-	installedBin2, err := os.ReadFile(filepath.Join(binDir2, subnetEVMBin))
+	installedBin2, err := os.ReadFile(filepath.Join(binDir2, constants.SubnetEVMBin))
 	assert.NoError(err)
 	assert.Equal(binary2, installedBin2)
 }

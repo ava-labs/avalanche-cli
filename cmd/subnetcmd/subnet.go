@@ -49,5 +49,7 @@ manage your subnet configurations and live deployments.`,
 	cmd.AddCommand(newExportCmd())
 	// subnet import
 	cmd.AddCommand(newImportCmd())
+	// subnet publish
+	cmd.AddCommand(newPublishCmd())
 	return cmd
 }
