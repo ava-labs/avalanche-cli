@@ -197,9 +197,12 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	// or, pluginDir was set but not avagoConfigPath
 	// if **both** flags were set, this will be skipped...
 	if avagoConfigPath == "" {
-		avagoConfigPath, err = app.Prompt.CaptureString("Path to your existing config file (or where it will be generated)")
-		if err != nil {
-			return err
+		avagoConfigPath, found = findAvagoConfigPath()
+		if !found() {
+			avagoConfigPath, err = app.Prompt.CaptureString("Path to your existing config file (or where it will be generated)")
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -235,6 +238,20 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 		return err
 	}
 	return nil
+}
+
+func findAvagoConfigPath() (string, bool) {
+	var (
+		path  string
+		found bool
+	)
+
+	path, found = getConfigViaAdminAPI()
+	if !found {
+		return "", false
+	}
+
+	return path, true
 }
 
 func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, error) {
