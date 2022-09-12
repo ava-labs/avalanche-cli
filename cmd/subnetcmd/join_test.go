@@ -30,11 +30,12 @@ func TestFindByRunningProcess(t *testing.T) {
 
 	// a test with this name will be ran from within this test
 	procName := "sh"
-	fakeProcessRunFile := "./fakeProcessRunFile.sh"
 
-	// prepare the first test: it will be `test.sh -argWithSpace /path/to/oblivion`
-	cs := []string{"-" + argWithSpace, spaceValue}
-	cmd := exec.Command(fakeProcessRunFile, cs...) // #nosec G204
+	// prepare the first test: it will be `sh -c "sleep 20; -argWithSpace /path/to/oblivion"`
+	// we sleep 20 just to simulate a running process which won't just terminate before
+	// we looked at the process list
+	cs := []string{"-c", "sleep 20; -" + argWithSpace + " " + spaceValue}
+	cmd := exec.Command(procName, cs...) // #nosec G204
 	// start the proc async
 	err := cmd.Start()
 	assert.NoError(err)
@@ -53,9 +54,11 @@ func TestFindByRunningProcess(t *testing.T) {
 	err = cmd.Wait()
 	assert.ErrorContains(err, "killed")
 
-	// prepare the second test: it will be `test.sh -argWithEqual=/path/to/programmers/bliss`
-	cs = []string{"-" + argWithEqual + "=" + equalValue}
-	cmd2 := exec.Command(fakeProcessRunFile, cs...) // #nosec G204
+	// prepare the second test: it will be `sh -c "sleep 20; -argWithEqual=/path/to/programmers/bliss"`
+	// we sleep 20 just to simulate a running process which won't just terminate before
+	// we looked at the process list
+	cs = []string{"-c", "sleep 20; -" + argWithEqual + " " + equalValue}
+	cmd2 := exec.Command(procName, cs...) // #nosec G204
 	err = cmd2.Start()
 	assert.NoError(err)
 	go func() {
