@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/kardianos/osext"
 	"github.com/shirou/gopsutil/process"
@@ -73,6 +74,8 @@ func init() {
 		wd,
 		home,
 		filepath.Join(home, constants.AvalancheGoRepoName),
+		filepath.Join(home, "go", "src", "github.com",
+			constants.AvaLabsOrg, constants.AvalancheGoRepoName, "build"),
 		filepath.Join(home, ".avalanchego"),
 		defaultUnexpandedDataDir,
 	)
@@ -243,6 +246,18 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	// if **both** flags were set, this will be skipped...
 	if avagoConfigPath == "" {
 		avagoConfigPath = findAvagoConfigPath()
+		if avagoConfigPath != "" {
+			ux.Logger.PrintToUser(logging.Bold.Wrap(logging.Green.Wrap("Found a config file at %s")), avagoConfigPath)
+			yes, err := app.Prompt.CaptureYesNo("Is this the file we should update?")
+			if err != nil {
+				return err
+			}
+			if yes {
+				ux.Logger.PrintToUser("Will use file at path %s to update the configuration", avagoConfigPath)
+			} else {
+				avagoConfigPath = ""
+			}
+		}
 		if avagoConfigPath == "" {
 			avagoConfigPath, err = app.Prompt.CaptureString("Path to your existing config file (or where it will be generated)")
 			if err != nil {
@@ -261,6 +276,18 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	// if **both** flags were set, this will be skipped...
 	if pluginDir == "" {
 		pluginDir = findPluginDir()
+		if pluginDir != "" {
+			ux.Logger.PrintToUser(logging.Bold.Wrap(logging.Green.Wrap("Found the VM plugin directory at %s")), pluginDir)
+			yes, err := app.Prompt.CaptureYesNo("Is this where we should install the VM?")
+			if err != nil {
+				return err
+			}
+			if yes {
+				ux.Logger.PrintToUser("Will use plugin directory at %s to install the VM", pluginDir)
+			} else {
+				pluginDir = ""
+			}
+		}
 		if pluginDir == "" {
 			pluginDir, err = app.Prompt.CaptureString("Path to your avalanchego plugin dir (likely avalanchego/build/plugins)")
 			if err != nil {
@@ -289,6 +316,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 }
 
 func findAvagoConfigPath() string {
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("Scanning your system for existing files..."))
 	var path string
 	// Attempt 1: Try the admin API
 	if path = findByRunningProcesses(constants.AvalancheGoRepoName, config.ConfigFileKey); path != "" {
@@ -298,6 +326,7 @@ func findAvagoConfigPath() string {
 	if path = findByCommonDirs(defaultConfigFileName, scanConfigDirs); path != "" {
 		return path
 	}
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("No config file has been found on your system"))
 	return ""
 }
 
@@ -340,7 +369,13 @@ func findByRunningProcesses(procName, key string) string {
 }
 
 func findPluginDir() string {
-	return findByCommonDirs(defaultPluginDir, scanConfigDirs)
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("Scanning your system for the plugin directory..."))
+	dir := findByCommonDirs(defaultPluginDir, scanConfigDirs)
+	if dir != "" {
+		return dir
+	}
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("No plugin directory found on your system"))
+	return ""
 }
 
 func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, error) {
