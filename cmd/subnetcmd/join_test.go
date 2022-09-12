@@ -57,7 +57,7 @@ func TestFindByRunningProcess(t *testing.T) {
 	// prepare the second test: it will be `sh -c "sleep 20; -argWithEqual=/path/to/programmers/bliss"`
 	// we sleep 20 just to simulate a running process which won't just terminate before
 	// we looked at the process list
-	cs = []string{"-c", "sleep 20; -" + argWithEqual + " " + equalValue}
+	cs = []string{"-c", "sleep 20; -" + argWithEqual + "=" + equalValue}
 	cmd2 := exec.Command(procName, cs...) // #nosec G204
 	err = cmd2.Start()
 	assert.NoError(err)
