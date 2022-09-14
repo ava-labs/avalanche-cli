@@ -95,4 +95,6 @@ const (
 	GitRepoCommitEmail = "info@avax.network"
 
 	AvaLabsMaintainers = "ava-labs"
+
+	NotAvailableLabel = "Not available"
 )
