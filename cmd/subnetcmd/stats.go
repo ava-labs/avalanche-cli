@@ -80,19 +80,31 @@ func stats(cmd *cobra.Command, args []string) error {
 		return errors.New("failed to create a client to an API endpoint")
 	}
 
+	table := tablewriter.NewWriter(os.Stdout)
+	rows, err := buildStats(pClient, infoClient, table, subnetID)
+	if err != nil {
+		return err
+	}
+	for _, row := range rows {
+		table.Append(row)
+	}
+	table.Render()
+	return nil
+}
+
+func buildStats(pClient platformvm.Client, infoClient info.Client, table *tablewriter.Table, subnetID ids.ID) ([][]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// TODO pending validators?
+	// TODO do we need to query pending validators?
 	validators, err := pClient.GetCurrentValidators(ctx, subnetID, []ids.NodeID{})
 	if err != nil {
-		return fmt.Errorf("failed to query the API endpoint for the current validators: %w", err)
+		return nil, fmt.Errorf("failed to query the API endpoint for the current validators: %w", err)
 	}
 
 	// long format overlows screen:
 	// header := []string{"nodeID", "connected", "stake-amount", "weight", "start-time", "end-time", "remaining", "vmversion"}
 	header := []string{"nodeID", "connected", "stake-amount", "weight", "remaining", "vmversion"}
-	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	table.SetAutoMergeCells(true)
@@ -111,7 +123,6 @@ func stats(cmd *cobra.Command, args []string) error {
 	if err == nil {
 		// we can ignore err here; if it worked, we have a non-zero node ID
 		localNodeID, _ = infoClient.GetNodeID(ctx)
-		fmt.Println(reply.VMVersions)
 		for k, v := range reply.VMVersions {
 			localVersionStr = fmt.Sprintf("%s: %s\n", k, v)
 		}
@@ -122,6 +133,8 @@ func stats(cmd *cobra.Command, args []string) error {
 		endTime = time.Unix(int64(v.EndTime), 0)
 		remaining = ux.FormatDuration(endTime.Sub(startTime))
 
+		// some members of the returned object are pointers
+		// so we need to check the pointer is actually valid
 		if v.Connected != nil {
 			connected = strconv.FormatBool(*v.Connected)
 		} else {
@@ -155,13 +168,12 @@ func stats(cmd *cobra.Command, args []string) error {
 			versionStr,
 		})
 	}
-	for _, row := range rows {
-		table.Append(row)
-	}
-	table.Render()
-	return nil
+
+	return rows, nil
 }
 
+// findAPIEndpoint tries first to create a client to a local node
+// if it doesn't find one, it tries public APIs
 func findAPIEndpoint(network models.Network) (platformvm.Client, info.Client) {
 	var i info.Client
 
@@ -185,14 +197,17 @@ func findAPIEndpoint(network models.Network) (platformvm.Client, info.Client) {
 	case models.Mainnet:
 		url = constants.MainnetAPIEndpoint
 	}
-
 	// unsupported network
 	if url == "" {
 		return nil, nil
 	}
+
+	// create client to public API
 	c = platformvm.NewClient(url)
+	// try calling it to make sure it actually worked
 	_, err = c.GetHeight(ctx)
 	if err == nil {
+		// also try to get a local client
 		i = info.NewClient(constants.LocalAPIEndpoint)
 	}
 	return c, i
