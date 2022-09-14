@@ -46,6 +46,8 @@ var (
 	defaultConfigFileName = "config.json"
 	// expected name of the plugins dir
 	defaultPluginDir = "plugins"
+	// default dir where the binary is usually found
+	defaultAvalanchegoBuildDir = filepath.Join("go", "src", "github.com", constants.AvaLabsOrg, constants.AvalancheGoRepoName, "build")
 )
 
 // this init is partly "borrowed" from avalanchego/config/config.go
@@ -74,8 +76,7 @@ func init() {
 		wd,
 		home,
 		filepath.Join(home, constants.AvalancheGoRepoName),
-		filepath.Join(home, "go", "src", "github.com",
-			constants.AvaLabsOrg, constants.AvalancheGoRepoName, "build"),
+		filepath.Join(home, defaultAvalanchegoBuildDir),
 		filepath.Join(home, ".avalanchego"),
 		defaultUnexpandedDataDir,
 	)
