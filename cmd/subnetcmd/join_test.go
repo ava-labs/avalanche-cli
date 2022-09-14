@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -39,6 +40,9 @@ func TestFindByRunningProcess(t *testing.T) {
 	// start the proc async
 	err := cmd.Start()
 	assert.NoError(err)
+	// give the process the time to actually start;
+	// otherwise `findByRunningProcesses` might be done before that!
+	time.Sleep(250 * time.Millisecond)
 	// in a go routine (while our target backend process is running):
 	// run the target function and expect the targeted argument to be found
 	go func() {
@@ -61,6 +65,9 @@ func TestFindByRunningProcess(t *testing.T) {
 	cmd2 := exec.Command(procName, cs...) // #nosec G204
 	err = cmd2.Start()
 	assert.NoError(err)
+	// give the process the time to actually start;
+	// otherwise `findByRunningProcesses` might be done before that!
+	time.Sleep(250 * time.Millisecond)
 	go func() {
 		funcValue := findByRunningProcesses(procName, argWithEqual)
 		assert.Equal(equalValue, funcValue)

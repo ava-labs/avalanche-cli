@@ -355,9 +355,7 @@ func findByRunningProcesses(procName, key string) string {
 	}
 	for _, p := range procs {
 		name, err := p.Cmdline()
-		fmt.Println(name)
 		if err != nil {
-			fmt.Println(err)
 			return ""
 		}
 		if regex.MatchString(name) {
@@ -368,7 +366,6 @@ func findByRunningProcesses(procName, key string) string {
 			return strings.Split(trunc, " ")[0]
 		}
 	}
-	fmt.Println("no match!")
 	return ""
 }
 
