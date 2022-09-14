@@ -3,14 +3,14 @@ module github.com/ava-labs/avalanche-cli
 go 1.18
 
 require (
-	github.com/ava-labs/apm v0.0.4
+	github.com/ava-labs/apm v1.0.0
 	github.com/ava-labs/avalanche-network-runner v1.2.2
 	github.com/ava-labs/avalanchego v1.8.5
 	github.com/ava-labs/coreth v0.9.0
 	github.com/ava-labs/spacesvm v0.0.8
 	github.com/ava-labs/subnet-evm v0.3.0
 	github.com/docker/docker v20.10.18+incompatible
-	github.com/ethereum/go-ethereum v1.10.23
+	github.com/ethereum/go-ethereum v1.10.24
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/manifoldco/promptui v0.9.0
 	github.com/olekukonko/tablewriter v0.0.5
@@ -91,6 +91,7 @@ require (
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jessevdk/go-flags v1.5.0 // indirect
 	github.com/jrick/logrotate v1.0.0 // indirect
+	github.com/juju/fslock v0.0.0-20160525022230-4d5c94c67b4b // indirect
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/kkdai/bstream v1.0.0 // indirect
