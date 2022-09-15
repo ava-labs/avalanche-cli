@@ -110,7 +110,7 @@ func TestStats(t *testing.T) {
 	assert.Equal(localNodeID.String(), rows[0][0])
 	assert.Equal("42000000", rows[0][1])
 	assert.Equal("42", rows[0][2])
-	assert.Equal(controlStartTime.UTC().String(), rows[0][3])
-	assert.Equal(controlEndTime.UTC().String(), rows[0][4])
+	assert.Equal(controlStartTime.Local().String(), rows[0][3])
+	assert.Equal(controlEndTime.Local().String(), rows[0][4])
 	assert.Equal(expectedVerStr, rows[0][5])
 }

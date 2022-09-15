@@ -187,9 +187,8 @@ func buildPendingValidatorStats(pClient platformvm.Client, infoClient info.Clien
 			v.NodeID.String(),
 			stakeAmount,
 			weight,
-			// TODO: Print in local time zone vs UTC?
-			startTime.UTC().String(),
-			endTime.UTC().String(),
+			startTime.Local().String(),
+			endTime.Local().String(),
 			versionStr,
 		})
 	}
@@ -266,9 +265,8 @@ func buildCurrentValidatorStats(pClient platformvm.Client, infoClient info.Clien
 			connected,
 			stakeAmount,
 			weight,
-			// TODO: Print in local time zone vs UTC?
-			// startTime.UTC().String(),
-			// endTime.UTC().String(),
+			// startTime.Local().String(),
+			// endTime.Local().String(),
 			remaining,
 			versionStr,
 		})
