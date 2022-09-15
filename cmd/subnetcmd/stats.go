@@ -17,13 +17,14 @@ import (
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/api"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
 
 // avalanche subnet stats
 func newStatsCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:          "stats [subnetName]",
 		Short:        "Show validator statistics for the given subnet",
 		Long:         ``,
@@ -31,6 +32,10 @@ func newStatsCmd() *cobra.Command {
 		RunE:         stats,
 		SilenceUsage: true,
 	}
+	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "join on `fuji` (alias for `testnet`)")
+	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
+	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
+	return cmd
 }
 
 func stats(cmd *cobra.Command, args []string) error {
@@ -81,9 +86,23 @@ func stats(cmd *cobra.Command, args []string) error {
 	}
 
 	table := tablewriter.NewWriter(os.Stdout)
-	rows, err := buildStats(pClient, infoClient, table, subnetID)
+	rows, err := buildCurrentValidatorStats(pClient, infoClient, table, subnetID)
 	if err != nil {
 		return err
+	}
+	for _, row := range rows {
+		table.Append(row)
+	}
+	table.Render()
+
+	table = tablewriter.NewWriter(os.Stdout)
+	rows, err = buildPendingValidatorStats(pClient, infoClient, table, subnetID)
+	if err != nil {
+		return err
+	}
+
+	if len(rows) == 0 {
+		return nil
 	}
 	for _, row := range rows {
 		table.Append(row)
@@ -92,18 +111,104 @@ func stats(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func buildStats(pClient platformvm.Client, infoClient info.Client, table *tablewriter.Table, subnetID ids.ID) ([][]string, error) {
+func buildPendingValidatorStats(pClient platformvm.Client, infoClient info.Client, table *tablewriter.Table, subnetID ids.ID) ([][]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// TODO do we need to query pending validators?
-	validators, err := pClient.GetCurrentValidators(ctx, subnetID, []ids.NodeID{})
+	// 2nd param are delegators, we don't need them here?
+	pendingValidatorsIface, _, err := pClient.GetPendingValidators(ctx, subnetID, []ids.NodeID{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query the API endpoint for the pending validators: %w", err)
+	}
+
+	pendingValidators := make([]api.PermissionlessValidator, len(pendingValidatorsIface))
+	var ok bool
+	for i, v := range pendingValidatorsIface {
+		pendingValidators[i], ok = v.(api.PermissionlessValidator)
+		if !ok {
+			return nil, fmt.Errorf("expected type api.PermissionlessValidator, but got %T", v)
+		}
+	}
+
+	rows := [][]string{}
+
+	if len(pendingValidators) == 0 {
+		ux.Logger.PrintToUser("No pending validators found.")
+		return rows, nil
+	}
+
+	ux.Logger.PrintToUser("Pending validators (not yet validating the subnet)")
+	ux.Logger.PrintToUser("==================================================")
+
+	header := []string{"nodeID", "stake-amount", "weight", "start-time", "end-time", "vmversion"}
+	table.SetHeader(header)
+	table.SetAutoMergeCellsByColumnIndex([]int{0})
+	table.SetAutoMergeCells(true)
+	table.SetRowLine(true)
+
+	var (
+		startTime, endTime          time.Time
+		localNodeID                 ids.NodeID
+		stakeAmount, weight         string
+		localVersionStr, versionStr string
+	)
+
+	// try querying the local node for its node version
+	reply, err := infoClient.GetNodeVersion(ctx)
+	if err == nil {
+		// we can ignore err here; if it worked, we have a non-zero node ID
+		localNodeID, _ = infoClient.GetNodeID(ctx)
+		for k, v := range reply.VMVersions {
+			localVersionStr = fmt.Sprintf("%s: %s\n", k, v)
+		}
+	}
+
+	for _, v := range pendingValidators {
+		startTime = time.Unix(int64(v.StartTime), 0)
+		endTime = time.Unix(int64(v.EndTime), 0)
+
+		if v.StakeAmount != nil {
+			stakeAmount = strconv.FormatUint(uint64(*v.StakeAmount), 10)
+		} else {
+			stakeAmount = constants.NotAvailableLabel
+		}
+		if v.Weight != nil {
+			weight = strconv.FormatUint(uint64(*v.Weight), 10)
+		} else {
+			weight = constants.NotAvailableLabel
+		}
+		// if retrieval of localNodeID failed, it will be empty,
+		// and this comparison fails
+		if v.NodeID == localNodeID {
+			versionStr = localVersionStr
+		}
+		// query peers for IP address of this NodeID...
+		rows = append(rows, []string{
+			v.NodeID.String(),
+			stakeAmount,
+			weight,
+			// TODO: Print in local time zone vs UTC?
+			startTime.UTC().String(),
+			endTime.UTC().String(),
+			versionStr,
+		})
+	}
+
+	return rows, nil
+}
+
+func buildCurrentValidatorStats(pClient platformvm.Client, infoClient info.Client, table *tablewriter.Table, subnetID ids.ID) ([][]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	currValidators, err := pClient.GetCurrentValidators(ctx, subnetID, []ids.NodeID{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to query the API endpoint for the current validators: %w", err)
 	}
 
-	// long format overlows screen:
-	// header := []string{"nodeID", "connected", "stake-amount", "weight", "start-time", "end-time", "remaining", "vmversion"}
+	ux.Logger.PrintToUser("Current validators (already validating the subnet)")
+	ux.Logger.PrintToUser("==================================================")
+
 	header := []string{"nodeID", "connected", "stake-amount", "weight", "remaining", "vmversion"}
 	table.SetHeader(header)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
@@ -128,7 +233,7 @@ func buildStats(pClient platformvm.Client, infoClient info.Client, table *tablew
 		}
 	}
 
-	for _, v := range validators {
+	for _, v := range currValidators {
 		startTime = time.Unix(int64(v.StartTime), 0)
 		endTime = time.Unix(int64(v.EndTime), 0)
 		remaining = ux.FormatDuration(endTime.Sub(startTime))
