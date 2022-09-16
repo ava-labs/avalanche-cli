@@ -485,3 +485,32 @@ func ImportSubnetConfigFromURL(repoURL string, branch string, subnetName string)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
+
+func GetSubnetStats(subnetName string) string {
+	// Check config does already exist:
+	// We want to run stats on an existing subnet
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// run stats
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"stats",
+		subnetName,
+	)
+	output, err := cmd.CombinedOutput()
+	exitErr, typeOk := err.(*exec.ExitError)
+	stderr := ""
+	if typeOk {
+		stderr = string(exitErr.Stderr)
+	}
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+		fmt.Println(stderr)
+	}
+	gomega.Expect(exitErr).Should(gomega.BeNil())
+	return string(output)
+}
