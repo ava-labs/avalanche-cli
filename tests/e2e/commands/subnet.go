@@ -486,7 +486,8 @@ func ImportSubnetConfigFromURL(repoURL string, branch string, subnetName string)
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
-func GetSubnetStats(subnetName string) string {
+func SimulateGetSubnetStatsFuji(subnetName string) string {
+	os.Setenv(constants.SimulatePublicNetwork, "true")
 	// Check config does already exist:
 	// We want to run stats on an existing subnet
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -499,6 +500,7 @@ func GetSubnetStats(subnetName string) string {
 		SubnetCmd,
 		"stats",
 		subnetName,
+		"--fuji",
 	)
 	output, err := cmd.CombinedOutput()
 	exitErr, typeOk := err.(*exec.ExitError)
@@ -511,6 +513,7 @@ func GetSubnetStats(subnetName string) string {
 		fmt.Println(err)
 		fmt.Println(stderr)
 	}
+	os.Unsetenv(constants.SimulatePublicNetwork)
 	gomega.Expect(exitErr).Should(gomega.BeNil())
 	return string(output)
 }

@@ -32,9 +32,9 @@ func newStatsCmd() *cobra.Command {
 		RunE:         stats,
 		SilenceUsage: true,
 	}
-	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "join on `fuji` (alias for `testnet`)")
-	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
-	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
+	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "print stats on `fuji` (alias for `testnet`)")
+	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "print stats on `testnet` (alias for `fuji`)")
+	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "print stats on `mainnet`")
 	return cmd
 }
 
@@ -75,7 +75,10 @@ func stats(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	fmt.Println(subnetName)
+	fmt.Println(network.String())
 	subnetID := sc.Networks[network.String()].SubnetID
+	fmt.Println(subnetID)
 	if subnetID == ids.Empty {
 		return errors.New("no subnetID found for the provided subnet name; has this subnet actually been deployed to this network?")
 	}

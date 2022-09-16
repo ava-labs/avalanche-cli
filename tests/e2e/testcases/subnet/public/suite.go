@@ -80,7 +80,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		err = utils.RunHardhatTests(utils.BaseTest)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		output := commands.GetSubnetStats(subnetName)
+		output := commands.SimulateGetSubnetStatsFuji(subnetName)
 		fmt.Println(output)
 		gomega.Expect(output).Should(gomega.Not(gomega.BeNil()))
 		gomega.Expect(output).Should(gomega.ContainSubstring("Current validators"))
