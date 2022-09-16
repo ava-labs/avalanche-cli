@@ -9,6 +9,7 @@ import (
 	"os/exec"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/onsi/gomega"
 )
@@ -486,14 +487,15 @@ func ImportSubnetConfigFromURL(repoURL string, branch string, subnetName string)
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
-func SimulateGetSubnetStatsFuji(subnetName string) string {
-	os.Setenv(constants.SimulatePublicNetwork, "true")
+func SimulateGetSubnetStatsFuji(subnetName, subnetID string) string {
 	// Check config does already exist:
 	// We want to run stats on an existing subnet
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
+	err = utils.UpdateSubnetConfig(subnetName, models.Fuji, subnetID)
+	gomega.Expect(err).Should(gomega.BeNil())
 	// run stats
 	cmd := exec.Command(
 		CLIBinary,
@@ -513,7 +515,6 @@ func SimulateGetSubnetStatsFuji(subnetName string) string {
 		fmt.Println(err)
 		fmt.Println(stderr)
 	}
-	os.Unsetenv(constants.SimulatePublicNetwork)
 	gomega.Expect(exitErr).Should(gomega.BeNil())
 	return string(output)
 }

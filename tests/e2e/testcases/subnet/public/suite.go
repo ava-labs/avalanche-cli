@@ -80,8 +80,9 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		err = utils.RunHardhatTests(utils.BaseTest)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		output := commands.SimulateGetSubnetStatsFuji(subnetName)
-		fmt.Println(output)
+		// this is a simulation, so app is probably saving the info in the local sidecar section...TODO IS THIS SO?
+		// ...need to manipulate sidecar to contain expected info
+		output := commands.SimulateGetSubnetStatsFuji(subnetName, subnetID)
 		gomega.Expect(output).Should(gomega.Not(gomega.BeNil()))
 		gomega.Expect(output).Should(gomega.ContainSubstring("Current validators"))
 		gomega.Expect(output).Should(gomega.ContainSubstring("NodeID-"))

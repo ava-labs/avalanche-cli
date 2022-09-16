@@ -75,10 +75,7 @@ func stats(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println(subnetName)
-	fmt.Println(network.String())
 	subnetID := sc.Networks[network.String()].SubnetID
-	fmt.Println(subnetID)
 	if subnetID == ids.Empty {
 		return errors.New("no subnetID found for the provided subnet name; has this subnet actually been deployed to this network?")
 	}
