@@ -204,9 +204,9 @@ func KillgRPCServerProcess(app *application.Avalanche) error {
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {
 			ux.Logger.PrintToUser("No local network running")
-			return nil
+		} else {
+			return fmt.Errorf("failed stopping gRPC server process: %w", err)
 		}
-		return fmt.Errorf("failed stopping gRPC server process: %w", err)
 	}
 
 	pid, err := GetServerPID(app)
