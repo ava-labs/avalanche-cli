@@ -356,8 +356,8 @@ func findByRunningProcesses(procName, key string) string {
 	for _, p := range procs {
 		name, err := p.Cmdline()
 		if err != nil {
-			fmt.Println("findByRunningProcesses ERROR", err)
-			return ""
+			// ignore errors for processes that just died
+			continue
 		}
 		if regex.MatchString(name) {
 			fmt.Println("findByRunningProcesses match")
@@ -371,10 +371,10 @@ func findByRunningProcesses(procName, key string) string {
 	fmt.Println("PROCESS")
 	for _, p := range procs {
 		name, err := p.Cmdline()
-		fmt.Println(name)
 		if err != nil {
 			fmt.Println("findByRunningProcesses ERROR", err)
-			return ""
+		} else {
+			fmt.Println(name)
 		}
 	}
 	fmt.Println("PROCESS END")
