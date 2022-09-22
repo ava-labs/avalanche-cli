@@ -42,7 +42,7 @@ func TestFindByRunningProcess(t *testing.T) {
 	assert.NoError(err)
 	// give the process the time to actually start;
 	// otherwise `findByRunningProcesses` might be done before that!
-	time.Sleep(1 * time.Second)
+	time.Sleep(2 * time.Second)
 	// in a go routine (while our target backend process is running):
 	// run the target function and expect the targeted argument to be found
 	go func() {
@@ -67,7 +67,7 @@ func TestFindByRunningProcess(t *testing.T) {
 	assert.NoError(err)
 	// give the process the time to actually start;
 	// otherwise `findByRunningProcesses` might be done before that!
-	time.Sleep(1 * time.Second)
+	time.Sleep(2 * time.Second)
 	go func() {
 		funcValue := findByRunningProcesses(procName, argWithEqual)
 		assert.Equal(equalValue, funcValue)
