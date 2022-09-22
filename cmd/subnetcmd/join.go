@@ -353,11 +353,13 @@ func findByRunningProcesses(procName, key string) string {
 	if err != nil {
 		return ""
 	}
+	fmt.Println("PROCESOS START")
 	for _, p := range procs {
 		name, err := p.Cmdline()
 		if err != nil {
 			return ""
 		}
+		fmt.Println(name)
 		if regex.MatchString(name) {
 			// truncate at end of `--config-file` + 1 (ignores if = or space)
 			trunc := name[strings.Index(name, key)+len(key)+1:]
@@ -366,6 +368,7 @@ func findByRunningProcesses(procName, key string) string {
 			return strings.Split(trunc, " ")[0]
 		}
 	}
+	fmt.Println("PROCESOS END")
 	return ""
 }
 
