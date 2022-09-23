@@ -356,7 +356,8 @@ func findByRunningProcesses(procName, key string) string {
 	for _, p := range procs {
 		name, err := p.Cmdline()
 		if err != nil {
-			return ""
+			// ignore errors for processes that just died (macos implementation)
+			continue
 		}
 		if regex.MatchString(name) {
 			// truncate at end of `--config-file` + 1 (ignores if = or space)
