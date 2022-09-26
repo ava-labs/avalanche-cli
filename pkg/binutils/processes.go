@@ -140,7 +140,7 @@ func GetServerPID(app *application.Avalanche) (int, error) {
 func StartServerProcess(app *application.Avalanche) error {
 	thisBin := reexec.Self()
 
-	args := []string{"backend", "start"}
+	args := []string{constants.BackendCmd}
 	cmd := exec.Command(thisBin, args...)
 
 	outputDirPrefix := path.Join(app.GetRunDir(), "server")
