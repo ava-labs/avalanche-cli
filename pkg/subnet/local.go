@@ -444,6 +444,7 @@ func (d *LocalDeployer) startNetwork(
 		client.WithPluginDir(pluginDir),
 		client.WithExecPath(avalancheGoBinPath),
 		client.WithRootDataDir(runDir),
+		client.WithReassignPortsIfUsed(true),
 	}
 
 	// load global node configs if they exist
