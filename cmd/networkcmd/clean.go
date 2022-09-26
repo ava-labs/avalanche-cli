@@ -6,11 +6,13 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/shirou/gopsutil/process"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -56,6 +58,7 @@ func clean(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("hard clean requested via flag, removing all downloaded avalanchego and plugin binaries")
 		binDir := filepath.Join(app.GetBaseDir(), constants.AvalancheCliBinDir)
 		cleanBins(binDir)
+		_ = killAllBackendsByName()
 	} else {
 		// Iterate over all installed avalanchego versions and remove all plugins from their
 		// plugin dirs except for the c-chain plugin
@@ -95,4 +98,25 @@ func cleanBins(dir string) {
 		ux.Logger.PrintToUser("Removal failed: %s", err)
 	}
 	ux.Logger.PrintToUser("All existing binaries removed.")
+}
+
+func killAllBackendsByName() error {
+	procs, err := process.Processes()
+	if err != nil {
+		return err
+	}
+	regex := regexp.MustCompile(".* " + constants.BackendCmd + ".*")
+	for _, p := range procs {
+		name, err := p.Cmdline()
+		if err != nil {
+			// ignore errors for processes that just died (macos implementation)
+			continue
+		}
+		if regex.MatchString(name) {
+			if err := p.Terminate(); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
