@@ -169,28 +169,35 @@ func printPrecompileTable(genesis core.Genesis) {
 	precompileSet := false
 
 	// Native Minting
-	// timestamp := genesis.Config.ContractNativeMinterConfig.BlockTimestamp
-	for _, address := range genesis.Config.ContractNativeMinterConfig.AllowListAdmins {
-		table.Append([]string{"Native Minter", address.Hex()})
-		precompileSet = true
+	if genesis.Config.ContractNativeMinterConfig != nil {
+		for _, address := range genesis.Config.ContractNativeMinterConfig.AllowListAdmins {
+			table.Append([]string{"Native Minter", address.Hex()})
+			precompileSet = true
+		}
 	}
 
 	// Contract allow list
-	for _, address := range genesis.Config.ContractDeployerAllowListConfig.AllowListAdmins {
-		table.Append([]string{"Contract Allow list", address.Hex()})
-		precompileSet = true
+	if genesis.Config.ContractDeployerAllowListConfig != nil {
+		for _, address := range genesis.Config.ContractDeployerAllowListConfig.AllowListAdmins {
+			table.Append([]string{"Contract Allow list", address.Hex()})
+			precompileSet = true
+		}
 	}
 
 	// TX allow list
-	for _, address := range genesis.Config.TxAllowListConfig.AllowListAdmins {
-		table.Append([]string{"Tx Allow list", address.Hex()})
-		precompileSet = true
+	if genesis.Config.TxAllowListConfig != nil {
+		for _, address := range genesis.Config.TxAllowListConfig.AllowListAdmins {
+			table.Append([]string{"Tx Allow list", address.Hex()})
+			precompileSet = true
+		}
 	}
 
 	// Fee config allow list
-	for _, address := range genesis.Config.FeeManagerConfig.AllowListAdmins {
-		table.Append([]string{"Fee Config Allow list", address.Hex()})
-		precompileSet = true
+	if genesis.Config.FeeManagerConfig != nil {
+		for _, address := range genesis.Config.FeeManagerConfig.AllowListAdmins {
+			table.Append([]string{"Fee Config Allow list", address.Hex()})
+			precompileSet = true
+		}
 	}
 
 	if precompileSet {
