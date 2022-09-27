@@ -97,4 +97,6 @@ const (
 	GitRepoCommitEmail = "info@avax.network"
 
 	AvaLabsMaintainers = "ava-labs"
+
+	BackendCmd = "avalanche-cli-backend"
 )
