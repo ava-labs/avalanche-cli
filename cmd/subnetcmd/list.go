@@ -38,7 +38,7 @@ func (c subnetMatrix) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
 func (c subnetMatrix) Less(i, j int) bool { return strings.Compare(c[i][0], c[j][0]) == -1 }
 
 func listSubnets(cmd *cobra.Command, args []string) error {
-	header := []string{"subnet", "chain", "chain ID", "type", "from repo", "", "deployed", ""}
+	header := []string{"subnet", "chain", "chain ID", "type", "vm version", "from repo", "", "deployed", ""}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
@@ -52,7 +52,7 @@ func listSubnets(cmd *cobra.Command, args []string) error {
 
 	rows := subnetMatrix{}
 	// append a second "header" row for the networks
-	rows = append(rows, []string{"", "", "", "", "", "Local", "Fuji", "Mainnet"})
+	rows = append(rows, []string{"", "", "", "", "", "", "Local", "Fuji", "Mainnet"})
 
 	deployedNames := map[string]struct{}{}
 	// if the server can not be contacted, or there is a problem with the query,
@@ -111,6 +111,7 @@ func listSubnets(cmd *cobra.Command, args []string) error {
 				sc.Name,
 				chainID,
 				string(sc.VM),
+				sc.VMVersion,
 				strconv.FormatBool(sc.ImportedFromAPM),
 				deployedLocal,
 				deployedFuji,

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
@@ -75,23 +77,44 @@ func updateToLatestVersion(subnetName string, vmType models.VMType, sc models.Si
 	currentVersion := sc.VMVersion
 
 	// check latest version
-
-	// check if current version equals latest
-	if currentVersion == "latest" {
-		ux.Logger.PrintToUser("VM already up-to-date")
+	latestVersion, err := binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+		constants.AvaLabsOrg,
+		vmType.RepoName(),
+	))
+	if err != nil {
+		return err
 	}
 
-	// install latest version
+	// check if current version equals latest
+	if currentVersion == "latest" || currentVersion == latestVersion {
+		ux.Logger.PrintToUser("VM already up-to-date")
+		return nil
+	}
 
-	// update sidecar
+	// to switch to new version, just need to update sidecar
+	sc.VMVersion = latestVersion
+	if err = app.UpdateSidecar(&sc); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("VM updated. Update will apply next time subnet is deployed.")
+
+	if len(sc.Networks) > 0 {
+		// perform update on deployed network
+		// TODO
+	}
 	return nil
 }
 
 func updateToSpecificVersion(subnetName string, vmType models.VMType, sc models.Sidecar) error {
 	fmt.Println("Updating to specific version")
 	// pull in current version
+	// currentVersion := sc.VMVersion
 
 	// check if current version equals chosen version
+	// if currentVersion == targetVersion {
+	// 	ux.Logger.PrintToUser("VM already up-to-date")
+	// 	return nil
+	// }
 
 	// install specific version
 
