@@ -9,13 +9,37 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/plugins"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-network-runner/utils"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/spf13/cobra"
+)
+
+const (
+	futureDeployment  = "All future deployments"
+	localDeployment   = "Existing local deployment"
+	fujiDeployment    = "Fuji"
+	mainnetDeployment = "Mainnet"
+)
+
+var (
+	pluginDir string
+
+	useFuji       bool
+	useMainnet    bool
+	useLocal      bool
+	useFuture     bool
+	useManual     bool
+	useLatest     bool
+	targetVersion string
+	useBinary     string
 )
 
 // avalanche subnet delete
 func newVMCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:          "vm [subnetName]",
 		Short:        "Upgrade a subnet's binary",
 		Long:         "",
@@ -23,9 +47,49 @@ func newVMCmd() *cobra.Command {
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 	}
+
+	cmd.Flags().BoolVar(&useFuture, "future", false, "upgrade future subnet deployments")
+	cmd.Flags().BoolVar(&useLocal, "local", false, "upgrade existing `local` deployment")
+	cmd.Flags().BoolVar(&useFuji, "fuji", false, "upgrade existing `fuji` deployment (alias for `testnet`)")
+	cmd.Flags().BoolVar(&useFuji, "testnet", false, "upgrade existing `testbet` deployment (alias for `fuji`)")
+	cmd.Flags().BoolVar(&useMainnet, "mainnet", false, "upgrade existing `local` deployment")
+
+	cmd.Flags().BoolVar(&useManual, "print", false, "print instructions for upgrading")
+	cmd.Flags().StringVar(&pluginDir, "plugin-dir", "", "plugin directory to automatically upgrade VM")
+
+	cmd.Flags().BoolVar(&useLatest, "latest", false, "upgrade to latest version")
+	cmd.Flags().StringVar(&targetVersion, "version", "", "Upgrade to custom version")
+	cmd.Flags().StringVar(&useBinary, "binary", "", "Upgrade to custom binary")
+
+	return cmd
+}
+
+func atMostOneNetworkSelected() bool {
+	return !(useFuture && useLocal || useFuture && useFuji || useFuture && useMainnet || useLocal && useFuji ||
+		useLocal && useMainnet || useFuji && useMainnet)
+}
+
+func atMostOneVersionSelected() bool {
+	return !(useLatest && targetVersion != "" || useLatest && useBinary != "" || targetVersion != "" && useBinary != "")
+}
+
+func atMostOneAutomationSelected() bool {
+	return !(useManual && pluginDir != "")
 }
 
 func upgradeVM(cmd *cobra.Command, args []string) error {
+	if !atMostOneNetworkSelected() {
+		return errors.New("too many networks selected")
+	}
+
+	if !atMostOneVersionSelected() {
+		return errors.New("too many versions selected")
+	}
+
+	if !atMostOneAutomationSelected() {
+		return errors.New("--print and --plugin-dir are mutually exclusive")
+	}
+
 	subnetName := args[0]
 
 	if !app.SubnetConfigExists(subnetName) {
@@ -37,16 +101,72 @@ func upgradeVM(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to load sidecar: %w", err)
 	}
 
+	networkToUpgrade, err := selectNetworkToUpgrade(sc)
+	if err != nil {
+		return err
+	}
+
 	vmType := sc.VM
 	if vmType == models.SubnetEvm || vmType == models.SpacesVM {
-		return selectUpdateOption(subnetName, vmType, sc)
+		return selectUpdateOption(subnetName, vmType, sc, networkToUpgrade)
 	}
 
 	// Must be a custom update
-	return updateToCustomBin(subnetName, vmType, sc)
+	return updateToCustomBin(subnetName, vmType, sc, networkToUpgrade)
 }
 
-func selectUpdateOption(subnetName string, vmType models.VMType, sc models.Sidecar) error {
+func selectNetworkToUpgrade(sc models.Sidecar) (string, error) {
+	switch {
+	case useFuture:
+		return futureDeployment, nil
+	case useLocal:
+		return localDeployment, nil
+	case useFuji:
+		return fujiDeployment, nil
+	case useMainnet:
+		return mainnetDeployment, nil
+	}
+
+	updatePrompt := "What deployment would you like to upgrade"
+	upgradeOptions := []string{futureDeployment}
+
+	// check if subnet already deployed locally
+	locallyDeployedSubnets, err := subnet.GetLocallyDeployedSubnets(app)
+	if err != nil {
+		// ignore error if we can't reach the server, assume subnet isn't deployed
+		app.Log.Warn("Unable to reach server to get deployed subnets")
+	}
+	if _, ok := locallyDeployedSubnets[sc.Subnet]; ok {
+		upgradeOptions = append(upgradeOptions, localDeployment)
+	}
+
+	// check if subnet deployed on fuji
+	if _, ok := sc.Networks[models.Fuji.String()]; ok {
+		upgradeOptions = append(upgradeOptions, fujiDeployment)
+	}
+
+	// check if subnet deployed on mainnet
+	if _, ok := sc.Networks[models.Mainnet.String()]; ok {
+		upgradeOptions = append(upgradeOptions, mainnetDeployment)
+	}
+
+	selectedDeployment, err := app.Prompt.CaptureList(updatePrompt, upgradeOptions)
+	if err != nil {
+		return "", err
+	}
+	return selectedDeployment, nil
+}
+
+func selectUpdateOption(subnetName string, vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
+	switch {
+	case useLatest:
+		return updateToLatestVersion(subnetName, vmType, sc, networkToUpgrade)
+	case targetVersion != "":
+		return updateToSpecificVersion(subnetName, vmType, sc, networkToUpgrade)
+	case useBinary != "":
+		return updateToCustomBin(subnetName, vmType, sc, networkToUpgrade)
+	}
+
 	latestVersionUpdate := "Update to latest version"
 	specificVersionUpdate := "Update to a specific version"
 	customBinaryUpdate := "Update to a custom binary"
@@ -61,17 +181,17 @@ func selectUpdateOption(subnetName string, vmType models.VMType, sc models.Sidec
 
 	switch updateDecision {
 	case latestVersionUpdate:
-		return updateToLatestVersion(subnetName, vmType, sc)
+		return updateToLatestVersion(subnetName, vmType, sc, networkToUpgrade)
 	case specificVersionUpdate:
-		return updateToSpecificVersion(subnetName, vmType, sc)
+		return updateToSpecificVersion(subnetName, vmType, sc, networkToUpgrade)
 	case customBinaryUpdate:
-		return updateToCustomBin(subnetName, vmType, sc)
+		return updateToCustomBin(subnetName, vmType, sc, networkToUpgrade)
 	default:
 		return errors.New("invalid option")
 	}
 }
 
-func updateToLatestVersion(subnetName string, vmType models.VMType, sc models.Sidecar) error {
+func updateToLatestVersion(subnetName string, vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
 	fmt.Println("Updating to latest version")
 	// pull in current version
 	currentVersion := sc.VMVersion
@@ -91,38 +211,48 @@ func updateToLatestVersion(subnetName string, vmType models.VMType, sc models.Si
 		return nil
 	}
 
-	// to switch to new version, just need to update sidecar
-	sc.VMVersion = latestVersion
-	if err = app.UpdateSidecar(&sc); err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("VM updated. Update will apply next time subnet is deployed.")
-
-	if len(sc.Networks) > 0 {
-		// perform update on deployed network
-		// TODO
-	}
-	return nil
+	return updateVMByNetwork(sc, latestVersion, networkToUpgrade)
 }
 
-func updateToSpecificVersion(subnetName string, vmType models.VMType, sc models.Sidecar) error {
+func updateToSpecificVersion(subnetName string, vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
 	fmt.Println("Updating to specific version")
 	// pull in current version
-	// currentVersion := sc.VMVersion
+	currentVersion := sc.VMVersion
+
+	// Get version to update to
+	var err error
+	if targetVersion != "" {
+		targetVersion, err = app.Prompt.CaptureVersion("Enter version")
+		if err != nil {
+			return err
+		}
+	}
 
 	// check if current version equals chosen version
-	// if currentVersion == targetVersion {
-	// 	ux.Logger.PrintToUser("VM already up-to-date")
-	// 	return nil
-	// }
+	if currentVersion == targetVersion {
+		ux.Logger.PrintToUser("VM already up-to-date")
+		return nil
+	}
 
-	// install specific version
-
-	// update sidecar
-	return nil
+	return updateVMByNetwork(sc, targetVersion, networkToUpgrade)
 }
 
-func updateToCustomBin(subnetName string, vmType models.VMType, sc models.Sidecar) error {
+func updateVMByNetwork(sc models.Sidecar, targetVersion string, networkToUpgrade string) error {
+	switch networkToUpgrade {
+	case futureDeployment:
+		return updateFutureVM(sc, targetVersion)
+	case localDeployment:
+		return updateExistingLocalVM(sc, targetVersion)
+	case fujiDeployment:
+		return chooseManualOrAutomatic(sc, targetVersion, networkToUpgrade)
+	case mainnetDeployment:
+		return updateMainnetVM()
+	default:
+		return errors.New("unknown deployment")
+	}
+}
+
+func updateToCustomBin(subnetName string, vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
 	fmt.Println("Updating to custom binary")
 	// get path
 
@@ -130,4 +260,139 @@ func updateToCustomBin(subnetName string, vmType models.VMType, sc models.Sideca
 
 	// update sidecar
 	return nil
+}
+
+func updateFutureVM(sc models.Sidecar, targetVersion string) error {
+	// to switch to new version, just need to update sidecar
+	sc.VMVersion = targetVersion
+	if err := app.UpdateSidecar(&sc); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("VM updated for future deployments. Update will apply next time subnet is deployed.")
+	return nil
+}
+
+func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
+	ux.Logger.PrintToUser("Coming soon. For now, please upgrade your existing deployments and redeploy the subnet.")
+	return nil
+}
+
+func chooseManualOrAutomatic(sc models.Sidecar, targetVersion string, networkToUpgrade string) error {
+	switch {
+	case useManual:
+		return manualUpgrade(sc, targetVersion, networkToUpgrade)
+	case pluginDir != "":
+		return automatedUpgrade(sc, targetVersion, networkToUpgrade)
+	}
+
+	const (
+		choiceManual    = "Manual"
+		choiceAutomatic = "Automatic"
+	)
+	choice, err := app.Prompt.CaptureList(
+		"How would you like to update the avalanchego config?",
+		[]string{choiceAutomatic, choiceManual},
+	)
+	if err != nil {
+		return err
+	}
+
+	if choice == choiceManual {
+		return manualUpgrade(sc, targetVersion, networkToUpgrade)
+	}
+	return automatedUpgrade(sc, targetVersion, networkToUpgrade)
+}
+
+func getVMID(sc models.Sidecar) (string, error) {
+	// get vmid
+	var vmid string
+	if sc.ImportedFromAPM {
+		vmid = sc.ImportedVMID
+	} else {
+		chainVMID, err := utils.VMID(sc.Name)
+		if err != nil {
+			return "", err
+		}
+		vmid = chainVMID.String()
+	}
+	return vmid, nil
+}
+
+func manualUpgrade(sc models.Sidecar, targetVersion string, networkToUpgrade string) error {
+	vmid, err := getVMID(sc)
+	if err != nil {
+		return err
+	}
+	pluginDir = app.GetTmpPluginDir()
+	vmPath, err := plugins.CreatePluginFromVersion(app, sc.Name, sc.VM, targetVersion, vmid, pluginDir)
+	if err != nil {
+		return err
+	}
+	printUpgradeCmd(vmPath)
+	return nil
+}
+
+func automatedUpgrade(sc models.Sidecar, targetVersion string, networkToUpgrade string) error {
+	// Attempt an automated update
+	var err error
+	if pluginDir == "" {
+		pluginDir = plugins.FindPluginDir()
+		if pluginDir != "" {
+			ux.Logger.PrintToUser(logging.Bold.Wrap(logging.Green.Wrap("Found the VM plugin directory at %s")), pluginDir)
+			yes, err := app.Prompt.CaptureYesNo("Is this where we should upgrade the VM?")
+			if err != nil {
+				return err
+			}
+			if yes {
+				ux.Logger.PrintToUser("Will use plugin directory at %s to upgrade the VM", pluginDir)
+			} else {
+				pluginDir = ""
+			}
+		}
+		if pluginDir == "" {
+			pluginDir, err = app.Prompt.CaptureString("Path to your avalanchego plugin dir (likely avalanchego/build/plugins)")
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	pluginDir, err = plugins.SanitizePath(pluginDir)
+	if err != nil {
+		return err
+	}
+
+	vmid, err := getVMID(sc)
+	if err != nil {
+		return err
+	}
+	vmPath, err := plugins.CreatePluginFromVersion(app, sc.Name, sc.VM, targetVersion, vmid, pluginDir)
+	if err != nil {
+		return err
+	}
+
+	ux.Logger.PrintToUser("VM binary written to %s", vmPath)
+
+	return nil
+}
+
+func updateMainnetVM() error {
+	ux.Logger.PrintToUser("Coming soon. For now, please upgrade your mainnet deployments manually.")
+	return nil
+}
+
+func printUpgradeCmd(vmPath string) {
+	msg := `
+To upgrade your node, you must do two things:
+
+1. Replace your VM binary in your node's plugin directory
+2. Restart your node
+
+To add the VM to your plugin directory, copy or scp from %s
+
+If you installed avalanchego manually, your plugin directory is likely
+avalanchego/build/plugins.
+`
+
+	ux.Logger.PrintToUser(msg, vmPath)
 }

@@ -7,21 +7,15 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/user"
-	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/plugins"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/kardianos/osext"
-	"github.com/shirou/gopsutil/process"
 	"github.com/spf13/cobra"
 )
 
@@ -36,51 +30,7 @@ var (
 	skipWhitelistCheck bool
 	// if true, doesn't ask for overwriting the config file
 	forceWrite bool
-	// a list of directories to scan for potential location
-	// of avalanchego configs
-	scanConfigDirs = []string{}
-	// env var for avalanchego data dir
-	defaultUnexpandedDataDir = "$" + config.AvalancheGoDataDirVar
-	// expected file name for the config
-	// TODO should other file names be supported? e.g. conf.json, etc.
-	defaultConfigFileName = "config.json"
-	// expected name of the plugins dir
-	defaultPluginDir = "plugins"
-	// default dir where the binary is usually found
-	defaultAvalanchegoBuildDir = filepath.Join("go", "src", "github.com", constants.AvaLabsOrg, constants.AvalancheGoRepoName, "build")
 )
-
-// this init is partly "borrowed" from avalanchego/config/config.go
-func init() {
-	folderPath, err := osext.ExecutableFolder()
-	if err == nil {
-		scanConfigDirs = append(scanConfigDirs, folderPath)
-		scanConfigDirs = append(scanConfigDirs, filepath.Dir(folderPath))
-	}
-	wd, err := os.Getwd()
-	if err != nil {
-		// really this shouldn't happen, and we could just os.Exit,
-		// but it's bit bad to hide an os.Exit here
-		fmt.Println("Warning: failed to get current directory")
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		// really this shouldn't happen, and we could just os.Exit,
-		// but it's bit bad to hide an os.Exit here
-		fmt.Println("Warning: failed to get user home dir")
-	}
-	// TODO: Any other dirs we want to scan?
-	scanConfigDirs = append(scanConfigDirs,
-		filepath.Join("/", "etc", constants.AvalancheGoRepoName),
-		filepath.Join("/", "usr", "local", "lib", constants.AvalancheGoRepoName),
-		wd,
-		home,
-		filepath.Join(home, constants.AvalancheGoRepoName),
-		filepath.Join(home, defaultAvalanchegoBuildDir),
-		filepath.Join(home, ".avalanchego"),
-		defaultUnexpandedDataDir,
-	)
-}
 
 // avalanche subnet deploy
 func newJoinCmd() *cobra.Command {
@@ -246,7 +196,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	// or, pluginDir was set but not avagoConfigPath
 	// if **both** flags were set, this will be skipped...
 	if avagoConfigPath == "" {
-		avagoConfigPath = findAvagoConfigPath()
+		avagoConfigPath = plugins.FindAvagoConfigPath()
 		if avagoConfigPath != "" {
 			ux.Logger.PrintToUser(logging.Bold.Wrap(logging.Green.Wrap("Found a config file at %s")), avagoConfigPath)
 			yes, err := app.Prompt.CaptureYesNo("Is this the file we should update?")
@@ -268,7 +218,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	}
 
 	// ...but not this
-	avagoConfigPath, err := sanitizePath(avagoConfigPath)
+	avagoConfigPath, err := plugins.SanitizePath(avagoConfigPath)
 	if err != nil {
 		return err
 	}
@@ -276,7 +226,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	// avagoConfigPath was set but not pluginDir
 	// if **both** flags were set, this will be skipped...
 	if pluginDir == "" {
-		pluginDir = findPluginDir()
+		pluginDir = plugins.FindPluginDir()
 		if pluginDir != "" {
 			ux.Logger.PrintToUser(logging.Bold.Wrap(logging.Green.Wrap("Found the VM plugin directory at %s")), pluginDir)
 			yes, err := app.Prompt.CaptureYesNo("Is this where we should install the VM?")
@@ -298,7 +248,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	}
 
 	// ...but not this
-	pluginDir, err := sanitizePath(pluginDir)
+	pluginDir, err := plugins.SanitizePath(pluginDir)
 	if err != nil {
 		return err
 	}
@@ -314,70 +264,6 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 		return err
 	}
 	return nil
-}
-
-func findAvagoConfigPath() string {
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("Scanning your system for existing files..."))
-	var path string
-	// Attempt 1: Try the admin API
-	if path = findByRunningProcesses(constants.AvalancheGoRepoName, config.ConfigFileKey); path != "" {
-		return path
-	}
-	// Attempt 2: find looking at some usual dirs
-	if path = findByCommonDirs(defaultConfigFileName, scanConfigDirs); path != "" {
-		return path
-	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("No config file has been found on your system"))
-	return ""
-}
-
-func findByCommonDirs(filename string, scanDirs []string) string {
-	for _, d := range scanDirs {
-		if d == defaultUnexpandedDataDir {
-			d = os.ExpandEnv(d)
-		}
-		path := filepath.Join(d, filename)
-		if _, err := os.Stat(path); err == nil {
-			return path
-		}
-	}
-	return ""
-}
-
-func findByRunningProcesses(procName, key string) string {
-	procs, err := process.Processes()
-	if err != nil {
-		return ""
-	}
-	regex, err := regexp.Compile(procName + ".*" + key)
-	if err != nil {
-		return ""
-	}
-	for _, p := range procs {
-		name, err := p.Cmdline()
-		if err != nil {
-			// ignore errors for processes that just died (macos implementation)
-			continue
-		}
-		if regex.MatchString(name) {
-			// truncate at end of `--config-file` + 1 (ignores if = or space)
-			trunc := name[strings.Index(name, key)+len(key)+1:]
-			// there might be other params after the config file entry, so split those away
-			// first entry is the value of configFileKey
-			return strings.Split(trunc, " ")[0]
-		}
-	}
-	return ""
-}
-
-func findPluginDir() string {
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("Scanning your system for the plugin directory..."))
-	dir := findByCommonDirs(defaultPluginDir, scanConfigDirs)
-	if dir != "" {
-		return dir
-	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("No plugin directory found on your system"))
-	return ""
 }
 
 func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, error) {
@@ -477,19 +363,4 @@ After you update your config, you will need to restart your node for the changes
 take effect.`
 
 	ux.Logger.PrintToUser(msg, vmPath, subnetID, networkID, subnetID, subnetID)
-}
-
-func sanitizePath(path string) (string, error) {
-	usr, err := user.Current()
-	if err != nil {
-		return "", err
-	}
-	homeDir := usr.HomeDir
-	if path == "~" {
-		// In case of "~", which won't be caught by the "else if"
-		path = homeDir
-	} else if strings.HasPrefix(path, "~/") {
-		path = filepath.Join(homeDir, path[2:])
-	}
-	return path, nil
 }
