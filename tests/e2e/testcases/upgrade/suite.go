@@ -112,28 +112,27 @@ var _ = ginkgo.Describe("[Upgrade]", func() {
 		err = utils.WaitSubnetValidators(subnetID, nodeInfos)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		// stop network
-		commands.StopNetwork()
-
 		// TODO Delete this after updating
 		var originalHash string
 
 		// upgrade the vm on each node
 		vmid, err := anr_utils.VMID(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		first := true
+
 		for _, nodeInfo := range nodeInfos {
 			// check the current node version
 			vmVersion, err := utils.GetNodeVMVersion(nodeInfo.URI, vmid.String())
 			gomega.Expect(err).Should(gomega.BeNil())
 			gomega.Expect(vmVersion).Should(gomega.Equal(subnetEVMVersion1))
 
-			if first {
-				originalHash, err = utils.GetFileHash(filepath.Join(nodeInfo.PluginDir, vmid.String()))
-				gomega.Expect(err).Should(gomega.BeNil())
-				first = false
-			}
+			originalHash, err = utils.GetFileHash(filepath.Join(nodeInfo.PluginDir, vmid.String()))
+			gomega.Expect(err).Should(gomega.BeNil())
+		}
 
+		// stop network
+		commands.StopNetwork()
+
+		for _, nodeInfo := range nodeInfos {
 			output, err := commands.UpgradeVMPublic(subnetName, subnetEVMVersion2, nodeInfo.PluginDir)
 			gomega.Expect(err).Should(gomega.BeNil())
 			fmt.Println(output)
