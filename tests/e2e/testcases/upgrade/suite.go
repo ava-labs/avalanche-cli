@@ -25,9 +25,6 @@ const (
 
 	controlKeys = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 	keyName     = "ewoq"
-
-	subnetEVM029Hash = "9e8c1063b2965db21d2a759f0caedfca09d1e3f45edd2759c418acec22477a93"
-	subnetEVM030Hash = "83c2ef4e478c37be6d2191da0b1b47f9bd449ac06c3e6ca7d04a274c47bccb0e"
 )
 
 var _ = ginkgo.Describe("[Upgrade]", func() {
@@ -115,6 +112,9 @@ var _ = ginkgo.Describe("[Upgrade]", func() {
 		err = utils.WaitSubnetValidators(subnetID, nodeInfos)
 		gomega.Expect(err).Should(gomega.BeNil())
 
+		// TODO Delete this after updating
+		var originalHash string
+
 		// upgrade the vm on each node
 		vmid, err := anr_utils.VMID(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -126,9 +126,8 @@ var _ = ginkgo.Describe("[Upgrade]", func() {
 			gomega.Expect(vmVersion).Should(gomega.Equal(subnetEVMVersion1))
 
 			if first {
-				originalHash, err := utils.GetFileHash(filepath.Join(nodeInfo.PluginDir, vmid.String()))
+				originalHash, err = utils.GetFileHash(filepath.Join(nodeInfo.PluginDir, vmid.String()))
 				gomega.Expect(err).Should(gomega.BeNil())
-				gomega.Expect(originalHash).Should(gomega.Equal(subnetEVM030Hash))
 				first = false
 			}
 
@@ -162,7 +161,7 @@ var _ = ginkgo.Describe("[Upgrade]", func() {
 			measuredHash, err := utils.GetFileHash(filepath.Join(nodeInfo.PluginDir, vmid.String()))
 			gomega.Expect(err).Should(gomega.BeNil())
 
-			gomega.Expect(measuredHash).Should(gomega.Equal(subnetEVM029Hash))
+			gomega.Expect(measuredHash).ShouldNot(gomega.Equal(originalHash))
 		}
 
 		// Stop removal here
