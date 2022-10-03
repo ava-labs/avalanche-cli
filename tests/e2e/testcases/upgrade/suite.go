@@ -22,7 +22,6 @@ const (
 
 	subnetEVMVersion1 = "v0.3.0"
 	subnetEVMVersion2 = "v0.2.9"
-	// avagoVersion      = "v1.7.18"
 
 	controlKeys = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 	keyName     = "ewoq"
@@ -34,9 +33,7 @@ const (
 var _ = ginkgo.Describe("[Upgrade]", func() {
 	ginkgo.BeforeEach(func() {
 		commands.CleanNetworkHard()
-		// commands.CleanNetwork()
 		// local network
-		// _ = commands.StartNetworkWithVersion(avagoVersion)
 		_ = commands.StartNetwork()
 		// key
 		_ = utils.DeleteKey(keyName)
@@ -56,44 +53,36 @@ var _ = ginkgo.Describe("[Upgrade]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
-	// ginkgo.It("can create and update future", func() {
-	// 	commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
+	ginkgo.It("can create and update future", func() {
+		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
 
-	// 	// check version
-	// 	output, err := commands.DescribeSubnet(subnetName)
-	// 	gomega.Expect(err).Should(gomega.BeNil())
+		// check version
+		output, err := commands.DescribeSubnet(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
 
-	// 	containsVersion1 := strings.Contains(output, subnetEVMVersion1)
-	// 	containsVersion2 := strings.Contains(output, subnetEVMVersion2)
-	// 	gomega.Expect(containsVersion1).Should(gomega.BeTrue())
-	// 	gomega.Expect(containsVersion2).Should(gomega.BeFalse())
+		containsVersion1 := strings.Contains(output, subnetEVMVersion1)
+		containsVersion2 := strings.Contains(output, subnetEVMVersion2)
+		gomega.Expect(containsVersion1).Should(gomega.BeTrue())
+		gomega.Expect(containsVersion2).Should(gomega.BeFalse())
 
-	// 	output, err = commands.UpgradeVMFuture(subnetName, subnetEVMVersion2)
-	// 	gomega.Expect(err).Should(gomega.BeNil())
-	// 	if err != nil {
-	// 		fmt.Println(output)
-	// 	}
+		output, err = commands.UpgradeVMFuture(subnetName, subnetEVMVersion2)
+		gomega.Expect(err).Should(gomega.BeNil())
+		if err != nil {
+			fmt.Println(output)
+		}
 
-	// 	output, err = commands.DescribeSubnet(subnetName)
-	// 	gomega.Expect(err).Should(gomega.BeNil())
+		output, err = commands.DescribeSubnet(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
 
-	// 	containsVersion1 = strings.Contains(output, subnetEVMVersion1)
-	// 	containsVersion2 = strings.Contains(output, subnetEVMVersion2)
-	// 	gomega.Expect(containsVersion1).Should(gomega.BeFalse())
-	// 	gomega.Expect(containsVersion2).Should(gomega.BeTrue())
+		containsVersion1 = strings.Contains(output, subnetEVMVersion1)
+		containsVersion2 = strings.Contains(output, subnetEVMVersion2)
+		gomega.Expect(containsVersion1).Should(gomega.BeFalse())
+		gomega.Expect(containsVersion2).Should(gomega.BeTrue())
 
-	// 	commands.DeleteSubnetConfig(subnetName)
-	// })
+		commands.DeleteSubnetConfig(subnetName)
+	})
 
 	ginkgo.It("can upgrade subnet-evm on public deployment", func() {
-		// sub29Hash, err := utils.GetFileHash("/Users/connor/.avalanche-cli/bin/subnet-evm/subnet-evm-v0.2.9/subnet-evm")
-		// gomega.Expect(err).Should(gomega.BeNil())
-		// sub30Hash, err := utils.GetFileHash("/Users/connor/.avalanche-cli/bin/subnet-evm/subnet-evm-v0.3.0/subnet-evm")
-		// gomega.Expect(err).Should(gomega.BeNil())
-
-		// fmt.Println("2.9 Hash:", sub29Hash)
-		// fmt.Println("3.0 Hash:", sub30Hash)
-
 		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
 
 		// Simulate fuji deployment
@@ -181,24 +170,4 @@ var _ = ginkgo.Describe("[Upgrade]", func() {
 
 		commands.DeleteSubnetConfig(subnetName)
 	})
-
-	// ginkgo.It("can deploy a subnet with subnet-evm version", func() {
-	// 	commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
-	// 	deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, avagoVersion)
-	// 	rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
-	// 	if err != nil {
-	// 		fmt.Println(deployOutput)
-	// 	}
-	// 	gomega.Expect(err).Should(gomega.BeNil())
-	// 	gomega.Expect(rpcs).Should(gomega.HaveLen(1))
-	// 	rpc := rpcs[0]
-
-	// 	err = utils.SetHardhatRPC(rpc)
-	// 	gomega.Expect(err).Should(gomega.BeNil())
-
-	// 	err = utils.RunHardhatTests(utils.BaseTest)
-	// 	gomega.Expect(err).Should(gomega.BeNil())
-
-	// 	commands.DeleteSubnetConfig(subnetName)
-	// })
 })
