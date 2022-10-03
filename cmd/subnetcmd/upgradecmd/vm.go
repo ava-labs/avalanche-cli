@@ -283,7 +283,7 @@ func chooseManualOrAutomatic(sc models.Sidecar, targetVersion string, networkToU
 
 	const (
 		choiceManual    = "Manual"
-		choiceAutomatic = "Automatic"
+		choiceAutomatic = "Automatic (Make sure your node isn't running)"
 	)
 	choice, err := app.Prompt.CaptureList(
 		"How would you like to update the avalanchego config?",

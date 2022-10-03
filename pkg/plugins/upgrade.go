@@ -86,10 +86,11 @@ func AutomatedUpgrade(app *application.Avalanche, sc models.Sidecar, targetVersi
 
 func printUpgradeCmd(vmPath string) {
 	msg := `
-To upgrade your node, you must do two things:
+To upgrade your node, you must do three things:
 
-1. Replace your VM binary in your node's plugin directory
-2. Restart your node
+1. Stop your node
+2. Replace your VM binary in your node's plugin directory
+3. Restart your node
 
 To add the VM to your plugin directory, copy or scp from %s
 

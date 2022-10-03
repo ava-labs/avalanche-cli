@@ -112,6 +112,9 @@ var _ = ginkgo.Describe("[Upgrade]", func() {
 		err = utils.WaitSubnetValidators(subnetID, nodeInfos)
 		gomega.Expect(err).Should(gomega.BeNil())
 
+		// stop network
+		commands.StopNetwork()
+
 		// TODO Delete this after updating
 		var originalHash string
 
