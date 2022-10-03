@@ -17,9 +17,9 @@ import (
 
 const (
 	futureDeployment  = "All future deployments"
-	localDeployment   = "Existing local deployment"
+	localDeployment   = "Existing local deployment (coming soon)"
 	fujiDeployment    = "Fuji"
-	mainnetDeployment = "Mainnet"
+	mainnetDeployment = "Mainnet (coming soon)"
 )
 
 var (
@@ -76,6 +76,7 @@ func atMostOneAutomationSelected() bool {
 }
 
 func upgradeVM(cmd *cobra.Command, args []string) error {
+	// Check flag preconditions
 	if !atMostOneNetworkSelected() {
 		return errors.New("too many networks selected")
 	}
@@ -167,7 +168,7 @@ func selectUpdateOption(subnetName string, vmType models.VMType, sc models.Sidec
 
 	latestVersionUpdate := "Update to latest version"
 	specificVersionUpdate := "Update to a specific version"
-	customBinaryUpdate := "Update to a custom binary"
+	customBinaryUpdate := "Update to a custom binary (coming soon)"
 
 	updateOptions := []string{latestVersionUpdate, specificVersionUpdate, customBinaryUpdate}
 
@@ -190,7 +191,6 @@ func selectUpdateOption(subnetName string, vmType models.VMType, sc models.Sidec
 }
 
 func updateToLatestVersion(subnetName string, vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
-	fmt.Println("Updating to latest version")
 	// pull in current version
 	currentVersion := sc.VMVersion
 
@@ -213,7 +213,6 @@ func updateToLatestVersion(subnetName string, vmType models.VMType, sc models.Si
 }
 
 func updateToSpecificVersion(subnetName string, vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
-	fmt.Println("Updating to specific version")
 	// pull in current version
 	currentVersion := sc.VMVersion
 
@@ -251,7 +250,6 @@ func updateVMByNetwork(sc models.Sidecar, targetVersion string, networkToUpgrade
 }
 
 func updateToCustomBin(subnetName string, vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
-	fmt.Println("Updating to custom binary")
 	// get path
 
 	// install update
