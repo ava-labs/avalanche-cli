@@ -8,4 +8,5 @@ const (
 	SubnetCmd  = "subnet"
 	NetworkCmd = "network"
 	KeyCmd     = "key"
+	UpgradeCmd = "upgrade"
 )

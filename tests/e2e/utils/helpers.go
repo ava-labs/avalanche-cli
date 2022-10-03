@@ -19,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-network-runner/client"
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -427,7 +428,7 @@ func ParsePublicDeployOutput(output string) (string, string, error) {
 	return subnetID, rpcURL, nil
 }
 
-func UpdateNodesWhitelistedSubnets(whitelistedSubnets string) error {
+func RestartNodesWithWhitelistedSubnets(whitelistedSubnets string) error {
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
 		return err
@@ -461,6 +462,26 @@ type NodeInfo struct {
 	PluginDir  string
 	ConfigFile string
 	URI        string
+}
+
+func GetNodeVMVersion(nodeURI string, vmid string) (string, error) {
+	rootCtx := context.Background()
+	ctx, cancel := context.WithTimeout(rootCtx, constants.RequestTimeout)
+
+	client := info.NewClient(nodeURI)
+	versionInfo, err := client.GetNodeVersion(ctx)
+	cancel()
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Println("Got this version:", versionInfo.VMVersions)
+	for vm, version := range versionInfo.VMVersions {
+		if vm == vmid {
+			return version, nil
+		}
+	}
+	return "", errors.New("vmid not found")
 }
 
 func GetNodesInfo() (map[string]NodeInfo, error) {

@@ -485,3 +485,27 @@ func ImportSubnetConfigFromURL(repoURL string, branch string, subnetName string)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
+
+/* #nosec G204 */
+func DescribeSubnet(subnetName string) (string, error) {
+	// Create config
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"describe",
+		subnetName,
+	)
+
+	output, err := cmd.Output()
+	exitErr, typeOk := err.(*exec.ExitError)
+	stderr := ""
+	if typeOk {
+		stderr = string(exitErr.Stderr)
+	}
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+		fmt.Println(stderr)
+	}
+	return string(output), err
+}
