@@ -193,6 +193,21 @@ func GetAsyncContext() context.Context {
 }
 
 func KillgRPCServerProcess(app *application.Avalanche) error {
+	cli, err := NewGRPCClient()
+	if err != nil {
+		return err
+	}
+	defer cli.Close()
+	ctx := GetAsyncContext()
+	_, err = cli.Stop(ctx)
+	if err != nil {
+		if server.IsServerError(err, server.ErrNotBootstrapped) {
+			ux.Logger.PrintToUser("No local network running")
+		} else {
+			app.Log.Debug("failed stopping local network", zap.Error(err))
+		}
+	}
+
 	pid, err := GetServerPID(app)
 	if err != nil {
 		return fmt.Errorf("failed getting PID from run file: %w", err)
