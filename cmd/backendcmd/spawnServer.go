@@ -8,6 +8,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/spf13/cobra"
 )
 
@@ -17,23 +18,16 @@ var app *application.Avalanche
 func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	app = injectedApp
 	return &cobra.Command{
-		Use:    "backend",
+		Use:    constants.BackendCmd,
 		Short:  "Run the backend server",
 		Long:   "This tool requires a backend process to run; this command starts it",
-		RunE:   backendController,
-		Args:   cobra.ExactArgs(1),
+		RunE:   startBackend,
+		Args:   cobra.ExactArgs(0),
 		Hidden: true,
 	}
 }
 
-func backendController(cmd *cobra.Command, args []string) error {
-	if args[0] == "start" {
-		return startBackend(cmd)
-	}
-	return fmt.Errorf("unsupported command")
-}
-
-func startBackend(_ *cobra.Command) error {
+func startBackend(_ *cobra.Command, _ []string) error {
 	s, err := binutils.NewGRPCServer(app.GetSnapshotsDir())
 	if err != nil {
 		return err

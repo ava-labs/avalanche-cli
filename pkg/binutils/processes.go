@@ -140,7 +140,7 @@ func GetServerPID(app *application.Avalanche) (int, error) {
 func StartServerProcess(app *application.Avalanche) error {
 	thisBin := reexec.Self()
 
-	args := []string{"backend", "start"}
+	args := []string{constants.BackendCmd}
 	cmd := exec.Command(thisBin, args...)
 
 	outputDirPrefix := path.Join(app.GetRunDir(), "server")
@@ -198,15 +198,14 @@ func KillgRPCServerProcess(app *application.Avalanche) error {
 		return err
 	}
 	defer cli.Close()
-
 	ctx := GetAsyncContext()
 	_, err = cli.Stop(ctx)
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {
 			ux.Logger.PrintToUser("No local network running")
-			return nil
+		} else {
+			app.Log.Debug("failed stopping local network", zap.Error(err))
 		}
-		return fmt.Errorf("failed stopping gRPC server process: %w", err)
 	}
 
 	pid, err := GetServerPID(app)

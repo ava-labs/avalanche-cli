@@ -79,6 +79,7 @@ func startNetwork(cmd *cobra.Command, args []string) error {
 		client.WithPluginDir(pluginDir),
 		client.WithExecPath(avalancheGoBinPath),
 		client.WithRootDataDir(outputDir),
+		client.WithReassignPortsIfUsed(true),
 	}
 
 	// load global node configs if they exist
