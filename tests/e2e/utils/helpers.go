@@ -5,9 +5,11 @@ package utils
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/user"
@@ -629,4 +631,19 @@ func RunSpacesVMAPITest(rpc string) error {
 		return fmt.Errorf("expected value to be %q, got %q", v, rv)
 	}
 	return nil
+}
+
+func GetFileHash(filename string) (string, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
