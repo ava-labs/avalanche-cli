@@ -40,7 +40,7 @@ jobs:
       - run: scripts/build.sh
       - run: go test -v -coverprofile=coverage.out ./...
         env:
-          CGO_FLAGS: "-O -D__BLST_PORTABLE__"
+          CGO_CFLAGS: "-O -D__BLST_PORTABLE__"
       - run: go tool cover -func=coverage.out
   release:
     needs: [lint, test]

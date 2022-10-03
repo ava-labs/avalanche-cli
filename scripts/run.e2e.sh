@@ -12,7 +12,7 @@ then
 fi
 
 go install -v github.com/onsi/ginkgo/v2/ginkgo@v2.1.3
-export CGO_FLAGS="-O -D__BLST_PORTABLE__"
+export CGO_CFLAGS="-O -D__BLST_PORTABLE__"
 ACK_GINKGO_RC=true ginkgo build ./tests/e2e
 
 ./tests/e2e/e2e.test --ginkgo.v
