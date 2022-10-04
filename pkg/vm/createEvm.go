@@ -89,7 +89,7 @@ func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVe
 		case feeState:
 			*conf, direction, err = getFeeConfig(*conf, app)
 		case airdropState:
-			allocation, direction, err = getAllocation(app, defaultEvmAirdropAmount, oneAvax, "Amount to airdrop (in AVAX units)")
+			allocation, direction, err = getEVMAllocation(app)
 		case precompilesState:
 			*conf, direction, err = getPrecompiles(*conf, app)
 		default:
@@ -128,4 +128,8 @@ func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVe
 	}
 
 	return prettyJSON.Bytes(), sc, nil
+}
+
+func getEVMAllocation(app *application.Avalanche) (core.GenesisAlloc, statemachine.StateDirection, error) {
+	return getAllocation(app, defaultEvmAirdropAmount, oneAvax, "Amount to airdrop (in AVAX units)")
 }
