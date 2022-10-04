@@ -130,6 +130,7 @@ func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVe
 	return prettyJSON.Bytes(), sc, nil
 }
 
+// In own function to facilitate testing
 func getEVMAllocation(app *application.Avalanche) (core.GenesisAlloc, statemachine.StateDirection, error) {
 	return getAllocation(app, defaultEvmAirdropAmount, oneAvax, "Amount to airdrop (in AVAX units)")
 }
