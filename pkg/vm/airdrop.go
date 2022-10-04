@@ -13,6 +13,12 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+const (
+	defaultAirdrop        = "Airdrop 1 million tokens to the default address (do not use in production)"
+	customAirdrop  string = "Customize your airdrop"
+	extendAirdrop         = "Would you like to airdrop more tokens?"
+)
+
 func getDefaultAllocation(defaultAirdropAmount string) (core.GenesisAlloc, error) {
 	allocation := core.GenesisAlloc{}
 	defaultAmount, ok := new(big.Int).SetString(defaultAirdropAmount, 10)
@@ -33,10 +39,6 @@ func getAllocation(
 	captureAmountLabel string,
 ) (core.GenesisAlloc, statemachine.StateDirection, error) {
 	allocation := core.GenesisAlloc{}
-
-	defaultAirdrop := "Airdrop 1 million tokens to the default address (do not use in production)"
-	customAirdrop := "Customize your airdrop"
-	extendAirdrop := "Would you like to airdrop more tokens?"
 
 	airdropType, err := app.Prompt.CaptureList(
 		"How would you like to distribute funds",
