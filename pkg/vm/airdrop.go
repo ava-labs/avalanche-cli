@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	defaultAirdrop        = "Airdrop 1 million tokens to the default address (do not use in production)"
-	customAirdrop  string = "Customize your airdrop"
-	extendAirdrop         = "Would you like to airdrop more tokens?"
+	defaultAirdrop = "Airdrop 1 million tokens to the default address (do not use in production)"
+	customAirdrop  = "Customize your airdrop"
+	extendAirdrop  = "Would you like to airdrop more tokens?"
 )
 
 func getDefaultAllocation(defaultAirdropAmount string) (core.GenesisAlloc, error) {
