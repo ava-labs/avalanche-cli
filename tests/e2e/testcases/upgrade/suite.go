@@ -31,8 +31,6 @@ var _ = ginkgo.Describe("[Upgrade]", func() {
 	ginkgo.BeforeEach(func() {
 		// local network
 		_ = commands.StartNetwork()
-		// key
-		_ = utils.DeleteKey(keyName)
 		output, err := commands.CreateKeyFromPath(keyName, utils.EwoqKeyPath)
 		if err != nil {
 			fmt.Println(output)

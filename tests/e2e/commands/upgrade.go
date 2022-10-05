@@ -18,7 +18,7 @@ func UpgradeVMConfig(subnetName string, targetVersion string) (string, error) {
 		UpgradeCmd,
 		"vm",
 		subnetName,
-		"--future",
+		"--config",
 		"--version",
 		targetVersion,
 	)
