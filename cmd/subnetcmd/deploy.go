@@ -20,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	ledger "github.com/ava-labs/avalanche-ledger-go"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/keychain"
 	"github.com/ava-labs/coreth/core"
 	spacesvmchain "github.com/ava-labs/spacesvm/chain"
@@ -251,29 +252,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// from here on we are assuming a public deploy
 
-	// prompt for control keys
-	if controlKeys == nil {
-		var cancelled bool
-		controlKeys, cancelled, err = getControlKeys(network, keyName)
-		if err != nil {
-			return err
-		}
-		if cancelled {
-			ux.Logger.PrintToUser("User cancelled. No subnet deployed")
-			return nil
-		}
-	}
-
-	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
-
-	// prompt for threshold
-	if len(controlKeys) > 0 && threshold == 0 {
-		threshold, err = getThreshold(len(controlKeys))
-		if err != nil {
-			return err
-		}
-	}
-
 	// get keychain accesor
 	var kc keychain.Accessor
 	if useLedger {
@@ -282,7 +260,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		kc = keychain.NewLedgerKeychain(ledgerDevice)
-		ux.Logger.PrintToUser("Please provide extended public key on the ledger device")
 	} else {
 		var networkID uint32
 		switch network {
@@ -301,6 +278,29 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		kc = sf.KeyChain()
+	}
+
+	// prompt for control keys
+	if controlKeys == nil {
+		var cancelled bool
+		controlKeys, cancelled, err = getControlKeys(network, kc)
+		if err != nil {
+			return err
+		}
+		if cancelled {
+			ux.Logger.PrintToUser("User cancelled. No subnet deployed")
+			return nil
+		}
+	}
+
+	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
+
+	// prompt for threshold
+	if len(controlKeys) > 0 && threshold == 0 {
+		threshold, err = getThreshold(len(controlKeys))
+		if err != nil {
+			return err
+		}
 	}
 
 	// deploy to public network
@@ -324,7 +324,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	return app.UpdateSidecar(&sidecar)
 }
 
-func getControlKeys(network models.Network, keyName string) ([]string, bool, error) {
+func getControlKeys(network models.Network, kc keychain.Accessor) ([]string, bool, error) {
 	controlKeysInitialPrompt := "Configure which addresses may add new validators to the subnet.\n" +
 		"These addresses are known as your control keys. You will also\n" +
 		"set how many control keys are required to add a validator (the threshold)."
@@ -354,7 +354,7 @@ func getControlKeys(network models.Network, keyName string) ([]string, bool, err
 	case useAll:
 		keys, err = useAllKeys(network)
 	case creationOnly:
-		keys, err = loadCreationKey(network, keyName)
+		keys, err = loadCreationKey(network, kc)
 	case custom:
 		keys, cancelled, err = enterCustomKeys(network)
 	}
@@ -395,14 +395,31 @@ func useAllKeys(network models.Network) ([]string, error) {
 	return existing, nil
 }
 
-func loadCreationKey(network models.Network, keyName string) ([]string, error) {
-	path := filepath.Join(app.GetKeyDir(), keyName+constants.KeySuffix)
-	k, err := key.LoadSoft(network.NetworkID(), path)
+func loadCreationKey(network models.Network, kc keychain.Accessor) ([]string, error) {
+	addrs := kc.Addresses().List()
+	if len(addrs) == 0 {
+		return nil, fmt.Errorf("not creation addresses found")
+	}
+	addr := addrs[0]
+	var networkID uint32
+	switch network {
+	case models.Fuji:
+		networkID = avago_constants.FujiID
+	case models.Mainnet:
+		networkID = avago_constants.MainnetID
+	case models.Local:
+		// used for E2E testing of public related paths
+		networkID = constants.LocalNetworkID
+	default:
+		return nil, fmt.Errorf("unsupported public network")
+	}
+	hrp := key.GetHRP(networkID)
+	addrStr, err := address.Format("P", hrp, addr[:])
 	if err != nil {
 		return nil, err
 	}
 
-	return k.P(), nil
+	return []string{addrStr}, nil
 }
 
 func enterCustomKeys(network models.Network) ([]string, bool, error) {
