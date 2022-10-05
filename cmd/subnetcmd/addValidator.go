@@ -159,17 +159,9 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	       ux.Logger.PrintToUser("Please provide extended public key on the ledger device")
 	   } else {
 	*/
-	var networkID uint32
-	switch network {
-	case models.Fuji:
-		networkID = avago_constants.FujiID
-	case models.Mainnet:
-		networkID = avago_constants.MainnetID
-	case models.Local:
-		// used for E2E testing of public related paths
-		networkID = constants.LocalNetworkID
-	default:
-		return fmt.Errorf("unsupported public network")
+	networkID, err := network.NetworkID()
+	if err != nil {
+		return err
 	}
 	sf, err := key.LoadSoft(networkID, app.GetKeyPath(keyName))
 	if err != nil {
@@ -177,7 +169,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 	kc = sf.KeyChain()
 	// }
-	deployer := subnet.NewPublicDeployer(app, kc, network)
+	deployer := subnet.NewPublicDeployer(app, false, kc, network)
 	return deployer.AddValidator(subnetID, nodeID, weight, start, duration)
 }
 

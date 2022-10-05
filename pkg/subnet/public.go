@@ -15,7 +15,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
-	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/platformvm/validator"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -27,15 +26,17 @@ import (
 
 type PublicDeployer struct {
 	LocalDeployer
-	kc      keychain.Accessor
-	network models.Network
-	app     *application.Avalanche
+	usingLedger bool
+	kc          keychain.Accessor
+	network     models.Network
+	app         *application.Avalanche
 }
 
-func NewPublicDeployer(app *application.Avalanche, kc keychain.Accessor, network models.Network) *PublicDeployer {
+func NewPublicDeployer(app *application.Avalanche, usingLedger bool, kc keychain.Accessor, network models.Network) *PublicDeployer {
 	return &PublicDeployer{
 		LocalDeployer: *NewLocalDeployer(app, "", ""),
 		app:           app,
+		usingLedger:   usingLedger,
 		kc:            kc,
 		network:       network,
 	}
@@ -54,6 +55,9 @@ func (d *PublicDeployer) AddValidator(subnet ids.ID, nodeID ids.NodeID, weight u
 			Wght:   weight,
 		},
 		Subnet: subnet,
+	}
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign hash on the ledger device (add validator transaction) *** ")
 	}
 	id, err := wallet.P().IssueAddSubnetValidatorTx(validator)
 	if err != nil {
@@ -127,6 +131,9 @@ func (d *PublicDeployer) createBlockchainTx(chainName string, vmID, subnetID ids
 	// TODO do we need any of these to be set?
 	options := []common.Option{}
 	fxIDs := make([]ids.ID, 0)
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign hash on the ledger device (create blockchain transaction) *** ")
+	}
 	return wallet.P().IssueCreateChainTx(subnetID, genesis, vmID, fxIDs, chainName, options...)
 }
 
@@ -145,6 +152,9 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 		Locktime:  0,
 	}
 	opts := []common.Option{}
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign hash on the ledger device (create subnet transaction) *** ")
+	}
 	return wallet.P().IssueCreateSubnetTx(owners, opts...)
 }
 
@@ -159,17 +169,9 @@ func (d *PublicDeployer) validateWalletIsSubnetOwner(controlKeys []string, thres
 	}
 	walletAddr := walletAddrs[0]
 
-	var networkID uint32
-	switch d.network {
-	case models.Fuji:
-		networkID = avago_constants.FujiID
-	case models.Mainnet:
-		networkID = avago_constants.MainnetID
-	case models.Local:
-		// used for E2E testing of public related paths
-		networkID = constants.LocalNetworkID
-	default:
-		return fmt.Errorf("unsupported public network")
+	networkID, err := d.network.NetworkID()
+	if err != nil {
+		return err
 	}
 	hrp := key.GetHRP(networkID)
 	walletAddrStr, err := address.Format("P", hrp, walletAddr[:])
