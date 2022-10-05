@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	ledger "github.com/ava-labs/avalanche-ledger-go"
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -68,13 +69,6 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		err    error
 	)
 
-	if keyName == "" {
-		keyName, err = captureKeyName()
-		if err != nil {
-			return err
-		}
-	}
-
 	var network models.Network
 	switch {
 	case deployTestnet:
@@ -85,13 +79,29 @@ func addValidator(cmd *cobra.Command, args []string) error {
 
 	if network == models.Undefined {
 		networkStr, err := app.Prompt.CaptureList(
-			"Choose a network to deploy on. This command only supports Fuji currently.",
-			[]string{models.Fuji.String(), models.Mainnet.String() + " (coming soon)"},
+			"Choose a network to deploy on.",
+			[]string{models.Fuji.String(), models.Mainnet.String()},
 		)
 		if err != nil {
 			return err
 		}
 		network = models.NetworkFromString(networkStr)
+	}
+
+	switch network {
+	case models.Fuji:
+		if !useLedger {
+			if keyName == "" {
+				keyName, err = captureKeyName()
+				if err != nil {
+					return err
+				}
+			}
+		}
+	case models.Mainnet:
+		useLedger = true
+	default:
+		return errors.New("not implemented")
 	}
 
 	// used in E2E to simulate public network execution paths on a local network
@@ -149,27 +159,30 @@ func addValidator(cmd *cobra.Command, args []string) error {
 
 	// get keychain accesor
 	var kc keychain.Accessor
-	/*
-	   if useLedger {
-	       ledgerDevice, err := ledger.Connect()
-	       if err != nil {
-	           return err
-	       }
-	       kc = keychain.NewLedgerKeychain(ledgerDevice)
-	       ux.Logger.PrintToUser("Please provide extended public key on the ledger device")
-	   } else {
-	*/
-	networkID, err := network.NetworkID()
-	if err != nil {
-		return err
+	if useLedger {
+		ledgerDevice, err := ledger.Connect()
+		if err != nil {
+			return err
+		}
+		// ask for addresses here to print user msg for ledger interaction
+		ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
+		_, err = ledgerDevice.Addresses(1)
+		if err != nil {
+			return err
+		}
+		kc = keychain.NewLedgerKeychain(ledgerDevice)
+	} else {
+		networkID, err := network.NetworkID()
+		if err != nil {
+			return err
+		}
+		sf, err := key.LoadSoft(networkID, app.GetKeyPath(keyName))
+		if err != nil {
+			return err
+		}
+		kc = sf.KeyChain()
 	}
-	sf, err := key.LoadSoft(networkID, app.GetKeyPath(keyName))
-	if err != nil {
-		return err
-	}
-	kc = sf.KeyChain()
-	// }
-	deployer := subnet.NewPublicDeployer(app, false, kc, network)
+	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	return deployer.AddValidator(subnetID, nodeID, weight, start, duration)
 }
 

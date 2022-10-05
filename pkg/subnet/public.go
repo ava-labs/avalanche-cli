@@ -57,7 +57,7 @@ func (d *PublicDeployer) AddValidator(subnet ids.ID, nodeID ids.NodeID, weight u
 		Subnet: subnet,
 	}
 	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign hash on the ledger device (add validator transaction) *** ")
+		ux.Logger.PrintToUser("*** Please sign add validator hash on the ledger device *** ")
 	}
 	id, err := wallet.P().IssueAddSubnetValidatorTx(validator)
 	if err != nil {
@@ -132,7 +132,7 @@ func (d *PublicDeployer) createBlockchainTx(chainName string, vmID, subnetID ids
 	options := []common.Option{}
 	fxIDs := make([]ids.ID, 0)
 	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign hash on the ledger device (create blockchain transaction) *** ")
+		ux.Logger.PrintToUser("*** Please sign blockchain creation hash on the ledger device *** ")
 	}
 	return wallet.P().IssueCreateChainTx(subnetID, genesis, vmID, fxIDs, chainName, options...)
 }
@@ -153,7 +153,7 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 	}
 	opts := []common.Option{}
 	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign hash on the ledger device (create subnet transaction) *** ")
+		ux.Logger.PrintToUser("*** Please sign subnet creation hash on the ledger device *** ")
 	}
 	return wallet.P().IssueCreateSubnetTx(owners, opts...)
 }
