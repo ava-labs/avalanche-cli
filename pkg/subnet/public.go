@@ -26,15 +26,17 @@ import (
 
 type PublicDeployer struct {
 	LocalDeployer
+	useLedger   bool
 	privKeyPath string
 	network     models.Network
 	app         *application.Avalanche
 }
 
-func NewPublicDeployer(app *application.Avalanche, privKeyPath string, network models.Network) *PublicDeployer {
+func NewPublicDeployer(app *application.Avalanche, useLedger bool, privKeyPath string, network models.Network) *PublicDeployer {
 	return &PublicDeployer{
 		LocalDeployer: *NewLocalDeployer(app, "", ""),
 		app:           app,
+		useLedger:     useLedger,
 		privKeyPath:   privKeyPath,
 		network:       network,
 	}
@@ -111,6 +113,9 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error
 	case models.Fuji:
 		api = constants.FujiAPIEndpoint
 		networkID = avago_constants.FujiID
+	case models.Mainnet:
+		api = constants.MainnetAPIEndpoint
+		networkID = avago_constants.MainnetID
 	case models.Local:
 		// used for E2E testing of public related paths
 		api = constants.LocalAPIEndpoint
@@ -164,6 +169,8 @@ func (d *PublicDeployer) validateWalletIsSubnetOwner(controlKeys []string, thres
 	switch d.network {
 	case models.Fuji:
 		networkID = avago_constants.FujiID
+	case models.Mainnet:
+		networkID = avago_constants.MainnetID
 	case models.Local:
 		// used for E2E testing of public related paths
 		networkID = constants.LocalNetworkID

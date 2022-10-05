@@ -176,6 +176,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	genesisPath := app.GetGenesisPath(chain)
 
+	useLedger := false
+
 	switch network {
 	case models.Local:
 		app.Log.Debug("Deploy local")
@@ -232,8 +234,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-	case models.Mainnet: // in the future, just make the switch pass, fuij/main implementation is the same (for now)
-		return errors.New("deploying to mainnet is not yet supported") // for now not supported
+	case models.Mainnet:
+		useLedger = true
+
 	default:
 		return errors.New("not implemented")
 	}
@@ -269,7 +272,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	// deploy to public network
-	deployer := subnet.NewPublicDeployer(app, app.GetKeyPath(keyName), network)
+	deployer := subnet.NewPublicDeployer(app, useLedger, app.GetKeyPath(keyName), network)
 	subnetID, blockchainID, err := deployer.Deploy(controlKeys, threshold, chain, chainGenesis)
 	if err != nil {
 		return err
