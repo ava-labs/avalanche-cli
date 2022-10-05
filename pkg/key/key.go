@@ -80,7 +80,7 @@ func WithFeeDeduct(fee uint64) OpOption {
 	}
 }
 
-func getHRP(networkID uint32) string {
+func GetHRP(networkID uint32) string {
 	switch networkID {
 	case constants.LocalID:
 		return constants.LocalHRP

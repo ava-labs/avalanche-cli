@@ -11,12 +11,14 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/wallet/subnet/primary/keychain"
 	"github.com/spf13/cobra"
 )
 
@@ -144,7 +146,38 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("End time: %s", start.Add(duration).Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("Weight: %d", weight)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
-	deployer := subnet.NewPublicDeployer(app, false, app.GetKeyPath(keyName), network)
+
+	// get keychain accesor
+	var kc keychain.Accessor
+	/*
+	   if useLedger {
+	       ledgerDevice, err := ledger.Connect()
+	       if err != nil {
+	           return err
+	       }
+	       kc = keychain.NewLedgerKeychain(ledgerDevice)
+	       ux.Logger.PrintToUser("Please provide extended public key on the ledger device")
+	   } else {
+	*/
+	var networkID uint32
+	switch network {
+	case models.Fuji:
+		networkID = avago_constants.FujiID
+	case models.Mainnet:
+		networkID = avago_constants.MainnetID
+	case models.Local:
+		// used for E2E testing of public related paths
+		networkID = constants.LocalNetworkID
+	default:
+		return fmt.Errorf("unsupported public network")
+	}
+	sf, err := key.LoadSoft(networkID, app.GetKeyPath(keyName))
+	if err != nil {
+		return err
+	}
+	kc = sf.KeyChain()
+	// }
+	deployer := subnet.NewPublicDeployer(app, kc, network)
 	return deployer.AddValidator(subnetID, nodeID, weight, start, duration)
 }
 

@@ -18,6 +18,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	ledger "github.com/ava-labs/avalanche-ledger-go"
+	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/wallet/subnet/primary/keychain"
 	"github.com/ava-labs/coreth/core"
 	spacesvmchain "github.com/ava-labs/spacesvm/chain"
 	"github.com/spf13/cobra"
@@ -271,8 +274,37 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// get keychain accesor
+	var kc keychain.Accessor
+	if useLedger {
+		ledgerDevice, err := ledger.Connect()
+		if err != nil {
+			return err
+		}
+		kc = keychain.NewLedgerKeychain(ledgerDevice)
+		ux.Logger.PrintToUser("Please provide extended public key on the ledger device")
+	} else {
+		var networkID uint32
+		switch network {
+		case models.Fuji:
+			networkID = avago_constants.FujiID
+		case models.Mainnet:
+			networkID = avago_constants.MainnetID
+		case models.Local:
+			// used for E2E testing of public related paths
+			networkID = constants.LocalNetworkID
+		default:
+			return fmt.Errorf("unsupported public network")
+		}
+		sf, err := key.LoadSoft(networkID, app.GetKeyPath(keyName))
+		if err != nil {
+			return err
+		}
+		kc = sf.KeyChain()
+	}
+
 	// deploy to public network
-	deployer := subnet.NewPublicDeployer(app, useLedger, app.GetKeyPath(keyName), network)
+	deployer := subnet.NewPublicDeployer(app, kc, network)
 	subnetID, blockchainID, err := deployer.Deploy(controlKeys, threshold, chain, chainGenesis)
 	if err != nil {
 		return err

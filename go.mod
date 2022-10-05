@@ -2,8 +2,13 @@ module github.com/ava-labs/avalanche-cli
 
 go 1.18
 
+replace github.com/ava-labs/avalanchego => ../avalanchego-internal/
+
+replace github.com/zondax/ledger-go => ../ledger-go/
+
 require (
 	github.com/ava-labs/apm v0.0.4
+	github.com/ava-labs/avalanche-ledger-go v0.0.7-0.20221005140653-03a39d34a581
 	github.com/ava-labs/avalanche-network-runner v1.2.4-0.20221003163451-7d3d1bfa924f
 	github.com/ava-labs/avalanchego v1.8.6
 	github.com/ava-labs/coreth v0.10.0-rc.1
@@ -30,6 +35,7 @@ require (
 )
 
 require (
+	github.com/FactomProject/btcutilecc v0.0.0-20130527213604-d3a63a5752ec // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20220517143526-88bb52951d5b // indirect
@@ -109,6 +115,7 @@ require (
 	github.com/otiai10/copy v1.7.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.5 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.13.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
@@ -131,6 +138,8 @@ require (
 	github.com/tyler-smith/go-bip39 v1.0.2 // indirect
 	github.com/xanzy/ssh-agent v0.3.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
+	github.com/zondax/hid v0.9.0 // indirect
+	github.com/zondax/ledger-go v0.12.2 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect

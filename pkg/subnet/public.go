@@ -21,23 +21,22 @@ import (
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
+	"github.com/ava-labs/avalanchego/wallet/subnet/primary/keychain"
 	"github.com/olekukonko/tablewriter"
 )
 
 type PublicDeployer struct {
 	LocalDeployer
-	useLedger   bool
-	privKeyPath string
-	network     models.Network
-	app         *application.Avalanche
+	kc      keychain.Accessor
+	network models.Network
+	app     *application.Avalanche
 }
 
-func NewPublicDeployer(app *application.Avalanche, useLedger bool, privKeyPath string, network models.Network) *PublicDeployer {
+func NewPublicDeployer(app *application.Avalanche, kc keychain.Accessor, network models.Network) *PublicDeployer {
 	return &PublicDeployer{
 		LocalDeployer: *NewLocalDeployer(app, "", ""),
 		app:           app,
-		useLedger:     useLedger,
-		privKeyPath:   privKeyPath,
+		kc:            kc,
 		network:       network,
 	}
 }
@@ -104,34 +103,20 @@ func (d *PublicDeployer) Deploy(controlKeys []string, threshold uint32, chain st
 func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error) {
 	ctx := context.Background()
 
-	var (
-		api       string
-		networkID uint32
-	)
-
+	var api string
 	switch d.network {
 	case models.Fuji:
 		api = constants.FujiAPIEndpoint
-		networkID = avago_constants.FujiID
 	case models.Mainnet:
 		api = constants.MainnetAPIEndpoint
-		networkID = avago_constants.MainnetID
 	case models.Local:
 		// used for E2E testing of public related paths
 		api = constants.LocalAPIEndpoint
-		networkID = constants.LocalNetworkID
 	default:
 		return nil, fmt.Errorf("unsupported public network")
 	}
 
-	sf, err := key.LoadSoft(networkID, d.privKeyPath)
-	if err != nil {
-		return nil, err
-	}
-
-	kc := sf.KeyChain()
-
-	wallet, err := primary.NewWalletWithTxs(ctx, api, kc, preloadTxs...)
+	wallet, err := primary.NewWalletWithTxs(ctx, api, d.kc, preloadTxs...)
 	if err != nil {
 		return nil, err
 	}
@@ -164,8 +149,17 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 }
 
 func (d *PublicDeployer) validateWalletIsSubnetOwner(controlKeys []string, threshold uint32) error {
-	var networkID uint32
+	if threshold != 1 {
+		return fmt.Errorf("multisig subnets are currently unsupported")
+	}
 
+	walletAddrs := d.kc.Addresses().List()
+	if len(walletAddrs) == 0 {
+		return fmt.Errorf("not addrs in wallet")
+	}
+	walletAddr := walletAddrs[0]
+
+	var networkID uint32
 	switch d.network {
 	case models.Fuji:
 		networkID = avago_constants.FujiID
@@ -177,22 +171,11 @@ func (d *PublicDeployer) validateWalletIsSubnetOwner(controlKeys []string, thres
 	default:
 		return fmt.Errorf("unsupported public network")
 	}
-
-	sf, err := key.LoadSoft(networkID, d.privKeyPath)
+	hrp := key.GetHRP(networkID)
+	walletAddrStr, err := address.Format("P", hrp, walletAddr[:])
 	if err != nil {
 		return err
 	}
-
-	if threshold != 1 {
-		return fmt.Errorf("multisig subnets are currently unsupported")
-	}
-
-	walletAddrsStr := sf.P()
-	if len(walletAddrsStr) == 0 {
-		return fmt.Errorf("no wallet address specified")
-	}
-
-	walletAddrStr := walletAddrsStr[0]
 
 	for _, addr := range controlKeys {
 		if addr == walletAddrStr {
