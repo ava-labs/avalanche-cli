@@ -4,7 +4,6 @@
 package plugins
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -33,8 +32,10 @@ var (
 	defaultAvalanchegoBuildDir = filepath.Join("go", "src", "github.com", constants.AvaLabsOrg, constants.AvalancheGoRepoName, "build")
 )
 
+// This function needs to be called to initialize this package
+//
 // this init is partly "borrowed" from avalanchego/config/config.go
-func init() {
+func SetScanConfigDirs() error {
 	folderPath, err := osext.ExecutableFolder()
 	if err == nil {
 		scanConfigDirs = append(scanConfigDirs, folderPath)
@@ -42,15 +43,11 @@ func init() {
 	}
 	wd, err := os.Getwd()
 	if err != nil {
-		// really this shouldn't happen, and we could just os.Exit,
-		// but it's bit bad to hide an os.Exit here
-		fmt.Println("Warning: failed to get current directory")
+		return err
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		// really this shouldn't happen, and we could just os.Exit,
-		// but it's bit bad to hide an os.Exit here
-		fmt.Println("Warning: failed to get user home dir")
+		return err
 	}
 	// TODO: Any other dirs we want to scan?
 	scanConfigDirs = append(scanConfigDirs,
@@ -63,6 +60,7 @@ func init() {
 		filepath.Join(home, ".avalanchego"),
 		defaultUnexpandedDataDir,
 	)
+	return nil
 }
 
 func FindPluginDir() string {

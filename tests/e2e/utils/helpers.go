@@ -477,7 +477,6 @@ func GetNodeVMVersion(nodeURI string, vmid string) (string, error) {
 		return "", err
 	}
 
-	fmt.Println("Got this version:", versionInfo.VMVersions)
 	for vm, version := range versionInfo.VMVersions {
 		if vm == vmid {
 			return version, nil

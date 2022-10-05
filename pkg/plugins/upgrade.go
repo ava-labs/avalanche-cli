@@ -7,27 +7,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
-func getVMID(sc models.Sidecar) (string, error) {
-	// get vmid
-	var vmid string
-	if sc.ImportedFromAPM {
-		vmid = sc.ImportedVMID
-	} else {
-		chainVMID, err := utils.VMID(sc.Name)
-		if err != nil {
-			return "", err
-		}
-		vmid = chainVMID.String()
-	}
-	return vmid, nil
-}
-
 func ManualUpgrade(app *application.Avalanche, sc models.Sidecar, targetVersion string) error {
-	vmid, err := getVMID(sc)
+	vmid, err := sc.GetVMID()
 	if err != nil {
 		return err
 	}
@@ -70,7 +54,7 @@ func AutomatedUpgrade(app *application.Avalanche, sc models.Sidecar, targetVersi
 		return err
 	}
 
-	vmid, err := getVMID(sc)
+	vmid, err := sc.GetVMID()
 	if err != nil {
 		return err
 	}

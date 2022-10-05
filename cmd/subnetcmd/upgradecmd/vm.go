@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	futureDeployment  = "All future deployments"
+	futureDeployment  = "Update config for future deployments"
 	localDeployment   = "Existing local deployment (coming soon)"
 	fujiDeployment    = "Fuji"
 	mainnetDeployment = "Mainnet (coming soon)"
@@ -28,14 +28,14 @@ var (
 	useFuji       bool
 	useMainnet    bool
 	useLocal      bool
-	useFuture     bool
+	useConfig     bool
 	useManual     bool
 	useLatest     bool
 	targetVersion string
 	useBinary     string
 )
 
-// avalanche subnet delete
+// avalanche subnet update vm
 func newVMCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "vm [subnetName]",
@@ -46,11 +46,11 @@ func newVMCmd() *cobra.Command {
 		SilenceUsage: true,
 	}
 
-	cmd.Flags().BoolVar(&useFuture, "future", false, "upgrade future subnet deployments")
+	cmd.Flags().BoolVar(&useConfig, "config", false, "upgrade config for future subnet deployments")
 	cmd.Flags().BoolVar(&useLocal, "local", false, "upgrade existing `local` deployment")
 	cmd.Flags().BoolVar(&useFuji, "fuji", false, "upgrade existing `fuji` deployment (alias for `testnet`)")
 	cmd.Flags().BoolVar(&useFuji, "testnet", false, "upgrade existing `testbet` deployment (alias for `fuji`)")
-	cmd.Flags().BoolVar(&useMainnet, "mainnet", false, "upgrade existing `local` deployment")
+	cmd.Flags().BoolVar(&useMainnet, "mainnet", false, "upgrade existing `mainnet` deployment")
 
 	cmd.Flags().BoolVar(&useManual, "print", false, "print instructions for upgrading")
 	cmd.Flags().StringVar(&pluginDir, "plugin-dir", "", "plugin directory to automatically upgrade VM")
@@ -63,7 +63,7 @@ func newVMCmd() *cobra.Command {
 }
 
 func atMostOneNetworkSelected() bool {
-	return !(useFuture && useLocal || useFuture && useFuji || useFuture && useMainnet || useLocal && useFuji ||
+	return !(useConfig && useLocal || useConfig && useFuji || useConfig && useMainnet || useLocal && useFuji ||
 		useLocal && useMainnet || useFuji && useMainnet)
 }
 
@@ -116,7 +116,7 @@ func upgradeVM(cmd *cobra.Command, args []string) error {
 
 func selectNetworkToUpgrade(sc models.Sidecar) (string, error) {
 	switch {
-	case useFuture:
+	case useConfig:
 		return futureDeployment, nil
 	case useLocal:
 		return localDeployment, nil

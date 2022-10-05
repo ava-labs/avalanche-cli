@@ -73,7 +73,14 @@ func CreatePlugin(app *application.Avalanche, subnetName string, pluginDir strin
 }
 
 // Downloads the target VM (if necessary) and copies it into the plugin directory
-func CreatePluginFromVersion(app *application.Avalanche, subnetName string, vm models.VMType, version string, vmid string, pluginDir string) (string, error) {
+func CreatePluginFromVersion(
+	app *application.Avalanche,
+	subnetName string,
+	vm models.VMType,
+	version string,
+	vmid string,
+	pluginDir string,
+) (string, error) {
 	var vmSourcePath string
 	var vmDestPath string
 	var err error

@@ -29,7 +29,6 @@ const (
 
 var _ = ginkgo.Describe("[Upgrade]", func() {
 	ginkgo.BeforeEach(func() {
-		commands.CleanNetworkHard()
 		// local network
 		_ = commands.StartNetwork()
 		// key
@@ -43,11 +42,12 @@ var _ = ginkgo.Describe("[Upgrade]", func() {
 	})
 
 	ginkgo.AfterEach(func() {
-		commands.CleanNetwork()
+		commands.CleanNetworkHard()
 		err := utils.DeleteConfigs(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		err = utils.DeleteConfigs(secondSubnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
+		_ = utils.DeleteKey(keyName)
 	})
 
 	ginkgo.It("can create and update future", func() {
@@ -62,11 +62,8 @@ var _ = ginkgo.Describe("[Upgrade]", func() {
 		gomega.Expect(containsVersion1).Should(gomega.BeTrue())
 		gomega.Expect(containsVersion2).Should(gomega.BeFalse())
 
-		output, err = commands.UpgradeVMFuture(subnetName, subnetEVMVersion2)
+		_, err = commands.UpgradeVMConfig(subnetName, subnetEVMVersion2)
 		gomega.Expect(err).Should(gomega.BeNil())
-		if err != nil {
-			fmt.Println(output)
-		}
 
 		output, err = commands.DescribeSubnet(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -112,7 +109,7 @@ var _ = ginkgo.Describe("[Upgrade]", func() {
 		err = utils.WaitSubnetValidators(subnetID, nodeInfos)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		// TODO Delete this after updating
+		// TODO Delete this after updating this test as described below
 		var originalHash string
 
 		// upgrade the vm on each node
@@ -133,12 +130,8 @@ var _ = ginkgo.Describe("[Upgrade]", func() {
 		commands.StopNetwork()
 
 		for _, nodeInfo := range nodeInfos {
-			output, err := commands.UpgradeVMPublic(subnetName, subnetEVMVersion2, nodeInfo.PluginDir)
+			_, err := commands.UpgradeVMPublic(subnetName, subnetEVMVersion2, nodeInfo.PluginDir)
 			gomega.Expect(err).Should(gomega.BeNil())
-			fmt.Println(output)
-			if err != nil {
-				fmt.Println(output)
-			}
 		}
 
 		// TODO: There is currently only one subnet-evm version compatible with avalanchego. These

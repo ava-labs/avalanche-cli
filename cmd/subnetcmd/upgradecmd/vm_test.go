@@ -122,7 +122,7 @@ func TestAtMostOneNetworkSelected(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			useFuture = tt.useFuture
+			useConfig = tt.useFuture
 			useLocal = tt.useLocal
 			useFuji = tt.useFuji
 			useMainnet = tt.useMainnet

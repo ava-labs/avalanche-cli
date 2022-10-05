@@ -476,9 +476,6 @@ func GetLocallyDeployedSubnets(app *application.Avalanche) (map[string]struct{},
 	if err != nil {
 		return nil, err
 	}
-	if cli == nil {
-		return nil, errors.New("unable to initialize cli")
-	}
 
 	ctx := binutils.GetAsyncContext()
 	resp, err := cli.Status(ctx)
@@ -486,10 +483,9 @@ func GetLocallyDeployedSubnets(app *application.Avalanche) (map[string]struct{},
 		return nil, err
 	}
 
-	if resp != nil {
-		for _, chain := range resp.GetClusterInfo().CustomChains {
-			deployedNames[chain.ChainName] = struct{}{}
-		}
+	for _, chain := range resp.GetClusterInfo().CustomChains {
+		deployedNames[chain.ChainName] = struct{}{}
 	}
+
 	return deployedNames, nil
 }

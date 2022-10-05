@@ -6,11 +6,12 @@ package commands
 import (
 	"fmt"
 	"os/exec"
+
+	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 )
 
 /* #nosec G204 */
-func UpgradeVMFuture(subnetName string, targetVersion string) (string, error) {
-	// Create config
+func UpgradeVMConfig(subnetName string, targetVersion string) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
 		SubnetCmd,
@@ -22,24 +23,16 @@ func UpgradeVMFuture(subnetName string, targetVersion string) (string, error) {
 		targetVersion,
 	)
 
-	fmt.Println(cmd.String())
-
 	output, err := cmd.Output()
-	exitErr, typeOk := err.(*exec.ExitError)
-	stderr := ""
-	if typeOk {
-		stderr = string(exitErr.Stderr)
-	}
 	if err != nil {
+		fmt.Println(cmd.String())
 		fmt.Println(string(output))
-		fmt.Println(err)
-		fmt.Println(stderr)
+		utils.PrintStdErr(err)
 	}
 	return string(output), err
 }
 
 func UpgradeVMPublic(subnetName string, targetVersion string, pluginDir string) (string, error) {
-	// Create config
 	cmd := exec.Command(
 		CLIBinary,
 		SubnetCmd,
@@ -53,19 +46,11 @@ func UpgradeVMPublic(subnetName string, targetVersion string, pluginDir string) 
 		pluginDir,
 	)
 
-	fmt.Println(cmd.String())
-
 	output, err := cmd.Output()
-	exitErr, typeOk := err.(*exec.ExitError)
-	stderr := ""
-	if typeOk {
-		stderr = string(exitErr.Stderr)
-	}
 	if err != nil {
 		fmt.Println(cmd.String())
 		fmt.Println(string(output))
-		fmt.Println(err)
-		fmt.Println(stderr)
+		utils.PrintStdErr(err)
 	}
 	return string(output), err
 }
