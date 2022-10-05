@@ -39,7 +39,7 @@ func (s Network) NetworkID() (uint32, error) {
 	case Local:
 		return constants.LocalNetworkID, nil
 	}
-	return 0, fmt.Errorf("unsupported public network")
+	return 0, fmt.Errorf("unsupported network")
 }
 
 func NetworkFromString(s string) Network {
