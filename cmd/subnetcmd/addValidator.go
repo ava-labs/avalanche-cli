@@ -208,9 +208,17 @@ func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime t
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
 
-	uri := constants.MainnetAPIEndpoint
-	if network == models.Fuji {
+	var uri string
+	switch network {
+	case models.Fuji:
 		uri = constants.FujiAPIEndpoint
+	case models.Mainnet:
+		uri = constants.MainnetAPIEndpoint
+	case models.Local:
+		// used for E2E testing of public related paths
+		uri = constants.LocalAPIEndpoint
+	default:
+		return 0, fmt.Errorf("unsupported public network")
 	}
 
 	platformCli := platformvm.NewClient(uri)
