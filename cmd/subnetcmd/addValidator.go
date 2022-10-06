@@ -212,9 +212,6 @@ func promptDuration(start time.Time) (time.Duration, error) {
 }
 
 func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime time.Time) (time.Duration, error) {
-	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
-
 	var uri string
 	switch network {
 	case models.Fuji:
@@ -228,6 +225,8 @@ func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime t
 		return 0, fmt.Errorf("unsupported public network")
 	}
 
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
 	platformCli := platformvm.NewClient(uri)
 	vs, err := platformCli.GetCurrentValidators(ctx, avago_constants.PrimaryNetworkID, nil)
 	cancel()
