@@ -80,7 +80,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 
 	if network == models.Undefined {
 		networkStr, err := app.Prompt.CaptureList(
-			"Choose a network to deploy on.",
+			"Choose a network to add validator on.",
 			[]string{models.Fuji.String(), models.Mainnet.String()},
 		)
 		if err != nil {
