@@ -28,14 +28,15 @@ import (
 )
 
 var (
-	deployLocal   bool
-	deployTestnet bool
-	deployMainnet bool
-	useLedger     bool
-	keyName       string
-	threshold     uint32
-	controlKeys   []string
-	avagoVersion  string
+	deployLocal    bool
+	deployTestnet  bool
+	deployMainnet  bool
+	useLedger      bool
+	sameControlKey bool
+	keyName        string
+	threshold      uint32
+	controlKeys    []string
+	avagoVersion   string
 
 	errMutuallyExlusive = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 )
@@ -70,6 +71,7 @@ subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&avagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key [fuji deploys]")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploys]")
+	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use creation key as control key")
 	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to add a validator [fuji deploys]")
 	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may add new validators to the subnet [fuji deploys]")
 	return cmd
@@ -279,6 +281,14 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		kc = sf.KeyChain()
 	}
 
+	// use creation key as control key
+	if sameControlKey {
+		controlKeys, err = loadCreationKey(network, useLedger, kc)
+		if err != nil {
+			return err
+		}
+	}
+
 	// prompt for control keys
 	if controlKeys == nil {
 		var cancelled bool
@@ -332,13 +342,13 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Accessor
 	ux.Logger.PrintToUser(controlKeysInitialPrompt)
 
 	const (
-		useAll       = "Use all stored keys"
-		creationOnly = "Use creation key only"
-		custom       = "Custom list"
+		creation = "Use creation key"
+		useAll   = "Use all stored keys"
+		custom   = "Custom list"
 	)
 
 	listDecision, err := app.Prompt.CaptureList(
-		moreKeysPrompt, []string{useAll, creationOnly, custom},
+		moreKeysPrompt, []string{creation, useAll, custom},
 	)
 	if err != nil {
 		return nil, false, err
@@ -350,10 +360,10 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Accessor
 	)
 
 	switch listDecision {
+	case creation:
+		keys, err = loadCreationKey(network, useLedger, kc)
 	case useAll:
 		keys, err = useAllKeys(network)
-	case creationOnly:
-		keys, err = loadCreationKey(network, useLedger, kc)
 	case custom:
 		keys, cancelled, err = enterCustomKeys(network)
 	}
