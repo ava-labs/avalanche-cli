@@ -196,7 +196,10 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	// or, pluginDir was set but not avagoConfigPath
 	// if **both** flags were set, this will be skipped...
 	if avagoConfigPath == "" {
-		avagoConfigPath = plugins.FindAvagoConfigPath()
+		avagoConfigPath, err = plugins.FindAvagoConfigPath()
+		if err != nil {
+			return err
+		}
 		if avagoConfigPath != "" {
 			ux.Logger.PrintToUser(logging.Bold.Wrap(logging.Green.Wrap("Found a config file at %s")), avagoConfigPath)
 			yes, err := app.Prompt.CaptureYesNo("Is this the file we should update?")
@@ -226,7 +229,10 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	// avagoConfigPath was set but not pluginDir
 	// if **both** flags were set, this will be skipped...
 	if pluginDir == "" {
-		pluginDir = plugins.FindPluginDir()
+		pluginDir, err = plugins.FindPluginDir()
+		if err != nil {
+			return err
+		}
 		if pluginDir != "" {
 			ux.Logger.PrintToUser(logging.Bold.Wrap(logging.Green.Wrap("Found the VM plugin directory at %s")), pluginDir)
 			yes, err := app.Prompt.CaptureYesNo("Is this where we should install the VM?")
@@ -340,8 +346,8 @@ To setup your node, you must do two things:
 
 To add the VM to your plugin directory, copy or scp from %s
 
-If you installed avalanchego manually, your plugin directory is likely
-avalanchego/build/plugins.
+If you installed avalanchego with the install script, your plugin directory is likely
+~/.avalanchego/build/plugins.
 
 If you start your node from the command line WITHOUT a config file (e.g. via command
 line or systemd script), add the following flag to your node's startup command:

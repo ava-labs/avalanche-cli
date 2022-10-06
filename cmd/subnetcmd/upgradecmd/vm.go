@@ -36,7 +36,7 @@ var (
 )
 
 // avalanche subnet update vm
-func newVMCmd() *cobra.Command {
+func newUpgradeVMCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "vm [subnetName]",
 		Short:        "Upgrade a subnet's binary",

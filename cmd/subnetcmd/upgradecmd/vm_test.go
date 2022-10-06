@@ -14,7 +14,7 @@ func TestAtMostOneNetworkSelected(t *testing.T) {
 
 	type test struct {
 		name       string
-		useFuture  bool
+		useConfig  bool
 		useLocal   bool
 		useFuji    bool
 		useMainnet bool
@@ -24,7 +24,7 @@ func TestAtMostOneNetworkSelected(t *testing.T) {
 	tests := []test{
 		{
 			name:       "all false",
-			useFuture:  false,
+			useConfig:  false,
 			useLocal:   false,
 			useFuji:    false,
 			useMainnet: false,
@@ -32,7 +32,7 @@ func TestAtMostOneNetworkSelected(t *testing.T) {
 		},
 		{
 			name:       "future true",
-			useFuture:  true,
+			useConfig:  true,
 			useLocal:   false,
 			useFuji:    false,
 			useMainnet: false,
@@ -40,7 +40,7 @@ func TestAtMostOneNetworkSelected(t *testing.T) {
 		},
 		{
 			name:       "local true",
-			useFuture:  false,
+			useConfig:  false,
 			useLocal:   true,
 			useFuji:    false,
 			useMainnet: false,
@@ -48,7 +48,7 @@ func TestAtMostOneNetworkSelected(t *testing.T) {
 		},
 		{
 			name:       "fuji true",
-			useFuture:  false,
+			useConfig:  false,
 			useLocal:   false,
 			useFuji:    true,
 			useMainnet: false,
@@ -56,7 +56,7 @@ func TestAtMostOneNetworkSelected(t *testing.T) {
 		},
 		{
 			name:       "mainnet true",
-			useFuture:  false,
+			useConfig:  false,
 			useLocal:   false,
 			useFuji:    false,
 			useMainnet: true,
@@ -64,7 +64,7 @@ func TestAtMostOneNetworkSelected(t *testing.T) {
 		},
 		{
 			name:       "double true 1",
-			useFuture:  true,
+			useConfig:  true,
 			useLocal:   true,
 			useFuji:    false,
 			useMainnet: false,
@@ -72,7 +72,7 @@ func TestAtMostOneNetworkSelected(t *testing.T) {
 		},
 		{
 			name:       "double true 2",
-			useFuture:  true,
+			useConfig:  true,
 			useLocal:   false,
 			useFuji:    true,
 			useMainnet: false,
@@ -80,7 +80,7 @@ func TestAtMostOneNetworkSelected(t *testing.T) {
 		},
 		{
 			name:       "double true 3",
-			useFuture:  true,
+			useConfig:  true,
 			useLocal:   false,
 			useFuji:    false,
 			useMainnet: true,
@@ -88,7 +88,7 @@ func TestAtMostOneNetworkSelected(t *testing.T) {
 		},
 		{
 			name:       "double true 4",
-			useFuture:  false,
+			useConfig:  false,
 			useLocal:   true,
 			useFuji:    true,
 			useMainnet: false,
@@ -96,7 +96,7 @@ func TestAtMostOneNetworkSelected(t *testing.T) {
 		},
 		{
 			name:       "double true 5",
-			useFuture:  false,
+			useConfig:  false,
 			useLocal:   true,
 			useFuji:    false,
 			useMainnet: true,
@@ -104,7 +104,7 @@ func TestAtMostOneNetworkSelected(t *testing.T) {
 		},
 		{
 			name:       "double true 6",
-			useFuture:  false,
+			useConfig:  false,
 			useLocal:   false,
 			useFuji:    true,
 			useMainnet: true,
@@ -112,7 +112,7 @@ func TestAtMostOneNetworkSelected(t *testing.T) {
 		},
 		{
 			name:       "all true",
-			useFuture:  true,
+			useConfig:  true,
 			useLocal:   true,
 			useFuji:    true,
 			useMainnet: true,
@@ -122,7 +122,7 @@ func TestAtMostOneNetworkSelected(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			useConfig = tt.useFuture
+			useConfig = tt.useConfig
 			useLocal = tt.useLocal
 			useFuji = tt.useFuji
 			useMainnet = tt.useMainnet

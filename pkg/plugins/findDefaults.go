@@ -18,9 +18,6 @@ import (
 )
 
 var (
-	// a list of directories to scan for potential location
-	// of avalanchego configs
-	scanConfigDirs = []string{}
 	// env var for avalanchego data dir
 	defaultUnexpandedDataDir = "$" + config.AvalancheGoDataDirVar
 	// expected file name for the config
@@ -35,19 +32,20 @@ var (
 // This function needs to be called to initialize this package
 //
 // this init is partly "borrowed" from avalanchego/config/config.go
-func SetScanConfigDirs() error {
+func getScanConfigDirs() ([]string, error) {
 	folderPath, err := osext.ExecutableFolder()
+	scanConfigDirs := []string{}
 	if err == nil {
 		scanConfigDirs = append(scanConfigDirs, folderPath)
 		scanConfigDirs = append(scanConfigDirs, filepath.Dir(folderPath))
 	}
 	wd, err := os.Getwd()
 	if err != nil {
-		return err
+		return []string{}, err
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return err
+		return []string{}, err
 	}
 	// TODO: Any other dirs we want to scan?
 	scanConfigDirs = append(scanConfigDirs,
@@ -60,32 +58,40 @@ func SetScanConfigDirs() error {
 		filepath.Join(home, ".avalanchego"),
 		defaultUnexpandedDataDir,
 	)
-	return nil
+	return scanConfigDirs, nil
 }
 
-func FindPluginDir() string {
+func FindPluginDir() (string, error) {
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("Scanning your system for the plugin directory..."))
+	scanConfigDirs, err := getScanConfigDirs()
+	if err != nil {
+		return "", err
+	}
 	dir := findByCommonDirs(defaultPluginDir, scanConfigDirs)
 	if dir != "" {
-		return dir
+		return dir, nil
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("No plugin directory found on your system"))
-	return ""
+	return "", nil
 }
 
-func FindAvagoConfigPath() string {
+func FindAvagoConfigPath() (string, error) {
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("Scanning your system for existing files..."))
 	var path string
 	// Attempt 1: Try the admin API
 	if path = findByRunningProcesses(constants.AvalancheGoRepoName, config.ConfigFileKey); path != "" {
-		return path
+		return path, nil
 	}
 	// Attempt 2: find looking at some usual dirs
+	scanConfigDirs, err := getScanConfigDirs()
+	if err != nil {
+		return "", err
+	}
 	if path = findByCommonDirs(defaultConfigFileName, scanConfigDirs); path != "" {
-		return path
+		return path, nil
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("No config file has been found on your system"))
-	return ""
+	return "", nil
 }
 
 func findByCommonDirs(filename string, scanDirs []string) string {

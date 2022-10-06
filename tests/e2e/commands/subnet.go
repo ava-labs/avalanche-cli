@@ -33,6 +33,7 @@ func CreateSubnetEvmConfig(subnetName string, genesisPath string) {
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(cmd.String())
 		fmt.Println(string(output))
 		utils.PrintStdErr(err)
 	}
