@@ -4,11 +4,9 @@ go 1.18
 
 replace github.com/ava-labs/avalanchego => ../avalanchego-internal/
 
-replace github.com/zondax/ledger-go => ../ledger-go/
-
 require (
 	github.com/ava-labs/apm v0.0.4
-	github.com/ava-labs/avalanche-ledger-go v0.0.7-0.20221005140653-03a39d34a581
+	github.com/ava-labs/avalanche-ledger-go v0.0.7-0.20221006030208-e6e27d143bf4
 	github.com/ava-labs/avalanche-network-runner v1.2.4-0.20221003163451-7d3d1bfa924f
 	github.com/ava-labs/avalanchego v1.8.6
 	github.com/ava-labs/coreth v0.10.0-rc.1
@@ -139,7 +137,7 @@ require (
 	github.com/xanzy/ssh-agent v0.3.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	github.com/zondax/hid v0.9.0 // indirect
-	github.com/zondax/ledger-go v0.12.2 // indirect
+	github.com/zondax/ledger-go v0.12.3-0.20221005223406-dbd460b7296d // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect

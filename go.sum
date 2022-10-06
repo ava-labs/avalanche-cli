@@ -72,6 +72,8 @@ github.com/ava-labs/apm v0.0.4 h1:0IUwxCyvqwr2sbbEKhSI7VzpPG3Z+e180ulJwNiKkBk=
 github.com/ava-labs/apm v0.0.4/go.mod h1:4MNcyEvWajJm2JnezC7vgHuA220ppoQYOMh5vM+iH4Q=
 github.com/ava-labs/avalanche-ledger-go v0.0.7-0.20221005140653-03a39d34a581 h1:YQxMjM1yeerg+so/rtdaQNfIiROI2ir07SDcH/YyMvE=
 github.com/ava-labs/avalanche-ledger-go v0.0.7-0.20221005140653-03a39d34a581/go.mod h1:TU0U64JTMF1uCr7aS4BOrDY1bnHh6i5FenFXTsssm/c=
+github.com/ava-labs/avalanche-ledger-go v0.0.7-0.20221006030208-e6e27d143bf4 h1:i+0r/MxWjkSfIfHRzyJmqkLM1tzu5h58JulGCOg8r+c=
+github.com/ava-labs/avalanche-ledger-go v0.0.7-0.20221006030208-e6e27d143bf4/go.mod h1:wiqePCS9tR6y94j146b4IamT6pLUHoAbl/IvI7bUBuE=
 github.com/ava-labs/avalanche-network-runner v1.2.4-0.20221003163451-7d3d1bfa924f h1:9mcWnEt0J51SGUQ9q/bcg7C7iAJc3C9XRNh87TRQdyI=
 github.com/ava-labs/avalanche-network-runner v1.2.4-0.20221003163451-7d3d1bfa924f/go.mod h1:itR+KLMfvHu7yeZdwHkDanOImRyG3xtsZJai3UC7sk4=
 github.com/ava-labs/coreth v0.10.0-rc.1 h1:OIJmXLpKzkyBjmrbPqFEYGM+suewknNOb3iLctWluuM=
@@ -534,6 +536,8 @@ github.com/yusufpapurcu/wmi v1.2.2 h1:KBNDSne4vP5mbSWnJbO+51IMOXJB67QiYCSBrubbPR
 github.com/yusufpapurcu/wmi v1.2.2/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
 github.com/zondax/hid v0.9.0 h1:eiT3P6vNxAEVxXMw66eZUAAnU2zD33JBkfG/EnfAKl8=
 github.com/zondax/hid v0.9.0/go.mod h1:l5wttcP0jwtdLjqjMMWFVEE7d1zO0jvSPA9OPZxWpEM=
+github.com/zondax/ledger-go v0.12.3-0.20221005223406-dbd460b7296d h1:0x2GQWgIP6+XAitVxzflRLcGOhnuEbhaBotwTbmpfMk=
+github.com/zondax/ledger-go v0.12.3-0.20221005223406-dbd460b7296d/go.mod h1:KatxXrVDzgWwbssUWsF5+cOJHXPvzQ09YSlzGNuhOEo=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
 go.opencensus.io v0.22.2/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=
