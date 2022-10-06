@@ -6,7 +6,7 @@ replace github.com/ava-labs/avalanchego => ../avalanchego-internal/
 
 require (
 	github.com/ava-labs/apm v0.0.4
-	github.com/ava-labs/avalanche-ledger-go v0.0.7-0.20221006030208-e6e27d143bf4
+	github.com/ava-labs/avalanche-ledger-go v0.0.7
 	github.com/ava-labs/avalanche-network-runner v1.2.4-0.20221003163451-7d3d1bfa924f
 	github.com/ava-labs/avalanchego v1.8.6
 	github.com/ava-labs/coreth v0.10.0-rc.1
