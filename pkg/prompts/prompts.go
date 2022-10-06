@@ -54,6 +54,7 @@ type Prompter interface {
 	CaptureWeight(promptStr string) (uint64, error)
 	CaptureUint64(promptStr string) (uint64, error)
 	CapturePChainAddress(promptStr string, network models.Network) (string, error)
+	ChooseKeyOrLedger() (bool, error)
 }
 
 type realPrompter struct{}
@@ -545,6 +546,21 @@ func (*realPrompter) CaptureIndex(promptStr string, options []any) (int, error) 
 		return 0, err
 	}
 	return listIndex, nil
+}
+
+func (prompter *realPrompter) ChooseKeyOrLedger() (bool, error) {
+	const (
+		keyOption    = "Use stored key"
+		ledgerOption = "Use ledger"
+	)
+	option, err := prompter.CaptureList(
+		"Which key source should be used to issue the transaction?",
+		[]string{keyOption, ledgerOption},
+	)
+	if err != nil {
+		return false, err
+	}
+	return option == keyOption, nil
 }
 
 func contains[T comparable](list []T, element T) bool {

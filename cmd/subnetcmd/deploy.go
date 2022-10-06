@@ -230,12 +230,11 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	case models.Fuji:
 		if !useLedger && keyName == "" {
-			var err error
-			useLedger, err = app.Prompt.CaptureYesNo("Use ledger as private key to issue the transaction?")
+			useStoredKey, err := app.Prompt.ChooseKeyOrLedger()
 			if err != nil {
 				return err
 			}
-			if !useLedger {
+			if useStoredKey {
 				keyName, err = captureKeyName()
 				if err != nil {
 					if err == errNoKeys {
@@ -243,6 +242,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 					}
 					return err
 				}
+			} else {
+				useLedger = true
 			}
 		}
 
@@ -288,7 +289,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// use creation key as control key
 	if sameControlKey {
-		controlKeys, err = loadCreationKey(network, useLedger, kc)
+		controlKeys, err = loadCreationKey(network, kc)
 		if err != nil {
 			return err
 		}
@@ -373,7 +374,7 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Accessor
 
 	switch listDecision {
 	case creation:
-		keys, err = loadCreationKey(network, useLedger, kc)
+		keys, err = loadCreationKey(network, kc)
 	case useAll:
 		keys, err = useAllKeys(network)
 	case custom:
@@ -421,7 +422,7 @@ func useAllKeys(network models.Network) ([]string, error) {
 	return existing, nil
 }
 
-func loadCreationKey(network models.Network, useLedger bool, kc keychain.Accessor) ([]string, error) {
+func loadCreationKey(network models.Network, kc keychain.Accessor) ([]string, error) {
 	addrs := kc.Addresses().List()
 	if len(addrs) == 0 {
 		return nil, fmt.Errorf("not creation addresses found")

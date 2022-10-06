@@ -92,16 +92,17 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	switch network {
 	case models.Fuji:
 		if !useLedger && keyName == "" {
-			var err error
-			useLedger, err = app.Prompt.CaptureYesNo("Use ledger as private key to issue the transaction?")
+			useStoredKey, err := app.Prompt.ChooseKeyOrLedger()
 			if err != nil {
 				return err
 			}
-			if !useLedger {
+			if useStoredKey {
 				keyName, err = captureKeyName()
 				if err != nil {
 					return err
 				}
+			} else {
+				useLedger = true
 			}
 		}
 	case models.Mainnet:
@@ -357,7 +358,7 @@ func captureKeyName() (string, error) {
 		}
 	}
 
-	keyName, err = app.Prompt.CaptureList("Which private key should be used to issue the transaction?", keys)
+	keyName, err = app.Prompt.CaptureList("Which stored key should be used to issue the transaction?", keys)
 	if err != nil {
 		return "", err
 	}
