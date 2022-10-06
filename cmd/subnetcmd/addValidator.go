@@ -51,6 +51,7 @@ This command currently only works on subnets deployed to the Fuji testnet.`,
 		RunE:         addValidator,
 		Args:         cobra.ExactArgs(1),
 	}
+	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key [fuji deploys]")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
 	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
