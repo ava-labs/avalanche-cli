@@ -230,12 +230,19 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	case models.Fuji:
 		if !useLedger && keyName == "" {
-			keyName, err = captureKeyName()
+			var err error
+			useLedger, err = app.Prompt.CaptureYesNo("Use ledger as private key to issue the transaction?")
 			if err != nil {
-				if err == errNoKeys {
-					ux.Logger.PrintToUser("No private keys have been found. Deployment to fuji without a private key is not possible. Create a new one with `avalanche key create`.")
-				}
 				return err
+			}
+			if !useLedger {
+				keyName, err = captureKeyName()
+				if err != nil {
+					if err == errNoKeys {
+						ux.Logger.PrintToUser("No private keys have been found. Deployment to fuji without a private key is not possible. Create a new one with `avalanche key create`.")
+					}
+					return err
+				}
 			}
 		}
 
@@ -302,11 +309,18 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
 
-	// prompt for threshold
+	// validate and prompt for threshold
+	if int(threshold) > len(controlKeys) {
+		return fmt.Errorf("given threshold is greater than number of control keys")
+	}
 	if len(controlKeys) > 0 && threshold == 0 {
-		threshold, err = getThreshold(len(controlKeys))
-		if err != nil {
-			return err
+		if len(controlKeys) == 1 {
+			threshold = 1
+		} else {
+			threshold, err = getThreshold(len(controlKeys))
+			if err != nil {
+				return err
+			}
 		}
 	}
 
