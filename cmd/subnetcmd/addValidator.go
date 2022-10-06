@@ -91,12 +91,10 @@ func addValidator(cmd *cobra.Command, args []string) error {
 
 	switch network {
 	case models.Fuji:
-		if !useLedger {
-			if keyName == "" {
-				keyName, err = captureKeyName()
-				if err != nil {
-					return err
-				}
+		if !useLedger && keyName == "" {
+			keyName, err = captureKeyName()
+			if err != nil {
+				return err
 			}
 		}
 	case models.Mainnet:
