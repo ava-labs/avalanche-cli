@@ -20,7 +20,7 @@ export CGO_CFLAGS="-O -D__BLST_PORTABLE__"
 go install -v github.com/onsi/ginkgo/v2/ginkgo@v2.1.3
 ACK_GINKGO_RC=true ginkgo build ./tests/e2e
 
-./tests/e2e/e2e.test --ginkgo.v
+./tests/e2e/e2e.test --ginkgo.v --ginkgo.label-filter=local_machine
 
 EXIT_CODE=$?
 

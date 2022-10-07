@@ -80,4 +80,41 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		err = utils.RunHardhatTests(utils.BaseTest)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
+
+	ginkgo.It("deploy subnet to mainnet", ginkgo.Label("local_machine"), func() {
+		// deploy
+		s := commands.SimulateDeploySubnetPublicly(subnetName, keyName, controlKeys)
+		subnetID, rpcURL, err := utils.ParsePublicDeployOutput(s)
+		gomega.Expect(err).Should(gomega.BeNil())
+		// add validators to subnet
+		nodeInfos, err := utils.GetNodesInfo()
+		gomega.Expect(err).Should(gomega.BeNil())
+		for _, nodeInfo := range nodeInfos {
+			start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
+			_ = commands.SimulateAddValidatorPublicly(subnetName, keyName, nodeInfo.ID, start, "24h", "20")
+		}
+		// join to copy vm binary and update config file
+		for _, nodeInfo := range nodeInfos {
+			_ = commands.SimulateJoinPublicly(subnetName, nodeInfo.ConfigFile, nodeInfo.PluginDir)
+		}
+		// get and check whitelisted subnets from config file
+		var whitelistedSubnets string
+		for _, nodeInfo := range nodeInfos {
+			whitelistedSubnets, err = utils.GetWhilelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
+			gomega.Expect(err).Should(gomega.BeNil())
+			whitelistedSubnetsSlice := strings.Split(whitelistedSubnets, ",")
+			gomega.Expect(whitelistedSubnetsSlice).Should(gomega.ContainElement(subnetID))
+		}
+		// update nodes whitelisted subnets
+		err = utils.UpdateNodesWhitelistedSubnets(whitelistedSubnets)
+		gomega.Expect(err).Should(gomega.BeNil())
+		// wait for subnet walidators to be up
+		err = utils.WaitSubnetValidators(subnetID, nodeInfos)
+		gomega.Expect(err).Should(gomega.BeNil())
+		// hardhat
+		err = utils.SetHardhatRPC(rpcURL)
+		gomega.Expect(err).Should(gomega.BeNil())
+		err = utils.RunHardhatTests(utils.BaseTest)
+		gomega.Expect(err).Should(gomega.BeNil())
+	})
 })
