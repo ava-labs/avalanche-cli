@@ -64,6 +64,7 @@ jobs:
           path: osxcross
       - name: Build osxcross
         run: |
+          sudo apt-get -y install clang llvm-dev libxml2-dev uuid-dev libssl-dev bash patch make tar xz-utils bzip2 gzip sed cpio libbz2-dev
           cd osxcross
           wget https://github.com/phracker/MacOSX-SDKs/releases/download/11.3/$MACOS_SDK_FNAME -O tarballs/$MACOS_SDK_FNAME
           echo $MACOS_SDK_CHECKSUM tarballs/$MACOS_SDK_FNAME | sha256sum -c -
