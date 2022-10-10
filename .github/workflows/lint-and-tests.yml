@@ -40,6 +40,8 @@ jobs:
       - run: go mod download
       - run: scripts/build.sh
       - run: go test -v -coverprofile=coverage.out $(go list ./... | grep -v /tests/)
+        env:
+              CGO_CFLAGS: "-O -D__BLST_PORTABLE__" # Set the CGO flags to use the portable version of BLST
       - run: go tool cover -func=coverage.out
   e2e_test:
     name: e2e tests

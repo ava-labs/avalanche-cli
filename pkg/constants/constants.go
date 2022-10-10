@@ -99,4 +99,5 @@ const (
 	AvaLabsMaintainers = "ava-labs"
 
 	NotAvailableLabel = "Not available"
+	BackendCmd        = "avalanche-cli-backend"
 )
