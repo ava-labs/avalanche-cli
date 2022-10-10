@@ -17,6 +17,7 @@ import (
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet/local"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet/public"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/upgrade"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/format"

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os/exec"
 
+	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/onsi/gomega"
 )
 
@@ -19,8 +20,9 @@ func CleanNetwork() {
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(cmd.String())
 		fmt.Println(string(output))
-		fmt.Println(err)
+		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 }
@@ -35,8 +37,9 @@ func CleanNetworkHard() {
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(cmd.String())
 		fmt.Println(string(output))
-		fmt.Println(err)
+		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 }
@@ -50,8 +53,28 @@ func StartNetwork() string {
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(cmd.String())
 		fmt.Println(string(output))
-		fmt.Println(err)
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+	return string(output)
+}
+
+/* #nosec G204 */
+func StartNetworkWithVersion(avagoVersion string) string {
+	cmd := exec.Command(
+		CLIBinary,
+		NetworkCmd,
+		"start",
+		"--avalanchego-version",
+		avagoVersion,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 	return string(output)
@@ -66,8 +89,9 @@ func StopNetwork() {
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(cmd.String())
 		fmt.Println(string(output))
-		fmt.Println(err)
+		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 }

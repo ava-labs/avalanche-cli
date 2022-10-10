@@ -8,13 +8,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 // avalanche subnet list
@@ -38,7 +37,7 @@ func (c subnetMatrix) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
 func (c subnetMatrix) Less(i, j int) bool { return strings.Compare(c[i][0], c[j][0]) == -1 }
 
 func listSubnets(cmd *cobra.Command, args []string) error {
-	header := []string{"subnet", "chain", "chain ID", "type", "from repo", "", "deployed", ""}
+	header := []string{"subnet", "chain", "chain ID", "type", "vm version", "from repo", "", "deployed", ""}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
@@ -52,27 +51,13 @@ func listSubnets(cmd *cobra.Command, args []string) error {
 
 	rows := subnetMatrix{}
 	// append a second "header" row for the networks
-	rows = append(rows, []string{"", "", "", "", "", "Local", "Fuji", "Mainnet"})
+	rows = append(rows, []string{"", "", "", "", "", "", "Local", "Fuji", "Mainnet"})
 
-	deployedNames := map[string]struct{}{}
-	// if the server can not be contacted, or there is a problem with the query,
-	// DO NOT FAIL, just print No for deployed status
-	cli, err := binutils.NewGRPCClient()
+	deployedNames, err := subnet.GetLocallyDeployedSubnets(app)
 	if err != nil {
-		app.Log.Warn("could not get connection to server", zap.Error(err))
-	}
-	if cli != nil {
-		ctx := binutils.GetAsyncContext()
-		resp, err := cli.Status(ctx)
-		if err != nil {
-			app.Log.Warn("failed to query server for status", zap.Error(err))
-		}
-
-		if resp != nil {
-			for _, chain := range resp.GetClusterInfo().CustomChains {
-				deployedNames[chain.ChainName] = struct{}{}
-			}
-		}
+		// if the server can not be contacted, or there is a problem with the query,
+		// DO NOT FAIL, just print No for deployed status
+		app.Log.Warn("problem contacting server to get deployed subnets")
 	}
 
 	for _, f := range files {
@@ -111,6 +96,7 @@ func listSubnets(cmd *cobra.Command, args []string) error {
 				sc.Name,
 				chainID,
 				string(sc.VM),
+				sc.VMVersion,
 				strconv.FormatBool(sc.ImportedFromAPM),
 				deployedLocal,
 				deployedFuji,

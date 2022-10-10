@@ -131,6 +131,17 @@ func (app *Avalanche) GenesisExists(subnetName string) bool {
 	return err == nil
 }
 
+func (app *Avalanche) SidecarExists(subnetName string) bool {
+	sidecarPath := app.GetSidecarPath(subnetName)
+	_, err := os.Stat(sidecarPath)
+	return err == nil
+}
+
+func (app *Avalanche) SubnetConfigExists(subnetName string) bool {
+	// There's always a sidecar, but imported subnets don't have a genesis right now
+	return app.SidecarExists(subnetName)
+}
+
 func (app *Avalanche) KeyExists(keyName string) bool {
 	keyPath := app.GetKeyPath(keyName)
 	_, err := os.Stat(keyPath)
