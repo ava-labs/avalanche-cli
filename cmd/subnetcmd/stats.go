@@ -157,7 +157,7 @@ func buildPendingValidatorStats(pClient platformvm.Client, infoClient info.Clien
 	reply, err := infoClient.GetNodeVersion(ctx)
 	if err == nil {
 		// we can ignore err here; if it worked, we have a non-zero node ID
-		localNodeID, _ = infoClient.GetNodeID(ctx)
+		localNodeID, _, _ = infoClient.GetNodeID(ctx)
 		for k, v := range reply.VMVersions {
 			localVersionStr = fmt.Sprintf("%s: %s\n", k, v)
 		}
@@ -226,7 +226,7 @@ func buildCurrentValidatorStats(pClient platformvm.Client, infoClient info.Clien
 	reply, err := infoClient.GetNodeVersion(ctx)
 	if err == nil {
 		// we can ignore err here; if it worked, we have a non-zero node ID
-		localNodeID, _ = infoClient.GetNodeID(ctx)
+		localNodeID, _, _ = infoClient.GetNodeID(ctx)
 		for k, v := range reply.VMVersions {
 			localVersionStr = fmt.Sprintf("%s: %s\n", k, v)
 		}
@@ -286,7 +286,7 @@ func findAPIEndpoint(network models.Network) (platformvm.Client, info.Client) {
 	_, err := c.GetHeight(ctx)
 	if err == nil {
 		i = info.NewClient(constants.LocalAPIEndpoint)
-		_, err := i.GetNodeID(ctx)
+		_, _, err := i.GetNodeID(ctx)
 		if err == nil {
 			return c, i
 		}

@@ -53,7 +53,7 @@ func TestStats(t *testing.T) {
 	}
 
 	pClient.On("GetCurrentValidators", mock.Anything, mock.Anything, mock.Anything).Return(reply, nil)
-	iClient.On("GetNodeID", mock.Anything).Return(localNodeID, nil)
+	iClient.On("GetNodeID", mock.Anything).Return(localNodeID, nil, nil)
 	iClient.On("GetNodeVersion", mock.Anything).Return(&info.GetNodeVersionReply{
 		VMVersions: map[string]string{
 			subnetID.String(): "0.1.23",
