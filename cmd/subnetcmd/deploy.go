@@ -230,20 +230,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	case models.Fuji:
 		if !useLedger && keyName == "" {
-			useStoredKey, err := app.Prompt.ChooseKeyOrLedger()
+			useLedger, keyName, err = getFujiKeyOrLedger()
 			if err != nil {
 				return err
-			}
-			if useStoredKey {
-				keyName, err = captureKeyName()
-				if err != nil {
-					if err == errNoKeys {
-						ux.Logger.PrintToUser("No private keys have been found. Deployment to fuji without a private key is not possible. Create a new one with `avalanche key create`.")
-					}
-					return err
-				}
-			} else {
-				useLedger = true
 			}
 		}
 
@@ -262,37 +251,18 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// from here on we are assuming a public deploy
 
 	// get keychain accesor
-	var kc keychain.Accessor
-	if useLedger {
-		ledgerDevice, err := ledger.Connect()
-		if err != nil {
-			return err
-		}
-		// ask for addresses here to print user msg for ledger interaction
-		ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
-		_, err = ledgerDevice.Addresses(1)
-		if err != nil {
-			return err
-		}
-		kc = keychain.NewLedgerKeychain(ledgerDevice)
-	} else {
-		networkID, err := network.NetworkID()
-		if err != nil {
-			return err
-		}
-		sf, err := key.LoadSoft(networkID, app.GetKeyPath(keyName))
-		if err != nil {
-			return err
-		}
-		kc = sf.KeyChain()
+	kc, err := getKeychainAccessor(useLedger, keyName, network)
+	if err != nil {
+		return err
 	}
 
 	// use creation key as control key
 	if sameControlKey {
-		controlKeys, err = loadCreationKey(network, kc)
+		controlKey, err := loadCreationKey(network, kc)
 		if err != nil {
 			return err
 		}
+		controlKeys = []string{controlKey}
 	}
 
 	// prompt for control keys
@@ -374,7 +344,9 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Accessor
 
 	switch listDecision {
 	case creation:
-		keys, err = loadCreationKey(network, kc)
+		var key string
+		key, err = loadCreationKey(network, kc)
+		keys = []string{key}
 	case useAll:
 		keys, err = useAllKeys(network)
 	case custom:
@@ -422,23 +394,23 @@ func useAllKeys(network models.Network) ([]string, error) {
 	return existing, nil
 }
 
-func loadCreationKey(network models.Network, kc keychain.Accessor) ([]string, error) {
+func loadCreationKey(network models.Network, kc keychain.Accessor) (string, error) {
 	addrs := kc.Addresses().List()
 	if len(addrs) == 0 {
-		return nil, fmt.Errorf("not creation addresses found")
+		return "", fmt.Errorf("no creation addresses found")
 	}
 	addr := addrs[0]
 	networkID, err := network.NetworkID()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	hrp := key.GetHRP(networkID)
 	addrStr, err := address.Format("P", hrp, addr[:])
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return []string{addrStr}, nil
+	return addrStr, nil
 }
 
 func enterCustomKeys(network models.Network) ([]string, bool, error) {
@@ -530,4 +502,56 @@ func checkMutuallyExclusive(flagA bool, flagB bool, flagC bool) error {
 		return errMutuallyExlusive
 	}
 	return nil
+}
+
+func getFujiKeyOrLedger() (bool, string, error) {
+	useStoredKey, err := app.Prompt.ChooseKeyOrLedger()
+	if err != nil {
+		return false, "", err
+	}
+	if useStoredKey {
+		keyName, err := captureKeyName()
+		if err != nil {
+			if err == errNoKeys {
+				ux.Logger.PrintToUser("No private keys have been found. Deployment to fuji without a private key or ledger is not possible. Create a new one with `avalanche key create`, or use a ledger device.")
+			}
+			return false, "", err
+		}
+		return false, keyName, nil
+	} else {
+		return true, "", nil
+	}
+}
+
+func getKeychainAccessor(
+	useLedger bool,
+	keyName string,
+	network models.Network,
+) (keychain.Accessor, error) {
+	// get keychain accesor
+	var kc keychain.Accessor
+	if useLedger {
+		ledgerDevice, err := ledger.Connect()
+		if err != nil {
+			return kc, err
+		}
+		// ask for addresses here to print user msg for ledger interaction
+		ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
+		_, err = ledgerDevice.Addresses(1)
+		if err != nil {
+			return kc, err
+		}
+		kc = keychain.NewLedgerKeychain(ledgerDevice)
+	} else {
+		networkID, err := network.NetworkID()
+		if err != nil {
+			return kc, err
+		}
+		sf, err := key.LoadSoft(networkID, app.GetKeyPath(keyName))
+		if err != nil {
+			return kc, err
+		}
+		kc = sf.KeyChain()
+	}
+	return kc, nil
 }
