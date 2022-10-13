@@ -548,6 +548,7 @@ func (*realPrompter) CaptureIndex(promptStr string, options []any) (int, error) 
 	return listIndex, nil
 }
 
+// returns true [resp. false] if user chooses stored key [resp. ledger] option
 func (prompter *realPrompter) ChooseKeyOrLedger() (bool, error) {
 	const (
 		keyOption    = "Use stored key"
