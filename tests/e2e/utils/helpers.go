@@ -672,6 +672,7 @@ func FundLedgerAddress() error {
 	}
 
 	// import X-Chain genesis addr to P-Chain ledger addr
+    fmt.Println("*** Please sign import hash on the ledger device *** ")
 	if _, err = wallet.P().IssueImportTx(wallet.X().BlockchainID(), &to); err != nil {
 		return err
 	}
