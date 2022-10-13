@@ -94,11 +94,13 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		// add validators to subnet
 		nodeInfos, err := utils.GetNodesInfo()
 		gomega.Expect(err).Should(gomega.BeNil())
-		for i, nodeInfo := range nodeInfos {
+		nodeIdx := 0
+		for _, nodeInfo := range nodeInfos {
 			fmt.Println(logging.LightRed.Wrap(
-				fmt.Sprintf("ADDING VALIDATOR %d of %d. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING", i, len(nodeInfos))))
+				fmt.Sprintf("ADDING VALIDATOR %d of %d. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING", nodeIdx, len(nodeInfos))))
 			start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
 			_ = commands.SimulateMainnetAddValidator(subnetName, nodeInfo.ID, start, "24h", "20")
+			nodeIdx += 1
 		}
 		fmt.Println(logging.LightBlue.Wrap("EXECUTING NON INTERACTIVE PART OF THE TEST: JOIN/WHITELIST/WAIT/HARDHAT"))
 		// join to copy vm binary and update config file

@@ -4,6 +4,7 @@ go 1.18
 
 replace github.com/ava-labs/avalanchego => ../avalanchego-internal/
 replace github.com/ava-labs/spacesvm => ../spacesvm/
+replace github.com/ava-labs/avalanche-ledger-go => ../avalanche-ledger-go/
 
 require (
 	github.com/ava-labs/apm v0.0.4
