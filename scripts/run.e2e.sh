@@ -2,6 +2,13 @@
 
 set -e
 
+if [ "$1" = "--local" ]
+then
+    label_filter="local_machine"
+else
+    label_filter="!local_machine"
+fi
+
 export RUN_E2E="true"
 
 if [ ! -d "tests/e2e/hardhat/node_modules" ]
@@ -20,7 +27,7 @@ export CGO_CFLAGS="-O -D__BLST_PORTABLE__"
 go install -v github.com/onsi/ginkgo/v2/ginkgo@v2.1.3
 ACK_GINKGO_RC=true ginkgo build ./tests/e2e
 
-./tests/e2e/e2e.test --ginkgo.v --ginkgo.label-filter=local_machine
+./tests/e2e/e2e.test --ginkgo.v --ginkgo.label-filter=$label_filter
 
 EXIT_CODE=$?
 
