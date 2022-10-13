@@ -254,7 +254,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// from here on we are assuming a public deploy
 
 	// get keychain accesor
-	kc, err := getKeychainAccessor(useLedger, keyName, network)
+	kc, err := getKeychain(useLedger, keyName, network)
 	if err != nil {
 		return err
 	}
@@ -319,7 +319,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	return app.UpdateSidecar(&sidecar)
 }
 
-func getControlKeys(network models.Network, useLedger bool, kc keychain.Accessor) ([]string, bool, error) {
+func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain) ([]string, bool, error) {
 	controlKeysInitialPrompt := "Configure which addresses may add new validators to the subnet.\n" +
 		"These addresses are known as your control keys. You will also\n" +
 		"set how many control keys are required to add a validator (the threshold)."
@@ -397,7 +397,7 @@ func useAllKeys(network models.Network) ([]string, error) {
 	return existing, nil
 }
 
-func loadCreationKey(network models.Network, kc keychain.Accessor) (string, error) {
+func loadCreationKey(network models.Network, kc keychain.Keychain) (string, error) {
 	addrs := kc.Addresses().List()
 	if len(addrs) == 0 {
 		return "", fmt.Errorf("no creation addresses found")
@@ -526,13 +526,13 @@ func getFujiKeyOrLedger() (bool, string, error) {
 	}
 }
 
-func getKeychainAccessor(
+func getKeychain(
 	useLedger bool,
 	keyName string,
 	network models.Network,
-) (keychain.Accessor, error) {
+) (keychain.Keychain, error) {
 	// get keychain accesor
-	var kc keychain.Accessor
+	var kc keychain.Keychain
 	if useLedger {
 		ledgerDevice, err := ledger.Connect()
 		if err != nil {

@@ -27,12 +27,12 @@ import (
 type PublicDeployer struct {
 	LocalDeployer
 	usingLedger bool
-	kc          keychain.Accessor
+	kc          keychain.Keychain
 	network     models.Network
 	app         *application.Avalanche
 }
 
-func NewPublicDeployer(app *application.Avalanche, usingLedger bool, kc keychain.Accessor, network models.Network) *PublicDeployer {
+func NewPublicDeployer(app *application.Avalanche, usingLedger bool, kc keychain.Keychain, network models.Network) *PublicDeployer {
 	return &PublicDeployer{
 		LocalDeployer: *NewLocalDeployer(app, "", ""),
 		app:           app,

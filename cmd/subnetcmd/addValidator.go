@@ -154,7 +154,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
 	// get keychain accesor
-	kc, err := getKeychainAccessor(useLedger, keyName, network)
+	kc, err := getKeychain(useLedger, keyName, network)
 	if err != nil {
 		return err
 	}
