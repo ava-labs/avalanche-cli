@@ -15,17 +15,23 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/spacesvm/chain"
 	spacesvmclient "github.com/ava-labs/spacesvm/client"
 	"github.com/ava-labs/subnet-evm/ethclient"
 	"github.com/ethereum/go-ethereum/crypto"
+	ledger "github.com/ava-labs/avalanche-ledger-go"
+	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 )
 
 const (
@@ -608,4 +614,60 @@ func RunSpacesVMAPITest(rpc string) error {
 		return fmt.Errorf("expected value to be %q, got %q", v, rv)
 	}
 	return nil
+}
+
+func FundLedgerAddress() error {
+    return nil
+	// get ledger addr
+	ledgerDev, err := ledger.Connect()
+	if err != nil {
+        return err
+	}
+    fmt.Println("*** Please provide extended public key on the ledger device ***")
+	ledgerAddrs, err := ledgerDev.Addresses(1)
+	if err != nil {
+        return err
+	}
+    if len(ledgerAddrs) != 1 {
+        return fmt.Errorf("no ledger addresses available")
+    }
+    ledgerAddr := ledgerAddrs[0]
+	if err := ledgerDev.Disconnect(); err != nil {
+        return err
+	}
+
+    // get genesis funded wallet
+    sk, err := key.LoadSoft(constants.LocalNetworkID, EwoqKeyPath)
+    if err != nil {
+        return err
+    }
+    kc := sk.KeyChain()
+	wallet, err := primary.NewWalletWithTxs(context.Background(), constants.LocalAPIEndpoint, kc)
+	if err != nil {
+		return err
+	}
+
+    // fund ledger on P-Chain by X export/P import
+    to := secp256k1fx.OutputOwners{
+        Threshold: 1,
+        Addrs:     []ids.ShortID{ledgerAddr},
+    }
+    output := &avax.TransferableOutput{
+        Asset: avax.Asset{ID: wallet.X().AVAXAssetID()},
+        Out: &secp256k1fx.TransferOutput{
+            Amt: 1000000000,
+            OutputOwners: to,
+        },
+    }
+    outputs := []*avax.TransferableOutput{output}
+    txID, err := wallet.X().IssueExportTx(avago_constants.PlatformChainID, outputs)
+	if err != nil {
+		return err
+	}
+	txID, err = wallet.P().IssueImportTx(wallet.X().BlockchainID(), &to)
+	if err != nil {
+		return err
+	}
+    _ = txID
+    return nil
 }
