@@ -660,7 +660,7 @@ func FundLedgerAddress() error {
 		},
 	}
 	outputs := []*avax.TransferableOutput{output}
-	if _ err := wallet.X().IssueExportTx(avago_constants.PlatformChainID, outputs); err != nil {
+	if _, err := wallet.X().IssueExportTx(avago_constants.PlatformChainID, outputs); err != nil {
 		return err
 	}
 
