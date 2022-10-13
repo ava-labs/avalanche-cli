@@ -534,13 +534,13 @@ func getKeychainAccessor(
 	if useLedger {
 		ledgerDevice, err := ledger.Connect()
 		if err != nil {
-			return kc, improveLedgerError(err)
+			return kc, err
 		}
 		// ask for addresses here to print user msg for ledger interaction
 		ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
 		addresses, err := ledgerDevice.Addresses(1)
 		if err != nil {
-			return kc, improveLedgerError(err)
+			return kc, err
 		}
 		addr := addresses[0]
 		networkID, err := network.NetworkID()
@@ -565,20 +565,4 @@ func getKeychainAccessor(
 		kc = sf.KeyChain()
 	}
 	return kc, nil
-}
-
-func improveLedgerError(err error) error {
-	if strings.Contains(err.Error(), "LedgerHID device") && strings.Contains(err.Error(), "not found") {
-		return fmt.Errorf("ledger is not connected")
-	}
-	if strings.Contains(err.Error(), "Error code: 6e01") {
-		return fmt.Errorf("ledger is not executing avalanche app")
-	}
-	if strings.Contains(err.Error(), "Error code: 6b0c") {
-		return fmt.Errorf("ledger is blocked")
-	}
-	if strings.Contains(err.Error(), "[APDU_CODE_CONDITIONS_NOT_SATISFIED] Conditions of use not satisfied") {
-		return fmt.Errorf("operation rejected on ledger")
-	}
-	return err
 }

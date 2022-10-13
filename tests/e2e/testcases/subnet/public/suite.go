@@ -86,6 +86,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		// fund ledger address
 		err := utils.FundLedgerAddress()
 		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println()
 		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
 		s := commands.SimulateMainnetDeploy(subnetName)
 		// deploy
@@ -94,7 +95,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		// add validators to subnet
 		nodeInfos, err := utils.GetNodesInfo()
 		gomega.Expect(err).Should(gomega.BeNil())
-		nodeIdx := 0
+		nodeIdx := 1
 		for _, nodeInfo := range nodeInfos {
 			fmt.Println(logging.LightRed.Wrap(
 				fmt.Sprintf("ADDING VALIDATOR %d of %d. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING", nodeIdx, len(nodeInfos))))
