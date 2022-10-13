@@ -28,6 +28,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
+	"github.com/ava-labs/avalanchego/wallet/subnet/primary/keychain"
 	"github.com/ava-labs/spacesvm/chain"
 	spacesvmclient "github.com/ava-labs/spacesvm/client"
 	"github.com/ava-labs/subnet-evm/ethclient"
@@ -617,11 +618,13 @@ func RunSpacesVMAPITest(rpc string) error {
 }
 
 func FundLedgerAddress() error {
-	// get ledger addr
+	// get ledger
 	ledgerDev, err := ledger.Connect()
 	if err != nil {
 		return err
 	}
+
+	// get ledger addr
 	fmt.Println("*** Please provide extended public key on the ledger device ***")
 	ledgerAddrs, err := ledgerDev.Addresses(1)
 	if err != nil {
@@ -631,24 +634,20 @@ func FundLedgerAddress() error {
 		return fmt.Errorf("no ledger addresses available")
 	}
 	ledgerAddr := ledgerAddrs[0]
-	if err := ledgerDev.Disconnect(); err != nil {
-		return err
-	}
-	fmt.Println(ledgerAddr)
 
 	// get genesis funded wallet
 	sk, err := key.LoadSoft(constants.LocalNetworkID, EwoqKeyPath)
 	if err != nil {
 		return err
 	}
-	kc := sk.KeyChain()
-	fmt.Println(kc.Addresses())
+    var kc keychain.Keychain
+	kc = sk.KeyChain()
 	wallet, err := primary.NewWalletWithTxs(context.Background(), constants.LocalAPIEndpoint, kc)
 	if err != nil {
 		return err
 	}
 
-	// fund ledger on P-Chain by X export/P import
+	// export X-Chain genesis addr to P-Chain ledger addr
 	to := secp256k1fx.OutputOwners{
 		Threshold: 1,
 		Addrs:     []ids.ShortID{ledgerAddr},
@@ -661,14 +660,25 @@ func FundLedgerAddress() error {
 		},
 	}
 	outputs := []*avax.TransferableOutput{output}
-	txID, err := wallet.X().IssueExportTx(avago_constants.PlatformChainID, outputs)
+	if _ err := wallet.X().IssueExportTx(avago_constants.PlatformChainID, outputs); err != nil {
+		return err
+	}
+
+	// get ledger funded wallet
+    kc, err = keychain.NewLedgerKeychain(ledgerDev, 1)
+	wallet, err = primary.NewWalletWithTxs(context.Background(), constants.LocalAPIEndpoint, kc)
 	if err != nil {
 		return err
 	}
-	txID, err = wallet.P().IssueImportTx(wallet.X().BlockchainID(), &to)
-	if err != nil {
+
+	// import X-Chain genesis addr to P-Chain ledger addr
+	if _, err = wallet.P().IssueImportTx(wallet.X().BlockchainID(), &to); err != nil {
 		return err
 	}
-	_ = txID
+
+	if err := ledgerDev.Disconnect(); err != nil {
+		return err
+	}
+
 	return nil
 }
