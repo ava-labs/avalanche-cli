@@ -617,7 +617,6 @@ func RunSpacesVMAPITest(rpc string) error {
 }
 
 func FundLedgerAddress() error {
-	return nil
 	// get ledger addr
 	ledgerDev, err := ledger.Connect()
 	if err != nil {
@@ -635,6 +634,7 @@ func FundLedgerAddress() error {
 	if err := ledgerDev.Disconnect(); err != nil {
 		return err
 	}
+	fmt.Println(ledgerAddr)
 
 	// get genesis funded wallet
 	sk, err := key.LoadSoft(constants.LocalNetworkID, EwoqKeyPath)
@@ -642,6 +642,7 @@ func FundLedgerAddress() error {
 		return err
 	}
 	kc := sk.KeyChain()
+	fmt.Println(kc.Addresses())
 	wallet, err := primary.NewWalletWithTxs(context.Background(), constants.LocalAPIEndpoint, kc)
 	if err != nil {
 		return err
