@@ -482,6 +482,7 @@ func SimulateFujiJoin(
 	subnetName string,
 	avalanchegoConfig string,
 	pluginDir string,
+	nodeID string,
 ) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -500,7 +501,10 @@ func SimulateFujiJoin(
 		avalanchegoConfig,
 		"--plugin-dir",
 		pluginDir,
-		"--skip-whitelist-check",
+		"--force-whitelist-check",
+        "--fail-if-not-validating",
+		"--nodeID",
+		nodeID,
 		"--force-write",
 		subnetName,
 	)
@@ -523,6 +527,7 @@ func SimulateMainnetJoin(
 	subnetName string,
 	avalanchegoConfig string,
 	pluginDir string,
+    nodeID string,
 ) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -541,7 +546,10 @@ func SimulateMainnetJoin(
 		avalanchegoConfig,
 		"--plugin-dir",
 		pluginDir,
-		"--skip-whitelist-check",
+		"--force-whitelist-check",
+        "--fail-if-not-validating",
+		"--nodeID",
+		nodeID,
 		"--force-write",
 		subnetName,
 	)

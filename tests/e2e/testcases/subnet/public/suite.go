@@ -59,7 +59,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		}
 		// join to copy vm binary and update config file
 		for _, nodeInfo := range nodeInfos {
-			_ = commands.SimulateFujiJoin(subnetName, nodeInfo.ConfigFile, nodeInfo.PluginDir)
+			_ = commands.SimulateFujiJoin(subnetName, nodeInfo.ConfigFile, nodeInfo.PluginDir, nodeInfo.ID)
 		}
 		// get and check whitelisted subnets from config file
 		var whitelistedSubnets string
@@ -100,7 +100,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		}
 		// join to copy vm binary and update config file
 		for _, nodeInfo := range nodeInfos {
-			_ = commands.SimulateMainnetJoin(subnetName, nodeInfo.ConfigFile, nodeInfo.PluginDir)
+			_ = commands.SimulateMainnetJoin(subnetName, nodeInfo.ConfigFile, nodeInfo.PluginDir, nodeInfo.ID)
 		}
 		// get and check whitelisted subnets from config file
 		var whitelistedSubnets string
