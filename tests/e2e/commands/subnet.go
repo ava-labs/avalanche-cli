@@ -343,20 +343,20 @@ func SimulateMainnetDeploy(
 	err = cmd.Start()
 	gomega.Expect(err).Should(gomega.BeNil())
 
-	output := ""
+	stdout := ""
 	go func(p io.ReadCloser) {
 		reader := bufio.NewReader(p)
 		line, err := reader.ReadString('\n')
 		for err == nil {
-			output = output + line
+			stdout = stdout + line
 			fmt.Print(line)
 			line, err = reader.ReadString('\n')
 		}
 	}(stdoutPipe)
 
-	stderrOutput, err := io.ReadAll(stderrPipe)
+	stderr, err := io.ReadAll(stderrPipe)
 	gomega.Expect(err).Should(gomega.BeNil())
-	fmt.Println(string(stderrOutput))
+	fmt.Println(string(stderr))
 
 	err = cmd.Wait()
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -364,7 +364,7 @@ func SimulateMainnetDeploy(
 	// disable simulation of public network execution paths on a local network
 	os.Unsetenv(constants.SimulatePublicNetwork)
 
-	return output
+	return stdout + string(stderr)
 }
 
 // simulates fuji add validator execution path on a local network
@@ -448,19 +448,25 @@ func SimulateMainnetAddValidator(
 	)
 	stdoutPipe, err := cmd.StdoutPipe()
 	gomega.Expect(err).Should(gomega.BeNil())
+	stderrPipe, err := cmd.StderrPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
 	err = cmd.Start()
 	gomega.Expect(err).Should(gomega.BeNil())
 
-	output := ""
+	stdout := ""
 	go func(p io.ReadCloser) {
 		reader := bufio.NewReader(p)
 		line, err := reader.ReadString('\n')
 		for err == nil {
-			output = output + line
+			stdout = stdout + line
 			fmt.Print(line)
 			line, err = reader.ReadString('\n')
 		}
 	}(stdoutPipe)
+
+	stderr, err := io.ReadAll(stderrPipe)
+	gomega.Expect(err).Should(gomega.BeNil())
+	fmt.Println(string(stderr))
 
 	err = cmd.Wait()
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -468,7 +474,7 @@ func SimulateMainnetAddValidator(
 	// disable simulation of public network execution paths on a local network
 	os.Unsetenv(constants.SimulatePublicNetwork)
 
-	return string(output)
+	return stdout + string(stderr)
 }
 
 // simulates fuji join execution path on a local network

@@ -19,8 +19,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	ledger "github.com/ava-labs/avalanche-ledger-go"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/keychain"
 	"github.com/ava-labs/coreth/core"
 	spacesvmchain "github.com/ava-labs/spacesvm/chain"
@@ -538,20 +538,20 @@ func getKeychainAccessor(
 		}
 		// ask for addresses here to print user msg for ledger interaction
 		ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
-        addresses, err := ledgerDevice.Addresses(1)
+		addresses, err := ledgerDevice.Addresses(1)
 		if err != nil {
 			return kc, err
 		}
-        addr := addresses[0]
-        networkID, err := network.NetworkID()
+		addr := addresses[0]
+		networkID, err := network.NetworkID()
 		if err != nil {
 			return kc, err
 		}
-        addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
-        if err != nil {
-            return kc, err
-        }
-        ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("Ledger address: %s", addrStr)))
+		addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
+		if err != nil {
+			return kc, err
+		}
+		ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("Ledger address: %s", addrStr)))
 		kc = keychain.NewLedgerKeychain(ledgerDevice)
 	} else {
 		networkID, err := network.NetworkID()
