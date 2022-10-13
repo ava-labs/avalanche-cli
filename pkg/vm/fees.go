@@ -11,7 +11,7 @@ import (
 	"github.com/ava-labs/subnet-evm/params"
 )
 
-func getFeeConfig(config params.ChainConfig, app *application.Avalanche) (
+func GetFeeConfig(config params.ChainConfig, app *application.Avalanche) (
 	params.ChainConfig,
 	statemachine.StateDirection,
 	error,

@@ -87,7 +87,7 @@ func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVe
 		case descriptorsState:
 			chainID, tokenName, vmVersion, direction, err = getDescriptors(app, subnetEVMVersion)
 		case feeState:
-			*conf, direction, err = getFeeConfig(*conf, app)
+			*conf, direction, err = GetFeeConfig(*conf, app)
 		case airdropState:
 			allocation, direction, err = getEVMAllocation(app)
 		case precompilesState:
