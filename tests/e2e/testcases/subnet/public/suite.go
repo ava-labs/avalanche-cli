@@ -10,7 +10,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
-    "github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -83,10 +83,10 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 	})
 
 	ginkgo.It("deploy subnet to mainnet", ginkgo.Label("local_machine"), func() {
-        // fund ledger address
-        err := utils.FundLedgerAddress()
+		// fund ledger address
+		err := utils.FundLedgerAddress()
 		gomega.Expect(err).Should(gomega.BeNil())
-        fmt.Println(logging.LightRed.Wrap("VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
+		fmt.Println(logging.LightRed.Wrap("VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
 		s := commands.SimulateMainnetDeploy(subnetName)
 		// deploy
 		subnetID, rpcURL, err := utils.ParsePublicDeployOutput(s)

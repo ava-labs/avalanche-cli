@@ -4,11 +4,11 @@
 package commands
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
-    "io"
-    "bufio"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
@@ -336,23 +336,29 @@ func SimulateMainnetDeploy(
 		"--same-control-key",
 		subnetName,
 	)
-    stdoutPipe, err := cmd.StdoutPipe()
+	stdoutPipe, err := cmd.StdoutPipe()
 	gomega.Expect(err).Should(gomega.BeNil())
-    err = cmd.Start()
+	stderrPipe, err := cmd.StderrPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	err = cmd.Start()
 	gomega.Expect(err).Should(gomega.BeNil())
 
-    output := ""
-    go func(p io.ReadCloser) {
-        reader := bufio.NewReader(p)
-        line, err := reader.ReadString('\n')
-        for err == nil {
-            output = output + line
-            fmt.Print(line)
-            line, err = reader.ReadString('\n')
-        }
-    }(stdoutPipe)
+	output := ""
+	go func(p io.ReadCloser) {
+		reader := bufio.NewReader(p)
+		line, err := reader.ReadString('\n')
+		for err == nil {
+			output = output + line
+			fmt.Print(line)
+			line, err = reader.ReadString('\n')
+		}
+	}(stdoutPipe)
 
-    err = cmd.Wait()
+	stderrOutput, err := io.ReadAll(stderrPipe)
+	gomega.Expect(err).Should(gomega.BeNil())
+	fmt.Println(string(stderrOutput))
+
+	err = cmd.Wait()
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	// disable simulation of public network execution paths on a local network
@@ -440,23 +446,23 @@ func SimulateMainnetAddValidator(
 		weight,
 		subnetName,
 	)
-    stdoutPipe, err := cmd.StdoutPipe()
+	stdoutPipe, err := cmd.StdoutPipe()
 	gomega.Expect(err).Should(gomega.BeNil())
-    err = cmd.Start()
+	err = cmd.Start()
 	gomega.Expect(err).Should(gomega.BeNil())
 
-    output := ""
-    go func(p io.ReadCloser) {
-        reader := bufio.NewReader(p)
-        line, err := reader.ReadString('\n')
-        for err == nil {
-            output = output + line
-            fmt.Print(line)
-            line, err = reader.ReadString('\n')
-        }
-    }(stdoutPipe)
+	output := ""
+	go func(p io.ReadCloser) {
+		reader := bufio.NewReader(p)
+		line, err := reader.ReadString('\n')
+		for err == nil {
+			output = output + line
+			fmt.Print(line)
+			line, err = reader.ReadString('\n')
+		}
+	}(stdoutPipe)
 
-    err = cmd.Wait()
+	err = cmd.Wait()
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	// disable simulation of public network execution paths on a local network
@@ -546,6 +552,7 @@ func SimulateMainnetJoin(
 
 	return string(output)
 }
+
 /* #nosec G204 */
 func ImportSubnetConfig(repoAlias string, subnetName string) {
 	// Check config does not already exist
