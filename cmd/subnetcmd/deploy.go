@@ -28,6 +28,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const numLedgerAddressesToDerive = 1
+
 var (
 	deployLocal    bool
 	deployTestnet  bool
@@ -552,7 +554,7 @@ func getKeychainAccessor(
 			return kc, err
 		}
 		ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("Ledger address: %s", addrStr)))
-		kc = keychain.NewLedgerKeychain(ledgerDevice)
+		return keychain.NewLedgerKeychain(ledgerDevice, numLedgerAddressesToDerive)
 	} else {
 		networkID, err := network.NetworkID()
 		if err != nil {
@@ -562,7 +564,6 @@ func getKeychainAccessor(
 		if err != nil {
 			return kc, err
 		}
-		kc = sf.KeyChain()
+		return sf.KeyChain(), nil
 	}
-	return kc, nil
 }
