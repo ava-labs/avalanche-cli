@@ -34,7 +34,6 @@ func TestStats(t *testing.T) {
 	startTime := time.Now()
 	endTime := time.Now()
 	weight := uint64(42)
-	stake := uint64(42_000_000)
 	conn := true
 
 	remaining := ux.FormatDuration(endTime.Sub(startTime))
@@ -42,11 +41,10 @@ func TestStats(t *testing.T) {
 	reply := []platformvm.ClientPermissionlessValidator{
 		{
 			ClientStaker: platformvm.ClientStaker{
-				StartTime:   uint64(startTime.Unix()),
-				EndTime:     uint64(endTime.Unix()),
-				NodeID:      localNodeID,
-				Weight:      &weight,
-				StakeAmount: &stake,
+				StartTime: uint64(startTime.Unix()),
+				EndTime:   uint64(endTime.Unix()),
+				NodeID:    localNodeID,
+				Weight:    &weight,
 			},
 			Connected: &conn,
 		},
@@ -71,23 +69,20 @@ func TestStats(t *testing.T) {
 	assert.Equal(1, table.NumLines())
 	assert.Equal(localNodeID.String(), rows[0][0])
 	assert.Equal("true", rows[0][1])
-	assert.Equal("42000000", rows[0][2])
-	assert.Equal("42", rows[0][3])
-	assert.Equal(remaining, rows[0][4])
-	assert.Equal(expectedVerStr, rows[0][5])
+	assert.Equal("42", rows[0][2])
+	assert.Equal(remaining, rows[0][3])
+	assert.Equal(expectedVerStr, rows[0][4])
 
 	pendingV := make([]interface{}, 1)
 
 	jweight := json.Uint64(weight)
-	jstake := json.Uint64(stake)
 
 	pendingV[0] = api.PermissionlessValidator{
 		Staker: api.Staker{
-			StartTime:   json.Uint64(uint64(startTime.Unix())),
-			EndTime:     json.Uint64(uint64(endTime.Unix())),
-			NodeID:      localNodeID,
-			Weight:      &jweight,
-			StakeAmount: &jstake,
+			StartTime: json.Uint64(uint64(startTime.Unix())),
+			EndTime:   json.Uint64(uint64(endTime.Unix())),
+			NodeID:    localNodeID,
+			Weight:    &jweight,
 		},
 	}
 
@@ -108,9 +103,8 @@ func TestStats(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(1, table.NumLines())
 	assert.Equal(localNodeID.String(), rows[0][0])
-	assert.Equal("42000000", rows[0][1])
-	assert.Equal("42", rows[0][2])
-	assert.Equal(controlStartTime.Local().String(), rows[0][3])
-	assert.Equal(controlEndTime.Local().String(), rows[0][4])
-	assert.Equal(expectedVerStr, rows[0][5])
+	assert.Equal("42", rows[0][1])
+	assert.Equal(controlStartTime.Local().String(), rows[0][2])
+	assert.Equal(controlEndTime.Local().String(), rows[0][3])
+	assert.Equal(expectedVerStr, rows[0][4])
 }

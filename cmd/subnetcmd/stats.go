@@ -115,8 +115,7 @@ func buildPendingValidatorStats(pClient platformvm.Client, infoClient info.Clien
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// 2nd param are delegators, we don't need them here?
-	pendingValidatorsIface, _, err := pClient.GetPendingValidators(ctx, subnetID, []ids.NodeID{})
+	pendingValidatorsIface, pendingDelegatorsIface, err := pClient.GetPendingValidators(ctx, subnetID, []ids.NodeID{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to query the API endpoint for the pending validators: %w", err)
 	}
@@ -130,6 +129,14 @@ func buildPendingValidatorStats(pClient platformvm.Client, infoClient info.Clien
 		}
 	}
 
+	pendingDelegators := make([]api.Staker, len(pendingDelegatorsIface))
+	for i, v := range pendingDelegatorsIface {
+		pendingDelegators[i], ok = v.(api.Staker)
+		if !ok {
+			return nil, fmt.Errorf("expected type api.Staker, but got %T", v)
+		}
+	}
+
 	rows := [][]string{}
 
 	if len(pendingValidators) == 0 {
@@ -140,7 +147,7 @@ func buildPendingValidatorStats(pClient platformvm.Client, infoClient info.Clien
 	ux.Logger.PrintToUser("Pending validators (not yet validating the subnet)")
 	ux.Logger.PrintToUser("==================================================")
 
-	header := []string{"nodeID", "stake-amount", "weight", "start-time", "end-time", "vmversion"}
+	header := []string{"nodeID", "weight", "start-time", "end-time", "vmversion"}
 	table.SetHeader(header)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	table.SetAutoMergeCells(true)
@@ -149,7 +156,7 @@ func buildPendingValidatorStats(pClient platformvm.Client, infoClient info.Clien
 	var (
 		startTime, endTime          time.Time
 		localNodeID                 ids.NodeID
-		stakeAmount, weight         string
+		weight                      string
 		localVersionStr, versionStr string
 	)
 
@@ -167,13 +174,12 @@ func buildPendingValidatorStats(pClient platformvm.Client, infoClient info.Clien
 		startTime = time.Unix(int64(v.StartTime), 0)
 		endTime = time.Unix(int64(v.EndTime), 0)
 
-		if v.StakeAmount != nil {
-			stakeAmount = strconv.FormatUint(uint64(*v.StakeAmount), 10)
-		} else {
-			stakeAmount = constants.NotAvailableLabel
-		}
 		if v.Weight != nil {
-			weight = strconv.FormatUint(uint64(*v.Weight), 10)
+			uint64Weight := *v.Weight
+			for _, d := range pendingDelegators {
+				uint64Weight += *d.Weight
+			}
+			weight = strconv.FormatUint(uint64(uint64Weight), 10)
 		} else {
 			weight = constants.NotAvailableLabel
 		}
@@ -185,7 +191,6 @@ func buildPendingValidatorStats(pClient platformvm.Client, infoClient info.Clien
 		// query peers for IP address of this NodeID...
 		rows = append(rows, []string{
 			v.NodeID.String(),
-			stakeAmount,
 			weight,
 			startTime.Local().String(),
 			endTime.Local().String(),
@@ -208,7 +213,7 @@ func buildCurrentValidatorStats(pClient platformvm.Client, infoClient info.Clien
 	ux.Logger.PrintToUser("Current validators (already validating the subnet)")
 	ux.Logger.PrintToUser("==================================================")
 
-	header := []string{"nodeID", "connected", "stake-amount", "weight", "remaining", "vmversion"}
+	header := []string{"nodeID", "connected", "weight", "remaining", "vmversion"}
 	table.SetHeader(header)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	table.SetAutoMergeCells(true)
@@ -216,10 +221,10 @@ func buildCurrentValidatorStats(pClient platformvm.Client, infoClient info.Clien
 	rows := [][]string{}
 
 	var (
-		startTime, endTime                        time.Time
-		localNodeID                               ids.NodeID
-		remaining, connected, stakeAmount, weight string
-		localVersionStr, versionStr               string
+		startTime, endTime           time.Time
+		localNodeID                  ids.NodeID
+		remaining, connected, weight string
+		localVersionStr, versionStr  string
 	)
 
 	// try querying the local node for its node version
@@ -244,16 +249,17 @@ func buildCurrentValidatorStats(pClient platformvm.Client, infoClient info.Clien
 		} else {
 			connected = constants.NotAvailableLabel
 		}
-		if v.StakeAmount != nil {
-			stakeAmount = strconv.FormatUint(*v.StakeAmount, 10)
-		} else {
-			stakeAmount = constants.NotAvailableLabel
-		}
 		if v.Weight != nil {
-			weight = strconv.FormatUint(*v.Weight, 10)
+			uint64Weight := *v.Weight
+			delegators := v.Delegators
+			for _, d := range delegators {
+				uint64Weight += *d.Weight
+			}
+			weight = strconv.FormatUint(uint64Weight, 10)
 		} else {
 			weight = constants.NotAvailableLabel
 		}
+
 		// if retrieval of localNodeID failed, it will be empty,
 		// and this comparison fails
 		if v.NodeID == localNodeID {
@@ -263,10 +269,7 @@ func buildCurrentValidatorStats(pClient platformvm.Client, infoClient info.Clien
 		rows = append(rows, []string{
 			v.NodeID.String(),
 			connected,
-			stakeAmount,
 			weight,
-			// startTime.Local().String(),
-			// endTime.Local().String(),
 			remaining,
 			versionStr,
 		})
