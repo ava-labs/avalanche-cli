@@ -48,8 +48,8 @@ This command currently only works on subnets deployed to the Fuji testnet.`,
 		RunE:         addValidator,
 		Args:         cobra.ExactArgs(1),
 	}
-	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key [fuji deploys]")
-	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploys]")
+	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
+	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
 	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
