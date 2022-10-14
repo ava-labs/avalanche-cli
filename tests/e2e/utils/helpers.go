@@ -640,7 +640,7 @@ func FundLedgerAddress() error {
 	if err != nil {
 		return err
 	}
-    var kc keychain.Keychain
+	var kc keychain.Keychain
 	kc = sk.KeyChain()
 	wallet, err := primary.NewWalletWithTxs(context.Background(), constants.LocalAPIEndpoint, kc)
 	if err != nil {
@@ -665,14 +665,17 @@ func FundLedgerAddress() error {
 	}
 
 	// get ledger funded wallet
-    kc, err = keychain.NewLedgerKeychain(ledgerDev, 1)
+	kc, err = keychain.NewLedgerKeychain(ledgerDev, 1)
+	if err != nil {
+		return err
+	}
 	wallet, err = primary.NewWalletWithTxs(context.Background(), constants.LocalAPIEndpoint, kc)
 	if err != nil {
 		return err
 	}
 
 	// import X-Chain genesis addr to P-Chain ledger addr
-    fmt.Println("*** Please sign import hash on the ledger device *** ")
+	fmt.Println("*** Please sign import hash on the ledger device *** ")
 	if _, err = wallet.P().IssueImportTx(wallet.X().BlockchainID(), &to); err != nil {
 		return err
 	}

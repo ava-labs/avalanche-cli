@@ -348,7 +348,7 @@ func SimulateMainnetDeploy(
 		reader := bufio.NewReader(p)
 		line, err := reader.ReadString('\n')
 		for err == nil {
-			stdout = stdout + line
+			stdout += line
 			fmt.Print(line)
 			line, err = reader.ReadString('\n')
 		}
@@ -458,7 +458,7 @@ func SimulateMainnetAddValidator(
 		reader := bufio.NewReader(p)
 		line, err := reader.ReadString('\n')
 		for err == nil {
-			stdout = stdout + line
+			stdout += line
 			fmt.Print(line)
 			line, err = reader.ReadString('\n')
 		}

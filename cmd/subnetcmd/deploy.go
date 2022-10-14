@@ -521,9 +521,8 @@ func getFujiKeyOrLedger() (bool, string, error) {
 			return false, "", err
 		}
 		return false, keyName, nil
-	} else {
-		return true, "", nil
 	}
+	return true, "", nil
 }
 
 func getKeychain(
@@ -555,15 +554,14 @@ func getKeychain(
 		}
 		ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("Ledger address: %s", addrStr)))
 		return keychain.NewLedgerKeychain(ledgerDevice, numLedgerAddressesToDerive)
-	} else {
-		networkID, err := network.NetworkID()
-		if err != nil {
-			return kc, err
-		}
-		sf, err := key.LoadSoft(networkID, app.GetKeyPath(keyName))
-		if err != nil {
-			return kc, err
-		}
-		return sf.KeyChain(), nil
 	}
+	networkID, err := network.NetworkID()
+	if err != nil {
+		return kc, err
+	}
+	sf, err := key.LoadSoft(networkID, app.GetKeyPath(keyName))
+	if err != nil {
+		return kc, err
+	}
+	return sf.KeyChain(), nil
 }
