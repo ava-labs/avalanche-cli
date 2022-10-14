@@ -4,7 +4,9 @@
 package commands
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 
@@ -270,7 +272,7 @@ func DeploySubnetLocallyWithVersion(subnetName string, version string) string {
 }
 
 // simulates fuji deploy execution path on a local network
-func SimulateDeploySubnetPublicly(
+func SimulateFujiDeploy(
 	subnetName string,
 	key string,
 	controlKeys string,
@@ -311,8 +313,62 @@ func SimulateDeploySubnetPublicly(
 	return string(output)
 }
 
+// simulates mainnet deploy execution path on a local network
+func SimulateMainnetDeploy(
+	subnetName string,
+) string {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// enable simulation of public network execution paths on a local network
+	os.Setenv(constants.SimulatePublicNetwork, "true")
+
+	// Deploy subnet locally
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"deploy",
+		"--mainnet",
+		"--threshold",
+		"1",
+		"--same-control-key",
+		subnetName,
+	)
+	stdoutPipe, err := cmd.StdoutPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	stderrPipe, err := cmd.StderrPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	err = cmd.Start()
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	stdout := ""
+	go func(p io.ReadCloser) {
+		reader := bufio.NewReader(p)
+		line, err := reader.ReadString('\n')
+		for err == nil {
+			stdout = stdout + line
+			fmt.Print(line)
+			line, err = reader.ReadString('\n')
+		}
+	}(stdoutPipe)
+
+	stderr, err := io.ReadAll(stderrPipe)
+	gomega.Expect(err).Should(gomega.BeNil())
+	fmt.Println(string(stderr))
+
+	err = cmd.Wait()
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	// disable simulation of public network execution paths on a local network
+	os.Unsetenv(constants.SimulatePublicNetwork)
+
+	return stdout + string(stderr)
+}
+
 // simulates fuji add validator execution path on a local network
-func SimulateAddValidatorPublicly(
+func SimulateFujiAddValidator(
 	subnetName string,
 	key string,
 	nodeID string,
@@ -359,11 +415,74 @@ func SimulateAddValidatorPublicly(
 	return string(output)
 }
 
+// simulates mainnet add validator execution path on a local network
+func SimulateMainnetAddValidator(
+	subnetName string,
+	nodeID string,
+	start string,
+	period string,
+	weight string,
+) string {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// enable simulation of public network execution paths on a local network
+	os.Setenv(constants.SimulatePublicNetwork, "true")
+
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"addValidator",
+		"--mainnet",
+		"--nodeID",
+		nodeID,
+		"--start-time",
+		start,
+		"--staking-period",
+		period,
+		"--weight",
+		weight,
+		subnetName,
+	)
+	stdoutPipe, err := cmd.StdoutPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	stderrPipe, err := cmd.StderrPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	err = cmd.Start()
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	stdout := ""
+	go func(p io.ReadCloser) {
+		reader := bufio.NewReader(p)
+		line, err := reader.ReadString('\n')
+		for err == nil {
+			stdout = stdout + line
+			fmt.Print(line)
+			line, err = reader.ReadString('\n')
+		}
+	}(stdoutPipe)
+
+	stderr, err := io.ReadAll(stderrPipe)
+	gomega.Expect(err).Should(gomega.BeNil())
+	fmt.Println(string(stderr))
+
+	err = cmd.Wait()
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	// disable simulation of public network execution paths on a local network
+	os.Unsetenv(constants.SimulatePublicNetwork)
+
+	return stdout + string(stderr)
+}
+
 // simulates fuji join execution path on a local network
-func SimulateJoinPublicly(
+func SimulateFujiJoin(
 	subnetName string,
 	avalanchegoConfig string,
 	pluginDir string,
+	nodeID string,
 ) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -382,7 +501,55 @@ func SimulateJoinPublicly(
 		avalanchegoConfig,
 		"--plugin-dir",
 		pluginDir,
-		"--skip-whitelist-check",
+		"--force-whitelist-check",
+		"--fail-if-not-validating",
+		"--nodeID",
+		nodeID,
+		"--force-write",
+		subnetName,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+	}
+
+	// disable simulation of public network execution paths on a local network
+	os.Unsetenv(constants.SimulatePublicNetwork)
+
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	return string(output)
+}
+
+// simulates mainnet join execution path on a local network
+func SimulateMainnetJoin(
+	subnetName string,
+	avalanchegoConfig string,
+	pluginDir string,
+	nodeID string,
+) string {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// enable simulation of public network execution paths on a local network
+	os.Setenv(constants.SimulatePublicNetwork, "true")
+
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"join",
+		"--mainnet",
+		"--avalanchego-config",
+		avalanchegoConfig,
+		"--plugin-dir",
+		pluginDir,
+		"--force-whitelist-check",
+		"--fail-if-not-validating",
+		"--nodeID",
+		nodeID,
 		"--force-write",
 		subnetName,
 	)

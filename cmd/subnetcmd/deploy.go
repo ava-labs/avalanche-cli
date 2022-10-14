@@ -20,12 +20,15 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	ledger "github.com/ava-labs/avalanche-ledger-go"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/keychain"
 	"github.com/ava-labs/coreth/core"
 	spacesvmchain "github.com/ava-labs/spacesvm/chain"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
+
+const numLedgerAddressesToDerive = 1
 
 var (
 	deployLocal    bool
@@ -251,7 +254,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// from here on we are assuming a public deploy
 
 	// get keychain accesor
-	kc, err := getKeychainAccessor(useLedger, keyName, network)
+	kc, err := getKeychain(useLedger, keyName, network)
 	if err != nil {
 		return err
 	}
@@ -316,7 +319,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	return app.UpdateSidecar(&sidecar)
 }
 
-func getControlKeys(network models.Network, useLedger bool, kc keychain.Accessor) ([]string, bool, error) {
+func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain) ([]string, bool, error) {
 	controlKeysInitialPrompt := "Configure which addresses may add new validators to the subnet.\n" +
 		"These addresses are known as your control keys. You will also\n" +
 		"set how many control keys are required to add a validator (the threshold)."
@@ -394,7 +397,7 @@ func useAllKeys(network models.Network) ([]string, error) {
 	return existing, nil
 }
 
-func loadCreationKey(network models.Network, kc keychain.Accessor) (string, error) {
+func loadCreationKey(network models.Network, kc keychain.Keychain) (string, error) {
 	addrs := kc.Addresses().List()
 	if len(addrs) == 0 {
 		return "", fmt.Errorf("no creation addresses found")
@@ -523,13 +526,13 @@ func getFujiKeyOrLedger() (bool, string, error) {
 	}
 }
 
-func getKeychainAccessor(
+func getKeychain(
 	useLedger bool,
 	keyName string,
 	network models.Network,
-) (keychain.Accessor, error) {
+) (keychain.Keychain, error) {
 	// get keychain accesor
-	var kc keychain.Accessor
+	var kc keychain.Keychain
 	if useLedger {
 		ledgerDevice, err := ledger.Connect()
 		if err != nil {
@@ -537,11 +540,21 @@ func getKeychainAccessor(
 		}
 		// ask for addresses here to print user msg for ledger interaction
 		ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
-		_, err = ledgerDevice.Addresses(1)
+		addresses, err := ledgerDevice.Addresses(1)
 		if err != nil {
 			return kc, err
 		}
-		kc = keychain.NewLedgerKeychain(ledgerDevice)
+		addr := addresses[0]
+		networkID, err := network.NetworkID()
+		if err != nil {
+			return kc, err
+		}
+		addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
+		if err != nil {
+			return kc, err
+		}
+		ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("Ledger address: %s", addrStr)))
+		return keychain.NewLedgerKeychain(ledgerDevice, numLedgerAddressesToDerive)
 	} else {
 		networkID, err := network.NetworkID()
 		if err != nil {
@@ -551,7 +564,6 @@ func getKeychainAccessor(
 		if err != nil {
 			return kc, err
 		}
-		kc = sf.KeyChain()
+		return sf.KeyChain(), nil
 	}
-	return kc, nil
 }
