@@ -24,7 +24,7 @@ const (
 var _ = ginkgo.Describe("[Public Subnet]", func() {
 	ginkgo.BeforeEach(func() {
 		// local network
-		//_ = commands.StartNetwork()
+		_ = commands.StartNetwork()
 		// key
 		_ = utils.DeleteKey(keyName)
 		output, err := commands.CreateKeyFromPath(keyName, utils.EwoqKeyPath)
@@ -42,7 +42,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		commands.DeleteSubnetConfig(subnetName)
 		err := utils.DeleteKey(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		//commands.CleanNetwork()
+		commands.CleanNetwork()
 	})
 
 	ginkgo.It("deploy subnet to fuji", func() {
