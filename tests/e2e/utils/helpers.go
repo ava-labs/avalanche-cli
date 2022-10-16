@@ -619,7 +619,7 @@ func RunSpacesVMAPITest(rpc string) error {
 
 func FundLedgerAddress() error {
 	// get ledger
-	ledgerDev, err := ledger.Connect()
+	ledgerDev, err := ledger.New()
 	if err != nil {
 		return err
 	}
