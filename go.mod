@@ -8,7 +8,7 @@ replace github.com/ava-labs/spacesvm => ../spacesvm/
 
 require (
 	github.com/ava-labs/apm v0.0.4
-	github.com/ava-labs/avalanche-ledger-go v0.0.8
+	github.com/ava-labs/avalanche-ledger-go v0.0.9-0.20221016025743-d0445c377252
 	github.com/ava-labs/avalanche-network-runner v1.2.4-0.20221003163451-7d3d1bfa924f
 	github.com/ava-labs/avalanchego v1.9.1-rc.3
 	github.com/ava-labs/coreth v0.11.1-rc.2

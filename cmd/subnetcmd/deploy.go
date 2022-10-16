@@ -533,7 +533,7 @@ func getKeychain(
 	// get keychain accesor
 	var kc keychain.Keychain
 	if useLedger {
-		ledgerDevice, err := ledger.Connect()
+		ledgerDevice, err := ledger.New()
 		if err != nil {
 			return kc, err
 		}
