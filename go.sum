@@ -76,6 +76,12 @@ github.com/ava-labs/avalanche-ledger-go v0.0.9-0.20221016024902-2582e1c87224 h1:
 github.com/ava-labs/avalanche-ledger-go v0.0.9-0.20221016024902-2582e1c87224/go.mod h1:wiqePCS9tR6y94j146b4IamT6pLUHoAbl/IvI7bUBuE=
 github.com/ava-labs/avalanche-ledger-go v0.0.9-0.20221016025743-d0445c377252 h1:x1sX3096c94rh3kcXoMOCYfFT/0Z0F1UIdRdhyVqDHk=
 github.com/ava-labs/avalanche-ledger-go v0.0.9-0.20221016025743-d0445c377252/go.mod h1:wiqePCS9tR6y94j146b4IamT6pLUHoAbl/IvI7bUBuE=
+github.com/ava-labs/avalanche-ledger-go v0.0.9-0.20221017140231-895c57f030fc h1:+5JkEtA3oKoO9kSlsXPgET0nMILAtoiNJG6JtrSbWIQ=
+github.com/ava-labs/avalanche-ledger-go v0.0.9-0.20221017140231-895c57f030fc/go.mod h1:TtOF5kAnSTkGBALJjrtx2pXE/bZpVp8Mdm7UPOhV4As=
+github.com/ava-labs/avalanche-ledger-go v0.0.9-0.20221017144450-4ce6740c6112 h1:Dgfpqdu1fBau9WcZhwWUmxSOnWFuRViqv8JENHHriQc=
+github.com/ava-labs/avalanche-ledger-go v0.0.9-0.20221017144450-4ce6740c6112/go.mod h1:TtOF5kAnSTkGBALJjrtx2pXE/bZpVp8Mdm7UPOhV4As=
+github.com/ava-labs/avalanche-ledger-go v0.0.9 h1:5AEaIYLsRs3sp/o/B1QcYhvXl6f0cuO5n2ZZGoCzY5c=
+github.com/ava-labs/avalanche-ledger-go v0.0.9/go.mod h1:TtOF5kAnSTkGBALJjrtx2pXE/bZpVp8Mdm7UPOhV4As=
 github.com/ava-labs/avalanche-network-runner v1.2.4-0.20221003163451-7d3d1bfa924f h1:9mcWnEt0J51SGUQ9q/bcg7C7iAJc3C9XRNh87TRQdyI=
 github.com/ava-labs/avalanche-network-runner v1.2.4-0.20221003163451-7d3d1bfa924f/go.mod h1:itR+KLMfvHu7yeZdwHkDanOImRyG3xtsZJai3UC7sk4=
 github.com/ava-labs/coreth v0.11.1-rc.2 h1:Q1lOyC8BJaklqDP4DR9QLEPqZTj7MLyL1f/WxaMRMNI=
