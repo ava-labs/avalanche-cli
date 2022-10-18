@@ -6,12 +6,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/subnet-evm/commontype"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ethereum/go-ethereum/common"
@@ -73,6 +77,11 @@ type Precompiles struct {
 }
 
 func upgradeGenerateCmd(cmd *cobra.Command, args []string) error {
+	subnetName := args[0]
+	if !app.GenesisExists(subnetName) {
+		ux.Logger.PrintToUser("The provided subnet name %q does not exist", subnetName)
+		return nil
+	}
 	// print some warning/info message
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("Performing a network upgrade requires coordinating the upgrade network-wide. A network upgrade changes the rule set used to process and verify blocks, such that any node that upgrades incorrectly or fails to upgrade by the time that upgrade goes into effect may become out of sync with the rest of the network.\n\nAny mistakes in configuring network upgrades or coordinating them on validators may cause the network to halt and recovering may be difficult."))
 	ux.Logger.PrintToUser(logging.Cyan.Wrap("Please consult https://docs.avax.network/subnets/customize-a-subnet#network-upgrades-enabledisable-precompiles for more information"))
@@ -156,7 +165,45 @@ func upgradeGenerateCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(jsonBytes))
+
+	return writeUpgradeFile(jsonBytes, subnetName)
+}
+
+func writeUpgradeFile(jsonBytes []byte, subnetName string) error {
+	var (
+		exists bool
+		err    error
+	)
+
+	subnetPath := filepath.Join(app.GetUpgradeFilesDir(), subnetName)
+	updateBytesFileName := filepath.Join(subnetPath, constants.UpdateBytesFileName)
+
+	ux.Logger.PrintToUser(fmt.Sprintf("Writing %q file to %q...", constants.UpdateBytesFileName, subnetPath))
+
+	exists, err = storage.FolderExists(app.GetUpgradeFilesDir())
+	if err != nil {
+		return err
+	}
+	if !exists {
+		if err := os.Mkdir(app.GetUpgradeFilesDir(), constants.DefaultPerms755); err != nil {
+			return err
+		}
+	}
+
+	exists, err = storage.FolderExists(subnetPath)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		if err := os.Mkdir(subnetPath, constants.DefaultPerms755); err != nil {
+			return err
+		}
+	}
+
+	if err = os.WriteFile(updateBytesFileName, jsonBytes, constants.DefaultPerms755); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("File written successfully")
 	return nil
 }
 

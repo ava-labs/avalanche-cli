@@ -11,7 +11,7 @@ import (
 // avalanche subnet upgrade
 func newUpgrade() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "subnet upgrade [subnetName]",
+		Use:   "upgrade",
 		Short: "Upgrade a subnet",
 		Long: `The subnet upgrade command suite provides a collection of tools for updating subnets.
 

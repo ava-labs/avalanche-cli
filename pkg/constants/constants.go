@@ -15,6 +15,7 @@ const (
 	ServerRunFile      = "gRPCserver.run"
 	AvalancheCliBinDir = "bin"
 	RunDir             = "runs"
+	UpgradeFilesDir    = "upgrades"
 	SidecarSuffix      = "_sidecar.json"
 	GenesisSuffix      = "_genesis.json"
 
@@ -99,4 +100,6 @@ const (
 	AvaLabsMaintainers = "ava-labs"
 
 	BackendCmd = "avalanche-cli-backend"
+
+	UpdateBytesFileName = "upgrade.json"
 )

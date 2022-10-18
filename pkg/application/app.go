@@ -44,6 +44,10 @@ func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Con
 	app.Prompt = prompt
 }
 
+func (app *Avalanche) GetUpgradeFilesDir() string {
+	return filepath.Join(app.baseDir, constants.UpgradeFilesDir)
+}
+
 func (app *Avalanche) GetRunFile() string {
 	return filepath.Join(app.GetRunDir(), constants.ServerRunFile)
 }
