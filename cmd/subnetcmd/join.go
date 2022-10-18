@@ -32,9 +32,9 @@ var (
 	pluginDir string
 	// if true, print the manual instructions to screen
 	printManual bool
-	// skipWhitelistCheck if true doesn't prompt, skipping the test
+	// skipWhitelistCheck if true doesn't prompt, skip the check
 	skipWhitelistCheck bool
-	// forceWhitelistCheck if true doesn't prompt, doing the test
+	// forceWhitelistCheck if true doesn't prompt, run the check
 	forceWhitelistCheck bool
 	// failIfNotValidating
 	failIfNotValidating bool
@@ -117,8 +117,8 @@ This command currently only supports subnets deployed on the Fuji testnet.`,
 	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
 	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
 	cmd.Flags().BoolVar(&printManual, "print", false, "if true, print the manual config without prompting")
-	cmd.Flags().BoolVar(&skipWhitelistCheck, "skip-whitelist-check", false, "if true, skip the whitelist test")
-	cmd.Flags().BoolVar(&forceWhitelistCheck, "force-whitelist-check", false, "if true, force the whitelist test")
+	cmd.Flags().BoolVar(&skipWhitelistCheck, "skip-whitelist-check", false, "if true, skip the whitelist check")
+	cmd.Flags().BoolVar(&forceWhitelistCheck, "force-whitelist-check", false, "if true, force the whitelist check")
 	cmd.Flags().BoolVar(&failIfNotValidating, "fail-if-not-validating", false, "fail if whitelist check fails")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to check")
 	cmd.Flags().BoolVar(&forceWrite, "force-write", false, "if true, skip to prompt to overwrite the config file")
