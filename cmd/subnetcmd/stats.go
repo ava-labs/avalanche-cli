@@ -289,6 +289,7 @@ func findAPIEndpoint(network models.Network) (platformvm.Client, info.Client) {
 	_, err := c.GetHeight(ctx)
 	if err == nil {
 		i = info.NewClient(constants.LocalAPIEndpoint)
+		// try calling it to make sure it actually worked
 		_, _, err := i.GetNodeID(ctx)
 		if err == nil {
 			return c, i

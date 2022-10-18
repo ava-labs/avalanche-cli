@@ -94,7 +94,7 @@ func SubnetConfigExists(subnetName string) (bool, error) {
 	return gen && sc, nil
 }
 
-func UpdateSubnetConfig(subnetName string, network models.Network, subnetID string) error {
+func AddSubnetIDToSidecar(subnetName string, network models.Network, subnetID string) error {
 	exists, err := sidecarExists(subnetName)
 	if err != nil {
 		return fmt.Errorf("failed to access sidecar for %s: %w", subnetName, err)
