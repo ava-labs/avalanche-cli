@@ -99,7 +99,7 @@ const (
 
 	AvaLabsMaintainers = "ava-labs"
 
-	BackendCmd = "avalanche-cli-backend"
-
 	UpdateBytesFileName = "upgrade.json"
+	NotAvailableLabel   = "Not available"
+	BackendCmd          = "avalanche-cli-backend"
 )

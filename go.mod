@@ -5,12 +5,12 @@ go 1.18
 require (
 	github.com/ava-labs/apm v0.0.4
 	github.com/ava-labs/avalanche-network-runner v1.2.4-0.20221003163451-7d3d1bfa924f
-	github.com/ava-labs/avalanchego v1.8.6
-	github.com/ava-labs/coreth v0.10.0-rc.1
+	github.com/ava-labs/avalanchego v1.9.0
+	github.com/ava-labs/coreth v0.11.0-rc.4
 	github.com/ava-labs/spacesvm v0.0.8
 	github.com/ava-labs/subnet-evm v0.3.0
 	github.com/docker/docker v20.10.18+incompatible
-	github.com/ethereum/go-ethereum v1.10.23
+	github.com/ethereum/go-ethereum v1.10.25
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/manifoldco/promptui v0.9.0
