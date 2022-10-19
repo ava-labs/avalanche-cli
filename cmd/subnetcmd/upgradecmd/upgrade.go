@@ -28,5 +28,7 @@ updating your developmental and deployed subnets.`,
 	app = injectedApp
 	// subnet upgrade vm
 	cmd.AddCommand(newUpgradeVMCmd())
+	// subnet upgrade generate
+	cmd.AddCommand(newUpgradeGenerateCmd())
 	return cmd
 }

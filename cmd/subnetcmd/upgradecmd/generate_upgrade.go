@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package subnetcmd
+package upgradecmd
 
 import (
 	"encoding/json"
@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -136,10 +137,16 @@ func upgradeGenerateCmd(cmd *cobra.Command, args []string) error {
 		}
 
 		mapForJSON := pp.ToMap()
-		mapForJSON[blockTimestampKey], err = app.Prompt.CaptureUint64("Enter the block activation time stamp")
+		// TODO: This is requiring a timestamp 1 minute in the future
+		// What is a sensible default?
+		// An update requires planning and coordination, so it's not easy to think of a sensible default.
+		// It's probably best to not try to be too smart and just assume the user to set something useful
+		date, err := app.Prompt.CaptureFutureDate(
+			"Enter the block activation UTC datetime in 'YYYY-MM-DD HH:MM:SS' format", time.Now().Add(time.Minute).UTC())
 		if err != nil {
 			return err
 		}
+		mapForJSON[blockTimestampKey] = date.Unix()
 
 		precompiles.PrecompileUpgrades[vm.PrecompileToUpgradeString(vm.Precompile(precomp))] = mapForJSON
 
