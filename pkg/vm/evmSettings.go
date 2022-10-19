@@ -6,7 +6,6 @@ package vm
 import (
 	"math/big"
 
-	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/subnet-evm/commontype"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -40,5 +39,5 @@ var (
 	PrefundedEwoqAddress = common.HexToAddress("0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC")
 	PrefundedEwoqPrivate = "56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
 
-	oneAvax = new(big.Int).SetUint64(units.Avax)
+	oneAvax = new(big.Int).SetUint64(1000000000000000000)
 )
