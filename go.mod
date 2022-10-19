@@ -5,8 +5,8 @@ go 1.18
 require (
 	github.com/ava-labs/apm v0.0.4
 	github.com/ava-labs/avalanche-network-runner v1.2.4-0.20221003163451-7d3d1bfa924f
-	github.com/ava-labs/avalanchego v1.9.0
-	github.com/ava-labs/coreth v0.11.0-rc.4
+	github.com/ava-labs/avalanchego v1.9.1-rc.3
+	github.com/ava-labs/coreth v0.11.1-rc.2
 	github.com/ava-labs/spacesvm v0.0.8
 	github.com/ava-labs/subnet-evm v0.3.0
 	github.com/docker/docker v20.10.18+incompatible
@@ -134,6 +134,7 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
+	golang.org/x/exp v0.0.0-20220426173459-3bcf042a4bf5 // indirect
 	golang.org/x/net v0.0.0-20220722155237-a158d28d115b // indirect
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
 	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
