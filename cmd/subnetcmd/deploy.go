@@ -261,11 +261,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// use creation key as control key
 	if sameControlKey {
-		controlKey, err := loadCreationKey(network, kc)
+		controlKeys, err = loadCreationKeys(network, kc)
 		if err != nil {
 			return err
 		}
-		controlKeys = []string{controlKey}
 	}
 
 	// prompt for control keys
@@ -347,9 +346,7 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain
 
 	switch listDecision {
 	case creation:
-		var key string
-		key, err = loadCreationKey(network, kc)
-		keys = []string{key}
+		keys, err = loadCreationKeys(network, kc)
 	case useAll:
 		keys, err = useAllKeys(network)
 	case custom:
@@ -397,23 +394,26 @@ func useAllKeys(network models.Network) ([]string, error) {
 	return existing, nil
 }
 
-func loadCreationKey(network models.Network, kc keychain.Keychain) (string, error) {
+func loadCreationKeys(network models.Network, kc keychain.Keychain) ([]string, error) {
 	addrs := kc.Addresses().List()
 	if len(addrs) == 0 {
-		return "", fmt.Errorf("no creation addresses found")
+		return nil, fmt.Errorf("no creation addresses found")
 	}
-	addr := addrs[0]
 	networkID, err := network.NetworkID()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	hrp := key.GetHRP(networkID)
-	addrStr, err := address.Format("P", hrp, addr[:])
-	if err != nil {
-		return "", err
+	addrsStr := []string{}
+	for _, addr := range addrs {
+		addrStr, err := address.Format("P", hrp, addr[:])
+		if err != nil {
+			return nil, err
+		}
+		addrsStr = append(addrsStr, addrStr)
 	}
 
-	return addrStr, nil
+	return addrsStr, nil
 }
 
 func enterCustomKeys(network models.Network) ([]string, bool, error) {
