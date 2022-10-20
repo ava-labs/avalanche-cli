@@ -5,6 +5,7 @@ package subnetcmd
 import (
 	"testing"
 
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -69,12 +70,11 @@ func TestMutuallyExclusive(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		err := checkMutuallyExclusive(tt.flagA, tt.flagB, tt.flagC)
+		isEx := flags.EnsureMutuallyExclusive([]bool{tt.flagA, tt.flagB, tt.flagC})
 		if tt.expectError {
-			assert.Error(err, tt)
-			assert.ErrorIs(err, errMutuallyExlusive)
+			assert.False(isEx)
 		} else {
-			assert.NoError(err)
+			assert.True(isEx)
 		}
 	}
 }
