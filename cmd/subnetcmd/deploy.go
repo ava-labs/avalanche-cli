@@ -331,6 +331,12 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if err := printPartialSigningMsg(deployer, subnetAuthKeys, outputTxPath); err != nil {
 			return err
 		}
+		tx2, err := loadTxFromDisk(outputTxPath)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%#v", tx)
+		fmt.Printf("%#v", tx2)
 	}
 
 	// update sidecar
@@ -676,9 +682,29 @@ func saveTxToDisk(tx *txs.Tx, outputTxPath string) error {
 	if err != nil {
 		return fmt.Errorf("couldn't create file to write tx to: %w", err)
 	}
+	defer f.Close()
 	_, err = f.WriteString(txStr)
-	f.Close()
+	if err != nil {
+		return fmt.Errorf("couldn't write tx into file: %w", err)
+	}
 	return nil
+}
+
+func loadTxFromDisk(outputTxPath string) (*txs.Tx, error) {
+	txEncodedBytes, err := os.ReadFile(outputTxPath)
+	if err != nil {
+		return nil, err
+	}
+	txBytes, err := formatting.Decode(formatting.Hex, string(txEncodedBytes))
+	if err != nil {
+		return nil, fmt.Errorf("couldn't decode signed tx: %w", err)
+	}
+	var tx txs.Tx
+	if _, err := txs.Codec.Unmarshal(txBytes, &tx); err != nil {
+		return nil, fmt.Errorf("error unmarshaling signed tx: %w", err)
+	}
+	tx.Initialize(nil, txBytes)
+	return &tx, nil
 }
 
 func printPartialSigningMsg(deployer *subnet.PublicDeployer, subnetAuthKeys []string, outputTxPath string) error {
