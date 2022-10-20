@@ -23,12 +23,12 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
-	"github.com/ava-labs/avalanchego/wallet/subnet/primary/keychain"
 	"github.com/ava-labs/spacesvm/chain"
 	spacesvmclient "github.com/ava-labs/spacesvm/client"
 	"github.com/ava-labs/subnet-evm/ethclient"
@@ -99,6 +99,44 @@ func SubnetConfigExists(subnetName string) (bool, error) {
 		return false, errors.New("config half exists")
 	}
 	return gen && sc, nil
+}
+
+func AddSubnetIDToSidecar(subnetName string, network models.Network, subnetID string) error {
+	exists, err := sidecarExists(subnetName)
+	if err != nil {
+		return fmt.Errorf("failed to access sidecar for %s: %w", subnetName, err)
+	}
+	if !exists {
+		return fmt.Errorf("failed to access sidecar for %s: not found", subnetName)
+	}
+
+	sidecar := path.Join(GetBaseDir(), subnetName+constants.SidecarSuffix)
+
+	jsonBytes, err := os.ReadFile(sidecar)
+	if err != nil {
+		return err
+	}
+
+	var sc models.Sidecar
+	err = json.Unmarshal(jsonBytes, &sc)
+	if err != nil {
+		return err
+	}
+
+	subnetIDstr, err := ids.FromString(subnetID)
+	if err != nil {
+		return err
+	}
+	sc.Networks[network.String()] = models.NetworkData{
+		SubnetID: subnetIDstr,
+	}
+
+	fileBytes, err := json.Marshal(&sc)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(sidecar, fileBytes, constants.DefaultPerms755)
 }
 
 func APMConfigExists(subnetName string) (bool, error) {

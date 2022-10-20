@@ -70,16 +70,6 @@ github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPd
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
 github.com/ava-labs/apm v0.0.4 h1:0IUwxCyvqwr2sbbEKhSI7VzpPG3Z+e180ulJwNiKkBk=
 github.com/ava-labs/apm v0.0.4/go.mod h1:4MNcyEvWajJm2JnezC7vgHuA220ppoQYOMh5vM+iH4Q=
-github.com/ava-labs/avalanche-ledger-go v0.0.8 h1:YZpunfR7Vt64Fw9gS2aU7kkjEO58MEacgaCDO9SuQks=
-github.com/ava-labs/avalanche-ledger-go v0.0.8/go.mod h1:wiqePCS9tR6y94j146b4IamT6pLUHoAbl/IvI7bUBuE=
-github.com/ava-labs/avalanche-ledger-go v0.0.9-0.20221016024902-2582e1c87224 h1:oE++Has0s+Qtj7a7EnWUaV8byhixf68BiLtCPUsbQac=
-github.com/ava-labs/avalanche-ledger-go v0.0.9-0.20221016024902-2582e1c87224/go.mod h1:wiqePCS9tR6y94j146b4IamT6pLUHoAbl/IvI7bUBuE=
-github.com/ava-labs/avalanche-ledger-go v0.0.9-0.20221016025743-d0445c377252 h1:x1sX3096c94rh3kcXoMOCYfFT/0Z0F1UIdRdhyVqDHk=
-github.com/ava-labs/avalanche-ledger-go v0.0.9-0.20221016025743-d0445c377252/go.mod h1:wiqePCS9tR6y94j146b4IamT6pLUHoAbl/IvI7bUBuE=
-github.com/ava-labs/avalanche-ledger-go v0.0.9-0.20221017140231-895c57f030fc h1:+5JkEtA3oKoO9kSlsXPgET0nMILAtoiNJG6JtrSbWIQ=
-github.com/ava-labs/avalanche-ledger-go v0.0.9-0.20221017140231-895c57f030fc/go.mod h1:TtOF5kAnSTkGBALJjrtx2pXE/bZpVp8Mdm7UPOhV4As=
-github.com/ava-labs/avalanche-ledger-go v0.0.9-0.20221017144450-4ce6740c6112 h1:Dgfpqdu1fBau9WcZhwWUmxSOnWFuRViqv8JENHHriQc=
-github.com/ava-labs/avalanche-ledger-go v0.0.9-0.20221017144450-4ce6740c6112/go.mod h1:TtOF5kAnSTkGBALJjrtx2pXE/bZpVp8Mdm7UPOhV4As=
 github.com/ava-labs/avalanche-ledger-go v0.0.9 h1:5AEaIYLsRs3sp/o/B1QcYhvXl6f0cuO5n2ZZGoCzY5c=
 github.com/ava-labs/avalanche-ledger-go v0.0.9/go.mod h1:TtOF5kAnSTkGBALJjrtx2pXE/bZpVp8Mdm7UPOhV4As=
 github.com/ava-labs/avalanche-network-runner v1.2.4-0.20221003163451-7d3d1bfa924f h1:9mcWnEt0J51SGUQ9q/bcg7C7iAJc3C9XRNh87TRQdyI=
@@ -425,8 +415,8 @@ github.com/onsi/gomega v1.7.1/go.mod h1:XdKZgCCFLUoM/7CFJVPcG8C1xQ1AJ0vpAezJrB7J
 github.com/onsi/gomega v1.10.1/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1ybHNo=
 github.com/onsi/gomega v1.17.0/go.mod h1:HnhC7FXeEQY45zxNK3PPoIUhzk/80Xly9PcubAlGdZY=
 github.com/onsi/gomega v1.19.0/go.mod h1:LY+I3pBVzYsTBU1AnDwOSxaYi9WoWiqgwooUqq9yPro=
-github.com/onsi/gomega v1.20.2 h1:8uQq0zMgLEfa0vRrrBgaJF2gyW9Da9BmfGV+OyUzfkY=
-github.com/onsi/gomega v1.20.2/go.mod h1:iYAIXgPSaDHak0LCMA+AWBpIKBr8WZicMxnE8luStNc=
+github.com/onsi/gomega v1.21.1 h1:OB/euWYIExnPBohllTicTHmGTrMaqJ67nIu80j0/uEM=
+github.com/onsi/gomega v1.21.1/go.mod h1:iYAIXgPSaDHak0LCMA+AWBpIKBr8WZicMxnE8luStNc=
 github.com/otiai10/copy v1.7.0 h1:hVoPiN+t+7d2nzzwMiDHPSOogsWAStewq3TwU05+clE=
 github.com/otiai10/copy v1.7.0/go.mod h1:rmRl6QPdJj6EiUqXQ/4Nn2lLXoNQjFCQbbNrxgc/t3U=
 github.com/otiai10/curr v0.0.0-20150429015615-9b4961190c95/go.mod h1:9qAhocn7zKJG+0mI8eUu6xqkFDYS2kb2saOteoSB3cE=
