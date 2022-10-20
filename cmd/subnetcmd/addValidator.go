@@ -197,7 +197,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		if err := txutils.SaveToDisk(tx, outputTxPath); err != nil {
 			return err
 		}
-		remainingSubnetAuthKeys, err := getTxRemainingSigners(tx, network, subnetID)
+		remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, network, subnetID)
 		if err != nil {
 			return err
 		}
