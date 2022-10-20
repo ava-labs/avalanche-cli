@@ -12,6 +12,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	txutils "github.com/ava-labs/avalanche-cli/pkg/tx"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -130,11 +131,11 @@ func addValidator(cmd *cobra.Command, args []string) error {
 
 	// get keys for add validator tx signing
 	if subnetAuthKeys != nil {
-		if err := checkSubnetAuthKeys(subnetAuthKeys, controlKeys, threshold); err != nil {
+		if err := prompts.CheckSubnetAuthKeys(subnetAuthKeys, controlKeys, threshold); err != nil {
 			return err
 		}
 	} else {
-		subnetAuthKeys, err = getSubnetAuthKeys(controlKeys, threshold)
+		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, controlKeys, threshold)
 		if err != nil {
 			return err
 		}

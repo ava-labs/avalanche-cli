@@ -572,3 +572,50 @@ func contains[T comparable](list []T, element T) bool {
 	}
 	return false
 }
+
+func CheckSubnetAuthKeys(subnetAuthKeys []string, controlKeys []string, threshold uint32) error {
+	// get keys for blockchain creation
+	if subnetAuthKeys != nil && len(subnetAuthKeys) != int(threshold) {
+		return fmt.Errorf("number of given chain creation keys differs from the threshold")
+	}
+	for _, subnetAuthKey := range subnetAuthKeys {
+		found := false
+		for _, controlKey := range controlKeys {
+			if subnetAuthKey == controlKey {
+				found = true
+			}
+		}
+		if !found {
+			return fmt.Errorf("subnet auth key %s does not belong to control keys", subnetAuthKey)
+		}
+	}
+	return nil
+}
+
+func GetSubnetAuthKeys(prompt Prompter, controlKeys []string, threshold uint32) ([]string, error) {
+	var subnetAuthKeys []string
+	if len(controlKeys) == int(threshold) {
+		subnetAuthKeys = controlKeys
+	} else {
+		subnetAuthKeys = []string{}
+		filteredControlKeys := controlKeys
+		for len(subnetAuthKeys) != int(threshold) {
+			subnetAuthKey, err := prompt.CaptureList(
+				"Choose a chain creation key",
+				filteredControlKeys,
+			)
+			if err != nil {
+				return nil, err
+			}
+			subnetAuthKeys = append(subnetAuthKeys, subnetAuthKey)
+			filteredControlKeysTmp := []string{}
+			for _, controlKey := range filteredControlKeys {
+				if controlKey != subnetAuthKey {
+					filteredControlKeysTmp = append(filteredControlKeysTmp, controlKey)
+				}
+			}
+			filteredControlKeys = filteredControlKeysTmp
+		}
+	}
+	return subnetAuthKeys, nil
+}

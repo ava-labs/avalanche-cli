@@ -312,11 +312,11 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// get keys for blockchain tx signing
 	if subnetAuthKeys != nil {
-		if err := checkSubnetAuthKeys(subnetAuthKeys, controlKeys, threshold); err != nil {
+		if err := prompts.CheckSubnetAuthKeys(subnetAuthKeys, controlKeys, threshold); err != nil {
 			return err
 		}
 	} else {
-		subnetAuthKeys, err = getSubnetAuthKeys(controlKeys, threshold)
+		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, controlKeys, threshold)
 		if err != nil {
 			return err
 		}
@@ -604,53 +604,6 @@ func getKeychain(
 		return kc, err
 	}
 	return sf.KeyChain(), nil
-}
-
-func checkSubnetAuthKeys(subnetAuthKeys []string, controlKeys []string, threshold uint32) error {
-	// get keys for blockchain creation
-	if subnetAuthKeys != nil && len(subnetAuthKeys) != int(threshold) {
-		return fmt.Errorf("number of given chain creation keys differs from the threshold")
-	}
-	for _, subnetAuthKey := range subnetAuthKeys {
-		found := false
-		for _, controlKey := range controlKeys {
-			if subnetAuthKey == controlKey {
-				found = true
-			}
-		}
-		if !found {
-			return fmt.Errorf("subnet auth key %s does not belong to control keys", subnetAuthKey)
-		}
-	}
-	return nil
-}
-
-func getSubnetAuthKeys(controlKeys []string, threshold uint32) ([]string, error) {
-	var subnetAuthKeys []string
-	if len(controlKeys) == int(threshold) {
-		subnetAuthKeys = controlKeys
-	} else {
-		subnetAuthKeys = []string{}
-		filteredControlKeys := controlKeys
-		for len(subnetAuthKeys) != int(threshold) {
-			subnetAuthKey, err := app.Prompt.CaptureList(
-				"Choose a chain creation key",
-				filteredControlKeys,
-			)
-			if err != nil {
-				return nil, err
-			}
-			subnetAuthKeys = append(subnetAuthKeys, subnetAuthKey)
-			filteredControlKeysTmp := []string{}
-			for _, controlKey := range filteredControlKeys {
-				if controlKey != subnetAuthKey {
-					filteredControlKeysTmp = append(filteredControlKeysTmp, controlKey)
-				}
-			}
-			filteredControlKeys = filteredControlKeysTmp
-		}
-	}
-	return subnetAuthKeys, nil
 }
 
 func printPartialSigningMsg(remainingSubnetAuthKeys []string, outputTxPath string) error {
