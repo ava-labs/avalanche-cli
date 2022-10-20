@@ -22,8 +22,11 @@ import (
 	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/keychain"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
+	"github.com/ava-labs/avalanchego/vms/components/verify"
 	"github.com/ava-labs/coreth/core"
 	spacesvmchain "github.com/ava-labs/spacesvm/chain"
 	"github.com/spf13/cobra"
@@ -331,12 +334,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if err := printPartialSigningMsg(deployer, subnetAuthKeys, outputTxPath); err != nil {
 			return err
 		}
-		tx2, err := loadTxFromDisk(outputTxPath)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("%#v", tx)
-		fmt.Printf("%#v", tx2)
+        fmt.Println(getTxRemainingSingers(tx, network, subnetID))
 	}
 
 	// update sidecar
@@ -739,3 +737,46 @@ func printPartialSigningMsg(deployer *subnet.PublicDeployer, subnetAuthKeys []st
 	ux.Logger.PrintToUser("  avalanche transaction sign %s", outputTxPath)
 	return nil
 }
+
+func getTxRemainingSingers(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]string, error) {
+	controlKeys, _, err := getSubnetDef(network, subnetID)
+	if err != nil {
+        return nil, err
+	}
+    unsignedTx := tx.Unsigned
+    var subnetAuth verify.Verifiable
+	switch unsignedTx := unsignedTx.(type) {
+    case *txs.AddSubnetValidatorTx:
+         subnetAuth = unsignedTx.SubnetAuth
+    case *txs.CreateChainTx:
+         subnetAuth = unsignedTx.SubnetAuth
+    }
+	subnetInput, ok := subnetAuth.(*secp256k1fx.Input)
+	if !ok {
+		return nil, fmt.Errorf("expected subnetAuth of type *secp256k1fx.Input, got %T", subnetAuth)
+	}
+	authSigners := []string{}
+    fmt.Println(controlKeys)
+	for _, addrIndex := range subnetInput.SigIndices {
+        fmt.Println(addrIndex)
+		if addrIndex >= uint32(len(controlKeys)) {
+			return nil, fmt.Errorf("addrIndex %d > len(controlKeys) %d", addrIndex, len(controlKeys))
+		}
+        authSigners = append(authSigners, controlKeys[addrIndex])
+	}
+    fmt.Println(tx.Creds)
+    /*
+    credIntf := tx.Creds[credIndex]
+    if credIntf == nil {
+        credIntf = &secp256k1fx.Credential{}
+        tx.Creds[credIndex] = credIntf
+    }
+
+    cred, ok := credIntf.(*secp256k1fx.Credential)
+    if !ok {
+        return errUnknownCredentialType
+    }
+    */
+    return authSigners, nil
+}
+
