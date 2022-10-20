@@ -74,30 +74,44 @@ func (d *PublicDeployer) Deploy(
 	threshold uint32,
 	chain string,
 	genesis []byte,
-) (ids.ID, ids.ID, error) {
+) (ids.ID, bool, ids.ID, *txs.Tx, error) {
 	wallet, err := d.loadWallet()
 	if err != nil {
-		return ids.Empty, ids.Empty, err
+		return ids.Empty, false, ids.Empty, nil, err
 	}
 	vmID, err := utils.VMID(chain)
 	if err != nil {
-		return ids.Empty, ids.Empty, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
+		return ids.Empty, false, ids.Empty, nil, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
 
-	_, err = d.getWalletSubnetAuthAddresses(subnetAuthKeys)
+	_, err = d.GetWalletSubnetAuthAddresses(subnetAuthKeys)
 	if err != nil {
-		return ids.Empty, ids.Empty, err
+		return ids.Empty, false, ids.Empty, nil, err
 	}
 
 	subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
 	if err != nil {
-		return ids.Empty, ids.Empty, err
+		return ids.Empty, false, ids.Empty, nil, err
 	}
 	ux.Logger.PrintToUser("Subnet has been created with ID: %s. Now creating blockchain...", subnetID.String())
 
-	blockchainID, err := d.createBlockchainTx(subnetAuthKeys, chain, vmID, subnetID, genesis, wallet)
-	if err != nil {
-		return ids.Empty, ids.Empty, err
+	var (
+		blockchainID       ids.ID
+		blockchainTx       *txs.Tx
+		blockchainDeployed bool
+	)
+
+	if len(subnetAuthKeys) == 1 {
+		blockchainDeployed = true
+		blockchainID, err = d.createAndIssueBlockchainTx(chain, vmID, subnetID, genesis, wallet)
+		if err != nil {
+			return ids.Empty, false, ids.Empty, nil, err
+		}
+	} else {
+		blockchainTx, err = d.createBlockchainTx(subnetAuthKeys, chain, vmID, subnetID, genesis, wallet)
+		if err != nil {
+			return ids.Empty, false, ids.Empty, nil, err
+		}
 	}
 
 	header := []string{"Deployment results", ""}
@@ -107,13 +121,14 @@ func (d *PublicDeployer) Deploy(
 	table.SetAutoMergeCells(true)
 	table.Append([]string{"Chain Name", chain})
 	table.Append([]string{"Subnet ID", subnetID.String()})
-	table.Append([]string{"Blockchain ID", blockchainID.String()})
 	table.Append([]string{"VM ID", vmID.String()})
-	table.Append([]string{"RPC URL", fmt.Sprintf("%s/ext/bc/%s/rpc", constants.DefaultNodeRunURL, blockchainID.String())})
-
+	if blockchainDeployed {
+		table.Append([]string{"Blockchain ID", blockchainID.String()})
+		table.Append([]string{"RPC URL", fmt.Sprintf("%s/ext/bc/%s/rpc", constants.DefaultNodeRunURL, blockchainID.String())})
+	}
 	table.Render()
 
-	return subnetID, blockchainID, nil
+	return subnetID, blockchainDeployed, blockchainID, blockchainTx, nil
 }
 
 func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error) {
@@ -139,6 +154,20 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error
 	return wallet, nil
 }
 
+func (d *PublicDeployer) createAndIssueBlockchainTx(
+	chainName string,
+	vmID,
+	subnetID ids.ID,
+	genesis []byte,
+	wallet primary.Wallet,
+) (ids.ID, error) {
+	fxIDs := make([]ids.ID, 0)
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign blockchain creation hash on the ledger device *** ")
+	}
+	return wallet.P().IssueCreateChainTx(subnetID, genesis, vmID, fxIDs, chainName)
+}
+
 func (d *PublicDeployer) createBlockchainTx(
 	subnetAuthKeys []string,
 	chainName string,
@@ -146,60 +175,55 @@ func (d *PublicDeployer) createBlockchainTx(
 	subnetID ids.ID,
 	genesis []byte,
 	wallet primary.Wallet,
-) (ids.ID, error) {
+) (*txs.Tx, error) {
 	options := []common.Option{}
 	fxIDs := make([]ids.ID, 0)
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign blockchain creation hash on the ledger device *** ")
 	}
-	if len(subnetAuthKeys) == 1 {
-		return wallet.P().IssueCreateChainTx(subnetID, genesis, vmID, fxIDs, chainName, options...)
-	} else {
-		// addrs to use for signing
-		customAddrsSet := ids.ShortSet{}
-		for _, customAddrStr := range subnetAuthKeys {
-			customAddr, err := address.ParseToID(customAddrStr)
-			if err != nil {
-				return ids.Empty, err
-			}
-			customAddrsSet.Add(customAddr)
-		}
-		options = append(options, common.WithCustomAddresses(customAddrsSet))
-		// set change to go to wallet addr (instead of any other subnet auth key)
-		walletAddresses, err := d.getWalletSubnetAuthAddresses(subnetAuthKeys)
+	// addrs to use for signing
+	customAddrsSet := ids.ShortSet{}
+	for _, customAddrStr := range subnetAuthKeys {
+		customAddr, err := address.ParseToID(customAddrStr)
 		if err != nil {
-			return ids.Empty, err
+			return nil, err
 		}
-		walletAddrStr := walletAddresses[0]
-		walletAddr, err := address.ParseToID(walletAddrStr)
-		if err != nil {
-			return ids.Empty, err
-		}
-		changeOwner := &secp256k1fx.OutputOwners{
-			Threshold: 1,
-			Addrs:     []ids.ShortID{walletAddr},
-		}
-		options = append(options, common.WithChangeOwner(changeOwner))
-		// create tx
-		unsignedTx, err := wallet.P().Builder().NewCreateChainTx(
-			subnetID,
-			genesis,
-			vmID,
-			fxIDs,
-			chainName,
-			options...,
-		)
-		if err != nil {
-			return ids.Empty, err
-		}
-		tx := txs.Tx{Unsigned: unsignedTx}
-		// sign with current wallet
-		if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-			return ids.Empty, err
-		}
-
-		return wallet.P().IssueTx(&tx)
+		customAddrsSet.Add(customAddr)
 	}
+	options = append(options, common.WithCustomAddresses(customAddrsSet))
+	// set change to go to wallet addr (instead of any other subnet auth key)
+	walletAddresses, err := d.GetWalletSubnetAuthAddresses(subnetAuthKeys)
+	if err != nil {
+		return nil, err
+	}
+	walletAddrStr := walletAddresses[0]
+	walletAddr, err := address.ParseToID(walletAddrStr)
+	if err != nil {
+		return nil, err
+	}
+	changeOwner := &secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs:     []ids.ShortID{walletAddr},
+	}
+	options = append(options, common.WithChangeOwner(changeOwner))
+	// create tx
+	unsignedTx, err := wallet.P().Builder().NewCreateChainTx(
+		subnetID,
+		genesis,
+		vmID,
+		fxIDs,
+		chainName,
+		options...,
+	)
+	if err != nil {
+		return nil, err
+	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	// sign with current wallet
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return nil, err
+	}
+	return &tx, nil
 }
 
 func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, wallet primary.Wallet) (ids.ID, error) {
@@ -219,7 +243,7 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 	return wallet.P().IssueCreateSubnetTx(owners, opts...)
 }
 
-func (d *PublicDeployer) getWalletSubnetAuthAddresses(subnetAuth []string) ([]string, error) {
+func (d *PublicDeployer) GetWalletSubnetAuthAddresses(subnetAuth []string) ([]string, error) {
 	networkID, err := d.network.NetworkID()
 	if err != nil {
 		return nil, err

@@ -19,8 +19,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	ledger "github.com/ava-labs/avalanche-ledger-go"
+	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/keychain"
 	"github.com/ava-labs/coreth/core"
 	spacesvmchain "github.com/ava-labs/spacesvm/chain"
@@ -41,6 +43,7 @@ var (
 	controlKeys    []string
 	subnetAuthKeys []string
 	avagoVersion   string
+	outputTxPath   string
 
 	errMutuallyExlusive = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 )
@@ -79,6 +82,7 @@ subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to add a validator")
 	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may add new validators to the subnet")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate chain creation")
+	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
 	return cmd
 }
 
@@ -349,9 +353,72 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	subnetID, blockchainID, err := deployer.Deploy(controlKeys, subnetAuthKeys, threshold, chain, chainGenesis)
+	subnetID, blockchainDeployed, blockchainID, blockchainTx, err := deployer.Deploy(controlKeys, subnetAuthKeys, threshold, chain, chainGenesis)
 	if err != nil {
 		return err
+	}
+
+	if !blockchainDeployed {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Partial signing was done on blockchain tx. Saving tx to disk to enable remaining signing.")
+		// get path
+		if outputTxPath == "" {
+			ux.Logger.PrintToUser("")
+			outputTxPath, err = app.Prompt.CaptureString("Path to export partially signed tx to")
+			if err != nil {
+				return err
+			}
+		}
+		// Serialize the signed tx
+		txBytes, err := txs.Codec.Marshal(txs.Version, blockchainTx)
+		if err != nil {
+			return fmt.Errorf("couldn't marshal signed tx: %w", err)
+		}
+
+		// Get the encoded (in hex + checksum) signed tx
+		txStr, err := formatting.Encode(formatting.Hex, txBytes)
+		if err != nil {
+			return fmt.Errorf("couldn't encode signed tx: %w", err)
+		}
+		// save
+		if _, err := os.Stat(outputTxPath); err == nil {
+			return fmt.Errorf("couldn't create file to write tx to: file exists")
+		}
+		f, err := os.Create(outputTxPath)
+		if err != nil {
+			return fmt.Errorf("couldn't create file to write tx to: %w", err)
+		}
+		_, err = f.WriteString(txStr)
+		f.Close()
+		// final msg
+		walletSubnetAuthKeys, err := deployer.GetWalletSubnetAuthAddresses(subnetAuthKeys)
+		if err != nil {
+			return err
+		}
+		filteredSubnetAuthKeys := []string{}
+		for _, subnetAuthKey := range subnetAuthKeys {
+			found := false
+			for _, walletSubnetAuthKey := range walletSubnetAuthKeys {
+				if subnetAuthKey == walletSubnetAuthKey {
+					found = true
+				}
+			}
+			if !found {
+				filteredSubnetAuthKeys = append(filteredSubnetAuthKeys, subnetAuthKey)
+			}
+		}
+		ux.Logger.PrintToUser("")
+		if len(filteredSubnetAuthKeys) == 1 {
+			ux.Logger.PrintToUser("One address remaining to sign the tx: %s", filteredSubnetAuthKeys[0])
+		} else {
+			ux.Logger.PrintToUser("%d addresses remaining to sign the tx:", len(filteredSubnetAuthKeys))
+			for _, subnetAuthKey := range filteredSubnetAuthKeys {
+				ux.Logger.PrintToUser("  %s", subnetAuthKey)
+			}
+		}
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Signing command:")
+		ux.Logger.PrintToUser("  avalanche transaction sign %s", outputTxPath)
 	}
 
 	// update sidecar
