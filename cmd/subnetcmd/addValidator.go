@@ -137,6 +137,9 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 	if subnetAuthKeys == nil {
 		subnetAuthKeys, err = getSubnetAuthKeys(controlKeys, threshold)
+		if err != nil {
+			return err
+		}
 	}
 	ux.Logger.PrintToUser("Your subnet auth keys for add validator tx creation: %s", subnetAuthKeys)
 

@@ -318,6 +318,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 	if subnetAuthKeys == nil {
 		subnetAuthKeys, err = getSubnetAuthKeys(controlKeys, threshold)
+		if err != nil {
+			return err
+		}
 	}
 	ux.Logger.PrintToUser("Your subnet auth keys for chain creation: %s", subnetAuthKeys)
 
@@ -609,29 +612,27 @@ func checkSubnetAuthKeys(subnetAuthKeys []string, controlKeys []string, threshol
 	if subnetAuthKeys != nil && len(subnetAuthKeys) != int(threshold) {
 		return fmt.Errorf("number of given chain creation keys differs from the threshold")
 	}
-	if subnetAuthKeys != nil {
-		for _, subnetAuthKey := range subnetAuthKeys {
-			found := false
-			for _, controlKey := range controlKeys {
-				if subnetAuthKey == controlKey {
-					found = true
-				}
+	for _, subnetAuthKey := range subnetAuthKeys {
+		found := false
+		for _, controlKey := range controlKeys {
+			if subnetAuthKey == controlKey {
+				found = true
 			}
-			if !found {
-				return fmt.Errorf("subnet auth key %s does not belong to control keys", subnetAuthKey)
-			}
+		}
+		if !found {
+			return fmt.Errorf("subnet auth key %s does not belong to control keys", subnetAuthKey)
 		}
 	}
 	return nil
 }
 
 func getSubnetAuthKeys(controlKeys []string, threshold uint32) ([]string, error) {
-	subnetAuthKeys := []string{}
+	var subnetAuthKeys []string
 	if len(controlKeys) == int(threshold) {
-		subnetAuthKeys = controlKeys[:]
+		subnetAuthKeys = controlKeys
 	} else {
 		subnetAuthKeys = []string{}
-		filteredControlKeys := controlKeys[:]
+		filteredControlKeys := controlKeys
 		for len(subnetAuthKeys) != int(threshold) {
 			subnetAuthKey, err := app.Prompt.CaptureList(
 				"Choose a chain creation key",
@@ -692,6 +693,7 @@ func saveTxToDisk(tx *txs.Tx, outputTxPath string) error {
 	return nil
 }
 
+//nolint:deadcode,unused
 func loadTxFromDisk(outputTxPath string) (*txs.Tx, error) {
 	txEncodedBytes, err := os.ReadFile(outputTxPath)
 	if err != nil {

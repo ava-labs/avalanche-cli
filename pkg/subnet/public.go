@@ -319,7 +319,6 @@ func (d *PublicDeployer) GetWalletSubnetAuthAddresses(subnetAuth []string) ([]st
 	}
 	if len(subnetAuthAddrs) == 0 {
 		return nil, fmt.Errorf("wallet addr not listed in subnet auth addresses")
-	} else {
-		return subnetAuthAddrs, nil
 	}
+	return subnetAuthAddrs, nil
 }
