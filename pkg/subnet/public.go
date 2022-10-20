@@ -43,10 +43,21 @@ func NewPublicDeployer(app *application.Avalanche, usingLedger bool, kc keychain
 	}
 }
 
-func (d *PublicDeployer) AddValidator(subnet ids.ID, nodeID ids.NodeID, weight uint64, startTime time.Time, duration time.Duration) error {
+func (d *PublicDeployer) AddValidator(
+	subnetAuthKeys []string,
+	subnet ids.ID,
+	nodeID ids.NodeID,
+	weight uint64,
+	startTime time.Time,
+	duration time.Duration,
+) (*txs.Tx, error) {
 	wallet, err := d.loadWallet(subnet)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	_, err = d.GetWalletSubnetAuthAddresses(subnetAuthKeys)
+	if err != nil {
+		return nil, err
 	}
 	validator := &validator.SubnetValidator{
 		Validator: validator.Validator{
@@ -60,12 +71,22 @@ func (d *PublicDeployer) AddValidator(subnet ids.ID, nodeID ids.NodeID, weight u
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign add validator hash on the ledger device *** ")
 	}
-	id, err := wallet.P().IssueAddSubnetValidatorTx(validator)
-	if err != nil {
-		return err
+
+	var tx *txs.Tx
+	if len(subnetAuthKeys) == 1 {
+		id, err := wallet.P().IssueAddSubnetValidatorTx(validator)
+		if err != nil {
+			return nil, err
+		}
+		ux.Logger.PrintToUser("Transaction successful, transaction ID :%s", id)
+	} else {
+		tx, err = d.createAddSubnetValidatorTx(subnetAuthKeys, validator, wallet)
+		if err != nil {
+			return nil, err
+		}
 	}
-	ux.Logger.PrintToUser("Transaction successful, transaction ID :%s", id)
-	return nil
+
+	return tx, nil
 }
 
 func (d *PublicDeployer) Deploy(
@@ -168,6 +189,36 @@ func (d *PublicDeployer) createAndIssueBlockchainTx(
 	return wallet.P().IssueCreateChainTx(subnetID, genesis, vmID, fxIDs, chainName)
 }
 
+func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []string) ([]common.Option, error) {
+	options := []common.Option{}
+	// addrs to use for signing
+	customAddrsSet := ids.ShortSet{}
+	for _, customAddrStr := range subnetAuthKeys {
+		customAddr, err := address.ParseToID(customAddrStr)
+		if err != nil {
+			return options, err
+		}
+		customAddrsSet.Add(customAddr)
+	}
+	options = append(options, common.WithCustomAddresses(customAddrsSet))
+	// set change to go to wallet addr (instead of any other subnet auth key)
+	walletAddresses, err := d.GetWalletSubnetAuthAddresses(subnetAuthKeys)
+	if err != nil {
+		return options, err
+	}
+	walletAddrStr := walletAddresses[0]
+	walletAddr, err := address.ParseToID(walletAddrStr)
+	if err != nil {
+		return options, err
+	}
+	changeOwner := &secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs:     []ids.ShortID{walletAddr},
+	}
+	options = append(options, common.WithChangeOwner(changeOwner))
+	return options, nil
+}
+
 func (d *PublicDeployer) createBlockchainTx(
 	subnetAuthKeys []string,
 	chainName string,
@@ -176,36 +227,14 @@ func (d *PublicDeployer) createBlockchainTx(
 	genesis []byte,
 	wallet primary.Wallet,
 ) (*txs.Tx, error) {
-	options := []common.Option{}
 	fxIDs := make([]ids.ID, 0)
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign blockchain creation hash on the ledger device *** ")
 	}
-	// addrs to use for signing
-	customAddrsSet := ids.ShortSet{}
-	for _, customAddrStr := range subnetAuthKeys {
-		customAddr, err := address.ParseToID(customAddrStr)
-		if err != nil {
-			return nil, err
-		}
-		customAddrsSet.Add(customAddr)
-	}
-	options = append(options, common.WithCustomAddresses(customAddrsSet))
-	// set change to go to wallet addr (instead of any other subnet auth key)
-	walletAddresses, err := d.GetWalletSubnetAuthAddresses(subnetAuthKeys)
+	options, err := d.getMultisigTxOptions(subnetAuthKeys)
 	if err != nil {
 		return nil, err
 	}
-	walletAddrStr := walletAddresses[0]
-	walletAddr, err := address.ParseToID(walletAddrStr)
-	if err != nil {
-		return nil, err
-	}
-	changeOwner := &secp256k1fx.OutputOwners{
-		Threshold: 1,
-		Addrs:     []ids.ShortID{walletAddr},
-	}
-	options = append(options, common.WithChangeOwner(changeOwner))
 	// create tx
 	unsignedTx, err := wallet.P().Builder().NewCreateChainTx(
 		subnetID,
@@ -215,6 +244,28 @@ func (d *PublicDeployer) createBlockchainTx(
 		chainName,
 		options...,
 	)
+	if err != nil {
+		return nil, err
+	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	// sign with current wallet
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return nil, err
+	}
+	return &tx, nil
+}
+
+func (d *PublicDeployer) createAddSubnetValidatorTx(
+	subnetAuthKeys []string,
+	validator *validator.SubnetValidator,
+	wallet primary.Wallet,
+) (*txs.Tx, error) {
+	options, err := d.getMultisigTxOptions(subnetAuthKeys)
+	if err != nil {
+		return nil, err
+	}
+	// create tx
+	unsignedTx, err := wallet.P().Builder().NewAddSubnetValidatorTx(validator, options...)
 	if err != nil {
 		return nil, err
 	}

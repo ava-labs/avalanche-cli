@@ -11,11 +11,13 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/spf13/cobra"
 )
@@ -57,6 +59,8 @@ This command currently only works on subnets deployed to the Fuji testnet.`,
 	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "join on `fuji` (alias for `testnet`)")
 	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
 	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
+	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate chain creation")
+	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
 	return cmd
 }
 
@@ -120,6 +124,22 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		return errNoSubnetID
 	}
 
+	controlKeys, threshold, err := getSubnetDef(network, subnetID)
+	if err != nil {
+		return err
+	}
+
+	// get keys for add validator tx signing
+	if subnetAuthKeys != nil {
+		if err := checkSubnetAuthKeys(subnetAuthKeys, controlKeys, threshold); err != nil {
+			return err
+		}
+	}
+	if subnetAuthKeys == nil {
+		subnetAuthKeys, err = getSubnetAuthKeys(controlKeys, threshold)
+	}
+	ux.Logger.PrintToUser("Your subnet auth keys for add validator tx creation: %s", subnetAuthKeys)
+
 	if nodeIDStr == "" {
 		nodeID, err = promptNodeID()
 		if err != nil {
@@ -159,7 +179,9 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	return deployer.AddValidator(subnetID, nodeID, weight, start, duration)
+	tx, err := deployer.AddValidator(subnetAuthKeys, subnetID, nodeID, weight, start, duration)
+	_ = tx
+	return err
 }
 
 func promptDuration(start time.Time) (time.Duration, error) {
@@ -333,4 +355,43 @@ func captureKeyName() (string, error) {
 	}
 
 	return keyName, nil
+}
+
+func getSubnetDef(network models.Network, subnetID ids.ID) ([]string, uint32, error) {
+	var api string
+	switch network {
+	case models.Fuji:
+		api = constants.FujiAPIEndpoint
+	case models.Mainnet:
+		api = constants.MainnetAPIEndpoint
+	case models.Local:
+		api = constants.LocalAPIEndpoint
+	default:
+		return nil, 0, fmt.Errorf("network not supported")
+	}
+	pClient := platformvm.NewClient(api)
+	ctx := context.Background()
+	subnets, err := pClient.GetSubnets(ctx, []ids.ID{subnetID})
+	if err != nil {
+		return nil, 0, fmt.Errorf("subnet query error: %w", err)
+	}
+	if len(subnets) == 0 {
+		return nil, 0, fmt.Errorf("subnet not found")
+	}
+	controlKeys := subnets[0].ControlKeys
+	threshold := subnets[0].Threshold
+	networkID, err := network.NetworkID()
+	if err != nil {
+		return nil, 0, err
+	}
+	hrp := key.GetHRP(networkID)
+	controlKeysStrs := []string{}
+	for _, addr := range controlKeys {
+		addrStr, err := address.Format("P", hrp, addr[:])
+		if err != nil {
+			return nil, 0, err
+		}
+		controlKeysStrs = append(controlKeysStrs, addrStr)
+	}
+	return controlKeysStrs, threshold, nil
 }
