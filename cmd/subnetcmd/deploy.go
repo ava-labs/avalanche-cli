@@ -332,7 +332,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if err := saveTxToDisk(tx, outputTxPath); err != nil {
 			return err
 		}
-		remainingSubnetAuthKeys, err := getTxRemainingSingers(tx, network, subnetID)
+		remainingSubnetAuthKeys, err := getTxRemainingSigners(tx, network, subnetID)
 		if err != nil {
 			return err
 		}
@@ -753,7 +753,7 @@ func getAuthSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]stri
 	return authSigners, nil
 }
 
-func getTxRemainingSingers(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]string, error) {
+func getTxRemainingSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]string, error) {
 	authSigners, err := getAuthSigners(tx, network, subnetID)
 	if err != nil {
 		return nil, err

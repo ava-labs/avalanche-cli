@@ -185,7 +185,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		if err := saveTxToDisk(tx, outputTxPath); err != nil {
 			return err
 		}
-		remainingSubnetAuthKeys, err := getTxRemainingSingers(tx, network, subnetID)
+		remainingSubnetAuthKeys, err := getTxRemainingSigners(tx, network, subnetID)
 		if err != nil {
 			return err
 		}
