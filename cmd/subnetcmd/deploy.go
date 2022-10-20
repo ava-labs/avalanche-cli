@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ava-labs/avalanchego/utils/crypto"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
@@ -764,7 +765,22 @@ func getTxRemainingSingers(tx *txs.Tx, network models.Network, subnetID ids.ID) 
 		}
         authSigners = append(authSigners, controlKeys[addrIndex])
 	}
-    fmt.Println(tx.Creds)
+    emptySig := [crypto.SECP256K1RSigLen]byte{}
+    if len(tx.Creds) != 2 {
+        return nil, fmt.Errorf("expected tx.Creds of len 2, got %d", len(tx.Creds))
+    }
+    // signatures for funding address should be filled
+    cred, ok := tx.Creds[0].(*secp256k1fx.Credential)
+    if !ok {
+        return nil, fmt.Errorf("expected cred to be of type *secp256k1fx.Credential, got %T", tx.Creds[0])
+    }
+    for i, sig := range cred.Sigs {
+        if sig == emptySig {
+            return nil, fmt.Errorf("expected funding sig %d to be filled", i)
+        }
+    }
+    fmt.Println(cred.Sigs)
+    _ = emptySig
     /*
     credIntf := tx.Creds[credIndex]
     if credIntf == nil {
