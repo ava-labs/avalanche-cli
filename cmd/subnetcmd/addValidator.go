@@ -180,7 +180,16 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	tx, err := deployer.AddValidator(subnetAuthKeys, subnetID, nodeID, weight, start, duration)
-	_ = tx
+
+	if err == nil && tx != nil {
+		if err := saveTxToDisk(tx, outputTxPath); err != nil {
+			return err
+		}
+		if err := printPartialSigningMsg(deployer, subnetAuthKeys, outputTxPath); err != nil {
+			return err
+		}
+	}
+
 	return err
 }
 
