@@ -430,6 +430,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	nets[network.String()] = models.NetworkData{
 		SubnetID:     subnetID,
 		BlockchainID: blockchainID,
+		Threshold:    threshold,
 	}
 	sidecar.Networks = nets
 	return app.UpdateSidecar(&sidecar)

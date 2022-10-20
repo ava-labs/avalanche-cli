@@ -7,6 +7,7 @@ import "github.com/ava-labs/avalanchego/ids"
 type NetworkData struct {
 	SubnetID     ids.ID
 	BlockchainID ids.ID
+	Threshold    uint32
 }
 
 type Sidecar struct {
