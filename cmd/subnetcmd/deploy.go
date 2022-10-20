@@ -728,7 +728,7 @@ func printPartialSigningMsg(remainingSubnetAuthKeys []string, outputTxPath strin
 }
 
 func getAuthSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]string, error) {
-	controlKeys, _, err := getSubnetDef(network, subnetID)
+	controlKeys, _, err := subnet.GetOwners(network, subnetID)
 	if err != nil {
 		return nil, err
 	}
