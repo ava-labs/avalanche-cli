@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/platformvm/validator"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
@@ -83,6 +84,11 @@ func (d *PublicDeployer) Deploy(
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
 
+	_, err = d.getWalletSubnetAuthAddresses(subnetAuthKeys)
+	if err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+
 	subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
 	if err != nil {
 		return ids.Empty, ids.Empty, err
@@ -146,14 +152,57 @@ func (d *PublicDeployer) createBlockchainTx(
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign blockchain creation hash on the ledger device *** ")
 	}
-	return wallet.P().IssueCreateChainTx(subnetID, genesis, vmID, fxIDs, chainName, options...)
+	if len(subnetAuthKeys) == 1 {
+		return wallet.P().IssueCreateChainTx(subnetID, genesis, vmID, fxIDs, chainName, options...)
+	} else {
+		// addrs to use for signing
+		customAddrsSet := ids.ShortSet{}
+		for _, customAddrStr := range subnetAuthKeys {
+			customAddr, err := address.ParseToID(customAddrStr)
+			if err != nil {
+				return ids.Empty, err
+			}
+			customAddrsSet.Add(customAddr)
+		}
+		options = append(options, common.WithCustomAddresses(customAddrsSet))
+		// set change to go to wallet addr (instead of any other subnet auth key)
+		walletAddresses, err := d.getWalletSubnetAuthAddresses(subnetAuthKeys)
+		if err != nil {
+			return ids.Empty, err
+		}
+		walletAddrStr := walletAddresses[0]
+		walletAddr, err := address.ParseToID(walletAddrStr)
+		if err != nil {
+			return ids.Empty, err
+		}
+		changeOwner := &secp256k1fx.OutputOwners{
+			Threshold: 1,
+			Addrs:     []ids.ShortID{walletAddr},
+		}
+		options = append(options, common.WithChangeOwner(changeOwner))
+		// create tx
+		unsignedTx, err := wallet.P().Builder().NewCreateChainTx(
+			subnetID,
+			genesis,
+			vmID,
+			fxIDs,
+			chainName,
+			options...,
+		)
+		if err != nil {
+			return ids.Empty, err
+		}
+		tx := txs.Tx{Unsigned: unsignedTx}
+		// sign with current wallet
+		if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+			return ids.Empty, err
+		}
+
+		return wallet.P().IssueTx(&tx)
+	}
 }
 
 func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, wallet primary.Wallet) (ids.ID, error) {
-	err := d.validateWalletIsSubnetOwner(controlKeys, threshold)
-	if err != nil {
-		return ids.Empty, err
-	}
 	addrs, err := address.ParseToIDs(controlKeys)
 	if err != nil {
 		return ids.Empty, err
@@ -170,30 +219,32 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 	return wallet.P().IssueCreateSubnetTx(owners, opts...)
 }
 
-func (d *PublicDeployer) validateWalletIsSubnetOwner(controlKeys []string, threshold uint32) error {
-	walletAddrs := d.kc.Addresses().List()
-	if len(walletAddrs) == 0 {
-		return fmt.Errorf("no addrs in wallet")
-	}
-
+func (d *PublicDeployer) getWalletSubnetAuthAddresses(subnetAuth []string) ([]string, error) {
 	networkID, err := d.network.NetworkID()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	hrp := key.GetHRP(networkID)
-
+	walletAddrs := d.kc.Addresses().List()
+	if len(walletAddrs) == 0 {
+		return nil, fmt.Errorf("no addrs in wallet")
+	}
+	subnetAuthAddrs := []string{}
 	for _, walletAddr := range walletAddrs {
 		walletAddrStr, err := address.Format("P", hrp, walletAddr[:])
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		for _, addr := range controlKeys {
+		for _, addr := range subnetAuth {
 			if addr == walletAddrStr {
-				return nil
+				subnetAuthAddrs = append(subnetAuthAddrs, addr)
 			}
 		}
 	}
-
-	return fmt.Errorf("wallet addr not listed in subnet owners")
+	if len(subnetAuthAddrs) == 0 {
+		return nil, fmt.Errorf("wallet addr not listed in subnet auth addresses")
+	} else {
+		return subnetAuthAddrs, nil
+	}
 }
