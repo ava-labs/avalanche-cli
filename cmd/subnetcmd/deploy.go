@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ava-labs/avalanchego/utils/crypto"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
@@ -20,14 +19,15 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	ledger "github.com/ava-labs/avalanche-ledger-go"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/crypto"
 	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
-	"github.com/ava-labs/avalanchego/wallet/subnet/primary/keychain"
-	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
+	"github.com/ava-labs/avalanchego/wallet/subnet/primary/keychain"
 	"github.com/ava-labs/coreth/core"
 	spacesvmchain "github.com/ava-labs/spacesvm/chain"
 	"github.com/spf13/cobra"
@@ -332,10 +332,13 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if err := saveTxToDisk(tx, outputTxPath); err != nil {
 			return err
 		}
-		if err := printPartialSigningMsg(deployer, subnetAuthKeys, outputTxPath); err != nil {
+		remainingSubnetAuthKeys, err := getTxRemainingSingers(tx, network, subnetID)
+		if err != nil {
 			return err
 		}
-        fmt.Println(getTxRemainingSingers(tx, network, subnetID))
+		if err := printPartialSigningMsg(deployer, remainingSubnetAuthKeys, outputTxPath); err != nil {
+			return err
+		}
 	}
 
 	// update sidecar
@@ -706,30 +709,14 @@ func loadTxFromDisk(outputTxPath string) (*txs.Tx, error) {
 	return &tx, nil
 }
 
-func printPartialSigningMsg(deployer *subnet.PublicDeployer, subnetAuthKeys []string, outputTxPath string) error {
+func printPartialSigningMsg(deployer *subnet.PublicDeployer, remainingSubnetAuthKeys []string, outputTxPath string) error {
 	// final msg
-	walletSubnetAuthKeys, err := deployer.GetWalletSubnetAuthAddresses(subnetAuthKeys)
-	if err != nil {
-		return err
-	}
-	filteredSubnetAuthKeys := []string{}
-	for _, subnetAuthKey := range subnetAuthKeys {
-		found := false
-		for _, walletSubnetAuthKey := range walletSubnetAuthKeys {
-			if subnetAuthKey == walletSubnetAuthKey {
-				found = true
-			}
-		}
-		if !found {
-			filteredSubnetAuthKeys = append(filteredSubnetAuthKeys, subnetAuthKey)
-		}
-	}
 	ux.Logger.PrintToUser("")
-	if len(filteredSubnetAuthKeys) == 1 {
-		ux.Logger.PrintToUser("One address remaining to sign the tx: %s", filteredSubnetAuthKeys[0])
+	if len(remainingSubnetAuthKeys) == 1 {
+		ux.Logger.PrintToUser("One address remaining to sign the tx: %s", remainingSubnetAuthKeys[0])
 	} else {
-		ux.Logger.PrintToUser("%d addresses remaining to sign the tx:", len(filteredSubnetAuthKeys))
-		for _, subnetAuthKey := range filteredSubnetAuthKeys {
+		ux.Logger.PrintToUser("%d addresses remaining to sign the tx:", len(remainingSubnetAuthKeys))
+		for _, subnetAuthKey := range remainingSubnetAuthKeys {
 			ux.Logger.PrintToUser("  %s", subnetAuthKey)
 		}
 	}
@@ -739,60 +726,63 @@ func printPartialSigningMsg(deployer *subnet.PublicDeployer, subnetAuthKeys []st
 	return nil
 }
 
-func getTxRemainingSingers(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]string, error) {
+func getAuthSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]string, error) {
 	controlKeys, _, err := getSubnetDef(network, subnetID)
 	if err != nil {
-        return nil, err
+		return nil, err
 	}
-    unsignedTx := tx.Unsigned
-    var subnetAuth verify.Verifiable
+	unsignedTx := tx.Unsigned
+	var subnetAuth verify.Verifiable
 	switch unsignedTx := unsignedTx.(type) {
-    case *txs.AddSubnetValidatorTx:
-         subnetAuth = unsignedTx.SubnetAuth
-    case *txs.CreateChainTx:
-         subnetAuth = unsignedTx.SubnetAuth
-    }
+	case *txs.AddSubnetValidatorTx:
+		subnetAuth = unsignedTx.SubnetAuth
+	case *txs.CreateChainTx:
+		subnetAuth = unsignedTx.SubnetAuth
+	}
 	subnetInput, ok := subnetAuth.(*secp256k1fx.Input)
 	if !ok {
 		return nil, fmt.Errorf("expected subnetAuth of type *secp256k1fx.Input, got %T", subnetAuth)
 	}
 	authSigners := []string{}
-    fmt.Println(controlKeys)
 	for _, addrIndex := range subnetInput.SigIndices {
-        fmt.Println(addrIndex)
 		if addrIndex >= uint32(len(controlKeys)) {
 			return nil, fmt.Errorf("addrIndex %d > len(controlKeys) %d", addrIndex, len(controlKeys))
 		}
-        authSigners = append(authSigners, controlKeys[addrIndex])
+		authSigners = append(authSigners, controlKeys[addrIndex])
 	}
-    emptySig := [crypto.SECP256K1RSigLen]byte{}
-    if len(tx.Creds) != 2 {
-        return nil, fmt.Errorf("expected tx.Creds of len 2, got %d", len(tx.Creds))
-    }
-    // signatures for funding address should be filled
-    cred, ok := tx.Creds[0].(*secp256k1fx.Credential)
-    if !ok {
-        return nil, fmt.Errorf("expected cred to be of type *secp256k1fx.Credential, got %T", tx.Creds[0])
-    }
-    for i, sig := range cred.Sigs {
-        if sig == emptySig {
-            return nil, fmt.Errorf("expected funding sig %d to be filled", i)
-        }
-    }
-    fmt.Println(cred.Sigs)
-    _ = emptySig
-    /*
-    credIntf := tx.Creds[credIndex]
-    if credIntf == nil {
-        credIntf = &secp256k1fx.Credential{}
-        tx.Creds[credIndex] = credIntf
-    }
-
-    cred, ok := credIntf.(*secp256k1fx.Credential)
-    if !ok {
-        return errUnknownCredentialType
-    }
-    */
-    return authSigners, nil
+	return authSigners, nil
 }
 
+func getTxRemainingSingers(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]string, error) {
+	authSigners, err := getAuthSigners(tx, network, subnetID)
+	if err != nil {
+		return nil, err
+	}
+	emptySig := [crypto.SECP256K1RSigLen]byte{}
+	// we should have 1 cred for funding and 1 cred for subnet auth
+	if len(tx.Creds) != 2 {
+		return nil, fmt.Errorf("expected tx.Creds of len 2, got %d", len(tx.Creds))
+	}
+	// signatures for funding address should be filled
+	cred, ok := tx.Creds[0].(*secp256k1fx.Credential)
+	if !ok {
+		return nil, fmt.Errorf("expected cred to be of type *secp256k1fx.Credential, got %T", tx.Creds[0])
+	}
+	for i, sig := range cred.Sigs {
+		if sig == emptySig {
+			return nil, fmt.Errorf("expected funding sig %d to be filled", i)
+		}
+	}
+	// signatures for subnet auth
+	cred, ok = tx.Creds[1].(*secp256k1fx.Credential)
+	if !ok {
+		return nil, fmt.Errorf("expected cred to be of type *secp256k1fx.Credential, got %T", tx.Creds[1])
+	}
+	filteredAuthSigners := []string{}
+	for i, sig := range cred.Sigs {
+		if sig == emptySig {
+			filteredAuthSigners = append(filteredAuthSigners, authSigners[i])
+		}
+	}
+	return filteredAuthSigners, nil
+}
