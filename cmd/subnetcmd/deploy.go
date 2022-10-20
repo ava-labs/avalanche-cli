@@ -17,12 +17,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	txutils "github.com/ava-labs/avalanche-cli/pkg/tx"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	ledger "github.com/ava-labs/avalanche-ledger-go"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
-	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
@@ -331,7 +331,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	if !isFullySigned {
-		if err := saveTxToDisk(tx, outputTxPath); err != nil {
+		if err := txutils.SaveToDisk(app, tx, outputTxPath); err != nil {
 			return err
 		}
 		remainingSubnetAuthKeys, err := getTxRemainingSigners(tx, network, subnetID)
@@ -651,63 +651,6 @@ func getSubnetAuthKeys(controlKeys []string, threshold uint32) ([]string, error)
 		}
 	}
 	return subnetAuthKeys, nil
-}
-
-func saveTxToDisk(tx *txs.Tx, outputTxPath string) error {
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Partial signing was done on blockchain tx. Saving tx to disk to enable remaining signing.")
-	// get path
-	if outputTxPath == "" {
-		ux.Logger.PrintToUser("")
-		var err error
-		outputTxPath, err = app.Prompt.CaptureString("Path to export partially signed tx to")
-		if err != nil {
-			return err
-		}
-	}
-	// Serialize the signed tx
-	txBytes, err := txs.Codec.Marshal(txs.Version, tx)
-	if err != nil {
-		return fmt.Errorf("couldn't marshal signed tx: %w", err)
-	}
-
-	// Get the encoded (in hex + checksum) signed tx
-	txStr, err := formatting.Encode(formatting.Hex, txBytes)
-	if err != nil {
-		return fmt.Errorf("couldn't encode signed tx: %w", err)
-	}
-	// save
-	if _, err := os.Stat(outputTxPath); err == nil {
-		return fmt.Errorf("couldn't create file to write tx to: file exists")
-	}
-	f, err := os.Create(outputTxPath)
-	if err != nil {
-		return fmt.Errorf("couldn't create file to write tx to: %w", err)
-	}
-	defer f.Close()
-	_, err = f.WriteString(txStr)
-	if err != nil {
-		return fmt.Errorf("couldn't write tx into file: %w", err)
-	}
-	return nil
-}
-
-//nolint:deadcode,unused
-func loadTxFromDisk(outputTxPath string) (*txs.Tx, error) {
-	txEncodedBytes, err := os.ReadFile(outputTxPath)
-	if err != nil {
-		return nil, err
-	}
-	txBytes, err := formatting.Decode(formatting.Hex, string(txEncodedBytes))
-	if err != nil {
-		return nil, fmt.Errorf("couldn't decode signed tx: %w", err)
-	}
-	var tx txs.Tx
-	if _, err := txs.Codec.Unmarshal(txBytes, &tx); err != nil {
-		return nil, fmt.Errorf("error unmarshaling signed tx: %w", err)
-	}
-	tx.Initialize(nil, txBytes)
-	return &tx, nil
 }
 
 func printPartialSigningMsg(remainingSubnetAuthKeys []string, outputTxPath string) error {

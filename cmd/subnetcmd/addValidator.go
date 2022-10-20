@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	txutils "github.com/ava-labs/avalanche-cli/pkg/tx"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
@@ -182,7 +183,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	isFullySigned, tx, err := deployer.AddValidator(subnetAuthKeys, subnetID, nodeID, weight, start, duration)
 
 	if err == nil && !isFullySigned && tx != nil {
-		if err := saveTxToDisk(tx, outputTxPath); err != nil {
+		if err := txutils.SaveToDisk(app, tx, outputTxPath); err != nil {
 			return err
 		}
 		remainingSubnetAuthKeys, err := getTxRemainingSigners(tx, network, subnetID)
