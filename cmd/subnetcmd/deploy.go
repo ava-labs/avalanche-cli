@@ -336,7 +336,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if err := printPartialSigningMsg(deployer, remainingSubnetAuthKeys, outputTxPath); err != nil {
+		if err := printPartialSigningMsg(remainingSubnetAuthKeys, outputTxPath); err != nil {
 			return err
 		}
 	}
@@ -709,7 +709,7 @@ func loadTxFromDisk(outputTxPath string) (*txs.Tx, error) {
 	return &tx, nil
 }
 
-func printPartialSigningMsg(deployer *subnet.PublicDeployer, remainingSubnetAuthKeys []string, outputTxPath string) error {
+func printPartialSigningMsg(remainingSubnetAuthKeys []string, outputTxPath string) error {
 	// final msg
 	ux.Logger.PrintToUser("")
 	if len(remainingSubnetAuthKeys) == 1 {
