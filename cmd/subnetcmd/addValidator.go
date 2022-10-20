@@ -184,16 +184,16 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	isFullySigned, tx, err := deployer.AddValidator(subnetAuthKeys, subnetID, nodeID, weight, start, duration)
 
 	if err == nil && !isFullySigned && tx != nil {
-        ux.Logger.PrintToUser("")
-        ux.Logger.PrintToUser("Partial signing was done on blockchain tx. Saving tx to disk to enable remaining signing.")
-        if outputTxPath == "" {
-            ux.Logger.PrintToUser("")
-            var err error
-            outputTxPath, err = app.Prompt.CaptureString("Path to export partially signed tx to")
-            if err != nil {
-                return err
-            }
-        }
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Partial signing was done on blockchain tx. Saving tx to disk to enable remaining signing.")
+		if outputTxPath == "" {
+			ux.Logger.PrintToUser("")
+			var err error
+			outputTxPath, err = app.Prompt.CaptureString("Path to export partially signed tx to")
+			if err != nil {
+				return err
+			}
+		}
 		if err := txutils.SaveToDisk(tx, outputTxPath); err != nil {
 			return err
 		}
