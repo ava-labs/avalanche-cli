@@ -347,11 +347,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	ux.Logger.PrintToUser("Your subnet auth keys for chain creation: %s", subnetAuthKeys)
 
-	return nil
-
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	subnetID, blockchainID, err := deployer.Deploy(controlKeys, threshold, chain, chainGenesis)
+	subnetID, blockchainID, err := deployer.Deploy(controlKeys, subnetAuthKeys, threshold, chain, chainGenesis)
 	if err != nil {
 		return err
 	}

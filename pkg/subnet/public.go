@@ -67,7 +67,13 @@ func (d *PublicDeployer) AddValidator(subnet ids.ID, nodeID ids.NodeID, weight u
 	return nil
 }
 
-func (d *PublicDeployer) Deploy(controlKeys []string, threshold uint32, chain string, genesis []byte) (ids.ID, ids.ID, error) {
+func (d *PublicDeployer) Deploy(
+	controlKeys []string,
+	subnetAuthKeys []string,
+	threshold uint32,
+	chain string,
+	genesis []byte,
+) (ids.ID, ids.ID, error) {
 	wallet, err := d.loadWallet()
 	if err != nil {
 		return ids.Empty, ids.Empty, err
@@ -83,7 +89,7 @@ func (d *PublicDeployer) Deploy(controlKeys []string, threshold uint32, chain st
 	}
 	ux.Logger.PrintToUser("Subnet has been created with ID: %s. Now creating blockchain...", subnetID.String())
 
-	blockchainID, err := d.createBlockchainTx(chain, vmID, subnetID, genesis, wallet)
+	blockchainID, err := d.createBlockchainTx(subnetAuthKeys, chain, vmID, subnetID, genesis, wallet)
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
@@ -127,8 +133,14 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error
 	return wallet, nil
 }
 
-func (d *PublicDeployer) createBlockchainTx(chainName string, vmID, subnetID ids.ID, genesis []byte, wallet primary.Wallet) (ids.ID, error) {
-	// TODO do we need any of these to be set?
+func (d *PublicDeployer) createBlockchainTx(
+	subnetAuthKeys []string,
+	chainName string,
+	vmID,
+	subnetID ids.ID,
+	genesis []byte,
+	wallet primary.Wallet,
+) (ids.ID, error) {
 	options := []common.Option{}
 	fxIDs := make([]ids.ID, 0)
 	if d.usingLedger {
