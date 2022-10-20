@@ -7,21 +7,16 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/user"
-	"path/filepath"
-	"regexp"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/plugins"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/kardianos/osext"
-	"github.com/shirou/gopsutil/process"
 	"github.com/spf13/cobra"
 )
 
@@ -32,59 +27,11 @@ var (
 	pluginDir string
 	// if true, print the manual instructions to screen
 	printManual bool
-	// skipWhitelistCheck if true doesn't prompt, skip the check
+	// skipWhitelistCheck if true doesn't prompt
 	skipWhitelistCheck bool
-	// forceWhitelistCheck if true doesn't prompt, run the check
-	forceWhitelistCheck bool
-	// failIfNotValidating
-	failIfNotValidating bool
 	// if true, doesn't ask for overwriting the config file
 	forceWrite bool
-	// a list of directories to scan for potential location
-	// of avalanchego configs
-	scanConfigDirs = []string{}
-	// env var for avalanchego data dir
-	defaultUnexpandedDataDir = "$" + config.AvalancheGoDataDirVar
-	// expected file name for the config
-	// TODO should other file names be supported? e.g. conf.json, etc.
-	defaultConfigFileName = "config.json"
-	// expected name of the plugins dir
-	defaultPluginDir = "plugins"
-	// default dir where the binary is usually found
-	defaultAvalanchegoBuildDir = filepath.Join("go", "src", "github.com", constants.AvaLabsOrg, constants.AvalancheGoRepoName, "build")
 )
-
-// this init is partly "borrowed" from avalanchego/config/config.go
-func init() {
-	folderPath, err := osext.ExecutableFolder()
-	if err == nil {
-		scanConfigDirs = append(scanConfigDirs, folderPath)
-		scanConfigDirs = append(scanConfigDirs, filepath.Dir(folderPath))
-	}
-	wd, err := os.Getwd()
-	if err != nil {
-		// really this shouldn't happen, and we could just os.Exit,
-		// but it's bit bad to hide an os.Exit here
-		fmt.Println("Warning: failed to get current directory")
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		// really this shouldn't happen, and we could just os.Exit,
-		// but it's bit bad to hide an os.Exit here
-		fmt.Println("Warning: failed to get user home dir")
-	}
-	// TODO: Any other dirs we want to scan?
-	scanConfigDirs = append(scanConfigDirs,
-		filepath.Join("/", "etc", constants.AvalancheGoRepoName),
-		filepath.Join("/", "usr", "local", "lib", constants.AvalancheGoRepoName),
-		wd,
-		home,
-		filepath.Join(home, constants.AvalancheGoRepoName),
-		filepath.Join(home, defaultAvalanchegoBuildDir),
-		filepath.Join(home, ".avalanchego"),
-		defaultUnexpandedDataDir,
-	)
-}
 
 // avalanche subnet deploy
 func newJoinCmd() *cobra.Command {
@@ -117,10 +64,7 @@ This command currently only supports subnets deployed on the Fuji testnet.`,
 	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
 	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
 	cmd.Flags().BoolVar(&printManual, "print", false, "if true, print the manual config without prompting")
-	cmd.Flags().BoolVar(&skipWhitelistCheck, "skip-whitelist-check", false, "if true, skip the whitelist check")
-	cmd.Flags().BoolVar(&forceWhitelistCheck, "force-whitelist-check", false, "if true, force the whitelist check")
-	cmd.Flags().BoolVar(&failIfNotValidating, "fail-if-not-validating", false, "fail if whitelist check fails")
-	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to check")
+	cmd.Flags().BoolVar(&skipWhitelistCheck, "skip-whitelist-check", false, "if true, skip the whitelist check prompting")
 	cmd.Flags().BoolVar(&forceWrite, "force-write", false, "if true, skip to prompt to overwrite the config file")
 	return cmd
 }
@@ -141,7 +85,7 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := checkMutuallyExclusive(deployTestnet, deployMainnet, false); err != nil {
+	if !flags.EnsureMutuallyExclusive([]bool{deployMainnet, deployTestnet}) {
 		return errors.New("--fuji and --mainnet are mutually exclusive")
 	}
 
@@ -184,16 +128,13 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 	subnetIDStr := subnetID.String()
 
 	if !skipWhitelistCheck {
-		yes := true
-		if !forceWhitelistCheck {
-			ask := "Would you like to check if your node is allowed to join this subnet?\n" +
-				"If not, the subnet's control key holder must call avalanche subnet\n" +
-				"addValidator with your NodeID."
-			ux.Logger.PrintToUser(ask)
-			yes, err = app.Prompt.CaptureYesNo("Check whitelist?")
-			if err != nil {
-				return err
-			}
+		ask := "Would you like to check if your node is allowed to join this subnet?\n" +
+			"If not, the subnet's control key holder must call avalanche subnet\n" +
+			"addValidator with your NodeID."
+		ux.Logger.PrintToUser(ask)
+		yes, err := app.Prompt.CaptureYesNo("Check whitelist?")
+		if err != nil {
+			return err
 		}
 		if yes {
 			isValidating, err := isNodeValidatingSubnet(subnetID, network)
@@ -201,10 +142,6 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			if !isValidating {
-				if failIfNotValidating {
-					ux.Logger.PrintToUser("The node is not whitelisted to validate this subnet.")
-					return nil
-				}
 				ux.Logger.PrintToUser(`The node is not whitelisted to validate this subnet.
 You can continue with this command, generating a config file or printing the whitelisting configuration,
 but until the node is whitelisted, it will not be able to validate this subnet.`)
@@ -260,7 +197,10 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	// or, pluginDir was set but not avagoConfigPath
 	// if **both** flags were set, this will be skipped...
 	if avagoConfigPath == "" {
-		avagoConfigPath = findAvagoConfigPath()
+		avagoConfigPath, err = plugins.FindAvagoConfigPath()
+		if err != nil {
+			return err
+		}
 		if avagoConfigPath != "" {
 			ux.Logger.PrintToUser(logging.Bold.Wrap(logging.Green.Wrap("Found a config file at %s")), avagoConfigPath)
 			yes, err := app.Prompt.CaptureYesNo("Is this the file we should update?")
@@ -282,7 +222,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	}
 
 	// ...but not this
-	avagoConfigPath, err := sanitizePath(avagoConfigPath)
+	avagoConfigPath, err := plugins.SanitizePath(avagoConfigPath)
 	if err != nil {
 		return err
 	}
@@ -290,7 +230,10 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	// avagoConfigPath was set but not pluginDir
 	// if **both** flags were set, this will be skipped...
 	if pluginDir == "" {
-		pluginDir = findPluginDir()
+		pluginDir, err = plugins.FindPluginDir()
+		if err != nil {
+			return err
+		}
 		if pluginDir != "" {
 			ux.Logger.PrintToUser(logging.Bold.Wrap(logging.Green.Wrap("Found the VM plugin directory at %s")), pluginDir)
 			yes, err := app.Prompt.CaptureYesNo("Is this where we should install the VM?")
@@ -312,7 +255,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	}
 
 	// ...but not this
-	pluginDir, err := sanitizePath(pluginDir)
+	pluginDir, err := plugins.SanitizePath(pluginDir)
 	if err != nil {
 		return err
 	}
@@ -330,91 +273,16 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	return nil
 }
 
-func findAvagoConfigPath() string {
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("Scanning your system for existing files..."))
-	var path string
-	// Attempt 1: Try the admin API
-	if path = findByRunningProcesses(constants.AvalancheGoRepoName, config.ConfigFileKey); path != "" {
-		return path
-	}
-	// Attempt 2: find looking at some usual dirs
-	if path = findByCommonDirs(defaultConfigFileName, scanConfigDirs); path != "" {
-		return path
-	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("No config file has been found on your system"))
-	return ""
-}
-
-func findByCommonDirs(filename string, scanDirs []string) string {
-	for _, d := range scanDirs {
-		if d == defaultUnexpandedDataDir {
-			d = os.ExpandEnv(d)
-		}
-		path := filepath.Join(d, filename)
-		if _, err := os.Stat(path); err == nil {
-			return path
-		}
-	}
-	return ""
-}
-
-func findByRunningProcesses(procName, key string) string {
-	procs, err := process.Processes()
-	if err != nil {
-		return ""
-	}
-	regex, err := regexp.Compile(procName + ".*" + key)
-	if err != nil {
-		return ""
-	}
-	for _, p := range procs {
-		name, err := p.Cmdline()
-		if err != nil {
-			// ignore errors for processes that just died (macos implementation)
-			continue
-		}
-		if regex.MatchString(name) {
-			// truncate at end of `--config-file` + 1 (ignores if = or space)
-			trunc := name[strings.Index(name, key)+len(key)+1:]
-			// there might be other params after the config file entry, so split those away
-			// first entry is the value of configFileKey
-			return strings.Split(trunc, " ")[0]
-		}
-	}
-	return ""
-}
-
-func findPluginDir() string {
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("Scanning your system for the plugin directory..."))
-	dir := findByCommonDirs(defaultPluginDir, scanConfigDirs)
-	if dir != "" {
-		return dir
-	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("No plugin directory found on your system"))
-	return ""
-}
-
 func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, error) {
-	var (
-		nodeID ids.NodeID
-		err    error
-	)
-	if nodeIDStr == "" {
-		ux.Logger.PrintToUser("Next, we need the NodeID of the validator you want to whitelist.")
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions about how to query the NodeID from your node")
-		ux.Logger.PrintToUser("(Edit host IP address and port to match your deployment, if needed).")
+	ux.Logger.PrintToUser("Next, we need the NodeID of the validator you want to whitelist.")
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions about how to query the NodeID from your node")
+	ux.Logger.PrintToUser("(Edit host IP address and port to match your deployment, if needed).")
 
-		promptStr := "What is the NodeID of the validator you'd like to whitelist?"
-		nodeID, err = app.Prompt.CaptureNodeID(promptStr)
-		if err != nil {
-			return false, err
-		}
-	} else {
-		nodeID, err = ids.NodeIDFromString(nodeIDStr)
-		if err != nil {
-			return false, err
-		}
+	promptStr := "What is the NodeID of the validator you'd like to whitelist?"
+	nodeID, err := app.Prompt.CaptureNodeID(promptStr)
+	if err != nil {
+		return false, err
 	}
 
 	var api string
@@ -479,8 +347,8 @@ To setup your node, you must do two things:
 
 To add the VM to your plugin directory, copy or scp from %s
 
-If you installed avalanchego manually, your plugin directory is likely
-avalanchego/build/plugins.
+If you installed avalanchego with the install script, your plugin directory is likely
+~/.avalanchego/build/plugins.
 
 If you start your node from the command line WITHOUT a config file (e.g. via command
 line or systemd script), add the following flag to your node's startup command:
@@ -502,19 +370,4 @@ After you update your config, you will need to restart your node for the changes
 take effect.`
 
 	ux.Logger.PrintToUser(msg, vmPath, subnetID, networkID, subnetID, subnetID)
-}
-
-func sanitizePath(path string) (string, error) {
-	usr, err := user.Current()
-	if err != nil {
-		return "", err
-	}
-	homeDir := usr.HomeDir
-	if path == "~" {
-		// In case of "~", which won't be caught by the "else if"
-		path = homeDir
-	} else if strings.HasPrefix(path, "~/") {
-		path = filepath.Join(homeDir, path[2:])
-	}
-	return path, nil
 }

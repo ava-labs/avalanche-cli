@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
@@ -18,28 +19,20 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	ledger "github.com/ava-labs/avalanche-ledger-go"
-	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/coreth/core"
 	spacesvmchain "github.com/ava-labs/spacesvm/chain"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
 
-const numLedgerAddressesToDerive = 1
-
 var (
-	deployLocal    bool
-	deployTestnet  bool
-	deployMainnet  bool
-	useLedger      bool
-	sameControlKey bool
-	keyName        string
-	threshold      uint32
-	controlKeys    []string
-	avagoVersion   string
+	deployLocal   bool
+	deployTestnet bool
+	deployMainnet bool
+	keyName       string
+	threshold     uint32
+	controlKeys   []string
+	avagoVersion  string
 
 	errMutuallyExlusive = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 )
@@ -70,13 +63,11 @@ subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
 	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "deploy to testnet (alias to `fuji`)")
 	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "deploy to fuji (alias to `testnet`")
-	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "deploy to mainnet")
+	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "deploy to mainnet (not yet supported)")
 	cmd.Flags().StringVar(&avagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
-	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
-	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
-	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use creation key as control key")
-	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to add a validator")
-	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may add new validators to the subnet")
+	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploys]")
+	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to add a validator [fuji deploys]")
+	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may add new validators to the subnet [fuji deploys]")
 	return cmd
 }
 
@@ -131,8 +122,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// get the network to deploy to
 	var network models.Network
 
-	if err := checkMutuallyExclusive(deployLocal, deployTestnet, deployMainnet); err != nil {
-		return err
+	if !flags.EnsureMutuallyExclusive([]bool{deployMainnet, deployTestnet, deployLocal}) {
+		return errMutuallyExlusive
 	}
 
 	switch {
@@ -231,17 +222,19 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 		return nil
 
-	case models.Fuji:
-		if !useLedger && keyName == "" {
-			useLedger, keyName, err = getFujiKeyOrLedger()
+	case models.Fuji: // just make the switch pass
+		if keyName == "" {
+			keyName, err = captureKeyName()
 			if err != nil {
+				if err == errNoKeys {
+					ux.Logger.PrintToUser("No private keys have been found. Deployment to fuji without a private key is not possible. Create a new one with `avalanche key create`.")
+				}
 				return err
 			}
 		}
 
-	case models.Mainnet:
-		useLedger = true
-
+	case models.Mainnet: // in the future, just make the switch pass, fuij/main implementation is the same (for now)
+		return errors.New("deploying to mainnet is not yet supported") // for now not supported
 	default:
 		return errors.New("not implemented")
 	}
@@ -253,25 +246,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// from here on we are assuming a public deploy
 
-	// get keychain accesor
-	kc, err := getKeychain(useLedger, keyName, network)
-	if err != nil {
-		return err
-	}
-
-	// use creation key as control key
-	if sameControlKey {
-		controlKey, err := loadCreationKey(network, kc)
-		if err != nil {
-			return err
-		}
-		controlKeys = []string{controlKey}
-	}
-
 	// prompt for control keys
 	if controlKeys == nil {
 		var cancelled bool
-		controlKeys, cancelled, err = getControlKeys(network, useLedger, kc)
+		controlKeys, cancelled, err = getControlKeys(network, keyName)
 		if err != nil {
 			return err
 		}
@@ -283,23 +261,16 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
 
-	// validate and prompt for threshold
-	if int(threshold) > len(controlKeys) {
-		return fmt.Errorf("given threshold is greater than number of control keys")
-	}
+	// prompt for threshold
 	if len(controlKeys) > 0 && threshold == 0 {
-		if len(controlKeys) == 1 {
-			threshold = 1
-		} else {
-			threshold, err = getThreshold(len(controlKeys))
-			if err != nil {
-				return err
-			}
+		threshold, err = getThreshold(len(controlKeys))
+		if err != nil {
+			return err
 		}
 	}
 
 	// deploy to public network
-	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	deployer := subnet.NewPublicDeployer(app, app.GetKeyPath(keyName), network)
 	subnetID, blockchainID, err := deployer.Deploy(controlKeys, threshold, chain, chainGenesis)
 	if err != nil {
 		return err
@@ -319,7 +290,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	return app.UpdateSidecar(&sidecar)
 }
 
-func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain) ([]string, bool, error) {
+func getControlKeys(network models.Network, keyName string) ([]string, bool, error) {
 	controlKeysInitialPrompt := "Configure which addresses may add new validators to the subnet.\n" +
 		"These addresses are known as your control keys. You will also\n" +
 		"set how many control keys are required to add a validator (the threshold)."
@@ -328,13 +299,13 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain
 	ux.Logger.PrintToUser(controlKeysInitialPrompt)
 
 	const (
-		creation = "Use creation key"
-		useAll   = "Use all stored keys"
-		custom   = "Custom list"
+		useAll       = "Use all stored keys"
+		creationOnly = "Use creation key only"
+		custom       = "Custom list"
 	)
 
 	listDecision, err := app.Prompt.CaptureList(
-		moreKeysPrompt, []string{creation, useAll, custom},
+		moreKeysPrompt, []string{useAll, creationOnly, custom},
 	)
 	if err != nil {
 		return nil, false, err
@@ -346,12 +317,10 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain
 	)
 
 	switch listDecision {
-	case creation:
-		var key string
-		key, err = loadCreationKey(network, kc)
-		keys = []string{key}
 	case useAll:
 		keys, err = useAllKeys(network)
+	case creationOnly:
+		keys, err = loadCreationKey(network, keyName)
 	case custom:
 		keys, cancelled, err = enterCustomKeys(network)
 	}
@@ -365,11 +334,6 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain
 }
 
 func useAllKeys(network models.Network) ([]string, error) {
-	networkID, err := network.NetworkID()
-	if err != nil {
-		return nil, err
-	}
-
 	existing := []string{}
 
 	files, err := os.ReadDir(app.GetKeyDir())
@@ -386,7 +350,7 @@ func useAllKeys(network models.Network) ([]string, error) {
 	}
 
 	for _, kp := range keyPaths {
-		k, err := key.LoadSoft(networkID, kp)
+		k, err := key.LoadSoft(network.NetworkID(), kp)
 		if err != nil {
 			return nil, err
 		}
@@ -397,23 +361,14 @@ func useAllKeys(network models.Network) ([]string, error) {
 	return existing, nil
 }
 
-func loadCreationKey(network models.Network, kc keychain.Keychain) (string, error) {
-	addrs := kc.Addresses().List()
-	if len(addrs) == 0 {
-		return "", fmt.Errorf("no creation addresses found")
-	}
-	addr := addrs[0]
-	networkID, err := network.NetworkID()
+func loadCreationKey(network models.Network, keyName string) ([]string, error) {
+	path := filepath.Join(app.GetKeyDir(), keyName+constants.KeySuffix)
+	k, err := key.LoadSoft(network.NetworkID(), path)
 	if err != nil {
-		return "", err
-	}
-	hrp := key.GetHRP(networkID)
-	addrStr, err := address.Format("P", hrp, addr[:])
-	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return addrStr, nil
+	return k.P(), nil
 }
 
 func enterCustomKeys(network models.Network) ([]string, bool, error) {
@@ -498,71 +453,4 @@ func validateSubnetNameAndGetChains(args []string) ([]string, error) {
 	}
 
 	return chains, nil
-}
-
-func checkMutuallyExclusive(flagA bool, flagB bool, flagC bool) error {
-	if flagA && flagB || flagB && flagC || flagA && flagC {
-		return errMutuallyExlusive
-	}
-	return nil
-}
-
-func getFujiKeyOrLedger() (bool, string, error) {
-	useStoredKey, err := app.Prompt.ChooseKeyOrLedger()
-	if err != nil {
-		return false, "", err
-	}
-	if useStoredKey {
-		keyName, err := captureKeyName()
-		if err != nil {
-			if err == errNoKeys {
-				ux.Logger.PrintToUser("No private keys have been found. Deployment to fuji without a private key " +
-					"or ledger is not possible. Create a new one with `avalanche key create`, or use a ledger device.")
-			}
-			return false, "", err
-		}
-		return false, keyName, nil
-	}
-	return true, "", nil
-}
-
-func getKeychain(
-	useLedger bool,
-	keyName string,
-	network models.Network,
-) (keychain.Keychain, error) {
-	// get keychain accesor
-	var kc keychain.Keychain
-	if useLedger {
-		ledgerDevice, err := ledger.New()
-		if err != nil {
-			return kc, err
-		}
-		// ask for addresses here to print user msg for ledger interaction
-		ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
-		addresses, err := ledgerDevice.Addresses(1)
-		if err != nil {
-			return kc, err
-		}
-		addr := addresses[0]
-		networkID, err := network.NetworkID()
-		if err != nil {
-			return kc, err
-		}
-		addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
-		if err != nil {
-			return kc, err
-		}
-		ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("Ledger address: %s", addrStr)))
-		return keychain.NewLedgerKeychain(ledgerDevice, numLedgerAddressesToDerive)
-	}
-	networkID, err := network.NetworkID()
-	if err != nil {
-		return kc, err
-	}
-	sf, err := key.LoadSoft(networkID, app.GetKeyPath(keyName))
-	if err != nil {
-		return kc, err
-	}
-	return sf.KeyChain(), nil
 }
