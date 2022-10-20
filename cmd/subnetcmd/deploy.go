@@ -315,8 +315,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if err := checkSubnetAuthKeys(subnetAuthKeys, controlKeys, threshold); err != nil {
 			return err
 		}
-	}
-	if subnetAuthKeys == nil {
+	} else {
 		subnetAuthKeys, err = getSubnetAuthKeys(controlKeys, threshold)
 		if err != nil {
 			return err
@@ -326,12 +325,12 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	subnetID, blockchainDeployed, blockchainID, tx, err := deployer.Deploy(controlKeys, subnetAuthKeys, threshold, chain, chainGenesis)
+	isFullySigned, subnetID, blockchainID, tx, err := deployer.Deploy(controlKeys, subnetAuthKeys, threshold, chain, chainGenesis)
 	if err != nil {
 		return err
 	}
 
-	if !blockchainDeployed {
+	if !isFullySigned {
 		if err := saveTxToDisk(tx, outputTxPath); err != nil {
 			return err
 		}

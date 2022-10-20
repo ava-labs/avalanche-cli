@@ -59,8 +59,8 @@ This command currently only works on subnets deployed to the Fuji testnet.`,
 	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "join on `fuji` (alias for `testnet`)")
 	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
 	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
-	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate chain creation")
-	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
+	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate add validator tx")
+	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the add validator tx")
 	return cmd
 }
 
@@ -134,8 +134,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		if err := checkSubnetAuthKeys(subnetAuthKeys, controlKeys, threshold); err != nil {
 			return err
 		}
-	}
-	if subnetAuthKeys == nil {
+	} else {
 		subnetAuthKeys, err = getSubnetAuthKeys(controlKeys, threshold)
 		if err != nil {
 			return err
@@ -182,9 +181,9 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	tx, err := deployer.AddValidator(subnetAuthKeys, subnetID, nodeID, weight, start, duration)
+	isFullySigned, tx, err := deployer.AddValidator(subnetAuthKeys, subnetID, nodeID, weight, start, duration)
 
-	if err == nil && tx != nil {
+	if err == nil && !isFullySigned && tx != nil {
 		if err := saveTxToDisk(tx, outputTxPath); err != nil {
 			return err
 		}
