@@ -167,21 +167,23 @@ func (d *PublicDeployer) validateWalletIsSubnetOwner(controlKeys []string, thres
 	if len(walletAddrs) == 0 {
 		return fmt.Errorf("no addrs in wallet")
 	}
-	walletAddr := walletAddrs[0]
 
 	networkID, err := d.network.NetworkID()
 	if err != nil {
 		return err
 	}
 	hrp := key.GetHRP(networkID)
-	walletAddrStr, err := address.Format("P", hrp, walletAddr[:])
-	if err != nil {
-		return err
-	}
 
-	for _, addr := range controlKeys {
-		if addr == walletAddrStr {
-			return nil
+	for _, walletAddr := range walletAddrs {
+		walletAddrStr, err := address.Format("P", hrp, walletAddr[:])
+		if err != nil {
+			return err
+		}
+
+		for _, addr := range controlKeys {
+			if addr == walletAddrStr {
+				return nil
+			}
 		}
 	}
 
