@@ -171,10 +171,6 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 }
 
 func (d *PublicDeployer) validateWalletIsSubnetOwner(controlKeys []string, threshold uint32) error {
-	if threshold != 1 {
-		return fmt.Errorf("multisig subnets are currently unsupported")
-	}
-
 	walletAddrs := d.kc.Addresses().List()
 	if len(walletAddrs) == 0 {
 		return fmt.Errorf("no addrs in wallet")
