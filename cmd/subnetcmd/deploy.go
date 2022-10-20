@@ -39,6 +39,7 @@ var (
 	keyName        string
 	threshold      uint32
 	controlKeys    []string
+	subnetAuthKeys []string
 	avagoVersion   string
 
 	errMutuallyExlusive = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
@@ -77,6 +78,7 @@ subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use creation key as control key")
 	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to add a validator")
 	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may add new validators to the subnet")
+	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate chain creation")
 	return cmd
 }
 
@@ -283,10 +285,13 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
 
 	// validate and prompt for threshold
+	if threshold == 0 && subnetAuthKeys != nil {
+		threshold = uint32(len(subnetAuthKeys))
+	}
 	if int(threshold) > len(controlKeys) {
 		return fmt.Errorf("given threshold is greater than number of control keys")
 	}
-	if len(controlKeys) > 0 && threshold == 0 {
+	if threshold == 0 {
 		if len(controlKeys) == 1 {
 			threshold = 1
 		} else {
@@ -296,6 +301,53 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			}
 		}
 	}
+
+	// get keys for blockchain creation
+	if subnetAuthKeys != nil && len(subnetAuthKeys) != int(threshold) {
+		return fmt.Errorf("number of given chain creation keys differs from the threshold")
+	}
+	if subnetAuthKeys != nil {
+		for _, subnetAuthKey := range subnetAuthKeys {
+			found := false
+			for _, controlKey := range controlKeys {
+				if subnetAuthKey == controlKey {
+					found = true
+				}
+			}
+			if !found {
+				return fmt.Errorf("subnet auth key %s does not belong to control keys", subnetAuthKey)
+			}
+		}
+	}
+	if subnetAuthKeys == nil {
+		if len(controlKeys) == int(threshold) {
+			subnetAuthKeys = controlKeys[:]
+		} else {
+			subnetAuthKeys = []string{}
+			filteredControlKeys := controlKeys[:]
+			for len(subnetAuthKeys) != int(threshold) {
+				subnetAuthKey, err := app.Prompt.CaptureList(
+					"Choose a chain creation key",
+					filteredControlKeys,
+				)
+				if err != nil {
+					return err
+				}
+				subnetAuthKeys = append(subnetAuthKeys, subnetAuthKey)
+				filteredControlKeysTmp := []string{}
+				for _, controlKey := range filteredControlKeys {
+					if controlKey != subnetAuthKey {
+						filteredControlKeysTmp = append(filteredControlKeysTmp, controlKey)
+					}
+				}
+				filteredControlKeys = filteredControlKeysTmp
+			}
+		}
+	}
+
+	ux.Logger.PrintToUser("Your subnet auth keys for chain creation: %s", subnetAuthKeys)
+
+	return nil
 
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
