@@ -298,6 +298,7 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 	return wallet.P().IssueCreateSubnetTx(owners, opts...)
 }
 
+// get wallet addresses that are also subnet auth addresses
 func (d *PublicDeployer) getSubnetAuthAddressesInWallet(subnetAuth []ids.ShortID) ([]ids.ShortID, error) {
 	walletAddrs := d.kc.Addresses().List()
 	subnetAuthInWallet := []ids.ShortID{}
@@ -311,6 +312,7 @@ func (d *PublicDeployer) getSubnetAuthAddressesInWallet(subnetAuth []ids.ShortID
 	return subnetAuthInWallet, nil
 }
 
+// check that the wallet at least contain one subnet auth address
 func (d *PublicDeployer) checkWalletHasSubnetAuthAddresses(subnetAuth []ids.ShortID) (bool, error) {
 	addrs, err := d.getSubnetAuthAddressesInWallet(subnetAuth)
 	if err != nil {
