@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 )
 
+// saves a given [tx] to [txPath]
 func SaveToDisk(tx *txs.Tx, txPath string) error {
 	// Serialize the signed tx
 	txBytes, err := txs.Codec.Marshal(txs.Version, tx)
@@ -38,6 +39,7 @@ func SaveToDisk(tx *txs.Tx, txPath string) error {
 	return nil
 }
 
+// loads a tx from [txPath]
 //nolint:deadcode,unused
 func LoadFromDisk(txPath string) (*txs.Tx, error) {
 	txEncodedBytes, err := os.ReadFile(txPath)

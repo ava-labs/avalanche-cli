@@ -14,6 +14,8 @@ import (
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 )
 
+// get all subnet auth addresses that are required to sign a given tx
+// expect tx.Unsigned type to be in [txs.AddSubnetValidatorTx, txs.CreateChainTx]
 func GetAuthSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]string, error) {
 	controlKeys, _, err := subnet.GetOwners(network, subnetID)
 	if err != nil {
@@ -43,6 +45,9 @@ func GetAuthSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]stri
 	return authSigners, nil
 }
 
+// get subnet auth addresses that does not yet signed a given tx
+// if the tx is fully signed, returns empty slice
+// expect tx.Unsigned type to be in [txs.AddSubnetValidatorTx, txs.CreateChainTx]
 func GetRemainingSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]string, error) {
 	authSigners, err := GetAuthSigners(tx, network, subnetID)
 	if err != nil {
