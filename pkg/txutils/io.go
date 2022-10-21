@@ -40,7 +40,6 @@ func SaveToDisk(tx *txs.Tx, txPath string) error {
 }
 
 // loads a tx from [txPath]
-//nolint:deadcode,unused
 func LoadFromDisk(txPath string) (*txs.Tx, error) {
 	txEncodedBytes, err := os.ReadFile(txPath)
 	if err != nil {
