@@ -212,7 +212,7 @@ func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []ids.ShortID) ([]c
 	// set change to go to wallet addr (instead of any other subnet auth key)
 	walletAddresses, err := d.getSubnetAuthAddressesInWallet(subnetAuthKeys)
 	if err != nil {
-		return options, err
+		return nil, err
 	}
 	walletAddr := walletAddresses[0]
 	changeOwner := &secp256k1fx.OutputOwners{
