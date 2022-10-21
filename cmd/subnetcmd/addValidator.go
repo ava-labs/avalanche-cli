@@ -182,8 +182,10 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	isFullySigned, tx, err := deployer.AddValidator(subnetAuthKeys, subnetID, nodeID, weight, start, duration)
-
-	if err == nil && !isFullySigned && tx != nil {
+	if err != nil {
+		return err
+	}
+	if !isFullySigned {
 		remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, network, subnetID)
 		if err != nil {
 			return err
