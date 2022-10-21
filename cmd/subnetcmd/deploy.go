@@ -287,7 +287,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	if int(threshold) > len(controlKeys) {
 		return fmt.Errorf("given threshold is greater than number of control keys")
 	}
-	if len(controlKeys) > 0 && threshold == 0 {
+	if threshold == 0 {
 		threshold, err = getThreshold(len(controlKeys))
 		if err != nil {
 			return err
