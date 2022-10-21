@@ -586,7 +586,7 @@ func getIndexInSlice[T comparable](list []T, element T) (int, error) {
 // - [subnetAuthKeys] is a subset of subnet's [controlKeys]
 func CheckSubnetAuthKeys(subnetAuthKeys []string, controlKeys []string, threshold uint32) error {
 	if len(subnetAuthKeys) != int(threshold) {
-		return fmt.Errorf("number of given chain creation keys differs from the threshold")
+		return fmt.Errorf("number of given subnet auth differs from the threshold")
 	}
 	for _, subnetAuthKey := range subnetAuthKeys {
 		found := false

@@ -86,7 +86,7 @@ func (d *PublicDeployer) AddValidator(
 		if err != nil {
 			return false, nil, err
 		}
-		ux.Logger.PrintToUser("Transaction successful, transaction ID :%s", id)
+		ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", id)
 	} else {
 		tx, err = d.createAddSubnetValidatorTx(subnetAuthKeys, validator, wallet)
 		if err != nil {
