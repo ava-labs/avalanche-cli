@@ -610,8 +610,8 @@ func GetSubnetAuthKeys(prompt Prompter, controlKeys []string, threshold uint32) 
 		return controlKeys, nil
 	}
 	subnetAuthKeys := []string{}
-    filteredControlKeys := []string{}
-    filteredControlKeys = append(filteredControlKeys, controlKeys...)
+	filteredControlKeys := []string{}
+	filteredControlKeys = append(filteredControlKeys, controlKeys...)
 	for len(subnetAuthKeys) != int(threshold) {
 		subnetAuthKey, err := prompt.CaptureList(
 			"Choose a subnet auth key",
