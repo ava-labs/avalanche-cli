@@ -443,7 +443,6 @@ func (*realPrompter) CaptureList(promptStr string, options []string) (string, er
 		Label: promptStr,
 		Items: options,
 	}
-
 	_, listDecision, err := prompt.Run()
 	if err != nil {
 		return "", err
@@ -573,6 +572,15 @@ func contains[T comparable](list []T, element T) bool {
 	return false
 }
 
+func getIndexInSlice[T comparable](list []T, element T) (int, error) {
+	for i, val := range list {
+		if val == element {
+			return i, nil
+		}
+	}
+	return 0, fmt.Errorf("element not found")
+}
+
 // check subnet authorization criteria:
 // - [subnetAuthKeys] satisfy subnet's [threshold]
 // - [subnetAuthKeys] is a subset of subnet's [controlKeys]
@@ -601,24 +609,22 @@ func GetSubnetAuthKeys(prompt Prompter, controlKeys []string, threshold uint32) 
 	if len(controlKeys) == int(threshold) {
 		return controlKeys, nil
 	}
-	subnetAuthKeys = []string{}
+	subnetAuthKeys := []string{}
 	filteredControlKeys := controlKeys
 	for len(subnetAuthKeys) != int(threshold) {
 		subnetAuthKey, err := prompt.CaptureList(
-			"Choose a chain creation key",
+			"Choose a subnet auth key",
 			filteredControlKeys,
 		)
 		if err != nil {
 			return nil, err
 		}
-		subnetAuthKeys = append(subnetAuthKeys, subnetAuthKey)
-		filteredControlKeysTmp := []string{}
-		for _, controlKey := range filteredControlKeys {
-			if controlKey != subnetAuthKey {
-				filteredControlKeysTmp = append(filteredControlKeysTmp, controlKey)
-			}
+		index, err := getIndexInSlice(filteredControlKeys, subnetAuthKey)
+		if err != nil {
+			return nil, err
 		}
-		filteredControlKeys = filteredControlKeysTmp
+		subnetAuthKeys = append(subnetAuthKeys, subnetAuthKey)
+		filteredControlKeys = append(filteredControlKeys[:index], filteredControlKeys[index+1:]...)
 	}
 	return subnetAuthKeys, nil
 }
