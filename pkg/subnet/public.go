@@ -10,7 +10,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/utils"
@@ -44,7 +43,7 @@ func NewPublicDeployer(app *application.Avalanche, usingLedger bool, kc keychain
 }
 
 func (d *PublicDeployer) AddValidator(
-	subnetAuthKeys []string,
+	subnetAuthKeysStrs []string,
 	subnet ids.ID,
 	nodeID ids.NodeID,
 	weight uint64,
@@ -52,6 +51,10 @@ func (d *PublicDeployer) AddValidator(
 	duration time.Duration,
 ) (bool, *txs.Tx, error) {
 	wallet, err := d.loadWallet(subnet)
+	if err != nil {
+		return false, nil, err
+	}
+	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
 		return false, nil, err
 	}
@@ -94,7 +97,7 @@ func (d *PublicDeployer) AddValidator(
 
 func (d *PublicDeployer) Deploy(
 	controlKeys []string,
-	subnetAuthKeys []string,
+	subnetAuthKeysStrs []string,
 	threshold uint32,
 	chain string,
 	genesis []byte,
@@ -108,12 +111,10 @@ func (d *PublicDeployer) Deploy(
 		return false, ids.Empty, ids.Empty, nil, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
 
-	/*
-		    subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
-			if err != nil {
-				return false, ids.Empty, ids.Empty, nil, err
-			}
-	*/
+	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
+	if err != nil {
+		return false, ids.Empty, ids.Empty, nil, err
+	}
 
 	ok, err := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys)
 	if err != nil {
@@ -202,28 +203,18 @@ func (d *PublicDeployer) createAndIssueBlockchainTx(
 	return wallet.P().IssueCreateChainTx(subnetID, genesis, vmID, fxIDs, chainName)
 }
 
-func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []string) ([]common.Option, error) {
+func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []ids.ShortID) ([]common.Option, error) {
 	options := []common.Option{}
 	// addrs to use for signing
 	customAddrsSet := ids.ShortSet{}
-	for _, customAddrStr := range subnetAuthKeys {
-		customAddr, err := address.ParseToID(customAddrStr)
-		if err != nil {
-			return options, err
-		}
-		customAddrsSet.Add(customAddr)
-	}
+	customAddrsSet.Add(subnetAuthKeys...)
 	options = append(options, common.WithCustomAddresses(customAddrsSet))
 	// set change to go to wallet addr (instead of any other subnet auth key)
 	walletAddresses, err := d.getSubnetAuthAddressesInWallet(subnetAuthKeys)
 	if err != nil {
 		return options, err
 	}
-	walletAddrStr := walletAddresses[0]
-	walletAddr, err := address.ParseToID(walletAddrStr)
-	if err != nil {
-		return options, err
-	}
+	walletAddr := walletAddresses[0]
 	changeOwner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
 		Addrs:     []ids.ShortID{walletAddr},
@@ -233,7 +224,7 @@ func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []string) ([]common
 }
 
 func (d *PublicDeployer) createBlockchainTx(
-	subnetAuthKeys []string,
+	subnetAuthKeys []ids.ShortID,
 	chainName string,
 	vmID,
 	subnetID ids.ID,
@@ -269,7 +260,7 @@ func (d *PublicDeployer) createBlockchainTx(
 }
 
 func (d *PublicDeployer) createAddSubnetValidatorTx(
-	subnetAuthKeys []string,
+	subnetAuthKeys []ids.ShortID,
 	validator *validator.SubnetValidator,
 	wallet primary.Wallet,
 ) (*txs.Tx, error) {
@@ -307,30 +298,20 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 	return wallet.P().IssueCreateSubnetTx(owners, opts...)
 }
 
-func (d *PublicDeployer) getSubnetAuthAddressesInWallet(subnetAuth []string) ([]string, error) {
-	networkID, err := d.network.NetworkID()
-	if err != nil {
-		return nil, err
-	}
-	hrp := key.GetHRP(networkID)
+func (d *PublicDeployer) getSubnetAuthAddressesInWallet(subnetAuth []ids.ShortID) ([]ids.ShortID, error) {
 	walletAddrs := d.kc.Addresses().List()
-	subnetAuthAddrs := []string{}
+	subnetAuthInWallet := []ids.ShortID{}
 	for _, walletAddr := range walletAddrs {
-		walletAddrStr, err := address.Format("P", hrp, walletAddr[:])
-		if err != nil {
-			return nil, err
-		}
-
 		for _, addr := range subnetAuth {
-			if addr == walletAddrStr {
-				subnetAuthAddrs = append(subnetAuthAddrs, addr)
+			if addr == walletAddr {
+				subnetAuthInWallet = append(subnetAuthInWallet, addr)
 			}
 		}
 	}
-	return subnetAuthAddrs, nil
+	return subnetAuthInWallet, nil
 }
 
-func (d *PublicDeployer) checkWalletHasSubnetAuthAddresses(subnetAuth []string) (bool, error) {
+func (d *PublicDeployer) checkWalletHasSubnetAuthAddresses(subnetAuth []ids.ShortID) (bool, error) {
 	addrs, err := d.getSubnetAuthAddressesInWallet(subnetAuth)
 	if err != nil {
 		return false, err
