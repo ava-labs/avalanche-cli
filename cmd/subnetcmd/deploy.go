@@ -295,13 +295,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("given threshold is greater than number of control keys")
 	}
 	if threshold == 0 {
-		if len(controlKeys) == 1 {
-			threshold = 1
-		} else {
-			threshold, err = getThreshold(len(controlKeys))
-			if err != nil {
-				return err
-			}
+		threshold, err = getThreshold(len(controlKeys))
+		if err != nil {
+			return err
 		}
 	}
 
@@ -505,6 +501,9 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 
 // getThreshold prompts for the threshold of addresses as a number
 func getThreshold(maxLen int) (uint32, error) {
+	if maxLen == 1 {
+		return uint32(1), nil
+	}
 	// create a list of indexes so the user only has the option to choose what is the theshold
 	// instead of entering
 	indexList := make([]string, maxLen)
@@ -558,18 +557,18 @@ func getFujiKeyOrLedger() (bool, string, error) {
 	if err != nil {
 		return false, "", err
 	}
-	if useStoredKey {
-		keyName, err := captureKeyName()
-		if err != nil {
-			if err == errNoKeys {
-				ux.Logger.PrintToUser("No private keys have been found. Deployment to fuji without a private key " +
-					"or ledger is not possible. Create a new one with `avalanche key create`, or use a ledger device.")
-			}
-			return false, "", err
-		}
-		return false, keyName, nil
+	if !useStoredKey {
+		return true, "", nil
 	}
-	return true, "", nil
+	keyName, err := captureKeyName()
+	if err != nil {
+		if err == errNoKeys {
+			ux.Logger.PrintToUser("No private keys have been found. Deployment to fuji without a private key " +
+				"or ledger is not possible. Create a new one with `avalanche key create`, or use a ledger device.")
+		}
+		return false, "", err
+	}
+	return false, keyName, nil
 }
 
 func getKeychain(
