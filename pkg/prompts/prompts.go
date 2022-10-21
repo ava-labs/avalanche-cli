@@ -585,6 +585,7 @@ func CheckSubnetAuthKeys(subnetAuthKeys []string, controlKeys []string, threshol
 		for _, controlKey := range controlKeys {
 			if subnetAuthKey == controlKey {
 				found = true
+				break
 			}
 		}
 		if !found {
@@ -597,29 +598,27 @@ func CheckSubnetAuthKeys(subnetAuthKeys []string, controlKeys []string, threshol
 // get subnet authorization keys from the user, as a subset of the subnet's [controlKeys]
 // with a len equal to the subnet's [threshold]
 func GetSubnetAuthKeys(prompt Prompter, controlKeys []string, threshold uint32) ([]string, error) {
-	var subnetAuthKeys []string
 	if len(controlKeys) == int(threshold) {
-		subnetAuthKeys = controlKeys
-	} else {
-		subnetAuthKeys = []string{}
-		filteredControlKeys := controlKeys
-		for len(subnetAuthKeys) != int(threshold) {
-			subnetAuthKey, err := prompt.CaptureList(
-				"Choose a chain creation key",
-				filteredControlKeys,
-			)
-			if err != nil {
-				return nil, err
-			}
-			subnetAuthKeys = append(subnetAuthKeys, subnetAuthKey)
-			filteredControlKeysTmp := []string{}
-			for _, controlKey := range filteredControlKeys {
-				if controlKey != subnetAuthKey {
-					filteredControlKeysTmp = append(filteredControlKeysTmp, controlKey)
-				}
-			}
-			filteredControlKeys = filteredControlKeysTmp
+		return controlKeys, nil
+	}
+	subnetAuthKeys = []string{}
+	filteredControlKeys := controlKeys
+	for len(subnetAuthKeys) != int(threshold) {
+		subnetAuthKey, err := prompt.CaptureList(
+			"Choose a chain creation key",
+			filteredControlKeys,
+		)
+		if err != nil {
+			return nil, err
 		}
+		subnetAuthKeys = append(subnetAuthKeys, subnetAuthKey)
+		filteredControlKeysTmp := []string{}
+		for _, controlKey := range filteredControlKeys {
+			if controlKey != subnetAuthKey {
+				filteredControlKeysTmp = append(filteredControlKeysTmp, controlKey)
+			}
+		}
+		filteredControlKeys = filteredControlKeysTmp
 	}
 	return subnetAuthKeys, nil
 }
