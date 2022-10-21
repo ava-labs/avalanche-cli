@@ -184,8 +184,14 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	isFullySigned, tx, err := deployer.AddValidator(subnetAuthKeys, subnetID, nodeID, weight, start, duration)
 
 	if err == nil && !isFullySigned && tx != nil {
+		remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, network, subnetID)
+		if err != nil {
+			return err
+		}
+		signedCount := len(subnetAuthKeys) - len(remainingSubnetAuthKeys)
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("Partial signing was done on blockchain tx. Saving tx to disk to enable remaining signing.")
+		ux.Logger.PrintToUser("%d of %d required Add Validator signatures have been signed. "+
+			"Saving tx to disk to enable remaining signing.", signedCount, len(subnetAuthKeys))
 		if outputTxPath == "" {
 			ux.Logger.PrintToUser("")
 			var err error
@@ -195,10 +201,6 @@ func addValidator(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if err := txutils.SaveToDisk(tx, outputTxPath); err != nil {
-			return err
-		}
-		remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, network, subnetID)
-		if err != nil {
 			return err
 		}
 		if err := printPartialSigningMsg(remainingSubnetAuthKeys, outputTxPath); err != nil {

@@ -326,8 +326,14 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	if !isFullySigned {
+		remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, network, subnetID)
+		if err != nil {
+			return err
+		}
+		signedCount := len(subnetAuthKeys) - len(remainingSubnetAuthKeys)
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("Partial signing was done on blockchain tx. Saving tx to disk to enable remaining signing.")
+		ux.Logger.PrintToUser("%d of %d required Blockchain Creation signatures have been signed. "+
+			"Saving tx to disk to enable remaining signing.", signedCount, len(subnetAuthKeys))
 		if outputTxPath == "" {
 			ux.Logger.PrintToUser("")
 			var err error
@@ -337,10 +343,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if err := txutils.SaveToDisk(tx, outputTxPath); err != nil {
-			return err
-		}
-		remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, network, subnetID)
-		if err != nil {
 			return err
 		}
 		if err := printPartialSigningMsg(remainingSubnetAuthKeys, outputTxPath); err != nil {
@@ -614,13 +616,9 @@ func getKeychain(
 func printPartialSigningMsg(remainingSubnetAuthKeys []string, outputTxPath string) error {
 	// final msg
 	ux.Logger.PrintToUser("")
-	if len(remainingSubnetAuthKeys) == 1 {
-		ux.Logger.PrintToUser("One address remaining to sign the tx: %s", remainingSubnetAuthKeys[0])
-	} else {
-		ux.Logger.PrintToUser("%d addresses remaining to sign the tx:", len(remainingSubnetAuthKeys))
-		for _, subnetAuthKey := range remainingSubnetAuthKeys {
-			ux.Logger.PrintToUser("  %s", subnetAuthKey)
-		}
+	ux.Logger.PrintToUser("Addresses remaining to sign the tx")
+	for _, subnetAuthKey := range remainingSubnetAuthKeys {
+		ux.Logger.PrintToUser("  %s", subnetAuthKey)
 	}
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Signing command:")
