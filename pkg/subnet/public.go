@@ -165,7 +165,7 @@ func (d *PublicDeployer) validateWalletIsSubnetOwner(controlKeys []string, thres
 
 	walletAddrs := d.kc.Addresses().List()
 	if len(walletAddrs) == 0 {
-		return fmt.Errorf("no addrs in wallet")
+		return fmt.Errorf("no addresses in wallet")
 	}
 	walletAddr := walletAddrs[0]
 
