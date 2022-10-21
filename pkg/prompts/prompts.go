@@ -573,9 +573,11 @@ func contains[T comparable](list []T, element T) bool {
 	return false
 }
 
+// check subnet authorization criteria:
+// - [subnetAuthKeys] satisfy subnet's [threshold]
+// - [subnetAuthKeys] is a subset of subnet's [controlKeys]
 func CheckSubnetAuthKeys(subnetAuthKeys []string, controlKeys []string, threshold uint32) error {
-	// get keys for blockchain creation
-	if subnetAuthKeys != nil && len(subnetAuthKeys) != int(threshold) {
+	if len(subnetAuthKeys) != int(threshold) {
 		return fmt.Errorf("number of given chain creation keys differs from the threshold")
 	}
 	for _, subnetAuthKey := range subnetAuthKeys {
@@ -592,6 +594,8 @@ func CheckSubnetAuthKeys(subnetAuthKeys []string, controlKeys []string, threshol
 	return nil
 }
 
+// get subnet authorization keys from the user, as a subset of the subnet's [controlKeys]
+// with a len equal to the subnet's [threshold]
 func GetSubnetAuthKeys(prompt Prompter, controlKeys []string, threshold uint32) ([]string, error) {
 	var subnetAuthKeys []string
 	if len(controlKeys) == int(threshold) {
