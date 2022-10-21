@@ -75,26 +75,21 @@ func (d *PublicDeployer) AddValidator(
 		ux.Logger.PrintToUser("*** Please sign add validator hash on the ledger device *** ")
 	}
 
-	var (
-		tx            *txs.Tx
-		isFullySigned bool
-	)
-
 	if len(subnetAuthKeys) == 1 {
-		isFullySigned = true
 		id, err := wallet.P().IssueAddSubnetValidatorTx(validator)
 		if err != nil {
 			return false, nil, err
 		}
 		ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", id)
-	} else {
-		tx, err = d.createAddSubnetValidatorTx(subnetAuthKeys, validator, wallet)
-		if err != nil {
-			return false, nil, err
-		}
+		return true, nil, nil
 	}
 
-	return isFullySigned, tx, nil
+	// not fully signed
+	tx, err := d.createAddSubnetValidatorTx(subnetAuthKeys, validator, wallet)
+	if err != nil {
+		return false, nil, err
+	}
+	return false, tx, nil
 }
 
 func (d *PublicDeployer) Deploy(
@@ -112,6 +107,13 @@ func (d *PublicDeployer) Deploy(
 	if err != nil {
 		return false, ids.Empty, ids.Empty, nil, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
+
+	/*
+		    subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
+			if err != nil {
+				return false, ids.Empty, ids.Empty, nil, err
+			}
+	*/
 
 	ok, err := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys)
 	if err != nil {
