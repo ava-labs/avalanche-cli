@@ -6,23 +6,33 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var exportPath string
+const inputTxPathFlag = "input-tx-filepath"
+
+var inputTxPath string
 
 // avalanche transaction sign
 func newTransactionSignCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "sign [subnetName]",
+		Use:          "sign",
 		Short:        "sign a transaction",
 		Long:         "",
 		RunE:         signTx,
-		Args:         cobra.ExactArgs(1),
+		Args:         cobra.ExactArgs(0),
 		SilenceUsage: true,
 	}
 
-	cmd.Flags().StringVar(&exportPath, "export-path", "", "Path to where the signed transaction should be written to disk")
+	cmd.Flags().StringVar(&inputTxPath, inputTxPathFlag, "", "Path to the transaction file for signing")
+	cmd.MarkFlagRequired(inputTxPathFlag)
 	return cmd
 }
 
 func signTx(cmd *cobra.Command, args []string) error {
+	var err error
+	if inputTxPath == "" {
+		inputTxPath, err = app.Prompt.CaptureExistingFilepath("What is the path to the transactions file which needs signing?")
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }

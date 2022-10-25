@@ -6,8 +6,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var txFilePath string
-
 // avalanche transaction commit
 func newTransactionCommitCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -19,10 +17,18 @@ func newTransactionCommitCmd() *cobra.Command {
 		SilenceUsage: true,
 	}
 
-	cmd.Flags().StringVar(&txFilePath, "tx-file-path", "", "Path to the completed signed transaction")
+	cmd.Flags().StringVar(&inputTxPath, inputTxPathFlag, "", "Path to the transaction signed by all signatories")
+	cmd.MarkFlagRequired(inputTxPathFlag)
 	return cmd
 }
 
 func commitTx(cmd *cobra.Command, args []string) error {
+	var err error
+	if inputTxPath == "" {
+		inputTxPath, err = app.Prompt.CaptureExistingFilepath("What is the path to the signed transactions file?")
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
