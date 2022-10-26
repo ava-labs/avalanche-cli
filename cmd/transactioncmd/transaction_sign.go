@@ -3,6 +3,9 @@
 package transactioncmd
 
 import (
+	"fmt"
+
+	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/spf13/cobra"
 )
 
@@ -34,5 +37,14 @@ func signTx(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
+	tx, err := txutils.LoadFromDisk(inputTxPath)
+	if err != nil {
+		return err
+	}
+	network, err := txutils.GetNetwork(tx)
+	if err != nil {
+		return err
+	}
+	fmt.Println(network)
 	return nil
 }

@@ -53,3 +53,15 @@ func NetworkFromString(s string) Network {
 	}
 	return Undefined
 }
+
+func NetworkFromNetworkID(networkID uint32) Network {
+	switch networkID {
+	case avago_constants.MainnetID:
+		return Mainnet
+	case avago_constants.FujiID:
+		return Fuji
+	case constants.LocalNetworkID:
+		return Local
+	}
+	return Undefined
+}
