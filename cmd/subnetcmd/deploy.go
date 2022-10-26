@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
@@ -138,8 +139,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// get the network to deploy to
 	var network models.Network
 
-	if err := checkMutuallyExclusive(deployLocal, deployTestnet, deployMainnet); err != nil {
-		return err
+	if !flags.EnsureMutuallyExclusive([]bool{deployLocal, deployTestnet, deployMainnet}) {
+		return errMutuallyExlusive
 	}
 
 	switch {
@@ -526,13 +527,6 @@ func validateSubnetNameAndGetChains(args []string) ([]string, error) {
 	}
 
 	return chains, nil
-}
-
-func checkMutuallyExclusive(flagA bool, flagB bool, flagC bool) error {
-	if flagA && flagB || flagB && flagC || flagA && flagC {
-		return errMutuallyExlusive
-	}
-	return nil
 }
 
 func getFujiKeyOrLedger() (bool, string, error) {
