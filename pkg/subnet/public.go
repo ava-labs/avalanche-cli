@@ -192,6 +192,16 @@ func (d *PublicDeployer) Deploy(
 	return isFullySigned, subnetID, blockchainID, blockchainTx, nil
 }
 
+func (d *PublicDeployer) Commit(
+	tx *txs.Tx,
+) (ids.ID, error) {
+	wallet, err := d.loadWallet()
+	if err != nil {
+		return ids.Empty, err
+	}
+	return wallet.P().IssueTx(tx)
+}
+
 func (d *PublicDeployer) Sign(
 	tx *txs.Tx,
 	subnetAuthKeysStrs []string,
