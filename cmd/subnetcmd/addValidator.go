@@ -14,7 +14,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
@@ -186,26 +185,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if !isFullySigned {
-		remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, network, subnetID)
-		if err != nil {
-			return err
-		}
-		signedCount := len(subnetAuthKeys) - len(remainingSubnetAuthKeys)
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("%d of %d required Add Validator signatures have been signed. "+
-			"Saving tx to disk to enable remaining signing.", signedCount, len(subnetAuthKeys))
-		if outputTxPath == "" {
-			ux.Logger.PrintToUser("")
-			var err error
-			outputTxPath, err = app.Prompt.CaptureString("Path to export partially signed tx to")
-			if err != nil {
-				return err
-			}
-		}
-		if err := txutils.SaveToDisk(tx, outputTxPath); err != nil {
-			return err
-		}
-		if err := printPartialSigningMsg(remainingSubnetAuthKeys, outputTxPath); err != nil {
+		if err := saveNotFullySignedTx("Add Validator", tx, network, subnetID, subnetAuthKeys); err != nil {
 			return err
 		}
 	}

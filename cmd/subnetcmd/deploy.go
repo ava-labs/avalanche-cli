@@ -20,9 +20,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	ledger "github.com/ava-labs/avalanche-ledger-go"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/coreth/core"
 	spacesvmchain "github.com/ava-labs/spacesvm/chain"
 	"github.com/spf13/cobra"
@@ -322,26 +324,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	if !isFullySigned {
-		remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, network, subnetID)
-		if err != nil {
-			return err
-		}
-		signedCount := len(subnetAuthKeys) - len(remainingSubnetAuthKeys)
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("%d of %d required Blockchain Creation signatures have been signed. "+
-			"Saving tx to disk to enable remaining signing.", signedCount, len(subnetAuthKeys))
-		if outputTxPath == "" {
-			ux.Logger.PrintToUser("")
-			var err error
-			outputTxPath, err = app.Prompt.CaptureString("Path to export partially signed tx to")
-			if err != nil {
-				return err
-			}
-		}
-		if err := txutils.SaveToDisk(tx, outputTxPath); err != nil {
-			return err
-		}
-		if err := printPartialSigningMsg(remainingSubnetAuthKeys, outputTxPath); err != nil {
+		if err := saveNotFullySignedTx("Blockchain Creation", tx, network, subnetID, subnetAuthKeys); err != nil {
 			return err
 		}
 	}
@@ -622,5 +605,37 @@ func printPartialSigningMsg(remainingSubnetAuthKeys []string, outputTxPath strin
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Signing command:")
 	ux.Logger.PrintToUser("  avalanche transaction sign %s", outputTxPath)
+	return nil
+}
+
+func saveNotFullySignedTx(
+	txName string,
+	tx *txs.Tx,
+	network models.Network,
+	subnetID ids.ID,
+	subnetAuthKeys []string,
+) error {
+	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, network, subnetID)
+	if err != nil {
+		return err
+	}
+	signedCount := len(subnetAuthKeys) - len(remainingSubnetAuthKeys)
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("%d of %d required %s signatures have been signed. "+
+		"Saving tx to disk to enable remaining signing.", signedCount, len(subnetAuthKeys), txName)
+	if outputTxPath == "" {
+		ux.Logger.PrintToUser("")
+		var err error
+		outputTxPath, err = app.Prompt.CaptureString("Path to export partially signed tx to")
+		if err != nil {
+			return err
+		}
+	}
+	if err := txutils.SaveToDisk(tx, outputTxPath); err != nil {
+		return err
+	}
+	if err := printPartialSigningMsg(remainingSubnetAuthKeys, outputTxPath); err != nil {
+		return err
+	}
 	return nil
 }
