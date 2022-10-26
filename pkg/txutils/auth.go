@@ -40,11 +40,11 @@ func GetAuthSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]stri
 		return nil, fmt.Errorf("expected subnetAuth of type *secp256k1fx.Input, got %T", subnetAuth)
 	}
 	authSigners := []string{}
-	for _, addrIndex := range subnetInput.SigIndices {
-		if addrIndex >= uint32(len(controlKeys)) {
-			return nil, fmt.Errorf("signer index %d exceeds number of control keys", addrIndex)
+	for _, sigIndex := range subnetInput.SigIndices {
+		if sigIndex >= uint32(len(controlKeys)) {
+			return nil, fmt.Errorf("signer index %d exceeds number of control keys", sigIndex)
 		}
-		authSigners = append(authSigners, controlKeys[addrIndex])
+		authSigners = append(authSigners, controlKeys[sigIndex])
 	}
 	return authSigners, nil
 }
