@@ -323,7 +323,16 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	if !isFullySigned {
-		if err := SaveNotFullySignedTx("Blockchain Creation", tx, network, subnetID, subnetAuthKeys, outputTxPath); err != nil {
+		if err := SaveNotFullySignedTx(
+			"Blockchain Creation",
+			tx,
+			network,
+			chain,
+			subnetID,
+			subnetAuthKeys,
+			outputTxPath,
+			false,
+		); err != nil {
 			return err
 		}
 	}
@@ -531,9 +540,11 @@ func SaveNotFullySignedTx(
 	txName string,
 	tx *txs.Tx,
 	network models.Network,
+	chain string,
 	subnetID ids.ID,
 	subnetAuthKeys []string,
 	outputTxPath string,
+	forceOverwrite bool,
 ) error {
 	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, network, subnetID)
 	if err != nil {
@@ -541,8 +552,13 @@ func SaveNotFullySignedTx(
 	}
 	signedCount := len(subnetAuthKeys) - len(remainingSubnetAuthKeys)
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("%d of %d required %s signatures have been signed. "+
-		"Saving tx to disk to enable remaining signing.", signedCount, len(subnetAuthKeys), txName)
+	if signedCount == len(subnetAuthKeys) {
+		ux.Logger.PrintToUser("All %d required %s signatures have been signed. "+
+			"Saving tx to disk to enable commit.", len(subnetAuthKeys), txName)
+	} else {
+		ux.Logger.PrintToUser("%d of %d required %s signatures have been signed. "+
+			"Saving tx to disk to enable remaining signing.", signedCount, len(subnetAuthKeys), txName)
+	}
 	if outputTxPath == "" {
 		ux.Logger.PrintToUser("")
 		var err error
@@ -551,16 +567,35 @@ func SaveNotFullySignedTx(
 			return err
 		}
 	}
-	if err := txutils.SaveToDisk(tx, outputTxPath); err != nil {
+	if forceOverwrite {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Overwritting %s", outputTxPath)
+	}
+	if err := txutils.SaveToDisk(tx, outputTxPath, forceOverwrite); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Addresses remaining to sign the tx")
-	for _, subnetAuthKey := range remainingSubnetAuthKeys {
-		ux.Logger.PrintToUser("  %s", subnetAuthKey)
+	if signedCount == len(subnetAuthKeys) {
+		PrintReadyToSignMsg(chain, outputTxPath)
+	} else {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Addresses remaining to sign the tx")
+		for _, subnetAuthKey := range remainingSubnetAuthKeys {
+			ux.Logger.PrintToUser("  %s", subnetAuthKey)
+		}
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Signing command:")
+		ux.Logger.PrintToUser("  avalanche transaction sign %s --input-tx-filepath %s", chain, outputTxPath)
 	}
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Signing command:")
-	ux.Logger.PrintToUser("  avalanche transaction sign %s", outputTxPath)
 	return nil
+}
+
+func PrintReadyToSignMsg(
+	chain string,
+	outputTxPath string,
+) {
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Tx is fully signed, and ready to be committed")
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Commit command:")
+	ux.Logger.PrintToUser("  avalanche transaction commit %s --input-tx-filepath %s", chain, outputTxPath)
 }

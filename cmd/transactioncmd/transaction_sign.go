@@ -98,6 +98,11 @@ func signTx(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if len(remainingSubnetAuthKeys) == 0 {
+		subnetcmd.PrintReadyToSignMsg(subnetName, inputTxPath)
+		return nil
+	}
+
 	// get keychain accesor
 	kc, err := key.GetKeychain(useLedger, app.GetKeyPath(keyName), network)
 	if err != nil {
@@ -107,7 +112,7 @@ func signTx(cmd *cobra.Command, args []string) error {
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	if err := deployer.Sign(tx, remainingSubnetAuthKeys, subnetID); err != nil {
 		if errors.Is(err, subnet.NoSubnetAuthKeysInWallet) {
-			ux.Logger.PrintToUser("There are not subnet auth keys present in the wallet")
+			ux.Logger.PrintToUser("There are no required subnet auth keys present in the wallet")
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser("Expected one of:")
 			for _, addr := range remainingSubnetAuthKeys {
@@ -120,7 +125,16 @@ func signTx(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if err := subnetcmd.SaveNotFullySignedTx("Tx", tx, network, subnetID, subnetAuthKeys, inputTxPath); err != nil {
+	if err := subnetcmd.SaveNotFullySignedTx(
+		"Tx",
+		tx,
+		network,
+		subnetName,
+		subnetID,
+		subnetAuthKeys,
+		inputTxPath,
+		true,
+	); err != nil {
 		return err
 	}
 

@@ -11,7 +11,7 @@ import (
 )
 
 // saves a given [tx] to [txPath]
-func SaveToDisk(tx *txs.Tx, txPath string) error {
+func SaveToDisk(tx *txs.Tx, txPath string, forceOverwrite bool) error {
 	// Serialize the signed tx
 	txBytes, err := txs.Codec.Marshal(txs.Version, tx)
 	if err != nil {
@@ -24,7 +24,7 @@ func SaveToDisk(tx *txs.Tx, txPath string) error {
 		return fmt.Errorf("couldn't encode signed tx: %w", err)
 	}
 	// save
-	if _, err := os.Stat(txPath); err == nil {
+	if _, err := os.Stat(txPath); err == nil && !forceOverwrite {
 		return fmt.Errorf("couldn't create file to write tx to: file exists")
 	}
 	f, err := os.Create(txPath)
