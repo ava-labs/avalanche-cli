@@ -7,10 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -28,7 +28,6 @@ var (
 	duration     time.Duration
 
 	errNoSubnetID = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
-	errNoKeys     = errors.New("no keys")
 )
 
 // avalanche subnet deploy
@@ -92,7 +91,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	switch network {
 	case models.Fuji:
 		if !useLedger && keyName == "" {
-			useLedger, keyName, err = getFujiKeyOrLedger()
+			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, app.GetKeyDir())
 			if err != nil {
 				return err
 			}
@@ -175,7 +174,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
 	// get keychain accesor
-	kc, err := getKeychain(useLedger, keyName, network)
+	kc, err := key.GetKeychain(useLedger, app.GetKeyPath(keyName), network)
 	if err != nil {
 		return err
 	}
@@ -338,30 +337,4 @@ func promptWeight() (uint64, error) {
 	default:
 		return app.Prompt.CaptureWeight(txt)
 	}
-}
-
-func captureKeyName() (string, error) {
-	files, err := os.ReadDir(app.GetKeyDir())
-	if err != nil {
-		return "", err
-	}
-
-	if len(files) < 1 {
-		return "", errNoKeys
-	}
-
-	keys := make([]string, len(files))
-
-	for i, f := range files {
-		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
-			keys[i] = strings.TrimSuffix(f.Name(), constants.KeySuffix)
-		}
-	}
-
-	keyName, err = app.Prompt.CaptureList("Which stored key should be used to issue the transaction?", keys)
-	if err != nil {
-		return "", err
-	}
-
-	return keyName, nil
 }

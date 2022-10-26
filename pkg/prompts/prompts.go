@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -34,6 +35,8 @@ const (
 	Done     = "Done"
 	Cancel   = "Cancel"
 )
+
+var errNoKeys = errors.New("no keys")
 
 type Prompter interface {
 	CapturePositiveBigInt(promptStr string) (*big.Int, error)
@@ -628,4 +631,49 @@ func GetSubnetAuthKeys(prompt Prompter, controlKeys []string, threshold uint32) 
 		filteredControlKeys = append(filteredControlKeys[:index], filteredControlKeys[index+1:]...)
 	}
 	return subnetAuthKeys, nil
+}
+
+func GetFujiKeyOrLedger(prompt Prompter, keyDir string) (bool, string, error) {
+	useStoredKey, err := prompt.ChooseKeyOrLedger()
+	if err != nil {
+		return false, "", err
+	}
+	if !useStoredKey {
+		return true, "", nil
+	}
+	keyName, err := captureKeyName(prompt, keyDir)
+	if err != nil {
+		if err == errNoKeys {
+			ux.Logger.PrintToUser("No private keys have been found. Deployment to fuji without a private key " +
+				"or ledger is not possible. Create a new one with `avalanche key create`, or use a ledger device.")
+		}
+		return false, "", err
+	}
+	return false, keyName, nil
+}
+
+func captureKeyName(prompt Prompter, keyDir string) (string, error) {
+	files, err := os.ReadDir(keyDir)
+	if err != nil {
+		return "", err
+	}
+
+	if len(files) < 1 {
+		return "", errNoKeys
+	}
+
+	keys := make([]string, len(files))
+
+	for i, f := range files {
+		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
+			keys[i] = strings.TrimSuffix(f.Name(), constants.KeySuffix)
+		}
+	}
+
+	keyName, err := prompt.CaptureList("Which stored key should be used to issue the transaction?", keys)
+	if err != nil {
+		return "", err
+	}
+
+	return keyName, nil
 }
