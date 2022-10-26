@@ -262,7 +262,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// from here on we are assuming a public deploy
 
 	// get keychain accesor
-	kc, err := GetKeychain(useLedger, app.GetKeyPath(keyName), network)
+	kc, err := GetKeychain(useLedger, keyName, network)
 	if err != nil {
 		return err
 	}
@@ -604,7 +604,7 @@ func PrintReadyToSignMsg(
 
 func GetKeychain(
 	useLedger bool,
-	keyPath string,
+	keyName string,
 	network models.Network,
 ) (keychain.Keychain, error) {
 	// get keychain accesor
@@ -636,7 +636,7 @@ func GetKeychain(
 	if err != nil {
 		return kc, err
 	}
-	sf, err := key.LoadSoft(networkID, keyPath)
+	sf, err := key.LoadSoft(networkID, app.GetKeyPath(keyName))
 	if err != nil {
 		return kc, err
 	}
