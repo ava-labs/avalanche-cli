@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -174,7 +173,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
 	// get keychain accesor
-	kc, err := key.GetKeychain(useLedger, app.GetKeyPath(keyName), network)
+	kc, err := GetKeychain(useLedger, app.GetKeyPath(keyName), network)
 	if err != nil {
 		return err
 	}

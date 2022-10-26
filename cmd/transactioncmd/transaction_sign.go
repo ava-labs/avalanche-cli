@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
-	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -104,7 +103,7 @@ func signTx(cmd *cobra.Command, args []string) error {
 	}
 
 	// get keychain accesor
-	kc, err := key.GetKeychain(useLedger, app.GetKeyPath(keyName), network)
+	kc, err := subnetcmd.GetKeychain(useLedger, app.GetKeyPath(keyName), network)
 	if err != nil {
 		return err
 	}
