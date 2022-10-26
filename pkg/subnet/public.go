@@ -102,6 +102,7 @@ func (d *PublicDeployer) AddValidator(
 	if err != nil {
 		return false, nil, err
 	}
+	ux.Logger.PrintToUser("Partial tx created, transaction ID: %s", tx.ID())
 	return false, tx, nil
 }
 
