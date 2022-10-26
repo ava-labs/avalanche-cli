@@ -4,7 +4,6 @@ package transactioncmd
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -40,7 +39,9 @@ func newTransactionSignCmd() *cobra.Command {
 	cmd.Flags().StringVar(&inputTxPath, inputTxPathFlag, "", "Path to the transaction file for signing")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
-	cmd.MarkFlagRequired(inputTxPathFlag)
+	if err := cmd.MarkFlagRequired(inputTxPathFlag); err != nil {
+		panic(err)
+	}
 	return cmd
 }
 
@@ -110,7 +111,7 @@ func signTx(cmd *cobra.Command, args []string) error {
 
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	if err := deployer.Sign(tx, remainingSubnetAuthKeys, subnetID); err != nil {
-		if errors.Is(err, subnet.NoSubnetAuthKeysInWallet) {
+		if errors.Is(err, subnet.ErrNoSubnetAuthKeysInWallet) {
 			ux.Logger.PrintToUser("There are no required subnet auth keys present in the wallet")
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser("Expected one of:")
@@ -118,10 +119,8 @@ func signTx(cmd *cobra.Command, args []string) error {
 				ux.Logger.PrintToUser("  %s", addr)
 			}
 			return nil
-		} else {
-			fmt.Println("que carajos")
-			return err
 		}
+		return err
 	}
 
 	if err := subnetcmd.SaveNotFullySignedTx(

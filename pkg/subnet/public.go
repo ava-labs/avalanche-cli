@@ -25,7 +25,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 )
 
-var NoSubnetAuthKeysInWallet = errors.New("wallet does not contain subnet auth keys")
+var ErrNoSubnetAuthKeysInWallet = errors.New("wallet does not contain subnet auth keys")
 
 type PublicDeployer struct {
 	LocalDeployer
@@ -76,7 +76,7 @@ func (d *PublicDeployer) AddValidator(
 		return false, nil, err
 	}
 	if !ok {
-		return false, nil, NoSubnetAuthKeysInWallet
+		return false, nil, ErrNoSubnetAuthKeysInWallet
 	}
 	validator := &validator.SubnetValidator{
 		Validator: validator.Validator{
@@ -147,7 +147,7 @@ func (d *PublicDeployer) Deploy(
 		return false, ids.Empty, ids.Empty, nil, err
 	}
 	if !ok {
-		return false, ids.Empty, ids.Empty, nil, NoSubnetAuthKeysInWallet
+		return false, ids.Empty, ids.Empty, nil, ErrNoSubnetAuthKeysInWallet
 	}
 
 	subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
@@ -210,7 +210,7 @@ func (d *PublicDeployer) Sign(
 		return err
 	}
 	if !ok {
-		return NoSubnetAuthKeysInWallet
+		return ErrNoSubnetAuthKeysInWallet
 	}
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign tx hash on the ledger device *** ")
