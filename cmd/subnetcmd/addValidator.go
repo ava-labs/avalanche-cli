@@ -12,6 +12,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
@@ -57,6 +58,8 @@ This command currently only works on subnets deployed to the Fuji testnet.`,
 	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "join on `fuji` (alias for `testnet`)")
 	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
 	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
+	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate add validator tx")
+	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the add validator tx")
 	return cmd
 }
 
@@ -120,6 +123,24 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		return errNoSubnetID
 	}
 
+	controlKeys, threshold, err := subnet.GetOwners(network, subnetID)
+	if err != nil {
+		return err
+	}
+
+	// get keys for add validator tx signing
+	if subnetAuthKeys != nil {
+		if err := prompts.CheckSubnetAuthKeys(subnetAuthKeys, controlKeys, threshold); err != nil {
+			return err
+		}
+	} else {
+		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, controlKeys, threshold)
+		if err != nil {
+			return err
+		}
+	}
+	ux.Logger.PrintToUser("Your subnet auth keys for add validator tx creation: %s", subnetAuthKeys)
+
 	if nodeIDStr == "" {
 		nodeID, err = promptNodeID()
 		if err != nil {
@@ -159,7 +180,17 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	return deployer.AddValidator(subnetID, nodeID, weight, start, duration)
+	isFullySigned, tx, err := deployer.AddValidator(subnetAuthKeys, subnetID, nodeID, weight, start, duration)
+	if err != nil {
+		return err
+	}
+	if !isFullySigned {
+		if err := saveNotFullySignedTx("Add Validator", tx, network, subnetID, subnetAuthKeys); err != nil {
+			return err
+		}
+	}
+
+	return err
 }
 
 func promptDuration(start time.Time) (time.Duration, error) {

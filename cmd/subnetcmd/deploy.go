@@ -17,11 +17,14 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	ledger "github.com/ava-labs/avalanche-ledger-go"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/coreth/core"
 	spacesvmchain "github.com/ava-labs/spacesvm/chain"
 	"github.com/spf13/cobra"
@@ -39,7 +42,9 @@ var (
 	keyName        string
 	threshold      uint32
 	controlKeys    []string
+	subnetAuthKeys []string
 	avagoVersion   string
+	outputTxPath   string
 
 	errMutuallyExlusive = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 )
@@ -77,6 +82,8 @@ subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use creation key as control key")
 	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to add a validator")
 	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may add new validators to the subnet")
+	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate chain creation")
+	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
 	return cmd
 }
 
@@ -261,11 +268,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// use creation key as control key
 	if sameControlKey {
-		controlKey, err := loadCreationKey(network, kc)
+		controlKeys, err = loadCreationKeys(network, kc)
 		if err != nil {
 			return err
 		}
-		controlKeys = []string{controlKey}
 	}
 
 	// prompt for control keys
@@ -284,6 +290,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
 
 	// validate and prompt for threshold
+	if threshold == 0 && subnetAuthKeys != nil {
+		threshold = uint32(len(subnetAuthKeys))
+	}
 	if int(threshold) > len(controlKeys) {
 		return fmt.Errorf("given threshold is greater than number of control keys")
 	}
@@ -294,11 +303,30 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// get keys for blockchain tx signing
+	if subnetAuthKeys != nil {
+		if err := prompts.CheckSubnetAuthKeys(subnetAuthKeys, controlKeys, threshold); err != nil {
+			return err
+		}
+	} else {
+		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, controlKeys, threshold)
+		if err != nil {
+			return err
+		}
+	}
+	ux.Logger.PrintToUser("Your subnet auth keys for chain creation: %s", subnetAuthKeys)
+
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	subnetID, blockchainID, err := deployer.Deploy(controlKeys, threshold, chain, chainGenesis)
+	isFullySigned, subnetID, blockchainID, tx, err := deployer.Deploy(controlKeys, subnetAuthKeys, threshold, chain, chainGenesis)
 	if err != nil {
 		return err
+	}
+
+	if !isFullySigned {
+		if err := saveNotFullySignedTx("Blockchain Creation", tx, network, subnetID, subnetAuthKeys); err != nil {
+			return err
+		}
 	}
 
 	// update sidecar
@@ -343,9 +371,7 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain
 
 	switch listDecision {
 	case creation:
-		var key string
-		key, err = loadCreationKey(network, kc)
-		keys = []string{key}
+		keys, err = loadCreationKeys(network, kc)
 	case useAll:
 		keys, err = useAllKeys(network)
 	case custom:
@@ -393,23 +419,26 @@ func useAllKeys(network models.Network) ([]string, error) {
 	return existing, nil
 }
 
-func loadCreationKey(network models.Network, kc keychain.Keychain) (string, error) {
+func loadCreationKeys(network models.Network, kc keychain.Keychain) ([]string, error) {
 	addrs := kc.Addresses().List()
 	if len(addrs) == 0 {
-		return "", fmt.Errorf("no creation addresses found")
+		return nil, fmt.Errorf("no creation addresses found")
 	}
-	addr := addrs[0]
 	networkID, err := network.NetworkID()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	hrp := key.GetHRP(networkID)
-	addrStr, err := address.Format("P", hrp, addr[:])
-	if err != nil {
-		return "", err
+	addrsStr := []string{}
+	for _, addr := range addrs {
+		addrStr, err := address.Format("P", hrp, addr[:])
+		if err != nil {
+			return nil, err
+		}
+		addrsStr = append(addrsStr, addrStr)
 	}
 
-	return addrStr, nil
+	return addrsStr, nil
 }
 
 func enterCustomKeys(network models.Network) ([]string, bool, error) {
@@ -564,4 +593,49 @@ func getKeychain(
 		return kc, err
 	}
 	return sf.KeyChain(), nil
+}
+
+func printPartialSigningMsg(remainingSubnetAuthKeys []string, outputTxPath string) error {
+	// final msg
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Addresses remaining to sign the tx")
+	for _, subnetAuthKey := range remainingSubnetAuthKeys {
+		ux.Logger.PrintToUser("  %s", subnetAuthKey)
+	}
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Signing command:")
+	ux.Logger.PrintToUser("  avalanche transaction sign %s", outputTxPath)
+	return nil
+}
+
+func saveNotFullySignedTx(
+	txName string,
+	tx *txs.Tx,
+	network models.Network,
+	subnetID ids.ID,
+	subnetAuthKeys []string,
+) error {
+	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, network, subnetID)
+	if err != nil {
+		return err
+	}
+	signedCount := len(subnetAuthKeys) - len(remainingSubnetAuthKeys)
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("%d of %d required %s signatures have been signed. "+
+		"Saving tx to disk to enable remaining signing.", signedCount, len(subnetAuthKeys), txName)
+	if outputTxPath == "" {
+		ux.Logger.PrintToUser("")
+		var err error
+		outputTxPath, err = app.Prompt.CaptureString("Path to export partially signed tx to")
+		if err != nil {
+			return err
+		}
+	}
+	if err := txutils.SaveToDisk(tx, outputTxPath); err != nil {
+		return err
+	}
+	if err := printPartialSigningMsg(remainingSubnetAuthKeys, outputTxPath); err != nil {
+		return err
+	}
+	return nil
 }

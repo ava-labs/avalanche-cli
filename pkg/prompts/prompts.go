@@ -443,7 +443,6 @@ func (*realPrompter) CaptureList(promptStr string, options []string) (string, er
 		Label: promptStr,
 		Items: options,
 	}
-
 	_, listDecision, err := prompt.Run()
 	if err != nil {
 		return "", err
@@ -571,4 +570,62 @@ func contains[T comparable](list []T, element T) bool {
 		}
 	}
 	return false
+}
+
+func getIndexInSlice[T comparable](list []T, element T) (int, error) {
+	for i, val := range list {
+		if val == element {
+			return i, nil
+		}
+	}
+	return 0, fmt.Errorf("element not found")
+}
+
+// check subnet authorization criteria:
+// - [subnetAuthKeys] satisfy subnet's [threshold]
+// - [subnetAuthKeys] is a subset of subnet's [controlKeys]
+func CheckSubnetAuthKeys(subnetAuthKeys []string, controlKeys []string, threshold uint32) error {
+	if len(subnetAuthKeys) != int(threshold) {
+		return fmt.Errorf("number of given subnet auth differs from the threshold")
+	}
+	for _, subnetAuthKey := range subnetAuthKeys {
+		found := false
+		for _, controlKey := range controlKeys {
+			if subnetAuthKey == controlKey {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("subnet auth key %s does not belong to control keys", subnetAuthKey)
+		}
+	}
+	return nil
+}
+
+// get subnet authorization keys from the user, as a subset of the subnet's [controlKeys]
+// with a len equal to the subnet's [threshold]
+func GetSubnetAuthKeys(prompt Prompter, controlKeys []string, threshold uint32) ([]string, error) {
+	if len(controlKeys) == int(threshold) {
+		return controlKeys, nil
+	}
+	subnetAuthKeys := []string{}
+	filteredControlKeys := []string{}
+	filteredControlKeys = append(filteredControlKeys, controlKeys...)
+	for len(subnetAuthKeys) != int(threshold) {
+		subnetAuthKey, err := prompt.CaptureList(
+			"Choose a subnet auth key",
+			filteredControlKeys,
+		)
+		if err != nil {
+			return nil, err
+		}
+		index, err := getIndexInSlice(filteredControlKeys, subnetAuthKey)
+		if err != nil {
+			return nil, err
+		}
+		subnetAuthKeys = append(subnetAuthKeys, subnetAuthKey)
+		filteredControlKeys = append(filteredControlKeys[:index], filteredControlKeys[index+1:]...)
+	}
+	return subnetAuthKeys, nil
 }
