@@ -323,7 +323,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	if !isFullySigned {
-		if err := saveNotFullySignedTx("Blockchain Creation", tx, network, subnetID, subnetAuthKeys); err != nil {
+		if err := SaveNotFullySignedTx("Blockchain Creation", tx, network, subnetID, subnetAuthKeys, outputTxPath); err != nil {
 			return err
 		}
 	}
@@ -527,25 +527,13 @@ func validateSubnetNameAndGetChains(args []string) ([]string, error) {
 	return chains, nil
 }
 
-func printPartialSigningMsg(remainingSubnetAuthKeys []string, outputTxPath string) error {
-	// final msg
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Addresses remaining to sign the tx")
-	for _, subnetAuthKey := range remainingSubnetAuthKeys {
-		ux.Logger.PrintToUser("  %s", subnetAuthKey)
-	}
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Signing command:")
-	ux.Logger.PrintToUser("  avalanche transaction sign %s", outputTxPath)
-	return nil
-}
-
-func saveNotFullySignedTx(
+func SaveNotFullySignedTx(
 	txName string,
 	tx *txs.Tx,
 	network models.Network,
 	subnetID ids.ID,
 	subnetAuthKeys []string,
+	outputTxPath string,
 ) error {
 	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, network, subnetID)
 	if err != nil {
@@ -566,8 +554,13 @@ func saveNotFullySignedTx(
 	if err := txutils.SaveToDisk(tx, outputTxPath); err != nil {
 		return err
 	}
-	if err := printPartialSigningMsg(remainingSubnetAuthKeys, outputTxPath); err != nil {
-		return err
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Addresses remaining to sign the tx")
+	for _, subnetAuthKey := range remainingSubnetAuthKeys {
+		ux.Logger.PrintToUser("  %s", subnetAuthKey)
 	}
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Signing command:")
+	ux.Logger.PrintToUser("  avalanche transaction sign %s", outputTxPath)
 	return nil
 }

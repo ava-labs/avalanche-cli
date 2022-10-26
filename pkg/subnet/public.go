@@ -4,6 +4,7 @@ package subnet
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -23,6 +24,8 @@ import (
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 	"github.com/olekukonko/tablewriter"
 )
+
+var NoSubnetAuthKeysInWallet = errors.New("wallet does not contain subnet auth keys")
 
 type PublicDeployer struct {
 	LocalDeployer
@@ -73,7 +76,7 @@ func (d *PublicDeployer) AddValidator(
 		return false, nil, err
 	}
 	if !ok {
-		return false, nil, fmt.Errorf("wallet does not contain subnet auth keys")
+		return false, nil, NoSubnetAuthKeysInWallet
 	}
 	validator := &validator.SubnetValidator{
 		Validator: validator.Validator{
@@ -102,7 +105,7 @@ func (d *PublicDeployer) AddValidator(
 	if err != nil {
 		return false, nil, err
 	}
-	ux.Logger.PrintToUser("Partial tx created, transaction ID: %s", tx.ID())
+	ux.Logger.PrintToUser("Partial tx created")
 	return false, tx, nil
 }
 
@@ -144,7 +147,7 @@ func (d *PublicDeployer) Deploy(
 		return false, ids.Empty, ids.Empty, nil, err
 	}
 	if !ok {
-		return false, ids.Empty, ids.Empty, nil, fmt.Errorf("wallet does not contain subnet auth keys")
+		return false, ids.Empty, ids.Empty, nil, NoSubnetAuthKeysInWallet
 	}
 
 	subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
@@ -187,6 +190,35 @@ func (d *PublicDeployer) Deploy(
 	table.Render()
 
 	return isFullySigned, subnetID, blockchainID, blockchainTx, nil
+}
+
+func (d *PublicDeployer) Sign(
+	tx *txs.Tx,
+	subnetAuthKeysStrs []string,
+	subnet ids.ID,
+) error {
+	wallet, err := d.loadWallet(subnet)
+	if err != nil {
+		return err
+	}
+	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
+	if err != nil {
+		return err
+	}
+	ok, err := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return NoSubnetAuthKeysInWallet
+	}
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign tx hash on the ledger device *** ")
+	}
+	if err := d.signTx(tx, wallet); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error) {
@@ -302,6 +334,16 @@ func (d *PublicDeployer) createAddSubnetValidatorTx(
 		return nil, err
 	}
 	return &tx, nil
+}
+
+func (d *PublicDeployer) signTx(
+	tx *txs.Tx,
+	wallet primary.Wallet,
+) error {
+	if err := wallet.P().Signer().Sign(context.Background(), tx); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, wallet primary.Wallet) (ids.ID, error) {

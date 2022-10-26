@@ -6,10 +6,13 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 )
@@ -55,7 +58,7 @@ func signTx(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// we need network to decide if ledger is required (mainnet)
+	// we need network to decide if ledger is forced (mainnet)
 	network, err := txutils.GetNetwork(tx)
 	if err != nil {
 		return err
@@ -74,6 +77,7 @@ func signTx(cmd *cobra.Command, args []string) error {
 		return errors.New("unsupported network")
 	}
 
+	// we need subnet wallet signing validation + process
 	subnetName := args[0]
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
@@ -82,6 +86,11 @@ func signTx(cmd *cobra.Command, args []string) error {
 	subnetID := sc.Networks[network.String()].SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
+	}
+
+	subnetAuthKeys, err := txutils.GetAuthSigners(tx, network, subnetID)
+	if err != nil {
+		return err
 	}
 
 	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, network, subnetID)
@@ -94,8 +103,26 @@ func signTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(remainingSubnetAuthKeys)
-	fmt.Println(kc.Addresses())
+
+	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	if err := deployer.Sign(tx, remainingSubnetAuthKeys, subnetID); err != nil {
+		if errors.Is(err, subnet.NoSubnetAuthKeysInWallet) {
+			ux.Logger.PrintToUser("There are not subnet auth keys present in the wallet")
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("Expected one of:")
+			for _, addr := range remainingSubnetAuthKeys {
+				ux.Logger.PrintToUser("  %s", addr)
+			}
+			return nil
+		} else {
+			fmt.Println("que carajos")
+			return err
+		}
+	}
+
+	if err := subnetcmd.SaveNotFullySignedTx("Tx", tx, network, subnetID, subnetAuthKeys, inputTxPath); err != nil {
+		return err
+	}
 
 	return nil
 }

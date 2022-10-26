@@ -184,7 +184,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if !isFullySigned {
-		if err := saveNotFullySignedTx("Add Validator", tx, network, subnetID, subnetAuthKeys); err != nil {
+		if err := SaveNotFullySignedTx("Add Validator", tx, network, subnetID, subnetAuthKeys, outputTxPath); err != nil {
 			return err
 		}
 	}
