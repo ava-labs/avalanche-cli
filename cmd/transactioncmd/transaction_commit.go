@@ -71,7 +71,7 @@ func commitTx(cmd *cobra.Command, args []string) error {
 	if len(remainingSubnetAuthKeys) != 0 {
 		signedCount := len(subnetAuthKeys) - len(remainingSubnetAuthKeys)
 		ux.Logger.PrintToUser("%d of %d required signatures have been signed.", signedCount, len(subnetAuthKeys))
-		subnetcmd.PrintRemainingToSignMsg(subnetName, remainingSubnetAuthKeys)
+		subnetcmd.PrintRemainingToSignMsg(subnetName, remainingSubnetAuthKeys, inputTxPath)
 		return nil
 	}
 

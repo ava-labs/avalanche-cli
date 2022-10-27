@@ -560,7 +560,7 @@ func SaveNotFullySignedTx(
 	if signedCount == len(subnetAuthKeys) {
 		PrintReadyToSignMsg(chain, outputTxPath)
 	} else {
-		PrintRemainingToSignMsg(chain, remainingSubnetAuthKeys)
+		PrintRemainingToSignMsg(chain, remainingSubnetAuthKeys, outputTxPath)
 	}
 	return nil
 }
@@ -576,7 +576,11 @@ func PrintReadyToSignMsg(
 	ux.Logger.PrintToUser("  avalanche transaction commit %s --input-tx-filepath %s", chain, outputTxPath)
 }
 
-func PrintRemainingToSignMsg(chain string, remainingSubnetAuthKeys []string) {
+func PrintRemainingToSignMsg(
+	chain string,
+	remainingSubnetAuthKeys []string,
+	outputTxPath string,
+) {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Addresses remaining to sign the tx")
 	for _, subnetAuthKey := range remainingSubnetAuthKeys {
