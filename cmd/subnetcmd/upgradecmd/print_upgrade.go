@@ -20,8 +20,8 @@ import (
 func newUpgradePrintCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "print [subnetName]",
-		Short: "Generate the configuration file to upgrade subnet nodes",
-		Long:  `Upgrades to subnet nodes can be executed by providing a upgrade.json file to the nodes. This command starts a wizard guiding the user generating the required file.`,
+		Short: "Print the upgrade.json file content",
+		Long:  `Print the upgrade.json file content`,
 		RunE:  upgradePrintCmd,
 		Args:  cobra.ExactArgs(1),
 	}
@@ -53,7 +53,7 @@ func upgradePrintCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	var prettyJSON bytes.Buffer
-	if err = json.Indent(&prettyJSON, fileBytes, "", "\t"); err != nil {
+	if err = json.Indent(&prettyJSON, fileBytes, "", "  "); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser(string(prettyJSON.Bytes()))
