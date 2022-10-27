@@ -94,7 +94,7 @@ func (d *PublicDeployer) AddValidator(
 		if err != nil {
 			return false, nil, err
 		}
-		ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", id)
+		ux.Logger.PrintToUser("Transaction submitted, transaction ID: %s", id)
 		return true, nil, nil
 	}
 

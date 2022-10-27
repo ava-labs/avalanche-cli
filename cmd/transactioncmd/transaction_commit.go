@@ -91,7 +91,7 @@ func commitTx(cmd *cobra.Command, args []string) error {
 		}
 		return app.UpdateSidecarNetworks(&sc, network, subnetID, txID)
 	}
-	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID)
+	ux.Logger.PrintToUser("Transaction submitted, transaction ID: %s", txID)
 
 	return nil
 }
