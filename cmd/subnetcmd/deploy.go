@@ -593,8 +593,8 @@ func PrintRemainingToSignMsg(
 		ux.Logger.PrintToUser("  %s", subnetAuthKey)
 	}
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Connect a ledger with one of the remaining addresses (mainnet) or choose a stored key "+
-		"(fuji) and run the signing command, or send %s to another user for signing.", outputTxPath)
+	ux.Logger.PrintToUser("Connect a ledger with one of the remaining addresses or choose a stored key "+
+		"and run the signing command, or send %q to another user for signing.", outputTxPath)
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Signing command:")
 	ux.Logger.PrintToUser("  avalanche transaction sign %s --input-tx-filepath %s", chain, outputTxPath)
