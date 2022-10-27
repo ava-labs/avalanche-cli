@@ -25,7 +25,9 @@ func newUpgradeImportCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&upgradeBytesFilePath, upgradeBytesFilePathKey, "", "Import upgrade bytes file into local environment")
-	cmd.MarkFlagRequired(upgradeBytesFilePathKey)
+	if err := cmd.MarkFlagRequired(upgradeBytesFilePathKey); err != nil {
+		panic(err)
+	}
 
 	return cmd
 }
@@ -39,7 +41,7 @@ func upgradeImportCmd(cmd *cobra.Command, args []string) error {
 
 	if _, err := os.Stat(upgradeBytesFilePath); err != nil {
 		if err == os.ErrNotExist {
-			return fmt.Errorf("The upgrade file specified with path %q does not exist", upgradeBytesFilePath)
+			return fmt.Errorf("the upgrade file specified with path %q does not exist", upgradeBytesFilePath)
 		}
 		return err
 	}
