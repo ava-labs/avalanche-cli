@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ava-labs/avalanche-cli/pkg/subnet/upgrades"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
@@ -25,9 +26,6 @@ func newUpgradeImportCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&upgradeBytesFilePath, upgradeBytesFilePathKey, "", "Import upgrade bytes file into local environment")
-	if err := cmd.MarkFlagRequired(upgradeBytesFilePathKey); err != nil {
-		panic(err)
-	}
 
 	return cmd
 }
@@ -37,6 +35,14 @@ func upgradeImportCmd(cmd *cobra.Command, args []string) error {
 	if !app.GenesisExists(subnetName) {
 		ux.Logger.PrintToUser("The provided subnet name %q does not exist", subnetName)
 		return nil
+	}
+
+	if upgradeBytesFilePath == "" {
+		var err error
+		upgradeBytesFilePath, err = app.Prompt.CaptureExistingFilepath("Provide the path to the upgrade file to import")
+		if err != nil {
+			return err
+		}
 	}
 
 	if _, err := os.Stat(upgradeBytesFilePath); err != nil {
@@ -51,5 +57,5 @@ func upgradeImportCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to read the provided upgrade file: %w", err)
 	}
 
-	return writeUpgradeFile(fileBytes, subnetName)
+	return upgrades.WriteUpgradeFile(fileBytes, subnetName, app.GetUpgradeFilesDir())
 }
