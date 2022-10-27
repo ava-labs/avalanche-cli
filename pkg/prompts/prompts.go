@@ -662,11 +662,10 @@ func captureKeyName(prompt Prompter, keyDir string) (string, error) {
 		return "", errNoKeys
 	}
 
-	keys := make([]string, len(files))
-
-	for i, f := range files {
+	keys := []string{}
+	for _, f := range files {
 		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
-			keys[i] = strings.TrimSuffix(f.Name(), constants.KeySuffix)
+			keys = append(keys, strings.TrimSuffix(f.Name(), constants.KeySuffix))
 		}
 	}
 

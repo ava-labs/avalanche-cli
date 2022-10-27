@@ -24,9 +24,6 @@ func newTransactionCommitCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&inputTxPath, inputTxPathFlag, "", "Path to the transaction signed by all signatories")
-	if err := cmd.MarkFlagRequired(inputTxPathFlag); err != nil {
-		panic(err)
-	}
 	return cmd
 }
 

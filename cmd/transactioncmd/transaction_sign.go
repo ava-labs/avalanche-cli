@@ -39,9 +39,6 @@ func newTransactionSignCmd() *cobra.Command {
 	cmd.Flags().StringVar(&inputTxPath, inputTxPathFlag, "", "Path to the transaction file for signing")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
-	if err := cmd.MarkFlagRequired(inputTxPathFlag); err != nil {
-		panic(err)
-	}
 	return cmd
 }
 
