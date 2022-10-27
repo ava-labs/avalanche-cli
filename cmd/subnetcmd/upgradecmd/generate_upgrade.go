@@ -6,17 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet/upgrades"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/subnet-evm/commontype"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ethereum/go-ethereum/common"
@@ -66,9 +63,11 @@ func newUpgradeGenerateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "generate [subnetName]",
 		Short: "Generate the configuration file to upgrade subnet nodes",
-		Long:  `Upgrades to subnet nodes can be executed by providing a upgrade.json file to the nodes. This command starts a wizard guiding the user generating the required file.`,
-		RunE:  upgradeGenerateCmd,
-		Args:  cobra.ExactArgs(1),
+		Long: `Upgrades to subnet nodes can be executed 
+by providing a upgrade.json file to the nodes. 
+This command starts a wizard guiding the user generating the required file.`,
+		RunE: upgradeGenerateCmd,
+		Args: cobra.ExactArgs(1),
 	}
 	return cmd
 }
@@ -84,8 +83,19 @@ func upgradeGenerateCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	// print some warning/info message
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("Performing a network upgrade requires coordinating the upgrade network-wide. A network upgrade changes the rule set used to process and verify blocks, such that any node that upgrades incorrectly or fails to upgrade by the time that upgrade goes into effect may become out of sync with the rest of the network.\n\nAny mistakes in configuring network upgrades or coordinating them on validators may cause the network to halt and recovering may be difficult."))
-	ux.Logger.PrintToUser(logging.Cyan.Wrap("Please consult https://docs.avax.network/subnets/customize-a-subnet#network-upgrades-enabledisable-precompiles for more information"))
+	ux.Logger.PrintToUser(logging.Bold.Wrap(logging.Yellow.Wrap(
+		"Performing a network upgrade requires coordinating the upgrade network-wide.")))
+	ux.Logger.PrintToUser(logging.White.Wrap(logging.Reset.Wrap(
+		"A network upgrade changes the rule set used to process and verify blocks, " +
+			"such that any node that upgrades incorrectly or fails to upgrade by the time " +
+			"that upgrade goes into effect may become out of sync with the rest of the network.\n")))
+	ux.Logger.PrintToUser(logging.Bold.Wrap(logging.Red.Wrap(
+		"Any mistakes in configuring network upgrades or coordinating them on validators " +
+			"may cause the network to halt and recovering may be difficult.")))
+	ux.Logger.PrintToUser(logging.Reset.Wrap(
+		"Please consult " + logging.Cyan.Wrap(
+			"https://docs.avax.network/subnets/customize-a-subnet#network-upgrades-enabledisable-precompiles ") +
+			logging.Reset.Wrap("for more information")))
 
 	txt := "Press [Enter] to continue, or abort by choosing 'no'"
 	yes, err := app.Prompt.CaptureYesNo(txt)
@@ -105,7 +115,9 @@ func upgradeGenerateCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println()
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("Avalanchego and this tool support configuring multiple precompiles. However, we suggest to only configure one"))
+	ux.Logger.PrintToUser(logging.Yellow.Wrap(
+		"Avalanchego and this tool support configuring multiple precompiles." +
+			"However, we suggest to only configure one"))
 	fmt.Println()
 
 	precompiles := Precompiles{
@@ -173,45 +185,7 @@ func upgradeGenerateCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return writeUpgradeFile(jsonBytes, subnetName)
-}
-
-func writeUpgradeFile(jsonBytes []byte, subnetName string) error {
-	var (
-		exists bool
-		err    error
-	)
-
-	subnetPath := filepath.Join(app.GetUpgradeFilesDir(), subnetName)
-	updateBytesFileName := filepath.Join(subnetPath, constants.UpdateBytesFileName)
-
-	ux.Logger.PrintToUser(fmt.Sprintf("Writing %q file to %q...", constants.UpdateBytesFileName, subnetPath))
-
-	exists, err = storage.FolderExists(app.GetUpgradeFilesDir())
-	if err != nil {
-		return err
-	}
-	if !exists {
-		if err := os.Mkdir(app.GetUpgradeFilesDir(), constants.DefaultPerms755); err != nil {
-			return err
-		}
-	}
-
-	exists, err = storage.FolderExists(subnetPath)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		if err := os.Mkdir(subnetPath, constants.DefaultPerms755); err != nil {
-			return err
-		}
-	}
-
-	if err = os.WriteFile(updateBytesFileName, jsonBytes, constants.DefaultPerms755); err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("File written successfully")
-	return nil
+	return upgrades.WriteUpgradeFile(jsonBytes, subnetName, app.GetUpgradeFilesDir())
 }
 
 func (p *nativeMint) PromptParams() error {
@@ -223,7 +197,7 @@ func (p *nativeMint) PromptParams() error {
 		return err
 	}
 
-	yes, err := app.Prompt.CaptureYesNo(fmt.Sprintf("Add an `%s` section?", initialMintKey))
+	yes, err := app.Prompt.CaptureYesNo(fmt.Sprintf("Airdrop more tokens? (`%s` section in file)", initialMintKey))
 	if err != nil {
 		return err
 	}
@@ -232,13 +206,13 @@ func (p *nativeMint) PromptParams() error {
 		for {
 			_, cancel, err := prompts.CaptureListDecision(
 				app.Prompt,
-				"Provide a pair of Ethereum address to initial mint amount",
+				"How would you like to distribute your funds",
 				func(s string) (string, error) {
-					addr, err := app.Prompt.CaptureAddress("What's the ethereum address")
+					addr, err := app.Prompt.CaptureAddress("Address to airdrop to")
 					if err != nil {
 						return "", err
 					}
-					amount, err := app.Prompt.CaptureUint64("What's its initial amount")
+					amount, err := app.Prompt.CaptureUint64("Amount to airdrop (in AVAX units)")
 					if err != nil {
 						return "", err
 					}
@@ -247,7 +221,8 @@ func (p *nativeMint) PromptParams() error {
 				},
 				"Add an address to amount pair",
 				"Address-Amount",
-				"Ethereum address in Hex format and it's initial amount value, for example: 0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC (address) and 1000000000000000000 (value)",
+				"Hex-formatted address and it's initial amount value, "+
+					"for example: 0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC (address) and 1000000000000000000 (value)",
 			)
 			if err != nil {
 				return err
@@ -261,7 +236,7 @@ func (p *nativeMint) PromptParams() error {
 }
 
 func (p *nativeMint) ToMap() map[string]interface{} {
-	finalMap := toMap(&p.enabledAddresses, &p.adminAddresses)
+	finalMap := allowListToMap(&p.enabledAddresses, &p.adminAddresses)
 	finalMap[initialMintKey] = p.initialMint
 	return finalMap
 }
@@ -275,7 +250,8 @@ func (p *feeManager) PromptParams() error {
 		return err
 	}
 
-	yes, err := app.Prompt.CaptureYesNo(fmt.Sprintf("Add an '%s' section?", feeConfigKey))
+	yes, err := app.Prompt.CaptureYesNo(fmt.Sprintf(
+		"Do you want to update the fee config upon precompile activation? ('%s' section in file)", feeConfigKey))
 	if err != nil {
 		return err
 	}
@@ -291,7 +267,7 @@ func (p *feeManager) PromptParams() error {
 }
 
 func (p *feeManager) ToMap() map[string]interface{} {
-	finalMap := toMap(&p.enabledAddresses, &p.adminAddresses)
+	finalMap := allowListToMap(&p.enabledAddresses, &p.adminAddresses)
 	finalMap[feeConfigKey] = p.initialFeeConfig
 	return finalMap
 }
@@ -301,7 +277,7 @@ func (p *contractAllowList) PromptParams() error {
 }
 
 func (p *contractAllowList) ToMap() map[string]interface{} {
-	return toMap(&p.enabledAddresses, &p.adminAddresses)
+	return allowListToMap(&p.enabledAddresses, &p.adminAddresses)
 }
 
 func (p *txAllowList) PromptParams() error {
@@ -309,7 +285,7 @@ func (p *txAllowList) PromptParams() error {
 }
 
 func (p *txAllowList) ToMap() map[string]interface{} {
-	return toMap(&p.enabledAddresses, &p.adminAddresses)
+	return allowListToMap(&p.enabledAddresses, &p.adminAddresses)
 }
 
 func enabledAdminPromptParams(enabled *[]common.Address, admin *[]common.Address) error {
@@ -322,14 +298,15 @@ func enabledAdminPromptParams(enabled *[]common.Address, admin *[]common.Address
 		}
 
 		if len(*enabled) == 0 && len(*admin) == 0 {
-			ux.Logger.PrintToUser(fmt.Sprintf("We need at least one Ethereum address for either '%s' or '%s'. Otherwise abort.", enabledAddressesKey, adminAddressesKey))
+			ux.Logger.PrintToUser(fmt.Sprintf(
+				"We need at least one address for either '%s' or '%s'. Otherwise abort.", enabledAddressesKey, adminAddressesKey))
 			continue
 		}
 		return nil
 	}
 }
 
-func toMap(enabledAddresses *[]common.Address, adminAddresses *[]common.Address) map[string]interface{} {
+func allowListToMap(enabledAddresses *[]common.Address, adminAddresses *[]common.Address) map[string]interface{} {
 	finalMap := map[string]interface{}{}
 	if len(*enabledAddresses) > 0 {
 		enabled := make([]string, len(*enabledAddresses))
@@ -366,7 +343,7 @@ func captureAddress(which string, addrsField *[]common.Address) error {
 			app.Prompt.CaptureAddress,
 			"Add an address",
 			"Address",
-			fmt.Sprintf("Ethereum address in Hex format for %s addresses", which),
+			fmt.Sprintf("Hex-formatted %s addresses", which),
 		)
 		if err != nil {
 			return err
