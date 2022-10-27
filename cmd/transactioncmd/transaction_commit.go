@@ -89,7 +89,7 @@ func commitTx(cmd *cobra.Command, args []string) error {
 	}
 
 	if txutils.IsCreateChainTx(tx) {
-		if err := subnet.PrintDeployResults(subnetName, subnetID, txID, true); err != nil {
+		if err := subnetcmd.PrintDeployResults(subnetName, subnetID, txID, true); err != nil {
 			return err
 		}
 		return subnetcmd.UpdateSidecarNetworks(&sc, network, subnetID, txID)

@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -22,7 +21,6 @@ import (
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
-	"github.com/olekukonko/tablewriter"
 )
 
 var ErrNoSubnetAuthKeysInWallet = errors.New("wallet does not contain subnet auth keys")
@@ -175,32 +173,7 @@ func (d *PublicDeployer) Deploy(
 		}
 	}
 
-	if err := PrintDeployResults(chain, subnetID, blockchainID, isFullySigned); err != nil {
-		return false, ids.Empty, ids.Empty, nil, err
-	}
-
 	return isFullySigned, subnetID, blockchainID, blockchainTx, nil
-}
-
-func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFullySigned bool) error {
-	vmID, err := utils.VMID(chain)
-	if err != nil {
-		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
-	}
-	header := []string{"Deployment results", ""}
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader(header)
-	table.SetRowLine(true)
-	table.SetAutoMergeCells(true)
-	table.Append([]string{"Chain Name", chain})
-	table.Append([]string{"Subnet ID", subnetID.String()})
-	table.Append([]string{"VM ID", vmID.String()})
-	if isFullySigned {
-		table.Append([]string{"Blockchain ID", blockchainID.String()})
-		table.Append([]string{"RPC URL", fmt.Sprintf("%s/ext/bc/%s/rpc", constants.DefaultNodeRunURL, blockchainID.String())})
-	}
-	table.Render()
-	return nil
 }
 
 func (d *PublicDeployer) Commit(

@@ -21,6 +21,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	ledger "github.com/ava-labs/avalanche-ledger-go"
+	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -28,6 +29,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/coreth/core"
 	spacesvmchain "github.com/ava-labs/spacesvm/chain"
+	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -311,6 +313,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	isFullySigned, subnetID, blockchainID, tx, err := deployer.Deploy(controlKeys, subnetAuthKeys, threshold, chain, chainGenesis)
 	if err != nil {
+		return err
+	}
+
+	if err := PrintDeployResults(chain, subnetID, blockchainID, isFullySigned); err != nil {
 		return err
 	}
 
@@ -643,5 +649,26 @@ func UpdateSidecarNetworks(sc *models.Sidecar, network models.Network, subnetID 
 	if err := app.UpdateSidecar(sc); err != nil {
 		return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)
 	}
+	return nil
+}
+
+func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFullySigned bool) error {
+	vmID, err := utils.VMID(chain)
+	if err != nil {
+		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
+	}
+	header := []string{"Deployment results", ""}
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(header)
+	table.SetRowLine(true)
+	table.SetAutoMergeCells(true)
+	table.Append([]string{"Chain Name", chain})
+	table.Append([]string{"Subnet ID", subnetID.String()})
+	table.Append([]string{"VM ID", vmID.String()})
+	if isFullySigned {
+		table.Append([]string{"Blockchain ID", blockchainID.String()})
+		table.Append([]string{"RPC URL", fmt.Sprintf("%s/ext/bc/%s/rpc", constants.DefaultNodeRunURL, blockchainID.String())})
+	}
+	table.Render()
 	return nil
 }
