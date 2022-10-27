@@ -18,8 +18,8 @@ import (
 func newUpgradeExportCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "export [subnetName]",
-		Short: "Generate the configuration file to upgrade subnet nodes",
-		Long:  `Upgrades to subnet nodes can be executed by providing a upgrade.json file to the nodes. This command starts a wizard guiding the user generating the required file.`,
+		Short: "Export the upgrade bytes file to a location of choice on disk",
+		Long:  `Export the upgrade bytes file to a location of choice on disk`,
 		RunE:  upgradeExportCmd,
 		Args:  cobra.ExactArgs(1),
 	}
