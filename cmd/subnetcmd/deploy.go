@@ -83,8 +83,8 @@ subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
 	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use creation key as control key")
-	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to add a validator")
-	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may add new validators to the subnet")
+	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to make subnet changes")
+	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may make subnet changes")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate chain creation")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
 	return cmd
@@ -341,9 +341,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 }
 
 func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain) ([]string, bool, error) {
-	controlKeysInitialPrompt := "Configure which addresses may add new validators to the subnet.\n" +
+	controlKeysInitialPrompt := "Configure which addresses may make changes to the subnet.\n" +
 		"These addresses are known as your control keys. You will also\n" +
-		"set how many control keys are required to add a validator (the threshold)."
+		"set how many control keys are required to make a subnet change (the threshold)."
 	moreKeysPrompt := "How would you like to set your control keys?"
 
 	ux.Logger.PrintToUser(controlKeysInitialPrompt)
@@ -490,7 +490,7 @@ func getThreshold(maxLen int) (uint32, error) {
 	for i := 0; i < maxLen; i++ {
 		indexList[i] = strconv.Itoa(i + 1)
 	}
-	threshold, err := app.Prompt.CaptureList("Select required number of control key signatures to add a validator", indexList)
+	threshold, err := app.Prompt.CaptureList("Select required number of control key signatures to make a subnet change", indexList)
 	if err != nil {
 		return 0, err
 	}
