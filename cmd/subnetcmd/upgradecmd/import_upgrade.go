@@ -18,8 +18,8 @@ const upgradeBytesFilePathKey = "upgrade-filepath"
 func newUpgradeImportCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "import [subnetName]",
-		Short: "Generate the configuration file to upgrade subnet nodes",
-		Long:  `Upgrades to subnet nodes can be executed by providing a upgrade.json file to the nodes. This command starts a wizard guiding the user generating the required file.`,
+		Short: "Import the upgrade bytes file into the local environment",
+		Long:  `Import the upgrade bytes file into the local environment`,
 		RunE:  upgradeImportCmd,
 		Args:  cobra.ExactArgs(1),
 	}
