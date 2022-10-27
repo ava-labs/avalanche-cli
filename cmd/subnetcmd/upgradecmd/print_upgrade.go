@@ -56,6 +56,6 @@ func upgradePrintCmd(cmd *cobra.Command, args []string) error {
 	if err = json.Indent(&prettyJSON, fileBytes, "", "  "); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser(string(prettyJSON.Bytes()))
+	ux.Logger.PrintToUser(prettyJSON.String())
 	return nil
 }
