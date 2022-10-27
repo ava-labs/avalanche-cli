@@ -25,7 +25,9 @@ func newUpgradeExportCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&upgradeBytesFilePath, upgradeBytesFilePathKey, "", "Export upgrade bytes file to location of choice on disk")
-	cmd.MarkFlagRequired(upgradeBytesFilePathKey)
+	if err := cmd.MarkFlagRequired(upgradeBytesFilePathKey); err != nil {
+		panic(err)
+	}
 
 	return cmd
 }
