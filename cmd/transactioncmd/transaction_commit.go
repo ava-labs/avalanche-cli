@@ -3,10 +3,13 @@
 package transactioncmd
 
 import (
+	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/spf13/cobra"
@@ -86,6 +89,20 @@ func commitTx(cmd *cobra.Command, args []string) error {
 	txID, err := deployer.Commit(tx)
 	if err != nil {
 		return err
+	}
+
+	if txutils.IsCreateChainTx(tx) {
+		vmID, err := utils.VMID(subnetName)
+		if err != nil {
+			return fmt.Errorf("failed to create VM ID from %s: %w", subnetName, err)
+		}
+		subnet.PrintDeployResults(subnetName, subnetID, vmID, txID, true)
+		nets := sc.Networks[network.String()]
+		nets.BlockchainID = txID
+		sc.Networks[network.String()] = nets
+		if err := app.UpdateSidecar(&sc); err != nil {
+			return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)
+		}
 	}
 
 	return nil

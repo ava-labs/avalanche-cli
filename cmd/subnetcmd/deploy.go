@@ -230,7 +230,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if sidecar.Networks == nil {
 			sidecar.Networks = make(map[string]models.NetworkData)
 		}
-		sidecar.Networks[models.Local.String()] = models.NetworkData{
+		sidecar.Networks[network.String()] = models.NetworkData{
 			SubnetID:     subnetID,
 			BlockchainID: blockchainID,
 		}

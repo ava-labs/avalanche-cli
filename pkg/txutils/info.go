@@ -28,3 +28,8 @@ func GetNetwork(tx *txs.Tx) (models.Network, error) {
 	}
 	return network, nil
 }
+
+func IsCreateChainTx(tx *txs.Tx) bool {
+	_, ok := tx.Unsigned.(*txs.CreateChainTx)
+	return ok
+}

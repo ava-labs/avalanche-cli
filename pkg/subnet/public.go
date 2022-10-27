@@ -175,6 +175,12 @@ func (d *PublicDeployer) Deploy(
 		}
 	}
 
+	PrintDeployResults(chain, subnetID, vmID, blockchainID, isFullySigned)
+
+	return isFullySigned, subnetID, blockchainID, blockchainTx, nil
+}
+
+func PrintDeployResults(chain string, subnetID ids.ID, vmID ids.ID, blockchainID ids.ID, isFullySigned bool) {
 	header := []string{"Deployment results", ""}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
@@ -188,8 +194,6 @@ func (d *PublicDeployer) Deploy(
 		table.Append([]string{"RPC URL", fmt.Sprintf("%s/ext/bc/%s/rpc", constants.DefaultNodeRunURL, blockchainID.String())})
 	}
 	table.Render()
-
-	return isFullySigned, subnetID, blockchainID, blockchainTx, nil
 }
 
 func (d *PublicDeployer) Commit(
