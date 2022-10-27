@@ -3,16 +3,15 @@
 package upgradecmd
 
 import (
-	"errors"
-	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet/upgrades"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/spf13/cobra"
 )
+
+var force bool
 
 // avalanche subnet upgrade import
 func newUpgradeExportCmd() *cobra.Command {
@@ -25,9 +24,7 @@ func newUpgradeExportCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&upgradeBytesFilePath, upgradeBytesFilePathKey, "", "Export upgrade bytes file to location of choice on disk")
-	if err := cmd.MarkFlagRequired(upgradeBytesFilePathKey); err != nil {
-		panic(err)
-	}
+	cmd.Flags().BoolVar(&force, "force", false, "If true, overwrite a possibly existing file without prompting")
 
 	return cmd
 }
@@ -39,35 +36,33 @@ func upgradeExportCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	if _, err := os.Stat(upgradeBytesFilePath); err == nil {
-		ux.Logger.PrintToUser("The file specified with path %q already exists!", upgradeBytesFilePath)
-
-		yes, err := app.Prompt.CaptureYesNo("Should we overwrite it?")
+	if upgradeBytesFilePath == "" {
+		var err error
+		upgradeBytesFilePath, err = app.Prompt.CaptureString("Provide a path where we should export the file to")
 		if err != nil {
 			return err
 		}
-		if !yes {
-			ux.Logger.PrintToUser("Aborted by user. Nothing has been exported")
-			return nil
+	}
+
+	if !force {
+		if _, err := os.Stat(upgradeBytesFilePath); err == nil {
+			ux.Logger.PrintToUser("The file specified with path %q already exists!", upgradeBytesFilePath)
+
+			yes, err := app.Prompt.CaptureYesNo("Should we overwrite it?")
+			if err != nil {
+				return err
+			}
+			if !yes {
+				ux.Logger.PrintToUser("Aborted by user. Nothing has been exported")
+				return nil
+			}
 		}
 	}
 
-	subnetPath := filepath.Join(app.GetUpgradeFilesDir(), subnetName)
-	localUpgradeBytesFileName := filepath.Join(subnetPath, constants.UpdateBytesFileName)
-
-	exists, err := storage.FileExists(localUpgradeBytesFileName)
+	fileBytes, err := upgrades.ReadUpgradeFile(subnetName, app.GetUpgradeFilesDir())
 	if err != nil {
-		return fmt.Errorf("failed to access the upgrade bytes file on the local environment: %w", err)
+		return err
 	}
-	if !exists {
-		return errors.New("we could not find the upgrade bytes file on the local environment - sure it exists?")
-	}
-
-	fileBytes, err := os.ReadFile(localUpgradeBytesFileName)
-	if err != nil {
-		return fmt.Errorf("failed to read the upgrade bytes file from the local environment: %w", err)
-	}
-
 	ux.Logger.PrintToUser("Writing the upgrade bytes file to %q...", upgradeBytesFilePath)
 	err = os.WriteFile(upgradeBytesFilePath, fileBytes, constants.DefaultPerms755)
 	if err != nil {
