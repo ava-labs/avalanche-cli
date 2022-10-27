@@ -229,7 +229,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			}
 			return err
 		}
-		return UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
+		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
 
 	case models.Fuji:
 		if !useLedger && keyName == "" {
@@ -337,7 +337,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
-	return UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
+	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
 }
 
 func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain) ([]string, bool, error) {
@@ -636,20 +636,6 @@ func GetKeychain(
 		return kc, err
 	}
 	return sf.KeyChain(), nil
-}
-
-func UpdateSidecarNetworks(sc *models.Sidecar, network models.Network, subnetID ids.ID, blockchainID ids.ID) error {
-	if sc.Networks == nil {
-		sc.Networks = make(map[string]models.NetworkData)
-	}
-	sc.Networks[network.String()] = models.NetworkData{
-		SubnetID:     subnetID,
-		BlockchainID: blockchainID,
-	}
-	if err := app.UpdateSidecar(sc); err != nil {
-		return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)
-	}
-	return nil
 }
 
 func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFullySigned bool) error {
