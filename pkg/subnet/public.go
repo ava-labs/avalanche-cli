@@ -175,12 +175,18 @@ func (d *PublicDeployer) Deploy(
 		}
 	}
 
-	PrintDeployResults(chain, subnetID, vmID, blockchainID, isFullySigned)
+	if err := PrintDeployResults(chain, subnetID, blockchainID, isFullySigned); err != nil {
+		return false, ids.Empty, ids.Empty, nil, err
+	}
 
 	return isFullySigned, subnetID, blockchainID, blockchainTx, nil
 }
 
-func PrintDeployResults(chain string, subnetID ids.ID, vmID ids.ID, blockchainID ids.ID, isFullySigned bool) {
+func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFullySigned bool) error {
+	vmID, err := utils.VMID(chain)
+	if err != nil {
+		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
+	}
 	header := []string{"Deployment results", ""}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
@@ -194,6 +200,7 @@ func PrintDeployResults(chain string, subnetID ids.ID, vmID ids.ID, blockchainID
 		table.Append([]string{"RPC URL", fmt.Sprintf("%s/ext/bc/%s/rpc", constants.DefaultNodeRunURL, blockchainID.String())})
 	}
 	table.Render()
+	return nil
 }
 
 func (d *PublicDeployer) Commit(
