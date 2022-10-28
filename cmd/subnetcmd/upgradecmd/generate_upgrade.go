@@ -117,7 +117,7 @@ func upgradeGenerateCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 	ux.Logger.PrintToUser(logging.Yellow.Wrap(
 		"Avalanchego and this tool support configuring multiple precompiles." +
-			"However, we suggest to only configure one"))
+			"However, we suggest to only configure one per upgrade."))
 	fmt.Println()
 
 	precompiles := Precompiles{
