@@ -63,8 +63,7 @@ func newUpgradeGenerateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "generate [subnetName]",
 		Short: "Generate the configuration file to upgrade subnet nodes",
-		Long: `Upgrades to subnet nodes can be executed 
-by providing a upgrade.json file to the nodes. 
+		Long: `Upgrades to subnet nodes can be executed by providing a upgrade.json file to the nodes. 
 This command starts a wizard guiding the user generating the required file.`,
 		RunE: upgradeGenerateCmd,
 		Args: cobra.ExactArgs(1),
