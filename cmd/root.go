@@ -38,7 +38,7 @@ func NewRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use: "avalanche",
 		Long: `Avalanche CLI is a command line tool that gives developers access to
-everything Avalanche. This beta release specializes in helping developers
+everything Avalanche. This release specializes in helping developers
 build and test subnets.
 
 To get started, look at the documentation for the subcommands or jump right
