@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet/upgrades"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -63,8 +64,7 @@ func newUpgradeGenerateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "generate [subnetName]",
 		Short: "Generate the configuration file to upgrade subnet nodes",
-		Long: `Upgrades to subnet nodes can be executed 
-by providing a upgrade.json file to the nodes. 
+		Long: `Upgrades to subnet nodes can be executed by providing a upgrade.json file to the nodes. 
 This command starts a wizard guiding the user generating the required file.`,
 		RunE: upgradeGenerateCmd,
 		Args: cobra.ExactArgs(1),
@@ -149,15 +149,41 @@ func upgradeGenerateCmd(cmd *cobra.Command, args []string) error {
 		}
 
 		mapForJSON := pp.ToMap()
-		// TODO: This is requiring a timestamp 1 minute in the future
-		// What is a sensible default?
-		// An update requires planning and coordination, so it's not easy to think of a sensible default.
-		// It's probably best to not try to be too smart and just assume the user to set something useful
-		date, err := app.Prompt.CaptureFutureDate(
-			"Enter the block activation UTC datetime in 'YYYY-MM-DD HH:MM:SS' format", time.Now().Add(time.Minute).UTC())
+
+		const (
+			in5min   = "In 5 minutes"
+			in1day   = "In 1 day"
+			in1week  = "In 1 week"
+			in2weeks = "In 2 weeks"
+			custom   = "custom"
+		)
+		options := []string{in5min, in1day, in1week, in2weeks, custom}
+		choice, err := app.Prompt.CaptureList("When should the precompile be activated?", options)
 		if err != nil {
 			return err
 		}
+
+		var date time.Time
+		now := time.Now()
+
+		switch choice {
+		case in5min:
+			date = now.Add(5 * time.Minute)
+		case in1day:
+			date = now.Add(24 * time.Hour)
+		case in1week:
+			date = now.Add(7 * 24 * time.Hour)
+		case in2weeks:
+			date = now.Add(14 * 24 * time.Hour)
+		case custom:
+			date, err = app.Prompt.CaptureFutureDate(
+				"Enter the block activation UTC datetime in 'YYYY-MM-DD HH:MM:SS' format", time.Now().Add(time.Minute).UTC())
+			if err != nil {
+				return err
+			}
+		}
+
+		ux.Logger.PrintToUser("The chosen block activation time is %s", date.Format(constants.TimeParseLayout))
 		mapForJSON[blockTimestampKey] = date.Unix()
 
 		precompiles.PrecompileUpgrades[vm.PrecompileToUpgradeString(vm.Precompile(precomp))] = mapForJSON
