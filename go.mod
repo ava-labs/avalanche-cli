@@ -2,19 +2,13 @@ module github.com/ava-labs/avalanche-cli
 
 go 1.18
 
-replace github.com/ava-labs/avalanchego => ../avalanchego-internal/
-
-replace github.com/ava-labs/spacesvm => ../spacesvm/
-
-replace github.com/ava-labs/avalanche-network-runner => ../avalanche-network-runner/
-
 require (
 	github.com/ava-labs/apm v0.0.4
 	github.com/ava-labs/avalanche-ledger-go v0.0.10
-	github.com/ava-labs/avalanche-network-runner v1.2.4-0.20221006162609-e7eb33c1e830
-	github.com/ava-labs/avalanchego v1.9.1-rc.3
+	github.com/ava-labs/avalanche-network-runner v1.2.4-0.20221028230723-210f20bf73b9
+	github.com/ava-labs/avalanchego v1.9.1
 	github.com/ava-labs/coreth v0.11.1-rc.7
-	github.com/ava-labs/spacesvm v0.0.9
+	github.com/ava-labs/spacesvm v0.0.10-0.20221028231554-98552b8981ec
 	github.com/ava-labs/subnet-evm v0.4.0
 	github.com/docker/docker v20.10.21+incompatible
 	github.com/ethereum/go-ethereum v1.10.25
@@ -85,7 +79,7 @@ require (
 	github.com/gorilla/rpc v1.2.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.3 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.12.0 // indirect
 	github.com/hashicorp/go-bexpr v0.1.10 // indirect
 	github.com/hashicorp/go-hclog v1.2.2 // indirect
 	github.com/hashicorp/go-plugin v1.4.4 // indirect
@@ -164,8 +158,8 @@ require (
 	golang.org/x/text v0.4.0 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	gonum.org/v1/gonum v0.11.0 // indirect
-	google.golang.org/genproto v0.0.0-20220822174746-9e6da59bd2fc // indirect
-	google.golang.org/grpc v1.50.0-dev // indirect
+	google.golang.org/genproto v0.0.0-20221014213838-99cd37c6964a // indirect
+	google.golang.org/grpc v1.51.0-dev // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/urfave/cli.v1 v1.20.0 // indirect
