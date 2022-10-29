@@ -426,14 +426,7 @@ func CheckAvalancheGoExists(version string) bool {
 // Currently downloads subnet-evm, but that suffices to test the custom vm functionality
 func DownloadCustomVMBin() (string, error) {
 	targetDir := os.TempDir()
-	subnetEVMVersion, err := binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
-		constants.AvaLabsOrg,
-		subnetEVMName,
-	))
-	if err != nil {
-		return "", err
-	}
-	subnetEVMDir, err := binutils.DownloadReleaseVersion(logging.NoLog{}, subnetEVMName, subnetEVMVersion, targetDir)
+	subnetEVMDir, err := binutils.DownloadReleaseVersion(logging.NoLog{}, subnetEVMName, SubnetEVMVersion, targetDir)
 	if err != nil {
 		return "", err
 	}
