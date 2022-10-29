@@ -157,7 +157,7 @@ func DeploySubnetLocally(subnetName string) string {
 // Returns the deploy output
 /* #nosec G204 */
 func DeploySubnetLocallyWithViperConf(subnetName string, confPath string) string {
-	return DeploySubnetLocallyWithArgs(subnetName, "", confPath)
+	return DeploySubnetLocallyWithArgs(subnetName, utils.AvagoVersion, confPath)
 }
 
 // Returns the deploy output
