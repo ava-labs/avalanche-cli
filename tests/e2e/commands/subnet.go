@@ -151,7 +151,7 @@ func DeleteSubnetConfig(subnetName string) {
 // Returns the deploy output
 /* #nosec G204 */
 func DeploySubnetLocally(subnetName string) string {
-	return DeploySubnetLocallyWithArgs(subnetName, "", "")
+	return DeploySubnetLocallyWithArgs(subnetName, utils.AvagoVersion, "")
 }
 
 // Returns the deploy output
