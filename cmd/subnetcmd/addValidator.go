@@ -7,11 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
@@ -27,7 +27,6 @@ var (
 	duration     time.Duration
 
 	errNoSubnetID = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
-	errNoKeys     = errors.New("no keys")
 )
 
 // avalanche subnet deploy
@@ -57,6 +56,8 @@ This command currently only works on subnets deployed to the Fuji testnet.`,
 	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "join on `fuji` (alias for `testnet`)")
 	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
 	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
+	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate add validator tx")
+	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the add validator tx")
 	return cmd
 }
 
@@ -89,7 +90,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	switch network {
 	case models.Fuji:
 		if !useLedger && keyName == "" {
-			useLedger, keyName, err = getFujiKeyOrLedger()
+			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, app.GetKeyDir())
 			if err != nil {
 				return err
 			}
@@ -119,6 +120,24 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
+
+	controlKeys, threshold, err := subnet.GetOwners(network, subnetID)
+	if err != nil {
+		return err
+	}
+
+	// get keys for add validator tx signing
+	if subnetAuthKeys != nil {
+		if err := prompts.CheckSubnetAuthKeys(subnetAuthKeys, controlKeys, threshold); err != nil {
+			return err
+		}
+	} else {
+		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, controlKeys, threshold)
+		if err != nil {
+			return err
+		}
+	}
+	ux.Logger.PrintToUser("Your subnet auth keys for add validator tx creation: %s", subnetAuthKeys)
 
 	if nodeIDStr == "" {
 		nodeID, err = promptNodeID()
@@ -154,12 +173,31 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
 	// get keychain accesor
-	kc, err := getKeychain(useLedger, keyName, network)
+	kc, err := GetKeychain(useLedger, keyName, network)
 	if err != nil {
 		return err
 	}
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	return deployer.AddValidator(subnetID, nodeID, weight, start, duration)
+	isFullySigned, tx, err := deployer.AddValidator(subnetAuthKeys, subnetID, nodeID, weight, start, duration)
+	if err != nil {
+		return err
+	}
+	if !isFullySigned {
+		if err := SaveNotFullySignedTx(
+			"Add Validator",
+			tx,
+			network,
+			subnetName,
+			subnetID,
+			subnetAuthKeys,
+			outputTxPath,
+			false,
+		); err != nil {
+			return err
+		}
+	}
+
+	return err
 }
 
 func promptDuration(start time.Time) (time.Duration, error) {
@@ -307,30 +345,4 @@ func promptWeight() (uint64, error) {
 	default:
 		return app.Prompt.CaptureWeight(txt)
 	}
-}
-
-func captureKeyName() (string, error) {
-	files, err := os.ReadDir(app.GetKeyDir())
-	if err != nil {
-		return "", err
-	}
-
-	if len(files) < 1 {
-		return "", errNoKeys
-	}
-
-	keys := make([]string, len(files))
-
-	for i, f := range files {
-		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
-			keys[i] = strings.TrimSuffix(f.Name(), constants.KeySuffix)
-		}
-	}
-
-	keyName, err = app.Prompt.CaptureList("Which stored key should be used to issue the transaction?", keys)
-	if err != nil {
-		return "", err
-	}
-
-	return keyName, nil
 }

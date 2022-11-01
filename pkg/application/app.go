@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
 )
@@ -246,6 +247,25 @@ func (app *Avalanche) UpdateSidecar(sc *models.Sidecar) error {
 
 	sidecarPath := app.GetSidecarPath(sc.Name)
 	return os.WriteFile(sidecarPath, scBytes, WriteReadReadPerms)
+}
+
+func (app *Avalanche) UpdateSidecarNetworks(
+	sc *models.Sidecar,
+	network models.Network,
+	subnetID ids.ID,
+	blockchainID ids.ID,
+) error {
+	if sc.Networks == nil {
+		sc.Networks = make(map[string]models.NetworkData)
+	}
+	sc.Networks[network.String()] = models.NetworkData{
+		SubnetID:     subnetID,
+		BlockchainID: blockchainID,
+	}
+	if err := app.UpdateSidecar(sc); err != nil {
+		return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)
+	}
+	return nil
 }
 
 func (app *Avalanche) GetTokenName(subnetName string) string {

@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/plugins"
@@ -141,7 +142,7 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := checkMutuallyExclusive(deployTestnet, deployMainnet, false); err != nil {
+	if !flags.EnsureMutuallyExclusive([]bool{deployMainnet, deployTestnet}) {
 		return errors.New("--fuji and --mainnet are mutually exclusive")
 	}
 
