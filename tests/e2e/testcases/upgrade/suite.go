@@ -21,7 +21,7 @@ const (
 	secondSubnetName = "e2eSecondSubnetTest"
 
 	subnetEVMVersion1 = "v0.4.0"
-	subnetEVMVersion2 = "v0.3.0"
+	subnetEVMVersion2 = "v0.4.1"
 
 	controlKeys = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 	keyName     = "ewoq"
