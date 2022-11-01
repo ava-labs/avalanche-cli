@@ -49,7 +49,8 @@ var (
 	avagoVersion   string
 	outputTxPath   string
 
-	errMutuallyExlusive = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
+	errMutuallyExlusiveNetworks    = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
+	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 )
 
 // avalanche subnet deploy
@@ -142,7 +143,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	var network models.Network
 
 	if !flags.EnsureMutuallyExclusive([]bool{deployLocal, deployTestnet, deployMainnet}) {
-		return errMutuallyExlusive
+		return errMutuallyExlusiveNetworks
 	}
 
 	switch {
@@ -257,6 +258,11 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	kc, err := GetKeychain(useLedger, keyName, network)
 	if err != nil {
 		return err
+	}
+
+	// accept only one control keys specification
+	if len(controlKeys) > 0 && sameControlKey {
+		return errMutuallyExlusiveControlKeys
 	}
 
 	// use creation key as control key
