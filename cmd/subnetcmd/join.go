@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/plugins"
@@ -26,8 +27,12 @@ var (
 	pluginDir string
 	// if true, print the manual instructions to screen
 	printManual bool
-	// skipWhitelistCheck if true doesn't prompt
+	// skipWhitelistCheck if true doesn't prompt, skip the check
 	skipWhitelistCheck bool
+	// forceWhitelistCheck if true doesn't prompt, run the check
+	forceWhitelistCheck bool
+	// failIfNotValidating
+	failIfNotValidating bool
 	// if true, doesn't ask for overwriting the config file
 	forceWrite bool
 )
@@ -63,7 +68,10 @@ This command currently only supports subnets deployed on the Fuji testnet.`,
 	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
 	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
 	cmd.Flags().BoolVar(&printManual, "print", false, "if true, print the manual config without prompting")
-	cmd.Flags().BoolVar(&skipWhitelistCheck, "skip-whitelist-check", false, "if true, skip the whitelist check prompting")
+	cmd.Flags().BoolVar(&skipWhitelistCheck, "skip-whitelist-check", false, "if true, skip the whitelist check")
+	cmd.Flags().BoolVar(&forceWhitelistCheck, "force-whitelist-check", false, "if true, force the whitelist check")
+	cmd.Flags().BoolVar(&failIfNotValidating, "fail-if-not-validating", false, "fail if whitelist check fails")
+	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to check")
 	cmd.Flags().BoolVar(&forceWrite, "force-write", false, "if true, skip to prompt to overwrite the config file")
 	return cmd
 }
@@ -84,7 +92,7 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := checkMutuallyExclusive(deployTestnet, deployMainnet, false); err != nil {
+	if !flags.EnsureMutuallyExclusive([]bool{deployMainnet, deployTestnet}) {
 		return errors.New("--fuji and --mainnet are mutually exclusive")
 	}
 
@@ -127,13 +135,16 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 	subnetIDStr := subnetID.String()
 
 	if !skipWhitelistCheck {
-		ask := "Would you like to check if your node is allowed to join this subnet?\n" +
-			"If not, the subnet's control key holder must call avalanche subnet\n" +
-			"addValidator with your NodeID."
-		ux.Logger.PrintToUser(ask)
-		yes, err := app.Prompt.CaptureYesNo("Check whitelist?")
-		if err != nil {
-			return err
+		yes := true
+		if !forceWhitelistCheck {
+			ask := "Would you like to check if your node is allowed to join this subnet?\n" +
+				"If not, the subnet's control key holder must call avalanche subnet\n" +
+				"addValidator with your NodeID."
+			ux.Logger.PrintToUser(ask)
+			yes, err = app.Prompt.CaptureYesNo("Check whitelist?")
+			if err != nil {
+				return err
+			}
 		}
 		if yes {
 			isValidating, err := isNodeValidatingSubnet(subnetID, network)
@@ -141,6 +152,10 @@ func joinCmd(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			if !isValidating {
+				if failIfNotValidating {
+					ux.Logger.PrintToUser("The node is not whitelisted to validate this subnet.")
+					return nil
+				}
 				ux.Logger.PrintToUser(`The node is not whitelisted to validate this subnet.
 You can continue with this command, generating a config file or printing the whitelisting configuration,
 but until the node is whitelisted, it will not be able to validate this subnet.`)
@@ -273,15 +288,26 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 }
 
 func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, error) {
-	ux.Logger.PrintToUser("Next, we need the NodeID of the validator you want to whitelist.")
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions about how to query the NodeID from your node")
-	ux.Logger.PrintToUser("(Edit host IP address and port to match your deployment, if needed).")
+	var (
+		nodeID ids.NodeID
+		err    error
+	)
+	if nodeIDStr == "" {
+		ux.Logger.PrintToUser("Next, we need the NodeID of the validator you want to whitelist.")
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions about how to query the NodeID from your node")
+		ux.Logger.PrintToUser("(Edit host IP address and port to match your deployment, if needed).")
 
-	promptStr := "What is the NodeID of the validator you'd like to whitelist?"
-	nodeID, err := app.Prompt.CaptureNodeID(promptStr)
-	if err != nil {
-		return false, err
+		promptStr := "What is the NodeID of the validator you'd like to whitelist?"
+		nodeID, err = app.Prompt.CaptureNodeID(promptStr)
+		if err != nil {
+			return false, err
+		}
+	} else {
+		nodeID, err = ids.NodeIDFromString(nodeIDStr)
+		if err != nil {
+			return false, err
+		}
 	}
 
 	var api string

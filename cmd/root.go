@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/keycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/transactioncmd"
 	"github.com/ava-labs/avalanche-cli/pkg/apmintegration"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
@@ -38,7 +39,7 @@ func NewRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use: "avalanche",
 		Long: `Avalanche CLI is a command line tool that gives developers access to
-everything Avalanche. This beta release specializes in helping developers
+everything Avalanche. This release specializes in helping developers
 build and test subnets.
 
 To get started, look at the documentation for the subcommands or jump right
@@ -61,6 +62,8 @@ in with avalanche subnet create myNewSubnet.`,
 	// add hidden backend command
 	rootCmd.AddCommand(backendcmd.NewCmd(app))
 
+	// add transaction command
+	rootCmd.AddCommand(transactioncmd.NewCmd(app))
 	return rootCmd
 }
 

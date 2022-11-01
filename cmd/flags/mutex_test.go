@@ -1,11 +1,10 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package subnetcmd
+package flags
 
 import (
 	"testing"
 
-	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -70,7 +69,8 @@ func TestMutuallyExclusive(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		isEx := flags.EnsureMutuallyExclusive([]bool{tt.flagA, tt.flagB, tt.flagC})
+		flags := []bool{tt.flagA, tt.flagB, tt.flagC}
+		isEx := EnsureMutuallyExclusive(flags)
 		if tt.expectError {
 			assert.False(isEx)
 		} else {

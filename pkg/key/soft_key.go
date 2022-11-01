@@ -135,7 +135,7 @@ func NewSoft(networkID uint32, opts ...SOpOption) (*SoftKey, error) {
 	}
 
 	// Parse HRP to create valid address
-	hrp := getHRP(networkID)
+	hrp := GetHRP(networkID)
 	m.pAddr, err = address.Format("P", hrp, m.privKey.PublicKey().Address().Bytes())
 	if err != nil {
 		return nil, err
