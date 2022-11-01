@@ -9,7 +9,7 @@ require (
 	github.com/ava-labs/avalanchego v1.9.1
 	github.com/ava-labs/coreth v0.11.1-rc.7
 	github.com/ava-labs/spacesvm v0.0.10-0.20221029001213-6925f62a1394
-	github.com/ava-labs/subnet-evm v0.4.0
+	github.com/ava-labs/subnet-evm v0.4.1
 	github.com/docker/docker v20.10.21+incompatible
 	github.com/ethereum/go-ethereum v1.10.25
 	github.com/go-git/go-git/v5 v5.4.2
@@ -60,7 +60,7 @@ require (
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 // indirect
-	github.com/fsnotify/fsnotify v1.5.4 // indirect
+	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.3.1 // indirect
