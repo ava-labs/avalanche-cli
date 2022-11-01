@@ -557,7 +557,11 @@ func SaveNotFullySignedTx(
 	if outputTxPath == "" {
 		ux.Logger.PrintToUser("")
 		var err error
-		outputTxPath, err = app.Prompt.CaptureString("Path to export partially signed tx to")
+		if forceOverwrite {
+			outputTxPath, err = app.Prompt.CaptureString("Path to export partially signed tx to")
+		} else {
+			outputTxPath, err = app.Prompt.CaptureNewFilepath("Path to export partially signed tx to")
+		}
 		if err != nil {
 			return err
 		}

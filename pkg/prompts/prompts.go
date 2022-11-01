@@ -41,6 +41,7 @@ var errNoKeys = errors.New("no keys")
 type Prompter interface {
 	CapturePositiveBigInt(promptStr string) (*big.Int, error)
 	CaptureAddress(promptStr string) (common.Address, error)
+	CaptureNewFilepath(promptStr string) (string, error)
 	CaptureExistingFilepath(promptStr string) (string, error)
 	CaptureYesNo(promptStr string) (bool, error)
 	CaptureNoYes(promptStr string) (bool, error)
@@ -126,6 +127,13 @@ func validateExistingFilepath(input string) error {
 		return nil
 	}
 	return errors.New("file doesn't exist")
+}
+
+func validateNewFilepath(input string) error {
+	if _, err := os.Stat(input); err != nil && os.IsNotExist(err) {
+		return nil
+	}
+	return errors.New("file does exist")
 }
 
 func validateWeight(input string) error {
@@ -410,6 +418,20 @@ func (*realPrompter) CaptureExistingFilepath(promptStr string) (string, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validateExistingFilepath,
+	}
+
+	pathStr, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return pathStr, nil
+}
+
+func (*realPrompter) CaptureNewFilepath(promptStr string) (string, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateNewFilepath,
 	}
 
 	pathStr, err := prompt.Run()
