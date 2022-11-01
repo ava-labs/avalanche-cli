@@ -145,6 +145,12 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return errMutuallyExlusive
 	}
 
+	if outputTxPath != "" {
+		if _, err := os.Stat(outputTxPath); err == nil {
+			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
+		}
+	}
+
 	switch {
 	case deployLocal:
 		network = models.Local
