@@ -260,7 +260,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// only accept one control key especification
+	// accept only one control keys specification
 	if len(controlKeys) > 0 && sameControlKey {
 		return errMutuallyExlusiveControlKeys
 	}
