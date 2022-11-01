@@ -3,6 +3,7 @@
 package upgrades
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -48,4 +49,23 @@ func WriteUpgradeFile(jsonBytes []byte, subnetName, upgradeFilesDir string) erro
 	}
 	ux.Logger.PrintToUser("File written successfully")
 	return nil
+}
+
+func ReadUpgradeFile(subnetName, upgradeFilesDir string) ([]byte, error) {
+	subnetPath := filepath.Join(upgradeFilesDir, subnetName)
+	localUpgradeBytesFileName := filepath.Join(subnetPath, constants.UpdateBytesFileName)
+
+	exists, err := storage.FileExists(localUpgradeBytesFileName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to access the upgrade bytes file on the local environment: %w", err)
+	}
+	if !exists {
+		return nil, errors.New("we could not find the upgrade bytes file on the local environment - sure it exists?")
+	}
+
+	fileBytes, err := os.ReadFile(localUpgradeBytesFileName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read the upgrade bytes file from the local environment: %w", err)
+	}
+	return fileBytes, nil
 }
