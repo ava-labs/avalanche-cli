@@ -2,7 +2,12 @@
 // See the file LICENSE for licensing terms.
 package models
 
-import "github.com/ava-labs/avalanchego/utils/constants"
+import (
+	"fmt"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+)
 
 type Network int64
 
@@ -25,16 +30,16 @@ func (s Network) String() string {
 	return "Unknown Network"
 }
 
-func (s Network) NetworkID() uint32 {
+func (s Network) NetworkID() (uint32, error) {
 	switch s {
 	case Mainnet:
-		return constants.MainnetID
+		return avago_constants.MainnetID, nil
 	case Fuji:
-		return constants.FujiID
+		return avago_constants.FujiID, nil
 	case Local:
-		return 0
+		return constants.LocalNetworkID, nil
 	}
-	return 0
+	return 0, fmt.Errorf("unsupported network")
 }
 
 func NetworkFromString(s string) Network {

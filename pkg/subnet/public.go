@@ -15,7 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
-	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/platformvm/validator"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -26,16 +26,18 @@ import (
 
 type PublicDeployer struct {
 	LocalDeployer
-	privKeyPath string
+	usingLedger bool
+	kc          keychain.Keychain
 	network     models.Network
 	app         *application.Avalanche
 }
 
-func NewPublicDeployer(app *application.Avalanche, privKeyPath string, network models.Network) *PublicDeployer {
+func NewPublicDeployer(app *application.Avalanche, usingLedger bool, kc keychain.Keychain, network models.Network) *PublicDeployer {
 	return &PublicDeployer{
 		LocalDeployer: *NewLocalDeployer(app, "", ""),
 		app:           app,
-		privKeyPath:   privKeyPath,
+		usingLedger:   usingLedger,
+		kc:            kc,
 		network:       network,
 	}
 }
@@ -53,6 +55,9 @@ func (d *PublicDeployer) AddValidator(subnet ids.ID, nodeID ids.NodeID, weight u
 			Wght:   weight,
 		},
 		Subnet: subnet,
+	}
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign add validator hash on the ledger device *** ")
 	}
 	id, err := wallet.P().IssueAddSubnetValidatorTx(validator)
 	if err != nil {
@@ -102,31 +107,20 @@ func (d *PublicDeployer) Deploy(controlKeys []string, threshold uint32, chain st
 func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error) {
 	ctx := context.Background()
 
-	var (
-		api       string
-		networkID uint32
-	)
-
+	var api string
 	switch d.network {
 	case models.Fuji:
 		api = constants.FujiAPIEndpoint
-		networkID = avago_constants.FujiID
+	case models.Mainnet:
+		api = constants.MainnetAPIEndpoint
 	case models.Local:
 		// used for E2E testing of public related paths
 		api = constants.LocalAPIEndpoint
-		networkID = constants.LocalNetworkID
 	default:
 		return nil, fmt.Errorf("unsupported public network")
 	}
 
-	sf, err := key.LoadSoft(networkID, d.privKeyPath)
-	if err != nil {
-		return nil, err
-	}
-
-	kc := sf.KeyChain()
-
-	wallet, err := primary.NewWalletWithTxs(ctx, api, kc, preloadTxs...)
+	wallet, err := primary.NewWalletWithTxs(ctx, api, d.kc, preloadTxs...)
 	if err != nil {
 		return nil, err
 	}
@@ -137,6 +131,9 @@ func (d *PublicDeployer) createBlockchainTx(chainName string, vmID, subnetID ids
 	// TODO do we need any of these to be set?
 	options := []common.Option{}
 	fxIDs := make([]ids.ID, 0)
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign blockchain creation hash on the ledger device *** ")
+	}
 	return wallet.P().IssueCreateChainTx(subnetID, genesis, vmID, fxIDs, chainName, options...)
 }
 
@@ -155,37 +152,32 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 		Locktime:  0,
 	}
 	opts := []common.Option{}
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign subnet creation hash on the ledger device *** ")
+	}
 	return wallet.P().IssueCreateSubnetTx(owners, opts...)
 }
 
 func (d *PublicDeployer) validateWalletIsSubnetOwner(controlKeys []string, threshold uint32) error {
-	var networkID uint32
-
-	switch d.network {
-	case models.Fuji:
-		networkID = avago_constants.FujiID
-	case models.Local:
-		// used for E2E testing of public related paths
-		networkID = constants.LocalNetworkID
-	default:
-		return fmt.Errorf("unsupported public network")
-	}
-
-	sf, err := key.LoadSoft(networkID, d.privKeyPath)
-	if err != nil {
-		return err
-	}
-
 	if threshold != 1 {
 		return fmt.Errorf("multisig subnets are currently unsupported")
 	}
 
-	walletAddrsStr := sf.P()
-	if len(walletAddrsStr) == 0 {
-		return fmt.Errorf("no wallet address specified")
+	walletAddrs := d.kc.Addresses().List()
+	if len(walletAddrs) == 0 {
+		return fmt.Errorf("no addresses in wallet")
 	}
+	walletAddr := walletAddrs[0]
 
-	walletAddrStr := walletAddrsStr[0]
+	networkID, err := d.network.NetworkID()
+	if err != nil {
+		return err
+	}
+	hrp := key.GetHRP(networkID)
+	walletAddrStr, err := address.Format("P", hrp, walletAddr[:])
+	if err != nil {
+		return err
+	}
 
 	for _, addr := range controlKeys {
 		if addr == walletAddrStr {

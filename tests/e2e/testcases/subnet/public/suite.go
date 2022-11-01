@@ -10,6 +10,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -46,7 +47,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 
 	ginkgo.It("deploy subnet to fuji", func() {
 		// deploy
-		s := commands.SimulateDeploySubnetPublicly(subnetName, keyName, controlKeys)
+		s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys)
 		subnetID, rpcURL, err := utils.ParsePublicDeployOutput(s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		// add validators to subnet
@@ -54,11 +55,58 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		for _, nodeInfo := range nodeInfos {
 			start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
-			_ = commands.SimulateAddValidatorPublicly(subnetName, keyName, nodeInfo.ID, start, "24h", "20")
+			_ = commands.SimulateFujiAddValidator(subnetName, keyName, nodeInfo.ID, start, "24h", "20")
 		}
 		// join to copy vm binary and update config file
 		for _, nodeInfo := range nodeInfos {
-			_ = commands.SimulateJoinPublicly(subnetName, nodeInfo.ConfigFile, nodeInfo.PluginDir)
+			_ = commands.SimulateFujiJoin(subnetName, nodeInfo.ConfigFile, nodeInfo.PluginDir, nodeInfo.ID)
+		}
+		// get and check whitelisted subnets from config file
+		var whitelistedSubnets string
+		for _, nodeInfo := range nodeInfos {
+			whitelistedSubnets, err = utils.GetWhilelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
+			gomega.Expect(err).Should(gomega.BeNil())
+			whitelistedSubnetsSlice := strings.Split(whitelistedSubnets, ",")
+			gomega.Expect(whitelistedSubnetsSlice).Should(gomega.ContainElement(subnetID))
+		}
+		// update nodes whitelisted subnets
+		err = utils.UpdateNodesWhitelistedSubnets(whitelistedSubnets)
+		gomega.Expect(err).Should(gomega.BeNil())
+		// wait for subnet walidators to be up
+		err = utils.WaitSubnetValidators(subnetID, nodeInfos)
+		gomega.Expect(err).Should(gomega.BeNil())
+		// hardhat
+		err = utils.SetHardhatRPC(rpcURL)
+		gomega.Expect(err).Should(gomega.BeNil())
+		err = utils.RunHardhatTests(utils.BaseTest)
+		gomega.Expect(err).Should(gomega.BeNil())
+	})
+
+	ginkgo.It("deploy subnet to mainnet", ginkgo.Label("local_machine"), func() {
+		// fund ledger address
+		err := utils.FundLedgerAddress()
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println()
+		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
+		s := commands.SimulateMainnetDeploy(subnetName)
+		// deploy
+		subnetID, rpcURL, err := utils.ParsePublicDeployOutput(s)
+		gomega.Expect(err).Should(gomega.BeNil())
+		// add validators to subnet
+		nodeInfos, err := utils.GetNodesInfo()
+		gomega.Expect(err).Should(gomega.BeNil())
+		nodeIdx := 1
+		for _, nodeInfo := range nodeInfos {
+			fmt.Println(logging.LightRed.Wrap(
+				fmt.Sprintf("ADDING VALIDATOR %d of %d. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING", nodeIdx, len(nodeInfos))))
+			start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
+			_ = commands.SimulateMainnetAddValidator(subnetName, nodeInfo.ID, start, "24h", "20")
+			nodeIdx++
+		}
+		fmt.Println(logging.LightBlue.Wrap("EXECUTING NON INTERACTIVE PART OF THE TEST: JOIN/WHITELIST/WAIT/HARDHAT"))
+		// join to copy vm binary and update config file
+		for _, nodeInfo := range nodeInfos {
+			_ = commands.SimulateMainnetJoin(subnetName, nodeInfo.ConfigFile, nodeInfo.PluginDir, nodeInfo.ID)
 		}
 		// get and check whitelisted subnets from config file
 		var whitelistedSubnets string

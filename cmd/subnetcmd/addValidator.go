@@ -48,7 +48,8 @@ This command currently only works on subnets deployed to the Fuji testnet.`,
 		RunE:         addValidator,
 		Args:         cobra.ExactArgs(1),
 	}
-	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use")
+	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
+	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
 	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
@@ -66,13 +67,6 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		err    error
 	)
 
-	if keyName == "" {
-		keyName, err = captureKeyName()
-		if err != nil {
-			return err
-		}
-	}
-
 	var network models.Network
 	switch {
 	case deployTestnet:
@@ -83,13 +77,27 @@ func addValidator(cmd *cobra.Command, args []string) error {
 
 	if network == models.Undefined {
 		networkStr, err := app.Prompt.CaptureList(
-			"Choose a network to deploy on. This command only supports Fuji currently.",
-			[]string{models.Fuji.String(), models.Mainnet.String() + " (coming soon)"},
+			"Choose a network to add validator to.",
+			[]string{models.Fuji.String(), models.Mainnet.String()},
 		)
 		if err != nil {
 			return err
 		}
 		network = models.NetworkFromString(networkStr)
+	}
+
+	switch network {
+	case models.Fuji:
+		if !useLedger && keyName == "" {
+			useLedger, keyName, err = getFujiKeyOrLedger()
+			if err != nil {
+				return err
+			}
+		}
+	case models.Mainnet:
+		useLedger = true
+	default:
+		return errors.New("unsupported network")
 	}
 
 	// used in E2E to simulate public network execution paths on a local network
@@ -144,7 +152,13 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("End time: %s", start.Add(duration).Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("Weight: %d", weight)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
-	deployer := subnet.NewPublicDeployer(app, app.GetKeyPath(keyName), network)
+
+	// get keychain accesor
+	kc, err := getKeychain(useLedger, keyName, network)
+	if err != nil {
+		return err
+	}
+	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	return deployer.AddValidator(subnetID, nodeID, weight, start, duration)
 }
 
@@ -168,14 +182,21 @@ func promptDuration(start time.Time) (time.Duration, error) {
 }
 
 func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime time.Time) (time.Duration, error) {
-	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
-
-	uri := constants.MainnetAPIEndpoint
-	if network == models.Fuji {
+	var uri string
+	switch network {
+	case models.Fuji:
 		uri = constants.FujiAPIEndpoint
+	case models.Mainnet:
+		uri = constants.MainnetAPIEndpoint
+	case models.Local:
+		// used for E2E testing of public related paths
+		uri = constants.LocalAPIEndpoint
+	default:
+		return 0, fmt.Errorf("unsupported public network")
 	}
 
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
 	platformCli := platformvm.NewClient(uri)
 	vs, err := platformCli.GetCurrentValidators(ctx, avago_constants.PrimaryNetworkID, nil)
 	cancel()
@@ -306,7 +327,7 @@ func captureKeyName() (string, error) {
 		}
 	}
 
-	keyName, err = app.Prompt.CaptureList("Which private key should be used to issue the transaction?", keys)
+	keyName, err = app.Prompt.CaptureList("Which stored key should be used to issue the transaction?", keys)
 	if err != nil {
 		return "", err
 	}
