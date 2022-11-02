@@ -72,8 +72,8 @@ github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPd
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
 github.com/ava-labs/apm v0.0.4 h1:0IUwxCyvqwr2sbbEKhSI7VzpPG3Z+e180ulJwNiKkBk=
 github.com/ava-labs/apm v0.0.4/go.mod h1:4MNcyEvWajJm2JnezC7vgHuA220ppoQYOMh5vM+iH4Q=
-github.com/ava-labs/avalanche-ledger-go v0.0.10 h1:qEiTJvjuEmTYhYczk/CYvXoQuLlgd7xYyC2OcXOhAlw=
-github.com/ava-labs/avalanche-ledger-go v0.0.10/go.mod h1:60Ftil/0sHi8IwjvBFyrvRsPVAue8zAkIMGuvXXMwVM=
+github.com/ava-labs/avalanche-ledger-go v0.0.11-0.20221102205732-db0ec376419e h1:pwOfYdlpcwIIoAa11+Qzfqa4mbKUYHHpDky0DCpCz3w=
+github.com/ava-labs/avalanche-ledger-go v0.0.11-0.20221102205732-db0ec376419e/go.mod h1:ZU0gQAFDbyKV2WiBxsvvuigJbKgxVjWn509ajTYozT0=
 github.com/ava-labs/avalanche-network-runner v1.3.0 h1:dqAlbTCyMndomqkVLk75zj2gLvCizmW5phGVoQJ/KkI=
 github.com/ava-labs/avalanche-network-runner v1.3.0/go.mod h1:TbbYc8E0dZZOEF4AXW8Fa595qlhNjuEi4Y0llwzWsic=
 github.com/ava-labs/avalanchego v1.9.1 h1:TJLvoA5kHAwsaBG80x57hCMnwJYWFDnHOoI/fw+Off8=
@@ -564,8 +564,8 @@ github.com/yusufpapurcu/wmi v1.2.2/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQ
 github.com/zondax/hid v0.9.0/go.mod h1:l5wttcP0jwtdLjqjMMWFVEE7d1zO0jvSPA9OPZxWpEM=
 github.com/zondax/hid v0.9.1-0.20220302062450-5552068d2266 h1:O9XLFXGkVswDFmH9LaYpqu+r/AAFWqr0DL6V00KEVFg=
 github.com/zondax/hid v0.9.1-0.20220302062450-5552068d2266/go.mod h1:l5wttcP0jwtdLjqjMMWFVEE7d1zO0jvSPA9OPZxWpEM=
-github.com/zondax/ledger-go v0.12.3-0.20221005223406-dbd460b7296d h1:0x2GQWgIP6+XAitVxzflRLcGOhnuEbhaBotwTbmpfMk=
-github.com/zondax/ledger-go v0.12.3-0.20221005223406-dbd460b7296d/go.mod h1:KatxXrVDzgWwbssUWsF5+cOJHXPvzQ09YSlzGNuhOEo=
+github.com/zondax/ledger-go v0.13.0 h1:3brWtvAlfKqpe27JSUC/t1f0CvVVOX8zR/f/3+ShPBY=
+github.com/zondax/ledger-go v0.13.0/go.mod h1:KatxXrVDzgWwbssUWsF5+cOJHXPvzQ09YSlzGNuhOEo=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
 go.opencensus.io v0.22.2/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=
