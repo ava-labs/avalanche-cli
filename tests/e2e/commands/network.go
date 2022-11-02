@@ -67,25 +67,6 @@ func StartNetworkWithVersion(version string) string {
 }
 
 /* #nosec G204 */
-func StartNetworkWithVersion(avagoVersion string) string {
-	cmd := exec.Command(
-		CLIBinary,
-		NetworkCmd,
-		"start",
-		"--avalanchego-version",
-		avagoVersion,
-	)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(cmd.String())
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-	}
-	gomega.Expect(err).Should(gomega.BeNil())
-	return string(output)
-}
-
-/* #nosec G204 */
 func StopNetwork() {
 	cmd := exec.Command(
 		CLIBinary,
