@@ -15,6 +15,30 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+type Precompile string
+
+const (
+	NativeMint        = "Native Minting"
+	ContractAllowList = "Contract Deployment Allow List"
+	TxAllowList       = "Transaction Allow List"
+	FeeManager        = "Manage Fee Settings"
+)
+
+func PrecompileToUpgradeString(p Precompile) string {
+	switch p {
+	case NativeMint:
+		return "contractNativeMinterConfig"
+	case ContractAllowList:
+		return "contractDeployerAllowListConfig"
+	case TxAllowList:
+		return "txAllowListConfig"
+	case FeeManager:
+		return "feeManagerConfig"
+	default:
+		return ""
+	}
+}
+
 func getAdminList(initialPrompt string, info string, app *application.Avalanche) ([]common.Address, bool, error) {
 	label := "Address"
 
@@ -130,17 +154,11 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (
 	statemachine.StateDirection,
 	error,
 ) {
-	const (
-		nativeMint        = "Native Minting"
-		contractAllowList = "Contract Deployment Allow List"
-		txAllowList       = "Transaction Allow List"
-		feeManager        = "Manage Fee Settings"
-		cancel            = "Cancel"
-	)
+	const cancel = "Cancel"
 
 	first := true
 
-	remainingPrecompiles := []string{nativeMint, contractAllowList, txAllowList, feeManager, cancel}
+	remainingPrecompiles := []string{NativeMint, ContractAllowList, TxAllowList, FeeManager, cancel}
 
 	for {
 		firstStr := "Advanced: Would you like to add a custom precompile to modify the EVM?"
@@ -173,50 +191,50 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (
 		}
 
 		switch precompileDecision {
-		case nativeMint:
+		case NativeMint:
 			mintConfig, cancelled, err := configureMinterList(app)
 			if err != nil {
 				return config, statemachine.Stop, err
 			}
 			if !cancelled {
 				config.ContractNativeMinterConfig = &mintConfig
-				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, nativeMint)
+				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, NativeMint)
 				if err != nil {
 					return config, statemachine.Stop, err
 				}
 			}
-		case contractAllowList:
+		case ContractAllowList:
 			contractConfig, cancelled, err := configureContractAllowList(app)
 			if err != nil {
 				return config, statemachine.Stop, err
 			}
 			if !cancelled {
 				config.ContractDeployerAllowListConfig = &contractConfig
-				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, contractAllowList)
+				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, ContractAllowList)
 				if err != nil {
 					return config, statemachine.Stop, err
 				}
 			}
-		case txAllowList:
+		case TxAllowList:
 			txConfig, cancelled, err := configureTransactionAllowList(app)
 			if err != nil {
 				return config, statemachine.Stop, err
 			}
 			if !cancelled {
 				config.TxAllowListConfig = &txConfig
-				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, txAllowList)
+				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, TxAllowList)
 				if err != nil {
 					return config, statemachine.Stop, err
 				}
 			}
-		case feeManager:
+		case FeeManager:
 			feeConfig, cancelled, err := configureFeeConfigAllowList(app)
 			if err != nil {
 				return config, statemachine.Stop, err
 			}
 			if !cancelled {
 				config.FeeManagerConfig = &feeConfig
-				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, feeManager)
+				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, FeeManager)
 				if err != nil {
 					return config, statemachine.Stop, err
 				}
