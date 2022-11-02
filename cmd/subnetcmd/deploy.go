@@ -146,6 +146,12 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return errMutuallyExlusiveNetworks
 	}
 
+	if outputTxPath != "" {
+		if _, err := os.Stat(outputTxPath); err == nil {
+			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
+		}
+	}
+
 	switch {
 	case deployLocal:
 		network = models.Local
@@ -557,7 +563,11 @@ func SaveNotFullySignedTx(
 	if outputTxPath == "" {
 		ux.Logger.PrintToUser("")
 		var err error
-		outputTxPath, err = app.Prompt.CaptureString("Path to export partially signed tx to")
+		if forceOverwrite {
+			outputTxPath, err = app.Prompt.CaptureString("Path to export partially signed tx to")
+		} else {
+			outputTxPath, err = app.Prompt.CaptureNewFilepath("Path to export partially signed tx to")
+		}
 		if err != nil {
 			return err
 		}

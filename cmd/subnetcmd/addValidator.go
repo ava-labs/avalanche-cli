@@ -87,6 +87,12 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		network = models.NetworkFromString(networkStr)
 	}
 
+	if outputTxPath != "" {
+		if _, err := os.Stat(outputTxPath); err == nil {
+			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
+		}
+	}
+
 	switch network {
 	case models.Fuji:
 		if !useLedger && keyName == "" {
