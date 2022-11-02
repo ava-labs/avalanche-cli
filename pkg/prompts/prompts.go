@@ -133,7 +133,7 @@ func validateNewFilepath(input string) error {
 	if _, err := os.Stat(input); err != nil && os.IsNotExist(err) {
 		return nil
 	}
-	return errors.New("file does exist")
+	return errors.New("file already exists")
 }
 
 func validateWeight(input string) error {
