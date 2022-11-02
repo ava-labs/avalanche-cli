@@ -46,30 +46,16 @@ func CleanNetworkHard() {
 
 /* #nosec G204 */
 func StartNetwork() string {
-	cmd := exec.Command(
-		CLIBinary,
-		NetworkCmd,
-		"start",
-	)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(cmd.String())
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-	}
-	gomega.Expect(err).Should(gomega.BeNil())
-	return string(output)
+	return StartNetworkWithVersion(utils.AvagoVersion)
 }
 
 /* #nosec G204 */
-func StartNetworkWithVersion(avagoVersion string) string {
-	cmd := exec.Command(
-		CLIBinary,
-		NetworkCmd,
-		"start",
-		"--avalanchego-version",
-		avagoVersion,
-	)
+func StartNetworkWithVersion(version string) string {
+	cmdArgs := []string{NetworkCmd, "start"}
+	if version != "" {
+		cmdArgs = append(cmdArgs, "--avalanchego-version", version)
+	}
+	cmd := exec.Command(CLIBinary, cmdArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
