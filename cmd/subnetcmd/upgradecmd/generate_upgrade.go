@@ -155,7 +155,7 @@ func upgradeGenerateCmd(cmd *cobra.Command, args []string) error {
 			in1day   = "In 1 day"
 			in1week  = "In 1 week"
 			in2weeks = "In 2 weeks"
-			custom   = "custom"
+			custom   = "Custom"
 		)
 		options := []string{in5min, in1day, in1week, in2weeks, custom}
 		choice, err := app.Prompt.CaptureList("When should the precompile be activated?", options)
