@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/ava-labs/apm v0.0.4
-	github.com/ava-labs/avalanche-ledger-go v0.0.10
+	github.com/ava-labs/avalanche-ledger-go v0.0.11
 	github.com/ava-labs/avalanche-network-runner v1.3.0
 	github.com/ava-labs/avalanchego v1.9.1
 	github.com/ava-labs/coreth v0.11.1
@@ -138,7 +138,7 @@ require (
 	github.com/xanzy/ssh-agent v0.3.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	github.com/zondax/hid v0.9.1-0.20220302062450-5552068d2266 // indirect
-	github.com/zondax/ledger-go v0.12.3-0.20221005223406-dbd460b7296d // indirect
+	github.com/zondax/ledger-go v0.13.0 // indirect
 	go.opentelemetry.io/otel v1.11.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.11.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.11.0 // indirect
