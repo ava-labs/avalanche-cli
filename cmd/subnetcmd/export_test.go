@@ -26,7 +26,7 @@ func TestExportImportSubnet(t *testing.T) {
 	vmVersion := "v0.9.99"
 
 	app = application.New()
-	app.Setup(testDir, logging.NoLog{}, nil, prompts.NewPrompter())
+	app.Setup(testDir, logging.NoLog{}, nil, prompts.NewPrompter(), application.NewDownloader())
 	ux.NewUserLog(logging.NoLog{}, io.Discard)
 	genBytes, sc, err := vm.CreateEvmSubnetConfig(app, testSubnet, "../../"+utils.SubnetEvmGenesisPath, vmVersion)
 	assert.NoError(err)

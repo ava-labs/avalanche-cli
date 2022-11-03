@@ -2,9 +2,9 @@
 
 
 # NOTE: This script can only generate mocks from interfaces inside this repository.
-# For interfaces in other repositories (e.g. avalanchego), the mocks should 
+# For interfaces in other repositories (e.g. avalanchego), the mocks should
 # still be created manually for the time being.
-# 
+#
 # This currently affects the following mocks:
 # * InfoClient
 # * PClient
@@ -21,7 +21,8 @@ mockery -r --output ./internal/mocks --name PluginBinaryDownloader --filename pl
 mockery -r --output ./internal/mocks --name ProcessChecker --filename processChecker.go
 mockery -r --output ./internal/mocks --name Prompter --filename prompter.go
 mockery -r --output ./internal/mocks --name Installer --filename installer.go
-mockery -r --output ./internal/mocks --name Publisher --filename publisher.go 
+mockery -r --output ./internal/mocks --name Publisher --filename publisher.go
+mockery -r --output ./internal/mocks --name Downloader --filename downloader.go
 
 echo ""
 echo "Created mocks for interfaces in this repository only. Please create other mocks manually."

@@ -100,4 +100,6 @@ const (
 
 	NotAvailableLabel = "Not available"
 	BackendCmd        = "avalanche-cli-backend"
+
+	SubnetEVMRPCCompatibilityURL = "https://raw.githubusercontent.com/ava-labs/subnet-evm/addComposability/compatibility.json"
 )

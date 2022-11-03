@@ -87,7 +87,7 @@ func TestDeployToLocal(t *testing.T) {
 	}()
 
 	app := &application.Avalanche{}
-	app.Setup(testDir, logging.NoLog{}, config.New(), prompts.NewPrompter())
+	app.Setup(testDir, logging.NoLog{}, config.New(), prompts.NewPrompter(), application.NewDownloader())
 
 	binDir := filepath.Join(app.GetAvalanchegoBinDir(), "avalanchego-"+avagoVersion)
 

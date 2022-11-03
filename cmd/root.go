@@ -77,7 +77,7 @@ func createApp(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	cf := config.New()
-	app.Setup(baseDir, log, cf, prompts.NewPrompter())
+	app.Setup(baseDir, log, cf, prompts.NewPrompter(), application.NewDownloader())
 
 	// Setup APM, skip if running a hidden command
 	if !cmd.Hidden {
