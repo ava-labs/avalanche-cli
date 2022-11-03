@@ -72,8 +72,6 @@ github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPd
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
 github.com/ava-labs/apm v0.0.4 h1:0IUwxCyvqwr2sbbEKhSI7VzpPG3Z+e180ulJwNiKkBk=
 github.com/ava-labs/apm v0.0.4/go.mod h1:4MNcyEvWajJm2JnezC7vgHuA220ppoQYOMh5vM+iH4Q=
-github.com/ava-labs/avalanche-ledger-go v0.0.11-0.20221102205732-db0ec376419e h1:pwOfYdlpcwIIoAa11+Qzfqa4mbKUYHHpDky0DCpCz3w=
-github.com/ava-labs/avalanche-ledger-go v0.0.11-0.20221102205732-db0ec376419e/go.mod h1:ZU0gQAFDbyKV2WiBxsvvuigJbKgxVjWn509ajTYozT0=
 github.com/ava-labs/avalanche-ledger-go v0.0.11 h1:AZ2cKEZ1noMZPCLvjyl/33LBu2u/ESgolr661epH0Ak=
 github.com/ava-labs/avalanche-ledger-go v0.0.11/go.mod h1:ZU0gQAFDbyKV2WiBxsvvuigJbKgxVjWn509ajTYozT0=
 github.com/ava-labs/avalanche-network-runner v1.3.0 h1:dqAlbTCyMndomqkVLk75zj2gLvCizmW5phGVoQJ/KkI=
