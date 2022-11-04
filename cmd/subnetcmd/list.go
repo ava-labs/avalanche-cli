@@ -4,6 +4,7 @@ package subnetcmd
 
 import (
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -45,7 +46,7 @@ func listSubnets(cmd *cobra.Command, args []string) error {
 	table.SetAutoMergeCells(true)
 	table.SetRowLine(true)
 
-	files, err := os.ReadDir(app.GetBaseDir())
+	subnets, err := os.ReadDir(filepath.Join(app.GetBaseDir(), constants.SubnetDir))
 	if err != nil {
 		return err
 	}
@@ -75,47 +76,58 @@ func listSubnets(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	for _, f := range files {
-		if strings.HasSuffix(f.Name(), constants.SidecarSuffix) {
-			carName := strings.TrimSuffix(f.Name(), constants.SidecarSuffix)
-			// read in sidecar file
-			sc, err := app.LoadSidecar(carName)
-			if err != nil {
-				return err
-			}
-
-			chainID := sc.ChainID
-			// for older sidecars, check in genesis if sidecar has
-			// no chainID set
-			if chainID == "" {
-				sc, err := app.LoadEvmGenesis(carName)
-				// ignore the error in this case: just leave it to ""
-				if err == nil {
-					chainID = sc.Config.ChainID.String()
+	for _, s := range subnets {
+		// this shouldn't happen but let's be safe
+		if !s.IsDir() {
+			continue
+		}
+		subnetDir := filepath.Join(app.GetSubnetDir(), s.Name())
+		files, err := os.ReadDir(subnetDir)
+		if err != nil {
+			return err
+		}
+		for _, f := range files {
+			if f.Name() == constants.SidecarFileName {
+				carName := s.Name()
+				// read in sidecar file
+				sc, err := app.LoadSidecar(carName)
+				if err != nil {
+					return err
 				}
-			}
 
-			deployedLocal := "No"
-			if _, ok := deployedNames[sc.Subnet]; ok {
-				deployedLocal = "Yes"
-			}
-			deployedFuji := "No"
-			if _, ok := sc.Networks[models.Fuji.String()]; ok {
-				if sc.Networks[models.Fuji.String()].SubnetID != ids.Empty {
-					deployedFuji = "Yes"
+				chainID := sc.ChainID
+				// for older sidecars, check in genesis if sidecar has
+				// no chainID set
+				if chainID == "" {
+					sc, err := app.LoadEvmGenesis(carName)
+					// ignore the error in this case: just leave it to ""
+					if err == nil {
+						chainID = sc.Config.ChainID.String()
+					}
 				}
+
+				deployedLocal := "No"
+				if _, ok := deployedNames[sc.Subnet]; ok {
+					deployedLocal = "Yes"
+				}
+				deployedFuji := "No"
+				if _, ok := sc.Networks[models.Fuji.String()]; ok {
+					if sc.Networks[models.Fuji.String()].SubnetID != ids.Empty {
+						deployedFuji = "Yes"
+					}
+				}
+				deployedMain := "N/A"
+				rows = append(rows, []string{
+					sc.Subnet,
+					sc.Name,
+					chainID,
+					string(sc.VM),
+					strconv.FormatBool(sc.ImportedFromAPM),
+					deployedLocal,
+					deployedFuji,
+					deployedMain,
+				})
 			}
-			deployedMain := "N/A"
-			rows = append(rows, []string{
-				sc.Subnet,
-				sc.Name,
-				chainID,
-				string(sc.VM),
-				strconv.FormatBool(sc.ImportedFromAPM),
-				deployedLocal,
-				deployedFuji,
-				deployedMain,
-			})
 		}
 	}
 	sort.Sort(rows)

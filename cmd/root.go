@@ -94,6 +94,8 @@ func createApp(cmd *cobra.Command, args []string) error {
 
 	initConfig()
 
+	runMigrations()
+
 	return nil
 }
 

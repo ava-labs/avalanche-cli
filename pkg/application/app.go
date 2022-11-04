@@ -57,6 +57,10 @@ func (app *Avalanche) GetBaseDir() string {
 	return app.baseDir
 }
 
+func (app *Avalanche) GetSubnetDir() string {
+	return filepath.Join(app.baseDir, constants.SubnetDir)
+}
+
 func (app *Avalanche) GetReposDir() string {
 	return filepath.Join(app.baseDir, constants.ReposDir)
 }
@@ -90,11 +94,11 @@ func (app *Avalanche) GetAPMVMPath(vmid string) string {
 }
 
 func (app *Avalanche) GetGenesisPath(subnetName string) string {
-	return filepath.Join(app.baseDir, subnetName+constants.GenesisSuffix)
+	return filepath.Join(app.GetSubnetDir(), subnetName, constants.GenesisFileName)
 }
 
 func (app *Avalanche) GetSidecarPath(subnetName string) string {
-	return filepath.Join(app.baseDir, subnetName+constants.SidecarSuffix)
+	return filepath.Join(app.GetSubnetDir(), subnetName, constants.SidecarFileName)
 }
 
 func (app *Avalanche) GetKeyDir() string {
@@ -123,6 +127,10 @@ func (app *Avalanche) GetKeyPath(keyName string) string {
 
 func (app *Avalanche) WriteGenesisFile(subnetName string, genesisBytes []byte) error {
 	genesisPath := app.GetGenesisPath(subnetName)
+	if err := os.MkdirAll(filepath.Dir(genesisPath), constants.DefaultPerms755); err != nil {
+		return err
+	}
+
 	return os.WriteFile(genesisPath, genesisBytes, WriteReadReadPerms)
 }
 
@@ -144,6 +152,10 @@ func (app *Avalanche) CopyGenesisFile(inputFilename string, subnetName string) e
 		return err
 	}
 	genesisPath := app.GetGenesisPath(subnetName)
+	if err := os.MkdirAll(filepath.Dir(genesisPath), constants.DefaultPerms755); err != nil {
+		return err
+	}
+
 	return os.WriteFile(genesisPath, genesisBytes, WriteReadReadPerms)
 }
 
@@ -191,6 +203,12 @@ func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 	if sc.TokenName == "" {
 		sc.TokenName = constants.DefaultTokenName
 	}
+
+	sidecarPath := app.GetSidecarPath(sc.Name)
+	if err := os.MkdirAll(filepath.Dir(sidecarPath), constants.DefaultPerms755); err != nil {
+		return err
+	}
+
 	if sc.VM == models.SubnetEvm {
 		// We should have caught this during the actual prompting,
 		// but better safe than sorry
@@ -217,7 +235,6 @@ func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 		return nil
 	}
 
-	sidecarPath := app.GetSidecarPath(sc.Name)
 	return os.WriteFile(sidecarPath, scBytes, WriteReadReadPerms)
 }
 
@@ -277,15 +294,17 @@ func (app *Avalanche) GetTokenName(subnetName string) string {
 }
 
 func (app *Avalanche) GetSidecarNames() ([]string, error) {
-	matches, err := filepath.Glob(filepath.Join(app.baseDir, "*"+constants.SidecarSuffix))
+	matches, err := os.ReadDir(app.GetSubnetDir())
 	if err != nil {
 		return nil, err
 	}
-	names := make([]string, len(matches))
-	for i, m := range matches {
-		base := filepath.Base(m)
-		name := base[:len(base)-len(constants.SidecarSuffix)]
-		names[i] = name
+
+	var names []string
+	for _, m := range matches {
+		// a subnet dir could theoretically exist without a sidecar yet...
+		if _, err := os.Stat(filepath.Join(app.GetSubnetDir(), m.Name(), constants.SidecarFileName)); err == nil {
+			names = append(names, m.Name())
+		}
 	}
 	return names, nil
 }
