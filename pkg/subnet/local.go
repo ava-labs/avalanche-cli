@@ -179,13 +179,27 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 	subnetIDStr := subnetIDs[numBlockchains%len(subnetIDs)]
 
+	// if a chainConfig has been configured
+	var (
+		chainConfig     string
+		chainConfigFile = filepath.Join(d.app.GetSubnetDir(), chain, constants.ChainConfigFileName)
+	)
+	if _, err := os.Stat(chainConfigFile); err == nil {
+		bChainConfig, err := os.ReadFile(chainConfigFile)
+		if err != nil {
+			d.app.Log.Warn("a chainconfig file has been found, but we failed to read it: %w", zap.Error(err))
+			return ids.Empty, ids.Empty, err
+		}
+		chainConfig = string(bChainConfig)
+	}
 	// create a new blockchain on the already started network, associated to
 	// the given VM ID, genesis, and available subnet ID
 	blockchainSpecs := []*rpcpb.BlockchainSpec{
 		{
-			VmName:   chain,
-			Genesis:  genesisPath,
-			SubnetId: &subnetIDStr,
+			VmName:      chain,
+			Genesis:     genesisPath,
+			SubnetId:    &subnetIDStr,
+			ChainConfig: chainConfig,
 		},
 	}
 	deployBlockchainsInfo, err := cli.CreateBlockchains(
