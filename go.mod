@@ -2,9 +2,11 @@ module github.com/ava-labs/avalanche-cli
 
 go 1.18
 
+replace github.com/ava-labs/avalanchego => ../avalanchego-internal/
+
 require (
 	github.com/ava-labs/apm v0.0.4
-	github.com/ava-labs/avalanche-ledger-go v0.0.11
+	github.com/ava-labs/avalanche-ledger-go v0.0.12
 	github.com/ava-labs/avalanche-network-runner v1.3.1
 	github.com/ava-labs/avalanchego v1.9.2
 	github.com/ava-labs/coreth v0.11.2-rc.0
