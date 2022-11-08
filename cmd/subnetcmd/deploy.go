@@ -633,21 +633,32 @@ func GetKeychain(
 		}
 		// ask for addresses here to print user msg for ledger interaction
 		ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
-		addresses, err := ledgerDevice.Addresses([]uint32{0})
-		if err != nil {
-			return kc, err
+		addrStrs := []string{}
+		var ledgerIndices []uint32
+		if len(ledgerAddresses) == 0 {
+			// get addr at index 0
+			ledgerIndices = []uint32{0}
+			addresses, err := ledgerDevice.Addresses(ledgerIndices)
+			if err != nil {
+				return kc, err
+			}
+			addr := addresses[0]
+			networkID, err := network.NetworkID()
+			if err != nil {
+				return kc, err
+			}
+			addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
+			if err != nil {
+				return kc, err
+			}
+			addrStrs = append(addrStrs, addrStr)
+		} else {
 		}
-		addr := addresses[0]
-		networkID, err := network.NetworkID()
-		if err != nil {
-			return kc, err
+		ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("Ledger addresses: ")))
+		for _, addrStr := range addrStrs {
+			ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("  %s", addrStr)))
 		}
-		addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
-		if err != nil {
-			return kc, err
-		}
-		ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("Ledger address: %s", addrStr)))
-		return keychain.NewLedgerKeychain(ledgerDevice, numLedgerAddressesToDerive)
+		return keychain.NewLedgerKeychainFromIndices(ledgerDevice, ledgerIndices)
 	}
 	networkID, err := network.NetworkID()
 	if err != nil {
@@ -658,6 +669,9 @@ func GetKeychain(
 		return kc, err
 	}
 	return sf.KeyChain(), nil
+}
+
+func getLedgerIndicesFromAddresses() {
 }
 
 func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFullySigned bool) error {
