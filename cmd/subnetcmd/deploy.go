@@ -37,17 +37,18 @@ import (
 const numLedgerAddressesToDerive = 1
 
 var (
-	deployLocal    bool
-	deployTestnet  bool
-	deployMainnet  bool
-	useLedger      bool
-	sameControlKey bool
-	keyName        string
-	threshold      uint32
-	controlKeys    []string
-	subnetAuthKeys []string
-	avagoVersion   string
-	outputTxPath   string
+	deployLocal     bool
+	deployTestnet   bool
+	deployMainnet   bool
+	useLedger       bool
+	sameControlKey  bool
+	keyName         string
+	threshold       uint32
+	controlKeys     []string
+	subnetAuthKeys  []string
+	avagoVersion    string
+	outputTxPath    string
+	ledgerAddresses []string
 
 	errMutuallyExlusiveNetworks    = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
@@ -88,6 +89,7 @@ subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may make subnet changes")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate chain creation")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
+	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	return cmd
 }
 
@@ -261,7 +263,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// from here on we are assuming a public deploy
 
 	// get keychain accesor
-	kc, err := GetKeychain(useLedger, keyName, network)
+	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
 	if err != nil {
 		return err
 	}
@@ -618,6 +620,7 @@ func PrintRemainingToSignMsg(
 
 func GetKeychain(
 	useLedger bool,
+	ledgerAddresses []string,
 	keyName string,
 	network models.Network,
 ) (keychain.Keychain, error) {

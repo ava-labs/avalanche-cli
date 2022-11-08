@@ -18,9 +18,10 @@ import (
 const inputTxPathFlag = "input-tx-filepath"
 
 var (
-	inputTxPath string
-	useLedger   bool
-	keyName     string
+	inputTxPath     string
+	useLedger       bool
+	keyName         string
+	ledgerAddresses []string
 
 	errNoSubnetID = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 )
@@ -39,6 +40,7 @@ func newTransactionSignCmd() *cobra.Command {
 	cmd.Flags().StringVar(&inputTxPath, inputTxPathFlag, "", "Path to the transaction file for signing")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
+	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	return cmd
 }
 
@@ -101,7 +103,7 @@ func signTx(cmd *cobra.Command, args []string) error {
 	}
 
 	// get keychain accesor
-	kc, err := subnetcmd.GetKeychain(useLedger, keyName, network)
+	kc, err := subnetcmd.GetKeychain(useLedger, ledgerAddresses, keyName, network)
 	if err != nil {
 		return err
 	}
