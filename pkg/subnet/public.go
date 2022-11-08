@@ -67,7 +67,7 @@ func (d *PublicDeployer) AddValidator(
 	}
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
-		return false, nil, err
+		return false, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 	ok, err := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys)
 	if err != nil {
@@ -137,7 +137,7 @@ func (d *PublicDeployer) Deploy(
 
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
-		return false, ids.Empty, ids.Empty, nil, err
+		return false, ids.Empty, ids.Empty, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 
 	ok, err := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys)
@@ -197,7 +197,7 @@ func (d *PublicDeployer) Sign(
 	}
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
-		return err
+		return fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 	ok, err := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys)
 	if err != nil {
@@ -343,7 +343,7 @@ func (d *PublicDeployer) signTx(
 func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, wallet primary.Wallet) (ids.ID, error) {
 	addrs, err := address.ParseToIDs(controlKeys)
 	if err != nil {
-		return ids.Empty, err
+		return ids.Empty, fmt.Errorf("failure parsing control keys: %w", err)
 	}
 	owners := &secp256k1fx.OutputOwners{
 		Addrs:     addrs,

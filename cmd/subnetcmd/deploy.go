@@ -34,7 +34,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const numLedgerAddressesToDerive = 1
+const numLedgerAddressesToSearch = 1000
 
 var (
 	deployLocal     bool
@@ -204,6 +204,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	genesisPath := app.GetGenesisPath(chain)
+
+	if len(ledgerAddresses) > 0 {
+		useLedger = true
+	}
 
 	switch network {
 	case models.Local:
@@ -634,7 +638,7 @@ func GetKeychain(
 		// ask for addresses here to print user msg for ledger interaction
 		ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
 		addrStrs := []string{}
-		var ledgerIndices []uint32
+		ledgerIndices := []uint32{}
 		if len(ledgerAddresses) == 0 {
 			// get addr at index 0
 			ledgerIndices = []uint32{0}
@@ -651,8 +655,13 @@ func GetKeychain(
 			if err != nil {
 				return kc, err
 			}
-			addrStrs = append(addrStrs, addrStr)
+			addrStrs = []string{addrStr}
 		} else {
+			ledgerIndices, err = getLedgerIndices(ledgerDevice, ledgerAddresses)
+			if err != nil {
+				return kc, err
+			}
+			addrStrs = ledgerAddresses
 		}
 		ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("Ledger addresses: ")))
 		for _, addrStr := range addrStrs {
@@ -671,7 +680,40 @@ func GetKeychain(
 	return sf.KeyChain(), nil
 }
 
-func getLedgerIndicesFromAddresses() {
+func getLedgerIndices(ledgerDevice ledger.Ledger, addressesStr []string) ([]uint32, error) {
+	// get numLedgerAddressesToSearch addresses from the ledger
+	searchIndices := []uint32{}
+	for i := 0; i < numLedgerAddressesToSearch; i++ {
+		searchIndices = append(searchIndices, uint32(i))
+	}
+	searchAddresses, err := ledgerDevice.Addresses(searchIndices)
+	if err != nil {
+		return []uint32{}, err
+	}
+	if len(searchAddresses) != len(searchIndices) {
+		return []uint32{}, fmt.Errorf("invalid number of ledger addresses: expected %d got %d",
+			len(searchIndices), len(searchAddresses))
+	}
+	// get indices for the given addressesStr
+	ledgerIndices := []uint32{}
+	addresses, err := address.ParseToIDs(addressesStr)
+	if err != nil {
+		return []uint32{}, fmt.Errorf("failure parsing given ledger addresses: %w", err)
+	}
+	for i, addr := range addresses {
+		found := false
+		for searchIndex, searchAddr := range searchAddresses {
+			if addr == searchAddr {
+				found = true
+				ledgerIndices = append(ledgerIndices, uint32(searchIndex))
+				break
+			}
+		}
+		if found == false {
+			return []uint32{}, fmt.Errorf("address %s not found on ledger", addressesStr[i])
+		}
+	}
+	return ledgerIndices, nil
 }
 
 func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFullySigned bool) error {

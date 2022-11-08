@@ -57,6 +57,10 @@ func signTx(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if len(ledgerAddresses) > 0 {
+		useLedger = true
+	}
+
 	// we need network to decide if ledger is forced (mainnet)
 	network, err := txutils.GetNetwork(tx)
 	if err != nil {

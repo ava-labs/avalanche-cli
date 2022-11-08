@@ -94,6 +94,10 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if len(ledgerAddresses) > 0 {
+		useLedger = true
+	}
+
 	switch network {
 	case models.Fuji:
 		if !useLedger && keyName == "" {
