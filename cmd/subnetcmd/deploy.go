@@ -226,6 +226,11 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("unknown vm: %s", sidecar.VM)
 		}
 
+		if avagoVersion == "latest" {
+			// rpcVersion := sidecar.RPCVersion
+			// find latest avago version for this rpc version
+		}
+
 		deployer := subnet.NewLocalDeployer(app, avagoVersion, vmBin)
 		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
 		if err != nil {

@@ -101,5 +101,7 @@ const (
 	NotAvailableLabel = "Not available"
 	BackendCmd        = "avalanche-cli-backend"
 
-	SubnetEVMRPCCompatibilityURL = "https://raw.githubusercontent.com/ava-labs/subnet-evm/addComposability/compatibility.json"
+	AvalancheGoCompatibilityURL  = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
+	SubnetEVMRPCCompatibilityURL = "https://raw.githubusercontent.com/ava-labs/subnet-evm/master/compatibility.json"
+	SpacesVMRPCCompatibilityURL  = "https://raw.githubusercontent.com/ava-labs/spacesvm/addCompatibility/compatibility.json"
 )

@@ -32,6 +32,27 @@ func (_m *Downloader) Download(url string) ([]byte, error) {
 	return r0, r1
 }
 
+// GetLatestReleaseVersion provides a mock function with given fields: releaseURL
+func (_m *Downloader) GetLatestReleaseVersion(releaseURL string) (string, error) {
+	ret := _m.Called(releaseURL)
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(releaseURL)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(releaseURL)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 type mockConstructorTestingTNewDownloader interface {
 	mock.TestingT
 	Cleanup(func())

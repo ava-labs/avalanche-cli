@@ -87,8 +87,8 @@ func getMagic(app *application.Avalanche) (uint64, statemachine.StateDirection, 
 	return magic, statemachine.Forward, nil
 }
 
-func getDefaultGenesisValues() (uint64, string, core.GenesisAlloc, error) {
-	version, err := binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+func getDefaultGenesisValues(app *application.Avalanche) (uint64, string, core.GenesisAlloc, error) {
+	version, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 		constants.AvaLabsOrg,
 		constants.SpacesVMRepoName,
 	))
@@ -133,7 +133,7 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 			var useDefault bool
 			useDefault, err = app.Prompt.CaptureYesNo("Use default genesis?")
 			if useDefault {
-				magic, version, allocs, err = getDefaultGenesisValues()
+				magic, version, allocs, err = getDefaultGenesisValues(app)
 				if err == nil {
 					spacesVMState.Stop()
 				}

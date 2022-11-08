@@ -14,7 +14,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -152,7 +151,8 @@ func TestGetLatestAvagoVersion(t *testing.T) {
 	s := httptest.NewServer(testHandler)
 	defer s.Close()
 
-	v, err := binutils.GetLatestReleaseVersion(s.URL)
+	dl := application.NewDownloader()
+	v, err := dl.GetLatestReleaseVersion(s.URL)
 	assert.NoError(err)
 	assert.Equal(v, testVersion)
 }
