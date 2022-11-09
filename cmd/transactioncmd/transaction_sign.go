@@ -59,13 +59,13 @@ func signTx(cmd *cobra.Command, args []string) error {
 	}
 
 	if firstLedgerAddress && len(ledgerAddresses) > 0 {
-		return ErrMutuallyExlusiveLedgerEsp
+		return subnetcmd.ErrMutuallyExlusiveLedgerEsp
 	}
 	if firstLedgerAddress || len(ledgerAddresses) > 0 {
 		useLedger = true
 	}
 	if useLedger && keyName != "" {
-		return ErrMutuallyExlusiveKeyLedger
+		return subnetcmd.ErrMutuallyExlusiveKeyLedger
 	}
 
 	// we need network to decide if ledger is forced (mainnet)
