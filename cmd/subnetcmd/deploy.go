@@ -652,8 +652,8 @@ func GetKeychain(
 		}
 		// ask for addresses here to print user msg for ledger interaction
 		ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
-		addrStrs := []string{}
-		ledgerIndices := []uint32{}
+		var addrStrs []string
+		var ledgerIndices []uint32
 		if len(ledgerAddresses) == 0 {
 			// get addr at index 0
 			ledgerIndices = []uint32{0}
@@ -678,7 +678,7 @@ func GetKeychain(
 			}
 			addrStrs = ledgerAddresses
 		}
-		ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("Ledger addresses: ")))
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Ledger addresses: "))
 		for _, addrStr := range addrStrs {
 			ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("  %s", addrStr)))
 		}
@@ -724,7 +724,7 @@ func getLedgerIndices(ledgerDevice ledger.Ledger, addressesStr []string) ([]uint
 				break
 			}
 		}
-		if found == false {
+		if !found {
 			return []uint32{}, fmt.Errorf("address %s not found on ledger", addressesStr[i])
 		}
 	}
