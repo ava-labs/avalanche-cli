@@ -3,12 +3,11 @@
 package subnetcmd
 
 import (
-	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/spf13/cobra"
@@ -17,9 +16,11 @@ import (
 // avalanche subnet configure
 func newConfigureCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "configure [subnetName]",
-		Short:        "",
-		Long:         ``,
+		Use:   "configure [subnetName]",
+		Short: "Allows to add additional config files for the avalanchego nodes",
+		Long: `Avalanchego nodes can be configured at different levels. 
+For example, subnets have their own subnet config (applies to all chains/VMs in the subnet).
+And each chain or VM can have its own specific chain config file.`,
 		SilenceUsage: true,
 		RunE:         configure,
 		Args:         cobra.ExactArgs(1),
@@ -37,21 +38,17 @@ func configure(cmd *cobra.Command, args []string) error {
 	const (
 		subnetConf = "Subnet config"
 		chainConf  = "Chain config"
-		abort      = "Abort"
 	)
 
 	ux.Logger.PrintToUser("The " + logging.Cyan.Wrap("subnet") + logging.Reset.Wrap(" config file applies to *all* VMs in a subnet"))
 	ux.Logger.PrintToUser("The " + logging.Cyan.Wrap("chain") + logging.Reset.Wrap(" config file applies to a *specific* VM in a subnet"))
 
-	options := []string{subnetConf, chainConf, abort}
+	options := []string{subnetConf, chainConf}
 	selected, err := app.Prompt.CaptureList("Which configuration file would you like to update?", options)
 	if err != nil {
 		return err
 	}
 	switch selected {
-	case abort:
-		ux.Logger.PrintToUser("Aborted by user. Nothing changed.")
-		return nil
 	case subnetConf:
 		err = updateConf(subnetName, constants.SubnetConfigFileName)
 	case chainConf:
@@ -65,15 +62,15 @@ func configure(cmd *cobra.Command, args []string) error {
 }
 
 func updateConf(subnet, filename string) error {
-	path, err := app.Prompt.CaptureExistingFilepath("Where can we find the configuration file?")
+	path, err := app.Prompt.CaptureExistingFilepath("Enter the path to your configuration file")
 	if err != nil {
 		return err
 	}
-	fileBytes, err := validateJSON(path)
+	fileBytes, err := utils.ValidateJSON(path)
 	if err != nil {
 		return err
 	}
-	subnetDir := filepath.Join(app.GetBaseDir(), subnet)
+	subnetDir := filepath.Join(app.GetSubnetDir(), subnet)
 	if err := os.MkdirAll(subnetDir, constants.DefaultPerms755); err != nil {
 		return err
 	}
@@ -84,20 +81,4 @@ func updateConf(subnet, filename string) error {
 	ux.Logger.PrintToUser("File %s successfully written", fileName)
 
 	return nil
-}
-
-func validateJSON(path string) ([]byte, error) {
-	var content map[string]interface{}
-
-	contentBytes, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	// if the file is not valid json, this fails
-	if err := json.Unmarshal(contentBytes, &content); err != nil {
-		return nil, fmt.Errorf("this looks like invalid JSON: %w", err)
-	}
-
-	return contentBytes, nil
 }

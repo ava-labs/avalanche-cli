@@ -185,12 +185,8 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		chainConfigFile = filepath.Join(d.app.GetSubnetDir(), chain, constants.ChainConfigFileName)
 	)
 	if _, err := os.Stat(chainConfigFile); err == nil {
-		bChainConfig, err := os.ReadFile(chainConfigFile)
-		if err != nil {
-			d.app.Log.Warn("a chainconfig file has been found, but we failed to read it: %w", zap.Error(err))
-			return ids.Empty, ids.Empty, err
-		}
-		chainConfig = string(bChainConfig)
+		// currently the ANR only accepts the file as a path, not its content
+		chainConfig = chainConfigFile
 	}
 	// create a new blockchain on the already started network, associated to
 	// the given VM ID, genesis, and available subnet ID

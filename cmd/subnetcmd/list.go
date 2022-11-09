@@ -116,7 +116,12 @@ func listSubnets(cmd *cobra.Command, args []string) error {
 						deployedFuji = "Yes"
 					}
 				}
-				deployedMain := "N/A"
+				deployedMain := "No"
+				if _, ok := sc.Networks[models.Mainnet.String()]; ok {
+					if sc.Networks[models.Mainnet.String()].SubnetID != ids.Empty {
+						deployedMain = "Yes"
+					}
+				}
 				rows = append(rows, []string{
 					sc.Subnet,
 					sc.Name,
