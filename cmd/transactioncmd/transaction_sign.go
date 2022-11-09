@@ -86,7 +86,7 @@ func signTx(cmd *cobra.Command, args []string) error {
 		return errors.New("unsupported network")
 	}
 
-	if len(ledgerAddresses) == 0 {
+	if useLedger && len(ledgerAddresses) == 0 {
 		ledgerAddresses, err = subnetcmd.CaptureLedgerAddress(network)
 		if err != nil {
 			return err

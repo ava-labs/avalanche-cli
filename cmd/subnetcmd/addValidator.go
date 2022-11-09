@@ -123,7 +123,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		network = models.Local
 	}
 
-	if len(ledgerAddresses) == 0 {
+	if useLedger && len(ledgerAddresses) == 0 {
 		ledgerAddresses, err = CaptureLedgerAddress(network)
 		if err != nil {
 			return err
