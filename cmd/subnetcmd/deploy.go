@@ -278,7 +278,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	if useLedger && len(ledgerAddresses) == 0 && !firstLedgerAddress {
-		ledgerAddresses, err = CaptureLedgerAddress(network)
+		firstLedgerAddress, ledgerAddresses, err = CaptureLedgerAddress(network)
 		if err != nil {
 			return err
 		}
@@ -650,7 +650,7 @@ func GetKeychain(
 ) (keychain.Keychain, error) {
 	// get keychain accesor
 	var kc keychain.Keychain
-	if firstLedgerAddress {
+	if firstLedgerAddress || len(ledgerAddresses) > 0 {
 		ledgerDevice, err := ledger.New()
 		if err != nil {
 			return kc, err
@@ -659,7 +659,7 @@ func GetKeychain(
 		ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
 		var addrStrs []string
 		var ledgerIndices []uint32
-		if len(ledgerAddresses) == 0 {
+		if firstLedgerAddress {
 			// get addr at index 0
 			ledgerIndices = []uint32{0}
 			addresses, err := ledgerDevice.Addresses(ledgerIndices)
@@ -758,7 +758,7 @@ func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFu
 	return nil
 }
 
-func CaptureLedgerAddress(network models.Network) ([]string, error) {
+func CaptureLedgerAddress(network models.Network) (bool, []string, error) {
 	ledgerAddresses := []string{}
 	const (
 		firstAddr  = "Address at index 0"
@@ -769,15 +769,15 @@ func CaptureLedgerAddress(network models.Network) ([]string, error) {
 		[]string{firstAddr, customAddr},
 	)
 	if err != nil {
-		return []string{}, err
+		return false, []string{}, err
 	}
 	if option == customAddr {
 		addressPrompt := "Enter P-Chain address (Example: P-...)"
 		addr, err := app.Prompt.CapturePChainAddress(addressPrompt, network)
 		if err != nil {
-			return []string{}, err
+			return false, []string{}, err
 		}
 		ledgerAddresses = []string{addr}
 	}
-	return ledgerAddresses, nil
+	return option == firstAddr, ledgerAddresses, nil
 }

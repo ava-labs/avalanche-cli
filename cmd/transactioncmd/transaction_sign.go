@@ -91,7 +91,7 @@ func signTx(cmd *cobra.Command, args []string) error {
 	}
 
 	if useLedger && len(ledgerAddresses) == 0 && !firstLedgerAddress {
-		ledgerAddresses, err = subnetcmd.CaptureLedgerAddress(network)
+		firstLedgerAddress, ledgerAddresses, err = subnetcmd.CaptureLedgerAddress(network)
 		if err != nil {
 			return err
 		}
