@@ -124,7 +124,7 @@ func signTx(cmd *cobra.Command, args []string) error {
 	}
 
 	// get keychain accesor
-	kc, err := subnetcmd.GetKeychain(useLedger, ledgerAddresses, keyName, network)
+	kc, err := subnetcmd.GetKeychain(firstLedgerAddress, ledgerAddresses, keyName, network)
 	if err != nil {
 		return err
 	}

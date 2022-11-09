@@ -287,7 +287,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// from here on we are assuming a public deploy
 
 	// get keychain accesor
-	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
+	kc, err := GetKeychain(firstLedgerAddress, ledgerAddresses, keyName, network)
 	if err != nil {
 		return err
 	}
@@ -643,14 +643,14 @@ func PrintRemainingToSignMsg(
 }
 
 func GetKeychain(
-	useLedger bool,
+	firstLedgerAddress bool,
 	ledgerAddresses []string,
 	keyName string,
 	network models.Network,
 ) (keychain.Keychain, error) {
 	// get keychain accesor
 	var kc keychain.Keychain
-	if useLedger {
+	if firstLedgerAddress {
 		ledgerDevice, err := ledger.New()
 		if err != nil {
 			return kc, err
