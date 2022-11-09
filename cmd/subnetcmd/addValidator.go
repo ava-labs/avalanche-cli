@@ -47,7 +47,6 @@ This command currently only works on subnets deployed to the Fuji testnet.`,
 		RunE:         addValidator,
 		Args:         cobra.ExactArgs(1),
 	}
-	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
 	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
@@ -58,6 +57,7 @@ This command currently only works on subnets deployed to the Fuji testnet.`,
 	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate add validator tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the add validator tx")
+	cmd.Flags().BoolVarP(&firstLedgerAddress, "ledger", "g", false, "use first ledger address")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	return cmd
 }
@@ -94,7 +94,10 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if len(ledgerAddresses) > 0 {
+	if firstLedgerAddress && len(ledgerAddresses) > 0 {
+		return ErrMutuallyExlusiveLedgerEsp
+	}
+	if firstLedgerAddress || len(ledgerAddresses) > 0 {
 		useLedger = true
 	}
 	if useLedger && keyName != "" {
@@ -123,7 +126,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		network = models.Local
 	}
 
-	if useLedger && len(ledgerAddresses) == 0 {
+	if useLedger && len(ledgerAddresses) == 0 && !firstLedgerAddress {
 		ledgerAddresses, err = CaptureLedgerAddress(network)
 		if err != nil {
 			return err

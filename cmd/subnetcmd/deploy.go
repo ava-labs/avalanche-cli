@@ -37,22 +37,24 @@ import (
 const numLedgerAddressesToSearch = 1000
 
 var (
-	deployLocal     bool
-	deployTestnet   bool
-	deployMainnet   bool
-	useLedger       bool
-	sameControlKey  bool
-	keyName         string
-	threshold       uint32
-	controlKeys     []string
-	subnetAuthKeys  []string
-	avagoVersion    string
-	outputTxPath    string
-	ledgerAddresses []string
+	deployLocal        bool
+	deployTestnet      bool
+	deployMainnet      bool
+	sameControlKey     bool
+	keyName            string
+	threshold          uint32
+	controlKeys        []string
+	subnetAuthKeys     []string
+	avagoVersion       string
+	outputTxPath       string
+	useLedger          bool
+	firstLedgerAddress bool
+	ledgerAddresses    []string
 
 	errMutuallyExlusiveNetworks    = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
+	ErrMutuallyExlusiveLedgerEsp   = errors.New("--ledger and --ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet          = errors.New("--key is not available for mainnet operations")
 )
 
@@ -84,13 +86,13 @@ subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "deploy to fuji (alias to `testnet`")
 	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "deploy to mainnet")
 	cmd.Flags().StringVar(&avagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
-	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
 	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use creation key as control key")
 	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to make subnet changes")
 	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may make subnet changes")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate chain creation")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
+	cmd.Flags().BoolVarP(&firstLedgerAddress, "ledger", "g", false, "use first ledger address")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	return cmd
 }
@@ -207,7 +209,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	genesisPath := app.GetGenesisPath(chain)
 
-	if len(ledgerAddresses) > 0 {
+	if firstLedgerAddress && len(ledgerAddresses) > 0 {
+		return ErrMutuallyExlusiveLedgerEsp
+	}
+	if firstLedgerAddress || len(ledgerAddresses) > 0 {
 		useLedger = true
 	}
 	if useLedger && keyName != "" {
@@ -272,7 +277,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		network = models.Local
 	}
 
-	if useLedger && len(ledgerAddresses) == 0 {
+	if useLedger && len(ledgerAddresses) == 0 && !firstLedgerAddress {
 		ledgerAddresses, err = CaptureLedgerAddress(network)
 		if err != nil {
 			return err

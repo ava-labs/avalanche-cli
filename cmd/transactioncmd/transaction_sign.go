@@ -18,10 +18,11 @@ import (
 const inputTxPathFlag = "input-tx-filepath"
 
 var (
-	inputTxPath     string
-	useLedger       bool
-	keyName         string
-	ledgerAddresses []string
+	inputTxPath        string
+	keyName            string
+	useLedger          bool
+	firstLedgerAddress bool
+	ledgerAddresses    []string
 
 	errNoSubnetID = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 )
@@ -38,8 +39,8 @@ func newTransactionSignCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&inputTxPath, inputTxPathFlag, "", "Path to the transaction file for signing")
-	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
+	cmd.Flags().BoolVarP(&firstLedgerAddress, "ledger", "g", false, "use first ledger address")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	return cmd
 }
@@ -57,11 +58,14 @@ func signTx(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if len(ledgerAddresses) > 0 {
+	if firstLedgerAddress && len(ledgerAddresses) > 0 {
+		return ErrMutuallyExlusiveLedgerEsp
+	}
+	if firstLedgerAddress || len(ledgerAddresses) > 0 {
 		useLedger = true
 	}
 	if useLedger && keyName != "" {
-		return subnetcmd.ErrMutuallyExlusiveKeyLedger
+		return ErrMutuallyExlusiveKeyLedger
 	}
 
 	// we need network to decide if ledger is forced (mainnet)
@@ -86,7 +90,7 @@ func signTx(cmd *cobra.Command, args []string) error {
 		return errors.New("unsupported network")
 	}
 
-	if useLedger && len(ledgerAddresses) == 0 {
+	if useLedger && len(ledgerAddresses) == 0 && !firstLedgerAddress {
 		ledgerAddresses, err = subnetcmd.CaptureLedgerAddress(network)
 		if err != nil {
 			return err
