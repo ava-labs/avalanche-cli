@@ -18,7 +18,6 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/math"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -91,11 +90,20 @@ keys or for the ledger addresses associated to certain indices.`,
 	return cmd
 }
 
+type clients struct {
+	fujiPClient platformvm.Client
+}
+
 func listKeys(cmd *cobra.Command, args []string) error {
+	fujiPClient := platformvm.NewClient(constants.FujiAPIEndpoint)
+	clis := clients{
+		fujiPClient: fujiPClient,
+	}
 	var err error
 	addrInfos := []addressInfo{}
+	networks := []models.Network{models.Fuji}
 	if len(ledgerIndices) > 0 {
-		addrInfos, err = getLedgerAddrInfos(ledgerIndices)
+		addrInfos, err = getLedgerAddrInfos(clis, ledgerIndices, networks)
 		if err != nil {
 			return err
 		}
@@ -115,7 +123,7 @@ func listKeys(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func getLedgerAddrInfos(ledgerIndices []uint) ([]addressInfo, error) {
+func getLedgerAddrInfos(clis clients, ledgerIndices []uint, networks []models.Network) ([]addressInfo, error) {
 	ledgerDevice, err := ledger.New()
 	if err != nil {
 		return []addressInfo{}, err
@@ -128,27 +136,47 @@ func getLedgerAddrInfos(ledgerIndices []uint) ([]addressInfo, error) {
 		return []addressInfo{}, err
 	}
 	if len(addresses) != toDerive {
-		return []addressInfo{}, fmt.Errorf("derived addresses %d differ from expected %d", len(addresses), toDerive)
+		return []addressInfo{}, fmt.Errorf("derived addresses length %d differs from expected %d", len(addresses), toDerive)
 	}
-	network := models.Local
-	networkID, err := network.NetworkID()
-	if err != nil {
-		return []addressInfo{}, err
-	}
+	addrInfos := []addressInfo{}
 	for _, index := range ledgerIndices {
 		addr := addresses[index]
-		addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
+		addrInfo, err := getLedgerAddrInfo(clis, index, []models.Network{}, addr)
 		if err != nil {
 			return []addressInfo{}, err
 		}
-		ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("Ledger address: %s", addrStr)))
+		addrInfos = append(addrInfos, addrInfo)
 	}
-	return []addressInfo{}, nil
+	return addrInfos, nil
+}
+
+func getLedgerAddrInfo(clis clients, index uint, networks []models.Network, addr ids.ShortID) (addressInfo, error) {
+	network := models.Fuji
+	networkID, err := network.NetworkID()
+	if err != nil {
+		return addressInfo{}, err
+	}
+	addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
+	if err != nil {
+		return addressInfo{}, err
+	}
+	balance, err := getPChainBalanceStr(context.Background(), clis.fujiPClient, addrStr)
+	if err != nil {
+		return addressInfo{}, err
+	}
+	return addressInfo{
+		kind:    "ledger",
+		name:    fmt.Sprintf("index %d", index),
+		chain:   "P-Chain (Bech32 format)",
+		address: addrStr,
+		balance: balance,
+		network: network.String(),
+	}, nil
 }
 
 type addressInfo struct {
-	name    string
 	kind    string
+	name    string
 	chain   string
 	address string
 	balance string
@@ -156,7 +184,7 @@ type addressInfo struct {
 }
 
 func printAddrInfos(addrInfos []addressInfo) {
-	header := []string{"Name", "Kind", "Chain", "Address", "Balance", "Network"}
+	header := []string{"Kind", "Name", "Chain", "Address", "Balance", "Network"}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetRowLine(true)
