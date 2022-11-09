@@ -29,12 +29,17 @@ import (
 )
 
 const (
-	allNetworksFlag   = "all-networks"
+	localFlag         = "local"
+	fujiFlag          = "fuji"
+	testnetFlag       = "testnet"
+	mainnetFlag       = "mainnet"
 	ledgerIndicesFlag = "ledger"
 )
 
 var (
-	allNetworks   bool
+	local         bool
+	testnet       bool
+	mainnet       bool
 	ledgerIndices []uint
 )
 
@@ -42,25 +47,46 @@ var (
 func newListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List all created signing keys",
-		Long: `The key list command prints the names of all created signing
-keys.`,
+		Short: "List stored signing keys or ledger addresses",
+		Long: `The key list command prints information for all stored signing
+keys or for the ledger addresses associated to certain indices.`,
 		RunE:         listKeys,
 		SilenceUsage: true,
 	}
 	cmd.Flags().BoolVarP(
-		&allNetworks,
-		allNetworksFlag,
-		"a",
+		&local,
+		localFlag,
+		"l",
 		false,
-		"list also local network addresses",
+		"list local network addresses",
+	)
+	cmd.Flags().BoolVarP(
+		&testnet,
+		fujiFlag,
+		"f",
+		false,
+		"list testnet (fuji) network addresses",
+	)
+	cmd.Flags().BoolVarP(
+		&testnet,
+		testnetFlag,
+		"t",
+		false,
+		"list testnet (fuji) network addresses",
+	)
+	cmd.Flags().BoolVarP(
+		&mainnet,
+		mainnetFlag,
+		"m",
+		false,
+		"list mainnet network addresses",
 	)
 	cmd.Flags().UintSliceVarP(
 		&ledgerIndices,
 		ledgerIndicesFlag,
-		"l",
+		"g",
 		[]uint{},
-		"list ledger addresses for the given indices (if two are given, will consider they as a range specification)",
+		"list ledger addresses for the given indices",
 	)
 	return cmd
 }
@@ -156,9 +182,9 @@ func getAddrInfos(keyPaths []string) error {
 		models.Mainnet.String(): avago_constants.MainnetID,
 	}
 
-	if allNetworks {
-		supportedNetworks[models.Local.String()] = 0
-	}
+	//if allNetworks {
+	//	supportedNetworks[models.Local.String()] = 0
+	//}
 
 	// get clients
 	ctx := context.Background()
