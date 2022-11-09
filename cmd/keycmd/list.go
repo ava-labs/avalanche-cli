@@ -10,16 +10,16 @@ import (
 	"path/filepath"
 	"strings"
 
-	ledger "github.com/ava-labs/avalanche-ledger-go"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	ledger "github.com/ava-labs/avalanche-ledger-go"
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
-	"github.com/ava-labs/avalanchego/utils/logging"
-    "github.com/ava-labs/avalanchego/utils/math"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/math"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/coreth/ethclient"
@@ -29,13 +29,13 @@ import (
 )
 
 const (
-    allNetworksFlag = "all-networks"
-    ledgerIndicesFlag = "ledger"
+	allNetworksFlag   = "all-networks"
+	ledgerIndicesFlag = "ledger"
 )
 
 var (
-    allNetworks bool
-    ledgerIndices []uint
+	allNetworks   bool
+	ledgerIndices []uint
 )
 
 // avalanche subnet list
@@ -59,44 +59,44 @@ keys.`,
 		&ledgerIndices,
 		ledgerIndicesFlag,
 		"l",
-        []uint{},
+		[]uint{},
 		"list ledger addresses for the given indices (if two are given, will consider they as a range specification)",
 	)
 	return cmd
 }
 
 func listKeys(cmd *cobra.Command, args []string) error {
-    if len(ledgerIndices) > 0 {
-        ledgerDevice, err := ledger.New()
-        if err != nil {
-            return err
-        }
-        // ask for addresses here to print user msg for ledger interaction
-        ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
-        maxIndex := math.Max(0, ledgerIndices...)
-        toDerive := int(maxIndex+1)
-        addresses, err := ledgerDevice.Addresses(toDerive)
-        if err != nil {
-            return err
-        }
-        if len(addresses) != toDerive {
-            return fmt.Errorf("derived addresses %d differ from expected %d", len(addresses), toDerive)
-        }
-        network := models.Local
-        networkID, err := network.NetworkID()
-        if err != nil {
-            return err
-        }
-        for _, index := range ledgerIndices {
-            addr := addresses[index]
-            addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
-            if err != nil {
-                return err
-            }
-            ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("Ledger address: %s", addrStr)))
-        }
-    }
-    return nil
+	if len(ledgerIndices) > 0 {
+		ledgerDevice, err := ledger.New()
+		if err != nil {
+			return err
+		}
+		// ask for addresses here to print user msg for ledger interaction
+		ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
+		maxIndex := math.Max(0, ledgerIndices...)
+		toDerive := int(maxIndex + 1)
+		addresses, err := ledgerDevice.Addresses(toDerive)
+		if err != nil {
+			return err
+		}
+		if len(addresses) != toDerive {
+			return fmt.Errorf("derived addresses %d differ from expected %d", len(addresses), toDerive)
+		}
+		network := models.Local
+		networkID, err := network.NetworkID()
+		if err != nil {
+			return err
+		}
+		for _, index := range ledgerIndices {
+			addr := addresses[index]
+			addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
+			if err != nil {
+				return err
+			}
+			ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("Ledger address: %s", addrStr)))
+		}
+	}
+	return nil
 
 	files, err := os.ReadDir(app.GetKeyDir())
 	if err != nil {
@@ -110,10 +110,41 @@ func listKeys(cmd *cobra.Command, args []string) error {
 			keyPaths[i] = filepath.Join(app.GetKeyDir(), f.Name())
 		}
 	}
-	return printAddresses(keyPaths)
+
+	addrInfos := []addressInfo{}
+	printAddrInfos(addrInfos)
+
+	return nil
 }
 
-func printAddresses(keyPaths []string) error {
+type addressInfo struct {
+	name    string
+	kind    string
+	chain   string
+	address string
+	balance string
+	network string
+}
+
+func printAddrInfos(addrInfos []addressInfo) {
+	header := []string{"Name", "Kind", "Chain", "Address", "Balance", "Network"}
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(header)
+	table.SetRowLine(true)
+	table.SetAutoMergeCellsByColumnIndex([]int{0, 1})
+	for _, addrInfo := range addrInfos {
+		table.Append([]string{
+			addrInfo.name,
+			addrInfo.kind,
+			addrInfo.chain,
+			addrInfo.address,
+			addrInfo.balance,
+			addrInfo.network})
+	}
+	table.Render()
+}
+
+func getAddrInfos(keyPaths []string) error {
 	header := []string{"Key Name", "Chain", "Address", "Balance", "Network"}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
@@ -121,15 +152,15 @@ func printAddresses(keyPaths []string) error {
 	table.SetAutoMergeCellsByColumnIndex([]int{0, 1})
 
 	supportedNetworks := map[string]uint32{
-		models.Fuji.String(): avago_constants.FujiID,
-        models.Mainnet.String(): avago_constants.MainnetID,
+		models.Fuji.String():    avago_constants.FujiID,
+		models.Mainnet.String(): avago_constants.MainnetID,
 	}
 
 	if allNetworks {
 		supportedNetworks[models.Local.String()] = 0
 	}
 
-    // get clients
+	// get clients
 	ctx := context.Background()
 	fujiPClient := platformvm.NewClient(constants.FujiAPIEndpoint)
 	fujiCClient, err := ethclient.Dial(fmt.Sprintf("%s/ext/bc/%s/rpc", constants.FujiAPIEndpoint, "C"))
@@ -141,8 +172,8 @@ func printAddresses(keyPaths []string) error {
 	if err != nil {
 		return err
 	}
-    _ = mainnetPClient
-    _ = mainnetCClient
+	_ = mainnetPClient
+	_ = mainnetCClient
 
 	for _, keyPath := range keyPaths {
 		keyName := strings.TrimSuffix(filepath.Base(keyPath), constants.KeySuffix)
