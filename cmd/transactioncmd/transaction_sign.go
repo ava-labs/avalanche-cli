@@ -60,6 +60,9 @@ func signTx(cmd *cobra.Command, args []string) error {
 	if len(ledgerAddresses) > 0 {
 		useLedger = true
 	}
+	if useLedger && keyName != "" {
+		return subnetcmd.ErrMutuallyExlusiveKeyLedger
+	}
 
 	// we need network to decide if ledger is forced (mainnet)
 	network, err := txutils.GetNetwork(tx)
@@ -76,8 +79,18 @@ func signTx(cmd *cobra.Command, args []string) error {
 		}
 	case models.Mainnet:
 		useLedger = true
+		if keyName != "" {
+			return subnetcmd.ErrStoredKeyOnMainnet
+		}
 	default:
 		return errors.New("unsupported network")
+	}
+
+	if len(ledgerAddresses) == 0 {
+		ledgerAddresses, err = subnetcmd.CaptureLedgerAddress(network)
+		if err != nil {
+			return err
+		}
 	}
 
 	// we need subnet wallet signing validation + process

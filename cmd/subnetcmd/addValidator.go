@@ -97,6 +97,9 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	if len(ledgerAddresses) > 0 {
 		useLedger = true
 	}
+	if useLedger && keyName != "" {
+		return ErrMutuallyExlusiveKeyLedger
+	}
 
 	switch network {
 	case models.Fuji:
@@ -108,6 +111,9 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		}
 	case models.Mainnet:
 		useLedger = true
+		if keyName != "" {
+			return ErrStoredKeyOnMainnet
+		}
 	default:
 		return errors.New("unsupported network")
 	}
@@ -115,6 +121,13 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	// used in E2E to simulate public network execution paths on a local network
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
 		network = models.Local
+	}
+
+	if len(ledgerAddresses) == 0 {
+		ledgerAddresses, err = CaptureLedgerAddress(network)
+		if err != nil {
+			return err
+		}
 	}
 
 	chains, err := validateSubnetNameAndGetChains(args)

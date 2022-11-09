@@ -52,6 +52,8 @@ var (
 
 	errMutuallyExlusiveNetworks    = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
+	ErrMutuallyExlusiveKeyLedger   = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
+	ErrStoredKeyOnMainnet          = errors.New("--key is not available for mainnet operations")
 )
 
 // avalanche subnet deploy
@@ -208,6 +210,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	if len(ledgerAddresses) > 0 {
 		useLedger = true
 	}
+	if useLedger && keyName != "" {
+		return ErrMutuallyExlusiveKeyLedger
+	}
 
 	switch network {
 	case models.Local:
@@ -254,6 +259,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	case models.Mainnet:
 		useLedger = true
+		if keyName != "" {
+			return ErrStoredKeyOnMainnet
+		}
 
 	default:
 		return errors.New("not implemented")
@@ -262,6 +270,13 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// used in E2E to simulate public network execution paths on a local network
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
 		network = models.Local
+	}
+
+	if len(ledgerAddresses) == 0 {
+		ledgerAddresses, err = CaptureLedgerAddress(network)
+		if err != nil {
+			return err
+		}
 	}
 
 	// from here on we are assuming a public deploy
@@ -736,4 +751,28 @@ func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFu
 	}
 	table.Render()
 	return nil
+}
+
+func CaptureLedgerAddress(network models.Network) ([]string, error) {
+	ledgerAddresses := []string{}
+	const (
+		firstAddr  = "Address at index 0"
+		customAddr = "Custom address"
+	)
+	option, err := app.Prompt.CaptureList(
+		"Pick an address to use:",
+		[]string{firstAddr, customAddr},
+	)
+	if err != nil {
+		return []string{}, err
+	}
+	if option == customAddr {
+		addressPrompt := "Enter P-Chain address (Example: P-...)"
+		addr, err := app.Prompt.CapturePChainAddress(addressPrompt, network)
+		if err != nil {
+			return []string{}, err
+		}
+		ledgerAddresses = []string{addr}
+	}
+	return ledgerAddresses, nil
 }
