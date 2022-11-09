@@ -92,55 +92,58 @@ keys or for the ledger addresses associated to certain indices.`,
 }
 
 func listKeys(cmd *cobra.Command, args []string) error {
-	if len(ledgerIndices) > 0 {
-		ledgerDevice, err := ledger.New()
-		if err != nil {
-			return err
-		}
-		// ask for addresses here to print user msg for ledger interaction
-		ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
-		maxIndex := math.Max(0, ledgerIndices...)
-		toDerive := int(maxIndex + 1)
-		addresses, err := ledgerDevice.Addresses(toDerive)
-		if err != nil {
-			return err
-		}
-		if len(addresses) != toDerive {
-			return fmt.Errorf("derived addresses %d differ from expected %d", len(addresses), toDerive)
-		}
-		network := models.Local
-		networkID, err := network.NetworkID()
-		if err != nil {
-			return err
-		}
-		for _, index := range ledgerIndices {
-			addr := addresses[index]
-			addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
-			if err != nil {
-				return err
-			}
-			ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("Ledger address: %s", addrStr)))
-		}
-	}
-	return nil
-
-	files, err := os.ReadDir(app.GetKeyDir())
-	if err != nil {
-		return err
-	}
-
-	keyPaths := make([]string, len(files))
-
-	for i, f := range files {
-		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
-			keyPaths[i] = filepath.Join(app.GetKeyDir(), f.Name())
-		}
-	}
-
+	var err error
 	addrInfos := []addressInfo{}
+	if len(ledgerIndices) > 0 {
+		addrInfos, err = getLedgerAddrInfos(ledgerIndices)
+		if err != nil {
+			return err
+		}
+	} else {
+		files, err := os.ReadDir(app.GetKeyDir())
+		if err != nil {
+			return err
+		}
+		keyPaths := make([]string, len(files))
+		for i, f := range files {
+			if strings.HasSuffix(f.Name(), constants.KeySuffix) {
+				keyPaths[i] = filepath.Join(app.GetKeyDir(), f.Name())
+			}
+		}
+	}
 	printAddrInfos(addrInfos)
-
 	return nil
+}
+
+func getLedgerAddrInfos(ledgerIndices []uint) ([]addressInfo, error) {
+	ledgerDevice, err := ledger.New()
+	if err != nil {
+		return []addressInfo{}, err
+	}
+	ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
+	maxIndex := math.Max(0, ledgerIndices...)
+	toDerive := int(maxIndex + 1)
+	addresses, err := ledgerDevice.Addresses(toDerive)
+	if err != nil {
+		return []addressInfo{}, err
+	}
+	if len(addresses) != toDerive {
+		return []addressInfo{}, fmt.Errorf("derived addresses %d differ from expected %d", len(addresses), toDerive)
+	}
+	network := models.Local
+	networkID, err := network.NetworkID()
+	if err != nil {
+		return []addressInfo{}, err
+	}
+	for _, index := range ledgerIndices {
+		addr := addresses[index]
+		addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
+		if err != nil {
+			return []addressInfo{}, err
+		}
+		ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("Ledger address: %s", addrStr)))
+	}
+	return []addressInfo{}, nil
 }
 
 type addressInfo struct {
@@ -157,7 +160,7 @@ func printAddrInfos(addrInfos []addressInfo) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetRowLine(true)
-	table.SetAutoMergeCellsByColumnIndex([]int{0, 1})
+	table.SetAutoMergeCellsByColumnIndex([]int{0, 1, 2})
 	for _, addrInfo := range addrInfos {
 		table.Append([]string{
 			addrInfo.name,
