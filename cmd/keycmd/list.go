@@ -108,7 +108,7 @@ keys or for the ledger addresses associated to certain indices.`,
 	return cmd
 }
 
-func getClients(networks []models.Network, getCChainClients bool) (
+func getClients(networks []models.Network, cchain bool) (
     map[models.Network]platformvm.Client,
     map[models.Network]ethclient.Client,
     error,
@@ -124,7 +124,7 @@ func getClients(networks []models.Network, getCChainClients bool) (
     for _, network := range networks {
         fmt.Println("p", network)
 		pClients[network] = platformvm.NewClient(apiEndpoints[network])
-        if getCChainClients {
+        if cchain {
             fmt.Println("c", network)
             cClients[network], err = ethclient.Dial(fmt.Sprintf("%s/ext/bc/%s/rpc", apiEndpoints[network], "C"))
             if err != nil {
@@ -177,6 +177,7 @@ func getStoredKeyInfos(
 	pClients map[models.Network]platformvm.Client,
 	cClients map[models.Network]ethclient.Client,
 	networks []models.Network,
+    cchain bool,
 ) ([]addressInfo, error) {
     files, err := os.ReadDir(app.GetKeyDir())
     if err != nil {
@@ -197,16 +198,37 @@ func getStoredKeyInfo(
 	cClients map[models.Network]ethclient.Client,
 	network models.Network,
     ketPath string,
+    cchain bool,
 ) (addressInfo, error) {
 	networkID, err := network.NetworkID()
 	if err != nil {
 		return addressInfo{}, err
 	}
-	addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
-	if err != nil {
-		return addressInfo{}, err
-	}
-	balance, err := getPChainBalanceStr(context.Background(), pClients[network], addrStr)
+    keyName := strings.TrimSuffix(filepath.Base(keyPath), constants.KeySuffix)
+    sk, err := key.LoadSoft(networkID, keyPath)
+    if err != nil {
+        return addressInfo{}, err
+    }
+    if cchain {
+        cChainAddr := sk.C()
+        cChainBalance, err := getCChainBalanceStr(context.Background(), cClients[network], cChainAddr)
+        if err != nil {
+            // just ignore local network errors
+            if network != models.Local {
+                return addressInfo{}, err
+            }
+        }
+        return addressInfo{
+            kind:    "stored",
+            name:    keyName,
+            chain:   "C-Chain (Ethereum hex format)",
+            address: cChainAddr,
+            balance: cChainBalance,
+            network: network.String(),
+        }, nil
+    }
+    pChainAddr := sk.P()
+	balance, err := getPChainBalanceStr(context.Background(), pClients[network], pChainAddr)
 	if err != nil {
 		// just ignore local network errors
 		if network != models.Local {
@@ -214,49 +236,13 @@ func getStoredKeyInfo(
 		}
 	}
 	return addressInfo{
-		kind:    "ledger",
-		name:    fmt.Sprintf("index %d", index),
+		kind:    "stored",
+		name:    keyName,
 		chain:   "P-Chain (Bech32 format)",
 		address: addrStr,
 		balance: balance,
 		network: network.String(),
 	}, nil
-
-
-
-    keyName := strings.TrimSuffix(filepath.Base(keyPath), constants.KeySuffix)
-    sk, err := key.LoadSoft(networkID, keyPath)
-    if err != nil {
-        return addressInfo{}, err
-    }
-    cChainAddr := sk.C()
-    cChainBalance := ""
-    cChainBalance, err = getCChainBalanceStr(ctx, cClients[network], strC)
-    if err != nil {
-        return addressInfo{}, err
-    }
-    table.Append([]string{keyName, "C-Chain (Ethereum hex format)", strC, balanceStr, net})
-	return addressInfo{
-		kind:    "stored",
-		name:    keyName,
-		chain:   "C-Chain (Ethereum hex format)",
-		address: cChainAddr,
-		balance: cChainBalance,
-		network: network.String(),
-	}, nil
-
-    strP := sk.P()
-    for _, p := range strP {
-        balanceStr := ""
-        if net == models.Fuji.String() {
-            var err error
-            balanceStr, err = getPChainBalanceStr(ctx, fujiPClient, p)
-            if err != nil {
-                return err
-            }
-        }
-        table.Append([]string{keyName, "P-Chain (Bech32 format)", p, balanceStr, net})
-    }
 }
 
 func getLedgerAddrInfos(
