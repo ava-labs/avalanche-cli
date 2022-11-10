@@ -144,6 +144,8 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 
 		// check avago install
 		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion1)).Should(gomega.BeTrue())
+		// FIXME: If we have to use twice the same version (because they are incompatible
+		// between each other), then the following will necessarily fail:
 		// gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion2)).Should(gomega.BeFalse())
 
 		commands.CleanNetwork()
