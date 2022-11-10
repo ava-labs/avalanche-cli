@@ -156,25 +156,38 @@ func listKeys(cmd *cobra.Command, args []string) error {
     if err != nil {
         return err
     }
-	if len(ledgerIndices) > 0 {
+	if queryLedger {
 		addrInfos, err = getLedgerAddrInfos(pClients, ledgerIndices, networks)
 		if err != nil {
 			return err
 		}
 	} else {
-		files, err := os.ReadDir(app.GetKeyDir())
+		addrInfos, err = getStoredKeyInfos(pClients, cClients, networks)
 		if err != nil {
 			return err
-		}
-		keyPaths := make([]string, len(files))
-		for i, f := range files {
-			if strings.HasSuffix(f.Name(), constants.KeySuffix) {
-				keyPaths[i] = filepath.Join(app.GetKeyDir(), f.Name())
-			}
 		}
 	}
 	printAddrInfos(addrInfos)
 	return nil
+}
+
+func getStoredKeyInfos(
+	pClients map[models.Network]platformvm.Client,
+	cClients map[models.Network]ethclient.Client,
+	networks []models.Network,
+) ([]addressInfo, error) {
+    files, err := os.ReadDir(app.GetKeyDir())
+    if err != nil {
+        return err
+    }
+    keyPaths := make([]string, len(files))
+    for i, f := range files {
+        if strings.HasSuffix(f.Name(), constants.KeySuffix) {
+            keyPaths[i] = filepath.Join(app.GetKeyDir(), f.Name())
+        }
+    }
+	addrInfos := []addressInfo{}
+    return addrInfos
 }
 
 func getLedgerAddrInfos(
