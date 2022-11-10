@@ -709,14 +709,12 @@ func checkForInvalidDeployAndSetAvagoVersion(network nw.StatusChecker, configure
 					configuredRPCVersion,
 				)
 			}
-
 		} else {
 			// user wants a specific version
 			if runningAvagoVersion != avagoVersion {
 				return errors.New("incompatible avalanchego version selected")
 			}
 		}
-
 	} else {
 		if avagoVersion == "latest" {
 			// find latest avago version for this rpc version

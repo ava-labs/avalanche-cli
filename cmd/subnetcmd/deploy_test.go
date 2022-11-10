@@ -93,7 +93,6 @@ func TestMutuallyExclusive(t *testing.T) {
 }
 
 func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
-
 	type test struct {
 		networkRPC      int
 		networkVersion  string

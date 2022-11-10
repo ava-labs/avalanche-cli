@@ -14,7 +14,10 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-const forceFlag = "force"
+const (
+	forceFlag = "force"
+	latest    = "latest"
+)
 
 var (
 	forceCreate      bool
@@ -58,7 +61,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&useSpacesVM, "spacesvm", false, "use the SpacesVM as the base template")
 	cmd.Flags().StringVar(&vmVersion, "vm-version", "", "version of vm template to use")
 	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
-	cmd.Flags().BoolVar(&useLatestVersion, "latest", false, "use latest VM version, takes precedence over --vm-version")
+	cmd.Flags().BoolVar(&useLatestVersion, latest, false, "use latest VM version, takes precedence over --vm-version")
 	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
 	return cmd
 }
@@ -123,10 +126,10 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	)
 
 	if useLatestVersion {
-		vmVersion = "latest"
+		vmVersion = latest
 	}
 
-	if vmVersion != "latest" && vmVersion != "" && !semver.IsValid(vmVersion) {
+	if vmVersion != latest && vmVersion != "" && !semver.IsValid(vmVersion) {
 		return fmt.Errorf("invalid version string, should be semantic version (ex: v1.1.1): %s", vmVersion)
 	}
 

@@ -13,6 +13,11 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+const (
+	testAvagoVersion         = "v0.4.2"
+	testUnlistedAvagoVersion = "v0.4.3"
+)
+
 var (
 	testSubnetEVMCompat = []byte("{\"rpcChainVMProtocolVersion\": {\"v0.4.2\": 18,\"v0.4.1\": 18,\"v0.4.0\": 17}}")
 	testAvagoCompat     = []byte("{\"19\": [\"v1.9.2\"],\"18\": [\"v1.9.1\"],\"17\": [\"v1.9.0\",\"v1.8.0\"]}")
@@ -22,7 +27,6 @@ var (
 
 func TestGetRPCProtocolVersionSubnetEVM(t *testing.T) {
 	assert := assert.New(t)
-	version := "v0.4.2"
 	expectedRPC := 18
 	var vm models.VMType = models.SubnetEvm
 
@@ -32,14 +36,13 @@ func TestGetRPCProtocolVersionSubnetEVM(t *testing.T) {
 	app := application.New()
 	app.Downloader = mockDownloader
 
-	rpcVersion, err := GetRPCProtocolVersion(app, vm, version)
+	rpcVersion, err := GetRPCProtocolVersion(app, vm, testAvagoVersion)
 	assert.NoError(err)
 	assert.Equal(expectedRPC, rpcVersion)
 }
 
 func TestGetRPCProtocolVersionSpacesVM(t *testing.T) {
 	assert := assert.New(t)
-	version := "v0.4.2"
 	expectedRPC := 18
 	var vm models.VMType = models.SpacesVM
 
@@ -49,25 +52,23 @@ func TestGetRPCProtocolVersionSpacesVM(t *testing.T) {
 	app := application.New()
 	app.Downloader = mockDownloader
 
-	rpcVersion, err := GetRPCProtocolVersion(app, vm, version)
+	rpcVersion, err := GetRPCProtocolVersion(app, vm, testAvagoVersion)
 	assert.NoError(err)
 	assert.Equal(expectedRPC, rpcVersion)
 }
 
 func TestGetRPCProtocolVersionUnknownVM(t *testing.T) {
 	assert := assert.New(t)
-	version := "v0.4.2"
 	var vm models.VMType = "unknown"
 
 	app := application.New()
 
-	_, err := GetRPCProtocolVersion(app, vm, version)
+	_, err := GetRPCProtocolVersion(app, vm, testAvagoVersion)
 	assert.ErrorContains(err, "unknown VM type")
 }
 
 func TestGetRPCProtocolVersionMissing(t *testing.T) {
 	assert := assert.New(t)
-	version := "v0.4.3"
 
 	mockDownloader := &mocks.Downloader{}
 	mockDownloader.On("Download", mock.Anything).Return(testSubnetEVMCompat, nil)
@@ -75,7 +76,7 @@ func TestGetRPCProtocolVersionMissing(t *testing.T) {
 	app := application.New()
 	app.Downloader = mockDownloader
 
-	_, err := GetRPCProtocolVersion(app, models.SubnetEvm, version)
+	_, err := GetRPCProtocolVersion(app, models.SubnetEvm, testUnlistedAvagoVersion)
 	assert.ErrorContains(err, "no RPC version found")
 }
 
@@ -129,14 +130,14 @@ func TestGetLatestAvalancheGoByProtocolVersion(t *testing.T) {
 			testData:        testAvagoCompat2,
 			latestVersion:   "v1.9.2",
 			expectedVersion: "",
-			expectedErr:     NoAvagoVersion,
+			expectedErr:     ErrNoAvagoVersion,
 		},
 		{
 			rpc:             19,
 			testData:        testAvagoCompat,
 			latestVersion:   "v1.9.1",
 			expectedVersion: "",
-			expectedErr:     NoAvagoVersion,
+			expectedErr:     ErrNoAvagoVersion,
 		},
 	}
 	for _, tt := range tests {
@@ -156,7 +157,5 @@ func TestGetLatestAvalancheGoByProtocolVersion(t *testing.T) {
 			assert.ErrorIs(err, tt.expectedErr)
 		}
 		assert.Equal(tt.expectedVersion, avagoVersion)
-
 	}
-
 }

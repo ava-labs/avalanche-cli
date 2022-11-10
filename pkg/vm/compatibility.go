@@ -16,7 +16,7 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-var NoAvagoVersion = errors.New("unable to find a compatible avalanchego version")
+var ErrNoAvagoVersion = errors.New("unable to find a compatible avalanchego version")
 
 func GetRPCProtocolVersion(app *application.Avalanche, vmType models.VMType, vmVersion string) (int, error) {
 	var url string
@@ -63,7 +63,7 @@ func GetLatestAvalancheGoByProtocolVersion(app *application.Avalanche, rpcVersio
 
 	eligibleVersions, ok := parsedCompat[strconv.Itoa(rpcVersion)]
 	if !ok {
-		return "", NoAvagoVersion
+		return "", ErrNoAvagoVersion
 	}
 
 	// versions are not necessarily sorted, so we need to sort them
@@ -74,9 +74,12 @@ func GetLatestAvalancheGoByProtocolVersion(app *application.Avalanche, rpcVersio
 		constants.AvaLabsOrg,
 		constants.AvalancheGoRepoName,
 	))
+	if err != nil {
+		return "", err
+	}
 
 	var useVersion string
-	for _, proposedVersion := range []string(eligibleVersions) {
+	for _, proposedVersion := range eligibleVersions {
 		versionComparison := semver.Compare(proposedVersion, latestAvagoVersion)
 		if versionComparison != 1 {
 			useVersion = proposedVersion
@@ -85,7 +88,7 @@ func GetLatestAvalancheGoByProtocolVersion(app *application.Avalanche, rpcVersio
 	}
 
 	if useVersion == "" {
-		return "", NoAvagoVersion
+		return "", ErrNoAvagoVersion
 	}
 
 	return useVersion, nil
