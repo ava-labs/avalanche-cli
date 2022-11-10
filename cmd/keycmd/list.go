@@ -164,7 +164,7 @@ func listKeys(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		addrInfos, err = getStoredKeyInfos(pClients, cClients, networks)
+		addrInfos, err = getStoredKeyInfos(pClients, cClients, networks, cchain)
 		if err != nil {
 			return err
 		}
@@ -197,35 +197,26 @@ func getStoredKeyInfo(
 	pClients map[models.Network]platformvm.Client,
 	cClients map[models.Network]ethclient.Client,
 	network models.Network,
-    ketPath string,
+    keyPath string,
     cchain bool,
-) (addressInfo, error) {
+) ([]addressInfo, error) {
 	networkID, err := network.NetworkID()
 	if err != nil {
-		return addressInfo{}, err
+		return nil, err
 	}
     keyName := strings.TrimSuffix(filepath.Base(keyPath), constants.KeySuffix)
     sk, err := key.LoadSoft(networkID, keyPath)
     if err != nil {
-        return addressInfo{}, err
+        return nil, err
     }
+	addrInfos := []addressInfo{}
     if cchain {
         cChainAddr := sk.C()
-        cChainBalance, err := getCChainBalanceStr(context.Background(), cClients[network], cChainAddr)
+        addrInfo, err := getCChainAddrInfo(cClients, network, cChainAddr, "stored", keyName)
         if err != nil {
-            // just ignore local network errors
-            if network != models.Local {
-                return addressInfo{}, err
-            }
+            return nil, err
         }
-        return addressInfo{
-            kind:    "stored",
-            name:    keyName,
-            chain:   "C-Chain (Ethereum hex format)",
-            address: cChainAddr,
-            balance: cChainBalance,
-            network: network.String(),
-        }, nil
+        addInfos = append(addInfos, addrInfo)
     }
     pChainAddr := sk.P()
 	balance, err := getPChainBalanceStr(context.Background(), pClients[network], pChainAddr)
@@ -304,11 +295,11 @@ func getLedgerAddrInfo(
 func getPChainAddrInfo(
 	pClients map[models.Network]platformvm.Client,
 	network models.Network,
-    addr string,
+    pChainAddr string,
     kind string,
     name string,
 ) (addressInfo, error) {
-	balance, err := getPChainBalanceStr(context.Background(), pClients[network], addr)
+	balance, err := getPChainBalanceStr(context.Background(), pClients[network], pChainAddr)
 	if err != nil {
 		// just ignore local network errors
 		if network != models.Local {
@@ -319,10 +310,34 @@ func getPChainAddrInfo(
 		kind:    kind,
 		name:    name,
 		chain:   "P-Chain (Bech32 format)",
-		address: addr,
+		address: pChainAddr,
 		balance: balance,
 		network: network.String(),
 	}, nil
+}
+
+func getCChainAddrInfo(
+	cClients map[models.Network]ethclient.Client,
+	network models.Network,
+    cChainAddr string,
+    kind string,
+    name string,
+) (addressInfo, error) {
+    cChainBalance, err := getCChainBalanceStr(context.Background(), cClients[network], cChainAddr)
+    if err != nil {
+        // just ignore local network errors
+        if network != models.Local {
+            return addressInfo{}, err
+        }
+    }
+    return addressInfo{
+        kind:    kind,
+        name:    name,
+        chain:   "C-Chain (Ethereum hex format)",
+        address: cChainAddr,
+        balance: cChainBalance,
+        network: network.String(),
+    }, nil
 }
 
 type addressInfo struct {
