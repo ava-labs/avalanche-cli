@@ -23,6 +23,7 @@ mockery -r --output ./internal/mocks --name Prompter --filename prompter.go
 mockery -r --output ./internal/mocks --name Installer --filename installer.go
 mockery -r --output ./internal/mocks --name Publisher --filename publisher.go
 mockery -r --output ./internal/mocks --name Downloader --filename downloader.go
+mockery -r --output ./internal/mocks --name StatusChecker --filename network.go
 
 echo ""
 echo "Created mocks for interfaces in this repository only. Please create other mocks manually."

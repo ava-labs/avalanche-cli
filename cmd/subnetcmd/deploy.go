@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	nw "github.com/ava-labs/avalanche-cli/pkg/network"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
@@ -227,9 +228,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("unknown vm: %s", sidecar.VM)
 		}
 
-		if avagoVersion == "latest" {
-			// find latest avago version for this rpc version
-			avagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(app, sidecar.RPCVersion)
+		nc := nw.NewStatusChecker()
+		err = checkForInvalidDeployAndSetAvagoVersion(nc, sidecar.RPCVersion)
+		if err != nil {
+			return err
 		}
 
 		// check if selected version matches what is currently running
@@ -684,5 +686,45 @@ func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFu
 		table.Append([]string{"P-Chain TXID", blockchainID.String()})
 	}
 	table.Render()
+	return nil
+}
+
+// Has side effects and will set the version of avalanchego in the package-level avagoVersion variable.
+func checkForInvalidDeployAndSetAvagoVersion(network nw.StatusChecker, configuredRPCVersion int) error {
+	// get current network
+	networkRunning := true
+	runningAvagoVersion, runningRPCVersion, err := network.GetCurrentNetworkVersion()
+	if err != nil {
+		// not actually an error, network just not running
+		app.Log.Debug(err.Error())
+		networkRunning = false
+	}
+
+	if networkRunning {
+		if avagoVersion == "latest" {
+			if runningRPCVersion != configuredRPCVersion {
+				return fmt.Errorf(
+					"the current avalanchego deployment uses rpc version %d but your subnet has version %d and is not compatible",
+					runningRPCVersion,
+					configuredRPCVersion,
+				)
+			}
+
+		} else {
+			// user wants a specific version
+			if runningAvagoVersion != avagoVersion {
+				return errors.New("incompatible avalanchego version selected")
+			}
+		}
+
+	} else {
+		if avagoVersion == "latest" {
+			// find latest avago version for this rpc version
+			avagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(app, configuredRPCVersion)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }

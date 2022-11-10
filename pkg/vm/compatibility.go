@@ -87,16 +87,3 @@ func GetLatestAvalancheGoByProtocolVersion(app *application.Avalanche, rpcVersio
 
 	return useVersion, nil
 }
-
-func GetCurrentNetworkVersion() (string, error) {
-	// ctx := context.Background()
-	// infoClient := info.NewClient(constants.LocalAPIEndpoint)
-	// versionResponse, err := infoClient.GetNodeVersion(ctx)
-	// if err != nil {
-	// 	return "", fmt.Errorf("unable to determine rpc version: %w", err)
-	// }
-
-	// versionResponse.
-
-	return "", nil
-}
