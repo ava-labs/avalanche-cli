@@ -107,4 +107,7 @@ const (
 
 	NotAvailableLabel = "Not available"
 	BackendCmd        = "avalanche-cli-backend"
+
+	YesLabel = "Yes"
+	NoLabel  = "No"
 )

@@ -106,20 +106,20 @@ func listSubnets(cmd *cobra.Command, args []string) error {
 					}
 				}
 
-				deployedLocal := "No"
+				deployedLocal := constants.NoLabel
 				if _, ok := deployedNames[sc.Subnet]; ok {
-					deployedLocal = "Yes"
+					deployedLocal = constants.YesLabel
 				}
-				deployedFuji := "No"
+				deployedFuji := constants.NoLabel
 				if _, ok := sc.Networks[models.Fuji.String()]; ok {
 					if sc.Networks[models.Fuji.String()].SubnetID != ids.Empty {
-						deployedFuji = "Yes"
+						deployedFuji = constants.YesLabel
 					}
 				}
-				deployedMain := "No"
+				deployedMain := constants.NoLabel
 				if _, ok := sc.Networks[models.Mainnet.String()]; ok {
 					if sc.Networks[models.Mainnet.String()].SubnetID != ids.Empty {
-						deployedMain = "Yes"
+						deployedMain = constants.YesLabel
 					}
 				}
 				rows = append(rows, []string{
