@@ -198,23 +198,14 @@ func KeyExists(keyName string) (bool, error) {
 }
 
 func DeleteConfigs(subnetName string) error {
-	genesis := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.GenesisFileName)
-	if _, err := os.Stat(genesis); err != nil && !errors.Is(err, os.ErrNotExist) {
+	subnetDir := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName)
+	if _, err := os.Stat(subnetDir); err != nil && !errors.Is(err, os.ErrNotExist) {
 		// Schrodinger: file may or may not exist. See err for details.
 		return err
 	}
 
 	// ignore error, file may not exist
-	os.Remove(genesis)
-
-	sidecar := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.SidecarFileName)
-	if _, err := os.Stat(sidecar); err != nil && !errors.Is(err, os.ErrNotExist) {
-		// Schrodinger: file may or may not exist. See err for details.
-		return err
-	}
-
-	// ignore error, file may not exist
-	os.Remove(sidecar)
+	os.RemoveAll(subnetDir)
 
 	return nil
 }
