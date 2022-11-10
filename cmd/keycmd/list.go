@@ -216,24 +216,17 @@ func getStoredKeyInfo(
         if err != nil {
             return nil, err
         }
-        addInfos = append(addInfos, addrInfo)
+        addrInfos = append(addInfos, addrInfo)
     }
-    pChainAddr := sk.P()
-	balance, err := getPChainBalanceStr(context.Background(), pClients[network], pChainAddr)
-	if err != nil {
-		// just ignore local network errors
-		if network != models.Local {
-			return addressInfo{}, err
-		}
-	}
-	return addressInfo{
-		kind:    "stored",
-		name:    keyName,
-		chain:   "P-Chain (Bech32 format)",
-		address: addrStr,
-		balance: balance,
-		network: network.String(),
-	}, nil
+    pChainAddrs := sk.P()
+    for _, pChainAddr := range pChainAddrs {
+        addrInfo, err :=  getPChainAddrInfo(pClients, network, pChainAddr, "stored", keyName)
+        if err != nil {
+            return nil, err
+        }
+        addrInfos = append(addInfos, addrInfo)
+    )
+    return addrInfos, nil
 }
 
 func getLedgerAddrInfos(
