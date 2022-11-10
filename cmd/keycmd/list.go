@@ -32,7 +32,8 @@ const (
 	fujiFlag          = "fuji"
 	testnetFlag       = "testnet"
 	mainnetFlag       = "mainnet"
-	allFlag           = "all"
+	allFlag           = "all-networks"
+    cchainFlag        = "c-chain"
 	ledgerIndicesFlag = "ledger"
 )
 
@@ -41,6 +42,7 @@ var (
 	testnet       bool
 	mainnet       bool
 	all           bool
+    cchain        bool
 	ledgerIndices []uint
 )
 
@@ -79,7 +81,7 @@ keys or for the ledger addresses associated to certain indices.`,
 		&mainnet,
 		mainnetFlag,
 		"m",
-		false,
+		true,
 		"list mainnet network addresses",
 	)
 	cmd.Flags().BoolVarP(
@@ -88,6 +90,13 @@ keys or for the ledger addresses associated to certain indices.`,
 		"a",
 		false,
 		"list all network addresses",
+	)
+	cmd.Flags().BoolVarP(
+		&cchain,
+		cchainFlag,
+		"c",
+		true,
+		"list C-Chain addresses",
 	)
 	cmd.Flags().UintSliceVarP(
 		&ledgerIndices,
@@ -99,13 +108,32 @@ keys or for the ledger addresses associated to certain indices.`,
 	return cmd
 }
 
+func getClients(networks []models.Network, getCChainClients bool) (
+    map[models.Network]platformvm.Client,
+    map[models.Network]ethclient.Client,
+    error,
+) {
+    apiEndpoints := map[models.Network]string{
+		models.Fuji:    constants.FujiAPIEndpoint,
+		models.Mainnet: constants.MainnetAPIEndpoint,
+		models.Local:   constants.LocalAPIEndpoint,
+    }
+    var err error
+	pClients := map[models.Network]platformvm.Client{}
+	cClients := map[models.Network]ethclient.Client{}
+    for _, network := range networks {
+		pClients[network] = platformvm.NewClient(apiEndpoints[network])
+        if getCChainClients {
+            cClients[networl], err = ethclient.Dial(fmt.Sprintf("%s/ext/bc/%s/rpc", apiEndpoints[network], "C"))
+            if err != nil {
+                return nil, nil, err
+            }
+        }
+    }
+    return pClients, cClients, nil
+}
+
 func listKeys(cmd *cobra.Command, args []string) error {
-	pClients := map[models.Network]platformvm.Client{
-		models.Fuji:    platformvm.NewClient(constants.FujiAPIEndpoint),
-		models.Mainnet: platformvm.NewClient(constants.MainnetAPIEndpoint),
-		models.Local:   platformvm.NewClient(constants.LocalAPIEndpoint),
-	}
-	var err error
 	addrInfos := []addressInfo{}
 	networks := []models.Network{}
 	if local || all {
@@ -120,6 +148,14 @@ func listKeys(cmd *cobra.Command, args []string) error {
 	if len(networks) == 0 {
 		return fmt.Errorf("you must specify at least one of --local, --fuji, --testnet, --mainnet")
 	}
+    queryLedger := len(ledgerIndices) > 0
+    if queryLedger {
+        cchain = false
+    }
+    pClients, cClients, err := getClients(networks, cchain)
+    if err != nil {
+        return err
+    }
 	if len(ledgerIndices) > 0 {
 		addrInfos, err = getLedgerAddrInfos(pClients, ledgerIndices, networks)
 		if err != nil {
