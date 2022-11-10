@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -17,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestExportImportSubnet(t *testing.T) {
@@ -24,9 +26,14 @@ func TestExportImportSubnet(t *testing.T) {
 	assert := assert.New(t)
 	testSubnet := "testSubnet"
 	vmVersion := "v0.9.99"
+	testSubnetEVMCompat := []byte("{\"rpcChainVMProtocolVersion\": {\"v0.9.99\": 18}}")
 
 	app = application.New()
-	app.Setup(testDir, logging.NoLog{}, nil, prompts.NewPrompter(), application.NewDownloader())
+
+	mockAppDownloader := mocks.Downloader{}
+	mockAppDownloader.On("Download", mock.Anything).Return(testSubnetEVMCompat, nil)
+
+	app.Setup(testDir, logging.NoLog{}, nil, prompts.NewPrompter(), &mockAppDownloader)
 	ux.NewUserLog(logging.NoLog{}, io.Discard)
 	genBytes, sc, err := vm.CreateEvmSubnetConfig(app, testSubnet, "../../"+utils.SubnetEvmGenesisPath, vmVersion)
 	assert.NoError(err)

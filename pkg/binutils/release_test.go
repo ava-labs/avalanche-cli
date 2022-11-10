@@ -50,13 +50,15 @@ func Test_installAvalancheGoWithVersion_Zip(t *testing.T) {
 	mockInstaller := &mocks.Installer{}
 	mockInstaller.On("GetArch").Return("amd64", "darwin")
 
-	downloader := NewAvagoDownloader()
+	githubDownloader := NewAvagoDownloader()
 
-	mockInstaller.On("DownloadRelease", mock.Anything).Return(zipBytes, nil)
+	mockAppDownloader := mocks.Downloader{}
+	mockAppDownloader.On("Download", mock.Anything).Return(zipBytes, nil)
+	app.Downloader = &mockAppDownloader
 
 	expectedDir := filepath.Join(app.GetAvalanchegoBinDir(), avalanchegoBinPrefix+version1)
 
-	binDir, err := installBinaryWithVersion(app, version1, app.GetAvalanchegoBinDir(), avalanchegoBinPrefix, downloader, mockInstaller)
+	binDir, err := installBinaryWithVersion(app, version1, app.GetAvalanchegoBinDir(), avalanchegoBinPrefix, githubDownloader, mockInstaller)
 	assert.Equal(expectedDir, binDir)
 	assert.NoError(err)
 
@@ -78,7 +80,9 @@ func Test_installAvalancheGoWithVersion_Tar(t *testing.T) {
 
 	downloader := NewAvagoDownloader()
 
-	mockInstaller.On("DownloadRelease", mock.Anything).Return(tarBytes, nil)
+	mockAppDownloader := mocks.Downloader{}
+	mockAppDownloader.On("Download", mock.Anything).Return(tarBytes, nil)
+	app.Downloader = &mockAppDownloader
 
 	expectedDir := filepath.Join(app.GetAvalanchegoBinDir(), avalanchegoBinPrefix+version1)
 
@@ -109,6 +113,11 @@ func Test_installAvalancheGoWithVersion_MultipleCoinstalls(t *testing.T) {
 	assert.NoError(err)
 	mockInstaller.On("DownloadRelease", url1).Return(zipBytes1, nil)
 	mockInstaller.On("DownloadRelease", url2).Return(zipBytes2, nil)
+
+	mockAppDownloader := mocks.Downloader{}
+	mockAppDownloader.On("Download", url1).Return(zipBytes1, nil)
+	mockAppDownloader.On("Download", url2).Return(zipBytes2, nil)
+	app.Downloader = &mockAppDownloader
 
 	expectedDir1 := filepath.Join(app.GetAvalanchegoBinDir(), avalanchegoBinPrefix+version1)
 	expectedDir2 := filepath.Join(app.GetAvalanchegoBinDir(), avalanchegoBinPrefix+version2)
@@ -144,7 +153,9 @@ func Test_installSubnetEVMWithVersion(t *testing.T) {
 
 	downloader := NewSubnetEVMDownloader()
 
-	mockInstaller.On("DownloadRelease", mock.Anything).Return(tarBytes, nil)
+	mockAppDownloader := mocks.Downloader{}
+	mockAppDownloader.On("Download", mock.Anything).Return(tarBytes, nil)
+	app.Downloader = &mockAppDownloader
 
 	expectedDir := filepath.Join(app.GetSubnetEVMBinDir(), subnetEVMBinPrefix+version1)
 
@@ -175,8 +186,11 @@ func Test_installSubnetEVMWithVersion_MultipleCoinstalls(t *testing.T) {
 	assert.NoError(err)
 	url2, _, err := downloader.GetDownloadURL(version2, mockInstaller)
 	assert.NoError(err)
-	mockInstaller.On("DownloadRelease", url1).Return(tarBytes1, nil)
-	mockInstaller.On("DownloadRelease", url2).Return(tarBytes2, nil)
+
+	mockAppDownloader := mocks.Downloader{}
+	mockAppDownloader.On("Download", url1).Return(tarBytes1, nil)
+	mockAppDownloader.On("Download", url2).Return(tarBytes2, nil)
+	app.Downloader = &mockAppDownloader
 
 	expectedDir1 := filepath.Join(app.GetSubnetEVMBinDir(), subnetEVMBinPrefix+version1)
 	expectedDir2 := filepath.Join(app.GetSubnetEVMBinDir(), subnetEVMBinPrefix+version2)
