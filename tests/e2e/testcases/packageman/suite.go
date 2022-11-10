@@ -20,10 +20,10 @@ const (
 	// is compatible with avago v1.8.x.
 	// This also means we should consider this for the future: How to handle hardforks which make
 	// this test break.:w
-	subnetEVMVersion1 = "v0.4.3"
-	subnetEVMVersion2 = "v0.4.3"
-	avagoVersion1     = "v1.9.2"
-	avagoVersion2     = "v1.9.2"
+	subnetEVMVersion1 = "v0.3.0"
+	subnetEVMVersion2 = "v0.3.0"
+	avagoVersion1     = "v1.8.0"
+	avagoVersion2     = "v1.8.1"
 )
 
 var _ = ginkgo.Describe("[Package Management]", func() {
