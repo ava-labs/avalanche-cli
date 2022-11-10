@@ -7,6 +7,7 @@ import (
 	"regexp"
 
 	"github.com/ava-labs/avalanche-cli/pkg/key"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
@@ -43,9 +44,17 @@ func createKey(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.PrintToUser("Key created")
-		//if err := printAddresses([]string{keyPath}); err != nil {
-		//	return err
-		//}
+		networks := []models.Network{models.Fuji, models.Mainnet}
+		cchain := true
+		pClients, cClients, err := getClients(networks, cchain)
+		if err != nil {
+			return err
+		}
+		addrInfos, err := getStoredKeyInfos(pClients, cClients, networks, cchain)
+		if err != nil {
+			return err
+		}
+		printAddrInfos(addrInfos)
 	} else {
 		// Load key from file
 		// TODO add validation that key is legal
