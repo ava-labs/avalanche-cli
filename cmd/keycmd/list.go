@@ -33,7 +33,7 @@ const (
 	testnetFlag       = "testnet"
 	mainnetFlag       = "mainnet"
 	allFlag           = "all-networks"
-    cchainFlag        = "cchain"
+	cchainFlag        = "cchain"
 	ledgerIndicesFlag = "ledger"
 )
 
@@ -42,7 +42,7 @@ var (
 	testnet       bool
 	mainnet       bool
 	all           bool
-    cchain        bool
+	cchain        bool
 	ledgerIndices []uint
 )
 
@@ -109,30 +109,28 @@ keys or for the ledger addresses associated to certain indices.`,
 }
 
 func getClients(networks []models.Network, cchain bool) (
-    map[models.Network]platformvm.Client,
-    map[models.Network]ethclient.Client,
-    error,
+	map[models.Network]platformvm.Client,
+	map[models.Network]ethclient.Client,
+	error,
 ) {
-    apiEndpoints := map[models.Network]string{
+	apiEndpoints := map[models.Network]string{
 		models.Fuji:    constants.FujiAPIEndpoint,
 		models.Mainnet: constants.MainnetAPIEndpoint,
 		models.Local:   constants.LocalAPIEndpoint,
-    }
-    var err error
+	}
+	var err error
 	pClients := map[models.Network]platformvm.Client{}
 	cClients := map[models.Network]ethclient.Client{}
-    for _, network := range networks {
-        fmt.Println("p", network)
+	for _, network := range networks {
 		pClients[network] = platformvm.NewClient(apiEndpoints[network])
-        if cchain {
-            fmt.Println("c", network)
-            cClients[network], err = ethclient.Dial(fmt.Sprintf("%s/ext/bc/%s/rpc", apiEndpoints[network], "C"))
-            if err != nil {
-                return nil, nil, err
-            }
-        }
-    }
-    return pClients, cClients, nil
+		if cchain {
+			cClients[network], err = ethclient.Dial(fmt.Sprintf("%s/ext/bc/%s/rpc", apiEndpoints[network], "C"))
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+	}
+	return pClients, cClients, nil
 }
 
 func listKeys(cmd *cobra.Command, args []string) error {
@@ -150,14 +148,14 @@ func listKeys(cmd *cobra.Command, args []string) error {
 	if len(networks) == 0 {
 		return fmt.Errorf("you must specify at least one of --local, --fuji, --testnet, --mainnet")
 	}
-    queryLedger := len(ledgerIndices) > 0
-    if queryLedger {
-        cchain = false
-    }
-    pClients, cClients, err := getClients(networks, cchain)
-    if err != nil {
-        return err
-    }
+	queryLedger := len(ledgerIndices) > 0
+	if queryLedger {
+		cchain = false
+	}
+	pClients, cClients, err := getClients(networks, cchain)
+	if err != nil {
+		return err
+	}
 	if queryLedger {
 		addrInfos, err = getLedgerAddrInfos(pClients, ledgerIndices, networks)
 		if err != nil {
@@ -177,56 +175,65 @@ func getStoredKeyInfos(
 	pClients map[models.Network]platformvm.Client,
 	cClients map[models.Network]ethclient.Client,
 	networks []models.Network,
-    cchain bool,
+	cchain bool,
 ) ([]addressInfo, error) {
-    files, err := os.ReadDir(app.GetKeyDir())
-    if err != nil {
-        return nil, err
-    }
-    keyPaths := make([]string, len(files))
-    for i, f := range files {
-        if strings.HasSuffix(f.Name(), constants.KeySuffix) {
-            keyPaths[i] = filepath.Join(app.GetKeyDir(), f.Name())
-        }
-    }
+	files, err := os.ReadDir(app.GetKeyDir())
+	if err != nil {
+		return nil, err
+	}
+	keyPaths := make([]string, len(files))
+	for i, f := range files {
+		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
+			keyPaths[i] = filepath.Join(app.GetKeyDir(), f.Name())
+		}
+	}
 	addrInfos := []addressInfo{}
-    return addrInfos, nil
+	for _, keyPath := range keyPaths {
+		for _, network := range networks {
+			keyAddrInfos, err := getStoredKeyInfo(pClients, cClients, network, keyPath, cchain)
+			if err != nil {
+				return nil, err
+			}
+			addrInfos = append(addrInfos, keyAddrInfos...)
+		}
+	}
+	return addrInfos, nil
 }
 
 func getStoredKeyInfo(
 	pClients map[models.Network]platformvm.Client,
 	cClients map[models.Network]ethclient.Client,
 	network models.Network,
-    keyPath string,
-    cchain bool,
+	keyPath string,
+	cchain bool,
 ) ([]addressInfo, error) {
 	networkID, err := network.NetworkID()
 	if err != nil {
 		return nil, err
 	}
-    keyName := strings.TrimSuffix(filepath.Base(keyPath), constants.KeySuffix)
-    sk, err := key.LoadSoft(networkID, keyPath)
-    if err != nil {
-        return nil, err
-    }
+	keyName := strings.TrimSuffix(filepath.Base(keyPath), constants.KeySuffix)
+	sk, err := key.LoadSoft(networkID, keyPath)
+	if err != nil {
+		return nil, err
+	}
 	addrInfos := []addressInfo{}
-    if cchain {
-        cChainAddr := sk.C()
-        addrInfo, err := getCChainAddrInfo(cClients, network, cChainAddr, "stored", keyName)
-        if err != nil {
-            return nil, err
-        }
-        addrInfos = append(addInfos, addrInfo)
-    }
-    pChainAddrs := sk.P()
-    for _, pChainAddr := range pChainAddrs {
-        addrInfo, err :=  getPChainAddrInfo(pClients, network, pChainAddr, "stored", keyName)
-        if err != nil {
-            return nil, err
-        }
-        addrInfos = append(addInfos, addrInfo)
-    )
-    return addrInfos, nil
+	if cchain {
+		cChainAddr := sk.C()
+		addrInfo, err := getCChainAddrInfo(cClients, network, cChainAddr, "stored", keyName)
+		if err != nil {
+			return nil, err
+		}
+		addrInfos = append(addrInfos, addrInfo)
+	}
+	pChainAddrs := sk.P()
+	for _, pChainAddr := range pChainAddrs {
+		addrInfo, err := getPChainAddrInfo(pClients, network, pChainAddr, "stored", keyName)
+		if err != nil {
+			return nil, err
+		}
+		addrInfos = append(addrInfos, addrInfo)
+	}
+	return addrInfos, nil
 }
 
 func getLedgerAddrInfos(
@@ -276,21 +283,21 @@ func getLedgerAddrInfo(
 	if err != nil {
 		return addressInfo{}, err
 	}
-    return getPChainAddrInfo(
-        pClients,
-        network,
-        pChainAddr,
-        "ledger",
-        fmt.Sprintf("index %d", index),
-    )
+	return getPChainAddrInfo(
+		pClients,
+		network,
+		pChainAddr,
+		"ledger",
+		fmt.Sprintf("index %d", index),
+	)
 }
 
 func getPChainAddrInfo(
 	pClients map[models.Network]platformvm.Client,
 	network models.Network,
-    pChainAddr string,
-    kind string,
-    name string,
+	pChainAddr string,
+	kind string,
+	name string,
 ) (addressInfo, error) {
 	balance, err := getPChainBalanceStr(context.Background(), pClients[network], pChainAddr)
 	if err != nil {
@@ -312,25 +319,25 @@ func getPChainAddrInfo(
 func getCChainAddrInfo(
 	cClients map[models.Network]ethclient.Client,
 	network models.Network,
-    cChainAddr string,
-    kind string,
-    name string,
+	cChainAddr string,
+	kind string,
+	name string,
 ) (addressInfo, error) {
-    cChainBalance, err := getCChainBalanceStr(context.Background(), cClients[network], cChainAddr)
-    if err != nil {
-        // just ignore local network errors
-        if network != models.Local {
-            return addressInfo{}, err
-        }
-    }
-    return addressInfo{
-        kind:    kind,
-        name:    name,
-        chain:   "C-Chain (Ethereum hex format)",
-        address: cChainAddr,
-        balance: cChainBalance,
-        network: network.String(),
-    }, nil
+	cChainBalance, err := getCChainBalanceStr(context.Background(), cClients[network], cChainAddr)
+	if err != nil {
+		// just ignore local network errors
+		if network != models.Local {
+			return addressInfo{}, err
+		}
+	}
+	return addressInfo{
+		kind:    kind,
+		name:    name,
+		chain:   "C-Chain (Ethereum hex format)",
+		address: cChainAddr,
+		balance: cChainBalance,
+		network: network.String(),
+	}, nil
 }
 
 type addressInfo struct {
