@@ -17,5 +17,5 @@ const (
 	EwoqKeyPath           = "tests/e2e/assets/ewoq_key.pk"
 	SubnetEVMVersion      = "v0.4.0"
 	SpacesVMVersion       = "v0.0.9"
-	AvagoVersion          = "v1.9.0"
+	AvagoVersion          = "latest"
 )
