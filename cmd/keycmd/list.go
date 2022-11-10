@@ -32,6 +32,7 @@ const (
 	fujiFlag          = "fuji"
 	testnetFlag       = "testnet"
 	mainnetFlag       = "mainnet"
+	allFlag           = "all"
 	ledgerIndicesFlag = "ledger"
 )
 
@@ -39,6 +40,7 @@ var (
 	local         bool
 	testnet       bool
 	mainnet       bool
+	all           bool
 	ledgerIndices []uint
 )
 
@@ -80,6 +82,13 @@ keys or for the ledger addresses associated to certain indices.`,
 		false,
 		"list mainnet network addresses",
 	)
+	cmd.Flags().BoolVarP(
+		&all,
+		allFlag,
+		"a",
+		false,
+		"list all network addresses",
+	)
 	cmd.Flags().UintSliceVarP(
 		&ledgerIndices,
 		ledgerIndicesFlag,
@@ -98,7 +107,19 @@ func listKeys(cmd *cobra.Command, args []string) error {
 	}
 	var err error
 	addrInfos := []addressInfo{}
-	networks := []models.Network{models.Local, models.Mainnet, models.Fuji}
+	networks := []models.Network{}
+	if local || all {
+		networks = append(networks, models.Local)
+	}
+	if testnet || all {
+		networks = append(networks, models.Fuji)
+	}
+	if mainnet || all {
+		networks = append(networks, models.Mainnet)
+	}
+	if len(networks) == 0 {
+		return fmt.Errorf("you must specify at least one of --local, --fuji, --testnet, --mainnet")
+	}
 	if len(ledgerIndices) > 0 {
 		addrInfos, err = getLedgerAddrInfos(pClients, ledgerIndices, networks)
 		if err != nil {
@@ -201,8 +222,8 @@ func printAddrInfos(addrInfos []addressInfo) {
 	table.SetAutoMergeCellsByColumnIndex([]int{0, 1, 2})
 	for _, addrInfo := range addrInfos {
 		table.Append([]string{
-			addrInfo.name,
 			addrInfo.kind,
+			addrInfo.name,
 			addrInfo.chain,
 			addrInfo.address,
 			addrInfo.balance,
