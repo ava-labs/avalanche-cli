@@ -90,20 +90,17 @@ keys or for the ledger addresses associated to certain indices.`,
 	return cmd
 }
 
-type clients struct {
-	fujiPClient platformvm.Client
-}
-
 func listKeys(cmd *cobra.Command, args []string) error {
-	fujiPClient := platformvm.NewClient(constants.FujiAPIEndpoint)
-	clis := clients{
-		fujiPClient: fujiPClient,
+	pClients := map[models.Network]platformvm.Client{
+		models.Fuji:    platformvm.NewClient(constants.FujiAPIEndpoint),
+		models.Mainnet: platformvm.NewClient(constants.MainnetAPIEndpoint),
+		models.Local:   platformvm.NewClient(constants.LocalAPIEndpoint),
 	}
 	var err error
 	addrInfos := []addressInfo{}
-	networks := []models.Network{models.Fuji}
+	networks := []models.Network{models.Local, models.Mainnet, models.Fuji}
 	if len(ledgerIndices) > 0 {
-		addrInfos, err = getLedgerAddrInfos(clis, ledgerIndices, networks)
+		addrInfos, err = getLedgerAddrInfos(pClients, ledgerIndices, networks)
 		if err != nil {
 			return err
 		}
@@ -123,7 +120,11 @@ func listKeys(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func getLedgerAddrInfos(clis clients, ledgerIndices []uint, networks []models.Network) ([]addressInfo, error) {
+func getLedgerAddrInfos(
+	pClients map[models.Network]platformvm.Client,
+	ledgerIndices []uint,
+	networks []models.Network,
+) ([]addressInfo, error) {
 	ledgerDevice, err := ledger.New()
 	if err != nil {
 		return []addressInfo{}, err
@@ -141,17 +142,23 @@ func getLedgerAddrInfos(clis clients, ledgerIndices []uint, networks []models.Ne
 	addrInfos := []addressInfo{}
 	for _, index := range ledgerIndices {
 		addr := addresses[index]
-		addrInfo, err := getLedgerAddrInfo(clis, index, []models.Network{}, addr)
-		if err != nil {
-			return []addressInfo{}, err
+		for _, network := range networks {
+			addrInfo, err := getLedgerAddrInfo(pClients, index, network, addr)
+			if err != nil {
+				return []addressInfo{}, err
+			}
+			addrInfos = append(addrInfos, addrInfo)
 		}
-		addrInfos = append(addrInfos, addrInfo)
 	}
 	return addrInfos, nil
 }
 
-func getLedgerAddrInfo(clis clients, index uint, networks []models.Network, addr ids.ShortID) (addressInfo, error) {
-	network := models.Fuji
+func getLedgerAddrInfo(
+	pClients map[models.Network]platformvm.Client,
+	index uint,
+	network models.Network,
+	addr ids.ShortID,
+) (addressInfo, error) {
 	networkID, err := network.NetworkID()
 	if err != nil {
 		return addressInfo{}, err
@@ -160,9 +167,12 @@ func getLedgerAddrInfo(clis clients, index uint, networks []models.Network, addr
 	if err != nil {
 		return addressInfo{}, err
 	}
-	balance, err := getPChainBalanceStr(context.Background(), clis.fujiPClient, addrStr)
+	balance, err := getPChainBalanceStr(context.Background(), pClients[network], addrStr)
 	if err != nil {
-		return addressInfo{}, err
+		// just ignore local network errors
+		if network != models.Local {
+			return addressInfo{}, err
+		}
 	}
 	return addressInfo{
 		kind:    "ledger",
