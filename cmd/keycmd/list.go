@@ -192,6 +192,73 @@ func getStoredKeyInfos(
     return addrInfos, nil
 }
 
+func getStoredKeyInfo(
+	pClients map[models.Network]platformvm.Client,
+	cClients map[models.Network]ethclient.Client,
+	network models.Network,
+    ketPath string,
+) (addressInfo, error) {
+	networkID, err := network.NetworkID()
+	if err != nil {
+		return addressInfo{}, err
+	}
+	addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
+	if err != nil {
+		return addressInfo{}, err
+	}
+	balance, err := getPChainBalanceStr(context.Background(), pClients[network], addrStr)
+	if err != nil {
+		// just ignore local network errors
+		if network != models.Local {
+			return addressInfo{}, err
+		}
+	}
+	return addressInfo{
+		kind:    "ledger",
+		name:    fmt.Sprintf("index %d", index),
+		chain:   "P-Chain (Bech32 format)",
+		address: addrStr,
+		balance: balance,
+		network: network.String(),
+	}, nil
+
+
+
+    keyName := strings.TrimSuffix(filepath.Base(keyPath), constants.KeySuffix)
+    sk, err := key.LoadSoft(networkID, keyPath)
+    if err != nil {
+        return addressInfo{}, err
+    }
+    cChainAddr := sk.C()
+    cChainBalance := ""
+    cChainBalance, err = getCChainBalanceStr(ctx, cClients[network], strC)
+    if err != nil {
+        return addressInfo{}, err
+    }
+    table.Append([]string{keyName, "C-Chain (Ethereum hex format)", strC, balanceStr, net})
+	return addressInfo{
+		kind:    "stored",
+		name:    keyName,
+		chain:   "C-Chain (Ethereum hex format)",
+		address: cChainAddr,
+		balance: cChainBalance,
+		network: network.String(),
+	}, nil
+
+    strP := sk.P()
+    for _, p := range strP {
+        balanceStr := ""
+        if net == models.Fuji.String() {
+            var err error
+            balanceStr, err = getPChainBalanceStr(ctx, fujiPClient, p)
+            if err != nil {
+                return err
+            }
+        }
+        table.Append([]string{keyName, "P-Chain (Bech32 format)", p, balanceStr, net})
+    }
+}
+
 func getLedgerAddrInfos(
 	pClients map[models.Network]platformvm.Client,
 	ledgerIndices []uint,
