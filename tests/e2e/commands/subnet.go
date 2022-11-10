@@ -156,6 +156,12 @@ func DeploySubnetLocally(subnetName string) string {
 
 // Returns the deploy output
 /* #nosec G204 */
+func DeploySubnetLocallyExpectError(subnetName string) {
+	DeploySubnetLocallyWithArgsExpectError(subnetName, utils.AvagoVersion, "")
+}
+
+// Returns the deploy output
+/* #nosec G204 */
 func DeploySubnetLocallyWithViperConf(subnetName string, confPath string) string {
 	return DeploySubnetLocallyWithArgs(subnetName, utils.AvagoVersion, confPath)
 }
@@ -197,6 +203,27 @@ func DeploySubnetLocallyWithArgs(subnetName string, version string, confPath str
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	return string(output)
+}
+
+// Returns the deploy output
+/* #nosec G204 */
+func DeploySubnetLocallyWithArgsExpectError(subnetName string, version string, confPath string) {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// Deploy subnet locally
+	cmdArgs := []string{SubnetCmd, "deploy", "--local", subnetName}
+	if version != "" {
+		cmdArgs = append(cmdArgs, "--avalanchego-version", version)
+	}
+	if confPath != "" {
+		cmdArgs = append(cmdArgs, "--config", confPath)
+	}
+	cmd := exec.Command(CLIBinary, cmdArgs...)
+	_, err = cmd.CombinedOutput()
+	gomega.Expect(err).Should(gomega.HaveOccurred())
 }
 
 // simulates fuji deploy execution path on a local network

@@ -164,3 +164,81 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 		commands.DeleteSubnetConfig(secondSubnetName)
 	})
 })
+
+var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
+	ginkgo.AfterEach(func() {
+		commands.CleanNetwork()
+		err := utils.DeleteConfigs(subnetName)
+		if err != nil {
+			fmt.Println("Clean network error:", err)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		err = utils.DeleteConfigs(secondSubnetName)
+		if err != nil {
+			fmt.Println("Delete config error:", err)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+	})
+
+	ginkgo.It("can deploy a subnet-evm with old version", func() {
+		subnetEVMVersion := "v0.4.2"
+
+		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion)
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+		rpc := rpcs[0]
+
+		err = utils.SetHardhatRPC(rpc)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		err = utils.RunHardhatTests(utils.BaseTest)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		commands.DeleteSubnetConfig(subnetName)
+	})
+
+	ginkgo.It("can deploy a spaces-vm with old version", func() {
+		spacesVMVersion := "v0.0.9"
+
+		commands.CreateSpacesVMConfigWithVersion(subnetName, utils.SpacesVMGenesisPath, spacesVMVersion)
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+		rpc := rpcs[0]
+
+		err = utils.RunSpacesVMAPITest(rpc)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		commands.DeleteSubnetConfig(subnetName)
+	})
+
+	ginkgo.It("can't deploy conflicting vm versions", func() {
+		subnetEVMVersion1 := "v0.4.2"
+		subnetEVMVersion2 := "v0.4.4"
+
+		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
+		commands.CreateSubnetEvmConfigWithVersion(secondSubnetName, utils.SubnetEvmGenesis2Path, subnetEVMVersion2)
+
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+
+		commands.DeploySubnetLocallyExpectError(secondSubnetName)
+
+		commands.DeleteSubnetConfig(subnetName)
+		commands.DeleteSubnetConfig(secondSubnetName)
+	})
+})
