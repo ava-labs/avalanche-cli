@@ -197,13 +197,11 @@ func getStoredKeyInfos(
 	}
 	addrInfos := []addressInfo{}
 	for _, keyPath := range keyPaths {
-		for _, network := range networks {
-			keyAddrInfos, err := getStoredKeyInfo(pClients, cClients, network, keyPath, cchain)
-			if err != nil {
-				return nil, err
-			}
-			addrInfos = append(addrInfos, keyAddrInfos...)
+		keyAddrInfos, err := getStoredKeyInfo(pClients, cClients, networks, keyPath, cchain)
+		if err != nil {
+			return nil, err
 		}
+		addrInfos = append(addrInfos, keyAddrInfos...)
 	}
 	return addrInfos, nil
 }
@@ -211,35 +209,37 @@ func getStoredKeyInfos(
 func getStoredKeyInfo(
 	pClients map[models.Network]platformvm.Client,
 	cClients map[models.Network]ethclient.Client,
-	network models.Network,
+	networks []models.Network,
 	keyPath string,
 	cchain bool,
 ) ([]addressInfo, error) {
-	networkID, err := network.NetworkID()
-	if err != nil {
-		return nil, err
-	}
-	keyName := strings.TrimSuffix(filepath.Base(keyPath), constants.KeySuffix)
-	sk, err := key.LoadSoft(networkID, keyPath)
-	if err != nil {
-		return nil, err
-	}
 	addrInfos := []addressInfo{}
-	if cchain {
-		cChainAddr := sk.C()
-		addrInfo, err := getCChainAddrInfo(cClients, network, cChainAddr, "stored", keyName)
+	for _, network := range networks {
+		networkID, err := network.NetworkID()
 		if err != nil {
 			return nil, err
 		}
-		addrInfos = append(addrInfos, addrInfo)
-	}
-	pChainAddrs := sk.P()
-	for _, pChainAddr := range pChainAddrs {
-		addrInfo, err := getPChainAddrInfo(pClients, network, pChainAddr, "stored", keyName)
+		keyName := strings.TrimSuffix(filepath.Base(keyPath), constants.KeySuffix)
+		sk, err := key.LoadSoft(networkID, keyPath)
 		if err != nil {
 			return nil, err
 		}
-		addrInfos = append(addrInfos, addrInfo)
+		if cchain {
+			cChainAddr := sk.C()
+			addrInfo, err := getCChainAddrInfo(cClients, network, cChainAddr, "stored", keyName)
+			if err != nil {
+				return nil, err
+			}
+			addrInfos = append(addrInfos, addrInfo)
+		}
+		pChainAddrs := sk.P()
+		for _, pChainAddr := range pChainAddrs {
+			addrInfo, err := getPChainAddrInfo(pClients, network, pChainAddr, "stored", keyName)
+			if err != nil {
+				return nil, err
+			}
+			addrInfos = append(addrInfos, addrInfo)
+		}
 	}
 	return addrInfos, nil
 }

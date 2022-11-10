@@ -50,7 +50,7 @@ func createKey(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		addrInfos, err := getStoredKeyInfos(pClients, cClients, networks, cchain)
+		addrInfos, err := getStoredKeyInfo(pClients, cClients, networks, keyPath, cchain)
 		if err != nil {
 			return err
 		}
