@@ -33,7 +33,7 @@ const (
 	testnetFlag       = "testnet"
 	mainnetFlag       = "mainnet"
 	allFlag           = "all-networks"
-    cchainFlag        = "c-chain"
+    cchainFlag        = "cchain"
 	ledgerIndicesFlag = "ledger"
 )
 
@@ -122,9 +122,11 @@ func getClients(networks []models.Network, getCChainClients bool) (
 	pClients := map[models.Network]platformvm.Client{}
 	cClients := map[models.Network]ethclient.Client{}
     for _, network := range networks {
+        fmt.Println("p", network)
 		pClients[network] = platformvm.NewClient(apiEndpoints[network])
         if getCChainClients {
-            cClients[networl], err = ethclient.Dial(fmt.Sprintf("%s/ext/bc/%s/rpc", apiEndpoints[network], "C"))
+            fmt.Println("c", network)
+            cClients[network], err = ethclient.Dial(fmt.Sprintf("%s/ext/bc/%s/rpc", apiEndpoints[network], "C"))
             if err != nil {
                 return nil, nil, err
             }
@@ -178,7 +180,7 @@ func getStoredKeyInfos(
 ) ([]addressInfo, error) {
     files, err := os.ReadDir(app.GetKeyDir())
     if err != nil {
-        return err
+        return nil, err
     }
     keyPaths := make([]string, len(files))
     for i, f := range files {
@@ -187,7 +189,7 @@ func getStoredKeyInfos(
         }
     }
 	addrInfos := []addressInfo{}
-    return addrInfos
+    return addrInfos, nil
 }
 
 func getLedgerAddrInfos(
@@ -197,17 +199,17 @@ func getLedgerAddrInfos(
 ) ([]addressInfo, error) {
 	ledgerDevice, err := ledger.New()
 	if err != nil {
-		return []addressInfo{}, err
+		return nil, err
 	}
 	ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
 	maxIndex := math.Max(0, ledgerIndices...)
 	toDerive := int(maxIndex + 1)
 	addresses, err := ledgerDevice.Addresses(toDerive)
 	if err != nil {
-		return []addressInfo{}, err
+		return nil, err
 	}
 	if len(addresses) != toDerive {
-		return []addressInfo{}, fmt.Errorf("derived addresses length %d differs from expected %d", len(addresses), toDerive)
+		return nil, fmt.Errorf("derived addresses length %d differs from expected %d", len(addresses), toDerive)
 	}
 	addrInfos := []addressInfo{}
 	for _, index := range ledgerIndices {
