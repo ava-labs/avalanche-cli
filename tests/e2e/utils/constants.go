@@ -16,6 +16,6 @@ const (
 	SpacesVMGenesisPath   = "tests/e2e/assets/test_spacesvm_genesis.json"
 	EwoqKeyPath           = "tests/e2e/assets/ewoq_key.pk"
 	SubnetEVMVersion      = "v0.4.3"
-	SpacesVMVersion       = "v0.0.9"
+	SpacesVMVersion       = "v0.0.11"
 	AvagoVersion          = "v1.9.2"
 )

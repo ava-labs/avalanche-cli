@@ -21,9 +21,9 @@ const (
 	// This also means we should consider this for the future: How to handle hardforks which make
 	// this test break.:w
 	subnetEVMVersion1 = "v0.4.3"
-	subnetEVMVersion2 = "v0.4.2"
+	subnetEVMVersion2 = "v0.4.3"
 	avagoVersion1     = "v1.9.2"
-	avagoVersion2     = "v1.9.1"
+	avagoVersion2     = "v1.9.2"
 )
 
 var _ = ginkgo.Describe("[Package Management]", func() {
@@ -144,7 +144,7 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 
 		// check avago install
 		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion1)).Should(gomega.BeTrue())
-		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion2)).Should(gomega.BeFalse())
+		// gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion2)).Should(gomega.BeFalse())
 
 		commands.CleanNetwork()
 
