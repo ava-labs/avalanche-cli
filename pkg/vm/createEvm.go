@@ -125,7 +125,7 @@ func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVe
 		return nil, nil, err
 	}
 
-	rpcVersion, err := GetRPCProtocolVersion(app, models.SubnetEvm, subnetEVMVersion)
+	rpcVersion, err := GetRPCProtocolVersion(app, models.SubnetEvm, vmVersion)
 	if err != nil {
 		return nil, &models.Sidecar{}, err
 	}

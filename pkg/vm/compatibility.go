@@ -3,7 +3,6 @@ package vm
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"sort"
 	"strconv"
 
@@ -59,14 +58,10 @@ func GetLatestAvalancheGoByProtocolVersion(app *application.Avalanche, rpcVersio
 		return "", err
 	}
 
-	fmt.Println("Parsed compat:", parsedCompat)
-
 	eligibleVersions, ok := parsedCompat[strconv.Itoa(rpcVersion)]
 	if !ok {
 		return "", NoAvagoVersion
 	}
-
-	fmt.Println("Eligible versions:", eligibleVersions)
 
 	// versions are not necessarily sorted, so we need to sort them
 	sort.Sort(sort.Reverse(sort.StringSlice(eligibleVersions)))
@@ -77,13 +72,9 @@ func GetLatestAvalancheGoByProtocolVersion(app *application.Avalanche, rpcVersio
 		constants.AvalancheGoRepoName,
 	))
 
-	fmt.Println("All versions", eligibleVersions)
-
 	var useVersion string
 	for _, proposedVersion := range []string(eligibleVersions) {
 		versionComparison := semver.Compare(proposedVersion, latestAvagoVersion)
-		fmt.Println("Proposed version:", proposedVersion)
-		fmt.Println("Comparison:", versionComparison)
 		if versionComparison != 1 {
 			useVersion = proposedVersion
 			break
@@ -95,4 +86,17 @@ func GetLatestAvalancheGoByProtocolVersion(app *application.Avalanche, rpcVersio
 	}
 
 	return useVersion, nil
+}
+
+func GetCurrentNetworkVersion() (string, error) {
+	// ctx := context.Background()
+	// infoClient := info.NewClient(constants.LocalAPIEndpoint)
+	// versionResponse, err := infoClient.GetNodeVersion(ctx)
+	// if err != nil {
+	// 	return "", fmt.Errorf("unable to determine rpc version: %w", err)
+	// }
+
+	// versionResponse.
+
+	return "", nil
 }

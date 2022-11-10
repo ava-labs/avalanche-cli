@@ -48,8 +48,9 @@ additional VM templates, such as the SpacesVM.
 By default, running the command with a subnetName that already exists will
 cause the command to fail. If you’d like to overwrite an existing
 configuration, pass the -f flag.`,
-		Args: cobra.ExactArgs(1),
-		RunE: createSubnetConfig,
+		SilenceUsage: true,
+		Args:         cobra.ExactArgs(1),
+		RunE:         createSubnetConfig,
 	}
 	cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
 	cmd.Flags().StringVar(&vmFile, "vm", "", "file path of custom vm to use")

@@ -20,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	ledger "github.com/ava-labs/avalanche-ledger-go"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
@@ -227,9 +228,11 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 
 		if avagoVersion == "latest" {
-			// rpcVersion := sidecar.RPCVersion
 			// find latest avago version for this rpc version
+			avagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(app, sidecar.RPCVersion)
 		}
+
+		// check if selected version matches what is currently running
 
 		deployer := subnet.NewLocalDeployer(app, avagoVersion, vmBin)
 		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
