@@ -288,11 +288,27 @@ func getLedgerAddrInfo(
 	if err != nil {
 		return addressInfo{}, err
 	}
-	addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
+	pChainAddr, err := address.Format("P", key.GetHRP(networkID), addr[:])
 	if err != nil {
 		return addressInfo{}, err
 	}
-	balance, err := getPChainBalanceStr(context.Background(), pClients[network], addrStr)
+    return getPChainAddrInfo(
+        pClients,
+        network,
+        pChainAddr,
+        "ledger",
+        fmt.Sprintf("index %d", index),
+    )
+}
+
+func getPChainAddrInfo(
+	pClients map[models.Network]platformvm.Client,
+	network models.Network,
+    addr string,
+    kind string,
+    name string,
+) (addressInfo, error) {
+	balance, err := getPChainBalanceStr(context.Background(), pClients[network], addr)
 	if err != nil {
 		// just ignore local network errors
 		if network != models.Local {
@@ -300,10 +316,10 @@ func getLedgerAddrInfo(
 		}
 	}
 	return addressInfo{
-		kind:    "ledger",
-		name:    fmt.Sprintf("index %d", index),
+		kind:    kind,
+		name:    name,
 		chain:   "P-Chain (Bech32 format)",
-		address: addrStr,
+		address: addr,
 		balance: balance,
 		network: network.String(),
 	}, nil
