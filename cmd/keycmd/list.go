@@ -266,13 +266,11 @@ func getLedgerAddrInfos(
 	addrInfos := []addressInfo{}
 	for _, index := range ledgerIndices {
 		addr := addresses[index]
-		for _, network := range networks {
-			addrInfo, err := getLedgerAddrInfo(pClients, index, network, addr)
-			if err != nil {
-				return []addressInfo{}, err
-			}
-			addrInfos = append(addrInfos, addrInfo)
+		ledgerAddrInfos, err := getLedgerAddrInfo(pClients, index, networks, addr)
+		if err != nil {
+			return []addressInfo{}, err
 		}
+		addrInfos = append(addrInfos, ledgerAddrInfos...)
 	}
 	return addrInfos, nil
 }
@@ -280,24 +278,32 @@ func getLedgerAddrInfos(
 func getLedgerAddrInfo(
 	pClients map[models.Network]platformvm.Client,
 	index uint,
-	network models.Network,
+	networks []models.Network,
 	addr ids.ShortID,
-) (addressInfo, error) {
-	networkID, err := network.NetworkID()
-	if err != nil {
-		return addressInfo{}, err
+) ([]addressInfo, error) {
+	addrInfos := []addressInfo{}
+	for _, network := range networks {
+		networkID, err := network.NetworkID()
+		if err != nil {
+			return nil, err
+		}
+		pChainAddr, err := address.Format("P", key.GetHRP(networkID), addr[:])
+		if err != nil {
+			return nil, err
+		}
+		addrInfo, err := getPChainAddrInfo(
+			pClients,
+			network,
+			pChainAddr,
+			"ledger",
+			fmt.Sprintf("index %d", index),
+		)
+		if err != nil {
+			return nil, err
+		}
+		addrInfos = append(addrInfos, addrInfo)
 	}
-	pChainAddr, err := address.Format("P", key.GetHRP(networkID), addr[:])
-	if err != nil {
-		return addressInfo{}, err
-	}
-	return getPChainAddrInfo(
-		pClients,
-		network,
-		pChainAddr,
-		"ledger",
-		fmt.Sprintf("index %d", index),
-	)
+	return addrInfos, nil
 }
 
 func getPChainAddrInfo(
