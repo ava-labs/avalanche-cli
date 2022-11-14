@@ -18,8 +18,9 @@ type migrationRunner struct {
 }
 
 var (
-	runMessage = "The tool needs to apply some internal updates first..."
-	endMessage = "Update process successfully completed"
+	runMessage       = "The tool needs to apply some internal updates first..."
+	endMessage       = "Update process successfully completed"
+	failedEndMessage = "Sadly some updates succeeded - others failed. Check output for hints"
 )
 
 // poor-man's migrations: there are no rollbacks (for now)
@@ -42,6 +43,9 @@ func (m *migrationRunner) run(app *application.Avalanche) error {
 	for i := 0; i < len(m.migrations); i++ {
 		err := m.migrations[i](app, m)
 		if err != nil {
+			if m.running {
+				ux.Logger.PrintToUser(failedEndMessage)
+			}
 			return fmt.Errorf("migration #%d failed: %w", i, err)
 		}
 	}

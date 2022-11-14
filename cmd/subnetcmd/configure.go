@@ -17,10 +17,11 @@ import (
 func newConfigureCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "configure [subnetName]",
-		Short: "Allows to add additional config files for the avalanchego nodes",
+		Short: "Adds additional config files for the avalanchego nodes",
 		Long: `Avalanchego nodes can be configured at different levels. 
 For example, subnets have their own subnet config (applies to all chains/VMs in the subnet).
-And each chain or VM can have its own specific chain config file.`,
+And each chain or VM can have its own specific chain config file.
+This command allows to set both config files.`,
 		SilenceUsage: true,
 		RunE:         configure,
 		Args:         cobra.ExactArgs(1),

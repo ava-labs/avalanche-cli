@@ -1,6 +1,6 @@
-#Migrations
+# Migrations
 
-##Why migrations
+## Why migrations
 The idea is to introduce a standardized process for internal changes of the
 `Avalanche` tool which usually require scripting.
 
@@ -12,11 +12,11 @@ The concept is obviously borrowed from databases where migrations
 are being applied to update database structures and its data
 to new versions of schemas and applications.
 
-##Limitations
+## Limitations
 Usually migrations have a rollback path which can be applied in case of failures.
 This tool currently does not support rollbacks.
 
-##General structure
+## General structure
 * The application calls all migrations implemnted when booting 
 * Each migration is iterated in order (the order is "enforced" via the index in the migrations map)
 * Each migration checks itself if it needs to be applied
@@ -24,8 +24,8 @@ This tool currently does not support rollbacks.
 * At the end of the iteration, it is checked if any migration ran. If one did, a closing message is printed
 * If no migration ran at all, nothing is being printed
 
-##Implementation
-* migrations need to reside in `internal/migrations`
+## Implementation
+* Migrations need to reside in `internal/migrations`
 * Each new migration should be added into a separate file in the package
 * Each new migration needs to implement a `migrationFunc`
 * It adds itself to the global `migrations` map with the next available index

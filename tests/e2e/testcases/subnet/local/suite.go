@@ -4,10 +4,18 @@
 package subnet
 
 import (
+	"context"
 	"fmt"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strconv"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
+	"github.com/ava-labs/avalanche-network-runner/api"
+	"github.com/ethereum/go-ethereum/common"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -164,46 +172,44 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 		commands.DeleteSubnetConfig(secondSubnetName)
 	})
 
-	/*
-		ginkgo.It("can deploy custom chain config", func() {
-			commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+	ginkgo.It("can deploy custom chain config", func() {
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 
-			addr := "0xb794f5ea0ba39494ce839613fffba74279579268"
+		addr := "0xb794f5ea0ba39494ce839613fffba74279579268"
 
-			chainConfig := "{\"feeRecipient\": [\"" + addr + "\"]}"
+		chainConfig := "{\"feeRecipient\": [\"" + addr + "\"]}"
 
-			fileName := filepath.Join(utils.GetBaseDir(), constants.SubnetDir, subnetName, constants.ChainConfigFileName)
-			err := os.WriteFile(fileName, []byte(chainConfig), constants.DefaultPerms755)
-			gomega.Expect(err).Should(gomega.BeNil())
+		fileName := filepath.Join(utils.GetBaseDir(), constants.SubnetDir, subnetName, constants.ChainConfigFileName)
+		err := os.WriteFile(fileName, []byte(chainConfig), constants.DefaultPerms755)
+		gomega.Expect(err).Should(gomega.BeNil())
 
-			deployOutput := commands.DeploySubnetLocally(subnetName)
-			rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
-			if err != nil {
-				fmt.Println(deployOutput)
-			}
-			gomega.Expect(err).Should(gomega.BeNil())
-			gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
 
-			rpc := rpcs[0]
-			err = utils.SetHardhatRPC(rpc)
-			gomega.Expect(err).Should(gomega.BeNil())
+		rpc := rpcs[0]
+		err = utils.SetHardhatRPC(rpc)
+		gomega.Expect(err).Should(gomega.BeNil())
 
-			err = utils.RunHardhatTests(utils.BaseTest)
-			gomega.Expect(err).Should(gomega.BeNil())
+		err = utils.RunHardhatTests(utils.BaseTest)
+		gomega.Expect(err).Should(gomega.BeNil())
 
-			url, err := url.Parse(rpc)
-			gomega.Expect(err).Should(gomega.BeNil())
-			port, err := strconv.Atoi(url.Port())
-			gomega.Expect(err).Should(gomega.BeNil())
-			cClient := api.NewEthClient(url.Host, uint(port))
+		url, err := url.Parse(rpc)
+		gomega.Expect(err).Should(gomega.BeNil())
+		port, err := strconv.Atoi(url.Port())
+		gomega.Expect(err).Should(gomega.BeNil())
+		cClient := api.NewEthClient(url.Host, uint(port))
 
-			ethAddr := common.HexToAddress(addr)
-			balance, err := cClient.BalanceAt(context.Background(), ethAddr, nil)
-			gomega.Expect(err).Should(gomega.BeNil())
+		ethAddr := common.HexToAddress(addr)
+		balance, err := cClient.BalanceAt(context.Background(), ethAddr, nil)
+		gomega.Expect(err).Should(gomega.BeNil())
 
-			gomega.Expect(balance.Int64()).Should(gomega.Not(gomega.BeZero()))
+		gomega.Expect(balance.Int64()).Should(gomega.Not(gomega.BeZero()))
 
-			commands.DeleteSubnetConfig(subnetName)
-		})
-	*/
+		commands.DeleteSubnetConfig(subnetName)
+	})
 })

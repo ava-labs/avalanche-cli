@@ -33,6 +33,7 @@ func TestRunMigrations(t *testing.T) {
 	}
 
 	expectedIfRan := runMessage + "\n" + endMessage + "\n"
+	expectedIfFailed := runMessage + "\n" + failedEndMessage + "\n"
 
 	tests := []migTest{
 		{
@@ -90,6 +91,34 @@ func TestRunMigrations(t *testing.T) {
 				},
 			},
 			expectedOutput: expectedIfRan,
+		},
+		{
+			name:      "2 mig, first one fails",
+			shouldErr: true,
+			migs: map[int]migrationFunc{
+				0: func(app *application.Avalanche, r *migrationRunner) error {
+					return errors.New("bogus fail")
+				},
+				1: func(app *application.Avalanche, r *migrationRunner) error {
+					r.printMigrationMessage()
+					return nil
+				},
+			},
+			expectedOutput: "",
+		},
+		{
+			name:      "2 mig, apply 1, second one fails",
+			shouldErr: true,
+			migs: map[int]migrationFunc{
+				0: func(app *application.Avalanche, r *migrationRunner) error {
+					r.printMigrationMessage()
+					return nil
+				},
+				1: func(app *application.Avalanche, r *migrationRunner) error {
+					return errors.New("bogus fail")
+				},
+			},
+			expectedOutput: expectedIfFailed,
 		},
 	}
 
