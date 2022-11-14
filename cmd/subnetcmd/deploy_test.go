@@ -94,6 +94,7 @@ func TestMutuallyExclusive(t *testing.T) {
 
 func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 	type test struct {
+		name            string
 		networkRPC      int
 		networkVersion  string
 		networkErr      error
@@ -106,18 +107,18 @@ func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 	}
 
 	tests := []test{
-		// network already running, rpc matches
 		{
+			name:            "network already running, rpc matches",
 			networkRPC:      18,
 			networkVersion:  testAvagoVersion1,
 			networkErr:      nil,
 			desiredRPC:      18,
 			desiredVersion:  testLatestAvagoVersion,
 			expectError:     false,
-			expectedVersion: testLatestAvagoVersion,
+			expectedVersion: testAvagoVersion1,
 		},
-		// network already running, rpc mismatch
 		{
+			name:            "network already running, rpc mismatch",
 			networkRPC:      18,
 			networkVersion:  testAvagoVersion1,
 			networkErr:      nil,
@@ -126,8 +127,8 @@ func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 			expectError:     true,
 			expectedVersion: "",
 		},
-		// network already running, version mismatch
 		{
+			name:            "network already running, version mismatch",
 			networkRPC:      18,
 			networkVersion:  testAvagoVersion1,
 			networkErr:      nil,
@@ -136,8 +137,8 @@ func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 			expectError:     true,
 			expectedVersion: "",
 		},
-		// network stopped, no err
 		{
+			name:            "network stopped, no err",
 			networkRPC:      0,
 			networkVersion:  "",
 			networkErr:      errors.New("unable to determine rpc version"),
@@ -148,8 +149,8 @@ func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 			compatData:      testAvagoCompat,
 			compatError:     nil,
 		},
-		// network stopped, no compat
 		{
+			name:            "network stopped, no compat",
 			networkRPC:      0,
 			networkVersion:  "",
 			networkErr:      errors.New("unable to determine rpc version"),
@@ -163,28 +164,30 @@ func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		assert := assert.New(t)
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
 
-		mockSC := mocks.StatusChecker{}
-		mockSC.On("GetCurrentNetworkVersion").Return(tt.networkVersion, tt.networkRPC, tt.networkErr)
+			mockSC := mocks.StatusChecker{}
+			mockSC.On("GetCurrentNetworkVersion").Return(tt.networkVersion, tt.networkRPC, tt.networkErr)
 
-		avagoVersion = tt.desiredVersion
+			avagoVersion = tt.desiredVersion
 
-		mockDownloader := &mocks.Downloader{}
-		mockDownloader.On("Download", mock.Anything).Return(tt.compatData, nil)
-		mockDownloader.On("GetLatestReleaseVersion", mock.Anything).Return(tt.expectedVersion, nil)
+			mockDownloader := &mocks.Downloader{}
+			mockDownloader.On("Download", mock.Anything).Return(tt.compatData, nil)
+			mockDownloader.On("GetLatestReleaseVersion", mock.Anything).Return(tt.expectedVersion, nil)
 
-		app = application.New()
-		app.Log = logging.NoLog{}
-		app.Downloader = mockDownloader
+			app = application.New()
+			app.Log = logging.NoLog{}
+			app.Downloader = mockDownloader
 
-		err := checkForInvalidDeployAndSetAvagoVersion(&mockSC, tt.desiredRPC)
+			err := checkForInvalidDeployAndSetAvagoVersion(&mockSC, tt.desiredRPC)
 
-		if tt.expectError {
-			assert.Error(err)
-		} else {
-			assert.NoError(err)
-			assert.Equal(tt.expectedVersion, avagoVersion)
-		}
+			if tt.expectError {
+				assert.Error(err)
+			} else {
+				assert.NoError(err)
+				assert.Equal(tt.expectedVersion, avagoVersion)
+			}
+		})
 	}
 }
