@@ -31,6 +31,9 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 			fmt.Println("Delete config error:", err)
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
+
+		// delete custom vm
+		utils.DeleteCustomBinary(subnetName)
 	})
 
 	ginkgo.It("can deploy a custom vm subnet to local", func() {

@@ -20,10 +20,14 @@ const (
 	// is compatible with avago v1.8.x.
 	// This also means we should consider this for the future: How to handle hardforks which make
 	// this test break.:w
-	subnetEVMVersion1 = "v0.3.0"
-	subnetEVMVersion2 = "v0.3.0"
-	avagoVersion1     = "v1.8.0"
-	avagoVersion2     = "v1.8.1"
+	subnetEVMVersion1 = "v0.4.2"
+	subnetEVMVersion2 = "v0.4.1"
+
+	soloAvagoVersion = "v1.9.1"
+
+	multipleAvagoSubnetEVM = "v0.3.0"
+	multipleAvagoVersion1  = "v1.8.0"
+	mulitpleAvagoVersion2  = "v1.8.1"
 )
 
 var _ = ginkgo.Describe("[Package Management]", func() {
@@ -42,10 +46,10 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 	ginkgo.It("can deploy a subnet with subnet-evm version", func() {
 		// check subnet-evm install precondition
 		gomega.Expect(utils.CheckSubnetEVMExists(subnetEVMVersion1)).Should(gomega.BeFalse())
-		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion1)).Should(gomega.BeFalse())
+		gomega.Expect(utils.CheckAvalancheGoExists(soloAvagoVersion)).Should(gomega.BeFalse())
 
 		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
-		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, avagoVersion1)
+		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, soloAvagoVersion)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -62,7 +66,7 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 
 		// check subnet-evm install
 		gomega.Expect(utils.CheckSubnetEVMExists(subnetEVMVersion1)).Should(gomega.BeTrue())
-		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion1)).Should(gomega.BeTrue())
+		gomega.Expect(utils.CheckAvalancheGoExists(soloAvagoVersion)).Should(gomega.BeTrue())
 
 		commands.DeleteSubnetConfig(subnetName)
 	})
@@ -75,7 +79,7 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
 		commands.CreateSubnetEvmConfigWithVersion(secondSubnetName, utils.SubnetEvmGenesis2Path, subnetEVMVersion2)
 
-		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, avagoVersion2)
+		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -83,7 +87,7 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
 
-		deployOutput = commands.DeploySubnetLocallyWithVersion(secondSubnetName, avagoVersion2)
+		deployOutput = commands.DeploySubnetLocally(secondSubnetName)
 		rpcs, err = utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -113,11 +117,11 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 
 	ginkgo.It("can deploy with multiple avalanchego versions", func() {
 		// check avago install precondition
-		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion1)).Should(gomega.BeFalse())
-		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion2)).Should(gomega.BeFalse())
+		gomega.Expect(utils.CheckAvalancheGoExists(multipleAvagoVersion1)).Should(gomega.BeFalse())
+		gomega.Expect(utils.CheckAvalancheGoExists(mulitpleAvagoVersion2)).Should(gomega.BeFalse())
 
-		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
-		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, avagoVersion1)
+		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, multipleAvagoSubnetEVM)
+		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, multipleAvagoVersion1)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -143,12 +147,12 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// check avago install
-		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion1)).Should(gomega.BeTrue())
-		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion2)).Should(gomega.BeFalse())
+		gomega.Expect(utils.CheckAvalancheGoExists(multipleAvagoVersion1)).Should(gomega.BeTrue())
+		gomega.Expect(utils.CheckAvalancheGoExists(mulitpleAvagoVersion2)).Should(gomega.BeFalse())
 
 		commands.CleanNetwork()
 
-		deployOutput = commands.DeploySubnetLocallyWithVersion(subnetName, avagoVersion2)
+		deployOutput = commands.DeploySubnetLocallyWithVersion(subnetName, mulitpleAvagoVersion2)
 		rpcs, err = utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -164,8 +168,8 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// check avago install
-		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion1)).Should(gomega.BeTrue())
-		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion2)).Should(gomega.BeTrue())
+		gomega.Expect(utils.CheckAvalancheGoExists(multipleAvagoVersion1)).Should(gomega.BeTrue())
+		gomega.Expect(utils.CheckAvalancheGoExists(mulitpleAvagoVersion2)).Should(gomega.BeTrue())
 
 		commands.DeleteSubnetConfig(subnetName)
 	})

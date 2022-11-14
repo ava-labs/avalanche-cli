@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/spf13/cobra"
 )
 
@@ -254,10 +253,8 @@ func importFromAPM() error {
 
 	version := fmt.Sprintf("v%d.%d.%d", vmDescr.Version.Major, vmDescr.Version.Minor, vmDescr.Version.Patch)
 
-	rpcVersion, err := vm.GetRPCProtocolVersion(app, vmType, version)
-	if err != nil {
-		return err
-	}
+	// this is automatically tagged as a custom VM, so we don't check the RPC
+	rpcVersion := 0
 
 	sidecar := models.Sidecar{
 		Name:            subnetDescr.Alias,

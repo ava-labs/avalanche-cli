@@ -54,11 +54,17 @@ func CreateSpacesVMSubnetConfig(
 			return nil, &models.Sidecar{}, err
 		}
 
+		rpcVersion, err := GetRPCProtocolVersion(app, models.SpacesVM, spacesVMVersion)
+		if err != nil {
+			return nil, &models.Sidecar{}, err
+		}
+
 		sc = &models.Sidecar{
-			Name:      subnetName,
-			VM:        models.SpacesVM,
-			VMVersion: spacesVMVersion,
-			Subnet:    subnetName,
+			Name:       subnetName,
+			VM:         models.SpacesVM,
+			VMVersion:  spacesVMVersion,
+			Subnet:     subnetName,
+			RPCVersion: rpcVersion,
 		}
 	}
 
@@ -171,11 +177,17 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 		return nil, nil, err
 	}
 
+	rpcVersion, err := GetRPCProtocolVersion(app, models.SpacesVM, version)
+	if err != nil {
+		return nil, &models.Sidecar{}, err
+	}
+
 	sc := &models.Sidecar{
-		Name:      subnetName,
-		VM:        models.SpacesVM,
-		VMVersion: version,
-		Subnet:    subnetName,
+		Name:       subnetName,
+		VM:         models.SpacesVM,
+		VMVersion:  version,
+		Subnet:     subnetName,
+		RPCVersion: rpcVersion,
 	}
 
 	return jsonBytes, sc, nil

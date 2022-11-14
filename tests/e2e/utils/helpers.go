@@ -257,6 +257,12 @@ func DeleteBins() error {
 	return nil
 }
 
+func DeleteCustomBinary(vmName string) {
+	vmPath := path.Join(GetBaseDir(), constants.VMDir, vmName)
+	// ignore error, file may not exist
+	os.RemoveAll(vmPath)
+}
+
 func DeleteAPMBin(vmid string) {
 	vmPath := path.Join(GetBaseDir(), constants.AvalancheCliBinDir, constants.APMPluginDir, vmid)
 
@@ -290,7 +296,7 @@ func ParseRPCsFromOutput(output string) ([]string, error) {
 		}
 		startIndex := strings.Index(line, "http")
 		if startIndex == -1 {
-			return nil, errors.New("no url in RPC URL line")
+			return nil, fmt.Errorf("no url in RPC URL line: %s", line)
 		}
 		endIndex := strings.LastIndex(line, "rpc")
 		rpc := line[startIndex : endIndex+3]

@@ -5,7 +5,9 @@ package network
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -29,5 +31,13 @@ func (networkStatusChecker) GetCurrentNetworkVersion() (string, int, error) {
 		return "", 0, fmt.Errorf("unable to determine rpc version: %w", err)
 	}
 
-	return versionResponse.Version, int(versionResponse.RPCProtocolVersion), nil
+	// version is in format avalanche/x.y.z, need to turn to semantic
+	splitVersion := strings.Split(versionResponse.Version, "/")
+	if len(splitVersion) != 2 {
+		return "", 0, errors.New("unable to parse avalanchego version " + versionResponse.Version)
+	}
+	// index 0 should be avalanche, index 1 will be version
+	parsedVersion := "v" + splitVersion[1]
+
+	return parsedVersion, int(versionResponse.RPCProtocolVersion), nil
 }
