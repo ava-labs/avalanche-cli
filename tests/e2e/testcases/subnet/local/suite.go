@@ -173,11 +173,11 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 	})
 
 	ginkgo.It("can deploy custom chain config", func() {
-		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmAllowFeeRecpPath)
 
-		addr := "0xb794f5ea0ba39494ce839613fffba74279579268"
+		addr := "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
 
-		chainConfig := "{\"feeRecipient\": [\"" + addr + "\"]}"
+		chainConfig := "{\"feeRecipient\": \"" + addr + "\"}"
 
 		fileName := filepath.Join(utils.GetBaseDir(), constants.SubnetDir, subnetName, constants.ChainConfigFileName)
 		err := os.WriteFile(fileName, []byte(chainConfig), constants.DefaultPerms755)
@@ -202,7 +202,7 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		port, err := strconv.Atoi(url.Port())
 		gomega.Expect(err).Should(gomega.BeNil())
-		cClient := api.NewEthClient(url.Host, uint(port))
+		cClient := api.NewEthClient(url.Hostname(), uint(port))
 
 		ethAddr := common.HexToAddress(addr)
 		balance, err := cClient.BalanceAt(context.Background(), ethAddr, nil)
