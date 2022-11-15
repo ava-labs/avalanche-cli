@@ -165,12 +165,12 @@ func listKeys(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if queryLedger {
-		addrInfos, err = getLedgerAddrInfos(pClients, ledgerIndices, networks)
+		addrInfos, err = getLedgerIndicesInfo(pClients, ledgerIndices, networks)
 		if err != nil {
 			return err
 		}
 	} else {
-		addrInfos, err = getStoredKeyInfos(pClients, cClients, networks, cchain)
+		addrInfos, err = getStoredKeysInfo(pClients, cClients, networks, cchain)
 		if err != nil {
 			return err
 		}
@@ -179,7 +179,7 @@ func listKeys(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func getStoredKeyInfos(
+func getStoredKeysInfo(
 	pClients map[models.Network]platformvm.Client,
 	cClients map[models.Network]ethclient.Client,
 	networks []models.Network,
@@ -244,7 +244,7 @@ func getStoredKeyInfo(
 	return addrInfos, nil
 }
 
-func getLedgerAddrInfos(
+func getLedgerIndicesInfo(
 	pClients map[models.Network]platformvm.Client,
 	ledgerIndices []uint,
 	networks []models.Network,
@@ -266,7 +266,7 @@ func getLedgerAddrInfos(
 	addrInfos := []addressInfo{}
 	for _, index := range ledgerIndices {
 		addr := addresses[index]
-		ledgerAddrInfos, err := getLedgerAddrInfo(pClients, index, networks, addr)
+		ledgerAddrInfos, err := getLedgerIndexInfo(pClients, index, networks, addr)
 		if err != nil {
 			return []addressInfo{}, err
 		}
@@ -275,7 +275,7 @@ func getLedgerAddrInfos(
 	return addrInfos, nil
 }
 
-func getLedgerAddrInfo(
+func getLedgerIndexInfo(
 	pClients map[models.Network]platformvm.Client,
 	index uint,
 	networks []models.Network,
