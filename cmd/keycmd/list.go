@@ -80,7 +80,7 @@ keys or for the ledger addresses associated to certain indices.`,
 		&mainnet,
 		mainnetFlag,
 		"m",
-		true,
+		false,
 		"list mainnet network addresses",
 	)
 	cmd.Flags().BoolVarP(
@@ -154,7 +154,16 @@ func listKeys(cmd *cobra.Command, args []string) error {
 		networks = append(networks, models.Mainnet)
 	}
 	if len(networks) == 0 {
-		return fmt.Errorf("you must specify at least one of --local, --fuji, --testnet, --mainnet")
+		// no flag was set, prompt user
+		networkStr, err := app.Prompt.CaptureList(
+			"Choose network for which to list addresses",
+			[]string{models.Mainnet.String(), models.Fuji.String(), models.Local.String()},
+		)
+		if err != nil {
+			return err
+		}
+		network := models.NetworkFromString(networkStr)
+		networks = append(networks, network)
 	}
 	queryLedger := len(ledgerIndices) > 0
 	if queryLedger {
