@@ -70,8 +70,8 @@ github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYU
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPdPJAN/hZIm0C4OItdklCFmMRWYpio=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
-github.com/ava-labs/apm v0.0.4 h1:0IUwxCyvqwr2sbbEKhSI7VzpPG3Z+e180ulJwNiKkBk=
-github.com/ava-labs/apm v0.0.4/go.mod h1:4MNcyEvWajJm2JnezC7vgHuA220ppoQYOMh5vM+iH4Q=
+github.com/ava-labs/apm v1.0.0 h1:6FwozH67hEkbWVsOXNZGexBy5KLpNeYucN9zcFUHv+Q=
+github.com/ava-labs/apm v1.0.0/go.mod h1:TJL7pTlZNvQatsQPsLUtDHApEwVZ/qS7iSNtRFU83mc=
 github.com/ava-labs/avalanche-ledger-go v0.0.11 h1:AZ2cKEZ1noMZPCLvjyl/33LBu2u/ESgolr661epH0Ak=
 github.com/ava-labs/avalanche-ledger-go v0.0.11/go.mod h1:ZU0gQAFDbyKV2WiBxsvvuigJbKgxVjWn509ajTYozT0=
 github.com/ava-labs/avalanche-network-runner v1.3.2 h1:6uWaFZsxrpBHowylpLU7A1voD67MWs956MlfepFNqZQ=
@@ -359,6 +359,8 @@ github.com/json-iterator/go v1.1.11/go.mod h1:KdQUCv79m/52Kvf8AW2vK1V8akMuk1QjK/
 github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
 github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1:6v2b51hI/fHJwM22ozAgKL4VKDeJcHhJFhtBdhmNjmU=
 github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/XSXhF0NWZEnDohbsk=
+github.com/juju/fslock v0.0.0-20160525022230-4d5c94c67b4b h1:FQ7+9fxhyp82ks9vAuyPzG0/vVbWwMwLJ+P6yJI5FN8=
+github.com/juju/fslock v0.0.0-20160525022230-4d5c94c67b4b/go.mod h1:HMcgvsgd0Fjj4XXDkbjdmlbI505rUPBs6WBMYg2pXks=
 github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
 github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
 github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 h1:iQTw/8FWTuc7uiaSepXwyf3o52HaUYcV+Tu66S3F5GA=
