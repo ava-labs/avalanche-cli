@@ -40,7 +40,7 @@ var (
 
 type newPublisherFunc func(string, string, string) subnet.Publisher
 
-// avalanche subnet deploy
+// avalanche subnet publish
 func newPublishCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "publish [subnetName]",

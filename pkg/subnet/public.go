@@ -50,6 +50,7 @@ func NewPublicDeployer(app *application.Avalanche, usingLedger bool, kc keychain
 //   - sets the change output owner to be a wallet address (if not, it may go to any other subnet auth address)
 //   - signs the tx with the wallet as the owner of fee outputs and one of the subnet auth keys
 //   - returns the tx so that it can be later on be signed by the rest of the subnet auth keys
+//
 // - if operation is not multisig (len(subnetAuthKeysStrs) == 1):
 //   - creates and issues an add validator tx, signing the tx with the wallet as the owner of fee outputs
 //     and the only one subnet auth key
@@ -115,6 +116,7 @@ func (d *PublicDeployer) AddValidator(
 //   - sets the change output owner to be a wallet address (if not, it may go to any other subnet auth address)
 //   - signs the tx with the wallet as the owner of fee outputs and one of the subnet auth keys
 //   - returns the tx so that it can be later on be signed by the rest of the subnet auth keys
+//
 // - if operation is not multisig (len(subnetAuthKeysStrs) == 1):
 //   - creates and issues a blockchain tx, signing the tx with the wallet as the owner of fee outputs
 //     and the only one subnet auth key

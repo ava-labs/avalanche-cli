@@ -15,8 +15,11 @@ const (
 	ServerRunFile      = "gRPCserver.run"
 	AvalancheCliBinDir = "bin"
 	RunDir             = "runs"
-	SidecarSuffix      = "_sidecar.json"
-	GenesisSuffix      = "_genesis.json"
+	SuffixSeparator    = "_"
+	SidecarFileName    = "sidecar.json"
+	GenesisFileName    = "genesis.json"
+	SidecarSuffix      = SuffixSeparator + SidecarFileName
+	GenesisSuffix      = SuffixSeparator + GenesisFileName
 
 	SidecarVersion = "1.2.1"
 
@@ -89,9 +92,13 @@ const (
 	// #nosec G101
 	GithubAPITokenEnvVarName = "GITHUB_TOKEN"
 
-	ReposDir  = "repos"
-	SubnetDir = "subnets"
-	VMDir     = "vms"
+	ReposDir       = "repos"
+	SubnetDir      = "subnets"
+	VMDir          = "vms"
+	ChainConfigDir = "chains"
+
+	SubnetConfigFileName = "subnet.json"
+	ChainConfigFileName  = "chain.json"
 
 	GitRepoCommitName  = "Avalanche-CLI"
 	GitRepoCommitEmail = "info@avax.network"
@@ -100,4 +107,7 @@ const (
 
 	NotAvailableLabel = "Not available"
 	BackendCmd        = "avalanche-cli-backend"
+
+	YesLabel = "Yes"
+	NoLabel  = "No"
 )

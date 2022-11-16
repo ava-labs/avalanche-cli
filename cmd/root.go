@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/transactioncmd"
+	"github.com/ava-labs/avalanche-cli/internal/migrations"
 	"github.com/ava-labs/avalanche-cli/pkg/apmintegration"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
@@ -93,6 +94,10 @@ func createApp(cmd *cobra.Command, args []string) error {
 	}
 
 	initConfig()
+
+	if err := migrations.RunMigrations(app); err != nil {
+		return err
+	}
 
 	return nil
 }

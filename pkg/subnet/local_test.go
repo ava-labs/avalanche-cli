@@ -129,7 +129,10 @@ func TestDeployToLocal(t *testing.T) {
 	assert.NoError(err)
 	// create dummy sidecar file, also checked by deploy
 	sidecar := `{"VM": "SubnetEVM"}`
-	testSidecar, err := os.Create(filepath.Join(testDir, "test_sidecar.json"))
+	testSubnetDir := filepath.Join(testDir, constants.SubnetDir, testChainName)
+	err = os.MkdirAll(testSubnetDir, constants.DefaultPerms755)
+	assert.NoError(err)
+	testSidecar, err := os.Create(filepath.Join(testSubnetDir, constants.SidecarFileName))
 	assert.NoError(err)
 	err = os.WriteFile(testSidecar.Name(), []byte(sidecar), constants.DefaultPerms755)
 	assert.NoError(err)

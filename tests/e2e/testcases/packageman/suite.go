@@ -19,7 +19,7 @@ const (
 	// TODO: Currently the subnetEVM versions are collapsed to just use one, because only v0.3.0
 	// is compatible with avago v1.8.x.
 	// This also means we should consider this for the future: How to handle hardforks which make
-	// this test break.:w
+	// this test break.
 	subnetEVMVersion1 = "v0.3.0"
 	subnetEVMVersion2 = "v0.3.0"
 	avagoVersion1     = "v1.8.0"
@@ -144,7 +144,9 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 
 		// check avago install
 		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion1)).Should(gomega.BeTrue())
-		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion2)).Should(gomega.BeFalse())
+		// FIXME: If we have to use twice the same version (because they are incompatible
+		// between each other), then the following will necessarily fail:
+		// gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion2)).Should(gomega.BeFalse())
 
 		commands.CleanNetwork()
 
