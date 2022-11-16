@@ -20,8 +20,8 @@ const (
 	// is compatible with avago v1.8.x.
 	// This also means we should consider this for the future: How to handle hardforks which make
 	// this test break.:w
-	subnetEVMVersion1 = "v0.4.2"
-	subnetEVMVersion2 = "v0.4.1"
+	soloSubnetEVMVersion1 = "v0.4.2"
+	soloSubnetEVMVersion2 = "v0.4.1"
 
 	soloAvagoVersion = "v1.9.1"
 
@@ -45,10 +45,10 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 
 	ginkgo.It("can deploy a subnet with subnet-evm version", func() {
 		// check subnet-evm install precondition
-		gomega.Expect(utils.CheckSubnetEVMExists(subnetEVMVersion1)).Should(gomega.BeFalse())
+		gomega.Expect(utils.CheckSubnetEVMExists(soloSubnetEVMVersion1)).Should(gomega.BeFalse())
 		gomega.Expect(utils.CheckAvalancheGoExists(soloAvagoVersion)).Should(gomega.BeFalse())
 
-		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
+		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, soloSubnetEVMVersion1)
 		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, soloAvagoVersion)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
@@ -65,7 +65,7 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// check subnet-evm install
-		gomega.Expect(utils.CheckSubnetEVMExists(subnetEVMVersion1)).Should(gomega.BeTrue())
+		gomega.Expect(utils.CheckSubnetEVMExists(soloSubnetEVMVersion1)).Should(gomega.BeTrue())
 		gomega.Expect(utils.CheckAvalancheGoExists(soloAvagoVersion)).Should(gomega.BeTrue())
 
 		commands.DeleteSubnetConfig(subnetName)
@@ -73,11 +73,11 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 
 	ginkgo.It("can deploy multiple subnet-evm versions", func() {
 		// check subnet-evm install precondition
-		gomega.Expect(utils.CheckSubnetEVMExists(subnetEVMVersion1)).Should(gomega.BeFalse())
-		gomega.Expect(utils.CheckSubnetEVMExists(subnetEVMVersion2)).Should(gomega.BeFalse())
+		gomega.Expect(utils.CheckSubnetEVMExists(soloSubnetEVMVersion1)).Should(gomega.BeFalse())
+		gomega.Expect(utils.CheckSubnetEVMExists(soloSubnetEVMVersion2)).Should(gomega.BeFalse())
 
-		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
-		commands.CreateSubnetEvmConfigWithVersion(secondSubnetName, utils.SubnetEvmGenesis2Path, subnetEVMVersion2)
+		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, soloSubnetEVMVersion1)
+		commands.CreateSubnetEvmConfigWithVersion(secondSubnetName, utils.SubnetEvmGenesis2Path, soloSubnetEVMVersion2)
 
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
@@ -108,8 +108,8 @@ var _ = ginkgo.Describe("[Package Management]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// check subnet-evm install
-		gomega.Expect(utils.CheckSubnetEVMExists(subnetEVMVersion1)).Should(gomega.BeTrue())
-		gomega.Expect(utils.CheckSubnetEVMExists(subnetEVMVersion2)).Should(gomega.BeTrue())
+		gomega.Expect(utils.CheckSubnetEVMExists(soloSubnetEVMVersion1)).Should(gomega.BeTrue())
+		gomega.Expect(utils.CheckSubnetEVMExists(soloSubnetEVMVersion2)).Should(gomega.BeTrue())
 
 		commands.DeleteSubnetConfig(subnetName)
 		commands.DeleteSubnetConfig(secondSubnetName)

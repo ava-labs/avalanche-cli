@@ -154,7 +154,6 @@ func DeploySubnetLocally(subnetName string) string {
 	return DeploySubnetLocallyWithArgs(subnetName, "", "")
 }
 
-// Returns the deploy output
 /* #nosec G204 */
 func DeploySubnetLocallyExpectError(subnetName string) {
 	DeploySubnetLocallyWithArgsExpectError(subnetName, utils.AvagoVersion, "")
@@ -205,7 +204,6 @@ func DeploySubnetLocallyWithArgs(subnetName string, version string, confPath str
 	return string(output)
 }
 
-// Returns the deploy output
 /* #nosec G204 */
 func DeploySubnetLocallyWithArgsExpectError(subnetName string, version string, confPath string) {
 	// Check config exists

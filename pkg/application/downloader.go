@@ -11,8 +11,14 @@ import (
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"golang.org/x/mod/semver"
 )
 
+const githubVersionTagName = "tag_name"
+
+// This is a generic interface for performing highly testable downloads. All methods here involve
+// external http requests. To write tests using these functions, provide a mocked version of this
+// interface to your application object.
 type Downloader interface {
 	Download(url string) ([]byte, error)
 	GetLatestReleaseVersion(releaseURL string) (string, error)
@@ -69,8 +75,8 @@ func (downloader) GetLatestReleaseVersion(releaseURL string) (string, error) {
 		return "", fmt.Errorf("failed to unmarshal binary json version string: %w", err)
 	}
 
-	version := jsonStr["tag_name"].(string)
-	if version == "" || version[0] != 'v' {
+	version := jsonStr[githubVersionTagName].(string)
+	if !semver.IsValid(version) {
 		return "", fmt.Errorf("invalid version string: %s", version)
 	}
 

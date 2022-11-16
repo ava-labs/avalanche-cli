@@ -36,8 +36,7 @@ func GetRPCProtocolVersion(app *application.Avalanche, vmType models.VMType, vmV
 	}
 
 	var parsedCompat models.VMCompatibility
-	err = json.Unmarshal(compatibilityBytes, &parsedCompat)
-	if err != nil {
+	if err = json.Unmarshal(compatibilityBytes, &parsedCompat); err != nil {
 		return 0, err
 	}
 
@@ -56,8 +55,7 @@ func GetLatestAvalancheGoByProtocolVersion(app *application.Avalanche, rpcVersio
 	}
 
 	var parsedCompat models.AvagoCompatiblity
-	err = json.Unmarshal(compatibilityBytes, &parsedCompat)
-	if err != nil {
+	if err = json.Unmarshal(compatibilityBytes, &parsedCompat); err != nil {
 		return "", err
 	}
 

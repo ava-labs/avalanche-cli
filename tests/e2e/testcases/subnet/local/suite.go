@@ -171,16 +171,15 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 	ginkgo.AfterEach(func() {
 		commands.CleanNetwork()
-		err := utils.DeleteConfigs(subnetName)
-		if err != nil {
+		if err := utils.DeleteConfigs(subnetName); err != nil {
 			fmt.Println("Clean network error:", err)
+			gomega.Expect(err).Should(gomega.BeNil())
 		}
-		gomega.Expect(err).Should(gomega.BeNil())
-		err = utils.DeleteConfigs(secondSubnetName)
-		if err != nil {
+
+		if err := utils.DeleteConfigs(secondSubnetName); err != nil {
 			fmt.Println("Delete config error:", err)
+			gomega.Expect(err).Should(gomega.BeNil())
 		}
-		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
 	ginkgo.It("can deploy a subnet-evm with old version", func() {

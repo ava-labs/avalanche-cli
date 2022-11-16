@@ -170,7 +170,7 @@ func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 			mockSC := mocks.StatusChecker{}
 			mockSC.On("GetCurrentNetworkVersion").Return(tt.networkVersion, tt.networkRPC, tt.networkErr)
 
-			avagoVersion = tt.desiredVersion
+			userProvidedAvagoVersion = tt.desiredVersion
 
 			mockDownloader := &mocks.Downloader{}
 			mockDownloader.On("Download", mock.Anything).Return(tt.compatData, nil)
@@ -180,13 +180,13 @@ func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 			app.Log = logging.NoLog{}
 			app.Downloader = mockDownloader
 
-			err := checkForInvalidDeployAndSetAvagoVersion(&mockSC, tt.desiredRPC)
+			desiredAvagoVersion, err := checkForInvalidDeployAndGetAvagoVersion(&mockSC, tt.desiredRPC)
 
 			if tt.expectError {
 				assert.Error(err)
 			} else {
 				assert.NoError(err)
-				assert.Equal(tt.expectedVersion, avagoVersion)
+				assert.Equal(tt.expectedVersion, desiredAvagoVersion)
 			}
 		})
 	}

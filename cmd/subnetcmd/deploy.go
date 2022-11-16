@@ -15,8 +15,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
+	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	nw "github.com/ava-labs/avalanche-cli/pkg/network"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
@@ -40,17 +40,17 @@ import (
 const numLedgerAddressesToDerive = 1
 
 var (
-	deployLocal    bool
-	deployTestnet  bool
-	deployMainnet  bool
-	useLedger      bool
-	sameControlKey bool
-	keyName        string
-	threshold      uint32
-	controlKeys    []string
-	subnetAuthKeys []string
-	avagoVersion   string
-	outputTxPath   string
+	deployLocal              bool
+	deployTestnet            bool
+	deployMainnet            bool
+	useLedger                bool
+	sameControlKey           bool
+	keyName                  string
+	threshold                uint32
+	controlKeys              []string
+	subnetAuthKeys           []string
+	userProvidedAvagoVersion string
+	outputTxPath             string
 
 	errMutuallyExlusiveNetworks    = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
@@ -83,7 +83,7 @@ subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "deploy to testnet (alias to `fuji`)")
 	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "deploy to fuji (alias to `testnet`")
 	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "deploy to mainnet")
-	cmd.Flags().StringVar(&avagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
+	cmd.Flags().StringVar(&userProvidedAvagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
 	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use creation key as control key")
@@ -231,16 +231,15 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 		// skip rpc check if using custom vm
 		if sidecar.VM != models.CustomVM {
-			nc := nw.NewStatusChecker()
-			err = checkForInvalidDeployAndSetAvagoVersion(nc, sidecar.RPCVersion)
+			// check if selected version matches what is currently running
+			nc := localnetworkinterface.NewStatusChecker()
+			userProvidedAvagoVersion, err = checkForInvalidDeployAndGetAvagoVersion(nc, sidecar.RPCVersion)
 			if err != nil {
 				return err
 			}
 		}
 
-		// check if selected version matches what is currently running
-
-		deployer := subnet.NewLocalDeployer(app, avagoVersion, vmBin)
+		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, vmBin)
 		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
 		if err != nil {
 			if deployer.BackendStartedHere() {
@@ -693,44 +692,44 @@ func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFu
 	return nil
 }
 
-// Has side effects and will set the version of avalanchego in the package-level avagoVersion variable.
-func checkForInvalidDeployAndSetAvagoVersion(network nw.StatusChecker, configuredRPCVersion int) error {
+// Determines the appropriate version of avalanchego to run with. Returns an error if
+// that version conflicts with the current deployment.
+func checkForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.StatusChecker, configuredRPCVersion int) (string, error) {
 	// get current network
-	networkRunning := true
-	runningAvagoVersion, runningRPCVersion, err := network.GetCurrentNetworkVersion()
+	runningAvagoVersion, runningRPCVersion, networkRunning, err := network.GetCurrentNetworkVersion()
 	if err != nil {
-		// not actually an error, network just not running
-		app.Log.Debug(err.Error())
-		networkRunning = false
+		return "", err
 	}
+
+	desiredAvagoVersion := userProvidedAvagoVersion
 
 	// RPC Version was made available in the info API in avalanchego version v1.9.2. For prior versions,
 	// we will need to skip this check.
 	skipRPCCheck := false
-	if semver.Compare(runningAvagoVersion, "v1.9.2") == -1 {
+	if semver.Compare(runningAvagoVersion, constants.AvalancheGoCompatibilityVersionAdded) == -1 {
 		skipRPCCheck = true
 	}
 
 	if networkRunning {
-		if avagoVersion == "latest" {
+		if userProvidedAvagoVersion == "latest" {
 			if runningRPCVersion != configuredRPCVersion && !skipRPCCheck {
-				return fmt.Errorf(
+				return "", fmt.Errorf(
 					"the current avalanchego deployment uses rpc version %d but your subnet has version %d and is not compatible",
 					runningRPCVersion,
 					configuredRPCVersion,
 				)
 			}
-			avagoVersion = runningAvagoVersion
-		} else if runningAvagoVersion != avagoVersion {
+			desiredAvagoVersion = runningAvagoVersion
+		} else if runningAvagoVersion != userProvidedAvagoVersion {
 			// user wants a specific version
-			return errors.New("incompatible avalanchego version selected")
+			return "", errors.New("incompatible avalanchego version selected")
 		}
-	} else if avagoVersion == "latest" {
+	} else if userProvidedAvagoVersion == "latest" {
 		// find latest avago version for this rpc version
-		avagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(app, configuredRPCVersion)
+		desiredAvagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(app, configuredRPCVersion)
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
-	return nil
+	return desiredAvagoVersion, nil
 }
