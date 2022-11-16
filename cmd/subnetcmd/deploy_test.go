@@ -98,6 +98,7 @@ func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 		networkRPC      int
 		networkVersion  string
 		networkErr      error
+		networkUp       bool
 		desiredRPC      int
 		desiredVersion  string
 		compatData      []byte
@@ -116,6 +117,7 @@ func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 			desiredVersion:  testLatestAvagoVersion,
 			expectError:     false,
 			expectedVersion: testAvagoVersion1,
+			networkUp:       true,
 		},
 		{
 			name:            "network already running, rpc mismatch",
@@ -126,6 +128,7 @@ func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 			desiredVersion:  testLatestAvagoVersion,
 			expectError:     true,
 			expectedVersion: "",
+			networkUp:       true,
 		},
 		{
 			name:            "network already running, version mismatch",
@@ -136,21 +139,36 @@ func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 			desiredVersion:  testAvagoVersion2,
 			expectError:     true,
 			expectedVersion: "",
+			networkUp:       true,
 		},
 		{
 			name:            "network stopped, no err",
 			networkRPC:      0,
 			networkVersion:  "",
-			networkErr:      errors.New("unable to determine rpc version"),
+			networkErr:      nil,
 			desiredRPC:      19,
 			desiredVersion:  testLatestAvagoVersion,
 			expectError:     false,
 			expectedVersion: testAvagoVersion1,
 			compatData:      testAvagoCompat,
 			compatError:     nil,
+			networkUp:       false,
 		},
 		{
 			name:            "network stopped, no compat",
+			networkRPC:      0,
+			networkVersion:  "",
+			networkErr:      nil,
+			desiredRPC:      19,
+			desiredVersion:  testLatestAvagoVersion,
+			expectError:     true,
+			expectedVersion: testAvagoVersion1,
+			compatData:      nil,
+			compatError:     errors.New("no compat"),
+			networkUp:       false,
+		},
+		{
+			name:            "network up, network err",
 			networkRPC:      0,
 			networkVersion:  "",
 			networkErr:      errors.New("unable to determine rpc version"),
@@ -158,8 +176,9 @@ func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 			desiredVersion:  testLatestAvagoVersion,
 			expectError:     true,
 			expectedVersion: testAvagoVersion1,
-			compatData:      nil,
-			compatError:     errors.New("no compat"),
+			compatData:      testAvagoCompat,
+			compatError:     nil,
+			networkUp:       true,
 		},
 	}
 
@@ -168,7 +187,7 @@ func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 			assert := assert.New(t)
 
 			mockSC := mocks.StatusChecker{}
-			mockSC.On("GetCurrentNetworkVersion").Return(tt.networkVersion, tt.networkRPC, tt.networkErr)
+			mockSC.On("GetCurrentNetworkVersion").Return(tt.networkVersion, tt.networkRPC, tt.networkUp, tt.networkErr)
 
 			userProvidedAvagoVersion = tt.desiredVersion
 
