@@ -9,7 +9,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -40,9 +39,6 @@ func configure(cmd *cobra.Command, args []string) error {
 		subnetConf = "Subnet config"
 		chainConf  = "Chain config"
 	)
-
-	ux.Logger.PrintToUser("The " + logging.Cyan.Wrap("subnet") + logging.Reset.Wrap(" config file applies to *all* VMs in a subnet"))
-	ux.Logger.PrintToUser("The " + logging.Cyan.Wrap("chain") + logging.Reset.Wrap(" config file applies to a *specific* VM in a subnet"))
 
 	options := []string{subnetConf, chainConf}
 	selected, err := app.Prompt.CaptureList("Which configuration file would you like to update?", options)

@@ -20,7 +20,7 @@ type migrationRunner struct {
 var (
 	runMessage       = "The tool needs to apply some internal updates first..."
 	endMessage       = "Update process successfully completed"
-	failedEndMessage = "Sadly some updates succeeded - others failed. Check output for hints"
+	failedEndMessage = "Some updates succeeded - others failed. Check output for hints"
 )
 
 // poor-man's migrations: there are no rollbacks (for now)
