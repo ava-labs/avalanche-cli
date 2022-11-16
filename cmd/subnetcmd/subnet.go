@@ -53,5 +53,7 @@ manage your subnet configurations and live deployments.`,
 	cmd.AddCommand(newPublishCmd())
 	// subnet stats
 	cmd.AddCommand(newStatsCmd())
+	// subnet configure
+	cmd.AddCommand(newConfigureCmd())
 	return cmd
 }

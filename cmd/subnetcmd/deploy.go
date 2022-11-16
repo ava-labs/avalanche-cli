@@ -95,26 +95,26 @@ subnet and deploy it on Fuji or Mainnet.`,
 }
 
 func getChainsInSubnet(subnetName string) ([]string, error) {
-	files, err := os.ReadDir(app.GetBaseDir())
+	subnets, err := os.ReadDir(app.GetSubnetDir())
 	if err != nil {
 		return nil, fmt.Errorf("failed to read baseDir: %w", err)
 	}
 
 	chains := []string{}
 
-	for _, f := range files {
-		if strings.Contains(f.Name(), constants.SidecarSuffix) {
+	for _, s := range subnets {
+		sidecarFile := filepath.Join(app.GetSubnetDir(), s.Name(), constants.SidecarFileName)
+		if _, err := os.Stat(sidecarFile); err == nil {
 			// read in sidecar file
-			path := filepath.Join(app.GetBaseDir(), f.Name())
-			jsonBytes, err := os.ReadFile(path)
+			jsonBytes, err := os.ReadFile(sidecarFile)
 			if err != nil {
-				return nil, fmt.Errorf("failed reading file %s: %w", path, err)
+				return nil, fmt.Errorf("failed reading file %s: %w", sidecarFile, err)
 			}
 
 			var sc models.Sidecar
 			err = json.Unmarshal(jsonBytes, &sc)
 			if err != nil {
-				return nil, fmt.Errorf("failed unmarshaling file %s: %w", path, err)
+				return nil, fmt.Errorf("failed unmarshaling file %s: %w", sidecarFile, err)
 			}
 			if sc.Subnet == subnetName {
 				chains = append(chains, sc.Name)

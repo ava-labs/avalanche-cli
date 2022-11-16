@@ -57,7 +57,7 @@ func TestExportImportSubnet(t *testing.T) {
 	err = exportSubnet(nil, []string{testSubnet})
 	assert.NoError(err)
 	assert.FileExists(exportOutput)
-	sidecarFile := filepath.Join(app.GetBaseDir(), testSubnet+constants.SidecarSuffix)
+	sidecarFile := filepath.Join(app.GetBaseDir(), constants.SubnetDir, testSubnet, constants.SidecarFileName)
 	orig, err := os.ReadFile(sidecarFile)
 	assert.NoError(err)
 
@@ -79,7 +79,7 @@ func TestExportImportSubnet(t *testing.T) {
 	assert.ErrorIs(err, os.ErrNotExist)
 	err = importSubnet(nil, []string{exportOutput})
 	assert.ErrorContains(err, "subnet already exists")
-	genFile := filepath.Join(app.GetBaseDir(), testSubnet+constants.GenesisSuffix)
+	genFile := filepath.Join(app.GetBaseDir(), constants.SubnetDir, testSubnet, constants.GenesisFileName)
 	err = os.Remove(genFile)
 	assert.NoError(err)
 	err = importSubnet(nil, []string{exportOutput})
