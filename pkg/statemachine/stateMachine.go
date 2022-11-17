@@ -21,14 +21,12 @@ const notRunningState = ""
 //
 // usage example:
 //
-// TODO: This is currently issuing linter errors if not formatted this way
-// Check with future go/golangci-lint version combinations if this is still happening
-// machine, err := NewStateMachine(states)
-// [ err processing ]
-// while machine.Running() {
-// [do stuff based on machine.CurrentState(), and set direction]
-// machine.NextState(direction)
-// }
+//	machine, err := NewStateMachine(states)
+//	[ err processing ]
+//	while machine.Running() {
+//	  [do stuff based on machine.CurrentState(), and set direction]
+//	  machine.NextState(direction)
+//	}
 type StateMachine struct {
 	index    int
 	states   []string

@@ -4,15 +4,11 @@
 package binutils
 
 import (
-	"fmt"
-	"io"
-	"net/http"
 	"runtime"
 )
 
 type Installer interface {
 	GetArch() (string, string)
-	DownloadRelease(releaseURL string) ([]byte, error)
 }
 
 type installerImpl struct{}
@@ -23,21 +19,4 @@ func NewInstaller() Installer {
 
 func (installerImpl) GetArch() (string, string) {
 	return runtime.GOARCH, runtime.GOOS
-}
-
-func (installerImpl) DownloadRelease(releaseURL string) ([]byte, error) {
-	resp, err := http.Get(releaseURL)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected http status code: %d", resp.StatusCode)
-	}
-	defer resp.Body.Close()
-
-	archive, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	return archive, nil
 }

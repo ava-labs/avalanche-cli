@@ -21,7 +21,7 @@ const (
 	testRepo = "https://github.com/ava-labs/test-subnet-configs"
 )
 
-var _ = ginkgo.Describe("[Local Subnet]", func() {
+var _ = ginkgo.Describe("[APM]", func() {
 	ginkgo.BeforeEach(func() {
 		// TODO this is a bit coarse, but I'm not sure a better solution is possible
 		// without modifications to the APM.

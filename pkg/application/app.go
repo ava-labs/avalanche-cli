@@ -26,23 +26,25 @@ const (
 var errSubnetEvmChainIDExists = errors.New("the provided subnet evm chain ID already exists! Try another one")
 
 type Avalanche struct {
-	Log     logging.Logger
-	baseDir string
-	Conf    *config.Config
-	Prompt  prompts.Prompter
-	Apm     *apm.APM
-	ApmDir  string
+	Log        logging.Logger
+	baseDir    string
+	Conf       *config.Config
+	Prompt     prompts.Prompter
+	Apm        *apm.APM
+	ApmDir     string
+	Downloader Downloader
 }
 
 func New() *Avalanche {
 	return &Avalanche{}
 }
 
-func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Config, prompt prompts.Prompter) {
+func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Config, prompt prompts.Prompter, downloader Downloader) {
 	app.baseDir = baseDir
 	app.Log = log
 	app.Conf = conf
 	app.Prompt = prompt
+	app.Downloader = downloader
 }
 
 func (app *Avalanche) GetRunFile() string {

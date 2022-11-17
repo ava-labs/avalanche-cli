@@ -3,7 +3,6 @@
 package binutils
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,51 +10,10 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"go.uber.org/zap"
 )
-
-// GetLatestReleaseVersion returns the latest available version from github
-func GetLatestReleaseVersion(releaseURL string) (string, error) {
-	// TODO: Question if there is a less error prone (= simpler) way to install latest avalanchego
-	// Maybe the binary package manager should also allow the actual avalanchego binary for download
-	request, err := http.NewRequest("GET", releaseURL, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to create request for latest version from %s: %w", releaseURL, err)
-	}
-	token := os.Getenv(constants.GithubAPITokenEnvVarName)
-	if token != "" {
-		// avoid rate limitation issues at CI
-		request.Header.Set("authorization", fmt.Sprintf("Bearer %s", token))
-	}
-	resp, err := http.DefaultClient.Do(request)
-	if err != nil {
-		return "", fmt.Errorf("failed to get latest version from %s: %w", releaseURL, err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to get latest version from %s: unexpected http status code: %d", releaseURL, resp.StatusCode)
-	}
-	defer resp.Body.Close()
-
-	jsonBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to get latest binary version from %s: %w", releaseURL, err)
-	}
-
-	var jsonStr map[string]interface{}
-	if err := json.Unmarshal(jsonBytes, &jsonStr); err != nil {
-		return "", fmt.Errorf("failed to unmarshal binary json version string: %w", err)
-	}
-
-	version := jsonStr["tag_name"].(string)
-	if version == "" || version[0] != 'v' {
-		return "", fmt.Errorf("invalid version string: %s", version)
-	}
-
-	return version, nil
-}
 
 // DownloadReleaseVersion returns the latest available version from github for
 // the given repo and version, and installs it into the apps `bin` dir.
