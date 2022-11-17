@@ -22,7 +22,8 @@ var (
 	testSubnetEVMCompat = []byte("{\"rpcChainVMProtocolVersion\": {\"v0.4.2\": 18,\"v0.4.1\": 18,\"v0.4.0\": 17}}")
 	testAvagoCompat     = []byte("{\"19\": [\"v1.9.2\"],\"18\": [\"v1.9.1\"],\"17\": [\"v1.9.0\",\"v1.8.0\"]}")
 	testAvagoCompat2    = []byte("{\"19\": [\"v1.9.2\", \"v1.9.1\"],\"18\": [\"v1.9.0\"]}")
-	testAvagoCompat3    = []byte("{\"19\": [\"v1.9.2\", \"v1.9.1\"],\"18\": [\"v1.9.0\"]}")
+	testAvagoCompat3    = []byte("{\"19\": [\"v1.9.1\", \"v1.9.2\"],\"18\": [\"v1.9.0\"]}")
+	testAvagoCompat4    = []byte("{\"19\": [\"v1.9.1\", \"v1.9.2\", \"v1.9.11\"],\"18\": [\"v1.9.0\"]}")
 )
 
 func TestGetRPCProtocolVersionSubnetEVM(t *testing.T) {
@@ -82,6 +83,7 @@ func TestGetRPCProtocolVersionMissing(t *testing.T) {
 
 func TestGetLatestAvalancheGoByProtocolVersion(t *testing.T) {
 	type versionTest struct {
+		name            string
 		rpc             int
 		testData        []byte
 		latestVersion   string
@@ -91,6 +93,7 @@ func TestGetLatestAvalancheGoByProtocolVersion(t *testing.T) {
 
 	tests := []versionTest{
 		{
+			name:            "latest, one entry",
 			rpc:             19,
 			testData:        testAvagoCompat,
 			latestVersion:   "v1.9.2",
@@ -98,6 +101,7 @@ func TestGetLatestAvalancheGoByProtocolVersion(t *testing.T) {
 			expectedErr:     nil,
 		},
 		{
+			name:            "older, one entry",
 			rpc:             18,
 			testData:        testAvagoCompat,
 			latestVersion:   "v1.9.2",
@@ -105,6 +109,7 @@ func TestGetLatestAvalancheGoByProtocolVersion(t *testing.T) {
 			expectedErr:     nil,
 		},
 		{
+			name:            "latest, multiple entry",
 			rpc:             19,
 			testData:        testAvagoCompat2,
 			latestVersion:   "v1.9.2",
@@ -112,6 +117,7 @@ func TestGetLatestAvalancheGoByProtocolVersion(t *testing.T) {
 			expectedErr:     nil,
 		},
 		{
+			name:            "latest, multiple entry, reverse sorted",
 			rpc:             19,
 			testData:        testAvagoCompat3,
 			latestVersion:   "v1.9.2",
@@ -119,6 +125,7 @@ func TestGetLatestAvalancheGoByProtocolVersion(t *testing.T) {
 			expectedErr:     nil,
 		},
 		{
+			name:            "latest, multiple entry, unreleased version",
 			rpc:             19,
 			testData:        testAvagoCompat2,
 			latestVersion:   "v1.9.1",
@@ -126,6 +133,7 @@ func TestGetLatestAvalancheGoByProtocolVersion(t *testing.T) {
 			expectedErr:     nil,
 		},
 		{
+			name:            "no rpc version",
 			rpc:             20,
 			testData:        testAvagoCompat2,
 			latestVersion:   "v1.9.2",
@@ -133,29 +141,48 @@ func TestGetLatestAvalancheGoByProtocolVersion(t *testing.T) {
 			expectedErr:     ErrNoAvagoVersion,
 		},
 		{
+			name:            "existing rpc, but no eligible version",
 			rpc:             19,
 			testData:        testAvagoCompat,
 			latestVersion:   "v1.9.1",
 			expectedVersion: "",
 			expectedErr:     ErrNoAvagoVersion,
 		},
+		{
+			name:            "string sorting test",
+			rpc:             19,
+			testData:        testAvagoCompat4,
+			latestVersion:   "v1.9.11",
+			expectedVersion: "v1.9.11",
+			expectedErr:     nil,
+		},
+		{
+			name:            "string sorting test 2",
+			rpc:             19,
+			testData:        testAvagoCompat4,
+			latestVersion:   "v1.9.2",
+			expectedVersion: "v1.9.2",
+			expectedErr:     nil,
+		},
 	}
 	for _, tt := range tests {
-		assert := assert.New(t)
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
 
-		mockDownloader := &mocks.Downloader{}
-		mockDownloader.On("Download", mock.Anything).Return(tt.testData, nil)
-		mockDownloader.On("GetLatestReleaseVersion", mock.Anything).Return(tt.expectedVersion, nil)
+			mockDownloader := &mocks.Downloader{}
+			mockDownloader.On("Download", mock.Anything).Return(tt.testData, nil)
+			mockDownloader.On("GetLatestReleaseVersion", mock.Anything).Return(tt.latestVersion, nil)
 
-		app := application.New()
-		app.Downloader = mockDownloader
+			app := application.New()
+			app.Downloader = mockDownloader
 
-		avagoVersion, err := GetLatestAvalancheGoByProtocolVersion(app, tt.rpc)
-		if tt.expectedErr == nil {
-			assert.NoError(err)
-		} else {
-			assert.ErrorIs(err, tt.expectedErr)
-		}
-		assert.Equal(tt.expectedVersion, avagoVersion)
+			avagoVersion, err := GetLatestAvalancheGoByProtocolVersion(app, tt.rpc)
+			if tt.expectedErr == nil {
+				assert.NoError(err)
+			} else {
+				assert.ErrorIs(err, tt.expectedErr)
+			}
+			assert.Equal(tt.expectedVersion, avagoVersion)
+		})
 	}
 }
