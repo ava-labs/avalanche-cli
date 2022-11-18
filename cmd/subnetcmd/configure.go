@@ -3,13 +3,20 @@
 package subnetcmd
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
+)
+
+var (
+	doSubnetConf bool
+	doChainConf  bool
 )
 
 // avalanche subnet configure
@@ -25,6 +32,9 @@ This command allows to set both config files.`,
 		RunE:         configure,
 		Args:         cobra.ExactArgs(1),
 	}
+
+	cmd.Flags().BoolVar(&doSubnetConf, "subnet-config", false, "provide the subnet configuration")
+	cmd.Flags().BoolVar(&doChainConf, "chain-config", false, "provide the chain configuration")
 	return cmd
 }
 
@@ -35,15 +45,31 @@ func configure(cmd *cobra.Command, args []string) error {
 	}
 	subnetName := chains[0]
 
+	var selected string
 	const (
 		subnetConf = "Subnet config"
 		chainConf  = "Chain config"
 	)
 
-	options := []string{subnetConf, chainConf}
-	selected, err := app.Prompt.CaptureList("Which configuration file would you like to update?", options)
-	if err != nil {
-		return err
+	if !flags.EnsureMutuallyExclusive([]bool{doSubnetConf, doChainConf}) {
+		// TODO: We might actually be able to easily allow this...
+		return errors.New("the tool currently allows only one at the time")
+	}
+
+	if doSubnetConf {
+		selected = subnetConf
+	}
+
+	if doChainConf {
+		selected = chainConf
+	}
+
+	if selected == "" {
+		options := []string{subnetConf, chainConf}
+		selected, err = app.Prompt.CaptureList("Which configuration file would you like to update?", options)
+		if err != nil {
+			return err
+		}
 	}
 	switch selected {
 	case subnetConf:
