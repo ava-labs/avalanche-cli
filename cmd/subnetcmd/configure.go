@@ -87,8 +87,8 @@ func configure(cmd *cobra.Command, args []string) error {
 	}
 
 	// load each provided file
-	for f, c := range configsToLoad {
-		if err = updateConf(subnetName, c, f); err != nil {
+	for filename, configPath := range configsToLoad {
+		if err = updateConf(subnetName, configPath, filename); err != nil {
 			return err
 		}
 	}
