@@ -274,8 +274,8 @@ func getLedgerIndicesInfo(
 		return nil, fmt.Errorf("derived addresses length %d differs from expected %d", len(addresses), len(ledgerIndices))
 	}
 	addrInfos := []addressInfo{}
-	for _, index := range ledgerIndices {
-		addr := addresses[index]
+	for i, index := range ledgerIndices {
+		addr := addresses[i]
 		ledgerAddrInfos, err := getLedgerIndexInfo(pClients, index, networks, addr)
 		if err != nil {
 			return []addressInfo{}, err
