@@ -52,7 +52,7 @@ func CreateSubnetEvmConfigWithVersion(subnetName string, genesisPath string, ver
 /* #nosec G204 */
 func ConfigureChainConfig(subnetName string, genesisPath string) {
 	// run configure
-	cmdArgs := []string{SubnetCmd, "configure", "--chain-config", genesisPath}
+	cmdArgs := []string{SubnetCmd, "configure", subnetName, "--chain-config", genesisPath}
 	cmd := exec.Command(CLIBinary, cmdArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
