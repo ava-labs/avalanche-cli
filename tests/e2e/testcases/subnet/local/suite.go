@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strconv"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -182,9 +181,13 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 
 		chainConfig := "{\"feeRecipient\": \"" + addr + "\"}"
 
-		fileName := filepath.Join(utils.GetBaseDir(), constants.SubnetDir, subnetName, constants.ChainConfigFileName)
-		err := os.WriteFile(fileName, []byte(chainConfig), constants.DefaultPerms755)
+		// create a chain config in tmp
+		file, err := os.CreateTemp("", constants.ChainConfigFileName+"*")
 		gomega.Expect(err).Should(gomega.BeNil())
+		err = os.WriteFile(file.Name(), []byte(chainConfig), constants.DefaultPerms755)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		commands.ConfigureChainConfig(subnetName, file.Name())
 
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)

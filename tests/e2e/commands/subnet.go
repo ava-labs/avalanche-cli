@@ -50,6 +50,24 @@ func CreateSubnetEvmConfigWithVersion(subnetName string, genesisPath string, ver
 }
 
 /* #nosec G204 */
+func ConfigureChainConfig(subnetName string, genesisPath string) {
+	// run configure
+	cmdArgs := []string{SubnetCmd, "configure", "--chain-config", genesisPath}
+	cmd := exec.Command(CLIBinary, cmdArgs...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	// Config should now exist
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+}
+
+/* #nosec G204 */
 func CreateSpacesVMConfig(subnetName string, genesisPath string) {
 	CreateSpacesVMConfigWithVersion(subnetName, genesisPath, utils.SpacesVMVersion)
 }
