@@ -50,9 +50,9 @@ var (
 	subnetAuthKeys           []string
 	userProvidedAvagoVersion string
 	outputTxPath             string
-	useLedger          bool
-	firstLedgerAddress bool
-	ledgerAddresses    []string
+	useLedger                bool
+	firstLedgerAddress       bool
+	ledgerAddresses          []string
 
 	errMutuallyExlusiveNetworks    = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
