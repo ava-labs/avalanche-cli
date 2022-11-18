@@ -4,10 +4,18 @@
 package subnet
 
 import (
+	"context"
 	"fmt"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strconv"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
+	"github.com/ava-labs/avalanche-network-runner/api"
+	"github.com/ethereum/go-ethereum/common"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -31,6 +39,9 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 			fmt.Println("Delete config error:", err)
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
+
+		// delete custom vm
+		utils.DeleteCustomBinary(subnetName)
 	})
 
 	ginkgo.It("can deploy a custom vm subnet to local", func() {
@@ -159,6 +170,124 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 
 		err = utils.RunHardhatTests(utils.BaseTest)
 		gomega.Expect(err).Should(gomega.BeNil())
+
+		commands.DeleteSubnetConfig(subnetName)
+		commands.DeleteSubnetConfig(secondSubnetName)
+	})
+
+	ginkgo.It("can deploy custom chain config", func() {
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmAllowFeeRecpPath)
+
+		addr := "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
+
+		chainConfig := "{\"feeRecipient\": \"" + addr + "\"}"
+
+		fileName := filepath.Join(utils.GetBaseDir(), constants.SubnetDir, subnetName, constants.ChainConfigFileName)
+		err := os.WriteFile(fileName, []byte(chainConfig), constants.DefaultPerms755)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+
+		rpc := rpcs[0]
+		err = utils.SetHardhatRPC(rpc)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		err = utils.RunHardhatTests(utils.BaseTest)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		url, err := url.Parse(rpc)
+		gomega.Expect(err).Should(gomega.BeNil())
+		port, err := strconv.Atoi(url.Port())
+		gomega.Expect(err).Should(gomega.BeNil())
+		cClient := api.NewEthClient(url.Hostname(), uint(port))
+
+		ethAddr := common.HexToAddress(addr)
+		balance, err := cClient.BalanceAt(context.Background(), ethAddr, nil)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		gomega.Expect(balance.Int64()).Should(gomega.Not(gomega.BeZero()))
+
+		commands.DeleteSubnetConfig(subnetName)
+	})
+})
+
+var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
+	ginkgo.AfterEach(func() {
+		commands.CleanNetwork()
+		if err := utils.DeleteConfigs(subnetName); err != nil {
+			fmt.Println("Clean network error:", err)
+			gomega.Expect(err).Should(gomega.BeNil())
+		}
+
+		if err := utils.DeleteConfigs(secondSubnetName); err != nil {
+			fmt.Println("Delete config error:", err)
+			gomega.Expect(err).Should(gomega.BeNil())
+		}
+	})
+
+	ginkgo.It("can deploy a subnet-evm with old version", func() {
+		subnetEVMVersion := "v0.4.2"
+
+		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion)
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+		rpc := rpcs[0]
+
+		err = utils.SetHardhatRPC(rpc)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		err = utils.RunHardhatTests(utils.BaseTest)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		commands.DeleteSubnetConfig(subnetName)
+	})
+
+	ginkgo.It("can deploy a spaces-vm with old version", func() {
+		spacesVMVersion := "v0.0.9"
+
+		commands.CreateSpacesVMConfigWithVersion(subnetName, utils.SpacesVMGenesisPath, spacesVMVersion)
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+		rpc := rpcs[0]
+
+		err = utils.RunSpacesVMAPITest(rpc)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		commands.DeleteSubnetConfig(subnetName)
+	})
+
+	ginkgo.It("can't deploy conflicting vm versions", func() {
+		subnetEVMVersion1 := "v0.4.2"
+		subnetEVMVersion2 := "v0.4.4"
+
+		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
+		commands.CreateSubnetEvmConfigWithVersion(secondSubnetName, utils.SubnetEvmGenesis2Path, subnetEVMVersion2)
+
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+
+		commands.DeploySubnetLocallyExpectError(secondSubnetName)
 
 		commands.DeleteSubnetConfig(subnetName)
 		commands.DeleteSubnetConfig(secondSubnetName)

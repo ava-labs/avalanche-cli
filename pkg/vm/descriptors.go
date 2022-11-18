@@ -55,7 +55,7 @@ func getVMVersion(
 	var err error
 	direction := statemachine.Forward
 	if vmVersion == "latest" {
-		vmVersion, err = binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+		vmVersion, err = app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 			constants.AvaLabsOrg,
 			repoName,
 		))
@@ -102,7 +102,7 @@ func askForVMVersion(
 
 	if versionOption == useLatest {
 		// Get and return latest version
-		version, err := binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+		version, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 			constants.AvaLabsOrg,
 			repoName,
 		))

@@ -15,11 +15,13 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
+	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	ledger "github.com/ava-labs/avalanche-ledger-go"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
@@ -32,21 +34,22 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"golang.org/x/mod/semver"
 )
 
 const numLedgerAddressesToSearch = 1000
 
 var (
-	deployLocal        bool
-	deployTestnet      bool
-	deployMainnet      bool
-	sameControlKey     bool
-	keyName            string
-	threshold          uint32
-	controlKeys        []string
-	subnetAuthKeys     []string
-	avagoVersion       string
-	outputTxPath       string
+	deployLocal              bool
+	deployTestnet            bool
+	deployMainnet            bool
+	sameControlKey           bool
+	keyName                  string
+	threshold                uint32
+	controlKeys              []string
+	subnetAuthKeys           []string
+	userProvidedAvagoVersion string
+	outputTxPath             string
 	useLedger          bool
 	firstLedgerAddress bool
 	ledgerAddresses    []string
@@ -85,7 +88,7 @@ subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "deploy to testnet (alias to `fuji`)")
 	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "deploy to fuji (alias to `testnet`")
 	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "deploy to mainnet")
-	cmd.Flags().StringVar(&avagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
+	cmd.Flags().StringVar(&userProvidedAvagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
 	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use creation key as control key")
 	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to make subnet changes")
@@ -98,26 +101,26 @@ subnet and deploy it on Fuji or Mainnet.`,
 }
 
 func getChainsInSubnet(subnetName string) ([]string, error) {
-	files, err := os.ReadDir(app.GetBaseDir())
+	subnets, err := os.ReadDir(app.GetSubnetDir())
 	if err != nil {
 		return nil, fmt.Errorf("failed to read baseDir: %w", err)
 	}
 
 	chains := []string{}
 
-	for _, f := range files {
-		if strings.Contains(f.Name(), constants.SidecarSuffix) {
+	for _, s := range subnets {
+		sidecarFile := filepath.Join(app.GetSubnetDir(), s.Name(), constants.SidecarFileName)
+		if _, err := os.Stat(sidecarFile); err == nil {
 			// read in sidecar file
-			path := filepath.Join(app.GetBaseDir(), f.Name())
-			jsonBytes, err := os.ReadFile(path)
+			jsonBytes, err := os.ReadFile(sidecarFile)
 			if err != nil {
-				return nil, fmt.Errorf("failed reading file %s: %w", path, err)
+				return nil, fmt.Errorf("failed reading file %s: %w", sidecarFile, err)
 			}
 
 			var sc models.Sidecar
 			err = json.Unmarshal(jsonBytes, &sc)
 			if err != nil {
-				return nil, fmt.Errorf("failed unmarshaling file %s: %w", path, err)
+				return nil, fmt.Errorf("failed unmarshaling file %s: %w", sidecarFile, err)
 			}
 			if sc.Subnet == subnetName {
 				chains = append(chains, sc.Name)
@@ -242,7 +245,17 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("unknown vm: %s", sidecar.VM)
 		}
 
-		deployer := subnet.NewLocalDeployer(app, avagoVersion, vmBin)
+		// skip rpc check if using custom vm
+		if sidecar.VM != models.CustomVM {
+			// check if selected version matches what is currently running
+			nc := localnetworkinterface.NewStatusChecker()
+			userProvidedAvagoVersion, err = checkForInvalidDeployAndGetAvagoVersion(nc, sidecar.RPCVersion)
+			if err != nil {
+				return err
+			}
+		}
+
+		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, vmBin)
 		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
 		if err != nil {
 			if deployer.BackendStartedHere() {
@@ -780,4 +793,46 @@ func CaptureLedgerAddress(network models.Network) (bool, []string, error) {
 		ledgerAddresses = []string{addr}
 	}
 	return option == firstAddr, ledgerAddresses, nil
+}
+
+// Determines the appropriate version of avalanchego to run with. Returns an error if
+// that version conflicts with the current deployment.
+func checkForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.StatusChecker, configuredRPCVersion int) (string, error) {
+	// get current network
+	runningAvagoVersion, runningRPCVersion, networkRunning, err := network.GetCurrentNetworkVersion()
+	if err != nil {
+		return "", err
+	}
+
+	desiredAvagoVersion := userProvidedAvagoVersion
+
+	// RPC Version was made available in the info API in avalanchego version v1.9.2. For prior versions,
+	// we will need to skip this check.
+	skipRPCCheck := false
+	if semver.Compare(runningAvagoVersion, constants.AvalancheGoCompatibilityVersionAdded) == -1 {
+		skipRPCCheck = true
+	}
+
+	if networkRunning {
+		if userProvidedAvagoVersion == "latest" {
+			if runningRPCVersion != configuredRPCVersion && !skipRPCCheck {
+				return "", fmt.Errorf(
+					"the current avalanchego deployment uses rpc version %d but your subnet has version %d and is not compatible",
+					runningRPCVersion,
+					configuredRPCVersion,
+				)
+			}
+			desiredAvagoVersion = runningAvagoVersion
+		} else if runningAvagoVersion != userProvidedAvagoVersion {
+			// user wants a specific version
+			return "", errors.New("incompatible avalanchego version selected")
+		}
+	} else if userProvidedAvagoVersion == "latest" {
+		// find latest avago version for this rpc version
+		desiredAvagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(app, configuredRPCVersion)
+		if err != nil {
+			return "", err
+		}
+	}
+	return desiredAvagoVersion, nil
 }

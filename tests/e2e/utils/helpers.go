@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -58,7 +59,7 @@ func GetAPMDir() string {
 }
 
 func genesisExists(subnetName string) (bool, error) {
-	genesis := path.Join(GetBaseDir(), subnetName+constants.GenesisSuffix)
+	genesis := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.GenesisFileName)
 	genesisExists := true
 	if _, err := os.Stat(genesis); errors.Is(err, os.ErrNotExist) {
 		// does *not* exist
@@ -71,7 +72,7 @@ func genesisExists(subnetName string) (bool, error) {
 }
 
 func sidecarExists(subnetName string) (bool, error) {
-	sidecar := path.Join(GetBaseDir(), subnetName+constants.SidecarSuffix)
+	sidecar := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.SidecarFileName)
 	sidecarExists := true
 	if _, err := os.Stat(sidecar); errors.Is(err, os.ErrNotExist) {
 		// does *not* exist
@@ -110,7 +111,7 @@ func AddSubnetIDToSidecar(subnetName string, network models.Network, subnetID st
 		return fmt.Errorf("failed to access sidecar for %s: not found", subnetName)
 	}
 
-	sidecar := path.Join(GetBaseDir(), subnetName+constants.SidecarSuffix)
+	sidecar := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.SidecarFileName)
 
 	jsonBytes, err := os.ReadFile(sidecar)
 	if err != nil {
@@ -157,7 +158,7 @@ func SubnetCustomVMExists(subnetName string) (bool, error) {
 }
 
 func SubnetAPMVMExists(subnetName string) (bool, error) {
-	sidecarPath := path.Join(GetBaseDir(), subnetName+constants.SidecarSuffix)
+	sidecarPath := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.SidecarFileName)
 	jsonBytes, err := os.ReadFile(sidecarPath)
 	if err != nil {
 		return false, err
@@ -197,23 +198,14 @@ func KeyExists(keyName string) (bool, error) {
 }
 
 func DeleteConfigs(subnetName string) error {
-	genesis := path.Join(GetBaseDir(), subnetName+constants.GenesisSuffix)
-	if _, err := os.Stat(genesis); err != nil && !errors.Is(err, os.ErrNotExist) {
+	subnetDir := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName)
+	if _, err := os.Stat(subnetDir); err != nil && !errors.Is(err, os.ErrNotExist) {
 		// Schrodinger: file may or may not exist. See err for details.
 		return err
 	}
 
 	// ignore error, file may not exist
-	os.Remove(genesis)
-
-	sidecar := path.Join(GetBaseDir(), subnetName+constants.SidecarSuffix)
-	if _, err := os.Stat(sidecar); err != nil && !errors.Is(err, os.ErrNotExist) {
-		// Schrodinger: file may or may not exist. See err for details.
-		return err
-	}
-
-	// ignore error, file may not exist
-	os.Remove(sidecar)
+	os.RemoveAll(subnetDir)
 
 	return nil
 }
@@ -257,6 +249,12 @@ func DeleteBins() error {
 	return nil
 }
 
+func DeleteCustomBinary(vmName string) {
+	vmPath := path.Join(GetBaseDir(), constants.VMDir, vmName)
+	// ignore error, file may not exist
+	os.RemoveAll(vmPath)
+}
+
 func DeleteAPMBin(vmid string) {
 	vmPath := path.Join(GetBaseDir(), constants.AvalancheCliBinDir, constants.APMPluginDir, vmid)
 
@@ -290,7 +288,7 @@ func ParseRPCsFromOutput(output string) ([]string, error) {
 		}
 		startIndex := strings.Index(line, "http")
 		if startIndex == -1 {
-			return nil, errors.New("no url in RPC URL line")
+			return nil, fmt.Errorf("no url in RPC URL line: %s", line)
 		}
 		endIndex := strings.LastIndex(line, "rpc")
 		rpc := line[startIndex : endIndex+3]

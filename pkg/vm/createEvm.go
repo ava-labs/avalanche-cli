@@ -42,12 +42,18 @@ func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesi
 			return nil, &models.Sidecar{}, err
 		}
 
+		rpcVersion, err := GetRPCProtocolVersion(app, models.SubnetEvm, subnetEVMVersion)
+		if err != nil {
+			return nil, &models.Sidecar{}, err
+		}
+
 		sc = &models.Sidecar{
-			Name:      subnetName,
-			VM:        models.SubnetEvm,
-			VMVersion: subnetEVMVersion,
-			Subnet:    subnetName,
-			TokenName: "",
+			Name:       subnetName,
+			VM:         models.SubnetEvm,
+			VMVersion:  subnetEVMVersion,
+			RPCVersion: rpcVersion,
+			Subnet:     subnetName,
+			TokenName:  "",
 		}
 	}
 
@@ -119,12 +125,18 @@ func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVe
 		return nil, nil, err
 	}
 
+	rpcVersion, err := GetRPCProtocolVersion(app, models.SubnetEvm, vmVersion)
+	if err != nil {
+		return nil, &models.Sidecar{}, err
+	}
+
 	sc := &models.Sidecar{
-		Name:      subnetName,
-		VM:        models.SubnetEvm,
-		VMVersion: vmVersion,
-		Subnet:    subnetName,
-		TokenName: tokenName,
+		Name:       subnetName,
+		VM:         models.SubnetEvm,
+		VMVersion:  vmVersion,
+		RPCVersion: rpcVersion,
+		Subnet:     subnetName,
+		TokenName:  tokenName,
 	}
 
 	return prettyJSON.Bytes(), sc, nil

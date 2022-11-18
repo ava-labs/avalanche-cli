@@ -14,7 +14,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -87,7 +86,7 @@ func TestDeployToLocal(t *testing.T) {
 	}()
 
 	app := &application.Avalanche{}
-	app.Setup(testDir, logging.NoLog{}, config.New(), prompts.NewPrompter())
+	app.Setup(testDir, logging.NoLog{}, config.New(), prompts.NewPrompter(), application.NewDownloader())
 
 	binDir := filepath.Join(app.GetAvalanchegoBinDir(), "avalanchego-"+avagoVersion)
 
@@ -129,7 +128,10 @@ func TestDeployToLocal(t *testing.T) {
 	assert.NoError(err)
 	// create dummy sidecar file, also checked by deploy
 	sidecar := `{"VM": "SubnetEVM"}`
-	testSidecar, err := os.Create(filepath.Join(testDir, "test_sidecar.json"))
+	testSubnetDir := filepath.Join(testDir, constants.SubnetDir, testChainName)
+	err = os.MkdirAll(testSubnetDir, constants.DefaultPerms755)
+	assert.NoError(err)
+	testSidecar, err := os.Create(filepath.Join(testSubnetDir, constants.SidecarFileName))
 	assert.NoError(err)
 	err = os.WriteFile(testSidecar.Name(), []byte(sidecar), constants.DefaultPerms755)
 	assert.NoError(err)
@@ -152,7 +154,8 @@ func TestGetLatestAvagoVersion(t *testing.T) {
 	s := httptest.NewServer(testHandler)
 	defer s.Close()
 
-	v, err := binutils.GetLatestReleaseVersion(s.URL)
+	dl := application.NewDownloader()
+	v, err := dl.GetLatestReleaseVersion(s.URL)
 	assert.NoError(err)
 	assert.Equal(v, testVersion)
 }

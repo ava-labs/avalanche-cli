@@ -21,12 +21,12 @@ const notRunningState = ""
 //
 // usage example:
 //
-//   machine, err := NewStateMachine(states)
-//   [ err processing ]
-//   while machine.Running() {
-//     [do stuff based on machine.CurrentState(), and set direction]
-//     machine.NextState(direction)
-//   }
+//	machine, err := NewStateMachine(states)
+//	[ err processing ]
+//	while machine.Running() {
+//	  [do stuff based on machine.CurrentState(), and set direction]
+//	  machine.NextState(direction)
+//	}
 type StateMachine struct {
 	index    int
 	states   []string

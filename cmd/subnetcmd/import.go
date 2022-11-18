@@ -251,12 +251,16 @@ func importFromAPM() error {
 		return err
 	}
 
-	version := fmt.Sprintf("%d.%d.%d", vmDescr.Version.Major, vmDescr.Version.Minor, vmDescr.Version.Patch)
+	version := fmt.Sprintf("v%d.%d.%d", vmDescr.Version.Major, vmDescr.Version.Minor, vmDescr.Version.Patch)
+
+	// this is automatically tagged as a custom VM, so we don't check the RPC
+	rpcVersion := 0
 
 	sidecar := models.Sidecar{
 		Name:            subnetDescr.Alias,
 		VM:              vmType,
 		VMVersion:       version,
+		RPCVersion:      rpcVersion,
 		Subnet:          subnetDescr.Alias,
 		TokenName:       constants.DefaultTokenName,
 		Version:         constants.SidecarVersion,
