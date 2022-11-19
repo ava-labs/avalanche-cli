@@ -382,9 +382,12 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain
 	var listOptions []string
 	if useLedger {
 		creation = "Use ledger address"
-		listOptions = []string{creation, custom}
 	} else {
 		creation = "Use creation key"
+	}
+	if network == models.Mainnet {
+		listOptions = []string{creation, custom}
+	} else {
 		listOptions = []string{creation, useAll, custom}
 	}
 
