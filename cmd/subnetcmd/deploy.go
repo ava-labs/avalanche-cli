@@ -379,9 +379,14 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain
 		custom   = "Custom list"
 	)
 
-	listDecision, err := app.Prompt.CaptureList(
-		moreKeysPrompt, []string{creation, useAll, custom},
-	)
+	var listOptions []string
+	if useLedger {
+		listOptions = []string{creation, custom}
+	} else {
+		listOptions = []string{creation, useAll, custom}
+	}
+
+	listDecision, err := app.Prompt.CaptureList(moreKeysPrompt, listOptions)
 	if err != nil {
 		return nil, false, err
 	}
