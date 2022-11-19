@@ -374,15 +374,17 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain
 	ux.Logger.PrintToUser(controlKeysInitialPrompt)
 
 	const (
-		creation = "Use creation key"
-		useAll   = "Use all stored keys"
-		custom   = "Custom list"
+		useAll = "Use all stored keys"
+		custom = "Custom list"
 	)
 
+	var creation string
 	var listOptions []string
 	if useLedger {
+		creation = "Use ledger address"
 		listOptions = []string{creation, custom}
 	} else {
+		creation = "Use creation key"
 		listOptions = []string{creation, useAll, custom}
 	}
 
