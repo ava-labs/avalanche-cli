@@ -148,6 +148,13 @@ func setupEnv() (string, error) {
 		os.Exit(1)
 	}
 
+	// Create repos dir if it doesn't exist
+	repoDir := filepath.Join(baseDir, constants.ReposDir)
+	if err = os.MkdirAll(repoDir, os.ModePerm); err != nil {
+		fmt.Printf("failed creating the repo dir %s: %s\n", repoDir, err)
+		os.Exit(1)
+	}
+
 	return baseDir, nil
 }
 
