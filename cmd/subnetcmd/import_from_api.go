@@ -11,12 +11,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/rpc"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/coreth/core"
-	"github.com/ava-labs/spacesvm/vm"
 	"github.com/spf13/cobra"
 )
 
@@ -167,7 +167,7 @@ func importRunningSubnet(cmd *cobra.Command, args []string) error {
 		if ch.SubnetID == subnetID {
 			blockchainID = ch.ID
 			vmID = ch.VMID
-			subnetName = vm.Name
+			subnetName = ch.Name
 			break
 		}
 	}
@@ -219,6 +219,34 @@ func importRunningSubnet(cmd *cobra.Command, args []string) error {
 		Version: constants.SidecarVersion,
 	}
 
+	var versions []string
+	switch vmType {
+	case models.SubnetEvm:
+		versions, err = app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName)
+		if err != nil {
+			return err
+		}
+		sc.VMVersion, err = app.Prompt.CaptureList("Pick the version for this VM", versions)
+	case models.SpacesVM:
+		versions, err = app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SpacesVMRepoName)
+		if err != nil {
+			return err
+		}
+		sc.VMVersion, err = app.Prompt.CaptureList("Pick the version for this VM", versions)
+	case models.CustomVM:
+		// versions,err = prompts.Capt
+	default:
+		return fmt.Errorf("unexpected VM type: %v", vmType)
+	}
+
+	// hasn't been set in reply
+	if sc.RPCVersion == 0 {
+		sc.RPCVersion, err = vm.GetRPCProtocolVersion(app, vmType, sc.VMVersion)
+		if err != nil {
+			return fmt.Errorf("failed getting RPCVersion for VM type %s with version %s", vmType, sc.VMVersion)
+		}
+	}
+
 	if vmType == models.SubnetEvm {
 		var genesis core.Genesis
 		if err := json.Unmarshal(genBytes, &genesis); err != nil {
@@ -242,5 +270,11 @@ func importRunningSubnet(cmd *cobra.Command, args []string) error {
 		sc.RPCVersion = int(reply.RPCProtocolVersion)
 	}
 
-	return app.CreateSidecar(sc)
+	if err := app.CreateSidecar(sc); err != nil {
+		return fmt.Errorf("failed creating the sidecar for import: %w", err)
+	}
+
+	ux.Logger.PrintToUser("Subnet %s imported successfully", sc.Name)
+
+	return nil
 }

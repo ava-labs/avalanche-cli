@@ -6,6 +6,7 @@ package vm
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -57,6 +58,9 @@ func GetLatestAvalancheGoByProtocolVersion(app *application.Avalanche, rpcVersio
 	if err = json.Unmarshal(compatibilityBytes, &parsedCompat); err != nil {
 		return "", err
 	}
+
+	fmt.Println(parsedCompat)
+	fmt.Println(rpcVersion)
 
 	eligibleVersions, ok := parsedCompat[strconv.Itoa(rpcVersion)]
 	if !ok {
