@@ -119,10 +119,9 @@ func importRunningSubnet(cmd *cobra.Command, args []string) error {
 			options := []rpc.Option{}
 			reply, err = infoAPI.GetNodeVersion(ctx, options...)
 			if err != nil {
-				return fmt.Errorf("Failed to query node - is it running and reachable? %w", err)
+				return fmt.Errorf("failed to query node - is it running and reachable? %w", err)
 			}
 		}
-
 	}
 
 	var subnetID ids.ID
@@ -173,7 +172,7 @@ func importRunningSubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	if blockchainID == ids.Empty || vmID == ids.Empty {
-		return fmt.Errorf("subnet ID %s not found on this network!", subnetIDstr)
+		return fmt.Errorf("subnet ID %s not found on this network", subnetIDstr)
 	}
 
 	ux.Logger.PrintToUser("Retrieved information. BlockchainID: %s, Name: %s, VMID: %s",
@@ -237,6 +236,9 @@ func importRunningSubnet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("importing custom VMs is not yet implemented, but will be available soon")
 	default:
 		return fmt.Errorf("unexpected VM type: %v", vmType)
+	}
+	if err != nil {
+		return err
 	}
 
 	// hasn't been set in reply
