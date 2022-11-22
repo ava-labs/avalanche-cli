@@ -234,7 +234,7 @@ func importRunningSubnet(cmd *cobra.Command, args []string) error {
 		}
 		sc.VMVersion, err = app.Prompt.CaptureList("Pick the version for this VM", versions)
 	case models.CustomVM:
-		// versions,err = prompts.Capt
+		return fmt.Errorf("importing custom VMs is not yet implemented, but will be available soon")
 	default:
 		return fmt.Errorf("unexpected VM type: %v", vmType)
 	}
