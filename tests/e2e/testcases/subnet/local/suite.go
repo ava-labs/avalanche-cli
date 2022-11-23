@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
@@ -44,10 +45,16 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 	})
 
 	ginkgo.It("can deploy a custom vm subnet to local", func() {
-		customVMPath, err := utils.DownloadCustomVMBin()
+		app := &application.Avalanche{
+			Downloader: application.NewDownloader(),
+		}
+		// EVM version and Avago version need to be compatible
+		mapping, err := utils.GetVersionMapping(app)
+		gomega.Expect(err).Should(gomega.BeNil())
+		customVMPath, err := utils.DownloadCustomVMBin(mapping[utils.SoloSubnetEVMKey1])
 		gomega.Expect(err).Should(gomega.BeNil())
 		commands.CreateCustomVMConfig(subnetName, utils.SubnetEvmGenesisPath, customVMPath)
-		deployOutput := commands.DeploySubnetLocally(subnetName)
+		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, mapping[utils.SoloAvagoKey])
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -276,6 +283,7 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 	})
 
 	ginkgo.It("can't deploy conflicting vm versions", func() {
+		// TODO: These shouldn't be hardcoded either
 		subnetEVMVersion1 := "v0.4.2"
 		subnetEVMVersion2 := "v0.4.4"
 
