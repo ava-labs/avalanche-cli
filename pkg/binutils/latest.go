@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"go.uber.org/zap"
@@ -58,7 +59,19 @@ func DownloadReleaseVersion(
 
 	log.Debug("starting download...", zap.String("download-url", downloadURL))
 
-	resp, err := http.Get(downloadURL)
+	request, err := http.NewRequest("GET", downloadURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request for latest version from %s: %w", downloadURL, err)
+	}
+	token := os.Getenv(constants.GithubAPITokenEnvVarName)
+	if token != "" {
+		// avoid rate limitation issues at CI
+		request.Header.Set("authorization", fmt.Sprintf("Bearer %s", token))
+	}
+	resp, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return "", err
+	}
 	if err != nil {
 		return "", err
 	}

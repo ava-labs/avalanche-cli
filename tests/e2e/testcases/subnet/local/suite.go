@@ -26,7 +26,20 @@ const (
 	confPath         = "tests/e2e/assets/test_avalanche-cli.json"
 )
 
-var _ = ginkgo.Describe("[Local Subnet]", func() {
+var (
+	mapping map[string]string
+	err     error
+)
+
+var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
+	_ = ginkgo.BeforeAll(func() {
+		app := &application.Avalanche{
+			Downloader: application.NewDownloader(),
+		}
+		mapping, err = utils.GetVersionMapping(app)
+		gomega.Expect(err).Should(gomega.BeNil())
+	})
+
 	ginkgo.AfterEach(func() {
 		commands.CleanNetwork()
 		err := utils.DeleteConfigs(subnetName)
@@ -45,12 +58,6 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 	})
 
 	ginkgo.It("can deploy a custom vm subnet to local", func() {
-		app := &application.Avalanche{
-			Downloader: application.NewDownloader(),
-		}
-		// EVM version and Avago version need to be compatible
-		mapping, err := utils.GetVersionMapping(app)
-		gomega.Expect(err).Should(gomega.BeNil())
 		customVMPath, err := utils.DownloadCustomVMBin(mapping[utils.SoloSubnetEVMKey1])
 		gomega.Expect(err).Should(gomega.BeNil())
 		commands.CreateCustomVMConfig(subnetName, utils.SubnetEvmGenesisPath, customVMPath)

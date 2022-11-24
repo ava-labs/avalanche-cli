@@ -6,6 +6,7 @@ package network
 import (
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -16,7 +17,20 @@ const (
 	subnetName = "e2eSubnetTest"
 )
 
-var _ = ginkgo.Describe("[Network]", func() {
+var (
+	mapping map[string]string
+	err     error
+)
+
+var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
+	_ = ginkgo.BeforeAll(func() {
+		app := &application.Avalanche{
+			Downloader: application.NewDownloader(),
+		}
+		mapping, err = utils.GetVersionMapping(app)
+		gomega.Expect(err).Should(gomega.BeNil())
+	})
+
 	ginkgo.AfterEach(func() {
 		commands.CleanNetwork()
 		err := utils.DeleteConfigs(subnetName)

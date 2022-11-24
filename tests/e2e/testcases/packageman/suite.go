@@ -18,16 +18,23 @@ const (
 	secondSubnetName = "e2eSecondSubnetTest"
 )
 
-var _ = ginkgo.Describe("[Package Management]", func() {
+var (
+	mapping map[string]string
+	err     error
+)
+
+var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
+	_ = ginkgo.BeforeAll(func() {
+		app := &application.Avalanche{
+			Downloader: application.NewDownloader(),
+		}
+		mapping, err = utils.GetVersionMapping(app)
+		gomega.Expect(err).Should(gomega.BeNil())
+	})
+
 	ginkgo.BeforeEach(func() {
 		commands.CleanNetworkHard()
 	})
-
-	app := &application.Avalanche{
-		Downloader: application.NewDownloader(),
-	}
-	mapping, err := utils.GetVersionMapping(app)
-	gomega.Expect(err).Should(gomega.BeNil())
 
 	ginkgo.AfterEach(func() {
 		commands.CleanNetwork()
