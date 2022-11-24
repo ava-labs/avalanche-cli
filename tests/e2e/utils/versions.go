@@ -6,7 +6,6 @@ package utils
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"sort"
 	"strconv"
 	"sync"
@@ -24,14 +23,11 @@ var (
 )
 
 func GetVersionMapping(app *application.Avalanche) (map[string]string, error) {
-	fmt.Println("GetVMap")
 	lock.Lock()
 	defer lock.Unlock()
 	if mapping != nil {
-		fmt.Println("not nil")
 		return mapping, nil
 	}
-	fmt.Println("nil")
 	subnetEVMversions, subnetEVMmapping, err := getVersions(constants.SubnetEVMRPCCompatibilityURL, app)
 	if err != nil {
 		return nil, err
@@ -78,6 +74,9 @@ func GetVersionMapping(app *application.Avalanche) (map[string]string, error) {
 
 	for i, ver := range subnetEVMversions {
 		// safety check, should not happen
+		if i == 0 {
+			continue
+		}
 		if i+1 == len(subnetEVMversions) {
 			return nil, errors.New("no compatible versions for subsecuent SubnetEVM found")
 		}
