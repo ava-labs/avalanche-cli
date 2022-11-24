@@ -8,6 +8,7 @@ import (
 	"errors"
 	"sort"
 	"strconv"
+	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -16,7 +17,17 @@ import (
 	"golang.org/x/mod/semver"
 )
 
+var (
+	mapping map[string]string
+	lock    = &sync.Mutex{}
+)
+
 func GetVersionMapping(app *application.Avalanche) (map[string]string, error) {
+	lock.Lock()
+	defer lock.Unlock()
+	if mapping != nil {
+		return mapping, nil
+	}
 	subnetEVMversions, subnetEVMmapping, err := getVersions(constants.SubnetEVMRPCCompatibilityURL, app)
 	if err != nil {
 		return nil, err

@@ -16,17 +16,6 @@ import (
 const (
 	subnetName       = "e2eSubnetTest"
 	secondSubnetName = "e2eSecondSubnetTest"
-
-	/*
-		soloSubnetEVMVersion1  = "v0.4.2"
-		soloSubnetEVMVersion2  = "v0.4.1"
-
-		soloAvagoVersion = "v1.9.1"
-
-		multipleAvagoSubnetEVM = "v0.3.0"
-		multipleAvagoVersion1  = "v1.8.0"
-		mulitpleAvagoVersion2  = "v1.8.1"
-	*/
 )
 
 var _ = ginkgo.Describe("[Package Management]", func() {
