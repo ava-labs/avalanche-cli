@@ -6,6 +6,7 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sort"
 	"strconv"
 	"sync"
@@ -32,13 +33,16 @@ func GetVersionMapping(app *application.Avalanche) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	// subnet-evm publishes its upcoming new version in the compatibility json
+	// before the new version is actually a downloadable release
+	subnetEVMversions = subnetEVMversions[1:]
 
 	avagoCompat, err := getAvagoCompatibility(app)
 	if err != nil {
 		return nil, err
 	}
 
-	mapping := make(map[string]string)
+	mapping = make(map[string]string)
 
 	rpcs := make([]int, 0, len(avagoCompat))
 	for k := range avagoCompat {
@@ -74,9 +78,6 @@ func GetVersionMapping(app *application.Avalanche) (map[string]string, error) {
 
 	for i, ver := range subnetEVMversions {
 		// safety check, should not happen
-		if i == 0 {
-			continue
-		}
 		if i+1 == len(subnetEVMversions) {
 			return nil, errors.New("no compatible versions for subsecuent SubnetEVM found")
 		}
@@ -94,6 +95,13 @@ func GetVersionMapping(app *application.Avalanche) (map[string]string, error) {
 			break
 		}
 	}
+
+	fmt.Println(fmt.Sprintf("SoloSubnetEVM1: %s", mapping[SoloSubnetEVMKey1]))
+	fmt.Println(fmt.Sprintf("SoloSubnetEVM2: %s", mapping[SoloSubnetEVMKey2]))
+	fmt.Println(fmt.Sprintf("SoloAvago: %s", mapping[SoloAvagoKey]))
+	fmt.Println(fmt.Sprintf("MultiAvago1: %s", mapping[MultiAvago1Key]))
+	fmt.Println(fmt.Sprintf("MultiAvago2: %s", mapping[MultiAvago2Key]))
+	fmt.Println(fmt.Sprintf("MultiAvagoSubnetEVM: %s", mapping[MultiAvagoSubnetEVMKey]))
 
 	return mapping, nil
 }
