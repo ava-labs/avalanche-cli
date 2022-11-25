@@ -60,6 +60,7 @@ func GetVersionMapping(app *application.Avalanche) (map[string]string, error) {
 		vers := avagoCompat[strv]
 		if len(vers) > 1 {
 			semver.Sort(vers)
+			sort.Sort(sort.Reverse(sort.StringSlice(vers)))
 			mapping[MultiAvago1Key] = vers[0]
 			mapping[MultiAvago2Key] = vers[1]
 
@@ -84,16 +85,20 @@ func GetVersionMapping(app *application.Avalanche) (map[string]string, error) {
 		first := ver
 		second := subnetEVMversions[i+1]
 		// first and second are compatible
+		soloAvago, err := vm.GetLatestAvalancheGoByProtocolVersion(app, subnetEVMmapping[first])
+		if err != nil {
+			return nil, err
+		}
 		if subnetEVMmapping[first] == subnetEVMmapping[second] {
-			soloAvago, err := vm.GetLatestAvalancheGoByProtocolVersion(app, subnetEVMmapping[first])
-			if err != nil {
-				return nil, err
-			}
 			mapping[SoloSubnetEVMKey1] = first
 			mapping[SoloSubnetEVMKey2] = second
 			mapping[SoloAvagoKey] = soloAvago
 			break
+		} else if mapping[LatestEVM2AvagoKey] == "" {
+			mapping[LatestEVM2AvagoKey] = first
+			mapping[LatestAvago2EVMKey] = soloAvago
 		}
+		// TODO else
 	}
 
 	fmt.Println(fmt.Sprintf("SoloSubnetEVM1: %s", mapping[SoloSubnetEVMKey1]))
@@ -102,6 +107,8 @@ func GetVersionMapping(app *application.Avalanche) (map[string]string, error) {
 	fmt.Println(fmt.Sprintf("MultiAvago1: %s", mapping[MultiAvago1Key]))
 	fmt.Println(fmt.Sprintf("MultiAvago2: %s", mapping[MultiAvago2Key]))
 	fmt.Println(fmt.Sprintf("MultiAvagoSubnetEVM: %s", mapping[MultiAvagoSubnetEVMKey]))
+	fmt.Println(fmt.Sprintf("LatestEVM2Avago: %s", mapping[LatestEVM2AvagoKey]))
+	fmt.Println(fmt.Sprintf("LatestAvago2EVM: %s", mapping[LatestAvago2EVMKey]))
 
 	return mapping, nil
 }

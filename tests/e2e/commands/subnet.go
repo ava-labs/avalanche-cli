@@ -25,7 +25,7 @@ func CreateSubnetEvmConfig(subnetName string, genesisPath string) {
 	// TODO: we might need to have to change the interface here to allow for err checking
 	mapping, _ := utils.GetVersionMapping(app)
 	// let's use a SubnetEVM version which has a guaranteed compatible avago
-	CreateSubnetEvmConfigWithVersion(subnetName, genesisPath, mapping[utils.SoloSubnetEVMKey1])
+	CreateSubnetEvmConfigWithVersion(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey])
 }
 
 /* #nosec G204 */

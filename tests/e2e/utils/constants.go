@@ -19,6 +19,8 @@ const (
 	MultiAvagoSubnetEVMKey = "multiAvagoSubnetEVMVersion"
 	MultiAvago1Key         = "multiAvagoVersion1"
 	MultiAvago2Key         = "multiAvagoVersion2"
+	LatestEVM2AvagoKey     = "latestEVM2Avago"
+	LatestAvago2EVMKey     = "latestAvago2EVM"
 
 	SubnetEvmGenesisPath  = "tests/e2e/assets/test_subnet_evm_genesis.json"
 	SubnetEvmGenesis2Path = "tests/e2e/assets/test_subnet_evm_genesis_2.json"
