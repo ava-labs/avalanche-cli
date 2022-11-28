@@ -108,7 +108,8 @@ validator manually. If the --avalanchego-config flag is provided, this
 command attempts to edit the config file at that path (requires the file
 to be readable and writable).
 
-This command currently only supports subnets deployed on the Fuji testnet.`,
+This command currently only supports subnets deployed on the Fuji testnet
+and Mainnet.`,
 		RunE: joinCmd,
 		Args: cobra.ExactArgs(1),
 	}

@@ -42,11 +42,9 @@ func newCreateCmd() *cobra.Command {
 The command is structured as an interactive wizard. It will walk you through
 all the steps you need to create your first subnet.
 
-Currently, the tool supports deploying Subnet-EVM and Subnet-EVM forks. You
+The tool supports deploying Subnet-EVM, SpacesVM, and custom vms. You
 can create a custom, user-generated genesis with a custom vm by providing
 the path to your genesis and vm binarires with the --genesis and --vm flags.
-As more subnets reach maturity, you'll be able to use this tool to generate
-additional VM templates, such as the SpacesVM.
 
 By default, running the command with a subnetName that already exists will
 cause the command to fail. If you’d like to overwrite an existing

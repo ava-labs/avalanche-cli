@@ -42,7 +42,8 @@ the subnetName and the validator's unique NodeID. The command then prompts
 for the validation start time, duration and stake weight. These values can
 all be collected with flags instead of prompts.
 
-This command currently only works on subnets deployed to the Fuji testnet.`,
+This command currently only works on subnets deployed to either the Fuji
+testnet or Mainnet.`,
 		SilenceUsage: true,
 		RunE:         addValidator,
 		Args:         cobra.ExactArgs(1),

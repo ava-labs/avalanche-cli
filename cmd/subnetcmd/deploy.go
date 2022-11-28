@@ -62,8 +62,7 @@ func newDeployCmd() *cobra.Command {
 		Use:   "deploy [subnetName]",
 		Short: "Deploys a subnet configuration",
 		Long: `The subnet deploy command deploys your subnet configuration locally, to
-Fuji Testnet, or to Mainnet. Currently, the beta release only supports
-local and Fuji deploys.
+Fuji Testnet, or to Mainnet.
 
 At the end of the call, the command will print the RPC URL you can use
 to interact with the subnet.
