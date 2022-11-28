@@ -7,7 +7,7 @@ usage() {
 $this: download go binaries for ava-labs/avalanche-cli
 
 Usage: $this [-b] bindir [-d] [tag]
-  -b sets bindir or installation directory, Defaults to ./bin
+  -b sets bindir or installation directory, Defaults to ~/bin
   -d turns on debug logging
    [tag] is a tag from
    https://github.com/ava-labs/avalanche-cli/releases
@@ -21,7 +21,7 @@ parse_args() {
   #BINDIR is ./bin unless set be ENV
   # over-ridden by flag below
 
-  BINDIR=${BINDIR:-./bin}
+  BINDIR=${BINDIR:-~/bin}
   while getopts "b:dh?x" arg; do
     case "$arg" in
       b) BINDIR="$OPTARG" ;;
