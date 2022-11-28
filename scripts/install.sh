@@ -400,7 +400,7 @@ then
         sed_in_place "/.*# avalanche completion/d" $BASHRC
         echo "source $(brew --prefix)/etc/bash_completion # avalanche completion" >> $BASHRC
     else 
-        echo "brew not found on macos: bash avalanche command completion not installed"
+        echo "warning: brew not found on macos. bash avalanche command completion not installed"
     fi
 fi
 
