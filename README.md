@@ -12,19 +12,16 @@ The tool has been tested on Linux and Mac. Windows is currently not supported.
 
 To download a binary for the latest release, run:
 
-```
+```sh
 curl -sSfL https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh | sh -s
 ```
 
-The binary will be installed inside the `./bin` directory (relative to where the install command was run).
-
-_Downloading binaries from the Github UI will cause permission errors on Mac._
+The binary will be installed inside the `~/bin` directory.
 
 To add the binary to your path, run
 
-```
-cd bin
-export PATH=$PWD:$PATH
+```sh
+export PATH=~/bin:$PATH
 ```
 
 To add it to your path permanently, add an export command to your shell initialization script (ex: .bashrc).
