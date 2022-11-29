@@ -49,7 +49,8 @@ func StartNetwork() string {
 		Downloader: application.NewDownloader(),
 	}
 	// TODO: should we change interfaces here to allow err checking
-	mapping, _ := utils.GetVersionMapping(app)
+	mapper := utils.NewVersionMapper(app)
+	mapping, _ := utils.GetVersionMapping(mapper)
 
 	return StartNetworkWithVersion(mapping[utils.OnlyAvagoKey])
 }

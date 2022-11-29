@@ -23,7 +23,8 @@ var _ = ginkgo.Describe("[Subnet]", ginkgo.Ordered, func() {
 		app := &application.Avalanche{
 			Downloader: application.NewDownloader(),
 		}
-		mapping, err = utils.GetVersionMapping(app)
+		mapper := utils.NewVersionMapper(app)
+		mapping, err = utils.GetVersionMapping(mapper)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 

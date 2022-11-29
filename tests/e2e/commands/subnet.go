@@ -23,7 +23,8 @@ func CreateSubnetEvmConfig(subnetName string, genesisPath string) {
 		Downloader: application.NewDownloader(),
 	}
 	// TODO: we might need to have to change the interface here to allow for err checking
-	mapping, _ := utils.GetVersionMapping(app)
+	mapper := utils.NewVersionMapper(app)
+	mapping, _ := utils.GetVersionMapping(mapper)
 	// let's use a SubnetEVM version which has a guaranteed compatible avago
 	CreateSubnetEvmConfigWithVersion(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey])
 }
@@ -185,7 +186,8 @@ func DeploySubnetLocallyExpectError(subnetName string) {
 		Downloader: application.NewDownloader(),
 	}
 	// TODO: should we change interfaces here to allow err checking
-	mapping, _ := utils.GetVersionMapping(app)
+	mapper := utils.NewVersionMapper(app)
+	mapping, _ := utils.GetVersionMapping(mapper)
 
 	DeploySubnetLocallyWithArgsExpectError(subnetName, mapping[utils.OnlyAvagoKey], "")
 }
@@ -197,7 +199,8 @@ func DeploySubnetLocallyWithViperConf(subnetName string, confPath string) string
 		Downloader: application.NewDownloader(),
 	}
 	// TODO: should we change interfaces here to allow err checking
-	mapping, _ := utils.GetVersionMapping(app)
+	mapper := utils.NewVersionMapper(app)
+	mapping, _ := utils.GetVersionMapping(mapper)
 
 	return DeploySubnetLocallyWithArgs(subnetName, mapping[utils.OnlyAvagoKey], confPath)
 }
