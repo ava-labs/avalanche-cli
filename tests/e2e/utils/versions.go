@@ -6,7 +6,6 @@ package utils
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"sort"
 	"strconv"
 	"sync"
@@ -15,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"go.uber.org/zap"
 	"golang.org/x/mod/semver"
 )
 
@@ -23,13 +23,56 @@ var (
 	lock    = &sync.Mutex{}
 )
 
-func GetVersionMapping(app *application.Avalanche) (map[string]string, error) {
+type VersionMapper interface {
+	GetCompatURL(vmType models.VMType) string
+	GetAvagoURL() string
+	GetApp() *application.Avalanche
+	GetLatestAvagoByProtoVersion(app *application.Avalanche, rpcVersion int, url string) (string, error)
+}
+
+func NewVersionMapper(app *application.Avalanche) VersionMapper {
+	return &versionMapper{
+		app: app,
+	}
+}
+
+type versionMapper struct {
+	app *application.Avalanche
+}
+
+func (m *versionMapper) GetLatestAvagoByProtoVersion(app *application.Avalanche, rpcVersion int, url string) (string, error) {
+	return vm.GetLatestAvalancheGoByProtocolVersion(app, rpcVersion, url)
+}
+
+func (m *versionMapper) GetApp() *application.Avalanche {
+	return m.app
+}
+
+func (m *versionMapper) GetCompatURL(vmType models.VMType) string {
+	switch vmType {
+	case models.SubnetEvm:
+		return constants.SubnetEVMRPCCompatibilityURL
+	case models.SpacesVM:
+		return constants.SpacesVMRPCCompatibilityURL
+	case models.CustomVM:
+		// TODO: unclear yet what we should return here
+		return ""
+	default:
+		return ""
+	}
+}
+
+func (m *versionMapper) GetAvagoURL() string {
+	return constants.AvalancheGoCompatibilityURL
+}
+
+func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 	lock.Lock()
 	defer lock.Unlock()
 	if mapping != nil {
 		return mapping, nil
 	}
-	subnetEVMversions, subnetEVMmapping, err := getVersions(constants.SubnetEVMRPCCompatibilityURL, app)
+	subnetEVMversions, subnetEVMmapping, err := getVersions(mapper, models.SubnetEvm)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +80,7 @@ func GetVersionMapping(app *application.Avalanche) (map[string]string, error) {
 	// before the new version is actually a downloadable release
 	subnetEVMversions = subnetEVMversions[1:]
 
-	avagoCompat, err := getAvagoCompatibility(app)
+	avagoCompat, err := getAvagoCompatibility(mapper)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +118,7 @@ func GetVersionMapping(app *application.Avalanche) (map[string]string, error) {
 	}
 
 	// when running Avago only, always use latest
-	mapping[OnlyAvagoKey] = "latest"
+	mapping[OnlyAvagoKey] = OnlyAvagoValue
 
 	for i, ver := range subnetEVMversions {
 		// safety check, should not happen
@@ -85,41 +128,49 @@ func GetVersionMapping(app *application.Avalanche) (map[string]string, error) {
 		first := ver
 		second := subnetEVMversions[i+1]
 		// first and second are compatible
-		soloAvago, err := vm.GetLatestAvalancheGoByProtocolVersion(app, subnetEVMmapping[first])
+		soloAvago, err := mapper.GetLatestAvagoByProtoVersion(mapper.GetApp(), subnetEVMmapping[first], mapper.GetAvagoURL())
 		if err != nil {
 			return nil, err
+		}
+		if mapping[LatestEVM2AvagoKey] == "" {
+			mapping[LatestEVM2AvagoKey] = first
+			mapping[LatestAvago2EVMKey] = soloAvago
 		}
 		if subnetEVMmapping[first] == subnetEVMmapping[second] {
 			mapping[SoloSubnetEVMKey1] = first
 			mapping[SoloSubnetEVMKey2] = second
 			mapping[SoloAvagoKey] = soloAvago
 			break
-		} else if mapping[LatestEVM2AvagoKey] == "" {
-			mapping[LatestEVM2AvagoKey] = first
-			mapping[LatestAvago2EVMKey] = soloAvago
 		}
-		// TODO else
 	}
 
-	fmt.Println(fmt.Sprintf("SoloSubnetEVM1: %s", mapping[SoloSubnetEVMKey1]))
-	fmt.Println(fmt.Sprintf("SoloSubnetEVM2: %s", mapping[SoloSubnetEVMKey2]))
-	fmt.Println(fmt.Sprintf("SoloAvago: %s", mapping[SoloAvagoKey]))
-	fmt.Println(fmt.Sprintf("MultiAvago1: %s", mapping[MultiAvago1Key]))
-	fmt.Println(fmt.Sprintf("MultiAvago2: %s", mapping[MultiAvago2Key]))
-	fmt.Println(fmt.Sprintf("MultiAvagoSubnetEVM: %s", mapping[MultiAvagoSubnetEVMKey]))
-	fmt.Println(fmt.Sprintf("LatestEVM2Avago: %s", mapping[LatestEVM2AvagoKey]))
-	fmt.Println(fmt.Sprintf("LatestAvago2EVM: %s", mapping[LatestAvago2EVMKey]))
+	mapper.GetApp().Log.Debug("mapping:",
+		zap.String("SoloSubnetEVM1", mapping[SoloSubnetEVMKey1]),
+		zap.String("SoloSubnetEVM2", mapping[SoloSubnetEVMKey2]),
+		zap.String("SoloAvago", mapping[SoloAvagoKey]),
+		zap.String("MultiAvago1", mapping[MultiAvago1Key]),
+		zap.String("MultiAvago2", mapping[MultiAvago2Key]),
+		zap.String("MultiAvagoSubnetEVM", mapping[MultiAvagoSubnetEVMKey]),
+		zap.String("LatestEVM2Avago", mapping[LatestEVM2AvagoKey]),
+		zap.String("LatestAvago2EVM", mapping[LatestAvago2EVMKey]),
+	)
 
 	return mapping, nil
 }
 
-func getVersions(url string, app *application.Avalanche) ([]string, map[string]int, error) {
-	compat, err := getCompatibility(constants.SubnetEVMRPCCompatibilityURL, app)
+func getVersions(mapper VersionMapper, vmType models.VMType) ([]string, map[string]int, error) {
+	compat, err := getCompatibility(mapper, vmType)
 	if err != nil {
 		return nil, nil, err
 	}
 	mapping := compat.RPCChainVMProtocolVersion
+	if len(mapping) == 0 {
+		return nil, nil, errors.New("zero length rpcs")
+	}
 	versions := make([]string, len(mapping))
+	if len(versions) == 0 {
+		return nil, nil, errors.New("zero length versions")
+	}
 	i := 0
 	for v := range mapping {
 		versions[i] = v
@@ -131,8 +182,8 @@ func getVersions(url string, app *application.Avalanche) ([]string, map[string]i
 	return versions, mapping, nil
 }
 
-func getCompatibility(url string, app *application.Avalanche) (models.VMCompatibility, error) {
-	compatibilityBytes, err := app.Downloader.Download(url)
+func getCompatibility(mapper VersionMapper, vmType models.VMType) (models.VMCompatibility, error) {
+	compatibilityBytes, err := mapper.GetApp().GetDownloader().Download(mapper.GetCompatURL(vmType))
 	if err != nil {
 		return models.VMCompatibility{}, err
 	}
@@ -144,8 +195,8 @@ func getCompatibility(url string, app *application.Avalanche) (models.VMCompatib
 	return parsedCompat, nil
 }
 
-func getAvagoCompatibility(app *application.Avalanche) (models.AvagoCompatiblity, error) {
-	avagoBytes, err := app.Downloader.Download(constants.AvalancheGoCompatibilityURL)
+func getAvagoCompatibility(mapper VersionMapper) (models.AvagoCompatiblity, error) {
+	avagoBytes, err := mapper.GetApp().GetDownloader().Download(mapper.GetAvagoURL())
 	if err != nil {
 		return nil, err
 	}
