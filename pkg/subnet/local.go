@@ -409,7 +409,33 @@ func (d *LocalDeployer) installPlugin(
 // If force flag is set to true, overwrite the default snapshot if it exists
 func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 	bootstrapSnapshotArchivePath := filepath.Join(snapshotsDir, constants.BootstrapSnapshotArchiveName)
+    downloadSnapshot := false
+    sha256File, err := os.ReadFile("assets/sha256sum.txt")
+    if err != nil {
+        return err
+    }
+    expectedSum, err := utils.SearchSHA256File(sha256File, constants.BootstrapSnapshotLocalPath)
+    if err != nil {
+        return err
+    }
 	if _, err := os.Stat(bootstrapSnapshotArchivePath); os.IsNotExist(err) {
+        downloadSnapshot = true
+    } else {
+        gotSum, err := utils.GetSHA256FromDisk(bootstrapSnapshotArchivePath)
+        if err != nil {
+            return err
+        }
+        if gotSum != expectedSum {
+            downloadSnapshot = true
+            fmt.Println("TENEMOS PROBLEMAS")
+        } else {
+            fmt.Println("ESTA TODO BIEN")
+            fmt.Println(gotSum)
+            fmt.Println(expectedSum)
+        }
+    }
+	if downloadSnapshot {
+        fmt.Println("downloading")
 		resp, err := http.Get(constants.BootstrapSnapshotURL)
 		if err != nil {
 			return fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
@@ -426,7 +452,6 @@ func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 			return fmt.Errorf("failed writing down bootstrap snapshot: %w", err)
 		}
 	}
-    fmt.Println(utils.GetSHA256FromDisk(bootstrapSnapshotArchivePath))
 	defaultSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.DefaultSnapshotName)
 	if force {
 		os.RemoveAll(defaultSnapshotPath)

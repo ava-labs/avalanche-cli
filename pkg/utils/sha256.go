@@ -7,6 +7,7 @@ import (
     "os"
 	"crypto/sha256"
 	"encoding/hex"
+    "strings"
 )
 
 func GetSHA256FromDisk(binPath string) (string, error) {
@@ -23,3 +24,15 @@ func GetSHA256FromDisk(binPath string) (string, error) {
 	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
 
+func SearchSHA256File(file []byte, toSearch string) (string, error) {
+    lines := strings.Split(string(file), "\n")
+    for _, line := range lines {
+        sha256Info := strings.Fields(line)
+        if len(sha256Info) == 2 {
+            if sha256Info[1] == toSearch {
+                return sha256Info[0], nil
+            }
+        }
+    }
+    return "", fmt.Errorf("%q not found in sha256 file", toSearch)
+}

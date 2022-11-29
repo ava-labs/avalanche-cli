@@ -45,8 +45,9 @@ const (
 	// but let's add some more entropy
 	SnapshotsDirName             = "snapshots"
 	DefaultSnapshotName          = "default-1654102509"
-	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/bootstrapSnapshot.tar.gz"
 	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
+	BootstrapSnapshotLocalPath   = "assets/" + BootstrapSnapshotArchiveName
+	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/" + BootstrapSnapshotLocalPath
 
 	KeyDir     = "key"
 	KeySuffix  = ".pk"
