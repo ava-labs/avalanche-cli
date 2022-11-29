@@ -391,8 +391,8 @@ sed_in_place "/.*# avalanche completion/d" $BASH_COMPLETION_MAIN
 echo "source $BASH_COMPLETION_SCRIPT_PATH # avalanche completion" >> $BASH_COMPLETION_MAIN
 if [ $(uname) = Darwin ]
 then
-    BREW_INSTALLED=true
-    which brew > /dev/null 2> /dev/null || BREW_INSTALLED=false
+    BREW_INSTALLED=false
+    which brew >/dev/null 2>&1 && BREW_INSTALLED=true
     if [ $BREW_INSTALLED = true ]
     then
         BASHRC=~/.bashrc
