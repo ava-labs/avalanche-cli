@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/onsi/gomega"
 )
 
@@ -21,6 +22,7 @@ import (
 func CreateSubnetEvmConfig(subnetName string, genesisPath string) {
 	app := &application.Avalanche{
 		Downloader: application.NewDownloader(),
+		Log:        logging.NoLog{},
 	}
 	// TODO: we might need to have to change the interface here to allow for err checking
 	mapper := utils.NewVersionMapper(app)
@@ -184,6 +186,7 @@ func DeploySubnetLocally(subnetName string) string {
 func DeploySubnetLocallyExpectError(subnetName string) {
 	app := &application.Avalanche{
 		Downloader: application.NewDownloader(),
+		Log:        logging.NoLog{},
 	}
 	// TODO: should we change interfaces here to allow err checking
 	mapper := utils.NewVersionMapper(app)
@@ -197,6 +200,7 @@ func DeploySubnetLocallyExpectError(subnetName string) {
 func DeploySubnetLocallyWithViperConf(subnetName string, confPath string) string {
 	app := &application.Avalanche{
 		Downloader: application.NewDownloader(),
+		Log:        logging.NoLog{},
 	}
 	// TODO: should we change interfaces here to allow err checking
 	mapper := utils.NewVersionMapper(app)
