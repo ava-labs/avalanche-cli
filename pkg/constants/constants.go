@@ -48,7 +48,7 @@ const (
 	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
 	BootstrapSnapshotLocalPath   = "assets/" + BootstrapSnapshotArchiveName
 	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/" + BootstrapSnapshotLocalPath
-	BootstrapSnapshotSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/download-new-snapshots/assets/sha256sum.txt"
+	BootstrapSnapshotSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/sha256sum.txt"
 
 	KeyDir     = "key"
 	KeySuffix  = ".pk"
