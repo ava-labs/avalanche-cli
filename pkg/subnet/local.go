@@ -22,10 +22,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/server"
-	"github.com/ava-labs/avalanche-network-runner/utils"
+	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/coreth/params"
@@ -138,7 +139,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 	}
 
-	chainVMID, err := utils.VMID(chain)
+	chainVMID, err := anrutils.VMID(chain)
 	if err != nil {
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
@@ -425,6 +426,7 @@ func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 			return fmt.Errorf("failed writing down bootstrap snapshot: %w", err)
 		}
 	}
+    fmt.Println(utils.GetSHA256FromDisk(bootstrapSnapshotArchivePath))
 	defaultSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.DefaultSnapshotName)
 	if force {
 		os.RemoveAll(defaultSnapshotPath)
