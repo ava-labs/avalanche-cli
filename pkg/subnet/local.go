@@ -409,15 +409,25 @@ func (d *LocalDeployer) installPlugin(
 // If force flag is set to true, overwrite the default snapshot if it exists
 func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 	bootstrapSnapshotArchivePath := filepath.Join(snapshotsDir, constants.BootstrapSnapshotArchiveName)
+    // download expected SHA256 sum
+    resp, err := http.Get(constants.BootstrapSnapshotSHA256URL)
+    if err != nil {
+        return fmt.Errorf("failed downloading sha256 sums: %w", err)
+    }
+    if resp.StatusCode != http.StatusOK {
+        return fmt.Errorf("failed downloading sha256 sums: unexpected http status code: %d", resp.StatusCode)
+    }
+    defer resp.Body.Close()
+    sha256FileBytes, err := io.ReadAll(resp.Body)
+    if err != nil {
+        return fmt.Errorf("failed downloading sha256 sums: %w", err)
+    }
+	expectedSum, err := utils.SearchSHA256File(sha256FileBytes, constants.BootstrapSnapshotLocalPath)
+	if err != nil {
+        return fmt.Errorf("failed obtaining snapshot sha256 sum: %w", err)
+	}
+    // will download either if file not exists or if sha256 sum is not the same
 	downloadSnapshot := false
-	sha256File, err := os.ReadFile("assets/sha256sum.txt")
-	if err != nil {
-		return err
-	}
-	expectedSum, err := utils.SearchSHA256File(sha256File, constants.BootstrapSnapshotLocalPath)
-	if err != nil {
-		return err
-	}
 	if _, err := os.Stat(bootstrapSnapshotArchivePath); os.IsNotExist(err) {
 		downloadSnapshot = true
 	} else {
