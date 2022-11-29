@@ -20,9 +20,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/server"
@@ -409,33 +409,33 @@ func (d *LocalDeployer) installPlugin(
 // If force flag is set to true, overwrite the default snapshot if it exists
 func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 	bootstrapSnapshotArchivePath := filepath.Join(snapshotsDir, constants.BootstrapSnapshotArchiveName)
-    downloadSnapshot := false
-    sha256File, err := os.ReadFile("assets/sha256sum.txt")
-    if err != nil {
-        return err
-    }
-    expectedSum, err := utils.SearchSHA256File(sha256File, constants.BootstrapSnapshotLocalPath)
-    if err != nil {
-        return err
-    }
+	downloadSnapshot := false
+	sha256File, err := os.ReadFile("assets/sha256sum.txt")
+	if err != nil {
+		return err
+	}
+	expectedSum, err := utils.SearchSHA256File(sha256File, constants.BootstrapSnapshotLocalPath)
+	if err != nil {
+		return err
+	}
 	if _, err := os.Stat(bootstrapSnapshotArchivePath); os.IsNotExist(err) {
-        downloadSnapshot = true
-    } else {
-        gotSum, err := utils.GetSHA256FromDisk(bootstrapSnapshotArchivePath)
-        if err != nil {
-            return err
-        }
-        if gotSum != expectedSum {
-            downloadSnapshot = true
-            fmt.Println("TENEMOS PROBLEMAS")
-        } else {
-            fmt.Println("ESTA TODO BIEN")
-            fmt.Println(gotSum)
-            fmt.Println(expectedSum)
-        }
-    }
+		downloadSnapshot = true
+	} else {
+		gotSum, err := utils.GetSHA256FromDisk(bootstrapSnapshotArchivePath)
+		if err != nil {
+			return err
+		}
+		if gotSum != expectedSum {
+			downloadSnapshot = true
+			fmt.Println("TENEMOS PROBLEMAS")
+		} else {
+			fmt.Println("ESTA TODO BIEN")
+			fmt.Println(gotSum)
+			fmt.Println(expectedSum)
+		}
+	}
 	if downloadSnapshot {
-        fmt.Println("downloading")
+		fmt.Println("downloading")
 		resp, err := http.Get(constants.BootstrapSnapshotURL)
 		if err != nil {
 			return fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
