@@ -10,22 +10,16 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/onsi/gomega"
 )
 
 /* #nosec G204 */
 func CreateSubnetEvmConfig(subnetName string, genesisPath string) {
-	app := &application.Avalanche{
-		Downloader: application.NewDownloader(),
-		Log:        logging.NoLog{},
-	}
+	mapper := utils.NewVersionMapper()
 	// TODO: we might need to have to change the interface here to allow for err checking
-	mapper := utils.NewVersionMapper(app)
 	mapping, _ := utils.GetVersionMapping(mapper)
 	// let's use a SubnetEVM version which has a guaranteed compatible avago
 	CreateSubnetEvmConfigWithVersion(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey])
@@ -79,7 +73,10 @@ func ConfigureChainConfig(subnetName string, genesisPath string) {
 
 /* #nosec G204 */
 func CreateSpacesVMConfig(subnetName string, genesisPath string) {
-	CreateSpacesVMConfigWithVersion(subnetName, genesisPath, utils.SpacesVMVersion)
+	mapper := utils.NewVersionMapper()
+	// TODO: should we change interfaces here to allow err checking
+	mapping, _ := utils.GetVersionMapping(mapper)
+	CreateSpacesVMConfigWithVersion(subnetName, genesisPath, mapping[utils.Spaces2AvagoKey])
 }
 
 /* #nosec G204 */
@@ -184,12 +181,8 @@ func DeploySubnetLocally(subnetName string) string {
 
 /* #nosec G204 */
 func DeploySubnetLocallyExpectError(subnetName string) {
-	app := &application.Avalanche{
-		Downloader: application.NewDownloader(),
-		Log:        logging.NoLog{},
-	}
+	mapper := utils.NewVersionMapper()
 	// TODO: should we change interfaces here to allow err checking
-	mapper := utils.NewVersionMapper(app)
 	mapping, _ := utils.GetVersionMapping(mapper)
 
 	DeploySubnetLocallyWithArgsExpectError(subnetName, mapping[utils.OnlyAvagoKey], "")
@@ -198,12 +191,8 @@ func DeploySubnetLocallyExpectError(subnetName string) {
 // Returns the deploy output
 /* #nosec G204 */
 func DeploySubnetLocallyWithViperConf(subnetName string, confPath string) string {
-	app := &application.Avalanche{
-		Downloader: application.NewDownloader(),
-		Log:        logging.NoLog{},
-	}
+	mapper := utils.NewVersionMapper()
 	// TODO: should we change interfaces here to allow err checking
-	mapper := utils.NewVersionMapper(app)
 	mapping, _ := utils.GetVersionMapping(mapper)
 
 	return DeploySubnetLocallyWithArgs(subnetName, mapping[utils.OnlyAvagoKey], confPath)

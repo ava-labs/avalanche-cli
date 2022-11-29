@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"go.uber.org/zap"
 	"golang.org/x/mod/semver"
 )
@@ -23,6 +24,11 @@ var (
 	lock    = &sync.Mutex{}
 )
 
+// VersionMapper is an abstraction for retrieving version compatibility URLs
+// allowing unit tests without requiring external http calls.
+// The idea is to finally calculate which VM is compatible with which Avalanchego,
+// so that the e2e tests can always download and run the latest compatible versions,
+// without having to manually update the e2e tests periodically.
 type VersionMapper interface {
 	GetCompatURL(vmType models.VMType) string
 	GetAvagoURL() string
@@ -30,24 +36,36 @@ type VersionMapper interface {
 	GetLatestAvagoByProtoVersion(app *application.Avalanche, rpcVersion int, url string) (string, error)
 }
 
-func NewVersionMapper(app *application.Avalanche) VersionMapper {
+// NewVersionMapper returns the default VersionMapper for e2e tests
+func NewVersionMapper() VersionMapper {
+	app := &application.Avalanche{
+		Downloader: application.NewDownloader(),
+		Log:        logging.NoLog{},
+	}
 	return &versionMapper{
 		app: app,
 	}
 }
 
+// versionMapper is the default implementation for version mapping.
+// It downloads compatibility URLs from the actual github endpoints
 type versionMapper struct {
 	app *application.Avalanche
 }
 
+// GetLatestAvagoByProtoVersion returns the latest Avalanchego version which
+// runs with the specified rpcVersion, or an error if it can't be found
+// (or other errors occurred)
 func (m *versionMapper) GetLatestAvagoByProtoVersion(app *application.Avalanche, rpcVersion int, url string) (string, error) {
 	return vm.GetLatestAvalancheGoByProtocolVersion(app, rpcVersion, url)
 }
 
+// GetApp returns the Avalanche application instance
 func (m *versionMapper) GetApp() *application.Avalanche {
 	return m.app
 }
 
+// GetCompatURL returns the compatibility URL for the given VM type
 func (m *versionMapper) GetCompatURL(vmType models.VMType) string {
 	switch vmType {
 	case models.SubnetEvm:
@@ -62,16 +80,30 @@ func (m *versionMapper) GetCompatURL(vmType models.VMType) string {
 	}
 }
 
+// GetAvagoURL returns the compatibility URL for Avalanchego
 func (m *versionMapper) GetAvagoURL() string {
 	return constants.AvalancheGoCompatibilityURL
 }
 
+// GetVersionMapping returns a map of specific VMs resp. Avalanchego e2e context keys
+// to the actual version which corresponds to that key.
+// This allows the e2e test to know what version to download and run.
+// Returns an error if there was a problem reading the URL compatibility json
+// or some other issue.
 func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
+	// ginkgo can run tests in parallel. However, we really just need this mapping to be
+	// performed once for the whole duration of a test.
+	// Therefore we store the result in a global variable, and then lock
+	// the access to it.
 	lock.Lock()
 	defer lock.Unlock()
+	// if mapping has already been done, return it right away
 	if mapping != nil {
 		return mapping, nil
 	}
+	// get compatible versions for subnetEVM
+	// subnetEVMversions is a list of sorted EVM versions,
+	// subnetEVMmapping maps EVM versions to their RPC versions
 	subnetEVMversions, subnetEVMmapping, err := getVersions(mapper, models.SubnetEvm)
 	if err != nil {
 		return nil, err
@@ -80,13 +112,17 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 	// before the new version is actually a downloadable release
 	subnetEVMversions = subnetEVMversions[1:]
 
+	// now get the avalanchego compatibility object
 	avagoCompat, err := getAvagoCompatibility(mapper)
 	if err != nil {
 		return nil, err
 	}
 
+	// create the global mapping variable
 	mapping = make(map[string]string)
 
+	// sort avago compatibility by highest available RPC versions
+	// to lowest (the map can not be iterated in a sorted way)
 	rpcs := make([]int, 0, len(avagoCompat))
 	for k := range avagoCompat {
 		// cannot use string sort
@@ -98,21 +134,33 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 	}
 	sort.Sort(sort.Reverse(sort.IntSlice(rpcs)))
 
+	// iterate the rpc versions
+	// evaluate two avalanchego versions which are consecutive
+	// and run with the same RPC version.
+	// This is required for the for the "can deploy with multiple avalanchego versions" test
 	for _, v := range rpcs {
 		strv := strconv.Itoa(v)
 		vers := avagoCompat[strv]
+		// we need at least 2 versions for the same RPC version
 		if len(vers) > 1 {
-			semver.Sort(vers)
-			sort.Sort(sort.Reverse(sort.StringSlice(vers)))
+			vers = reverseSemverSort(vers)
 			mapping[MultiAvago1Key] = vers[0]
 			mapping[MultiAvago2Key] = vers[1]
 
+			// now iterate the subnetEVMversions and find a
+			// subnet-evm version which is compatible with that RPC version.
+			// The above-mentioned test runs with this as well.
 			for _, evmVer := range subnetEVMversions {
 				if subnetEVMmapping[evmVer] == v {
+					// we know there already exists at least one such combination.
+					// unless the compatibility JSON will start to be shortened in some way,
+					// we should always be able to find a matching subnet-evm
 					mapping[MultiAvagoSubnetEVMKey] = evmVer
+					// found the version, break
 					break
 				}
 			}
+			// all good, don't need to look more
 			break
 		}
 	}
@@ -120,22 +168,34 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 	// when running Avago only, always use latest
 	mapping[OnlyAvagoKey] = OnlyAvagoValue
 
+	// now let's look for subnet-evm versions which are fit for the
+	// "can deploy multiple subnet-evm versions" test.
+	// We need two subnet-evm versions which run the same RPC version,
+	// and then a compatible Avalanchego
+	//
+	// To avoid having to iterate again, we'll also fill the values
+	// for the **latest** compatible Avalanchego and Subnet-EVM
 	for i, ver := range subnetEVMversions {
-		// safety check, should not happen
+		// safety check, should not happen, as we already know
+		// compatible versions exist
 		if i+1 == len(subnetEVMversions) {
 			return nil, errors.New("no compatible versions for subsecuent SubnetEVM found")
 		}
 		first := ver
 		second := subnetEVMversions[i+1]
-		// first and second are compatible
+		// we should be able to safely assume that for a given subnet-evm RPC version,
+		// there exists at least one compatible Avalanchego.
+		// This means we can in any case use this to set the **latest** compatibility
 		soloAvago, err := mapper.GetLatestAvagoByProtoVersion(mapper.GetApp(), subnetEVMmapping[first], mapper.GetAvagoURL())
 		if err != nil {
 			return nil, err
 		}
+		// Once latest compatibility has been set, we can skip this
 		if mapping[LatestEVM2AvagoKey] == "" {
 			mapping[LatestEVM2AvagoKey] = first
 			mapping[LatestAvago2EVMKey] = soloAvago
 		}
+		// first and second are compatible
 		if subnetEVMmapping[first] == subnetEVMmapping[second] {
 			mapping[SoloSubnetEVMKey1] = first
 			mapping[SoloSubnetEVMKey2] = second
@@ -143,6 +203,22 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 			break
 		}
 	}
+
+	// finally let's do the SpacesVM
+	// this is simpler, we just need the latest and its compatible Avalanchego
+	spacesVMversions, spacesVMmapping, err := getVersions(mapper, models.SpacesVM)
+	if err != nil {
+		return nil, err
+	}
+	// the assumption is that the latest SpacesVM ALWAYS has a compatible avalanchego already
+	latest := spacesVMversions[0]
+	rpc := spacesVMmapping[latest]
+	avago, err := mapper.GetLatestAvagoByProtoVersion(mapper.GetApp(), rpc, mapper.GetAvagoURL())
+	if err != nil {
+		return nil, err
+	}
+	mapping[Spaces2AvagoKey] = latest
+	mapping[Avago2SpacesKey] = avago
 
 	mapper.GetApp().Log.Debug("mapping:",
 		zap.String("SoloSubnetEVM1", mapping[SoloSubnetEVMKey1]),
@@ -153,11 +229,16 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 		zap.String("MultiAvagoSubnetEVM", mapping[MultiAvagoSubnetEVMKey]),
 		zap.String("LatestEVM2Avago", mapping[LatestEVM2AvagoKey]),
 		zap.String("LatestAvago2EVM", mapping[LatestAvago2EVMKey]),
+		zap.String("Spaces2Avago", mapping[Spaces2AvagoKey]),
+		zap.String("Avago2Spaces", mapping[Avago2SpacesKey]),
 	)
 
 	return mapping, nil
 }
 
+// getVersions gets compatible versions for the given VM type.
+// Returns a correctly ordered list of semantic version strings,
+// from latest to oldest, and a map of version to rpc
 func getVersions(mapper VersionMapper, vmType models.VMType) ([]string, map[string]int, error) {
 	compat, err := getCompatibility(mapper, vmType)
 	if err != nil {
@@ -177,11 +258,11 @@ func getVersions(mapper VersionMapper, vmType models.VMType) ([]string, map[stri
 		i++
 	}
 
-	semver.Sort(versions)
-	sort.Sort(sort.Reverse(sort.StringSlice(versions)))
+	versions = reverseSemverSort(versions)
 	return versions, mapping, nil
 }
 
+// getCompatibility returns the compatibility object for the given VM type
 func getCompatibility(mapper VersionMapper, vmType models.VMType) (models.VMCompatibility, error) {
 	compatibilityBytes, err := mapper.GetApp().GetDownloader().Download(mapper.GetCompatURL(vmType))
 	if err != nil {
@@ -195,6 +276,7 @@ func getCompatibility(mapper VersionMapper, vmType models.VMType) (models.VMComp
 	return parsedCompat, nil
 }
 
+// getAvagoCompatibility returns the compatibility for Avalanchego
 func getAvagoCompatibility(mapper VersionMapper) (models.AvagoCompatiblity, error) {
 	avagoBytes, err := mapper.GetApp().GetDownloader().Download(mapper.GetAvagoURL())
 	if err != nil {
@@ -207,4 +289,19 @@ func getAvagoCompatibility(mapper VersionMapper) (models.AvagoCompatiblity, erro
 	}
 
 	return avagoCompat, nil
+}
+
+// For semantic version slices, we can't just reverse twice:
+// the semver packages only has increasing `Sort`, while
+// `sort.Sort(sort.Reverse(sort.StringSlice(sliceSortedWithSemverSort)))`
+// again fails to sort correctly (as it will sort again with string sorting
+// instead of semantic versioning)
+func reverseSemverSort(slice []string) []string {
+	semver.Sort(slice)
+	reverse := make([]string, len(slice))
+	for i, s := range slice {
+		idx := len(slice) - (1 + i)
+		reverse[idx] = s
+	}
+	return reverse
 }

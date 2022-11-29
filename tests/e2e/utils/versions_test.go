@@ -22,6 +22,7 @@ import (
 type testContext struct {
 	expected    map[string]string
 	sourceEVM   string
+	spacesVM    string
 	sourceAvago string
 	shouldFail  bool
 }
@@ -75,7 +76,15 @@ func (m *testMapper) GetApp() *application.Avalanche {
 }
 
 func (m *testMapper) GetCompatURL(vmType models.VMType) string {
-	return m.srv.URL + "/evm"
+	switch vmType {
+	case models.SubnetEvm:
+		return m.srv.URL + "/evm"
+	case models.SpacesVM:
+		return m.srv.URL + "/spaces"
+	default:
+		m.t.Fatalf("unexpected vmType: %T", vmType)
+	}
+	return ""
 }
 
 func (m *testMapper) GetAvagoURL() string {
@@ -88,6 +97,8 @@ func (m *testMapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/evm":
 		_, err = w.Write([]byte(m.currentContext.sourceEVM))
+	case "/spaces":
+		_, err = w.Write([]byte(m.currentContext.spacesVM))
 	case "/avago":
 		_, err = w.Write([]byte(m.currentContext.sourceAvago))
 	default:
@@ -118,6 +129,8 @@ func TestGetVersionMapping(t *testing.T) {
 				MultiAvagoSubnetEVMKey: "v0.4.3",
 				LatestEVM2AvagoKey:     "v0.4.3",
 				LatestAvago2EVMKey:     "v1.9.3",
+				Spaces2AvagoKey:        "v0.0.12",
+				Avago2SpacesKey:        "v1.9.3",
 			},
 			sourceEVM: `{
 						"rpcChainVMProtocolVersion": {
@@ -128,6 +141,16 @@ func TestGetVersionMapping(t *testing.T) {
 							"v0.4.0": 17
 						}
 				  }`,
+			spacesVM: `{
+  					"rpcChainVMProtocolVersion": {
+    					"v0.0.12": 19,
+    					"v0.0.11": 19,
+    					"v0.0.10": 19,
+    					"v0.0.9": 17,
+    					"v0.0.8": 16,
+    					"v0.0.7": 15
+						}
+					}`,
 			sourceAvago: `{
 						"19": [
 							"v1.9.2",
@@ -153,6 +176,8 @@ func TestGetVersionMapping(t *testing.T) {
 				MultiAvagoSubnetEVMKey: "v0.9.9",
 				LatestEVM2AvagoKey:     "v0.9.9",
 				LatestAvago2EVMKey:     "v2.3.4",
+				Spaces2AvagoKey:        "v4.5.12",
+				Avago2SpacesKey:        "v2.3.4",
 			},
 			sourceEVM: `{
 					"rpcChainVMProtocolVersion": {
@@ -164,6 +189,14 @@ func TestGetVersionMapping(t *testing.T) {
 						"v0.4.0": 17
 					}
 			  }`,
+			spacesVM: `{
+  					"rpcChainVMProtocolVersion": {
+    					"v4.5.12": 99,
+    					"v3.2.12": 77,
+    					"v2.1.11": 66,
+    					"v0.0.10": 19
+						}
+					}`,
 			sourceAvago: `{
 					"99": [
 						"v2.3.4",
@@ -189,6 +222,8 @@ func TestGetVersionMapping(t *testing.T) {
 				MultiAvagoSubnetEVMKey: "v0.4.2",
 				LatestEVM2AvagoKey:     "v0.9.9",
 				LatestAvago2EVMKey:     "v4.3.2",
+				Spaces2AvagoKey:        "v3.2.12",
+				Avago2SpacesKey:        "v2.1.1",
 			},
 			sourceEVM: `{
 					"rpcChainVMProtocolVersion": {
@@ -202,6 +237,13 @@ func TestGetVersionMapping(t *testing.T) {
 						"v0.4.0": 17
 					}
 			  }`,
+			spacesVM: `{
+  					"rpcChainVMProtocolVersion": {
+    					"v3.2.12": 77,
+    					"v2.1.11": 66,
+    					"v0.0.10": 19
+						}
+					}`,
 			sourceAvago: `{
 					"99": [
 						"v4.3.2"

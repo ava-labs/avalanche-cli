@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/onsi/gomega"
 )
 
@@ -46,12 +44,8 @@ func CleanNetworkHard() {
 
 /* #nosec G204 */
 func StartNetwork() string {
-	app := &application.Avalanche{
-		Downloader: application.NewDownloader(),
-		Log:        logging.NoLog{},
-	}
 	// TODO: should we change interfaces here to allow err checking
-	mapper := utils.NewVersionMapper(app)
+	mapper := utils.NewVersionMapper()
 	mapping, _ := utils.GetVersionMapping(mapper)
 
 	return StartNetworkWithVersion(mapping[utils.OnlyAvagoKey])

@@ -10,12 +10,10 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/ava-labs/avalanche-network-runner/api"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ethereum/go-ethereum/common"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -34,11 +32,7 @@ var (
 
 var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 	_ = ginkgo.BeforeAll(func() {
-		app := &application.Avalanche{
-			Downloader: application.NewDownloader(),
-			Log:        logging.NoLog{},
-		}
-		mapper := utils.NewVersionMapper(app)
+		mapper := utils.NewVersionMapper()
 		mapping, err = utils.GetVersionMapping(mapper)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
@@ -103,8 +97,8 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can deploy a SpacesVM subnet to local", func() {
-		commands.CreateSpacesVMConfig(subnetName, utils.SpacesVMGenesisPath)
-		deployOutput := commands.DeploySubnetLocally(subnetName)
+		commands.CreateSpacesVMConfigWithVersion(subnetName, utils.SpacesVMGenesisPath, mapping[utils.Spaces2AvagoKey])
+		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, mapping[utils.Avago2SpacesKey])
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
