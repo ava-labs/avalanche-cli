@@ -110,7 +110,11 @@ func askForVMVersion(
 	}
 
 	// prompt for version
-	version, err := app.Prompt.CaptureVersion(fmt.Sprintf("%s version", vmName))
+	versions, err := app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName)
+	if err != nil {
+		return "", statemachine.Stop, err
+	}
+	version, err := app.Prompt.CaptureList("Pick the version for this VM", versions)
 	if err != nil {
 		return "", statemachine.Stop, err
 	}

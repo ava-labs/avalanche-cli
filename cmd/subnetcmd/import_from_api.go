@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/rpc"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/coreth/core"
+	"github.com/ava-labs/spacesvm/chain"
 	"github.com/spf13/cobra"
 )
 
@@ -204,62 +205,29 @@ func importRunningSubnet(cmd *cobra.Command, args []string) error {
 		vmType = models.VMTypeFromString(subnetTypeStr)
 	}
 
+	vmIDstr := vmID.String()
+
 	sc := &models.Sidecar{
-		Name:            subnetName,
-		VM:              vmType,
-		ImportedFromAPM: false,
+		Name: subnetName,
+		VM:   vmType,
 		Networks: map[string]models.NetworkData{
 			network.String(): {
 				SubnetID:     subnetID,
 				BlockchainID: blockchainID,
 			},
 		},
-		Subnet:    subnetName,
-		Version:   constants.SidecarVersion,
-		TokenName: constants.DefaultTokenName,
+		Subnet:       subnetName,
+		Version:      constants.SidecarVersion,
+		TokenName:    constants.DefaultTokenName,
+		ImportedVMID: vmIDstr,
+		// signals that the VMID wasn't derived from the subnet name but through import
+		ImportedFromAPM: true,
 	}
 
 	var versions []string
-	switch vmType {
-	case models.SubnetEvm:
-		versions, err = app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName)
-		if err != nil {
-			return err
-		}
-		sc.VMVersion, err = app.Prompt.CaptureList("Pick the version for this VM", versions)
-	case models.SpacesVM:
-		versions, err = app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SpacesVMRepoName)
-		if err != nil {
-			return err
-		}
-		sc.VMVersion, err = app.Prompt.CaptureList("Pick the version for this VM", versions)
-	case models.CustomVM:
-		return fmt.Errorf("importing custom VMs is not yet implemented, but will be available soon")
-	default:
-		return fmt.Errorf("unexpected VM type: %v", vmType)
-	}
-	if err != nil {
-		return err
-	}
 
-	sc.RPCVersion, err = vm.GetRPCProtocolVersion(app, vmType, sc.VMVersion)
-	if err != nil {
-		return fmt.Errorf("failed getting RPCVersion for VM type %s with version %s", vmType, sc.VMVersion)
-	}
-
-	if vmType == models.SubnetEvm {
-		var genesis core.Genesis
-		if err := json.Unmarshal(genBytes, &genesis); err != nil {
-			return err
-		}
-		sc.ChainID = genesis.Config.ChainID.String()
-	}
-
-	vmIDstr := vmID.String()
-	sc.ImportedVMID = vmIDstr
-	// signals that the VMID wasn't derived from the subnet name but through import
-	sc.ImportedFromAPM = true
 	if reply != nil {
+		// a node was queried
 		for _, v := range reply.VMVersions {
 			if v == vmIDstr {
 				sc.VMVersion = v
@@ -267,6 +235,49 @@ func importRunningSubnet(cmd *cobra.Command, args []string) error {
 			}
 		}
 		sc.RPCVersion = int(reply.RPCProtocolVersion)
+	} else {
+		// no node was queried, ask the user
+		switch vmType {
+		case models.SubnetEvm:
+			versions, err = app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName)
+			if err != nil {
+				return err
+			}
+			sc.VMVersion, err = app.Prompt.CaptureList("Pick the version for this VM", versions)
+		case models.SpacesVM:
+			versions, err = app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SpacesVMRepoName)
+			if err != nil {
+				return err
+			}
+			sc.VMVersion, err = app.Prompt.CaptureList("Pick the version for this VM", versions)
+		case models.CustomVM:
+			return fmt.Errorf("importing custom VMs is not yet implemented, but will be available soon")
+		default:
+			return fmt.Errorf("unexpected VM type: %v", vmType)
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	sc.RPCVersion, err = vm.GetRPCProtocolVersion(app, vmType, sc.VMVersion)
+	if err != nil {
+		return fmt.Errorf("failed getting RPCVersion for VM type %s with version %s", vmType, sc.VMVersion)
+	}
+
+	switch vmType {
+	case models.SubnetEvm:
+		var genesis core.Genesis
+		if err := json.Unmarshal(genBytes, &genesis); err != nil {
+			return err
+		}
+		sc.ChainID = genesis.Config.ChainID.String()
+	case models.SpacesVM:
+		// for spacesvm just make sure it's valid
+		var genesis chain.Genesis
+		if err := json.Unmarshal(genBytes, &genesis); err != nil {
+			return err
+		}
 	}
 
 	if err := app.CreateSidecar(sc); err != nil {
