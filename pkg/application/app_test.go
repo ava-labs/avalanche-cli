@@ -3,8 +3,6 @@
 package application
 
 import (
-	"encoding/json"
-	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,8 +11,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/subnet-evm/core"
-	"github.com/ava-labs/subnet-evm/params"
 	"github.com/stretchr/testify/assert"
 )
 
