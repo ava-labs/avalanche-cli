@@ -536,6 +536,7 @@ func ImportSubnetConfig(repoAlias string, subnetName string) {
 		CLIBinary,
 		SubnetCmd,
 		"import",
+		"file",
 		"--repo",
 		repoAlias,
 		"--subnet",
