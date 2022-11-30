@@ -97,8 +97,9 @@ func newJoinCmd() *cobra.Command {
 To complete this process, you must have access to the machine running your validator. If the
 CLI is running on the same machine as your validator, it can generate or update your node's
 config file automatically. Alternatively, the command can print the necessary instructions
-to update your node manually. To complete the validation process, the Subnet admins must add
-the NodeID of your validator to the Subnet's allow list.
+to update your node manually. To complete the validation process, the Subnet's admins must add
+the NodeID of your validator to the Subnet's allow list by calling addValidator with your
+NodeID.
 
 After you update your validator's config, you need to restart your validator manually. If
 you provide the --avalanchego-config flag, this command attempts to edit the config file

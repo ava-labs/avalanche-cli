@@ -79,7 +79,7 @@ use in production environments. DO NOT use these keys on Mainnet.
 The command works by generating a secp256 key and storing it with the provided keyName. You
 can use this key in other commands by providing this keyName.
 
-If you'd like to import and existing key instead of generating one from scratch, provide the
+If you'd like to import an existing key instead of generating one from scratch, provide the
 --file flag.`,
 		Args:         cobra.ExactArgs(1),
 		RunE:         createKey,
