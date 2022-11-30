@@ -30,12 +30,12 @@ var (
 // avalanche subnet import
 func newImportFromNetworkCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "import-running [subnetPath]",
-		Short:        "Import an existing subnet config from running subnets",
+		Use:          "public [subnetPath]",
+		Short:        "Import an existing subnet config from running subnets on a public network",
 		RunE:         importRunningSubnet,
 		SilenceUsage: true,
 		Args:         cobra.MaximumNArgs(1),
-		Long: `The subnet import command will import a subnet configuration from a running network.
+		Long: `The subnet import public command will import a subnet configuration from a running network.
 
 The genesis file should be available from the disk for this to work. 
 By default, an imported subnet will not overwrite an existing subnet with the same name. 
