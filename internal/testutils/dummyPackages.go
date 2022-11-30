@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -38,7 +38,7 @@ var (
 	licenseContents = []byte("LICENSE")
 )
 
-func verifyAvagoTarContents(assert *assert.Assertions, tarBytes []byte, version string) {
+func verifyAvagoTarContents(require *require.Assertions, tarBytes []byte, version string) {
 	topDir := avalanchegoBinPrefix + version
 	bin := filepath.Join(topDir, avalanchegoBin)
 	plugins := filepath.Join(topDir, pluginDirName)
@@ -50,15 +50,15 @@ func verifyAvagoTarContents(assert *assert.Assertions, tarBytes []byte, version 
 
 	file := bytes.NewReader(tarBytes)
 	gzRead, err := gzip.NewReader(file)
-	assert.NoError(err)
+	require.NoError(err)
 	tarReader := tar.NewReader(gzRead)
-	assert.NoError(err)
+	require.NoError(err)
 	for {
 		file, err := tarReader.Next()
 		if err == io.EOF {
 			break
 		}
-		assert.NoError(err)
+		require.NoError(err)
 		switch file.Name {
 		case topDir:
 			// we don't need to check the top dir, it is implied through other checks
@@ -70,31 +70,31 @@ func verifyAvagoTarContents(assert *assert.Assertions, tarBytes []byte, version 
 		case evm:
 			evmExists = true
 		default:
-			assert.FailNow("Tar has extra files")
+			require.FailNow("Tar has extra files")
 		}
 	}
 
-	assert.True(binExists)
-	assert.True(pluginsExists)
-	assert.True(evmExists)
+	require.True(binExists)
+	require.True(pluginsExists)
+	require.True(evmExists)
 }
 
-func verifySubnetEVMTarContents(assert *assert.Assertions, tarBytes []byte) {
+func verifySubnetEVMTarContents(require *require.Assertions, tarBytes []byte) {
 	binExists := false
 	readmeExists := false
 	licenseExists := false
 
 	file := bytes.NewReader(tarBytes)
 	gzRead, err := gzip.NewReader(file)
-	assert.NoError(err)
+	require.NoError(err)
 	tarReader := tar.NewReader(gzRead)
-	assert.NoError(err)
+	require.NoError(err)
 	for {
 		file, err := tarReader.Next()
 		if err == io.EOF {
 			break
 		}
-		assert.NoError(err)
+		require.NoError(err)
 		switch file.Name {
 		case subnetEVMBin:
 			binExists = true
@@ -103,15 +103,15 @@ func verifySubnetEVMTarContents(assert *assert.Assertions, tarBytes []byte) {
 		case license:
 			licenseExists = true
 		default:
-			assert.FailNow("Tar has extra files: " + file.Name)
+			require.FailNow("Tar has extra files: " + file.Name)
 		}
 	}
-	assert.True(binExists)
-	assert.True(readmeExists)
-	assert.True(licenseExists)
+	require.True(binExists)
+	require.True(readmeExists)
+	require.True(licenseExists)
 }
 
-func verifyAvagoZipContents(assert *assert.Assertions, zipFile string) {
+func verifyAvagoZipContents(require *require.Assertions, zipFile string) {
 	topDir := buildDirName
 	bin := filepath.Join(topDir, avalanchegoBin)
 	plugins := filepath.Join(topDir, pluginDirName)
@@ -123,7 +123,7 @@ func verifyAvagoZipContents(assert *assert.Assertions, zipFile string) {
 	evmExists := false
 
 	reader, err := zip.OpenReader(zipFile)
-	assert.NoError(err)
+	require.NoError(err)
 	defer reader.Close()
 	for _, file := range reader.File {
 		// Zip directories end in "/" which is annoying for string matching
@@ -137,99 +137,99 @@ func verifyAvagoZipContents(assert *assert.Assertions, zipFile string) {
 		case evm:
 			evmExists = true
 		default:
-			assert.FailNow("Zip has extra files: " + file.Name)
+			require.FailNow("Zip has extra files: " + file.Name)
 		}
 	}
-	assert.True(topDirExists)
-	assert.True(binExists)
-	assert.True(pluginsExists)
-	assert.True(evmExists)
+	require.True(topDirExists)
+	require.True(binExists)
+	require.True(pluginsExists)
+	require.True(evmExists)
 }
 
-func CreateDummyAvagoZip(assert *assert.Assertions, binary []byte) []byte {
+func CreateDummyAvagoZip(require *require.Assertions, binary []byte) []byte {
 	sourceDir, err := os.MkdirTemp(os.TempDir(), "binutils-source")
-	assert.NoError(err)
+	require.NoError(err)
 	defer os.RemoveAll(sourceDir)
 
 	topDir := filepath.Join(sourceDir, buildDirName)
 	err = os.Mkdir(topDir, 0o700)
-	assert.NoError(err)
+	require.NoError(err)
 
 	binPath := filepath.Join(topDir, avalanchegoBin)
 	err = os.WriteFile(binPath, binary, 0o600)
-	assert.NoError(err)
+	require.NoError(err)
 
 	pluginDir := filepath.Join(topDir, pluginDirName)
 	err = os.Mkdir(pluginDir, 0o700)
-	assert.NoError(err)
+	require.NoError(err)
 
 	evmBinPath := filepath.Join(pluginDir, evmBin)
 	err = os.WriteFile(evmBinPath, evmBinary, 0o600)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// Put into zip
-	CreateZip(assert, topDir, avagoZip)
+	CreateZip(require, topDir, avagoZip)
 	defer os.Remove(avagoZip)
 
-	verifyAvagoZipContents(assert, avagoZip)
+	verifyAvagoZipContents(require, avagoZip)
 
 	zipBytes, err := os.ReadFile(avagoZip)
-	assert.NoError(err)
+	require.NoError(err)
 	return zipBytes
 }
 
-func CreateDummyAvagoTar(assert *assert.Assertions, binary []byte, version string) []byte {
+func CreateDummyAvagoTar(require *require.Assertions, binary []byte, version string) []byte {
 	sourceDir, err := os.MkdirTemp(os.TempDir(), "binutils-source")
-	assert.NoError(err)
+	require.NoError(err)
 	defer os.RemoveAll(sourceDir)
 
 	topDir := filepath.Join(sourceDir, avalanchegoBinPrefix+version)
 	err = os.Mkdir(topDir, 0o700)
-	assert.NoError(err)
+	require.NoError(err)
 
 	binPath := filepath.Join(topDir, avalanchegoBin)
 	err = os.WriteFile(binPath, binary, 0o600)
-	assert.NoError(err)
+	require.NoError(err)
 
 	pluginDir := filepath.Join(topDir, pluginDirName)
 	err = os.Mkdir(pluginDir, 0o700)
-	assert.NoError(err)
+	require.NoError(err)
 
 	evmBinPath := filepath.Join(pluginDir, evmBin)
 	err = os.WriteFile(evmBinPath, evmBinary, 0o600)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// Put into tar
-	CreateTarGz(assert, topDir, avagoTar, true)
+	CreateTarGz(require, topDir, avagoTar, true)
 	defer os.Remove(avagoTar)
 	tarBytes, err := os.ReadFile(avagoTar)
-	assert.NoError(err)
-	verifyAvagoTarContents(assert, tarBytes, version)
+	require.NoError(err)
+	verifyAvagoTarContents(require, tarBytes, version)
 	return tarBytes
 }
 
-func CreateDummySubnetEVMTar(assert *assert.Assertions, binary []byte) []byte {
+func CreateDummySubnetEVMTar(require *require.Assertions, binary []byte) []byte {
 	sourceDir, err := os.MkdirTemp(os.TempDir(), "binutils-source")
-	assert.NoError(err)
+	require.NoError(err)
 	defer os.RemoveAll(sourceDir)
 
 	binPath := filepath.Join(sourceDir, subnetEVMBin)
 	err = os.WriteFile(binPath, binary, 0o600)
-	assert.NoError(err)
+	require.NoError(err)
 
 	readmePath := filepath.Join(sourceDir, readme)
 	err = os.WriteFile(readmePath, readmeContents, 0o600)
-	assert.NoError(err)
+	require.NoError(err)
 
 	licensePath := filepath.Join(sourceDir, license)
 	err = os.WriteFile(licensePath, licenseContents, 0o600)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// Put into tar
-	CreateTarGz(assert, sourceDir, subnetEVMTar, false)
+	CreateTarGz(require, sourceDir, subnetEVMTar, false)
 	defer os.Remove(subnetEVMTar)
 	tarBytes, err := os.ReadFile(subnetEVMTar)
-	assert.NoError(err)
-	verifySubnetEVMTarContents(assert, tarBytes)
+	require.NoError(err)
+	verifySubnetEVMTarContents(require, tarBytes)
 	return tarBytes
 }

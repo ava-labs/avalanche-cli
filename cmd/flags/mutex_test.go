@@ -5,11 +5,11 @@ package flags
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMutuallyExclusive(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	type test struct {
 		flagA       bool
 		flagB       bool
@@ -72,9 +72,9 @@ func TestMutuallyExclusive(t *testing.T) {
 		flags := []bool{tt.flagA, tt.flagB, tt.flagC}
 		isEx := EnsureMutuallyExclusive(flags)
 		if tt.expectError {
-			assert.False(isEx)
+			require.False(isEx)
 		} else {
-			assert.True(isEx)
+			require.True(isEx)
 		}
 	}
 }

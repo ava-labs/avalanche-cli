@@ -23,7 +23,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/protobuf/proto"
 )
@@ -64,14 +64,14 @@ var (
 	}
 )
 
-func setupTest(t *testing.T) *assert.Assertions {
+func setupTest(t *testing.T) *require.Assertions {
 	// use io.Discard to not print anything
 	ux.NewUserLog(logging.NoLog{}, io.Discard)
-	return assert.New(t)
+	return require.New(t)
 }
 
 func TestDeployToLocal(t *testing.T) {
-	assert := setupTest(t)
+	require := setupTest(t)
 	avagoVersion := "v1.18.0"
 
 	// fake-return true simulating the process is running
@@ -80,7 +80,7 @@ func TestDeployToLocal(t *testing.T) {
 
 	tmpDir := os.TempDir()
 	testDir, err := os.MkdirTemp(tmpDir, "local-test")
-	assert.NoError(err)
+	require.NoError(err)
 	defer func() {
 		os.RemoveAll(testDir)
 	}()
@@ -93,11 +93,11 @@ func TestDeployToLocal(t *testing.T) {
 	// create a dummy plugins dir, deploy will check it exists
 	binChecker := &mocks.BinaryChecker{}
 	err = os.MkdirAll(filepath.Join(binDir, "plugins"), perms.ReadWriteExecute)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// create a dummy avalanchego file, deploy will check it exists
 	f, err := os.Create(filepath.Join(binDir, "avalanchego"))
-	assert.NoError(err)
+	require.NoError(err)
 	defer func() {
 		_ = f.Close()
 	}()
@@ -123,41 +123,41 @@ func TestDeployToLocal(t *testing.T) {
 	genesis := `{"config":{"chainId":9999},"gasLimit":"0x0","difficulty":"0x0","alloc":{}}`
 	// create a dummy genesis file, deploy will check it exists
 	testGenesis, err := os.CreateTemp(tmpDir, "test-genesis.json")
-	assert.NoError(err)
+	require.NoError(err)
 	err = os.WriteFile(testGenesis.Name(), []byte(genesis), constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 	// create dummy sidecar file, also checked by deploy
 	sidecar := `{"VM": "SubnetEVM"}`
 	testSubnetDir := filepath.Join(testDir, constants.SubnetDir, testChainName)
 	err = os.MkdirAll(testSubnetDir, constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 	testSidecar, err := os.Create(filepath.Join(testSubnetDir, constants.SidecarFileName))
-	assert.NoError(err)
+	require.NoError(err)
 	err = os.WriteFile(testSidecar.Name(), []byte(sidecar), constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 	// test actual deploy
 	s, b, err := testDeployer.DeployToLocalNetwork(testChainName, []byte(genesis), testGenesis.Name())
-	assert.NoError(err)
-	assert.Equal(testSubnetID2, s.String())
-	assert.Equal(testBlockChainID2, b.String())
+	require.NoError(err)
+	require.Equal(testSubnetID2, s.String())
+	require.Equal(testBlockChainID2, b.String())
 }
 
 func TestGetLatestAvagoVersion(t *testing.T) {
-	assert := setupTest(t)
+	require := setupTest(t)
 
 	testVersion := "v1.99.9999"
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := fmt.Sprintf(`{"some":"unimportant","fake":"data","tag_name":"%s","tag_name_was":"what we are interested in"}`, testVersion)
 		_, err := w.Write([]byte(resp))
-		assert.NoError(err)
+		require.NoError(err)
 	})
 	s := httptest.NewServer(testHandler)
 	defer s.Close()
 
 	dl := application.NewDownloader()
 	v, err := dl.GetLatestReleaseVersion(s.URL)
-	assert.NoError(err)
-	assert.Equal(v, testVersion)
+	require.NoError(err)
+	require.Equal(v, testVersion)
 }
 
 func getTestClientFunc() (client.Client, error) {

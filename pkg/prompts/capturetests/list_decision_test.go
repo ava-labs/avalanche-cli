@@ -10,7 +10,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -21,14 +21,14 @@ import (
 */
 
 func TestListDecision(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	mockPrompt := &mocks.Prompter{}
 
 	pk, err := crypto.GenerateKey()
-	assert.NoError(err)
+	require.NoError(err)
 	addr := crypto.PubkeyToAddress(pk.PublicKey)
 	pk2, err := crypto.GenerateKey()
-	assert.NoError(err)
+	require.NoError(err)
 	addr2 := crypto.PubkeyToAddress(pk2.PublicKey)
 
 	// 1. cancel
@@ -81,9 +81,9 @@ func TestListDecision(t *testing.T) {
 		label,
 		info,
 	)
-	assert.NoError(err)
-	assert.True(cancel)
-	assert.Empty(list)
+	require.NoError(err)
+	require.True(cancel)
+	require.Empty(list)
 
 	// 2. error
 	list, cancel, err = prompts.CaptureListDecision(
@@ -94,10 +94,10 @@ func TestListDecision(t *testing.T) {
 		label,
 		info,
 	)
-	assert.Error(err)
-	assert.ErrorContains(err, "fake error")
-	assert.False(cancel)
-	assert.Empty(list)
+	require.Error(err)
+	require.ErrorContains(err, "fake error")
+	require.False(cancel)
+	require.Empty(list)
 
 	// 3. add - 1 valid, 1 done
 	list, cancel, err = prompts.CaptureListDecision(
@@ -108,9 +108,9 @@ func TestListDecision(t *testing.T) {
 		label,
 		info,
 	)
-	assert.NoError(err)
-	assert.False(cancel)
-	assert.Exactly(1, len(list))
+	require.NoError(err)
+	require.False(cancel)
+	require.Exactly(1, len(list))
 
 	// 4. add - 1 valid, then add the same
 	list, cancel, err = prompts.CaptureListDecision(
@@ -121,9 +121,9 @@ func TestListDecision(t *testing.T) {
 		label,
 		info,
 	)
-	assert.NoError(err)
-	assert.False(cancel)
-	assert.Exactly(2, len(list))
+	require.NoError(err)
+	require.False(cancel)
+	require.Exactly(2, len(list))
 
 	// 5. add - 2 valid, then remove index 1, readd
 	list, cancel, err = prompts.CaptureListDecision(
@@ -134,7 +134,7 @@ func TestListDecision(t *testing.T) {
 		label,
 		info,
 	)
-	assert.NoError(err)
-	assert.False(cancel)
-	assert.Exactly(2, len(list))
+	require.NoError(err)
+	require.False(cancel)
+	require.Exactly(2, len(list))
 }

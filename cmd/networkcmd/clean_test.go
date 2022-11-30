@@ -8,19 +8,19 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCleanBins(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	ux.NewUserLog(logging.NoLog{}, os.Stdout)
 	dir := t.TempDir()
 	f, err := os.CreateTemp(dir, "bin-test")
-	assert.NoError(err)
+	require.NoError(err)
 	f2, err := os.CreateTemp(dir, "another-test")
-	assert.NoError(err)
+	require.NoError(err)
 	cleanBins(dir)
-	assert.NoFileExists(f.Name())
-	assert.NoFileExists(f2.Name())
-	assert.NoDirExists(dir)
+	require.NoFileExists(f.Name())
+	require.NoFileExists(f2.Name())
+	require.NoDirExists(dir)
 }

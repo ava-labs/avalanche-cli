@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_removePrecompile(t *testing.T) {
@@ -45,12 +45,12 @@ func Test_removePrecompile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			require := require.New(t)
 
 			// Check how many selected
 			shortenedList, err := removePrecompile(tt.precompileList, tt.toRemove)
-			assert.Equal(tt.expectedResult, shortenedList)
-			assert.Equal(tt.expectedErr, err)
+			require.Equal(tt.expectedResult, shortenedList)
+			require.Equal(tt.expectedErr, err)
 		})
 	}
 }
