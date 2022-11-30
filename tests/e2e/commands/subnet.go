@@ -578,6 +578,7 @@ func ImportSubnetConfigFromURL(repoURL string, branch string, subnetName string)
 		CLIBinary,
 		SubnetCmd,
 		"import",
+		"file",
 		"--repo",
 		repoURL,
 		"--branch",
