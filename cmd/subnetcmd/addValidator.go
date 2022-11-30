@@ -35,15 +35,15 @@ func newAddValidatorCmd() *cobra.Command {
 		Use:   "addValidator [subnetName]",
 		Short: "Allow a validator to validate your subnet",
 		Long: `The subnet addValidator command whitelists a primary network validator to
-validate the provided deployed subnet.
+validate the provided deployed Subnet.
 
-To add the validator to the subnet's allow list, you first need to provide
+To add the validator to the Subnet's allow list, you first need to provide
 the subnetName and the validator's unique NodeID. The command then prompts
-for the validation start time, duration and stake weight. These values can
-all be collected with flags instead of prompts.
+for the validation start time, duration, and stake weight. You can bypass
+these prompts by providing the values with flags.
 
-This command currently only works on subnets deployed to either the Fuji
-testnet or Mainnet.`,
+This command currently only works on Subnets deployed to either the Fuji
+Testnet or Mainnet.`,
 		SilenceUsage: true,
 		RunE:         addValidator,
 		Args:         cobra.ExactArgs(1),

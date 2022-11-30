@@ -38,16 +38,16 @@ func newCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create [subnetName]",
 		Short: "Create a new subnet configuration",
-		Long: `The subnet create command builds a new genesis file to configure your subnet.
-The command is structured as an interactive wizard. It will walk you through
-all the steps you need to create your first subnet.
+		Long: `The subnet create command builds a new genesis file to configure your Subnet.
+By default, the command runs an interactive wizard. It walks you through
+all the steps you need to create your first Subnet.
 
-The tool supports deploying Subnet-EVM, SpacesVM, and custom vms. You
-can create a custom, user-generated genesis with a custom vm by providing
-the path to your genesis and vm binarires with the --genesis and --vm flags.
+The tool supports deploying Subnet-EVM, SpacesVM, and custom VMs. You
+can create a custom, user-generated genesis with a custom VM by providing
+the path to your genesis and VM binaries with the --genesis and --vm flags.
 
-By default, running the command with a subnetName that already exists will
-cause the command to fail. If you’d like to overwrite an existing
+By default, running the command with a subnetName that already exists
+causes the command to fail. If you’d like to overwrite an existing
 configuration, pass the -f flag.`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
