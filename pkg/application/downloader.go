@@ -46,7 +46,8 @@ func (downloader) Download(url string) ([]byte, error) {
 
 func (d downloader) GetAllReleasesForRepo(org, repo string) ([]string, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases", org, repo)
-	body, err := d.doAPIRequest(url)
+	token := os.Getenv(constants.GithubAPITokenEnvVarName)
+	body, err := d.doAPIRequest(url, token)
 	if err != nil {
 		return nil, err
 	}
@@ -74,22 +75,21 @@ func (d downloader) GetAllReleasesForRepo(org, repo string) ([]string, error) {
 	return releases, nil
 }
 
-func (downloader) doAPIRequest(url string) (io.ReadCloser, error) {
+func (downloader) doAPIRequest(url, token string) (io.ReadCloser, error) {
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request for latest version from %s: %w", url, err)
+		return nil, fmt.Errorf("failed to create request for %s: %w", url, err)
 	}
-	token := os.Getenv(constants.GithubAPITokenEnvVarName)
 	if token != "" {
 		// avoid rate limitation issues at CI
 		request.Header.Set("authorization", fmt.Sprintf("Bearer %s", token))
 	}
 	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get latest version from %s: %w", url, err)
+		return nil, fmt.Errorf("failed doing request to %s: %w", url, err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get latest version from %s: unexpected http status code: %d", url, resp.StatusCode)
+		return nil, fmt.Errorf("failed doing request %s: unexpected http status code: %d", url, resp.StatusCode)
 	}
 	return resp.Body, nil
 }
@@ -98,7 +98,8 @@ func (downloader) doAPIRequest(url string) (io.ReadCloser, error) {
 func (d downloader) GetLatestReleaseVersion(releaseURL string) (string, error) {
 	// TODO: Question if there is a less error prone (= simpler) way to install latest avalanchego
 	// Maybe the binary package manager should also allow the actual avalanchego binary for download
-	body, err := d.doAPIRequest(releaseURL)
+	token := os.Getenv(constants.GithubAPITokenEnvVarName)
+	body, err := d.doAPIRequest(releaseURL, token)
 	if err != nil {
 		return "", err
 	}

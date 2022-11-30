@@ -109,7 +109,7 @@ func importRunningSubnet(cmd *cobra.Command, args []string) error {
 		}
 		if yes {
 			nodeURL, err = app.Prompt.CaptureString(
-				"Please provide an API URL of such a node so we can query its VM version (e.g. 111.22.33.44:5555)")
+				"Please provide an API URL of such a node so we can query its VM version (e.g. http://111.22.33.44:5555)")
 			if err != nil {
 				return err
 			}
@@ -214,8 +214,9 @@ func importRunningSubnet(cmd *cobra.Command, args []string) error {
 				BlockchainID: blockchainID,
 			},
 		},
-		Subnet:  subnetName,
-		Version: constants.SidecarVersion,
+		Subnet:    subnetName,
+		Version:   constants.SidecarVersion,
+		TokenName: constants.DefaultTokenName,
 	}
 
 	var versions []string
@@ -241,12 +242,9 @@ func importRunningSubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// hasn't been set in reply
-	if sc.RPCVersion == 0 {
-		sc.RPCVersion, err = vm.GetRPCProtocolVersion(app, vmType, sc.VMVersion)
-		if err != nil {
-			return fmt.Errorf("failed getting RPCVersion for VM type %s with version %s", vmType, sc.VMVersion)
-		}
+	sc.RPCVersion, err = vm.GetRPCProtocolVersion(app, vmType, sc.VMVersion)
+	if err != nil {
+		return fmt.Errorf("failed getting RPCVersion for VM type %s with version %s", vmType, sc.VMVersion)
 	}
 
 	if vmType == models.SubnetEvm {
@@ -255,18 +253,17 @@ func importRunningSubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		sc.ChainID = genesis.Config.ChainID.String()
-		/*
-			  // TODO: can we get this one?
-				TokenName       string
-		*/
 	}
 
 	vmIDstr := vmID.String()
-	sc.ImportedVMID = vmIDstr // TODO: Is this correct?
+	sc.ImportedVMID = vmIDstr
+	// signals that the VMID wasn't derived from the subnet name but through import
+	sc.ImportedFromAPM = true
 	if reply != nil {
 		for _, v := range reply.VMVersions {
 			if v == vmIDstr {
 				sc.VMVersion = v
+				break
 			}
 		}
 		sc.RPCVersion = int(reply.RPCProtocolVersion)
