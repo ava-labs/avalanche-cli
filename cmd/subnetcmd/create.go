@@ -55,7 +55,7 @@ configuration, pass the -f flag.`,
 	}
 	cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
 	cmd.Flags().StringVar(&vmFile, "vm", "", "file path of custom vm to use")
-	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the SubnetEVM as the base template")
+	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the Subnet-EVM as the base template")
 	cmd.Flags().BoolVar(&useSpacesVM, "spacesvm", false, "use the SpacesVM as the base template")
 	cmd.Flags().StringVar(&vmVersion, "vm-version", "", "version of vm template to use")
 	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
