@@ -21,10 +21,9 @@ import (
 // avalanche subnet list
 func newListCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "list",
-		Short: "List all created subnet configurations",
-		Long: `The subnet list command prints the names of all created subnet
-configurations.`,
+		Use:          "list",
+		Short:        "List all created subnet configurations",
+		Long:         `The subnet list command prints the names of all created Subnet configurations.`,
 		RunE:         listSubnets,
 		SilenceUsage: true,
 	}

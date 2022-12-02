@@ -179,7 +179,7 @@ func Test_loadSidecar_success(t *testing.T) {
 	ap := newTestApp(t)
 
 	// Write sidecar
-	sidecarBytes := []byte("{  \"Name\": \"TEST_subnet\",\n  \"VM\": \"SubnetEVM\",\n  \"Subnet\": \"TEST_subnet\"\n  }")
+	sidecarBytes := []byte("{  \"Name\": \"TEST_subnet\",\n  \"VM\": \"Subnet-EVM\",\n  \"Subnet\": \"TEST_subnet\"\n  }")
 	sidecarPath := ap.GetSidecarPath(subnetName1)
 	err := os.MkdirAll(filepath.Dir(sidecarPath), constants.DefaultPerms755)
 	assert.NoError(err)

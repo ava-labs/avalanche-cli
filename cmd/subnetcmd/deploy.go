@@ -61,20 +61,16 @@ func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy [subnetName]",
 		Short: "Deploys a subnet configuration",
-		Long: `The subnet deploy command deploys your subnet configuration locally, to
-Fuji Testnet, or to Mainnet. Currently, the beta release only supports
-local and Fuji deploys.
+		Long: `The subnet deploy command deploys your Subnet configuration locally, to Fuji Testnet, or to Mainnet.
 
-At the end of the call, the command will print the RPC URL you can use
-to interact with the subnet.
+At the end of the call, the command prints the RPC URL you can use to interact with the Subnet.
 
-Subnets may only be deployed once. Subsequent calls of deploy to the
-same network (local, Fuji, Mainnet) are not allowed. If you'd like to
-redeploy a subnet locally for testing, you must first call avalanche
-network clean to reset all deployed chain state. Subsequent local
-deploys will redeploy the chain with fresh state. The same subnet can
-be deployed to multiple networks, so you can take your locally tested
-subnet and deploy it on Fuji or Mainnet.`,
+Avalanche-CLI only supports deploying an individual Subnet once per network. Subsequent
+attempts to deploy the same Subnet to the same network (local, Fuji, Mainnet) aren't
+allowed. If you'd like to redeploy a Subnet locally for testing, you must first call
+avalanche network clean to reset all deployed chain state. Subsequent local deploys
+redeploy the chain with fresh state. You can deploy the same Subnet to multiple networks,
+so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 		SilenceUsage: true,
 		RunE:         deploySubnet,
 		Args:         cobra.ExactArgs(1),
