@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/ava-labs/apm v0.0.4
 	github.com/ava-labs/avalanche-ledger-go v0.0.13
-	github.com/ava-labs/avalanche-network-runner v1.3.2
+	github.com/ava-labs/avalanche-network-runner v1.3.3-0.20221128213709-3e03e70190ac
 	github.com/ava-labs/avalanchego v1.9.3
 	github.com/ava-labs/coreth v0.11.3-rc.1
 	github.com/ava-labs/spacesvm v0.0.12
@@ -16,10 +16,10 @@ require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/manifoldco/promptui v0.9.0
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/onsi/ginkgo/v2 v2.5.0
+	github.com/onsi/ginkgo/v2 v2.5.1
 	github.com/onsi/gomega v1.24.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
-	github.com/spf13/afero v1.9.2
+	github.com/spf13/afero v1.9.3
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.14.0
 	github.com/stretchr/testify v1.8.1

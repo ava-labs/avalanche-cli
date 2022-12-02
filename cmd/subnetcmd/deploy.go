@@ -400,14 +400,24 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain
 	ux.Logger.PrintToUser(controlKeysInitialPrompt)
 
 	const (
-		creation = "Use creation key"
-		useAll   = "Use all stored keys"
-		custom   = "Custom list"
+		useAll = "Use all stored keys"
+		custom = "Custom list"
 	)
 
-	listDecision, err := app.Prompt.CaptureList(
-		moreKeysPrompt, []string{creation, useAll, custom},
-	)
+	var creation string
+	var listOptions []string
+	if useLedger {
+		creation = "Use ledger address"
+	} else {
+		creation = "Use creation key"
+	}
+	if network == models.Mainnet {
+		listOptions = []string{creation, custom}
+	} else {
+		listOptions = []string{creation, useAll, custom}
+	}
+
+	listDecision, err := app.Prompt.CaptureList(moreKeysPrompt, listOptions)
 	if err != nil {
 		return nil, false, err
 	}
