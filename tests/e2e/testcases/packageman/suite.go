@@ -21,9 +21,9 @@ const (
 
 	soloAvagoVersion = "v1.9.1"
 
-	multipleAvagoSubnetEVM = "v0.3.0"
-	multipleAvagoVersion1  = "v1.8.0"
-	mulitpleAvagoVersion2  = "v1.8.1"
+	multipleAvagoSubnetEVM = "v0.4.3"
+	multipleAvagoVersion1  = "v1.9.2"
+	mulitpleAvagoVersion2  = "v1.9.3"
 )
 
 var _ = ginkgo.Describe("[Package Management]", func() {
