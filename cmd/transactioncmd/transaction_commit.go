@@ -17,7 +17,7 @@ func newTransactionCommitCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "commit [subnetName]",
 		Short:        "commit a transaction",
-		Long:         "The transaction commit command commits a transaction by submitting it to the p-chain.",
+		Long:         "The transaction commit command commits a transaction by submitting it to the P-Chain.",
 		RunE:         commitTx,
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
