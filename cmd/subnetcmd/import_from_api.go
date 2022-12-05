@@ -262,7 +262,6 @@ func importRunningSubnet(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("failed getting RPCVersion for VM type %s with version %s", vmType, sc.VMVersion)
 		}
-
 	}
 
 	switch vmType {
