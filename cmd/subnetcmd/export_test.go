@@ -65,7 +65,7 @@ func TestExportImportSubnet(t *testing.T) {
 	err = json.Unmarshal(orig, &control)
 	require.NoError(err)
 	require.Equal(control["Name"], testSubnet)
-	require.Equal(control["VM"], "SubnetEVM")
+	require.Equal(control["VM"], "Subnet-EVM")
 	require.Equal(control["VMVersion"], vmVersion)
 	require.Equal(control["Subnet"], testSubnet)
 	require.Equal(control["TokenName"], "TEST")
