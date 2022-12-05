@@ -38,18 +38,16 @@ func newCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create [subnetName]",
 		Short: "Create a new subnet configuration",
-		Long: `The subnet create command builds a new genesis file to configure your subnet.
-The command is structured as an interactive wizard. It will walk you through
-all the steps you need to create your first subnet.
+		Long: `The subnet create command builds a new genesis file to configure your Subnet.
+By default, the command runs an interactive wizard. It walks you through
+all the steps you need to create your first Subnet.
 
-Currently, the tool supports deploying Subnet-EVM and Subnet-EVM forks. You
-can create a custom, user-generated genesis with a custom vm by providing
-the path to your genesis and vm binarires with the --genesis and --vm flags.
-As more subnets reach maturity, you'll be able to use this tool to generate
-additional VM templates, such as the SpacesVM.
+The tool supports deploying Subnet-EVM, SpacesVM, and custom VMs. You
+can create a custom, user-generated genesis with a custom VM by providing
+the path to your genesis and VM binaries with the --genesis and --vm flags.
 
-By default, running the command with a subnetName that already exists will
-cause the command to fail. If you’d like to overwrite an existing
+By default, running the command with a subnetName that already exists
+causes the command to fail. If you’d like to overwrite an existing
 configuration, pass the -f flag.`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
@@ -57,7 +55,7 @@ configuration, pass the -f flag.`,
 	}
 	cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
 	cmd.Flags().StringVar(&vmFile, "vm", "", "file path of custom vm to use")
-	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the SubnetEVM as the base template")
+	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the Subnet-EVM as the base template")
 	cmd.Flags().BoolVar(&useSpacesVM, "spacesvm", false, "use the SpacesVM as the base template")
 	cmd.Flags().StringVar(&vmVersion, "vm-version", "", "version of vm template to use")
 	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")

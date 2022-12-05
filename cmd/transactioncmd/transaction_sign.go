@@ -30,7 +30,7 @@ func newTransactionSignCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "sign [subnetName]",
 		Short:        "sign a transaction",
-		Long:         "",
+		Long:         "The transaction sign command signs a multisig transaction.",
 		RunE:         signTx,
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
