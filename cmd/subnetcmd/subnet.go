@@ -17,12 +17,12 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 		Use:   "subnet",
 		Short: "Create and deploy subnets",
 		Long: `The subnet command suite provides a collection of tools for developing
-and deploying subnets.
+and deploying Subnets.
 
 To get started, use the subnet create command wizard to walk through the
-configuration of your very first subnet. Then, go ahead and deploy it
+configuration of your very first Subnet. Then, go ahead and deploy it
 with the subnet deploy command. You can use the rest of the commands to
-manage your subnet configurations and live deployments.`,
+manage your Subnet configurations and live deployments.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			err := cmd.Help()
 			if err != nil {

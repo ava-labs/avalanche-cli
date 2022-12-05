@@ -18,9 +18,9 @@ func newExportCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "export [subnetName]",
 		Short: "Export deployment details",
-		Long: `The subnet export command prints the details of an existing subnet deploy.
+		Long: `The subnet export command write the details of an existing Subnet deploy to a file.
 
-The command prompts for an output filename. You can also provide one with
+The command prompts for an output path. You can also provide one with
 the --output flag.`,
 		RunE:         exportSubnet,
 		SilenceUsage: true,
