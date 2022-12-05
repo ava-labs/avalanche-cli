@@ -44,9 +44,9 @@ func CleanNetworkHard() {
 
 /* #nosec G204 */
 func StartNetwork() string {
-	// TODO: should we change interfaces here to allow err checking
 	mapper := utils.NewVersionMapper()
-	mapping, _ := utils.GetVersionMapping(mapper)
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
 
 	return StartNetworkWithVersion(mapping[utils.OnlyAvagoKey])
 }

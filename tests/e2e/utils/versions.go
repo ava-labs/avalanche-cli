@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
@@ -20,8 +21,10 @@ import (
 )
 
 var (
-	mapping map[string]string
-	lock    = &sync.Mutex{}
+	binary2Version map[string]string
+	lock           = &sync.Mutex{}
+
+	_ VersionMapper = &versionMapper{}
 )
 
 // VersionMapper is an abstraction for retrieving version compatibility URLs
@@ -34,6 +37,7 @@ type VersionMapper interface {
 	GetAvagoURL() string
 	GetApp() *application.Avalanche
 	GetLatestAvagoByProtoVersion(app *application.Avalanche, rpcVersion int, url string) (string, error)
+	GetEligibleVersions(sortedVersions []string, repoName string, app *application.Avalanche) ([]string, error)
 }
 
 // NewVersionMapper returns the default VersionMapper for e2e tests
@@ -85,6 +89,29 @@ func (m *versionMapper) GetAvagoURL() string {
 	return constants.AvalancheGoCompatibilityURL
 }
 
+func (m *versionMapper) GetEligibleVersions(sortedVersions []string, repoName string, app *application.Avalanche) ([]string, error) {
+	// get latest avago release to make sure we're not picking a release currently in progress but not available for download
+	latest, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+		constants.AvaLabsOrg,
+		repoName,
+	))
+	if err != nil {
+		return nil, err
+	}
+
+	var eligible []string
+	for i, ver := range sortedVersions {
+		versionComparison := semver.Compare(ver, latest)
+		if versionComparison == 0 {
+			continue
+		}
+		eligible = sortedVersions[i:]
+		break
+	}
+
+	return eligible, nil
+}
+
 // GetVersionMapping returns a map of specific VMs resp. Avalanchego e2e context keys
 // to the actual version which corresponds to that key.
 // This allows the e2e test to know what version to download and run.
@@ -98,8 +125,8 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 	lock.Lock()
 	defer lock.Unlock()
 	// if mapping has already been done, return it right away
-	if mapping != nil {
-		return mapping, nil
+	if binary2Version != nil {
+		return binary2Version, nil
 	}
 	// get compatible versions for subnetEVM
 	// subnetEVMversions is a list of sorted EVM versions,
@@ -108,9 +135,14 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	// subnet-evm publishes its upcoming new version in the compatibility json
 	// before the new version is actually a downloadable release
-	subnetEVMversions = subnetEVMversions[1:]
+	subnetEVMversions, err = mapper.GetEligibleVersions(subnetEVMversions, constants.SubnetEVMRepoName, mapper.GetApp())
+	if err != nil {
+		return nil, err
+	}
+	// subnetEVMversions = subnetEVMversions[1:]
 
 	// now get the avalanchego compatibility object
 	avagoCompat, err := getAvagoCompatibility(mapper)
@@ -119,7 +151,7 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 	}
 
 	// create the global mapping variable
-	mapping = make(map[string]string)
+	binary2Version = make(map[string]string)
 
 	// sort avago compatibility by highest available RPC versions
 	// to lowest (the map can not be iterated in a sorted way)
@@ -138,24 +170,24 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 	// evaluate two avalanchego versions which are consecutive
 	// and run with the same RPC version.
 	// This is required for the for the "can deploy with multiple avalanchego versions" test
-	for _, v := range rpcs {
-		strv := strconv.Itoa(v)
-		vers := avagoCompat[strv]
+	for _, rpcVersion := range rpcs {
+		versionAsString := strconv.Itoa(rpcVersion)
+		versions4rpc := avagoCompat[versionAsString]
 		// we need at least 2 versions for the same RPC version
-		if len(vers) > 1 {
-			vers = reverseSemverSort(vers)
-			mapping[MultiAvago1Key] = vers[0]
-			mapping[MultiAvago2Key] = vers[1]
+		if len(versions4rpc) > 1 {
+			versions4rpc = reverseSemverSort(versions4rpc)
+			binary2Version[MultiAvago1Key] = versions4rpc[0]
+			binary2Version[MultiAvago2Key] = versions4rpc[1]
 
 			// now iterate the subnetEVMversions and find a
 			// subnet-evm version which is compatible with that RPC version.
 			// The above-mentioned test runs with this as well.
 			for _, evmVer := range subnetEVMversions {
-				if subnetEVMmapping[evmVer] == v {
+				if subnetEVMmapping[evmVer] == rpcVersion {
 					// we know there already exists at least one such combination.
 					// unless the compatibility JSON will start to be shortened in some way,
 					// we should always be able to find a matching subnet-evm
-					mapping[MultiAvagoSubnetEVMKey] = evmVer
+					binary2Version[MultiAvagoSubnetEVMKey] = evmVer
 					// found the version, break
 					break
 				}
@@ -166,7 +198,7 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 	}
 
 	// when running Avago only, always use latest
-	mapping[OnlyAvagoKey] = OnlyAvagoValue
+	binary2Version[OnlyAvagoKey] = OnlyAvagoValue
 
 	// now let's look for subnet-evm versions which are fit for the
 	// "can deploy multiple subnet-evm versions" test.
@@ -191,15 +223,15 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 			return nil, err
 		}
 		// Once latest compatibility has been set, we can skip this
-		if mapping[LatestEVM2AvagoKey] == "" {
-			mapping[LatestEVM2AvagoKey] = first
-			mapping[LatestAvago2EVMKey] = soloAvago
+		if binary2Version[LatestEVM2AvagoKey] == "" {
+			binary2Version[LatestEVM2AvagoKey] = first
+			binary2Version[LatestAvago2EVMKey] = soloAvago
 		}
 		// first and second are compatible
 		if subnetEVMmapping[first] == subnetEVMmapping[second] {
-			mapping[SoloSubnetEVMKey1] = first
-			mapping[SoloSubnetEVMKey2] = second
-			mapping[SoloAvagoKey] = soloAvago
+			binary2Version[SoloSubnetEVMKey1] = first
+			binary2Version[SoloSubnetEVMKey2] = second
+			binary2Version[SoloAvagoKey] = soloAvago
 			break
 		}
 	}
@@ -217,23 +249,23 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	mapping[Spaces2AvagoKey] = latest
-	mapping[Avago2SpacesKey] = avago
+	binary2Version[Spaces2AvagoKey] = latest
+	binary2Version[Avago2SpacesKey] = avago
 
 	mapper.GetApp().Log.Debug("mapping:",
-		zap.String("SoloSubnetEVM1", mapping[SoloSubnetEVMKey1]),
-		zap.String("SoloSubnetEVM2", mapping[SoloSubnetEVMKey2]),
-		zap.String("SoloAvago", mapping[SoloAvagoKey]),
-		zap.String("MultiAvago1", mapping[MultiAvago1Key]),
-		zap.String("MultiAvago2", mapping[MultiAvago2Key]),
-		zap.String("MultiAvagoSubnetEVM", mapping[MultiAvagoSubnetEVMKey]),
-		zap.String("LatestEVM2Avago", mapping[LatestEVM2AvagoKey]),
-		zap.String("LatestAvago2EVM", mapping[LatestAvago2EVMKey]),
-		zap.String("Spaces2Avago", mapping[Spaces2AvagoKey]),
-		zap.String("Avago2Spaces", mapping[Avago2SpacesKey]),
+		zap.String("SoloSubnetEVM1", binary2Version[SoloSubnetEVMKey1]),
+		zap.String("SoloSubnetEVM2", binary2Version[SoloSubnetEVMKey2]),
+		zap.String("SoloAvago", binary2Version[SoloAvagoKey]),
+		zap.String("MultiAvago1", binary2Version[MultiAvago1Key]),
+		zap.String("MultiAvago2", binary2Version[MultiAvago2Key]),
+		zap.String("MultiAvagoSubnetEVM", binary2Version[MultiAvagoSubnetEVMKey]),
+		zap.String("LatestEVM2Avago", binary2Version[LatestEVM2AvagoKey]),
+		zap.String("LatestAvago2EVM", binary2Version[LatestAvago2EVMKey]),
+		zap.String("Spaces2Avago", binary2Version[Spaces2AvagoKey]),
+		zap.String("Avago2Spaces", binary2Version[Avago2SpacesKey]),
 	)
 
-	return mapping, nil
+	return binary2Version, nil
 }
 
 // getVersions gets compatible versions for the given VM type.

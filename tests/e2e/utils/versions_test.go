@@ -19,14 +19,27 @@ import (
 	"golang.org/x/mod/semver"
 )
 
+var _ VersionMapper = &testMapper{}
+
 type testContext struct {
-	expected    map[string]string
-	sourceEVM   string
-	spacesVM    string
+	// expected mapping of binaries to their versions
+	expected map[string]string
+	// fake versions set for the evm binaries, faking github
+	sourceEVM string
+	// fake versions set for the spacesvm binaries, faking github
+	sourceSpacesVM string
+	// fake versions set for the avalanchego binaries, faking github
 	sourceAvago string
-	shouldFail  bool
+	// should the test fail
+	shouldFail bool
 }
 
+// testMapper is used to bypass github,
+// to test the `GetVersionMapping` function
+// We want to make sure that given a set of
+// versions mocking the structure of github releases API,
+// `GetVersionMapping` is able to correctly evaluate
+// the set of compatible versions for each test.
 type testMapper struct {
 	app            *application.Avalanche
 	currentContext *testContext
@@ -47,6 +60,13 @@ func newTestMapper(t *testing.T) *testMapper {
 	}
 }
 
+// implement VersionMapper
+func (m *testMapper) GetEligibleVersions(sorted []string, repo string, app *application.Avalanche) ([]string, error) {
+	// tests were written with the assumption that the first version is always in progress
+	return sorted[1:], nil
+}
+
+// implement VersionMapper
 func (m *testMapper) GetLatestAvagoByProtoVersion(app *application.Avalanche, rpcVersion int, url string) (string, error) {
 	cBytes := []byte(m.currentContext.sourceAvago)
 
@@ -65,16 +85,25 @@ func (m *testMapper) GetLatestAvagoByProtoVersion(app *application.Avalanche, rp
 	return vers[len(vers)-1], nil
 }
 
+// implement VersionMapper
+// We just set a currentContext for a duration of a single test,
+// so that when the faked github URL is called,
+// it knows what faked versions to return
 func (m *testMapper) getVersionMapping(tc *testContext) (map[string]string, error) {
-	mapping = nil
+	binary2Version = nil
+	// allows to know which test is currently running
 	m.currentContext = tc
 	return GetVersionMapping(m)
 }
 
+// implement VersionMapper
 func (m *testMapper) GetApp() *application.Avalanche {
 	return m.app
 }
 
+// GetCompatURL fakes a github endpoint for
+// evm and spacesvm releases
+// implement VersionMapper
 func (m *testMapper) GetCompatURL(vmType models.VMType) string {
 	switch vmType {
 	case models.SubnetEvm:
@@ -87,18 +116,28 @@ func (m *testMapper) GetCompatURL(vmType models.VMType) string {
 	return ""
 }
 
+// GetAvagoURL fakes a github endpoint for
+// avalanchego releases
+// implement VersionMapper
 func (m *testMapper) GetAvagoURL() string {
 	return m.srv.URL + "/avago"
 }
 
+// This is the server function which the local
+// httptest.NewServer() will serve for tests.
+// Therefore, the tests hit this endpoint,
+// and get a faked list of versions (simulating github)
 func (m *testMapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	var err error
+	// return the correct faked versions based on the URL
+	// which is being requested, returning the faked
+	// versions for each binary release endpoint
 	switch r.URL.Path {
 	case "/evm":
 		_, err = w.Write([]byte(m.currentContext.sourceEVM))
 	case "/spaces":
-		_, err = w.Write([]byte(m.currentContext.spacesVM))
+		_, err = w.Write([]byte(m.currentContext.sourceSpacesVM))
 	case "/avago":
 		_, err = w.Write([]byte(m.currentContext.sourceAvago))
 	default:
@@ -109,15 +148,31 @@ func (m *testMapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// TestGetVersionMapping tests that mapping the binaries
+// to versions function (`GetVersionMapping`) returns
+// the expected values.
+// For the test to be meaningful, we start a httptest HTTP
+// server locally, which then returns fake versions for each request
+// (sourceEVM, spacesVM, sourceAvago) which then
+// the mapping code in `GetVersionMapping` is expected
+// to correctly evaluate for the global `binary2Version` map,
+// used by the tests to know which version to use for which test.
 func TestGetVersionMapping(t *testing.T) {
 	assert := assert.New(t)
 	m := newTestMapper(t)
+	// start local test HTTP server
 	srv := httptest.NewServer(m)
 	defer srv.Close()
 	m.srv = srv
 
 	testContexts := []*testContext{
 		{
+			// This test contains a combination
+			// of versions which will be used
+			// by `GetVersionMapping` to evaluate versions.
+			// The function should be able to correctly
+			// evaluate compatible versions, hence
+			// `shouldFail` is false
 			shouldFail: false,
 			expected: map[string]string{
 				SoloSubnetEVMKey1:      "v0.4.2",
@@ -141,7 +196,7 @@ func TestGetVersionMapping(t *testing.T) {
 							"v0.4.0": 17
 						}
 				  }`,
-			spacesVM: `{
+			sourceSpacesVM: `{
   					"rpcChainVMProtocolVersion": {
     					"v0.0.12": 19,
     					"v0.0.11": 19,
@@ -165,6 +220,8 @@ func TestGetVersionMapping(t *testing.T) {
 				  }`,
 		},
 		{
+			// This test does the same, but a different
+			// constellation of versions
 			shouldFail: false,
 			expected: map[string]string{
 				SoloSubnetEVMKey1:      "v0.9.9",
@@ -189,7 +246,7 @@ func TestGetVersionMapping(t *testing.T) {
 						"v0.4.0": 17
 					}
 			  }`,
-			spacesVM: `{
+			sourceSpacesVM: `{
   					"rpcChainVMProtocolVersion": {
     					"v4.5.12": 99,
     					"v3.2.12": 77,
@@ -211,6 +268,8 @@ func TestGetVersionMapping(t *testing.T) {
 			  }`,
 		},
 		{
+			// This test does the same, but a different
+			// constellation of versions
 			shouldFail: false,
 			expected: map[string]string{
 				SoloSubnetEVMKey1:      "v0.4.2",
@@ -237,7 +296,7 @@ func TestGetVersionMapping(t *testing.T) {
 						"v0.4.0": 17
 					}
 			  }`,
-			spacesVM: `{
+			sourceSpacesVM: `{
   					"rpcChainVMProtocolVersion": {
     					"v3.2.12": 77,
     					"v2.1.11": 66,
@@ -270,12 +329,17 @@ func TestGetVersionMapping(t *testing.T) {
 			  }`,
 		},
 		{
+			// this test should fail, simulating that
+			// the APIs would return empty releases for some reason
 			shouldFail:  true,
 			expected:    map[string]string{},
 			sourceEVM:   `{}`,
 			sourceAvago: `{}`,
 		},
 		{
+			// this test should fail, simulating that
+			// the APIs would return empty releases for some reason
+			// just for the spacesvm
 			shouldFail: true,
 			expected:   map[string]string{},
 			sourceAvago: `{
@@ -302,6 +366,9 @@ func TestGetVersionMapping(t *testing.T) {
 			  }`,
 		},
 		{
+			// this test should fail, simulating that
+			// the APIs would return empty releases for some reason
+			// but only got sourceEVM versions
 			shouldFail:  true,
 			expected:    map[string]string{},
 			sourceAvago: `{}`,
@@ -317,6 +384,9 @@ func TestGetVersionMapping(t *testing.T) {
 			  }`,
 		},
 		{
+			// this test should fail, simulating that
+			// the APIs would return empty releases for some reason
+			// but only got sourceAvago versions
 			shouldFail: true,
 			expected:   map[string]string{},
 			sourceEVM:  `{}`,
@@ -336,6 +406,8 @@ func TestGetVersionMapping(t *testing.T) {
 	}
 
 	for i, tc := range testContexts {
+		// run the function, but use the testMapper,
+		// so that we can set the currentContext
 		mapping, err := m.getVersionMapping(tc)
 		if tc.shouldFail {
 			assert.Error(err)
@@ -343,6 +415,8 @@ func TestGetVersionMapping(t *testing.T) {
 		} else {
 			assert.NoError(err)
 		}
+		// make sure the mapping returned from `GetVersionMapping`
+		// matches the expected one
 		assert.Equal(tc.expected, mapping, fmt.Sprintf("iteration: %d", i))
 	}
 }

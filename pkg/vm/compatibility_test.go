@@ -177,7 +177,6 @@ func TestGetLatestAvalancheGoByProtocolVersion(t *testing.T) {
 			app := application.New()
 			app.Downloader = mockDownloader
 
-			// TODO: this should be a different URL, a unit test should not need to access a live URL
 			avagoVersion, err := GetLatestAvalancheGoByProtocolVersion(app, tt.rpc, constants.AvalancheGoCompatibilityURL)
 			if tt.expectedErr == nil {
 				assert.NoError(err)

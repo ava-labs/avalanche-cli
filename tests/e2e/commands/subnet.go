@@ -19,8 +19,8 @@ import (
 /* #nosec G204 */
 func CreateSubnetEvmConfig(subnetName string, genesisPath string) {
 	mapper := utils.NewVersionMapper()
-	// TODO: we might need to have to change the interface here to allow for err checking
-	mapping, _ := utils.GetVersionMapping(mapper)
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
 	// let's use a SubnetEVM version which has a guaranteed compatible avago
 	CreateSubnetEvmConfigWithVersion(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey])
 }
@@ -75,7 +75,8 @@ func ConfigureChainConfig(subnetName string, genesisPath string) {
 func CreateSpacesVMConfig(subnetName string, genesisPath string) {
 	mapper := utils.NewVersionMapper()
 	// TODO: should we change interfaces here to allow err checking
-	mapping, _ := utils.GetVersionMapping(mapper)
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
 	CreateSpacesVMConfigWithVersion(subnetName, genesisPath, mapping[utils.Spaces2AvagoKey])
 }
 
@@ -182,8 +183,8 @@ func DeploySubnetLocally(subnetName string) string {
 /* #nosec G204 */
 func DeploySubnetLocallyExpectError(subnetName string) {
 	mapper := utils.NewVersionMapper()
-	// TODO: should we change interfaces here to allow err checking
-	mapping, _ := utils.GetVersionMapping(mapper)
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
 
 	DeploySubnetLocallyWithArgsExpectError(subnetName, mapping[utils.OnlyAvagoKey], "")
 }
@@ -192,8 +193,8 @@ func DeploySubnetLocallyExpectError(subnetName string) {
 /* #nosec G204 */
 func DeploySubnetLocallyWithViperConf(subnetName string, confPath string) string {
 	mapper := utils.NewVersionMapper()
-	// TODO: should we change interfaces here to allow err checking
-	mapping, _ := utils.GetVersionMapping(mapper)
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
 
 	return DeploySubnetLocallyWithArgs(subnetName, mapping[utils.OnlyAvagoKey], confPath)
 }
