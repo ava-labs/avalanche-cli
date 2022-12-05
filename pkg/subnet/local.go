@@ -441,10 +441,8 @@ func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 		expectedSum, err := getExpectedDefaultSnapshotSHA256Sum()
 		if err != nil {
 			ux.Logger.PrintToUser("Warning: failure verifying that the local snapshot is the latest one: %s", err)
-		} else {
-			if gotSum != expectedSum {
-				downloadSnapshot = true
-			}
+		} else if gotSum != expectedSum {
+			downloadSnapshot = true
 		}
 	}
 	if downloadSnapshot {
