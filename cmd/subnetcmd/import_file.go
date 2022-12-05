@@ -33,10 +33,10 @@ func newImportFileCmd() *cobra.Command {
 		Args:         cobra.MaximumNArgs(1),
 		Long: `The subnet import command will import a subnet configuration from a file or a git repository.
 
-To import from a file, you can optionally provide the filepath as a command line argument.
-Alternatively, running the command without any arguments will trigger an interactive wizard.
-To import from a repo, go through the wizard. By default, an imported subnet will not
-overwrite an existing subnet with the same name. To allow overwrites, provide the --force
+To import from a file, you can optionally provide the path as a commandR-line argument.
+Alternatively, running the command without any arguments triggers an interactive wizard.
+To import from a repository, go through the wizard. By default, an imported Subnet doesn't 
+overwrite an existing Subnet with the same name. To allow overwrites, provide the --force
 flag.`,
 	}
 	cmd.Flags().BoolVarP(
