@@ -102,7 +102,7 @@ func (m *versionMapper) GetEligibleVersions(sortedVersions []string, repoName st
 	var eligible []string
 	for i, ver := range sortedVersions {
 		versionComparison := semver.Compare(ver, latest)
-		if versionComparison == 0 {
+		if versionComparison != 0 {
 			continue
 		}
 		eligible = sortedVersions[i:]
