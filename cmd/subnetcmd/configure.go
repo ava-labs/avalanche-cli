@@ -3,6 +3,7 @@
 package subnetcmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -12,19 +13,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	subnetConf string
+	chainConf  string
+)
+
 // avalanche subnet configure
 func newConfigureCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "configure [subnetName]",
 		Short: "Adds additional config files for the avalanchego nodes",
-		Long: `Avalanchego nodes can be configured at different levels. 
-For example, subnets have their own subnet config (applies to all chains/VMs in the subnet).
-And each chain or VM can have its own specific chain config file.
-This command allows to set both config files.`,
+		Long: `AvalancheGo nodes support several different configuration files. Subnets have their own
+Subnet config which applies to all chains/VMs in the Subnet. Each chain within the Subnet
+can have its own chain config. This command allows you to set both config files.`,
 		SilenceUsage: true,
 		RunE:         configure,
 		Args:         cobra.ExactArgs(1),
 	}
+
+	cmd.Flags().StringVar(&subnetConf, "subnet-config", "", "path to the subnet configuration")
+	cmd.Flags().StringVar(&chainConf, "chain-config", "", "path to the chain configuration")
 	return cmd
 }
 
@@ -36,33 +44,58 @@ func configure(cmd *cobra.Command, args []string) error {
 	subnetName := chains[0]
 
 	const (
-		subnetConf = "Subnet config"
-		chainConf  = "Chain config"
+		chainLabel  = constants.ChainConfigFileName
+		subnetLabel = constants.SubnetConfigFileName
 	)
+	configsToLoad := map[string]string{}
 
-	options := []string{subnetConf, chainConf}
-	selected, err := app.Prompt.CaptureList("Which configuration file would you like to update?", options)
-	if err != nil {
-		return err
+	if subnetConf != "" {
+		configsToLoad[subnetLabel] = subnetConf
 	}
-	switch selected {
-	case subnetConf:
-		err = updateConf(subnetName, constants.SubnetConfigFileName)
-	case chainConf:
-		err = updateConf(subnetName, constants.ChainConfigFileName)
+	if chainConf != "" {
+		configsToLoad[chainLabel] = chainConf
 	}
-	if err != nil {
-		return err
+
+	// no flags provided
+	if len(configsToLoad) == 0 {
+		options := []string{chainLabel, subnetLabel}
+		selected, err := app.Prompt.CaptureList("Which configuration file would you like to provide?", options)
+		if err != nil {
+			return err
+		}
+		configsToLoad[selected], err = app.Prompt.CaptureExistingFilepath("Enter the path to your configuration file")
+		if err != nil {
+			return err
+		}
+		var other string
+		if selected == chainLabel {
+			other = subnetLabel
+		} else {
+			other = chainLabel
+		}
+		yes, err := app.Prompt.CaptureNoYes(fmt.Sprintf("Would you like to provide the %s file as well?", other))
+		if err != nil {
+			return err
+		}
+		if yes {
+			configsToLoad[other], err = app.Prompt.CaptureExistingFilepath("Enter the path to your configuration file")
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// load each provided file
+	for filename, configPath := range configsToLoad {
+		if err = updateConf(subnetName, configPath, filename); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func updateConf(subnet, filename string) error {
-	path, err := app.Prompt.CaptureExistingFilepath("Enter the path to your configuration file")
-	if err != nil {
-		return err
-	}
+func updateConf(subnet, path, filename string) error {
 	fileBytes, err := utils.ValidateJSON(path)
 	if err != nil {
 		return err

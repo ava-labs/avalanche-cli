@@ -15,24 +15,8 @@ import (
 )
 
 func getChainID(app *application.Avalanche) (*big.Int, error) {
-	// TODO check against known chain ids and provide warning
 	ux.Logger.PrintToUser("Enter your subnet's ChainId. It can be any positive integer.")
-
-	chainID, err := app.Prompt.CapturePositiveBigInt("ChainId")
-	if err != nil {
-		return nil, err
-	}
-
-	exists, err := app.SubnetEvmChainIDExists(chainID.String())
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		ux.Logger.PrintToUser("The provided chain ID %q already exists! Try a different one:", chainID.String())
-		return getChainID(app)
-	}
-
-	return chainID, nil
+	return app.Prompt.CapturePositiveBigInt("ChainId")
 }
 
 func getTokenName(app *application.Avalanche) (string, error) {

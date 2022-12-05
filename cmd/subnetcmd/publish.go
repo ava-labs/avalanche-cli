@@ -45,7 +45,7 @@ func newPublishCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "publish [subnetName]",
 		Short:        "Publish the subnet's VM to a repository",
-		Long:         ``,
+		Long:         `The subnet publish command publishes the Subnet's VM to a repository.`,
 		SilenceUsage: true,
 		RunE:         publish,
 		Args:         cobra.ExactArgs(1),

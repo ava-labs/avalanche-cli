@@ -65,7 +65,7 @@ func TestExportImportSubnet(t *testing.T) {
 	err = json.Unmarshal(orig, &control)
 	assert.NoError(err)
 	assert.Equal(control["Name"], testSubnet)
-	assert.Equal(control["VM"], "SubnetEVM")
+	assert.Equal(control["VM"], "Subnet-EVM")
 	assert.Equal(control["VMVersion"], vmVersion)
 	assert.Equal(control["Subnet"], testSubnet)
 	assert.Equal(control["TokenName"], "TEST")
