@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
@@ -71,11 +72,20 @@ func listSubnets(cmd *cobra.Command, args []string) error {
 			}
 		}
 
+		vmID := sc.ImportedVMID
+		if vmID == "" {
+			id, err := utils.VMID(sc.Name)
+			if err != nil {
+				vmID = "n/a"
+			} else {
+				vmID = id.String()
+			}
+		}
 		rows = append(rows, []string{
 			sc.Subnet,
 			sc.Name,
 			chainID,
-			sc.ImportedVMID,
+			vmID,
 			string(sc.VM),
 			strconv.FormatBool(sc.ImportedFromAPM),
 		})
@@ -124,14 +134,12 @@ func listDeployInfo(cmd *cobra.Command, args []string) error {
 	header := []string{"subnet", "chain", "vm ID", "Local Network", "Fuji (testnet)", "Mainnet"}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
-	// table.SetAutoMergeCellsByColumnIndex([]int{0, 1, 2, 3, 4, 5})
-	table.SetAutoMergeCellsByColumnIndex([]int{0, 1, 3, 4})
+	table.SetAutoMergeCellsByColumnIndex([]int{0, 1, 2, 3, 4})
 	table.SetAutoMergeCells(true)
 	table.SetRowLine(true)
 
 	rows := subnetMatrix{}
 
-	// append a second "header" row for the networks
 	deployedNames := map[string]struct{}{}
 	// if the server can not be contacted, or there is a problem with the query,
 	// DO NOT FAIL, just print No for deployed status
@@ -192,7 +200,12 @@ func listDeployInfo(cmd *cobra.Command, args []string) error {
 		}
 		vmID := sc.ImportedVMID
 		if vmID == "" {
-			vmID = "n/a"
+			id, err := utils.VMID(sc.Name)
+			if err != nil {
+				vmID = "n/a"
+			} else {
+				vmID = id.String()
+			}
 		}
 
 		rows = append(rows, []string{
