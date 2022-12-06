@@ -23,10 +23,9 @@ func newDescribeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "describe [subnetName]",
 		Short: "Print a summary of the subnet’s configuration",
-		Long: `The subnet describe command prints the details of a subnet configuration
-to the console. By default, the command will print a summary of the
-configuration. By providing the --genesis flag, the command will instead
-print out the raw genesis file.`,
+		Long: `The subnet describe command prints the details of a Subnet configuration to the console.
+By default, the command prints a summary of the configuration. By providing the --genesis
+flag, the command instead prints out the raw genesis file.`,
 		RunE: readGenesis,
 		Args: cobra.ExactArgs(1),
 	}

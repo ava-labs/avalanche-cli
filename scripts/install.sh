@@ -7,7 +7,7 @@ usage() {
 $this: download go binaries for ava-labs/avalanche-cli
 
 Usage: $this [-b] bindir [-d] [tag]
-  -b sets bindir or installation directory, Defaults to ./bin
+  -b sets bindir or installation directory, Defaults to ~/bin
   -d turns on debug logging
    [tag] is a tag from
    https://github.com/ava-labs/avalanche-cli/releases
@@ -21,7 +21,7 @@ parse_args() {
   #BINDIR is ./bin unless set be ENV
   # over-ridden by flag below
 
-  BINDIR=${BINDIR:-./bin}
+  BINDIR=${BINDIR:-~/bin}
   while getopts "b:dh?x" arg; do
     case "$arg" in
       b) BINDIR="$OPTARG" ;;
@@ -391,10 +391,17 @@ sed_in_place "/.*# avalanche completion/d" $BASH_COMPLETION_MAIN
 echo "source $BASH_COMPLETION_SCRIPT_PATH # avalanche completion" >> $BASH_COMPLETION_MAIN
 if [ $(uname) = Darwin ]
 then
-    BASHRC=~/.bashrc
-    touch $BASHRC
-    sed_in_place "/.*# avalanche completion/d" $BASHRC
-    echo "source $(brew --prefix)/etc/bash_completion # avalanche completion" >> $BASHRC
+    BREW_INSTALLED=false
+    which brew >/dev/null 2>&1 && BREW_INSTALLED=true
+    if [ $BREW_INSTALLED = true ]
+    then
+        BASHRC=~/.bashrc
+        touch $BASHRC
+        sed_in_place "/.*# avalanche completion/d" $BASHRC
+        echo "source $(brew --prefix)/etc/bash_completion # avalanche completion" >> $BASHRC
+    else 
+        echo "warning: brew not found on macos. bash avalanche command completion not installed"
+    fi
 fi
 
 ZSH_COMPLETION_MAIN=~/.zshrc

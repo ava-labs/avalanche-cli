@@ -4,7 +4,6 @@ package application
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,8 +21,6 @@ import (
 const (
 	WriteReadReadPerms = 0o644
 )
-
-var errSubnetEvmChainIDExists = errors.New("the provided subnet evm chain ID already exists! Try another one")
 
 type Avalanche struct {
 	Log        logging.Logger
@@ -211,25 +208,6 @@ func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 		return err
 	}
 
-	if sc.VM == models.SubnetEvm {
-		// We should have caught this during the actual prompting,
-		// but better safe than sorry
-		chainID := sc.ChainID
-		if chainID == "" {
-			gen, err := app.LoadEvmGenesis(sc.Name)
-			if err != nil {
-				return err
-			}
-			chainID = gen.Config.ChainID.String()
-		}
-		exists, err := app.SubnetEvmChainIDExists(chainID)
-		if err != nil {
-			return fmt.Errorf("unable to determine if subnet evm chainID is unique: %w", err)
-		}
-		if exists {
-			return errSubnetEvmChainIDExists
-		}
-	}
 	// only apply the version on a write
 	sc.Version = constants.SidecarVersion
 	scBytes, err := json.MarshalIndent(sc, "", "    ")
@@ -309,38 +287,4 @@ func (app *Avalanche) GetSidecarNames() ([]string, error) {
 		}
 	}
 	return names, nil
-}
-
-func (app *Avalanche) SubnetEvmChainIDExists(chainID string) (bool, error) {
-	if chainID == "" {
-		return false, nil
-	}
-	sidecarNames, err := app.GetSidecarNames()
-	if err != nil {
-		return false, err
-	}
-	for _, carName := range sidecarNames {
-		existingSc, err := app.LoadSidecar(carName)
-		if err != nil {
-			return false, err
-		}
-		if existingSc.VM == models.SubnetEvm {
-			existingChainID := existingSc.ChainID
-			// sidecar doesn't contain chain ID yet
-			// try loading it from genesis
-			if existingChainID == "" {
-				gen, err := app.LoadEvmGenesis(carName)
-				if err != nil {
-					// unable to find chain id, skip
-					continue
-				}
-				existingChainID = gen.Config.ChainID.String()
-			}
-			if existingChainID == chainID {
-				return true, nil
-			}
-		}
-	}
-
-	return false, nil
 }
