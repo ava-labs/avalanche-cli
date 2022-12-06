@@ -71,6 +71,9 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 	table.Append([]string{"Subnet Name", sc.Subnet})
 	table.Append([]string{"ChainID", genesis.Config.ChainID.String()})
 	table.Append([]string{"Token Name", app.GetTokenName(sc.Subnet)})
+	if sc.ImportedVMID != "" {
+		table.Append([]string{"VM ID", sc.ImportedVMID})
+	}
 	for net, data := range sc.Networks {
 		if data.SubnetID != ids.Empty {
 			table.Append([]string{fmt.Sprintf("%s SubnetID", net), data.SubnetID.String()})
