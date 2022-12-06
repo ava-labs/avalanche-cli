@@ -76,7 +76,7 @@ func listSubnets(cmd *cobra.Command, args []string) error {
 		if vmID == "" {
 			id, err := utils.VMID(sc.Name)
 			if err != nil {
-				vmID = "n/a"
+				vmID = constants.NotAvailableLabel
 			} else {
 				vmID = id.String()
 			}
@@ -179,8 +179,8 @@ func listDeployInfo(cmd *cobra.Command, args []string) error {
 		if _, ok := sc.Networks[fujiK]; ok {
 			if sc.Networks[fujiK].SubnetID != ids.Empty {
 				net2id[fujiK] = []string{
-					"SubnetID: " + sc.Networks[fujiK].SubnetID.String(),
-					"BlockchainID: " + sc.Networks[fujiK].BlockchainID.String(),
+					constants.SubnetIDLabel + sc.Networks[fujiK].SubnetID.String(),
+					constants.BlockchainIDLabel + sc.Networks[fujiK].BlockchainID.String(),
 				}
 				singleLine = false
 			}
@@ -190,8 +190,8 @@ func listDeployInfo(cmd *cobra.Command, args []string) error {
 		if _, ok := sc.Networks[mainK]; ok {
 			if sc.Networks[mainK].SubnetID != ids.Empty {
 				net2id[mainK] = []string{
-					"SubnetID: " + sc.Networks[mainK].SubnetID.String(),
-					"BlockchainID: " + sc.Networks[mainK].BlockchainID.String(),
+					constants.SubnetIDLabel + sc.Networks[mainK].SubnetID.String(),
+					constants.BlockchainIDLabel + sc.Networks[mainK].BlockchainID.String(),
 				}
 				singleLine = false
 			}
@@ -202,7 +202,7 @@ func listDeployInfo(cmd *cobra.Command, args []string) error {
 		if vmID == "" {
 			id, err := utils.VMID(sc.Name)
 			if err != nil {
-				vmID = "n/a"
+				vmID = constants.NotAvailableLabel
 			} else {
 				vmID = id.String()
 			}

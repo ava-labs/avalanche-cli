@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/utils"
@@ -74,7 +75,7 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 	if sc.ImportedVMID != "" {
 		table.Append([]string{"VM ID", sc.ImportedVMID})
 	} else {
-		id := "n/a"
+		id := constants.NotAvailableLabel
 		vmID, err := utils.VMID(sc.Name)
 		if err == nil {
 			id = vmID.String()

@@ -117,4 +117,7 @@ const (
 
 	YesLabel = "Yes"
 	NoLabel  = "No"
+
+	SubnetIDLabel     = "SubnetID"
+	BlockchainIDLabel = "BlockchainID"
 )
