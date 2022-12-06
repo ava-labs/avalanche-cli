@@ -124,7 +124,8 @@ func listDeployInfo(cmd *cobra.Command, args []string) error {
 	header := []string{"subnet", "chain", "vm ID", "Local Network", "Fuji (testnet)", "Mainnet"}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
-	table.SetAutoMergeCellsByColumnIndex([]int{0})
+	// table.SetAutoMergeCellsByColumnIndex([]int{0, 1, 2, 3, 4, 5})
+	table.SetAutoMergeCellsByColumnIndex([]int{0, 1, 3, 4})
 	table.SetAutoMergeCells(true)
 	table.SetRowLine(true)
 
@@ -170,8 +171,8 @@ func listDeployInfo(cmd *cobra.Command, args []string) error {
 		if _, ok := sc.Networks[fujiK]; ok {
 			if sc.Networks[fujiK].SubnetID != ids.Empty {
 				net2id[fujiK] = []string{
-					sc.Networks[fujiK].SubnetID.String(),
-					sc.Networks[fujiK].BlockchainID.String(),
+					"SubnetID: " + sc.Networks[fujiK].SubnetID.String(),
+					"BlockchainID: " + sc.Networks[fujiK].BlockchainID.String(),
 				}
 				singleLine = false
 			}
@@ -181,19 +182,23 @@ func listDeployInfo(cmd *cobra.Command, args []string) error {
 		if _, ok := sc.Networks[mainK]; ok {
 			if sc.Networks[mainK].SubnetID != ids.Empty {
 				net2id[mainK] = []string{
-					sc.Networks[mainK].SubnetID.String(),
-					sc.Networks[mainK].BlockchainID.String(),
+					"SubnetID: " + sc.Networks[mainK].SubnetID.String(),
+					"BlockchainID: " + sc.Networks[mainK].BlockchainID.String(),
 				}
 				singleLine = false
 			}
 		} else {
 			net2id[mainK] = []string{constants.NoLabel, constants.NoLabel}
 		}
+		vmID := sc.ImportedVMID
+		if vmID == "" {
+			vmID = "n/a"
+		}
 
 		rows = append(rows, []string{
 			sc.Subnet,
 			sc.Name,
-			sc.ImportedVMID,
+			vmID,
 			deployedLocal,
 			net2id[fujiK][0],
 			net2id[mainK][0],
@@ -203,7 +208,7 @@ func listDeployInfo(cmd *cobra.Command, args []string) error {
 			rows = append(rows, []string{
 				sc.Subnet,
 				sc.Name,
-				sc.ImportedVMID,
+				vmID,
 				deployedLocal,
 				net2id[fujiK][1],
 				net2id[mainK][1],
