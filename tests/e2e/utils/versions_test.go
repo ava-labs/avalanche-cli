@@ -32,6 +32,8 @@ type testContext struct {
 	sourceAvago string
 	// should the test fail
 	shouldFail bool
+	// name of the test
+	name string
 }
 
 // testMapper is used to bypass github,
@@ -90,7 +92,7 @@ func (m *testMapper) GetLatestAvagoByProtoVersion(app *application.Avalanche, rp
 // so that when the faked github URL is called,
 // it knows what faked versions to return
 func (m *testMapper) getVersionMapping(tc *testContext) (map[string]string, error) {
-	binary2Version = nil
+	binaryToVersion = nil
 	// allows to know which test is currently running
 	m.currentContext = tc
 	return GetVersionMapping(m)
@@ -155,7 +157,7 @@ func (m *testMapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // server locally, which then returns fake versions for each request
 // (sourceEVM, spacesVM, sourceAvago) which then
 // the mapping code in `GetVersionMapping` is expected
-// to correctly evaluate for the global `binary2Version` map,
+// to correctly evaluate for the global `binaryToVersion` map,
 // used by the tests to know which version to use for which test.
 func TestGetVersionMapping(t *testing.T) {
 	assert := assert.New(t)
@@ -173,6 +175,7 @@ func TestGetVersionMapping(t *testing.T) {
 			// The function should be able to correctly
 			// evaluate compatible versions, hence
 			// `shouldFail` is false
+			name:       "latest evm match latest avago",
 			shouldFail: false,
 			expected: map[string]string{
 				SoloSubnetEVMKey1:      "v0.4.2",
@@ -222,6 +225,7 @@ func TestGetVersionMapping(t *testing.T) {
 		{
 			// This test does the same, but a different
 			// constellation of versions
+			name:       ">0 major version",
 			shouldFail: false,
 			expected: map[string]string{
 				SoloSubnetEVMKey1:      "v0.9.9",
@@ -270,6 +274,7 @@ func TestGetVersionMapping(t *testing.T) {
 		{
 			// This test does the same, but a different
 			// constellation of versions
+			name:       "subsecuent evm versions are older",
 			shouldFail: false,
 			expected: map[string]string{
 				SoloSubnetEVMKey1:      "v0.4.2",
@@ -331,6 +336,7 @@ func TestGetVersionMapping(t *testing.T) {
 		{
 			// this test should fail, simulating that
 			// the APIs would return empty releases for some reason
+			name:        "all-empty responses",
 			shouldFail:  true,
 			expected:    map[string]string{},
 			sourceEVM:   `{}`,
@@ -340,6 +346,7 @@ func TestGetVersionMapping(t *testing.T) {
 			// this test should fail, simulating that
 			// the APIs would return empty releases for some reason
 			// just for the spacesvm
+			name:       "no spaces",
 			shouldFail: true,
 			expected:   map[string]string{},
 			sourceAvago: `{
@@ -369,6 +376,7 @@ func TestGetVersionMapping(t *testing.T) {
 			// this test should fail, simulating that
 			// the APIs would return empty releases for some reason
 			// but only got sourceEVM versions
+			name:        "only evm",
 			shouldFail:  true,
 			expected:    map[string]string{},
 			sourceAvago: `{}`,
@@ -387,6 +395,7 @@ func TestGetVersionMapping(t *testing.T) {
 			// this test should fail, simulating that
 			// the APIs would return empty releases for some reason
 			// but only got sourceAvago versions
+			name:       "only avago",
 			shouldFail: true,
 			expected:   map[string]string{},
 			sourceEVM:  `{}`,
@@ -406,17 +415,18 @@ func TestGetVersionMapping(t *testing.T) {
 	}
 
 	for i, tc := range testContexts {
-		// run the function, but use the testMapper,
-		// so that we can set the currentContext
-		mapping, err := m.getVersionMapping(tc)
-		if tc.shouldFail {
-			assert.Error(err)
-			continue
-		} else {
+		t.Run(tc.name, func(tt *testing.T) {
+			// run the function, but use the testMapper,
+			// so that we can set the currentContext
+			mapping, err := m.getVersionMapping(tc)
+			if tc.shouldFail {
+				assert.Error(err)
+				return
+			}
 			assert.NoError(err)
-		}
-		// make sure the mapping returned from `GetVersionMapping`
-		// matches the expected one
-		assert.Equal(tc.expected, mapping, fmt.Sprintf("iteration: %d", i))
+			// make sure the mapping returned from `GetVersionMapping`
+			// matches the expected one
+			assert.Equal(tc.expected, mapping, fmt.Sprintf("iteration: %d", i))
+		})
 	}
 }
