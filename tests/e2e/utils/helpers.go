@@ -422,9 +422,9 @@ func CheckAvalancheGoExists(version string) bool {
 }
 
 // Currently downloads subnet-evm, but that suffices to test the custom vm functionality
-func DownloadCustomVMBin() (string, error) {
+func DownloadCustomVMBin(subnetEVMversion string) (string, error) {
 	targetDir := os.TempDir()
-	subnetEVMDir, err := binutils.DownloadReleaseVersion(logging.NoLog{}, subnetEVMName, SubnetEVMVersion, targetDir)
+	subnetEVMDir, err := binutils.DownloadReleaseVersion(logging.NoLog{}, subnetEVMName, subnetEVMversion, targetDir)
 	if err != nil {
 		return "", err
 	}

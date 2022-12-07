@@ -8,6 +8,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -176,7 +177,7 @@ func TestGetLatestAvalancheGoByProtocolVersion(t *testing.T) {
 			app := application.New()
 			app.Downloader = mockDownloader
 
-			avagoVersion, err := GetLatestAvalancheGoByProtocolVersion(app, tt.rpc)
+			avagoVersion, err := GetLatestAvalancheGoByProtocolVersion(app, tt.rpc, constants.AvalancheGoCompatibilityURL)
 			if tt.expectedErr == nil {
 				assert.NoError(err)
 			} else {

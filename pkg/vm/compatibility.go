@@ -47,8 +47,8 @@ func GetRPCProtocolVersion(app *application.Avalanche, vmType models.VMType, vmV
 	return version, nil
 }
 
-func GetLatestAvalancheGoByProtocolVersion(app *application.Avalanche, rpcVersion int) (string, error) {
-	compatibilityBytes, err := app.Downloader.Download(constants.AvalancheGoCompatibilityURL)
+func GetLatestAvalancheGoByProtocolVersion(app *application.Avalanche, rpcVersion int, url string) (string, error) {
+	compatibilityBytes, err := app.Downloader.Download(url)
 	if err != nil {
 		return "", err
 	}

@@ -18,7 +18,11 @@ import (
 
 /* #nosec G204 */
 func CreateSubnetEvmConfig(subnetName string, genesisPath string) {
-	CreateSubnetEvmConfigWithVersion(subnetName, genesisPath, utils.SubnetEVMVersion)
+	mapper := utils.NewVersionMapper()
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
+	// let's use a SubnetEVM version which has a guaranteed compatible avago
+	CreateSubnetEvmConfigWithVersion(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey])
 }
 
 /* #nosec G204 */
@@ -69,7 +73,11 @@ func ConfigureChainConfig(subnetName string, genesisPath string) {
 
 /* #nosec G204 */
 func CreateSpacesVMConfig(subnetName string, genesisPath string) {
-	CreateSpacesVMConfigWithVersion(subnetName, genesisPath, utils.SpacesVMVersion)
+	mapper := utils.NewVersionMapper()
+	// TODO: should we change interfaces here to allow err checking
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
+	CreateSpacesVMConfigWithVersion(subnetName, genesisPath, mapping[utils.Spaces2AvagoKey])
 }
 
 /* #nosec G204 */
@@ -174,13 +182,21 @@ func DeploySubnetLocally(subnetName string) string {
 
 /* #nosec G204 */
 func DeploySubnetLocallyExpectError(subnetName string) {
-	DeploySubnetLocallyWithArgsExpectError(subnetName, utils.AvagoVersion, "")
+	mapper := utils.NewVersionMapper()
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	DeploySubnetLocallyWithArgsExpectError(subnetName, mapping[utils.OnlyAvagoKey], "")
 }
 
 // Returns the deploy output
 /* #nosec G204 */
 func DeploySubnetLocallyWithViperConf(subnetName string, confPath string) string {
-	return DeploySubnetLocallyWithArgs(subnetName, utils.AvagoVersion, confPath)
+	mapper := utils.NewVersionMapper()
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	return DeploySubnetLocallyWithArgs(subnetName, mapping[utils.OnlyAvagoKey], confPath)
 }
 
 // Returns the deploy output
