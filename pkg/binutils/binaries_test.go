@@ -10,55 +10,55 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/internal/testutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInstallZipArchive(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
-	archivePath, checkFunc := testutils.CreateTestArchivePath(t, assert)
+	archivePath, checkFunc := testutils.CreateTestArchivePath(t, require)
 
 	tmpDir := os.TempDir()
 	zip := filepath.Join(tmpDir, "testFile.zip")
 	defer os.Remove(zip)
 
-	testutils.CreateZip(assert, archivePath, zip)
+	testutils.CreateZip(require, archivePath, zip)
 
 	// can't use t.TempDir here as that returns the same dir
 	installDir, err := os.MkdirTemp(tmpDir, "zip-test-dir")
-	assert.NoError(err)
+	require.NoError(err)
 	defer os.RemoveAll(installDir)
 
 	zipBytes, err := os.ReadFile(zip)
-	assert.NoError(err)
+	require.NoError(err)
 
 	err = installZipArchive(zipBytes, installDir)
-	assert.NoError(err)
+	require.NoError(err)
 
 	checkFunc(archivePath)
 }
 
 func TestInstallGzipArchive(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
-	archivePath, checkFunc := testutils.CreateTestArchivePath(t, assert)
+	archivePath, checkFunc := testutils.CreateTestArchivePath(t, require)
 
 	tmpDir := os.TempDir()
 	tgz := filepath.Join(tmpDir, "testFile.tar.gz")
 	defer os.Remove(tgz)
 
-	testutils.CreateTarGz(assert, archivePath, tgz, true)
+	testutils.CreateTarGz(require, archivePath, tgz, true)
 
 	// can't use t.TempDir here as that returns the same dir
 	installDir, err := os.MkdirTemp(tmpDir, "gzip-test-dir")
-	assert.NoError(err)
+	require.NoError(err)
 	defer os.RemoveAll(installDir)
 
 	tgzBytes, err := os.ReadFile(tgz)
-	assert.NoError(err)
+	require.NoError(err)
 
 	err = installTarGzArchive(tgzBytes, installDir)
-	assert.NoError(err)
+	require.NoError(err)
 
 	checkFunc(archivePath)
 }
@@ -67,24 +67,24 @@ func TestExistsWithVersion(t *testing.T) {
 	binPrefix := "binary-"
 	binVersion := "1.4.3"
 
-	assert := assert.New(t)
+	require := require.New(t)
 
 	installDir, err := os.MkdirTemp(os.TempDir(), "binutils-tests")
-	assert.NoError(err)
+	require.NoError(err)
 	defer os.RemoveAll(installDir)
 
 	checker := NewBinaryChecker()
 
 	exists, err := checker.ExistsWithVersion(installDir, binPrefix, binVersion)
-	assert.NoError(err)
-	assert.False(exists)
+	require.NoError(err)
+	require.False(exists)
 
 	err = os.Mkdir(filepath.Join(installDir, binPrefix+binVersion), constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 
 	exists, err = checker.ExistsWithVersion(installDir, binPrefix, binVersion)
-	assert.NoError(err)
-	assert.True(exists)
+	require.NoError(err)
+	require.True(exists)
 }
 
 func TestExistsWithVersion_Longer(t *testing.T) {
@@ -92,22 +92,22 @@ func TestExistsWithVersion_Longer(t *testing.T) {
 	desiredVersion := "1.4.3"
 	actualVersion := "1.4.30"
 
-	assert := assert.New(t)
+	require := require.New(t)
 
 	installDir, err := os.MkdirTemp(os.TempDir(), "binutils-tests")
-	assert.NoError(err)
+	require.NoError(err)
 	defer os.RemoveAll(installDir)
 
 	checker := NewBinaryChecker()
 
 	exists, err := checker.ExistsWithVersion(installDir, binPrefix, desiredVersion)
-	assert.NoError(err)
-	assert.False(exists)
+	require.NoError(err)
+	require.False(exists)
 
 	err = os.Mkdir(filepath.Join(installDir, binPrefix+actualVersion), constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 
 	exists, err = checker.ExistsWithVersion(installDir, binPrefix, desiredVersion)
-	assert.NoError(err)
-	assert.False(exists)
+	require.NoError(err)
+	require.False(exists)
 }

@@ -17,13 +17,13 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExportImportSubnet(t *testing.T) {
 	testDir := t.TempDir()
-	assert := assert.New(t)
+	require := require.New(t)
 	testSubnet := "testSubnet"
 	vmVersion := "v0.9.99"
 	testSubnetEVMCompat := []byte("{\"rpcChainVMProtocolVersion\": {\"v0.9.99\": 18}}")
@@ -36,15 +36,15 @@ func TestExportImportSubnet(t *testing.T) {
 	app.Setup(testDir, logging.NoLog{}, nil, prompts.NewPrompter(), &mockAppDownloader)
 	ux.NewUserLog(logging.NoLog{}, io.Discard)
 	genBytes, sc, err := vm.CreateEvmSubnetConfig(app, testSubnet, "../../"+utils.SubnetEvmGenesisPath, vmVersion)
-	assert.NoError(err)
+	require.NoError(err)
 	err = app.WriteGenesisFile(testSubnet, genBytes)
-	assert.NoError(err)
+	require.NoError(err)
 	err = app.CreateSidecar(sc)
-	assert.NoError(err)
+	require.NoError(err)
 
 	exportOutputDir := filepath.Join(testDir, "output")
 	err = os.MkdirAll(exportOutputDir, constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 	exportOutput = filepath.Join(exportOutputDir, testSubnet)
 	defer func() {
 		exportOutput = ""
@@ -52,36 +52,36 @@ func TestExportImportSubnet(t *testing.T) {
 	}()
 
 	err = exportSubnet(nil, []string{"this-does-not-exist-should-fail"})
-	assert.Error(err)
+	require.Error(err)
 
 	err = exportSubnet(nil, []string{testSubnet})
-	assert.NoError(err)
-	assert.FileExists(exportOutput)
+	require.NoError(err)
+	require.FileExists(exportOutput)
 	sidecarFile := filepath.Join(app.GetBaseDir(), constants.SubnetDir, testSubnet, constants.SidecarFileName)
 	orig, err := os.ReadFile(sidecarFile)
-	assert.NoError(err)
+	require.NoError(err)
 
 	var control map[string]interface{}
 	err = json.Unmarshal(orig, &control)
-	assert.NoError(err)
-	assert.Equal(control["Name"], testSubnet)
-	assert.Equal(control["VM"], "Subnet-EVM")
-	assert.Equal(control["VMVersion"], vmVersion)
-	assert.Equal(control["Subnet"], testSubnet)
-	assert.Equal(control["TokenName"], "TEST")
-	assert.Equal(control["Version"], constants.SidecarVersion)
-	assert.Equal(control["Networks"], nil)
+	require.NoError(err)
+	require.Equal(control["Name"], testSubnet)
+	require.Equal(control["VM"], "Subnet-EVM")
+	require.Equal(control["VMVersion"], vmVersion)
+	require.Equal(control["Subnet"], testSubnet)
+	require.Equal(control["TokenName"], "TEST")
+	require.Equal(control["Version"], constants.SidecarVersion)
+	require.Equal(control["Networks"], nil)
 
 	err = os.Remove(sidecarFile)
-	assert.NoError(err)
+	require.NoError(err)
 
 	err = importSubnet(nil, []string{"this-does-also-not-exist-import-should-fail"})
-	assert.ErrorIs(err, os.ErrNotExist)
+	require.ErrorIs(err, os.ErrNotExist)
 	err = importSubnet(nil, []string{exportOutput})
-	assert.ErrorContains(err, "subnet already exists")
+	require.ErrorContains(err, "subnet already exists")
 	genFile := filepath.Join(app.GetBaseDir(), constants.SubnetDir, testSubnet, constants.GenesisFileName)
 	err = os.Remove(genFile)
-	assert.NoError(err)
+	require.NoError(err)
 	err = importSubnet(nil, []string{exportOutput})
-	assert.NoError(err)
+	require.NoError(err)
 }

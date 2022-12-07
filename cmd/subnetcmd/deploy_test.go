@@ -10,8 +10,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -23,7 +23,7 @@ const (
 var testAvagoCompat = []byte("{\"19\": [\"v1.9.2\"],\"18\": [\"v1.9.1\"],\"17\": [\"v1.9.0\",\"v1.8.0\"]}")
 
 func TestMutuallyExclusive(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	type test struct {
 		flagA       bool
 		flagB       bool
@@ -85,9 +85,9 @@ func TestMutuallyExclusive(t *testing.T) {
 	for _, tt := range tests {
 		isEx := flags.EnsureMutuallyExclusive([]bool{tt.flagA, tt.flagB, tt.flagC})
 		if tt.expectError {
-			assert.False(isEx)
+			require.False(isEx)
 		} else {
-			assert.True(isEx)
+			require.True(isEx)
 		}
 	}
 }
@@ -184,7 +184,7 @@ func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			require := require.New(t)
 
 			mockSC := mocks.StatusChecker{}
 			mockSC.On("GetCurrentNetworkVersion").Return(tt.networkVersion, tt.networkRPC, tt.networkUp, tt.networkErr)
@@ -202,10 +202,10 @@ func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 			desiredAvagoVersion, err := checkForInvalidDeployAndGetAvagoVersion(&mockSC, tt.desiredRPC)
 
 			if tt.expectError {
-				assert.Error(err)
+				require.Error(err)
 			} else {
-				assert.NoError(err)
-				assert.Equal(tt.expectedVersion, desiredAvagoVersion)
+				require.NoError(err)
+				require.Equal(tt.expectedVersion, desiredAvagoVersion)
 			}
 		})
 	}

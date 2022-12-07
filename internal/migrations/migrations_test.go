@@ -12,14 +12,14 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRunMigrations(t *testing.T) {
 	buffer := make([]byte, 0, 100)
 	bufWriter := bytes.NewBuffer(buffer)
 	ux.NewUserLog(logging.NoLog{}, bufWriter)
-	assert := assert.New(t)
+	require := require.New(t)
 	testDir := t.TempDir()
 
 	app := &application.Avalanche{}
@@ -132,10 +132,10 @@ func TestRunMigrations(t *testing.T) {
 		}
 		err := runner.run(app)
 		if tt.shouldErr {
-			assert.Error(err)
+			require.Error(err)
 		} else {
-			assert.NoError(err)
+			require.NoError(err)
 		}
-		assert.Equal(tt.expectedOutput, bufWriter.String())
+		require.Equal(tt.expectedOutput, bufWriter.String())
 	}
 }
