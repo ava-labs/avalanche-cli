@@ -29,8 +29,9 @@ func RunMigrations(app *application.Avalanche) error {
 		showMsg: true,
 		migrations: map[int]migrationFunc{
 			// add new migrations here in rising index order
-			// next one is 1
+			// next one is 2
 			0: migrateTopLevelFiles,
+			1: migrateSubnetEVMNames,
 		},
 	}
 	return runner.run(app)
