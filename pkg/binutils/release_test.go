@@ -15,8 +15,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -31,9 +31,9 @@ var (
 	binary2 = []byte{0xfe, 0xed, 0xc0, 0xde}
 )
 
-func setupInstallDir(assert *assert.Assertions) *application.Avalanche {
+func setupInstallDir(require *require.Assertions) *application.Avalanche {
 	rootDir, err := os.MkdirTemp(os.TempDir(), "binutils-tests")
-	assert.NoError(err)
+	require.NoError(err)
 	defer os.RemoveAll(rootDir)
 
 	app := application.New()
@@ -42,10 +42,10 @@ func setupInstallDir(assert *assert.Assertions) *application.Avalanche {
 }
 
 func Test_installAvalancheGoWithVersion_Zip(t *testing.T) {
-	assert := testutils.SetupTest(t)
+	require := testutils.SetupTest(t)
 
-	zipBytes := testutils.CreateDummyAvagoZip(assert, binary1)
-	app := setupInstallDir(assert)
+	zipBytes := testutils.CreateDummyAvagoZip(require, binary1)
+	app := setupInstallDir(require)
 
 	mockInstaller := &mocks.Installer{}
 	mockInstaller.On("GetArch").Return("amd64", "darwin")
@@ -59,21 +59,21 @@ func Test_installAvalancheGoWithVersion_Zip(t *testing.T) {
 	expectedDir := filepath.Join(app.GetAvalanchegoBinDir(), avalanchegoBinPrefix+version1)
 
 	binDir, err := installBinaryWithVersion(app, version1, app.GetAvalanchegoBinDir(), avalanchegoBinPrefix, githubDownloader, mockInstaller)
-	assert.Equal(expectedDir, binDir)
-	assert.NoError(err)
+	require.Equal(expectedDir, binDir)
+	require.NoError(err)
 
 	// Check the installed binary
 	installedBin, err := os.ReadFile(filepath.Join(binDir, avalanchegoBin))
-	assert.NoError(err)
-	assert.Equal(binary1, installedBin)
+	require.NoError(err)
+	require.Equal(binary1, installedBin)
 }
 
 func Test_installAvalancheGoWithVersion_Tar(t *testing.T) {
-	assert := testutils.SetupTest(t)
+	require := testutils.SetupTest(t)
 
-	tarBytes := testutils.CreateDummyAvagoTar(assert, binary1, version1)
+	tarBytes := testutils.CreateDummyAvagoTar(require, binary1, version1)
 
-	app := setupInstallDir(assert)
+	app := setupInstallDir(require)
 
 	mockInstaller := &mocks.Installer{}
 	mockInstaller.On("GetArch").Return("amd64", "linux")
@@ -87,30 +87,30 @@ func Test_installAvalancheGoWithVersion_Tar(t *testing.T) {
 	expectedDir := filepath.Join(app.GetAvalanchegoBinDir(), avalanchegoBinPrefix+version1)
 
 	binDir, err := installBinaryWithVersion(app, version1, app.GetAvalanchegoBinDir(), avalanchegoBinPrefix, downloader, mockInstaller)
-	assert.Equal(expectedDir, binDir)
-	assert.NoError(err)
+	require.Equal(expectedDir, binDir)
+	require.NoError(err)
 
 	// Check the installed binary
 	installedBin, err := os.ReadFile(filepath.Join(binDir, avalanchegoBin))
-	assert.NoError(err)
-	assert.Equal(binary1, installedBin)
+	require.NoError(err)
+	require.Equal(binary1, installedBin)
 }
 
 func Test_installAvalancheGoWithVersion_MultipleCoinstalls(t *testing.T) {
-	assert := testutils.SetupTest(t)
+	require := testutils.SetupTest(t)
 
-	zipBytes1 := testutils.CreateDummyAvagoZip(assert, binary1)
-	zipBytes2 := testutils.CreateDummyAvagoZip(assert, binary2)
-	app := setupInstallDir(assert)
+	zipBytes1 := testutils.CreateDummyAvagoZip(require, binary1)
+	zipBytes2 := testutils.CreateDummyAvagoZip(require, binary2)
+	app := setupInstallDir(require)
 
 	mockInstaller := &mocks.Installer{}
 	mockInstaller.On("GetArch").Return("amd64", "darwin")
 
 	downloader := NewAvagoDownloader()
 	url1, _, err := downloader.GetDownloadURL(version1, mockInstaller)
-	assert.NoError(err)
+	require.NoError(err)
 	url2, _, err := downloader.GetDownloadURL(version2, mockInstaller)
-	assert.NoError(err)
+	require.NoError(err)
 	mockInstaller.On("DownloadRelease", url1).Return(zipBytes1, nil)
 	mockInstaller.On("DownloadRelease", url2).Return(zipBytes2, nil)
 
@@ -123,30 +123,30 @@ func Test_installAvalancheGoWithVersion_MultipleCoinstalls(t *testing.T) {
 	expectedDir2 := filepath.Join(app.GetAvalanchegoBinDir(), avalanchegoBinPrefix+version2)
 
 	binDir1, err := installBinaryWithVersion(app, version1, app.GetAvalanchegoBinDir(), avalanchegoBinPrefix, downloader, mockInstaller)
-	assert.Equal(expectedDir1, binDir1)
-	assert.NoError(err)
+	require.Equal(expectedDir1, binDir1)
+	require.NoError(err)
 
 	binDir2, err := installBinaryWithVersion(app, version2, app.GetAvalanchegoBinDir(), avalanchegoBinPrefix, downloader, mockInstaller)
-	assert.Equal(expectedDir2, binDir2)
-	assert.NoError(err)
+	require.Equal(expectedDir2, binDir2)
+	require.NoError(err)
 
-	assert.NotEqual(binDir1, binDir2)
+	require.NotEqual(binDir1, binDir2)
 
 	// Check the installed binary
 	installedBin1, err := os.ReadFile(filepath.Join(binDir1, avalanchegoBin))
-	assert.NoError(err)
-	assert.Equal(binary1, installedBin1)
+	require.NoError(err)
+	require.Equal(binary1, installedBin1)
 
 	installedBin2, err := os.ReadFile(filepath.Join(binDir2, avalanchegoBin))
-	assert.NoError(err)
-	assert.Equal(binary2, installedBin2)
+	require.NoError(err)
+	require.Equal(binary2, installedBin2)
 }
 
 func Test_installSubnetEVMWithVersion(t *testing.T) {
-	assert := testutils.SetupTest(t)
+	require := testutils.SetupTest(t)
 
-	tarBytes := testutils.CreateDummySubnetEVMTar(assert, binary1)
-	app := setupInstallDir(assert)
+	tarBytes := testutils.CreateDummySubnetEVMTar(require, binary1)
+	app := setupInstallDir(require)
 
 	mockInstaller := &mocks.Installer{}
 	mockInstaller.On("GetArch").Return("amd64", "darwin")
@@ -162,30 +162,30 @@ func Test_installSubnetEVMWithVersion(t *testing.T) {
 	subDir := filepath.Join(app.GetSubnetEVMBinDir(), subnetEVMBinPrefix+version1)
 
 	binDir, err := installBinaryWithVersion(app, version1, subDir, subnetEVMBinPrefix, downloader, mockInstaller)
-	assert.Equal(expectedDir, binDir)
-	assert.NoError(err)
+	require.Equal(expectedDir, binDir)
+	require.NoError(err)
 
 	// Check the installed binary
 	installedBin, err := os.ReadFile(filepath.Join(binDir, constants.SubnetEVMBin))
-	assert.NoError(err)
-	assert.Equal(binary1, installedBin)
+	require.NoError(err)
+	require.Equal(binary1, installedBin)
 }
 
 func Test_installSubnetEVMWithVersion_MultipleCoinstalls(t *testing.T) {
-	assert := testutils.SetupTest(t)
+	require := testutils.SetupTest(t)
 
-	tarBytes1 := testutils.CreateDummySubnetEVMTar(assert, binary1)
-	tarBytes2 := testutils.CreateDummySubnetEVMTar(assert, binary2)
-	app := setupInstallDir(assert)
+	tarBytes1 := testutils.CreateDummySubnetEVMTar(require, binary1)
+	tarBytes2 := testutils.CreateDummySubnetEVMTar(require, binary2)
+	app := setupInstallDir(require)
 
 	mockInstaller := &mocks.Installer{}
 	mockInstaller.On("GetArch").Return("arm64", "linux")
 
 	downloader := NewSubnetEVMDownloader()
 	url1, _, err := downloader.GetDownloadURL(version1, mockInstaller)
-	assert.NoError(err)
+	require.NoError(err)
 	url2, _, err := downloader.GetDownloadURL(version2, mockInstaller)
-	assert.NoError(err)
+	require.NoError(err)
 
 	mockAppDownloader := mocks.Downloader{}
 	mockAppDownloader.On("Download", url1).Return(tarBytes1, nil)
@@ -199,21 +199,21 @@ func Test_installSubnetEVMWithVersion_MultipleCoinstalls(t *testing.T) {
 	subDir2 := filepath.Join(app.GetSubnetEVMBinDir(), subnetEVMBinPrefix+version2)
 
 	binDir1, err := installBinaryWithVersion(app, version1, subDir1, subnetEVMBinPrefix, downloader, mockInstaller)
-	assert.Equal(expectedDir1, binDir1)
-	assert.NoError(err)
+	require.Equal(expectedDir1, binDir1)
+	require.NoError(err)
 
 	binDir2, err := installBinaryWithVersion(app, version2, subDir2, subnetEVMBinPrefix, downloader, mockInstaller)
-	assert.Equal(expectedDir2, binDir2)
-	assert.NoError(err)
+	require.Equal(expectedDir2, binDir2)
+	require.NoError(err)
 
-	assert.NotEqual(binDir1, binDir2)
+	require.NotEqual(binDir1, binDir2)
 
 	// Check the installed binary
 	installedBin1, err := os.ReadFile(filepath.Join(binDir1, constants.SubnetEVMBin))
-	assert.NoError(err)
-	assert.Equal(binary1, installedBin1)
+	require.NoError(err)
+	require.Equal(binary1, installedBin1)
 
 	installedBin2, err := os.ReadFile(filepath.Join(binDir2, constants.SubnetEVMBin))
-	assert.NoError(err)
-	assert.Equal(binary2, installedBin2)
+	require.NoError(err)
+	require.Equal(binary2, installedBin2)
 }

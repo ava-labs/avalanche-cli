@@ -55,6 +55,7 @@ type Prompter interface {
 	CaptureDuration(promptStr string) (time.Duration, error)
 	CaptureDate(promptStr string) (time.Time, error)
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
+	CaptureID(promptStr string) (ids.ID, error)
 	CaptureWeight(promptStr string) (uint64, error)
 	CaptureUint64(promptStr string) (uint64, error)
 	CapturePChainAddress(promptStr string, network models.Network) (string, error)
@@ -107,6 +108,11 @@ func validateTime(input string) error {
 	if t.Before(time.Now().Add(constants.StakingStartLeadTime)) {
 		return fmt.Errorf("time should be at least start from now + %s", constants.StakingStartLeadTime)
 	}
+	return err
+}
+
+func validateID(input string) error {
+	_, err := ids.FromString(input)
 	return err
 }
 
@@ -266,6 +272,19 @@ func (*realPrompter) CaptureDate(promptStr string) (time.Time, error) {
 	}
 
 	return time.Parse(constants.TimeParseLayout, timeStr)
+}
+
+func (*realPrompter) CaptureID(promptStr string) (ids.ID, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateID,
+	}
+
+	IDStr, err := prompt.Run()
+	if err != nil {
+		return ids.Empty, err
+	}
+	return ids.FromString(IDStr)
 }
 
 func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {

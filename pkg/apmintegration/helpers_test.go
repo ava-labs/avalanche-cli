@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetGithubOrg(t *testing.T) {
@@ -47,15 +47,15 @@ func TestGetGithubOrg(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			require := require.New(t)
 			parsedURL, err := url.ParseRequestURI(tt.url)
-			assert.NoError(err)
+			require.NoError(err)
 			org, err := getGitOrg(parsedURL)
-			assert.Equal(tt.expectedOrg, org)
+			require.Equal(tt.expectedOrg, org)
 			if tt.expectedErr {
-				assert.Error(err)
+				require.Error(err)
 			} else {
-				assert.NoError(err)
+				require.NoError(err)
 			}
 		})
 	}
@@ -98,15 +98,15 @@ func TestGetGithubRepo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			require := require.New(t)
 			parsedURL, err := url.ParseRequestURI(tt.url)
-			assert.NoError(err)
+			require.NoError(err)
 			repo, err := getGitRepo(parsedURL)
-			assert.Equal(tt.expectedRepo, repo)
+			require.Equal(tt.expectedRepo, repo)
 			if tt.expectedErr {
-				assert.Error(err)
+				require.Error(err)
 			} else {
-				assert.NoError(err)
+				require.NoError(err)
 			}
 		})
 	}
@@ -149,38 +149,38 @@ func TestGetAlias(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			require := require.New(t)
 			parsedURL, err := url.ParseRequestURI(tt.url)
-			assert.NoError(err)
+			require.NoError(err)
 			alias, err := getAlias(parsedURL)
-			assert.Equal(tt.expectedAlias, alias)
+			require.Equal(tt.expectedAlias, alias)
 			if tt.expectedErr {
-				assert.Error(err)
+				require.Error(err)
 			} else {
-				assert.NoError(err)
+				require.NoError(err)
 			}
 		})
 	}
 }
 
 func TestSplitKey(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	key := "ava-labs/avalanche-plugins-core:wagmi"
 	expectedAlias := "ava-labs/avalanche-plugins-core"
 	expectedSubnet := "wagmi"
 
 	alias, subnet, err := splitKey(key)
-	assert.NoError(err)
-	assert.Equal(expectedAlias, alias)
-	assert.Equal(expectedSubnet, subnet)
+	require.NoError(err)
+	require.Equal(expectedAlias, alias)
+	require.Equal(expectedSubnet, subnet)
 }
 
 func TestSplitKey_Errpr(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	key := "ava-labs/avalanche-plugins-core_wagmi"
 
 	_, _, err := splitKey(key)
-	assert.ErrorContains(err, "invalid subnet key:")
+	require.ErrorContains(err, "invalid subnet key:")
 }

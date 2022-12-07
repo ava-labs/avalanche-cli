@@ -25,7 +25,18 @@ const (
 	confPath         = "tests/e2e/assets/test_avalanche-cli.json"
 )
 
-var _ = ginkgo.Describe("[Local Subnet]", func() {
+var (
+	mapping map[string]string
+	err     error
+)
+
+var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
+	_ = ginkgo.BeforeAll(func() {
+		mapper := utils.NewVersionMapper()
+		mapping, err = utils.GetVersionMapping(mapper)
+		gomega.Expect(err).Should(gomega.BeNil())
+	})
+
 	ginkgo.AfterEach(func() {
 		commands.CleanNetwork()
 		err := utils.DeleteConfigs(subnetName)
@@ -44,10 +55,10 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 	})
 
 	ginkgo.It("can deploy a custom vm subnet to local", func() {
-		customVMPath, err := utils.DownloadCustomVMBin()
+		customVMPath, err := utils.DownloadCustomVMBin(mapping[utils.SoloSubnetEVMKey1])
 		gomega.Expect(err).Should(gomega.BeNil())
 		commands.CreateCustomVMConfig(subnetName, utils.SubnetEvmGenesisPath, customVMPath)
-		deployOutput := commands.DeploySubnetLocally(subnetName)
+		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, mapping[utils.SoloAvagoKey])
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -86,8 +97,8 @@ var _ = ginkgo.Describe("[Local Subnet]", func() {
 	})
 
 	ginkgo.It("can deploy a SpacesVM subnet to local", func() {
-		commands.CreateSpacesVMConfig(subnetName, utils.SpacesVMGenesisPath)
-		deployOutput := commands.DeploySubnetLocally(subnetName)
+		commands.CreateSpacesVMConfigWithVersion(subnetName, utils.SpacesVMGenesisPath, mapping[utils.Spaces2AvagoKey])
+		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, mapping[utils.Avago2SpacesKey])
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -276,6 +287,7 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 	})
 
 	ginkgo.It("can't deploy conflicting vm versions", func() {
+		// TODO: These shouldn't be hardcoded either
 		subnetEVMVersion1 := "v0.4.2"
 		subnetEVMVersion2 := "v0.4.4"
 

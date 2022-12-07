@@ -94,36 +94,36 @@ func TestGetRepos(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := require.New(t)
+			require := require.New(t)
 
 			testDir := t.TempDir()
 			app := newTestApp(t, testDir)
 
 			repositoryDir := filepath.Join(testDir, "repositories")
 			err := os.Mkdir(repositoryDir, constants.DefaultPerms755)
-			assert.NoError(err)
+			require.NoError(err)
 
 			// create repos
 			for _, org := range tt.orgs {
 				for _, repo := range tt.repos {
 					repoPath := filepath.Join(repositoryDir, org, repo)
 					err = os.MkdirAll(repoPath, constants.DefaultPerms755)
-					assert.NoError(err)
+					require.NoError(err)
 				}
 			}
 
 			// test function
 			repos, err := GetRepos(app)
-			assert.NoError(err)
+			require.NoError(err)
 
 			// check results
 			numRepos := len(tt.orgs) * len(tt.repos)
-			assert.Equal(numRepos, len(repos))
+			require.Equal(numRepos, len(repos))
 
 			index := 0
 			for _, org := range tt.orgs {
 				for _, repo := range tt.repos {
-					assert.Equal(org+"/"+repo, repos[index])
+					require.Equal(org+"/"+repo, repos[index])
 					index++
 				}
 			}
@@ -162,7 +162,7 @@ func TestGetSubnets(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := require.New(t)
+			require := require.New(t)
 
 			testDir := t.TempDir()
 			app := newTestApp(t, testDir)
@@ -170,29 +170,29 @@ func TestGetSubnets(t *testing.T) {
 			// Setup subnet directory
 			subnetPath := filepath.Join(testDir, "repositories", tt.org, tt.repo, "subnets")
 			err := os.MkdirAll(subnetPath, constants.DefaultPerms755)
-			assert.NoError(err)
+			require.NoError(err)
 
 			// Create subnet files
 			for _, subnet := range tt.subnetNames {
 				subnetFile := filepath.Join(subnetPath, subnet+".yaml")
 				err = os.WriteFile(subnetFile, []byte(testSubnetYaml), constants.DefaultPerms755)
-				assert.NoError(err)
+				require.NoError(err)
 			}
 
 			subnets, err := GetSubnets(app, makeAlias(tt.org, tt.repo))
-			assert.NoError(err)
+			require.NoError(err)
 
 			// check results
-			assert.Equal(len(tt.subnetNames), len(subnets))
+			require.Equal(len(tt.subnetNames), len(subnets))
 			for i, subnet := range tt.subnetNames {
-				assert.Equal(tt.subnetNames[i], subnet)
+				require.Equal(tt.subnetNames[i], subnet)
 			}
 		})
 	}
 }
 
 func TestLoadSubnetFile_Success(t *testing.T) {
-	assert := require.New(t)
+	require := require.New(t)
 
 	testDir := t.TempDir()
 	app := newTestApp(t, testDir)
@@ -200,12 +200,12 @@ func TestLoadSubnetFile_Success(t *testing.T) {
 	// Setup subnet directory
 	subnetPath := filepath.Join(testDir, "repositories", org1, repo1, "subnets")
 	err := os.MkdirAll(subnetPath, constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// Create subnet files
 	subnetFile := filepath.Join(subnetPath, subnet1+".yaml")
 	err = os.WriteFile(subnetFile, []byte(testSubnetYaml), constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 
 	expectedSubnet := types.Subnet{
 		ID:          "abcd",
@@ -217,12 +217,12 @@ func TestLoadSubnetFile_Success(t *testing.T) {
 	}
 
 	loadedSubnet, err := LoadSubnetFile(app, MakeKey(makeAlias(org1, repo1), subnet1))
-	assert.NoError(err)
-	assert.Equal(expectedSubnet, loadedSubnet)
+	require.NoError(err)
+	require.Equal(expectedSubnet, loadedSubnet)
 }
 
 func TestLoadSubnetFile_BadKey(t *testing.T) {
-	assert := require.New(t)
+	require := require.New(t)
 
 	testDir := t.TempDir()
 	app := newTestApp(t, testDir)
@@ -230,19 +230,19 @@ func TestLoadSubnetFile_BadKey(t *testing.T) {
 	// Setup subnet directory
 	subnetPath := filepath.Join(testDir, "repositories", org1, repo1, "subnets")
 	err := os.MkdirAll(subnetPath, constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// Create subnet files
 	subnetFile := filepath.Join(subnetPath, subnet1+".yaml")
 	err = os.WriteFile(subnetFile, []byte(testSubnetYaml), constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 
 	_, err = LoadSubnetFile(app, subnet1)
-	assert.ErrorContains(err, "invalid subnet key")
+	require.ErrorContains(err, "invalid subnet key")
 }
 
 func TestGetVMsInSubnet(t *testing.T) {
-	assert := require.New(t)
+	require := require.New(t)
 
 	testDir := t.TempDir()
 	app := newTestApp(t, testDir)
@@ -250,22 +250,22 @@ func TestGetVMsInSubnet(t *testing.T) {
 	// Setup subnet directory
 	subnetPath := filepath.Join(testDir, "repositories", org1, repo1, "subnets")
 	err := os.MkdirAll(subnetPath, constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// Create subnet files
 	subnetFile := filepath.Join(subnetPath, subnet1+".yaml")
 	err = os.WriteFile(subnetFile, []byte(testSubnetYaml), constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 
 	expectedVMs := []string{"testvm1", "testvm2"}
 
 	loadedVMs, err := getVMsInSubnet(app, MakeKey(makeAlias(org1, repo1), subnet1))
-	assert.NoError(err)
-	assert.Equal(expectedVMs, loadedVMs)
+	require.NoError(err)
+	require.Equal(expectedVMs, loadedVMs)
 }
 
 func TestLoadVMFile(t *testing.T) {
-	assert := require.New(t)
+	require := require.New(t)
 
 	testDir := t.TempDir()
 	app := newTestApp(t, testDir)
@@ -273,12 +273,12 @@ func TestLoadVMFile(t *testing.T) {
 	// Setup vm directory
 	vmPath := filepath.Join(testDir, "repositories", org1, repo1, "vms")
 	err := os.MkdirAll(vmPath, constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// Create subnet files
 	vmFile := filepath.Join(vmPath, vm+".yaml")
 	err = os.WriteFile(vmFile, []byte(testVMYaml), constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 
 	expectedVM := types.VM{
 		ID:            "efgh",
@@ -298,6 +298,6 @@ func TestLoadVMFile(t *testing.T) {
 	}
 
 	loadedVM, err := LoadVMFile(app, makeAlias(org1, repo1), vm)
-	assert.NoError(err)
-	assert.Equal(expectedVM, loadedVM)
+	require.NoError(err)
+	require.Equal(expectedVM, loadedVM)
 }

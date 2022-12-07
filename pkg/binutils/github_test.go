@@ -9,7 +9,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type urlTest struct {
@@ -22,10 +22,10 @@ type urlTest struct {
 }
 
 func TestGetGithubLatestReleaseURL(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	expected := "https://api.github.com/repos/ava-labs/avalanchego/releases/latest"
 	url := GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.AvalancheGoRepoName)
-	assert.Equal(expected, url)
+	require.Equal(expected, url)
 }
 
 func TestGetDownloadURL_AvalancheGo(t *testing.T) {
@@ -65,16 +65,16 @@ func TestGetDownloadURL_AvalancheGo(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		assert := assert.New(t)
+		require := require.New(t)
 		mockInstaller := &mocks.Installer{}
 		mockInstaller.On("GetArch").Return(tt.goarch, tt.goos)
 
 		downloader := NewAvagoDownloader()
 
 		url, ext, err := downloader.GetDownloadURL(tt.version, mockInstaller)
-		assert.Equal(tt.expectedURL, url)
-		assert.Equal(tt.expectedExt, ext)
-		assert.Equal(tt.expectedErr, err)
+		require.Equal(tt.expectedURL, url)
+		require.Equal(tt.expectedExt, ext)
+		require.Equal(tt.expectedErr, err)
 	}
 }
 
@@ -107,15 +107,15 @@ func TestGetDownloadURL_SubnetEVM(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		assert := assert.New(t)
+		require := require.New(t)
 		mockInstaller := &mocks.Installer{}
 		mockInstaller.On("GetArch").Return(tt.goarch, tt.goos)
 
 		downloader := NewSubnetEVMDownloader()
 
 		url, ext, err := downloader.GetDownloadURL(tt.version, mockInstaller)
-		assert.Equal(tt.expectedURL, url)
-		assert.Equal(tt.expectedExt, ext)
-		assert.Equal(tt.expectedErr, err)
+		require.Equal(tt.expectedURL, url)
+		require.Equal(tt.expectedExt, ext)
+		require.Equal(tt.expectedErr, err)
 	}
 }

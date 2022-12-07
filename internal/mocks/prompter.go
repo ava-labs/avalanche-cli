@@ -152,6 +152,29 @@ func (_m *Prompter) CaptureGitURL(promptStr string) (*url.URL, error) {
 	return r0, r1
 }
 
+// CaptureID provides a mock function with given fields: promptStr
+func (_m *Prompter) CaptureID(promptStr string) (ids.ID, error) {
+	ret := _m.Called(promptStr)
+
+	var r0 ids.ID
+	if rf, ok := ret.Get(0).(func(string) ids.ID); ok {
+		r0 = rf(promptStr)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(ids.ID)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(promptStr)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // CaptureIndex provides a mock function with given fields: promptStr, options
 func (_m *Prompter) CaptureIndex(promptStr string, options []interface{}) (int, error) {
 	ret := _m.Called(promptStr, options)
