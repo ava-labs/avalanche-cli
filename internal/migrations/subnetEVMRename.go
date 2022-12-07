@@ -5,6 +5,7 @@ package migrations
 
 import (
 	"os"
+	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -20,6 +21,15 @@ func migrateSubnetEVMNames(app *application.Avalanche, runner *migrationRunner) 
 	}
 
 	for _, subnet := range subnets {
+		// disregard any empty subnet directories
+		dirContents, err := os.ReadDir(filepath.Join(subnetDir, subnet.Name()))
+		if err != nil {
+			return err
+		}
+		if len(dirContents) == 0 {
+			continue
+		}
+
 		sc, err := app.LoadSidecar(subnet.Name())
 		if err != nil {
 			return err

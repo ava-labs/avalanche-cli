@@ -5,10 +5,13 @@ package migrations
 
 import (
 	"io"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -88,4 +91,30 @@ func TestSubnetEVMRenameMigration(t *testing.T) {
 			require.Equal(tt.expectedVM, string(loadedSC.VM))
 		})
 	}
+}
+
+func TestSubnetEVMRenameMigration_EmptyDir(t *testing.T) {
+	ux.NewUserLog(logging.NoLog{}, io.Discard)
+	require := require.New(t)
+	testDir := t.TempDir()
+
+	app := &application.Avalanche{}
+	app.Setup(testDir, logging.NoLog{}, config.New(), prompts.NewPrompter(), application.NewDownloader())
+
+	emptySubnetName := "emptySubnet"
+
+	subnetDir := filepath.Join(app.GetSubnetDir(), emptySubnetName)
+	err := os.MkdirAll(subnetDir, constants.DefaultPerms755)
+	require.NoError(err)
+
+	runner := migrationRunner{
+		showMsg: true,
+		running: false,
+		migrations: map[int]migrationFunc{
+			0: migrateSubnetEVMNames,
+		},
+	}
+	// run the migration
+	err = runner.run(app)
+	require.NoError(err)
 }
