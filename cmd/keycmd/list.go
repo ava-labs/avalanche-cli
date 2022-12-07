@@ -17,7 +17,6 @@ import (
 	ledger "github.com/ava-labs/avalanche-ledger-go"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
-	"github.com/ava-labs/avalanchego/utils/math"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/coreth/ethclient"
@@ -174,7 +173,11 @@ func listKeys(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if queryLedger {
-		addrInfos, err = getLedgerIndicesInfo(pClients, ledgerIndices, networks)
+		ledgerIndicesU32 := []uint32{}
+		for _, index := range ledgerIndices {
+			ledgerIndicesU32 = append(ledgerIndicesU32, uint32(index))
+		}
+		addrInfos, err = getLedgerIndicesInfo(pClients, ledgerIndicesU32, networks)
 		if err != nil {
 			return err
 		}
@@ -255,7 +258,7 @@ func getStoredKeyInfo(
 
 func getLedgerIndicesInfo(
 	pClients map[models.Network]platformvm.Client,
-	ledgerIndices []uint,
+	ledgerIndices []uint32,
 	networks []models.Network,
 ) ([]addressInfo, error) {
 	ledgerDevice, err := ledger.New()
@@ -263,18 +266,16 @@ func getLedgerIndicesInfo(
 		return nil, err
 	}
 	ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
-	maxIndex := math.Max(0, ledgerIndices...)
-	toDerive := int(maxIndex + 1)
-	addresses, err := ledgerDevice.Addresses(toDerive)
+	addresses, err := ledgerDevice.Addresses(ledgerIndices)
 	if err != nil {
 		return nil, err
 	}
-	if len(addresses) != toDerive {
-		return nil, fmt.Errorf("derived addresses length %d differs from expected %d", len(addresses), toDerive)
+	if len(addresses) != len(ledgerIndices) {
+		return nil, fmt.Errorf("derived addresses length %d differs from expected %d", len(addresses), len(ledgerIndices))
 	}
 	addrInfos := []addressInfo{}
-	for _, index := range ledgerIndices {
-		addr := addresses[index]
+	for i, index := range ledgerIndices {
+		addr := addresses[i]
 		ledgerAddrInfos, err := getLedgerIndexInfo(pClients, index, networks, addr)
 		if err != nil {
 			return []addressInfo{}, err
@@ -286,7 +287,7 @@ func getLedgerIndicesInfo(
 
 func getLedgerIndexInfo(
 	pClients map[models.Network]platformvm.Client,
-	index uint,
+	index uint32,
 	networks []models.Network,
 	addr ids.ShortID,
 ) ([]addressInfo, error) {

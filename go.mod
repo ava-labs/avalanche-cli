@@ -4,12 +4,12 @@ go 1.18
 
 require (
 	github.com/ava-labs/apm v0.0.4
-	github.com/ava-labs/avalanche-ledger-go v0.0.11
-	github.com/ava-labs/avalanche-network-runner v1.3.3-0.20221128213709-3e03e70190ac
-	github.com/ava-labs/avalanchego v1.9.2
-	github.com/ava-labs/coreth v0.11.2
-	github.com/ava-labs/spacesvm v0.0.10-0.20221029001213-6925f62a1394
-	github.com/ava-labs/subnet-evm v0.4.3
+	github.com/ava-labs/avalanche-ledger-go v0.0.13
+	github.com/ava-labs/avalanche-network-runner v1.3.3-0.20221207225310-6d9c39e817f3
+	github.com/ava-labs/avalanchego v1.9.4
+	github.com/ava-labs/coreth v0.11.4
+	github.com/ava-labs/spacesvm v0.0.13-0.20221207225604-b0e8c3490f99
+	github.com/ava-labs/subnet-evm v0.4.5
 	github.com/docker/docker v20.10.21+incompatible
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/go-git/go-git/v5 v5.5.0
@@ -149,7 +149,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.11.0 // indirect
 	go.opentelemetry.io/otel/trace v1.11.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
-	go.uber.org/atomic v1.9.0 // indirect
+	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/crypto v0.3.0 // indirect
 	golang.org/x/exp v0.0.0-20220426173459-3bcf042a4bf5 // indirect
