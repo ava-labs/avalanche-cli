@@ -649,7 +649,7 @@ func GetKeychain(
 		}
 		// ask for addresses here to print user msg for ledger interaction
 		ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
-		addresses, err := ledgerDevice.Addresses(1)
+		addresses, err := ledgerDevice.Addresses([]uint32{0})
 		if err != nil {
 			return kc, err
 		}

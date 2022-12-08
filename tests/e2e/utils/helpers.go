@@ -655,7 +655,7 @@ func FundLedgerAddress() error {
 
 	// get ledger addr
 	fmt.Println("*** Please provide extended public key on the ledger device ***")
-	ledgerAddrs, err := ledgerDev.Addresses(1)
+	ledgerAddrs, err := ledgerDev.Addresses([]uint32{0})
 	if err != nil {
 		return err
 	}
