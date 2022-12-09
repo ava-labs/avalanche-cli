@@ -8,8 +8,10 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
@@ -17,6 +19,8 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
+
+var printGenesisOnly bool
 
 // avalanche subnet describe
 func newDescribeCmd() *cobra.Command {
@@ -38,8 +42,6 @@ flag, the command instead prints out the raw genesis file.`,
 	)
 	return cmd
 }
-
-var printGenesisOnly bool
 
 func printGenesis(subnetName string) error {
 	genesisFile := app.GetGenesisPath(subnetName)
@@ -70,6 +72,16 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 	table.Append([]string{"Subnet Name", sc.Subnet})
 	table.Append([]string{"ChainID", genesis.Config.ChainID.String()})
 	table.Append([]string{"Token Name", app.GetTokenName(sc.Subnet)})
+	if sc.ImportedVMID != "" {
+		table.Append([]string{"VM ID", sc.ImportedVMID})
+	} else {
+		id := constants.NotAvailableLabel
+		vmID, err := utils.VMID(sc.Name)
+		if err == nil {
+			id = vmID.String()
+		}
+		table.Append([]string{"VM ID", id})
+	}
 	for net, data := range sc.Networks {
 		if data.SubnetID != ids.Empty {
 			table.Append([]string{fmt.Sprintf("%s SubnetID", net), data.SubnetID.String()})
@@ -228,27 +240,21 @@ func readGenesis(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if printGenesisOnly {
-		if err := printGenesis(subnetName); err != nil {
-			return err
-		}
-	} else {
-		// read in sidecar
-		sc, err := app.LoadSidecar(subnetName)
-		if err != nil {
-			return err
-		}
-
-		switch sc.VM {
-		case models.SubnetEvm:
-			err = describeSubnetEvmGenesis(sc)
-		default:
-			app.Log.Warn("Unknown genesis format", zap.Any("vm-type", sc.VM))
-			ux.Logger.PrintToUser("Printing genesis")
-			err = printGenesis(subnetName)
-		}
-		if err != nil {
-			return err
-		}
+		return printGenesis(subnetName)
 	}
-	return nil
+	// read in sidecar
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
+	}
+
+	switch sc.VM {
+	case models.SubnetEvm:
+		return describeSubnetEvmGenesis(sc)
+	default:
+		app.Log.Warn("Unknown genesis format", zap.Any("vm-type", sc.VM))
+		ux.Logger.PrintToUser("Printing genesis")
+		err = printGenesis(subnetName)
+	}
+	return err
 }
