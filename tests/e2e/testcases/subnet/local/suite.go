@@ -52,6 +52,7 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 
 		// delete custom vm
 		utils.DeleteCustomBinary(subnetName)
+		utils.DeleteCustomBinary(secondSubnetName)
 	})
 
 	ginkgo.It("can deploy a custom vm subnet to local", func() {
