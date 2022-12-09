@@ -171,32 +171,32 @@ func listDeployInfo(cmd *cobra.Command, args []string) error {
 	singleLine := true
 
 	for _, sc := range cars {
-		netToId := map[string][]string{}
+		netToID := map[string][]string{}
 		deployedLocal := constants.NoLabel
 		if _, ok := deployedNames[sc.Subnet]; ok {
 			deployedLocal = constants.YesLabel
 		}
 		if _, ok := sc.Networks[fujiKey]; ok {
 			if sc.Networks[fujiKey].SubnetID != ids.Empty {
-				netToId[fujiKey] = []string{
+				netToID[fujiKey] = []string{
 					constants.SubnetIDLabel + sc.Networks[fujiKey].SubnetID.String(),
 					constants.BlockchainIDLabel + sc.Networks[fujiKey].BlockchainID.String(),
 				}
 				singleLine = false
 			}
 		} else {
-			netToId[fujiKey] = []string{constants.NoLabel, constants.NoLabel}
+			netToID[fujiKey] = []string{constants.NoLabel, constants.NoLabel}
 		}
 		if _, ok := sc.Networks[mainKey]; ok {
 			if sc.Networks[mainKey].SubnetID != ids.Empty {
-				netToId[mainKey] = []string{
+				netToID[mainKey] = []string{
 					constants.SubnetIDLabel + sc.Networks[mainKey].SubnetID.String(),
 					constants.BlockchainIDLabel + sc.Networks[mainKey].BlockchainID.String(),
 				}
 				singleLine = false
 			}
 		} else {
-			netToId[mainKey] = []string{constants.NoLabel, constants.NoLabel}
+			netToID[mainKey] = []string{constants.NoLabel, constants.NoLabel}
 		}
 		vmID := sc.ImportedVMID
 		if vmID == "" {
@@ -213,8 +213,8 @@ func listDeployInfo(cmd *cobra.Command, args []string) error {
 			sc.Name,
 			vmID,
 			deployedLocal,
-			netToId[fujiKey][0],
-			netToId[mainKey][0],
+			netToID[fujiKey][0],
+			netToID[mainKey][0],
 		})
 
 		if !singleLine {
@@ -223,8 +223,8 @@ func listDeployInfo(cmd *cobra.Command, args []string) error {
 				sc.Name,
 				vmID,
 				deployedLocal,
-				netToId[fujiKey][1],
-				netToId[mainKey][1],
+				netToID[fujiKey][1],
+				netToID[mainKey][1],
 			})
 		}
 	}
