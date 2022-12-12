@@ -58,7 +58,7 @@ Testnet or Mainnet.`,
 	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate add validator tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the add validator tx")
-	cmd.Flags().BoolVarP(&firstLedgerAddress, "ledger", "g", false, "use first ledger address")
+	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	return cmd
 }
@@ -95,12 +95,10 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if firstLedgerAddress && len(ledgerAddresses) > 0 {
-		return ErrMutuallyExlusiveLedgerEsp
-	}
-	if firstLedgerAddress || len(ledgerAddresses) > 0 {
+	if len(ledgerAddresses) > 0 {
 		useLedger = true
 	}
+
 	if useLedger && keyName != "" {
 		return ErrMutuallyExlusiveKeyLedger
 	}
@@ -125,13 +123,6 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	// used in E2E to simulate public network execution paths on a local network
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
 		network = models.Local
-	}
-
-	if useLedger && len(ledgerAddresses) == 0 && !firstLedgerAddress {
-		firstLedgerAddress, ledgerAddresses, err = CaptureLedgerAddress(network)
-		if err != nil {
-			return err
-		}
 	}
 
 	chains, err := validateSubnetNameAndGetChains(args)
@@ -201,7 +192,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
 	// get keychain accesor
-	kc, err := GetKeychain(firstLedgerAddress, ledgerAddresses, keyName, network)
+	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
 	if err != nil {
 		return err
 	}

@@ -51,13 +51,11 @@ var (
 	userProvidedAvagoVersion string
 	outputTxPath             string
 	useLedger                bool
-	firstLedgerAddress       bool
 	ledgerAddresses          []string
 
 	errMutuallyExlusiveNetworks    = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
-	ErrMutuallyExlusiveLedgerEsp   = errors.New("--ledger and --ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet          = errors.New("--key is not available for mainnet operations")
 )
 
@@ -91,7 +89,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may make subnet changes")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate chain creation")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
-	cmd.Flags().BoolVarP(&firstLedgerAddress, "ledger", "g", false, "use first ledger address")
+	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	return cmd
 }
@@ -208,12 +206,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	genesisPath := app.GetGenesisPath(chain)
 
-	if firstLedgerAddress && len(ledgerAddresses) > 0 {
-		return ErrMutuallyExlusiveLedgerEsp
-	}
-	if firstLedgerAddress || len(ledgerAddresses) > 0 {
+	if len(ledgerAddresses) > 0 {
 		useLedger = true
 	}
+
 	if useLedger && keyName != "" {
 		return ErrMutuallyExlusiveKeyLedger
 	}
@@ -286,17 +282,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		network = models.Local
 	}
 
-	if useLedger && len(ledgerAddresses) == 0 && !firstLedgerAddress {
-		firstLedgerAddress, ledgerAddresses, err = CaptureLedgerAddress(network)
-		if err != nil {
-			return err
-		}
-	}
-
 	// from here on we are assuming a public deploy
 
 	// get keychain accesor
-	kc, err := GetKeychain(firstLedgerAddress, ledgerAddresses, keyName, network)
+	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
 	if err != nil {
 		return err
 	}
@@ -662,14 +651,14 @@ func PrintRemainingToSignMsg(
 }
 
 func GetKeychain(
-	firstLedgerAddress bool,
+	useLedger bool,
 	ledgerAddresses []string,
 	keyName string,
 	network models.Network,
 ) (keychain.Keychain, error) {
 	// get keychain accesor
 	var kc keychain.Keychain
-	if firstLedgerAddress || len(ledgerAddresses) > 0 {
+	if useLedger {
 		ledgerDevice, err := ledger.New()
 		if err != nil {
 			return kc, err
@@ -678,7 +667,7 @@ func GetKeychain(
 		ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
 		var addrStrs []string
 		var ledgerIndices []uint32
-		if firstLedgerAddress {
+		if len(ledgerAddresses) == 0 {
 			// get addr at index 0
 			ledgerIndices = []uint32{0}
 			addresses, err := ledgerDevice.Addresses(ledgerIndices)
@@ -775,30 +764,6 @@ func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFu
 	}
 	table.Render()
 	return nil
-}
-
-func CaptureLedgerAddress(network models.Network) (bool, []string, error) {
-	ledgerAddresses := []string{}
-	const (
-		firstAddr  = "Address at index 0"
-		customAddr = "Custom address"
-	)
-	option, err := app.Prompt.CaptureList(
-		"Pick an address to use:",
-		[]string{firstAddr, customAddr},
-	)
-	if err != nil {
-		return false, []string{}, err
-	}
-	if option == customAddr {
-		addressPrompt := "Enter P-Chain address (Example: P-...)"
-		addr, err := app.Prompt.CapturePChainAddress(addressPrompt, network)
-		if err != nil {
-			return false, []string{}, err
-		}
-		ledgerAddresses = []string{addr}
-	}
-	return option == firstAddr, ledgerAddresses, nil
 }
 
 // Determines the appropriate version of avalanchego to run with. Returns an error if
