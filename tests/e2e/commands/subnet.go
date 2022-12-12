@@ -423,7 +423,6 @@ func SimulateMainnetAddValidator(
 		SubnetCmd,
 		"addValidator",
 		"--mainnet",
-		"--ledger",
 		"--nodeID",
 		nodeID,
 		"--start-time",
