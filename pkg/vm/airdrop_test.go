@@ -17,7 +17,7 @@ import (
 var testAirdropAddress = common.HexToAddress("0x098B69E43b1720Bd12378225519d74e5F3aD0eA5")
 
 func TestGetAllocationCustomUnits(t *testing.T) {
-	assert := setupTest(t)
+	require := setupTest(t)
 	app := application.New()
 	mockPrompt := &mocks.Prompter{}
 	app.Prompt = mockPrompt
@@ -34,8 +34,8 @@ func TestGetAllocationCustomUnits(t *testing.T) {
 	mockPrompt.On("CaptureNoYes", mock.Anything).Return(false, nil)
 
 	alloc, direction, err := getEVMAllocation(app)
-	assert.NoError(err)
-	assert.Equal(direction, statemachine.Forward)
+	require.NoError(err)
+	require.Equal(direction, statemachine.Forward)
 
-	assert.Equal(alloc[testAirdropAddress].Balance, expectedAmount)
+	require.Equal(alloc[testAirdropAddress].Balance, expectedAmount)
 }

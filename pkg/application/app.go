@@ -124,6 +124,14 @@ func (app *Avalanche) GetKeyPath(keyName string) string {
 	return filepath.Join(app.baseDir, constants.KeyDir, keyName+constants.KeySuffix)
 }
 
+func (app *Avalanche) GetDownloader() Downloader {
+	return app.Downloader
+}
+
+func (app *Avalanche) GetAvalanchegoCompatibilityURL() string {
+	return constants.AvalancheGoCompatibilityURL
+}
+
 func (app *Avalanche) WriteGenesisFile(subnetName string, genesisBytes []byte) error {
 	genesisPath := app.GetGenesisPath(subnetName)
 	if err := os.MkdirAll(filepath.Dir(genesisPath), constants.DefaultPerms755); err != nil {

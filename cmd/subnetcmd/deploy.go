@@ -835,7 +835,8 @@ func checkForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.Statu
 		}
 	} else if userProvidedAvagoVersion == "latest" {
 		// find latest avago version for this rpc version
-		desiredAvagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(app, configuredRPCVersion)
+		desiredAvagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(
+			app, configuredRPCVersion, constants.AvalancheGoCompatibilityURL)
 		if err != nil {
 			return "", err
 		}

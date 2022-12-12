@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/platformvm/validator"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -257,7 +258,7 @@ func (d *PublicDeployer) createAndIssueBlockchainTx(
 func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []ids.ShortID) ([]common.Option, error) {
 	options := []common.Option{}
 	// addrs to use for signing
-	customAddrsSet := ids.ShortSet{}
+	customAddrsSet := set.Set[ids.ShortID]{}
 	customAddrsSet.Add(subnetAuthKeys...)
 	options = append(options, common.WithCustomAddresses(customAddrsSet))
 	// set change to go to wallet addr (instead of any other subnet auth key)

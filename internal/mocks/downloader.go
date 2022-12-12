@@ -32,6 +32,29 @@ func (_m *Downloader) Download(url string) ([]byte, error) {
 	return r0, r1
 }
 
+// GetAllReleasesForRepo provides a mock function with given fields: org, repo
+func (_m *Downloader) GetAllReleasesForRepo(org string, repo string) ([]string, error) {
+	ret := _m.Called(org, repo)
+
+	var r0 []string
+	if rf, ok := ret.Get(0).(func(string, string) []string); ok {
+		r0 = rf(org, repo)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(org, repo)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetLatestReleaseVersion provides a mock function with given fields: releaseURL
 func (_m *Downloader) GetLatestReleaseVersion(releaseURL string) (string, error) {
 	ret := _m.Called(releaseURL)
