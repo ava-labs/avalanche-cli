@@ -318,7 +318,6 @@ func SimulateMainnetDeploy(
 		SubnetCmd,
 		"deploy",
 		"--mainnet",
-		"--ledger",
 		"--threshold",
 		"1",
 		"--same-control-key",
