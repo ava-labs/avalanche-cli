@@ -182,21 +182,27 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	// if a chainConfig has been configured
 	var (
-		chainConfig     string
-		chainConfigFile = filepath.Join(d.app.GetSubnetDir(), chain, constants.ChainConfigFileName)
+		chainConfig            string
+		chainConfigFile        = filepath.Join(d.app.GetSubnetDir(), chain, constants.ChainConfigFileName)
+		perNodeChainConfig     string
+		perNodeChainConfigFile = filepath.Join(d.app.GetSubnetDir(), chain, constants.PerNodeChainConfigFileName)
 	)
 	if _, err := os.Stat(chainConfigFile); err == nil {
 		// currently the ANR only accepts the file as a path, not its content
 		chainConfig = chainConfigFile
 	}
+	if _, err := os.Stat(perNodeChainConfigFile); err == nil {
+		perNodeChainConfig = perNodeChainConfigFile
+	}
 	// create a new blockchain on the already started network, associated to
 	// the given VM ID, genesis, and available subnet ID
 	blockchainSpecs := []*rpcpb.BlockchainSpec{
 		{
-			VmName:      chain,
-			Genesis:     genesisPath,
-			SubnetId:    &subnetIDStr,
-			ChainConfig: chainConfig,
+			VmName:             chain,
+			Genesis:            genesisPath,
+			SubnetId:           &subnetIDStr,
+			ChainConfig:        chainConfig,
+			PerNodeChainConfig: perNodeChainConfig,
 		},
 	}
 	deployBlockchainsInfo, err := cli.CreateBlockchains(
