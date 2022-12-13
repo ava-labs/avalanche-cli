@@ -679,6 +679,7 @@ func GetKeychain(
 				return kc, err
 			}
 		}
+		fmt.Println(ledgerIndices)
 		// get formatted addresses for ux
 		addresses, err := ledgerDevice.Addresses(ledgerIndices)
 		if err != nil {
@@ -706,37 +707,37 @@ func GetKeychain(
 }
 
 func getLedgerIndices(ledgerDevice ledger.Ledger, addressesStr []string) ([]uint32, error) {
-	// get numLedgerAddressesToSearch addresses from the ledger
-	searchIndices := []uint32{}
-	for i := 0; i < numLedgerAddressesToSearch; i++ {
-		searchIndices = append(searchIndices, uint32(i))
-	}
-	searchAddresses, err := ledgerDevice.Addresses(searchIndices)
-	if err != nil {
-		return []uint32{}, err
-	}
-	if len(searchAddresses) != len(searchIndices) {
-		return []uint32{}, fmt.Errorf("invalid number of ledger addresses: expected %d got %d",
-			len(searchIndices), len(searchAddresses))
-	}
-	// get indices for the given addressesStr
-	ledgerIndices := []uint32{}
 	addresses, err := address.ParseToIDs(addressesStr)
 	if err != nil {
 		return []uint32{}, fmt.Errorf("failure parsing given ledger addresses: %w", err)
 	}
-	for i, addr := range addresses {
-		found := false
-		for searchIndex, searchAddr := range searchAddresses {
-			if addr == searchAddr {
-				found = true
-				ledgerIndices = append(ledgerIndices, uint32(searchIndex))
-				break
+	// maps the indices of addresses to their corresponding ledger indices
+	indexMap := map[int]uint32{}
+	// for all ledger indices to search for, find if the ledger address belongs to the input
+	// addresses and, if so, add the index pair to indexMap, breaking the loop if
+	// all addresses were found
+	for ledgerIndex := uint32(0); ledgerIndex < numLedgerAddressesToSearch; ledgerIndex++ {
+		ledgerAddress, err := ledgerDevice.Addresses([]uint32{ledgerIndex})
+		if err != nil {
+			return []uint32{}, err
+		}
+		for addressesIndex, addr := range addresses {
+			if addr == ledgerAddress[0] {
+				indexMap[addressesIndex] = ledgerIndex
 			}
 		}
-		if !found {
-			return []uint32{}, fmt.Errorf("address %s not found on ledger", addressesStr[i])
+		if len(indexMap) == len(addresses) {
+			break
 		}
+	}
+	// create ledgerIndices from indexMap
+	ledgerIndices := []uint32{}
+	for addressesIndex := range addresses {
+		ledgerIndex, ok := indexMap[addressesIndex]
+		if !ok {
+			return []uint32{}, fmt.Errorf("address %s not found on ledger", addressesStr[addressesIndex])
+		}
+		ledgerIndices = append(ledgerIndices, ledgerIndex)
 	}
 	return ledgerIndices, nil
 }
