@@ -58,6 +58,32 @@ func GetAPMDir() string {
 	return path.Join(usr.HomeDir, constants.APMDir)
 }
 
+func ChainConfigExists(subnetName string) (bool, error) {
+	cfgPath := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.ChainConfigFileName)
+	cfgExists := true
+	if _, err := os.Stat(cfgPath); errors.Is(err, os.ErrNotExist) {
+		// does *not* exist
+		cfgExists = false
+	} else if err != nil {
+		// Schrodinger: file may or may not exist. See err for details.
+		return false, err
+	}
+	return cfgExists, nil
+}
+
+func PerNodeChainConfigExists(subnetName string) (bool, error) {
+	cfgPath := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.PerNodeChainConfigFileName)
+	cfgExists := true
+	if _, err := os.Stat(cfgPath); errors.Is(err, os.ErrNotExist) {
+		// does *not* exist
+		cfgExists = false
+	} else if err != nil {
+		// Schrodinger: file may or may not exist. See err for details.
+		return false, err
+	}
+	return cfgExists, nil
+}
+
 func genesisExists(subnetName string) (bool, error) {
 	genesis := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.GenesisFileName)
 	genesisExists := true
