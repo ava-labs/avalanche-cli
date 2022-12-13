@@ -523,6 +523,7 @@ type NodeInfo struct {
 	PluginDir  string
 	ConfigFile string
 	URI        string
+	LogDir     string
 }
 
 func GetNodesInfo() (map[string]NodeInfo, error) {
@@ -544,6 +545,7 @@ func GetNodesInfo() (map[string]NodeInfo, error) {
 			PluginDir:  nodeInfo.PluginDir,
 			ConfigFile: path.Join(path.Dir(nodeInfo.LogDir), "config.json"),
 			URI:        nodeInfo.Uri,
+			LogDir:     nodeInfo.LogDir,
 		}
 	}
 	return nodesInfo, nil
