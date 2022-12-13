@@ -658,6 +658,10 @@ func GetKeychain(
 ) (keychain.Keychain, error) {
 	// get keychain accesor
 	var kc keychain.Keychain
+	networkID, err := network.NetworkID()
+	if err != nil {
+		return kc, err
+	}
 	if useLedger {
 		ledgerDevice, err := ledger.New()
 		if err != nil {
@@ -665,41 +669,34 @@ func GetKeychain(
 		}
 		// ask for addresses here to print user msg for ledger interaction
 		ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
-		var addrStrs []string
+		// set ledger indices
 		var ledgerIndices []uint32
 		if len(ledgerAddresses) == 0 {
-			// get addr at index 0
 			ledgerIndices = []uint32{0}
-			addresses, err := ledgerDevice.Addresses(ledgerIndices)
-			if err != nil {
-				return kc, err
-			}
-			addr := addresses[0]
-			networkID, err := network.NetworkID()
-			if err != nil {
-				return kc, err
-			}
-			addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
-			if err != nil {
-				return kc, err
-			}
-			addrStrs = []string{addrStr}
 		} else {
 			ledgerIndices, err = getLedgerIndices(ledgerDevice, ledgerAddresses)
 			if err != nil {
 				return kc, err
 			}
-			addrStrs = ledgerAddresses
+		}
+		// get formatted addresses for ux
+		addresses, err := ledgerDevice.Addresses(ledgerIndices)
+		if err != nil {
+			return kc, err
+		}
+		addrStrs := []string{}
+		for _, addr := range addresses {
+			addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
+			if err != nil {
+				return kc, err
+			}
+			addrStrs = append(addrStrs, addrStr)
 		}
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Ledger addresses: "))
 		for _, addrStr := range addrStrs {
 			ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("  %s", addrStr)))
 		}
 		return keychain.NewLedgerKeychainFromIndices(ledgerDevice, ledgerIndices)
-	}
-	networkID, err := network.NetworkID()
-	if err != nil {
-		return kc, err
 	}
 	sf, err := key.LoadSoft(networkID, app.GetKeyPath(keyName))
 	if err != nil {
