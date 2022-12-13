@@ -679,7 +679,6 @@ func GetKeychain(
 				return kc, err
 			}
 		}
-		fmt.Println(ledgerIndices)
 		// get formatted addresses for ux
 		addresses, err := ledgerDevice.Addresses(ledgerIndices)
 		if err != nil {
