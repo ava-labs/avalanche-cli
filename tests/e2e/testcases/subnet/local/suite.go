@@ -231,12 +231,13 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 	ginkgo.It("can deploy with custom per chain config node", func() {
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 
-		perNodeChainConfig := "{" +
-			"\"node1\": {\"rpc-tx-fee-cap\": 101}" +
-			"\"node2\": {\"rpc-tx-fee-cap\": 102}" +
-			"\"node3\": {\"rpc-tx-fee-cap\": 103}" +
-			"\"node4\": {\"rpc-tx-fee-cap\": 104}" +
-			"\"node5\": {\"rpc-tx-fee-cap\": 105}"
+		perNodeChainConfig := "{\n" +
+			"  \"node1\": {\"rpc-tx-fee-cap\": 101},\n" +
+			"  \"node2\": {\"rpc-tx-fee-cap\": 102},\n" +
+			"  \"node3\": {\"rpc-tx-fee-cap\": 103},\n" +
+			"  \"node4\": {\"rpc-tx-fee-cap\": 104},\n" +
+			"  \"node5\": {\"rpc-tx-fee-cap\": 105}\n" +
+			"}\n"
 
 		// create a chain config in tmp
 		file, err := os.CreateTemp("", constants.PerNodeChainConfigFileName+"*")
