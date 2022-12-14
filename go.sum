@@ -76,8 +76,8 @@ github.com/ava-labs/avalanchego v1.9.4 h1:z5tE/vUGzUQflqv3mn6X5E1VTCZHYhuD36idOy
 github.com/ava-labs/avalanchego v1.9.4/go.mod h1:H4pMTYzgudfPs9WX+KXI0nCiUGNkdgPWOwm1nqzGibQ=
 github.com/ava-labs/coreth v0.11.4 h1:WIP3LcDvag8h1ydyGsMIHhVjyRaNHEFd673jcE9z+vo=
 github.com/ava-labs/coreth v0.11.4/go.mod h1:HFu7INBEQh2Zv/pc50nIMAqYFJKJLqYVtTtPMwZu6N4=
-github.com/ava-labs/spacesvm v0.0.13 h1:bd9+GvotIMMMAqEwqrjtppNjdCn1rJRPpak5RH5YC94=
-github.com/ava-labs/spacesvm v0.0.13/go.mod h1:H6qrXFdjp/SLedxS1k0choFQgADZnPNvLhXP4MQ0vRw=
+github.com/ava-labs/spacesvm v0.0.14 h1:eUD7zwZjA/yaayLXUm55pt2CUNjSnscvifwtNdSnClA=
+github.com/ava-labs/spacesvm v0.0.14/go.mod h1:H6qrXFdjp/SLedxS1k0choFQgADZnPNvLhXP4MQ0vRw=
 github.com/ava-labs/subnet-evm v0.4.5 h1:vw9cA6f2L2SH0wibTKAb1dSql9Te/D0unHI4qBLwYAE=
 github.com/ava-labs/subnet-evm v0.4.5/go.mod h1:7XSYfwL0GmFJxPw2/mwZ4JTMjQK6ny3aqu+kGr0BrIc=
 github.com/benbjohnson/clock v1.3.0 h1:ip6w0uFQkncKQ979AypyG0ER7mqUSBdKLOgAle/AT8A=
