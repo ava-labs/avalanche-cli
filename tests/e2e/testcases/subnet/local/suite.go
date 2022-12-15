@@ -237,7 +237,7 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 
 		// create per node chain config
-		nodesRpcTxFeeCap := map[string]string{
+		nodesRPCTxFeeCap := map[string]string{
 			"node1": "101",
 			"node2": "102",
 			"node3": "103",
@@ -246,9 +246,9 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		}
 		perNodeChainConfig := "{\n"
 		i := 0
-		for nodeName, rpcTxFeeCap := range nodesRpcTxFeeCap {
+		for nodeName, rpcTxFeeCap := range nodesRPCTxFeeCap {
 			commaStr := ","
-			if i == len(nodesRpcTxFeeCap)-1 {
+			if i == len(nodesRPCTxFeeCap)-1 {
 				commaStr = ""
 			}
 			perNodeChainConfig += fmt.Sprintf("  \"%s\": {\"rpc-tx-fee-cap\": %s}%s\n", nodeName, rpcTxFeeCap, commaStr)
@@ -284,14 +284,13 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 			logFile := path.Join(nodeInfo.LogDir, blockchainID+".log")
 			fileBytes, err := os.ReadFile(logFile)
 			gomega.Expect(err).Should(gomega.BeNil())
-			rpcTxFeeCap, ok := nodesRpcTxFeeCap[nodeName]
+			rpcTxFeeCap, ok := nodesRPCTxFeeCap[nodeName]
 			gomega.Expect(ok).Should(gomega.BeTrue())
 			gomega.Expect(fileBytes).Should(gomega.ContainSubstring("RPCTxFeeCap:%s", rpcTxFeeCap))
 		}
 
 		commands.DeleteSubnetConfig(subnetName)
 	})
-
 })
 
 var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
