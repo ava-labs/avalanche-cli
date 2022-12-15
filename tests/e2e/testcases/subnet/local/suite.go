@@ -182,6 +182,7 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 			commands.DeleteSubnetConfig(secondSubnetName)
 		})
 
+	*/
 		ginkgo.It("can deploy custom chain config", func() {
 			commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmAllowFeeRecpPath)
 
@@ -226,7 +227,6 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 
 			commands.DeleteSubnetConfig(subnetName)
 		})
-	*/
 
 	ginkgo.It("can deploy with custom per chain config node", func() {
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
