@@ -160,7 +160,7 @@ func ensureAdminsHaveBalance(admins []common.Address, alloc core.GenesisAlloc) e
 			return nil
 		}
 	}
-	return errors.New("could not find any admin in the TxAllowListConfig which is funded")
+	return errors.New("none of the addresses in the transaction allow list precompile have any tokens allocated to them. Currently, no address can transact on the network. Airdrop some funds to one of the allow list addresses to continue")
 }
 
 // In own function to facilitate testing
