@@ -5,6 +5,7 @@ package commands
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -132,12 +133,14 @@ func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) 
 		subnetName,
 	)
 	output, err := cmd.CombinedOutput()
-	exitErr, typeOk := err.(*exec.ExitError)
-	stderr := ""
-	if typeOk {
-		stderr = string(exitErr.Stderr)
-	}
 	if err != nil {
+		var (
+			exitErr *exec.ExitError
+			stderr  string
+		)
+		if errors.As(err, &exitErr) {
+			stderr = string(exitErr.Stderr)
+		}
 		fmt.Println(string(output))
 		fmt.Println(err)
 		fmt.Println(stderr)
@@ -223,12 +226,14 @@ func DeploySubnetLocallyWithArgs(subnetName string, version string, confPath str
 	}
 	cmd := exec.Command(CLIBinary, cmdArgs...)
 	output, err := cmd.CombinedOutput()
-	exitErr, typeOk := err.(*exec.ExitError)
-	stderr := ""
-	if typeOk {
-		stderr = string(exitErr.Stderr)
-	}
 	if err != nil {
+		var (
+			exitErr *exec.ExitError
+			stderr  string
+		)
+		if errors.As(err, &exitErr) {
+			stderr = string(exitErr.Stderr)
+		}
 		fmt.Println(string(output))
 		fmt.Println(err)
 		fmt.Println(stderr)
@@ -577,12 +582,14 @@ func ImportSubnetConfig(repoAlias string, subnetName string) {
 		subnetName,
 	)
 	output, err := cmd.CombinedOutput()
-	exitErr, typeOk := err.(*exec.ExitError)
-	stderr := ""
-	if typeOk {
-		stderr = string(exitErr.Stderr)
-	}
 	if err != nil {
+		var (
+			exitErr *exec.ExitError
+			stderr  string
+		)
+		if errors.As(err, &exitErr) {
+			stderr = string(exitErr.Stderr)
+		}
 		fmt.Println(string(output))
 		fmt.Println(err)
 		fmt.Println(stderr)
@@ -622,12 +629,14 @@ func ImportSubnetConfigFromURL(repoURL string, branch string, subnetName string)
 		subnetName,
 	)
 	output, err := cmd.CombinedOutput()
-	exitErr, typeOk := err.(*exec.ExitError)
-	stderr := ""
-	if typeOk {
-		stderr = string(exitErr.Stderr)
-	}
 	if err != nil {
+		var (
+			exitErr *exec.ExitError
+			stderr  string
+		)
+		if errors.As(err, &exitErr) {
+			stderr = string(exitErr.Stderr)
+		}
 		fmt.Println(string(output))
 		fmt.Println(err)
 		fmt.Println(stderr)
@@ -663,12 +672,12 @@ func SimulateGetSubnetStatsFuji(subnetName, subnetID string) string {
 		"--fuji",
 	)
 	output, err := cmd.CombinedOutput()
-	exitErr, typeOk := err.(*exec.ExitError)
-	stderr := ""
-	if typeOk {
-		stderr = string(exitErr.Stderr)
-	}
+	var exitErr *exec.ExitError
 	if err != nil {
+		stderr := ""
+		if errors.As(err, &exitErr) {
+			stderr = string(exitErr.Stderr)
+		}
 		fmt.Println(string(output))
 		fmt.Println(err)
 		fmt.Println(stderr)

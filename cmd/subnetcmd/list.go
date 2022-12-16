@@ -130,7 +130,7 @@ func getSidecars(app *application.Avalanche) ([]*models.Sidecar, error) {
 	return cars, nil
 }
 
-func listDeployInfo(cmd *cobra.Command, args []string) error {
+func listDeployInfo(*cobra.Command, []string) error {
 	header := []string{"subnet", "chain", "vm ID", "Local Network", "Fuji (testnet)", "Mainnet"}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)

@@ -376,9 +376,11 @@ func RunHardhatScript(script string) (string, string, error) {
 	cmd := exec.Command("npx", "hardhat", "run", script, "--network", "subnet")
 	cmd.Dir = hardhatDir
 	output, err := cmd.CombinedOutput()
-	exitErr, typeOk := err.(*exec.ExitError)
-	stderr := ""
-	if typeOk {
+	var (
+		exitErr *exec.ExitError
+		stderr  string
+	)
+	if errors.As(err, &exitErr) {
 		stderr = string(exitErr.Stderr)
 	}
 	if err != nil {
@@ -389,8 +391,8 @@ func RunHardhatScript(script string) (string, string, error) {
 }
 
 func PrintStdErr(err error) {
-	exitErr, typeOk := err.(*exec.ExitError)
-	if typeOk {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
 		fmt.Println(string(exitErr.Stderr))
 	}
 }
