@@ -211,7 +211,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 				return ids.Empty, ids.Empty, err
 			}
 			chainConfigContentMap[chain] = chains.ChainConfig{
-				Config: []byte(nodeChainConfigBytes),
+				Config: nodeChainConfigBytes,
 			}
 			chainConfigContent, err := json.Marshal(chainConfigContentMap)
 			if err != nil {
