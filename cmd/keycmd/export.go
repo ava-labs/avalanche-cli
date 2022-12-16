@@ -35,7 +35,7 @@ flag, the command writes the key to a file of your choosing.`,
 	return cmd
 }
 
-func exportKey(cmd *cobra.Command, args []string) error {
+func exportKey(_ *cobra.Command, args []string) error {
 	keyName := args[0]
 
 	keyPath := app.GetKeyPath(keyName)

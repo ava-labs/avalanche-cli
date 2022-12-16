@@ -197,7 +197,7 @@ func installTarGzArchive(targz []byte, binDir string) error {
 }
 
 // ExistsWithVersion returns true if the supplied binary is installed with the supplied version
-func (abc *binaryChecker) ExistsWithVersion(binDir, binPrefix, version string) (bool, error) {
+func (*binaryChecker) ExistsWithVersion(binDir, binPrefix, version string) (bool, error) {
 	match, err := filepath.Glob(filepath.Join(binDir, binPrefix) + version)
 	if err != nil {
 		return false, err
@@ -205,7 +205,7 @@ func (abc *binaryChecker) ExistsWithVersion(binDir, binPrefix, version string) (
 	return len(match) != 0, nil
 }
 
-func (d *pluginBinaryDownloader) InstallVM(vmID, vmBin, pluginDir string) error {
+func (*pluginBinaryDownloader) InstallVM(vmID, vmBin, pluginDir string) error {
 	// target of VM install
 	binaryPath := filepath.Join(pluginDir, vmID)
 

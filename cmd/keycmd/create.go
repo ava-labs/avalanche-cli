@@ -21,7 +21,7 @@ var (
 	filename    string
 )
 
-func createKey(cmd *cobra.Command, args []string) error {
+func createKey(_ *cobra.Command, args []string) error {
 	keyName := args[0]
 
 	if match, _ := regexp.MatchString("\\s", keyName); match {

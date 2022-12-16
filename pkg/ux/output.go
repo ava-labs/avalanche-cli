@@ -32,7 +32,7 @@ func NewUserLog(log logging.Logger, userwriter io.Writer) {
 // PrintToUser prints msg directly on the screen, but also to log file
 func (ul *UserLog) PrintToUser(msg string, args ...interface{}) {
 	formattedMsg := fmt.Sprintf(msg, args...)
-	fmt.Fprintln(ul.writer, formattedMsg)
+	_, _ = fmt.Fprintln(ul.writer, formattedMsg)
 	ul.log.Info(formattedMsg)
 }
 

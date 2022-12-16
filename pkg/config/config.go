@@ -15,7 +15,9 @@ func New() *Config {
 	return &Config{}
 }
 
-func (c *Config) LoadNodeConfig() (string, error) {
+// TODO should this be a function instead of a method?
+// We're not using the *Config here.
+func (*Config) LoadNodeConfig() (string, error) {
 	globalConfigs := viper.GetStringMap("node-config")
 	if len(globalConfigs) == 0 {
 		return "", nil

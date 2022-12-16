@@ -280,11 +280,11 @@ func (*realPrompter) CaptureID(promptStr string) (ids.ID, error) {
 		Validate: validateID,
 	}
 
-	IDStr, err := prompt.Run()
+	idStr, err := prompt.Run()
 	if err != nil {
 		return ids.Empty, err
 	}
-	return ids.FromString(IDStr)
+	return ids.FromString(idStr)
 }
 
 func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {

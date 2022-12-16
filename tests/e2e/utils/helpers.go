@@ -205,13 +205,13 @@ func DeleteConfigs(subnetName string) error {
 	}
 
 	// ignore error, file may not exist
-	os.RemoveAll(subnetDir)
+	_ = os.RemoveAll(subnetDir)
 
 	return nil
 }
 
 func RemoveAPMRepo() {
-	os.RemoveAll(GetAPMDir())
+	_ = os.RemoveAll(GetAPMDir())
 }
 
 func DeleteKey(keyName string) error {
@@ -222,7 +222,7 @@ func DeleteKey(keyName string) error {
 	}
 
 	// ignore error, file may not exist
-	os.Remove(keyPath)
+	_ = os.Remove(keyPath)
 
 	return nil
 }
@@ -235,7 +235,7 @@ func DeleteBins() error {
 	}
 
 	// ignore error, file may not exist
-	os.RemoveAll(avagoPath)
+	_ = os.RemoveAll(avagoPath)
 
 	subevmPath := path.Join(GetBaseDir(), constants.AvalancheCliBinDir, constants.SubnetEVMInstallDir)
 	if _, err := os.Stat(subevmPath); err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -244,7 +244,7 @@ func DeleteBins() error {
 	}
 
 	// ignore error, file may not exist
-	os.RemoveAll(subevmPath)
+	_ = os.RemoveAll(subevmPath)
 
 	return nil
 }
@@ -252,14 +252,14 @@ func DeleteBins() error {
 func DeleteCustomBinary(vmName string) {
 	vmPath := path.Join(GetBaseDir(), constants.VMDir, vmName)
 	// ignore error, file may not exist
-	os.RemoveAll(vmPath)
+	_ = os.RemoveAll(vmPath)
 }
 
 func DeleteAPMBin(vmid string) {
 	vmPath := path.Join(GetBaseDir(), constants.AvalancheCliBinDir, constants.APMPluginDir, vmid)
 
 	// ignore error, file may not exist
-	os.RemoveAll(vmPath)
+	_ = os.RemoveAll(vmPath)
 }
 
 func stdoutParser(output string, queue string, capture string) (string, error) {

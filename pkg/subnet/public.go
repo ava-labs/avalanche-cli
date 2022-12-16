@@ -312,7 +312,7 @@ func (d *PublicDeployer) createAddSubnetValidatorTx(
 	return &tx, nil
 }
 
-func (d *PublicDeployer) signTx(
+func (*PublicDeployer) signTx(
 	tx *txs.Tx,
 	wallet primary.Wallet,
 ) error {

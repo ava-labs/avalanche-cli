@@ -111,7 +111,11 @@ func (ins *innerSortTransferableInputsWithSigners) Less(i, j int) bool {
 		return false
 	}
 }
-func (ins *innerSortTransferableInputsWithSigners) Len() int { return len(ins.ins) }
+
+func (ins *innerSortTransferableInputsWithSigners) Len() int {
+	return len(ins.ins)
+}
+
 func (ins *innerSortTransferableInputsWithSigners) Swap(i, j int) {
 	ins.ins[j], ins.ins[i] = ins.ins[i], ins.ins[j]
 	ins.signers[j], ins.signers[i] = ins.signers[i], ins.signers[j]

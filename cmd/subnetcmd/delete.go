@@ -21,7 +21,7 @@ func newDeleteCmd() *cobra.Command {
 	}
 }
 
-func deleteSubnet(cmd *cobra.Command, args []string) error {
+func deleteSubnet(_ *cobra.Command, args []string) error {
 	// TODO sanitize this input
 	subnetName := args[0]
 	subnetDir := filepath.Join(app.GetSubnetDir(), subnetName)
@@ -34,10 +34,12 @@ func deleteSubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	if sidecar.VM == models.CustomVM {
-		if _, err := os.Stat(customVMPath); err == nil {
-			// exists
-			os.Remove(customVMPath)
-		} else {
+		if _, err := os.Stat(customVMPath); err != nil {
+			return err
+		}
+
+		// exists
+		if err := os.Remove(customVMPath); err != nil {
 			return err
 		}
 	}
@@ -48,12 +50,13 @@ func deleteSubnet(cmd *cobra.Command, args []string) error {
 	// but only if no other subnet is using it.
 	// More info: https://github.com/ava-labs/avalanche-cli/issues/246
 
-	if _, err := os.Stat(subnetDir); err == nil {
-		// exists
-		os.RemoveAll(subnetDir)
-	} else {
+	if _, err := os.Stat(subnetDir); err != nil {
 		return err
 	}
 
+	// exists
+	if err := os.RemoveAll(subnetDir); err != nil {
+		return err
+	}
 	return nil
 }

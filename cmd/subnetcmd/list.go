@@ -37,11 +37,18 @@ func newListCmd() *cobra.Command {
 
 type subnetMatrix [][]string
 
-func (c subnetMatrix) Len() int      { return len(c) }
-func (c subnetMatrix) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
+func (c subnetMatrix) Len() int {
+	return len(c)
+}
+
+func (c subnetMatrix) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
+}
 
 // Compare strings by first key of the sub-slice
-func (c subnetMatrix) Less(i, j int) bool { return strings.Compare(c[i][0], c[j][0]) == -1 }
+func (c subnetMatrix) Less(i, j int) bool {
+	return strings.Compare(c[i][0], c[j][0]) == -1
+}
 
 func listSubnets(cmd *cobra.Command, args []string) error {
 	if deployed {

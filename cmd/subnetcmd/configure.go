@@ -36,7 +36,7 @@ can have its own chain config. This command allows you to set both config files.
 	return cmd
 }
 
-func configure(cmd *cobra.Command, args []string) error {
+func configure(_ *cobra.Command, args []string) error {
 	chains, err := validateSubnetNameAndGetChains(args)
 	if err != nil {
 		return err

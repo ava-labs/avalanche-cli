@@ -68,7 +68,7 @@ in with avalanche subnet create myNewSubnet.`,
 	return rootCmd
 }
 
-func createApp(cmd *cobra.Command, args []string) error {
+func createApp(cmd *cobra.Command, _ []string) error {
 	baseDir, err := setupEnv()
 	if err != nil {
 		return err

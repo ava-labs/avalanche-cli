@@ -63,7 +63,7 @@ Testnet or Mainnet.`,
 	return cmd
 }
 
-func addValidator(cmd *cobra.Command, args []string) error {
+func addValidator(_ *cobra.Command, args []string) error {
 	var (
 		nodeID ids.NodeID
 		start  time.Time
