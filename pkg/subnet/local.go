@@ -4,6 +4,7 @@ package subnet
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,6 +28,8 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
+	"github.com/ava-labs/avalanchego/chains"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/coreth/params"
@@ -126,28 +129,6 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	runDir := d.app.GetRunDir()
 
-    perNodeChainConfigFile := filepath.Join(d.app.GetSubnetDir(), chain, constants.PerNodeChainConfigFileName)
-	if _, err := os.Stat(perNodeChainConfigFile); err == nil {
-        perNodeChainConfigBytes, err := os.ReadFile(perNodeChainConfigFile)
-        if err != nil {
-            return ids.Empty, ids.Empty, err
-        }
-        perNodeChainConfigMap := map[string]interface{}{}
-        if err := json.Unmarshal(perNodeChainConfigBytes, &perNodeChainConfigMap); err != nil {
-            return ids.Empty, ids.Empty, err
-        }
-        for nodeName := range perNodeChainConfigMap {
-            fmt.Println(nodeName)
-            fmt.Println(perNodeChainConfigMap[nodeName])
-            nodeConfig, err := json.Marshal(perNodeChainConfigMap[nodeName])
-            if err != nil {
-                return ids.Empty, ids.Empty, err
-            }
-            fmt.Println(string(nodeConfig))
-        }
-	}
-    return ids.Empty, ids.Empty, fmt.Errorf("pepe")
-
 	ctx := binutils.GetAsyncContext()
 
 	// check for network and get VM info
@@ -204,26 +185,72 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	// if a chainConfig has been configured
 	var (
-		chainConfig            string
-		chainConfigFile        = filepath.Join(d.app.GetSubnetDir(), chain, constants.ChainConfigFileName)
+		chainConfig     string
+		chainConfigFile = filepath.Join(d.app.GetSubnetDir(), chain, constants.ChainConfigFileName)
 	)
 	if _, err := os.Stat(chainConfigFile); err == nil {
 		// currently the ANR only accepts the file as a path, not its content
 		chainConfig = chainConfigFile
 	}
+
+	customNodeConfigs := map[string]string{}
+	perNodeChainConfigFile := filepath.Join(d.app.GetSubnetDir(), chain, constants.PerNodeChainConfigFileName)
+	if _, err := os.Stat(perNodeChainConfigFile); err == nil {
+		perNodeChainConfigBytes, err := os.ReadFile(perNodeChainConfigFile)
+		if err != nil {
+			return ids.Empty, ids.Empty, err
+		}
+		perNodeChainConfigMap := map[string]interface{}{}
+		if err := json.Unmarshal(perNodeChainConfigBytes, &perNodeChainConfigMap); err != nil {
+			return ids.Empty, ids.Empty, err
+		}
+		for nodeName := range perNodeChainConfigMap {
+			chainConfigContentMap := map[string]chains.ChainConfig{}
+			nodeChainConfigBytes, err := json.Marshal(perNodeChainConfigMap[nodeName])
+			if err != nil {
+				return ids.Empty, ids.Empty, err
+			}
+			chainConfigContentMap[chain] = chains.ChainConfig{
+				Config: []byte(nodeChainConfigBytes),
+			}
+			chainConfigContent, err := json.Marshal(chainConfigContentMap)
+			if err != nil {
+				return ids.Empty, ids.Empty, err
+			}
+			encodedChainConfigContent := base64.StdEncoding.EncodeToString(chainConfigContent)
+			flagsMap := map[string]interface{}{}
+			flagsMap[config.ChainConfigContentKey] = encodedChainConfigContent
+			flagsBytes, err := json.Marshal(flagsMap)
+			if err != nil {
+				return ids.Empty, ids.Empty, err
+			}
+			customNodeConfigs[nodeName] = string(flagsBytes)
+		}
+	}
+
+	opts := []client.OpOption{}
+
 	// create a new blockchain on the already started network, associated to
 	// the given VM ID, genesis, and available subnet ID
 	blockchainSpecs := []*rpcpb.BlockchainSpec{
 		{
-			VmName:             chain,
-			Genesis:            genesisPath,
-			SubnetId:           &subnetIDStr,
-			ChainConfig:        chainConfig,
+			VmName:          chain,
+			Genesis:         genesisPath,
+			SubnetId:        &subnetIDStr,
+			ChainConfig:     chainConfig,
+			BlockchainAlias: chain,
 		},
 	}
+
+	if len(customNodeConfigs) > 0 {
+		opts = append(opts, client.WithCustomNodeConfigs(customNodeConfigs))
+		blockchainSpecs[0].BlockchainAlias = chain
+	}
+
 	deployBlockchainsInfo, err := cli.CreateBlockchains(
 		ctx,
 		blockchainSpecs,
+		opts...,
 	)
 	if err != nil {
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to deploy blockchain: %w", err)
