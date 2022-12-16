@@ -126,6 +126,28 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	runDir := d.app.GetRunDir()
 
+    perNodeChainConfigFile := filepath.Join(d.app.GetSubnetDir(), chain, constants.PerNodeChainConfigFileName)
+	if _, err := os.Stat(perNodeChainConfigFile); err == nil {
+        perNodeChainConfigBytes, err := os.ReadFile(perNodeChainConfigFile)
+        if err != nil {
+            return ids.Empty, ids.Empty, err
+        }
+        perNodeChainConfigMap := map[string]interface{}{}
+        if err := json.Unmarshal(perNodeChainConfigBytes, &perNodeChainConfigMap); err != nil {
+            return ids.Empty, ids.Empty, err
+        }
+        for nodeName := range perNodeChainConfigMap {
+            fmt.Println(nodeName)
+            fmt.Println(perNodeChainConfigMap[nodeName])
+            nodeConfig, err := json.Marshal(perNodeChainConfigMap[nodeName])
+            if err != nil {
+                return ids.Empty, ids.Empty, err
+            }
+            fmt.Println(string(nodeConfig))
+        }
+	}
+    return ids.Empty, ids.Empty, fmt.Errorf("pepe")
+
 	ctx := binutils.GetAsyncContext()
 
 	// check for network and get VM info
@@ -184,15 +206,10 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	var (
 		chainConfig            string
 		chainConfigFile        = filepath.Join(d.app.GetSubnetDir(), chain, constants.ChainConfigFileName)
-		perNodeChainConfig     string
-		perNodeChainConfigFile = filepath.Join(d.app.GetSubnetDir(), chain, constants.PerNodeChainConfigFileName)
 	)
 	if _, err := os.Stat(chainConfigFile); err == nil {
 		// currently the ANR only accepts the file as a path, not its content
 		chainConfig = chainConfigFile
-	}
-	if _, err := os.Stat(perNodeChainConfigFile); err == nil {
-		perNodeChainConfig = perNodeChainConfigFile
 	}
 	// create a new blockchain on the already started network, associated to
 	// the given VM ID, genesis, and available subnet ID
@@ -202,7 +219,6 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			Genesis:            genesisPath,
 			SubnetId:           &subnetIDStr,
 			ChainConfig:        chainConfig,
-			PerNodeChainConfig: perNodeChainConfig,
 		},
 	}
 	deployBlockchainsInfo, err := cli.CreateBlockchains(
