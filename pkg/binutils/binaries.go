@@ -111,7 +111,7 @@ func installZipArchive(zipfile []byte, binDir string) error {
 			}
 
 			_, err = io.CopyN(f, rc, maxCopy)
-			if err != nil && errors.Is(err, io.EOF) {
+			if err != nil && !errors.Is(err, io.EOF) {
 				return fmt.Errorf("failed writing zip file entry to disk: %w", err)
 			}
 			if err := f.Close(); err != nil {
