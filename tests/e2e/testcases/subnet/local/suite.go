@@ -10,7 +10,6 @@ import (
 	"os"
 	"path"
 	"strconv"
-	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
@@ -272,16 +271,11 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
 
-		// get blockchain ID
-		rpcParts := strings.Split(rpcs[0], "/")
-		gomega.Expect(rpcParts).Should(gomega.HaveLen(7))
-		blockchainID := rpcParts[5]
-
 		// verify that plugin logs reflect per node configuration
 		nodesInfo, err := utils.GetNodesInfo()
 		gomega.Expect(err).Should(gomega.BeNil())
 		for nodeName, nodeInfo := range nodesInfo {
-			logFile := path.Join(nodeInfo.LogDir, blockchainID+".log")
+			logFile := path.Join(nodeInfo.LogDir, subnetName+".log")
 			fileBytes, err := os.ReadFile(logFile)
 			gomega.Expect(err).Should(gomega.BeNil())
 			rpcTxFeeCap, ok := nodesRPCTxFeeCap[nodeName]
