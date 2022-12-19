@@ -299,31 +299,31 @@ func getRepoURL(reposDir string) error {
 	}
 	path := filepath.Join(reposDir, alias)
 	repo, err := git.PlainOpen(path)
-	if err == nil {
-		// there is a repo already for this alias, let's try to figure out the remote URL from there
-		conf, err := repo.Config()
-		if err != nil {
-			// TODO Would we really want to abort here?
-			return err
-		}
-		remotes := make([]string, len(conf.Remotes))
-		i := 0
-		for _, r := range conf.Remotes {
-			// NOTE: supporting only one remote for now
-			remotes[i] = r.URLs[0]
-			i++
-		}
-		repoURL, err = app.Prompt.CaptureList("Which is the remote URL for this repo?", remotes)
-		if err != nil {
-			// should never happen
-			return err
-		}
-		return nil
+	if err != nil {
+		app.Log.Debug(
+			"opening repo failed - alias might have not been created yet, so ignore", zap.String("alias", alias), zap.Error(err))
+		repoURL, err = app.Prompt.CaptureString("Provide the repository URL")
+		return err
 	}
-	app.Log.Debug(
-		"opening repo failed - alias might have not been created yet, so ignore", zap.String("alias", alias), zap.Error(err))
-	repoURL, err = app.Prompt.CaptureString("Provide the repository URL")
-	return err
+	// there is a repo already for this alias, let's try to figure out the remote URL from there
+	conf, err := repo.Config()
+	if err != nil {
+		// TODO Would we really want to abort here?
+		return err
+	}
+	remotes := make([]string, len(conf.Remotes))
+	i := 0
+	for _, r := range conf.Remotes {
+		// NOTE: supporting only one remote for now
+		remotes[i] = r.URLs[0]
+		i++
+	}
+	repoURL, err = app.Prompt.CaptureList("Which is the remote URL for this repo?", remotes)
+	if err != nil {
+		// should never happen
+		return err
+	}
+	return nil
 }
 
 // loadYAMLFile loads a YAML file from disk into a concrete types.Definition object

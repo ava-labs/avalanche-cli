@@ -80,6 +80,7 @@ linters-settings:
           - "fmt.Fprintf"
           - "fmt.Print"
           - "fmt.Printf"
+          - "fmt.Fprintln"
           - "fmt.Println"
           - "rand.Read"
           - "sb.WriteString"
