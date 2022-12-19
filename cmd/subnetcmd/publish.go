@@ -293,6 +293,7 @@ func getNewAlias() (string, error) {
 	return app.Prompt.CaptureString("Provide an alias for the repository we are going to use")
 }
 
+// TODO -- do we want to modify global [repoURL]?
 func getRepoURL(reposDir string) error {
 	if repoURL != "" {
 		return nil
