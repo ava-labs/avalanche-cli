@@ -5,7 +5,7 @@ package subnetcmd
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_moreThanOneVMSelected(t *testing.T) {
@@ -43,7 +43,7 @@ func Test_moreThanOneVMSelected(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert := assert.New(t)
+			require := require.New(t)
 
 			// Set vars
 			useSubnetEvm = tt.useSubnetVM
@@ -51,7 +51,7 @@ func Test_moreThanOneVMSelected(t *testing.T) {
 
 			// Check how many selected
 			result := moreThanOneVMSelected()
-			assert.Equal(tt.expectedResult, result)
+			require.Equal(tt.expectedResult, result)
 		})
 	}
 }

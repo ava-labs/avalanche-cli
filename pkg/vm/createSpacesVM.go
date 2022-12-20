@@ -54,11 +54,17 @@ func CreateSpacesVMSubnetConfig(
 			return nil, &models.Sidecar{}, err
 		}
 
+		rpcVersion, err := GetRPCProtocolVersion(app, models.SpacesVM, spacesVMVersion)
+		if err != nil {
+			return nil, &models.Sidecar{}, err
+		}
+
 		sc = &models.Sidecar{
-			Name:      subnetName,
-			VM:        models.SpacesVM,
-			VMVersion: spacesVMVersion,
-			Subnet:    subnetName,
+			Name:       subnetName,
+			VM:         models.SpacesVM,
+			VMVersion:  spacesVMVersion,
+			Subnet:     subnetName,
+			RPCVersion: rpcVersion,
 		}
 	}
 
@@ -87,8 +93,8 @@ func getMagic(app *application.Avalanche) (uint64, statemachine.StateDirection, 
 	return magic, statemachine.Forward, nil
 }
 
-func getDefaultGenesisValues() (uint64, string, core.GenesisAlloc, error) {
-	version, err := binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+func getDefaultGenesisValues(app *application.Avalanche) (uint64, string, core.GenesisAlloc, error) {
+	version, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 		constants.AvaLabsOrg,
 		constants.SpacesVMRepoName,
 	))
@@ -133,7 +139,7 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 			var useDefault bool
 			useDefault, err = app.Prompt.CaptureYesNo("Use default genesis?")
 			if useDefault {
-				magic, version, allocs, err = getDefaultGenesisValues()
+				magic, version, allocs, err = getDefaultGenesisValues(app)
 				if err == nil {
 					spacesVMState.Stop()
 				}
@@ -171,11 +177,17 @@ func createSpacesVMGenesis(app *application.Avalanche, subnetName string, spaces
 		return nil, nil, err
 	}
 
+	rpcVersion, err := GetRPCProtocolVersion(app, models.SpacesVM, version)
+	if err != nil {
+		return nil, &models.Sidecar{}, err
+	}
+
 	sc := &models.Sidecar{
-		Name:      subnetName,
-		VM:        models.SpacesVM,
-		VMVersion: version,
-		Subnet:    subnetName,
+		Name:       subnetName,
+		VM:         models.SpacesVM,
+		VMVersion:  version,
+		Subnet:     subnetName,
+		RPCVersion: rpcVersion,
 	}
 
 	return jsonBytes, sc, nil

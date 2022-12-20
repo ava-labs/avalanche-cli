@@ -15,24 +15,8 @@ import (
 )
 
 func getChainID(app *application.Avalanche) (*big.Int, error) {
-	// TODO check against known chain ids and provide warning
 	ux.Logger.PrintToUser("Enter your subnet's ChainId. It can be any positive integer.")
-
-	chainID, err := app.Prompt.CapturePositiveBigInt("ChainId")
-	if err != nil {
-		return nil, err
-	}
-
-	exists, err := app.SubnetEvmChainIDExists(chainID.String())
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		ux.Logger.PrintToUser("The provided chain ID %q already exists! Try a different one:", chainID.String())
-		return getChainID(app)
-	}
-
-	return chainID, nil
+	return app.Prompt.CapturePositiveBigInt("ChainId")
 }
 
 func getTokenName(app *application.Avalanche) (string, error) {
@@ -55,7 +39,7 @@ func getVMVersion(
 	var err error
 	direction := statemachine.Forward
 	if vmVersion == "latest" {
-		vmVersion, err = binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+		vmVersion, err = app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 			constants.AvaLabsOrg,
 			repoName,
 		))
@@ -102,7 +86,7 @@ func askForVMVersion(
 
 	if versionOption == useLatest {
 		// Get and return latest version
-		version, err := binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+		version, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 			constants.AvaLabsOrg,
 			repoName,
 		))
@@ -110,7 +94,11 @@ func askForVMVersion(
 	}
 
 	// prompt for version
-	version, err := app.Prompt.CaptureVersion(fmt.Sprintf("%s version", vmName))
+	versions, err := app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName)
+	if err != nil {
+		return "", statemachine.Stop, err
+	}
+	version, err := app.Prompt.CaptureList("Pick the version for this VM", versions)
 	if err != nil {
 		return "", statemachine.Stop, err
 	}

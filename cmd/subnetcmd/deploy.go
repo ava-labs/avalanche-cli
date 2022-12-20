@@ -15,11 +15,13 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
+	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	ledger "github.com/ava-labs/avalanche-ledger-go"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
@@ -32,25 +34,29 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"golang.org/x/mod/semver"
 )
 
-const numLedgerAddressesToDerive = 1
+const numLedgerAddressesToSearch = 1000
 
 var (
-	deployLocal    bool
-	deployTestnet  bool
-	deployMainnet  bool
-	useLedger      bool
-	sameControlKey bool
-	keyName        string
-	threshold      uint32
-	controlKeys    []string
-	subnetAuthKeys []string
-	avagoVersion   string
-	outputTxPath   string
+	deployLocal              bool
+	deployTestnet            bool
+	deployMainnet            bool
+	sameControlKey           bool
+	keyName                  string
+	threshold                uint32
+	controlKeys              []string
+	subnetAuthKeys           []string
+	userProvidedAvagoVersion string
+	outputTxPath             string
+	useLedger                bool
+	ledgerAddresses          []string
 
 	errMutuallyExlusiveNetworks    = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
+	ErrMutuallyExlusiveKeyLedger   = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
+	ErrStoredKeyOnMainnet          = errors.New("--key is not available for mainnet operations")
 )
 
 // avalanche subnet deploy
@@ -58,20 +64,16 @@ func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy [subnetName]",
 		Short: "Deploys a subnet configuration",
-		Long: `The subnet deploy command deploys your subnet configuration locally, to
-Fuji Testnet, or to Mainnet. Currently, the beta release only supports
-local and Fuji deploys.
+		Long: `The subnet deploy command deploys your Subnet configuration locally, to Fuji Testnet, or to Mainnet.
 
-At the end of the call, the command will print the RPC URL you can use
-to interact with the subnet.
+At the end of the call, the command prints the RPC URL you can use to interact with the Subnet.
 
-Subnets may only be deployed once. Subsequent calls of deploy to the
-same network (local, Fuji, Mainnet) are not allowed. If you'd like to
-redeploy a subnet locally for testing, you must first call avalanche
-network clean to reset all deployed chain state. Subsequent local
-deploys will redeploy the chain with fresh state. The same subnet can
-be deployed to multiple networks, so you can take your locally tested
-subnet and deploy it on Fuji or Mainnet.`,
+Avalanche-CLI only supports deploying an individual Subnet once per network. Subsequent
+attempts to deploy the same Subnet to the same network (local, Fuji, Mainnet) aren't
+allowed. If you'd like to redeploy a Subnet locally for testing, you must first call
+avalanche network clean to reset all deployed chain state. Subsequent local deploys
+redeploy the chain with fresh state. You can deploy the same Subnet to multiple networks,
+so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 		SilenceUsage: true,
 		RunE:         deploySubnet,
 		Args:         cobra.ExactArgs(1),
@@ -80,38 +82,39 @@ subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "deploy to testnet (alias to `fuji`)")
 	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "deploy to fuji (alias to `testnet`")
 	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "deploy to mainnet")
-	cmd.Flags().StringVar(&avagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
-	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
+	cmd.Flags().StringVar(&userProvidedAvagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
 	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use creation key as control key")
 	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to make subnet changes")
 	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may make subnet changes")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate chain creation")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
+	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
+	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	return cmd
 }
 
 func getChainsInSubnet(subnetName string) ([]string, error) {
-	files, err := os.ReadDir(app.GetBaseDir())
+	subnets, err := os.ReadDir(app.GetSubnetDir())
 	if err != nil {
 		return nil, fmt.Errorf("failed to read baseDir: %w", err)
 	}
 
 	chains := []string{}
 
-	for _, f := range files {
-		if strings.Contains(f.Name(), constants.SidecarSuffix) {
+	for _, s := range subnets {
+		sidecarFile := filepath.Join(app.GetSubnetDir(), s.Name(), constants.SidecarFileName)
+		if _, err := os.Stat(sidecarFile); err == nil {
 			// read in sidecar file
-			path := filepath.Join(app.GetBaseDir(), f.Name())
-			jsonBytes, err := os.ReadFile(path)
+			jsonBytes, err := os.ReadFile(sidecarFile)
 			if err != nil {
-				return nil, fmt.Errorf("failed reading file %s: %w", path, err)
+				return nil, fmt.Errorf("failed reading file %s: %w", sidecarFile, err)
 			}
 
 			var sc models.Sidecar
 			err = json.Unmarshal(jsonBytes, &sc)
 			if err != nil {
-				return nil, fmt.Errorf("failed unmarshaling file %s: %w", path, err)
+				return nil, fmt.Errorf("failed unmarshaling file %s: %w", sidecarFile, err)
 			}
 			if sc.Subnet == subnetName {
 				chains = append(chains, sc.Name)
@@ -144,6 +147,12 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	if !flags.EnsureMutuallyExclusive([]bool{deployLocal, deployTestnet, deployMainnet}) {
 		return errMutuallyExlusiveNetworks
+	}
+
+	if outputTxPath != "" {
+		if _, err := os.Stat(outputTxPath); err == nil {
+			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
+		}
 	}
 
 	switch {
@@ -197,6 +206,14 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	genesisPath := app.GetGenesisPath(chain)
 
+	if len(ledgerAddresses) > 0 {
+		useLedger = true
+	}
+
+	if useLedger && keyName != "" {
+		return ErrMutuallyExlusiveKeyLedger
+	}
+
 	switch network {
 	case models.Local:
 		app.Log.Debug("Deploy local")
@@ -220,7 +237,17 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("unknown vm: %s", sidecar.VM)
 		}
 
-		deployer := subnet.NewLocalDeployer(app, avagoVersion, vmBin)
+		// skip rpc check if using custom vm
+		if sidecar.VM != models.CustomVM {
+			// check if selected version matches what is currently running
+			nc := localnetworkinterface.NewStatusChecker()
+			userProvidedAvagoVersion, err = checkForInvalidDeployAndGetAvagoVersion(nc, sidecar.RPCVersion)
+			if err != nil {
+				return err
+			}
+		}
+
+		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, vmBin)
 		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
 		if err != nil {
 			if deployer.BackendStartedHere() {
@@ -242,6 +269,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	case models.Mainnet:
 		useLedger = true
+		if keyName != "" {
+			return ErrStoredKeyOnMainnet
+		}
 
 	default:
 		return errors.New("not implemented")
@@ -255,7 +285,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// from here on we are assuming a public deploy
 
 	// get keychain accesor
-	kc, err := GetKeychain(useLedger, keyName, network)
+	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
 	if err != nil {
 		return err
 	}
@@ -355,14 +385,24 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain
 	ux.Logger.PrintToUser(controlKeysInitialPrompt)
 
 	const (
-		creation = "Use creation key"
-		useAll   = "Use all stored keys"
-		custom   = "Custom list"
+		useAll = "Use all stored keys"
+		custom = "Custom list"
 	)
 
-	listDecision, err := app.Prompt.CaptureList(
-		moreKeysPrompt, []string{creation, useAll, custom},
-	)
+	var creation string
+	var listOptions []string
+	if useLedger {
+		creation = "Use ledger address"
+	} else {
+		creation = "Use creation key"
+	}
+	if network == models.Mainnet {
+		listOptions = []string{creation, custom}
+	} else {
+		listOptions = []string{creation, useAll, custom}
+	}
+
+	listDecision, err := app.Prompt.CaptureList(moreKeysPrompt, listOptions)
 	if err != nil {
 		return nil, false, err
 	}
@@ -557,7 +597,11 @@ func SaveNotFullySignedTx(
 	if outputTxPath == "" {
 		ux.Logger.PrintToUser("")
 		var err error
-		outputTxPath, err = app.Prompt.CaptureString("Path to export partially signed tx to")
+		if forceOverwrite {
+			outputTxPath, err = app.Prompt.CaptureString("Path to export partially signed tx to")
+		} else {
+			outputTxPath, err = app.Prompt.CaptureNewFilepath("Path to export partially signed tx to")
+		}
 		if err != nil {
 			return err
 		}
@@ -608,11 +652,16 @@ func PrintRemainingToSignMsg(
 
 func GetKeychain(
 	useLedger bool,
+	ledgerAddresses []string,
 	keyName string,
 	network models.Network,
 ) (keychain.Keychain, error) {
 	// get keychain accesor
 	var kc keychain.Keychain
+	networkID, err := network.NetworkID()
+	if err != nil {
+		return kc, err
+	}
 	if useLedger {
 		ledgerDevice, err := ledger.New()
 		if err != nil {
@@ -620,31 +669,76 @@ func GetKeychain(
 		}
 		// ask for addresses here to print user msg for ledger interaction
 		ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
-		addresses, err := ledgerDevice.Addresses(1)
+		// set ledger indices
+		var ledgerIndices []uint32
+		if len(ledgerAddresses) == 0 {
+			ledgerIndices = []uint32{0}
+		} else {
+			ledgerIndices, err = getLedgerIndices(ledgerDevice, ledgerAddresses)
+			if err != nil {
+				return kc, err
+			}
+		}
+		// get formatted addresses for ux
+		addresses, err := ledgerDevice.Addresses(ledgerIndices)
 		if err != nil {
 			return kc, err
 		}
-		addr := addresses[0]
-		networkID, err := network.NetworkID()
-		if err != nil {
-			return kc, err
+		addrStrs := []string{}
+		for _, addr := range addresses {
+			addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
+			if err != nil {
+				return kc, err
+			}
+			addrStrs = append(addrStrs, addrStr)
 		}
-		addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
-		if err != nil {
-			return kc, err
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Ledger addresses: "))
+		for _, addrStr := range addrStrs {
+			ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("  %s", addrStr)))
 		}
-		ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("Ledger address: %s", addrStr)))
-		return keychain.NewLedgerKeychain(ledgerDevice, numLedgerAddressesToDerive)
-	}
-	networkID, err := network.NetworkID()
-	if err != nil {
-		return kc, err
+		return keychain.NewLedgerKeychainFromIndices(ledgerDevice, ledgerIndices)
 	}
 	sf, err := key.LoadSoft(networkID, app.GetKeyPath(keyName))
 	if err != nil {
 		return kc, err
 	}
 	return sf.KeyChain(), nil
+}
+
+func getLedgerIndices(ledgerDevice ledger.Ledger, addressesStr []string) ([]uint32, error) {
+	addresses, err := address.ParseToIDs(addressesStr)
+	if err != nil {
+		return []uint32{}, fmt.Errorf("failure parsing given ledger addresses: %w", err)
+	}
+	// maps the indices of addresses to their corresponding ledger indices
+	indexMap := map[int]uint32{}
+	// for all ledger indices to search for, find if the ledger address belongs to the input
+	// addresses and, if so, add the index pair to indexMap, breaking the loop if
+	// all addresses were found
+	for ledgerIndex := uint32(0); ledgerIndex < numLedgerAddressesToSearch; ledgerIndex++ {
+		ledgerAddress, err := ledgerDevice.Addresses([]uint32{ledgerIndex})
+		if err != nil {
+			return []uint32{}, err
+		}
+		for addressesIndex, addr := range addresses {
+			if addr == ledgerAddress[0] {
+				indexMap[addressesIndex] = ledgerIndex
+			}
+		}
+		if len(indexMap) == len(addresses) {
+			break
+		}
+	}
+	// create ledgerIndices from indexMap
+	ledgerIndices := []uint32{}
+	for addressesIndex := range addresses {
+		ledgerIndex, ok := indexMap[addressesIndex]
+		if !ok {
+			return []uint32{}, fmt.Errorf("address %s not found on ledger", addressesStr[addressesIndex])
+		}
+		ledgerIndices = append(ledgerIndices, ledgerIndex)
+	}
+	return ledgerIndices, nil
 }
 
 func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFullySigned bool) error {
@@ -667,4 +761,47 @@ func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFu
 	}
 	table.Render()
 	return nil
+}
+
+// Determines the appropriate version of avalanchego to run with. Returns an error if
+// that version conflicts with the current deployment.
+func checkForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.StatusChecker, configuredRPCVersion int) (string, error) {
+	// get current network
+	runningAvagoVersion, runningRPCVersion, networkRunning, err := network.GetCurrentNetworkVersion()
+	if err != nil {
+		return "", err
+	}
+
+	desiredAvagoVersion := userProvidedAvagoVersion
+
+	// RPC Version was made available in the info API in avalanchego version v1.9.2. For prior versions,
+	// we will need to skip this check.
+	skipRPCCheck := false
+	if semver.Compare(runningAvagoVersion, constants.AvalancheGoCompatibilityVersionAdded) == -1 {
+		skipRPCCheck = true
+	}
+
+	if networkRunning {
+		if userProvidedAvagoVersion == "latest" {
+			if runningRPCVersion != configuredRPCVersion && !skipRPCCheck {
+				return "", fmt.Errorf(
+					"the current avalanchego deployment uses rpc version %d but your subnet has version %d and is not compatible",
+					runningRPCVersion,
+					configuredRPCVersion,
+				)
+			}
+			desiredAvagoVersion = runningAvagoVersion
+		} else if runningAvagoVersion != userProvidedAvagoVersion {
+			// user wants a specific version
+			return "", errors.New("incompatible avalanchego version selected")
+		}
+	} else if userProvidedAvagoVersion == "latest" {
+		// find latest avago version for this rpc version
+		desiredAvagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(
+			app, configuredRPCVersion, constants.AvalancheGoCompatibilityURL)
+		if err != nil {
+			return "", err
+		}
+	}
+	return desiredAvagoVersion, nil
 }

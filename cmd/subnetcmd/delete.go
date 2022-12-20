@@ -4,9 +4,9 @@ package subnetcmd
 
 import (
 	"os"
+	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
 
@@ -23,11 +23,12 @@ func newDeleteCmd() *cobra.Command {
 
 func deleteSubnet(cmd *cobra.Command, args []string) error {
 	// TODO sanitize this input
-	sidecarPath := app.GetSidecarPath(args[0])
-	genesisPath := app.GetGenesisPath(args[0])
-	customVMPath := app.GetCustomVMPath(args[0])
+	subnetName := args[0]
+	subnetDir := filepath.Join(app.GetSubnetDir(), subnetName)
 
-	sidecar, err := app.LoadSidecar(args[0])
+	customVMPath := app.GetCustomVMPath(subnetName)
+
+	sidecar, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
 	}
@@ -47,17 +48,9 @@ func deleteSubnet(cmd *cobra.Command, args []string) error {
 	// but only if no other subnet is using it.
 	// More info: https://github.com/ava-labs/avalanche-cli/issues/246
 
-	if _, err := os.Stat(genesisPath); err == nil {
+	if _, err := os.Stat(subnetDir); err == nil {
 		// exists
-		os.Remove(genesisPath)
-	} else {
-		return err
-	}
-
-	if _, err := os.Stat(sidecarPath); err == nil {
-		// exists
-		os.Remove(sidecarPath)
-		ux.Logger.PrintToUser("Deleted subnet")
+		os.RemoveAll(subnetDir)
 	} else {
 		return err
 	}

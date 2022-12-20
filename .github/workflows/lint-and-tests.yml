@@ -18,7 +18,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.45
+          version: v1.49
           working-directory: .
           args: --timeout 3m
       - name: Install license check
@@ -49,7 +49,7 @@ jobs:
     strategy:
       matrix:
         go: ["1.18"]
-        os: [ubuntu-20.04, macos-latest]
+        os: [ubuntu-latest, macos-latest]
     steps:
       - name: Git checkout
         uses: actions/checkout@v2
@@ -64,8 +64,12 @@ jobs:
         with:
           node-version: '14.x'
       - name: Yarn install
-        run: yarn
-        working-directory: ./tests/e2e/hardhat
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_on: error
+          command: yarn --cwd ./tests/e2e/hardhat
       - name: Run e2e tests
         shell: bash
         run: GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} scripts/run.e2e.sh

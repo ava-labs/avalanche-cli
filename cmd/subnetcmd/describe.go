@@ -8,8 +8,10 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
@@ -18,15 +20,16 @@ import (
 	"go.uber.org/zap"
 )
 
+var printGenesisOnly bool
+
 // avalanche subnet describe
 func newDescribeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "describe [subnetName]",
 		Short: "Print a summary of the subnet’s configuration",
-		Long: `The subnet describe command prints the details of a subnet configuration
-to the console. By default, the command will print a summary of the
-configuration. By providing the --genesis flag, the command will instead
-print out the raw genesis file.`,
+		Long: `The subnet describe command prints the details of a Subnet configuration to the console.
+By default, the command prints a summary of the configuration. By providing the --genesis
+flag, the command instead prints out the raw genesis file.`,
 		RunE: readGenesis,
 		Args: cobra.ExactArgs(1),
 	}
@@ -39,8 +42,6 @@ print out the raw genesis file.`,
 	)
 	return cmd
 }
-
-var printGenesisOnly bool
 
 func printGenesis(subnetName string) error {
 	genesisFile := app.GetGenesisPath(subnetName)
@@ -72,6 +73,17 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 	table.Append([]string{"ChainID", genesis.Config.ChainID.String()})
 	table.Append([]string{"Token Name", app.GetTokenName(sc.Subnet)})
 	table.Append([]string{"VM Version", sc.VMVersion})
+	if sc.ImportedVMID != "" {
+		table.Append([]string{"VM ID", sc.ImportedVMID})
+	} else {
+		id := constants.NotAvailableLabel
+		vmID, err := utils.VMID(sc.Name)
+		if err == nil {
+			id = vmID.String()
+		}
+		table.Append([]string{"VM ID", id})
+	}
+
 	for net, data := range sc.Networks {
 		if data.SubnetID != ids.Empty {
 			table.Append([]string{fmt.Sprintf("%s SubnetID", net), data.SubnetID.String()})
@@ -230,27 +242,21 @@ func readGenesis(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	if printGenesisOnly {
-		if err := printGenesis(subnetName); err != nil {
-			return err
-		}
-	} else {
-		// read in sidecar
-		sc, err := app.LoadSidecar(subnetName)
-		if err != nil {
-			return err
-		}
-
-		switch sc.VM {
-		case models.SubnetEvm:
-			err = describeSubnetEvmGenesis(sc)
-		default:
-			app.Log.Warn("Unknown genesis format", zap.Any("vm-type", sc.VM))
-			ux.Logger.PrintToUser("Printing genesis")
-			err = printGenesis(subnetName)
-		}
-		if err != nil {
-			return err
-		}
+		return printGenesis(subnetName)
 	}
-	return nil
+	// read in sidecar
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
+	}
+
+	switch sc.VM {
+	case models.SubnetEvm:
+		return describeSubnetEvmGenesis(sc)
+	default:
+		app.Log.Warn("Unknown genesis format", zap.Any("vm-type", sc.VM))
+		ux.Logger.PrintToUser("Printing genesis")
+		err = printGenesis(subnetName)
+	}
+	return err
 }

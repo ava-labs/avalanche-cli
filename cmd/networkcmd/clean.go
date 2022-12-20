@@ -23,9 +23,9 @@ func newCleanCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "clean",
 		Short: "Stop the running local network and delete state",
-		Long: `The network clean command shuts down your local, multi-node network. All
-the deployed subnets will shutdown and delete their state. The network
-may be started again by deploying a new subnet configuration.`,
+		Long: `The network clean command shuts down your local, multi-node network. All deployed Subnets
+shutdown and delete their state. You can restart the network by deploying a new Subnet
+configuration.`,
 		RunE:         clean,
 		Args:         cobra.ExactArgs(0),
 		SilenceUsage: true,

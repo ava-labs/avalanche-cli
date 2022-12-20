@@ -18,7 +18,11 @@ import (
 
 /* #nosec G204 */
 func CreateSubnetEvmConfig(subnetName string, genesisPath string) {
-	CreateSubnetEvmConfigWithVersion(subnetName, genesisPath, utils.SubnetEVMVersion)
+	mapper := utils.NewVersionMapper()
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
+	// let's use a SubnetEVM version which has a guaranteed compatible avago
+	CreateSubnetEvmConfigWithVersion(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey])
 }
 
 /* #nosec G204 */
@@ -51,8 +55,30 @@ func CreateSubnetEvmConfigWithVersion(subnetName string, genesisPath string, ver
 }
 
 /* #nosec G204 */
+func ConfigureChainConfig(subnetName string, genesisPath string) {
+	// run configure
+	cmdArgs := []string{SubnetCmd, "configure", subnetName, "--chain-config", genesisPath}
+	cmd := exec.Command(CLIBinary, cmdArgs...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	// Config should now exist
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+}
+
+/* #nosec G204 */
 func CreateSpacesVMConfig(subnetName string, genesisPath string) {
-	CreateSpacesVMConfigWithVersion(subnetName, genesisPath, utils.SpacesVMVersion)
+	mapper := utils.NewVersionMapper()
+	// TODO: should we change interfaces here to allow err checking
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
+	CreateSpacesVMConfigWithVersion(subnetName, genesisPath, mapping[utils.Spaces2AvagoKey])
 }
 
 /* #nosec G204 */
@@ -149,13 +175,26 @@ func DeleteSubnetConfig(subnetName string) {
 // Returns the deploy output
 /* #nosec G204 */
 func DeploySubnetLocally(subnetName string) string {
-	return DeploySubnetLocallyWithArgs(subnetName, utils.AvagoVersion, "")
+	return DeploySubnetLocallyWithArgs(subnetName, "", "")
+}
+
+/* #nosec G204 */
+func DeploySubnetLocallyExpectError(subnetName string) {
+	mapper := utils.NewVersionMapper()
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	DeploySubnetLocallyWithArgsExpectError(subnetName, mapping[utils.OnlyAvagoKey], "")
 }
 
 // Returns the deploy output
 /* #nosec G204 */
 func DeploySubnetLocallyWithViperConf(subnetName string, confPath string) string {
-	return DeploySubnetLocallyWithArgs(subnetName, utils.AvagoVersion, confPath)
+	mapper := utils.NewVersionMapper()
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	return DeploySubnetLocallyWithArgs(subnetName, mapping[utils.OnlyAvagoKey], confPath)
 }
 
 // Returns the deploy output
@@ -190,6 +229,26 @@ func DeploySubnetLocallyWithArgs(subnetName string, version string, confPath str
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	return string(output)
+}
+
+/* #nosec G204 */
+func DeploySubnetLocallyWithArgsExpectError(subnetName string, version string, confPath string) {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// Deploy subnet locally
+	cmdArgs := []string{SubnetCmd, "deploy", "--local", subnetName}
+	if version != "" {
+		cmdArgs = append(cmdArgs, "--avalanchego-version", version)
+	}
+	if confPath != "" {
+		cmdArgs = append(cmdArgs, "--config", confPath)
+	}
+	cmd := exec.Command(CLIBinary, cmdArgs...)
+	_, err = cmd.CombinedOutput()
+	gomega.Expect(err).Should(gomega.HaveOccurred())
 }
 
 // simulates fuji deploy execution path on a local network
@@ -507,6 +566,7 @@ func ImportSubnetConfig(repoAlias string, subnetName string) {
 		CLIBinary,
 		SubnetCmd,
 		"import",
+		"file",
 		"--repo",
 		repoAlias,
 		"--subnet",
@@ -544,6 +604,7 @@ func ImportSubnetConfigFromURL(repoURL string, branch string, subnetName string)
 		CLIBinary,
 		SubnetCmd,
 		"import",
+		"file",
 		"--repo",
 		repoURL,
 		"--branch",

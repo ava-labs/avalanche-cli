@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesisPath string, subnetEVMVersion string) ([]byte, *models.Sidecar, error) {
@@ -42,19 +43,29 @@ func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesi
 			return nil, &models.Sidecar{}, err
 		}
 
+		rpcVersion, err := GetRPCProtocolVersion(app, models.SubnetEvm, subnetEVMVersion)
+		if err != nil {
+			return nil, &models.Sidecar{}, err
+		}
+
 		sc = &models.Sidecar{
-			Name:      subnetName,
-			VM:        models.SubnetEvm,
-			VMVersion: subnetEVMVersion,
-			Subnet:    subnetName,
-			TokenName: "",
+			Name:       subnetName,
+			VM:         models.SubnetEvm,
+			VMVersion:  subnetEVMVersion,
+			RPCVersion: rpcVersion,
+			Subnet:     subnetName,
+			TokenName:  "",
 		}
 	}
 
 	return genesisBytes, sc, nil
 }
 
-func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVersion string) ([]byte, *models.Sidecar, error) {
+func createEvmGenesis(
+	app *application.Avalanche,
+	subnetName string,
+	subnetEVMVersion string,
+) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating subnet %s", subnetName)
 
 	genesis := core.Genesis{}
@@ -101,6 +112,12 @@ func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVe
 		subnetEvmState.NextState(direction)
 	}
 
+	if conf != nil && conf.TxAllowListConfig != nil {
+		if err := ensureAdminsHaveBalance(conf.TxAllowListConfig.AllowListAdmins, allocation); err != nil {
+			return nil, nil, err
+		}
+	}
+
 	conf.ChainID = chainID
 
 	genesis.Alloc = allocation
@@ -119,15 +136,37 @@ func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVe
 		return nil, nil, err
 	}
 
+	rpcVersion, err := GetRPCProtocolVersion(app, models.SubnetEvm, vmVersion)
+	if err != nil {
+		return nil, &models.Sidecar{}, err
+	}
+
 	sc := &models.Sidecar{
-		Name:      subnetName,
-		VM:        models.SubnetEvm,
-		VMVersion: vmVersion,
-		Subnet:    subnetName,
-		TokenName: tokenName,
+		Name:       subnetName,
+		VM:         models.SubnetEvm,
+		VMVersion:  vmVersion,
+		RPCVersion: rpcVersion,
+		Subnet:     subnetName,
+		TokenName:  tokenName,
 	}
 
 	return prettyJSON.Bytes(), sc, nil
+}
+
+func ensureAdminsHaveBalance(admins []common.Address, alloc core.GenesisAlloc) error {
+	if len(admins) < 1 {
+		return nil
+	}
+
+	for _, admin := range admins {
+		// we can break at the first admin who has a non-zero balance
+		if bal, ok := alloc[admin]; ok &&
+			bal.Balance != nil &&
+			bal.Balance.Uint64() > uint64(0) {
+			return nil
+		}
+	}
+	return errors.New("none of the addresses in the transaction allow list precompile have any tokens allocated to them. Currently, no address can transact on the network. Airdrop some funds to one of the allow list addresses to continue")
 }
 
 // In own function to facilitate testing

@@ -8,12 +8,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIsNodeValidatingSubnet(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	nodeID := ids.GenerateTestNodeID()
 	nonValidator := ids.GenerateTestNodeID()
 	subnetID := ids.GenerateTestID()
@@ -40,17 +40,17 @@ func TestIsNodeValidatingSubnet(t *testing.T) {
 
 	// first pass: should return true for the GetCurrentValidators
 	isValidating, err := checkIsValidating(subnetID, nodeID, pClient)
-	assert.NoError(err)
-	assert.True(isValidating)
+	require.NoError(err)
+	require.True(isValidating)
 
 	// second pass: The nonValidator is not in current nor pending validators, hence false
 	isValidating, err = checkIsValidating(subnetID, nonValidator, pClient)
-	assert.NoError(err)
-	assert.False(isValidating)
+	require.NoError(err)
+	require.False(isValidating)
 
 	// third pass: The second mocked GetPendingValidators applies, and this time
 	// nonValidator is in the pending set, hence true
 	isValidating, err = checkIsValidating(subnetID, nonValidator, pClient)
-	assert.NoError(err)
-	assert.True(isValidating)
+	require.NoError(err)
+	require.True(isValidating)
 }

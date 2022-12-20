@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDurationFormat(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	type test struct {
 		d        time.Duration
@@ -74,6 +74,6 @@ func TestDurationFormat(t *testing.T) {
 
 	for _, t := range tests {
 		s := FormatDuration(t.d)
-		assert.Equal(t.expected, s)
+		require.Equal(t.expected, s)
 	}
 }

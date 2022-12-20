@@ -42,23 +42,20 @@ func newJoinCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "join [subnetName]",
 		Short: "Configure your validator node to begin validating a new subnet",
-		Long: `The subnet join command configures your validator node to begin validating
-a new subnet.
+		Long: `The subnet join command configures your validator node to begin validating a new Subnet.
 
-To complete this process, you must have access to the machine running your
-validator. If the CLI is running on the same machine as your validator,
-it can generate or update your node's config file automatically.
-Alternatively, the command can print the necessary instructions to
-update your node manually. To complete the validation process, the
-NodeID of your validator node must have been whitelisted by one of the
-subnet's control keys.
+To complete this process, you must have access to the machine running your validator. If the
+CLI is running on the same machine as your validator, it can generate or update your node's
+config file automatically. Alternatively, the command can print the necessary instructions
+to update your node manually. To complete the validation process, the Subnet's admins must add
+the NodeID of your validator to the Subnet's allow list by calling addValidator with your
+NodeID.
 
-After you update your validator's config, you will need to restart your
-validator manually. If the --avalanchego-config flag is provided, this
-command attempts to edit the config file at that path (requires the file
-to be readable and writable).
+After you update your validator's config, you need to restart your validator manually. If
+you provide the --avalanchego-config flag, this command attempts to edit the config file
+at that path.
 
-This command currently only supports subnets deployed on the Fuji testnet.`,
+This command currently only supports Subnets deployed on the Fuji Testnet and Mainnet.`,
 		RunE: joinCmd,
 		Args: cobra.ExactArgs(1),
 	}

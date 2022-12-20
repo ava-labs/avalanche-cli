@@ -9,11 +9,11 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func SetupTest(t *testing.T) *assert.Assertions {
+func SetupTest(t *testing.T) *require.Assertions {
 	// use io.Discard to not print anything
 	ux.NewUserLog(logging.NoLog{}, io.Discard)
-	return assert.New(t)
+	return require.New(t)
 }

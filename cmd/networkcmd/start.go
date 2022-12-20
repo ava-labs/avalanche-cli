@@ -25,13 +25,11 @@ func newStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "Starts a local network",
-		Long: `The network start command starts a local, multi-node Avalanche network
-on your machine.
+		Long: `The network start command starts a local, multi-node Avalanche network on your machine.
 
-By default, the command loads the default snapshot. If --snapshot-name flag
-is provided, that snapshot will be used for starting the network if
-it can be found. The command may fail if the local network is already
-running.`,
+By default, the command loads the default snapshot. If you provide the --snapshot-name
+flag, the network loads that snapshot instead. The command fails if the local network is
+already running.`,
 
 		RunE:         startNetwork,
 		Args:         cobra.ExactArgs(0),
