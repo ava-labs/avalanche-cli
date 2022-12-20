@@ -112,7 +112,7 @@ func createEvmGenesis(
 		subnetEvmState.NextState(direction)
 	}
 
-	if conf.TxAllowListConfig != nil {
+	if conf != nil && conf.TxAllowListConfig != nil {
 		if err := ensureAdminsHaveBalance(conf.TxAllowListConfig.AllowListAdmins, allocation); err != nil {
 			return nil, nil, err
 		}
