@@ -64,7 +64,7 @@ func configure(cmd *cobra.Command, args []string) error {
 
 	// no flags provided
 	if len(configsToLoad) == 0 {
-		options := []string{chainLabel, subnetLabel}
+		options := []string{chainLabel, subnetLabel, perNodeChainLabel}
 		selected, err := app.Prompt.CaptureList("Which configuration file would you like to provide?", options)
 		if err != nil {
 			return err
@@ -74,7 +74,7 @@ func configure(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		var other string
-		if selected == chainLabel {
+		if selected == chainLabel || selected == perNodeChainLabel {
 			other = subnetLabel
 		} else {
 			other = chainLabel
