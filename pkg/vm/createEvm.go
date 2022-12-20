@@ -61,7 +61,11 @@ func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesi
 	return genesisBytes, sc, nil
 }
 
-func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVersion string) ([]byte, *models.Sidecar, error) {
+func createEvmGenesis(
+	app *application.Avalanche,
+	subnetName string,
+	subnetEVMVersion string,
+) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating subnet %s", subnetName)
 
 	genesis := core.Genesis{}
@@ -108,8 +112,10 @@ func createEvmGenesis(app *application.Avalanche, subnetName string, subnetEVMVe
 		subnetEvmState.NextState(direction)
 	}
 
-	if err := ensureAdminsHaveBalance(conf.TxAllowListConfig.AllowListAdmins, allocation); err != nil {
-		return nil, nil, err
+	if conf.TxAllowListConfig != nil {
+		if err := ensureAdminsHaveBalance(conf.TxAllowListConfig.AllowListAdmins, allocation); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	conf.ChainID = chainID
