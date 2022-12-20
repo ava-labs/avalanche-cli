@@ -16,12 +16,12 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/api"
 	"github.com/olekukonko/tablewriter"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStats(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	ux.NewUserLog(logging.NoLog{}, io.Discard)
 
@@ -65,13 +65,13 @@ func TestStats(t *testing.T) {
 	rows, err := buildCurrentValidatorStats(pClient, iClient, table, subnetID)
 	table.Append(rows[0])
 
-	assert.NoError(err)
-	assert.Equal(1, table.NumLines())
-	assert.Equal(localNodeID.String(), rows[0][0])
-	assert.Equal("true", rows[0][1])
-	assert.Equal("42", rows[0][2])
-	assert.Equal(remaining, rows[0][3])
-	assert.Equal(expectedVerStr, rows[0][4])
+	require.NoError(err)
+	require.Equal(1, table.NumLines())
+	require.Equal(localNodeID.String(), rows[0][0])
+	require.Equal("true", rows[0][1])
+	require.Equal("42", rows[0][2])
+	require.Equal(remaining, rows[0][3])
+	require.Equal(expectedVerStr, rows[0][4])
 
 	pendingV := make([]interface{}, 1)
 
@@ -100,11 +100,11 @@ func TestStats(t *testing.T) {
 	controlStartTime := time.Unix(startTime.Unix(), 0)
 	controlEndTime := time.Unix(endTime.Unix(), 0)
 
-	assert.NoError(err)
-	assert.Equal(1, table.NumLines())
-	assert.Equal(localNodeID.String(), rows[0][0])
-	assert.Equal("42", rows[0][1])
-	assert.Equal(controlStartTime.Local().String(), rows[0][2])
-	assert.Equal(controlEndTime.Local().String(), rows[0][3])
-	assert.Equal(expectedVerStr, rows[0][4])
+	require.NoError(err)
+	require.Equal(1, table.NumLines())
+	require.Equal(localNodeID.String(), rows[0][0])
+	require.Equal("42", rows[0][1])
+	require.Equal(controlStartTime.Local().String(), rows[0][2])
+	require.Equal(controlEndTime.Local().String(), rows[0][3])
+	require.Equal(expectedVerStr, rows[0][4])
 }

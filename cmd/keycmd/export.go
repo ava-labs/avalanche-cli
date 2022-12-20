@@ -14,11 +14,11 @@ func newExportCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "export [keyName]",
 		Short: "Exports a signing key",
-		Long: `The key export command exports a created signing key. An exported key can
-be used externally or imported into another instance of the CLI.
+		Long: `The key export command exports a created signing key. You can use an exported key in other
+applications or import it into another instance of Avalanche-CLI.
 
-By default, the tool writes the hex encoded key to stdout. If the --output
-flag is provided, the key will be written to a file of your choosing.`,
+By default, the tool writes the hex encoded key to stdout. If you provide the --output
+flag, the command writes the key to a file of your choosing.`,
 		Args:         cobra.ExactArgs(1),
 		RunE:         exportKey,
 		SilenceUsage: true,

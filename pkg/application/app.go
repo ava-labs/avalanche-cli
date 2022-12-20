@@ -4,7 +4,6 @@ package application
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
 )
@@ -22,26 +22,26 @@ const (
 	WriteReadReadPerms = 0o644
 )
 
-var errSubnetEvmChainIDExists = errors.New("the provided subnet evm chain ID already exists! Try another one")
-
 type Avalanche struct {
-	Log     logging.Logger
-	baseDir string
-	Conf    *config.Config
-	Prompt  prompts.Prompter
-	Apm     *apm.APM
-	ApmDir  string
+	Log        logging.Logger
+	baseDir    string
+	Conf       *config.Config
+	Prompt     prompts.Prompter
+	Apm        *apm.APM
+	ApmDir     string
+	Downloader Downloader
 }
 
 func New() *Avalanche {
 	return &Avalanche{}
 }
 
-func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Config, prompt prompts.Prompter) {
+func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Config, prompt prompts.Prompter, downloader Downloader) {
 	app.baseDir = baseDir
 	app.Log = log
 	app.Conf = conf
 	app.Prompt = prompt
+	app.Downloader = downloader
 }
 
 func (app *Avalanche) GetRunFile() string {
@@ -54,6 +54,10 @@ func (app *Avalanche) GetSnapshotsDir() string {
 
 func (app *Avalanche) GetBaseDir() string {
 	return app.baseDir
+}
+
+func (app *Avalanche) GetSubnetDir() string {
+	return filepath.Join(app.baseDir, constants.SubnetDir)
 }
 
 func (app *Avalanche) GetReposDir() string {
@@ -89,11 +93,11 @@ func (app *Avalanche) GetAPMVMPath(vmid string) string {
 }
 
 func (app *Avalanche) GetGenesisPath(subnetName string) string {
-	return filepath.Join(app.baseDir, subnetName+constants.GenesisSuffix)
+	return filepath.Join(app.GetSubnetDir(), subnetName, constants.GenesisFileName)
 }
 
 func (app *Avalanche) GetSidecarPath(subnetName string) string {
-	return filepath.Join(app.baseDir, subnetName+constants.SidecarSuffix)
+	return filepath.Join(app.GetSubnetDir(), subnetName, constants.SidecarFileName)
 }
 
 func (app *Avalanche) GetKeyDir() string {
@@ -120,8 +124,20 @@ func (app *Avalanche) GetKeyPath(keyName string) string {
 	return filepath.Join(app.baseDir, constants.KeyDir, keyName+constants.KeySuffix)
 }
 
+func (app *Avalanche) GetDownloader() Downloader {
+	return app.Downloader
+}
+
+func (app *Avalanche) GetAvalanchegoCompatibilityURL() string {
+	return constants.AvalancheGoCompatibilityURL
+}
+
 func (app *Avalanche) WriteGenesisFile(subnetName string, genesisBytes []byte) error {
 	genesisPath := app.GetGenesisPath(subnetName)
+	if err := os.MkdirAll(filepath.Dir(genesisPath), constants.DefaultPerms755); err != nil {
+		return err
+	}
+
 	return os.WriteFile(genesisPath, genesisBytes, WriteReadReadPerms)
 }
 
@@ -154,6 +170,10 @@ func (app *Avalanche) CopyGenesisFile(inputFilename string, subnetName string) e
 		return err
 	}
 	genesisPath := app.GetGenesisPath(subnetName)
+	if err := os.MkdirAll(filepath.Dir(genesisPath), constants.DefaultPerms755); err != nil {
+		return err
+	}
+
 	return os.WriteFile(genesisPath, genesisBytes, WriteReadReadPerms)
 }
 
@@ -201,25 +221,12 @@ func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 	if sc.TokenName == "" {
 		sc.TokenName = constants.DefaultTokenName
 	}
-	if sc.VM == models.SubnetEvm {
-		// We should have caught this during the actual prompting,
-		// but better safe than sorry
-		chainID := sc.ChainID
-		if chainID == "" {
-			gen, err := app.LoadEvmGenesis(sc.Name)
-			if err != nil {
-				return err
-			}
-			chainID = gen.Config.ChainID.String()
-		}
-		exists, err := app.SubnetEvmChainIDExists(chainID)
-		if err != nil {
-			return fmt.Errorf("unable to determine if subnet evm chainID is unique: %w", err)
-		}
-		if exists {
-			return errSubnetEvmChainIDExists
-		}
+
+	sidecarPath := app.GetSidecarPath(sc.Name)
+	if err := os.MkdirAll(filepath.Dir(sidecarPath), constants.DefaultPerms755); err != nil {
+		return err
 	}
+
 	// only apply the version on a write
 	sc.Version = constants.SidecarVersion
 	scBytes, err := json.MarshalIndent(sc, "", "    ")
@@ -227,7 +234,6 @@ func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 		return nil
 	}
 
-	sidecarPath := app.GetSidecarPath(sc.Name)
 	return os.WriteFile(sidecarPath, scBytes, WriteReadReadPerms)
 }
 
@@ -259,6 +265,25 @@ func (app *Avalanche) UpdateSidecar(sc *models.Sidecar) error {
 	return os.WriteFile(sidecarPath, scBytes, WriteReadReadPerms)
 }
 
+func (app *Avalanche) UpdateSidecarNetworks(
+	sc *models.Sidecar,
+	network models.Network,
+	subnetID ids.ID,
+	blockchainID ids.ID,
+) error {
+	if sc.Networks == nil {
+		sc.Networks = make(map[string]models.NetworkData)
+	}
+	sc.Networks[network.String()] = models.NetworkData{
+		SubnetID:     subnetID,
+		BlockchainID: blockchainID,
+	}
+	if err := app.UpdateSidecar(sc); err != nil {
+		return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)
+	}
+	return nil
+}
+
 func (app *Avalanche) GetTokenName(subnetName string) string {
 	sidecar, err := app.LoadSidecar(subnetName)
 	if err != nil {
@@ -268,49 +293,17 @@ func (app *Avalanche) GetTokenName(subnetName string) string {
 }
 
 func (app *Avalanche) GetSidecarNames() ([]string, error) {
-	matches, err := filepath.Glob(filepath.Join(app.baseDir, "*"+constants.SidecarSuffix))
+	matches, err := os.ReadDir(app.GetSubnetDir())
 	if err != nil {
 		return nil, err
 	}
-	names := make([]string, len(matches))
-	for i, m := range matches {
-		base := filepath.Base(m)
-		name := base[:len(base)-len(constants.SidecarSuffix)]
-		names[i] = name
+
+	var names []string
+	for _, m := range matches {
+		// a subnet dir could theoretically exist without a sidecar yet...
+		if _, err := os.Stat(filepath.Join(app.GetSubnetDir(), m.Name(), constants.SidecarFileName)); err == nil {
+			names = append(names, m.Name())
+		}
 	}
 	return names, nil
-}
-
-func (app *Avalanche) SubnetEvmChainIDExists(chainID string) (bool, error) {
-	if chainID == "" {
-		return false, nil
-	}
-	sidecarNames, err := app.GetSidecarNames()
-	if err != nil {
-		return false, err
-	}
-	for _, carName := range sidecarNames {
-		existingSc, err := app.LoadSidecar(carName)
-		if err != nil {
-			return false, err
-		}
-		if existingSc.VM == models.SubnetEvm {
-			existingChainID := existingSc.ChainID
-			// sidecar doesn't contain chain ID yet
-			// try loading it from genesis
-			if existingChainID == "" {
-				gen, err := app.LoadEvmGenesis(carName)
-				if err != nil {
-					// unable to find chain id, skip
-					continue
-				}
-				existingChainID = gen.Config.ChainID.String()
-			}
-			if existingChainID == chainID {
-				return true, nil
-			}
-		}
-	}
-
-	return false, nil
 }

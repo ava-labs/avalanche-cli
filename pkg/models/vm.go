@@ -7,7 +7,7 @@ import "github.com/ava-labs/avalanche-cli/pkg/constants"
 type VMType string
 
 const (
-	SubnetEvm   = "SubnetEVM"
+	SubnetEvm   = "Subnet-EVM"
 	SpacesVM    = "SpacesVM"
 	BlobVM      = "Blob VM"
 	TimestampVM = "Timestamp VM"

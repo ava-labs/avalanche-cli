@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -35,9 +36,12 @@ const (
 	Cancel   = "Cancel"
 )
 
+var errNoKeys = errors.New("no keys")
+
 type Prompter interface {
 	CapturePositiveBigInt(promptStr string) (*big.Int, error)
 	CaptureAddress(promptStr string) (common.Address, error)
+	CaptureNewFilepath(promptStr string) (string, error)
 	CaptureExistingFilepath(promptStr string) (string, error)
 	CaptureYesNo(promptStr string) (bool, error)
 	CaptureNoYes(promptStr string) (bool, error)
@@ -51,9 +55,11 @@ type Prompter interface {
 	CaptureDuration(promptStr string) (time.Duration, error)
 	CaptureDate(promptStr string) (time.Time, error)
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
+	CaptureID(promptStr string) (ids.ID, error)
 	CaptureWeight(promptStr string) (uint64, error)
 	CaptureUint64(promptStr string) (uint64, error)
 	CapturePChainAddress(promptStr string, network models.Network) (string, error)
+	ChooseKeyOrLedger() (bool, error)
 }
 
 type realPrompter struct{}
@@ -105,6 +111,11 @@ func validateTime(input string) error {
 	return err
 }
 
+func validateID(input string) error {
+	_, err := ids.FromString(input)
+	return err
+}
+
 func validateNodeID(input string) error {
 	_, err := ids.NodeIDFromString(input)
 	return err
@@ -122,6 +133,13 @@ func validateExistingFilepath(input string) error {
 		return nil
 	}
 	return errors.New("file doesn't exist")
+}
+
+func validateNewFilepath(input string) error {
+	if _, err := os.Stat(input); err != nil && os.IsNotExist(err) {
+		return nil
+	}
+	return errors.New("file already exists")
 }
 
 func validateWeight(input string) error {
@@ -254,6 +272,19 @@ func (*realPrompter) CaptureDate(promptStr string) (time.Time, error) {
 	}
 
 	return time.Parse(constants.TimeParseLayout, timeStr)
+}
+
+func (*realPrompter) CaptureID(promptStr string) (ids.ID, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateID,
+	}
+
+	IDStr, err := prompt.Run()
+	if err != nil {
+		return ids.Empty, err
+	}
+	return ids.FromString(IDStr)
 }
 
 func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
@@ -416,6 +447,20 @@ func (*realPrompter) CaptureExistingFilepath(promptStr string) (string, error) {
 	return pathStr, nil
 }
 
+func (*realPrompter) CaptureNewFilepath(promptStr string) (string, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateNewFilepath,
+	}
+
+	pathStr, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return pathStr, nil
+}
+
 func yesNoBase(promptStr string, orderedOptions []string) (bool, error) {
 	prompt := promptui.Select{
 		Label: promptStr,
@@ -442,7 +487,6 @@ func (*realPrompter) CaptureList(promptStr string, options []string) (string, er
 		Label: promptStr,
 		Items: options,
 	}
-
 	_, listDecision, err := prompt.Run()
 	if err != nil {
 		return "", err
@@ -547,6 +591,22 @@ func (*realPrompter) CaptureIndex(promptStr string, options []any) (int, error) 
 	return listIndex, nil
 }
 
+// returns true [resp. false] if user chooses stored key [resp. ledger] option
+func (prompter *realPrompter) ChooseKeyOrLedger() (bool, error) {
+	const (
+		keyOption    = "Use stored key"
+		ledgerOption = "Use ledger"
+	)
+	option, err := prompter.CaptureList(
+		"Which key source should be used to issue the transaction?",
+		[]string{keyOption, ledgerOption},
+	)
+	if err != nil {
+		return false, err
+	}
+	return option == keyOption, nil
+}
+
 func contains[T comparable](list []T, element T) bool {
 	for _, val := range list {
 		if val == element {
@@ -554,4 +614,106 @@ func contains[T comparable](list []T, element T) bool {
 		}
 	}
 	return false
+}
+
+func getIndexInSlice[T comparable](list []T, element T) (int, error) {
+	for i, val := range list {
+		if val == element {
+			return i, nil
+		}
+	}
+	return 0, fmt.Errorf("element not found")
+}
+
+// check subnet authorization criteria:
+// - [subnetAuthKeys] satisfy subnet's [threshold]
+// - [subnetAuthKeys] is a subset of subnet's [controlKeys]
+func CheckSubnetAuthKeys(subnetAuthKeys []string, controlKeys []string, threshold uint32) error {
+	if len(subnetAuthKeys) != int(threshold) {
+		return fmt.Errorf("number of given subnet auth differs from the threshold")
+	}
+	for _, subnetAuthKey := range subnetAuthKeys {
+		found := false
+		for _, controlKey := range controlKeys {
+			if subnetAuthKey == controlKey {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("subnet auth key %s does not belong to control keys", subnetAuthKey)
+		}
+	}
+	return nil
+}
+
+// get subnet authorization keys from the user, as a subset of the subnet's [controlKeys]
+// with a len equal to the subnet's [threshold]
+func GetSubnetAuthKeys(prompt Prompter, controlKeys []string, threshold uint32) ([]string, error) {
+	if len(controlKeys) == int(threshold) {
+		return controlKeys, nil
+	}
+	subnetAuthKeys := []string{}
+	filteredControlKeys := []string{}
+	filteredControlKeys = append(filteredControlKeys, controlKeys...)
+	for len(subnetAuthKeys) != int(threshold) {
+		subnetAuthKey, err := prompt.CaptureList(
+			"Choose a subnet auth key",
+			filteredControlKeys,
+		)
+		if err != nil {
+			return nil, err
+		}
+		index, err := getIndexInSlice(filteredControlKeys, subnetAuthKey)
+		if err != nil {
+			return nil, err
+		}
+		subnetAuthKeys = append(subnetAuthKeys, subnetAuthKey)
+		filteredControlKeys = append(filteredControlKeys[:index], filteredControlKeys[index+1:]...)
+	}
+	return subnetAuthKeys, nil
+}
+
+func GetFujiKeyOrLedger(prompt Prompter, keyDir string) (bool, string, error) {
+	useStoredKey, err := prompt.ChooseKeyOrLedger()
+	if err != nil {
+		return false, "", err
+	}
+	if !useStoredKey {
+		return true, "", nil
+	}
+	keyName, err := captureKeyName(prompt, keyDir)
+	if err != nil {
+		if err == errNoKeys {
+			ux.Logger.PrintToUser("No private keys have been found. Deployment to fuji without a private key " +
+				"or ledger is not possible. Create a new one with `avalanche key create`, or use a ledger device.")
+		}
+		return false, "", err
+	}
+	return false, keyName, nil
+}
+
+func captureKeyName(prompt Prompter, keyDir string) (string, error) {
+	files, err := os.ReadDir(keyDir)
+	if err != nil {
+		return "", err
+	}
+
+	if len(files) < 1 {
+		return "", errNoKeys
+	}
+
+	keys := []string{}
+	for _, f := range files {
+		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
+			keys = append(keys, strings.TrimSuffix(f.Name(), constants.KeySuffix))
+		}
+	}
+
+	keyName, err := prompt.CaptureList("Which stored key should be used to issue the transaction?", keys)
+	if err != nil {
+		return "", err
+	}
+
+	return keyName, nil
 }

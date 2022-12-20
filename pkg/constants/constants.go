@@ -15,8 +15,11 @@ const (
 	ServerRunFile      = "gRPCserver.run"
 	AvalancheCliBinDir = "bin"
 	RunDir             = "runs"
-	SidecarSuffix      = "_sidecar.json"
-	GenesisSuffix      = "_genesis.json"
+	SuffixSeparator    = "_"
+	SidecarFileName    = "sidecar.json"
+	GenesisFileName    = "genesis.json"
+	SidecarSuffix      = SuffixSeparator + SidecarFileName
+	GenesisSuffix      = SuffixSeparator + GenesisFileName
 
 	SidecarVersion = "1.2.1"
 
@@ -42,8 +45,10 @@ const (
 	// but let's add some more entropy
 	SnapshotsDirName             = "snapshots"
 	DefaultSnapshotName          = "default-1654102509"
-	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/bootstrapSnapshot.tar.gz"
 	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
+	BootstrapSnapshotLocalPath   = "assets/" + BootstrapSnapshotArchiveName
+	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/" + BootstrapSnapshotLocalPath
+	BootstrapSnapshotSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/sha256sum.txt"
 
 	KeyDir     = "key"
 	KeySuffix  = ".pk"
@@ -89,9 +94,13 @@ const (
 	// #nosec G101
 	GithubAPITokenEnvVarName = "GITHUB_TOKEN"
 
-	ReposDir  = "repos"
-	SubnetDir = "subnets"
-	VMDir     = "vms"
+	ReposDir       = "repos"
+	SubnetDir      = "subnets"
+	VMDir          = "vms"
+	ChainConfigDir = "chains"
+
+	SubnetConfigFileName = "subnet.json"
+	ChainConfigFileName  = "chain.json"
 
 	GitRepoCommitName  = "Avalanche-CLI"
 	GitRepoCommitEmail = "info@avax.network"
@@ -100,4 +109,15 @@ const (
 
 	NotAvailableLabel = "Not available"
 	BackendCmd        = "avalanche-cli-backend"
+
+	AvalancheGoCompatibilityVersionAdded = "v1.9.2"
+	AvalancheGoCompatibilityURL          = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
+	SubnetEVMRPCCompatibilityURL         = "https://raw.githubusercontent.com/ava-labs/subnet-evm/master/compatibility.json"
+	SpacesVMRPCCompatibilityURL          = "https://raw.githubusercontent.com/ava-labs/spacesvm/master/compatibility.json"
+
+	YesLabel = "Yes"
+	NoLabel  = "No"
+
+	SubnetIDLabel     = "SubnetID: "
+	BlockchainIDLabel = "BlockchainID: "
 )

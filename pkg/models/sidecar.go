@@ -16,6 +16,7 @@ type Sidecar struct {
 	Name            string
 	VM              VMType
 	VMVersion       string
+	RPCVersion      int
 	Subnet          string
 	TokenName       string
 	ChainID         string

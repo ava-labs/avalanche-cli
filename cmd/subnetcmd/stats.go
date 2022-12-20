@@ -27,7 +27,7 @@ func newStatsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "stats [subnetName]",
 		Short:        "Show validator statistics for the given subnet",
-		Long:         ``,
+		Long:         `The subnet stats command prints validator statistics for the given Subnet.`,
 		Args:         cobra.ExactArgs(1),
 		RunE:         stats,
 		SilenceUsage: true,

@@ -7,11 +7,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestContains(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	strList := []string{"test", "capture", "list"}
 
 	k1, _ := crypto.GenerateKey()
@@ -27,12 +27,12 @@ func TestContains(t *testing.T) {
 		addr2,
 	}
 
-	assert.True(contains(strList, "test"))
-	assert.True(contains(strList, "capture"))
-	assert.True(contains(strList, "list"))
-	assert.False(contains(strList, "false"))
+	require.True(contains(strList, "test"))
+	require.True(contains(strList, "capture"))
+	require.True(contains(strList, "list"))
+	require.False(contains(strList, "false"))
 
-	assert.True(contains(addrList, addr1))
-	assert.True(contains(addrList, addr2))
-	assert.False(contains(addrList, addr3))
+	require.True(contains(addrList, addr1))
+	require.True(contains(addrList, addr2))
+	require.False(contains(addrList, addr3))
 }

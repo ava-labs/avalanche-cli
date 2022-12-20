@@ -19,7 +19,7 @@ func newDeleteCmd() *cobra.Command {
 		Short: "Delete a signing key",
 		Long: `The key delete command deletes an existing signing key.
 
-To delete a key, provide the keyName. The command will prompt for confirmation
+To delete a key, provide the keyName. The command prompts for confirmation
 before deleting the key. To skip the confirmation, provide the --force flag.`,
 		RunE:         deleteKey,
 		Args:         cobra.ExactArgs(1),

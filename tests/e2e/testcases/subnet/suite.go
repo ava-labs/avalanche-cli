@@ -12,7 +12,18 @@ import (
 
 const subnetName = "e2eSubnetTest"
 
-var _ = ginkgo.Describe("[Subnet]", func() {
+var (
+	mapping map[string]string
+	err     error
+)
+
+var _ = ginkgo.Describe("[Subnet]", ginkgo.Ordered, func() {
+	_ = ginkgo.BeforeAll(func() {
+		mapper := utils.NewVersionMapper()
+		mapping, err = utils.GetVersionMapping(mapper)
+		gomega.Expect(err).Should(gomega.BeNil())
+	})
+
 	ginkgo.It("can create and delete a subnet evm config", func() {
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 		commands.DeleteSubnetConfig(subnetName)
@@ -24,8 +35,10 @@ var _ = ginkgo.Describe("[Subnet]", func() {
 	})
 
 	ginkgo.It("can create and delete a custom vm subnet config", func() {
-		customVMPath, err := utils.DownloadCustomVMBin()
+		// let's use a SubnetEVM version which would be compatible with an existing Avago
+		customVMPath, err := utils.DownloadCustomVMBin(mapping[utils.SoloSubnetEVMKey1])
 		gomega.Expect(err).Should(gomega.BeNil())
+
 		commands.CreateCustomVMConfig(subnetName, utils.SubnetEvmGenesisPath, customVMPath)
 		commands.DeleteSubnetConfig(subnetName)
 		exists, err := utils.SubnetCustomVMExists(subnetName)

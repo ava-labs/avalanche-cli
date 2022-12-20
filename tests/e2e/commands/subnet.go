@@ -4,7 +4,9 @@
 package commands
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 
@@ -16,22 +18,28 @@ import (
 
 /* #nosec G204 */
 func CreateSubnetEvmConfig(subnetName string, genesisPath string) {
+	mapper := utils.NewVersionMapper()
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
+	// let's use a SubnetEVM version which has a guaranteed compatible avago
+	CreateSubnetEvmConfigWithVersion(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey])
+}
+
+/* #nosec G204 */
+func CreateSubnetEvmConfigWithVersion(subnetName string, genesisPath string, version string) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeFalse())
 
 	// Create config
-	cmd := exec.Command(
-		CLIBinary,
-		SubnetCmd,
-		"create",
-		"--genesis",
-		genesisPath,
-		"--evm",
-		subnetName,
-		"--latest",
-	)
+	cmdArgs := []string{SubnetCmd, "create", "--genesis", genesisPath, "--evm", subnetName}
+	if version == "" {
+		cmdArgs = append(cmdArgs, "--latest")
+	} else {
+		cmdArgs = append(cmdArgs, "--vm-version", version)
+	}
+	cmd := exec.Command(CLIBinary, cmdArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -47,56 +55,47 @@ func CreateSubnetEvmConfig(subnetName string, genesisPath string) {
 }
 
 /* #nosec G204 */
-func CreateSpacesVMConfig(subnetName string, genesisPath string) {
-	// Check config does not already exist
-	exists, err := utils.SubnetConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeFalse())
-
-	// Create config
-	cmd := exec.Command(
-		CLIBinary,
-		SubnetCmd,
-		"create",
-		"--genesis",
-		genesisPath,
-		"--spacesvm",
-		subnetName,
-		"--latest",
-	)
-	output, err := cmd.Output()
+func ConfigureChainConfig(subnetName string, genesisPath string) {
+	// run configure
+	cmdArgs := []string{SubnetCmd, "configure", subnetName, "--chain-config", genesisPath}
+	cmd := exec.Command(CLIBinary, cmdArgs...)
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Println(cmd.String())
 		fmt.Println(string(output))
-		utils.PrintStdErr(err)
+		fmt.Println(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	// Config should now exist
-	exists, err = utils.SubnetConfigExists(subnetName)
+	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
 /* #nosec G204 */
-func CreateSubnetEvmConfigWithVersion(subnetName string, genesisPath string, version string) {
+func CreateSpacesVMConfig(subnetName string, genesisPath string) {
+	mapper := utils.NewVersionMapper()
+	// TODO: should we change interfaces here to allow err checking
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
+	CreateSpacesVMConfigWithVersion(subnetName, genesisPath, mapping[utils.Spaces2AvagoKey])
+}
+
+/* #nosec G204 */
+func CreateSpacesVMConfigWithVersion(subnetName string, genesisPath string, version string) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeFalse())
 
 	// Create config
-	cmd := exec.Command(
-		CLIBinary,
-		SubnetCmd,
-		"create",
-		"--genesis",
-		genesisPath,
-		"--evm",
-		subnetName,
-		"--vm-version",
-		version,
-	)
+	cmdArgs := []string{SubnetCmd, "create", "--genesis", genesisPath, "--spacesvm", subnetName}
+	if version == "" {
+		cmdArgs = append(cmdArgs, "--latest")
+	} else {
+		cmdArgs = append(cmdArgs, "--vm-version", version)
+	}
+	cmd := exec.Command(CLIBinary, cmdArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -176,77 +175,51 @@ func DeleteSubnetConfig(subnetName string) {
 // Returns the deploy output
 /* #nosec G204 */
 func DeploySubnetLocally(subnetName string) string {
-	// Check config exists
-	exists, err := utils.SubnetConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeTrue())
+	return DeploySubnetLocallyWithArgs(subnetName, "", "")
+}
 
-	// Deploy subnet locally
-	cmd := exec.Command(
-		CLIBinary,
-		SubnetCmd,
-		"deploy",
-		"--local",
-		subnetName,
-	)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(cmd.String())
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-	}
+/* #nosec G204 */
+func DeploySubnetLocallyExpectError(subnetName string) {
+	mapper := utils.NewVersionMapper()
+	mapping, err := utils.GetVersionMapping(mapper)
 	gomega.Expect(err).Should(gomega.BeNil())
 
-	return string(output)
+	DeploySubnetLocallyWithArgsExpectError(subnetName, mapping[utils.OnlyAvagoKey], "")
 }
 
 // Returns the deploy output
 /* #nosec G204 */
 func DeploySubnetLocallyWithViperConf(subnetName string, confPath string) string {
-	// Check config exists
-	exists, err := utils.SubnetConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeTrue())
-
-	// Deploy subnet locally
-	cmd := exec.Command(
-		CLIBinary,
-		SubnetCmd,
-		"deploy",
-		"--local",
-		"--config",
-		confPath,
-		subnetName,
-	)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(cmd.String())
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-	}
+	mapper := utils.NewVersionMapper()
+	mapping, err := utils.GetVersionMapping(mapper)
 	gomega.Expect(err).Should(gomega.BeNil())
 
-	return string(output)
+	return DeploySubnetLocallyWithArgs(subnetName, mapping[utils.OnlyAvagoKey], confPath)
 }
 
 // Returns the deploy output
 /* #nosec G204 */
 func DeploySubnetLocallyWithVersion(subnetName string, version string) string {
+	return DeploySubnetLocallyWithArgs(subnetName, version, "")
+}
+
+// Returns the deploy output
+/* #nosec G204 */
+func DeploySubnetLocallyWithArgs(subnetName string, version string, confPath string) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
 	// Deploy subnet locally
-	cmd := exec.Command(
-		CLIBinary,
-		SubnetCmd,
-		"deploy",
-		"--local",
-		subnetName,
-		"--avalanchego-version",
-		version,
-	)
+	cmdArgs := []string{SubnetCmd, "deploy", "--local", subnetName}
+	if version != "" {
+		cmdArgs = append(cmdArgs, "--avalanchego-version", version)
+	}
+	if confPath != "" {
+		cmdArgs = append(cmdArgs, "--config", confPath)
+	}
+	cmd := exec.Command(CLIBinary, cmdArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -258,8 +231,28 @@ func DeploySubnetLocallyWithVersion(subnetName string, version string) string {
 	return string(output)
 }
 
+/* #nosec G204 */
+func DeploySubnetLocallyWithArgsExpectError(subnetName string, version string, confPath string) {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// Deploy subnet locally
+	cmdArgs := []string{SubnetCmd, "deploy", "--local", subnetName}
+	if version != "" {
+		cmdArgs = append(cmdArgs, "--avalanchego-version", version)
+	}
+	if confPath != "" {
+		cmdArgs = append(cmdArgs, "--config", confPath)
+	}
+	cmd := exec.Command(CLIBinary, cmdArgs...)
+	_, err = cmd.CombinedOutput()
+	gomega.Expect(err).Should(gomega.HaveOccurred())
+}
+
 // simulates fuji deploy execution path on a local network
-func SimulateDeploySubnetPublicly(
+func SimulateFujiDeploy(
 	subnetName string,
 	key string,
 	controlKeys string,
@@ -301,8 +294,62 @@ func SimulateDeploySubnetPublicly(
 	return string(output)
 }
 
+// simulates mainnet deploy execution path on a local network
+func SimulateMainnetDeploy(
+	subnetName string,
+) string {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// enable simulation of public network execution paths on a local network
+	os.Setenv(constants.SimulatePublicNetwork, "true")
+
+	// Deploy subnet locally
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"deploy",
+		"--mainnet",
+		"--threshold",
+		"1",
+		"--same-control-key",
+		subnetName,
+	)
+	stdoutPipe, err := cmd.StdoutPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	stderrPipe, err := cmd.StderrPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	err = cmd.Start()
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	stdout := ""
+	go func(p io.ReadCloser) {
+		reader := bufio.NewReader(p)
+		line, err := reader.ReadString('\n')
+		for err == nil {
+			stdout += line
+			fmt.Print(line)
+			line, err = reader.ReadString('\n')
+		}
+	}(stdoutPipe)
+
+	stderr, err := io.ReadAll(stderrPipe)
+	gomega.Expect(err).Should(gomega.BeNil())
+	fmt.Println(string(stderr))
+
+	err = cmd.Wait()
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	// disable simulation of public network execution paths on a local network
+	os.Unsetenv(constants.SimulatePublicNetwork)
+
+	return stdout + string(stderr)
+}
+
 // simulates fuji add validator execution path on a local network
-func SimulateAddValidatorPublicly(
+func SimulateFujiAddValidator(
 	subnetName string,
 	key string,
 	nodeID string,
@@ -350,11 +397,74 @@ func SimulateAddValidatorPublicly(
 	return string(output)
 }
 
+// simulates mainnet add validator execution path on a local network
+func SimulateMainnetAddValidator(
+	subnetName string,
+	nodeID string,
+	start string,
+	period string,
+	weight string,
+) string {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// enable simulation of public network execution paths on a local network
+	os.Setenv(constants.SimulatePublicNetwork, "true")
+
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"addValidator",
+		"--mainnet",
+		"--nodeID",
+		nodeID,
+		"--start-time",
+		start,
+		"--staking-period",
+		period,
+		"--weight",
+		weight,
+		subnetName,
+	)
+	stdoutPipe, err := cmd.StdoutPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	stderrPipe, err := cmd.StderrPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	err = cmd.Start()
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	stdout := ""
+	go func(p io.ReadCloser) {
+		reader := bufio.NewReader(p)
+		line, err := reader.ReadString('\n')
+		for err == nil {
+			stdout += line
+			fmt.Print(line)
+			line, err = reader.ReadString('\n')
+		}
+	}(stdoutPipe)
+
+	stderr, err := io.ReadAll(stderrPipe)
+	gomega.Expect(err).Should(gomega.BeNil())
+	fmt.Println(string(stderr))
+
+	err = cmd.Wait()
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	// disable simulation of public network execution paths on a local network
+	os.Unsetenv(constants.SimulatePublicNetwork)
+
+	return stdout + string(stderr)
+}
+
 // simulates fuji join execution path on a local network
-func SimulateJoinPublicly(
+func SimulateFujiJoin(
 	subnetName string,
 	avalanchegoConfig string,
 	pluginDir string,
+	nodeID string,
 ) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -373,7 +483,55 @@ func SimulateJoinPublicly(
 		avalanchegoConfig,
 		"--plugin-dir",
 		pluginDir,
-		"--skip-whitelist-check",
+		"--force-whitelist-check",
+		"--fail-if-not-validating",
+		"--nodeID",
+		nodeID,
+		"--force-write",
+		subnetName,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+	}
+
+	// disable simulation of public network execution paths on a local network
+	os.Unsetenv(constants.SimulatePublicNetwork)
+
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	return string(output)
+}
+
+// simulates mainnet join execution path on a local network
+func SimulateMainnetJoin(
+	subnetName string,
+	avalanchegoConfig string,
+	pluginDir string,
+	nodeID string,
+) string {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// enable simulation of public network execution paths on a local network
+	os.Setenv(constants.SimulatePublicNetwork, "true")
+
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"join",
+		"--mainnet",
+		"--avalanchego-config",
+		avalanchegoConfig,
+		"--plugin-dir",
+		pluginDir,
+		"--force-whitelist-check",
+		"--fail-if-not-validating",
+		"--nodeID",
+		nodeID,
 		"--force-write",
 		subnetName,
 	)
@@ -408,6 +566,7 @@ func ImportSubnetConfig(repoAlias string, subnetName string) {
 		CLIBinary,
 		SubnetCmd,
 		"import",
+		"file",
 		"--repo",
 		repoAlias,
 		"--subnet",
@@ -445,6 +604,7 @@ func ImportSubnetConfigFromURL(repoURL string, branch string, subnetName string)
 		CLIBinary,
 		SubnetCmd,
 		"import",
+		"file",
 		"--repo",
 		repoURL,
 		"--branch",

@@ -14,17 +14,25 @@ import (
 	"os/exec"
 	"os/user"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	ledger "github.com/ava-labs/avalanche-ledger-go"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
+	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
+	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/spacesvm/chain"
 	spacesvmclient "github.com/ava-labs/spacesvm/client"
 	"github.com/ava-labs/subnet-evm/ethclient"
@@ -54,7 +62,7 @@ func GetAPMDir() string {
 }
 
 func genesisExists(subnetName string) (bool, error) {
-	genesis := path.Join(GetBaseDir(), subnetName+constants.GenesisSuffix)
+	genesis := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.GenesisFileName)
 	genesisExists := true
 	if _, err := os.Stat(genesis); errors.Is(err, os.ErrNotExist) {
 		// does *not* exist
@@ -67,7 +75,7 @@ func genesisExists(subnetName string) (bool, error) {
 }
 
 func sidecarExists(subnetName string) (bool, error) {
-	sidecar := path.Join(GetBaseDir(), subnetName+constants.SidecarSuffix)
+	sidecar := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.SidecarFileName)
 	sidecarExists := true
 	if _, err := os.Stat(sidecar); errors.Is(err, os.ErrNotExist) {
 		// does *not* exist
@@ -106,7 +114,7 @@ func AddSubnetIDToSidecar(subnetName string, network models.Network, subnetID st
 		return fmt.Errorf("failed to access sidecar for %s: not found", subnetName)
 	}
 
-	sidecar := path.Join(GetBaseDir(), subnetName+constants.SidecarSuffix)
+	sidecar := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.SidecarFileName)
 
 	jsonBytes, err := os.ReadFile(sidecar)
 	if err != nil {
@@ -153,7 +161,7 @@ func SubnetCustomVMExists(subnetName string) (bool, error) {
 }
 
 func SubnetAPMVMExists(subnetName string) (bool, error) {
-	sidecarPath := path.Join(GetBaseDir(), subnetName+constants.SidecarSuffix)
+	sidecarPath := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.SidecarFileName)
 	jsonBytes, err := os.ReadFile(sidecarPath)
 	if err != nil {
 		return false, err
@@ -193,23 +201,14 @@ func KeyExists(keyName string) (bool, error) {
 }
 
 func DeleteConfigs(subnetName string) error {
-	genesis := path.Join(GetBaseDir(), subnetName+constants.GenesisSuffix)
-	if _, err := os.Stat(genesis); err != nil && !errors.Is(err, os.ErrNotExist) {
+	subnetDir := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName)
+	if _, err := os.Stat(subnetDir); err != nil && !errors.Is(err, os.ErrNotExist) {
 		// Schrodinger: file may or may not exist. See err for details.
 		return err
 	}
 
 	// ignore error, file may not exist
-	os.Remove(genesis)
-
-	sidecar := path.Join(GetBaseDir(), subnetName+constants.SidecarSuffix)
-	if _, err := os.Stat(sidecar); err != nil && !errors.Is(err, os.ErrNotExist) {
-		// Schrodinger: file may or may not exist. See err for details.
-		return err
-	}
-
-	// ignore error, file may not exist
-	os.Remove(sidecar)
+	os.RemoveAll(subnetDir)
 
 	return nil
 }
@@ -253,6 +252,12 @@ func DeleteBins() error {
 	return nil
 }
 
+func DeleteCustomBinary(vmName string) {
+	vmPath := path.Join(GetBaseDir(), constants.VMDir, vmName)
+	// ignore error, file may not exist
+	os.RemoveAll(vmPath)
+}
+
 func DeleteAPMBin(vmid string) {
 	vmPath := path.Join(GetBaseDir(), constants.AvalancheCliBinDir, constants.APMPluginDir, vmid)
 
@@ -286,7 +291,7 @@ func ParseRPCsFromOutput(output string) ([]string, error) {
 		}
 		startIndex := strings.Index(line, "http")
 		if startIndex == -1 {
-			return nil, errors.New("no url in RPC URL line")
+			return nil, fmt.Errorf("no url in RPC URL line: %s", line)
 		}
 		endIndex := strings.LastIndex(line, "rpc")
 		rpc := line[startIndex : endIndex+3]
@@ -420,16 +425,9 @@ func CheckAvalancheGoExists(version string) bool {
 }
 
 // Currently downloads subnet-evm, but that suffices to test the custom vm functionality
-func DownloadCustomVMBin() (string, error) {
+func DownloadCustomVMBin(subnetEVMversion string) (string, error) {
 	targetDir := os.TempDir()
-	subnetEVMVersion, err := binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
-		constants.AvaLabsOrg,
-		subnetEVMName,
-	))
-	if err != nil {
-		return "", err
-	}
-	subnetEVMDir, err := binutils.DownloadReleaseVersion(logging.NoLog{}, subnetEVMName, subnetEVMVersion, targetDir)
+	subnetEVMDir, err := binutils.DownloadReleaseVersion(logging.NoLog{}, subnetEVMName, subnetEVMversion, targetDir)
 	if err != nil {
 		return "", err
 	}
@@ -683,4 +681,74 @@ func GetFileHash(filename string) (string, error) {
 	}
 
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
+}
+
+func FundLedgerAddress() error {
+	// get ledger
+	ledgerDev, err := ledger.New()
+	if err != nil {
+		return err
+	}
+
+	// get ledger addr
+	fmt.Println("*** Please provide extended public key on the ledger device ***")
+	ledgerAddrs, err := ledgerDev.Addresses([]uint32{0})
+	if err != nil {
+		return err
+	}
+	if len(ledgerAddrs) != 1 {
+		return fmt.Errorf("no ledger addresses available")
+	}
+	ledgerAddr := ledgerAddrs[0]
+
+	// get genesis funded wallet
+	sk, err := key.LoadSoft(constants.LocalNetworkID, EwoqKeyPath)
+	if err != nil {
+		return err
+	}
+	var kc keychain.Keychain
+	kc = sk.KeyChain()
+	wallet, err := primary.NewWalletWithTxs(context.Background(), constants.LocalAPIEndpoint, kc)
+	if err != nil {
+		return err
+	}
+
+	// export X-Chain genesis addr to P-Chain ledger addr
+	to := secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs:     []ids.ShortID{ledgerAddr},
+	}
+	output := &avax.TransferableOutput{
+		Asset: avax.Asset{ID: wallet.X().AVAXAssetID()},
+		Out: &secp256k1fx.TransferOutput{
+			Amt:          1000000000,
+			OutputOwners: to,
+		},
+	}
+	outputs := []*avax.TransferableOutput{output}
+	if _, err := wallet.X().IssueExportTx(avago_constants.PlatformChainID, outputs); err != nil {
+		return err
+	}
+
+	// get ledger funded wallet
+	kc, err = keychain.NewLedgerKeychain(ledgerDev, 1)
+	if err != nil {
+		return err
+	}
+	wallet, err = primary.NewWalletWithTxs(context.Background(), constants.LocalAPIEndpoint, kc)
+	if err != nil {
+		return err
+	}
+
+	// import X-Chain genesis addr to P-Chain ledger addr
+	fmt.Println("*** Please sign import hash on the ledger device *** ")
+	if _, err = wallet.P().IssueImportTx(wallet.X().BlockchainID(), &to); err != nil {
+		return err
+	}
+
+	if err := ledgerDev.Disconnect(); err != nil {
+		return err
+	}
+
+	return nil
 }

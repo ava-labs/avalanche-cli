@@ -9,47 +9,47 @@ import (
 	"testing"
 
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_LoadNodeConfig(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	cf := New()
 
 	err := useViper("node-config-test")
-	assert.NoError(err)
+	require.NoError(err)
 
 	config, err := cf.LoadNodeConfig()
-	assert.NoError(err)
+	require.NoError(err)
 	fmt.Println("Config:", config)
 	testVal := viper.GetString("var")
 	fmt.Println("Test val", testVal)
-	assert.Equal("val", testVal)
+	require.Equal("val", testVal)
 }
 
 func Test_LoadNodeConfig_EmptyConfig(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	cf := New()
 
 	err := useViper("empty-config")
-	assert.NoError(err)
+	require.NoError(err)
 
 	config, err := cf.LoadNodeConfig()
-	assert.NoError(err)
-	assert.Empty(config)
+	require.NoError(err)
+	require.Empty(config)
 }
 
 func Test_LoadNodeConfig_NoConfig(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	cf := New()
 
 	err := useViper("")
 	// we want to make sure this errors and no config file is read
-	assert.Error(err)
+	require.Error(err)
 
 	config, err := cf.LoadNodeConfig()
-	assert.NoError(err)
-	assert.Empty(config)
+	require.NoError(err)
+	require.Empty(config)
 }
 
 func useViper(configName string) error {
