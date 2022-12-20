@@ -14,8 +14,9 @@ import (
 )
 
 var (
-	subnetConf string
-	chainConf  string
+	subnetConf       string
+	chainConf        string
+	perNodeChainConf string
 )
 
 // avalanche subnet configure
@@ -33,6 +34,7 @@ can have its own chain config. This command allows you to set both config files.
 
 	cmd.Flags().StringVar(&subnetConf, "subnet-config", "", "path to the subnet configuration")
 	cmd.Flags().StringVar(&chainConf, "chain-config", "", "path to the chain configuration")
+	cmd.Flags().StringVar(&perNodeChainConf, "per-node-chain-config", "", "path to per node chain configuration for local network")
 	return cmd
 }
 
@@ -44,8 +46,9 @@ func configure(cmd *cobra.Command, args []string) error {
 	subnetName := chains[0]
 
 	const (
-		chainLabel  = constants.ChainConfigFileName
-		subnetLabel = constants.SubnetConfigFileName
+		chainLabel        = constants.ChainConfigFileName
+		perNodeChainLabel = constants.PerNodeChainConfigFileName
+		subnetLabel       = constants.SubnetConfigFileName
 	)
 	configsToLoad := map[string]string{}
 
@@ -55,10 +58,13 @@ func configure(cmd *cobra.Command, args []string) error {
 	if chainConf != "" {
 		configsToLoad[chainLabel] = chainConf
 	}
+	if perNodeChainConf != "" {
+		configsToLoad[perNodeChainLabel] = perNodeChainConf
+	}
 
 	// no flags provided
 	if len(configsToLoad) == 0 {
-		options := []string{chainLabel, subnetLabel}
+		options := []string{chainLabel, subnetLabel, perNodeChainLabel}
 		selected, err := app.Prompt.CaptureList("Which configuration file would you like to provide?", options)
 		if err != nil {
 			return err
@@ -68,7 +74,7 @@ func configure(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		var other string
-		if selected == chainLabel {
+		if selected == chainLabel || selected == perNodeChainLabel {
 			other = subnetLabel
 		} else {
 			other = chainLabel
