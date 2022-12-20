@@ -76,6 +76,10 @@ github.com/ava-labs/avalanche-network-runner v1.3.4-0.20221212190542-c8d6f506cd1
 github.com/ava-labs/avalanche-network-runner v1.3.4-0.20221212190542-c8d6f506cd14/go.mod h1:B96JzcyRDy3rzSJscZE1/zcYkrc3p1aVPBRV5cLO5sc=
 github.com/ava-labs/avalanche-network-runner v1.3.4-0.20221212192614-370a27ee1daa h1:xfgIE/n4FCNQmQ5xpFiK85EcMwAdM3EZ39lRfh9beZ8=
 github.com/ava-labs/avalanche-network-runner v1.3.4-0.20221212192614-370a27ee1daa/go.mod h1:B96JzcyRDy3rzSJscZE1/zcYkrc3p1aVPBRV5cLO5sc=
+github.com/ava-labs/avalanche-network-runner v1.3.4-0.20221220145930-d986e5cd3605 h1:foXVfB3Ttl9QoY6N1W15qsq/C38StpkaQIHmohm1nAw=
+github.com/ava-labs/avalanche-network-runner v1.3.4-0.20221220145930-d986e5cd3605/go.mod h1:0eQ0hQFkNBWdN2g2v6TO9576D18H5BS661KSaq/96Pk=
+github.com/ava-labs/avalanche-network-runner v1.3.4-0.20221220150640-583c5b619ab1 h1:F1/8OonxD1ViVtoP5azBgMteCZwGdi3C1Jsb2ZyHlMM=
+github.com/ava-labs/avalanche-network-runner v1.3.4-0.20221220150640-583c5b619ab1/go.mod h1:0eQ0hQFkNBWdN2g2v6TO9576D18H5BS661KSaq/96Pk=
 github.com/ava-labs/avalanchego v1.9.4 h1:z5tE/vUGzUQflqv3mn6X5E1VTCZHYhuD36idOyPNRrc=
 github.com/ava-labs/avalanchego v1.9.4/go.mod h1:H4pMTYzgudfPs9WX+KXI0nCiUGNkdgPWOwm1nqzGibQ=
 github.com/ava-labs/coreth v0.11.4 h1:WIP3LcDvag8h1ydyGsMIHhVjyRaNHEFd673jcE9z+vo=
@@ -308,6 +312,8 @@ github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFb
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0/go.mod h1:hgWBS7lorOAVIJEQMi4ZsPv9hVvWI6+ch50m39Pf2Ks=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.13.0 h1:fi9bGIUJOGzzrHBbP8NWbTfNC5fKO6X7kFw40TOqGB8=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.13.0/go.mod h1:uY3Aurq+SxwQCpdX91xZ9CgxIMT1EsYtcidljXufYIY=
+github.com/grpc-ecosystem/grpc-gateway/v2 v2.14.0 h1:t7uX3JBHdVwAi3G7sSSdbsk8NfgA+LnUS88V/2EKaA0=
+github.com/grpc-ecosystem/grpc-gateway/v2 v2.14.0/go.mod h1:4OGVnY4qf2+gw+ssiHbW+pq4mo2yko94YxxMmXZ7jCA=
 github.com/hashicorp/go-bexpr v0.1.10 h1:9kuI5PFotCboP3dkDYFr/wi0gg0QVbSNz5oFRpxn4uE=
 github.com/hashicorp/go-bexpr v0.1.10/go.mod h1:oxlubA2vC/gFVfX1A6JGp7ls7uCDlfJn732ehYYg+g0=
 github.com/hashicorp/go-hclog v1.2.2 h1:ihRI7YFwcZdiSD7SIenIhHfQH3OuDvWerAUBZbeQS3M=
@@ -947,6 +953,8 @@ google.golang.org/genproto v0.0.0-20210226172003-ab064af71705/go.mod h1:FWY/as6D
 google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1/go.mod h1:5CzLGKJ67TSI2B9POpiiyGha0AjJvZIUgRMt1dSmuhc=
 google.golang.org/genproto v0.0.0-20221027153422-115e99e71e1c h1:QgY/XxIAIeccR+Ca/rDdKubLIU9rcJ3xfy1DC/Wd2Oo=
 google.golang.org/genproto v0.0.0-20221027153422-115e99e71e1c/go.mod h1:CGI5F/G+E5bKwmfYo09AXuVN4dD894kIKUFmVbP2/Fo=
+google.golang.org/genproto v0.0.0-20221114212237-e4508ebdbee1 h1:jCw9YRd2s40X9Vxi4zKsPRvSPlHWNqadVkpbMsCPzPQ=
+google.golang.org/genproto v0.0.0-20221114212237-e4508ebdbee1/go.mod h1:rZS5c/ZVYMaOGBfO68GWtjOw/eLaZM1X6iVtgjZ+EWg=
 google.golang.org/grpc v1.19.0/go.mod h1:mqu4LbDTu4XGKhr4mRzUsmM4RtVoemTSY81AxZiDr8c=
 google.golang.org/grpc v1.20.1/go.mod h1:10oTOabMzJvdu6/UiuZezV6QK5dSlG84ov/aaiqXj38=
 google.golang.org/grpc v1.21.1/go.mod h1:oYelfM1adQP15Ek0mdvEgi9Df8B9CZIaU1084ijfRaM=
