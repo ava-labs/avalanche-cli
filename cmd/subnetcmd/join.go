@@ -123,7 +123,7 @@ This command currently only supports Subnets deployed on the Fuji Testnet and Ma
 	return cmd
 }
 
-func joinCmd(cmd *cobra.Command, args []string) error {
+func joinCmd(_ *cobra.Command, args []string) error {
 	if printManual && (avagoConfigPath != "" || pluginDir != "") {
 		return errors.New("--print cannot be used with --avalanchego-config or --plugin-dir")
 	}

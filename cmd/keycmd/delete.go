@@ -35,7 +35,7 @@ before deleting the key. To skip the confirmation, provide the --force flag.`,
 	return cmd
 }
 
-func deleteKey(cmd *cobra.Command, args []string) error {
+func deleteKey(_ *cobra.Command, args []string) error {
 	keyName := args[0]
 	keyPath := app.GetKeyPath(keyName)
 

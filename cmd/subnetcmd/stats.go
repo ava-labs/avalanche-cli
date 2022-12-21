@@ -38,7 +38,7 @@ func newStatsCmd() *cobra.Command {
 	return cmd
 }
 
-func stats(cmd *cobra.Command, args []string) error {
+func stats(_ *cobra.Command, args []string) error {
 	var network models.Network
 	switch {
 	case deployTestnet:

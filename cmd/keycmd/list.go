@@ -140,7 +140,7 @@ type addressInfo struct {
 	network string
 }
 
-func listKeys(cmd *cobra.Command, args []string) error {
+func listKeys(*cobra.Command, []string) error {
 	var addrInfos []addressInfo
 	networks := []models.Network{}
 	if local || all {

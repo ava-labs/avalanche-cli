@@ -67,7 +67,7 @@ flag.`,
 	return cmd
 }
 
-func importSubnet(cmd *cobra.Command, args []string) error {
+func importSubnet(_ *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		importPath := args[0]
 		return importFromFile(importPath)

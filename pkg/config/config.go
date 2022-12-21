@@ -15,7 +15,7 @@ func New() *Config {
 	return &Config{}
 }
 
-func (c *Config) LoadNodeConfig() (string, error) {
+func (*Config) LoadNodeConfig() (string, error) {
 	globalConfigs := viper.GetStringMap("node-config")
 	if len(globalConfigs) == 0 {
 		return "", nil

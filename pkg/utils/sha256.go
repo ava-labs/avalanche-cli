@@ -16,8 +16,10 @@ func GetSHA256FromDisk(binPath string) (string, error) {
 	}
 	hasher := sha256.New()
 	s, err := os.ReadFile(binPath)
-	hasher.Write(s)
 	if err != nil {
+		return "", err
+	}
+	if _, err := hasher.Write(s); err != nil {
 		return "", fmt.Errorf("failed calculating the sha256 hash of the binary %s: %w", binPath, err)
 	}
 

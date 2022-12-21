@@ -104,7 +104,7 @@ func (app *Avalanche) GetKeyDir() string {
 	return filepath.Join(app.baseDir, constants.KeyDir)
 }
 
-func (app *Avalanche) GetTmpPluginDir() string {
+func (*Avalanche) GetTmpPluginDir() string {
 	return os.TempDir()
 }
 
@@ -128,7 +128,7 @@ func (app *Avalanche) GetDownloader() Downloader {
 	return app.Downloader
 }
 
-func (app *Avalanche) GetAvalanchegoCompatibilityURL() string {
+func (*Avalanche) GetAvalanchegoCompatibilityURL() string {
 	return constants.AvalancheGoCompatibilityURL
 }
 

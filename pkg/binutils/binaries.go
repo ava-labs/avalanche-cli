@@ -111,7 +111,7 @@ func installZipArchive(zipfile []byte, binDir string) error {
 			}
 
 			_, err = io.CopyN(f, rc, maxCopy)
-			if err != nil && err != io.EOF {
+			if err != nil && !errors.Is(err, io.EOF) {
 				return fmt.Errorf("failed writing zip file entry to disk: %w", err)
 			}
 			if err := f.Close(); err != nil {
@@ -147,7 +147,7 @@ func installTarGzArchive(targz []byte, binDir string) error {
 		header, err := tarReader.Next()
 		switch {
 		// if no more files are found return
-		case err == io.EOF:
+		case errors.Is(err, io.EOF):
 			return nil
 		case err != nil:
 			return fmt.Errorf("failed reading next tar entry: %w", err)
@@ -184,7 +184,7 @@ func installTarGzArchive(targz []byte, binDir string) error {
 				return fmt.Errorf("failed opening new file from tar entry %w", err)
 			}
 			// copy over contents
-			if _, err := io.CopyN(f, tarReader, maxCopy); err != nil && err != io.EOF {
+			if _, err := io.CopyN(f, tarReader, maxCopy); err != nil && !errors.Is(err, io.EOF) {
 				return fmt.Errorf("failed writing tar entry contents to disk: %w", err)
 			}
 			// manually close here after each file operation; defering would cause each file close
@@ -197,7 +197,7 @@ func installTarGzArchive(targz []byte, binDir string) error {
 }
 
 // ExistsWithVersion returns true if the supplied binary is installed with the supplied version
-func (abc *binaryChecker) ExistsWithVersion(binDir, binPrefix, version string) (bool, error) {
+func (*binaryChecker) ExistsWithVersion(binDir, binPrefix, version string) (bool, error) {
 	match, err := filepath.Glob(filepath.Join(binDir, binPrefix) + version)
 	if err != nil {
 		return false, err
@@ -205,7 +205,7 @@ func (abc *binaryChecker) ExistsWithVersion(binDir, binPrefix, version string) (
 	return len(match) != 0, nil
 }
 
-func (d *pluginBinaryDownloader) InstallVM(vmID, vmBin, pluginDir string) error {
+func (*pluginBinaryDownloader) InstallVM(vmID, vmBin, pluginDir string) error {
 	// target of VM install
 	binaryPath := filepath.Join(pluginDir, vmID)
 

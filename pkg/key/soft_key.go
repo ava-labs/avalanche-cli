@@ -280,7 +280,9 @@ func (m *SoftKey) Save(p string) error {
 	return os.WriteFile(p, []byte(k), fsModeWrite)
 }
 
-func (m *SoftKey) P() []string { return []string{m.pAddr} }
+func (m *SoftKey) P() []string {
+	return []string{m.pAddr}
+}
 
 func (m *SoftKey) Spends(outputs []*avax.UTXO, opts ...OpOption) (
 	totalBalanceToSpend uint64,

@@ -27,7 +27,7 @@ func newTransactionCommitCmd() *cobra.Command {
 	return cmd
 }
 
-func commitTx(cmd *cobra.Command, args []string) error {
+func commitTx(_ *cobra.Command, args []string) error {
 	var err error
 	if inputTxPath == "" {
 		inputTxPath, err = app.Prompt.CaptureExistingFilepath("What is the path to the signed transactions file?")

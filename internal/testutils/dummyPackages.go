@@ -8,6 +8,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -55,7 +56,7 @@ func verifyAvagoTarContents(require *require.Assertions, tarBytes []byte, versio
 	require.NoError(err)
 	for {
 		file, err := tarReader.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		require.NoError(err)
@@ -91,7 +92,7 @@ func verifySubnetEVMTarContents(require *require.Assertions, tarBytes []byte) {
 	require.NoError(err)
 	for {
 		file, err := tarReader.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		require.NoError(err)

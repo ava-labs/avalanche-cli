@@ -33,7 +33,7 @@ default snapshot with network start.`,
 	return cmd
 }
 
-func stopNetwork(cmd *cobra.Command, args []string) error {
+func stopNetwork(*cobra.Command, []string) error {
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
 		return err

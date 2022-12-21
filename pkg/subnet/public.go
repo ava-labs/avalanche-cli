@@ -71,11 +71,7 @@ func (d *PublicDeployer) AddValidator(
 	if err != nil {
 		return false, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
-	ok, err := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys)
-	if err != nil {
-		return false, nil, err
-	}
-	if !ok {
+	if ok := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys); !ok {
 		return false, nil, ErrNoSubnetAuthKeysInWallet
 	}
 	validator := &validator.SubnetValidator{
@@ -143,11 +139,7 @@ func (d *PublicDeployer) Deploy(
 		return false, ids.Empty, ids.Empty, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 
-	ok, err := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys)
-	if err != nil {
-		return false, ids.Empty, ids.Empty, nil, err
-	}
-	if !ok {
+	if ok := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys); !ok {
 		return false, ids.Empty, ids.Empty, nil, ErrNoSubnetAuthKeysInWallet
 	}
 
@@ -202,11 +194,7 @@ func (d *PublicDeployer) Sign(
 	if err != nil {
 		return fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
-	ok, err := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys)
-	if err != nil {
-		return err
-	}
-	if !ok {
+	if ok := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys); !ok {
 		return ErrNoSubnetAuthKeysInWallet
 	}
 	if d.usingLedger {
@@ -255,24 +243,21 @@ func (d *PublicDeployer) createAndIssueBlockchainTx(
 	return wallet.P().IssueCreateChainTx(subnetID, genesis, vmID, fxIDs, chainName)
 }
 
-func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []ids.ShortID) ([]common.Option, error) {
+func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []ids.ShortID) []common.Option {
 	options := []common.Option{}
 	// addrs to use for signing
 	customAddrsSet := set.Set[ids.ShortID]{}
 	customAddrsSet.Add(subnetAuthKeys...)
 	options = append(options, common.WithCustomAddresses(customAddrsSet))
 	// set change to go to wallet addr (instead of any other subnet auth key)
-	walletAddresses, err := d.getSubnetAuthAddressesInWallet(subnetAuthKeys)
-	if err != nil {
-		return nil, err
-	}
+	walletAddresses := d.getSubnetAuthAddressesInWallet(subnetAuthKeys)
 	walletAddr := walletAddresses[0]
 	changeOwner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
 		Addrs:     []ids.ShortID{walletAddr},
 	}
 	options = append(options, common.WithChangeOwner(changeOwner))
-	return options, nil
+	return options
 }
 
 func (d *PublicDeployer) createBlockchainTx(
@@ -287,10 +272,7 @@ func (d *PublicDeployer) createBlockchainTx(
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign blockchain creation hash on the ledger device *** ")
 	}
-	options, err := d.getMultisigTxOptions(subnetAuthKeys)
-	if err != nil {
-		return nil, err
-	}
+	options := d.getMultisigTxOptions(subnetAuthKeys)
 	// create tx
 	unsignedTx, err := wallet.P().Builder().NewCreateChainTx(
 		subnetID,
@@ -316,10 +298,7 @@ func (d *PublicDeployer) createAddSubnetValidatorTx(
 	validator *validator.SubnetValidator,
 	wallet primary.Wallet,
 ) (*txs.Tx, error) {
-	options, err := d.getMultisigTxOptions(subnetAuthKeys)
-	if err != nil {
-		return nil, err
-	}
+	options := d.getMultisigTxOptions(subnetAuthKeys)
 	// create tx
 	unsignedTx, err := wallet.P().Builder().NewAddSubnetValidatorTx(validator, options...)
 	if err != nil {
@@ -333,7 +312,7 @@ func (d *PublicDeployer) createAddSubnetValidatorTx(
 	return &tx, nil
 }
 
-func (d *PublicDeployer) signTx(
+func (*PublicDeployer) signTx(
 	tx *txs.Tx,
 	wallet primary.Wallet,
 ) error {
@@ -361,7 +340,7 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 }
 
 // get wallet addresses that are also subnet auth addresses
-func (d *PublicDeployer) getSubnetAuthAddressesInWallet(subnetAuth []ids.ShortID) ([]ids.ShortID, error) {
+func (d *PublicDeployer) getSubnetAuthAddressesInWallet(subnetAuth []ids.ShortID) []ids.ShortID {
 	walletAddrs := d.kc.Addresses().List()
 	subnetAuthInWallet := []ids.ShortID{}
 	for _, walletAddr := range walletAddrs {
@@ -371,17 +350,11 @@ func (d *PublicDeployer) getSubnetAuthAddressesInWallet(subnetAuth []ids.ShortID
 			}
 		}
 	}
-	return subnetAuthInWallet, nil
+	return subnetAuthInWallet
 }
 
 // check that the wallet at least contain one subnet auth address
-func (d *PublicDeployer) checkWalletHasSubnetAuthAddresses(subnetAuth []ids.ShortID) (bool, error) {
-	addrs, err := d.getSubnetAuthAddressesInWallet(subnetAuth)
-	if err != nil {
-		return false, err
-	}
-	if len(addrs) == 0 {
-		return false, nil
-	}
-	return true, nil
+func (d *PublicDeployer) checkWalletHasSubnetAuthAddresses(subnetAuth []ids.ShortID) bool {
+	addrs := d.getSubnetAuthAddressesInWallet(subnetAuth)
+	return len(addrs) != 0
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/mod/semver"
 )
 
@@ -63,13 +63,13 @@ func newTestMapper(t *testing.T) *testMapper {
 }
 
 // implement VersionMapper
-func (m *testMapper) GetEligibleVersions(sorted []string, repo string, app *application.Avalanche) ([]string, error) {
+func (*testMapper) GetEligibleVersions(sorted []string, _ string, _ *application.Avalanche) ([]string, error) {
 	// tests were written with the assumption that the first version is always in progress
 	return sorted[1:], nil
 }
 
 // implement VersionMapper
-func (m *testMapper) GetLatestAvagoByProtoVersion(app *application.Avalanche, rpcVersion int, url string) (string, error) {
+func (m *testMapper) GetLatestAvagoByProtoVersion(_ *application.Avalanche, rpcVersion int, _ string) (string, error) {
 	cBytes := []byte(m.currentContext.sourceAvago)
 
 	var compat models.AvagoCompatiblity
@@ -160,7 +160,7 @@ func (m *testMapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // to correctly evaluate for the global `binaryToVersion` map,
 // used by the tests to know which version to use for which test.
 func TestGetVersionMapping(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	m := newTestMapper(t)
 	// start local test HTTP server
 	srv := httptest.NewServer(m)
@@ -420,13 +420,13 @@ func TestGetVersionMapping(t *testing.T) {
 			// so that we can set the currentContext
 			mapping, err := m.getVersionMapping(tc)
 			if tc.shouldFail {
-				assert.Error(err)
+				require.Error(err)
 				return
 			}
-			assert.NoError(err)
+			require.NoError(err)
 			// make sure the mapping returned from `GetVersionMapping`
 			// matches the expected one
-			assert.Equal(tc.expected, mapping, fmt.Sprintf("iteration: %d", i))
+			require.Equal(tc.expected, mapping, fmt.Sprintf("iteration: %d", i))
 		})
 	}
 }

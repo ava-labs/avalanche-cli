@@ -132,10 +132,10 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	networkBooted := true
 	clusterInfo, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
-		if server.IsServerError(err, server.ErrNotBootstrapped) {
-			networkBooted = false
-		} else {
+		if !server.IsServerError(err, server.ErrNotBootstrapped) {
 			return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
+		} else {
+			networkBooted = false
 		}
 	}
 
@@ -264,7 +264,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	return subnetID, blockchainID, nil
 }
 
-func (d *LocalDeployer) printExtraSpacesVMInfo(chainGenesis []byte) error {
+func (*LocalDeployer) printExtraSpacesVMInfo(chainGenesis []byte) error {
 	var genesis spacesvmchain.Genesis
 	if err := json.Unmarshal(chainGenesis, &genesis); err != nil {
 		return fmt.Errorf("failed to unmarshall genesis: %w", err)
@@ -470,7 +470,9 @@ func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 	}
 	defaultSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.DefaultSnapshotName)
 	if force {
-		os.RemoveAll(defaultSnapshotPath)
+		if err := os.RemoveAll(defaultSnapshotPath); err != nil {
+			return fmt.Errorf("failed removing default snapshot: %w", err)
+		}
 	}
 	if _, err := os.Stat(defaultSnapshotPath); os.IsNotExist(err) {
 		bootstrapSnapshotBytes, err := os.ReadFile(bootstrapSnapshotArchivePath)

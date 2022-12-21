@@ -41,7 +41,7 @@ configuration.`,
 	return cmd
 }
 
-func clean(cmd *cobra.Command, args []string) error {
+func clean(*cobra.Command, []string) error {
 	app.Log.Info("killing gRPC server process...")
 
 	if err := subnet.SetDefaultSnapshot(app.GetSnapshotsDir(), true); err != nil {
