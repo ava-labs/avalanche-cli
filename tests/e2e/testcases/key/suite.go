@@ -129,10 +129,10 @@ var _ = ginkgo.Describe("[Key]", func() {
 		// if there are independent regexes instead of one large one,
 		// difficult to understand (go regexes don't support Perl regex
 		// Go RE2 library doesn't support lookahead and lookbehind
-		regex1 := `.*KEY NAME.*CHAIN.*ADDRESS.*NETWORK`
+		regex1 := `.*NAME.*CHAIN.*ADDRESS.*NETWORK`
 		regex2 := `.*e2eKey.*C-Chain.*0x[a-fA-F0-9]{40}`
 		regex3 := `.*P-Chain.*[(P-custom)(P-fuji)][a-zA-Z0-9]{39}`
-		regex4 := `.*P-fuji[a-zA-Z0-9]{39}`
+		regex4 := `.*P-avax[a-zA-Z0-9]{39}`
 
 		// Create a key
 		output, err := commands.CreateKey(keyName)

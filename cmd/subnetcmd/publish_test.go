@@ -22,8 +22,8 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/version"
 	"github.com/go-git/go-git/v5"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -31,7 +31,7 @@ const (
 )
 
 func TestInfoKnownVMs(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	vmBinDir := t.TempDir()
 	expectedSHA := "a12871fee210fb8619291eaea194581cbd2531e4b23759d225f6806923f63222"
 
@@ -63,9 +63,9 @@ func TestInfoKnownVMs(t *testing.T) {
 	for _, c := range cases {
 		binDir := filepath.Join(vmBinDir, c.repoName+"-"+c.strVer)
 		err := os.MkdirAll(binDir, constants.DefaultPerms755)
-		assert.NoError(err)
+		require.NoError(err)
 		err = os.WriteFile(filepath.Join(binDir, c.vmBin), []byte{0x1, 0x2}, constants.DefaultPerms755)
-		assert.NoError(err)
+		require.NoError(err)
 		maintrs, ver, resurl, sha, err := getInfoForKnownVMs(
 			c.strVer,
 			c.repoName,
@@ -73,29 +73,29 @@ func TestInfoKnownVMs(t *testing.T) {
 			c.vmBin,
 			c.dl,
 		)
-		assert.NoError(err)
-		assert.ElementsMatch([]string{constants.AvaLabsMaintainers}, maintrs)
-		assert.NoError(err)
+		require.NoError(err)
+		require.ElementsMatch([]string{constants.AvaLabsMaintainers}, maintrs)
+		require.NoError(err)
 		_, err = url.Parse(resurl)
-		assert.NoError(err)
+		require.NoError(err)
 		// it's kinda useless to create the URL by building it via downloader -
 		// would defeat the purpose of the test
 		expectedURL := "https://github.com/ava-labs/" +
 			c.repoName + "/releases/download/" +
 			c.strVer + "/" + c.repoName + "_" + c.strVer[1:] + "_" +
 			runtime.GOOS + "_" + runtime.GOARCH + ".tar.gz"
-		assert.Equal(expectedURL, resurl)
-		assert.Equal(&version.Semantic{
+		require.Equal(expectedURL, resurl)
+		require.Equal(&version.Semantic{
 			Major: 0,
 			Minor: 9,
 			Patch: 99,
 		}, ver)
-		assert.Equal(expectedSHA, sha)
+		require.Equal(expectedSHA, sha)
 	}
 }
 
 func TestNoRepoPath(t *testing.T) {
-	assert, mockPrompt := setupTestEnv(t)
+	require, mockPrompt := setupTestEnv(t)
 	defer func() {
 		app = nil
 		noRepoPath = ""
@@ -121,29 +121,29 @@ func TestNoRepoPath(t *testing.T) {
 	noRepoPath = "/path/to/nowhere"
 	err := doPublish(sc, testSubnet, newTestPublisher)
 	// should fail as it can't create that dir
-	assert.Error(err)
-	assert.ErrorContains(err, "failed")
+	require.Error(err)
+	require.ErrorContains(err, "failed")
 
 	// try with existing files
 	noRepoPath = t.TempDir()
 	subnetDir := filepath.Join(noRepoPath, constants.SubnetDir)
 	vmDir := filepath.Join(noRepoPath, constants.VMDir)
 	err = os.MkdirAll(subnetDir, constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 	err = os.MkdirAll(vmDir, constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 	expectedSubnetFile := filepath.Join(subnetDir, testSubnet+constants.YAMLSuffix)
 	expectedVMFile := filepath.Join(vmDir, sc.Networks["Fuji"].BlockchainID.String()+constants.YAMLSuffix)
 	_, err = os.Create(expectedSubnetFile)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// For Sha256 calc we are accessing the subnet-evm binary
 	// So we're just `touch`ing that file so the code finds it
 	appSubnetDir := filepath.Join(app.GetSubnetEVMBinDir(), constants.SubnetEVMRepoName+"-"+sc.VMVersion)
 	err = os.MkdirAll(appSubnetDir, constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 	_, err = os.Create(filepath.Join(appSubnetDir, constants.SubnetEVMBin))
-	assert.NoError(err)
+	require.NoError(err)
 
 	// reset expectations as this test (and TestPublishing) also uses the same mocks
 	// and the same sequence so expectations get messed up
@@ -153,12 +153,12 @@ func TestNoRepoPath(t *testing.T) {
 
 	// should fail as no force flag
 	err = doPublish(sc, testSubnet, newTestPublisher)
-	assert.Error(err)
-	assert.ErrorContains(err, "already exists")
+	require.Error(err)
+	require.ErrorContains(err, "already exists")
 	err = os.Remove(expectedSubnetFile)
-	assert.NoError(err)
+	require.NoError(err)
 	_, err = os.Create(expectedVMFile)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// next should fail as no force flag (other file)
 
@@ -169,10 +169,10 @@ func TestNoRepoPath(t *testing.T) {
 	configureMockPrompt(mockPrompt)
 
 	err = doPublish(sc, testSubnet, newTestPublisher)
-	assert.Error(err)
-	assert.ErrorContains(err, "already exists")
+	require.Error(err)
+	require.ErrorContains(err, "already exists")
 	err = os.Remove(expectedVMFile)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// this now should succeed and the file exist
 
@@ -183,9 +183,9 @@ func TestNoRepoPath(t *testing.T) {
 	configureMockPrompt(mockPrompt)
 
 	err = doPublish(sc, testSubnet, newTestPublisher)
-	assert.NoError(err)
-	assert.FileExists(expectedSubnetFile)
-	assert.FileExists(expectedVMFile)
+	require.NoError(err)
+	require.FileExists(expectedSubnetFile)
+	require.FileExists(expectedVMFile)
 
 	// set force flag
 	forceWrite = true
@@ -199,9 +199,9 @@ func TestNoRepoPath(t *testing.T) {
 	configureMockPrompt(mockPrompt)
 
 	err = doPublish(sc, testSubnet, newTestPublisher)
-	assert.NoError(err)
-	assert.FileExists(expectedSubnetFile)
-	assert.FileExists(expectedVMFile)
+	require.NoError(err)
+	require.FileExists(expectedSubnetFile)
+	require.FileExists(expectedVMFile)
 
 	// reset expectations as TestPublishing also uses the same mocks
 	// but those are global so expectations get messed up
@@ -210,7 +210,7 @@ func TestNoRepoPath(t *testing.T) {
 }
 
 func TestCanPublish(t *testing.T) {
-	assert, _ := setupTestEnv(t)
+	require, _ := setupTestEnv(t)
 	defer func() {
 		app = nil
 	}()
@@ -307,72 +307,72 @@ func TestCanPublish(t *testing.T) {
 	for i, sc := range sidecars {
 		ready := isReadyToPublish(sc)
 		if i < 3 {
-			assert.True(ready)
+			require.True(ready)
 		} else {
-			assert.False(ready)
+			require.False(ready)
 		}
 	}
 }
 
 func TestIsPublished(t *testing.T) {
-	assert, _ := setupTestEnv(t)
+	require, _ := setupTestEnv(t)
 	defer func() {
 		app = nil
 	}()
 
 	published, err := isAlreadyPublished(testSubnet)
-	assert.NoError(err)
-	assert.False(published)
+	require.NoError(err)
+	require.False(published)
 
 	baseDir := app.GetBaseDir()
 	err = os.Mkdir(filepath.Join(baseDir, testSubnet), constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 	published, err = isAlreadyPublished(testSubnet)
-	assert.NoError(err)
-	assert.False(published)
+	require.NoError(err)
+	require.False(published)
 
 	reposDir := app.GetReposDir()
 	err = os.MkdirAll(filepath.Join(reposDir, "dummyRepo", constants.VMDir, testSubnet), constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 	published, err = isAlreadyPublished(testSubnet)
-	assert.NoError(err)
-	assert.False(published)
+	require.NoError(err)
+	require.False(published)
 
 	goodDir1 := filepath.Join(reposDir, "dummyRepo", constants.SubnetDir, testSubnet)
 	err = os.MkdirAll(goodDir1, constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 	published, err = isAlreadyPublished(testSubnet)
-	assert.NoError(err)
-	assert.False(published)
+	require.NoError(err)
+	require.False(published)
 
 	_, err = os.Create(filepath.Join(goodDir1, testSubnet))
-	assert.NoError(err)
+	require.NoError(err)
 	published, err = isAlreadyPublished(testSubnet)
-	assert.NoError(err)
-	assert.True(published)
+	require.NoError(err)
+	require.True(published)
 
 	goodDir2 := filepath.Join(reposDir, "dummyRepo2", constants.SubnetDir, testSubnet)
 	err = os.MkdirAll(goodDir2, constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 	published, err = isAlreadyPublished(testSubnet)
-	assert.NoError(err)
-	assert.True(published)
+	require.NoError(err)
+	require.True(published)
 	_, err = os.Create(filepath.Join(goodDir2, "myOtherTestSubnet"))
-	assert.NoError(err)
+	require.NoError(err)
 	published, err = isAlreadyPublished(testSubnet)
-	assert.NoError(err)
-	assert.True(published)
+	require.NoError(err)
+	require.True(published)
 
 	_, err = os.Create(filepath.Join(goodDir2, testSubnet))
-	assert.NoError(err)
+	require.NoError(err)
 	published, err = isAlreadyPublished(testSubnet)
-	assert.NoError(err)
-	assert.True(published)
+	require.NoError(err)
+	require.True(published)
 }
 
 // TestPublishing allows unit testing of the **normal** flow for publishing
 func TestPublishing(t *testing.T) {
-	assert, mockPrompt := setupTestEnv(t)
+	require, mockPrompt := setupTestEnv(t)
 	defer func() {
 		app = nil
 	}()
@@ -387,12 +387,12 @@ func TestPublishing(t *testing.T) {
 	// So we're just `touch`ing that file so the code finds it
 	subnetDir := filepath.Join(app.GetSubnetEVMBinDir(), constants.SubnetEVMRepoName+"-"+sc.VMVersion)
 	err := os.MkdirAll(subnetDir, constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 	_, err = os.Create(filepath.Join(subnetDir, constants.SubnetEVMBin))
-	assert.NoError(err)
+	require.NoError(err)
 
 	err = doPublish(sc, testSubnet, newTestPublisher)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// reset expectations as TestNoRepoPath also uses the same mocks
 	// but those are global so expectations get messed up
@@ -414,17 +414,17 @@ func configureMockPrompt(mockPrompt *mocks.Prompter) {
 	mockPrompt.On("CaptureVersion", mock.Anything).Return("v0.9.99", nil)
 }
 
-func setupTestEnv(t *testing.T) (*assert.Assertions, *mocks.Prompter) {
-	assert := assert.New(t)
+func setupTestEnv(t *testing.T) (*require.Assertions, *mocks.Prompter) {
+	require := require.New(t)
 	testDir := t.TempDir()
 	err := os.Mkdir(filepath.Join(testDir, "repos"), 0o755)
-	assert.NoError(err)
+	require.NoError(err)
 	ux.NewUserLog(logging.NoLog{}, io.Discard)
 	app = &application.Avalanche{}
 	mockPrompt := mocks.NewPrompter(t)
-	app.Setup(testDir, logging.NoLog{}, config.New(), mockPrompt)
+	app.Setup(testDir, logging.NoLog{}, config.New(), mockPrompt, application.NewDownloader())
 
-	return assert, mockPrompt
+	return require, mockPrompt
 }
 
 func newTestPublisher(string, string, string) subnet.Publisher {

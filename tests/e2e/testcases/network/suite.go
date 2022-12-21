@@ -16,7 +16,7 @@ const (
 	subnetName = "e2eSubnetTest"
 )
 
-var _ = ginkgo.Describe("[Network]", func() {
+var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 	ginkgo.AfterEach(func() {
 		commands.CleanNetwork()
 		err := utils.DeleteConfigs(subnetName)

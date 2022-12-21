@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/platformvm/validator"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -50,6 +51,7 @@ func NewPublicDeployer(app *application.Avalanche, usingLedger bool, kc keychain
 //   - sets the change output owner to be a wallet address (if not, it may go to any other subnet auth address)
 //   - signs the tx with the wallet as the owner of fee outputs and one of the subnet auth keys
 //   - returns the tx so that it can be later on be signed by the rest of the subnet auth keys
+//
 // - if operation is not multisig (len(subnetAuthKeysStrs) == 1):
 //   - creates and issues an add validator tx, signing the tx with the wallet as the owner of fee outputs
 //     and the only one subnet auth key
@@ -67,7 +69,7 @@ func (d *PublicDeployer) AddValidator(
 	}
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
-		return false, nil, err
+		return false, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 	ok, err := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys)
 	if err != nil {
@@ -115,6 +117,7 @@ func (d *PublicDeployer) AddValidator(
 //   - sets the change output owner to be a wallet address (if not, it may go to any other subnet auth address)
 //   - signs the tx with the wallet as the owner of fee outputs and one of the subnet auth keys
 //   - returns the tx so that it can be later on be signed by the rest of the subnet auth keys
+//
 // - if operation is not multisig (len(subnetAuthKeysStrs) == 1):
 //   - creates and issues a blockchain tx, signing the tx with the wallet as the owner of fee outputs
 //     and the only one subnet auth key
@@ -137,7 +140,7 @@ func (d *PublicDeployer) Deploy(
 
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
-		return false, ids.Empty, ids.Empty, nil, err
+		return false, ids.Empty, ids.Empty, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 
 	ok, err := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys)
@@ -197,7 +200,7 @@ func (d *PublicDeployer) Sign(
 	}
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
-		return err
+		return fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 	ok, err := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys)
 	if err != nil {
@@ -255,7 +258,7 @@ func (d *PublicDeployer) createAndIssueBlockchainTx(
 func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []ids.ShortID) ([]common.Option, error) {
 	options := []common.Option{}
 	// addrs to use for signing
-	customAddrsSet := ids.ShortSet{}
+	customAddrsSet := set.Set[ids.ShortID]{}
 	customAddrsSet.Add(subnetAuthKeys...)
 	options = append(options, common.WithCustomAddresses(customAddrsSet))
 	// set change to go to wallet addr (instead of any other subnet auth key)
@@ -343,7 +346,7 @@ func (d *PublicDeployer) signTx(
 func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, wallet primary.Wallet) (ids.ID, error) {
 	addrs, err := address.ParseToIDs(controlKeys)
 	if err != nil {
-		return ids.Empty, err
+		return ids.Empty, fmt.Errorf("failure parsing control keys: %w", err)
 	}
 	owners := &secp256k1fx.OutputOwners{
 		Addrs:     addrs,

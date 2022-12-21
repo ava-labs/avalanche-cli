@@ -16,9 +16,7 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "transaction",
 		Short: "Sign and execute specific transactions",
-		Long: `Some transactions require a dedicated workflow 
-(notably multisig transactions). 
-The 'transaction' command supports the required steps for such workflows.`,
+		Long:  `The transaction command suite provides all of the utilities required to sign multisig transactions.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			err := cmd.Help()
 			if err != nil {

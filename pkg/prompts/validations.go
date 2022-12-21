@@ -173,3 +173,15 @@ func getPChainValidationFunc(network models.Network) func(string) error {
 		}
 	}
 }
+
+func validateID(input string) error {
+	_, err := ids.FromString(input)
+	return err
+}
+
+func validateNewFilepath(input string) error {
+	if _, err := os.Stat(input); err != nil && os.IsNotExist(err) {
+		return nil
+	}
+	return errors.New("file already exists")
+}

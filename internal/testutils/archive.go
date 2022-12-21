@@ -15,12 +15,12 @@ import (
 	"testing"
 
 	"github.com/ava-labs/avalanchego/utils/perms"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func CreateZip(assert *assert.Assertions, src string, dest string) {
+func CreateZip(require *require.Assertions, src string, dest string) {
 	zipf, err := os.Create(dest)
-	assert.NoError(err)
+	require.NoError(err)
 	defer zipf.Close()
 
 	zipWriter := zip.NewWriter(zipf)
@@ -70,12 +70,12 @@ func CreateZip(assert *assert.Assertions, src string, dest string) {
 		return err
 	})
 
-	assert.NoError(err)
+	require.NoError(err)
 }
 
-func CreateTarGz(assert *assert.Assertions, src string, dest string, includeTopLevel bool) {
+func CreateTarGz(require *require.Assertions, src string, dest string, includeTopLevel bool) {
 	tgz, err := os.Create(dest)
-	assert.NoError(err)
+	require.NoError(err)
 	defer tgz.Close()
 
 	gw := gzip.NewWriter(tgz)
@@ -85,7 +85,7 @@ func CreateTarGz(assert *assert.Assertions, src string, dest string, includeTopL
 	defer tarball.Close()
 
 	info, err := os.Stat(src)
-	assert.NoError(err)
+	require.NoError(err)
 
 	var baseDir string
 	if includeTopLevel && info.IsDir() {
@@ -127,15 +127,15 @@ func CreateTarGz(assert *assert.Assertions, src string, dest string, includeTopL
 
 			defer func() {
 				err := file.Close()
-				assert.NoError(err)
+				require.NoError(err)
 			}()
 			_, err = io.Copy(tarball, file)
 			return err
 		})
-	assert.NoError(err)
+	require.NoError(err)
 }
 
-func CreateTestArchivePath(t *testing.T, assert *assert.Assertions) (string, func(string)) {
+func CreateTestArchivePath(t *testing.T, require *require.Assertions) (string, func(string)) {
 	// create root test dir, will be cleaned up after test
 	testDir := t.TempDir()
 
@@ -143,42 +143,42 @@ func CreateTestArchivePath(t *testing.T, assert *assert.Assertions) (string, fun
 	dir1 := filepath.Join(testDir, "dir1")
 	dir2 := filepath.Join(testDir, "dir2")
 	err := os.Mkdir(dir1, perms.ReadWriteExecute)
-	assert.NoError(err)
+	require.NoError(err)
 	err = os.Mkdir(dir2, perms.ReadWriteExecute)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// create some (empty) files
 	_, err = os.Create(filepath.Join(dir1, "gzipTest11"))
-	assert.NoError(err)
+	require.NoError(err)
 	_, err = os.Create(filepath.Join(dir1, "gzipTest12"))
-	assert.NoError(err)
+	require.NoError(err)
 	_, err = os.Create(filepath.Join(dir1, "gzipTest13"))
-	assert.NoError(err)
+	require.NoError(err)
 	_, err = os.Create(filepath.Join(dir2, "gzipTest21"))
-	assert.NoError(err)
+	require.NoError(err)
 	_, err = os.Create(filepath.Join(testDir, "gzipTest0"))
-	assert.NoError(err)
+	require.NoError(err)
 
 	// also create a binary file
 	buf := make([]byte, 32)
 	_, err = rand.Read(buf)
-	assert.NoError(err)
+	require.NoError(err)
 	binFile := filepath.Join(testDir, "binary-test-file")
 	err = os.WriteFile(binFile, buf, perms.ReadWrite)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// make sure the same stuff exists
 	checkFunc := func(controlDir string) {
-		assert.DirExists(filepath.Join(controlDir, "dir1"))
-		assert.DirExists(filepath.Join(controlDir, "dir2"))
-		assert.FileExists(filepath.Join(controlDir, "dir1", "gzipTest11"))
-		assert.FileExists(filepath.Join(controlDir, "dir1", "gzipTest12"))
-		assert.FileExists(filepath.Join(controlDir, "dir1", "gzipTest13"))
-		assert.FileExists(filepath.Join(controlDir, "dir2", "gzipTest21"))
-		assert.FileExists(filepath.Join(controlDir, "gzipTest0"))
+		require.DirExists(filepath.Join(controlDir, "dir1"))
+		require.DirExists(filepath.Join(controlDir, "dir2"))
+		require.FileExists(filepath.Join(controlDir, "dir1", "gzipTest11"))
+		require.FileExists(filepath.Join(controlDir, "dir1", "gzipTest12"))
+		require.FileExists(filepath.Join(controlDir, "dir1", "gzipTest13"))
+		require.FileExists(filepath.Join(controlDir, "dir2", "gzipTest21"))
+		require.FileExists(filepath.Join(controlDir, "gzipTest0"))
 		checkBin, err := os.ReadFile(binFile)
-		assert.NoError(err)
-		assert.Equal(checkBin, buf)
+		require.NoError(err)
+		require.Equal(checkBin, buf)
 	}
 
 	return testDir, checkFunc

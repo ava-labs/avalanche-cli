@@ -57,6 +57,7 @@ func ListKeys() (string, error) {
 		CLIBinary,
 		KeyCmd,
 		"list",
+		"--mainnet",
 	)
 
 	out, err := cmd.Output()

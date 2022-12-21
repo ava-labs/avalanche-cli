@@ -27,7 +27,18 @@ const (
 	keyName     = "ewoq"
 )
 
-var _ = ginkgo.Describe("[Upgrade]", func() {
+var (
+	binaryToVersion map[string]string
+	err             error
+)
+
+var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
+	_ = ginkgo.BeforeAll(func() {
+		mapper := utils.NewVersionMapper()
+		binaryToVersion, err = utils.GetVersionMapping(mapper)
+		gomega.Expect(err).Should(gomega.BeNil())
+	})
+
 	ginkgo.BeforeEach(func() {
 		// local network
 		_ = commands.StartNetwork()
@@ -75,7 +86,7 @@ var _ = ginkgo.Describe("[Upgrade]", func() {
 	})
 
 	ginkgo.It("can upgrade subnet-evm on public deployment", func() {
-		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
+		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, binaryToVersion[utils.SoloSubnetEVMKey2])
 
 		// Simulate fuji deployment
 		s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys)
@@ -118,7 +129,7 @@ var _ = ginkgo.Describe("[Upgrade]", func() {
 			// check the current node version
 			vmVersion, err := utils.GetNodeVMVersion(nodeInfo.URI, vmid.String())
 			gomega.Expect(err).Should(gomega.BeNil())
-			gomega.Expect(vmVersion).Should(gomega.Equal(subnetEVMVersion1))
+			gomega.Expect(vmVersion).Should(gomega.Equal(binaryToVersion[utils.SoloSubnetEVMKey2]))
 
 			originalHash, err = utils.GetFileHash(filepath.Join(nodeInfo.PluginDir, vmid.String()))
 			gomega.Expect(err).Should(gomega.BeNil())
@@ -128,7 +139,7 @@ var _ = ginkgo.Describe("[Upgrade]", func() {
 		commands.StopNetwork()
 
 		for _, nodeInfo := range nodeInfos {
-			_, err := commands.UpgradeVMPublic(subnetName, subnetEVMVersion2, nodeInfo.PluginDir)
+			_, err := commands.UpgradeVMPublic(subnetName, binaryToVersion[utils.SoloSubnetEVMKey1], nodeInfo.PluginDir)
 			gomega.Expect(err).Should(gomega.BeNil())
 		}
 

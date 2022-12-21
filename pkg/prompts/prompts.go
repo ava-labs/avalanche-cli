@@ -38,6 +38,7 @@ var errNoKeys = errors.New("no keys")
 type Prompter interface {
 	CapturePositiveBigInt(promptStr string) (*big.Int, error)
 	CaptureAddress(promptStr string) (common.Address, error)
+	CaptureNewFilepath(promptStr string) (string, error)
 	CaptureExistingFilepath(promptStr string) (string, error)
 	CaptureYesNo(promptStr string) (bool, error)
 	CaptureNoYes(promptStr string) (bool, error)
@@ -51,6 +52,7 @@ type Prompter interface {
 	CaptureDuration(promptStr string) (time.Duration, error)
 	CaptureDate(promptStr string) (time.Time, error)
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
+	CaptureID(promptStr string) (ids.ID, error)
 	CaptureWeight(promptStr string) (uint64, error)
 	CaptureUint64(promptStr string) (uint64, error)
 	CapturePChainAddress(promptStr string, network models.Network) (string, error)
@@ -167,6 +169,19 @@ func (*realPrompter) CaptureDate(promptStr string) (time.Time, error) {
 	return time.Parse(constants.TimeParseLayout, timeStr)
 }
 
+func (*realPrompter) CaptureID(promptStr string) (ids.ID, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateID,
+	}
+
+	IDStr, err := prompt.Run()
+	if err != nil {
+		return ids.Empty, err
+	}
+	return ids.FromString(IDStr)
+}
+
 func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
@@ -255,6 +270,20 @@ func (*realPrompter) CaptureExistingFilepath(promptStr string) (string, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validateExistingFilepath,
+	}
+
+	pathStr, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return pathStr, nil
+}
+
+func (*realPrompter) CaptureNewFilepath(promptStr string) (string, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateNewFilepath,
 	}
 
 	pathStr, err := prompt.Run()

@@ -13,15 +13,15 @@ import (
 )
 
 func TestSetupAPM(t *testing.T) {
-	assert := require.New(t)
+	require := require.New(t)
 	testDir := t.TempDir()
 	app := newTestApp(t, testDir)
 
 	err := os.MkdirAll(filepath.Dir(app.GetAPMLog()), constants.DefaultPerms755)
-	assert.NoError(err)
+	require.NoError(err)
 
 	err = SetupApm(app, testDir)
-	assert.NoError(err)
-	assert.NotEqual(nil, app.Apm)
-	assert.Equal(testDir, app.ApmDir)
+	require.NoError(err)
+	require.NotEqual(nil, app.Apm)
+	require.Equal(testDir, app.ApmDir)
 }

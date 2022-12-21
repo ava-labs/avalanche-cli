@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/transactioncmd"
+	"github.com/ava-labs/avalanche-cli/internal/migrations"
 	"github.com/ava-labs/avalanche-cli/pkg/apmintegration"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
@@ -38,9 +39,9 @@ func NewRootCmd() *cobra.Command {
 	// rootCmd represents the base command when called without any subcommands
 	rootCmd := &cobra.Command{
 		Use: "avalanche",
-		Long: `Avalanche CLI is a command line tool that gives developers access to
+		Long: `Avalanche-CLI is a command-line tool that gives developers access to
 everything Avalanche. This release specializes in helping developers
-build and test subnets.
+build and test Subnets.
 
 To get started, look at the documentation for the subcommands or jump right
 in with avalanche subnet create myNewSubnet.`,
@@ -77,7 +78,7 @@ func createApp(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	cf := config.New()
-	app.Setup(baseDir, log, cf, prompts.NewPrompter())
+	app.Setup(baseDir, log, cf, prompts.NewPrompter(), application.NewDownloader())
 
 	// Setup APM, skip if running a hidden command
 	if !cmd.Hidden {
@@ -93,6 +94,10 @@ func createApp(cmd *cobra.Command, args []string) error {
 	}
 
 	initConfig()
+
+	if err := migrations.RunMigrations(app); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -133,6 +138,20 @@ func setupEnv() (string, error) {
 	vmDir := filepath.Join(baseDir, constants.CustomVMDir)
 	if err = os.MkdirAll(vmDir, os.ModePerm); err != nil {
 		fmt.Printf("failed creating the vm dir %s: %s\n", vmDir, err)
+		os.Exit(1)
+	}
+
+	// Create subnet dir if it doesn't exist
+	subnetDir := filepath.Join(baseDir, constants.SubnetDir)
+	if err = os.MkdirAll(subnetDir, os.ModePerm); err != nil {
+		fmt.Printf("failed creating the subnet dir %s: %s\n", subnetDir, err)
+		os.Exit(1)
+	}
+
+	// Create repos dir if it doesn't exist
+	repoDir := filepath.Join(baseDir, constants.ReposDir)
+	if err = os.MkdirAll(repoDir, os.ModePerm); err != nil {
+		fmt.Printf("failed creating the repo dir %s: %s\n", repoDir, err)
 		os.Exit(1)
 	}
 

@@ -3,8 +3,6 @@
 package subnetcmd
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -21,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/version"
@@ -40,12 +39,12 @@ var (
 
 type newPublisherFunc func(string, string, string) subnet.Publisher
 
-// avalanche subnet deploy
+// avalanche subnet publish
 func newPublishCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "publish [subnetName]",
 		Short:        "Publish the subnet's VM to a repository",
-		Long:         ``,
+		Long:         `The subnet publish command publishes the Subnet's VM to a repository.`,
 		SilenceUsage: true,
 		RunE:         publish,
 		Args:         cobra.ExactArgs(1),
@@ -498,7 +497,7 @@ func getInfoForKnownVMs(
 ) ([]string, *version.Semantic, string, string, error) {
 	maintrs := []string{constants.AvaLabsMaintainers}
 	binPath := filepath.Join(vmBinDir, repoName+"-"+strVer, vmBin)
-	sha, err := getSHA256FromDisk(binPath)
+	sha, err := utils.GetSHA256FromDisk(binPath)
 	if err != nil {
 		return nil, nil, "", "", err
 	}
@@ -513,18 +512,4 @@ func getInfoForKnownVMs(
 	}
 
 	return maintrs, ver, url, sha, nil
-}
-
-func getSHA256FromDisk(binPath string) (string, error) {
-	if _, err := os.Stat(binPath); err != nil {
-		return "", fmt.Errorf("failed looking up plugin binary at %s: %w", binPath, err)
-	}
-	hasher := sha256.New()
-	s, err := os.ReadFile(binPath)
-	hasher.Write(s)
-	if err != nil {
-		return "", fmt.Errorf("failed calculating the sha256 hash of the binary %s: %w", binPath, err)
-	}
-
-	return hex.EncodeToString(hasher.Sum(nil)), nil
 }

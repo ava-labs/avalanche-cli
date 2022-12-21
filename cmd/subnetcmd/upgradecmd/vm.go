@@ -195,7 +195,7 @@ func updateToLatestVersion(subnetName string, vmType models.VMType, sc models.Si
 	currentVersion := sc.VMVersion
 
 	// check latest version
-	latestVersion, err := binutils.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+	latestVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 		constants.AvaLabsOrg,
 		vmType.RepoName(),
 	))

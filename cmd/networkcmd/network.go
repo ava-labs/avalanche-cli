@@ -16,16 +16,14 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "network",
 		Short: "Manage locally deployed subnets",
-		Long: `The network command suite provides a collection of tools for managing
-local subnet deployments.
+		Long: `The network command suite provides a collection of tools for managing local Subnet
+deployments.
 
-When a subnet is deployed locally, it runs on a local, multi-node
-Avalanche network. Deploying a subnet locally will start this network
-in the background. This command suite allows you to shutdown,
-restart, and clear that network.
+When you deploy a Subnet locally, it runs on a local, multi-node Avalanche network. The
+subnet deploy command starts this network in the background. This command suite allows you
+to shutdown, restart, and clear that network.
 
-This network currently supports multiple, concurrently deployed
-subnets.`,
+This network currently supports multiple, concurrently deployed Subnets.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			err := cmd.Help()
 			if err != nil {
