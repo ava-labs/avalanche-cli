@@ -41,6 +41,7 @@ func deleteSubnet(_ *cobra.Command, args []string) error {
 				return err
 			}
 			app.Log.Warn("tried to remove custom VM path but it actually does not exist. Ignoring")
+			return nil
 		}
 
 		// exists
@@ -60,7 +61,7 @@ func deleteSubnet(_ *cobra.Command, args []string) error {
 			return err
 		}
 		app.Log.Warn("tried to remove the Subnet dir path but it actually does not exist. Ignoring")
-		return err
+		return nil
 	}
 
 	// exists
