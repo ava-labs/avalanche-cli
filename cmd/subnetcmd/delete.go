@@ -3,6 +3,8 @@
 package subnetcmd
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -35,7 +37,10 @@ func deleteSubnet(_ *cobra.Command, args []string) error {
 
 	if sidecar.VM == models.CustomVM {
 		if _, err := os.Stat(customVMPath); err != nil {
-			return err
+			if !errors.Is(err, fs.ErrNotExist) {
+				return err
+			}
+			app.Log.Warn("tried to remove custom VM path but it actually does not exist. Ignoring")
 		}
 
 		// exists
@@ -51,6 +56,10 @@ func deleteSubnet(_ *cobra.Command, args []string) error {
 	// More info: https://github.com/ava-labs/avalanche-cli/issues/246
 
 	if _, err := os.Stat(subnetDir); err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+		app.Log.Warn("tried to remove the Subnet dir path but it actually does not exist. Ignoring")
 		return err
 	}
 
