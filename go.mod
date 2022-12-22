@@ -6,8 +6,8 @@ require (
 	github.com/ava-labs/apm v0.0.4
 	github.com/ava-labs/avalanche-ledger-go v0.0.13
 	github.com/ava-labs/avalanche-network-runner v1.3.4
-	github.com/ava-labs/avalanchego v1.9.4
-	github.com/ava-labs/coreth v0.11.4
+	github.com/ava-labs/avalanchego v1.9.5
+	github.com/ava-labs/coreth v0.11.5-rc.0
 	github.com/ava-labs/spacesvm v0.0.14
 	github.com/ava-labs/subnet-evm v0.4.6
 	github.com/docker/docker v20.10.22+incompatible
