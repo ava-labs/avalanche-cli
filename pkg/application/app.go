@@ -220,7 +220,7 @@ func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 	sc.Version = constants.SidecarVersion
 	scBytes, err := json.MarshalIndent(sc, "", "    ")
 	if err != nil {
-		return nil
+		return err
 	}
 
 	return os.WriteFile(sidecarPath, scBytes, WriteReadReadPerms)
@@ -247,7 +247,7 @@ func (app *Avalanche) UpdateSidecar(sc *models.Sidecar) error {
 	sc.Version = constants.SidecarVersion
 	scBytes, err := json.MarshalIndent(sc, "", "    ")
 	if err != nil {
-		return nil
+		return err
 	}
 
 	sidecarPath := app.GetSidecarPath(sc.Name)
