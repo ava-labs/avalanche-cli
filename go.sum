@@ -74,8 +74,8 @@ github.com/ava-labs/avalanche-network-runner v1.3.5-0.20221223174105-febfae49b9b
 github.com/ava-labs/avalanche-network-runner v1.3.5-0.20221223174105-febfae49b9bd/go.mod h1:Vuii9Ef6C9r/DfpDZJfDp628+RBr+UCmRBByATVQq7Y=
 github.com/ava-labs/avalanchego v1.9.5 h1:0uykbcKFocUL7U7SO/PGrXSMLX9RSt8xo5rj84bI3YY=
 github.com/ava-labs/avalanchego v1.9.5/go.mod h1:1f/z4CBcz/VhNlOTj607dQj5ZQQaZQO/RO8sEa0EgvA=
-github.com/ava-labs/coreth v0.11.5-rc.0 h1:EQ4MVWFrG+gtqtTFgquL4yoZnCNA+kbMVGWAnsTMeBE=
-github.com/ava-labs/coreth v0.11.5-rc.0/go.mod h1:4pelpPFzz3/M008s1WrpyQP4TLPdu2lw8ZyAVcttzJs=
+github.com/ava-labs/coreth v0.11.5 h1:/FklgdJuaezIE3lOWCvTwOUQrJv1OYuYbx3zujvSCqo=
+github.com/ava-labs/coreth v0.11.5/go.mod h1:4pelpPFzz3/M008s1WrpyQP4TLPdu2lw8ZyAVcttzJs=
 github.com/ava-labs/spacesvm v0.0.14 h1:eUD7zwZjA/yaayLXUm55pt2CUNjSnscvifwtNdSnClA=
 github.com/ava-labs/spacesvm v0.0.14/go.mod h1:H6qrXFdjp/SLedxS1k0choFQgADZnPNvLhXP4MQ0vRw=
 github.com/ava-labs/subnet-evm v0.4.7 h1:+Jk6g09QzW/ugAu6MT44OyCi25otojzpSiFaA3+nZzg=
