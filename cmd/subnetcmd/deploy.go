@@ -196,9 +196,6 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 	case models.SpacesVM:
 		var genesis spacesvmchain.Genesis
 		err = json.Unmarshal(chainGenesis, &genesis)
-	default:
-		var genesis map[string]interface{}
-		err = json.Unmarshal(chainGenesis, &genesis)
 	}
 	if err != nil {
 		return fmt.Errorf("failed to validate genesis format: %w", err)
