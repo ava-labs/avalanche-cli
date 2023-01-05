@@ -13,9 +13,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	ledger "github.com/ava-labs/avalanche-ledger-go"
 	"github.com/ava-labs/avalanchego/ids"
+	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -265,7 +264,6 @@ func getLedgerIndicesInfo(
 	if err != nil {
 		return nil, err
 	}
-	ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
 	addresses, err := ledgerDevice.Addresses(ledgerIndices)
 	if err != nil {
 		return nil, err

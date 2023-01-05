@@ -20,11 +20,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	ledger "github.com/ava-labs/avalanche-ledger-go"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
+	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -684,7 +684,6 @@ func FundLedgerAddress() error {
 	}
 
 	// get ledger addr
-	fmt.Println("*** Please provide extended public key on the ledger device ***")
 	ledgerAddrs, err := ledgerDev.Addresses([]uint32{0})
 	if err != nil {
 		return err
