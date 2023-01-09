@@ -496,7 +496,8 @@ func (d *LocalDeployer) startNetwork(
 ) error {
 	ux.Logger.PrintToUser("Starting network...")
 	loadSnapshotOpts := []client.OpOption{
-		client.WithPluginDir(pluginDir),
+		//TODO: enable once 1.9.6 release is out
+		//client.WithPluginDir(pluginDir),
 		client.WithExecPath(avalancheGoBinPath),
 		client.WithRootDataDir(runDir),
 		client.WithReassignPortsIfUsed(true),

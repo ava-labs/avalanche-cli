@@ -74,7 +74,8 @@ func startNetwork(*cobra.Command, []string) error {
 	}
 
 	loadSnapshotOpts := []client.OpOption{
-		client.WithPluginDir(pluginDir),
+		//TODO: enable once 1.9.6 release is out
+		//client.WithPluginDir(pluginDir),
 		client.WithExecPath(avalancheGoBinPath),
 		client.WithRootDataDir(outputDir),
 		client.WithReassignPortsIfUsed(true),
