@@ -494,10 +494,12 @@ func (d *LocalDeployer) startNetwork(
 	pluginDir string,
 	runDir string,
 ) error {
+	// TODO: remove once 1.9.6 release is out
+	_ = pluginDir
 	ux.Logger.PrintToUser("Starting network...")
 	loadSnapshotOpts := []client.OpOption{
-		//TODO: enable once 1.9.6 release is out
-		//client.WithPluginDir(pluginDir),
+		// TODO: enable once 1.9.6 release is out
+		// client.WithPluginDir(pluginDir),
 		client.WithExecPath(avalancheGoBinPath),
 		client.WithRootDataDir(runDir),
 		client.WithReassignPortsIfUsed(true),

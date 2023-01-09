@@ -53,6 +53,8 @@ func startNetwork(*cobra.Command, []string) error {
 	if err != nil {
 		return err
 	}
+	// TODO: remove once 1.9.6 release is out
+	_ = pluginDir
 
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
@@ -74,8 +76,8 @@ func startNetwork(*cobra.Command, []string) error {
 	}
 
 	loadSnapshotOpts := []client.OpOption{
-		//TODO: enable once 1.9.6 release is out
-		//client.WithPluginDir(pluginDir),
+		// TODO: enable once 1.9.6 release is out
+		// client.WithPluginDir(pluginDir),
 		client.WithExecPath(avalancheGoBinPath),
 		client.WithRootDataDir(outputDir),
 		client.WithReassignPortsIfUsed(true),
