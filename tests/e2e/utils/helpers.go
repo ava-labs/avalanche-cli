@@ -542,9 +542,14 @@ func GetNodesInfo() (map[string]NodeInfo, error) {
 	}
 	nodesInfo := map[string]NodeInfo{}
 	for nodeName, nodeInfo := range resp.ClusterInfo.NodeInfos {
+		pluginDir := nodeInfo.PluginDir
+		if pluginDir == "" {
+			// pre 1.9.6 case for CLI, will use pre 1.9.6 node plugin dir
+			pluginDir = path.Join(path.Dir(nodeInfo.ExecPath), "plugins")
+		}
 		nodesInfo[nodeName] = NodeInfo{
 			ID:         nodeInfo.Id,
-			PluginDir:  nodeInfo.PluginDir,
+			PluginDir:  pluginDir,
 			ConfigFile: path.Join(path.Dir(nodeInfo.LogDir), "config.json"),
 			URI:        nodeInfo.Uri,
 			LogDir:     nodeInfo.LogDir,
