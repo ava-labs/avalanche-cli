@@ -163,6 +163,7 @@ func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) 
 		}
 		fmt.Println(string(output))
 		utils.PrintStdErr(err)
+		fmt.Println(stderr)
 	}
 
 	// Config should now exist
@@ -256,6 +257,7 @@ func DeploySubnetLocallyWithArgs(subnetName string, version string, confPath str
 		}
 		fmt.Println(string(output))
 		utils.PrintStdErr(err)
+		fmt.Println(stderr)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 
@@ -621,7 +623,8 @@ func ImportSubnetConfig(repoAlias string, subnetName string) {
 			stderr = string(exitErr.Stderr)
 		}
 		fmt.Println(string(output))
-		utils.PrintStdErr(err)
+		fmt.Println(err)
+		fmt.Println(stderr)
 	}
 
 	// Config should now exist
@@ -668,6 +671,7 @@ func ImportSubnetConfigFromURL(repoURL string, branch string, subnetName string)
 		}
 		fmt.Println(string(output))
 		utils.PrintStdErr(err)
+		fmt.Println(stderr)
 	}
 
 	// Config should now exist
