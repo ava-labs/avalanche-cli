@@ -72,7 +72,7 @@ To allow overwrites, provide the --force flag.`,
 	return cmd
 }
 
-func importRunningSubnet(cmd *cobra.Command, args []string) error {
+func importRunningSubnet(*cobra.Command, []string) error {
 	var err error
 
 	var network models.Network

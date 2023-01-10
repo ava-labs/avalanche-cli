@@ -22,7 +22,7 @@ network is running and some basic stats about the network.`,
 	}
 }
 
-func networkStatus(cmd *cobra.Command, args []string) error {
+func networkStatus(*cobra.Command, []string) error {
 	ux.Logger.PrintToUser("Requesting network status...")
 
 	cli, err := binutils.NewGRPCClient()

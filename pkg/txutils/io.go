@@ -53,6 +53,8 @@ func LoadFromDisk(txPath string) (*txs.Tx, error) {
 	if _, err := txs.Codec.Unmarshal(txBytes, &tx); err != nil {
 		return nil, fmt.Errorf("error unmarshaling signed tx: %w", err)
 	}
-	tx.Initialize(nil, txBytes)
+	if err := tx.Initialize(txs.Codec); err != nil {
+		return nil, fmt.Errorf("error initializing signed tx: %w", err)
+	}
 	return &tx, nil
 }

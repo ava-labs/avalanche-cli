@@ -90,7 +90,7 @@ func getVMFromFlag() models.VMType {
 	return ""
 }
 
-func createSubnetConfig(cmd *cobra.Command, args []string) error {
+func createSubnetConfig(_ *cobra.Command, args []string) error {
 	subnetName := args[0]
 	if app.GenesisExists(subnetName) && !forceCreate {
 		return errors.New("configuration already exists. Use --" + forceFlag + " parameter to overwrite")

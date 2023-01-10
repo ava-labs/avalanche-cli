@@ -125,7 +125,7 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 }
 
 // deploySubnet is the cobra command run for deploying subnets
-func deploySubnet(cmd *cobra.Command, args []string) error {
+func deploySubnet(_ *cobra.Command, args []string) error {
 	chains, err := validateSubnetNameAndGetChains(args)
 	if err != nil {
 		return err
@@ -195,9 +195,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		err = json.Unmarshal(chainGenesis, &genesis)
 	case models.SpacesVM:
 		var genesis spacesvmchain.Genesis
-		err = json.Unmarshal(chainGenesis, &genesis)
-	default:
-		var genesis map[string]interface{}
 		err = json.Unmarshal(chainGenesis, &genesis)
 	}
 	if err != nil {
@@ -495,11 +492,10 @@ func enterCustomKeys(network models.Network) ([]string, bool, error) {
 		if cancelled {
 			return nil, cancelled, nil
 		}
-		if len(controlKeys) == 0 {
-			ux.Logger.PrintToUser("This tool does not allow to proceed without any control key set")
-		} else {
+		if len(controlKeys) != 0 {
 			return controlKeys, false, nil
 		}
+		ux.Logger.PrintToUser("This tool does not allow to proceed without any control key set")
 	}
 }
 

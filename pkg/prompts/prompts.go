@@ -175,11 +175,11 @@ func (*realPrompter) CaptureID(promptStr string) (ids.ID, error) {
 		Validate: validateID,
 	}
 
-	IDStr, err := prompt.Run()
+	idStr, err := prompt.Run()
 	if err != nil {
 		return ids.Empty, err
 	}
-	return ids.FromString(IDStr)
+	return ids.FromString(idStr)
 }
 
 func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
@@ -546,7 +546,7 @@ func GetFujiKeyOrLedger(prompt Prompter, keyDir string) (bool, string, error) {
 	}
 	keyName, err := captureKeyName(prompt, keyDir)
 	if err != nil {
-		if err == errNoKeys {
+		if errors.Is(err, errNoKeys) {
 			ux.Logger.PrintToUser("No private keys have been found. Deployment to fuji without a private key " +
 				"or ledger is not possible. Create a new one with `avalanche key create`, or use a ledger device.")
 		}

@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path"
 	"strconv"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
@@ -227,6 +229,65 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		gomega.Expect(balance.Int64()).Should(gomega.Not(gomega.BeZero()))
+
+		commands.DeleteSubnetConfig(subnetName)
+	})
+
+	ginkgo.It("can deploy with custom per chain config node", func() {
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+
+		// create per node chain config
+		nodesRPCTxFeeCap := map[string]string{
+			"node1": "101",
+			"node2": "102",
+			"node3": "103",
+			"node4": "104",
+			"node5": "105",
+		}
+		perNodeChainConfig := "{\n"
+		i := 0
+		for nodeName, rpcTxFeeCap := range nodesRPCTxFeeCap {
+			commaStr := ","
+			if i == len(nodesRPCTxFeeCap)-1 {
+				commaStr = ""
+			}
+			perNodeChainConfig += fmt.Sprintf("  \"%s\": {\"rpc-tx-fee-cap\": %s}%s\n", nodeName, rpcTxFeeCap, commaStr)
+			i++
+		}
+		perNodeChainConfig += "}\n"
+
+		// configure the subnet
+		file, err := os.CreateTemp("", constants.PerNodeChainConfigFileName+"*")
+		gomega.Expect(err).Should(gomega.BeNil())
+		err = os.WriteFile(file.Name(), []byte(perNodeChainConfig), constants.DefaultPerms755)
+		gomega.Expect(err).Should(gomega.BeNil())
+		commands.ConfigurePerNodeChainConfig(subnetName, file.Name())
+
+		// deploy
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+
+		// get blockchain ID
+		rpcParts := strings.Split(rpcs[0], "/")
+		gomega.Expect(rpcParts).Should(gomega.HaveLen(7))
+		blockchainID := rpcParts[5]
+
+		// verify that plugin logs reflect per node configuration
+		nodesInfo, err := utils.GetNodesInfo()
+		gomega.Expect(err).Should(gomega.BeNil())
+		for nodeName, nodeInfo := range nodesInfo {
+			logFile := path.Join(nodeInfo.LogDir, blockchainID+".log")
+			fileBytes, err := os.ReadFile(logFile)
+			gomega.Expect(err).Should(gomega.BeNil())
+			rpcTxFeeCap, ok := nodesRPCTxFeeCap[nodeName]
+			gomega.Expect(ok).Should(gomega.BeTrue())
+			gomega.Expect(fileBytes).Should(gomega.ContainSubstring("RPCTxFeeCap:%s", rpcTxFeeCap))
+		}
 
 		commands.DeleteSubnetConfig(subnetName)
 	})

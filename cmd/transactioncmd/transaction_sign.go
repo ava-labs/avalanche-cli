@@ -44,7 +44,7 @@ func newTransactionSignCmd() *cobra.Command {
 	return cmd
 }
 
-func signTx(cmd *cobra.Command, args []string) error {
+func signTx(_ *cobra.Command, args []string) error {
 	var err error
 	if inputTxPath == "" {
 		inputTxPath, err = app.Prompt.CaptureExistingFilepath("What is the path to the transactions file which needs signing?")

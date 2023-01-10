@@ -82,7 +82,8 @@ func TestDeployToLocal(t *testing.T) {
 	testDir, err := os.MkdirTemp(tmpDir, "local-test")
 	require.NoError(err)
 	defer func() {
-		os.RemoveAll(testDir)
+		err = os.RemoveAll(testDir)
+		require.NoError(err)
 	}()
 
 	app := &application.Avalanche{}
@@ -187,6 +188,6 @@ func getTestClientFunc() (client.Client, error) {
 	return c, nil
 }
 
-func fakeSetDefaultSnapshot(baseDir string, force bool) error {
+func fakeSetDefaultSnapshot(string, bool) error {
 	return nil
 }

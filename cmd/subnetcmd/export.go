@@ -38,7 +38,7 @@ the --output flag.`,
 	return cmd
 }
 
-func exportSubnet(cmd *cobra.Command, args []string) error {
+func exportSubnet(_ *cobra.Command, args []string) error {
 	var err error
 	if exportOutput == "" {
 		pathPrompt := "Enter file path to write export data to"

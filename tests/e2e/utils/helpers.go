@@ -61,6 +61,32 @@ func GetAPMDir() string {
 	return path.Join(usr.HomeDir, constants.APMDir)
 }
 
+func ChainConfigExists(subnetName string) (bool, error) {
+	cfgPath := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.ChainConfigFileName)
+	cfgExists := true
+	if _, err := os.Stat(cfgPath); errors.Is(err, os.ErrNotExist) {
+		// does *not* exist
+		cfgExists = false
+	} else if err != nil {
+		// Schrodinger: file may or may not exist. See err for details.
+		return false, err
+	}
+	return cfgExists, nil
+}
+
+func PerNodeChainConfigExists(subnetName string) (bool, error) {
+	cfgPath := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.PerNodeChainConfigFileName)
+	cfgExists := true
+	if _, err := os.Stat(cfgPath); errors.Is(err, os.ErrNotExist) {
+		// does *not* exist
+		cfgExists = false
+	} else if err != nil {
+		// Schrodinger: file may or may not exist. See err for details.
+		return false, err
+	}
+	return cfgExists, nil
+}
+
 func genesisExists(subnetName string) (bool, error) {
 	genesis := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.GenesisFileName)
 	genesisExists := true
@@ -208,13 +234,13 @@ func DeleteConfigs(subnetName string) error {
 	}
 
 	// ignore error, file may not exist
-	os.RemoveAll(subnetDir)
+	_ = os.RemoveAll(subnetDir)
 
 	return nil
 }
 
 func RemoveAPMRepo() {
-	os.RemoveAll(GetAPMDir())
+	_ = os.RemoveAll(GetAPMDir())
 }
 
 func DeleteKey(keyName string) error {
@@ -225,7 +251,7 @@ func DeleteKey(keyName string) error {
 	}
 
 	// ignore error, file may not exist
-	os.Remove(keyPath)
+	_ = os.Remove(keyPath)
 
 	return nil
 }
@@ -238,7 +264,7 @@ func DeleteBins() error {
 	}
 
 	// ignore error, file may not exist
-	os.RemoveAll(avagoPath)
+	_ = os.RemoveAll(avagoPath)
 
 	subevmPath := path.Join(GetBaseDir(), constants.AvalancheCliBinDir, constants.SubnetEVMInstallDir)
 	if _, err := os.Stat(subevmPath); err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -247,7 +273,7 @@ func DeleteBins() error {
 	}
 
 	// ignore error, file may not exist
-	os.RemoveAll(subevmPath)
+	_ = os.RemoveAll(subevmPath)
 
 	return nil
 }
@@ -255,14 +281,14 @@ func DeleteBins() error {
 func DeleteCustomBinary(vmName string) {
 	vmPath := path.Join(GetBaseDir(), constants.VMDir, vmName)
 	// ignore error, file may not exist
-	os.RemoveAll(vmPath)
+	_ = os.RemoveAll(vmPath)
 }
 
 func DeleteAPMBin(vmid string) {
 	vmPath := path.Join(GetBaseDir(), constants.AvalancheCliBinDir, constants.APMPluginDir, vmid)
 
 	// ignore error, file may not exist
-	os.RemoveAll(vmPath)
+	_ = os.RemoveAll(vmPath)
 }
 
 func stdoutParser(output string, queue string, capture string) (string, error) {
@@ -379,9 +405,11 @@ func RunHardhatScript(script string) (string, string, error) {
 	cmd := exec.Command("npx", "hardhat", "run", script, "--network", "subnet")
 	cmd.Dir = hardhatDir
 	output, err := cmd.CombinedOutput()
-	exitErr, typeOk := err.(*exec.ExitError)
-	stderr := ""
-	if typeOk {
+	var (
+		exitErr *exec.ExitError
+		stderr  string
+	)
+	if errors.As(err, &exitErr) {
 		stderr = string(exitErr.Stderr)
 	}
 	if err != nil {
@@ -392,8 +420,8 @@ func RunHardhatScript(script string) (string, string, error) {
 }
 
 func PrintStdErr(err error) {
-	exitErr, typeOk := err.(*exec.ExitError)
-	if typeOk {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
 		fmt.Println(string(exitErr.Stderr))
 	}
 }
@@ -500,6 +528,7 @@ type NodeInfo struct {
 	PluginDir  string
 	ConfigFile string
 	URI        string
+	LogDir     string
 }
 
 func GetNodeVMVersion(nodeURI string, vmid string) (string, error) {
@@ -540,6 +569,7 @@ func GetNodesInfo() (map[string]NodeInfo, error) {
 			PluginDir:  nodeInfo.PluginDir,
 			ConfigFile: path.Join(path.Dir(nodeInfo.LogDir), "config.json"),
 			URI:        nodeInfo.Uri,
+			LogDir:     nodeInfo.LogDir,
 		}
 	}
 	return nodesInfo, nil

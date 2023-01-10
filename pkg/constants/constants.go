@@ -101,8 +101,9 @@ const (
 	VMDir          = "vms"
 	ChainConfigDir = "chains"
 
-	SubnetConfigFileName = "subnet.json"
-	ChainConfigFileName  = "chain.json"
+	SubnetConfigFileName       = "subnet.json"
+	ChainConfigFileName        = "chain.json"
+	PerNodeChainConfigFileName = "per-node-chain.json"
 
 	GitRepoCommitName  = "Avalanche-CLI"
 	GitRepoCommitEmail = "info@avax.network"

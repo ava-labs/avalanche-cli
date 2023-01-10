@@ -36,11 +36,18 @@ func newListCmd() *cobra.Command {
 
 type subnetMatrix [][]string
 
-func (c subnetMatrix) Len() int      { return len(c) }
-func (c subnetMatrix) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
+func (c subnetMatrix) Len() int {
+	return len(c)
+}
+
+func (c subnetMatrix) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
+}
 
 // Compare strings by first key of the sub-slice
-func (c subnetMatrix) Less(i, j int) bool { return strings.Compare(c[i][0], c[j][0]) == -1 }
+func (c subnetMatrix) Less(i, j int) bool {
+	return strings.Compare(c[i][0], c[j][0]) == -1
+}
 
 func listSubnets(cmd *cobra.Command, args []string) error {
 	if deployed {
@@ -130,7 +137,7 @@ func getSidecars(app *application.Avalanche) ([]*models.Sidecar, error) {
 	return cars, nil
 }
 
-func listDeployInfo(cmd *cobra.Command, args []string) error {
+func listDeployInfo(*cobra.Command, []string) error {
 	header := []string{"subnet", "chain", "vm ID", "Local Network", "Fuji (testnet)", "Mainnet"}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)

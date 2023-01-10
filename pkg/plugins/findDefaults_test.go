@@ -102,14 +102,18 @@ func TestFindDefaultFiles(t *testing.T) {
 	err = os.MkdirAll(scanDirs[1], constants.DefaultPerms755)
 	require.NoError(err)
 
-	os.Setenv("THIS_ENV_VAR_EXISTS", "/path/doesnt/matter")
+	err = os.Setenv("THIS_ENV_VAR_EXISTS", "/path/doesnt/matter")
+	require.NoError(err)
 	existingDataDir := filepath.Join(testDir, "data-dir")
 	// make sure we don't accidentally overwrite a really existing env var
 	origVar := os.Getenv(config.AvalancheGoDataDirVar)
-	os.Setenv(config.AvalancheGoDataDirVar, existingDataDir)
+	err = os.Setenv(config.AvalancheGoDataDirVar, existingDataDir)
+	require.NoError(err)
 	defer func() {
-		os.Setenv(config.AvalancheGoDataDirVar, origVar)
-		os.Setenv(fakeSetEnvVar, "")
+		err = os.Setenv(config.AvalancheGoDataDirVar, origVar)
+		require.NoError(err)
+		err = os.Setenv(fakeSetEnvVar, "")
+		require.NoError(err)
 	}()
 
 	err = os.MkdirAll(existingDataDir, constants.DefaultPerms755)

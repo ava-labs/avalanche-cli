@@ -108,7 +108,7 @@ func (app *Avalanche) GetKeyDir() string {
 	return filepath.Join(app.baseDir, constants.KeyDir)
 }
 
-func (app *Avalanche) GetTmpPluginDir() string {
+func (*Avalanche) GetTmpPluginDir() string {
 	return os.TempDir()
 }
 
@@ -132,7 +132,7 @@ func (app *Avalanche) GetDownloader() Downloader {
 	return app.Downloader
 }
 
-func (app *Avalanche) GetAvalanchegoCompatibilityURL() string {
+func (*Avalanche) GetAvalanchegoCompatibilityURL() string {
 	return constants.AvalancheGoCompatibilityURL
 }
 
@@ -235,7 +235,7 @@ func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 	sc.Version = constants.SidecarVersion
 	scBytes, err := json.MarshalIndent(sc, "", "    ")
 	if err != nil {
-		return nil
+		return err
 	}
 
 	return os.WriteFile(sidecarPath, scBytes, WriteReadReadPerms)
@@ -262,7 +262,7 @@ func (app *Avalanche) UpdateSidecar(sc *models.Sidecar) error {
 	sc.Version = constants.SidecarVersion
 	scBytes, err := json.MarshalIndent(sc, "", "    ")
 	if err != nil {
-		return nil
+		return err
 	}
 
 	sidecarPath := app.GetSidecarPath(sc.Name)

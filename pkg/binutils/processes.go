@@ -88,7 +88,7 @@ func NewGRPCServer(snapshotsDir string) (server.Server, error) {
 
 // IsServerProcessRunning returns true if the gRPC server is running,
 // or false if not
-func (rpr *realProcessRunner) IsServerProcessRunning(app *application.Avalanche) (bool, error) {
+func (*realProcessRunner) IsServerProcessRunning(app *application.Avalanche) (bool, error) {
 	pid, err := GetServerPID(app)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
