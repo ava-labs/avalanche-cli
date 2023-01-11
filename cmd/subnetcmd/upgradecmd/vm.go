@@ -272,12 +272,12 @@ func updateFutureVM(sc models.Sidecar, targetVersion string) error {
 	return nil
 }
 
-func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
+func updateExistingLocalVM(_ models.Sidecar, _ string) error {
 	ux.Logger.PrintToUser("Coming soon. For now, please upgrade your existing deployments and redeploy the subnet.")
 	return nil
 }
 
-func chooseManualOrAutomatic(sc models.Sidecar, targetVersion string, networkToUpgrade string) error {
+func chooseManualOrAutomatic(sc models.Sidecar, targetVersion string, _ string) error {
 	switch {
 	case useManual:
 		return plugins.ManualUpgrade(app, sc, targetVersion)
