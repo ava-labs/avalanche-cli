@@ -17,7 +17,7 @@ func SetupSpacesVM(app *application.Avalanche, spacesVMVersion string) (string, 
 
 	installer := NewInstaller()
 	downloader := NewSpacesVMDownloader()
-	vmDir, err := InstallBinary(
+	_, vmDir, err := InstallBinary(
 		app,
 		spacesVMVersion,
 		binDir,
