@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/plugins"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +33,7 @@ var (
 	useManual     bool
 	useLatest     bool
 	targetVersion string
-	useBinary     string
+	newBinary     string
 )
 
 // avalanche subnet update vm
@@ -57,7 +58,7 @@ func newUpgradeVMCmd() *cobra.Command {
 
 	cmd.Flags().BoolVar(&useLatest, "latest", false, "upgrade to latest version")
 	cmd.Flags().StringVar(&targetVersion, "version", "", "Upgrade to custom version")
-	cmd.Flags().StringVar(&useBinary, "binary", "", "Upgrade to custom binary")
+	cmd.Flags().StringVar(&newBinary, "binary", "", "Upgrade to custom binary")
 
 	return cmd
 }
@@ -68,14 +69,14 @@ func atMostOneNetworkSelected() bool {
 }
 
 func atMostOneVersionSelected() bool {
-	return !(useLatest && targetVersion != "" || useLatest && useBinary != "" || targetVersion != "" && useBinary != "")
+	return !(useLatest && targetVersion != "" || useLatest && newBinary != "" || targetVersion != "" && newBinary != "")
 }
 
 func atMostOneAutomationSelected() bool {
 	return !(useManual && pluginDir != "")
 }
 
-func upgradeVM(cmd *cobra.Command, args []string) error {
+func upgradeVM(_ *cobra.Command, args []string) error {
 	// Check flag preconditions
 	if !atMostOneNetworkSelected() {
 		return errors.New("too many networks selected")
@@ -111,7 +112,7 @@ func upgradeVM(cmd *cobra.Command, args []string) error {
 	}
 
 	// Must be a custom update
-	return updateToCustomBin(subnetName, vmType, sc, networkToUpgrade)
+	return updateToCustomBin(subnetName, sc, networkToUpgrade)
 }
 
 func selectNetworkToUpgrade(sc models.Sidecar) (string, error) {
@@ -130,7 +131,7 @@ func selectNetworkToUpgrade(sc models.Sidecar) (string, error) {
 	upgradeOptions := []string{futureDeployment}
 
 	// check if subnet already deployed locally
-	locallyDeployedSubnets, err := subnet.GetLocallyDeployedSubnets(app)
+	locallyDeployedSubnets, err := subnet.GetLocallyDeployedSubnets()
 	if err != nil {
 		// ignore error if we can't reach the server, assume subnet isn't deployed
 		app.Log.Warn("Unable to reach server to get deployed subnets")
@@ -159,16 +160,16 @@ func selectNetworkToUpgrade(sc models.Sidecar) (string, error) {
 func selectUpdateOption(subnetName string, vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
 	switch {
 	case useLatest:
-		return updateToLatestVersion(subnetName, vmType, sc, networkToUpgrade)
+		return updateToLatestVersion(vmType, sc, networkToUpgrade)
 	case targetVersion != "":
-		return updateToSpecificVersion(subnetName, vmType, sc, networkToUpgrade)
-	case useBinary != "":
-		return updateToCustomBin(subnetName, vmType, sc, networkToUpgrade)
+		return updateToSpecificVersion(sc, networkToUpgrade)
+	case newBinary != "":
+		return updateToCustomBin(subnetName, sc, networkToUpgrade)
 	}
 
 	latestVersionUpdate := "Update to latest version"
 	specificVersionUpdate := "Update to a specific version"
-	customBinaryUpdate := "Update to a custom binary (coming soon)"
+	customBinaryUpdate := "Update to a custom binary"
 
 	updateOptions := []string{latestVersionUpdate, specificVersionUpdate, customBinaryUpdate}
 
@@ -180,17 +181,17 @@ func selectUpdateOption(subnetName string, vmType models.VMType, sc models.Sidec
 
 	switch updateDecision {
 	case latestVersionUpdate:
-		return updateToLatestVersion(subnetName, vmType, sc, networkToUpgrade)
+		return updateToLatestVersion(vmType, sc, networkToUpgrade)
 	case specificVersionUpdate:
-		return updateToSpecificVersion(subnetName, vmType, sc, networkToUpgrade)
+		return updateToSpecificVersion(sc, networkToUpgrade)
 	case customBinaryUpdate:
-		return updateToCustomBin(subnetName, vmType, sc, networkToUpgrade)
+		return updateToCustomBin(subnetName, sc, networkToUpgrade)
 	default:
 		return errors.New("invalid option")
 	}
 }
 
-func updateToLatestVersion(subnetName string, vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
+func updateToLatestVersion(vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
 	// pull in current version
 	currentVersion := sc.VMVersion
 
@@ -212,7 +213,7 @@ func updateToLatestVersion(subnetName string, vmType models.VMType, sc models.Si
 	return updateVMByNetwork(sc, latestVersion, networkToUpgrade)
 }
 
-func updateToSpecificVersion(subnetName string, vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
+func updateToSpecificVersion(sc models.Sidecar, networkToUpgrade string) error {
 	// pull in current version
 	currentVersion := sc.VMVersion
 
@@ -249,13 +250,16 @@ func updateVMByNetwork(sc models.Sidecar, targetVersion string, networkToUpgrade
 	}
 }
 
-func updateToCustomBin(subnetName string, vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
-	// get path
+func updateToCustomBin(subnetName string, sc models.Sidecar, networkToUpgrade string) error {
+	err := vm.CopyCustomVM(app, subnetName, newBinary)
+	if err != nil {
+		return err
+	}
 
-	// install update
+	sc.VM = models.CustomVM
+	sc.VMVersion = ""
 
-	// update sidecar
-	return nil
+	return updateVMByNetwork(sc, targetVersion, networkToUpgrade)
 }
 
 func updateFutureVM(sc models.Sidecar, targetVersion string) error {

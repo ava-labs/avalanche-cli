@@ -536,7 +536,7 @@ func (d *LocalDeployer) startNetwork(
 }
 
 // Returns an error if the server cannot be contacted. You may want to ignore this error.
-func GetLocallyDeployedSubnets(app *application.Avalanche) (map[string]struct{}, error) {
+func GetLocallyDeployedSubnets() (map[string]struct{}, error) {
 	deployedNames := map[string]struct{}{}
 	// if the server can not be contacted, or there is a problem with the query,
 	// DO NOT FAIL, just print No for deployed status

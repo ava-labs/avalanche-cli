@@ -147,7 +147,7 @@ func listDeployInfo(*cobra.Command, []string) error {
 
 	rows := subnetMatrix{}
 
-	deployedNames, err := subnet.GetLocallyDeployedSubnets(app)
+	deployedNames, err := subnet.GetLocallyDeployedSubnets()
 	if err != nil {
 		// if the server can not be contacted, or there is a problem with the query,
 		// DO NOT FAIL, just print No for deployed status

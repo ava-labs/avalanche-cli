@@ -4,13 +4,21 @@
 package upgradecmd
 
 import (
+	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/config"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAtMostOneNetworkSelected(t *testing.T) {
-	assert := assert.New(t)
+	assert := require.New(t)
 
 	type test struct {
 		name       string
@@ -138,7 +146,7 @@ func TestAtMostOneNetworkSelected(t *testing.T) {
 }
 
 func TestAtMostOneVersionSelected(t *testing.T) {
-	assert := assert.New(t)
+	assert := require.New(t)
 
 	type test struct {
 		name      string
@@ -211,7 +219,7 @@ func TestAtMostOneVersionSelected(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			useLatest = tt.useLatest
 			targetVersion = tt.version
-			useBinary = tt.binary
+			newBinary = tt.binary
 
 			accepted := atMostOneVersionSelected()
 			if tt.valid {
@@ -224,7 +232,7 @@ func TestAtMostOneVersionSelected(t *testing.T) {
 }
 
 func TestAtMostOneAutomationSelected(t *testing.T) {
-	assert := assert.New(t)
+	assert := require.New(t)
 
 	type test struct {
 		name      string
@@ -273,4 +281,54 @@ func TestAtMostOneAutomationSelected(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestUpdateToCustomBin(t *testing.T) {
+	assert := require.New(t)
+	testDir := t.TempDir()
+
+	subnetName := "testSubnet"
+	sc := models.Sidecar{
+		Name:       subnetName,
+		VM:         models.SubnetEvm,
+		VMVersion:  "v3.0.0",
+		RPCVersion: 20,
+		Subnet:     subnetName,
+	}
+	networkToUpgrade := futureDeployment
+
+	factory := logging.NewFactory(logging.Config{})
+	log, err := factory.Make("avalanche")
+	assert.NoError(err)
+
+	// create the user facing logger as a global var
+	ux.NewUserLog(log, os.Stdout)
+
+	app = &application.Avalanche{}
+	app.Setup(testDir, log, config.New(), prompts.NewPrompter(), application.NewDownloader())
+
+	err = os.MkdirAll(app.GetSubnetDir(), constants.DefaultPerms755)
+	assert.NoError(err)
+
+	err = app.CreateSidecar(&sc)
+	assert.NoError(err)
+
+	err = os.MkdirAll(app.GetCustomVMDir(), constants.DefaultPerms755)
+	assert.NoError(err)
+
+	newBinary = "../../../README.md"
+
+	assert.FileExists(newBinary)
+
+	err = updateToCustomBin(subnetName, sc, networkToUpgrade)
+	assert.NoError(err)
+
+	// check new binary exists
+	assert.FileExists(app.GetCustomVMPath(subnetName))
+
+	// check sidecar
+	diskSC, err := app.LoadSidecar(subnetName)
+	assert.NoError(err)
+	assert.Equal(models.VMTypeFromString(models.CustomVM), diskSC.VM)
+	assert.Empty(diskSC.VMVersion)
 }

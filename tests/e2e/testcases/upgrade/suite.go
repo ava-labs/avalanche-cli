@@ -57,6 +57,7 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 		err = utils.DeleteConfigs(secondSubnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		_ = utils.DeleteKey(keyName)
+		utils.DeleteCustomBinary(subnetName)
 	})
 
 	ginkgo.It("can create and update future", func() {
@@ -81,6 +82,40 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 		containsVersion2 = strings.Contains(output, subnetEVMVersion2)
 		gomega.Expect(containsVersion1).Should(gomega.BeFalse())
 		gomega.Expect(containsVersion2).Should(gomega.BeTrue())
+
+		commands.DeleteSubnetConfig(subnetName)
+	})
+
+	ginkgo.It("can update a subnet-evm to a custom VM", func() {
+		customVMPath, err := utils.DownloadCustomVMBin(binaryToVersion[utils.SoloSubnetEVMKey2])
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		commands.CreateSubnetEvmConfigWithVersion(
+			subnetName,
+			utils.SubnetEvmGenesisPath,
+			binaryToVersion[utils.SoloSubnetEVMKey1],
+		)
+
+		// check version
+		output, err := commands.DescribeSubnet(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		containsVersion1 := strings.Contains(output, binaryToVersion[utils.SoloSubnetEVMKey1])
+		containsVersion2 := strings.Contains(output, binaryToVersion[utils.SoloSubnetEVMKey2])
+		gomega.Expect(containsVersion1).Should(gomega.BeTrue())
+		gomega.Expect(containsVersion2).Should(gomega.BeFalse())
+
+		_, err = commands.UpgradeCustomVM(subnetName, customVMPath)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		output, err = commands.DescribeSubnet(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		containsVersion2 = strings.Contains(output, binaryToVersion[utils.SoloSubnetEVMKey2])
+		gomega.Expect(containsVersion2).Should(gomega.BeFalse())
+		// the following indicates it is a custom VM
+		containsCustomVM := strings.Contains(output, "Printing genesis")
+		gomega.Expect(containsCustomVM).Should(gomega.BeTrue())
 
 		commands.DeleteSubnetConfig(subnetName)
 	})
