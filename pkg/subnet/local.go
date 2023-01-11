@@ -323,6 +323,10 @@ func (d *LocalDeployer) SetupLocalEnv() (string, string, string, error) {
 	pluginDir := filepath.Join(avagoDir, "plugins")
 	avalancheGoBinPath := filepath.Join(avagoDir, "avalanchego")
 
+	if err := os.MkdirAll(pluginDir, constants.DefaultPerms755); err != nil {
+		return "", "", "", fmt.Errorf("could not create pluginDir %s", pluginDir)
+	}
+
 	exists, err := storage.FolderExists(pluginDir)
 	if !exists || err != nil {
 		return "", "", "", fmt.Errorf("evaluated pluginDir to be %s but it does not exist", pluginDir)
