@@ -257,7 +257,7 @@ func updateToCustomBin(subnetName string, sc models.Sidecar, networkToUpgrade st
 	}
 
 	sc.VM = models.CustomVM
-	sc.VMVersion = ""
+	targetVersion = ""
 
 	return updateVMByNetwork(sc, targetVersion, networkToUpgrade)
 }
