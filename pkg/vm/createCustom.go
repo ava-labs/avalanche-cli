@@ -3,7 +3,6 @@
 package vm
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -52,9 +51,6 @@ func CopyCustomVM(app *application.Avalanche, subnetName string, vmPath string) 
 			return err
 		}
 	}
-
-	fmt.Println("VM Path:", vmPath)
-	fmt.Println("Subnet name", subnetName)
 
 	return app.CopyVMBinary(vmPath, subnetName)
 }
