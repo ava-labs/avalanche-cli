@@ -44,6 +44,10 @@ func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Con
 	app.Downloader = downloader
 }
 
+func (app *Avalanche) GetUpgradeFilesDir() string {
+	return filepath.Join(app.baseDir, constants.UpgradeFilesDir)
+}
+
 func (app *Avalanche) GetRunFile() string {
 	return filepath.Join(app.GetRunDir(), constants.ServerRunFile)
 }
@@ -145,6 +149,17 @@ func (app *Avalanche) GenesisExists(subnetName string) bool {
 	genesisPath := app.GetGenesisPath(subnetName)
 	_, err := os.Stat(genesisPath)
 	return err == nil
+}
+
+func (app *Avalanche) SidecarExists(subnetName string) bool {
+	sidecarPath := app.GetSidecarPath(subnetName)
+	_, err := os.Stat(sidecarPath)
+	return err == nil
+}
+
+func (app *Avalanche) SubnetConfigExists(subnetName string) bool {
+	// There's always a sidecar, but imported subnets don't have a genesis right now
+	return app.SidecarExists(subnetName)
 }
 
 func (app *Avalanche) KeyExists(keyName string) bool {

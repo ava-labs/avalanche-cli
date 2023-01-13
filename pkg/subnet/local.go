@@ -534,3 +534,26 @@ func (d *LocalDeployer) startNetwork(
 	}
 	return nil
 }
+
+// Returns an error if the server cannot be contacted. You may want to ignore this error.
+func GetLocallyDeployedSubnets() (map[string]struct{}, error) {
+	deployedNames := map[string]struct{}{}
+	// if the server can not be contacted, or there is a problem with the query,
+	// DO NOT FAIL, just print No for deployed status
+	cli, err := binutils.NewGRPCClient()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := binutils.GetAsyncContext()
+	resp, err := cli.Status(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, chain := range resp.GetClusterInfo().CustomChains {
+		deployedNames[chain.ChainName] = struct{}{}
+	}
+
+	return deployedNames, nil
+}

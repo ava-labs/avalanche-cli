@@ -10,14 +10,13 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 var deployed bool
@@ -54,7 +53,7 @@ func listSubnets(cmd *cobra.Command, args []string) error {
 	if deployed {
 		return listDeployInfo(cmd, args)
 	}
-	header := []string{"subnet", "chain", "chainID", "vmID", "type", "from repo"}
+	header := []string{"subnet", "chain", "chainID", "vmID", "type", "vm version", "from repo"}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
@@ -94,6 +93,7 @@ func listSubnets(cmd *cobra.Command, args []string) error {
 			chainID,
 			vmID,
 			string(sc.VM),
+			sc.VMVersion,
 			strconv.FormatBool(sc.ImportedFromAPM),
 		})
 	}
@@ -147,25 +147,11 @@ func listDeployInfo(*cobra.Command, []string) error {
 
 	rows := subnetMatrix{}
 
-	deployedNames := map[string]struct{}{}
-	// if the server can not be contacted, or there is a problem with the query,
-	// DO NOT FAIL, just print No for deployed status
-	cli, err := binutils.NewGRPCClient()
+	deployedNames, err := subnet.GetLocallyDeployedSubnets()
 	if err != nil {
-		app.Log.Warn("could not get connection to server", zap.Error(err))
-	}
-	if cli != nil {
-		ctx := binutils.GetAsyncContext()
-		resp, err := cli.Status(ctx)
-		if err != nil {
-			app.Log.Warn("failed to query server for status", zap.Error(err))
-		}
-
-		if resp != nil {
-			for _, chain := range resp.GetClusterInfo().CustomChains {
-				deployedNames[chain.ChainName] = struct{}{}
-			}
-		}
+		// if the server can not be contacted, or there is a problem with the query,
+		// DO NOT FAIL, just print No for deployed status
+		app.Log.Warn("problem contacting server to get deployed subnets")
 	}
 	cars, err := getSidecars(app)
 	if err != nil {
@@ -228,7 +214,6 @@ func listDeployInfo(*cobra.Command, []string) error {
 			rows = append(rows, []string{
 				sc.Subnet,
 				sc.Name,
-				vmID,
 				deployedLocal,
 				netToID[fujiKey][1],
 				netToID[mainKey][1],

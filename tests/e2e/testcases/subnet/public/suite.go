@@ -70,7 +70,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			gomega.Expect(whitelistedSubnetsSlice).Should(gomega.ContainElement(subnetID))
 		}
 		// update nodes whitelisted subnets
-		err = utils.UpdateNodesWhitelistedSubnets(whitelistedSubnets)
+		err = utils.RestartNodesWithWhitelistedSubnets(whitelistedSubnets)
 		gomega.Expect(err).Should(gomega.BeNil())
 		// wait for subnet walidators to be up
 		err = utils.WaitSubnetValidators(subnetID, nodeInfos)
@@ -117,7 +117,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			gomega.Expect(whitelistedSubnetsSlice).Should(gomega.ContainElement(subnetID))
 		}
 		// update nodes whitelisted subnets
-		err = utils.UpdateNodesWhitelistedSubnets(whitelistedSubnets)
+		err = utils.RestartNodesWithWhitelistedSubnets(whitelistedSubnets)
 		gomega.Expect(err).Should(gomega.BeNil())
 		// wait for subnet walidators to be up
 		err = utils.WaitSubnetValidators(subnetID, nodeInfos)

@@ -210,7 +210,7 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 		// safety check, should not happen, as we already know
 		// compatible versions exist
 		if i+1 == len(subnetEVMversions) {
-			return nil, errors.New("no compatible versions for subsecuent SubnetEVM found")
+			return nil, errors.New("no compatible versions for subsequent SubnetEVM found")
 		}
 		first := ver
 		second := subnetEVMversions[i+1]

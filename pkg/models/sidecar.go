@@ -2,7 +2,10 @@
 // See the file LICENSE for licensing terms.
 package models
 
-import "github.com/ava-labs/avalanchego/ids"
+import (
+	"github.com/ava-labs/avalanche-network-runner/utils"
+	"github.com/ava-labs/avalanchego/ids"
+)
 
 type NetworkData struct {
 	SubnetID     ids.ID
@@ -21,4 +24,19 @@ type Sidecar struct {
 	Networks        map[string]NetworkData
 	ImportedFromAPM bool
 	ImportedVMID    string
+}
+
+func (sc Sidecar) GetVMID() (string, error) {
+	// get vmid
+	var vmid string
+	if sc.ImportedFromAPM {
+		vmid = sc.ImportedVMID
+	} else {
+		chainVMID, err := utils.VMID(sc.Name)
+		if err != nil {
+			return "", err
+		}
+		vmid = chainVMID.String()
+	}
+	return vmid, nil
 }

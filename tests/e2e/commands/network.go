@@ -20,8 +20,9 @@ func CleanNetwork() {
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(cmd.String())
 		fmt.Println(string(output))
-		fmt.Println(err)
+		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 }
@@ -36,8 +37,9 @@ func CleanNetworkHard() {
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(cmd.String())
 		fmt.Println(string(output))
-		fmt.Println(err)
+		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 }
@@ -60,8 +62,9 @@ func StartNetworkWithVersion(version string) string {
 	cmd := exec.Command(CLIBinary, cmdArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(cmd.String())
 		fmt.Println(string(output))
-		fmt.Println(err)
+		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 	return string(output)
@@ -76,8 +79,9 @@ func StopNetwork() {
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(cmd.String())
 		fmt.Println(string(output))
-		fmt.Println(err)
+		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 }

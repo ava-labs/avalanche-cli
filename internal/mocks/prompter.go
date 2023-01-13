@@ -129,6 +129,27 @@ func (_m *Prompter) CaptureExistingFilepath(promptStr string) (string, error) {
 	return r0, r1
 }
 
+// CaptureFutureDate provides a mock function with given fields: promptStr, minDate
+func (_m *Prompter) CaptureFutureDate(promptStr string, minDate time.Time) (time.Time, error) {
+	ret := _m.Called(promptStr, minDate)
+
+	var r0 time.Time
+	if rf, ok := ret.Get(0).(func(string, time.Time) time.Time); ok {
+		r0 = rf(promptStr, minDate)
+	} else {
+		r0 = ret.Get(0).(time.Time)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, time.Time) error); ok {
+		r1 = rf(promptStr, minDate)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // CaptureGitURL provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureGitURL(promptStr string) (*url.URL, error) {
 	ret := _m.Called(promptStr)

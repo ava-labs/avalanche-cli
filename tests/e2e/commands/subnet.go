@@ -43,8 +43,9 @@ func CreateSubnetEvmConfigWithVersion(subnetName string, genesisPath string, ver
 	cmd := exec.Command(CLIBinary, cmdArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(cmd.String())
 		fmt.Println(string(output))
-		fmt.Println(err)
+		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 
@@ -116,8 +117,9 @@ func CreateSpacesVMConfigWithVersion(subnetName string, genesisPath string, vers
 	cmd := exec.Command(CLIBinary, cmdArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(cmd.String())
 		fmt.Println(string(output))
-		fmt.Println(err)
+		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 
@@ -160,7 +162,7 @@ func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) 
 			stderr = string(exitErr.Stderr)
 		}
 		fmt.Println(string(output))
-		fmt.Println(err)
+		utils.PrintStdErr(err)
 		fmt.Println(stderr)
 	}
 
@@ -184,8 +186,9 @@ func DeleteSubnetConfig(subnetName string) {
 	cmd := exec.Command(CLIBinary, SubnetCmd, "delete", subnetName)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(cmd.String())
 		fmt.Println(string(output))
-		fmt.Println(err)
+		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 
@@ -253,7 +256,7 @@ func DeploySubnetLocallyWithArgs(subnetName string, version string, confPath str
 			stderr = string(exitErr.Stderr)
 		}
 		fmt.Println(string(output))
-		fmt.Println(err)
+		utils.PrintStdErr(err)
 		fmt.Println(stderr)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -312,8 +315,9 @@ func SimulateFujiDeploy(
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(cmd.String())
 		fmt.Println(string(output))
-		fmt.Println(err)
+		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 
@@ -417,8 +421,9 @@ func SimulateFujiAddValidator(
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(cmd.String())
 		fmt.Println(string(output))
-		fmt.Println(err)
+		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 
@@ -573,8 +578,9 @@ func SimulateMainnetJoin(
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		fmt.Println(cmd.String())
 		fmt.Println(string(output))
-		fmt.Println(err)
+		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
 
@@ -664,7 +670,7 @@ func ImportSubnetConfigFromURL(repoURL string, branch string, subnetName string)
 			stderr = string(exitErr.Stderr)
 		}
 		fmt.Println(string(output))
-		fmt.Println(err)
+		utils.PrintStdErr(err)
 		fmt.Println(stderr)
 	}
 
@@ -675,6 +681,25 @@ func ImportSubnetConfigFromURL(repoURL string, branch string, subnetName string)
 	exists, err = utils.SubnetAPMVMExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
+}
+
+/* #nosec G204 */
+func DescribeSubnet(subnetName string) (string, error) {
+	// Create config
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"describe",
+		subnetName,
+	)
+
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+	}
+	return string(output), err
 }
 
 func SimulateGetSubnetStatsFuji(subnetName, subnetID string) string {

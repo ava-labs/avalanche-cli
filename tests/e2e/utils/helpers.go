@@ -5,9 +5,11 @@ package utils
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/user"
@@ -21,6 +23,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-network-runner/client"
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
@@ -491,7 +494,7 @@ func ParsePublicDeployOutput(output string) (string, string, error) {
 	return subnetID, rpcURL, nil
 }
 
-func UpdateNodesWhitelistedSubnets(whitelistedSubnets string) error {
+func RestartNodesWithWhitelistedSubnets(whitelistedSubnets string) error {
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
 		return err
@@ -526,6 +529,25 @@ type NodeInfo struct {
 	ConfigFile string
 	URI        string
 	LogDir     string
+}
+
+func GetNodeVMVersion(nodeURI string, vmid string) (string, error) {
+	rootCtx := context.Background()
+	ctx, cancel := context.WithTimeout(rootCtx, constants.RequestTimeout)
+
+	client := info.NewClient(nodeURI)
+	versionInfo, err := client.GetNodeVersion(ctx)
+	cancel()
+	if err != nil {
+		return "", err
+	}
+
+	for vm, version := range versionInfo.VMVersions {
+		if vm == vmid {
+			return version, nil
+		}
+	}
+	return "", errors.New("vmid not found")
 }
 
 func GetNodesInfo() (map[string]NodeInfo, error) {
@@ -679,6 +701,21 @@ func RunSpacesVMAPITest(rpc string) error {
 		return fmt.Errorf("expected value to be %q, got %q", v, rv)
 	}
 	return nil
+}
+
+func GetFileHash(filename string) (string, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
 
 func FundLedgerAddress() error {

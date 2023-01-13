@@ -15,11 +15,13 @@ const (
 	ServerRunFile      = "gRPCserver.run"
 	AvalancheCliBinDir = "bin"
 	RunDir             = "runs"
-	SuffixSeparator    = "_"
-	SidecarFileName    = "sidecar.json"
-	GenesisFileName    = "genesis.json"
-	SidecarSuffix      = SuffixSeparator + SidecarFileName
-	GenesisSuffix      = SuffixSeparator + GenesisFileName
+	UpgradeFilesDir    = "upgrades"
+
+	SuffixSeparator = "_"
+	SidecarFileName = "sidecar.json"
+	GenesisFileName = "genesis.json"
+	SidecarSuffix   = SuffixSeparator + SidecarFileName
+	GenesisSuffix   = SuffixSeparator + GenesisFileName
 
 	SidecarVersion = "1.2.1"
 
@@ -108,8 +110,9 @@ const (
 
 	AvaLabsMaintainers = "ava-labs"
 
-	NotAvailableLabel = "Not available"
-	BackendCmd        = "avalanche-cli-backend"
+	UpdateBytesFileName = "upgrade.json"
+	NotAvailableLabel   = "Not available"
+	BackendCmd          = "avalanche-cli-backend"
 
 	AvalancheGoPluginDirFlagAdded = "v1.9.6"
 

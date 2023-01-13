@@ -5,6 +5,7 @@ package subnetcmd
 import (
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd/upgradecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/spf13/cobra"
 )
@@ -51,6 +52,8 @@ manage your Subnet configurations and live deployments.`,
 	cmd.AddCommand(newImportCmd())
 	// subnet publish
 	cmd.AddCommand(newPublishCmd())
+	// subnet upgrade
+	cmd.AddCommand(upgradecmd.NewCmd(app))
 	// subnet stats
 	cmd.AddCommand(newStatsCmd())
 	// subnet configure
