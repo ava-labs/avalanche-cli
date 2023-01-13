@@ -7,11 +7,11 @@ import (
 	"testing"
 
 	"github.com/ava-labs/avalanche-network-runner/utils"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetVMID_imported(t *testing.T) {
-	assert := assert.New(t)
+	assert := require.New(t)
 	testVMID := "abcd"
 	sc := Sidecar{
 		ImportedFromAPM: true,
@@ -24,7 +24,7 @@ func TestGetVMID_imported(t *testing.T) {
 }
 
 func TestGetVMID_derived(t *testing.T) {
-	assert := assert.New(t)
+	assert := require.New(t)
 	testVMName := "subnet"
 	sc := Sidecar{
 		ImportedFromAPM: false,

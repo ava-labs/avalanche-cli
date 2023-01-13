@@ -6,11 +6,11 @@ package upgradecmd
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAtMostOneNetworkSelected(t *testing.T) {
-	assert := assert.New(t)
+	assert := require.New(t)
 
 	type test struct {
 		name       string
@@ -138,7 +138,7 @@ func TestAtMostOneNetworkSelected(t *testing.T) {
 }
 
 func TestAtMostOneVersionSelected(t *testing.T) {
-	assert := assert.New(t)
+	assert := require.New(t)
 
 	type test struct {
 		name      string
@@ -224,7 +224,7 @@ func TestAtMostOneVersionSelected(t *testing.T) {
 }
 
 func TestAtMostOneAutomationSelected(t *testing.T) {
-	assert := assert.New(t)
+	assert := require.New(t)
 
 	type test struct {
 		name      string
