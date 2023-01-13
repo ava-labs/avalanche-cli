@@ -75,7 +75,7 @@ func atMostOneAutomationSelected() bool {
 	return !(useManual && pluginDir != "")
 }
 
-func upgradeVM(cmd *cobra.Command, args []string) error {
+func upgradeVM(_ *cobra.Command, args []string) error {
 	// Check flag preconditions
 	if !atMostOneNetworkSelected() {
 		return errors.New("too many networks selected")
@@ -130,7 +130,7 @@ func selectNetworkToUpgrade(sc models.Sidecar) (string, error) {
 	upgradeOptions := []string{futureDeployment}
 
 	// check if subnet already deployed locally
-	locallyDeployedSubnets, err := subnet.GetLocallyDeployedSubnets(app)
+	locallyDeployedSubnets, err := subnet.GetLocallyDeployedSubnets()
 	if err != nil {
 		// ignore error if we can't reach the server, assume subnet isn't deployed
 		app.Log.Warn("Unable to reach server to get deployed subnets")
@@ -190,7 +190,7 @@ func selectUpdateOption(subnetName string, vmType models.VMType, sc models.Sidec
 	}
 }
 
-func updateToLatestVersion(subnetName string, vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
+func updateToLatestVersion(_ string, vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
 	// pull in current version
 	currentVersion := sc.VMVersion
 
@@ -212,7 +212,7 @@ func updateToLatestVersion(subnetName string, vmType models.VMType, sc models.Si
 	return updateVMByNetwork(sc, latestVersion, networkToUpgrade)
 }
 
-func updateToSpecificVersion(subnetName string, vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
+func updateToSpecificVersion(_ string, _ models.VMType, sc models.Sidecar, networkToUpgrade string) error {
 	// pull in current version
 	currentVersion := sc.VMVersion
 
@@ -249,7 +249,7 @@ func updateVMByNetwork(sc models.Sidecar, targetVersion string, networkToUpgrade
 	}
 }
 
-func updateToCustomBin(subnetName string, vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
+func updateToCustomBin(_ string, _ models.VMType, _ models.Sidecar, _ string) error {
 	// get path
 
 	// install update
@@ -268,12 +268,12 @@ func updateFutureVM(sc models.Sidecar, targetVersion string) error {
 	return nil
 }
 
-func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
+func updateExistingLocalVM(_ models.Sidecar, _ string) error {
 	ux.Logger.PrintToUser("Coming soon. For now, please upgrade your existing deployments and redeploy the subnet.")
 	return nil
 }
 
-func chooseManualOrAutomatic(sc models.Sidecar, targetVersion string, networkToUpgrade string) error {
+func chooseManualOrAutomatic(sc models.Sidecar, targetVersion string, _ string) error {
 	switch {
 	case useManual:
 		return plugins.ManualUpgrade(app, sc, targetVersion)
