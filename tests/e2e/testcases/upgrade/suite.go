@@ -24,15 +24,17 @@ const (
 	keyName     = "ewoq"
 )
 
-var (
-	binaryToVersion map[string]string
-	err             error
-)
+// var (
+// 	binaryToVersion map[string]string
+// 	err error
+// )
+
+var err error
 
 var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 	_ = ginkgo.BeforeAll(func() {
-		mapper := utils.NewVersionMapper()
-		binaryToVersion, err = utils.GetVersionMapping(mapper)
+		// mapper := utils.NewVersionMapper()
+		// binaryToVersion, err = utils.GetVersionMapping(mapper)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
