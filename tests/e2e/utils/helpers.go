@@ -22,12 +22,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	ledger "github.com/ava-labs/avalanche-ledger-go"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
+	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -564,9 +564,14 @@ func GetNodesInfo() (map[string]NodeInfo, error) {
 	}
 	nodesInfo := map[string]NodeInfo{}
 	for nodeName, nodeInfo := range resp.ClusterInfo.NodeInfos {
+		pluginDir := nodeInfo.PluginDir
+		if pluginDir == "" {
+			// pre 1.9.6 case for CLI, will use pre 1.9.6 node plugin dir
+			pluginDir = path.Join(path.Dir(nodeInfo.ExecPath), "plugins")
+		}
 		nodesInfo[nodeName] = NodeInfo{
 			ID:         nodeInfo.Id,
-			PluginDir:  nodeInfo.PluginDir,
+			PluginDir:  pluginDir,
 			ConfigFile: path.Join(path.Dir(nodeInfo.LogDir), "config.json"),
 			URI:        nodeInfo.Uri,
 			LogDir:     nodeInfo.LogDir,
@@ -721,7 +726,6 @@ func FundLedgerAddress() error {
 	}
 
 	// get ledger addr
-	fmt.Println("*** Please provide extended public key on the ledger device ***")
 	ledgerAddrs, err := ledgerDev.Addresses([]uint32{0})
 	if err != nil {
 		return err

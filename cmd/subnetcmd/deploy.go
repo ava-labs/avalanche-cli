@@ -22,10 +22,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	ledger "github.com/ava-labs/avalanche-ledger-go"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
+	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
@@ -661,10 +661,10 @@ func GetKeychain(
 	if useLedger {
 		ledgerDevice, err := ledger.New()
 		if err != nil {
+			ux.Logger.PrintToUser(logging.LightRed.Wrap("Error accessing ledger device. Please update ledger app to >= v0.6.5."))
 			return kc, err
 		}
 		// ask for addresses here to print user msg for ledger interaction
-		ux.Logger.PrintToUser("*** Please provide extended public key on the ledger device ***")
 		// set ledger indices
 		var ledgerIndices []uint32
 		if len(ledgerAddresses) == 0 {
@@ -678,6 +678,7 @@ func GetKeychain(
 		// get formatted addresses for ux
 		addresses, err := ledgerDevice.Addresses(ledgerIndices)
 		if err != nil {
+			ux.Logger.PrintToUser(logging.LightRed.Wrap("Error accessing ledger device. Please update ledger app to >= v0.6.5."))
 			return kc, err
 		}
 		addrStrs := []string{}
@@ -701,7 +702,7 @@ func GetKeychain(
 	return sf.KeyChain(), nil
 }
 
-func getLedgerIndices(ledgerDevice ledger.Ledger, addressesStr []string) ([]uint32, error) {
+func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]uint32, error) {
 	addresses, err := address.ParseToIDs(addressesStr)
 	if err != nil {
 		return []uint32{}, fmt.Errorf("failure parsing given ledger addresses: %w", err)
