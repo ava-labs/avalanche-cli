@@ -153,7 +153,6 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 		err = utils.WaitSubnetValidators(subnetID, nodeInfos)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		// TODO Delete this after updating this test as described below
 		var originalHash string
 
 		// upgrade the vm on each node
@@ -161,11 +160,6 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		for _, nodeInfo := range nodeInfos {
-			// check the current node version
-			// vmVersion, err := utils.GetNodeVMVersion(nodeInfo.URI, vmid.String())
-			// gomega.Expect(err).Should(gomega.BeNil())
-			// gomega.Expect(vmVersion).Should(gomega.Equal(binaryToVersion[utils.SoloSubnetEVMKey2]))
-
 			originalHash, err = utils.GetFileHash(filepath.Join(nodeInfo.PluginDir, vmid.String()))
 			gomega.Expect(err).Should(gomega.BeNil())
 		}
@@ -178,23 +172,6 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 			gomega.Expect(err).Should(gomega.BeNil())
 		}
 
-		// TODO: There is currently only one subnet-evm version compatible with avalanchego. These
-		// lines should be uncommented when a new version is released. The section below can be removed.
-		// // restart to use the new vm version
-		// err = utils.RestartNodesWithWhitelistedSubnets(whitelistedSubnets)
-		// gomega.Expect(err).Should(gomega.BeNil())
-		// // wait for subnet walidators to be up
-		// err = utils.WaitSubnetValidators(subnetID, nodeInfos)
-		// gomega.Expect(err).Should(gomega.BeNil())
-
-		// // Check that nodes are running the new version
-		// for _, nodeInfo := range nodeInfos {
-		// 	// check the current node version
-		// 	vmVersion, err := utils.GetNodeVMVersion(nodeInfo.URI, vmid.String())
-		// 	gomega.Expect(err).Should(gomega.BeNil())
-		// 	gomega.Expect(vmVersion).Should(gomega.Equal(subnetEVMVersion2))
-		// }
-
 		// This can be removed when the above is added
 		for _, nodeInfo := range nodeInfos {
 			measuredHash, err := utils.GetFileHash(filepath.Join(nodeInfo.PluginDir, vmid.String()))
@@ -202,9 +179,6 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 
 			gomega.Expect(measuredHash).ShouldNot(gomega.Equal(originalHash))
 		}
-
-		// Stop removal here
-		////////////////////////////////////////////////////////
 
 		commands.DeleteSubnetConfig(subnetName)
 	})
