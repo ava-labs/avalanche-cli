@@ -120,6 +120,12 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		return ids.Empty, ids.Empty, err
 	}
 
+	// this means if we can't find the backend log file we are ignoring this error
+	// TODO should we ignore?
+	backendLogFile, _ := binutils.GetBackendLogFile(d.app)
+	backendLogDir := filepath.Dir(backendLogFile)
+	fmt.Println(backendLogDir)
+
 	cli, err := d.getClientFunc()
 	if err != nil {
 		return ids.Empty, ids.Empty, fmt.Errorf("error creating gRPC Client: %w", err)
@@ -135,6 +141,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	clusterInfo, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
 		if !server.IsServerError(err, server.ErrNotBootstrapped) {
+			utils.FindErrorLogs(clusterInfo.GetRootDataDir(), backendLogDir)
 			return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 		} else {
 			networkBooted = false
@@ -158,14 +165,19 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	ux.Logger.PrintToUser("VMs ready.")
 
+	var rootDir string
+
 	if !networkBooted {
-		if err := d.startNetwork(ctx, cli, avagoVersion, avalancheGoBinPath, pluginDir, runDir); err != nil {
+		resp, err := d.startNetwork(ctx, cli, avagoVersion, avalancheGoBinPath, pluginDir, runDir)
+		if err != nil {
 			return ids.Empty, ids.Empty, err
 		}
+		rootDir = resp.ClusterInfo.GetRootDataDir()
 	}
 
 	clusterInfo, err = d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
+		utils.FindErrorLogs(rootDir, backendLogDir)
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 	}
 	subnetIDs := clusterInfo.Subnets
@@ -500,7 +512,7 @@ func (d *LocalDeployer) startNetwork(
 	avalancheGoBinPath string,
 	pluginDir string,
 	runDir string,
-) error {
+) (*rpcpb.LoadSnapshotResponse, error) {
 	ux.Logger.PrintToUser("Starting network...")
 	loadSnapshotOpts := []client.OpOption{
 		client.WithExecPath(avalancheGoBinPath),
@@ -518,21 +530,17 @@ func (d *LocalDeployer) startNetwork(
 	// load global node configs if they exist
 	configStr, err := d.app.Conf.LoadNodeConfig()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if configStr != "" {
 		loadSnapshotOpts = append(loadSnapshotOpts, client.WithGlobalNodeConfig(configStr))
 	}
 
-	_, err = cli.LoadSnapshot(
+	return cli.LoadSnapshot(
 		ctx,
 		constants.DefaultSnapshotName,
 		loadSnapshotOpts...,
 	)
-	if err != nil {
-		return fmt.Errorf("failed to start network :%w", err)
-	}
-	return nil
 }
 
 // Returns an error if the server cannot be contacted. You may want to ignore this error.
