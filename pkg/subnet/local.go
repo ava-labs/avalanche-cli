@@ -16,8 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/mod/semver"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -115,7 +113,7 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 //   - waits completion of operation
 //   - show status
 func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, error) {
-	avagoVersion, avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
+	_, avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
@@ -159,7 +157,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	ux.Logger.PrintToUser("VMs ready.")
 
 	if !networkBooted {
-		if err := d.startNetwork(ctx, cli, avagoVersion, avalancheGoBinPath, pluginDir, runDir); err != nil {
+		if err := d.startNetwork(ctx, cli, avalancheGoBinPath, pluginDir, runDir); err != nil {
 			return ids.Empty, ids.Empty, err
 		}
 	}
@@ -496,7 +494,6 @@ func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 func (d *LocalDeployer) startNetwork(
 	ctx context.Context,
 	cli client.Client,
-	avagoVersion string,
 	avalancheGoBinPath string,
 	pluginDir string,
 	runDir string,
@@ -506,13 +503,7 @@ func (d *LocalDeployer) startNetwork(
 		client.WithExecPath(avalancheGoBinPath),
 		client.WithRootDataDir(runDir),
 		client.WithReassignPortsIfUsed(true),
-	}
-
-	// For avago version < AvalancheGoPluginDirFlagAdded, we use ANR default location for plugins dir,
-	// for >= AvalancheGoPluginDirFlagAdded, we pass the param
-	// TODO: review this once ANR includes proper avago version management
-	if semver.Compare(avagoVersion, constants.AvalancheGoPluginDirFlagAdded) >= 0 {
-		loadSnapshotOpts = append(loadSnapshotOpts, client.WithPluginDir(pluginDir))
+		client.WithPluginDir(pluginDir),
 	}
 
 	// load global node configs if they exist

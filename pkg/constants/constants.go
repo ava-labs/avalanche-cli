@@ -114,8 +114,6 @@ const (
 	NotAvailableLabel   = "Not available"
 	BackendCmd          = "avalanche-cli-backend"
 
-	AvalancheGoPluginDirFlagAdded = "v1.9.6"
-
 	AvalancheGoCompatibilityVersionAdded = "v1.9.2"
 	AvalancheGoCompatibilityURL          = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
 	SubnetEVMRPCCompatibilityURL         = "https://raw.githubusercontent.com/ava-labs/subnet-evm/master/compatibility.json"
