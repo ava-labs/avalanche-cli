@@ -7,7 +7,7 @@ require (
 	github.com/ava-labs/avalanche-network-runner v1.3.5
 	github.com/ava-labs/avalanchego v1.9.7
 	github.com/ava-labs/coreth v0.11.6
-	github.com/ava-labs/spacesvm v0.0.14
+	github.com/ava-labs/spacesvm v0.0.15
 	github.com/ava-labs/subnet-evm v0.4.8
 	github.com/docker/docker v20.10.22+incompatible
 	github.com/ethereum/go-ethereum v1.10.26
