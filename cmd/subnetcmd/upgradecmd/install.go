@@ -5,8 +5,22 @@ package upgradecmd
 import (
 	"errors"
 	"fmt"
+	"os"
+	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet/upgrades"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	ANRclient "github.com/ava-labs/avalanche-network-runner/client"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
+)
+
+const (
+	timestampFormat  = "20060102150405"
+	tmpSnapshotInfix = "-tmp-"
 )
 
 // avalanche subnet upgrade generate
@@ -37,6 +51,60 @@ func installCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(networkToUpgrade)
+
+	switch networkToUpgrade {
+	case futureDeployment:
+		// TODO: Is this actually going to work
+		return upgradeGenerateCmd(cmd, args)
+	case localDeployment:
+		return saveAndRestartFromSnapshot(subnetName, sc)
+	}
+
+	return nil
+}
+
+func saveAndRestartFromSnapshot(subnetName string, sc models.Sidecar) error {
+	//		For a already deployed subnet, the supported scheme is to save a snapshot, and to load the snapshot with the upgrade
+	cli, err := binutils.NewGRPCClient()
+	if err != nil {
+		return err
+	}
+	ctx := binutils.GetAsyncContext()
+
+	blockchainID := sc.Networks[models.Local.String()].BlockchainID
+
+	if blockchainID == ids.Empty {
+		return errors.New("failed to find deployment information about this subnet in state. Aborting.")
+	}
+
+	snapName := subnetName + tmpSnapshotInfix + time.Now().Format(timestampFormat)
+
+	app.Log.Debug("saving temporary snapshot for upgrade bytes", zap.String("snapshot-name", snapName))
+	_, err = cli.SaveSnapshot(ctx, snapName)
+	if err != nil {
+		return err
+	}
+	app.Log.Debug("network stopped and named temporary snapshot created. Now starting the network with given snapshot")
+
+	netUpgradeBytes, err := upgrades.ReadUpgradeFile(subnetName, app.GetSubnetDir())
+	if err != nil {
+		if err == os.ErrNotExist {
+			ux.Logger.PrintToUser("A file with upgrade specs for the given subnet have not been found.")
+			ux.Logger.PrintToUser("You may need to first create it with the `avalanche subnet update generate` command")
+		}
+		return err
+	}
+
+	netUpgradeConfs := map[string]string{
+		blockchainID.String(): string(netUpgradeBytes),
+	}
+
+	opts := ANRclient.WithUpgradeConfigs(netUpgradeConfs)
+	_, err = cli.LoadSnapshot(ctx, snapName, opts)
+	if err != nil {
+		return err
+	}
+
+	ux.Logger.PrintToUser("Network restarted and upgrade bytes have been applied to running nodes")
 	return nil
 }

@@ -15,7 +15,6 @@ const (
 	ServerRunFile      = "gRPCserver.run"
 	AvalancheCliBinDir = "bin"
 	RunDir             = "runs"
-	UpgradeFilesDir    = "upgrades"
 
 	SuffixSeparator = "_"
 	SidecarFileName = "sidecar.json"

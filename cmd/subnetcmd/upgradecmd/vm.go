@@ -17,7 +17,7 @@ import (
 
 const (
 	futureDeployment  = "Update config for future deployments"
-	localDeployment   = "Existing local deployment (coming soon)"
+	localDeployment   = "Existing local deployment"
 	fujiDeployment    = "Fuji"
 	mainnetDeployment = "Mainnet (coming soon)"
 )
@@ -168,7 +168,7 @@ func selectUpdateOption(subnetName string, vmType models.VMType, sc models.Sidec
 
 	latestVersionUpdate := "Update to latest version"
 	specificVersionUpdate := "Update to a specific version"
-	customBinaryUpdate := "Update to a custom binary (coming soon)"
+	customBinaryUpdate := "Update to a custom binary"
 
 	updateOptions := []string{latestVersionUpdate, specificVersionUpdate, customBinaryUpdate}
 
