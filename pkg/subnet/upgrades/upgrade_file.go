@@ -13,33 +13,26 @@ import (
 	"github.com/ava-labs/avalanchego/utils/storage"
 )
 
-func WriteUpgradeFile(jsonBytes []byte, subnetName, upgradeFilesDir string) error {
+func WriteUpgradeFile(jsonBytes []byte, subnetName, subnetsRoot string) error {
 	var (
 		exists bool
 		err    error
 	)
 
-	subnetPath := filepath.Join(upgradeFilesDir, subnetName)
-	updateBytesFileName := filepath.Join(subnetPath, constants.UpdateBytesFileName)
+	subnetDir := filepath.Join(subnetsRoot, subnetName)
+	updateBytesFileName := filepath.Join(subnetDir, constants.UpdateBytesFileName)
 
-	ux.Logger.PrintToUser(fmt.Sprintf("Writing %q file to %q...", constants.UpdateBytesFileName, subnetPath))
+	ux.Logger.PrintToUser(fmt.Sprintf("Writing %q file to %q...", constants.UpdateBytesFileName, subnetDir))
 
-	exists, err = storage.FolderExists(upgradeFilesDir)
+	// NOTE: This allows creating the update bytes file before a subnet has actually been created.
+	// It is probably never going to happen though, as commands calling this will
+	// check if the subnet exists before this
+	exists, err = storage.FolderExists(subnetDir)
 	if err != nil {
 		return err
 	}
 	if !exists {
-		if err := os.Mkdir(upgradeFilesDir, constants.DefaultPerms755); err != nil {
-			return err
-		}
-	}
-
-	exists, err = storage.FolderExists(subnetPath)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		if err := os.Mkdir(subnetPath, constants.DefaultPerms755); err != nil {
+		if err := os.Mkdir(subnetDir, constants.DefaultPerms755); err != nil {
 			return err
 		}
 	}
@@ -51,9 +44,8 @@ func WriteUpgradeFile(jsonBytes []byte, subnetName, upgradeFilesDir string) erro
 	return nil
 }
 
-func ReadUpgradeFile(subnetName, upgradeFilesDir string) ([]byte, error) {
-	subnetPath := filepath.Join(upgradeFilesDir, subnetName)
-	localUpgradeBytesFileName := filepath.Join(subnetPath, constants.UpdateBytesFileName)
+func ReadUpgradeFile(subnetName, subnetsRoot string) ([]byte, error) {
+	localUpgradeBytesFileName := filepath.Join(subnetsRoot, subnetName, constants.UpdateBytesFileName)
 
 	exists, err := storage.FileExists(localUpgradeBytesFileName)
 	if err != nil {

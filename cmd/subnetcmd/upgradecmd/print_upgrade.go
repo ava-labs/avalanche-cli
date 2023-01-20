@@ -31,7 +31,7 @@ func upgradePrintCmd(_ *cobra.Command, args []string) error {
 		return nil
 	}
 
-	fileBytes, err := upgrades.ReadUpgradeFile(subnetName, app.GetUpgradeFilesDir())
+	fileBytes, err := upgrades.ReadUpgradeFile(subnetName, app.GetSubnetDir())
 	if err != nil {
 		return err
 	}

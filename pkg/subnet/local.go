@@ -551,6 +551,7 @@ func GetLocallyDeployedSubnets() (map[string]struct{}, error) {
 		return nil, err
 	}
 
+	fmt.Println(resp.GetClusterInfo().CustomChains)
 	for _, chain := range resp.GetClusterInfo().CustomChains {
 		deployedNames[chain.ChainName] = struct{}{}
 	}

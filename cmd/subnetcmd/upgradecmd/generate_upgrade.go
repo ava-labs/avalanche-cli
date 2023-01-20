@@ -211,7 +211,7 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	return upgrades.WriteUpgradeFile(jsonBytes, subnetName, app.GetUpgradeFilesDir())
+	return upgrades.WriteUpgradeFile(jsonBytes, subnetName, app.GetSubnetDir())
 }
 
 func (p *nativeMint) PromptParams() error {
