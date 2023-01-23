@@ -251,8 +251,7 @@ func updateVMByNetwork(sc models.Sidecar, targetVersion string, networkToUpgrade
 }
 
 func updateToCustomBin(subnetName string, sc models.Sidecar, networkToUpgrade string) error {
-	err := vm.CopyCustomVM(app, subnetName, newBinary)
-	if err != nil {
+	if err := vm.CopyCustomVM(app, subnetName, newBinary); err != nil {
 		return err
 	}
 

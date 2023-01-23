@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/stretchr/testify/require"
@@ -316,15 +317,23 @@ func TestUpdateToCustomBin(t *testing.T) {
 	err = os.MkdirAll(app.GetCustomVMDir(), constants.DefaultPerms755)
 	assert.NoError(err)
 
-	newBinary = "../../../README.md"
+	newBinary = "../../../tests/assets/dummyVmBinary.bin"
 
 	assert.FileExists(newBinary)
 
 	err = updateToCustomBin(subnetName, sc, networkToUpgrade)
 	assert.NoError(err)
 
-	// check new binary exists
-	assert.FileExists(app.GetCustomVMPath(subnetName))
+	// check new binary exists and matches
+	placedBinaryPath := app.GetCustomVMPath(subnetName)
+	assert.FileExists(placedBinaryPath)
+	expectedHash, err := utils.GetSHA256FromDisk(newBinary)
+	assert.NoError(err)
+
+	actualHash, err := utils.GetSHA256FromDisk(placedBinaryPath)
+	assert.NoError(err)
+
+	assert.Equal(expectedHash, actualHash)
 
 	// check sidecar
 	diskSC, err := app.LoadSidecar(subnetName)

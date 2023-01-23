@@ -172,7 +172,6 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 			gomega.Expect(err).Should(gomega.BeNil())
 		}
 
-		// This can be removed when the above is added
 		for _, nodeInfo := range nodeInfos {
 			measuredHash, err := utils.GetFileHash(filepath.Join(nodeInfo.PluginDir, vmid.String()))
 			gomega.Expect(err).Should(gomega.BeNil())
