@@ -53,18 +53,18 @@ func installCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	switch networkToUpgrade {
+	// in this case, we just are going to generate new update bytes
 	case futureDeployment:
-		// in this case, we just are going to generate new update bytes
 		return upgradeGenerateCmd(cmd, args)
-		// update a locally running network
+	// update a locally running network
 	case localDeployment:
-		return saveAndRestartFromSnapshot(subnetName, sc)
+		return localInstallNetworkUpgrades(subnetName, sc)
 	}
 
 	return nil
 }
 
-func saveAndRestartFromSnapshot(subnetName string, sc models.Sidecar) error {
+func localInstallNetworkUpgrades(subnetName string, sc models.Sidecar) error {
 	// For a already deployed subnet, the supported scheme is to
 	// save a snapshot, and to load the snapshot with the upgrade
 	cli, err := binutils.NewGRPCClient()
@@ -73,12 +73,14 @@ func saveAndRestartFromSnapshot(subnetName string, sc models.Sidecar) error {
 	}
 	ctx := binutils.GetAsyncContext()
 
+	// get the blockchainID from the sidecar
 	blockchainID := sc.Networks[models.Local.String()].BlockchainID
 	if blockchainID == ids.Empty {
 		return errors.New(
 			"failed to find deployment information about this subnet in state - aborting")
 	}
 
+	// save a temporary snapshot
 	snapName := subnetName + tmpSnapshotInfix + time.Now().Format(timestampFormat)
 	app.Log.Debug("saving temporary snapshot for upgrade bytes", zap.String("snapshot-name", snapName))
 	_, err = cli.SaveSnapshot(ctx, snapName)
@@ -88,6 +90,7 @@ func saveAndRestartFromSnapshot(subnetName string, sc models.Sidecar) error {
 	app.Log.Debug(
 		"network stopped and named temporary snapshot created. Now starting the network with given snapshot")
 
+	// restart the network setting the upgrade bytes file
 	netUpgradeBytes, err := upgrades.ReadUpgradeFile(subnetName, app.GetSubnetDir())
 	if err != nil {
 		if err == os.ErrNotExist {
