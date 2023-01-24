@@ -23,19 +23,26 @@ const (
 	tmpSnapshotInfix = "-tmp-"
 )
 
-// avalanche subnet upgrade generate
-func newUpgradeInstallCmd() *cobra.Command {
+// avalanche subnet upgrade apply
+func newUpgradeApplyCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "install [subnetName]",
-		Short: "Installs upgrade bytes onto subnet nodes",
-		Long:  `Installs upgrade bytes onto VMs.`, // TODO fix this wording
-		RunE:  installCmd,
+		Use:   "apply [subnetName]",
+		Short: "Apply upgrade bytes onto subnet nodes",
+		Long:  `Apply generated upgrade bytes to running subnet nodes to trigger a network upgrade`,
+		RunE:  applyCmd,
 		Args:  cobra.ExactArgs(1),
 	}
+
+	cmd.Flags().BoolVar(&useConfig, "config", false, "create upgrade config for future subnet deployments (same as generate)")
+	cmd.Flags().BoolVar(&useLocal, "local", false, "apply upgrade existing `local` deployment")
+	cmd.Flags().BoolVar(&useFuji, "fuji", false, "apply upgrade existing `fuji` deployment (alias for `testnet`)")
+	cmd.Flags().BoolVar(&useFuji, "testnet", false, "apply upgrade existing `testbet` deployment (alias for `fuji`)")
+	cmd.Flags().BoolVar(&useMainnet, "mainnet", false, "apply upgrade existing `mainnet` deployment")
+
 	return cmd
 }
 
-func installCmd(cmd *cobra.Command, args []string) error {
+func applyCmd(cmd *cobra.Command, args []string) error {
 	subnetName := args[0]
 
 	if !app.SubnetConfigExists(subnetName) {
@@ -58,15 +65,31 @@ func installCmd(cmd *cobra.Command, args []string) error {
 		return upgradeGenerateCmd(cmd, args)
 	// update a locally running network
 	case localDeployment:
-		return localInstallNetworkUpgrades(subnetName, sc)
+		return applyLocalNetworkUpgrade(subnetName, sc)
 	}
 
 	return nil
 }
 
-func localInstallNetworkUpgrades(subnetName string, sc models.Sidecar) error {
+func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 	// For a already deployed subnet, the supported scheme is to
 	// save a snapshot, and to load the snapshot with the upgrade
+
+	// first let's check update bytes actually exist
+	netUpgradeBytes, err := upgrades.ReadUpgradeFile(subnetName, app.GetSubnetDir())
+	if err != nil {
+		if err == os.ErrNotExist {
+			ux.Logger.PrintToUser("No file with upgrade specs for the given subnet has been found")
+			ux.Logger.PrintToUser("You may need to first create it with the `avalanche subnet update generate` command or import it")
+			ux.Logger.PrintToUser("Aborting this command. No changes applied")
+		}
+		return err
+	}
+
+	if err := validateUpgradeBytes(netUpgradeBytes); err != nil {
+		return err
+	}
+
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
 		return err
@@ -90,21 +113,11 @@ func localInstallNetworkUpgrades(subnetName string, sc models.Sidecar) error {
 	app.Log.Debug(
 		"network stopped and named temporary snapshot created. Now starting the network with given snapshot")
 
-	// restart the network setting the upgrade bytes file
-	netUpgradeBytes, err := upgrades.ReadUpgradeFile(subnetName, app.GetSubnetDir())
-	if err != nil {
-		if err == os.ErrNotExist {
-			ux.Logger.PrintToUser("A file with upgrade specs for the given subnet have not been found.")
-			ux.Logger.PrintToUser("You may need to first create it with the `avalanche subnet update generate` command")
-		}
-		return err
-	}
-
-	// TODO input validation
 	netUpgradeConfs := map[string]string{
 		blockchainID.String(): string(netUpgradeBytes),
 	}
 
+	// restart the network setting the upgrade bytes file
 	opts := ANRclient.WithUpgradeConfigs(netUpgradeConfs)
 	_, err = cli.LoadSnapshot(ctx, snapName, opts)
 	if err != nil {

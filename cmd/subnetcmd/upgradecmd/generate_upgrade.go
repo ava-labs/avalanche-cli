@@ -72,8 +72,10 @@ This command starts a wizard guiding the user generating the required file.`,
 	return cmd
 }
 
+type PrecompileContent map[string]interface{}
+
 type Precompiles struct {
-	PrecompileUpgrades map[string]interface{} `json:"precompileUpgrades"`
+	PrecompileUpgrades PrecompileContent `json:"precompileUpgrades"`
 }
 
 func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
@@ -121,7 +123,7 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 	fmt.Println()
 
 	precompiles := Precompiles{
-		PrecompileUpgrades: map[string]interface{}{},
+		PrecompileUpgrades: PrecompileContent{},
 	}
 
 	for {
