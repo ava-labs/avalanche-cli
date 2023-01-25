@@ -113,7 +113,7 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 //   - waits completion of operation
 //   - show status
 func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, error) {
-	_, avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
+	avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
@@ -307,27 +307,27 @@ func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte) err
 // * checks if avalanchego is installed in the local binary path
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path and plugin
-func (d *LocalDeployer) SetupLocalEnv() (string, string, string, error) {
+func (d *LocalDeployer) SetupLocalEnv() (string, string, error) {
 	err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed setting up snapshots: %w", err)
+		return "", "", fmt.Errorf("failed setting up snapshots: %w", err)
 	}
 
-	avagoVersion, avagoDir, err := d.setupLocalEnv()
+	avagoDir, err := d.setupLocalEnv()
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed setting up local environment: %w", err)
+		return "", "", fmt.Errorf("failed setting up local environment: %w", err)
 	}
 
 	pluginDir := filepath.Join(avagoDir, "plugins")
 	avalancheGoBinPath := filepath.Join(avagoDir, "avalanchego")
 
 	if err := os.MkdirAll(pluginDir, constants.DefaultPerms755); err != nil {
-		return "", "", "", fmt.Errorf("could not create pluginDir %s", pluginDir)
+		return "", "", fmt.Errorf("could not create pluginDir %s", pluginDir)
 	}
 
 	exists, err := storage.FolderExists(pluginDir)
 	if !exists || err != nil {
-		return "", "", "", fmt.Errorf("evaluated pluginDir to be %s but it does not exist", pluginDir)
+		return "", "", fmt.Errorf("evaluated pluginDir to be %s but it does not exist", pluginDir)
 	}
 
 	// TODO: we need some better version management here
@@ -335,14 +335,14 @@ func (d *LocalDeployer) SetupLocalEnv() (string, string, string, error) {
 	// * decide if force update or give user choice
 	exists, err = storage.FileExists(avalancheGoBinPath)
 	if !exists || err != nil {
-		return "", "", "", fmt.Errorf(
+		return "", "", fmt.Errorf(
 			"evaluated avalancheGoBinPath to be %s but it does not exist", avalancheGoBinPath)
 	}
 
-	return avagoVersion, avalancheGoBinPath, pluginDir, nil
+	return avalancheGoBinPath, pluginDir, nil
 }
 
-func (d *LocalDeployer) setupLocalEnv() (string, string, error) {
+func (d *LocalDeployer) setupLocalEnv() (string, error) {
 	return binutils.SetupAvalanchego(d.app, d.avagoVersion)
 }
 

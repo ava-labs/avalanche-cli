@@ -17,7 +17,7 @@ func SetupSubnetEVM(app *application.Avalanche, subnetEVMVersion string) (string
 
 	installer := NewInstaller()
 	downloader := NewSubnetEVMDownloader()
-	_, vmDir, err := InstallBinary(
+	vmDir, err := InstallBinary(
 		app,
 		subnetEVMVersion,
 		binDir,

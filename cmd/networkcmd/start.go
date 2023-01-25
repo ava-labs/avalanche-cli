@@ -49,7 +49,7 @@ func startNetwork(*cobra.Command, []string) error {
 		return err
 	}
 
-	_, avalancheGoBinPath, pluginDir, err := sd.SetupLocalEnv()
+	avalancheGoBinPath, pluginDir, err := sd.SetupLocalEnv()
 	if err != nil {
 		return err
 	}
