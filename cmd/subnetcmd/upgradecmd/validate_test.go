@@ -104,7 +104,7 @@ func TestEarliestTimestamp(t *testing.T) {
 			earliest, err := getEarliestTimestamp(upgrades)
 			if tt.expectedErr != nil {
 				// give some time so timestamps are defo before now
-				time.Sleep(200 * time.Millisecond)
+				time.Sleep(1 * time.Second)
 				require.ErrorIs(err, tt.expectedErr)
 			} else {
 				require.NoError(err)
