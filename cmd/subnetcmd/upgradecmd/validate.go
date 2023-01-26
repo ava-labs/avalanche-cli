@@ -7,27 +7,29 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/big"
 	"time"
+
+	"github.com/ava-labs/subnet-evm/params"
 )
 
 var (
-	errInvalidPrecompiles       = errors.New("invalid precompiles")
-	errInvalidPrecompileContent = errors.New("invalid precompile content")
-	errNoBlockTimestamp         = errors.New("no blockTimestamp value set")
-	errBlockTimestampInvalid    = errors.New("blockTimestamp is invalid")
-	errBlockTimestampInthePast  = errors.New("blockTimestamp is in the past")
-	errNoPrecompiles            = errors.New("no precompiles present")
-	errEmptyPrecompile          = errors.New("the precompile has no content")
-	errNoUpcomingUpgrades       = errors.New("no valid upcoming activation timestamp found")
+	errInvalidPrecompiles      = errors.New("invalid precompiles")
+	errNoBlockTimestamp        = errors.New("no blockTimestamp value set")
+	errBlockTimestampInvalid   = errors.New("blockTimestamp is invalid")
+	errBlockTimestampInthePast = errors.New("blockTimestamp is in the past")
+	errNoPrecompiles           = errors.New("no precompiles present")
+	errEmptyPrecompile         = errors.New("the precompile has no content")
+	errNoUpcomingUpgrades      = errors.New("no valid upcoming activation timestamp found")
 )
 
 func validateUpgradeBytes(file []byte) error {
-	precomps, err := getAllPrecomps(file)
+	upgrades, err := getAllUpgrades(file)
 	if err != nil {
 		return err
 	}
 
-	allTimestamps, err := getAllTimestamps(precomps)
+	allTimestamps, err := getAllTimestamps(upgrades)
 	if err != nil {
 		return err
 	}
@@ -42,29 +44,69 @@ func validateUpgradeBytes(file []byte) error {
 	return nil
 }
 
-func getAllTimestamps(precomps []PrecompileContent) ([]int64, error) {
-	allTimestamps := make([]int64, len(precomps))
+func getAllTimestamps(upgrades []params.PrecompileUpgrade) ([]int64, error) {
+	var allTimestamps []int64
 
-	var (
-		ok              bool
-		blockTimestamp  float64 // json unmarshalling of numbers is always float64...
-		blockTimestampV interface{}
-	)
-
-	for i, pre := range precomps {
-		if blockTimestampV, ok = pre[blockTimestampKey]; !ok {
-			return nil, errNoBlockTimestamp
+	found := false
+	if len(upgrades) == 0 {
+		return nil, errNoBlockTimestamp
+	}
+	for _, upgrade := range upgrades {
+		if upgrade.ContractDeployerAllowListConfig != nil {
+			ts, err := validateTimestamp(upgrade.ContractDeployerAllowListConfig.BlockTimestamp)
+			if err != nil {
+				return nil, err
+			}
+			allTimestamps = append(allTimestamps, ts)
+			found = true
 		}
-		if blockTimestamp, ok = blockTimestampV.(float64); !ok {
-			return nil, errBlockTimestampInvalid
+		if upgrade.FeeManagerConfig != nil {
+			ts, err := validateTimestamp(upgrade.FeeManagerConfig.BlockTimestamp)
+			if err != nil {
+				return nil, err
+			}
+			allTimestamps = append(allTimestamps, ts)
+			found = true
 		}
-		allTimestamps[i] = int64(blockTimestamp)
+		if upgrade.ContractNativeMinterConfig != nil {
+			ts, err := validateTimestamp(upgrade.ContractNativeMinterConfig.BlockTimestamp)
+			if err != nil {
+				return nil, err
+			}
+			allTimestamps = append(allTimestamps, ts)
+			found = true
+		}
+		if upgrade.TxAllowListConfig != nil {
+			ts, err := validateTimestamp(upgrade.TxAllowListConfig.BlockTimestamp)
+			if err != nil {
+				return nil, err
+			}
+			allTimestamps = append(allTimestamps, ts)
+			found = true
+		}
+	}
+	if !found {
+		return nil, errNoBlockTimestamp
 	}
 	return allTimestamps, nil
 }
 
-func getEarliestTimestamp(precomps []PrecompileContent) (int64, error) {
-	allTimestamps, err := getAllTimestamps(precomps)
+func validateTimestamp(ts *big.Int) (int64, error) {
+	if ts == nil {
+		return 0, errNoBlockTimestamp
+	}
+	if !ts.IsInt64() {
+		return 0, errBlockTimestampInvalid
+	}
+	val := ts.Int64()
+	if val == int64(0) {
+		return 0, errBlockTimestampInvalid
+	}
+	return val, nil
+}
+
+func getEarliestTimestamp(upgrades []params.PrecompileUpgrade) (int64, error) {
+	allTimestamps, err := getAllTimestamps(upgrades)
 	if err != nil {
 		return 0, err
 	}
@@ -89,12 +131,8 @@ func getEarliestTimestamp(precomps []PrecompileContent) (int64, error) {
 	return earliest, nil
 }
 
-func getAllPrecomps(file []byte) ([]PrecompileContent, error) {
-	var (
-		ok                bool
-		precompiles       Precompiles
-		precompileContent PrecompileContent
-	)
+func getAllUpgrades(file []byte) ([]params.PrecompileUpgrade, error) {
+	var precompiles params.UpgradeConfig
 
 	if err := json.Unmarshal(file, &precompiles); err != nil {
 		return nil, fmt.Errorf("failed parsing JSON - %s: %w", err.Error(), errInvalidPrecompiles)
@@ -104,16 +142,13 @@ func getAllPrecomps(file []byte) ([]PrecompileContent, error) {
 		return nil, errNoPrecompiles
 	}
 
-	allPrecomps := make([]PrecompileContent, 0, len(precompiles.PrecompileUpgrades))
-
-	for name, precomp := range precompiles.PrecompileUpgrades {
-		if precompileContent, ok = precomp.(map[string]interface{}); !ok {
-			return nil, fmt.Errorf("failed unpacking JSON for the %s precompile: %w", name, errInvalidPrecompileContent)
-		}
-		if precompileContent == nil {
+	for _, upgrade := range precompiles.PrecompileUpgrades {
+		if upgrade.ContractDeployerAllowListConfig == nil &&
+			upgrade.ContractNativeMinterConfig == nil &&
+			upgrade.FeeManagerConfig == nil &&
+			upgrade.TxAllowListConfig == nil {
 			return nil, errEmptyPrecompile
 		}
-		allPrecomps = append(allPrecomps, precompileContent)
 	}
-	return allPrecomps, nil
+	return precompiles.PrecompileUpgrades, nil
 }

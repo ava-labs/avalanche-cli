@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet/upgrades"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	ANRclient "github.com/ava-labs/avalanche-network-runner/client"
@@ -116,15 +118,27 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 	netUpgradeConfs := map[string]string{
 		blockchainID.String(): string(netUpgradeBytes),
 	}
-
 	// restart the network setting the upgrade bytes file
 	opts := ANRclient.WithUpgradeConfigs(netUpgradeConfs)
-	resp, err := cli.LoadSnapshot(ctx, snapName, opts)
+	_, err = cli.LoadSnapshot(ctx, snapName, opts)
 	if err != nil {
 		return err
 	}
-	fmt.Println(resp.ClusterInfo)
 
-	ux.Logger.PrintToUser("Network restarted and upgrade bytes have been applied to running nodes")
+	// TODO as noted elsewhere, we need to extract the health polling from the deployer
+	sd := subnet.NewLocalDeployer(app, "", "")
+
+	clusterInfo, err := sd.WaitForHealthy(ctx, cli, constants.HealthCheckInterval)
+	if err != nil {
+		return fmt.Errorf("failed waiting for network to become healthy: %w", err)
+	}
+
+	endpoints := subnet.GetEndpoints(clusterInfo)
+
+	fmt.Println()
+	if len(endpoints) > 0 {
+		ux.Logger.PrintToUser("Network restarted and ready to use. Upgrade bytes have been applied to running nodes at these endpoints")
+		ux.PrintTableEndpoints(clusterInfo)
+	}
 	return nil
 }

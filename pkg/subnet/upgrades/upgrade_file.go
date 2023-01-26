@@ -20,9 +20,9 @@ func WriteUpgradeFile(jsonBytes []byte, subnetName, subnetsRoot string) error {
 	)
 
 	subnetDir := filepath.Join(subnetsRoot, subnetName)
-	updateBytesFileName := filepath.Join(subnetDir, constants.UpdateBytesFileName)
+	updateBytesFileName := filepath.Join(subnetDir, constants.UpgradeBytesFileName)
 
-	ux.Logger.PrintToUser(fmt.Sprintf("Writing %q file to %q...", constants.UpdateBytesFileName, subnetDir))
+	ux.Logger.PrintToUser(fmt.Sprintf("Writing %q file to %q...", constants.UpgradeBytesFileName, subnetDir))
 
 	// NOTE: This allows creating the update bytes file before a subnet has actually been created.
 	// It is probably never going to happen though, as commands calling this will
@@ -45,7 +45,7 @@ func WriteUpgradeFile(jsonBytes []byte, subnetName, subnetsRoot string) error {
 }
 
 func ReadUpgradeFile(subnetName, subnetsRoot string) ([]byte, error) {
-	localUpgradeBytesFileName := filepath.Join(subnetsRoot, subnetName, constants.UpdateBytesFileName)
+	localUpgradeBytesFileName := filepath.Join(subnetsRoot, subnetName, constants.UpgradeBytesFileName)
 
 	exists, err := storage.FileExists(localUpgradeBytesFileName)
 	if err != nil {

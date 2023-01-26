@@ -84,6 +84,10 @@ func (app *Avalanche) GetSpacesVMBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.SpacesVMInstallDir)
 }
 
+func (app *Avalanche) GetUpgradeBytesFilepath(subnetName string) string {
+	return filepath.Join(app.GetSubnetDir(), subnetName, constants.UpgradeBytesFileName)
+}
+
 func (app *Avalanche) GetCustomVMPath(subnetName string) string {
 	return filepath.Join(app.GetCustomVMDir(), subnetName)
 }

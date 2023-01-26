@@ -24,9 +24,9 @@ func TestEarliestTimestamp(t *testing.T) {
 			name: "only one",
 			upgradesFile: []byte(
 				fmt.Sprintf(`
-{"precompileUpgrades":
+{"precompileUpgrades":[
 {"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}}
-}`,
+]}`,
 					targetEarliest,
 				)),
 			earliest:    targetEarliest,
@@ -36,10 +36,10 @@ func TestEarliestTimestamp(t *testing.T) {
 			name: "there are two",
 			upgradesFile: []byte(
 				fmt.Sprintf(`
-{"precompileUpgrades":{
-"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}},
-"someProbablyBreakingLaterConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}
-}}`,
+{"precompileUpgrades":[
+{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}},
+{"contractNativeMinterConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}}
+]}`,
 					targetEarliest,
 					time.Now().Add(1*time.Minute).Add(2*time.Second).Unix(),
 				)),
@@ -50,11 +50,11 @@ func TestEarliestTimestamp(t *testing.T) {
 			name: "three with second earliest",
 			upgradesFile: []byte(
 				fmt.Sprintf(`
-{"precompileUpgrades":{
-"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}},
-"someProbablyAgainBreaking":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}},
-"becauseWeMightHaveMoreValidation":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}
-}}`,
+{"precompileUpgrades":[
+{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}},
+{"contractNativeMinterConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}},
+{"txAllowListConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}}
+]}`,
 					time.Now().Add(1*time.Minute).Add(2*time.Second).Unix(),
 					targetEarliest,
 					time.Now().Add(1*time.Minute).Add(4*time.Second).Unix(),
@@ -66,11 +66,11 @@ func TestEarliestTimestamp(t *testing.T) {
 			name: "three with third earliest",
 			upgradesFile: []byte(
 				fmt.Sprintf(`
-{"precompileUpgrades":{
-"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}},
-"break":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}},
-"later":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}
-}}`,
+{"precompileUpgrades":[
+{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}},
+{"txAllowListConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}},
+{"contractNativeMinterConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}}
+]}`,
 					time.Now().Add(1*time.Minute).Add(2*time.Second).Unix(),
 					time.Now().Add(1*time.Minute).Add(4*time.Second).Unix(),
 					targetEarliest,
@@ -82,11 +82,11 @@ func TestEarliestTimestamp(t *testing.T) {
 			name: "no upcoming",
 			upgradesFile: []byte(
 				fmt.Sprintf(`
-{"precompileUpgrades":{
-"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}},
-"break":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}},
-"later":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}
-}}`,
+{"precompileUpgrades":[
+{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}},
+{"txAllowListConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}},
+{"contractNativeMinterConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}}
+]}`,
 					time.Now().Add(50*time.Millisecond).Unix(),
 					time.Now().Add(60*time.Millisecond).Unix(),
 					time.Now().Add(70*time.Millisecond).Unix(),
@@ -99,9 +99,9 @@ func TestEarliestTimestamp(t *testing.T) {
 	require := require.New(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			precomps, err := getAllPrecomps(tt.upgradesFile)
+			upgrades, err := getAllUpgrades(tt.upgradesFile)
 			require.NoError(err)
-			earliest, err := getEarliestTimestamp(precomps)
+			earliest, err := getEarliestTimestamp(upgrades)
 			if tt.expectedErr != nil {
 				// give some time so timestamps are defo before now
 				time.Sleep(200 * time.Millisecond)
@@ -130,43 +130,43 @@ func TestUpgradeBytesValidation(t *testing.T) {
 		{
 			name: "empty upgrades",
 			upgradesFile: []byte(
-				`{"precompileUpgrades":{}}`),
+				`{"precompileUpgrades":[]}`),
 			expectedErr: errNoPrecompiles,
 		},
 		{
-			name: "precompile is not map[string]interface{}",
+			name: "precompile is not []",
 			upgradesFile: []byte(
 				`{"precompileUpgrades":{"badPrecompile":1234}}`),
-			expectedErr: errInvalidPrecompileContent,
+			expectedErr: errInvalidPrecompiles,
 		},
 		{
 			name: "no blockTimestamp",
 			upgradesFile: []byte(
-				`{"precompileUpgrades":{"feeManagerConfig":{"initialFeeConfig":{"something":"isset"}}}}`),
+				`{"precompileUpgrades":[{"feeManagerConfig":{"initialFeeConfig":{"something":"isset"}}}]}`),
 			expectedErr: errNoBlockTimestamp,
 		},
 		{
 			name: "bad blockTimestamp type",
 			upgradesFile: []byte(
-				`{"precompileUpgrades":{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":"1234","initialFeeConfig":{}}}}`),
-			expectedErr: errBlockTimestampInvalid,
+				`{"precompileUpgrades":[{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":"1234","initialFeeConfig":{}}}]}`),
+			expectedErr: errInvalidPrecompiles,
 		},
 		{
 			name: "zero blockTimestamp",
 			upgradesFile: []byte(
-				`{"precompileUpgrades":{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":0,"initialFeeConfig":{}}}}`),
-			expectedErr: errBlockTimestampInthePast,
+				`{"precompileUpgrades":[{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":0,"initialFeeConfig":{}}}]}`),
+			expectedErr: errBlockTimestampInvalid,
 		},
 		{
 			name: "blockTimestamp in the past",
 			upgradesFile: []byte(
-				`{"precompileUpgrades":{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":1674496268,"initialFeeConfig":{}}}}`),
+				`{"precompileUpgrades":[{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":1674496268,"initialFeeConfig":{}}}]}`),
 			expectedErr: errBlockTimestampInthePast,
 		},
 		{
 			name: "blockTimestamp ok",
 			upgradesFile: []byte(
-				fmt.Sprintf(`{"precompileUpgrades":{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}}}`,
+				fmt.Sprintf(`{"precompileUpgrades":[{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}}]}`,
 					time.Now().Add(1*time.Minute).Unix()),
 			),
 			expectedErr: nil,

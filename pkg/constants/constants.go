@@ -109,9 +109,9 @@ const (
 
 	AvaLabsMaintainers = "ava-labs"
 
-	UpdateBytesFileName = "upgrade.json"
-	NotAvailableLabel   = "Not available"
-	BackendCmd          = "avalanche-cli-backend"
+	UpgradeBytesFileName = "upgrade.json"
+	NotAvailableLabel    = "Not available"
+	BackendCmd           = "avalanche-cli-backend"
 
 	AvalancheGoPluginDirFlagAdded = "v1.9.6"
 

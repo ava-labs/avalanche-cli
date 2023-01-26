@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
@@ -73,8 +72,6 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 			fmt.Println(deployOutput)
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
-		fmt.Println(rpcs)
-		time.Sleep(10 * time.Second)
 
 		_, err = commands.ImportUpgradeBytes(subnetName, upgradeBytesPath)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -84,22 +81,15 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 		upgradeBytes, err := os.ReadFile(upgradeBytesPath)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		var upgrade params.PrecompileUpgrade
-		err = json.Unmarshal(upgradeBytes, &upgrade)
+		var upgrades params.UpgradeConfig
+		err = json.Unmarshal(upgradeBytes, &upgrades)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		/*
-			fmt.Println("sleeping")
-			time.Sleep(15 * time.Second)
-			fmt.Println("awake")
-		*/
 		rpcs, err = utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
 		}
-		fmt.Println(rpcs)
-		time.Sleep(90 * time.Second)
-		err = utils.CheckUpgradeIsDeployed(rpcs[0], upgrade)
+		err = utils.CheckUpgradeIsDeployed(rpcs[0], upgrades)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 

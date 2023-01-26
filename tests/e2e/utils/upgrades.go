@@ -4,7 +4,6 @@ package utils
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -18,7 +17,7 @@ const (
 	chainConfigAPI = "eth_getChainConfig"
 )
 
-func CheckUpgradeIsDeployed(rpcEndpoint string, deployedUpgrade params.PrecompileUpgrade) error {
+func CheckUpgradeIsDeployed(rpcEndpoint string, deployedUpgrades params.UpgradeConfig) error {
 	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
 	defer cancel()
 
@@ -27,24 +26,22 @@ func CheckUpgradeIsDeployed(rpcEndpoint string, deployedUpgrade params.Precompil
 		return err
 	}
 
-	var result json.RawMessage
-	if err := rpcClient.CallContext(ctx, &result, chainConfigAPI); err != nil {
+	var chainConfig params.ChainConfig
+	if err := rpcClient.CallContext(ctx, &chainConfig, chainConfigAPI); err != nil {
 		return err
 	}
+	fmt.Println(chainConfig)
 
-	var chainConfig params.ChainConfig
-	if err := json.Unmarshal(result, &chainConfig); err != nil {
-		return fmt.Errorf("failed to unpack API response into a subnet-evm/params.ChainConfig: %w", err)
-	}
-
-	upgrades := chainConfig.UpgradeConfig.PrecompileUpgrades
-	found := false
-	for _, upgrade := range upgrades {
-		if cmp.Equal(deployedUpgrade, upgrade) {
-			found = true
-		}
-	}
-	if !found {
+	upgrades := chainConfig.UpgradeConfig
+	fmt.Println(deployedUpgrades)
+	fmt.Println(upgrades)
+	// found := false
+	//	for _, upgrade := range upgrades {
+	if !cmp.Equal(deployedUpgrades, upgrades) {
+		//			found = true
+		//}
+		//	}
+		//if !found {
 		return errors.New("API did not report the upgrade in its config")
 	}
 	return nil

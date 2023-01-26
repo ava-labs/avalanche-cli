@@ -46,14 +46,11 @@ func CleanNetworkHard() {
 
 /* #nosec G204 */
 func StartNetwork() string {
-	/*
-		mapper := utils.NewVersionMapper()
-		mapping, err := utils.GetVersionMapping(mapper)
-		gomega.Expect(err).Should(gomega.BeNil())
+	mapper := utils.NewVersionMapper()
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
 
-		return StartNetworkWithVersion(mapping[utils.OnlyAvagoKey])
-	*/
-	return StartNetworkWithVersion("v1.9.7")
+	return StartNetworkWithVersion(mapping[utils.OnlyAvagoKey])
 }
 
 /* #nosec G204 */

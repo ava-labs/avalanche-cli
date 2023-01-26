@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
+	"math/big"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -17,36 +17,11 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/commontype"
 	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ava-labs/subnet-evm/precompile"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/spf13/cobra"
 )
-
-type PrecompilePrompt interface {
-	PromptParams() error
-	ToMap() map[string]interface{}
-}
-
-type contractAllowList struct {
-	enabledAddresses []common.Address
-	adminAddresses   []common.Address
-}
-
-type feeManager struct {
-	adminAddresses   []common.Address
-	enabledAddresses []common.Address
-	initialFeeConfig commontype.FeeConfig
-}
-
-type nativeMint struct {
-	adminAddresses   []common.Address
-	enabledAddresses []common.Address
-	initialMint      map[string]string
-}
-
-type txAllowList struct {
-	enabledAddresses []common.Address
-	adminAddresses   []common.Address
-}
 
 const (
 	blockTimestampKey   = "blockTimestamp"
@@ -70,12 +45,6 @@ This command starts a wizard guiding the user generating the required file.`,
 		Args: cobra.ExactArgs(1),
 	}
 	return cmd
-}
-
-type PrecompileContent map[string]interface{}
-
-type Precompiles struct {
-	PrecompileUpgrades PrecompileContent `json:"precompileUpgrades"`
 }
 
 func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
@@ -122,8 +91,9 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 			"However, we suggest to only configure one per upgrade."))
 	fmt.Println()
 
-	precompiles := Precompiles{
-		PrecompileUpgrades: PrecompileContent{},
+	// use the correct data types from subnet-evm right away
+	precompiles := params.UpgradeConfig{
+		PrecompileUpgrades: make([]params.PrecompileUpgrade, 0),
 	}
 
 	for {
@@ -131,64 +101,11 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		var pp PrecompilePrompt
-		switch precomp {
-		case vm.ContractAllowList:
-			pp = &contractAllowList{}
-		case vm.TxAllowList:
-			pp = &txAllowList{}
-		case vm.NativeMint:
-			pp = &nativeMint{}
-		case vm.FeeManager:
-			pp = &feeManager{}
-		default:
-			return fmt.Errorf("unexpected precompile identifier: %q", precomp)
-		}
 
 		ux.Logger.PrintToUser(fmt.Sprintf("Set parameters for the %q precompile", precomp))
-		if err := pp.PromptParams(); err != nil {
+		if err := promptParams(precomp, &precompiles.PrecompileUpgrades); err != nil {
 			return err
 		}
-
-		mapForJSON := pp.ToMap()
-
-		const (
-			in5min   = "In 5 minutes"
-			in1day   = "In 1 day"
-			in1week  = "In 1 week"
-			in2weeks = "In 2 weeks"
-			custom   = "Custom"
-		)
-		options := []string{in5min, in1day, in1week, in2weeks, custom}
-		choice, err := app.Prompt.CaptureList("When should the precompile be activated?", options)
-		if err != nil {
-			return err
-		}
-
-		var date time.Time
-		now := time.Now()
-
-		switch choice {
-		case in5min:
-			date = now.Add(5 * time.Minute)
-		case in1day:
-			date = now.Add(24 * time.Hour)
-		case in1week:
-			date = now.Add(7 * 24 * time.Hour)
-		case in2weeks:
-			date = now.Add(14 * 24 * time.Hour)
-		case custom:
-			date, err = app.Prompt.CaptureFutureDate(
-				"Enter the block activation UTC datetime in 'YYYY-MM-DD HH:MM:SS' format", time.Now().Add(time.Minute).UTC())
-			if err != nil {
-				return err
-			}
-		}
-
-		ux.Logger.PrintToUser("The chosen block activation time is %s", date.Format(constants.TimeParseLayout))
-		mapForJSON[blockTimestampKey] = date.Unix()
-
-		precompiles.PrecompileUpgrades[vm.PrecompileToUpgradeString(vm.Precompile(precomp))] = mapForJSON
 
 		if len(allPreComps) > 1 {
 			yes, err := app.Prompt.CaptureNoYes("Should we configure another precompile?")
@@ -216,12 +133,68 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 	return upgrades.WriteUpgradeFile(jsonBytes, subnetName, app.GetSubnetDir())
 }
 
-func (p *nativeMint) PromptParams() error {
-	if err := captureAddress(adminLabel, &p.adminAddresses); err != nil {
-		return err
+func queryActivationTimestamp() (time.Time, error) {
+	const (
+		in5min   = "In 5 minutes"
+		in1day   = "In 1 day"
+		in1week  = "In 1 week"
+		in2weeks = "In 2 weeks"
+		custom   = "Custom"
+	)
+	options := []string{in5min, in1day, in1week, in2weeks, custom}
+	choice, err := app.Prompt.CaptureList("When should the precompile be activated?", options)
+	if err != nil {
+		return time.Time{}, err
 	}
 
-	if err := captureAddress(enabledLabel, &p.enabledAddresses); err != nil {
+	var date time.Time
+	now := time.Now()
+
+	switch choice {
+	case in5min:
+		date = now.Add(5 * time.Minute)
+	case in1day:
+		date = now.Add(24 * time.Hour)
+	case in1week:
+		date = now.Add(7 * 24 * time.Hour)
+	case in2weeks:
+		date = now.Add(14 * 24 * time.Hour)
+	case custom:
+		date, err = app.Prompt.CaptureFutureDate(
+			"Enter the block activation UTC datetime in 'YYYY-MM-DD HH:MM:SS' format", time.Now().Add(time.Minute).UTC())
+		if err != nil {
+			return time.Time{}, err
+		}
+	}
+
+	ux.Logger.PrintToUser("The chosen block activation time is %s", date.Format(constants.TimeParseLayout))
+	return date, nil
+}
+
+func promptParams(precomp string, precompiles *[]params.PrecompileUpgrade) error {
+	date, err := queryActivationTimestamp()
+	if err != nil {
+		return err
+	}
+	switch precomp {
+	case vm.ContractAllowList:
+		return promptContractAllowListParams(precompiles, date)
+	case vm.TxAllowList:
+		return promptTxAllowListParams(precompiles, date)
+	case vm.NativeMint:
+		return promptNativeMintParams(precompiles, date)
+	case vm.FeeManager:
+		return promptFeeManagerParams(precompiles, date)
+	default:
+		return fmt.Errorf("unexpected precompile identifier: %q", precomp)
+	}
+}
+
+func promptNativeMintParams(precompiles *[]params.PrecompileUpgrade, date time.Time) error {
+	initialMint := map[common.Address]*math.HexOrDecimal256{}
+
+	adminAddrs, enabledAddrs, err := promptAdminAndEnabledAddresses()
+	if err != nil {
 		return err
 	}
 
@@ -231,50 +204,50 @@ func (p *nativeMint) PromptParams() error {
 	}
 
 	if yes {
-		for {
-			_, cancel, err := prompts.CaptureListDecision(
-				app.Prompt,
-				"How would you like to distribute your funds",
-				func(s string) (string, error) {
-					addr, err := app.Prompt.CaptureAddress("Address to airdrop to")
-					if err != nil {
-						return "", err
-					}
-					amount, err := app.Prompt.CaptureUint64("Amount to airdrop (in AVAX units)")
-					if err != nil {
-						return "", err
-					}
-					p.initialMint[addr.Hex()] = strconv.FormatUint(amount, 10)
-					return "", nil
-				},
-				"Add an address to amount pair",
-				"Address-Amount",
-				"Hex-formatted address and it's initial amount value, "+
-					"for example: 0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC (address) and 1000000000000000000 (value)",
-			)
-			if err != nil {
-				return err
-			}
-			if cancel {
-				return errors.New("aborted by user")
-			}
+		_, cancel, err := prompts.CaptureListDecision(
+			app.Prompt,
+			"How would you like to distribute your funds",
+			func(s string) (string, error) {
+				addr, err := app.Prompt.CaptureAddress("Address to airdrop to")
+				if err != nil {
+					return "", err
+				}
+				amount, err := app.Prompt.CaptureUint64("Amount to airdrop (in AVAX units)")
+				if err != nil {
+					return "", err
+				}
+				initialMint[addr] = math.NewHexOrDecimal256(int64(amount))
+				return fmt.Sprintf("%s-%d", addr.Hex(), amount), nil
+			},
+			"Add an address to amount pair",
+			"Address-Amount",
+			"Hex-formatted address and it's initial amount value, "+
+				"for example: 0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC (address) and 1000000000000000000 (value)",
+		)
+		if err != nil {
+			return err
+		}
+		if cancel {
+			return errors.New("aborted by user")
 		}
 	}
+
+	config := precompile.NewContractNativeMinterConfig(
+		big.NewInt(date.Unix()),
+		adminAddrs,
+		enabledAddrs,
+		initialMint,
+	)
+	upgrade := params.PrecompileUpgrade{
+		ContractNativeMinterConfig: config,
+	}
+	*precompiles = append(*precompiles, upgrade)
 	return nil
 }
 
-func (p *nativeMint) ToMap() map[string]interface{} {
-	finalMap := allowListToMap(&p.enabledAddresses, &p.adminAddresses)
-	finalMap[initialMintKey] = p.initialMint
-	return finalMap
-}
-
-func (p *feeManager) PromptParams() error {
-	if err := captureAddress(adminLabel, &p.adminAddresses); err != nil {
-		return err
-	}
-
-	if err := captureAddress(enabledLabel, &p.enabledAddresses); err != nil {
+func promptFeeManagerParams(precompiles *[]params.PrecompileUpgrade, date time.Time) error {
+	adminAddrs, enabledAddrs, err := promptAdminAndEnabledAddresses()
+	if err != nil {
 		return err
 	}
 
@@ -284,75 +257,83 @@ func (p *feeManager) PromptParams() error {
 		return err
 	}
 
+	var feeConfig *commontype.FeeConfig
+
 	if yes {
 		chainConfig, _, err := vm.GetFeeConfig(params.ChainConfig{}, app)
 		if err != nil {
 			return err
 		}
-		p.initialFeeConfig = chainConfig.FeeConfig
+		feeConfig = &chainConfig.FeeConfig
 	}
+
+	config := precompile.NewFeeManagerConfig(
+		big.NewInt(date.Unix()),
+		adminAddrs,
+		enabledAddrs,
+		feeConfig,
+	)
+	upgrade := params.PrecompileUpgrade{
+		FeeManagerConfig: config,
+	}
+	*precompiles = append(*precompiles, upgrade)
 	return nil
 }
 
-func (p *feeManager) ToMap() map[string]interface{} {
-	finalMap := allowListToMap(&p.enabledAddresses, &p.adminAddresses)
-	finalMap[feeConfigKey] = p.initialFeeConfig
-	return finalMap
+func promptContractAllowListParams(precompiles *[]params.PrecompileUpgrade, date time.Time) error {
+	adminAddrs, enabledAddrs, err := promptAdminAndEnabledAddresses()
+	if err != nil {
+		return err
+	}
+
+	config := precompile.NewContractDeployerAllowListConfig(
+		big.NewInt(date.Unix()),
+		adminAddrs,
+		enabledAddrs,
+	)
+	upgrade := params.PrecompileUpgrade{
+		ContractDeployerAllowListConfig: config,
+	}
+	*precompiles = append(*precompiles, upgrade)
+	return nil
 }
 
-func (p *contractAllowList) PromptParams() error {
-	return enabledAdminPromptParams(&p.enabledAddresses, &p.adminAddresses)
+func promptTxAllowListParams(precompiles *[]params.PrecompileUpgrade, date time.Time) error {
+	adminAddrs, enabledAddrs, err := promptAdminAndEnabledAddresses()
+	if err != nil {
+		return err
+	}
+
+	config := precompile.NewTxAllowListConfig(
+		big.NewInt(date.Unix()),
+		adminAddrs,
+		enabledAddrs,
+	)
+	upgrade := params.PrecompileUpgrade{
+		TxAllowListConfig: config,
+	}
+	*precompiles = append(*precompiles, upgrade)
+	return nil
 }
 
-func (p *contractAllowList) ToMap() map[string]interface{} {
-	return allowListToMap(&p.enabledAddresses, &p.adminAddresses)
-}
+func promptAdminAndEnabledAddresses() ([]common.Address, []common.Address, error) {
+	var admin, enabled []common.Address
 
-func (p *txAllowList) PromptParams() error {
-	return enabledAdminPromptParams(&p.enabledAddresses, &p.adminAddresses)
-}
-
-func (p *txAllowList) ToMap() map[string]interface{} {
-	return allowListToMap(&p.enabledAddresses, &p.adminAddresses)
-}
-
-func enabledAdminPromptParams(enabled *[]common.Address, admin *[]common.Address) error {
 	for {
-		if err := captureAddress(enabledLabel, enabled); err != nil {
-			return err
+		if err := captureAddress(adminLabel, &admin); err != nil {
+			return nil, nil, err
 		}
-		if err := captureAddress(adminLabel, admin); err != nil {
-			return err
+		if err := captureAddress(enabledLabel, &enabled); err != nil {
+			return nil, nil, err
 		}
 
-		if len(*enabled) == 0 && len(*admin) == 0 {
+		if len(enabled) == 0 && len(admin) == 0 {
 			ux.Logger.PrintToUser(fmt.Sprintf(
 				"We need at least one address for either '%s' or '%s'. Otherwise abort.", enabledAddressesKey, adminAddressesKey))
 			continue
 		}
-		return nil
+		return admin, enabled, nil
 	}
-}
-
-func allowListToMap(enabledAddresses *[]common.Address, adminAddresses *[]common.Address) map[string]interface{} {
-	finalMap := map[string]interface{}{}
-	if len(*enabledAddresses) > 0 {
-		enabled := make([]string, len(*enabledAddresses))
-		for i := 0; i < len(*enabledAddresses); i++ {
-			enabled[i] = (*enabledAddresses)[i].Hex()
-		}
-		finalMap[enabledAddressesKey] = enabled
-	}
-
-	if len(*adminAddresses) > 0 {
-		admin := make([]string, len(*adminAddresses))
-		for i := 0; i < len(*adminAddresses); i++ {
-			admin[i] = (*adminAddresses)[i].Hex()
-		}
-		finalMap[adminAddressesKey] = admin
-	}
-
-	return finalMap
 }
 
 func captureAddress(which string, addrsField *[]common.Address) error {
