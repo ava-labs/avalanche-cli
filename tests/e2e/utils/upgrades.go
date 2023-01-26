@@ -4,13 +4,14 @@ package utils
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/rpc"
-	"github.com/google/go-cmp/cmp"
+	"github.com/onsi/gomega"
 )
 
 const (
@@ -26,23 +27,31 @@ func CheckUpgradeIsDeployed(rpcEndpoint string, deployedUpgrades params.UpgradeC
 		return err
 	}
 
-	var chainConfig params.ChainConfig
+	var chainConfig json.RawMessage
 	if err := rpcClient.CallContext(ctx, &chainConfig, chainConfigAPI); err != nil {
 		return err
 	}
-	fmt.Println(chainConfig)
 
-	upgrades := chainConfig.UpgradeConfig
-	fmt.Println(deployedUpgrades)
-	fmt.Println(upgrades)
-	// found := false
-	//	for _, upgrade := range upgrades {
-	if !cmp.Equal(deployedUpgrades, upgrades) {
-		//			found = true
-		//}
-		//	}
-		//if !found {
-		return errors.New("API did not report the upgrade in its config")
+	var jsonToGo map[string]interface{}
+	if err := json.Unmarshal(chainConfig, &jsonToGo); err != nil {
+		return fmt.Errorf("failed to unpack JSON string to go map[string]interface{}")
 	}
+
+	upgradesI, ok := jsonToGo["upgrades"]
+	if !ok {
+		return errors.New("failed to find the 'upgrades' section in the JSON response")
+	}
+
+	serialized, err := json.Marshal(upgradesI)
+	if err != nil {
+		return fmt.Errorf("failed to serialize 'upgrades' section: %w", err)
+	}
+
+	var appliedUpgrades params.UpgradeConfig
+	if err := json.Unmarshal(serialized, &appliedUpgrades); err != nil {
+		return fmt.Errorf("failed to unpack JSON strings to params.UpgradeConfig")
+	}
+
+	gomega.Expect(appliedUpgrades).Should(gomega.Equal(deployedUpgrades))
 	return nil
 }
