@@ -1,0 +1,11 @@
+{
+  "precompileUpgrades": {
+    "feeManagerConfig": {
+      "adminAddresses": [
+        "0xb794F5eA0ba39494cE839613fffBA74279579268"
+      ],
+      "blockTimestamp": 1990321370,
+      "initialFeeConfig": {}
+    }
+  }
+}

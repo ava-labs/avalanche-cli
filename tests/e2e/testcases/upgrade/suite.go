@@ -4,11 +4,15 @@
 package apm
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
+	"github.com/ava-labs/subnet-evm/params"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -22,6 +26,8 @@ const (
 
 	controlKeys = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 	keyName     = "ewoq"
+
+	upgradeBytesPath = "tests/e2e/assets/test_upgrade.json"
 )
 
 // var (
@@ -56,6 +62,45 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 		err = utils.DeleteConfigs(secondSubnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		_ = utils.DeleteKey(keyName)
+	})
+
+	ginkgo.It("can create and apply to locally running subnet", func() {
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(rpcs)
+		time.Sleep(10 * time.Second)
+
+		_, err = commands.ImportUpgradeBytes(subnetName, upgradeBytesPath)
+		gomega.Expect(err).Should(gomega.BeNil())
+		_, err = commands.ApplyUpgradeLocal(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		upgradeBytes, err := os.ReadFile(upgradeBytesPath)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		var upgrade params.PrecompileUpgrade
+		err = json.Unmarshal(upgradeBytes, &upgrade)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		/*
+			fmt.Println("sleeping")
+			time.Sleep(15 * time.Second)
+			fmt.Println("awake")
+		*/
+		rpcs, err = utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		fmt.Println(rpcs)
+		time.Sleep(90 * time.Second)
+		err = utils.CheckUpgradeIsDeployed(rpcs[0], upgrade)
+		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
 	ginkgo.It("can create and update future", func() {

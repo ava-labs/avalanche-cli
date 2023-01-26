@@ -119,10 +119,11 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 
 	// restart the network setting the upgrade bytes file
 	opts := ANRclient.WithUpgradeConfigs(netUpgradeConfs)
-	_, err = cli.LoadSnapshot(ctx, snapName, opts)
+	resp, err := cli.LoadSnapshot(ctx, snapName, opts)
 	if err != nil {
 		return err
 	}
+	fmt.Println(resp.ClusterInfo)
 
 	ux.Logger.PrintToUser("Network restarted and upgrade bytes have been applied to running nodes")
 	return nil
