@@ -67,14 +67,10 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 
 		deployOutput := commands.DeploySubnetLocally(subnetName)
-		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
-		if err != nil {
-			fmt.Println(deployOutput)
-		}
-		gomega.Expect(err).Should(gomega.BeNil())
 
 		_, err = commands.ImportUpgradeBytes(subnetName, upgradeBytesPath)
 		gomega.Expect(err).Should(gomega.BeNil())
+
 		_, err = commands.ApplyUpgradeLocal(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 
@@ -85,7 +81,7 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 		err = json.Unmarshal(upgradeBytes, &upgrades)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		rpcs, err = utils.ParseRPCsFromOutput(deployOutput)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
 		}
