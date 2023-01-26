@@ -126,8 +126,8 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 	}
 
 	// TODO as noted elsewhere, we need to extract the health polling from the deployer
+	// we shouldn't have to create the deployer here just to poll for healthy
 	sd := subnet.NewLocalDeployer(app, "", "")
-
 	clusterInfo, err := sd.WaitForHealthy(ctx, cli, constants.HealthCheckInterval)
 	if err != nil {
 		return fmt.Errorf("failed waiting for network to become healthy: %w", err)
