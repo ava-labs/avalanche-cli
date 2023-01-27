@@ -16,8 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/mod/semver"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -115,7 +113,7 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 //   - waits completion of operation
 //   - show status
 func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, error) {
-	avagoVersion, avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
+	avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
@@ -159,7 +157,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	ux.Logger.PrintToUser("VMs ready.")
 
 	if !networkBooted {
-		if err := d.startNetwork(ctx, cli, avagoVersion, avalancheGoBinPath, pluginDir, runDir); err != nil {
+		if err := d.startNetwork(ctx, cli, avalancheGoBinPath, pluginDir, runDir); err != nil {
 			return ids.Empty, ids.Empty, err
 		}
 	}
@@ -309,27 +307,27 @@ func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte) err
 // * checks if avalanchego is installed in the local binary path
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path and plugin
-func (d *LocalDeployer) SetupLocalEnv() (string, string, string, error) {
+func (d *LocalDeployer) SetupLocalEnv() (string, string, error) {
 	err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed setting up snapshots: %w", err)
+		return "", "", fmt.Errorf("failed setting up snapshots: %w", err)
 	}
 
-	avagoVersion, avagoDir, err := d.setupLocalEnv()
+	avagoDir, err := d.setupLocalEnv()
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed setting up local environment: %w", err)
+		return "", "", fmt.Errorf("failed setting up local environment: %w", err)
 	}
 
 	pluginDir := filepath.Join(avagoDir, "plugins")
 	avalancheGoBinPath := filepath.Join(avagoDir, "avalanchego")
 
 	if err := os.MkdirAll(pluginDir, constants.DefaultPerms755); err != nil {
-		return "", "", "", fmt.Errorf("could not create pluginDir %s", pluginDir)
+		return "", "", fmt.Errorf("could not create pluginDir %s", pluginDir)
 	}
 
 	exists, err := storage.FolderExists(pluginDir)
 	if !exists || err != nil {
-		return "", "", "", fmt.Errorf("evaluated pluginDir to be %s but it does not exist", pluginDir)
+		return "", "", fmt.Errorf("evaluated pluginDir to be %s but it does not exist", pluginDir)
 	}
 
 	// TODO: we need some better version management here
@@ -337,14 +335,14 @@ func (d *LocalDeployer) SetupLocalEnv() (string, string, string, error) {
 	// * decide if force update or give user choice
 	exists, err = storage.FileExists(avalancheGoBinPath)
 	if !exists || err != nil {
-		return "", "", "", fmt.Errorf(
+		return "", "", fmt.Errorf(
 			"evaluated avalancheGoBinPath to be %s but it does not exist", avalancheGoBinPath)
 	}
 
-	return avagoVersion, avalancheGoBinPath, pluginDir, nil
+	return avalancheGoBinPath, pluginDir, nil
 }
 
-func (d *LocalDeployer) setupLocalEnv() (string, string, error) {
+func (d *LocalDeployer) setupLocalEnv() (string, error) {
 	return binutils.SetupAvalanchego(d.app, d.avagoVersion)
 }
 
@@ -496,7 +494,6 @@ func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 func (d *LocalDeployer) startNetwork(
 	ctx context.Context,
 	cli client.Client,
-	avagoVersion string,
 	avalancheGoBinPath string,
 	pluginDir string,
 	runDir string,
@@ -506,13 +503,7 @@ func (d *LocalDeployer) startNetwork(
 		client.WithExecPath(avalancheGoBinPath),
 		client.WithRootDataDir(runDir),
 		client.WithReassignPortsIfUsed(true),
-	}
-
-	// For avago version < AvalancheGoPluginDirFlagAdded, we use ANR default location for plugins dir,
-	// for >= AvalancheGoPluginDirFlagAdded, we pass the param
-	// TODO: review this once ANR includes proper avago version management
-	if semver.Compare(avagoVersion, constants.AvalancheGoPluginDirFlagAdded) >= 0 {
-		loadSnapshotOpts = append(loadSnapshotOpts, client.WithPluginDir(pluginDir))
+		client.WithPluginDir(pluginDir),
 	}
 
 	// load global node configs if they exist
