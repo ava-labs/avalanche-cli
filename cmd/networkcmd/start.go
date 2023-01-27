@@ -116,7 +116,7 @@ func startNetwork(*cobra.Command, []string) error {
 
 	// TODO: this should probably be extracted from the deployer and
 	// used as an independent helper
-	clusterInfo, err := sd.WaitForHealthy(ctx, cli, constants.HealthCheckInterval)
+	clusterInfo, err := sd.WaitForHealthy(ctx, cli)
 	if err != nil {
 		return fmt.Errorf("failed waiting for network to become healthy: %w", err)
 	}

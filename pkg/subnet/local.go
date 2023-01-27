@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
 
 	"golang.org/x/mod/semver"
 
@@ -42,29 +41,27 @@ const (
 )
 
 type LocalDeployer struct {
-	procChecker         binutils.ProcessChecker
-	binChecker          binutils.BinaryChecker
-	getClientFunc       getGRPCClientFunc
-	binaryDownloader    binutils.PluginBinaryDownloader
-	healthCheckInterval time.Duration
-	app                 *application.Avalanche
-	backendStartedHere  bool
-	setDefaultSnapshot  setDefaultSnapshotFunc
-	avagoVersion        string
-	vmBin               string
+	procChecker        binutils.ProcessChecker
+	binChecker         binutils.BinaryChecker
+	getClientFunc      getGRPCClientFunc
+	binaryDownloader   binutils.PluginBinaryDownloader
+	app                *application.Avalanche
+	backendStartedHere bool
+	setDefaultSnapshot setDefaultSnapshotFunc
+	avagoVersion       string
+	vmBin              string
 }
 
 func NewLocalDeployer(app *application.Avalanche, avagoVersion string, vmBin string) *LocalDeployer {
 	return &LocalDeployer{
-		procChecker:         binutils.NewProcessChecker(),
-		binChecker:          binutils.NewBinaryChecker(),
-		getClientFunc:       binutils.NewGRPCClient,
-		binaryDownloader:    binutils.NewPluginBinaryDownloader(app),
-		healthCheckInterval: 100 * time.Millisecond,
-		app:                 app,
-		setDefaultSnapshot:  SetDefaultSnapshot,
-		avagoVersion:        avagoVersion,
-		vmBin:               vmBin,
+		procChecker:        binutils.NewProcessChecker(),
+		binChecker:         binutils.NewBinaryChecker(),
+		getClientFunc:      binutils.NewGRPCClient,
+		binaryDownloader:   binutils.NewPluginBinaryDownloader(app),
+		app:                app,
+		setDefaultSnapshot: SetDefaultSnapshot,
+		avagoVersion:       avagoVersion,
+		vmBin:              vmBin,
 	}
 }
 
@@ -132,7 +129,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	// check for network and get VM info
 	networkBooted := true
-	clusterInfo, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
+	clusterInfo, err := d.WaitForHealthy(ctx, cli)
 	if err != nil {
 		if !server.IsServerError(err, server.ErrNotBootstrapped) {
 			return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
@@ -164,7 +161,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 	}
 
-	clusterInfo, err = d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
+	clusterInfo, err = d.WaitForHealthy(ctx, cli)
 	if err != nil {
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 	}
@@ -220,7 +217,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	fmt.Println()
 	ux.Logger.PrintToUser("Blockchain has been deployed. Wait until network acknowledges...")
 
-	clusterInfo, err = d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
+	clusterInfo, err = d.WaitForHealthy(ctx, cli)
 	if err != nil {
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 	}
@@ -352,37 +349,15 @@ func (d *LocalDeployer) setupLocalEnv() (string, string, error) {
 func (d *LocalDeployer) WaitForHealthy(
 	ctx context.Context,
 	cli client.Client,
-	healthCheckInterval time.Duration,
 ) (*rpcpb.ClusterInfo, error) {
 	cancel := make(chan struct{})
 	defer close(cancel)
 	go ux.PrintWait(cancel)
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-time.After(healthCheckInterval):
-			d.app.Log.Debug("polling for health...")
-			resp, err := cli.Health(ctx)
-			if err != nil {
-				return nil, err
-			}
-			if resp.ClusterInfo == nil {
-				d.app.Log.Debug("warning: ClusterInfo is nil. trying again...")
-				continue
-			}
-			if !resp.ClusterInfo.Healthy {
-				d.app.Log.Debug("network is not healthy. polling again...")
-				continue
-			}
-			if !resp.ClusterInfo.CustomChainsHealthy {
-				d.app.Log.Debug("network is up but custom VMs are not healthy. polling again...")
-				continue
-			}
-			d.app.Log.Debug("network is up and custom VMs are up")
-			return resp.ClusterInfo, nil
-		}
+	resp, err := cli.WaitForHealthy(ctx)
+	if err != nil {
+		return nil, err
 	}
+	return resp.ClusterInfo, nil
 }
 
 // GetEndpoints get a human readable list of endpoints from clusterinfo
