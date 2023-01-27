@@ -23,25 +23,24 @@ var (
 	errNoUpcomingUpgrades      = errors.New("no valid upcoming activation timestamp found")
 )
 
-func validateUpgradeBytes(file []byte) error {
+func validateUpgradeBytes(file []byte) ([]params.PrecompileUpgrade, error) {
 	upgrades, err := getAllUpgrades(file)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	allTimestamps, err := getAllTimestamps(upgrades)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, ts := range allTimestamps {
 		if time.Unix(ts, 0).Before(time.Now()) {
-			return errBlockTimestampInthePast
+			return nil, errBlockTimestampInthePast
 		}
 	}
 
-	// TODO what other validation do we want to do?
-	return nil
+	return upgrades, nil
 }
 
 func getAllTimestamps(upgrades []params.PrecompileUpgrade) ([]int64, error) {

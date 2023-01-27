@@ -88,7 +88,8 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 		return err
 	}
 
-	if err := validateUpgradeBytes(netUpgradeBytes); err != nil {
+	upgrades, err := validateUpgradeBytes(netUpgradeBytes)
+	if err != nil {
 		return err
 	}
 
@@ -137,7 +138,14 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 
 	fmt.Println()
 	if len(endpoints) > 0 {
-		ux.Logger.PrintToUser("Network restarted and ready to use. Upgrade bytes have been applied to running nodes at these endpoints")
+		ux.Logger.PrintToUser("Network restarted and ready to use. Upgrade bytes have been applied to running nodes at these endpoints.")
+
+		nextUpgrade, err := getEarliestTimestamp(upgrades)
+		// this should not happen anymore at this point...
+		if err != nil {
+			app.Log.Warn("looks like the upgrade went well, but we failed getting the timestamp of the next upcoming upgrade: %w")
+		}
+		ux.Logger.PrintToUser("The next upgrade will go into effect %s", time.Unix(nextUpgrade, 0).Local().Format(constants.TimeParseLayout))
 		ux.PrintTableEndpoints(clusterInfo)
 	}
 	return nil

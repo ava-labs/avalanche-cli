@@ -176,7 +176,7 @@ func TestUpgradeBytesValidation(t *testing.T) {
 	require := require.New(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateUpgradeBytes(tt.upgradesFile)
+			_, err := validateUpgradeBytes(tt.upgradesFile)
 			require.ErrorIs(err, tt.expectedErr)
 		})
 	}
