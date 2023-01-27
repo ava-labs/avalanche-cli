@@ -49,7 +49,7 @@ func newUpgradeVMCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&useConfig, "config", false, "upgrade config for future subnet deployments")
 	cmd.Flags().BoolVar(&useLocal, "local", false, "upgrade existing `local` deployment")
 	cmd.Flags().BoolVar(&useFuji, "fuji", false, "upgrade existing `fuji` deployment (alias for `testnet`)")
-	cmd.Flags().BoolVar(&useFuji, "testnet", false, "upgrade existing `testbet` deployment (alias for `fuji`)")
+	cmd.Flags().BoolVar(&useFuji, "testnet", false, "upgrade existing `testnet` deployment (alias for `fuji`)")
 	cmd.Flags().BoolVar(&useMainnet, "mainnet", false, "upgrade existing `mainnet` deployment")
 
 	cmd.Flags().BoolVar(&useManual, "print", false, "print instructions for upgrading")

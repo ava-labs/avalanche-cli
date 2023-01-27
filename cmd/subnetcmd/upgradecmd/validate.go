@@ -46,7 +46,6 @@ func validateUpgradeBytes(file []byte) ([]params.PrecompileUpgrade, error) {
 func getAllTimestamps(upgrades []params.PrecompileUpgrade) ([]int64, error) {
 	var allTimestamps []int64
 
-	found := false
 	if len(upgrades) == 0 {
 		return nil, errNoBlockTimestamp
 	}
@@ -57,7 +56,6 @@ func getAllTimestamps(upgrades []params.PrecompileUpgrade) ([]int64, error) {
 				return nil, err
 			}
 			allTimestamps = append(allTimestamps, ts)
-			found = true
 		}
 		if upgrade.FeeManagerConfig != nil {
 			ts, err := validateTimestamp(upgrade.FeeManagerConfig.BlockTimestamp)
@@ -65,7 +63,6 @@ func getAllTimestamps(upgrades []params.PrecompileUpgrade) ([]int64, error) {
 				return nil, err
 			}
 			allTimestamps = append(allTimestamps, ts)
-			found = true
 		}
 		if upgrade.ContractNativeMinterConfig != nil {
 			ts, err := validateTimestamp(upgrade.ContractNativeMinterConfig.BlockTimestamp)
@@ -73,7 +70,6 @@ func getAllTimestamps(upgrades []params.PrecompileUpgrade) ([]int64, error) {
 				return nil, err
 			}
 			allTimestamps = append(allTimestamps, ts)
-			found = true
 		}
 		if upgrade.TxAllowListConfig != nil {
 			ts, err := validateTimestamp(upgrade.TxAllowListConfig.BlockTimestamp)
@@ -81,10 +77,9 @@ func getAllTimestamps(upgrades []params.PrecompileUpgrade) ([]int64, error) {
 				return nil, err
 			}
 			allTimestamps = append(allTimestamps, ts)
-			found = true
 		}
 	}
-	if !found {
+	if len(allTimestamps) == 0 {
 		return nil, errNoBlockTimestamp
 	}
 	return allTimestamps, nil
@@ -137,7 +132,7 @@ func getAllUpgrades(file []byte) ([]params.PrecompileUpgrade, error) {
 		return nil, fmt.Errorf("failed parsing JSON - %s: %w", err.Error(), errInvalidPrecompiles)
 	}
 
-	if precompiles.PrecompileUpgrades == nil || len(precompiles.PrecompileUpgrades) == 0 {
+	if len(precompiles.PrecompileUpgrades) == 0 {
 		return nil, errNoPrecompiles
 	}
 

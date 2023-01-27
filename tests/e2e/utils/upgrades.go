@@ -14,9 +14,7 @@ import (
 	"github.com/onsi/gomega"
 )
 
-const (
-	chainConfigAPI = "eth_getChainConfig"
-)
+const chainConfigAPI = "eth_getChainConfig"
 
 func CheckUpgradeIsDeployed(rpcEndpoint string, deployedUpgrades params.UpgradeConfig) error {
 	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)

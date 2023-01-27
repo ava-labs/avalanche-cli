@@ -128,6 +128,10 @@ func (app *Avalanche) GetKeyPath(keyName string) string {
 	return filepath.Join(app.baseDir, constants.KeyDir, keyName+constants.KeySuffix)
 }
 
+func (app *Avalanche) GetUpgradeBytesFilePath(subnetName string) string {
+	return filepath.Join(app.GetSubnetDir(), subnetName, constants.UpgradeBytesFileName)
+}
+
 func (app *Avalanche) GetDownloader() Downloader {
 	return app.Downloader
 }

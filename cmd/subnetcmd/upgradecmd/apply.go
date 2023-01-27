@@ -38,7 +38,7 @@ func newUpgradeApplyCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&useConfig, "config", false, "create upgrade config for future subnet deployments (same as generate)")
 	cmd.Flags().BoolVar(&useLocal, "local", false, "apply upgrade existing `local` deployment")
 	cmd.Flags().BoolVar(&useFuji, "fuji", false, "apply upgrade existing `fuji` deployment (alias for `testnet`)")
-	cmd.Flags().BoolVar(&useFuji, "testnet", false, "apply upgrade existing `testbet` deployment (alias for `fuji`)")
+	cmd.Flags().BoolVar(&useFuji, "testnet", false, "apply upgrade existing `testnet` deployment (alias for `fuji`)")
 	cmd.Flags().BoolVar(&useMainnet, "mainnet", false, "apply upgrade existing `mainnet` deployment")
 
 	return cmd
@@ -78,7 +78,7 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 	// save a snapshot, and to load the snapshot with the upgrade
 
 	// first let's check update bytes actually exist
-	netUpgradeBytes, err := upgrades.ReadUpgradeFile(subnetName, app.GetSubnetDir())
+	netUpgradeBytes, err := upgrades.ReadUpgradeFile(subnetName, app)
 	if err != nil {
 		if err == os.ErrNotExist {
 			ux.Logger.PrintToUser("No file with upgrade specs for the given subnet has been found")

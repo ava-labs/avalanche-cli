@@ -130,7 +130,7 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	return upgrades.WriteUpgradeFile(jsonBytes, subnetName, app.GetSubnetDir())
+	return upgrades.WriteUpgradeFile(jsonBytes, subnetName, app)
 }
 
 func queryActivationTimestamp() (time.Time, error) {

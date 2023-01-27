@@ -21,7 +21,7 @@ func ImportUpgradeBytes(subnetName, filepath string) (string, error) {
 		filepath,
 	)
 
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
 		fmt.Println(string(output))
@@ -43,7 +43,7 @@ func UpgradeVMConfig(subnetName string, targetVersion string) (string, error) {
 		targetVersion,
 	)
 
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
 		fmt.Println(string(output))
@@ -66,7 +66,7 @@ func UpgradeVMPublic(subnetName string, targetVersion string, pluginDir string) 
 		pluginDir,
 	)
 
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
 		fmt.Println(string(output))
@@ -85,7 +85,7 @@ func ApplyUpgradeLocal(subnetName string) (string, error) {
 		"--local",
 	)
 
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
 		fmt.Println(string(output))
