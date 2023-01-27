@@ -114,9 +114,7 @@ func startNetwork(*cobra.Command, []string) error {
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 	}
 
-	// TODO: this should probably be extracted from the deployer and
-	// used as an independent helper
-	clusterInfo, err := sd.WaitForHealthy(ctx, cli)
+	clusterInfo, err := subnet.WaitForHealthy(ctx, cli)
 	if err != nil {
 		return fmt.Errorf("failed waiting for network to become healthy: %w", err)
 	}

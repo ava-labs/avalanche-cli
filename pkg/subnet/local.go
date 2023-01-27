@@ -129,7 +129,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	// check for network and get VM info
 	networkBooted := true
-	clusterInfo, err := d.WaitForHealthy(ctx, cli)
+	clusterInfo, err := WaitForHealthy(ctx, cli)
 	if err != nil {
 		if !server.IsServerError(err, server.ErrNotBootstrapped) {
 			return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
@@ -161,7 +161,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 	}
 
-	clusterInfo, err = d.WaitForHealthy(ctx, cli)
+	clusterInfo, err = WaitForHealthy(ctx, cli)
 	if err != nil {
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 	}
@@ -217,7 +217,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	fmt.Println()
 	ux.Logger.PrintToUser("Blockchain has been deployed. Wait until network acknowledges...")
 
-	clusterInfo, err = d.WaitForHealthy(ctx, cli)
+	clusterInfo, err = WaitForHealthy(ctx, cli)
 	if err != nil {
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 	}
@@ -346,7 +346,7 @@ func (d *LocalDeployer) setupLocalEnv() (string, string, error) {
 }
 
 // WaitForHealthy polls continuously until the network is ready to be used
-func (d *LocalDeployer) WaitForHealthy(
+func WaitForHealthy(
 	ctx context.Context,
 	cli client.Client,
 ) (*rpcpb.ClusterInfo, error) {
