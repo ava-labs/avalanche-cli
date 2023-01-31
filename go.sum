@@ -65,8 +65,6 @@ github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPd
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
 github.com/ava-labs/apm v0.0.4 h1:0IUwxCyvqwr2sbbEKhSI7VzpPG3Z+e180ulJwNiKkBk=
 github.com/ava-labs/apm v0.0.4/go.mod h1:4MNcyEvWajJm2JnezC7vgHuA220ppoQYOMh5vM+iH4Q=
-github.com/ava-labs/avalanche-network-runner v1.3.6-0.20230127200512-16de8166913e h1:aRy1YRtNIh47EW/ds5GG/euIMJcMsX4zdG9ULRZdkWY=
-github.com/ava-labs/avalanche-network-runner v1.3.6-0.20230127200512-16de8166913e/go.mod h1:honAz8TVRUAXqyLV3YceDk++97lGu1LXA4sZriEx1aQ=
 github.com/ava-labs/avalanche-network-runner v1.3.6-0.20230131185357-8438e423db52 h1:SPDSlAAO2i4Jiz0LzEXHxkYWNfainRvlySbnBFQ6KEs=
 github.com/ava-labs/avalanche-network-runner v1.3.6-0.20230131185357-8438e423db52/go.mod h1:honAz8TVRUAXqyLV3YceDk++97lGu1LXA4sZriEx1aQ=
 github.com/ava-labs/avalanchego v1.9.7 h1:f2vS8jUBZmrqPcfU5NEa7dSHXbKfTB0EyjcCyvqxqPw=
@@ -418,8 +416,8 @@ github.com/onsi/ginkgo v1.16.4/go.mod h1:dX+/inL/fNMqNlz0e9LfyB9TswhZpCVdJM/Z6Vv
 github.com/onsi/ginkgo v1.16.5 h1:8xi0RTUf59SOSfEtZMvwTvXYMzG4gV23XVHOZiXNtnE=
 github.com/onsi/ginkgo v1.16.5/go.mod h1:+E8gABHa3K6zRBolWtd+ROzc/U5bkGt0FwiG042wbpU=
 github.com/onsi/ginkgo/v2 v2.1.3/go.mod h1:vw5CSIxN1JObi/U8gcbwft7ZxR2dgaR70JSE3/PpL4c=
-github.com/onsi/ginkgo/v2 v2.7.0 h1:/XxtEV3I3Eif/HobnVx9YmJgk8ENdRsuUmM+fLCFNow=
-github.com/onsi/ginkgo/v2 v2.7.0/go.mod h1:yjiuMwPokqY1XauOgju45q3sJt6VzQ/Fict1LFVcsAo=
+github.com/onsi/ginkgo/v2 v2.8.0 h1:pAM+oBNPrpXRs+E/8spkeGx9QgekbRVyr74EUvRVOUI=
+github.com/onsi/ginkgo/v2 v2.8.0/go.mod h1:6JsQiECmxCa3V5st74AL/AmsV482EDdVrGaVW6z3oYU=
 github.com/onsi/gomega v1.4.1/go.mod h1:C1qb7wdrVGGVU+Z6iS04AVkA3Q65CEZX59MT0QO5uiA=
 github.com/onsi/gomega v1.4.3/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1CpauHY=
 github.com/onsi/gomega v1.7.1/go.mod h1:XdKZgCCFLUoM/7CFJVPcG8C1xQ1AJ0vpAezJrB7JYyY=
