@@ -25,6 +25,8 @@ const (
 	tmpSnapshotInfix = "-tmp-"
 )
 
+var errNotYetImplemented = errors.New("not yet implemented")
+
 // avalanche subnet upgrade apply
 func newUpgradeApplyCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -44,7 +46,7 @@ func newUpgradeApplyCmd() *cobra.Command {
 	return cmd
 }
 
-func applyCmd(cmd *cobra.Command, args []string) error {
+func applyCmd(_ *cobra.Command, args []string) error {
 	subnetName := args[0]
 
 	if !app.SubnetConfigExists(subnetName) {
@@ -56,18 +58,19 @@ func applyCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to load sidecar: %w", err)
 	}
 
-	networkToUpgrade, err := selectNetworkToUpgrade(sc)
+	networkToUpgrade, err := selectNetworkToUpgrade(sc, []string{})
 	if err != nil {
 		return err
 	}
 
 	switch networkToUpgrade {
-	// in this case, we just are going to generate new update bytes
-	case futureDeployment:
-		return upgradeGenerateCmd(cmd, args)
 	// update a locally running network
 	case localDeployment:
 		return applyLocalNetworkUpgrade(subnetName, sc)
+	case fujiDeployment:
+		return errNotYetImplemented
+	case mainnetDeployment:
+		return errNotYetImplemented
 	}
 
 	return nil
@@ -82,7 +85,7 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 	if err != nil {
 		if err == os.ErrNotExist {
 			ux.Logger.PrintToUser("No file with upgrade specs for the given subnet has been found")
-			ux.Logger.PrintToUser("You may need to first create it with the `avalanche subnet update generate` command or import it")
+			ux.Logger.PrintToUser("You may need to first create it with the `avalanche subnet upgrade generate` command or import it")
 			ux.Logger.PrintToUser("Aborting this command. No changes applied")
 		}
 		return err

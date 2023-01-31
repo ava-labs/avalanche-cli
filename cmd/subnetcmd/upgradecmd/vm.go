@@ -100,7 +100,8 @@ func upgradeVM(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to load sidecar: %w", err)
 	}
 
-	networkToUpgrade, err := selectNetworkToUpgrade(sc)
+	upgradeOptions := []string{futureDeployment}
+	networkToUpgrade, err := selectNetworkToUpgrade(sc, upgradeOptions)
 	if err != nil {
 		return err
 	}
@@ -114,7 +115,9 @@ func upgradeVM(_ *cobra.Command, args []string) error {
 	return updateToCustomBin(subnetName, vmType, sc, networkToUpgrade)
 }
 
-func selectNetworkToUpgrade(sc models.Sidecar) (string, error) {
+// select which network to upgrade
+// optionally provide a list of options to preload
+func selectNetworkToUpgrade(sc models.Sidecar, upgradeOptions []string) (string, error) {
 	switch {
 	case useConfig:
 		return futureDeployment, nil
@@ -127,7 +130,9 @@ func selectNetworkToUpgrade(sc models.Sidecar) (string, error) {
 	}
 
 	updatePrompt := "What deployment would you like to upgrade"
-	upgradeOptions := []string{futureDeployment}
+	if upgradeOptions == nil {
+		upgradeOptions = []string{}
+	}
 
 	// check if subnet already deployed locally
 	locallyDeployedSubnets, err := subnet.GetLocallyDeployedSubnets()
@@ -147,6 +152,10 @@ func selectNetworkToUpgrade(sc models.Sidecar) (string, error) {
 	// check if subnet deployed on mainnet
 	if _, ok := sc.Networks[models.Mainnet.String()]; ok {
 		upgradeOptions = append(upgradeOptions, mainnetDeployment)
+	}
+
+	if len(upgradeOptions) == 0 {
+		return "", errors.New("no deployment target available")
 	}
 
 	selectedDeployment, err := app.Prompt.CaptureList(updatePrompt, upgradeOptions)
