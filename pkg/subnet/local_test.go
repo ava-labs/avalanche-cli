@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -37,7 +36,7 @@ var (
 	testVMID      = "tGBrM2SXkAdNsqzb3SaFZZWMNdzjjFEUKteheTa4dhUwnfQyu" // VM ID of "test"
 	testChainName = "test"
 
-	fakeHealthResponse = &rpcpb.HealthResponse{
+	fakeWaitForHealthyResponse = &rpcpb.WaitForHealthyResponse{
 		ClusterInfo: &rpcpb.ClusterInfo{
 			Healthy:             true, // currently actually not checked, should it, if CustomVMsHealthy already is?
 			CustomChainsHealthy: true,
@@ -110,14 +109,13 @@ func TestDeployToLocal(t *testing.T) {
 	binDownloader.On("InstallVM", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	testDeployer := &LocalDeployer{
-		procChecker:         procChecker,
-		binChecker:          binChecker,
-		getClientFunc:       getTestClientFunc,
-		binaryDownloader:    binDownloader,
-		healthCheckInterval: 500 * time.Millisecond,
-		app:                 app,
-		setDefaultSnapshot:  fakeSetDefaultSnapshot,
-		avagoVersion:        avagoVersion,
+		procChecker:        procChecker,
+		binChecker:         binChecker,
+		getClientFunc:      getTestClientFunc,
+		binaryDownloader:   binDownloader,
+		app:                app,
+		setDefaultSnapshot: fakeSetDefaultSnapshot,
+		avagoVersion:       avagoVersion,
 	}
 
 	// create a simple genesis for the test
@@ -176,14 +174,14 @@ func getTestClientFunc() (client.Client, error) {
 	// otherwise the doDeploy function "aborts" when checking if the subnet had already been deployed.
 	// Afterwards, we can set the actual VM ID so that the test returns an expected subnet ID...
 
-	// Return a fake health response twice
-	c.On("Health", mock.Anything).Return(fakeHealthResponse, nil).Twice()
+	// Return a fake wait for healthy response twice
+	c.On("WaitForHealthy", mock.Anything).Return(fakeWaitForHealthyResponse, nil).Twice()
 	// Afterwards, change the VmId so that TestDeployToLocal has the correct ID to check
-	alteredFakeResponse := proto.Clone(fakeHealthResponse).(*rpcpb.HealthResponse) // new(rpcpb.HealthResponse)
+	alteredFakeResponse := proto.Clone(fakeWaitForHealthyResponse).(*rpcpb.WaitForHealthyResponse) // new(rpcpb.WaitForHealthyResponse)
 	alteredFakeResponse.ClusterInfo.CustomChains["bchain2"].VmId = testVMID
 	alteredFakeResponse.ClusterInfo.CustomChains["bchain2"].ChainName = testChainName
 	alteredFakeResponse.ClusterInfo.CustomChains["bchain1"].ChainName = "bchain1"
-	c.On("Health", mock.Anything).Return(alteredFakeResponse, nil)
+	c.On("WaitForHealthy", mock.Anything).Return(alteredFakeResponse, nil)
 	c.On("Close").Return(nil)
 	return c, nil
 }
