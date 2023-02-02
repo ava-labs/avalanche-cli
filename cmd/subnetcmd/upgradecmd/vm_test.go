@@ -220,7 +220,7 @@ func TestAtMostOneVersionSelected(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			useLatest = tt.useLatest
 			targetVersion = tt.version
-			newBinary = tt.binary
+			binaryPathArg = tt.binary
 
 			accepted := atMostOneVersionSelected()
 			if tt.valid {
@@ -317,17 +317,17 @@ func TestUpdateToCustomBin(t *testing.T) {
 	err = os.MkdirAll(app.GetCustomVMDir(), constants.DefaultPerms755)
 	assert.NoError(err)
 
-	newBinary = "../../../tests/assets/dummyVmBinary.bin"
+	binaryPath := "../../../tests/assets/dummyVmBinary.bin"
 
-	assert.FileExists(newBinary)
+	assert.FileExists(binaryPathArg)
 
-	err = updateToCustomBin(subnetName, sc, networkToUpgrade)
+	err = updateToCustomBin(subnetName, sc, networkToUpgrade, binaryPath)
 	assert.NoError(err)
 
 	// check new binary exists and matches
 	placedBinaryPath := app.GetCustomVMPath(subnetName)
 	assert.FileExists(placedBinaryPath)
-	expectedHash, err := utils.GetSHA256FromDisk(newBinary)
+	expectedHash, err := utils.GetSHA256FromDisk(binaryPathArg)
 	assert.NoError(err)
 
 	actualHash, err := utils.GetSHA256FromDisk(placedBinaryPath)

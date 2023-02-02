@@ -33,7 +33,7 @@ var (
 	useManual     bool
 	useLatest     bool
 	targetVersion string
-	newBinary     string
+	binaryPathArg string
 )
 
 // avalanche subnet update vm
@@ -58,7 +58,7 @@ func newUpgradeVMCmd() *cobra.Command {
 
 	cmd.Flags().BoolVar(&useLatest, "latest", false, "upgrade to latest version")
 	cmd.Flags().StringVar(&targetVersion, "version", "", "Upgrade to custom version")
-	cmd.Flags().StringVar(&newBinary, "binary", "", "Upgrade to custom binary")
+	cmd.Flags().StringVar(&binaryPathArg, "binary", "", "Upgrade to custom binary")
 
 	return cmd
 }
@@ -69,7 +69,7 @@ func atMostOneNetworkSelected() bool {
 }
 
 func atMostOneVersionSelected() bool {
-	return !(useLatest && targetVersion != "" || useLatest && newBinary != "" || targetVersion != "" && newBinary != "")
+	return !(useLatest && targetVersion != "" || useLatest && binaryPathArg != "" || targetVersion != "" && binaryPathArg != "")
 }
 
 func atMostOneAutomationSelected() bool {
@@ -112,7 +112,7 @@ func upgradeVM(_ *cobra.Command, args []string) error {
 	}
 
 	// Must be a custom update
-	return updateToCustomBin(subnetName, sc, networkToUpgrade)
+	return updateToCustomBin(subnetName, sc, networkToUpgrade, binaryPathArg)
 }
 
 func selectNetworkToUpgrade(sc models.Sidecar) (string, error) {
@@ -163,8 +163,8 @@ func selectUpdateOption(subnetName string, vmType models.VMType, sc models.Sidec
 		return updateToLatestVersion(vmType, sc, networkToUpgrade)
 	case targetVersion != "":
 		return updateToSpecificVersion(sc, networkToUpgrade)
-	case newBinary != "":
-		return updateToCustomBin(subnetName, sc, networkToUpgrade)
+	case binaryPathArg != "":
+		return updateToCustomBin(subnetName, sc, networkToUpgrade, binaryPathArg)
 	}
 
 	latestVersionUpdate := "Update to latest version"
@@ -185,7 +185,7 @@ func selectUpdateOption(subnetName string, vmType models.VMType, sc models.Sidec
 	case specificVersionUpdate:
 		return updateToSpecificVersion(sc, networkToUpgrade)
 	case customBinaryUpdate:
-		return updateToCustomBin(subnetName, sc, networkToUpgrade)
+		return updateToCustomBin(subnetName, sc, networkToUpgrade, binaryPathArg)
 	default:
 		return errors.New("invalid option")
 	}
@@ -250,8 +250,8 @@ func updateVMByNetwork(sc models.Sidecar, targetVersion string, networkToUpgrade
 	}
 }
 
-func updateToCustomBin(subnetName string, sc models.Sidecar, networkToUpgrade string) error {
-	if err := vm.CopyCustomVM(app, subnetName, newBinary); err != nil {
+func updateToCustomBin(subnetName string, sc models.Sidecar, networkToUpgrade, binaryPath string) error {
+	if err := vm.CopyCustomVM(app, subnetName, binaryPath); err != nil {
 		return err
 	}
 
