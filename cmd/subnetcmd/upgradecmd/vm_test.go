@@ -319,7 +319,7 @@ func TestUpdateToCustomBin(t *testing.T) {
 
 	binaryPath := "../../../tests/assets/dummyVmBinary.bin"
 
-	assert.FileExists(binaryPathArg)
+	assert.FileExists(binaryPath)
 
 	err = updateToCustomBin(subnetName, sc, networkToUpgrade, binaryPath)
 	assert.NoError(err)
@@ -327,7 +327,7 @@ func TestUpdateToCustomBin(t *testing.T) {
 	// check new binary exists and matches
 	placedBinaryPath := app.GetCustomVMPath(subnetName)
 	assert.FileExists(placedBinaryPath)
-	expectedHash, err := utils.GetSHA256FromDisk(binaryPathArg)
+	expectedHash, err := utils.GetSHA256FromDisk(binaryPath)
 	assert.NoError(err)
 
 	actualHash, err := utils.GetSHA256FromDisk(placedBinaryPath)
