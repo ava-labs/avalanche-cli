@@ -114,12 +114,11 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 		return err
 	}
 
-	fmt.Println(string(netUpgradeBytes))
 	// read the lock file right away
 	lockUpgradeBytes, err := app.ReadLockUpgradeFile(subnetName)
 	if err != nil {
 		// if the file doesn't exist, that's ok
-		if err != os.ErrNotExist {
+		if !os.IsNotExist(err) {
 			return err
 		}
 	}
