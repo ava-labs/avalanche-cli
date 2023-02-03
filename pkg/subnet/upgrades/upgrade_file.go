@@ -8,54 +8,46 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/storage"
 )
 
-func WriteUpgradeFile(jsonBytes []byte, subnetName, upgradeFilesDir string) error {
+func WriteUpgradeFile(jsonBytes []byte, subnetName string, app *application.Avalanche) error {
 	var (
 		exists bool
 		err    error
 	)
 
-	subnetPath := filepath.Join(upgradeFilesDir, subnetName)
-	updateBytesFileName := filepath.Join(subnetPath, constants.UpdateBytesFileName)
+	upgradeBytesFilePath := app.GetUpgradeBytesFilePath(subnetName)
+	ux.Logger.PrintToUser(fmt.Sprintf("Writing file %q...", upgradeBytesFilePath))
 
-	ux.Logger.PrintToUser(fmt.Sprintf("Writing %q file to %q...", constants.UpdateBytesFileName, subnetPath))
-
-	exists, err = storage.FolderExists(upgradeFilesDir)
+	// NOTE: This allows creating the update bytes file before a subnet has actually been created.
+	// It is probably never going to happen though, as commands calling this will
+	// check if the subnet exists before this
+	subnetDir := filepath.Base(upgradeBytesFilePath)
+	exists, err = storage.FolderExists(subnetDir)
 	if err != nil {
 		return err
 	}
 	if !exists {
-		if err := os.Mkdir(upgradeFilesDir, constants.DefaultPerms755); err != nil {
+		if err := os.Mkdir(subnetDir, constants.DefaultPerms755); err != nil {
 			return err
 		}
 	}
 
-	exists, err = storage.FolderExists(subnetPath)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		if err := os.Mkdir(subnetPath, constants.DefaultPerms755); err != nil {
-			return err
-		}
-	}
-
-	if err = os.WriteFile(updateBytesFileName, jsonBytes, constants.DefaultPerms755); err != nil {
+	if err = os.WriteFile(upgradeBytesFilePath, jsonBytes, constants.DefaultPerms755); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("File written successfully")
 	return nil
 }
 
-func ReadUpgradeFile(subnetName, upgradeFilesDir string) ([]byte, error) {
-	subnetPath := filepath.Join(upgradeFilesDir, subnetName)
-	localUpgradeBytesFileName := filepath.Join(subnetPath, constants.UpdateBytesFileName)
+func ReadUpgradeFile(subnetName string, app *application.Avalanche) ([]byte, error) {
+	localUpgradeBytesFilePath := app.GetUpgradeBytesFilePath(subnetName)
 
-	exists, err := storage.FileExists(localUpgradeBytesFileName)
+	exists, err := storage.FileExists(localUpgradeBytesFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to access the upgrade bytes file on the local environment: %w", err)
 	}
@@ -63,7 +55,7 @@ func ReadUpgradeFile(subnetName, upgradeFilesDir string) ([]byte, error) {
 		return nil, errors.New("we could not find the upgrade bytes file on the local environment - sure it exists?")
 	}
 
-	fileBytes, err := os.ReadFile(localUpgradeBytesFileName)
+	fileBytes, err := os.ReadFile(localUpgradeBytesFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read the upgrade bytes file from the local environment: %w", err)
 	}

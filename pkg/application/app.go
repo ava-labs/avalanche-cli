@@ -44,10 +44,6 @@ func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Con
 	app.Downloader = downloader
 }
 
-func (app *Avalanche) GetUpgradeFilesDir() string {
-	return filepath.Join(app.baseDir, constants.UpgradeFilesDir)
-}
-
 func (app *Avalanche) GetRunFile() string {
 	return filepath.Join(app.GetRunDir(), constants.ServerRunFile)
 }
@@ -88,6 +84,10 @@ func (app *Avalanche) GetSpacesVMBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.SpacesVMInstallDir)
 }
 
+func (app *Avalanche) GetUpgradeBytesFilepath(subnetName string) string {
+	return filepath.Join(app.GetSubnetDir(), subnetName, constants.UpgradeBytesFileName)
+}
+
 func (app *Avalanche) GetCustomVMPath(subnetName string) string {
 	return filepath.Join(app.GetCustomVMDir(), subnetName)
 }
@@ -126,6 +126,10 @@ func (app *Avalanche) GetAPMPluginDir() string {
 
 func (app *Avalanche) GetKeyPath(keyName string) string {
 	return filepath.Join(app.baseDir, constants.KeyDir, keyName+constants.KeySuffix)
+}
+
+func (app *Avalanche) GetUpgradeBytesFilePath(subnetName string) string {
+	return filepath.Join(app.GetSubnetDir(), subnetName, constants.UpgradeBytesFileName)
 }
 
 func (app *Avalanche) GetDownloader() Downloader {

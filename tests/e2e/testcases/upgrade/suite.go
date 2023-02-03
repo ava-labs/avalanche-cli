@@ -4,7 +4,9 @@
 package apm
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -12,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	anr_utils "github.com/ava-labs/avalanche-network-runner/utils"
+	"github.com/ava-labs/subnet-evm/params"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -25,6 +28,8 @@ const (
 
 	controlKeys = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 	keyName     = "ewoq"
+
+	upgradeBytesPath = "tests/e2e/assets/test_upgrade.json"
 )
 
 var (
@@ -58,6 +63,32 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		_ = utils.DeleteKey(keyName)
 		utils.DeleteCustomBinary(subnetName)
+	})
+
+	ginkgo.It("can create and apply to locally running subnet", func() {
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+
+		_, err = commands.ImportUpgradeBytes(subnetName, upgradeBytesPath)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		_, err = commands.ApplyUpgradeLocal(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		upgradeBytes, err := os.ReadFile(upgradeBytesPath)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		var upgrades params.UpgradeConfig
+		err = json.Unmarshal(upgradeBytes, &upgrades)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		err = utils.CheckUpgradeIsDeployed(rpcs[0], upgrades)
+		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
 	ginkgo.It("can create and update future", func() {

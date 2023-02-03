@@ -57,5 +57,5 @@ func upgradeImportCmd(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to read the provided upgrade file: %w", err)
 	}
 
-	return upgrades.WriteUpgradeFile(fileBytes, subnetName, app.GetUpgradeFilesDir())
+	return upgrades.WriteUpgradeFile(fileBytes, subnetName, app)
 }

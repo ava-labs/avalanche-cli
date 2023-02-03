@@ -18,7 +18,7 @@ import (
 
 const (
 	futureDeployment  = "Update config for future deployments"
-	localDeployment   = "Existing local deployment (coming soon)"
+	localDeployment   = "Existing local deployment"
 	fujiDeployment    = "Fuji"
 	mainnetDeployment = "Mainnet (coming soon)"
 )
@@ -50,7 +50,7 @@ func newUpgradeVMCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&useConfig, "config", false, "upgrade config for future subnet deployments")
 	cmd.Flags().BoolVar(&useLocal, "local", false, "upgrade existing `local` deployment")
 	cmd.Flags().BoolVar(&useFuji, "fuji", false, "upgrade existing `fuji` deployment (alias for `testnet`)")
-	cmd.Flags().BoolVar(&useFuji, "testnet", false, "upgrade existing `testbet` deployment (alias for `fuji`)")
+	cmd.Flags().BoolVar(&useFuji, "testnet", false, "upgrade existing `testnet` deployment (alias for `fuji`)")
 	cmd.Flags().BoolVar(&useMainnet, "mainnet", false, "upgrade existing `mainnet` deployment")
 
 	cmd.Flags().BoolVar(&useManual, "print", false, "print instructions for upgrading")
@@ -101,7 +101,8 @@ func upgradeVM(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to load sidecar: %w", err)
 	}
 
-	networkToUpgrade, err := selectNetworkToUpgrade(sc)
+	upgradeOptions := []string{futureDeployment}
+	networkToUpgrade, err := selectNetworkToUpgrade(sc, upgradeOptions)
 	if err != nil {
 		return err
 	}
@@ -115,7 +116,9 @@ func upgradeVM(_ *cobra.Command, args []string) error {
 	return updateToCustomBin(subnetName, sc, networkToUpgrade, binaryPathArg)
 }
 
-func selectNetworkToUpgrade(sc models.Sidecar) (string, error) {
+// select which network to upgrade
+// optionally provide a list of options to preload
+func selectNetworkToUpgrade(sc models.Sidecar, upgradeOptions []string) (string, error) {
 	switch {
 	case useConfig:
 		return futureDeployment, nil
@@ -128,7 +131,9 @@ func selectNetworkToUpgrade(sc models.Sidecar) (string, error) {
 	}
 
 	updatePrompt := "What deployment would you like to upgrade"
-	upgradeOptions := []string{futureDeployment}
+	if upgradeOptions == nil {
+		upgradeOptions = []string{}
+	}
 
 	// check if subnet already deployed locally
 	locallyDeployedSubnets, err := subnet.GetLocallyDeployedSubnets()
@@ -148,6 +153,10 @@ func selectNetworkToUpgrade(sc models.Sidecar) (string, error) {
 	// check if subnet deployed on mainnet
 	if _, ok := sc.Networks[models.Mainnet.String()]; ok {
 		upgradeOptions = append(upgradeOptions, mainnetDeployment)
+	}
+
+	if len(upgradeOptions) == 0 {
+		return "", errors.New("no deployment target available")
 	}
 
 	selectedDeployment, err := app.Prompt.CaptureList(updatePrompt, upgradeOptions)

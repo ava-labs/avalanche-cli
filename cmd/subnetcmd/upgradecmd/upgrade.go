@@ -36,5 +36,7 @@ updating your developmental and deployed subnets.`,
 	cmd.AddCommand(newUpgradeExportCmd())
 	// subnet upgrade print
 	cmd.AddCommand(newUpgradePrintCmd())
+	// subnet upgrade apply
+	cmd.AddCommand(newUpgradeApplyCmd())
 	return cmd
 }

@@ -1,0 +1,26 @@
+{
+  "precompileUpgrades": [
+    {
+      "txAllowListConfig": {
+        "adminAddresses": [
+          "0x8db97c7cece249c2b98bdc0226cc4c2a57bf52fc",
+          "0xab5801a7d398351b8be11c439e05c5b3259aec9b"
+        ],
+        "enabledAddresses": null,
+        "blockTimestamp": 2526843696
+      }
+    },
+    {
+      "contractNativeMinterConfig": {
+        "adminAddresses": [
+          "0x8db97c7cece249c2b98bdc0226cc4c2a57bf52fc"
+        ],
+        "enabledAddresses": null,
+        "blockTimestamp": 2526849999,
+        "initialMint": {
+          "0xab5801a7d398351b8be11c439e05c5b3259aec9b": "0x5af3107a4000"
+        }
+      }
+    }
+  ]
+}

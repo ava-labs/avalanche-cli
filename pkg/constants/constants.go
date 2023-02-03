@@ -15,7 +15,6 @@ const (
 	ServerRunFile      = "gRPCserver.run"
 	AvalancheCliBinDir = "bin"
 	RunDir             = "runs"
-	UpgradeFilesDir    = "upgrades"
 
 	SuffixSeparator = "_"
 	SidecarFileName = "sidecar.json"
@@ -110,9 +109,9 @@ const (
 
 	AvaLabsMaintainers = "ava-labs"
 
-	UpdateBytesFileName = "upgrade.json"
-	NotAvailableLabel   = "Not available"
-	BackendCmd          = "avalanche-cli-backend"
+	UpgradeBytesFileName = "upgrade.json"
+	NotAvailableLabel    = "Not available"
+	BackendCmd           = "avalanche-cli-backend"
 
 	AvalancheGoCompatibilityVersionAdded = "v1.9.2"
 	AvalancheGoCompatibilityURL          = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"

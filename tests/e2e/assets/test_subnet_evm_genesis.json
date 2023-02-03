@@ -21,18 +21,6 @@
       "minBlockGasCost": 0,
       "maxBlockGasCost": 1000000,
       "blockGasCostStep": 200000
-    },
-    "contractDeployerAllowListConfig": {
-      "blockTimestamp": null,
-      "adminAddresses": null
-    },
-    "contractNativeMinterConfig": {
-      "blockTimestamp": null,
-      "adminAddresses": null
-    },
-    "txAllowListConfig": {
-      "blockTimestamp": null,
-      "adminAddresses": null
     }
   },
   "nonce": "0x0",
