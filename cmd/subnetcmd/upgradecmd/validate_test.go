@@ -176,7 +176,81 @@ func TestUpgradeBytesValidation(t *testing.T) {
 	require := require.New(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateUpgradeBytes(tt.upgradesFile)
+			_, err := validateUpgradeBytes(tt.upgradesFile, nil)
+			require.ErrorIs(err, tt.expectedErr)
+		})
+	}
+}
+
+func TestLockFile(t *testing.T) {
+	type testRun struct {
+		name         string
+		upgradesFile []byte
+		lockFile     []byte
+		expectedErr  error
+	}
+
+	sameActivation := time.Now().Add(1 * time.Minute)
+
+	tests := []testRun{
+		{
+			name: "same file",
+			upgradesFile: []byte(
+				fmt.Sprintf(`{"precompileUpgrades":[{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}}]}`,
+					time.Now().Add(1*time.Minute).Unix()),
+			),
+			lockFile: []byte(
+				fmt.Sprintf(`{"precompileUpgrades":[{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}}]}`,
+					time.Now().Add(1*time.Minute).Unix()),
+			),
+			expectedErr: nil,
+		},
+		{
+			name: "added precompile",
+			upgradesFile: []byte(
+				fmt.Sprintf(`
+{"precompileUpgrades":[
+{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}},
+{"txAllowListConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}},
+{"contractNativeMinterConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}}
+]}`,
+					sameActivation.Unix(),
+					time.Now().Add(20*time.Second).Unix(),
+					time.Now().Add(30*time.Second).Unix(),
+				)),
+			lockFile: []byte(
+				fmt.Sprintf(`{"precompileUpgrades":[{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}}]}`,
+					time.Now().Add(1*time.Minute).Unix()),
+			),
+			expectedErr: nil,
+		},
+		{
+			name: "empty lock",
+			upgradesFile: []byte(
+				fmt.Sprintf(`{"precompileUpgrades":[{"feeManagerConfig":{"adminAddresses":["0xcccccccccccccccccccccccccccBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}}]}`,
+					sameActivation.Unix()),
+			),
+			lockFile:    []byte{},
+			expectedErr: nil,
+		},
+		{
+			name: "altered initial",
+			upgradesFile: []byte(
+				fmt.Sprintf(`{"precompileUpgrades":[{"feeManagerConfig":{"adminAddresses":["0xcccccccccccccccccccccccccccBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}}]}`,
+					time.Now().Add(1*time.Minute).Unix()),
+			),
+			lockFile: []byte(
+				fmt.Sprintf(`{"precompileUpgrades":[{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}}]}`,
+					time.Now().Add(1*time.Minute).Unix()),
+			),
+			expectedErr: errNewUpgradesNotContainsLock,
+		},
+	}
+
+	require := require.New(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := validateUpgradeBytes(tt.upgradesFile, tt.lockFile)
 			require.ErrorIs(err, tt.expectedErr)
 		})
 	}

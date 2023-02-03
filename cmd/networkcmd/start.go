@@ -33,7 +33,7 @@ By default, the command loads the default snapshot. If you provide the --snapsho
 flag, the network loads that snapshot instead. The command fails if the local network is
 already running.`,
 
-		RunE:         startNetwork,
+		RunE:         StartNetwork,
 		Args:         cobra.ExactArgs(0),
 		SilenceUsage: true,
 	}
@@ -44,7 +44,7 @@ already running.`,
 	return cmd
 }
 
-func startNetwork(*cobra.Command, []string) error {
+func StartNetwork(*cobra.Command, []string) error {
 	sd := subnet.NewLocalDeployer(app, avagoVersion, "")
 
 	if err := sd.StartServer(); err != nil {

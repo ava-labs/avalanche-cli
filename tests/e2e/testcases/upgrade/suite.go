@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd/upgradecmd"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/ava-labs/subnet-evm/params"
@@ -36,6 +38,26 @@ const (
 
 var err error
 
+// need to have this outside the normal suite because of the BeforeEach
+var _ = ginkgo.Describe("[Upgrade expect network failure]", ginkgo.Ordered, func() {
+	ginkgo.AfterEach(func() {
+		commands.CleanNetworkHard()
+		err := utils.DeleteConfigs(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on stopped network", func() {
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+
+		_, err = commands.ImportUpgradeBytes(subnetName, upgradeBytesPath)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		out, err := commands.ApplyUpgradeLocal(subnetName)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(out).Should(gomega.ContainSubstring(binutils.ErrGRPCTimeout.Error()))
+	})
+})
+
 var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 	_ = ginkgo.BeforeAll(func() {
 		// mapper := utils.NewVersionMapper()
@@ -61,6 +83,19 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 		err = utils.DeleteConfigs(secondSubnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		_ = utils.DeleteKey(keyName)
+	})
+
+	ginkgo.It("fails on undeployed subnet", func() {
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+
+		_, err = commands.ImportUpgradeBytes(subnetName, upgradeBytesPath)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		_ = commands.StartNetwork()
+
+		out, err := commands.ApplyUpgradeLocal(subnetName)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(out).Should(gomega.ContainSubstring(upgradecmd.ErrSubnetNotDeployedOutput))
 	})
 
 	ginkgo.It("can create and apply to locally running subnet", func() {

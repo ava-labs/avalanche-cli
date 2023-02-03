@@ -8,25 +8,46 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"reflect"
 	"time"
 
 	"github.com/ava-labs/subnet-evm/params"
 )
 
 var (
-	errInvalidPrecompiles      = errors.New("invalid precompiles")
-	errNoBlockTimestamp        = errors.New("no blockTimestamp value set")
-	errBlockTimestampInvalid   = errors.New("blockTimestamp is invalid")
-	errBlockTimestampInthePast = errors.New("blockTimestamp is in the past")
-	errNoPrecompiles           = errors.New("no precompiles present")
-	errEmptyPrecompile         = errors.New("the precompile has no content")
-	errNoUpcomingUpgrades      = errors.New("no valid upcoming activation timestamp found")
+	errInvalidPrecompiles         = errors.New("invalid precompiles")
+	errNoBlockTimestamp           = errors.New("no blockTimestamp value set")
+	errBlockTimestampInvalid      = errors.New("blockTimestamp is invalid")
+	errBlockTimestampInthePast    = errors.New("blockTimestamp is in the past")
+	errNoPrecompiles              = errors.New("no precompiles present")
+	errEmptyPrecompile            = errors.New("the precompile has no content")
+	errNoUpcomingUpgrades         = errors.New("no valid upcoming activation timestamp found")
+	errNewUpgradesNotContainsLock = errors.New("the new upgrade file does not contain the content of the lock file")
 )
 
-func validateUpgradeBytes(file []byte) ([]params.PrecompileUpgrade, error) {
+func validateUpgradeBytes(file []byte, lockFile []byte) ([]params.PrecompileUpgrade, error) {
 	upgrades, err := getAllUpgrades(file)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(lockFile) > 0 {
+		lockUpgrades, err := getAllUpgrades(lockFile)
+		if err != nil {
+			return nil, err
+		}
+		match := 0
+		for _, lu := range lockUpgrades {
+			for _, u := range upgrades {
+				if reflect.DeepEqual(u, lu) {
+					match++
+					break
+				}
+			}
+		}
+		if match != len(lockUpgrades) {
+			return nil, errNewUpgradesNotContainsLock
+		}
 	}
 
 	allTimestamps, err := getAllTimestamps(upgrades)

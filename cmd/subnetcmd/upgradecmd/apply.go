@@ -3,6 +3,7 @@
 package upgradecmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet/upgrades"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	ANRclient "github.com/ava-labs/avalanche-network-runner/client"
+	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -25,7 +27,13 @@ const (
 	tmpSnapshotInfix = "-tmp-"
 )
 
-var errNotYetImplemented = errors.New("not yet implemented")
+var (
+	ErrNetworkNotStartedOutput = "No local network running. Please start the network first."
+	ErrSubnetNotDeployedOutput = "Looks like this subnet has not been deployed to a local network yet."
+
+	errNotYetImplemented    = errors.New("not yet implemented")
+	errSubnetNotYetDeployed = errors.New("subnet not yet deployed")
+)
 
 // avalanche subnet upgrade apply
 func newUpgradeApplyCmd() *cobra.Command {
@@ -76,11 +84,21 @@ func applyCmd(_ *cobra.Command, args []string) error {
 	return nil
 }
 
+// applyLocalNetworkUpgrade:
+// * if network stopped, start
+// * if subnet NOT deployed (`network status`):
+// * Stop the apply command and print a message suggesting to deploy first
+// * if subnet deployed (ASK STATUS):
+// * if never upgraded before, apply
+// * if upgraded before, and this upgrade contains the same upgrade as before (.lock)
+// *  if has new valid upgrade on top, apply
+// *  if the same, print info and do nothing
+// * if upgraded before, but this upgrade is not cumulative (append-only)
+// * fail the apply, print message
 func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 	// For a already deployed subnet, the supported scheme is to
 	// save a snapshot, and to load the snapshot with the upgrade
-
-	// first let's check update bytes actually exist
+	// let's check update bytes actually exist
 	netUpgradeBytes, err := upgrades.ReadUpgradeFile(subnetName, app)
 	if err != nil {
 		if err == os.ErrNotExist {
@@ -91,19 +109,56 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 		return err
 	}
 
-	upgrades, err := validateUpgradeBytes(netUpgradeBytes)
+	lockUpgradeBytes, err := upgrades.ReadLockUpgradeFile(subnetName, app)
+	if err != nil {
+		if err != os.ErrNotExist {
+			return err
+		}
+	}
+
+	precmpUpgrades, err := validateUpgradeBytes(netUpgradeBytes, lockUpgradeBytes)
 	if err != nil {
 		return err
 	}
 
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
+		ux.Logger.PrintToUser(ErrNetworkNotStartedOutput)
 		return err
 	}
 	ctx := binutils.GetAsyncContext()
 
+	// first let's get the status
+	networkKey := models.Local.String()
+
+	status, err := cli.Status(ctx)
+	if err != nil {
+		if server.IsServerError(err, server.ErrNotBootstrapped) {
+			ux.Logger.PrintToUser(ErrNetworkNotStartedOutput)
+			return err
+		}
+		return err
+	}
+
+	if sc.Networks[networkKey] == (models.NetworkData{}) {
+		return subnetNotYetDeployed()
+	}
+
+	deployed := false
+	subnets := status.ClusterInfo.GetSubnets()
+	for _, s := range subnets {
+		if s == sc.Networks[networkKey].SubnetID.String() {
+			deployed = true
+			break
+		}
+	}
+
+	if !deployed {
+		return subnetNotYetDeployed()
+	}
+
 	// get the blockchainID from the sidecar
-	blockchainID := sc.Networks[models.Local.String()].BlockchainID
+	blockchainID := sc.Networks[networkKey].BlockchainID
 	if blockchainID == ids.Empty {
 		return errors.New(
 			"failed to find deployment information about this subnet in state - aborting")
@@ -143,13 +198,34 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 	if len(endpoints) > 0 {
 		ux.Logger.PrintToUser("Network restarted and ready to use. Upgrade bytes have been applied to running nodes at these endpoints.")
 
-		nextUpgrade, err := getEarliestTimestamp(upgrades)
+		nextUpgrade, err := getEarliestTimestamp(precmpUpgrades)
 		// this should not happen anymore at this point...
 		if err != nil {
 			app.Log.Warn("looks like the upgrade went well, but we failed getting the timestamp of the next upcoming upgrade: %w")
 		}
 		ux.Logger.PrintToUser("The next upgrade will go into effect %s", time.Unix(nextUpgrade, 0).Local().Format(constants.TimeParseLayout))
 		ux.PrintTableEndpoints(clusterInfo)
+
+		// it seems all went well this far, now we try to write the lock file
+		// if this fails, we probably don't want to cause an error to the user?
+		// so we are silently failing, just write a log entry
+		jsonBytes, err := json.Marshal(precmpUpgrades)
+		if err != nil {
+			app.Log.Debug("failed to marshaling upgrades lock file content", zap.Error(err))
+			return nil
+		}
+		if err := upgrades.WriteLockUpgradeFile(jsonBytes, subnetName, app); err != nil {
+			app.Log.Debug("failed to write upgrades lock file", zap.Error(err))
+		}
+
+		return nil
 	}
-	return nil
+
+	return errors.New("unexpected network size of zero nodes")
+}
+
+func subnetNotYetDeployed() error {
+	ux.Logger.PrintToUser(ErrSubnetNotDeployedOutput)
+	ux.Logger.PrintToUser("Please deploy this network first.")
+	return errSubnetNotYetDeployed
 }

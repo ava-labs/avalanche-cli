@@ -25,7 +25,7 @@ reload this snapshot with network start --snapshot-name <snapshotName>. Otherwis
 network saves to the default snapshot, overwriting any existing state. You can reload the
 default snapshot with network start.`,
 
-		RunE:         stopNetwork,
+		RunE:         StopNetwork,
 		Args:         cobra.ExactArgs(0),
 		SilenceUsage: true,
 	}
@@ -33,7 +33,7 @@ default snapshot with network start.`,
 	return cmd
 }
 
-func stopNetwork(*cobra.Command, []string) error {
+func StopNetwork(*cobra.Command, []string) error {
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
 		return err
