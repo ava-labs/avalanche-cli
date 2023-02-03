@@ -174,15 +174,12 @@ func buildPendingValidatorStats(pClient platformvm.Client, infoClient info.Clien
 		startTime = time.Unix(int64(v.StartTime), 0)
 		endTime = time.Unix(int64(v.EndTime), 0)
 
-		if v.Weight != nil {
-			uint64Weight := *v.Weight
-			for _, d := range pendingDelegators {
-				uint64Weight += *d.Weight
-			}
-			weight = strconv.FormatUint(uint64(uint64Weight), 10)
-		} else {
-			weight = constants.NotAvailableLabel
+		uint64Weight := v.Weight
+		for _, d := range pendingDelegators {
+			uint64Weight += d.Weight
 		}
+		weight = strconv.FormatUint(uint64(uint64Weight), 10)
+
 		// if retrieval of localNodeID failed, it will be empty,
 		// and this comparison fails
 		if v.NodeID == localNodeID {
@@ -249,16 +246,13 @@ func buildCurrentValidatorStats(pClient platformvm.Client, infoClient info.Clien
 		} else {
 			connected = constants.NotAvailableLabel
 		}
-		if v.Weight != nil {
-			uint64Weight := *v.Weight
-			delegators := v.Delegators
-			for _, d := range delegators {
-				uint64Weight += *d.Weight
-			}
-			weight = strconv.FormatUint(uint64Weight, 10)
-		} else {
-			weight = constants.NotAvailableLabel
+
+		uint64Weight := v.Weight
+		delegators := v.Delegators
+		for _, d := range delegators {
+			uint64Weight += d.Weight
 		}
+		weight = strconv.FormatUint(uint64Weight, 10)
 
 		// if retrieval of localNodeID failed, it will be empty,
 		// and this comparison fails
