@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ava-labs/avalanche-cli/pkg/subnet/upgrades"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
@@ -57,5 +56,5 @@ func upgradeImportCmd(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to read the provided upgrade file: %w", err)
 	}
 
-	return upgrades.WriteUpgradeFile(fileBytes, subnetName, app)
+	return app.WriteUpgradeFile(subnetName, fileBytes)
 }

@@ -16,7 +16,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet/upgrades"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	anr_utils "github.com/ava-labs/avalanche-network-runner/utils"
@@ -153,7 +152,7 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 		app.Setup(utils.GetBaseDir(), logging.NoLog{}, nil, nil, nil)
 
 		stripped := stripWhitespaces(string(upgradeBytes))
-		lockUpgradeBytes, err := upgrades.ReadLockUpgradeFile(subnetName, app)
+		lockUpgradeBytes, err := app.ReadLockUpgradeFile(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect([]byte(stripped)).Should(gomega.Equal(lockUpgradeBytes))
 	})

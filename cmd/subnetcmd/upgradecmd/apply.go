@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet/upgrades"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	ANRclient "github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/server"
@@ -105,7 +104,7 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 		return subnetNotYetDeployed()
 	}
 	// let's check update bytes actually exist
-	netUpgradeBytes, err := upgrades.ReadUpgradeFile(subnetName, app)
+	netUpgradeBytes, err := app.ReadUpgradeFile(subnetName)
 	if err != nil {
 		if err == os.ErrNotExist {
 			ux.Logger.PrintToUser("No file with upgrade specs for the given subnet has been found")
@@ -117,7 +116,7 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 
 	fmt.Println(string(netUpgradeBytes))
 	// read the lock file right away
-	lockUpgradeBytes, err := upgrades.ReadLockUpgradeFile(subnetName, app)
+	lockUpgradeBytes, err := app.ReadLockUpgradeFile(subnetName)
 	if err != nil {
 		// if the file doesn't exist, that's ok
 		if err != os.ErrNotExist {
@@ -219,7 +218,7 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 			app.Log.Debug("failed to marshaling upgrades lock file content", zap.Error(err))
 			return nil
 		}
-		if err := upgrades.WriteLockUpgradeFile(jsonBytes, subnetName, app); err != nil {
+		if err := app.WriteLockUpgradeFile(subnetName, jsonBytes); err != nil {
 			app.Log.Debug("failed to write upgrades lock file", zap.Error(err))
 		}
 

@@ -140,13 +140,34 @@ func (*Avalanche) GetAvalanchegoCompatibilityURL() string {
 	return constants.AvalancheGoCompatibilityURL
 }
 
+func (app *Avalanche) ReadUpgradeFile(subnetName string) ([]byte, error) {
+	upgradeBytesFilePath := app.GetUpgradeBytesFilePath(subnetName)
+
+	return app.readFile(upgradeBytesFilePath)
+}
+
+func (app *Avalanche) ReadLockUpgradeFile(subnetName string) ([]byte, error) {
+	upgradeBytesLockFilePath := app.GetUpgradeBytesFilePath(subnetName) + constants.UpgradeBytesLockExtension
+
+	return app.readFile(upgradeBytesLockFilePath)
+}
+
+func (app *Avalanche) WriteUpgradeFile(subnetName string, bytes []byte) error {
+	upgradeBytesFilePath := app.GetUpgradeBytesFilePath(subnetName)
+
+	return app.writeFile(upgradeBytesFilePath, bytes)
+}
+
+func (app *Avalanche) WriteLockUpgradeFile(subnetName string, bytes []byte) error {
+	upgradeBytesLockFilePath := app.GetUpgradeBytesFilePath(subnetName) + constants.UpgradeBytesLockExtension
+
+	return app.writeFile(upgradeBytesLockFilePath, bytes)
+}
+
 func (app *Avalanche) WriteGenesisFile(subnetName string, genesisBytes []byte) error {
 	genesisPath := app.GetGenesisPath(subnetName)
-	if err := os.MkdirAll(filepath.Dir(genesisPath), constants.DefaultPerms755); err != nil {
-		return err
-	}
 
-	return os.WriteFile(genesisPath, genesisBytes, WriteReadReadPerms)
+	return app.writeFile(genesisPath, genesisBytes)
 }
 
 func (app *Avalanche) GenesisExists(subnetName string) bool {
@@ -314,4 +335,20 @@ func (app *Avalanche) GetSidecarNames() ([]string, error) {
 		}
 	}
 	return names, nil
+}
+
+func (*Avalanche) readFile(path string) ([]byte, error) {
+	if err := os.MkdirAll(filepath.Dir(path), constants.DefaultPerms755); err != nil {
+		return nil, err
+	}
+
+	return os.ReadFile(path)
+}
+
+func (*Avalanche) writeFile(path string, bytes []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), constants.DefaultPerms755); err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, bytes, WriteReadReadPerms)
 }
