@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd/upgradecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -16,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet/upgrades"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
+	anr_utils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/params"
@@ -36,12 +39,10 @@ const (
 	upgradeBytesPath = "tests/e2e/assets/test_upgrade.json"
 )
 
-// var (
-// 	binaryToVersion map[string]string
-// 	err error
-// )
-
-var err error
+var (
+	binaryToVersion map[string]string
+	err             error
+)
 
 // need to have this outside the normal suite because of the BeforeEach
 var _ = ginkgo.Describe("[Upgrade expect network failure]", ginkgo.Ordered, func() {
@@ -83,8 +84,8 @@ var _ = ginkgo.Describe("[Upgrade expect network failure]", ginkgo.Ordered, func
 
 var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 	_ = ginkgo.BeforeAll(func() {
-		// mapper := utils.NewVersionMapper()
-		// binaryToVersion, err = utils.GetVersionMapping(mapper)
+		mapper := utils.NewVersionMapper()
+		binaryToVersion, err = utils.GetVersionMapping(mapper)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
@@ -106,6 +107,7 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 		err = utils.DeleteConfigs(secondSubnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		_ = utils.DeleteKey(keyName)
+		utils.DeleteCustomBinary(subnetName)
 	})
 
 	ginkgo.It("fails on undeployed subnet", func() {
@@ -182,93 +184,99 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 		commands.DeleteSubnetConfig(subnetName)
 	})
 
-	// disabling this test to pass CI, should be fixed before releasing
-	// ginkgo.It("can upgrade subnet-evm on public deployment", func() {
-	// 	commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, binaryToVersion[utils.SoloSubnetEVMKey2])
+	ginkgo.It("can update a subnet-evm to a custom VM", func() {
+		customVMPath, err := utils.DownloadCustomVMBin(binaryToVersion[utils.SoloSubnetEVMKey2])
+		gomega.Expect(err).Should(gomega.BeNil())
 
-	// 	// Simulate fuji deployment
-	// 	s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys)
-	// 	subnetID, _, err := utils.ParsePublicDeployOutput(s)
-	// 	gomega.Expect(err).Should(gomega.BeNil())
-	// 	// add validators to subnet
-	// 	nodeInfos, err := utils.GetNodesInfo()
-	// 	gomega.Expect(err).Should(gomega.BeNil())
-	// 	for _, nodeInfo := range nodeInfos {
-	// 		start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
-	// 		_ = commands.SimulateFujiAddValidator(subnetName, keyName, nodeInfo.ID, start, "24h", "20")
-	// 	}
-	// 	// join to copy vm binary and update config file
-	// 	for _, nodeInfo := range nodeInfos {
-	// 		_ = commands.SimulateFujiJoin(subnetName, nodeInfo.ConfigFile, nodeInfo.PluginDir, nodeInfo.ID)
-	// 	}
-	// 	// get and check whitelisted subnets from config file
-	// 	var whitelistedSubnets string
-	// 	for _, nodeInfo := range nodeInfos {
-	// 		whitelistedSubnets, err = utils.GetWhilelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
-	// 		gomega.Expect(err).Should(gomega.BeNil())
-	// 		whitelistedSubnetsSlice := strings.Split(whitelistedSubnets, ",")
-	// 		gomega.Expect(whitelistedSubnetsSlice).Should(gomega.ContainElement(subnetID))
-	// 	}
-	// 	// update nodes whitelisted subnets
-	// 	err = utils.RestartNodesWithWhitelistedSubnets(whitelistedSubnets)
-	// 	gomega.Expect(err).Should(gomega.BeNil())
-	// 	// wait for subnet walidators to be up
-	// 	err = utils.WaitSubnetValidators(subnetID, nodeInfos)
-	// 	gomega.Expect(err).Should(gomega.BeNil())
+		commands.CreateSubnetEvmConfigWithVersion(
+			subnetName,
+			utils.SubnetEvmGenesisPath,
+			binaryToVersion[utils.SoloSubnetEVMKey1],
+		)
 
-	// 	// TODO Delete this after updating this test as described below
-	// 	var originalHash string
+		// check version
+		output, err := commands.DescribeSubnet(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
 
-	// 	// upgrade the vm on each node
-	// 	vmid, err := anr_utils.VMID(subnetName)
-	// 	gomega.Expect(err).Should(gomega.BeNil())
+		containsVersion1 := strings.Contains(output, binaryToVersion[utils.SoloSubnetEVMKey1])
+		containsVersion2 := strings.Contains(output, binaryToVersion[utils.SoloSubnetEVMKey2])
+		gomega.Expect(containsVersion1).Should(gomega.BeTrue())
+		gomega.Expect(containsVersion2).Should(gomega.BeFalse())
 
-	// 	for _, nodeInfo := range nodeInfos {
-	// 		// check the current node version
-	// 		vmVersion, err := utils.GetNodeVMVersion(nodeInfo.URI, vmid.String())
-	// 		gomega.Expect(err).Should(gomega.BeNil())
-	// 		gomega.Expect(vmVersion).Should(gomega.Equal(binaryToVersion[utils.SoloSubnetEVMKey2]))
+		_, err = commands.UpgradeCustomVM(subnetName, customVMPath)
+		gomega.Expect(err).Should(gomega.BeNil())
 
-	// 		originalHash, err = utils.GetFileHash(filepath.Join(nodeInfo.PluginDir, vmid.String()))
-	// 		gomega.Expect(err).Should(gomega.BeNil())
-	// 	}
+		output, err = commands.DescribeSubnet(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
 
-	// 	// stop network
-	// 	commands.StopNetwork()
+		containsVersion2 = strings.Contains(output, binaryToVersion[utils.SoloSubnetEVMKey2])
+		gomega.Expect(containsVersion2).Should(gomega.BeFalse())
+		// the following indicates it is a custom VM
+		containsCustomVM := strings.Contains(output, "Printing genesis")
+		gomega.Expect(containsCustomVM).Should(gomega.BeTrue())
 
-	// 	for _, nodeInfo := range nodeInfos {
-	// 		_, err := commands.UpgradeVMPublic(subnetName, binaryToVersion[utils.SoloSubnetEVMKey1], nodeInfo.PluginDir)
-	// 		gomega.Expect(err).Should(gomega.BeNil())
-	// 	}
+		commands.DeleteSubnetConfig(subnetName)
+	})
 
-	// 	// TODO: There is currently only one subnet-evm version compatible with avalanchego. These
-	// 	// lines should be uncommented when a new version is released. The section below can be removed.
-	// 	// // restart to use the new vm version
-	// 	// err = utils.RestartNodesWithWhitelistedSubnets(whitelistedSubnets)
-	// 	// gomega.Expect(err).Should(gomega.BeNil())
-	// 	// // wait for subnet walidators to be up
-	// 	// err = utils.WaitSubnetValidators(subnetID, nodeInfos)
-	// 	// gomega.Expect(err).Should(gomega.BeNil())
+	ginkgo.It("can upgrade subnet-evm on public deployment", func() {
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 
-	// 	// // Check that nodes are running the new version
-	// 	// for _, nodeInfo := range nodeInfos {
-	// 	// 	// check the current node version
-	// 	// 	vmVersion, err := utils.GetNodeVMVersion(nodeInfo.URI, vmid.String())
-	// 	// 	gomega.Expect(err).Should(gomega.BeNil())
-	// 	// 	gomega.Expect(vmVersion).Should(gomega.Equal(subnetEVMVersion2))
-	// 	// }
+		// Simulate fuji deployment
+		s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys)
+		subnetID, _, err := utils.ParsePublicDeployOutput(s)
+		gomega.Expect(err).Should(gomega.BeNil())
+		// add validators to subnet
+		nodeInfos, err := utils.GetNodesInfo()
+		gomega.Expect(err).Should(gomega.BeNil())
+		for _, nodeInfo := range nodeInfos {
+			start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
+			_ = commands.SimulateFujiAddValidator(subnetName, keyName, nodeInfo.ID, start, "24h", "20")
+		}
+		// join to copy vm binary and update config file
+		for _, nodeInfo := range nodeInfos {
+			_ = commands.SimulateFujiJoin(subnetName, nodeInfo.ConfigFile, nodeInfo.PluginDir, nodeInfo.ID)
+		}
+		// get and check whitelisted subnets from config file
+		var whitelistedSubnets string
+		for _, nodeInfo := range nodeInfos {
+			whitelistedSubnets, err = utils.GetWhilelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
+			gomega.Expect(err).Should(gomega.BeNil())
+			whitelistedSubnetsSlice := strings.Split(whitelistedSubnets, ",")
+			gomega.Expect(whitelistedSubnetsSlice).Should(gomega.ContainElement(subnetID))
+		}
+		// update nodes whitelisted subnets
+		err = utils.RestartNodesWithWhitelistedSubnets(whitelistedSubnets)
+		gomega.Expect(err).Should(gomega.BeNil())
+		// wait for subnet walidators to be up
+		err = utils.WaitSubnetValidators(subnetID, nodeInfos)
+		gomega.Expect(err).Should(gomega.BeNil())
 
-	// 	// This can be removed when the above is added
-	// 	for _, nodeInfo := range nodeInfos {
-	// 		measuredHash, err := utils.GetFileHash(filepath.Join(nodeInfo.PluginDir, vmid.String()))
-	// 		gomega.Expect(err).Should(gomega.BeNil())
+		var originalHash string
 
-	// 		gomega.Expect(measuredHash).ShouldNot(gomega.Equal(originalHash))
-	// 	}
+		// upgrade the vm on each node
+		vmid, err := anr_utils.VMID(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
 
-	// 	// Stop removal here
-	// 	////////////////////////////////////////////////////////
+		for _, nodeInfo := range nodeInfos {
+			originalHash, err = utils.GetFileHash(filepath.Join(nodeInfo.PluginDir, vmid.String()))
+			gomega.Expect(err).Should(gomega.BeNil())
+		}
 
-	// 	commands.DeleteSubnetConfig(subnetName)
-	// })
+		// stop network
+		commands.StopNetwork()
+
+		for _, nodeInfo := range nodeInfos {
+			_, err := commands.UpgradeVMPublic(subnetName, binaryToVersion[utils.SoloSubnetEVMKey1], nodeInfo.PluginDir)
+			gomega.Expect(err).Should(gomega.BeNil())
+		}
+
+		for _, nodeInfo := range nodeInfos {
+			measuredHash, err := utils.GetFileHash(filepath.Join(nodeInfo.PluginDir, vmid.String()))
+			gomega.Expect(err).Should(gomega.BeNil())
+
+			gomega.Expect(measuredHash).ShouldNot(gomega.Equal(originalHash))
+		}
+
+		commands.DeleteSubnetConfig(subnetName)
+	})
 })
