@@ -52,6 +52,28 @@ func UpgradeVMConfig(subnetName string, targetVersion string) (string, error) {
 	return string(output), err
 }
 
+/* #nosec G204 */
+func UpgradeCustomVM(subnetName string, binaryPath string) (string, error) {
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		UpgradeCmd,
+		"vm",
+		subnetName,
+		"--config",
+		"--binary",
+		binaryPath,
+	)
+
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+	}
+	return string(output), err
+}
+
 func UpgradeVMPublic(subnetName string, targetVersion string, pluginDir string) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,

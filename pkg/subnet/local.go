@@ -14,9 +14,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
-
-	"golang.org/x/mod/semver"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -42,29 +39,27 @@ const (
 )
 
 type LocalDeployer struct {
-	procChecker         binutils.ProcessChecker
-	binChecker          binutils.BinaryChecker
-	getClientFunc       getGRPCClientFunc
-	binaryDownloader    binutils.PluginBinaryDownloader
-	healthCheckInterval time.Duration
-	app                 *application.Avalanche
-	backendStartedHere  bool
-	setDefaultSnapshot  setDefaultSnapshotFunc
-	avagoVersion        string
-	vmBin               string
+	procChecker        binutils.ProcessChecker
+	binChecker         binutils.BinaryChecker
+	getClientFunc      getGRPCClientFunc
+	binaryDownloader   binutils.PluginBinaryDownloader
+	app                *application.Avalanche
+	backendStartedHere bool
+	setDefaultSnapshot setDefaultSnapshotFunc
+	avagoVersion       string
+	vmBin              string
 }
 
 func NewLocalDeployer(app *application.Avalanche, avagoVersion string, vmBin string) *LocalDeployer {
 	return &LocalDeployer{
-		procChecker:         binutils.NewProcessChecker(),
-		binChecker:          binutils.NewBinaryChecker(),
-		getClientFunc:       binutils.NewGRPCClient,
-		binaryDownloader:    binutils.NewPluginBinaryDownloader(app),
-		healthCheckInterval: 100 * time.Millisecond,
-		app:                 app,
-		setDefaultSnapshot:  SetDefaultSnapshot,
-		avagoVersion:        avagoVersion,
-		vmBin:               vmBin,
+		procChecker:        binutils.NewProcessChecker(),
+		binChecker:         binutils.NewBinaryChecker(),
+		getClientFunc:      binutils.NewGRPCClient,
+		binaryDownloader:   binutils.NewPluginBinaryDownloader(app),
+		app:                app,
+		setDefaultSnapshot: SetDefaultSnapshot,
+		avagoVersion:       avagoVersion,
+		vmBin:              vmBin,
 	}
 }
 
@@ -115,7 +110,7 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 //   - waits completion of operation
 //   - show status
 func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, error) {
-	avagoVersion, avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
+	avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
@@ -132,7 +127,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	// check for network and get VM info
 	networkBooted := true
-	clusterInfo, err := d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
+	clusterInfo, err := WaitForHealthy(ctx, cli)
 	if err != nil {
 		if !server.IsServerError(err, server.ErrNotBootstrapped) {
 			return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
@@ -159,12 +154,12 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	ux.Logger.PrintToUser("VMs ready.")
 
 	if !networkBooted {
-		if err := d.startNetwork(ctx, cli, avagoVersion, avalancheGoBinPath, pluginDir, runDir); err != nil {
+		if err := d.startNetwork(ctx, cli, avalancheGoBinPath, pluginDir, runDir); err != nil {
 			return ids.Empty, ids.Empty, err
 		}
 	}
 
-	clusterInfo, err = d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
+	clusterInfo, err = WaitForHealthy(ctx, cli)
 	if err != nil {
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 	}
@@ -220,7 +215,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	fmt.Println()
 	ux.Logger.PrintToUser("Blockchain has been deployed. Wait until network acknowledges...")
 
-	clusterInfo, err = d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
+	clusterInfo, err = WaitForHealthy(ctx, cli)
 	if err != nil {
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 	}
@@ -309,27 +304,27 @@ func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte) err
 // * checks if avalanchego is installed in the local binary path
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path and plugin
-func (d *LocalDeployer) SetupLocalEnv() (string, string, string, error) {
+func (d *LocalDeployer) SetupLocalEnv() (string, string, error) {
 	err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed setting up snapshots: %w", err)
+		return "", "", fmt.Errorf("failed setting up snapshots: %w", err)
 	}
 
-	avagoVersion, avagoDir, err := d.setupLocalEnv()
+	avagoDir, err := d.setupLocalEnv()
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed setting up local environment: %w", err)
+		return "", "", fmt.Errorf("failed setting up local environment: %w", err)
 	}
 
 	pluginDir := filepath.Join(avagoDir, "plugins")
 	avalancheGoBinPath := filepath.Join(avagoDir, "avalanchego")
 
 	if err := os.MkdirAll(pluginDir, constants.DefaultPerms755); err != nil {
-		return "", "", "", fmt.Errorf("could not create pluginDir %s", pluginDir)
+		return "", "", fmt.Errorf("could not create pluginDir %s", pluginDir)
 	}
 
 	exists, err := storage.FolderExists(pluginDir)
 	if !exists || err != nil {
-		return "", "", "", fmt.Errorf("evaluated pluginDir to be %s but it does not exist", pluginDir)
+		return "", "", fmt.Errorf("evaluated pluginDir to be %s but it does not exist", pluginDir)
 	}
 
 	// TODO: we need some better version management here
@@ -337,52 +332,30 @@ func (d *LocalDeployer) SetupLocalEnv() (string, string, string, error) {
 	// * decide if force update or give user choice
 	exists, err = storage.FileExists(avalancheGoBinPath)
 	if !exists || err != nil {
-		return "", "", "", fmt.Errorf(
+		return "", "", fmt.Errorf(
 			"evaluated avalancheGoBinPath to be %s but it does not exist", avalancheGoBinPath)
 	}
 
-	return avagoVersion, avalancheGoBinPath, pluginDir, nil
+	return avalancheGoBinPath, pluginDir, nil
 }
 
-func (d *LocalDeployer) setupLocalEnv() (string, string, error) {
+func (d *LocalDeployer) setupLocalEnv() (string, error) {
 	return binutils.SetupAvalanchego(d.app, d.avagoVersion)
 }
 
 // WaitForHealthy polls continuously until the network is ready to be used
-func (d *LocalDeployer) WaitForHealthy(
+func WaitForHealthy(
 	ctx context.Context,
 	cli client.Client,
-	healthCheckInterval time.Duration,
 ) (*rpcpb.ClusterInfo, error) {
 	cancel := make(chan struct{})
 	defer close(cancel)
 	go ux.PrintWait(cancel)
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-time.After(healthCheckInterval):
-			d.app.Log.Debug("polling for health...")
-			resp, err := cli.Health(ctx)
-			if err != nil {
-				return nil, err
-			}
-			if resp.ClusterInfo == nil {
-				d.app.Log.Debug("warning: ClusterInfo is nil. trying again...")
-				continue
-			}
-			if !resp.ClusterInfo.Healthy {
-				d.app.Log.Debug("network is not healthy. polling again...")
-				continue
-			}
-			if !resp.ClusterInfo.CustomChainsHealthy {
-				d.app.Log.Debug("network is up but custom VMs are not healthy. polling again...")
-				continue
-			}
-			d.app.Log.Debug("network is up and custom VMs are up")
-			return resp.ClusterInfo, nil
-		}
+	resp, err := cli.WaitForHealthy(ctx)
+	if err != nil {
+		return nil, err
 	}
+	return resp.ClusterInfo, nil
 }
 
 // GetEndpoints get a human readable list of endpoints from clusterinfo
@@ -496,7 +469,6 @@ func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 func (d *LocalDeployer) startNetwork(
 	ctx context.Context,
 	cli client.Client,
-	avagoVersion string,
 	avalancheGoBinPath string,
 	pluginDir string,
 	runDir string,
@@ -506,13 +478,7 @@ func (d *LocalDeployer) startNetwork(
 		client.WithExecPath(avalancheGoBinPath),
 		client.WithRootDataDir(runDir),
 		client.WithReassignPortsIfUsed(true),
-	}
-
-	// For avago version < AvalancheGoPluginDirFlagAdded, we use ANR default location for plugins dir,
-	// for >= AvalancheGoPluginDirFlagAdded, we pass the param
-	// TODO: review this once ANR includes proper avago version management
-	if semver.Compare(avagoVersion, constants.AvalancheGoPluginDirFlagAdded) >= 0 {
-		loadSnapshotOpts = append(loadSnapshotOpts, client.WithPluginDir(pluginDir))
+		client.WithPluginDir(pluginDir),
 	}
 
 	// load global node configs if they exist

@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"path"
 
-	"golang.org/x/mod/semver"
-
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -51,7 +49,7 @@ func startNetwork(*cobra.Command, []string) error {
 		return err
 	}
 
-	avagoVersion, avalancheGoBinPath, pluginDir, err := sd.SetupLocalEnv()
+	avalancheGoBinPath, pluginDir, err := sd.SetupLocalEnv()
 	if err != nil {
 		return err
 	}
@@ -79,13 +77,7 @@ func startNetwork(*cobra.Command, []string) error {
 		client.WithExecPath(avalancheGoBinPath),
 		client.WithRootDataDir(outputDir),
 		client.WithReassignPortsIfUsed(true),
-	}
-
-	// For avago version < AvalancheGoPluginDirFlagAdded, we use ANR default location for plugins dir,
-	// for >= AvalancheGoPluginDirFlagAdded, we pass the param
-	// TODO: review this once ANR includes proper avago version management
-	if semver.Compare(avagoVersion, constants.AvalancheGoPluginDirFlagAdded) >= 0 {
-		loadSnapshotOpts = append(loadSnapshotOpts, client.WithPluginDir(pluginDir))
+		client.WithPluginDir(pluginDir),
 	}
 
 	// load global node configs if they exist
@@ -114,9 +106,7 @@ func startNetwork(*cobra.Command, []string) error {
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 	}
 
-	// TODO: this should probably be extracted from the deployer and
-	// used as an independent helper
-	clusterInfo, err := sd.WaitForHealthy(ctx, cli, constants.HealthCheckInterval)
+	clusterInfo, err := subnet.WaitForHealthy(ctx, cli)
 	if err != nil {
 		return fmt.Errorf("failed waiting for network to become healthy: %w", err)
 	}
