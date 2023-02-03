@@ -73,8 +73,6 @@ github.com/ava-labs/coreth v0.11.7-rc.0 h1:C+6vtAqBz3KrGyuSeZSwYeFTNalCKxxLdClWa
 github.com/ava-labs/coreth v0.11.7-rc.0/go.mod h1:e7SuEq6g3+YWyNPiznJF6KnnAuc0HCXxiSshMNj52Sw=
 github.com/ava-labs/ledger-avalanche/go v0.0.0-20230105152938-00a24d05a8c7 h1:EdxD90j5sClfL5Ngpz2TlnbnkNYdFPDXa0jDOjam65c=
 github.com/ava-labs/ledger-avalanche/go v0.0.0-20230105152938-00a24d05a8c7/go.mod h1:XhiXSrh90sHUbkERzaxEftCmUz53eCijshDLZ4fByVM=
-github.com/ava-labs/spacesvm v0.0.15 h1:0wkn3RPvSbxMW2k/ExNbWa2kv8keAtvtyU+/VKCqJWw=
-github.com/ava-labs/spacesvm v0.0.15/go.mod h1:Wq/LBfoDzSKit+SO86so7cFiCZu49eocOYFqSXjvwyM=
 github.com/ava-labs/spacesvm v0.0.16-0.20230203183930-edab6c380a0c h1:Y0GZ0D9M81+aBt1lA58grU0Cllwhd+CwFNrFfuF4DwE=
 github.com/ava-labs/spacesvm v0.0.16-0.20230203183930-edab6c380a0c/go.mod h1:HUsQDCUsbzjW9eN720eouhxPPwq9+p9azXgZ7GHQ4pQ=
 github.com/ava-labs/subnet-evm v0.4.8 h1:h9pDDqSQioEtUGyjhHJ3dT5Mh5BVxpBwVyil8Zb2r08=
