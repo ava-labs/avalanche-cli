@@ -85,19 +85,24 @@ func applyCmd(_ *cobra.Command, args []string) error {
 }
 
 // applyLocalNetworkUpgrade:
-// * if network stopped, start
 // * if subnet NOT deployed (`network status`):
-// * Stop the apply command and print a message suggesting to deploy first
-// * if subnet deployed (ASK STATUS):
-// * if never upgraded before, apply
-// * if upgraded before, and this upgrade contains the same upgrade as before (.lock)
-// *  if has new valid upgrade on top, apply
-// *  if the same, print info and do nothing
-// * if upgraded before, but this upgrade is not cumulative (append-only)
-// * fail the apply, print message
+// *   Stop the apply command and print a message suggesting to deploy first
+// * if subnet deployed:
+// *   if never upgraded before, apply
+// *   if upgraded before, and this upgrade contains the same upgrade as before (.lock)
+// *     if has new valid upgrade on top, apply
+// *     if the same, print info and do nothing
+// *   if upgraded before, but this upgrade is not cumulative (append-only)
+// *     fail the apply, print message
+
+// For a already deployed subnet, the supported scheme is to
+// save a snapshot, and to load the snapshot with the upgrade
 func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
-	// For a already deployed subnet, the supported scheme is to
-	// save a snapshot, and to load the snapshot with the upgrade
+	// if there's no entry in the Sidecar, we assume there hasn't been a deploy yet
+	networkKey := models.Local.String()
+	if sc.Networks[networkKey] == (models.NetworkData{}) {
+		return subnetNotYetDeployed()
+	}
 	// let's check update bytes actually exist
 	netUpgradeBytes, err := upgrades.ReadUpgradeFile(subnetName, app)
 	if err != nil {
@@ -109,13 +114,16 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 		return err
 	}
 
+	// read the lock file right away
 	lockUpgradeBytes, err := upgrades.ReadLockUpgradeFile(subnetName, app)
 	if err != nil {
+		// if the file doesn't exist, that's ok
 		if err != os.ErrNotExist {
 			return err
 		}
 	}
 
+	// validate the upgrade bytes files
 	precmpUpgrades, err := validateUpgradeBytes(netUpgradeBytes, lockUpgradeBytes)
 	if err != nil {
 		return err
@@ -129,8 +137,6 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 	ctx := binutils.GetAsyncContext()
 
 	// first let's get the status
-	networkKey := models.Local.String()
-
 	status, err := cli.Status(ctx)
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {
@@ -140,10 +146,7 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 		return err
 	}
 
-	if sc.Networks[networkKey] == (models.NetworkData{}) {
-		return subnetNotYetDeployed()
-	}
-
+	// confirm in the status that the subnet actually is deployed and running
 	deployed := false
 	subnets := status.ClusterInfo.GetSubnets()
 	for _, s := range subnets {
@@ -206,7 +209,7 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 		ux.Logger.PrintToUser("The next upgrade will go into effect %s", time.Unix(nextUpgrade, 0).Local().Format(constants.TimeParseLayout))
 		ux.PrintTableEndpoints(clusterInfo)
 
-		// it seems all went well this far, now we try to write the lock file
+		// it seems all went well this far, now we try to write/update the lock file
 		// if this fails, we probably don't want to cause an error to the user?
 		// so we are silently failing, just write a log entry
 		jsonBytes, err := json.Marshal(precmpUpgrades)

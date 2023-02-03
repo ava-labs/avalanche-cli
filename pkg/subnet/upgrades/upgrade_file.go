@@ -3,7 +3,6 @@
 package upgrades
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -73,7 +72,7 @@ func readFile(path string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to access the upgrade bytes file on the local environment: %w", err)
 	}
 	if !exists {
-		return nil, errors.New("we could not find the upgrade bytes file on the local environment - sure it exists?")
+		return nil, os.ErrNotExist
 	}
 
 	fileBytes, err := os.ReadFile(path)

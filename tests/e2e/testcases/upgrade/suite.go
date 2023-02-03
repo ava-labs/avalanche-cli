@@ -10,9 +10,14 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd/upgradecmd"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet/upgrades"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/params"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -50,6 +55,24 @@ var _ = ginkgo.Describe("[Upgrade expect network failure]", ginkgo.Ordered, func
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 
 		_, err = commands.ImportUpgradeBytes(subnetName, upgradeBytesPath)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// we want to simulate a situation here where the subnet has been deployed
+		// but the network is stopped
+		// the code would detect it hasn't been deployed yet so report that error first
+		// therefore we can just manually edit the file to fake it had been deployed
+		app := application.New()
+		app.Setup(utils.GetBaseDir(), logging.NoLog{}, nil, nil, nil)
+		sc := models.Sidecar{
+			Name:     subnetName,
+			Subnet:   subnetName,
+			Networks: make(map[string]models.NetworkData),
+		}
+		sc.Networks[models.Local.String()] = models.NetworkData{
+			SubnetID:     ids.GenerateTestID(),
+			BlockchainID: ids.GenerateTestID(),
+		}
+		err = app.UpdateSidecar(&sc)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		out, err := commands.ApplyUpgradeLocal(subnetName)
@@ -112,16 +135,25 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 		upgradeBytes, err := os.ReadFile(upgradeBytesPath)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		var upgrades params.UpgradeConfig
-		err = json.Unmarshal(upgradeBytes, &upgrades)
+		var precmpUpgrades params.UpgradeConfig
+		err = json.Unmarshal(upgradeBytes, &precmpUpgrades)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
 		}
-		err = utils.CheckUpgradeIsDeployed(rpcs[0], upgrades)
+		err = utils.CheckUpgradeIsDeployed(rpcs[0], precmpUpgrades)
 		gomega.Expect(err).Should(gomega.BeNil())
+
+		app := application.New()
+		app.Setup(utils.GetBaseDir(), logging.NoLog{}, nil, nil, nil)
+
+		netUpgradeBytes, err := upgrades.ReadUpgradeFile(subnetName, app)
+		gomega.Expect(err).Should(gomega.BeNil())
+		lockUpgradeBytes, err := upgrades.ReadLockUpgradeFile(subnetName, app)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(netUpgradeBytes).Should(gomega.Equal(lockUpgradeBytes))
 	})
 
 	ginkgo.It("can create and update future", func() {
