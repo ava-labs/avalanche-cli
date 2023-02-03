@@ -18,6 +18,7 @@ import (
 	ANRclient "github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/subnet-evm/params"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -114,6 +115,7 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 		return err
 	}
 
+	fmt.Println(string(netUpgradeBytes))
 	// read the lock file right away
 	lockUpgradeBytes, err := upgrades.ReadLockUpgradeFile(subnetName, app)
 	if err != nil {
@@ -209,7 +211,10 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 		// it seems all went well this far, now we try to write/update the lock file
 		// if this fails, we probably don't want to cause an error to the user?
 		// so we are silently failing, just write a log entry
-		jsonBytes, err := json.Marshal(precmpUpgrades)
+		wrapper := params.UpgradeConfig{
+			PrecompileUpgrades: precmpUpgrades,
+		}
+		jsonBytes, err := json.Marshal(wrapper)
 		if err != nil {
 			app.Log.Debug("failed to marshaling upgrades lock file content", zap.Error(err))
 			return nil

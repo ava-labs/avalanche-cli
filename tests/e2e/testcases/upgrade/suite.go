@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd/upgradecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -151,11 +152,10 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 		app := application.New()
 		app.Setup(utils.GetBaseDir(), logging.NoLog{}, nil, nil, nil)
 
-		netUpgradeBytes, err := upgrades.ReadUpgradeFile(subnetName, app)
-		gomega.Expect(err).Should(gomega.BeNil())
+		stripped := stripWhitespaces(string(upgradeBytes))
 		lockUpgradeBytes, err := upgrades.ReadLockUpgradeFile(subnetName, app)
 		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(netUpgradeBytes).Should(gomega.Equal(lockUpgradeBytes))
+		gomega.Expect([]byte(stripped)).Should(gomega.Equal(lockUpgradeBytes))
 	})
 
 	ginkgo.It("can create and update future", func() {
@@ -280,3 +280,14 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 		commands.DeleteSubnetConfig(subnetName)
 	})
 })
+
+func stripWhitespaces(str string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) {
+			// if the character is a space, drop it
+			return -1
+		}
+		// else keep it in the string
+		return r
+	}, str)
+}
