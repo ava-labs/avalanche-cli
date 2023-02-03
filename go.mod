@@ -2,10 +2,6 @@ module github.com/ava-labs/avalanche-cli
 
 go 1.18
 
-replace github.com/ava-labs/avalanchego => ../avalanchego
-
-replace github.com/ava-labs/spacesvm => ../spacesvm
-
 require (
 	github.com/ava-labs/apm v0.0.4
 	github.com/ava-labs/avalanche-network-runner v1.3.6-0.20230131185357-8438e423db52
