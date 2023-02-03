@@ -5,9 +5,9 @@ go 1.18
 require (
 	github.com/ava-labs/apm v0.0.4
 	github.com/ava-labs/avalanche-network-runner v1.3.6-0.20230131185357-8438e423db52
-	github.com/ava-labs/avalanchego v1.9.7
-	github.com/ava-labs/coreth v0.11.6
-	github.com/ava-labs/spacesvm v0.0.15
+	github.com/ava-labs/avalanchego v1.9.8
+	github.com/ava-labs/coreth v0.11.7-rc.0
+	github.com/ava-labs/spacesvm v0.0.16-0.20230203183930-edab6c380a0c
 	github.com/ava-labs/subnet-evm v0.4.8
 	github.com/docker/docker v20.10.23+incompatible
 	github.com/ethereum/go-ethereum v1.10.26
@@ -100,6 +100,7 @@ require (
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/otiai10/copy v1.9.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
+	github.com/pires/go-proxyproto v0.6.2 // indirect
 	github.com/pjbgf/sha1cd v0.2.3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -107,7 +108,7 @@ require (
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
-	github.com/rjeczalik/notify v0.9.2 // indirect
+	github.com/rjeczalik/notify v0.9.3 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect

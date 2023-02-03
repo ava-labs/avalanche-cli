@@ -44,7 +44,7 @@ func TestStats(t *testing.T) {
 				StartTime: uint64(startTime.Unix()),
 				EndTime:   uint64(endTime.Unix()),
 				NodeID:    localNodeID,
-				Weight:    &weight,
+				Weight:    weight,
 			},
 			Connected: &conn,
 		},
@@ -82,7 +82,7 @@ func TestStats(t *testing.T) {
 			StartTime: json.Uint64(uint64(startTime.Unix())),
 			EndTime:   json.Uint64(uint64(endTime.Unix())),
 			NodeID:    localNodeID,
-			Weight:    &jweight,
+			Weight:    jweight,
 		},
 	}
 
