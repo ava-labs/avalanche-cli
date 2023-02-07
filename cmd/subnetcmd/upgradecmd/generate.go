@@ -11,7 +11,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet/upgrades"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -130,7 +129,7 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	return upgrades.WriteUpgradeFile(jsonBytes, subnetName, app)
+	return app.WriteUpgradeFile(subnetName, jsonBytes)
 }
 
 func queryActivationTimestamp() (time.Time, error) {

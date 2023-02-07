@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"github.com/ava-labs/avalanche-cli/pkg/subnet/upgrades"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
@@ -31,7 +30,7 @@ func upgradePrintCmd(_ *cobra.Command, args []string) error {
 		return nil
 	}
 
-	fileBytes, err := upgrades.ReadUpgradeFile(subnetName, app)
+	fileBytes, err := app.ReadUpgradeFile(subnetName)
 	if err != nil {
 		return err
 	}

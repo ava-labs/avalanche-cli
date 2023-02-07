@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet/upgrades"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
@@ -59,7 +58,7 @@ func upgradeExportCmd(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	fileBytes, err := upgrades.ReadUpgradeFile(subnetName, app)
+	fileBytes, err := app.ReadUpgradeFile(subnetName)
 	if err != nil {
 		return err
 	}

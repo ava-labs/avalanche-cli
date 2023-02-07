@@ -26,8 +26,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// errGRPCTimeout is a common error message if the gRPC server can't be reached
-var errGRPCTimeout = errors.New("timed out trying to contact backend controller, it is most probably not running")
+// ErrGRPCTimeout is a common error message if the gRPC server can't be reached
+var ErrGRPCTimeout = errors.New("timed out trying to contact backend controller, it is most probably not running")
 
 // ProcessChecker is responsible for checking if the gRPC server is running
 type ProcessChecker interface {
@@ -62,7 +62,7 @@ func NewGRPCClient() (client.Client, error) {
 		DialTimeout: gRPCDialTimeout,
 	}, log)
 	if errors.Is(err, context.DeadlineExceeded) {
-		err = errGRPCTimeout
+		err = ErrGRPCTimeout
 	}
 	return client, err
 }
