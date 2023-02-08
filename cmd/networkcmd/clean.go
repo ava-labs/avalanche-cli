@@ -3,7 +3,6 @@
 package networkcmd
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -59,34 +58,17 @@ func clean(*cobra.Command, []string) error {
 		binDir := filepath.Join(app.GetBaseDir(), constants.AvalancheCliBinDir)
 		cleanBins(binDir)
 		_ = killAllBackendsByName()
-	} else {
-		// Iterate over all installed avalanchego versions and remove all plugins from their
-		// plugin dirs except for the c-chain plugin
+	}
 
-		// Check if dir exists. If not, no work to be done
-		if _, err := os.Stat(app.GetAvalanchegoBinDir()); errors.Is(err, os.ErrNotExist) {
-			// path/to/whatever does *not* exist
-			return nil
-		}
-
-		installedVersions, err := os.ReadDir(app.GetAvalanchegoBinDir())
-		if err != nil {
+	// Remove all plugins from plugin dir
+	pluginDir := app.GetPluginsDir()
+	installedPlugins, err := os.ReadDir(pluginDir)
+	if err != nil {
+		return err
+	}
+	for _, plugin := range installedPlugins {
+		if err = os.Remove(filepath.Join(pluginDir, plugin.Name())); err != nil {
 			return err
-		}
-
-		for _, avagoDir := range installedVersions {
-			pluginDir := filepath.Join(app.GetAvalanchegoBinDir(), avagoDir.Name(), "plugins")
-			installedPlugins, err := os.ReadDir(pluginDir)
-			if err != nil {
-				return err
-			}
-			for _, plugin := range installedPlugins {
-				if plugin.Name() != constants.EVMPlugin {
-					if err = os.Remove(filepath.Join(pluginDir, plugin.Name())); err != nil {
-						return err
-					}
-				}
-			}
 		}
 	}
 

@@ -155,6 +155,12 @@ func setupEnv() (string, error) {
 		os.Exit(1)
 	}
 
+	pluginDir := filepath.Join(baseDir, constants.PluginDir)
+	if err = os.MkdirAll(pluginDir, os.ModePerm); err != nil {
+		fmt.Printf("failed creating the plugin dir %s: %s\n", pluginDir, err)
+		os.Exit(1)
+	}
+
 	return baseDir, nil
 }
 

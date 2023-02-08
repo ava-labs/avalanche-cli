@@ -9,13 +9,13 @@ type PluginBinaryDownloader struct {
 	mock.Mock
 }
 
-// InstallVM provides a mock function with given fields: vmID, vmBin, pluginDir
-func (_m *PluginBinaryDownloader) InstallVM(vmID string, vmBin string, pluginDir string) error {
-	ret := _m.Called(vmID, vmBin, pluginDir)
+// InstallVM provides a mock function with given fields: vmID, vmBin
+func (_m *PluginBinaryDownloader) InstallVM(vmID string, vmBin string) error {
+	ret := _m.Called(vmID, vmBin)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, string, string) error); ok {
-		r0 = rf(vmID, vmBin, pluginDir)
+	if rf, ok := ret.Get(0).(func(string, string) error); ok {
+		r0 = rf(vmID, vmBin)
 	} else {
 		r0 = ret.Error(0)
 	}
