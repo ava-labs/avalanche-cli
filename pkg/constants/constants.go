@@ -125,4 +125,7 @@ const (
 	BlockchainIDLabel = "BlockchainID: "
 
 	PluginDir = "plugins"
+
+	TimestampFormat = "20060102150405"
+	TmpSnapshotName = "tmp-snapshot"
 )

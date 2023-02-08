@@ -22,10 +22,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	timestampFormat  = "20060102150405"
-	tmpSnapshotInfix = "-tmp-"
-)
+const tmpSnapshotInfix = "-tmp-"
 
 var (
 	ErrNetworkNotStartedOutput = "No local network running. Please start the network first."
@@ -168,7 +165,7 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 	}
 
 	// save a temporary snapshot
-	snapName := subnetName + tmpSnapshotInfix + time.Now().Format(timestampFormat)
+	snapName := subnetName + tmpSnapshotInfix + time.Now().Format(constants.TimestampFormat)
 	app.Log.Debug("saving temporary snapshot for upgrade bytes", zap.String("snapshot-name", snapName))
 	_, err = cli.SaveSnapshot(ctx, snapName)
 	if err != nil {

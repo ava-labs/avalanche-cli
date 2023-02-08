@@ -301,7 +301,8 @@ func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
 		if err != nil {
 			return fmt.Errorf("failed to install spaces-vm: %w", err)
 		}
-		// case models.CustomVM:
+	case models.CustomVM:
+		return errors.New("unimplemented")
 		// // update the binary in the network runner's active directory and restart the network
 		// vmBin, err = binutils.SetupCustomVM(app, targetVersion)
 	default:
