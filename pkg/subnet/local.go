@@ -110,7 +110,10 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 //   - waits completion of operation
 //   - show status
 func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, error) {
+	fmt.Println("Pre avago:", d.avagoVersion)
 	avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
+	fmt.Println("AvalancheGoBinPath: ", avalancheGoBinPath)
+	fmt.Println("PluginDir: ", pluginDir)
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}

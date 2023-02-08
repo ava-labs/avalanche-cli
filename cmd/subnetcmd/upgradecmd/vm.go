@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -280,8 +281,38 @@ func updateFutureVM(sc models.Sidecar, targetVersion string) error {
 	return nil
 }
 
-func updateExistingLocalVM(_ models.Sidecar, _ string) error {
-	ux.Logger.PrintToUser("Coming soon. For now, please upgrade your existing deployments and redeploy the subnet.")
+func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
+	// ux.Logger.PrintToUser("Coming soon. For now, please upgrade your existing deployments and redeploy the subnet.")
+	vmid, err := utils.VMID(sc.Name)
+	if err != nil {
+		return err
+	}
+	var vmBin string
+	switch sc.VM {
+	case models.SubnetEvm:
+		// update the binary in the network runner's active directory and restart the network
+		vmBin, err = binutils.SetupSubnetEVM(app, targetVersion)
+		if err != nil {
+			return fmt.Errorf("failed to install subnet-evm: %w", err)
+		}
+	case models.SpacesVM:
+		// update the binary in the network runner's active directory and restart the network
+		vmBin, err = binutils.SetupSpacesVM(app, targetVersion)
+		if err != nil {
+			return fmt.Errorf("failed to install spaces-vm: %w", err)
+		}
+		// case models.CustomVM:
+		// // update the binary in the network runner's active directory and restart the network
+		// vmBin, err = binutils.SetupCustomVM(app, targetVersion)
+	default:
+		return errors.New("unknown VM type")
+	}
+
+	// Update the binary in the network runner's active directory and restart the network
+	if err := binutils.UpgradeVM(app, vmid.String(), vmBin); err != nil {
+		return err
+	}
+
 	return nil
 }
 

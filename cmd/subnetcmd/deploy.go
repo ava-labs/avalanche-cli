@@ -244,6 +244,7 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 			}
 		}
 
+		fmt.Println("User avago", userProvidedAvagoVersion)
 		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, vmBin)
 		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
 		if err != nil {
