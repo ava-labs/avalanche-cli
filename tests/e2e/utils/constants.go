@@ -31,4 +31,6 @@ const (
 	SpacesVMGenesisPath       = "tests/e2e/assets/test_spacesvm_genesis.json"
 	EwoqKeyPath               = "tests/e2e/assets/ewoq_key.pk"
 	SubnetEvmAllowFeeRecpPath = "tests/e2e/assets/test_subnet_evm_allowFeeRecps_genesis.json"
+
+	PluginDir = baseDir + "/plugins"
 )

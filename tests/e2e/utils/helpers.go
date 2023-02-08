@@ -781,3 +781,21 @@ func FundLedgerAddress() error {
 
 	return nil
 }
+
+func GetPluginBinaries() ([]string, error) {
+	// load plugin files from the plugin directory
+	files, err := os.ReadDir(PluginDir)
+	if err != nil {
+		return nil, err
+	}
+
+	pluginFiles := []string{}
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		pluginFiles = append(pluginFiles, filepath.Join(PluginDir, file.Name()))
+	}
+
+	return pluginFiles, nil
+}
