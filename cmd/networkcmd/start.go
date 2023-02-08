@@ -49,7 +49,7 @@ func StartNetwork(*cobra.Command, []string) error {
 		return err
 	}
 
-	avalancheGoBinPath, pluginDir, err := sd.SetupLocalEnv()
+	avalancheGoBinPath, err := sd.SetupLocalEnv()
 	if err != nil {
 		return err
 	}
@@ -72,6 +72,8 @@ func StartNetwork(*cobra.Command, []string) error {
 	if err != nil {
 		return err
 	}
+
+	pluginDir := app.GetPluginsDir()
 
 	loadSnapshotOpts := []client.OpOption{
 		client.WithExecPath(avalancheGoBinPath),

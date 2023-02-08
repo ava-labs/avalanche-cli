@@ -124,4 +124,6 @@ const (
 
 	SubnetIDLabel     = "SubnetID: "
 	BlockchainIDLabel = "BlockchainID: "
+
+	PluginDir = "plugins"
 )

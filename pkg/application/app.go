@@ -72,6 +72,10 @@ func (app *Avalanche) GetCustomVMDir() string {
 	return filepath.Join(app.baseDir, constants.CustomVMDir)
 }
 
+func (app *Avalanche) GetPluginsDir() string {
+	return filepath.Join(app.baseDir, constants.PluginDir)
+}
+
 func (app *Avalanche) GetAvalanchegoBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.AvalancheGoInstallDir)
 }

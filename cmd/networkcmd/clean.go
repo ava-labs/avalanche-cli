@@ -69,22 +69,15 @@ func clean(*cobra.Command, []string) error {
 			return nil
 		}
 
-		installedVersions, err := os.ReadDir(app.GetAvalanchegoBinDir())
+		pluginDir := app.GetPluginsDir()
+		installedPlugins, err := os.ReadDir(pluginDir)
 		if err != nil {
 			return err
 		}
-
-		for _, avagoDir := range installedVersions {
-			pluginDir := filepath.Join(app.GetAvalanchegoBinDir(), avagoDir.Name(), "plugins")
-			installedPlugins, err := os.ReadDir(pluginDir)
-			if err != nil {
-				return err
-			}
-			for _, plugin := range installedPlugins {
-				if plugin.Name() != constants.EVMPlugin {
-					if err = os.Remove(filepath.Join(pluginDir, plugin.Name())); err != nil {
-						return err
-					}
+		for _, plugin := range installedPlugins {
+			if plugin.Name() != constants.EVMPlugin {
+				if err = os.Remove(filepath.Join(pluginDir, plugin.Name())); err != nil {
+					return err
 				}
 			}
 		}

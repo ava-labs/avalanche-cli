@@ -110,7 +110,7 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 //   - waits completion of operation
 //   - show status
 func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, error) {
-	avalancheGoBinPath, pluginDir, err := d.SetupLocalEnv()
+	avalancheGoBinPath, err := d.SetupLocalEnv()
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
@@ -147,14 +147,14 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		return ids.Empty, ids.Empty, nil
 	}
 
-	if err := d.installPlugin(chainVMID, d.vmBin, pluginDir); err != nil {
+	if err := d.installPlugin(chainVMID, d.vmBin); err != nil {
 		return ids.Empty, ids.Empty, err
 	}
 
 	ux.Logger.PrintToUser("VMs ready.")
 
 	if !networkBooted {
-		if err := d.startNetwork(ctx, cli, avalancheGoBinPath, pluginDir, runDir); err != nil {
+		if err := d.startNetwork(ctx, cli, avalancheGoBinPath, runDir); err != nil {
 			return ids.Empty, ids.Empty, err
 		}
 	}
@@ -303,28 +303,28 @@ func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte) err
 // * sets up default snapshot if not installed
 // * checks if avalanchego is installed in the local binary path
 // * if not, it downloads it and installs it (os - and archive dependent)
-// * returns the location of the avalanchego path and plugin
-func (d *LocalDeployer) SetupLocalEnv() (string, string, error) {
+// * returns the location of the avalanchego path
+func (d *LocalDeployer) SetupLocalEnv() (string, error) {
 	err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false)
 	if err != nil {
-		return "", "", fmt.Errorf("failed setting up snapshots: %w", err)
+		return "", fmt.Errorf("failed setting up snapshots: %w", err)
 	}
 
 	avagoDir, err := d.setupLocalEnv()
 	if err != nil {
-		return "", "", fmt.Errorf("failed setting up local environment: %w", err)
+		return "", fmt.Errorf("failed setting up local environment: %w", err)
 	}
 
-	pluginDir := filepath.Join(avagoDir, "plugins")
+	pluginDir := d.app.GetPluginsDir()
 	avalancheGoBinPath := filepath.Join(avagoDir, "avalanchego")
 
 	if err := os.MkdirAll(pluginDir, constants.DefaultPerms755); err != nil {
-		return "", "", fmt.Errorf("could not create pluginDir %s", pluginDir)
+		return "", fmt.Errorf("could not create pluginDir %s", pluginDir)
 	}
 
 	exists, err := storage.FolderExists(pluginDir)
 	if !exists || err != nil {
-		return "", "", fmt.Errorf("evaluated pluginDir to be %s but it does not exist", pluginDir)
+		return "", fmt.Errorf("evaluated pluginDir to be %s but it does not exist", pluginDir)
 	}
 
 	// TODO: we need some better version management here
@@ -332,11 +332,11 @@ func (d *LocalDeployer) SetupLocalEnv() (string, string, error) {
 	// * decide if force update or give user choice
 	exists, err = storage.FileExists(avalancheGoBinPath)
 	if !exists || err != nil {
-		return "", "", fmt.Errorf(
+		return "", fmt.Errorf(
 			"evaluated avalancheGoBinPath to be %s but it does not exist", avalancheGoBinPath)
 	}
 
-	return avalancheGoBinPath, pluginDir, nil
+	return avalancheGoBinPath, nil
 }
 
 func (d *LocalDeployer) setupLocalEnv() (string, error) {
@@ -385,9 +385,8 @@ func alreadyDeployed(chainVMID ids.ID, clusterInfo *rpcpb.ClusterInfo) bool {
 func (d *LocalDeployer) installPlugin(
 	vmID ids.ID,
 	vmBin string,
-	pluginDir string,
 ) error {
-	return d.binaryDownloader.InstallVM(vmID.String(), vmBin, pluginDir)
+	return d.binaryDownloader.InstallVM(vmID.String(), vmBin)
 }
 
 func getExpectedDefaultSnapshotSHA256Sum() (string, error) {
@@ -470,7 +469,6 @@ func (d *LocalDeployer) startNetwork(
 	ctx context.Context,
 	cli client.Client,
 	avalancheGoBinPath string,
-	pluginDir string,
 	runDir string,
 ) error {
 	ux.Logger.PrintToUser("Starting network...")
@@ -478,7 +476,7 @@ func (d *LocalDeployer) startNetwork(
 		client.WithExecPath(avalancheGoBinPath),
 		client.WithRootDataDir(runDir),
 		client.WithReassignPortsIfUsed(true),
-		client.WithPluginDir(pluginDir),
+		client.WithPluginDir(d.app.GetPluginsDir()),
 	}
 
 	// load global node configs if they exist
