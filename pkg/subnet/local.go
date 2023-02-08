@@ -155,12 +155,20 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	if !networkBooted {
 		if err := d.startNetwork(ctx, cli, avalancheGoBinPath, runDir); err != nil {
+			secondErr := d.removeInstalledPlugin(chainVMID)
+			if secondErr != nil {
+				ux.Logger.PrintToUser("Failed to remove plugin binary: %s", secondErr)
+			}
 			return ids.Empty, ids.Empty, err
 		}
 	}
 
 	clusterInfo, err = WaitForHealthy(ctx, cli)
 	if err != nil {
+		secondErr := d.removeInstalledPlugin(chainVMID)
+		if secondErr != nil {
+			ux.Logger.PrintToUser("Failed to remove plugin binary: %s", secondErr)
+		}
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 	}
 	subnetIDs := clusterInfo.Subnets
@@ -207,6 +215,10 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		blockchainSpecs,
 	)
 	if err != nil {
+		secondErr := d.removeInstalledPlugin(chainVMID)
+		if secondErr != nil {
+			ux.Logger.PrintToUser("Failed to remove plugin binary: %s", secondErr)
+		}
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to deploy blockchain: %w", err)
 	}
 
@@ -217,6 +229,10 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	clusterInfo, err = WaitForHealthy(ctx, cli)
 	if err != nil {
+		secondErr := d.removeInstalledPlugin(chainVMID)
+		if secondErr != nil {
+			ux.Logger.PrintToUser("Failed to remove plugin binary: %s", secondErr)
+		}
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 	}
 
@@ -387,6 +403,13 @@ func (d *LocalDeployer) installPlugin(
 	vmBin string,
 ) error {
 	return d.binaryDownloader.InstallVM(vmID.String(), vmBin)
+}
+
+// get list of all needed plugins and install them
+func (d *LocalDeployer) removeInstalledPlugin(
+	vmID ids.ID,
+) error {
+	return d.binaryDownloader.RemoveVM(vmID.String())
 }
 
 func getExpectedDefaultSnapshotSHA256Sum() (string, error) {
