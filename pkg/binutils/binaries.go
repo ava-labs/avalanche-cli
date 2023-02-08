@@ -25,7 +25,7 @@ var (
 )
 
 type PluginBinaryDownloader interface {
-	InstallVM(vmID, vmBin, pluginDir string) error
+	InstallVM(vmID, vmBin string) error
 }
 
 type BinaryChecker interface {
@@ -205,9 +205,9 @@ func (*binaryChecker) ExistsWithVersion(binDir, binPrefix, version string) (bool
 	return len(match) != 0, nil
 }
 
-func (*pluginBinaryDownloader) InstallVM(vmID, vmBin, pluginDir string) error {
+func (pbd *pluginBinaryDownloader) InstallVM(vmID, vmBin string) error {
 	// target of VM install
-	binaryPath := filepath.Join(pluginDir, vmID)
+	binaryPath := filepath.Join(pbd.app.GetPluginsDir(), vmID)
 
 	// check if binary is already present, this should never happen
 	if _, err := os.Stat(binaryPath); err == nil {
