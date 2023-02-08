@@ -784,7 +784,8 @@ func FundLedgerAddress() error {
 
 func GetPluginBinaries() ([]string, error) {
 	// load plugin files from the plugin directory
-	files, err := os.ReadDir(PluginDir)
+	pluginDir := path.Join(GetBaseDir(), PluginDirExt)
+	files, err := os.ReadDir(pluginDir)
 	if err != nil {
 		return nil, err
 	}
@@ -794,7 +795,7 @@ func GetPluginBinaries() ([]string, error) {
 		if file.IsDir() {
 			continue
 		}
-		pluginFiles = append(pluginFiles, filepath.Join(PluginDir, file.Name()))
+		pluginFiles = append(pluginFiles, filepath.Join(pluginDir, file.Name()))
 	}
 
 	return pluginFiles, nil

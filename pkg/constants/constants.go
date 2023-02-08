@@ -81,7 +81,6 @@ const (
 	SubnetEVMInstallDir   = "subnet-evm"
 	SpacesVMInstallDir    = "spacesvm"
 
-	EVMPlugin    = "evm"
 	SubnetEVMBin = "subnet-evm"
 	SpacesVMBin  = "spacesvm"
 
