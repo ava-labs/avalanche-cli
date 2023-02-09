@@ -125,6 +125,12 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	ctx := binutils.GetAsyncContext()
 
+	// loading sidecar before it's needed so we catch any error early
+	sc, err := d.app.LoadSidecar(chain)
+	if err != nil {
+		return ids.Empty, ids.Empty, fmt.Errorf("failed to load sidecar: %w", err)
+	}
+
 	// check for network and get VM info
 	networkBooted := true
 	clusterInfo, err := WaitForHealthy(ctx, cli)
@@ -146,12 +152,6 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		ux.Logger.PrintToUser("Subnet %s has already been deployed", chain)
 		return ids.Empty, ids.Empty, nil
 	}
-
-	if err := d.installPlugin(chainVMID, d.vmBin); err != nil {
-		return ids.Empty, ids.Empty, err
-	}
-
-	ux.Logger.PrintToUser("VMs ready.")
 
 	if !networkBooted {
 		if err := d.startNetwork(ctx, cli, avalancheGoBinPath, runDir); err != nil {
@@ -191,6 +191,14 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	if _, err := os.Stat(perNodeChainConfigFile); err == nil {
 		perNodeChainConfig = perNodeChainConfigFile
 	}
+
+	// install the plugin binary for the new VM
+	if err := d.installPlugin(chainVMID, d.vmBin); err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+
+	ux.Logger.PrintToUser("VMs ready.")
+
 	// create a new blockchain on the already started network, associated to
 	// the given VM ID, genesis, and available subnet ID
 	blockchainSpecs := []*rpcpb.BlockchainSpec{
@@ -207,6 +215,10 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		blockchainSpecs,
 	)
 	if err != nil {
+		pluginRemoveErr := d.removeInstalledPlugin(chainVMID)
+		if pluginRemoveErr != nil {
+			ux.Logger.PrintToUser("Failed to remove plugin binary: %s", pluginRemoveErr)
+		}
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to deploy blockchain: %w", err)
 	}
 
@@ -217,6 +229,10 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	clusterInfo, err = WaitForHealthy(ctx, cli)
 	if err != nil {
+		pluginRemoveErr := d.removeInstalledPlugin(chainVMID)
+		if pluginRemoveErr != nil {
+			ux.Logger.PrintToUser("Failed to remove plugin binary: %s", pluginRemoveErr)
+		}
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 	}
 
@@ -232,11 +248,6 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	ux.Logger.PrintToUser("Browser Extension connection details (any node URL from above works):")
 	ux.Logger.PrintToUser("RPC URL:          %s", firstURL[strings.LastIndex(firstURL, "http"):])
 
-	// extra ux based on vm type
-	sc, err := d.app.LoadSidecar(chain)
-	if err != nil {
-		return ids.Empty, ids.Empty, fmt.Errorf("failed to load sidecar: %w", err)
-	}
 	switch sc.VM {
 	case models.SubnetEvm:
 		if err := d.printExtraEvmInfo(chain, chainGenesis); err != nil {
@@ -387,6 +398,13 @@ func (d *LocalDeployer) installPlugin(
 	vmBin string,
 ) error {
 	return d.binaryDownloader.InstallVM(vmID.String(), vmBin)
+}
+
+// get list of all needed plugins and install them
+func (d *LocalDeployer) removeInstalledPlugin(
+	vmID ids.ID,
+) error {
+	return d.binaryDownloader.RemoveVM(vmID.String())
 }
 
 func getExpectedDefaultSnapshotSHA256Sum() (string, error) {

@@ -23,6 +23,20 @@ func (_m *PluginBinaryDownloader) InstallVM(vmID string, vmBin string) error {
 	return r0
 }
 
+// RemoveVM provides a mock function with given fields: vmID
+func (_m *PluginBinaryDownloader) RemoveVM(vmID string) error {
+	ret := _m.Called(vmID)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(vmID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 type mockConstructorTestingTNewPluginBinaryDownloader interface {
 	mock.TestingT
 	Cleanup(func())

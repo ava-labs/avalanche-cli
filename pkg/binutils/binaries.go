@@ -26,6 +26,7 @@ var (
 
 type PluginBinaryDownloader interface {
 	InstallVM(vmID, vmBin string) error
+	RemoveVM(vmID string) error
 }
 
 type BinaryChecker interface {
@@ -218,6 +219,23 @@ func (pbd *pluginBinaryDownloader) InstallVM(vmID, vmBin string) error {
 
 	if err := CopyFile(vmBin, binaryPath); err != nil {
 		return fmt.Errorf("failed copying custom vm to plugin dir: %w", err)
+	}
+	return nil
+}
+
+func (pbd *pluginBinaryDownloader) RemoveVM(vmID string) error {
+	// target of VM install
+	binaryPath := filepath.Join(pbd.app.GetPluginsDir(), vmID)
+
+	// check if binary is already present, this should never happen
+	if _, err := os.Stat(binaryPath); errors.Is(err, os.ErrNotExist) {
+		return errors.New("vm binary does not exist")
+	} else if err != nil {
+		return err
+	}
+
+	if err := os.Remove(binaryPath); err != nil {
+		return fmt.Errorf("failed deleting plugin: %w", err)
 	}
 	return nil
 }
