@@ -31,6 +31,7 @@ func UpgradeVM(app *application.Avalanche, vmID string, vmBinPath string) error 
 		return fmt.Errorf("failed to upgrade vm: %w", err)
 	}
 
+	// TODO this will fail if if this bumps the RPC version, especially if multiple subnets are running
 	app.Log.Debug("restarting network")
 
 	// restart network
