@@ -372,7 +372,7 @@ func GetFirstEndpoint(clusterInfo *rpcpb.ClusterInfo, chain string) string {
 	var endpoint string
 	for _, nodeInfo := range clusterInfo.NodeInfos {
 		for blockchainID, chainInfo := range clusterInfo.CustomChains {
-			if chainInfo.ChainName == chain && nodeInfo.Name == "node1" {
+			if chainInfo.ChainName == chain && nodeInfo.Name == clusterInfo.NodeNames[0] {
 				endpoint = fmt.Sprintf("Endpoint at node %s for blockchain %q with VM ID %q: %s/ext/bc/%s/rpc", nodeInfo.Name, blockchainID, chainInfo.VmId, nodeInfo.GetUri(), blockchainID)
 			}
 		}
