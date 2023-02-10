@@ -513,7 +513,7 @@ func (d *LocalDeployer) startNetwork(
 	if err != nil {
 		return fmt.Errorf("failed to start network :%w", err)
 	}
-	ux.Logger.PrintToUser("Logs for each node to be found on %s/nodeN/logs/ where N is the node number", pp.ClusterInfo.RootDataDir)
+	ux.Logger.PrintToUser("Node log path: %s/node<i>/logs", pp.ClusterInfo.RootDataDir)
 	ux.Logger.PrintToUser("Starting network...")
 	return nil
 }
