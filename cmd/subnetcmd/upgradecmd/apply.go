@@ -192,10 +192,8 @@ func applyLocalNetworkUpgrade(subnetName string, sc models.Sidecar) error {
 		return fmt.Errorf("failed waiting for network to become healthy: %w", err)
 	}
 
-	endpoints := subnet.GetEndpoints(clusterInfo)
-
 	fmt.Println()
-	if len(endpoints) > 0 {
+	if subnet.HasEndpoints(clusterInfo) {
 		ux.Logger.PrintToUser("Network restarted and ready to use. Upgrade bytes have been applied to running nodes at these endpoints.")
 
 		nextUpgrade, err := getEarliestTimestamp(precmpUpgrades)

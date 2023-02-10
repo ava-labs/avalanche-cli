@@ -113,10 +113,8 @@ func StartNetwork(*cobra.Command, []string) error {
 		return fmt.Errorf("failed waiting for network to become healthy: %w", err)
 	}
 
-	endpoints := subnet.GetEndpoints(clusterInfo)
-
 	fmt.Println()
-	if len(endpoints) > 0 {
+	if subnet.HasEndpoints(clusterInfo) {
 		ux.Logger.PrintToUser("Network ready to use. Local network node endpoints:")
 		ux.PrintTableEndpoints(clusterInfo)
 	}
