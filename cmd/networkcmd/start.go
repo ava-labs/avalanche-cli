@@ -93,7 +93,7 @@ func StartNetwork(*cobra.Command, []string) error {
 
 	ctx := binutils.GetAsyncContext()
 
-	_, err = cli.LoadSnapshot(
+	pp, err := cli.LoadSnapshot(
 		ctx,
 		snapshotName,
 		loadSnapshotOpts...,
@@ -107,6 +107,7 @@ func StartNetwork(*cobra.Command, []string) error {
 	} else {
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 	}
+	ux.Logger.PrintToUser("Logs for each node to be found on %s/nodeN/logs/ where N is the node number", pp.ClusterInfo.RootDataDir)
 
 	clusterInfo, err := subnet.WaitForHealthy(ctx, cli)
 	if err != nil {

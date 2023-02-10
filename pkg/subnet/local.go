@@ -489,7 +489,6 @@ func (d *LocalDeployer) startNetwork(
 	avalancheGoBinPath string,
 	runDir string,
 ) error {
-	ux.Logger.PrintToUser("Starting network...")
 	loadSnapshotOpts := []client.OpOption{
 		client.WithExecPath(avalancheGoBinPath),
 		client.WithRootDataDir(runDir),
@@ -506,7 +505,7 @@ func (d *LocalDeployer) startNetwork(
 		loadSnapshotOpts = append(loadSnapshotOpts, client.WithGlobalNodeConfig(configStr))
 	}
 
-	_, err = cli.LoadSnapshot(
+	pp, err := cli.LoadSnapshot(
 		ctx,
 		constants.DefaultSnapshotName,
 		loadSnapshotOpts...,
@@ -514,6 +513,8 @@ func (d *LocalDeployer) startNetwork(
 	if err != nil {
 		return fmt.Errorf("failed to start network :%w", err)
 	}
+	ux.Logger.PrintToUser("Logs for each node to be found on %s/nodeN/logs/ where N is the node number", pp.ClusterInfo.RootDataDir)
+	ux.Logger.PrintToUser("Starting network...")
 	return nil
 }
 
