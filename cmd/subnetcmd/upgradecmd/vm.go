@@ -111,7 +111,7 @@ func upgradeVM(_ *cobra.Command, args []string) error {
 
 	vmType := sc.VM
 	if vmType == models.SubnetEvm || vmType == models.SpacesVM {
-		return selectUpdateOption(subnetName, vmType, sc, networkToUpgrade)
+		return selectUpdateOption(vmType, sc, networkToUpgrade)
 	}
 
 	// Must be a custom update
@@ -168,7 +168,7 @@ func selectNetworkToUpgrade(sc models.Sidecar, upgradeOptions []string) (string,
 	return selectedDeployment, nil
 }
 
-func selectUpdateOption(subnetName string, vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
+func selectUpdateOption(vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
 	switch {
 	case useLatest:
 		return updateToLatestVersion(vmType, sc, networkToUpgrade)
@@ -221,7 +221,7 @@ func updateToLatestVersion(vmType models.VMType, sc models.Sidecar, networkToUpg
 		return nil
 	}
 
-	return updateVMByNetwork(sc, latestVersion, networkToUpgrade, "")
+	return updateVMByNetwork(sc, latestVersion, networkToUpgrade)
 }
 
 func updateToSpecificVersion(sc models.Sidecar, networkToUpgrade string) error {
@@ -243,15 +243,15 @@ func updateToSpecificVersion(sc models.Sidecar, networkToUpgrade string) error {
 		return nil
 	}
 
-	return updateVMByNetwork(sc, targetVersion, networkToUpgrade, "")
+	return updateVMByNetwork(sc, targetVersion, networkToUpgrade)
 }
 
-func updateVMByNetwork(sc models.Sidecar, targetVersion string, networkToUpgrade string, customVMPath string) error {
+func updateVMByNetwork(sc models.Sidecar, targetVersion string, networkToUpgrade string) error {
 	switch networkToUpgrade {
 	case futureDeployment:
 		return updateFutureVM(sc, targetVersion)
 	case localDeployment:
-		return updateExistingLocalVM(sc, targetVersion, customVMPath)
+		return updateExistingLocalVM(sc, targetVersion)
 	case fujiDeployment:
 		return chooseManualOrAutomatic(sc, targetVersion, networkToUpgrade)
 	case mainnetDeployment:
@@ -277,7 +277,7 @@ func updateToCustomBin(sc models.Sidecar, networkToUpgrade, binaryPath string) e
 	sc.VM = models.CustomVM
 	targetVersion = ""
 
-	return updateVMByNetwork(sc, targetVersion, networkToUpgrade, binaryPath)
+	return updateVMByNetwork(sc, targetVersion, networkToUpgrade)
 }
 
 func updateFutureVM(sc models.Sidecar, targetVersion string) error {
@@ -290,7 +290,7 @@ func updateFutureVM(sc models.Sidecar, targetVersion string) error {
 	return nil
 }
 
-func updateExistingLocalVM(sc models.Sidecar, targetVersion, customVMPath string) error {
+func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
 	// check network has been stopped
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
