@@ -92,7 +92,7 @@ const (
 	APMPluginDir          = "apm_plugins"
 
 	// #nosec G101
-	GithubAPITokenEnvVarName = "GITHUB_TOKEN"
+	GithubAPITokenEnvVarName = "AVALANCHE_CLI_GITHUB_TOKEN"
 
 	ReposDir       = "repos"
 	SubnetDir      = "subnets"
