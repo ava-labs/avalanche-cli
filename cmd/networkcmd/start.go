@@ -93,7 +93,7 @@ func StartNetwork(*cobra.Command, []string) error {
 
 	ctx := binutils.GetAsyncContext()
 
-	_, err = cli.LoadSnapshot(
+	pp, err := cli.LoadSnapshot(
 		ctx,
 		snapshotName,
 		loadSnapshotOpts...,
@@ -106,6 +106,7 @@ func StartNetwork(*cobra.Command, []string) error {
 		ux.Logger.PrintToUser("Network has already been booted. Wait until healthy...")
 	} else {
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
+		ux.Logger.PrintToUser("Node log path: %s/node<i>/logs", pp.ClusterInfo.RootDataDir)
 	}
 
 	clusterInfo, err := subnet.WaitForHealthy(ctx, cli)
@@ -113,10 +114,8 @@ func StartNetwork(*cobra.Command, []string) error {
 		return fmt.Errorf("failed waiting for network to become healthy: %w", err)
 	}
 
-	endpoints := subnet.GetEndpoints(clusterInfo)
-
 	fmt.Println()
-	if len(endpoints) > 0 {
+	if subnet.HasEndpoints(clusterInfo) {
 		ux.Logger.PrintToUser("Network ready to use. Local network node endpoints:")
 		ux.PrintTableEndpoints(clusterInfo)
 	}

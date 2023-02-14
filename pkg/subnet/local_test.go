@@ -40,6 +40,7 @@ var (
 		ClusterInfo: &rpcpb.ClusterInfo{
 			Healthy:             true, // currently actually not checked, should it, if CustomVMsHealthy already is?
 			CustomChainsHealthy: true,
+			NodeNames:           []string{"testNode1", "testNode2"},
 			NodeInfos: map[string]*rpcpb.NodeInfo{
 				"testNode1": {
 					Name: "testNode1",
