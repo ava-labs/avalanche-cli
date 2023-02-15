@@ -310,25 +310,26 @@ func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
 	}
 	var vmBin string
 	switch sc.VM {
-	// setup the binary for the new VM
+	// download the binary and prepare to copy it
 	case models.SubnetEvm:
 		vmBin, err = binutils.SetupSubnetEVM(app, targetVersion)
 		if err != nil {
 			return fmt.Errorf("failed to install subnet-evm: %w", err)
 		}
 	case models.SpacesVM:
-		// update the binary in the network runner's active directory and restart the network
+		// download the binary and prepare to copy it
 		vmBin, err = binutils.SetupSpacesVM(app, targetVersion)
 		if err != nil {
 			return fmt.Errorf("failed to install spaces-vm: %w", err)
 		}
 	case models.CustomVM:
+		// get the path to the already copied binary
 		vmBin = binutils.SetupCustomBin(app, sc.Name)
 	default:
 		return errors.New("unknown VM type")
 	}
 
-	// Update the binary in the network runner's active directory and restart the network
+	// Update the binary in the plugin directory
 	if err := binutils.UpgradeVM(app, vmid.String(), vmBin); err != nil {
 		return err
 	}
