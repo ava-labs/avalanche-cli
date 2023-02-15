@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/rpc"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/coreth/core"
 	"github.com/ava-labs/spacesvm/chain"
 	"github.com/spf13/cobra"
@@ -23,7 +24,7 @@ import (
 
 var (
 	genesisFilePath string
-	subnetIDstr     string
+	blockchainIDstr string
 	nodeURL         string
 )
 
@@ -37,6 +38,8 @@ func newImportFromNetworkCmd() *cobra.Command {
 		Args:         cobra.MaximumNArgs(1),
 		Long: `The subnet import public command will import a subnet configuration from a running network.
 
+Currently this only supports importing one single chain from a subnet. 
+Therefore, this import asks the blockchain ID from the user.
 The genesis file should be available from the disk for this to work. 
 By default, an imported subnet will not overwrite an existing subnet with the same name. 
 To allow overwrites, provide the --force flag.`,
@@ -64,10 +67,10 @@ To allow overwrites, provide the --force flag.`,
 		"path to the genesis file",
 	)
 	cmd.Flags().StringVar(
-		&subnetIDstr,
-		"subnet-id",
+		&blockchainIDstr,
+		"blockchain-id",
 		"",
-		"the subnet ID",
+		"the blockchain ID",
 	)
 	return cmd
 }
@@ -125,14 +128,14 @@ func importRunningSubnet(*cobra.Command, []string) error {
 		}
 	}
 
-	var subnetID ids.ID
-	if subnetIDstr == "" {
-		subnetID, err = app.Prompt.CaptureID("What is the ID of the subnet?")
+	var blockchainID ids.ID
+	if blockchainIDstr == "" {
+		blockchainID, err = app.Prompt.CaptureID("What is the ID of the blockchain?")
 		if err != nil {
 			return err
 		}
 	} else {
-		subnetID, err = ids.FromString(subnetIDstr)
+		blockchainID, err = ids.FromString(blockchainIDstr)
 		if err != nil {
 			return err
 		}
@@ -152,32 +155,34 @@ func importRunningSubnet(*cobra.Command, []string) error {
 
 	ux.Logger.PrintToUser("Getting information from the %s network...", network.String())
 
-	chains, err := client.GetBlockchains(ctx, options...)
+	txBytes, err := client.GetTx(ctx, blockchainID, options...)
 	if err != nil {
 		return err
 	}
 
 	var (
-		blockchainID, vmID ids.ID
-		subnetName         string
+		vmID, subnetID ids.ID
+		tx             txs.Tx
+		subnetName     string
 	)
 
-	for _, ch := range chains {
-		// NOTE: This supports only one chain per subnet
-		if ch.SubnetID == subnetID {
-			blockchainID = ch.ID
-			vmID = ch.VMID
-			subnetName = ch.Name
-			break
-		}
+	_, err = txs.Codec.Unmarshal(txBytes, &tx)
+	if err != nil {
+		return fmt.Errorf("failed unmarshaling the createChainTx: %w", err)
 	}
 
-	if blockchainID == ids.Empty || vmID == ids.Empty {
-		return fmt.Errorf("subnet ID %s not found on this network", subnetIDstr)
+	createChainTx, ok := tx.Unsigned.(*txs.CreateChainTx)
+	if !ok {
+		return fmt.Errorf("expected a CreateChainTx, got %T", createChainTx)
 	}
 
-	ux.Logger.PrintToUser("Retrieved information. BlockchainID: %s, Name: %s, VMID: %s",
+	vmID = createChainTx.VMID
+	subnetID = createChainTx.SubnetID
+	subnetName = createChainTx.ChainName
+
+	ux.Logger.PrintToUser("Retrieved information. BlockchainID: %s, SubnetID: %s, Name: %s, VMID: %s",
 		blockchainID.String(),
+		subnetID.String(),
 		subnetName,
 		vmID.String(),
 	)
