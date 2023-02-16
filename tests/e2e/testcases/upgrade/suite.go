@@ -30,8 +30,11 @@ const (
 	subnetName       = "e2eSubnetTest"
 	secondSubnetName = "e2eSecondSubnetTest"
 
-	subnetEVMVersion1 = "v0.4.0"
-	subnetEVMVersion2 = "v0.4.1"
+	subnetEVMVersion1 = "v0.4.7"
+	subnetEVMVersion2 = "v0.4.8"
+
+	avagoRPC1Version = "v1.9.5"
+	avagoRPC2Version = "v1.9.8"
 
 	controlKeys = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 	keyName     = "ewoq"
@@ -90,8 +93,6 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.BeforeEach(func() {
-		// local network
-		_ = commands.StartNetwork()
 		output, err := commands.CreateKeyFromPath(keyName, utils.EwoqKeyPath)
 		if err != nil {
 			fmt.Println(output)
@@ -183,6 +184,84 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 		commands.DeleteSubnetConfig(subnetName)
 	})
 
+	ginkgo.It("upgrade SubnetEVM local deployment", func() {
+		// create and deploy
+		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+
+		// check running version
+		// remove string suffix starting with /ext
+		nodeURI := strings.Split(rpcs[0], "/ext")[0]
+		vmid, err := anr_utils.VMID(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		version, err := utils.GetNodeVMVersion(nodeURI, vmid.String())
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(version).Should(gomega.Equal(subnetEVMVersion1))
+
+		// stop network
+		commands.StopNetwork()
+
+		// upgrade
+		commands.UpgradeVMLocal(subnetName, subnetEVMVersion2)
+
+		// restart network
+		commands.StartNetwork()
+
+		// check running version
+		version, err = utils.GetNodeVMVersion(nodeURI, vmid.String())
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(version).Should(gomega.Equal(subnetEVMVersion2))
+
+		commands.DeleteSubnetConfig(subnetName)
+	})
+
+	ginkgo.It("upgrade custom vm local deployment", func() {
+		// download vm bins
+		customVMPath1, err := utils.DownloadCustomVMBin(subnetEVMVersion1)
+		gomega.Expect(err).Should(gomega.BeNil())
+		customVMPath2, err := utils.DownloadCustomVMBin(subnetEVMVersion2)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// create and deploy
+		commands.CreateCustomVMConfig(subnetName, utils.SubnetEvmGenesisPath, customVMPath1)
+		// need to set avago version manually since VMs are custom
+		commands.StartNetworkWithVersion(avagoRPC1Version)
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+
+		// check running version
+		// remove string suffix starting with /ext from rpc url to get node uri
+		nodeURI := strings.Split(rpcs[0], "/ext")[0]
+		vmid, err := anr_utils.VMID(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		version, err := utils.GetNodeVMVersion(nodeURI, vmid.String())
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(version).Should(gomega.Equal(subnetEVMVersion1))
+
+		// stop network
+		commands.StopNetwork()
+
+		// upgrade
+		commands.UpgradeCustomVMLocal(subnetName, customVMPath2)
+
+		// restart network
+		commands.StartNetworkWithVersion(avagoRPC2Version)
+
+		// check running version
+		version, err = utils.GetNodeVMVersion(nodeURI, vmid.String())
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(version).Should(gomega.Equal(subnetEVMVersion2))
+
+		commands.DeleteSubnetConfig(subnetName)
+	})
+
 	ginkgo.It("can update a subnet-evm to a custom VM", func() {
 		customVMPath, err := utils.DownloadCustomVMBin(binaryToVersion[utils.SoloSubnetEVMKey2])
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -218,6 +297,7 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can upgrade subnet-evm on public deployment", func() {
+		_ = commands.StartNetwork()
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 
 		// Simulate fuji deployment

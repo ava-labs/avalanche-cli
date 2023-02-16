@@ -13,6 +13,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-network-runner/server"
+	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -109,11 +111,11 @@ func upgradeVM(_ *cobra.Command, args []string) error {
 
 	vmType := sc.VM
 	if vmType == models.SubnetEvm || vmType == models.SpacesVM {
-		return selectUpdateOption(subnetName, vmType, sc, networkToUpgrade)
+		return selectUpdateOption(vmType, sc, networkToUpgrade)
 	}
 
 	// Must be a custom update
-	return updateToCustomBin(subnetName, sc, networkToUpgrade, binaryPathArg)
+	return updateToCustomBin(sc, networkToUpgrade, binaryPathArg)
 }
 
 // select which network to upgrade
@@ -166,14 +168,14 @@ func selectNetworkToUpgrade(sc models.Sidecar, upgradeOptions []string) (string,
 	return selectedDeployment, nil
 }
 
-func selectUpdateOption(subnetName string, vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
+func selectUpdateOption(vmType models.VMType, sc models.Sidecar, networkToUpgrade string) error {
 	switch {
 	case useLatest:
 		return updateToLatestVersion(vmType, sc, networkToUpgrade)
 	case targetVersion != "":
 		return updateToSpecificVersion(sc, networkToUpgrade)
 	case binaryPathArg != "":
-		return updateToCustomBin(subnetName, sc, networkToUpgrade, binaryPathArg)
+		return updateToCustomBin(sc, networkToUpgrade, binaryPathArg)
 	}
 
 	latestVersionUpdate := "Update to latest version"
@@ -194,7 +196,7 @@ func selectUpdateOption(subnetName string, vmType models.VMType, sc models.Sidec
 	case specificVersionUpdate:
 		return updateToSpecificVersion(sc, networkToUpgrade)
 	case customBinaryUpdate:
-		return updateToCustomBin(subnetName, sc, networkToUpgrade, binaryPathArg)
+		return updateToCustomBin(sc, networkToUpgrade, binaryPathArg)
 	default:
 		return errors.New("invalid option")
 	}
@@ -259,8 +261,16 @@ func updateVMByNetwork(sc models.Sidecar, targetVersion string, networkToUpgrade
 	}
 }
 
-func updateToCustomBin(subnetName string, sc models.Sidecar, networkToUpgrade, binaryPath string) error {
-	if err := vm.CopyCustomVM(app, subnetName, binaryPath); err != nil {
+func updateToCustomBin(sc models.Sidecar, networkToUpgrade, binaryPath string) error {
+	var err error
+	if binaryPath == "" {
+		binaryPath, err = app.Prompt.CaptureExistingFilepath("Enter path to custom binary")
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := vm.CopyCustomVM(app, sc.Name, binaryPath); err != nil {
 		return err
 	}
 
@@ -280,8 +290,53 @@ func updateFutureVM(sc models.Sidecar, targetVersion string) error {
 	return nil
 }
 
-func updateExistingLocalVM(_ models.Sidecar, _ string) error {
-	ux.Logger.PrintToUser("Coming soon. For now, please upgrade your existing deployments and redeploy the subnet.")
+func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
+	// check network has been stopped
+	cli, err := binutils.NewGRPCClient()
+	if err != nil {
+		return err
+	}
+	ctx := binutils.GetAsyncContext()
+
+	_, err = cli.Status(ctx)
+
+	if err == nil || !server.IsServerError(err, server.ErrNotBootstrapped) {
+		ux.Logger.PrintToUser("Please stop network before upgrading local VMs")
+		return errors.New("network is still running")
+	}
+
+	vmid, err := utils.VMID(sc.Name)
+	if err != nil {
+		return err
+	}
+	var vmBin string
+	switch sc.VM {
+	// download the binary and prepare to copy it
+	case models.SubnetEvm:
+		vmBin, err = binutils.SetupSubnetEVM(app, targetVersion)
+		if err != nil {
+			return fmt.Errorf("failed to install subnet-evm: %w", err)
+		}
+	case models.SpacesVM:
+		// download the binary and prepare to copy it
+		vmBin, err = binutils.SetupSpacesVM(app, targetVersion)
+		if err != nil {
+			return fmt.Errorf("failed to install spaces-vm: %w", err)
+		}
+	case models.CustomVM:
+		// get the path to the already copied binary
+		vmBin = binutils.SetupCustomBin(app, sc.Name)
+	default:
+		return errors.New("unknown VM type " + string(sc.VM))
+	}
+
+	// Update the binary in the plugin directory
+	if err := binutils.UpgradeVM(app, vmid.String(), vmBin); err != nil {
+		return err
+	}
+
+	ux.Logger.PrintToUser("Upgrade complete. Ready to restart the network.")
+
 	return nil
 }
 
