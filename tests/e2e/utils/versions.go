@@ -27,6 +27,26 @@ var (
 	_ VersionMapper = &versionMapper{}
 )
 
+/*
+VersionMapper keys and their usage:
+ * OnlyAvagoKey: 					Used when running one avalanchego only (no compatibility required)
+
+ * MultiAvago1Key					Used for the update scenario where avalanchego is updated and
+ * MultiAvago2Key    			both avalanchego versions need to be compatible.
+ * MultiAvagoSubnetEVMKey	This is the Subnet-EVM version compatible to the above scenario.
+
+ * LatestEVM2AvagoKey 	  Latest subnet-evm version
+ * LatestAvago2EVMKey     while this is the latest avalanchego compatible with that subnet-evm
+
+ * SoloSubnetEVMKey1 			This is used when we want to test subnet-evm versions where compatibility
+ * SoloSubnetEVMKey2      needs to be between the two subnet-evm versions
+ 													(latest might not be compatible with second latest)
+
+ * Spaces2Avago 					Latest spaces-vm version
+ * Avago2Spaces						Latest avalanchego version compatible with that spaces-vm
+
+*/
+
 // VersionMapper is an abstraction for retrieving version compatibility URLs
 // allowing unit tests without requiring external http calls.
 // The idea is to finally calculate which VM is compatible with which Avalanchego,
