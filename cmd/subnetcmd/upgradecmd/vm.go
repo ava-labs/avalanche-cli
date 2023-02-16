@@ -302,6 +302,7 @@ func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
 
 	if err == nil || !server.IsServerError(err, server.ErrNotBootstrapped) {
 		ux.Logger.PrintToUser("Please stop network before upgrading local VMs")
+		return errors.New("network is still running")
 	}
 
 	vmid, err := utils.VMID(sc.Name)
@@ -326,7 +327,7 @@ func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
 		// get the path to the already copied binary
 		vmBin = binutils.SetupCustomBin(app, sc.Name)
 	default:
-		return errors.New("unknown VM type")
+		return errors.New("unknown VM type " + string(sc.VM))
 	}
 
 	// Update the binary in the plugin directory

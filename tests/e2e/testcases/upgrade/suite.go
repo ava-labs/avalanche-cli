@@ -33,8 +33,8 @@ const (
 	subnetEVMVersion1 = "v0.4.7"
 	subnetEVMVersion2 = "v0.4.8"
 
-	avagoRPC22Version = "v1.9.8"
-	avagoRPC21Version = "v1.9.5"
+	avagoRPC1Version = "v1.9.5"
+	avagoRPC2Version = "v1.9.8"
 
 	controlKeys = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 	keyName     = "ewoq"
@@ -229,7 +229,7 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 		// create and deploy
 		commands.CreateCustomVMConfig(subnetName, utils.SubnetEvmGenesisPath, customVMPath1)
 		// need to set avago version manually since VMs are custom
-		commands.StartNetworkWithVersion(avagoRPC21Version)
+		commands.StartNetworkWithVersion(avagoRPC1Version)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
@@ -252,7 +252,7 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 		commands.UpgradeCustomVMLocal(subnetName, customVMPath2)
 
 		// restart network
-		commands.StartNetworkWithVersion(avagoRPC22Version)
+		commands.StartNetworkWithVersion(avagoRPC2Version)
 
 		// check running version
 		version, err = utils.GetNodeVMVersion(nodeURI, vmid.String())
