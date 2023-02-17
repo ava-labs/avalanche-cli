@@ -661,7 +661,6 @@ func GetKeychain(
 	if useLedger {
 		ledgerDevice, err := ledger.New()
 		if err != nil {
-			ux.Logger.PrintToUser(logging.LightRed.Wrap("Error accessing ledger device. Please update ledger app to >= v0.6.5."))
 			return kc, err
 		}
 		// ask for addresses here to print user msg for ledger interaction
@@ -678,7 +677,6 @@ func GetKeychain(
 		// get formatted addresses for ux
 		addresses, err := ledgerDevice.Addresses(ledgerIndices)
 		if err != nil {
-			ux.Logger.PrintToUser(logging.LightRed.Wrap("Error accessing ledger device. Please update ledger app to >= v0.6.5."))
 			return kc, err
 		}
 		addrStrs := []string{}
