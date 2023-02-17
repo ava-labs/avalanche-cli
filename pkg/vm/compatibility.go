@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -38,6 +39,9 @@ func GetRPCProtocolVersion(app *application.Avalanche, vmType models.VMType, vmV
 	if err = json.Unmarshal(compatibilityBytes, &parsedCompat); err != nil {
 		return 0, err
 	}
+
+	// ignore release candidate components
+	vmVersion = strings.Split(vmVersion, "-")[0]
 
 	version, ok := parsedCompat.RPCChainVMProtocolVersion[vmVersion]
 	if !ok {
