@@ -79,7 +79,7 @@ func TestGetRPCProtocolVersionMissing(t *testing.T) {
 	app.Downloader = mockDownloader
 
 	_, err := GetRPCProtocolVersion(app, models.SubnetEvm, testUnlistedAvagoVersion)
-	require.ErrorContains(err, "no RPC version found")
+	require.ErrorContains(err, "no RPC VM protocol version found")
 }
 
 func TestGetLatestAvalancheGoByProtocolVersion(t *testing.T) {

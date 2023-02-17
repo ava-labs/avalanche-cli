@@ -6,6 +6,7 @@ package vm
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -45,7 +46,7 @@ func GetRPCProtocolVersion(app *application.Avalanche, vmType models.VMType, vmV
 
 	version, ok := parsedCompat.RPCChainVMProtocolVersion[vmVersion]
 	if !ok {
-		return 0, errors.New("no RPC version found")
+		return 0, fmt.Errorf("no RPC VM protocol version found for %s %s. Consider using another %s version.", vmType, vmVersion, vmType)
 	}
 
 	return version, nil
