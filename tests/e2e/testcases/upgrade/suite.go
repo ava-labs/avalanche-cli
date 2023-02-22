@@ -245,11 +245,8 @@ var _ = ginkgo.Describe("[Upgrade local network]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("upgrade SubnetEVM local deployment", func() {
-		// create and deploy
-		subnetEVMVersion1 := binaryToVersion[utils.SoloSubnetEVMKey1]
-		subnetEVMVersion2 := binaryToVersion[utils.SoloSubnetEVMKey2]
 		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
-		deployOutput := commands.DeploySubnetLocallyWithArgs(subnetName, binaryToVersion[utils.SoloAvagoKey], "")
+		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, avagoRPC1Version)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -271,7 +268,9 @@ var _ = ginkgo.Describe("[Upgrade local network]", ginkgo.Ordered, func() {
 		commands.UpgradeVMLocal(subnetName, subnetEVMVersion2)
 
 		// restart network
-		commands.StartNetwork()
+		// needs to start the network with the same binary version,
+		// otherwise will use latest, which quickly will be incompatible
+		commands.StartNetworkWithVersion(avagoRPC2Version)
 
 		// check running version
 		version, err = utils.GetNodeVMVersion(nodeURI, vmid.String())
