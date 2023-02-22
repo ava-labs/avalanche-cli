@@ -217,6 +217,8 @@ var _ = ginkgo.Describe("[Upgrade local network]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can create and update future", func() {
+		subnetEVMVersion1 := binaryToVersion[utils.SoloSubnetEVMKey1]
+		subnetEVMVersion2 := binaryToVersion[utils.SoloSubnetEVMKey2]
 		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
 
 		// check version
@@ -244,8 +246,10 @@ var _ = ginkgo.Describe("[Upgrade local network]", ginkgo.Ordered, func() {
 
 	ginkgo.It("upgrade SubnetEVM local deployment", func() {
 		// create and deploy
+		subnetEVMVersion1 := binaryToVersion[utils.SoloSubnetEVMKey1]
+		subnetEVMVersion2 := binaryToVersion[utils.SoloSubnetEVMKey2]
 		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
-		deployOutput := commands.DeploySubnetLocally(subnetName)
+		deployOutput := commands.DeploySubnetLocallyWithArgs(subnetName, binaryToVersion[utils.SoloAvagoKey], "")
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
