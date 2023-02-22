@@ -115,3 +115,24 @@ func ApplyUpgradeLocal(subnetName string) (string, error) {
 	}
 	return string(output), err
 }
+
+func ApplyUpgradePublic(subnetName, avagoChainConfDir string) (string, error) {
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		UpgradeCmd,
+		"apply",
+		subnetName,
+		"--fuji",
+		"--avalanchego-chain-config-dir",
+		avagoChainConfDir,
+	)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+	}
+	return string(output), err
+}

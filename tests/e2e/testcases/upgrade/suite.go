@@ -15,10 +15,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd/upgradecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
-	anr_utils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/params"
@@ -82,7 +82,60 @@ var _ = ginkgo.Describe("[Upgrade expect network failure]", ginkgo.Ordered, func
 	})
 })
 
-var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
+var _ = ginkgo.Describe("[Upgrade public network]", ginkgo.Ordered, func() {
+	ginkgo.AfterEach(func() {
+		commands.CleanNetworkHard()
+		err := utils.DeleteConfigs(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+	})
+
+	ginkgo.It("can create and apply to public node", func() {
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+
+		// simulate as if this had already been deployed to fuji
+		// by just entering fake data into the struct
+		app := application.New()
+		app.Setup(utils.GetBaseDir(), logging.NoLog{}, nil, nil, nil)
+
+		sc, err := app.LoadSidecar(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		blockchainID := ids.GenerateTestID()
+		sc.Networks = make(map[string]models.NetworkData)
+		sc.Networks[models.Fuji.String()] = models.NetworkData{
+			SubnetID:     ids.GenerateTestID(),
+			BlockchainID: blockchainID,
+		}
+		err = app.UpdateSidecar(&sc)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// import the upgrade bytes file so have one
+		_, err = commands.ImportUpgradeBytes(subnetName, upgradeBytesPath)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// we'll set a fake chain config dir to not mess up with a potential real one
+		// in the system
+		avalanchegoConfigDir, err := os.MkdirTemp("", "cli-tmp-avago-conf-dir")
+		gomega.Expect(err).Should(gomega.BeNil())
+		defer os.RemoveAll(avalanchegoConfigDir)
+
+		// now we try to apply
+		_, err = commands.ApplyUpgradePublic(subnetName, avalanchegoConfigDir)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// we expect the file to be present at the expected location and being
+		// the same content as the original one
+		expectedPath := filepath.Join(avalanchegoConfigDir, blockchainID.String(), constants.UpgradeBytesFileName)
+		gomega.Expect(expectedPath).Should(gomega.BeARegularFile())
+		ori, err := os.ReadFile(upgradeBytesPath)
+		gomega.Expect(err).Should(gomega.BeNil())
+		cp, err := os.ReadFile(expectedPath)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(ori).Should(gomega.Equal(cp))
+	})
+})
+
+var _ = ginkgo.Describe("[Upgrade local network]", ginkgo.Ordered, func() {
 	_ = ginkgo.BeforeAll(func() {
 		mapper := utils.NewVersionMapper()
 		binaryToVersion, err = utils.GetVersionMapping(mapper)
