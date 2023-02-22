@@ -83,6 +83,10 @@ var _ = ginkgo.Describe("[Upgrade expect network failure]", ginkgo.Ordered, func
 	})
 })
 
+// upgrade a public network
+// the approach is rather simple: import the upgrade file,
+// call the apply command which "just" installs the file at an expected path,
+// and then check the file is there and has the correct content.
 var _ = ginkgo.Describe("[Upgrade public network]", ginkgo.Ordered, func() {
 	ginkgo.AfterEach(func() {
 		commands.CleanNetworkHard()
