@@ -128,7 +128,7 @@ var _ = ginkgo.Describe("[Upgrade public network]", ginkgo.Ordered, func() {
 		defer os.RemoveAll(avalanchegoConfigDir)
 
 		// now we try to apply
-		_, err = commands.ApplyUpgradePublic(subnetName, avalanchegoConfigDir)
+		_, err = commands.ApplyUpgradeToPublicNode(subnetName, avalanchegoConfigDir)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// we expect the file to be present at the expected location and being

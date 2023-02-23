@@ -68,7 +68,7 @@ Refer to https://docs.avax.network/nodes/maintain/chain-config-flags#subnet-chai
 	cmd.Flags().BoolVar(&useFuji, "testnet", false, "apply upgrade existing `testnet` deployment (alias for `fuji`)")
 	cmd.Flags().BoolVar(&useMainnet, "mainnet", false, "apply upgrade existing `mainnet` deployment")
 	cmd.Flags().BoolVar(&print, "print", false, "if true, print the manual config without prompting (for public networks only)")
-	cmd.Flags().StringVar(&avalanchegoChainConfigDir, avalanchegoChainConfigFlag, avalanchegoChainConfigDirDefault, "avalanchego's chain config file directory")
+	cmd.Flags().StringVar(&avalanchegoChainConfigDir, avalanchegoChainConfigFlag, os.ExpandEnv(avalanchegoChainConfigDirDefault), "avalanchego's chain config file directory")
 
 	return cmd
 }

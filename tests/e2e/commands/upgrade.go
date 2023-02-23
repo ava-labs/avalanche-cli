@@ -164,7 +164,7 @@ func ApplyUpgradeLocal(subnetName string) (string, error) {
 	return string(output), err
 }
 
-func ApplyUpgradePublic(subnetName, avagoChainConfDir string) (string, error) {
+func ApplyUpgradeToPublicNode(subnetName, avagoChainConfDir string) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
 		SubnetCmd,
