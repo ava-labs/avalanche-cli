@@ -359,8 +359,8 @@ var _ = ginkgo.Describe("[Upgrade local network]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can upgrade subnet-evm on public deployment", func() {
-		_ = commands.StartNetwork()
-		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+		_ = commands.StartNetworkWithVersion(binaryToVersion[utils.SoloAvagoKey])
+		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, binaryToVersion[utils.SoloSubnetEVMKey1])
 
 		// Simulate fuji deployment
 		s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys)
@@ -407,7 +407,7 @@ var _ = ginkgo.Describe("[Upgrade local network]", ginkgo.Ordered, func() {
 		commands.StopNetwork()
 
 		for _, nodeInfo := range nodeInfos {
-			_, err := commands.UpgradeVMPublic(subnetName, binaryToVersion[utils.SoloSubnetEVMKey1], nodeInfo.PluginDir)
+			_, err := commands.UpgradeVMPublic(subnetName, binaryToVersion[utils.SoloSubnetEVMKey2], nodeInfo.PluginDir)
 			gomega.Expect(err).Should(gomega.BeNil())
 		}
 
