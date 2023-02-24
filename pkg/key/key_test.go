@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/ava-labs/avalanchego/utils/cb58"
-	"github.com/ava-labs/avalanchego/utils/crypto"
+	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
 )
 
 const (
@@ -55,18 +55,18 @@ func TestNewKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	factory := &crypto.FactorySECP256K1R{}
+	factory := &secp256k1.FactorySECP256K1R{}
 	rpk, err := factory.ToPrivateKey(skBytes)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ewoqPk, _ := rpk.(*crypto.PrivateKeySECP256K1R)
+	ewoqPk, _ := rpk.(*secp256k1.PrivateKeySECP256K1R)
 
 	rpk2, err := factory.NewPrivateKey()
 	if err != nil {
 		t.Fatal(err)
 	}
-	privKey2, _ := rpk2.(*crypto.PrivateKeySECP256K1R)
+	privKey2, _ := rpk2.(*secp256k1.PrivateKeySECP256K1R)
 
 	tt := []struct {
 		name   string
