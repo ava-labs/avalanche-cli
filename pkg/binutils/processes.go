@@ -70,8 +70,15 @@ func NewGRPCClient() (client.Client, error) {
 		if err != nil {
 			return nil, err
 		}
-		version := RPCVersion.Version
-		fmt.Println("rpc version", version)
+		// obtained using server API
+		serverVersion := RPCVersion.Version
+		// obtained from ANR source code
+		clientVersion := server.RPCVersion
+		if serverVersion != clientVersion {
+			return nil, fmt.Errorf("Trying to connect to a backend controller that uses a different RPC version (%d) than the CLI client (%d). Use network clean to stop the controller and then restart the operation.",
+				serverVersion,
+				clientVersion)
+		}
 	}
 	return client, err
 }
