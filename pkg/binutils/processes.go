@@ -64,6 +64,15 @@ func NewGRPCClient() (client.Client, error) {
 	if errors.Is(err, context.DeadlineExceeded) {
 		err = ErrGRPCTimeout
 	}
+	if client != nil {
+		ctx := GetAsyncContext()
+		RPCVersion, err := client.RPCVersion(ctx)
+		if err != nil {
+			return nil, err
+		}
+		version := RPCVersion.Version
+		fmt.Println("rpc version", version)
+	}
 	return client, err
 }
 
