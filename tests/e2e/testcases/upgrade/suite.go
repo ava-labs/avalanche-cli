@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd/upgradecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -361,6 +360,7 @@ var _ = ginkgo.Describe("[Upgrade]", ginkgo.Ordered, func() {
 	})
 })
 
+/*
 func stripWhitespaces(str string) string {
 	return strings.Map(func(r rune) rune {
 		if unicode.IsSpace(r) {
@@ -371,3 +371,4 @@ func stripWhitespaces(str string) string {
 		return r
 	}, str)
 }
+*/
