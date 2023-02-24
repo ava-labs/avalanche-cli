@@ -43,6 +43,16 @@ already running.`,
 }
 
 func StartNetwork(*cobra.Command, []string) error {
+	// Need to determine which subnets have been deployed
+	locallyDeployedSubnets, err := subnet.GetLocallyDeployedSubnetsFromFile(app)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Deployed subnets:", locallyDeployedSubnets)
+
+	// For each deployed subnet, check RPC versions
+
 	sd := subnet.NewLocalDeployer(app, avagoVersion, "")
 
 	if err := sd.StartServer(); err != nil {

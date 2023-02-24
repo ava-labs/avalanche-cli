@@ -9,6 +9,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/shirou/gopsutil/process"
@@ -72,6 +73,27 @@ func clean(*cobra.Command, []string) error {
 		}
 	}
 
+	return removeLocalDeployInfoFromSidecars()
+}
+
+func removeLocalDeployInfoFromSidecars() error {
+	// Remove all local deployment info from sidecar files
+	deployedSubnets, err := subnet.GetLocallyDeployedSubnetsFromFile(app)
+	if err != nil {
+		return err
+	}
+
+	for _, subnet := range deployedSubnets {
+		sc, err := app.LoadSidecar(subnet)
+		if err != nil {
+			return err
+		}
+
+		delete(sc.Networks, models.Local.String())
+		if err = app.UpdateSidecar(&sc); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
