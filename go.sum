@@ -65,8 +65,6 @@ github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPd
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
 github.com/ava-labs/apm v0.0.4 h1:0IUwxCyvqwr2sbbEKhSI7VzpPG3Z+e180ulJwNiKkBk=
 github.com/ava-labs/apm v0.0.4/go.mod h1:4MNcyEvWajJm2JnezC7vgHuA220ppoQYOMh5vM+iH4Q=
-github.com/ava-labs/avalanche-network-runner v1.3.7-0.20230214202745-270485c24e61 h1:DR7owbKuW0a7Yb/4+BwUC9TQeMYq0hPyGHYojFKv6MQ=
-github.com/ava-labs/avalanche-network-runner v1.3.7-0.20230214202745-270485c24e61/go.mod h1:qv0AO8uL7lDD6L7wMo3RlvCaF5y8rnqPETHi5pak4WY=
 github.com/ava-labs/avalanche-network-runner v1.3.7 h1:XjJFtEitvXsI91EaLxBQLMH/THdd7ewWTHwNT+S7MgE=
 github.com/ava-labs/avalanche-network-runner v1.3.7/go.mod h1:qv0AO8uL7lDD6L7wMo3RlvCaF5y8rnqPETHi5pak4WY=
 github.com/ava-labs/avalanchego v1.9.8 h1:5SHKqkWpBn9Pqxg2qpzDZ7FQqYFapzaCZwArapBdqAA=
