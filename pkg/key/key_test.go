@@ -55,18 +55,16 @@ func TestNewKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	factory := &secp256k1.FactorySECP256K1R{}
-	rpk, err := factory.ToPrivateKey(skBytes)
+	factory := &secp256k1.Factory{}
+	ewoqPk, err := factory.ToPrivateKey(skBytes)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ewoqPk, _ := rpk.(*secp256k1.PrivateKeySECP256K1R)
 
-	rpk2, err := factory.NewPrivateKey()
+	privKey2, err := factory.NewPrivateKey()
 	if err != nil {
 		t.Fatal(err)
 	}
-	privKey2, _ := rpk2.(*secp256k1.PrivateKeySECP256K1R)
 
 	tt := []struct {
 		name   string
