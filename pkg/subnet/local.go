@@ -63,7 +63,7 @@ func NewLocalDeployer(app *application.Avalanche, avagoVersion string, vmBin str
 	}
 }
 
-type getGRPCClientFunc func() (client.Client, error)
+type getGRPCClientFunc func(...binutils.GRPCClientOpOption) (client.Client, error)
 
 type setDefaultSnapshotFunc func(string, bool) error
 

@@ -35,7 +35,20 @@ default snapshot with network start.`,
 }
 
 func StopNetwork(*cobra.Command, []string) error {
-	cli, err := binutils.NewGRPCClient()
+	err := saveNetwork()
+
+	if err := binutils.KillgRPCServerProcess(app); err != nil {
+		app.Log.Warn("failed killing server process", zap.Error(err))
+		fmt.Println(err)
+	} else {
+		ux.Logger.PrintToUser("Server process terminated.")
+	}
+
+	return err
+}
+
+func saveNetwork() error {
+	cli, err := binutils.NewGRPCClient(binutils.WithAvoidRPCVersionCheck(true))
 	if err != nil {
 		return err
 	}
@@ -60,12 +73,6 @@ func StopNetwork(*cobra.Command, []string) error {
 		return fmt.Errorf("failed to stop network with a snapshot: %w", err)
 	}
 	ux.Logger.PrintToUser("Network stopped successfully.")
-
-	if err := binutils.KillgRPCServerProcess(app); err != nil {
-		app.Log.Warn("failed killing server process", zap.Error(err))
-	} else {
-		ux.Logger.PrintToUser("Server process terminated.")
-	}
 
 	return nil
 }

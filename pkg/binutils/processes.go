@@ -43,8 +43,28 @@ func NewProcessChecker() ProcessChecker {
 	return &realProcessRunner{}
 }
 
+type GRPCClientOp struct {
+	avoidRPCVersionCheck bool
+}
+
+type GRPCClientOpOption func(*GRPCClientOp)
+
+func (op *GRPCClientOp) applyOpts(opts []GRPCClientOpOption) {
+	for _, opt := range opts {
+		opt(op)
+	}
+}
+
+func WithAvoidRPCVersionCheck(avoidRPCVersionCheck bool) GRPCClientOpOption {
+	return func(op *GRPCClientOp) {
+		op.avoidRPCVersionCheck = avoidRPCVersionCheck
+	}
+}
+
 // NewGRPCClient hides away the details (params) of creating a gRPC server connection
-func NewGRPCClient() (client.Client, error) {
+func NewGRPCClient(opts ...GRPCClientOpOption) (client.Client, error) {
+	op := GRPCClientOp{}
+	op.applyOpts(opts)
 	logLevel, err := logging.ToLevel(gRPCClientLogLevel)
 	if err != nil {
 		return nil, err
@@ -64,7 +84,7 @@ func NewGRPCClient() (client.Client, error) {
 	if errors.Is(err, context.DeadlineExceeded) {
 		err = ErrGRPCTimeout
 	}
-	if client != nil {
+	if client != nil && !op.avoidRPCVersionCheck {
 		ctx := GetAsyncContext()
 		rpcVersion, err := client.RPCVersion(ctx)
 		if err != nil {
@@ -209,7 +229,7 @@ func GetAsyncContext() context.Context {
 }
 
 func KillgRPCServerProcess(app *application.Avalanche) error {
-	cli, err := NewGRPCClient()
+	cli, err := NewGRPCClient(WithAvoidRPCVersionCheck(true))
 	if err != nil {
 		return err
 	}
