@@ -32,7 +32,6 @@ func GetLocallyDeployedSubnetsFromFile(app *application.Avalanche) ([]string, er
 		}
 
 		// check if sidecar contains local deployment info in Networks map
-
 		// if so, add to list of deployed subnets
 		if _, ok := sc.Networks[models.Local.String()]; ok {
 			deployedSubnets = append(deployedSubnets, sc.Name)
