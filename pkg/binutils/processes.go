@@ -75,7 +75,7 @@ func NewGRPCClient() (client.Client, error) {
 		// obtained from ANR source code
 		clientVersion := server.RPCVersion
 		if serverVersion != clientVersion {
-			return nil, fmt.Errorf("trying to connect to a backend controller that uses a different RPC version (%d) than the CLI client (%d). Use network clean to stop the controller and then restart the operation",
+			return nil, fmt.Errorf("trying to connect to a backend controller that uses a different RPC version (%d) than the CLI client (%d). Use 'network stop' to stop the controller and then restart the operation",
 				serverVersion,
 				clientVersion)
 		}
@@ -218,7 +218,7 @@ func KillgRPCServerProcess(app *application.Avalanche) error {
 	_, err = cli.Stop(ctx)
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {
-			ux.Logger.PrintToUser("No local network running")
+			app.Log.Debug("No local network running")
 		} else {
 			app.Log.Debug("failed stopping local network", zap.Error(err))
 		}
