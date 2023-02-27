@@ -41,7 +41,7 @@ func StopNetwork(*cobra.Command, []string) error {
 		app.Log.Warn("failed killing server process", zap.Error(err))
 		fmt.Println(err)
 	} else {
-		ux.Logger.PrintToUser("Server process terminated.")
+		ux.Logger.PrintToUser("Server shutdown gracefully")
 	}
 
 	return err
