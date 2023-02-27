@@ -25,5 +25,6 @@ func SetupTestInTempDir(t *testing.T) *application.Avalanche {
 
 	app := application.New()
 	app.Setup(testDir, logging.NoLog{}, &config.Config{}, nil, nil)
+	ux.NewUserLog(logging.NoLog{}, io.Discard)
 	return app
 }

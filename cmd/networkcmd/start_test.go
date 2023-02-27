@@ -97,7 +97,21 @@ func Test_determineAvagoVersion(t *testing.T) {
 			name:          "single custom",
 			userAvago:     "latest",
 			sidecars:      []models.Sidecar{scCustom},
-			expectedAvago: "v1.9.2",
+			expectedAvago: "latest",
+			expectedErr:   false,
+		},
+		{
+			name:          "custom plus user selected",
+			userAvago:     "v1.9.1",
+			sidecars:      []models.Sidecar{scCustom},
+			expectedAvago: "v1.9.1",
+			expectedErr:   false,
+		},
+		{
+			name:          "multi sc matching plus custom",
+			userAvago:     "latest",
+			sidecars:      []models.Sidecar{sc1, sc2, scCustom},
+			expectedAvago: "v1.9.1",
 			expectedErr:   false,
 		},
 	}

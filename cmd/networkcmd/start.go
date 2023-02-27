@@ -166,9 +166,6 @@ func determineAvagoVersion(userProvidedAvagoVersion string) (string, error) {
 			currentRPCVersion = sc.RPCVersion
 		}
 
-		fmt.Println("currentRPCVersion", currentRPCVersion)
-		fmt.Println("sc.RPCVersion", sc.RPCVersion)
-
 		if sc.RPCVersion != currentRPCVersion {
 			return "", fmt.Errorf(
 				"RPC version mismatch. Expected %d, got %d for Subnet %s. Upgrade all subnets to the same RPC version to launch the network",
