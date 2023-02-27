@@ -11,9 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	testAvagoCompat = []byte("{\"19\": [\"v1.9.2\"],\"18\": [\"v1.9.1\"],\"17\": [\"v1.9.0\",\"v1.8.0\"]}")
-)
+var testAvagoCompat = []byte("{\"19\": [\"v1.9.2\"],\"18\": [\"v1.9.1\"],\"17\": [\"v1.9.0\",\"v1.8.0\"]}")
 
 func Test_determineAvagoVersion(t *testing.T) {
 	subnetName1 := "test1"
@@ -21,7 +19,6 @@ func Test_determineAvagoVersion(t *testing.T) {
 	subnetName3 := "test3"
 	subnetName4 := "test4"
 
-	// emptyMap := make(map[string]models.NetworkData)
 	localMap := make(map[string]models.NetworkData)
 
 	localMap[models.Local.String()] = models.NetworkData{

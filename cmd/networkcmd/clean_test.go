@@ -33,7 +33,6 @@ func Test_removeLocalDeployInfoFromSidecars(t *testing.T) {
 
 	subnetName := "test1"
 
-	// emptyMap := make(map[string]models.NetworkData)
 	localMap := make(map[string]models.NetworkData)
 
 	localMap[models.Local.String()] = models.NetworkData{
