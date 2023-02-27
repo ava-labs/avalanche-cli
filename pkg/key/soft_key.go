@@ -14,7 +14,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/cb58"
-	"github.com/ava-labs/avalanchego/utils/crypto"
+	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
@@ -34,7 +34,7 @@ var (
 var _ Key = &SoftKey{}
 
 type SoftKey struct {
-	privKey        *crypto.PrivateKeySECP256K1R
+	privKey        *secp256k1.PrivateKey
 	privKeyRaw     []byte
 	privKeyEncoded string
 
@@ -51,10 +51,10 @@ const (
 	EwoqPrivateKey = privKeyEncPfx + rawEwoqPk
 )
 
-var keyFactory = new(crypto.FactorySECP256K1R)
+var keyFactory = new(secp256k1.Factory)
 
 type SOp struct {
-	privKey        *crypto.PrivateKeySECP256K1R
+	privKey        *secp256k1.PrivateKey
 	privKeyEncoded string
 }
 
@@ -67,7 +67,7 @@ func (sop *SOp) applyOpts(opts []SOpOption) {
 }
 
 // To create a new key SoftKey with a pre-loaded private key.
-func WithPrivateKey(privKey *crypto.PrivateKeySECP256K1R) SOpOption {
+func WithPrivateKey(privKey *secp256k1.PrivateKey) SOpOption {
 	return func(sop *SOp) {
 		sop.privKey = privKey
 	}
@@ -100,14 +100,10 @@ func NewSoft(networkID uint32, opts ...SOpOption) (*SoftKey, error) {
 
 	// generate a new one
 	if ret.privKey == nil {
-		rpk, err := keyFactory.NewPrivateKey()
+		var err error
+		ret.privKey, err = keyFactory.NewPrivateKey()
 		if err != nil {
 			return nil, err
-		}
-		var ok bool
-		ret.privKey, ok = rpk.(*crypto.PrivateKeySECP256K1R)
-		if !ok {
-			return nil, ErrInvalidType
 		}
 	}
 
@@ -174,13 +170,9 @@ func LoadSoft(networkID uint32, keyPath string) (*SoftKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	rpk, err := keyFactory.ToPrivateKey(skBytes)
+	privKey, err := keyFactory.ToPrivateKey(skBytes)
 	if err != nil {
 		return nil, err
-	}
-	privKey, ok := rpk.(*crypto.PrivateKeySECP256K1R)
-	if !ok {
-		return nil, ErrInvalidType
 	}
 
 	return NewSoft(networkID, WithPrivateKey(privKey))
@@ -220,7 +212,7 @@ func checkKeyFileEnd(r io.ByteReader) error {
 	}
 }
 
-func encodePrivateKey(pk *crypto.PrivateKeySECP256K1R) (string, error) {
+func encodePrivateKey(pk *secp256k1.PrivateKey) (string, error) {
 	privKeyRaw := pk.Bytes()
 	enc, err := cb58.Encode(privKeyRaw)
 	if err != nil {
@@ -229,19 +221,15 @@ func encodePrivateKey(pk *crypto.PrivateKeySECP256K1R) (string, error) {
 	return privKeyEncPfx + enc, nil
 }
 
-func decodePrivateKey(enc string) (*crypto.PrivateKeySECP256K1R, error) {
+func decodePrivateKey(enc string) (*secp256k1.PrivateKey, error) {
 	rawPk := strings.Replace(enc, privKeyEncPfx, "", 1)
 	skBytes, err := cb58.Decode(rawPk)
 	if err != nil {
 		return nil, err
 	}
-	rpk, err := keyFactory.ToPrivateKey(skBytes)
+	privKey, err := keyFactory.ToPrivateKey(skBytes)
 	if err != nil {
 		return nil, err
-	}
-	privKey, ok := rpk.(*crypto.PrivateKeySECP256K1R)
-	if !ok {
-		return nil, ErrInvalidType
 	}
 	return privKey, nil
 }
@@ -260,7 +248,7 @@ func (m *SoftKey) KeyChain() *secp256k1fx.Keychain {
 }
 
 // Returns the private key.
-func (m *SoftKey) Key() *crypto.PrivateKeySECP256K1R {
+func (m *SoftKey) Key() *secp256k1.PrivateKey {
 	return m.privKey
 }
 
@@ -321,7 +309,7 @@ func (m *SoftKey) Spends(outputs []*avax.UTXO, opts ...OpOption) (
 
 func (m *SoftKey) spend(output *avax.UTXO, time uint64) (
 	input avax.TransferableIn,
-	signers []*crypto.PrivateKeySECP256K1R,
+	signers []*secp256k1.PrivateKey,
 	err error,
 ) {
 	// "time" is used to check whether the key owner
@@ -345,9 +333,9 @@ func (m *SoftKey) Addresses() []ids.ShortID {
 }
 
 func (m *SoftKey) Sign(pTx *txs.Tx, signers [][]ids.ShortID) error {
-	privsigners := make([][]*crypto.PrivateKeySECP256K1R, len(signers))
+	privsigners := make([][]*secp256k1.PrivateKey, len(signers))
 	for i, inputSigners := range signers {
-		privsigners[i] = make([]*crypto.PrivateKeySECP256K1R, len(inputSigners))
+		privsigners[i] = make([]*secp256k1.PrivateKey, len(inputSigners))
 		for j, signer := range inputSigners {
 			if signer != m.privKey.PublicKey().Address() {
 				// Should never happen

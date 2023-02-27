@@ -8,7 +8,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/crypto"
+	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -65,7 +65,7 @@ func GetRemainingSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([
 	if err != nil {
 		return nil, err
 	}
-	emptySig := [crypto.SECP256K1RSigLen]byte{}
+	emptySig := [secp256k1.SignatureLen]byte{}
 	// we should have at least 1 cred for output owners and 1 cred for subnet auth
 	if len(tx.Creds) < 2 {
 		return nil, fmt.Errorf("expected tx.Creds of len 2, got %d", len(tx.Creds))
