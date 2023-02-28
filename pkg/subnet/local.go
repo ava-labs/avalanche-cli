@@ -63,7 +63,7 @@ func NewLocalDeployer(app *application.Avalanche, avagoVersion string, vmBin str
 	}
 }
 
-type getGRPCClientFunc func() (client.Client, error)
+type getGRPCClientFunc func(...binutils.GRPCClientOpOption) (client.Client, error)
 
 type setDefaultSnapshotFunc func(string, bool) error
 
@@ -131,9 +131,9 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to load sidecar: %w", err)
 	}
 
-	// check for network and get VM info
+	// check for network status
 	networkBooted := true
-	clusterInfo, err := WaitForHealthy(ctx, cli)
+	_, err = WaitForHealthy(ctx, cli)
 	if err != nil {
 		if !server.IsServerError(err, server.ErrNotBootstrapped) {
 			return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
@@ -148,21 +148,23 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 	d.app.Log.Debug("this VM will get ID", zap.String("vm-id", chainVMID.String()))
 
-	if alreadyDeployed(chainVMID, clusterInfo) {
-		ux.Logger.PrintToUser("Subnet %s has already been deployed", chain)
-		return ids.Empty, ids.Empty, nil
-	}
-
 	if !networkBooted {
 		if err := d.startNetwork(ctx, cli, avalancheGoBinPath, runDir); err != nil {
 			return ids.Empty, ids.Empty, err
 		}
 	}
 
-	clusterInfo, err = WaitForHealthy(ctx, cli)
+	// get VM info
+	clusterInfo, err := WaitForHealthy(ctx, cli)
 	if err != nil {
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 	}
+
+	if alreadyDeployed(chainVMID, clusterInfo) {
+		ux.Logger.PrintToUser("Subnet %s has already been deployed", chain)
+		return ids.Empty, ids.Empty, nil
+	}
+
 	subnetIDs := clusterInfo.Subnets
 	numBlockchains := len(clusterInfo.CustomChains)
 
