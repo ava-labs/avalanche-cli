@@ -110,15 +110,12 @@ func upgradeVM(_ *cobra.Command, args []string) error {
 	}
 
 	// if upgrading local, check that the network is off otherwise fail here
-	cli, err := binutils.NewGRPCClient()
+	serverRunning, err := isServerRunning()
 	if err != nil {
 		return err
 	}
-	ctx := binutils.GetAsyncContext()
 
-	_, err = cli.Status(ctx)
-
-	if err == nil || !server.IsServerError(err, server.ErrNotBootstrapped) {
+	if serverRunning {
 		ux.Logger.PrintToUser("Please stop network before upgrading local VMs")
 		return errors.New("network is still running")
 	}
@@ -307,20 +304,6 @@ func updateFutureVM(sc models.Sidecar, targetVersion string) error {
 }
 
 func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
-	// check network has been stopped
-	cli, err := binutils.NewGRPCClient()
-	if err != nil {
-		return err
-	}
-	ctx := binutils.GetAsyncContext()
-
-	_, err = cli.Status(ctx)
-
-	if err == nil || !server.IsServerError(err, server.ErrNotBootstrapped) {
-		ux.Logger.PrintToUser("Please stop network before upgrading local VMs")
-		return errors.New("network is still running")
-	}
-
 	vmid, err := utils.VMID(sc.Name)
 	if err != nil {
 		return err
@@ -402,4 +385,21 @@ func chooseManualOrAutomatic(sc models.Sidecar, targetVersion string, _ string) 
 func updateMainnetVM() error {
 	ux.Logger.PrintToUser("Coming soon. For now, please upgrade your mainnet deployments manually.")
 	return nil
+}
+
+func isServerRunning() (bool, error) {
+	cli, err := binutils.NewGRPCClient()
+	if err == binutils.ErrGRPCTimeout {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	ctx := binutils.GetAsyncContext()
+
+	_, err = cli.Status(ctx)
+
+	if err == nil || !server.IsServerError(err, server.ErrNotBootstrapped) {
+		return true, nil
+	}
+	return false, nil
 }
