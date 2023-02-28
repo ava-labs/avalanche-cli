@@ -110,7 +110,6 @@ func upgradeVM(_ *cobra.Command, args []string) error {
 	}
 
 	// if upgrading local, check that the network is off otherwise fail here
-	// check network has been stopped
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
 		return err
