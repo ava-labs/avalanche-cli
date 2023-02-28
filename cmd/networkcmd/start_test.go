@@ -22,38 +22,54 @@ func Test_determineAvagoVersion(t *testing.T) {
 	subnetName3 := "test3"
 	subnetName4 := "test4"
 
-	localMap := make(map[string]models.NetworkData)
-
-	localMap[models.Local.String()] = models.NetworkData{
-		SubnetID:     ids.ID{1, 2, 3, 4},
-		BlockchainID: ids.ID{1, 2, 3, 4},
-	}
+	dummySlice := ids.ID{1, 2, 3, 4}
 
 	sc1 := models.Sidecar{
-		Name:       subnetName1,
-		Networks:   localMap,
-		VM:         models.SubnetEvm,
-		RPCVersion: 18,
+		Name: subnetName1,
+		Networks: map[string]models.NetworkData{
+			models.Local.String(): {
+				SubnetID:     dummySlice,
+				BlockchainID: dummySlice,
+				RPCVersion:   18,
+			},
+		},
+		VM: models.SubnetEvm,
 	}
 
 	sc2 := models.Sidecar{
-		Name:       subnetName2,
-		Networks:   localMap,
-		VM:         models.SubnetEvm,
-		RPCVersion: 18,
+		Name: subnetName2,
+		Networks: map[string]models.NetworkData{
+			models.Local.String(): {
+				SubnetID:     dummySlice,
+				BlockchainID: dummySlice,
+				RPCVersion:   18,
+			},
+		},
+		VM: models.SubnetEvm,
 	}
 
 	sc3 := models.Sidecar{
-		Name:       subnetName3,
-		Networks:   localMap,
-		VM:         models.SubnetEvm,
-		RPCVersion: 19,
+		Name: subnetName3,
+		Networks: map[string]models.NetworkData{
+			models.Local.String(): {
+				SubnetID:     dummySlice,
+				BlockchainID: dummySlice,
+				RPCVersion:   19,
+			},
+		},
+		VM: models.SubnetEvm,
 	}
 
 	scCustom := models.Sidecar{
-		Name:     subnetName4,
-		Networks: localMap,
-		VM:       models.CustomVM,
+		Name: subnetName4,
+		Networks: map[string]models.NetworkData{
+			models.Local.String(): {
+				SubnetID:     dummySlice,
+				BlockchainID: dummySlice,
+				RPCVersion:   0,
+			},
+		},
+		VM: models.CustomVM,
 	}
 
 	type test struct {
