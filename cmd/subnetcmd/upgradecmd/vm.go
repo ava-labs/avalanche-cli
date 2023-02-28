@@ -294,15 +294,16 @@ func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
 	// check network has been stopped
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
-		return err
-	}
-	ctx := binutils.GetAsyncContext()
-
-	_, err = cli.Status(ctx)
-
-	if err == nil || !server.IsServerError(err, server.ErrNotBootstrapped) {
-		ux.Logger.PrintToUser("Please stop network before upgrading local VMs")
-		return errors.New("network is still running")
+		if err != binutils.ErrGRPCTimeout {
+			return err
+		}
+	} else {
+		ctx := binutils.GetAsyncContext()
+		_, err = cli.Status(ctx)
+		if err == nil || !server.IsServerError(err, server.ErrNotBootstrapped) {
+			ux.Logger.PrintToUser("Please stop network before upgrading local VMs")
+			return errors.New("network is still running")
+		}
 	}
 
 	vmid, err := utils.VMID(sc.Name)
