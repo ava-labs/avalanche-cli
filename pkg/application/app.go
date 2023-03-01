@@ -310,6 +310,7 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	sc.Networks[network.String()] = models.NetworkData{
 		SubnetID:     subnetID,
 		BlockchainID: blockchainID,
+		RPCVersion:   sc.RPCVersion,
 	}
 	if err := app.UpdateSidecar(sc); err != nil {
 		return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)

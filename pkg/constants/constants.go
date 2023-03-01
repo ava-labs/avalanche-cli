@@ -22,7 +22,7 @@ const (
 	SidecarSuffix   = SuffixSeparator + SidecarFileName
 	GenesisSuffix   = SuffixSeparator + GenesisFileName
 
-	SidecarVersion = "1.2.1"
+	SidecarVersion = "1.3.0"
 
 	MaxLogFileSize   = 4
 	MaxNumOfLogFiles = 5

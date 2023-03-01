@@ -10,6 +10,7 @@ import (
 type NetworkData struct {
 	SubnetID     ids.ID
 	BlockchainID ids.ID
+	RPCVersion   int
 }
 
 type Sidecar struct {
