@@ -15,7 +15,6 @@ const (
 	ServerRunFile      = "gRPCserver.run"
 	AvalancheCliBinDir = "bin"
 	RunDir             = "runs"
-	UpgradeFilesDir    = "upgrades"
 
 	SuffixSeparator = "_"
 	SidecarFileName = "sidecar.json"
@@ -23,7 +22,7 @@ const (
 	SidecarSuffix   = SuffixSeparator + SidecarFileName
 	GenesisSuffix   = SuffixSeparator + GenesisFileName
 
-	SidecarVersion = "1.2.1"
+	SidecarVersion = "1.3.0"
 
 	MaxLogFileSize   = 4
 	MaxNumOfLogFiles = 5
@@ -82,7 +81,6 @@ const (
 	SubnetEVMInstallDir   = "subnet-evm"
 	SpacesVMInstallDir    = "spacesvm"
 
-	EVMPlugin    = "evm"
 	SubnetEVMBin = "subnet-evm"
 	SpacesVMBin  = "spacesvm"
 
@@ -94,7 +92,7 @@ const (
 	APMPluginDir          = "apm_plugins"
 
 	// #nosec G101
-	GithubAPITokenEnvVarName = "GITHUB_TOKEN"
+	GithubAPITokenEnvVarName = "AVALANCHE_CLI_GITHUB_TOKEN"
 
 	ReposDir       = "repos"
 	SubnetDir      = "subnets"
@@ -110,11 +108,10 @@ const (
 
 	AvaLabsMaintainers = "ava-labs"
 
-	UpdateBytesFileName = "upgrade.json"
-	NotAvailableLabel   = "Not available"
-	BackendCmd          = "avalanche-cli-backend"
-
-	AvalancheGoPluginDirFlagAdded = "v1.9.6"
+	UpgradeBytesFileName      = "upgrade.json"
+	UpgradeBytesLockExtension = ".lock"
+	NotAvailableLabel         = "Not available"
+	BackendCmd                = "avalanche-cli-backend"
 
 	AvalancheGoCompatibilityVersionAdded = "v1.9.2"
 	AvalancheGoCompatibilityURL          = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
@@ -126,4 +123,6 @@ const (
 
 	SubnetIDLabel     = "SubnetID: "
 	BlockchainIDLabel = "BlockchainID: "
+
+	PluginDir = "plugins"
 )

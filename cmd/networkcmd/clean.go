@@ -3,13 +3,13 @@
 package networkcmd
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"regexp"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/shirou/gopsutil/process"
@@ -59,37 +59,41 @@ func clean(*cobra.Command, []string) error {
 		binDir := filepath.Join(app.GetBaseDir(), constants.AvalancheCliBinDir)
 		cleanBins(binDir)
 		_ = killAllBackendsByName()
-	} else {
-		// Iterate over all installed avalanchego versions and remove all plugins from their
-		// plugin dirs except for the c-chain plugin
+	}
 
-		// Check if dir exists. If not, no work to be done
-		if _, err := os.Stat(app.GetAvalanchegoBinDir()); errors.Is(err, os.ErrNotExist) {
-			// path/to/whatever does *not* exist
-			return nil
+	// Remove all plugins from plugin dir
+	pluginDir := app.GetPluginsDir()
+	installedPlugins, err := os.ReadDir(pluginDir)
+	if err != nil {
+		return err
+	}
+	for _, plugin := range installedPlugins {
+		if err = os.Remove(filepath.Join(pluginDir, plugin.Name())); err != nil {
+			return err
 		}
+	}
 
-		installedVersions, err := os.ReadDir(app.GetAvalanchegoBinDir())
+	return removeLocalDeployInfoFromSidecars()
+}
+
+func removeLocalDeployInfoFromSidecars() error {
+	// Remove all local deployment info from sidecar files
+	deployedSubnets, err := subnet.GetLocallyDeployedSubnetsFromFile(app)
+	if err != nil {
+		return err
+	}
+
+	for _, subnet := range deployedSubnets {
+		sc, err := app.LoadSidecar(subnet)
 		if err != nil {
 			return err
 		}
 
-		for _, avagoDir := range installedVersions {
-			pluginDir := filepath.Join(app.GetAvalanchegoBinDir(), avagoDir.Name(), "plugins")
-			installedPlugins, err := os.ReadDir(pluginDir)
-			if err != nil {
-				return err
-			}
-			for _, plugin := range installedPlugins {
-				if plugin.Name() != constants.EVMPlugin {
-					if err = os.Remove(filepath.Join(pluginDir, plugin.Name())); err != nil {
-						return err
-					}
-				}
-			}
+		delete(sc.Networks, models.Local.String())
+		if err = app.UpdateSidecar(&sc); err != nil {
+			return err
 		}
 	}
-
 	return nil
 }
 

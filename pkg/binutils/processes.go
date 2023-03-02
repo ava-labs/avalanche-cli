@@ -26,8 +26,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// errGRPCTimeout is a common error message if the gRPC server can't be reached
-var errGRPCTimeout = errors.New("timed out trying to contact backend controller, it is most probably not running")
+// ErrGRPCTimeout is a common error message if the gRPC server can't be reached
+var ErrGRPCTimeout = errors.New("timed out trying to contact backend controller, it is most probably not running")
 
 // ProcessChecker is responsible for checking if the gRPC server is running
 type ProcessChecker interface {
@@ -43,8 +43,28 @@ func NewProcessChecker() ProcessChecker {
 	return &realProcessRunner{}
 }
 
+type GRPCClientOp struct {
+	avoidRPCVersionCheck bool
+}
+
+type GRPCClientOpOption func(*GRPCClientOp)
+
+func (op *GRPCClientOp) applyOpts(opts []GRPCClientOpOption) {
+	for _, opt := range opts {
+		opt(op)
+	}
+}
+
+func WithAvoidRPCVersionCheck(avoidRPCVersionCheck bool) GRPCClientOpOption {
+	return func(op *GRPCClientOp) {
+		op.avoidRPCVersionCheck = avoidRPCVersionCheck
+	}
+}
+
 // NewGRPCClient hides away the details (params) of creating a gRPC server connection
-func NewGRPCClient() (client.Client, error) {
+func NewGRPCClient(opts ...GRPCClientOpOption) (client.Client, error) {
+	op := GRPCClientOp{}
+	op.applyOpts(opts)
 	logLevel, err := logging.ToLevel(gRPCClientLogLevel)
 	if err != nil {
 		return nil, err
@@ -62,7 +82,23 @@ func NewGRPCClient() (client.Client, error) {
 		DialTimeout: gRPCDialTimeout,
 	}, log)
 	if errors.Is(err, context.DeadlineExceeded) {
-		err = errGRPCTimeout
+		err = ErrGRPCTimeout
+	}
+	if client != nil && !op.avoidRPCVersionCheck {
+		ctx := GetAsyncContext()
+		rpcVersion, err := client.RPCVersion(ctx)
+		if err != nil {
+			return nil, err
+		}
+		// obtained using server API
+		serverVersion := rpcVersion.Version
+		// obtained from ANR source code
+		clientVersion := server.RPCVersion
+		if serverVersion != clientVersion {
+			return nil, fmt.Errorf("trying to connect to a backend controller that uses a different RPC version (%d) than the CLI client (%d). Use 'network stop' to stop the controller and then restart the operation",
+				serverVersion,
+				clientVersion)
+		}
 	}
 	return client, err
 }
@@ -207,7 +243,7 @@ func GetAsyncContext() context.Context {
 }
 
 func KillgRPCServerProcess(app *application.Avalanche) error {
-	cli, err := NewGRPCClient()
+	cli, err := NewGRPCClient(WithAvoidRPCVersionCheck(true))
 	if err != nil {
 		return err
 	}
@@ -216,7 +252,7 @@ func KillgRPCServerProcess(app *application.Avalanche) error {
 	_, err = cli.Stop(ctx)
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {
-			ux.Logger.PrintToUser("No local network running")
+			app.Log.Debug("No local network running")
 		} else {
 			app.Log.Debug("failed stopping local network", zap.Error(err))
 		}

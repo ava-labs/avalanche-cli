@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"path"
 
-	"golang.org/x/mod/semver"
-
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanche-network-runner/utils"
@@ -19,9 +19,11 @@ import (
 )
 
 var (
-	avagoVersion string
-	snapshotName string
+	userProvidedAvagoVersion string
+	snapshotName             string
 )
+
+const latest = "latest"
 
 func newStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -33,25 +35,30 @@ By default, the command loads the default snapshot. If you provide the --snapsho
 flag, the network loads that snapshot instead. The command fails if the local network is
 already running.`,
 
-		RunE:         startNetwork,
+		RunE:         StartNetwork,
 		Args:         cobra.ExactArgs(0),
 		SilenceUsage: true,
 	}
 
-	cmd.Flags().StringVar(&avagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
+	cmd.Flags().StringVar(&userProvidedAvagoVersion, "avalanchego-version", latest, "use this version of avalanchego (ex: v1.17.12)")
 	cmd.Flags().StringVar(&snapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to start the network from")
 
 	return cmd
 }
 
-func startNetwork(*cobra.Command, []string) error {
+func StartNetwork(*cobra.Command, []string) error {
+	avagoVersion, err := determineAvagoVersion(userProvidedAvagoVersion)
+	if err != nil {
+		return err
+	}
+
 	sd := subnet.NewLocalDeployer(app, avagoVersion, "")
 
 	if err := sd.StartServer(); err != nil {
 		return err
 	}
 
-	avagoVersion, avalancheGoBinPath, pluginDir, err := sd.SetupLocalEnv()
+	avalancheGoBinPath, err := sd.SetupLocalEnv()
 	if err != nil {
 		return err
 	}
@@ -75,17 +82,13 @@ func startNetwork(*cobra.Command, []string) error {
 		return err
 	}
 
+	pluginDir := app.GetPluginsDir()
+
 	loadSnapshotOpts := []client.OpOption{
 		client.WithExecPath(avalancheGoBinPath),
 		client.WithRootDataDir(outputDir),
 		client.WithReassignPortsIfUsed(true),
-	}
-
-	// For avago version < AvalancheGoPluginDirFlagAdded, we use ANR default location for plugins dir,
-	// for >= AvalancheGoPluginDirFlagAdded, we pass the param
-	// TODO: review this once ANR includes proper avago version management
-	if semver.Compare(avagoVersion, constants.AvalancheGoPluginDirFlagAdded) >= 0 {
-		loadSnapshotOpts = append(loadSnapshotOpts, client.WithPluginDir(pluginDir))
+		client.WithPluginDir(pluginDir),
 	}
 
 	// load global node configs if they exist
@@ -99,7 +102,7 @@ func startNetwork(*cobra.Command, []string) error {
 
 	ctx := binutils.GetAsyncContext()
 
-	_, err = cli.LoadSnapshot(
+	pp, err := cli.LoadSnapshot(
 		ctx,
 		snapshotName,
 		loadSnapshotOpts...,
@@ -112,22 +115,78 @@ func startNetwork(*cobra.Command, []string) error {
 		ux.Logger.PrintToUser("Network has already been booted. Wait until healthy...")
 	} else {
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
+		ux.Logger.PrintToUser("Node log path: %s/node<i>/logs", pp.ClusterInfo.RootDataDir)
 	}
 
-	// TODO: this should probably be extracted from the deployer and
-	// used as an independent helper
-	clusterInfo, err := sd.WaitForHealthy(ctx, cli, constants.HealthCheckInterval)
+	clusterInfo, err := subnet.WaitForHealthy(ctx, cli)
 	if err != nil {
 		return fmt.Errorf("failed waiting for network to become healthy: %w", err)
 	}
 
-	endpoints := subnet.GetEndpoints(clusterInfo)
-
 	fmt.Println()
-	if len(endpoints) > 0 {
+	if subnet.HasEndpoints(clusterInfo) {
 		ux.Logger.PrintToUser("Network ready to use. Local network node endpoints:")
 		ux.PrintTableEndpoints(clusterInfo)
 	}
 
 	return nil
+}
+
+func determineAvagoVersion(userProvidedAvagoVersion string) (string, error) {
+	// a specific user provided version should override this calculation, so just return
+	if userProvidedAvagoVersion != latest {
+		return userProvidedAvagoVersion, nil
+	}
+
+	// Need to determine which subnets have been deployed
+	locallyDeployedSubnets, err := subnet.GetLocallyDeployedSubnetsFromFile(app)
+	if err != nil {
+		return "", err
+	}
+
+	// if no subnets have been deployed, use latest
+	if len(locallyDeployedSubnets) == 0 {
+		return latest, nil
+	}
+
+	currentRPCVersion := -1
+
+	// For each deployed subnet, check RPC versions
+	for _, deployedSubnet := range locallyDeployedSubnets {
+		sc, err := app.LoadSidecar(deployedSubnet)
+		if err != nil {
+			return "", err
+		}
+
+		// if you have a custom vm, you must provide the version explicitly
+		// if you upgrade from subnet-evm to a custom vm, the RPC version will be 0
+		if sc.VM == models.CustomVM || sc.Networks[models.Local.String()].RPCVersion == 0 {
+			continue
+		}
+
+		if currentRPCVersion == -1 {
+			currentRPCVersion = sc.Networks[models.Local.String()].RPCVersion
+		}
+
+		if sc.Networks[models.Local.String()].RPCVersion != currentRPCVersion {
+			return "", fmt.Errorf(
+				"RPC version mismatch. Expected %d, got %d for Subnet %s. Upgrade all subnets to the same RPC version to launch the network",
+				currentRPCVersion,
+				sc.RPCVersion,
+				sc.Name,
+			)
+		}
+	}
+
+	// If currentRPCVersion == -1, then only custom subnets have been deployed, the user must provide the version explicitly if not latest
+	if currentRPCVersion == -1 {
+		ux.Logger.PrintToUser("No Subnet RPC version found. Using latest AvalancheGo version")
+		return latest, nil
+	}
+
+	return vm.GetLatestAvalancheGoByProtocolVersion(
+		app,
+		currentRPCVersion,
+		constants.AvalancheGoCompatibilityURL,
+	)
 }

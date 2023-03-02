@@ -18,7 +18,6 @@ import (
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
-	"github.com/ava-labs/avalanchego/vms/platformvm/validator"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
@@ -74,8 +73,8 @@ func (d *PublicDeployer) AddValidator(
 	if ok := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys); !ok {
 		return false, nil, ErrNoSubnetAuthKeysInWallet
 	}
-	validator := &validator.SubnetValidator{
-		Validator: validator.Validator{
+	validator := &txs.SubnetValidator{
+		Validator: txs.Validator{
 			NodeID: nodeID,
 			Start:  uint64(startTime.Unix()),
 			End:    uint64(startTime.Add(duration).Unix()),
@@ -295,7 +294,7 @@ func (d *PublicDeployer) createBlockchainTx(
 
 func (d *PublicDeployer) createAddSubnetValidatorTx(
 	subnetAuthKeys []ids.ShortID,
-	validator *validator.SubnetValidator,
+	validator *txs.SubnetValidator,
 	wallet primary.Wallet,
 ) (*txs.Tx, error) {
 	options := d.getMultisigTxOptions(subnetAuthKeys)

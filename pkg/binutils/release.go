@@ -65,7 +65,7 @@ func InstallBinary(
 	repo string,
 	downloader GithubDownloader,
 	installer Installer,
-) (string, string, error) {
+) (string, error) {
 	if version == "latest" {
 		// get latest version
 		var err error
@@ -74,10 +74,10 @@ func InstallBinary(
 			repo,
 		))
 		if err != nil {
-			return "", "", err
+			return "", err
 		}
 	} else if !semver.IsValid(version) {
-		return "", "", fmt.Errorf(
+		return "", fmt.Errorf(
 			"invalid version string. Must be semantic version ex: v1.7.14: %s", version)
 	}
 
@@ -85,16 +85,16 @@ func InstallBinary(
 
 	exists, err := binChecker.ExistsWithVersion(baseBinDir, binPrefix, version)
 	if err != nil {
-		return "", "", fmt.Errorf("failed trying to locate binary %s-%s: %s", binPrefix, version, baseBinDir)
+		return "", fmt.Errorf("failed trying to locate binary %s-%s: %s", binPrefix, version, baseBinDir)
 	}
 	if exists {
 		app.Log.Debug(binPrefix + version + " found. Skipping installation")
-		return version, filepath.Join(baseBinDir, binPrefix+version), nil
+		return filepath.Join(baseBinDir, binPrefix+version), nil
 	}
 
 	app.Log.Info("Using binary version", zap.String("version", version))
 
 	binDir, err := installBinaryWithVersion(app, version, installDir, binPrefix, downloader, installer)
 
-	return version, binDir, err
+	return binDir, err
 }

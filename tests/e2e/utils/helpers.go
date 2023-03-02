@@ -564,14 +564,9 @@ func GetNodesInfo() (map[string]NodeInfo, error) {
 	}
 	nodesInfo := map[string]NodeInfo{}
 	for nodeName, nodeInfo := range resp.ClusterInfo.NodeInfos {
-		pluginDir := nodeInfo.PluginDir
-		if pluginDir == "" {
-			// pre 1.9.6 case for CLI, will use pre 1.9.6 node plugin dir
-			pluginDir = path.Join(path.Dir(nodeInfo.ExecPath), "plugins")
-		}
 		nodesInfo[nodeName] = NodeInfo{
 			ID:         nodeInfo.Id,
-			PluginDir:  pluginDir,
+			PluginDir:  nodeInfo.PluginDir,
 			ConfigFile: path.Join(path.Dir(nodeInfo.LogDir), "config.json"),
 			URI:        nodeInfo.Uri,
 			LogDir:     nodeInfo.LogDir,
@@ -785,4 +780,23 @@ func FundLedgerAddress() error {
 	}
 
 	return nil
+}
+
+func GetPluginBinaries() ([]string, error) {
+	// load plugin files from the plugin directory
+	pluginDir := path.Join(GetBaseDir(), PluginDirExt)
+	files, err := os.ReadDir(pluginDir)
+	if err != nil {
+		return nil, err
+	}
+
+	pluginFiles := []string{}
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		pluginFiles = append(pluginFiles, filepath.Join(pluginDir, file.Name()))
+	}
+
+	return pluginFiles, nil
 }

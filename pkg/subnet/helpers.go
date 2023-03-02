@@ -12,6 +12,8 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 )
 
 func GetOwners(network models.Network, subnetID ids.ID) ([]string, uint32, error) {
@@ -28,15 +30,24 @@ func GetOwners(network models.Network, subnetID ids.ID) ([]string, uint32, error
 	}
 	pClient := platformvm.NewClient(api)
 	ctx := context.Background()
-	subnets, err := pClient.GetSubnets(ctx, []ids.ID{subnetID})
+	txBytes, err := pClient.GetTx(ctx, subnetID)
 	if err != nil {
-		return nil, 0, fmt.Errorf("subnet query error: %w", err)
+		return nil, 0, fmt.Errorf("subnet tx %s query error: %w", subnetID, err)
 	}
-	if len(subnets) == 0 {
-		return nil, 0, fmt.Errorf("subnet not found")
+	var tx txs.Tx
+	if _, err := txs.Codec.Unmarshal(txBytes, &tx); err != nil {
+		return nil, 0, fmt.Errorf("couldn't unmarshal tx %s: %w", subnetID, err)
 	}
-	controlKeys := subnets[0].ControlKeys
-	threshold := subnets[0].Threshold
+	createSubnetTx, ok := tx.Unsigned.(*txs.CreateSubnetTx)
+	if !ok {
+		return nil, 0, fmt.Errorf("got unexpected type %T for subnet tx %s", tx.Unsigned, subnetID)
+	}
+	owner, ok := createSubnetTx.Owner.(*secp256k1fx.OutputOwners)
+	if !ok {
+		return nil, 0, fmt.Errorf("got unexpected type %T for subnet owners tx %s", createSubnetTx.Owner, subnetID)
+	}
+	controlKeys := owner.Addrs
+	threshold := owner.Threshold
 	networkID, err := network.NetworkID()
 	if err != nil {
 		return nil, 0, err

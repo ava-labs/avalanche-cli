@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/local"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 func newStopCmd() *cobra.Command {
@@ -25,7 +26,7 @@ reload this snapshot with network start --snapshot-name <snapshotName>. Otherwis
 network saves to the default snapshot, overwriting any existing state. You can reload the
 default snapshot with network start.`,
 
-		RunE:         stopNetwork,
+		RunE:         StopNetwork,
 		Args:         cobra.ExactArgs(0),
 		SilenceUsage: true,
 	}
@@ -33,8 +34,21 @@ default snapshot with network start.`,
 	return cmd
 }
 
-func stopNetwork(*cobra.Command, []string) error {
-	cli, err := binutils.NewGRPCClient()
+func StopNetwork(*cobra.Command, []string) error {
+	err := saveNetwork()
+
+	if err := binutils.KillgRPCServerProcess(app); err != nil {
+		app.Log.Warn("failed killing server process", zap.Error(err))
+		fmt.Println(err)
+	} else {
+		ux.Logger.PrintToUser("Server shutdown gracefully")
+	}
+
+	return err
+}
+
+func saveNetwork() error {
+	cli, err := binutils.NewGRPCClient(binutils.WithAvoidRPCVersionCheck(true))
 	if err != nil {
 		return err
 	}
@@ -59,5 +73,6 @@ func stopNetwork(*cobra.Command, []string) error {
 		return fmt.Errorf("failed to stop network with a snapshot: %w", err)
 	}
 	ux.Logger.PrintToUser("Network stopped successfully.")
+
 	return nil
 }

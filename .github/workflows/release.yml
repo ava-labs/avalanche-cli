@@ -12,12 +12,12 @@ jobs:
     steps:
       - uses: actions/setup-go@v3
         with:
-          go-version: 1.18
+          go-version: "1.19"
       - uses: actions/checkout@v3
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.45
+          version: v1.49
           working-directory: .
           args: --timeout 3m
       - name: Install license check
@@ -29,7 +29,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        go: ["1.18"]
+        go: ["1.19"]
         os: [ubuntu-20.04]
     steps:
       - uses: actions/checkout@v3
@@ -52,9 +52,9 @@ jobs:
           fetch-depth: 0
           path: avalanche-cli
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
-          go-version: 1.18
+          go-version: "1.19"
       - name: Set up arm64 cross compiler
         run: |
           sudo apt-get -y update
@@ -85,4 +85,3 @@ jobs:
         env:
           #https://docs.github.com/en/actions/security-guides/automatic-token-authentication#about-the-github_token-secret
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

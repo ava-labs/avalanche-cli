@@ -25,7 +25,7 @@ func CreateCustomSubnetConfig(app *application.Avalanche, subnetName string, gen
 		TokenName: "",
 	}
 
-	err = copyCustomVM(app, subnetName, vmPath)
+	err = CopyCustomVM(app, subnetName, vmPath)
 
 	return genesisBytes, sc, err
 }
@@ -43,7 +43,7 @@ func loadCustomGenesis(app *application.Avalanche, genesisPath string) ([]byte, 
 	return genesisBytes, err
 }
 
-func copyCustomVM(app *application.Avalanche, subnetName string, vmPath string) error {
+func CopyCustomVM(app *application.Avalanche, subnetName string, vmPath string) error {
 	var err error
 	if vmPath == "" {
 		vmPath, err = app.Prompt.CaptureExistingFilepath("Enter path to vm binary")

@@ -44,10 +44,6 @@ func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Con
 	app.Downloader = downloader
 }
 
-func (app *Avalanche) GetUpgradeFilesDir() string {
-	return filepath.Join(app.baseDir, constants.UpgradeFilesDir)
-}
-
 func (app *Avalanche) GetRunFile() string {
 	return filepath.Join(app.GetRunDir(), constants.ServerRunFile)
 }
@@ -76,6 +72,10 @@ func (app *Avalanche) GetCustomVMDir() string {
 	return filepath.Join(app.baseDir, constants.CustomVMDir)
 }
 
+func (app *Avalanche) GetPluginsDir() string {
+	return filepath.Join(app.baseDir, constants.PluginDir)
+}
+
 func (app *Avalanche) GetAvalanchegoBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.AvalancheGoInstallDir)
 }
@@ -86,6 +86,10 @@ func (app *Avalanche) GetSubnetEVMBinDir() string {
 
 func (app *Avalanche) GetSpacesVMBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.SpacesVMInstallDir)
+}
+
+func (app *Avalanche) GetUpgradeBytesFilepath(subnetName string) string {
+	return filepath.Join(app.GetSubnetDir(), subnetName, constants.UpgradeBytesFileName)
 }
 
 func (app *Avalanche) GetCustomVMPath(subnetName string) string {
@@ -128,6 +132,10 @@ func (app *Avalanche) GetKeyPath(keyName string) string {
 	return filepath.Join(app.baseDir, constants.KeyDir, keyName+constants.KeySuffix)
 }
 
+func (app *Avalanche) GetUpgradeBytesFilePath(subnetName string) string {
+	return filepath.Join(app.GetSubnetDir(), subnetName, constants.UpgradeBytesFileName)
+}
+
 func (app *Avalanche) GetDownloader() Downloader {
 	return app.Downloader
 }
@@ -136,13 +144,34 @@ func (*Avalanche) GetAvalanchegoCompatibilityURL() string {
 	return constants.AvalancheGoCompatibilityURL
 }
 
+func (app *Avalanche) ReadUpgradeFile(subnetName string) ([]byte, error) {
+	upgradeBytesFilePath := app.GetUpgradeBytesFilePath(subnetName)
+
+	return app.readFile(upgradeBytesFilePath)
+}
+
+func (app *Avalanche) ReadLockUpgradeFile(subnetName string) ([]byte, error) {
+	upgradeBytesLockFilePath := app.GetUpgradeBytesFilePath(subnetName) + constants.UpgradeBytesLockExtension
+
+	return app.readFile(upgradeBytesLockFilePath)
+}
+
+func (app *Avalanche) WriteUpgradeFile(subnetName string, bytes []byte) error {
+	upgradeBytesFilePath := app.GetUpgradeBytesFilePath(subnetName)
+
+	return app.writeFile(upgradeBytesFilePath, bytes)
+}
+
+func (app *Avalanche) WriteLockUpgradeFile(subnetName string, bytes []byte) error {
+	upgradeBytesLockFilePath := app.GetUpgradeBytesFilePath(subnetName) + constants.UpgradeBytesLockExtension
+
+	return app.writeFile(upgradeBytesLockFilePath, bytes)
+}
+
 func (app *Avalanche) WriteGenesisFile(subnetName string, genesisBytes []byte) error {
 	genesisPath := app.GetGenesisPath(subnetName)
-	if err := os.MkdirAll(filepath.Dir(genesisPath), constants.DefaultPerms755); err != nil {
-		return err
-	}
 
-	return os.WriteFile(genesisPath, genesisBytes, WriteReadReadPerms)
+	return app.writeFile(genesisPath, genesisBytes)
 }
 
 func (app *Avalanche) GenesisExists(subnetName string) bool {
@@ -281,6 +310,7 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	sc.Networks[network.String()] = models.NetworkData{
 		SubnetID:     subnetID,
 		BlockchainID: blockchainID,
+		RPCVersion:   sc.RPCVersion,
 	}
 	if err := app.UpdateSidecar(sc); err != nil {
 		return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)
@@ -310,4 +340,20 @@ func (app *Avalanche) GetSidecarNames() ([]string, error) {
 		}
 	}
 	return names, nil
+}
+
+func (*Avalanche) readFile(path string) ([]byte, error) {
+	if err := os.MkdirAll(filepath.Dir(path), constants.DefaultPerms755); err != nil {
+		return nil, err
+	}
+
+	return os.ReadFile(path)
+}
+
+func (*Avalanche) writeFile(path string, bytes []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), constants.DefaultPerms755); err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, bytes, WriteReadReadPerms)
 }
