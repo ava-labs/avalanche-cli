@@ -48,6 +48,8 @@ func FindErrorLogs(rootDirs ...string) {
 						ux.Logger.PrintToUser("Found some error strings in the logs, check these for possible causes:")
 						alreadyNotified = true
 					}
+					fmt.Println()
+					ux.Logger.PrintToUser("-- Found error logs in file at path %s:", path)
 					for _, o := range occurrences {
 						ux.Logger.PrintToUser(o)
 					}

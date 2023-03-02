@@ -180,6 +180,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		utils.FindErrorLogs(rootDir, backendLogDir)
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 	}
+
 	subnetIDs := clusterInfo.Subnets
 	numBlockchains := len(clusterInfo.CustomChains)
 
@@ -224,6 +225,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		blockchainSpecs,
 	)
 	if err != nil {
+		utils.FindErrorLogs(rootDir, backendLogDir)
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to deploy blockchain: %w", err)
 	}
 
@@ -234,6 +236,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	clusterInfo, err = d.WaitForHealthy(ctx, cli, d.healthCheckInterval)
 	if err != nil {
+		utils.FindErrorLogs(rootDir, backendLogDir)
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 	}
 

@@ -29,6 +29,12 @@ var _ = ginkgo.Describe("[Error handling]", func() {
 	})
 	ginkgo.It("launching faulty VM prints error message", func() {
 		commands.CreateSpacesVMConfigWithVersion(subnetName, utils.SpacesVMGenesisPath, "latest")
-		commands.DeploySubnetLocallyWithArgsExpectError(subnetName, "v1.8.4", "") // this combination should fail
+		out, err := commands.DeploySubnetLocallyWithArgsAndOutput(subnetName, "v1.8.4", "") // this combination should fail
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		fmt.Println(string(out))
+	})
+	ginkgo.It("upgrade VM has error", func() {
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+		commands.DeploySubnetLocally(subnetName)
 	})
 })
