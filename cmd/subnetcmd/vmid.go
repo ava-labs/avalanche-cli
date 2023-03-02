@@ -31,6 +31,9 @@ func printVMID(_ *cobra.Command, args []string) error {
 
 	chain := chains[0]
 	vmID, err := utils.VMID(chain)
+	if err != nil {
+		return err
+	}
 
 	ux.Logger.PrintToUser(fmt.Sprintf("VM ID : %s", vmID.String()))
 	return nil
