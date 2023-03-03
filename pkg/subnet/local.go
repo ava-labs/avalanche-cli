@@ -115,10 +115,12 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		return ids.Empty, ids.Empty, err
 	}
 
-	// ignoring the following error returned
-	// TODO should we ignore?
-	backendLogFile, _ := binutils.GetBackendLogFile(d.app)
-	backendLogDir := filepath.Dir(backendLogFile)
+	backendLogFile, err := binutils.GetBackendLogFile(d.app)
+	var backendLogDir string
+	if err == nil {
+		// TODO should we do something if there _was_ an error?
+		backendLogDir = filepath.Dir(backendLogFile)
+	}
 
 	cli, err := d.getClientFunc()
 	if err != nil {
@@ -142,7 +144,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	rootDir := clusterInfo.GetRootDataDir()
 	if err != nil {
 		if !server.IsServerError(err, server.ErrNotBootstrapped) {
-			utils.FindErrorLogs(clusterInfo.GetRootDataDir(), backendLogDir)
+			utils.FindErrorLogs(rootDir, backendLogDir)
 			return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 		} else {
 			networkBooted = false
@@ -168,6 +170,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		utils.FindErrorLogs(clusterInfo.GetRootDataDir(), backendLogDir)
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 	}
+	rootDir = clusterInfo.GetRootDataDir()
 
 	if alreadyDeployed(chainVMID, clusterInfo) {
 		ux.Logger.PrintToUser("Subnet %s has already been deployed", chain)
@@ -226,13 +229,14 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		blockchainSpecs,
 	)
 	if err != nil {
-		utils.FindErrorLogs(clusterInfo.GetRootDataDir(), backendLogDir)
+		utils.FindErrorLogs(rootDir, backendLogDir)
 		pluginRemoveErr := d.removeInstalledPlugin(chainVMID)
 		if pluginRemoveErr != nil {
 			ux.Logger.PrintToUser("Failed to remove plugin binary: %s", pluginRemoveErr)
 		}
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to deploy blockchain: %w", err)
 	}
+	rootDir = clusterInfo.GetRootDataDir()
 
 	d.app.Log.Debug(deployBlockchainsInfo.String())
 
@@ -241,10 +245,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	clusterInfo, err = WaitForHealthy(ctx, cli)
 	if err != nil {
-		fmt.Println("********************************")
-		fmt.Println(clusterInfo.GetRootDataDir())
-		fmt.Println("********************************")
-		utils.FindErrorLogs(clusterInfo.GetRootDataDir(), backendLogDir)
+		utils.FindErrorLogs(rootDir, backendLogDir)
 		pluginRemoveErr := d.removeInstalledPlugin(chainVMID)
 		if pluginRemoveErr != nil {
 			ux.Logger.PrintToUser("Failed to remove plugin binary: %s", pluginRemoveErr)
