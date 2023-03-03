@@ -115,11 +115,10 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		return ids.Empty, ids.Empty, err
 	}
 
-	// this means if we can't find the backend log file we are ignoring this error
+	// ignoring the following error returned
 	// TODO should we ignore?
 	backendLogFile, _ := binutils.GetBackendLogFile(d.app)
 	backendLogDir := filepath.Dir(backendLogFile)
-	fmt.Println(backendLogDir)
 
 	cli, err := d.getClientFunc()
 	if err != nil {
@@ -139,7 +138,8 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	// check for network status
 	networkBooted := true
-	_, err = WaitForHealthy(ctx, cli)
+	clusterInfo, err := WaitForHealthy(ctx, cli)
+	rootDir := clusterInfo.GetRootDataDir()
 	if err != nil {
 		if !server.IsServerError(err, server.ErrNotBootstrapped) {
 			utils.FindErrorLogs(clusterInfo.GetRootDataDir(), backendLogDir)
@@ -157,15 +157,15 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	if !networkBooted {
 		if err := d.startNetwork(ctx, cli, avalancheGoBinPath, runDir); err != nil {
+			utils.FindErrorLogs(rootDir, backendLogDir)
 			return ids.Empty, ids.Empty, err
 		}
-		rootDir = resp.ClusterInfo.GetRootDataDir()
 	}
 
 	// get VM info
-	clusterInfo, err := WaitForHealthy(ctx, cli)
+	clusterInfo, err = WaitForHealthy(ctx, cli)
 	if err != nil {
-		utils.FindErrorLogs(rootDir, backendLogDir)
+		utils.FindErrorLogs(clusterInfo.GetRootDataDir(), backendLogDir)
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
 	}
 
@@ -226,7 +226,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		blockchainSpecs,
 	)
 	if err != nil {
-		utils.FindErrorLogs(rootDir, backendLogDir)
+		utils.FindErrorLogs(clusterInfo.GetRootDataDir(), backendLogDir)
 		pluginRemoveErr := d.removeInstalledPlugin(chainVMID)
 		if pluginRemoveErr != nil {
 			ux.Logger.PrintToUser("Failed to remove plugin binary: %s", pluginRemoveErr)
@@ -241,7 +241,10 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	clusterInfo, err = WaitForHealthy(ctx, cli)
 	if err != nil {
-		utils.FindErrorLogs(rootDir, backendLogDir)
+		fmt.Println("********************************")
+		fmt.Println(clusterInfo.GetRootDataDir())
+		fmt.Println("********************************")
+		utils.FindErrorLogs(clusterInfo.GetRootDataDir(), backendLogDir)
 		pluginRemoveErr := d.removeInstalledPlugin(chainVMID)
 		if pluginRemoveErr != nil {
 			ux.Logger.PrintToUser("Failed to remove plugin binary: %s", pluginRemoveErr)
