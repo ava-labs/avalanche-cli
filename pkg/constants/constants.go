@@ -19,6 +19,7 @@ const (
 	SuffixSeparator = "_"
 	SidecarFileName = "sidecar.json"
 	GenesisFileName = "genesis.json"
+	NodeFileName    = "node.json"
 	SidecarSuffix   = SuffixSeparator + SidecarFileName
 	GenesisSuffix   = SuffixSeparator + GenesisFileName
 
