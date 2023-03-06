@@ -19,7 +19,6 @@ var (
 	errInvalidPrecompiles         = errors.New("invalid precompiles")
 	errNoBlockTimestamp           = errors.New("no blockTimestamp value set")
 	errBlockTimestampInvalid      = errors.New("blockTimestamp is invalid")
-	errBlockTimestampInthePast    = errors.New("blockTimestamp is in the past")
 	errNoPrecompiles              = errors.New("no precompiles present")
 	errEmptyPrecompile            = errors.New("the precompile has no content")
 	errNoUpcomingUpgrades         = errors.New("no valid upcoming activation timestamp found")
