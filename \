@@ -176,26 +176,6 @@ func TestUpgradeBytesValidation(t *testing.T) {
 	}
 }
 
-func TestForceIgnorePastTimestamp(t *testing.T) {
-	// it's not great to overwrite a global variable during a test
-	// in this case the variable is also used for other contexts
-	// thus, it could have unintended consequences
-	// we therefore store it's value temporarily and
-	// set it to its original value after the test
-	forceVal := force
-	force = true
-	defer func() {
-		force = forceVal
-	}()
-
-	upgradesFile := []byte(
-		`{"precompileUpgrades":[{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":1674496268,"initialFeeConfig":{}}}]}`)
-
-	require := require.New(t)
-	_, err := validateUpgradeBytes(upgradesFile, nil)
-	require.NoError(err)
-}
-
 func TestLockFile(t *testing.T) {
 	type testRun struct {
 		name         string

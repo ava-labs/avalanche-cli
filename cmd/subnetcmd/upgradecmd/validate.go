@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/params"
 )
 
@@ -23,6 +24,8 @@ var (
 	errEmptyPrecompile            = errors.New("the precompile has no content")
 	errNoUpcomingUpgrades         = errors.New("no valid upcoming activation timestamp found")
 	errNewUpgradesNotContainsLock = errors.New("the new upgrade file does not contain the content of the lock file")
+
+	errUserAborted = errors.New("user aborted")
 )
 
 func validateUpgradeBytes(file []byte, lockFile []byte) ([]params.PrecompileUpgrade, error) {
@@ -55,9 +58,19 @@ func validateUpgradeBytes(file []byte, lockFile []byte) ([]params.PrecompileUpgr
 		return nil, err
 	}
 
-	for _, ts := range allTimestamps {
-		if time.Unix(ts, 0).Before(time.Now()) {
-			return nil, errBlockTimestampInthePast
+	if !force {
+		for _, ts := range allTimestamps {
+			if time.Unix(ts, 0).Before(time.Now()) {
+				ux.Logger.PrintToUser("Warning: a timestamp in the past has been detected. This only works for already deployed upgrades!")
+				yes, err := app.Prompt.CaptureYesNo("Do you want to continue (use --force to skip prompting)?")
+				if err != nil {
+					return nil, err
+				}
+				if !yes {
+					ux.Logger.PrintToUser("No selected.")
+					return nil, errUserAborted
+				}
+			}
 		}
 	}
 
