@@ -167,32 +167,23 @@ func TestUpgradeBytesValidation(t *testing.T) {
 		},
 	}
 
+	skipPrompting := false
 	require := require.New(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateUpgradeBytes(tt.upgradesFile, nil)
+			_, err := validateUpgradeBytes(tt.upgradesFile, nil, skipPrompting)
 			require.ErrorIs(err, tt.expectedErr)
 		})
 	}
 }
 
 func TestForceIgnorePastTimestamp(t *testing.T) {
-	// it's not great to overwrite a global variable during a test
-	// in this case the variable is also used for other contexts
-	// thus, it could have unintended consequences
-	// we therefore store it's value temporarily and
-	// set it to its original value after the test
-	forceVal := force
-	force = true
-	defer func() {
-		force = forceVal
-	}()
-
+	skipPrompting := true
 	upgradesFile := []byte(
 		`{"precompileUpgrades":[{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":1674496268,"initialFeeConfig":{}}}]}`)
 
 	require := require.New(t)
-	_, err := validateUpgradeBytes(upgradesFile, nil)
+	_, err := validateUpgradeBytes(upgradesFile, nil, skipPrompting)
 	require.NoError(err)
 }
 
@@ -261,10 +252,11 @@ func TestLockFile(t *testing.T) {
 		},
 	}
 
+	skipPrompting := false
 	require := require.New(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateUpgradeBytes(tt.upgradesFile, tt.lockFile)
+			_, err := validateUpgradeBytes(tt.upgradesFile, tt.lockFile, skipPrompting)
 			require.ErrorIs(err, tt.expectedErr)
 		})
 	}
