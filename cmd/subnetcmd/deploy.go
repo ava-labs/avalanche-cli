@@ -103,6 +103,9 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 	chains := []string{}
 
 	for _, s := range subnets {
+		if !s.IsDir() {
+			continue
+		}
 		sidecarFile := filepath.Join(app.GetSubnetDir(), s.Name(), constants.SidecarFileName)
 		if _, err := os.Stat(sidecarFile); err == nil {
 			// read in sidecar file

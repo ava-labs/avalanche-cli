@@ -4,11 +4,10 @@
 package subnet
 
 import (
-	"os"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"os"
 )
 
 func GetLocallyDeployedSubnetsFromFile(app *application.Avalanche) ([]string, error) {
@@ -20,6 +19,9 @@ func GetLocallyDeployedSubnetsFromFile(app *application.Avalanche) ([]string, er
 	deployedSubnets := []string{}
 
 	for _, subnetDir := range allSubnetDirs {
+		if !subnetDir.IsDir() {
+			continue
+		}
 		// read sidecar file
 		sc, err := app.LoadSidecar(subnetDir.Name())
 		if err == os.ErrNotExist {
