@@ -15,40 +15,35 @@ import (
 const oldSubnetEVM = "SubnetEVM"
 
 func migrateSubnetEVMNames(app *application.Avalanche, runner *migrationRunner) error {
-	subnetsDir := app.GetSubnetDir()
-	subnets, err := os.ReadDir(subnetsDir)
+	subnetDir := app.GetSubnetDir()
+	subnets, err := os.ReadDir(subnetDir)
 	if err != nil {
 		return err
 	}
 
 	for _, subnet := range subnets {
-		subnetDir := filepath.Join(subnetsDir, subnet.Name())
-		fileInfo, err := os.Stat(subnetDir)
+		if !subnet.IsDir() {
+			continue
+		}
+		// disregard any empty subnet directories
+		dirContents, err := os.ReadDir(filepath.Join(subnetDir, subnet.Name()))
+		if err != nil {
+			return err
+		}
+		if len(dirContents) == 0 {
+			continue
+		}
+
+		sc, err := app.LoadSidecar(subnet.Name())
 		if err != nil {
 			return err
 		}
 
-		if fileInfo.IsDir() {
-			// disregard any empty subnet directories
-			dirContents, err := os.ReadDir(subnetDir)
-			if err != nil {
+		if string(sc.VM) == oldSubnetEVM {
+			runner.printMigrationMessage()
+			sc.VM = models.SubnetEvm
+			if err = app.UpdateSidecar(&sc); err != nil {
 				return err
-			}
-			if len(dirContents) == 0 {
-				continue
-			}
-
-			sc, err := app.LoadSidecar(subnet.Name())
-			if err != nil {
-				return err
-			}
-
-			if string(sc.VM) == oldSubnetEVM {
-				runner.printMigrationMessage()
-				sc.VM = models.SubnetEvm
-				if err = app.UpdateSidecar(&sc); err != nil {
-					return err
-				}
 			}
 		}
 	}
