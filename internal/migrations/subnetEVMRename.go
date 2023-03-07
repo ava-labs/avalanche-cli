@@ -4,9 +4,10 @@
 package migrations
 
 import (
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"os"
 	"path/filepath"
+
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 )
