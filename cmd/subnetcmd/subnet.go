@@ -60,5 +60,7 @@ manage your Subnet configurations and live deployments.`,
 	cmd.AddCommand(newConfigureCmd())
 	// subnet import-running
 	cmd.AddCommand(newImportFromNetworkCmd())
+	// subnet VMID
+	cmd.AddCommand(vmidCmd())
 	return cmd
 }
