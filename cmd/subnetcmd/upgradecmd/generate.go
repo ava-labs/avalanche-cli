@@ -323,27 +323,7 @@ func promptTxAllowListParams(precompiles *[]params.PrecompileUpgrade, date time.
 	*precompiles = append(*precompiles, upgrade)
 	return nil
 }
-func getLocalNetworkBlockchainID(subnetName string) (string, error) {
-	if !app.GenesisExists(subnetName) {
-		ux.Logger.PrintToUser("The provided subnet name %q does not exist", subnetName)
-		return "", nil
-	}
 
-	// read in sidecar
-	sc, err := app.LoadSidecar(subnetName)
-	switch sc.VM {
-	case models.SubnetEvm:
-		//Currently only checking if admins have balance for subnets deployed in Local Network
-		if networkData, ok := sc.Networks["Local Network"]; ok {
-			blockchainID := networkData.BlockchainID.String()
-			return blockchainID, nil
-		}
-		return "", nil
-	default:
-		app.Log.Warn("Unknown genesis format", zap.Any("vm-type", sc.VM))
-	}
-	return "", err
-}
 func getCClient(apiEndpoint string, blockchainID string) (ethclient.Client, error) {
 	cClient, err := ethclient.Dial(fmt.Sprintf("%s/ext/bc/%s/rpc", apiEndpoint, blockchainID))
 	if err != nil {
@@ -351,11 +331,8 @@ func getCClient(apiEndpoint string, blockchainID string) (ethclient.Client, erro
 	}
 	return cClient, nil
 }
-func ensureAdminsHaveBalanceLocalNetwork(admins []common.Address, subnetName string, blockchainID string) error {
-	blockchainID, err := getLocalNetworkBlockchainID(subnetName)
-	if err != nil {
-		return err
-	}
+
+func ensureAdminsHaveBalanceLocalNetwork(admins []common.Address, blockchainID string) error {
 	cClient, err := getCClient(constants.LocalAPIEndpoint, blockchainID)
 	if err != nil {
 		return err
@@ -363,11 +340,11 @@ func ensureAdminsHaveBalanceLocalNetwork(admins []common.Address, subnetName str
 
 	for _, admin := range admins {
 		// we can break at the first admin who has a non-zero balance
-		cChainBalance, err := getCChainBalance(context.Background(), cClient, admin.String())
+		accountBalance, err := getAccountBalance(context.Background(), cClient, admin.String())
 		if err != nil {
 			return err
 		}
-		if cChainBalance > float64(0) {
+		if accountBalance > float64(0) {
 			return nil
 		}
 	}
@@ -375,6 +352,7 @@ func ensureAdminsHaveBalanceLocalNetwork(admins []common.Address, subnetName str
 	return errors.New("none of the addresses in the transaction allow list precompile have any tokens allocated to them. Currently, no address can transact on the network. Airdrop some funds to one of the allow list addresses to continue")
 
 }
+
 func ensureAdminsHaveBalance(admins []common.Address, subnetName string) error {
 	if len(admins) < 1 {
 		return nil
@@ -392,7 +370,7 @@ func ensureAdminsHaveBalance(admins []common.Address, subnetName string) error {
 		//Currently only checking if admins have balance for subnets deployed in Local Network
 		if networkData, ok := sc.Networks["Local Network"]; ok {
 			blockchainID := networkData.BlockchainID.String()
-			if err = ensureAdminsHaveBalanceLocalNetwork(admins, subnetName, blockchainID); err != nil {
+			if err = ensureAdminsHaveBalanceLocalNetwork(admins, blockchainID); err != nil {
 				return err
 			}
 		}
@@ -401,7 +379,7 @@ func ensureAdminsHaveBalance(admins []common.Address, subnetName string) error {
 	}
 	return nil
 }
-func getCChainBalance(ctx context.Context, cClient ethclient.Client, addrStr string) (float64, error) {
+func getAccountBalance(ctx context.Context, cClient ethclient.Client, addrStr string) (float64, error) {
 	addr := common.HexToAddress(addrStr)
 	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
 	balance, err := cClient.BalanceAt(ctx, addr, nil)
