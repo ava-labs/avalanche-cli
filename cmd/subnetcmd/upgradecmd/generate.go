@@ -355,7 +355,6 @@ func ensureAdminsHaveBalanceLocalNetwork(admins []common.Address, subnetName str
 	if err != nil {
 		return err
 	}
-	fmt.Printf("blockchainID is %s \n", blockchainID)
 	cClient, err := getCClient(constants.LocalAPIEndpoint, blockchainID)
 	if err != nil {
 		return err
@@ -363,14 +362,11 @@ func ensureAdminsHaveBalanceLocalNetwork(admins []common.Address, subnetName str
 
 	for _, admin := range admins {
 		// we can break at the first admin who has a non-zero balance
-		fmt.Printf("address is %s \n", admin.String())
-
 		cChainBalance, err := getCChainBalance(context.Background(), cClient, admin.String())
 		if err != nil {
 			return err
 		}
 		if cChainBalance > float64(0) {
-			fmt.Printf("balance of address %s is %s \n", admin.String(), cChainBalance)
 			return nil
 		}
 	}
