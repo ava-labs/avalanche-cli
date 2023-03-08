@@ -334,6 +334,9 @@ func (app *Avalanche) GetSidecarNames() ([]string, error) {
 
 	var names []string
 	for _, m := range matches {
+		if !m.IsDir() {
+			continue
+		}
 		// a subnet dir could theoretically exist without a sidecar yet...
 		if _, err := os.Stat(filepath.Join(app.GetSubnetDir(), m.Name(), constants.SidecarFileName)); err == nil {
 			names = append(names, m.Name())
