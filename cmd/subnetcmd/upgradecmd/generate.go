@@ -3,9 +3,14 @@
 package upgradecmd
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanchego/utils/units"
+	"github.com/ava-labs/coreth/ethclient"
+	"go.uber.org/zap"
 	"math/big"
 	"time"
 
@@ -102,7 +107,7 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 		}
 
 		ux.Logger.PrintToUser(fmt.Sprintf("Set parameters for the %q precompile", precomp))
-		if err := promptParams(precomp, &precompiles.PrecompileUpgrades); err != nil {
+		if err := promptParams(precomp, &precompiles.PrecompileUpgrades, subnetName); err != nil {
 			return err
 		}
 
@@ -170,7 +175,7 @@ func queryActivationTimestamp() (time.Time, error) {
 	return date, nil
 }
 
-func promptParams(precomp string, precompiles *[]params.PrecompileUpgrade) error {
+func promptParams(precomp string, precompiles *[]params.PrecompileUpgrade, subnetName string) error {
 	date, err := queryActivationTimestamp()
 	if err != nil {
 		return err
@@ -179,7 +184,7 @@ func promptParams(precomp string, precompiles *[]params.PrecompileUpgrade) error
 	case vm.ContractAllowList:
 		return promptContractAllowListParams(precompiles, date)
 	case vm.TxAllowList:
-		return promptTxAllowListParams(precompiles, date)
+		return promptTxAllowListParams(precompiles, date, subnetName)
 	case vm.NativeMint:
 		return promptNativeMintParams(precompiles, date)
 	case vm.FeeManager:
@@ -297,12 +302,15 @@ func promptContractAllowListParams(precompiles *[]params.PrecompileUpgrade, date
 	return nil
 }
 
-func promptTxAllowListParams(precompiles *[]params.PrecompileUpgrade, date time.Time) error {
+func promptTxAllowListParams(precompiles *[]params.PrecompileUpgrade, date time.Time, subnetName string) error {
 	adminAddrs, enabledAddrs, err := promptAdminAndEnabledAddresses()
 	if err != nil {
 		return err
 	}
 
+	if err = ensureAdminsHaveBalance(adminAddrs, subnetName); err != nil {
+		return err
+	}
 	config := precompile.NewTxAllowListConfig(
 		big.NewInt(date.Unix()),
 		adminAddrs,
@@ -313,6 +321,103 @@ func promptTxAllowListParams(precompiles *[]params.PrecompileUpgrade, date time.
 	}
 	*precompiles = append(*precompiles, upgrade)
 	return nil
+}
+func getLocalNetworkBlockchainID(subnetName string) (string, error) {
+	if !app.GenesisExists(subnetName) {
+		ux.Logger.PrintToUser("The provided subnet name %q does not exist", subnetName)
+		return "", nil
+	}
+
+	// read in sidecar
+	sc, err := app.LoadSidecar(subnetName)
+	switch sc.VM {
+	case models.SubnetEvm:
+		//Currently only checking if admins have balance for subnets deployed in Local Network
+		if networkData, ok := sc.Networks["Local Network"]; ok {
+			blockchainID := networkData.BlockchainID.String()
+			return blockchainID, nil
+		}
+		return "", nil
+	default:
+		app.Log.Warn("Unknown genesis format", zap.Any("vm-type", sc.VM))
+	}
+	return "", err
+}
+func getCClient(apiEndpoint string, blockchainID string) (ethclient.Client, error) {
+	cClient, err := ethclient.Dial(fmt.Sprintf("%s/ext/bc/%s/rpc", apiEndpoint, blockchainID))
+	if err != nil {
+		return nil, err
+	}
+	return cClient, nil
+}
+func ensureAdminsHaveBalanceLocalNetwork(admins []common.Address, subnetName string, blockchainID string) error {
+	blockchainID, err := getLocalNetworkBlockchainID(subnetName)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("blockchainID is %s \n", blockchainID)
+	cClient, err := getCClient(constants.LocalAPIEndpoint, blockchainID)
+	if err != nil {
+		return err
+	}
+
+	for _, admin := range admins {
+		// we can break at the first admin who has a non-zero balance
+		fmt.Printf("address is %s \n", admin.String())
+
+		cChainBalance, err := getCChainBalance(context.Background(), cClient, admin.String())
+		if err != nil {
+			return err
+		}
+		if cChainBalance > float64(0) {
+			fmt.Printf("balance of address %s is %s \n", admin.String(), cChainBalance)
+			return nil
+		}
+	}
+
+	return errors.New("none of the addresses in the transaction allow list precompile have any tokens allocated to them. Currently, no address can transact on the network. Airdrop some funds to one of the allow list addresses to continue")
+
+}
+func ensureAdminsHaveBalance(admins []common.Address, subnetName string) error {
+	if len(admins) < 1 {
+		return nil
+	}
+
+	if !app.GenesisExists(subnetName) {
+		ux.Logger.PrintToUser("The provided subnet name %q does not exist", subnetName)
+		return nil
+	}
+
+	// read in sidecar
+	sc, err := app.LoadSidecar(subnetName)
+	switch sc.VM {
+	case models.SubnetEvm:
+		//Currently only checking if admins have balance for subnets deployed in Local Network
+		if networkData, ok := sc.Networks["Local Network"]; ok {
+			blockchainID := networkData.BlockchainID.String()
+			if err = ensureAdminsHaveBalanceLocalNetwork(admins, subnetName, blockchainID); err != nil {
+				return err
+			}
+		}
+	default:
+		app.Log.Warn("Unknown genesis format", zap.Any("vm-type", sc.VM))
+	}
+	return nil
+}
+func getCChainBalance(ctx context.Context, cClient ethclient.Client, addrStr string) (float64, error) {
+	addr := common.HexToAddress(addrStr)
+	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
+	balance, err := cClient.BalanceAt(ctx, addr, nil)
+	defer cancel()
+	if err != nil {
+		return 0, err
+	}
+	// convert to nAvax
+	balance = balance.Div(balance, big.NewInt(int64(units.Avax)))
+	if balance.Cmp(big.NewInt(0)) == 0 {
+		return 0, nil
+	}
+	return float64(balance.Uint64()) / float64(units.Avax), nil
 }
 
 func promptAdminAndEnabledAddresses() ([]common.Address, []common.Address, error) {
