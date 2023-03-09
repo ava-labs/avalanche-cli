@@ -39,6 +39,8 @@ const (
 	adminLabel   = "admin"
 )
 
+var subnetName string
+
 // avalanche subnet upgrade generate
 func newUpgradeGenerateCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -53,7 +55,7 @@ This command starts a wizard guiding the user generating the required file.`,
 }
 
 func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
-	subnetName := args[0]
+	subnetName = args[0]
 	if !app.GenesisExists(subnetName) {
 		ux.Logger.PrintToUser("The provided subnet name %q does not exist", subnetName)
 		return nil
@@ -108,7 +110,7 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 		}
 
 		ux.Logger.PrintToUser(fmt.Sprintf("Set parameters for the %q precompile", precomp))
-		if err := promptParams(precomp, &precompiles.PrecompileUpgrades, subnetName); err != nil {
+		if err := promptParams(precomp, &precompiles.PrecompileUpgrades); err != nil {
 			return err
 		}
 
@@ -176,7 +178,7 @@ func queryActivationTimestamp() (time.Time, error) {
 	return date, nil
 }
 
-func promptParams(precomp string, precompiles *[]params.PrecompileUpgrade, subnetName string) error {
+func promptParams(precomp string, precompiles *[]params.PrecompileUpgrade) error {
 	date, err := queryActivationTimestamp()
 	if err != nil {
 		return err
@@ -185,7 +187,7 @@ func promptParams(precomp string, precompiles *[]params.PrecompileUpgrade, subne
 	case vm.ContractAllowList:
 		return promptContractAllowListParams(precompiles, date)
 	case vm.TxAllowList:
-		return promptTxAllowListParams(precompiles, date, subnetName)
+		return promptTxAllowListParams(precompiles, date)
 	case vm.NativeMint:
 		return promptNativeMintParams(precompiles, date)
 	case vm.FeeManager:
@@ -303,15 +305,12 @@ func promptContractAllowListParams(precompiles *[]params.PrecompileUpgrade, date
 	return nil
 }
 
-func promptTxAllowListParams(precompiles *[]params.PrecompileUpgrade, date time.Time, subnetName string) error {
+func promptTxAllowListParams(precompiles *[]params.PrecompileUpgrade, date time.Time) error {
 	adminAddrs, enabledAddrs, err := promptAdminAndEnabledAddresses()
 	if err != nil {
 		return err
 	}
 
-	if err = ensureAdminsHaveBalance(adminAddrs, subnetName); err != nil {
-		return err
-	}
 	config := precompile.NewTxAllowListConfig(
 		big.NewInt(date.Unix()),
 		adminAddrs,
@@ -349,7 +348,7 @@ func ensureAdminsHaveBalanceLocalNetwork(admins []common.Address, blockchainID s
 		}
 	}
 
-	return errors.New("none of the addresses in the transaction allow list precompile have any tokens allocated to them. Currently, no address can transact on the network. Airdrop some funds to one of the allow list addresses to continue")
+	return errors.New("at least one of the admin addresses requires a positive token balance")
 }
 
 func ensureAdminsHaveBalance(admins []common.Address, subnetName string) error {
@@ -372,12 +371,13 @@ func ensureAdminsHaveBalance(admins []common.Address, subnetName string) error {
 		// Currently only checking if admins have balance for subnets deployed in Local Network
 		if networkData, ok := sc.Networks["Local Network"]; ok {
 			blockchainID := networkData.BlockchainID.String()
-			if err = ensureAdminsHaveBalanceLocalNetwork(admins, blockchainID); err != nil {
+			err = ensureAdminsHaveBalanceLocalNetwork(admins, blockchainID)
+			if err != nil {
 				return err
 			}
 		}
 	default:
-		app.Log.Warn("Unknown genesis format", zap.Any("vm-type", sc.VM))
+		app.Log.Warn("Unsupported VM type", zap.Any("vm-type", sc.VM))
 	}
 	return nil
 }
@@ -405,6 +405,11 @@ func promptAdminAndEnabledAddresses() ([]common.Address, []common.Address, error
 		if err := captureAddress(adminLabel, &admin); err != nil {
 			return nil, nil, err
 		}
+
+		if err := ensureAdminsHaveBalance(admin, subnetName); err != nil {
+			return nil, nil, err
+		}
+
 		if err := captureAddress(enabledLabel, &enabled); err != nil {
 			return nil, nil, err
 		}
