@@ -22,6 +22,7 @@ const (
 	ContractAllowList = "Contract Deployment Allow List"
 	TxAllowList       = "Transaction Allow List"
 	FeeManager        = "Manage Fee Settings"
+	RewardManager     = "RewardManagerConfig"
 )
 
 func PrecompileToUpgradeString(p Precompile) string {
@@ -34,9 +35,68 @@ func PrecompileToUpgradeString(p Precompile) string {
 		return "txAllowListConfig"
 	case FeeManager:
 		return "feeManagerConfig"
+	case RewardManager:
+		return "rewardManagerConfig"
 	default:
 		return ""
 	}
+}
+
+func configureRewardManager(app *application.Avalanche) (precompile.RewardManagerConfig, bool, error) {
+	config := precompile.RewardManagerConfig{}
+	prompt := "Configure reward manager admins"
+	info := "\nThis precompile allows to configure the fee reward mechanism " +
+		"on your subnet, including burning or sending fees.\nFor more information visit " +
+		"https://docs.avax.network/subnets/customize-a-subnet#changing-fee-reward-mechanisms\n\n"
+
+	admins, cancelled, err := getAdminList(prompt, info, app)
+	if err != nil {
+		return config, false, err
+	}
+
+	config.AllowListConfig = precompile.AllowListConfig{
+		AllowListAdmins: admins,
+	}
+	config.UpgradeableConfig = precompile.UpgradeableConfig{
+		BlockTimestamp: big.NewInt(0),
+	}
+	config.InitialRewardConfig, err = ConfigureInitialRewardConfig(app)
+	if err != nil {
+		return config, false, err
+	}
+
+	return config, cancelled, nil
+}
+
+func ConfigureInitialRewardConfig(app *application.Avalanche) (*precompile.InitialRewardConfig, error) {
+	config := &precompile.InitialRewardConfig{}
+
+	burnPrompt := "Should fees be burnt?"
+	burnFees, err := app.Prompt.CaptureYesNo(burnPrompt)
+	if err != nil {
+		return config, err
+	}
+	if burnFees {
+		return config, nil
+	}
+
+	feeRcpdPrompt := "Allow block producers to claim fees?"
+	allowFeeRecipients, err := app.Prompt.CaptureYesNo(feeRcpdPrompt)
+	if err != nil {
+		return config, err
+	}
+	if allowFeeRecipients {
+		config.AllowFeeRecipients = true
+		return config, nil
+	}
+
+	rewardPrompt := "Provide the address to which fees will be sent to"
+	rewardAddress, err := app.Prompt.CaptureAddress(rewardPrompt)
+	if err != nil {
+		return config, err
+	}
+	config.RewardAddress = rewardAddress
+	return config, nil
 }
 
 func getAdminList(initialPrompt string, info string, app *application.Avalanche) ([]common.Address, bool, error) {
@@ -158,7 +218,7 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (
 
 	first := true
 
-	remainingPrecompiles := []string{NativeMint, ContractAllowList, TxAllowList, FeeManager, cancel}
+	remainingPrecompiles := []string{NativeMint, ContractAllowList, TxAllowList, FeeManager, RewardManager, cancel}
 
 	for {
 		firstStr := "Advanced: Would you like to add a custom precompile to modify the EVM?"
@@ -239,6 +299,19 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (
 					return config, statemachine.Stop, err
 				}
 			}
+		case RewardManager:
+			rewardManagerConfig, cancelled, err := configureRewardManager(app)
+			if err != nil {
+				return config, statemachine.Stop, err
+			}
+			if !cancelled {
+				config.RewardManagerConfig = &rewardManagerConfig
+				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, RewardManager)
+				if err != nil {
+					return config, statemachine.Stop, err
+				}
+			}
+
 		case cancel:
 			return config, statemachine.Forward, nil
 		}
