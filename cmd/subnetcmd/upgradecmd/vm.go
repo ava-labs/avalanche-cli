@@ -22,7 +22,7 @@ const (
 	futureDeployment  = "Update config for future deployments"
 	localDeployment   = "Existing local deployment"
 	fujiDeployment    = "Fuji"
-	mainnetDeployment = "Mainnet (coming soon)"
+	mainnetDeployment = "Mainnet"
 )
 
 var (
@@ -266,9 +266,9 @@ func updateVMByNetwork(sc models.Sidecar, targetVersion string, networkToUpgrade
 	case localDeployment:
 		return updateExistingLocalVM(sc, targetVersion)
 	case fujiDeployment:
-		return chooseManualOrAutomatic(sc, targetVersion, networkToUpgrade)
+		return chooseManualOrAutomatic(sc, targetVersion)
 	case mainnetDeployment:
-		return updateMainnetVM()
+		return chooseManualOrAutomatic(sc, targetVersion)
 	default:
 		return errors.New("unknown deployment")
 	}
@@ -356,7 +356,7 @@ func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
 	return nil
 }
 
-func chooseManualOrAutomatic(sc models.Sidecar, targetVersion string, _ string) error {
+func chooseManualOrAutomatic(sc models.Sidecar, targetVersion string) error {
 	switch {
 	case useManual:
 		return plugins.ManualUpgrade(app, sc, targetVersion)
@@ -380,11 +380,6 @@ func chooseManualOrAutomatic(sc models.Sidecar, targetVersion string, _ string) 
 		return plugins.ManualUpgrade(app, sc, targetVersion)
 	}
 	return plugins.AutomatedUpgrade(app, sc, targetVersion, pluginDir)
-}
-
-func updateMainnetVM() error {
-	ux.Logger.PrintToUser("Coming soon. For now, please upgrade your mainnet deployments manually.")
-	return nil
 }
 
 func isServerRunning() (bool, error) {
