@@ -82,6 +82,7 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 		vm.FeeManager,
 		vm.NativeMint,
 		vm.TxAllowList,
+		vm.RewardManager,
 	}
 
 	fmt.Println()
@@ -184,6 +185,8 @@ func promptParams(precomp string, precompiles *[]params.PrecompileUpgrade) error
 		return promptNativeMintParams(precompiles, date)
 	case vm.FeeManager:
 		return promptFeeManagerParams(precompiles, date)
+	case vm.RewardManager:
+		return promptRewardManagerParams(precompiles, date)
 	default:
 		return fmt.Errorf("unexpected precompile identifier: %q", precomp)
 	}
@@ -239,6 +242,31 @@ func promptNativeMintParams(precompiles *[]params.PrecompileUpgrade, date time.T
 	)
 	upgrade := params.PrecompileUpgrade{
 		ContractNativeMinterConfig: config,
+	}
+	*precompiles = append(*precompiles, upgrade)
+	return nil
+}
+
+func promptRewardManagerParams(precompiles *[]params.PrecompileUpgrade, date time.Time) error {
+	adminAddrs, enabledAddrs, err := promptAdminAndEnabledAddresses()
+	if err != nil {
+		return err
+	}
+
+	initialConfig, err := vm.ConfigureInitialRewardConfig(app)
+	if err != nil {
+		return err
+	}
+
+	config := precompile.NewRewardManagerConfig(
+		big.NewInt(date.Unix()),
+		adminAddrs,
+		enabledAddrs,
+		initialConfig,
+	)
+
+	upgrade := params.PrecompileUpgrade{
+		RewardManagerConfig: config,
 	}
 	*precompiles = append(*precompiles, upgrade)
 	return nil
