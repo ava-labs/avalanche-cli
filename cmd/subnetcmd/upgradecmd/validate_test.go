@@ -101,7 +101,7 @@ func TestEarliestTimestamp(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			upgrades, err := getAllUpgrades(tt.upgradesFile)
 			require.NoError(err)
-			earliest, err := getEarliestTimestamp(upgrades)
+			earliest, err := getEarliestUpcomingTimestamp(upgrades)
 			if tt.expectedErr != nil {
 				// give some time so timestamps are defo before now
 				time.Sleep(1 * time.Second)

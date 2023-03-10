@@ -205,7 +205,7 @@ func applyLocalNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar)
 	if subnet.HasEndpoints(clusterInfo) {
 		ux.Logger.PrintToUser("Network restarted and ready to use. Upgrade bytes have been applied to running nodes at these endpoints.")
 
-		nextUpgrade, err := getEarliestTimestamp(precmpUpgrades)
+		nextUpgrade, err := getEarliestUpcomingTimestamp(precmpUpgrades)
 		// this should not happen anymore at this point...
 		if err != nil {
 			app.Log.Warn("looks like the upgrade went well, but we failed getting the timestamp of the next upcoming upgrade: %w")
@@ -395,7 +395,13 @@ func validateUpgradeBytes(file, lockFile []byte, skipPrompting bool) ([]params.P
 	if !skipPrompting {
 		for _, ts := range allTimestamps {
 			if time.Unix(ts, 0).Before(time.Now()) {
-				ux.Logger.PrintToUser("Warning: a timestamp in the past has been detected. This only works for already deployed upgrades!")
+				ux.Logger.PrintToUser("Warning: one or more of your upgrades is set to happen in the past.")
+				ux.Logger.PrintToUser(
+					"If you've already upgraded your network, the configuration is likely correct and will not cause problems.")
+				ux.Logger.PrintToUser(
+					"If this is a new upgrade, this configuration could cause unpredictable behavior and irrecoverable damage to your Subnet.")
+				ux.Logger.PrintToUser(
+					"The config MUST be removed. Use caution before proceeding")
 				yes, err := app.Prompt.CaptureYesNo("Do you want to continue (use --force to skip prompting)?")
 				if err != nil {
 					return nil, err
@@ -467,7 +473,7 @@ func validateTimestamp(ts *big.Int) (int64, error) {
 	return val, nil
 }
 
-func getEarliestTimestamp(upgrades []params.PrecompileUpgrade) (int64, error) {
+func getEarliestUpcomingTimestamp(upgrades []params.PrecompileUpgrade) (int64, error) {
 	allTimestamps, err := getAllTimestamps(upgrades)
 	if err != nil {
 		return 0, err
