@@ -212,6 +212,14 @@ func printPrecompileTable(genesis core.Genesis) {
 		}
 	}
 
+	// Reward config allow list
+	if genesis.Config.RewardManagerConfig != nil {
+		for _, address := range genesis.Config.RewardManagerConfig.AllowListAdmins {
+			table.Append([]string{"Reward Manager Config Allow list", address.Hex()})
+			precompileSet = true
+		}
+	}
+
 	if precompileSet {
 		table.Render()
 	} else {

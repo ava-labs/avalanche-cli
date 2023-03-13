@@ -101,7 +101,7 @@ func TestEarliestTimestamp(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			upgrades, err := getAllUpgrades(tt.upgradesFile)
 			require.NoError(err)
-			earliest, err := getEarliestTimestamp(upgrades)
+			earliest, err := getEarliestUpcomingTimestamp(upgrades)
 			if tt.expectedErr != nil {
 				// give some time so timestamps are defo before now
 				time.Sleep(1 * time.Second)
@@ -158,12 +158,6 @@ func TestUpgradeBytesValidation(t *testing.T) {
 			expectedErr: errBlockTimestampInvalid,
 		},
 		{
-			name: "blockTimestamp in the past",
-			upgradesFile: []byte(
-				`{"precompileUpgrades":[{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":1674496268,"initialFeeConfig":{}}}]}`),
-			expectedErr: errBlockTimestampInthePast,
-		},
-		{
 			name: "blockTimestamp ok",
 			upgradesFile: []byte(
 				fmt.Sprintf(`{"precompileUpgrades":[{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}}]}`,
@@ -173,13 +167,24 @@ func TestUpgradeBytesValidation(t *testing.T) {
 		},
 	}
 
+	skipPrompting := false
 	require := require.New(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateUpgradeBytes(tt.upgradesFile, nil)
+			_, err := validateUpgradeBytes(tt.upgradesFile, nil, skipPrompting)
 			require.ErrorIs(err, tt.expectedErr)
 		})
 	}
+}
+
+func TestForceIgnorePastTimestamp(t *testing.T) {
+	skipPrompting := true
+	upgradesFile := []byte(
+		`{"precompileUpgrades":[{"feeManagerConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":1674496268,"initialFeeConfig":{}}}]}`)
+
+	require := require.New(t)
+	_, err := validateUpgradeBytes(upgradesFile, nil, skipPrompting)
+	require.NoError(err)
 }
 
 func TestLockFile(t *testing.T) {
@@ -247,10 +252,11 @@ func TestLockFile(t *testing.T) {
 		},
 	}
 
+	skipPrompting := false
 	require := require.New(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateUpgradeBytes(tt.upgradesFile, tt.lockFile)
+			_, err := validateUpgradeBytes(tt.upgradesFile, tt.lockFile, skipPrompting)
 			require.ErrorIs(err, tt.expectedErr)
 		})
 	}
