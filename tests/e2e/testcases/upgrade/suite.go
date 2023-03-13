@@ -41,6 +41,8 @@ const (
 	keyName     = "ewoq"
 
 	upgradeBytesPath = "tests/e2e/assets/test_upgrade.json"
+
+	upgradeBytesPath2 = "tests/e2e/assets/test_upgrade_2.json"
 )
 
 var (
@@ -214,6 +216,30 @@ var _ = ginkgo.Describe("[Upgrade local network]", ginkgo.Ordered, func() {
 		lockUpgradeBytes, err := app.ReadLockUpgradeFile(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect([]byte(stripped)).Should(gomega.Equal(lockUpgradeBytes))
+	})
+
+	ginkgo.It("can't upgrade transactionAllowList precompile because admin address doesn't have enough token", func() {
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+
+		commands.DeploySubnetLocally(subnetName)
+
+		_, err = commands.ImportUpgradeBytes(subnetName, upgradeBytesPath2)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		_, err = commands.ApplyUpgradeLocal(subnetName)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("can upgrade transactionAllowList precompile because admin address has enough tokens", func() {
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+
+		commands.DeploySubnetLocally(subnetName)
+
+		_, err = commands.ImportUpgradeBytes(subnetName, upgradeBytesPath)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		_, err = commands.ApplyUpgradeLocal(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
 	ginkgo.It("can create and update future", func() {
