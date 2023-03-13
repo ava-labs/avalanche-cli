@@ -323,7 +323,7 @@ func validateUpgrade(subnetName, networkKey string, sc *models.Sidecar) ([]param
 		return nil, "", err
 	}
 
-	//checks that adminAddress in precompile upgrade for TxAllowList has enough token balance
+	// checks that adminAddress in precompile upgrade for TxAllowList has enough token balance
 	for _, precmpUpgrade := range upgrds {
 		if precmpUpgrade.TxAllowListConfig != nil {
 			if err := ensureAdminsHaveBalance(precmpUpgrade.TxAllowListConfig.AllowListAdmins, subnetName); err != nil {
