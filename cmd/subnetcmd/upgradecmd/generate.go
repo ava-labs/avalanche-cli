@@ -3,11 +3,17 @@
 package upgradecmd
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanchego/utils/units"
+	"github.com/ava-labs/coreth/ethclient"
+	"go.uber.org/zap"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -33,6 +39,8 @@ const (
 	adminLabel   = "admin"
 )
 
+var subnetName string
+
 // avalanche subnet upgrade generate
 func newUpgradeGenerateCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -47,7 +55,7 @@ This command starts a wizard guiding the user generating the required file.`,
 }
 
 func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
-	subnetName := args[0]
+	subnetName = args[0]
 	if !app.GenesisExists(subnetName) {
 		ux.Logger.PrintToUser("The provided subnet name %q does not exist", subnetName)
 		return nil
@@ -343,6 +351,81 @@ func promptTxAllowListParams(precompiles *[]params.PrecompileUpgrade, date time.
 	return nil
 }
 
+func getCClient(apiEndpoint string, blockchainID string) (ethclient.Client, error) {
+	cClient, err := ethclient.Dial(fmt.Sprintf("%s/ext/bc/%s/rpc", apiEndpoint, blockchainID))
+	if err != nil {
+		return nil, err
+	}
+	return cClient, nil
+}
+
+func ensureAdminsHaveBalanceLocalNetwork(admins []common.Address, blockchainID string) error {
+	cClient, err := getCClient(constants.LocalAPIEndpoint, blockchainID)
+	if err != nil {
+		return err
+	}
+
+	for _, admin := range admins {
+		// we can break at the first admin who has a non-zero balance
+		accountBalance, err := getAccountBalance(context.Background(), cClient, admin.String())
+		if err != nil {
+			return err
+		}
+		if accountBalance > float64(0) {
+			return nil
+		}
+	}
+
+	return errors.New("at least one of the admin addresses requires a positive token balance")
+}
+
+func ensureAdminsHaveBalance(admins []common.Address, subnetName string) error {
+	if len(admins) < 1 {
+		return nil
+	}
+
+	if !app.GenesisExists(subnetName) {
+		ux.Logger.PrintToUser("The provided subnet name %q does not exist", subnetName)
+		return nil
+	}
+
+	// read in sidecar
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
+	}
+	switch sc.VM {
+	case models.SubnetEvm:
+		// Currently only checking if admins have balance for subnets deployed in Local Network
+		if networkData, ok := sc.Networks["Local Network"]; ok {
+			blockchainID := networkData.BlockchainID.String()
+			err = ensureAdminsHaveBalanceLocalNetwork(admins, blockchainID)
+			if err != nil {
+				return err
+			}
+		}
+	default:
+		app.Log.Warn("Unsupported VM type", zap.Any("vm-type", sc.VM))
+	}
+	return nil
+}
+
+func getAccountBalance(ctx context.Context, cClient ethclient.Client, addrStr string) (float64, error) {
+	addr := common.HexToAddress(addrStr)
+	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
+	balance, err := cClient.BalanceAt(ctx, addr, nil)
+	defer cancel()
+	if err != nil {
+		return 0, err
+	}
+	// convert to nAvax
+	balance = balance.Div(balance, big.NewInt(int64(units.Avax)))
+	if balance.Cmp(big.NewInt(0)) == 0 {
+		return 0, nil
+	}
+	return float64(balance.Uint64()) / float64(units.Avax), nil
+}
+
 func promptAdminAndEnabledAddresses() ([]common.Address, []common.Address, error) {
 	var admin, enabled []common.Address
 
@@ -350,6 +433,11 @@ func promptAdminAndEnabledAddresses() ([]common.Address, []common.Address, error
 		if err := captureAddress(adminLabel, &admin); err != nil {
 			return nil, nil, err
 		}
+
+		if err := ensureAdminsHaveBalance(admin, subnetName); err != nil {
+			return nil, nil, err
+		}
+
 		if err := captureAddress(enabledLabel, &enabled); err != nil {
 			return nil, nil, err
 		}
