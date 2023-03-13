@@ -319,7 +319,7 @@ func ParseRPCsFromOutput(output string) ([]string, error) {
 		if startIndex == -1 {
 			return nil, fmt.Errorf("no url in RPC URL line: %s", line)
 		}
-		endIndex := strings.LastIndex(line, "rpc")
+		endIndex := strings.Index(line, "rpc")
 		rpc := line[startIndex : endIndex+3]
 		rpcComponents := strings.Split(rpc, "/")
 		if len(rpcComponents) != expectedRPCComponentsLen {
