@@ -7,8 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"math/big"
 	"os"
 	"path/filepath"
+	"reflect"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -33,7 +36,16 @@ var (
 	ErrNetworkNotStartedOutput = "No local network running. Please start the network first."
 	ErrSubnetNotDeployedOutput = "Looks like this subnet has not been deployed to this network yet."
 
-	errSubnetNotYetDeployed = errors.New("subnet not yet deployed")
+	errSubnetNotYetDeployed       = errors.New("subnet not yet deployed")
+	errInvalidPrecompiles         = errors.New("invalid precompiles")
+	errNoBlockTimestamp           = errors.New("no blockTimestamp value set")
+	errBlockTimestampInvalid      = errors.New("blockTimestamp is invalid")
+	errNoPrecompiles              = errors.New("no precompiles present")
+	errEmptyPrecompile            = errors.New("the precompile has no content")
+	errNoUpcomingUpgrades         = errors.New("no valid upcoming activation timestamp found")
+	errNewUpgradesNotContainsLock = errors.New("the new upgrade file does not contain the content of the lock file")
+
+	errUserAborted = errors.New("user aborted")
 
 	avalanchegoChainConfigDirDefault = filepath.Join("$HOME", ".avalanchego", "chains")
 	avalanchegoChainConfigFlag       = "avalanchego-chain-config-dir"
@@ -68,6 +80,7 @@ Refer to https://docs.avax.network/nodes/maintain/chain-config-flags#subnet-chai
 	cmd.Flags().BoolVar(&useFuji, "testnet", false, "apply upgrade existing `testnet` deployment (alias for `fuji`)")
 	cmd.Flags().BoolVar(&useMainnet, "mainnet", false, "apply upgrade existing `mainnet` deployment")
 	cmd.Flags().BoolVar(&print, "print", false, "if true, print the manual config without prompting (for public networks only)")
+	cmd.Flags().BoolVar(&force, "force", false, "If true, don't prompt for confirmation of timestamps in the past")
 	cmd.Flags().StringVar(&avalanchegoChainConfigDir, avalanchegoChainConfigFlag, os.ExpandEnv(avalanchegoChainConfigDirDefault), "avalanchego's chain config file directory")
 
 	return cmd
@@ -120,7 +133,7 @@ func applyLocalNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar)
 	if print {
 		ux.Logger.PrintToUser("The --print flag is ignored on local networks. Continuing.")
 	}
-	precmpUpgrades, strNetUpgrades, err := validateUpgrade(subnetName, networkKey, sc)
+	precmpUpgrades, strNetUpgrades, err := validateUpgrade(subnetName, networkKey, sc, force)
 	if err != nil {
 		return err
 	}
@@ -192,7 +205,7 @@ func applyLocalNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar)
 	if subnet.HasEndpoints(clusterInfo) {
 		ux.Logger.PrintToUser("Network restarted and ready to use. Upgrade bytes have been applied to running nodes at these endpoints.")
 
-		nextUpgrade, err := getEarliestTimestamp(precmpUpgrades)
+		nextUpgrade, err := getEarliestUpcomingTimestamp(precmpUpgrades)
 		// this should not happen anymore at this point...
 		if err != nil {
 			app.Log.Warn("looks like the upgrade went well, but we failed getting the timestamp of the next upcoming upgrade: %w")
@@ -253,7 +266,7 @@ func applyPublicNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar
 		ux.Logger.PrintToUser("   *************************************************************************************************************")
 		return nil
 	}
-	_, _, err := validateUpgrade(subnetName, networkKey, sc)
+	_, _, err := validateUpgrade(subnetName, networkKey, sc, force)
 	if err != nil {
 		return err
 	}
@@ -288,7 +301,7 @@ func applyPublicNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar
 	return nil
 }
 
-func validateUpgrade(subnetName, networkKey string, sc *models.Sidecar) ([]params.PrecompileUpgrade, string, error) {
+func validateUpgrade(subnetName, networkKey string, sc *models.Sidecar, skipPrompting bool) ([]params.PrecompileUpgrade, string, error) {
 	// if there's no entry in the Sidecar, we assume there hasn't been a deploy yet
 	if sc.Networks[networkKey] == (models.NetworkData{}) {
 		return nil, "", subnetNotYetDeployed()
@@ -318,7 +331,7 @@ func validateUpgrade(subnetName, networkKey string, sc *models.Sidecar) ([]param
 	}
 
 	// validate the upgrade bytes files
-	upgrds, err := validateUpgradeBytes(netUpgradeBytes, lockUpgradeBytes)
+	upgrds, err := validateUpgradeBytes(netUpgradeBytes, lockUpgradeBytes, skipPrompting)
 	if err != nil {
 		return nil, "", err
 	}
@@ -347,4 +360,163 @@ func writeLockFile(precmpUpgrades []params.PrecompileUpgrade, subnetName string)
 	}
 
 	return nil
+}
+
+func validateUpgradeBytes(file, lockFile []byte, skipPrompting bool) ([]params.PrecompileUpgrade, error) {
+	upgrades, err := getAllUpgrades(file)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(lockFile) > 0 {
+		lockUpgrades, err := getAllUpgrades(lockFile)
+		if err != nil {
+			return nil, err
+		}
+		match := 0
+		for _, lu := range lockUpgrades {
+			for _, u := range upgrades {
+				if reflect.DeepEqual(u, lu) {
+					match++
+					break
+				}
+			}
+		}
+		if match != len(lockUpgrades) {
+			return nil, errNewUpgradesNotContainsLock
+		}
+	}
+
+	allTimestamps, err := getAllTimestamps(upgrades)
+	if err != nil {
+		return nil, err
+	}
+
+	if !skipPrompting {
+		for _, ts := range allTimestamps {
+			if time.Unix(ts, 0).Before(time.Now()) {
+				ux.Logger.PrintToUser("Warning: one or more of your upgrades is set to happen in the past.")
+				ux.Logger.PrintToUser(
+					"If you've already upgraded your network, the configuration is likely correct and will not cause problems.")
+				ux.Logger.PrintToUser(
+					"If this is a new upgrade, this configuration could cause unpredictable behavior and irrecoverable damage to your Subnet.")
+				ux.Logger.PrintToUser(
+					"The config MUST be removed. Use caution before proceeding")
+				yes, err := app.Prompt.CaptureYesNo("Do you want to continue (use --force to skip prompting)?")
+				if err != nil {
+					return nil, err
+				}
+				if !yes {
+					ux.Logger.PrintToUser("No selected.")
+					return nil, errUserAborted
+				}
+			}
+		}
+	}
+
+	return upgrades, nil
+}
+
+func getAllTimestamps(upgrades []params.PrecompileUpgrade) ([]int64, error) {
+	var allTimestamps []int64
+
+	if len(upgrades) == 0 {
+		return nil, errNoBlockTimestamp
+	}
+	for _, upgrade := range upgrades {
+		if upgrade.ContractDeployerAllowListConfig != nil {
+			ts, err := validateTimestamp(upgrade.ContractDeployerAllowListConfig.BlockTimestamp)
+			if err != nil {
+				return nil, err
+			}
+			allTimestamps = append(allTimestamps, ts)
+		}
+		if upgrade.FeeManagerConfig != nil {
+			ts, err := validateTimestamp(upgrade.FeeManagerConfig.BlockTimestamp)
+			if err != nil {
+				return nil, err
+			}
+			allTimestamps = append(allTimestamps, ts)
+		}
+		if upgrade.ContractNativeMinterConfig != nil {
+			ts, err := validateTimestamp(upgrade.ContractNativeMinterConfig.BlockTimestamp)
+			if err != nil {
+				return nil, err
+			}
+			allTimestamps = append(allTimestamps, ts)
+		}
+		if upgrade.TxAllowListConfig != nil {
+			ts, err := validateTimestamp(upgrade.TxAllowListConfig.BlockTimestamp)
+			if err != nil {
+				return nil, err
+			}
+			allTimestamps = append(allTimestamps, ts)
+		}
+	}
+	if len(allTimestamps) == 0 {
+		return nil, errNoBlockTimestamp
+	}
+	return allTimestamps, nil
+}
+
+func validateTimestamp(ts *big.Int) (int64, error) {
+	if ts == nil {
+		return 0, errNoBlockTimestamp
+	}
+	if !ts.IsInt64() {
+		return 0, errBlockTimestampInvalid
+	}
+	val := ts.Int64()
+	if val == int64(0) {
+		return 0, errBlockTimestampInvalid
+	}
+	return val, nil
+}
+
+func getEarliestUpcomingTimestamp(upgrades []params.PrecompileUpgrade) (int64, error) {
+	allTimestamps, err := getAllTimestamps(upgrades)
+	if err != nil {
+		return 0, err
+	}
+
+	earliest := int64(math.MaxInt64)
+
+	for _, ts := range allTimestamps {
+		// we may also not necessarily need to check
+		// if after now, but to know if something is upcoming,
+		// seems appropriate
+		if ts < earliest && time.Unix(ts, 0).After(time.Now()) {
+			earliest = ts
+		}
+	}
+
+	// this should not happen as we have timestamp validation
+	// but might be required if called in a different context
+	if earliest == math.MaxInt64 {
+		return earliest, errNoUpcomingUpgrades
+	}
+
+	return earliest, nil
+}
+
+func getAllUpgrades(file []byte) ([]params.PrecompileUpgrade, error) {
+	var precompiles params.UpgradeConfig
+
+	if err := json.Unmarshal(file, &precompiles); err != nil {
+		return nil, fmt.Errorf("failed parsing JSON - %s: %w", err.Error(), errInvalidPrecompiles)
+	}
+
+	if len(precompiles.PrecompileUpgrades) == 0 {
+		return nil, errNoPrecompiles
+	}
+
+	for _, upgrade := range precompiles.PrecompileUpgrades {
+		if upgrade.ContractDeployerAllowListConfig == nil &&
+			upgrade.ContractNativeMinterConfig == nil &&
+			upgrade.FeeManagerConfig == nil &&
+			upgrade.TxAllowListConfig == nil {
+			return nil, errEmptyPrecompile
+		}
+	}
+	return precompiles.PrecompileUpgrades, nil
 }
