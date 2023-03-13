@@ -17,7 +17,7 @@ import (
 const chainConfigAPI = "eth_getChainConfig"
 
 func CheckUpgradeIsDeployed(rpcEndpoint string, deployedUpgrades params.UpgradeConfig) error {
-	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
 	defer cancel()
 
 	rpcClient, err := rpc.DialContext(ctx, rpcEndpoint)

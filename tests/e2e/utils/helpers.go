@@ -370,7 +370,7 @@ func SetHardhatRPC(rpc string) error {
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
 	chainIDBig, err := client.ChainID(ctx)
 	cancel()
 	if err != nil {
@@ -500,21 +500,21 @@ func RestartNodesWithWhitelistedSubnets(whitelistedSubnets string) error {
 		return err
 	}
 	rootCtx := context.Background()
-	ctx, cancel := context.WithTimeout(rootCtx, constants.RequestTimeout)
+	ctx, cancel := context.WithTimeout(rootCtx, constants.E2ERequestTimeout)
 	resp, err := cli.Status(ctx)
 	cancel()
 	if err != nil {
 		return err
 	}
 	for _, nodeName := range resp.ClusterInfo.NodeNames {
-		ctx, cancel := context.WithTimeout(rootCtx, constants.RequestTimeout)
+		ctx, cancel := context.WithTimeout(rootCtx, constants.E2ERequestTimeout)
 		_, err := cli.RestartNode(ctx, nodeName, client.WithWhitelistedSubnets(whitelistedSubnets))
 		cancel()
 		if err != nil {
 			return err
 		}
 	}
-	ctx, cancel = context.WithTimeout(rootCtx, constants.RequestTimeout)
+	ctx, cancel = context.WithTimeout(rootCtx, constants.E2ERequestTimeout)
 	_, err = cli.Health(ctx)
 	cancel()
 	if err != nil {
@@ -533,7 +533,7 @@ type NodeInfo struct {
 
 func GetNodeVMVersion(nodeURI string, vmid string) (string, error) {
 	rootCtx := context.Background()
-	ctx, cancel := context.WithTimeout(rootCtx, constants.RequestTimeout)
+	ctx, cancel := context.WithTimeout(rootCtx, constants.E2ERequestTimeout)
 
 	client := info.NewClient(nodeURI)
 	versionInfo, err := client.GetNodeVersion(ctx)
@@ -556,7 +556,7 @@ func GetNodesInfo() (map[string]NodeInfo, error) {
 		return nil, err
 	}
 	rootCtx := context.Background()
-	ctx, cancel := context.WithTimeout(rootCtx, constants.RequestTimeout)
+	ctx, cancel := context.WithTimeout(rootCtx, constants.E2ERequestTimeout)
 	resp, err := cli.Status(ctx)
 	cancel()
 	if err != nil {
@@ -607,7 +607,7 @@ func WaitSubnetValidators(subnetIDStr string, nodeInfos map[string]NodeInfo) err
 	defer mainCtxCancel()
 	for {
 		ready := true
-		ctx, ctxCancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
+		ctx, ctxCancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
 		vs, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
 		ctxCancel()
 		if err != nil {
@@ -643,7 +643,7 @@ func RunSpacesVMAPITest(rpc string) error {
 		return err
 	}
 
-	cli := spacesvmclient.New(strings.ReplaceAll(rpc, "/rpc", ""), constants.RequestTimeout)
+	cli := spacesvmclient.New(strings.ReplaceAll(rpc, "/rpc", ""), constants.E2ERequestTimeout)
 
 	// claim a space
 	space := "clispace"
@@ -651,7 +651,7 @@ func RunSpacesVMAPITest(rpc string) error {
 		BaseTx: &chain.BaseTx{},
 		Space:  space,
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
 	_, _, err = spacesvmclient.SignIssueRawTx(
 		ctx,
 		cli,
@@ -673,7 +673,7 @@ func RunSpacesVMAPITest(rpc string) error {
 		Key:    k,
 		Value:  v,
 	}
-	ctx, cancel = context.WithTimeout(context.Background(), constants.RequestTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
 	_, _, err = spacesvmclient.SignIssueRawTx(
 		ctx,
 		cli,
