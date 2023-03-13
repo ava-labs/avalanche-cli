@@ -264,8 +264,7 @@ func DeploySubnetLocallyWithArgs(subnetName string, version string, confPath str
 	return string(output)
 }
 
-/* #nosec G204 */
-func DeploySubnetLocallyWithArgsExpectError(subnetName string, version string, confPath string) {
+func DeploySubnetLocallyWithArgsAndOutput(subnetName string, version string, confPath string) ([]byte, error) {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -280,7 +279,12 @@ func DeploySubnetLocallyWithArgsExpectError(subnetName string, version string, c
 		cmdArgs = append(cmdArgs, "--config", confPath)
 	}
 	cmd := exec.Command(CLIBinary, cmdArgs...)
-	_, err = cmd.CombinedOutput()
+	return cmd.CombinedOutput()
+}
+
+/* #nosec G204 */
+func DeploySubnetLocallyWithArgsExpectError(subnetName string, version string, confPath string) {
+	_, err := DeploySubnetLocallyWithArgsAndOutput(subnetName, version, confPath)
 	gomega.Expect(err).Should(gomega.HaveOccurred())
 }
 

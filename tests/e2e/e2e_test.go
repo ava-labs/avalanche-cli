@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/apm"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/errhandling"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/key"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/network"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/packageman"
