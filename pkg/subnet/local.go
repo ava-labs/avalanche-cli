@@ -209,6 +209,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			Genesis:            genesisPath,
 			SubnetId:           &subnetIDStr,
 			ChainConfig:        chainConfig,
+			BlockchainAlias:    chain,
 			PerNodeChainConfig: perNodeChainConfig,
 		},
 	}

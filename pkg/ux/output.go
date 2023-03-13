@@ -51,7 +51,7 @@ func PrintWait(cancel chan struct{}) {
 // PrintTableEndpoints prints the endpoints coming from the healthy call
 func PrintTableEndpoints(clusterInfo *rpcpb.ClusterInfo) {
 	table := tablewriter.NewWriter(os.Stdout)
-	header := []string{"node", "VM", "URL"}
+	header := []string{"node", "VM", "URL", "ALIAS_URL"}
 	table.SetHeader(header)
 	table.SetRowLine(true)
 
@@ -62,7 +62,7 @@ func PrintTableEndpoints(clusterInfo *rpcpb.ClusterInfo) {
 	for _, nodeName := range clusterInfo.NodeNames {
 		nodeInfo := nodeInfos[nodeName]
 		for blockchainID, chainInfo := range clusterInfo.CustomChains {
-			table.Append([]string{nodeInfo.Name, chainInfo.ChainName, fmt.Sprintf("%s/ext/bc/%s/rpc", nodeInfo.GetUri(), blockchainID)})
+			table.Append([]string{nodeInfo.Name, chainInfo.ChainName, fmt.Sprintf("%s/ext/bc/%s/rpc", nodeInfo.GetUri(), blockchainID), fmt.Sprintf("%s/ext/bc/%s/rpc", nodeInfo.GetUri(), chainInfo.ChainName)})
 		}
 	}
 	table.Render()
