@@ -19,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
@@ -98,6 +99,8 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	if err := migrations.RunMigrations(app); err != nil {
 		return err
 	}
+
+	utils.TrackMetrics(cmd)
 
 	return nil
 }
