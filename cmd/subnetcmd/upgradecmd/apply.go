@@ -340,7 +340,7 @@ func validateUpgrade(subnetName, networkKey string, sc *models.Sidecar, skipProm
 	for _, precmpUpgrade := range upgrds {
 		allowListCfg, ok := precmpUpgrade.Config.(*txallowlist.Config)
 		if !ok {
-			return nil, "", fmt.Errorf("expected txallowlist.Config, got %T", allowListCfg)
+			continue
 		}
 		if allowListCfg != nil {
 			if err := ensureAdminsHaveBalance(allowListCfg.AdminAddresses, subnetName); err != nil {
