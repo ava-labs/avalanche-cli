@@ -190,35 +190,35 @@ func printPrecompileTable(genesis core.Genesis) {
 	// Native Minting
 	if genesis.Config.GenesisPrecompiles[nativeminter.ConfigKey] != nil {
 		cfg := genesis.Config.GenesisPrecompiles[nativeminter.ConfigKey].(*nativeminter.Config)
-		buildAddressTable(table, "Native Minter", cfg.AdminAddresses, cfg.EnabledAddresses)
+		appendToAddressTable(table, "Native Minter", cfg.AdminAddresses, cfg.EnabledAddresses)
 		precompileSet = true
 	}
 
 	// Contract allow list
 	if genesis.Config.GenesisPrecompiles[deployerallowlist.ConfigKey] != nil {
 		cfg := genesis.Config.GenesisPrecompiles[deployerallowlist.ConfigKey].(*deployerallowlist.Config)
-		buildAddressTable(table, "Contract Allow List", cfg.AdminAddresses, cfg.EnabledAddresses)
+		appendToAddressTable(table, "Contract Allow List", cfg.AdminAddresses, cfg.EnabledAddresses)
 		precompileSet = true
 	}
 
 	// TX allow list
 	if genesis.Config.GenesisPrecompiles[txallowlist.ConfigKey] != nil {
 		cfg := genesis.Config.GenesisPrecompiles[txallowlist.Module.ConfigKey].(*txallowlist.Config)
-		buildAddressTable(table, "Tx Allow List", cfg.AdminAddresses, cfg.EnabledAddresses)
+		appendToAddressTable(table, "Tx Allow List", cfg.AdminAddresses, cfg.EnabledAddresses)
 		precompileSet = true
 	}
 
 	// Fee config allow list
 	if genesis.Config.GenesisPrecompiles[feemanager.ConfigKey] != nil {
 		cfg := genesis.Config.GenesisPrecompiles[feemanager.ConfigKey].(*feemanager.Config)
-		buildAddressTable(table, "Fee Config Allow List", cfg.AdminAddresses, cfg.EnabledAddresses)
+		appendToAddressTable(table, "Fee Config Allow List", cfg.AdminAddresses, cfg.EnabledAddresses)
 		precompileSet = true
 	}
 
 	// Reward config allow list
 	if genesis.Config.GenesisPrecompiles[rewardmanager.ConfigKey] != nil {
 		cfg := genesis.Config.GenesisPrecompiles[rewardmanager.ConfigKey].(*rewardmanager.Config)
-		buildAddressTable(table, "Reward Manager Allow List", cfg.AdminAddresses, cfg.EnabledAddresses)
+		appendToAddressTable(table, "Reward Manager Allow List", cfg.AdminAddresses, cfg.EnabledAddresses)
 		precompileSet = true
 	}
 
@@ -229,7 +229,7 @@ func printPrecompileTable(genesis core.Genesis) {
 	}
 }
 
-func buildAddressTable(
+func appendToAddressTable(
 	table *tablewriter.Table,
 	label string,
 	adminAddresses []common.Address,
