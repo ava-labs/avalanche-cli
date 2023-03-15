@@ -31,7 +31,7 @@ func GetCLIVersion() string {
 }
 
 func TrackMetrics(command *cobra.Command) {
-	if mixpanelToken == "" {
+	if mixpanelToken == "" || os.Getenv("RUN_E2E") == "" {
 		return
 	}
 	client := mixpanel.New(mixpanelToken, "")
