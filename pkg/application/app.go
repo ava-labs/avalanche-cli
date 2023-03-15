@@ -56,6 +56,19 @@ func (app *Avalanche) GetBaseDir() string {
 	return app.baseDir
 }
 
+func (app *Avalanche) GetCLIVersion() (string, error) {
+	wdPath, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	versionPath := filepath.Join(wdPath, "VERSION")
+	content, err := os.ReadFile(versionPath)
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
+}
+
 func (app *Avalanche) GetSubnetDir() string {
 	return filepath.Join(app.baseDir, constants.SubnetDir)
 }
