@@ -6,17 +6,21 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"os/user"
+
 	"github.com/dukex/mixpanel"
 	"github.com/spf13/cobra"
-	"os/user"
 )
 
 // mixpanelToken value is set at build and install scripts using ldflags
-var mixpanelToken = "be5c4cee5052278568d7a153430173a1"
+var MIXPANEL_PROJECT_TOKEN = ""
 
 func TrackMetrics(command *cobra.Command, version string) {
-	client := mixpanel.New(mixpanelToken, "")
-	usr, _ := user.Current() //use empty string if err
+	if MIXPANEL_PROJECT_TOKEN == "" {
+		return
+	}
+	client := mixpanel.New(MIXPANEL_PROJECT_TOKEN, "")
+	usr, _ := user.Current() // use empty string if err
 	hash := sha256.Sum256([]byte(fmt.Sprintf("%s%s", usr.Username, usr.Uid)))
 	userID := base64.StdEncoding.EncodeToString(hash[:])
 

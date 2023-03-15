@@ -56,7 +56,7 @@ func (app *Avalanche) GetBaseDir() string {
 	return app.baseDir
 }
 
-func (app *Avalanche) GetCLIVersion() (string, error) {
+func (_ *Avalanche) GetCLIVersion() (string, error) {
 	wdPath, err := os.Getwd()
 	if err != nil {
 		return "", err
