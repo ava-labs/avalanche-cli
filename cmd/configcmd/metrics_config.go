@@ -5,6 +5,7 @@ package configcmd
 import (
 	"encoding/json"
 	"errors"
+
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
