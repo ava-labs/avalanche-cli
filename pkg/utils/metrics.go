@@ -17,17 +17,17 @@ import (
 // mixpanelToken value is set at build and install scripts using ldflags
 var mixpanelToken = ""
 
-func GetCLIVersion() (string, error) {
+func GetCLIVersion() string {
 	wdPath, err := os.Getwd()
 	if err != nil {
-		return "", err
+		return ""
 	}
 	versionPath := filepath.Join(wdPath, "VERSION")
 	content, err := os.ReadFile(versionPath)
 	if err != nil {
-		return "", err
+		return ""
 	}
-	return string(content), nil
+	return string(content)
 }
 
 func TrackMetrics(command *cobra.Command) {
