@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
@@ -26,17 +27,23 @@ func newMetricsCmd() *cobra.Command {
 }
 
 func handleMetricsSettings(_ *cobra.Command, args []string) error {
-	if args[0] == "enable" {
+	switch args[0] {
+	case constants.Enable:
 		ux.Logger.PrintToUser("Thank you for opting in Avalanche CLI usage metrics collection")
-		saveMetricsPreferences(true)
-	} else if args[0] == "disable" {
+		err := saveMetricsPreferences(true)
+		if err != nil {
+			return err
+		}
+	case constants.Disable:
 		ux.Logger.PrintToUser("Avalanche CLI usage metrics will no longer be collected")
 		saveMetricsPreferences(false)
-
-	} else {
+		err := saveMetricsPreferences(true)
+		if err != nil {
+			return err
+		}
+	default:
 		return errors.New("Invalid metrics argument '" + args[0] + "'")
 	}
-
 	return nil
 }
 
