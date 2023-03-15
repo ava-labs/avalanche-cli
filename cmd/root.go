@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -66,6 +67,9 @@ in with avalanche subnet create myNewSubnet.`,
 
 	// add transaction command
 	rootCmd.AddCommand(transactioncmd.NewCmd(app))
+
+	// add config command
+	rootCmd.AddCommand(configcmd.NewCmd(app))
 	return rootCmd
 }
 
@@ -100,11 +104,21 @@ func createApp(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	utils.TrackMetrics(cmd)
+	if userIsOptedIn() {
+		utils.TrackMetrics(cmd)
+	}
 
 	return nil
 }
-
+func userIsOptedIn() bool {
+	//if config file is not found or unable to be read, will return true (user is opted in)
+	config, err := app.LoadConfig()
+	if err != nil {
+		fmt.Printf("we have an error here")
+		return true
+	}
+	return config.MetricsEnabled
+}
 func setupEnv() (string, error) {
 	// Set base dir
 	usr, err := user.Current()

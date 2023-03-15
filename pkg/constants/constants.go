@@ -55,6 +55,11 @@ const (
 	KeyDir     = "key"
 	KeySuffix  = ".pk"
 	YAMLSuffix = ".yml"
+	ConfigDir  = "config"
+
+	Enable = "enable"
+
+	Disable = "disable"
 
 	TimeParseLayout    = "2006-01-02 15:04:05"
 	MinStakeDuration   = 24 * 14 * time.Hour

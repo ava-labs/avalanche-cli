@@ -108,6 +108,10 @@ func (app *Avalanche) GetSidecarPath(subnetName string) string {
 	return filepath.Join(app.GetSubnetDir(), subnetName, constants.SidecarFileName)
 }
 
+func (app *Avalanche) GetConfigPath() string {
+	return filepath.Join(app.baseDir, constants.ConfigDir)
+}
+
 func (app *Avalanche) GetKeyDir() string {
 	return filepath.Join(app.baseDir, constants.KeyDir)
 }
@@ -359,4 +363,29 @@ func (*Avalanche) writeFile(path string, bytes []byte) error {
 	}
 
 	return os.WriteFile(path, bytes, WriteReadReadPerms)
+}
+
+func (app *Avalanche) LoadConfig() (models.Config, error) {
+	configPath := app.GetConfigPath()
+	jsonBytes, err := os.ReadFile(configPath)
+	if err != nil {
+		config := models.Config{MetricsEnabled: true}
+
+		if os.IsNotExist(err) {
+			jsonBytes, _ = json.Marshal(&config)
+			app.WriteConfigFile(jsonBytes)
+		}
+		return config, err
+	}
+
+	var config models.Config
+	err = json.Unmarshal(jsonBytes, &config)
+
+	return config, err
+}
+
+func (app *Avalanche) WriteConfigFile(bytes []byte) error {
+	configPath := app.GetConfigPath()
+
+	return app.writeFile(configPath, bytes)
 }
