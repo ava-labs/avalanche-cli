@@ -100,11 +100,7 @@ func createApp(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	version, err := app.GetCLIVersion()
-	if err != nil {
-		return err
-	}
-	utils.TrackMetrics(cmd, version)
+	utils.TrackMetrics(cmd)
 
 	return nil
 }
