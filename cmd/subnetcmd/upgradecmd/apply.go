@@ -23,6 +23,7 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -41,7 +42,6 @@ var (
 	errNoBlockTimestamp           = errors.New("no blockTimestamp value set")
 	errBlockTimestampInvalid      = errors.New("blockTimestamp is invalid")
 	errNoPrecompiles              = errors.New("no precompiles present")
-	errEmptyPrecompile            = errors.New("the precompile has no content")
 	errNoUpcomingUpgrades         = errors.New("no valid upcoming activation timestamp found")
 	errNewUpgradesNotContainsLock = errors.New("the new upgrade file does not contain the content of the lock file")
 
@@ -338,8 +338,12 @@ func validateUpgrade(subnetName, networkKey string, sc *models.Sidecar, skipProm
 
 	// checks that adminAddress in precompile upgrade for TxAllowList has enough token balance
 	for _, precmpUpgrade := range upgrds {
-		if precmpUpgrade.TxAllowListConfig != nil {
-			if err := ensureAdminsHaveBalance(precmpUpgrade.TxAllowListConfig.AllowListAdmins, subnetName); err != nil {
+		allowListCfg, ok := precmpUpgrade.Config.(*txallowlist.Config)
+		if !ok {
+			return nil, "", fmt.Errorf("expected txallowlist.Config, got %T", allowListCfg)
+		}
+		if allowListCfg != nil {
+			if err := ensureAdminsHaveBalance(allowListCfg.AdminAddresses, subnetName); err != nil {
 				return nil, "", err
 			}
 		}
@@ -433,34 +437,11 @@ func getAllTimestamps(upgrades []params.PrecompileUpgrade) ([]int64, error) {
 		return nil, errNoBlockTimestamp
 	}
 	for _, upgrade := range upgrades {
-		if upgrade.ContractDeployerAllowListConfig != nil {
-			ts, err := validateTimestamp(upgrade.ContractDeployerAllowListConfig.BlockTimestamp)
-			if err != nil {
-				return nil, err
-			}
-			allTimestamps = append(allTimestamps, ts)
+		ts, err := validateTimestamp(upgrade.Timestamp())
+		if err != nil {
+			return nil, err
 		}
-		if upgrade.FeeManagerConfig != nil {
-			ts, err := validateTimestamp(upgrade.FeeManagerConfig.BlockTimestamp)
-			if err != nil {
-				return nil, err
-			}
-			allTimestamps = append(allTimestamps, ts)
-		}
-		if upgrade.ContractNativeMinterConfig != nil {
-			ts, err := validateTimestamp(upgrade.ContractNativeMinterConfig.BlockTimestamp)
-			if err != nil {
-				return nil, err
-			}
-			allTimestamps = append(allTimestamps, ts)
-		}
-		if upgrade.TxAllowListConfig != nil {
-			ts, err := validateTimestamp(upgrade.TxAllowListConfig.BlockTimestamp)
-			if err != nil {
-				return nil, err
-			}
-			allTimestamps = append(allTimestamps, ts)
-		}
+		allTimestamps = append(allTimestamps, ts)
 	}
 	if len(allTimestamps) == 0 {
 		return nil, errNoBlockTimestamp
@@ -519,13 +500,5 @@ func getAllUpgrades(file []byte) ([]params.PrecompileUpgrade, error) {
 		return nil, errNoPrecompiles
 	}
 
-	for _, upgrade := range precompiles.PrecompileUpgrades {
-		if upgrade.ContractDeployerAllowListConfig == nil &&
-			upgrade.ContractNativeMinterConfig == nil &&
-			upgrade.FeeManagerConfig == nil &&
-			upgrade.TxAllowListConfig == nil {
-			return nil, errEmptyPrecompile
-		}
-	}
 	return precompiles.PrecompileUpgrades, nil
 }
