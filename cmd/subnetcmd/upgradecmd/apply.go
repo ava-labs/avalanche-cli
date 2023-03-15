@@ -493,7 +493,8 @@ func getAllUpgrades(file []byte) ([]params.PrecompileUpgrade, error) {
 	var precompiles params.UpgradeConfig
 
 	if err := json.Unmarshal(file, &precompiles); err != nil {
-		return nil, fmt.Errorf("failed parsing JSON - %w: %w", err, errInvalidPrecompiles)
+		cause := fmt.Errorf(err.Error(), errInvalidPrecompiles)
+		return nil, fmt.Errorf("failed parsing JSON : %w", cause)
 	}
 
 	if len(precompiles.PrecompileUpgrades) == 0 {
