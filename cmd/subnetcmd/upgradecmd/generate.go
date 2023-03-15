@@ -253,7 +253,7 @@ func promptNativeMintParams(precompiles *[]params.PrecompileUpgrade, date time.T
 		initialMint,
 	)
 	upgrade := params.PrecompileUpgrade{
-		config,
+		Config: config,
 	}
 	*precompiles = append(*precompiles, upgrade)
 	return nil
@@ -278,7 +278,7 @@ func promptRewardManagerParams(precompiles *[]params.PrecompileUpgrade, date tim
 	)
 
 	upgrade := params.PrecompileUpgrade{
-		config,
+		Config: config,
 	}
 	*precompiles = append(*precompiles, upgrade)
 	return nil
@@ -313,7 +313,7 @@ func promptFeeManagerParams(precompiles *[]params.PrecompileUpgrade, date time.T
 		feeConfig,
 	)
 	upgrade := params.PrecompileUpgrade{
-		config,
+		Config: config,
 	}
 	*precompiles = append(*precompiles, upgrade)
 	return nil
@@ -331,7 +331,7 @@ func promptContractAllowListParams(precompiles *[]params.PrecompileUpgrade, date
 		enabledAddrs,
 	)
 	upgrade := params.PrecompileUpgrade{
-		config,
+		Config: config,
 	}
 	*precompiles = append(*precompiles, upgrade)
 	return nil
@@ -349,7 +349,7 @@ func promptTxAllowListParams(precompiles *[]params.PrecompileUpgrade, date time.
 		enabledAddrs,
 	)
 	upgrade := params.PrecompileUpgrade{
-		config,
+		Config: config,
 	}
 	*precompiles = append(*precompiles, upgrade)
 	return nil

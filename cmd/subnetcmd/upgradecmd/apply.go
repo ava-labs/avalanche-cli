@@ -431,7 +431,7 @@ func validateUpgradeBytes(file, lockFile []byte, skipPrompting bool) ([]params.P
 }
 
 func getAllTimestamps(upgrades []params.PrecompileUpgrade) ([]int64, error) {
-	var allTimestamps []int64
+	allTimestamps := []int64{}
 
 	if len(upgrades) == 0 {
 		return nil, errNoBlockTimestamp
@@ -493,7 +493,7 @@ func getAllUpgrades(file []byte) ([]params.PrecompileUpgrade, error) {
 	var precompiles params.UpgradeConfig
 
 	if err := json.Unmarshal(file, &precompiles); err != nil {
-		return nil, fmt.Errorf("failed parsing JSON - %s: %w", err.Error(), errInvalidPrecompiles)
+		return nil, fmt.Errorf("failed parsing JSON - %w: %w", err, errInvalidPrecompiles)
 	}
 
 	if len(precompiles.PrecompileUpgrades) == 0 {
