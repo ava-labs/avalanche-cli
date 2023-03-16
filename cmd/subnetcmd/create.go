@@ -168,7 +168,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	}
 	flags := make(map[string]string)
 	flags[constants.SubnetType] = subnetType.RepoName()
-	handleTracking(cmd, flags)
+	utils.HandleTracking(cmd, app, flags)
 	ux.Logger.PrintToUser("Successfully created subnet configuration")
 	return nil
 }
@@ -182,23 +182,4 @@ func checkInvalidSubnetNames(name string) error {
 	}
 
 	return nil
-}
-
-func handleTracking(cmd *cobra.Command, flags map[string]string) {
-	// if config file doesn't exist, user needs to be aware of new tracking feature so that they can opt out if they want to
-	if !app.ConfigFileExists() {
-		utils.PrintMetricsOptOutPrompt()
-	}
-	if userIsOptedIn() {
-		utils.TrackMetrics(cmd, flags)
-	}
-}
-
-func userIsOptedIn() bool {
-	// if config file is not found or unable to be read, will return true (user is opted in)
-	config, err := app.LoadConfig()
-	if err != nil {
-		return true
-	}
-	return config.MetricsEnabled
 }

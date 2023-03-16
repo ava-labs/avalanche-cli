@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -39,6 +40,25 @@ func PrintMetricsOptOutPrompt() {
 		"personal data.")
 	ux.Logger.PrintToUser("You can disable data collection with `avalanche config metrics disable` command. " +
 		"You can also read our privacy statement <https://www.avalabs.org/privacy-policy> to learn more.\n")
+}
+
+func userIsOptedIn(app *application.Avalanche) bool {
+	// if config file is not found or unable to be read, will return true (user is opted in)
+	config, err := app.LoadConfig()
+	if err != nil {
+		return true
+	}
+	return config.MetricsEnabled
+}
+
+func HandleTracking(cmd *cobra.Command, app *application.Avalanche, flags map[string]string) {
+	// if config file doesn't exist, user needs to be aware of new tracking feature so that they can opt out if they want to
+	if !app.ConfigFileExists() {
+		PrintMetricsOptOutPrompt()
+	}
+	if userIsOptedIn(app) {
+		TrackMetrics(cmd, flags)
+	}
 }
 
 func TrackMetrics(command *cobra.Command, flags map[string]string) {

@@ -110,22 +110,7 @@ func createApp(cmd *cobra.Command, _ []string) error {
 }
 
 func handleTracking(cmd *cobra.Command, _ []string) {
-	// if config file doesn't exist, user needs to be aware of new tracking feature so that they can opt out if they want to
-	if !app.ConfigFileExists() {
-		utils.PrintMetricsOptOutPrompt()
-	}
-	if userIsOptedIn() {
-		utils.TrackMetrics(cmd, nil)
-	}
-}
-
-func userIsOptedIn() bool {
-	// if config file is not found or unable to be read, will return true (user is opted in)
-	config, err := app.LoadConfig()
-	if err != nil {
-		return true
-	}
-	return config.MetricsEnabled
+	utils.HandleTracking(cmd, app, nil)
 }
 
 func setupEnv() (string, error) {
