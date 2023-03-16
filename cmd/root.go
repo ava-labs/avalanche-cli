@@ -50,6 +50,7 @@ To get started, look at the documentation for the subcommands or jump right
 in with avalanche subnet create myNewSubnet.`,
 		PersistentPreRunE: createApp,
 		Version:           Version,
+		PersistentPostRun: handleTracking,
 	}
 
 	// Disable printing the completion command
@@ -105,21 +106,16 @@ func createApp(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	handleTracking(cmd)
-
 	return nil
 }
-func handleTracking(cmd *cobra.Command) {
+
+func handleTracking(cmd *cobra.Command, _ []string) {
 	// if config file doesn't exist, user needs to be aware of new tracking feature so that they can opt out if they want to
 	if !app.ConfigFileExists() {
-		ux.Logger.PrintToUser("Ava Labs aggregates collected data to identify patterns of usage to identify common " +
-			"issues and improve the experience of Avalanche-CLI. Avalanche-CLI does not collect any private or " +
-			"personal data.")
-		ux.Logger.PrintToUser("You can disable data collection with `avalanche config metrics disable` command. " +
-			"You can also read our privacy statement <https://www.avalabs.org/privacy-policy> to learn more.\n")
+		utils.PrintMetricsOptOutPrompt()
 	}
 	if userIsOptedIn() {
-		utils.TrackMetrics(cmd)
+		utils.TrackMetrics(cmd, nil)
 	}
 }
 func userIsOptedIn() bool {

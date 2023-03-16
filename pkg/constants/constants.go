@@ -78,11 +78,11 @@ const (
 
 	CustomVMDir = "vms"
 
-	AvaLabsOrg          = "ava-labs"
-	AvalancheGoRepoName = "avalanchego"
-	SubnetEVMRepoName   = "subnet-evm"
-	SpacesVMRepoName    = "spacesvm"
-
+	AvaLabsOrg            = "ava-labs"
+	AvalancheGoRepoName   = "avalanchego"
+	SubnetEVMRepoName     = "subnet-evm"
+	SpacesVMRepoName      = "spacesvm"
+	CustomVMRepoName      = "customvm"
 	AvalancheGoInstallDir = "avalanchego"
 	SubnetEVMInstallDir   = "subnet-evm"
 	SpacesVMInstallDir    = "spacesvm"
@@ -105,6 +105,7 @@ const (
 	VMDir          = "vms"
 	ChainConfigDir = "chains"
 
+	SubnetType                 = "subnet type"
 	SubnetConfigFileName       = "subnet.json"
 	ChainConfigFileName        = "chain.json"
 	PerNodeChainConfigFileName = "per-node-chain.json"

@@ -5,6 +5,8 @@ package subnetcmd
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"unicode"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -49,9 +51,10 @@ the path to your genesis and VM binaries with the --genesis and --vm flags.
 By default, running the command with a subnetName that already exists
 causes the command to fail. If you’d like to overwrite an existing
 configuration, pass the -f flag.`,
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
-		RunE:         createSubnetConfig,
+		SilenceUsage:      true,
+		Args:              cobra.ExactArgs(1),
+		RunE:              createSubnetConfig,
+		PersistentPostRun: handlePostRun,
 	}
 	cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
 	cmd.Flags().StringVar(&vmFile, "vm", "", "file path of custom vm to use")
@@ -90,7 +93,12 @@ func getVMFromFlag() models.VMType {
 	return ""
 }
 
-func createSubnetConfig(_ *cobra.Command, args []string) error {
+// override postrun function from root.go, so that we don't double send metrics for the same command
+func handlePostRun(_ *cobra.Command, args []string) {
+	return
+}
+
+func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	subnetName := args[0]
 	if app.GenesisExists(subnetName) && !forceCreate {
 		return errors.New("configuration already exists. Use --" + forceFlag + " parameter to overwrite")
@@ -159,7 +167,9 @@ func createSubnetConfig(_ *cobra.Command, args []string) error {
 	if err = app.CreateSidecar(sc); err != nil {
 		return err
 	}
-
+	flags := make(map[string]string)
+	flags[constants.SubnetType] = subnetType.RepoName()
+	handleTracking(cmd, flags)
 	ux.Logger.PrintToUser("Successfully created subnet configuration")
 	return nil
 }
@@ -173,4 +183,22 @@ func checkInvalidSubnetNames(name string) error {
 	}
 
 	return nil
+}
+
+func handleTracking(cmd *cobra.Command, flags map[string]string) {
+	// if config file doesn't exist, user needs to be aware of new tracking feature so that they can opt out if they want to
+	if !app.ConfigFileExists() {
+		utils.PrintMetricsOptOutPrompt()
+	}
+	if userIsOptedIn() {
+		utils.TrackMetrics(cmd, flags)
+	}
+}
+func userIsOptedIn() bool {
+	// if config file is not found or unable to be read, will return true (user is opted in)
+	config, err := app.LoadConfig()
+	if err != nil {
+		return true
+	}
+	return config.MetricsEnabled
 }

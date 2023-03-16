@@ -35,6 +35,8 @@ func (v VMType) RepoName() string {
 		return constants.SubnetEVMRepoName
 	case SpacesVM:
 		return constants.SpacesVMRepoName
+	case CustomVM:
+		return constants.CustomVMRepoName
 	default:
 		return "unknown"
 	}

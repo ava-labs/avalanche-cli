@@ -6,9 +6,11 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime"
 
 	"github.com/dukex/mixpanel"
 	"github.com/spf13/cobra"
@@ -29,8 +31,14 @@ func GetCLIVersion() string {
 	}
 	return string(content)
 }
-
-func TrackMetrics(command *cobra.Command) {
+func PrintMetricsOptOutPrompt() {
+	ux.Logger.PrintToUser("Ava Labs aggregates collected data to identify patterns of usage to identify common " +
+		"issues and improve the experience of Avalanche-CLI. Avalanche-CLI does not collect any private or " +
+		"personal data.")
+	ux.Logger.PrintToUser("You can disable data collection with `avalanche config metrics disable` command. " +
+		"You can also read our privacy statement <https://www.avalabs.org/privacy-policy> to learn more.\n")
+}
+func TrackMetrics(command *cobra.Command, flags map[string]string) {
 	if mixpanelToken == "" || os.Getenv("RUN_E2E") != "" {
 		return
 	}
@@ -38,12 +46,16 @@ func TrackMetrics(command *cobra.Command) {
 	usr, _ := user.Current() // use empty string if err
 	hash := sha256.Sum256([]byte(fmt.Sprintf("%s%s", usr.Username, usr.Uid)))
 	userID := base64.StdEncoding.EncodeToString(hash[:])
+	mixPanelProperties := make(map[string]any)
+	mixPanelProperties["command"] = command.CommandPath()
+	mixPanelProperties["version"] = GetCLIVersion()
+	mixPanelProperties["os"] = runtime.GOOS
 
+	for propertyKey, propertyValue := range flags {
+		mixPanelProperties[propertyKey] = propertyValue
+	}
 	_ = client.Track(userID, "cli-command", &mixpanel.Event{
-		IP: "0",
-		Properties: map[string]any{
-			"command": command.CommandPath(),
-			"version": GetCLIVersion(),
-		},
+		IP:         "0",
+		Properties: mixPanelProperties,
 	})
 }
