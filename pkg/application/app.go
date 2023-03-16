@@ -382,6 +382,7 @@ func (app *Avalanche) LoadConfig() (models.Config, error) {
 	err = json.Unmarshal(jsonBytes, &config)
 	return config, err
 }
+
 func (app *Avalanche) ConfigFileExists() bool {
 	configPath := app.GetConfigPath()
 	_, err := os.ReadFile(configPath)
@@ -392,6 +393,7 @@ func (app *Avalanche) ConfigFileExists() bool {
 	}
 	return true
 }
+
 func (app *Avalanche) WriteConfigFile(bytes []byte) error {
 	configPath := app.GetConfigPath()
 	return app.writeFile(configPath, bytes)

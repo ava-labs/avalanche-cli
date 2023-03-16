@@ -6,11 +6,12 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
+
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/dukex/mixpanel"
 	"github.com/spf13/cobra"
@@ -31,6 +32,7 @@ func GetCLIVersion() string {
 	}
 	return string(content)
 }
+
 func PrintMetricsOptOutPrompt() {
 	ux.Logger.PrintToUser("Ava Labs aggregates collected data to identify patterns of usage to identify common " +
 		"issues and improve the experience of Avalanche-CLI. Avalanche-CLI does not collect any private or " +
@@ -38,6 +40,7 @@ func PrintMetricsOptOutPrompt() {
 	ux.Logger.PrintToUser("You can disable data collection with `avalanche config metrics disable` command. " +
 		"You can also read our privacy statement <https://www.avalabs.org/privacy-policy> to learn more.\n")
 }
+
 func TrackMetrics(command *cobra.Command, flags map[string]string) {
 	if mixpanelToken == "" || os.Getenv("RUN_E2E") != "" {
 		return
