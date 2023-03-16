@@ -36,8 +36,7 @@ func handleMetricsSettings(_ *cobra.Command, args []string) error {
 		}
 	case constants.Disable:
 		ux.Logger.PrintToUser("Avalanche CLI usage metrics will no longer be collected")
-		saveMetricsPreferences(false)
-		err := saveMetricsPreferences(true)
+		err := saveMetricsPreferences(false)
 		if err != nil {
 			return err
 		}
