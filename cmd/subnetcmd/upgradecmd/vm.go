@@ -41,9 +41,13 @@ var (
 // avalanche subnet update vm
 func newUpgradeVMCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "vm [subnetName]",
-		Short:        "Upgrade a subnet's binary",
-		Long:         "",
+		Use:   "vm [subnetName]",
+		Short: "Upgrade a subnet's binary",
+		Long: `The subnet upgrade vm command enables the user to upgrade their Subnet's VM binary. The command
+can upgrade both local Subnets and publicly deployed Subnets on Fuji and Mainnet.
+
+The command walks the user through an interactive wizard. The user can skip the wizard by providing
+command line flags.`,
 		RunE:         upgradeVM,
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,

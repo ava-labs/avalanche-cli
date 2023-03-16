@@ -36,13 +36,11 @@ func newImportFromNetworkCmd() *cobra.Command {
 		RunE:         importRunningSubnet,
 		SilenceUsage: true,
 		Args:         cobra.MaximumNArgs(1),
-		Long: `The subnet import public command will import a subnet configuration from a running network.
+		Long: `The subnet import public command imports a Subnet configuration from a running network.
 
-Currently this only supports importing one single chain from a subnet. 
-Therefore, this import asks the blockchain ID from the user.
-The genesis file should be available from the disk for this to work. 
-By default, an imported subnet will not overwrite an existing subnet with the same name. 
-To allow overwrites, provide the --force flag.`,
+The genesis file should be available from the disk for this to work. By default, an imported Subnet
+doesn't overwrite an existing Subnet with the same name. To allow overwrites, provide the --force
+flag.`,
 	}
 
 	cmd.Flags().StringVar(&nodeURL, "node-url", "", "[optional] URL of an already running subnet validator")

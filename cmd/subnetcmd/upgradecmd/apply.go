@@ -59,15 +59,15 @@ func newUpgradeApplyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "apply [subnetName]",
 		Short: "Apply upgrade bytes onto subnet nodes",
-		Long: `Apply generated upgrade bytes to running subnet nodes to trigger a network upgrade. 
+		Long: `Apply generated upgrade bytes to running Subnet nodes to trigger a network upgrade.
 
-For public networks (fuji testnet or mainnet), to complete this process, 
+For public networks (Fuji Testnet or Mainnet), to complete this process,
 you must have access to the machine running your validator.
 If the CLI is running on the same machine as your validator, it can manipulate your node's
 configuration automatically. Alternatively, the command can print the necessary instructions
 to upgrade your node manually.
 
-After you update your validator's configuration, you need to restart your validator manually. 
+After you update your validator's configuration, you need to restart your validator manually.
 If you provide the --avalanchego-chain-config-dir flag, this command attempts to write the upgrade file at that path.
 Refer to https://docs.avax.network/nodes/maintain/chain-config-flags#subnet-chain-configs for related documentation.`,
 		RunE: applyCmd,
