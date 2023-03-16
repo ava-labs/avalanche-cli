@@ -105,6 +105,11 @@ func createApp(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	handleTracking(cmd)
+
+	return nil
+}
+func handleTracking(cmd *cobra.Command) {
 	// if config file doesn't exist, user needs to be aware of new tracking feature so that they can opt out if they want to
 	if !app.ConfigFileExists() {
 		ux.Logger.PrintToUser("Ava Labs aggregates collected data to identify patterns of usage to identify common " +
@@ -116,10 +121,7 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	if userIsOptedIn() {
 		utils.TrackMetrics(cmd)
 	}
-
-	return nil
 }
-
 func userIsOptedIn() bool {
 	// if config file is not found or unable to be read, will return true (user is opted in)
 	config, err := app.LoadConfig()
