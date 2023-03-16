@@ -5,9 +5,10 @@ package subnetcmd
 import (
 	"errors"
 	"fmt"
+	"unicode"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"unicode"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -94,9 +95,7 @@ func getVMFromFlag() models.VMType {
 }
 
 // override postrun function from root.go, so that we don't double send metrics for the same command
-func handlePostRun(_ *cobra.Command, args []string) {
-	return
-}
+func handlePostRun(_ *cobra.Command, _ []string) {}
 
 func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	subnetName := args[0]
