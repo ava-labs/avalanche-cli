@@ -193,6 +193,7 @@ func handleTracking(cmd *cobra.Command, flags map[string]string) {
 		utils.TrackMetrics(cmd, flags)
 	}
 }
+
 func userIsOptedIn() bool {
 	// if config file is not found or unable to be read, will return true (user is opted in)
 	config, err := app.LoadConfig()
