@@ -118,6 +118,7 @@ func handleTracking(cmd *cobra.Command, _ []string) {
 		utils.TrackMetrics(cmd, nil)
 	}
 }
+
 func userIsOptedIn() bool {
 	// if config file is not found or unable to be read, will return true (user is opted in)
 	config, err := app.LoadConfig()
@@ -126,6 +127,7 @@ func userIsOptedIn() bool {
 	}
 	return config.MetricsEnabled
 }
+
 func setupEnv() (string, error) {
 	// Set base dir
 	usr, err := user.Current()
