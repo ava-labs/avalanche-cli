@@ -6,11 +6,12 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
+
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
