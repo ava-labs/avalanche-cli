@@ -22,7 +22,11 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/commontype"
 	"github.com/ava-labs/subnet-evm/params"
-	"github.com/ava-labs/subnet-evm/precompile"
+	"github.com/ava-labs/subnet-evm/precompile/contracts/deployerallowlist"
+	"github.com/ava-labs/subnet-evm/precompile/contracts/feemanager"
+	"github.com/ava-labs/subnet-evm/precompile/contracts/nativeminter"
+	"github.com/ava-labs/subnet-evm/precompile/contracts/rewardmanager"
+	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/spf13/cobra"
@@ -242,14 +246,14 @@ func promptNativeMintParams(precompiles *[]params.PrecompileUpgrade, date time.T
 		}
 	}
 
-	config := precompile.NewContractNativeMinterConfig(
+	config := nativeminter.NewConfig(
 		big.NewInt(date.Unix()),
 		adminAddrs,
 		enabledAddrs,
 		initialMint,
 	)
 	upgrade := params.PrecompileUpgrade{
-		ContractNativeMinterConfig: config,
+		Config: config,
 	}
 	*precompiles = append(*precompiles, upgrade)
 	return nil
@@ -266,7 +270,7 @@ func promptRewardManagerParams(precompiles *[]params.PrecompileUpgrade, date tim
 		return err
 	}
 
-	config := precompile.NewRewardManagerConfig(
+	config := rewardmanager.NewConfig(
 		big.NewInt(date.Unix()),
 		adminAddrs,
 		enabledAddrs,
@@ -274,7 +278,7 @@ func promptRewardManagerParams(precompiles *[]params.PrecompileUpgrade, date tim
 	)
 
 	upgrade := params.PrecompileUpgrade{
-		RewardManagerConfig: config,
+		Config: config,
 	}
 	*precompiles = append(*precompiles, upgrade)
 	return nil
@@ -302,14 +306,14 @@ func promptFeeManagerParams(precompiles *[]params.PrecompileUpgrade, date time.T
 		feeConfig = &chainConfig.FeeConfig
 	}
 
-	config := precompile.NewFeeManagerConfig(
+	config := feemanager.NewConfig(
 		big.NewInt(date.Unix()),
 		adminAddrs,
 		enabledAddrs,
 		feeConfig,
 	)
 	upgrade := params.PrecompileUpgrade{
-		FeeManagerConfig: config,
+		Config: config,
 	}
 	*precompiles = append(*precompiles, upgrade)
 	return nil
@@ -321,13 +325,13 @@ func promptContractAllowListParams(precompiles *[]params.PrecompileUpgrade, date
 		return err
 	}
 
-	config := precompile.NewContractDeployerAllowListConfig(
+	config := deployerallowlist.NewConfig(
 		big.NewInt(date.Unix()),
 		adminAddrs,
 		enabledAddrs,
 	)
 	upgrade := params.PrecompileUpgrade{
-		ContractDeployerAllowListConfig: config,
+		Config: config,
 	}
 	*precompiles = append(*precompiles, upgrade)
 	return nil
@@ -339,13 +343,13 @@ func promptTxAllowListParams(precompiles *[]params.PrecompileUpgrade, date time.
 		return err
 	}
 
-	config := precompile.NewTxAllowListConfig(
+	config := txallowlist.NewConfig(
 		big.NewInt(date.Unix()),
 		adminAddrs,
 		enabledAddrs,
 	)
 	upgrade := params.PrecompileUpgrade{
-		TxAllowListConfig: config,
+		Config: config,
 	}
 	*precompiles = append(*precompiles, upgrade)
 	return nil

@@ -4,6 +4,7 @@ package subnetcmd
 
 import (
 	"fmt"
+	"math"
 	"math/big"
 	"os"
 	"strconv"
@@ -15,6 +16,12 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ava-labs/subnet-evm/precompile/contracts/deployerallowlist"
+	"github.com/ava-labs/subnet-evm/precompile/contracts/feemanager"
+	"github.com/ava-labs/subnet-evm/precompile/contracts/nativeminter"
+	"github.com/ava-labs/subnet-evm/precompile/contracts/rewardmanager"
+	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -173,57 +180,73 @@ func printPrecompileTable(genesis core.Genesis) {
 	fmt.Print(art)
 
 	table := tablewriter.NewWriter(os.Stdout)
-	header := []string{"Precompile", "Admin"}
+	header := []string{"Precompile", "Admin", "Enabled"}
 	table.SetHeader(header)
-	table.SetAutoMergeCellsByColumnIndex([]int{0})
+	table.SetAutoMergeCellsByColumnIndex([]int{0, 1, 2})
 	table.SetRowLine(true)
 
 	precompileSet := false
 
 	// Native Minting
-	if genesis.Config.ContractNativeMinterConfig != nil {
-		for _, address := range genesis.Config.ContractNativeMinterConfig.AllowListAdmins {
-			table.Append([]string{"Native Minter", address.Hex()})
-			precompileSet = true
-		}
+	if genesis.Config.GenesisPrecompiles[nativeminter.ConfigKey] != nil {
+		cfg := genesis.Config.GenesisPrecompiles[nativeminter.ConfigKey].(*nativeminter.Config)
+		appendToAddressTable(table, "Native Minter", cfg.AdminAddresses, cfg.EnabledAddresses)
+		precompileSet = true
 	}
 
 	// Contract allow list
-	if genesis.Config.ContractDeployerAllowListConfig != nil {
-		for _, address := range genesis.Config.ContractDeployerAllowListConfig.AllowListAdmins {
-			table.Append([]string{"Contract Allow list", address.Hex()})
-			precompileSet = true
-		}
+	if genesis.Config.GenesisPrecompiles[deployerallowlist.ConfigKey] != nil {
+		cfg := genesis.Config.GenesisPrecompiles[deployerallowlist.ConfigKey].(*deployerallowlist.Config)
+		appendToAddressTable(table, "Contract Allow List", cfg.AdminAddresses, cfg.EnabledAddresses)
+		precompileSet = true
 	}
 
 	// TX allow list
-	if genesis.Config.TxAllowListConfig != nil {
-		for _, address := range genesis.Config.TxAllowListConfig.AllowListAdmins {
-			table.Append([]string{"Tx Allow list", address.Hex()})
-			precompileSet = true
-		}
+	if genesis.Config.GenesisPrecompiles[txallowlist.ConfigKey] != nil {
+		cfg := genesis.Config.GenesisPrecompiles[txallowlist.Module.ConfigKey].(*txallowlist.Config)
+		appendToAddressTable(table, "Tx Allow List", cfg.AdminAddresses, cfg.EnabledAddresses)
+		precompileSet = true
 	}
 
 	// Fee config allow list
-	if genesis.Config.FeeManagerConfig != nil {
-		for _, address := range genesis.Config.FeeManagerConfig.AllowListAdmins {
-			table.Append([]string{"Fee Config Allow list", address.Hex()})
-			precompileSet = true
-		}
+	if genesis.Config.GenesisPrecompiles[feemanager.ConfigKey] != nil {
+		cfg := genesis.Config.GenesisPrecompiles[feemanager.ConfigKey].(*feemanager.Config)
+		appendToAddressTable(table, "Fee Config Allow List", cfg.AdminAddresses, cfg.EnabledAddresses)
+		precompileSet = true
 	}
 
 	// Reward config allow list
-	if genesis.Config.RewardManagerConfig != nil {
-		for _, address := range genesis.Config.RewardManagerConfig.AllowListAdmins {
-			table.Append([]string{"Reward Manager Config Allow list", address.Hex()})
-			precompileSet = true
-		}
+	if genesis.Config.GenesisPrecompiles[rewardmanager.ConfigKey] != nil {
+		cfg := genesis.Config.GenesisPrecompiles[rewardmanager.ConfigKey].(*rewardmanager.Config)
+		appendToAddressTable(table, "Reward Manager Allow List", cfg.AdminAddresses, cfg.EnabledAddresses)
+		precompileSet = true
 	}
 
 	if precompileSet {
 		table.Render()
 	} else {
 		ux.Logger.PrintToUser("No precompiles set")
+	}
+}
+
+func appendToAddressTable(
+	table *tablewriter.Table,
+	label string,
+	adminAddresses []common.Address,
+	enabledAddresses []common.Address,
+) {
+	admins := len(adminAddresses)
+	enabled := len(enabledAddresses)
+	max := int(math.Max(float64(admins), float64(enabled)))
+	for i := 0; i < max; i++ {
+		var admin, enable string
+		if len(adminAddresses) >= i+1 && adminAddresses[i] != (common.Address{}) {
+			admin = adminAddresses[i].Hex()
+		}
+		if len(enabledAddresses) >= i+1 && enabledAddresses[i] != (common.Address{}) {
+			enable = enabledAddresses[i].Hex()
+		}
+		table.Append([]string{label, admin, enable})
 	}
 }
 
