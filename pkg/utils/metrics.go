@@ -45,11 +45,13 @@ func PrintMetricsOptOutPrompt() {
 	ux.Logger.PrintToUser("You can disable data collection with `avalanche config metrics disable` command. " +
 		"You can also read our privacy statement <https://www.avalabs.org/privacy-policy> to learn more.\n")
 }
+
 func saveMetricsConfig(app *application.Avalanche, metricsEnabled bool) {
 	config := models.Config{MetricsEnabled: metricsEnabled}
 	jsonBytes, _ := json.Marshal(&config)
 	_ = app.WriteConfigFile(jsonBytes)
 }
+
 func HandleUserMetricsPreference(app *application.Avalanche) error {
 	PrintMetricsOptOutPrompt()
 	txt := "Press [Enter] to opt-in, or opt out by choosing 'No'"
@@ -65,6 +67,7 @@ func HandleUserMetricsPreference(app *application.Avalanche) error {
 	saveMetricsConfig(app, yes)
 	return nil
 }
+
 func userIsOptedIn(app *application.Avalanche) bool {
 	// if config file is not found or unable to be read, will return false (user is not opted in)
 	config, err := app.LoadConfig()
