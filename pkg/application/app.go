@@ -369,13 +369,7 @@ func (app *Avalanche) LoadConfig() (models.Config, error) {
 	configPath := app.GetConfigPath()
 	jsonBytes, err := os.ReadFile(configPath)
 	if err != nil {
-		// create a config file if it doesn't exist
-		config := models.Config{MetricsEnabled: true}
-		if os.IsNotExist(err) {
-			jsonBytes, _ = json.Marshal(&config)
-			_ = app.WriteConfigFile(jsonBytes)
-		}
-		return config, err
+		return models.Config{}, err
 	}
 
 	var config models.Config

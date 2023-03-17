@@ -5,11 +5,14 @@ package utils
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
+
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 
@@ -42,21 +45,36 @@ func PrintMetricsOptOutPrompt() {
 	ux.Logger.PrintToUser("You can disable data collection with `avalanche config metrics disable` command. " +
 		"You can also read our privacy statement <https://www.avalabs.org/privacy-policy> to learn more.\n")
 }
-
+func saveMetricsConfig(app *application.Avalanche, metricsEnabled bool) {
+	config := models.Config{MetricsEnabled: metricsEnabled}
+	jsonBytes, _ := json.Marshal(&config)
+	_ = app.WriteConfigFile(jsonBytes)
+}
+func HandleUserMetricsPreference(app *application.Avalanche) error {
+	PrintMetricsOptOutPrompt()
+	txt := "Press [Enter] to opt-in, or opt out by choosing 'No'"
+	yes, err := app.Prompt.CaptureYesNo(txt)
+	if err != nil {
+		return err
+	}
+	if !yes {
+		ux.Logger.PrintToUser("Avalanche CLI usage metrics will not be collected")
+	} else {
+		ux.Logger.PrintToUser("Thank you for opting in Avalanche CLI usage metrics collection")
+	}
+	saveMetricsConfig(app, yes)
+	return nil
+}
 func userIsOptedIn(app *application.Avalanche) bool {
-	// if config file is not found or unable to be read, will return true (user is opted in)
+	// if config file is not found or unable to be read, will return false (user is not opted in)
 	config, err := app.LoadConfig()
 	if err != nil {
-		return true
+		return false
 	}
 	return config.MetricsEnabled
 }
 
 func HandleTracking(cmd *cobra.Command, app *application.Avalanche, flags map[string]string) {
-	// if config file doesn't exist, user needs to be aware of new tracking feature so that they can opt out if they want to
-	if !app.ConfigFileExists() {
-		PrintMetricsOptOutPrompt()
-	}
 	if userIsOptedIn(app) {
 		TrackMetrics(cmd, flags)
 	}
