@@ -259,6 +259,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			}
 			return err
 		}
+		flags := make(map[string]string)
+		flags[constants.Network] = network.String()
+		utilspkg.HandleTracking(cmd, app, flags)
 		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
 
 	case models.Fuji:
