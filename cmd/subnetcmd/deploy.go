@@ -75,9 +75,10 @@ allowed. If you'd like to redeploy a Subnet locally for testing, you must first 
 avalanche network clean to reset all deployed chain state. Subsequent local deploys
 redeploy the chain with fresh state. You can deploy the same Subnet to multiple networks,
 so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
-		SilenceUsage: true,
-		RunE:         deploySubnet,
-		Args:         cobra.ExactArgs(1),
+		SilenceUsage:      true,
+		RunE:              deploySubnet,
+		PersistentPostRun: handlePostRun,
+		Args:              cobra.ExactArgs(1),
 	}
 	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
 	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "deploy to testnet (alias to `fuji`)")
