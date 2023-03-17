@@ -106,7 +106,7 @@ func createApp(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	if !app.ConfigFileExists() {
+	if os.Getenv("RUN_E2E") == "" && !app.ConfigFileExists() {
 		err = utils.HandleUserMetricsPreference(app)
 		if err != nil {
 			return err
