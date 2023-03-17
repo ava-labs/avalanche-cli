@@ -132,4 +132,6 @@ const (
 	BlockchainIDLabel = "BlockchainID: "
 
 	PluginDir = "plugins"
+
+	Network = "network"
 )
