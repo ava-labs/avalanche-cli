@@ -468,30 +468,25 @@ func DownloadCustomVMBin(subnetEVMversion string) (string, error) {
 	return subnetEVMBin, nil
 }
 
-func ParsePublicDeployOutput(output string) (string, string, error) {
+func ParsePublicDeployOutput(output string) (string, error) {
 	lines := strings.Split(output, "\n")
-	var (
-		subnetID string
-		rpcURL   string
-	)
+	var subnetID string
 	for _, line := range lines {
 		if !strings.Contains(line, "Subnet ID") && !strings.Contains(line, "RPC URL") {
 			continue
 		}
 		words := strings.Split(line, "|")
 		if len(words) != 4 {
-			return "", "", errors.New("error parsing output: invalid number of words in line")
+			return "", errors.New("error parsing output: invalid number of words in line")
 		}
 		if strings.Contains(line, "Subnet ID") {
 			subnetID = strings.TrimSpace(words[2])
-		} else {
-			rpcURL = strings.TrimSpace(words[2])
 		}
 	}
-	if subnetID == "" || rpcURL == "" {
-		return "", "", errors.New("information not found in output")
+	if subnetID == "" {
+		return "", errors.New("information not found in output")
 	}
-	return subnetID, rpcURL, nil
+	return subnetID, nil
 }
 
 func RestartNodesWithWhitelistedSubnets(whitelistedSubnets string) error {

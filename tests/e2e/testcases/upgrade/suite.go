@@ -387,7 +387,7 @@ var _ = ginkgo.Describe("[Upgrade local network]", ginkgo.Ordered, func() {
 
 		// Simulate fuji deployment
 		s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys)
-		subnetID, _, err := utils.ParsePublicDeployOutput(s)
+		subnetID, err := utils.ParsePublicDeployOutput(s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		// add validators to subnet
 		nodeInfos, err := utils.GetNodesInfo()

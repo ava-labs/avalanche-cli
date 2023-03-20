@@ -48,7 +48,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 	ginkgo.It("deploy subnet to fuji", func() {
 		// deploy
 		s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys)
-		subnetID, rpcURL, err := utils.ParsePublicDeployOutput(s)
+		subnetID, err := utils.ParsePublicDeployOutput(s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		// add validators to subnet
 		nodeInfos, err := utils.GetNodesInfo()
@@ -75,11 +75,6 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		// wait for subnet walidators to be up
 		err = utils.WaitSubnetValidators(subnetID, nodeInfos)
 		gomega.Expect(err).Should(gomega.BeNil())
-		// hardhat
-		err = utils.SetHardhatRPC(rpcURL)
-		gomega.Expect(err).Should(gomega.BeNil())
-		err = utils.RunHardhatTests(utils.BaseTest)
-		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
 	ginkgo.It("deploy subnet to mainnet", ginkgo.Label("local_machine"), func() {
@@ -90,7 +85,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
 		s := commands.SimulateMainnetDeploy(subnetName)
 		// deploy
-		subnetID, rpcURL, err := utils.ParsePublicDeployOutput(s)
+		subnetID, err := utils.ParsePublicDeployOutput(s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		// add validators to subnet
 		nodeInfos, err := utils.GetNodesInfo()
@@ -121,11 +116,6 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		// wait for subnet walidators to be up
 		err = utils.WaitSubnetValidators(subnetID, nodeInfos)
-		gomega.Expect(err).Should(gomega.BeNil())
-		// hardhat
-		err = utils.SetHardhatRPC(rpcURL)
-		gomega.Expect(err).Should(gomega.BeNil())
-		err = utils.RunHardhatTests(utils.BaseTest)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// this is a simulation, so app is probably saving the info in the

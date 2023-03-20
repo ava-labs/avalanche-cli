@@ -754,7 +754,6 @@ func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFu
 	table.Append([]string{"VM ID", vmID.String()})
 	if isFullySigned {
 		table.Append([]string{"Blockchain ID", blockchainID.String()})
-		table.Append([]string{"RPC URL", fmt.Sprintf("%s/ext/bc/%s/rpc", constants.DefaultNodeRunURL, blockchainID.String())})
 		table.Append([]string{"P-Chain TXID", blockchainID.String()})
 	}
 	table.Render()
