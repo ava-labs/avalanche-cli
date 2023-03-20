@@ -87,7 +87,7 @@ func validateWeight(input string) error {
 	if err != nil {
 		return err
 	}
-	if val < constants.MinStakeWeight || val > constants.MaxStakeWeight {
+	if val < constants.MinStakeWeight {
 		return errors.New("the weight must be an integer between 1 and 100")
 	}
 	return nil
