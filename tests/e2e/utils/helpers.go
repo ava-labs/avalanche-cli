@@ -484,11 +484,9 @@ func ParsePublicDeployOutput(output string) (string, string, error) {
 		}
 		if strings.Contains(line, "Subnet ID") {
 			subnetID = strings.TrimSpace(words[2])
-		} else {
-			rpcURL = strings.TrimSpace(words[2])
 		}
 	}
-	if subnetID == "" || rpcURL == "" {
+	if subnetID == "" {
 		return "", "", errors.New("information not found in output")
 	}
 	return subnetID, rpcURL, nil
