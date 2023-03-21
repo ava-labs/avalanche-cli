@@ -18,12 +18,13 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
-	"github.com/dukex/mixpanel"
+	"github.com/posthog/posthog-go"
 	"github.com/spf13/cobra"
 )
 
 // mixpanelToken value is set at build and install scripts using ldflags
-var mixpanelToken = ""
+var telemetryToken = ""
+var telemetryInstance = "https://data-posthog.avax-test.network"
 
 func GetCLIVersion() string {
 	wdPath, err := os.Getwd()
@@ -84,23 +85,27 @@ func HandleTracking(cmd *cobra.Command, app *application.Avalanche, flags map[st
 }
 
 func TrackMetrics(command *cobra.Command, flags map[string]string) {
-	if mixpanelToken == "" || os.Getenv("RUN_E2E") != "" {
+	if telemetryToken == "" || os.Getenv("RUN_E2E") != "" {
 		return
 	}
-	client := mixpanel.New(mixpanelToken, "")
+
+	client, _ := posthog.NewWithConfig(telemetryToken, posthog.Config{Endpoint: telemetryInstance})
+
+	defer client.Close()
+
 	usr, _ := user.Current() // use empty string if err
 	hash := sha256.Sum256([]byte(fmt.Sprintf("%s%s", usr.Username, usr.Uid)))
 	userID := base64.StdEncoding.EncodeToString(hash[:])
-	mixPanelProperties := make(map[string]any)
-	mixPanelProperties["command"] = command.CommandPath()
-	mixPanelProperties["version"] = GetCLIVersion()
-	mixPanelProperties["os"] = runtime.GOOS
-
+	telemetryProperties := make(map[string]interface{})
+	telemetryProperties["command"] = command.CommandPath()
+	telemetryProperties["version"] = GetCLIVersion()
+	telemetryProperties["os"] = runtime.GOOS
 	for propertyKey, propertyValue := range flags {
-		mixPanelProperties[propertyKey] = propertyValue
+		telemetryProperties[propertyKey] = propertyValue
 	}
-	_ = client.Track(userID, "cli-command", &mixpanel.Event{
-		IP:         "0",
-		Properties: mixPanelProperties,
+	client.Enqueue(posthog.Capture{
+		DistinctId: userID,
+		Event:      "cli-command",
+		Properties: telemetryProperties,
 	})
 }

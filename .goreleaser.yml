@@ -9,6 +9,7 @@ builds:
     # contains linux and darwin
     ldflags:
       - -X 'github.com/ava-labs/avalanche-cli/cmd.Version={{.Version}}'
+      - -X 'github.com/ava-labs/avalanche-cli/pkg/utils.telemetryToken={{.TELEMETRY_TOKEN}}'
     goos:
       - linux
       - darwin
