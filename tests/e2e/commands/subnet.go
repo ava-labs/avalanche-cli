@@ -34,7 +34,7 @@ func CreateSubnetEvmConfigWithVersion(subnetName string, genesisPath string, ver
 	gomega.Expect(exists).Should(gomega.BeFalse())
 
 	// Create config
-	cmdArgs := []string{SubnetCmd, "create", "--genesis", genesisPath, "--evm", subnetName}
+	cmdArgs := []string{SubnetCmd, "create", "--genesis", genesisPath, "--evm", subnetName, "--" + constants.SkipUpdateFlag}
 	if version == "" {
 		cmdArgs = append(cmdArgs, "--latest")
 	} else {
@@ -58,7 +58,7 @@ func CreateSubnetEvmConfigWithVersion(subnetName string, genesisPath string, ver
 /* #nosec G204 */
 func ConfigureChainConfig(subnetName string, genesisPath string) {
 	// run configure
-	cmdArgs := []string{SubnetCmd, "configure", subnetName, "--chain-config", genesisPath}
+	cmdArgs := []string{SubnetCmd, "configure", subnetName, "--chain-config", genesisPath, "--" + constants.SkipUpdateFlag}
 	cmd := exec.Command(CLIBinary, cmdArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -76,7 +76,7 @@ func ConfigureChainConfig(subnetName string, genesisPath string) {
 /* #nosec G204 */
 func ConfigurePerNodeChainConfig(subnetName string, perNodeChainConfigPath string) {
 	// run configure
-	cmdArgs := []string{SubnetCmd, "configure", subnetName, "--per-node-chain-config", perNodeChainConfigPath}
+	cmdArgs := []string{SubnetCmd, "configure", subnetName, "--per-node-chain-config", perNodeChainConfigPath, "--" + constants.SkipUpdateFlag}
 	cmd := exec.Command(CLIBinary, cmdArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -108,7 +108,7 @@ func CreateSpacesVMConfigWithVersion(subnetName string, genesisPath string, vers
 	gomega.Expect(exists).Should(gomega.BeFalse())
 
 	// Create config
-	cmdArgs := []string{SubnetCmd, "create", "--genesis", genesisPath, "--spacesvm", subnetName}
+	cmdArgs := []string{SubnetCmd, "create", "--genesis", genesisPath, "--spacesvm", subnetName, "--" + constants.SkipUpdateFlag}
 	if version == "" {
 		cmdArgs = append(cmdArgs, "--latest")
 	} else {
@@ -151,6 +151,7 @@ func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) 
 		vmPath,
 		"--custom",
 		subnetName,
+		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -183,7 +184,7 @@ func DeleteSubnetConfig(subnetName string) {
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
 	// Now delete config
-	cmd := exec.Command(CLIBinary, SubnetCmd, "delete", subnetName)
+	cmd := exec.Command(CLIBinary, SubnetCmd, "delete", subnetName, "--"+constants.SkipUpdateFlag)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -238,7 +239,7 @@ func DeploySubnetLocallyWithArgs(subnetName string, version string, confPath str
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
 	// Deploy subnet locally
-	cmdArgs := []string{SubnetCmd, "deploy", "--local", subnetName}
+	cmdArgs := []string{SubnetCmd, "deploy", "--local", subnetName, "--" + constants.SkipUpdateFlag}
 	if version != "" {
 		cmdArgs = append(cmdArgs, "--avalanchego-version", version)
 	}
@@ -271,7 +272,7 @@ func DeploySubnetLocallyWithArgsAndOutput(subnetName string, version string, con
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
 	// Deploy subnet locally
-	cmdArgs := []string{SubnetCmd, "deploy", "--local", subnetName}
+	cmdArgs := []string{SubnetCmd, "deploy", "--local", subnetName, "--" + constants.SkipUpdateFlag}
 	if version != "" {
 		cmdArgs = append(cmdArgs, "--avalanchego-version", version)
 	}
@@ -316,6 +317,7 @@ func SimulateFujiDeploy(
 		"--control-keys",
 		controlKeys,
 		subnetName,
+		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -355,6 +357,7 @@ func SimulateMainnetDeploy(
 		"1",
 		"--same-control-key",
 		subnetName,
+		"--"+constants.SkipUpdateFlag,
 	)
 	stdoutPipe, err := cmd.StdoutPipe()
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -422,6 +425,7 @@ func SimulateFujiAddValidator(
 		"--weight",
 		weight,
 		subnetName,
+		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -469,6 +473,7 @@ func SimulateMainnetAddValidator(
 		"--weight",
 		weight,
 		subnetName,
+		"--"+constants.SkipUpdateFlag,
 	)
 	stdoutPipe, err := cmd.StdoutPipe()
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -533,6 +538,7 @@ func SimulateFujiJoin(
 		nodeID,
 		"--force-write",
 		subnetName,
+		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -579,6 +585,7 @@ func SimulateMainnetJoin(
 		nodeID,
 		"--force-write",
 		subnetName,
+		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -616,6 +623,7 @@ func ImportSubnetConfig(repoAlias string, subnetName string) {
 		repoAlias,
 		"--subnet",
 		subnetName,
+		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -663,6 +671,7 @@ func ImportSubnetConfigFromURL(repoURL string, branch string, subnetName string)
 		branch,
 		"--subnet",
 		subnetName,
+		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -695,6 +704,7 @@ func DescribeSubnet(subnetName string) (string, error) {
 		SubnetCmd,
 		"describe",
 		subnetName,
+		"--"+constants.SkipUpdateFlag,
 	)
 
 	output, err := cmd.Output()
@@ -725,6 +735,7 @@ func SimulateGetSubnetStatsFuji(subnetName, subnetID string) string {
 		"stats",
 		subnetName,
 		"--fuji",
+		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
 	var exitErr *exec.ExitError

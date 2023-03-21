@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/transactioncmd"
+	"github.com/ava-labs/avalanche-cli/cmd/updatecmd"
 	"github.com/ava-labs/avalanche-cli/internal/migrations"
 	"github.com/ava-labs/avalanche-cli/pkg/apmintegration"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -30,9 +31,10 @@ import (
 var (
 	app *application.Avalanche
 
-	logLevel string
-	Version  = ""
-	cfgFile  string
+	logLevel  string
+	Version   = ""
+	cfgFile   string
+	skipCheck bool
 )
 
 func NewRootCmd() *cobra.Command {
@@ -54,6 +56,7 @@ in with avalanche subnet create myNewSubnet.`,
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.avalanche-cli.json)")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "ERROR", "log level for the application")
+	rootCmd.PersistentFlags().BoolVar(&skipCheck, constants.SkipUpdateFlag, false, "skip check for new versions")
 
 	// add sub commands
 	rootCmd.AddCommand(subnetcmd.NewCmd(app))
@@ -65,6 +68,9 @@ in with avalanche subnet create myNewSubnet.`,
 
 	// add transaction command
 	rootCmd.AddCommand(transactioncmd.NewCmd(app))
+
+	// add update command
+	rootCmd.AddCommand(updatecmd.NewCmd(app, Version))
 	return rootCmd
 }
 
@@ -99,6 +105,31 @@ func createApp(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	if !skipCheck {
+		if err := checkForUpdates(cmd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func checkForUpdates(cmd *cobra.Command) error {
+	isUserCalled := false
+	if err := updatecmd.Update(cmd, isUserCalled); err != nil {
+		if err == updatecmd.ErrUserAbortedInstallation {
+			return nil
+		}
+		if err == updatecmd.ErrNoVersion {
+			ux.Logger.PrintToUser(
+				"Attempted to check if a new version is available, but couldn't find the currently running version information")
+			ux.Logger.PrintToUser(
+				"This can be ignored, but make sure to follow official instructions, or automatic updates won't be available for you")
+			return nil
+		}
+		return err
+	}
+	ux.Logger.PrintToUser("The new version will be used on next command execution")
 	return nil
 }
 

@@ -52,6 +52,9 @@ const (
 	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/" + BootstrapSnapshotLocalPath
 	BootstrapSnapshotSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/sha256sum.txt"
 
+	CliInstallationURL    = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
+	ExpectedCliInstallErr = "resource temporarily unavailable"
+
 	KeyDir     = "key"
 	KeySuffix  = ".pk"
 	YAMLSuffix = ".yml"
@@ -77,6 +80,7 @@ const (
 	AvalancheGoRepoName = "avalanchego"
 	SubnetEVMRepoName   = "subnet-evm"
 	SpacesVMRepoName    = "spacesvm"
+	CliRepoName         = "avalanche-cli"
 
 	AvalancheGoInstallDir = "avalanchego"
 	SubnetEVMInstallDir   = "subnet-evm"
@@ -126,4 +130,6 @@ const (
 	BlockchainIDLabel = "BlockchainID: "
 
 	PluginDir = "plugins"
+
+	SkipUpdateFlag = "skip-update-check"
 )

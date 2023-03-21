@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os/exec"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/onsi/gomega"
 )
@@ -20,6 +21,7 @@ func ImportUpgradeBytes(subnetName, filepath string) (string, error) {
 		subnetName,
 		"--upgrade-filepath",
 		filepath,
+		"--"+constants.SkipUpdateFlag,
 	)
 
 	output, err := cmd.CombinedOutput()
@@ -42,6 +44,7 @@ func UpgradeVMConfig(subnetName string, targetVersion string) (string, error) {
 		"--config",
 		"--version",
 		targetVersion,
+		"--"+constants.SkipUpdateFlag,
 	)
 
 	output, err := cmd.CombinedOutput()
@@ -64,6 +67,7 @@ func UpgradeCustomVM(subnetName string, binaryPath string) (string, error) {
 		"--config",
 		"--binary",
 		binaryPath,
+		"--"+constants.SkipUpdateFlag,
 	)
 
 	output, err := cmd.Output()
@@ -87,6 +91,7 @@ func UpgradeVMPublic(subnetName string, targetVersion string, pluginDir string) 
 		targetVersion,
 		"--plugin-dir",
 		pluginDir,
+		"--"+constants.SkipUpdateFlag,
 	)
 
 	output, err := cmd.CombinedOutput()
@@ -109,6 +114,7 @@ func UpgradeVMLocal(subnetName string, targetVersion string) string {
 		"--local",
 		"--version",
 		targetVersion,
+		"--"+constants.SkipUpdateFlag,
 	)
 
 	output, err := cmd.CombinedOutput()
@@ -133,6 +139,7 @@ func UpgradeCustomVMLocal(subnetName string, binaryPath string) string {
 		"--local",
 		"--binary",
 		binaryPath,
+		"--"+constants.SkipUpdateFlag,
 	)
 
 	output, err := cmd.Output()
@@ -153,6 +160,7 @@ func ApplyUpgradeLocal(subnetName string) (string, error) {
 		"apply",
 		subnetName,
 		"--local",
+		"--"+constants.SkipUpdateFlag,
 	)
 
 	output, err := cmd.CombinedOutput()
@@ -174,6 +182,7 @@ func ApplyUpgradeToPublicNode(subnetName, avagoChainConfDir string) (string, err
 		"--fuji",
 		"--avalanchego-chain-config-dir",
 		avagoChainConfDir,
+		"--"+constants.SkipUpdateFlag,
 	)
 
 	output, err := cmd.CombinedOutput()
