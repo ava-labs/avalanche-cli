@@ -290,6 +290,7 @@ func DeploySubnetLocallyWithArgsExpectError(subnetName string, version string, c
 }
 
 // simulates fuji deploy execution path on a local network
+/* #nosec G204 */
 func SimulateFujiDeploy(
 	subnetName string,
 	key string,
@@ -335,6 +336,7 @@ func SimulateFujiDeploy(
 }
 
 // simulates mainnet deploy execution path on a local network
+/* #nosec G204 */
 func SimulateMainnetDeploy(
 	subnetName string,
 ) string {
@@ -392,6 +394,7 @@ func SimulateMainnetDeploy(
 }
 
 // simulates fuji add validator execution path on a local network
+/* #nosec G204 */
 func SimulateFujiAddValidator(
 	subnetName string,
 	key string,
@@ -443,6 +446,7 @@ func SimulateFujiAddValidator(
 }
 
 // simulates mainnet add validator execution path on a local network
+/* #nosec G204 */
 func SimulateMainnetAddValidator(
 	subnetName string,
 	nodeID string,
@@ -508,6 +512,7 @@ func SimulateMainnetAddValidator(
 }
 
 // simulates fuji join execution path on a local network
+/* #nosec G204 */
 func SimulateFujiJoin(
 	subnetName string,
 	avalanchegoConfig string,
@@ -555,6 +560,7 @@ func SimulateFujiJoin(
 }
 
 // simulates mainnet join execution path on a local network
+/* #nosec G204 */
 func SimulateMainnetJoin(
 	subnetName string,
 	avalanchegoConfig string,
@@ -716,6 +722,7 @@ func DescribeSubnet(subnetName string) (string, error) {
 	return string(output), err
 }
 
+/* #nosec G204 */
 func SimulateGetSubnetStatsFuji(subnetName, subnetID string) string {
 	// Check config does already exist:
 	// We want to run stats on an existing subnet

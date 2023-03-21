@@ -12,6 +12,7 @@ import (
 	"github.com/onsi/gomega"
 )
 
+/* #nosec G204 */
 func ImportUpgradeBytes(subnetName, filepath string) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -79,6 +80,7 @@ func UpgradeCustomVM(subnetName string, binaryPath string) (string, error) {
 	return string(output), err
 }
 
+/* #nosec G204 */
 func UpgradeVMPublic(subnetName string, targetVersion string, pluginDir string) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -152,6 +154,7 @@ func UpgradeCustomVMLocal(subnetName string, binaryPath string) string {
 	return string(output)
 }
 
+/* #nosec G204 */
 func ApplyUpgradeLocal(subnetName string) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -172,6 +175,7 @@ func ApplyUpgradeLocal(subnetName string) (string, error) {
 	return string(output), err
 }
 
+/* #nosec G204 */
 func ApplyUpgradeToPublicNode(subnetName, avagoChainConfDir string) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
