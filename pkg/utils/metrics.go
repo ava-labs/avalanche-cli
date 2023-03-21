@@ -103,7 +103,7 @@ func TrackMetrics(command *cobra.Command, flags map[string]string) {
 	for propertyKey, propertyValue := range flags {
 		telemetryProperties[propertyKey] = propertyValue
 	}
-	client.Enqueue(posthog.Capture{
+	_ = client.Enqueue(posthog.Capture{
 		DistinctId: userID,
 		Event:      "cli-command",
 		Properties: telemetryProperties,
