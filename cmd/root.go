@@ -3,10 +3,12 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/keycmd"
@@ -105,16 +107,57 @@ func createApp(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	if !skipCheck {
-		if err := checkForUpdates(cmd); err != nil {
-			return err
-		}
+	if err := checkForUpdates(cmd, app); err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func checkForUpdates(cmd *cobra.Command) error {
+// checkForUpdates evaluates first if the user is maybe wanting to skip the update check
+// if there's no skip, it runs the update check
+func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
+	var (
+		lastActs *application.LastActions
+		err      error
+	)
+	// we store a timestamp of the last skip check in a file
+	lastActs, err = app.ReadLastActionsFile()
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			// if the file does not exist AND the user is requesting to skipCheck,
+			// we write the new file
+			if skipCheck {
+				lastActs := &application.LastActions{
+					LastSkipCheck: time.Now(),
+				}
+				app.WriteLastActionsFile(lastActs)
+			}
+			return nil
+		}
+		return fmt.Errorf("failed to read last-actions file! This is non-critical but is logged: %w", err)
+	}
+
+	// if the user had requested to skipCheck less than 24 hrs ago, we skip in any case
+	if lastActs.LastSkipCheck != (time.Time{}) &&
+		time.Now().Before(lastActs.LastSkipCheck.Add(24*time.Hour)) {
+		app.Log.Debug("last checked %s, so less than 24 hrs earlier. Skipping to check for updates.",
+			zap.Time("lastSkipCheck", lastActs.LastSkipCheck))
+		return nil
+	}
+
+	// more than 24hrs ago or the user never asked to skip before
+	// we update the timestamp and write the file again
+	if skipCheck {
+		if lastActs == nil {
+			lastActs = &application.LastActions{}
+		}
+		lastActs.LastSkipCheck = time.Now()
+		app.WriteLastActionsFile(lastActs)
+		return nil
+	}
+
+	// at this point we want to run the check
 	isUserCalled := false
 	if err := updatecmd.Update(cmd, isUserCalled); err != nil {
 		if err == updatecmd.ErrUserAbortedInstallation {
@@ -124,7 +167,7 @@ func checkForUpdates(cmd *cobra.Command) error {
 			ux.Logger.PrintToUser(
 				"Attempted to check if a new version is available, but couldn't find the currently running version information")
 			ux.Logger.PrintToUser(
-				"This can be ignored, but make sure to follow official instructions, or automatic updates won't be available for you")
+				"Make sure to follow official instructions, or automatic updates won't be available for you")
 			return nil
 		}
 		return err

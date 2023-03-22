@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -30,7 +31,7 @@ func NewCmd(injectedApp *application.Avalanche, version string) *cobra.Command {
 	app = injectedApp
 	cmd := &cobra.Command{
 		Use:          "update",
-		Short:        "Check for latest updates of this same tool",
+		Short:        "Check for latest updates of Avalanche-CLI",
 		Long:         `Check if an update is available, and prompt the user to install it`,
 		RunE:         runUpdate,
 		Args:         cobra.ExactArgs(0),
@@ -38,7 +39,7 @@ func NewCmd(injectedApp *application.Avalanche, version string) *cobra.Command {
 		Version:      version,
 	}
 
-	cmd.Flags().BoolVarP(&yes, "assume-yes", "y", false, "Assume yes for installation")
+	cmd.Flags().BoolVarP(&yes, "confirm", "c", false, "Assume yes for installation")
 	return cmd
 }
 
@@ -134,15 +135,21 @@ func Update(cmd *cobra.Command, isUserCalled bool) error {
 	}
 	ux.Logger.PrintToUser("Installing new release...")
 	if err := installCmd.Wait(); err != nil {
-		// this is the reason why we need the output as a string:
-		// the installation script executes the binary after installation for the shell completions
-		// but that fails as we are still running the same binary here!
-		// The error is the following one:
-		if !strings.Contains(errbuf.String(), constants.ExpectedCliInstallErr) {
-			ux.Logger.PrintToUser("installation failed: %s", err.Error())
-			return err
+		ux.Logger.PrintToUser("installation failed: %s", err.Error())
+		return err
+	}
+
+	// write to file when last updated
+	lastActs, err := app.ReadLastActionsFile()
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			lastActs = &application.LastActions{}
 		}
 	}
+
+	lastActs.LastUpdated = time.Now()
+	app.WriteLastActionsFile(lastActs)
+
 	app.Log.Debug(outbuf.String())
 	app.Log.Debug(errbuf.String())
 	ux.Logger.PrintToUser("Installation successful")

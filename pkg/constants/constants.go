@@ -132,4 +132,5 @@ const (
 	PluginDir = "plugins"
 
 	SkipUpdateFlag = "skip-update-check"
+	LastFileName   = ".last_actions.json"
 )
