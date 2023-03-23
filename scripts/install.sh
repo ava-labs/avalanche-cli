@@ -374,53 +374,6 @@ CHECKSUM_URL=${GITHUB_DOWNLOAD}/${TAG}/${CHECKSUM}
 
 execute
 
-sed_in_place() {
-  expr=$1
-  file=$2
-  if [ $(uname) = Darwin ]
-  then
-    sed -i "" "$expr" "$file"
-  else
-    sed -i "$expr" "$file"
-  fi
-}
-
-completions() {
-  BASH_COMPLETION_MAIN=~/.bash_completion
-  BASH_COMPLETION_SCRIPTS_DIR=~/.local/share/bash-completion/completions
-  BASH_COMPLETION_SCRIPT_PATH=$BASH_COMPLETION_SCRIPTS_DIR/avalanche.sh
-  mkdir -p $BASH_COMPLETION_SCRIPTS_DIR
-  $BINDIR/$BINARY completion bash > $BASH_COMPLETION_SCRIPT_PATH
-  touch $BASH_COMPLETION_MAIN
-  sed_in_place "/.*# avalanche completion/d" $BASH_COMPLETION_MAIN
-  echo "source $BASH_COMPLETION_SCRIPT_PATH # avalanche completion" >> $BASH_COMPLETION_MAIN
-  if [ $(uname) = Darwin ]
-  then
-      BREW_INSTALLED=false
-      which brew >/dev/null 2>&1 && BREW_INSTALLED=true
-      if [ $BREW_INSTALLED = true ]
-      then
-          BASHRC=~/.bashrc
-          touch $BASHRC
-          sed_in_place "/.*# avalanche completion/d" $BASHRC
-          echo "source $(brew --prefix)/etc/bash_completion # avalanche completion" >> $BASHRC
-      else 
-          echo "warning: brew not found on macos. bash avalanche command completion not installed"
-      fi
-  fi
-
-  ZSH_COMPLETION_MAIN=~/.zshrc
-  ZSH_COMPLETION_SCRIPTS_DIR=~/.local/share/zsh-completion/completions
-  ZSH_COMPLETION_SCRIPT_PATH=$ZSH_COMPLETION_SCRIPTS_DIR/_avalanche
-  mkdir -p $ZSH_COMPLETION_SCRIPTS_DIR
-  $BINDIR/$BINARY completion zsh > $ZSH_COMPLETION_SCRIPT_PATH
-  touch $ZSH_COMPLETION_MAIN
-  sed_in_place "/.*# avalanche completion/d" $ZSH_COMPLETION_MAIN
-  echo "fpath=($ZSH_COMPLETION_SCRIPTS_DIR \$fpath) # avalanche completion" >> $ZSH_COMPLETION_MAIN
-  echo "rm -f ~/.zcompdump; compinit # avalanche completion" >> $ZSH_COMPLETION_MAIN
-}
-
 if [ "$RUN_COMPLETIONS" = true ]; then
-  completions
+  curl -sSfL https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/shell-completions.sh | sh -s $BINDIR
 fi
-
