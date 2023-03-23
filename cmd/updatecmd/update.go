@@ -4,7 +4,6 @@ package updatecmd
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -62,7 +61,6 @@ func Update(cmd *cobra.Command, isUserCalled bool) error {
 	// the current version info should be in this variable
 	this := cmd.Version
 	if this == "" {
-		fmt.Println("loading ver file")
 		// try loading from file system
 		verFile := "VERSION"
 		bver, err := os.ReadFile(verFile)
