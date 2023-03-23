@@ -4,6 +4,7 @@ package updatecmd
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,6 +23,7 @@ import (
 var (
 	ErrUserAbortedInstallation = errors.New("user canceled installation")
 	ErrNoVersion               = errors.New("failed to find current version - did you install following official instructions?")
+	ErrNotInstalled            = errors.New("no installation required")
 
 	app *application.Avalanche
 	yes bool
@@ -60,6 +62,7 @@ func Update(cmd *cobra.Command, isUserCalled bool) error {
 	// the current version info should be in this variable
 	this := cmd.Version
 	if this == "" {
+		fmt.Println("loading ver file")
 		// try loading from file system
 		verFile := "VERSION"
 		bver, err := os.ReadFile(verFile)
@@ -71,13 +74,15 @@ func Update(cmd *cobra.Command, isUserCalled bool) error {
 	}
 
 	// check this version needs update
+	// we skip if compare returns -1 (latest < this)
+	// or 0 (latest == this)
 	if semver.Compare(latest, this) < 1 {
 		txt := "No new version found upstream; skipping update"
 		app.Log.Debug(txt)
 		if isUserCalled {
 			ux.Logger.PrintToUser(txt)
-			return nil
 		}
+		return ErrNotInstalled
 	}
 
 	// flag not provided
@@ -103,10 +108,13 @@ func Update(cmd *cobra.Command, isUserCalled bool) error {
 	/* #nosec G204 */
 	downloadCmd := exec.Command("curl", "-sSfL", constants.CliInstallationURL)
 
-	installCmdArgs := []string{"-s"}
+	// -s is for the sh command, -- separates the args for our install script,
+	// -n skips shell completion installation, which would result in an error,
+	// as it requires to launch the binary, but we are already executing it
+	installCmdArgs := []string{"-s", "--", "-n"}
 	// custom installation path
 	if execPath != defaultDir {
-		installCmdArgs = append(installCmdArgs, "--", "-b", execPath)
+		installCmdArgs = append(installCmdArgs, "-b", execPath)
 	}
 
 	app.Log.Debug("installing new version", zap.String("path", execPath))
@@ -152,6 +160,6 @@ func Update(cmd *cobra.Command, isUserCalled bool) error {
 
 	app.Log.Debug(outbuf.String())
 	app.Log.Debug(errbuf.String())
-	ux.Logger.PrintToUser("Installation successful")
+	ux.Logger.PrintToUser("Installation successful. Please run the shell completion update manually after this process terminates.")
 	return nil
 }

@@ -132,10 +132,11 @@ func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
 					LastSkipCheck: time.Now(),
 				}
 				app.WriteLastActionsFile(lastActs)
+				return nil
 			}
-			return nil
 		}
-		return fmt.Errorf("failed to read last-actions file! This is non-critical but is logged: %w", err)
+		app.Log.Warn("failed to read last-actions file! This is non-critical but is logged", zap.Error(err))
+		lastActs = &application.LastActions{}
 	}
 
 	// if the user had requested to skipCheck less than 24 hrs ago, we skip in any case
@@ -160,7 +161,10 @@ func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
 	// at this point we want to run the check
 	isUserCalled := false
 	if err := updatecmd.Update(cmd, isUserCalled); err != nil {
-		if err == updatecmd.ErrUserAbortedInstallation {
+		if errors.Is(err, updatecmd.ErrUserAbortedInstallation) {
+			return nil
+		}
+		if errors.Is(err, updatecmd.ErrNotInstalled) {
 			return nil
 		}
 		if err == updatecmd.ErrNoVersion {
