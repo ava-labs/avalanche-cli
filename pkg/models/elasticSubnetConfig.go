@@ -3,8 +3,9 @@
 package models
 
 import (
-	"github.com/ava-labs/avalanchego/ids"
 	"time"
+
+	"github.com/ava-labs/avalanchego/ids"
 )
 
 type ElasticSubnetConfig struct {

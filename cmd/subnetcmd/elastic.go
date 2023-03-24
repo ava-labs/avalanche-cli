@@ -5,9 +5,10 @@ package subnetcmd
 import (
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanchego/genesis"
 	"os"
 	"time"
+
+	"github.com/ava-labs/avalanchego/genesis"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -61,7 +62,7 @@ func getDefaultElasticSubnetConfig() (models.ElasticSubnetConfig, error) {
 	)
 	elasticSubnetConfigOptions := []string{defaultConfig}
 
-	feeDefault, err := app.Prompt.CaptureList(
+	chosenConfig, err := app.Prompt.CaptureList(
 		"How would you like to set fees",
 		elasticSubnetConfigOptions,
 	)
@@ -82,12 +83,11 @@ func getDefaultElasticSubnetConfig() (models.ElasticSubnetConfig, error) {
 		MaxValidatorWeightFactor: defaultMaxValidatorWeightFactor,
 		UptimeRequirement:        defaultUptimeRequirement * reward.PercentDenominator,
 	}
-
-	switch feeDefault {
-	case defaultConfig:
+	if chosenConfig == defaultConfig {
 		return elasticSubnetConfig, nil
 	}
-	return elasticSubnetConfig, nil
+
+	return models.ElasticSubnetConfig{}, nil
 }
 func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 	subnetName := args[0]
@@ -136,12 +136,11 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 				return errNoSubnetID
 			}
 			deployer := subnet.NewPublicDeployer(app, false, keyChain, models.Local)
-			txID, err := deployer.IssueTransformSubnetTx(elasticSubnetConfig, subnetID)
+			txID, assetID, err := deployer.IssueTransformSubnetTx(elasticSubnetConfig, subnetID)
 			if err != nil {
-				fmt.Print("we have error IssueTransformSubnetTx %s \n", err)
 				return err
 			}
-			fmt.Print("no error IssueTransformSubnetTx %s \n", err)
+			elasticSubnetConfig.AssetID = assetID
 
 			PrintTransformResults(subnetName, txID, subnetID)
 			if err = app.CreateElasticSubnetConfig(subnetName, &elasticSubnetConfig); err != nil {
@@ -190,7 +189,7 @@ func selectNetworkToTransform(sc models.Sidecar, networkOptions []string) (strin
 	return selectedDeployment, nil
 }
 
-func PrintTransformResults(chain string, txID ids.ID, subnetID ids.ID) error {
+func PrintTransformResults(chain string, txID ids.ID, subnetID ids.ID) {
 	header := []string{"Subnet Elastic Transform Results", ""}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
@@ -199,7 +198,5 @@ func PrintTransformResults(chain string, txID ids.ID, subnetID ids.ID) error {
 	table.Append([]string{"Chain Name", chain})
 	table.Append([]string{"Subnet ID", subnetID.String()})
 	table.Append([]string{"P-Chain TXID", txID.String()})
-
 	table.Render()
-	return nil
 }

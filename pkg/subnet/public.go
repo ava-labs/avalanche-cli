@@ -6,11 +6,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -203,6 +204,7 @@ func getAssetID(wallet primary.Wallet) (ids.ID, error) {
 	}
 	return subnetAssetID, nil
 }
+
 func exportToPChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners, subnetAssetID ids.ID) error {
 	xWallet := wallet.X()
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultWalletCreationTimeout)
@@ -225,6 +227,7 @@ func exportToPChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners, subn
 	defer cancel()
 	return err
 }
+
 func importFromXChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners) error {
 	xWallet := wallet.X()
 	pWallet := wallet.P()
@@ -238,19 +241,20 @@ func importFromXChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners) er
 	defer cancel()
 	return err
 }
+
 func (d *PublicDeployer) IssueTransformSubnetTx(
 	elasticSubnetConfig models.ElasticSubnetConfig,
 	subnetID ids.ID,
-) (ids.ID, error) {
+) (ids.ID, ids.ID, error) {
 	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
-		return ids.Empty, err
+		return ids.Empty, ids.Empty, err
 	}
 	fmt.Println("getting asset id \n")
 	subnetAssetID, err := getAssetID(wallet)
 	if err != nil {
 		fmt.Println("error obtaining asset id \n")
-		return ids.Empty, err
+		return ids.Empty, ids.Empty, err
 	}
 	fmt.Println("obtained asset id %s \n", subnetAssetID)
 	owner := &secp256k1fx.OutputOwners{
@@ -262,12 +266,12 @@ func (d *PublicDeployer) IssueTransformSubnetTx(
 	err = exportToPChain(wallet, owner, subnetAssetID)
 	if err != nil {
 		fmt.Println("error exportToPChain %s \n", err)
-		return ids.Empty, err
+		return ids.Empty, ids.Empty, err
 	}
 	err = importFromXChain(wallet, owner)
 	if err != nil {
 		fmt.Println("error importFromXChain %s \n", err)
-		return ids.Empty, err
+		return ids.Empty, ids.Empty, err
 	}
 	fmt.Println("we have passed everything here \n")
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultConfirmTxTimeout)
@@ -281,9 +285,9 @@ func (d *PublicDeployer) IssueTransformSubnetTx(
 	defer cancel()
 	if err != nil {
 		fmt.Println("error IssueTransformSubnetTx %s \n", err)
-		return ids.Empty, err
+		return ids.Empty, ids.Empty, err
 	}
-	return transformSubnetTxID, err
+	return transformSubnetTxID, subnetAssetID, err
 }
 
 func (d *PublicDeployer) Commit(

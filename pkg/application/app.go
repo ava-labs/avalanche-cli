@@ -364,6 +364,7 @@ func (*Avalanche) writeFile(path string, bytes []byte) error {
 
 	return os.WriteFile(path, bytes, WriteReadReadPerms)
 }
+
 func (app *Avalanche) CreateElasticSubnetConfig(subnetName string, es *models.ElasticSubnetConfig) error {
 	elasticSubetConfigPath := app.GetElasticSubnetConfigPath(subnetName)
 	if err := os.MkdirAll(filepath.Dir(elasticSubetConfigPath), constants.DefaultPerms755); err != nil {
