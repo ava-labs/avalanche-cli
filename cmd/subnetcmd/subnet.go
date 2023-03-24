@@ -62,5 +62,7 @@ manage your Subnet configurations and live deployments.`,
 	cmd.AddCommand(newImportFromNetworkCmd())
 	// subnet VMID
 	cmd.AddCommand(vmidCmd())
+	// subnet elastic
+	cmd.AddCommand(newElasticCmd())
 	return cmd
 }

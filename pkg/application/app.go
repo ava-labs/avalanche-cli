@@ -108,6 +108,10 @@ func (app *Avalanche) GetSidecarPath(subnetName string) string {
 	return filepath.Join(app.GetSubnetDir(), subnetName, constants.SidecarFileName)
 }
 
+func (app *Avalanche) GetElasticSubnetConfigPath(subnetName string) string {
+	return filepath.Join(app.GetSubnetDir(), subnetName, constants.ElasticSubnetConfigFileName)
+}
+
 func (app *Avalanche) GetKeyDir() string {
 	return filepath.Join(app.baseDir, constants.KeyDir)
 }
@@ -359,4 +363,17 @@ func (*Avalanche) writeFile(path string, bytes []byte) error {
 	}
 
 	return os.WriteFile(path, bytes, WriteReadReadPerms)
+}
+func (app *Avalanche) CreateElasticSubnetConfig(subnetName string, es *models.ElasticSubnetConfig) error {
+	elasticSubetConfigPath := app.GetElasticSubnetConfigPath(subnetName)
+	if err := os.MkdirAll(filepath.Dir(elasticSubetConfigPath), constants.DefaultPerms755); err != nil {
+		return err
+	}
+
+	esBytes, err := json.MarshalIndent(es, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(elasticSubetConfigPath, esBytes, WriteReadReadPerms)
 }
