@@ -250,13 +250,10 @@ func (d *PublicDeployer) IssueTransformSubnetTx(
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
-	fmt.Println("getting asset id \n")
 	subnetAssetID, err := getAssetID(wallet)
 	if err != nil {
-		fmt.Println("error obtaining asset id \n")
 		return ids.Empty, ids.Empty, err
 	}
-	fmt.Println("obtained asset id %s \n", subnetAssetID)
 	owner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
 		Addrs: []ids.ShortID{
@@ -265,15 +262,12 @@ func (d *PublicDeployer) IssueTransformSubnetTx(
 	}
 	err = exportToPChain(wallet, owner, subnetAssetID)
 	if err != nil {
-		fmt.Println("error exportToPChain %s \n", err)
 		return ids.Empty, ids.Empty, err
 	}
 	err = importFromXChain(wallet, owner)
 	if err != nil {
-		fmt.Println("error importFromXChain %s \n", err)
 		return ids.Empty, ids.Empty, err
 	}
-	fmt.Println("we have passed everything here \n")
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultConfirmTxTimeout)
 	transformSubnetTxID, err := wallet.P().IssueTransformSubnetTx(elasticSubnetConfig.SubnetID, subnetAssetID,
 		elasticSubnetConfig.InitialSupply, elasticSubnetConfig.MaxSupply, elasticSubnetConfig.MinConsumptionRate,
@@ -284,7 +278,6 @@ func (d *PublicDeployer) IssueTransformSubnetTx(
 	)
 	defer cancel()
 	if err != nil {
-		fmt.Println("error IssueTransformSubnetTx %s \n", err)
 		return ids.Empty, ids.Empty, err
 	}
 	return transformSubnetTxID, subnetAssetID, err

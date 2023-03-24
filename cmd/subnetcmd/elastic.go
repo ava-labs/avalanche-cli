@@ -56,6 +56,7 @@ mechanics will work.`,
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	return cmd
 }
+
 func getDefaultElasticSubnetConfig() (models.ElasticSubnetConfig, error) {
 	const (
 		defaultConfig = "Use default elastic subnet config"
@@ -89,6 +90,7 @@ func getDefaultElasticSubnetConfig() (models.ElasticSubnetConfig, error) {
 
 	return models.ElasticSubnetConfig{}, nil
 }
+
 func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 	subnetName := args[0]
 
@@ -128,7 +130,7 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	for network, _ := range sc.Networks {
+	for network := range sc.Networks {
 		if network == models.Local.String() {
 			subnetID := sc.Networks[network].SubnetID
 			elasticSubnetConfig.SubnetID = subnetID
