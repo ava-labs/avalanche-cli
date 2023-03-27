@@ -336,34 +336,43 @@ func getStakeDuration(tokenName string, initialSupply uint64) (uint64, uint64, e
 	return minStakeDuration, maxStakeDuration, nil
 }
 
-//func getMinDelegationFee(tokenName string, initialSupply uint64) (uint64, error) {
-//	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Supply of %s", tokenName))
-//	maxSupply, err := app.Prompt.CaptureUint64Compare("Maximum Supply amount", initialSupply, "Initial Supply")
-//	if err != nil {
-//		return 0, err
-//	}
-//	return maxSupply, nil
-//}
+func getMinDelegationFee() (uint32, error) {
+	ux.Logger.PrintToUser("Select the Minimum Delegation Fee")
+	comparatorMap := map[string]prompts.Comparator{}
+	comparator := prompts.Comparator{}
+	comparator.CompareType = prompts.LessThanEq
+	comparator.CompareValue = reward.PercentDenominator
+	comparatorMap["Percent Denominator(1_0000_0000)"] = comparator
+	minDelegationFee, err := app.Prompt.CaptureUint64Compare("Minimum Delegation Fee", comparatorMap)
+	if err != nil {
+		return 0, err
+	}
+	return uint32(minDelegationFee), nil
+}
 
-//
-//func getMinDelegatorStake(tokenName string, initialSupply uint64) (uint64, error) {
-//	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Supply of %s", tokenName))
-//	maxSupply, err := app.Prompt.CaptureUint64Compare("Maximum Supply amount", initialSupply, "Initial Supply")
-//	if err != nil {
-//		return 0, err
-//	}
-//	return maxSupply, nil
-//}
-//
-//func getMaxValidatorWeightFactor(tokenName string, initialSupply uint64) (uint64, error) {
-//	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Supply of %s", tokenName))
-//	maxSupply, err := app.Prompt.CaptureUint64Compare("Maximum Supply amount", initialSupply, "Initial Supply")
-//	if err != nil {
-//		return 0, err
-//	}
-//	return maxSupply, nil
-//}
-//
+func getMinDelegatorStake() (uint64, error) {
+	ux.Logger.PrintToUser("Select the Minimum Delegator Stake")
+	comparatorMap := map[string]prompts.Comparator{}
+	comparator := prompts.Comparator{}
+	comparator.CompareType = prompts.MoreThan
+	comparator.CompareValue = 0
+	comparatorMap["0"] = comparator
+	minDelegatorStake, err := app.Prompt.CaptureUint64Compare("Minimum Delegator Stake", comparatorMap)
+	if err != nil {
+		return 0, err
+	}
+	return minDelegatorStake, nil
+}
+
+func getMaxValidatorWeightFactor(tokenName string, initialSupply uint64) (uint64, error) {
+	ux.Logger.PrintToUser("Select the Maximum Validator Weight")
+	maxSupply, err := app.Prompt.CaptureUint64Compare("Maximum Supply amount", initialSupply, "Initial Supply")
+	if err != nil {
+		return 0, err
+	}
+	return maxSupply, nil
+}
+
 //func getUptimeRequirement(tokenName string, initialSupply uint64) (uint64, error) {
 //	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Supply of %s", tokenName))
 //	maxSupply, err := app.Prompt.CaptureUint64Compare("Maximum Supply amount", initialSupply, "Initial Supply")
