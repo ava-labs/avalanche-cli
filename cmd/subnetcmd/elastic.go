@@ -5,12 +5,14 @@ package subnetcmd
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"os"
 	"time"
 
 	"github.com/ava-labs/avalanchego/genesis"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	prompts "github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/reward"
@@ -57,11 +59,12 @@ mechanics will work.`,
 	return cmd
 }
 
-func getDefaultElasticSubnetConfig() (models.ElasticSubnetConfig, error) {
+func getElasticSubnetConfig() (models.ElasticSubnetConfig, error) {
 	const (
-		defaultConfig = "Use default elastic subnet config"
+		defaultConfig   = "Use default elastic subnet config"
+		customizeConfig = "Customize elastic subnet config"
 	)
-	elasticSubnetConfigOptions := []string{defaultConfig}
+	elasticSubnetConfigOptions := []string{defaultConfig, customizeConfig}
 
 	chosenConfig, err := app.Prompt.CaptureList(
 		"How would you like to set fees",
@@ -86,6 +89,8 @@ func getDefaultElasticSubnetConfig() (models.ElasticSubnetConfig, error) {
 	}
 	if chosenConfig == defaultConfig {
 		return elasticSubnetConfig, nil
+	} else if chosenConfig == customizeConfig {
+
 	}
 
 	return models.ElasticSubnetConfig{}, nil
@@ -119,14 +124,14 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 	switch networkToUpgrade {
 	case localDeployment:
 	case fujiDeployment:
-		return errors.New("Elastic subnet transformation is not yet supported on Fuji network")
+		return errors.New("elastic subnet transformation is not yet supported on Fuji network")
 	case mainnetDeployment:
-		return errors.New("Elastic subnet transformation is not yet supported on Mainnet")
+		return errors.New("elastic subnet transformation is not yet supported on Mainnet")
 	}
-
+	getCustomElasticSubnetConfig()
 	testKey := genesis.EWOQKey
 	keyChain := secp256k1fx.NewKeychain(testKey)
-	elasticSubnetConfig, err := getDefaultElasticSubnetConfig()
+	elasticSubnetConfig, err := getElasticSubnetConfig()
 	if err != nil {
 		return err
 	}
@@ -152,6 +157,20 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+func getCustomElasticSubnetConfig() (models.ElasticSubnetConfig, error) {
+	tokenName, err := getTokenName()
+	if err != nil {
+		return models.ElasticSubnetConfig{}, err
+	}
+	initialSupply, err := getInitialSupply(tokenName)
+	fmt.Printf("initial supply amount %s \n", initialSupply)
+	maxSupply, err := getMaximumSupply(tokenName, initialSupply)
+	fmt.Printf("max supply amount %s \n", maxSupply)
+	minConsumptionRate, maxConsumptionRate, err := getConsumptionRate()
+	fmt.Printf("consumption rate %s  %s\n", minConsumptionRate, maxConsumptionRate)
+
+	return models.ElasticSubnetConfig{}, err
 }
 
 // select which network to transform to elastic subnet
@@ -202,3 +221,154 @@ func PrintTransformResults(chain string, txID ids.ID, subnetID ids.ID) {
 	table.Append([]string{"P-Chain TXID", txID.String()})
 	table.Render()
 }
+
+func getTokenName() (string, error) {
+	ux.Logger.PrintToUser("Select a symbol for your subnet's native token")
+	tokenName, err := app.Prompt.CaptureString("Token symbol")
+	if err != nil {
+		return "", err
+	}
+	return tokenName, nil
+}
+
+func getInitialSupply(tokenName string) (uint64, error) {
+	ux.Logger.PrintToUser(fmt.Sprintf("Select the Initial Supply of %s", tokenName))
+	initialSupply, err := app.Prompt.CaptureUint64("Initial Supply amount")
+	if err != nil {
+		return 0, err
+	}
+	return initialSupply, nil
+}
+
+func getMaximumSupply(tokenName string, initialSupply uint64) (uint64, error) {
+	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Supply of %s", tokenName))
+	comparatorMap := map[string]prompts.Comparator{}
+	comparator := prompts.Comparator{}
+	comparator.CompareType = prompts.MoreThanEq
+	comparator.CompareValue = initialSupply
+	comparatorMap["Initial Supply"] = comparator
+	maxSupply, err := app.Prompt.CaptureUint64Compare("Maximum Supply amount", comparatorMap)
+
+	if err != nil {
+		return 0, err
+	}
+	return maxSupply, nil
+}
+
+func getConsumptionRate() (uint64, uint64, error) {
+	ux.Logger.PrintToUser(fmt.Sprintf("Select the Minimum Consumption Rate"))
+	comparatorMap := map[string]prompts.Comparator{}
+	comparator := prompts.Comparator{}
+	comparator.CompareType = prompts.LessThanEq
+	comparator.CompareValue = reward.PercentDenominator
+	comparatorMap["Percent Denominator(1_0000_0000)"] = comparator
+	minConsumptionRate, err := app.Prompt.CaptureUint64Compare("Minimum Consumption Rate", comparatorMap)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Consumption Rate"))
+	comparator.CompareType = prompts.MoreThanEq
+	comparator.CompareValue = minConsumptionRate
+	comparatorMap["Mininum Consumption Rate"] = comparator
+	maxConsumptionRate, err := app.Prompt.CaptureUint64Compare("Maximum Consumption Rate", comparatorMap)
+	if err != nil {
+		return 0, 0, err
+	}
+	return minConsumptionRate, maxConsumptionRate, nil
+}
+
+func getValidatorStake(initialSupply uint64, maximumSupply uint64) (uint64, uint64, error) {
+	ux.Logger.PrintToUser(fmt.Sprintf("Select the Minimum Validator Stake"))
+	comparatorMap := map[string]prompts.Comparator{}
+	comparator := prompts.Comparator{}
+	comparator.CompareType = prompts.MoreThan
+	comparator.CompareValue = 0
+	comparatorMap["0"] = comparator
+	comparator.CompareType = prompts.LessThanEq
+	comparator.CompareValue = initialSupply
+	comparatorMap["Initial Supply"] = comparator
+	minValidatorStake, err := app.Prompt.CaptureUint64Compare("Minimum Validator Stake", comparatorMap)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Validator Stake"))
+	comparatorMap = map[string]prompts.Comparator{}
+	comparator.CompareType = prompts.MoreThan
+	comparator.CompareValue = minValidatorStake
+	comparatorMap["Minimum Validator Stake"] = comparator
+	comparator.CompareType = prompts.LessThanEq
+	comparator.CompareValue = maximumSupply
+	comparatorMap["Maximum Supply"] = comparator
+	maxValidatorStake, err := app.Prompt.CaptureUint64Compare("Maximum Validator Stake", comparatorMap)
+	if err != nil {
+		return 0, 0, err
+	}
+	return minValidatorStake, maxValidatorStake, nil
+}
+
+func getStakeDuration(tokenName string, initialSupply uint64) (uint64, uint64, error) {
+	ux.Logger.PrintToUser(fmt.Sprintf("Select the Minimum Stake Duration"))
+	comparatorMap := map[string]prompts.Comparator{}
+	comparator := prompts.Comparator{}
+	comparator.CompareType = prompts.MoreThan
+	comparator.CompareValue = 0
+	comparatorMap["0"] = comparator
+	minStakeDuration, err := app.Prompt.CaptureUint64Compare("Minimum Stake Duration", comparatorMap)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Stake Duration"))
+	comparatorMap = map[string]prompts.Comparator{}
+	comparator = prompts.Comparator{}
+	comparator.CompareType = prompts.MoreThanEq
+	comparator.CompareValue = minStakeDuration
+	comparatorMap["Minimum Stake Duration"] = comparator
+	comparator.CompareType = prompts.LessThanEq
+	comparator.CompareValue = uint64(defaultMaxStakeDuration)
+	comparatorMap["Global Max Stake Duration"] = comparator
+	maxStakeDuration, err := app.Prompt.CaptureUint64Compare("Maximum Stake Duration", comparatorMap)
+	if err != nil {
+		return 0, 0, err
+	}
+	return minStakeDuration, maxStakeDuration, nil
+}
+
+//func getMinDelegationFee(tokenName string, initialSupply uint64) (uint64, error) {
+//	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Supply of %s", tokenName))
+//	maxSupply, err := app.Prompt.CaptureUint64Compare("Maximum Supply amount", initialSupply, "Initial Supply")
+//	if err != nil {
+//		return 0, err
+//	}
+//	return maxSupply, nil
+//}
+
+//
+//func getMinDelegatorStake(tokenName string, initialSupply uint64) (uint64, error) {
+//	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Supply of %s", tokenName))
+//	maxSupply, err := app.Prompt.CaptureUint64Compare("Maximum Supply amount", initialSupply, "Initial Supply")
+//	if err != nil {
+//		return 0, err
+//	}
+//	return maxSupply, nil
+//}
+//
+//func getMaxValidatorWeightFactor(tokenName string, initialSupply uint64) (uint64, error) {
+//	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Supply of %s", tokenName))
+//	maxSupply, err := app.Prompt.CaptureUint64Compare("Maximum Supply amount", initialSupply, "Initial Supply")
+//	if err != nil {
+//		return 0, err
+//	}
+//	return maxSupply, nil
+//}
+//
+//func getUptimeRequirement(tokenName string, initialSupply uint64) (uint64, error) {
+//	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Supply of %s", tokenName))
+//	maxSupply, err := app.Prompt.CaptureUint64Compare("Maximum Supply amount", initialSupply, "Initial Supply")
+//	if err != nil {
+//		return 0, err
+//	}
+//	return maxSupply, nil
+//}

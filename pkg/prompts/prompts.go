@@ -31,10 +31,20 @@ const (
 	MoreInfo = "More Info"
 	Done     = "Done"
 	Cancel   = "Cancel"
+
+	LessThanEq = "Less Than Or Eq"
+
+	MoreThanEq = "More Than Or Eq"
+
+	MoreThan = "More Than"
 )
 
 var errNoKeys = errors.New("no keys")
 
+type Comparator struct {
+	CompareType  string //Less Than Eq or More than Eq
+	CompareValue uint64 //Value to Compare To
+}
 type Prompter interface {
 	CapturePositiveBigInt(promptStr string) (*big.Int, error)
 	CaptureAddress(promptStr string) (common.Address, error)
@@ -55,6 +65,7 @@ type Prompter interface {
 	CaptureID(promptStr string) (ids.ID, error)
 	CaptureWeight(promptStr string) (uint64, error)
 	CaptureUint64(promptStr string) (uint64, error)
+	CaptureUint64Compare(promptStr string, compareMap map[string]Comparator) (uint64, error)
 	CapturePChainAddress(promptStr string, network models.Network) (string, error)
 	CaptureFutureDate(promptStr string, minDate time.Time) (time.Time, error)
 	ChooseKeyOrLedger() (bool, error)
@@ -223,6 +234,63 @@ func (*realPrompter) CaptureUint64(promptStr string) (uint64, error) {
 	return strconv.ParseUint(amountStr, 10, 64)
 }
 
+//func (*realPrompter) CaptureUint64Compare(promptStr string, compareValue uint64, compareLabel string) (uint64, error) {
+//	prompt := promptui.Prompt{
+//		Label: promptStr,
+//		Validate: func(input string) error {
+//			val, err := strconv.ParseUint(input, 10, 64)
+//			if err != nil {
+//				return err
+//			}
+//			if val == 0 {
+//				return errors.New("the value must be bigger than zero")
+//			}
+//			if val < compareValue {
+//				return errors.New(fmt.Sprintf("the value must be bigger than %s", compareLabel))
+//			}
+//			return nil
+//		},
+//	}
+//
+//	amountStr, err := prompt.Run()
+//	if err != nil {
+//		return 0, err
+//	}
+//
+//	return strconv.ParseUint(amountStr, 10, 64)
+//}
+
+func (*realPrompter) CaptureUint64Compare(promptStr string, compareMap map[string]Comparator) (uint64, error) {
+	prompt := promptui.Prompt{
+		Label: promptStr,
+		Validate: func(input string) error {
+			val, err := strconv.ParseUint(input, 10, 64)
+			if err != nil {
+				return err
+			}
+			//if greaterThanZero && val == 0 {
+			//	return errors.New("the value must be bigger than zero")
+			//}
+			for compareLabel, compareValue := range compareMap {
+				if compareValue.CompareType == LessThanEq && val > compareValue.CompareValue {
+					return errors.New(fmt.Sprintf("the value must be smaller than or equal to %s", compareLabel))
+				} else if compareValue.CompareType == MoreThan && val <= compareValue.CompareValue {
+					return errors.New(fmt.Sprintf("the value must be bigger than %s", compareLabel))
+				} else if compareValue.CompareType == MoreThanEq && val < compareValue.CompareValue {
+					return errors.New(fmt.Sprintf("the value must be bigger than or equal to %s", compareLabel))
+				}
+			}
+			return nil
+		},
+	}
+
+	amountStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	return strconv.ParseUint(amountStr, 10, 64)
+}
 func (*realPrompter) CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
