@@ -5,8 +5,8 @@ go 1.19
 require (
 	github.com/ava-labs/apm v0.0.4
 	github.com/ava-labs/avalanche-network-runner v1.3.9
-	github.com/ava-labs/avalanchego v1.9.11
-	github.com/ava-labs/coreth v0.11.8
+	github.com/ava-labs/avalanchego v1.9.16
+	github.com/ava-labs/coreth v0.11.9-rc.0
 	github.com/ava-labs/spacesvm v0.0.16-0.20230203183930-edab6c380a0c
 	github.com/ava-labs/subnet-evm v0.4.12
 	github.com/docker/docker v23.0.1+incompatible
