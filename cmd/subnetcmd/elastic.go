@@ -169,12 +169,12 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 				cancel <- struct{}{}
 				return err
 			}
-
 		}
 	}
 
 	return nil
 }
+
 func getCustomElasticSubnetConfig(tokenSymbol string) (models.ElasticSubnetConfig, error) {
 	ux.Logger.PrintToUser("More info regarding elastic subnet parameters can be found at https://docs.avax.network/subnets/reference-elastic-subnets-parameters")
 	initialSupply, err := getInitialSupply(tokenSymbol)
@@ -327,7 +327,6 @@ func getMaximumSupply(tokenName string, initialSupply uint64) (uint64, error) {
 	comparator.CompareValue = initialSupply
 	comparatorMap["Initial Supply"] = comparator
 	maxSupply, err := app.Prompt.CaptureUint64Compare("Maximum Supply amount", comparatorMap)
-
 	if err != nil {
 		return 0, err
 	}
@@ -335,8 +334,8 @@ func getMaximumSupply(tokenName string, initialSupply uint64) (uint64, error) {
 }
 
 func getConsumptionRate() (uint64, uint64, error) {
-	ux.Logger.PrintToUser(fmt.Sprintf("Select the Minimum Consumption Rate. Please denominate your percentage in PercentDenominator"))
-	ux.Logger.PrintToUser(fmt.Sprintf("To denominate your percentage in PercentDenominator just multiply it by 10_000. For example, 1 percent corresponds to 10_000"))
+	ux.Logger.PrintToUser("Select the Minimum Consumption Rate. Please denominate your percentage in PercentDenominator")
+	ux.Logger.PrintToUser("To denominate your percentage in PercentDenominator just multiply it by 10_000. For example, 1 percent corresponds to 10_000")
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Minimum Consumption Rate is %s", ux.ConvertToStringWithThousandSeparator(uint64(defaultMinConsumptionRate*reward.PercentDenominator))))
 	comparatorMap := map[string]prompts.Comparator{}
 	comparator := prompts.Comparator{}
@@ -348,8 +347,8 @@ func getConsumptionRate() (uint64, uint64, error) {
 		return 0, 0, err
 	}
 
-	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Consumption Rate. Please denominate your percentage in PercentDenominator"))
-	ux.Logger.PrintToUser(fmt.Sprintf("To denominate your percentage in PercentDenominator just multiply it by 10_000. For example, 1 percent corresponds to 10_000"))
+	ux.Logger.PrintToUser("Select the Maximum Consumption Rate. Please denominate your percentage in PercentDenominator")
+	ux.Logger.PrintToUser("To denominate your percentage in PercentDenominator just multiply it by 10_000. For example, 1 percent corresponds to 10_000")
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Maximum Consumption Rate is %s", ux.ConvertToStringWithThousandSeparator(uint64(defaultMaxConsumptionRate*reward.PercentDenominator))))
 	comparator.CompareType = prompts.MoreThanEq
 	comparator.CompareValue = minConsumptionRate
@@ -362,7 +361,7 @@ func getConsumptionRate() (uint64, uint64, error) {
 }
 
 func getValidatorStake(initialSupply uint64, maximumSupply uint64) (uint64, uint64, error) {
-	ux.Logger.PrintToUser(fmt.Sprintf("Select the Minimum Validator Stake. \"_\" can be used as thousand separator"))
+	ux.Logger.PrintToUser("Select the Minimum Validator Stake. \"_\" can be used as thousand separator")
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Minimum Validator Stake is %s", ux.ConvertToStringWithThousandSeparator(defaultMinValidatorStake)))
 	comparatorMap := map[string]prompts.Comparator{}
 	comparator := prompts.Comparator{}
@@ -377,7 +376,7 @@ func getValidatorStake(initialSupply uint64, maximumSupply uint64) (uint64, uint
 		return 0, 0, err
 	}
 
-	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Validator Stake. \"_\" can be used as thousand separator"))
+	ux.Logger.PrintToUser("Select the Maximum Validator Stake. \"_\" can be used as thousand separator")
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Maximum Validator Stake is %s", ux.ConvertToStringWithThousandSeparator(defaultMaxValidatorStake)))
 	comparatorMap = map[string]prompts.Comparator{}
 	comparator.CompareType = prompts.MoreThan
@@ -394,7 +393,7 @@ func getValidatorStake(initialSupply uint64, maximumSupply uint64) (uint64, uint
 }
 
 func getStakeDuration() (time.Duration, time.Duration, error) {
-	ux.Logger.PrintToUser(fmt.Sprintf("Select the Minimum Stake Duration. Please enter in units of hours"))
+	ux.Logger.PrintToUser("Select the Minimum Stake Duration. Please enter in units of hours")
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Minimum Stake Duration is %d (14 x 24)", defaultMinStakeDurationHours))
 	comparatorMap := map[string]prompts.Comparator{}
 	comparator := prompts.Comparator{}
@@ -406,7 +405,7 @@ func getStakeDuration() (time.Duration, time.Duration, error) {
 		return 0, 0, err
 	}
 
-	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Stake Duration"))
+	ux.Logger.PrintToUser("Select the Maximum Stake Duration")
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Maximum Stake Duration is %d (365 x 24)", defaultMaxStakeDurationHours))
 	comparatorMap = map[string]prompts.Comparator{}
 	comparator = prompts.Comparator{}
@@ -426,7 +425,7 @@ func getStakeDuration() (time.Duration, time.Duration, error) {
 
 func getMinDelegationFee() (uint32, error) {
 	ux.Logger.PrintToUser("Select the Minimum Delegation Fee. Please denominate your percentage in PercentDenominator")
-	ux.Logger.PrintToUser(fmt.Sprintf("To denominate your percentage in PercentDenominator just multiply it by 10_000. For example, 1 percent corresponds to 10_000"))
+	ux.Logger.PrintToUser("To denominate your percentage in PercentDenominator just multiply it by 10_000. For example, 1 percent corresponds to 10_000")
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Minimum Delegation Fee is %s", ux.ConvertToStringWithThousandSeparator(uint64(defaultMinDelegationFee))))
 	comparatorMap := map[string]prompts.Comparator{}
 	comparator := prompts.Comparator{}
@@ -473,7 +472,7 @@ func getMaxValidatorWeightFactor() (byte, error) {
 
 func getUptimeRequirement() (uint32, error) {
 	ux.Logger.PrintToUser("Select the Uptime Requirement. Please denominate your percentage in PercentDenominator")
-	ux.Logger.PrintToUser(fmt.Sprintf("To denominate your percentage in PercentDenominator just multiply it by 10_000. For example, 1 percent corresponds to 10_000"))
+	ux.Logger.PrintToUser("To denominate your percentage in PercentDenominator just multiply it by 10_000. For example, 1 percent corresponds to 10_000")
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Uptime Requirement is %s", ux.ConvertToStringWithThousandSeparator(uint64(defaultUptimeRequirement*reward.PercentDenominator))))
 
 	comparatorMap := map[string]prompts.Comparator{}
