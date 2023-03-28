@@ -94,7 +94,7 @@ func validateWeight(input string) error {
 }
 
 func validateBiggerThanZero(input string) error {
-	val, err := strconv.ParseUint(input, 10, 64)
+	val, err := strconv.ParseUint(input, 0, 64)
 	if err != nil {
 		return err
 	}

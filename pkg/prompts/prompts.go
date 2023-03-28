@@ -230,15 +230,14 @@ func (*realPrompter) CaptureUint64(promptStr string) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-
-	return strconv.ParseUint(amountStr, 10, 64)
+	return strconv.ParseUint(amountStr, 0, 64)
 }
 
 func (*realPrompter) CaptureUint64Compare(promptStr string, compareMap map[string]Comparator) (uint64, error) {
 	prompt := promptui.Prompt{
 		Label: promptStr,
 		Validate: func(input string) error {
-			val, err := strconv.ParseUint(input, 10, 64)
+			val, err := strconv.ParseUint(input, 0, 64)
 			if err != nil {
 				return err
 			}
@@ -261,7 +260,7 @@ func (*realPrompter) CaptureUint64Compare(promptStr string, compareMap map[strin
 		return 0, err
 	}
 
-	return strconv.ParseUint(amountStr, 10, 64)
+	return strconv.ParseUint(amountStr, 0, 64)
 }
 
 func (*realPrompter) CapturePositiveBigInt(promptStr string) (*big.Int, error) {

@@ -175,7 +175,7 @@ func (d *PublicDeployer) Deploy(
 	return isFullySigned, subnetID, blockchainID, blockchainTx, nil
 }
 
-func getAssetID(wallet primary.Wallet) (ids.ID, error) {
+func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string) (ids.ID, error) {
 	xWallet := wallet.X()
 	owner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
@@ -185,8 +185,8 @@ func getAssetID(wallet primary.Wallet) (ids.ID, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultWalletCreationTimeout)
 	subnetAssetID, err := xWallet.IssueCreateAssetTx(
-		"TEST",
-		"TEST",
+		tokenName,
+		tokenSymbol,
 		9,
 		map[uint32][]verify.State{
 			0: {
@@ -245,12 +245,14 @@ func importFromXChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners) er
 func (d *PublicDeployer) IssueTransformSubnetTx(
 	elasticSubnetConfig models.ElasticSubnetConfig,
 	subnetID ids.ID,
+	tokenName string,
+	tokenSymbol string,
 ) (ids.ID, ids.ID, error) {
 	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
-	subnetAssetID, err := getAssetID(wallet)
+	subnetAssetID, err := getAssetID(wallet, tokenName, tokenSymbol)
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}

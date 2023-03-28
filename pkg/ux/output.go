@@ -4,8 +4,11 @@ package ux
 
 import (
 	"fmt"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
@@ -66,4 +69,10 @@ func PrintTableEndpoints(clusterInfo *rpcpb.ClusterInfo) {
 		}
 	}
 	table.Render()
+}
+
+func ConvertToStringWithThousandSeparator(input uint64) string {
+	p := message.NewPrinter(language.English)
+	s := p.Sprintf("%d\n", input)
+	return fmt.Sprintf(strings.ReplaceAll(s, ",", "_"))
 }

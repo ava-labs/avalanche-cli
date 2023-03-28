@@ -5,9 +5,10 @@ package subnetcmd
 import (
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"os"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/ava-labs/avalanchego/genesis"
 
@@ -29,8 +30,10 @@ const (
 	defaultMintingPeriod            = 365 * 24 * time.Hour
 	defaultMinValidatorStake        = 2_000
 	defaultMaxValidatorStake        = 3_000_000
-	defaultMinStakeDuration         = 14 * 24 * time.Hour
-	defaultMaxStakeDuration         = 365 * 24 * time.Hour
+	defaultMinStakeDurationHours    = 14 * 24
+	defaultMinStakeDuration         = defaultMinStakeDurationHours * time.Hour
+	defaultMaxStakeDurationHours    = 365 * 24
+	defaultMaxStakeDuration         = defaultMaxStakeDurationHours * time.Hour
 	defaultMinDelegationFee         = 20_000
 	defaultMinDelegatorStake        = 25
 	defaultMaxValidatorWeightFactor = 5
@@ -59,7 +62,7 @@ mechanics will work.`,
 	return cmd
 }
 
-func getElasticSubnetConfig() (models.ElasticSubnetConfig, error) {
+func getElasticSubnetConfig(tokenSymbol string) (models.ElasticSubnetConfig, error) {
 	const (
 		defaultConfig   = "Use default elastic subnet config"
 		customizeConfig = "Customize elastic subnet config"
@@ -89,14 +92,17 @@ func getElasticSubnetConfig() (models.ElasticSubnetConfig, error) {
 	}
 	if chosenConfig == defaultConfig {
 		return elasticSubnetConfig, nil
-	} else if chosenConfig == customizeConfig {
-
 	}
-
-	return models.ElasticSubnetConfig{}, nil
+	customElasticSubnetConfig, err := getCustomElasticSubnetConfig(tokenSymbol)
+	if err != nil {
+		return models.ElasticSubnetConfig{}, err
+	}
+	return customElasticSubnetConfig, nil
 }
 
 func elasticSubnetConfig(_ *cobra.Command, args []string) error {
+	cancel := make(chan struct{})
+	defer close(cancel)
 	subnetName := args[0]
 
 	if !app.SubnetConfigExists(subnetName) {
@@ -106,14 +112,6 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return fmt.Errorf("unable to load sidecar: %w", err)
-	}
-
-	yes, err := app.Prompt.CaptureNoYes("WARNING: Transforming a Permissioned Subnet into an Elastic Subnet is an irreversible operation. Continue?")
-	if err != nil {
-		return err
-	}
-	if !yes {
-		return nil
 	}
 
 	networkToUpgrade, err := selectNetworkToTransform(sc, []string{})
@@ -128,13 +126,31 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 	case mainnetDeployment:
 		return errors.New("elastic subnet transformation is not yet supported on Mainnet")
 	}
-	getCustomElasticSubnetConfig()
-	testKey := genesis.EWOQKey
-	keyChain := secp256k1fx.NewKeychain(testKey)
-	elasticSubnetConfig, err := getElasticSubnetConfig()
+
+	yes, err := app.Prompt.CaptureNoYes("WARNING: Transforming a Permissioned Subnet into an Elastic Subnet is an irreversible operation. Continue?")
 	if err != nil {
 		return err
 	}
+	if !yes {
+		return nil
+	}
+
+	tokenName, err := getTokenName()
+	if err != nil {
+		return err
+	}
+	tokenSymbol, err := getTokenSymbol()
+	if err != nil {
+		return err
+	}
+	testKey := genesis.EWOQKey
+	keyChain := secp256k1fx.NewKeychain(testKey)
+	elasticSubnetConfig, err := getElasticSubnetConfig(tokenSymbol)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Starting Elastic Subnet Transformation")
+	go ux.PrintWait(cancel)
 	for network := range sc.Networks {
 		if network == models.Local.String() {
 			subnetID := sc.Networks[network].SubnetID
@@ -143,34 +159,76 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 				return errNoSubnetID
 			}
 			deployer := subnet.NewPublicDeployer(app, false, keyChain, models.Local)
-			txID, assetID, err := deployer.IssueTransformSubnetTx(elasticSubnetConfig, subnetID)
+			txID, assetID, err := deployer.IssueTransformSubnetTx(elasticSubnetConfig, subnetID, tokenName, tokenSymbol)
 			if err != nil {
 				return err
 			}
 			elasticSubnetConfig.AssetID = assetID
-
-			PrintTransformResults(subnetName, txID, subnetID)
+			PrintTransformResults(subnetName, txID, subnetID, tokenName, tokenSymbol, assetID)
 			if err = app.CreateElasticSubnetConfig(subnetName, &elasticSubnetConfig); err != nil {
+				cancel <- struct{}{}
 				return err
 			}
+
 		}
 	}
 
 	return nil
 }
-func getCustomElasticSubnetConfig() (models.ElasticSubnetConfig, error) {
-	tokenName, err := getTokenName()
+func getCustomElasticSubnetConfig(tokenSymbol string) (models.ElasticSubnetConfig, error) {
+	ux.Logger.PrintToUser("More info regarding elastic subnet parameters can be found at https://docs.avax.network/subnets/reference-elastic-subnets-parameters")
+	initialSupply, err := getInitialSupply(tokenSymbol)
 	if err != nil {
 		return models.ElasticSubnetConfig{}, err
 	}
-	initialSupply, err := getInitialSupply(tokenName)
-	fmt.Printf("initial supply amount %s \n", initialSupply)
-	maxSupply, err := getMaximumSupply(tokenName, initialSupply)
-	fmt.Printf("max supply amount %s \n", maxSupply)
+	maxSupply, err := getMaximumSupply(tokenSymbol, initialSupply)
+	if err != nil {
+		return models.ElasticSubnetConfig{}, err
+	}
 	minConsumptionRate, maxConsumptionRate, err := getConsumptionRate()
-	fmt.Printf("consumption rate %s  %s\n", minConsumptionRate, maxConsumptionRate)
+	if err != nil {
+		return models.ElasticSubnetConfig{}, err
+	}
+	minValidatorStake, maxValidatorStake, err := getValidatorStake(initialSupply, maxSupply)
+	if err != nil {
+		return models.ElasticSubnetConfig{}, err
+	}
+	minStakeDuration, maxStakeDuration, err := getStakeDuration()
+	if err != nil {
+		return models.ElasticSubnetConfig{}, err
+	}
+	minDelegationFee, err := getMinDelegationFee()
+	if err != nil {
+		return models.ElasticSubnetConfig{}, err
+	}
+	minDelegatorStake, err := getMinDelegatorStake()
+	if err != nil {
+		return models.ElasticSubnetConfig{}, err
+	}
+	maxValidatorWeightFactor, err := getMaxValidatorWeightFactor()
+	if err != nil {
+		return models.ElasticSubnetConfig{}, err
+	}
+	uptimeReq, err := getUptimeRequirement()
+	if err != nil {
+		return models.ElasticSubnetConfig{}, err
+	}
 
-	return models.ElasticSubnetConfig{}, err
+	elasticSubnetConfig := models.ElasticSubnetConfig{
+		InitialSupply:            initialSupply,
+		MaxSupply:                maxSupply,
+		MinConsumptionRate:       minConsumptionRate,
+		MaxConsumptionRate:       maxConsumptionRate,
+		MinValidatorStake:        minValidatorStake,
+		MaxValidatorStake:        maxValidatorStake,
+		MinStakeDuration:         minStakeDuration,
+		MaxStakeDuration:         maxStakeDuration,
+		MinDelegationFee:         minDelegationFee,
+		MinDelegatorStake:        minDelegatorStake,
+		MaxValidatorWeightFactor: maxValidatorWeightFactor,
+		UptimeRequirement:        uptimeReq,
+	}
+	return elasticSubnetConfig, err
 }
 
 // select which network to transform to elastic subnet
@@ -200,7 +258,7 @@ func selectNetworkToTransform(sc models.Sidecar, networkOptions []string) (strin
 	}
 
 	if len(networkOptions) == 0 {
-		return "", errors.New("no deployment target available")
+		return "", errors.New("no deployment target available, please first deploy created subnet")
 	}
 
 	selectedDeployment, err := app.Prompt.CaptureList(networkPrompt, networkOptions)
@@ -210,12 +268,22 @@ func selectNetworkToTransform(sc models.Sidecar, networkOptions []string) (strin
 	return selectedDeployment, nil
 }
 
-func PrintTransformResults(chain string, txID ids.ID, subnetID ids.ID) {
-	header := []string{"Subnet Elastic Transform Results", ""}
+func PrintTransformResults(chain string, txID ids.ID, subnetID ids.ID, tokenName string, tokenSymbol string, assetID ids.ID) {
+	const art = "\n  ______ _           _   _         _____       _                _     _______                   __                        _____                              __       _ " +
+		"\n |  ____| |         | | (_)       / ____|     | |              | |   |__   __|                 / _|                      / ____|                            / _|     | |" +
+		"\n | |__  | | __ _ ___| |_ _  ___  | (___  _   _| |__  _ __   ___| |_     | |_ __ __ _ _ __  ___| |_ ___  _ __ _ __ ___   | (___  _   _  ___ ___ ___  ___ ___| |_ _   _| |" +
+		"\n |  __| | |/ _` / __| __| |/ __|  \\___ \\| | | | '_ \\| '_ \\ / _ \\ __|    | | '__/ _` | '_ \\/ __|  _/ _ \\| '__| '_ ` _ \\   \\___ \\| | | |/ __/ __/ _ \\/ __/ __|  _| | | | |" +
+		"\n | |____| | (_| \\__ \\ |_| | (__   ____) | |_| | |_) | | | |  __/ |_     | | | | (_| | | | \\__ \\ || (_) | |  | | | | | |  ____) | |_| | (_| (_|  __/\\__ \\__ \\ | | |_| | |" +
+		"\n |______|_|\\__,_|___/\\__|_|\\___| |_____/ \\__,_|_.__/|_| |_|\\___|\\__|    |_|_|  \\__,_|_| |_|___/_| \\___/|_|  |_| |_| |_| |_____/ \\__,_|\\___\\___\\___||___/___/_|  \\__,_|_|" +
+		"\n"
+	fmt.Print(art)
+
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader(header)
 	table.SetRowLine(true)
 	table.SetAutoMergeCells(true)
+	table.Append([]string{"Token Name", tokenName})
+	table.Append([]string{"Token Symbol", tokenSymbol})
+	table.Append([]string{"Asset ID", assetID.String()})
 	table.Append([]string{"Chain Name", chain})
 	table.Append([]string{"Subnet ID", subnetID.String()})
 	table.Append([]string{"P-Chain TXID", txID.String()})
@@ -223,16 +291,26 @@ func PrintTransformResults(chain string, txID ids.ID, subnetID ids.ID) {
 }
 
 func getTokenName() (string, error) {
-	ux.Logger.PrintToUser("Select a symbol for your subnet's native token")
-	tokenName, err := app.Prompt.CaptureString("Token symbol")
+	ux.Logger.PrintToUser("Select a name for your subnet's native token")
+	tokenName, err := app.Prompt.CaptureString("Token name")
 	if err != nil {
 		return "", err
 	}
 	return tokenName, nil
 }
 
+func getTokenSymbol() (string, error) {
+	ux.Logger.PrintToUser("Select a symbol for your subnet's native token")
+	tokenSymbol, err := app.Prompt.CaptureString("Token symbol")
+	if err != nil {
+		return "", err
+	}
+	return tokenSymbol, nil
+}
+
 func getInitialSupply(tokenName string) (uint64, error) {
-	ux.Logger.PrintToUser(fmt.Sprintf("Select the Initial Supply of %s", tokenName))
+	ux.Logger.PrintToUser(fmt.Sprintf("Select the Initial Supply of %s. \"_\" can be used as thousand separator", tokenName))
+	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Initial Supply is %s", ux.ConvertToStringWithThousandSeparator(defaultInitialSupply)))
 	initialSupply, err := app.Prompt.CaptureUint64("Initial Supply amount")
 	if err != nil {
 		return 0, err
@@ -241,7 +319,8 @@ func getInitialSupply(tokenName string) (uint64, error) {
 }
 
 func getMaximumSupply(tokenName string, initialSupply uint64) (uint64, error) {
-	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Supply of %s", tokenName))
+	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Supply of %s. \"_\" can be used as thousand separator", tokenName))
+	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Maximum Supply is %s", ux.ConvertToStringWithThousandSeparator(defaultMaximumSupply)))
 	comparatorMap := map[string]prompts.Comparator{}
 	comparator := prompts.Comparator{}
 	comparator.CompareType = prompts.MoreThanEq
@@ -256,7 +335,9 @@ func getMaximumSupply(tokenName string, initialSupply uint64) (uint64, error) {
 }
 
 func getConsumptionRate() (uint64, uint64, error) {
-	ux.Logger.PrintToUser(fmt.Sprintf("Select the Minimum Consumption Rate"))
+	ux.Logger.PrintToUser(fmt.Sprintf("Select the Minimum Consumption Rate. Please denominate your percentage in PercentDenominator"))
+	ux.Logger.PrintToUser(fmt.Sprintf("To denominate your percentage in PercentDenominator just multiply it by 10_000. For example, 1 percent corresponds to 10_000"))
+	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Minimum Consumption Rate is %s", ux.ConvertToStringWithThousandSeparator(uint64(defaultMinConsumptionRate*reward.PercentDenominator))))
 	comparatorMap := map[string]prompts.Comparator{}
 	comparator := prompts.Comparator{}
 	comparator.CompareType = prompts.LessThanEq
@@ -267,7 +348,9 @@ func getConsumptionRate() (uint64, uint64, error) {
 		return 0, 0, err
 	}
 
-	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Consumption Rate"))
+	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Consumption Rate. Please denominate your percentage in PercentDenominator"))
+	ux.Logger.PrintToUser(fmt.Sprintf("To denominate your percentage in PercentDenominator just multiply it by 10_000. For example, 1 percent corresponds to 10_000"))
+	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Maximum Consumption Rate is %s", ux.ConvertToStringWithThousandSeparator(uint64(defaultMaxConsumptionRate*reward.PercentDenominator))))
 	comparator.CompareType = prompts.MoreThanEq
 	comparator.CompareValue = minConsumptionRate
 	comparatorMap["Mininum Consumption Rate"] = comparator
@@ -279,7 +362,8 @@ func getConsumptionRate() (uint64, uint64, error) {
 }
 
 func getValidatorStake(initialSupply uint64, maximumSupply uint64) (uint64, uint64, error) {
-	ux.Logger.PrintToUser(fmt.Sprintf("Select the Minimum Validator Stake"))
+	ux.Logger.PrintToUser(fmt.Sprintf("Select the Minimum Validator Stake. \"_\" can be used as thousand separator"))
+	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Minimum Validator Stake is %s", ux.ConvertToStringWithThousandSeparator(defaultMinValidatorStake)))
 	comparatorMap := map[string]prompts.Comparator{}
 	comparator := prompts.Comparator{}
 	comparator.CompareType = prompts.MoreThan
@@ -293,7 +377,8 @@ func getValidatorStake(initialSupply uint64, maximumSupply uint64) (uint64, uint
 		return 0, 0, err
 	}
 
-	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Validator Stake"))
+	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Validator Stake. \"_\" can be used as thousand separator"))
+	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Maximum Validator Stake is %s", ux.ConvertToStringWithThousandSeparator(defaultMaxValidatorStake)))
 	comparatorMap = map[string]prompts.Comparator{}
 	comparator.CompareType = prompts.MoreThan
 	comparator.CompareValue = minValidatorStake
@@ -308,8 +393,9 @@ func getValidatorStake(initialSupply uint64, maximumSupply uint64) (uint64, uint
 	return minValidatorStake, maxValidatorStake, nil
 }
 
-func getStakeDuration(tokenName string, initialSupply uint64) (uint64, uint64, error) {
-	ux.Logger.PrintToUser(fmt.Sprintf("Select the Minimum Stake Duration"))
+func getStakeDuration() (time.Duration, time.Duration, error) {
+	ux.Logger.PrintToUser(fmt.Sprintf("Select the Minimum Stake Duration. Please enter in units of hours"))
+	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Minimum Stake Duration is %d (14 x 24)", defaultMinStakeDurationHours))
 	comparatorMap := map[string]prompts.Comparator{}
 	comparator := prompts.Comparator{}
 	comparator.CompareType = prompts.MoreThan
@@ -321,23 +407,27 @@ func getStakeDuration(tokenName string, initialSupply uint64) (uint64, uint64, e
 	}
 
 	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Stake Duration"))
+	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Maximum Stake Duration is %d (365 x 24)", defaultMaxStakeDurationHours))
 	comparatorMap = map[string]prompts.Comparator{}
 	comparator = prompts.Comparator{}
 	comparator.CompareType = prompts.MoreThanEq
 	comparator.CompareValue = minStakeDuration
 	comparatorMap["Minimum Stake Duration"] = comparator
 	comparator.CompareType = prompts.LessThanEq
-	comparator.CompareValue = uint64(defaultMaxStakeDuration)
+	comparator.CompareValue = uint64(defaultMaxStakeDurationHours)
 	comparatorMap["Global Max Stake Duration"] = comparator
 	maxStakeDuration, err := app.Prompt.CaptureUint64Compare("Maximum Stake Duration", comparatorMap)
 	if err != nil {
 		return 0, 0, err
 	}
-	return minStakeDuration, maxStakeDuration, nil
+
+	return time.Duration(minStakeDuration) * time.Hour, time.Duration(maxStakeDuration) * time.Hour, nil
 }
 
 func getMinDelegationFee() (uint32, error) {
-	ux.Logger.PrintToUser("Select the Minimum Delegation Fee")
+	ux.Logger.PrintToUser("Select the Minimum Delegation Fee. Please denominate your percentage in PercentDenominator")
+	ux.Logger.PrintToUser(fmt.Sprintf("To denominate your percentage in PercentDenominator just multiply it by 10_000. For example, 1 percent corresponds to 10_000"))
+	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Minimum Delegation Fee is %s", ux.ConvertToStringWithThousandSeparator(uint64(defaultMinDelegationFee))))
 	comparatorMap := map[string]prompts.Comparator{}
 	comparator := prompts.Comparator{}
 	comparator.CompareType = prompts.LessThanEq
@@ -352,6 +442,7 @@ func getMinDelegationFee() (uint32, error) {
 
 func getMinDelegatorStake() (uint64, error) {
 	ux.Logger.PrintToUser("Select the Minimum Delegator Stake")
+	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Minimum Delegator Stake is %d", defaultMinDelegatorStake))
 	comparatorMap := map[string]prompts.Comparator{}
 	comparator := prompts.Comparator{}
 	comparator.CompareType = prompts.MoreThan
@@ -364,20 +455,35 @@ func getMinDelegatorStake() (uint64, error) {
 	return minDelegatorStake, nil
 }
 
-func getMaxValidatorWeightFactor(tokenName string, initialSupply uint64) (uint64, error) {
-	ux.Logger.PrintToUser("Select the Maximum Validator Weight")
-	maxSupply, err := app.Prompt.CaptureUint64Compare("Maximum Supply amount", initialSupply, "Initial Supply")
+func getMaxValidatorWeightFactor() (byte, error) {
+	ux.Logger.PrintToUser("Select the Maximum Validator Weight Factor. A value of 1 effectively disables delegation")
+	ux.Logger.PrintToUser("More info can be found at https://docs.avax.network/subnets/reference-elastic-subnets-parameters#delegators-weight-checks")
+	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Maximum Validator Weight Factor is %d", defaultMaxValidatorWeightFactor))
+	comparatorMap := map[string]prompts.Comparator{}
+	comparator := prompts.Comparator{}
+	comparator.CompareType = prompts.MoreThan
+	comparator.CompareValue = 0
+	comparatorMap["0"] = comparator
+	maxValidatorWeightFactor, err := app.Prompt.CaptureUint64Compare("Maximum Validator Weight Factor", comparatorMap)
 	if err != nil {
 		return 0, err
 	}
-	return maxSupply, nil
+	return byte(maxValidatorWeightFactor), nil
 }
 
-//func getUptimeRequirement(tokenName string, initialSupply uint64) (uint64, error) {
-//	ux.Logger.PrintToUser(fmt.Sprintf("Select the Maximum Supply of %s", tokenName))
-//	maxSupply, err := app.Prompt.CaptureUint64Compare("Maximum Supply amount", initialSupply, "Initial Supply")
-//	if err != nil {
-//		return 0, err
-//	}
-//	return maxSupply, nil
-//}
+func getUptimeRequirement() (uint32, error) {
+	ux.Logger.PrintToUser("Select the Uptime Requirement. Please denominate your percentage in PercentDenominator")
+	ux.Logger.PrintToUser(fmt.Sprintf("To denominate your percentage in PercentDenominator just multiply it by 10_000. For example, 1 percent corresponds to 10_000"))
+	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Uptime Requirement is %s", ux.ConvertToStringWithThousandSeparator(uint64(defaultUptimeRequirement*reward.PercentDenominator))))
+
+	comparatorMap := map[string]prompts.Comparator{}
+	comparator := prompts.Comparator{}
+	comparator.CompareType = prompts.LessThanEq
+	comparator.CompareValue = reward.PercentDenominator
+	comparatorMap["Percent Denominator(1_0000_0000)"] = comparator
+	uptimeReq, err := app.Prompt.CaptureUint64Compare("Uptime Requirement", comparatorMap)
+	if err != nil {
+		return 0, err
+	}
+	return uint32(uptimeReq), nil
+}
