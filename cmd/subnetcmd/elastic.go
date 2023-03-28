@@ -11,7 +11,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/genesis"
 
-	es "github.com/ava-labs/avalanche-cli/pkg/elastic_subnet"
+	es "github.com/ava-labs/avalanche-cli/pkg/elasticsubnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanchego/ids"
