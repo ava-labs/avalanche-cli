@@ -5,6 +5,7 @@ package subnetcmd
 import (
 	"errors"
 	"fmt"
+	"math"
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -86,6 +87,10 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	denomination, err := getTokenDenomination()
+	if err != nil {
+		return err
+	}
 	testKey := genesis.EWOQKey
 	keyChain := secp256k1fx.NewKeychain(testKey)
 	elasticSubnetConfig, err := es.GetElasticSubnetConfig(app, tokenSymbol)
@@ -102,7 +107,7 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 				return errNoSubnetID
 			}
 			deployer := subnet.NewPublicDeployer(app, false, keyChain, models.Local)
-			txID, assetID, err := deployer.IssueTransformSubnetTx(elasticSubnetConfig, subnetID, tokenName, tokenSymbol)
+			txID, assetID, err := deployer.IssueTransformSubnetTx(elasticSubnetConfig, subnetID, tokenName, tokenSymbol, elasticSubnetConfig.MaxSupply, denomination)
 			if err != nil {
 				return err
 			}
@@ -193,4 +198,17 @@ func getTokenSymbol() (string, error) {
 		return "", err
 	}
 	return tokenSymbol, nil
+}
+
+func getTokenDenomination() (byte, error) {
+	ux.Logger.PrintToUser("Select the denomination for your subnet's native token. Denomination specifies how many times the asset can be split.\n" +
+		"For example, a denomination of [4] would mean that the smallest unit of the asset would be 0.001 units.")
+	denomination, err := app.Prompt.CaptureUint64("Token denomination")
+	if err != nil {
+		return 0, err
+	}
+	if denomination > math.MaxInt8 {
+		return 0, fmt.Errorf("denomination needs to be unsigned 8-bit integer")
+	}
+	return byte(denomination), nil
 }

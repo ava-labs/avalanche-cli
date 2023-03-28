@@ -6,10 +6,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/ava-labs/avalanchego/genesis"
-	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 
@@ -175,7 +175,7 @@ func (d *PublicDeployer) Deploy(
 	return isFullySigned, subnetID, blockchainID, blockchainTx, nil
 }
 
-func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string) (ids.ID, error) {
+func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string, maxSupply uint64, denomination byte) (ids.ID, error) {
 	xWallet := wallet.X()
 	owner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
@@ -187,11 +187,11 @@ func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string) (id
 	subnetAssetID, err := xWallet.IssueCreateAssetTx(
 		tokenName,
 		tokenSymbol,
-		9,
+		denomination,
 		map[uint32][]verify.State{
 			0: {
 				&secp256k1fx.TransferOutput{
-					Amt:          720 * units.MegaAvax,
+					Amt:          maxSupply * uint64(math.Pow(10, float64(denomination))),
 					OutputOwners: *owner,
 				},
 			},
@@ -205,7 +205,7 @@ func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string) (id
 	return subnetAssetID, nil
 }
 
-func exportToPChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners, subnetAssetID ids.ID) error {
+func exportToPChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners, subnetAssetID ids.ID, maxSupply uint64, denomination byte) error {
 	xWallet := wallet.X()
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultWalletCreationTimeout)
 
@@ -217,7 +217,7 @@ func exportToPChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners, subn
 					ID: subnetAssetID,
 				},
 				Out: &secp256k1fx.TransferOutput{
-					Amt:          720 * units.MegaAvax,
+					Amt:          maxSupply * uint64(math.Pow(10, float64(denomination))),
 					OutputOwners: *owner,
 				},
 			},
@@ -247,12 +247,14 @@ func (d *PublicDeployer) IssueTransformSubnetTx(
 	subnetID ids.ID,
 	tokenName string,
 	tokenSymbol string,
+	maxSupply uint64,
+	denomination byte,
 ) (ids.ID, ids.ID, error) {
 	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
-	subnetAssetID, err := getAssetID(wallet, tokenName, tokenSymbol)
+	subnetAssetID, err := getAssetID(wallet, tokenName, tokenSymbol, maxSupply, denomination)
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
@@ -262,7 +264,7 @@ func (d *PublicDeployer) IssueTransformSubnetTx(
 			genesis.EWOQKey.PublicKey().Address(),
 		},
 	}
-	err = exportToPChain(wallet, owner, subnetAssetID)
+	err = exportToPChain(wallet, owner, subnetAssetID, maxSupply, denomination)
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
