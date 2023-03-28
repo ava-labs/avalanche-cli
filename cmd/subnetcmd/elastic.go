@@ -5,6 +5,7 @@ package subnetcmd
 import (
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"time"
 
@@ -436,6 +437,9 @@ func getMinDelegationFee() (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
+	if minDelegationFee > math.MaxInt32 {
+		return 0, fmt.Errorf("Minimum Delegation Fee needs to be unsigned 32-bit integer")
+	}
 	return uint32(minDelegationFee), nil
 }
 
@@ -467,6 +471,9 @@ func getMaxValidatorWeightFactor() (byte, error) {
 	if err != nil {
 		return 0, err
 	}
+	if maxValidatorWeightFactor > math.MaxInt8 {
+		return 0, fmt.Errorf("Maximum Validator Weight Factor needs to be unsigned 8-bit integer")
+	}
 	return byte(maxValidatorWeightFactor), nil
 }
 
@@ -483,6 +490,9 @@ func getUptimeRequirement() (uint32, error) {
 	uptimeReq, err := app.Prompt.CaptureUint64Compare("Uptime Requirement", comparatorMap)
 	if err != nil {
 		return 0, err
+	}
+	if uptimeReq > math.MaxInt32 {
+		return 0, fmt.Errorf("Uptime Requirement needs to be unsigned 32-bit integer")
 	}
 	return uint32(uptimeReq), nil
 }
