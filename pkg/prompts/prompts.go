@@ -243,12 +243,19 @@ func (*realPrompter) CaptureUint64Compare(promptStr string, compareMap map[strin
 			}
 
 			for compareLabel, compareValue := range compareMap {
-				if compareValue.CompareType == LessThanEq && val > compareValue.CompareValue {
-					return errors.New(fmt.Sprintf("the value must be smaller than or equal to %s", compareLabel))
-				} else if compareValue.CompareType == MoreThan && val <= compareValue.CompareValue {
-					return errors.New(fmt.Sprintf("the value must be bigger than %s", compareLabel))
-				} else if compareValue.CompareType == MoreThanEq && val < compareValue.CompareValue {
-					return errors.New(fmt.Sprintf("the value must be bigger than or equal to %s", compareLabel))
+				switch compareValue.CompareType {
+				case LessThanEq:
+					if val > compareValue.CompareValue {
+						return fmt.Errorf(fmt.Sprintf("the value must be smaller than or equal to %s", compareLabel))
+					}
+				case MoreThan:
+					if val <= compareValue.CompareValue {
+						return fmt.Errorf(fmt.Sprintf("the value must be bigger than %s", compareLabel))
+					}
+				case MoreThanEq:
+					if val < compareValue.CompareValue {
+						return fmt.Errorf(fmt.Sprintf("the value must be bigger than or equal to %s", compareLabel))
+					}
 				}
 			}
 			return nil

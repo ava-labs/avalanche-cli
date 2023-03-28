@@ -4,12 +4,13 @@ package ux
 
 import (
 	"fmt"
-	"golang.org/x/text/language"
-	"golang.org/x/text/message"
 	"io"
 	"os"
 	"strings"
 	"time"
+
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/utils/logging"
