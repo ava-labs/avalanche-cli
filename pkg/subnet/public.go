@@ -272,12 +272,18 @@ func (d *PublicDeployer) IssueTransformSubnetTx(
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
+	initialSupplyDenomination := elasticSubnetConfig.InitialSupply * uint64(math.Pow(10, float64(denomination)))
+	maxSupplyDenomination := elasticSubnetConfig.MaxSupply * uint64(math.Pow(10, float64(denomination)))
+	minValidatorStakeDenomination := elasticSubnetConfig.MinValidatorStake * uint64(math.Pow(10, float64(denomination)))
+	maxValidatorStakeDenomination := elasticSubnetConfig.MaxValidatorStake * uint64(math.Pow(10, float64(denomination)))
+	minDelegatorStakeDenomination := elasticSubnetConfig.MinDelegatorStake * uint64(math.Pow(10, float64(denomination)))
+
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultConfirmTxTimeout)
 	transformSubnetTxID, err := wallet.P().IssueTransformSubnetTx(elasticSubnetConfig.SubnetID, subnetAssetID,
-		elasticSubnetConfig.InitialSupply, elasticSubnetConfig.MaxSupply, elasticSubnetConfig.MinConsumptionRate,
-		elasticSubnetConfig.MaxConsumptionRate, elasticSubnetConfig.MinValidatorStake, elasticSubnetConfig.MaxValidatorStake,
+		initialSupplyDenomination, maxSupplyDenomination, elasticSubnetConfig.MinConsumptionRate,
+		elasticSubnetConfig.MaxConsumptionRate, minValidatorStakeDenomination, maxValidatorStakeDenomination,
 		elasticSubnetConfig.MinStakeDuration, elasticSubnetConfig.MaxStakeDuration, elasticSubnetConfig.MinDelegationFee,
-		elasticSubnetConfig.MinDelegatorStake, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement,
+		minDelegatorStakeDenomination, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement,
 		common.WithContext(ctx),
 	)
 	defer cancel()
