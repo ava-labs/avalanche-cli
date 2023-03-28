@@ -42,8 +42,8 @@ const (
 var errNoKeys = errors.New("no keys")
 
 type Comparator struct {
-	CompareType  string //Less Than Eq or More than Eq
-	CompareValue uint64 //Value to Compare To
+	CompareType  string // Less Than Eq or More than Eq
+	CompareValue uint64 // Value to Compare To
 }
 type Prompter interface {
 	CapturePositiveBigInt(promptStr string) (*big.Int, error)
