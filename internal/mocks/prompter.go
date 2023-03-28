@@ -466,7 +466,7 @@ func (_m *Prompter) CaptureUint64(promptStr string) (uint64, error) {
 }
 
 // CaptureUint64Compare provides a mock function with given fields: promptStr and compareMap
-func (_m *Prompter) CaptureUint64Compare(promptStr string,compareMap map[string]prompts.Comparator) (uint64, error) {
+func (_m *Prompter) CaptureUint64Compare(promptStr string, compareMap map[string]prompts.Comparator) (uint64, error) {
 	ret := _m.Called(promptStr)
 
 	var r0 uint64

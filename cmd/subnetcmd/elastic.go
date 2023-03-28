@@ -28,7 +28,6 @@ const (
 	defaultMaximumSupply            = 720_000_000
 	defaultMinConsumptionRate       = 0.1
 	defaultMaxConsumptionRate       = 0.12
-	defaultMintingPeriod            = 365 * 24 * time.Hour
 	defaultMinValidatorStake        = 2_000
 	defaultMaxValidatorStake        = 3_000_000
 	defaultMinStakeDurationHours    = 14 * 24
@@ -438,7 +437,7 @@ func getMinDelegationFee() (uint32, error) {
 		return 0, err
 	}
 	if minDelegationFee > math.MaxInt32 {
-		return 0, fmt.Errorf("Minimum Delegation Fee needs to be unsigned 32-bit integer")
+		return 0, fmt.Errorf("minimum Delegation Fee needs to be unsigned 32-bit integer")
 	}
 	return uint32(minDelegationFee), nil
 }
@@ -472,7 +471,7 @@ func getMaxValidatorWeightFactor() (byte, error) {
 		return 0, err
 	}
 	if maxValidatorWeightFactor > math.MaxInt8 {
-		return 0, fmt.Errorf("Maximum Validator Weight Factor needs to be unsigned 8-bit integer")
+		return 0, fmt.Errorf("maximum Validator Weight Factor needs to be unsigned 8-bit integer")
 	}
 	return byte(maxValidatorWeightFactor), nil
 }
@@ -492,7 +491,7 @@ func getUptimeRequirement() (uint32, error) {
 		return 0, err
 	}
 	if uptimeReq > math.MaxInt32 {
-		return 0, fmt.Errorf("Uptime Requirement needs to be unsigned 32-bit integer")
+		return 0, fmt.Errorf("uptime Requirement needs to be unsigned 32-bit integer")
 	}
 	return uint32(uptimeReq), nil
 }
