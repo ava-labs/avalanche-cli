@@ -14,12 +14,11 @@ type NetworkData struct {
 }
 
 type ElasticSubnet struct {
-	SubnetID     ids.ID
-	AssetID      ids.ID
-	PChainTXID   ids.ID
-	TokenName    string
-	TokenSymbol  string
-	Denomination byte
+	SubnetID    ids.ID
+	AssetID     ids.ID
+	PChainTXID  ids.ID
+	TokenName   string
+	TokenSymbol string
 }
 
 type Sidecar struct {

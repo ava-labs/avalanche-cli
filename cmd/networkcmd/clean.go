@@ -3,10 +3,11 @@
 package networkcmd
 
 import (
-	"github.com/ava-labs/avalanche-cli/pkg/elasticsubnet"
 	"os"
 	"path/filepath"
 	"regexp"
+
+	"github.com/ava-labs/avalanche-cli/pkg/elasticsubnet"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"

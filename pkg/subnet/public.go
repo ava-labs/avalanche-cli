@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/ava-labs/avalanchego/genesis"
@@ -175,7 +174,7 @@ func (d *PublicDeployer) Deploy(
 	return isFullySigned, subnetID, blockchainID, blockchainTx, nil
 }
 
-func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string, maxSupply uint64, denomination byte) (ids.ID, error) {
+func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string, maxSupply uint64) (ids.ID, error) {
 	xWallet := wallet.X()
 	owner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
@@ -187,11 +186,11 @@ func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string, max
 	subnetAssetID, err := xWallet.IssueCreateAssetTx(
 		tokenName,
 		tokenSymbol,
-		denomination,
+		9,
 		map[uint32][]verify.State{
 			0: {
 				&secp256k1fx.TransferOutput{
-					Amt:          maxSupply * uint64(math.Pow(10, float64(denomination))),
+					Amt:          maxSupply,
 					OutputOwners: *owner,
 				},
 			},
@@ -205,7 +204,7 @@ func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string, max
 	return subnetAssetID, nil
 }
 
-func exportToPChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners, subnetAssetID ids.ID, maxSupply uint64, denomination byte) error {
+func exportToPChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners, subnetAssetID ids.ID, maxSupply uint64) error {
 	xWallet := wallet.X()
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultWalletCreationTimeout)
 
@@ -217,7 +216,7 @@ func exportToPChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners, subn
 					ID: subnetAssetID,
 				},
 				Out: &secp256k1fx.TransferOutput{
-					Amt:          maxSupply * uint64(math.Pow(10, float64(denomination))),
+					Amt:          maxSupply,
 					OutputOwners: *owner,
 				},
 			},
@@ -248,13 +247,12 @@ func (d *PublicDeployer) IssueTransformSubnetTx(
 	tokenName string,
 	tokenSymbol string,
 	maxSupply uint64,
-	denomination byte,
 ) (ids.ID, ids.ID, error) {
 	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
-	subnetAssetID, err := getAssetID(wallet, tokenName, tokenSymbol, maxSupply, denomination)
+	subnetAssetID, err := getAssetID(wallet, tokenName, tokenSymbol, maxSupply)
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
@@ -264,7 +262,7 @@ func (d *PublicDeployer) IssueTransformSubnetTx(
 			genesis.EWOQKey.PublicKey().Address(),
 		},
 	}
-	err = exportToPChain(wallet, owner, subnetAssetID, maxSupply, denomination)
+	err = exportToPChain(wallet, owner, subnetAssetID, maxSupply)
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
@@ -272,18 +270,13 @@ func (d *PublicDeployer) IssueTransformSubnetTx(
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
-	initialSupplyDenomination := elasticSubnetConfig.InitialSupply * uint64(math.Pow(10, float64(denomination)))
-	maxSupplyDenomination := elasticSubnetConfig.MaxSupply * uint64(math.Pow(10, float64(denomination)))
-	minValidatorStakeDenomination := elasticSubnetConfig.MinValidatorStake * uint64(math.Pow(10, float64(denomination)))
-	maxValidatorStakeDenomination := elasticSubnetConfig.MaxValidatorStake * uint64(math.Pow(10, float64(denomination)))
-	minDelegatorStakeDenomination := elasticSubnetConfig.MinDelegatorStake * uint64(math.Pow(10, float64(denomination)))
 
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultConfirmTxTimeout)
 	transformSubnetTxID, err := wallet.P().IssueTransformSubnetTx(elasticSubnetConfig.SubnetID, subnetAssetID,
-		initialSupplyDenomination, maxSupplyDenomination, elasticSubnetConfig.MinConsumptionRate,
-		elasticSubnetConfig.MaxConsumptionRate, minValidatorStakeDenomination, maxValidatorStakeDenomination,
+		elasticSubnetConfig.InitialSupply, elasticSubnetConfig.MaxSupply, elasticSubnetConfig.MinConsumptionRate,
+		elasticSubnetConfig.MaxConsumptionRate, elasticSubnetConfig.MinValidatorStake, elasticSubnetConfig.MaxValidatorStake,
 		elasticSubnetConfig.MinStakeDuration, elasticSubnetConfig.MaxStakeDuration, elasticSubnetConfig.MinDelegationFee,
-		minDelegatorStakeDenomination, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement,
+		elasticSubnetConfig.MinDelegatorStake, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement,
 		common.WithContext(ctx),
 	)
 	defer cancel()
