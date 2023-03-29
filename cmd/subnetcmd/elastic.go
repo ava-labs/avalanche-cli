@@ -43,7 +43,12 @@ mechanics will work.`,
 	}
 	return cmd
 }
-
+func checkIfSubnetIsElasticOnLocal(sc models.Sidecar) bool {
+	if _, ok := sc.ElasticSubnet[models.Local.String()]; ok {
+		return true
+	}
+	return false
+}
 func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 	cancel := make(chan struct{})
 	defer close(cancel)
@@ -69,6 +74,10 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 		return errors.New("elastic subnet transformation is not yet supported on Fuji network")
 	case mainnetDeployment:
 		return errors.New("elastic subnet transformation is not yet supported on Mainnet")
+	}
+
+	if checkIfSubnetIsElasticOnLocal(sc) {
+		return fmt.Errorf(fmt.Sprintf("%s is already an elastic subnet", subnetName))
 	}
 
 	yes, err := app.Prompt.CaptureNoYes("WARNING: Transforming a Permissioned Subnet into an Elastic Subnet is an irreversible operation. Continue?")
@@ -97,6 +106,7 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	ux.Logger.PrintToUser("Starting Elastic Subnet Transformation")
 	go ux.PrintWait(cancel)
 	for network := range sc.Networks {
@@ -114,7 +124,9 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 			elasticSubnetConfig.AssetID = assetID
 			PrintTransformResults(subnetName, txID, subnetID, tokenName, tokenSymbol, assetID)
 			if err = app.CreateElasticSubnetConfig(subnetName, &elasticSubnetConfig); err != nil {
-				cancel <- struct{}{}
+				return err
+			}
+			if err = app.UpdateSidecarElasticSubnet(&sc, models.Local, subnetID, assetID, txID, tokenName, tokenSymbol, denomination); err != nil {
 				return err
 			}
 		}

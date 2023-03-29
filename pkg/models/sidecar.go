@@ -13,6 +13,15 @@ type NetworkData struct {
 	RPCVersion   int
 }
 
+type ElasticSubnet struct {
+	SubnetID     ids.ID
+	AssetID      ids.ID
+	PChainTXID   ids.ID
+	TokenName    string
+	TokenSymbol  string
+	Denomination byte
+}
+
 type Sidecar struct {
 	Name            string
 	VM              VMType
@@ -23,6 +32,7 @@ type Sidecar struct {
 	ChainID         string
 	Version         string
 	Networks        map[string]NetworkData
+	ElasticSubnet   map[string]ElasticSubnet
 	ImportedFromAPM bool
 	ImportedVMID    string
 }

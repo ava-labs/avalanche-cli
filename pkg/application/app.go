@@ -322,6 +322,33 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	return nil
 }
 
+func (app *Avalanche) UpdateSidecarElasticSubnet(
+	sc *models.Sidecar,
+	network models.Network,
+	subnetID ids.ID,
+	assetID ids.ID,
+	pchainTXID ids.ID,
+	tokenName string,
+	tokenSymbol string,
+	denomination byte,
+) error {
+	if sc.ElasticSubnet == nil {
+		sc.ElasticSubnet = make(map[string]models.ElasticSubnet)
+	}
+	sc.ElasticSubnet[network.String()] = models.ElasticSubnet{
+		subnetID,
+		assetID,
+		pchainTXID,
+		tokenName,
+		tokenSymbol,
+		denomination,
+	}
+	if err := app.UpdateSidecar(sc); err != nil {
+		return fmt.Errorf("elastic subnet transformation was successful, but failed to update sidecar: %w", err)
+	}
+	return nil
+}
+
 func (app *Avalanche) GetTokenName(subnetName string) string {
 	sidecar, err := app.LoadSidecar(subnetName)
 	if err != nil {

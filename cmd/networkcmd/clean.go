@@ -3,6 +3,7 @@
 package networkcmd
 
 import (
+	"github.com/ava-labs/avalanche-cli/pkg/elasticsubnet"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -72,8 +73,14 @@ func clean(*cobra.Command, []string) error {
 			return err
 		}
 	}
+	if err = removeLocalDeployInfoFromSidecars(); err != nil {
+		return err
+	}
+	if err = removeLocalElasticSubnetInfoFromSidecars(); err != nil {
+		return err
+	}
 
-	return removeLocalDeployInfoFromSidecars()
+	return nil
 }
 
 func removeLocalDeployInfoFromSidecars() error {
@@ -90,6 +97,27 @@ func removeLocalDeployInfoFromSidecars() error {
 		}
 
 		delete(sc.Networks, models.Local.String())
+		if err = app.UpdateSidecar(&sc); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func removeLocalElasticSubnetInfoFromSidecars() error {
+	// Remove all local elastic subnet info from sidecar files
+	elasticSubnets, err := elasticsubnet.GetLocalElasticSubnetsFromFile(app)
+	if err != nil {
+		return err
+	}
+
+	for _, subnet := range elasticSubnets {
+		sc, err := app.LoadSidecar(subnet)
+		if err != nil {
+			return err
+		}
+
+		delete(sc.ElasticSubnet, models.Local.String())
 		if err = app.UpdateSidecar(&sc); err != nil {
 			return err
 		}
