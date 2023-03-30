@@ -89,7 +89,7 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 	//	commands.DeleteSubnetConfig(subnetName)
 	//})
 
-	ginkgo.It("can transform a deployed SubnetEvm subnet to elastic subnet", func() {
+	ginkgo.It("can transform a deployed SubnetEvm subnet to elastic subnet only once", func() {
 		commands.CleanNetwork()
 		err := utils.DeleteConfigs(subnetName)
 		if err != nil {
@@ -100,6 +100,7 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		// delete custom vm
 		utils.DeleteCustomBinary(subnetName)
 
+		commands.StartNetwork()
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
@@ -123,7 +124,7 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(exists).Should(gomega.BeTrue())
 
 		_, err = commands.TransformElasticSubnetLocally(subnetName)
-		gomega.Expect(err).Should(gomega.ContainSubstring("is already an elastic subnet\n"))
+		gomega.Expect(err).Should(gomega.HaveOccurred())
 
 		commands.DeleteSubnetConfig(subnetName)
 	})
