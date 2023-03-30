@@ -158,8 +158,6 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 			deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, vmBin)
 			txID, assetID, err := deployer.IssueTransformSubnetTx(elasticSubnetConfig, keyChain, subnetID, tokenName, tokenSymbol, elasticSubnetConfig.MaxSupply)
 
-			//deployer := subnet.NewPublicDeployer(app, false, keyChain, models.Local)
-			//txID, assetID, err := deployer.IssueTransformSubnetTx(elasticSubnetConfig, subnetID, tokenName, tokenSymbol, elasticSubnetConfig.MaxSupply)
 			if err != nil {
 				return err
 			}
