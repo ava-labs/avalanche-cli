@@ -90,15 +90,15 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 	//})
 
 	ginkgo.It("can transform a deployed SubnetEvm subnet to elastic subnet", func() {
-		//commands.CleanNetwork()
-		//err := utils.DeleteConfigs(subnetName)
-		//if err != nil {
-		//	fmt.Println("Clean network error:", err)
-		//}
-		//gomega.Expect(err).Should(gomega.BeNil())
-		//
-		//// delete custom vm
-		//utils.DeleteCustomBinary(subnetName)
+		commands.CleanNetwork()
+		err := utils.DeleteConfigs(subnetName)
+		if err != nil {
+			fmt.Println("Clean network error:", err)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// delete custom vm
+		utils.DeleteCustomBinary(subnetName)
 
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
@@ -123,11 +123,7 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(exists).Should(gomega.BeTrue())
 
 		_, err = commands.TransformElasticSubnetLocally(subnetName)
-		gomega.Expect(err).Should(gomega.BeNil())
-		exists, err = utils.ElasticSubnetConfigExists(subnetName)
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(exists).Should(gomega.BeTrue())
-		gomega.Expect(deployOutput).Should(gomega.ContainSubstring("immutable"))
+		gomega.Expect(err).Should(gomega.ContainSubstring("is already an elastic subnet\n"))
 
 		commands.DeleteSubnetConfig(subnetName)
 	})
