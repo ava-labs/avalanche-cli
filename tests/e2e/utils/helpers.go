@@ -795,3 +795,20 @@ func GetPluginBinaries() ([]string, error) {
 
 	return pluginFiles, nil
 }
+
+func GetSubnetValidators(subnetIDStr string, nodeInfos map[string]NodeInfo) ([]platformvm.ClientPermissionlessValidator, error) {
+	var uri string
+	for _, nodeInfo := range nodeInfos {
+		uri = nodeInfo.URI
+		break
+	}
+	pClient := platformvm.NewClient(uri)
+	subnetID, err := ids.FromString(subnetIDStr)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+
+	return pClient.GetCurrentValidators(ctx, subnetID, nil)
+}

@@ -12,7 +12,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/spf13/cobra"
 )
 
@@ -83,11 +85,15 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		return ErrMutuallyExlusiveKeyLedger
 	}
 
+	chains, err := validateSubnetNameAndGetChains(args)
+	if err != nil {
+		return err
+	}
+	subnetName := chains[0]
+
 	switch network {
 	case models.Local:
-		if err = removeFromLocal(); err != nil {
-			return err
-		}
+		return removeFromLocal(subnetName)
 	case models.Fuji:
 		if !useLedger && keyName == "" {
 			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, app.GetKeyDir())
@@ -109,11 +115,6 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		network = models.Local
 	}
 
-	chains, err := validateSubnetNameAndGetChains(args)
-	if err != nil {
-		return err
-	}
-	subnetName := chains[0]
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
@@ -188,6 +189,49 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	return err
 }
 
-func removeFromLocal() error {
+func removeFromLocal(subnetName string) error {
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
+	}
+
+	subnetID := sc.Networks[models.Local.String()].SubnetID
+	if subnetID == ids.Empty {
+		return errNoSubnetID
+	}
+
+	// Get NodeIDs of all validators on the subnet
+	validators, err := subnet.GetSubnetValidators(subnetID)
+	if err != nil {
+		return err
+	}
+
+	// construct list of validators to choose from
+	validatorList := make([]string, len(validators))
+	for i, v := range validators {
+		validatorList[i] = v.NodeID.String()
+	}
+
+	// Get NodeID of the node we want to remove
+	nodeIDStr, err := app.Prompt.CaptureList("Choose a validator to remove", validatorList)
+	if err != nil {
+		return err
+	}
+
+	// Convert NodeID string to NodeID type
+	nodeID, err := ids.NodeIDFromString(nodeIDStr)
+	if err != nil {
+		return err
+	}
+
+	testKey := genesis.EWOQKey
+	keyChain := secp256k1fx.NewKeychain(testKey)
+	_, err = subnet.IssueRemoveSubnetValidatorTx(keyChain, subnetID, nodeID)
+	if err != nil {
+		return err
+	}
+
+	ux.Logger.PrintToUser("Validator removed")
+
 	return nil
 }

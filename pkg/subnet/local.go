@@ -27,7 +27,10 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/server"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/storage"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/coreth/params"
 	spacesvmchain "github.com/ava-labs/spacesvm/chain"
 	"github.com/ava-labs/subnet-evm/core"
@@ -562,4 +565,28 @@ func GetLocallyDeployedSubnets() (map[string]struct{}, error) {
 	}
 
 	return deployedNames, nil
+}
+
+func IssueRemoveSubnetValidatorTx(kc keychain.Keychain, subnetID ids.ID, nodeID ids.NodeID) (ids.ID, error) {
+	ctx := context.Background()
+	api := constants.LocalAPIEndpoint
+	wallet, err := primary.NewWalletWithTxs(ctx, api, kc, subnetID)
+	if err != nil {
+		return ids.Empty, err
+	}
+
+	removeValidatorTXID, err := wallet.P().IssueRemoveSubnetValidatorTx(nodeID, subnetID)
+	if err != nil {
+		return ids.Empty, err
+	}
+	return removeValidatorTXID, err
+}
+
+func GetSubnetValidators(subnetID ids.ID) ([]platformvm.ClientPermissionlessValidator, error) {
+	api := constants.LocalAPIEndpoint
+	pClient := platformvm.NewClient(api)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+
+	return pClient.GetCurrentValidators(ctx, subnetID, nil)
 }
