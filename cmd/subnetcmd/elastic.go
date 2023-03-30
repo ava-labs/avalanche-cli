@@ -98,7 +98,7 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 		return fmt.Errorf(fmt.Sprintf("%s is already an elastic subnet", subnetName))
 	}
 
-	//Skip warning if running on e2e
+	// Skip warning if running on e2e
 	if os.Getenv("RUN_E2E") == "" {
 		yes, err := app.Prompt.CaptureNoYes("WARNING: Transforming a Permissioned Subnet into an Elastic Subnet is an irreversible operation. Continue?")
 		if err != nil {
