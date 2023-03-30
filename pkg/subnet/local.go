@@ -7,6 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanchego/genesis"
+	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
+	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
+	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 	"io"
 	"math/big"
 	"net/http"
@@ -75,6 +80,54 @@ func (d *LocalDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, 
 		return ids.Empty, ids.Empty, err
 	}
 	return d.doDeploy(chain, chainGenesis, genesisPath)
+}
+
+func (d *LocalDeployer) IssueTransformSubnetTx(
+	elasticSubnetConfig models.ElasticSubnetConfig,
+	kc keychain.Keychain,
+	subnetID ids.ID,
+	tokenName string,
+	tokenSymbol string,
+	maxSupply uint64,
+) (ids.ID, ids.ID, error) {
+	ctx := context.Background()
+	api := constants.LocalAPIEndpoint
+	wallet, err := primary.NewWalletWithTxs(ctx, api, kc, subnetID)
+	if err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+	subnetAssetID, err := getAssetID(wallet, tokenName, tokenSymbol, maxSupply)
+	if err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+	owner := &secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs: []ids.ShortID{
+			genesis.EWOQKey.PublicKey().Address(),
+		},
+	}
+	err = exportToPChain(wallet, owner, subnetAssetID, maxSupply)
+	if err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+	err = importFromXChain(wallet, owner)
+	if err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultConfirmTxTimeout)
+	transformSubnetTxID, err := wallet.P().IssueTransformSubnetTx(elasticSubnetConfig.SubnetID, subnetAssetID,
+		elasticSubnetConfig.InitialSupply, elasticSubnetConfig.MaxSupply, elasticSubnetConfig.MinConsumptionRate,
+		elasticSubnetConfig.MaxConsumptionRate, elasticSubnetConfig.MinValidatorStake, elasticSubnetConfig.MaxValidatorStake,
+		elasticSubnetConfig.MinStakeDuration, elasticSubnetConfig.MaxStakeDuration, elasticSubnetConfig.MinDelegationFee,
+		elasticSubnetConfig.MinDelegatorStake, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement,
+		common.WithContext(ctx),
+	)
+	defer cancel()
+	if err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+	return transformSubnetTxID, subnetAssetID, err
 }
 
 func (d *LocalDeployer) StartServer() error {
