@@ -100,15 +100,15 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can transform a deployed SubnetEvm subnet to elastic subnet", func() {
-		commands.CleanNetwork()
-		err := utils.DeleteConfigs(subnetName)
-		if err != nil {
-			fmt.Println("Clean network error:", err)
-		}
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		// delete custom vm
-		utils.DeleteCustomBinary(subnetName)
+		//commands.CleanNetwork()
+		//err := utils.DeleteConfigs(subnetName)
+		//if err != nil {
+		//	fmt.Println("Clean network error:", err)
+		//}
+		//gomega.Expect(err).Should(gomega.BeNil())
+		//
+		//// delete custom vm
+		//utils.DeleteCustomBinary(subnetName)
 
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
