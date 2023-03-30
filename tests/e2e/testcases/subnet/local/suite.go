@@ -132,12 +132,12 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(exists).Should(gomega.BeTrue())
 
-		//_, err = commands.TransformElasticSubnetLocally(subnetName)
-		//gomega.Expect(err).Should(gomega.BeNil())
-		//exists, err = utils.ElasticSubnetConfigExists(subnetName)
-		//gomega.Expect(err).Should(gomega.BeNil())
-		//gomega.Expect(exists).Should(gomega.BeTrue())
-		//gomega.Expect(deployOutput).Should(gomega.ContainSubstring("immutable"))
+		_, err = commands.TransformElasticSubnetLocally(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		exists, err = utils.ElasticSubnetConfigExists(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(exists).Should(gomega.BeTrue())
+		gomega.Expect(deployOutput).Should(gomega.ContainSubstring("immutable"))
 
 		commands.DeleteSubnetConfig(subnetName)
 	})
