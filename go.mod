@@ -9,7 +9,7 @@ require (
 	github.com/ava-labs/coreth v0.11.9
 	github.com/ava-labs/spacesvm v0.0.16-0.20230203183930-edab6c380a0c
 	github.com/ava-labs/subnet-evm v0.4.12
-	github.com/docker/docker v23.0.1+incompatible
+	github.com/docker/docker v23.0.2+incompatible
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/go-git/go-git/v5 v5.6.1
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
