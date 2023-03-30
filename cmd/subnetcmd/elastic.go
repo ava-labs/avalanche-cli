@@ -137,26 +137,22 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser("Starting Elastic Subnet Transformation")
 	go ux.PrintWait(cancel)
-	for scNetwork := range sc.Networks {
-		if scNetwork == models.Local.String() {
-			subnetID := sc.Networks[scNetwork].SubnetID
-			elasticSubnetConfig.SubnetID = subnetID
-			if subnetID == ids.Empty {
-				return errNoSubnetID
-			}
-			txID, assetID, err := subnet.IssueTransformSubnetTx(elasticSubnetConfig, keyChain, subnetID, tokenName, tokenSymbol, elasticSubnetConfig.MaxSupply)
-			if err != nil {
-				return err
-			}
-			elasticSubnetConfig.AssetID = assetID
-			PrintTransformResults(subnetName, txID, subnetID, tokenName, tokenSymbol, assetID)
-			if err = app.CreateElasticSubnetConfig(subnetName, &elasticSubnetConfig); err != nil {
-				return err
-			}
-			if err = app.UpdateSidecarElasticSubnet(&sc, models.Local, subnetID, assetID, txID, tokenName, tokenSymbol); err != nil {
-				return err
-			}
-		}
+	subnetID := sc.Networks[models.Local.String()].SubnetID
+	elasticSubnetConfig.SubnetID = subnetID
+	if subnetID == ids.Empty {
+		return errNoSubnetID
+	}
+	txID, assetID, err := subnet.IssueTransformSubnetTx(elasticSubnetConfig, keyChain, subnetID, tokenName, tokenSymbol, elasticSubnetConfig.MaxSupply)
+	if err != nil {
+		return err
+	}
+	elasticSubnetConfig.AssetID = assetID
+	PrintTransformResults(subnetName, txID, subnetID, tokenName, tokenSymbol, assetID)
+	if err = app.CreateElasticSubnetConfig(subnetName, &elasticSubnetConfig); err != nil {
+		return err
+	}
+	if err = app.UpdateSidecarElasticSubnet(&sc, models.Local, subnetID, assetID, txID, tokenName, tokenSymbol); err != nil {
+		return err
 	}
 
 	return nil

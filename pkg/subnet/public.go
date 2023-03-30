@@ -8,10 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanchego/genesis"
-	"github.com/ava-labs/avalanchego/vms/components/avax"
-	"github.com/ava-labs/avalanchego/vms/components/verify"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -172,73 +168,6 @@ func (d *PublicDeployer) Deploy(
 	}
 
 	return isFullySigned, subnetID, blockchainID, blockchainTx, nil
-}
-
-func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string, maxSupply uint64) (ids.ID, error) {
-	xWallet := wallet.X()
-	owner := &secp256k1fx.OutputOwners{
-		Threshold: 1,
-		Addrs: []ids.ShortID{
-			genesis.EWOQKey.PublicKey().Address(),
-		},
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultWalletCreationTimeout)
-	subnetAssetID, err := xWallet.IssueCreateAssetTx(
-		tokenName,
-		tokenSymbol,
-		9,
-		map[uint32][]verify.State{
-			0: {
-				&secp256k1fx.TransferOutput{
-					Amt:          maxSupply,
-					OutputOwners: *owner,
-				},
-			},
-		},
-		common.WithContext(ctx),
-	)
-	defer cancel()
-	if err != nil {
-		return ids.Empty, err
-	}
-	return subnetAssetID, nil
-}
-
-func exportToPChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners, subnetAssetID ids.ID, maxSupply uint64) error {
-	xWallet := wallet.X()
-	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultWalletCreationTimeout)
-
-	_, err := xWallet.IssueExportTx(
-		ids.Empty,
-		[]*avax.TransferableOutput{
-			{
-				Asset: avax.Asset{
-					ID: subnetAssetID,
-				},
-				Out: &secp256k1fx.TransferOutput{
-					Amt:          maxSupply,
-					OutputOwners: *owner,
-				},
-			},
-		},
-		common.WithContext(ctx),
-	)
-	defer cancel()
-	return err
-}
-
-func importFromXChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners) error {
-	xWallet := wallet.X()
-	pWallet := wallet.P()
-	xChainID := xWallet.BlockchainID()
-	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultWalletCreationTimeout)
-	_, err := pWallet.IssueImportTx(
-		xChainID,
-		owner,
-		common.WithContext(ctx),
-	)
-	defer cancel()
-	return err
 }
 
 func (d *PublicDeployer) Commit(

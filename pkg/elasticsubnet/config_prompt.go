@@ -15,6 +15,8 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/reward"
 )
 
+// default elastic config parameter values are from
+// https://docs.avax.network/subnets/reference-elastic-subnets-parameters#primary-network-parameters-on-mainnet
 const (
 	defaultInitialSupply            = 240_000_000
 	defaultMaximumSupply            = 720_000_000
