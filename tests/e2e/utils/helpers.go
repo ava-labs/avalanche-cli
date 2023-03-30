@@ -113,6 +113,19 @@ func sidecarExists(subnetName string) (bool, error) {
 	return sidecarExists, nil
 }
 
+func ElasticSubnetConfigExists(subnetName string) (bool, error) {
+	elasticSubnetConfig := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.ElasticSubnetConfigFileName)
+	elasticSubnetConfigExists := true
+	if _, err := os.Stat(elasticSubnetConfig); errors.Is(err, os.ErrNotExist) {
+		// does *not* exist
+		elasticSubnetConfigExists = false
+	} else if err != nil {
+		// Schrodinger: file may or may not exist. See err for details.
+		return false, err
+	}
+	return elasticSubnetConfigExists, nil
+}
+
 func SubnetConfigExists(subnetName string) (bool, error) {
 	gen, err := genesisExists(subnetName)
 	if err != nil {
