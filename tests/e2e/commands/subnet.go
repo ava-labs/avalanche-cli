@@ -751,13 +751,13 @@ func TransformElasticSubnetLocally(subnetName string) (string, error) {
 		CLIBinary,
 		SubnetCmd,
 		ElasticTransformCmd,
-		subnetName,
 		"--local",
 		"--tokenName",
 		"BLIZZARD",
 		"--tokenSymbol",
 		"BRRR",
 		"--useDefaultConfig",
+		subnetName,
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
