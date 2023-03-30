@@ -26,6 +26,13 @@ const (
 	mainnetDeployment = "Mainnet (coming soon)"
 )
 
+var (
+	transformLocal   bool
+	tokenNameFlag    string
+	tokenSymbolFlag  string
+	useDefaultConfig bool
+)
+
 // avalanche subnet elastic
 func newElasticCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -40,6 +47,10 @@ mechanics will work.`,
 		Args:         cobra.ExactArgs(1),
 		RunE:         elasticSubnetConfig,
 	}
+	cmd.Flags().BoolVarP(&transformLocal, "local", "l", false, "transform a subnet on a local network")
+	cmd.Flags().StringVar(&tokenNameFlag, "tokenName", "", "specify the token name")
+	cmd.Flags().StringVar(&tokenSymbolFlag, "tokenSymbol", "", "specify the token symbol")
+	cmd.Flags().BoolVar(&useDefaultConfig, "useDefaultConfig", false, "use default elastic subnet config values")
 	return cmd
 }
 
@@ -64,50 +75,71 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to load sidecar: %w", err)
 	}
 
-	networkToUpgrade, err := selectNetworkToTransform(sc, []string{})
-	if err != nil {
-		return err
+	var network models.Network
+	if transformLocal {
+		network = models.Local
 	}
 
-	switch networkToUpgrade {
-	case localDeployment:
-	case fujiDeployment:
-		return errors.New("elastic subnet transformation is not yet supported on Fuji network")
-	case mainnetDeployment:
-		return errors.New("elastic subnet transformation is not yet supported on Mainnet")
+	if network == models.Undefined {
+		networkToUpgrade, err := selectNetworkToTransform(sc, []string{})
+		if err != nil {
+			return err
+		}
+		switch networkToUpgrade {
+		case localDeployment:
+		case fujiDeployment:
+			return errors.New("elastic subnet transformation is not yet supported on Fuji network")
+		case mainnetDeployment:
+			return errors.New("elastic subnet transformation is not yet supported on Mainnet")
+		}
 	}
 
 	if checkIfSubnetIsElasticOnLocal(sc) {
 		return fmt.Errorf(fmt.Sprintf("%s is already an elastic subnet", subnetName))
 	}
 
-	yes, err := app.Prompt.CaptureNoYes("WARNING: Transforming a Permissioned Subnet into an Elastic Subnet is an irreversible operation. Continue?")
-	if err != nil {
-		return err
-	}
-	if !yes {
-		return nil
+	//Skip warning if running on e2e
+	if os.Getenv("RUN_E2E") == "" {
+		yes, err := app.Prompt.CaptureNoYes("WARNING: Transforming a Permissioned Subnet into an Elastic Subnet is an irreversible operation. Continue?")
+		if err != nil {
+			return err
+		}
+		if !yes {
+			return nil
+		}
 	}
 
-	tokenName, err := getTokenName()
-	if err != nil {
-		return err
+	tokenName := ""
+	if tokenNameFlag == "" {
+		tokenName, err = getTokenName()
+		if err != nil {
+			return err
+		}
+	} else {
+		tokenName = tokenNameFlag
 	}
-	tokenSymbol, err := getTokenSymbol()
-	if err != nil {
-		return err
+
+	tokenSymbol := ""
+	if tokenSymbolFlag == "" {
+		tokenSymbol, err = getTokenSymbol()
+		if err != nil {
+			return err
+		}
+	} else {
+		tokenSymbol = tokenSymbolFlag
 	}
+
 	testKey := genesis.EWOQKey
 	keyChain := secp256k1fx.NewKeychain(testKey)
-	elasticSubnetConfig, err := es.GetElasticSubnetConfig(app, tokenSymbol)
+	elasticSubnetConfig, err := es.GetElasticSubnetConfig(app, tokenSymbol, useDefaultConfig)
 	if err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Starting Elastic Subnet Transformation")
 	go ux.PrintWait(cancel)
-	for network := range sc.Networks {
-		if network == models.Local.String() {
-			subnetID := sc.Networks[network].SubnetID
+	for scNetwork := range sc.Networks {
+		if scNetwork == models.Local.String() {
+			subnetID := sc.Networks[scNetwork].SubnetID
 			elasticSubnetConfig.SubnetID = subnetID
 			if subnetID == ids.Empty {
 				return errNoSubnetID

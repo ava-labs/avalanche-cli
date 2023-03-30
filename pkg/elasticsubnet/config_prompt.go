@@ -32,20 +32,11 @@ const (
 	defaultUptimeRequirement        = 0.8
 )
 
-func GetElasticSubnetConfig(app *application.Avalanche, tokenSymbol string) (models.ElasticSubnetConfig, error) {
+func GetElasticSubnetConfig(app *application.Avalanche, tokenSymbol string, useDefaultConfig bool) (models.ElasticSubnetConfig, error) {
 	const (
 		defaultConfig   = "Use default elastic subnet config"
 		customizeConfig = "Customize elastic subnet config"
 	)
-	elasticSubnetConfigOptions := []string{defaultConfig, customizeConfig}
-
-	chosenConfig, err := app.Prompt.CaptureList(
-		"How would you like to set fees",
-		elasticSubnetConfigOptions,
-	)
-	if err != nil {
-		return models.ElasticSubnetConfig{}, err
-	}
 	elasticSubnetConfig := models.ElasticSubnetConfig{
 		InitialSupply:            defaultInitialSupply,
 		MaxSupply:                defaultMaximumSupply,
@@ -60,6 +51,18 @@ func GetElasticSubnetConfig(app *application.Avalanche, tokenSymbol string) (mod
 		MaxValidatorWeightFactor: defaultMaxValidatorWeightFactor,
 		UptimeRequirement:        defaultUptimeRequirement * reward.PercentDenominator,
 	}
+	if useDefaultConfig {
+		return elasticSubnetConfig, nil
+	}
+	elasticSubnetConfigOptions := []string{defaultConfig, customizeConfig}
+	chosenConfig, err := app.Prompt.CaptureList(
+		"How would you like to set fees",
+		elasticSubnetConfigOptions,
+	)
+	if err != nil {
+		return models.ElasticSubnetConfig{}, err
+	}
+
 	if chosenConfig == defaultConfig {
 		return elasticSubnetConfig, nil
 	}

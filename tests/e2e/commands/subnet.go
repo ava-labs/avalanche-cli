@@ -740,3 +740,37 @@ func SimulateGetSubnetStatsFuji(subnetName, subnetID string) string {
 	gomega.Expect(exitErr).Should(gomega.BeNil())
 	return string(output)
 }
+
+func TransformElasticSubnetLocally(subnetName string) (string, error) {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		ElasticTransformCmd,
+		"--local",
+		"--tokenName",
+		"BLIZZARD",
+		"--tokenSymbol",
+		"BRRR",
+		"--useDefaultConfig",
+		subnetName,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		var (
+			exitErr *exec.ExitError
+			stderr  string
+		)
+		if errors.As(err, &exitErr) {
+			stderr = string(exitErr.Stderr)
+		}
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+		fmt.Println(stderr)
+	}
+	return string(output), err
+}

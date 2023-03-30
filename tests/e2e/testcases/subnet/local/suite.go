@@ -99,6 +99,35 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		commands.DeleteSubnetConfig(subnetName)
 	})
 
+	ginkgo.It("can transform a deployed SubnetEvm subnet to elastic subnet only once", func() {
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+		rpc := rpcs[0]
+
+		err = utils.SetHardhatRPC(rpc)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		err = utils.RunHardhatTests(utils.BaseTest)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		_, err = commands.TransformElasticSubnetLocally(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		exists, err := utils.ElasticSubnetConfigExists(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(exists).Should(gomega.BeTrue())
+
+		_, err = commands.TransformElasticSubnetLocally(subnetName)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+
+		commands.DeleteSubnetConfig(subnetName)
+	})
+
 	ginkgo.It("can deploy a SpacesVM subnet to local", func() {
 		commands.CreateSpacesVMConfigWithVersion(subnetName, utils.SpacesVMGenesisPath, mapping[utils.Spaces2AvagoKey])
 		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, mapping[utils.Avago2SpacesKey])
