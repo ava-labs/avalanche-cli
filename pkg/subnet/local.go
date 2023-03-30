@@ -7,11 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanchego/genesis"
-	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
-	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
-	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
-	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 	"io"
 	"math/big"
 	"net/http"
@@ -19,6 +14,12 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/ava-labs/avalanchego/genesis"
+	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
+	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
+	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -82,7 +83,7 @@ func (d *LocalDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, 
 	return d.doDeploy(chain, chainGenesis, genesisPath)
 }
 
-func (d *LocalDeployer) IssueTransformSubnetTx(
+func (_ *LocalDeployer) IssueTransformSubnetTx(
 	elasticSubnetConfig models.ElasticSubnetConfig,
 	kc keychain.Keychain,
 	subnetID ids.ID,

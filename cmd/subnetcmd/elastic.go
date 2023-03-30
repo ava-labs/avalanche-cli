@@ -79,6 +79,7 @@ func getVMBin(sc models.Sidecar, args []string) (string, error) {
 		return "", fmt.Errorf("unknown vm: %s", sc.VM)
 	}
 }
+
 func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 	cancel := make(chan struct{})
 	defer close(cancel)
