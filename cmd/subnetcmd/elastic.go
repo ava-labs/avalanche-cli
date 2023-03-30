@@ -7,16 +7,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
-	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
-
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/ava-labs/avalanchego/genesis"
 
 	es "github.com/ava-labs/avalanche-cli/pkg/elasticsubnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	subnet "github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/olekukonko/tablewriter"
@@ -51,33 +48,6 @@ func checkIfSubnetIsElasticOnLocal(sc models.Sidecar) bool {
 		return true
 	}
 	return false
-}
-
-func getVMBin(sc models.Sidecar, args []string) (string, error) {
-	chains, err := validateSubnetNameAndGetChains(args)
-	if err != nil {
-		return "", err
-	}
-	chain := chains[0]
-	switch sc.VM {
-	case models.SubnetEvm:
-		vmBin, err := binutils.SetupSubnetEVM(app, sc.VMVersion)
-		if err != nil {
-			return "", fmt.Errorf("failed to install subnet-evm: %w", err)
-		}
-		return vmBin, nil
-	case models.SpacesVM:
-		vmBin, err := binutils.SetupSpacesVM(app, sc.VMVersion)
-		if err != nil {
-			return "", fmt.Errorf("failed to install spacesvm: %w", err)
-		}
-		return vmBin, nil
-	case models.CustomVM:
-		vmBin := binutils.SetupCustomBin(app, chain)
-		return vmBin, nil
-	default:
-		return "", fmt.Errorf("unknown vm: %s", sc.VM)
-	}
 }
 
 func elasticSubnetConfig(_ *cobra.Command, args []string) error {
@@ -133,19 +103,6 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	vmBin, err := getVMBin(sc, args)
-	if err != nil {
-		return err
-	}
-	// skip rpc check if using custom vm
-	if sc.VM != models.CustomVM {
-		// check if selected version matches what is currently running
-		nc := localnetworkinterface.NewStatusChecker()
-		userProvidedAvagoVersion, err = checkForInvalidDeployAndGetAvagoVersion(nc, sc.RPCVersion)
-		if err != nil {
-			return err
-		}
-	}
 	ux.Logger.PrintToUser("Starting Elastic Subnet Transformation")
 	go ux.PrintWait(cancel)
 	for network := range sc.Networks {
@@ -155,9 +112,7 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 			if subnetID == ids.Empty {
 				return errNoSubnetID
 			}
-
-			deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, vmBin)
-			txID, assetID, err := deployer.IssueTransformSubnetTx(elasticSubnetConfig, keyChain, subnetID, tokenName, tokenSymbol, elasticSubnetConfig.MaxSupply)
+			txID, assetID, err := subnet.IssueTransformSubnetTx(elasticSubnetConfig, keyChain, subnetID, tokenName, tokenSymbol, elasticSubnetConfig.MaxSupply)
 			if err != nil {
 				return err
 			}

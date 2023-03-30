@@ -83,7 +83,7 @@ func (d *LocalDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, 
 	return d.doDeploy(chain, chainGenesis, genesisPath)
 }
 
-func (_ *LocalDeployer) IssueTransformSubnetTx(
+func IssueTransformSubnetTx(
 	elasticSubnetConfig models.ElasticSubnetConfig,
 	kc keychain.Keychain,
 	subnetID ids.ID,
