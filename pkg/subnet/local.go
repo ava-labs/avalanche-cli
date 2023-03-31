@@ -575,11 +575,7 @@ func IssueRemoveSubnetValidatorTx(kc keychain.Keychain, subnetID ids.ID, nodeID 
 		return ids.Empty, err
 	}
 
-	removeValidatorTXID, err := wallet.P().IssueRemoveSubnetValidatorTx(nodeID, subnetID)
-	if err != nil {
-		return ids.Empty, err
-	}
-	return removeValidatorTXID, err
+	return wallet.P().IssueRemoveSubnetValidatorTx(nodeID, subnetID)
 }
 
 func GetSubnetValidators(subnetID ids.ID) ([]platformvm.ClientPermissionlessValidator, error) {

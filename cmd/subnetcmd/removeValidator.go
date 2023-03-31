@@ -26,15 +26,14 @@ func newRemoveValidatorCmd() *cobra.Command {
 		Long: `The subnet removeValidator command stops a whitelisted, subnet network validator from
 validating your deployed Subnet.
 
-To remove the validator from the Subnet's allow list, you first need to provide
-the subnetName and the validator's unique NodeID. You can bypass
+To remove the validator from the Subnet's allow list, provide the validator's unique NodeID. You can bypass
 these prompts by providing the values with flags.`,
 		SilenceUsage: true,
 		RunE:         removeValidator,
 		Args:         cobra.ExactArgs(1),
 	}
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
-	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
+	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to remove")
 	cmd.Flags().BoolVar(&deployLocal, "local", false, "remove from the locally deployed Subnet")
 	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "remove from `fuji` deployment (alias for `testnet`)")
 	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "remove from `testnet` deployment (alias for `fuji`)")
@@ -58,6 +57,8 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		network = models.Fuji
 	case deployMainnet:
 		network = models.Mainnet
+	case deployLocal:
+		network = models.Local
 	}
 
 	if network == models.Undefined {
@@ -141,7 +142,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("Your subnet auth keys for add validator tx creation: %s", subnetAuthKeys)
+	ux.Logger.PrintToUser("Your subnet auth keys for remove validator tx creation: %s", subnetAuthKeys)
 
 	if nodeIDStr == "" {
 		nodeID, err = promptNodeID()
@@ -159,7 +160,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
 	ux.Logger.PrintToUser("Network: %s", network.String())
-	ux.Logger.PrintToUser("Inputs complete, issuing transaction to remove the sepecified validator information...")
+	ux.Logger.PrintToUser("Inputs complete, issuing transaction to remove the specified validator...")
 
 	// get keychain accesor
 	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
