@@ -204,6 +204,8 @@ func DeleteElasticSubnetConfig(subnetName string) {
 	elasticSubnetConfig := filepath.Join(utils.GetBaseDir(), constants.SubnetDir, subnetName, constants.ElasticSubnetConfigFileName)
 	if _, err = os.Stat(elasticSubnetConfig); errors.Is(err, os.ErrNotExist) {
 		// does *not* exist
+		err = nil
+	} else {
 		err = os.Remove(elasticSubnetConfig)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
