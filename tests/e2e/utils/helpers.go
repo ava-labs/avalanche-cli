@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"io"
 	"os"
 	"os/exec"
@@ -807,4 +808,36 @@ func GetPluginBinaries() ([]string, error) {
 	}
 
 	return pluginFiles, nil
+}
+
+func getSideCar(subnetName string) (models.Sidecar, error) {
+	exists, err := sidecarExists(subnetName)
+	if err != nil {
+		return models.Sidecar{}, fmt.Errorf("failed to access sidecar for %s: %w", subnetName, err)
+	}
+	if !exists {
+		return models.Sidecar{}, fmt.Errorf("failed to access sidecar for %s: not found", subnetName)
+	}
+
+	sidecar := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.SidecarFileName)
+
+	jsonBytes, err := os.ReadFile(sidecar)
+	if err != nil {
+		return models.Sidecar{}, err
+	}
+
+	var sc models.Sidecar
+	err = json.Unmarshal(jsonBytes, &sc)
+	if err != nil {
+		return models.Sidecar{}, err
+	}
+	return sc, nil
+}
+func GetCurrentSupply(subnetName string) error {
+	sc, err := getSideCar(subnetName)
+	if err != nil {
+		return err
+	}
+	subnetID := sc.Networks[models.Local.String()].SubnetID
+	return subnet.GetCurrentSupply(subnetID)
 }

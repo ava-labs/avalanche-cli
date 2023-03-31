@@ -15,6 +15,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 
@@ -214,6 +216,15 @@ func (d *LocalDeployer) StartServer() error {
 		d.backendStartedHere = true
 	}
 	return nil
+}
+
+func GetCurrentSupply(subnetID ids.ID) error {
+	api := constants.LocalAPIEndpoint
+	pClient := platformvm.NewClient(api)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+	_, err := pClient.GetCurrentSupply(ctx, subnetID)
+	return err
 }
 
 // BackendStartedHere returns true if the backend was started by this run,

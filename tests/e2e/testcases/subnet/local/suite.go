@@ -116,11 +116,19 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		err = utils.RunHardhatTests(utils.BaseTest)
 		gomega.Expect(err).Should(gomega.BeNil())
 
+		// GetCurrentSupply will return error if queried for non-elastic subnet
+		err = utils.GetCurrentSupply(subnetName)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+
 		_, err = commands.TransformElasticSubnetLocally(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		exists, err := utils.ElasticSubnetConfigExists(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(exists).Should(gomega.BeTrue())
+
+		// GetCurrentSupply will return result if queried for elastic subnet
+		err = utils.GetCurrentSupply(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		_, err = commands.TransformElasticSubnetLocally(subnetName)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
