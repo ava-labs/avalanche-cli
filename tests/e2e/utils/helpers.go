@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"io"
 	"os"
 	"os/exec"
@@ -18,6 +17,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -833,6 +834,7 @@ func getSideCar(subnetName string) (models.Sidecar, error) {
 	}
 	return sc, nil
 }
+
 func GetCurrentSupply(subnetName string) error {
 	sc, err := getSideCar(subnetName)
 	if err != nil {
