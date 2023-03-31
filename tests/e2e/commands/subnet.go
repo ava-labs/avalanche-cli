@@ -202,7 +202,7 @@ func DeleteSubnetConfig(subnetName string) {
 func DeleteElasticSubnetConfig(subnetName string) {
 	var err error
 	elasticSubnetConfig := filepath.Join(utils.GetBaseDir(), constants.SubnetDir, subnetName, constants.ElasticSubnetConfigFileName)
-	if _, err := os.Stat(elasticSubnetConfig); errors.Is(err, os.ErrNotExist) {
+	if _, err = os.Stat(elasticSubnetConfig); errors.Is(err, os.ErrNotExist) {
 		// does *not* exist
 		err = os.Remove(elasticSubnetConfig)
 	}
