@@ -126,6 +126,7 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 
 		commands.DeleteSubnetConfig(subnetName)
+		commands.DeleteElasticSubnetConfig(subnetName)
 	})
 
 	ginkgo.It("can deploy a SpacesVM subnet to local", func() {
