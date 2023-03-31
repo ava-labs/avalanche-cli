@@ -80,7 +80,6 @@ func clean(*cobra.Command, []string) error {
 	if err = removeLocalElasticSubnetInfoFromSidecars(); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -122,6 +121,17 @@ func removeLocalElasticSubnetInfoFromSidecars() error {
 		if err = app.UpdateSidecar(&sc); err != nil {
 			return err
 		}
+		if err = deleteElasticSubnetConfigFile(subnet); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func deleteElasticSubnetConfigFile(subnetName string) error {
+	elasticSubetConfigPath := app.GetElasticSubnetConfigPath(subnetName)
+	if err := os.Remove(elasticSubetConfigPath); err != nil {
+		return err
 	}
 	return nil
 }
