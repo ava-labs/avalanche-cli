@@ -176,7 +176,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 			return err
 		}
 	} else if weight < constants.MinStakeWeight {
-		return fmt.Errorf("illegal weight, must be greater than or equal to 1: %d", weight)
+		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", constants.MinStakeWeight, weight)
 	}
 
 	start, duration, err = getTimeParameters(network, nodeID)
