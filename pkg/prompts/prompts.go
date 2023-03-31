@@ -25,18 +25,15 @@ const (
 	Yes = "Yes"
 	No  = "No"
 
-	Add      = "Add"
-	Del      = "Delete"
-	Preview  = "Preview"
-	MoreInfo = "More Info"
-	Done     = "Done"
-	Cancel   = "Cancel"
-
+	Add        = "Add"
+	Del        = "Delete"
+	Preview    = "Preview"
+	MoreInfo   = "More Info"
+	Done       = "Done"
+	Cancel     = "Cancel"
 	LessThanEq = "Less Than Or Eq"
-
 	MoreThanEq = "More Than Or Eq"
-
-	MoreThan = "More Than"
+	MoreThan   = "More Than"
 )
 
 var errNoKeys = errors.New("no keys")
@@ -243,18 +240,19 @@ func (*realPrompter) CaptureUint64Compare(promptStr string, compareMap map[strin
 			}
 
 			for compareLabel, compareValue := range compareMap {
+				labelValue := compareValue.CompareValue
 				switch compareValue.CompareType {
 				case LessThanEq:
 					if val > compareValue.CompareValue {
-						return fmt.Errorf(fmt.Sprintf("the value must be smaller than or equal to %s", compareLabel))
+						return fmt.Errorf(fmt.Sprintf("the value must be smaller than or equal to %s (%d)", compareLabel, labelValue))
 					}
 				case MoreThan:
 					if val <= compareValue.CompareValue {
-						return fmt.Errorf(fmt.Sprintf("the value must be bigger than %s", compareLabel))
+						return fmt.Errorf(fmt.Sprintf("the value must be bigger than %s (%d)", compareLabel, labelValue))
 					}
 				case MoreThanEq:
 					if val < compareValue.CompareValue {
-						return fmt.Errorf(fmt.Sprintf("the value must be bigger than or equal to %s", compareLabel))
+						return fmt.Errorf(fmt.Sprintf("the value must be bigger than or equal to %s (%d)", compareLabel, labelValue))
 					}
 				}
 			}

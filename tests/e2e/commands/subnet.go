@@ -756,18 +756,15 @@ func TransformElasticSubnetLocally(subnetName string) (string, error) {
 		"BLIZZARD",
 		"--tokenSymbol",
 		"BRRR",
-		"--useDefaultConfig",
+		"--default",
+		"--force",
 		subnetName,
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		var (
-			exitErr *exec.ExitError
-			stderr  string
+			stderr string
 		)
-		if errors.As(err, &exitErr) {
-			stderr = string(exitErr.Stderr)
-		}
 		fmt.Println(string(output))
 		utils.PrintStdErr(err)
 		fmt.Println(stderr)

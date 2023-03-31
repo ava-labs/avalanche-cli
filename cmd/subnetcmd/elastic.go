@@ -31,6 +31,7 @@ var (
 	tokenNameFlag    string
 	tokenSymbolFlag  string
 	useDefaultConfig bool
+	overrideWarning  bool
 )
 
 // avalanche subnet elastic
@@ -50,7 +51,8 @@ mechanics will work.`,
 	cmd.Flags().BoolVarP(&transformLocal, "local", "l", false, "transform a subnet on a local network")
 	cmd.Flags().StringVar(&tokenNameFlag, "tokenName", "", "specify the token name")
 	cmd.Flags().StringVar(&tokenSymbolFlag, "tokenSymbol", "", "specify the token symbol")
-	cmd.Flags().BoolVar(&useDefaultConfig, "useDefaultConfig", false, "use default elastic subnet config values")
+	cmd.Flags().BoolVar(&useDefaultConfig, "default", false, "use default elastic subnet config values")
+	cmd.Flags().BoolVar(&overrideWarning, "force", false, "override transform into elastic subnet warning")
 	return cmd
 }
 
@@ -62,8 +64,6 @@ func checkIfSubnetIsElasticOnLocal(sc models.Sidecar) bool {
 }
 
 func elasticSubnetConfig(_ *cobra.Command, args []string) error {
-	cancel := make(chan struct{})
-	defer close(cancel)
 	subnetName := args[0]
 
 	if !app.SubnetConfigExists(subnetName) {
@@ -86,7 +86,6 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 			return err
 		}
 		switch networkToUpgrade {
-		case localDeployment:
 		case fujiDeployment:
 			return errors.New("elastic subnet transformation is not yet supported on Fuji network")
 		case mainnetDeployment:
@@ -95,11 +94,11 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 	}
 
 	if checkIfSubnetIsElasticOnLocal(sc) {
-		return fmt.Errorf(fmt.Sprintf("%s is already an elastic subnet", subnetName))
+		return fmt.Errorf("%s is already an elastic subnet", subnetName)
 	}
 
 	// Skip warning if running on e2e
-	if os.Getenv("RUN_E2E") == "" {
+	if overrideWarning {
 		yes, err := app.Prompt.CaptureNoYes("WARNING: Transforming a Permissioned Subnet into an Elastic Subnet is an irreversible operation. Continue?")
 		if err != nil {
 			return err
@@ -136,6 +135,8 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Starting Elastic Subnet Transformation")
+	cancel := make(chan struct{})
+	defer close(cancel)
 	go ux.PrintWait(cancel)
 	subnetID := sc.Networks[models.Local.String()].SubnetID
 	elasticSubnetConfig.SubnetID = subnetID

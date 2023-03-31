@@ -74,6 +74,6 @@ func PrintTableEndpoints(clusterInfo *rpcpb.ClusterInfo) {
 
 func ConvertToStringWithThousandSeparator(input uint64) string {
 	p := message.NewPrinter(language.English)
-	s := p.Sprintf("%d\n", input)
+	s := p.Sprintf("%d", input)
 	return strings.ReplaceAll(s, ",", "_")
 }

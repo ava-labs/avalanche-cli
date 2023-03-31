@@ -18,20 +18,22 @@ import (
 // default elastic config parameter values are from
 // https://docs.avax.network/subnets/reference-elastic-subnets-parameters#primary-network-parameters-on-mainnet
 const (
-	defaultInitialSupply            = 240_000_000
-	defaultMaximumSupply            = 720_000_000
-	defaultMinConsumptionRate       = 0.1
-	defaultMaxConsumptionRate       = 0.12
-	defaultMinValidatorStake        = 2_000
-	defaultMaxValidatorStake        = 3_000_000
-	defaultMinStakeDurationHours    = 14 * 24
-	defaultMinStakeDuration         = defaultMinStakeDurationHours * time.Hour
-	defaultMaxStakeDurationHours    = 365 * 24
-	defaultMaxStakeDuration         = defaultMaxStakeDurationHours * time.Hour
-	defaultMinDelegationFee         = 20_000
-	defaultMinDelegatorStake        = 25
-	defaultMaxValidatorWeightFactor = 5
-	defaultUptimeRequirement        = 0.8
+	defaultInitialSupply               = 240_000_000
+	defaultMaximumSupply               = 720_000_000
+	defaultMinConsumptionRate          = 0.1
+	defaultMaxConsumptionRate          = 0.12
+	defaultMinValidatorStake           = 2_000
+	defaultMaxValidatorStake           = 3_000_000
+	defaultMinStakeDurationHours       = 14 * 24
+	defaultMinStakeDurationHoursString = "14 x 24"
+	defaultMinStakeDuration            = defaultMinStakeDurationHours * time.Hour
+	defaultMaxStakeDurationHours       = 365 * 24
+	defaultMaxStakeDurationHoursString = "365 x 24"
+	defaultMaxStakeDuration            = defaultMaxStakeDurationHours * time.Hour
+	defaultMinDelegationFee            = 20_000
+	defaultMinDelegatorStake           = 25
+	defaultMaxValidatorWeightFactor    = 5
+	defaultUptimeRequirement           = 0.8
 )
 
 func GetElasticSubnetConfig(app *application.Avalanche, tokenSymbol string, useDefaultConfig bool) (models.ElasticSubnetConfig, error) {
@@ -217,7 +219,7 @@ func getValidatorStake(app *application.Avalanche, initialSupply uint64, maximum
 
 func getStakeDuration(app *application.Avalanche) (time.Duration, time.Duration, error) {
 	ux.Logger.PrintToUser("Select the Minimum Stake Duration. Please enter in units of hours")
-	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Minimum Stake Duration is %d (14 x 24)", defaultMinStakeDurationHours))
+	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Minimum Stake Duration is %d (%s)", defaultMinStakeDurationHours, defaultMinStakeDurationHoursString))
 	comparatorMap := map[string]prompts.Comparator{}
 	comparator := prompts.Comparator{}
 	comparator.CompareType = prompts.MoreThan
@@ -229,7 +231,7 @@ func getStakeDuration(app *application.Avalanche) (time.Duration, time.Duration,
 	}
 
 	ux.Logger.PrintToUser("Select the Maximum Stake Duration")
-	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Maximum Stake Duration is %d (365 x 24)", defaultMaxStakeDurationHours))
+	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Maximum Stake Duration is %d (%s)", defaultMaxStakeDurationHours, defaultMaxStakeDurationHoursString))
 	comparatorMap = map[string]prompts.Comparator{}
 	comparator = prompts.Comparator{}
 	comparator.CompareType = prompts.MoreThanEq
