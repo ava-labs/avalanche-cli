@@ -34,7 +34,8 @@ var (
 	// failIfNotValidating
 	failIfNotValidating bool
 	// if true, doesn't ask for overwriting the config file
-	forceWrite bool
+	forceWrite  bool
+	joinElastic bool
 )
 
 // avalanche subnet deploy
@@ -70,8 +71,24 @@ This command currently only supports Subnets deployed on the Fuji Testnet and Ma
 	cmd.Flags().BoolVar(&failIfNotValidating, "fail-if-not-validating", false, "fail if whitelist check fails")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to check")
 	cmd.Flags().BoolVar(&forceWrite, "force-write", false, "if true, skip to prompt to overwrite the config file")
+	cmd.Flags().BoolVar(&joinElastic, "elastic", false, "if validator is joining a elastic subnet, set to true")
 	return cmd
 }
+
+//func joinElasticSubnet(subnetName string, nodeID ids.ID) error {
+//	// Get NodeIDs of all validators on the subnet
+//
+//	testKey := genesis.EWOQKey
+//	keyChain := secp256k1fx.NewKeychain(testKey)
+//	_, err = subnet.IssueRemoveSubnetValidatorTx(keyChain, subnetID, nodeID)
+//	if err != nil {
+//		return err
+//	}
+//
+//	ux.Logger.PrintToUser("Validator removed")
+//
+//	return nil
+//}
 
 func joinCmd(_ *cobra.Command, args []string) error {
 	if printManual && (avagoConfigPath != "" || pluginDir != "") {
@@ -131,6 +148,9 @@ func joinCmd(_ *cobra.Command, args []string) error {
 	}
 	subnetIDStr := subnetID.String()
 
+	if joinElastic {
+
+	}
 	if !skipWhitelistCheck {
 		yes := true
 		if !forceWhitelistCheck {

@@ -7,6 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanchego/utils/units"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/reward"
+	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"io"
 	"math/big"
 	"net/http"
@@ -192,6 +197,63 @@ func IssueTransformSubnetTx(
 		elasticSubnetConfig.MaxConsumptionRate, elasticSubnetConfig.MinValidatorStake, elasticSubnetConfig.MaxValidatorStake,
 		elasticSubnetConfig.MinStakeDuration, elasticSubnetConfig.MaxStakeDuration, elasticSubnetConfig.MinDelegationFee,
 		elasticSubnetConfig.MinDelegatorStake, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement,
+		common.WithContext(ctx),
+	)
+	defer cancel()
+	if err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+	return transformSubnetTxID, subnetAssetID, err
+}
+
+func (d *PublicDeployer) IssueAddPermissionlessValidatorTx(
+	subnetID ids.ID,
+	nodeID ids.NodeID,
+	tokenName string,
+	tokenSymbol string,
+	maxSupply uint64,
+	startTime uint64,
+	endTime uint64,
+) (ids.ID, ids.ID, error) {
+	wallet, err := d.loadWallet(subnetID)
+	if err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+	subnetAssetID, err := getAssetID(wallet, tokenName, tokenSymbol, maxSupply)
+	if err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+	owner := &secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs: []ids.ShortID{
+			genesis.EWOQKey.PublicKey().Address(),
+		},
+	}
+	err = exportToPChain(wallet, owner, subnetAssetID, maxSupply)
+	if err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+	err = importFromXChain(wallet, owner)
+	if err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultConfirmTxTimeout)
+	transformSubnetTxID, err := wallet.P().IssueAddPermissionlessValidatorTx(
+		&txs.SubnetValidator{
+			Validator: txs.Validator{
+				NodeID: nodeID,
+				Start:  startTime,
+				End:    endTime,
+				Wght:   25 * units.MegaAvax,
+			},
+			Subnet: subnetID,
+		},
+		&signer.Empty{},
+		subnetAssetID,
+		&secp256k1fx.OutputOwners{},
+		&secp256k1fx.OutputOwners{},
+		reward.PercentDenominator,
 		common.WithContext(ctx),
 	)
 	defer cancel()
@@ -686,4 +748,13 @@ func GetLocallyDeployedSubnets() (map[string]struct{}, error) {
 	}
 
 	return deployedNames, nil
+}
+
+func GetSubnetValidators(subnetID ids.ID) ([]platformvm.ClientPermissionlessValidator, error) {
+	api := constants.LocalAPIEndpoint
+	pClient := platformvm.NewClient(api)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+
+	return pClient.GetCurrentValidators(ctx, subnetID, nil)
 }

@@ -154,6 +154,7 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 	if err = app.UpdateSidecarElasticSubnet(&sc, models.Local, subnetID, assetID, txID, tokenName, tokenSymbol); err != nil {
 		return err
 	}
+	assignEqualWeightToValidators(sc)
 
 	return nil
 }
@@ -233,4 +234,40 @@ func getTokenSymbol() (string, error) {
 		return "", err
 	}
 	return tokenSymbol, nil
+}
+
+func assignEqualWeightToValidators(sc models.Sidecar) error {
+	subnetID := sc.Networks[models.Local.String()].SubnetID
+	if subnetID == ids.Empty {
+		return errNoSubnetID
+	}
+
+	// Get NodeIDs of all validators on the subnet
+	validators, err := subnet.GetSubnetValidators(subnetID)
+	if err != nil {
+		return err
+	}
+
+	// construct list of validators to choose from
+	validatorList := make([]string, len(validators))
+	for i, v := range validators {
+		fmt.Printf("each validator weight %s \n", v.Weight)
+		fmt.Printf("each validator stake amount %s \n", v.StakeAmount)
+
+		validatorList[i] = v.NodeID.String()
+	}
+	// Get NodeID of the node we want to remove
+	nodeIDStr, err := app.Prompt.CaptureList("Choose a validator to remove", validatorList)
+	if err != nil {
+		return err
+	}
+
+	// Convert NodeID string to NodeID type
+	_, err = ids.NodeIDFromString(nodeIDStr)
+	if err != nil {
+		return err
+	}
+
+	return nil
+
 }
