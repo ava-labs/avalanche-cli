@@ -342,7 +342,7 @@ func (app *Avalanche) UpdateSidecarElasticSubnet(
 		TokenSymbol: tokenSymbol,
 	}
 	if err := app.UpdateSidecar(sc); err != nil {
-		return fmt.Errorf("elastic subnet transformation was successful, but failed to update sidecar: %w", err)
+		return err
 	}
 	return nil
 }

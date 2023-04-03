@@ -46,7 +46,7 @@ and that will be distributed as staking rewards, and provides a set of parameter
 mechanics will work.`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
-		RunE:         elasticSubnetConfig,
+		RunE:         transformElasticSubnet,
 	}
 	cmd.Flags().BoolVarP(&transformLocal, "local", "l", false, "transform a subnet on a local network")
 	cmd.Flags().StringVar(&tokenNameFlag, "tokenName", "", "specify the token name")
@@ -63,7 +63,7 @@ func checkIfSubnetIsElasticOnLocal(sc models.Sidecar) bool {
 	return false
 }
 
-func elasticSubnetConfig(_ *cobra.Command, args []string) error {
+func transformElasticSubnet(_ *cobra.Command, args []string) error {
 	subnetName := args[0]
 
 	if !app.SubnetConfigExists(subnetName) {
@@ -81,7 +81,7 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 	}
 
 	if network == models.Undefined {
-		networkToUpgrade, err := selectNetworkToTransform(sc, []string{})
+		networkToUpgrade, err := selectNetworkToTransform(sc)
 		if err != nil {
 			return err
 		}
@@ -126,9 +126,6 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 	} else {
 		tokenSymbol = tokenSymbolFlag
 	}
-
-	testKey := genesis.EWOQKey
-	keyChain := secp256k1fx.NewKeychain(testKey)
 	elasticSubnetConfig, err := es.GetElasticSubnetConfig(app, tokenSymbol, useDefaultConfig)
 	if err != nil {
 		return err
@@ -142,6 +139,8 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
+	testKey := genesis.EWOQKey
+	keyChain := secp256k1fx.NewKeychain(testKey)
 	txID, assetID, err := subnet.IssueTransformSubnetTx(elasticSubnetConfig, keyChain, subnetID, tokenName, tokenSymbol, elasticSubnetConfig.MaxSupply)
 	if err != nil {
 		return err
@@ -152,36 +151,24 @@ func elasticSubnetConfig(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if err = app.UpdateSidecarElasticSubnet(&sc, models.Local, subnetID, assetID, txID, tokenName, tokenSymbol); err != nil {
-		return err
+		return fmt.Errorf("elastic subnet transformation was successful, but failed to update sidecar: %w", err)
 	}
-
 	return nil
 }
 
 // select which network to transform to elastic subnet
-func selectNetworkToTransform(sc models.Sidecar, networkOptions []string) (string, error) {
+func selectNetworkToTransform(sc models.Sidecar) (string, error) {
+	var networkOptions []string
 	networkPrompt := "Which network should transform into an elastic Subnet?"
-
-	// get locally deployed subnets from file since network is shut down
-	locallyDeployedSubnets, err := subnet.GetLocallyDeployedSubnetsFromFile(app)
-	if err != nil {
-		return "", fmt.Errorf("unable to read deployed subnets: %w", err)
-	}
-
-	for _, subnet := range locallyDeployedSubnets {
-		if subnet == sc.Name {
+	for network := range sc.Networks {
+		switch network {
+		case models.Local.String():
 			networkOptions = append(networkOptions, localDeployment)
+		case models.Fuji.String():
+			networkOptions = append(networkOptions, fujiDeployment)
+		case models.Mainnet.String():
+			networkOptions = append(networkOptions, mainnetDeployment)
 		}
-	}
-
-	// check if subnet deployed on fuji
-	if _, ok := sc.Networks[models.Fuji.String()]; ok {
-		networkOptions = append(networkOptions, fujiDeployment)
-	}
-
-	// check if subnet deployed on mainnet
-	if _, ok := sc.Networks[models.Mainnet.String()]; ok {
-		networkOptions = append(networkOptions, mainnetDeployment)
 	}
 
 	if len(networkOptions) == 0 {

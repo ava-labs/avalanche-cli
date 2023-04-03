@@ -100,7 +100,7 @@ func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string, max
 	subnetAssetID, err := xWallet.IssueCreateAssetTx(
 		tokenName,
 		tokenSymbol,
-		9,
+		9, //denomination for UI purposes only in explorer
 		map[uint32][]verify.State{
 			0: {
 				&secp256k1fx.TransferOutput{
