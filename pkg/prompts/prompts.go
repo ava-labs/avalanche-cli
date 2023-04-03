@@ -229,7 +229,6 @@ func (*realPrompter) CaptureUint64(promptStr string) (uint64, error) {
 	}
 	return strconv.ParseUint(amountStr, 0, 64)
 }
-
 func (*realPrompter) CaptureUint64Compare(promptStr string, compareMap map[string]Comparator) (uint64, error) {
 	prompt := promptui.Prompt{
 		Label: promptStr,
@@ -238,25 +237,7 @@ func (*realPrompter) CaptureUint64Compare(promptStr string, compareMap map[strin
 			if err != nil {
 				return err
 			}
-
-			for compareLabel, compareValue := range compareMap {
-				labelValue := compareValue.CompareValue
-				switch compareValue.CompareType {
-				case LessThanEq:
-					if val > compareValue.CompareValue {
-						return fmt.Errorf(fmt.Sprintf("the value must be smaller than or equal to %s (%d)", compareLabel, labelValue))
-					}
-				case MoreThan:
-					if val <= compareValue.CompareValue {
-						return fmt.Errorf(fmt.Sprintf("the value must be bigger than %s (%d)", compareLabel, labelValue))
-					}
-				case MoreThanEq:
-					if val < compareValue.CompareValue {
-						return fmt.Errorf(fmt.Sprintf("the value must be bigger than or equal to %s (%d)", compareLabel, labelValue))
-					}
-				}
-			}
-			return nil
+			return validateCompareValue(val, compareMap)
 		},
 	}
 
@@ -623,4 +604,25 @@ func captureKeyName(prompt Prompter, keyDir string) (string, error) {
 	}
 
 	return keyName, nil
+}
+
+func validateCompareValue(val uint64, compareMap map[string]Comparator) error {
+	for compareLabel, compareValue := range compareMap {
+		labelValue := compareValue.CompareValue
+		switch compareValue.CompareType {
+		case LessThanEq:
+			if val > compareValue.CompareValue {
+				return fmt.Errorf(fmt.Sprintf("the value must be smaller than or equal to %s (%d)", compareLabel, labelValue))
+			}
+		case MoreThan:
+			if val <= compareValue.CompareValue {
+				return fmt.Errorf(fmt.Sprintf("the value must be bigger than %s (%d)", compareLabel, labelValue))
+			}
+		case MoreThanEq:
+			if val < compareValue.CompareValue {
+				return fmt.Errorf(fmt.Sprintf("the value must be bigger than or equal to %s (%d)", compareLabel, labelValue))
+			}
+		}
+	}
+	return nil
 }

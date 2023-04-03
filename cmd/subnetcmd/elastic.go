@@ -97,6 +97,11 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("%s is already an elastic subnet", subnetName)
 	}
 
+	subnetID := sc.Networks[models.Local.String()].SubnetID
+	if subnetID == ids.Empty {
+		return errNoSubnetID
+	}
+
 	if !overrideWarning {
 		yes, err := app.Prompt.CaptureNoYes("WARNING: Transforming a Permissioned Subnet into an Elastic Subnet is an irreversible operation. Continue?")
 		if err != nil {
@@ -130,15 +135,11 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	elasticSubnetConfig.SubnetID = subnetID
 	ux.Logger.PrintToUser("Starting Elastic Subnet Transformation")
 	cancel := make(chan struct{})
 	defer close(cancel)
 	go ux.PrintWait(cancel)
-	subnetID := sc.Networks[models.Local.String()].SubnetID
-	elasticSubnetConfig.SubnetID = subnetID
-	if subnetID == ids.Empty {
-		return errNoSubnetID
-	}
 	testKey := genesis.EWOQKey
 	keyChain := secp256k1fx.NewKeychain(testKey)
 	txID, assetID, err := subnet.IssueTransformSubnetTx(elasticSubnetConfig, keyChain, subnetID, tokenName, tokenSymbol, elasticSubnetConfig.MaxSupply)
