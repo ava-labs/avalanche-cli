@@ -198,11 +198,11 @@ func getValidatorStake(app *application.Avalanche, initialSupply uint64, maximum
 	ux.Logger.PrintToUser("Select the Minimum Validator Stake. \"_\" can be used as thousand separator")
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Minimum Validator Stake is %s", ux.ConvertToStringWithThousandSeparator(defaultMinValidatorStake)))
 	var comparatorMap = map[string]prompts.Comparator{
-		"Initial Supply": {
+		"Initial Supply": prompts.Comparator{
 			CompareType:  prompts.LessThanEq,
 			CompareValue: initialSupply,
 		},
-		"0": {
+		"0": prompts.Comparator{
 			CompareType:  prompts.MoreThan,
 			CompareValue: 0,
 		},
