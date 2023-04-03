@@ -197,34 +197,36 @@ func getConsumptionRate(app *application.Avalanche) (uint64, uint64, error) {
 func getValidatorStake(app *application.Avalanche, initialSupply uint64, maximumSupply uint64) (uint64, uint64, error) {
 	ux.Logger.PrintToUser("Select the Minimum Validator Stake. \"_\" can be used as thousand separator")
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Minimum Validator Stake is %s", ux.ConvertToStringWithThousandSeparator(defaultMinValidatorStake)))
-	var comparatorMap = map[string]prompts.Comparator{
-		"Initial Supply": prompts.Comparator{
-			CompareType:  prompts.LessThanEq,
-			CompareValue: initialSupply,
-		},
-		"0": prompts.Comparator{
-			CompareType:  prompts.MoreThan,
-			CompareValue: 0,
-		},
-	}
-	minValidatorStake, err := app.Prompt.CaptureUint64Compare("Minimum Validator Stake", comparatorMap)
+	minValidatorStake, err := app.Prompt.CaptureUint64Compare(
+		"Minimum Validator Stake",
+		map[string]prompts.Comparator{
+			"Initial Supply": {
+				CompareType:  prompts.LessThanEq,
+				CompareValue: initialSupply,
+			},
+			"0": {
+				CompareType:  prompts.MoreThan,
+				CompareValue: 0,
+			},
+		})
 	if err != nil {
 		return 0, 0, err
 	}
 
 	ux.Logger.PrintToUser("Select the Maximum Validator Stake. \"_\" can be used as thousand separator")
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Maximum Validator Stake is %s", ux.ConvertToStringWithThousandSeparator(defaultMaxValidatorStake)))
-	comparatorMap = map[string]prompts.Comparator{
-		"Maximum Supply": {
-			CompareType:  prompts.LessThanEq,
-			CompareValue: maximumSupply,
-		},
-		"Minimum Validator Stake": {
-			CompareType:  prompts.MoreThan,
-			CompareValue: minValidatorStake,
-		},
-	}
-	maxValidatorStake, err := app.Prompt.CaptureUint64Compare("Maximum Validator Stake", comparatorMap)
+	maxValidatorStake, err := app.Prompt.CaptureUint64Compare(
+		"Maximum Validator Stake",
+		map[string]prompts.Comparator{
+			"Maximum Supply": {
+				CompareType:  prompts.LessThanEq,
+				CompareValue: maximumSupply,
+			},
+			"Minimum Validator Stake": {
+				CompareType:  prompts.MoreThan,
+				CompareValue: minValidatorStake,
+			},
+		})
 	if err != nil {
 		return 0, 0, err
 	}
