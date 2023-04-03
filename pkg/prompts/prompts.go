@@ -229,6 +229,7 @@ func (*realPrompter) CaptureUint64(promptStr string) (uint64, error) {
 	}
 	return strconv.ParseUint(amountStr, 0, 64)
 }
+
 func (*realPrompter) CaptureUint64Compare(promptStr string, compareMap map[string]Comparator) (uint64, error) {
 	prompt := promptui.Prompt{
 		Label: promptStr,
