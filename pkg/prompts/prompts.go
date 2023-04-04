@@ -39,9 +39,29 @@ const (
 var errNoKeys = errors.New("no keys")
 
 type Comparator struct {
-	CompareType  string // Less Than Eq or More than Eq
-	CompareValue uint64 // Value to Compare To
+	Label string // Label that identifies reference value
+	Type  string // Less Than Eq or More than Eq
+	Value uint64 // Value to Compare To
 }
+
+func (comparator *Comparator) Validate(val uint64) error {
+	switch comparator.Type {
+	case LessThanEq:
+		if val > comparator.Value {
+			return fmt.Errorf(fmt.Sprintf("the value must be smaller than or equal to %s (%d)", comparator.Label, comparator.Value))
+		}
+	case MoreThan:
+		if val <= comparator.Value {
+			return fmt.Errorf(fmt.Sprintf("the value must be bigger than %s (%d)", comparator.Label, comparator.Value))
+		}
+	case MoreThanEq:
+		if val < comparator.Value {
+			return fmt.Errorf(fmt.Sprintf("the value must be bigger than or equal to %s (%d)", comparator.Label, comparator.Value))
+		}
+	}
+	return nil
+}
+
 type Prompter interface {
 	CapturePositiveBigInt(promptStr string) (*big.Int, error)
 	CaptureAddress(promptStr string) (common.Address, error)
@@ -62,7 +82,7 @@ type Prompter interface {
 	CaptureID(promptStr string) (ids.ID, error)
 	CaptureWeight(promptStr string) (uint64, error)
 	CaptureUint64(promptStr string) (uint64, error)
-	CaptureUint64Compare(promptStr string, compareMap map[string]Comparator) (uint64, error)
+	CaptureUint64Compare(promptStr string, comparatorsp []Comparator) (uint64, error)
 	CapturePChainAddress(promptStr string, network models.Network) (string, error)
 	CaptureFutureDate(promptStr string, minDate time.Time) (time.Time, error)
 	ChooseKeyOrLedger() (bool, error)
@@ -230,7 +250,7 @@ func (*realPrompter) CaptureUint64(promptStr string) (uint64, error) {
 	return strconv.ParseUint(amountStr, 0, 64)
 }
 
-func (*realPrompter) CaptureUint64Compare(promptStr string, compareMap map[string]Comparator) (uint64, error) {
+func (*realPrompter) CaptureUint64Compare(promptStr string, comparators []Comparator) (uint64, error) {
 	prompt := promptui.Prompt{
 		Label: promptStr,
 		Validate: func(input string) error {
@@ -238,7 +258,12 @@ func (*realPrompter) CaptureUint64Compare(promptStr string, compareMap map[strin
 			if err != nil {
 				return err
 			}
-			return validateCompareValue(val, compareMap)
+			for _, comparator := range comparators {
+				if err := comparator.Validate(val); err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 	}
 
@@ -605,25 +630,4 @@ func captureKeyName(prompt Prompter, keyDir string) (string, error) {
 	}
 
 	return keyName, nil
-}
-
-func validateCompareValue(val uint64, compareMap map[string]Comparator) error {
-	for compareLabel, compareValue := range compareMap {
-		labelValue := compareValue.CompareValue
-		switch compareValue.CompareType {
-		case LessThanEq:
-			if val > compareValue.CompareValue {
-				return fmt.Errorf(fmt.Sprintf("the value must be smaller than or equal to %s (%d)", compareLabel, labelValue))
-			}
-		case MoreThan:
-			if val <= compareValue.CompareValue {
-				return fmt.Errorf(fmt.Sprintf("the value must be bigger than %s (%d)", compareLabel, labelValue))
-			}
-		case MoreThanEq:
-			if val < compareValue.CompareValue {
-				return fmt.Errorf(fmt.Sprintf("the value must be bigger than or equal to %s (%d)", compareLabel, labelValue))
-			}
-		}
-	}
-	return nil
 }
