@@ -148,12 +148,14 @@ func getMaximumSupply(app *application.Avalanche, tokenName string, initialSuppl
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Maximum Supply is %s", ux.ConvertToStringWithThousandSeparator(defaultMaximumSupply)))
 	maxSupply, err := app.Prompt.CaptureUint64Compare(
 		"Maximum Supply amount",
-		map[string]prompts.Comparator{
-			"Initial Supply": {
-				CompareType:  prompts.MoreThanEq,
-				CompareValue: initialSupply,
+		[]prompts.Comparator{
+			{
+				Label: "Initial Supply",
+				Type:  prompts.MoreThanEq,
+				Value: initialSupply,
 			},
-		})
+		},
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -166,12 +168,14 @@ func getConsumptionRate(app *application.Avalanche) (uint64, uint64, error) {
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Minimum Consumption Rate is %s", ux.ConvertToStringWithThousandSeparator(uint64(defaultMinConsumptionRate*reward.PercentDenominator))))
 	minConsumptionRate, err := app.Prompt.CaptureUint64Compare(
 		"Minimum Consumption Rate",
-		map[string]prompts.Comparator{
-			"Percent Denominator(1_0000_0000)": {
-				CompareType:  prompts.LessThanEq,
-				CompareValue: reward.PercentDenominator,
+		[]prompts.Comparator{
+			{
+				Label: "Percent Denominator(1_0000_0000)",
+				Type:  prompts.LessThanEq,
+				Value: reward.PercentDenominator,
 			},
-		})
+		},
+	)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -181,16 +185,19 @@ func getConsumptionRate(app *application.Avalanche) (uint64, uint64, error) {
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Maximum Consumption Rate is %s", ux.ConvertToStringWithThousandSeparator(uint64(defaultMaxConsumptionRate*reward.PercentDenominator))))
 	maxConsumptionRate, err := app.Prompt.CaptureUint64Compare(
 		"Maximum Consumption Rate",
-		map[string]prompts.Comparator{
-			"Percent Denominator(1_0000_0000)": {
-				CompareType:  prompts.LessThanEq,
-				CompareValue: reward.PercentDenominator,
+		[]prompts.Comparator{
+			{
+				Label: "Percent Denominator(1_0000_0000)",
+				Type:  prompts.LessThanEq,
+				Value: reward.PercentDenominator,
 			},
-			"Mininum Consumption Rate": {
-				CompareType:  prompts.MoreThanEq,
-				CompareValue: minConsumptionRate,
+			{
+				Label: "Mininum Consumption Rate",
+				Type:  prompts.MoreThanEq,
+				Value: minConsumptionRate,
 			},
-		})
+		},
+	)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -202,16 +209,19 @@ func getValidatorStake(app *application.Avalanche, initialSupply uint64, maximum
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Minimum Validator Stake is %s", ux.ConvertToStringWithThousandSeparator(defaultMinValidatorStake)))
 	minValidatorStake, err := app.Prompt.CaptureUint64Compare(
 		"Minimum Validator Stake",
-		map[string]prompts.Comparator{
-			"Initial Supply": {
-				CompareType:  prompts.LessThanEq,
-				CompareValue: initialSupply,
+		[]prompts.Comparator{
+			{
+				Label: "Initial Supply",
+				Type:  prompts.LessThanEq,
+				Value: initialSupply,
 			},
-			"0": {
-				CompareType:  prompts.MoreThan,
-				CompareValue: 0,
+			{
+				Label: "0",
+				Type:  prompts.MoreThan,
+				Value: 0,
 			},
-		})
+		},
+	)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -220,16 +230,19 @@ func getValidatorStake(app *application.Avalanche, initialSupply uint64, maximum
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Maximum Validator Stake is %s", ux.ConvertToStringWithThousandSeparator(defaultMaxValidatorStake)))
 	maxValidatorStake, err := app.Prompt.CaptureUint64Compare(
 		"Maximum Validator Stake",
-		map[string]prompts.Comparator{
-			"Maximum Supply": {
-				CompareType:  prompts.LessThanEq,
-				CompareValue: maximumSupply,
+		[]prompts.Comparator{
+			{
+				Label: "Maximum Supply",
+				Type:  prompts.LessThanEq,
+				Value: maximumSupply,
 			},
-			"Minimum Validator Stake": {
-				CompareType:  prompts.MoreThan,
-				CompareValue: minValidatorStake,
+			{
+				Label: "Minimum Validator Stake",
+				Type:  prompts.MoreThan,
+				Value: minValidatorStake,
 			},
-		})
+		},
+	)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -241,16 +254,19 @@ func getStakeDuration(app *application.Avalanche) (time.Duration, time.Duration,
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Minimum Stake Duration is %d (%s)", defaultMinStakeDurationHours, defaultMinStakeDurationHoursString))
 	minStakeDuration, err := app.Prompt.CaptureUint64Compare(
 		"Minimum Stake Duration",
-		map[string]prompts.Comparator{
-			"0": {
-				CompareType:  prompts.MoreThan,
-				CompareValue: 0,
+		[]prompts.Comparator{
+			{
+				Label: "0",
+				Type:  prompts.MoreThan,
+				Value: 0,
 			},
-			"Global Max Stake Duration": {
-				CompareType:  prompts.LessThanEq,
-				CompareValue: uint64(defaultMaxStakeDurationHours),
+			{
+				Label: "Global Max Stake Duration",
+				Type:  prompts.LessThanEq,
+				Value: uint64(defaultMaxStakeDurationHours),
 			},
-		})
+		},
+	)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -259,16 +275,19 @@ func getStakeDuration(app *application.Avalanche) (time.Duration, time.Duration,
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Maximum Stake Duration is %d (%s)", defaultMaxStakeDurationHours, defaultMaxStakeDurationHoursString))
 	maxStakeDuration, err := app.Prompt.CaptureUint64Compare(
 		"Maximum Stake Duration",
-		map[string]prompts.Comparator{
-			"Minimum Stake Duration": {
-				CompareType:  prompts.MoreThanEq,
-				CompareValue: minStakeDuration,
+		[]prompts.Comparator{
+			{
+				Label: "Minimum Stake Duration",
+				Type:  prompts.MoreThanEq,
+				Value: minStakeDuration,
 			},
-			"Global Max Stake Duration": {
-				CompareType:  prompts.LessThanEq,
-				CompareValue: uint64(defaultMaxStakeDurationHours),
+			{
+				Label: "Global Max Stake Duration",
+				Type:  prompts.LessThanEq,
+				Value: uint64(defaultMaxStakeDurationHours),
 			},
-		})
+		},
+	)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -282,12 +301,14 @@ func getMinDelegationFee(app *application.Avalanche) (uint32, error) {
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Minimum Delegation Fee is %s", ux.ConvertToStringWithThousandSeparator(uint64(defaultMinDelegationFee))))
 	minDelegationFee, err := app.Prompt.CaptureUint64Compare(
 		"Minimum Delegation Fee",
-		map[string]prompts.Comparator{
-			"Percent Denominator(1_0000_0000)": {
-				CompareType:  prompts.LessThanEq,
-				CompareValue: reward.PercentDenominator,
+		[]prompts.Comparator{
+			{
+				Label: "Percent Denominator(1_0000_0000)",
+				Type:  prompts.LessThanEq,
+				Value: reward.PercentDenominator,
 			},
-		})
+		},
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -302,12 +323,14 @@ func getMinDelegatorStake(app *application.Avalanche) (uint64, error) {
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Minimum Delegator Stake is %d", defaultMinDelegatorStake))
 	minDelegatorStake, err := app.Prompt.CaptureUint64Compare(
 		"Minimum Delegator Stake",
-		map[string]prompts.Comparator{
-			"0": {
-				CompareType:  prompts.MoreThan,
-				CompareValue: 0,
+		[]prompts.Comparator{
+			{
+				Label: "0",
+				Type:  prompts.MoreThan,
+				Value: 0,
 			},
-		})
+		},
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -320,12 +343,14 @@ func getMaxValidatorWeightFactor(app *application.Avalanche) (byte, error) {
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Maximum Validator Weight Factor is %d", defaultMaxValidatorWeightFactor))
 	maxValidatorWeightFactor, err := app.Prompt.CaptureUint64Compare(
 		"Maximum Validator Weight Factor",
-		map[string]prompts.Comparator{
-			"0": {
-				CompareType:  prompts.MoreThan,
-				CompareValue: 0,
+		[]prompts.Comparator{
+			{
+				Label: "0",
+				Type:  prompts.MoreThan,
+				Value: 0,
 			},
-		})
+		},
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -341,12 +366,14 @@ func getUptimeRequirement(app *application.Avalanche) (uint32, error) {
 	ux.Logger.PrintToUser(fmt.Sprintf("Mainnet Uptime Requirement is %s", ux.ConvertToStringWithThousandSeparator(uint64(defaultUptimeRequirement*reward.PercentDenominator))))
 	uptimeReq, err := app.Prompt.CaptureUint64Compare(
 		"Uptime Requirement",
-		map[string]prompts.Comparator{
-			"Percent Denominator(1_0000_0000)": {
-				CompareType:  prompts.LessThanEq,
-				CompareValue: reward.PercentDenominator,
+		[]prompts.Comparator{
+			{
+				Label: "Percent Denominator(1_0000_0000)",
+				Type:  prompts.LessThanEq,
+				Value: reward.PercentDenominator,
 			},
-		})
+		},
+	)
 	if err != nil {
 		return 0, err
 	}
