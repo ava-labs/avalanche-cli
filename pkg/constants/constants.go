@@ -16,13 +16,14 @@ const (
 	AvalancheCliBinDir = "bin"
 	RunDir             = "runs"
 
-	SuffixSeparator = "_"
-	SidecarFileName = "sidecar.json"
-	GenesisFileName = "genesis.json"
-	SidecarSuffix   = SuffixSeparator + SidecarFileName
-	GenesisSuffix   = SuffixSeparator + GenesisFileName
+	SuffixSeparator             = "_"
+	SidecarFileName             = "sidecar.json"
+	GenesisFileName             = "genesis.json"
+	ElasticSubnetConfigFileName = "elastic_subnet_config.json"
+	SidecarSuffix               = SuffixSeparator + SidecarFileName
+	GenesisSuffix               = SuffixSeparator + GenesisFileName
 
-	SidecarVersion = "1.3.0"
+	SidecarVersion = "1.4.0"
 
 	MaxLogFileSize   = 4
 	MaxNumOfLogFiles = 5
@@ -126,4 +127,8 @@ const (
 	BlockchainIDLabel = "BlockchainID: "
 
 	PluginDir = "plugins"
+
+	DefaultWalletCreationTimeout = 5 * time.Second
+
+	DefaultConfirmTxTimeout = 20 * time.Second
 )
