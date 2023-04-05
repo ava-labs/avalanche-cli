@@ -258,15 +258,12 @@ func importRunningSubnet(*cobra.Command, []string) error {
 			return fmt.Errorf("failed getting RPCVersion for VM type %s with version %s", vmType, sc.VMVersion)
 		}
 	}
-
-	switch vmType {
-	case models.SubnetEvm:
+	if vmType == models.SubnetEvm {
 		var genesis core.Genesis
 		if err := json.Unmarshal(genBytes, &genesis); err != nil {
 			return err
 		}
 		sc.ChainID = genesis.Config.ChainID.String()
-
 	}
 
 	if err := app.CreateSidecar(sc); err != nil {
