@@ -8,7 +8,6 @@ type VMType string
 
 const (
 	SubnetEvm   = "Subnet-EVM"
-	SpacesVM    = "SpacesVM"
 	BlobVM      = "Blob VM"
 	TimestampVM = "Timestamp VM"
 	CustomVM    = "Custom"
@@ -18,8 +17,6 @@ func VMTypeFromString(s string) VMType {
 	switch s {
 	case SubnetEvm:
 		return SubnetEvm
-	case SpacesVM:
-		return SpacesVM
 	case BlobVM:
 		return BlobVM
 	case TimestampVM:
@@ -33,8 +30,6 @@ func (v VMType) RepoName() string {
 	switch v {
 	case SubnetEvm:
 		return constants.SubnetEVMRepoName
-	case SpacesVM:
-		return constants.SpacesVMRepoName
 	default:
 		return "unknown"
 	}

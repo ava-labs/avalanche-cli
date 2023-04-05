@@ -137,23 +137,6 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		commands.DeleteElasticSubnetConfig(subnetName)
 	})
 
-	ginkgo.It("can deploy a SpacesVM subnet to local", func() {
-		commands.CreateSpacesVMConfigWithVersion(subnetName, utils.SpacesVMGenesisPath, mapping[utils.Spaces2AvagoKey])
-		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, mapping[utils.Avago2SpacesKey])
-		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
-		if err != nil {
-			fmt.Println(deployOutput)
-		}
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
-		rpc := rpcs[0]
-
-		err = utils.RunSpacesVMAPITest(rpc)
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		commands.DeleteSubnetConfig(subnetName)
-	})
-
 	ginkgo.It("can load viper config and setup node properties for local deploy", func() {
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 		deployOutput := commands.DeploySubnetLocallyWithViperConf(subnetName, confPath)
@@ -362,25 +345,6 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		err = utils.RunHardhatTests(utils.BaseTest)
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		commands.DeleteSubnetConfig(subnetName)
-	})
-
-	ginkgo.It("can deploy a spaces-vm with old version", func() {
-		spacesVMVersion := "v0.0.9"
-
-		commands.CreateSpacesVMConfigWithVersion(subnetName, utils.SpacesVMGenesisPath, spacesVMVersion)
-		deployOutput := commands.DeploySubnetLocally(subnetName)
-		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
-		if err != nil {
-			fmt.Println(deployOutput)
-		}
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
-		rpc := rpcs[0]
-
-		err = utils.RunSpacesVMAPITest(rpc)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		commands.DeleteSubnetConfig(subnetName)

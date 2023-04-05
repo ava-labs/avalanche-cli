@@ -23,8 +23,6 @@ func GetRPCProtocolVersion(app *application.Avalanche, vmType models.VMType, vmV
 	switch vmType {
 	case models.SubnetEvm:
 		url = constants.SubnetEVMRPCCompatibilityURL
-	case models.SpacesVM:
-		url = constants.SpacesVMRPCCompatibilityURL
 	default:
 		return 0, errors.New("unknown VM type")
 	}
