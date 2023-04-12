@@ -133,7 +133,7 @@ func (d *PublicDeployer) RemoveValidator(
 	}
 
 	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign add validator hash on the ledger device *** ")
+		ux.Logger.PrintToUser("*** Please sign remove validator hash on the ledger device *** ")
 	}
 
 	if len(subnetAuthKeys) == 1 {
