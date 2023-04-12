@@ -77,14 +77,11 @@ const (
 	AvaLabsOrg          = "ava-labs"
 	AvalancheGoRepoName = "avalanchego"
 	SubnetEVMRepoName   = "subnet-evm"
-	SpacesVMRepoName    = "spacesvm"
 
 	AvalancheGoInstallDir = "avalanchego"
 	SubnetEVMInstallDir   = "subnet-evm"
-	SpacesVMInstallDir    = "spacesvm"
 
 	SubnetEVMBin = "subnet-evm"
-	SpacesVMBin  = "spacesvm"
 
 	DefaultNodeRunURL = "http://127.0.0.1:9650"
 
@@ -118,7 +115,6 @@ const (
 	AvalancheGoCompatibilityVersionAdded = "v1.9.2"
 	AvalancheGoCompatibilityURL          = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
 	SubnetEVMRPCCompatibilityURL         = "https://raw.githubusercontent.com/ava-labs/subnet-evm/master/compatibility.json"
-	SpacesVMRPCCompatibilityURL          = "https://raw.githubusercontent.com/ava-labs/spacesvm/master/compatibility.json"
 
 	YesLabel = "Yes"
 	NoLabel  = "No"

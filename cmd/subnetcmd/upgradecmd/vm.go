@@ -125,7 +125,7 @@ func upgradeVM(_ *cobra.Command, args []string) error {
 	}
 
 	vmType := sc.VM
-	if vmType == models.SubnetEvm || vmType == models.SpacesVM {
+	if vmType == models.SubnetEvm {
 		return selectUpdateOption(vmType, sc, networkToUpgrade)
 	}
 
@@ -323,17 +323,6 @@ func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
 		}
 
 		rpcVersion, err = vm.GetRPCProtocolVersion(app, models.SubnetEvm, targetVersion)
-		if err != nil {
-			return fmt.Errorf("unable to get RPC version: %w", err)
-		}
-	case models.SpacesVM:
-		// download the binary and prepare to copy it
-		vmBin, err = binutils.SetupSpacesVM(app, targetVersion)
-		if err != nil {
-			return fmt.Errorf("failed to install spaces-vm: %w", err)
-		}
-
-		rpcVersion, err = vm.GetRPCProtocolVersion(app, models.SpacesVM, targetVersion)
 		if err != nil {
 			return fmt.Errorf("unable to get RPC version: %w", err)
 		}

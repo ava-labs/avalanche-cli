@@ -93,44 +93,6 @@ func ConfigurePerNodeChainConfig(subnetName string, perNodeChainConfigPath strin
 }
 
 /* #nosec G204 */
-func CreateSpacesVMConfig(subnetName string, genesisPath string) {
-	mapper := utils.NewVersionMapper()
-	// TODO: should we change interfaces here to allow err checking
-	mapping, err := utils.GetVersionMapping(mapper)
-	gomega.Expect(err).Should(gomega.BeNil())
-	CreateSpacesVMConfigWithVersion(subnetName, genesisPath, mapping[utils.Spaces2AvagoKey])
-}
-
-/* #nosec G204 */
-func CreateSpacesVMConfigWithVersion(subnetName string, genesisPath string, version string) {
-	// Check config does not already exist
-	exists, err := utils.SubnetConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeFalse())
-
-	// Create config
-	cmdArgs := []string{SubnetCmd, "create", "--genesis", genesisPath, "--spacesvm", subnetName}
-	if version == "" {
-		cmdArgs = append(cmdArgs, "--latest")
-	} else {
-		cmdArgs = append(cmdArgs, "--vm-version", version)
-	}
-	cmd := exec.Command(CLIBinary, cmdArgs...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(cmd.String())
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-	}
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	// Config should now exist
-	exists, err = utils.SubnetConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeTrue())
-}
-
-/* #nosec G204 */
 func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)

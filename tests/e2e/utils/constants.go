@@ -9,12 +9,9 @@ const (
 	confFilePath = hardhatDir + "/dynamic_conf.json"
 	greeterFile  = hardhatDir + "/greeter.json"
 
-	BaseTest      = "./test/index.ts"
-	GreeterScript = "./scripts/deploy.ts"
-	GreeterCheck  = "./scripts/checkGreeting.ts"
-
-	Spaces2AvagoKey        = "spaces2avago"
-	Avago2SpacesKey        = "avago2spaces"
+	BaseTest               = "./test/index.ts"
+	GreeterScript          = "./scripts/deploy.ts"
+	GreeterCheck           = "./scripts/checkGreeting.ts"
 	SoloSubnetEVMKey1      = "soloSubnetEVMVersion1"
 	SoloSubnetEVMKey2      = "soloSubnetEVMVersion2"
 	SoloAvagoKey           = "soloAvagoVersion"
@@ -28,7 +25,6 @@ const (
 
 	SubnetEvmGenesisPath      = "tests/e2e/assets/test_subnet_evm_genesis.json"
 	SubnetEvmGenesis2Path     = "tests/e2e/assets/test_subnet_evm_genesis_2.json"
-	SpacesVMGenesisPath       = "tests/e2e/assets/test_spacesvm_genesis.json"
 	EwoqKeyPath               = "tests/e2e/assets/ewoq_key.pk"
 	SubnetEvmAllowFeeRecpPath = "tests/e2e/assets/test_subnet_evm_allowFeeRecps_genesis.json"
 	SubnetEvmGenesisBadPath   = "tests/e2e/assets/test_subnet_evm_genesis_bad.json"

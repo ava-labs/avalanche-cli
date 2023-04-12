@@ -35,10 +35,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
-	"github.com/ava-labs/spacesvm/chain"
-	spacesvmclient "github.com/ava-labs/spacesvm/client"
 	"github.com/ava-labs/subnet-evm/ethclient"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const (
@@ -641,71 +638,6 @@ func WaitSubnetValidators(subnetIDStr string, nodeInfos map[string]NodeInfo) err
 		case <-time.After(time.Second * 1):
 		}
 	}
-}
-
-func RunSpacesVMAPITest(rpc string) error {
-	privHexBytes, err := os.ReadFile(EwoqKeyPath)
-	if err != nil {
-		return err
-	}
-	priv, err := crypto.HexToECDSA(strings.TrimSpace(string(privHexBytes)))
-	if err != nil {
-		return err
-	}
-
-	cli := spacesvmclient.New(strings.ReplaceAll(rpc, "/rpc", ""), constants.E2ERequestTimeout)
-
-	// claim a space
-	space := "clispace"
-	claimTx := &chain.ClaimTx{
-		BaseTx: &chain.BaseTx{},
-		Space:  space,
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
-	_, _, err = spacesvmclient.SignIssueRawTx(
-		ctx,
-		cli,
-		claimTx,
-		priv,
-		spacesvmclient.WithPollTx(),
-		spacesvmclient.WithInfo(space),
-	)
-	cancel()
-	if err != nil {
-		return err
-	}
-
-	// set key/val pair
-	k, v := "key", []byte("value")
-	setTx := &chain.SetTx{
-		BaseTx: &chain.BaseTx{},
-		Space:  space,
-		Key:    k,
-		Value:  v,
-	}
-	ctx, cancel = context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
-	_, _, err = spacesvmclient.SignIssueRawTx(
-		ctx,
-		cli,
-		setTx,
-		priv,
-		spacesvmclient.WithPollTx(),
-		spacesvmclient.WithInfo(space),
-	)
-	cancel()
-	if err != nil {
-		return err
-	}
-
-	// check key/val pair
-	_, rv, _, err := cli.Resolve(context.Background(), space+"/"+k)
-	if err != nil {
-		return err
-	}
-	if string(rv) != string(v) {
-		return fmt.Errorf("expected value to be %q, got %q", v, rv)
-	}
-	return nil
 }
 
 func GetFileHash(filename string) (string, error) {

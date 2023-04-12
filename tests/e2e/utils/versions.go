@@ -16,7 +16,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"go.uber.org/zap"
 	"golang.org/x/mod/semver"
 )
 
@@ -42,8 +41,6 @@ VersionMapper keys and their usage:
  * SoloSubnetEVMKey2      needs to be between the two subnet-evm versions
  													(latest might not be compatible with second latest)
 
- * Spaces2Avago 					Latest spaces-vm version
- * Avago2Spaces						Latest avalanchego version compatible with that spaces-vm
 
 */
 
@@ -94,8 +91,6 @@ func (*versionMapper) GetCompatURL(vmType models.VMType) string {
 	switch vmType {
 	case models.SubnetEvm:
 		return constants.SubnetEVMRPCCompatibilityURL
-	case models.SpacesVM:
-		return constants.SpacesVMRPCCompatibilityURL
 	case models.CustomVM:
 		// TODO: unclear yet what we should return here
 		return ""
@@ -254,35 +249,6 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 			break
 		}
 	}
-
-	// finally let's do the SpacesVM
-	// this is simpler, we just need the latest and its compatible Avalanchego
-	spacesVMversions, spacesVMmapping, err := getVersions(mapper, models.SpacesVM)
-	if err != nil {
-		return nil, err
-	}
-	// the assumption is that the latest SpacesVM ALWAYS has a compatible avalanchego already
-	latest := spacesVMversions[0]
-	rpc := spacesVMmapping[latest]
-	avago, err := mapper.GetLatestAvagoByProtoVersion(mapper.GetApp(), rpc, mapper.GetAvagoURL())
-	if err != nil {
-		return nil, err
-	}
-	binaryToVersion[Spaces2AvagoKey] = latest
-	binaryToVersion[Avago2SpacesKey] = avago
-
-	mapper.GetApp().Log.Debug("mapping:",
-		zap.String("SoloSubnetEVM1", binaryToVersion[SoloSubnetEVMKey1]),
-		zap.String("SoloSubnetEVM2", binaryToVersion[SoloSubnetEVMKey2]),
-		zap.String("SoloAvago", binaryToVersion[SoloAvagoKey]),
-		zap.String("MultiAvago1", binaryToVersion[MultiAvago1Key]),
-		zap.String("MultiAvago2", binaryToVersion[MultiAvago2Key]),
-		zap.String("MultiAvagoSubnetEVM", binaryToVersion[MultiAvagoSubnetEVMKey]),
-		zap.String("LatestEVM2Avago", binaryToVersion[LatestEVM2AvagoKey]),
-		zap.String("LatestAvago2EVM", binaryToVersion[LatestAvago2EVMKey]),
-		zap.String("Spaces2Avago", binaryToVersion[Spaces2AvagoKey]),
-		zap.String("Avago2Spaces", binaryToVersion[Avago2SpacesKey]),
-	)
 
 	return binaryToVersion, nil
 }
