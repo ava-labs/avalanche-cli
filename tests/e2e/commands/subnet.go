@@ -19,12 +19,13 @@ import (
 )
 
 /* #nosec G204 */
-func CreateSubnetEvmConfig(subnetName string, genesisPath string) {
+func CreateSubnetEvmConfig(subnetName string, genesisPath string) (string, string) {
 	mapper := utils.NewVersionMapper()
 	mapping, err := utils.GetVersionMapping(mapper)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// let's use a SubnetEVM version which has a guaranteed compatible avago
 	CreateSubnetEvmConfigWithVersion(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey])
+	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
 }
 
 /* #nosec G204 */
