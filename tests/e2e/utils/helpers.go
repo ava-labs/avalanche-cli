@@ -18,6 +18,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
@@ -33,10 +35,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
-	"github.com/ava-labs/spacesvm/chain"
-	spacesvmclient "github.com/ava-labs/spacesvm/client"
 	"github.com/ava-labs/subnet-evm/ethclient"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const (
@@ -111,6 +110,19 @@ func sidecarExists(subnetName string) (bool, error) {
 		return false, err
 	}
 	return sidecarExists, nil
+}
+
+func ElasticSubnetConfigExists(subnetName string) (bool, error) {
+	elasticSubnetConfig := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.ElasticSubnetConfigFileName)
+	elasticSubnetConfigExists := true
+	if _, err := os.Stat(elasticSubnetConfig); errors.Is(err, os.ErrNotExist) {
+		// does *not* exist
+		elasticSubnetConfigExists = false
+	} else if err != nil {
+		// Schrodinger: file may or may not exist. See err for details.
+		return false, err
+	}
+	return elasticSubnetConfigExists, nil
 }
 
 func SubnetConfigExists(subnetName string) (bool, error) {
@@ -628,71 +640,6 @@ func WaitSubnetValidators(subnetIDStr string, nodeInfos map[string]NodeInfo) err
 	}
 }
 
-func RunSpacesVMAPITest(rpc string) error {
-	privHexBytes, err := os.ReadFile(EwoqKeyPath)
-	if err != nil {
-		return err
-	}
-	priv, err := crypto.HexToECDSA(strings.TrimSpace(string(privHexBytes)))
-	if err != nil {
-		return err
-	}
-
-	cli := spacesvmclient.New(strings.ReplaceAll(rpc, "/rpc", ""), constants.E2ERequestTimeout)
-
-	// claim a space
-	space := "clispace"
-	claimTx := &chain.ClaimTx{
-		BaseTx: &chain.BaseTx{},
-		Space:  space,
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
-	_, _, err = spacesvmclient.SignIssueRawTx(
-		ctx,
-		cli,
-		claimTx,
-		priv,
-		spacesvmclient.WithPollTx(),
-		spacesvmclient.WithInfo(space),
-	)
-	cancel()
-	if err != nil {
-		return err
-	}
-
-	// set key/val pair
-	k, v := "key", []byte("value")
-	setTx := &chain.SetTx{
-		BaseTx: &chain.BaseTx{},
-		Space:  space,
-		Key:    k,
-		Value:  v,
-	}
-	ctx, cancel = context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
-	_, _, err = spacesvmclient.SignIssueRawTx(
-		ctx,
-		cli,
-		setTx,
-		priv,
-		spacesvmclient.WithPollTx(),
-		spacesvmclient.WithInfo(space),
-	)
-	cancel()
-	if err != nil {
-		return err
-	}
-
-	// check key/val pair
-	_, rv, _, err := cli.Resolve(context.Background(), space+"/"+k)
-	if err != nil {
-		return err
-	}
-	if string(rv) != string(v) {
-		return fmt.Errorf("expected value to be %q, got %q", v, rv)
-	}
-	return nil
-}
-
 func GetFileHash(filename string) (string, error) {
 	f, err := os.Open(filename)
 	if err != nil {
@@ -794,4 +741,37 @@ func GetPluginBinaries() ([]string, error) {
 	}
 
 	return pluginFiles, nil
+}
+
+func getSideCar(subnetName string) (models.Sidecar, error) {
+	exists, err := sidecarExists(subnetName)
+	if err != nil {
+		return models.Sidecar{}, fmt.Errorf("failed to access sidecar for %s: %w", subnetName, err)
+	}
+	if !exists {
+		return models.Sidecar{}, fmt.Errorf("failed to access sidecar for %s: not found", subnetName)
+	}
+
+	sidecar := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.SidecarFileName)
+
+	jsonBytes, err := os.ReadFile(sidecar)
+	if err != nil {
+		return models.Sidecar{}, err
+	}
+
+	var sc models.Sidecar
+	err = json.Unmarshal(jsonBytes, &sc)
+	if err != nil {
+		return models.Sidecar{}, err
+	}
+	return sc, nil
+}
+
+func GetCurrentSupply(subnetName string) error {
+	sc, err := getSideCar(subnetName)
+	if err != nil {
+		return err
+	}
+	subnetID := sc.Networks[models.Local.String()].SubnetID
+	return subnet.GetCurrentSupply(subnetID)
 }

@@ -57,7 +57,7 @@ avalanche network start
 
 ## Notable Features
 
-- Creation of Subnet-EVM, SpacesVM, and custom virtual machine subnet configurations
+- Creation of Subnet-EVM, and custom virtual machine subnet configurations
 - Precompile integration and configuration
 - Local deployment of subnets for development and rapid prototyping
 - Fuji Testnet and Avalanche Mainnet deployment of subnets

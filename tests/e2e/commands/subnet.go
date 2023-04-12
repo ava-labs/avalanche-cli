@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -92,44 +93,6 @@ func ConfigurePerNodeChainConfig(subnetName string, perNodeChainConfigPath strin
 }
 
 /* #nosec G204 */
-func CreateSpacesVMConfig(subnetName string, genesisPath string) {
-	mapper := utils.NewVersionMapper()
-	// TODO: should we change interfaces here to allow err checking
-	mapping, err := utils.GetVersionMapping(mapper)
-	gomega.Expect(err).Should(gomega.BeNil())
-	CreateSpacesVMConfigWithVersion(subnetName, genesisPath, mapping[utils.Spaces2AvagoKey])
-}
-
-/* #nosec G204 */
-func CreateSpacesVMConfigWithVersion(subnetName string, genesisPath string, version string) {
-	// Check config does not already exist
-	exists, err := utils.SubnetConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeFalse())
-
-	// Create config
-	cmdArgs := []string{SubnetCmd, "create", "--genesis", genesisPath, "--spacesvm", subnetName, "--" + constants.SkipUpdateFlag}
-	if version == "" {
-		cmdArgs = append(cmdArgs, "--latest")
-	} else {
-		cmdArgs = append(cmdArgs, "--vm-version", version)
-	}
-	cmd := exec.Command(CLIBinary, cmdArgs...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(cmd.String())
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-	}
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	// Config should now exist
-	exists, err = utils.SubnetConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeTrue())
-}
-
-/* #nosec G204 */
 func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -197,6 +160,18 @@ func DeleteSubnetConfig(subnetName string) {
 	exists, err = utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeFalse())
+}
+
+func DeleteElasticSubnetConfig(subnetName string) {
+	var err error
+	elasticSubnetConfig := filepath.Join(utils.GetBaseDir(), constants.SubnetDir, subnetName, constants.ElasticSubnetConfigFileName)
+	if _, err = os.Stat(elasticSubnetConfig); errors.Is(err, os.ErrNotExist) {
+		// does *not* exist
+		err = nil
+	} else {
+		err = os.Remove(elasticSubnetConfig)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
 }
 
 // Returns the deploy output
@@ -757,4 +732,33 @@ func SimulateGetSubnetStatsFuji(subnetName, subnetID string) string {
 	}
 	gomega.Expect(exitErr).Should(gomega.BeNil())
 	return string(output)
+}
+
+func TransformElasticSubnetLocally(subnetName string) (string, error) {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		ElasticTransformCmd,
+		"--local",
+		"--tokenName",
+		"BLIZZARD",
+		"--tokenSymbol",
+		"BRRR",
+		"--default",
+		"--force",
+		subnetName,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		var stderr string
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+		fmt.Println(stderr)
+	}
+	return string(output), err
 }

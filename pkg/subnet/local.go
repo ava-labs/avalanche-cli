@@ -15,6 +15,17 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+
+	"github.com/ava-labs/avalanchego/vms/components/avax"
+	"github.com/ava-labs/avalanchego/vms/components/verify"
+
+	"github.com/ava-labs/avalanchego/genesis"
+	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
+	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
+	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -29,7 +40,6 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/coreth/params"
-	spacesvmchain "github.com/ava-labs/spacesvm/chain"
 	"github.com/ava-labs/subnet-evm/core"
 	"go.uber.org/zap"
 )
@@ -77,6 +87,121 @@ func (d *LocalDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, 
 	return d.doDeploy(chain, chainGenesis, genesisPath)
 }
 
+func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string, maxSupply uint64) (ids.ID, error) {
+	xWallet := wallet.X()
+	owner := &secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs: []ids.ShortID{
+			genesis.EWOQKey.PublicKey().Address(),
+		},
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultWalletCreationTimeout)
+	subnetAssetID, err := xWallet.IssueCreateAssetTx(
+		tokenName,
+		tokenSymbol,
+		9, // denomination for UI purposes only in explorer
+		map[uint32][]verify.State{
+			0: {
+				&secp256k1fx.TransferOutput{
+					Amt:          maxSupply,
+					OutputOwners: *owner,
+				},
+			},
+		},
+		common.WithContext(ctx),
+	)
+	defer cancel()
+	if err != nil {
+		return ids.Empty, err
+	}
+	return subnetAssetID, nil
+}
+
+func exportToPChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners, subnetAssetID ids.ID, maxSupply uint64) error {
+	xWallet := wallet.X()
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultWalletCreationTimeout)
+
+	_, err := xWallet.IssueExportTx(
+		ids.Empty,
+		[]*avax.TransferableOutput{
+			{
+				Asset: avax.Asset{
+					ID: subnetAssetID,
+				},
+				Out: &secp256k1fx.TransferOutput{
+					Amt:          maxSupply,
+					OutputOwners: *owner,
+				},
+			},
+		},
+		common.WithContext(ctx),
+	)
+	defer cancel()
+	return err
+}
+
+func importFromXChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners) error {
+	xWallet := wallet.X()
+	pWallet := wallet.P()
+	xChainID := xWallet.BlockchainID()
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultWalletCreationTimeout)
+	_, err := pWallet.IssueImportTx(
+		xChainID,
+		owner,
+		common.WithContext(ctx),
+	)
+	defer cancel()
+	return err
+}
+
+func IssueTransformSubnetTx(
+	elasticSubnetConfig models.ElasticSubnetConfig,
+	kc keychain.Keychain,
+	subnetID ids.ID,
+	tokenName string,
+	tokenSymbol string,
+	maxSupply uint64,
+) (ids.ID, ids.ID, error) {
+	ctx := context.Background()
+	api := constants.LocalAPIEndpoint
+	wallet, err := primary.NewWalletWithTxs(ctx, api, kc, subnetID)
+	if err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+	subnetAssetID, err := getAssetID(wallet, tokenName, tokenSymbol, maxSupply)
+	if err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+	owner := &secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs: []ids.ShortID{
+			genesis.EWOQKey.PublicKey().Address(),
+		},
+	}
+	err = exportToPChain(wallet, owner, subnetAssetID, maxSupply)
+	if err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+	err = importFromXChain(wallet, owner)
+	if err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultConfirmTxTimeout)
+	transformSubnetTxID, err := wallet.P().IssueTransformSubnetTx(elasticSubnetConfig.SubnetID, subnetAssetID,
+		elasticSubnetConfig.InitialSupply, elasticSubnetConfig.MaxSupply, elasticSubnetConfig.MinConsumptionRate,
+		elasticSubnetConfig.MaxConsumptionRate, elasticSubnetConfig.MinValidatorStake, elasticSubnetConfig.MaxValidatorStake,
+		elasticSubnetConfig.MinStakeDuration, elasticSubnetConfig.MaxStakeDuration, elasticSubnetConfig.MinDelegationFee,
+		elasticSubnetConfig.MinDelegatorStake, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement,
+		common.WithContext(ctx),
+	)
+	defer cancel()
+	if err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+	return transformSubnetTxID, subnetAssetID, err
+}
+
 func (d *LocalDeployer) StartServer() error {
 	isRunning, err := d.procChecker.IsServerProcessRunning(d.app)
 	if err != nil {
@@ -90,6 +215,15 @@ func (d *LocalDeployer) StartServer() error {
 		d.backendStartedHere = true
 	}
 	return nil
+}
+
+func GetCurrentSupply(subnetID ids.ID) error {
+	api := constants.LocalAPIEndpoint
+	pClient := platformvm.NewClient(api)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+	_, err := pClient.GetCurrentSupply(ctx, subnetID)
+	return err
 }
 
 // BackendStartedHere returns true if the backend was started by this run,
@@ -264,14 +398,8 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	ux.Logger.PrintToUser("Browser Extension connection details (any node URL from above works):")
 	ux.Logger.PrintToUser("RPC URL:          %s", endpoint[strings.LastIndex(endpoint, "http"):])
 
-	switch sc.VM {
-	case models.SubnetEvm:
+	if sc.VM == models.SubnetEvm {
 		if err := d.printExtraEvmInfo(chain, chainGenesis); err != nil {
-			// not supposed to happen due to genesis pre validation
-			return ids.Empty, ids.Empty, nil
-		}
-	case models.SpacesVM:
-		if err := d.printExtraSpacesVMInfo(chainGenesis); err != nil {
 			// not supposed to happen due to genesis pre validation
 			return ids.Empty, ids.Empty, nil
 		}
@@ -286,24 +414,6 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 	}
 	return subnetID, blockchainID, nil
-}
-
-func (*LocalDeployer) printExtraSpacesVMInfo(chainGenesis []byte) error {
-	var genesis spacesvmchain.Genesis
-	if err := json.Unmarshal(chainGenesis, &genesis); err != nil {
-		return fmt.Errorf("failed to unmarshall genesis: %w", err)
-	}
-	for _, alloc := range genesis.CustomAllocation {
-		address := alloc.Address
-		amount := alloc.Balance
-		amountStr := fmt.Sprintf("%d", amount)
-		if address == vm.PrefundedEwoqAddress {
-			ux.Logger.PrintToUser("Funded address:   %s with %s - private key: %s", address, amountStr, vm.PrefundedEwoqPrivate)
-		} else {
-			ux.Logger.PrintToUser("Funded address:   %s with %s", address, amountStr)
-		}
-	}
-	return nil
 }
 
 func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte) error {

@@ -46,13 +46,6 @@ func TestInfoKnownVMs(t *testing.T) {
 	cases := []testCase{
 		{
 			strVer:   "v0.9.99",
-			repoName: "spacesvm",
-			vmBinDir: vmBinDir,
-			vmBin:    "mySpacesVM",
-			dl:       binutils.NewSpacesVMDownloader(),
-		},
-		{
-			strVer:   "v0.9.99",
 			repoName: "subnet-evm",
 			vmBinDir: vmBinDir,
 			vmBin:    "mySubnetEVM",
