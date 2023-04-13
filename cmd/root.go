@@ -3,16 +3,19 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/keycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/transactioncmd"
+	"github.com/ava-labs/avalanche-cli/cmd/updatecmd"
 	"github.com/ava-labs/avalanche-cli/internal/migrations"
 	"github.com/ava-labs/avalanche-cli/pkg/apmintegration"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -30,9 +33,10 @@ import (
 var (
 	app *application.Avalanche
 
-	logLevel string
-	Version  = ""
-	cfgFile  string
+	logLevel  string
+	Version   = ""
+	cfgFile   string
+	skipCheck bool
 )
 
 func NewRootCmd() *cobra.Command {
@@ -54,6 +58,7 @@ in with avalanche subnet create myNewSubnet.`,
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.avalanche-cli.json)")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "ERROR", "log level for the application")
+	rootCmd.PersistentFlags().BoolVar(&skipCheck, constants.SkipUpdateFlag, false, "skip check for new versions")
 
 	// add sub commands
 	rootCmd.AddCommand(subnetcmd.NewCmd(app))
@@ -65,6 +70,9 @@ in with avalanche subnet create myNewSubnet.`,
 
 	// add transaction command
 	rootCmd.AddCommand(transactioncmd.NewCmd(app))
+
+	// add update command
+	rootCmd.AddCommand(updatecmd.NewCmd(app, Version))
 	return rootCmd
 }
 
@@ -99,6 +107,76 @@ func createApp(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	if err := checkForUpdates(cmd, app); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// checkForUpdates evaluates first if the user is maybe wanting to skip the update check
+// if there's no skip, it runs the update check
+func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
+	var (
+		lastActs *application.LastActions
+		err      error
+	)
+	// we store a timestamp of the last skip check in a file
+	lastActs, err = app.ReadLastActionsFile()
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			// if the file does not exist AND the user is requesting to skipCheck,
+			// we write the new file
+			if skipCheck {
+				lastActs := &application.LastActions{
+					LastSkipCheck: time.Now(),
+				}
+				app.WriteLastActionsFile(lastActs)
+				return nil
+			}
+		}
+		app.Log.Warn("failed to read last-actions file! This is non-critical but is logged", zap.Error(err))
+		lastActs = &application.LastActions{}
+	}
+
+	// if the user had requested to skipCheck less than 24 hrs ago, we skip in any case
+	if lastActs.LastSkipCheck != (time.Time{}) &&
+		time.Now().Before(lastActs.LastSkipCheck.Add(24*time.Hour)) {
+		app.Log.Debug("last checked %s, so less than 24 hrs earlier. Skipping to check for updates.",
+			zap.Time("lastSkipCheck", lastActs.LastSkipCheck))
+		return nil
+	}
+
+	// more than 24hrs ago or the user never asked to skip before
+	// we update the timestamp and write the file again
+	if skipCheck {
+		if lastActs == nil {
+			lastActs = &application.LastActions{}
+		}
+		lastActs.LastSkipCheck = time.Now()
+		app.WriteLastActionsFile(lastActs)
+		return nil
+	}
+
+	// at this point we want to run the check
+	isUserCalled := false
+	if err := updatecmd.Update(cmd, isUserCalled); err != nil {
+		if errors.Is(err, updatecmd.ErrUserAbortedInstallation) {
+			return nil
+		}
+		if errors.Is(err, updatecmd.ErrNotInstalled) {
+			return nil
+		}
+		if err == updatecmd.ErrNoVersion {
+			ux.Logger.PrintToUser(
+				"Attempted to check if a new version is available, but couldn't find the currently running version information")
+			ux.Logger.PrintToUser(
+				"Make sure to follow official instructions, or automatic updates won't be available for you")
+			return nil
+		}
+		return err
+	}
+	ux.Logger.PrintToUser("The new version will be used on next command execution")
 	return nil
 }
 

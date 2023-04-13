@@ -6,7 +6,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
+
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -66,4 +70,10 @@ func PrintTableEndpoints(clusterInfo *rpcpb.ClusterInfo) {
 		}
 	}
 	table.Render()
+}
+
+func ConvertToStringWithThousandSeparator(input uint64) string {
+	p := message.NewPrinter(language.English)
+	s := p.Sprintf("%d", input)
+	return strings.ReplaceAll(s, ",", "_")
 }

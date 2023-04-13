@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os/exec"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/onsi/gomega"
 )
@@ -17,6 +18,7 @@ func CleanNetwork() {
 		CLIBinary,
 		NetworkCmd,
 		"clean",
+		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -34,6 +36,7 @@ func CleanNetworkHard() {
 		NetworkCmd,
 		"clean",
 		"--hard",
+		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -57,7 +60,12 @@ func StartNetwork() string {
 func StartNetworkWithVersion(version string) string {
 	cmdArgs := []string{NetworkCmd, "start"}
 	if version != "" {
-		cmdArgs = append(cmdArgs, "--avalanchego-version", version)
+		cmdArgs = append(
+			cmdArgs,
+			"--avalanchego-version",
+			version,
+			"--"+constants.SkipUpdateFlag,
+		)
 	}
 	cmd := exec.Command(CLIBinary, cmdArgs...)
 	output, err := cmd.CombinedOutput()
@@ -76,6 +84,7 @@ func StopNetwork() {
 		CLIBinary,
 		NetworkCmd,
 		"stop",
+		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {

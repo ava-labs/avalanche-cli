@@ -40,7 +40,7 @@ func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesi
 			return nil, &models.Sidecar{}, err
 		}
 
-		subnetEVMVersion, _, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion, false)
+		subnetEVMVersion, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion, false)
 		if err != nil {
 			return nil, &models.Sidecar{}, err
 		}

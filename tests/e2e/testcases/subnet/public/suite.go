@@ -56,8 +56,6 @@ func deploySubnetToFuji() (string, map[string]utils.NodeInfo) {
 
 var _ = ginkgo.Describe("[Public Subnet]", func() {
 	ginkgo.BeforeEach(func() {
-		// local network
-		_ = commands.StartNetwork()
 		// key
 		_ = utils.DeleteKey(keyName)
 		output, err := commands.CreateKeyFromPath(keyName, utils.EwoqKeyPath)
@@ -68,7 +66,10 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		// subnet config
 		_ = utils.DeleteConfigs(subnetName)
-		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+		_, avagoVersion := commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+
+		// local network
+		commands.StartNetworkWithVersion(avagoVersion)
 	})
 
 	ginkgo.AfterEach(func() {

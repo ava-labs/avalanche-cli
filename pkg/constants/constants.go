@@ -16,13 +16,14 @@ const (
 	AvalancheCliBinDir = "bin"
 	RunDir             = "runs"
 
-	SuffixSeparator = "_"
-	SidecarFileName = "sidecar.json"
-	GenesisFileName = "genesis.json"
-	SidecarSuffix   = SuffixSeparator + SidecarFileName
-	GenesisSuffix   = SuffixSeparator + GenesisFileName
+	SuffixSeparator             = "_"
+	SidecarFileName             = "sidecar.json"
+	GenesisFileName             = "genesis.json"
+	ElasticSubnetConfigFileName = "elastic_subnet_config.json"
+	SidecarSuffix               = SuffixSeparator + SidecarFileName
+	GenesisSuffix               = SuffixSeparator + GenesisFileName
 
-	SidecarVersion = "1.3.0"
+	SidecarVersion = "1.4.0"
 
 	MaxLogFileSize   = 4
 	MaxNumOfLogFiles = 5
@@ -52,6 +53,9 @@ const (
 	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/" + BootstrapSnapshotLocalPath
 	BootstrapSnapshotSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/sha256sum.txt"
 
+	CliInstallationURL    = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
+	ExpectedCliInstallErr = "resource temporarily unavailable"
+
 	KeyDir     = "key"
 	KeySuffix  = ".pk"
 	YAMLSuffix = ".yml"
@@ -76,14 +80,12 @@ const (
 	AvaLabsOrg          = "ava-labs"
 	AvalancheGoRepoName = "avalanchego"
 	SubnetEVMRepoName   = "subnet-evm"
-	SpacesVMRepoName    = "spacesvm"
+	CliRepoName         = "avalanche-cli"
 
 	AvalancheGoInstallDir = "avalanchego"
 	SubnetEVMInstallDir   = "subnet-evm"
-	SpacesVMInstallDir    = "spacesvm"
 
 	SubnetEVMBin = "subnet-evm"
-	SpacesVMBin  = "spacesvm"
 
 	DefaultNodeRunURL = "http://127.0.0.1:9650"
 
@@ -117,7 +119,6 @@ const (
 	AvalancheGoCompatibilityVersionAdded = "v1.9.2"
 	AvalancheGoCompatibilityURL          = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
 	SubnetEVMRPCCompatibilityURL         = "https://raw.githubusercontent.com/ava-labs/subnet-evm/master/compatibility.json"
-	SpacesVMRPCCompatibilityURL          = "https://raw.githubusercontent.com/ava-labs/spacesvm/master/compatibility.json"
 
 	YesLabel = "Yes"
 	NoLabel  = "No"
@@ -126,4 +127,11 @@ const (
 	BlockchainIDLabel = "BlockchainID: "
 
 	PluginDir = "plugins"
+
+	SkipUpdateFlag = "skip-update-check"
+	LastFileName   = ".last_actions.json"
+
+	DefaultWalletCreationTimeout = 5 * time.Second
+
+	DefaultConfirmTxTimeout = 20 * time.Second
 )

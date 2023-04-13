@@ -43,22 +43,6 @@ func TestGetRPCProtocolVersionSubnetEVM(t *testing.T) {
 	require.Equal(expectedRPC, rpcVersion)
 }
 
-func TestGetRPCProtocolVersionSpacesVM(t *testing.T) {
-	require := require.New(t)
-	expectedRPC := 18
-	var vm models.VMType = models.SpacesVM
-
-	mockDownloader := &mocks.Downloader{}
-	mockDownloader.On("Download", mock.Anything).Return(testSubnetEVMCompat, nil)
-
-	app := application.New()
-	app.Downloader = mockDownloader
-
-	rpcVersion, err := GetRPCProtocolVersion(app, vm, testAvagoVersion)
-	require.NoError(err)
-	require.Equal(expectedRPC, rpcVersion)
-}
-
 func TestGetRPCProtocolVersionUnknownVM(t *testing.T) {
 	require := require.New(t)
 	var vm models.VMType = "unknown"

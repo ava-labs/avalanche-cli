@@ -22,7 +22,6 @@ const (
 var (
 	forceCreate      bool
 	useSubnetEvm     bool
-	useSpacesVM      bool
 	genesisFile      string
 	vmFile           string
 	useCustom        bool
@@ -42,7 +41,7 @@ func newCreateCmd() *cobra.Command {
 By default, the command runs an interactive wizard. It walks you through
 all the steps you need to create your first Subnet.
 
-The tool supports deploying Subnet-EVM, SpacesVM, and custom VMs. You
+The tool supports deploying Subnet-EVM, and custom VMs. You
 can create a custom, user-generated genesis with a custom VM by providing
 the path to your genesis and VM binaries with the --genesis and --vm flags.
 
@@ -56,7 +55,6 @@ configuration, pass the -f flag.`,
 	cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
 	cmd.Flags().StringVar(&vmFile, "vm", "", "file path of custom vm to use")
 	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the Subnet-EVM as the base template")
-	cmd.Flags().BoolVar(&useSpacesVM, "spacesvm", false, "use the SpacesVM as the base template")
 	cmd.Flags().StringVar(&vmVersion, "vm-version", "", "version of vm template to use")
 	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
 	cmd.Flags().BoolVar(&useLatestVersion, latest, false, "use latest VM version, takes precedence over --vm-version")
@@ -65,7 +63,7 @@ configuration, pass the -f flag.`,
 }
 
 func moreThanOneVMSelected() bool {
-	vmVars := []bool{useSubnetEvm, useSpacesVM, useCustom}
+	vmVars := []bool{useSubnetEvm, useCustom}
 	firstSelect := false
 	for _, val := range vmVars {
 		if firstSelect && val {
@@ -80,9 +78,6 @@ func moreThanOneVMSelected() bool {
 func getVMFromFlag() models.VMType {
 	if useSubnetEvm {
 		return models.SubnetEvm
-	}
-	if useSpacesVM {
-		return models.SpacesVM
 	}
 	if useCustom {
 		return models.CustomVM
@@ -109,7 +104,7 @@ func createSubnetConfig(_ *cobra.Command, args []string) error {
 	if subnetType == "" {
 		subnetTypeStr, err := app.Prompt.CaptureList(
 			"Choose your VM",
-			[]string{models.SubnetEvm, models.SpacesVM, models.CustomVM},
+			[]string{models.SubnetEvm, models.CustomVM},
 		)
 		if err != nil {
 			return err
@@ -134,11 +129,6 @@ func createSubnetConfig(_ *cobra.Command, args []string) error {
 	switch subnetType {
 	case models.SubnetEvm:
 		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(app, subnetName, genesisFile, vmVersion)
-		if err != nil {
-			return err
-		}
-	case models.SpacesVM:
-		genesisBytes, sc, err = vm.CreateSpacesVMSubnetConfig(app, subnetName, genesisFile, vmVersion)
 		if err != nil {
 			return err
 		}

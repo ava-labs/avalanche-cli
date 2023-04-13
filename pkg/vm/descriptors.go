@@ -35,24 +35,23 @@ func getVMVersion(
 	repoName string,
 	vmVersion string,
 	addGoBackOption bool,
-) (string, statemachine.StateDirection, error) {
+) (string, error) {
 	var err error
-	direction := statemachine.Forward
 	if vmVersion == "latest" {
 		vmVersion, err = app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 			constants.AvaLabsOrg,
 			repoName,
 		))
 		if err != nil {
-			return "", statemachine.Stop, err
+			return "", err
 		}
 	} else if vmVersion == "" {
-		vmVersion, direction, err = askForVMVersion(app, vmName, repoName, addGoBackOption)
+		vmVersion, _, err = askForVMVersion(app, vmName, repoName, addGoBackOption)
 		if err != nil {
-			return "", statemachine.Stop, err
+			return "", err
 		}
 	}
-	return vmVersion, direction, nil
+	return vmVersion, nil
 }
 
 func askForVMVersion(
@@ -123,7 +122,7 @@ func getDescriptors(app *application.Avalanche, subnetEVMVersion string) (
 		return nil, "", "", statemachine.Stop, err
 	}
 
-	subnetEVMVersion, _, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion, false)
+	subnetEVMVersion, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion, false)
 	if err != nil {
 		return nil, "", "", statemachine.Stop, err
 	}

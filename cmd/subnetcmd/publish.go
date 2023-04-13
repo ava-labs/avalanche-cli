@@ -432,17 +432,6 @@ func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 			return nil, err
 		}
 
-	case sc.VM == models.SpacesVM:
-		vmID = models.SpacesVM
-		desc = "Authenticated, hierarchical storage of arbitrary keys/values using any EIP-712 compatible wallet."
-		dl := binutils.NewSpacesVMDownloader()
-		maintrs, ver, url, sha, err = getInfoForKnownVMs(
-			sc.VMVersion,
-			constants.SpacesVMRepoName,
-			app.GetSpacesVMBinDir(),
-			constants.SpacesVMBin,
-			dl,
-		)
 	case sc.VM == models.SubnetEvm:
 		vmID = models.SubnetEvm
 		dl := binutils.NewSubnetEVMDownloader()
