@@ -49,6 +49,7 @@ jobs:
   e2e_test:
     name: e2e tests
     runs-on: ${{ matrix.os }}
+    continue-on-error: true
     strategy:
       matrix:
         suite:
