@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/set"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
@@ -426,4 +427,26 @@ func (d *PublicDeployer) getSubnetAuthAddressesInWallet(subnetAuth []ids.ShortID
 func (d *PublicDeployer) checkWalletHasSubnetAuthAddresses(subnetAuth []ids.ShortID) bool {
 	addrs := d.getSubnetAuthAddressesInWallet(subnetAuth)
 	return len(addrs) != 0
+}
+
+func IsSubnetValidator(subnetID ids.ID, nodeID ids.NodeID, network models.Network) (bool, error) {
+	var apiURL string
+	switch network {
+	case models.Mainnet:
+		apiURL = constants.MainnetAPIEndpoint
+	case models.Fuji:
+		apiURL = constants.FujiAPIEndpoint
+	default:
+		return false, fmt.Errorf("invalid network: %s", network)
+	}
+	pClient := platformvm.NewClient(apiURL)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+
+	vals, err := pClient.GetCurrentValidators(ctx, subnetID, []ids.NodeID{nodeID})
+	if err != nil {
+		return false, fmt.Errorf("failed to get current validators")
+	}
+
+	return !(len(vals) == 0), nil
 }

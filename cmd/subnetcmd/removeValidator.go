@@ -156,7 +156,15 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	// TODO check that this guy actually is a validator on the subnet
+	// check that this guy actually is a validator on the subnet
+	isValidator, err := subnet.IsSubnetValidator(subnetID, nodeID, network)
+	if err != nil {
+		// just warn the user, don't fail
+		ux.Logger.PrintToUser("failed to check if node is a validator on the subnet: %s", err)
+	} else if !isValidator {
+		// this is actually an error
+		return fmt.Errorf("node %s is not a validator on subnet %s", nodeID, subnetID)
+	}
 
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
 	ux.Logger.PrintToUser("Network: %s", network.String())

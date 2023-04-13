@@ -8,8 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -136,7 +138,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 	})
 
 	ginkgo.It("remove validator fuji", func() {
-		subnetID, nodeInfos := deploySubnetToFuji()
+		subnetIDStr, nodeInfos := deploySubnetToFuji()
 
 		// pick a validator to remove
 		var validatorToRemove string
@@ -146,7 +148,9 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		}
 
 		// confirm current validator set
-		validators, err := utils.GetSubnetValidators(subnetID, nodeInfos)
+		subnetID, err := ids.FromString(subnetIDStr)
+		gomega.Expect(err).Should(gomega.BeNil())
+		validators, err := subnet.GetSubnetValidators(subnetID)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(len(validators)).Should(gomega.Equal(5))
 
@@ -164,7 +168,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		_ = commands.SimulateFujiRemoveValidator(subnetName, keyName, validatorToRemove)
 
 		// confirm current validator set
-		validators, err = utils.GetSubnetValidators(subnetID, nodeInfos)
+		validators, err = subnet.GetSubnetValidators(subnetID)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(len(validators)).Should(gomega.Equal(4))
 
