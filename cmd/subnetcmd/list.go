@@ -216,6 +216,7 @@ func listDeployInfo(*cobra.Command, []string) error {
 			rows = append(rows, []string{
 				sc.Subnet,
 				sc.Name,
+				vmID,
 				deployedLocal,
 				netToID[fujiKey][1],
 				netToID[mainKey][1],
