@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/ava-labs/apm v0.0.4
-	github.com/ava-labs/avalanche-network-runner v1.3.9
+	github.com/ava-labs/avalanche-network-runner v1.4.0
 	github.com/ava-labs/avalanchego v1.9.16
 	github.com/ava-labs/coreth v0.11.9
 	github.com/ava-labs/subnet-evm v0.4.12
@@ -134,7 +134,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.11.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
-	go.uber.org/multierr v1.8.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
 	golang.org/x/net v0.7.0 // indirect
