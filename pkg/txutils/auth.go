@@ -29,6 +29,8 @@ func GetAuthSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]stri
 	unsignedTx := tx.Unsigned
 	var subnetAuth verify.Verifiable
 	switch unsignedTx := unsignedTx.(type) {
+	case *txs.RemoveSubnetValidatorTx:
+		subnetAuth = unsignedTx.SubnetAuth
 	case *txs.AddSubnetValidatorTx:
 		subnetAuth = unsignedTx.SubnetAuth
 	case *txs.CreateChainTx:
