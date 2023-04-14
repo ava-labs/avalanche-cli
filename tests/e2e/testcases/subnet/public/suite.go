@@ -8,8 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -20,6 +22,39 @@ const (
 	controlKeys = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 	keyName     = "ewoq"
 )
+
+func deploySubnetToFuji() (string, map[string]utils.NodeInfo) {
+	// deploy
+	s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys)
+	subnetID, err := utils.ParsePublicDeployOutput(s)
+	gomega.Expect(err).Should(gomega.BeNil())
+	// add validators to subnet
+	nodeInfos, err := utils.GetNodesInfo()
+	gomega.Expect(err).Should(gomega.BeNil())
+	for _, nodeInfo := range nodeInfos {
+		start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
+		_ = commands.SimulateFujiAddValidator(subnetName, keyName, nodeInfo.ID, start, "24h", "20")
+	}
+	// join to copy vm binary and update config file
+	for _, nodeInfo := range nodeInfos {
+		_ = commands.SimulateFujiJoin(subnetName, nodeInfo.ConfigFile, nodeInfo.PluginDir, nodeInfo.ID)
+	}
+	// get and check whitelisted subnets from config file
+	var whitelistedSubnets string
+	for _, nodeInfo := range nodeInfos {
+		whitelistedSubnets, err = utils.GetWhilelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
+		gomega.Expect(err).Should(gomega.BeNil())
+		whitelistedSubnetsSlice := strings.Split(whitelistedSubnets, ",")
+		gomega.Expect(whitelistedSubnetsSlice).Should(gomega.ContainElement(subnetID))
+	}
+	// update nodes whitelisted subnets
+	err = utils.RestartNodesWithWhitelistedSubnets(whitelistedSubnets)
+	gomega.Expect(err).Should(gomega.BeNil())
+	// wait for subnet walidators to be up
+	err = utils.WaitSubnetValidators(subnetID, nodeInfos)
+	gomega.Expect(err).Should(gomega.BeNil())
+	return subnetID, nodeInfos
+}
 
 var _ = ginkgo.Describe("[Public Subnet]", func() {
 	ginkgo.BeforeEach(func() {
@@ -47,35 +82,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 	})
 
 	ginkgo.It("deploy subnet to fuji", func() {
-		// deploy
-		s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys)
-		subnetID, err := utils.ParsePublicDeployOutput(s)
-		gomega.Expect(err).Should(gomega.BeNil())
-		// add validators to subnet
-		nodeInfos, err := utils.GetNodesInfo()
-		gomega.Expect(err).Should(gomega.BeNil())
-		for _, nodeInfo := range nodeInfos {
-			start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
-			_ = commands.SimulateFujiAddValidator(subnetName, keyName, nodeInfo.ID, start, "24h", "20")
-		}
-		// join to copy vm binary and update config file
-		for _, nodeInfo := range nodeInfos {
-			_ = commands.SimulateFujiJoin(subnetName, nodeInfo.ConfigFile, nodeInfo.PluginDir, nodeInfo.ID)
-		}
-		// get and check whitelisted subnets from config file
-		var whitelistedSubnets string
-		for _, nodeInfo := range nodeInfos {
-			whitelistedSubnets, err = utils.GetWhilelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
-			gomega.Expect(err).Should(gomega.BeNil())
-			whitelistedSubnetsSlice := strings.Split(whitelistedSubnets, ",")
-			gomega.Expect(whitelistedSubnetsSlice).Should(gomega.ContainElement(subnetID))
-		}
-		// update nodes whitelisted subnets
-		err = utils.RestartNodesWithWhitelistedSubnets(whitelistedSubnets)
-		gomega.Expect(err).Should(gomega.BeNil())
-		// wait for subnet walidators to be up
-		err = utils.WaitSubnetValidators(subnetID, nodeInfos)
-		gomega.Expect(err).Should(gomega.BeNil())
+		deploySubnetToFuji()
 	})
 
 	ginkgo.It("deploy subnet to mainnet", ginkgo.Label("local_machine"), func() {
@@ -128,5 +135,51 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(output).Should(gomega.ContainSubstring("Current validators"))
 		gomega.Expect(output).Should(gomega.ContainSubstring("NodeID-"))
 		gomega.Expect(output).Should(gomega.ContainSubstring("No pending validators found"))
+	})
+
+	ginkgo.It("remove validator fuji", func() {
+		subnetIDStr, nodeInfos := deploySubnetToFuji()
+
+		// pick a validator to remove
+		var validatorToRemove string
+		for _, nodeInfo := range nodeInfos {
+			validatorToRemove = nodeInfo.ID
+			break
+		}
+
+		// confirm current validator set
+		subnetID, err := ids.FromString(subnetIDStr)
+		gomega.Expect(err).Should(gomega.BeNil())
+		validators, err := subnet.GetSubnetValidators(subnetID)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(len(validators)).Should(gomega.Equal(5))
+
+		// Check that the validatorToRemove is in the subnet validator set
+		var found bool
+		for _, validator := range validators {
+			if validator.NodeID.String() == validatorToRemove {
+				found = true
+				break
+			}
+		}
+		gomega.Expect(found).Should(gomega.BeTrue())
+
+		// remove validator
+		_ = commands.SimulateFujiRemoveValidator(subnetName, keyName, validatorToRemove)
+
+		// confirm current validator set
+		validators, err = subnet.GetSubnetValidators(subnetID)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(len(validators)).Should(gomega.Equal(4))
+
+		// Check that the validatorToRemove is NOT in the subnet validator set
+		found = false
+		for _, validator := range validators {
+			if validator.NodeID.String() == validatorToRemove {
+				found = true
+				break
+			}
+		}
+		gomega.Expect(found).Should(gomega.BeFalse())
 	})
 })

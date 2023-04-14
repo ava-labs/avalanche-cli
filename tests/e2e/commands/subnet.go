@@ -421,6 +421,47 @@ func SimulateFujiAddValidator(
 	return string(output)
 }
 
+// simulates fuji add validator execution path on a local network
+func SimulateFujiRemoveValidator(
+	subnetName string,
+	key string,
+	nodeID string,
+) string {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// enable simulation of public network execution paths on a local network
+	err = os.Setenv(constants.SimulatePublicNetwork, "true")
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"removeValidator",
+		"--fuji",
+		"--key",
+		key,
+		"--nodeID",
+		nodeID,
+		subnetName,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	// disable simulation of public network execution paths on a local network
+	err = os.Unsetenv(constants.SimulatePublicNetwork)
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	return string(output)
+}
+
 // simulates mainnet add validator execution path on a local network
 /* #nosec G204 */
 func SimulateMainnetAddValidator(

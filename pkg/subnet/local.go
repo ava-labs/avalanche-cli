@@ -15,8 +15,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 
@@ -39,6 +37,7 @@ import (
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/storage"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/coreth/params"
 	"github.com/ava-labs/subnet-evm/core"
 	"go.uber.org/zap"
@@ -672,4 +671,24 @@ func GetLocallyDeployedSubnets() (map[string]struct{}, error) {
 	}
 
 	return deployedNames, nil
+}
+
+func IssueRemoveSubnetValidatorTx(kc keychain.Keychain, subnetID ids.ID, nodeID ids.NodeID) (ids.ID, error) {
+	ctx := context.Background()
+	api := constants.LocalAPIEndpoint
+	wallet, err := primary.NewWalletWithTxs(ctx, api, kc, subnetID)
+	if err != nil {
+		return ids.Empty, err
+	}
+
+	return wallet.P().IssueRemoveSubnetValidatorTx(nodeID, subnetID)
+}
+
+func GetSubnetValidators(subnetID ids.ID) ([]platformvm.ClientPermissionlessValidator, error) {
+	api := constants.LocalAPIEndpoint
+	pClient := platformvm.NewClient(api)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+
+	return pClient.GetCurrentValidators(ctx, subnetID, nil)
 }

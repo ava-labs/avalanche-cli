@@ -62,6 +62,8 @@ manage your Subnet configurations and live deployments.`,
 	cmd.AddCommand(newImportFromNetworkCmd())
 	// subnet VMID
 	cmd.AddCommand(vmidCmd())
+	// subnet removeValidator
+	cmd.AddCommand(newRemoveValidatorCmd())
 	// subnet elastic
 	cmd.AddCommand(newElasticCmd())
 	return cmd
