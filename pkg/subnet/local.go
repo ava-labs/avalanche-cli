@@ -15,6 +15,10 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ava-labs/avalanchego/vms/platformvm/reward"
+	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 
@@ -199,6 +203,52 @@ func IssueTransformSubnetTx(
 		return ids.Empty, ids.Empty, err
 	}
 	return transformSubnetTxID, subnetAssetID, err
+}
+
+func IssueAddPermissionlessValidatorTx(
+	kc keychain.Keychain,
+	subnetID ids.ID,
+	nodeID ids.NodeID,
+	stakeAmount uint64,
+	assetID ids.ID,
+	startTime uint64,
+	endTime uint64,
+) (ids.ID, error) {
+	ctx := context.Background()
+	api := constants.LocalAPIEndpoint
+	wallet, err := primary.NewWalletWithTxs(ctx, api, kc, subnetID)
+	if err != nil {
+		return ids.Empty, err
+	}
+	owner := &secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs: []ids.ShortID{
+			genesis.EWOQKey.PublicKey().Address(),
+		},
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultConfirmTxTimeout)
+	txID, err := wallet.P().IssueAddPermissionlessValidatorTx(
+		&txs.SubnetValidator{
+			Validator: txs.Validator{
+				NodeID: nodeID,
+				Start:  startTime,
+				End:    endTime,
+				Wght:   stakeAmount,
+			},
+			Subnet: subnetID,
+		},
+		&signer.Empty{},
+		assetID,
+		owner,
+		&secp256k1fx.OutputOwners{},
+		reward.PercentDenominator,
+		common.WithContext(ctx),
+	)
+	defer cancel()
+	if err != nil {
+		return ids.Empty, err
+	}
+	return txID, err
 }
 
 func (d *LocalDeployer) StartServer() error {

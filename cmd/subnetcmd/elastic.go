@@ -81,7 +81,7 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 	}
 
 	if network == models.Undefined {
-		networkToUpgrade, err := selectNetworkToTransform(sc)
+		networkToUpgrade, err := promptNetworkElastic(sc, "Which network should transform into an elastic Subnet?")
 		if err != nil {
 			return err
 		}
@@ -158,9 +158,8 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 }
 
 // select which network to transform to elastic subnet
-func selectNetworkToTransform(sc models.Sidecar) (string, error) {
+func promptNetworkElastic(sc models.Sidecar, prompt string) (string, error) {
 	var networkOptions []string
-	networkPrompt := "Which network should transform into an elastic Subnet?"
 	for network := range sc.Networks {
 		switch network {
 		case models.Local.String():
@@ -176,7 +175,7 @@ func selectNetworkToTransform(sc models.Sidecar) (string, error) {
 		return "", errors.New("no deployment target available, please first deploy created subnet")
 	}
 
-	selectedDeployment, err := app.Prompt.CaptureList(networkPrompt, networkOptions)
+	selectedDeployment, err := app.Prompt.CaptureList(prompt, networkOptions)
 	if err != nil {
 		return "", err
 	}

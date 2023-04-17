@@ -13,10 +13,13 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/plugins"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +37,8 @@ var (
 	// failIfNotValidating
 	failIfNotValidating bool
 	// if true, doesn't ask for overwriting the config file
-	forceWrite bool
+	forceWrite  bool
+	joinElastic bool
 )
 
 // avalanche subnet deploy
@@ -70,6 +74,7 @@ This command currently only supports Subnets deployed on the Fuji Testnet and Ma
 	cmd.Flags().BoolVar(&failIfNotValidating, "fail-if-not-validating", false, "fail if whitelist check fails")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to check")
 	cmd.Flags().BoolVar(&forceWrite, "force-write", false, "if true, skip to prompt to overwrite the config file")
+	cmd.Flags().BoolVar(&joinElastic, "elastic", false, "set flag as true if joining elastic subnet")
 	return cmd
 }
 
@@ -95,6 +100,8 @@ func joinCmd(_ *cobra.Command, args []string) error {
 
 	var network models.Network
 	switch {
+	case deployLocal:
+		network = models.Local
 	case deployTestnet:
 		network = models.Fuji
 	case deployMainnet:
@@ -102,20 +109,38 @@ func joinCmd(_ *cobra.Command, args []string) error {
 	}
 
 	if network == models.Undefined {
-		networkStr, err := app.Prompt.CaptureList(
-			"Choose a network to validate on (this command only supports public networks)",
-			[]string{models.Fuji.String(), models.Mainnet.String()},
-		)
-		if err != nil {
-			return err
+		if joinElastic {
+			networkToUpgrade, err := promptNetworkElastic(sc, "Which network is the elastic subnet that the node wants to join on?")
+			if err != nil {
+				return err
+			}
+			switch networkToUpgrade {
+			case fujiDeployment:
+				return errors.New("joining elastic subnet is not yet supported on Fuji network")
+			case mainnetDeployment:
+				return errors.New("joining elastic subnet is not yet supported on Mainnet")
+			}
+			network = models.Local
+		} else {
+			networkStr, err := app.Prompt.CaptureList(
+				"Choose a network to validate on (this command only supports public networks)",
+				[]string{models.Fuji.String(), models.Mainnet.String()},
+			)
+			if err != nil {
+				return err
+			}
+			// flag provided
+			networkStr = strings.Title(networkStr)
+			// as we are allowing a flag, we need to check if a supported network has been provided
+			if !(networkStr == models.Fuji.String() || networkStr == models.Mainnet.String()) {
+				return errors.New("unsupported network")
+			}
+			network = models.NetworkFromString(networkStr)
 		}
-		// flag provided
-		networkStr = strings.Title(networkStr)
-		// as we are allowing a flag, we need to check if a supported network has been provided
-		if !(networkStr == models.Fuji.String() || networkStr == models.Mainnet.String()) {
-			return errors.New("unsupported network")
-		}
-		network = models.NetworkFromString(networkStr)
+	}
+
+	if joinElastic {
+		return handleValidatorJoinElasticSubnet(sc, network, subnetName)
 	}
 
 	// used in E2E to simulate public network execution paths on a local network
@@ -284,6 +309,46 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	return nil
 }
 
+func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network, subnetName string) error {
+	if network != models.Local {
+		return errors.New("unsupported network")
+	}
+	if !checkIfSubnetIsElasticOnLocal(sc) {
+		return fmt.Errorf("%s is not an elastic subnet", subnetName)
+	}
+	nodeID, err := promptNodeIDToAdd()
+	if err != nil {
+		return err
+	}
+	stakeAmount, err := promptStakeAmount()
+	if err != nil {
+		return err
+	}
+	start, duration, err := getTimeParameters(network, nodeID)
+	if err != nil {
+		return err
+	}
+	endTime := start.Add(duration)
+	ux.Logger.PrintToUser("Inputs complete, issuing transaction for the provided validator to join elastic subnet...")
+	ux.Logger.PrintToUser("")
+
+	assetID := sc.ElasticSubnet[models.Local.String()].AssetID
+	testKey := genesis.EWOQKey
+	keyChain := secp256k1fx.NewKeychain(testKey)
+	subnetID := sc.Networks[models.Local.String()].SubnetID
+	txID, err := subnet.IssueAddPermissionlessValidatorTx(keyChain, subnetID, nodeID, stakeAmount, assetID, uint64(start.Unix()), uint64(endTime.Unix()))
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Validator successfully joined elastic subnet!")
+	ux.Logger.PrintToUser("TX ID: %s", txID.String())
+	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
+	ux.Logger.PrintToUser("Network: %s", network.String())
+	ux.Logger.PrintToUser("Start time: %s", start.UTC().Format(constants.TimeParseLayout))
+	ux.Logger.PrintToUser("End time: %s", endTime.Format(constants.TimeParseLayout))
+	ux.Logger.PrintToUser("Stake Amount: %d", stakeAmount)
+	return nil
+}
 func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, error) {
 	var (
 		nodeID ids.NodeID
@@ -358,6 +423,46 @@ func checkIsValidating(subnetID ids.ID, nodeID ids.NodeID, pClient platformvm.Cl
 	}
 
 	return false, nil
+}
+
+func promptNodeIDToAdd() (ids.NodeID, error) {
+	if nodeIDStr == "" {
+		ux.Logger.PrintToUser("Please enter the NodeID of the validator that you want to join this elastic subnet.")
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions about how to query the NodeID from your node")
+		promptStr := "What is the NodeID of the validator you'd like to join this elastic subnet?"
+		nodeID, err := app.Prompt.CaptureNodeID(promptStr)
+		if err != nil {
+			return ids.NodeID{}, err
+		}
+		return nodeID, nil
+	}
+	nodeID, err := ids.NodeIDFromString(nodeIDStr)
+	if err != nil {
+		return ids.NodeID{}, err
+	}
+	return nodeID, nil
+
+}
+
+func promptStakeAmount() (uint64, error) {
+	defaultWeight := fmt.Sprintf("Default (%d)", constants.DefaultPermissionlessSubnetValidatorStake)
+	customWeight := "Custom (Has to be between minValidatorStake and maxValidatorStake defined during elastic subnet transformation)"
+
+	txt := "What amount of the subnet native token would you like to stake in the validator?"
+	weightOptions := []string{defaultWeight, customWeight}
+
+	weightOption, err := app.Prompt.CaptureList(txt, weightOptions)
+	if err != nil {
+		return 0, err
+	}
+
+	switch weightOption {
+	case defaultWeight:
+		return constants.DefaultPermissionlessSubnetValidatorStake, nil
+	default:
+		return app.Prompt.CaptureWeight(txt)
+	}
 }
 
 func printJoinCmd(subnetID string, networkID string, vmPath string) {
