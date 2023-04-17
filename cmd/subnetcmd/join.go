@@ -349,6 +349,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	ux.Logger.PrintToUser("Stake Amount: %d", stakeAmount)
 	return nil
 }
+
 func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, error) {
 	var (
 		nodeID ids.NodeID
@@ -442,7 +443,6 @@ func promptNodeIDToAdd() (ids.NodeID, error) {
 		return ids.NodeID{}, err
 	}
 	return nodeID, nil
-
 }
 
 func promptStakeAmount() (uint64, error) {
