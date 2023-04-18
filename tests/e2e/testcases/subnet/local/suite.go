@@ -6,6 +6,12 @@ package subnet
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"os"
+	"path"
+	"strconv"
+	"strings"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
@@ -13,11 +19,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"net/url"
-	"os"
-	"path"
-	"strconv"
-	"strings"
 )
 
 const (
