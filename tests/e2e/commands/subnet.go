@@ -812,6 +812,7 @@ func RemoveValidator(subnetName string, nodeID string) (string, error) {
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
+	//nolint:gosec
 	cmd := exec.Command(
 		CLIBinary,
 		SubnetCmd,
