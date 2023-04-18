@@ -812,7 +812,6 @@ func RemoveValidator(subnetName string, nodeID string) (string, error) {
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
-	//nolint:gosec
 	cmd := exec.Command(
 		CLIBinary,
 		SubnetCmd,
@@ -838,6 +837,7 @@ func AddPermissionlessValidator(subnetName string, nodeID string, stakeAmount st
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
+	startTimeStr := time.Now().Add(constants.StakingStartLeadTime).UTC().Format(constants.TimeParseLayout)
 	cmd := exec.Command(
 		CLIBinary,
 		SubnetCmd,
@@ -849,7 +849,7 @@ func AddPermissionlessValidator(subnetName string, nodeID string, stakeAmount st
 		"--stake-amount",
 		stakeAmount,
 		"--start-time",
-		time.Now().Add(constants.StakingStartLeadTime).UTC().Format(constants.TimeParseLayout),
+		startTimeStr,
 		"--staking-period",
 		stakingPeriod,
 		subnetName,
