@@ -160,6 +160,7 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		nodeIDs, err := utils.GetValidators(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(len(nodeIDs)).Should(gomega.Equal(5))
 
 		_, err = commands.RemoveValidator(subnetName, nodeIDs[0])
