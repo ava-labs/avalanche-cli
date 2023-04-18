@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/reward"
+
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 
@@ -741,4 +742,26 @@ func GetSubnetValidators(subnetID ids.ID) ([]platformvm.ClientPermissionlessVali
 	defer cancel()
 
 	return pClient.GetCurrentValidators(ctx, subnetID, nil)
+}
+
+func CheckNodeIsInSubnetPendingValidators(subnetID ids.ID, nodeID string) (bool, error) {
+	api := constants.LocalAPIEndpoint
+	pClient := platformvm.NewClient(api)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+
+	pVals, _, err := pClient.GetPendingValidators(ctx, subnetID, nil)
+	if err != nil {
+		return false, err
+	}
+	for _, iv := range pVals {
+		if v, ok := iv.(map[string]interface{}); ok {
+			// strictly this is not needed, as we are providing the nodeID as param
+			// just a double check
+			if v["nodeID"] == nodeID {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }

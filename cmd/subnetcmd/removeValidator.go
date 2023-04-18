@@ -221,10 +221,11 @@ func removeFromLocal(subnetName string) error {
 		validatorList[i] = v.NodeID.String()
 	}
 
-	// Get NodeID of the node we want to remove
-	nodeIDStr, err := app.Prompt.CaptureList("Choose a validator to remove", validatorList)
-	if err != nil {
-		return err
+	if nodeIDStr == "" {
+		nodeIDStr, err = app.Prompt.CaptureList("Choose a validator to remove", validatorList)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Convert NodeID string to NodeID type

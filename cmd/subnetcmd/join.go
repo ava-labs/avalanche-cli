@@ -37,8 +37,11 @@ var (
 	// failIfNotValidating
 	failIfNotValidating bool
 	// if true, doesn't ask for overwriting the config file
-	forceWrite  bool
+	forceWrite bool
+	// if true, validator is joining a permissionless subnet
 	joinElastic bool
+	// for permissionless subnet only: how much subnet native token will be staked in the validator
+	stakeAmount uint64
 )
 
 // avalanche subnet deploy
@@ -67,6 +70,7 @@ This command currently only supports Subnets deployed on the Fuji Testnet and Ma
 	cmd.Flags().StringVar(&pluginDir, "plugin-dir", "", "file path of avalanchego's plugin directory")
 	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "join on `fuji` (alias for `testnet`)")
 	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
+	cmd.Flags().BoolVar(&deployLocal, "local", false, "join on `local` (for elastic subnet only)")
 	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
 	cmd.Flags().BoolVar(&printManual, "print", false, "if true, print the manual config without prompting")
 	cmd.Flags().BoolVar(&skipWhitelistCheck, "skip-whitelist-check", false, "if true, skip the whitelist check")
@@ -75,6 +79,9 @@ This command currently only supports Subnets deployed on the Fuji Testnet and Ma
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to check")
 	cmd.Flags().BoolVar(&forceWrite, "force-write", false, "if true, skip to prompt to overwrite the config file")
 	cmd.Flags().BoolVar(&joinElastic, "elastic", false, "set flag as true if joining elastic subnet")
+	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "amount of tokens to stake on validator")
+	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "start time that validator starts validating")
+	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long validator validates for after start time")
 	return cmd
 }
 
@@ -310,6 +317,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 }
 
 func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network, subnetName string) error {
+	fmt.Printf("network name %s \n", network.String())
 	if network != models.Local {
 		return errors.New("unsupported network")
 	}
@@ -320,15 +328,15 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	if err != nil {
 		return err
 	}
-	stakeAmount, err := promptStakeAmount()
+	stakedTokenAmount, err := promptStakeAmount()
 	if err != nil {
 		return err
 	}
-	start, duration, err := getTimeParameters(network, nodeID)
+	start, stakeDuration, err := getTimeParameters(network, nodeID)
 	if err != nil {
 		return err
 	}
-	endTime := start.Add(duration)
+	endTime := start.Add(stakeDuration)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction for the provided validator to join elastic subnet...")
 	ux.Logger.PrintToUser("")
 
@@ -336,7 +344,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	testKey := genesis.EWOQKey
 	keyChain := secp256k1fx.NewKeychain(testKey)
 	subnetID := sc.Networks[models.Local.String()].SubnetID
-	txID, err := subnet.IssueAddPermissionlessValidatorTx(keyChain, subnetID, nodeID, stakeAmount, assetID, uint64(start.Unix()), uint64(endTime.Unix()))
+	txID, err := subnet.IssueAddPermissionlessValidatorTx(keyChain, subnetID, nodeID, stakedTokenAmount, assetID, uint64(start.Unix()), uint64(endTime.Unix()))
 	if err != nil {
 		return err
 	}
@@ -346,7 +354,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	ux.Logger.PrintToUser("Network: %s", network.String())
 	ux.Logger.PrintToUser("Start time: %s", start.UTC().Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("End time: %s", endTime.Format(constants.TimeParseLayout))
-	ux.Logger.PrintToUser("Stake Amount: %d", stakeAmount)
+	ux.Logger.PrintToUser("Stake Amount: %d", stakedTokenAmount)
 	return nil
 }
 
@@ -446,6 +454,9 @@ func promptNodeIDToAdd() (ids.NodeID, error) {
 }
 
 func promptStakeAmount() (uint64, error) {
+	if stakeAmount > 0 {
+		return stakeAmount, nil
+	}
 	defaultWeight := fmt.Sprintf("Default (%d)", constants.DefaultPermissionlessSubnetValidatorStake)
 	customWeight := "Custom (Has to be between minValidatorStake and maxValidatorStake defined during elastic subnet transformation)"
 

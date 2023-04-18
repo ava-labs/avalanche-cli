@@ -767,6 +767,48 @@ func getSideCar(subnetName string) (models.Sidecar, error) {
 	return sc, nil
 }
 
+func GetValidators(subnetName string) ([]string, error) {
+	sc, err := getSideCar(subnetName)
+	if err != nil {
+		return nil, err
+	}
+	subnetID := sc.Networks[models.Local.String()].SubnetID
+	if subnetID == ids.Empty {
+		return nil, errors.New("no subnet id")
+	}
+	// Get NodeIDs of all validators on the subnet
+	validators, err := subnet.GetSubnetValidators(subnetID)
+	if err != nil {
+		return nil, err
+	}
+	nodeIDsList := []string{}
+	for _, validator := range validators {
+		nodeIDsList = append(nodeIDsList, validator.NodeID.String())
+	}
+	return nodeIDsList, nil
+}
+
+func GetPendingValidators(subnetName string) ([]string, error) {
+	sc, err := getSideCar(subnetName)
+	if err != nil {
+		return nil, err
+	}
+	subnetID := sc.Networks[models.Local.String()].SubnetID
+	if subnetID == ids.Empty {
+		return nil, errors.New("no subnet id")
+	}
+	// Get NodeIDs of all validators on the subnet
+	validators, err := subnet.GetSubnetValidators(subnetID)
+	if err != nil {
+		return nil, err
+	}
+	nodeIDsList := []string{}
+	for _, validator := range validators {
+		nodeIDsList = append(nodeIDsList, validator.NodeID.String())
+	}
+	return nodeIDsList, nil
+}
+
 func GetCurrentSupply(subnetName string) error {
 	sc, err := getSideCar(subnetName)
 	if err != nil {
@@ -774,4 +816,13 @@ func GetCurrentSupply(subnetName string) error {
 	}
 	subnetID := sc.Networks[models.Local.String()].SubnetID
 	return subnet.GetCurrentSupply(subnetID)
+}
+
+func IsNodeInPendingValidator(subnetName string, nodeID string) (bool, error) {
+	sc, err := getSideCar(subnetName)
+	if err != nil {
+		return false, err
+	}
+	subnetID := sc.Networks[models.Local.String()].SubnetID
+	return subnet.CheckNodeIsInSubnetPendingValidators(subnetID, nodeID)
 }

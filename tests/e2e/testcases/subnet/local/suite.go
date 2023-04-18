@@ -6,12 +6,6 @@ package subnet
 import (
 	"context"
 	"fmt"
-	"net/url"
-	"os"
-	"path"
-	"strconv"
-	"strings"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
@@ -19,12 +13,19 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	"net/url"
+	"os"
+	"path"
+	"strconv"
+	"strings"
 )
 
 const (
 	subnetName       = "e2eSubnetTest"
 	secondSubnetName = "e2eSecondSubnetTest"
 	confPath         = "tests/e2e/assets/test_avalanche-cli.json"
+	stakeAmount      = "2000"
+	stakeDuration    = "336h"
 )
 
 var (
@@ -132,6 +133,59 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 
 		_, err = commands.TransformElasticSubnetLocally(subnetName)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
+
+		commands.DeleteSubnetConfig(subnetName)
+		commands.DeleteElasticSubnetConfig(subnetName)
+	})
+
+	ginkgo.It("can add permissionless validator to elastic subnet", func() {
+		exists, err := utils.SubnetConfigExists(subnetName)
+		if exists {
+			commands.DeleteSubnetConfig(subnetName)
+			commands.DeleteElasticSubnetConfig(subnetName)
+		}
+
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+		rpc := rpcs[0]
+
+		err = utils.SetHardhatRPC(rpc)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		err = utils.RunHardhatTests(utils.BaseTest)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		_, err = commands.TransformElasticSubnetLocally(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		nodeIDs, err := utils.GetValidators(subnetName)
+		gomega.Expect(len(nodeIDs)).Should(gomega.Equal(5))
+
+		_, err = commands.RemoveValidator(subnetName, nodeIDs[0])
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		_, err = commands.AddPermissionlessValidator(subnetName, nodeIDs[0], stakeAmount, stakeDuration)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		isPendingValidator, err := utils.IsNodeInPendingValidator(subnetName, nodeIDs[0])
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
+
+		_, err = commands.RemoveValidator(subnetName, nodeIDs[1])
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		_, err = commands.AddPermissionlessValidator(subnetName, nodeIDs[1], stakeAmount, stakeDuration)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		isPendingValidator, err = utils.IsNodeInPendingValidator(subnetName, nodeIDs[1])
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
 
 		commands.DeleteSubnetConfig(subnetName)
 		commands.DeleteElasticSubnetConfig(subnetName)
