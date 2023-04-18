@@ -140,12 +140,6 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can add permissionless validator to elastic subnet", func() {
-		exists, err := utils.SubnetConfigExists(subnetName)
-		if exists {
-			commands.DeleteSubnetConfig(subnetName)
-			commands.DeleteElasticSubnetConfig(subnetName)
-		}
-
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
