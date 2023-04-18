@@ -27,6 +27,7 @@ const (
 	confPath         = "tests/e2e/assets/test_avalanche-cli.json"
 	stakeAmount      = "2000"
 	stakeDuration    = "336h"
+	localNetwork     = "Local Network"
 )
 
 var (
@@ -168,6 +169,9 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 
 		_, err = commands.AddPermissionlessValidator(subnetName, nodeIDs[0], stakeAmount, stakeDuration)
 		gomega.Expect(err).Should(gomega.BeNil())
+		exists, err := utils.PermissionlessValidatorExistsInSidecar(subnetName, nodeIDs[0], localNetwork)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(exists).Should(gomega.BeTrue())
 
 		isPendingValidator, err := utils.IsNodeInPendingValidator(subnetName, nodeIDs[0])
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -178,6 +182,9 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 
 		_, err = commands.AddPermissionlessValidator(subnetName, nodeIDs[1], stakeAmount, stakeDuration)
 		gomega.Expect(err).Should(gomega.BeNil())
+		exists, err = utils.PermissionlessValidatorExistsInSidecar(subnetName, nodeIDs[1], localNetwork)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(exists).Should(gomega.BeTrue())
 
 		isPendingValidator, err = utils.IsNodeInPendingValidator(subnetName, nodeIDs[1])
 		gomega.Expect(err).Should(gomega.BeNil())

@@ -125,6 +125,16 @@ func ElasticSubnetConfigExists(subnetName string) (bool, error) {
 	return elasticSubnetConfigExists, nil
 }
 
+func PermissionlessValidatorExistsInSidecar(subnetName string, nodeID string, network string) (bool, error) {
+	sc, err := getSideCar(subnetName)
+	if err != nil {
+		return false, err
+	}
+	elasticSubnetValidators := sc.ElasticSubnet[network].Validators
+	_, ok := elasticSubnetValidators[nodeID]
+	return ok, nil
+}
+
 func SubnetConfigExists(subnetName string) (bool, error) {
 	gen, err := genesisExists(subnetName)
 	if err != nil {

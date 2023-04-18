@@ -355,6 +355,9 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	ux.Logger.PrintToUser("Start time: %s", start.UTC().Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("End time: %s", endTime.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("Stake Amount: %d", stakedTokenAmount)
+	if err = app.UpdateSidecarPermissionlessValidator(&sc, models.Local, nodeID.String(), txID); err != nil {
+		return fmt.Errorf("joining permissionless subnet was successful, but failed to update sidecar: %w", err)
+	}
 	return nil
 }
 

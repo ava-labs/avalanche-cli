@@ -343,6 +343,24 @@ func (app *Avalanche) UpdateSidecarElasticSubnet(
 	return nil
 }
 
+func (app *Avalanche) UpdateSidecarPermissionlessValidator(
+	sc *models.Sidecar,
+	network models.Network,
+	nodeID string,
+	txID ids.ID,
+) error {
+	elasticSubnet := sc.ElasticSubnet[network.String()]
+	if elasticSubnet.Validators == nil {
+		elasticSubnet.Validators = make(map[string]models.PermissionlessValidators)
+	}
+	elasticSubnet.Validators[nodeID] = models.PermissionlessValidators{TxID: txID}
+	sc.ElasticSubnet[network.String()] = elasticSubnet
+	if err := app.UpdateSidecar(sc); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (app *Avalanche) GetTokenName(subnetName string) string {
 	sidecar, err := app.LoadSidecar(subnetName)
 	if err != nil {
