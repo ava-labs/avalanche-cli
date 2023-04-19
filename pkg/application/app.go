@@ -417,3 +417,16 @@ func (app *Avalanche) CreateElasticSubnetConfig(subnetName string, es *models.El
 
 	return os.WriteFile(elasticSubetConfigPath, esBytes, WriteReadReadPerms)
 }
+
+func (app *Avalanche) LoadElasticSubnetConfig(subnetName string) (models.ElasticSubnetConfig, error) {
+	elasticSubnetConfigPath := app.GetElasticSubnetConfigPath(subnetName)
+	jsonBytes, err := os.ReadFile(elasticSubnetConfigPath)
+	if err != nil {
+		return models.ElasticSubnetConfig{}, err
+	}
+
+	var esc models.ElasticSubnetConfig
+	err = json.Unmarshal(jsonBytes, &esc)
+
+	return esc, err
+}

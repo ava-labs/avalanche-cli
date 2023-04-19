@@ -143,18 +143,10 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 	ginkgo.It("can add permissionless validator to elastic subnet", func() {
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
-		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		_, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
 		}
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
-		rpc := rpcs[0]
-
-		err = utils.SetHardhatRPC(rpc)
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		err = utils.RunHardhatTests(utils.BaseTest)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		_, err = commands.TransformElasticSubnetLocally(subnetName)

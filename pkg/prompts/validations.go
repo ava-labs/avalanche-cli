@@ -93,6 +93,17 @@ func validateWeight(input string) error {
 	return nil
 }
 
+func validatePermissionlessValidatorStake(input string, minStake int, maxStake int) error {
+	val, err := strconv.ParseUint(input, 10, 64)
+	if err != nil {
+		return err
+	}
+	if val < constants.MinStakeWeight {
+		return errors.New("the weight must be an integer between 1 and 100")
+	}
+	return nil
+}
+
 func validateBiggerThanZero(input string) error {
 	val, err := strconv.ParseUint(input, 0, 64)
 	if err != nil {
