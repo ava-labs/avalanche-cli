@@ -6,9 +6,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"os"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -23,6 +25,8 @@ import (
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/spf13/cobra"
 )
+
+const ewoqPChainAddr = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 
 var (
 	// path to avalanchego config file
@@ -448,7 +452,9 @@ func promptNodeIDToAdd(subnetID ids.ID) (ids.NodeID, error) {
 			return ids.EmptyNodeID, err
 		}
 		// construct list of validators to choose from
-		validatorList := make([]string, len(defaultLocalNetworkNodeIDs)-len(validators))
+		var validatorList []string
+		fmt.Printf("defaultLocalNetworkNodeIDs %s \n", defaultLocalNetworkNodeIDs)
+
 		for _, localNodeID := range defaultLocalNetworkNodeIDs {
 			nodeIDFound := false
 			for _, v := range validators {
@@ -458,6 +464,8 @@ func promptNodeIDToAdd(subnetID ids.ID) (ids.NodeID, error) {
 				}
 			}
 			if !nodeIDFound {
+				fmt.Printf("adding validators %s \n", localNodeID)
+
 				validatorList = append(validatorList, localNodeID)
 			}
 		}
@@ -491,7 +499,12 @@ func promptStakeAmount(subnetName string) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-
+	ctx := context.Background()
+	pClient := platformvm.NewClient(constants.LocalAPIEndpoint)
+	walletBalance, err := getAssetBalance(ctx, pClient, ewoqPChainAddr, esc.AssetID)
+	if err != nil {
+		return 0, err
+	}
 	switch weightOption {
 	case minValidatorStake:
 		return esc.MinValidatorStake, nil
@@ -508,6 +521,11 @@ func promptStakeAmount(subnetName string) (uint64, error) {
 					Label: fmt.Sprintf("Min Validator Stake(%d)", esc.MinValidatorStake),
 					Type:  prompts.MoreThanEq,
 					Value: esc.MinValidatorStake,
+				},
+				{
+					Label: fmt.Sprintf("Min Validator Stake(%d)", esc.MinValidatorStake),
+					Type:  prompts.LessThanEq,
+					Value: walletBalance,
 				},
 			},
 		)
@@ -546,4 +564,20 @@ After you update your config, you will need to restart your node for the changes
 take effect.`
 
 	ux.Logger.PrintToUser(msg, vmPath, subnetID, networkID, subnetID, subnetID)
+}
+
+func getAssetBalance(ctx context.Context, pClient platformvm.Client, addr string, assetID ids.ID) (uint64, error) {
+	pID, err := address.ParseToID(addr)
+	if err != nil {
+		return 0, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
+	resp, err := pClient.GetBalance(ctx, []ids.ShortID{pID})
+	cancel()
+	if err != nil {
+		return 0, err
+	}
+	fmt.Printf("balances %s \n", resp.Balances)
+	assetIDBalance := resp.Balances[assetID]
+	return uint64(assetIDBalance), nil
 }
