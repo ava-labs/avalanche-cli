@@ -577,7 +577,6 @@ func getAssetBalance(ctx context.Context, pClient platformvm.Client, addr string
 	if err != nil {
 		return 0, err
 	}
-	fmt.Printf("balances %s \n", resp.Balances)
 	assetIDBalance := resp.Balances[assetID]
 	return uint64(assetIDBalance), nil
 }
