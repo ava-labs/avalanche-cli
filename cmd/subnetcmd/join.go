@@ -523,7 +523,7 @@ func promptStakeAmount(subnetName string) (uint64, error) {
 					Value: esc.MinValidatorStake,
 				},
 				{
-					Label: fmt.Sprintf("Min Validator Stake(%d)", esc.MinValidatorStake),
+					Label: fmt.Sprintf("Wallet Balance(%d)", walletBalance),
 					Type:  prompts.LessThanEq,
 					Value: walletBalance,
 				},
