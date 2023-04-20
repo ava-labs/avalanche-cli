@@ -489,11 +489,11 @@ func promptStakeAmount(subnetName string) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	minValidatorStake := fmt.Sprintf("Minimum Validator Stake (%d)", esc.MinValidatorStake)
+	maxValidatorStake := fmt.Sprintf("Maximum Validator Stake (%d)", esc.MaxValidatorStake)
 	customWeight := "Custom (Has to be between minValidatorStake and maxValidatorStake defined during elastic subnet transformation)"
 
 	txt := "What amount of the subnet native token would you like to stake in the validator?"
-	weightOptions := []string{minValidatorStake, customWeight}
+	weightOptions := []string{maxValidatorStake, customWeight}
 
 	weightOption, err := app.Prompt.CaptureList(txt, weightOptions)
 	if err != nil {
@@ -506,8 +506,8 @@ func promptStakeAmount(subnetName string) (uint64, error) {
 		return 0, err
 	}
 	switch weightOption {
-	case minValidatorStake:
-		return esc.MinValidatorStake, nil
+	case maxValidatorStake:
+		return esc.MaxValidatorStake, nil
 	default:
 		return app.Prompt.CaptureUint64Compare(
 			txt,

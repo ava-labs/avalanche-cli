@@ -44,6 +44,11 @@ const (
 	subnetEVMName            = "subnet-evm"
 )
 
+var (
+	defaultLocalNetworkNodeIDs = []string{"NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg", "NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ",
+		"NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN", "NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu", "NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5"}
+)
+
 func GetBaseDir() string {
 	usr, err := user.Current()
 	if err != nil {
@@ -835,4 +840,37 @@ func IsNodeInPendingValidator(subnetName string, nodeID string) (bool, error) {
 	}
 	subnetID := sc.Networks[models.Local.String()].SubnetID
 	return subnet.CheckNodeIsInSubnetPendingValidators(subnetID, nodeID)
+}
+
+func CheckAllNodesArePendingValidator(subnetName string) (bool, error) {
+	sc, err := getSideCar(subnetName)
+	if err != nil {
+		return false, err
+	}
+	subnetID := sc.Networks[models.Local.String()].SubnetID
+	for _, nodeIDstr := range defaultLocalNetworkNodeIDs {
+		isPendingValidator, err := subnet.CheckNodeIsInSubnetPendingValidators(subnetID, nodeIDstr)
+		if err != nil {
+			return false, err
+		}
+		if !isPendingValidator {
+			return false, err
+		}
+	}
+	return true, nil
+}
+
+func AllPermissionlessValidatorExistsInSidecar(subnetName string, network string) (bool, error) {
+	sc, err := getSideCar(subnetName)
+	if err != nil {
+		return false, err
+	}
+	elasticSubnetValidators := sc.ElasticSubnet[network].Validators
+	for _, nodeIDstr := range defaultLocalNetworkNodeIDs {
+		_, ok := elasticSubnetValidators[nodeIDstr]
+		if !ok {
+			return false, err
+		}
+	}
+	return true, nil
 }
