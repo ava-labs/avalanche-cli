@@ -164,7 +164,7 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
 
-		exists, err = utils.AllPermissionlessValidatorExistsInSidecar(subnetName, localNetwork)
+		exists, err := utils.AllPermissionlessValidatorExistsInSidecar(subnetName, localNetwork)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(exists).Should(gomega.BeTrue())
 
