@@ -162,17 +162,19 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("elastic subnet transformation was successful, but failed to update sidecar: %w", err)
 	}
 	if !transformValidators {
-		yes, err := app.Prompt.CaptureNoYes("Do you want to transform existing validators to permissionless validators with equal weight? " +
-			"Press <No> if you want to customize the structure of your permissionless validators")
-		if err != nil {
-			return err
-		}
-		if !yes {
-			return nil
-		}
-		ux.Logger.PrintToUser("Transforming validators to permissionless validators")
-		if err = transformValidatorsToPermissionlessLocal(sc, subnetID, subnetName); err != nil {
-			return err
+		if !overrideWarning {
+			yes, err := app.Prompt.CaptureNoYes("Do you want to transform existing validators to permissionless validators with equal weight? " +
+				"Press <No> if you want to customize the structure of your permissionless validators")
+			if err != nil {
+				return err
+			}
+			if !yes {
+				return nil
+			}
+			ux.Logger.PrintToUser("Transforming validators to permissionless validators")
+			if err = transformValidatorsToPermissionlessLocal(sc, subnetID, subnetName); err != nil {
+				return err
+			}
 		}
 	} else {
 		ux.Logger.PrintToUser("Transforming validators to permissionless validators")
