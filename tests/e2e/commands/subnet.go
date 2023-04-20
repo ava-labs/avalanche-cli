@@ -869,7 +869,7 @@ func AddPermissionlessValidator(subnetName string, nodeID string, stakeAmount st
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
-	startTimeStr := time.Now().Add(constants.StakingMinimumLeadTime).UTC().Format(constants.TimeParseLayout)
+	startTimeStr := time.Now().Add(constants.StakingStartLeadTime).UTC().Format(constants.TimeParseLayout)
 	cmd := exec.Command(
 		CLIBinary,
 		SubnetCmd,
