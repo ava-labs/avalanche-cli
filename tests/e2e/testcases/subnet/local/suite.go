@@ -140,6 +140,39 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		commands.DeleteElasticSubnetConfig(subnetName)
 	})
 
+	ginkgo.It("can transform subnet to elastic subnet and automatically transform validators to permissionless", func() {
+		exists, err := utils.SubnetConfigExists(subnetName)
+		if exists {
+			commands.DeleteSubnetConfig(subnetName)
+			commands.DeleteElasticSubnetConfig(subnetName)
+		}
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		_, err = utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		_, err = commands.TransformElasticSubnetLocallyandTransformValidators(subnetName, stakeAmount, stakeDuration)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// GetCurrentSupply will return result if queried for elastic subnet
+		err = utils.GetCurrentSupply(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		isPendingValidator, err := utils.CheckAllNodesArePendingValidator(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
+
+		exists, err = utils.AllPermissionlessValidatorExistsInSidecar(subnetName, localNetwork)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(exists).Should(gomega.BeTrue())
+
+		commands.DeleteSubnetConfig(subnetName)
+		commands.DeleteElasticSubnetConfig(subnetName)
+	})
+
 	ginkgo.It("can add permissionless validator to elastic subnet", func() {
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)

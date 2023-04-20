@@ -806,6 +806,43 @@ func TransformElasticSubnetLocally(subnetName string) (string, error) {
 	return string(output), err
 }
 
+func TransformElasticSubnetLocallyandTransformValidators(subnetName string, stakeAmount string, stakingPeriod string) (string, error) {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+	startTimeStr := time.Now().Add(constants.StakingStartLeadTime).UTC().Format(constants.TimeParseLayout)
+
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		ElasticTransformCmd,
+		"--local",
+		"--tokenName",
+		"BLIZZARD",
+		"--tokenSymbol",
+		"BRRR",
+		"--default",
+		"--force",
+		"--transform-validators",
+		"--stake-amount",
+		stakeAmount,
+		"--start-time",
+		startTimeStr,
+		"--staking-period",
+		stakingPeriod,
+		subnetName,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		var stderr string
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+		fmt.Println(stderr)
+	}
+	return string(output), err
+}
+
 func RemoveValidator(subnetName string, nodeID string) (string, error) {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
