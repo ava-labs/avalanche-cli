@@ -141,11 +141,6 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can transform subnet to elastic subnet and automatically transform validators to permissionless", func() {
-		exists, err := utils.SubnetConfigExists(subnetName)
-		if exists {
-			commands.DeleteSubnetConfig(subnetName)
-			commands.DeleteElasticSubnetConfig(subnetName)
-		}
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		_, err = utils.ParseRPCsFromOutput(deployOutput)
@@ -165,7 +160,7 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
 
-		exists, err = utils.AllPermissionlessValidatorExistsInSidecar(subnetName, localNetwork)
+		exists, err := utils.AllPermissionlessValidatorExistsInSidecar(subnetName, localNetwork)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(exists).Should(gomega.BeTrue())
 
