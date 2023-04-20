@@ -143,7 +143,6 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 	elasticSubnetConfig.SubnetID = subnetID
 	ux.Logger.PrintToUser("Starting Elastic Subnet Transformation")
 	cancel := make(chan struct{})
-	//defer close(cancel)
 	go ux.PrintWait(cancel)
 	testKey := genesis.EWOQKey
 	keyChain := secp256k1fx.NewKeychain(testKey)
