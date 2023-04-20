@@ -842,14 +842,14 @@ func IsNodeInPendingValidator(subnetName string, nodeID string) (bool, error) {
 	return subnet.CheckNodeIsInSubnetPendingValidators(subnetID, nodeID)
 }
 
-func CheckAllNodesArePendingValidator(subnetName string) (bool, error) {
+func CheckAllNodesAreCurrentValidators(subnetName string) (bool, error) {
 	sc, err := getSideCar(subnetName)
 	if err != nil {
 		return false, err
 	}
 	subnetID := sc.Networks[models.Local.String()].SubnetID
 	for _, nodeIDstr := range defaultLocalNetworkNodeIDs {
-		isPendingValidator, err := subnet.CheckNodeIsInSubnetPendingValidators(subnetID, nodeIDstr)
+		isPendingValidator, err := subnet.CheckNodeIsInSubnetCurrentValidators(subnetID, nodeIDstr)
 		if err != nil {
 			return false, err
 		}

@@ -11,6 +11,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
@@ -156,11 +157,14 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		err = utils.GetCurrentSupply(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		isPendingValidator, err := utils.CheckAllNodesArePendingValidator(subnetName)
+		// wait for the last node to be current validator
+		time.Sleep(constants.StakingMinimumLeadTime)
+
+		isPendingValidator, err := utils.CheckAllNodesAreCurrentValidators(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
 
-		exists, err := utils.AllPermissionlessValidatorExistsInSidecar(subnetName, localNetwork)
+		exists, err = utils.AllPermissionlessValidatorExistsInSidecar(subnetName, localNetwork)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(exists).Should(gomega.BeTrue())
 
