@@ -806,7 +806,7 @@ func TransformElasticSubnetLocally(subnetName string) (string, error) {
 	return string(output), err
 }
 
-func TransformElasticSubnetLocallyandTransformValidators(subnetName string, stakeAmount string, stakingPeriod string) (string, error) {
+func TransformElasticSubnetLocallyandTransformValidators(subnetName string, stakeAmount string) (string, error) {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())

@@ -149,7 +149,7 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		_, err = commands.TransformElasticSubnetLocallyandTransformValidators(subnetName, stakeAmount, stakeDuration)
+		_, err = commands.TransformElasticSubnetLocallyandTransformValidators(subnetName, stakeAmount)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// GetCurrentSupply will return result if queried for elastic subnet
