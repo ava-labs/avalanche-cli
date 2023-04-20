@@ -811,7 +811,6 @@ func TransformElasticSubnetLocallyandTransformValidators(subnetName string, stak
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
-	startTimeStr := time.Now().Add(constants.StakingStartLeadTime).UTC().Format(constants.TimeParseLayout)
 
 	cmd := exec.Command(
 		CLIBinary,
@@ -827,10 +826,6 @@ func TransformElasticSubnetLocallyandTransformValidators(subnetName string, stak
 		"--transform-validators",
 		"--stake-amount",
 		stakeAmount,
-		"--start-time",
-		startTimeStr,
-		"--staking-period",
-		stakingPeriod,
 		subnetName,
 	)
 	output, err := cmd.CombinedOutput()
@@ -874,7 +869,7 @@ func AddPermissionlessValidator(subnetName string, nodeID string, stakeAmount st
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
-	startTimeStr := time.Now().Add(constants.StakingStartLeadTime).UTC().Format(constants.TimeParseLayout)
+	startTimeStr := time.Now().Add(constants.StakingMinimumLeadTime).UTC().Format(constants.TimeParseLayout)
 	cmd := exec.Command(
 		CLIBinary,
 		SubnetCmd,

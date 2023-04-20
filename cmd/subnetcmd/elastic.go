@@ -6,6 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
@@ -267,30 +270,46 @@ func transformValidatorsToPermissionlessLocal(sc models.Sidecar, subnetID ids.ID
 		validatorList[i] = v.NodeID
 	}
 
-	start, stakeDuration, err := getTimeParameters(models.Local, validatorList[0])
+	numToRemoveInitially := len(validatorList) - 1
+	for _, validator := range validatorList {
+		// Remove first 4 nodes locally, wait for minimum lead time (25 seconds) and then remove the last node
+		// so that we don't end up with a subnet without any current validators
+		if numToRemoveInitially > 0 {
+			err = handleRemoveAndAddValidators(sc, subnetID, validator, stakedTokenAmount)
+			if err != nil {
+				return err
+			}
+			numToRemoveInitially -= 1
+		} else {
+			ux.Logger.PrintToUser("Waiting for the first four nodes to be activated as permissionless validators...")
+			time.Sleep(constants.StakingMinimumLeadTime)
+			err = handleRemoveAndAddValidators(sc, subnetID, validator, stakedTokenAmount)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func handleRemoveAndAddValidators(sc models.Sidecar, subnetID ids.ID, validator ids.NodeID, stakedAmount uint64) error {
+	startTime := time.Now().Add(constants.StakingMinimumLeadTime).UTC()
+	endTime := startTime.Add(constants.MinStakeDuration)
+	testKey := genesis.EWOQKey
+	keyChain := secp256k1fx.NewKeychain(testKey)
+	_, err := subnet.IssueRemoveSubnetValidatorTx(keyChain, subnetID, validator)
 	if err != nil {
 		return err
 	}
-	endTime := start.Add(stakeDuration)
-
-	for _, validator := range validatorList {
-		testKey := genesis.EWOQKey
-		keyChain := secp256k1fx.NewKeychain(testKey)
-		_, err = subnet.IssueRemoveSubnetValidatorTx(keyChain, subnetID, validator)
-		if err != nil {
-			return err
-		}
-		ux.Logger.PrintToUser(fmt.Sprintf("Validator %s removed", validator.String()))
-		assetID := sc.ElasticSubnet[models.Local.String()].AssetID
-		subnetID := sc.Networks[models.Local.String()].SubnetID
-		txID, err := subnet.IssueAddPermissionlessValidatorTx(keyChain, subnetID, validator, stakedTokenAmount, assetID, uint64(start.Unix()), uint64(endTime.Unix()))
-		if err != nil {
-			return err
-		}
-		ux.Logger.PrintToUser(fmt.Sprintf("%s successfully joined elastic subnet as permissionless validator!", validator.String()))
-		if err = app.UpdateSidecarPermissionlessValidator(&sc, models.Local, validator.String(), txID); err != nil {
-			return fmt.Errorf("joining permissionless subnet was successful, but failed to update sidecar: %w", err)
-		}
+	ux.Logger.PrintToUser(fmt.Sprintf("Validator %s removed", validator.String()))
+	assetID := sc.ElasticSubnet[models.Local.String()].AssetID
+	txID, err := subnet.IssueAddPermissionlessValidatorTx(keyChain, subnetID, validator, stakedAmount, assetID, uint64(startTime.Unix()), uint64(endTime.Unix()))
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser(fmt.Sprintf("%s successfully joined elastic subnet as permissionless validator!", validator.String()))
+	if err = app.UpdateSidecarPermissionlessValidator(&sc, models.Local, validator.String(), txID); err != nil {
+		return fmt.Errorf("joining permissionless subnet was successful, but failed to update sidecar: %w", err)
 	}
 	return nil
 }
