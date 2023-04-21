@@ -803,27 +803,6 @@ func GetValidators(subnetName string) ([]string, error) {
 	return nodeIDsList, nil
 }
 
-func GetPendingValidators(subnetName string) ([]string, error) {
-	sc, err := getSideCar(subnetName)
-	if err != nil {
-		return nil, err
-	}
-	subnetID := sc.Networks[models.Local.String()].SubnetID
-	if subnetID == ids.Empty {
-		return nil, errors.New("no subnet id")
-	}
-	// Get NodeIDs of all validators on the subnet
-	validators, err := subnet.GetSubnetValidators(subnetID)
-	if err != nil {
-		return nil, err
-	}
-	nodeIDsList := []string{}
-	for _, validator := range validators {
-		nodeIDsList = append(nodeIDsList, validator.NodeID.String())
-	}
-	return nodeIDsList, nil
-}
-
 func GetCurrentSupply(subnetName string) error {
 	sc, err := getSideCar(subnetName)
 	if err != nil {
@@ -848,13 +827,26 @@ func CheckAllNodesAreCurrentValidators(subnetName string) (bool, error) {
 		return false, err
 	}
 	subnetID := sc.Networks[models.Local.String()].SubnetID
+
+	api := constants.LocalAPIEndpoint
+	pClient := platformvm.NewClient(api)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+
+	validators, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
+	if err != nil {
+		return false, err
+	}
+
 	for _, nodeIDstr := range defaultLocalNetworkNodeIDs {
-		isPendingValidator, err := subnet.CheckNodeIsInSubnetCurrentValidators(subnetID, nodeIDstr)
-		if err != nil {
-			return false, err
+		currentValidator := false
+		for _, validator := range validators {
+			if validator.NodeID.String() == nodeIDstr {
+				currentValidator = true
+			}
 		}
-		if !isPendingValidator {
-			return false, err
+		if !currentValidator {
+			return false, errors.New(fmt.Sprintf("%s is still not a current validator of the elastic subnet", nodeIDstr))
 		}
 	}
 	return true, nil

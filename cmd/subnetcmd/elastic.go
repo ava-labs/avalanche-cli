@@ -3,10 +3,13 @@
 package subnetcmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"time"
+
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
@@ -185,6 +188,7 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
+
 	PrintTransformResults(subnetName, txID, subnetID, tokenName, tokenSymbol, assetID)
 	return nil
 }
@@ -254,6 +258,29 @@ func getTokenSymbol() (string, error) {
 	return tokenSymbol, nil
 }
 
+func checkAllLocalNodesAreCurrentValidators(subnetID ids.ID) error {
+	api := constants.LocalAPIEndpoint
+	pClient := platformvm.NewClient(api)
+
+	ctx := context.Background()
+	validators, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
+	if err != nil {
+		return err
+	}
+	for _, localVal := range defaultLocalNetworkNodeIDs {
+		currentValidator := false
+		for _, validator := range validators {
+			if validator.NodeID.String() == localVal {
+				currentValidator = true
+			}
+		}
+		if !currentValidator {
+			return errors.New(fmt.Sprintf("%s is still not a current validator of the elastic subnet", localVal))
+		}
+	}
+	return nil
+}
+
 func transformValidatorsToPermissionlessLocal(sc models.Sidecar, subnetID ids.ID, subnetName string) error {
 	stakedTokenAmount, err := promptStakeAmount(subnetName)
 	if err != nil {
@@ -289,7 +316,8 @@ func transformValidatorsToPermissionlessLocal(sc models.Sidecar, subnetID ids.ID
 			}
 		}
 	}
-	return nil
+	time.Sleep(constants.StakingMinimumLeadTime)
+	return checkAllLocalNodesAreCurrentValidators(subnetID)
 }
 
 func handleRemoveAndAddValidators(sc models.Sidecar, subnetID ids.ID, validator ids.NodeID, stakedAmount uint64) error {

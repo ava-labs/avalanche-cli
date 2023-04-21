@@ -765,21 +765,3 @@ func CheckNodeIsInSubnetPendingValidators(subnetID ids.ID, nodeID string) (bool,
 	}
 	return false, nil
 }
-
-func CheckNodeIsInSubnetCurrentValidators(subnetID ids.ID, nodeID string) (bool, error) {
-	api := constants.LocalAPIEndpoint
-	pClient := platformvm.NewClient(api)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
-	defer cancel()
-
-	validators, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
-	if err != nil {
-		return false, err
-	}
-	for _, validator := range validators {
-		if validator.NodeID.String() == nodeID {
-			return true, nil
-		}
-	}
-	return false, nil
-}
