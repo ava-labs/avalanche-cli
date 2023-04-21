@@ -846,7 +846,7 @@ func CheckAllNodesAreCurrentValidators(subnetName string) (bool, error) {
 			}
 		}
 		if !currentValidator {
-			return false, errors.New(fmt.Sprintf("%s is still not a current validator of the elastic subnet", nodeIDstr))
+			return false, fmt.Errorf("%s is still not a current validator of the elastic subnet", nodeIDstr)
 		}
 	}
 	return true, nil

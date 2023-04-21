@@ -275,7 +275,7 @@ func checkAllLocalNodesAreCurrentValidators(subnetID ids.ID) error {
 			}
 		}
 		if !currentValidator {
-			return errors.New(fmt.Sprintf("%s is still not a current validator of the elastic subnet", localVal))
+			return fmt.Errorf("%s is still not a current validator of the elastic subnet", localVal)
 		}
 	}
 	return nil
