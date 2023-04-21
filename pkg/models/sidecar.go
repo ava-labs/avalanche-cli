@@ -13,12 +13,16 @@ type NetworkData struct {
 	RPCVersion   int
 }
 
+type PermissionlessValidators struct {
+	TxID ids.ID
+}
 type ElasticSubnet struct {
 	SubnetID    ids.ID
 	AssetID     ids.ID
 	PChainTXID  ids.ID
 	TokenName   string
 	TokenSymbol string
+	Validators  map[string]PermissionlessValidators
 }
 
 type Sidecar struct {

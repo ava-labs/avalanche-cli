@@ -3,9 +3,15 @@
 package subnetcmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
+	"time"
+
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
@@ -27,11 +33,12 @@ const (
 )
 
 var (
-	transformLocal   bool
-	tokenNameFlag    string
-	tokenSymbolFlag  string
-	useDefaultConfig bool
-	overrideWarning  bool
+	transformLocal      bool
+	tokenNameFlag       string
+	tokenSymbolFlag     string
+	useDefaultConfig    bool
+	overrideWarning     bool
+	transformValidators bool
 )
 
 // avalanche subnet elastic
@@ -53,6 +60,10 @@ mechanics will work.`,
 	cmd.Flags().StringVar(&tokenSymbolFlag, "tokenSymbol", "", "specify the token symbol")
 	cmd.Flags().BoolVar(&useDefaultConfig, "default", false, "use default elastic subnet config values")
 	cmd.Flags().BoolVar(&overrideWarning, "force", false, "override transform into elastic subnet warning")
+	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "amount of tokens to stake on validator")
+	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "start time that validator starts validating")
+	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long validator validates for after start time")
+	cmd.Flags().BoolVar(&transformValidators, "transform-validators", false, "transform validators to permissionless validators")
 	return cmd
 }
 
@@ -81,7 +92,7 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 	}
 
 	if network == models.Undefined {
-		networkToUpgrade, err := selectNetworkToTransform(sc)
+		networkToUpgrade, err := promptNetworkElastic(sc, "Which network should transform into an elastic Subnet?")
 		if err != nil {
 			return err
 		}
@@ -138,29 +149,53 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 	elasticSubnetConfig.SubnetID = subnetID
 	ux.Logger.PrintToUser("Starting Elastic Subnet Transformation")
 	cancel := make(chan struct{})
-	defer close(cancel)
 	go ux.PrintWait(cancel)
 	testKey := genesis.EWOQKey
 	keyChain := secp256k1fx.NewKeychain(testKey)
 	txID, assetID, err := subnet.IssueTransformSubnetTx(elasticSubnetConfig, keyChain, subnetID, tokenName, tokenSymbol, elasticSubnetConfig.MaxSupply)
+	close(cancel)
 	if err != nil {
 		return err
 	}
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Subnet Successfully Transformed To Elastic Subnet!")
+
 	elasticSubnetConfig.AssetID = assetID
-	PrintTransformResults(subnetName, txID, subnetID, tokenName, tokenSymbol, assetID)
 	if err = app.CreateElasticSubnetConfig(subnetName, &elasticSubnetConfig); err != nil {
 		return err
 	}
 	if err = app.UpdateSidecarElasticSubnet(&sc, models.Local, subnetID, assetID, txID, tokenName, tokenSymbol); err != nil {
 		return fmt.Errorf("elastic subnet transformation was successful, but failed to update sidecar: %w", err)
 	}
+	if !transformValidators {
+		if !overrideWarning {
+			yes, err := app.Prompt.CaptureNoYes("Do you want to transform existing validators to permissionless validators with equal weight? " +
+				"Press <No> if you want to customize the structure of your permissionless validators")
+			if err != nil {
+				return err
+			}
+			if !yes {
+				return nil
+			}
+			ux.Logger.PrintToUser("Transforming validators to permissionless validators")
+			if err = transformValidatorsToPermissionlessLocal(sc, subnetID, subnetName); err != nil {
+				return err
+			}
+		}
+	} else {
+		ux.Logger.PrintToUser("Transforming validators to permissionless validators")
+		if err = transformValidatorsToPermissionlessLocal(sc, subnetID, subnetName); err != nil {
+			return err
+		}
+	}
+
+	PrintTransformResults(subnetName, txID, subnetID, tokenName, tokenSymbol, assetID)
 	return nil
 }
 
 // select which network to transform to elastic subnet
-func selectNetworkToTransform(sc models.Sidecar) (string, error) {
+func promptNetworkElastic(sc models.Sidecar, prompt string) (string, error) {
 	var networkOptions []string
-	networkPrompt := "Which network should transform into an elastic Subnet?"
 	for network := range sc.Networks {
 		switch network {
 		case models.Local.String():
@@ -176,7 +211,7 @@ func selectNetworkToTransform(sc models.Sidecar) (string, error) {
 		return "", errors.New("no deployment target available, please first deploy created subnet")
 	}
 
-	selectedDeployment, err := app.Prompt.CaptureList(networkPrompt, networkOptions)
+	selectedDeployment, err := app.Prompt.CaptureList(prompt, networkOptions)
 	if err != nil {
 		return "", err
 	}
@@ -221,4 +256,88 @@ func getTokenSymbol() (string, error) {
 		return "", err
 	}
 	return tokenSymbol, nil
+}
+
+func checkAllLocalNodesAreCurrentValidators(subnetID ids.ID) error {
+	api := constants.LocalAPIEndpoint
+	pClient := platformvm.NewClient(api)
+
+	ctx := context.Background()
+	validators, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
+	if err != nil {
+		return err
+	}
+	for _, localVal := range defaultLocalNetworkNodeIDs {
+		currentValidator := false
+		for _, validator := range validators {
+			if validator.NodeID.String() == localVal {
+				currentValidator = true
+			}
+		}
+		if !currentValidator {
+			return fmt.Errorf("%s is still not a current validator of the elastic subnet", localVal)
+		}
+	}
+	return nil
+}
+
+func transformValidatorsToPermissionlessLocal(sc models.Sidecar, subnetID ids.ID, subnetName string) error {
+	stakedTokenAmount, err := promptStakeAmount(subnetName)
+	if err != nil {
+		return err
+	}
+
+	validators, err := subnet.GetSubnetValidators(subnetID)
+	if err != nil {
+		return err
+	}
+
+	validatorList := make([]ids.NodeID, len(validators))
+	for i, v := range validators {
+		validatorList[i] = v.NodeID
+	}
+
+	numToRemoveInitially := len(validatorList) - 1
+	for _, validator := range validatorList {
+		// Remove first 4 nodes locally, wait for minimum lead time (25 seconds) and then remove the last node
+		// so that we don't end up with a subnet without any current validators
+		if numToRemoveInitially > 0 {
+			err = handleRemoveAndAddValidators(sc, subnetID, validator, stakedTokenAmount)
+			if err != nil {
+				return err
+			}
+			numToRemoveInitially -= 1
+		} else {
+			ux.Logger.PrintToUser("Waiting for the first four nodes to be activated as permissionless validators...")
+			time.Sleep(constants.StakingMinimumLeadTime)
+			err = handleRemoveAndAddValidators(sc, subnetID, validator, stakedTokenAmount)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	time.Sleep(constants.StakingMinimumLeadTime)
+	return checkAllLocalNodesAreCurrentValidators(subnetID)
+}
+
+func handleRemoveAndAddValidators(sc models.Sidecar, subnetID ids.ID, validator ids.NodeID, stakedAmount uint64) error {
+	startTime := time.Now().Add(constants.StakingMinimumLeadTime).UTC()
+	endTime := startTime.Add(constants.MinStakeDuration)
+	testKey := genesis.EWOQKey
+	keyChain := secp256k1fx.NewKeychain(testKey)
+	_, err := subnet.IssueRemoveSubnetValidatorTx(keyChain, subnetID, validator)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser(fmt.Sprintf("Validator %s removed", validator.String()))
+	assetID := sc.ElasticSubnet[models.Local.String()].AssetID
+	txID, err := subnet.IssueAddPermissionlessValidatorTx(keyChain, subnetID, validator, stakedAmount, assetID, uint64(startTime.Unix()), uint64(endTime.Unix()))
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser(fmt.Sprintf("%s successfully joined elastic subnet as permissionless validator!", validator.String()))
+	if err = app.UpdateSidecarPermissionlessValidator(&sc, models.Local, validator.String(), txID); err != nil {
+		return fmt.Errorf("joining permissionless subnet was successful, but failed to update sidecar: %w", err)
+	}
+	return nil
 }

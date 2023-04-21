@@ -343,6 +343,24 @@ func (app *Avalanche) UpdateSidecarElasticSubnet(
 	return nil
 }
 
+func (app *Avalanche) UpdateSidecarPermissionlessValidator(
+	sc *models.Sidecar,
+	network models.Network,
+	nodeID string,
+	txID ids.ID,
+) error {
+	elasticSubnet := sc.ElasticSubnet[network.String()]
+	if elasticSubnet.Validators == nil {
+		elasticSubnet.Validators = make(map[string]models.PermissionlessValidators)
+	}
+	elasticSubnet.Validators[nodeID] = models.PermissionlessValidators{TxID: txID}
+	sc.ElasticSubnet[network.String()] = elasticSubnet
+	if err := app.UpdateSidecar(sc); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (app *Avalanche) GetTokenName(subnetName string) string {
 	sidecar, err := app.LoadSidecar(subnetName)
 	if err != nil {
@@ -398,4 +416,17 @@ func (app *Avalanche) CreateElasticSubnetConfig(subnetName string, es *models.El
 	}
 
 	return os.WriteFile(elasticSubetConfigPath, esBytes, WriteReadReadPerms)
+}
+
+func (app *Avalanche) LoadElasticSubnetConfig(subnetName string) (models.ElasticSubnetConfig, error) {
+	elasticSubnetConfigPath := app.GetElasticSubnetConfigPath(subnetName)
+	jsonBytes, err := os.ReadFile(elasticSubnetConfigPath)
+	if err != nil {
+		return models.ElasticSubnetConfig{}, err
+	}
+
+	var esc models.ElasticSubnetConfig
+	err = json.Unmarshal(jsonBytes, &esc)
+
+	return esc, err
 }

@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -795,6 +796,97 @@ func TransformElasticSubnetLocally(subnetName string) (string, error) {
 		"--force",
 		subnetName,
 	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		var stderr string
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+		fmt.Println(stderr)
+	}
+	return string(output), err
+}
+
+func TransformElasticSubnetLocallyandTransformValidators(subnetName string, stakeAmount string) (string, error) {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		ElasticTransformCmd,
+		"--local",
+		"--tokenName",
+		"BLIZZARD",
+		"--tokenSymbol",
+		"BRRR",
+		"--default",
+		"--force",
+		"--transform-validators",
+		"--stake-amount",
+		stakeAmount,
+		subnetName,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		var stderr string
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+		fmt.Println(stderr)
+	}
+	return string(output), err
+}
+
+func RemoveValidator(subnetName string, nodeID string) (string, error) {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		RemoveValidatorCmd,
+		"--local",
+		"--nodeID",
+		nodeID,
+		subnetName,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		var stderr string
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+		fmt.Println(stderr)
+	}
+	return string(output), err
+}
+
+func AddPermissionlessValidator(subnetName string, nodeID string, stakeAmount string, stakingPeriod string) (string, error) {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	startTimeStr := time.Now().Add(constants.StakingStartLeadTime).UTC().Format(constants.TimeParseLayout)
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		JoinCmd,
+		"--local",
+		"--elastic",
+		"--nodeID",
+		nodeID,
+		"--stake-amount",
+		stakeAmount,
+		"--start-time",
+		startTimeStr,
+		"--staking-period",
+		stakingPeriod,
+		subnetName,
+	)
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		var stderr string

@@ -221,7 +221,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 
 func promptDuration(start time.Time) (time.Duration, error) {
 	for {
-		txt := "How long should this validator be validating? Enter a duration, e.g. 8760h"
+		txt := "How long should this validator be validating? Enter a duration, e.g. 8760h. Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\""
 		d, err := app.Prompt.CaptureDuration(txt)
 		if err != nil {
 			return 0, err

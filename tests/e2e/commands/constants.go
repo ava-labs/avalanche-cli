@@ -10,4 +10,6 @@ const (
 	KeyCmd              = "key"
 	UpgradeCmd          = "upgrade"
 	ElasticTransformCmd = "elastic"
+	JoinCmd             = "join"
+	RemoveValidatorCmd  = "removeValidator"
 )

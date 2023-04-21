@@ -66,7 +66,6 @@ const (
 	MaxStakeWeight     = 100
 	MinStakeWeight     = 1
 	DefaultStakeWeight = 20
-
 	// The absolute minimum is 25 seconds, but set to 1 minute to allow for
 	// time to go through the command
 	StakingStartLeadTime   = 1 * time.Minute
