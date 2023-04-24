@@ -132,7 +132,7 @@ func createEvmGenesis(
 	genesis.Alloc = allocation
 	genesis.Config = conf
 	genesis.Difficulty = Difficulty
-	genesis.GasLimit = GasLimit
+	genesis.GasLimit = conf.FeeConfig.GasLimit.Uint64()
 
 	jsonBytes, err := genesis.MarshalJSON()
 	if err != nil {
