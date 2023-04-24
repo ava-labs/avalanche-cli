@@ -141,7 +141,7 @@ Designed for fast deploys. Enables full reset of the blockchain state.
 - The `default snapshot` is the main way to keep track of blockchain state. Used by default in the tools.
 It is initialized from the `bootstrap snapshot`, and after that is updated from CLI operations.
 - `custom snapshots` can be specified by the user, to save and restore particular states. Only changed if
-explicitely asked to do so.
+explicitly asked to do so.
 
 ### Local networks
 
