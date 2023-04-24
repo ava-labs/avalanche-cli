@@ -15,7 +15,7 @@ func vmidCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "vmid [vmName]",
 		Short:        "Prints the VMID of a VM",
-		Long:         `Derives a VMID from the VM's name and prints the VMID`,
+		Long:         `The subnet vmid command prints the virtual machine ID (VMID) for the given Subnet.`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
 		RunE:         printVMID,

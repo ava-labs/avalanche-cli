@@ -25,15 +25,42 @@ const (
 	Yes = "Yes"
 	No  = "No"
 
-	Add      = "Add"
-	Del      = "Delete"
-	Preview  = "Preview"
-	MoreInfo = "More Info"
-	Done     = "Done"
-	Cancel   = "Cancel"
+	Add        = "Add"
+	Del        = "Delete"
+	Preview    = "Preview"
+	MoreInfo   = "More Info"
+	Done       = "Done"
+	Cancel     = "Cancel"
+	LessThanEq = "Less Than Or Eq"
+	MoreThanEq = "More Than Or Eq"
+	MoreThan   = "More Than"
 )
 
 var errNoKeys = errors.New("no keys")
+
+type Comparator struct {
+	Label string // Label that identifies reference value
+	Type  string // Less Than Eq or More than Eq
+	Value uint64 // Value to Compare To
+}
+
+func (comparator *Comparator) Validate(val uint64) error {
+	switch comparator.Type {
+	case LessThanEq:
+		if val > comparator.Value {
+			return fmt.Errorf(fmt.Sprintf("the value must be smaller than or equal to %s (%d)", comparator.Label, comparator.Value))
+		}
+	case MoreThan:
+		if val <= comparator.Value {
+			return fmt.Errorf(fmt.Sprintf("the value must be bigger than %s (%d)", comparator.Label, comparator.Value))
+		}
+	case MoreThanEq:
+		if val < comparator.Value {
+			return fmt.Errorf(fmt.Sprintf("the value must be bigger than or equal to %s (%d)", comparator.Label, comparator.Value))
+		}
+	}
+	return nil
+}
 
 type Prompter interface {
 	CapturePositiveBigInt(promptStr string) (*big.Int, error)
@@ -55,6 +82,7 @@ type Prompter interface {
 	CaptureID(promptStr string) (ids.ID, error)
 	CaptureWeight(promptStr string) (uint64, error)
 	CaptureUint64(promptStr string) (uint64, error)
+	CaptureUint64Compare(promptStr string, comparators []Comparator) (uint64, error)
 	CapturePChainAddress(promptStr string, network models.Network) (string, error)
 	CaptureFutureDate(promptStr string, minDate time.Time) (time.Time, error)
 	ChooseKeyOrLedger() (bool, error)
@@ -219,8 +247,32 @@ func (*realPrompter) CaptureUint64(promptStr string) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
+	return strconv.ParseUint(amountStr, 0, 64)
+}
 
-	return strconv.ParseUint(amountStr, 10, 64)
+func (*realPrompter) CaptureUint64Compare(promptStr string, comparators []Comparator) (uint64, error) {
+	prompt := promptui.Prompt{
+		Label: promptStr,
+		Validate: func(input string) error {
+			val, err := strconv.ParseUint(input, 0, 64)
+			if err != nil {
+				return err
+			}
+			for _, comparator := range comparators {
+				if err := comparator.Validate(val); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}
+
+	amountStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	return strconv.ParseUint(amountStr, 0, 64)
 }
 
 func (*realPrompter) CapturePositiveBigInt(promptStr string) (*big.Int, error) {

@@ -175,8 +175,8 @@ func addValidator(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-	} else if weight < constants.MinStakeWeight || weight > constants.MaxStakeWeight {
-		return fmt.Errorf("illegal weight, must be between 1 and 100 inclusive: %d", weight)
+	} else if weight < constants.MinStakeWeight {
+		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", constants.MinStakeWeight, weight)
 	}
 
 	start, duration, err = getTimeParameters(network, nodeID)
@@ -221,7 +221,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 
 func promptDuration(start time.Time) (time.Duration, error) {
 	for {
-		txt := "How long should this validator be validating? Enter a duration, e.g. 8760h"
+		txt := "How long should this validator be validating? Enter a duration, e.g. 8760h. Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\""
 		d, err := app.Prompt.CaptureDuration(txt)
 		if err != nil {
 			return 0, err

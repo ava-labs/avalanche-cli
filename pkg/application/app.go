@@ -84,10 +84,6 @@ func (app *Avalanche) GetSubnetEVMBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.SubnetEVMInstallDir)
 }
 
-func (app *Avalanche) GetSpacesVMBinDir() string {
-	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.SpacesVMInstallDir)
-}
-
 func (app *Avalanche) GetUpgradeBytesFilepath(subnetName string) string {
 	return filepath.Join(app.GetSubnetDir(), subnetName, constants.UpgradeBytesFileName)
 }
@@ -106,6 +102,10 @@ func (app *Avalanche) GetGenesisPath(subnetName string) string {
 
 func (app *Avalanche) GetSidecarPath(subnetName string) string {
 	return filepath.Join(app.GetSubnetDir(), subnetName, constants.SidecarFileName)
+}
+
+func (app *Avalanche) GetElasticSubnetConfigPath(subnetName string) string {
+	return filepath.Join(app.GetSubnetDir(), subnetName, constants.ElasticSubnetConfigFileName)
 }
 
 func (app *Avalanche) GetKeyDir() string {
@@ -318,6 +318,49 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	return nil
 }
 
+func (app *Avalanche) UpdateSidecarElasticSubnet(
+	sc *models.Sidecar,
+	network models.Network,
+	subnetID ids.ID,
+	assetID ids.ID,
+	pchainTXID ids.ID,
+	tokenName string,
+	tokenSymbol string,
+) error {
+	if sc.ElasticSubnet == nil {
+		sc.ElasticSubnet = make(map[string]models.ElasticSubnet)
+	}
+	sc.ElasticSubnet[network.String()] = models.ElasticSubnet{
+		SubnetID:    subnetID,
+		AssetID:     assetID,
+		PChainTXID:  pchainTXID,
+		TokenName:   tokenName,
+		TokenSymbol: tokenSymbol,
+	}
+	if err := app.UpdateSidecar(sc); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (app *Avalanche) UpdateSidecarPermissionlessValidator(
+	sc *models.Sidecar,
+	network models.Network,
+	nodeID string,
+	txID ids.ID,
+) error {
+	elasticSubnet := sc.ElasticSubnet[network.String()]
+	if elasticSubnet.Validators == nil {
+		elasticSubnet.Validators = make(map[string]models.PermissionlessValidators)
+	}
+	elasticSubnet.Validators[nodeID] = models.PermissionlessValidators{TxID: txID}
+	sc.ElasticSubnet[network.String()] = elasticSubnet
+	if err := app.UpdateSidecar(sc); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (app *Avalanche) GetTokenName(subnetName string) string {
 	sidecar, err := app.LoadSidecar(subnetName)
 	if err != nil {
@@ -334,6 +377,9 @@ func (app *Avalanche) GetSidecarNames() ([]string, error) {
 
 	var names []string
 	for _, m := range matches {
+		if !m.IsDir() {
+			continue
+		}
 		// a subnet dir could theoretically exist without a sidecar yet...
 		if _, err := os.Stat(filepath.Join(app.GetSubnetDir(), m.Name(), constants.SidecarFileName)); err == nil {
 			names = append(names, m.Name())
@@ -356,4 +402,31 @@ func (*Avalanche) writeFile(path string, bytes []byte) error {
 	}
 
 	return os.WriteFile(path, bytes, WriteReadReadPerms)
+}
+
+func (app *Avalanche) CreateElasticSubnetConfig(subnetName string, es *models.ElasticSubnetConfig) error {
+	elasticSubetConfigPath := app.GetElasticSubnetConfigPath(subnetName)
+	if err := os.MkdirAll(filepath.Dir(elasticSubetConfigPath), constants.DefaultPerms755); err != nil {
+		return err
+	}
+
+	esBytes, err := json.MarshalIndent(es, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(elasticSubetConfigPath, esBytes, WriteReadReadPerms)
+}
+
+func (app *Avalanche) LoadElasticSubnetConfig(subnetName string) (models.ElasticSubnetConfig, error) {
+	elasticSubnetConfigPath := app.GetElasticSubnetConfigPath(subnetName)
+	jsonBytes, err := os.ReadFile(elasticSubnetConfigPath)
+	if err != nil {
+		return models.ElasticSubnetConfig{}, err
+	}
+
+	var esc models.ElasticSubnetConfig
+	err = json.Unmarshal(jsonBytes, &esc)
+
+	return esc, err
 }

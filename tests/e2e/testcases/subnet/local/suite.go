@@ -11,6 +11,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
@@ -25,6 +26,9 @@ const (
 	subnetName       = "e2eSubnetTest"
 	secondSubnetName = "e2eSecondSubnetTest"
 	confPath         = "tests/e2e/assets/test_avalanche-cli.json"
+	stakeAmount      = "2000"
+	stakeDuration    = "336h"
+	localNetwork     = "Local Network"
 )
 
 var (
@@ -99,9 +103,9 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		commands.DeleteSubnetConfig(subnetName)
 	})
 
-	ginkgo.It("can deploy a SpacesVM subnet to local", func() {
-		commands.CreateSpacesVMConfigWithVersion(subnetName, utils.SpacesVMGenesisPath, mapping[utils.Spaces2AvagoKey])
-		deployOutput := commands.DeploySubnetLocallyWithVersion(subnetName, mapping[utils.Avago2SpacesKey])
+	ginkgo.It("can transform a deployed SubnetEvm subnet to elastic subnet only once", func() {
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+		deployOutput := commands.DeploySubnetLocally(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -110,10 +114,108 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
 		rpc := rpcs[0]
 
-		err = utils.RunSpacesVMAPITest(rpc)
+		err = utils.SetHardhatRPC(rpc)
 		gomega.Expect(err).Should(gomega.BeNil())
 
+		err = utils.RunHardhatTests(utils.BaseTest)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// GetCurrentSupply will return error if queried for non-elastic subnet
+		err = utils.GetCurrentSupply(subnetName)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+
+		_, err = commands.TransformElasticSubnetLocally(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		exists, err := utils.ElasticSubnetConfigExists(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(exists).Should(gomega.BeTrue())
+
+		// GetCurrentSupply will return result if queried for elastic subnet
+		err = utils.GetCurrentSupply(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		_, err = commands.TransformElasticSubnetLocally(subnetName)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+
 		commands.DeleteSubnetConfig(subnetName)
+		commands.DeleteElasticSubnetConfig(subnetName)
+	})
+
+	ginkgo.It("can transform subnet to elastic subnet and automatically transform validators to permissionless", func() {
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		_, err = utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		_, err = commands.TransformElasticSubnetLocallyandTransformValidators(subnetName, stakeAmount)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// GetCurrentSupply will return result if queried for elastic subnet
+		err = utils.GetCurrentSupply(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// wait for the last node to be current validator
+		time.Sleep(constants.StakingMinimumLeadTime)
+
+		isPendingValidator, err := utils.CheckAllNodesAreCurrentValidators(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
+
+		exists, err := utils.AllPermissionlessValidatorExistsInSidecar(subnetName, localNetwork)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(exists).Should(gomega.BeTrue())
+
+		commands.DeleteSubnetConfig(subnetName)
+		commands.DeleteElasticSubnetConfig(subnetName)
+	})
+
+	ginkgo.It("can add permissionless validator to elastic subnet", func() {
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		_, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		_, err = commands.TransformElasticSubnetLocally(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		nodeIDs, err := utils.GetValidators(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(len(nodeIDs)).Should(gomega.Equal(5))
+
+		_, err = commands.RemoveValidator(subnetName, nodeIDs[0])
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		_, err = commands.AddPermissionlessValidator(subnetName, nodeIDs[0], stakeAmount, stakeDuration)
+		gomega.Expect(err).Should(gomega.BeNil())
+		exists, err := utils.PermissionlessValidatorExistsInSidecar(subnetName, nodeIDs[0], localNetwork)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(exists).Should(gomega.BeTrue())
+
+		isPendingValidator, err := utils.IsNodeInPendingValidator(subnetName, nodeIDs[0])
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
+
+		_, err = commands.RemoveValidator(subnetName, nodeIDs[1])
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		_, err = commands.AddPermissionlessValidator(subnetName, nodeIDs[1], stakeAmount, stakeDuration)
+		gomega.Expect(err).Should(gomega.BeNil())
+		exists, err = utils.PermissionlessValidatorExistsInSidecar(subnetName, nodeIDs[1], localNetwork)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(exists).Should(gomega.BeTrue())
+
+		isPendingValidator, err = utils.IsNodeInPendingValidator(subnetName, nodeIDs[1])
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
+
+		commands.DeleteSubnetConfig(subnetName)
+		commands.DeleteElasticSubnetConfig(subnetName)
 	})
 
 	ginkgo.It("can load viper config and setup node properties for local deploy", func() {
@@ -324,25 +426,6 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		err = utils.RunHardhatTests(utils.BaseTest)
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		commands.DeleteSubnetConfig(subnetName)
-	})
-
-	ginkgo.It("can deploy a spaces-vm with old version", func() {
-		spacesVMVersion := "v0.0.9"
-
-		commands.CreateSpacesVMConfigWithVersion(subnetName, utils.SpacesVMGenesisPath, spacesVMVersion)
-		deployOutput := commands.DeploySubnetLocally(subnetName)
-		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
-		if err != nil {
-			fmt.Println(deployOutput)
-		}
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
-		rpc := rpcs[0]
-
-		err = utils.RunSpacesVMAPITest(rpc)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		commands.DeleteSubnetConfig(subnetName)

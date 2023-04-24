@@ -15,21 +15,23 @@ const (
 	ServerRunFile      = "gRPCserver.run"
 	AvalancheCliBinDir = "bin"
 	RunDir             = "runs"
+  
+	SuffixSeparator             = "_"
+	SidecarFileName             = "sidecar.json"
+	GenesisFileName             = "genesis.json"
+	ElasticSubnetConfigFileName = "elastic_subnet_config.json"
+	SidecarSuffix               = SuffixSeparator + SidecarFileName
+	GenesisSuffix               = SuffixSeparator + GenesisFileName
+  NodeFileName                = "node.json"
 
-	SuffixSeparator = "_"
-	SidecarFileName = "sidecar.json"
-	GenesisFileName = "genesis.json"
-	NodeFileName    = "node.json"
-	SidecarSuffix   = SuffixSeparator + SidecarFileName
-	GenesisSuffix   = SuffixSeparator + GenesisFileName
-
-	SidecarVersion = "1.3.0"
+	SidecarVersion = "1.4.0"
 
 	MaxLogFileSize   = 4
 	MaxNumOfLogFiles = 5
 	RetainOldFiles   = 0 // retain all old log files
 
-	RequestTimeout = 3 * time.Minute
+	RequestTimeout    = 3 * time.Minute
+	E2ERequestTimeout = 30 * time.Second
 
 	SimulatePublicNetwork = "SIMULATE_PUBLIC_NETWORK"
 	FujiAPIEndpoint       = "https://api.avax-test.network"
@@ -52,6 +54,9 @@ const (
 	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/" + BootstrapSnapshotLocalPath
 	BootstrapSnapshotSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/sha256sum.txt"
 
+	CliInstallationURL    = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
+	ExpectedCliInstallErr = "resource temporarily unavailable"
+
 	KeyDir     = "key"
 	KeySuffix  = ".pk"
 	YAMLSuffix = ".yml"
@@ -62,7 +67,6 @@ const (
 	MaxStakeWeight     = 100
 	MinStakeWeight     = 1
 	DefaultStakeWeight = 20
-
 	// The absolute minimum is 25 seconds, but set to 1 minute to allow for
 	// time to go through the command
 	StakingStartLeadTime   = 1 * time.Minute
@@ -76,14 +80,12 @@ const (
 	AvaLabsOrg          = "ava-labs"
 	AvalancheGoRepoName = "avalanchego"
 	SubnetEVMRepoName   = "subnet-evm"
-	SpacesVMRepoName    = "spacesvm"
+	CliRepoName         = "avalanche-cli"
 
 	AvalancheGoInstallDir = "avalanchego"
 	SubnetEVMInstallDir   = "subnet-evm"
-	SpacesVMInstallDir    = "spacesvm"
 
 	SubnetEVMBin = "subnet-evm"
-	SpacesVMBin  = "spacesvm"
 
 	DefaultNodeRunURL = "http://127.0.0.1:9650"
 
@@ -117,7 +119,6 @@ const (
 	AvalancheGoCompatibilityVersionAdded = "v1.9.2"
 	AvalancheGoCompatibilityURL          = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
 	SubnetEVMRPCCompatibilityURL         = "https://raw.githubusercontent.com/ava-labs/subnet-evm/master/compatibility.json"
-	SpacesVMRPCCompatibilityURL          = "https://raw.githubusercontent.com/ava-labs/spacesvm/master/compatibility.json"
 
 	YesLabel = "Yes"
 	NoLabel  = "No"
@@ -126,4 +127,11 @@ const (
 	BlockchainIDLabel = "BlockchainID: "
 
 	PluginDir = "plugins"
+
+	SkipUpdateFlag = "skip-update-check"
+	LastFileName   = ".last_actions.json"
+
+	DefaultWalletCreationTimeout = 5 * time.Second
+
+	DefaultConfirmTxTimeout = 20 * time.Second
 )

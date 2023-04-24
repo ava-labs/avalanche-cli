@@ -29,11 +29,6 @@ var _ = ginkgo.Describe("[Subnet]", ginkgo.Ordered, func() {
 		commands.DeleteSubnetConfig(subnetName)
 	})
 
-	ginkgo.It("can create and delete a spacesvm config", func() {
-		commands.CreateSpacesVMConfig(subnetName, utils.SpacesVMGenesisPath)
-		commands.DeleteSubnetConfig(subnetName)
-	})
-
 	ginkgo.It("can create and delete a custom vm subnet config", func() {
 		// let's use a SubnetEVM version which would be compatible with an existing Avago
 		customVMPath, err := utils.DownloadCustomVMBin(mapping[utils.SoloSubnetEVMKey1])

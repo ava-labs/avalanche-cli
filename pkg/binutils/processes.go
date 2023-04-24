@@ -154,6 +154,20 @@ type runFile struct {
 	GRPCserverFileName string `json:"gRPCserverFileName"`
 }
 
+func GetBackendLogFile(app *application.Avalanche) (string, error) {
+	var rf runFile
+	serverRunFilePath := app.GetRunFile()
+	run, err := os.ReadFile(serverRunFilePath)
+	if err != nil {
+		return "", fmt.Errorf("failed reading process info file at %s: %w", serverRunFilePath, err)
+	}
+	if err := json.Unmarshal(run, &rf); err != nil {
+		return "", fmt.Errorf("failed unmarshalling server run file at %s: %w", serverRunFilePath, err)
+	}
+
+	return rf.GRPCserverFileName, nil
+}
+
 func GetServerPID(app *application.Avalanche) (int, error) {
 	var rf runFile
 	serverRunFilePath := app.GetRunFile()
@@ -185,7 +199,7 @@ func StartServerProcess(app *application.Avalanche) error {
 		return err
 	}
 
-	outputFile, err := os.Create(path.Join(outputDir, "avalanche-cli-backend"))
+	outputFile, err := os.Create(path.Join(outputDir, "avalanche-cli-backend.log"))
 	if err != nil {
 		return err
 	}

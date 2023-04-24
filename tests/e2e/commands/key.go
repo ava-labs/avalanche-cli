@@ -4,6 +4,8 @@ package commands
 
 import (
 	"os/exec"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
 /* #nosec G204 */
@@ -14,6 +16,7 @@ func CreateKey(keyName string) (string, error) {
 		KeyCmd,
 		"create",
 		keyName,
+		"--"+constants.SkipUpdateFlag,
 	)
 
 	out, err := cmd.Output()
@@ -30,6 +33,7 @@ func CreateKeyFromPath(keyName string, keyPath string) (string, error) {
 		"--file",
 		keyPath,
 		keyName,
+		"--"+constants.SkipUpdateFlag,
 	)
 	out, err := cmd.Output()
 	return string(out), err
@@ -44,6 +48,7 @@ func CreateKeyForce(keyName string) (string, error) {
 		"create",
 		keyName,
 		"--force",
+		"--"+constants.SkipUpdateFlag,
 	)
 
 	out, err := cmd.Output()
@@ -58,6 +63,7 @@ func ListKeys() (string, error) {
 		KeyCmd,
 		"list",
 		"--mainnet",
+		"--"+constants.SkipUpdateFlag,
 	)
 
 	out, err := cmd.Output()
@@ -73,6 +79,7 @@ func DeleteKey(keyName string) (string, error) {
 		"delete",
 		keyName,
 		"--force",
+		"--"+constants.SkipUpdateFlag,
 	)
 
 	out, err := cmd.Output()
@@ -87,6 +94,7 @@ func ExportKey(keyName string) (string, error) {
 		KeyCmd,
 		"export",
 		keyName,
+		"--"+constants.SkipUpdateFlag,
 	)
 
 	out, err := cmd.Output()
@@ -103,6 +111,7 @@ func ExportKeyToFile(keyName string, outputPath string) (string, error) {
 		keyName,
 		"-o",
 		outputPath,
+		"--"+constants.SkipUpdateFlag,
 	)
 
 	out, err := cmd.Output()

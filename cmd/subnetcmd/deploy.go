@@ -30,7 +30,6 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/coreth/core"
-	spacesvmchain "github.com/ava-labs/spacesvm/chain"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -103,6 +102,9 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 	chains := []string{}
 
 	for _, s := range subnets {
+		if !s.IsDir() {
+			continue
+		}
 		sidecarFile := filepath.Join(app.GetSubnetDir(), s.Name(), constants.SidecarFileName)
 		if _, err := os.Stat(sidecarFile); err == nil {
 			// read in sidecar file
@@ -189,12 +191,8 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 	}
 
 	// validate genesis as far as possible previous to deploy
-	switch sidecar.VM {
-	case models.SubnetEvm:
+	if sidecar.VM == models.SubnetEvm {
 		var genesis core.Genesis
-		err = json.Unmarshal(chainGenesis, &genesis)
-	case models.SpacesVM:
-		var genesis spacesvmchain.Genesis
 		err = json.Unmarshal(chainGenesis, &genesis)
 	}
 	if err != nil {
@@ -222,11 +220,6 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 			vmBin, err = binutils.SetupSubnetEVM(app, sidecar.VMVersion)
 			if err != nil {
 				return fmt.Errorf("failed to install subnet-evm: %w", err)
-			}
-		case models.SpacesVM:
-			vmBin, err = binutils.SetupSpacesVM(app, sidecar.VMVersion)
-			if err != nil {
-				return fmt.Errorf("failed to install spacesvm: %w", err)
 			}
 		case models.CustomVM:
 			vmBin = binutils.SetupCustomBin(app, chain)
@@ -751,7 +744,6 @@ func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFu
 	table.Append([]string{"VM ID", vmID.String()})
 	if isFullySigned {
 		table.Append([]string{"Blockchain ID", blockchainID.String()})
-		table.Append([]string{"RPC URL", fmt.Sprintf("%s/ext/bc/%s/rpc", constants.DefaultNodeRunURL, blockchainID.String())})
 		table.Append([]string{"P-Chain TXID", blockchainID.String()})
 	}
 	table.Render()

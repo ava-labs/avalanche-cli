@@ -22,7 +22,7 @@ const (
 	futureDeployment  = "Update config for future deployments"
 	localDeployment   = "Existing local deployment"
 	fujiDeployment    = "Fuji"
-	mainnetDeployment = "Mainnet (coming soon)"
+	mainnetDeployment = "Mainnet"
 )
 
 var (
@@ -41,9 +41,13 @@ var (
 // avalanche subnet update vm
 func newUpgradeVMCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "vm [subnetName]",
-		Short:        "Upgrade a subnet's binary",
-		Long:         "",
+		Use:   "vm [subnetName]",
+		Short: "Upgrade a subnet's binary",
+		Long: `The subnet upgrade vm command enables the user to upgrade their Subnet's VM binary. The command
+can upgrade both local Subnets and publicly deployed Subnets on Fuji and Mainnet.
+
+The command walks the user through an interactive wizard. The user can skip the wizard by providing
+command line flags.`,
 		RunE:         upgradeVM,
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
@@ -121,7 +125,7 @@ func upgradeVM(_ *cobra.Command, args []string) error {
 	}
 
 	vmType := sc.VM
-	if vmType == models.SubnetEvm || vmType == models.SpacesVM {
+	if vmType == models.SubnetEvm {
 		return selectUpdateOption(vmType, sc, networkToUpgrade)
 	}
 
@@ -266,9 +270,9 @@ func updateVMByNetwork(sc models.Sidecar, targetVersion string, networkToUpgrade
 	case localDeployment:
 		return updateExistingLocalVM(sc, targetVersion)
 	case fujiDeployment:
-		return chooseManualOrAutomatic(sc, targetVersion, networkToUpgrade)
+		return chooseManualOrAutomatic(sc, targetVersion)
 	case mainnetDeployment:
-		return updateMainnetVM()
+		return chooseManualOrAutomatic(sc, targetVersion)
 	default:
 		return errors.New("unknown deployment")
 	}
@@ -322,17 +326,6 @@ func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
 		if err != nil {
 			return fmt.Errorf("unable to get RPC version: %w", err)
 		}
-	case models.SpacesVM:
-		// download the binary and prepare to copy it
-		vmBin, err = binutils.SetupSpacesVM(app, targetVersion)
-		if err != nil {
-			return fmt.Errorf("failed to install spaces-vm: %w", err)
-		}
-
-		rpcVersion, err = vm.GetRPCProtocolVersion(app, models.SpacesVM, targetVersion)
-		if err != nil {
-			return fmt.Errorf("unable to get RPC version: %w", err)
-		}
 	case models.CustomVM:
 		// get the path to the already copied binary
 		vmBin = binutils.SetupCustomBin(app, sc.Name)
@@ -356,7 +349,7 @@ func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
 	return nil
 }
 
-func chooseManualOrAutomatic(sc models.Sidecar, targetVersion string, _ string) error {
+func chooseManualOrAutomatic(sc models.Sidecar, targetVersion string) error {
 	switch {
 	case useManual:
 		return plugins.ManualUpgrade(app, sc, targetVersion)
@@ -380,11 +373,6 @@ func chooseManualOrAutomatic(sc models.Sidecar, targetVersion string, _ string) 
 		return plugins.ManualUpgrade(app, sc, targetVersion)
 	}
 	return plugins.AutomatedUpgrade(app, sc, targetVersion, pluginDir)
-}
-
-func updateMainnetVM() error {
-	ux.Logger.PrintToUser("Coming soon. For now, please upgrade your mainnet deployments manually.")
-	return nil
 }
 
 func isServerRunning() (bool, error) {

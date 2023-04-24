@@ -15,6 +15,8 @@ func GetNetwork(tx *txs.Tx) (models.Network, error) {
 	unsignedTx := tx.Unsigned
 	var networkID uint32
 	switch unsignedTx := unsignedTx.(type) {
+	case *txs.RemoveSubnetValidatorTx:
+		networkID = unsignedTx.NetworkID
 	case *txs.AddSubnetValidatorTx:
 		networkID = unsignedTx.NetworkID
 	case *txs.CreateChainTx:

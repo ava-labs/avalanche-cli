@@ -20,6 +20,9 @@ func GetLocallyDeployedSubnetsFromFile(app *application.Avalanche) ([]string, er
 	deployedSubnets := []string{}
 
 	for _, subnetDir := range allSubnetDirs {
+		if !subnetDir.IsDir() {
+			continue
+		}
 		// read sidecar file
 		sc, err := app.LoadSidecar(subnetDir.Name())
 		if err == os.ErrNotExist {

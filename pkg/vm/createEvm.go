@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"os"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -38,7 +40,7 @@ func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesi
 			return nil, &models.Sidecar{}, err
 		}
 
-		subnetEVMVersion, _, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion, false)
+		subnetEVMVersion, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion, false)
 		if err != nil {
 			return nil, &models.Sidecar{}, err
 		}
@@ -112,8 +114,15 @@ func createEvmGenesis(
 		subnetEvmState.NextState(direction)
 	}
 
-	if conf != nil && conf.TxAllowListConfig != nil {
-		if err := ensureAdminsHaveBalance(conf.TxAllowListConfig.AllowListAdmins, allocation); err != nil {
+	if conf != nil && conf.GenesisPrecompiles[txallowlist.ConfigKey] != nil {
+		allowListCfg, ok := conf.GenesisPrecompiles[txallowlist.ConfigKey].(*txallowlist.Config)
+		if !ok {
+			return nil, nil, fmt.Errorf("expected config of type txallowlist.AllowListConfig, but got %T", allowListCfg)
+		}
+
+		if err := ensureAdminsHaveBalance(
+			allowListCfg.AdminAddresses,
+			allocation); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -123,7 +132,7 @@ func createEvmGenesis(
 	genesis.Alloc = allocation
 	genesis.Config = conf
 	genesis.Difficulty = Difficulty
-	genesis.GasLimit = GasLimit
+	genesis.GasLimit = conf.FeeConfig.GasLimit.Uint64()
 
 	jsonBytes, err := genesis.MarshalJSON()
 	if err != nil {
