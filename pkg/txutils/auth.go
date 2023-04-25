@@ -4,7 +4,6 @@ package txutils
 
 import (
 	"fmt"
-
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanchego/ids"

@@ -4,6 +4,7 @@ package keycmd
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 
 	"github.com/ava-labs/avalanche-cli/pkg/key"
@@ -48,10 +49,12 @@ func createKey(_ *cobra.Command, args []string) error {
 		cchain := true
 		pClients, cClients, err := getClients(networks, cchain)
 		if err != nil {
+			fmt.Print("the errror create key is here %s \n", err)
 			return err
 		}
 		addrInfos, err := getStoredKeyInfo(pClients, cClients, networks, keyPath, cchain)
 		if err != nil {
+			fmt.Print("the errror getStoredKeyInfo is here %s \n", err)
 			return err
 		}
 		printAddrInfos(addrInfos)

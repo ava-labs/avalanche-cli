@@ -6,6 +6,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanchego/vms/components/avax"
+	"github.com/ava-labs/avalanchego/vms/components/verify"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -17,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/set"
+	avmtx "github.com/ava-labs/avalanchego/vms/avm/txs"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -103,6 +106,168 @@ func (d *PublicDeployer) AddValidator(
 	}
 	ux.Logger.PrintToUser("Partial tx created")
 	return false, tx, nil
+}
+
+func (d *PublicDeployer) CreateAssetTx(
+	subnetAuthKeysStrs []string,
+	subnetID ids.ID,
+	tokenName string,
+	tokenSymbol string,
+	denomination byte,
+	initialState map[uint32][]verify.State,
+) (bool, ids.ID, error) {
+	wallet, err := d.loadWallet(subnetID)
+	if err != nil {
+		return false, ids.Empty, err
+	}
+
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign remove validator hash on the ledger device *** ")
+	}
+
+	if len(subnetAuthKeysStrs) == 1 {
+		fmt.Printf("we are here creating asset")
+		fmt.Printf("token Name %s %s %d", tokenName, tokenSymbol, denomination)
+		id, err := wallet.X().IssueCreateAssetTx(tokenName, tokenSymbol, denomination, initialState)
+		if err != nil {
+			return false, ids.Empty, err
+		}
+		ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", id)
+		return true, id, err
+	}
+	// not fully signed
+	//tx, err := d.createCreateAssetTX(subnetAuthKeys, wallet, tokenName, tokenSymbol, denomination, initialState)
+	//if err != nil {
+	//	return false, nil, err
+	//}
+	//ux.Logger.PrintToUser("Partial tx created")
+	//return false, tx, err
+	return false, ids.Empty, err
+
+}
+
+func (d *PublicDeployer) ExportToPChainTx(
+	subnetAuthKeysStrs []string,
+	subnetID ids.ID,
+	subnetAssetID ids.ID,
+	owner *secp256k1fx.OutputOwners,
+	maxSupply uint64,
+) (bool, *avmtx.Tx, error) {
+	wallet, err := d.loadWallet(subnetID)
+	if err != nil {
+		return false, nil, err
+	}
+
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign remove validator hash on the ledger device *** ")
+	}
+
+	if len(subnetAuthKeysStrs) == 1 {
+		id, err := wallet.X().IssueExportTx(ids.Empty,
+			[]*avax.TransferableOutput{
+				{
+					Asset: avax.Asset{
+						ID: subnetAssetID,
+					},
+					Out: &secp256k1fx.TransferOutput{
+						Amt:          maxSupply,
+						OutputOwners: *owner,
+					},
+				},
+			})
+		if err != nil {
+			return false, nil, err
+		}
+		ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", id)
+		return true, nil, err
+	}
+	// not fully signed
+	//tx, err := d.createExportToPChainTX(subnetAuthKeys, wallet, owner, subnetAssetID, maxSupply)
+	//if err != nil {
+	//	return false, nil, err
+	//}
+	//ux.Logger.PrintToUser("Partial tx created")
+	return false, nil, err
+}
+
+func (d *PublicDeployer) ImportFromXChain(
+	subnetAuthKeysStrs []string,
+	subnetID ids.ID,
+	owner *secp256k1fx.OutputOwners,
+) (bool, *txs.Tx, error) {
+	wallet, err := d.loadWallet(subnetID)
+	if err != nil {
+		return false, nil, err
+	}
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign remove validator hash on the ledger device *** ")
+	}
+	xWallet := wallet.X()
+	xChainID := xWallet.BlockchainID()
+
+	if len(subnetAuthKeysStrs) == 1 {
+		id, err := wallet.P().IssueImportTx(xChainID, owner)
+		if err != nil {
+			return false, nil, err
+		}
+		ux.Logger.PrintToUser("ImportFromXChain Transaction successful, transaction ID: %s", id)
+		return true, nil, nil
+	}
+
+	// not fully signed
+	//tx, err := d.createImportFromXChainTx(subnetAuthKeys, wallet, owner, xChainID)
+	//if err != nil {
+	//	return false, nil, err
+	//}
+	//ux.Logger.PrintToUser("Partial tx created")
+	return false, nil, nil
+}
+
+func (d *PublicDeployer) TransformSubnetTx(
+	subnetAuthKeysStrs []string,
+	elasticSubnetConfig models.ElasticSubnetConfig,
+	subnetID ids.ID,
+	subnetAssetID ids.ID,
+) (bool, *txs.Tx, error) {
+	wallet, err := d.loadWallet(subnetID)
+	if err != nil {
+		fmt.Printf("we have error wallet %s \n", err.Error())
+		return false, nil, err
+	}
+	//subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
+	//if err != nil {
+	//	return false, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
+	//}
+	//if ok := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys); !ok {
+	//	return false, nil, ErrNoSubnetAuthKeysInWallet
+	//}
+
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign remove validator hash on the ledger device *** ")
+	}
+
+	if len(subnetAuthKeysStrs) == 1 {
+		id, err := wallet.P().IssueTransformSubnetTx(elasticSubnetConfig.SubnetID, subnetAssetID,
+			elasticSubnetConfig.InitialSupply, elasticSubnetConfig.MaxSupply, elasticSubnetConfig.MinConsumptionRate,
+			elasticSubnetConfig.MaxConsumptionRate, elasticSubnetConfig.MinValidatorStake, elasticSubnetConfig.MaxValidatorStake,
+			elasticSubnetConfig.MinStakeDuration, elasticSubnetConfig.MaxStakeDuration, elasticSubnetConfig.MinDelegationFee,
+			elasticSubnetConfig.MinDelegatorStake, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement,
+		)
+		if err != nil {
+			fmt.Printf("we have error transform %s \n", err.Error())
+			return false, nil, err
+		}
+		ux.Logger.PrintToUser("IssueTransformSubnetTx Transaction successful, transaction ID: %s", id)
+		return true, nil, nil
+	}
+
+	// not fully signed
+	//tx, err := d.createTransformSubnetTX(subnetAuthKeys, elasticSubnetConfig, wallet, subnetAssetID)
+	//if err != nil {
+	//	return false, nil, err
+	//}
+	//ux.Logger.PrintToUser("Partial tx created")
+	return false, nil, nil
 }
 
 // removes a subnet validator from the given [subnet]
@@ -362,6 +527,89 @@ func (d *PublicDeployer) createAddSubnetValidatorTx(
 	return &tx, nil
 }
 
+func (d *PublicDeployer) createExportToPChainTX(
+	subnetAuthKeys []ids.ShortID,
+	wallet primary.Wallet,
+	owner *secp256k1fx.OutputOwners,
+	subnetAssetID ids.ID,
+	maxSupply uint64,
+) (*avmtx.Tx, error) {
+	options := d.getMultisigTxOptions(subnetAuthKeys)
+	// create tx
+	unsignedTx, err := wallet.X().Builder().NewExportTx(
+		ids.Empty,
+		[]*avax.TransferableOutput{
+			{
+				Asset: avax.Asset{
+					ID: subnetAssetID,
+				},
+				Out: &secp256k1fx.TransferOutput{
+					Amt:          maxSupply,
+					OutputOwners: *owner,
+				},
+			},
+		},
+		options...,
+	)
+	if err != nil {
+		return nil, err
+	}
+	tx := avmtx.Tx{Unsigned: unsignedTx}
+	// sign with current wallet
+	if err := wallet.X().Signer().Sign(context.Background(), &tx); err != nil {
+		return nil, err
+	}
+	return &tx, nil
+}
+
+func (d *PublicDeployer) createCreateAssetTX(
+	subnetAuthKeys []ids.ShortID,
+	wallet primary.Wallet,
+	tokenName string,
+	tokenSymbol string,
+	denomination byte,
+	initialState map[uint32][]verify.State,
+) (*avmtx.Tx, error) {
+	options := d.getMultisigTxOptions(subnetAuthKeys)
+	// create tx
+	unsignedTx, err := wallet.X().Builder().NewCreateAssetTx(
+		tokenName,
+		tokenSymbol,
+		denomination, // denomination for UI purposes only in explorer
+		initialState,
+		options...,
+	)
+	if err != nil {
+		return nil, err
+	}
+	tx := avmtx.Tx{Unsigned: unsignedTx}
+	// sign with current wallet
+	if err := wallet.X().Signer().Sign(context.Background(), &tx); err != nil {
+		return nil, err
+	}
+	return &tx, nil
+}
+
+func (d *PublicDeployer) createImportFromXChainTx(
+	subnetAuthKeys []ids.ShortID,
+	wallet primary.Wallet,
+	owner *secp256k1fx.OutputOwners,
+	blockchainID ids.ID,
+) (*txs.Tx, error) {
+	options := d.getMultisigTxOptions(subnetAuthKeys)
+	// create tx
+	unsignedTx, err := wallet.P().Builder().NewImportTx(blockchainID, owner, options...)
+	if err != nil {
+		return nil, err
+	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	// sign with current wallet
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return nil, err
+	}
+	return &tx, nil
+}
+
 func (d *PublicDeployer) createRemoveValidatorTX(
 	subnetAuthKeys []ids.ShortID,
 	nodeID ids.NodeID,
@@ -371,6 +619,30 @@ func (d *PublicDeployer) createRemoveValidatorTX(
 	options := d.getMultisigTxOptions(subnetAuthKeys)
 	// create tx
 	unsignedTx, err := wallet.P().Builder().NewRemoveSubnetValidatorTx(nodeID, subnetID, options...)
+	if err != nil {
+		return nil, err
+	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	// sign with current wallet
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return nil, err
+	}
+	return &tx, nil
+}
+
+func (d *PublicDeployer) createTransformSubnetTX(
+	subnetAuthKeys []ids.ShortID,
+	elasticSubnetConfig models.ElasticSubnetConfig,
+	wallet primary.Wallet,
+	assetID ids.ID,
+) (*txs.Tx, error) {
+	options := d.getMultisigTxOptions(subnetAuthKeys)
+	// create tx
+	unsignedTx, err := wallet.P().Builder().NewTransformSubnetTx(elasticSubnetConfig.SubnetID, assetID,
+		elasticSubnetConfig.InitialSupply, elasticSubnetConfig.MaxSupply, elasticSubnetConfig.MinConsumptionRate,
+		elasticSubnetConfig.MaxConsumptionRate, elasticSubnetConfig.MinValidatorStake, elasticSubnetConfig.MaxValidatorStake,
+		elasticSubnetConfig.MinStakeDuration, elasticSubnetConfig.MaxStakeDuration, elasticSubnetConfig.MinDelegationFee,
+		elasticSubnetConfig.MinDelegatorStake, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement, options...)
 	if err != nil {
 		return nil, err
 	}

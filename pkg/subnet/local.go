@@ -88,6 +88,7 @@ func (d *LocalDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, 
 
 func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string, maxSupply uint64) (ids.ID, error) {
 	xWallet := wallet.X()
+	fmt.Printf("owner address genesis ewoq %s \n", genesis.EWOQKey.PublicKey().Address())
 	owner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
 		Addrs: []ids.ShortID{
