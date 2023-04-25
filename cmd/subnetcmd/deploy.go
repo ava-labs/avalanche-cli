@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -692,59 +691,6 @@ func GetKeychain(
 		return kc, err
 	}
 	return sf.KeyChain(), nil
-}
-
-func GetKeychainPrivateAddr(
-	useLedger bool,
-	keyName string,
-	network models.Network,
-) (*secp256k1.PrivateKey, error) {
-	// get keychain accesor
-	var privateKey *secp256k1.PrivateKey
-	networkID, err := network.NetworkID()
-	if err != nil {
-		return privateKey, err
-	}
-	if useLedger {
-		//ledgerDevice, err := ledger.New()
-		//if err != nil {
-		//	return privateKey, err
-		//}
-		//// ask for addresses here to print user msg for ledger interaction
-		//// set ledger indices
-		//var ledgerIndices []uint32
-		//if len(ledgerAddresses) == 0 {
-		//	ledgerIndices = []uint32{0}
-		//} else {
-		//	ledgerIndices, err = getLedgerIndices(ledgerDevice, ledgerAddresses)
-		//	if err != nil {
-		//		return privateKey, err
-		//	}
-		//}
-		//// get formatted addresses for ux
-		//addresses, err := ledgerDevice.Addresses(ledgerIndices)
-		//if err != nil {
-		//	return privateKey, err
-		//}
-		//addrStrs := []string{}
-		//for _, addr := range addresses {
-		//	addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
-		//	if err != nil {
-		//		return privateKey, err
-		//	}
-		//	addrStrs = append(addrStrs, addrStr)
-		//}
-		//ux.Logger.PrintToUser(logging.Yellow.Wrap("Ledger addresses: "))
-		//for _, addrStr := range addrStrs {
-		//	ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("  %s", addrStr)))
-		//}
-		//return keychain.NewLedgerKeychainFromIndices(ledgerDevice, ledgerIndices)
-	}
-	sf, err := key.LoadSoft(networkID, app.GetKeyPath(keyName))
-	if err != nil {
-		return privateKey, err
-	}
-	return sf.Key(), nil
 }
 
 func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]uint32, error) {
