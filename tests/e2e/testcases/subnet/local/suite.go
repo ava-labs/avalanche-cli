@@ -412,6 +412,11 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		output, err := commands.ListValidators(subnetName, "local")
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		for _, nodeID := range nodeIDs {
+			gomega.Expect(output).Should(gomega.ContainSubstring(nodeID))
+		}
 
 		commands.DeleteSubnetConfig(subnetName)
 	})
