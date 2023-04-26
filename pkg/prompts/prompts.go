@@ -588,6 +588,31 @@ func GetSubnetAuthKeys(prompt Prompter, controlKeys []string, threshold uint32) 
 	return subnetAuthKeys, nil
 }
 
+func GetRecipientKeys(prompt Prompter, controlKeys []string, threshold uint32) ([]string, error) {
+	if len(controlKeys) == int(threshold) {
+		return controlKeys, nil
+	}
+	subnetAuthKeys := []string{}
+	filteredControlKeys := []string{}
+	filteredControlKeys = append(filteredControlKeys, controlKeys...)
+	for len(subnetAuthKeys) != int(threshold) {
+		subnetAuthKey, err := prompt.CaptureList(
+			"Choose a subnet auth key",
+			filteredControlKeys,
+		)
+		if err != nil {
+			return nil, err
+		}
+		index, err := getIndexInSlice(filteredControlKeys, subnetAuthKey)
+		if err != nil {
+			return nil, err
+		}
+		subnetAuthKeys = append(subnetAuthKeys, subnetAuthKey)
+		filteredControlKeys = append(filteredControlKeys[:index], filteredControlKeys[index+1:]...)
+	}
+	return subnetAuthKeys, nil
+}
+
 func GetFujiKeyOrLedger(prompt Prompter, keyDir string) (bool, string, error) {
 	useStoredKey, err := prompt.ChooseKeyOrLedger()
 	if err != nil {
@@ -599,7 +624,7 @@ func GetFujiKeyOrLedger(prompt Prompter, keyDir string) (bool, string, error) {
 	keyName, err := captureKeyName(prompt, keyDir)
 	if err != nil {
 		if errors.Is(err, errNoKeys) {
-			ux.Logger.PrintToUser("No private keys have been found. Deployment to fuji without a private key " +
+			ux.Logger.PrintToUser("No private keys have been found. Signing transactions on Fuji without a private key " +
 				"or ledger is not possible. Create a new one with `avalanche key create`, or use a ledger device.")
 		}
 		return false, "", err

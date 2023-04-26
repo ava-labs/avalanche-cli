@@ -5,6 +5,8 @@ package subnetcmd
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"os"
 
@@ -40,6 +42,7 @@ var (
 	tokenSymbolFlag  string
 	useDefaultConfig bool
 	overrideWarning  bool
+	recipientKeys    []string
 )
 
 // avalanche subnet elastic
@@ -62,6 +65,8 @@ mechanics will work.`,
 	cmd.Flags().IntVar(&denominationFlag, "denomination", 0, "specify the token denomination")
 	cmd.Flags().BoolVar(&useDefaultConfig, "default", false, "use default elastic subnet config values")
 	cmd.Flags().BoolVar(&overrideWarning, "force", false, "override transform into elastic subnet warning")
+	cmd.Flags().StringSliceVar(&recipientKeys, "recipient-keys", nil, "addresses that will receive tokens when subnet is transformed")
+
 	return cmd
 }
 
@@ -203,18 +208,18 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		tokenSymbol = tokenSymbolFlag
 	}
 
-	tokenDenomination := 0
-	if network != models.Local {
-		if denominationFlag == 0 {
-			tokenDenomination, err = getTokenDenomination()
-			if err != nil {
-				return err
-			}
-		} else {
-			tokenDenomination = denominationFlag
-		}
-	}
-	fmt.Printf("token denom %d \n", tokenDenomination)
+	//tokenDenomination := 0
+	//if network != models.Local {
+	//	if denominationFlag == 0 {
+	//		tokenDenomination, err = getTokenDenomination()
+	//		if err != nil {
+	//			return err
+	//		}
+	//	} else {
+	//		tokenDenomination = denominationFlag
+	//	}
+	//}
+
 	subnetID := sc.Networks[network.String()].SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
@@ -249,10 +254,8 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		network = models.Local
 	}
 
-	// get keychain accesor
+	// get keychain accessor
 	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
-	//kcPrivAddr, err := GetKeychainPrivateAddr(useLedger, keyName, network)
-
 	if err != nil {
 		return err
 	}
@@ -316,42 +319,72 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		subnetAuthAddrsPubKey = append(subnetAuthAddrsPubKey, addr)
 	}
 
-	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	isFullySigned, assetID, err := createAssetID(deployer, subnetAuthAddrs, elasticSubnetConfig.MaxSupply, subnetID, tokenName, tokenSymbol, byte(tokenDenomination), subnetAuthAddrsPubKey[0])
+	subnetAuthKeys, err := address.ParseToIDs([]string{"P-fuji1r5mkuktrr4l9hncga4qnukn2jx38llzy8mdxs9", "P-fuji165tam4age2lyznusd8zu08fell4u6scuqp0svz", "P-fuji15t53knd9l003f8q4ap0x2wrs3uwaeqa5yg00ap"})
+	fmt.Printf("obtained subnetAuthAddrs list %s \n", subnetAuthKeys)
+
+	// prompt for control keys
+	if recipientKeys == nil {
+		var cancelled bool
+		recipientKeys, cancelled, err = getRecipientAddr(network, useLedger, kc, keyName)
+		if err != nil {
+			return err
+		}
+		if cancelled {
+			ux.Logger.PrintToUser("User cancelled. Subnet is not transformed into elastic subnet")
+			return nil
+		}
+	}
+
+	if threshold == 0 {
+		threshold, err = getThreshold(len(recipientKeys))
+		if err != nil {
+			return err
+		}
+	}
+
+	recipientAddrStr, err := prompts.GetSubnetAuthKeys(app.Prompt, recipientKeys, threshold)
 	if err != nil {
 		return err
 	}
-	if !isFullySigned {
-		return errors.New("not fully signed createAssetTx")
-	}
-	fmt.Printf("obtained assetID %s \n", assetID)
-	//assetID, err := ids.FromString("ZAP9junNhhkCZri5i4PU5k2vSinL8XzVvXjbKbwDfSocMRjp7")
+	ux.Logger.PrintToUser("Your subnet auth keys for chain creation: %s", subnetAuthKeys)
+
+	fmt.Printf("obtained recipientAddrStr %s \n ", recipientAddrStr)
+	//deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	//isFullySigned, assetID, err := createAssetID(deployer, subnetAuthAddrs, elasticSubnetConfig.MaxSupply, subnetID, tokenName, tokenSymbol, byte(tokenDenomination), subnetAuthAddrsPubKey[0])
 	//if err != nil {
 	//	return err
 	//}
-	isFullySigned, _, err = exportToPChain(deployer, subnetAuthAddrs, subnetID, assetID, subnetAuthAddrsPubKey[0], elasticSubnetConfig.MaxSupply)
-	if err != nil {
-		return err
-	}
-	if !isFullySigned {
-		return errors.New("not fully signed exportToPChain")
-	}
-
-	isFullySigned, _, err = importFromXChain(deployer, subnetAuthAddrs, subnetID, subnetAuthAddrsPubKey[0])
-	if err != nil {
-		return err
-	}
-	if !isFullySigned {
-		return errors.New("not fully signed importFromXChain")
-	}
-
-	isFullySigned, _, err = deployer.TransformSubnetTx(subnetAuthAddrs, elasticSubnetConfig, subnetID, assetID)
-	if err != nil {
-		return errors.New("not fully signed TransformSubnetTx")
-	}
-	if !isFullySigned {
-		return errors.New("not fully signed TransformSubnetTx")
-	}
+	//if !isFullySigned {
+	//	return errors.New("not fully signed createAssetTx")
+	//}
+	//fmt.Printf("obtained assetID %s \n", assetID)
+	////assetID, err := ids.FromString("ZAP9junNhhkCZri5i4PU5k2vSinL8XzVvXjbKbwDfSocMRjp7")
+	////if err != nil {
+	////	return err
+	////}
+	//isFullySigned, _, err = exportToPChain(deployer, subnetAuthAddrs, subnetID, assetID, subnetAuthAddrsPubKey[0], elasticSubnetConfig.MaxSupply)
+	//if err != nil {
+	//	return err
+	//}
+	//if !isFullySigned {
+	//	return errors.New("not fully signed exportToPChain")
+	//}
+	//
+	//isFullySigned, _, err = importFromXChain(deployer, subnetAuthAddrs, subnetID, subnetAuthAddrsPubKey[0])
+	//if err != nil {
+	//	return err
+	//}
+	//if !isFullySigned {
+	//	return errors.New("not fully signed importFromXChain")
+	//}
+	//
+	//isFullySigned, _, err = deployer.TransformSubnetTx(subnetAuthAddrs, elasticSubnetConfig, subnetID, assetID)
+	//if err != nil {
+	//	return errors.New("not fully signed TransformSubnetTx")
+	//}
+	//if !isFullySigned {
+	//	return errors.New("not fully signed TransformSubnetTx")
+	//}
 	//fmt.Printf("obtainedTxID is %s", txID.ID().String())
 
 	//isFullySigned, txID, err := createAssetID(deployer, elasticSubnetConfig.MaxSupply, subnetID, tokenName, tokenSymbol, byte(tokenDenomination))
@@ -363,6 +396,51 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 	//}
 	return nil
 }
+
+func getRecipientAddr(network models.Network, useLedger bool, kc keychain.Keychain, keyName string) ([]string, bool, error) {
+	recipientAddrPrompt := "Configure which addresses you want to receive the created assets on the elastic subnet."
+	moreKeysPrompt := "How would you like to set your recipient address(es)?"
+
+	ux.Logger.PrintToUser(recipientAddrPrompt)
+	useAll := "Choose 1 or more keys from locally stored keys"
+	var creation string
+	var listOptions []string
+	if useLedger {
+		creation = "Use ledger address"
+	} else {
+		creation = fmt.Sprintf("Use %s", keyName)
+	}
+	if network == models.Mainnet {
+		listOptions = []string{creation}
+	} else {
+		listOptions = []string{creation, useAll}
+	}
+
+	listDecision, err := app.Prompt.CaptureList(moreKeysPrompt, listOptions)
+	if err != nil {
+		return nil, false, err
+	}
+
+	var (
+		keys      []string
+		cancelled bool
+	)
+
+	switch listDecision {
+	case creation:
+		keys, err = loadCreationKeys(network, kc)
+	case useAll:
+		keys, err = useAllKeys(network)
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	if cancelled {
+		return nil, true, nil
+	}
+	return keys, false, nil
+}
+
 func transformElasticSubnetLocal(sc models.Sidecar, subnetName string, tokenName string, tokenSymbol string, elasticSubnetConfig models.ElasticSubnetConfig) error {
 	if checkIfSubnetIsElasticOnLocal(sc) {
 		return fmt.Errorf("%s is already an elastic subnet", subnetName)

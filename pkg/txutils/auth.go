@@ -24,7 +24,6 @@ import (
 func GetAuthSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]string, error) {
 	controlKeys, _, err := subnet.GetOwners(network, subnetID)
 	if err != nil {
-		fmt.Printf("we have error GetOwners %s \n", err.Error())
 		return nil, err
 	}
 	unsignedTx := tx.Unsigned
@@ -66,8 +65,6 @@ func GetAuthSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]stri
 func GetRemainingSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]string, error) {
 	authSigners, err := GetAuthSigners(tx, network, subnetID)
 	if err != nil {
-		fmt.Printf("we have error GetAuthSigners %s \n", err.Error())
-
 		return nil, err
 	}
 	emptySig := [secp256k1.SignatureLen]byte{}
