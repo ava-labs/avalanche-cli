@@ -379,10 +379,12 @@ func (d *PublicDeployer) Deploy(
 	} else {
 		blockchainTx, err = d.createBlockchainTx(subnetAuthKeys, chain, vmID, subnetID, genesis, wallet)
 		if err != nil {
+			fmt.Printf("blockchain created error %s \n", err.Error())
+
 			return false, ids.Empty, ids.Empty, nil, err
 		}
 	}
-
+	fmt.Printf("blockchain created successfully")
 	return isFullySigned, subnetID, blockchainID, blockchainTx, nil
 }
 

@@ -339,10 +339,12 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	isFullySigned, subnetID, blockchainID, tx, err := deployer.Deploy(controlKeys, subnetAuthKeys, threshold, chain, chainGenesis)
 	if err != nil {
+		fmt.Printf("we have error deploying %s \n", err.Error())
 		return err
 	}
 
 	if err := PrintDeployResults(chain, subnetID, blockchainID, isFullySigned); err != nil {
+		fmt.Printf("we have error here PrintDeployResults %s \n", err.Error())
 		return err
 	}
 
@@ -357,10 +359,11 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 			outputTxPath,
 			false,
 		); err != nil {
+			fmt.Printf("we have error here SaveNotFullySignedTx %s \n", err.Error())
 			return err
 		}
 	}
-
+	fmt.Printf("its acutally all good here \n")
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
 	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
@@ -572,6 +575,7 @@ func SaveNotFullySignedTx(
 ) error {
 	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, network, subnetID)
 	if err != nil {
+		fmt.Printf("we have error GetRemainingSigners %s \n", err.Error())
 		return err
 	}
 	signedCount := len(subnetAuthKeys) - len(remainingSubnetAuthKeys)
@@ -592,6 +596,8 @@ func SaveNotFullySignedTx(
 			outputTxPath, err = app.Prompt.CaptureNewFilepath("Path to export partially signed tx to")
 		}
 		if err != nil {
+			fmt.Printf("we have error forceOverwrite %s \n", err.Error())
+
 			return err
 		}
 	}
