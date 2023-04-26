@@ -67,7 +67,7 @@ func (avalancheGoDownloader) GetDownloadURL(version string, installer Installer)
 			version,
 		)
 		ext = zipExtension
-		// EXPERMENTAL WIN, no support
+		// EXPERIMENTAL WIN, no support
 	case windows:
 		avalanchegoURL = fmt.Sprintf(
 			"https://github.com/%s/%s/releases/download/%s/avalanchego-win-%s-experimental.zip",

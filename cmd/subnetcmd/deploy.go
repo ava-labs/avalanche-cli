@@ -274,7 +274,7 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 
 	// from here on we are assuming a public deploy
 
-	// get keychain accesor
+	// get keychain accessor
 	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
 	if err != nil {
 		return err
@@ -519,7 +519,7 @@ func getThreshold(maxLen int) (uint32, error) {
 	if maxLen == 1 {
 		return uint32(1), nil
 	}
-	// create a list of indexes so the user only has the option to choose what is the theshold
+	// create a list of indexes so the user only has the option to choose what is the threshold
 	// instead of entering
 	indexList := make([]string, maxLen)
 	for i := 0; i < maxLen; i++ {
@@ -597,7 +597,7 @@ func SaveNotFullySignedTx(
 	}
 	if forceOverwrite {
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("Overwritting %s", outputTxPath)
+		ux.Logger.PrintToUser("Overwriting %s", outputTxPath)
 	}
 	if err := txutils.SaveToDisk(tx, outputTxPath, forceOverwrite); err != nil {
 		return err
@@ -645,7 +645,7 @@ func GetKeychain(
 	keyName string,
 	network models.Network,
 ) (keychain.Keychain, error) {
-	// get keychain accesor
+	// get keychain accessor
 	var kc keychain.Keychain
 	networkID, err := network.NetworkID()
 	if err != nil {

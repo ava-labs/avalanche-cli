@@ -56,7 +56,7 @@ func GetAuthSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]stri
 //   - get the string slice of auth signers for the tx (GetAuthSigners)
 //   - verifies that all creds in tx.Creds, except the last one, are fully signed
 //     (a cred is fully signed if all the signatures in cred.Sigs are non-empty)
-//   - computes remaning signers by iterating the last cred in tx.Creds, associated to subnet auth signing
+//   - computes remaining signers by iterating the last cred in tx.Creds, associated to subnet auth signing
 //   - for each sig in cred.Sig: if sig is empty, then add the associated auth signer address (obtained from
 //     authSigners by using the index) to the remaining signers list
 //

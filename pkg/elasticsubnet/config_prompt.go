@@ -192,7 +192,7 @@ func getConsumptionRate(app *application.Avalanche) (uint64, uint64, error) {
 				Value: reward.PercentDenominator,
 			},
 			{
-				Label: "Mininum Consumption Rate",
+				Label: "Minimum Consumption Rate",
 				Type:  prompts.MoreThanEq,
 				Value: minConsumptionRate,
 			},
