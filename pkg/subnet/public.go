@@ -189,29 +189,48 @@ func (d *PublicDeployer) ImportFromXChain(
 }
 
 func (d *PublicDeployer) TransformSubnetTx(
+	subnetAuthKeysStrs []string,
 	elasticSubnetConfig models.ElasticSubnetConfig,
 	subnetID ids.ID,
 	subnetAssetID ids.ID,
-) (ids.ID, error) {
+) (bool, ids.ID, *txs.Tx, error) {
 	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
-		return ids.Empty, err
+		return false, ids.Empty, nil, err
 	}
+	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
+	if err != nil {
+		return false, ids.Empty, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
+	}
+	if ok := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys); !ok {
+		return false, ids.Empty, nil, ErrNoSubnetAuthKeysInWallet
+	}
+
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign remove validator hash on the ledger device *** ")
 	}
 
-	txID, err := wallet.P().IssueTransformSubnetTx(elasticSubnetConfig.SubnetID, subnetAssetID,
-		elasticSubnetConfig.InitialSupply, elasticSubnetConfig.MaxSupply, elasticSubnetConfig.MinConsumptionRate,
-		elasticSubnetConfig.MaxConsumptionRate, elasticSubnetConfig.MinValidatorStake, elasticSubnetConfig.MaxValidatorStake,
-		elasticSubnetConfig.MinStakeDuration, elasticSubnetConfig.MaxStakeDuration, elasticSubnetConfig.MinDelegationFee,
-		elasticSubnetConfig.MinDelegatorStake, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement,
-	)
-	if err != nil {
-		return ids.Empty, err
+	if len(subnetAuthKeys) == 1 {
+		txID, err := wallet.P().IssueTransformSubnetTx(elasticSubnetConfig.SubnetID, subnetAssetID,
+			elasticSubnetConfig.InitialSupply, elasticSubnetConfig.MaxSupply, elasticSubnetConfig.MinConsumptionRate,
+			elasticSubnetConfig.MaxConsumptionRate, elasticSubnetConfig.MinValidatorStake, elasticSubnetConfig.MaxValidatorStake,
+			elasticSubnetConfig.MinStakeDuration, elasticSubnetConfig.MaxStakeDuration, elasticSubnetConfig.MinDelegationFee,
+			elasticSubnetConfig.MinDelegatorStake, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement,
+		)
+		if err != nil {
+			return false, ids.Empty, nil, err
+		}
+		ux.Logger.PrintToUser("IssueTransformSubnetTx Transaction successful, transaction ID: %s", txID)
+		return true, txID, nil, nil
 	}
-	ux.Logger.PrintToUser("IssueTransformSubnetTx Transaction successful, transaction ID: %s", txID)
-	return txID, nil
+
+	// not fully signed
+	tx, err := d.createTransformSubnetTX(subnetAuthKeys, elasticSubnetConfig, wallet, subnetAssetID)
+	if err != nil {
+		return false, ids.Empty, nil, err
+	}
+	ux.Logger.PrintToUser("Partial tx created")
+	return false, ids.Empty, tx, nil
 }
 
 // removes a subnet validator from the given [subnet]
@@ -480,6 +499,30 @@ func (d *PublicDeployer) createRemoveValidatorTX(
 	options := d.getMultisigTxOptions(subnetAuthKeys)
 	// create tx
 	unsignedTx, err := wallet.P().Builder().NewRemoveSubnetValidatorTx(nodeID, subnetID, options...)
+	if err != nil {
+		return nil, err
+	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	// sign with current wallet
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return nil, err
+	}
+	return &tx, nil
+}
+
+func (d *PublicDeployer) createTransformSubnetTX(
+	subnetAuthKeys []ids.ShortID,
+	elasticSubnetConfig models.ElasticSubnetConfig,
+	wallet primary.Wallet,
+	assetID ids.ID,
+) (*txs.Tx, error) {
+	options := d.getMultisigTxOptions(subnetAuthKeys)
+	// create tx
+	unsignedTx, err := wallet.P().Builder().NewTransformSubnetTx(elasticSubnetConfig.SubnetID, assetID,
+		elasticSubnetConfig.InitialSupply, elasticSubnetConfig.MaxSupply, elasticSubnetConfig.MinConsumptionRate,
+		elasticSubnetConfig.MaxConsumptionRate, elasticSubnetConfig.MinValidatorStake, elasticSubnetConfig.MaxValidatorStake,
+		elasticSubnetConfig.MinStakeDuration, elasticSubnetConfig.MaxStakeDuration, elasticSubnetConfig.MinDelegationFee,
+		elasticSubnetConfig.MinDelegatorStake, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement, options...)
 	if err != nil {
 		return nil, err
 	}

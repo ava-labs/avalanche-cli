@@ -4,6 +4,7 @@ package txutils
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -22,6 +23,7 @@ import (
 //
 // expect tx.Unsigned type to be in [txs.AddSubnetValidatorTx, txs.CreateChainTx]
 func GetAuthSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]string, error) {
+	time.Sleep(2 * time.Second)
 	controlKeys, _, err := subnet.GetOwners(network, subnetID)
 	if err != nil {
 		return nil, err
@@ -34,6 +36,8 @@ func GetAuthSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]stri
 	case *txs.AddSubnetValidatorTx:
 		subnetAuth = unsignedTx.SubnetAuth
 	case *txs.CreateChainTx:
+		subnetAuth = unsignedTx.SubnetAuth
+	case *txs.TransformSubnetTx:
 		subnetAuth = unsignedTx.SubnetAuth
 	default:
 		return nil, fmt.Errorf("unexpected unsigned tx type %T", unsignedTx)

@@ -282,11 +282,42 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 	}
 
 	time.Sleep(2 * time.Second)
-	txID, err := deployer.TransformSubnetTx(elasticSubnetConfig, subnetID, assetID)
+	controlKeys, threshold, err := subnet.GetOwners(network, subnetID)
 	if err != nil {
 		return err
 	}
-	PrintTransformResults(subnetName, txID, subnetID, tokenName, tokenSymbol, assetID)
+	// get keys for add validator tx signing
+	if subnetAuthKeys != nil {
+		if err := prompts.CheckSubnetAuthKeys(subnetAuthKeys, controlKeys, threshold); err != nil {
+			return err
+		}
+	} else {
+		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, controlKeys, threshold)
+		if err != nil {
+			return err
+		}
+	}
+	ux.Logger.PrintToUser("Your subnet auth keys for issue transform subnet tx: %s", subnetAuthKeys)
+	isFullySigned, txID, tx, err := deployer.TransformSubnetTx(subnetAuthKeys, elasticSubnetConfig, subnetID, assetID)
+	if err != nil {
+		return err
+	}
+	if !isFullySigned {
+		if err := SaveNotFullySignedTx(
+			"Transform Subnet",
+			tx,
+			network,
+			subnetName,
+			subnetID,
+			subnetAuthKeys,
+			outputTxPath,
+			false,
+		); err != nil {
+			return err
+		}
+	} else {
+		PrintTransformResults(subnetName, txID, subnetID, tokenName, tokenSymbol, assetID)
+	}
 	return nil
 }
 
