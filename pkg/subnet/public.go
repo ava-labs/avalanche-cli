@@ -19,7 +19,6 @@ import (
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/set"
-	avmtx "github.com/ava-labs/avalanchego/vms/avm/txs"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -465,41 +464,6 @@ func (d *PublicDeployer) createAddSubnetValidatorTx(
 	tx := txs.Tx{Unsigned: unsignedTx}
 	// sign with current wallet
 	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-		return nil, err
-	}
-	return &tx, nil
-}
-
-func (d *PublicDeployer) createExportToPChainTX(
-	subnetAuthKeys []ids.ShortID,
-	wallet primary.Wallet,
-	owner *secp256k1fx.OutputOwners,
-	subnetAssetID ids.ID,
-	maxSupply uint64,
-) (*avmtx.Tx, error) {
-	options := d.getMultisigTxOptions(subnetAuthKeys)
-	// create tx
-	unsignedTx, err := wallet.X().Builder().NewExportTx(
-		ids.Empty,
-		[]*avax.TransferableOutput{
-			{
-				Asset: avax.Asset{
-					ID: subnetAssetID,
-				},
-				Out: &secp256k1fx.TransferOutput{
-					Amt:          maxSupply,
-					OutputOwners: *owner,
-				},
-			},
-		},
-		options...,
-	)
-	if err != nil {
-		return nil, err
-	}
-	tx := avmtx.Tx{Unsigned: unsignedTx}
-	// sign with current wallet
-	if err := wallet.X().Signer().Sign(context.Background(), &tx); err != nil {
 		return nil, err
 	}
 	return &tx, nil
