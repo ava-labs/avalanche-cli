@@ -43,5 +43,8 @@ To get started, use the key create command.`,
 	// avalanche key export
 	cmd.AddCommand(newExportCmd())
 
+	// avalanche key fund
+	cmd.AddCommand(newFundCmd())
+
 	return cmd
 }
