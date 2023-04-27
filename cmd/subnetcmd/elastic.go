@@ -3,14 +3,13 @@
 package subnetcmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
-	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"os"
+	"time"
 
-	avmtx "github.com/ava-labs/avalanchego/vms/avm/txs"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -30,9 +29,10 @@ import (
 )
 
 const (
-	localDeployment   = "Existing local deployment"
-	fujiDeployment    = "Fuji"
-	mainnetDeployment = "Mainnet (coming soon)"
+	localDeployment      = "Existing local deployment"
+	fujiDeployment       = "Fuji"
+	mainnetDeployment    = "Mainnet (coming soon)"
+	subnetIsElasticError = "Subnet is already elastic"
 )
 
 var (
@@ -78,14 +78,13 @@ func checkIfSubnetIsElasticOnLocal(sc models.Sidecar) bool {
 }
 
 func createAssetID(deployer *subnet.PublicDeployer,
-	subnetAuthAddrStr []string,
 	maxSupply uint64,
 	subnetID ids.ID,
 	tokenName string,
 	tokenSymbol string,
 	tokenDenomination byte,
 	recipientAddr ids.ShortID,
-) (bool, ids.ID, error) {
+) (ids.ID, error) {
 	owner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
 		Addrs: []ids.ShortID{
@@ -101,61 +100,43 @@ func createAssetID(deployer *subnet.PublicDeployer,
 			},
 		},
 	}
-
-	isFullySigned, txID, err := deployer.CreateAssetTx(subnetAuthAddrStr, subnetID, tokenName, tokenSymbol, tokenDenomination, initialState)
+	txID, err := deployer.CreateAssetTx(subnetID, tokenName, tokenSymbol, tokenDenomination, initialState)
 	if err != nil {
-		return false, ids.Empty, err
+		return ids.Empty, err
 	}
-	//fmt.Printf("obtained txID %s \n", tx.ID().String())
-	//if !isFullySigned {
-	//	if err := SaveNotFullySignedAVMTx(
-	//		"Add Validator",
-	//		tx,
-	//		network,
-	//		subnetName,
-	//		subnetID,
-	//		subnetAuthKeys,
-	//		outputTxPath,
-	//		false,
-	//	); err != nil {
-	//		return err
-	//	}
-	//}
-	return isFullySigned, txID, nil
+	return txID, nil
 }
 func exportToPChain(deployer *subnet.PublicDeployer,
-	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
 	subnetAssetID ids.ID,
 	recipientAddr ids.ShortID,
-	maxSupply uint64) (bool, *avmtx.Tx, error) {
+	maxSupply uint64) error {
 	owner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
 		Addrs: []ids.ShortID{
 			recipientAddr,
 		},
 	}
-	isFullySigned, tx, err := deployer.ExportToPChainTx(subnetAuthKeysStrs, subnetID, subnetAssetID, owner, maxSupply)
+	err := deployer.ExportToPChainTx(subnetID, subnetAssetID, owner, maxSupply)
 	if err != nil {
-		return false, nil, err
+		return err
 	}
-	return isFullySigned, tx, nil
+	return nil
 }
 func importFromXChain(deployer *subnet.PublicDeployer,
-	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
-	recipientAddr ids.ShortID) (bool, *txs.Tx, error) {
+	recipientAddr ids.ShortID) error {
 	owner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
 		Addrs: []ids.ShortID{
 			recipientAddr,
 		},
 	}
-	isFullySigned, tx, err := deployer.ImportFromXChain(subnetAuthKeysStrs, subnetID, owner)
+	err := deployer.ImportFromXChain(subnetID, owner)
 	if err != nil {
-		return false, nil, err
+		return err
 	}
-	return isFullySigned, tx, nil
+	return nil
 }
 func transformElasticSubnet(_ *cobra.Command, args []string) error {
 	subnetName := args[0]
@@ -188,6 +169,20 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		}
 	}
 
+	subnetID := sc.Networks[network.String()].SubnetID
+	if subnetID == ids.Empty {
+		return errNoSubnetID
+	}
+
+	isAlreadyElastic, err := GetCurrentSupply(subnetID, network)
+	if err != nil && err.Error() != subnetIsElasticError {
+		return err
+	}
+
+	if isAlreadyElastic {
+		return errors.New(subnetIsElasticError)
+	}
+
 	tokenName := ""
 	if tokenNameFlag == "" {
 		tokenName, err = getTokenName()
@@ -208,21 +203,16 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		tokenSymbol = tokenSymbolFlag
 	}
 
-	//tokenDenomination := 0
-	//if network != models.Local {
-	//	if denominationFlag == 0 {
-	//		tokenDenomination, err = getTokenDenomination()
-	//		if err != nil {
-	//			return err
-	//		}
-	//	} else {
-	//		tokenDenomination = denominationFlag
-	//	}
-	//}
-
-	subnetID := sc.Networks[network.String()].SubnetID
-	if subnetID == ids.Empty {
-		return errNoSubnetID
+	tokenDenomination := 0
+	if network != models.Local {
+		if denominationFlag == 0 {
+			tokenDenomination, err = getTokenDenomination()
+			if err != nil {
+				return err
+			}
+		} else {
+			tokenDenomination = denominationFlag
+		}
 	}
 
 	elasticSubnetConfig, err := es.GetElasticSubnetConfig(app, tokenSymbol, useDefaultConfig)
@@ -259,186 +249,37 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	//fmt.Printf("obtained kcPrivaddress %s \n", kcPrivAddr.String())
-	//// accept only one control keys specification
-	//if len(controlKeys) > 0 && sameControlKey {
-	//	return errMutuallyExlusiveControlKeys
-	//}
-	//
-	//// use creation key as control key
-	//if sameControlKey {
-	//	controlKeys, err = loadCreationKeys(network, kc)
-	//	if err != nil {
-	//		return err
-	//	}
-	//}
-	//
-	//// prompt for control keys
-	//if controlKeys == nil {
-	//	var cancelled bool
-	//	controlKeys, cancelled, err = getControlKeys(network, useLedger, kc)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	if cancelled {
-	//		ux.Logger.PrintToUser("User cancelled. No subnet deployed")
-	//		return nil
-	//	}
-	//}
 
-	//controlKeys, threshold, err := subnet.GetOwners(network, subnetID)
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//// get keys for add validator tx signing
-	//if subnetAuthKeys != nil {
-	//	if err := prompts.CheckSubnetAuthKeys(subnetAuthKeys, controlKeys, threshold); err != nil {
-	//		return err
-	//	}
-	//} else {
-	//	subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, controlKeys, threshold)
-	//	if err != nil {
-	//		return err
-	//	}
-	//}
-	//ux.Logger.PrintToUser("Your subnet auth keys for transform elastic subnet tx creation: %s", subnetAuthKeys)
-	//
-	//kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
-	//if err != nil {
-	//	return err
-	//}
-	var subnetAuthAddrs []string
-	var subnetAuthAddrsPubKey []ids.ShortID
-
-	recipientAddr := kc.Addresses().List()
-	fmt.Printf("obtained subnetAuthAddrs list %s \n", recipientAddr)
-
-	for _, addr := range recipientAddr {
-		subnetAuthAddrs = append(subnetAuthAddrs, addr.String())
-		subnetAuthAddrsPubKey = append(subnetAuthAddrsPubKey, addr)
-	}
-
-	subnetAuthKeys, err := address.ParseToIDs([]string{"P-fuji1r5mkuktrr4l9hncga4qnukn2jx38llzy8mdxs9", "P-fuji165tam4age2lyznusd8zu08fell4u6scuqp0svz", "P-fuji15t53knd9l003f8q4ap0x2wrs3uwaeqa5yg00ap"})
-	fmt.Printf("obtained subnetAuthAddrs list %s \n", subnetAuthKeys)
-
-	// prompt for control keys
-	if recipientKeys == nil {
-		var cancelled bool
-		recipientKeys, cancelled, err = getRecipientAddr(network, useLedger, kc, keyName)
-		if err != nil {
-			return err
-		}
-		if cancelled {
-			ux.Logger.PrintToUser("User cancelled. Subnet is not transformed into elastic subnet")
-			return nil
-		}
-	}
-
-	if threshold == 0 {
-		threshold, err = getThreshold(len(recipientKeys))
-		if err != nil {
-			return err
-		}
-	}
-
-	recipientAddrStr, err := prompts.GetSubnetAuthKeys(app.Prompt, recipientKeys, threshold)
+	recipientAddr := kc.Addresses().List()[0]
+	fmt.Printf("obtained recipientAddrStr %s \n ", recipientAddr[0])
+	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	assetID, err := createAssetID(deployer, elasticSubnetConfig.MaxSupply, subnetID, tokenName, tokenSymbol, byte(tokenDenomination), recipientAddr)
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Your subnet auth keys for chain creation: %s", subnetAuthKeys)
 
-	fmt.Printf("obtained recipientAddrStr %s \n ", recipientAddrStr)
-	//deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	//isFullySigned, assetID, err := createAssetID(deployer, subnetAuthAddrs, elasticSubnetConfig.MaxSupply, subnetID, tokenName, tokenSymbol, byte(tokenDenomination), subnetAuthAddrsPubKey[0])
-	//if err != nil {
-	//	return err
-	//}
-	//if !isFullySigned {
-	//	return errors.New("not fully signed createAssetTx")
-	//}
-	//fmt.Printf("obtained assetID %s \n", assetID)
-	////assetID, err := ids.FromString("ZAP9junNhhkCZri5i4PU5k2vSinL8XzVvXjbKbwDfSocMRjp7")
-	////if err != nil {
-	////	return err
-	////}
-	//isFullySigned, _, err = exportToPChain(deployer, subnetAuthAddrs, subnetID, assetID, subnetAuthAddrsPubKey[0], elasticSubnetConfig.MaxSupply)
-	//if err != nil {
-	//	return err
-	//}
-	//if !isFullySigned {
-	//	return errors.New("not fully signed exportToPChain")
-	//}
-	//
-	//isFullySigned, _, err = importFromXChain(deployer, subnetAuthAddrs, subnetID, subnetAuthAddrsPubKey[0])
-	//if err != nil {
-	//	return err
-	//}
-	//if !isFullySigned {
-	//	return errors.New("not fully signed importFromXChain")
-	//}
-	//
-	//isFullySigned, _, err = deployer.TransformSubnetTx(subnetAuthAddrs, elasticSubnetConfig, subnetID, assetID)
-	//if err != nil {
-	//	return errors.New("not fully signed TransformSubnetTx")
-	//}
-	//if !isFullySigned {
-	//	return errors.New("not fully signed TransformSubnetTx")
-	//}
-	//fmt.Printf("obtainedTxID is %s", txID.ID().String())
+	//we need to sleep after each operation to make sure that UTXO is available for consumption
+	time.Sleep(2 * time.Second)
 
-	//isFullySigned, txID, err := createAssetID(deployer, elasticSubnetConfig.MaxSupply, subnetID, tokenName, tokenSymbol, byte(tokenDenomination))
-	//if err != nil {
-	//	return err
-	//}
-	//if !isFullySigned {
-	//	return errors.New("not fully signed createAssetTx")
-	//}
+	err = exportToPChain(deployer, subnetID, assetID, recipientAddr, elasticSubnetConfig.MaxSupply)
+	if err != nil {
+		return err
+	}
+
+	time.Sleep(2 * time.Second)
+
+	err = importFromXChain(deployer, subnetID, recipientAddr)
+	if err != nil {
+		return err
+	}
+
+	time.Sleep(2 * time.Second)
+
+	err = deployer.TransformSubnetTx(elasticSubnetConfig, subnetID, assetID)
+	if err != nil {
+		return err
+	}
 	return nil
-}
-
-func getRecipientAddr(network models.Network, useLedger bool, kc keychain.Keychain, keyName string) ([]string, bool, error) {
-	recipientAddrPrompt := "Configure which addresses you want to receive the created assets on the elastic subnet."
-	moreKeysPrompt := "How would you like to set your recipient address(es)?"
-
-	ux.Logger.PrintToUser(recipientAddrPrompt)
-	useAll := "Choose 1 or more keys from locally stored keys"
-	var creation string
-	var listOptions []string
-	if useLedger {
-		creation = "Use ledger address"
-	} else {
-		creation = fmt.Sprintf("Use %s", keyName)
-	}
-	if network == models.Mainnet {
-		listOptions = []string{creation}
-	} else {
-		listOptions = []string{creation, useAll}
-	}
-
-	listDecision, err := app.Prompt.CaptureList(moreKeysPrompt, listOptions)
-	if err != nil {
-		return nil, false, err
-	}
-
-	var (
-		keys      []string
-		cancelled bool
-	)
-
-	switch listDecision {
-	case creation:
-		keys, err = loadCreationKeys(network, kc)
-	case useAll:
-		keys, err = useAllKeys(network)
-	}
-	if err != nil {
-		return nil, false, err
-	}
-	if cancelled {
-		return nil, true, nil
-	}
-	return keys, false, nil
 }
 
 func transformElasticSubnetLocal(sc models.Sidecar, subnetName string, tokenName string, tokenSymbol string, elasticSubnetConfig models.ElasticSubnetConfig) error {
@@ -566,53 +407,22 @@ func getTokenDenomination() (int, error) {
 	return int(tokenDenomination), nil
 }
 
-//
-//func SaveNotFullySignedAVMTx(
-//	txName string,
-//	tx *avmtx.Tx,
-//	network models.Network,
-//	chain string,
-//	subnetID ids.ID,
-//	subnetAuthKeys []string,
-//	outputTxPath string,
-//	forceOverwrite bool,
-//) error {
-//	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, network, subnetID)
-//	if err != nil {
-//		return err
-//	}
-//	signedCount := len(subnetAuthKeys) - len(remainingSubnetAuthKeys)
-//	ux.Logger.PrintToUser("")
-//	if signedCount == len(subnetAuthKeys) {
-//		ux.Logger.PrintToUser("All %d required %s signatures have been signed. "+
-//			"Saving tx to disk to enable commit.", len(subnetAuthKeys), txName)
-//	} else {
-//		ux.Logger.PrintToUser("%d of %d required %s signatures have been signed. "+
-//			"Saving tx to disk to enable remaining signing.", signedCount, len(subnetAuthKeys), txName)
-//	}
-//	if outputTxPath == "" {
-//		ux.Logger.PrintToUser("")
-//		var err error
-//		if forceOverwrite {
-//			outputTxPath, err = app.Prompt.CaptureString("Path to export partially signed tx to")
-//		} else {
-//			outputTxPath, err = app.Prompt.CaptureNewFilepath("Path to export partially signed tx to")
-//		}
-//		if err != nil {
-//			return err
-//		}
-//	}
-//	if forceOverwrite {
-//		ux.Logger.PrintToUser("")
-//		ux.Logger.PrintToUser("Overwritting %s", outputTxPath)
-//	}
-//	if err := txutils.SaveToDisk(tx, outputTxPath, forceOverwrite); err != nil {
-//		return err
-//	}
-//	if signedCount == len(subnetAuthKeys) {
-//		PrintReadyToSignMsg(chain, outputTxPath)
-//	} else {
-//		PrintRemainingToSignMsg(chain, remainingSubnetAuthKeys, outputTxPath)
-//	}
-//	return nil
-//}
+func GetCurrentSupply(subnetID ids.ID, network models.Network) (bool, error) {
+	var apiURL string
+	switch network {
+	case models.Mainnet:
+		apiURL = constants.MainnetAPIEndpoint
+	case models.Fuji:
+		apiURL = constants.FujiAPIEndpoint
+	default:
+		return false, fmt.Errorf("invalid network: %s", network)
+	}
+	pClient := platformvm.NewClient(apiURL)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+	_, err := pClient.GetCurrentSupply(ctx, subnetID)
+	if err != nil {
+		return false, errors.New(subnetIsElasticError)
+	}
+	return true, nil
+}
