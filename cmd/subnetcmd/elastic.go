@@ -6,11 +6,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanchego/vms/components/verify"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanchego/vms/components/verify"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 
@@ -108,11 +109,13 @@ func createAssetID(deployer *subnet.PublicDeployer,
 	}
 	return txID, nil
 }
+
 func exportToPChain(deployer *subnet.PublicDeployer,
 	subnetID ids.ID,
 	subnetAssetID ids.ID,
 	recipientAddr ids.ShortID,
-	maxSupply uint64) error {
+	maxSupply uint64,
+) error {
 	owner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
 		Addrs: []ids.ShortID{
@@ -125,9 +128,11 @@ func exportToPChain(deployer *subnet.PublicDeployer,
 	}
 	return nil
 }
+
 func importFromXChain(deployer *subnet.PublicDeployer,
 	subnetID ids.ID,
-	recipientAddr ids.ShortID) error {
+	recipientAddr ids.ShortID,
+) error {
 	owner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
 		Addrs: []ids.ShortID{
@@ -163,11 +168,12 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if networkToUpgrade == localDeployment {
+		switch networkToUpgrade {
+		case localDeployment:
 			network = models.Local
-		} else if networkToUpgrade == fujiDeployment {
+		case fujiDeployment:
 			network = models.Fuji
-		} else {
+		default:
 			return errors.New("elastic subnet transformation is not yet supported on Mainnet")
 		}
 	}
@@ -177,13 +183,15 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		return errNoSubnetID
 	}
 
-	isAlreadyElastic, err := GetCurrentSupply(subnetID, network)
-	if err != nil && err.Error() != subnetIsElasticError {
-		return err
-	}
+	if network != models.Local {
+		isAlreadyElastic, err := GetCurrentSupply(subnetID, network)
+		if err != nil && err.Error() != subnetIsElasticError {
+			return err
+		}
 
-	if isAlreadyElastic {
-		return errors.New(subnetIsElasticError)
+		if isAlreadyElastic {
+			return errors.New(subnetIsElasticError)
+		}
 	}
 
 	tokenName := ""
@@ -260,7 +268,7 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	//we need to sleep after each operation to make sure that UTXO is available for consumption
+	// we need to sleep after each operation to make sure that UTXO is available for consumption
 	time.Sleep(2 * time.Second)
 	err = exportToPChain(deployer, subnetID, assetID, recipientAddr, elasticSubnetConfig.MaxSupply)
 	if err != nil {
@@ -304,14 +312,17 @@ func transformElasticSubnetLocal(sc models.Sidecar, subnetName string, tokenName
 
 	ux.Logger.PrintToUser("Starting Elastic Subnet Transformation")
 	cancel := make(chan struct{})
-	defer close(cancel)
 	go ux.PrintWait(cancel)
 	testKey := genesis.EWOQKey
 	keyChain := secp256k1fx.NewKeychain(testKey)
 	txID, assetID, err := subnet.IssueTransformSubnetTx(elasticSubnetConfig, keyChain, subnetID, tokenName, tokenSymbol, elasticSubnetConfig.MaxSupply)
+	close(cancel)
 	if err != nil {
 		return err
 	}
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Subnet Successfully Transformed To Elastic Subnet!")
+
 	elasticSubnetConfig.AssetID = assetID
 	if err = app.CreateElasticSubnetConfig(subnetName, &elasticSubnetConfig); err != nil {
 		return err
@@ -554,7 +565,7 @@ func GetCurrentSupply(subnetID ids.ID, network models.Network) (bool, error) {
 	defer cancel()
 	_, err := pClient.GetCurrentSupply(ctx, subnetID)
 	if err != nil {
-		//if subnet is already elastic it will return "not found" error
+		// if subnet is already elastic it will return "not found" error
 		if strings.Contains(err.Error(), "not found") {
 			return false, errors.New(subnetIsElasticError)
 		}
