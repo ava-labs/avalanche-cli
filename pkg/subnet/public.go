@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ava-labs/avalanchego/vms/components/avax"
+	"github.com/ava-labs/avalanchego/vms/components/verify"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -103,6 +106,112 @@ func (d *PublicDeployer) AddValidator(
 	}
 	ux.Logger.PrintToUser("Partial tx created")
 	return false, tx, nil
+}
+
+func (d *PublicDeployer) CreateAssetTx(
+	subnetID ids.ID,
+	tokenName string,
+	tokenSymbol string,
+	denomination byte,
+	initialState map[uint32][]verify.State,
+) (ids.ID, error) {
+	wallet, err := d.loadWallet(subnetID)
+	if err != nil {
+		return ids.Empty, err
+	}
+
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign remove validator hash on the ledger device *** ")
+	}
+
+	id, err := wallet.X().IssueCreateAssetTx(tokenName, tokenSymbol, denomination, initialState)
+	if err != nil {
+		return ids.Empty, err
+	}
+	ux.Logger.PrintToUser("CreateAssetTx Transaction successful, transaction ID: %s", id)
+	return id, err
+}
+
+func (d *PublicDeployer) ExportToPChainTx(
+	subnetID ids.ID,
+	subnetAssetID ids.ID,
+	owner *secp256k1fx.OutputOwners,
+	maxSupply uint64,
+) error {
+	wallet, err := d.loadWallet(subnetID)
+	if err != nil {
+		return err
+	}
+
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign remove validator hash on the ledger device *** ")
+	}
+
+	id, err := wallet.X().IssueExportTx(ids.Empty,
+		[]*avax.TransferableOutput{
+			{
+				Asset: avax.Asset{
+					ID: subnetAssetID,
+				},
+				Out: &secp256k1fx.TransferOutput{
+					Amt:          maxSupply,
+					OutputOwners: *owner,
+				},
+			},
+		})
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("ExportToPChainTx Transaction successful, transaction ID: %s", id)
+	return err
+}
+
+func (d *PublicDeployer) ImportFromXChain(
+	subnetID ids.ID,
+	owner *secp256k1fx.OutputOwners,
+) error {
+	wallet, err := d.loadWallet(subnetID)
+	if err != nil {
+		return err
+	}
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign remove validator hash on the ledger device *** ")
+	}
+	xWallet := wallet.X()
+	xChainID := xWallet.BlockchainID()
+
+	id, err := wallet.P().IssueImportTx(xChainID, owner)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("ImportFromXChain Transaction successful, transaction ID: %s", id)
+	return nil
+}
+
+func (d *PublicDeployer) TransformSubnetTx(
+	elasticSubnetConfig models.ElasticSubnetConfig,
+	subnetID ids.ID,
+	subnetAssetID ids.ID,
+) (ids.ID, error) {
+	wallet, err := d.loadWallet(subnetID)
+	if err != nil {
+		return ids.Empty, err
+	}
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign remove validator hash on the ledger device *** ")
+	}
+
+	txID, err := wallet.P().IssueTransformSubnetTx(elasticSubnetConfig.SubnetID, subnetAssetID,
+		elasticSubnetConfig.InitialSupply, elasticSubnetConfig.MaxSupply, elasticSubnetConfig.MinConsumptionRate,
+		elasticSubnetConfig.MaxConsumptionRate, elasticSubnetConfig.MinValidatorStake, elasticSubnetConfig.MaxValidatorStake,
+		elasticSubnetConfig.MinStakeDuration, elasticSubnetConfig.MaxStakeDuration, elasticSubnetConfig.MinDelegationFee,
+		elasticSubnetConfig.MinDelegatorStake, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement,
+	)
+	if err != nil {
+		return ids.Empty, err
+	}
+	ux.Logger.PrintToUser("IssueTransformSubnetTx Transaction successful, transaction ID: %s", txID)
+	return txID, nil
 }
 
 // removes a subnet validator from the given [subnet]

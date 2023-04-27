@@ -6,7 +6,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanchego/vms/components/verify"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -27,9 +30,10 @@ import (
 )
 
 const (
-	localDeployment   = "Existing local deployment"
-	fujiDeployment    = "Fuji (coming soon)"
-	mainnetDeployment = "Mainnet (coming soon)"
+	localDeployment      = "Existing local deployment"
+	fujiDeployment       = "Fuji"
+	mainnetDeployment    = "Mainnet (coming soon)"
+	subnetIsElasticError = "Subnet is already elastic"
 )
 
 var (
@@ -39,6 +43,7 @@ var (
 	useDefaultConfig    bool
 	overrideWarning     bool
 	transformValidators bool
+	denominationFlag    int
 )
 
 // avalanche subnet elastic
@@ -64,6 +69,7 @@ mechanics will work.`,
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "start time that validator starts validating")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long validator validates for after start time")
 	cmd.Flags().BoolVar(&transformValidators, "transform-validators", false, "transform validators to permissionless validators")
+	cmd.Flags().IntVar(&denominationFlag, "denomination", 0, "specify the token denomination")
 	return cmd
 }
 
@@ -72,6 +78,67 @@ func checkIfSubnetIsElasticOnLocal(sc models.Sidecar) bool {
 		return true
 	}
 	return false
+}
+
+func createAssetID(deployer *subnet.PublicDeployer,
+	maxSupply uint64,
+	subnetID ids.ID,
+	tokenName string,
+	tokenSymbol string,
+	tokenDenomination byte,
+	recipientAddr ids.ShortID,
+) (ids.ID, error) {
+	owner := &secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs: []ids.ShortID{
+			recipientAddr,
+		},
+	}
+	initialState := map[uint32][]verify.State{
+		0: {
+			&secp256k1fx.TransferOutput{
+				Amt:          maxSupply,
+				OutputOwners: *owner,
+			},
+		},
+	}
+	txID, err := deployer.CreateAssetTx(subnetID, tokenName, tokenSymbol, tokenDenomination, initialState)
+	if err != nil {
+		return ids.Empty, err
+	}
+	return txID, nil
+}
+func exportToPChain(deployer *subnet.PublicDeployer,
+	subnetID ids.ID,
+	subnetAssetID ids.ID,
+	recipientAddr ids.ShortID,
+	maxSupply uint64) error {
+	owner := &secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs: []ids.ShortID{
+			recipientAddr,
+		},
+	}
+	err := deployer.ExportToPChainTx(subnetID, subnetAssetID, owner, maxSupply)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func importFromXChain(deployer *subnet.PublicDeployer,
+	subnetID ids.ID,
+	recipientAddr ids.ShortID) error {
+	owner := &secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs: []ids.ShortID{
+			recipientAddr,
+		},
+	}
+	err := deployer.ImportFromXChain(subnetID, owner)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func transformElasticSubnet(_ *cobra.Command, args []string) error {
@@ -92,35 +159,31 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 	}
 
 	if network == models.Undefined {
-		networkToUpgrade, err := promptNetworkElastic(sc, "Which network should transform into an elastic Subnet?")
+		networkToUpgrade, err := selectNetworkToTransform(sc)
 		if err != nil {
 			return err
 		}
-		switch networkToUpgrade {
-		case fujiDeployment:
-			return errors.New("elastic subnet transformation is not yet supported on Fuji network")
-		case mainnetDeployment:
+		if networkToUpgrade == localDeployment {
+			network = models.Local
+		} else if networkToUpgrade == fujiDeployment {
+			network = models.Fuji
+		} else {
 			return errors.New("elastic subnet transformation is not yet supported on Mainnet")
 		}
 	}
 
-	if checkIfSubnetIsElasticOnLocal(sc) {
-		return fmt.Errorf("%s is already an elastic subnet", subnetName)
-	}
-
-	subnetID := sc.Networks[models.Local.String()].SubnetID
+	subnetID := sc.Networks[network.String()].SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
 
-	if !overrideWarning {
-		yes, err := app.Prompt.CaptureNoYes("WARNING: Transforming a Permissioned Subnet into an Elastic Subnet is an irreversible operation. Continue?")
-		if err != nil {
-			return err
-		}
-		if !yes {
-			return nil
-		}
+	isAlreadyElastic, err := GetCurrentSupply(subnetID, network)
+	if err != nil && err.Error() != subnetIsElasticError {
+		return err
+	}
+
+	if isAlreadyElastic {
+		return errors.New(subnetIsElasticError)
 	}
 
 	tokenName := ""
@@ -142,24 +205,113 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 	} else {
 		tokenSymbol = tokenSymbolFlag
 	}
+
+	tokenDenomination := 0
+	if network != models.Local {
+		if denominationFlag == 0 {
+			tokenDenomination, err = getTokenDenomination()
+			if err != nil {
+				return err
+			}
+		} else {
+			tokenDenomination = denominationFlag
+		}
+	}
+
 	elasticSubnetConfig, err := es.GetElasticSubnetConfig(app, tokenSymbol, useDefaultConfig)
 	if err != nil {
 		return err
 	}
 	elasticSubnetConfig.SubnetID = subnetID
+
+	switch network {
+	case models.Local:
+		return transformElasticSubnetLocal(sc, subnetName, tokenName, tokenSymbol, elasticSubnetConfig)
+	case models.Fuji:
+		if !useLedger && keyName == "" {
+			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, app.GetKeyDir())
+			if err != nil {
+				return err
+			}
+		}
+	case models.Mainnet:
+		useLedger = true
+		if keyName != "" {
+			return ErrStoredKeyOnMainnet
+		}
+	default:
+		return errors.New("unsupported network")
+	}
+	// used in E2E to simulate public network execution paths on a local network
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		network = models.Local
+	}
+
+	// get keychain accessor
+	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
+	if err != nil {
+		return err
+	}
+
+	recipientAddr := kc.Addresses().List()[0]
+	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	assetID, err := createAssetID(deployer, elasticSubnetConfig.MaxSupply, subnetID, tokenName, tokenSymbol, byte(tokenDenomination), recipientAddr)
+	if err != nil {
+		return err
+	}
+
+	//we need to sleep after each operation to make sure that UTXO is available for consumption
+	time.Sleep(2 * time.Second)
+	err = exportToPChain(deployer, subnetID, assetID, recipientAddr, elasticSubnetConfig.MaxSupply)
+	if err != nil {
+		return err
+	}
+
+	time.Sleep(2 * time.Second)
+	err = importFromXChain(deployer, subnetID, recipientAddr)
+	if err != nil {
+		return err
+	}
+
+	time.Sleep(2 * time.Second)
+	txID, err := deployer.TransformSubnetTx(elasticSubnetConfig, subnetID, assetID)
+	if err != nil {
+		return err
+	}
+	PrintTransformResults(subnetName, txID, subnetID, tokenName, tokenSymbol, assetID)
+	return nil
+}
+
+func transformElasticSubnetLocal(sc models.Sidecar, subnetName string, tokenName string, tokenSymbol string, elasticSubnetConfig models.ElasticSubnetConfig) error {
+	if checkIfSubnetIsElasticOnLocal(sc) {
+		return fmt.Errorf("%s is already an elastic subnet", subnetName)
+	}
+	var err error
+	subnetID := sc.Networks[models.Local.String()].SubnetID
+	if subnetID == ids.Empty {
+		return errNoSubnetID
+	}
+
+	if !overrideWarning {
+		yes, err := app.Prompt.CaptureNoYes("WARNING: Transforming a Permissioned Subnet into an Elastic Subnet is an irreversible operation. Continue?")
+		if err != nil {
+			return err
+		}
+		if !yes {
+			return nil
+		}
+	}
+
 	ux.Logger.PrintToUser("Starting Elastic Subnet Transformation")
 	cancel := make(chan struct{})
+	defer close(cancel)
 	go ux.PrintWait(cancel)
 	testKey := genesis.EWOQKey
 	keyChain := secp256k1fx.NewKeychain(testKey)
 	txID, assetID, err := subnet.IssueTransformSubnetTx(elasticSubnetConfig, keyChain, subnetID, tokenName, tokenSymbol, elasticSubnetConfig.MaxSupply)
-	close(cancel)
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Subnet Successfully Transformed To Elastic Subnet!")
-
 	elasticSubnetConfig.AssetID = assetID
 	if err = app.CreateElasticSubnetConfig(subnetName, &elasticSubnetConfig); err != nil {
 		return err
@@ -167,6 +319,7 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 	if err = app.UpdateSidecarElasticSubnet(&sc, models.Local, subnetID, assetID, txID, tokenName, tokenSymbol); err != nil {
 		return fmt.Errorf("elastic subnet transformation was successful, but failed to update sidecar: %w", err)
 	}
+
 	if !transformValidators {
 		if !overrideWarning {
 			yes, err := app.Prompt.CaptureNoYes("Do you want to transform existing validators to permissionless validators with equal weight? " +
@@ -212,6 +365,32 @@ func promptNetworkElastic(sc models.Sidecar, prompt string) (string, error) {
 	}
 
 	selectedDeployment, err := app.Prompt.CaptureList(prompt, networkOptions)
+	if err != nil {
+		return "", err
+	}
+	return selectedDeployment, nil
+}
+
+// select which network to transform to elastic subnet
+func selectNetworkToTransform(sc models.Sidecar) (string, error) {
+	var networkOptions []string
+	networkPrompt := "Which network should transform into an elastic Subnet?"
+	for network := range sc.Networks {
+		switch network {
+		case models.Local.String():
+			networkOptions = append(networkOptions, localDeployment)
+		case models.Fuji.String():
+			networkOptions = append(networkOptions, fujiDeployment)
+		case models.Mainnet.String():
+			networkOptions = append(networkOptions, mainnetDeployment)
+		}
+	}
+
+	if len(networkOptions) == 0 {
+		return "", errors.New("no deployment target available, please first deploy created subnet")
+	}
+
+	selectedDeployment, err := app.Prompt.CaptureList(networkPrompt, networkOptions)
 	if err != nil {
 		return "", err
 	}
@@ -340,4 +519,46 @@ func handleRemoveAndAddValidators(sc models.Sidecar, subnetID ids.ID, validator 
 		return fmt.Errorf("joining permissionless subnet was successful, but failed to update sidecar: %w", err)
 	}
 	return nil
+}
+
+func getTokenDenomination() (int, error) {
+	ux.Logger.PrintToUser("What's the denomination for your token?")
+	tokenDenomination, err := app.Prompt.CaptureUint64Compare(
+		"Token Denomination",
+		[]prompts.Comparator{
+			{
+				Label: "Min Denomination Value",
+				Type:  prompts.MoreThanEq,
+				Value: 0,
+			},
+		},
+	)
+	if err != nil {
+		return 0, err
+	}
+	return int(tokenDenomination), nil
+}
+
+func GetCurrentSupply(subnetID ids.ID, network models.Network) (bool, error) {
+	var apiURL string
+	switch network {
+	case models.Mainnet:
+		apiURL = constants.MainnetAPIEndpoint
+	case models.Fuji:
+		apiURL = constants.FujiAPIEndpoint
+	default:
+		return false, fmt.Errorf("invalid network: %s", network)
+	}
+	pClient := platformvm.NewClient(apiURL)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+	_, err := pClient.GetCurrentSupply(ctx, subnetID)
+	if err != nil {
+		//if subnet is already elastic it will return "not found" error
+		if strings.Contains(err.Error(), "not found") {
+			return false, errors.New(subnetIsElasticError)
+		}
+		return false, err
+	}
+	return true, nil
 }

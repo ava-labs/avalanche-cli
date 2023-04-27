@@ -599,7 +599,7 @@ func GetFujiKeyOrLedger(prompt Prompter, keyDir string) (bool, string, error) {
 	keyName, err := captureKeyName(prompt, keyDir)
 	if err != nil {
 		if errors.Is(err, errNoKeys) {
-			ux.Logger.PrintToUser("No private keys have been found. Deployment to fuji without a private key " +
+			ux.Logger.PrintToUser("No private keys have been found. Signing transactions on Fuji without a private key " +
 				"or ledger is not possible. Create a new one with `avalanche key create`, or use a ledger device.")
 		}
 		return false, "", err
