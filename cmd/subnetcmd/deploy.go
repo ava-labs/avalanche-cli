@@ -360,6 +360,7 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
+
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
 	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)

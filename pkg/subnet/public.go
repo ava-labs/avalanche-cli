@@ -505,54 +505,6 @@ func (d *PublicDeployer) createExportToPChainTX(
 	return &tx, nil
 }
 
-func (d *PublicDeployer) createCreateAssetTX(
-	subnetAuthKeys []ids.ShortID,
-	wallet primary.Wallet,
-	tokenName string,
-	tokenSymbol string,
-	denomination byte,
-	initialState map[uint32][]verify.State,
-) (*avmtx.Tx, error) {
-	options := d.getMultisigTxOptions(subnetAuthKeys)
-	// create tx
-	unsignedTx, err := wallet.X().Builder().NewCreateAssetTx(
-		tokenName,
-		tokenSymbol,
-		denomination, // denomination for UI purposes only in explorer
-		initialState,
-		options...,
-	)
-	if err != nil {
-		return nil, err
-	}
-	tx := avmtx.Tx{Unsigned: unsignedTx}
-	// sign with current wallet
-	if err := wallet.X().Signer().Sign(context.Background(), &tx); err != nil {
-		return nil, err
-	}
-	return &tx, nil
-}
-
-func (d *PublicDeployer) createImportFromXChainTx(
-	subnetAuthKeys []ids.ShortID,
-	wallet primary.Wallet,
-	owner *secp256k1fx.OutputOwners,
-	blockchainID ids.ID,
-) (*txs.Tx, error) {
-	options := d.getMultisigTxOptions(subnetAuthKeys)
-	// create tx
-	unsignedTx, err := wallet.P().Builder().NewImportTx(blockchainID, owner, options...)
-	if err != nil {
-		return nil, err
-	}
-	tx := txs.Tx{Unsigned: unsignedTx}
-	// sign with current wallet
-	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-		return nil, err
-	}
-	return &tx, nil
-}
-
 func (d *PublicDeployer) createRemoveValidatorTX(
 	subnetAuthKeys []ids.ShortID,
 	nodeID ids.NodeID,
@@ -562,30 +514,6 @@ func (d *PublicDeployer) createRemoveValidatorTX(
 	options := d.getMultisigTxOptions(subnetAuthKeys)
 	// create tx
 	unsignedTx, err := wallet.P().Builder().NewRemoveSubnetValidatorTx(nodeID, subnetID, options...)
-	if err != nil {
-		return nil, err
-	}
-	tx := txs.Tx{Unsigned: unsignedTx}
-	// sign with current wallet
-	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-		return nil, err
-	}
-	return &tx, nil
-}
-
-func (d *PublicDeployer) createTransformSubnetTX(
-	subnetAuthKeys []ids.ShortID,
-	elasticSubnetConfig models.ElasticSubnetConfig,
-	wallet primary.Wallet,
-	assetID ids.ID,
-) (*txs.Tx, error) {
-	options := d.getMultisigTxOptions(subnetAuthKeys)
-	// create tx
-	unsignedTx, err := wallet.P().Builder().NewTransformSubnetTx(elasticSubnetConfig.SubnetID, assetID,
-		elasticSubnetConfig.InitialSupply, elasticSubnetConfig.MaxSupply, elasticSubnetConfig.MinConsumptionRate,
-		elasticSubnetConfig.MaxConsumptionRate, elasticSubnetConfig.MinValidatorStake, elasticSubnetConfig.MaxValidatorStake,
-		elasticSubnetConfig.MinStakeDuration, elasticSubnetConfig.MaxStakeDuration, elasticSubnetConfig.MinDelegationFee,
-		elasticSubnetConfig.MinDelegatorStake, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement, options...)
 	if err != nil {
 		return nil, err
 	}

@@ -588,31 +588,6 @@ func GetSubnetAuthKeys(prompt Prompter, controlKeys []string, threshold uint32) 
 	return subnetAuthKeys, nil
 }
 
-func GetRecipientKeys(prompt Prompter, controlKeys []string, threshold uint32) ([]string, error) {
-	if len(controlKeys) == int(threshold) {
-		return controlKeys, nil
-	}
-	subnetAuthKeys := []string{}
-	filteredControlKeys := []string{}
-	filteredControlKeys = append(filteredControlKeys, controlKeys...)
-	for len(subnetAuthKeys) != int(threshold) {
-		subnetAuthKey, err := prompt.CaptureList(
-			"Choose a subnet auth key",
-			filteredControlKeys,
-		)
-		if err != nil {
-			return nil, err
-		}
-		index, err := getIndexInSlice(filteredControlKeys, subnetAuthKey)
-		if err != nil {
-			return nil, err
-		}
-		subnetAuthKeys = append(subnetAuthKeys, subnetAuthKey)
-		filteredControlKeys = append(filteredControlKeys[:index], filteredControlKeys[index+1:]...)
-	}
-	return subnetAuthKeys, nil
-}
-
 func GetFujiKeyOrLedger(prompt Prompter, keyDir string) (bool, string, error) {
 	useStoredKey, err := prompt.ChooseKeyOrLedger()
 	if err != nil {
