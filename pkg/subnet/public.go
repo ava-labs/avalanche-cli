@@ -124,8 +124,6 @@ func (d *PublicDeployer) CreateAssetTx(
 		ux.Logger.PrintToUser("*** Please sign remove validator hash on the ledger device *** ")
 	}
 
-	fmt.Printf("we are here creating asset")
-	fmt.Printf("token Name %s %s %d", tokenName, tokenSymbol, denomination)
 	id, err := wallet.X().IssueCreateAssetTx(tokenName, tokenSymbol, denomination, initialState)
 	if err != nil {
 		return ids.Empty, err
@@ -210,7 +208,6 @@ func (d *PublicDeployer) TransformSubnetTx(
 		elasticSubnetConfig.MinDelegatorStake, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement,
 	)
 	if err != nil {
-		fmt.Printf("we have error transform %s \n", err.Error())
 		return err
 	}
 	ux.Logger.PrintToUser("IssueTransformSubnetTx Transaction successful, transaction ID: %s", id)

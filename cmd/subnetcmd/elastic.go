@@ -91,7 +91,6 @@ func createAssetID(deployer *subnet.PublicDeployer,
 			recipientAddr,
 		},
 	}
-	fmt.Printf("obtained public key address create asset %s \n", recipientAddr)
 	initialState := map[uint32][]verify.State{
 		0: {
 			&secp256k1fx.TransferOutput{
@@ -251,7 +250,6 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 	}
 
 	recipientAddr := kc.Addresses().List()[0]
-	fmt.Printf("obtained recipientAddrStr %s \n ", recipientAddr[0])
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	assetID, err := createAssetID(deployer, elasticSubnetConfig.MaxSupply, subnetID, tokenName, tokenSymbol, byte(tokenDenomination), recipientAddr)
 	if err != nil {
