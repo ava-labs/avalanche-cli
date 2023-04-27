@@ -34,7 +34,7 @@ const (
 	localDeployment      = "Existing local deployment"
 	fujiDeployment       = "Fuji"
 	mainnetDeployment    = "Mainnet (coming soon)"
-	subnetIsElasticError = "Subnet is already elastic"
+	subnetIsElasticError = "subnet is already elastic"
 )
 
 var (
