@@ -269,19 +269,19 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 	}
 
 	// we need to sleep after each operation to make sure that UTXO is available for consumption
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 	err = exportToPChain(deployer, subnetID, assetID, recipientAddr, elasticSubnetConfig.MaxSupply)
 	if err != nil {
 		return err
 	}
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 	err = importFromXChain(deployer, subnetID, recipientAddr)
 	if err != nil {
 		return err
 	}
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 	controlKeys, threshold, err := subnet.GetOwners(network, subnetID)
 	if err != nil {
 		return err

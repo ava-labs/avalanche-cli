@@ -134,7 +134,6 @@ func (d *PublicDeployer) CreateAssetTx(
 }
 
 func (d *PublicDeployer) ExportToPChainTx(
-
 	subnetID ids.ID,
 	subnetAssetID ids.ID,
 	owner *secp256k1fx.OutputOwners,
