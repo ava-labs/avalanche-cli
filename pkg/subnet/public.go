@@ -288,7 +288,7 @@ func (d *PublicDeployer) createAndIssueBlockchainTx(
 ) (ids.ID, error) {
 	fxIDs := make([]ids.ID, 0)
 	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign blockchain creation hash on the ledger device *** ")
+		ux.Logger.PrintToUser("*** Please sign CreateChain transaction on the ledger device *** ")
 	}
 	return wallet.P().IssueCreateChainTx(subnetID, genesis, vmID, fxIDs, chainName)
 }
@@ -404,7 +404,7 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 	}
 	opts := []common.Option{}
 	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign subnet creation hash on the ledger device *** ")
+		ux.Logger.PrintToUser("*** Please sign CreateSubnet transaction on the ledger device *** ")
 	}
 	return wallet.P().IssueCreateSubnetTx(owners, opts...)
 }
