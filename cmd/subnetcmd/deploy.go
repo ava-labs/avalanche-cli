@@ -51,6 +51,7 @@ var (
 	outputTxPath             string
 	useLedger                bool
 	ledgerAddresses          []string
+	subnetIDStr              string
 
 	errMutuallyExlusiveNetworks    = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
@@ -90,6 +91,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
+	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "deploy into given subnet id [fuji/mainnet deploy only]")
 	return cmd
 }
 
@@ -282,12 +284,21 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 
 	createSubnet := true
 	var subnetID ids.ID
-	if sidecar.Networks != nil {
-		model, ok := sidecar.Networks[network.String()]
-		if ok {
-			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
-				subnetID = model.SubnetID
-				createSubnet = false
+
+	if subnetIDStr != "" {
+		subnetID, err = ids.FromString(subnetIDStr)
+		if err != nil {
+			return err
+		}
+		createSubnet = false
+	} else {
+		if sidecar.Networks != nil {
+			model, ok := sidecar.Networks[network.String()]
+			if ok {
+				if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
+					subnetID = model.SubnetID
+					createSubnet = false
+				}
 			}
 		}
 	}
@@ -331,6 +342,9 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 			}
 		}
 	} else {
+		ux.Logger.PrintToUser(logging.Green.Wrap(
+			fmt.Sprintf("Deploying into pre-existent subnet ID %s", subnetID.String()),
+		))
 		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
 		if err != nil {
 			return err
