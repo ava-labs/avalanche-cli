@@ -303,7 +303,7 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	network models.Network,
 	subnetID ids.ID,
 	blockchainID ids.ID,
-	subnetOnly bool,
+	doChainUpdate bool,
 ) error {
 	if sc.Networks == nil {
 		sc.Networks = make(map[string]models.NetworkData)
@@ -311,7 +311,7 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	model := models.NetworkData{
 		SubnetID: subnetID,
 	}
-	if !subnetOnly {
+	if doChainUpdate {
 		model.BlockchainID = blockchainID
 		model.RPCVersion = sc.RPCVersion
 	}

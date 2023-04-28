@@ -38,6 +38,20 @@ func GetNetwork(tx *txs.Tx) (models.Network, error) {
 	return network, nil
 }
 
+func GetTxName(tx *txs.Tx) string {
+	unsignedTx := tx.Unsigned
+	switch unsignedTx.(type) {
+	case *txs.RemoveSubnetValidatorTx:
+		return "RemoveSubnetValidator"
+	case *txs.AddSubnetValidatorTx:
+		return "AddSubnetValidator"
+	case *txs.CreateChainTx:
+		return "CreateChain"
+	default:
+		return ""
+	}
+}
+
 func IsCreateChainTx(tx *txs.Tx) bool {
 	_, ok := tx.Unsigned.(*txs.CreateChainTx)
 	return ok

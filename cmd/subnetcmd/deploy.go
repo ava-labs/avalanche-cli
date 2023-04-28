@@ -280,43 +280,58 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	// accept only one control keys specification
-	if len(controlKeys) > 0 && sameControlKey {
-		return errMutuallyExlusiveControlKeys
-	}
-
-	// use creation key as control key
-	if sameControlKey {
-		controlKeys, err = loadCreationKeys(network, kc)
-		if err != nil {
-			return err
+	createSubnet := true
+	var subnetID ids.ID
+	if sidecar.Networks != nil {
+		model, ok := sidecar.Networks[network.String()]
+		if ok {
+			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
+				subnetID = model.SubnetID
+				createSubnet = false
+			}
 		}
 	}
 
-	// prompt for control keys
-	if controlKeys == nil {
-		var cancelled bool
-		controlKeys, cancelled, err = getControlKeys(network, useLedger, kc)
-		if err != nil {
-			return err
+	if createSubnet {
+		// accept only one control keys specification
+		if len(controlKeys) > 0 && sameControlKey {
+			return errMutuallyExlusiveControlKeys
 		}
-		if cancelled {
-			ux.Logger.PrintToUser("User cancelled. No subnet deployed")
-			return nil
+		// use creation key as control key
+		if sameControlKey {
+			controlKeys, err = loadCreationKeys(network, kc)
+			if err != nil {
+				return err
+			}
 		}
-	}
-
-	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
-
-	// validate and prompt for threshold
-	if threshold == 0 && subnetAuthKeys != nil {
-		threshold = uint32(len(subnetAuthKeys))
-	}
-	if int(threshold) > len(controlKeys) {
-		return fmt.Errorf("given threshold is greater than number of control keys")
-	}
-	if threshold == 0 {
-		threshold, err = getThreshold(len(controlKeys))
+		// prompt for control keys
+		if controlKeys == nil {
+			var cancelled bool
+			controlKeys, cancelled, err = getControlKeys(network, useLedger, kc)
+			if err != nil {
+				return err
+			}
+			if cancelled {
+				ux.Logger.PrintToUser("User cancelled. No subnet deployed")
+				return nil
+			}
+		}
+		ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
+		// validate and prompt for threshold
+		if threshold == 0 && subnetAuthKeys != nil {
+			threshold = uint32(len(subnetAuthKeys))
+		}
+		if int(threshold) > len(controlKeys) {
+			return fmt.Errorf("given threshold is greater than number of control keys")
+		}
+		if threshold == 0 {
+			threshold, err = getThreshold(len(controlKeys))
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
 		if err != nil {
 			return err
 		}
@@ -337,9 +352,12 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	subnetID, err := deployer.DeploySubnet(controlKeys, threshold)
-	if err != nil {
-		return err
+
+	if createSubnet {
+		subnetID, err = deployer.DeploySubnet(controlKeys, threshold)
+		if err != nil {
+			return err
+		}
 	}
 
 	isFullySigned, blockchainID, tx, err := deployer.DeployBlockchain(subnetAuthKeys, subnetID, chain, chainGenesis)
