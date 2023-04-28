@@ -197,7 +197,7 @@ func (d *PublicDeployer) Deploy(
 		return false, ids.Empty, ids.Empty, nil, err
 	}
 
-	time.Sleep(2)
+	time.Sleep(2 * time.Second)
 	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(blockchainTx, d.network, subnetID)
 	if err != nil {
 		return false, ids.Empty, ids.Empty, nil, err
@@ -271,20 +271,6 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error
 		return nil, err
 	}
 	return wallet, nil
-}
-
-func (d *PublicDeployer) createAndIssueBlockchainTx(
-	chainName string,
-	vmID,
-	subnetID ids.ID,
-	genesis []byte,
-	wallet primary.Wallet,
-) (ids.ID, error) {
-	fxIDs := make([]ids.ID, 0)
-	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign CreateChain transaction on the ledger device *** ")
-	}
-	return wallet.P().IssueCreateChainTx(subnetID, genesis, vmID, fxIDs, chainName)
 }
 
 func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []ids.ShortID) []common.Option {
