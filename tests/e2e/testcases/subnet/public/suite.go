@@ -137,6 +137,33 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(output).Should(gomega.ContainSubstring("No pending validators found"))
 	})
 
+	ginkgo.It("can transform a deployed SubnetEvm subnet to elastic subnet only once", func() {
+		subnetIDStr, _ := deploySubnetToFuji()
+		subnetID, err := ids.FromString(subnetIDStr)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		subnet.GetCurrentSupply(subnetID)
+		// GetCurrentSupply will return error if queried for non-elastic subnet
+		err = utils.GetCurrentSupply(subnetName)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+
+		_, err = commands.TransformElasticSubnetLocally(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		exists, err := utils.ElasticSubnetConfigExists(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(exists).Should(gomega.BeTrue())
+
+		// GetCurrentSupply will return result if queried for elastic subnet
+		err = utils.GetCurrentSupply(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		_, err = commands.TransformElasticSubnetLocally(subnetName)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+
+		commands.DeleteSubnetConfig(subnetName)
+		commands.DeleteElasticSubnetConfig(subnetName)
+	})
+
 	ginkgo.It("remove validator fuji", func() {
 		subnetIDStr, nodeInfos := deploySubnetToFuji()
 

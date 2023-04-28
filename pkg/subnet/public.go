@@ -128,11 +128,13 @@ func (d *PublicDeployer) CreateAssetTx(
 	if err != nil {
 		return ids.Empty, err
 	}
-	ux.Logger.PrintToUser("CreateAssetTx Transaction successful, transaction ID: %s", id)
+	ux.Logger.PrintToUser("Create Asset Transaction successful, transaction ID: %s", id)
+	ux.Logger.PrintToUser("Now exporting asset to P-Chain ...")
 	return id, err
 }
 
 func (d *PublicDeployer) ExportToPChainTx(
+
 	subnetID ids.ID,
 	subnetAssetID ids.ID,
 	owner *secp256k1fx.OutputOwners,
@@ -162,7 +164,8 @@ func (d *PublicDeployer) ExportToPChainTx(
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("ExportToPChainTx Transaction successful, transaction ID: %s", id)
+	ux.Logger.PrintToUser("Export to P-Chain Transaction successful, transaction ID: %s", id)
+	ux.Logger.PrintToUser("Now importing asset from X-Chain ...")
 	return err
 }
 
@@ -184,7 +187,9 @@ func (d *PublicDeployer) ImportFromXChain(
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("ImportFromXChain Transaction successful, transaction ID: %s", id)
+	ux.Logger.PrintToUser("Import from X Chain Transaction successful, transaction ID: %s", id)
+	ux.Logger.PrintToUser("Now transforming subnet into elastic subnet ...")
+
 	return nil
 }
 
@@ -220,7 +225,7 @@ func (d *PublicDeployer) TransformSubnetTx(
 		if err != nil {
 			return false, ids.Empty, nil, err
 		}
-		ux.Logger.PrintToUser("IssueTransformSubnetTx Transaction successful, transaction ID: %s", txID)
+		ux.Logger.PrintToUser("Transform Subnet Transaction successful, transaction ID: %s", txID)
 		return true, txID, nil, nil
 	}
 
