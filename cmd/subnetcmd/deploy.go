@@ -247,7 +247,7 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 			}
 			return err
 		}
-		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
+		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, true)
 
 	case models.Fuji:
 		if !useLedger && keyName == "" {
@@ -344,14 +344,18 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 
 	isFullySigned, blockchainID, tx, err := deployer.DeployBlockchain(subnetAuthKeys, subnetID, chain, chainGenesis)
 	if err != nil {
+		ux.Logger.PrintToUser(logging.Red.Wrap(
+			fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
+		))
+	}
+	blockchainDeployed := isFullySigned && err == nil
+	savePartialTx := !isFullySigned && err == nil
+
+	if err := PrintDeployResults(chain, subnetID, blockchainID, blockchainDeployed); err != nil {
 		return err
 	}
 
-	if err := PrintDeployResults(chain, subnetID, blockchainID, isFullySigned); err != nil {
-		return err
-	}
-
-	if !isFullySigned {
+	if savePartialTx {
 		if err := SaveNotFullySignedTx(
 			"Blockchain Creation",
 			tx,
@@ -368,7 +372,7 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
-	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
+	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, blockchainDeployed)
 }
 
 func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain) ([]string, bool, error) {
@@ -734,7 +738,7 @@ func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]ui
 	return ledgerIndices, nil
 }
 
-func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFullySigned bool) error {
+func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, blockchainDeployed bool) error {
 	vmID, err := utils.VMID(chain)
 	if err != nil {
 		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
@@ -747,7 +751,7 @@ func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFu
 	table.Append([]string{"Chain Name", chain})
 	table.Append([]string{"Subnet ID", subnetID.String()})
 	table.Append([]string{"VM ID", vmID.String()})
-	if isFullySigned {
+	if blockchainDeployed {
 		table.Append([]string{"Blockchain ID", blockchainID.String()})
 		table.Append([]string{"P-Chain TXID", blockchainID.String()})
 	}

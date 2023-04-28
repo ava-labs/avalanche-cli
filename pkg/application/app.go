@@ -303,15 +303,19 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	network models.Network,
 	subnetID ids.ID,
 	blockchainID ids.ID,
+	subnetOnly bool,
 ) error {
 	if sc.Networks == nil {
 		sc.Networks = make(map[string]models.NetworkData)
 	}
-	sc.Networks[network.String()] = models.NetworkData{
-		SubnetID:     subnetID,
-		BlockchainID: blockchainID,
-		RPCVersion:   sc.RPCVersion,
+	model := models.NetworkData{
+		SubnetID: subnetID,
 	}
+	if !subnetOnly {
+		model.BlockchainID = blockchainID
+		model.RPCVersion = sc.RPCVersion
+	}
+	sc.Networks[network.String()] = model
 	if err := app.UpdateSidecar(sc); err != nil {
 		return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)
 	}

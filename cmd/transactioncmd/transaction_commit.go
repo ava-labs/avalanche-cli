@@ -89,7 +89,7 @@ func commitTx(_ *cobra.Command, args []string) error {
 		if err := subnetcmd.PrintDeployResults(subnetName, subnetID, txID, true); err != nil {
 			return err
 		}
-		return app.UpdateSidecarNetworks(&sc, network, subnetID, txID)
+		return app.UpdateSidecarNetworks(&sc, network, subnetID, txID, true)
 	}
 	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID)
 
