@@ -337,7 +337,12 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	isFullySigned, subnetID, blockchainID, tx, err := deployer.Deploy(controlKeys, subnetAuthKeys, threshold, chain, chainGenesis)
+	subnetID, err := deployer.DeploySubnet(controlKeys, threshold)
+	if err != nil {
+		return err
+	}
+
+	isFullySigned, blockchainID, tx, err := deployer.DeployBlockchain(subnetAuthKeys, subnetID, chain, chainGenesis)
 	if err != nil {
 		return err
 	}

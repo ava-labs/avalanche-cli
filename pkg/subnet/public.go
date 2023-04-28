@@ -45,7 +45,7 @@ func NewPublicDeployer(app *application.Avalanche, usingLedger bool, kc keychain
 	}
 }
 
-// adds a subnet validator to the given [subnet]
+// adds a subnet validator to the given [subnetID]
 //   - creates an add subnet validator tx
 //   - sets the change output owner to be a wallet address (if not, it may go to any other subnet auth address)
 //   - signs the tx with the wallet as the owner of fee outputs and a possible subnet auth key
@@ -53,13 +53,13 @@ func NewPublicDeployer(app *application.Avalanche, usingLedger bool, kc keychain
 //   - if fully signed, issues it
 func (d *PublicDeployer) AddValidator(
 	subnetAuthKeysStrs []string,
-	subnet ids.ID,
+	subnetID ids.ID,
 	nodeID ids.NodeID,
 	weight uint64,
 	startTime time.Time,
 	duration time.Duration,
 ) (bool, *txs.Tx, error) {
-	wallet, err := d.loadWallet(subnet)
+	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
 		return false, nil, err
 	}
@@ -74,7 +74,7 @@ func (d *PublicDeployer) AddValidator(
 			End:    uint64(startTime.Add(duration).Unix()),
 			Wght:   weight,
 		},
-		Subnet: subnet,
+		Subnet: subnetID,
 	}
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign add validator hash on the ledger device *** ")
@@ -85,7 +85,7 @@ func (d *PublicDeployer) AddValidator(
 		return false, nil, err
 	}
 
-	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, d.network, subnet)
+	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, d.network, subnetID)
 	if err != nil {
 		return false, nil, err
 	}
@@ -104,7 +104,7 @@ func (d *PublicDeployer) AddValidator(
 	return false, tx, nil
 }
 
-// removes a subnet validator from the given [subnet]
+// removes a subnet validator from the given [subnetID]
 //   - creates an remove subnet validator tx
 //   - sets the change output owner to be a wallet address (if not, it may go to any other subnet auth address)
 //   - signs the tx with the wallet as the owner of fee outputs and a possible subnet auth key
@@ -112,10 +112,10 @@ func (d *PublicDeployer) AddValidator(
 //   - if fully signed, issues it
 func (d *PublicDeployer) RemoveValidator(
 	subnetAuthKeysStrs []string,
-	subnet ids.ID,
+	subnetID ids.ID,
 	nodeID ids.NodeID,
 ) (bool, *txs.Tx, error) {
-	wallet, err := d.loadWallet(subnet)
+	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
 		return false, nil, err
 	}
@@ -128,12 +128,12 @@ func (d *PublicDeployer) RemoveValidator(
 		ux.Logger.PrintToUser("*** Please sign remove validator hash on the ledger device *** ")
 	}
 
-	tx, err := d.createRemoveValidatorTX(subnetAuthKeys, nodeID, subnet, wallet)
+	tx, err := d.createRemoveValidatorTX(subnetAuthKeys, nodeID, subnetID, wallet)
 	if err != nil {
 		return false, nil, err
 	}
 
-	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, d.network, subnet)
+	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, d.network, subnetID)
 	if err != nil {
 		return false, nil, err
 	}
@@ -152,67 +152,77 @@ func (d *PublicDeployer) RemoveValidator(
 	return false, tx, nil
 }
 
-// deploys the given [chain]
-// - creates a subnet using the given [controlKeys] and [threshold] as subnet authentication parameters
-// - if operation is multisig (len(subnetAuthKeysStrs) > 1):
-//   - creates a blockchain tx
-//   - sets the change output owner to be a wallet address (if not, it may go to any other subnet auth address)
-//   - signs the tx with the wallet as the owner of fee outputs and one of the subnet auth keys
-//   - returns the tx so that it can be later on be signed by the rest of the subnet auth keys
-//
-// - if operation is not multisig (len(subnetAuthKeysStrs) == 1):
-//   - creates and issues a blockchain tx, signing the tx with the wallet as the owner of fee outputs
-//     and the only one subnet auth key
-//   - returns the blockchain tx id
-func (d *PublicDeployer) Deploy(
+// - creates a subnet for [chain] using the given [controlKeys] and [threshold] as subnet authentication parameters
+func (d *PublicDeployer) DeploySubnet(
 	controlKeys []string,
-	subnetAuthKeysStrs []string,
 	threshold uint32,
-	chain string,
-	genesis []byte,
-) (bool, ids.ID, ids.ID, *txs.Tx, error) {
+) (ids.ID, error) {
 	wallet, err := d.loadWallet()
 	if err != nil {
-		return false, ids.Empty, ids.Empty, nil, err
+		return ids.Empty, err
 	}
+	subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
+	if err != nil {
+		return ids.Empty, err
+	}
+	ux.Logger.PrintToUser("Subnet has been created with ID: %s", subnetID.String())
+	time.Sleep(2 * time.Second)
+	return subnetID, nil
+}
+
+// creates a blockchain for the given [subnetID]
+//   - creates a create blockchain tx
+//   - sets the change output owner to be a wallet address (if not, it may go to any other subnet auth address)
+//   - signs the tx with the wallet as the owner of fee outputs and a possible subnet auth key
+//   - if partially signed, returns the tx so that it can later on be signed by the rest of the subnet auth keys
+//   - if fully signed, issues it
+func (d *PublicDeployer) DeployBlockchain(
+	subnetAuthKeysStrs []string,
+	subnetID ids.ID,
+	chain string,
+	genesis []byte,
+) (bool, ids.ID, *txs.Tx, error) {
+	ux.Logger.PrintToUser("Now creating blockchain...")
+
+	wallet, err := d.loadWallet(subnetID)
+	if err != nil {
+		return false, ids.Empty, nil, err
+	}
+
 	vmID, err := utils.VMID(chain)
 	if err != nil {
-		return false, ids.Empty, ids.Empty, nil, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
+		return false, ids.Empty, nil, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
 
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
-		return false, ids.Empty, ids.Empty, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
+		return false, ids.Empty, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 
-	subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
-	if err != nil {
-		return false, ids.Empty, ids.Empty, nil, err
-	}
-	ux.Logger.PrintToUser("Subnet has been created with ID: %s", subnetID.String())
-
-	ux.Logger.PrintToUser("Now creating blockchain...")
-	blockchainTx, err := d.createBlockchainTx(subnetAuthKeys, chain, vmID, subnetID, genesis, wallet)
-	if err != nil {
-		return false, ids.Empty, ids.Empty, nil, err
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign CreateChain transaction on the ledger device *** ")
 	}
 
-	time.Sleep(2 * time.Second)
-	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(blockchainTx, d.network, subnetID)
+	tx, err := d.createBlockchainTx(subnetAuthKeys, chain, vmID, subnetID, genesis, wallet)
 	if err != nil {
-		return false, ids.Empty, ids.Empty, nil, err
+		return false, ids.Empty, nil, err
+	}
+
+	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, d.network, subnetID)
+	if err != nil {
+		return false, ids.Empty, nil, err
 	}
 	isFullySigned := len(remainingSubnetAuthKeys) == 0
 
-	var blockchainID ids.ID
+	var id ids.ID
 	if isFullySigned {
-		blockchainID, err = d.Commit(blockchainTx)
+		id, err = d.Commit(tx)
 		if err != nil {
-			return false, ids.Empty, ids.Empty, nil, err
+			return false, ids.Empty, nil, err
 		}
 	}
 
-	return isFullySigned, subnetID, blockchainID, blockchainTx, nil
+	return isFullySigned, id, tx, nil
 }
 
 func (d *PublicDeployer) Commit(
@@ -299,9 +309,6 @@ func (d *PublicDeployer) createBlockchainTx(
 	wallet primary.Wallet,
 ) (*txs.Tx, error) {
 	fxIDs := make([]ids.ID, 0)
-	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign blockchain creation hash on the ledger device *** ")
-	}
 	options := d.getMultisigTxOptions(subnetAuthKeys)
 	// create tx
 	unsignedTx, err := wallet.P().Builder().NewCreateChainTx(
