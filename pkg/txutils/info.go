@@ -38,13 +38,11 @@ func GetNetwork(tx *txs.Tx) (models.Network, error) {
 	return network, nil
 }
 
-func GetTxName(tx *txs.Tx) string {
+func GetLedgerDisplayName(tx *txs.Tx) string {
 	unsignedTx := tx.Unsigned
 	switch unsignedTx.(type) {
-	case *txs.RemoveSubnetValidatorTx:
-		return "RemoveSubnetValidator"
 	case *txs.AddSubnetValidatorTx:
-		return "AddSubnetValidator"
+		return "SubnetValidator"
 	case *txs.CreateChainTx:
 		return "CreateChain"
 	default:

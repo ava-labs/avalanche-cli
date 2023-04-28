@@ -77,7 +77,7 @@ func (d *PublicDeployer) AddValidator(
 		Subnet: subnetID,
 	}
 	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign AddSubnetValidator transaction on the ledger device *** ")
+		ux.Logger.PrintToUser("*** Please sign SubnetValidator transaction on the ledger device *** ")
 	}
 
 	tx, err := d.createAddSubnetValidatorTx(subnetAuthKeys, validator, wallet)
@@ -125,7 +125,7 @@ func (d *PublicDeployer) RemoveValidator(
 	}
 
 	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign RemoveSubnetValidator transaction on the ledger device *** ")
+		ux.Logger.PrintToUser("*** Please sign tx hash on the ledger device *** ")
 	}
 
 	tx, err := d.createRemoveValidatorTX(subnetAuthKeys, nodeID, subnetID, wallet)
@@ -252,7 +252,7 @@ func (d *PublicDeployer) Sign(
 		return ErrNoSubnetAuthKeysInWallet
 	}
 	if d.usingLedger {
-		txName := txutils.GetTxName(tx)
+		txName := txutils.GetLedgerDisplayName(tx)
 		if len(txName) == 0 {
 			ux.Logger.PrintToUser("*** Please sign tx hash on the ledger device *** ")
 		} else {
