@@ -291,14 +291,12 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 			return err
 		}
 		createSubnet = false
-	} else {
-		if sidecar.Networks != nil {
-			model, ok := sidecar.Networks[network.String()]
-			if ok {
-				if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
-					subnetID = model.SubnetID
-					createSubnet = false
-				}
+	} else if sidecar.Networks != nil {
+		model, ok := sidecar.Networks[network.String()]
+		if ok {
+			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
+				subnetID = model.SubnetID
+				createSubnet = false
 			}
 		}
 	}
