@@ -330,12 +330,14 @@ func (app *Avalanche) UpdateSidecarElasticSubnet(
 	if sc.ElasticSubnet == nil {
 		sc.ElasticSubnet = make(map[string]models.ElasticSubnet)
 	}
+	partialTxs := sc.ElasticSubnet[network.String()].Txs
 	sc.ElasticSubnet[network.String()] = models.ElasticSubnet{
 		SubnetID:    subnetID,
 		AssetID:     assetID,
 		PChainTXID:  pchainTXID,
 		TokenName:   tokenName,
 		TokenSymbol: tokenSymbol,
+		Txs:         partialTxs,
 	}
 	if err := app.UpdateSidecar(sc); err != nil {
 		return err
@@ -359,6 +361,46 @@ func (app *Avalanche) UpdateSidecarPermissionlessValidator(
 		return err
 	}
 	return nil
+}
+
+func (app *Avalanche) UpdateSidecarElasticSubnetPartialTx(
+	sc *models.Sidecar,
+	network models.Network,
+	txName string,
+	txID ids.ID,
+) error {
+	if sc.ElasticSubnet == nil {
+		sc.ElasticSubnet = make(map[string]models.ElasticSubnet)
+	}
+	partialTxs := make(map[string]ids.ID)
+	if sc.ElasticSubnet[network.String()].Txs != nil {
+		partialTxs = sc.ElasticSubnet[network.String()].Txs
+	}
+	partialTxs[txName] = txID
+	sc.ElasticSubnet[network.String()] = models.ElasticSubnet{
+		Txs: partialTxs,
+	}
+	if err := app.UpdateSidecar(sc); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (app *Avalanche) CheckIfTxHasOccurred(
+	sc *models.Sidecar,
+	network models.Network,
+	txName string,
+) (bool, ids.ID) {
+	if sc.ElasticSubnet == nil {
+		return false, ids.Empty
+	}
+	if sc.ElasticSubnet[network.String()].Txs != nil {
+		txID, ok := sc.ElasticSubnet[network.String()].Txs[txName]
+		if ok {
+			return true, txID
+		}
+	}
+	return false, ids.Empty
 }
 
 func (app *Avalanche) GetTokenName(subnetName string) string {

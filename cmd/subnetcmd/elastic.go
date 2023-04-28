@@ -122,35 +122,35 @@ func exportToPChain(deployer *subnet.PublicDeployer,
 	subnetAssetID ids.ID,
 	recipientAddr ids.ShortID,
 	maxSupply uint64,
-) error {
+) (ids.ID, error) {
 	owner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
 		Addrs: []ids.ShortID{
 			recipientAddr,
 		},
 	}
-	err := deployer.ExportToPChainTx(subnetID, subnetAssetID, owner, maxSupply)
+	txID, err := deployer.ExportToPChainTx(subnetID, subnetAssetID, owner, maxSupply)
 	if err != nil {
-		return err
+		return ids.Empty, err
 	}
-	return nil
+	return txID, nil
 }
 
 func importFromXChain(deployer *subnet.PublicDeployer,
 	subnetID ids.ID,
 	recipientAddr ids.ShortID,
-) error {
+) (ids.ID, error) {
 	owner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
 		Addrs: []ids.ShortID{
 			recipientAddr,
 		},
 	}
-	err := deployer.ImportFromXChain(subnetID, owner)
+	txID, err := deployer.ImportFromXChain(subnetID, owner)
 	if err != nil {
-		return err
+		return ids.Empty, err
 	}
-	return nil
+	return txID, nil
 }
 
 func transformElasticSubnet(_ *cobra.Command, args []string) error {
@@ -291,25 +291,54 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 
 	recipientAddr := kc.Addresses().List()[0]
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	assetID, err := createAssetID(deployer, elasticSubnetConfig.MaxSupply, subnetID, tokenName, tokenSymbol, byte(tokenDenomination), recipientAddr)
-	if err != nil {
-		return err
+	txHasOccurred, txID := app.CheckIfTxHasOccurred(&sc, network, "CreateAssetTx")
+	var assetID ids.ID
+	if txHasOccurred {
+		fmt.Printf("skipping createAssetTx \n")
+		assetID = txID
+	} else {
+		assetID, err = createAssetID(deployer, elasticSubnetConfig.MaxSupply, subnetID, tokenName, tokenSymbol, byte(tokenDenomination), recipientAddr)
+		if err != nil {
+			return err
+		}
+		err = app.UpdateSidecarElasticSubnetPartialTx(&sc, network, "CreateAssetTx", assetID)
+		if err != nil {
+			return err
+		}
+		// we need to sleep after each operation to make sure that UTXO is available for consumption
+		time.Sleep(5 * time.Second)
 	}
 
-	// we need to sleep after each operation to make sure that UTXO is available for consumption
-	time.Sleep(5 * time.Second)
-	err = exportToPChain(deployer, subnetID, assetID, recipientAddr, elasticSubnetConfig.MaxSupply)
-	if err != nil {
-		return err
+	txHasOccurred, _ = app.CheckIfTxHasOccurred(&sc, network, "ExportTx")
+	if !txHasOccurred {
+		txID, err = exportToPChain(deployer, subnetID, assetID, recipientAddr, elasticSubnetConfig.MaxSupply)
+		if err != nil {
+			return err
+		}
+		err = app.UpdateSidecarElasticSubnetPartialTx(&sc, network, "ExportTx", txID)
+		if err != nil {
+			return err
+		}
+		time.Sleep(5 * time.Second)
+	} else {
+		fmt.Printf("skipping ExportTx \n")
 	}
 
-	time.Sleep(5 * time.Second)
-	err = importFromXChain(deployer, subnetID, recipientAddr)
-	if err != nil {
-		return err
+	txHasOccurred, _ = app.CheckIfTxHasOccurred(&sc, network, "ImportTx")
+	if !txHasOccurred {
+		txID, err = importFromXChain(deployer, subnetID, recipientAddr)
+		if err != nil {
+			return err
+		}
+		err = app.UpdateSidecarElasticSubnetPartialTx(&sc, network, "ImportTx", txID)
+		if err != nil {
+			return err
+		}
+		time.Sleep(5 * time.Second)
+	} else {
+		fmt.Printf("skipping ImportTx \n")
 	}
 
-	time.Sleep(5 * time.Second)
 	controlKeys, threshold, err := subnet.GetOwners(network, subnetID)
 	if err != nil {
 		return err
