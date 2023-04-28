@@ -251,7 +251,7 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 
 	case models.Fuji:
 		if !useLedger && keyName == "" {
-			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, app.GetKeyDir())
+			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "pay transaction fees", app.GetKeyDir())
 			if err != nil {
 				return err
 			}
@@ -384,7 +384,7 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain
 	if useLedger {
 		creation = "Use ledger address"
 	} else {
-		creation = "Use creation key"
+		creation = "Use fee-paying key"
 	}
 	if network == models.Mainnet {
 		listOptions = []string{creation, custom}

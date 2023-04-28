@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
@@ -24,7 +25,7 @@ import (
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 )
 
-var ErrNoSubnetAuthKeysInWallet = errors.New("wallet does not contain subnet auth keys")
+var ErrNoSubnetAuthKeysInWallet = errors.New("auth wallet does not contain subnet auth keys")
 
 type PublicDeployer struct {
 	LocalDeployer
@@ -70,9 +71,6 @@ func (d *PublicDeployer) AddValidator(
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
 		return false, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
-	}
-	if ok := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys); !ok {
-		return false, nil, ErrNoSubnetAuthKeysInWallet
 	}
 	validator := &txs.SubnetValidator{
 		Validator: txs.Validator{
@@ -128,9 +126,6 @@ func (d *PublicDeployer) RemoveValidator(
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
 		return false, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
-	}
-	if ok := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys); !ok {
-		return false, nil, ErrNoSubnetAuthKeysInWallet
 	}
 
 	if d.usingLedger {
@@ -189,30 +184,28 @@ func (d *PublicDeployer) Deploy(
 		return false, ids.Empty, ids.Empty, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 
-	if ok := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys); !ok {
-		return false, ids.Empty, ids.Empty, nil, ErrNoSubnetAuthKeysInWallet
-	}
-
 	subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
 	if err != nil {
 		return false, ids.Empty, ids.Empty, nil, err
 	}
 	ux.Logger.PrintToUser("Subnet has been created with ID: %s. Now creating blockchain...", subnetID.String())
 
-	var (
-		blockchainID  ids.ID
-		blockchainTx  *txs.Tx
-		isFullySigned bool
-	)
+	blockchainTx, err := d.createBlockchainTx(subnetAuthKeys, chain, vmID, subnetID, genesis, wallet)
+	if err != nil {
+		return false, ids.Empty, ids.Empty, nil, err
+	}
 
-	if len(subnetAuthKeys) == 1 {
-		isFullySigned = true
-		blockchainID, err = d.createAndIssueBlockchainTx(chain, vmID, subnetID, genesis, wallet)
-		if err != nil {
-			return false, ids.Empty, ids.Empty, nil, err
-		}
-	} else {
-		blockchainTx, err = d.createBlockchainTx(subnetAuthKeys, chain, vmID, subnetID, genesis, wallet)
+	time.Sleep(2)
+	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(blockchainTx, d.network, subnetID)
+	if err != nil {
+		return false, ids.Empty, ids.Empty, nil, err
+	}
+
+	isFullySigned := len(remainingSubnetAuthKeys) == 0
+
+	var blockchainID ids.ID
+	if isFullySigned {
+		blockchainID, err = d.Commit(blockchainTx)
 		if err != nil {
 			return false, ids.Empty, ids.Empty, nil, err
 		}
@@ -295,13 +288,13 @@ func (d *PublicDeployer) createAndIssueBlockchainTx(
 
 func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []ids.ShortID) []common.Option {
 	options := []common.Option{}
+	walletAddr := d.kc.Addresses().List()[0]
 	// addrs to use for signing
 	customAddrsSet := set.Set[ids.ShortID]{}
+	customAddrsSet.Add(walletAddr)
 	customAddrsSet.Add(subnetAuthKeys...)
 	options = append(options, common.WithCustomAddresses(customAddrsSet))
 	// set change to go to wallet addr (instead of any other subnet auth key)
-	walletAddresses := d.getSubnetAuthAddressesInWallet(subnetAuthKeys)
-	walletAddr := walletAddresses[0]
 	changeOwner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
 		Addrs:     []ids.ShortID{walletAddr},
@@ -409,7 +402,6 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 	return wallet.P().IssueCreateSubnetTx(owners, opts...)
 }
 
-// get wallet addresses that are also subnet auth addresses
 func (d *PublicDeployer) getSubnetAuthAddressesInWallet(subnetAuth []ids.ShortID) []ids.ShortID {
 	walletAddrs := d.kc.Addresses().List()
 	subnetAuthInWallet := []ids.ShortID{}
