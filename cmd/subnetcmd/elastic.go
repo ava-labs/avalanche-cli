@@ -62,6 +62,8 @@ mechanics will work.`,
 		RunE:         transformElasticSubnet,
 	}
 	cmd.Flags().BoolVarP(&transformLocal, "local", "l", false, "transform a subnet on a local network")
+	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "remove from `fuji` deployment (alias for `testnet`)")
+	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "remove from `testnet` deployment (alias for `fuji`)")
 	cmd.Flags().StringVar(&tokenNameFlag, "tokenName", "", "specify the token name")
 	cmd.Flags().StringVar(&tokenSymbolFlag, "tokenSymbol", "", "specify the token symbol")
 	cmd.Flags().BoolVar(&useDefaultConfig, "default", false, "use default elastic subnet config values")
@@ -70,7 +72,12 @@ mechanics will work.`,
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "start time that validator starts validating")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long validator validates for after start time")
 	cmd.Flags().BoolVar(&transformValidators, "transform-validators", false, "transform validators to permissionless validators")
-	cmd.Flags().IntVar(&denominationFlag, "denomination", 0, "specify the token denomination")
+	cmd.Flags().IntVar(&denominationFlag, "denomination", -1, "specify the token denomination")
+	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
+	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
+	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
+	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate the transformSubnet tx")
+	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the transformSubnet tx")
 	return cmd
 }
 
@@ -159,7 +166,12 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 	}
 
 	var network models.Network
-	if transformLocal {
+	switch {
+	case deployTestnet:
+		network = models.Fuji
+	case deployMainnet:
+		network = models.Mainnet
+	case transformLocal:
 		network = models.Local
 	}
 
@@ -178,7 +190,24 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		}
 	}
 
+	if outputTxPath != "" {
+		if _, err := os.Stat(outputTxPath); err == nil {
+			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
+		}
+	}
+
+	if len(ledgerAddresses) > 0 {
+		useLedger = true
+	}
+
+	if useLedger && keyName != "" {
+		return ErrMutuallyExlusiveKeyLedger
+	}
+
 	subnetID := sc.Networks[network.String()].SubnetID
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		subnetID = sc.Networks[models.Local.String()].SubnetID
+	}
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
@@ -188,7 +217,6 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		if err != nil && err.Error() != subnetIsElasticError {
 			return err
 		}
-
 		if isAlreadyElastic {
 			return errors.New(subnetIsElasticError)
 		}
@@ -216,7 +244,7 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 
 	tokenDenomination := 0
 	if network != models.Local {
-		if denominationFlag == 0 {
+		if denominationFlag == -1 {
 			tokenDenomination, err = getTokenDenomination()
 			if err != nil {
 				return err
@@ -316,6 +344,13 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
+		elasticSubnetConfig.AssetID = assetID
+		if err = app.CreateElasticSubnetConfig(subnetName, &elasticSubnetConfig); err != nil {
+			return err
+		}
+		if err = app.UpdateSidecarElasticSubnet(&sc, network, subnetID, assetID, txID, tokenName, tokenSymbol); err != nil {
+			return fmt.Errorf("elastic subnet transformation was successful, but failed to update sidecar: %w", err)
+		}
 		PrintTransformResults(subnetName, txID, subnetID, tokenName, tokenSymbol, assetID)
 	}
 	return nil
@@ -565,6 +600,8 @@ func handleRemoveAndAddValidators(sc models.Sidecar, subnetID ids.ID, validator 
 
 func getTokenDenomination() (int, error) {
 	ux.Logger.PrintToUser("What's the denomination for your token?")
+	ux.Logger.PrintToUser("Denomination determines how balances of this asset are displayed by user interfaces. " +
+		"If denomination is 0, 100 units of this asset are displayed as 100. If denomination is 1, 100 units of this asset are displayed as 10.0.")
 	tokenDenomination, err := app.Prompt.CaptureUint64Compare(
 		"Token Denomination",
 		[]prompts.Comparator{
@@ -572,6 +609,11 @@ func getTokenDenomination() (int, error) {
 				Label: "Min Denomination Value",
 				Type:  prompts.MoreThanEq,
 				Value: 0,
+			},
+			{
+				Label: "Max Denomination Value",
+				Type:  prompts.LessThanEq,
+				Value: 32,
 			},
 		},
 	)

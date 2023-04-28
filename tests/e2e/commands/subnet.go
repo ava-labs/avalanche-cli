@@ -466,8 +466,7 @@ func SimulateFujiRemoveValidator(
 func SimulateFujiTransformSubnet(
 	subnetName string,
 	key string,
-	nodeID string,
-) string {
+) (string, error) {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -476,16 +475,21 @@ func SimulateFujiTransformSubnet(
 	// enable simulation of public network execution paths on a local network
 	err = os.Setenv(constants.SimulatePublicNetwork, "true")
 	gomega.Expect(err).Should(gomega.BeNil())
-
 	cmd := exec.Command(
 		CLIBinary,
 		SubnetCmd,
-		"removeValidator",
+		ElasticTransformCmd,
 		"--fuji",
 		"--key",
 		key,
-		"--nodeID",
-		nodeID,
+		"--tokenName",
+		"BLIZZARD",
+		"--tokenSymbol",
+		"BRRR",
+		"--denomination",
+		"0",
+		"--default",
+		"--force",
 		subnetName,
 	)
 	output, err := cmd.CombinedOutput()
@@ -493,14 +497,16 @@ func SimulateFujiTransformSubnet(
 		fmt.Println(cmd.String())
 		fmt.Println(string(output))
 		utils.PrintStdErr(err)
+		err2 := os.Unsetenv(constants.SimulatePublicNetwork)
+		gomega.Expect(err2).Should(gomega.BeNil())
+		return "", err
 	}
-	gomega.Expect(err).Should(gomega.BeNil())
 
 	// disable simulation of public network execution paths on a local network
 	err = os.Unsetenv(constants.SimulatePublicNetwork)
 	gomega.Expect(err).Should(gomega.BeNil())
 
-	return string(output)
+	return string(output), nil
 }
 
 // simulates mainnet add validator execution path on a local network
