@@ -393,6 +393,33 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 
 		commands.DeleteSubnetConfig(subnetName)
 	})
+
+	ginkgo.It("can list a subnet's validators", func() {
+		nodeIDs := []string{
+			"NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5",
+			"NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu",
+			"NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN",
+			"NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ",
+			"NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg",
+		}
+
+		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+		deployOutput := commands.DeploySubnetLocally(subnetName)
+		_, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		output, err := commands.ListValidators(subnetName, "local")
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		for _, nodeID := range nodeIDs {
+			gomega.Expect(output).Should(gomega.ContainSubstring(nodeID))
+		}
+
+		commands.DeleteSubnetConfig(subnetName)
+	})
 })
 
 var _ = ginkgo.Describe("[Subnet Compatibility]", func() {

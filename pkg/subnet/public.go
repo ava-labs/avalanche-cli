@@ -450,3 +450,25 @@ func IsSubnetValidator(subnetID ids.ID, nodeID ids.NodeID, network models.Networ
 
 	return !(len(vals) == 0), nil
 }
+
+func GetPublicSubnetValidators(subnetID ids.ID, network models.Network) ([]platformvm.ClientPermissionlessValidator, error) {
+	var apiURL string
+	switch network {
+	case models.Mainnet:
+		apiURL = constants.MainnetAPIEndpoint
+	case models.Fuji:
+		apiURL = constants.FujiAPIEndpoint
+	default:
+		return nil, fmt.Errorf("invalid network: %s", network)
+	}
+	pClient := platformvm.NewClient(apiURL)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+
+	vals, err := pClient.GetCurrentValidators(ctx, subnetID, []ids.NodeID{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current validators")
+	}
+
+	return vals, nil
+}
