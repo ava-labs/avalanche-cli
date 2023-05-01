@@ -386,7 +386,7 @@ func (app *Avalanche) UpdateSidecarElasticSubnetPartialTx(
 	return nil
 }
 
-func (app *Avalanche) CheckIfTxHasOccurred(
+func (_ *Avalanche) CheckIfTxHasOccurred(
 	sc *models.Sidecar,
 	network models.Network,
 	txName string,
