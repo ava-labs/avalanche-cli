@@ -60,7 +60,7 @@ func printValidators(_ *cobra.Command, args []string) error {
 	if network == models.Undefined {
 		// no flag was set, prompt user
 		networkStr, err := app.Prompt.CaptureList(
-			"Choose a network to deploy on",
+			"Choose a network to list validators from",
 			[]string{models.Local.String(), models.Fuji.String(), models.Mainnet.String()},
 		)
 		if err != nil {
@@ -108,7 +108,7 @@ func printPublicValidators(subnetID ids.ID, network models.Network) error {
 }
 
 func printValidatorsFromList(validators []platformvm.ClientPermissionlessValidator) error {
-	header := []string{"NodeID", "Stake Amount", "Delegator Weight", "Start Time", "End Time"}
+	header := []string{"NodeID", "Stake Amount", "Delegator Weight", "Start Time", "End Time", "Type"}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetRowLine(true)
@@ -119,12 +119,18 @@ func printValidatorsFromList(validators []platformvm.ClientPermissionlessValidat
 			delegatorWeight = *validator.DelegatorWeight
 		}
 
+		validatorType := "permissioned"
+		if validator.PotentialReward != nil && *validator.PotentialReward > 0 {
+			validatorType = "elastic"
+		}
+
 		table.Append([]string{
 			validator.NodeID.String(),
 			strconv.FormatUint(*validator.StakeAmount, 10),
 			strconv.FormatUint(delegatorWeight, 10),
 			formatUnixTime(validator.StartTime),
 			formatUnixTime(validator.EndTime),
+			validatorType,
 		})
 	}
 
