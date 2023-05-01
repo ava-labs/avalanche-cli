@@ -15,13 +15,14 @@ const (
 	ServerRunFile      = "gRPCserver.run"
 	AvalancheCliBinDir = "bin"
 	RunDir             = "runs"
-
+  
 	SuffixSeparator             = "_"
 	SidecarFileName             = "sidecar.json"
 	GenesisFileName             = "genesis.json"
 	ElasticSubnetConfigFileName = "elastic_subnet_config.json"
 	SidecarSuffix               = SuffixSeparator + SidecarFileName
 	GenesisSuffix               = SuffixSeparator + GenesisFileName
+  NodeFileName                = "node.json"
 
 	SidecarVersion = "1.4.0"
 
