@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ava-labs/avalanche-cli/internal/testutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/stretchr/testify/require"
 )
@@ -29,7 +29,7 @@ func TestEditConfigFileWithOldPattern(t *testing.T) {
 
 	require := require.New(t)
 
-	ap := newTestApp(t)
+	ap := testutils.SetupTestInTempDir(t)
 
 	genesisBytes := []byte("genesis")
 	err := ap.WriteGenesisFile(subnetName1, genesisBytes)
@@ -53,6 +53,7 @@ func TestEditConfigFileWithOldPattern(t *testing.T) {
 	require.NoError(err)
 
 	fileBytes, err := os.ReadFile(configPath)
+	require.NoError(err)
 
 	var avagoConfig map[string]interface{}
 	err = json.Unmarshal(fileBytes, &avagoConfig)
@@ -70,7 +71,7 @@ func TestEditConfigFileWithNewPattern(t *testing.T) {
 
 	require := require.New(t)
 
-	ap := newTestApp(t)
+	ap := testutils.SetupTestInTempDir(t)
 
 	genesisBytes := []byte("genesis")
 	err := ap.WriteGenesisFile(subnetName1, genesisBytes)
@@ -94,6 +95,7 @@ func TestEditConfigFileWithNewPattern(t *testing.T) {
 	require.NoError(err)
 
 	fileBytes, err := os.ReadFile(configPath)
+	require.NoError(err)
 
 	var avagoConfig map[string]interface{}
 	err = json.Unmarshal(fileBytes, &avagoConfig)
@@ -110,7 +112,7 @@ func TestEditConfigFileWithNoSettings(t *testing.T) {
 
 	require := require.New(t)
 
-	ap := newTestApp(t)
+	ap := testutils.SetupTestInTempDir(t)
 
 	genesisBytes := []byte("genesis")
 	err := ap.WriteGenesisFile(subnetName1, genesisBytes)
@@ -134,6 +136,7 @@ func TestEditConfigFileWithNoSettings(t *testing.T) {
 	require.NoError(err)
 
 	fileBytes, err := os.ReadFile(configPath)
+	require.NoError(err)
 
 	var avagoConfig map[string]interface{}
 	err = json.Unmarshal(fileBytes, &avagoConfig)
@@ -143,10 +146,4 @@ func TestEditConfigFileWithNoSettings(t *testing.T) {
 
 	// ensure that the old setting wont be applied at all
 	require.Equal(nil, avagoConfig["whitelisted-subnets"])
-}
-
-func newTestApp(t *testing.T) *application.Avalanche {
-	return &application.Avalanche{
-		Log: logging.NoLog{},
-	}
 }
