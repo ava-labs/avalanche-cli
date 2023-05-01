@@ -386,23 +386,6 @@ func (app *Avalanche) UpdateSidecarElasticSubnetPartialTx(
 	return nil
 }
 
-func (_ *Avalanche) CheckIfTxHasOccurred(
-	sc *models.Sidecar,
-	network models.Network,
-	txName string,
-) (bool, ids.ID) {
-	if sc.ElasticSubnet == nil {
-		return false, ids.Empty
-	}
-	if sc.ElasticSubnet[network.String()].Txs != nil {
-		txID, ok := sc.ElasticSubnet[network.String()].Txs[txName]
-		if ok {
-			return true, txID
-		}
-	}
-	return false, ids.Empty
-}
-
 func (app *Avalanche) GetTokenName(subnetName string) string {
 	sidecar, err := app.LoadSidecar(subnetName)
 	if err != nil {

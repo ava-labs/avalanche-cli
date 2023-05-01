@@ -291,7 +291,7 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 
 	recipientAddr := kc.Addresses().List()[0]
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	txHasOccurred, txID := app.CheckIfTxHasOccurred(&sc, network, "CreateAssetTx")
+	txHasOccurred, txID := checkIfTxHasOccurred(&sc, network, "CreateAssetTx")
 	var assetID ids.ID
 	if txHasOccurred {
 		fmt.Printf("skipping createAssetTx \n")
@@ -309,7 +309,7 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		time.Sleep(5 * time.Second)
 	}
 
-	txHasOccurred, _ = app.CheckIfTxHasOccurred(&sc, network, "ExportTx")
+	txHasOccurred, _ = checkIfTxHasOccurred(&sc, network, "ExportTx")
 	if !txHasOccurred {
 		txID, err = exportToPChain(deployer, subnetID, assetID, recipientAddr, elasticSubnetConfig.MaxSupply)
 		if err != nil {
@@ -324,7 +324,7 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		fmt.Printf("skipping ExportTx \n")
 	}
 
-	txHasOccurred, _ = app.CheckIfTxHasOccurred(&sc, network, "ImportTx")
+	txHasOccurred, _ = checkIfTxHasOccurred(&sc, network, "ImportTx")
 	if !txHasOccurred {
 		txID, err = importFromXChain(deployer, subnetID, recipientAddr)
 		if err != nil {
@@ -674,4 +674,21 @@ func GetCurrentSupply(subnetID ids.ID, network models.Network) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func checkIfTxHasOccurred(
+	sc *models.Sidecar,
+	network models.Network,
+	txName string,
+) (bool, ids.ID) {
+	if sc.ElasticSubnet == nil {
+		return false, ids.Empty
+	}
+	if sc.ElasticSubnet[network.String()].Txs != nil {
+		txID, ok := sc.ElasticSubnet[network.String()].Txs[txName]
+		if ok {
+			return true, txID
+		}
+	}
+	return false, ids.Empty
 }
