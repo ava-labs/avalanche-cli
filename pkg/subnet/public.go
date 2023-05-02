@@ -214,7 +214,7 @@ func (d *PublicDeployer) DeployBlockchain(
 	}
 	isFullySigned := len(remainingSubnetAuthKeys) == 0
 
-	var id ids.ID
+	id := ids.Empty
 	if isFullySigned {
 		id, err = d.Commit(tx)
 		if err != nil {

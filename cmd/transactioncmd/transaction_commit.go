@@ -86,10 +86,10 @@ func commitTx(_ *cobra.Command, args []string) error {
 	}
 
 	if txutils.IsCreateChainTx(tx) {
-		if err := subnetcmd.PrintDeployResults(subnetName, subnetID, txID, true); err != nil {
+		if err := subnetcmd.PrintDeployResults(subnetName, subnetID, txID); err != nil {
 			return err
 		}
-		return app.UpdateSidecarNetworks(&sc, network, subnetID, txID, true)
+		return app.UpdateSidecarNetworks(&sc, network, subnetID, txID)
 	}
 	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID)
 

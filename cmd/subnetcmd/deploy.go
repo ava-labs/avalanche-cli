@@ -249,7 +249,7 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 			}
 			return err
 		}
-		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, true)
+		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
 
 	case models.Fuji:
 		if !useLedger && keyName == "" {
@@ -378,10 +378,10 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 			fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
 		))
 	}
-	blockchainDeployed := isFullySigned && err == nil
+
 	savePartialTx := !isFullySigned && err == nil
 
-	if err := PrintDeployResults(chain, subnetID, blockchainID, blockchainDeployed); err != nil {
+	if err := PrintDeployResults(chain, subnetID, blockchainID); err != nil {
 		return err
 	}
 
@@ -402,7 +402,7 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
-	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, blockchainDeployed)
+	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
 }
 
 func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain) ([]string, bool, error) {
@@ -768,7 +768,7 @@ func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]ui
 	return ledgerIndices, nil
 }
 
-func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, blockchainDeployed bool) error {
+func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID) error {
 	vmID, err := utils.VMID(chain)
 	if err != nil {
 		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
@@ -781,7 +781,7 @@ func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, bloc
 	table.Append([]string{"Chain Name", chain})
 	table.Append([]string{"Subnet ID", subnetID.String()})
 	table.Append([]string{"VM ID", vmID.String()})
-	if blockchainDeployed {
+	if blockchainID != ids.Empty {
 		table.Append([]string{"Blockchain ID", blockchainID.String()})
 		table.Append([]string{"P-Chain TXID", blockchainID.String()})
 	}
