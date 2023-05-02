@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 	"time"
@@ -297,6 +298,9 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		fmt.Printf("skipping createAssetTx \n")
 		assetID = txID
 	} else {
+		if tokenDenomination > math.MaxUint8 {
+			return errors.New("token denomination cannot exceed 32")
+		}
 		assetID, err = createAssetID(deployer, elasticSubnetConfig.MaxSupply, subnetID, tokenName, tokenSymbol, byte(tokenDenomination), recipientAddr)
 		if err != nil {
 			return err
@@ -631,7 +635,7 @@ func getTokenDenomination() (int, error) {
 	ux.Logger.PrintToUser("What's the denomination for your token?")
 	ux.Logger.PrintToUser("Denomination determines how balances of this asset are displayed by user interfaces. " +
 		"If denomination is 0, 100 units of this asset are displayed as 100. If denomination is 1, 100 units of this asset are displayed as 10.0.")
-	tokenDenomination, err := app.Prompt.CaptureUint64Compare(
+	tokenDenomination, err := app.Prompt.CapturePositiveInt(
 		"Token Denomination",
 		[]prompts.Comparator{
 			{
@@ -649,7 +653,7 @@ func getTokenDenomination() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return int(tokenDenomination), nil
+	return tokenDenomination, nil
 }
 
 func GetCurrentSupply(subnetID ids.ID, network models.Network) (bool, error) {
