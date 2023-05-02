@@ -85,7 +85,7 @@ type Prompter interface {
 	CaptureUint64Compare(promptStr string, comparators []Comparator) (uint64, error)
 	CapturePChainAddress(promptStr string, network models.Network) (string, error)
 	CaptureFutureDate(promptStr string, minDate time.Time) (time.Time, error)
-	ChooseKeyOrLedger() (bool, error)
+	ChooseKeyOrLedger(goal string) (bool, error)
 }
 
 type realPrompter struct{}
@@ -506,13 +506,13 @@ func (*realPrompter) CaptureFutureDate(promptStr string, minDate time.Time) (tim
 }
 
 // returns true [resp. false] if user chooses stored key [resp. ledger] option
-func (prompter *realPrompter) ChooseKeyOrLedger() (bool, error) {
+func (prompter *realPrompter) ChooseKeyOrLedger(goal string) (bool, error) {
 	const (
 		keyOption    = "Use stored key"
 		ledgerOption = "Use ledger"
 	)
 	option, err := prompter.CaptureList(
-		"Which key source should be used to issue the transaction?",
+		fmt.Sprintf("Which key source should be used to %s?", goal),
 		[]string{keyOption, ledgerOption},
 	)
 	if err != nil {
@@ -588,15 +588,15 @@ func GetSubnetAuthKeys(prompt Prompter, controlKeys []string, threshold uint32) 
 	return subnetAuthKeys, nil
 }
 
-func GetFujiKeyOrLedger(prompt Prompter, keyDir string) (bool, string, error) {
-	useStoredKey, err := prompt.ChooseKeyOrLedger()
+func GetFujiKeyOrLedger(prompt Prompter, goal string, keyDir string) (bool, string, error) {
+	useStoredKey, err := prompt.ChooseKeyOrLedger(goal)
 	if err != nil {
 		return false, "", err
 	}
 	if !useStoredKey {
 		return true, "", nil
 	}
-	keyName, err := captureKeyName(prompt, keyDir)
+	keyName, err := captureKeyName(prompt, goal, keyDir)
 	if err != nil {
 		if errors.Is(err, errNoKeys) {
 			ux.Logger.PrintToUser("No private keys have been found. Deployment to fuji without a private key " +
@@ -607,7 +607,7 @@ func GetFujiKeyOrLedger(prompt Prompter, keyDir string) (bool, string, error) {
 	return false, keyName, nil
 }
 
-func captureKeyName(prompt Prompter, keyDir string) (string, error) {
+func captureKeyName(prompt Prompter, goal string, keyDir string) (string, error) {
 	files, err := os.ReadDir(keyDir)
 	if err != nil {
 		return "", err
@@ -624,7 +624,7 @@ func captureKeyName(prompt Prompter, keyDir string) (string, error) {
 		}
 	}
 
-	keyName, err := prompt.CaptureList("Which stored key should be used to issue the transaction?", keys)
+	keyName, err := prompt.CaptureList(fmt.Sprintf("Which stored key should be used to %s?", goal), keys)
 	if err != nil {
 		return "", err
 	}
