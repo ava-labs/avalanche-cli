@@ -557,6 +557,9 @@ For example:
 If you start the node via a JSON config file, add this to your config file:
 track-subnets: %s
 
+NOTE: The flag --track-subnets is a replacement of the deprecated --whitelisted-subnets.
+If the later is present in config, please rename it to track-subnets first.
+
 TIP: Try this command with the --avalanchego-config flag pointing to your config file,
 this tool will try to update the file automatically (make sure it can write to it).
 
