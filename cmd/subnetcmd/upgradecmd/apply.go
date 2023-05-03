@@ -158,7 +158,7 @@ func applyLocalNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar)
 	// confirm in the status that the subnet actually is deployed and running
 	deployed := false
 	subnets := status.ClusterInfo.GetSubnets()
-	for _, s := range subnets {
+	for s := range subnets {
 		if s == sc.Networks[networkKey].SubnetID.String() {
 			deployed = true
 			break

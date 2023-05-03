@@ -361,8 +361,13 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		return ids.Empty, ids.Empty, nil
 	}
 
-	subnetIDs := clusterInfo.Subnets
+	subnets := clusterInfo.Subnets
 	numBlockchains := len(clusterInfo.CustomChains)
+
+	subnetIDs := []string{}
+	for id := range subnets {
+		subnetIDs = append(subnetIDs, id)
+	}
 
 	// in order to make subnet deploy faster, a set of validated subnet IDs is preloaded
 	// in the bootstrap snapshot
