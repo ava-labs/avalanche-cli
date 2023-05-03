@@ -96,9 +96,12 @@ func createAssetID(deployer *subnet.PublicDeployer,
 	subnetID ids.ID,
 	tokenName string,
 	tokenSymbol string,
-	tokenDenomination byte,
+	tokenDenomination int,
 	recipientAddr ids.ShortID,
 ) (ids.ID, error) {
+	if tokenDenomination > math.MaxUint8 {
+		return ids.Empty, errors.New("token denomination cannot exceed 32")
+	}
 	owner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
 		Addrs: []ids.ShortID{
@@ -113,11 +116,7 @@ func createAssetID(deployer *subnet.PublicDeployer,
 			},
 		},
 	}
-	txID, err := deployer.CreateAssetTx(subnetID, tokenName, tokenSymbol, tokenDenomination, initialState)
-	if err != nil {
-		return ids.Empty, err
-	}
-	return txID, nil
+	return deployer.CreateAssetTx(subnetID, tokenName, tokenSymbol, byte(tokenDenomination), initialState)
 }
 
 func exportToPChain(deployer *subnet.PublicDeployer,
@@ -132,11 +131,7 @@ func exportToPChain(deployer *subnet.PublicDeployer,
 			recipientAddr,
 		},
 	}
-	txID, err := deployer.ExportToPChainTx(subnetID, subnetAssetID, owner, maxSupply)
-	if err != nil {
-		return ids.Empty, err
-	}
-	return txID, nil
+	return deployer.ExportToPChainTx(subnetID, subnetAssetID, owner, maxSupply)
 }
 
 func importFromXChain(deployer *subnet.PublicDeployer,
@@ -149,11 +144,7 @@ func importFromXChain(deployer *subnet.PublicDeployer,
 			recipientAddr,
 		},
 	}
-	txID, err := deployer.ImportFromXChain(subnetID, owner)
-	if err != nil {
-		return ids.Empty, err
-	}
-	return txID, nil
+	return deployer.ImportFromXChain(subnetID, owner)
 }
 
 func transformElasticSubnet(_ *cobra.Command, args []string) error {
@@ -216,7 +207,7 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 	}
 
 	if network != models.Local {
-		isAlreadyElastic, err := GetCurrentSupply(subnetID, network)
+		isAlreadyElastic, err := CheckSubnetIsElastic(subnetID, network)
 		if err != nil && err.Error() != subnetIsElasticError {
 			return err
 		}
@@ -296,14 +287,12 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	txHasOccurred, txID := checkIfTxHasOccurred(&sc, network, "CreateAssetTx")
 	var assetID ids.ID
+	// TODO: replace sleep functions with sticky API sessions
 	if txHasOccurred {
-		fmt.Printf("skipping createAssetTx \n")
+		ux.Logger.PrintToUser(fmt.Sprintf("Skipping CreateAssetTx, transforming subnet with asset ID %s...", txID.String()))
 		assetID = txID
 	} else {
-		if tokenDenomination > math.MaxUint8 {
-			return errors.New("token denomination cannot exceed 32")
-		}
-		assetID, err = createAssetID(deployer, elasticSubnetConfig.MaxSupply, subnetID, tokenName, tokenSymbol, byte(tokenDenomination), recipientAddr)
+		assetID, err = createAssetID(deployer, elasticSubnetConfig.MaxSupply, subnetID, tokenName, tokenSymbol, tokenDenomination, recipientAddr)
 		if err != nil {
 			return err
 		}
@@ -327,7 +316,7 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		}
 		time.Sleep(5 * time.Second)
 	} else {
-		fmt.Printf("skipping ExportTx \n")
+		ux.Logger.PrintToUser("Skipping ExportTx...")
 	}
 
 	txHasOccurred, _ = checkIfTxHasOccurred(&sc, network, "ImportTx")
@@ -342,7 +331,7 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		}
 		time.Sleep(5 * time.Second)
 	} else {
-		fmt.Printf("skipping ImportTx \n")
+		ux.Logger.PrintToUser("Skipping ImportTx...")
 	}
 
 	controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
@@ -658,7 +647,7 @@ func getTokenDenomination() (int, error) {
 	return tokenDenomination, nil
 }
 
-func GetCurrentSupply(subnetID ids.ID, network models.Network) (bool, error) {
+func CheckSubnetIsElastic(subnetID ids.ID, network models.Network) (bool, error) {
 	var apiURL string
 	switch network {
 	case models.Mainnet:

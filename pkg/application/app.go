@@ -380,10 +380,7 @@ func (app *Avalanche) UpdateSidecarElasticSubnetPartialTx(
 	sc.ElasticSubnet[network.String()] = models.ElasticSubnet{
 		Txs: partialTxs,
 	}
-	if err := app.UpdateSidecar(sc); err != nil {
-		return err
-	}
-	return nil
+	return app.UpdateSidecar(sc)
 }
 
 func (app *Avalanche) GetTokenName(subnetName string) string {

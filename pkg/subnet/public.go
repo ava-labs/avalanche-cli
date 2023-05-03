@@ -120,7 +120,7 @@ func (d *PublicDeployer) CreateAssetTx(
 	}
 
 	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign remove validator hash on the ledger device *** ")
+		ux.Logger.PrintToUser("*** Please sign Create Asset Transaction hash on the ledger device *** ")
 	}
 
 	id, err := wallet.X().IssueCreateAssetTx(tokenName, tokenSymbol, denomination, initialState)
@@ -136,7 +136,7 @@ func (d *PublicDeployer) ExportToPChainTx(
 	subnetID ids.ID,
 	subnetAssetID ids.ID,
 	owner *secp256k1fx.OutputOwners,
-	maxSupply uint64,
+	assetAmount uint64,
 ) (ids.ID, error) {
 	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
@@ -144,7 +144,7 @@ func (d *PublicDeployer) ExportToPChainTx(
 	}
 
 	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign remove validator hash on the ledger device *** ")
+		ux.Logger.PrintToUser("*** Please sign X -> P Chain Export Transaction hash on the ledger device *** ")
 	}
 
 	id, err := wallet.X().IssueExportTx(ids.Empty,
@@ -154,16 +154,15 @@ func (d *PublicDeployer) ExportToPChainTx(
 					ID: subnetAssetID,
 				},
 				Out: &secp256k1fx.TransferOutput{
-					Amt:          maxSupply,
+					Amt:          assetAmount,
 					OutputOwners: *owner,
 				},
 			},
 		})
-	if err != nil {
-		return ids.Empty, err
+	if err == nil {
+		ux.Logger.PrintToUser("Export to P-Chain Transaction successful, transaction ID: %s", id)
+		ux.Logger.PrintToUser("Now importing asset from X-Chain ...")
 	}
-	ux.Logger.PrintToUser("Export to P-Chain Transaction successful, transaction ID: %s", id)
-	ux.Logger.PrintToUser("Now importing asset from X-Chain ...")
 	return id, err
 }
 
@@ -176,19 +175,17 @@ func (d *PublicDeployer) ImportFromXChain(
 		return ids.Empty, err
 	}
 	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign remove validator hash on the ledger device *** ")
+		ux.Logger.PrintToUser("*** Please sign X -> P Chain Import Transaction hash on the ledger device *** ")
 	}
 	xWallet := wallet.X()
 	xChainID := xWallet.BlockchainID()
 
 	id, err := wallet.P().IssueImportTx(xChainID, owner)
-	if err != nil {
-		return ids.Empty, err
+	if err == nil {
+		ux.Logger.PrintToUser("Import from X Chain Transaction successful, transaction ID: %s", id)
+		ux.Logger.PrintToUser("Now transforming subnet into elastic subnet ...")
 	}
-	ux.Logger.PrintToUser("Import from X Chain Transaction successful, transaction ID: %s", id)
-	ux.Logger.PrintToUser("Now transforming subnet into elastic subnet ...")
-
-	return id, nil
+	return id, err
 }
 
 func (d *PublicDeployer) TransformSubnetTx(
@@ -205,12 +202,9 @@ func (d *PublicDeployer) TransformSubnetTx(
 	if err != nil {
 		return false, ids.Empty, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
-	if ok := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys); !ok {
-		return false, ids.Empty, nil, ErrNoSubnetAuthKeysInWallet
-	}
 
 	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign remove validator hash on the ledger device *** ")
+		ux.Logger.PrintToUser("*** Please sign Transform Subnet hash on the ledger device *** ")
 	}
 
 	if len(subnetAuthKeys) == 1 {
