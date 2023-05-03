@@ -597,7 +597,7 @@ func GetNodesInfo() (map[string]NodeInfo, error) {
 	return nodesInfo, nil
 }
 
-func GetWhilelistedSubnetsFromConfigFile(configFile string) (string, error) {
+func GetWhitelistedSubnetsFromConfigFile(configFile string) (string, error) {
 	fileBytes, err := os.ReadFile(configFile)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return "", fmt.Errorf("failed to load avalanchego config file %s: %w", configFile, err)
@@ -606,7 +606,7 @@ func GetWhilelistedSubnetsFromConfigFile(configFile string) (string, error) {
 	if err := json.Unmarshal(fileBytes, &avagoConfig); err != nil {
 		return "", fmt.Errorf("failed to unpack the config file %s to JSON: %w", configFile, err)
 	}
-	whitelistedSubnetsIntf := avagoConfig["whitelisted-subnets"]
+	whitelistedSubnetsIntf := avagoConfig["track-subnets"]
 	whitelistedSubnets, ok := whitelistedSubnetsIntf.(string)
 	if !ok {
 		return "", fmt.Errorf("expected a string value, but got %T", whitelistedSubnetsIntf)

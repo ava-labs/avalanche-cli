@@ -42,7 +42,7 @@ func deploySubnetToFuji() (string, map[string]utils.NodeInfo) {
 	// get and check whitelisted subnets from config file
 	var whitelistedSubnets string
 	for _, nodeInfo := range nodeInfos {
-		whitelistedSubnets, err = utils.GetWhilelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
+		whitelistedSubnets, err = utils.GetWhitelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
 		gomega.Expect(err).Should(gomega.BeNil())
 		whitelistedSubnetsSlice := strings.Split(whitelistedSubnets, ",")
 		gomega.Expect(whitelistedSubnetsSlice).Should(gomega.ContainElement(subnetID))
@@ -114,7 +114,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		// get and check whitelisted subnets from config file
 		var whitelistedSubnets string
 		for _, nodeInfo := range nodeInfos {
-			whitelistedSubnets, err = utils.GetWhilelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
+			whitelistedSubnets, err = utils.GetWhitelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
 			gomega.Expect(err).Should(gomega.BeNil())
 			whitelistedSubnetsSlice := strings.Split(whitelistedSubnets, ",")
 			gomega.Expect(whitelistedSubnetsSlice).Should(gomega.ContainElement(subnetID))

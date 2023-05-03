@@ -942,3 +942,19 @@ func AddPermissionlessValidator(subnetName string, nodeID string, stakeAmount st
 	}
 	return string(output), err
 }
+
+/* #nosec G204 */
+func ListValidators(subnetName string, network string) (string, error) {
+	// Create config
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"validators",
+		subnetName,
+		"--"+network,
+		"--"+constants.SkipUpdateFlag,
+	)
+
+	out, err := cmd.Output()
+	return string(out), err
+}

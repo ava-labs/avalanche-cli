@@ -48,8 +48,13 @@ func EditConfigFile(
 		return fmt.Errorf("failed to unpack the config file %s to JSON: %w", configFile, err)
 	}
 
-	// check the old entries in the config file for whitelisted subnets
-	oldVal := avagoConfig["whitelisted-subnets"]
+	// Banff.10: "track-subnets" instead of "whitelisted-subnets"
+	oldVal := avagoConfig["track-subnets"]
+	if oldVal == nil {
+		// check the old key in the config file for tracked-subnets
+		oldVal = avagoConfig["whitelisted-subnets"]
+	}
+
 	newVal := ""
 	if oldVal != nil {
 		// if an entry already exists, we check if the subnetID already is part
@@ -76,7 +81,10 @@ func EditConfigFile(
 		// there were no entries yet, so add this subnet as its new value
 		newVal = subnetID
 	}
-	avagoConfig["whitelisted-subnets"] = newVal
+
+	// Banf.10 changes from "whitelisted-subnets" to "track-subnets"
+	delete(avagoConfig, "whitelisted-subnets")
+	avagoConfig["track-subnets"] = newVal
 	avagoConfig["network-id"] = networkID
 
 	writeBytes, err := json.MarshalIndent(avagoConfig, "", "  ")

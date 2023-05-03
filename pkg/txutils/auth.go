@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
@@ -21,10 +20,12 @@ import (
 //   - creates the string slice of required subnet auth addresses by applying
 //     the indices to the control keys slice
 //
-// expect tx.Unsigned type to be in [txs.AddSubnetValidatorTx, txs.CreateChainTx]
+// expect tx.Unsigned type to be in:
+// - txs.CreateChainTx
+// - txs.AddSubnetValidatorTx
+// - txs.RemoveSubnetValidatorTx
 func GetAuthSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]string, error) {
-	time.Sleep(2 * time.Second)
-	controlKeys, _, err := subnet.GetOwners(network, subnetID)
+	controlKeys, _, err := GetOwners(network, subnetID)
 	if err != nil {
 		return nil, err
 	}

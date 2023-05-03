@@ -22,6 +22,7 @@ const (
 	ElasticSubnetConfigFileName = "elastic_subnet_config.json"
 	SidecarSuffix               = SuffixSeparator + SidecarFileName
 	GenesisSuffix               = SuffixSeparator + GenesisFileName
+	NodeFileName                = "node.json"
 
 	SidecarVersion = "1.4.0"
 

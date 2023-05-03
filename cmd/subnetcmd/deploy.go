@@ -51,6 +51,7 @@ var (
 	outputTxPath             string
 	useLedger                bool
 	ledgerAddresses          []string
+	subnetIDStr              string
 
 	errMutuallyExlusiveNetworks    = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
@@ -90,6 +91,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
+	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "deploy into given subnet id [fuji/mainnet deploy only]")
 	return cmd
 }
 
@@ -251,7 +253,7 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 
 	case models.Fuji:
 		if !useLedger && keyName == "" {
-			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, app.GetKeyDir())
+			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "pay transaction fees", app.GetKeyDir())
 			if err != nil {
 				return err
 			}
@@ -280,43 +282,68 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	// accept only one control keys specification
-	if len(controlKeys) > 0 && sameControlKey {
-		return errMutuallyExlusiveControlKeys
-	}
+	createSubnet := true
+	var subnetID ids.ID
 
-	// use creation key as control key
-	if sameControlKey {
-		controlKeys, err = loadCreationKeys(network, kc)
+	if subnetIDStr != "" {
+		subnetID, err = ids.FromString(subnetIDStr)
 		if err != nil {
 			return err
 		}
-	}
-
-	// prompt for control keys
-	if controlKeys == nil {
-		var cancelled bool
-		controlKeys, cancelled, err = getControlKeys(network, useLedger, kc)
-		if err != nil {
-			return err
-		}
-		if cancelled {
-			ux.Logger.PrintToUser("User cancelled. No subnet deployed")
-			return nil
+		createSubnet = false
+	} else if sidecar.Networks != nil {
+		model, ok := sidecar.Networks[network.String()]
+		if ok {
+			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
+				subnetID = model.SubnetID
+				createSubnet = false
+			}
 		}
 	}
 
-	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
-
-	// validate and prompt for threshold
-	if threshold == 0 && subnetAuthKeys != nil {
-		threshold = uint32(len(subnetAuthKeys))
-	}
-	if int(threshold) > len(controlKeys) {
-		return fmt.Errorf("given threshold is greater than number of control keys")
-	}
-	if threshold == 0 {
-		threshold, err = getThreshold(len(controlKeys))
+	if createSubnet {
+		// accept only one control keys specification
+		if len(controlKeys) > 0 && sameControlKey {
+			return errMutuallyExlusiveControlKeys
+		}
+		// use creation key as control key
+		if sameControlKey {
+			controlKeys, err = loadCreationKeys(network, kc)
+			if err != nil {
+				return err
+			}
+		}
+		// prompt for control keys
+		if controlKeys == nil {
+			var cancelled bool
+			controlKeys, cancelled, err = getControlKeys(network, useLedger, kc)
+			if err != nil {
+				return err
+			}
+			if cancelled {
+				ux.Logger.PrintToUser("User cancelled. No subnet deployed")
+				return nil
+			}
+		}
+		ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
+		// validate and prompt for threshold
+		if threshold == 0 && subnetAuthKeys != nil {
+			threshold = uint32(len(subnetAuthKeys))
+		}
+		if int(threshold) > len(controlKeys) {
+			return fmt.Errorf("given threshold is greater than number of control keys")
+		}
+		if threshold == 0 {
+			threshold, err = getThreshold(len(controlKeys))
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		ux.Logger.PrintToUser(logging.Green.Wrap(
+			fmt.Sprintf("Deploying into pre-existent subnet ID %s", subnetID.String()),
+		))
+		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
 		if err != nil {
 			return err
 		}
@@ -337,16 +364,28 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	isFullySigned, subnetID, blockchainID, tx, err := deployer.Deploy(controlKeys, subnetAuthKeys, threshold, chain, chainGenesis)
+
+	if createSubnet {
+		subnetID, err = deployer.DeploySubnet(controlKeys, threshold)
+		if err != nil {
+			return err
+		}
+	}
+
+	isFullySigned, blockchainID, tx, err := deployer.DeployBlockchain(subnetAuthKeys, subnetID, chain, chainGenesis)
 	if err != nil {
+		ux.Logger.PrintToUser(logging.Red.Wrap(
+			fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
+		))
+	}
+
+	savePartialTx := !isFullySigned && err == nil
+
+	if err := PrintDeployResults(chain, subnetID, blockchainID); err != nil {
 		return err
 	}
 
-	if err := PrintDeployResults(chain, subnetID, blockchainID, isFullySigned); err != nil {
-		return err
-	}
-
-	if !isFullySigned {
+	if savePartialTx {
 		if err := SaveNotFullySignedTx(
 			"Blockchain Creation",
 			tx,
@@ -384,7 +423,7 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain
 	if useLedger {
 		creation = "Use ledger address"
 	} else {
-		creation = "Use creation key"
+		creation = "Use fee-paying key"
 	}
 	if network == models.Mainnet {
 		listOptions = []string{creation, custom}
@@ -729,7 +768,7 @@ func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]ui
 	return ledgerIndices, nil
 }
 
-func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFullySigned bool) error {
+func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID) error {
 	vmID, err := utils.VMID(chain)
 	if err != nil {
 		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
@@ -742,7 +781,7 @@ func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFu
 	table.Append([]string{"Chain Name", chain})
 	table.Append([]string{"Subnet ID", subnetID.String()})
 	table.Append([]string{"VM ID", vmID.String()})
-	if isFullySigned {
+	if blockchainID != ids.Empty {
 		table.Append([]string{"Blockchain ID", blockchainID.String()})
 		table.Append([]string{"P-Chain TXID", blockchainID.String()})
 	}
