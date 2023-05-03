@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/txutils"
+
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 
@@ -266,7 +268,7 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		return transformElasticSubnetLocal(sc, subnetName, tokenName, tokenSymbol, elasticSubnetConfig)
 	case models.Fuji:
 		if !useLedger && keyName == "" {
-			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, app.GetKeyDir())
+			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "pay transaction fees", app.GetKeyDir())
 			if err != nil {
 				return err
 			}
@@ -343,7 +345,7 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		fmt.Printf("skipping ImportTx \n")
 	}
 
-	controlKeys, threshold, err := subnet.GetOwners(network, subnetID)
+	controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
 	}
