@@ -61,8 +61,8 @@ var (
 				},
 			},
 			Subnets: map[string]*rpcpb.SubnetInfo{
-				testSubnetID1: &rpcpb.SubnetInfo{},
-				testSubnetID2: &rpcpb.SubnetInfo{},
+				testSubnetID1: {},
+				testSubnetID2: {},
 			},
 		},
 	}
