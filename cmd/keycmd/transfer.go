@@ -68,7 +68,7 @@ func newTransferCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&testnet,
 		fujiFlag,
-		"f",
+		"u",
 		false,
 		"transfer between testnet (fuji) addresses",
 	)
@@ -124,7 +124,7 @@ func transferF(_ *cobra.Command, args []string) error {
 
 	if !source && !target {
 		sourceTargetStr, err := app.Prompt.CaptureList(
-			"Choose sthe tep of the transfer to perform",
+			"Choose the step of the transfer to perform",
 			[]string{"source", "target"},
 		)
 		if err != nil {
