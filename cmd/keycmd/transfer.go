@@ -48,7 +48,7 @@ func newTransferCmd() *cobra.Command {
 		Short:        "Fund a ledger address or stored key from another one",
 		Long:         `The key transfer command allows to transfer funds between stored keys or ledger addrs.`,
 		RunE:         transferF,
-		Args:         cobra.ExactArgs(2),
+		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 	}
 	cmd.Flags().BoolVarP(
@@ -143,11 +143,6 @@ func transferF(_ *cobra.Command, args []string) error {
 		return err
 	}
 	amount := uint64(amountFlt * float64(units.Avax))
-	addrStr := args[1]
-	addr, err := address.ParseToID(addrStr)
-	if err != nil {
-		return err
-	}
 
 	if (keyName == "" && ledgerIndex == wrongLedgerIndexVal) || (keyName != "" && ledgerIndex != wrongLedgerIndexVal) {
 		return fmt.Errorf("only one between a keyname or a ledger index must be given")
@@ -176,6 +171,16 @@ func transferF(_ *cobra.Command, args []string) error {
 	}
 
 	networkID, err := network.NetworkID()
+	if err != nil {
+		return err
+	}
+
+	addrStr, err := app.Prompt.CapturePChainAddress("Set the target P-Chain address for the transfer", network)
+	if err != nil {
+		return err
+	}
+
+	addr, err := address.ParseToID(addrStr)
 	if err != nil {
 		return err
 	}
