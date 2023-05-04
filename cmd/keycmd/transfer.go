@@ -39,58 +39,66 @@ var (
 	target      bool
 	keyName     string
 	ledgerIndex uint
+	force       bool
 )
 
-func newFundCmd() *cobra.Command {
+func newTransferCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "fund addr amount",
+		Use:          "transfer addr amount",
 		Short:        "Fund a ledger address or stored key from another one",
-		Long:         `The key fund command allows to fund a stored key or ledger addrs from another one.`,
-		RunE:         fundKey,
+		Long:         `The key transfer command allows to transfer funds between stored keys or ledger addrs.`,
+		RunE:         transferF,
 		Args:         cobra.ExactArgs(2),
 		SilenceUsage: true,
 	}
+	cmd.Flags().BoolVarP(
+		&force,
+		forceFlag,
+		"f",
+		false,
+		"avoid transfer confirmation",
+	)
 	cmd.Flags().BoolVarP(
 		&local,
 		localFlag,
 		"l",
 		false,
-		"fund a local network address",
+		"transfer between local network addresses",
 	)
 	cmd.Flags().BoolVarP(
 		&testnet,
 		fujiFlag,
 		"f",
 		false,
-		"fund a testnet (fuji) network address",
+		"transfer between testnet (fuji) addresses",
 	)
 	cmd.Flags().BoolVarP(
 		&testnet,
 		testnetFlag,
 		"t",
 		false,
-		"fund a testnet (fuji) network address",
+		"transfer between testnet (fuji) addresses",
 	)
 	cmd.Flags().BoolVarP(
 		&mainnet,
 		mainnetFlag,
 		"m",
 		false,
-		"fund a mainnet network address",
+		"transfer between mainnet addresses",
 	)
 	cmd.Flags().BoolVarP(
 		&source,
 		sourceFlag,
 		"s",
 		false,
-		"do source funding tx",
+		"do source transfer tx",
 	)
 	cmd.Flags().BoolVarP(
 		&target,
 		targetFlag,
 		"g",
 		false,
-		"do target funding tx",
+		"do target transfer tx",
 	)
 	cmd.Flags().StringVarP(
 		&keyName,
@@ -109,7 +117,7 @@ func newFundCmd() *cobra.Command {
 	return cmd
 }
 
-func fundKey(_ *cobra.Command, args []string) error {
+func transferF(_ *cobra.Command, args []string) error {
 	if (!source && !target) || (source && target) {
 		return fmt.Errorf("one of %s, %s flags must be selected", sourceFlag, targetFlag)
 	}
@@ -142,7 +150,7 @@ func fundKey(_ *cobra.Command, args []string) error {
 	if network == models.Undefined {
 		// no flag was set, prompt user
 		networkStr, err := app.Prompt.CaptureList(
-			"Choose network in which to fund address",
+			"Choose network in which to do the transfer",
 			[]string{models.Mainnet.String(), models.Fuji.String(), models.Local.String()},
 		)
 		if err != nil {
@@ -209,14 +217,17 @@ func fundKey(_ *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("- receive %.9f AVAX at target address %s", float64(amount)/float64(units.Avax), addrStr)
 	}
 	ux.Logger.PrintToUser("")
-	confStr := "Are you sure you want to do it?"
-	conf, err := app.Prompt.CaptureNoYes(confStr)
-	if err != nil {
-		return err
-	}
-	if !conf {
-		ux.Logger.PrintToUser("Cancelled")
-		return nil
+
+	if !force {
+		confStr := "Confirm transfer"
+		conf, err := app.Prompt.CaptureNoYes(confStr)
+		if err != nil {
+			return err
+		}
+		if !conf {
+			ux.Logger.PrintToUser("Cancelled")
+			return nil
+		}
 	}
 
 	apiEndpoints := map[models.Network]string{
