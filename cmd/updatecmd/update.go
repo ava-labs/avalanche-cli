@@ -68,7 +68,7 @@ func Update(cmd *cobra.Command, isUserCalled bool) error {
 			app.Log.Warn("failed to read version from file on disk", zap.Error(err))
 			return ErrNoVersion
 		}
-		this = "v" + string(bver)
+		this = "v" + strings.TrimSpace(string(bver))
 	}
 
 	// check this version needs update
