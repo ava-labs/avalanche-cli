@@ -207,20 +207,6 @@ func (d *PublicDeployer) TransformSubnetTx(
 		ux.Logger.PrintToUser("*** Please sign Transform Subnet hash on the ledger device *** ")
 	}
 
-	//if len(subnetAuthKeys) == 1 {
-	//	txID, err := wallet.P().IssueTransformSubnetTx(elasticSubnetConfig.SubnetID, subnetAssetID,
-	//		elasticSubnetConfig.InitialSupply, elasticSubnetConfig.MaxSupply, elasticSubnetConfig.MinConsumptionRate,
-	//		elasticSubnetConfig.MaxConsumptionRate, elasticSubnetConfig.MinValidatorStake, elasticSubnetConfig.MaxValidatorStake,
-	//		elasticSubnetConfig.MinStakeDuration, elasticSubnetConfig.MaxStakeDuration, elasticSubnetConfig.MinDelegationFee,
-	//		elasticSubnetConfig.MinDelegatorStake, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement,
-	//	)
-	//	if err != nil {
-	//		return false, ids.Empty, nil, err
-	//	}
-	//	ux.Logger.PrintToUser("Transform Subnet Transaction successful, transaction ID: %s", txID)
-	//	return true, txID, nil, nil
-	//}
-
 	tx, err := d.createTransformSubnetTX(subnetAuthKeys, elasticSubnetConfig, wallet, subnetAssetID)
 	if err != nil {
 		return false, ids.Empty, nil, err
