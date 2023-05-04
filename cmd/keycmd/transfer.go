@@ -5,10 +5,7 @@ package keycmd
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
-
-	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
@@ -24,6 +21,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -32,6 +30,7 @@ const (
 	keyNameFlag         = "key"
 	ledgerIndexFlag     = "ledger"
 	targetAddrFlag      = "target-addr"
+	amountFlag          = "amount"
 	wrongLedgerIndexVal = 32768
 )
 
@@ -42,15 +41,16 @@ var (
 	ledgerIndex   uint
 	force         bool
 	targetAddrStr string
+	amountFlt     float64
 )
 
 func newTransferCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "transfer addr amount",
+		Use:          "transfer [options]",
 		Short:        "Fund a ledger address or stored key from another one",
 		Long:         `The key transfer command allows to transfer funds between stored keys or ledger addrs.`,
 		RunE:         transferF,
-		Args:         cobra.ExactArgs(1),
+		Args:         cobra.ExactArgs(0),
 		SilenceUsage: true,
 	}
 	cmd.Flags().BoolVarP(
@@ -123,10 +123,17 @@ func newTransferCmd() *cobra.Command {
 		"",
 		"P-Chain target address",
 	)
+	cmd.Flags().Float64VarP(
+		&amountFlt,
+		amountFlag,
+		"o",
+		0,
+		"amount to transfer in AVAX units",
+	)
 	return cmd
 }
 
-func transferF(_ *cobra.Command, args []string) error {
+func transferF(*cobra.Command, []string) error {
 	if source && target {
 		return fmt.Errorf("only one of %s, %s flags should be selected", sourceFlag, targetFlag)
 	}
@@ -146,10 +153,17 @@ func transferF(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	amountStr := args[0]
-	amountFlt, err := strconv.ParseFloat(amountStr, 64)
-	if err != nil {
-		return err
+	var err error
+	if amountFlt == 0 {
+		amountFlt, err = app.Prompt.CaptureFloat("Choose amount to transfer in AVAX units", func(v float64) error {
+			if v <= 0 {
+				return fmt.Errorf("value %f must be greater than zero", v)
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
 	}
 	amount := uint64(amountFlt * float64(units.Avax))
 

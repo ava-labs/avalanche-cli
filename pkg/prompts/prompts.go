@@ -82,6 +82,7 @@ type Prompter interface {
 	CaptureID(promptStr string) (ids.ID, error)
 	CaptureWeight(promptStr string) (uint64, error)
 	CaptureUint64(promptStr string) (uint64, error)
+	CaptureFloat(promptStr string, validator func(float64) error) (float64, error)
 	CaptureUint64Compare(promptStr string, comparators []Comparator) (uint64, error)
 	CapturePChainAddress(promptStr string, network models.Network) (string, error)
 	CaptureFutureDate(promptStr string, minDate time.Time) (time.Time, error)
@@ -248,6 +249,25 @@ func (*realPrompter) CaptureUint64(promptStr string) (uint64, error) {
 		return 0, err
 	}
 	return strconv.ParseUint(amountStr, 0, 64)
+}
+
+func (*realPrompter) CaptureFloat(promptStr string, validator func(float64) error) (float64, error) {
+	prompt := promptui.Prompt{
+		Label: promptStr,
+		Validate: func(input string) error {
+			val, err := strconv.ParseFloat(input, 64)
+			if err != nil {
+				return err
+			}
+			return validator(val)
+		},
+	}
+
+	amountStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+	return strconv.ParseFloat(amountStr, 64)
 }
 
 func (*realPrompter) CaptureUint64Compare(promptStr string, comparators []Comparator) (uint64, error) {
