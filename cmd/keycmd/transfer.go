@@ -117,11 +117,11 @@ func newTransferCmd() *cobra.Command {
 		"ledger index to use for either source or target op",
 	)
 	cmd.Flags().StringVarP(
-		&keyName,
-		keyNameFlag,
-		"k",
+		&targetAddrStr,
+		targetAddrFlag,
+		"a",
 		"",
-		"key to use for either source or target op",
+		"P-Chain target address",
 	)
 	return cmd
 }
