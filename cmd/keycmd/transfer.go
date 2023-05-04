@@ -31,15 +31,17 @@ const (
 	targetFlag          = "target"
 	keyNameFlag         = "key"
 	ledgerIndexFlag     = "ledger"
+	targetAddrFlag      = "target-addr"
 	wrongLedgerIndexVal = 32768
 )
 
 var (
-	source      bool
-	target      bool
-	keyName     string
-	ledgerIndex uint
-	force       bool
+	source        bool
+	target        bool
+	keyName       string
+	ledgerIndex   uint
+	force         bool
+	targetAddrStr string
 )
 
 func newTransferCmd() *cobra.Command {
@@ -114,6 +116,13 @@ func newTransferCmd() *cobra.Command {
 		wrongLedgerIndexVal,
 		"ledger index to use for either source or target op",
 	)
+	cmd.Flags().StringVarP(
+		&keyName,
+		keyNameFlag,
+		"k",
+		"",
+		"key to use for either source or target op",
+	)
 	return cmd
 }
 
@@ -175,14 +184,16 @@ func transferF(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	addrStr, err := app.Prompt.CapturePChainAddress("Set the target P-Chain address for the transfer", network)
-	if err != nil {
-		return err
-	}
-
-	addr, err := address.ParseToID(addrStr)
-	if err != nil {
-		return err
+	var targetAddr ids.ShortID
+	if targetAddrStr == "" {
+		targetAddrStr, err = app.Prompt.CapturePChainAddress("Set the target P-Chain address for the transfer", network)
+		if err != nil {
+			return err
+		}
+		targetAddr, err = address.ParseToID(targetAddrStr)
+		if err != nil {
+			return err
+		}
 	}
 
 	fees := map[models.Network]uint64{
@@ -214,28 +225,18 @@ func transferF(_ *cobra.Command, args []string) error {
 
 	ux.Logger.PrintToUser("this operation is going to:")
 	if source {
-		sourceAddr := kc.Addresses().List()[0]
-		hrp := key.GetHRP(networkID)
-		sourceAddrStr, err := address.Format("P", hrp, sourceAddr[:])
-		if err != nil {
-			return err
-		}
-		if sourceAddrStr == addrStr {
+		addr := kc.Addresses().List()[0]
+		if addr == targetAddr {
 			return fmt.Errorf("source addr is the same as target addr")
 		}
-		ux.Logger.PrintToUser("- send %.9f AVAX from %s to target address %s", float64(amount)/float64(units.Avax), sourceAddrStr, addrStr)
-		ux.Logger.PrintToUser("- take a fee of %.9f AVAX from source address %s", float64(4*fee)/float64(units.Avax), sourceAddrStr)
+		ux.Logger.PrintToUser("- send %.9f AVAX from %s to target address %s", float64(amount)/float64(units.Avax), addr, targetAddr)
+		ux.Logger.PrintToUser("- take a fee of %.9f AVAX from source address %s", float64(4*fee)/float64(units.Avax), addr)
 	} else {
-		targetAddr := kc.Addresses().List()[0]
-		hrp := key.GetHRP(networkID)
-		targetAddrStr, err := address.Format("P", hrp, targetAddr[:])
-		if err != nil {
-			return err
+		addr := kc.Addresses().List()[0]
+		if addr != targetAddr {
+			return fmt.Errorf("target addr inconsistency: %s vs %s", targetAddr, addr)
 		}
-		if targetAddrStr != addrStr {
-			return fmt.Errorf("target addr inconsistency: %s vs %s", targetAddrStr, addrStr)
-		}
-		ux.Logger.PrintToUser("- receive %.9f AVAX at target address %s", float64(amount)/float64(units.Avax), addrStr)
+		ux.Logger.PrintToUser("- receive %.9f AVAX at target address %s", float64(amount)/float64(units.Avax), addr)
 	}
 	ux.Logger.PrintToUser("")
 
@@ -260,7 +261,7 @@ func transferF(_ *cobra.Command, args []string) error {
 
 	to := secp256k1fx.OutputOwners{
 		Threshold: 1,
-		Addrs:     []ids.ShortID{addr},
+		Addrs:     []ids.ShortID{targetAddr},
 	}
 
 	if source {
