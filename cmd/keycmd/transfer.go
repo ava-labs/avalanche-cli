@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -344,13 +345,15 @@ func transferF(*cobra.Command, []string) error {
 		if receiveRecoveryStep == 0 {
 			ux.Logger.PrintToUser("Issuing ImportTx P -> X")
 			if ledgerIndex != wrongLedgerIndexVal {
-				ux.Logger.PrintToUser("*** Please sign 'Import Tx / P to X Chain' transaction on the ledger device *** ")
+				ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
 			}
 			wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
 			if err != nil {
+				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("error initializing wallet: %s. restart from this step using the same command", err)))
 				return err
 			}
 			if _, err = wallet.X().IssueImportTx(avago_constants.PlatformChainID, &to); err != nil {
+				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("error issuing tx: %s. restart from this step using the same command", err)))
 				return err
 			}
 			time.Sleep(2 * time.Second)
@@ -363,6 +366,7 @@ func transferF(*cobra.Command, []string) error {
 			}
 			wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
 			if err != nil {
+				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("error initializing wallet: %s. restart from this step using the same command with extra arguments: --%s 1", err, receiveRecoveryStepFlag)))
 				return err
 			}
 			output := &avax.TransferableOutput{
@@ -374,6 +378,7 @@ func transferF(*cobra.Command, []string) error {
 			}
 			outputs := []*avax.TransferableOutput{output}
 			if _, err := wallet.X().IssueExportTx(avago_constants.PlatformChainID, outputs); err != nil {
+				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("error issuing tx: %s. restart from this step using the same command with extra arguments: --%s 1", err, receiveRecoveryStepFlag)))
 				return err
 			}
 			time.Sleep(2 * time.Second)
@@ -382,13 +387,15 @@ func transferF(*cobra.Command, []string) error {
 		if receiveRecoveryStep == 2 {
 			wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
 			if err != nil {
+				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("error initializing wallet: %s. restart from this step using the same command with extra arguments: --%s 2", err, receiveRecoveryStepFlag)))
 				return err
 			}
 			ux.Logger.PrintToUser("Issuing ImportTx X -> P")
 			if ledgerIndex != wrongLedgerIndexVal {
-				ux.Logger.PrintToUser("*** Please sign 'Import Tx / X to P Chain' transaction on the ledger device *** ")
+				ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
 			}
 			if _, err = wallet.P().IssueImportTx(wallet.X().BlockchainID(), &to); err != nil {
+				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("error issuing tx: %s. restart from this step using the same command with extra arguments: --%s 2", err, receiveRecoveryStepFlag)))
 				return err
 			}
 		}
