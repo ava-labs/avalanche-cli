@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
@@ -38,7 +39,7 @@ var (
 	source        bool
 	target        bool
 	keyName       string
-	ledgerIndex   uint
+	ledgerIndex   uint64
 	force         bool
 	targetAddrStr string
 	amountFlt     float64
@@ -109,7 +110,7 @@ func newTransferCmd() *cobra.Command {
 		"",
 		"key to use for either source or target op",
 	)
-	cmd.Flags().UintVarP(
+	cmd.Flags().Uint64VarP(
 		&ledgerIndex,
 		ledgerIndexFlag,
 		"i",
@@ -166,6 +167,20 @@ func transferF(*cobra.Command, []string) error {
 		}
 	}
 	amount := uint64(amountFlt * float64(units.Avax))
+
+	if keyName == "" {
+		var useLedger bool
+		useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, app.GetKeyDir())
+		if err != nil {
+			return err
+		}
+		if useLedger {
+			ledgerIndex, err = app.Prompt.CaptureUint64Compare("Ledger index to use", nil)
+			if err != nil {
+				return err
+			}
+		}
+	}
 
 	if (keyName == "" && ledgerIndex == wrongLedgerIndexVal) || (keyName != "" && ledgerIndex != wrongLedgerIndexVal) {
 		return fmt.Errorf("only one between a keyname or a ledger index must be given")
