@@ -207,25 +207,39 @@ func (d *PublicDeployer) TransformSubnetTx(
 		ux.Logger.PrintToUser("*** Please sign Transform Subnet hash on the ledger device *** ")
 	}
 
-	if len(subnetAuthKeys) == 1 {
-		txID, err := wallet.P().IssueTransformSubnetTx(elasticSubnetConfig.SubnetID, subnetAssetID,
-			elasticSubnetConfig.InitialSupply, elasticSubnetConfig.MaxSupply, elasticSubnetConfig.MinConsumptionRate,
-			elasticSubnetConfig.MaxConsumptionRate, elasticSubnetConfig.MinValidatorStake, elasticSubnetConfig.MaxValidatorStake,
-			elasticSubnetConfig.MinStakeDuration, elasticSubnetConfig.MaxStakeDuration, elasticSubnetConfig.MinDelegationFee,
-			elasticSubnetConfig.MinDelegatorStake, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement,
-		)
-		if err != nil {
-			return false, ids.Empty, nil, err
-		}
-		ux.Logger.PrintToUser("Transform Subnet Transaction successful, transaction ID: %s", txID)
-		return true, txID, nil, nil
-	}
+	//if len(subnetAuthKeys) == 1 {
+	//	txID, err := wallet.P().IssueTransformSubnetTx(elasticSubnetConfig.SubnetID, subnetAssetID,
+	//		elasticSubnetConfig.InitialSupply, elasticSubnetConfig.MaxSupply, elasticSubnetConfig.MinConsumptionRate,
+	//		elasticSubnetConfig.MaxConsumptionRate, elasticSubnetConfig.MinValidatorStake, elasticSubnetConfig.MaxValidatorStake,
+	//		elasticSubnetConfig.MinStakeDuration, elasticSubnetConfig.MaxStakeDuration, elasticSubnetConfig.MinDelegationFee,
+	//		elasticSubnetConfig.MinDelegatorStake, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement,
+	//	)
+	//	if err != nil {
+	//		return false, ids.Empty, nil, err
+	//	}
+	//	ux.Logger.PrintToUser("Transform Subnet Transaction successful, transaction ID: %s", txID)
+	//	return true, txID, nil, nil
+	//}
 
-	// not fully signed
 	tx, err := d.createTransformSubnetTX(subnetAuthKeys, elasticSubnetConfig, wallet, subnetAssetID)
 	if err != nil {
 		return false, ids.Empty, nil, err
 	}
+	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, d.network, subnetID)
+	if err != nil {
+		return false, ids.Empty, nil, err
+	}
+	isFullySigned := len(remainingSubnetAuthKeys) == 0
+
+	if isFullySigned {
+		txID, err := d.Commit(tx)
+		if err != nil {
+			return false, ids.Empty, nil, err
+		}
+		ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID)
+		return true, txID, nil, nil
+	}
+
 	ux.Logger.PrintToUser("Partial tx created")
 	return false, ids.Empty, tx, nil
 }
