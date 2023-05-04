@@ -26,23 +26,25 @@ import (
 )
 
 const (
-	sourceFlag          = "source"
-	targetFlag          = "target"
-	keyNameFlag         = "key"
-	ledgerIndexFlag     = "ledger"
-	targetAddrFlag      = "target-addr"
-	amountFlag          = "amount"
-	wrongLedgerIndexVal = 32768
+	sendFlag                = "send"
+	receiveFlag             = "receive"
+	keyNameFlag             = "key"
+	ledgerIndexFlag         = "ledger"
+	receiverAddrFlag        = "target-addr"
+	amountFlag              = "amount"
+	wrongLedgerIndexVal     = 32768
+	receiveRecoveryStepFlag = "receive-recovery-step"
 )
 
 var (
-	source        bool
-	target        bool
-	keyName       string
-	ledgerIndex   uint64
-	force         bool
-	targetAddrStr string
-	amountFlt     float64
+	send                bool
+	receive             bool
+	keyName             string
+	ledgerIndex         uint64
+	force               bool
+	receiverAddrStr     string
+	amountFlt           float64
+	receiveRecoveryStep uint64
 )
 
 func newTransferCmd() *cobra.Command {
@@ -90,99 +92,63 @@ func newTransferCmd() *cobra.Command {
 		"transfer between mainnet addresses",
 	)
 	cmd.Flags().BoolVarP(
-		&source,
-		sourceFlag,
+		&send,
+		sendFlag,
 		"s",
 		false,
-		"do source transfer tx",
+		"send the transfer",
 	)
 	cmd.Flags().BoolVarP(
-		&target,
-		targetFlag,
+		&receive,
+		receiveFlag,
 		"g",
 		false,
-		"do target transfer tx",
+		"receive the transfer",
 	)
 	cmd.Flags().StringVarP(
 		&keyName,
 		keyNameFlag,
 		"k",
 		"",
-		"key to use for either source or target op",
+		"key associated to the sender or receiver address",
 	)
 	cmd.Flags().Uint64VarP(
 		&ledgerIndex,
 		ledgerIndexFlag,
 		"i",
 		wrongLedgerIndexVal,
-		"ledger index to use for either source or target op",
+		"ledger index associated to the sender or receiver address",
+	)
+	cmd.Flags().Uint64VarP(
+		&receiveRecoveryStep,
+		receiveRecoveryStepFlag,
+		"r",
+		0,
+		"receive step to use for multiple step transaction recovery",
 	)
 	cmd.Flags().StringVarP(
-		&targetAddrStr,
-		targetAddrFlag,
+		&receiverAddrStr,
+		receiverAddrFlag,
 		"a",
 		"",
-		"P-Chain target address",
+		"receiver address",
 	)
 	cmd.Flags().Float64VarP(
 		&amountFlt,
 		amountFlag,
 		"o",
 		0,
-		"amount to transfer in AVAX units",
+		"amount to send or receive (AVAX units)",
 	)
 	return cmd
 }
 
 func transferF(*cobra.Command, []string) error {
-	if source && target {
-		return fmt.Errorf("only one of %s, %s flags should be selected", sourceFlag, targetFlag)
+	if send && receive {
+		return fmt.Errorf("only one of %s, %s flags should be selected", sendFlag, receiveFlag)
 	}
 
-	if !source && !target {
-		sourceTargetStr, err := app.Prompt.CaptureList(
-			"Choose the step of the transfer to perform",
-			[]string{"source", "target"},
-		)
-		if err != nil {
-			return err
-		}
-		if sourceTargetStr == "source" {
-			source = true
-		} else {
-			target = true
-		}
-	}
-
-	var err error
-	if amountFlt == 0 {
-		amountFlt, err = app.Prompt.CaptureFloat("Choose amount to transfer in AVAX units", func(v float64) error {
-			if v <= 0 {
-				return fmt.Errorf("value %f must be greater than zero", v)
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-	}
-	amount := uint64(amountFlt * float64(units.Avax))
-
-	if keyName == "" {
-		var useLedger bool
-		useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, app.GetKeyDir())
-		if err != nil {
-			return err
-		}
-		if useLedger {
-			ledgerIndex, err = app.Prompt.CaptureUint64Compare("Ledger index to use", nil)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	if (keyName == "" && ledgerIndex == wrongLedgerIndexVal) || (keyName != "" && ledgerIndex != wrongLedgerIndexVal) {
+	if keyName != "" && ledgerIndex != wrongLedgerIndexVal {
 		return fmt.Errorf("only one between a keyname or a ledger index must be given")
 	}
 
@@ -199,7 +165,7 @@ func transferF(*cobra.Command, []string) error {
 	if network == models.Undefined {
 		// no flag was set, prompt user
 		networkStr, err := app.Prompt.CaptureList(
-			"Choose network in which to do the transfer",
+			"Network to use",
 			[]string{models.Mainnet.String(), models.Fuji.String(), models.Local.String()},
 		)
 		if err != nil {
@@ -213,17 +179,59 @@ func transferF(*cobra.Command, []string) error {
 		return err
 	}
 
-	var targetAddr ids.ShortID
-	if targetAddrStr == "" {
-		targetAddrStr, err = app.Prompt.CapturePChainAddress("Set the target P-Chain address for the transfer", network)
+	if !send && !receive {
+		option, err := app.Prompt.CaptureList(
+			"Step of the transfer",
+			[]string{"Send", "Receive"},
+		)
 		if err != nil {
 			return err
 		}
-		targetAddr, err = address.ParseToID(targetAddrStr)
+		if option == "Send" {
+			send = true
+		} else {
+			receive = true
+		}
+	}
+
+	if keyName == "" && ledgerIndex == wrongLedgerIndexVal {
+		var useLedger bool
+		goalStr := ""
+		if send {
+			goalStr = " for the sender address"
+		} else {
+			goalStr = " for the receiver address"
+		}
+		useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, app.GetKeyDir(), goalStr)
+		if err != nil {
+			return err
+		}
+		if useLedger {
+			ledgerIndex, err = app.Prompt.CaptureUint64Compare("Ledger index to use", nil)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if amountFlt == 0 {
+		var promptStr string
+		if send {
+			promptStr = "Amount to send (AVAX units)"
+		} else {
+			promptStr = "Amount to receive (AVAX units)"
+		}
+		amountFlt, err = app.Prompt.CaptureFloat(promptStr, func(v float64) error {
+			if v <= 0 {
+				return fmt.Errorf("value %f must be greater than zero", v)
+			}
+			return nil
+		})
 		if err != nil {
 			return err
 		}
 	}
+	amount := uint64(amountFlt * float64(units.Avax))
 
 	fees := map[models.Network]uint64{
 		models.Fuji:    genesis.FujiParams.TxFeeConfig.TxFee,
@@ -252,28 +260,39 @@ func transferF(*cobra.Command, []string) error {
 		}
 	}
 
+	var receiverAddr ids.ShortID
+	if send && receiverAddrStr == "" {
+		receiverAddrStr, err = app.Prompt.CapturePChainAddress("Receiver address", network)
+		if err != nil {
+			return err
+		}
+		receiverAddr, err = address.ParseToID(receiverAddrStr)
+		if err != nil {
+			return err
+		}
+	} else {
+		receiverAddr = kc.Addresses().List()[0]
+		receiverAddrStr, err = address.Format("P", key.GetHRP(networkID), receiverAddr[:])
+		if err != nil {
+			return err
+		}
+	}
+
+	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("this operation is going to:")
-	if source {
+	if send {
 		addr := kc.Addresses().List()[0]
 		addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
 		if err != nil {
 			return err
 		}
-		if addr == targetAddr {
-			return fmt.Errorf("source addr is the same as target addr")
+		if addr == receiverAddr {
+			return fmt.Errorf("sender addr is the same as receiver addr")
 		}
-		ux.Logger.PrintToUser("- send %.9f AVAX from %s to target address %s", float64(amount)/float64(units.Avax), addrStr, targetAddrStr)
+		ux.Logger.PrintToUser("- send %.9f AVAX from %s to target address %s", float64(amount)/float64(units.Avax), addrStr, receiverAddrStr)
 		ux.Logger.PrintToUser("- take a fee of %.9f AVAX from source address %s", float64(4*fee)/float64(units.Avax), addrStr)
 	} else {
-		addr := kc.Addresses().List()[0]
-		addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
-		if err != nil {
-			return err
-		}
-		if addr != targetAddr {
-			return fmt.Errorf("target addr inconsistency: %s vs %s", targetAddrStr, addrStr)
-		}
-		ux.Logger.PrintToUser("- receive %.9f AVAX at target address %s", float64(amount)/float64(units.Avax), addr)
+		ux.Logger.PrintToUser("- receive %.9f AVAX at target address %s", float64(amount)/float64(units.Avax), receiverAddrStr)
 	}
 	ux.Logger.PrintToUser("")
 
@@ -298,10 +317,10 @@ func transferF(*cobra.Command, []string) error {
 
 	to := secp256k1fx.OutputOwners{
 		Threshold: 1,
-		Addrs:     []ids.ShortID{targetAddr},
+		Addrs:     []ids.ShortID{receiverAddr},
 	}
 
-	if source {
+	if send {
 		wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
 		if err != nil {
 			return err
@@ -314,44 +333,64 @@ func transferF(*cobra.Command, []string) error {
 			},
 		}
 		outputs := []*avax.TransferableOutput{output}
-		ux.Logger.PrintToUser("P -> X source export")
+		ux.Logger.PrintToUser("Issuing ExportTx P -> X")
+		if ledgerIndex != wrongLedgerIndexVal {
+			ux.Logger.PrintToUser("*** Please sign 'Export Tx / P to X Chain' transaction on the ledger device *** ")
+		}
 		if _, err := wallet.P().IssueExportTx(wallet.X().BlockchainID(), outputs); err != nil {
 			return err
 		}
 	} else {
-		ux.Logger.PrintToUser("P -> X target import")
-		wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
-		if err != nil {
-			return err
+		if receiveRecoveryStep == 0 {
+			ux.Logger.PrintToUser("Issuing ImportTx P -> X")
+			if ledgerIndex != wrongLedgerIndexVal {
+				ux.Logger.PrintToUser("*** Please sign 'Import Tx / P to X Chain' transaction on the ledger device *** ")
+			}
+			wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
+			if err != nil {
+				return err
+			}
+			if _, err = wallet.X().IssueImportTx(avago_constants.PlatformChainID, &to); err != nil {
+				return err
+			}
+			time.Sleep(2 * time.Second)
+			receiveRecoveryStep++
 		}
-		if _, err = wallet.X().IssueImportTx(avago_constants.PlatformChainID, &to); err != nil {
-			return err
+		if receiveRecoveryStep == 1 {
+			ux.Logger.PrintToUser("Issuing ExportTx X -> P")
+			if ledgerIndex != wrongLedgerIndexVal {
+				ux.Logger.PrintToUser("*** Please sign 'Export Tx / X to P Chain' transaction on the ledger device *** ")
+			}
+			wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
+			if err != nil {
+				return err
+			}
+			output := &avax.TransferableOutput{
+				Asset: avax.Asset{ID: wallet.P().AVAXAssetID()},
+				Out: &secp256k1fx.TransferOutput{
+					Amt:          amount + fee*1,
+					OutputOwners: to,
+				},
+			}
+			outputs := []*avax.TransferableOutput{output}
+			if _, err := wallet.X().IssueExportTx(avago_constants.PlatformChainID, outputs); err != nil {
+				return err
+			}
+			time.Sleep(2 * time.Second)
+			receiveRecoveryStep++
 		}
-		time.Sleep(2 * time.Second)
-		output := &avax.TransferableOutput{
-			Asset: avax.Asset{ID: wallet.P().AVAXAssetID()},
-			Out: &secp256k1fx.TransferOutput{
-				Amt:          amount + fee*1,
-				OutputOwners: to,
-			},
-		}
-		outputs := []*avax.TransferableOutput{output}
-		ux.Logger.PrintToUser("X -> P target export")
-		wallet, err = primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
-		if err != nil {
-			return err
-		}
-		if _, err := wallet.X().IssueExportTx(avago_constants.PlatformChainID, outputs); err != nil {
-			return err
-		}
-		time.Sleep(2 * time.Second)
-		wallet, err = primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
-		if err != nil {
-			return err
-		}
-		ux.Logger.PrintToUser("X -> P target import")
-		if _, err = wallet.P().IssueImportTx(wallet.X().BlockchainID(), &to); err != nil {
-			return err
+		if receiveRecoveryStep == 2 {
+			wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
+			if err != nil {
+				return err
+			}
+			ux.Logger.PrintToUser("Issuing ImportTx X -> P")
+			if ledgerIndex != wrongLedgerIndexVal {
+				ux.Logger.PrintToUser("*** Please sign 'Import Tx / X to P Chain' transaction on the ledger device *** ")
+			}
+			if _, err = wallet.P().IssueImportTx(wallet.X().BlockchainID(), &to); err != nil {
+				return err
+			}
 		}
 	}
 

@@ -73,7 +73,7 @@ func signTx(_ *cobra.Command, args []string) error {
 	switch network {
 	case models.Fuji, models.Local:
 		if !useLedger && keyName == "" {
-			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, app.GetKeyDir())
+			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, app.GetKeyDir(), " to sign the tx")
 			if err != nil {
 				return err
 			}
