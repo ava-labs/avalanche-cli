@@ -118,9 +118,25 @@ func newTransferCmd() *cobra.Command {
 }
 
 func transferF(_ *cobra.Command, args []string) error {
-	if (!source && !target) || (source && target) {
-		return fmt.Errorf("one of %s, %s flags must be selected", sourceFlag, targetFlag)
+	if source && target {
+		return fmt.Errorf("only one of %s, %s flags should be selected", sourceFlag, targetFlag)
 	}
+
+	if !source && !target {
+		sourceTargetStr, err := app.Prompt.CaptureList(
+			"Choose sthe tep of the transfer to perform",
+			[]string{"source", "target"},
+		)
+		if err != nil {
+			return err
+		}
+		if sourceTargetStr == "source" {
+			source = true
+		} else {
+			target = true
+		}
+	}
+
 	amountStr := args[0]
 	amountFlt, err := strconv.ParseFloat(amountStr, 64)
 	if err != nil {
