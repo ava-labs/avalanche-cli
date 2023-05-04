@@ -255,15 +255,23 @@ func transferF(*cobra.Command, []string) error {
 	ux.Logger.PrintToUser("this operation is going to:")
 	if source {
 		addr := kc.Addresses().List()[0]
+		addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
+		if err != nil {
+			return err
+		}
 		if addr == targetAddr {
 			return fmt.Errorf("source addr is the same as target addr")
 		}
-		ux.Logger.PrintToUser("- send %.9f AVAX from %s to target address %s", float64(amount)/float64(units.Avax), addr, targetAddr)
-		ux.Logger.PrintToUser("- take a fee of %.9f AVAX from source address %s", float64(4*fee)/float64(units.Avax), addr)
+		ux.Logger.PrintToUser("- send %.9f AVAX from %s to target address %s", float64(amount)/float64(units.Avax), addrStr, targetAddrStr)
+		ux.Logger.PrintToUser("- take a fee of %.9f AVAX from source address %s", float64(4*fee)/float64(units.Avax), addrStr)
 	} else {
 		addr := kc.Addresses().List()[0]
+		addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
+		if err != nil {
+			return err
+		}
 		if addr != targetAddr {
-			return fmt.Errorf("target addr inconsistency: %s vs %s", targetAddr, addr)
+			return fmt.Errorf("target addr inconsistency: %s vs %s", targetAddrStr, addrStr)
 		}
 		ux.Logger.PrintToUser("- receive %.9f AVAX at target address %s", float64(amount)/float64(units.Avax), addr)
 	}
