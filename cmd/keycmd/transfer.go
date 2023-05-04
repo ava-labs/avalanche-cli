@@ -343,30 +343,26 @@ func transferF(*cobra.Command, []string) error {
 		}
 	} else {
 		if receiveRecoveryStep == 0 {
+			wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
+			if err != nil {
+				ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
+				return err
+			}
 			ux.Logger.PrintToUser("Issuing ImportTx P -> X")
 			if ledgerIndex != wrongLedgerIndexVal {
 				ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
 			}
-			wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
-			if err != nil {
-				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("error initializing wallet: %s. restart from this step using the same command", err)))
-				return err
-			}
 			if _, err = wallet.X().IssueImportTx(avago_constants.PlatformChainID, &to); err != nil {
-				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("error issuing tx: %s. restart from this step using the same command", err)))
+				ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
 				return err
 			}
 			time.Sleep(2 * time.Second)
 			receiveRecoveryStep++
 		}
 		if receiveRecoveryStep == 1 {
-			ux.Logger.PrintToUser("Issuing ExportTx X -> P")
-			if ledgerIndex != wrongLedgerIndexVal {
-				ux.Logger.PrintToUser("*** Please sign 'Export Tx / X to P Chain' transaction on the ledger device *** ")
-			}
 			wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
 			if err != nil {
-				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("error initializing wallet: %s. restart from this step using the same command with extra arguments: --%s 1", err, receiveRecoveryStepFlag)))
+				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("ERROR: restart from this step by using the same command with extra arguments: --%s %d", receiveRecoveryStepFlag, receiveRecoveryStep)))
 				return err
 			}
 			output := &avax.TransferableOutput{
@@ -377,8 +373,12 @@ func transferF(*cobra.Command, []string) error {
 				},
 			}
 			outputs := []*avax.TransferableOutput{output}
+			ux.Logger.PrintToUser("Issuing ExportTx X -> P")
+			if ledgerIndex != wrongLedgerIndexVal {
+				ux.Logger.PrintToUser("*** Please sign 'Export Tx / X to P Chain' transaction on the ledger device *** ")
+			}
 			if _, err := wallet.X().IssueExportTx(avago_constants.PlatformChainID, outputs); err != nil {
-				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("error issuing tx: %s. restart from this step using the same command with extra arguments: --%s 1", err, receiveRecoveryStepFlag)))
+				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("ERROR: restart from this step by using the same command with extra arguments: --%s %d", receiveRecoveryStepFlag, receiveRecoveryStep)))
 				return err
 			}
 			time.Sleep(2 * time.Second)
@@ -387,7 +387,7 @@ func transferF(*cobra.Command, []string) error {
 		if receiveRecoveryStep == 2 {
 			wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
 			if err != nil {
-				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("error initializing wallet: %s. restart from this step using the same command with extra arguments: --%s 2", err, receiveRecoveryStepFlag)))
+				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("ERROR: restart from this step by using the same command with extra arguments: --%s %d", receiveRecoveryStepFlag, receiveRecoveryStep)))
 				return err
 			}
 			ux.Logger.PrintToUser("Issuing ImportTx X -> P")
@@ -395,7 +395,7 @@ func transferF(*cobra.Command, []string) error {
 				ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
 			}
 			if _, err = wallet.P().IssueImportTx(wallet.X().BlockchainID(), &to); err != nil {
-				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("error issuing tx: %s. restart from this step using the same command with extra arguments: --%s 2", err, receiveRecoveryStepFlag)))
+				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("ERROR: restart from this step by using the same command with extra arguments: --%s %d", receiveRecoveryStepFlag, receiveRecoveryStep)))
 				return err
 			}
 		}
