@@ -8,7 +8,7 @@ require (
 	github.com/ava-labs/avalanchego v1.10.1
 	github.com/ava-labs/coreth v0.12.1
 	github.com/ava-labs/subnet-evm v0.5.0
-	github.com/docker/docker v23.0.5+incompatible
+	github.com/docker/docker v23.0.6+incompatible
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/go-git/go-git/v5 v5.6.1
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
@@ -22,6 +22,7 @@ require (
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.2
 	go.uber.org/zap v1.24.0
+	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
 	golang.org/x/mod v0.10.0
 	golang.org/x/text v0.9.0
 	google.golang.org/protobuf v1.30.0
@@ -137,7 +138,6 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
-	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
