@@ -55,7 +55,11 @@ func commitTx(_ *cobra.Command, args []string) error {
 		return errNoSubnetID
 	}
 
-	subnetAuthKeys, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, network, subnetID)
+	controlKeys, _, err := txutils.GetOwners(network, subnetID)
+	if err != nil {
+		return err
+	}
+	subnetAuthKeys, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
 	if err != nil {
 		return err
 	}

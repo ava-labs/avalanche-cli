@@ -370,9 +370,14 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		// get the control keys in the same order as the tx
+		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
+		if err != nil {
+			return err
+		}
 	}
 
-	isFullySigned, blockchainID, tx, remainingSubnetAuthKeys, err := deployer.DeployBlockchain(subnetAuthKeys, subnetID, chain, chainGenesis)
+	isFullySigned, blockchainID, tx, remainingSubnetAuthKeys, err := deployer.DeployBlockchain(controlKeys, subnetAuthKeys, subnetID, chain, chainGenesis)
 	if err != nil {
 		ux.Logger.PrintToUser(logging.Red.Wrap(
 			fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),

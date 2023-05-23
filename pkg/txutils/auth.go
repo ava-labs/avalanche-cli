@@ -5,8 +5,6 @@ package txutils
 import (
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
@@ -23,11 +21,9 @@ import (
 // - txs.CreateChainTx
 // - txs.AddSubnetValidatorTx
 // - txs.RemoveSubnetValidatorTx
-func GetAuthSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]string, error) {
-	controlKeys, _, err := GetOwners(network, subnetID)
-	if err != nil {
-		return nil, err
-	}
+//
+// controlKeys must be in the same order as in the subnet creation tx (as obtained by GetOwners)
+func GetAuthSigners(tx *txs.Tx, controlKeys []string) ([]string, error) {
 	unsignedTx := tx.Unsigned
 	var subnetAuth verify.Verifiable
 	switch unsignedTx := unsignedTx.(type) {
@@ -64,8 +60,10 @@ func GetAuthSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]stri
 //
 // if the tx is fully signed, returns empty slice
 // expect tx.Unsigned type to be in [txs.AddSubnetValidatorTx, txs.CreateChainTx]
-func GetRemainingSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]string, []string, error) {
-	authSigners, err := GetAuthSigners(tx, network, subnetID)
+//
+// controlKeys must be in the same order as in the subnet creation tx (as obtained by GetOwners)
+func GetRemainingSigners(tx *txs.Tx, controlKeys []string) ([]string, []string, error) {
+	authSigners, err := GetAuthSigners(tx, controlKeys)
 	if err != nil {
 		return nil, nil, err
 	}

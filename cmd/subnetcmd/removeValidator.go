@@ -177,7 +177,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.RemoveValidator(subnetAuthKeys, subnetID, nodeID)
+	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.RemoveValidator(controlKeys, subnetAuthKeys, subnetID, nodeID)
 	if err != nil {
 		return err
 	}

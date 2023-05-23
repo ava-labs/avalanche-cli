@@ -52,6 +52,7 @@ func NewPublicDeployer(app *application.Avalanche, usingLedger bool, kc keychain
 //   - if partially signed, returns the tx so that it can later on be signed by the rest of the subnet auth keys
 //   - if fully signed, issues it
 func (d *PublicDeployer) AddValidator(
+	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
 	nodeID ids.NodeID,
@@ -85,7 +86,7 @@ func (d *PublicDeployer) AddValidator(
 		return false, nil, nil, err
 	}
 
-	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, d.network, subnetID)
+	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -111,6 +112,7 @@ func (d *PublicDeployer) AddValidator(
 //   - if partially signed, returns the tx so that it can later on be signed by the rest of the subnet auth keys
 //   - if fully signed, issues it
 func (d *PublicDeployer) RemoveValidator(
+	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
 	nodeID ids.NodeID,
@@ -133,7 +135,7 @@ func (d *PublicDeployer) RemoveValidator(
 		return false, nil, nil, err
 	}
 
-	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, d.network, subnetID)
+	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -177,6 +179,7 @@ func (d *PublicDeployer) DeploySubnet(
 //   - if partially signed, returns the tx so that it can later on be signed by the rest of the subnet auth keys
 //   - if fully signed, issues it
 func (d *PublicDeployer) DeployBlockchain(
+	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
 	chain string,
@@ -208,7 +211,7 @@ func (d *PublicDeployer) DeployBlockchain(
 		return false, ids.Empty, nil, nil, err
 	}
 
-	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, d.network, subnetID)
+	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}

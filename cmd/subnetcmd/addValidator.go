@@ -198,7 +198,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidator(subnetAuthKeys, subnetID, nodeID, weight, start, duration)
+	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidator(controlKeys, subnetAuthKeys, subnetID, nodeID, weight, start, duration)
 	if err != nil {
 		return err
 	}
