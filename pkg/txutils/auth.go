@@ -64,35 +64,35 @@ func GetAuthSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]stri
 //
 // if the tx is fully signed, returns empty slice
 // expect tx.Unsigned type to be in [txs.AddSubnetValidatorTx, txs.CreateChainTx]
-func GetRemainingSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]string, error) {
+func GetRemainingSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]string, []string, error) {
 	authSigners, err := GetAuthSigners(tx, network, subnetID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	emptySig := [secp256k1.SignatureLen]byte{}
 	// we should have at least 1 cred for output owners and 1 cred for subnet auth
 	if len(tx.Creds) < 2 {
-		return nil, fmt.Errorf("expected tx.Creds of len 2, got %d", len(tx.Creds))
+		return nil, nil, fmt.Errorf("expected tx.Creds of len 2, got %d", len(tx.Creds))
 	}
 	// signatures for output owners should be filled (all creds except last one)
 	for credIndex := range tx.Creds[:len(tx.Creds)-1] {
 		cred, ok := tx.Creds[credIndex].(*secp256k1fx.Credential)
 		if !ok {
-			return nil, fmt.Errorf("expected cred to be of type *secp256k1fx.Credential, got %T", tx.Creds[credIndex])
+			return nil, nil, fmt.Errorf("expected cred to be of type *secp256k1fx.Credential, got %T", tx.Creds[credIndex])
 		}
 		for i, sig := range cred.Sigs {
 			if sig == emptySig {
-				return nil, fmt.Errorf("expected funding sig %d of cred %d to be filled", i, credIndex)
+				return nil, nil, fmt.Errorf("expected funding sig %d of cred %d to be filled", i, credIndex)
 			}
 		}
 	}
 	// signatures for subnet auth (last cred)
 	cred, ok := tx.Creds[len(tx.Creds)-1].(*secp256k1fx.Credential)
 	if !ok {
-		return nil, fmt.Errorf("expected cred to be of type *secp256k1fx.Credential, got %T", tx.Creds[1])
+		return nil, nil, fmt.Errorf("expected cred to be of type *secp256k1fx.Credential, got %T", tx.Creds[1])
 	}
 	if len(cred.Sigs) != len(authSigners) {
-		return nil, fmt.Errorf("expected number of cred's signatures %d to equal number of auth signers %d",
+		return nil, nil, fmt.Errorf("expected number of cred's signatures %d to equal number of auth signers %d",
 			len(cred.Sigs),
 			len(authSigners),
 		)
@@ -103,5 +103,5 @@ func GetRemainingSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([
 			remainingSigners = append(remainingSigners, authSigners[i])
 		}
 	}
-	return remainingSigners, nil
+	return authSigners, remainingSigners, nil
 }
