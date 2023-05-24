@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
@@ -20,18 +19,25 @@ import (
 //   - creates the string slice of required subnet auth addresses by applying
 //     the indices to the control keys slice
 //
-// expect tx.Unsigned type to be in [txs.AddSubnetValidatorTx, txs.CreateChainTx]
+// expect tx.Unsigned type to be in:
+// - txs.CreateChainTx
+// - txs.AddSubnetValidatorTx
+// - txs.RemoveSubnetValidatorTx
 func GetAuthSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]string, error) {
-	controlKeys, _, err := subnet.GetOwners(network, subnetID)
+	controlKeys, _, err := GetOwners(network, subnetID)
 	if err != nil {
 		return nil, err
 	}
 	unsignedTx := tx.Unsigned
 	var subnetAuth verify.Verifiable
 	switch unsignedTx := unsignedTx.(type) {
+	case *txs.RemoveSubnetValidatorTx:
+		subnetAuth = unsignedTx.SubnetAuth
 	case *txs.AddSubnetValidatorTx:
 		subnetAuth = unsignedTx.SubnetAuth
 	case *txs.CreateChainTx:
+		subnetAuth = unsignedTx.SubnetAuth
+	case *txs.TransformSubnetTx:
 		subnetAuth = unsignedTx.SubnetAuth
 	default:
 		return nil, fmt.Errorf("unexpected unsigned tx type %T", unsignedTx)
@@ -54,7 +60,7 @@ func GetAuthSigners(tx *txs.Tx, network models.Network, subnetID ids.ID) ([]stri
 //   - get the string slice of auth signers for the tx (GetAuthSigners)
 //   - verifies that all creds in tx.Creds, except the last one, are fully signed
 //     (a cred is fully signed if all the signatures in cred.Sigs are non-empty)
-//   - computes remaning signers by iterating the last cred in tx.Creds, associated to subnet auth signing
+//   - computes remaining signers by iterating the last cred in tx.Creds, associated to subnet auth signing
 //   - for each sig in cred.Sig: if sig is empty, then add the associated auth signer address (obtained from
 //     authSigners by using the index) to the remaining signers list
 //

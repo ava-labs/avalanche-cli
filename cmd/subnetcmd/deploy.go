@@ -31,7 +31,6 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/coreth/core"
-	spacesvmchain "github.com/ava-labs/spacesvm/chain"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -53,6 +52,7 @@ var (
 	outputTxPath             string
 	useLedger                bool
 	ledgerAddresses          []string
+	subnetIDStr              string
 
 	errMutuallyExlusiveNetworks    = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
@@ -93,6 +93,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
+	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "deploy into given subnet id [fuji/mainnet deploy only]")
 	return cmd
 }
 
@@ -194,12 +195,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	// validate genesis as far as possible previous to deploy
-	switch sidecar.VM {
-	case models.SubnetEvm:
+	if sidecar.VM == models.SubnetEvm {
 		var genesis core.Genesis
-		err = json.Unmarshal(chainGenesis, &genesis)
-	case models.SpacesVM:
-		var genesis spacesvmchain.Genesis
 		err = json.Unmarshal(chainGenesis, &genesis)
 	}
 	if err != nil {
@@ -227,11 +224,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			vmBin, err = binutils.SetupSubnetEVM(app, sidecar.VMVersion)
 			if err != nil {
 				return fmt.Errorf("failed to install subnet-evm: %w", err)
-			}
-		case models.SpacesVM:
-			vmBin, err = binutils.SetupSpacesVM(app, sidecar.VMVersion)
-			if err != nil {
-				return fmt.Errorf("failed to install spacesvm: %w", err)
 			}
 		case models.CustomVM:
 			vmBin = binutils.SetupCustomBin(app, chain)
@@ -266,7 +258,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	case models.Fuji:
 		if !useLedger && keyName == "" {
-			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, app.GetKeyDir())
+			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "pay transaction fees", app.GetKeyDir())
 			if err != nil {
 				return err
 			}
@@ -289,49 +281,74 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// from here on we are assuming a public deploy
 
-	// get keychain accesor
+	// get keychain accessor
 	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
 	if err != nil {
 		return err
 	}
 
-	// accept only one control keys specification
-	if len(controlKeys) > 0 && sameControlKey {
-		return errMutuallyExlusiveControlKeys
-	}
+	createSubnet := true
+	var subnetID ids.ID
 
-	// use creation key as control key
-	if sameControlKey {
-		controlKeys, err = loadCreationKeys(network, kc)
+	if subnetIDStr != "" {
+		subnetID, err = ids.FromString(subnetIDStr)
 		if err != nil {
 			return err
 		}
-	}
-
-	// prompt for control keys
-	if controlKeys == nil {
-		var cancelled bool
-		controlKeys, cancelled, err = getControlKeys(network, useLedger, kc)
-		if err != nil {
-			return err
-		}
-		if cancelled {
-			ux.Logger.PrintToUser("User cancelled. No subnet deployed")
-			return nil
+		createSubnet = false
+	} else if sidecar.Networks != nil {
+		model, ok := sidecar.Networks[network.String()]
+		if ok {
+			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
+				subnetID = model.SubnetID
+				createSubnet = false
+			}
 		}
 	}
 
-	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
-
-	// validate and prompt for threshold
-	if threshold == 0 && subnetAuthKeys != nil {
-		threshold = uint32(len(subnetAuthKeys))
-	}
-	if int(threshold) > len(controlKeys) {
-		return fmt.Errorf("given threshold is greater than number of control keys")
-	}
-	if threshold == 0 {
-		threshold, err = getThreshold(len(controlKeys))
+	if createSubnet {
+		// accept only one control keys specification
+		if len(controlKeys) > 0 && sameControlKey {
+			return errMutuallyExlusiveControlKeys
+		}
+		// use creation key as control key
+		if sameControlKey {
+			controlKeys, err = loadCreationKeys(network, kc)
+			if err != nil {
+				return err
+			}
+		}
+		// prompt for control keys
+		if controlKeys == nil {
+			var cancelled bool
+			controlKeys, cancelled, err = getControlKeys(network, useLedger, kc)
+			if err != nil {
+				return err
+			}
+			if cancelled {
+				ux.Logger.PrintToUser("User cancelled. No subnet deployed")
+				return nil
+			}
+		}
+		ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
+		// validate and prompt for threshold
+		if threshold == 0 && subnetAuthKeys != nil {
+			threshold = uint32(len(subnetAuthKeys))
+		}
+		if int(threshold) > len(controlKeys) {
+			return fmt.Errorf("given threshold is greater than number of control keys")
+		}
+		if threshold == 0 {
+			threshold, err = getThreshold(len(controlKeys))
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		ux.Logger.PrintToUser(logging.Green.Wrap(
+			fmt.Sprintf("Deploying into pre-existent subnet ID %s", subnetID.String()),
+		))
+		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
 		if err != nil {
 			return err
 		}
@@ -352,16 +369,28 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	isFullySigned, subnetID, blockchainID, tx, err := deployer.Deploy(controlKeys, subnetAuthKeys, threshold, chain, chainGenesis)
+
+	if createSubnet {
+		subnetID, err = deployer.DeploySubnet(controlKeys, threshold)
+		if err != nil {
+			return err
+		}
+	}
+
+	isFullySigned, blockchainID, tx, err := deployer.DeployBlockchain(subnetAuthKeys, subnetID, chain, chainGenesis)
 	if err != nil {
+		ux.Logger.PrintToUser(logging.Red.Wrap(
+			fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
+		))
+	}
+
+	savePartialTx := !isFullySigned && err == nil
+
+	if err := PrintDeployResults(chain, subnetID, blockchainID); err != nil {
 		return err
 	}
 
-	if err := PrintDeployResults(chain, subnetID, blockchainID, isFullySigned); err != nil {
-		return err
-	}
-
-	if !isFullySigned {
+	if savePartialTx {
 		if err := SaveNotFullySignedTx(
 			"Blockchain Creation",
 			tx,
@@ -403,7 +432,7 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain
 	if useLedger {
 		creation = "Use ledger address"
 	} else {
-		creation = "Use creation key"
+		creation = "Use fee-paying key"
 	}
 	if network == models.Mainnet {
 		listOptions = []string{creation, custom}
@@ -538,7 +567,7 @@ func getThreshold(maxLen int) (uint32, error) {
 	if maxLen == 1 {
 		return uint32(1), nil
 	}
-	// create a list of indexes so the user only has the option to choose what is the theshold
+	// create a list of indexes so the user only has the option to choose what is the threshold
 	// instead of entering
 	indexList := make([]string, maxLen)
 	for i := 0; i < maxLen; i++ {
@@ -616,7 +645,7 @@ func SaveNotFullySignedTx(
 	}
 	if forceOverwrite {
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("Overwritting %s", outputTxPath)
+		ux.Logger.PrintToUser("Overwriting %s", outputTxPath)
 	}
 	if err := txutils.SaveToDisk(tx, outputTxPath, forceOverwrite); err != nil {
 		return err
@@ -664,7 +693,7 @@ func GetKeychain(
 	keyName string,
 	network models.Network,
 ) (keychain.Keychain, error) {
-	// get keychain accesor
+	// get keychain accessor
 	var kc keychain.Keychain
 	networkID, err := network.NetworkID()
 	if err != nil {
@@ -748,7 +777,7 @@ func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]ui
 	return ledgerIndices, nil
 }
 
-func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFullySigned bool) error {
+func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID) error {
 	vmID, err := utils.VMID(chain)
 	if err != nil {
 		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
@@ -761,9 +790,8 @@ func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID, isFu
 	table.Append([]string{"Chain Name", chain})
 	table.Append([]string{"Subnet ID", subnetID.String()})
 	table.Append([]string{"VM ID", vmID.String()})
-	if isFullySigned {
+	if blockchainID != ids.Empty {
 		table.Append([]string{"Blockchain ID", blockchainID.String()})
-		table.Append([]string{"RPC URL", fmt.Sprintf("%s/ext/bc/%s/rpc", constants.DefaultNodeRunURL, blockchainID.String())})
 		table.Append([]string{"P-Chain TXID", blockchainID.String()})
 	}
 	table.Render()

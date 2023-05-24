@@ -18,6 +18,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
@@ -33,10 +35,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
-	"github.com/ava-labs/spacesvm/chain"
-	spacesvmclient "github.com/ava-labs/spacesvm/client"
 	"github.com/ava-labs/subnet-evm/ethclient"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const (
@@ -44,6 +43,11 @@ const (
 	blockchainIDPos          = 5
 	subnetEVMName            = "subnet-evm"
 )
+
+var defaultLocalNetworkNodeIDs = []string{
+	"NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg", "NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ",
+	"NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN", "NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu", "NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5",
+}
 
 func GetBaseDir() string {
 	usr, err := user.Current()
@@ -111,6 +115,29 @@ func sidecarExists(subnetName string) (bool, error) {
 		return false, err
 	}
 	return sidecarExists, nil
+}
+
+func ElasticSubnetConfigExists(subnetName string) (bool, error) {
+	elasticSubnetConfig := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.ElasticSubnetConfigFileName)
+	elasticSubnetConfigExists := true
+	if _, err := os.Stat(elasticSubnetConfig); errors.Is(err, os.ErrNotExist) {
+		// does *not* exist
+		elasticSubnetConfigExists = false
+	} else if err != nil {
+		// Schrodinger: file may or may not exist. See err for details.
+		return false, err
+	}
+	return elasticSubnetConfigExists, nil
+}
+
+func PermissionlessValidatorExistsInSidecar(subnetName string, nodeID string, network string) (bool, error) {
+	sc, err := getSideCar(subnetName)
+	if err != nil {
+		return false, err
+	}
+	elasticSubnetValidators := sc.ElasticSubnet[network].Validators
+	_, ok := elasticSubnetValidators[nodeID]
+	return ok, nil
 }
 
 func SubnetConfigExists(subnetName string) (bool, error) {
@@ -468,30 +495,25 @@ func DownloadCustomVMBin(subnetEVMversion string) (string, error) {
 	return subnetEVMBin, nil
 }
 
-func ParsePublicDeployOutput(output string) (string, string, error) {
+func ParsePublicDeployOutput(output string) (string, error) {
 	lines := strings.Split(output, "\n")
-	var (
-		subnetID string
-		rpcURL   string
-	)
+	var subnetID string
 	for _, line := range lines {
 		if !strings.Contains(line, "Subnet ID") && !strings.Contains(line, "RPC URL") {
 			continue
 		}
 		words := strings.Split(line, "|")
 		if len(words) != 4 {
-			return "", "", errors.New("error parsing output: invalid number of words in line")
+			return "", errors.New("error parsing output: invalid number of words in line")
 		}
 		if strings.Contains(line, "Subnet ID") {
 			subnetID = strings.TrimSpace(words[2])
-		} else {
-			rpcURL = strings.TrimSpace(words[2])
 		}
 	}
-	if subnetID == "" || rpcURL == "" {
-		return "", "", errors.New("information not found in output")
+	if subnetID == "" {
+		return "", errors.New("information not found in output")
 	}
-	return subnetID, rpcURL, nil
+	return subnetID, nil
 }
 
 func RestartNodesWithWhitelistedSubnets(whitelistedSubnets string) error {
@@ -575,7 +597,7 @@ func GetNodesInfo() (map[string]NodeInfo, error) {
 	return nodesInfo, nil
 }
 
-func GetWhilelistedSubnetsFromConfigFile(configFile string) (string, error) {
+func GetWhitelistedSubnetsFromConfigFile(configFile string) (string, error) {
 	fileBytes, err := os.ReadFile(configFile)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return "", fmt.Errorf("failed to load avalanchego config file %s: %w", configFile, err)
@@ -584,7 +606,7 @@ func GetWhilelistedSubnetsFromConfigFile(configFile string) (string, error) {
 	if err := json.Unmarshal(fileBytes, &avagoConfig); err != nil {
 		return "", fmt.Errorf("failed to unpack the config file %s to JSON: %w", configFile, err)
 	}
-	whitelistedSubnetsIntf := avagoConfig["whitelisted-subnets"]
+	whitelistedSubnetsIntf := avagoConfig["track-subnets"]
 	whitelistedSubnets, ok := whitelistedSubnetsIntf.(string)
 	if !ok {
 		return "", fmt.Errorf("expected a string value, but got %T", whitelistedSubnetsIntf)
@@ -631,71 +653,6 @@ func WaitSubnetValidators(subnetIDStr string, nodeInfos map[string]NodeInfo) err
 		case <-time.After(time.Second * 1):
 		}
 	}
-}
-
-func RunSpacesVMAPITest(rpc string) error {
-	privHexBytes, err := os.ReadFile(EwoqKeyPath)
-	if err != nil {
-		return err
-	}
-	priv, err := crypto.HexToECDSA(strings.TrimSpace(string(privHexBytes)))
-	if err != nil {
-		return err
-	}
-
-	cli := spacesvmclient.New(strings.ReplaceAll(rpc, "/rpc", ""), constants.E2ERequestTimeout)
-
-	// claim a space
-	space := "clispace"
-	claimTx := &chain.ClaimTx{
-		BaseTx: &chain.BaseTx{},
-		Space:  space,
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
-	_, _, err = spacesvmclient.SignIssueRawTx(
-		ctx,
-		cli,
-		claimTx,
-		priv,
-		spacesvmclient.WithPollTx(),
-		spacesvmclient.WithInfo(space),
-	)
-	cancel()
-	if err != nil {
-		return err
-	}
-
-	// set key/val pair
-	k, v := "key", []byte("value")
-	setTx := &chain.SetTx{
-		BaseTx: &chain.BaseTx{},
-		Space:  space,
-		Key:    k,
-		Value:  v,
-	}
-	ctx, cancel = context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
-	_, _, err = spacesvmclient.SignIssueRawTx(
-		ctx,
-		cli,
-		setTx,
-		priv,
-		spacesvmclient.WithPollTx(),
-		spacesvmclient.WithInfo(space),
-	)
-	cancel()
-	if err != nil {
-		return err
-	}
-
-	// check key/val pair
-	_, rv, _, err := cli.Resolve(context.Background(), space+"/"+k)
-	if err != nil {
-		return err
-	}
-	if string(rv) != string(v) {
-		return fmt.Errorf("expected value to be %q, got %q", v, rv)
-	}
-	return nil
 }
 
 func GetFileHash(filename string) (string, error) {
@@ -799,4 +756,113 @@ func GetPluginBinaries() ([]string, error) {
 	}
 
 	return pluginFiles, nil
+}
+
+func getSideCar(subnetName string) (models.Sidecar, error) {
+	exists, err := sidecarExists(subnetName)
+	if err != nil {
+		return models.Sidecar{}, fmt.Errorf("failed to access sidecar for %s: %w", subnetName, err)
+	}
+	if !exists {
+		return models.Sidecar{}, fmt.Errorf("failed to access sidecar for %s: not found", subnetName)
+	}
+
+	sidecar := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.SidecarFileName)
+
+	jsonBytes, err := os.ReadFile(sidecar)
+	if err != nil {
+		return models.Sidecar{}, err
+	}
+
+	var sc models.Sidecar
+	err = json.Unmarshal(jsonBytes, &sc)
+	if err != nil {
+		return models.Sidecar{}, err
+	}
+	return sc, nil
+}
+
+func GetValidators(subnetName string) ([]string, error) {
+	sc, err := getSideCar(subnetName)
+	if err != nil {
+		return nil, err
+	}
+	subnetID := sc.Networks[models.Local.String()].SubnetID
+	if subnetID == ids.Empty {
+		return nil, errors.New("no subnet id")
+	}
+	// Get NodeIDs of all validators on the subnet
+	validators, err := subnet.GetSubnetValidators(subnetID)
+	if err != nil {
+		return nil, err
+	}
+	nodeIDsList := []string{}
+	for _, validator := range validators {
+		nodeIDsList = append(nodeIDsList, validator.NodeID.String())
+	}
+	return nodeIDsList, nil
+}
+
+func GetCurrentSupply(subnetName string) error {
+	sc, err := getSideCar(subnetName)
+	if err != nil {
+		return err
+	}
+	subnetID := sc.Networks[models.Local.String()].SubnetID
+	return subnet.GetCurrentSupply(subnetID)
+}
+
+func IsNodeInPendingValidator(subnetName string, nodeID string) (bool, error) {
+	sc, err := getSideCar(subnetName)
+	if err != nil {
+		return false, err
+	}
+	subnetID := sc.Networks[models.Local.String()].SubnetID
+	return subnet.CheckNodeIsInSubnetPendingValidators(subnetID, nodeID)
+}
+
+func CheckAllNodesAreCurrentValidators(subnetName string) (bool, error) {
+	sc, err := getSideCar(subnetName)
+	if err != nil {
+		return false, err
+	}
+	subnetID := sc.Networks[models.Local.String()].SubnetID
+
+	api := constants.LocalAPIEndpoint
+	pClient := platformvm.NewClient(api)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+
+	validators, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
+	if err != nil {
+		return false, err
+	}
+
+	for _, nodeIDstr := range defaultLocalNetworkNodeIDs {
+		currentValidator := false
+		for _, validator := range validators {
+			if validator.NodeID.String() == nodeIDstr {
+				currentValidator = true
+			}
+		}
+		if !currentValidator {
+			return false, fmt.Errorf("%s is still not a current validator of the elastic subnet", nodeIDstr)
+		}
+	}
+	return true, nil
+}
+
+func AllPermissionlessValidatorExistsInSidecar(subnetName string, network string) (bool, error) {
+	sc, err := getSideCar(subnetName)
+	if err != nil {
+		return false, err
+	}
+	elasticSubnetValidators := sc.ElasticSubnet[network].Validators
+	for _, nodeIDstr := range defaultLocalNetworkNodeIDs {
+		_, ok := elasticSubnetValidators[nodeIDstr]
+		if !ok {
+			return false, err
+		}
+	}
+	return true, nil
 }

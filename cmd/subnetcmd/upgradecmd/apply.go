@@ -23,6 +23,7 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -41,7 +42,6 @@ var (
 	errNoBlockTimestamp           = errors.New("no blockTimestamp value set")
 	errBlockTimestampInvalid      = errors.New("blockTimestamp is invalid")
 	errNoPrecompiles              = errors.New("no precompiles present")
-	errEmptyPrecompile            = errors.New("the precompile has no content")
 	errNoUpcomingUpgrades         = errors.New("no valid upcoming activation timestamp found")
 	errNewUpgradesNotContainsLock = errors.New("the new upgrade file does not contain the content of the lock file")
 
@@ -59,15 +59,15 @@ func newUpgradeApplyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "apply [subnetName]",
 		Short: "Apply upgrade bytes onto subnet nodes",
-		Long: `Apply generated upgrade bytes to running subnet nodes to trigger a network upgrade. 
+		Long: `Apply generated upgrade bytes to running Subnet nodes to trigger a network upgrade.
 
-For public networks (fuji testnet or mainnet), to complete this process, 
+For public networks (Fuji Testnet or Mainnet), to complete this process,
 you must have access to the machine running your validator.
 If the CLI is running on the same machine as your validator, it can manipulate your node's
 configuration automatically. Alternatively, the command can print the necessary instructions
 to upgrade your node manually.
 
-After you update your validator's configuration, you need to restart your validator manually. 
+After you update your validator's configuration, you need to restart your validator manually.
 If you provide the --avalanchego-chain-config-dir flag, this command attempts to write the upgrade file at that path.
 Refer to https://docs.avax.network/nodes/maintain/chain-config-flags#subnet-chain-configs for related documentation.`,
 		RunE: applyCmd,
@@ -158,7 +158,7 @@ func applyLocalNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar)
 	// confirm in the status that the subnet actually is deployed and running
 	deployed := false
 	subnets := status.ClusterInfo.GetSubnets()
-	for _, s := range subnets {
+	for s := range subnets {
 		if s == sc.Networks[networkKey].SubnetID.String() {
 			deployed = true
 			break
@@ -338,8 +338,12 @@ func validateUpgrade(subnetName, networkKey string, sc *models.Sidecar, skipProm
 
 	// checks that adminAddress in precompile upgrade for TxAllowList has enough token balance
 	for _, precmpUpgrade := range upgrds {
-		if precmpUpgrade.TxAllowListConfig != nil {
-			if err := ensureAdminsHaveBalance(precmpUpgrade.TxAllowListConfig.AllowListAdmins, subnetName); err != nil {
+		allowListCfg, ok := precmpUpgrade.Config.(*txallowlist.Config)
+		if !ok {
+			continue
+		}
+		if allowListCfg != nil {
+			if err := ensureAdminsHaveBalance(allowListCfg.AdminAddresses, subnetName); err != nil {
 				return nil, "", err
 			}
 		}
@@ -427,40 +431,17 @@ func validateUpgradeBytes(file, lockFile []byte, skipPrompting bool) ([]params.P
 }
 
 func getAllTimestamps(upgrades []params.PrecompileUpgrade) ([]int64, error) {
-	var allTimestamps []int64
+	allTimestamps := []int64{}
 
 	if len(upgrades) == 0 {
 		return nil, errNoBlockTimestamp
 	}
 	for _, upgrade := range upgrades {
-		if upgrade.ContractDeployerAllowListConfig != nil {
-			ts, err := validateTimestamp(upgrade.ContractDeployerAllowListConfig.BlockTimestamp)
-			if err != nil {
-				return nil, err
-			}
-			allTimestamps = append(allTimestamps, ts)
+		ts, err := validateTimestamp(upgrade.Timestamp())
+		if err != nil {
+			return nil, err
 		}
-		if upgrade.FeeManagerConfig != nil {
-			ts, err := validateTimestamp(upgrade.FeeManagerConfig.BlockTimestamp)
-			if err != nil {
-				return nil, err
-			}
-			allTimestamps = append(allTimestamps, ts)
-		}
-		if upgrade.ContractNativeMinterConfig != nil {
-			ts, err := validateTimestamp(upgrade.ContractNativeMinterConfig.BlockTimestamp)
-			if err != nil {
-				return nil, err
-			}
-			allTimestamps = append(allTimestamps, ts)
-		}
-		if upgrade.TxAllowListConfig != nil {
-			ts, err := validateTimestamp(upgrade.TxAllowListConfig.BlockTimestamp)
-			if err != nil {
-				return nil, err
-			}
-			allTimestamps = append(allTimestamps, ts)
-		}
+		allTimestamps = append(allTimestamps, ts)
 	}
 	if len(allTimestamps) == 0 {
 		return nil, errNoBlockTimestamp
@@ -512,20 +493,13 @@ func getAllUpgrades(file []byte) ([]params.PrecompileUpgrade, error) {
 	var precompiles params.UpgradeConfig
 
 	if err := json.Unmarshal(file, &precompiles); err != nil {
-		return nil, fmt.Errorf("failed parsing JSON - %s: %w", err.Error(), errInvalidPrecompiles)
+		cause := fmt.Errorf("failed parsing JSON: %w", err)
+		return nil, fmt.Errorf(cause.Error()+" - %w ", errInvalidPrecompiles)
 	}
 
 	if len(precompiles.PrecompileUpgrades) == 0 {
 		return nil, errNoPrecompiles
 	}
 
-	for _, upgrade := range precompiles.PrecompileUpgrades {
-		if upgrade.ContractDeployerAllowListConfig == nil &&
-			upgrade.ContractNativeMinterConfig == nil &&
-			upgrade.FeeManagerConfig == nil &&
-			upgrade.TxAllowListConfig == nil {
-			return nil, errEmptyPrecompile
-		}
-	}
 	return precompiles.PrecompileUpgrades, nil
 }

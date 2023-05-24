@@ -18,7 +18,6 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/coreth/core"
-	"github.com/ava-labs/spacesvm/chain"
 	"github.com/spf13/cobra"
 )
 
@@ -36,13 +35,11 @@ func newImportFromNetworkCmd() *cobra.Command {
 		RunE:         importRunningSubnet,
 		SilenceUsage: true,
 		Args:         cobra.MaximumNArgs(1),
-		Long: `The subnet import public command will import a subnet configuration from a running network.
+		Long: `The subnet import public command imports a Subnet configuration from a running network.
 
-Currently this only supports importing one single chain from a subnet. 
-Therefore, this import asks the blockchain ID from the user.
-The genesis file should be available from the disk for this to work. 
-By default, an imported subnet will not overwrite an existing subnet with the same name. 
-To allow overwrites, provide the --force flag.`,
+The genesis file should be available from the disk for this to work. By default, an imported Subnet
+doesn't overwrite an existing Subnet with the same name. To allow overwrites, provide the --force
+flag.`,
 	}
 
 	cmd.Flags().StringVar(&nodeURL, "node-url", "", "[optional] URL of an already running subnet validator")
@@ -51,7 +48,6 @@ To allow overwrites, provide the --force flag.`,
 	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "import from `testnet` (alias for `fuji`)")
 	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "import from `mainnet`")
 	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "import a subnet-evm")
-	cmd.Flags().BoolVar(&useSpacesVM, "spacesvm", false, "use the SpacesVM as the base template")
 	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
 	cmd.Flags().BoolVarP(
 		&overwriteImport,
@@ -202,7 +198,7 @@ func importRunningSubnet(*cobra.Command, []string) error {
 	if vmType == "" {
 		subnetTypeStr, err := app.Prompt.CaptureList(
 			"What's this VM's type?",
-			[]string{models.SubnetEvm, models.SpacesVM, models.CustomVM},
+			[]string{models.SubnetEvm, models.CustomVM},
 		)
 		if err != nil {
 			return err
@@ -249,12 +245,6 @@ func importRunningSubnet(*cobra.Command, []string) error {
 				return err
 			}
 			sc.VMVersion, err = app.Prompt.CaptureList("Pick the version for this VM", versions)
-		case models.SpacesVM:
-			versions, err = app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SpacesVMRepoName)
-			if err != nil {
-				return err
-			}
-			sc.VMVersion, err = app.Prompt.CaptureList("Pick the version for this VM", versions)
 		case models.CustomVM:
 			return fmt.Errorf("importing custom VMs is not yet implemented, but will be available soon")
 		default:
@@ -268,20 +258,12 @@ func importRunningSubnet(*cobra.Command, []string) error {
 			return fmt.Errorf("failed getting RPCVersion for VM type %s with version %s", vmType, sc.VMVersion)
 		}
 	}
-
-	switch vmType {
-	case models.SubnetEvm:
+	if vmType == models.SubnetEvm {
 		var genesis core.Genesis
 		if err := json.Unmarshal(genBytes, &genesis); err != nil {
 			return err
 		}
 		sc.ChainID = genesis.Config.ChainID.String()
-	case models.SpacesVM:
-		// for spacesvm just make sure it's valid
-		var genesis chain.Genesis
-		if err := json.Unmarshal(genBytes, &genesis); err != nil {
-			return err
-		}
 	}
 
 	if err := app.CreateSidecar(sc); err != nil {

@@ -46,14 +46,6 @@ func TestSubnetEVMRenameMigration(t *testing.T) {
 			expectedVM: "Subnet-EVM",
 		},
 		{
-			name: "Ignore SpacesVM",
-			sc: &models.Sidecar{
-				Name: subnetName,
-				VM:   "SpacesVM",
-			},
-			expectedVM: "SpacesVM",
-		},
-		{
 			name: "Ignore unknown",
 			sc: &models.Sidecar{
 				Name: subnetName,

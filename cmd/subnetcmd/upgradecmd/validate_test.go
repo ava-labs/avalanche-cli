@@ -88,8 +88,8 @@ func TestEarliestTimestamp(t *testing.T) {
 {"contractNativeMinterConfig":{"adminAddresses":["0xb794F5eA0ba39494cE839613fffBA74279579268"],"blockTimestamp":%d,"initialFeeConfig":{}}}
 ]}`,
 					time.Now().Add(10*time.Millisecond).Unix(),
+					time.Now().Add(15*time.Millisecond).Unix(),
 					time.Now().Add(20*time.Millisecond).Unix(),
-					time.Now().Add(30*time.Millisecond).Unix(),
 				)),
 			earliest:    targetEarliest,
 			expectedErr: errNoUpcomingUpgrades,

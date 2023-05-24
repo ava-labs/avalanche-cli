@@ -60,7 +60,10 @@ var (
 					ChainId: testBlockChainID2,
 				},
 			},
-			Subnets: []string{testSubnetID1, testSubnetID2},
+			Subnets: map[string]*rpcpb.SubnetInfo{
+				testSubnetID1: {},
+				testSubnetID2: {},
+			},
 		},
 	}
 )

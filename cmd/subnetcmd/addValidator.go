@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
@@ -106,7 +107,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	switch network {
 	case models.Fuji:
 		if !useLedger && keyName == "" {
-			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, app.GetKeyDir())
+			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "pay transaction fees", app.GetKeyDir())
 			if err != nil {
 				return err
 			}
@@ -140,7 +141,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return errNoSubnetID
 	}
 
-	controlKeys, threshold, err := subnet.GetOwners(network, subnetID)
+	controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
 	}
@@ -175,8 +176,8 @@ func addValidator(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-	} else if weight < constants.MinStakeWeight || weight > constants.MaxStakeWeight {
-		return fmt.Errorf("illegal weight, must be between 1 and 100 inclusive: %d", weight)
+	} else if weight < constants.MinStakeWeight {
+		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", constants.MinStakeWeight, weight)
 	}
 
 	start, duration, err = getTimeParameters(network, nodeID)
@@ -221,7 +222,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 
 func promptDuration(start time.Time) (time.Duration, error) {
 	for {
-		txt := "How long should this validator be validating? Enter a duration, e.g. 8760h"
+		txt := "How long should this validator be validating? Enter a duration, e.g. 8760h. Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\""
 		d, err := app.Prompt.CaptureDuration(txt)
 		if err != nil {
 			return 0, err
