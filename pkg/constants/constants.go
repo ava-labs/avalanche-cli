@@ -134,7 +134,7 @@ const (
 
 	PluginDir = "plugins"
 
-	Network = "network"
+	Network        = "network"
 	SkipUpdateFlag = "skip-update-check"
 	LastFileName   = ".last_actions.json"
 
