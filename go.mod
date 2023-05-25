@@ -5,8 +5,8 @@ go 1.19
 require (
 	github.com/ava-labs/apm v0.0.4
 	github.com/ava-labs/avalanche-network-runner v1.5.0
-	github.com/ava-labs/avalanchego v1.10.1
-	github.com/ava-labs/coreth v0.12.1
+	github.com/ava-labs/avalanchego v1.10.2
+	github.com/ava-labs/coreth v0.12.2-rc.0
 	github.com/ava-labs/subnet-evm v0.5.1
 	github.com/docker/docker v24.0.1+incompatible
 	github.com/ethereum/go-ethereum v1.10.26
@@ -140,8 +140,8 @@ require (
 	golang.org/x/crypto v0.6.0 // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.6.0 // indirect
-	golang.org/x/term v0.6.0 // indirect
+	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/term v0.7.0 // indirect
 	golang.org/x/time v0.1.0 // indirect
 	gonum.org/v1/gonum v0.11.0 // indirect
 	google.golang.org/genproto v0.0.0-20230306155012-7f2fa6fef1f4 // indirect
