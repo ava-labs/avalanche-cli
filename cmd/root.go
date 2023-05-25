@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
+
 	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/keycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
@@ -22,6 +24,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
@@ -51,6 +54,7 @@ To get started, look at the documentation for the subcommands or jump right
 in with avalanche subnet create myNewSubnet.`,
 		PersistentPreRunE: createApp,
 		Version:           Version,
+		PersistentPostRun: handleTracking,
 	}
 
 	// Disable printing the completion command
@@ -70,6 +74,9 @@ in with avalanche subnet create myNewSubnet.`,
 
 	// add transaction command
 	rootCmd.AddCommand(transactioncmd.NewCmd(app))
+
+	// add config command
+	rootCmd.AddCommand(configcmd.NewCmd(app))
 
 	// add update command
 	rootCmd.AddCommand(updatecmd.NewCmd(app, Version))
@@ -107,6 +114,12 @@ func createApp(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	if os.Getenv("RUN_E2E") == "" && !app.ConfigFileExists() {
+		err = utils.HandleUserMetricsPreference(app)
+		if err != nil {
+			return err
+		}
+	}
 	if err := checkForUpdates(cmd, app); err != nil {
 		return err
 	}
@@ -178,6 +191,10 @@ func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
 	}
 	ux.Logger.PrintToUser("The new version will be used on next command execution")
 	return nil
+}
+
+func handleTracking(cmd *cobra.Command, _ []string) {
+	utils.HandleTracking(cmd, app, nil)
 }
 
 func setupEnv() (string, error) {

@@ -60,6 +60,11 @@ const (
 	KeyDir     = "key"
 	KeySuffix  = ".pk"
 	YAMLSuffix = ".yml"
+	ConfigDir  = "config"
+
+	Enable = "enable"
+
+	Disable = "disable"
 
 	TimeParseLayout    = "2006-01-02 15:04:05"
 	MinStakeDuration   = 24 * 14 * time.Hour
@@ -102,6 +107,7 @@ const (
 	VMDir          = "vms"
 	ChainConfigDir = "chains"
 
+	SubnetType                 = "subnet type"
 	SubnetConfigFileName       = "subnet.json"
 	ChainConfigFileName        = "chain.json"
 	PerNodeChainConfigFileName = "per-node-chain.json"
@@ -128,6 +134,7 @@ const (
 
 	PluginDir = "plugins"
 
+	Network        = "network"
 	SkipUpdateFlag = "skip-update-check"
 	LastFileName   = ".last_actions.json"
 

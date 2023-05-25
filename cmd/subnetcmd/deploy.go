@@ -20,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
+	utilspkg "github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/utils"
@@ -74,9 +75,10 @@ allowed. If you'd like to redeploy a Subnet locally for testing, you must first 
 avalanche network clean to reset all deployed chain state. Subsequent local deploys
 redeploy the chain with fresh state. You can deploy the same Subnet to multiple networks,
 so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
-		SilenceUsage: true,
-		RunE:         deploySubnet,
-		Args:         cobra.ExactArgs(1),
+		SilenceUsage:      true,
+		RunE:              deploySubnet,
+		PersistentPostRun: handlePostRun,
+		Args:              cobra.ExactArgs(1),
 	}
 	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
 	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "deploy to testnet (alias to `fuji`)")
@@ -129,7 +131,7 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 }
 
 // deploySubnet is the cobra command run for deploying subnets
-func deploySubnet(_ *cobra.Command, args []string) error {
+func deploySubnet(cmd *cobra.Command, args []string) error {
 	chains, err := validateSubnetNameAndGetChains(args)
 	if err != nil {
 		return err
@@ -249,6 +251,9 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 			}
 			return err
 		}
+		flags := make(map[string]string)
+		flags[constants.Network] = network.String()
+		utilspkg.HandleTracking(cmd, app, flags)
 		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
 
 	case models.Fuji:
@@ -399,6 +404,10 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
+
+	flags := make(map[string]string)
+	flags[constants.Network] = network.String()
+	utilspkg.HandleTracking(cmd, app, flags)
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?

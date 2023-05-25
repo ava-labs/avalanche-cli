@@ -104,6 +104,10 @@ func (app *Avalanche) GetSidecarPath(subnetName string) string {
 	return filepath.Join(app.GetSubnetDir(), subnetName, constants.SidecarFileName)
 }
 
+func (app *Avalanche) GetConfigPath() string {
+	return filepath.Join(app.baseDir, constants.ConfigDir)
+}
+
 func (app *Avalanche) GetElasticSubnetConfigPath(subnetName string) string {
 	return filepath.Join(app.GetSubnetDir(), subnetName, constants.ElasticSubnetConfigFileName)
 }
@@ -424,6 +428,34 @@ func (*Avalanche) writeFile(path string, bytes []byte) error {
 	}
 
 	return os.WriteFile(path, bytes, WriteReadReadPerms)
+}
+
+func (app *Avalanche) LoadConfig() (models.Config, error) {
+	configPath := app.GetConfigPath()
+	jsonBytes, err := os.ReadFile(configPath)
+	if err != nil {
+		return models.Config{}, err
+	}
+
+	var config models.Config
+	err = json.Unmarshal(jsonBytes, &config)
+	return config, err
+}
+
+func (app *Avalanche) ConfigFileExists() bool {
+	configPath := app.GetConfigPath()
+	_, err := os.ReadFile(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
+	}
+	return true
+}
+
+func (app *Avalanche) WriteConfigFile(bytes []byte) error {
+	configPath := app.GetConfigPath()
+	return app.writeFile(configPath, bytes)
 }
 
 func (app *Avalanche) CreateElasticSubnetConfig(subnetName string, es *models.ElasticSubnetConfig) error {
