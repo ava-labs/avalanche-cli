@@ -24,7 +24,7 @@ import (
 
 // mixpanelToken value is set at build and install scripts using ldflags
 var telemetryToken = ""
-var telemetryInstance = "https://data-posthog.avax-test.network"
+var telemetryInstance = "https://app.posthog.com"
 
 func GetCLIVersion() string {
 	wdPath, err := os.Getwd()
