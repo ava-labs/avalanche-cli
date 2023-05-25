@@ -40,9 +40,14 @@ func GetCLIVersion() string {
 }
 
 func PrintMetricsOptOutPrompt() {
-	ux.Logger.PrintToUser("Ava Labs aggregates collected data to identify patterns of usage to identify common " +
-		"issues and improve the experience of Avalanche-CLI. Avalanche-CLI does not collect any private or " +
-		"personal data.")
+	ux.Logger.PrintToUser(
+		"Avalanche-CLI (the \"software\") may collect statistical data on how the software is used on an anonymous " +
+			"basis for purposes of product improvement.  This data will not (i) include any passwords, scripts, or data " +
+			"files, (ii) be associated with any particular user or entity, or (iii) include any personally identifiable " +
+			"information or be used to identify individuals or entities using the software.  You can disable such data " +
+			"collection with `avalanche config metrics disable` command, which will result in no data being collected; " +
+			"by using the software without so disabling such data collection you expressly consent to the collection of " +
+			"such data.  You can also read our privacy statement <https://www.avalabs.org/privacy-policy> to learn more. \n")
 	ux.Logger.PrintToUser("You can disable data collection with `avalanche config metrics disable` command. " +
 		"You can also read our privacy statement <https://www.avalabs.org/privacy-policy> to learn more.\n")
 }
