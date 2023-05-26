@@ -11,6 +11,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 
@@ -23,8 +24,10 @@ import (
 )
 
 // mixpanelToken value is set at build and install scripts using ldflags
-var telemetryToken = ""
-var telemetryInstance = "https://app.posthog.com"
+var (
+	telemetryToken    = ""
+	telemetryInstance = "https://app.posthog.com"
+)
 
 func GetCLIVersion() string {
 	wdPath, err := os.Getwd()
@@ -85,8 +88,18 @@ func userIsOptedIn(app *application.Avalanche) bool {
 
 func HandleTracking(cmd *cobra.Command, app *application.Avalanche, flags map[string]string) {
 	if userIsOptedIn(app) {
-		TrackMetrics(cmd, flags)
+		if !cmd.HasSubCommands() && checkCommandIsNotCompletion(cmd) {
+			TrackMetrics(cmd, flags)
+		}
 	}
+}
+
+func checkCommandIsNotCompletion(cmd *cobra.Command) bool {
+	result := strings.Fields(cmd.CommandPath())
+	if len(result) >= 2 && result[1] == "completion" {
+		return false
+	}
+	return true
 }
 
 func TrackMetrics(command *cobra.Command, flags map[string]string) {
