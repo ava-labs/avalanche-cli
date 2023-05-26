@@ -132,6 +132,11 @@ func signTx(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	subnetAuthKeys, remainingSubnetAuthKeys, err = txutils.GetRemainingSigners(tx, controlKeys)
+	if err != nil {
+		return err
+	}
+
 	if err := subnetcmd.SaveNotFullySignedTx(
 		"Tx",
 		tx,
