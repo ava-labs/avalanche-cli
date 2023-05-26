@@ -98,12 +98,13 @@ func signTx(_ *cobra.Command, args []string) error {
 		return errNoSubnetID
 	}
 
-	subnetAuthKeys, err := txutils.GetAuthSigners(tx, network, subnetID)
+	controlKeys, _, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
 	}
 
-	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, network, subnetID)
+	// get the remaining tx signers so as to check that the wallet does contain an expected signer
+	subnetAuthKeys, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
 	if err != nil {
 		return err
 	}
@@ -133,13 +134,18 @@ func signTx(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	// update the remaining tx signers after the signature has been done
+	_, remainingSubnetAuthKeys, err = txutils.GetRemainingSigners(tx, controlKeys)
+	if err != nil {
+		return err
+	}
+
 	if err := subnetcmd.SaveNotFullySignedTx(
 		"Tx",
 		tx,
-		network,
 		subnetName,
-		subnetID,
 		subnetAuthKeys,
+		remainingSubnetAuthKeys,
 		inputTxPath,
 		true,
 	); err != nil {

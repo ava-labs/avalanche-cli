@@ -350,7 +350,7 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		}
 	}
 	ux.Logger.PrintToUser("Your subnet auth keys for issue transform subnet tx: %s", subnetAuthKeys)
-	isFullySigned, txID, tx, err := deployer.TransformSubnetTx(subnetAuthKeys, elasticSubnetConfig, subnetID, assetID)
+	isFullySigned, txID, tx, remainingSubnetAuthKeys, err := deployer.TransformSubnetTx(controlKeys, subnetAuthKeys, elasticSubnetConfig, subnetID, assetID)
 	if err != nil {
 		return err
 	}
@@ -358,10 +358,9 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 		if err := SaveNotFullySignedTx(
 			"Transform Subnet",
 			tx,
-			network,
 			subnetName,
-			subnetID,
 			subnetAuthKeys,
+			remainingSubnetAuthKeys,
 			outputTxPath,
 			false,
 		); err != nil {

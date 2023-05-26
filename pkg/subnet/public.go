@@ -55,20 +55,21 @@ func NewPublicDeployer(app *application.Avalanche, usingLedger bool, kc keychain
 //   - if partially signed, returns the tx so that it can later on be signed by the rest of the subnet auth keys
 //   - if fully signed, issues it
 func (d *PublicDeployer) AddValidator(
+	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
 	nodeID ids.NodeID,
 	weight uint64,
 	startTime time.Time,
 	duration time.Duration,
-) (bool, *txs.Tx, error) {
+) (bool, *txs.Tx, []string, error) {
 	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
-		return false, nil, err
+		return false, nil, nil, err
 	}
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
-		return false, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
+		return false, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 	validator := &txs.SubnetValidator{
 		Validator: txs.Validator{
@@ -85,26 +86,26 @@ func (d *PublicDeployer) AddValidator(
 
 	tx, err := d.createAddSubnetValidatorTx(subnetAuthKeys, validator, wallet)
 	if err != nil {
-		return false, nil, err
+		return false, nil, nil, err
 	}
 
-	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, d.network, subnetID)
+	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
 	if err != nil {
-		return false, nil, err
+		return false, nil, nil, err
 	}
 	isFullySigned := len(remainingSubnetAuthKeys) == 0
 
 	if isFullySigned {
 		id, err := d.Commit(tx)
 		if err != nil {
-			return false, nil, err
+			return false, nil, nil, err
 		}
 		ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", id)
-		return true, nil, nil
+		return true, nil, nil, nil
 	}
 
 	ux.Logger.PrintToUser("Partial tx created")
-	return false, tx, nil
+	return false, tx, remainingSubnetAuthKeys, nil
 }
 
 func (d *PublicDeployer) CreateAssetTx(
@@ -189,18 +190,19 @@ func (d *PublicDeployer) ImportFromXChain(
 }
 
 func (d *PublicDeployer) TransformSubnetTx(
+	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	elasticSubnetConfig models.ElasticSubnetConfig,
 	subnetID ids.ID,
 	subnetAssetID ids.ID,
-) (bool, ids.ID, *txs.Tx, error) {
+) (bool, ids.ID, *txs.Tx, []string, error) {
 	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
-		return false, ids.Empty, nil, err
+		return false, ids.Empty, nil, nil, err
 	}
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
-		return false, ids.Empty, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
+		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 
 	if d.usingLedger {
@@ -209,25 +211,25 @@ func (d *PublicDeployer) TransformSubnetTx(
 
 	tx, err := d.createTransformSubnetTX(subnetAuthKeys, elasticSubnetConfig, wallet, subnetAssetID)
 	if err != nil {
-		return false, ids.Empty, nil, err
+		return false, ids.Empty, nil, nil, err
 	}
-	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, d.network, subnetID)
+	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
 	if err != nil {
-		return false, ids.Empty, nil, err
+		return false, ids.Empty, nil, nil, err
 	}
 	isFullySigned := len(remainingSubnetAuthKeys) == 0
 
 	if isFullySigned {
 		txID, err := d.Commit(tx)
 		if err != nil {
-			return false, ids.Empty, nil, err
+			return false, ids.Empty, nil, nil, err
 		}
 		ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID)
-		return true, txID, nil, nil
+		return true, txID, nil, nil, nil
 	}
 
 	ux.Logger.PrintToUser("Partial tx created")
-	return false, ids.Empty, tx, nil
+	return false, ids.Empty, tx, remainingSubnetAuthKeys, nil
 }
 
 // removes a subnet validator from the given [subnet]
@@ -239,17 +241,18 @@ func (d *PublicDeployer) TransformSubnetTx(
 //   - if partially signed, returns the tx so that it can later on be signed by the rest of the subnet auth keys
 //   - if fully signed, issues it
 func (d *PublicDeployer) RemoveValidator(
+	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
 	nodeID ids.NodeID,
-) (bool, *txs.Tx, error) {
+) (bool, *txs.Tx, []string, error) {
 	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
-		return false, nil, err
+		return false, nil, nil, err
 	}
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
-		return false, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
+		return false, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 
 	if d.usingLedger {
@@ -258,26 +261,26 @@ func (d *PublicDeployer) RemoveValidator(
 
 	tx, err := d.createRemoveValidatorTX(subnetAuthKeys, nodeID, subnetID, wallet)
 	if err != nil {
-		return false, nil, err
+		return false, nil, nil, err
 	}
 
-	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, d.network, subnetID)
+	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
 	if err != nil {
-		return false, nil, err
+		return false, nil, nil, err
 	}
 	isFullySigned := len(remainingSubnetAuthKeys) == 0
 
 	if isFullySigned {
 		id, err := d.Commit(tx)
 		if err != nil {
-			return false, nil, err
+			return false, nil, nil, err
 		}
 		ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", id)
-		return true, nil, nil
+		return true, nil, nil, nil
 	}
 
 	ux.Logger.PrintToUser("Partial tx created")
-	return false, tx, nil
+	return false, tx, remainingSubnetAuthKeys, nil
 }
 
 // - creates a subnet for [chain] using the given [controlKeys] and [threshold] as subnet authentication parameters
@@ -305,26 +308,27 @@ func (d *PublicDeployer) DeploySubnet(
 //   - if partially signed, returns the tx so that it can later on be signed by the rest of the subnet auth keys
 //   - if fully signed, issues it
 func (d *PublicDeployer) DeployBlockchain(
+	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
 	chain string,
 	genesis []byte,
-) (bool, ids.ID, *txs.Tx, error) {
+) (bool, ids.ID, *txs.Tx, []string, error) {
 	ux.Logger.PrintToUser("Now creating blockchain...")
 
 	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
-		return false, ids.Empty, nil, err
+		return false, ids.Empty, nil, nil, err
 	}
 
 	vmID, err := utils.VMID(chain)
 	if err != nil {
-		return false, ids.Empty, nil, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
+		return false, ids.Empty, nil, nil, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
 
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
-		return false, ids.Empty, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
+		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 
 	if d.usingLedger {
@@ -333,12 +337,12 @@ func (d *PublicDeployer) DeployBlockchain(
 
 	tx, err := d.createBlockchainTx(subnetAuthKeys, chain, vmID, subnetID, genesis, wallet)
 	if err != nil {
-		return false, ids.Empty, nil, err
+		return false, ids.Empty, nil, nil, err
 	}
 
-	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, d.network, subnetID)
+	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
 	if err != nil {
-		return false, ids.Empty, nil, err
+		return false, ids.Empty, nil, nil, err
 	}
 	isFullySigned := len(remainingSubnetAuthKeys) == 0
 
@@ -346,11 +350,11 @@ func (d *PublicDeployer) DeployBlockchain(
 	if isFullySigned {
 		id, err = d.Commit(tx)
 		if err != nil {
-			return false, ids.Empty, nil, err
+			return false, ids.Empty, nil, nil, err
 		}
 	}
 
-	return isFullySigned, id, tx, nil
+	return isFullySigned, id, tx, remainingSubnetAuthKeys, nil
 }
 
 func (d *PublicDeployer) Commit(

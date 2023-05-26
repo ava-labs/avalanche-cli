@@ -375,9 +375,14 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		// get the control keys in the same order as the tx
+		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
+		if err != nil {
+			return err
+		}
 	}
 
-	isFullySigned, blockchainID, tx, err := deployer.DeployBlockchain(subnetAuthKeys, subnetID, chain, chainGenesis)
+	isFullySigned, blockchainID, tx, remainingSubnetAuthKeys, err := deployer.DeployBlockchain(controlKeys, subnetAuthKeys, subnetID, chain, chainGenesis)
 	if err != nil {
 		ux.Logger.PrintToUser(logging.Red.Wrap(
 			fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
@@ -394,10 +399,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if err := SaveNotFullySignedTx(
 			"Blockchain Creation",
 			tx,
-			network,
 			chain,
-			subnetID,
 			subnetAuthKeys,
+			remainingSubnetAuthKeys,
 			outputTxPath,
 			false,
 		); err != nil {
@@ -611,17 +615,12 @@ func validateSubnetNameAndGetChains(args []string) ([]string, error) {
 func SaveNotFullySignedTx(
 	txName string,
 	tx *txs.Tx,
-	network models.Network,
 	chain string,
-	subnetID ids.ID,
 	subnetAuthKeys []string,
+	remainingSubnetAuthKeys []string,
 	outputTxPath string,
 	forceOverwrite bool,
 ) error {
-	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, network, subnetID)
-	if err != nil {
-		return err
-	}
 	signedCount := len(subnetAuthKeys) - len(remainingSubnetAuthKeys)
 	ux.Logger.PrintToUser("")
 	if signedCount == len(subnetAuthKeys) {
