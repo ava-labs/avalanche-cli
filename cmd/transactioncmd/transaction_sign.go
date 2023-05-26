@@ -102,7 +102,9 @@ func signTx(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	subnetAuthKeys, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
+
+	// get the remaining tx signers so as to check that the wallet does contain an expected signer
+	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
 	if err != nil {
 		return err
 	}
@@ -132,6 +134,7 @@ func signTx(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	// update the remaining tx signers after the signature has been done
 	subnetAuthKeys, remainingSubnetAuthKeys, err = txutils.GetRemainingSigners(tx, controlKeys)
 	if err != nil {
 		return err
