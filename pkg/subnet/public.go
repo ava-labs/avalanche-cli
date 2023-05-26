@@ -190,18 +190,19 @@ func (d *PublicDeployer) ImportFromXChain(
 }
 
 func (d *PublicDeployer) TransformSubnetTx(
+	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	elasticSubnetConfig models.ElasticSubnetConfig,
 	subnetID ids.ID,
 	subnetAssetID ids.ID,
-) (bool, ids.ID, *txs.Tx, error) {
+) (bool, ids.ID, *txs.Tx, []string, error) {
 	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
-		return false, ids.Empty, nil, err
+		return false, ids.Empty, nil, nil, err
 	}
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
-		return false, ids.Empty, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
+		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 
 	if d.usingLedger {
@@ -210,25 +211,25 @@ func (d *PublicDeployer) TransformSubnetTx(
 
 	tx, err := d.createTransformSubnetTX(subnetAuthKeys, elasticSubnetConfig, wallet, subnetAssetID)
 	if err != nil {
-		return false, ids.Empty, nil, err
+		return false, ids.Empty, nil, nil, err
 	}
-	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, d.network, subnetID)
+	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
 	if err != nil {
-		return false, ids.Empty, nil, err
+		return false, ids.Empty, nil, nil, err
 	}
 	isFullySigned := len(remainingSubnetAuthKeys) == 0
 
 	if isFullySigned {
 		txID, err := d.Commit(tx)
 		if err != nil {
-			return false, ids.Empty, nil, err
+			return false, ids.Empty, nil, nil, err
 		}
 		ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID)
-		return true, txID, nil, nil
+		return true, txID, nil, nil, nil
 	}
 
 	ux.Logger.PrintToUser("Partial tx created")
-	return false, ids.Empty, tx, nil
+	return false, ids.Empty, tx, remainingSubnetAuthKeys, nil
 }
 
 // removes a subnet validator from the given [subnet]
