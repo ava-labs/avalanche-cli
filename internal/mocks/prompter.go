@@ -394,6 +394,30 @@ func (_m *Prompter) CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 	return r0, r1
 }
 
+// CapturePositiveInt provides a mock function with given fields: promptStr, comparators
+func (_m *Prompter) CapturePositiveInt(promptStr string, comparators []prompts.Comparator) (int, error) {
+	ret := _m.Called(promptStr, comparators)
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, []prompts.Comparator) (int, error)); ok {
+		return rf(promptStr, comparators)
+	}
+	if rf, ok := ret.Get(0).(func(string, []prompts.Comparator) int); ok {
+		r0 = rf(promptStr, comparators)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(string, []prompts.Comparator) error); ok {
+		r1 = rf(promptStr, comparators)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // CaptureString provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureString(promptStr string) (string, error) {
 	ret := _m.Called(promptStr)

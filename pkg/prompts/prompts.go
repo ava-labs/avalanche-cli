@@ -81,6 +81,7 @@ type Prompter interface {
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
 	CaptureID(promptStr string) (ids.ID, error)
 	CaptureWeight(promptStr string) (uint64, error)
+	CapturePositiveInt(promptStr string, comparators []Comparator) (int, error)
 	CaptureUint64(promptStr string) (uint64, error)
 	CaptureUint64Compare(promptStr string, comparators []Comparator) (uint64, error)
 	CapturePChainAddress(promptStr string, network models.Network) (string, error)
@@ -248,6 +249,33 @@ func (*realPrompter) CaptureUint64(promptStr string) (uint64, error) {
 		return 0, err
 	}
 	return strconv.ParseUint(amountStr, 0, 64)
+}
+
+func (*realPrompter) CapturePositiveInt(promptStr string, comparators []Comparator) (int, error) {
+	prompt := promptui.Prompt{
+		Label: promptStr,
+		Validate: func(input string) error {
+			val, err := strconv.Atoi(input)
+			if err != nil {
+				return err
+			}
+			if val < 0 {
+				return errors.New("input is less than 0")
+			}
+			for _, comparator := range comparators {
+				if err := comparator.Validate(uint64(val)); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}
+
+	amountStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+	return strconv.Atoi(amountStr)
 }
 
 func (*realPrompter) CaptureUint64Compare(promptStr string, comparators []Comparator) (uint64, error) {
@@ -599,7 +627,7 @@ func GetFujiKeyOrLedger(prompt Prompter, goal string, keyDir string) (bool, stri
 	keyName, err := captureKeyName(prompt, goal, keyDir)
 	if err != nil {
 		if errors.Is(err, errNoKeys) {
-			ux.Logger.PrintToUser("No private keys have been found. Deployment to fuji without a private key " +
+			ux.Logger.PrintToUser("No private keys have been found. Signing transactions on Fuji without a private key " +
 				"or ledger is not possible. Create a new one with `avalanche key create`, or use a ledger device.")
 		}
 		return false, "", err

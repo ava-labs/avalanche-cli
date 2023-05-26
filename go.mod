@@ -8,7 +8,7 @@ require (
 	github.com/ava-labs/avalanchego v1.10.1
 	github.com/ava-labs/coreth v0.12.1
 	github.com/ava-labs/subnet-evm v0.5.1
-	github.com/docker/docker v24.0.0+incompatible
+	github.com/docker/docker v24.0.1+incompatible
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/go-git/go-git/v5 v5.6.1
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
@@ -16,6 +16,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo/v2 v2.8.1
 	github.com/onsi/gomega v1.27.1
+	github.com/posthog/posthog-go v0.0.0-20221221115252-24dfed35d71a
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/afero v1.9.5
 	github.com/spf13/cobra v1.7.0
@@ -124,6 +125,7 @@ require (
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	github.com/tyler-smith/go-bip39 v1.0.2 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
+	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	github.com/zondax/hid v0.9.1 // indirect
 	github.com/zondax/ledger-go v0.14.1 // indirect
