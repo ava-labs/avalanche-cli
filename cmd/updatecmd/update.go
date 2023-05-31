@@ -44,10 +44,10 @@ func NewCmd(injectedApp *application.Avalanche, version string) *cobra.Command {
 
 func runUpdate(cmd *cobra.Command, _ []string) error {
 	isUserCalled := true
-	return Update(cmd, isUserCalled)
+	return Update(cmd, isUserCalled, "")
 }
 
-func Update(cmd *cobra.Command, isUserCalled bool) error {
+func Update(cmd *cobra.Command, isUserCalled bool, version string) error {
 	// first check if there is a new version exists
 	url := binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.CliRepoName)
 	latest, err := app.Downloader.GetLatestReleaseVersion(url)
@@ -59,14 +59,18 @@ func Update(cmd *cobra.Command, isUserCalled bool) error {
 	// the current version info should be in this variable
 	this := cmd.Version
 	if this == "" {
-		// try loading from file system
-		verFile := "VERSION"
-		bver, err := os.ReadFile(verFile)
-		if err != nil {
-			app.Log.Warn("failed to read version from file on disk", zap.Error(err))
-			return ErrNoVersion
+		if version != "" {
+			this = version
+		} else {
+			// try loading from file system
+			verFile := "VERSION"
+			bver, err := os.ReadFile(verFile)
+			if err != nil {
+				app.Log.Warn("failed to read version from file on disk", zap.Error(err))
+				return ErrNoVersion
+			}
+			this = "v" + string(bver)
 		}
-		this = string(bver)
 	}
 	thisVFmt := "v" + this
 
