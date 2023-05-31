@@ -68,13 +68,12 @@ func Update(cmd *cobra.Command, isUserCalled bool) error {
 		}
 		this = string(bver)
 	}
-	thisVFmt := "v" + string(this)
+	thisVFmt := "v" + this
 
 	// check this version needs update
 	// we skip if compare returns -1 (latest < this)
 	// or 0 (latest == this)
-	latestV := "v" + string(latest)
-	if semver.Compare(latestV, thisVFmt) < 1 {
+	if semver.Compare(latest, thisVFmt) < 1 {
 		txt := "No new version found upstream; skipping update"
 		app.Log.Debug(txt)
 		if isUserCalled {
