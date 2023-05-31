@@ -180,9 +180,6 @@ func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
 			if errors.Is(err, updatecmd.ErrUserAbortedInstallation) {
 				return nil
 			}
-			if errors.Is(err, updatecmd.ErrNotInstalled) {
-				return nil
-			}
 			if err == updatecmd.ErrNoVersion {
 				ux.Logger.PrintToUser(
 					"Attempted to check if a new version is available, but couldn't find the currently running version information")

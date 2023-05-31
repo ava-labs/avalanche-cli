@@ -22,10 +22,8 @@ import (
 var (
 	ErrUserAbortedInstallation = errors.New("user canceled installation")
 	ErrNoVersion               = errors.New("failed to find current version - did you install following official instructions?")
-	ErrNotInstalled            = errors.New("no installation required")
-
-	app *application.Avalanche
-	yes bool
+	app                        *application.Avalanche
+	yes                        bool
 )
 
 func NewCmd(injectedApp *application.Avalanche, version string) *cobra.Command {
