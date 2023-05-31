@@ -89,7 +89,6 @@ func userIsOptedIn(app *application.Avalanche) bool {
 func HandleTracking(cmd *cobra.Command, app *application.Avalanche, flags map[string]string) {
 	if userIsOptedIn(app) {
 		if !cmd.HasSubCommands() && checkCommandIsNotCompletion(cmd) {
-			fmt.Printf("handletracking %s", flags)
 			TrackMetrics(cmd, flags)
 		}
 	}
