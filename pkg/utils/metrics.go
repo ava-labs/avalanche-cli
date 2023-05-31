@@ -23,7 +23,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// mixpanelToken value is set at build and install scripts using ldflags
+// telemetryToken value is set at build and install scripts using ldflags
 var (
 	telemetryToken    = ""
 	telemetryInstance = "https://app.posthog.com"
@@ -89,6 +89,7 @@ func userIsOptedIn(app *application.Avalanche) bool {
 func HandleTracking(cmd *cobra.Command, app *application.Avalanche, flags map[string]string) {
 	if userIsOptedIn(app) {
 		if !cmd.HasSubCommands() && checkCommandIsNotCompletion(cmd) {
+			fmt.Printf("handletracking %s", flags)
 			TrackMetrics(cmd, flags)
 		}
 	}

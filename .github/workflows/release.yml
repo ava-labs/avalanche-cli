@@ -85,4 +85,4 @@ jobs:
         env:
           #https://docs.github.com/en/actions/security-guides/automatic-token-authentication#about-the-github_token-secret
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TELEMETRY_TOKEN: ${{ secrets.POSTHOG_TEST_TOKEN }}
+          TELEMETRY_TOKEN: ${{ secrets.POSTHOG_PROD_TOKEN }}
