@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
@@ -173,23 +174,25 @@ func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
 
 	// at this point we want to run the check
 	isUserCalled := false
-	if err := updatecmd.Update(cmd, isUserCalled); err != nil {
-		if errors.Is(err, updatecmd.ErrUserAbortedInstallation) {
-			return nil
+	commandList := strings.Fields(cmd.CommandPath())
+	if !(len(commandList) > 1 && commandList[1] == "update") {
+		if err := updatecmd.Update(cmd, isUserCalled); err != nil {
+			if errors.Is(err, updatecmd.ErrUserAbortedInstallation) {
+				return nil
+			}
+			if errors.Is(err, updatecmd.ErrNotInstalled) {
+				return nil
+			}
+			if err == updatecmd.ErrNoVersion {
+				ux.Logger.PrintToUser(
+					"Attempted to check if a new version is available, but couldn't find the currently running version information")
+				ux.Logger.PrintToUser(
+					"Make sure to follow official instructions, or automatic updates won't be available for you")
+				return nil
+			}
+			return err
 		}
-		if errors.Is(err, updatecmd.ErrNotInstalled) {
-			return nil
-		}
-		if err == updatecmd.ErrNoVersion {
-			ux.Logger.PrintToUser(
-				"Attempted to check if a new version is available, but couldn't find the currently running version information")
-			ux.Logger.PrintToUser(
-				"Make sure to follow official instructions, or automatic updates won't be available for you")
-			return nil
-		}
-		return err
 	}
-	ux.Logger.PrintToUser("The new version will be used on next command execution")
 	return nil
 }
 

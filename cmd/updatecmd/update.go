@@ -68,24 +68,26 @@ func Update(cmd *cobra.Command, isUserCalled bool) error {
 			app.Log.Warn("failed to read version from file on disk", zap.Error(err))
 			return ErrNoVersion
 		}
-		this = "v" + string(bver)
+		this = string(bver)
 	}
+	thisVFmt := "v" + string(this)
 
 	// check this version needs update
 	// we skip if compare returns -1 (latest < this)
 	// or 0 (latest == this)
-	if semver.Compare(latest, this) < 1 {
+	latestV := "v" + string(latest)
+	if semver.Compare(latestV, thisVFmt) < 1 {
 		txt := "No new version found upstream; skipping update"
 		app.Log.Debug(txt)
 		if isUserCalled {
 			ux.Logger.PrintToUser(txt)
 		}
-		return ErrNotInstalled
+		return nil
 	}
 
 	// flag not provided
 	if !yes {
-		ux.Logger.PrintToUser("We found a new version of Avalanche-CLI %s upstream. You are running %s", latest, this)
+		ux.Logger.PrintToUser("We found a new version of Avalanche-CLI %s upstream. You are running %s", latest, thisVFmt)
 		y, err := app.Prompt.CaptureYesNo("Do you want to update?")
 		if err != nil {
 			return nil
@@ -159,5 +161,6 @@ func Update(cmd *cobra.Command, isUserCalled bool) error {
 	app.Log.Debug(outbuf.String())
 	app.Log.Debug(errbuf.String())
 	ux.Logger.PrintToUser("Installation successful. Please run the shell completion update manually after this process terminates.")
+	ux.Logger.PrintToUser("The new version will be used on next command execution")
 	return nil
 }
