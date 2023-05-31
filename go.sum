@@ -72,8 +72,8 @@ github.com/ava-labs/avalanche-network-runner v1.5.0 h1:gLuC1z/Ibr4V2sMhrVN2Bi8bb
 github.com/ava-labs/avalanche-network-runner v1.5.0/go.mod h1:hAuQL0fCQ9GVo1yjV3LWZhheEt97JSIPSr5HXc/iV7c=
 github.com/ava-labs/avalanchego v1.10.2 h1:kDM2xfQDaewueUCxJUujPlbNQ91gtJfXY9Z0CYthdRc=
 github.com/ava-labs/avalanchego v1.10.2/go.mod h1:PsNLfOc9FnsnoJ8CjauclvFy6BCSVZmT05I4c9rm4a4=
-github.com/ava-labs/coreth v0.12.2-rc.0 h1:nGhGN4bYqid5EgqH/GFky2ybY8bGRxto6Bo7nes1V+Y=
-github.com/ava-labs/coreth v0.12.2-rc.0/go.mod h1:/5x54QlIKjlPebkdzTA5ic9wXdejbWOnQosztkv9jxo=
+github.com/ava-labs/coreth v0.12.2 h1:fjPOTAfrUeAwVwRV8lZJKXTPOSViHqZo5+/M2nkLeYs=
+github.com/ava-labs/coreth v0.12.2/go.mod h1:/5x54QlIKjlPebkdzTA5ic9wXdejbWOnQosztkv9jxo=
 github.com/ava-labs/ledger-avalanche/go v0.0.0-20230105152938-00a24d05a8c7 h1:EdxD90j5sClfL5Ngpz2TlnbnkNYdFPDXa0jDOjam65c=
 github.com/ava-labs/ledger-avalanche/go v0.0.0-20230105152938-00a24d05a8c7/go.mod h1:XhiXSrh90sHUbkERzaxEftCmUz53eCijshDLZ4fByVM=
 github.com/ava-labs/subnet-evm v0.5.1 h1:ZFvNmO5oGluhkRSLWi7XUBjspVe/3r2NiQkyz84gzUc=
@@ -159,8 +159,6 @@ github.com/docker/docker v24.0.1+incompatible/go.mod h1:eEKB0N0r5NX/I1kEveEz05bc
 github.com/dop251/goja v0.0.0-20220405120441-9037c2b61cbf h1:Yt+4K30SdjOkRoRRm3vYNQgR+/ZIy0RmeUDZo7Y8zeQ=
 github.com/dop251/goja v0.0.0-20220405120441-9037c2b61cbf/go.mod h1:R9ET47fwRVRPZnOGvHxxhuZcbrMCuiqOz3Rlrh4KSnk=
 github.com/dop251/goja_nodejs v0.0.0-20210225215109-d91c329300e7/go.mod h1:hn7BA7c8pLvoGndExHudxTDKZ84Pyvv+90pbBjbTz0Y=
-github.com/dukex/mixpanel v1.0.1 h1:IQ3qBjtgltF044jU9+i6MubdDdpc8PKpK9yvfawRgeE=
-github.com/dukex/mixpanel v1.0.1/go.mod h1:080BDsRRMzAxViWT3OjlQaMW9nhaIEXDHHtGeDK60b8=
 github.com/emirpasic/gods v1.18.1 h1:FXtiHYKDGKCW2KzwZKx0iC0PQmdlorYgdFG9jPXJ1Bc=
 github.com/emirpasic/gods v1.18.1/go.mod h1:8tpGGwCnJ5H4r6BWwaV6OrWmMoPhUl5jm/FMNAnJvWQ=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
