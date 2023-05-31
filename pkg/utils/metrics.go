@@ -23,7 +23,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// mixpanelToken value is set at build and install scripts using ldflags
+// telemetryToken value is set at build and install scripts using ldflags
 var (
 	telemetryToken    = ""
 	telemetryInstance = "https://app.posthog.com"
