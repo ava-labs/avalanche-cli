@@ -22,10 +22,8 @@ import (
 var (
 	ErrUserAbortedInstallation = errors.New("user canceled installation")
 	ErrNoVersion               = errors.New("failed to find current version - did you install following official instructions?")
-	ErrNotInstalled            = errors.New("no installation required")
-
-	app *application.Avalanche
-	yes bool
+	app                        *application.Avalanche
+	yes                        bool
 )
 
 func NewCmd(injectedApp *application.Avalanche, version string) *cobra.Command {
@@ -46,10 +44,10 @@ func NewCmd(injectedApp *application.Avalanche, version string) *cobra.Command {
 
 func runUpdate(cmd *cobra.Command, _ []string) error {
 	isUserCalled := true
-	return Update(cmd, isUserCalled)
+	return Update(cmd, isUserCalled, "")
 }
 
-func Update(cmd *cobra.Command, isUserCalled bool) error {
+func Update(cmd *cobra.Command, isUserCalled bool, version string) error {
 	// first check if there is a new version exists
 	url := binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.CliRepoName)
 	latest, err := app.Downloader.GetLatestReleaseVersion(url)
@@ -61,31 +59,36 @@ func Update(cmd *cobra.Command, isUserCalled bool) error {
 	// the current version info should be in this variable
 	this := cmd.Version
 	if this == "" {
-		// try loading from file system
-		verFile := "VERSION"
-		bver, err := os.ReadFile(verFile)
-		if err != nil {
-			app.Log.Warn("failed to read version from file on disk", zap.Error(err))
-			return ErrNoVersion
+		if version != "" {
+			this = version
+		} else {
+			// try loading from file system
+			verFile := "VERSION"
+			bver, err := os.ReadFile(verFile)
+			if err != nil {
+				app.Log.Warn("failed to read version from file on disk", zap.Error(err))
+				return ErrNoVersion
+			}
+			this = "v" + string(bver)
 		}
-		this = "v" + string(bver)
 	}
+	thisVFmt := "v" + this
 
 	// check this version needs update
 	// we skip if compare returns -1 (latest < this)
 	// or 0 (latest == this)
-	if semver.Compare(latest, this) < 1 {
+	if semver.Compare(latest, thisVFmt) < 1 {
 		txt := "No new version found upstream; skipping update"
 		app.Log.Debug(txt)
 		if isUserCalled {
 			ux.Logger.PrintToUser(txt)
 		}
-		return ErrNotInstalled
+		return nil
 	}
 
 	// flag not provided
 	if !yes {
-		ux.Logger.PrintToUser("We found a new version of Avalanche-CLI %s upstream. You are running %s", latest, this)
+		ux.Logger.PrintToUser("We found a new version of Avalanche-CLI %s upstream. You are running %s", latest, thisVFmt)
 		y, err := app.Prompt.CaptureYesNo("Do you want to update?")
 		if err != nil {
 			return nil
@@ -159,5 +162,6 @@ func Update(cmd *cobra.Command, isUserCalled bool) error {
 	app.Log.Debug(outbuf.String())
 	app.Log.Debug(errbuf.String())
 	ux.Logger.PrintToUser("Installation successful. Please run the shell completion update manually after this process terminates.")
+	ux.Logger.PrintToUser("The new version will be used on next command execution")
 	return nil
 }
