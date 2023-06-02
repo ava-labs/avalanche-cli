@@ -239,7 +239,7 @@ func IssueAddPermissionlessValidatorTx(
 		&signer.Empty{},
 		assetID,
 		owner,
-		&secp256k1fx.OutputOwners{},
+		owner,
 		reward.PercentDenominator,
 		common.WithContext(ctx),
 	)
@@ -266,6 +266,7 @@ func IssueAddPermissionlessDelegatorTx(
 		return ids.Empty, err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultConfirmTxTimeout)
+	fmt.Printf("stakeAmount delegator %d \n", stakeAmount)
 	txID, err := wallet.P().IssueAddPermissionlessDelegatorTx(
 		&txs.SubnetValidator{
 			Validator: txs.Validator{

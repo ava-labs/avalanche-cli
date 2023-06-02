@@ -335,7 +335,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	if err != nil {
 		return err
 	}
-	stakedTokenAmount, err := promptStakeAmount(subnetName, false)
+	stakedTokenAmount, err := promptStakeAmount(subnetName, true)
 	if err != nil {
 		return err
 	}
@@ -453,19 +453,18 @@ func promptNodeIDToAdd(subnetID ids.ID, isValidator bool) (ids.NodeID, error) {
 		}
 		// construct list of validators to choose from
 		var validatorList []string
-		fmt.Printf("defaultLocalNetworkNodeIDs %s \n", defaultLocalNetworkNodeIDs)
-
 		for _, localNodeID := range defaultLocalNetworkNodeIDs {
 			nodeIDFound := false
-			for _, v := range validators {
-				if v.NodeID.String() == localNodeID {
-					nodeIDFound = true
-					break
+			if isValidator {
+				for _, v := range validators {
+					if v.NodeID.String() == localNodeID {
+						nodeIDFound = true
+						break
+					}
 				}
 			}
-			if !nodeIDFound {
-				fmt.Printf("adding validators %s \n", localNodeID)
 
+			if !nodeIDFound {
 				validatorList = append(validatorList, localNodeID)
 			}
 		}
@@ -494,10 +493,9 @@ func promptStakeAmount(subnetName string, isValidator bool) (uint64, error) {
 		return 0, err
 	}
 	maxValidatorStake := fmt.Sprintf("Maximum Validator Stake (%d)", esc.MaxValidatorStake)
-	customWeight := "Custom (Has to be between minValidatorStake and maxValidatorStake defined during elastic subnet transformation)"
+	customWeight := fmt.Sprintf("Custom (Has to be between minValidatorStake (%d) and maxValidatorStake (%d) defined during elastic subnet transformation)", esc.MinValidatorStake, esc.MaxValidatorStake)
 	if !isValidator {
-		maxValidatorStake = fmt.Sprintf("Maximum Delegator Stake (%d)", esc.MaxValidatorStake)
-		customWeight = "Custom (Has to be between minDelegatorStake and maxValidatorStake defined during elastic subnet transformation)"
+		customWeight = fmt.Sprintf("Custom (Has to be between minDelegatorStake (%d) and maxValidatorStake (%d) defined during elastic subnet transformation)", esc.MinDelegatorStake, esc.MaxValidatorStake)
 	}
 
 	txt := "What amount of the subnet native token would you like to stake?"

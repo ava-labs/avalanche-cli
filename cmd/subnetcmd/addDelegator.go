@@ -19,9 +19,9 @@ import (
 )
 
 // avalanche subnet deploy
-func newAddDelegatorCmd() *cobra.Command {
+func newAddPermissionlessDelegatorCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "addDelegator [subnetName]",
+		Use:   "addPermissionlessDelegator [subnetName]",
 		Short: "Allow a node join an existing subnet validator as a delegator",
 		Long: `The subnet addDelegator enables a node (the delegator) to stake 
 AVAX and specify a validator (the delegatee) to validate on their behalf. The 
@@ -40,7 +40,7 @@ the subnetID and the validator's unique NodeID. The command then prompts
 for the validation start time, duration, and stake weight. You can bypass
 these prompts by providing the values with flags.`,
 		SilenceUsage: true,
-		RunE:         addDelegator,
+		RunE:         addPermissionlessDelegator,
 		Args:         cobra.ExactArgs(1),
 	}
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
@@ -55,7 +55,7 @@ these prompts by providing the values with flags.`,
 	return cmd
 }
 
-func addDelegator(_ *cobra.Command, args []string) error {
+func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 	chains, err := validateSubnetNameAndGetChains(args)
 	if err != nil {
 		return err
@@ -109,10 +109,8 @@ func addDelegator(_ *cobra.Command, args []string) error {
 		return errors.New("addPermissionlessDelegator is not yet supported on Fuji network")
 	case models.Mainnet:
 		return errors.New("addPermissionlessDelegator is not yet supported on Mainnet")
-
-	default:
-		return errors.New("unsupported network")
 	}
+	network = models.Local
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
@@ -152,9 +150,6 @@ func addDelegator(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Start time: %s", start.UTC().Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("End time: %s", endTime.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("Stake Amount: %d", stakedTokenAmount)
-	if err = app.UpdateSidecarPermissionlessValidator(&sc, models.Local, nodeID.String(), txID); err != nil {
-		return fmt.Errorf("joining permissionless subnet was successful, but failed to update sidecar: %w", err)
-	}
 
 	return nil
 }

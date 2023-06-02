@@ -68,5 +68,7 @@ manage your Subnet configurations and live deployments.`,
 	cmd.AddCommand(newElasticCmd())
 	// subnet validators
 	cmd.AddCommand(newValidatorsCmd())
+	// subnet addPermissionlessDelegator
+	cmd.AddCommand(newAddPermissionlessDelegatorCmd())
 	return cmd
 }
