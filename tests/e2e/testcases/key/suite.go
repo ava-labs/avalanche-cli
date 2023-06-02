@@ -246,4 +246,14 @@ var _ = ginkgo.Describe("[Key]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(exists).Should(gomega.BeFalse())
 	})
+
+	ginkgo.It("can transfer between keys", func() {
+		_ = utils.DeleteKey(keyName)
+		_, err := commands.CreateKeyFromPath(keyName, utils.EwoqKeyPath)
+		gomega.Expect(err).Should(gomega.BeNil())
+		commands.StartNetwork()
+		err = utils.DeleteKey(keyName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		commands.CleanNetwork()
+	})
 })
