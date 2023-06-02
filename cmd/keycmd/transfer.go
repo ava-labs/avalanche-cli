@@ -5,6 +5,7 @@ package keycmd
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -254,7 +255,11 @@ func transferF(*cobra.Command, []string) error {
 		if err != nil {
 			return err
 		}
-		ledgerIndices := []uint32{uint32(ledgerIndex)}
+		if ledgerIndex > math.MaxUint32 {
+			return fmt.Errorf("ledger index %d excess max uint32", ledgerIndex)
+		}
+		ledgerIndexUint32 := uint32(ledgerIndex)
+		ledgerIndices := []uint32{ledgerIndexUint32}
 		kc, err = keychain.NewLedgerKeychainFromIndices(ledgerDevice, ledgerIndices)
 		if err != nil {
 			return err
