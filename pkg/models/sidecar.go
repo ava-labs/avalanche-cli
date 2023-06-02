@@ -23,6 +23,7 @@ type ElasticSubnet struct {
 	TokenName   string
 	TokenSymbol string
 	Validators  map[string]PermissionlessValidators
+	Txs         map[string]ids.ID
 }
 
 type Sidecar struct {

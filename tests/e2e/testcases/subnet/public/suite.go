@@ -42,7 +42,7 @@ func deploySubnetToFuji() (string, map[string]utils.NodeInfo) {
 	// get and check whitelisted subnets from config file
 	var whitelistedSubnets string
 	for _, nodeInfo := range nodeInfos {
-		whitelistedSubnets, err = utils.GetWhilelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
+		whitelistedSubnets, err = utils.GetWhitelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
 		gomega.Expect(err).Should(gomega.BeNil())
 		whitelistedSubnetsSlice := strings.Split(whitelistedSubnets, ",")
 		gomega.Expect(whitelistedSubnetsSlice).Should(gomega.ContainElement(subnetID))
@@ -114,7 +114,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		// get and check whitelisted subnets from config file
 		var whitelistedSubnets string
 		for _, nodeInfo := range nodeInfos {
-			whitelistedSubnets, err = utils.GetWhilelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
+			whitelistedSubnets, err = utils.GetWhitelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
 			gomega.Expect(err).Should(gomega.BeNil())
 			whitelistedSubnetsSlice := strings.Split(whitelistedSubnets, ",")
 			gomega.Expect(whitelistedSubnetsSlice).Should(gomega.ContainElement(subnetID))
@@ -135,6 +135,31 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(output).Should(gomega.ContainSubstring("Current validators"))
 		gomega.Expect(output).Should(gomega.ContainSubstring("NodeID-"))
 		gomega.Expect(output).Should(gomega.ContainSubstring("No pending validators found"))
+	})
+
+	ginkgo.It("can transform a deployed SubnetEvm subnet to elastic subnet only on fuji", func() {
+		subnetIDStr, _ := deploySubnetToFuji()
+		subnetID, err := ids.FromString(subnetIDStr)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// GetCurrentSupply will return error if queried for non-elastic subnet
+		err = subnet.GetCurrentSupply(subnetID)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+
+		_, err = commands.SimulateFujiTransformSubnet(subnetName, keyName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		exists, err := utils.ElasticSubnetConfigExists(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(exists).Should(gomega.BeTrue())
+
+		// GetCurrentSupply will return result if queried for elastic subnet
+		err = subnet.GetCurrentSupply(subnetID)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		_, err = commands.SimulateFujiTransformSubnet(subnetName, keyName)
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+
+		commands.DeleteElasticSubnetConfig(subnetName)
 	})
 
 	ginkgo.It("remove validator fuji", func() {

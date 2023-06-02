@@ -66,5 +66,7 @@ manage your Subnet configurations and live deployments.`,
 	cmd.AddCommand(newRemoveValidatorCmd())
 	// subnet elastic
 	cmd.AddCommand(newElasticCmd())
+	// subnet validators
+	cmd.AddCommand(newValidatorsCmd())
 	return cmd
 }

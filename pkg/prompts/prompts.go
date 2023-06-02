@@ -81,12 +81,13 @@ type Prompter interface {
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
 	CaptureID(promptStr string) (ids.ID, error)
 	CaptureWeight(promptStr string) (uint64, error)
+	CapturePositiveInt(promptStr string, comparators []Comparator) (int, error)
 	CaptureUint64(promptStr string) (uint64, error)
 	CaptureFloat(promptStr string, validator func(float64) error) (float64, error)
 	CaptureUint64Compare(promptStr string, comparators []Comparator) (uint64, error)
 	CapturePChainAddress(promptStr string, network models.Network) (string, error)
 	CaptureFutureDate(promptStr string, minDate time.Time) (time.Time, error)
-	ChooseKeyOrLedger(goalStr string) (bool, error)
+	ChooseKeyOrLedger(goal string) (bool, error)
 }
 
 type realPrompter struct{}
@@ -268,6 +269,33 @@ func (*realPrompter) CaptureFloat(promptStr string, validator func(float64) erro
 		return 0, err
 	}
 	return strconv.ParseFloat(amountStr, 64)
+}
+
+func (*realPrompter) CapturePositiveInt(promptStr string, comparators []Comparator) (int, error) {
+	prompt := promptui.Prompt{
+		Label: promptStr,
+		Validate: func(input string) error {
+			val, err := strconv.Atoi(input)
+			if err != nil {
+				return err
+			}
+			if val < 0 {
+				return errors.New("input is less than 0")
+			}
+			for _, comparator := range comparators {
+				if err := comparator.Validate(uint64(val)); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}
+
+	amountStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+	return strconv.Atoi(amountStr)
 }
 
 func (*realPrompter) CaptureUint64Compare(promptStr string, comparators []Comparator) (uint64, error) {
@@ -526,13 +554,13 @@ func (*realPrompter) CaptureFutureDate(promptStr string, minDate time.Time) (tim
 }
 
 // returns true [resp. false] if user chooses stored key [resp. ledger] option
-func (prompter *realPrompter) ChooseKeyOrLedger(goalStr string) (bool, error) {
+func (prompter *realPrompter) ChooseKeyOrLedger(goal string) (bool, error) {
 	const (
 		keyOption    = "Use stored key"
 		ledgerOption = "Use ledger"
 	)
 	option, err := prompter.CaptureList(
-		fmt.Sprintf("Which key source should be used%s?", goalStr),
+		fmt.Sprintf("Which key source should be used to %s?", goal),
 		[]string{keyOption, ledgerOption},
 	)
 	if err != nil {
@@ -608,15 +636,15 @@ func GetSubnetAuthKeys(prompt Prompter, controlKeys []string, threshold uint32) 
 	return subnetAuthKeys, nil
 }
 
-func GetFujiKeyOrLedger(prompt Prompter, keyDir string, goalStr string) (bool, string, error) {
-	useStoredKey, err := prompt.ChooseKeyOrLedger(goalStr)
+func GetFujiKeyOrLedger(prompt Prompter, goal string, keyDir string) (bool, string, error) {
+	useStoredKey, err := prompt.ChooseKeyOrLedger(goal)
 	if err != nil {
 		return false, "", err
 	}
 	if !useStoredKey {
 		return true, "", nil
 	}
-	keyName, err := captureKeyName(prompt, keyDir, goalStr)
+	keyName, err := captureKeyName(prompt, goal, keyDir)
 	if err != nil {
 		if errors.Is(err, errNoKeys) {
 			ux.Logger.PrintToUser("No private keys have been found. Create a new one with `avalanche key create`")
@@ -626,7 +654,7 @@ func GetFujiKeyOrLedger(prompt Prompter, keyDir string, goalStr string) (bool, s
 	return false, keyName, nil
 }
 
-func captureKeyName(prompt Prompter, keyDir string, goalStr string) (string, error) {
+func captureKeyName(prompt Prompter, goal string, keyDir string) (string, error) {
 	files, err := os.ReadDir(keyDir)
 	if err != nil {
 		return "", err
@@ -643,7 +671,7 @@ func captureKeyName(prompt Prompter, keyDir string, goalStr string) (string, err
 		}
 	}
 
-	keyName, err := prompt.CaptureList(fmt.Sprintf("Which stored key should be used%s?", goalStr), keys)
+	keyName, err := prompt.CaptureList(fmt.Sprintf("Which stored key should be used to %s?", goal), keys)
 	if err != nil {
 		return "", err
 	}

@@ -418,6 +418,30 @@ func (_m *Prompter) CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 	return r0, r1
 }
 
+// CapturePositiveInt provides a mock function with given fields: promptStr, comparators
+func (_m *Prompter) CapturePositiveInt(promptStr string, comparators []prompts.Comparator) (int, error) {
+	ret := _m.Called(promptStr, comparators)
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, []prompts.Comparator) (int, error)); ok {
+		return rf(promptStr, comparators)
+	}
+	if rf, ok := ret.Get(0).(func(string, []prompts.Comparator) int); ok {
+		r0 = rf(promptStr, comparators)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(string, []prompts.Comparator) error); ok {
+		r1 = rf(promptStr, comparators)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // CaptureString provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureString(promptStr string) (string, error) {
 	ret := _m.Called(promptStr)
@@ -586,23 +610,23 @@ func (_m *Prompter) CaptureYesNo(promptStr string) (bool, error) {
 	return r0, r1
 }
 
-// ChooseKeyOrLedger provides a mock function with given fields: goalStr
-func (_m *Prompter) ChooseKeyOrLedger(goalStr string) (bool, error) {
-	ret := _m.Called(goalStr)
+// ChooseKeyOrLedger provides a mock function with given fields: goal
+func (_m *Prompter) ChooseKeyOrLedger(goal string) (bool, error) {
+	ret := _m.Called(goal)
 
 	var r0 bool
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string) (bool, error)); ok {
-		return rf(goalStr)
+		return rf(goal)
 	}
 	if rf, ok := ret.Get(0).(func(string) bool); ok {
-		r0 = rf(goalStr)
+		r0 = rf(goal)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
 
 	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(goalStr)
+		r1 = rf(goal)
 	} else {
 		r1 = ret.Error(1)
 	}

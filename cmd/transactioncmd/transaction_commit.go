@@ -55,12 +55,11 @@ func commitTx(_ *cobra.Command, args []string) error {
 		return errNoSubnetID
 	}
 
-	subnetAuthKeys, err := txutils.GetAuthSigners(tx, network, subnetID)
+	controlKeys, _, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
 	}
-
-	remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, network, subnetID)
+	subnetAuthKeys, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
 	if err != nil {
 		return err
 	}
@@ -86,7 +85,7 @@ func commitTx(_ *cobra.Command, args []string) error {
 	}
 
 	if txutils.IsCreateChainTx(tx) {
-		if err := subnetcmd.PrintDeployResults(subnetName, subnetID, txID, true); err != nil {
+		if err := subnetcmd.PrintDeployResults(subnetName, subnetID, txID); err != nil {
 			return err
 		}
 		return app.UpdateSidecarNetworks(&sc, network, subnetID, txID)
