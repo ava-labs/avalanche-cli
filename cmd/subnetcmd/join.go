@@ -331,15 +331,15 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	if !checkIfSubnetIsElasticOnLocal(sc) {
 		return fmt.Errorf("%s is not an elastic subnet", subnetName)
 	}
-	nodeID, err := promptNodeIDToAdd(sc.Networks[models.Local.String()].SubnetID)
+	nodeID, err := promptNodeIDToAdd(sc.Networks[models.Local.String()].SubnetID, true)
 	if err != nil {
 		return err
 	}
-	stakedTokenAmount, err := promptStakeAmount(subnetName)
+	stakedTokenAmount, err := promptStakeAmount(subnetName, false)
 	if err != nil {
 		return err
 	}
-	start, stakeDuration, err := getTimeParameters(network, nodeID)
+	start, stakeDuration, err := getTimeParameters(network, nodeID, true)
 	if err != nil {
 		return err
 	}
@@ -444,7 +444,7 @@ func checkIsValidating(subnetID ids.ID, nodeID ids.NodeID, pClient platformvm.Cl
 	return false, nil
 }
 
-func promptNodeIDToAdd(subnetID ids.ID) (ids.NodeID, error) {
+func promptNodeIDToAdd(subnetID ids.ID, isValidator bool) (ids.NodeID, error) {
 	if nodeIDStr == "" {
 		// Get NodeIDs of all validators on the subnet
 		validators, err := subnet.GetSubnetValidators(subnetID)
@@ -469,7 +469,11 @@ func promptNodeIDToAdd(subnetID ids.ID) (ids.NodeID, error) {
 				validatorList = append(validatorList, localNodeID)
 			}
 		}
-		nodeIDStr, err = app.Prompt.CaptureList("Which validator you'd like to join this elastic subnet?", validatorList)
+		promptStr := "Which validator you'd like to join this elastic subnet?"
+		if !isValidator {
+			promptStr = "Which validator would you like to delegate to?"
+		}
+		nodeIDStr, err = app.Prompt.CaptureList(promptStr, validatorList)
 		if err != nil {
 			return ids.EmptyNodeID, err
 		}
@@ -481,7 +485,7 @@ func promptNodeIDToAdd(subnetID ids.ID) (ids.NodeID, error) {
 	return nodeID, nil
 }
 
-func promptStakeAmount(subnetName string) (uint64, error) {
+func promptStakeAmount(subnetName string, isValidator bool) (uint64, error) {
 	if stakeAmount > 0 {
 		return stakeAmount, nil
 	}
@@ -491,10 +495,13 @@ func promptStakeAmount(subnetName string) (uint64, error) {
 	}
 	maxValidatorStake := fmt.Sprintf("Maximum Validator Stake (%d)", esc.MaxValidatorStake)
 	customWeight := "Custom (Has to be between minValidatorStake and maxValidatorStake defined during elastic subnet transformation)"
+	if !isValidator {
+		maxValidatorStake = fmt.Sprintf("Maximum Delegator Stake (%d)", esc.MaxValidatorStake)
+		customWeight = "Custom (Has to be between minDelegatorStake and maxValidatorStake defined during elastic subnet transformation)"
+	}
 
-	txt := "What amount of the subnet native token would you like to stake in the validator?"
+	txt := "What amount of the subnet native token would you like to stake?"
 	weightOptions := []string{maxValidatorStake, customWeight}
-
 	weightOption, err := app.Prompt.CaptureList(txt, weightOptions)
 	if err != nil {
 		return 0, err
@@ -504,6 +511,12 @@ func promptStakeAmount(subnetName string) (uint64, error) {
 	walletBalance, err := getAssetBalance(ctx, pClient, ewoqPChainAddr, esc.AssetID)
 	if err != nil {
 		return 0, err
+	}
+	minStakePromptStr := fmt.Sprintf("Min Validator Stake(%d)", esc.MinValidatorStake)
+	minStakeVal := esc.MinValidatorStake
+	if !isValidator {
+		minStakePromptStr = fmt.Sprintf("Min Delegator Stake(%d)", esc.MinValidatorStake)
+		minStakeVal = esc.MinDelegatorStake
 	}
 	switch weightOption {
 	case maxValidatorStake:
@@ -518,9 +531,9 @@ func promptStakeAmount(subnetName string) (uint64, error) {
 					Value: esc.MaxValidatorStake,
 				},
 				{
-					Label: fmt.Sprintf("Min Validator Stake(%d)", esc.MinValidatorStake),
+					Label: minStakePromptStr,
 					Type:  prompts.MoreThanEq,
-					Value: esc.MinValidatorStake,
+					Value: minStakeVal,
 				},
 				{
 					Label: fmt.Sprintf("Wallet Balance(%d)", walletBalance),
