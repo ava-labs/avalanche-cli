@@ -266,7 +266,6 @@ func IssueAddPermissionlessDelegatorTx(
 		return ids.Empty, err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultConfirmTxTimeout)
-	fmt.Printf("stakeAmount delegator %d \n", stakeAmount)
 	txID, err := wallet.P().IssueAddPermissionlessDelegatorTx(
 		&txs.SubnetValidator{
 			Validator: txs.Validator{

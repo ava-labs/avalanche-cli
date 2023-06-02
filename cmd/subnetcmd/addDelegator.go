@@ -5,10 +5,11 @@ package subnetcmd
 import (
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanchego/genesis"
-	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"os"
 	"time"
+
+	"github.com/ava-labs/avalanchego/genesis"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -45,12 +46,13 @@ these prompts by providing the values with flags.`,
 	}
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
-	cmd.Flags().Uint64Var(&weight, "weight", 0, "set how many tokens the delegator will be staking")
-	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "UTC start time when node becomes a delegator, in 'YYYY-MM-DD HH:MM:SS' format")
-	cmd.Flags().DurationVar(&duration, "delegating-period", 0, "how long this node will be a delegator")
 	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "join on `fuji` (alias for `testnet`)")
 	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
 	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
+	cmd.Flags().BoolVar(&deployLocal, "local", false, "join on `local`")
+	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "amount of tokens to stake")
+	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "start time that delegator starts delegating")
+	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long delegator should delegate for after start time")
 
 	return cmd
 }
@@ -75,8 +77,6 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 		network = models.Mainnet
 	case deployTestnet:
 		network = models.Fuji
-	case deployMainnet:
-		network = models.Mainnet
 	}
 
 	if network == models.Undefined {
@@ -150,6 +150,5 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Start time: %s", start.UTC().Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("End time: %s", endTime.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("Stake Amount: %d", stakedTokenAmount)
-
 	return nil
 }
