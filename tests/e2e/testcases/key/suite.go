@@ -16,9 +16,10 @@ import (
 )
 
 const (
-	keyName   = "e2eKey"
-	testKey   = "tests/e2e/assets/test_key.pk"
-	outputKey = "/tmp/testKey.pk"
+	keyName     = "e2eKey"
+	ewoqKeyName = "ewoq"
+	testKey     = "tests/e2e/assets/test_key.pk"
+	outputKey   = "/tmp/testKey.pk"
 )
 
 var _ = ginkgo.Describe("[Key]", func() {
@@ -143,7 +144,7 @@ var _ = ginkgo.Describe("[Key]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// Call list cmd
-		output, err = commands.ListKeys()
+		output, err = commands.ListKeys("mainnet", false)
 		if err != nil {
 			fmt.Println(output)
 			utils.PrintStdErr(err)
@@ -245,5 +246,37 @@ var _ = ginkgo.Describe("[Key]", func() {
 		exists, err = utils.KeyExists(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(exists).Should(gomega.BeFalse())
+	})
+
+	ginkgo.It("can transfer between keys", func() {
+		_ = utils.DeleteKey(keyName)
+		_ = utils.DeleteKey(ewoqKeyName)
+		output, err := commands.CreateKeyFromPath(ewoqKeyName, utils.EwoqKeyPath)
+		if err != nil {
+			fmt.Println(output)
+			utils.PrintStdErr(err)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		output, err = commands.CreateKey(keyName)
+		if err != nil {
+			fmt.Println(output)
+			utils.PrintStdErr(err)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		commands.StartNetworkWithVersion("")
+
+		output, err = commands.ListKeys("local", true)
+		fmt.Println(output)
+		if err != nil {
+			fmt.Println(output)
+			utils.PrintStdErr(err)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		err = utils.DeleteKey(keyName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		err = utils.DeleteKey(ewoqKeyName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		commands.CleanNetwork()
 	})
 })

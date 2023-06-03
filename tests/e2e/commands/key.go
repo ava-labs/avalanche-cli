@@ -3,6 +3,7 @@
 package commands
 
 import (
+	"fmt"
 	"os/exec"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -56,16 +57,14 @@ func CreateKeyForce(keyName string) (string, error) {
 }
 
 /* #nosec G204 */
-func ListKeys() (string, error) {
-	// Create config
-	cmd := exec.Command(
-		CLIBinary,
-		KeyCmd,
-		"list",
-		"--mainnet",
-		"--"+constants.SkipUpdateFlag,
-	)
-
+func ListKeys(network string, omitCChain bool) (string, error) {
+	args := []string{KeyCmd, "list", "--" + network, "--" + constants.SkipUpdateFlag}
+	if omitCChain {
+		args = append(args, "--cchain=false")
+	}
+	fmt.Println(omitCChain)
+	fmt.Println(args)
+	cmd := exec.Command(CLIBinary, args...)
 	out, err := cmd.Output()
 	return string(out), err
 }
