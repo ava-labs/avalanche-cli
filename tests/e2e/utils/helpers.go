@@ -371,7 +371,7 @@ func ParseRPCsFromOutput(output string) ([]string, error) {
 	return rpcs, nil
 }
 
-func ParseAddrBalanceFromKeyListOutput(output string, keyName string) (string, float64, error) {
+func ParseAddrBalanceFromKeyListOutput(output string, keyName string) (string, uint64, error) {
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
 		if !strings.Contains(line, keyName) {
@@ -385,9 +385,9 @@ func ParseAddrBalanceFromKeyListOutput(output string, keyName string) (string, f
 				len(components),
 			)
 		}
-		addr := components[4]
+		addr := strings.TrimSpace(components[4])
 		balanceStr := strings.TrimSpace(components[5])
-		balance, err := strconv.ParseFloat(balanceStr, 64)
+		balance, err := strconv.ParseUint(balanceStr, 0, 64)
 		if err != nil {
 			return "", 0, fmt.Errorf("error parsing expected float %s", balanceStr)
 		}

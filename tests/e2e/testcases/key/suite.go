@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
@@ -144,7 +145,7 @@ var _ = ginkgo.Describe("[Key]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// Call list cmd
-		output, err = commands.ListKeys("mainnet", false)
+		output, err = commands.ListKeys("mainnet", false, false)
 		if err != nil {
 			fmt.Println(output)
 			utils.PrintStdErr(err)
@@ -265,18 +266,42 @@ var _ = ginkgo.Describe("[Key]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		commands.StartNetworkWithVersion("")
 
-		output, err = commands.ListKeys("local", true)
-		if err != nil {
-			fmt.Println(output)
-			utils.PrintStdErr(err)
-		}
+		output, err = commands.ListKeys("local", true, true)
 		gomega.Expect(err).Should(gomega.BeNil())
-		keyAddr, keyBalance, err := utils.ParseAddrBalanceFromKeyListOutput(output, keyName)
+		keyAddr, keyBalance1, err := utils.ParseAddrBalanceFromKeyListOutput(output, keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		fmt.Println(keyAddr, keyBalance)
-		ewoqKeyAddr, ewoqKeyBalance, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName)
+		_, ewoqKeyBalance1, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		fmt.Println(ewoqKeyAddr, ewoqKeyBalance)
+
+		fmt.Println("SEND")
+		output, err = commands.KeyTransferSend(ewoqKeyName, keyAddr, "1")
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(output)
+
+		output, err = commands.ListKeys("local", true, true)
+		gomega.Expect(err).Should(gomega.BeNil())
+		_, keyBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, keyName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		_, ewoqKeyBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(ewoqKeyBalance1 - ewoqKeyBalance2)
+		fmt.Println(keyBalance2 - keyBalance1)
+
+		fmt.Println("RECEIVE")
+		time.Sleep(5 * time.Second)
+		output, err = commands.KeyTransferReceive(keyName, "1", "0")
+		fmt.Println(output)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(output)
+
+		output, err = commands.ListKeys("local", true, true)
+		gomega.Expect(err).Should(gomega.BeNil())
+		_, keyBalance3, err := utils.ParseAddrBalanceFromKeyListOutput(output, keyName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		_, ewoqKeyBalance3, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(ewoqKeyBalance2 - ewoqKeyBalance3)
+		fmt.Println(keyBalance3 - keyBalance2)
 
 		err = utils.DeleteKey(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
