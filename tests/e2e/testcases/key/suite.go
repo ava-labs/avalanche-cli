@@ -266,12 +266,17 @@ var _ = ginkgo.Describe("[Key]", func() {
 		commands.StartNetworkWithVersion("")
 
 		output, err = commands.ListKeys("local", true)
-		fmt.Println(output)
 		if err != nil {
 			fmt.Println(output)
 			utils.PrintStdErr(err)
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
+		keyAddr, keyBalance, err := utils.ParseAddrBalanceFromKeyListOutput(output, keyName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(keyAddr, keyBalance)
+		ewoqKeyAddr, ewoqKeyBalance, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(ewoqKeyAddr, ewoqKeyBalance)
 
 		err = utils.DeleteKey(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
