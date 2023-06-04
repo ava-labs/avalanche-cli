@@ -3,7 +3,6 @@
 package commands
 
 import (
-	"fmt"
 	"os/exec"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -62,8 +61,6 @@ func ListKeys(network string, omitCChain bool) (string, error) {
 	if omitCChain {
 		args = append(args, "--cchain=false")
 	}
-	fmt.Println(omitCChain)
-	fmt.Println(args)
 	cmd := exec.Command(CLIBinary, args...)
 	out, err := cmd.Output()
 	return string(out), err
