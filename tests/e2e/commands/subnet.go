@@ -932,6 +932,9 @@ func AddPermissionlessValidator(subnetName string, nodeID string, stakeAmount st
 		stakingPeriod,
 		subnetName,
 	)
+	fmt.Printf("start time str %s \n", startTimeStr)
+	fmt.Printf("stakingperiod %s \n", stakingPeriod)
+	fmt.Printf("stakeAmount %s \n", stakeAmount)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
