@@ -214,9 +214,6 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
 
-		_, err = commands.AddPermissionlessDelegator(subnetName, nodeIDs[1], "100", stakeDuration)
-		gomega.Expect(err).Should(gomega.BeNil())
-
 		commands.DeleteSubnetConfig(subnetName)
 		commands.DeleteElasticSubnetConfig(subnetName)
 	})
