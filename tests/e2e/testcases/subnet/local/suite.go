@@ -214,6 +214,8 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
 
+		//wait for newly added validator to be active
+		time.Sleep(60 * time.Second)
 		_, err = commands.AddPermissionlessDelegator(subnetName, nodeIDs[1], "25", stakeDuration)
 		gomega.Expect(err).Should(gomega.BeNil())
 
