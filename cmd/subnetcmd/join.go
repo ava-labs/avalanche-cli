@@ -351,6 +351,9 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	testKey := genesis.EWOQKey
 	keyChain := secp256k1fx.NewKeychain(testKey)
 	subnetID := sc.Networks[models.Local.String()].SubnetID
+	fmt.Printf("input join start time str %s \n", uint64(start.Unix()))
+	fmt.Printf("input join stakeAmount %s \n", stakedTokenAmount)
+	fmt.Printf("input join nodeID %s \n", nodeID.String())
 	txID, err := subnet.IssueAddPermissionlessValidatorTx(keyChain, subnetID, nodeID, stakedTokenAmount, assetID, uint64(start.Unix()), uint64(endTime.Unix()))
 	if err != nil {
 		return err

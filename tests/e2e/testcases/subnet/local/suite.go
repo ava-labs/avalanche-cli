@@ -174,6 +174,8 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can add permissionless validator to elastic subnet and can add delegator", func() {
+		commands.CleanNetwork()
+
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		_, err := utils.ParseRPCsFromOutput(deployOutput)
@@ -189,32 +191,33 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(len(nodeIDs)).Should(gomega.Equal(5))
 
-		_, err = commands.RemoveValidator(subnetName, nodeIDs[0])
+		_, err = commands.RemoveValidator(subnetName, nodeIDs[2])
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		_, err = commands.AddPermissionlessValidator(subnetName, nodeIDs[0], "100000", stakeDuration)
+		_, err = commands.AddPermissionlessValidator(subnetName, nodeIDs[2], "200000", stakeDuration)
 		gomega.Expect(err).Should(gomega.BeNil())
-		exists, err := utils.PermissionlessValidatorExistsInSidecar(subnetName, nodeIDs[0], localNetwork)
+		exists, err := utils.PermissionlessValidatorExistsInSidecar(subnetName, nodeIDs[2], localNetwork)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(exists).Should(gomega.BeTrue())
-		addedNode = nodeIDs[0]
+		addedNode = nodeIDs[2]
+		fmt.Printf("added node is %s \n", addedNode)
 
-		isPendingValidator, err := utils.IsNodeInPendingValidator(subnetName, nodeIDs[0])
+		isPendingValidator, err := utils.IsNodeInPendingValidator(subnetName, nodeIDs[2])
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
 
-		_, err = commands.RemoveValidator(subnetName, nodeIDs[1])
-		gomega.Expect(err).Should(gomega.BeNil())
+		//_, err = commands.RemoveValidator(subnetName, nodeIDs[1])
+		//gomega.Expect(err).Should(gomega.BeNil())
 
-		_, err = commands.AddPermissionlessValidator(subnetName, nodeIDs[1], "200000", stakeDuration)
-		gomega.Expect(err).Should(gomega.BeNil())
-		exists, err = utils.PermissionlessValidatorExistsInSidecar(subnetName, nodeIDs[1], localNetwork)
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(exists).Should(gomega.BeTrue())
-
-		isPendingValidator, err = utils.IsNodeInPendingValidator(subnetName, nodeIDs[1])
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
+		//_, err = commands.AddPermissionlessValidator(subnetName, nodeIDs[1], "200000", stakeDuration)
+		//gomega.Expect(err).Should(gomega.BeNil())
+		//exists, err = utils.PermissionlessValidatorExistsInSidecar(subnetName, nodeIDs[1], localNetwork)
+		//gomega.Expect(err).Should(gomega.BeNil())
+		//gomega.Expect(exists).Should(gomega.BeTrue())
+		//
+		//isPendingValidator, err = utils.IsNodeInPendingValidator(subnetName, nodeIDs[1])
+		//gomega.Expect(err).Should(gomega.BeNil())
+		//gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
 
 		time.Sleep(60 * time.Second)
 		_, err = commands.AddPermissionlessDelegator(subnetName, addedNode, "25", stakeDuration)

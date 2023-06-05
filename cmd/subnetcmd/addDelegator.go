@@ -143,6 +143,10 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 	testKey := genesis.EWOQKey
 	keyChain := secp256k1fx.NewKeychain(testKey)
 	subnetID := sc.Networks[models.Local.String()].SubnetID
+
+	fmt.Printf("input start time str %s \n", uint64(start.Unix()))
+	fmt.Printf("input stakeAmount %s \n", stakedTokenAmount)
+	fmt.Printf("input nodeID %s \n", nodeID.String())
 	txID, err := subnet.IssueAddPermissionlessDelegatorTx(keyChain, subnetID, nodeID, stakedTokenAmount, assetID, uint64(start.Unix()), uint64(endTime.Unix()))
 	if err != nil {
 		return err

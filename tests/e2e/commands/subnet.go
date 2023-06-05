@@ -984,6 +984,12 @@ func AddPermissionlessDelegator(subnetName string, nodeID string, stakeAmount st
 		stakingPeriod,
 		subnetName,
 	)
+
+	fmt.Printf("adddelegator start time str %s \n", startTimeStr)
+	fmt.Printf("adddelegator stakingperiod %s \n", stakingPeriod)
+	fmt.Printf("adddelegator stakeAmount %s \n", stakeAmount)
+	fmt.Printf("adddelegator nodeID %s \n", nodeID)
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		var stderr string
