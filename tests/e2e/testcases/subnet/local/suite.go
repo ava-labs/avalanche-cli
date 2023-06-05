@@ -173,7 +173,7 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		commands.DeleteElasticSubnetConfig(subnetName)
 	})
 
-	ginkgo.It("can add permissionless validator to elastic subnet", func() {
+	ginkgo.It("can add permissionless validator to elastic subnet and can add delegator", func() {
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		_, err := utils.ParseRPCsFromOutput(deployOutput)
@@ -192,11 +192,12 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		_, err = commands.RemoveValidator(subnetName, nodeIDs[0])
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		_, err = commands.AddPermissionlessValidator(subnetName, nodeIDs[0], stakeAmount, stakeDuration)
+		_, err = commands.AddPermissionlessValidator(subnetName, nodeIDs[0], "2000000", stakeDuration)
 		gomega.Expect(err).Should(gomega.BeNil())
 		exists, err := utils.PermissionlessValidatorExistsInSidecar(subnetName, nodeIDs[0], localNetwork)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(exists).Should(gomega.BeTrue())
+		addedNode = nodeIDs[0]
 
 		isPendingValidator, err := utils.IsNodeInPendingValidator(subnetName, nodeIDs[0])
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -208,7 +209,6 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		_, err = commands.AddPermissionlessValidator(subnetName, nodeIDs[1], "200000", stakeDuration)
 		gomega.Expect(err).Should(gomega.BeNil())
 		exists, err = utils.PermissionlessValidatorExistsInSidecar(subnetName, nodeIDs[1], localNetwork)
-		addedNode = nodeIDs[1]
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(exists).Should(gomega.BeTrue())
 
@@ -216,16 +216,23 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
 
-	})
-
-	ginkgo.It("can add delegator", func() {
 		time.Sleep(60 * time.Second)
 		_, err = commands.AddPermissionlessDelegator(subnetName, addedNode, "25", stakeDuration)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		commands.DeleteSubnetConfig(subnetName)
 		commands.DeleteElasticSubnetConfig(subnetName)
+
 	})
+
+	//ginkgo.It("can add delegator", func() {
+	//	time.Sleep(60 * time.Second)
+	//	_, err = commands.AddPermissionlessDelegator(subnetName, addedNode, "25", stakeDuration)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//
+	//	commands.DeleteSubnetConfig(subnetName)
+	//	commands.DeleteElasticSubnetConfig(subnetName)
+	//})
 
 	ginkgo.It("can load viper config and setup node properties for local deploy", func() {
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
