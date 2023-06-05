@@ -135,6 +135,10 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction addPermissionlessDelegatorTx...")
 	ux.Logger.PrintToUser("")
 
+	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
+	ux.Logger.PrintToUser("Max Stake Amount: %d")
+	ux.Logger.PrintToUser("Stake Amount: %d", stakedTokenAmount)
+
 	assetID := sc.ElasticSubnet[models.Local.String()].AssetID
 	testKey := genesis.EWOQKey
 	keyChain := secp256k1fx.NewKeychain(testKey)

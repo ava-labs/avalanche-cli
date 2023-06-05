@@ -32,8 +32,9 @@ const (
 )
 
 var (
-	mapping map[string]string
-	err     error
+	mapping   map[string]string
+	err       error
+	addedNode string
 )
 
 var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
@@ -172,7 +173,7 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		commands.DeleteElasticSubnetConfig(subnetName)
 	})
 
-	ginkgo.It("can add permissionless validator to elastic subnet and add delegator", func() {
+	ginkgo.It("can add permissionless validator to elastic subnet", func() {
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		_, err := utils.ParseRPCsFromOutput(deployOutput)
@@ -207,6 +208,7 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		_, err = commands.AddPermissionlessValidator(subnetName, nodeIDs[1], "200000", stakeDuration)
 		gomega.Expect(err).Should(gomega.BeNil())
 		exists, err = utils.PermissionlessValidatorExistsInSidecar(subnetName, nodeIDs[1], localNetwork)
+		addedNode = nodeIDs[1]
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(exists).Should(gomega.BeTrue())
 
@@ -214,7 +216,11 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
 
-		_, err = commands.AddPermissionlessDelegator(subnetName, nodeIDs[1], "25", stakeDuration)
+	})
+
+	ginkgo.It("can add delegator", func() {
+		time.Sleep(60 * time.Second)
+		_, err = commands.AddPermissionlessDelegator(subnetName, addedNode, "25", stakeDuration)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		commands.DeleteSubnetConfig(subnetName)
