@@ -265,10 +265,7 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 			}
 		}
 	case models.Mainnet:
-		useLedger = true
-		if keyName != "" {
-			return ErrStoredKeyOnMainnet
-		}
+		return errors.New("unsupported network")
 	default:
 		return errors.New("unsupported network")
 	}

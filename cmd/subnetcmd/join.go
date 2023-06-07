@@ -89,6 +89,9 @@ This command currently only supports Subnets deployed on the Fuji Testnet and Ma
 	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "amount of tokens to stake on validator")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "start time that validator starts validating")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long validator validates for after start time")
+	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
+	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
+	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	return cmd
 }
 
@@ -129,12 +132,13 @@ func joinCmd(_ *cobra.Command, args []string) error {
 				return err
 			}
 			switch networkToUpgrade {
+			case localDeployment:
+				network = models.Local
 			case fujiDeployment:
-				return errors.New("joining elastic subnet is not yet supported on Fuji network")
+				network = models.Fuji
 			case mainnetDeployment:
 				return errors.New("joining elastic subnet is not yet supported on Mainnet")
 			}
-			network = models.Local
 		} else {
 			networkStr, err := app.Prompt.CaptureList(
 				"Choose a network to validate on (this command only supports public networks)",
@@ -322,9 +326,98 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	}
 	return nil
 }
-
 func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network, subnetName string) error {
-	fmt.Printf("network name %s \n", network.String())
+	var err error
+	if len(ledgerAddresses) > 0 {
+		useLedger = true
+	}
+
+	if useLedger && keyName != "" {
+		return ErrMutuallyExlusiveKeyLedger
+	}
+
+	subnetID := sc.Networks[network.String()].SubnetID
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		subnetID = sc.Networks[models.Local.String()].SubnetID
+	}
+	if subnetID == ids.Empty {
+		return errNoSubnetID
+	}
+
+	switch network {
+	case models.Local:
+		return handleValidatorJoinElasticSubnetLocal(sc, network, subnetName)
+	case models.Fuji:
+		if !useLedger && keyName == "" {
+			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "pay transaction fees", app.GetKeyDir())
+			if err != nil {
+				return err
+			}
+		}
+	case models.Mainnet:
+		return errors.New("unsupported network")
+	default:
+		return errors.New("unsupported network")
+	}
+	// used in E2E to simulate public network execution paths on a local network
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		network = models.Local
+	}
+	nodeID, err := promptNodeIDToAdd(subnetID)
+	if err != nil {
+		return err
+	}
+	stakedTokenAmount, err := promptStakeAmount(subnetName)
+	if err != nil {
+		return err
+	}
+	start, stakeDuration, err := getTimeParameters(network, nodeID)
+	if err != nil {
+		return err
+	}
+	endTime := start.Add(stakeDuration)
+
+	// get keychain accessor
+	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
+	if err != nil {
+		return err
+	}
+
+	recipientAddr := kc.Addresses().List()[0]
+	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	assetID, err := getSubnetAssetID(subnetID, network)
+	txID, err := deployer.AddPermissionlessValidator(subnetID, assetID, nodeID, stakedTokenAmount, uint64(start.Unix()), uint64(endTime.Unix()), recipientAddr)
+	if err != nil {
+		return err
+	}
+
+	if err = app.UpdateSidecarPermissionlessValidator(&sc, network, nodeID.String(), txID); err != nil {
+		return fmt.Errorf("joining permissionless subnet was successful, but failed to update sidecar: %w", err)
+	}
+	return nil
+}
+func getSubnetAssetID(subnetID ids.ID, network models.Network) (ids.ID, error) {
+	var api string
+	switch network {
+	case models.Fuji:
+		api = constants.FujiAPIEndpoint
+	case models.Mainnet:
+		api = constants.MainnetAPIEndpoint
+	case models.Local:
+		api = constants.LocalAPIEndpoint
+	default:
+		return ids.Empty, fmt.Errorf("network not supported")
+	}
+
+	pClient := platformvm.NewClient(api)
+	ctx := context.Background()
+	assetID, err := pClient.GetStakingAssetID(ctx, subnetID)
+	if err != nil {
+		return ids.Empty, err
+	}
+	return assetID, nil
+}
+func handleValidatorJoinElasticSubnetLocal(sc models.Sidecar, network models.Network, subnetName string) error {
 	if network != models.Local {
 		return errors.New("unsupported network")
 	}
@@ -453,8 +546,6 @@ func promptNodeIDToAdd(subnetID ids.ID) (ids.NodeID, error) {
 		}
 		// construct list of validators to choose from
 		var validatorList []string
-		fmt.Printf("defaultLocalNetworkNodeIDs %s \n", defaultLocalNetworkNodeIDs)
-
 		for _, localNodeID := range defaultLocalNetworkNodeIDs {
 			nodeIDFound := false
 			for _, v := range validators {
@@ -464,8 +555,6 @@ func promptNodeIDToAdd(subnetID ids.ID) (ids.NodeID, error) {
 				}
 			}
 			if !nodeIDFound {
-				fmt.Printf("adding validators %s \n", localNodeID)
-
 				validatorList = append(validatorList, localNodeID)
 			}
 		}
