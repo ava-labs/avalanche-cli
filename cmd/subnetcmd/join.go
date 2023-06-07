@@ -326,6 +326,7 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 	}
 	return nil
 }
+
 func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network, subnetName string) error {
 	var err error
 	if len(ledgerAddresses) > 0 {
@@ -386,6 +387,9 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	recipientAddr := kc.Addresses().List()[0]
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	assetID, err := getSubnetAssetID(subnetID, network)
+	if err != nil {
+		return err
+	}
 	txID, err := deployer.AddPermissionlessValidator(subnetID, assetID, nodeID, stakedTokenAmount, uint64(start.Unix()), uint64(endTime.Unix()), recipientAddr)
 	if err != nil {
 		return err
@@ -396,6 +400,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	}
 	return nil
 }
+
 func getSubnetAssetID(subnetID ids.ID, network models.Network) (ids.ID, error) {
 	var api string
 	switch network {
@@ -417,6 +422,7 @@ func getSubnetAssetID(subnetID ids.ID, network models.Network) (ids.ID, error) {
 	}
 	return assetID, nil
 }
+
 func handleValidatorJoinElasticSubnetLocal(sc models.Sidecar, network models.Network, subnetName string) error {
 	if network != models.Local {
 		return errors.New("unsupported network")
