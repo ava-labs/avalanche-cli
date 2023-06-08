@@ -127,11 +127,11 @@ func joinCmd(_ *cobra.Command, args []string) error {
 
 	if network == models.Undefined {
 		if joinElastic {
-			networkToUpgrade, err := promptNetworkElastic(sc, "Which network is the elastic subnet that the node wants to join on?")
+			selectedNetwork, err := promptNetworkElastic(sc, "Which network is the elastic subnet that the node wants to join on?")
 			if err != nil {
 				return err
 			}
-			switch networkToUpgrade {
+			switch selectedNetwork {
 			case localDeployment:
 				network = models.Local
 			case fujiDeployment:
