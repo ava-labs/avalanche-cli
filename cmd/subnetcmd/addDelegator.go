@@ -5,17 +5,15 @@ package subnetcmd
 import (
 	"errors"
 	"fmt"
-	"os"
-	"time"
-
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
+	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 )
 
@@ -63,12 +61,6 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 		return err
 	}
 	subnetName := chains[0]
-
-	var (
-		nodeID ids.NodeID
-		start  time.Time
-	)
-
 	var network models.Network
 	switch {
 	case deployLocal:
@@ -105,12 +97,57 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 	}
 
 	switch network {
+	case models.Local:
+		return handleAddPermissionlessDelegatorLocal(subnetName)
 	case models.Fuji:
-		return errors.New("addPermissionlessDelegator is not yet supported on Fuji network")
+		if !useLedger && keyName == "" {
+			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "pay transaction fees", app.GetKeyDir())
+			if err != nil {
+				return err
+			}
+		}
 	case models.Mainnet:
 		return errors.New("addPermissionlessDelegator is not yet supported on Mainnet")
 	}
-	network = models.Local
+	// used in E2E to simulate public network execution paths on a local network
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		network = models.Local
+	}
+	nodeID, err := promptNodeIDToAdd(subnetID)
+	if err != nil {
+		return err
+	}
+	stakedTokenAmount, err := promptStakeAmount(subnetName)
+	if err != nil {
+		return err
+	}
+	start, stakeDuration, err := getTimeParameters(network, nodeID)
+	if err != nil {
+		return err
+	}
+	endTime := start.Add(stakeDuration)
+
+	// get keychain accessor
+	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
+	if err != nil {
+		return err
+	}
+
+	recipientAddr := kc.Addresses().List()[0]
+	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	assetID, err := getSubnetAssetID(subnetID, network)
+	if err != nil {
+		return err
+	}
+	txID, err := deployer.AddPermissionlessValidator(subnetID, assetID, nodeID, stakedTokenAmount, uint64(start.Unix()), uint64(endTime.Unix()), recipientAddr)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func handleAddPermissionlessDelegatorLocal(subnetName string) error {
+	network := models.Local
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
@@ -119,7 +156,7 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 	if !checkIfSubnetIsElasticOnLocal(sc) {
 		return fmt.Errorf("%s is not an elastic subnet", subnetName)
 	}
-	nodeID, err = promptNodeIDToAdd(sc.Networks[models.Local.String()].SubnetID, false)
+	nodeID, err := promptNodeIDToAdd(sc.Networks[models.Local.String()].SubnetID, false)
 	if err != nil {
 		return err
 	}
