@@ -537,33 +537,33 @@ func checkIsValidating(subnetID ids.ID, nodeID ids.NodeID, pClient platformvm.Cl
 
 func promptNodeIDToAdd(subnetID ids.ID, network models.Network) (ids.NodeID, error) {
 	if nodeIDStr == "" {
-		if network == models.Local {
-			// Get NodeIDs of all validators on the subnet
-			validators, err := subnet.GetSubnetValidators(subnetID)
-			if err != nil {
-				return ids.EmptyNodeID, err
-			}
-			// construct list of validators to choose from
-			var validatorList []string
-			for _, localNodeID := range defaultLocalNetworkNodeIDs {
-				nodeIDFound := false
-				for _, v := range validators {
-					if v.NodeID.String() == localNodeID {
-						nodeIDFound = true
-						break
-					}
-				}
-				if !nodeIDFound {
-					validatorList = append(validatorList, localNodeID)
-				}
-			}
-			nodeIDStr, err = app.Prompt.CaptureList("Which validator you'd like to join this elastic subnet?", validatorList)
-			if err != nil {
-				return ids.EmptyNodeID, err
-			}
-		} else {
+		if network != models.Local {
 			ux.Logger.PrintToUser("Please enter the Node ID of the node that you would like to add to the elastic subnet")
 			return app.Prompt.CaptureNodeID("Node ID (format it as NodeID-<node_id>)")
+		}
+
+		// Get NodeIDs of all validators on the subnet
+		validators, err := subnet.GetSubnetValidators(subnetID)
+		if err != nil {
+			return ids.EmptyNodeID, err
+		}
+		// construct list of validators to choose from
+		var validatorList []string
+		for _, localNodeID := range defaultLocalNetworkNodeIDs {
+			nodeIDFound := false
+			for _, v := range validators {
+				if v.NodeID.String() == localNodeID {
+					nodeIDFound = true
+					break
+				}
+			}
+			if !nodeIDFound {
+				validatorList = append(validatorList, localNodeID)
+			}
+		}
+		nodeIDStr, err = app.Prompt.CaptureList("Which validator you'd like to join this elastic subnet?", validatorList)
+		if err != nil {
+			return ids.EmptyNodeID, err
 		}
 	}
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)
