@@ -558,7 +558,7 @@ func checkAllLocalNodesAreCurrentValidators(subnetID ids.ID) error {
 }
 
 func transformValidatorsToPermissionlessLocal(sc models.Sidecar, subnetID ids.ID, subnetName string) error {
-	stakedTokenAmount, err := promptStakeAmount(subnetName)
+	stakedTokenAmount, err := promptStakeAmount(subnetName, models.Local)
 	if err != nil {
 		return err
 	}
