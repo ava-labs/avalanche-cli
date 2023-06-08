@@ -6,13 +6,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"time"
+
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
-	"os"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -174,6 +175,7 @@ func printAddPermissionlessDelOutput(txID ids.ID, nodeID ids.NodeID, network mod
 	ux.Logger.PrintToUser("End time: %s", endTime.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("Stake Amount: %d", stakedTokenAmount)
 }
+
 func getSubnetAssetID(subnetID ids.ID, network models.Network) (ids.ID, error) {
 	var api string
 	switch network {
@@ -197,7 +199,8 @@ func getSubnetAssetID(subnetID ids.ID, network models.Network) (ids.ID, error) {
 }
 
 func handleAddPermissionlessDelegatorLocal(subnetName string, network models.Network, nodeID ids.NodeID,
-	stakedTokenAmount uint64, start time.Time, endTime time.Time) error {
+	stakedTokenAmount uint64, start time.Time, endTime time.Time,
+) error {
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
