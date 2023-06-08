@@ -378,7 +378,6 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	}
 	// used in E2E to simulate public network execution paths on a local network
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		fmt.Printf("we are simulating \n")
 		network = models.Local
 	}
 
@@ -435,9 +434,10 @@ func printAddPermissionlessValOutput(txID ids.ID, nodeID ids.NodeID, network mod
 	ux.Logger.PrintToUser("End time: %s", endTime.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("Stake Amount: %d", stakedTokenAmount)
 }
+
 func handleValidatorJoinElasticSubnetLocal(sc models.Sidecar, network models.Network, subnetName string, nodeID ids.NodeID,
-	stakedTokenAmount uint64, start time.Time, endTime time.Time) error {
-	fmt.Printf("we here at local \n")
+	stakedTokenAmount uint64, start time.Time, endTime time.Time,
+) error {
 	if network != models.Local {
 		return errors.New("unsupported network")
 	}
