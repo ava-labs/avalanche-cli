@@ -283,6 +283,30 @@ func (d *PublicDeployer) RemoveValidator(
 	return false, tx, remainingSubnetAuthKeys, nil
 }
 
+func (d *PublicDeployer) AddPermissionlessDelegator(
+	subnetID ids.ID,
+	subnetAssetID ids.ID,
+	nodeID ids.NodeID,
+	stakeAmount uint64,
+	startTime uint64,
+	endTime uint64,
+	recipientAddr ids.ShortID,
+) (ids.ID, error) {
+	wallet, err := d.loadWallet(subnetID)
+	if err != nil {
+		return ids.Empty, err
+	}
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign Add Permissionless Validator hash on the ledger device *** ")
+	}
+	txID, err := d.issueAddPermissionlessDelegatorTX(recipientAddr, stakeAmount, subnetID, nodeID, subnetAssetID, startTime, endTime, wallet)
+	if err != nil {
+		return ids.Empty, err
+	}
+	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID)
+	return txID, nil
+}
+
 // - creates a subnet for [chain] using the given [controlKeys] and [threshold] as subnet authentication parameters
 func (d *PublicDeployer) DeploySubnet(
 	controlKeys []string,
@@ -528,6 +552,43 @@ func (d *PublicDeployer) createTransformSubnetTX(
 		return nil, err
 	}
 	return &tx, nil
+}
+
+func (d *PublicDeployer) issueAddPermissionlessDelegatorTX(
+	recipientAddr ids.ShortID,
+	stakeAmount uint64,
+	subnetID ids.ID,
+	nodeID ids.NodeID,
+	assetID ids.ID,
+	startTime uint64,
+	endTime uint64,
+	wallet primary.Wallet,
+) (ids.ID, error) {
+	options := d.getMultisigTxOptions([]ids.ShortID{})
+	owner := &secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs: []ids.ShortID{
+			recipientAddr,
+		},
+	}
+	txID, err := wallet.P().IssueAddPermissionlessDelegatorTx(
+		&txs.SubnetValidator{
+			Validator: txs.Validator{
+				NodeID: nodeID,
+				Start:  startTime,
+				End:    endTime,
+				Wght:   stakeAmount,
+			},
+			Subnet: subnetID,
+		},
+		assetID,
+		owner,
+		options...,
+	)
+	if err != nil {
+		return ids.Empty, err
+	}
+	return txID, nil
 }
 
 func (*PublicDeployer) signTx(
