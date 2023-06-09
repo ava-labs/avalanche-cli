@@ -273,10 +273,10 @@ func transferF(*cobra.Command, []string) error {
 			if err != nil {
 				return err
 			}
-			receiverAddr, err = address.ParseToID(receiverAddrStr)
-			if err != nil {
-				return err
-			}
+		}
+		receiverAddr, err = address.ParseToID(receiverAddrStr)
+		if err != nil {
+			return err
 		}
 	} else {
 		receiverAddr = kc.Addresses().List()[0]
@@ -294,7 +294,6 @@ func transferF(*cobra.Command, []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(addrStr)
 		if addr == receiverAddr {
 			return fmt.Errorf("sender addr is the same as receiver addr")
 		}

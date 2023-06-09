@@ -7,7 +7,6 @@ import (
 	"os"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
@@ -272,11 +271,14 @@ var _ = ginkgo.Describe("[Key]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		_, ewoqKeyBalance1, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName)
 		gomega.Expect(err).Should(gomega.BeNil())
+        fmt.Println(ewoqKeyBalance1)
+        fmt.Println(keyBalance1)
 
-		fmt.Println("SEND")
-		output, err = commands.KeyTransferSend(ewoqKeyName, keyAddr, "1")
-		gomega.Expect(err).Should(gomega.BeNil())
+        amountStr := "0.2"
+
+		output, err = commands.KeyTransferSend(ewoqKeyName, keyAddr, amountStr)
 		fmt.Println(output)
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		output, err = commands.ListKeys("local", true, true)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -284,15 +286,12 @@ var _ = ginkgo.Describe("[Key]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		_, ewoqKeyBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		fmt.Println(ewoqKeyBalance1 - ewoqKeyBalance2)
-		fmt.Println(keyBalance2 - keyBalance1)
+        fmt.Println(ewoqKeyBalance2)
+        fmt.Println(keyBalance2)
 
-		fmt.Println("RECEIVE")
-		time.Sleep(5 * time.Second)
-		output, err = commands.KeyTransferReceive(keyName, "1", "0")
+		output, err = commands.KeyTransferReceive(keyName, amountStr, "0")
 		fmt.Println(output)
 		gomega.Expect(err).Should(gomega.BeNil())
-		fmt.Println(output)
 
 		output, err = commands.ListKeys("local", true, true)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -300,8 +299,8 @@ var _ = ginkgo.Describe("[Key]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		_, ewoqKeyBalance3, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		fmt.Println(ewoqKeyBalance2 - ewoqKeyBalance3)
-		fmt.Println(keyBalance3 - keyBalance2)
+        fmt.Println(ewoqKeyBalance3)
+        fmt.Println(keyBalance3)
 
 		err = utils.DeleteKey(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
