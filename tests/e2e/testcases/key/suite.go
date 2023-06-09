@@ -309,7 +309,7 @@ var _ = ginkgo.Describe("[Key]", func() {
 		_, ewoqKeyBalance3, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(ewoqKeyBalance1 - ewoqKeyBalance3).Should(gomega.Equal(feeNAvax + amountNAvax))
-		gomega.Expect(keyBalance3 - keyBalance1).Should(gomega.Equal(uint64(amountNAvax)))
+		gomega.Expect(keyBalance3 - keyBalance1).Should(gomega.Equal(amountNAvax))
 
 		// send/receive with recovery 1
 
@@ -363,7 +363,7 @@ var _ = ginkgo.Describe("[Key]", func() {
 		_, ewoqKeyBalance3, err = utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(ewoqKeyBalance1 - ewoqKeyBalance3).Should(gomega.Equal(feeNAvax + amountNAvax))
-		gomega.Expect(keyBalance3 - keyBalance1).Should(gomega.Equal(uint64(amountNAvax)))
+		gomega.Expect(keyBalance3 - keyBalance1).Should(gomega.Equal(amountNAvax))
 
 		err = utils.DeleteKey(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
