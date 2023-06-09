@@ -324,7 +324,6 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 }
 
 func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network, subnetName string) error {
-	fmt.Printf("network name %s \n", network.String())
 	if network != models.Local {
 		return errors.New("unsupported network")
 	}

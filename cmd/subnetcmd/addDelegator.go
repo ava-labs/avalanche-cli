@@ -90,6 +90,13 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 		network = models.NetworkFromString(networkStr)
 	}
 
+	switch network {
+	case models.Fuji:
+		return errors.New("addPermissionlessDelegator is not yet supported on Fuji network")
+	case models.Mainnet:
+		return errors.New("addPermissionlessDelegator is not yet supported on Mainnet")
+	}
+
 	if outputTxPath != "" {
 		if _, err := os.Stat(outputTxPath); err == nil {
 			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
@@ -104,13 +111,6 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 		return ErrMutuallyExlusiveKeyLedger
 	}
 
-	switch network {
-	case models.Fuji:
-		return errors.New("addPermissionlessDelegator is not yet supported on Fuji network")
-	case models.Mainnet:
-		return errors.New("addPermissionlessDelegator is not yet supported on Mainnet")
-	}
-	network = models.Local
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
@@ -119,7 +119,7 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 	if !checkIfSubnetIsElasticOnLocal(sc) {
 		return fmt.Errorf("%s is not an elastic subnet", subnetName)
 	}
-	nodeID, err = promptNodeIDToAdd(sc.Networks[models.Local.String()].SubnetID, false)
+	nodeID, err = promptNodeIDToAdd(sc.Networks[network.String()].SubnetID, false)
 	if err != nil {
 		return err
 	}
@@ -135,10 +135,10 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction addPermissionlessDelegatorTx...")
 	ux.Logger.PrintToUser("")
 
-	assetID := sc.ElasticSubnet[models.Local.String()].AssetID
+	assetID := sc.ElasticSubnet[network.String()].AssetID
 	testKey := genesis.EWOQKey
 	keyChain := secp256k1fx.NewKeychain(testKey)
-	subnetID := sc.Networks[models.Local.String()].SubnetID
+	subnetID := sc.Networks[network.String()].SubnetID
 	txID, err := subnet.IssueAddPermissionlessDelegatorTx(keyChain, subnetID, nodeID, stakedTokenAmount, assetID, uint64(start.Unix()), uint64(endTime.Unix()))
 	if err != nil {
 		return err

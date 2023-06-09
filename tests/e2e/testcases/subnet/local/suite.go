@@ -204,7 +204,7 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		_, err = commands.RemoveValidator(subnetName, nodeIDs[1])
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		_, err = commands.AddPermissionlessValidator(subnetName, nodeIDs[1], "200000", stakeDuration)
+		_, err = commands.AddPermissionlessValidator(subnetName, nodeIDs[1], stakeAmount, stakeDuration)
 		gomega.Expect(err).Should(gomega.BeNil())
 		exists, err = utils.PermissionlessValidatorExistsInSidecar(subnetName, nodeIDs[1], localNetwork)
 		gomega.Expect(err).Should(gomega.BeNil())
