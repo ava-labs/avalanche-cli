@@ -11,6 +11,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
+	"github.com/ava-labs/avalanchego/genesis"
+	"github.com/ava-labs/avalanchego/utils/units"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -271,13 +273,15 @@ var _ = ginkgo.Describe("[Key]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		_, ewoqKeyBalance1, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName)
 		gomega.Expect(err).Should(gomega.BeNil())
-        fmt.Println(ewoqKeyBalance1)
-        fmt.Println(keyBalance1)
+		gomega.Expect(keyBalance1).Should(gomega.Equal(uint64(0)))
 
-        amountStr := "0.2"
+		amount := 0.2
+		amountStr := fmt.Sprintf("%.2f", amount)
 
 		output, err = commands.KeyTransferSend(ewoqKeyName, keyAddr, amountStr)
-		fmt.Println(output)
+		if err != nil {
+			fmt.Println(output)
+		}
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		output, err = commands.ListKeys("local", true, true)
@@ -286,11 +290,15 @@ var _ = ginkgo.Describe("[Key]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		_, ewoqKeyBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName)
 		gomega.Expect(err).Should(gomega.BeNil())
-        fmt.Println(ewoqKeyBalance2)
-        fmt.Println(keyBalance2)
+		feeNAvax := genesis.LocalParams.TxFeeConfig.TxFee * 4
+		amountNAvax := uint64(amount * float64(units.Avax))
+		gomega.Expect(ewoqKeyBalance1 - ewoqKeyBalance2).Should(gomega.Equal(feeNAvax + amountNAvax))
+		gomega.Expect(keyBalance2).Should(gomega.Equal(uint64(0)))
 
 		output, err = commands.KeyTransferReceive(keyName, amountStr, "0")
-		fmt.Println(output)
+		if err != nil {
+			fmt.Println(output)
+		}
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		output, err = commands.ListKeys("local", true, true)
@@ -299,8 +307,8 @@ var _ = ginkgo.Describe("[Key]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		_, ewoqKeyBalance3, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName)
 		gomega.Expect(err).Should(gomega.BeNil())
-        fmt.Println(ewoqKeyBalance3)
-        fmt.Println(keyBalance3)
+		gomega.Expect(ewoqKeyBalance1 - ewoqKeyBalance3).Should(gomega.Equal(feeNAvax + amountNAvax))
+		gomega.Expect(keyBalance3).Should(gomega.Equal(amountNAvax))
 
 		err = utils.DeleteKey(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())

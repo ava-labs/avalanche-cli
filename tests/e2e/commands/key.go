@@ -3,7 +3,6 @@
 package commands
 
 import (
-    "fmt"
 	"os/exec"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -137,7 +136,7 @@ func ExportKeyToFile(keyName string, outputPath string) (string, error) {
 /* #nosec G204 */
 func KeyTransferSend(keyName string, targetAddr string, amount string) (string, error) {
 	// Create config
-    args := []string{
+	args := []string{
 		KeyCmd,
 		"transfer",
 		"--local",
@@ -149,9 +148,8 @@ func KeyTransferSend(keyName string, targetAddr string, amount string) (string, 
 		"--amount",
 		amount,
 		"--force",
-		"--"+constants.SkipUpdateFlag,
-    }
-    fmt.Println(args)
+		"--" + constants.SkipUpdateFlag,
+	}
 	cmd := exec.Command(CLIBinary, args...)
 
 	out, err := cmd.CombinedOutput()
@@ -161,7 +159,7 @@ func KeyTransferSend(keyName string, targetAddr string, amount string) (string, 
 /* #nosec G204 */
 func KeyTransferReceive(keyName string, amount string, recoveryStep string) (string, error) {
 	// Create config
-    args := []string{
+	args := []string{
 		KeyCmd,
 		"transfer",
 		"--local",
@@ -173,9 +171,8 @@ func KeyTransferReceive(keyName string, amount string, recoveryStep string) (str
 		"--force",
 		"--receive-recovery-step",
 		recoveryStep,
-		"--"+constants.SkipUpdateFlag,
-    }
-    fmt.Println(args)
+		"--" + constants.SkipUpdateFlag,
+	}
 	cmd := exec.Command(CLIBinary, args...)
 
 	out, err := cmd.CombinedOutput()
