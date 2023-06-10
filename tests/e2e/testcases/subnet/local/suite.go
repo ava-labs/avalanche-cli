@@ -27,7 +27,9 @@ const (
 	secondSubnetName = "e2eSecondSubnetTest"
 	confPath         = "tests/e2e/assets/test_avalanche-cli.json"
 	stakeAmount      = "2000"
-	stakeDuration    = "336h"
+	stakeDuration    = "337h"
+	delegateAmount   = "25"
+	delegateDuration = "336h"
 	localNetwork     = "Local Network"
 )
 
@@ -172,7 +174,7 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		commands.DeleteElasticSubnetConfig(subnetName)
 	})
 
-	ginkgo.It("can add permissionless validator to elastic subnet", func() {
+	ginkgo.It("can add permissionless validator to elastic subnet and delegate to it", func() {
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
 		_, err := utils.ParseRPCsFromOutput(deployOutput)
@@ -213,6 +215,9 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		isPendingValidator, err = utils.IsNodeInPendingValidator(subnetName, nodeIDs[1])
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
+
+		_, err = commands.AddPermissionlessDelegator(subnetName, nodeIDs[1], delegateAmount, delegateDuration)
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		commands.DeleteSubnetConfig(subnetName)
 		commands.DeleteElasticSubnetConfig(subnetName)
