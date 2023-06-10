@@ -82,6 +82,7 @@ type Prompter interface {
 	CaptureID(promptStr string) (ids.ID, error)
 	CaptureWeight(promptStr string) (uint64, error)
 	CapturePositiveInt(promptStr string, comparators []Comparator) (int, error)
+	CaptureUint32(promptStr string) (uint32, error)
 	CaptureUint64(promptStr string) (uint64, error)
 	CaptureFloat(promptStr string, validator func(float64) error) (float64, error)
 	CaptureUint64Compare(promptStr string, comparators []Comparator) (uint64, error)
@@ -237,6 +238,28 @@ func (*realPrompter) CaptureWeight(promptStr string) (uint64, error) {
 	}
 
 	return strconv.ParseUint(amountStr, 10, 64)
+}
+
+func (*realPrompter) CaptureUint32(promptStr string) (uint32, error) {
+	prompt := promptui.Prompt{
+		Label: promptStr,
+		Validate: func(input string) error {
+			_, err := strconv.ParseUint(input, 0, 32)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+	input, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+	val, err := strconv.ParseUint(input, 0, 32)
+	if err != nil {
+		return 0, err
+	}
+	return uint32(val), nil
 }
 
 func (*realPrompter) CaptureUint64(promptStr string) (uint64, error) {

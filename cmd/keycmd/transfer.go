@@ -5,7 +5,6 @@ package keycmd
 import (
 	"context"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -42,7 +41,7 @@ var (
 	send                bool
 	receive             bool
 	keyName             string
-	ledgerIndex         uint64
+	ledgerIndex         uint32
 	force               bool
 	receiverAddrStr     string
 	amountFlt           float64
@@ -114,7 +113,7 @@ func newTransferCmd() *cobra.Command {
 		"",
 		"key associated to the sender or receiver address",
 	)
-	cmd.Flags().Uint64VarP(
+	cmd.Flags().Uint32VarP(
 		&ledgerIndex,
 		ledgerIndexFlag,
 		"i",
@@ -209,7 +208,7 @@ func transferF(*cobra.Command, []string) error {
 			return err
 		}
 		if useLedger {
-			ledgerIndex, err = app.Prompt.CaptureUint64Compare("Ledger index to use", nil)
+			ledgerIndex, err = app.Prompt.CaptureUint32("Ledger index to use")
 			if err != nil {
 				return err
 			}
@@ -255,14 +254,7 @@ func transferF(*cobra.Command, []string) error {
 		if err != nil {
 			return err
 		}
-		var ledgerIndexUint32 uint32
-		if ledgerIndex > math.MaxUint32 {
-			return fmt.Errorf("ledger index %d excess max uint32", ledgerIndex)
-		}
-		if ledgerIndex <= math.MaxUint32 {
-			ledgerIndexUint32 = uint32(ledgerIndex)
-		}
-		ledgerIndices := []uint32{ledgerIndexUint32}
+		ledgerIndices := []uint32{ledgerIndex}
 		kc, err = keychain.NewLedgerKeychainFromIndices(ledgerDevice, ledgerIndices)
 		if err != nil {
 			return err

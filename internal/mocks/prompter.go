@@ -490,6 +490,30 @@ func (_m *Prompter) CaptureStringAllowEmpty(promptStr string) (string, error) {
 	return r0, r1
 }
 
+// CaptureUint32 provides a mock function with given fields: promptStr
+func (_m *Prompter) CaptureUint32(promptStr string) (uint32, error) {
+	ret := _m.Called(promptStr)
+
+	var r0 uint32
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (uint32, error)); ok {
+		return rf(promptStr)
+	}
+	if rf, ok := ret.Get(0).(func(string) uint32); ok {
+		r0 = rf(promptStr)
+	} else {
+		r0 = ret.Get(0).(uint32)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(promptStr)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // CaptureUint64 provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureUint64(promptStr string) (uint64, error) {
 	ret := _m.Called(promptStr)
