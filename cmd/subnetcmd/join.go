@@ -9,6 +9,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-network-runner/server"
+
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 
@@ -47,8 +50,6 @@ var (
 	joinElastic bool
 	// for permissionless subnet only: how much subnet native token will be staked in the validator
 	stakeAmount uint64
-	// default node ids of nodes in local network
-	defaultLocalNetworkNodeIDs = []string{"NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg", "NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ", "NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN", "NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu", "NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5"}
 )
 
 // avalanche subnet deploy
@@ -443,8 +444,37 @@ func checkIsValidating(subnetID ids.ID, nodeID ids.NodeID, pClient platformvm.Cl
 	return false, nil
 }
 
+func getLocalNetworkIDs() ([]string, error) {
+	var localNodeIDs []string
+	cli, err := binutils.NewGRPCClient()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := binutils.GetAsyncContext()
+	status, err := cli.Status(ctx)
+	if err != nil {
+		if server.IsServerError(err, server.ErrNotBootstrapped) {
+			ux.Logger.PrintToUser("No local network running")
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	if status != nil && status.ClusterInfo != nil {
+		for _, val := range status.ClusterInfo.NodeInfos {
+			localNodeIDs = append(localNodeIDs, val.Id)
+		}
+	}
+	return localNodeIDs, nil
+}
+
 func promptNodeIDToAdd(subnetID ids.ID, isValidator bool) (ids.NodeID, error) {
 	if nodeIDStr == "" {
+		defaultLocalNetworkNodeIDs, err := getLocalNetworkIDs()
+		if err != nil {
+			return ids.EmptyNodeID, err
+		}
 		// Get NodeIDs of all validators on the subnet
 		validators, err := subnet.GetSubnetValidators(subnetID)
 		if err != nil {
@@ -452,19 +482,19 @@ func promptNodeIDToAdd(subnetID ids.ID, isValidator bool) (ids.NodeID, error) {
 		}
 		// construct list of validators to choose from
 		var validatorList []string
-		for _, localNodeID := range defaultLocalNetworkNodeIDs {
-			nodeIDFound := false
-			if isValidator {
-				for _, v := range validators {
-					if v.NodeID.String() == localNodeID {
-						nodeIDFound = true
-						break
-					}
-				}
+		valNodeIDsMap := make(map[string]bool)
+		for _, val := range validators {
+			valNodeIDsMap[val.NodeID.String()] = true
+		}
+		if !isValidator {
+			for _, v := range validators {
+				validatorList = append(validatorList, v.NodeID.String())
 			}
-
-			if !nodeIDFound {
-				validatorList = append(validatorList, localNodeID)
+		} else {
+			for _, localNodeID := range defaultLocalNetworkNodeIDs {
+				if _, ok := valNodeIDsMap[localNodeID]; !ok {
+					validatorList = append(validatorList, localNodeID)
+				}
 			}
 		}
 		promptStr := "Which validator you'd like to join this elastic subnet?"

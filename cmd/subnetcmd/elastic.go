@@ -546,6 +546,10 @@ func checkAllLocalNodesAreCurrentValidators(subnetID ids.ID) error {
 	if err != nil {
 		return err
 	}
+	defaultLocalNetworkNodeIDs, err := getLocalNetworkIDs()
+	if err != nil {
+		return err
+	}
 	for _, localVal := range defaultLocalNetworkNodeIDs {
 		currentValidator := false
 		for _, validator := range validators {
