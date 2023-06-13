@@ -117,22 +117,6 @@ func ExportKeyToFile(keyName string, outputPath string) (string, error) {
 	return string(out), err
 }
 
-/*
-  -o, --amount float                 amount to send or receive (AVAX units)
-  -f, --force                        avoid transfer confirmation
-  -u, --fuji                         transfer between testnet (fuji) addresses
-  -h, --help                         help for transfer
-  -k, --key string                   key associated to the sender or receiver address
-  -i, --ledger uint                  ledger index associated to the sender or receiver address (default 32768)
-  -l, --local                        transfer between local network addresses
-  -m, --mainnet                      transfer between mainnet addresses
-  -g, --receive                      receive the transfer
-  -r, --receive-recovery-step uint   receive step to use for multiple step transaction recovery
-  -s, --send                         send the transfer
-  -a, --target-addr string           receiver address
-  -t, --testnet
-*/
-
 /* #nosec G204 */
 func KeyTransferSend(keyName string, targetAddr string, amount string) (string, error) {
 	// Create config
