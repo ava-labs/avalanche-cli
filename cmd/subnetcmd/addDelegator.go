@@ -102,15 +102,6 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
 		}
 	}
-
-	if len(ledgerAddresses) > 0 {
-		useLedger = true
-	}
-
-	if useLedger && keyName != "" {
-		return ErrMutuallyExlusiveKeyLedger
-	}
-
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
