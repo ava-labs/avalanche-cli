@@ -32,6 +32,7 @@ const (
 	allFlag           = "all-networks"
 	cchainFlag        = "cchain"
 	ledgerIndicesFlag = "ledger"
+	useNanoAvaxFlag   = "use-nano-avax"
 )
 
 var (
@@ -40,6 +41,7 @@ var (
 	mainnet       bool
 	all           bool
 	cchain        bool
+	useNanoAvax   bool
 	ledgerIndices []uint
 )
 
@@ -94,6 +96,13 @@ keys or for the ledger addresses associated to certain indices.`,
 		"c",
 		true,
 		"list C-Chain addresses",
+	)
+	cmd.Flags().BoolVarP(
+		&useNanoAvax,
+		useNanoAvaxFlag,
+		"n",
+		false,
+		"use nano Avax for balances",
 	)
 	cmd.Flags().UintSliceVarP(
 		&ledgerIndices,
@@ -394,7 +403,13 @@ func getCChainBalanceStr(ctx context.Context, cClient ethclient.Client, addrStr 
 	if balance.Cmp(big.NewInt(0)) == 0 {
 		return "0", nil
 	}
-	return fmt.Sprintf("%.9f", float64(balance.Uint64())/float64(units.Avax)), nil
+	balanceStr := ""
+	if useNanoAvax {
+		balanceStr = fmt.Sprintf("%9d", balance.Uint64())
+	} else {
+		balanceStr = fmt.Sprintf("%.9f", float64(balance.Uint64())/float64(units.Avax))
+	}
+	return balanceStr, nil
 }
 
 func getPChainBalanceStr(ctx context.Context, pClient platformvm.Client, addr string) (string, error) {
@@ -411,5 +426,11 @@ func getPChainBalanceStr(ctx context.Context, pClient platformvm.Client, addr st
 	if resp.Balance == 0 {
 		return "0", nil
 	}
-	return fmt.Sprintf("%.9f", float64(resp.Balance)/float64(units.Avax)), nil
+	balanceStr := ""
+	if useNanoAvax {
+		balanceStr = fmt.Sprintf("%9d", resp.Balance)
+	} else {
+		balanceStr = fmt.Sprintf("%.9f", float64(resp.Balance)/float64(units.Avax))
+	}
+	return balanceStr, nil
 }
