@@ -59,12 +59,12 @@ func StartNetwork() string {
 /* #nosec G204 */
 func StartNetworkWithVersion(version string) string {
 	cmdArgs := []string{NetworkCmd, "start"}
+	cmdArgs = append(cmdArgs, "--"+constants.SkipUpdateFlag)
 	if version != "" {
 		cmdArgs = append(
 			cmdArgs,
 			"--avalanchego-version",
 			version,
-			"--"+constants.SkipUpdateFlag,
 		)
 	}
 	cmd := exec.Command(CLIBinary, cmdArgs...)
