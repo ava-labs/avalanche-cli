@@ -110,11 +110,11 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 	if !checkIfSubnetIsElasticOnLocal(sc) {
 		return fmt.Errorf("%s is not an elastic subnet", subnetName)
 	}
-	nodeID, err = promptNodeIDToAdd(sc.Networks[network.String()].SubnetID, false)
+	nodeID, err = promptNodeIDToAdd(sc.Networks[network.String()].SubnetID, false, network)
 	if err != nil {
 		return err
 	}
-	stakedTokenAmount, err := promptStakeAmount(subnetName, false)
+	stakedTokenAmount, err := promptStakeAmount(subnetName, false, network)
 	if err != nil {
 		return err
 	}

@@ -561,13 +561,6 @@ func getLocalNetworkIDs() ([]string, error) {
 	return localNodeIDs, nil
 }
 
-func promptNodeIDToAdd(subnetID ids.ID, isValidator bool) (ids.NodeID, error) {
-	if nodeIDStr == "" {
-		defaultLocalNetworkNodeIDs, err := getLocalNetworkIDs()
-		if err != nil {
-			return ids.EmptyNodeID, err
-		}
-
 func promptNodeIDToAdd(subnetID ids.ID, isValidator bool, network models.Network) (ids.NodeID, error) {
 	if nodeIDStr == "" {
 		if network != models.Local {
