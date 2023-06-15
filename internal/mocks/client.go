@@ -52,6 +52,32 @@ func (_m *Client) AddNode(ctx context.Context, name string, execPath string, opt
 	return r0, r1
 }
 
+// AddPermissionlessValidator provides a mock function with given fields: ctx, validatorSpec
+func (_m *Client) AddPermissionlessValidator(ctx context.Context, validatorSpec []*rpcpb.PermissionlessValidatorSpec) (*rpcpb.AddPermissionlessValidatorResponse, error) {
+	ret := _m.Called(ctx, validatorSpec)
+
+	var r0 *rpcpb.AddPermissionlessValidatorResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []*rpcpb.PermissionlessValidatorSpec) (*rpcpb.AddPermissionlessValidatorResponse, error)); ok {
+		return rf(ctx, validatorSpec)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []*rpcpb.PermissionlessValidatorSpec) *rpcpb.AddPermissionlessValidatorResponse); ok {
+		r0 = rf(ctx, validatorSpec)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*rpcpb.AddPermissionlessValidatorResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []*rpcpb.PermissionlessValidatorSpec) error); ok {
+		r1 = rf(ctx, validatorSpec)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // AttachPeer provides a mock function with given fields: ctx, nodeName
 func (_m *Client) AttachPeer(ctx context.Context, nodeName string) (*rpcpb.AttachPeerResponse, error) {
 	ret := _m.Called(ctx, nodeName)
@@ -352,6 +378,32 @@ func (_m *Client) RemoveSnapshot(ctx context.Context, snapshotName string) (*rpc
 
 	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
 		r1 = rf(ctx, snapshotName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RemoveSubnetValidator provides a mock function with given fields: ctx, validatorSpec
+func (_m *Client) RemoveSubnetValidator(ctx context.Context, validatorSpec []*rpcpb.RemoveSubnetValidatorSpec) (*rpcpb.RemoveSubnetValidatorResponse, error) {
+	ret := _m.Called(ctx, validatorSpec)
+
+	var r0 *rpcpb.RemoveSubnetValidatorResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []*rpcpb.RemoveSubnetValidatorSpec) (*rpcpb.RemoveSubnetValidatorResponse, error)); ok {
+		return rf(ctx, validatorSpec)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []*rpcpb.RemoveSubnetValidatorSpec) *rpcpb.RemoveSubnetValidatorResponse); ok {
+		r0 = rf(ctx, validatorSpec)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*rpcpb.RemoveSubnetValidatorResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []*rpcpb.RemoveSubnetValidatorSpec) error); ok {
+		r1 = rf(ctx, validatorSpec)
 	} else {
 		r1 = ret.Error(1)
 	}

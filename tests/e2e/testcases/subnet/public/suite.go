@@ -18,9 +18,12 @@ import (
 )
 
 const (
-	subnetName  = "e2eSubnetTest"
-	controlKeys = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
-	keyName     = "ewoq"
+	subnetName    = "e2eSubnetTest"
+	controlKeys   = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
+	keyName       = "ewoq"
+	stakeAmount   = "2000"
+	stakeDuration = "336h"
+	localNetwork  = "Local Network"
 )
 
 func deploySubnetToFuji() (string, map[string]utils.NodeInfo) {
@@ -158,6 +161,19 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 
 		_, err = commands.SimulateFujiTransformSubnet(subnetName, keyName)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
+
+		nodeIDs, err := utils.GetValidators(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(len(nodeIDs)).Should(gomega.Equal(5))
+
+		_, err = commands.RemoveValidator(subnetName, nodeIDs[0])
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		_, err = commands.SimulateFujiAddPermissionlessValidator(subnetName, keyName, nodeIDs[0], stakeAmount, stakeDuration)
+		gomega.Expect(err).Should(gomega.BeNil())
+		exists, err = utils.PermissionlessValidatorExistsInSidecar(subnetName, nodeIDs[0], localNetwork)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(exists).Should(gomega.BeTrue())
 
 		commands.DeleteElasticSubnetConfig(subnetName)
 	})

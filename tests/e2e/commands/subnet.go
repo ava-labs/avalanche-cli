@@ -509,6 +509,57 @@ func SimulateFujiTransformSubnet(
 	return string(output), nil
 }
 
+func SimulateFujiAddPermissionlessValidator(
+	subnetName string,
+	key string,
+	nodeID string,
+	stakeAmount string,
+	stakingPeriod string,
+) (string, error) {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// enable simulation of public network execution paths on a local network
+	err = os.Setenv(constants.SimulatePublicNetwork, "true")
+	gomega.Expect(err).Should(gomega.BeNil())
+	startTimeStr := time.Now().Add(constants.StakingStartLeadTime).UTC().Format(constants.TimeParseLayout)
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		JoinCmd,
+		"--fuji",
+		"--key",
+		key,
+		"--elastic",
+		"--nodeID",
+		nodeID,
+		"--stake-amount",
+		stakeAmount,
+		"--start-time",
+		startTimeStr,
+		"--staking-period",
+		stakingPeriod,
+		subnetName,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+		err2 := os.Unsetenv(constants.SimulatePublicNetwork)
+		gomega.Expect(err2).Should(gomega.BeNil())
+		return "", err
+	}
+
+	// disable simulation of public network execution paths on a local network
+	err = os.Unsetenv(constants.SimulatePublicNetwork)
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	return string(output), nil
+}
+
 // simulates mainnet add validator execution path on a local network
 /* #nosec G204 */
 func SimulateMainnetAddValidator(

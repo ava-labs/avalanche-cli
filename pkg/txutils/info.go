@@ -30,6 +30,8 @@ func GetNetwork(tx *txs.Tx) (models.Network, error) {
 		networkID = unsignedTx.NetworkID
 	case *txs.TransformSubnetTx:
 		networkID = unsignedTx.NetworkID
+	case *txs.AddPermissionlessValidatorTx:
+		networkID = unsignedTx.NetworkID
 	default:
 		return models.Undefined, fmt.Errorf("unexpected unsigned tx type %T", unsignedTx)
 	}

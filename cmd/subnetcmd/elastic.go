@@ -265,10 +265,7 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 			}
 		}
 	case models.Mainnet:
-		useLedger = true
-		if keyName != "" {
-			return ErrStoredKeyOnMainnet
-		}
+		return errors.New("unsupported network")
 	default:
 		return errors.New("unsupported network")
 	}
@@ -565,7 +562,7 @@ func checkAllLocalNodesAreCurrentValidators(subnetID ids.ID) error {
 }
 
 func transformValidatorsToPermissionlessLocal(sc models.Sidecar, subnetID ids.ID, subnetName string) error {
-	stakedTokenAmount, err := promptStakeAmount(subnetName, true)
+	stakedTokenAmount, err := promptStakeAmount(subnetName, true, models.Local)
 	if err != nil {
 		return err
 	}
