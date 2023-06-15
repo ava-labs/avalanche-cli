@@ -147,7 +147,7 @@ func importFromXChain(deployer *subnet.PublicDeployer,
 	return deployer.ImportFromXChain(subnetID, owner)
 }
 
-func transformElasticSubnet(_ *cobra.Command, args []string) error {
+func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 	subnetName := args[0]
 
 	if !app.SubnetConfigExists(subnetName) {
@@ -256,6 +256,33 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 
 	switch network {
 	case models.Local:
+		chains, err := validateSubnetNameAndGetChains(args)
+		if err != nil {
+			if strings.Contains(err.Error(), "Invalid subnet") {
+				yes, promptErr := app.Prompt.CaptureNoYes(fmt.Sprintf("Subnet %s is not found. Do you want to create it first?", args[0]))
+				if promptErr != nil {
+					return promptErr
+				}
+				if !yes {
+					return err
+				}
+				createErr := createSubnetConfig(cmd, args)
+				if createErr != nil {
+					return createErr
+				}
+				chains, err = validateSubnetNameAndGetChains(args)
+				if err != nil {
+					return err
+				}
+				ux.Logger.PrintToUser("Now deploying subnet %s", chains[0])
+				err = deploySubnet(cmd, args)
+				if err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
 		return transformElasticSubnetLocal(sc, subnetName, tokenName, tokenSymbol, elasticSubnetConfig)
 	case models.Fuji:
 		if !useLedger && keyName == "" {
@@ -386,6 +413,22 @@ func transformElasticSubnetLocal(sc models.Sidecar, subnetName string, tokenName
 	var err error
 	subnetID := sc.Networks[models.Local.String()].SubnetID
 	if subnetID == ids.Empty {
+		yes, promptErr := app.Prompt.CaptureNoYes(fmt.Sprintf("Subnet %s is not found. Do you want to create it first?", args[0]))
+		if promptErr != nil {
+			return promptErr
+		}
+		if !yes {
+			return err
+		}
+		createErr := createSubnetConfig(cmd, args)
+		if createErr != nil {
+			return createErr
+		}
+		chains, err = validateSubnetNameAndGetChains(args)
+		if err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("Now deploying subnet %s", chains[0])
 		return errNoSubnetID
 	}
 

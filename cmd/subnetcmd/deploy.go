@@ -134,7 +134,26 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 func deploySubnet(cmd *cobra.Command, args []string) error {
 	chains, err := validateSubnetNameAndGetChains(args)
 	if err != nil {
-		return err
+		if strings.Contains(err.Error(), "Invalid subnet") {
+			yes, promptErr := app.Prompt.CaptureNoYes(fmt.Sprintf("Subnet %s is not found. Do you want to create it first?", args[0]))
+			if promptErr != nil {
+				return promptErr
+			}
+			if !yes {
+				return err
+			}
+			createErr := createSubnetConfig(cmd, args)
+			if createErr != nil {
+				return createErr
+			}
+			chains, err = validateSubnetNameAndGetChains(args)
+			if err != nil {
+				return err
+			}
+			ux.Logger.PrintToUser("Now deploying subnet %s", chains[0])
+		} else {
+			return err
+		}
 	}
 
 	chain := chains[0]
