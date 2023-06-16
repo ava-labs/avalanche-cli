@@ -8,6 +8,10 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-network-runner/server"
 
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -47,8 +51,6 @@ var (
 	joinElastic bool
 	// for permissionless subnet only: how much subnet native token will be staked in the validator
 	stakeAmount uint64
-	// default node ids of nodes in local network
-	defaultLocalNetworkNodeIDs = []string{"NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg", "NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ", "NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN", "NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu", "NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5"}
 )
 
 // avalanche subnet deploy
@@ -89,6 +91,9 @@ This command currently only supports Subnets deployed on the Fuji Testnet and Ma
 	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "amount of tokens to stake on validator")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "start time that validator starts validating")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long validator validates for after start time")
+	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
+	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
+	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	return cmd
 }
 
@@ -124,17 +129,18 @@ func joinCmd(_ *cobra.Command, args []string) error {
 
 	if network == models.Undefined {
 		if joinElastic {
-			networkToUpgrade, err := promptNetworkElastic(sc, "Which network is the elastic subnet that the node wants to join on?")
+			selectedNetwork, err := promptNetworkElastic(sc, "Which network is the elastic subnet that the node wants to join on?")
 			if err != nil {
 				return err
 			}
-			switch networkToUpgrade {
+			switch selectedNetwork {
+			case localDeployment:
+				network = models.Local
 			case fujiDeployment:
-				return errors.New("joining elastic subnet is not yet supported on Fuji network")
+				network = models.Fuji
 			case mainnetDeployment:
 				return errors.New("joining elastic subnet is not yet supported on Mainnet")
 			}
-			network = models.Local
 		} else {
 			networkStr, err := app.Prompt.CaptureList(
 				"Choose a network to validate on (this command only supports public networks)",
@@ -324,14 +330,24 @@ but until the node is whitelisted, it will not be able to validate this subnet.`
 }
 
 func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network, subnetName string) error {
-	fmt.Printf("network name %s \n", network.String())
-	if network != models.Local {
-		return errors.New("unsupported network")
+	var err error
+	if len(ledgerAddresses) > 0 {
+		useLedger = true
 	}
-	if !checkIfSubnetIsElasticOnLocal(sc) {
-		return fmt.Errorf("%s is not an elastic subnet", subnetName)
+
+	if useLedger && keyName != "" {
+		return ErrMutuallyExlusiveKeyLedger
 	}
-	nodeID, err := promptNodeIDToAdd(sc.Networks[models.Local.String()].SubnetID, true, network)
+
+	subnetID := sc.Networks[network.String()].SubnetID
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		subnetID = sc.Networks[models.Local.String()].SubnetID
+	}
+	if subnetID == ids.Empty {
+		return errNoSubnetID
+	}
+
+	nodeID, err := promptNodeIDToAdd(subnetID, true, network)
 	if err != nil {
 		return err
 	}
@@ -346,7 +362,89 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	endTime := start.Add(stakeDuration)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction for the provided validator to join elastic subnet...")
 	ux.Logger.PrintToUser("")
+	switch network {
+	case models.Local:
+		return handleValidatorJoinElasticSubnetLocal(sc, network, subnetName, nodeID, stakedTokenAmount, start, endTime)
+	case models.Fuji:
+		if !useLedger && keyName == "" {
+			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "pay transaction fees", app.GetKeyDir())
+			if err != nil {
+				return err
+			}
+		}
+	case models.Mainnet:
+		return errors.New("unsupported network")
+	default:
+		return errors.New("unsupported network")
+	}
+	// used in E2E to simulate public network execution paths on a local network
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		network = models.Local
+	}
 
+	// get keychain accessor
+	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
+	if err != nil {
+		return err
+	}
+	recipientAddr := kc.Addresses().List()[0]
+	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	assetID, err := getSubnetAssetID(subnetID, network)
+	if err != nil {
+		return err
+	}
+	txID, err := deployer.AddPermissionlessValidator(subnetID, assetID, nodeID, stakedTokenAmount, uint64(start.Unix()), uint64(endTime.Unix()), recipientAddr)
+	if err != nil {
+		return err
+	}
+	printAddPermissionlessValOutput(txID, nodeID, network, start, endTime, stakedTokenAmount)
+	if err = app.UpdateSidecarPermissionlessValidator(&sc, network, nodeID.String(), txID); err != nil {
+		return fmt.Errorf("joining permissionless subnet was successful, but failed to update sidecar: %w", err)
+	}
+	return nil
+}
+
+func getSubnetAssetID(subnetID ids.ID, network models.Network) (ids.ID, error) {
+	var api string
+	switch network {
+	case models.Fuji:
+		api = constants.FujiAPIEndpoint
+	case models.Mainnet:
+		api = constants.MainnetAPIEndpoint
+	case models.Local:
+		api = constants.LocalAPIEndpoint
+	default:
+		return ids.Empty, fmt.Errorf("network not supported")
+	}
+
+	pClient := platformvm.NewClient(api)
+	ctx := context.Background()
+	assetID, err := pClient.GetStakingAssetID(ctx, subnetID)
+	if err != nil {
+		return ids.Empty, err
+	}
+	return assetID, nil
+}
+
+func printAddPermissionlessValOutput(txID ids.ID, nodeID ids.NodeID, network models.Network, start time.Time, endTime time.Time, stakedTokenAmount uint64) {
+	ux.Logger.PrintToUser("Validator successfully joined elastic subnet!")
+	ux.Logger.PrintToUser("TX ID: %s", txID.String())
+	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
+	ux.Logger.PrintToUser("Network: %s", network.String())
+	ux.Logger.PrintToUser("Start time: %s", start.UTC().Format(constants.TimeParseLayout))
+	ux.Logger.PrintToUser("End time: %s", endTime.Format(constants.TimeParseLayout))
+	ux.Logger.PrintToUser("Stake Amount: %d", stakedTokenAmount)
+}
+
+func handleValidatorJoinElasticSubnetLocal(sc models.Sidecar, network models.Network, subnetName string, nodeID ids.NodeID,
+	stakedTokenAmount uint64, start time.Time, endTime time.Time,
+) error {
+	if network != models.Local {
+		return errors.New("unsupported network")
+	}
+	if !checkIfSubnetIsElasticOnLocal(sc) {
+		return fmt.Errorf("%s is not an elastic subnet", subnetName)
+	}
 	assetID := sc.ElasticSubnet[models.Local.String()].AssetID
 	testKey := genesis.EWOQKey
 	keyChain := secp256k1fx.NewKeychain(testKey)
@@ -355,13 +453,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Validator successfully joined elastic subnet!")
-	ux.Logger.PrintToUser("TX ID: %s", txID.String())
-	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
-	ux.Logger.PrintToUser("Network: %s", network.String())
-	ux.Logger.PrintToUser("Start time: %s", start.UTC().Format(constants.TimeParseLayout))
-	ux.Logger.PrintToUser("End time: %s", endTime.Format(constants.TimeParseLayout))
-	ux.Logger.PrintToUser("Stake Amount: %d", stakedTokenAmount)
+	printAddPermissionlessValOutput(txID, nodeID, network, start, endTime, stakedTokenAmount)
 	if err = app.UpdateSidecarPermissionlessValidator(&sc, models.Local, nodeID.String(), txID); err != nil {
 		return fmt.Errorf("joining permissionless subnet was successful, but failed to update sidecar: %w", err)
 	}
@@ -444,6 +536,31 @@ func checkIsValidating(subnetID ids.ID, nodeID ids.NodeID, pClient platformvm.Cl
 	return false, nil
 }
 
+func getLocalNetworkIDs() ([]string, error) {
+	var localNodeIDs []string
+	cli, err := binutils.NewGRPCClient()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := binutils.GetAsyncContext()
+	status, err := cli.Status(ctx)
+	if err != nil {
+		if server.IsServerError(err, server.ErrNotBootstrapped) {
+			ux.Logger.PrintToUser("No local network running")
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	if status != nil && status.ClusterInfo != nil {
+		for _, val := range status.ClusterInfo.NodeInfos {
+			localNodeIDs = append(localNodeIDs, val.Id)
+		}
+	}
+	return localNodeIDs, nil
+}
+
 func promptNodeIDToAdd(subnetID ids.ID, isValidator bool, network models.Network) (ids.NodeID, error) {
 	if nodeIDStr == "" {
 		if network != models.Local {
@@ -454,6 +571,10 @@ func promptNodeIDToAdd(subnetID ids.ID, isValidator bool, network models.Network
 			ux.Logger.PrintToUser(promptStr)
 			return app.Prompt.CaptureNodeID("Node ID (format it as NodeID-<node_id>)")
 		}
+		defaultLocalNetworkNodeIDs, err := getLocalNetworkIDs()
+		if err != nil {
+			return ids.EmptyNodeID, err
+		}
 		// Get NodeIDs of all validators on the subnet
 		validators, err := subnet.GetSubnetValidators(subnetID)
 		if err != nil {
@@ -461,19 +582,19 @@ func promptNodeIDToAdd(subnetID ids.ID, isValidator bool, network models.Network
 		}
 		// construct list of validators to choose from
 		var validatorList []string
-		for _, localNodeID := range defaultLocalNetworkNodeIDs {
-			nodeIDFound := false
-			if isValidator {
-				for _, v := range validators {
-					if v.NodeID.String() == localNodeID {
-						nodeIDFound = true
-						break
-					}
-				}
+		valNodeIDsMap := make(map[string]bool)
+		for _, val := range validators {
+			valNodeIDsMap[val.NodeID.String()] = true
+		}
+		if !isValidator {
+			for _, v := range validators {
+				validatorList = append(validatorList, v.NodeID.String())
 			}
-
-			if !nodeIDFound {
-				validatorList = append(validatorList, localNodeID)
+		} else {
+			for _, localNodeID := range defaultLocalNetworkNodeIDs {
+				if _, ok := valNodeIDsMap[localNodeID]; !ok {
+					validatorList = append(validatorList, localNodeID)
+				}
 			}
 		}
 		promptStr := "Which validator you'd like to join this elastic subnet?"

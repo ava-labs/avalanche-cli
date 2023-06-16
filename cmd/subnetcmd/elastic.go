@@ -147,16 +147,47 @@ func importFromXChain(deployer *subnet.PublicDeployer,
 	return deployer.ImportFromXChain(subnetID, owner)
 }
 
-func transformElasticSubnet(_ *cobra.Command, args []string) error {
+func promptDeployFirst(cmd *cobra.Command, args []string, prompt string, err error) error {
+	yes, promptErr := app.Prompt.CaptureNoYes(prompt)
+	if promptErr != nil {
+		return promptErr
+	}
+	if !yes {
+		return err
+	}
+	return runDeploy(cmd, args)
+}
+
+func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 	subnetName := args[0]
 
 	if !app.SubnetConfigExists(subnetName) {
-		return errors.New("subnet does not exist")
+		prompt := fmt.Sprintf("Subnet %s is not created yet. Do you want to create it first?", args[0])
+		err := promptDeployFirst(cmd, args, prompt, errors.New("subnet does not exist"))
+		if err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("Now transforming subnet ...")
 	}
 
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return fmt.Errorf("unable to load sidecar: %w", err)
+	}
+
+	networkOptions := getNetworkOptions(sc)
+	if len(networkOptions) == 0 {
+		prompt := fmt.Sprintf("Subnet %s is not deployed yet. Do you want to deploy it first?", args[0])
+		err := promptDeployFirst(cmd, args, prompt, nil)
+		if err != nil {
+			return err
+		}
+		// need to refresh sidecar if we deployed
+		sc, err = app.LoadSidecar(subnetName)
+		if err != nil {
+			return fmt.Errorf("unable to load sidecar: %w", err)
+		}
+		ux.Logger.PrintToUser("Now transforming subnet ... \n")
 	}
 
 	var network models.Network
@@ -265,10 +296,7 @@ func transformElasticSubnet(_ *cobra.Command, args []string) error {
 			}
 		}
 	case models.Mainnet:
-		useLedger = true
-		if keyName != "" {
-			return ErrStoredKeyOnMainnet
-		}
+		return errors.New("unsupported network")
 	default:
 		return errors.New("unsupported network")
 	}
@@ -471,10 +499,8 @@ func promptNetworkElastic(sc models.Sidecar, prompt string) (string, error) {
 	return selectedDeployment, nil
 }
 
-// select which network to transform to elastic subnet
-func selectNetworkToTransform(sc models.Sidecar) (string, error) {
+func getNetworkOptions(sc models.Sidecar) []string {
 	var networkOptions []string
-	networkPrompt := "Which network should transform into an elastic Subnet?"
 	for network := range sc.Networks {
 		switch network {
 		case models.Local.String():
@@ -485,7 +511,13 @@ func selectNetworkToTransform(sc models.Sidecar) (string, error) {
 			networkOptions = append(networkOptions, mainnetDeployment)
 		}
 	}
+	return networkOptions
+}
 
+// select which network to transform to elastic subnet
+func selectNetworkToTransform(sc models.Sidecar) (string, error) {
+	networkPrompt := "Which network should transform into an elastic Subnet?"
+	networkOptions := getNetworkOptions(sc)
 	if len(networkOptions) == 0 {
 		return "", errors.New("no deployment target available, please first deploy created subnet")
 	}
@@ -543,6 +575,10 @@ func checkAllLocalNodesAreCurrentValidators(subnetID ids.ID) error {
 
 	ctx := context.Background()
 	validators, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
+	if err != nil {
+		return err
+	}
+	defaultLocalNetworkNodeIDs, err := getLocalNetworkIDs()
 	if err != nil {
 		return err
 	}

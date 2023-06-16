@@ -141,6 +141,7 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 	case models.Mainnet:
 		return errors.New("addPermissionlessDelegator is not yet supported on Mainnet")
 	}
+
 	// used in E2E to simulate public network execution paths on a local network
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
 		network = models.Local

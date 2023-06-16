@@ -69,7 +69,7 @@ func Update(cmd *cobra.Command, isUserCalled bool, version string) error {
 				app.Log.Warn("failed to read version from file on disk", zap.Error(err))
 				return ErrNoVersion
 			}
-			this = "v" + string(bver)
+			this = strings.TrimSpace(string(bver))
 		}
 	}
 	thisVFmt := "v" + this

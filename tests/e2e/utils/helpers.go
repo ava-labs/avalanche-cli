@@ -15,6 +15,7 @@ import (
 	"os/user"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -39,9 +40,10 @@ import (
 )
 
 const (
-	expectedRPCComponentsLen = 7
-	blockchainIDPos          = 5
-	subnetEVMName            = "subnet-evm"
+	expectedKeyListLineComponents = 8
+	expectedRPCComponentsLen      = 7
+	blockchainIDPos               = 5
+	subnetEVMName                 = "subnet-evm"
 )
 
 var defaultLocalNetworkNodeIDs = []string{
@@ -367,6 +369,31 @@ func ParseRPCsFromOutput(output string) ([]string, error) {
 		return nil, errors.New("no RPCs where found")
 	}
 	return rpcs, nil
+}
+
+func ParseAddrBalanceFromKeyListOutput(output string, keyName string) (string, uint64, error) {
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		if !strings.Contains(line, keyName) {
+			continue
+		}
+		components := strings.Split(line, "|")
+		if len(components) != expectedKeyListLineComponents {
+			return "", 0, fmt.Errorf("unexpected number of components in key list line %q: expected %d got %d",
+				line,
+				expectedKeyListLineComponents,
+				len(components),
+			)
+		}
+		addr := strings.TrimSpace(components[4])
+		balanceStr := strings.TrimSpace(components[5])
+		balance, err := strconv.ParseUint(balanceStr, 0, 64)
+		if err != nil {
+			return "", 0, fmt.Errorf("error parsing expected float %s", balanceStr)
+		}
+		return addr, balance, nil
+	}
+	return "", 0, fmt.Errorf("keyName %s not found in key list", keyName)
 }
 
 type greeterAddr struct {

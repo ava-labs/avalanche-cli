@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ava-labs/avalanchego/vms/platformvm/reward"
+	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
+
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 
@@ -283,6 +286,30 @@ func (d *PublicDeployer) RemoveValidator(
 	return false, tx, remainingSubnetAuthKeys, nil
 }
 
+func (d *PublicDeployer) AddPermissionlessValidator(
+	subnetID ids.ID,
+	subnetAssetID ids.ID,
+	nodeID ids.NodeID,
+	stakeAmount uint64,
+	startTime uint64,
+	endTime uint64,
+	recipientAddr ids.ShortID,
+) (ids.ID, error) {
+	wallet, err := d.loadWallet(subnetID)
+	if err != nil {
+		return ids.Empty, err
+	}
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign Add Permissionless Validator hash on the ledger device *** ")
+	}
+	txID, err := d.issueAddPermissionlessValidatorTX(recipientAddr, stakeAmount, subnetID, nodeID, subnetAssetID, startTime, endTime, wallet)
+	if err != nil {
+		return ids.Empty, err
+	}
+	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID)
+	return txID, nil
+}
+
 func (d *PublicDeployer) AddPermissionlessDelegator(
 	subnetID ids.ID,
 	subnetAssetID ids.ID,
@@ -450,7 +477,9 @@ func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []ids.ShortID) []co
 	// addrs to use for signing
 	customAddrsSet := set.Set[ids.ShortID]{}
 	customAddrsSet.Add(walletAddr)
-	customAddrsSet.Add(subnetAuthKeys...)
+	if len(subnetAuthKeys) > 0 {
+		customAddrsSet.Add(subnetAuthKeys...)
+	}
 	options = append(options, common.WithCustomAddresses(customAddrsSet))
 	// set change to go to wallet addr (instead of any other subnet auth key)
 	changeOwner := &secp256k1fx.OutputOwners{
@@ -552,6 +581,44 @@ func (d *PublicDeployer) createTransformSubnetTX(
 		return nil, err
 	}
 	return &tx, nil
+}
+
+func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
+	recipientAddr ids.ShortID,
+	stakeAmount uint64,
+	subnetID ids.ID,
+	nodeID ids.NodeID,
+	assetID ids.ID,
+	startTime uint64,
+	endTime uint64,
+	wallet primary.Wallet,
+) (ids.ID, error) {
+	options := d.getMultisigTxOptions([]ids.ShortID{})
+	owner := &secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs: []ids.ShortID{
+			recipientAddr,
+		},
+	}
+	txID, err := wallet.P().IssueAddPermissionlessValidatorTx(&txs.SubnetValidator{
+		Validator: txs.Validator{
+			NodeID: nodeID,
+			Start:  startTime,
+			End:    endTime,
+			Wght:   stakeAmount,
+		},
+		Subnet: subnetID,
+	},
+		&signer.Empty{},
+		assetID,
+		owner,
+		&secp256k1fx.OutputOwners{},
+		reward.PercentDenominator,
+		options...)
+	if err != nil {
+		return ids.Empty, err
+	}
+	return txID, nil
 }
 
 func (d *PublicDeployer) issueAddPermissionlessDelegatorTX(
