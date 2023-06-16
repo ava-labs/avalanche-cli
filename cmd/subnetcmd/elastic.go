@@ -157,6 +157,7 @@ func promptDeployFirst(cmd *cobra.Command, args []string, prompt string, err err
 	}
 	return runDeploy(cmd, args)
 }
+
 func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 	subnetName := args[0]
 
@@ -181,7 +182,7 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		//need to refresh sidecar if we deployed
+		// need to refresh sidecar if we deployed
 		sc, err = app.LoadSidecar(subnetName)
 		if err != nil {
 			return fmt.Errorf("unable to load sidecar: %w", err)
