@@ -53,6 +53,7 @@ var (
 	useLedger                bool
 	ledgerAddresses          []string
 	subnetIDStr              string
+	skipCreatePrompt         bool
 
 	errMutuallyExlusiveNetworks    = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
@@ -130,17 +131,24 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 	return chains, nil
 }
 
+func runDeploy(cmd *cobra.Command, args []string) error {
+	skipCreatePrompt = true
+	return deploySubnet(cmd, args)
+}
+
 // deploySubnet is the cobra command run for deploying subnets
 func deploySubnet(cmd *cobra.Command, args []string) error {
 	chains, err := validateSubnetNameAndGetChains(args)
 	if err != nil {
 		if strings.Contains(err.Error(), "Invalid subnet") {
-			yes, promptErr := app.Prompt.CaptureNoYes(fmt.Sprintf("Subnet %s is not found. Do you want to create it first?", args[0]))
-			if promptErr != nil {
-				return promptErr
-			}
-			if !yes {
-				return err
+			if !skipCreatePrompt {
+				yes, promptErr := app.Prompt.CaptureNoYes(fmt.Sprintf("Subnet %s is not found. Do you want to create it first?", args[0]))
+				if promptErr != nil {
+					return promptErr
+				}
+				if !yes {
+					return err
+				}
 			}
 			createErr := createSubnetConfig(cmd, args)
 			if createErr != nil {
