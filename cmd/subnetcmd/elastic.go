@@ -148,7 +148,6 @@ func importFromXChain(deployer *subnet.PublicDeployer,
 }
 
 func promptDeployFirst(cmd *cobra.Command, args []string, prompt string, err error) error {
-	//yes, promptErr := app.Prompt.CaptureNoYes(fmt.Sprintf("Subnet %s is not created yet. Do you want to create it first?", args[0]))
 	yes, promptErr := app.Prompt.CaptureNoYes(prompt)
 	if promptErr != nil {
 		return promptErr
