@@ -180,7 +180,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", constants.MinStakeWeight, weight)
 	}
 
-	start, duration, err = getTimeParameters(network, nodeID)
+	start, duration, err = getTimeParameters(network, nodeID, true)
 	if err != nil {
 		return err
 	}
@@ -268,7 +268,7 @@ func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime t
 	return 0, errors.New("nodeID not found in validator set: " + nodeID.String())
 }
 
-func getTimeParameters(network models.Network, nodeID ids.NodeID) (time.Time, time.Duration, error) {
+func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bool) (time.Time, time.Duration, error) {
 	var (
 		start time.Time
 		err   error
@@ -281,8 +281,12 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID) (time.Time, ti
 	)
 
 	if startTimeStr == "" {
-		ux.Logger.PrintToUser("When should your validator start validating?\n" +
-			"If you validator is not ready by this time, subnet downtime can occur.")
+		if isValidator {
+			ux.Logger.PrintToUser("When should your validator start validating?\n" +
+				"If you validator is not ready by this time, subnet downtime can occur.")
+		} else {
+			ux.Logger.PrintToUser("When do you want to start delegating?\n")
+		}
 
 		startTimeOptions := []string{defaultStartOption, custom}
 		startTimeOption, err := app.Prompt.CaptureList("Start time", startTimeOptions)
@@ -311,6 +315,9 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID) (time.Time, ti
 
 	if duration == 0 {
 		msg := "How long should your validator validate for?"
+		if !isValidator {
+			msg = "How long do you want to delegate for?"
+		}
 		durationOptions := []string{defaultDurationOption, custom}
 		durationOption, err := app.Prompt.CaptureList(msg, durationOptions)
 		if err != nil {

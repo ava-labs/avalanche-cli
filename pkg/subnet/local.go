@@ -239,8 +239,45 @@ func IssueAddPermissionlessValidatorTx(
 		&signer.Empty{},
 		assetID,
 		owner,
-		&secp256k1fx.OutputOwners{},
+		owner,
 		reward.PercentDenominator,
+		common.WithContext(ctx),
+	)
+	defer cancel()
+	if err != nil {
+		return ids.Empty, err
+	}
+	return txID, err
+}
+
+func IssueAddPermissionlessDelegatorTx(
+	kc keychain.Keychain,
+	subnetID ids.ID,
+	nodeID ids.NodeID,
+	stakeAmount uint64,
+	assetID ids.ID,
+	startTime uint64,
+	endTime uint64,
+) (ids.ID, error) {
+	ctx := context.Background()
+	api := constants.LocalAPIEndpoint
+	wallet, err := primary.NewWalletWithTxs(ctx, api, kc, subnetID)
+	if err != nil {
+		return ids.Empty, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultConfirmTxTimeout)
+	txID, err := wallet.P().IssueAddPermissionlessDelegatorTx(
+		&txs.SubnetValidator{
+			Validator: txs.Validator{
+				NodeID: nodeID,
+				Start:  startTime,
+				End:    endTime,
+				Wght:   stakeAmount,
+			},
+			Subnet: subnetID,
+		},
+		assetID,
+		&secp256k1fx.OutputOwners{},
 		common.WithContext(ctx),
 	)
 	defer cancel()

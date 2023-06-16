@@ -543,6 +543,10 @@ func checkAllLocalNodesAreCurrentValidators(subnetID ids.ID) error {
 	if err != nil {
 		return err
 	}
+	defaultLocalNetworkNodeIDs, err := getLocalNetworkIDs()
+	if err != nil {
+		return err
+	}
 	for _, localVal := range defaultLocalNetworkNodeIDs {
 		currentValidator := false
 		for _, validator := range validators {
@@ -558,7 +562,7 @@ func checkAllLocalNodesAreCurrentValidators(subnetID ids.ID) error {
 }
 
 func transformValidatorsToPermissionlessLocal(sc models.Sidecar, subnetID ids.ID, subnetName string) error {
-	stakedTokenAmount, err := promptStakeAmount(subnetName, models.Local)
+	stakedTokenAmount, err := promptStakeAmount(subnetName, true, models.Local)
 	if err != nil {
 		return err
 	}

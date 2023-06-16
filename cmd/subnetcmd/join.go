@@ -10,6 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-network-runner/server"
+
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 
@@ -48,8 +51,6 @@ var (
 	joinElastic bool
 	// for permissionless subnet only: how much subnet native token will be staked in the validator
 	stakeAmount uint64
-	// default node ids of nodes in local network
-	defaultLocalNetworkNodeIDs = []string{"NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg", "NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ", "NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN", "NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu", "NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5"}
 )
 
 // avalanche subnet deploy
@@ -346,15 +347,15 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 		return errNoSubnetID
 	}
 
-	nodeID, err := promptNodeIDToAdd(subnetID, network)
+	nodeID, err := promptNodeIDToAdd(subnetID, true, network)
 	if err != nil {
 		return err
 	}
-	stakedTokenAmount, err := promptStakeAmount(subnetName, network)
+	stakedTokenAmount, err := promptStakeAmount(subnetName, true, network)
 	if err != nil {
 		return err
 	}
-	start, stakeDuration, err := getTimeParameters(network, nodeID)
+	start, stakeDuration, err := getTimeParameters(network, nodeID, true)
 	if err != nil {
 		return err
 	}
@@ -535,13 +536,41 @@ func checkIsValidating(subnetID ids.ID, nodeID ids.NodeID, pClient platformvm.Cl
 	return false, nil
 }
 
-func promptNodeIDToAdd(subnetID ids.ID, network models.Network) (ids.NodeID, error) {
+func getLocalNetworkIDs() ([]string, error) {
+	var localNodeIDs []string
+	cli, err := binutils.NewGRPCClient()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := binutils.GetAsyncContext()
+	status, err := cli.Status(ctx)
+	if err != nil {
+		if server.IsServerError(err, server.ErrNotBootstrapped) {
+			ux.Logger.PrintToUser("No local network running")
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	if status != nil && status.ClusterInfo != nil {
+		for _, val := range status.ClusterInfo.NodeInfos {
+			localNodeIDs = append(localNodeIDs, val.Id)
+		}
+	}
+	return localNodeIDs, nil
+}
+
+func promptNodeIDToAdd(subnetID ids.ID, isValidator bool, network models.Network) (ids.NodeID, error) {
 	if nodeIDStr == "" {
 		if network != models.Local {
 			ux.Logger.PrintToUser("Please enter the Node ID of the node that you would like to add to the elastic subnet")
 			return app.Prompt.CaptureNodeID("Node ID (format it as NodeID-<node_id>)")
 		}
-
+		defaultLocalNetworkNodeIDs, err := getLocalNetworkIDs()
+		if err != nil {
+			return ids.EmptyNodeID, err
+		}
 		// Get NodeIDs of all validators on the subnet
 		validators, err := subnet.GetSubnetValidators(subnetID)
 		if err != nil {
@@ -549,19 +578,26 @@ func promptNodeIDToAdd(subnetID ids.ID, network models.Network) (ids.NodeID, err
 		}
 		// construct list of validators to choose from
 		var validatorList []string
-		for _, localNodeID := range defaultLocalNetworkNodeIDs {
-			nodeIDFound := false
+		valNodeIDsMap := make(map[string]bool)
+		for _, val := range validators {
+			valNodeIDsMap[val.NodeID.String()] = true
+		}
+		if !isValidator {
 			for _, v := range validators {
-				if v.NodeID.String() == localNodeID {
-					nodeIDFound = true
-					break
+				validatorList = append(validatorList, v.NodeID.String())
+			}
+		} else {
+			for _, localNodeID := range defaultLocalNetworkNodeIDs {
+				if _, ok := valNodeIDsMap[localNodeID]; !ok {
+					validatorList = append(validatorList, localNodeID)
 				}
 			}
-			if !nodeIDFound {
-				validatorList = append(validatorList, localNodeID)
-			}
 		}
-		nodeIDStr, err = app.Prompt.CaptureList("Which validator you'd like to join this elastic subnet?", validatorList)
+		promptStr := "Which validator you'd like to join this elastic subnet?"
+		if !isValidator {
+			promptStr = "Which validator would you like to delegate to?"
+		}
+		nodeIDStr, err = app.Prompt.CaptureList(promptStr, validatorList)
 		if err != nil {
 			return ids.EmptyNodeID, err
 		}
@@ -573,7 +609,7 @@ func promptNodeIDToAdd(subnetID ids.ID, network models.Network) (ids.NodeID, err
 	return nodeID, nil
 }
 
-func promptStakeAmount(subnetName string, network models.Network) (uint64, error) {
+func promptStakeAmount(subnetName string, isValidator bool, network models.Network) (uint64, error) {
 	if stakeAmount > 0 {
 		return stakeAmount, nil
 	}
@@ -584,10 +620,12 @@ func promptStakeAmount(subnetName string, network models.Network) (uint64, error
 		}
 		maxValidatorStake := fmt.Sprintf("Maximum Validator Stake (%d)", esc.MaxValidatorStake)
 		customWeight := fmt.Sprintf("Custom (Has to be between minValidatorStake (%d) and maxValidatorStake (%d) defined during elastic subnet transformation)", esc.MinValidatorStake, esc.MaxValidatorStake)
+		if !isValidator {
+			customWeight = fmt.Sprintf("Custom (Has to be between minDelegatorStake (%d) and maxValidatorStake (%d) defined during elastic subnet transformation)", esc.MinDelegatorStake, esc.MaxValidatorStake)
+		}
 
-		txt := "What amount of the subnet native token would you like to stake in the validator?"
+		txt := "What amount of the subnet native token would you like to stake?"
 		weightOptions := []string{maxValidatorStake, customWeight}
-
 		weightOption, err := app.Prompt.CaptureList(txt, weightOptions)
 		if err != nil {
 			return 0, err
@@ -597,6 +635,12 @@ func promptStakeAmount(subnetName string, network models.Network) (uint64, error
 		walletBalance, err := getAssetBalance(ctx, pClient, ewoqPChainAddr, esc.AssetID)
 		if err != nil {
 			return 0, err
+		}
+		minStakePromptStr := fmt.Sprintf("Min Validator Stake(%d)", esc.MinValidatorStake)
+		minStakeVal := esc.MinValidatorStake
+		if !isValidator {
+			minStakePromptStr = fmt.Sprintf("Min Delegator Stake(%d)", esc.MinValidatorStake)
+			minStakeVal = esc.MinDelegatorStake
 		}
 		switch weightOption {
 		case maxValidatorStake:
@@ -611,9 +655,9 @@ func promptStakeAmount(subnetName string, network models.Network) (uint64, error
 						Value: esc.MaxValidatorStake,
 					},
 					{
-						Label: fmt.Sprintf("Min Validator Stake(%d)", esc.MinValidatorStake),
+						Label: minStakePromptStr,
 						Type:  prompts.MoreThanEq,
-						Value: esc.MinValidatorStake,
+						Value: minStakeVal,
 					},
 					{
 						Label: fmt.Sprintf("Wallet Balance(%d)", walletBalance),
