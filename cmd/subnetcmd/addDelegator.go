@@ -3,7 +3,6 @@
 package subnetcmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -12,7 +11,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -175,28 +173,6 @@ func printAddPermissionlessDelOutput(txID ids.ID, nodeID ids.NodeID, network mod
 	ux.Logger.PrintToUser("Start time: %s", start.UTC().Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("End time: %s", endTime.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("Stake Amount: %d", stakedTokenAmount)
-}
-
-func getSubnetAssetID(subnetID ids.ID, network models.Network) (ids.ID, error) {
-	var api string
-	switch network {
-	case models.Fuji:
-		api = constants.FujiAPIEndpoint
-	case models.Mainnet:
-		api = constants.MainnetAPIEndpoint
-	case models.Local:
-		api = constants.LocalAPIEndpoint
-	default:
-		return ids.Empty, fmt.Errorf("network not supported")
-	}
-
-	pClient := platformvm.NewClient(api)
-	ctx := context.Background()
-	assetID, err := pClient.GetStakingAssetID(ctx, subnetID)
-	if err != nil {
-		return ids.Empty, err
-	}
-	return assetID, nil
 }
 
 func handleAddPermissionlessDelegatorLocal(subnetName string, network models.Network, nodeID ids.NodeID,
