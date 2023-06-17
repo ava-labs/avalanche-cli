@@ -203,7 +203,7 @@ func transferF(*cobra.Command, []string) error {
 		} else {
 			goalStr = " for the receiver address"
 		}
-		useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, app.GetKeyDir(), goalStr)
+		useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, goalStr, app.GetKeyDir())
 		if err != nil {
 			return err
 		}
