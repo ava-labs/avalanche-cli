@@ -2,13 +2,10 @@ module github.com/ava-labs/avalanche-cli
 
 go 1.19
 
-replace github.com/ava-labs/avalanchego => ../avalanchego/
-replace github.com/ava-labs/avalanche-network-runner => ../avalanche-network-runner/
-
 require (
 	github.com/ava-labs/apm v0.0.4
-	github.com/ava-labs/avalanche-network-runner v1.6.1-0.20230616215223-ce1c18985fc9
-	github.com/ava-labs/avalanchego v1.10.3
+	github.com/ava-labs/avalanche-network-runner v1.6.1-0.20230621034612-01ec47a7e169
+	github.com/ava-labs/avalanchego v1.10.4-0.20230621033642-50d0c04ba817
 	github.com/ava-labs/coreth v0.12.3-rc.1
 	github.com/ava-labs/subnet-evm v0.5.2-0.20230617185940-35ed49861ba9
 	github.com/docker/docker v24.0.1+incompatible
