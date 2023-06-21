@@ -311,18 +311,17 @@ func (d *PublicDeployer) AddPermissionlessValidator(
 func (d *PublicDeployer) DeploySubnet(
 	controlKeys []string,
 	threshold uint32,
-) (ids.ID, error) {
+) (ids.ID, *txs.Tx, error) {
 	wallet, err := d.loadWallet()
 	if err != nil {
-		return ids.Empty, err
+		return ids.Empty, nil, err
 	}
-	subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
+	subnetID, subnetTx, err := d.createSubnetTx(controlKeys, threshold, wallet)
 	if err != nil {
-		return ids.Empty, err
+		return ids.Empty, nil, err
 	}
 	ux.Logger.PrintToUser("Subnet has been created with ID: %s", subnetID.String())
-	time.Sleep(2 * time.Second)
-	return subnetID, nil
+	return subnetID, subnetTx, nil
 }
 
 // creates a blockchain for the given [subnetID]
@@ -616,21 +615,37 @@ func (*PublicDeployer) signTx(
 	return nil
 }
 
-func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, wallet primary.Wallet) (ids.ID, error) {
+func (d *PublicDeployer) createSubnetTx(
+	controlKeys []string,
+	threshold uint32,
+	wallet primary.Wallet,
+) (ids.ID, *txs.Tx, error) {
 	addrs, err := address.ParseToIDs(controlKeys)
 	if err != nil {
-		return ids.Empty, fmt.Errorf("failure parsing control keys: %w", err)
+		return ids.Empty, nil, fmt.Errorf("failure parsing control keys: %w", err)
 	}
 	owners := &secp256k1fx.OutputOwners{
 		Addrs:     addrs,
 		Threshold: threshold,
 		Locktime:  0,
 	}
-	opts := []common.Option{}
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign CreateSubnet transaction on the ledger device *** ")
 	}
-	return wallet.P().IssueCreateSubnetTx(owners, opts...)
+	opts := []common.Option{}
+	unsignedTx, err := wallet.P().Builder().NewCreateSubnetTx(owners, opts...)
+	if err != nil {
+		return ids.Empty, nil, err
+	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return ids.Empty, nil, err
+	}
+	id, err := d.Commit(&tx)
+	if err != nil {
+		return ids.Empty, nil, err
+	}
+	return id, &tx, nil
 }
 
 func (d *PublicDeployer) getSubnetAuthAddressesInWallet(subnetAuth []ids.ShortID) []ids.ShortID {

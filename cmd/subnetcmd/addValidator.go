@@ -141,7 +141,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return errNoSubnetID
 	}
 
-	controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
+	controlKeys, threshold, err := txutils.GetOwners(network, subnetID, nil)
 	if err != nil {
 		return err
 	}

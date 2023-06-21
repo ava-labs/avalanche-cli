@@ -59,31 +59,34 @@ func IsCreateChainTx(tx *txs.Tx) bool {
 	return ok
 }
 
-func GetOwners(network models.Network, subnetID ids.ID) ([]string, uint32, error) {
-	var api string
-	switch network {
-	case models.Fuji:
-		api = constants.FujiAPIEndpoint
-	case models.Mainnet:
-		api = constants.MainnetAPIEndpoint
-	case models.Local:
-		api = constants.LocalAPIEndpoint
-	default:
-		return nil, 0, fmt.Errorf("network not supported")
+func GetOwners(network models.Network, subnetID ids.ID, subnetTx *txs.Tx) ([]string, uint32, error) {
+	if subnetTx == nil {
+		var api string
+		switch network {
+		case models.Fuji:
+			api = constants.FujiAPIEndpoint
+		case models.Mainnet:
+			api = constants.MainnetAPIEndpoint
+		case models.Local:
+			api = constants.LocalAPIEndpoint
+		default:
+			return nil, 0, fmt.Errorf("network not supported")
+		}
+		pClient := platformvm.NewClient(api)
+		ctx := context.Background()
+		txBytes, err := pClient.GetTx(ctx, subnetID)
+		if err != nil {
+			return nil, 0, fmt.Errorf("subnet tx %s query error: %w", subnetID, err)
+		}
+		var tx txs.Tx
+		if _, err := txs.Codec.Unmarshal(txBytes, &tx); err != nil {
+			return nil, 0, fmt.Errorf("couldn't unmarshal tx %s: %w", subnetID, err)
+		}
+		subnetTx = &tx
 	}
-	pClient := platformvm.NewClient(api)
-	ctx := context.Background()
-	txBytes, err := pClient.GetTx(ctx, subnetID)
-	if err != nil {
-		return nil, 0, fmt.Errorf("subnet tx %s query error: %w", subnetID, err)
-	}
-	var tx txs.Tx
-	if _, err := txs.Codec.Unmarshal(txBytes, &tx); err != nil {
-		return nil, 0, fmt.Errorf("couldn't unmarshal tx %s: %w", subnetID, err)
-	}
-	createSubnetTx, ok := tx.Unsigned.(*txs.CreateSubnetTx)
+	createSubnetTx, ok := subnetTx.Unsigned.(*txs.CreateSubnetTx)
 	if !ok {
-		return nil, 0, fmt.Errorf("got unexpected type %T for subnet tx %s", tx.Unsigned, subnetID)
+		return nil, 0, fmt.Errorf("got unexpected type %T for subnet tx %s", subnetTx.Unsigned, subnetID)
 	}
 	owner, ok := createSubnetTx.Owner.(*secp256k1fx.OutputOwners)
 	if !ok {

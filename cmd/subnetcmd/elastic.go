@@ -357,7 +357,7 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("Skipping ImportTx...")
 	}
 
-	controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
+	controlKeys, threshold, err := txutils.GetOwners(network, subnetID, nil)
 	if err != nil {
 		return err
 	}

@@ -374,7 +374,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser(logging.Green.Wrap(
 			fmt.Sprintf("Deploying into pre-existent subnet ID %s", subnetID.String()),
 		))
-		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
+		controlKeys, threshold, err = txutils.GetOwners(network, subnetID, nil)
 		if err != nil {
 			return err
 		}
@@ -397,12 +397,13 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 
 	if createSubnet {
-		subnetID, err = deployer.DeploySubnet(controlKeys, threshold)
+		var subnetTx *txs.Tx
+		subnetID, subnetTx, err = deployer.DeploySubnet(controlKeys, threshold)
 		if err != nil {
 			return err
 		}
 		// get the control keys in the same order as the tx
-		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
+		controlKeys, threshold, err = txutils.GetOwners(network, subnetID, subnetTx)
 		if err != nil {
 			return err
 		}
