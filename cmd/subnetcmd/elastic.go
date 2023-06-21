@@ -315,7 +315,6 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	txHasOccurred, txID := checkIfTxHasOccurred(&sc, network, "CreateAssetTx")
 	var assetID ids.ID
-	// TODO: replace sleep functions with sticky API sessions
 	if txHasOccurred {
 		ux.Logger.PrintToUser(fmt.Sprintf("Skipping CreateAssetTx, transforming subnet with asset ID %s...", txID.String()))
 		assetID = txID
@@ -328,8 +327,6 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		// we need to sleep after each operation to make sure that UTXO is available for consumption
-		time.Sleep(5 * time.Second)
 	}
 
 	txHasOccurred, _ = checkIfTxHasOccurred(&sc, network, "ExportTx")
@@ -342,7 +339,6 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		time.Sleep(5 * time.Second)
 	} else {
 		ux.Logger.PrintToUser("Skipping ExportTx...")
 	}
@@ -357,7 +353,6 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		time.Sleep(5 * time.Second)
 	} else {
 		ux.Logger.PrintToUser("Skipping ImportTx...")
 	}

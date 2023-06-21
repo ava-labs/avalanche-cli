@@ -39,6 +39,7 @@ type PublicDeployer struct {
 	kc          keychain.Keychain
 	network     models.Network
 	app         *application.Avalanche
+	wallet      primary.Wallet
 }
 
 func NewPublicDeployer(app *application.Avalanche, usingLedger bool, kc keychain.Keychain, network models.Network) *PublicDeployer {
@@ -427,24 +428,28 @@ func (d *PublicDeployer) Sign(
 func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error) {
 	ctx := context.Background()
 
-	var api string
-	switch d.network {
-	case models.Fuji:
-		api = constants.FujiAPIEndpoint
-	case models.Mainnet:
-		api = constants.MainnetAPIEndpoint
-	case models.Local:
-		// used for E2E testing of public related paths
-		api = constants.LocalAPIEndpoint
-	default:
-		return nil, fmt.Errorf("unsupported public network")
+	if d.wallet == nil {
+		var api string
+		switch d.network {
+		case models.Fuji:
+			api = constants.FujiAPIEndpoint
+		case models.Mainnet:
+			api = constants.MainnetAPIEndpoint
+		case models.Local:
+			// used for E2E testing of public related paths
+			api = constants.LocalAPIEndpoint
+		default:
+			return nil, fmt.Errorf("unsupported public network")
+		}
+
+		var err error
+		d.wallet, err = primary.NewWalletWithTxs(ctx, api, d.kc, preloadTxs...)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	wallet, err := primary.NewWalletWithTxs(ctx, api, d.kc, preloadTxs...)
-	if err != nil {
-		return nil, err
-	}
-	return wallet, nil
+	return d.wallet, nil
 }
 
 func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []ids.ShortID) []common.Option {

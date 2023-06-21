@@ -322,10 +322,10 @@ func transferF(*cobra.Command, []string) error {
 		Addrs:     []ids.ShortID{receiverAddr},
 	}
 
-    wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
-    if err != nil {
-        return err
-    }
+	wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
+	if err != nil {
+		return err
+	}
 
 	if send {
 		output := &avax.TransferableOutput{

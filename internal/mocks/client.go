@@ -52,16 +52,42 @@ func (_m *Client) AddNode(ctx context.Context, name string, execPath string, opt
 	return r0, r1
 }
 
+// AddPermissionlessDelegator provides a mock function with given fields: ctx, validatorSpec
+func (_m *Client) AddPermissionlessDelegator(ctx context.Context, validatorSpec []*rpcpb.PermissionlessStakerSpec) (*rpcpb.AddPermissionlessDelegatorResponse, error) {
+	ret := _m.Called(ctx, validatorSpec)
+
+	var r0 *rpcpb.AddPermissionlessDelegatorResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []*rpcpb.PermissionlessStakerSpec) (*rpcpb.AddPermissionlessDelegatorResponse, error)); ok {
+		return rf(ctx, validatorSpec)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []*rpcpb.PermissionlessStakerSpec) *rpcpb.AddPermissionlessDelegatorResponse); ok {
+		r0 = rf(ctx, validatorSpec)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*rpcpb.AddPermissionlessDelegatorResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []*rpcpb.PermissionlessStakerSpec) error); ok {
+		r1 = rf(ctx, validatorSpec)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // AddPermissionlessValidator provides a mock function with given fields: ctx, validatorSpec
-func (_m *Client) AddPermissionlessValidator(ctx context.Context, validatorSpec []*rpcpb.PermissionlessValidatorSpec) (*rpcpb.AddPermissionlessValidatorResponse, error) {
+func (_m *Client) AddPermissionlessValidator(ctx context.Context, validatorSpec []*rpcpb.PermissionlessStakerSpec) (*rpcpb.AddPermissionlessValidatorResponse, error) {
 	ret := _m.Called(ctx, validatorSpec)
 
 	var r0 *rpcpb.AddPermissionlessValidatorResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, []*rpcpb.PermissionlessValidatorSpec) (*rpcpb.AddPermissionlessValidatorResponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, []*rpcpb.PermissionlessStakerSpec) (*rpcpb.AddPermissionlessValidatorResponse, error)); ok {
 		return rf(ctx, validatorSpec)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, []*rpcpb.PermissionlessValidatorSpec) *rpcpb.AddPermissionlessValidatorResponse); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, []*rpcpb.PermissionlessStakerSpec) *rpcpb.AddPermissionlessValidatorResponse); ok {
 		r0 = rf(ctx, validatorSpec)
 	} else {
 		if ret.Get(0) != nil {
@@ -69,7 +95,7 @@ func (_m *Client) AddPermissionlessValidator(ctx context.Context, validatorSpec 
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, []*rpcpb.PermissionlessValidatorSpec) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, []*rpcpb.PermissionlessStakerSpec) error); ok {
 		r1 = rf(ctx, validatorSpec)
 	} else {
 		r1 = ret.Error(1)
