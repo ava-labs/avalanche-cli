@@ -93,7 +93,6 @@ func checkIfSubnetIsElasticOnLocal(sc models.Sidecar) bool {
 
 func createAssetID(deployer *subnet.PublicDeployer,
 	maxSupply uint64,
-	subnetID ids.ID,
 	tokenName string,
 	tokenSymbol string,
 	tokenDenomination int,
@@ -116,11 +115,10 @@ func createAssetID(deployer *subnet.PublicDeployer,
 			},
 		},
 	}
-	return deployer.CreateAssetTx(subnetID, tokenName, tokenSymbol, byte(tokenDenomination), initialState)
+	return deployer.CreateAssetTx(tokenName, tokenSymbol, byte(tokenDenomination), initialState)
 }
 
 func exportToPChain(deployer *subnet.PublicDeployer,
-	subnetID ids.ID,
 	subnetAssetID ids.ID,
 	recipientAddr ids.ShortID,
 	maxSupply uint64,
@@ -131,11 +129,10 @@ func exportToPChain(deployer *subnet.PublicDeployer,
 			recipientAddr,
 		},
 	}
-	return deployer.ExportToPChainTx(subnetID, subnetAssetID, owner, maxSupply)
+	return deployer.ExportToPChainTx(subnetAssetID, owner, maxSupply)
 }
 
 func importFromXChain(deployer *subnet.PublicDeployer,
-	subnetID ids.ID,
 	recipientAddr ids.ShortID,
 ) (ids.ID, error) {
 	owner := &secp256k1fx.OutputOwners{
@@ -144,7 +141,7 @@ func importFromXChain(deployer *subnet.PublicDeployer,
 			recipientAddr,
 		},
 	}
-	return deployer.ImportFromXChain(subnetID, owner)
+	return deployer.ImportFromXChain(owner)
 }
 
 func promptDeployFirst(cmd *cobra.Command, args []string, prompt string, err error) error {
@@ -313,13 +310,16 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 
 	recipientAddr := kc.Addresses().List()[0]
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	if err := deployer.InitWallet(subnetID); err != nil {
+		return err
+	}
 	txHasOccurred, txID := checkIfTxHasOccurred(&sc, network, "CreateAssetTx")
 	var assetID ids.ID
 	if txHasOccurred {
 		ux.Logger.PrintToUser(fmt.Sprintf("Skipping CreateAssetTx, transforming subnet with asset ID %s...", txID.String()))
 		assetID = txID
 	} else {
-		assetID, err = createAssetID(deployer, elasticSubnetConfig.MaxSupply, subnetID, tokenName, tokenSymbol, tokenDenomination, recipientAddr)
+		assetID, err = createAssetID(deployer, elasticSubnetConfig.MaxSupply, tokenName, tokenSymbol, tokenDenomination, recipientAddr)
 		if err != nil {
 			return err
 		}
@@ -331,7 +331,7 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 
 	txHasOccurred, _ = checkIfTxHasOccurred(&sc, network, "ExportTx")
 	if !txHasOccurred {
-		txID, err = exportToPChain(deployer, subnetID, assetID, recipientAddr, elasticSubnetConfig.MaxSupply)
+		txID, err = exportToPChain(deployer, assetID, recipientAddr, elasticSubnetConfig.MaxSupply)
 		if err != nil {
 			return err
 		}
@@ -345,7 +345,7 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 
 	txHasOccurred, _ = checkIfTxHasOccurred(&sc, network, "ImportTx")
 	if !txHasOccurred {
-		txID, err = importFromXChain(deployer, subnetID, recipientAddr)
+		txID, err = importFromXChain(deployer, recipientAddr)
 		if err != nil {
 			return err
 		}
@@ -373,7 +373,7 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 		}
 	}
 	ux.Logger.PrintToUser("Your subnet auth keys for issue transform subnet tx: %s", subnetAuthKeys)
-	isFullySigned, txID, tx, remainingSubnetAuthKeys, err := deployer.TransformSubnetTx(controlKeys, subnetAuthKeys, elasticSubnetConfig, subnetID, assetID)
+	isFullySigned, txID, tx, remainingSubnetAuthKeys, err := deployer.TransformSubnetTx(controlKeys, subnetAuthKeys, elasticSubnetConfig, assetID)
 	if err != nil {
 		return err
 	}

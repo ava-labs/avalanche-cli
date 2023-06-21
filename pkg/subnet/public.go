@@ -113,13 +113,12 @@ func (d *PublicDeployer) AddValidator(
 }
 
 func (d *PublicDeployer) CreateAssetTx(
-	subnetID ids.ID,
 	tokenName string,
 	tokenSymbol string,
 	denomination byte,
 	initialState map[uint32][]verify.State,
 ) (ids.ID, error) {
-	wallet, err := d.loadWallet(subnetID)
+	wallet, err := d.loadWallet()
 	if err != nil {
 		return ids.Empty, err
 	}
@@ -138,12 +137,11 @@ func (d *PublicDeployer) CreateAssetTx(
 }
 
 func (d *PublicDeployer) ExportToPChainTx(
-	subnetID ids.ID,
 	subnetAssetID ids.ID,
 	owner *secp256k1fx.OutputOwners,
 	assetAmount uint64,
 ) (ids.ID, error) {
-	wallet, err := d.loadWallet(subnetID)
+	wallet, err := d.loadWallet()
 	if err != nil {
 		return ids.Empty, err
 	}
@@ -172,10 +170,9 @@ func (d *PublicDeployer) ExportToPChainTx(
 }
 
 func (d *PublicDeployer) ImportFromXChain(
-	subnetID ids.ID,
 	owner *secp256k1fx.OutputOwners,
 ) (ids.ID, error) {
-	wallet, err := d.loadWallet(subnetID)
+	wallet, err := d.loadWallet()
 	if err != nil {
 		return ids.Empty, err
 	}
@@ -197,10 +194,9 @@ func (d *PublicDeployer) TransformSubnetTx(
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	elasticSubnetConfig models.ElasticSubnetConfig,
-	subnetID ids.ID,
 	subnetAssetID ids.ID,
 ) (bool, ids.ID, *txs.Tx, []string, error) {
-	wallet, err := d.loadWallet(subnetID)
+	wallet, err := d.loadWallet()
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}
@@ -344,7 +340,7 @@ func (d *PublicDeployer) DeployBlockchain(
 ) (bool, ids.ID, *txs.Tx, []string, error) {
 	ux.Logger.PrintToUser("Now creating blockchain...")
 
-	wallet, err := d.loadWallet(subnetID)
+	wallet, err := d.loadWallet()
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}
@@ -425,26 +421,34 @@ func (d *PublicDeployer) Sign(
 	return nil
 }
 
-func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error) {
+func (d *PublicDeployer) InitWallet(preloadTxs ...ids.ID) error {
 	ctx := context.Background()
 
-	if d.wallet == nil {
-		var api string
-		switch d.network {
-		case models.Fuji:
-			api = constants.FujiAPIEndpoint
-		case models.Mainnet:
-			api = constants.MainnetAPIEndpoint
-		case models.Local:
-			// used for E2E testing of public related paths
-			api = constants.LocalAPIEndpoint
-		default:
-			return nil, fmt.Errorf("unsupported public network")
-		}
+	var api string
+	switch d.network {
+	case models.Fuji:
+		api = constants.FujiAPIEndpoint
+	case models.Mainnet:
+		api = constants.MainnetAPIEndpoint
+	case models.Local:
+		// used for E2E testing of public related paths
+		api = constants.LocalAPIEndpoint
+	default:
+		return fmt.Errorf("unsupported public network")
+	}
 
-		var err error
-		d.wallet, err = primary.NewWalletWithTxs(ctx, api, d.kc, preloadTxs...)
-		if err != nil {
+	var err error
+	d.wallet, err = primary.NewWalletWithTxs(ctx, api, d.kc, preloadTxs...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error) {
+	if d.wallet == nil {
+		if err := d.InitWallet(preloadTxs...); err != nil {
 			return nil, err
 		}
 	}
