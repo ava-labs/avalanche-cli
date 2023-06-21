@@ -5,7 +5,6 @@ package keycmd
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
@@ -203,7 +202,7 @@ func transferF(*cobra.Command, []string) error {
 		} else {
 			goalStr = " for the receiver address"
 		}
-		useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, app.GetKeyDir(), goalStr)
+		useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, goalStr, app.GetKeyDir())
 		if err != nil {
 			return err
 		}
@@ -323,11 +322,12 @@ func transferF(*cobra.Command, []string) error {
 		Addrs:     []ids.ShortID{receiverAddr},
 	}
 
+    wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
+    if err != nil {
+        return err
+    }
+
 	if send {
-		wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
-		if err != nil {
-			return err
-		}
 		output := &avax.TransferableOutput{
 			Asset: avax.Asset{ID: wallet.P().AVAXAssetID()},
 			Out: &secp256k1fx.TransferOutput{
@@ -345,11 +345,6 @@ func transferF(*cobra.Command, []string) error {
 		}
 	} else {
 		if receiveRecoveryStep == 0 {
-			wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
-			if err != nil {
-				ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
-				return err
-			}
 			ux.Logger.PrintToUser("Issuing ImportTx P -> X")
 			if ledgerIndex != wrongLedgerIndexVal {
 				ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
@@ -358,15 +353,9 @@ func transferF(*cobra.Command, []string) error {
 				ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
 				return err
 			}
-			time.Sleep(2 * time.Second)
 			receiveRecoveryStep++
 		}
 		if receiveRecoveryStep == 1 {
-			wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
-			if err != nil {
-				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("ERROR: restart from this step by using the same command with extra arguments: --%s %d", receiveRecoveryStepFlag, receiveRecoveryStep)))
-				return err
-			}
 			output := &avax.TransferableOutput{
 				Asset: avax.Asset{ID: wallet.P().AVAXAssetID()},
 				Out: &secp256k1fx.TransferOutput{
@@ -383,15 +372,9 @@ func transferF(*cobra.Command, []string) error {
 				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("ERROR: restart from this step by using the same command with extra arguments: --%s %d", receiveRecoveryStepFlag, receiveRecoveryStep)))
 				return err
 			}
-			time.Sleep(2 * time.Second)
 			receiveRecoveryStep++
 		}
 		if receiveRecoveryStep == 2 {
-			wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
-			if err != nil {
-				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("ERROR: restart from this step by using the same command with extra arguments: --%s %d", receiveRecoveryStepFlag, receiveRecoveryStep)))
-				return err
-			}
 			ux.Logger.PrintToUser("Issuing ImportTx X -> P")
 			if ledgerIndex != wrongLedgerIndexVal {
 				ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")

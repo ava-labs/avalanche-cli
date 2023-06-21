@@ -3,6 +3,7 @@ module github.com/ava-labs/avalanche-cli
 go 1.19
 
 replace github.com/ava-labs/avalanchego => ../avalanchego/
+replace github.com/ava-labs/avalanche-network-runner => ../avalanche-network-runner/
 
 require (
 	github.com/ava-labs/apm v0.0.4
