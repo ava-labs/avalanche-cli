@@ -38,6 +38,8 @@ manage your Subnet configurations and live deployments.`,
 	cmd.AddCommand(newDeleteCmd())
 	// subnet deploy
 	cmd.AddCommand(newDeployCmd())
+	// subnet teleporter set up
+	cmd.AddCommand(newTeleporterCmd())
 	// subnet describe
 	cmd.AddCommand(newDescribeCmd())
 	// subnet list
