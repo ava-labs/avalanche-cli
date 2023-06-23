@@ -4,11 +4,12 @@ package subnetcmd
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
-	"os"
-	"os/exec"
 )
 
 // avalanche subnet teleporter
@@ -70,43 +71,43 @@ func setUpTeleporter(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	private_key := "0x56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
-	teleporter_deploy_address_bytes, err := os.ReadFile("./UniversalTeleporterDeployerAddress.txt")
-	teleporter_deploy_address := string(teleporter_deploy_address_bytes)
-	teleporter_deploy_tx_bytes, err := os.ReadFile("./UniversalTeleporterDeployerTransaction.txt")
-	teleporter_deploy_tx := string(teleporter_deploy_tx_bytes)
+	privateKey := "0x56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
+	teleporterDeployAddressBytes, err := os.ReadFile("./UniversalTeleporterDeployerAddress.txt")
+	teleporterDeployAddress := string(teleporterDeployAddressBytes)
+	teleporterDeployTxBytes, err := os.ReadFile("./UniversalTeleporterDeployerTransaction.txt")
+	teleporterDeployTx := string(teleporterDeployTxBytes)
 
-	if err := exec.Command("cast", "send", "--private-key", private_key, "--value", "50ether", teleporter_deploy_address, "--rpc-url", subnetURLA).Run(); err != nil {
+	if err := exec.Command("cast", "send", "--private-key", privateKey, "--value", "50ether", teleporterDeployAddress, "--rpc-url", subnetURLA).Run(); err != nil {
 		return err
 	}
-	if err := exec.Command("cast", "send", "--private-key", private_key, "--value", "50ether", teleporter_deploy_address, "--rpc-url", subnetURLB).Run(); err != nil {
+	if err := exec.Command("cast", "send", "--private-key", privateKey, "--value", "50ether", teleporterDeployAddress, "--rpc-url", subnetURLB).Run(); err != nil {
 		return err
 	}
-	if err := exec.Command("cast", "send", "--private-key", private_key, "--value", "50ether", teleporter_deploy_address, "--rpc-url", cChainURL).Run(); err != nil {
+	if err := exec.Command("cast", "send", "--private-key", privateKey, "--value", "50ether", teleporterDeployAddress, "--rpc-url", cChainURL).Run(); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Sent ether to teleporter deployer on both subnets")
 
-	if err := exec.Command("cast", "publish", "--rpc-url", subnetURLA, teleporter_deploy_tx).Run(); err != nil {
+	if err := exec.Command("cast", "publish", "--rpc-url", subnetURLA, teleporterDeployTx).Run(); err != nil {
 		return err
 	}
-	if err := exec.Command("cast", "publish", "--rpc-url", subnetURLB, teleporter_deploy_tx).Run(); err != nil {
+	if err := exec.Command("cast", "publish", "--rpc-url", subnetURLB, teleporterDeployTx).Run(); err != nil {
 		return err
 	}
-	if err := exec.Command("cast", "publish", "--rpc-url", cChainURL, teleporter_deploy_tx).Run(); err != nil {
+	if err := exec.Command("cast", "publish", "--rpc-url", cChainURL, teleporterDeployTx).Run(); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Deployed teleporter on all subnets")
 
-	relayer_address := "0xA100fF48a37cab9f87c8b5Da933DA46ea1a5fb80"
+	relayerAddress := "0xA100fF48a37cab9f87c8b5Da933DA46ea1a5fb80"
 
-	if err := exec.Command("cast", "send", "--private-key", private_key, "--value", "50ether", relayer_address, "--rpc-url", subnetURLA).Run(); err != nil {
+	if err := exec.Command("cast", "send", "--private-key", privateKey, "--value", "50ether", relayerAddress, "--rpc-url", subnetURLA).Run(); err != nil {
 		return err
 	}
-	if err := exec.Command("cast", "send", "--private-key", private_key, "--value", "50ether", relayer_address, "--rpc-url", subnetURLB).Run(); err != nil {
+	if err := exec.Command("cast", "send", "--private-key", privateKey, "--value", "50ether", relayerAddress, "--rpc-url", subnetURLB).Run(); err != nil {
 		return err
 	}
-	if err := exec.Command("cast", "send", "--private-key", private_key, "--value", "50ether", relayer_address, "--rpc-url", cChainURL).Run(); err != nil {
+	if err := exec.Command("cast", "send", "--private-key", privateKey, "--value", "50ether", relayerAddress, "--rpc-url", cChainURL).Run(); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Sent ether to relayer account on all subnets")
