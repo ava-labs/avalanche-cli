@@ -73,8 +73,14 @@ func setUpTeleporter(cmd *cobra.Command, args []string) error {
 
 	privateKey := "0x56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
 	teleporterDeployAddressBytes, err := os.ReadFile("./UniversalTeleporterDeployerAddress.txt")
+	if err != nil {
+		return err
+	}
 	teleporterDeployAddress := string(teleporterDeployAddressBytes)
 	teleporterDeployTxBytes, err := os.ReadFile("./UniversalTeleporterDeployerTransaction.txt")
+	if err != nil {
+		return err
+	}
 	teleporterDeployTx := string(teleporterDeployTxBytes)
 
 	if err := exec.Command("cast", "send", "--private-key", privateKey, "--value", "50ether", teleporterDeployAddress, "--rpc-url", subnetURLA).Run(); err != nil {
