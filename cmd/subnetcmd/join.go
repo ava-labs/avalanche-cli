@@ -564,7 +564,11 @@ func getLocalNetworkIDs() ([]string, error) {
 func promptNodeIDToAdd(subnetID ids.ID, isValidator bool, network models.Network) (ids.NodeID, error) {
 	if nodeIDStr == "" {
 		if network != models.Local {
-			ux.Logger.PrintToUser("Please enter the Node ID of the node that you would like to add to the elastic subnet")
+			promptStr := "Please enter the Node ID of the node that you would like to add to the elastic subnet"
+			if !isValidator {
+				promptStr = "Please enter the Node ID of the validator that you would like to delegate to"
+			}
+			ux.Logger.PrintToUser(promptStr)
 			return app.Prompt.CaptureNodeID("Node ID (format it as NodeID-<node_id>)")
 		}
 		defaultLocalNetworkNodeIDs, err := getLocalNetworkIDs()
@@ -668,7 +672,7 @@ func promptStakeAmount(subnetName string, isValidator bool, network models.Netwo
 			)
 		}
 	}
-	ux.Logger.PrintToUser("What amount of the subnet native token would you like to stake in the validator?")
+	ux.Logger.PrintToUser("What amount of the subnet native token would you like to stake?")
 	initialSupply, err := app.Prompt.CaptureUint64("Stake amount")
 	if err != nil {
 		return 0, err
