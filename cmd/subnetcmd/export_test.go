@@ -50,7 +50,7 @@ func TestExportImportSubnet(t *testing.T) {
 		exportOutput = ""
 		app = nil
 	}()
-
+	deployLocal = true
 	err = exportSubnet(nil, []string{"this-does-not-exist-should-fail"})
 	require.Error(err)
 
