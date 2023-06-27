@@ -100,6 +100,10 @@ func (app *Avalanche) GetGenesisPath(subnetName string) string {
 	return filepath.Join(app.GetSubnetDir(), subnetName, constants.GenesisFileName)
 }
 
+func (app *Avalanche) GetGenesisMainnetPath(subnetName string) string {
+	return filepath.Join(app.GetSubnetDir(), subnetName, constants.GenesisMainnetFileName)
+}
+
 func (app *Avalanche) GetSidecarPath(subnetName string) string {
 	return filepath.Join(app.GetSubnetDir(), subnetName, constants.SidecarFileName)
 }
@@ -178,6 +182,12 @@ func (app *Avalanche) WriteGenesisFile(subnetName string, genesisBytes []byte) e
 	return app.writeFile(genesisPath, genesisBytes)
 }
 
+func (app *Avalanche) WriteGenesisMainnetFile(subnetName string, genesisBytes []byte) error {
+	genesisPath := app.GetGenesisMainnetPath(subnetName)
+
+	return app.writeFile(genesisPath, genesisBytes)
+}
+
 func (app *Avalanche) GenesisExists(subnetName string) bool {
 	genesisPath := app.GetGenesisPath(subnetName)
 	_, err := os.Stat(genesisPath)
@@ -244,13 +254,19 @@ func (app *Avalanche) LoadEvmGenesis(subnetName string) (core.Genesis, error) {
 	return gen, err
 }
 
-func (app *Avalanche) LoadRawGenesis(subnetName string) ([]byte, error) {
+func (app *Avalanche) LoadRawGenesis(subnetName string, network models.Network) ([]byte, error) {
 	genesisPath := app.GetGenesisPath(subnetName)
 	genesisBytes, err := os.ReadFile(genesisPath)
 	if err != nil {
 		return nil, err
 	}
-
+	if network == models.Mainnet {
+		genesisPath = app.GetGenesisMainnetPath(subnetName)
+		genesisMainnetBytes, err := os.ReadFile(genesisPath)
+		if err == nil {
+			genesisBytes = genesisMainnetBytes
+		}
+	}
 	return genesisBytes, err
 }
 

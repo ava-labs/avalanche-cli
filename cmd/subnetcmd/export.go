@@ -48,13 +48,22 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 		}
 	}
 
+	networkStr, err := app.Prompt.CaptureList(
+		"Choose which network's genesis to export",
+		[]string{models.Local.String(), models.Fuji.String(), models.Mainnet.String()},
+	)
+	if err != nil {
+		return err
+	}
+	network := models.NetworkFromString(networkStr)
+
 	subnetName := args[0]
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
 	}
 
-	gen, err := app.LoadRawGenesis(subnetName)
+	gen, err := app.LoadRawGenesis(subnetName, network)
 	if err != nil {
 		return err
 	}

@@ -3,6 +3,7 @@
 package subnetcmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -136,6 +137,51 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	return deploySubnet(cmd, args)
 }
 
+func createMainnetGenesis(chain string) error {
+	evmGenesis, err := app.LoadEvmGenesis(chain)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Enter your subnet's ChainId. It can be any positive integer.")
+	chainID, err := app.Prompt.CapturePositiveBigInt("ChainId")
+	if err != nil {
+		return err
+	}
+	evmGenesis.Config.ChainID = chainID
+	jsonBytes, err := evmGenesis.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	var prettyJSON bytes.Buffer
+	err = json.Indent(&prettyJSON, jsonBytes, "", "    ")
+	if err != nil {
+		return err
+	}
+	return app.WriteGenesisMainnetFile(chain, prettyJSON.Bytes())
+}
+
+func handleMainnetChainID(chain string) error {
+	genesisMainnetPath := app.GetGenesisMainnetPath(chain)
+	_, err := os.ReadFile(genesisMainnetPath)
+	if err != nil && os.IsNotExist(err) {
+		useSameChainID := "Use same Chain ID"
+		createNewGenesis := "Use new Chain ID"
+		listOptions := []string{useSameChainID, createNewGenesis}
+		newChainIDPrompt := "Using the same Chain ID for both Fuji and Mainnet could lead to a replay attack. Do you want to use a different Chain ID?"
+		decision, err := app.Prompt.CaptureList(newChainIDPrompt, listOptions)
+		if err != nil {
+			return err
+		}
+		if decision == createNewGenesis {
+			err = createMainnetGenesis(chain)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // deploySubnet is the cobra command run for deploying subnets
 func deploySubnet(cmd *cobra.Command, args []string) error {
 	chains, err := validateSubnetNameAndGetChains(args)
@@ -208,9 +254,16 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		network = models.NetworkFromString(networkStr)
 	}
 
+	if network == models.Mainnet {
+		err = handleMainnetChainID(chain)
+		if err != nil {
+			return err
+		}
+	}
+
 	// deploy based on chosen network
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.String())
-	chainGenesis, err := app.LoadRawGenesis(chain)
+	chainGenesis, err := app.LoadRawGenesis(chain, network)
 	if err != nil {
 		return err
 	}
