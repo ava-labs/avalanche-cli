@@ -453,7 +453,7 @@ func promptAdminAndEnabledAddresses() ([]common.Address, []common.Address, error
 
 		for _, enabledAddress := range enabled {
 			if _, ok := adminsMap[enabledAddress.String()]; ok {
-				return nil, nil, fmt.Errorf("Can't have address %s in both admin and enabled addresses", enabledAddress.String())
+				return nil, nil, fmt.Errorf("can't have address %s in both admin and enabled addresses", enabledAddress.String())
 			}
 		}
 		if len(enabled) == 0 && len(admin) == 0 {
