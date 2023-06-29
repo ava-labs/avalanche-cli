@@ -215,7 +215,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if network != models.Local {
+	if network != models.Local && os.Getenv(constants.SimulatePublicNetwork) == "" {
 		genesis, err := app.LoadEvmGenesis(chain)
 		if err != nil {
 			return err
