@@ -184,7 +184,7 @@ func getAdminAndEnabledAddresses(adminPrompt, enabledPrompt, info string, app *a
 	}
 	for _, enabledAddress := range enabled {
 		if _, ok := adminsMap[enabledAddress.String()]; ok {
-			return nil, nil, false, fmt.Errorf("Can't have address %s in both admin and enabled addresses", enabledAddress.String())
+			return nil, nil, false, fmt.Errorf("can't have address %s in both admin and enabled addresses", enabledAddress.String())
 		}
 	}
 	return admins, enabled, cancelled, nil
