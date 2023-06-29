@@ -223,7 +223,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		allocAddressMap := genesis.Alloc
 		for address, _ := range allocAddressMap {
 			if address.String() == vm.PrefundedEwoqAddress.String() {
-				return errors.New(fmt.Sprintf("Can't airdrop to default address on public networks, please edit the genesis by calling `avalanche subnet create %s --force`", chain))
+				return fmt.Errorf("Can't airdrop to default address on public networks, please edit the genesis by calling `avalanche subnet create %s --force`", chain)
 			}
 		}
 	}
