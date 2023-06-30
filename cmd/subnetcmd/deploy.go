@@ -131,6 +131,22 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 	return chains, nil
 }
 
+func checkDefaultAddressNotInAlloc(network models.Network, chain string) error {
+	if network != models.Local && os.Getenv(constants.SimulatePublicNetwork) == "" {
+		genesis, err := app.LoadEvmGenesis(chain)
+		if err != nil {
+			return err
+		}
+		allocAddressMap := genesis.Alloc
+		for address := range allocAddressMap {
+			if address.String() == vm.PrefundedEwoqAddress.String() {
+				return fmt.Errorf("can't airdrop to default address on public networks, please edit the genesis by calling `avalanche subnet create %s --force`", chain)
+			}
+		}
+	}
+	return nil
+}
+
 func runDeploy(cmd *cobra.Command, args []string) error {
 	skipCreatePrompt = true
 	return deploySubnet(cmd, args)
@@ -215,17 +231,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if network != models.Local && os.Getenv(constants.SimulatePublicNetwork) == "" {
-		genesis, err := app.LoadEvmGenesis(chain)
-		if err != nil {
-			return err
-		}
-		allocAddressMap := genesis.Alloc
-		for address := range allocAddressMap {
-			if address.String() == vm.PrefundedEwoqAddress.String() {
-				return fmt.Errorf("can't airdrop to default address on public networks, please edit the genesis by calling `avalanche subnet create %s --force`", chain)
-			}
-		}
+	err = checkDefaultAddressNotInAlloc(network, chain)
+	if err != nil {
+		return err
 	}
 
 	sidecar, err := app.LoadSidecar(chain)
