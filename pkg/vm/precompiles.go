@@ -5,6 +5,7 @@ package vm
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -56,12 +57,7 @@ func configureRewardManager(app *application.Avalanche) (rewardmanager.Config, b
 		"on your subnet, including burning or sending fees.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet#changing-fee-reward-mechanisms\n\n"
 
-	admins, cancelled, err := getAddressList(adminPrompt, info, app)
-	if err != nil || cancelled {
-		return config, false, err
-	}
-
-	enabled, cancelled, err := getAddressList(enabledPrompt, info, app)
+	admins, enabled, cancelled, err := getAdminAndEnabledAddresses(adminPrompt, enabledPrompt, info, app)
 	if err != nil {
 		return config, false, err
 	}
@@ -133,12 +129,7 @@ func configureContractAllowList(app *application.Avalanche) (deployerallowlist.C
 		"on your subnet.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet/#restricting-smart-contract-deployers\n\n"
 
-	admins, cancelled, err := getAddressList(adminPrompt, info, app)
-	if err != nil || cancelled {
-		return config, false, err
-	}
-
-	enabled, cancelled, err := getAddressList(enabledPrompt, info, app)
+	admins, enabled, cancelled, err := getAdminAndEnabledAddresses(adminPrompt, enabledPrompt, info, app)
 	if err != nil {
 		return config, false, err
 	}
@@ -162,12 +153,7 @@ func configureTransactionAllowList(app *application.Avalanche) (txallowlist.Conf
 		"on your subnet.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet/#restricting-who-can-submit-transactions\n\n"
 
-	admins, cancelled, err := getAddressList(adminPrompt, info, app)
-	if err != nil || cancelled {
-		return config, false, err
-	}
-
-	enabled, cancelled, err := getAddressList(enabledPrompt, info, app)
+	admins, enabled, cancelled, err := getAdminAndEnabledAddresses(adminPrompt, enabledPrompt, info, app)
 	if err != nil {
 		return config, false, err
 	}
@@ -183,6 +169,27 @@ func configureTransactionAllowList(app *application.Avalanche) (txallowlist.Conf
 	return config, cancelled, nil
 }
 
+func getAdminAndEnabledAddresses(adminPrompt, enabledPrompt, info string, app *application.Avalanche) ([]common.Address, []common.Address, bool, error) {
+	admins, cancelled, err := getAddressList(adminPrompt, info, app)
+	if err != nil || cancelled {
+		return nil, nil, false, err
+	}
+	adminsMap := make(map[string]bool)
+	for _, adminsAddress := range admins {
+		adminsMap[adminsAddress.String()] = true
+	}
+	enabled, cancelled, err := getAddressList(enabledPrompt, info, app)
+	if err != nil {
+		return nil, nil, false, err
+	}
+	for _, enabledAddress := range enabled {
+		if _, ok := adminsMap[enabledAddress.String()]; ok {
+			return nil, nil, false, fmt.Errorf("can't have address %s in both admin and enabled addresses", enabledAddress.String())
+		}
+	}
+	return admins, enabled, cancelled, nil
+}
+
 func configureMinterList(app *application.Avalanche) (nativeminter.Config, bool, error) {
 	config := nativeminter.Config{}
 	adminPrompt := "Configure native minting allow list"
@@ -191,16 +198,10 @@ func configureMinterList(app *application.Avalanche) (nativeminter.Config, bool,
 		"on your subnet.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet#minting-native-coins\n\n"
 
-	admins, cancelled, err := getAddressList(adminPrompt, info, app)
-	if err != nil || cancelled {
-		return config, false, err
-	}
-
-	enabled, cancelled, err := getAddressList(enabledPrompt, info, app)
+	admins, enabled, cancelled, err := getAdminAndEnabledAddresses(adminPrompt, enabledPrompt, info, app)
 	if err != nil {
 		return config, false, err
 	}
-
 	config.AllowListConfig = allowlist.AllowListConfig{
 		AdminAddresses:   admins,
 		EnabledAddresses: enabled,
@@ -220,12 +221,7 @@ func configureFeeConfigAllowList(app *application.Avalanche) (feemanager.Config,
 		"performing a hardfork.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet#configuring-dynamic-fees\n\n"
 
-	admins, cancelled, err := getAddressList(adminPrompt, info, app)
-	if err != nil || cancelled {
-		return config, cancelled, err
-	}
-
-	enabled, cancelled, err := getAddressList(enabledPrompt, info, app)
+	admins, enabled, cancelled, err := getAdminAndEnabledAddresses(adminPrompt, enabledPrompt, info, app)
 	if err != nil {
 		return config, false, err
 	}
