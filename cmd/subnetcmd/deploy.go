@@ -164,10 +164,10 @@ func handleMainnetChainID(chain string) error {
 	genesisMainnetPath := app.GetGenesisMainnetPath(chain)
 	_, err := os.ReadFile(genesisMainnetPath)
 	if err != nil && os.IsNotExist(err) {
-		useSameChainID := "Use same Chain ID"
-		createNewGenesis := "Use new Chain ID"
-		listOptions := []string{useSameChainID, createNewGenesis}
-		newChainIDPrompt := "Using the same Chain ID for both Fuji and Mainnet could lead to a replay attack. Do you want to use a different Chain ID?"
+		useSameChainID := "Use same ChainID"
+		createNewGenesis := "Use new ChainID"
+		listOptions := []string{createNewGenesis, useSameChainID}
+		newChainIDPrompt := "Using the same ChainID for both Fuji and Mainnet could lead to a replay attack. Do you want to use a different ChainID?"
 		decision, err := app.Prompt.CaptureList(newChainIDPrompt, listOptions)
 		if err != nil {
 			return err
