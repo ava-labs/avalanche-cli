@@ -88,13 +88,25 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		deploySubnetToFuji()
 	})
 
+	ginkgo.It("deploy subnet to mainnet with new chain id", ginkgo.Label("local_machine"), func() {
+		// fund ledger address
+		err := utils.FundLedgerAddress()
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println()
+		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
+		s := commands.SimulateMainnetDeploy(subnetName, true)
+		// deploy
+		_, err = utils.ParsePublicDeployOutput(s)
+		gomega.Expect(err).Should(gomega.BeNil())
+	})
+
 	ginkgo.It("deploy subnet to mainnet", ginkgo.Label("local_machine"), func() {
 		// fund ledger address
 		err := utils.FundLedgerAddress()
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println()
 		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
-		s := commands.SimulateMainnetDeploy(subnetName)
+		s := commands.SimulateMainnetDeploy(subnetName, false)
 		// deploy
 		subnetID, err := utils.ParsePublicDeployOutput(s)
 		gomega.Expect(err).Should(gomega.BeNil())

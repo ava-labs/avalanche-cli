@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -54,6 +55,7 @@ var (
 	useLedger                bool
 	ledgerAddresses          []string
 	subnetIDStr              string
+	mainnetChainID           string
 	skipCreatePrompt         bool
 
 	errMutuallyExlusiveNetworks    = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
@@ -96,6 +98,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "deploy into given subnet id [fuji/mainnet deploy only]")
+	cmd.Flags().StringVar(&mainnetChainID, "mainnet-chain-id", "", "use different chain id for mainnet deployment")
 	return cmd
 }
 
@@ -143,9 +146,18 @@ func createMainnetGenesis(chain string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Enter your subnet's ChainId. It can be any positive integer.")
-	chainID, err := app.Prompt.CapturePositiveBigInt("ChainId")
-	if err != nil {
-		return err
+	var chainID *big.Int
+	if mainnetChainID != "" {
+		newChainID, ok := chainID.SetString(mainnetChainID, 10)
+		if !ok {
+			return errors.New("SetString: error")
+		}
+		chainID = newChainID
+	} else {
+		chainID, err = app.Prompt.CapturePositiveBigInt("ChainId")
+		if err != nil {
+			return err
+		}
 	}
 	evmGenesis.Config.ChainID = chainID
 	jsonBytes, err := evmGenesis.MarshalJSON()
@@ -168,11 +180,14 @@ func handleMainnetChainID(chain string) error {
 		createNewGenesis := "Use new ChainID"
 		listOptions := []string{createNewGenesis, useSameChainID}
 		newChainIDPrompt := "Using the same ChainID for both Fuji and Mainnet could lead to a replay attack. Do you want to use a different ChainID?"
-		decision, err := app.Prompt.CaptureList(newChainIDPrompt, listOptions)
-		if err != nil {
-			return err
+		var decision string
+		if mainnetChainID == "" {
+			decision, err = app.Prompt.CaptureList(newChainIDPrompt, listOptions)
+			if err != nil {
+				return err
+			}
 		}
-		if decision == createNewGenesis {
+		if mainnetChainID != "" || decision == createNewGenesis {
 			err = createMainnetGenesis(chain)
 			if err != nil {
 				return err
@@ -355,6 +370,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// used in E2E to simulate public network execution paths on a local network
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		if network == models.Mainnet {
+
+		}
 		network = models.Local
 	}
 

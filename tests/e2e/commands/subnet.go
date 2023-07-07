@@ -316,6 +316,7 @@ func SimulateFujiDeploy(
 /* #nosec G204 */
 func SimulateMainnetDeploy(
 	subnetName string,
+	newChainID bool,
 ) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
