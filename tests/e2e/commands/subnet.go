@@ -8,17 +8,22 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/subnet-evm/core"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
 
+	"github.com/ava-labs/subnet-evm/core"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/onsi/gomega"
+)
+
+const (
+	WriteReadReadPerms = 0o644
 )
 
 /* #nosec G204 */
@@ -171,8 +176,9 @@ func WriteGenesis(subnetName string, bytes []byte) error {
 	if err := os.MkdirAll(filepath.Dir(path), constants.DefaultPerms755); err != nil {
 		return err
 	}
-	return os.WriteFile(path, bytes, 0o644)
+	return os.WriteFile(path, bytes, WriteReadReadPerms)
 }
+
 func GetMainnetGenesis(subnetName string) (core.Genesis, error) {
 	genesisMainnetPath := filepath.Join(utils.GetSubnetDir(), subnetName, constants.GenesisMainnetFileName)
 	genesisBytes, err := os.ReadFile(genesisMainnetPath)
