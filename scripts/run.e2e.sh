@@ -2,13 +2,19 @@
 
 set -e
 
-if [ "$1" = "--local" ]
+label_filter="!ledger"
+extra_build_args=""
+
+if [ "$1" = "--ledger" ]
 then
-    label_filter="local_machine"
-    ledger_sim="-tags ledger_zemu"
-else
-    label_filter="!local_machine"
-    ledger_sim=""
+    label_filter="ledger"
+fi
+
+if [ "$1" = "--ledger-sim" ]
+then
+    label_filter="ledger"
+    extra_build_args="-tags ledger_zemu"
+    export LEDGER_SIM="true"
 fi
 
 description_filter=""
@@ -42,7 +48,7 @@ fi
 export CGO_CFLAGS="-O -D__BLST_PORTABLE__"
 
 go install -v github.com/onsi/ginkgo/v2/ginkgo@v2.1.3
-ACK_GINKGO_RC=true ginkgo build $ledger_sim ./tests/e2e
+ACK_GINKGO_RC=true ginkgo build $extra_build_args ./tests/e2e
 
 ./tests/e2e/e2e.test --ginkgo.v --ginkgo.label-filter=$label_filter $description_filter
 

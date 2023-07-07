@@ -19,6 +19,10 @@ fi
 # to pass this flag to all child processes spawned by the shell.
 export CGO_CFLAGS="-O -D__BLST_PORTABLE__"
 
-ledger_sim="-tags ledger_zemu"
+extra_build_args=""
+if [ $LEDGER_SIM = true ]
+then
+	extra_build_args="-tags ledger_zemu"
+fi
 
-go build -v -ldflags="-X 'github.com/ava-labs/avalanche-cli/cmd.Version=$VERSION' -X github.com/ava-labs/avalanche-cli/pkg/utils.telemetryToken=$TELEMETRY_TOKEN" $ledger_sim -o bin/avalanche
+go build -v -ldflags="-X 'github.com/ava-labs/avalanche-cli/cmd.Version=$VERSION' -X github.com/ava-labs/avalanche-cli/pkg/utils.telemetryToken=$TELEMETRY_TOKEN" $extra_build_args -o bin/avalanche

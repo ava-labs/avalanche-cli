@@ -5,6 +5,7 @@ package subnet
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -88,13 +89,15 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		deploySubnetToFuji()
 	})
 
-	ginkgo.It("deploy subnet to mainnet", ginkgo.Label("local_machine"), func() {
-		go func() {
-			// start sim
-			err := utils.RunLedgerSimScript(utils.BasicLedgerSimScript)
-			gomega.Expect(err).Should(gomega.BeNil())
-		}()
-		time.Sleep(10*time.Second)
+	ginkgo.It("deploy subnet to mainnet", ginkgo.Label("ledger"), func() {
+		if os.Getenv("LEDGER_SIM") != "" {
+			go func() {
+				// start sim
+				err := utils.RunLedgerSimScript(utils.BasicLedgerSimScript)
+				gomega.Expect(err).Should(gomega.BeNil())
+			}()
+			time.Sleep(10 * time.Second)
+		}
 		// fund ledger address
 		err := utils.FundLedgerAddress()
 		gomega.Expect(err).Should(gomega.BeNil())
