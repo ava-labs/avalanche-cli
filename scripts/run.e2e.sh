@@ -27,6 +27,14 @@ then
     popd
 fi
 
+if [ ! -d "tests/e2e/ledgerSim/node_modules" ]
+then
+    pushd tests/e2e/ledgerSim
+    yarn
+    cp node_modules/@zondax/zemu/dist/src/grpc/zemu.proto node_modules/@zondax/zemu/dist/grpc/zemu.proto
+    popd
+fi
+
 # Set the CGO flags to use the portable version of BLST
 #
 # We use "export" here instead of just setting a bash variable because we need

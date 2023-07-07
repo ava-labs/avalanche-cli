@@ -444,6 +444,17 @@ func SetHardhatRPC(rpc string) error {
 	return os.WriteFile(confFilePath, file, 0o600)
 }
 
+func RunLedgerSimScript(script string) error {
+	cmd := exec.Command("ts-node", script)
+	cmd.Dir = ledgerSimDir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		fmt.Println(err)
+	}
+	return err
+}
+
 func RunHardhatTests(test string) error {
 	cmd := exec.Command("npx", "hardhat", "test", test, "--network", "subnet")
 	cmd.Dir = hardhatDir

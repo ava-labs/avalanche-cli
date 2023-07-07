@@ -89,6 +89,12 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 	})
 
 	ginkgo.It("deploy subnet to mainnet", ginkgo.Label("local_machine"), func() {
+		go func() {
+			// start sim
+			err := utils.RunLedgerSimScript(utils.BasicLedgerSimScript)
+			gomega.Expect(err).Should(gomega.BeNil())
+		}()
+		time.Sleep(10*time.Second)
 		// fund ledger address
 		err := utils.FundLedgerAddress()
 		gomega.Expect(err).Should(gomega.BeNil())
