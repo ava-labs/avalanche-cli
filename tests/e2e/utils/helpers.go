@@ -444,8 +444,8 @@ func SetHardhatRPC(rpc string) error {
 	return os.WriteFile(confFilePath, file, 0o600)
 }
 
-func RunLedgerSimScript(script string) error {
-	cmd := exec.Command("ts-node", script)
+func RunBasicLedgerSim(iters int) error {
+	cmd := exec.Command("ts-node", basicLedgerSimScript, fmt.Sprintf("%d", iters))
 	cmd.Dir = ledgerSimDir
 	output, err := cmd.CombinedOutput()
 	if err != nil {

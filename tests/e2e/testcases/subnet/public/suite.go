@@ -92,8 +92,8 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 	ginkgo.It("deploy subnet to mainnet", ginkgo.Label("ledger"), func() {
 		if os.Getenv("LEDGER_SIM") != "" {
 			go func() {
-				// start sim
-				err := utils.RunLedgerSimScript(utils.BasicLedgerSimScript)
+				// start ledger sim and provide for 8 tx approvals
+				err := utils.RunBasicLedgerSim(8)
 				gomega.Expect(err).Should(gomega.BeNil())
 			}()
 			time.Sleep(10 * time.Second)

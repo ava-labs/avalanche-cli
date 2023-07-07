@@ -21,9 +21,11 @@ export const defaultOptions = {
 
 const appPath = Resolve('app_s.elf')
 const ledgerModel = 'nanos'
+const numApprovals = parseInt(process.argv[2], 10);
 
 async function main() {
   console.log("Zemu demo")
+
   //await catchExit();
   const sim = new Zemu(appPath, {}, "127.0.0.1", 9998, 5000);
   //await Zemu.checkAndPullImage();
@@ -39,55 +41,15 @@ async function main() {
   await sim.waitForText("Avalanche", 60000, true);
   await sim.waitForText("Ready", 60000, true);
   const readyScreen = await sim.snapshot();
+
   console.log("READY")
 
-  // approve import tx
-  await sim.deleteEvents();
-  await sim.waitUntilScreenIs(readyScreen, 60000);
-  await sim.waitUntilScreenIsNot(readyScreen, 60000);
-  await sim.navigateUntilText(".", "pp", "APPROVE", false, false, 0, 60000, true);
-
-  // approve create subnet tx
-  await sim.deleteEvents();
-  await sim.waitUntilScreenIs(readyScreen, 60000);
-  await sim.waitUntilScreenIsNot(readyScreen, 60000);
-  await sim.navigateUntilText(".", "pp", "APPROVE", false, false, 0, 60000, true);
-  
-  // approve create chain tx
-  await sim.deleteEvents();
-  await sim.waitUntilScreenIs(readyScreen, 60000);
-  await sim.waitUntilScreenIsNot(readyScreen, 60000);
-  await sim.navigateUntilText(".", "pp", "APPROVE", false, false, 0, 60000, true);
- 
-  // approve add validator 1
-  await sim.deleteEvents();
-  await sim.waitUntilScreenIs(readyScreen, 60000);
-  await sim.waitUntilScreenIsNot(readyScreen, 60000);
-  await sim.navigateUntilText(".", "pp", "APPROVE", false, false, 0, 60000, true);
-
-  // approve add validator 2
-  await sim.deleteEvents();
-  await sim.waitUntilScreenIs(readyScreen, 60000);
-  await sim.waitUntilScreenIsNot(readyScreen, 60000);
-  await sim.navigateUntilText(".", "pp", "APPROVE", false, false, 0, 60000, true);
-
-  // approve add validator 3
-  await sim.deleteEvents();
-  await sim.waitUntilScreenIs(readyScreen, 60000);
-  await sim.waitUntilScreenIsNot(readyScreen, 60000);
-  await sim.navigateUntilText(".", "pp", "APPROVE", false, false, 0, 60000, true);
-
-  // approve add validator 4
-  await sim.deleteEvents();
-  await sim.waitUntilScreenIs(readyScreen, 60000);
-  await sim.waitUntilScreenIsNot(readyScreen, 60000);
-  await sim.navigateUntilText(".", "pp", "APPROVE", false, false, 0, 60000, true);
-
-  // approve add validator 5
-  await sim.deleteEvents();
-  await sim.waitUntilScreenIs(readyScreen, 60000);
-  await sim.waitUntilScreenIsNot(readyScreen, 60000);
-  await sim.navigateUntilText(".", "pp", "APPROVE", false, false, 0, 60000, true);
+  for (let i = 0; i < numApprovals; i++) {
+    await sim.deleteEvents();
+    await sim.waitUntilScreenIs(readyScreen, 60000);
+    await sim.waitUntilScreenIsNot(readyScreen, 60000);
+    await sim.navigateUntilText(".", "pp", "APPROVE", false, false, 0, 60000, true);
+  }
 
   await new Promise(r => setTimeout(r, 1000));
 

@@ -32,5 +32,5 @@ const (
 	PluginDirExt = "plugins"
 
 	ledgerSimDir         = "./tests/e2e/ledgerSim"
-	BasicLedgerSimScript = "./launchAndApproveTxs.ts"
+	basicLedgerSimScript = "./launchAndApproveTxs.ts"
 )
