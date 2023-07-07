@@ -161,6 +161,7 @@ func createMainnetGenesis(chain string) error {
 }
 
 func handleMainnetChainID(chain string) error {
+
 	genesisMainnetPath := app.GetGenesisMainnetPath(chain)
 	_, err := os.ReadFile(genesisMainnetPath)
 	if err != nil && os.IsNotExist(err) {
