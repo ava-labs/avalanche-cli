@@ -91,12 +91,13 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 
 	ginkgo.It("deploy subnet to mainnet", ginkgo.Label("ledger"), func() {
 		if os.Getenv("LEDGER_SIM") != "" {
+			ledgerSimReadyCh := make(chan struct{})
 			go func() {
 				// start ledger sim and provide for 8 tx approvals
-				err := utils.RunBasicLedgerSim(8)
+				err := utils.RunBasicLedgerSim(8, ledgerSimReadyCh)
 				gomega.Expect(err).Should(gomega.BeNil())
 			}()
-			time.Sleep(10 * time.Second)
+			<-ledgerSimReadyCh
 		}
 		// fund ledger address
 		err := utils.FundLedgerAddress()

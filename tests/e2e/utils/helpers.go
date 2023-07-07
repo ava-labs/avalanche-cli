@@ -4,6 +4,7 @@
 package utils
 
 import (
+	"bufio"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -444,14 +445,47 @@ func SetHardhatRPC(rpc string) error {
 	return os.WriteFile(confFilePath, file, 0o600)
 }
 
-func RunBasicLedgerSim(iters int) error {
+func RunBasicLedgerSim(iters int, LedgerSimReadyCh chan struct{}) error {
 	cmd := exec.Command("ts-node", basicLedgerSimScript, fmt.Sprintf("%d", iters))
 	cmd.Dir = ledgerSimDir
-	output, err := cmd.CombinedOutput()
+
+	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		fmt.Println(string(output))
+		return err
+	}
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+	err = cmd.Start()
+	if err != nil {
+		return err
+	}
+
+	go func(p io.ReadCloser) {
+		reader := bufio.NewReader(p)
+		line, err := reader.ReadString('\n')
+		for err == nil {
+			line = strings.TrimSpace(line)
+			if line == "SIMULATED LEDGER DEV READY" {
+				close(LedgerSimReadyCh)
+			}
+			fmt.Println(line)
+			line, err = reader.ReadString('\n')
+		}
+	}(stdoutPipe)
+
+	stderr, err := io.ReadAll(stderrPipe)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(stderr))
+
+	err = cmd.Wait()
+	if err != nil {
 		fmt.Println(err)
 	}
+
 	return err
 }
 
