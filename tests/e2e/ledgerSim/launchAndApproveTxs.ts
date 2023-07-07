@@ -1,5 +1,7 @@
 import Zemu, { DEFAULT_START_OPTIONS } from "@zondax/zemu";
 
+const Resolve = require('path').resolve
+
 /*
 const catchExit = async () => {
   process.on('SIGINT', () => {
@@ -17,14 +19,20 @@ export const defaultOptions = {
   startText: 'Ready'
 }
 
+const appPath = Resolve('app_s.elf')
+const ledgerModel = 'nanos'
+
 async function main() {
   console.log("Zemu demo")
   //await catchExit();
-  const sim = new Zemu("/home/fm/Workdir/projects/ledger-avalanche/build/output/app_s.elf", {}, "127.0.0.1", 9998, 5000);
+  const sim = new Zemu(appPath, {}, "127.0.0.1", 9998, 5000);
   //await Zemu.checkAndPullImage();
   //await Zemu.stopAllEmuContainers();
-  await sim.start({ ...defaultOptions, model: "nanos" });
+  //await sim.start({ ...defaultOptions, model: "nanos" });
+  //
   //await sim.start({ ...DEFAULT_START_OPTIONS, model: "nanos" });
+  await sim.start(DEFAULT_START_OPTIONS)
+  
   sim.startGRPCServer("localhost", 3002);
 
   // wait until avalanche app ready screen and take screen snapshot
