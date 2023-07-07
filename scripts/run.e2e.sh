@@ -5,8 +5,10 @@ set -e
 if [ "$1" = "--local" ]
 then
     label_filter="local_machine"
+    ledger_sim="-tags ledger_zemu"
 else
     label_filter="!local_machine"
+    ledger_sim=""
 fi
 
 description_filter=""
@@ -32,7 +34,7 @@ fi
 export CGO_CFLAGS="-O -D__BLST_PORTABLE__"
 
 go install -v github.com/onsi/ginkgo/v2/ginkgo@v2.1.3
-ACK_GINKGO_RC=true ginkgo build ./tests/e2e
+ACK_GINKGO_RC=true ginkgo build $ledger_sim ./tests/e2e
 
 ./tests/e2e/e2e.test --ginkgo.v --ginkgo.label-filter=$label_filter $description_filter
 
