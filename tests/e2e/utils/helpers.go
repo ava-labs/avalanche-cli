@@ -59,6 +59,10 @@ func GetBaseDir() string {
 	return path.Join(usr.HomeDir, baseDir)
 }
 
+func GetSubnetDir() string {
+	return path.Join(GetBaseDir(), constants.SubnetDir)
+}
+
 func GetAPMDir() string {
 	usr, err := user.Current()
 	if err != nil {

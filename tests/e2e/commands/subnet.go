@@ -5,8 +5,10 @@ package commands
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/subnet-evm/core"
 	"io"
 	"os"
 	"os/exec"
@@ -164,6 +166,27 @@ func DeleteSubnetConfig(subnetName string) {
 	gomega.Expect(exists).Should(gomega.BeFalse())
 }
 
+func WriteGenesis(subnetName string, bytes []byte) error {
+	path := filepath.Join(utils.GetSubnetDir(), subnetName, constants.GenesisFileName)
+	if err := os.MkdirAll(filepath.Dir(path), constants.DefaultPerms755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, bytes, 0o644)
+}
+func GetMainnetGenesis(subnetName string) (core.Genesis, error) {
+	genesisMainnetPath := filepath.Join(utils.GetSubnetDir(), subnetName, constants.GenesisMainnetFileName)
+	genesisBytes, err := os.ReadFile(genesisMainnetPath)
+	if err != nil {
+		return core.Genesis{}, err
+	}
+	var genesis core.Genesis
+	err = json.Unmarshal(genesisBytes, &genesis)
+	if err != nil {
+		return core.Genesis{}, err
+	}
+	return genesis, nil
+}
+
 func DeleteElasticSubnetConfig(subnetName string) {
 	var err error
 	elasticSubnetConfig := filepath.Join(utils.GetBaseDir(), constants.SubnetDir, subnetName, constants.ElasticSubnetConfigFileName)
@@ -272,6 +295,7 @@ func SimulateFujiDeploy(
 	subnetName string,
 	key string,
 	controlKeys string,
+	newChainID string,
 ) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -297,6 +321,24 @@ func SimulateFujiDeploy(
 		subnetName,
 		"--"+constants.SkipUpdateFlag,
 	)
+	if newChainID != "" {
+		cmd = exec.Command(
+			CLIBinary,
+			SubnetCmd,
+			"deploy",
+			"--fuji",
+			"--threshold",
+			"1",
+			"--key",
+			key,
+			"--control-keys",
+			controlKeys,
+			"--mainnet-chain-id",
+			newChainID,
+			subnetName,
+			"--"+constants.SkipUpdateFlag,
+		)
+	}
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -316,7 +358,6 @@ func SimulateFujiDeploy(
 /* #nosec G204 */
 func SimulateMainnetDeploy(
 	subnetName string,
-	newChainID bool,
 ) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)

@@ -148,7 +148,8 @@ func createMainnetGenesis(chain string) error {
 	ux.Logger.PrintToUser("Enter your subnet's ChainId. It can be any positive integer.")
 	var chainID *big.Int
 	if mainnetChainID != "" {
-		newChainID, ok := chainID.SetString(mainnetChainID, 10)
+		newChainID := new(big.Int)
+		newChainID, ok := newChainID.SetString(mainnetChainID, 10)
 		if !ok {
 			return errors.New("SetString: error")
 		}
@@ -269,7 +270,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		network = models.NetworkFromString(networkStr)
 	}
 
-	if network == models.Mainnet {
+	if network == models.Mainnet || os.Getenv(constants.SimulatePublicNetwork) != "" {
 		err = handleMainnetChainID(chain)
 		if err != nil {
 			return err
@@ -370,9 +371,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// used in E2E to simulate public network execution paths on a local network
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		if network == models.Mainnet {
-
-		}
 		network = models.Local
 	}
 
