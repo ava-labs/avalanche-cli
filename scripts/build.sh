@@ -20,7 +20,7 @@ fi
 export CGO_CFLAGS="-O -D__BLST_PORTABLE__"
 
 extra_build_args=""
-if [ $LEDGER_SIM = true ]
+if [ "${LEDGER_SIM:-}" == true ]
 then
 	extra_build_args="-tags ledger_zemu"
 fi

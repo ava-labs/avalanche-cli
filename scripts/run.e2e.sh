@@ -3,7 +3,6 @@
 set -e
 
 label_filter="!ledger"
-extra_build_args=""
 
 if [ "$1" = "--ledger" ]
 then
@@ -13,7 +12,6 @@ fi
 if [ "$1" = "--ledger-sim" ]
 then
     label_filter="ledger"
-    extra_build_args="-tags ledger_zemu"
     export LEDGER_SIM="true"
 fi
 
@@ -48,6 +46,13 @@ fi
 export CGO_CFLAGS="-O -D__BLST_PORTABLE__"
 
 go install -v github.com/onsi/ginkgo/v2/ginkgo@v2.1.3
+
+extra_build_args=""
+if [ "${LEDGER_SIM:-}" == true ]
+then
+	extra_build_args="-tags ledger_zemu"
+fi
+
 ACK_GINKGO_RC=true ginkgo build $extra_build_args ./tests/e2e
 
 ./tests/e2e/e2e.test --ginkgo.v --ginkgo.label-filter=$label_filter $description_filter
