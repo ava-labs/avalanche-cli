@@ -182,7 +182,7 @@ func handleMainnetChainID(chain string) error {
 		listOptions := []string{createNewGenesis, useSameChainID}
 		newChainIDPrompt := "Using the same ChainID for both Fuji and Mainnet could lead to a replay attack. Do you want to use a different ChainID?"
 		var decision string
-		if mainnetChainID == "" {
+		if mainnetChainID == "" && os.Getenv(constants.SimulatePublicNetwork) == "" {
 			decision, err = app.Prompt.CaptureList(newChainIDPrompt, listOptions)
 			if err != nil {
 				return err
