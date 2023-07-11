@@ -44,10 +44,10 @@ func NewCmd(injectedApp *application.Avalanche, version string) *cobra.Command {
 
 func runUpdate(cmd *cobra.Command, _ []string) error {
 	isUserCalled := true
-	return Update(cmd, isUserCalled, "")
+	return Update(cmd, isUserCalled, "", &application.LastActions{})
 }
 
-func Update(cmd *cobra.Command, isUserCalled bool, version string) error {
+func Update(cmd *cobra.Command, isUserCalled bool, version string, lastActs *application.LastActions) error {
 	// first check if there is a new version exists
 	url := binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.CliRepoName)
 	latest, err := app.Downloader.GetLatestReleaseVersion(url)
@@ -55,6 +55,12 @@ func Update(cmd *cobra.Command, isUserCalled bool, version string) error {
 		app.Log.Warn("failed to get latest version for cli from repo", zap.Error(err))
 		return err
 	}
+
+	if lastActs == nil {
+		lastActs = &application.LastActions{}
+	}
+	lastActs.LastCheckGit = time.Now()
+	app.WriteLastActionsFile(lastActs)
 
 	// the current version info should be in this variable
 	this := cmd.Version
@@ -149,7 +155,7 @@ func Update(cmd *cobra.Command, isUserCalled bool, version string) error {
 	}
 
 	// write to file when last updated
-	lastActs, err := app.ReadLastActionsFile()
+	lastActs, err = app.ReadLastActionsFile()
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			lastActs = &application.LastActions{}
