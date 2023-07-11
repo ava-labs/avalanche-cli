@@ -176,7 +176,7 @@ func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
 	isUserCalled := false
 	commandList := strings.Fields(cmd.CommandPath())
 	if !(len(commandList) > 1 && commandList[1] == "update") {
-		if lastActs.LastCheckGit != (time.Time{}) && time.Now().Before(lastActs.LastSkipCheck.Add(24*time.Hour)) {
+		if lastActs.LastCheckGit != (time.Time{}) && time.Now().Before(lastActs.LastCheckGit.Add(24*time.Hour)) {
 			if err := updatecmd.Update(cmd, isUserCalled, Version, lastActs); err != nil {
 				if errors.Is(err, updatecmd.ErrUserAbortedInstallation) {
 					return nil
