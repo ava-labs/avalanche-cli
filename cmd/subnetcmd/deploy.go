@@ -145,7 +145,7 @@ func createMainnetGenesis(chain string) error {
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Enter your subnet's ChainId. It can be any positive integer.")
+	ux.Logger.PrintToUser("Enter your subnet's ChainID. It can be any positive integer.")
 	var chainID *big.Int
 	if mainnetChainID != "" {
 		newChainID := new(big.Int)
