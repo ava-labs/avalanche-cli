@@ -414,46 +414,6 @@ func handleValidatorJoinElasticSubnetLocal(sc models.Sidecar, network models.Net
 	return nil
 }
 
-func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, error) {
-	var (
-		nodeID ids.NodeID
-		err    error
-	)
-	if nodeIDStr == "" {
-		ux.Logger.PrintToUser("Next, we need the NodeID of the validator you want to whitelist.")
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions about how to query the NodeID from your node")
-		ux.Logger.PrintToUser("(Edit host IP address and port to match your deployment, if needed).")
-
-		promptStr := "What is the NodeID of the validator you'd like to whitelist?"
-		nodeID, err = app.Prompt.CaptureNodeID(promptStr)
-		if err != nil {
-			return false, err
-		}
-	} else {
-		nodeID, err = ids.NodeIDFromString(nodeIDStr)
-		if err != nil {
-			return false, err
-		}
-	}
-
-	var api string
-	switch network {
-	case models.Fuji:
-		api = constants.FujiAPIEndpoint
-	case models.Mainnet:
-		api = constants.MainnetAPIEndpoint
-	case models.Local:
-		api = constants.LocalAPIEndpoint
-	default:
-		return false, fmt.Errorf("network not supported")
-	}
-
-	pClient := platformvm.NewClient(api)
-
-	return checkIsValidating(subnetID, nodeID, pClient)
-}
-
 func checkIsValidating(subnetID ids.ID, nodeID ids.NodeID, pClient platformvm.Client) (bool, error) {
 	// first check if the node is already an accepted validator on the subnet
 	ctx := context.Background()
