@@ -98,7 +98,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "deploy into given subnet id [fuji/mainnet deploy only]")
-	cmd.Flags().StringVar(&mainnetChainID, "mainnet-chain-id", "", "use different chain id for mainnet deployment")
+	cmd.Flags().StringVar(&mainnetChainID, "mainnet-chain-id", "", "use different ChainID for mainnet deployment")
 	return cmd
 }
 
@@ -155,7 +155,7 @@ func createMainnetGenesis(chain string) error {
 		}
 		chainID = newChainID
 	} else {
-		chainID, err = app.Prompt.CapturePositiveBigInt("ChainId")
+		chainID, err = app.Prompt.CapturePositiveBigInt("ChainID")
 		if err != nil {
 			return err
 		}
