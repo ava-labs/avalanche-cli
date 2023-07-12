@@ -176,18 +176,20 @@ func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
 	isUserCalled := false
 	commandList := strings.Fields(cmd.CommandPath())
 	if !(len(commandList) > 1 && commandList[1] == "update") {
-		if err := updatecmd.Update(cmd, isUserCalled, Version); err != nil {
-			if errors.Is(err, updatecmd.ErrUserAbortedInstallation) {
-				return nil
+		if lastActs.LastCheckGit != (time.Time{}) && time.Now().Before(lastActs.LastCheckGit.Add(24*time.Hour)) {
+			if err := updatecmd.Update(cmd, isUserCalled, Version, lastActs); err != nil {
+				if errors.Is(err, updatecmd.ErrUserAbortedInstallation) {
+					return nil
+				}
+				if err == updatecmd.ErrNoVersion {
+					ux.Logger.PrintToUser(
+						"Attempted to check if a new version is available, but couldn't find the currently running version information")
+					ux.Logger.PrintToUser(
+						"Make sure to follow official instructions, or automatic updates won't be available for you")
+					return nil
+				}
+				return err
 			}
-			if err == updatecmd.ErrNoVersion {
-				ux.Logger.PrintToUser(
-					"Attempted to check if a new version is available, but couldn't find the currently running version information")
-				ux.Logger.PrintToUser(
-					"Make sure to follow official instructions, or automatic updates won't be available for you")
-				return nil
-			}
-			return err
 		}
 	}
 	return nil
