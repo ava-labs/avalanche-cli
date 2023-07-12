@@ -3,9 +3,11 @@
 package subnetcmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -53,6 +55,7 @@ var (
 	useLedger                bool
 	ledgerAddresses          []string
 	subnetIDStr              string
+	mainnetChainID           string
 	skipCreatePrompt         bool
 
 	errMutuallyExlusiveNetworks    = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
@@ -95,6 +98,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "deploy into given subnet id [fuji/mainnet deploy only]")
+	cmd.Flags().StringVar(&mainnetChainID, "mainnet-chain-id", "", "use different ChainID for mainnet deployment")
 	return cmd
 }
 
@@ -150,6 +154,64 @@ func checkDefaultAddressNotInAlloc(network models.Network, chain string) error {
 func runDeploy(cmd *cobra.Command, args []string) error {
 	skipCreatePrompt = true
 	return deploySubnet(cmd, args)
+}
+
+func createMainnetGenesis(chain string) error {
+	evmGenesis, err := app.LoadEvmGenesis(chain)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Enter your subnet's ChainID. It can be any positive integer.")
+	var chainID *big.Int
+	if mainnetChainID != "" {
+		newChainID := new(big.Int)
+		newChainID, ok := newChainID.SetString(mainnetChainID, 10)
+		if !ok {
+			return errors.New("SetString: error")
+		}
+		chainID = newChainID
+	} else {
+		chainID, err = app.Prompt.CapturePositiveBigInt("ChainID")
+		if err != nil {
+			return err
+		}
+	}
+	evmGenesis.Config.ChainID = chainID
+	jsonBytes, err := evmGenesis.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	var prettyJSON bytes.Buffer
+	err = json.Indent(&prettyJSON, jsonBytes, "", "    ")
+	if err != nil {
+		return err
+	}
+	return app.WriteGenesisMainnetFile(chain, prettyJSON.Bytes())
+}
+
+func handleMainnetChainID(chain string) error {
+	genesisMainnetPath := app.GetGenesisMainnetPath(chain)
+	_, err := os.ReadFile(genesisMainnetPath)
+	if err != nil && os.IsNotExist(err) {
+		useSameChainID := "Use same ChainID"
+		createNewGenesis := "Use new ChainID"
+		listOptions := []string{createNewGenesis, useSameChainID}
+		newChainIDPrompt := "Using the same ChainID for both Fuji and Mainnet could lead to a replay attack. Do you want to use a different ChainID?"
+		var decision string
+		if mainnetChainID == "" && os.Getenv(constants.SimulatePublicNetwork) == "" {
+			decision, err = app.Prompt.CaptureList(newChainIDPrompt, listOptions)
+			if err != nil {
+				return err
+			}
+		}
+		if mainnetChainID != "" || decision == createNewGenesis {
+			err = createMainnetGenesis(chain)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // deploySubnet is the cobra command run for deploying subnets
@@ -224,9 +286,16 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		network = models.NetworkFromString(networkStr)
 	}
 
+	if network == models.Mainnet || os.Getenv(constants.SimulatePublicNetwork) != "" {
+		err = handleMainnetChainID(chain)
+		if err != nil {
+			return err
+		}
+	}
+
 	// deploy based on chosen network
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.String())
-	chainGenesis, err := app.LoadRawGenesis(chain)
+	chainGenesis, err := app.LoadRawGenesis(chain, network)
 	if err != nil {
 		return err
 	}
