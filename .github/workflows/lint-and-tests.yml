@@ -89,6 +89,11 @@ jobs:
           max_attempts: 3
           retry_on: error
           command: yarn --cwd ./tests/e2e/hardhat
+      - name: ts-node install
+        shell: bash
+        run: |
+          npm install -g typescript
+          npm install -g ts-node
       - name: Run e2e tests
         shell: bash
         run: AVALANCHE_CLI_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} LEDGER_SIM=true scripts/run.e2e.sh --filter ${{ matrix.suite }}
