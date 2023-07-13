@@ -99,7 +99,7 @@ jobs:
         run: sudo ln -s ~/.docker/run/docker.sock /var/run/docker.sock
       - name: Run e2e tests
         shell: bash
-        run: AVALANCHE_CLI_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} LEDGER_SIM=true scripts/run.e2e.sh --filter ${{ matrix.suite }}
+        run: AVALANCHE_CLI_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} LEDGER_SIM=true scripts/run.e2e.sh --filter "${{ matrix.suite }}"
       - name: "Upload Artifact"
         if: always()
         uses: actions/upload-artifact@v3
