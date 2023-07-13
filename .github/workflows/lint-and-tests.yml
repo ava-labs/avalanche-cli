@@ -96,7 +96,7 @@ jobs:
           npm install -g ts-node
       - name: Fix docker environment on macos
         if: ${{ matrix.os == 'macos-latest' }}
-        run: ln -s ~/.docker/run/docker.sock /var/run/docker.sock
+        run: sudo ln -s ~/.docker/run/docker.sock /var/run/docker.sock
       - name: Run e2e tests
         shell: bash
         run: AVALANCHE_CLI_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} LEDGER_SIM=true scripts/run.e2e.sh --filter ${{ matrix.suite }}

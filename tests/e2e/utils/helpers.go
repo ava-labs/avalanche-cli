@@ -742,7 +742,7 @@ func GetFileHash(filename string) (string, error) {
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
 
-func FundLedgerAddress() error {
+func FundLedgerAddress(amount uint64) error {
 	// get ledger
 	ledgerDev, err := ledger.New()
 	if err != nil {
@@ -779,7 +779,7 @@ func FundLedgerAddress() error {
 	output := &avax.TransferableOutput{
 		Asset: avax.Asset{ID: wallet.X().AVAXAssetID()},
 		Out: &secp256k1fx.TransferOutput{
-			Amt:          1000000000,
+			Amt:          amount,
 			OutputOwners: to,
 		},
 	}

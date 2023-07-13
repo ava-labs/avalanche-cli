@@ -104,7 +104,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			<-ledgerSimReadyCh
 		}
 		// fund ledger address
-		err := utils.FundLedgerAddress()
+		err := utils.FundLedgerAddress(1000)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println()
 		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
