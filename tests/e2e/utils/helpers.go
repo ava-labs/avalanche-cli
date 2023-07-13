@@ -445,8 +445,8 @@ func SetHardhatRPC(rpc string) error {
 	return os.WriteFile(confFilePath, file, 0o600)
 }
 
-func RunBasicLedgerSim(iters int, LedgerSimReadyCh chan struct{}) error {
-	cmd := exec.Command("ts-node", basicLedgerSimScript, fmt.Sprintf("%d", iters))
+func RunBasicLedgerSim(iters int, ledgerSimReadyCh chan struct{}) error {
+	cmd := exec.Command("ts-node", basicLedgerSimScript, fmt.Sprintf("%d", iters)) //nolint:gosec
 	cmd.Dir = ledgerSimDir
 
 	stdoutPipe, err := cmd.StdoutPipe()
@@ -468,7 +468,7 @@ func RunBasicLedgerSim(iters int, LedgerSimReadyCh chan struct{}) error {
 		for err == nil {
 			line = strings.TrimSpace(line)
 			if line == "SIMULATED LEDGER DEV READY" {
-				close(LedgerSimReadyCh)
+				close(ledgerSimReadyCh)
 			}
 			fmt.Println(line)
 			line, err = reader.ReadString('\n')

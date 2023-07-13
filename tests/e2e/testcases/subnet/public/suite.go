@@ -93,6 +93,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		if os.Getenv("LEDGER_SIM") != "" {
 			ledgerSimReadyCh := make(chan struct{})
 			go func() {
+				defer ginkgo.GinkgoRecover()
 				// start ledger sim and provide for 8 tx approvals
 				err := utils.RunBasicLedgerSim(8, ledgerSimReadyCh)
 				gomega.Expect(err).Should(gomega.BeNil())
