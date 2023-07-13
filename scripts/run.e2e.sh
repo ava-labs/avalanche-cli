@@ -2,19 +2,6 @@
 
 set -e
 
-label_filter="!ledger"
-
-if [ "$1" = "--ledger" ]
-then
-    label_filter="ledger"
-fi
-
-if [ "$1" = "--ledger-sim" ]
-then
-    label_filter="ledger"
-    export LEDGER_SIM="true"
-fi
-
 description_filter=""
 if [ "$1" = "--filter" ]
 then
@@ -55,7 +42,7 @@ fi
 
 ACK_GINKGO_RC=true ginkgo build $extra_build_args ./tests/e2e
 
-./tests/e2e/e2e.test --ginkgo.v --ginkgo.label-filter=$label_filter $description_filter
+./tests/e2e/e2e.test --ginkgo.v $description_filter
 
 EXIT_CODE=$?
 

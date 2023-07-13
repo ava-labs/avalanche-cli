@@ -91,7 +91,7 @@ jobs:
           command: yarn --cwd ./tests/e2e/hardhat
       - name: Run e2e tests
         shell: bash
-        run: AVALANCHE_CLI_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} scripts/run.e2e.sh --filter ${{ matrix.suite }}
+        run: AVALANCHE_CLI_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} LEDGER_SIM=true scripts/run.e2e.sh --filter ${{ matrix.suite }}
       - name: "Upload Artifact"
         if: always()
         uses: actions/upload-artifact@v3

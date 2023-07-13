@@ -89,7 +89,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		deploySubnetToFuji()
 	})
 
-	ginkgo.It("deploy subnet to mainnet", ginkgo.Label("ledger"), func() {
+	ginkgo.It("deploy subnet to mainnet", func() {
 		if os.Getenv("LEDGER_SIM") != "" {
 			ledgerSimReadyCh := make(chan struct{})
 			go func() {
