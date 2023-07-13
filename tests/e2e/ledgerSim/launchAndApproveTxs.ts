@@ -13,8 +13,10 @@ const numApprovals = parseInt(process.argv[2], 10);
 
 async function main() {
   const sim = new Zemu(appPath, {}, "127.0.0.1", transportPort, speculosApiPort);
-  //await Zemu.checkAndPullImage();
-  //await Zemu.stopAllEmuContainers();
+
+  await Zemu.checkAndPullImage();
+  await Zemu.stopAllEmuContainers();
+
   await sim.start(DEFAULT_START_OPTIONS)
   
   sim.startGRPCServer("localhost", grpcPort);
@@ -35,8 +37,8 @@ async function main() {
 
   await Zemu.sleep(waitUntilClose);
 
-  //await sim.close();
-  //await Zemu.stopAllEmuContainers();
+  await sim.close();
+  await Zemu.stopAllEmuContainers();
 }
 
 main()
