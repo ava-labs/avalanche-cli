@@ -54,7 +54,7 @@ jobs:
       matrix:
         suite:
           [
-            "[APM]",
+            "\\[APM\\]",
             "[Error handling]",
             "[Key]",
             "[Network]",
