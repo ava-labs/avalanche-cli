@@ -94,13 +94,12 @@ jobs:
         run: |
           npm install -g typescript
           npm install -g ts-node
-      - name: Fix docker environment on macos
+      - name: Install docker on macos
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
           brew install docker
           colima start
           sudo ln -s ~/.colima/default/docker.sock /var/run/docker.sock
-          #sudo ln -s ~/.docker/run/docker.sock /var/run/docker.sock
       - name: Run e2e tests
         shell: bash
         run: AVALANCHE_CLI_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} LEDGER_SIM=true scripts/run.e2e.sh --filter "${{ matrix.suite }}"
