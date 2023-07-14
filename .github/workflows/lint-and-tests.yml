@@ -55,18 +55,18 @@ jobs:
         suite:
           [
             "\\[APM\\]",
-            "[Error handling]",
-            "[Key]",
-            "[Network]",
-            "[Package Management]",
-            "[Root]",
-            "[Local Subnet]",
-            "[Subnet Compatibility]",
-            "[Public Subnet]",
-            "[Subnet]",
-            "[Upgrade expect network failure]",
-            "[Upgrade public network]",
-            "[Upgrade local network]",
+            "\\[Error handling\\]",
+            "\\[Key\\]",
+            "\\[Network\\]",
+            "\\[Package Management\\]",
+            "\\[Root\\]",
+            "\\[Local Subnet\\]",
+            "\\[Subnet Compatibility\\]",
+            "\\[Public Subnet\\]",
+            "\\[Subnet\\]",
+            "\\[Upgrade expect network failure\\]",
+            "\\[Upgrade public network\\]",
+            "\\[Upgrade local network\\]",
           ]
         os: [ubuntu-latest, macos-latest]
     steps:
