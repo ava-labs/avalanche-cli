@@ -39,12 +39,6 @@ var (
 	pluginDir string
 	// if true, print the manual instructions to screen
 	printManual bool
-	// skipWhitelistCheck if true doesn't prompt, skip the check
-	skipWhitelistCheck bool
-	// forceWhitelistCheck if true doesn't prompt, run the check
-	forceWhitelistCheck bool
-	// failIfNotValidating
-	failIfNotValidating bool
 	// if true, doesn't ask for overwriting the config file
 	forceWrite bool
 	// if true, validator is joining a permissionless subnet
@@ -82,9 +76,6 @@ This command currently only supports Subnets deployed on the Fuji Testnet and Ma
 	cmd.Flags().BoolVar(&deployLocal, "local", false, "join on `local` (for elastic subnet only)")
 	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
 	cmd.Flags().BoolVar(&printManual, "print", false, "if true, print the manual config without prompting")
-	cmd.Flags().BoolVar(&skipWhitelistCheck, "skip-whitelist-check", false, "if true, skip the whitelist check")
-	cmd.Flags().BoolVar(&forceWhitelistCheck, "force-whitelist-check", false, "if true, force the whitelist check")
-	cmd.Flags().BoolVar(&failIfNotValidating, "fail-if-not-validating", false, "fail if whitelist check fails")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to check")
 	cmd.Flags().BoolVar(&forceWrite, "force-write", false, "if true, skip to prompt to overwrite the config file")
 	cmd.Flags().BoolVar(&joinElastic, "elastic", false, "set flag as true if joining elastic subnet")
@@ -175,43 +166,6 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		return errNoSubnetID
 	}
 	subnetIDStr := subnetID.String()
-
-	if !skipWhitelistCheck {
-		yes := true
-		if !forceWhitelistCheck {
-			ask := "Would you like to check if your node is allowed to join this subnet?\n" +
-				"If not, the subnet's control key holder must call avalanche subnet\n" +
-				"addValidator with your NodeID."
-			ux.Logger.PrintToUser(ask)
-			yes, err = app.Prompt.CaptureYesNo("Check whitelist?")
-			if err != nil {
-				return err
-			}
-		}
-		if yes {
-			isValidating, err := isNodeValidatingSubnet(subnetID, network)
-			if err != nil {
-				return err
-			}
-			if !isValidating {
-				if failIfNotValidating {
-					ux.Logger.PrintToUser("The node is not whitelisted to validate this subnet.")
-					return nil
-				}
-				ux.Logger.PrintToUser(`The node is not whitelisted to validate this subnet.
-You can continue with this command, generating a config file or printing the whitelisting configuration,
-but until the node is whitelisted, it will not be able to validate this subnet.`)
-				y, err := app.Prompt.CaptureYesNo("Do you wish to continue")
-				if err != nil {
-					return err
-				}
-				if !y {
-					return nil
-				}
-			}
-			ux.Logger.PrintToUser("The node is already whitelisted! You are good to go.")
-		}
-	}
 
 	if printManual {
 		pluginDir = app.GetTmpPluginDir()
@@ -458,46 +412,6 @@ func handleValidatorJoinElasticSubnetLocal(sc models.Sidecar, network models.Net
 		return fmt.Errorf("joining permissionless subnet was successful, but failed to update sidecar: %w", err)
 	}
 	return nil
-}
-
-func isNodeValidatingSubnet(subnetID ids.ID, network models.Network) (bool, error) {
-	var (
-		nodeID ids.NodeID
-		err    error
-	)
-	if nodeIDStr == "" {
-		ux.Logger.PrintToUser("Next, we need the NodeID of the validator you want to whitelist.")
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions about how to query the NodeID from your node")
-		ux.Logger.PrintToUser("(Edit host IP address and port to match your deployment, if needed).")
-
-		promptStr := "What is the NodeID of the validator you'd like to whitelist?"
-		nodeID, err = app.Prompt.CaptureNodeID(promptStr)
-		if err != nil {
-			return false, err
-		}
-	} else {
-		nodeID, err = ids.NodeIDFromString(nodeIDStr)
-		if err != nil {
-			return false, err
-		}
-	}
-
-	var api string
-	switch network {
-	case models.Fuji:
-		api = constants.FujiAPIEndpoint
-	case models.Mainnet:
-		api = constants.MainnetAPIEndpoint
-	case models.Local:
-		api = constants.LocalAPIEndpoint
-	default:
-		return false, fmt.Errorf("network not supported")
-	}
-
-	pClient := platformvm.NewClient(api)
-
-	return checkIsValidating(subnetID, nodeID, pClient)
 }
 
 func checkIsValidating(subnetID ids.ID, nodeID ids.NodeID, pClient platformvm.Client) (bool, error) {
