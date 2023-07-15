@@ -68,5 +68,4 @@ func TestMultipleAirdropsSameAddress(t *testing.T) {
 	require.Equal(direction, statemachine.Forward)
 
 	require.Equal(alloc[testAirdropAddress].Balance, expectedAmount)
-
 }
