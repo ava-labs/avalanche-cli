@@ -20,7 +20,7 @@
 
 # ignore GoLand metafiles directory
 .idea/
-
+.terraform/
 *logs/
 
 .vscode*

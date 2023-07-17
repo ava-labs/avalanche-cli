@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
+
 	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
 
 	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
@@ -81,6 +83,9 @@ in with avalanche subnet create myNewSubnet.`,
 
 	// add update command
 	rootCmd.AddCommand(updatecmd.NewCmd(app, Version))
+
+	// add node command
+	rootCmd.AddCommand(nodecmd.NewCmd(app))
 	return rootCmd
 }
 
