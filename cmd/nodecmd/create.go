@@ -115,7 +115,6 @@ func setCloudCredentials(rootBody *hclwrite.Body) error {
 	providerBody := provider.Body()
 	providerBody.SetAttributeValue("access_key", cty.StringVal(accessKey))
 	providerBody.SetAttributeValue("secret_key", cty.StringVal(secretKey))
-	// providerBody.SetAttributeValue("region", cty.StringVal("us-east-1"))
 	providerBody.SetAttributeValue("region", cty.StringVal("us-east-2"))
 
 	return nil
