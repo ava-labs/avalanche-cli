@@ -20,11 +20,6 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-var (
-	forceCreate bool
-	filename    string
-)
-
 func newCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create [subnetName]",
