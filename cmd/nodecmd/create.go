@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"io"
 	"log"
 	"net"
@@ -91,6 +93,24 @@ func createNode(_ *cobra.Command, args []string) error {
 	}
 	PrintResults(instanceID, elasticIP, certFilePath)
 	return nil
+}
+
+func checkKeyPairExists() {
+	// Load session from shared config
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+
+	// Create new EC2 client
+	ec2Svc := ec2.New(sess)
+
+	// Call to get detailed information on each instance
+	result, err := ec2Svc.DescribeInstances(nil)
+	if err != nil {
+		fmt.Println("Error", err)
+	} else {
+		fmt.Println("Success", result)
+	}
 }
 
 func getCloudCredentials(promptItem, promptStr string) (string, error) {
