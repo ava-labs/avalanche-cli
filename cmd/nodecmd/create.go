@@ -20,10 +20,6 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-const (
-	forceFlag = "force"
-)
-
 var (
 	forceCreate bool
 	filename    string
@@ -48,7 +44,6 @@ configuration, pass the -f flag.`,
 		Args:         cobra.ExactArgs(1),
 		RunE:         createNode,
 	}
-	// cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
 
 	return cmd
 }
