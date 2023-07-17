@@ -5,6 +5,7 @@ package subnet
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -18,17 +19,18 @@ import (
 )
 
 const (
-	subnetName    = "e2eSubnetTest"
-	controlKeys   = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
-	keyName       = "ewoq"
-	stakeAmount   = "2000"
-	stakeDuration = "336h"
-	localNetwork  = "Local Network"
+	subnetName     = "e2eSubnetTest"
+	controlKeys    = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
+	keyName        = "ewoq"
+	stakeAmount    = "2000"
+	stakeDuration  = "336h"
+	localNetwork   = "Local Network"
+	mainnetChainID = "123456"
 )
 
 func deploySubnetToFuji() (string, map[string]utils.NodeInfo) {
 	// deploy
-	s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys)
+	s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys, "")
 	subnetID, err := utils.ParsePublicDeployOutput(s)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// add validators to subnet
@@ -140,6 +142,17 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(output).Should(gomega.ContainSubstring("No pending validators found"))
 	})
 
+	ginkgo.It("deploy subnet with new chain id", func() {
+		genesisBytes, _ := os.ReadFile(utils.SubnetEvmGenesisPath)
+		_ = commands.WriteGenesis(subnetName, genesisBytes)
+		s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys, mainnetChainID)
+		_, err := utils.ParsePublicDeployOutput(s)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		mainnetGenesis, err := commands.GetMainnetGenesis(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(mainnetGenesis.Config.ChainID.String()).Should(gomega.Equal(mainnetChainID))
+	})
 	ginkgo.It("can transform a deployed SubnetEvm subnet to elastic subnet only on fuji", func() {
 		subnetIDStr, _ := deploySubnetToFuji()
 		subnetID, err := ids.FromString(subnetIDStr)

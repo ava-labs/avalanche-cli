@@ -442,10 +442,20 @@ func promptAdminAndEnabledAddresses() ([]common.Address, []common.Address, error
 			return nil, nil, err
 		}
 
+		adminsMap := make(map[string]bool)
+		for _, adminsAddress := range admin {
+			adminsMap[adminsAddress.String()] = true
+		}
+
 		if err := captureAddress(enabledLabel, &enabled); err != nil {
 			return nil, nil, err
 		}
 
+		for _, enabledAddress := range enabled {
+			if _, ok := adminsMap[enabledAddress.String()]; ok {
+				return nil, nil, fmt.Errorf("can't have address %s in both admin and enabled addresses", enabledAddress.String())
+			}
+		}
 		if len(enabled) == 0 && len(admin) == 0 {
 			ux.Logger.PrintToUser(fmt.Sprintf(
 				"We need at least one address for either '%s' or '%s'. Otherwise abort.", enabledAddressesKey, adminAddressesKey))
