@@ -6,17 +6,18 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclwrite"
-	"github.com/spf13/cobra"
-	"github.com/zclconf/go-cty/cty"
 	"io"
 	"log"
 	"net"
 	"os"
 	"os/exec"
 	"os/user"
+
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclwrite"
+	"github.com/spf13/cobra"
+	"github.com/zclconf/go-cty/cty"
 )
 
 const (
@@ -47,7 +48,7 @@ configuration, pass the -f flag.`,
 		Args:         cobra.ExactArgs(1),
 		RunE:         createNode,
 	}
-	//cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
+	// cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
 
 	return cmd
 }
@@ -67,14 +68,22 @@ func createNode(_ *cobra.Command, args []string) error {
 	}
 	rootBody := hclFile.Body()
 
-	setCloudCredentials(rootBody)
+	err = setCloudCredentials(rootBody)
+	if err != nil {
+		return err
+	}
 	setKeyPair(rootBody, keyPairName, certName)
-	setSecurityGroup(rootBody, securityGroupName)
+	err = setSecurityGroup(rootBody, securityGroupName)
+	if err != nil {
+		return err
+	}
 	setElasticIP(rootBody)
 	setUpInstance(rootBody, securityGroupName)
 	setOutput(rootBody)
-	tfFile.Write(hclFile.Bytes())
-
+	_, err = tfFile.Write(hclFile.Bytes())
+	if err != nil {
+		return err
+	}
 	instanceID, elasticIP, err := runTerraform()
 	if err != nil {
 		return err
@@ -102,6 +111,7 @@ func getCloudCredentials(promptItem, promptStr string) (string, error) {
 	}
 	return tokenName, nil
 }
+
 func setCloudCredentials(rootBody *hclwrite.Body) error {
 	accessKey, err := getCloudCredentials("AWS Access Key", "Enter your AWS Access Key")
 	if err != nil {
@@ -115,7 +125,7 @@ func setCloudCredentials(rootBody *hclwrite.Body) error {
 	providerBody := provider.Body()
 	providerBody.SetAttributeValue("access_key", cty.StringVal(accessKey))
 	providerBody.SetAttributeValue("secret_key", cty.StringVal(secretKey))
-	//providerBody.SetAttributeValue("region", cty.StringVal("us-east-1"))
+	// providerBody.SetAttributeValue("region", cty.StringVal("us-east-1"))
 	providerBody.SetAttributeValue("region", cty.StringVal("us-east-2"))
 
 	return nil
@@ -262,11 +272,11 @@ func setElasticIP(rootBody *hclwrite.Body) {
 		},
 	})
 }
+
 func setUpInstance(rootBody *hclwrite.Body, securityGroupName string) {
 	awsInstance := rootBody.AppendNewBlock("resource", []string{"aws_instance", "fuji_node"})
 	awsInstanceBody := awsInstance.Body()
 	awsInstanceBody.SetAttributeValue("count", cty.NumberIntVal(1))
-	//awsInstanceBody.SetAttributeValue("ami", cty.StringVal("ami-053b0d53c279acc90"))
 	awsInstanceBody.SetAttributeValue("ami", cty.StringVal("ami-0430580de6244e02e"))
 	awsInstanceBody.SetAttributeValue("instance_type", cty.StringVal("c5.2xlarge"))
 	awsInstanceBody.SetAttributeTraversal("key_name", hcl.Traversal{
@@ -284,6 +294,7 @@ func setUpInstance(rootBody *hclwrite.Body, securityGroupName string) {
 	securityGroupList = append(securityGroupList, cty.StringVal(securityGroupName))
 	awsInstanceBody.SetAttributeValue("security_groups", cty.ListVal(securityGroupList))
 }
+
 func setOutput(rootBody *hclwrite.Body) {
 	outputEip := rootBody.AppendNewBlock("output", []string{"instance_eip"})
 	outputEipBody := outputEip.Body()
@@ -313,6 +324,7 @@ func setOutput(rootBody *hclwrite.Body) {
 		},
 	})
 }
+
 func createAnsibleHostInventory(inventoryPath, elasticIP, certFilePath string) error {
 	if err := os.MkdirAll(inventoryPath, os.ModePerm); err != nil {
 		log.Fatal(err)
@@ -334,6 +346,7 @@ func createAnsibleHostInventory(inventoryPath, elasticIP, certFilePath string) e
 	}
 	return nil
 }
+
 func runTerraform() (string, string, error) {
 	var instanceID string
 	var elasticIP string
@@ -361,8 +374,9 @@ func runTerraform() (string, string, error) {
 	elasticIP = string(eipOutput)
 	return instanceID, elasticIP, nil
 }
+
 func handleCerts(certName string) (string, error) {
-	err := os.Chmod(certName, 0400)
+	err := os.Chmod(certName, 0o400)
 	if err != nil {
 		return "", err
 	}
@@ -385,6 +399,7 @@ func handleCerts(certName string) (string, error) {
 	}
 	return certFilePath, nil
 }
+
 func runAnsiblePlaybook(inventoryPath string) error {
 	var stdBuffer bytes.Buffer
 	cmd := exec.Command("ansible-playbook", "main.yml", "-i", inventoryPath, "--ssh-extra-args='-o IdentitiesOnly=yes'")
