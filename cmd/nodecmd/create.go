@@ -300,9 +300,9 @@ func setOutput(rootBody *hclwrite.Body) {
 		},
 	})
 
-	outputInstanceId := rootBody.AppendNewBlock("output", []string{"instance_id"})
-	outputInstanceIdBody := outputInstanceId.Body()
-	outputInstanceIdBody.SetAttributeTraversal("value", hcl.Traversal{
+	outputInstanceID := rootBody.AppendNewBlock("output", []string{"instance_id"})
+	outputInstanceIDBody := outputInstanceID.Body()
+	outputInstanceIDBody.SetAttributeTraversal("value", hcl.Traversal{
 		hcl.TraverseRoot{
 			Name: "aws_instance",
 		},
