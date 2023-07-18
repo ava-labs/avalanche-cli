@@ -105,6 +105,7 @@ const (
 
 	ReposDir       = "repos"
 	SubnetDir      = "subnets"
+	NodeDir        = "nodes"
 	VMDir          = "vms"
 	ChainConfigDir = "chains"
 

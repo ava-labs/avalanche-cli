@@ -6,20 +6,22 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hclwrite"
+	"github.com/spf13/cobra"
+	"github.com/zclconf/go-cty/cty"
 	"io"
 	"log"
 	"net"
 	"os"
 	"os/exec"
 	"os/user"
-
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclwrite"
-	"github.com/spf13/cobra"
-	"github.com/zclconf/go-cty/cty"
+	"strings"
 )
 
 func newCreateCmd() *cobra.Command {
@@ -45,11 +47,45 @@ configuration, pass the -f flag.`,
 	return cmd
 }
 
+func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
+	ux.Logger.PrintToUser("What do you want to name your key pair?")
+	for {
+		newKeyPairName, err := app.Prompt.CaptureString("Key Pair Name")
+		if err != nil {
+			return "", err
+		}
+		keyPairExists, err := checkKeyPairExists(ec2Svc, newKeyPairName)
+		if err != nil {
+			return "", err
+		}
+		if !keyPairExists {
+			return newKeyPairName, nil
+		}
+		ux.Logger.PrintToUser(fmt.Sprintf("Key Pair named %s already exists", newKeyPairName))
+	}
+}
+
+func updateNodeConfig() {
+
+}
+
+func getExistingKeyPairs() {
+
+}
+
+func getCertFilePath(certName string) (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	certFilePath := homeDir + "/.ssh/" + certName
+	return certFilePath, nil
+}
 func createNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 
 	usr, _ := user.Current()
-	keyPairName := usr.Username + "-avalanche-cli10"
+	keyPairName := usr.Username + "-avalanche-cli"
 	certName := keyPairName + "-kp.pem"
 	securityGroupName := keyPairName + "-sg"
 
@@ -60,17 +96,64 @@ func createNode(_ *cobra.Command, args []string) error {
 	}
 	rootBody := hclFile.Body()
 
-	err = setCloudCredentials(rootBody)
+	creds := credentials.NewSharedCredentials("", "default")
+	credValue, err := creds.Get()
 	if err != nil {
 		return err
 	}
-	setKeyPair(rootBody, keyPairName, certName)
-	err = setSecurityGroup(rootBody, securityGroupName)
+	err = setCloudCredentials(rootBody, credValue.AccessKeyID, credValue.SecretAccessKey)
 	if err != nil {
 		return err
+	}
+	// Load session from shared config
+	sess, err := session.NewSession(&aws.Config{
+		Region:      aws.String("us-east-2"),
+		Credentials: creds},
+	)
+
+	// Create new EC2 client
+	ec2Svc := ec2.New(sess)
+	var useExistingKeyPair bool
+	keyPairExists, err := checkKeyPairExists(ec2Svc, keyPairName)
+	if err != nil {
+		return err
+	}
+	if !keyPairExists {
+		setKeyPair(rootBody, keyPairName, certName)
+	} else {
+		certFilePath, err := getCertFilePath(certName)
+		if err != nil {
+			return err
+		}
+		if checkCertInSshDir(certFilePath) {
+			useExistingKeyPair = true
+		} else {
+			ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists", keyPairName))
+			keyPairName, err = getNewKeyPairName(ec2Svc)
+			if err != nil {
+				return err
+			}
+			certName = keyPairName + "-kp.pem"
+			setKeyPair(rootBody, keyPairName, certName)
+		}
+	}
+	securityGroupExists, err := checkSecurityGroupExists(ec2Svc, securityGroupName)
+	if err != nil {
+		return err
+	}
+	if !securityGroupExists {
+		err = setSecurityGroup(rootBody, securityGroupName)
+		if err != nil {
+			return err
+		}
+	} else {
+		if !checkCurrentIpInSg() {
+			//ux.Logger.PrintToUser(fmt.Sprintf("Adding current IP to security group %s", securityGroupName))
+			updateIpInSg()
+		}
 	}
 	setElasticIP(rootBody)
-	setUpInstance(rootBody, securityGroupName)
+	setUpInstance(rootBody, securityGroupName, useExistingKeyPair, keyPairName)
 	setOutput(rootBody)
 	_, err = tfFile.Write(hclFile.Bytes())
 	if err != nil {
@@ -80,10 +163,18 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	certFilePath, err := handleCerts(certName)
+	certFilePath, err := getCertFilePath(certName)
 	if err != nil {
 		return err
 	}
+
+	if !useExistingKeyPair {
+		err = handleCerts(certName)
+		if err != nil {
+			return err
+		}
+	}
+
 	inventoryPath := "inventories/" + clusterName
 	if err := createAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
 		return err
@@ -95,42 +186,53 @@ func createNode(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func checkKeyPairExists() {
-	// Load session from shared config
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
-
-	// Create new EC2 client
-	ec2Svc := ec2.New(sess)
+func checkKeyPairExists(ec2Svc *ec2.EC2, kpName string) (bool, error) {
+	keyPairInput := &ec2.DescribeKeyPairsInput{
+		KeyNames: []*string{
+			aws.String(kpName),
+		},
+	}
 
 	// Call to get detailed information on each instance
-	result, err := ec2Svc.DescribeInstances(nil)
+	_, err := ec2Svc.DescribeKeyPairs(keyPairInput)
 	if err != nil {
-		fmt.Println("Error", err)
-	} else {
-		fmt.Println("Success", result)
+		if strings.Contains(err.Error(), "InvalidKeyPair.NotFound") {
+			return false, nil
+		}
+		return false, err
 	}
+	return true, nil
+}
+func checkSecurityGroupExists(ec2Svc *ec2.EC2, sgName string) (bool, error) {
+	sgInput := &ec2.DescribeSecurityGroupsInput{
+		GroupNames: []*string{
+			aws.String(sgName),
+		},
+	}
+
+	_, err := ec2Svc.DescribeSecurityGroups(sgInput)
+	if err != nil {
+		if strings.Contains(err.Error(), "InvalidGroup.NotFound") {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
-func getCloudCredentials(promptItem, promptStr string) (string, error) {
-	ux.Logger.PrintToUser(promptStr)
-	tokenName, err := app.Prompt.CaptureString(promptItem)
-	if err != nil {
-		return "", err
-	}
-	return tokenName, nil
+func checkCertInSshDir(certFilePath string) bool {
+	_, err := os.Stat(certFilePath)
+	return err == nil
 }
 
-func setCloudCredentials(rootBody *hclwrite.Body) error {
-	accessKey, err := getCloudCredentials("AWS Access Key", "Enter your AWS Access Key")
-	if err != nil {
-		return err
-	}
-	secretKey, err := getCloudCredentials("Secret Key", "Enter your Secret Key")
-	if err != nil {
-		return err
-	}
+func checkCurrentIpInSg() bool {
+	return false
+}
+
+func updateIpInSg() {
+
+}
+func setCloudCredentials(rootBody *hclwrite.Body, accessKey, secretKey string) error {
 	provider := rootBody.AppendNewBlock("provider", []string{"aws"})
 	providerBody := provider.Body()
 	providerBody.SetAttributeValue("access_key", cty.StringVal(accessKey))
@@ -282,23 +384,27 @@ func setElasticIP(rootBody *hclwrite.Body) {
 	})
 }
 
-func setUpInstance(rootBody *hclwrite.Body, securityGroupName string) {
+func setUpInstance(rootBody *hclwrite.Body, securityGroupName string, useExistingKeyPair bool, existingKeyPairName string) {
 	awsInstance := rootBody.AppendNewBlock("resource", []string{"aws_instance", "fuji_node"})
 	awsInstanceBody := awsInstance.Body()
 	awsInstanceBody.SetAttributeValue("count", cty.NumberIntVal(1))
 	awsInstanceBody.SetAttributeValue("ami", cty.StringVal("ami-0430580de6244e02e"))
 	awsInstanceBody.SetAttributeValue("instance_type", cty.StringVal("c5.2xlarge"))
-	awsInstanceBody.SetAttributeTraversal("key_name", hcl.Traversal{
-		hcl.TraverseRoot{
-			Name: "aws_key_pair",
-		},
-		hcl.TraverseAttr{
-			Name: "kp",
-		},
-		hcl.TraverseAttr{
-			Name: "key_name",
-		},
-	})
+	if !useExistingKeyPair {
+		awsInstanceBody.SetAttributeTraversal("key_name", hcl.Traversal{
+			hcl.TraverseRoot{
+				Name: "aws_key_pair",
+			},
+			hcl.TraverseAttr{
+				Name: "kp",
+			},
+			hcl.TraverseAttr{
+				Name: "key_name",
+			},
+		})
+	} else {
+		awsInstanceBody.SetAttributeValue("key_name", cty.StringVal(existingKeyPairName))
+	}
 	var securityGroupList []cty.Value
 	securityGroupList = append(securityGroupList, cty.StringVal(securityGroupName))
 	awsInstanceBody.SetAttributeValue("security_groups", cty.ListVal(securityGroupList))
@@ -349,6 +455,7 @@ func createAnsibleHostInventory(inventoryPath, elasticIP, certFilePath string) e
 	alias += elasticIPToUse
 	alias += " ansible_user=ubuntu "
 	alias += fmt.Sprintf("ansible_ssh_private_key_file=%s", certFilePath)
+	alias += " ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
 	_, err = inventoryFile.WriteString(alias + "\n")
 	if err != nil {
 		return err
@@ -384,29 +491,26 @@ func runTerraform() (string, string, error) {
 	return instanceID, elasticIP, nil
 }
 
-func handleCerts(certName string) (string, error) {
+func handleCerts(certName string) error {
 	err := os.Chmod(certName, 0o400)
 	if err != nil {
-		return "", err
+		return err
 	}
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return "", err
+		return err
 	}
 	certFilePath := homeDir + "/.ssh/" + certName
 	err = os.Rename(certName, certFilePath)
 	if err != nil {
-		return "", err
+		return err
 	}
 	var stdBuffer bytes.Buffer
 	cmd := exec.Command("ssh-add", certFilePath)
 	mw := io.MultiWriter(os.Stdout, &stdBuffer)
 	cmd.Stdout = mw
 	cmd.Stderr = mw
-	if err := cmd.Run(); err != nil {
-		return "", err
-	}
-	return certFilePath, nil
+	return cmd.Run()
 }
 
 func runAnsiblePlaybook(inventoryPath string) error {

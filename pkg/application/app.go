@@ -60,6 +60,10 @@ func (app *Avalanche) GetSubnetDir() string {
 	return filepath.Join(app.baseDir, constants.SubnetDir)
 }
 
+func (app *Avalanche) GetNodeDir() string {
+	return filepath.Join(app.baseDir, constants.NodeDir)
+}
+
 func (app *Avalanche) GetReposDir() string {
 	return filepath.Join(app.baseDir, constants.ReposDir)
 }
@@ -110,6 +114,10 @@ func (app *Avalanche) GetSidecarPath(subnetName string) string {
 
 func (app *Avalanche) GetConfigPath() string {
 	return filepath.Join(app.baseDir, constants.ConfigDir)
+}
+
+func (app *Avalanche) GetNodeConfigPath(subnetName string) string {
+	return filepath.Join(app.GetSubnetDir(), subnetName, constants.SidecarFileName)
 }
 
 func (app *Avalanche) GetElasticSubnetConfigPath(subnetName string) string {
@@ -191,6 +199,12 @@ func (app *Avalanche) WriteGenesisMainnetFile(subnetName string, genesisBytes []
 func (app *Avalanche) GenesisExists(subnetName string) bool {
 	genesisPath := app.GetGenesisPath(subnetName)
 	_, err := os.Stat(genesisPath)
+	return err == nil
+}
+
+func (app *Avalanche) NodeDirExists() bool {
+	nodePath := app.GetNodeDir()
+	_, err := os.Stat(nodePath)
 	return err == nil
 }
 
