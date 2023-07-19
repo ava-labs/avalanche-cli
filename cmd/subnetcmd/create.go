@@ -158,6 +158,8 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	}
 	flags := make(map[string]string)
 	flags[constants.SubnetType] = subnetType.RepoName()
+	//config.GenesisPrecompiles[nativeminter.ConfigKey]
+
 	utils.HandleTracking(cmd, app, flags)
 	ux.Logger.PrintToUser("Successfully created subnet configuration")
 	return nil
