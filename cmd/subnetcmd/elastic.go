@@ -6,11 +6,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	utilspkg "github.com/ava-labs/avalanche-cli/pkg/utils"
 	"math"
 	"os"
 	"strings"
 	"time"
+
+	utilspkg "github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 
