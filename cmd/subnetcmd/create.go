@@ -189,7 +189,7 @@ func sendMetrics(cmd *cobra.Command, repoName, subnetName string) error {
 		}
 	}
 	sort.Strings(precompiles)
-	precompilesJoined := strings.Join(precompiles[:], ",")
+	precompilesJoined := strings.Join(precompiles, ",")
 	flags[constants.PrecompileType] = precompilesJoined
 	utils.HandleTracking(cmd, app, flags)
 	return nil
