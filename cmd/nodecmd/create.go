@@ -82,7 +82,7 @@ func getCertFilePath(certName string) (string, error) {
 	return certFilePath, nil
 }
 func createNode(_ *cobra.Command, args []string) error {
-	clusterName := args[0]
+	//clusterName := args[0]
 
 	usr, _ := user.Current()
 	keyPairName := usr.Username + "-avalanche-cli"
@@ -147,9 +147,13 @@ func createNode(_ *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		if !checkCurrentIpInSg() {
-			//ux.Logger.PrintToUser(fmt.Sprintf("Adding current IP to security group %s", securityGroupName))
-			updateIpInSg()
+		//if !checkCurrentIpInSg() {
+		//	//ux.Logger.PrintToUser(fmt.Sprintf("Adding current IP to security group %s", securityGroupName))
+		//	updateIpInSg()
+		//}
+		err = setSecurityGroup(rootBody, securityGroupName)
+		if err != nil {
+			return err
 		}
 	}
 	setElasticIP(rootBody)
@@ -159,30 +163,30 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	instanceID, elasticIP, err := runTerraform()
-	if err != nil {
-		return err
-	}
-	certFilePath, err := getCertFilePath(certName)
-	if err != nil {
-		return err
-	}
-
-	if !useExistingKeyPair {
-		err = handleCerts(certName)
-		if err != nil {
-			return err
-		}
-	}
-
-	inventoryPath := "inventories/" + clusterName
-	if err := createAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
-		return err
-	}
-	if err := runAnsiblePlaybook(inventoryPath); err != nil {
-		return err
-	}
-	PrintResults(instanceID, elasticIP, certFilePath)
+	//instanceID, elasticIP, err := runTerraform()
+	//if err != nil {
+	//	return err
+	//}
+	//certFilePath, err := getCertFilePath(certName)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//if !useExistingKeyPair {
+	//	err = handleCerts(certName)
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
+	//
+	//inventoryPath := "inventories/" + clusterName
+	//if err := createAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
+	//	return err
+	//}
+	//if err := runAnsiblePlaybook(inventoryPath); err != nil {
+	//	return err
+	//}
+	//PrintResults(instanceID, elasticIP, certFilePath)
 	return nil
 }
 
@@ -292,10 +296,11 @@ func getIPAddress() (string, error) {
 }
 
 func setSecurityGroup(rootBody *hclwrite.Body, securityGroupName string) error {
-	userIPAddress, err := getIPAddress()
-	if err != nil {
-		return err
-	}
+	//userIPAddress, err := getIPAddress()
+	//if err != nil {
+	//	return err
+	//}
+	userIPAddress := "70.19.54.141"
 	inputIPAddress := userIPAddress + "/32"
 	securityGroup := rootBody.AppendNewBlock("resource", []string{"aws_security_group", "ssh_avax_sg"})
 	securityGroupBody := securityGroup.Body()
