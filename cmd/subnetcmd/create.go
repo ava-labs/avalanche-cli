@@ -174,7 +174,7 @@ func sendMetrics(cmd *cobra.Command, repoName, subnetName string) error {
 		return err
 	}
 	conf := genesis.Config.GenesisPrecompiles
-	var precompiles []string
+	precompiles := make([]string, 6)
 	for precompileName := range conf {
 		precompileTag := "precompile-" + precompileName
 		flags[precompileTag] = precompileName
