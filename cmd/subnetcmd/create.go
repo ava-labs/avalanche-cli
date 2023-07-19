@@ -158,8 +158,15 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	}
 	flags := make(map[string]string)
 	flags[constants.SubnetType] = subnetType.RepoName()
+	genesis, err := app.LoadEvmGenesis(subnetName)
+	conf := genesis.Config.GenesisPrecompiles
 	//config.GenesisPrecompiles[nativeminter.ConfigKey]
 
+	for k, v := range conf {
+		fmt.Printf("key[%s] value[%s]\n", k, v)
+	}
+	alloc := genesis.Alloc
+	fmt.Printf("airdrop %s", alloc)
 	utils.HandleTracking(cmd, app, flags)
 	ux.Logger.PrintToUser("Successfully created subnet configuration")
 	return nil
