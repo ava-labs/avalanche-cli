@@ -149,7 +149,8 @@ func createNode(_ *cobra.Command, args []string) error {
 	// Load session from shared config
 	sess, err := session.NewSession(&aws.Config{
 		Region:      aws.String("us-east-2"),
-		Credentials: creds})
+		Credentials: creds,
+	})
 	if err != nil {
 		return err
 	}
@@ -406,7 +407,7 @@ func setSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName stri
 	inboundGroupBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
 }
 
-func setSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, ipInTCP, ipInHttp bool) {
+func setSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, ipInTCP, ipInHTTP bool) {
 	inputIPAddress := ipAddress + "/32"
 	if !ipInTCP {
 		sgRuleName := "ipTcp" + strings.ReplaceAll(ipAddress, ".", "")
@@ -421,7 +422,7 @@ func setSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, ipInT
 		securityGroupRuleBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
 		securityGroupRuleBody.SetAttributeValue("security_group_id", cty.StringVal(sgID))
 	}
-	if !ipInHttp {
+	if !ipInHTTP {
 		sgRuleName := "ipHttp" + strings.ReplaceAll(ipAddress, ".", "")
 		// sgRuleName := "ipHttp"
 		securityGroupRule := rootBody.AppendNewBlock("resource", []string{"aws_security_group_rule", sgRuleName})
