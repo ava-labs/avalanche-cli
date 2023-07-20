@@ -6,6 +6,15 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
+	"log"
+	"net"
+	"os"
+	"os/exec"
+	"os/user"
+	"strings"
+	"time"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -15,14 +24,6 @@ import (
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/spf13/cobra"
 	"github.com/zclconf/go-cty/cty"
-	"io"
-	"log"
-	"net"
-	"os"
-	"os/exec"
-	"os/user"
-	"strings"
-	"time"
 )
 
 func newCreateCmd() *cobra.Command {
@@ -97,6 +98,7 @@ func removeExistingTerraformFiles() error {
 	}
 	return nil
 }
+
 func getCertFilePath(certName string) (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -114,6 +116,7 @@ func printNoCredentialsOutput() {
 	ux.Logger.PrintToUser("===========END OF FILE===========")
 	ux.Logger.PrintToUser("More info can be found at https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-creds")
 }
+
 func createNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 
@@ -146,7 +149,8 @@ func createNode(_ *cobra.Command, args []string) error {
 	// Load session from shared config
 	sess, err := session.NewSession(&aws.Config{
 		Region:      aws.String("us-east-2"),
-		Credentials: creds},
+		Credentials: creds,
+	},
 	)
 
 	// Create new EC2 client
@@ -242,6 +246,7 @@ func checkKeyPairExists(ec2Svc *ec2.EC2, kpName string) (bool, error) {
 	}
 	return true, nil
 }
+
 func checkSecurityGroupExists(ec2Svc *ec2.EC2, sgName string) (bool, *ec2.SecurityGroup, error) {
 	sgInput := &ec2.DescribeSecurityGroupsInput{
 		GroupNames: []*string{
@@ -417,7 +422,7 @@ func setSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, ipInT
 	}
 	if !ipInHttp {
 		sgRuleName := "ipHttp" + strings.Replace(ipAddress, ".", "", -1)
-		//sgRuleName := "ipHttp"
+		// sgRuleName := "ipHttp"
 		securityGroupRule := rootBody.AppendNewBlock("resource", []string{"aws_security_group_rule", sgRuleName})
 		securityGroupRuleBody := securityGroupRule.Body()
 		securityGroupRuleBody.SetAttributeValue("type", cty.StringVal("ingress"))
