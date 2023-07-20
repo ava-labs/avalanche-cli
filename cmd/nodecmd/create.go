@@ -149,9 +149,10 @@ func createNode(_ *cobra.Command, args []string) error {
 	// Load session from shared config
 	sess, err := session.NewSession(&aws.Config{
 		Region:      aws.String("us-east-2"),
-		Credentials: creds,
-	},
-	)
+		Credentials: creds})
+	if err != nil {
+		return err
+	}
 
 	// Create new EC2 client
 	ec2Svc := ec2.New(sess)
@@ -167,7 +168,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if checkCertInSshDir(certFilePath) {
+		if checkCertInSSHDir(certFilePath) {
 			useExistingKeyPair = true
 		} else {
 			ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists", keyPairName))
@@ -190,7 +191,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	if !securityGroupExists {
 		setSecurityGroup(rootBody, userIPAddress, securityGroupName)
 	} else {
-		ipInTCP, ipInHTTP := checkCurrentIpInSg(sg, userIPAddress)
+		ipInTCP, ipInHTTP := checkCurrentIPInSg(sg, userIPAddress)
 		setSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
 	}
 	setElasticIP(rootBody)
@@ -264,12 +265,12 @@ func checkSecurityGroupExists(ec2Svc *ec2.EC2, sgName string) (bool, *ec2.Securi
 	return true, sg.SecurityGroups[0], nil
 }
 
-func checkCertInSshDir(certFilePath string) bool {
+func checkCertInSSHDir(certFilePath string) bool {
 	_, err := os.Stat(certFilePath)
 	return err == nil
 }
 
-func checkCurrentIpInSg(sg *ec2.SecurityGroup, currentIP string) (bool, bool) {
+func checkCurrentIPInSg(sg *ec2.SecurityGroup, currentIP string) (bool, bool) {
 	var ipInTCP bool
 	var ipInHTTP bool
 	for _, ip := range sg.IpPermissions {
@@ -405,10 +406,10 @@ func setSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName stri
 	inboundGroupBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
 }
 
-func setSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, ipInTcp, ipInHttp bool) {
+func setSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, ipInTCP, ipInHttp bool) {
 	inputIPAddress := ipAddress + "/32"
-	if !ipInTcp {
-		sgRuleName := "ipTcp" + strings.Replace(ipAddress, ".", "", -1)
+	if !ipInTCP {
+		sgRuleName := "ipTcp" + strings.ReplaceAll(ipAddress, ".", "")
 		securityGroupRule := rootBody.AppendNewBlock("resource", []string{"aws_security_group_rule", sgRuleName})
 		securityGroupRuleBody := securityGroupRule.Body()
 		securityGroupRuleBody.SetAttributeValue("type", cty.StringVal("ingress"))
@@ -421,7 +422,7 @@ func setSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, ipInT
 		securityGroupRuleBody.SetAttributeValue("security_group_id", cty.StringVal(sgID))
 	}
 	if !ipInHttp {
-		sgRuleName := "ipHttp" + strings.Replace(ipAddress, ".", "", -1)
+		sgRuleName := "ipHttp" + strings.ReplaceAll(ipAddress, ".", "")
 		// sgRuleName := "ipHttp"
 		securityGroupRule := rootBody.AppendNewBlock("resource", []string{"aws_security_group_rule", sgRuleName})
 		securityGroupRuleBody := securityGroupRule.Body()
