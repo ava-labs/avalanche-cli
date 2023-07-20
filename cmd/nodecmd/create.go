@@ -22,6 +22,7 @@ import (
 	"os/exec"
 	"os/user"
 	"strings"
+	"time"
 )
 
 func newCreateCmd() *cobra.Command {
@@ -65,14 +66,37 @@ func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
 	}
 }
 
-func updateNodeConfig() {
-
+func removeExistingTerraformFiles() error {
+	nodeConfigFile := "node_config.tf"
+	terraformLockFile := ".terraform.lock.hcl"
+	terraformStateFile := "terraform.tfstate"
+	terraformStateBackupFile := "terraform.tfstate.backup"
+	if _, err := os.Stat(nodeConfigFile); err == nil {
+		err := os.Remove(nodeConfigFile)
+		if err != nil {
+			return err
+		}
+	}
+	if _, err := os.Stat(terraformLockFile); err == nil {
+		err := os.Remove(terraformLockFile)
+		if err != nil {
+			return err
+		}
+	}
+	if _, err := os.Stat(terraformStateFile); err == nil {
+		err := os.Remove(terraformStateFile)
+		if err != nil {
+			return err
+		}
+	}
+	if _, err := os.Stat(terraformStateBackupFile); err == nil {
+		err := os.Remove(terraformStateBackupFile)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
-
-func getExistingKeyPairs() {
-
-}
-
 func getCertFilePath(certName string) (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -81,9 +105,22 @@ func getCertFilePath(certName string) (string, error) {
 	certFilePath := homeDir + "/.ssh/" + certName
 	return certFilePath, nil
 }
-func createNode(_ *cobra.Command, args []string) error {
-	//clusterName := args[0]
 
+func printNoCredentialsOutput() {
+	ux.Logger.PrintToUser("No AWS credentials file found in ~/.aws/credentials")
+	ux.Logger.PrintToUser("Create a file called 'credentials' with the contents below, and add the file to ~/.aws/ directory")
+	ux.Logger.PrintToUser("===========BEGINNING OF FILE===========")
+	ux.Logger.PrintToUser("[default]\naws_access_key_id=<AWS_ACCESS_KEY>\naws_secret_access_key=<AWS_SECRET_ACCESS_KEY>")
+	ux.Logger.PrintToUser("===========END OF FILE===========")
+	ux.Logger.PrintToUser("More info can be found at https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-creds")
+}
+func createNode(_ *cobra.Command, args []string) error {
+	clusterName := args[0]
+
+	err := removeExistingTerraformFiles()
+	if err != nil {
+		return err
+	}
 	usr, _ := user.Current()
 	keyPairName := usr.Username + "-avalanche-cli"
 	certName := keyPairName + "-kp.pem"
@@ -99,6 +136,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	creds := credentials.NewSharedCredentials("", "default")
 	credValue, err := creds.Get()
 	if err != nil {
+		printNoCredentialsOutput()
 		return err
 	}
 	err = setCloudCredentials(rootBody, credValue.AccessKeyID, credValue.SecretAccessKey)
@@ -137,24 +175,19 @@ func createNode(_ *cobra.Command, args []string) error {
 			setKeyPair(rootBody, keyPairName, certName)
 		}
 	}
-	securityGroupExists, err := checkSecurityGroupExists(ec2Svc, securityGroupName)
+	securityGroupExists, sg, err := checkSecurityGroupExists(ec2Svc, securityGroupName)
+	if err != nil {
+		return err
+	}
+	userIPAddress, err := getIPAddress()
 	if err != nil {
 		return err
 	}
 	if !securityGroupExists {
-		err = setSecurityGroup(rootBody, securityGroupName)
-		if err != nil {
-			return err
-		}
+		setSecurityGroup(rootBody, userIPAddress, securityGroupName)
 	} else {
-		//if !checkCurrentIpInSg() {
-		//	//ux.Logger.PrintToUser(fmt.Sprintf("Adding current IP to security group %s", securityGroupName))
-		//	updateIpInSg()
-		//}
-		err = setSecurityGroup(rootBody, securityGroupName)
-		if err != nil {
-			return err
-		}
+		ipInTCP, ipInHTTP := checkCurrentIpInSg(sg, userIPAddress)
+		setSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
 	}
 	setElasticIP(rootBody)
 	setUpInstance(rootBody, securityGroupName, useExistingKeyPair, keyPairName)
@@ -163,30 +196,32 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	//instanceID, elasticIP, err := runTerraform()
-	//if err != nil {
-	//	return err
-	//}
-	//certFilePath, err := getCertFilePath(certName)
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//if !useExistingKeyPair {
-	//	err = handleCerts(certName)
-	//	if err != nil {
-	//		return err
-	//	}
-	//}
-	//
-	//inventoryPath := "inventories/" + clusterName
-	//if err := createAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
-	//	return err
-	//}
-	//if err := runAnsiblePlaybook(inventoryPath); err != nil {
-	//	return err
-	//}
-	//PrintResults(instanceID, elasticIP, certFilePath)
+	instanceID, elasticIP, err := runTerraform()
+	if err != nil {
+		return err
+	}
+	certFilePath, err := getCertFilePath(certName)
+	if err != nil {
+		return err
+	}
+
+	if !useExistingKeyPair {
+		err = handleCerts(certName)
+		if err != nil {
+			return err
+		}
+	}
+
+	inventoryPath := "inventories/" + clusterName
+	if err := createAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
+		return err
+	}
+	time.Sleep(5 * time.Second)
+
+	if err := runAnsiblePlaybook(inventoryPath); err != nil {
+		return err
+	}
+	PrintResults(instanceID, elasticIP, certFilePath)
 	return nil
 }
 
@@ -207,21 +242,21 @@ func checkKeyPairExists(ec2Svc *ec2.EC2, kpName string) (bool, error) {
 	}
 	return true, nil
 }
-func checkSecurityGroupExists(ec2Svc *ec2.EC2, sgName string) (bool, error) {
+func checkSecurityGroupExists(ec2Svc *ec2.EC2, sgName string) (bool, *ec2.SecurityGroup, error) {
 	sgInput := &ec2.DescribeSecurityGroupsInput{
 		GroupNames: []*string{
 			aws.String(sgName),
 		},
 	}
 
-	_, err := ec2Svc.DescribeSecurityGroups(sgInput)
+	sg, err := ec2Svc.DescribeSecurityGroups(sgInput)
 	if err != nil {
 		if strings.Contains(err.Error(), "InvalidGroup.NotFound") {
-			return false, nil
+			return false, &ec2.SecurityGroup{}, nil
 		}
-		return false, err
+		return false, &ec2.SecurityGroup{}, err
 	}
-	return true, nil
+	return true, sg.SecurityGroups[0], nil
 }
 
 func checkCertInSshDir(certFilePath string) bool {
@@ -229,13 +264,26 @@ func checkCertInSshDir(certFilePath string) bool {
 	return err == nil
 }
 
-func checkCurrentIpInSg() bool {
-	return false
+func checkCurrentIpInSg(sg *ec2.SecurityGroup, currentIP string) (bool, bool) {
+	var ipInTCP bool
+	var ipInHTTP bool
+	for _, ip := range sg.IpPermissions {
+		if *ip.FromPort == 22 || *ip.FromPort == 9650 {
+			for _, cidrIP := range ip.IpRanges {
+				if strings.Contains(cidrIP.String(), currentIP) {
+					if *ip.FromPort == 22 {
+						ipInTCP = true
+					} else if *ip.FromPort == 9650 {
+						ipInHTTP = true
+					}
+					break
+				}
+			}
+		}
+	}
+	return ipInTCP, ipInHTTP
 }
 
-func updateIpInSg() {
-
-}
 func setCloudCredentials(rootBody *hclwrite.Body, accessKey, secretKey string) error {
 	provider := rootBody.AppendNewBlock("provider", []string{"aws"})
 	providerBody := provider.Body()
@@ -295,13 +343,8 @@ func getIPAddress() (string, error) {
 	return ipAddress, nil
 }
 
-func setSecurityGroup(rootBody *hclwrite.Body, securityGroupName string) error {
-	//userIPAddress, err := getIPAddress()
-	//if err != nil {
-	//	return err
-	//}
-	userIPAddress := "70.19.54.141"
-	inputIPAddress := userIPAddress + "/32"
+func setSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName string) {
+	inputIPAddress := ipAddress + "/32"
 	securityGroup := rootBody.AppendNewBlock("resource", []string{"aws_security_group", "ssh_avax_sg"})
 	securityGroupBody := securityGroup.Body()
 	securityGroupBody.SetAttributeValue("name", cty.StringVal(securityGroupName))
@@ -355,7 +398,37 @@ func setSecurityGroup(rootBody *hclwrite.Body, securityGroupName string) error {
 	ipList = []cty.Value{}
 	ipList = append(ipList, cty.StringVal("0.0.0.0/0"))
 	inboundGroupBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
-	return nil
+}
+
+func setSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, ipInTcp, ipInHttp bool) {
+	inputIPAddress := ipAddress + "/32"
+	if !ipInTcp {
+		sgRuleName := "ipTcp" + strings.Replace(ipAddress, ".", "", -1)
+		securityGroupRule := rootBody.AppendNewBlock("resource", []string{"aws_security_group_rule", sgRuleName})
+		securityGroupRuleBody := securityGroupRule.Body()
+		securityGroupRuleBody.SetAttributeValue("type", cty.StringVal("ingress"))
+		securityGroupRuleBody.SetAttributeValue("from_port", cty.NumberIntVal(22))
+		securityGroupRuleBody.SetAttributeValue("to_port", cty.NumberIntVal(22))
+		securityGroupRuleBody.SetAttributeValue("protocol", cty.StringVal("tcp"))
+		var ipList []cty.Value
+		ipList = append(ipList, cty.StringVal(inputIPAddress))
+		securityGroupRuleBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
+		securityGroupRuleBody.SetAttributeValue("security_group_id", cty.StringVal(sgID))
+	}
+	if !ipInHttp {
+		sgRuleName := "ipHttp" + strings.Replace(ipAddress, ".", "", -1)
+		//sgRuleName := "ipHttp"
+		securityGroupRule := rootBody.AppendNewBlock("resource", []string{"aws_security_group_rule", sgRuleName})
+		securityGroupRuleBody := securityGroupRule.Body()
+		securityGroupRuleBody.SetAttributeValue("type", cty.StringVal("ingress"))
+		securityGroupRuleBody.SetAttributeValue("from_port", cty.NumberIntVal(9650))
+		securityGroupRuleBody.SetAttributeValue("to_port", cty.NumberIntVal(9650))
+		securityGroupRuleBody.SetAttributeValue("protocol", cty.StringVal("tcp"))
+		var ipList []cty.Value
+		ipList = append(ipList, cty.StringVal(inputIPAddress))
+		securityGroupRuleBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
+		securityGroupRuleBody.SetAttributeValue("security_group_id", cty.StringVal(sgID))
+	}
 }
 
 func setElasticIP(rootBody *hclwrite.Body) {
