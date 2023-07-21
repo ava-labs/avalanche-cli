@@ -116,8 +116,12 @@ func (app *Avalanche) GetConfigPath() string {
 	return filepath.Join(app.baseDir, constants.ConfigDir)
 }
 
-func (app *Avalanche) GetNodeConfigPath(subnetName string) string {
-	return filepath.Join(app.GetSubnetDir(), subnetName, constants.SidecarFileName)
+func (app *Avalanche) GetNodeConfigPath(nodeName string) string {
+	return filepath.Join(app.GetNodeDir(), nodeName, constants.NodeFileName)
+}
+
+func (app *Avalanche) GetClusterConfigPath() string {
+	return filepath.Join(app.GetNodeDir(), constants.ClusterConfigFileName)
 }
 
 func (app *Avalanche) GetElasticSubnetConfigPath(subnetName string) string {
@@ -204,6 +208,12 @@ func (app *Avalanche) GenesisExists(subnetName string) bool {
 
 func (app *Avalanche) NodeDirExists() bool {
 	nodePath := app.GetNodeDir()
+	_, err := os.Stat(nodePath)
+	return err == nil
+}
+
+func (app *Avalanche) ClusterConfigExists() bool {
+	nodePath := app.GetClusterConfigPath()
 	_, err := os.Stat(nodePath)
 	return err == nil
 }
@@ -488,6 +498,20 @@ func (app *Avalanche) WriteConfigFile(bytes []byte) error {
 	return app.writeFile(configPath, bytes)
 }
 
+func (app *Avalanche) CreateNodeConfigFile(nodeName string, nodeConfig *models.NodeConfig) error {
+	nodeConfigPath := app.GetNodeConfigPath(nodeName)
+	if err := os.MkdirAll(filepath.Dir(nodeConfigPath), constants.DefaultPerms755); err != nil {
+		return err
+	}
+
+	esBytes, err := json.MarshalIndent(nodeConfig, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(nodeConfigPath, esBytes, WriteReadReadPerms)
+}
+
 func (app *Avalanche) CreateElasticSubnetConfig(subnetName string, es *models.ElasticSubnetConfig) error {
 	elasticSubetConfigPath := app.GetElasticSubnetConfigPath(subnetName)
 	if err := os.MkdirAll(filepath.Dir(elasticSubetConfigPath), constants.DefaultPerms755); err != nil {
@@ -513,4 +537,29 @@ func (app *Avalanche) LoadElasticSubnetConfig(subnetName string) (models.Elastic
 	err = json.Unmarshal(jsonBytes, &esc)
 
 	return esc, err
+}
+
+func (app *Avalanche) LoadClusterConfig() (models.ClusterConfig, error) {
+	clusterConfigPath := app.GetClusterConfigPath()
+	jsonBytes, err := os.ReadFile(clusterConfigPath)
+	if err != nil {
+		return models.ClusterConfig{}, err
+	}
+	var clusterConfig models.ClusterConfig
+	err = json.Unmarshal(jsonBytes, &clusterConfig)
+	return clusterConfig, err
+}
+
+func (app *Avalanche) UpdateClusterConfig(clusterConfig *models.ClusterConfig) error {
+	clusterConfigPath := app.GetClusterConfigPath()
+	if err := os.MkdirAll(filepath.Dir(clusterConfigPath), constants.DefaultPerms755); err != nil {
+		return err
+	}
+
+	clusterConfigBytes, err := json.MarshalIndent(clusterConfig, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(clusterConfigPath, clusterConfigBytes, WriteReadReadPerms)
 }

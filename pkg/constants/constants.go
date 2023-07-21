@@ -24,8 +24,8 @@ const (
 	SidecarSuffix               = SuffixSeparator + SidecarFileName
 	GenesisSuffix               = SuffixSeparator + GenesisFileName
 	NodeFileName                = "node.json"
-
-	SidecarVersion = "1.4.0"
+	ClusterConfigFileName       = "cluster_config.json"
+	SidecarVersion              = "1.4.0"
 
 	MaxLogFileSize   = 4
 	MaxNumOfLogFiles = 5

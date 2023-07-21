@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -108,6 +110,53 @@ func getCertFilePath(certName string) (string, error) {
 	return certFilePath, nil
 }
 
+func createNodeConfig(nodeID, region, ami, keyPairName, certPath, sg, eip, clusterName string) error {
+	elasticIPToUse := eip[1 : len(eip)-2]
+	nodeIDToUse := nodeID[1 : len(nodeID)-2]
+
+	nodeConfig := models.NodeConfig{
+		NodeID:        nodeIDToUse,
+		Region:        region,
+		AMI:           ami,
+		KeyPair:       keyPairName,
+		CertPath:      certPath,
+		SecurityGroup: sg,
+		ElasticIP:     elasticIPToUse,
+	}
+	err := app.CreateNodeConfigFile(nodeIDToUse, &nodeConfig)
+	if err != nil {
+		return err
+	}
+	return updateClusterConfig(nodeIDToUse, keyPairName, certPath, clusterName)
+}
+
+func updateClusterConfig(nodeID, keyPairName, certPath, clusterName string) error {
+	configExists := app.ClusterConfigExists()
+	clusterConfig := models.ClusterConfig{}
+	var err error
+	if configExists {
+		clusterConfig, err = app.LoadClusterConfig()
+		if err != nil {
+			return err
+		}
+	}
+
+	if clusterConfig.KeyPair == nil {
+		clusterConfig.KeyPair = make(map[string]string)
+	}
+	if _, ok := clusterConfig.KeyPair[keyPairName]; !ok {
+		clusterConfig.KeyPair[keyPairName] = certPath
+	}
+	if clusterConfig.Clusters == nil {
+		clusterConfig.Clusters = make(map[string][]string)
+	}
+	if _, ok := clusterConfig.Clusters[clusterName]; !ok {
+		clusterConfig.Clusters[clusterName] = []string{}
+	}
+	clusterConfig.Clusters[clusterName] = append(clusterConfig.Clusters[clusterName], nodeID)
+	return app.UpdateClusterConfig(&clusterConfig)
+}
+
 func printNoCredentialsOutput() {
 	ux.Logger.PrintToUser("No AWS credentials file found in ~/.aws/credentials")
 	ux.Logger.PrintToUser("Create a file called 'credentials' with the contents below, and add the file to ~/.aws/ directory")
@@ -128,6 +177,8 @@ func createNode(_ *cobra.Command, args []string) error {
 	keyPairName := usr.Username + "-avalanche-cli"
 	certName := keyPairName + "-kp.pem"
 	securityGroupName := keyPairName + "-sg"
+	region := "us-east-2"
+	ami := "ami-0430580de6244e02e"
 
 	hclFile := hclwrite.NewEmptyFile()
 	tfFile, err := os.Create("node_config.tf")
@@ -135,20 +186,19 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	rootBody := hclFile.Body()
-
 	creds := credentials.NewSharedCredentials("", "default")
 	credValue, err := creds.Get()
 	if err != nil {
 		printNoCredentialsOutput()
 		return err
 	}
-	err = setCloudCredentials(rootBody, credValue.AccessKeyID, credValue.SecretAccessKey)
+	err = setCloudCredentials(rootBody, credValue.AccessKeyID, credValue.SecretAccessKey, region)
 	if err != nil {
 		return err
 	}
 	// Load session from shared config
 	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String("us-east-2"),
+		Region:      aws.String(region),
 		Credentials: creds,
 	})
 	if err != nil {
@@ -196,7 +246,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		setSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
 	}
 	setElasticIP(rootBody)
-	setUpInstance(rootBody, securityGroupName, useExistingKeyPair, keyPairName)
+	setUpInstance(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami)
 	setOutput(rootBody)
 	_, err = tfFile.Write(hclFile.Bytes())
 	if err != nil {
@@ -227,7 +277,11 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err := runAnsiblePlaybook(inventoryPath); err != nil {
 		return err
 	}
-	PrintResults(instanceID, elasticIP, certFilePath)
+	err = createNodeConfig(instanceID, region, ami, keyPairName, certFilePath, securityGroupName, elasticIP, clusterName)
+	if err != nil {
+		return err
+	}
+	PrintResults(instanceID, elasticIP, certFilePath, region)
 	return nil
 }
 
@@ -291,12 +345,12 @@ func checkCurrentIPInSg(sg *ec2.SecurityGroup, currentIP string) (bool, bool) {
 	return ipInTCP, ipInHTTP
 }
 
-func setCloudCredentials(rootBody *hclwrite.Body, accessKey, secretKey string) error {
+func setCloudCredentials(rootBody *hclwrite.Body, accessKey, secretKey, region string) error {
 	provider := rootBody.AppendNewBlock("provider", []string{"aws"})
 	providerBody := provider.Body()
 	providerBody.SetAttributeValue("access_key", cty.StringVal(accessKey))
 	providerBody.SetAttributeValue("secret_key", cty.StringVal(secretKey))
-	providerBody.SetAttributeValue("region", cty.StringVal("us-east-2"))
+	providerBody.SetAttributeValue("region", cty.StringVal(region))
 
 	return nil
 }
@@ -469,11 +523,11 @@ func setElasticIP(rootBody *hclwrite.Body) {
 	})
 }
 
-func setUpInstance(rootBody *hclwrite.Body, securityGroupName string, useExistingKeyPair bool, existingKeyPairName string) {
+func setUpInstance(rootBody *hclwrite.Body, securityGroupName string, useExistingKeyPair bool, existingKeyPairName, ami string) {
 	awsInstance := rootBody.AppendNewBlock("resource", []string{"aws_instance", "fuji_node"})
 	awsInstanceBody := awsInstance.Body()
 	awsInstanceBody.SetAttributeValue("count", cty.NumberIntVal(1))
-	awsInstanceBody.SetAttributeValue("ami", cty.StringVal("ami-0430580de6244e02e"))
+	awsInstanceBody.SetAttributeValue("ami", cty.StringVal(ami))
 	awsInstanceBody.SetAttributeValue("instance_type", cty.StringVal("c5.2xlarge"))
 	if !useExistingKeyPair {
 		awsInstanceBody.SetAttributeTraversal("key_name", hcl.Traversal{
@@ -607,7 +661,7 @@ func runAnsiblePlaybook(inventoryPath string) error {
 	return cmd.Run()
 }
 
-func PrintResults(instanceID, elasticIP, certFilePath string) {
+func PrintResults(instanceID, elasticIP, certFilePath, region string) {
 	instanceIDToUse := instanceID[1 : len(instanceID)-2]
 	elasticIPToUse := elasticIP[1 : len(elasticIP)-2]
 	ux.Logger.PrintToUser("VALIDATOR SUCCESSFULLY SET UP!")
@@ -616,7 +670,7 @@ func PrintResults(instanceID, elasticIP, certFilePath string) {
 	ux.Logger.PrintToUser("Here are the details of the set up validator: ")
 	ux.Logger.PrintToUser(fmt.Sprintf("Cloud Instance ID: %s", instanceIDToUse))
 	ux.Logger.PrintToUser(fmt.Sprintf("Elastic IP: %s", elasticIPToUse))
-	ux.Logger.PrintToUser(fmt.Sprintf("Cloud Region: %s", "us-east-2"))
+	ux.Logger.PrintToUser(fmt.Sprintf("Cloud Region: %s", region))
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("To ssh to validator, run: ")
 	ux.Logger.PrintToUser("")
