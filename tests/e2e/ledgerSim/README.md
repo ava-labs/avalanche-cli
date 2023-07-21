@@ -35,7 +35,7 @@ provided by the simulator, and available under `http://localhost:5000`
 
 ## How a golang test connects to the simulator instead of a physical device
 
-As is it currently implemented, a tag must be passed to the build step for avalanche-cli and e2e test binary:
+As it is currently implemented, a tag must be passed to the build step for avalanche-cli and e2e test binary:
 
 ```
 -tags ledger_zemu
