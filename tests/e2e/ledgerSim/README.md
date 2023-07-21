@@ -55,7 +55,7 @@ The test should call `utils.RunBasicLedgerSim(numApprovals, ledgerReadyChan)` by
 
 See example on `deploy subnet to mainnet` test
 
-It is expected for a test to check env var `LEDGER_SIM`, if it is defined, launch and wait for
+It is expected for a test to check env var `LEDGER_SIM`, if it is set to `true`, launch and wait for
 the simulator, if not, the test is expected to operate agains a real device.
 
 ## Ledger device status for avalanche-cli tests interaction
@@ -79,12 +79,12 @@ With that elements provided, CLI e2e could start downloading latest ledger app a
 By default, the e2e script `scripts/run.e2e.sh` will try to execute all tests (including ledger based ones),
 and use physical ledger device.
 
-In order to used a simulated ledger device with the script, the env var LEDGER_SIM should be defined.
+In order to used a simulated ledger device with the script, the env var LEDGER_SIM should be set to `true`.
 
 For example:
 
 ```bash
-LEDGER_SIM=1 scripts/run.e2e.sh
+LEDGER_SIM=true scripts/run.e2e.sh
 ```
 
 Will execute all e2e tests using a simulated ledger device.
@@ -94,6 +94,6 @@ In order to execute a specific ledger test, it must be provided in filter arg.
 For example:
 
 ```bash
-LEDGER_SIM=1 scripts/run.e2e.sh --filter 'deploy subnet to mainnet'
+LEDGER_SIM=true scripts/run.e2e.sh --filter 'deploy subnet to mainnet'
 ```
 
