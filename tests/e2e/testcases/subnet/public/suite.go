@@ -9,9 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
+	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -25,6 +27,10 @@ const (
 	stakeAmount   = "2000"
 	stakeDuration = "336h"
 	localNetwork  = "Local Network"
+	ledger1Seed   = "ledger1"
+	ledger2Seed   = "ledger2"
+	ledger3Seed   = "ledger3"
+	txPath        = "tx.txt"
 )
 
 func deploySubnetToFuji() (string, map[string]utils.NodeInfo) {
@@ -91,17 +97,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 
 	ginkgo.It("deploy subnet to mainnet", func() {
 		if os.Getenv("LEDGER_SIM") != "" {
-			ledgerSimReadyCh := make(chan struct{})
-			go func() {
-				defer ginkgo.GinkgoRecover()
-				// start ledger sim and provide for 8 tx approvals
-				err := utils.RunBasicLedgerSim(8, ledgerSimReadyCh)
-				if err != nil {
-					fmt.Println(err)
-				}
-				gomega.Expect(err).Should(gomega.BeNil())
-			}()
-			<-ledgerSimReadyCh
+			_ = utils.StartLedgerSim(8, 0, ledger1Seed)
 		}
 		// fund ledger address
 		err := utils.FundLedgerAddress(206000000)
@@ -236,5 +232,53 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			}
 		}
 		gomega.Expect(found).Should(gomega.BeFalse())
+	})
+
+	ginkgo.It("mainnet multisig deploy", func() {
+		gomega.Expect(os.Getenv("LEDGER_SIM")).Should(gomega.Equal("true"))
+
+		// ignore error, file may not exist
+		_ = os.Remove(txPath)
+
+		ledgerSimEndCh := utils.StartLedgerSim(0, 0, ledger1Seed)
+		ledger1Addr, err := utils.GetLedgerAddress(models.Mainnet, 0)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(ledger1Addr)
+		<-ledgerSimEndCh
+
+		ledgerSimEndCh = utils.StartLedgerSim(0, 0, ledger2Seed)
+		ledger2Addr, err := utils.GetLedgerAddress(models.Mainnet, 0)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(ledger2Addr)
+		<-ledgerSimEndCh
+
+		ledgerSimEndCh = utils.StartLedgerSim(0, 0, ledger3Seed)
+		ledger3Addr, err := utils.GetLedgerAddress(models.Mainnet, 0)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(ledger3Addr)
+		<-ledgerSimEndCh
+
+		ledgerSimEndCh = utils.StartLedgerSim(3, 0, ledger2Seed)
+		err = utils.FundLedgerAddress(genesis.MainnetParams.TxFeeConfig.CreateSubnetTxFee + genesis.MainnetParams.TxFeeConfig.CreateBlockchainTxFee)
+		gomega.Expect(err).Should(gomega.BeNil())
+		_ = commands.SimulateMultisigMainnetDeploy(
+			subnetName,
+			[]string{ledger1Addr, ledger2Addr, ledger3Addr},
+			[]string{ledger2Addr, ledger3Addr},
+			txPath,
+		)
+		<-ledgerSimEndCh
+
+		ledgerSimEndCh = utils.StartLedgerSim(1, 0, ledger3Seed)
+		_ = commands.TransactionSignWithLedger(
+			subnetName,
+			txPath,
+		)
+		<-ledgerSimEndCh
+
+		_ = commands.TransactionCommit(
+			subnetName,
+			txPath,
+		)
 	})
 })

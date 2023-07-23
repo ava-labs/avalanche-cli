@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -365,6 +366,169 @@ func SimulateMainnetDeploy(
 
 	// disable simulation of public network execution paths on a local network
 	err = os.Unsetenv(constants.SimulatePublicNetwork)
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	return stdout + string(stderr)
+}
+
+// simulates multisig mainnet deploy execution path on a local network
+/* #nosec G204 */
+func SimulateMultisigMainnetDeploy(
+	subnetName string,
+	subnetControlAddrs []string,
+	chainCreationAuthAddrs []string,
+	txPath string,
+) string {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// enable simulation of public network execution paths on a local network
+	err = os.Setenv(constants.SimulatePublicNetwork, "true")
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	// Deploy subnet locally
+	cmd := exec.Command(
+		CLIBinary,
+		SubnetCmd,
+		"deploy",
+		"--mainnet",
+		"--control-keys",
+		strings.Join(subnetControlAddrs, ","),
+		"--subnet-auth-keys",
+		strings.Join(chainCreationAuthAddrs, ","),
+		"--output-tx-path",
+		txPath,
+		subnetName,
+		"--"+constants.SkipUpdateFlag,
+	)
+	stdoutPipe, err := cmd.StdoutPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	stderrPipe, err := cmd.StderrPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	err = cmd.Start()
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	stdout := ""
+	go func(p io.ReadCloser) {
+		reader := bufio.NewReader(p)
+		line, err := reader.ReadString('\n')
+		for err == nil {
+			stdout += line
+			fmt.Print(line)
+			line, err = reader.ReadString('\n')
+		}
+	}(stdoutPipe)
+
+	stderr, err := io.ReadAll(stderrPipe)
+	gomega.Expect(err).Should(gomega.BeNil())
+	fmt.Println(string(stderr))
+
+	err = cmd.Wait()
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	// disable simulation of public network execution paths on a local network
+	err = os.Unsetenv(constants.SimulatePublicNetwork)
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	return stdout + string(stderr)
+}
+
+// transaction signing with ledger
+/* #nosec G204 */
+func TransactionSignWithLedger(
+	subnetName string,
+	txPath string,
+) string {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// Deploy subnet locally
+	cmd := exec.Command(
+		CLIBinary,
+		"transaction",
+		"sign",
+		subnetName,
+		"--input-tx-filepath",
+		txPath,
+		"--ledger",
+		"--"+constants.SkipUpdateFlag,
+	)
+	stdoutPipe, err := cmd.StdoutPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	stderrPipe, err := cmd.StderrPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	err = cmd.Start()
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	stdout := ""
+	go func(p io.ReadCloser) {
+		reader := bufio.NewReader(p)
+		line, err := reader.ReadString('\n')
+		for err == nil {
+			stdout += line
+			fmt.Print(line)
+			line, err = reader.ReadString('\n')
+		}
+	}(stdoutPipe)
+
+	stderr, err := io.ReadAll(stderrPipe)
+	gomega.Expect(err).Should(gomega.BeNil())
+	fmt.Println(string(stderr))
+
+	err = cmd.Wait()
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	return stdout + string(stderr)
+}
+
+// transaction commit
+/* #nosec G204 */
+func TransactionCommit(
+	subnetName string,
+	txPath string,
+) string {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// Deploy subnet locally
+	cmd := exec.Command(
+		CLIBinary,
+		"transaction",
+		"commit",
+		subnetName,
+		"--input-tx-filepath",
+		txPath,
+		"--"+constants.SkipUpdateFlag,
+	)
+	stdoutPipe, err := cmd.StdoutPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	stderrPipe, err := cmd.StderrPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	err = cmd.Start()
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	stdout := ""
+	go func(p io.ReadCloser) {
+		reader := bufio.NewReader(p)
+		line, err := reader.ReadString('\n')
+		for err == nil {
+			stdout += line
+			fmt.Print(line)
+			line, err = reader.ReadString('\n')
+		}
+	}(stdoutPipe)
+
+	stderr, err := io.ReadAll(stderrPipe)
+	gomega.Expect(err).Should(gomega.BeNil())
+	fmt.Println(string(stderr))
+
+	err = cmd.Wait()
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	return stdout + string(stderr)
