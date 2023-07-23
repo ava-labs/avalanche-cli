@@ -100,7 +100,8 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			_ = utils.StartLedgerSim(8, 0, ledger1Seed)
 		}
 		// fund ledger address
-		err := utils.FundLedgerAddress(206000000)
+		feeConfig := genesis.MainnetParams.TxFeeConfig
+		err := utils.FundLedgerAddress(feeConfig.CreateSubnetTxFee + feeConfig.CreateBlockchainTxFee)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println()
 		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))

@@ -328,47 +328,19 @@ func SimulateMainnetDeploy(
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	// Deploy subnet locally
-	cmd := exec.Command(
+	return execCommand(
 		CLIBinary,
-		SubnetCmd,
-		"deploy",
-		"--mainnet",
-		"--threshold",
-		"1",
-		"--same-control-key",
-		subnetName,
-		"--"+constants.SkipUpdateFlag,
+		[]string{
+			SubnetCmd,
+			"deploy",
+			"--mainnet",
+			"--threshold",
+			"1",
+			"--same-control-key",
+			subnetName,
+			"--" + constants.SkipUpdateFlag,
+		},
 	)
-	stdoutPipe, err := cmd.StdoutPipe()
-	gomega.Expect(err).Should(gomega.BeNil())
-	stderrPipe, err := cmd.StderrPipe()
-	gomega.Expect(err).Should(gomega.BeNil())
-	err = cmd.Start()
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	stdout := ""
-	go func(p io.ReadCloser) {
-		reader := bufio.NewReader(p)
-		line, err := reader.ReadString('\n')
-		for err == nil {
-			stdout += line
-			fmt.Print(line)
-			line, err = reader.ReadString('\n')
-		}
-	}(stdoutPipe)
-
-	stderr, err := io.ReadAll(stderrPipe)
-	gomega.Expect(err).Should(gomega.BeNil())
-	fmt.Println(string(stderr))
-
-	err = cmd.Wait()
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	// disable simulation of public network execution paths on a local network
-	err = os.Unsetenv(constants.SimulatePublicNetwork)
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	return stdout + string(stderr)
 }
 
 // simulates multisig mainnet deploy execution path on a local network
@@ -388,51 +360,23 @@ func SimulateMultisigMainnetDeploy(
 	err = os.Setenv(constants.SimulatePublicNetwork, "true")
 	gomega.Expect(err).Should(gomega.BeNil())
 
-	// Deploy subnet locally
-	cmd := exec.Command(
+	// Multisig deploy for local subnet with possible tx file generation
+	return execCommand(
 		CLIBinary,
-		SubnetCmd,
-		"deploy",
-		"--mainnet",
-		"--control-keys",
-		strings.Join(subnetControlAddrs, ","),
-		"--subnet-auth-keys",
-		strings.Join(chainCreationAuthAddrs, ","),
-		"--output-tx-path",
-		txPath,
-		subnetName,
-		"--"+constants.SkipUpdateFlag,
+		[]string{
+			SubnetCmd,
+			"deploy",
+			"--mainnet",
+			"--control-keys",
+			strings.Join(subnetControlAddrs, ","),
+			"--subnet-auth-keys",
+			strings.Join(chainCreationAuthAddrs, ","),
+			"--output-tx-path",
+			txPath,
+			subnetName,
+			"--" + constants.SkipUpdateFlag,
+		},
 	)
-	stdoutPipe, err := cmd.StdoutPipe()
-	gomega.Expect(err).Should(gomega.BeNil())
-	stderrPipe, err := cmd.StderrPipe()
-	gomega.Expect(err).Should(gomega.BeNil())
-	err = cmd.Start()
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	stdout := ""
-	go func(p io.ReadCloser) {
-		reader := bufio.NewReader(p)
-		line, err := reader.ReadString('\n')
-		for err == nil {
-			stdout += line
-			fmt.Print(line)
-			line, err = reader.ReadString('\n')
-		}
-	}(stdoutPipe)
-
-	stderr, err := io.ReadAll(stderrPipe)
-	gomega.Expect(err).Should(gomega.BeNil())
-	fmt.Println(string(stderr))
-
-	err = cmd.Wait()
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	// disable simulation of public network execution paths on a local network
-	err = os.Unsetenv(constants.SimulatePublicNetwork)
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	return stdout + string(stderr)
 }
 
 // transaction signing with ledger
@@ -446,43 +390,18 @@ func TransactionSignWithLedger(
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
-	// Deploy subnet locally
-	cmd := exec.Command(
+	return execCommand(
 		CLIBinary,
-		"transaction",
-		"sign",
-		subnetName,
-		"--input-tx-filepath",
-		txPath,
-		"--ledger",
-		"--"+constants.SkipUpdateFlag,
+		[]string{
+			"transaction",
+			"sign",
+			subnetName,
+			"--input-tx-filepath",
+			txPath,
+			"--ledger",
+			"--" + constants.SkipUpdateFlag,
+		},
 	)
-	stdoutPipe, err := cmd.StdoutPipe()
-	gomega.Expect(err).Should(gomega.BeNil())
-	stderrPipe, err := cmd.StderrPipe()
-	gomega.Expect(err).Should(gomega.BeNil())
-	err = cmd.Start()
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	stdout := ""
-	go func(p io.ReadCloser) {
-		reader := bufio.NewReader(p)
-		line, err := reader.ReadString('\n')
-		for err == nil {
-			stdout += line
-			fmt.Print(line)
-			line, err = reader.ReadString('\n')
-		}
-	}(stdoutPipe)
-
-	stderr, err := io.ReadAll(stderrPipe)
-	gomega.Expect(err).Should(gomega.BeNil())
-	fmt.Println(string(stderr))
-
-	err = cmd.Wait()
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	return stdout + string(stderr)
 }
 
 // transaction commit
@@ -496,42 +415,17 @@ func TransactionCommit(
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
-	// Deploy subnet locally
-	cmd := exec.Command(
+	return execCommand(
 		CLIBinary,
-		"transaction",
-		"commit",
-		subnetName,
-		"--input-tx-filepath",
-		txPath,
-		"--"+constants.SkipUpdateFlag,
+		[]string{
+			"transaction",
+			"commit",
+			subnetName,
+			"--input-tx-filepath",
+			txPath,
+			"--" + constants.SkipUpdateFlag,
+		},
 	)
-	stdoutPipe, err := cmd.StdoutPipe()
-	gomega.Expect(err).Should(gomega.BeNil())
-	stderrPipe, err := cmd.StderrPipe()
-	gomega.Expect(err).Should(gomega.BeNil())
-	err = cmd.Start()
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	stdout := ""
-	go func(p io.ReadCloser) {
-		reader := bufio.NewReader(p)
-		line, err := reader.ReadString('\n')
-		for err == nil {
-			stdout += line
-			fmt.Print(line)
-			line, err = reader.ReadString('\n')
-		}
-	}(stdoutPipe)
-
-	stderr, err := io.ReadAll(stderrPipe)
-	gomega.Expect(err).Should(gomega.BeNil())
-	fmt.Println(string(stderr))
-
-	err = cmd.Wait()
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	return stdout + string(stderr)
 }
 
 // simulates fuji add validator execution path on a local network
@@ -742,52 +636,24 @@ func SimulateMainnetAddValidator(
 	err = os.Setenv(constants.SimulatePublicNetwork, "true")
 	gomega.Expect(err).Should(gomega.BeNil())
 
-	cmd := exec.Command(
+	return execCommand(
 		CLIBinary,
-		SubnetCmd,
-		"addValidator",
-		"--mainnet",
-		"--nodeID",
-		nodeID,
-		"--start-time",
-		start,
-		"--staking-period",
-		period,
-		"--weight",
-		weight,
-		subnetName,
-		"--"+constants.SkipUpdateFlag,
+		[]string{
+			SubnetCmd,
+			"addValidator",
+			"--mainnet",
+			"--nodeID",
+			nodeID,
+			"--start-time",
+			start,
+			"--staking-period",
+			period,
+			"--weight",
+			weight,
+			subnetName,
+			"--" + constants.SkipUpdateFlag,
+		},
 	)
-	stdoutPipe, err := cmd.StdoutPipe()
-	gomega.Expect(err).Should(gomega.BeNil())
-	stderrPipe, err := cmd.StderrPipe()
-	gomega.Expect(err).Should(gomega.BeNil())
-	err = cmd.Start()
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	stdout := ""
-	go func(p io.ReadCloser) {
-		reader := bufio.NewReader(p)
-		line, err := reader.ReadString('\n')
-		for err == nil {
-			stdout += line
-			fmt.Print(line)
-			line, err = reader.ReadString('\n')
-		}
-	}(stdoutPipe)
-
-	stderr, err := io.ReadAll(stderrPipe)
-	gomega.Expect(err).Should(gomega.BeNil())
-	fmt.Println(string(stderr))
-
-	err = cmd.Wait()
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	// disable simulation of public network execution paths on a local network
-	err = os.Unsetenv(constants.SimulatePublicNetwork)
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	return stdout + string(stderr)
 }
 
 // simulates fuji join execution path on a local network
@@ -1204,4 +1070,35 @@ func AddPermissionlessDelegator(subnetName string, nodeID string, stakeAmount st
 		fmt.Println(stderr)
 	}
 	return string(output), err
+}
+
+func execCommand(cmdName string, args []string) string { //nolint:unparam
+	cmd := exec.Command(cmdName, args...)
+
+	stdoutPipe, err := cmd.StdoutPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	stderrPipe, err := cmd.StderrPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	err = cmd.Start()
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	stdout := ""
+	go func(p io.ReadCloser) {
+		reader := bufio.NewReader(p)
+		line, err := reader.ReadString('\n')
+		for err == nil {
+			stdout += line
+			fmt.Print(line)
+			line, err = reader.ReadString('\n')
+		}
+	}(stdoutPipe)
+
+	stderr, err := io.ReadAll(stderrPipe)
+	gomega.Expect(err).Should(gomega.BeNil())
+	fmt.Println(string(stderr))
+
+	err = cmd.Wait()
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	return stdout + string(stderr)
 }
