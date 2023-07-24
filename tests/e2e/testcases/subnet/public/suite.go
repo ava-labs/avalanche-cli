@@ -257,19 +257,19 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// obtain ledger1 addr
-		ledgerSimEndCh := utils.StartLedgerSim(0, 0, ledger1Seed, false)
+		ledgerSimEndCh := utils.StartLedgerSim(0, 1, ledger1Seed, false)
 		ledger1Addr, err := utils.GetLedgerAddress(models.Local, 0)
 		gomega.Expect(err).Should(gomega.BeNil())
 		<-ledgerSimEndCh
 
 		// obtain ledger2 addr
-		ledgerSimEndCh = utils.StartLedgerSim(0, 0, ledger2Seed, false)
+		ledgerSimEndCh = utils.StartLedgerSim(0, 1, ledger2Seed, false)
 		ledger2Addr, err := utils.GetLedgerAddress(models.Local, 0)
 		gomega.Expect(err).Should(gomega.BeNil())
 		<-ledgerSimEndCh
 
 		// obtain ledger3 addr
-		ledgerSimEndCh = utils.StartLedgerSim(0, 0, ledger3Seed, false)
+		ledgerSimEndCh = utils.StartLedgerSim(0, 1, ledger3Seed, false)
 		ledger3Addr, err := utils.GetLedgerAddress(models.Local, 0)
 		gomega.Expect(err).Should(gomega.BeNil())
 		<-ledgerSimEndCh
@@ -328,7 +328,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(matched).Should(gomega.Equal(true))
 
 		// try to sign using unauthorized ledger1
-		ledgerSimEndCh = utils.StartLedgerSim(0, 0, ledger1Seed, true)
+		ledgerSimEndCh = utils.StartLedgerSim(0, 1, ledger1Seed, true)
 		s = commands.TransactionSignWithLedger(
 			subnetName,
 			txPath,
@@ -355,7 +355,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(matched).Should(gomega.Equal(true))
 
 		// try to sign using ledger2 which already signed
-		ledgerSimEndCh = utils.StartLedgerSim(0, 0, ledger2Seed, true)
+		ledgerSimEndCh = utils.StartLedgerSim(0, 1, ledger2Seed, true)
 		s = commands.TransactionSignWithLedger(
 			subnetName,
 			txPath,
@@ -395,7 +395,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(matched).Should(gomega.Equal(true))
 
 		// try to sign using ledger3 which already signedtx is already fully signed"
-		ledgerSimEndCh = utils.StartLedgerSim(0, 0, ledger3Seed, true)
+		ledgerSimEndCh = utils.StartLedgerSim(0, 1, ledger3Seed, true)
 		s = commands.TransactionSignWithLedger(
 			subnetName,
 			txPath,
