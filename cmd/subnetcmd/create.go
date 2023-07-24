@@ -24,7 +24,7 @@ const (
 	forceFlag = "force"
 	latest    = "latest"
 )
-d
+
 var (
 	forceCreate      bool
 	useSubnetEvm     bool
