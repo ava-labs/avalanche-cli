@@ -451,12 +451,13 @@ func StartLedgerSim(
 	iters int,
 	secondsToWait int,
 	seed string,
+	showStdout bool,
 ) chan struct{} {
 	ledgerSimReadyCh := make(chan struct{})
 	ledgerSimEndCh := make(chan struct{})
 	go func() {
 		defer ginkgo.GinkgoRecover()
-		err := RunLedgerSim(iters, secondsToWait, seed, ledgerSimReadyCh, ledgerSimEndCh)
+		err := RunLedgerSim(iters, secondsToWait, seed, ledgerSimReadyCh, ledgerSimEndCh, showStdout)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -472,6 +473,7 @@ func RunLedgerSim(
 	seed string,
 	ledgerSimReadyCh chan struct{},
 	ledgerSimEndCh chan struct{},
+	showStdout bool,
 ) error {
 	cmd := exec.Command( //nolint:gosec
 		"ts-node",
@@ -503,7 +505,9 @@ func RunLedgerSim(
 			if line == "SIMULATED LEDGER DEV READY" {
 				close(ledgerSimReadyCh)
 			}
-			fmt.Println(line)
+			if showStdout {
+				fmt.Println(line)
+			}
 			line, err = reader.ReadString('\n')
 		}
 	}(stdoutPipe)
@@ -512,7 +516,9 @@ func RunLedgerSim(
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(stderr))
+	if len(stderr) != 0 {
+		fmt.Println(string(stderr))
+	}
 
 	err = cmd.Wait()
 	if err != nil {
@@ -999,4 +1005,57 @@ func AllPermissionlessValidatorExistsInSidecar(subnetName string, network string
 		}
 	}
 	return true, nil
+}
+
+func GetTmpFilePath(fnamePrefix string) (string, error) {
+	file, err := os.CreateTemp("", fnamePrefix+"*")
+	if err != nil {
+		return "", err
+	}
+	path := file.Name()
+	err = file.Close()
+	if err != nil {
+		return "", err
+	}
+	err = os.Remove(path)
+	return path, err
+}
+
+func ExecCommand(cmdName string, args []string, showStdout bool, errorIsExpected bool) string {
+	cmd := exec.Command(cmdName, args...)
+
+	stdoutPipe, err := cmd.StdoutPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	stderrPipe, err := cmd.StderrPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	err = cmd.Start()
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	stdout := ""
+	go func(p io.ReadCloser) {
+		reader := bufio.NewReader(p)
+		line, err := reader.ReadString('\n')
+		for err == nil {
+			stdout += line
+			if showStdout {
+				fmt.Print(line)
+			}
+			line, err = reader.ReadString('\n')
+		}
+	}(stdoutPipe)
+
+	stderr, err := io.ReadAll(stderrPipe)
+	gomega.Expect(err).Should(gomega.BeNil())
+	if len(stderr) != 0 {
+		fmt.Println(string(stderr))
+	}
+
+	err = cmd.Wait()
+	if errorIsExpected {
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+	} else {
+		gomega.Expect(err).Should(gomega.BeNil())
+	}
+
+	return stdout + string(stderr)
 }

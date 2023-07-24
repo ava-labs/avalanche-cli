@@ -731,6 +731,7 @@ func PrintRemainingToSignMsg(
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Signing command:")
 	ux.Logger.PrintToUser("  avalanche transaction sign %s --input-tx-filepath %s", chain, outputTxPath)
+	ux.Logger.PrintToUser("")
 }
 
 func GetKeychain(

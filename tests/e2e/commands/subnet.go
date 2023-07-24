@@ -4,10 +4,8 @@
 package commands
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -328,7 +326,7 @@ func SimulateMainnetDeploy(
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	// Deploy subnet locally
-	return execCommand(
+	return utils.ExecCommand(
 		CLIBinary,
 		[]string{
 			SubnetCmd,
@@ -340,6 +338,8 @@ func SimulateMainnetDeploy(
 			subnetName,
 			"--" + constants.SkipUpdateFlag,
 		},
+		true,
+		false,
 	)
 }
 
@@ -350,6 +350,7 @@ func SimulateMultisigMainnetDeploy(
 	subnetControlAddrs []string,
 	chainCreationAuthAddrs []string,
 	txPath string,
+	errorIsExpected bool,
 ) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -361,7 +362,7 @@ func SimulateMultisigMainnetDeploy(
 	gomega.Expect(err).Should(gomega.BeNil())
 
 	// Multisig deploy for local subnet with possible tx file generation
-	return execCommand(
+	return utils.ExecCommand(
 		CLIBinary,
 		[]string{
 			SubnetCmd,
@@ -376,6 +377,8 @@ func SimulateMultisigMainnetDeploy(
 			subnetName,
 			"--" + constants.SkipUpdateFlag,
 		},
+		true,
+		errorIsExpected,
 	)
 }
 
@@ -384,13 +387,14 @@ func SimulateMultisigMainnetDeploy(
 func TransactionSignWithLedger(
 	subnetName string,
 	txPath string,
+	errorIsExpected bool,
 ) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
-	return execCommand(
+	return utils.ExecCommand(
 		CLIBinary,
 		[]string{
 			"transaction",
@@ -401,6 +405,8 @@ func TransactionSignWithLedger(
 			"--ledger",
 			"--" + constants.SkipUpdateFlag,
 		},
+		true,
+		errorIsExpected,
 	)
 }
 
@@ -409,13 +415,14 @@ func TransactionSignWithLedger(
 func TransactionCommit(
 	subnetName string,
 	txPath string,
+	errorIsExpected bool,
 ) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
-	return execCommand(
+	return utils.ExecCommand(
 		CLIBinary,
 		[]string{
 			"transaction",
@@ -425,6 +432,8 @@ func TransactionCommit(
 			txPath,
 			"--" + constants.SkipUpdateFlag,
 		},
+		true,
+		errorIsExpected,
 	)
 }
 
@@ -636,7 +645,7 @@ func SimulateMainnetAddValidator(
 	err = os.Setenv(constants.SimulatePublicNetwork, "true")
 	gomega.Expect(err).Should(gomega.BeNil())
 
-	return execCommand(
+	return utils.ExecCommand(
 		CLIBinary,
 		[]string{
 			SubnetCmd,
@@ -653,6 +662,8 @@ func SimulateMainnetAddValidator(
 			subnetName,
 			"--" + constants.SkipUpdateFlag,
 		},
+		true,
+		false,
 	)
 }
 
@@ -858,7 +869,7 @@ func DescribeSubnet(subnetName string) (string, error) {
 		"--"+constants.SkipUpdateFlag,
 	)
 
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
 		fmt.Println(string(output))
@@ -1036,7 +1047,7 @@ func ListValidators(subnetName string, network string) (string, error) {
 		"--"+constants.SkipUpdateFlag,
 	)
 
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	return string(out), err
 }
 
@@ -1070,35 +1081,4 @@ func AddPermissionlessDelegator(subnetName string, nodeID string, stakeAmount st
 		fmt.Println(stderr)
 	}
 	return string(output), err
-}
-
-func execCommand(cmdName string, args []string) string { //nolint:unparam
-	cmd := exec.Command(cmdName, args...)
-
-	stdoutPipe, err := cmd.StdoutPipe()
-	gomega.Expect(err).Should(gomega.BeNil())
-	stderrPipe, err := cmd.StderrPipe()
-	gomega.Expect(err).Should(gomega.BeNil())
-	err = cmd.Start()
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	stdout := ""
-	go func(p io.ReadCloser) {
-		reader := bufio.NewReader(p)
-		line, err := reader.ReadString('\n')
-		for err == nil {
-			stdout += line
-			fmt.Print(line)
-			line, err = reader.ReadString('\n')
-		}
-	}(stdoutPipe)
-
-	stderr, err := io.ReadAll(stderrPipe)
-	gomega.Expect(err).Should(gomega.BeNil())
-	fmt.Println(string(stderr))
-
-	err = cmd.Wait()
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	return stdout + string(stderr)
 }
