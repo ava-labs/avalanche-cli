@@ -181,13 +181,14 @@ func sendMetrics(cmd *cobra.Command, repoName, subnetName string) error {
 		flags[precompileTag] = precompileName
 		precompiles = append(precompiles, precompileName)
 	}
-	numAirdropAddresses := 0
+	numAirdropAddresses := len(genesis.Alloc)
 	for address := range genesis.Alloc {
-		if address.String() != vm.PrefundedEwoqAddress.String() {
+		if address.String() == vm.PrefundedEwoqAddress.String() {
+			numAirdropAddresses -= 1
+		} else {
 			precompileTag := "precompile-" + constants.CustomAirdrop
 			flags[precompileTag] = constants.CustomAirdrop
 			precompiles = append(precompiles, constants.CustomAirdrop)
-			numAirdropAddresses += 1
 			break
 		}
 	}
