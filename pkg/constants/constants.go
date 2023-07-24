@@ -136,6 +136,7 @@ const (
 	PluginDir = "plugins"
 
 	Network        = "network"
+	MultiSig       = "multi-sig"
 	SkipUpdateFlag = "skip-update-check"
 	LastFileName   = ".last_actions.json"
 
