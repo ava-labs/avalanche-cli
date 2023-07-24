@@ -72,9 +72,11 @@ func getAllocation(
 
 		amount = amount.Mul(amount, multiplier)
 
-		account := core.GenesisAccount{
-			Balance: amount,
+		account, ok := allocation[addressHex]
+		if !ok {
+			account.Balance = big.NewInt(0)
 		}
+		account.Balance.Add(account.Balance, amount)
 
 		allocation[addressHex] = account
 
