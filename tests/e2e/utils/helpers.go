@@ -20,24 +20,26 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/subnet-evm/ethclient"
+	ginkgo "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 )
 
 const (
@@ -449,8 +451,41 @@ func SetHardhatRPC(rpc string) error {
 	return os.WriteFile(confFilePath, file, 0o600)
 }
 
-func RunBasicLedgerSim(iters int, ledgerSimReadyCh chan struct{}) error {
-	cmd := exec.Command("ts-node", basicLedgerSimScript, fmt.Sprintf("%d", iters)) //nolint:gosec
+func StartLedgerSim(
+	iters int,
+	secondsToWait int,
+	seed string,
+	showStdout bool,
+) chan struct{} {
+	ledgerSimReadyCh := make(chan struct{})
+	ledgerSimEndCh := make(chan struct{})
+	go func() {
+		defer ginkgo.GinkgoRecover()
+		err := RunLedgerSim(iters, secondsToWait, seed, ledgerSimReadyCh, ledgerSimEndCh, showStdout)
+		if err != nil {
+			fmt.Println(err)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+	}()
+	<-ledgerSimReadyCh
+	return ledgerSimEndCh
+}
+
+func RunLedgerSim(
+	iters int,
+	secondsToWait int,
+	seed string,
+	ledgerSimReadyCh chan struct{},
+	ledgerSimEndCh chan struct{},
+	showStdout bool,
+) error {
+	cmd := exec.Command( //nolint:gosec
+		"ts-node",
+		basicLedgerSimScript,
+		fmt.Sprintf("%d", iters),
+		fmt.Sprintf("%d", secondsToWait),
+		seed,
+	)
 	cmd.Dir = ledgerSimDir
 
 	stdoutPipe, err := cmd.StdoutPipe()
@@ -474,7 +509,9 @@ func RunBasicLedgerSim(iters int, ledgerSimReadyCh chan struct{}) error {
 			if line == "SIMULATED LEDGER DEV READY" {
 				close(ledgerSimReadyCh)
 			}
-			fmt.Println(line)
+			if showStdout {
+				fmt.Println(line)
+			}
 			line, err = reader.ReadString('\n')
 		}
 	}(stdoutPipe)
@@ -483,12 +520,16 @@ func RunBasicLedgerSim(iters int, ledgerSimReadyCh chan struct{}) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(stderr))
+	if len(stderr) != 0 {
+		fmt.Println(string(stderr))
+	}
 
 	err = cmd.Wait()
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	close(ledgerSimEndCh)
 
 	return err
 }
@@ -746,6 +787,33 @@ func GetFileHash(filename string) (string, error) {
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
 
+func GetLedgerAddress(network models.Network, index uint32) (string, error) {
+	// get ledger
+	ledgerDev, err := ledger.New()
+	if err != nil {
+		return "", err
+	}
+	// get ledger addr
+	ledgerAddrs, err := ledgerDev.Addresses([]uint32{index})
+	if err != nil {
+		return "", err
+	}
+	if len(ledgerAddrs) != 1 {
+		return "", fmt.Errorf("no ledger addresses available")
+	}
+	ledgerAddr := ledgerAddrs[0]
+	networkID, err := network.NetworkID()
+	if err != nil {
+		return "", err
+	}
+	hrp := key.GetHRP(networkID)
+	ledgerAddrStr, err := address.Format("P", hrp, ledgerAddr[:])
+	if err != nil {
+		return "", err
+	}
+	return ledgerAddrStr, nil
+}
+
 func FundLedgerAddress(amount uint64) error {
 	// get ledger
 	ledgerDev, err := ledger.New()
@@ -941,4 +1009,57 @@ func AllPermissionlessValidatorExistsInSidecar(subnetName string, network string
 		}
 	}
 	return true, nil
+}
+
+func GetTmpFilePath(fnamePrefix string) (string, error) {
+	file, err := os.CreateTemp("", fnamePrefix+"*")
+	if err != nil {
+		return "", err
+	}
+	path := file.Name()
+	err = file.Close()
+	if err != nil {
+		return "", err
+	}
+	err = os.Remove(path)
+	return path, err
+}
+
+func ExecCommand(cmdName string, args []string, showStdout bool, errorIsExpected bool) string {
+	cmd := exec.Command(cmdName, args...)
+
+	stdoutPipe, err := cmd.StdoutPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	stderrPipe, err := cmd.StderrPipe()
+	gomega.Expect(err).Should(gomega.BeNil())
+	err = cmd.Start()
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	stdout := ""
+	go func(p io.ReadCloser) {
+		reader := bufio.NewReader(p)
+		line, err := reader.ReadString('\n')
+		for err == nil {
+			stdout += line
+			if showStdout {
+				fmt.Print(line)
+			}
+			line, err = reader.ReadString('\n')
+		}
+	}(stdoutPipe)
+
+	stderr, err := io.ReadAll(stderrPipe)
+	gomega.Expect(err).Should(gomega.BeNil())
+	if len(stderr) != 0 {
+		fmt.Println(string(stderr))
+	}
+
+	err = cmd.Wait()
+	if errorIsExpected {
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+	} else {
+		gomega.Expect(err).Should(gomega.BeNil())
+	}
+
+	return stdout + string(stderr)
 }
