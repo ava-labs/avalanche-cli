@@ -5,6 +5,9 @@ package subnetcmd
 import (
 	"errors"
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
 	"unicode"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -156,10 +159,42 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	if err = app.CreateSidecar(sc); err != nil {
 		return err
 	}
-	flags := make(map[string]string)
-	flags[constants.SubnetType] = subnetType.RepoName()
-	utils.HandleTracking(cmd, app, flags)
+	err = sendMetrics(cmd, subnetType.RepoName(), subnetName)
+	if err != nil {
+		return err
+	}
 	ux.Logger.PrintToUser("Successfully created subnet configuration")
+	return nil
+}
+
+func sendMetrics(cmd *cobra.Command, repoName, subnetName string) error {
+	flags := make(map[string]string)
+	flags[constants.SubnetType] = repoName
+	genesis, err := app.LoadEvmGenesis(subnetName)
+	if err != nil {
+		return err
+	}
+	conf := genesis.Config.GenesisPrecompiles
+	precompiles := make([]string, 6)
+	for precompileName := range conf {
+		precompileTag := "precompile-" + precompileName
+		flags[precompileTag] = precompileName
+		precompiles = append(precompiles, precompileName)
+	}
+	numAirdropAddresses := len(genesis.Alloc)
+	for address := range genesis.Alloc {
+		if address.String() != vm.PrefundedEwoqAddress.String() {
+			precompileTag := "precompile-" + constants.CustomAirdrop
+			flags[precompileTag] = constants.CustomAirdrop
+			precompiles = append(precompiles, constants.CustomAirdrop)
+			break
+		}
+	}
+	sort.Strings(precompiles)
+	precompilesJoined := strings.Join(precompiles, ",")
+	flags[constants.PrecompileType] = precompilesJoined
+	flags[constants.NumberOfAirdrops] = strconv.Itoa(numAirdropAddresses)
+	utils.HandleTracking(cmd, app, flags)
 	return nil
 }
 
