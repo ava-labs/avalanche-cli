@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -193,7 +194,7 @@ func sendMetrics(cmd *cobra.Command, repoName, subnetName string) error {
 	sort.Strings(precompiles)
 	precompilesJoined := strings.Join(precompiles, ",")
 	flags[constants.PrecompileType] = precompilesJoined
-	flags[constants.NumberOfAirdrops] = string(numAirdropAddresses)
+	flags[constants.NumberOfAirdrops] = strconv.Itoa(numAirdropAddresses)
 	utils.HandleTracking(cmd, app, flags)
 	return nil
 }
