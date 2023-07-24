@@ -7,3 +7,7 @@
       shell: chmod 755 avalanchego-installer.sh
     - name: call avalanche go install script
       shell: ./avalanchego-installer.sh --ip static --rpc private --state-sync on --fuji
+#    - name: copy exported subnet VM spec to cloud server
+#      copy:
+#        src: /tmp/testsubnet-export.dat
+#        dest: /tmp
