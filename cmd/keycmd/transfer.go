@@ -52,7 +52,7 @@ func newTransferCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "transfer [options]",
 		Short:        "Fund a ledger address or stored key from another one",
-		Long:         `The key transfer command allows to transfer funds between stored keys or ledger addrs.`,
+		Long:         `The key transfer command allows to transfer funds between stored keys or ledger addresses.`,
 		RunE:         transferF,
 		Args:         cobra.ExactArgs(0),
 		SilenceUsage: true,

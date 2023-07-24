@@ -15,6 +15,7 @@ import (
 type LastActions struct {
 	LastSkipCheck time.Time
 	LastUpdated   time.Time
+	LastCheckGit  time.Time
 }
 
 func (app *Avalanche) WriteLastActionsFile(acts *LastActions) {

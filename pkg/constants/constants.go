@@ -19,6 +19,7 @@ const (
 	SuffixSeparator             = "_"
 	SidecarFileName             = "sidecar.json"
 	GenesisFileName             = "genesis.json"
+	GenesisMainnetFileName      = "genesis_mainnet.json"
 	ElasticSubnetConfigFileName = "elastic_subnet_config.json"
 	SidecarSuffix               = SuffixSeparator + SidecarFileName
 	GenesisSuffix               = SuffixSeparator + GenesisFileName
@@ -135,6 +136,7 @@ const (
 	PluginDir = "plugins"
 
 	Network        = "network"
+	MultiSig       = "multi-sig"
 	SkipUpdateFlag = "skip-update-check"
 	LastFileName   = ".last_actions.json"
 

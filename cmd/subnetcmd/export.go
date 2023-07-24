@@ -34,7 +34,10 @@ the --output flag.`,
 		"",
 		"write the export data to the provided file path",
 	)
-
+	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "export `mainnet` genesis")
+	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "export `local` genesis")
+	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "export `fuji` genesis")
+	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "export `fuji` genesis")
 	return cmd
 }
 
@@ -47,6 +50,28 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
+	var network models.Network
+	if deployMainnet {
+		network = models.Mainnet
+	}
+	switch {
+	case deployLocal:
+		network = models.Local
+	case deployTestnet:
+		network = models.Fuji
+	case deployMainnet:
+		network = models.Mainnet
+	}
+	if network == models.Undefined {
+		networkStr, err := app.Prompt.CaptureList(
+			"Choose which network's genesis to export",
+			[]string{models.Local.String(), models.Fuji.String(), models.Mainnet.String()},
+		)
+		if err != nil {
+			return err
+		}
+		network = models.NetworkFromString(networkStr)
+	}
 
 	subnetName := args[0]
 	sc, err := app.LoadSidecar(subnetName)
@@ -54,7 +79,7 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	gen, err := app.LoadRawGenesis(subnetName)
+	gen, err := app.LoadRawGenesis(subnetName, network)
 	if err != nil {
 		return err
 	}

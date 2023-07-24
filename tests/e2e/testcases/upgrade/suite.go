@@ -386,7 +386,7 @@ var _ = ginkgo.Describe("[Upgrade local network]", ginkgo.Ordered, func() {
 		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, binaryToVersion[utils.SoloSubnetEVMKey1])
 
 		// Simulate fuji deployment
-		s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys)
+		s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys, "")
 		subnetID, err := utils.ParsePublicDeployOutput(s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		// add validators to subnet
