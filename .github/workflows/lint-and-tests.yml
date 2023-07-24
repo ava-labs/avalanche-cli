@@ -54,19 +54,19 @@ jobs:
       matrix:
         suite:
           [
-            apm,
-            "Error handling",
-            Key,
-            Network,
-            "Package Management",
-            Root,
-            "Local Subnet",
-            "Subnet Compatibility",
-            "Public Subnet",
-            Subnet,
-            "Upgrade expect network failure",
-            "Upgrade public network",
-            "Upgrade local network",
+            "\\[APM\\]",
+            "\\[Error handling\\]",
+            "\\[Key\\]",
+            "\\[Network\\]",
+            "\\[Package Management\\]",
+            "\\[Root\\]",
+            "\\[Local Subnet\\]",
+            "\\[Subnet Compatibility\\]",
+            "\\[Public Subnet\\]",
+            "\\[Subnet\\]",
+            "\\[Upgrade expect network failure\\]",
+            "\\[Upgrade public network\\]",
+            "\\[Upgrade local network\\]",
           ]
         os: [ubuntu-latest, macos-latest]
     steps:
@@ -89,9 +89,20 @@ jobs:
           max_attempts: 3
           retry_on: error
           command: yarn --cwd ./tests/e2e/hardhat
+      - name: ts-node install
+        shell: bash
+        run: |
+          npm install -g typescript
+          npm install -g ts-node
+      - name: Install docker on macos
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: |
+          brew install docker
+          colima start
+          sudo ln -s ~/.colima/default/docker.sock /var/run/docker.sock
       - name: Run e2e tests
         shell: bash
-        run: AVALANCHE_CLI_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} scripts/run.e2e.sh --filter ${{ matrix.suite }}
+        run: AVALANCHE_CLI_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} LEDGER_SIM=true scripts/run.e2e.sh --filter "${{ matrix.suite }}"
       - name: "Upload Artifact"
         if: always()
         uses: actions/upload-artifact@v3

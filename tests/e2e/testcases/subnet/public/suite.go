@@ -90,9 +90,22 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		deploySubnetToFuji()
 	})
 
-	ginkgo.It("deploy subnet to mainnet", ginkgo.Label("local_machine"), func() {
+	ginkgo.It("deploy subnet to mainnet", func() {
+		if os.Getenv("LEDGER_SIM") != "" {
+			ledgerSimReadyCh := make(chan struct{})
+			go func() {
+				defer ginkgo.GinkgoRecover()
+				// start ledger sim and provide for 8 tx approvals
+				err := utils.RunBasicLedgerSim(8, ledgerSimReadyCh)
+				if err != nil {
+					fmt.Println(err)
+				}
+				gomega.Expect(err).Should(gomega.BeNil())
+			}()
+			<-ledgerSimReadyCh
+		}
 		// fund ledger address
-		err := utils.FundLedgerAddress()
+		err := utils.FundLedgerAddress(206000000)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println()
 		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
