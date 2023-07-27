@@ -31,18 +31,16 @@ import (
 func newCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create [subnetName]",
-		Short: "Create a new subnet configuration",
-		Long: `The subnet create command builds a new genesis file to configure your Subnet.
-By default, the command runs an interactive wizard. It walks you through
-all the steps you need to create your first Subnet.
+		Short: "Create a new validator on cloud server",
+		Long: `The node create command sets up a validator on a cloud server of your choice. 
+The validator will be validating the Avalanche Primary Network and Subnet 
+of your choice. By default, the command runs an interactive wizard. It 
+walks you through all the steps you need to set up a validator.
 
-The tool supports deploying Subnet-EVM, and custom VMs. You
-can create a custom, user-generated genesis with a custom VM by providing
-the path to your genesis and VM binaries with the --genesis and --vm flags.
-
-By default, running the command with a subnetName that already exists
-causes the command to fail. If you’d like to overwrite an existing
-configuration, pass the -f flag.`,
+Once this command is completed, you will have to wait for the validator
+to finish bootstrapping on the primary network before running further
+commands on it, e.g. validating a Subnet. You can check the bootstrapping
+status by running avalanche node status`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
 		RunE:         createNode,
@@ -272,7 +270,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err := createAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
 		return err
 	}
-	time.Sleep(5 * time.Second)
+	time.Sleep(15 * time.Second)
 
 	if err := runAnsiblePlaybook(inventoryPath); err != nil {
 		return err
@@ -547,6 +545,9 @@ func setUpInstance(rootBody *hclwrite.Body, securityGroupName string, useExistin
 	var securityGroupList []cty.Value
 	securityGroupList = append(securityGroupList, cty.StringVal(securityGroupName))
 	awsInstanceBody.SetAttributeValue("security_groups", cty.ListVal(securityGroupList))
+	rootBlockDevice := awsInstanceBody.AppendNewBlock("root_block_device", []string{})
+	rootBlockDeviceBody := rootBlockDevice.Body()
+	rootBlockDeviceBody.SetAttributeValue("volume_size", cty.NumberIntVal(1000))
 }
 
 func setOutput(rootBody *hclwrite.Body) {
@@ -653,8 +654,10 @@ func handleCerts(certName string) error {
 }
 
 func runAnsiblePlaybook(inventoryPath string) error {
+	configPath := app.GetConfigPath()
+	configDirVar := "configDir=" + configPath
 	var stdBuffer bytes.Buffer
-	cmd := exec.Command("ansible-playbook", "main.yml", "-i", inventoryPath, "--ssh-extra-args='-o IdentitiesOnly=yes'")
+	cmd := exec.Command("ansible-playbook", "main.yml", "-i", inventoryPath, "--extra-vars", configDirVar, "--ssh-extra-args='-o IdentitiesOnly=yes'")
 	mw := io.MultiWriter(os.Stdout, &stdBuffer)
 	cmd.Stdout = mw
 	cmd.Stderr = mw

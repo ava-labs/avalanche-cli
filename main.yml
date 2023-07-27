@@ -1,5 +1,8 @@
 ---
 - hosts: all
+  vars:
+    ansible_host_key_checking: false
+    ansible_ssh_host_key_checking: false
   tasks:
     - name: get avalanche go script
       shell: wget -nd -m https://raw.githubusercontent.com/ava-labs/avalanche-docs/master/scripts/avalanchego-installer.sh
@@ -7,7 +10,19 @@
       shell: chmod 755 avalanchego-installer.sh
     - name: call avalanche go install script
       shell: ./avalanchego-installer.sh --ip static --rpc private --state-sync on --fuji
-#    - name: copy exported subnet VM spec to cloud server
-#      copy:
-#        src: /tmp/testsubnet-export.dat
-#        dest: /tmp
+    - name: get avalanche cli install script
+      shell: wget -nd -m https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh
+    - name: modify permissions
+      shell: chmod 755 install.sh
+    - name: run install script
+      shell: ./install.sh -n
+#    - name: export /bin directory to $PATH
+#      shell: echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
+#    - name: source .bashrc changes
+#      shell: . ~/.bashrc
+    - name: create .avalanche-cli dir
+      shell: mkdir .avalanche-cli
+    - name: copy metrics config to cloud server
+      copy:
+        src: "{{ configDir }}"
+        dest: /home/ubuntu/.avalanche-cli

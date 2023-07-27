@@ -52,6 +52,20 @@ func validateStakingDuration(input string) error {
 	return nil
 }
 
+func validateFujiStakingDuration(input string) error {
+	d, err := time.ParseDuration(input)
+	if err != nil {
+		return err
+	}
+	if d > constants.MaxStakeDuration {
+		return fmt.Errorf("exceeds maximum staking duration of %s", ux.FormatDuration(constants.MaxStakeDuration))
+	}
+	if d < constants.MinFujiStakeDuration {
+		return fmt.Errorf("below the minimum staking duration of %s", ux.FormatDuration(constants.MinStakeDuration))
+	}
+	return nil
+}
+
 func validateTime(input string) error {
 	t, err := time.Parse(constants.TimeParseLayout, input)
 	if err != nil {

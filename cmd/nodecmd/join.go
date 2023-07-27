@@ -3,171 +3,452 @@
 package nodecmd
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanchego/api/info"
-	"github.com/ava-labs/avalanchego/ids"
+	"io"
 	"os"
-	"os/user"
+	"os/exec"
 	"time"
 
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+
+	subnetcmd "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/hashicorp/hcl/v2/hclwrite"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
+)
+
+var (
+	deployTestnet   bool
+	deployMainnet   bool
+	keyName         string
+	subnetName      string
+	useLedger       bool
+	ledgerAddresses []string
+	weight          uint64
+	duration        time.Duration
+	startTimeStr    string
+
+	ErrMutuallyExlusiveKeyLedger = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
+	ErrStoredKeyOnMainnet        = errors.New("--key is not available for mainnet operations")
 )
 
 func newJoinCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create [subnetName]",
-		Short: "Create a new subnet configuration",
-		Long: `The subnet create command builds a new genesis file to configure your Subnet.
-By default, the command runs an interactive wizard. It walks you through
-all the steps you need to create your first Subnet.
-
-The tool supports deploying Subnet-EVM, and custom VMs. You
-can create a custom, user-generated genesis with a custom VM by providing
-the path to your genesis and VM binaries with the --genesis and --vm flags.
-
-By default, running the command with a subnetName that already exists
-causes the command to fail. If you’d like to overwrite an existing
-configuration, pass the -f flag.`,
+		Use:   "join [subnetName]",
+		Short: "Join a subnet as a validator",
+		Long: `The node join command enables a Primary Network Validator to also be a validator
+of a Subnet. If The command is run before the node is bootstrapped on the Primary Network, 
+the command will fail. You can check the bootstrap status by calling 
+avalanche node status`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
 		RunE:         joinSubnet,
 	}
+	cmd.Flags().StringVar(&subnetName, "subnet", "", "specify the subnet the node is validating")
 
 	return cmd
 }
 
-func CheckNodeIsBootstrapped(subnetID ids.ID) error {
-	api := constants.FujiAPIEndpoint
-	infoClient := info.NewClient(api)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
-	defer cancel()
-	_, err := infoClient.IsBootstrapped(subnetID)
-	return err
+func runAnsiblePlaybookExportSubnet(inventoryPath string) error {
+	var stdBuffer bytes.Buffer
+	exportOutput := "/tmp/" + subnetName + "-export.dat"
+	exportedSubnet := "exportedSubnet=" + exportOutput
+	cmd := exec.Command("ansible-playbook", "exportSubnet.yml", "-i", inventoryPath, "--extra-vars", exportedSubnet, "--ssh-extra-args='-o IdentitiesOnly=yes'")
+	mw := io.MultiWriter(os.Stdout, &stdBuffer)
+	cmd.Stdout = mw
+	cmd.Stderr = mw
+	return cmd.Run()
 }
 
-func joinSubnet(_ *cobra.Command, args []string) error {
-	clusterName := args[0]
+func runAnsiblePlaybookTrackSubnet(inventoryPath string) error {
+	var stdBuffer bytes.Buffer
+	importedFileName := "/tmp/" + subnetName + "-export.dat"
+	importedSubnet := "subnetExportFileName=" + importedFileName + " subnetName=" + subnetName
+	cmd := exec.Command("ansible-playbook", "trackSubnet.yml", "-i", inventoryPath, "--extra-vars", importedSubnet, "--ssh-extra-args='-o IdentitiesOnly=yes'")
+	mw := io.MultiWriter(os.Stdout, &stdBuffer)
+	cmd.Stdout = mw
+	cmd.Stderr = mw
+	return cmd.Run()
+}
 
-	err := removeExistingTerraformFiles()
-	if err != nil {
-		return err
-	}
-	usr, _ := user.Current()
-	keyPairName := usr.Username + "-avalanche-cli"
-	certName := keyPairName + "-kp.pem"
-	securityGroupName := keyPairName + "-sg"
-	region := "us-east-2"
-	ami := "ami-0430580de6244e02e"
+func runAnsiblePlaybookCheckBootstrapped(inventoryPath string) error {
+	var stdBuffer bytes.Buffer
+	cmd := exec.Command("ansible-playbook", "isBootstrapped.yml", "-i", inventoryPath, "--ssh-extra-args='-o IdentitiesOnly=yes'")
+	mw := io.MultiWriter(os.Stdout, &stdBuffer)
+	cmd.Stdout = mw
+	cmd.Stderr = mw
+	return cmd.Run()
+}
 
-	hclFile := hclwrite.NewEmptyFile()
-	tfFile, err := os.Create("node_config.tf")
-	if err != nil {
-		return err
-	}
-	rootBody := hclFile.Body()
-	creds := credentials.NewSharedCredentials("", "default")
-	credValue, err := creds.Get()
-	if err != nil {
-		printNoCredentialsOutput()
-		return err
-	}
-	err = setCloudCredentials(rootBody, credValue.AccessKeyID, credValue.SecretAccessKey, region)
-	if err != nil {
-		return err
-	}
-	// Load session from shared config
-	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String(region),
-		Credentials: creds,
-	})
-	if err != nil {
-		return err
-	}
+func runAnsiblePlaybookGetNodeID(inventoryPath string) error {
+	var stdBuffer bytes.Buffer
+	cmd := exec.Command("ansible-playbook", "getNodeID.yml", "-i", inventoryPath, "--ssh-extra-args='-o IdentitiesOnly=yes'")
+	mw := io.MultiWriter(os.Stdout, &stdBuffer)
+	cmd.Stdout = mw
+	cmd.Stderr = mw
+	return cmd.Run()
+}
 
-	// Create new EC2 client
-	ec2Svc := ec2.New(sess)
-	var useExistingKeyPair bool
-	keyPairExists, err := checkKeyPairExists(ec2Svc, keyPairName)
+func createFile(fileName string) error {
+	myfile, err := os.Create(fileName)
 	if err != nil {
 		return err
 	}
-	if !keyPairExists {
-		setKeyPair(rootBody, keyPairName, certName)
-	} else {
-		certFilePath, err := getCertFilePath(certName)
+	myfile.Close()
+
+	return nil
+}
+func removeFile(fileName string) error {
+	if _, err := os.Stat(fileName); err == nil {
+		err := os.Remove(fileName)
 		if err != nil {
 			return err
 		}
-		if checkCertInSSHDir(certFilePath) {
-			useExistingKeyPair = true
-		} else {
-			ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists", keyPairName))
-			keyPairName, err = getNewKeyPairName(ec2Svc)
+	}
+	return nil
+}
+func parseBootstrappedOutput(fileName string) (bool, error) {
+	jsonFile, err := os.Open(fileName)
+	if err != nil {
+		return false, err
+	}
+	defer jsonFile.Close()
+	byteValue, _ := io.ReadAll(jsonFile)
+
+	var result map[string]interface{}
+	json.Unmarshal(byteValue, &result)
+	isBootstrappedInterface, ok := result["result"].(map[string]interface{})
+	if ok {
+		isBootstrapped, ok := isBootstrappedInterface["isBootstrapped"].(bool)
+		if ok {
+			return isBootstrapped, nil
+		}
+	}
+	return false, nil
+}
+
+func parseNodeIDOutput(fileName string) (string, error) {
+	jsonFile, err := os.Open(fileName)
+	if err != nil {
+		return "", err
+	}
+	defer jsonFile.Close()
+	byteValue, _ := io.ReadAll(jsonFile)
+
+	var result map[string]interface{}
+	json.Unmarshal(byteValue, &result)
+	nodeIDInterface, ok := result["result"].(map[string]interface{})
+	if ok {
+		nodeID, ok := nodeIDInterface["nodeID"].(string)
+		if ok {
+			return nodeID, nil
+		}
+	}
+	return "", nil
+}
+
+func trackSubnet(clusterName string, network models.Network) error {
+	err := subnetcmd.CallExportSubnet(subnetName, network)
+	if err != nil {
+		return err
+	}
+	inventoryPath := "inventories/" + clusterName
+	err = runAnsiblePlaybookExportSubnet(inventoryPath)
+	if err != nil {
+		return err
+	}
+	err = runAnsiblePlaybookTrackSubnet(inventoryPath)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func addNodeAsSubnetValidator(nodeID string, network models.Network) error {
+	err := subnetcmd.CallAddValidator(subnetName, nodeID, network)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func getMinStakingAmount(network models.Network) (uint64, error) {
+	var apiURL string
+	switch network {
+	case models.Mainnet:
+		apiURL = constants.MainnetAPIEndpoint
+	case models.Fuji:
+		apiURL = constants.FujiAPIEndpoint
+	}
+	pClient := platformvm.NewClient(apiURL)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+	minValStake, _, err := pClient.GetMinStake(ctx, ids.Empty)
+	if err != nil {
+		return 0, err
+	}
+	return minValStake, nil
+}
+func validatePrimaryNetwork(nodeID ids.NodeID, network models.Network) error {
+	var (
+		start time.Time
+		err   error
+	)
+	switch {
+	case deployTestnet:
+		network = models.Fuji
+	case deployMainnet:
+		network = models.Mainnet
+	}
+	if len(ledgerAddresses) > 0 {
+		useLedger = true
+	}
+
+	if useLedger && keyName != "" {
+		return ErrMutuallyExlusiveKeyLedger
+	}
+
+	switch network {
+	case models.Fuji:
+		if !useLedger && keyName == "" {
+			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "pay transaction fees", app.GetKeyDir())
 			if err != nil {
 				return err
 			}
-			certName = keyPairName + "-kp.pem"
-			setKeyPair(rootBody, keyPairName, certName)
 		}
+	case models.Mainnet:
+		useLedger = true
+		if keyName != "" {
+			return ErrStoredKeyOnMainnet
+		}
+	default:
+		return errors.New("unsupported network")
 	}
-	securityGroupExists, sg, err := checkSecurityGroupExists(ec2Svc, securityGroupName)
+	minValStake, err := getMinStakingAmount(network)
 	if err != nil {
 		return err
 	}
-	userIPAddress, err := getIPAddress()
-	if err != nil {
-		return err
-	}
-	if !securityGroupExists {
-		setSecurityGroup(rootBody, userIPAddress, securityGroupName)
-	} else {
-		ipInTCP, ipInHTTP := checkCurrentIPInSg(sg, userIPAddress)
-		setSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
-	}
-	setElasticIP(rootBody)
-	setUpInstance(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami)
-	setOutput(rootBody)
-	_, err = tfFile.Write(hclFile.Bytes())
-	if err != nil {
-		return err
-	}
-	instanceID, elasticIP, err := runTerraform()
-	if err != nil {
-		return err
-	}
-	certFilePath, err := getCertFilePath(certName)
-	if err != nil {
-		return err
-	}
-
-	if !useExistingKeyPair {
-		err = handleCerts(certName)
+	if weight == 0 {
+		weight, err = promptWeightPrimaryNetwork(network)
 		if err != nil {
 			return err
 		}
+	} else if weight < minValStake {
+		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", minValStake, weight)
 	}
-
-	inventoryPath := "inventories/" + clusterName
-	if err := createAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
-		return err
-	}
-	time.Sleep(5 * time.Second)
-
-	if err := runAnsiblePlaybook(inventoryPath); err != nil {
-		return err
-	}
-	err = createNodeConfig(instanceID, region, ami, keyPairName, certFilePath, securityGroupName, elasticIP, clusterName)
+	start, duration, err = getTimeParametersPrimaryNetwork(network, nodeID)
 	if err != nil {
 		return err
 	}
-	PrintResults(instanceID, elasticIP, certFilePath, region)
+
+	kc, err := subnetcmd.GetKeychain(useLedger, ledgerAddresses, keyName, network)
+	if err != nil {
+		return err
+	}
+	recipientAddr := kc.Addresses().List()[0]
+	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	_, _, err = deployer.AddValidatorPrimaryNetwork(nodeID, weight, start, duration, recipientAddr, uint32(20000))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func promptWeightPrimaryNetwork(network models.Network) (uint64, error) {
+	defaultStake := constants.DefaultFujiPrimaryNetworkWeight
+	if network == models.Mainnet {
+		defaultStake = constants.DefaultMainnetPrimaryNetworkWeight
+	}
+	defaultWeight := fmt.Sprintf("Default (%d)", defaultStake)
+	txt := "What stake weight would you like to assign to the validator?"
+	weightOptions := []string{defaultWeight, "Custom"}
+
+	weightOption, err := app.Prompt.CaptureList(txt, weightOptions)
+	if err != nil {
+		return 0, err
+	}
+
+	switch weightOption {
+	case defaultWeight:
+		return uint64(defaultStake), nil
+	default:
+		return app.Prompt.CaptureWeight(txt)
+	}
+}
+
+func getTimeParametersPrimaryNetwork(network models.Network, nodeID ids.NodeID) (time.Time, time.Duration, error) {
+	var (
+		start time.Time
+		err   error
+	)
+
+	const (
+		defaultStartOption    = "Start in one minute"
+		defaultDurationOption = "Minimum staking duration on primary network"
+		custom                = "Custom"
+	)
+
+	if startTimeStr == "" {
+		ux.Logger.PrintToUser("When should your validator start validating?\n" +
+			"If you validator is not ready by this time, subnet downtime can occur.")
+
+		startTimeOptions := []string{defaultStartOption, custom}
+		startTimeOption, err := app.Prompt.CaptureList("Start time", startTimeOptions)
+		if err != nil {
+			return time.Time{}, 0, err
+		}
+
+		switch startTimeOption {
+		case defaultStartOption:
+			start = time.Now().Add(constants.StakingStartLeadTime)
+		default:
+			start, err = subnetcmd.PromptStart()
+			if err != nil {
+				return time.Time{}, 0, err
+			}
+		}
+	} else {
+		start, err = time.Parse(constants.TimeParseLayout, startTimeStr)
+		if err != nil {
+			return time.Time{}, 0, err
+		}
+		if start.Before(time.Now().Add(constants.StakingMinimumLeadTime)) {
+			return time.Time{}, 0, fmt.Errorf("time should be at least %s in the future ", constants.StakingMinimumLeadTime)
+		}
+	}
+
+	if duration == 0 {
+		msg := "How long should your validator validate for?"
+		durationOptions := []string{defaultDurationOption, custom}
+		durationOption, err := app.Prompt.CaptureList(msg, durationOptions)
+		if err != nil {
+			return time.Time{}, 0, err
+		}
+
+		switch durationOption {
+		case defaultDurationOption:
+			duration, err = getDefaultMaxValidationTime(start, network)
+			if err != nil {
+				return time.Time{}, 0, err
+			}
+		default:
+			duration, err = subnetcmd.PromptDuration(start, network)
+			if err != nil {
+				return time.Time{}, 0, err
+			}
+		}
+	}
+	return start, duration, nil
+}
+func getDefaultMaxValidationTime(start time.Time, network models.Network) (time.Duration, error) {
+	durationStr := constants.DefaultFujiStakeDuration
+	if network == models.Mainnet {
+		durationStr = constants.DefaultMainnetStakeDuration
+	}
+	d, err := app.Prompt.CaptureDuration(durationStr)
+	if err != nil {
+		return 0, err
+	}
+	end := start.Add(d)
+	confirm := fmt.Sprintf("Your validator will finish staking by %s", end.Format(constants.TimeParseLayout))
+	yes, err := app.Prompt.CaptureYesNo(confirm)
+	if err != nil {
+		return 0, err
+	}
+	if !yes {
+		return 0, errors.New("you have to confirm staking duration")
+	}
+	return d, nil
+}
+func checkNodeIsBootstrapped(clusterName string) (bool, error) {
+	fileName := "isBootstrapped.json"
+	err := createFile(fileName)
+	if err != nil {
+		return false, err
+	}
+	inventoryPath := "inventories/" + clusterName
+	if err := runAnsiblePlaybookCheckBootstrapped(inventoryPath); err != nil {
+		return false, err
+	}
+	isBootstrapped, err := parseBootstrappedOutput(fileName)
+	if err != nil {
+		return false, err
+	}
+	err = removeFile(fileName)
+	if err != nil {
+		return false, err
+	}
+	if isBootstrapped {
+		return true, nil
+	}
+	ux.Logger.PrintToUser("Node is not bootstrapped yet, please check again later.")
+	return false, nil
+}
+
+func getNodeID(clusterName string) (string, error) {
+	fileName := "nodeID.json"
+	err := createFile(fileName)
+	if err != nil {
+		return "", err
+	}
+	inventoryPath := "inventories/" + clusterName
+	if err := runAnsiblePlaybookGetNodeID(inventoryPath); err != nil {
+		return "", err
+	}
+	nodeID, err := parseNodeIDOutput(fileName)
+	if err != nil {
+		return "", err
+	}
+	err = removeFile(fileName)
+	if err != nil {
+		return "", err
+	}
+	return nodeID, err
+}
+func joinSubnet(_ *cobra.Command, args []string) error {
+	clusterName := args[0]
+	if subnetName == "" {
+		ux.Logger.PrintToUser("Please provide the name of the subnet that the node will be validating with --subnet flag")
+		return errors.New("no subnet provided")
+	}
+	_, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName})
+	if err != nil {
+		return err
+	}
+	isBootstrapped, err := checkNodeIsBootstrapped(clusterName)
+	if err != nil {
+		return err
+	}
+	if !isBootstrapped {
+		return errors.New("node is not bootstrapped yet, please try again later")
+	}
+	nodeIDStr, err := getNodeID(clusterName)
+	if err != nil {
+		return err
+	}
+	nodeID, err := ids.NodeIDFromString(nodeIDStr)
+	//_, err = ids.NodeIDFromString(nodeIDStr)
+	if err != nil {
+		return err
+	}
+	err = validatePrimaryNetwork(nodeID, models.Fuji)
+	if err != nil {
+		return err
+	}
+	err = trackSubnet(clusterName, models.Fuji)
+	if err != nil {
+		return err
+	}
+	err = addNodeAsSubnetValidator(nodeIDStr, models.Fuji)
+	if err != nil {
+		return err
+	}
 	return nil
 }
