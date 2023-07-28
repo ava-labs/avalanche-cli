@@ -73,7 +73,6 @@ func CallAddValidator(subnetName, nodeID string, network models.Network) error {
 	}
 	nodeIDStr = nodeID
 	return addValidator(nil, []string{subnetName})
-
 }
 
 func addValidator(_ *cobra.Command, args []string) error {
