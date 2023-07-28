@@ -104,6 +104,7 @@ func createFile(fileName string) error {
 	}
 	return myfile.Close()
 }
+
 func removeFile(fileName string) error {
 	if _, err := os.Stat(fileName); err == nil {
 		err := os.Remove(fileName)
@@ -113,6 +114,7 @@ func removeFile(fileName string) error {
 	}
 	return nil
 }
+
 func parseBootstrappedOutput(fileName string) (bool, error) {
 	jsonFile, err := os.Open(fileName)
 	if err != nil {
@@ -178,6 +180,7 @@ func addNodeAsSubnetValidator(nodeID string, network models.Network) error {
 	}
 	return nil
 }
+
 func getMinStakingAmount(network models.Network) (uint64, error) {
 	var apiURL string
 	switch network {
@@ -195,6 +198,7 @@ func getMinStakingAmount(network models.Network) (uint64, error) {
 	}
 	return minValStake, nil
 }
+
 func validatePrimaryNetwork(nodeID ids.NodeID, network models.Network) error {
 	var (
 		start time.Time
@@ -259,6 +263,7 @@ func validatePrimaryNetwork(nodeID ids.NodeID, network models.Network) error {
 	}
 	return nil
 }
+
 func promptWeightPrimaryNetwork(network models.Network) (uint64, error) {
 	defaultStake := constants.DefaultFujiPrimaryNetworkWeight
 	defaultStakeStr := constants.DefaultFujiPrimaryNetworkWeightStr
@@ -284,7 +289,6 @@ func promptWeightPrimaryNetwork(network models.Network) (uint64, error) {
 
 func getTimeParametersPrimaryNetwork(network models.Network) (time.Time, time.Duration, error) {
 	const (
-		//defaultStartOption    = "Start in one minute"
 		defaultDurationOption = "Minimum staking duration on primary network"
 		custom                = "Custom"
 	)
@@ -312,6 +316,7 @@ func getTimeParametersPrimaryNetwork(network models.Network) (time.Time, time.Du
 	}
 	return start, duration, nil
 }
+
 func getDefaultMaxValidationTime(start time.Time, network models.Network) (time.Duration, error) {
 	durationStr := constants.DefaultFujiStakeDuration
 	if network == models.Mainnet {
@@ -332,6 +337,7 @@ func getDefaultMaxValidationTime(start time.Time, network models.Network) (time.
 	}
 	return d, nil
 }
+
 func checkNodeIsBootstrapped(clusterName string) (bool, error) {
 	fileName := "isBootstrapped.json"
 	err := createFile(fileName)
@@ -377,6 +383,7 @@ func getNodeID(clusterName string) (string, error) {
 	}
 	return nodeID, err
 }
+
 func joinSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	if subnetName == "" {
