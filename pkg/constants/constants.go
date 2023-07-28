@@ -76,7 +76,7 @@ const (
 	DefaultStakeWeight                 = 20
 	DefaultFujiPrimaryNetworkWeight    = 1000000000
 	DefaultMainnetPrimaryNetworkWeight = 20000000000
-	DefaultFujiStakeDuration           = "24h"
+	DefaultFujiStakeDuration           = "48h"
 	DefaultMainnetStakeDuration        = "336h"
 	// The absolute minimum is 25 seconds, but set to 1 minute to allow for
 	// time to go through the command

@@ -16,10 +16,6 @@
       shell: chmod 755 install.sh
     - name: run install script
       shell: ./install.sh -n
-#    - name: export /bin directory to $PATH
-#      shell: echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
-#    - name: source .bashrc changes
-#      shell: . ~/.bashrc
     - name: create .avalanche-cli dir
       shell: mkdir .avalanche-cli
     - name: copy metrics config to cloud server

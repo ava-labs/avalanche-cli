@@ -244,7 +244,7 @@ func validatePrimaryNetwork(nodeID ids.NodeID, network models.Network) error {
 	} else if weight < minValStake {
 		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", minValStake, weight)
 	}
-	start, duration, err = getTimeParametersPrimaryNetwork(network, nodeID)
+	start, duration, err = getTimeParametersPrimaryNetwork(network)
 	if err != nil {
 		return err
 	}
@@ -283,47 +283,13 @@ func promptWeightPrimaryNetwork(network models.Network) (uint64, error) {
 	}
 }
 
-func getTimeParametersPrimaryNetwork(network models.Network, nodeID ids.NodeID) (time.Time, time.Duration, error) {
-	var (
-		start time.Time
-		err   error
-	)
-
+func getTimeParametersPrimaryNetwork(network models.Network) (time.Time, time.Duration, error) {
 	const (
-		defaultStartOption    = "Start in one minute"
+		//defaultStartOption    = "Start in one minute"
 		defaultDurationOption = "Minimum staking duration on primary network"
 		custom                = "Custom"
 	)
-
-	if startTimeStr == "" {
-		ux.Logger.PrintToUser("When should your validator start validating?\n" +
-			"If you validator is not ready by this time, subnet downtime can occur.")
-
-		startTimeOptions := []string{defaultStartOption, custom}
-		startTimeOption, err := app.Prompt.CaptureList("Start time", startTimeOptions)
-		if err != nil {
-			return time.Time{}, 0, err
-		}
-
-		switch startTimeOption {
-		case defaultStartOption:
-			start = time.Now().Add(constants.StakingStartLeadTime)
-		default:
-			start, err = subnetcmd.PromptStart()
-			if err != nil {
-				return time.Time{}, 0, err
-			}
-		}
-	} else {
-		start, err = time.Parse(constants.TimeParseLayout, startTimeStr)
-		if err != nil {
-			return time.Time{}, 0, err
-		}
-		if start.Before(time.Now().Add(constants.StakingMinimumLeadTime)) {
-			return time.Time{}, 0, fmt.Errorf("time should be at least %s in the future ", constants.StakingMinimumLeadTime)
-		}
-	}
-
+	start := time.Now().Add(constants.StakingStartLeadTime)
 	if duration == 0 {
 		msg := "How long should your validator validate for?"
 		durationOptions := []string{defaultDurationOption, custom}
@@ -352,7 +318,7 @@ func getDefaultMaxValidationTime(start time.Time, network models.Network) (time.
 	if network == models.Mainnet {
 		durationStr = constants.DefaultMainnetStakeDuration
 	}
-	d, err := app.Prompt.CaptureDuration(durationStr)
+	d, err := time.ParseDuration(durationStr)
 	if err != nil {
 		return 0, err
 	}
@@ -434,7 +400,6 @@ func joinSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)
-	//_, err = ids.NodeIDFromString(nodeIDStr)
 	if err != nil {
 		return err
 	}
@@ -446,6 +411,9 @@ func joinSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	ux.Logger.PrintToUser("Waiting 1 min for the node to be a Primary Network Validator...")
+	time.Sleep(60 * time.Second)
+	ux.Logger.PrintToUser("Adding the node as a Subnet Validator...")
 	err = addNodeAsSubnetValidator(nodeIDStr, models.Fuji)
 	if err != nil {
 		return err
