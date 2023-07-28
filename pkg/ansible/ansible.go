@@ -8,14 +8,13 @@ import (
 	"fmt"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 )
 
 func CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath string) error {
 	if err := os.MkdirAll(inventoryPath, os.ModePerm); err != nil {
-		log.Fatal(err)
+		return err
 	}
 	inventoryHostsFile := inventoryPath + "/hosts"
 	inventoryFile, err := os.Create(inventoryHostsFile)

@@ -67,6 +67,7 @@ func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
 }
 
 func createNodeConfig(nodeID, region, ami, keyPairName, certPath, sg, eip, clusterName string) error {
+	// eip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
 	elasticIPToUse := eip[1 : len(eip)-2]
 	nodeIDToUse := nodeID[1 : len(nodeID)-2]
 
@@ -149,6 +150,10 @@ func createNode(_ *cobra.Command, args []string) error {
 		printNoCredentialsOutput()
 		return err
 	}
+	err = requestAWSAccountAuth()
+	if err != nil {
+		return err
+	}
 	err = terraform.SetCloudCredentials(rootBody, credValue.AccessKeyID, credValue.SecretAccessKey, region)
 	if err != nil {
 		return err
@@ -163,6 +168,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	}
 
 	// Create new EC2 client
+	ux.Logger.PrintToUser("Creating a new EC2 instance on AWS...")
 	ec2Svc := ec2.New(sess)
 	var useExistingKeyPair bool
 	keyPairExists, err := checkKeyPairExists(ec2Svc, keyPairName)
@@ -170,6 +176,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if !keyPairExists {
+		ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s on AWS", keyPairName))
 		terraform.SetKeyPair(rootBody, keyPairName, certName)
 	} else {
 		certFilePath, err := app.GetSshCertFilePath(certName)
@@ -177,9 +184,11 @@ func createNode(_ *cobra.Command, args []string) error {
 			return err
 		}
 		if app.CheckCertInSSHDir(certFilePath) {
+			ux.Logger.PrintToUser(fmt.Sprintf("Using existing key pair %s on AWS", keyPairName))
 			useExistingKeyPair = true
 		} else {
 			ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists", keyPairName))
+			ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair on AWS as we can't find Key Pair named %s on AWS", keyPairName))
 			keyPairName, err = getNewKeyPairName(ec2Svc)
 			if err != nil {
 				return err
@@ -197,8 +206,10 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if !securityGroupExists {
+		ux.Logger.PrintToUser(fmt.Sprintf("Creating new security group %s on AWS", securityGroupName))
 		terraform.SetSecurityGroup(rootBody, userIPAddress, securityGroupName)
 	} else {
+		ux.Logger.PrintToUser(fmt.Sprintf("Using existing security group %s on AWS", securityGroupName))
 		ipInTCP, ipInHTTP := checkCurrentIPInSg(sg, userIPAddress)
 		terraform.SetSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
 	}
@@ -210,6 +221,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	ux.Logger.PrintToUser("A new EC2 instance is successfully created on AWS!")
 	certFilePath, err := app.GetSshCertFilePath(certName)
 	if err != nil {
 		return err
@@ -228,6 +240,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	}
 	time.Sleep(5 * time.Second)
 
+	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance...")
 	if err := ansible.RunAnsibleSetUpNodePlaybook(inventoryPath); err != nil {
 		return err
 	}
@@ -236,6 +249,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	PrintResults(instanceID, elasticIP, certFilePath, region)
+	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node is bootstrapping!")
 	err = terraform.RemoveExistingTerraformFiles()
 	if err != nil {
 		return err
@@ -243,6 +257,17 @@ func createNode(_ *cobra.Command, args []string) error {
 	return nil
 }
 
+func requestAWSAccountAuth() error {
+	confirm := "Do you authorize Avalanche-CLI to access your AWS account to set-up your Avalanche Validator node?"
+	yes, err := app.Prompt.CaptureYesNo(confirm)
+	if err != nil {
+		return err
+	}
+	if !yes {
+		return errors.New("user did not give authorization to Avalanche-CLI to access AWS account")
+	}
+	return nil
+}
 func checkKeyPairExists(ec2Svc *ec2.EC2, kpName string) (bool, error) {
 	keyPairInput := &ec2.DescribeKeyPairsInput{
 		KeyNames: []*string{
@@ -333,6 +358,7 @@ func handleCerts(certName string) error {
 }
 
 func PrintResults(instanceID, elasticIP, certFilePath, region string) {
+	// eip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
 	instanceIDToUse := instanceID[1 : len(instanceID)-2]
 	elasticIPToUse := elasticIP[1 : len(elasticIP)-2]
 	ux.Logger.PrintToUser("VALIDATOR SUCCESSFULLY SET UP!")
