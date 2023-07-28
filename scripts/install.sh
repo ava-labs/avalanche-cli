@@ -386,41 +386,69 @@ sed_in_place() {
 }
 
 completions() {
-  BASH_COMPLETION_MAIN=~/.bash_completion
-  BASH_COMPLETION_SCRIPTS_DIR=~/.local/share/bash-completion/completions
-  BASH_COMPLETION_SCRIPT_PATH=$BASH_COMPLETION_SCRIPTS_DIR/avalanche.sh
-  mkdir -p $BASH_COMPLETION_SCRIPTS_DIR
-  $BINDIR/$BINARY completion bash > $BASH_COMPLETION_SCRIPT_PATH
-  touch $BASH_COMPLETION_MAIN
-  sed_in_place "/.*# avalanche completion/d" $BASH_COMPLETION_MAIN
-  echo "source $BASH_COMPLETION_SCRIPT_PATH # avalanche completion" >> $BASH_COMPLETION_MAIN
-  if [ $(uname) = Darwin ]
+  HAS_BASH=false
+  which bash > /dev/null 2>&1 && HAS_BASH=true
+  if [ $HAS_BASH = true ]
   then
-      BREW_INSTALLED=false
-      which brew >/dev/null 2>&1 && BREW_INSTALLED=true
-      if [ $BREW_INSTALLED = true ]
+    BASH_COMPLETION_MAIN=~/.bash_completion
+    BASH_COMPLETION_SCRIPTS_DIR=~/.local/share/bash-completion/completions
+    BASH_COMPLETION_SCRIPT_PATH=$BASH_COMPLETION_SCRIPTS_DIR/avalanche.sh
+    mkdir -p $BASH_COMPLETION_SCRIPTS_DIR
+    COBRA_COMPLETION_SUCCEDED=false
+    $BINDIR/$BINARY completion bash > $BASH_COMPLETION_SCRIPT_PATH 2> /dev/null && COBRA_COMPLETION_SUCCEDED=true
+    if [ $COBRA_COMPLETION_SUCCEDED = true ]
+    then
+      touch $BASH_COMPLETION_MAIN
+      sed_in_place "/.*# avalanche completion/d" $BASH_COMPLETION_MAIN
+      echo "source $BASH_COMPLETION_SCRIPT_PATH # avalanche completion" >> $BASH_COMPLETION_MAIN
+      if [ $(uname) = Darwin ]
       then
-          BASHRC=~/.bashrc
-          touch $BASHRC
-          sed_in_place "/.*# avalanche completion/d" $BASHRC
-          echo "source $(brew --prefix)/etc/bash_completion # avalanche completion" >> $BASHRC
-      else 
-          echo "warning: brew not found on macos. bash avalanche command completion not installed"
+        HAS_BREW=false
+        which brew >/dev/null 2>&1 && HAS_BREW=true
+        if [ $HAS_BREW = true ]
+        then
+          HAS_BASH_COMPLETIONS=false
+          brew list bash-completion >/dev/null 2>&1 && HAS_BASH_COMPLETIONS=true
+          if [ $HAS_BASH_COMPLETIONS = true ]
+          then
+            BASHRC=~/.bashrc
+            touch $BASHRC
+            sed_in_place "/.*# avalanche completion/d" $BASHRC
+            echo "source $(brew --prefix)/etc/bash_completion # avalanche completion" >> $BASHRC
+          else
+            echo "warning: brew bash-completion package not found. avalanche command completion for bash not installed"
+          fi
+        else
+          echo "warning: brew not found. avalanche command completion for bash not installed"
+        fi
       fi
+    else
+      echo "warning: auto completion generation command failed. avalanche command completion for bash not installed"
+    fi
   fi
 
-  ZSH_COMPLETION_MAIN=~/.zshrc
-  ZSH_COMPLETION_SCRIPTS_DIR=~/.local/share/zsh-completion/completions
-  ZSH_COMPLETION_SCRIPT_PATH=$ZSH_COMPLETION_SCRIPTS_DIR/_avalanche
-  mkdir -p $ZSH_COMPLETION_SCRIPTS_DIR
-  $BINDIR/$BINARY completion zsh > $ZSH_COMPLETION_SCRIPT_PATH
-  touch $ZSH_COMPLETION_MAIN
-  sed_in_place "/.*# avalanche completion/d" $ZSH_COMPLETION_MAIN
-  echo "fpath=($ZSH_COMPLETION_SCRIPTS_DIR \$fpath) # avalanche completion" >> $ZSH_COMPLETION_MAIN
-  echo "rm -f ~/.zcompdump; compinit # avalanche completion" >> $ZSH_COMPLETION_MAIN
+  HAS_ZSH=false
+  which zsh > /dev/null 2>&1 && HAS_ZSH=true
+  if [ $HAS_ZSH = true ]
+  then
+    ZSH_COMPLETION_MAIN=~/.zshrc
+    ZSH_COMPLETION_SCRIPTS_DIR=~/.local/share/zsh-completion/completions
+    ZSH_COMPLETION_SCRIPT_PATH=$ZSH_COMPLETION_SCRIPTS_DIR/_avalanche
+    mkdir -p $ZSH_COMPLETION_SCRIPTS_DIR
+    COBRA_COMPLETION_SUCCEDED=false
+    $BINDIR/$BINARY completion zsh > $BASH_COMPLETION_SCRIPT_PATH 2> /dev/null && COBRA_COMPLETION_SUCCEDED=true
+    if [ $COBRA_COMPLETION_SUCCEDED = true ]
+    then
+      touch $ZSH_COMPLETION_MAIN
+      sed_in_place "/.*# avalanche completion/d" $ZSH_COMPLETION_MAIN
+      echo "fpath=($ZSH_COMPLETION_SCRIPTS_DIR \$fpath) # avalanche completion" >> $ZSH_COMPLETION_MAIN
+      echo "rm -f ~/.zcompdump; compinit # avalanche completion" >> $ZSH_COMPLETION_MAIN
+    else
+      echo "warning: auto completion generation command failed. avalanche command completion for zsh not installed"
+    fi
+  fi
 }
 
 if [ "$RUN_COMPLETIONS" = true ]; then
   completions
 fi
-
