@@ -280,7 +280,6 @@ func promptWeightPrimaryNetwork(network models.Network) (uint64, error) {
 	default:
 		return app.Prompt.CaptureWeight(txt)
 	}
-
 }
 
 func getTimeParametersPrimaryNetwork(network models.Network) (time.Time, time.Duration, error) {
