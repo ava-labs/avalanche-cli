@@ -102,9 +102,7 @@ func createFile(fileName string) error {
 	if err != nil {
 		return err
 	}
-	myfile.Close()
-
-	return nil
+	return myfile.Close()
 }
 func removeFile(fileName string) error {
 	if _, err := os.Stat(fileName); err == nil {
@@ -263,13 +261,14 @@ func validatePrimaryNetwork(nodeID ids.NodeID, network models.Network) error {
 }
 func promptWeightPrimaryNetwork(network models.Network) (uint64, error) {
 	defaultStake := constants.DefaultFujiPrimaryNetworkWeight
+	defaultStakeStr := constants.DefaultFujiPrimaryNetworkWeightStr
 	if network == models.Mainnet {
 		defaultStake = constants.DefaultMainnetPrimaryNetworkWeight
+		defaultStakeStr = constants.DefaultMainnetPrimaryNetworkWeightStr
 	}
-	defaultWeight := fmt.Sprintf("Default (%d)", defaultStake)
+	defaultWeight := fmt.Sprintf("Default (%d)", defaultStakeStr)
 	txt := "What stake weight would you like to assign to the validator?"
 	weightOptions := []string{defaultWeight, "Custom"}
-
 	weightOption, err := app.Prompt.CaptureList(txt, weightOptions)
 	if err != nil {
 		return 0, err

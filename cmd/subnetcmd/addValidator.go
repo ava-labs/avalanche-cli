@@ -72,12 +72,6 @@ func CallAddValidator(subnetName, nodeID string, network models.Network) error {
 		deployTestnet = true
 	}
 	nodeIDStr = nodeID
-	//var err error
-	////adding additional 10 seconds to 1 minute start lead time for Fuji to prevent staking period is too short error
-	//duration, err = time.ParseDuration("70s")
-	//if err != nil {
-	//	return err
-	//}
 	return addValidator(nil, []string{subnetName})
 }
 func addValidator(_ *cobra.Command, args []string) error {
