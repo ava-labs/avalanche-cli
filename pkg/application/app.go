@@ -563,3 +563,17 @@ func (app *Avalanche) UpdateClusterConfig(clusterConfig *models.ClusterConfig) e
 
 	return os.WriteFile(clusterConfigPath, clusterConfigBytes, WriteReadReadPerms)
 }
+
+func (app *Avalanche) GetSshCertFilePath(certName string) (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	certFilePath := homeDir + "/.ssh/" + certName
+	return certFilePath, nil
+}
+
+func (app *Avalanche) CheckCertInSSHDir(certFilePath string) bool {
+	_, err := os.Stat(certFilePath)
+	return err == nil
+}

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -15,33 +14,32 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 
+	ansible "github.com/ava-labs/avalanche-cli/pkg/ansible"
 	terraform "github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/spf13/cobra"
 )
 
 func newCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create [subnetName]",
-		Short: "Create a new subnet configuration",
-		Long: `The subnet create command builds a new genesis file to configure your Subnet.
-By default, the command runs an interactive wizard. It walks you through
-all the steps you need to create your first Subnet.
-
-The tool supports deploying Subnet-EVM, and custom VMs. You
-can create a custom, user-generated genesis with a custom VM by providing
-the path to your genesis and VM binaries with the --genesis and --vm flags.
-
-By default, running the command with a subnetName that already exists
-causes the command to fail. If you’d like to overwrite an existing
-configuration, pass the -f flag.`,
+		Short: "Create a new validator on cloud server",
+		Long: `The node create command sets up a validator on a cloud server of your choice. 
+The validator will be validating the Avalanche Primary Network and Subnet 
+of your choice. By default, the command runs an interactive wizard. It 
+walks you through all the steps you need to set up a validator.
+Once this command is completed, you will have to wait for the validator
+to finish bootstrapping on the primary network before running further
+commands on it, e.g. validating a Subnet. You can check the bootstrapping
+status by running avalanche node status`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
 		RunE:         createNode,
@@ -66,15 +64,6 @@ func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
 		}
 		ux.Logger.PrintToUser(fmt.Sprintf("Key Pair named %s already exists", newKeyPairName))
 	}
-}
-
-func getCertFilePath(certName string) (string, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	certFilePath := homeDir + "/.ssh/" + certName
-	return certFilePath, nil
 }
 
 func createNodeConfig(nodeID, region, ami, keyPairName, certPath, sg, eip, clusterName string) error {
@@ -144,19 +133,17 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	keyPairName := usr.Username + "-avalanche-cli"
-	certName := keyPairName + "-kp.pem"
-	securityGroupName := keyPairName + "-sg"
+	keyPairName := usr.Username + constants.AvalancheCLISuffix
+	certName := keyPairName + constants.CertSuffix
+	securityGroupName := keyPairName + constants.AWSSecurityGroupSuffix
 	region := "us-east-2"
 	ami := "ami-0430580de6244e02e"
 
-	hclFile := hclwrite.NewEmptyFile()
-	tfFile, err := os.Create("node_config.tf")
+	hclFile, tfFile, rootBody, err := terraform.CreateTerraformFile()
 	if err != nil {
 		return err
 	}
-	rootBody := hclFile.Body()
-	creds := credentials.NewSharedCredentials("", "default")
+	creds := credentials.NewSharedCredentials("", constants.AWSDefaultCredential)
 	credValue, err := creds.Get()
 	if err != nil {
 		printNoCredentialsOutput()
@@ -185,11 +172,11 @@ func createNode(_ *cobra.Command, args []string) error {
 	if !keyPairExists {
 		terraform.SetKeyPair(rootBody, keyPairName, certName)
 	} else {
-		certFilePath, err := getCertFilePath(certName)
+		certFilePath, err := app.GetSshCertFilePath(certName)
 		if err != nil {
 			return err
 		}
-		if checkCertInSSHDir(certFilePath) {
+		if app.CheckCertInSSHDir(certFilePath) {
 			useExistingKeyPair = true
 		} else {
 			ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists", keyPairName))
@@ -218,15 +205,12 @@ func createNode(_ *cobra.Command, args []string) error {
 	terraform.SetElasticIP(rootBody)
 	terraform.SetUpInstance(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami)
 	terraform.SetOutput(rootBody)
-	_, err = tfFile.Write(hclFile.Bytes())
-	if err != nil {
-		return err
-	}
+	err = terraform.SaveTerraformFile(tfFile, hclFile)
 	instanceID, elasticIP, err := terraform.RunTerraform()
 	if err != nil {
 		return err
 	}
-	certFilePath, err := getCertFilePath(certName)
+	certFilePath, err := app.GetSshCertFilePath(certName)
 	if err != nil {
 		return err
 	}
@@ -238,13 +222,13 @@ func createNode(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	inventoryPath := "inventories/" + clusterName
-	if err := createAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
+	inventoryPath := constants.AnsibleInventoryPath + clusterName
+	if err := ansible.CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
 		return err
 	}
 	time.Sleep(5 * time.Second)
 
-	if err := runAnsiblePlaybook(inventoryPath); err != nil {
+	if err := ansible.RunAnsibleSetUpNodePlaybook(inventoryPath); err != nil {
 		return err
 	}
 	err = createNodeConfig(instanceID, region, ami, keyPairName, certFilePath, securityGroupName, elasticIP, clusterName)
@@ -294,21 +278,16 @@ func checkSecurityGroupExists(ec2Svc *ec2.EC2, sgName string) (bool, *ec2.Securi
 	return true, sg.SecurityGroups[0], nil
 }
 
-func checkCertInSSHDir(certFilePath string) bool {
-	_, err := os.Stat(certFilePath)
-	return err == nil
-}
-
 func checkCurrentIPInSg(sg *ec2.SecurityGroup, currentIP string) (bool, bool) {
 	var ipInTCP bool
 	var ipInHTTP bool
 	for _, ip := range sg.IpPermissions {
-		if *ip.FromPort == 22 || *ip.FromPort == 9650 {
+		if *ip.FromPort == constants.TCPPort || *ip.FromPort == constants.HTTPPort {
 			for _, cidrIP := range ip.IpRanges {
 				if strings.Contains(cidrIP.String(), currentIP) {
-					if *ip.FromPort == 22 {
+					if *ip.FromPort == constants.TCPPort {
 						ipInTCP = true
-					} else if *ip.FromPort == 9650 {
+					} else if *ip.FromPort == constants.HTTPPort {
 						ipInHTTP = true
 					}
 					break
@@ -331,29 +310,6 @@ func getIPAddress() (string, error) {
 	return ipAddress, nil
 }
 
-func createAnsibleHostInventory(inventoryPath, elasticIP, certFilePath string) error {
-	if err := os.MkdirAll(inventoryPath, os.ModePerm); err != nil {
-		log.Fatal(err)
-	}
-	inventoryHostsFile := inventoryPath + "/hosts"
-	inventoryFile, err := os.Create(inventoryHostsFile)
-	if err != nil {
-		return err
-	}
-	alias := "aws-node "
-	elasticIPToUse := elasticIP[1 : len(elasticIP)-2]
-	alias += "ansible_host="
-	alias += elasticIPToUse
-	alias += " ansible_user=ubuntu "
-	alias += fmt.Sprintf("ansible_ssh_private_key_file=%s", certFilePath)
-	alias += " ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
-	_, err = inventoryFile.WriteString(alias + "\n")
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func handleCerts(certName string) error {
 	err := os.Chmod(certName, 0o400)
 	if err != nil {
@@ -370,15 +326,6 @@ func handleCerts(certName string) error {
 	}
 	var stdBuffer bytes.Buffer
 	cmd := exec.Command("ssh-add", certFilePath)
-	mw := io.MultiWriter(os.Stdout, &stdBuffer)
-	cmd.Stdout = mw
-	cmd.Stderr = mw
-	return cmd.Run()
-}
-
-func runAnsiblePlaybook(inventoryPath string) error {
-	var stdBuffer bytes.Buffer
-	cmd := exec.Command("ansible-playbook", "main.yml", "-i", inventoryPath, "--ssh-extra-args='-o IdentitiesOnly=yes'")
 	mw := io.MultiWriter(os.Stdout, &stdBuffer)
 	cmd.Stdout = mw
 	cmd.Stderr = mw

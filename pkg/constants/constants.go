@@ -75,11 +75,27 @@ const (
 	DefaultStakeWeight = 20
 	// The absolute minimum is 25 seconds, but set to 1 minute to allow for
 	// time to go through the command
-	StakingStartLeadTime   = 1 * time.Minute
-	StakingMinimumLeadTime = 25 * time.Second
-
-	DefaultConfigFileName = ".avalanche-cli"
-	DefaultConfigFileType = "json"
+	StakingStartLeadTime               = 1 * time.Minute
+	StakingMinimumLeadTime             = 25 * time.Second
+	NodeConfigFile                     = "node_config.tf"
+	TerraformLockFile                  = ".terraform.lock.hcl"
+	TerraformStateFile                 = "terraform.tfstate"
+	TerraformStateBackupFile           = "terraform.tfstate.backup"
+	AvalancheCLISuffix                 = "-avalanche-cli"
+	AWSDefaultCredential               = "default"
+	CertSuffix                         = "-kp.pem"
+	AWSSecurityGroupSuffix             = "-sg"
+	TCPPort                            = 22
+	HTTPPort                           = 9650
+	StakingPort                        = 9651
+	OutboundPort                       = 0
+	AnsiblePlaybook                    = "ansible-playbook"
+	SetUpNodePlaybook                  = "playbook/setupNode.yml"
+	AnsibleInventoryPath               = "inventories/"
+	AnsibleInventoryFlag               = "-i"
+	AnsibleExtraArgsIdentitiesOnlyFlag = "--ssh-extra-args='-o IdentitiesOnly=yes'"
+	DefaultConfigFileName              = ".avalanche-cli"
+	DefaultConfigFileType              = "json"
 
 	CustomVMDir = "vms"
 

@@ -5,6 +5,7 @@ package terraform
 
 import (
 	"bytes"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"io"
 	"os"
 	"os/exec"
@@ -15,6 +16,22 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+func CreateTerraformFile() (*hclwrite.File, *os.File, *hclwrite.Body, error) {
+	hclFile := hclwrite.NewEmptyFile()
+	tfFile, err := os.Create("node_config.tf")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	rootBody := hclFile.Body()
+	return hclFile, tfFile, rootBody, nil
+}
+func SaveTerraformFile(tfFile *os.File, hclFile *hclwrite.File) error {
+	_, err := tfFile.Write(hclFile.Bytes())
+	if err != nil {
+		return err
+	}
+	return nil
+}
 func SetCloudCredentials(rootBody *hclwrite.Body, accessKey, secretKey, region string) error {
 	provider := rootBody.AppendNewBlock("provider", []string{"aws"})
 	providerBody := provider.Body()
@@ -34,8 +51,8 @@ func SetSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName stri
 	inboundGroup := securityGroupBody.AppendNewBlock("ingress", []string{})
 	inboundGroupBody := inboundGroup.Body()
 	inboundGroupBody.SetAttributeValue("description", cty.StringVal("TCP"))
-	inboundGroupBody.SetAttributeValue("from_port", cty.NumberIntVal(22))
-	inboundGroupBody.SetAttributeValue("to_port", cty.NumberIntVal(22))
+	inboundGroupBody.SetAttributeValue("from_port", cty.NumberIntVal(constants.TCPPort))
+	inboundGroupBody.SetAttributeValue("to_port", cty.NumberIntVal(constants.TCPPort))
 	inboundGroupBody.SetAttributeValue("protocol", cty.StringVal("tcp"))
 	var ipList []cty.Value
 	ipList = append(ipList, cty.StringVal(inputIPAddress))
@@ -44,8 +61,8 @@ func SetSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName stri
 	inboundGroup = securityGroupBody.AppendNewBlock("ingress", []string{})
 	inboundGroupBody = inboundGroup.Body()
 	inboundGroupBody.SetAttributeValue("description", cty.StringVal("AVAX HTTP"))
-	inboundGroupBody.SetAttributeValue("from_port", cty.NumberIntVal(9650))
-	inboundGroupBody.SetAttributeValue("to_port", cty.NumberIntVal(9650))
+	inboundGroupBody.SetAttributeValue("from_port", cty.NumberIntVal(constants.HTTPPort))
+	inboundGroupBody.SetAttributeValue("to_port", cty.NumberIntVal(constants.HTTPPort))
 	inboundGroupBody.SetAttributeValue("protocol", cty.StringVal("tcp"))
 	ipList = []cty.Value{}
 	ipList = append(ipList, cty.StringVal("0.0.0.0/0"))
@@ -54,8 +71,8 @@ func SetSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName stri
 	inboundGroup = securityGroupBody.AppendNewBlock("ingress", []string{})
 	inboundGroupBody = inboundGroup.Body()
 	inboundGroupBody.SetAttributeValue("description", cty.StringVal("AVAX HTTP"))
-	inboundGroupBody.SetAttributeValue("from_port", cty.NumberIntVal(9650))
-	inboundGroupBody.SetAttributeValue("to_port", cty.NumberIntVal(9650))
+	inboundGroupBody.SetAttributeValue("from_port", cty.NumberIntVal(constants.HTTPPort))
+	inboundGroupBody.SetAttributeValue("to_port", cty.NumberIntVal(constants.HTTPPort))
 	inboundGroupBody.SetAttributeValue("protocol", cty.StringVal("tcp"))
 	ipList = []cty.Value{}
 	ipList = append(ipList, cty.StringVal(inputIPAddress))
@@ -64,8 +81,8 @@ func SetSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName stri
 	inboundGroup = securityGroupBody.AppendNewBlock("ingress", []string{})
 	inboundGroupBody = inboundGroup.Body()
 	inboundGroupBody.SetAttributeValue("description", cty.StringVal("AVAX Staking"))
-	inboundGroupBody.SetAttributeValue("from_port", cty.NumberIntVal(9651))
-	inboundGroupBody.SetAttributeValue("to_port", cty.NumberIntVal(9651))
+	inboundGroupBody.SetAttributeValue("from_port", cty.NumberIntVal(constants.StakingPort))
+	inboundGroupBody.SetAttributeValue("to_port", cty.NumberIntVal(constants.StakingPort))
 	inboundGroupBody.SetAttributeValue("protocol", cty.StringVal("tcp"))
 	ipList = []cty.Value{}
 	ipList = append(ipList, cty.StringVal("0.0.0.0/0"))
@@ -74,8 +91,8 @@ func SetSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName stri
 	inboundGroup = securityGroupBody.AppendNewBlock("egress", []string{})
 	inboundGroupBody = inboundGroup.Body()
 	inboundGroupBody.SetAttributeValue("description", cty.StringVal("Outbound traffic"))
-	inboundGroupBody.SetAttributeValue("from_port", cty.NumberIntVal(0))
-	inboundGroupBody.SetAttributeValue("to_port", cty.NumberIntVal(0))
+	inboundGroupBody.SetAttributeValue("from_port", cty.NumberIntVal(constants.OutboundPort))
+	inboundGroupBody.SetAttributeValue("to_port", cty.NumberIntVal(constants.OutboundPort))
 	inboundGroupBody.SetAttributeValue("protocol", cty.StringVal("-1"))
 	ipList = []cty.Value{}
 	ipList = append(ipList, cty.StringVal("0.0.0.0/0"))
@@ -89,8 +106,8 @@ func SetSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, ipInT
 		securityGroupRule := rootBody.AppendNewBlock("resource", []string{"aws_security_group_rule", sgRuleName})
 		securityGroupRuleBody := securityGroupRule.Body()
 		securityGroupRuleBody.SetAttributeValue("type", cty.StringVal("ingress"))
-		securityGroupRuleBody.SetAttributeValue("from_port", cty.NumberIntVal(22))
-		securityGroupRuleBody.SetAttributeValue("to_port", cty.NumberIntVal(22))
+		securityGroupRuleBody.SetAttributeValue("from_port", cty.NumberIntVal(constants.TCPPort))
+		securityGroupRuleBody.SetAttributeValue("to_port", cty.NumberIntVal(constants.TCPPort))
 		securityGroupRuleBody.SetAttributeValue("protocol", cty.StringVal("tcp"))
 		var ipList []cty.Value
 		ipList = append(ipList, cty.StringVal(inputIPAddress))
@@ -102,8 +119,8 @@ func SetSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, ipInT
 		securityGroupRule := rootBody.AppendNewBlock("resource", []string{"aws_security_group_rule", sgRuleName})
 		securityGroupRuleBody := securityGroupRule.Body()
 		securityGroupRuleBody.SetAttributeValue("type", cty.StringVal("ingress"))
-		securityGroupRuleBody.SetAttributeValue("from_port", cty.NumberIntVal(9650))
-		securityGroupRuleBody.SetAttributeValue("to_port", cty.NumberIntVal(9650))
+		securityGroupRuleBody.SetAttributeValue("from_port", cty.NumberIntVal(constants.HTTPPort))
+		securityGroupRuleBody.SetAttributeValue("to_port", cty.NumberIntVal(constants.HTTPPort))
 		securityGroupRuleBody.SetAttributeValue("protocol", cty.StringVal("tcp"))
 		var ipList []cty.Value
 		ipList = append(ipList, cty.StringVal(inputIPAddress))
@@ -237,30 +254,26 @@ func SetOutput(rootBody *hclwrite.Body) {
 }
 
 func RemoveExistingTerraformFiles() error {
-	nodeConfigFile := "node_config.tf"
-	terraformLockFile := ".terraform.lock.hcl"
-	terraformStateFile := "terraform.tfstate"
-	terraformStateBackupFile := "terraform.tfstate.backup"
-	if _, err := os.Stat(nodeConfigFile); err == nil {
-		err := os.Remove(nodeConfigFile)
+	if _, err := os.Stat(constants.NodeConfigFile); err == nil {
+		err := os.Remove(constants.NodeConfigFile)
 		if err != nil {
 			return err
 		}
 	}
-	if _, err := os.Stat(terraformLockFile); err == nil {
-		err := os.Remove(terraformLockFile)
+	if _, err := os.Stat(constants.TerraformLockFile); err == nil {
+		err := os.Remove(constants.TerraformLockFile)
 		if err != nil {
 			return err
 		}
 	}
-	if _, err := os.Stat(terraformStateFile); err == nil {
-		err := os.Remove(terraformStateFile)
+	if _, err := os.Stat(constants.TerraformStateFile); err == nil {
+		err := os.Remove(constants.TerraformStateFile)
 		if err != nil {
 			return err
 		}
 	}
-	if _, err := os.Stat(terraformStateBackupFile); err == nil {
-		err := os.Remove(terraformStateBackupFile)
+	if _, err := os.Stat(constants.TerraformStateBackupFile); err == nil {
+		err := os.Remove(constants.TerraformStateBackupFile)
 		if err != nil {
 			return err
 		}
