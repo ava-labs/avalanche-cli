@@ -34,7 +34,6 @@ var (
 	ledgerAddresses []string
 	weight          uint64
 	duration        time.Duration
-	startTimeStr    string
 
 	ErrMutuallyExlusiveKeyLedger = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet        = errors.New("--key is not available for mainnet operations")
@@ -124,7 +123,10 @@ func parseBootstrappedOutput(fileName string) (bool, error) {
 	byteValue, _ := io.ReadAll(jsonFile)
 
 	var result map[string]interface{}
-	json.Unmarshal(byteValue, &result)
+	err = json.Unmarshal(byteValue, &result)
+	if err != nil {
+		return false, err
+	}
 	isBootstrappedInterface, ok := result["result"].(map[string]interface{})
 	if ok {
 		isBootstrapped, ok := isBootstrappedInterface["isBootstrapped"].(bool)
@@ -144,7 +146,10 @@ func parseNodeIDOutput(fileName string) (string, error) {
 	byteValue, _ := io.ReadAll(jsonFile)
 
 	var result map[string]interface{}
-	json.Unmarshal(byteValue, &result)
+	err = json.Unmarshal(byteValue, &result)
+	if err != nil {
+		return "", err
+	}
 	nodeIDInterface, ok := result["result"].(map[string]interface{})
 	if ok {
 		nodeID, ok := nodeIDInterface["nodeID"].(string)
@@ -271,7 +276,7 @@ func promptWeightPrimaryNetwork(network models.Network) (uint64, error) {
 		defaultStake = constants.DefaultMainnetPrimaryNetworkWeight
 		defaultStakeStr = constants.DefaultMainnetPrimaryNetworkWeightStr
 	}
-	defaultWeight := fmt.Sprintf("Default (%d)", defaultStakeStr)
+	defaultWeight := fmt.Sprintf("Default (%s)", defaultStakeStr)
 	txt := "What stake weight would you like to assign to the validator?"
 	weightOptions := []string{defaultWeight, "Custom"}
 	weightOption, err := app.Prompt.CaptureList(txt, weightOptions)
