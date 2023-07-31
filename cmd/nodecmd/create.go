@@ -133,12 +133,11 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	keyPairName := usr.Username + constants.AvalancheCLISuffix
-	certName := keyPairName + constants.CertSuffix
-	securityGroupName := keyPairName + constants.AWSSecurityGroupSuffix
 	region := "us-east-2"
 	ami := "ami-0430580de6244e02e"
-
+	keyPairName := usr.Username + "-" + region + constants.AvalancheCLISuffix
+	certName := keyPairName + "-" + region + constants.CertSuffix
+	securityGroupName := keyPairName + "-" + region + constants.AWSSecurityGroupSuffix
 	hclFile, tfFile, rootBody, err := terraform.CreateTerraformFile()
 	if err != nil {
 		return err
@@ -170,19 +169,21 @@ func createNode(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Creating a new EC2 instance on AWS...")
 	ec2Svc := ec2.New(sess)
 	var useExistingKeyPair bool
+	certFilePath, err := app.GetSSHCertFilePath(certName)
+	if err != nil {
+		return err
+	}
 	keyPairExists, err := checkKeyPairExists(ec2Svc, keyPairName)
 	if err != nil {
 		return err
 	}
-	if !keyPairExists {
+	if !keyPairExists && !app.CheckCertInSSHDir(certFilePath) {
 		ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s on AWS", keyPairName))
 		terraform.SetKeyPair(rootBody, keyPairName, certName)
 	} else {
-		certFilePath, err := app.GetSSHCertFilePath(certName)
-		if err != nil {
-			return err
-		}
-		if app.CheckCertInSSHDir(certFilePath) {
+		if !keyPairExists && app.CheckCertInSSHDir(certFilePath) {
+			//need to create new key pair
+		} else if app.CheckCertInSSHDir(certFilePath) {
 			ux.Logger.PrintToUser(fmt.Sprintf("Using existing key pair %s on AWS", keyPairName))
 			useExistingKeyPair = true
 		} else {
@@ -224,7 +225,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("A new EC2 instance is successfully created on AWS!")
-	certFilePath, err := app.GetSSHCertFilePath(certName)
+	certFilePath, err = app.GetSSHCertFilePath(certName)
 	if err != nil {
 		return err
 	}
