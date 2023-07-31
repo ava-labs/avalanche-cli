@@ -178,7 +178,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s on AWS", keyPairName))
 		terraform.SetKeyPair(rootBody, keyPairName, certName)
 	} else {
-		certFilePath, err := app.GetSshCertFilePath(certName)
+		certFilePath, err := app.GetSSHCertFilePath(certName)
 		if err != nil {
 			return err
 		}
@@ -224,7 +224,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("A new EC2 instance is successfully created on AWS!")
-	certFilePath, err := app.GetSshCertFilePath(certName)
+	certFilePath, err := app.GetSSHCertFilePath(certName)
 	if err != nil {
 		return err
 	}
@@ -343,7 +343,7 @@ func addCertToSSH(certName string) error {
 	if err != nil {
 		return err
 	}
-	certFilePath, err := app.GetSshCertFilePath(certName)
+	certFilePath, err := app.GetSSHCertFilePath(certName)
 	if err != nil {
 		return err
 	}
