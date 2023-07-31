@@ -18,8 +18,8 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 
-	ansible "github.com/ava-labs/avalanche-cli/pkg/ansible"
-	terraform "github.com/ava-labs/avalanche-cli/pkg/terraform"
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"

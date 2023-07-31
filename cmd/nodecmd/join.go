@@ -74,14 +74,13 @@ func removeFile(fileName string) error {
 	return nil
 }
 
-func parseBootstrappedOutput(fileName string) (bool, error) {
-	jsonFile, err := os.Open(fileName)
+func parseBootstrappedOutput(filePath string) (bool, error) {
+	jsonFile, err := os.Open(filePath)
 	if err != nil {
 		return false, err
 	}
 	defer jsonFile.Close()
 	byteValue, _ := io.ReadAll(jsonFile)
-
 	var result map[string]interface{}
 	err = json.Unmarshal(byteValue, &result)
 	if err != nil {
@@ -304,8 +303,7 @@ func getDefaultMaxValidationTime(start time.Time, network models.Network) (time.
 }
 
 func checkNodeIsBootstrapped(clusterName string) (bool, error) {
-	fileName := "isBootstrapped.json"
-	err := createFile(fileName)
+	err := createFile(constants.IsBootstrappedJSONFile)
 	if err != nil {
 		return false, err
 	}
@@ -313,11 +311,11 @@ func checkNodeIsBootstrapped(clusterName string) (bool, error) {
 	if err := ansible.RunAnsiblePlaybookCheckBootstrapped(inventoryPath); err != nil {
 		return false, err
 	}
-	isBootstrapped, err := parseBootstrappedOutput(fileName)
+	isBootstrapped, err := parseBootstrappedOutput(app.GetBootstrappedJSONFile())
 	if err != nil {
 		return false, err
 	}
-	err = removeFile(fileName)
+	err = removeFile(app.GetBootstrappedJSONFile())
 	if err != nil {
 		return false, err
 	}
@@ -329,8 +327,7 @@ func checkNodeIsBootstrapped(clusterName string) (bool, error) {
 }
 
 func getNodeID(clusterName string) (string, error) {
-	fileName := "nodeID.json"
-	err := createFile(fileName)
+	err := createFile(constants.NodeIDJSONFile)
 	if err != nil {
 		return "", err
 	}
@@ -338,11 +335,11 @@ func getNodeID(clusterName string) (string, error) {
 	if err := ansible.RunAnsiblePlaybookGetNodeID(inventoryPath); err != nil {
 		return "", err
 	}
-	nodeID, err := parseNodeIDOutput(fileName)
+	nodeID, err := parseNodeIDOutput(app.GetNodeIDJSONFile())
 	if err != nil {
 		return "", err
 	}
-	err = removeFile(fileName)
+	err = removeFile(app.GetNodeIDJSONFile())
 	if err != nil {
 		return "", err
 	}
@@ -371,6 +368,7 @@ func joinSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)
+	//_, err = ids.NodeIDFromString(nodeIDStr)
 	if err != nil {
 		return err
 	}
@@ -378,10 +376,10 @@ func joinSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = trackSubnet(clusterName, models.Fuji)
-	if err != nil {
-		return err
-	}
+	//err = trackSubnet(clusterName, models.Fuji)
+	//if err != nil {
+	//	return err
+	//}
 	ux.Logger.PrintToUser("Waiting 1 min for the node to be a Primary Network Validator...")
 	time.Sleep(60 * time.Second)
 	ux.Logger.PrintToUser("Adding the node as a Subnet Validator...")

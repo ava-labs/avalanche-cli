@@ -577,3 +577,11 @@ func (*Avalanche) CheckCertInSSHDir(certFilePath string) bool {
 func (*Avalanche) GetAnsibleInventoryPath(clusterName string) string {
 	return constants.AnsibleInventoryPath + clusterName
 }
+
+func (*Avalanche) GetBootstrappedJSONFile() string {
+	return constants.AnsiblePlaybookPath + constants.IsBootstrappedJSONFile
+}
+
+func (*Avalanche) GetNodeIDJSONFile() string {
+	return constants.AnsiblePlaybookPath + constants.NodeIDJSONFile
+}
