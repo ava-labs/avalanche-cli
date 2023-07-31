@@ -560,7 +560,7 @@ func (app *Avalanche) UpdateClusterConfigFile(clusterConfig *models.ClusterConfi
 	return os.WriteFile(clusterConfigPath, clusterConfigBytes, constants.WriteReadReadPerms)
 }
 
-func (_ *Avalanche) GetSSHCertFilePath(certName string) (string, error) {
+func (*Avalanche) GetSSHCertFilePath(certName string) (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
