@@ -257,11 +257,13 @@ func SetOutput(rootBody *hclwrite.Body) {
 }
 
 func removeFile(fileName string) error {
-	_, err := os.Stat(fileName)
-	if err != nil {
-		return err
+	if _, err := os.Stat(fileName); err == nil {
+		err := os.Remove(fileName)
+		if err != nil {
+			return err
+		}
 	}
-	return os.Remove(fileName)
+	return nil
 }
 
 func RemoveExistingTerraformFiles() error {
