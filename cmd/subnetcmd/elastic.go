@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	utilspkg "github.com/ava-labs/avalanche-cli/pkg/utils"
+
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -60,9 +62,10 @@ P-Chain. When enabling Elastic Validation, the creator permanently locks the Sub
 (they relinquish their control keys), specifies an Avalanche Native Token (ANT) that validators must use for staking 
 and that will be distributed as staking rewards, and provides a set of parameters that govern how the Subnet’s staking 
 mechanics will work.`,
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
-		RunE:         transformElasticSubnet,
+		SilenceUsage:      true,
+		Args:              cobra.ExactArgs(1),
+		RunE:              transformElasticSubnet,
+		PersistentPostRun: handlePostRun,
 	}
 	cmd.Flags().BoolVarP(&transformLocal, "local", "l", false, "transform a subnet on a local network")
 	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "remove from `fuji` deployment (alias for `testnet`)")
@@ -287,7 +290,7 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 
 	switch network {
 	case models.Local:
-		return transformElasticSubnetLocal(sc, subnetName, tokenName, tokenSymbol, elasticSubnetConfig)
+		return transformElasticSubnetLocal(sc, subnetName, tokenName, tokenSymbol, elasticSubnetConfig, cmd)
 	case models.Fuji:
 		if !useLedger && keyName == "" {
 			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "pay transaction fees", app.GetKeyDir())
@@ -382,6 +385,14 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	flags := make(map[string]string)
+	flags[constants.Network] = network.String()
+	if !isFullySigned {
+		flags[constants.MultiSig] = "multi-sig"
+	} else {
+		flags[constants.MultiSig] = "non-multi-sig"
+	}
+	utilspkg.HandleTracking(cmd, app, flags)
 	if !isFullySigned {
 		if err := SaveNotFullySignedTx(
 			"Transform Subnet",
@@ -407,7 +418,7 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func transformElasticSubnetLocal(sc models.Sidecar, subnetName string, tokenName string, tokenSymbol string, elasticSubnetConfig models.ElasticSubnetConfig) error {
+func transformElasticSubnetLocal(sc models.Sidecar, subnetName string, tokenName string, tokenSymbol string, elasticSubnetConfig models.ElasticSubnetConfig, cmd *cobra.Command) error {
 	if checkIfSubnetIsElasticOnLocal(sc) {
 		return fmt.Errorf("%s is already an elastic subnet", subnetName)
 	}
@@ -471,6 +482,9 @@ func transformElasticSubnetLocal(sc models.Sidecar, subnetName string, tokenName
 	}
 
 	PrintTransformResults(subnetName, txID, subnetID, tokenName, tokenSymbol, assetID)
+	flags := make(map[string]string)
+	flags[constants.Network] = models.Local.String()
+	utilspkg.HandleTracking(cmd, app, flags)
 	return nil
 }
 

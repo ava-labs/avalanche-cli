@@ -126,6 +126,9 @@ const (
 	ChainConfigDir = "chains"
 
 	SubnetType                 = "subnet type"
+	PrecompileType             = "precompile type"
+	CustomAirdrop              = "custom-airdrop"
+	NumberOfAirdrops           = "airdrop-addresses"
 	SubnetConfigFileName       = "subnet.json"
 	ChainConfigFileName        = "chain.json"
 	PerNodeChainConfigFileName = "per-node-chain.json"
@@ -153,6 +156,7 @@ const (
 	PluginDir = "plugins"
 
 	Network        = "network"
+	MultiSig       = "multi-sig"
 	SkipUpdateFlag = "skip-update-check"
 	LastFileName   = ".last_actions.json"
 

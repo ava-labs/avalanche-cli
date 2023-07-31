@@ -30,4 +30,7 @@ const (
 	SubnetEvmGenesisBadPath   = "tests/e2e/assets/test_subnet_evm_genesis_bad.json"
 
 	PluginDirExt = "plugins"
+
+	ledgerSimDir         = "./tests/e2e/ledgerSim"
+	basicLedgerSimScript = "./launchAndApproveTxs.ts"
 )

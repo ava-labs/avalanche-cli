@@ -3,6 +3,8 @@
 package transactioncmd
 
 import (
+	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
@@ -68,7 +70,7 @@ func commitTx(_ *cobra.Command, args []string) error {
 		signedCount := len(subnetAuthKeys) - len(remainingSubnetAuthKeys)
 		ux.Logger.PrintToUser("%d of %d required signatures have been signed.", signedCount, len(subnetAuthKeys))
 		subnetcmd.PrintRemainingToSignMsg(subnetName, remainingSubnetAuthKeys, inputTxPath)
-		return nil
+		return fmt.Errorf("tx is not fully signed")
 	}
 
 	// get kc with some random address, to pass wallet creation checks

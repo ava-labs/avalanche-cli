@@ -2,13 +2,6 @@
 
 set -e
 
-if [ "$1" = "--local" ]
-then
-    label_filter="local_machine"
-else
-    label_filter="!local_machine"
-fi
-
 description_filter=""
 if [ "$1" = "--filter" ]
 then
@@ -25,6 +18,14 @@ then
     popd
 fi
 
+if [ ! -d "tests/e2e/ledgerSim/node_modules" ]
+then
+    pushd tests/e2e/ledgerSim
+    yarn
+    cp node_modules/@zondax/zemu/dist/src/grpc/zemu.proto node_modules/@zondax/zemu/dist/grpc/zemu.proto
+    popd
+fi
+
 # Set the CGO flags to use the portable version of BLST
 #
 # We use "export" here instead of just setting a bash variable because we need
@@ -32,9 +33,16 @@ fi
 export CGO_CFLAGS="-O -D__BLST_PORTABLE__"
 
 go install -v github.com/onsi/ginkgo/v2/ginkgo@v2.1.3
-ACK_GINKGO_RC=true ginkgo build ./tests/e2e
 
-./tests/e2e/e2e.test --ginkgo.v --ginkgo.label-filter=$label_filter $description_filter
+extra_build_args=""
+if [ "${LEDGER_SIM:-}" == true ]
+then
+	extra_build_args="-tags ledger_zemu"
+fi
+
+ACK_GINKGO_RC=true ginkgo build $extra_build_args ./tests/e2e
+
+./tests/e2e/e2e.test --ginkgo.v $description_filter
 
 EXIT_CODE=$?
 
