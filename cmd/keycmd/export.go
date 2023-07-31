@@ -4,9 +4,9 @@ package keycmd
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"os"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/spf13/cobra"
 )
 
@@ -49,5 +49,5 @@ func exportKey(_ *cobra.Command, args []string) error {
 		return nil
 	}
 
-	return os.WriteFile(filename, keyBytes, application.WriteReadReadPerms)
+	return os.WriteFile(filename, keyBytes, constants.WriteReadReadPerms)
 }

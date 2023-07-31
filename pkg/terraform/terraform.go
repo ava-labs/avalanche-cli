@@ -5,11 +5,12 @@ package terraform
 
 import (
 	"bytes"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
@@ -25,6 +26,7 @@ func CreateTerraformFile() (*hclwrite.File, *os.File, *hclwrite.Body, error) {
 	rootBody := hclFile.Body()
 	return hclFile, tfFile, rootBody, nil
 }
+
 func SaveTerraformFile(tfFile *os.File, hclFile *hclwrite.File) error {
 	_, err := tfFile.Write(hclFile.Bytes())
 	if err != nil {
@@ -32,6 +34,7 @@ func SaveTerraformFile(tfFile *os.File, hclFile *hclwrite.File) error {
 	}
 	return nil
 }
+
 func SetCloudCredentials(rootBody *hclwrite.Body, accessKey, secretKey, region string) error {
 	provider := rootBody.AppendNewBlock("provider", []string{"aws"})
 	providerBody := provider.Body()
@@ -252,33 +255,27 @@ func SetOutput(rootBody *hclwrite.Body) {
 		},
 	})
 }
-
+func removeFile(fileName string) error {
+	_, err := os.Stat(fileName)
+	if err != nil {
+		return err
+	}
+	return os.Remove(fileName)
+}
 func RemoveExistingTerraformFiles() error {
-	if _, err := os.Stat(constants.NodeConfigFile); err == nil {
-		err := os.Remove(constants.NodeConfigFile)
-		if err != nil {
-			return err
-		}
+	err := removeFile(constants.NodeConfigFile)
+	if err != nil {
+		return err
 	}
-	if _, err := os.Stat(constants.TerraformLockFile); err == nil {
-		err := os.Remove(constants.TerraformLockFile)
-		if err != nil {
-			return err
-		}
+	err = removeFile(constants.TerraformLockFile)
+	if err != nil {
+		return err
 	}
-	if _, err := os.Stat(constants.TerraformStateFile); err == nil {
-		err := os.Remove(constants.TerraformStateFile)
-		if err != nil {
-			return err
-		}
+	err = removeFile(constants.TerraformStateFile)
+	if err != nil {
+		return err
 	}
-	if _, err := os.Stat(constants.TerraformStateBackupFile); err == nil {
-		err := os.Remove(constants.TerraformStateBackupFile)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return removeFile(constants.TerraformStateBackupFile)
 }
 
 func RunTerraform() (string, string, error) {

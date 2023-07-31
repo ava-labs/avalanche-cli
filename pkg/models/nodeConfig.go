@@ -3,11 +3,11 @@
 package models
 
 type NodeConfig struct {
-	NodeID        string
-	Region        string
-	AMI           string
-	KeyPair       string
-	CertPath      string
-	SecurityGroup string
-	ElasticIP     string
+	NodeID        string // instance id on cloud server
+	Region        string // region where cloud server instance is deployed
+	AMI           string // image id for cloud server dependent on its os (e.g. ubuntu )and region deployed (e.g. us-east-1)
+	KeyPair       string // key pair used on cloud server
+	CertPath      string // where the cert is stored in user's local machine ssh directory
+	SecurityGroup string // security group used on cloud server
+	ElasticIP     string // public IP address of the cloud server
 }

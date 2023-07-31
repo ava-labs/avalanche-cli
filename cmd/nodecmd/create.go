@@ -88,10 +88,9 @@ func createNodeConfig(nodeID, region, ami, keyPairName, certPath, sg, eip, clust
 }
 
 func updateClusterConfig(nodeID, keyPairName, certPath, clusterName string) error {
-	configExists := app.ClusterConfigExists()
 	clusterConfig := models.ClusterConfig{}
 	var err error
-	if configExists {
+	if app.ClusterConfigExists() {
 		clusterConfig, err = app.LoadClusterConfig()
 		if err != nil {
 			return err
@@ -111,7 +110,7 @@ func updateClusterConfig(nodeID, keyPairName, certPath, clusterName string) erro
 		clusterConfig.Clusters[clusterName] = []string{}
 	}
 	clusterConfig.Clusters[clusterName] = append(clusterConfig.Clusters[clusterName], nodeID)
-	return app.UpdateClusterConfig(&clusterConfig)
+	return app.UpdateClusterConfigFile(&clusterConfig)
 }
 
 func printNoCredentialsOutput() {
@@ -228,13 +227,13 @@ func createNode(_ *cobra.Command, args []string) error {
 	}
 
 	if !useExistingKeyPair {
-		err = handleCerts(certName)
+		err = addCertToSSH(certName)
 		if err != nil {
 			return err
 		}
 	}
 
-	inventoryPath := constants.AnsibleInventoryPath + clusterName
+	inventoryPath := app.GetAnsibleInventoryPath(clusterName)
 	if err := ansible.CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
 		return err
 	}
@@ -268,6 +267,7 @@ func requestAWSAccountAuth() error {
 	}
 	return nil
 }
+
 func checkKeyPairExists(ec2Svc *ec2.EC2, kpName string) (bool, error) {
 	keyPairInput := &ec2.DescribeKeyPairsInput{
 		KeyNames: []*string{
@@ -335,16 +335,15 @@ func getIPAddress() (string, error) {
 	return ipAddress, nil
 }
 
-func handleCerts(certName string) error {
+func addCertToSSH(certName string) error {
 	err := os.Chmod(certName, 0o400)
 	if err != nil {
 		return err
 	}
-	homeDir, err := os.UserHomeDir()
+	certFilePath, err := app.GetSshCertFilePath(certName)
 	if err != nil {
 		return err
 	}
-	certFilePath := homeDir + "/.ssh/" + certName
 	err = os.Rename(certName, certFilePath)
 	if err != nil {
 		return err

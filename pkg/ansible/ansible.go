@@ -6,10 +6,11 @@ package ansible
 import (
 	"bytes"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"io"
 	"os"
 	"os/exec"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
 func CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath string) error {
@@ -37,7 +38,7 @@ func CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath string) e
 
 func RunAnsibleSetUpNodePlaybook(inventoryPath string) error {
 	var stdBuffer bytes.Buffer
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetUpNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag)
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetUpNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	mw := io.MultiWriter(os.Stdout, &stdBuffer)
 	cmd.Stdout = mw
 	cmd.Stderr = mw

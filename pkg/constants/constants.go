@@ -96,6 +96,7 @@ const (
 	AnsibleExtraArgsIdentitiesOnlyFlag = "--ssh-extra-args='-o IdentitiesOnly=yes'"
 	DefaultConfigFileName              = ".avalanche-cli"
 	DefaultConfigFileType              = "json"
+	WriteReadReadPerms                 = 0o644
 
 	CustomVMDir = "vms"
 

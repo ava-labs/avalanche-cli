@@ -18,10 +18,6 @@ import (
 	"github.com/ava-labs/subnet-evm/core"
 )
 
-const (
-	WriteReadReadPerms = 0o644
-)
-
 type Avalanche struct {
 	Log        logging.Logger
 	baseDir    string
@@ -245,7 +241,7 @@ func (app *Avalanche) CopyGenesisFile(inputFilename string, subnetName string) e
 		return err
 	}
 
-	return os.WriteFile(genesisPath, genesisBytes, WriteReadReadPerms)
+	return os.WriteFile(genesisPath, genesisBytes, constants.WriteReadReadPerms)
 }
 
 func (app *Avalanche) CopyVMBinary(inputFilename string, subnetName string) error {
@@ -254,7 +250,7 @@ func (app *Avalanche) CopyVMBinary(inputFilename string, subnetName string) erro
 		return err
 	}
 	vmPath := app.GetCustomVMPath(subnetName)
-	return os.WriteFile(vmPath, vmBytes, WriteReadReadPerms)
+	return os.WriteFile(vmPath, vmBytes, constants.WriteReadReadPerms)
 }
 
 func (app *Avalanche) CopyKeyFile(inputFilename string, keyName string) error {
@@ -263,7 +259,7 @@ func (app *Avalanche) CopyKeyFile(inputFilename string, keyName string) error {
 		return err
 	}
 	keyPath := app.GetKeyPath(keyName)
-	return os.WriteFile(keyPath, keyBytes, WriteReadReadPerms)
+	return os.WriteFile(keyPath, keyBytes, constants.WriteReadReadPerms)
 }
 
 func (app *Avalanche) LoadEvmGenesis(subnetName string) (core.Genesis, error) {
@@ -311,7 +307,7 @@ func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 		return err
 	}
 
-	return os.WriteFile(sidecarPath, scBytes, WriteReadReadPerms)
+	return os.WriteFile(sidecarPath, scBytes, constants.WriteReadReadPerms)
 }
 
 func (app *Avalanche) LoadSidecar(subnetName string) (models.Sidecar, error) {
@@ -339,7 +335,7 @@ func (app *Avalanche) UpdateSidecar(sc *models.Sidecar) error {
 	}
 
 	sidecarPath := app.GetSidecarPath(sc.Name)
-	return os.WriteFile(sidecarPath, scBytes, WriteReadReadPerms)
+	return os.WriteFile(sidecarPath, scBytes, constants.WriteReadReadPerms)
 }
 
 func (app *Avalanche) UpdateSidecarNetworks(
@@ -467,7 +463,7 @@ func (*Avalanche) writeFile(path string, bytes []byte) error {
 		return err
 	}
 
-	return os.WriteFile(path, bytes, WriteReadReadPerms)
+	return os.WriteFile(path, bytes, constants.WriteReadReadPerms)
 }
 
 func (app *Avalanche) LoadConfig() (models.Config, error) {
@@ -509,7 +505,7 @@ func (app *Avalanche) CreateNodeConfigFile(nodeName string, nodeConfig *models.N
 		return err
 	}
 
-	return os.WriteFile(nodeConfigPath, esBytes, WriteReadReadPerms)
+	return os.WriteFile(nodeConfigPath, esBytes, constants.WriteReadReadPerms)
 }
 
 func (app *Avalanche) CreateElasticSubnetConfig(subnetName string, es *models.ElasticSubnetConfig) error {
@@ -523,7 +519,7 @@ func (app *Avalanche) CreateElasticSubnetConfig(subnetName string, es *models.El
 		return err
 	}
 
-	return os.WriteFile(elasticSubetConfigPath, esBytes, WriteReadReadPerms)
+	return os.WriteFile(elasticSubetConfigPath, esBytes, constants.WriteReadReadPerms)
 }
 
 func (app *Avalanche) LoadElasticSubnetConfig(subnetName string) (models.ElasticSubnetConfig, error) {
@@ -550,7 +546,7 @@ func (app *Avalanche) LoadClusterConfig() (models.ClusterConfig, error) {
 	return clusterConfig, err
 }
 
-func (app *Avalanche) UpdateClusterConfig(clusterConfig *models.ClusterConfig) error {
+func (app *Avalanche) UpdateClusterConfigFile(clusterConfig *models.ClusterConfig) error {
 	clusterConfigPath := app.GetClusterConfigPath()
 	if err := os.MkdirAll(filepath.Dir(clusterConfigPath), constants.DefaultPerms755); err != nil {
 		return err
@@ -561,10 +557,10 @@ func (app *Avalanche) UpdateClusterConfig(clusterConfig *models.ClusterConfig) e
 		return err
 	}
 
-	return os.WriteFile(clusterConfigPath, clusterConfigBytes, WriteReadReadPerms)
+	return os.WriteFile(clusterConfigPath, clusterConfigBytes, constants.WriteReadReadPerms)
 }
 
-func (app *Avalanche) GetSshCertFilePath(certName string) (string, error) {
+func (_ *Avalanche) GetSshCertFilePath(certName string) (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
@@ -573,7 +569,11 @@ func (app *Avalanche) GetSshCertFilePath(certName string) (string, error) {
 	return certFilePath, nil
 }
 
-func (app *Avalanche) CheckCertInSSHDir(certFilePath string) bool {
+func (_ *Avalanche) CheckCertInSSHDir(certFilePath string) bool {
 	_, err := os.Stat(certFilePath)
 	return err == nil
+}
+
+func (app *Avalanche) GetAnsibleInventoryPath(clusterName string) string {
+	return constants.AnsibleInventoryPath + clusterName
 }

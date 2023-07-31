@@ -4,9 +4,9 @@ package subnetcmd
 
 import (
 	"encoding/json"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"os"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/spf13/cobra"
 )
@@ -93,5 +93,5 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(exportOutput, exportBytes, application.WriteReadReadPerms)
+	return os.WriteFile(exportOutput, exportBytes, constants.WriteReadReadPerms)
 }
