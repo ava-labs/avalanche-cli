@@ -4,8 +4,9 @@ package subnetcmd
 
 import (
 	"encoding/json"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"os"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/spf13/cobra"
