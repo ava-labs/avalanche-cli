@@ -567,6 +567,7 @@ func (*Avalanche) GetSSHCertFilePath(certName string) (string, error) {
 	}
 	certFilePath := homeDir + "/.ssh/" + certName
 	return certFilePath, nil
+
 }
 
 func (*Avalanche) CheckCertInSSHDir(certFilePath string) bool {
