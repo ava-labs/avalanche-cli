@@ -4,9 +4,9 @@ metadata:
   name: avalanche-cli
   description: |
     Avalanche-CLI is a command-line interface for building, deploying, and maintaining Avalanche
-    Subnets. It can be used to prototype and test Subnets, as well as to deploy them to the
-    Avalanche network. Avalanche-CLI is available for Linux and Mac, and is open source and
-    available on GitHub.
+    Subnets. It can be used to support the entire Subnet development lifecycle from initial
+    prototyping to production deployments. Avalanche-CLI is available for Linux and Mac, and is open
+    source on GitHub.
   annotations:
     backstage.io/techdocs-ref: dir:.
     github.com/project-slug: ava-labs/avalanche-cli
