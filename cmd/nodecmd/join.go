@@ -7,10 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"io"
 	"os"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 

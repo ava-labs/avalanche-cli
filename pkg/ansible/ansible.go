@@ -50,7 +50,7 @@ func RunAnsiblePlaybookExportSubnet(subnetName, inventoryPath string) error {
 	var stdBuffer bytes.Buffer
 	exportOutput := "/tmp/" + subnetName + "-export.dat"
 	exportedSubnet := "exportedSubnet=" + exportOutput
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.ExportSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, exportedSubnet, constants.AnsibleExtraArgsIdentitiesOnlyFlag)
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.ExportSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, exportedSubnet, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	mw := io.MultiWriter(os.Stdout, &stdBuffer)
 	cmd.Stdout = mw
 	cmd.Stderr = mw
@@ -61,7 +61,7 @@ func RunAnsiblePlaybookTrackSubnet(subnetName, inventoryPath string) error {
 	var stdBuffer bytes.Buffer
 	importedFileName := "/tmp/" + subnetName + "-export.dat"
 	importedSubnet := "subnetExportFileName=" + importedFileName + " subnetName=" + subnetName
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.TrackSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, importedSubnet, constants.AnsibleExtraArgsIdentitiesOnlyFlag)
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.TrackSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, importedSubnet, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	mw := io.MultiWriter(os.Stdout, &stdBuffer)
 	cmd.Stdout = mw
 	cmd.Stderr = mw
@@ -70,7 +70,7 @@ func RunAnsiblePlaybookTrackSubnet(subnetName, inventoryPath string) error {
 
 func RunAnsiblePlaybookCheckBootstrapped(inventoryPath string) error {
 	var stdBuffer bytes.Buffer
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsBootstrappedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag)
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsBootstrappedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	mw := io.MultiWriter(os.Stdout, &stdBuffer)
 	cmd.Stdout = mw
 	cmd.Stderr = mw
@@ -79,7 +79,7 @@ func RunAnsiblePlaybookCheckBootstrapped(inventoryPath string) error {
 
 func RunAnsiblePlaybookGetNodeID(inventoryPath string) error {
 	var stdBuffer bytes.Buffer
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.GetNodeIDPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag)
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.GetNodeIDPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	mw := io.MultiWriter(os.Stdout, &stdBuffer)
 	cmd.Stdout = mw
 	cmd.Stderr = mw
