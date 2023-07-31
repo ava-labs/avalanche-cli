@@ -216,6 +216,9 @@ func createNode(_ *cobra.Command, args []string) error {
 	terraform.SetUpInstance(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami)
 	terraform.SetOutput(rootBody)
 	err = terraform.SaveTerraformFile(tfFile, hclFile)
+	if err != nil {
+		return err
+	}
 	instanceID, elasticIP, err := terraform.RunTerraform()
 	if err != nil {
 		return err

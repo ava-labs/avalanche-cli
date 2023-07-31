@@ -4,8 +4,9 @@ package keycmd
 
 import (
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"os"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
 	"github.com/spf13/cobra"
 )

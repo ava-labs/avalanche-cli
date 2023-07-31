@@ -569,11 +569,11 @@ func (_ *Avalanche) GetSshCertFilePath(certName string) (string, error) {
 	return certFilePath, nil
 }
 
-func (_ *Avalanche) CheckCertInSSHDir(certFilePath string) bool {
+func (*Avalanche) CheckCertInSSHDir(certFilePath string) bool {
 	_, err := os.Stat(certFilePath)
 	return err == nil
 }
 
-func (app *Avalanche) GetAnsibleInventoryPath(clusterName string) string {
+func (*Avalanche) GetAnsibleInventoryPath(clusterName string) string {
 	return constants.AnsibleInventoryPath + clusterName
 }
