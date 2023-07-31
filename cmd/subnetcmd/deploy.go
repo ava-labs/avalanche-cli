@@ -216,7 +216,7 @@ func handleMainnetChainID(chain string) error {
 
 // deploySubnet is the cobra command run for deploying subnets
 func deploySubnet(cmd *cobra.Command, args []string) error {
-	chains, err := validateSubnetNameAndGetChains(args)
+	chains, err := ValidateSubnetNameAndGetChains(args)
 	if err != nil {
 		if !strings.Contains(err.Error(), "Invalid subnet") {
 			return err
@@ -234,7 +234,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if createErr != nil {
 			return createErr
 		}
-		chains, err = validateSubnetNameAndGetChains(args)
+		chains, err = ValidateSubnetNameAndGetChains(args)
 		if err != nil {
 			return err
 		}
@@ -708,7 +708,7 @@ func getThreshold(maxLen int) (uint32, error) {
 	return uint32(intTh), err
 }
 
-func validateSubnetNameAndGetChains(args []string) ([]string, error) {
+func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {
 	// this should not be necessary but some bright guy might just be creating
 	// the genesis by hand or something...
 	if err := checkInvalidSubnetNames(args[0]); err != nil {

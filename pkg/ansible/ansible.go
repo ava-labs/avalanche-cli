@@ -36,9 +36,50 @@ func CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath string) e
 	return nil
 }
 
-func RunAnsibleSetUpNodePlaybook(inventoryPath string) error {
+func RunAnsibleSetUpNodePlaybook(configPath, inventoryPath string) error {
+	configDirVar := "configDir=" + configPath
 	var stdBuffer bytes.Buffer
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetUpNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetUpNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, configDirVar, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	mw := io.MultiWriter(os.Stdout, &stdBuffer)
+	cmd.Stdout = mw
+	cmd.Stderr = mw
+	return cmd.Run()
+}
+
+func RunAnsiblePlaybookExportSubnet(subnetName, inventoryPath string) error {
+	var stdBuffer bytes.Buffer
+	exportOutput := "/tmp/" + subnetName + "-export.dat"
+	exportedSubnet := "exportedSubnet=" + exportOutput
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.ExportSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, exportedSubnet, constants.AnsibleExtraArgsIdentitiesOnlyFlag)
+	mw := io.MultiWriter(os.Stdout, &stdBuffer)
+	cmd.Stdout = mw
+	cmd.Stderr = mw
+	return cmd.Run()
+}
+
+func RunAnsiblePlaybookTrackSubnet(subnetName, inventoryPath string) error {
+	var stdBuffer bytes.Buffer
+	importedFileName := "/tmp/" + subnetName + "-export.dat"
+	importedSubnet := "subnetExportFileName=" + importedFileName + " subnetName=" + subnetName
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.TrackSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, importedSubnet, constants.AnsibleExtraArgsIdentitiesOnlyFlag)
+	mw := io.MultiWriter(os.Stdout, &stdBuffer)
+	cmd.Stdout = mw
+	cmd.Stderr = mw
+	return cmd.Run()
+}
+
+func RunAnsiblePlaybookCheckBootstrapped(inventoryPath string) error {
+	var stdBuffer bytes.Buffer
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsBootstrappedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag)
+	mw := io.MultiWriter(os.Stdout, &stdBuffer)
+	cmd.Stdout = mw
+	cmd.Stderr = mw
+	return cmd.Run()
+}
+
+func RunAnsiblePlaybookGetNodeID(inventoryPath string) error {
+	var stdBuffer bytes.Buffer
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.GetNodeIDPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag)
 	mw := io.MultiWriter(os.Stdout, &stdBuffer)
 	cmd.Stdout = mw
 	cmd.Stderr = mw

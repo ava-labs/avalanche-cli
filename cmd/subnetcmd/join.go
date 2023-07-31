@@ -93,7 +93,7 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		return errors.New("--print cannot be used with --avalanchego-config or --plugin-dir")
 	}
 
-	chains, err := validateSubnetNameAndGetChains(args)
+	chains, err := ValidateSubnetNameAndGetChains(args)
 	if err != nil {
 		return err
 	}

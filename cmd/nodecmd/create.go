@@ -240,10 +240,10 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err := ansible.CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
 		return err
 	}
-	time.Sleep(5 * time.Second)
+	time.Sleep(15 * time.Second)
 
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance...")
-	if err := ansible.RunAnsibleSetUpNodePlaybook(inventoryPath); err != nil {
+	if err := ansible.RunAnsibleSetUpNodePlaybook(app.GetConfigPath(), inventoryPath); err != nil {
 		return err
 	}
 	err = createNodeConfig(instanceID, region, ami, keyPairName, certFilePath, securityGroupName, elasticIP, clusterName)
