@@ -163,11 +163,12 @@ func (d *PublicDeployer) ExportToPChainTx(
 				},
 			},
 		})
-	if err == nil {
-		ux.Logger.PrintToUser("Export to P-Chain Transaction successful, transaction ID: %s", tx.ID())
-		ux.Logger.PrintToUser("Now importing asset from X-Chain ...")
+	if err != nil {
+		return ids.Empty, err
 	}
-	return tx.ID(), err
+	ux.Logger.PrintToUser("Export to P-Chain Transaction successful, transaction ID: %s", tx.ID())
+	ux.Logger.PrintToUser("Now importing asset from X-Chain ...")
+	return tx.ID(), nil
 }
 
 func (d *PublicDeployer) ImportFromXChain(
@@ -185,10 +186,11 @@ func (d *PublicDeployer) ImportFromXChain(
 	xChainID := xWallet.BlockchainID()
 
 	tx, err := wallet.P().IssueImportTx(xChainID, owner)
-	if err == nil {
-		ux.Logger.PrintToUser("Import from X Chain Transaction successful, transaction ID: %s", tx.ID())
-		ux.Logger.PrintToUser("Now transforming subnet into elastic subnet ...")
+	if err != nil {
+		return ids.Empty, err
 	}
+	ux.Logger.PrintToUser("Import from X Chain Transaction successful, transaction ID: %s", tx.ID())
+	ux.Logger.PrintToUser("Now transforming subnet into elastic subnet ...")
 	return tx.ID(), err
 }
 
@@ -684,7 +686,10 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 		ux.Logger.PrintToUser("*** Please sign CreateSubnet transaction on the ledger device *** ")
 	}
 	tx, err := wallet.P().IssueCreateSubnetTx(owners, opts...)
-	return tx.ID(), err
+	if err != nil {
+		return ids.Empty, err
+	}
+	return tx.ID(), nil
 }
 
 func (d *PublicDeployer) getSubnetAuthAddressesInWallet(subnetAuth []ids.ShortID) []ids.ShortID {
