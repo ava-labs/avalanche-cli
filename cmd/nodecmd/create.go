@@ -6,11 +6,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"io"
 	"net"
 	"os"
 	"os/exec"
 	"os/user"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/hashicorp/hcl/v2/hclwrite"
@@ -244,7 +246,7 @@ func createEC2Instance(rootBody *hclwrite.Body, hclFile *hclwrite.File, tfFile *
 }
 
 func createNode(_ *cobra.Command, args []string) error {
-	// clusterName := args[0]
+	clusterName := args[0]
 	err := terraform.RemoveExistingTerraformFiles()
 	if err != nil {
 		return err
@@ -253,10 +255,8 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	// region := "us-east-2"
-	// ami := "ami-0430580de6244e02e"
-	region := "us-east-1"
-	ami := "ami-0261755bbcb8c4a84"
+	region := "us-east-2"
+	ami := "ami-0430580de6244e02e"
 	keyPairName := usr.Username + "-" + region + constants.AvalancheCLISuffix
 	certName := keyPairName + "-" + region + constants.CertSuffix
 	securityGroupName := keyPairName + "-" + region + constants.AWSSecurityGroupSuffix
@@ -265,28 +265,27 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	// Create new EC2 client
-	// instanceID, elasticIP, certFilePath, keyPairName, err := createEC2Instance(rootBody, hclFile, tfFile, region, certName, keyPairName, securityGroupName, ami)
-	_, _, _, keyPairName, err = createEC2Instance(rootBody, hclFile, tfFile, region, certName, keyPairName, securityGroupName, ami)
+	instanceID, elasticIP, certFilePath, keyPairName, err := createEC2Instance(rootBody, hclFile, tfFile, region, certName, keyPairName, securityGroupName, ami)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("obtained keyPairName %s \n", keyPairName)
-	//inventoryPath := app.GetAnsibleInventoryPath(clusterName)
-	//if err := ansible.CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
-	//	return err
-	//}
-	//time.Sleep(5 * time.Second)
-	//
-	//ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance...")
-	//if err := ansible.RunAnsibleSetUpNodePlaybook(inventoryPath); err != nil {
-	//	return err
-	//}
-	//err = createNodeConfig(instanceID, region, ami, keyPairName, certFilePath, securityGroupName, elasticIP, clusterName)
-	//if err != nil {
-	//	return err
-	//}
-	//PrintResults(instanceID, elasticIP, certFilePath, region)
-	//ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node is bootstrapping!")
+	inventoryPath := app.GetAnsibleInventoryPath(clusterName)
+	if err := ansible.CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
+		return err
+	}
+	time.Sleep(5 * time.Second)
+
+	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance...")
+	if err := ansible.RunAnsibleSetUpNodePlaybook(inventoryPath); err != nil {
+		return err
+	}
+	err = createNodeConfig(instanceID, region, ami, keyPairName, certFilePath, securityGroupName, elasticIP, clusterName)
+	if err != nil {
+		return err
+	}
+	PrintResults(instanceID, elasticIP, certFilePath, region)
+	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node is bootstrapping!")
 	err = terraform.RemoveExistingTerraformFiles()
 	if err != nil {
 		return err
