@@ -442,11 +442,11 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	// the given VM ID, genesis, and available subnet ID
 	blockchainSpecs := []*rpcpb.BlockchainSpec{
 		{
-			VmName:             chain,
-			Genesis:            genesisPath,
-			SubnetId:           &subnetIDStr,
+			VmName:   chain,
+			Genesis:  genesisPath,
+			SubnetId: &subnetIDStr,
 			SubnetSpec: &rpcpb.SubnetSpec{
-				SubnetConfig:       subnetConfig,
+				SubnetConfig: subnetConfig,
 			},
 			ChainConfig:        chainConfig,
 			BlockchainAlias:    chain,
