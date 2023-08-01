@@ -6,13 +6,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"io"
 	"net"
 	"os"
 	"os/exec"
 	"os/user"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/hashicorp/hcl/v2/hclwrite"

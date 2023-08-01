@@ -4,10 +4,11 @@
 package aws
 
 import (
+	"strings"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"strings"
 )
 
 func CheckKeyPairExists(ec2Svc *ec2.EC2, kpName string) (bool, error) {
