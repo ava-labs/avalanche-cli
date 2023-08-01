@@ -357,7 +357,6 @@ func getNodeSubnetSyncStatus(blockchainID, clusterName string) (bool, error) {
 		return false, err
 	}
 	inventoryPath := "inventories/" + clusterName
-	//if err := ansible.RunAnsiblePlaybookSubnetSyncStatus("2V76cVSevkCVtPGLAKntu9dqGVi9omVNNUuFWWKaoBamfLVRN", inventoryPath); err != nil {
 	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(blockchainID, inventoryPath); err != nil {
 		return false, err
 	}
