@@ -21,6 +21,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/commontype"
+	"github.com/ava-labs/subnet-evm/utils"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/deployerallowlist"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/feemanager"
@@ -247,7 +248,7 @@ func promptNativeMintParams(precompiles *[]params.PrecompileUpgrade, date time.T
 	}
 
 	config := nativeminter.NewConfig(
-		big.NewInt(date.Unix()),
+		utils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
 		initialMint,
@@ -271,7 +272,7 @@ func promptRewardManagerParams(precompiles *[]params.PrecompileUpgrade, date tim
 	}
 
 	config := rewardmanager.NewConfig(
-		big.NewInt(date.Unix()),
+		utils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
 		initialConfig,
@@ -307,7 +308,7 @@ func promptFeeManagerParams(precompiles *[]params.PrecompileUpgrade, date time.T
 	}
 
 	config := feemanager.NewConfig(
-		big.NewInt(date.Unix()),
+		utils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
 		feeConfig,
@@ -326,7 +327,7 @@ func promptContractAllowListParams(precompiles *[]params.PrecompileUpgrade, date
 	}
 
 	config := deployerallowlist.NewConfig(
-		big.NewInt(date.Unix()),
+		utils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
 	)
@@ -344,7 +345,7 @@ func promptTxAllowListParams(precompiles *[]params.PrecompileUpgrade, date time.
 	}
 
 	config := txallowlist.NewConfig(
-		big.NewInt(date.Unix()),
+		utils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
 	)

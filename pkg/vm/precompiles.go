@@ -6,11 +6,11 @@ package vm
 import (
 	"errors"
 	"fmt"
-	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
+	"github.com/ava-labs/subnet-evm/utils"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/allowlist"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/deployerallowlist"
@@ -67,7 +67,7 @@ func configureRewardManager(app *application.Avalanche) (rewardmanager.Config, b
 		EnabledAddresses: enabled,
 	}
 	config.Upgrade = precompileconfig.Upgrade{
-		BlockTimestamp: big.NewInt(0),
+		BlockTimestamp: utils.NewUint64(0),
 	}
 	config.InitialRewardConfig, err = ConfigureInitialRewardConfig(app)
 	if err != nil {
@@ -139,7 +139,7 @@ func configureContractAllowList(app *application.Avalanche) (deployerallowlist.C
 		EnabledAddresses: enabled,
 	}
 	config.Upgrade = precompileconfig.Upgrade{
-		BlockTimestamp: big.NewInt(0),
+		BlockTimestamp: utils.NewUint64(0),
 	}
 
 	return config, cancelled, nil
@@ -163,7 +163,7 @@ func configureTransactionAllowList(app *application.Avalanche) (txallowlist.Conf
 		EnabledAddresses: enabled,
 	}
 	config.Upgrade = precompileconfig.Upgrade{
-		BlockTimestamp: big.NewInt(0),
+		BlockTimestamp: utils.NewUint64(0),
 	}
 
 	return config, cancelled, nil
@@ -207,7 +207,7 @@ func configureMinterList(app *application.Avalanche) (nativeminter.Config, bool,
 		EnabledAddresses: enabled,
 	}
 	config.Upgrade = precompileconfig.Upgrade{
-		BlockTimestamp: big.NewInt(0),
+		BlockTimestamp: utils.NewUint64(0),
 	}
 
 	return config, cancelled, nil
@@ -231,7 +231,7 @@ func configureFeeConfigAllowList(app *application.Avalanche) (feemanager.Config,
 		EnabledAddresses: enabled,
 	}
 	config.Upgrade = precompileconfig.Upgrade{
-		BlockTimestamp: big.NewInt(0),
+		BlockTimestamp: utils.NewUint64(0),
 	}
 
 	return config, cancelled, nil

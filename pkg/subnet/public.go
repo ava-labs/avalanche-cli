@@ -127,13 +127,13 @@ func (d *PublicDeployer) CreateAssetTx(
 		ux.Logger.PrintToUser("*** Please sign Create Asset Transaction hash on the ledger device *** ")
 	}
 
-	id, err := wallet.X().IssueCreateAssetTx(tokenName, tokenSymbol, denomination, initialState)
+	tx, err := wallet.X().IssueCreateAssetTx(tokenName, tokenSymbol, denomination, initialState)
 	if err != nil {
 		return ids.Empty, err
 	}
-	ux.Logger.PrintToUser("Create Asset Transaction successful, transaction ID: %s", id)
+	ux.Logger.PrintToUser("Create Asset Transaction successful, transaction ID: %s", tx.ID())
 	ux.Logger.PrintToUser("Now exporting asset to P-Chain ...")
-	return id, err
+	return tx.ID(), err
 }
 
 func (d *PublicDeployer) ExportToPChainTx(
@@ -151,7 +151,7 @@ func (d *PublicDeployer) ExportToPChainTx(
 		ux.Logger.PrintToUser("*** Please sign X -> P Chain Export Transaction hash on the ledger device *** ")
 	}
 
-	id, err := wallet.X().IssueExportTx(ids.Empty,
+	tx, err := wallet.X().IssueExportTx(ids.Empty,
 		[]*avax.TransferableOutput{
 			{
 				Asset: avax.Asset{
@@ -164,10 +164,10 @@ func (d *PublicDeployer) ExportToPChainTx(
 			},
 		})
 	if err == nil {
-		ux.Logger.PrintToUser("Export to P-Chain Transaction successful, transaction ID: %s", id)
+		ux.Logger.PrintToUser("Export to P-Chain Transaction successful, transaction ID: %s", tx.ID())
 		ux.Logger.PrintToUser("Now importing asset from X-Chain ...")
 	}
-	return id, err
+	return tx.ID(), err
 }
 
 func (d *PublicDeployer) ImportFromXChain(
@@ -184,12 +184,12 @@ func (d *PublicDeployer) ImportFromXChain(
 	xWallet := wallet.X()
 	xChainID := xWallet.BlockchainID()
 
-	id, err := wallet.P().IssueImportTx(xChainID, owner)
+	tx, err := wallet.P().IssueImportTx(xChainID, owner)
 	if err == nil {
-		ux.Logger.PrintToUser("Import from X Chain Transaction successful, transaction ID: %s", id)
+		ux.Logger.PrintToUser("Import from X Chain Transaction successful, transaction ID: %s", tx.ID())
 		ux.Logger.PrintToUser("Now transforming subnet into elastic subnet ...")
 	}
-	return id, err
+	return tx.ID(), err
 }
 
 func (d *PublicDeployer) TransformSubnetTx(
@@ -415,7 +415,8 @@ func (d *PublicDeployer) Commit(
 	if err != nil {
 		return ids.Empty, err
 	}
-	return wallet.P().IssueTx(tx)
+	err = wallet.P().IssueTx(tx)
+	return tx.ID(), err
 }
 
 func (d *PublicDeployer) Sign(
@@ -600,7 +601,7 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 			recipientAddr,
 		},
 	}
-	txID, err := wallet.P().IssueAddPermissionlessValidatorTx(&txs.SubnetValidator{
+	tx, err := wallet.P().IssueAddPermissionlessValidatorTx(&txs.SubnetValidator{
 		Validator: txs.Validator{
 			NodeID: nodeID,
 			Start:  startTime,
@@ -618,7 +619,7 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 	if err != nil {
 		return ids.Empty, err
 	}
-	return txID, nil
+	return tx.ID(), nil
 }
 
 func (d *PublicDeployer) issueAddPermissionlessDelegatorTX(
@@ -638,7 +639,7 @@ func (d *PublicDeployer) issueAddPermissionlessDelegatorTX(
 			recipientAddr,
 		},
 	}
-	txID, err := wallet.P().IssueAddPermissionlessDelegatorTx(
+	tx, err := wallet.P().IssueAddPermissionlessDelegatorTx(
 		&txs.SubnetValidator{
 			Validator: txs.Validator{
 				NodeID: nodeID,
@@ -655,7 +656,7 @@ func (d *PublicDeployer) issueAddPermissionlessDelegatorTX(
 	if err != nil {
 		return ids.Empty, err
 	}
-	return txID, nil
+	return tx.ID(), nil
 }
 
 func (*PublicDeployer) signTx(
@@ -682,7 +683,8 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign CreateSubnet transaction on the ledger device *** ")
 	}
-	return wallet.P().IssueCreateSubnetTx(owners, opts...)
+	tx, err := wallet.P().IssueCreateSubnetTx(owners, opts...)
+	return tx.ID(), err
 }
 
 func (d *PublicDeployer) getSubnetAuthAddressesInWallet(subnetAuth []ids.ShortID) []ids.ShortID {
