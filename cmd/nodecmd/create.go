@@ -11,14 +11,13 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
-	"strings"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/hashicorp/hcl/v2/hclwrite"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 
-	ansible "github.com/ava-labs/avalanche-cli/pkg/ansible"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
 	terraform "github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/aws/aws-sdk-go/aws"
@@ -55,7 +54,7 @@ func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		keyPairExists, err := checkKeyPairExists(ec2Svc, newKeyPairName)
+		keyPairExists, err := awsAPI.CheckKeyPairExists(ec2Svc, newKeyPairName)
 		if err != nil {
 			return "", err
 		}
@@ -122,9 +121,130 @@ func printNoCredentialsOutput() {
 	ux.Logger.PrintToUser("More info can be found at https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-creds")
 }
 
-func createNode(_ *cobra.Command, args []string) error {
-	clusterName := args[0]
+func getAWSCloudCredentials(rootBody *hclwrite.Body, region string) (*session.Session, error) {
+	creds := credentials.NewSharedCredentials("", constants.AWSDefaultCredential)
+	credValue, err := creds.Get()
+	if err != nil {
+		printNoCredentialsOutput()
+		return &session.Session{}, err
+	}
+	err = requestAWSAccountAuth()
+	if err != nil {
+		return &session.Session{}, err
+	}
+	err = terraform.SetCloudCredentials(rootBody, credValue.AccessKeyID, credValue.SecretAccessKey, region)
+	if err != nil {
+		return &session.Session{}, err
+	}
+	// Load session from shared config
+	sess, err := session.NewSession(&aws.Config{
+		Region:      aws.String(region),
+		Credentials: creds,
+	})
+	if err != nil {
+		return &session.Session{}, err
+	}
+	return sess, nil
+}
 
+func promptKeyPairName(ec2Svc *ec2.EC2, rootBody *hclwrite.Body, keyPairName string, keyPairExists bool) (string, string, error) {
+	if keyPairExists {
+		ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists in AWS", keyPairName))
+		ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName))
+	} else {
+		ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists on your .ssh directory but not on AWS", keyPairName))
+		ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in AWS", keyPairName))
+	}
+	newKeyPairName, err := getNewKeyPairName(ec2Svc)
+	if err != nil {
+		return "", "", err
+	}
+	certName := newKeyPairName + constants.CertSuffix
+	terraform.SetKeyPair(rootBody, newKeyPairName, certName)
+	return certName, newKeyPairName, nil
+}
+
+func createEC2Instance(rootBody *hclwrite.Body, hclFile *hclwrite.File, tfFile *os.File, region, certName, keyPairName, securityGroupName, ami string) (string, string, string, string, error) {
+	sess, err := getAWSCloudCredentials(rootBody, region)
+	if err != nil {
+		return "", "", "", "", err
+	}
+	ux.Logger.PrintToUser("Creating a new EC2 instance on AWS...")
+	ec2Svc := ec2.New(sess)
+	var useExistingKeyPair bool
+	certFilePath, err := app.GetSSHCertFilePath(certName)
+	if err != nil {
+		return "", "", "", "", err
+	}
+	keyPairExists, err := awsAPI.CheckKeyPairExists(ec2Svc, keyPairName)
+	if err != nil {
+		return "", "", "", "", err
+	}
+	if !keyPairExists {
+		if !app.CheckCertInSSHDir(certFilePath) {
+			ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s in AWS", keyPairName))
+			terraform.SetKeyPair(rootBody, keyPairName, certName)
+		} else {
+			certName, keyPairName, err = promptKeyPairName(ec2Svc, rootBody, keyPairName, keyPairExists)
+			if err != nil {
+				return "", "", "", "", err
+			}
+		}
+	} else {
+		if app.CheckCertInSSHDir(certFilePath) {
+			ux.Logger.PrintToUser(fmt.Sprintf("Using existing key pair %s in AWS", keyPairName))
+			useExistingKeyPair = true
+		} else {
+			certName, keyPairName, err = promptKeyPairName(ec2Svc, rootBody, keyPairName, keyPairExists)
+			if err != nil {
+				return "", "", "", "", err
+			}
+		}
+	}
+	securityGroupExists, sg, err := awsAPI.CheckSecurityGroupExists(ec2Svc, securityGroupName)
+	if err != nil {
+		return "", "", "", "", err
+	}
+	userIPAddress, err := getIPAddress()
+	if err != nil {
+		return "", "", "", "", err
+	}
+	if !securityGroupExists {
+		ux.Logger.PrintToUser(fmt.Sprintf("Creating new security group %s in AWS", securityGroupName))
+		terraform.SetSecurityGroup(rootBody, userIPAddress, securityGroupName)
+	} else {
+		ux.Logger.PrintToUser(fmt.Sprintf("Using existing security group %s in AWS", securityGroupName))
+		ipInTCP, ipInHTTP := awsAPI.CheckCurrentIPInSg(sg, userIPAddress)
+		terraform.SetSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
+	}
+	terraform.SetElasticIP(rootBody)
+	terraform.SetUpInstance(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami)
+	terraform.SetOutput(rootBody)
+	err = terraform.SaveTerraformFile(tfFile, hclFile)
+	if err != nil {
+		return "", "", "", "", err
+	}
+	instanceID, elasticIP, err := terraform.RunTerraform()
+	if err != nil {
+		return "", "", "", "", err
+	}
+	ux.Logger.PrintToUser("A new EC2 instance is successfully created in AWS!")
+	certFilePath, err = app.GetSSHCertFilePath(certName)
+	if err != nil {
+		return "", "", "", "", err
+	}
+
+	if !useExistingKeyPair {
+		err = addCertToSSH(certName)
+		if err != nil {
+			return "", "", "", "", err
+		}
+	}
+	return instanceID, elasticIP, certFilePath, keyPairName, nil
+}
+
+func createNode(_ *cobra.Command, args []string) error {
+	// clusterName := args[0]
 	err := terraform.RemoveExistingTerraformFiles()
 	if err != nil {
 		return err
@@ -133,8 +253,10 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	region := "us-east-2"
-	ami := "ami-0430580de6244e02e"
+	// region := "us-east-2"
+	// ami := "ami-0430580de6244e02e"
+	region := "us-east-1"
+	ami := "ami-0261755bbcb8c4a84"
 	keyPairName := usr.Username + "-" + region + constants.AvalancheCLISuffix
 	certName := keyPairName + "-" + region + constants.CertSuffix
 	securityGroupName := keyPairName + "-" + region + constants.AWSSecurityGroupSuffix
@@ -142,117 +264,29 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	creds := credentials.NewSharedCredentials("", constants.AWSDefaultCredential)
-	credValue, err := creds.Get()
-	if err != nil {
-		printNoCredentialsOutput()
-		return err
-	}
-	err = requestAWSAccountAuth()
-	if err != nil {
-		return err
-	}
-	err = terraform.SetCloudCredentials(rootBody, credValue.AccessKeyID, credValue.SecretAccessKey, region)
-	if err != nil {
-		return err
-	}
-	// Load session from shared config
-	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String(region),
-		Credentials: creds,
-	})
-	if err != nil {
-		return err
-	}
-
 	// Create new EC2 client
-	ux.Logger.PrintToUser("Creating a new EC2 instance on AWS...")
-	ec2Svc := ec2.New(sess)
-	var useExistingKeyPair bool
-	certFilePath, err := app.GetSSHCertFilePath(certName)
+	// instanceID, elasticIP, certFilePath, keyPairName, err := createEC2Instance(rootBody, hclFile, tfFile, region, certName, keyPairName, securityGroupName, ami)
+	_, _, _, keyPairName, err = createEC2Instance(rootBody, hclFile, tfFile, region, certName, keyPairName, securityGroupName, ami)
 	if err != nil {
 		return err
 	}
-	keyPairExists, err := checkKeyPairExists(ec2Svc, keyPairName)
-	if err != nil {
-		return err
-	}
-	if !keyPairExists && !app.CheckCertInSSHDir(certFilePath) {
-		ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s on AWS", keyPairName))
-		terraform.SetKeyPair(rootBody, keyPairName, certName)
-	} else {
-		if !keyPairExists && app.CheckCertInSSHDir(certFilePath) {
-			//need to create new key pair
-		} else if app.CheckCertInSSHDir(certFilePath) {
-			ux.Logger.PrintToUser(fmt.Sprintf("Using existing key pair %s on AWS", keyPairName))
-			useExistingKeyPair = true
-		} else {
-			ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists", keyPairName))
-			ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair on AWS as we can't find Key Pair named %s on AWS", keyPairName))
-			keyPairName, err = getNewKeyPairName(ec2Svc)
-			if err != nil {
-				return err
-			}
-			certName = keyPairName + "-kp.pem"
-			terraform.SetKeyPair(rootBody, keyPairName, certName)
-		}
-	}
-	securityGroupExists, sg, err := checkSecurityGroupExists(ec2Svc, securityGroupName)
-	if err != nil {
-		return err
-	}
-	userIPAddress, err := getIPAddress()
-	if err != nil {
-		return err
-	}
-	if !securityGroupExists {
-		ux.Logger.PrintToUser(fmt.Sprintf("Creating new security group %s on AWS", securityGroupName))
-		terraform.SetSecurityGroup(rootBody, userIPAddress, securityGroupName)
-	} else {
-		ux.Logger.PrintToUser(fmt.Sprintf("Using existing security group %s on AWS", securityGroupName))
-		ipInTCP, ipInHTTP := checkCurrentIPInSg(sg, userIPAddress)
-		terraform.SetSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
-	}
-	terraform.SetElasticIP(rootBody)
-	terraform.SetUpInstance(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami)
-	terraform.SetOutput(rootBody)
-	err = terraform.SaveTerraformFile(tfFile, hclFile)
-	if err != nil {
-		return err
-	}
-	instanceID, elasticIP, err := terraform.RunTerraform()
-	if err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("A new EC2 instance is successfully created on AWS!")
-	certFilePath, err = app.GetSSHCertFilePath(certName)
-	if err != nil {
-		return err
-	}
-
-	if !useExistingKeyPair {
-		err = addCertToSSH(certName)
-		if err != nil {
-			return err
-		}
-	}
-
-	inventoryPath := app.GetAnsibleInventoryPath(clusterName)
-	if err := ansible.CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
-		return err
-	}
-	time.Sleep(5 * time.Second)
-
-	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance...")
-	if err := ansible.RunAnsibleSetUpNodePlaybook(inventoryPath); err != nil {
-		return err
-	}
-	err = createNodeConfig(instanceID, region, ami, keyPairName, certFilePath, securityGroupName, elasticIP, clusterName)
-	if err != nil {
-		return err
-	}
-	PrintResults(instanceID, elasticIP, certFilePath, region)
-	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node is bootstrapping!")
+	fmt.Printf("obtained keyPairName %s \n", keyPairName)
+	//inventoryPath := app.GetAnsibleInventoryPath(clusterName)
+	//if err := ansible.CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
+	//	return err
+	//}
+	//time.Sleep(5 * time.Second)
+	//
+	//ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance...")
+	//if err := ansible.RunAnsibleSetUpNodePlaybook(inventoryPath); err != nil {
+	//	return err
+	//}
+	//err = createNodeConfig(instanceID, region, ami, keyPairName, certFilePath, securityGroupName, elasticIP, clusterName)
+	//if err != nil {
+	//	return err
+	//}
+	//PrintResults(instanceID, elasticIP, certFilePath, region)
+	//ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node is bootstrapping!")
 	err = terraform.RemoveExistingTerraformFiles()
 	if err != nil {
 		return err
@@ -261,7 +295,8 @@ func createNode(_ *cobra.Command, args []string) error {
 }
 
 func requestAWSAccountAuth() error {
-	confirm := "Do you authorize Avalanche-CLI to access your AWS account to set-up your Avalanche Validator node?"
+	confirm := "Do you authorize Avalanche-CLI to access your AWS account to set-up your Avalanche Validator node? " +
+		"Please note that you will be charged for AWS usage."
 	yes, err := app.Prompt.CaptureYesNo(confirm)
 	if err != nil {
 		return err
@@ -270,61 +305,6 @@ func requestAWSAccountAuth() error {
 		return errors.New("user did not give authorization to Avalanche-CLI to access AWS account")
 	}
 	return nil
-}
-
-func checkKeyPairExists(ec2Svc *ec2.EC2, kpName string) (bool, error) {
-	keyPairInput := &ec2.DescribeKeyPairsInput{
-		KeyNames: []*string{
-			aws.String(kpName),
-		},
-	}
-
-	// Call to get detailed information on each instance
-	_, err := ec2Svc.DescribeKeyPairs(keyPairInput)
-	if err != nil {
-		if strings.Contains(err.Error(), "InvalidKeyPair.NotFound") {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
-}
-
-func checkSecurityGroupExists(ec2Svc *ec2.EC2, sgName string) (bool, *ec2.SecurityGroup, error) {
-	sgInput := &ec2.DescribeSecurityGroupsInput{
-		GroupNames: []*string{
-			aws.String(sgName),
-		},
-	}
-
-	sg, err := ec2Svc.DescribeSecurityGroups(sgInput)
-	if err != nil {
-		if strings.Contains(err.Error(), "InvalidGroup.NotFound") {
-			return false, &ec2.SecurityGroup{}, nil
-		}
-		return false, &ec2.SecurityGroup{}, err
-	}
-	return true, sg.SecurityGroups[0], nil
-}
-
-func checkCurrentIPInSg(sg *ec2.SecurityGroup, currentIP string) (bool, bool) {
-	var ipInTCP bool
-	var ipInHTTP bool
-	for _, ip := range sg.IpPermissions {
-		if *ip.FromPort == constants.TCPPort || *ip.FromPort == constants.HTTPPort {
-			for _, cidrIP := range ip.IpRanges {
-				if strings.Contains(cidrIP.String(), currentIP) {
-					if *ip.FromPort == constants.TCPPort {
-						ipInTCP = true
-					} else if *ip.FromPort == constants.HTTPPort {
-						ipInHTTP = true
-					}
-					break
-				}
-			}
-		}
-	}
-	return ipInTCP, ipInHTTP
 }
 
 func getIPAddress() (string, error) {
