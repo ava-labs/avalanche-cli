@@ -270,6 +270,10 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	err = terraform.RemoveExistingTerraformFiles()
+	if err != nil {
+		return err
+	}
 	fmt.Printf("obtained keyPairName %s \n", keyPairName)
 	inventoryPath := app.GetAnsibleInventoryPath(clusterName)
 	if err := ansible.CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
@@ -287,10 +291,6 @@ func createNode(_ *cobra.Command, args []string) error {
 	}
 	PrintResults(instanceID, elasticIP, certFilePath, region)
 	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node is bootstrapping!")
-	err = terraform.RemoveExistingTerraformFiles()
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
