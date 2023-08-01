@@ -133,11 +133,11 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	keyPairName := usr.Username + constants.AvalancheCLISuffix
-	certName := keyPairName + constants.CertSuffix
-	securityGroupName := keyPairName + constants.AWSSecurityGroupSuffix
 	region := "us-east-2"
 	ami := "ami-0430580de6244e02e"
+	keyPairName := usr.Username + "-" + region + constants.AvalancheCLISuffix
+	certName := keyPairName + "-" + region + constants.CertSuffix
+	securityGroupName := keyPairName + "-" + region + constants.AWSSecurityGroupSuffix
 
 	hclFile, tfFile, rootBody, err := terraform.CreateTerraformFile()
 	if err != nil {

@@ -34,5 +34,7 @@ rest of the commands to maintain your node and make your node a Subnet Validator
 	cmd.AddCommand(newCreateCmd())
 	// node join subnet
 	cmd.AddCommand(newJoinCmd())
+	// node sync subnet
+	cmd.AddCommand(newSyncCmd())
 	return cmd
 }

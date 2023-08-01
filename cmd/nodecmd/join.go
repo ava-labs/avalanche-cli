@@ -37,6 +37,7 @@ var (
 
 	ErrMutuallyExlusiveKeyLedger = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet        = errors.New("--key is not available for mainnet operations")
+	ErrNoBlockchainID            = errors.New("failed to find the blockchain ID for this subnet, has it been deployed/created on this network?")
 )
 
 func newJoinCmd() *cobra.Command {
@@ -96,6 +97,28 @@ func parseBootstrappedOutput(filePath string) (bool, error) {
 	return false, nil
 }
 
+func parseSubnetSyncOutput(filePath string) (string, error) {
+	jsonFile, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer jsonFile.Close()
+	byteValue, _ := io.ReadAll(jsonFile)
+	var result map[string]interface{}
+	err = json.Unmarshal(byteValue, &result)
+	if err != nil {
+		return "", err
+	}
+	statusInterface, ok := result["result"].(map[string]interface{})
+	if ok {
+		status, ok := statusInterface["status"].(string)
+		if ok {
+			return status, nil
+		}
+	}
+	return "", nil
+}
+
 func parseNodeIDOutput(fileName string) (string, error) {
 	jsonFile, err := os.Open(fileName)
 	if err != nil {
@@ -117,24 +140,6 @@ func parseNodeIDOutput(fileName string) (string, error) {
 		}
 	}
 	return "", nil
-}
-
-func trackSubnet(clusterName string, network models.Network) error {
-	err := subnetcmd.CallExportSubnet(subnetName, network)
-	if err != nil {
-		return err
-	}
-	inventoryPath := "inventories/" + clusterName
-	err = ansible.RunAnsiblePlaybookExportSubnet(subnetName, inventoryPath)
-	if err != nil {
-		return err
-	}
-	err = ansible.RunAnsiblePlaybookTrackSubnet(subnetName, inventoryPath)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func addNodeAsSubnetValidator(nodeID string, network models.Network) error {
@@ -303,7 +308,7 @@ func getDefaultMaxValidationTime(start time.Time, network models.Network) (time.
 }
 
 func checkNodeIsBootstrapped(clusterName string) (bool, error) {
-	err := createFile(constants.IsBootstrappedJSONFile)
+	err := createFile(app.GetBootstrappedJSONFile())
 	if err != nil {
 		return false, err
 	}
@@ -327,7 +332,7 @@ func checkNodeIsBootstrapped(clusterName string) (bool, error) {
 }
 
 func getNodeID(clusterName string) (string, error) {
-	err := createFile(constants.NodeIDJSONFile)
+	err := createFile(app.GetNodeIDJSONFile())
 	if err != nil {
 		return "", err
 	}
@@ -344,6 +349,32 @@ func getNodeID(clusterName string) (string, error) {
 		return "", err
 	}
 	return nodeID, err
+}
+
+func getNodeSubnetSyncStatus(blockchainID, clusterName string) (bool, error) {
+	err := createFile(app.GetSubnetSyncJSONFile())
+	if err != nil {
+		return false, err
+	}
+	inventoryPath := "inventories/" + clusterName
+	//if err := ansible.RunAnsiblePlaybookSubnetSyncStatus("2V76cVSevkCVtPGLAKntu9dqGVi9omVNNUuFWWKaoBamfLVRN", inventoryPath); err != nil {
+	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(blockchainID, inventoryPath); err != nil {
+		return false, err
+	}
+	subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile())
+	if err != nil {
+		return false, err
+	}
+	err = removeFile(app.GetSubnetSyncJSONFile())
+	if err != nil {
+		return false, err
+	}
+	if subnetSyncStatus == constants.NodeIsSubnetSynced {
+		return true, nil
+	} else if subnetSyncStatus == constants.NodeIsSubnetValidating {
+		return false, errors.New("node is already a subnet validator")
+	}
+	return false, nil
 }
 
 func joinSubnet(_ *cobra.Command, args []string) error {
@@ -363,12 +394,26 @@ func joinSubnet(_ *cobra.Command, args []string) error {
 	if !isBootstrapped {
 		return errors.New("node is not bootstrapped yet, please try again later")
 	}
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
+	}
+	blockchainID := sc.Networks[models.Fuji.String()].BlockchainID
+	if blockchainID == ids.Empty {
+		return ErrNoBlockchainID
+	}
+	isSubnetSynced, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName)
+	if err != nil {
+		return err
+	}
+	if !isSubnetSynced {
+		return errors.New("node is not synced to subnet yet, please try again later")
+	}
 	nodeIDStr, err := getNodeID(clusterName)
 	if err != nil {
 		return err
 	}
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)
-	//_, err = ids.NodeIDFromString(nodeIDStr)
 	if err != nil {
 		return err
 	}
@@ -376,10 +421,6 @@ func joinSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	//err = trackSubnet(clusterName, models.Fuji)
-	//if err != nil {
-	//	return err
-	//}
 	ux.Logger.PrintToUser("Waiting 1 min for the node to be a Primary Network Validator...")
 	time.Sleep(60 * time.Second)
 	ux.Logger.PrintToUser("Adding the node as a Subnet Validator...")

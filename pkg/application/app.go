@@ -585,3 +585,7 @@ func (*Avalanche) GetBootstrappedJSONFile() string {
 func (*Avalanche) GetNodeIDJSONFile() string {
 	return constants.AnsiblePlaybookPath + constants.NodeIDJSONFile
 }
+
+func (*Avalanche) GetSubnetSyncJSONFile() string {
+	return constants.AnsiblePlaybookPath + constants.SubnetSyncJSONFile
+}

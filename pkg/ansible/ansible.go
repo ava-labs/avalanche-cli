@@ -85,3 +85,13 @@ func RunAnsiblePlaybookGetNodeID(inventoryPath string) error {
 	cmd.Stderr = mw
 	return cmd.Run()
 }
+
+func RunAnsiblePlaybookSubnetSyncStatus(blockchainID, inventoryPath string) error {
+	blockchainIDArg := "blockchainID=" + blockchainID
+	var stdBuffer bytes.Buffer
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsSubnetSyncedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, blockchainIDArg, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	mw := io.MultiWriter(os.Stdout, &stdBuffer)
+	cmd.Stdout = mw
+	cmd.Stderr = mw
+	return cmd.Run()
+}
