@@ -18,7 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
-	terraform "github.com/ava-labs/avalanche-cli/pkg/terraform"
+	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
