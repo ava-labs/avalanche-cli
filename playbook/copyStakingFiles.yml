@@ -1,0 +1,13 @@
+---
+- hosts: all
+  tasks:
+    - name: copy staker.crt to local machine
+      fetch:
+        src: /home/ubuntu/.avalanchego/staking/staker.crt
+        dest: "{{ nodeInstanceDirPath }}"
+        flat: true
+    - name: copy staker.key to local machine
+      fetch:
+        src: /home/ubuntu/.avalanchego/staking/staker.key
+        dest: "{{ nodeInstanceDirPath }}"
+        flat: true

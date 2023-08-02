@@ -98,6 +98,7 @@ const (
 	OutboundPort                       = 0
 	AnsiblePlaybook                    = "ansible-playbook"
 	SetUpNodePlaybook                  = "playbook/setupNode.yml"
+	CopyStakingFilesPlaybook           = "playbook/copyStakingFiles.yml"
 	ExportSubnetPlaybook               = "playbook/exportSubnet.yml"
 	GetNodeIDPlaybook                  = "playbook/getNodeID.yml"
 	IsBootstrappedPlaybook             = "playbook/isBootstrapped.yml"

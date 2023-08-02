@@ -112,6 +112,10 @@ func (app *Avalanche) GetConfigPath() string {
 	return filepath.Join(app.baseDir, constants.ConfigDir)
 }
 
+func (app *Avalanche) GetNodeInstanceDirPath(nodeName string) string {
+	return filepath.Join(app.GetNodeDir(), nodeName)
+}
+
 func (app *Avalanche) GetNodeConfigPath(nodeName string) string {
 	return filepath.Join(app.GetNodeDir(), nodeName, constants.NodeFileName)
 }

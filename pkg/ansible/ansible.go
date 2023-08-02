@@ -47,6 +47,17 @@ func RunAnsibleSetUpNodePlaybook(configPath, inventoryPath string) error {
 	return cmd.Run()
 }
 
+func RunAnsibleCopyStakingFilesPlaybook(nodeInstanceDirPath, inventoryPath string) error {
+	nodeInstanceDirPathVar := "nodeInstanceDirPath=" + nodeInstanceDirPath + "/"
+	fmt.Printf("nodeInstanceDirPathVar %s \n", nodeInstanceDirPathVar)
+	var stdBuffer bytes.Buffer
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.CopyStakingFilesPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, nodeInstanceDirPathVar, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	mw := io.MultiWriter(os.Stdout, &stdBuffer)
+	cmd.Stdout = mw
+	cmd.Stderr = mw
+	return cmd.Run()
+}
+
 func RunAnsiblePlaybookExportSubnet(subnetName, inventoryPath string) error {
 	var stdBuffer bytes.Buffer
 	exportOutput := "/tmp/" + subnetName + "-export.dat"

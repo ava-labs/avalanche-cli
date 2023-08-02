@@ -274,7 +274,6 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("obtained keyPairName %s \n", keyPairName)
 	inventoryPath := app.GetAnsibleInventoryPath(clusterName)
 	if err := ansible.CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
 		return err
@@ -287,6 +286,11 @@ func createNode(_ *cobra.Command, args []string) error {
 	}
 	err = createNodeConfig(instanceID, region, ami, keyPairName, certFilePath, securityGroupName, elasticIP, clusterName)
 	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
+	// instanceID is bounded by double quotation "", we need to remove them before they can be used
+	if err := ansible.RunAnsibleCopyStakingFilesPlaybook(app.GetNodeInstanceDirPath(instanceID[1:len(instanceID)-2]), inventoryPath); err != nil {
 		return err
 	}
 	PrintResults(instanceID, elasticIP, certFilePath, region)
@@ -352,9 +356,12 @@ func PrintResults(instanceID, elasticIP, certFilePath, region string) {
 	ux.Logger.PrintToUser(fmt.Sprintf("Elastic IP: %s", elasticIPToUse))
 	ux.Logger.PrintToUser(fmt.Sprintf("Cloud Region: %s", region))
 	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(fmt.Sprintf("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", certFilePath))
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(fmt.Sprintf("staker.crt and staker.key are stored at %s. If anything happens to your node or the machine node runs on, these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath()))
+	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("To ssh to validator, run: ")
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser(fmt.Sprintf("ssh -o IdentitiesOnly=yes ubuntu@%s -i %s", elasticIPToUse, certFilePath))
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(fmt.Sprintf("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", certFilePath))
 }
