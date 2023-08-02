@@ -291,7 +291,6 @@ func promptAvalancheGoVersion() (string, error) {
 			}
 			ux.Logger.PrintToUser(fmt.Sprintf("no subnet named %s found", subnetName))
 		}
-		return "", errors.New("no subnet provided")
 	}
 }
 
