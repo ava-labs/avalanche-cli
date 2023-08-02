@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"math/big"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -449,18 +448,15 @@ func getAllTimestamps(upgrades []params.PrecompileUpgrade) ([]int64, error) {
 	return allTimestamps, nil
 }
 
-func validateTimestamp(ts *big.Int) (int64, error) {
+func validateTimestamp(ts *uint64) (int64, error) {
 	if ts == nil {
 		return 0, errNoBlockTimestamp
 	}
-	if !ts.IsInt64() {
+	val := *ts
+	if val == uint64(0) {
 		return 0, errBlockTimestampInvalid
 	}
-	val := ts.Int64()
-	if val == int64(0) {
-		return 0, errBlockTimestampInvalid
-	}
-	return val, nil
+	return int64(val), nil
 }
 
 func getEarliestUpcomingTimestamp(upgrades []params.PrecompileUpgrade) (int64, error) {
