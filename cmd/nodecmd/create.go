@@ -358,7 +358,7 @@ func PrintResults(instanceID, elasticIP, certFilePath, region string) {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser(fmt.Sprintf("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", certFilePath))
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(fmt.Sprintf("staker.crt and staker.key are stored at %s. If anything happens to your node or the machine node runs on, these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath()))
+	ux.Logger.PrintToUser(fmt.Sprintf("staker.crt and staker.key are stored at %s. If anything happens to your node or the machine node runs on, these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceIDToUse)))
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("To ssh to validator, run: ")
 	ux.Logger.PrintToUser("")
