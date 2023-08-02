@@ -6,13 +6,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"io"
 	"net"
 	"os"
 	"os/exec"
 	"os/user"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/hashicorp/hcl/v2/hclwrite"
@@ -125,7 +126,12 @@ func printNoCredentialsOutput() {
 
 func getAWSCloudCredentials(rootBody *hclwrite.Body, region string) (*session.Session, error) {
 	creds := credentials.NewSharedCredentials("", constants.AWSDefaultCredential)
-	err := requestAWSAccountAuth()
+	_, err := creds.Get()
+	if err != nil {
+		printNoCredentialsOutput()
+		return &session.Session{}, err
+	}
+	err = requestAWSAccountAuth()
 	if err != nil {
 		return &session.Session{}, err
 	}
