@@ -11,7 +11,7 @@ metadata:
     backstage.io/techdocs-ref: dir:.
     github.com/project-slug: ava-labs/avalanche-cli
 spec:
-  type: cli
+  type: service
   owner: platform-tooling
   lifecycle: production
   dependsOn:
