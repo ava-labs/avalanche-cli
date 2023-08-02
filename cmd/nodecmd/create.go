@@ -14,12 +14,13 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 
+	subnet "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -246,6 +247,54 @@ func createEC2Instance(rootBody *hclwrite.Body, hclFile *hclwrite.File, tfFile *
 	return instanceID, elasticIP, certFilePath, keyPairName, nil
 }
 
+func getAvalancheGoVersion() (string, error) {
+	chosenOption, err := promptAvalancheGoVersion()
+	if err != nil {
+		return "", err
+	}
+	if chosenOption != "latest" {
+		sc, err := app.LoadSidecar(chosenOption)
+		if err != nil {
+			return "", err
+		}
+		nc := localnetworkinterface.NewStatusChecker()
+		customAvagoVersion, err := subnet.CheckForInvalidDeployAndGetAvagoVersion(nc, sc.RPCVersion)
+		if err != nil {
+			return "", err
+		}
+		return customAvagoVersion, nil
+	}
+	return chosenOption, nil
+}
+
+func promptAvalancheGoVersion() (string, error) {
+	defaultVersion := "Use latest Avalanche Go Version"
+	txt := "What version of Avalanche Go would you like to install in the node?"
+	versionOptions := []string{defaultVersion, "Use the deployed Subnet's VM version that the node will be validating"}
+	versionOption, err := app.Prompt.CaptureList(txt, versionOptions)
+	if err != nil {
+		return "", err
+	}
+
+	switch versionOption {
+	case defaultVersion:
+		return "latest", nil
+	default:
+		for {
+			subnetName, err := app.Prompt.CaptureString("Which Subnet would you like to use to choose the avalanche go version?")
+			if err != nil {
+				return "", err
+			}
+			_, err = subnet.ValidateSubnetNameAndGetChains([]string{subnetName})
+			if err == nil {
+				return subnetName, nil
+			}
+			ux.Logger.PrintToUser(fmt.Sprintf("no subnet named %s found", subnetName))
+		}
+		return "", errors.New("no subnet provided")
+	}
+}
+
 func createNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	err := terraform.RemoveExistingTerraformFiles()
@@ -280,8 +329,12 @@ func createNode(_ *cobra.Command, args []string) error {
 	}
 	time.Sleep(15 * time.Second)
 
+	avalancheGoVersion, err := getAvalancheGoVersion()
+	if err != nil {
+		return err
+	}
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance...")
-	if err := ansible.RunAnsibleSetUpNodePlaybook(app.GetConfigPath(), inventoryPath); err != nil {
+	if err := ansible.RunAnsibleSetUpNodePlaybook(app.GetConfigPath(), inventoryPath, avalancheGoVersion); err != nil {
 		return err
 	}
 	err = createNodeConfig(instanceID, region, ami, keyPairName, certFilePath, securityGroupName, elasticIP, clusterName)

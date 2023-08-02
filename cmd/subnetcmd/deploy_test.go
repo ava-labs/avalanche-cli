@@ -199,7 +199,7 @@ func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 			app.Log = logging.NoLog{}
 			app.Downloader = mockDownloader
 
-			desiredAvagoVersion, err := checkForInvalidDeployAndGetAvagoVersion(&mockSC, tt.desiredRPC)
+			desiredAvagoVersion, err := CheckForInvalidDeployAndGetAvagoVersion(&mockSC, tt.desiredRPC)
 
 			if tt.expectError {
 				require.Error(err)

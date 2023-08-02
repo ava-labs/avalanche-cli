@@ -37,8 +37,8 @@ func CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath string) e
 	return nil
 }
 
-func RunAnsibleSetUpNodePlaybook(configPath, inventoryPath string) error {
-	configDirVar := "configDir=" + configPath
+func RunAnsibleSetUpNodePlaybook(configPath, inventoryPath, avalancheGoVersion string) error {
+	configDirVar := "configDir=" + configPath + " avalancheGoVersion=" + avalancheGoVersion
 	var stdBuffer bytes.Buffer
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetUpNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, configDirVar, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	mw := io.MultiWriter(os.Stdout, &stdBuffer)

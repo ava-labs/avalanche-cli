@@ -351,7 +351,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if sidecar.VM != models.CustomVM {
 			// check if selected version matches what is currently running
 			nc := localnetworkinterface.NewStatusChecker()
-			userProvidedAvagoVersion, err = checkForInvalidDeployAndGetAvagoVersion(nc, sidecar.RPCVersion)
+			userProvidedAvagoVersion, err = CheckForInvalidDeployAndGetAvagoVersion(nc, sidecar.RPCVersion)
 			if err != nil {
 				return err
 			}
@@ -916,7 +916,7 @@ func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID) erro
 
 // Determines the appropriate version of avalanchego to run with. Returns an error if
 // that version conflicts with the current deployment.
-func checkForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.StatusChecker, configuredRPCVersion int) (string, error) {
+func CheckForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.StatusChecker, configuredRPCVersion int) (string, error) {
 	// get current network
 	runningAvagoVersion, runningRPCVersion, networkRunning, err := network.GetCurrentNetworkVersion()
 	if err != nil {
