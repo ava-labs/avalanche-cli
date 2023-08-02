@@ -11,9 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
-	"time"
-
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/hashicorp/hcl/v2/hclwrite"
@@ -126,16 +123,11 @@ func printNoCredentialsOutput() {
 
 func getAWSCloudCredentials(rootBody *hclwrite.Body, region string) (*session.Session, error) {
 	creds := credentials.NewSharedCredentials("", constants.AWSDefaultCredential)
-	credValue, err := creds.Get()
-	if err != nil {
-		printNoCredentialsOutput()
-		return &session.Session{}, err
-	}
-	err = requestAWSAccountAuth()
+	err := requestAWSAccountAuth()
 	if err != nil {
 		return &session.Session{}, err
 	}
-	err = terraform.SetCloudCredentials(rootBody, credValue.AccessKeyID, credValue.SecretAccessKey, region)
+	err = terraform.SetCloudCredentials(rootBody, region)
 	if err != nil {
 		return &session.Session{}, err
 	}
@@ -227,27 +219,28 @@ func createEC2Instance(rootBody *hclwrite.Body, hclFile *hclwrite.File, tfFile *
 	if err != nil {
 		return "", "", "", "", err
 	}
-	instanceID, elasticIP, err := terraform.RunTerraform()
-	if err != nil {
-		return "", "", "", "", err
-	}
-	ux.Logger.PrintToUser("A new EC2 instance is successfully created in AWS!")
-	certFilePath, err = app.GetSSHCertFilePath(certName)
-	if err != nil {
-		return "", "", "", "", err
-	}
-
-	if !useExistingKeyPair {
-		err = addCertToSSH(certName)
-		if err != nil {
-			return "", "", "", "", err
-		}
-	}
-	return instanceID, elasticIP, certFilePath, keyPairName, nil
+	//instanceID, elasticIP, err := terraform.RunTerraform()
+	//if err != nil {
+	//	return "", "", "", "", err
+	//}
+	//ux.Logger.PrintToUser("A new EC2 instance is successfully created in AWS!")
+	//certFilePath, err = app.GetSSHCertFilePath(certName)
+	//if err != nil {
+	//	return "", "", "", "", err
+	//}
+	//
+	//if !useExistingKeyPair {
+	//	err = addCertToSSH(certName)
+	//	if err != nil {
+	//		return "", "", "", "", err
+	//	}
+	//}
+	//return instanceID, elasticIP, certFilePath, keyPairName, nil
+	return "", "", certFilePath, keyPairName, nil
 }
 
 func createNode(_ *cobra.Command, args []string) error {
-	clusterName := args[0]
+	// clusterName := args[0]
 	err := terraform.RemoveExistingTerraformFiles()
 	if err != nil {
 		return err
@@ -266,31 +259,32 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	// Create new EC2 client
-	instanceID, elasticIP, certFilePath, keyPairName, err := createEC2Instance(rootBody, hclFile, tfFile, region, certName, keyPairName, securityGroupName, ami)
+	// instanceID, elasticIP, certFilePath, keyPairName, err := createEC2Instance(rootBody, hclFile, tfFile, region, certName, keyPairName, securityGroupName, ami)
+	_, _, _, keyPairName, err = createEC2Instance(rootBody, hclFile, tfFile, region, certName, keyPairName, securityGroupName, ami)
 	if err != nil {
 		return err
 	}
-	err = terraform.RemoveExistingTerraformFiles()
-	if err != nil {
-		return err
-	}
-	fmt.Printf("obtained keyPairName %s \n", keyPairName)
-	inventoryPath := app.GetAnsibleInventoryPath(clusterName)
-	if err := ansible.CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
-		return err
-	}
-	time.Sleep(5 * time.Second)
-
-	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance...")
-	if err := ansible.RunAnsibleSetUpNodePlaybook(inventoryPath); err != nil {
-		return err
-	}
-	err = createNodeConfig(instanceID, region, ami, keyPairName, certFilePath, securityGroupName, elasticIP, clusterName)
-	if err != nil {
-		return err
-	}
-	PrintResults(instanceID, elasticIP, certFilePath, region)
-	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node is bootstrapping!")
+	//err = terraform.RemoveExistingTerraformFiles()
+	//if err != nil {
+	//	return err
+	//}
+	//fmt.Printf("obtained keyPairName %s \n", keyPairName)
+	//inventoryPath := app.GetAnsibleInventoryPath(clusterName)
+	//if err := ansible.CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
+	//	return err
+	//}
+	//time.Sleep(5 * time.Second)
+	//
+	//ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance...")
+	//if err := ansible.RunAnsibleSetUpNodePlaybook(inventoryPath); err != nil {
+	//	return err
+	//}
+	//err = createNodeConfig(instanceID, region, ami, keyPairName, certFilePath, securityGroupName, elasticIP, clusterName)
+	//if err != nil {
+	//	return err
+	//}
+	//PrintResults(instanceID, elasticIP, certFilePath, region)
+	//ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node is bootstrapping!")
 	return nil
 }
 

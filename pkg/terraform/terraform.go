@@ -35,13 +35,11 @@ func SaveTerraformFile(tfFile *os.File, hclFile *hclwrite.File) error {
 	return nil
 }
 
-func SetCloudCredentials(rootBody *hclwrite.Body, accessKey, secretKey, region string) error {
+func SetCloudCredentials(rootBody *hclwrite.Body, region string) error {
 	provider := rootBody.AppendNewBlock("provider", []string{"aws"})
 	providerBody := provider.Body()
-	providerBody.SetAttributeValue("access_key", cty.StringVal(accessKey))
-	providerBody.SetAttributeValue("secret_key", cty.StringVal(secretKey))
 	providerBody.SetAttributeValue("region", cty.StringVal(region))
-
+	providerBody.SetAttributeValue("profile", cty.StringVal("default"))
 	return nil
 }
 
