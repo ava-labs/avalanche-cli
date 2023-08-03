@@ -4,11 +4,11 @@
 package ansible
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
+
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
@@ -105,5 +105,10 @@ func RunAnsiblePlaybookSubnetSyncStatus(blockchainID, inventoryPath string) erro
 	mw := io.MultiWriter(os.Stdout, &stdBuffer)
 	cmd.Stdout = mw
 	cmd.Stderr = mw
+}
+
+func RunAnsibleSetUpNodePlaybook(inventoryPath string) error {
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetUpNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	utils.SetUpMultiWrite(cmd)
 	return cmd.Run()
 }

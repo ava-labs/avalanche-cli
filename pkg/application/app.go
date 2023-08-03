@@ -120,6 +120,21 @@ func (app *Avalanche) GetNodeConfigPath(nodeName string) string {
 	return filepath.Join(app.GetNodeDir(), nodeName, constants.NodeFileName)
 }
 
+func (app *Avalanche) CreateNodeTerraformDir() error {
+	nodeTerraformDir := app.GetNodeTerraformDir()
+	if _, err := os.Stat(nodeTerraformDir); os.IsNotExist(err) {
+		err = os.Mkdir(nodeTerraformDir, 0o755)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (app *Avalanche) GetNodeTerraformDir() string {
+	return filepath.Join(app.GetNodeDir(), constants.TerraformDir)
+}
+
 func (app *Avalanche) GetClusterConfigPath() string {
 	return filepath.Join(app.GetNodeDir(), constants.ClusterConfigFileName)
 }
@@ -203,12 +218,6 @@ func (app *Avalanche) WriteGenesisMainnetFile(subnetName string, genesisBytes []
 func (app *Avalanche) GenesisExists(subnetName string) bool {
 	genesisPath := app.GetGenesisPath(subnetName)
 	_, err := os.Stat(genesisPath)
-	return err == nil
-}
-
-func (app *Avalanche) NodeDirExists() bool {
-	nodePath := app.GetNodeDir()
-	_, err := os.Stat(nodePath)
 	return err == nil
 }
 

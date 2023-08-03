@@ -1,0 +1,7 @@
+site_name: avalanche-cli
+site_description: Avalanche-CLI is a command-line interface for building, deploying, and maintaining Avalanche Subnets. It can be used to support the entire Subnet development lifecycle from initial prototyping to production deployments. Avalanche-CLI is available for Linux and Mac, and is open source on GitHub.
+nav:
+  - Introduction: index.md
+  - Ledger Simulator: ledger-simulator.md
+plugins:
+  - techdocs-core

@@ -119,6 +119,7 @@ func NewGRPCServer(snapshotsDir string) (server.Server, error) {
 		DialTimeout:         gRPCDialTimeout,
 		SnapshotsDir:        snapshotsDir,
 		RedirectNodesOutput: false,
+		LogLevel:            logging.Info,
 	}, log)
 }
 
