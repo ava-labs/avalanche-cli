@@ -52,7 +52,7 @@ func CheckIsInstalled() error {
 	if err := exec.Command(constants.AnsiblePlaybook).Run(); errors.Is(err, exec.ErrNotFound) { //nolint:gosec
 		ux.Logger.PrintToUser("Ansible tool is not available. It is a needed dependency for CLI to set up a remote node.")
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("Please follow install instructions at https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html")
+		ux.Logger.PrintToUser("Please follow install instructions at https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html and try again")
 		ux.Logger.PrintToUser("")
 		return err
 	}
