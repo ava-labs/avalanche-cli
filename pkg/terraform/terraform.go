@@ -283,7 +283,6 @@ func RemoveExistingTerraformFiles() error {
 }
 
 func RunTerraform() (string, string, error) {
-
 	var instanceID string
 	var elasticIP string
 	if err := exec.Command("terraform", "init").Run(); err != nil {
