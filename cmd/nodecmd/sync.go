@@ -15,17 +15,15 @@ import (
 
 func newSyncCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "join [subnetName]",
-		Short: "Join a subnet as a validator",
-		Long: `The node join command enables a Primary Network Validator to also be a validator
-of a Subnet. If The command is run before the node is bootstrapped on the Primary Network, 
-the command will fail. You can check the bootstrap status by calling 
-avalanche node status`,
+		Use:   "sync [subnetName]",
+		Short: "Sync with a subnet",
+		Long: `The node sync command enables a node to to also be bootstrapped to a Subnet. 
+You can check the subnet bootstrap status by calling avalanche node status --subnet`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
 		RunE:         syncSubnet,
 	}
-	cmd.Flags().StringVar(&subnetName, "subnet", "", "specify the subnet the node is validating")
+	cmd.Flags().StringVar(&subnetName, "subnet", "", "specify the subnet the node is syncing with")
 
 	return cmd
 }
