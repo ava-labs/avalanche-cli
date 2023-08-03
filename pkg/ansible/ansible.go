@@ -83,4 +83,5 @@ func RunAnsiblePlaybookSubnetSyncStatus(blockchainID, inventoryPath string) erro
 	blockchainIDArg := "blockchainID=" + blockchainID
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsSubnetSyncedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, blockchainIDArg, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	utils.SetUpMultiWrite(cmd)
+	return cmd.Run()
 }

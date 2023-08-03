@@ -142,8 +142,8 @@ func (d *PublicDeployer) AddValidatorPrimaryNetwork(
 	if err != nil {
 		return ids.Empty, nil, err
 	}
-	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID.String())
-	return txID, nil, nil
+	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID.ID().String())
+	return txID.ID(), nil, nil
 }
 
 func (d *PublicDeployer) CreateAssetTx(
