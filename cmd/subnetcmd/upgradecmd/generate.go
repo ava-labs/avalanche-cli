@@ -27,6 +27,7 @@ import (
 	"github.com/ava-labs/subnet-evm/precompile/contracts/nativeminter"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/rewardmanager"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
+	"github.com/ava-labs/subnet-evm/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/spf13/cobra"
@@ -247,7 +248,7 @@ func promptNativeMintParams(precompiles *[]params.PrecompileUpgrade, date time.T
 	}
 
 	config := nativeminter.NewConfig(
-		big.NewInt(date.Unix()),
+		utils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
 		initialMint,
@@ -271,7 +272,7 @@ func promptRewardManagerParams(precompiles *[]params.PrecompileUpgrade, date tim
 	}
 
 	config := rewardmanager.NewConfig(
-		big.NewInt(date.Unix()),
+		utils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
 		initialConfig,
@@ -307,7 +308,7 @@ func promptFeeManagerParams(precompiles *[]params.PrecompileUpgrade, date time.T
 	}
 
 	config := feemanager.NewConfig(
-		big.NewInt(date.Unix()),
+		utils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
 		feeConfig,
@@ -326,7 +327,7 @@ func promptContractAllowListParams(precompiles *[]params.PrecompileUpgrade, date
 	}
 
 	config := deployerallowlist.NewConfig(
-		big.NewInt(date.Unix()),
+		utils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
 	)
@@ -344,7 +345,7 @@ func promptTxAllowListParams(precompiles *[]params.PrecompileUpgrade, date time.
 	}
 
 	config := txallowlist.NewConfig(
-		big.NewInt(date.Unix()),
+		utils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
 	)
