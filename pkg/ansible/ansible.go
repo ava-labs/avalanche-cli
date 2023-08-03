@@ -4,7 +4,6 @@
 package ansible
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"os"

@@ -4,9 +4,7 @@
 package terraform
 
 import (
-	"bytes"
 	"errors"
-	"io"
 	"fmt"
 	"os"
 	"os/exec"
