@@ -248,6 +248,12 @@ func createEC2Instance(rootBody *hclwrite.Body, hclFile *hclwrite.File, tfFile *
 
 func createNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
+	if err := terraform.CheckIsInstalled(); err != nil {
+		return err
+	}
+	if err := ansible.CheckIsInstalled(); err != nil {
+		return err
+	}
 	err := terraform.RemoveExistingTerraformFiles()
 	if err != nil {
 		return err
@@ -357,7 +363,4 @@ func PrintResults(instanceID, elasticIP, certFilePath, region string) {
 	ux.Logger.PrintToUser(fmt.Sprintf("ssh -o IdentitiesOnly=yes ubuntu@%s -i %s", elasticIPToUse, certFilePath))
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser(fmt.Sprintf("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", certFilePath))
-}
-
-func checkDependantTools() {
 }
