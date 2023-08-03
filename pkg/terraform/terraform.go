@@ -5,10 +5,11 @@ package terraform
 
 import (
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 

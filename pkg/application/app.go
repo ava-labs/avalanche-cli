@@ -119,7 +119,7 @@ func (app *Avalanche) GetNodeConfigPath(nodeName string) string {
 func (app *Avalanche) CreateNodeTerraformDir() error {
 	nodeTerraformDir := app.GetNodeTerraformDir()
 	if _, err := os.Stat(nodeTerraformDir); os.IsNotExist(err) {
-		err = os.Mkdir(nodeTerraformDir, 0755)
+		err = os.Mkdir(nodeTerraformDir, 0o755)
 		if err != nil {
 			return err
 		}
