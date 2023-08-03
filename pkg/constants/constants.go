@@ -24,6 +24,7 @@ const (
 	SidecarSuffix               = SuffixSeparator + SidecarFileName
 	GenesisSuffix               = SuffixSeparator + GenesisFileName
 	NodeFileName                = "node.json"
+	TerraformDir                = "terraform"
 	ClusterConfigFileName       = "cluster_config.json"
 	SidecarVersion              = "1.4.0"
 
@@ -77,10 +78,10 @@ const (
 	// time to go through the command
 	StakingStartLeadTime               = 1 * time.Minute
 	StakingMinimumLeadTime             = 25 * time.Second
-	NodeConfigFile                     = "node_config.tf"
-	TerraformLockFile                  = ".terraform.lock.hcl"
-	TerraformStateFile                 = "terraform.tfstate"
-	TerraformStateBackupFile           = "terraform.tfstate.backup"
+	NodeConfigFile                     = "/node_config.tf"
+	TerraformLockFile                  = "/.terraform.lock.hcl"
+	TerraformStateFile                 = "/terraform.tfstate"
+	TerraformStateBackupFile           = "/terraform.tfstate.backup"
 	AvalancheCLISuffix                 = "-avalanche-cli"
 	AWSDefaultCredential               = "default"
 	CertSuffix                         = "-kp.pem"

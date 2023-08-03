@@ -7,9 +7,12 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -19,9 +22,10 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-func CreateTerraformFile() (*hclwrite.File, *os.File, *hclwrite.Body, error) {
+func CreateTerraformFile(terraformDir string) (*hclwrite.File, *os.File, *hclwrite.Body, error) {
 	hclFile := hclwrite.NewEmptyFile()
-	tfFile, err := os.Create("node_config.tf")
+	terraformFilePath := terraformDir + "/node_config.tf"
+	tfFile, err := os.Create(terraformFilePath)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -263,43 +267,48 @@ func removeFile(fileName string) error {
 	return nil
 }
 
-func RemoveExistingTerraformFiles() error {
-	err := removeFile(constants.NodeConfigFile)
+func RemoveExistingTerraformFiles(terraformDir string) error {
+	err := removeFile(terraformDir + constants.NodeConfigFile)
 	if err != nil {
 		return err
 	}
-	err = removeFile(constants.TerraformLockFile)
+	err = removeFile(terraformDir + constants.TerraformLockFile)
 	if err != nil {
 		return err
 	}
-	err = removeFile(constants.TerraformStateFile)
+	err = removeFile(terraformDir + constants.TerraformStateFile)
 	if err != nil {
 		return err
 	}
-	return removeFile(constants.TerraformStateBackupFile)
+	return removeFile(terraformDir + constants.TerraformStateBackupFile)
 }
 
-func RunTerraform() (string, string, error) {
+func RunTerraform(terraformDir string) (string, string, error) {
 	var instanceID string
 	var elasticIP string
-	if err := exec.Command(constants.Terraform, "init").Run(); err != nil { //nolint:gosec
+	cmd := exec.Command(constants.Terraform, "init").Run() //nolint:gosec
+	cmd.Dir = terraformDir
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("error here backendConfigVar %s \n", err)
 		return "", "", err
 	}
-	var stdBuffer bytes.Buffer
-	cmd := exec.Command(constants.Terraform, "apply", "-auto-approve") //nolint:gosec
-	mw := io.MultiWriter(os.Stdout, &stdBuffer)
-	cmd.Stdout = mw
-	cmd.Stderr = mw
+	cmd = exec.Command("terraform", "apply", "-auto-approve")
+	cmd.Dir = terraformDir
+	utils.SetUpMultiWrite(cmd)
 	if err := cmd.Run(); err != nil {
 		return "", "", err
 	}
 
-	instanceIDOutput, err := exec.Command(constants.Terraform, "output", "instance_id").Output() //nolint:gosec
+	cmd = exec.Command(constants.Terraform, "output", "instance_id").Output() //nolint:gosec
+	cmd.Dir = terraformDir
+	instanceIDOutput, err := cmd.Output()
 	if err != nil {
 		return "", "", err
 	}
 	instanceID = string(instanceIDOutput)
-	eipOutput, err := exec.Command(constants.Terraform, "output", "instance_eip").Output() //nolint:gosec
+	cmd = exec.Command(constants.Terraform, "output", "instance_eip").Output() //nolint:gosec
+	cmd.Dir = terraformDir
+	eipOutput, err := cmd.Output()
 	if err != nil {
 		return "", "", err
 	}

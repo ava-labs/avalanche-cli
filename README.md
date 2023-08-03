@@ -96,7 +96,7 @@ You may wish to deploy your subnet on a cloud instance and access it remotely. I
 
 ## Building Locally
 
-To build Avalanche-CLI, you'll first need to install golang. Follow the instructions here: https://go.dev/doc/install.
+To build Avalanche-CLI, you'll first need to install golang. Follow the instructions here: <https://go.dev/doc/install>.
 
 Once golang is installed, run:
 
@@ -136,6 +136,7 @@ Network snapshots are used by the CLI in order to keep track of blockchain state
 They are the main way to persist subnets, blockchains, and blockchain operations, among different executions of the tool.
 
 Three different kinds of snapshots are used:
+
 - The `bootstrap snapshot` is provided as the starting network state. It is never modified by CLI usage.
 Designed for fast deploys. Enables full reset of the blockchain state.
 - The `default snapshot` is the main way to keep track of blockchain state. Used by default in the tools.
@@ -146,6 +147,7 @@ explicitly asked to do so.
 ### Local networks
 
 Usage of local networks:
+
 - The local network will be started in the background only if it is not already running
 - If the network is not running, both `network start` and `subnet deploy` will start it from the `default snapshot`.
 `subnet deploy` will also do the deploy on the started network.
@@ -155,6 +157,7 @@ Usage of local networks:
 ### Default snapshot
 
 How the CLI commands affect the `default snapshot`:
+
 - First call of `network start` or `subnet deploy` will initialize `default snapshot` from the `bootstrap snapshot`
 - Subsequent calls to `subnet deploy` do not change the snapshot, only the running network
 - `network stop` persist the running network into the `default snapshot`
@@ -167,6 +170,7 @@ will recover that state.
 ### Custom snapshots
 
 How the CLI commands affect the `custom snapshots`:
+
 - `network stop` can be given an optional snapshot name. This will then be used instead of the default one to save the state
 - `network start` can be given an optional snapshot name. This will then be used instead of the default one to save the state
 - `subnet deploy` will take a running network if it is available, so there is a need to use `network start` previously to do

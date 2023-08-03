@@ -98,7 +98,7 @@ func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string, max
 		},
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultWalletCreationTimeout)
-	subnetAssetID, err := xWallet.IssueCreateAssetTx(
+	subnetAssetTx, err := xWallet.IssueCreateAssetTx(
 		tokenName,
 		tokenSymbol,
 		9, // denomination for UI purposes only in explorer
@@ -116,7 +116,7 @@ func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string, max
 	if err != nil {
 		return ids.Empty, err
 	}
-	return subnetAssetID, nil
+	return subnetAssetTx.ID(), nil
 }
 
 func exportToPChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners, subnetAssetID ids.ID, maxSupply uint64) error {
@@ -190,7 +190,7 @@ func IssueTransformSubnetTx(
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultConfirmTxTimeout)
-	transformSubnetTxID, err := wallet.P().IssueTransformSubnetTx(elasticSubnetConfig.SubnetID, subnetAssetID,
+	transformSubnetTx, err := wallet.P().IssueTransformSubnetTx(elasticSubnetConfig.SubnetID, subnetAssetID,
 		elasticSubnetConfig.InitialSupply, elasticSubnetConfig.MaxSupply, elasticSubnetConfig.MinConsumptionRate,
 		elasticSubnetConfig.MaxConsumptionRate, elasticSubnetConfig.MinValidatorStake, elasticSubnetConfig.MaxValidatorStake,
 		elasticSubnetConfig.MinStakeDuration, elasticSubnetConfig.MaxStakeDuration, elasticSubnetConfig.MinDelegationFee,
@@ -201,7 +201,7 @@ func IssueTransformSubnetTx(
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
-	return transformSubnetTxID, subnetAssetID, err
+	return transformSubnetTx.ID(), subnetAssetID, err
 }
 
 func IssueAddPermissionlessValidatorTx(
@@ -226,7 +226,7 @@ func IssueAddPermissionlessValidatorTx(
 		},
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultConfirmTxTimeout)
-	txID, err := wallet.P().IssueAddPermissionlessValidatorTx(
+	tx, err := wallet.P().IssueAddPermissionlessValidatorTx(
 		&txs.SubnetValidator{
 			Validator: txs.Validator{
 				NodeID: nodeID,
@@ -247,7 +247,7 @@ func IssueAddPermissionlessValidatorTx(
 	if err != nil {
 		return ids.Empty, err
 	}
-	return txID, err
+	return tx.ID(), err
 }
 
 func IssueAddPermissionlessDelegatorTx(
@@ -266,7 +266,7 @@ func IssueAddPermissionlessDelegatorTx(
 		return ids.Empty, err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultConfirmTxTimeout)
-	txID, err := wallet.P().IssueAddPermissionlessDelegatorTx(
+	tx, err := wallet.P().IssueAddPermissionlessDelegatorTx(
 		&txs.SubnetValidator{
 			Validator: txs.Validator{
 				NodeID: nodeID,
@@ -284,7 +284,7 @@ func IssueAddPermissionlessDelegatorTx(
 	if err != nil {
 		return ids.Empty, err
 	}
-	return txID, err
+	return tx.ID(), err
 }
 
 func (d *LocalDeployer) StartServer() error {
@@ -417,6 +417,8 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		chainConfigFile        = filepath.Join(d.app.GetSubnetDir(), chain, constants.ChainConfigFileName)
 		perNodeChainConfig     string
 		perNodeChainConfigFile = filepath.Join(d.app.GetSubnetDir(), chain, constants.PerNodeChainConfigFileName)
+		subnetConfig           string
+		subnetConfigFile       = filepath.Join(d.app.GetSubnetDir(), chain, constants.SubnetConfigFileName)
 	)
 	if _, err := os.Stat(chainConfigFile); err == nil {
 		// currently the ANR only accepts the file as a path, not its content
@@ -424,6 +426,9 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 	if _, err := os.Stat(perNodeChainConfigFile); err == nil {
 		perNodeChainConfig = perNodeChainConfigFile
+	}
+	if _, err := os.Stat(subnetConfigFile); err == nil {
+		subnetConfig = subnetConfigFile
 	}
 
 	// install the plugin binary for the new VM
@@ -437,9 +442,12 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	// the given VM ID, genesis, and available subnet ID
 	blockchainSpecs := []*rpcpb.BlockchainSpec{
 		{
-			VmName:             chain,
-			Genesis:            genesisPath,
-			SubnetId:           &subnetIDStr,
+			VmName:   chain,
+			Genesis:  genesisPath,
+			SubnetId: &subnetIDStr,
+			SubnetSpec: &rpcpb.SubnetSpec{
+				SubnetConfig: subnetConfig,
+			},
 			ChainConfig:        chainConfig,
 			BlockchainAlias:    chain,
 			PerNodeChainConfig: perNodeChainConfig,
@@ -768,7 +776,8 @@ func IssueRemoveSubnetValidatorTx(kc keychain.Keychain, subnetID ids.ID, nodeID 
 		return ids.Empty, err
 	}
 
-	return wallet.P().IssueRemoveSubnetValidatorTx(nodeID, subnetID)
+	tx, err := wallet.P().IssueRemoveSubnetValidatorTx(nodeID, subnetID)
+	return tx.ID(), err
 }
 
 func GetSubnetValidators(subnetID ids.ID) ([]platformvm.ClientPermissionlessValidator, error) {

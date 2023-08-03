@@ -3,10 +3,8 @@
 package nodecmd
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -14,8 +12,8 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -32,7 +30,7 @@ import (
 
 func newCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create [subnetName]",
+		Use:   "create [clusterName]",
 		Short: "Create a new validator on cloud server",
 		Long: `The node create command sets up a validator on a cloud server of your choice. 
 The validator will be validating the Avalanche Primary Network and Subnet 
@@ -227,7 +225,11 @@ func createEC2Instance(rootBody *hclwrite.Body, hclFile *hclwrite.File, tfFile *
 	if err != nil {
 		return "", "", "", "", err
 	}
-	instanceID, elasticIP, err := terraform.RunTerraform()
+	err = app.CreateNodeTerraformDir()
+	if err != nil {
+		return "", "", "", "", err
+	}
+	instanceID, elasticIP, err := terraform.RunTerraform(app.GetNodeTerraformDir())
 	if err != nil {
 		return "", "", "", "", err
 	}
@@ -254,7 +256,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err := ansible.CheckIsInstalled(); err != nil {
 		return err
 	}
-	err := terraform.RemoveExistingTerraformFiles()
+  err := terraform.RemoveExistingTerraformFiles(app.GetNodeTerraformDir())
 	if err != nil {
 		return err
 	}
@@ -267,7 +269,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	keyPairName := usr.Username + "-" + region + constants.AvalancheCLISuffix
 	certName := keyPairName + "-" + region + constants.CertSuffix
 	securityGroupName := keyPairName + "-" + region + constants.AWSSecurityGroupSuffix
-	hclFile, tfFile, rootBody, err := terraform.CreateTerraformFile()
+	hclFile, tfFile, rootBody, err := terraform.CreateTerraformFile(app.GetNodeTerraformDir())
 	if err != nil {
 		return err
 	}
@@ -276,11 +278,10 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = terraform.RemoveExistingTerraformFiles()
+	err = terraform.RemoveExistingTerraformFiles(app.GetNodeTerraformDir())
 	if err != nil {
 		return err
 	}
-	fmt.Printf("obtained keyPairName %s \n", keyPairName)
 	inventoryPath := app.GetAnsibleInventoryPath(clusterName)
 	if err := ansible.CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
 		return err
@@ -338,11 +339,8 @@ func addCertToSSH(certName string) error {
 	if err != nil {
 		return err
 	}
-	var stdBuffer bytes.Buffer
 	cmd := exec.Command("ssh-add", certFilePath)
-	mw := io.MultiWriter(os.Stdout, &stdBuffer)
-	cmd.Stdout = mw
-	cmd.Stderr = mw
+	utils.SetUpMultiWrite(cmd)
 	return cmd.Run()
 }
 
