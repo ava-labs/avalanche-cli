@@ -4,6 +4,7 @@
 package terraform
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
@@ -282,7 +284,7 @@ func RemoveExistingTerraformFiles(terraformDir string) error {
 func RunTerraform(terraformDir string) (string, string, error) {
 	var instanceID string
 	var elasticIP string
-	cmd := exec.Command("terraform", "init")
+	cmd := exec.Command(constants.Terraform, "init") //nolint:gosec
 	cmd.Dir = terraformDir
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("error here backendConfigVar %s \n", err)
@@ -295,14 +297,14 @@ func RunTerraform(terraformDir string) (string, string, error) {
 		return "", "", err
 	}
 
-	cmd = exec.Command("terraform", "output", "instance_id")
+	cmd = exec.Command(constants.Terraform, "output", "instance_id") //nolint:gosec
 	cmd.Dir = terraformDir
 	instanceIDOutput, err := cmd.Output()
 	if err != nil {
 		return "", "", err
 	}
 	instanceID = string(instanceIDOutput)
-	cmd = exec.Command("terraform", "output", "instance_eip")
+	cmd = exec.Command(constants.Terraform, "output", "instance_eip") //nolint:gosec
 	cmd.Dir = terraformDir
 	eipOutput, err := cmd.Output()
 	if err != nil {
@@ -310,4 +312,15 @@ func RunTerraform(terraformDir string) (string, string, error) {
 	}
 	elasticIP = string(eipOutput)
 	return instanceID, elasticIP, nil
+}
+
+func CheckIsInstalled() error {
+	if err := exec.Command(constants.Terraform).Run(); errors.Is(err, exec.ErrNotFound) { //nolint:gosec
+		ux.Logger.PrintToUser("Terraform tool is not available. It is a needed dependency for CLI to create a remote node.")
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Please follow install instructions at https://developer.hashicorp.com/terraform/downloads?product_intent=terraform and try again")
+		ux.Logger.PrintToUser("")
+		return err
+	}
+	return nil
 }

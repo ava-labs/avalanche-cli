@@ -4,6 +4,7 @@
 package ansible
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
 func CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath string) error {
@@ -41,4 +43,15 @@ func RunAnsibleSetUpNodePlaybook(inventoryPath string) error {
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetUpNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	utils.SetUpMultiWrite(cmd)
 	return cmd.Run()
+}
+
+func CheckIsInstalled() error {
+	if err := exec.Command(constants.AnsiblePlaybook).Run(); errors.Is(err, exec.ErrNotFound) { //nolint:gosec
+		ux.Logger.PrintToUser("Ansible tool is not available. It is a needed dependency for CLI to set up a remote node.")
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Please follow install instructions at https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html and try again")
+		ux.Logger.PrintToUser("")
+		return err
+	}
+	return nil
 }
