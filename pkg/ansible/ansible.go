@@ -39,76 +39,48 @@ func CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath string) e
 
 func RunAnsibleSetUpNodePlaybook(configPath, inventoryPath, avalancheGoVersion string) error {
 	configDirVar := "configDir=" + configPath + " avalancheGoVersion=" + avalancheGoVersion
-	var stdBuffer bytes.Buffer
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetUpNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, configDirVar, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	mw := io.MultiWriter(os.Stdout, &stdBuffer)
-	cmd.Stdout = mw
-	cmd.Stderr = mw
+	utils.SetUpMultiWrite(cmd)
 	return cmd.Run()
 }
 
 func RunAnsibleCopyStakingFilesPlaybook(nodeInstanceDirPath, inventoryPath string) error {
 	nodeInstanceDirPathVar := "nodeInstanceDirPath=" + nodeInstanceDirPath + "/"
-	fmt.Printf("nodeInstanceDirPathVar %s \n", nodeInstanceDirPathVar)
-	var stdBuffer bytes.Buffer
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.CopyStakingFilesPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, nodeInstanceDirPathVar, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	mw := io.MultiWriter(os.Stdout, &stdBuffer)
-	cmd.Stdout = mw
-	cmd.Stderr = mw
+	utils.SetUpMultiWrite(cmd)
 	return cmd.Run()
 }
 
 func RunAnsiblePlaybookExportSubnet(subnetName, inventoryPath string) error {
-	var stdBuffer bytes.Buffer
 	exportOutput := "/tmp/" + subnetName + "-export.dat"
 	exportedSubnet := "exportedSubnet=" + exportOutput
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.ExportSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, exportedSubnet, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	mw := io.MultiWriter(os.Stdout, &stdBuffer)
-	cmd.Stdout = mw
-	cmd.Stderr = mw
+	utils.SetUpMultiWrite(cmd)
 	return cmd.Run()
 }
 
 func RunAnsiblePlaybookTrackSubnet(subnetName, inventoryPath string) error {
-	var stdBuffer bytes.Buffer
 	importedFileName := "/tmp/" + subnetName + "-export.dat"
 	importedSubnet := "subnetExportFileName=" + importedFileName + " subnetName=" + subnetName
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.TrackSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, importedSubnet, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	mw := io.MultiWriter(os.Stdout, &stdBuffer)
-	cmd.Stdout = mw
-	cmd.Stderr = mw
+	utils.SetUpMultiWrite(cmd)
 	return cmd.Run()
 }
 
 func RunAnsiblePlaybookCheckBootstrapped(inventoryPath string) error {
-	var stdBuffer bytes.Buffer
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsBootstrappedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	mw := io.MultiWriter(os.Stdout, &stdBuffer)
-	cmd.Stdout = mw
-	cmd.Stderr = mw
+	utils.SetUpMultiWrite(cmd)
 	return cmd.Run()
 }
 
 func RunAnsiblePlaybookGetNodeID(inventoryPath string) error {
-	var stdBuffer bytes.Buffer
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.GetNodeIDPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	mw := io.MultiWriter(os.Stdout, &stdBuffer)
-	cmd.Stdout = mw
-	cmd.Stderr = mw
+	utils.SetUpMultiWrite(cmd)
 	return cmd.Run()
 }
 
 func RunAnsiblePlaybookSubnetSyncStatus(blockchainID, inventoryPath string) error {
 	blockchainIDArg := "blockchainID=" + blockchainID
-	var stdBuffer bytes.Buffer
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsSubnetSyncedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, blockchainIDArg, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	mw := io.MultiWriter(os.Stdout, &stdBuffer)
-	cmd.Stdout = mw
-	cmd.Stderr = mw
-}
-
-func RunAnsibleSetUpNodePlaybook(inventoryPath string) error {
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetUpNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	utils.SetUpMultiWrite(cmd)
-	return cmd.Run()
 }
