@@ -4,15 +4,15 @@ go 1.19
 
 require (
 	github.com/ava-labs/apm v0.0.4
-	github.com/aws/aws-sdk-go v1.44.301
-	github.com/hashicorp/hcl/v2 v2.17.0
 	github.com/ava-labs/avalanche-network-runner v1.7.2-0.20230801145317-3f717b47a9b0
 	github.com/ava-labs/avalanchego v1.10.5
 	github.com/ava-labs/coreth v0.12.4-rc.4
 	github.com/ava-labs/subnet-evm v0.5.3
+	github.com/aws/aws-sdk-go v1.44.301
 	github.com/docker/docker v24.0.5+incompatible
 	github.com/ethereum/go-ethereum v1.11.4
 	github.com/go-git/go-git/v5 v5.8.1
+	github.com/hashicorp/hcl/v2 v2.17.0
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/manifoldco/promptui v0.9.0
 	github.com/olekukonko/tablewriter v0.0.5
@@ -60,7 +60,6 @@ require (
 	github.com/cockroachdb/redact v1.1.3 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/deckarep/golang-set/v2 v2.1.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/dlclark/regexp2 v1.7.0 // indirect
@@ -128,7 +127,6 @@ require (
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.10.1 // indirect
-	github.com/rjeczalik/notify v0.9.3 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
