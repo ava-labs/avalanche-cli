@@ -286,7 +286,7 @@ func RemoveExistingTerraformFiles(terraformDir string) error {
 func RunTerraform(terraformDir string) (string, string, error) {
 	var instanceID string
 	var elasticIP string
-	cmd := exec.Command(constants.Terraform, "init").Run() //nolint:gosec
+	cmd := exec.Command(constants.Terraform, "init") //nolint:gosec
 	cmd.Dir = terraformDir
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("error here backendConfigVar %s \n", err)
@@ -299,14 +299,14 @@ func RunTerraform(terraformDir string) (string, string, error) {
 		return "", "", err
 	}
 
-	cmd = exec.Command(constants.Terraform, "output", "instance_id").Output() //nolint:gosec
+	cmd = exec.Command(constants.Terraform, "output", "instance_id") //nolint:gosec
 	cmd.Dir = terraformDir
 	instanceIDOutput, err := cmd.Output()
 	if err != nil {
 		return "", "", err
 	}
 	instanceID = string(instanceIDOutput)
-	cmd = exec.Command(constants.Terraform, "output", "instance_eip").Output() //nolint:gosec
+	cmd = exec.Command(constants.Terraform, "output", "instance_eip") //nolint:gosec
 	cmd.Dir = terraformDir
 	eipOutput, err := cmd.Output()
 	if err != nil {
