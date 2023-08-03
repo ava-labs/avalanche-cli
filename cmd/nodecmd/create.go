@@ -358,3 +358,6 @@ func PrintResults(instanceID, elasticIP, certFilePath, region string) {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser(fmt.Sprintf("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", certFilePath))
 }
+
+func checkDependantTools() {
+}
