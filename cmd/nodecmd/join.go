@@ -393,6 +393,7 @@ func checkNodeIsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Networ
 	}
 	return nil
 }
+
 func addNodeAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network) error {
 	err := checkNodeIsPrimaryNetworkValidator(nodeID, network)
 	if err == nil {
@@ -419,6 +420,7 @@ func waitForNodeToBePrimaryNetworkValidator(nodeID ids.NodeID) {
 		time.Sleep(5 * time.Second)
 	}
 }
+
 func joinSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	isBootstrapped, err := checkNodeIsBootstrapped(clusterName)
