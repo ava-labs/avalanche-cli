@@ -83,6 +83,7 @@ func RunAnsiblePlaybookSubnetSyncStatus(blockchainID, inventoryPath string) erro
 	blockchainIDArg := "blockchainID=" + blockchainID
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsSubnetSyncedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, blockchainIDArg, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	return cmd.Run()
+}
 
 func CheckIsInstalled() error {
 	if err := exec.Command(constants.AnsiblePlaybook).Run(); errors.Is(err, exec.ErrNotFound) { //nolint:gosec
