@@ -299,6 +299,12 @@ func promptAvalancheGoVersion() (string, error) {
 
 func createNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
+	if err := terraform.CheckIsInstalled(); err != nil {
+		return err
+	}
+	if err := ansible.CheckIsInstalled(); err != nil {
+		return err
+	}
 	err := terraform.RemoveExistingTerraformFiles(app.GetNodeTerraformDir())
 	if err != nil {
 		return err

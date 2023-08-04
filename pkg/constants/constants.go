@@ -97,6 +97,7 @@ const (
 	HTTPPort                           = 9650
 	StakingPort                        = 9651
 	OutboundPort                       = 0
+	Terraform                          = "terraform"
 	AnsiblePlaybook                    = "ansible-playbook"
 	SetUpNodePlaybook                  = "playbook/setupNode.yml"
 	CopyStakingFilesPlaybook           = "playbook/copyStakingFiles.yml"
