@@ -69,19 +69,16 @@ func RunAnsiblePlaybookTrackSubnet(subnetName, inventoryPath string) error {
 
 func RunAnsiblePlaybookCheckBootstrapped(inventoryPath string) error {
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsBootstrappedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	utils.SetUpMultiWrite(cmd)
 	return cmd.Run()
 }
 
 func RunAnsiblePlaybookGetNodeID(inventoryPath string) error {
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.GetNodeIDPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	utils.SetUpMultiWrite(cmd)
 	return cmd.Run()
 }
 
 func RunAnsiblePlaybookSubnetSyncStatus(blockchainID, inventoryPath string) error {
 	blockchainIDArg := "blockchainID=" + blockchainID
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsSubnetSyncedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, blockchainIDArg, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	utils.SetUpMultiWrite(cmd)
 	return cmd.Run()
 }

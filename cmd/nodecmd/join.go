@@ -143,10 +143,12 @@ func parseNodeIDOutput(fileName string) (string, error) {
 }
 
 func addNodeAsSubnetValidator(nodeID string, network models.Network) error {
+	ux.Logger.PrintToUser("Adding the node as a Subnet Validator...")
 	err := subnetcmd.CallAddValidator(subnetName, nodeID, network)
 	if err != nil {
 		return err
 	}
+	ux.Logger.PrintToUser("Node successfully added as Subnet validator!")
 	return nil
 }
 
@@ -169,6 +171,7 @@ func getMinStakingAmount(network models.Network) (uint64, error) {
 }
 
 func validatePrimaryNetwork(nodeID ids.NodeID, network models.Network) error {
+	ux.Logger.PrintToUser("Adding node as a Primary Network Validator...")
 	var (
 		start time.Time
 		err   error
@@ -226,6 +229,7 @@ func validatePrimaryNetwork(nodeID ids.NodeID, network models.Network) error {
 	}
 	recipientAddr := kc.Addresses().List()[0]
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	printNodeJoinOutput(nodeID, network, start)
 	_, _, err = deployer.AddValidatorPrimaryNetwork(nodeID, weight, start, duration, recipientAddr, uint32(20000))
 	if err != nil {
 		return err
@@ -308,6 +312,7 @@ func getDefaultMaxValidationTime(start time.Time, network models.Network) (time.
 }
 
 func checkNodeIsBootstrapped(clusterName string) (bool, error) {
+	ux.Logger.PrintToUser("Checking if node is bootstrapped to Primary Network ...")
 	err := createFile(app.GetBootstrappedJSONFile())
 	if err != nil {
 		return false, err
@@ -332,6 +337,7 @@ func checkNodeIsBootstrapped(clusterName string) (bool, error) {
 }
 
 func getNodeID(clusterName string) (string, error) {
+	ux.Logger.PrintToUser("Getting node id ...")
 	err := createFile(app.GetNodeIDJSONFile())
 	if err != nil {
 		return "", err
@@ -352,6 +358,7 @@ func getNodeID(clusterName string) (string, error) {
 }
 
 func getNodeSubnetSyncStatus(blockchainID, clusterName string) (bool, error) {
+	ux.Logger.PrintToUser("Checking if node is synced to subnet ...")
 	err := createFile(app.GetSubnetSyncJSONFile())
 	if err != nil {
 		return false, err
@@ -376,22 +383,66 @@ func getNodeSubnetSyncStatus(blockchainID, clusterName string) (bool, error) {
 	return false, nil
 }
 
+// checkNodeIsPrimaryNetworkValidator only returns err if node is already a Primary Network validator
+func checkNodeIsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network) error {
+	isValidator, err := subnet.IsSubnetValidator(ids.Empty, nodeID, network)
+	if err != nil {
+		ux.Logger.PrintToUser("failed to check if node is a validator on Primary Network: %s", err)
+	} else if isValidator {
+		return fmt.Errorf("node %s is already a validator on Primary Network", nodeID)
+	}
+	return nil
+}
+func addNodeAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network) error {
+	err := checkNodeIsPrimaryNetworkValidator(nodeID, network)
+	if err == nil {
+		err = validatePrimaryNetwork(nodeID, network)
+		if err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("Node successfully added as Primary Network validator!")
+	}
+	return nil
+}
+
+func waitForNodeToBePrimaryNetworkValidator(nodeID ids.NodeID) {
+	ux.Logger.PrintToUser("Waiting 1 min for the node to be a Primary Network Validator...")
+	// wait for 60 seconds because we set the start time to in 1 minute
+	time.Sleep(60 * time.Second)
+	// long polling: try up to 5 times
+	for i := 0; i < 5; i++ {
+		// checkNodeIsPrimaryNetworkValidator only returns err if node is already a Primary Network validator
+		err := checkNodeIsPrimaryNetworkValidator(nodeID, models.Fuji)
+		if err != nil {
+			break
+		}
+		time.Sleep(5 * time.Second)
+	}
+}
 func joinSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	if subnetName == "" {
-		ux.Logger.PrintToUser("Please provide the name of the subnet that the node will be validating with --subnet flag")
-		return errors.New("no subnet provided")
-	}
-	_, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName})
-	if err != nil {
-		return err
-	}
 	isBootstrapped, err := checkNodeIsBootstrapped(clusterName)
 	if err != nil {
 		return err
 	}
 	if !isBootstrapped {
 		return errors.New("node is not bootstrapped yet, please try again later")
+	}
+	nodeIDStr, err := getNodeID(clusterName)
+	if err != nil {
+		return err
+	}
+	nodeID, err := ids.NodeIDFromString(nodeIDStr)
+	if err != nil {
+		return err
+	}
+	if subnetName == "" {
+		// if no subnet is given in the flag, node will only be added as Primary Network Validator
+		return addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji)
+	}
+	_, err = subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName})
+	if err != nil {
+		return err
 	}
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
@@ -408,24 +459,23 @@ func joinSubnet(_ *cobra.Command, args []string) error {
 	if !isSubnetSynced {
 		return errors.New("node is not synced to subnet yet, please try again later")
 	}
-	nodeIDStr, err := getNodeID(clusterName)
+	err = addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji)
 	if err != nil {
 		return err
 	}
-	nodeID, err := ids.NodeIDFromString(nodeIDStr)
-	if err != nil {
-		return err
-	}
-	err = validatePrimaryNetwork(nodeID, models.Fuji)
-	if err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("Waiting 1 min for the node to be a Primary Network Validator...")
-	time.Sleep(60 * time.Second)
-	ux.Logger.PrintToUser("Adding the node as a Subnet Validator...")
+	waitForNodeToBePrimaryNetworkValidator(nodeID)
 	err = addNodeAsSubnetValidator(nodeIDStr, models.Fuji)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func printNodeJoinOutput(nodeID ids.NodeID, network models.Network, start time.Time) {
+	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
+	ux.Logger.PrintToUser("Network: %s", network.String())
+	ux.Logger.PrintToUser("Start time: %s", start.Format(constants.TimeParseLayout))
+	ux.Logger.PrintToUser("End time: %s", start.Add(duration).Format(constants.TimeParseLayout))
+	ux.Logger.PrintToUser("Weight: %d", weight)
+	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 }
