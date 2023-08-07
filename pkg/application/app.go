@@ -56,8 +56,8 @@ func (app *Avalanche) GetSubnetDir() string {
 	return filepath.Join(app.baseDir, constants.SubnetDir)
 }
 
-func (app *Avalanche) GetNodeDir() string {
-	return filepath.Join(app.baseDir, constants.NodeDir)
+func (app *Avalanche) GetNodesDir() string {
+	return filepath.Join(app.baseDir, constants.NodesDir)
 }
 
 func (app *Avalanche) GetReposDir() string {
@@ -113,11 +113,11 @@ func (app *Avalanche) GetConfigPath() string {
 }
 
 func (app *Avalanche) GetNodeConfigPath(nodeName string) string {
-	return filepath.Join(app.GetNodeDir(), nodeName, constants.NodeFileName)
+	return filepath.Join(app.GetNodesDir(), nodeName, constants.NodeCloudConfigFileName)
 }
 
-func (app *Avalanche) CreateNodeTerraformDir() error {
-	nodeTerraformDir := app.GetNodeTerraformDir()
+func (app *Avalanche) CreateTerraformDir() error {
+	nodeTerraformDir := app.GetTerraformDir()
 	if _, err := os.Stat(nodeTerraformDir); os.IsNotExist(err) {
 		err = os.Mkdir(nodeTerraformDir, 0o755)
 		if err != nil {
@@ -127,12 +127,12 @@ func (app *Avalanche) CreateNodeTerraformDir() error {
 	return nil
 }
 
-func (app *Avalanche) GetNodeTerraformDir() string {
-	return filepath.Join(app.GetNodeDir(), constants.TerraformDir)
+func (app *Avalanche) GetTerraformDir() string {
+	return filepath.Join(app.GetNodesDir(), constants.TerraformDir)
 }
 
 func (app *Avalanche) GetClusterConfigPath() string {
-	return filepath.Join(app.GetNodeDir(), constants.ClusterConfigFileName)
+	return filepath.Join(app.GetNodesDir(), constants.ClusterConfigFileName)
 }
 
 func (app *Avalanche) GetElasticSubnetConfigPath(subnetName string) string {
@@ -218,8 +218,7 @@ func (app *Avalanche) GenesisExists(subnetName string) bool {
 }
 
 func (app *Avalanche) ClusterConfigExists() bool {
-	nodePath := app.GetClusterConfigPath()
-	_, err := os.Stat(nodePath)
+	_, err := os.Stat(app.GetClusterConfigPath())
 	return err == nil
 }
 
@@ -503,7 +502,7 @@ func (app *Avalanche) WriteConfigFile(bytes []byte) error {
 	return app.writeFile(configPath, bytes)
 }
 
-func (app *Avalanche) CreateNodeConfigFile(nodeName string, nodeConfig *models.NodeConfig) error {
+func (app *Avalanche) CreateNodeCloudConfigFile(nodeName string, nodeConfig *models.NodeConfig) error {
 	nodeConfigPath := app.GetNodeConfigPath(nodeName)
 	if err := os.MkdirAll(filepath.Dir(nodeConfigPath), constants.DefaultPerms755); err != nil {
 		return err
@@ -555,7 +554,7 @@ func (app *Avalanche) LoadClusterConfig() (models.ClusterConfig, error) {
 	return clusterConfig, err
 }
 
-func (app *Avalanche) UpdateClusterConfigFile(clusterConfig *models.ClusterConfig) error {
+func (app *Avalanche) WriteClusterConfigFile(clusterConfig *models.ClusterConfig) error {
 	clusterConfigPath := app.GetClusterConfigPath()
 	if err := os.MkdirAll(filepath.Dir(clusterConfigPath), constants.DefaultPerms755); err != nil {
 		return err
@@ -574,8 +573,7 @@ func (*Avalanche) GetSSHCertFilePath(certName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	certFilePath := homeDir + "/.ssh/" + certName
-	return certFilePath, nil
+	return filepath.Join(homeDir, ".ssh", certName), nil
 }
 
 func (*Avalanche) CheckCertInSSHDir(certFilePath string) bool {
