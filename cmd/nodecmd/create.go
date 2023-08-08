@@ -245,7 +245,7 @@ func createEC2Instance(rootBody *hclwrite.Body,
 	}
 	ux.Logger.PrintToUser("A new EC2 instance is successfully created in AWS!")
 	if !useExistingKeyPair {
-		//takes the cert file downloaded from AWS through terraform and moves it to .ssh directory
+		// takes the cert file downloaded from AWS through terraform and moves it to .ssh directory
 		err = addCertToSSH(certName)
 		if err != nil {
 			return "", "", "", "", err

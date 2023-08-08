@@ -46,6 +46,7 @@ func SetCloudCredentials(rootBody *hclwrite.Body, region string) error {
 	return nil
 }
 
+// SetSecurityGroup whitelists the ip addresses allowed to ssh into cloud server
 func SetSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName string) {
 	inputIPAddress := ipAddress + "/32"
 	securityGroup := rootBody.AppendNewBlock("resource", []string{"aws_security_group", "ssh_avax_sg"})
@@ -53,6 +54,7 @@ func SetSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName stri
 	securityGroupBody.SetAttributeValue("name", cty.StringVal(securityGroupName))
 	securityGroupBody.SetAttributeValue("description", cty.StringVal("Allow SSH, AVAX HTTP outbound traffic"))
 
+	// enable inbound access for ip address inputIPAddress in port 22
 	inboundGroup := securityGroupBody.AppendNewBlock("ingress", []string{})
 	inboundGroupBody := inboundGroup.Body()
 	inboundGroupBody.SetAttributeValue("description", cty.StringVal("TCP"))
@@ -63,6 +65,7 @@ func SetSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName stri
 	ipList = append(ipList, cty.StringVal(inputIPAddress))
 	inboundGroupBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
 
+	// "0.0.0.0/0" is a must-have ip address value for inbound and outbound calls
 	inboundGroup = securityGroupBody.AppendNewBlock("ingress", []string{})
 	inboundGroupBody = inboundGroup.Body()
 	inboundGroupBody.SetAttributeValue("description", cty.StringVal("AVAX HTTP"))
@@ -73,6 +76,7 @@ func SetSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName stri
 	ipList = append(ipList, cty.StringVal("0.0.0.0/0"))
 	inboundGroupBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
 
+	// enable inbound access for ip address inputIPAddress in port 9650
 	inboundGroup = securityGroupBody.AppendNewBlock("ingress", []string{})
 	inboundGroupBody = inboundGroup.Body()
 	inboundGroupBody.SetAttributeValue("description", cty.StringVal("AVAX HTTP"))
@@ -83,6 +87,7 @@ func SetSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName stri
 	ipList = append(ipList, cty.StringVal(inputIPAddress))
 	inboundGroupBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
 
+	// "0.0.0.0/0" is a must-have ip address value for inbound and outbound calls
 	inboundGroup = securityGroupBody.AppendNewBlock("ingress", []string{})
 	inboundGroupBody = inboundGroup.Body()
 	inboundGroupBody.SetAttributeValue("description", cty.StringVal("AVAX Staking"))
