@@ -46,6 +46,33 @@ func SetCloudCredentials(rootBody *hclwrite.Body, region string) error {
 	return nil
 }
 
+// addSecurityGroupRuleToSg is to add sg rule to new sg
+func addSecurityGroupRuleToSg(securityGroupBody *hclwrite.Body, sgType, description, protocol, ip string, port int64) {
+	inboundGroup := securityGroupBody.AppendNewBlock(sgType, []string{})
+	inboundGroupBody := inboundGroup.Body()
+	inboundGroupBody.SetAttributeValue("description", cty.StringVal(description))
+	inboundGroupBody.SetAttributeValue("from_port", cty.NumberIntVal(port))
+	inboundGroupBody.SetAttributeValue("to_port", cty.NumberIntVal(port))
+	inboundGroupBody.SetAttributeValue("protocol", cty.StringVal(protocol))
+	var ipList []cty.Value
+	ipList = append(ipList, cty.StringVal(ip))
+	inboundGroupBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
+}
+
+// addNewSecurityGroupRule is to add sg rule to existing sg
+func addNewSecurityGroupRule(rootBody *hclwrite.Body, sgRuleName, sgID, sgType, protocol, ip string, port int64) {
+	securityGroupRule := rootBody.AppendNewBlock("resource", []string{"aws_security_group_rule", sgRuleName})
+	securityGroupRuleBody := securityGroupRule.Body()
+	securityGroupRuleBody.SetAttributeValue("type", cty.StringVal(sgType))
+	securityGroupRuleBody.SetAttributeValue("from_port", cty.NumberIntVal(port))
+	securityGroupRuleBody.SetAttributeValue("to_port", cty.NumberIntVal(port))
+	securityGroupRuleBody.SetAttributeValue("protocol", cty.StringVal(protocol))
+	var ipList []cty.Value
+	ipList = append(ipList, cty.StringVal(ip))
+	securityGroupRuleBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
+	securityGroupRuleBody.SetAttributeValue("security_group_id", cty.StringVal(sgID))
+}
+
 // SetSecurityGroup whitelists the ip addresses allowed to ssh into cloud server
 func SetSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName string) {
 	inputIPAddress := ipAddress + "/32"
@@ -55,87 +82,25 @@ func SetSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName stri
 	securityGroupBody.SetAttributeValue("description", cty.StringVal("Allow SSH, AVAX HTTP outbound traffic"))
 
 	// enable inbound access for ip address inputIPAddress in port 22
-	inboundGroup := securityGroupBody.AppendNewBlock("ingress", []string{})
-	inboundGroupBody := inboundGroup.Body()
-	inboundGroupBody.SetAttributeValue("description", cty.StringVal("TCP"))
-	inboundGroupBody.SetAttributeValue("from_port", cty.NumberIntVal(constants.SSHTCPPort))
-	inboundGroupBody.SetAttributeValue("to_port", cty.NumberIntVal(constants.SSHTCPPort))
-	inboundGroupBody.SetAttributeValue("protocol", cty.StringVal("tcp"))
-	var ipList []cty.Value
-	ipList = append(ipList, cty.StringVal(inputIPAddress))
-	inboundGroupBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
-
+	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "TCP", "tcp", inputIPAddress, constants.SSHTCPPort)
 	// "0.0.0.0/0" is a must-have ip address value for inbound and outbound calls
-	inboundGroup = securityGroupBody.AppendNewBlock("ingress", []string{})
-	inboundGroupBody = inboundGroup.Body()
-	inboundGroupBody.SetAttributeValue("description", cty.StringVal("AVAX HTTP"))
-	inboundGroupBody.SetAttributeValue("from_port", cty.NumberIntVal(constants.AvalanchegoAPIPort))
-	inboundGroupBody.SetAttributeValue("to_port", cty.NumberIntVal(constants.AvalanchegoAPIPort))
-	inboundGroupBody.SetAttributeValue("protocol", cty.StringVal("tcp"))
-	ipList = []cty.Value{}
-	ipList = append(ipList, cty.StringVal("0.0.0.0/0"))
-	inboundGroupBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
-
+	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", "tcp", "0.0.0.0/0", constants.AvalanchegoAPIPort)
 	// enable inbound access for ip address inputIPAddress in port 9650
-	inboundGroup = securityGroupBody.AppendNewBlock("ingress", []string{})
-	inboundGroupBody = inboundGroup.Body()
-	inboundGroupBody.SetAttributeValue("description", cty.StringVal("AVAX HTTP"))
-	inboundGroupBody.SetAttributeValue("from_port", cty.NumberIntVal(constants.AvalanchegoAPIPort))
-	inboundGroupBody.SetAttributeValue("to_port", cty.NumberIntVal(constants.AvalanchegoAPIPort))
-	inboundGroupBody.SetAttributeValue("protocol", cty.StringVal("tcp"))
-	ipList = []cty.Value{}
-	ipList = append(ipList, cty.StringVal(inputIPAddress))
-	inboundGroupBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
-
+	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", "tcp", inputIPAddress, constants.AvalanchegoAPIPort)
 	// "0.0.0.0/0" is a must-have ip address value for inbound and outbound calls
-	inboundGroup = securityGroupBody.AppendNewBlock("ingress", []string{})
-	inboundGroupBody = inboundGroup.Body()
-	inboundGroupBody.SetAttributeValue("description", cty.StringVal("AVAX Staking"))
-	inboundGroupBody.SetAttributeValue("from_port", cty.NumberIntVal(constants.AvalanchegoP2PPort))
-	inboundGroupBody.SetAttributeValue("to_port", cty.NumberIntVal(constants.AvalanchegoP2PPort))
-	inboundGroupBody.SetAttributeValue("protocol", cty.StringVal("tcp"))
-	ipList = []cty.Value{}
-	ipList = append(ipList, cty.StringVal("0.0.0.0/0"))
-	inboundGroupBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
-
-	inboundGroup = securityGroupBody.AppendNewBlock("egress", []string{})
-	inboundGroupBody = inboundGroup.Body()
-	inboundGroupBody.SetAttributeValue("description", cty.StringVal("Outbound traffic"))
-	inboundGroupBody.SetAttributeValue("from_port", cty.NumberIntVal(constants.OutboundPort))
-	inboundGroupBody.SetAttributeValue("to_port", cty.NumberIntVal(constants.OutboundPort))
-	inboundGroupBody.SetAttributeValue("protocol", cty.StringVal("-1"))
-	ipList = []cty.Value{}
-	ipList = append(ipList, cty.StringVal("0.0.0.0/0"))
-	inboundGroupBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
+	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX Staking", "tcp", "0.0.0.0/0", constants.AvalanchegoP2PPort)
+	addSecurityGroupRuleToSg(securityGroupBody, "egress", "Outbound traffic", "-1", "0.0.0.0/0", constants.OutboundPort)
 }
 
 func SetSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, ipInTCP, ipInHTTP bool) {
 	inputIPAddress := ipAddress + "/32"
 	if !ipInTCP {
 		sgRuleName := "ipTcp" + strings.ReplaceAll(ipAddress, ".", "")
-		securityGroupRule := rootBody.AppendNewBlock("resource", []string{"aws_security_group_rule", sgRuleName})
-		securityGroupRuleBody := securityGroupRule.Body()
-		securityGroupRuleBody.SetAttributeValue("type", cty.StringVal("ingress"))
-		securityGroupRuleBody.SetAttributeValue("from_port", cty.NumberIntVal(constants.SSHTCPPort))
-		securityGroupRuleBody.SetAttributeValue("to_port", cty.NumberIntVal(constants.SSHTCPPort))
-		securityGroupRuleBody.SetAttributeValue("protocol", cty.StringVal("tcp"))
-		var ipList []cty.Value
-		ipList = append(ipList, cty.StringVal(inputIPAddress))
-		securityGroupRuleBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
-		securityGroupRuleBody.SetAttributeValue("security_group_id", cty.StringVal(sgID))
+		addNewSecurityGroupRule(rootBody, sgRuleName, sgID, "ingress", "tcp", inputIPAddress, constants.SSHTCPPort)
 	}
 	if !ipInHTTP {
 		sgRuleName := "ipHttp" + strings.ReplaceAll(ipAddress, ".", "")
-		securityGroupRule := rootBody.AppendNewBlock("resource", []string{"aws_security_group_rule", sgRuleName})
-		securityGroupRuleBody := securityGroupRule.Body()
-		securityGroupRuleBody.SetAttributeValue("type", cty.StringVal("ingress"))
-		securityGroupRuleBody.SetAttributeValue("from_port", cty.NumberIntVal(constants.AvalanchegoAPIPort))
-		securityGroupRuleBody.SetAttributeValue("to_port", cty.NumberIntVal(constants.AvalanchegoAPIPort))
-		securityGroupRuleBody.SetAttributeValue("protocol", cty.StringVal("tcp"))
-		var ipList []cty.Value
-		ipList = append(ipList, cty.StringVal(inputIPAddress))
-		securityGroupRuleBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
-		securityGroupRuleBody.SetAttributeValue("security_group_id", cty.StringVal(sgID))
+		addNewSecurityGroupRule(rootBody, sgRuleName, sgID, "ingress", "tcp", inputIPAddress, constants.AvalanchegoAPIPort)
 	}
 }
 

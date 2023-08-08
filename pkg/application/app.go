@@ -623,6 +623,9 @@ func (app *Avalanche) CheckCertInSSHDir(certName string) (bool, error) {
 		return false, err
 	}
 	_, err = os.Stat(certPath)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
 	if err != nil {
 		return false, err
 	}

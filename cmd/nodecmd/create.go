@@ -276,8 +276,8 @@ func createNode(_ *cobra.Command, args []string) error {
 	}
 	// region := "us-east-2"
 	// ami := "ami-0430580de6244e02e"
-	region := "us-east-1"
-	ami := "ami-0261755bbcb8c4a84"
+	region := "us-west-1"
+	ami := "ami-04d1dcfb793f6fa37"
 	prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
 	certName := prefix + "-" + region + constants.CertSuffix
 	securityGroupName := prefix + "-" + region + constants.AWSSecurityGroupSuffix
