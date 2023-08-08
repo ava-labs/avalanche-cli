@@ -34,7 +34,11 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("Please provide the name of the subnet that the node will be validating with --subnet flag")
 		return errors.New("no subnet provided")
 	}
-	_, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName})
+	err := setupAnsible()
+	if err != nil {
+		return err
+	}
+	_, err = subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName})
 	if err != nil {
 		return err
 	}

@@ -640,14 +640,30 @@ func (app *Avalanche) GetAnsibleInventoryPath(clusterName string) string {
 	return filepath.Join(app.GetNodesDir(), constants.AnsibleInventoryDir, clusterName)
 }
 
-func (*Avalanche) GetBootstrappedJSONFile() string {
-	return filepath.Join(constants.AnsibleInventoryDir, constants.IsBootstrappedJSONFile)
+func (app *Avalanche) GetAnsiblePlaybookDir() string {
+	return filepath.Join(app.GetAnsibleDir(), constants.AnsiblePlaybookDir)
 }
 
-func (*Avalanche) GetNodeIDJSONFile() string {
-	return filepath.Join(constants.AnsibleInventoryDir, constants.NodeIDJSONFile)
+func (app *Avalanche) GetBootstrappedJSONFile() string {
+	return filepath.Join(app.GetAnsiblePlaybookDir(), constants.IsBootstrappedJSONFile)
 }
 
-func (*Avalanche) GetSubnetSyncJSONFile() string {
-	return filepath.Join(constants.AnsibleInventoryDir, constants.SubnetSyncJSONFile)
+func (app *Avalanche) GetNodeIDJSONFile() string {
+	return filepath.Join(app.GetAnsiblePlaybookDir(), constants.NodeIDJSONFile)
+}
+
+func (app *Avalanche) GetSubnetSyncJSONFile() string {
+	return filepath.Join(app.GetAnsiblePlaybookDir(), constants.SubnetSyncJSONFile)
+}
+
+func (app *Avalanche) SetUpAnsibleEnv() error {
+	err := os.RemoveAll(app.GetAnsibleDir())
+	if err != nil {
+		return err
+	}
+	err = app.CreateAnsibleDir()
+	if err != nil {
+		return err
+	}
+	return app.CreateAnsiblePlaybookDir()
 }

@@ -322,20 +322,15 @@ func createNode(_ *cobra.Command, args []string) error {
 	return nil
 }
 
+func setupAnsible() error {
+	err := app.SetUpAnsibleEnv()
+	if err != nil {
+		return err
+	}
+	return ansible.SetUp(app.GetAnsibleDir())
+}
 func runAnsible(inventoryPath, avalancheGoVersion string) error {
-	err := os.RemoveAll(app.GetAnsibleDir())
-	if err != nil {
-		return err
-	}
-	err = app.CreateAnsibleDir()
-	if err != nil {
-		return err
-	}
-	err = app.CreateAnsiblePlaybookDir()
-	if err != nil {
-		return err
-	}
-	err = ansible.SetUp(app.GetAnsibleDir())
+	err := setupAnsible()
 	if err != nil {
 		return err
 	}

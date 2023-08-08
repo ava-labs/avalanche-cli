@@ -423,6 +423,10 @@ func waitForNodeToBePrimaryNetworkValidator(nodeID ids.NodeID) {
 
 func joinSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
+	err := setupAnsible()
+	if err != nil {
+		return err
+	}
 	isBootstrapped, err := checkNodeIsBootstrapped(clusterName)
 	if err != nil {
 		return err
