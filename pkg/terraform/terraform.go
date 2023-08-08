@@ -201,6 +201,9 @@ func SetupInstance(rootBody *hclwrite.Body, securityGroupName string, useExistin
 	var securityGroupList []cty.Value
 	securityGroupList = append(securityGroupList, cty.StringVal(securityGroupName))
 	awsInstanceBody.SetAttributeValue("security_groups", cty.ListVal(securityGroupList))
+	rootBlockDevice := awsInstanceBody.AppendNewBlock("root_block_device", []string{})
+	rootBlockDeviceBody := rootBlockDevice.Body()
+	rootBlockDeviceBody.SetAttributeValue("volume_size", cty.NumberIntVal(1000))
 }
 
 // SetOutput adds output section in terraform state file so that we can call terraform output command and print instance_ip and instance_id to user

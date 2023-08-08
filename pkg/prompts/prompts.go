@@ -76,6 +76,7 @@ type Prompter interface {
 	CaptureEmail(promptStr string) (string, error)
 	CaptureIndex(promptStr string, options []any) (int, error)
 	CaptureVersion(promptStr string) (string, error)
+	CaptureFujiDuration(promptStr string) (time.Duration, error)
 	CaptureDuration(promptStr string) (time.Duration, error)
 	CaptureDate(promptStr string) (time.Time, error)
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
@@ -170,6 +171,20 @@ func CaptureListDecision[T comparable](
 			return nil, false, errors.New("unexpected option")
 		}
 	}
+}
+
+func (*realPrompter) CaptureFujiDuration(promptStr string) (time.Duration, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateFujiStakingDuration,
+	}
+
+	durationStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	return time.ParseDuration(durationStr)
 }
 
 func (*realPrompter) CaptureDuration(promptStr string) (time.Duration, error) {

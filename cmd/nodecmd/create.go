@@ -5,6 +5,7 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
 	"net"
 	"os"
 	"os/exec"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 
+	subnet "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -298,12 +300,21 @@ func createNode(_ *cobra.Command, args []string) error {
 	}
 	time.Sleep(15 * time.Second)
 
+	avalancheGoVersion, err := getAvalancheGoVersion()
+	if err != nil {
+		return err
+	}
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance...")
-	if err := runAnsible(inventoryPath); err != nil {
+	if err := runAnsible(inventoryPath, avalancheGoVersion); err != nil {
 		return err
 	}
 	err = createClusterNodeConfig(instanceID, region, ami, keyPairName, certFilePath, securityGroupName, elasticIP, clusterName)
 	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
+	// instanceID is bounded by double quotation "", we need to remove them before they can be used
+	if err := ansible.RunAnsibleCopyStakingFilesPlaybook(app.GetNodeInstanceDirPath(instanceID), inventoryPath); err != nil {
 		return err
 	}
 	PrintResults(instanceID, elasticIP, certFilePath, region)
@@ -311,7 +322,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func runAnsible(inventoryPath string) error {
+func runAnsible(inventoryPath, avalancheGoVersion string) error {
 	err := os.RemoveAll(app.GetAnsibleDir())
 	if err != nil {
 		return err
@@ -328,7 +339,7 @@ func runAnsible(inventoryPath string) error {
 	if err != nil {
 		return err
 	}
-	return ansible.RunAnsibleSetupNodePlaybook(app.GetAnsibleDir(), inventoryPath)
+	return ansible.RunAnsibleSetupNodePlaybook(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion)
 }
 
 func requestAWSAccountAuth() error {
@@ -376,6 +387,53 @@ func addCertToSSH(certName string) error {
 	return cmd.Run()
 }
 
+func getAvalancheGoVersion() (string, error) {
+	chosenOption, err := promptAvalancheGoVersion()
+	if err != nil {
+		return "", err
+	}
+	if chosenOption != "latest" {
+		sc, err := app.LoadSidecar(chosenOption)
+		if err != nil {
+			return "", err
+		}
+		nc := localnetworkinterface.NewStatusChecker()
+		customAvagoVersion, err := subnet.CheckForInvalidDeployAndGetAvagoVersion(nc, sc.RPCVersion)
+		if err != nil {
+			return "", err
+		}
+		return customAvagoVersion, nil
+	}
+	return chosenOption, nil
+}
+
+func promptAvalancheGoVersion() (string, error) {
+	defaultVersion := "Use latest Avalanche Go Version"
+	txt := "What version of Avalanche Go would you like to install in the node?"
+	versionOptions := []string{defaultVersion, "Use the deployed Subnet's VM version that the node will be validating"}
+	versionOption, err := app.Prompt.CaptureList(txt, versionOptions)
+	if err != nil {
+		return "", err
+	}
+
+	switch versionOption {
+	case defaultVersion:
+		return "latest", nil
+	default:
+		for {
+			subnetName, err := app.Prompt.CaptureString("Which Subnet would you like to use to choose the avalanche go version?")
+			if err != nil {
+				return "", err
+			}
+			_, err = subnet.ValidateSubnetNameAndGetChains([]string{subnetName})
+			if err == nil {
+				return subnetName, nil
+			}
+			ux.Logger.PrintToUser(fmt.Sprintf("no subnet named %s found", subnetName))
+		}
+	}
+}
+
 func PrintResults(instanceID, elasticIP, certFilePath, region string) {
 	ux.Logger.PrintToUser("VALIDATOR SUCCESSFULLY SET UP!")
 	ux.Logger.PrintToUser("Please wait until validator is successfully boostrapped to run further commands on validator")
@@ -385,9 +443,12 @@ func PrintResults(instanceID, elasticIP, certFilePath, region string) {
 	ux.Logger.PrintToUser(fmt.Sprintf("Elastic IP: %s", elasticIP))
 	ux.Logger.PrintToUser(fmt.Sprintf("Cloud Region: %s", region))
 	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(fmt.Sprintf("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", certFilePath))
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(fmt.Sprintf("staker.crt and staker.key are stored at %s. If anything happens to your node or the machine node runs on, these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID)))
+	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("To ssh to validator, run: ")
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser(fmt.Sprintf("ssh -o IdentitiesOnly=yes ubuntu@%s -i %s", elasticIP, certFilePath))
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(fmt.Sprintf("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", certFilePath))
 }

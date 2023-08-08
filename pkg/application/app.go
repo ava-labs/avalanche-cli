@@ -116,6 +116,10 @@ func (app *Avalanche) GetNodeConfigPath(nodeName string) string {
 	return filepath.Join(app.GetNodesDir(), nodeName, constants.NodeCloudConfigFileName)
 }
 
+func (app *Avalanche) GetNodeInstanceDirPath(nodeName string) string {
+	return filepath.Join(app.GetNodesDir(), nodeName)
+}
+
 func (app *Avalanche) GetAnsibleDir() string {
 	return filepath.Join(app.GetNodesDir(), constants.AnsibleDir)
 }
@@ -154,7 +158,7 @@ func (app *Avalanche) CreateAnsibleInventoryDir() error {
 }
 
 func (app *Avalanche) CreateAnsiblePlaybookDir() error {
-	playbookDir := filepath.Join(app.GetAnsibleDir(), "playbook")
+	playbookDir := filepath.Join(app.GetAnsibleDir(), constants.AnsiblePlaybookDir)
 	if _, err := os.Stat(playbookDir); os.IsNotExist(err) {
 		err = os.Mkdir(playbookDir, 0o755)
 		if err != nil {
@@ -634,4 +638,16 @@ func (app *Avalanche) CheckCertInSSHDir(certName string) (bool, error) {
 
 func (app *Avalanche) GetAnsibleInventoryPath(clusterName string) string {
 	return filepath.Join(app.GetNodesDir(), constants.AnsibleInventoryDir, clusterName)
+}
+
+func (*Avalanche) GetBootstrappedJSONFile() string {
+	return filepath.Join(constants.AnsibleInventoryDir, constants.IsBootstrappedJSONFile)
+}
+
+func (*Avalanche) GetNodeIDJSONFile() string {
+	return filepath.Join(constants.AnsibleInventoryDir, constants.NodeIDJSONFile)
+}
+
+func (*Avalanche) GetSubnetSyncJSONFile() string {
+	return filepath.Join(constants.AnsibleInventoryDir, constants.SubnetSyncJSONFile)
 }

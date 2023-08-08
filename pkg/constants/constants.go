@@ -70,12 +70,19 @@ const (
 
 	Disable = "disable"
 
-	TimeParseLayout    = "2006-01-02 15:04:05"
-	MinStakeDuration   = 24 * 14 * time.Hour
-	MaxStakeDuration   = 24 * 365 * time.Hour
-	MaxStakeWeight     = 100
-	MinStakeWeight     = 1
-	DefaultStakeWeight = 20
+	TimeParseLayout                       = "2006-01-02 15:04:05"
+	MinStakeDuration                      = 24 * 14 * time.Hour
+	MinFujiStakeDuration                  = 24 * time.Hour
+	MaxStakeDuration                      = 24 * 365 * time.Hour
+	MaxStakeWeight                        = 100
+	MinStakeWeight                        = 1
+	DefaultStakeWeight                    = 20
+	DefaultFujiPrimaryNetworkWeightStr    = "1 AVAX"
+	DefaultMainnetPrimaryNetworkWeightStr = "20 AVAX"
+	DefaultFujiPrimaryNetworkWeight       = 1000000000
+	DefaultMainnetPrimaryNetworkWeight    = 20000000000
+	DefaultFujiStakeDuration              = "48h"
+	DefaultMainnetStakeDuration           = "336h"
 	// The absolute minimum is 25 seconds, but set to 1 minute to allow for
 	// time to go through the command
 	StakingStartLeadTime               = 1 * time.Minute
@@ -92,9 +99,22 @@ const (
 	Terraform                          = "terraform"
 	AnsiblePlaybook                    = "ansible-playbook"
 	SetupNodePlaybook                  = "playbook/setupNode.yml"
+	CopyStakingFilesPlaybook           = "playbook/copyStakingFiles.yml"
+	ExportSubnetPlaybook               = "playbook/exportSubnet.yml"
+	GetNodeIDPlaybook                  = "playbook/getNodeID.yml"
+	IsBootstrappedPlaybook             = "playbook/isBootstrapped.yml"
+	IsSubnetSyncedPlaybook             = "playbook/isSubnetSynced.yml"
+	TrackSubnetPlaybook                = "playbook/trackSubnet.yml"
+	IsBootstrappedJSONFile             = "isBootstrapped.json"
+	NodeIDJSONFile                     = "nodeID.json"
+	SubnetSyncJSONFile                 = "isSubnetSynced.json"
 	AnsibleInventoryDir                = "inventories"
+	AnsiblePlaybookDir                 = "playbook"
+	NodeIsSubnetSynced                 = "Syncing"
+	NodeIsSubnetValidating             = "Validating"
 	AnsibleInventoryFlag               = "-i"
 	AnsibleExtraArgsIdentitiesOnlyFlag = "--ssh-extra-args='-o IdentitiesOnly=yes'"
+	AnsibleExtraVarsFlag               = "--extra-vars"
 	DefaultConfigFileName              = ".avalanche-cli"
 	DefaultConfigFileType              = "json"
 	WriteReadReadPerms                 = 0o644
