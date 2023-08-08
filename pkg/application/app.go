@@ -142,6 +142,17 @@ func (app *Avalanche) CreateTerraformDir() error {
 	return nil
 }
 
+func (app *Avalanche) CreateAnsibleInventoryDir() error {
+	inventoriesDir := filepath.Join(app.GetNodesDir(), constants.AnsibleInventoryDir)
+	if _, err := os.Stat(inventoriesDir); os.IsNotExist(err) {
+		err = os.Mkdir(inventoriesDir, 0o755)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (app *Avalanche) CreateAnsiblePlaybookDir() error {
 	playbookDir := filepath.Join(app.GetAnsibleDir(), "playbook")
 	if _, err := os.Stat(playbookDir); os.IsNotExist(err) {
@@ -598,7 +609,7 @@ func (app *Avalanche) WriteClusterConfigFile(clusterConfig *models.ClusterConfig
 	return os.WriteFile(clusterConfigPath, clusterConfigBytes, constants.WriteReadReadPerms)
 }
 
-func (app *Avalanche) GetSSHCertFilePath(certName string) (string, error) {
+func (*Avalanche) GetSSHCertFilePath(certName string) (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
@@ -618,6 +629,6 @@ func (app *Avalanche) CheckCertInSSHDir(certName string) (bool, error) {
 	return true, nil
 }
 
-func (*Avalanche) GetAnsibleInventoryPath(clusterName string) string {
-	return constants.AnsibleInventoryPath + clusterName
+func (app *Avalanche) GetAnsibleInventoryPath(clusterName string) string {
+	return filepath.Join(app.GetNodesDir(), constants.AnsibleInventoryDir, clusterName)
 }

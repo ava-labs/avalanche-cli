@@ -92,7 +92,7 @@ const (
 	Terraform                          = "terraform"
 	AnsiblePlaybook                    = "ansible-playbook"
 	SetupNodePlaybook                  = "playbook/setupNode.yml"
-	AnsibleInventoryPath               = "inventories/"
+	AnsibleInventoryDir                = "inventories"
 	AnsibleInventoryFlag               = "-i"
 	AnsibleExtraArgsIdentitiesOnlyFlag = "--ssh-extra-args='-o IdentitiesOnly=yes'"
 	DefaultConfigFileName              = ".avalanche-cli"

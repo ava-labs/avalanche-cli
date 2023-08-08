@@ -23,7 +23,9 @@ var playbook embed.FS
 //go:embed ansible.cfg
 var config []byte
 
-func CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath string) error {
+// CreateAnsibleHostInventory creates inventory file to be used for Ansible playbook commands
+// specifies the ip address of the cloud server and the corresponding ssh cert path for the cloud server
+func CreateAnsibleHostInventory(inventoryPath, ip, certFilePath string) error {
 	if err := os.MkdirAll(inventoryPath, os.ModePerm); err != nil {
 		return err
 	}
@@ -34,7 +36,7 @@ func CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath string) e
 	}
 	alias := "aws-node "
 	alias += "ansible_host="
-	alias += elasticIP
+	alias += ip
 	alias += " ansible_user=ubuntu "
 	alias += fmt.Sprintf("ansible_ssh_private_key_file=%s", certFilePath)
 	alias += " ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
@@ -49,6 +51,7 @@ func SetUp(ansibleDir string) error {
 	}
 	return WritePlaybookFiles(ansibleDir)
 }
+
 func WritePlaybookFiles(ansibleDir string) error {
 	playbookDir := filepath.Join(ansibleDir, "playbook")
 	files, err := playbook.ReadDir("playbook")

@@ -5,12 +5,13 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"net"
 	"os"
 	"os/exec"
 	"os/user"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -70,7 +71,9 @@ func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
 	}
 }
 
-func createNodeConfig(nodeID, region, ami, keyPairName, certPath, sg, eip, clusterName string) error {
+// createClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
+// also creates cluster config in .avalanche-cli/nodes storing various key pair and security group info for all clusters
+func createClusterNodeConfig(nodeID, region, ami, keyPairName, certPath, sg, eip, clusterName string) error {
 	nodeConfig := models.NodeConfig{
 		NodeID:        nodeID,
 		Region:        region,
@@ -172,10 +175,6 @@ func createEC2Instance(rootBody *hclwrite.Body,
 	ux.Logger.PrintToUser("Creating a new EC2 instance on AWS...")
 	ec2Svc := ec2.New(sess)
 	var useExistingKeyPair bool
-	sshCertPath, err := app.GetSSHCertFilePath(certName)
-	if err != nil {
-		return "", "", "", "", err
-	}
 	keyPairExists, err := awsAPI.CheckKeyPairExists(ec2Svc, keyPairName)
 	if err != nil {
 		return "", "", "", "", err
@@ -246,12 +245,13 @@ func createEC2Instance(rootBody *hclwrite.Body,
 	}
 	ux.Logger.PrintToUser("A new EC2 instance is successfully created in AWS!")
 	if !useExistingKeyPair {
+		//takes the cert file downloaded from AWS through terraform and moves it to .ssh directory
 		err = addCertToSSH(certName)
 		if err != nil {
 			return "", "", "", "", err
 		}
 	}
-	sshCertPath, err = app.GetSSHCertFilePath(certName)
+	sshCertPath, err := app.GetSSHCertFilePath(certName)
 	if err != nil {
 		return "", "", "", "", err
 	}
@@ -304,7 +304,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err := runAnsible(inventoryPath); err != nil {
 		return err
 	}
-	err = createNodeConfig(instanceID, region, ami, keyPairName, certFilePath, securityGroupName, elasticIP, clusterName)
+	err = createClusterNodeConfig(instanceID, region, ami, keyPairName, certFilePath, securityGroupName, elasticIP, clusterName)
 	if err != nil {
 		return err
 	}
@@ -358,6 +358,7 @@ func getIPAddress() (string, error) {
 	return ipAddress, nil
 }
 
+// addCertToSSH takes the cert file downloaded from AWS through terraform and moves it to .ssh directory
 func addCertToSSH(certName string) error {
 	certPath := app.GetTempCertPath(certName)
 	err := os.Chmod(certPath, 0o400)
