@@ -26,6 +26,7 @@ const (
 	NodeFileName                = "node.json"
 	NodeCloudConfigFileName     = "node_cloud_config.json"
 	TerraformDir                = "terraform"
+	AnsibleDir                  = "ansible"
 	ClusterConfigFileName       = "cluster_config.json"
 	SidecarVersion              = "1.4.0"
 

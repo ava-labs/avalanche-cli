@@ -5,13 +5,13 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"net"
 	"os"
 	"os/exec"
 	"os/user"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/hashicorp/hcl/v2/hclwrite"
@@ -180,7 +180,10 @@ func createEC2Instance(rootBody *hclwrite.Body,
 	if err != nil {
 		return "", "", "", "", err
 	}
-	certInSSHDir := app.CheckCertInSSHDir(sshCertPath)
+	certInSSHDir, err := app.CheckCertInSSHDir(certName)
+	if err != nil {
+		return "", "", "", "", err
+	}
 	if !keyPairExists {
 		if !certInSSHDir {
 			ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s in AWS", keyPairName))
@@ -298,7 +301,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	time.Sleep(15 * time.Second)
 
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance...")
-	if err := ansible.RunAnsibleSetupNodePlaybook(inventoryPath); err != nil {
+	if err := runAnsible(inventoryPath); err != nil {
 		return err
 	}
 	err = createNodeConfig(instanceID, region, ami, keyPairName, certFilePath, securityGroupName, elasticIP, clusterName)
@@ -308,6 +311,26 @@ func createNode(_ *cobra.Command, args []string) error {
 	PrintResults(instanceID, elasticIP, certFilePath, region)
 	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node is bootstrapping!")
 	return nil
+}
+
+func runAnsible(inventoryPath string) error {
+	err := os.RemoveAll(app.GetAnsibleDir())
+	if err != nil {
+		return err
+	}
+	err = app.CreateAnsibleDir()
+	if err != nil {
+		return err
+	}
+	err = app.CreateAnsiblePlaybookDir()
+	if err != nil {
+		return err
+	}
+	err = ansible.SetUp(app.GetAnsibleDir())
+	if err != nil {
+		return err
+	}
+	return ansible.RunAnsibleSetupNodePlaybook(app.GetAnsibleDir(), inventoryPath)
 }
 
 func requestAWSAccountAuth() error {

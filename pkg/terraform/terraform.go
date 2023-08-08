@@ -264,13 +264,6 @@ func SetOutput(rootBody *hclwrite.Body) {
 	})
 }
 
-func removeFile(fileName string) error {
-	if _, err := os.Stat(fileName); err == nil {
-		return os.Remove(fileName)
-	}
-	return nil
-}
-
 // RemoveDirectory remove terraform directory in .avalanche-cli. We need to call this before and after creating ec2 instance
 func RemoveDirectory(terraformDir string) error {
 	return os.RemoveAll(terraformDir)

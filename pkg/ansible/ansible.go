@@ -4,16 +4,24 @@
 package ansible
 
 import (
+	"embed"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
+
+//go:embed playbook/*
+var playbook embed.FS
+
+//go:embed ansible.cfg
+var config []byte
 
 func CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath string) error {
 	if err := os.MkdirAll(inventoryPath, os.ModePerm); err != nil {
@@ -34,8 +42,49 @@ func CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath string) e
 	return err
 }
 
-func RunAnsibleSetupNodePlaybook(inventoryPath string) error {
+func SetUp(ansibleDir string) error {
+	err := WriteCfgFile(ansibleDir)
+	if err != nil {
+		return err
+	}
+	return WritePlaybookFiles(ansibleDir)
+}
+func WritePlaybookFiles(ansibleDir string) error {
+	playbookDir := filepath.Join(ansibleDir, "playbook")
+	files, err := playbook.ReadDir("playbook")
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		fileContent, err := playbook.ReadFile(fmt.Sprintf("%s/%s", "playbook", file.Name()))
+		if err != nil {
+			return err
+		}
+		playbookFile, err := os.Create(filepath.Join(playbookDir, file.Name()))
+		if err != nil {
+			return err
+		}
+		_, err = playbookFile.Write(fileContent)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func WriteCfgFile(ansibleDir string) error {
+	cfgFile, err := os.Create(filepath.Join(ansibleDir, "ansible.cfg"))
+	if err != nil {
+		return err
+	}
+	_, err = cfgFile.Write(config)
+	return err
+}
+
+func RunAnsibleSetupNodePlaybook(ansibleDir, inventoryPath string) error {
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
 	utils.SetupRealtimeCLIOutput(cmd)
 	return cmd.Run()
 }
