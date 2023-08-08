@@ -25,10 +25,8 @@ func CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath string) e
 		return err
 	}
 	alias := "aws-node "
-	// terraform output has "" in the first and last characters, we need to remove them
-	elasticIPToUse := elasticIP[1 : len(elasticIP)-2]
 	alias += "ansible_host="
-	alias += elasticIPToUse
+	alias += elasticIP
 	alias += " ansible_user=ubuntu "
 	alias += fmt.Sprintf("ansible_ssh_private_key_file=%s", certFilePath)
 	alias += " ansible_ssh_common_args='-o StrictHostKeyChecking=no'"

@@ -160,7 +160,8 @@ func createEC2Instance(rootBody *hclwrite.Body,
 	certName,
 	keyPairName,
 	securityGroupName,
-	ami string) (string, string, string, string, error) {
+	ami string,
+) (string, string, string, string, error) {
 	sess, err := getAWSCloudCredentials(region)
 	if err != nil {
 		return "", "", "", "", err
@@ -227,12 +228,13 @@ func createEC2Instance(rootBody *hclwrite.Body,
 	terraform.SetElasticIP(rootBody)
 	terraform.SetupInstance(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami)
 	terraform.SetOutput(rootBody)
-	err = terraform.SaveConf(app.GetTerraformDir(), hclFile)
+	err = app.CreateTerraformDir()
 	if err != nil {
 		return "", "", "", "", err
 	}
-	err = app.CreateTerraformDir()
+	err = terraform.SaveConf(app.GetTerraformDir(), hclFile)
 	if err != nil {
+		fmt.Printf("error here ")
 		return "", "", "", "", err
 	}
 	instanceID, elasticIP, err := terraform.RunTerraform(app.GetTerraformDir())
@@ -240,16 +242,15 @@ func createEC2Instance(rootBody *hclwrite.Body,
 		return "", "", "", "", err
 	}
 	ux.Logger.PrintToUser("A new EC2 instance is successfully created in AWS!")
-	sshCertPath, err = app.GetSSHCertFilePath(certName)
-	if err != nil {
-		return "", "", "", "", err
-	}
-
 	if !useExistingKeyPair {
 		err = addCertToSSH(certName)
 		if err != nil {
 			return "", "", "", "", err
 		}
+	}
+	sshCertPath, err = app.GetSSHCertFilePath(certName)
+	if err != nil {
+		return "", "", "", "", err
 	}
 	return instanceID, elasticIP, sshCertPath, keyPairName, nil
 }
@@ -262,7 +263,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err := ansible.CheckIsInstalled(); err != nil {
 		return err
 	}
-	err := terraform.RemoveExistingFiles(app.GetTerraformDir())
+	err := terraform.RemoveDirectory(app.GetTerraformDir())
 	if err != nil {
 		return err
 	}
@@ -270,8 +271,10 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	region := "us-east-2"
-	ami := "ami-0430580de6244e02e"
+	// region := "us-east-2"
+	// ami := "ami-0430580de6244e02e"
+	region := "us-east-1"
+	ami := "ami-0261755bbcb8c4a84"
 	prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
 	certName := prefix + "-" + region + constants.CertSuffix
 	securityGroupName := prefix + "-" + region + constants.AWSSecurityGroupSuffix
@@ -284,7 +287,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = terraform.RemoveExistingFiles(app.GetTerraformDir())
+	err = terraform.RemoveDirectory(app.GetTerraformDir())
 	if err != nil {
 		return err
 	}
@@ -292,7 +295,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err := ansible.CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
 		return err
 	}
-	time.Sleep(5 * time.Second)
+	time.Sleep(15 * time.Second)
 
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance...")
 	if err := ansible.RunAnsibleSetupNodePlaybook(inventoryPath); err != nil {
@@ -332,12 +335,13 @@ func getIPAddress() (string, error) {
 	return ipAddress, nil
 }
 
-func addCertToSSH(certPath string) error {
+func addCertToSSH(certName string) error {
+	certPath := app.GetTempCertPath(certName)
 	err := os.Chmod(certPath, 0o400)
 	if err != nil {
 		return err
 	}
-	certFilePath, err := app.GetSSHCertFilePath(certPath)
+	certFilePath, err := app.GetSSHCertFilePath(certName)
 	if err != nil {
 		return err
 	}

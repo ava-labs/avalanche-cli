@@ -131,6 +131,10 @@ func (app *Avalanche) GetTerraformDir() string {
 	return filepath.Join(app.GetNodesDir(), constants.TerraformDir)
 }
 
+func (app *Avalanche) GetTempCertPath(certName string) string {
+	return filepath.Join(app.GetTerraformDir(), certName)
+}
+
 func (app *Avalanche) GetClusterConfigPath() string {
 	return filepath.Join(app.GetNodesDir(), constants.ClusterConfigFileName)
 }

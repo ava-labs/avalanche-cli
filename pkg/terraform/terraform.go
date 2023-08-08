@@ -168,13 +168,13 @@ func SetElasticIP(rootBody *hclwrite.Body) {
 
 // SetKeyPair define the key pair that we will create in our EC2 instance if it doesn't exist yet and download the .pem file to home dir
 func SetKeyPair(rootBody *hclwrite.Body, keyName, certName string) {
-	//define the encryption we are using for the key pair
+	// define the encryption we are using for the key pair
 	tlsPrivateKey := rootBody.AppendNewBlock("resource", []string{"tls_private_key", "pk"})
 	tlsPrivateKeyBody := tlsPrivateKey.Body()
 	tlsPrivateKeyBody.SetAttributeValue("algorithm", cty.StringVal("RSA"))
 	tlsPrivateKeyBody.SetAttributeValue("rsa_bits", cty.NumberIntVal(4096))
 
-	//define the encryption we are using for the key pair
+	// define the encryption we are using for the key pair
 	keyPair := rootBody.AppendNewBlock("resource", []string{"aws_key_pair", "kp"})
 	keyPairBody := keyPair.Body()
 	keyPairBody.SetAttributeValue("key_name", cty.StringVal(keyName))
@@ -271,21 +271,9 @@ func removeFile(fileName string) error {
 	return nil
 }
 
-// RemoveExistingFiles remove terraform files. We need to call this before and after creating ec2 instance
-func RemoveExistingFiles(terraformDir string) error {
-	err := removeFile(filepath.Join(terraformDir, constants.TerraformNodeConfigFile))
-	if err != nil {
-		return err
-	}
-	err = removeFile(filepath.Join(terraformDir, constants.TerraformLockFile))
-	if err != nil {
-		return err
-	}
-	err = removeFile(filepath.Join(terraformDir, constants.TerraformStateFile))
-	if err != nil {
-		return err
-	}
-	return removeFile(filepath.Join(terraformDir, constants.TerraformStateBackupFile))
+// RemoveDirectory remove terraform directory in .avalanche-cli. We need to call this before and after creating ec2 instance
+func RemoveDirectory(terraformDir string) error {
+	return os.RemoveAll(terraformDir)
 }
 
 // RunTerraform executes terraform apply function that creates the EC2 instances based on the .tf file provided
@@ -298,7 +286,7 @@ func RunTerraform(terraformDir string) (string, string, error) {
 	if err := cmd.Run(); err != nil {
 		return "", "", err
 	}
-	cmd = exec.Command(constants.Terraform, "apply", "-auto-approve")
+	cmd = exec.Command(constants.Terraform, "apply", "-auto-approve") //nolint:gosec
 	cmd.Dir = terraformDir
 	utils.SetupRealtimeCLIOutput(cmd)
 	if err := cmd.Run(); err != nil {

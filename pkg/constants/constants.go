@@ -80,9 +80,6 @@ const (
 	StakingStartLeadTime               = 1 * time.Minute
 	StakingMinimumLeadTime             = 25 * time.Second
 	TerraformNodeConfigFile            = "node_config.tf"
-	TerraformLockFile                  = ".terraform.lock.hcl"
-	TerraformStateFile                 = "terraform.tfstate"
-	TerraformStateBackupFile           = "terraform.tfstate.backup"
 	AvalancheCLISuffix                 = "-avalanche-cli"
 	AWSDefaultCredential               = "default"
 	CertSuffix                         = "-kp.pem"
