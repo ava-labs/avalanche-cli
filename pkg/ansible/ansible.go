@@ -33,16 +33,13 @@ func CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath string) e
 	alias += fmt.Sprintf("ansible_ssh_private_key_file=%s", certFilePath)
 	alias += " ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
 	_, err = inventoryFile.WriteString(alias + "\n")
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
-func RunAnsibleSetUpNodePlaybook(configPath, inventoryPath, avalancheGoVersion string) error {
+func RunAnsibleSetupNodePlaybook(configPath, inventoryPath, avalancheGoVersion string) error {
 	configDirVar := "configDir=" + configPath + " avalancheGoVersion=" + avalancheGoVersion
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetUpNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, configDirVar, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	utils.SetUpMultiWrite(cmd)
+	utils.SetupRealtimeCLIOutput(cmd)
 	return cmd.Run()
 }
 
@@ -87,7 +84,7 @@ func RunAnsiblePlaybookSubnetSyncStatus(blockchainID, inventoryPath string) erro
 
 func CheckIsInstalled() error {
 	if err := exec.Command(constants.AnsiblePlaybook).Run(); errors.Is(err, exec.ErrNotFound) { //nolint:gosec
-		ux.Logger.PrintToUser("Ansible tool is not available. It is a needed dependency for CLI to set up a remote node.")
+		ux.Logger.PrintToUser("Ansible tool is not available. It is a necessary dependency for CLI to set up a remote node.")
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("Please follow install instructions at https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html and try again")
 		ux.Logger.PrintToUser("")

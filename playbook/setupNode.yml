@@ -19,3 +19,4 @@
       copy:
         src: "{{ configDir }}"
         dest: /home/ubuntu/.avalanche-cli
+        

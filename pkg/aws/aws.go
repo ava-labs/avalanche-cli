@@ -6,11 +6,11 @@ package aws
 import (
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
+// CheckKeyPairExists checks that key pair kpName exists in the AWS region and returns the key pair object
 func CheckKeyPairExists(ec2Svc *ec2.EC2, kpName string) (bool, error) {
 	keyPairInput := &ec2.DescribeKeyPairsInput{
 		KeyNames: []*string{
@@ -18,7 +18,6 @@ func CheckKeyPairExists(ec2Svc *ec2.EC2, kpName string) (bool, error) {
 		},
 	}
 
-	// Call to get detailed information on each instance
 	_, err := ec2Svc.DescribeKeyPairs(keyPairInput)
 	if err != nil {
 		if strings.Contains(err.Error(), "InvalidKeyPair.NotFound") {
@@ -29,6 +28,7 @@ func CheckKeyPairExists(ec2Svc *ec2.EC2, kpName string) (bool, error) {
 	return true, nil
 }
 
+// CheckSecurityGroupExists checks that security group sgName exists in the AWS region and returns the security group object
 func CheckSecurityGroupExists(ec2Svc *ec2.EC2, sgName string) (bool, *ec2.SecurityGroup, error) {
 	sgInput := &ec2.DescribeSecurityGroupsInput{
 		GroupNames: []*string{
@@ -46,22 +46,16 @@ func CheckSecurityGroupExists(ec2Svc *ec2.EC2, sgName string) (bool, *ec2.Securi
 	return true, sg.SecurityGroups[0], nil
 }
 
-func CheckCurrentIPInSg(sg *ec2.SecurityGroup, currentIP string) (bool, bool) {
-	var ipInTCP bool
-	var ipInHTTP bool
-	for _, ip := range sg.IpPermissions {
-		if *ip.FromPort == constants.TCPPort || *ip.FromPort == constants.HTTPPort {
-			for _, cidrIP := range ip.IpRanges {
-				if strings.Contains(cidrIP.String(), currentIP) {
-					if *ip.FromPort == constants.TCPPort {
-						ipInTCP = true
-					} else if *ip.FromPort == constants.HTTPPort {
-						ipInHTTP = true
-					}
-					break
+// CheckUserIPInSg checks that the user's current IP address is included in the whitelisted security group sg in AWS so that user can ssh into ec2 instance
+func CheckUserIPInSg(sg *ec2.SecurityGroup, currentIP string, port int64) bool {
+	for _, ipPermission := range sg.IpPermissions {
+		for _, ip := range ipPermission.IpRanges {
+			if strings.Contains(ip.String(), currentIP) {
+				if *ipPermission.FromPort == port {
+					return true
 				}
 			}
 		}
 	}
-	return ipInTCP, ipInHTTP
+	return false
 }

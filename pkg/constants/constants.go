@@ -24,6 +24,7 @@ const (
 	SidecarSuffix               = SuffixSeparator + SidecarFileName
 	GenesisSuffix               = SuffixSeparator + GenesisFileName
 	NodeFileName                = "node.json"
+	NodeCloudConfigFileName     = "node_cloud_config.json"
 	TerraformDir                = "terraform"
 	ClusterConfigFileName       = "cluster_config.json"
 	SidecarVersion              = "1.4.0"
@@ -85,21 +86,21 @@ const (
 	// time to go through the command
 	StakingStartLeadTime               = 1 * time.Minute
 	StakingMinimumLeadTime             = 25 * time.Second
-	NodeConfigFile                     = "/node_config.tf"
-	TerraformLockFile                  = "/.terraform.lock.hcl"
-	TerraformStateFile                 = "/terraform.tfstate"
-	TerraformStateBackupFile           = "/terraform.tfstate.backup"
+	TerraformNodeConfigFile            = "node_config.tf"
+	TerraformLockFile                  = ".terraform.lock.hcl"
+	TerraformStateFile                 = "terraform.tfstate"
+	TerraformStateBackupFile           = "terraform.tfstate.backup"
 	AvalancheCLISuffix                 = "-avalanche-cli"
 	AWSDefaultCredential               = "default"
 	CertSuffix                         = "-kp.pem"
 	AWSSecurityGroupSuffix             = "-sg"
-	TCPPort                            = 22
-	HTTPPort                           = 9650
-	StakingPort                        = 9651
+	SSHTCPPort                         = 22
+	AvalanchegoAPIPort                 = 9650
+	AvalanchegoP2PPort                 = 9651
 	OutboundPort                       = 0
 	Terraform                          = "terraform"
 	AnsiblePlaybook                    = "ansible-playbook"
-	SetUpNodePlaybook                  = "playbook/setupNode.yml"
+	SetupNodePlaybook                  = "playbook/setupNode.yml"
 	CopyStakingFilesPlaybook           = "playbook/copyStakingFiles.yml"
 	ExportSubnetPlaybook               = "playbook/exportSubnet.yml"
 	GetNodeIDPlaybook                  = "playbook/getNodeID.yml"
@@ -144,7 +145,7 @@ const (
 
 	ReposDir       = "repos"
 	SubnetDir      = "subnets"
-	NodeDir        = "nodes"
+	NodesDir       = "nodes"
 	VMDir          = "vms"
 	ChainConfigDir = "chains"
 
