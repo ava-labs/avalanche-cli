@@ -5,12 +5,13 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
 	"net"
 	"os"
 	"os/exec"
 	"os/user"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 
@@ -329,6 +330,7 @@ func setupAnsible() error {
 	}
 	return ansible.SetUp(app.GetAnsibleDir())
 }
+
 func runAnsible(inventoryPath, avalancheGoVersion string) error {
 	err := setupAnsible()
 	if err != nil {
