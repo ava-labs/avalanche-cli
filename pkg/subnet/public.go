@@ -111,6 +111,7 @@ func (d *PublicDeployer) AddValidator(
 	return false, tx, remainingSubnetAuthKeys, nil
 }
 
+// AddValidatorPrimaryNetwork adds node as Primary Network Validator
 func (d *PublicDeployer) AddValidatorPrimaryNetwork(
 	nodeID ids.NodeID,
 	weight uint64,

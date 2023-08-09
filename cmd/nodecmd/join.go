@@ -43,8 +43,10 @@ var (
 func newJoinCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "join [subnetName]",
-		Short: "Join a subnet as a validator",
-		Long: `The node join command enables a Primary Network Validator to also be a validator
+		Short: "(ALPHA Warning) Join a subnet as a validator",
+		Long: `(ALPHA Warning) This command is currently in experimental mode.
+
+The node join command enables a Primary Network Validator to also be a validator
 of a Subnet. If The command is run before the node is bootstrapped on the Primary Network, 
 the command will fail. You can check the bootstrap status by calling 
 avalanche node status`,
@@ -230,6 +232,7 @@ func validatePrimaryNetwork(nodeID ids.NodeID, network models.Network) error {
 	recipientAddr := kc.Addresses().List()[0]
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	printNodeJoinOutput(nodeID, network, start)
+	//We set the starting time for node to be a Primary Network Validator to be in 1 minute
 	_, _, err = deployer.AddValidatorPrimaryNetwork(nodeID, weight, start, duration, recipientAddr, uint32(20000))
 	if err != nil {
 		return err
@@ -318,7 +321,7 @@ func checkNodeIsBootstrapped(clusterName string) (bool, error) {
 		return false, err
 	}
 	inventoryPath := "inventories/" + clusterName
-	if err := ansible.RunAnsiblePlaybookCheckBootstrapped(inventoryPath); err != nil {
+	if err := ansible.RunAnsiblePlaybookCheckBootstrapped(app.GetAnsibleDir(), inventoryPath); err != nil {
 		return false, err
 	}
 	isBootstrapped, err := parseBootstrappedOutput(app.GetBootstrappedJSONFile())
@@ -343,7 +346,7 @@ func getNodeID(clusterName string) (string, error) {
 		return "", err
 	}
 	inventoryPath := "inventories/" + clusterName
-	if err := ansible.RunAnsiblePlaybookGetNodeID(inventoryPath); err != nil {
+	if err := ansible.RunAnsiblePlaybookGetNodeID(app.GetAnsibleDir(), inventoryPath); err != nil {
 		return "", err
 	}
 	nodeID, err := parseNodeIDOutput(app.GetNodeIDJSONFile())
@@ -364,7 +367,7 @@ func getNodeSubnetSyncStatus(blockchainID, clusterName string) (bool, error) {
 		return false, err
 	}
 	inventoryPath := "inventories/" + clusterName
-	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(blockchainID, inventoryPath); err != nil {
+	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(app.GetAnsibleDir(), blockchainID, inventoryPath); err != nil {
 		return false, err
 	}
 	subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile())
@@ -458,6 +461,7 @@ func joinSubnet(_ *cobra.Command, args []string) error {
 	if blockchainID == ids.Empty {
 		return ErrNoBlockchainID
 	}
+	// we have to check if node is synced to subnet before adding the node as a validator
 	isSubnetSynced, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName)
 	if err != nil {
 		return err

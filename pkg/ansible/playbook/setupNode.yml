@@ -6,4 +6,17 @@
     - name: modify permissions
       shell: chmod 755 avalanchego-installer.sh
     - name: call avalanche go install script
-      shell: ./avalanchego-installer.sh --ip static --rpc private --state-sync on --fuji
+      shell: ./avalanchego-installer.sh --ip static --rpc private --state-sync on --fuji --version {{ avalancheGoVersion }}
+    - name: get avalanche cli install script
+      shell: wget -nd -m https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh
+    - name: modify permissions
+      shell: chmod 755 install.sh
+    - name: run install script
+      shell: ./install.sh -n
+    - name: create .avalanche-cli dir
+      shell: mkdir .avalanche-cli
+    - name: copy metrics config to cloud server
+      copy:
+        src: "{{ configDir }}"
+        dest: /home/ubuntu/.avalanche-cli
+        

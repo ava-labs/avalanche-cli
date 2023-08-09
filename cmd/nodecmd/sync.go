@@ -16,8 +16,10 @@ import (
 func newSyncCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sync [subnetName]",
-		Short: "Sync with a subnet",
-		Long: `The node sync command enables a node to to also be bootstrapped to a Subnet. 
+		Short: "(ALPHA Warning) Sync with a subnet",
+		Long: `(ALPHA Warning) This command is currently in experimental mode.
+
+The node sync command enables a node to to also be bootstrapped to a Subnet. 
 You can check the subnet bootstrap status by calling avalanche node status --subnet`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
@@ -62,11 +64,12 @@ func trackSubnet(clusterName string, network models.Network) error {
 		return err
 	}
 	inventoryPath := "inventories/" + clusterName
-	err = ansible.RunAnsiblePlaybookExportSubnet(subnetName, inventoryPath)
+	err = ansible.RunAnsiblePlaybookExportSubnet(app.GetAnsibleDir(), subnetName, inventoryPath)
 	if err != nil {
 		return err
 	}
-	err = ansible.RunAnsiblePlaybookTrackSubnet(subnetName, inventoryPath)
+	// runs avalanche join subnet command
+	err = ansible.RunAnsiblePlaybookTrackSubnet(app.GetAnsibleDir(), subnetName, inventoryPath)
 	if err != nil {
 		return err
 	}

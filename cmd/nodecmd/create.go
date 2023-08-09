@@ -314,8 +314,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
-	// instanceID is bounded by double quotation "", we need to remove them before they can be used
-	if err := ansible.RunAnsibleCopyStakingFilesPlaybook(app.GetNodeInstanceDirPath(instanceID), inventoryPath); err != nil {
+	if err := ansible.RunAnsibleCopyStakingFilesPlaybook(app.GetAnsibleDir(), app.GetNodeInstanceDirPath(instanceID), inventoryPath); err != nil {
 		return err
 	}
 	PrintResults(instanceID, elasticIP, certFilePath, region)
@@ -323,6 +322,8 @@ func createNode(_ *cobra.Command, args []string) error {
 	return nil
 }
 
+// setupAnsible we need to remove existing ansible directory and its contents in .avalanche-cli dir
+// before calling every ansible run command just in case there is a change in playbook
 func setupAnsible() error {
 	err := app.SetUpAnsibleEnv()
 	if err != nil {
@@ -384,6 +385,9 @@ func addCertToSSH(certName string) error {
 	return cmd.Run()
 }
 
+// getAvalancheGoVersion asks users whether they want to install the newest Avalanche Go version
+// or if they want to use the newest AValanche Go Version that is still compatible with Subnet EVM
+// version of their choice
 func getAvalancheGoVersion() (string, error) {
 	chosenOption, err := promptAvalancheGoVersion()
 	if err != nil {

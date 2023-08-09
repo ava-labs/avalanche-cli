@@ -1,0 +1,7 @@
+---
+- hosts: all
+  tasks:
+    - name: copy exported subnet VM spec to cloud server
+      copy:
+        src: "{{ exportedSubnet }}"
+        dest: /tmp
