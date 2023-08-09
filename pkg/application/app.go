@@ -667,3 +667,21 @@ func (app *Avalanche) SetUpAnsibleEnv() error {
 	}
 	return app.CreateAnsiblePlaybookDir()
 }
+
+func (*Avalanche) CreateFile(fileName string) error {
+	myfile, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+	return myfile.Close()
+}
+
+func (*Avalanche) RemoveFile(fileName string) error {
+	if _, err := os.Stat(fileName); err == nil {
+		err := os.Remove(fileName)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

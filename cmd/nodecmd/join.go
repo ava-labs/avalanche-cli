@@ -61,24 +61,6 @@ avalanche node status`,
 	return cmd
 }
 
-func createFile(fileName string) error {
-	myfile, err := os.Create(fileName)
-	if err != nil {
-		return err
-	}
-	return myfile.Close()
-}
-
-func removeFile(fileName string) error {
-	if _, err := os.Stat(fileName); err == nil {
-		err := os.Remove(fileName)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func parseBootstrappedOutput(filePath string) (bool, error) {
 	jsonFile, err := os.Open(filePath)
 	if err != nil {
@@ -318,7 +300,7 @@ func getDefaultMaxValidationTime(start time.Time, network models.Network) (time.
 
 func checkNodeIsBootstrapped(clusterName string) (bool, error) {
 	ux.Logger.PrintToUser("Checking if node is bootstrapped to Primary Network ...")
-	err := createFile(app.GetBootstrappedJSONFile())
+	err := app.CreateFile(app.GetBootstrappedJSONFile())
 	if err != nil {
 		return false, err
 	}
@@ -329,7 +311,7 @@ func checkNodeIsBootstrapped(clusterName string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	err = removeFile(app.GetBootstrappedJSONFile())
+	err = app.RemoveFile(app.GetBootstrappedJSONFile())
 	if err != nil {
 		return false, err
 	}
@@ -342,7 +324,7 @@ func checkNodeIsBootstrapped(clusterName string) (bool, error) {
 
 func getNodeID(clusterName string) (string, error) {
 	ux.Logger.PrintToUser("Getting node id ...")
-	err := createFile(app.GetNodeIDJSONFile())
+	err := app.CreateFile(app.GetNodeIDJSONFile())
 	if err != nil {
 		return "", err
 	}
@@ -353,7 +335,7 @@ func getNodeID(clusterName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	err = removeFile(app.GetNodeIDJSONFile())
+	err = app.RemoveFile(app.GetNodeIDJSONFile())
 	if err != nil {
 		return "", err
 	}
@@ -362,7 +344,7 @@ func getNodeID(clusterName string) (string, error) {
 
 func getNodeSubnetSyncStatus(blockchainID, clusterName string) (bool, error) {
 	ux.Logger.PrintToUser("Checking if node is synced to subnet ...")
-	err := createFile(app.GetSubnetSyncJSONFile())
+	err := app.CreateFile(app.GetSubnetSyncJSONFile())
 	if err != nil {
 		return false, err
 	}
@@ -373,7 +355,7 @@ func getNodeSubnetSyncStatus(blockchainID, clusterName string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	err = removeFile(app.GetSubnetSyncJSONFile())
+	err = app.RemoveFile(app.GetSubnetSyncJSONFile())
 	if err != nil {
 		return false, err
 	}
