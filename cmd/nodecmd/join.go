@@ -232,7 +232,7 @@ func validatePrimaryNetwork(nodeID ids.NodeID, network models.Network) error {
 	recipientAddr := kc.Addresses().List()[0]
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	printNodeJoinOutput(nodeID, network, start)
-	//We set the starting time for node to be a Primary Network Validator to be in 1 minute
+	// we set the starting time for node to be a Primary Network Validator to be in 1 minute
 	_, _, err = deployer.AddValidatorPrimaryNetwork(nodeID, weight, start, duration, recipientAddr, uint32(20000))
 	if err != nil {
 		return err
