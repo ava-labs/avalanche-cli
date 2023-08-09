@@ -126,8 +126,8 @@ func RunAnsiblePlaybookTrackSubnet(ansibleDir, subnetName, inventoryPath string)
 
 // RunAnsiblePlaybookCheckBootstrapped checks if node is bootstrapped to primary network
 func RunAnsiblePlaybookCheckBootstrapped(ansibleDir, isBootstrappedPath, inventoryPath string) error {
-	isBootstrappedJsonPath := "isBootstrappedJsonPath=" + isBootstrappedPath
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsBootstrappedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, isBootstrappedJsonPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	isBootstrappedJSONPath := "isBootstrappedJsonPath=" + isBootstrappedPath
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsBootstrappedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, isBootstrappedJSONPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	return cmd.Run()
 }
