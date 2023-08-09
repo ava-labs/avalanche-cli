@@ -24,8 +24,11 @@ const (
 	SidecarSuffix               = SuffixSeparator + SidecarFileName
 	GenesisSuffix               = SuffixSeparator + GenesisFileName
 	NodeFileName                = "node.json"
-
-	SidecarVersion = "1.4.0"
+	NodeCloudConfigFileName     = "node_cloud_config.json"
+	TerraformDir                = "terraform"
+	AnsibleDir                  = "ansible"
+	ClusterConfigFileName       = "cluster_config.json"
+	SidecarVersion              = "1.4.0"
 
 	MaxLogFileSize   = 4
 	MaxNumOfLogFiles = 5
@@ -75,11 +78,26 @@ const (
 	DefaultStakeWeight = 20
 	// The absolute minimum is 25 seconds, but set to 1 minute to allow for
 	// time to go through the command
-	StakingStartLeadTime   = 1 * time.Minute
-	StakingMinimumLeadTime = 25 * time.Second
-
-	DefaultConfigFileName = ".avalanche-cli"
-	DefaultConfigFileType = "json"
+	StakingStartLeadTime               = 1 * time.Minute
+	StakingMinimumLeadTime             = 25 * time.Second
+	TerraformNodeConfigFile            = "node_config.tf"
+	AvalancheCLISuffix                 = "-avalanche-cli"
+	AWSDefaultCredential               = "default"
+	CertSuffix                         = "-kp.pem"
+	AWSSecurityGroupSuffix             = "-sg"
+	SSHTCPPort                         = 22
+	AvalanchegoAPIPort                 = 9650
+	AvalanchegoP2PPort                 = 9651
+	OutboundPort                       = 0
+	Terraform                          = "terraform"
+	AnsiblePlaybook                    = "ansible-playbook"
+	SetupNodePlaybook                  = "playbook/setupNode.yml"
+	AnsibleInventoryDir                = "inventories"
+	AnsibleInventoryFlag               = "-i"
+	AnsibleExtraArgsIdentitiesOnlyFlag = "--ssh-extra-args='-o IdentitiesOnly=yes'"
+	DefaultConfigFileName              = ".avalanche-cli"
+	DefaultConfigFileType              = "json"
+	WriteReadReadPerms                 = 0o644
 
 	CustomVMDir = "vms"
 
@@ -105,6 +123,7 @@ const (
 
 	ReposDir       = "repos"
 	SubnetDir      = "subnets"
+	NodesDir       = "nodes"
 	VMDir          = "vms"
 	ChainConfigDir = "chains"
 
