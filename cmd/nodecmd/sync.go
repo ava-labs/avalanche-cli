@@ -72,6 +72,6 @@ func trackSubnet(clusterName string, network models.Network) error {
 	if err != nil {
 		return err
 	}
-
+	ux.Logger.PrintToUser("Node successfully synced with Subnet!")
 	return nil
 }
