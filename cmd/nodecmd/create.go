@@ -32,8 +32,10 @@ import (
 func newCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create [clusterName]",
-		Short: "Create a new validator on cloud server",
-		Long: `The node create command sets up a validator on a cloud server of your choice. 
+		Short: "(ALPHA Warning) Create a new validator on cloud server",
+		Long: `(ALPHA Warning) This command is currently in experimental mode. 
+
+The node create command sets up a validator on a cloud server of your choice. 
 The validator will be validating the Avalanche Primary Network and Subnet 
 of your choice. By default, the command runs an interactive wizard. It 
 walks you through all the steps you need to set up a validator.
@@ -127,12 +129,12 @@ func printNoCredentialsOutput() {
 
 // getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
 func getAWSCloudCredentials(region string) (*session.Session, error) {
+	if err := requestAWSAccountAuth(); err != nil {
+		return &session.Session{}, err
+	}
 	creds := credentials.NewSharedCredentials("", constants.AWSDefaultCredential)
 	if _, err := creds.Get(); err != nil {
 		printNoCredentialsOutput()
-		return &session.Session{}, err
-	}
-	if err := requestAWSAccountAuth(); err != nil {
 		return &session.Session{}, err
 	}
 	// Load session from shared config

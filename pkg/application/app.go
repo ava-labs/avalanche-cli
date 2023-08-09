@@ -123,7 +123,7 @@ func (app *Avalanche) GetAnsibleDir() string {
 func (app *Avalanche) CreateAnsibleDir() error {
 	ansibleDir := app.GetAnsibleDir()
 	if _, err := os.Stat(ansibleDir); os.IsNotExist(err) {
-		err = os.Mkdir(ansibleDir, 0o755)
+		err = os.Mkdir(ansibleDir, constants.DefaultPerms755)
 		if err != nil {
 			return err
 		}
@@ -134,7 +134,7 @@ func (app *Avalanche) CreateAnsibleDir() error {
 func (app *Avalanche) CreateTerraformDir() error {
 	nodeTerraformDir := app.GetTerraformDir()
 	if _, err := os.Stat(nodeTerraformDir); os.IsNotExist(err) {
-		err = os.Mkdir(nodeTerraformDir, 0o755)
+		err = os.Mkdir(nodeTerraformDir, constants.DefaultPerms755)
 		if err != nil {
 			return err
 		}
@@ -145,7 +145,7 @@ func (app *Avalanche) CreateTerraformDir() error {
 func (app *Avalanche) CreateAnsibleInventoryDir() error {
 	inventoriesDir := filepath.Join(app.GetNodesDir(), constants.AnsibleInventoryDir)
 	if _, err := os.Stat(inventoriesDir); os.IsNotExist(err) {
-		err = os.Mkdir(inventoriesDir, 0o755)
+		err = os.Mkdir(inventoriesDir, constants.DefaultPerms755)
 		if err != nil {
 			return err
 		}
@@ -156,7 +156,7 @@ func (app *Avalanche) CreateAnsibleInventoryDir() error {
 func (app *Avalanche) CreateAnsiblePlaybookDir() error {
 	playbookDir := filepath.Join(app.GetAnsibleDir(), "playbook")
 	if _, err := os.Stat(playbookDir); os.IsNotExist(err) {
-		err = os.Mkdir(playbookDir, 0o755)
+		err = os.Mkdir(playbookDir, constants.DefaultPerms755)
 		if err != nil {
 			return err
 		}
