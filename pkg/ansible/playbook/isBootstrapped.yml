@@ -12,6 +12,6 @@
           Content-Type: "application/json"
       register: command_output
     - copy:
-        dest: isBootstrapped.json
+        dest: "{{ isBootstrappedJsonPath }}"
         content: "{{ command_output[\"content\"] | from_json | to_nice_json }}"
       delegate_to: localhost

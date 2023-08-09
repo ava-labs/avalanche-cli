@@ -85,6 +85,7 @@ func WriteCfgFile(ansibleDir string) error {
 	return err
 }
 
+// RunAnsibleSetupNodePlaybook installs avalanche go and avalanche-cli
 func RunAnsibleSetupNodePlaybook(configPath, ansibleDir, inventoryPath, avalancheGoVersion string) error {
 	configDirVar := "configDir=" + configPath + " avalancheGoVersion=" + avalancheGoVersion
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, configDirVar, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
@@ -124,23 +125,25 @@ func RunAnsiblePlaybookTrackSubnet(ansibleDir, subnetName, inventoryPath string)
 }
 
 // RunAnsiblePlaybookCheckBootstrapped checks if node is bootstrapped to primary network
-func RunAnsiblePlaybookCheckBootstrapped(ansibleDir, inventoryPath string) error {
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsBootstrappedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+func RunAnsiblePlaybookCheckBootstrapped(ansibleDir, isBootstrappedPath, inventoryPath string) error {
+	isBootstrappedJsonPath := "isBootstrappedJsonPath=" + isBootstrappedPath
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsBootstrappedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, isBootstrappedJsonPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	return cmd.Run()
 }
 
 // RunAnsiblePlaybookGetNodeID gets node ID of cloud server
-func RunAnsiblePlaybookGetNodeID(ansibleDir, inventoryPath string) error {
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.GetNodeIDPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+func RunAnsiblePlaybookGetNodeID(ansibleDir, nodeIDPath, inventoryPath string) error {
+	nodeIDJsonPath := "nodeIDJsonPath=" + nodeIDPath
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.GetNodeIDPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, nodeIDJsonPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	return cmd.Run()
 }
 
 // RunAnsiblePlaybookSubnetSyncStatus checks if node is synced to subnet
-func RunAnsiblePlaybookSubnetSyncStatus(ansibleDir, blockchainID, inventoryPath string) error {
-	blockchainIDArg := "blockchainID=" + blockchainID
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsSubnetSyncedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, blockchainIDArg, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+func RunAnsiblePlaybookSubnetSyncStatus(ansibleDir, subnetSyncPath, blockchainID, inventoryPath string) error {
+	extraArgs := "blockchainID=" + blockchainID + " subnetSyncPath=" + subnetSyncPath
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsSubnetSyncedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, extraArgs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	return cmd.Run()
 }

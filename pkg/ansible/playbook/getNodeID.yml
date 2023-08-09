@@ -12,6 +12,6 @@
           Content-Type: "application/json"
       register: command_output
     - copy:
-        dest: nodeID.json
+        dest: "{{ nodeIDJsonPath }}"
         content: "{{ command_output[\"content\"] | from_json | to_nice_json }}"
       delegate_to: localhost

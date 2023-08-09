@@ -63,13 +63,12 @@ func trackSubnet(clusterName string, network models.Network) error {
 	if err != nil {
 		return err
 	}
-	inventoryPath := "inventories/" + clusterName
-	err = ansible.RunAnsiblePlaybookExportSubnet(app.GetAnsibleDir(), subnetName, inventoryPath)
+	err = ansible.RunAnsiblePlaybookExportSubnet(app.GetAnsibleDir(), subnetName, app.GetAnsibleInventoryPath(clusterName))
 	if err != nil {
 		return err
 	}
 	// runs avalanche join subnet command
-	err = ansible.RunAnsiblePlaybookTrackSubnet(app.GetAnsibleDir(), subnetName, inventoryPath)
+	err = ansible.RunAnsiblePlaybookTrackSubnet(app.GetAnsibleDir(), subnetName, app.GetAnsibleInventoryPath(clusterName))
 	if err != nil {
 		return err
 	}

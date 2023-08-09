@@ -77,6 +77,7 @@ const (
 	MaxStakeWeight                        = 100
 	MinStakeWeight                        = 1
 	DefaultStakeWeight                    = 20
+	AVAX                                  = "AVAX"
 	DefaultFujiPrimaryNetworkWeightStr    = "1 AVAX"
 	DefaultMainnetPrimaryNetworkWeightStr = "20 AVAX"
 	DefaultFujiPrimaryNetworkWeight       = 1000000000

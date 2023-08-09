@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanchego/utils/units"
 	"io"
 	"os"
 	"time"
@@ -320,8 +321,7 @@ func checkNodeIsBootstrapped(clusterName string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	inventoryPath := "inventories/" + clusterName
-	if err := ansible.RunAnsiblePlaybookCheckBootstrapped(app.GetAnsibleDir(), inventoryPath); err != nil {
+	if err := ansible.RunAnsiblePlaybookCheckBootstrapped(app.GetAnsibleDir(), app.GetBootstrappedJSONFile(), app.GetAnsibleInventoryPath(clusterName)); err != nil {
 		return false, err
 	}
 	isBootstrapped, err := parseBootstrappedOutput(app.GetBootstrappedJSONFile())
@@ -345,8 +345,7 @@ func getNodeID(clusterName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	inventoryPath := "inventories/" + clusterName
-	if err := ansible.RunAnsiblePlaybookGetNodeID(app.GetAnsibleDir(), inventoryPath); err != nil {
+	if err := ansible.RunAnsiblePlaybookGetNodeID(app.GetAnsibleDir(), app.GetNodeIDJSONFile(), app.GetAnsibleInventoryPath(clusterName)); err != nil {
 		return "", err
 	}
 	nodeID, err := parseNodeIDOutput(app.GetNodeIDJSONFile())
@@ -366,8 +365,7 @@ func getNodeSubnetSyncStatus(blockchainID, clusterName string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	inventoryPath := "inventories/" + clusterName
-	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(app.GetAnsibleDir(), blockchainID, inventoryPath); err != nil {
+	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(app.GetAnsibleDir(), app.GetSubnetSyncJSONFile(), blockchainID, app.GetAnsibleInventoryPath(clusterName)); err != nil {
 		return false, err
 	}
 	subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile())
@@ -481,11 +479,16 @@ func joinSubnet(_ *cobra.Command, args []string) error {
 	return nil
 }
 
+// convertToAVAX converts nanoAVAX to AVAX
+func convertToAVAX(weight uint64) string {
+	return fmt.Sprintf("%.9f", float64(weight)/float64(units.Avax)) + " " + constants.AVAX
+}
 func printNodeJoinOutput(nodeID ids.NodeID, network models.Network, start time.Time) {
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
 	ux.Logger.PrintToUser("Network: %s", network.String())
 	ux.Logger.PrintToUser("Start time: %s", start.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("End time: %s", start.Add(duration).Format(constants.TimeParseLayout))
-	ux.Logger.PrintToUser("Weight: %d", weight)
+	// we need to divide by 10 ^ 9 since we were using nanoAvax
+	ux.Logger.PrintToUser("Weight: %d", convertToAVAX(weight))
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 }
