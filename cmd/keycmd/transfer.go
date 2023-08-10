@@ -358,7 +358,7 @@ func transferF(*cobra.Command, []string) error {
 				ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
 				return err
 			}
-			time.Sleep(2 * time.Second)
+			time.Sleep(5 * time.Second)
 			receiveRecoveryStep++
 		}
 		if receiveRecoveryStep == 1 {
@@ -383,7 +383,7 @@ func transferF(*cobra.Command, []string) error {
 				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("ERROR: restart from this step by using the same command with extra arguments: --%s %d", receiveRecoveryStepFlag, receiveRecoveryStep)))
 				return err
 			}
-			time.Sleep(2 * time.Second)
+			time.Sleep(5 * time.Second)
 			receiveRecoveryStep++
 		}
 		if receiveRecoveryStep == 2 {
