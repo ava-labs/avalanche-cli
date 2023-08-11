@@ -11,9 +11,8 @@ import (
 	"os/user"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
-
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -159,24 +158,37 @@ func promptKeyPairName(ec2Svc *ec2.EC2) (string, string, error) {
 	return certName, newKeyPairName, nil
 }
 
-// createEC2Instance creates terraform .tf file and runs terraform exec function to create ec2 instance
-func createEC2Instance(rootBody *hclwrite.Body,
-	hclFile *hclwrite.File,
-	region,
-	certName,
-	keyPairName,
-	securityGroupName,
-	ami string,
-) (string, string, string, string, error) {
+func getAWSCloudConfig() (*ec2.EC2, string, string, error) {
+	region, err := app.Prompt.CaptureString("Which AWS region do you want to set up your node in?")
+	if err != nil {
+		return nil, "", "", err
+	}
 	sess, err := getAWSCloudCredentials(region)
 	if err != nil {
-		return "", "", "", "", err
+		return nil, "", "", err
 	}
+	ec2Svc := ec2.New(sess)
+	ami, err := awsAPI.GetAMIID(ec2Svc)
+	if err != nil {
+		return nil, "", "", err
+	}
+	return ec2Svc, region, ami, nil
+}
+
+// createEC2Instance creates terraform .tf file and runs terraform exec function to create ec2 instance
+func createEC2Instance(rootBody *hclwrite.Body,
+	ec2Svc *ec2.EC2,
+	hclFile *hclwrite.File,
+	region,
+	ami,
+	certName,
+	keyPairName,
+	securityGroupName string,
+) (string, string, string, string, error) {
 	if err := terraform.SetCloudCredentials(rootBody, region); err != nil {
 		return "", "", "", "", err
 	}
 	ux.Logger.PrintToUser("Creating a new EC2 instance on AWS...")
-	ec2Svc := ec2.New(sess)
 	var useExistingKeyPair bool
 	keyPairExists, err := awsAPI.CheckKeyPairExists(ec2Svc, keyPairName)
 	if err != nil {
@@ -239,7 +251,6 @@ func createEC2Instance(rootBody *hclwrite.Body,
 	}
 	err = terraform.SaveConf(app.GetTerraformDir(), hclFile)
 	if err != nil {
-		fmt.Printf("error here ")
 		return "", "", "", "", err
 	}
 	instanceID, elasticIP, err := terraform.RunTerraform(app.GetTerraformDir())
@@ -277,10 +288,11 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	region := "us-east-2"
-	ami := "ami-0430580de6244e02e"
-	// region := "us-east-1"
-	// ami := "ami-0261755bbcb8c4a84"
+	// Get AWS Credential, region and AMI
+	ec2Svc, region, ami, err := getAWSCloudConfig()
+	if err != nil {
+		return err
+	}
 	prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
 	certName := prefix + "-" + region + constants.CertSuffix
 	securityGroupName := prefix + "-" + region + constants.AWSSecurityGroupSuffix
@@ -288,8 +300,9 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	// Create new EC2 client
-	instanceID, elasticIP, certFilePath, keyPairName, err := createEC2Instance(rootBody, hclFile, region, certName, prefix, securityGroupName, ami)
+	instanceID, elasticIP, certFilePath, keyPairName, err := createEC2Instance(rootBody, ec2Svc, hclFile, region, ami, certName, prefix, securityGroupName)
 	if err != nil {
 		return err
 	}
