@@ -28,6 +28,7 @@ func CheckKeyPairExists(ec2Svc *ec2.EC2, kpName string) (bool, error) {
 	}
 	return true, nil
 }
+
 func GetAMIID(ec2Svc *ec2.EC2) (string, error) {
 	descriptionFilterValue := "Canonical, Ubuntu, 20.04 LTS, amd64 focal image build on 2023-05-17"
 	imageInput := &ec2.DescribeImagesInput{
