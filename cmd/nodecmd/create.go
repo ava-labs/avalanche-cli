@@ -182,7 +182,7 @@ func getAWSCloudConfig() (*ec2.EC2, string, string, error) {
 		return nil, "", "", err
 	}
 	ec2Svc := ec2.New(sess)
-	ami, err := awsAPI.GetAMIID(ec2Svc)
+	ami, err := awsAPI.GetUbuntuAMIID(ec2Svc)
 	if err != nil {
 		return nil, "", "", err
 	}
