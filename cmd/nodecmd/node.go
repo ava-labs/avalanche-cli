@@ -38,6 +38,5 @@ rest of the commands to maintain your node and make your node a Subnet Validator
 	cmd.AddCommand(newSyncCmd())
 	// node status cluster
 	cmd.AddCommand(newStatusCmd())
-
 	return cmd
 }
