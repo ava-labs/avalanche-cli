@@ -3,6 +3,7 @@
 package nodecmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -60,8 +61,15 @@ avalanche node status`,
 
 	return cmd
 }
-
-func parseBootstrappedOutput(filePath string) (bool, error) {
+func printJSONOutput(byteValue []byte) error {
+	var prettyJSON bytes.Buffer
+	if err := json.Indent(&prettyJSON, byteValue, "", "   "); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser(prettyJSON.String())
+	return nil
+}
+func parseBootstrappedOutput(filePath string, printOutput bool) (bool, error) {
 	jsonFile, err := os.Open(filePath)
 	if err != nil {
 		return false, err
@@ -72,6 +80,12 @@ func parseBootstrappedOutput(filePath string) (bool, error) {
 	err = json.Unmarshal(byteValue, &result)
 	if err != nil {
 		return false, err
+	}
+	if printOutput {
+		err = printJSONOutput(byteValue)
+		if err != nil {
+			return false, err
+		}
 	}
 	isBootstrappedInterface, ok := result["result"].(map[string]interface{})
 	if ok {
@@ -83,7 +97,7 @@ func parseBootstrappedOutput(filePath string) (bool, error) {
 	return false, nil
 }
 
-func parseSubnetSyncOutput(filePath string) (string, error) {
+func parseSubnetSyncOutput(filePath string, printOutput bool) (string, error) {
 	jsonFile, err := os.Open(filePath)
 	if err != nil {
 		return "", err
@@ -94,6 +108,12 @@ func parseSubnetSyncOutput(filePath string) (string, error) {
 	err = json.Unmarshal(byteValue, &result)
 	if err != nil {
 		return "", err
+	}
+	if printOutput {
+		err = printJSONOutput(byteValue)
+		if err != nil {
+			return "", err
+		}
 	}
 	statusInterface, ok := result["result"].(map[string]interface{})
 	if ok {
@@ -298,7 +318,7 @@ func getDefaultMaxValidationTime(start time.Time, network models.Network) (time.
 	return d, nil
 }
 
-func checkNodeIsBootstrapped(clusterName string) (bool, error) {
+func checkNodeIsBootstrapped(clusterName string, printOutput bool) (bool, error) {
 	ux.Logger.PrintToUser("Checking if node is bootstrapped to Primary Network ...")
 	err := app.CreateFile(app.GetBootstrappedJSONFile())
 	if err != nil {
@@ -307,7 +327,7 @@ func checkNodeIsBootstrapped(clusterName string) (bool, error) {
 	if err := ansible.RunAnsiblePlaybookCheckBootstrapped(app.GetAnsibleDir(), app.GetBootstrappedJSONFile(), app.GetAnsibleInventoryPath(clusterName)); err != nil {
 		return false, err
 	}
-	isBootstrapped, err := parseBootstrappedOutput(app.GetBootstrappedJSONFile())
+	isBootstrapped, err := parseBootstrappedOutput(app.GetBootstrappedJSONFile(), printOutput)
 	if err != nil {
 		return false, err
 	}
@@ -342,7 +362,7 @@ func getNodeID(clusterName string) (string, error) {
 	return nodeID, err
 }
 
-func getNodeSubnetSyncStatus(blockchainID, clusterName string) (bool, error) {
+func getNodeSubnetSyncStatus(blockchainID, clusterName string, printOutput bool) (bool, error) {
 	ux.Logger.PrintToUser("Checking if node is synced to subnet ...")
 	err := app.CreateFile(app.GetSubnetSyncJSONFile())
 	if err != nil {
@@ -351,7 +371,7 @@ func getNodeSubnetSyncStatus(blockchainID, clusterName string) (bool, error) {
 	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(app.GetAnsibleDir(), app.GetSubnetSyncJSONFile(), blockchainID, app.GetAnsibleInventoryPath(clusterName)); err != nil {
 		return false, err
 	}
-	subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile())
+	subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile(), printOutput)
 	if err != nil {
 		return false, err
 	}
@@ -411,7 +431,7 @@ func joinSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	isBootstrapped, err := checkNodeIsBootstrapped(clusterName)
+	isBootstrapped, err := checkNodeIsBootstrapped(clusterName, false)
 	if err != nil {
 		return err
 	}
@@ -443,7 +463,7 @@ func joinSubnet(_ *cobra.Command, args []string) error {
 		return ErrNoBlockchainID
 	}
 	// we have to check if node is synced to subnet before adding the node as a validator
-	isSubnetSynced, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName)
+	isSubnetSynced, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, false)
 	if err != nil {
 		return err
 	}

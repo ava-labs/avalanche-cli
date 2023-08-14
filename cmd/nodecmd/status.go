@@ -3,9 +3,9 @@
 package nodecmd
 
 import (
-	"errors"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 )
 
@@ -37,18 +37,17 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-	}
-
-	isBootstrapped, err := checkNodeIsBootstrapped(clusterName)
-	if err != nil {
+		sc, err := app.LoadSidecar(subnetName)
+		if err != nil {
+			return err
+		}
+		blockchainID := sc.Networks[models.Fuji.String()].BlockchainID
+		if blockchainID == ids.Empty {
+			return ErrNoBlockchainID
+		}
+		_, err = getNodeSubnetSyncStatus(blockchainID.String(), clusterName, true)
 		return err
 	}
-	if !isBootstrapped {
-		return errors.New("node is not bootstrapped yet, please try again later")
-	}
-	err = trackSubnet(clusterName, models.Fuji)
-	if err != nil {
-		return err
-	}
-	return nil
+	_, err = checkNodeIsBootstrapped(clusterName, true)
+	return err
 }
