@@ -86,6 +86,7 @@ func createClusterNodeConfig(nodeID, region, ami, keyPairName, certPath, sg, eip
 		ElasticIP:     eip,
 	}
 	err := app.CreateNodeCloudConfigFile(nodeID, &nodeConfig)
+
 	if err != nil {
 		return err
 	}
