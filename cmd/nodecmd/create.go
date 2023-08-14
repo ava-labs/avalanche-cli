@@ -159,9 +159,23 @@ func promptKeyPairName(ec2Svc *ec2.EC2) (string, string, error) {
 }
 
 func getAWSCloudConfig() (*ec2.EC2, string, string, error) {
-	region, err := app.Prompt.CaptureString("Which AWS region do you want to set up your node in?")
+	usEast1 := "us-east-1"
+	usEast2 := "us-east-2"
+	usWest1 := "us-west-1"
+	usWest2 := "us-west-2"
+	customRegion := "Choose custom region (list of regions available at https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html)"
+	region, err := app.Prompt.CaptureList(
+		"Which AWS region do you want to set up your node in?",
+		[]string{usEast1, usEast2, usWest1, usWest2, customRegion},
+	)
 	if err != nil {
 		return nil, "", "", err
+	}
+	if region == customRegion {
+		region, err = app.Prompt.CaptureString("Which AWS region do you want to set up your node in?")
+		if err != nil {
+			return nil, "", "", err
+		}
 	}
 	sess, err := getAWSCloudCredentials(region)
 	if err != nil {
