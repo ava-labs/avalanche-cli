@@ -61,6 +61,7 @@ avalanche node status`,
 
 	return cmd
 }
+
 func printJSONOutput(byteValue []byte) error {
 	var prettyJSON bytes.Buffer
 	if err := json.Indent(&prettyJSON, byteValue, "", "   "); err != nil {
@@ -69,6 +70,7 @@ func printJSONOutput(byteValue []byte) error {
 	ux.Logger.PrintToUser(prettyJSON.String())
 	return nil
 }
+
 func parseBootstrappedOutput(filePath string, printOutput bool) (bool, error) {
 	jsonFile, err := os.Open(filePath)
 	if err != nil {
