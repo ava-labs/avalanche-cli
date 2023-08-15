@@ -49,7 +49,7 @@ func CallExportSubnet(subnetName string, network models.Network) error {
 	case models.Fuji:
 		deployTestnet = true
 	}
-	exportOutput = "/tmp/" + subnetName + "-export.dat"
+	exportOutput = "/tmp/" + subnetName + constants.ExportSubnetSuffix
 	return exportSubnet(nil, []string{subnetName})
 }
 

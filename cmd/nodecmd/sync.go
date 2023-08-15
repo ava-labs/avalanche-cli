@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 
@@ -15,11 +16,11 @@ import (
 
 func newSyncCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "sync [subnetName]",
-		Short: "(ALPHA Warning) Sync with a subnet",
+		Use:   "sync [clusterName]",
+		Short: "(ALPHA Warning) Sync nodes in a cluster with a subnet",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
-The node sync command enables a node to to also be bootstrapped to a Subnet. 
+The node sync command enables all nodes in a cluster to be bootstrapped to a Subnet. 
 You can check the subnet bootstrap status by calling avalanche node status --subnet`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
@@ -36,12 +37,10 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("Please provide the name of the subnet that the node will be validating with --subnet flag")
 		return errors.New("no subnet provided")
 	}
-	err := setupAnsible()
-	if err != nil {
+	if err := setupAnsible(); err != nil {
 		return err
 	}
-	_, err = subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName})
-	if err != nil {
+	if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 		return err
 	}
 	isBootstrapped, err := checkNodeIsBootstrapped(clusterName)
@@ -51,27 +50,23 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	if !isBootstrapped {
 		return errors.New("node is not bootstrapped yet, please try again later")
 	}
-	err = trackSubnet(clusterName, models.Fuji)
-	if err != nil {
-		return err
-	}
-	return nil
+	return trackSubnet(clusterName, subnetName, models.Fuji)
 }
 
-func trackSubnet(clusterName string, network models.Network) error {
-	err := subnetcmd.CallExportSubnet(subnetName, network)
-	if err != nil {
+// trackSubnet exports deployed subnet in user's local machine to cloud server and calls node to
+// start tracking the specified subnet (similar to avalanche subnet join <subnetName> command)
+func trackSubnet(clusterName, subnetToTrack string, network models.Network) error {
+	if err := subnetcmd.CallExportSubnet(subnetToTrack, network); err != nil {
 		return err
 	}
-	err = ansible.RunAnsiblePlaybookExportSubnet(app.GetAnsibleDir(), subnetName, app.GetAnsibleInventoryPath(clusterName))
-	if err != nil {
+	if err := ansible.RunAnsiblePlaybookExportSubnet(app.GetAnsibleDir(), subnetToTrack, app.GetAnsibleInventoryPath(clusterName)); err != nil {
 		return err
 	}
 	// runs avalanche join subnet command
-	err = ansible.RunAnsiblePlaybookTrackSubnet(app.GetAnsibleDir(), subnetName, app.GetAnsibleInventoryPath(clusterName))
-	if err != nil {
+	if err := ansible.RunAnsiblePlaybookTrackSubnet(app.GetAnsibleDir(), subnetToTrack, app.GetAnsibleInventoryPath(clusterName)); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Node successfully synced with Subnet!")
+	ux.Logger.PrintToUser("Node successfully started syncing with Subnet!")
+	ux.Logger.PrintToUser(fmt.Sprintf("Check node subnet syncing status with avalanche node status %s --subnet %s", clusterName, subnetToTrack))
 	return nil
 }

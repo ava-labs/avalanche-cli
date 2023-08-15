@@ -44,7 +44,7 @@ func CreateAnsibleHostInventory(inventoryPath, ip, certFilePath string) error {
 	return err
 }
 
-func SetUp(ansibleDir string) error {
+func Setup(ansibleDir string) error {
 	err := WriteCfgFile(ansibleDir)
 	if err != nil {
 		return err
@@ -87,7 +87,7 @@ func WriteCfgFile(ansibleDir string) error {
 
 // RunAnsibleSetupNodePlaybook installs avalanche go and avalanche-cli
 func RunAnsibleSetupNodePlaybook(configPath, ansibleDir, inventoryPath, avalancheGoVersion string) error {
-	configDirVar := "configDir=" + configPath + " avalancheGoVersion=" + avalancheGoVersion
+	configDirVar := "configFilePath=" + configPath + " avalancheGoVersion=" + avalancheGoVersion
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, configDirVar, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	utils.SetupRealtimeCLIOutput(cmd)
@@ -106,7 +106,7 @@ func RunAnsibleCopyStakingFilesPlaybook(ansibleDir, nodeInstanceDirPath, invento
 
 // RunAnsiblePlaybookExportSubnet exports deployed Subnet from local machine to cloud server
 func RunAnsiblePlaybookExportSubnet(ansibleDir, subnetName, inventoryPath string) error {
-	exportOutput := "/tmp/" + subnetName + "-export.dat"
+	exportOutput := "/tmp/" + subnetName + constants.ExportSubnetSuffix
 	exportedSubnet := "exportedSubnet=" + exportOutput
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.ExportSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, exportedSubnet, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
@@ -116,7 +116,7 @@ func RunAnsiblePlaybookExportSubnet(ansibleDir, subnetName, inventoryPath string
 
 // RunAnsiblePlaybookTrackSubnet runs avalanche subnet join <subnetName> in cloud server
 func RunAnsiblePlaybookTrackSubnet(ansibleDir, subnetName, inventoryPath string) error {
-	importedFileName := "/tmp/" + subnetName + "-export.dat"
+	importedFileName := "/tmp/" + subnetName + constants.ExportSubnetSuffix
 	importedSubnet := "subnetExportFileName=" + importedFileName + " subnetName=" + subnetName
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.TrackSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, importedSubnet, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir

@@ -119,10 +119,10 @@ func (d *PublicDeployer) AddValidatorPrimaryNetwork(
 	duration time.Duration,
 	recipientAddr ids.ShortID,
 	shares uint32,
-) (ids.ID, []string, error) {
+) error {
 	wallet, err := d.loadWallet()
 	if err != nil {
-		return ids.Empty, nil, err
+		return err
 	}
 	validator := &txs.Validator{
 		NodeID: nodeID,
@@ -131,7 +131,7 @@ func (d *PublicDeployer) AddValidatorPrimaryNetwork(
 		Wght:   weight,
 	}
 	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign SubnetValidator transaction on the ledger device *** ")
+		ux.Logger.PrintToUser("*** Please sign AddValidatorPrimaryNetwork transaction on the ledger device *** ")
 	}
 	owner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
@@ -139,12 +139,12 @@ func (d *PublicDeployer) AddValidatorPrimaryNetwork(
 			recipientAddr,
 		},
 	}
-	txID, err := wallet.P().IssueAddValidatorTx(validator, owner, shares)
+	tx, err := wallet.P().IssueAddValidatorTx(validator, owner, shares)
 	if err != nil {
-		return ids.Empty, nil, err
+		return err
 	}
-	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID.ID().String())
-	return txID.ID(), nil, nil
+	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", tx.ID().String())
+	return nil
 }
 
 func (d *PublicDeployer) CreateAssetTx(

@@ -180,5 +180,5 @@ func ensureAdminsHaveBalance(admins []common.Address, alloc core.GenesisAlloc) e
 
 // In own function to facilitate testing
 func getEVMAllocation(app *application.Avalanche) (core.GenesisAlloc, statemachine.StateDirection, error) {
-	return getAllocation(app, defaultEvmAirdropAmount, oneAvax, "Amount to airdrop (in AVAX units)")
+	return getAllocation(app, defaultEvmAirdropAmount, oneAvax, "Amount to airdrop (in AVAXSymbol units)")
 }

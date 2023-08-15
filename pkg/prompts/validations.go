@@ -5,6 +5,7 @@ package prompts
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanchego/genesis"
 	"math/big"
 	"net/mail"
 	"net/url"
@@ -43,11 +44,11 @@ func validateStakingDuration(input string) error {
 	if err != nil {
 		return err
 	}
-	if d > constants.MaxStakeDuration {
-		return fmt.Errorf("exceeds maximum staking duration of %s", ux.FormatDuration(constants.MaxStakeDuration))
+	if d > genesis.MainnetParams.MaxStakeDuration {
+		return fmt.Errorf("exceeds maximum staking duration of %s", ux.FormatDuration(genesis.MainnetParams.MaxStakeDuration))
 	}
-	if d < constants.MinStakeDuration {
-		return fmt.Errorf("below the minimum staking duration of %s", ux.FormatDuration(constants.MinStakeDuration))
+	if d < genesis.MainnetParams.MinStakeDuration {
+		return fmt.Errorf("below the minimum staking duration of %s", ux.FormatDuration(genesis.MainnetParams.MinStakeDuration))
 	}
 	return nil
 }
@@ -57,11 +58,11 @@ func validateFujiStakingDuration(input string) error {
 	if err != nil {
 		return err
 	}
-	if d > constants.MaxStakeDuration {
+	if d > genesis.FujiParams.MaxStakeDuration {
 		return fmt.Errorf("exceeds maximum staking duration of %s", ux.FormatDuration(constants.MaxStakeDuration))
 	}
-	if d < constants.MinFujiStakeDuration {
-		return fmt.Errorf("below the minimum staking duration of %s", ux.FormatDuration(constants.MinStakeDuration))
+	if d < genesis.FujiParams.MinStakeDuration {
+		return fmt.Errorf("below the minimum staking duration of %s", ux.FormatDuration(constants.MinMainnetStakeDuration))
 	}
 	return nil
 }

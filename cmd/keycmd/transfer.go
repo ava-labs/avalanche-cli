@@ -139,7 +139,7 @@ func newTransferCmd() *cobra.Command {
 		amountFlag,
 		"o",
 		0,
-		"amount to send or receive (AVAX units)",
+		"amount to send or receive (AVAXSymbol units)",
 	)
 	return cmd
 }
@@ -218,9 +218,9 @@ func transferF(*cobra.Command, []string) error {
 	if amountFlt == 0 {
 		var promptStr string
 		if send {
-			promptStr = "Amount to send (AVAX units)"
+			promptStr = "Amount to send (AVAXSymbol units)"
 		} else {
-			promptStr = "Amount to receive (AVAX units)"
+			promptStr = "Amount to receive (AVAXSymbol units)"
 		}
 		amountFlt, err = app.Prompt.CaptureFloat(promptStr, func(v float64) error {
 			if v <= 0 {
@@ -292,10 +292,10 @@ func transferF(*cobra.Command, []string) error {
 		if addr == receiverAddr {
 			return fmt.Errorf("sender addr is the same as receiver addr")
 		}
-		ux.Logger.PrintToUser("- send %.9f AVAX from %s to target address %s", float64(amount)/float64(units.Avax), addrStr, receiverAddrStr)
-		ux.Logger.PrintToUser("- take a fee of %.9f AVAX from source address %s", float64(4*fee)/float64(units.Avax), addrStr)
+		ux.Logger.PrintToUser("- send %.9f AVAXSymbol from %s to target address %s", float64(amount)/float64(units.Avax), addrStr, receiverAddrStr)
+		ux.Logger.PrintToUser("- take a fee of %.9f AVAXSymbol from source address %s", float64(4*fee)/float64(units.Avax), addrStr)
 	} else {
-		ux.Logger.PrintToUser("- receive %.9f AVAX at target address %s", float64(amount)/float64(units.Avax), receiverAddrStr)
+		ux.Logger.PrintToUser("- receive %.9f AVAXSymbol at target address %s", float64(amount)/float64(units.Avax), receiverAddrStr)
 	}
 	ux.Logger.PrintToUser("")
 

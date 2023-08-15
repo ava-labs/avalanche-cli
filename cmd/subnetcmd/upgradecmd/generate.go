@@ -227,7 +227,7 @@ func promptNativeMintParams(precompiles *[]params.PrecompileUpgrade, date time.T
 				if err != nil {
 					return "", err
 				}
-				amount, err := app.Prompt.CaptureUint64("Amount to airdrop (in AVAX units)")
+				amount, err := app.Prompt.CaptureUint64("Amount to airdrop (in AVAXSymbol units)")
 				if err != nil {
 					return "", err
 				}

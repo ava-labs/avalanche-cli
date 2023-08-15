@@ -656,7 +656,7 @@ func (app *Avalanche) GetSubnetSyncJSONFile() string {
 	return filepath.Join(app.GetAnsiblePlaybookDir(), constants.SubnetSyncJSONFile)
 }
 
-func (app *Avalanche) SetUpAnsibleEnv() error {
+func (app *Avalanche) SetupAnsibleEnv() error {
 	err := os.RemoveAll(app.GetAnsibleDir())
 	if err != nil {
 		return err
@@ -668,6 +668,7 @@ func (app *Avalanche) SetUpAnsibleEnv() error {
 	return app.CreateAnsiblePlaybookDir()
 }
 
+// CreateFile creates file named fileName in .avalanche-cli directory
 func (*Avalanche) CreateFile(fileName string) error {
 	myfile, err := os.Create(fileName)
 	if err != nil {
@@ -676,6 +677,7 @@ func (*Avalanche) CreateFile(fileName string) error {
 	return myfile.Close()
 }
 
+// RemoveFile deletes file named fileName in .avalanche-cli directory
 func (*Avalanche) RemoveFile(fileName string) error {
 	if _, err := os.Stat(fileName); err == nil {
 		err := os.Remove(fileName)

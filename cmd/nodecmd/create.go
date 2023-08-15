@@ -279,8 +279,6 @@ func createNode(_ *cobra.Command, args []string) error {
 	}
 	region := "us-east-2"
 	ami := "ami-0430580de6244e02e"
-	// region := "us-east-1"
-	// ami := "ami-0261755bbcb8c4a84"
 	prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
 	certName := prefix + "-" + region + constants.CertSuffix
 	securityGroupName := prefix + "-" + region + constants.AWSSecurityGroupSuffix
@@ -327,11 +325,11 @@ func createNode(_ *cobra.Command, args []string) error {
 // setupAnsible we need to remove existing ansible directory and its contents in .avalanche-cli dir
 // before calling every ansible run command just in case there is a change in playbook
 func setupAnsible() error {
-	err := app.SetUpAnsibleEnv()
+	err := app.SetupAnsibleEnv()
 	if err != nil {
 		return err
 	}
-	return ansible.SetUp(app.GetAnsibleDir())
+	return ansible.Setup(app.GetAnsibleDir())
 }
 
 func runAnsible(inventoryPath, avalancheGoVersion string) error {
@@ -410,6 +408,7 @@ func getAvalancheGoVersion() (string, error) {
 	return chosenOption, nil
 }
 
+// promptAvalancheGoVersion either returns latest or the subnet that user wants to use as avago version reference
 func promptAvalancheGoVersion() (string, error) {
 	defaultVersion := "Use latest Avalanche Go Version"
 	txt := "What version of Avalanche Go would you like to install in the node?"

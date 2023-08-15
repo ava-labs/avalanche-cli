@@ -79,16 +79,16 @@ func SetSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName stri
 	securityGroup := rootBody.AppendNewBlock("resource", []string{"aws_security_group", "ssh_avax_sg"})
 	securityGroupBody := securityGroup.Body()
 	securityGroupBody.SetAttributeValue("name", cty.StringVal(securityGroupName))
-	securityGroupBody.SetAttributeValue("description", cty.StringVal("Allow SSH, AVAX HTTP outbound traffic"))
+	securityGroupBody.SetAttributeValue("description", cty.StringVal("Allow SSH, AVAXSymbol HTTP outbound traffic"))
 
 	// enable inbound access for ip address inputIPAddress in port 22
 	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "TCP", "tcp", inputIPAddress, constants.SSHTCPPort)
 	// "0.0.0.0/0" is a must-have ip address value for inbound and outbound calls
-	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", "tcp", "0.0.0.0/0", constants.AvalanchegoAPIPort)
+	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAXSymbol HTTP", "tcp", "0.0.0.0/0", constants.AvalanchegoAPIPort)
 	// enable inbound access for ip address inputIPAddress in port 9650
-	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", "tcp", inputIPAddress, constants.AvalanchegoAPIPort)
+	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAXSymbol HTTP", "tcp", inputIPAddress, constants.AvalanchegoAPIPort)
 	// "0.0.0.0/0" is a must-have ip address value for inbound and outbound calls
-	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX Staking", "tcp", "0.0.0.0/0", constants.AvalanchegoP2PPort)
+	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAXSymbol Staking", "tcp", "0.0.0.0/0", constants.AvalanchegoP2PPort)
 	addSecurityGroupRuleToSg(securityGroupBody, "egress", "Outbound traffic", "-1", "0.0.0.0/0", constants.OutboundPort)
 }
 
@@ -203,7 +203,7 @@ func SetupInstance(rootBody *hclwrite.Body, securityGroupName string, useExistin
 	awsInstanceBody.SetAttributeValue("security_groups", cty.ListVal(securityGroupList))
 	rootBlockDevice := awsInstanceBody.AppendNewBlock("root_block_device", []string{})
 	rootBlockDeviceBody := rootBlockDevice.Body()
-	rootBlockDeviceBody.SetAttributeValue("volume_size", cty.NumberIntVal(1000))
+	rootBlockDeviceBody.SetAttributeValue("volume_size", cty.NumberIntVal(constants.CloudServerStorageSize))
 }
 
 // SetOutput adds output section in terraform state file so that we can call terraform output command and print instance_ip and instance_id to user
