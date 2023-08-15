@@ -5,13 +5,14 @@ package prompts
 import (
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanchego/genesis"
 	"math/big"
 	"net/mail"
 	"net/url"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/ava-labs/avalanchego/genesis"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"

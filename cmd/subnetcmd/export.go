@@ -42,14 +42,14 @@ the --output flag.`,
 	return cmd
 }
 
-func CallExportSubnet(subnetName string, network models.Network) error {
+func CallExportSubnet(subnetName, exportPath string, network models.Network) error {
 	switch network {
 	case models.Mainnet:
 		deployMainnet = true
 	case models.Fuji:
 		deployTestnet = true
 	}
-	exportOutput = "/tmp/" + subnetName + constants.ExportSubnetSuffix
+	exportOutput = exportPath
 	return exportSubnet(nil, []string{subnetName})
 }
 
