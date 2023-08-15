@@ -4,6 +4,7 @@
 package aws
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -58,4 +59,19 @@ func CheckUserIPInSg(sg *ec2.SecurityGroup, currentIP string, port int64) bool {
 		}
 	}
 	return false
+}
+
+func GetInstanceStatus(ec2Svc *ec2.EC2, nodeID string) (bool, error) {
+	instanceInput := &ec2.DescribeInstancesInput{
+		InstanceIds: []*string{
+			aws.String(nodeID),
+		},
+	}
+
+	nodeStatus, err := ec2Svc.DescribeInstances(instanceInput)
+	if err != nil {
+		return false, err
+	}
+	fmt.Printf("node status %s \n", nodeStatus.String())
+	return true, nil
 }
