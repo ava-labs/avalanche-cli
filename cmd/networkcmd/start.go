@@ -5,6 +5,7 @@ package networkcmd
 import (
 	"fmt"
 	"path"
+	"context"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -67,6 +68,18 @@ func StartNetwork(*cobra.Command, []string) error {
 	if err != nil {
 		return err
 	}
+	
+	ctx := binutils.GetAsyncContext()
+
+	bootstrapped, err := checkNetworkIsAlreadyBootstrapped(ctx, cli)
+	if err != nil {
+		return err
+	}
+
+	if bootstrapped {
+		ux.Logger.PrintToUser("Network has already been booted.")
+		return nil
+	}
 
 	var startMsg string
 	if snapshotName == constants.DefaultSnapshotName {
@@ -76,7 +89,7 @@ func StartNetwork(*cobra.Command, []string) error {
 	}
 	ux.Logger.PrintToUser(startMsg)
 
-	outputDirPrefix := path.Join(app.GetRunDir(), "restart")
+	outputDirPrefix := path.Join(app.GetRunDir(), "network")
 	outputDir, err := utils.MkDirWithTimestamp(outputDirPrefix)
 	if err != nil {
 		return err
@@ -100,33 +113,23 @@ func StartNetwork(*cobra.Command, []string) error {
 		loadSnapshotOpts = append(loadSnapshotOpts, client.WithGlobalNodeConfig(configStr))
 	}
 
-	ctx := binutils.GetAsyncContext()
-
-	pp, err := cli.LoadSnapshot(
+	ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
+	resp, err := cli.LoadSnapshot(
 		ctx,
 		snapshotName,
 		loadSnapshotOpts...,
 	)
-
 	if err != nil {
-		if !server.IsServerError(err, server.ErrAlreadyBootstrapped) {
-			return fmt.Errorf("failed to start network with the persisted snapshot: %w", err)
-		}
-		ux.Logger.PrintToUser("Network has already been booted. Wait until healthy...")
-	} else {
-		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
-		ux.Logger.PrintToUser("Node log path: %s/node<i>/logs", pp.ClusterInfo.RootDataDir)
+		return fmt.Errorf("failed to start network with the persisted snapshot: %w", err)
 	}
 
-	clusterInfo, err := subnet.WaitForHealthy(ctx, cli)
-	if err != nil {
-		return fmt.Errorf("failed waiting for network to become healthy: %w", err)
-	}
+	ux.Logger.PrintToUser("Node logs directory: %s/node<i>/logs", resp.ClusterInfo.RootDataDir)
+	ux.Logger.PrintToUser("Network ready to use.")
 
-	fmt.Println()
-	if subnet.HasEndpoints(clusterInfo) {
-		ux.Logger.PrintToUser("Network ready to use. Local network node endpoints:")
-		ux.PrintTableEndpoints(clusterInfo)
+	if subnet.HasEndpoints(resp.ClusterInfo) {
+		fmt.Println()
+		ux.Logger.PrintToUser("Local network node endpoints:")
+		ux.PrintTableEndpoints(resp.ClusterInfo)
 	}
 
 	return nil
@@ -189,4 +192,15 @@ func determineAvagoVersion(userProvidedAvagoVersion string) (string, error) {
 		currentRPCVersion,
 		constants.AvalancheGoCompatibilityURL,
 	)
+}
+
+func checkNetworkIsAlreadyBootstrapped(ctx context.Context, cli client.Client) (bool, error) {
+	_, err := cli.Status(ctx)
+	if err != nil {
+		if server.IsServerError(err, server.ErrNotBootstrapped) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed trying to get network status: %w", err)
+	}
+	return true, nil
 }
