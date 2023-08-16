@@ -3,6 +3,7 @@
 package nodecmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -385,15 +386,22 @@ func requestAWSAccountAuth() error {
 }
 
 func getIPAddress() (string, error) {
-	ipOutput, err := exec.Command("curl", "ipecho.net/plain").Output()
+	ipOutput, err := exec.Command("curl", "https://api.ipify.org?format=json").Output()
 	if err != nil {
 		return "", err
 	}
-	ipAddress := string(ipOutput)
-	if net.ParseIP(ipAddress) == nil {
-		return "", errors.New("invalid IP address")
+	var result map[string]interface{}
+	if err = json.Unmarshal(ipOutput, &result); err != nil {
+		return "", err
 	}
-	return ipAddress, nil
+	ipAddress, ok := result["ip"].(string)
+	if ok {
+		if net.ParseIP(ipAddress) == nil {
+			return "", errors.New("invalid IP address")
+		}
+		return ipAddress, nil
+	}
+	return "", errors.New("no IP address found")
 }
 
 // addCertToSSH takes the cert file downloaded from AWS through terraform and moves it to .ssh directory

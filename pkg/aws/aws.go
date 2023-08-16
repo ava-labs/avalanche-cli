@@ -5,6 +5,7 @@ package aws
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -30,7 +31,7 @@ func CheckKeyPairExists(ec2Svc *ec2.EC2, kpName string) (bool, error) {
 }
 
 func GetUbuntuAMIID(ec2Svc *ec2.EC2) (string, error) {
-	descriptionFilterValue := "Canonical, Ubuntu, 20.04 LTS, amd64 focal image build on 2023-05-17"
+	descriptionFilterValue := "Canonical, Ubuntu, 20.04 LTS, amd64*"
 	imageInput := &ec2.DescribeImagesInput{
 		Filters: []*ec2.Filter{
 			{Name: aws.String("root-device-type"), Values: []*string{aws.String("ebs")}},
@@ -45,6 +46,11 @@ func GetUbuntuAMIID(ec2Svc *ec2.EC2) (string, error) {
 	if len(images.Images) == 0 {
 		return "", fmt.Errorf("no amazon machine image found with the description %s", descriptionFilterValue)
 	}
+	// sort results by creation date
+	sort.Slice(images.Images, func(i, j int) bool {
+		return *images.Images[i].CreationDate > *images.Images[j].CreationDate
+	})
+	// get image with the latest creation date
 	amiID := images.Images[0].ImageId
 	return *amiID, nil
 }
