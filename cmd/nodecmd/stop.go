@@ -3,7 +3,9 @@
 package nodecmd
 
 import (
+	"fmt"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/aws/aws-sdk-go/service/ec2"
 
 	"github.com/spf13/cobra"
@@ -26,23 +28,43 @@ The node stop command stops a running node in cloud server`,
 
 func stopNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	err := setupAnsible()
+	//if err := setupAnsible(); err != nil {
+	//	return err
+	//}
+	//nodeIDStr, err := getNodeID(clusterName)
+	//if err != nil {
+	//	return err
+	//}
+	var err error
+	clusterConfig := models.ClusterConfig{}
+	if app.ClusterConfigExists() {
+		clusterConfig, err = app.LoadClusterConfig()
+		if err != nil {
+			return err
+		}
+	}
+	clusterNodes := clusterConfig.Clusters[clusterName]
+	if len(clusterNodes) == 0 {
+		return fmt.Errorf("no nodes found in cluster %s", clusterName)
+	}
+	fmt.Printf("obtained node id %s \n", clusterNodes[0])
+	nodeConfig, err := app.LoadClusterNodeConfig(clusterNodes[0])
 	if err != nil {
 		return err
 	}
-	nodeIDStr, err := getNodeID(clusterName)
-	if err != nil {
-		return err
-	}
-	region := "us-east-2"
-	sess, err := getAWSCloudCredentials(region)
+	//region := "us-east-2"
+	fmt.Printf("obtained region %s \n", nodeConfig.Region)
+	sess, err := getAWSCloudCredentials(nodeConfig.Region)
 	if err != nil {
 		return err
 	}
 	ec2Svc := ec2.New(sess)
-	_, err = awsAPI.GetInstanceStatus(ec2Svc, nodeIDStr)
+	isRunning, err := awsAPI.CheckInstanceIsRunning(ec2Svc, nodeConfig.NodeID)
 	if err != nil {
 		return err
+	}
+	if !isRunning {
+		return fmt.Errorf("no running node with instance id %s is found in cluster %s", nodeConfig.NodeID, clusterName)
 	}
 	return nil
 }

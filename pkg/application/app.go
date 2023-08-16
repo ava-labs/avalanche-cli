@@ -588,6 +588,17 @@ func (app *Avalanche) LoadElasticSubnetConfig(subnetName string) (models.Elastic
 	return esc, err
 }
 
+func (app *Avalanche) LoadClusterNodeConfig(nodeName string) (models.NodeConfig, error) {
+	nodeConfigPath := app.GetNodeConfigPath(nodeName)
+	jsonBytes, err := os.ReadFile(nodeConfigPath)
+	if err != nil {
+		return models.NodeConfig{}, err
+	}
+	var nodeConfig models.NodeConfig
+	err = json.Unmarshal(jsonBytes, &nodeConfig)
+	return nodeConfig, err
+}
+
 func (app *Avalanche) LoadClusterConfig() (models.ClusterConfig, error) {
 	clusterConfigPath := app.GetClusterConfigPath()
 	jsonBytes, err := os.ReadFile(clusterConfigPath)

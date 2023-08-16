@@ -4,12 +4,15 @@
 package aws
 
 import (
-	"fmt"
+	"errors"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 )
+
+var ErrNoInstanceState = errors.New("unable to get instance state")
 
 // CheckKeyPairExists checks that key pair kpName exists in the AWS region and returns the key pair object
 func CheckKeyPairExists(ec2Svc *ec2.EC2, kpName string) (bool, error) {
@@ -61,17 +64,28 @@ func CheckUserIPInSg(sg *ec2.SecurityGroup, currentIP string, port int64) bool {
 	return false
 }
 
-func GetInstanceStatus(ec2Svc *ec2.EC2, nodeID string) (bool, error) {
+// CheckInstanceIsRunning checks that EC2 instance nodeID is running in AWS
+func CheckInstanceIsRunning(ec2Svc *ec2.EC2, nodeID string) (bool, error) {
 	instanceInput := &ec2.DescribeInstancesInput{
 		InstanceIds: []*string{
 			aws.String(nodeID),
 		},
 	}
-
 	nodeStatus, err := ec2Svc.DescribeInstances(instanceInput)
 	if err != nil {
 		return false, err
 	}
-	fmt.Printf("node status %s \n", nodeStatus.String())
-	return true, nil
+	reservation := nodeStatus.Reservations
+	if len(reservation) == 0 {
+		return false, ErrNoInstanceState
+	}
+	instances := reservation[0].Instances
+	if len(instances) == 0 {
+		return false, ErrNoInstanceState
+	}
+	instanceStatus := instances[0].State.Name
+	if *instanceStatus == constants.AWSCloudServerRunningState {
+		return true, nil
+	}
+	return false, nil
 }

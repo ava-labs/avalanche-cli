@@ -88,6 +88,8 @@ const (
 	// time to go through the command
 	StakingStartLeadTime               = 1 * time.Minute
 	StakingMinimumLeadTime             = 25 * time.Second
+	AWSCloudServerStoppedState         = "stopped"
+	AWSCloudServerRunningState         = "running"
 	TerraformNodeConfigFile            = "node_config.tf"
 	AvalancheCLISuffix                 = "-avalanche-cli"
 	AWSDefaultCredential               = "default"
