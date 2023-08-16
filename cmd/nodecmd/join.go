@@ -262,7 +262,7 @@ func getTimeParametersPrimaryNetwork(network models.Network) (time.Time, time.Du
 		defaultDurationOption = "Minimum staking duration on primary network"
 		custom                = "Custom"
 	)
-	start := time.Now().Add(constants.StakingStartLeadTime)
+	start := time.Now().Add(constants.PrimaryNetworkValidatingStartLeadTime)
 	if duration == 0 {
 		msg := "How long should your validator validate for?"
 		durationOptions := []string{defaultDurationOption, custom}
@@ -382,21 +382,22 @@ func checkNodeIsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Networ
 	return nil
 }
 
-func addNodeAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network) error {
-	if err := checkNodeIsPrimaryNetworkValidator(nodeID, network); err != nil {
+func addNodeAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network) (bool, error) {
+	if err := checkNodeIsPrimaryNetworkValidator(nodeID, network); err == nil {
 		err = validatePrimaryNetwork(nodeID, network)
 		if err != nil {
-			return err
+			return false, err
 		}
 		ux.Logger.PrintToUser("Node successfully added as Primary Network validator!")
+		return true, nil
 	}
-	return nil
+	return false, nil
 }
 
 func waitForNodeToBePrimaryNetworkValidator(nodeID ids.NodeID) {
-	ux.Logger.PrintToUser("Waiting 10 seconds for the node to be a Primary Network Validator...")
-	// wait for 10 seconds because we set the start time to in 10 seconds
-	time.Sleep(10 * time.Second)
+	ux.Logger.PrintToUser("Waiting for the node to start as a Primary Network Validator...")
+	// wait for 20 seconds because we set the start time to be in 20 seconds
+	time.Sleep(20 * time.Second)
 	// long polling: try up to 5 times
 	for i := 0; i < 5; i++ {
 		// checkNodeIsPrimaryNetworkValidator only returns err if node is already a Primary Network validator
@@ -430,7 +431,8 @@ func joinSubnet(_ *cobra.Command, args []string) error {
 	}
 	if subnetName == "" {
 		// if no subnet is given in the flag, node will only be added as Primary Network Validator
-		return addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji)
+		_, err = addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji)
+		return err
 	}
 	if _, err = subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 		return err
@@ -451,10 +453,13 @@ func joinSubnet(_ *cobra.Command, args []string) error {
 	if !isSubnetSynced {
 		return errors.New("node is not synced to subnet yet, please try again later")
 	}
-	if err = addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji); err != nil {
+	addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji)
+	if err != nil {
 		return err
 	}
-	waitForNodeToBePrimaryNetworkValidator(nodeID)
+	if addedNodeAsPrimaryNetworkValidator {
+		waitForNodeToBePrimaryNetworkValidator(nodeID)
+	}
 	return addNodeAsSubnetValidator(nodeIDStr, models.Fuji)
 }
 

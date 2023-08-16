@@ -80,40 +80,41 @@ const (
 	DefaultMainnetStakeDuration = "336h"
 	// The absolute minimum is 25 seconds, but set to 1 minute to allow for
 	// time to go through the command
-	StakingStartLeadTime               = 1 * time.Minute
-	StakingMinimumLeadTime             = 25 * time.Second
-	TerraformNodeConfigFile            = "node_config.tf"
-	AvalancheCLISuffix                 = "-avalanche-cli"
-	AWSDefaultCredential               = "default"
-	CertSuffix                         = "-kp.pem"
-	AWSSecurityGroupSuffix             = "-sg"
-	ExportSubnetSuffix                 = "-export.dat"
-	SSHTCPPort                         = 22
-	AvalanchegoAPIPort                 = 9650
-	AvalanchegoP2PPort                 = 9651
-	CloudServerStorageSize             = 1000
-	OutboundPort                       = 0
-	Terraform                          = "terraform"
-	AnsiblePlaybook                    = "ansible-playbook"
-	SetupNodePlaybook                  = "playbook/setupNode.yml"
-	CopyStakingFilesPlaybook           = "playbook/copyStakingFiles.yml"
-	ExportSubnetPlaybook               = "playbook/exportSubnet.yml"
-	GetNodeIDPlaybook                  = "playbook/getNodeID.yml"
-	IsBootstrappedPlaybook             = "playbook/isBootstrapped.yml"
-	IsSubnetSyncedPlaybook             = "playbook/isSubnetSynced.yml"
-	TrackSubnetPlaybook                = "playbook/trackSubnet.yml"
-	IsBootstrappedJSONFile             = "isBootstrapped.json"
-	NodeIDJSONFile                     = "nodeID.json"
-	SubnetSyncJSONFile                 = "isSubnetSynced.json"
-	AnsibleInventoryDir                = "inventories"
-	AnsiblePlaybookDir                 = "playbook"
-	AnsibleStatusDir                   = "status"
-	AnsibleInventoryFlag               = "-i"
-	AnsibleExtraArgsIdentitiesOnlyFlag = "--ssh-extra-args='-o IdentitiesOnly=yes'"
-	AnsibleExtraVarsFlag               = "--extra-vars"
-	DefaultConfigFileName              = ".avalanche-cli"
-	DefaultConfigFileType              = "json"
-	WriteReadReadPerms                 = 0o644
+	StakingStartLeadTime                  = 1 * time.Minute
+	PrimaryNetworkValidatingStartLeadTime = 20 * time.Second
+	StakingMinimumLeadTime                = 25 * time.Second
+	TerraformNodeConfigFile               = "node_config.tf"
+	AvalancheCLISuffix                    = "-avalanche-cli"
+	AWSDefaultCredential                  = "default"
+	CertSuffix                            = "-kp.pem"
+	AWSSecurityGroupSuffix                = "-sg"
+	ExportSubnetSuffix                    = "-export.dat"
+	SSHTCPPort                            = 22
+	AvalanchegoAPIPort                    = 9650
+	AvalanchegoP2PPort                    = 9651
+	CloudServerStorageSize                = 1000
+	OutboundPort                          = 0
+	Terraform                             = "terraform"
+	AnsiblePlaybook                       = "ansible-playbook"
+	SetupNodePlaybook                     = "playbook/setupNode.yml"
+	CopyStakingFilesPlaybook              = "playbook/copyStakingFiles.yml"
+	ExportSubnetPlaybook                  = "playbook/exportSubnet.yml"
+	GetNodeIDPlaybook                     = "playbook/getNodeID.yml"
+	IsBootstrappedPlaybook                = "playbook/isBootstrapped.yml"
+	IsSubnetSyncedPlaybook                = "playbook/isSubnetSynced.yml"
+	TrackSubnetPlaybook                   = "playbook/trackSubnet.yml"
+	IsBootstrappedJSONFile                = "isBootstrapped.json"
+	NodeIDJSONFile                        = "nodeID.json"
+	SubnetSyncJSONFile                    = "isSubnetSynced.json"
+	AnsibleInventoryDir                   = "inventories"
+	AnsiblePlaybookDir                    = "playbook"
+	AnsibleStatusDir                      = "status"
+	AnsibleInventoryFlag                  = "-i"
+	AnsibleExtraArgsIdentitiesOnlyFlag    = "--ssh-extra-args='-o IdentitiesOnly=yes'"
+	AnsibleExtraVarsFlag                  = "--extra-vars"
+	DefaultConfigFileName                 = ".avalanche-cli"
+	DefaultConfigFileType                 = "json"
+	WriteReadReadPerms                    = 0o644
 
 	CustomVMDir = "vms"
 
