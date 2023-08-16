@@ -35,8 +35,10 @@ import (
 func newCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create [clusterName]",
-		Short: "Create a new validator on cloud server",
-		Long: `The node create command sets up a validator on a cloud server of your choice. 
+		Short: "(ALPHA Warning) Create a new validator on cloud server",
+		Long: `(ALPHA Warning) This command is currently in experimental mode.
+
+The node create command sets up a validator on a cloud server of your choice. 
 The validator will be validating the Avalanche Primary Network and Subnet 
 of your choice. By default, the command runs an interactive wizard. It 
 walks you through all the steps you need to set up a validator.
