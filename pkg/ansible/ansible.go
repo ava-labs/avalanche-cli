@@ -44,7 +44,7 @@ func CreateAnsibleHostInventory(inventoryPath, ip, certFilePath string) error {
 	return err
 }
 
-func SetUp(ansibleDir string) error {
+func Setup(ansibleDir string) error {
 	err := WriteCfgFile(ansibleDir)
 	if err != nil {
 		return err
@@ -85,10 +85,11 @@ func WriteCfgFile(ansibleDir string) error {
 	return err
 }
 
-// RunAnsibleSetupNodePlaybook installs avalanche go and avalanche-cli
+// RunAnsibleSetupNodePlaybook installs avalanche go and avalanche-cli. It also copies the user's
+// metric preferences in configFilePath from local machine to cloud server
 func RunAnsibleSetupNodePlaybook(configPath, ansibleDir, inventoryPath, avalancheGoVersion string) error {
-	configDirVar := "configDir=" + configPath + " avalancheGoVersion=" + avalancheGoVersion
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, configDirVar, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	playbookInputs := "configFilePath=" + configPath + " avalancheGoVersion=" + avalancheGoVersion
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	utils.SetupRealtimeCLIOutput(cmd)
 	return cmd.Run()
@@ -105,20 +106,18 @@ func RunAnsibleCopyStakingFilesPlaybook(ansibleDir, nodeInstanceDirPath, invento
 }
 
 // RunAnsiblePlaybookExportSubnet exports deployed Subnet from local machine to cloud server
-func RunAnsiblePlaybookExportSubnet(ansibleDir, subnetName, inventoryPath string) error {
-	exportOutput := "/tmp/" + subnetName + "-export.dat"
-	exportedSubnet := "exportedSubnet=" + exportOutput
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.ExportSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, exportedSubnet, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+func RunAnsiblePlaybookExportSubnet(ansibleDir, inventoryPath, exportPath, cloudServerSubnetPath string) error {
+	playbookInputs := "exportedSubnet=" + exportPath + " exportedSubnetPath=" + cloudServerSubnetPath
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.ExportSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	utils.SetupRealtimeCLIOutput(cmd)
 	return cmd.Run()
 }
 
 // RunAnsiblePlaybookTrackSubnet runs avalanche subnet join <subnetName> in cloud server
-func RunAnsiblePlaybookTrackSubnet(ansibleDir, subnetName, inventoryPath string) error {
-	importedFileName := "/tmp/" + subnetName + "-export.dat"
-	importedSubnet := "subnetExportFileName=" + importedFileName + " subnetName=" + subnetName
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.TrackSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, importedSubnet, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+func RunAnsiblePlaybookTrackSubnet(ansibleDir, subnetName, importPath, inventoryPath string) error {
+	playbookInputs := "subnetExportFileName=" + importPath + " subnetName=" + subnetName
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.TrackSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	utils.SetupRealtimeCLIOutput(cmd)
 	return cmd.Run()
@@ -134,16 +133,16 @@ func RunAnsiblePlaybookCheckBootstrapped(ansibleDir, isBootstrappedPath, invento
 
 // RunAnsiblePlaybookGetNodeID gets node ID of cloud server
 func RunAnsiblePlaybookGetNodeID(ansibleDir, nodeIDPath, inventoryPath string) error {
-	nodeIDJsonPath := "nodeIDJsonPath=" + nodeIDPath
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.GetNodeIDPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, nodeIDJsonPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	playbookInputs := "nodeIDJsonPath=" + nodeIDPath
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.GetNodeIDPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	return cmd.Run()
 }
 
 // RunAnsiblePlaybookSubnetSyncStatus checks if node is synced to subnet
 func RunAnsiblePlaybookSubnetSyncStatus(ansibleDir, subnetSyncPath, blockchainID, inventoryPath string) error {
-	extraArgs := "blockchainID=" + blockchainID + " subnetSyncPath=" + subnetSyncPath
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsSubnetSyncedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, extraArgs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	playbookInputs := "blockchainID=" + blockchainID + " subnetSyncPath=" + subnetSyncPath
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsSubnetSyncedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	return cmd.Run()
 }

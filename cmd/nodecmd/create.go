@@ -34,8 +34,10 @@ import (
 func newCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create [clusterName]",
-		Short: "Create a new validator on cloud server",
-		Long: `The node create command sets up a validator on a cloud server of your choice. 
+		Short: "(ALPHA Warning) Create a new validator on cloud server",
+		Long: `(ALPHA Warning) This command is currently in experimental mode. 
+
+The node create command sets up a validator on a cloud server of your choice. 
 The validator will be validating the Avalanche Primary Network and Subnet 
 of your choice. By default, the command runs an interactive wizard. It 
 walks you through all the steps you need to set up a validator.
@@ -129,12 +131,12 @@ func printNoCredentialsOutput() {
 
 // getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
 func getAWSCloudCredentials(region string) (*session.Session, error) {
+	if err := requestAWSAccountAuth(); err != nil {
+		return &session.Session{}, err
+	}
 	creds := credentials.NewSharedCredentials("", constants.AWSDefaultCredential)
 	if _, err := creds.Get(); err != nil {
 		printNoCredentialsOutput()
-		return &session.Session{}, err
-	}
-	if err := requestAWSAccountAuth(); err != nil {
 		return &session.Session{}, err
 	}
 	// Load session from shared config
@@ -354,11 +356,11 @@ func createNode(_ *cobra.Command, args []string) error {
 // setupAnsible we need to remove existing ansible directory and its contents in .avalanche-cli dir
 // before calling every ansible run command just in case there is a change in playbook
 func setupAnsible() error {
-	err := app.SetUpAnsibleEnv()
+	err := app.SetupAnsibleEnv()
 	if err != nil {
 		return err
 	}
-	return ansible.SetUp(app.GetAnsibleDir())
+	return ansible.Setup(app.GetAnsibleDir())
 }
 
 func runAnsible(inventoryPath, avalancheGoVersion string) error {
@@ -437,6 +439,7 @@ func getAvalancheGoVersion() (string, error) {
 	return chosenOption, nil
 }
 
+// promptAvalancheGoVersion either returns latest or the subnet that user wants to use as avago version reference
 func promptAvalancheGoVersion() (string, error) {
 	defaultVersion := "Use latest Avalanche Go Version"
 	txt := "What version of Avalanche Go would you like to install in the node?"
