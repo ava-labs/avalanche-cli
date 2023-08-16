@@ -67,7 +67,7 @@ You can check the bootstrap status by calling avalanche node status <clusteName>
 	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "set up validator in mainnet")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
-	cmd.Flags().Uint64Var(&weight, "stake-amount", 0, "how many AVAXSymbol to stake in the validator")
+	cmd.Flags().Uint64Var(&weight, "stake-amount", 0, "how many AVAX to stake in the validator")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long validator validates for after start time")
 
 	return cmd
@@ -458,7 +458,7 @@ func joinSubnet(_ *cobra.Command, args []string) error {
 	return addNodeAsSubnetValidator(nodeIDStr, models.Fuji)
 }
 
-// convertToAVAXStr converts nanoAVAX to AVAXSymbol
+// convertToAVAXStr converts nanoAVAX to AVAX
 func convertToAVAXStr(weight uint64) string {
 	return fmt.Sprintf("%.9f %s", float64(weight)/float64(units.Avax), constants.AVAXSymbol)
 }

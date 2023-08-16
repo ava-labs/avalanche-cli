@@ -26,7 +26,7 @@ func newAddPermissionlessDelegatorCmd() *cobra.Command {
 		Use:   "addPermissionlessDelegator [subnetName]",
 		Short: "Allow a node join an existing subnet validator as a delegator",
 		Long: `The subnet addDelegator enables a node (the delegator) to stake 
-AVAXSymbol and specify a validator (the delegatee) to validate on their behalf. The 
+AVAX and specify a validator (the delegatee) to validate on their behalf. The 
 delegatee has an increased probability of being sampled by other validators 
 (weight) in proportion to the stake delegated to them.
 
