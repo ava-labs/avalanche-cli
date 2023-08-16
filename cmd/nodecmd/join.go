@@ -465,7 +465,7 @@ func joinSubnet(_ *cobra.Command, args []string) error {
 
 // convertToAVAXStr converts nanoAVAX to AVAX
 func convertToAVAXStr(weight uint64) string {
-	return fmt.Sprintf("%.9f %s", float64(weight)/float64(units.Avax), constants.AVAXSymbol)
+	return fmt.Sprintf("%.2f %s", float64(weight)/float64(units.Avax), constants.AVAXSymbol)
 }
 
 func printNodeJoinOutput(nodeID ids.NodeID, network models.Network, start time.Time) {
