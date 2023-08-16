@@ -107,6 +107,7 @@ const (
 	SubnetSyncJSONFile                 = "isSubnetSynced.json"
 	AnsibleInventoryDir                = "inventories"
 	AnsiblePlaybookDir                 = "playbook"
+	AnsibleStatusDir                   = "status"
 	AnsibleInventoryFlag               = "-i"
 	AnsibleExtraArgsIdentitiesOnlyFlag = "--ssh-extra-args='-o IdentitiesOnly=yes'"
 	AnsibleExtraVarsFlag               = "--extra-vars"

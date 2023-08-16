@@ -321,7 +321,7 @@ func checkNodeIsBootstrapped(clusterName string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if err := app.RemoveFile(app.GetBootstrappedJSONFile()); err != nil {
+	if err := app.RemoveFile(app.GetAnsibleStatusDir()); err != nil {
 		return false, err
 	}
 	if isBootstrapped {
@@ -342,7 +342,7 @@ func getClusterNodeID(clusterName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err = app.RemoveFile(app.GetNodeIDJSONFile()); err != nil {
+	if err = app.RemoveFile(app.GetAnsibleStatusDir()); err != nil {
 		return "", err
 	}
 	return nodeID, err
@@ -360,7 +360,7 @@ func getClusterSubnetSyncStatus(blockchainID, clusterName string) (bool, error) 
 	if err != nil {
 		return false, err
 	}
-	if err = app.RemoveFile(app.GetSubnetSyncJSONFile()); err != nil {
+	if err = app.RemoveFile(app.GetAnsibleStatusDir()); err != nil {
 		return false, err
 	}
 	if subnetSyncStatus == status.Syncing.String() {

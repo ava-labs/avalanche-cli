@@ -640,20 +640,20 @@ func (app *Avalanche) GetAnsibleInventoryPath(clusterName string) string {
 	return filepath.Join(app.GetNodesDir(), constants.AnsibleInventoryDir, clusterName)
 }
 
-func (app *Avalanche) GetAnsiblePlaybookDir() string {
-	return filepath.Join(app.GetAnsibleDir(), constants.AnsiblePlaybookDir)
+func (app *Avalanche) GetAnsibleStatusDir() string {
+	return filepath.Join(app.GetAnsibleDir(), constants.AnsibleStatusDir)
 }
 
 func (app *Avalanche) GetBootstrappedJSONFile() string {
-	return filepath.Join(app.GetAnsiblePlaybookDir(), constants.IsBootstrappedJSONFile)
+	return filepath.Join(app.GetAnsibleStatusDir(), constants.IsBootstrappedJSONFile)
 }
 
 func (app *Avalanche) GetNodeIDJSONFile() string {
-	return filepath.Join(app.GetAnsiblePlaybookDir(), constants.NodeIDJSONFile)
+	return filepath.Join(app.GetAnsibleStatusDir(), constants.NodeIDJSONFile)
 }
 
 func (app *Avalanche) GetSubnetSyncJSONFile() string {
-	return filepath.Join(app.GetAnsiblePlaybookDir(), constants.SubnetSyncJSONFile)
+	return filepath.Join(app.GetAnsibleStatusDir(), constants.SubnetSyncJSONFile)
 }
 
 func (app *Avalanche) SetupAnsibleEnv() error {
@@ -668,22 +668,19 @@ func (app *Avalanche) SetupAnsibleEnv() error {
 	return app.CreateAnsiblePlaybookDir()
 }
 
-// CreateFile creates file named fileName in .avalanche-cli directory
-func (*Avalanche) CreateFile(fileName string) error {
-	myfile, err := os.Create(fileName)
+// CreateFile creates file named fileName in .avalanche-cli ansible status directory
+func (app *Avalanche) CreateFile(filePath string) error {
+	if err := os.MkdirAll(app.GetAnsibleStatusDir(), constants.DefaultPerms755); err != nil {
+		return err
+	}
+	statusFile, err := os.Create(filePath)
 	if err != nil {
 		return err
 	}
-	return myfile.Close()
+	return statusFile.Close()
 }
 
-// RemoveFile deletes file named fileName in .avalanche-cli directory
-func (*Avalanche) RemoveFile(fileName string) error {
-	if _, err := os.Stat(fileName); err == nil {
-		err := os.Remove(fileName)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+// RemoveFile deletes avalanche ansible status dir in .avalanche-cli
+func (*Avalanche) RemoveFile(statusDir string) error {
+	return os.RemoveAll(statusDir)
 }
