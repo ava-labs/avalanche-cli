@@ -84,8 +84,7 @@ func parseBootstrappedOutput(filePath string, printOutput bool) (bool, error) {
 		return false, err
 	}
 	if printOutput {
-		err = printJSONOutput(byteValue)
-		if err != nil {
+		if err = printJSONOutput(byteValue); err != nil {
 			return false, err
 		}
 	}
@@ -112,8 +111,7 @@ func parseSubnetSyncOutput(filePath string, printOutput bool) (string, error) {
 		return "", err
 	}
 	if printOutput {
-		err = printJSONOutput(byteValue)
-		if err != nil {
+		if err = printJSONOutput(byteValue); err != nil {
 			return "", err
 		}
 	}

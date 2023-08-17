@@ -11,11 +11,11 @@ import (
 
 func newStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "status [subnetName]",
+		Use:   "status [clusterName]",
 		Short: "(ALPHA Warning) Get node bootstrap status",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
-The node status command gets the bootstrap status of a node with the Primary Network. 
+The node status command gets the bootstrap status of all nodes in a cluster with the Primary Network. 
 To get the bootstrap status of a node with a Subnet, use --subnet flag`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
@@ -28,13 +28,11 @@ To get the bootstrap status of a node with a Subnet, use --subnet flag`,
 
 func statusSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	err := setupAnsible()
-	if err != nil {
+	if err := setupAnsible(); err != nil {
 		return err
 	}
 	if subnetName != "" {
-		_, err = subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName})
-		if err != nil {
+		if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 			return err
 		}
 		sc, err := app.LoadSidecar(subnetName)
@@ -48,6 +46,6 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 		_, err = getNodeSubnetSyncStatus(blockchainID.String(), clusterName, true)
 		return err
 	}
-	_, err = checkNodeIsBootstrapped(clusterName, true)
+	_, err := checkNodeIsBootstrapped(clusterName, true)
 	return err
 }

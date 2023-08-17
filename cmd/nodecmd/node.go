@@ -32,7 +32,7 @@ rest of the commands to maintain your node and make your node a Subnet Validator
 	app = injectedApp
 	// node create
 	cmd.AddCommand(newCreateCmd())
-	// node join cluster
+	// node join cluster --subnet subnetName
 	cmd.AddCommand(newJoinCmd())
 	// node sync cluster --subnet subnetName
 	cmd.AddCommand(newSyncCmd())
