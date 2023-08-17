@@ -13,6 +13,7 @@ import (
 )
 
 var ErrNoInstanceState = errors.New("unable to get instance state")
+var ErrNoAddressFound = errors.New("unable to get public IP address info on AWS")
 
 // CheckKeyPairExists checks that key pair kpName exists in the AWS region and returns the key pair object
 func CheckKeyPairExists(ec2Svc *ec2.EC2, kpName string) (bool, error) {
@@ -88,4 +89,32 @@ func CheckInstanceIsRunning(ec2Svc *ec2.EC2, nodeID string) (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+func StopInstance(ec2Svc *ec2.EC2, instanceID, publicIP string) error {
+	input := &ec2.StopInstancesInput{
+		InstanceIds: []*string{aws.String(instanceID)},
+	}
+	if _, err := ec2Svc.StopInstances(input); err != nil {
+		return err
+	}
+	describeAddressInput := &ec2.DescribeAddressesInput{
+		Filters: []*ec2.Filter{
+			{Name: aws.String("public-ip"), Values: []*string{aws.String(publicIP)}},
+		},
+	}
+	addressOutput, err := ec2Svc.DescribeAddresses(describeAddressInput)
+	if err != nil {
+		return err
+	}
+	if len(addressOutput.Addresses) == 0 {
+		return ErrNoAddressFound
+	}
+	releaseAddressInput := &ec2.ReleaseAddressInput{
+		AllocationId: aws.String(*addressOutput.Addresses[0].AllocationId),
+	}
+	if _, err = ec2Svc.ReleaseAddress(releaseAddressInput); err != nil {
+		return err
+	}
+	return nil
 }

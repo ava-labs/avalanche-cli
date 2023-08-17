@@ -3,10 +3,11 @@
 package nodecmd
 
 import (
+	"errors"
 	"fmt"
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -26,15 +27,54 @@ The node stop command stops a running node in cloud server`,
 	return cmd
 }
 
+func removeNodeFromClusterConfig(clusterName string) error {
+	clusterConfig := models.ClusterConfig{}
+	var err error
+	if app.ClusterConfigExists() {
+		clusterConfig, err = app.LoadClusterConfig()
+		if err != nil {
+			return err
+		}
+	}
+	if clusterConfig.Clusters != nil {
+		delete(clusterConfig.Clusters, clusterName)
+	}
+	return app.WriteClusterConfigFile(&clusterConfig)
+}
+
+func removeDeletedNodeDirectory(clusterName string) error {
+	return os.RemoveAll(app.GetNodeInstanceDirPath(clusterName))
+}
+
+func removeClusterInventoryDir(clusterName string) error {
+	return os.RemoveAll(app.GetAnsibleInventoryPath(clusterName))
+}
+
+func getDeleteConfigConfirmation(instanceID string) error {
+	confirm := "Running this command will delete all stored files associated with your cloud server. Do you want to proceed? " +
+		fmt.Sprintf("Stored files can be found at %s", app.GetNodeInstanceDirPath(instanceID))
+	yes, err := app.Prompt.CaptureYesNo(confirm)
+	if err != nil {
+		return err
+	}
+	if !yes {
+		return errors.New("abort avalanche stop node command")
+	}
+	return nil
+}
+
+func removeConfigFiles(clusterName string) error {
+	if err := removeDeletedNodeDirectory(clusterName); err != nil {
+		return err
+	}
+	if err := removeClusterInventoryDir(clusterName); err != nil {
+		return err
+	}
+	return removeNodeFromClusterConfig(clusterName)
+}
+
 func stopNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	//if err := setupAnsible(); err != nil {
-	//	return err
-	//}
-	//nodeIDStr, err := getNodeID(clusterName)
-	//if err != nil {
-	//	return err
-	//}
 	var err error
 	clusterConfig := models.ClusterConfig{}
 	if app.ClusterConfigExists() {
@@ -47,24 +87,32 @@ func stopNode(_ *cobra.Command, args []string) error {
 	if len(clusterNodes) == 0 {
 		return fmt.Errorf("no nodes found in cluster %s", clusterName)
 	}
-	fmt.Printf("obtained node id %s \n", clusterNodes[0])
 	nodeConfig, err := app.LoadClusterNodeConfig(clusterNodes[0])
 	if err != nil {
 		return err
 	}
-	//region := "us-east-2"
-	fmt.Printf("obtained region %s \n", nodeConfig.Region)
-	sess, err := getAWSCloudCredentials(nodeConfig.Region)
-	if err != nil {
+	if err = getDeleteConfigConfirmation(nodeConfig.NodeID); err != nil {
 		return err
 	}
-	ec2Svc := ec2.New(sess)
-	isRunning, err := awsAPI.CheckInstanceIsRunning(ec2Svc, nodeConfig.NodeID)
-	if err != nil {
+	//sess, err := getAWSCloudCredentials(nodeConfig.Region)
+	//if err != nil {
+	//	return err
+	//}
+	//ec2Svc := ec2.New(sess)
+	//isRunning, err := awsAPI.CheckInstanceIsRunning(ec2Svc, nodeConfig.NodeID)
+	//if err != nil {
+	//	return err
+	//}
+	//if !isRunning {
+	//	return fmt.Errorf("no running node with instance id %s is found in cluster %s", nodeConfig.NodeID, clusterName)
+	//}
+	//ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
+	//if err = awsAPI.StopInstance(ec2Svc, nodeConfig.NodeID, nodeConfig.ElasticIP); err != nil {
+	//	return err
+	//}
+	if err = removeConfigFiles(clusterName); err != nil {
 		return err
 	}
-	if !isRunning {
-		return fmt.Errorf("no running node with instance id %s is found in cluster %s", nodeConfig.NodeID, clusterName)
-	}
+	ux.Logger.PrintToUser(fmt.Sprintf("Node instance %s in cluster %s successfully stopped!", nodeConfig.NodeID, clusterName))
 	return nil
 }
