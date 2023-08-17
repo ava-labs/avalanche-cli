@@ -5,9 +5,10 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
+	"os"
+
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"os"
 
 	"github.com/spf13/cobra"
 )
