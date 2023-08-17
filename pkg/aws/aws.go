@@ -5,15 +5,18 @@ package aws
 
 import (
 	"errors"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
-var ErrNoInstanceState = errors.New("unable to get instance state")
-var ErrNoAddressFound = errors.New("unable to get public IP address info on AWS")
+var (
+	ErrNoInstanceState = errors.New("unable to get instance state")
+	ErrNoAddressFound  = errors.New("unable to get public IP address info on AWS")
+)
 
 // CheckKeyPairExists checks that key pair kpName exists in the AWS region and returns the key pair object
 func CheckKeyPairExists(ec2Svc *ec2.EC2, kpName string) (bool, error) {
