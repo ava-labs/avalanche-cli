@@ -238,7 +238,7 @@ func PromptDuration(start time.Time, network models.Network) (time.Duration, err
 		if network == models.Fuji {
 			d, err = app.Prompt.CaptureFujiDuration(txt)
 		} else {
-			d, err = app.Prompt.CaptureDuration(txt)
+			d, err = app.Prompt.CaptureMainnetDuration(txt)
 		}
 		if err != nil {
 			return 0, err
@@ -315,7 +315,7 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bo
 		case defaultStartOption:
 			start = time.Now().Add(constants.StakingStartLeadTime)
 		default:
-			start, err = PromptStart()
+			start, err = promptStart()
 			if err != nil {
 				return time.Time{}, 0, err
 			}
@@ -357,7 +357,7 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bo
 	return start, duration, nil
 }
 
-func PromptStart() (time.Time, error) {
+func promptStart() (time.Time, error) {
 	txt := "When should the validator start validating? Enter a UTC datetime in 'YYYY-MM-DD HH:MM:SS' format"
 	return app.Prompt.CaptureDate(txt)
 }

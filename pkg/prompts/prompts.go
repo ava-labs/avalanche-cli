@@ -77,7 +77,7 @@ type Prompter interface {
 	CaptureIndex(promptStr string, options []any) (int, error)
 	CaptureVersion(promptStr string) (string, error)
 	CaptureFujiDuration(promptStr string) (time.Duration, error)
-	CaptureDuration(promptStr string) (time.Duration, error)
+	CaptureMainnetDuration(promptStr string) (time.Duration, error)
 	CaptureDate(promptStr string) (time.Time, error)
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
 	CaptureID(promptStr string) (ids.ID, error)
@@ -187,7 +187,7 @@ func (*realPrompter) CaptureFujiDuration(promptStr string) (time.Duration, error
 	return time.ParseDuration(durationStr)
 }
 
-func (*realPrompter) CaptureDuration(promptStr string) (time.Duration, error) {
+func (*realPrompter) CaptureMainnetDuration(promptStr string) (time.Duration, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validateStakingDuration,

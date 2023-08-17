@@ -17,6 +17,5 @@
       shell: mkdir .avalanche-cli
     - name: copy metrics config to cloud server
       copy:
-        src: "{{ configDir }}"
+        src: "{{ configFilePath }}"
         dest: /home/ubuntu/.avalanche-cli
-        
