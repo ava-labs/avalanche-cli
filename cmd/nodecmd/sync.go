@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	"golang.org/x/exp/slices"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
@@ -103,6 +104,7 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) error {
 	}
 	return nil
 }
+
 func syncSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	if subnetName == "" {
