@@ -75,7 +75,7 @@ func (_m *Prompter) CaptureDate(promptStr string) (time.Time, error) {
 }
 
 // CaptureDuration provides a mock function with given fields: promptStr
-func (_m *Prompter) CaptureDuration(promptStr string) (time.Duration, error) {
+func (_m *Prompter) CaptureMainnetDuration(promptStr string) (time.Duration, error) {
 	ret := _m.Called(promptStr)
 
 	var r0 time.Duration
