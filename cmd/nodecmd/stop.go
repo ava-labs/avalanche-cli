@@ -5,6 +5,8 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -95,22 +97,22 @@ func stopNode(_ *cobra.Command, args []string) error {
 	if err = getDeleteConfigConfirmation(nodeConfig.NodeID); err != nil {
 		return err
 	}
-	//sess, err := getAWSCloudCredentials(nodeConfig.Region)
-	//if err != nil {
-	//	return err
-	//}
-	//ec2Svc := ec2.New(sess)
-	//isRunning, err := awsAPI.CheckInstanceIsRunning(ec2Svc, nodeConfig.NodeID)
-	//if err != nil {
-	//	return err
-	//}
-	//if !isRunning {
-	//	return fmt.Errorf("no running node with instance id %s is found in cluster %s", nodeConfig.NodeID, clusterName)
-	//}
-	//ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
-	//if err = awsAPI.StopInstance(ec2Svc, nodeConfig.NodeID, nodeConfig.ElasticIP); err != nil {
-	//	return err
-	//}
+	sess, err := getAWSCloudCredentials(nodeConfig.Region)
+	if err != nil {
+		return err
+	}
+	ec2Svc := ec2.New(sess)
+	isRunning, err := awsAPI.CheckInstanceIsRunning(ec2Svc, nodeConfig.NodeID)
+	if err != nil {
+		return err
+	}
+	if !isRunning {
+		return fmt.Errorf("no running node with instance id %s is found in cluster %s", nodeConfig.NodeID, clusterName)
+	}
+	ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
+	if err = awsAPI.StopInstance(ec2Svc, nodeConfig.NodeID, nodeConfig.ElasticIP); err != nil {
+		return err
+	}
 	if err = removeConfigFiles(clusterName); err != nil {
 		return err
 	}
