@@ -3,9 +3,9 @@
 package networkcmd
 
 import (
+	"context"
 	"fmt"
 	"path"
-	"context"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -68,7 +68,7 @@ func StartNetwork(*cobra.Command, []string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	ctx := binutils.GetAsyncContext()
 
 	bootstrapped, err := checkNetworkIsAlreadyBootstrapped(ctx, cli)
