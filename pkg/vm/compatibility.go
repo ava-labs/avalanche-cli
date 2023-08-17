@@ -45,6 +45,28 @@ func GetRPCProtocolVersion(app *application.Avalanche, vmType models.VMType, vmV
 	return version, nil
 }
 
+// GetAvalancheGoVersionsForRpc returns list of compatible avalanche go versions for a specified rpcVersion
+func GetAvalancheGoVersionsForRpc(app *application.Avalanche, rpcVersion int, url string) ([]string, error) {
+	compatibilityBytes, err := app.Downloader.Download(url)
+	if err != nil {
+		return nil, err
+	}
+
+	var parsedCompat models.AvagoCompatiblity
+	if err = json.Unmarshal(compatibilityBytes, &parsedCompat); err != nil {
+		return nil, err
+	}
+
+	eligibleVersions, ok := parsedCompat[strconv.Itoa(rpcVersion)]
+	if !ok {
+		return nil, ErrNoAvagoVersion
+	}
+
+	// versions are not necessarily sorted, so we need to sort them, tho this puts them in ascending order
+	semver.Sort(eligibleVersions)
+	return eligibleVersions, nil
+}
+
 func GetLatestAvalancheGoByProtocolVersion(app *application.Avalanche, rpcVersion int, url string) (string, error) {
 	compatibilityBytes, err := app.Downloader.Download(url)
 	if err != nil {
