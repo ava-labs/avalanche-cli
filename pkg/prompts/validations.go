@@ -40,7 +40,7 @@ func validatePositiveBigInt(input string) error {
 	return nil
 }
 
-func validateStakingDuration(input string) error {
+func validateMainnetStakingDuration(input string) error {
 	d, err := time.ParseDuration(input)
 	if err != nil {
 		return err
@@ -60,10 +60,10 @@ func validateFujiStakingDuration(input string) error {
 		return err
 	}
 	if d > genesis.FujiParams.MaxStakeDuration {
-		return fmt.Errorf("exceeds maximum staking duration of %s", ux.FormatDuration(constants.MaxStakeDuration))
+		return fmt.Errorf("exceeds maximum staking duration of %s", ux.FormatDuration(genesis.FujiParams.MaxStakeDuration))
 	}
 	if d < genesis.FujiParams.MinStakeDuration {
-		return fmt.Errorf("below the minimum staking duration of %s", ux.FormatDuration(constants.MinMainnetStakeDuration))
+		return fmt.Errorf("below the minimum staking duration of %s", ux.FormatDuration(genesis.FujiParams.MinStakeDuration))
 	}
 	return nil
 }

@@ -668,8 +668,8 @@ func (app *Avalanche) SetupAnsibleEnv() error {
 	return app.CreateAnsiblePlaybookDir()
 }
 
-// CreateFile creates file named fileName in .avalanche-cli ansible status directory
-func (app *Avalanche) CreateFile(filePath string) error {
+// CreateAnsibleStatusFile creates file named fileName in .avalanche-cli ansible status directory
+func (app *Avalanche) CreateAnsibleStatusFile(filePath string) error {
 	if err := os.MkdirAll(app.GetAnsibleStatusDir(), constants.DefaultPerms755); err != nil {
 		return err
 	}
@@ -680,7 +680,7 @@ func (app *Avalanche) CreateFile(filePath string) error {
 	return statusFile.Close()
 }
 
-// RemoveFile deletes avalanche ansible status dir in .avalanche-cli
-func (*Avalanche) RemoveFile(statusDir string) error {
-	return os.RemoveAll(statusDir)
+// RemoveAnsibleStatusDir deletes avalanche ansible status dir in .avalanche-cli
+func (app *Avalanche) RemoveAnsibleStatusDir() error {
+	return os.RemoveAll(app.GetAnsibleStatusDir())
 }

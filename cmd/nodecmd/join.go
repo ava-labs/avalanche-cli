@@ -69,6 +69,7 @@ You can check the bootstrap status by calling avalanche node status <clusteName>
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().Uint64Var(&weight, "stake-amount", 0, "how many AVAX to stake in the validator")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long validator validates for after start time")
+	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 
 	return cmd
 }
@@ -91,7 +92,7 @@ func parseBootstrappedOutput(filePath string) (bool, error) {
 			return isBootstrapped, nil
 		}
 	}
-	return false, nil
+	return false, errors.New("unable to parse node bootstrap status")
 }
 
 func parseSubnetSyncOutput(filePath string) (string, error) {
@@ -112,7 +113,7 @@ func parseSubnetSyncOutput(filePath string) (string, error) {
 			return status, nil
 		}
 	}
-	return "", nil
+	return "", errors.New("unable to parse subnet sync status")
 }
 
 func parseNodeIDOutput(fileName string) (string, error) {
@@ -134,13 +135,12 @@ func parseNodeIDOutput(fileName string) (string, error) {
 			return nodeID, nil
 		}
 	}
-	return "", nil
+	return "", errors.New("unable to parse node ID")
 }
 
 func addNodeAsSubnetValidator(nodeID string, network models.Network) error {
 	ux.Logger.PrintToUser("Adding the node as a Subnet Validator...")
-	err := subnetcmd.CallAddValidator(subnetName, nodeID, network)
-	if err != nil {
+	if err := subnetcmd.CallAddValidator(subnetName, nodeID, network); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Node successfully added as Subnet validator!")
@@ -310,8 +310,7 @@ func getDefaultMaxValidationTime(start time.Time, network models.Network) (time.
 
 func checkNodeIsBootstrapped(clusterName string) (bool, error) {
 	ux.Logger.PrintToUser("Checking if node is bootstrapped to Primary Network ...")
-	err := app.CreateFile(app.GetBootstrappedJSONFile())
-	if err != nil {
+	if err := app.CreateAnsibleStatusFile(app.GetBootstrappedJSONFile()); err != nil {
 		return false, err
 	}
 	if err := ansible.RunAnsiblePlaybookCheckBootstrapped(app.GetAnsibleDir(), app.GetBootstrappedJSONFile(), app.GetAnsibleInventoryPath(clusterName)); err != nil {
@@ -321,7 +320,7 @@ func checkNodeIsBootstrapped(clusterName string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if err := app.RemoveFile(app.GetAnsibleStatusDir()); err != nil {
+	if err := app.RemoveAnsibleStatusDir(); err != nil {
 		return false, err
 	}
 	if isBootstrapped {
@@ -332,7 +331,7 @@ func checkNodeIsBootstrapped(clusterName string) (bool, error) {
 
 func getClusterNodeID(clusterName string) (string, error) {
 	ux.Logger.PrintToUser("Getting node id ...")
-	if err := app.CreateFile(app.GetNodeIDJSONFile()); err != nil {
+	if err := app.CreateAnsibleStatusFile(app.GetNodeIDJSONFile()); err != nil {
 		return "", err
 	}
 	if err := ansible.RunAnsiblePlaybookGetNodeID(app.GetAnsibleDir(), app.GetNodeIDJSONFile(), app.GetAnsibleInventoryPath(clusterName)); err != nil {
@@ -342,7 +341,7 @@ func getClusterNodeID(clusterName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err = app.RemoveFile(app.GetAnsibleStatusDir()); err != nil {
+	if err = app.RemoveAnsibleStatusDir(); err != nil {
 		return "", err
 	}
 	return nodeID, err
@@ -350,7 +349,7 @@ func getClusterNodeID(clusterName string) (string, error) {
 
 func getClusterSubnetSyncStatus(blockchainID, clusterName string) (bool, error) {
 	ux.Logger.PrintToUser("Checking if node is synced to subnet ...")
-	if err := app.CreateFile(app.GetSubnetSyncJSONFile()); err != nil {
+	if err := app.CreateAnsibleStatusFile(app.GetSubnetSyncJSONFile()); err != nil {
 		return false, err
 	}
 	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(app.GetAnsibleDir(), app.GetSubnetSyncJSONFile(), blockchainID, app.GetAnsibleInventoryPath(clusterName)); err != nil {
@@ -360,7 +359,7 @@ func getClusterSubnetSyncStatus(blockchainID, clusterName string) (bool, error) 
 	if err != nil {
 		return false, err
 	}
-	if err = app.RemoveFile(app.GetAnsibleStatusDir()); err != nil {
+	if err = app.RemoveAnsibleStatusDir(); err != nil {
 		return false, err
 	}
 	if subnetSyncStatus == status.Syncing.String() {
