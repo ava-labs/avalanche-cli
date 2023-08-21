@@ -92,7 +92,7 @@ func parseBootstrappedOutput(filePath string) (bool, error) {
 			return isBootstrapped, nil
 		}
 	}
-	return false, nil
+	return false, errors.New("unable to parse node bootstrap status")
 }
 
 func parseSubnetSyncOutput(filePath string) (string, error) {
@@ -113,7 +113,7 @@ func parseSubnetSyncOutput(filePath string) (string, error) {
 			return status, nil
 		}
 	}
-	return "", nil
+	return "", errors.New("unable to parse subnet sync status")
 }
 
 func parseNodeIDOutput(fileName string) (string, error) {
@@ -135,7 +135,7 @@ func parseNodeIDOutput(fileName string) (string, error) {
 			return nodeID, nil
 		}
 	}
-	return "", nil
+	return "", errors.New("unable to parse node ID")
 }
 
 func addNodeAsSubnetValidator(nodeID string, network models.Network) error {

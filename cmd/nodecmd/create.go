@@ -12,7 +12,7 @@ import (
 	"os/user"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 
@@ -408,14 +408,22 @@ func getAvalancheGoVersion() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		nc := localnetworkinterface.NewStatusChecker()
-		customAvagoVersion, err := subnet.CheckForInvalidDeployAndGetAvagoVersion(nc, sc.RPCVersion)
+		customAvagoVersion, err := GetLatestAvagoVersionForRPC(sc.RPCVersion)
 		if err != nil {
 			return "", err
 		}
 		return customAvagoVersion, nil
 	}
 	return chosenOption, nil
+}
+
+func GetLatestAvagoVersionForRPC(configuredRPCVersion int) (string, error) {
+	desiredAvagoVersion, err := vm.GetLatestAvalancheGoByProtocolVersion(
+		app, configuredRPCVersion, constants.AvalancheGoCompatibilityURL)
+	if err != nil {
+		return "", err
+	}
+	return desiredAvagoVersion, nil
 }
 
 // promptAvalancheGoVersion either returns latest or the subnet that user wants to use as avago version reference
