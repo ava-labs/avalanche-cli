@@ -98,8 +98,8 @@ func RunAnsibleSetupNodePlaybook(configPath, ansibleDir, inventoryPath, avalanch
 // RunAnsibleCopyStakingFilesPlaybook copies staker.crt and staker.key into local machine so users can back up their node
 // these files are stored in .avalanche-cli/nodes/<nodeID> dir
 func RunAnsibleCopyStakingFilesPlaybook(ansibleDir, nodeInstanceDirPath, inventoryPath string) error {
-	nodeInstanceDirPathVar := "nodeInstanceDirPath=" + nodeInstanceDirPath + "/"
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.CopyStakingFilesPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, nodeInstanceDirPathVar, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	playbookInputs := "nodeInstanceDirPath=" + nodeInstanceDirPath + "/"
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.CopyStakingFilesPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	utils.SetupRealtimeCLIOutput(cmd)
 	return cmd.Run()
@@ -107,7 +107,7 @@ func RunAnsibleCopyStakingFilesPlaybook(ansibleDir, nodeInstanceDirPath, invento
 
 // RunAnsiblePlaybookExportSubnet exports deployed Subnet from local machine to cloud server
 func RunAnsiblePlaybookExportSubnet(ansibleDir, inventoryPath, exportPath, cloudServerSubnetPath string) error {
-	playbookInputs := "exportedSubnet=" + exportPath + " exportedSubnetPath=" + cloudServerSubnetPath
+	playbookInputs := "originSubnetPath=" + exportPath + " destSubnetPath=" + cloudServerSubnetPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.ExportSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	utils.SetupRealtimeCLIOutput(cmd)
