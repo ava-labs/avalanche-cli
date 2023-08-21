@@ -45,8 +45,8 @@ func GetRPCProtocolVersion(app *application.Avalanche, vmType models.VMType, vmV
 	return version, nil
 }
 
-// GetAvalancheGoVersionsForRpc returns list of compatible avalanche go versions for a specified rpcVersion
-func GetAvalancheGoVersionsForRpc(app *application.Avalanche, rpcVersion int, url string) ([]string, error) {
+// GetAvalancheGoVersionsForRPC returns list of compatible avalanche go versions for a specified rpcVersion
+func GetAvalancheGoVersionsForRPC(app *application.Avalanche, rpcVersion int, url string) ([]string, error) {
 	compatibilityBytes, err := app.Downloader.Download(url)
 	if err != nil {
 		return nil, err
