@@ -12,9 +12,8 @@ import (
 	"os/user"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
