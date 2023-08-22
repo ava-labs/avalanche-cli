@@ -66,7 +66,7 @@ func parseAvalancheGoOutput(fileName string) (string, error) {
 }
 
 func checkForCompatibleAvagoVersion(configuredRPCVersion int) ([]string, error) {
-	compatibleAvagoVersions, err := vm.GetAvalancheGoVersionsForRPC(
+	compatibleAvagoVersions, err := vm.GetAvailableAvalancheGoVersions(
 		app, configuredRPCVersion, constants.AvalancheGoCompatibilityURL)
 	if err != nil {
 		return nil, err
