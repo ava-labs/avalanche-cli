@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	"golang.org/x/exp/slices"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
