@@ -100,7 +100,10 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) error {
 	}
 	if !slices.Contains(compatibleVersions, avalancheGoVersion) {
 		ux.Logger.PrintToUser(fmt.Sprintf("Compatible Avalanche Go versions are %s", strings.Join(compatibleVersions, ", ")))
-		return fmt.Errorf("the Avalanche Go version of cluster %s is not compatible with Subnet EVM RPC version of %s", clusterName, subnetName)
+		ux.Logger.PrintToUser("Either modify your Avalanche Go version or modify your Subnet-EVM version")
+		ux.Logger.PrintToUser("To modify your Avalanche Go version: https://docs.avax.network/nodes/maintain/upgrade-your-avalanchego-node")
+		ux.Logger.PrintToUser("To modify your Subnet-EVM version: https://docs.avax.network/build/subnet/upgrade/upgrade-subnet-vm")
+		return fmt.Errorf("the Avalanche Go version of cluster %s is incompatible with Subnet EVM RPC version of %s", clusterName, subnetName)
 	}
 	return nil
 }
