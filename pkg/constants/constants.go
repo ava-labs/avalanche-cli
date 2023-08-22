@@ -71,8 +71,6 @@ const (
 	Disable = "disable"
 
 	TimeParseLayout             = "2006-01-02 15:04:05"
-	MinMainnetStakeDuration     = 24 * 14 * time.Hour
-	MaxStakeDuration            = 24 * 365 * time.Hour
 	MinStakeWeight              = 1
 	DefaultStakeWeight          = 20
 	AVAXSymbol                  = "AVAX"

@@ -190,7 +190,7 @@ func (*realPrompter) CaptureFujiDuration(promptStr string) (time.Duration, error
 func (*realPrompter) CaptureMainnetDuration(promptStr string) (time.Duration, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
-		Validate: validateStakingDuration,
+		Validate: validateMainnetStakingDuration,
 	}
 
 	durationStr, err := prompt.Run()

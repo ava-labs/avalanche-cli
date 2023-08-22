@@ -131,7 +131,7 @@ func (d *PublicDeployer) AddValidatorPrimaryNetwork(
 		Wght:   weight,
 	}
 	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign AddValidatorPrimaryNetwork transaction on the ledger device *** ")
+		ux.Logger.PrintToUser("*** Please sign AddValidator transaction on the ledger device *** ")
 	}
 	owner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
