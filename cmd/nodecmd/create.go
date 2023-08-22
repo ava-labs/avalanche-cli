@@ -311,6 +311,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	PrintResults(instanceID, elasticIP, certFilePath, region)
 	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node is bootstrapping!")
 	return nil
+
 }
 
 func runAnsible(inventoryPath string) error {
