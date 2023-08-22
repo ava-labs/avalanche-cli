@@ -78,7 +78,7 @@ const (
 	DefaultMainnetStakeDuration = "336h"
 	// The absolute minimum is 25 seconds, but set to 1 minute to allow for
 	// time to go through the command
-	StakingStartLeadTime                  = 1 * time.Minute
+	StakingStartLeadTime                  = 5 * time.Minute
 	PrimaryNetworkValidatingStartLeadTime = 20 * time.Second
 	StakingMinimumLeadTime                = 25 * time.Second
 	TerraformNodeConfigFile               = "node_config.tf"
