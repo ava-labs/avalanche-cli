@@ -261,7 +261,7 @@ func promptWeightPrimaryNetwork(network models.Network) (uint64, error) {
 	if network == models.Mainnet {
 		defaultStake = genesis.MainnetParams.MinValidatorStake
 	}
-	defaultWeight := fmt.Sprintf("Default (%s)", convertToAVAXStr(defaultStake))
+	defaultWeight := fmt.Sprintf("Default (%s)", convertNanoAvaxToAvaxString(defaultStake))
 	txt := "What stake weight would you like to assign to the validator?"
 	weightOptions := []string{defaultWeight, "Custom"}
 	weightOption, err := app.Prompt.CaptureList(txt, weightOptions)
@@ -482,8 +482,8 @@ func joinSubnet(_ *cobra.Command, args []string) error {
 	return addNodeAsSubnetValidator(nodeIDStr, models.Fuji)
 }
 
-// convertToAVAXStr converts nanoAVAX to AVAX
-func convertToAVAXStr(weight uint64) string {
+// convertNanoAvaxToAvaxString converts nanoAVAX to AVAX
+func convertNanoAvaxToAvaxString(weight uint64) string {
 	return fmt.Sprintf("%.2f %s", float64(weight)/float64(units.Avax), constants.AVAXSymbol)
 }
 
@@ -493,6 +493,6 @@ func printNodeJoinOutput(nodeID ids.NodeID, network models.Network, start time.T
 	ux.Logger.PrintToUser("Start time: %s", start.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("End time: %s", start.Add(duration).Format(constants.TimeParseLayout))
 	// we need to divide by 10 ^ 9 since we were using nanoAvax
-	ux.Logger.PrintToUser("Weight: %s", convertToAVAXStr(weight))
+	ux.Logger.PrintToUser("Weight: %s", convertNanoAvaxToAvaxString(weight))
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 }

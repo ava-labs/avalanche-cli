@@ -425,10 +425,10 @@ func addCertToSSH(certName string) error {
 }
 
 // getAvalancheGoVersion asks users whether they want to install the newest Avalanche Go version
-// or if they want to use the newest AValanche Go Version that is still compatible with Subnet EVM
+// or if they want to use the newest Avalanche Go Version that is still compatible with Subnet EVM
 // version of their choice
 func getAvalancheGoVersion() (string, error) {
-	chosenOption, err := promptAvalancheGoVersion()
+	chosenOption, err := promptAvalancheGoReferenceChoice()
 	if err != nil {
 		return "", err
 	}
@@ -455,8 +455,10 @@ func GetLatestAvagoVersionForRPC(configuredRPCVersion int) (string, error) {
 	return desiredAvagoVersion, nil
 }
 
-// promptAvalancheGoVersion either returns latest or the subnet that user wants to use as avago version reference
-func promptAvalancheGoVersion() (string, error) {
+// promptAvalancheGoReferenceChoice returns user's choice of either using the latest Avalanche Go
+// version or using the latest Avalanche Go version that is still compatible with the subnet that user
+// wants the cloud server to track
+func promptAvalancheGoReferenceChoice() (string, error) {
 	defaultVersion := "Use latest Avalanche Go Version"
 	txt := "What version of Avalanche Go would you like to install in the node?"
 	versionOptions := []string{defaultVersion, "Use the deployed Subnet's VM version that the node will be validating"}
