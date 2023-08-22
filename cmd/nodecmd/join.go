@@ -3,6 +3,7 @@
 package nodecmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -74,7 +75,16 @@ You can check the bootstrap status by calling avalanche node status <clusteName>
 	return cmd
 }
 
-func parseBootstrappedOutput(filePath string) (bool, error) {
+func printJSONOutput(byteValue []byte) error {
+	var prettyJSON bytes.Buffer
+	if err := json.Indent(&prettyJSON, byteValue, "", "   "); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser(prettyJSON.String())
+	return nil
+}
+
+func parseBootstrappedOutput(filePath string, printOutput bool) (bool, error) {
 	jsonFile, err := os.Open(filePath)
 	if err != nil {
 		return false, err
@@ -84,6 +94,11 @@ func parseBootstrappedOutput(filePath string) (bool, error) {
 	var result map[string]interface{}
 	if err := json.Unmarshal(byteValue, &result); err != nil {
 		return false, err
+	}
+	if printOutput {
+		if err = printJSONOutput(byteValue); err != nil {
+			return false, err
+		}
 	}
 	isBootstrappedInterface, ok := result["result"].(map[string]interface{})
 	if ok {
@@ -95,7 +110,7 @@ func parseBootstrappedOutput(filePath string) (bool, error) {
 	return false, errors.New("unable to parse node bootstrap status")
 }
 
-func parseSubnetSyncOutput(filePath string) (string, error) {
+func parseSubnetSyncOutput(filePath string, printOutput bool) (string, error) {
 	jsonFile, err := os.Open(filePath)
 	if err != nil {
 		return "", err
@@ -105,6 +120,11 @@ func parseSubnetSyncOutput(filePath string) (string, error) {
 	var result map[string]interface{}
 	if err := json.Unmarshal(byteValue, &result); err != nil {
 		return "", err
+	}
+	if printOutput {
+		if err = printJSONOutput(byteValue); err != nil {
+			return "", err
+		}
 	}
 	statusInterface, ok := result["result"].(map[string]interface{})
 	if ok {
@@ -308,7 +328,7 @@ func getDefaultMaxValidationTime(start time.Time, network models.Network) (time.
 	return d, nil
 }
 
-func checkNodeIsBootstrapped(clusterName string) (bool, error) {
+func checkNodeIsBootstrapped(clusterName string, printOutput bool) (bool, error) {
 	ux.Logger.PrintToUser("Checking if node is bootstrapped to Primary Network ...")
 	if err := app.CreateAnsibleStatusFile(app.GetBootstrappedJSONFile()); err != nil {
 		return false, err
@@ -316,7 +336,7 @@ func checkNodeIsBootstrapped(clusterName string) (bool, error) {
 	if err := ansible.RunAnsiblePlaybookCheckBootstrapped(app.GetAnsibleDir(), app.GetBootstrappedJSONFile(), app.GetAnsibleInventoryPath(clusterName)); err != nil {
 		return false, err
 	}
-	isBootstrapped, err := parseBootstrappedOutput(app.GetBootstrappedJSONFile())
+	isBootstrapped, err := parseBootstrappedOutput(app.GetBootstrappedJSONFile(), printOutput)
 	if err != nil {
 		return false, err
 	}
@@ -347,7 +367,7 @@ func getClusterNodeID(clusterName string) (string, error) {
 	return nodeID, err
 }
 
-func getClusterSubnetSyncStatus(blockchainID, clusterName string) (bool, error) {
+func getNodeSubnetSyncStatus(blockchainID, clusterName string, printOutput bool) (bool, error) {
 	ux.Logger.PrintToUser("Checking if node is synced to subnet ...")
 	if err := app.CreateAnsibleStatusFile(app.GetSubnetSyncJSONFile()); err != nil {
 		return false, err
@@ -355,7 +375,7 @@ func getClusterSubnetSyncStatus(blockchainID, clusterName string) (bool, error) 
 	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(app.GetAnsibleDir(), app.GetSubnetSyncJSONFile(), blockchainID, app.GetAnsibleInventoryPath(clusterName)); err != nil {
 		return false, err
 	}
-	subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile())
+	subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile(), printOutput)
 	if err != nil {
 		return false, err
 	}
@@ -413,7 +433,7 @@ func joinSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	isBootstrapped, err := checkNodeIsBootstrapped(clusterName)
+	isBootstrapped, err := checkNodeIsBootstrapped(clusterName, false)
 	if err != nil {
 		return err
 	}
@@ -445,7 +465,7 @@ func joinSubnet(_ *cobra.Command, args []string) error {
 		return ErrNoBlockchainID
 	}
 	// we have to check if node is synced to subnet before adding the node as a validator
-	isSubnetSynced, err := getClusterSubnetSyncStatus(blockchainID.String(), clusterName)
+	isSubnetSynced, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, false)
 	if err != nil {
 		return err
 	}
