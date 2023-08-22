@@ -4,6 +4,8 @@
 package aws
 
 import (
+	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -26,6 +28,31 @@ func CheckKeyPairExists(ec2Svc *ec2.EC2, kpName string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func GetUbuntuAMIID(ec2Svc *ec2.EC2) (string, error) {
+	descriptionFilterValue := "Canonical, Ubuntu, 20.04 LTS, amd64*"
+	imageInput := &ec2.DescribeImagesInput{
+		Filters: []*ec2.Filter{
+			{Name: aws.String("root-device-type"), Values: []*string{aws.String("ebs")}},
+			{Name: aws.String("description"), Values: []*string{aws.String(descriptionFilterValue)}},
+		},
+		Owners: []*string{aws.String("self"), aws.String("amazon")},
+	}
+	images, err := ec2Svc.DescribeImages(imageInput)
+	if err != nil {
+		return "", err
+	}
+	if len(images.Images) == 0 {
+		return "", fmt.Errorf("no amazon machine image found with the description %s", descriptionFilterValue)
+	}
+	// sort results by creation date
+	sort.Slice(images.Images, func(i, j int) bool {
+		return *images.Images[i].CreationDate > *images.Images[j].CreationDate
+	})
+	// get image with the latest creation date
+	amiID := images.Images[0].ImageId
+	return *amiID, nil
 }
 
 // CheckSecurityGroupExists checks that security group sgName exists in the AWS region and returns the security group object
