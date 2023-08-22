@@ -22,7 +22,9 @@ func newStopCmd() *cobra.Command {
 		Short: "(ALPHA Warning) Stop all nodes in a cluster",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
-The node stop command stops a running node in cloud server`,
+The node stop command stops a running node in cloud server
+
+Note that a stopped node may still incur cloud server storage fees.`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
 		RunE:         stopNode,
