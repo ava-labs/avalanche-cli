@@ -97,6 +97,7 @@ jobs:
       - name: Install docker on macos
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
+          brew reinstall qemu
           brew install docker
           colima start
           sudo ln -s ~/.colima/default/docker.sock /var/run/docker.sock
