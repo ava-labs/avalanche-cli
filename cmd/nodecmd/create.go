@@ -371,6 +371,7 @@ func runAnsible(inventoryPath, avalancheGoVersion string) error {
 	}
 	return ansible.RunAnsibleSetupNodePlaybook(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion)
 }
+
 func requestAWSAccountAuth() error {
 	ux.Logger.PrintToUser("Do you authorize Avalanche-CLI to access your AWS account to set-up your Avalanche Validator node?")
 	ux.Logger.PrintToUser("Please note that you will be charged for AWS usage.")
