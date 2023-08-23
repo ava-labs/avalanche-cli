@@ -371,11 +371,14 @@ func runAnsible(inventoryPath, avalancheGoVersion string) error {
 	}
 	return ansible.RunAnsibleSetupNodePlaybook(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion)
 }
-
 func requestAWSAccountAuth() error {
-	confirm := "Do you authorize Avalanche-CLI to access your AWS account to set-up your Avalanche Validator node? " +
-		"Please note that you will be charged for AWS usage."
-	yes, err := app.Prompt.CaptureYesNo(confirm)
+	ux.Logger.PrintToUser("Do you authorize Avalanche-CLI to access your AWS account to set-up your Avalanche Validator node?")
+	ux.Logger.PrintToUser("Please note that you will be charged for AWS usage.")
+	ux.Logger.PrintToUser("By clicking yes, you are authorizing Avalanche-CLI to:")
+	ux.Logger.PrintToUser("- Set up EC2 instance and related necessary components (such as security groups, key pairs and elastic IPs)")
+	ux.Logger.PrintToUser("- Set up node to validate Avalanche Primary Network")
+	ux.Logger.PrintToUser("- Set up node to validate Subnets")
+	yes, err := app.Prompt.CaptureYesNo("I authorize Avalanche-CLI to access my AWS account")
 	if err != nil {
 		return err
 	}
