@@ -396,10 +396,7 @@ func checkNodeIsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Networ
 	if err != nil {
 		return false, err
 	}
-	if isValidator {
-		return true, nil
-	}
-	return false, nil
+	return isValidator, nil
 }
 
 // addNodeAsPrimaryNetworkValidator returns bool if node is added as primary network validator
