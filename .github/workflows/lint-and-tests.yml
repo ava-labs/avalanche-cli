@@ -23,7 +23,7 @@ jobs:
         with:
           version: v1.49
           working-directory: .
-          args: --timeout 3m
+          args: --timeout 5m
       - name: Install license check
         run: go install github.com/google/addlicense@v1.0.0
       - name: Check license
@@ -97,6 +97,10 @@ jobs:
       - name: Install docker on macos
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
+          # Workaround for https://github.com/actions/runner-images/issues/8104
+          brew remove --ignore-dependencies qemu
+          curl -o ./qemu.rb https://raw.githubusercontent.com/Homebrew/homebrew-core/dc0669eca9479e9eeb495397ba3a7480aaa45c2e/Formula/qemu.rb
+          brew install ./qemu.rb
           brew install docker
           colima start
           sudo ln -s ~/.colima/default/docker.sock /var/run/docker.sock
