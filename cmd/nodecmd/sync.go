@@ -81,9 +81,9 @@ func parseAvalancheGoOutput(fileName string) (string, error) {
 	if ok {
 		vmVersions, ok := nodeIDInterface["vmVersions"].(map[string]interface{})
 		if ok {
-			avalancheGoVersion, ok := vmVersions["platform"].(string)
+			version, ok := vmVersions["platform"].(string)
 			if ok {
-				return avalancheGoVersion, nil
+				return version, nil
 			}
 		}
 	}
