@@ -116,7 +116,7 @@ func stopNode(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("no running node with instance id %s is found in cluster %s", nodeConfig.NodeID, clusterName)
 	}
 	ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
-	if err = awsAPI.StopInstance(ec2Svc, nodeConfig.NodeID, nodeConfig.ElasticIP); err != nil {
+	if err = awsAPI.StopInstance(ec2Svc, nodeConfig.NodeID, nodeConfig.ElasticIP, true); err != nil {
 		return err
 	}
 	if err = removeConfigFiles(clusterName); err != nil {

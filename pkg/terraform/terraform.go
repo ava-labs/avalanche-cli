@@ -5,6 +5,7 @@ package terraform
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -254,6 +255,15 @@ func RunTerraform(terraformDir string) (string, string, error) {
 	cmd.Dir = terraformDir
 	utils.SetupRealtimeCLIOutput(cmd)
 	if err := cmd.Run(); err != nil {
+		cmdOutput, cmdOutputErr := cmd.Output()
+		if cmdOutputErr != nil {
+			fmt.Printf("cmdoutput err %s \n", cmdOutputErr)
+			return "", "", cmdOutputErr
+		}
+		if strings.Contains(string(cmdOutput), "AddressLimitExceeded") {
+			fmt.Printf("AddressLimitExceeded found \n")
+		}
+
 		return "", "", err
 	}
 	instanceID, err := GetInstanceID(terraformDir)
