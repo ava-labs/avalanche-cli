@@ -121,6 +121,16 @@ func CheckInstanceIsRunning(ec2Svc *ec2.EC2, nodeID string) (bool, error) {
 	return false, nil
 }
 
+func StopInstanceWoEIP(ec2Svc *ec2.EC2, instanceID string) error {
+	input := &ec2.StopInstancesInput{
+		InstanceIds: []*string{aws.String(instanceID)},
+	}
+	if _, err := ec2Svc.StopInstances(input); err != nil {
+		return err
+	}
+	return nil
+}
+
 func StopInstance(ec2Svc *ec2.EC2, instanceID, publicIP string) error {
 	input := &ec2.StopInstancesInput{
 		InstanceIds: []*string{aws.String(instanceID)},
