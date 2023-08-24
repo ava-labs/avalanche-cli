@@ -4,14 +4,13 @@
 package terraform
 
 import (
+	"bytes"
 	"errors"
-	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -253,17 +252,15 @@ func RunTerraform(terraformDir string) (string, string, error) {
 	}
 	cmd = exec.Command(constants.Terraform, "apply", "-auto-approve") //nolint:gosec
 	cmd.Dir = terraformDir
-	utils.SetupRealtimeCLIOutput(cmd)
+	var stdBuffer bytes.Buffer
+	var stderr bytes.Buffer
+	mw := io.MultiWriter(os.Stdout, &stdBuffer)
+	cmd.Stdout = mw
+	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		cmdOutput, cmdOutputErr := cmd.Output()
-		if cmdOutputErr != nil {
-			fmt.Printf("cmdoutput err %s \n", cmdOutputErr)
-			return "", "", cmdOutputErr
+		if strings.Contains(stderr.String(), constants.EIPLimitErr) {
+			return "", "", errors.New(constants.EIPLimitErr)
 		}
-		if strings.Contains(string(cmdOutput), "AddressLimitExceeded") {
-			fmt.Printf("AddressLimitExceeded found \n")
-		}
-
 		return "", "", err
 	}
 	instanceID, err := GetInstanceID(terraformDir)
