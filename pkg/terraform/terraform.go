@@ -177,10 +177,10 @@ func SetKeyPair(rootBody *hclwrite.Body, keyName, certName string) {
 }
 
 // SetupInstance adds aws_instance section in terraform state file where we configure all the necessary components of the desired ec2 instance
-func SetupInstance(rootBody *hclwrite.Body, securityGroupName string, useExistingKeyPair bool, existingKeyPairName, ami string) {
+func SetupInstance(rootBody *hclwrite.Body, securityGroupName string, useExistingKeyPair bool, existingKeyPairName, ami string, numNodes uint32) {
 	awsInstance := rootBody.AppendNewBlock("resource", []string{"aws_instance", "aws_node"})
 	awsInstanceBody := awsInstance.Body()
-	awsInstanceBody.SetAttributeValue("count", cty.NumberIntVal(1))
+	awsInstanceBody.SetAttributeValue("count", cty.NumberIntVal(int64(numNodes)))
 	awsInstanceBody.SetAttributeValue("ami", cty.StringVal(ami))
 	awsInstanceBody.SetAttributeValue("instance_type", cty.StringVal("c5.2xlarge"))
 	if !useExistingKeyPair {

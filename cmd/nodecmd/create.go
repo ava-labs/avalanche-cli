@@ -205,7 +205,7 @@ func createEC2Instance(rootBody *hclwrite.Body,
 	if err := terraform.SetCloudCredentials(rootBody, region); err != nil {
 		return "", "", "", "", err
 	}
-	ledgerIndex, err := app.Prompt.CaptureUint32("How many ")
+	numNodes, err := app.Prompt.CaptureUint32("How many nodes do you want to set up on AWS?")
 	if err != nil {
 		return "", "", "", "", err
 	}
@@ -264,7 +264,7 @@ func createEC2Instance(rootBody *hclwrite.Body,
 		terraform.SetSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
 	}
 	terraform.SetElasticIP(rootBody)
-	terraform.SetupInstance(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami)
+	terraform.SetupInstance(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami, numNodes)
 	terraform.SetOutput(rootBody)
 	err = app.CreateTerraformDir()
 	if err != nil {
