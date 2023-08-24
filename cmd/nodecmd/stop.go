@@ -89,38 +89,39 @@ func stopNode(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	if clusterNodes, ok := clusterConfig.Clusters[clusterName]; ok {
-		if len(clusterNodes) == 0 {
-			return fmt.Errorf("no nodes found in cluster %s", clusterName)
-		}
-		nodeConfig, err := app.LoadClusterNodeConfig(clusterNodes[0])
-		if err != nil {
-			return err
-		}
-		if err = getDeleteConfigConfirmation(nodeConfig.NodeID); err != nil {
-			return err
-		}
-		sess, err := getAWSCloudCredentials(nodeConfig.Region)
-		if err != nil {
-			return err
-		}
-		ec2Svc := ec2.New(sess)
-		isRunning, err := awsAPI.CheckInstanceIsRunning(ec2Svc, nodeConfig.NodeID)
-		if err != nil {
-			return err
-		}
-		if !isRunning {
-			return fmt.Errorf("no running node with instance id %s is found in cluster %s", nodeConfig.NodeID, clusterName)
-		}
-		ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
-		if err = awsAPI.StopInstance(ec2Svc, nodeConfig.NodeID, nodeConfig.ElasticIP); err != nil {
-			return err
-		}
-		if err = removeConfigFiles(clusterName); err != nil {
-			return err
-		}
-		ux.Logger.PrintToUser(fmt.Sprintf("Node instance %s in cluster %s successfully stopped!", nodeConfig.NodeID, clusterName))
-		return nil
+	if _, ok := clusterConfig.Clusters[clusterName]; !ok {
+		return fmt.Errorf("unable to find state file for cluster %s in .avalanche-cli dir", clusterName)
 	}
-	return fmt.Errorf("unable to find state file for cluster %s in .avalanche-cli dir", clusterName)
+	clusterNodes := clusterConfig.Clusters[clusterName]
+	if len(clusterNodes) == 0 {
+		return fmt.Errorf("no nodes found in cluster %s", clusterName)
+	}
+	nodeConfig, err := app.LoadClusterNodeConfig(clusterNodes[0])
+	if err != nil {
+		return err
+	}
+	if err = getDeleteConfigConfirmation(nodeConfig.NodeID); err != nil {
+		return err
+	}
+	sess, err := getAWSCloudCredentials(nodeConfig.Region)
+	if err != nil {
+		return err
+	}
+	ec2Svc := ec2.New(sess)
+	isRunning, err := awsAPI.CheckInstanceIsRunning(ec2Svc, nodeConfig.NodeID)
+	if err != nil {
+		return err
+	}
+	if !isRunning {
+		return fmt.Errorf("no running node with instance id %s is found in cluster %s", nodeConfig.NodeID, clusterName)
+	}
+	ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
+	if err = awsAPI.StopInstance(ec2Svc, nodeConfig.NodeID, nodeConfig.ElasticIP); err != nil {
+		return err
+	}
+	if err = removeConfigFiles(clusterName); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser(fmt.Sprintf("Node instance %s in cluster %s successfully stopped!", nodeConfig.NodeID, clusterName))
+	return nil
 }
