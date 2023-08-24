@@ -436,7 +436,8 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		return ids.Empty, ids.Empty, err
 	}
 
-	ux.Logger.PrintToUser("VMs ready.")
+	fmt.Println()
+	ux.Logger.PrintToUser("Deploying Blockchain. Wait until network acknowledges...")
 
 	// create a new blockchain on the already started network, associated to
 	// the given VM ID, genesis, and available subnet ID
@@ -469,9 +470,6 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	d.app.Log.Debug(deployBlockchainsInfo.String())
 
-	fmt.Println()
-	ux.Logger.PrintToUser("Blockchain has been deployed. Wait until network acknowledges...")
-
 	clusterInfo, err = WaitForHealthy(ctx, cli)
 	if err != nil {
 		utils.FindErrorLogs(rootDir, backendLogDir)
@@ -485,7 +483,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	endpoint := GetFirstEndpoint(clusterInfo, chain)
 
 	fmt.Println()
-	ux.Logger.PrintToUser("Network ready to use. Local network node endpoints:")
+	ux.Logger.PrintToUser("Blockchain ready to use. Local network node endpoints:")
 	ux.PrintTableEndpoints(clusterInfo)
 	fmt.Println()
 
@@ -732,7 +730,9 @@ func (d *LocalDeployer) startNetwork(
 		loadSnapshotOpts = append(loadSnapshotOpts, client.WithGlobalNodeConfig(configStr))
 	}
 
-	pp, err := cli.LoadSnapshot(
+	fmt.Println()
+	ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
+	resp, err := cli.LoadSnapshot(
 		ctx,
 		constants.DefaultSnapshotName,
 		loadSnapshotOpts...,
@@ -740,8 +740,8 @@ func (d *LocalDeployer) startNetwork(
 	if err != nil {
 		return fmt.Errorf("failed to start network :%w", err)
 	}
-	ux.Logger.PrintToUser("Node log path: %s/node<i>/logs", pp.ClusterInfo.RootDataDir)
-	ux.Logger.PrintToUser("Starting network...")
+	ux.Logger.PrintToUser("Node logs directory: %s/node<i>/logs", resp.ClusterInfo.RootDataDir)
+	ux.Logger.PrintToUser("Network ready to use.")
 	return nil
 }
 
