@@ -4,12 +4,20 @@
 package aws
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
+)
+
+var (
+	ErrNoInstanceState = errors.New("unable to get instance state")
+	ErrNoAddressFound  = errors.New("unable to get public IP address info on AWS")
 )
 
 // CheckKeyPairExists checks that key pair kpName exists in the AWS region and returns the key pair object
@@ -85,4 +93,58 @@ func CheckUserIPInSg(sg *ec2.SecurityGroup, currentIP string, port int64) bool {
 		}
 	}
 	return false
+}
+
+// CheckInstanceIsRunning checks that EC2 instance nodeID is running in AWS
+func CheckInstanceIsRunning(ec2Svc *ec2.EC2, nodeID string) (bool, error) {
+	instanceInput := &ec2.DescribeInstancesInput{
+		InstanceIds: []*string{
+			aws.String(nodeID),
+		},
+	}
+	nodeStatus, err := ec2Svc.DescribeInstances(instanceInput)
+	if err != nil {
+		return false, err
+	}
+	reservation := nodeStatus.Reservations
+	if len(reservation) == 0 {
+		return false, ErrNoInstanceState
+	}
+	instances := reservation[0].Instances
+	if len(instances) == 0 {
+		return false, ErrNoInstanceState
+	}
+	instanceStatus := instances[0].State.Name
+	if *instanceStatus == constants.AWSCloudServerRunningState {
+		return true, nil
+	}
+	return false, nil
+}
+
+func StopInstance(ec2Svc *ec2.EC2, instanceID, publicIP string) error {
+	input := &ec2.StopInstancesInput{
+		InstanceIds: []*string{aws.String(instanceID)},
+	}
+	if _, err := ec2Svc.StopInstances(input); err != nil {
+		return err
+	}
+	describeAddressInput := &ec2.DescribeAddressesInput{
+		Filters: []*ec2.Filter{
+			{Name: aws.String("public-ip"), Values: []*string{aws.String(publicIP)}},
+		},
+	}
+	addressOutput, err := ec2Svc.DescribeAddresses(describeAddressInput)
+	if err != nil {
+		return err
+	}
+	if len(addressOutput.Addresses) == 0 {
+		return ErrNoAddressFound
+	}
+	releaseAddressInput := &ec2.ReleaseAddressInput{
+		AllocationId: aws.String(*addressOutput.Addresses[0].AllocationId),
+	}
+	if _, err = ec2Svc.ReleaseAddress(releaseAddressInput); err != nil {
+		return err
+	}
+	return nil
 }
