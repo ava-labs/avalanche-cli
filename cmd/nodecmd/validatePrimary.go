@@ -13,8 +13,6 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanchego/genesis"
-	"github.com/ava-labs/avalanchego/vms/platformvm/status"
-
 	"github.com/ava-labs/avalanchego/utils/units"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -46,23 +44,18 @@ var (
 	ErrNoBlockchainID            = errors.New("failed to find the blockchain ID for this subnet, has it been deployed/created on this network?")
 )
 
-func newJoinCmd() *cobra.Command {
+func newValidatePrimaryCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "join [clusterName]",
-		Short: "(ALPHA Warning) Join a subnet as a validator",
+		Use:   "primary [clusterName]",
+		Short: "(ALPHA Warning) Join Primary Network as a validator",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
-The node join command enables all nodes in a cluster to be validators of a Subnet.
-The command also enables nodes to be Primary Network validators by omitting the --subnet flag.
-If The command is run before the nodes are Primary Network validators, the command will first
-make the nodes Primary Network validators before making them Subnet validators. 
-If The command is run before the nodes are bootstrapped on the Primary Network, the command will fail. 
-You can check the bootstrap status by calling avalanche node status <clusteName>`,
+The node validate command enables all nodes in a cluster to be validators of Primary
+Network.`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
-		RunE:         joinSubnet,
+		RunE:         validatePrimaryNetwork,
 	}
-	cmd.Flags().StringVar(&subnetName, "subnet", "", "specify the subnet the node is validating")
 	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "set up validator in testnet (alias to `fuji`)")
 	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "set up validator in fuji (alias to `testnet`")
 	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "set up validator in mainnet")
@@ -110,32 +103,6 @@ func parseBootstrappedOutput(filePath string, printOutput bool) (bool, error) {
 	return false, errors.New("unable to parse node bootstrap status")
 }
 
-func parseSubnetSyncOutput(filePath string, printOutput bool) (string, error) {
-	jsonFile, err := os.Open(filePath)
-	if err != nil {
-		return "", err
-	}
-	defer jsonFile.Close()
-	byteValue, _ := io.ReadAll(jsonFile)
-	var result map[string]interface{}
-	if err := json.Unmarshal(byteValue, &result); err != nil {
-		return "", err
-	}
-	if printOutput {
-		if err = printJSONOutput(byteValue); err != nil {
-			return "", err
-		}
-	}
-	statusInterface, ok := result["result"].(map[string]interface{})
-	if ok {
-		status, ok := statusInterface["status"].(string)
-		if ok {
-			return status, nil
-		}
-	}
-	return "", errors.New("unable to parse subnet sync status")
-}
-
 func parseNodeIDOutput(fileName string) (string, error) {
 	jsonFile, err := os.Open(fileName)
 	if err != nil {
@@ -158,15 +125,6 @@ func parseNodeIDOutput(fileName string) (string, error) {
 	return "", errors.New("unable to parse node ID")
 }
 
-func addNodeAsSubnetValidator(nodeID string, network models.Network) error {
-	ux.Logger.PrintToUser("Adding the node as a Subnet Validator...")
-	if err := subnetcmd.CallAddValidator(subnetName, nodeID, network); err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("Node successfully added as Subnet validator!")
-	return nil
-}
-
 func getMinStakingAmount(network models.Network) (uint64, error) {
 	var apiURL string
 	switch network {
@@ -185,7 +143,7 @@ func getMinStakingAmount(network models.Network) (uint64, error) {
 	return minValStake, nil
 }
 
-func validatePrimaryNetwork(nodeID ids.NodeID, network models.Network) error {
+func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network) error {
 	ux.Logger.PrintToUser("Adding node as a Primary Network Validator...")
 	var (
 		start time.Time
@@ -245,7 +203,7 @@ func validatePrimaryNetwork(nodeID ids.NodeID, network models.Network) error {
 	}
 	recipientAddr := kc.Addresses().List()[0]
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	printNodeJoinOutput(nodeID, network, start)
+	printNodeJoinPrimaryNetworkOutput(nodeID, network, start)
 	// we set the starting time for node to be a Primary Network Validator to be in 1 minute
 	// we use min delegation fee as default
 	// TODO: add prompt for delegation fee for mainnet
@@ -367,29 +325,6 @@ func getClusterNodeID(clusterName string) (string, error) {
 	return nodeID, err
 }
 
-func getNodeSubnetSyncStatus(blockchainID, clusterName string, printOutput bool) (bool, error) {
-	ux.Logger.PrintToUser("Checking if node is synced to subnet ...")
-	if err := app.CreateAnsibleStatusFile(app.GetSubnetSyncJSONFile()); err != nil {
-		return false, err
-	}
-	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(app.GetAnsibleDir(), app.GetSubnetSyncJSONFile(), blockchainID, app.GetAnsibleInventoryPath(clusterName)); err != nil {
-		return false, err
-	}
-	subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile(), printOutput)
-	if err != nil {
-		return false, err
-	}
-	if err = app.RemoveAnsibleStatusDir(); err != nil {
-		return false, err
-	}
-	if subnetSyncStatus == status.Syncing.String() {
-		return true, nil
-	} else if subnetSyncStatus == status.Validating.String() {
-		return false, errors.New("node is already a subnet validator")
-	}
-	return false, nil
-}
-
 // checkNodeIsPrimaryNetworkValidator only returns err if node is already a Primary Network validator
 func checkNodeIsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network) (bool, error) {
 	isValidator, err := subnet.IsSubnetValidator(ids.Empty, nodeID, network)
@@ -407,7 +342,7 @@ func addNodeAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network)
 		return false, err
 	}
 	if !isValidator {
-		if err = validatePrimaryNetwork(nodeID, network); err != nil {
+		if err = joinAsPrimaryNetworkValidator(nodeID, network); err != nil {
 			return false, err
 		}
 		ux.Logger.PrintToUser("Node successfully added as Primary Network validator!")
@@ -416,25 +351,7 @@ func addNodeAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network)
 	return false, nil
 }
 
-func waitForNodeToBePrimaryNetworkValidator(nodeID ids.NodeID) error {
-	ux.Logger.PrintToUser("Waiting for the node to start as a Primary Network Validator...")
-	// wait for 20 seconds because we set the start time to be in 20 seconds
-	time.Sleep(20 * time.Second)
-	// long polling: try up to 5 times
-	for i := 0; i < 5; i++ {
-		isValidator, err := checkNodeIsPrimaryNetworkValidator(nodeID, models.Fuji)
-		if err != nil {
-			return err
-		}
-		if isValidator {
-			break
-		}
-		time.Sleep(5 * time.Second)
-	}
-	return nil
-}
-
-func joinSubnet(_ *cobra.Command, args []string) error {
+func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	err := setupAnsible()
 	if err != nil {
@@ -455,40 +372,8 @@ func joinSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if subnetName == "" {
-		// if no subnet is given in the flag, node will only be added as Primary Network Validator
-		_, err = addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji)
-		return err
-	}
-	if _, err = subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
-		return err
-	}
-	sc, err := app.LoadSidecar(subnetName)
-	if err != nil {
-		return err
-	}
-	blockchainID := sc.Networks[models.Fuji.String()].BlockchainID
-	if blockchainID == ids.Empty {
-		return ErrNoBlockchainID
-	}
-	// we have to check if node is synced to subnet before adding the node as a validator
-	isSubnetSynced, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, false)
-	if err != nil {
-		return err
-	}
-	if !isSubnetSynced {
-		return errors.New("node is not synced to subnet yet, please try again later")
-	}
-	addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji)
-	if err != nil {
-		return err
-	}
-	if addedNodeAsPrimaryNetworkValidator {
-		if err := waitForNodeToBePrimaryNetworkValidator(nodeID); err != nil {
-			return err
-		}
-	}
-	return addNodeAsSubnetValidator(nodeIDStr, models.Fuji)
+	_, err = addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji)
+	return err
 }
 
 // convertNanoAvaxToAvaxString converts nanoAVAX to AVAX
@@ -496,7 +381,7 @@ func convertNanoAvaxToAvaxString(weight uint64) string {
 	return fmt.Sprintf("%.2f %s", float64(weight)/float64(units.Avax), constants.AVAXSymbol)
 }
 
-func printNodeJoinOutput(nodeID ids.NodeID, network models.Network, start time.Time) {
+func printNodeJoinPrimaryNetworkOutput(nodeID ids.NodeID, network models.Network, start time.Time) {
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
 	ux.Logger.PrintToUser("Network: %s", network.String())
 	ux.Logger.PrintToUser("Start time: %s", start.Format(constants.TimeParseLayout))
