@@ -205,6 +205,10 @@ func createEC2Instance(rootBody *hclwrite.Body,
 	if err := terraform.SetCloudCredentials(rootBody, region); err != nil {
 		return "", "", "", "", err
 	}
+	ledgerIndex, err := app.Prompt.CaptureUint32("How many ")
+	if err != nil {
+		return "", "", "", "", err
+	}
 	ux.Logger.PrintToUser("Creating a new EC2 instance on AWS...")
 	var useExistingKeyPair bool
 	keyPairExists, err := awsAPI.CheckKeyPairExists(ec2Svc, keyPairName)
