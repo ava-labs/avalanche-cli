@@ -60,11 +60,11 @@ const (
 
 	CliInstallationURL    = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
 	ExpectedCliInstallErr = "resource temporarily unavailable"
-
-	KeyDir     = "key"
-	KeySuffix  = ".pk"
-	YAMLSuffix = ".yml"
-	ConfigDir  = "config"
+	EIPLimitErr           = "AddressLimitExceeded"
+	KeyDir                = "key"
+	KeySuffix             = ".pk"
+	YAMLSuffix            = ".yml"
+	ConfigDir             = "config"
 
 	Enable = "enable"
 

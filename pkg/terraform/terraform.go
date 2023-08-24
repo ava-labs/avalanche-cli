@@ -4,13 +4,13 @@
 package terraform
 
 import (
+	"bytes"
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -245,8 +245,6 @@ func RemoveDirectory(terraformDir string) error {
 // RunTerraform executes terraform apply function that creates the EC2 instances based on the .tf file provided
 // returns the AWS node-ID and node IP
 func RunTerraform(terraformDir string) (string, string, error) {
-	var instanceID string
-	var publicIP string
 	cmd := exec.Command(constants.Terraform, "init") //nolint:gosec
 	cmd.Dir = terraformDir
 	if err := cmd.Run(); err != nil {
@@ -254,27 +252,51 @@ func RunTerraform(terraformDir string) (string, string, error) {
 	}
 	cmd = exec.Command(constants.Terraform, "apply", "-auto-approve") //nolint:gosec
 	cmd.Dir = terraformDir
-	utils.SetupRealtimeCLIOutput(cmd)
+	var stdBuffer bytes.Buffer
+	var stderr bytes.Buffer
+	mw := io.MultiWriter(os.Stdout, &stdBuffer)
+	cmd.Stdout = mw
+	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
+		if strings.Contains(stderr.String(), constants.EIPLimitErr) {
+			return "", "", errors.New(constants.EIPLimitErr)
+		}
 		return "", "", err
 	}
+	instanceID, err := GetInstanceID(terraformDir)
+	if err != nil {
+		return "", "", err
+	}
+	publicIP, err := GetPublicIP(terraformDir)
+	if err != nil {
+		return "", "", err
+	}
+	// eip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
+	return instanceID, publicIP, nil
+}
 
-	cmd = exec.Command(constants.Terraform, "output", "instance_id") //nolint:gosec
+func GetInstanceID(terraformDir string) (string, error) {
+	cmd := exec.Command(constants.Terraform, "output", "instance_id") //nolint:gosec
 	cmd.Dir = terraformDir
 	instanceIDOutput, err := cmd.Output()
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
-	instanceID = string(instanceIDOutput)
-	cmd = exec.Command(constants.Terraform, "output", "instance_ip") //nolint:gosec
+	instanceID := string(instanceIDOutput)
+	// eip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
+	return instanceID[1 : len(instanceID)-2], nil
+}
+
+func GetPublicIP(terraformDir string) (string, error) {
+	cmd := exec.Command(constants.Terraform, "output", "instance_ip") //nolint:gosec
 	cmd.Dir = terraformDir
 	eipOutput, err := cmd.Output()
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
-	publicIP = string(eipOutput)
+	publicIP := string(eipOutput)
 	// eip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
-	return instanceID[1 : len(instanceID)-2], publicIP[1 : len(publicIP)-2], nil
+	return publicIP[1 : len(publicIP)-2], nil
 }
 
 func CheckIsInstalled() error {

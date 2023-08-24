@@ -321,6 +321,23 @@ func createNode(_ *cobra.Command, args []string) error {
 	// Create new EC2 client
 	instanceID, elasticIP, certFilePath, keyPairName, err := createEC2Instance(rootBody, ec2Svc, hclFile, region, ami, certName, prefix, securityGroupName)
 	if err != nil {
+		if err.Error() == constants.EIPLimitErr {
+			ux.Logger.PrintToUser("Failed to create AWS cloud server, please try creating again in a different region")
+		} else {
+			ux.Logger.PrintToUser("Failed to create AWS cloud server")
+		}
+		// we stop created instance so that user doesn't pay for unused EC2 instance
+		instanceID, instanceIDErr := terraform.GetInstanceID(app.GetTerraformDir())
+		if instanceIDErr != nil {
+			return instanceIDErr
+		}
+		ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s...", instanceID))
+		if stopErr := awsAPI.StopInstance(ec2Svc, instanceID, "", false); stopErr != nil {
+			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop cloud server instance %s", instanceID))
+			ux.Logger.PrintToUser(fmt.Sprintf("Stop cloud server instance %s on AWS console to prevent charges", instanceID))
+			return stopErr
+		}
+		ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s stopped", instanceID))
 		return err
 	}
 	err = terraform.RemoveDirectory(app.GetTerraformDir())

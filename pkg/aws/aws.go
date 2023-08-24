@@ -121,30 +121,32 @@ func CheckInstanceIsRunning(ec2Svc *ec2.EC2, nodeID string) (bool, error) {
 	return false, nil
 }
 
-func StopInstance(ec2Svc *ec2.EC2, instanceID, publicIP string) error {
+func StopInstance(ec2Svc *ec2.EC2, instanceID, publicIP string, releasePublicIP bool) error {
 	input := &ec2.StopInstancesInput{
 		InstanceIds: []*string{aws.String(instanceID)},
 	}
 	if _, err := ec2Svc.StopInstances(input); err != nil {
 		return err
 	}
-	describeAddressInput := &ec2.DescribeAddressesInput{
-		Filters: []*ec2.Filter{
-			{Name: aws.String("public-ip"), Values: []*string{aws.String(publicIP)}},
-		},
-	}
-	addressOutput, err := ec2Svc.DescribeAddresses(describeAddressInput)
-	if err != nil {
-		return err
-	}
-	if len(addressOutput.Addresses) == 0 {
-		return ErrNoAddressFound
-	}
-	releaseAddressInput := &ec2.ReleaseAddressInput{
-		AllocationId: aws.String(*addressOutput.Addresses[0].AllocationId),
-	}
-	if _, err = ec2Svc.ReleaseAddress(releaseAddressInput); err != nil {
-		return err
+	if releasePublicIP {
+		describeAddressInput := &ec2.DescribeAddressesInput{
+			Filters: []*ec2.Filter{
+				{Name: aws.String("public-ip"), Values: []*string{aws.String(publicIP)}},
+			},
+		}
+		addressOutput, err := ec2Svc.DescribeAddresses(describeAddressInput)
+		if err != nil {
+			return err
+		}
+		if len(addressOutput.Addresses) == 0 {
+			return ErrNoAddressFound
+		}
+		releaseAddressInput := &ec2.ReleaseAddressInput{
+			AllocationId: aws.String(*addressOutput.Addresses[0].AllocationId),
+		}
+		if _, err = ec2Svc.ReleaseAddress(releaseAddressInput); err != nil {
+			return err
+		}
 	}
 	return nil
 }
