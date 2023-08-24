@@ -321,14 +321,18 @@ func createNode(_ *cobra.Command, args []string) error {
 	// Create new EC2 client
 	instanceID, elasticIP, certFilePath, keyPairName, err := createEC2Instance(rootBody, ec2Svc, hclFile, region, ami, certName, prefix, securityGroupName)
 	if err != nil {
+		ux.Logger.PrintToUser("Failed to create AWS cloud server, please try creating again in a different region")
+		ux.Logger.PrintToUser("Stopping AWS cloud server without Public IP... ")
 		// we stop created instance if EIP is not created due to limit reached of 5 EIP per AWS account
 		// so that user doesn't pay for unused EC2 instance
-		instanceID, err = terraform.GetInstanceID(app.GetTerraformDir())
-		if err != nil {
-			return err
+		instanceID, instanceIDErr := terraform.GetInstanceID(app.GetTerraformDir())
+		if instanceIDErr != nil {
+			return instanceIDErr
 		}
-		if err = awsAPI.StopInstanceWoEIP(ec2Svc, instanceID); err != nil {
-			return err
+		if stopErr := awsAPI.StopInstanceWoEIP(ec2Svc, instanceID); stopErr != nil {
+			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop cloud server instance %s without Public IP", instanceID))
+			ux.Logger.PrintToUser(fmt.Sprintf("Stop cloud server instance %s on AWS console to prevent charges", instanceID))
+			return stopErr
 		}
 		return err
 	}
