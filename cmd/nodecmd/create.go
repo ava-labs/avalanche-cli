@@ -377,8 +377,8 @@ func requestAWSAccountAuth() error {
 	ux.Logger.PrintToUser("Please note that you will be charged for AWS usage.")
 	ux.Logger.PrintToUser("By clicking yes, you are authorizing Avalanche-CLI to:")
 	ux.Logger.PrintToUser("- Set up EC2 instance(s) and other components (such as security groups, key pairs and elastic IPs)")
-	ux.Logger.PrintToUser("- Set up node to validate the Avalanche Primary Network")
-	ux.Logger.PrintToUser("- Set up node to validate Subnets")
+	ux.Logger.PrintToUser("- Set up the EC2 instance(s) to validate the Avalanche Primary Network")
+	ux.Logger.PrintToUser("- Set up the EC2 instance(s) to validate Subnets")
 	yes, err := app.Prompt.CaptureYesNo("I authorize Avalanche-CLI to access my AWS account")
 	if err != nil {
 		return err
