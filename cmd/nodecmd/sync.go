@@ -25,27 +25,23 @@ import (
 
 func newSyncCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "sync [clusterName]",
+		Use:   "sync [clusterName] [subnetName]",
 		Short: "(ALPHA Warning) Sync nodes in a cluster with a subnet",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
 The node sync command enables all nodes in a cluster to be bootstrapped to a Subnet. 
-You can check the subnet bootstrap status by calling avalanche node status --subnet`,
+You can check the subnet bootstrap status by calling avalanche node status clusterName --subnet`,
 		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
+		Args:         cobra.ExactArgs(2),
 		RunE:         syncSubnet,
 	}
-	cmd.Flags().StringVar(&subnetName, "subnet", "", "specify the subnet the node is syncing with")
 
 	return cmd
 }
 
 func syncSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	if subnetName == "" {
-		ux.Logger.PrintToUser("Please provide the name of the subnet that the node will be validating with --subnet flag")
-		return errors.New("no subnet provided")
-	}
+	subnetName := args[1]
 	if err := setupAnsible(); err != nil {
 		return err
 	}
