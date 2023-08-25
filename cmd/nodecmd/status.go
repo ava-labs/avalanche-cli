@@ -46,7 +46,7 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 		if blockchainID == ids.Empty {
 			return ErrNoBlockchainID
 		}
-		_, err = getNodeSubnetSyncStatus(blockchainID.String(), clusterName, true)
+		_, err = getNodeSubnetSyncStatus(blockchainID.String(), clusterName, true, false)
 		return err
 	}
 	_, err := checkNodeIsBootstrapped(clusterName, true)

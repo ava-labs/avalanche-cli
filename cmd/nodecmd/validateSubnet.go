@@ -83,7 +83,7 @@ func addNodeAsSubnetValidator(nodeID string, network models.Network) error {
 	return nil
 }
 
-func getNodeSubnetSyncStatus(blockchainID, clusterName string, printOutput bool) (bool, error) {
+func getNodeSubnetSyncStatus(blockchainID, clusterName string, printOutput, errOnValidating bool) (bool, error) {
 	ux.Logger.PrintToUser("Checking if node is synced to subnet ...")
 	if err := app.CreateAnsibleStatusFile(app.GetSubnetSyncJSONFile()); err != nil {
 		return false, err
@@ -100,7 +100,7 @@ func getNodeSubnetSyncStatus(blockchainID, clusterName string, printOutput bool)
 	}
 	if subnetSyncStatus == status.Syncing.String() {
 		return true, nil
-	} else if subnetSyncStatus == status.Validating.String() {
+	} else if subnetSyncStatus == status.Validating.String() && errOnValidating {
 		return false, errors.New("node is already a subnet validator")
 	}
 	return false, nil
@@ -160,7 +160,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 		return ErrNoBlockchainID
 	}
 	// we have to check if node is synced to subnet before adding the node as a validator
-	isSubnetSynced, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, false)
+	isSubnetSynced, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, false, true)
 	if err != nil {
 		return err
 	}

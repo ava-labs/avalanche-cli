@@ -30,7 +30,7 @@ will fail. You can check the bootstrap status by calling avalanche node status <
 	app = injectedApp
 	// node validate primary cluster
 	cmd.AddCommand(newValidatePrimaryCmd())
-	// node validate subnet cluster --subnet subnetName
+	// node validate subnet cluster subnetName
 	cmd.AddCommand(newValidateSubnetCmd())
 	return cmd
 }
