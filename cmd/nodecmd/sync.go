@@ -42,6 +42,9 @@ You can check the subnet bootstrap status by calling avalanche node status --sub
 
 func syncSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
+	if err := checkCluster(clusterName); err != nil {
+		return err
+	}
 	if subnetName == "" {
 		ux.Logger.PrintToUser("Please provide the name of the subnet that the node will be validating with --subnet flag")
 		return errors.New("no subnet provided")

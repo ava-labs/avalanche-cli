@@ -126,6 +126,9 @@ func waitForNodeToBePrimaryNetworkValidator(nodeID ids.NodeID) error {
 
 func validateSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
+	if err := checkCluster(clusterName); err != nil {
+		return err
+	}
 	err := setupAnsible()
 	if err != nil {
 		return err

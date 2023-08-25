@@ -28,6 +28,9 @@ To get the bootstrap status of a node with a Subnet, use --subnet flag`,
 
 func statusSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
+	if err := checkCluster(clusterName); err != nil {
+		return err
+	}
 	if err := setupAnsible(); err != nil {
 		return err
 	}
