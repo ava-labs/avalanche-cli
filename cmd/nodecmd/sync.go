@@ -104,6 +104,9 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) error {
 	if err != nil {
 		return err
 	}
+	if err := app.CreateAnsibleStatusFile(app.GetAvalancheGoJSONFile()); err != nil {
+		return err
+	}
 	if err := ansible.RunAnsiblePlaybookCheckAvalancheGoVersion(app.GetAnsibleDir(), app.GetAvalancheGoJSONFile(), app.GetAnsibleInventoryPath(clusterName)); err != nil {
 		return err
 	}
