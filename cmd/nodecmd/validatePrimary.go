@@ -50,7 +50,7 @@ func newValidatePrimaryCmd() *cobra.Command {
 		Short: "(ALPHA Warning) Join Primary Network as a validator",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
-The node validate command enables all nodes in a cluster to be validators of Primary
+The node validate primary command enables all nodes in a cluster to be validators of Primary
 Network.`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
