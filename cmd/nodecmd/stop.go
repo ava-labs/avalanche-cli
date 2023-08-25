@@ -81,20 +81,12 @@ func removeConfigFiles(clusterName string) error {
 
 func stopNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	var err error
-	clusterConfig := models.ClusterConfig{}
-	if app.ClusterConfigExists() {
-		clusterConfig, err = app.LoadClusterConfig()
-		if err != nil {
-			return err
-		}
+	if err := checkCluster(clusterName); err != nil {
+		return err
 	}
-	if _, ok := clusterConfig.Clusters[clusterName]; !ok {
-		return fmt.Errorf("unable to find state file for cluster %s in .avalanche-cli dir", clusterName)
-	}
-	clusterNodes := clusterConfig.Clusters[clusterName]
-	if len(clusterNodes) == 0 {
-		return fmt.Errorf("no nodes found in cluster %s", clusterName)
+	clusterNodes, err := getClusterNodes(clusterName)
+	if err != nil {
+		return err
 	}
 	nodeConfig, err := app.LoadClusterNodeConfig(clusterNodes[0])
 	if err != nil {
@@ -124,4 +116,28 @@ func stopNode(_ *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser(fmt.Sprintf("Node instance %s in cluster %s successfully stopped!", nodeConfig.NodeID, clusterName))
 	return nil
+}
+
+func checkCluster(clusterName string) error {
+	_, err := getClusterNodes(clusterName)
+	return err
+}
+
+func getClusterNodes(clusterName string) ([]string, error) {
+	clusterConfig := models.ClusterConfig{}
+	if app.ClusterConfigExists() {
+		var err error
+		clusterConfig, err = app.LoadClusterConfig()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if _, ok := clusterConfig.Clusters[clusterName]; !ok {
+		return nil, fmt.Errorf("cluster %q does not exist", clusterName)
+	}
+	clusterNodes := clusterConfig.Clusters[clusterName]
+	if len(clusterNodes) == 0 {
+		return nil, fmt.Errorf("no nodes found in cluster %s", clusterName)
+	}
+	return clusterNodes, nil
 }

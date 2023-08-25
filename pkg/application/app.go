@@ -136,6 +136,13 @@ func (app *Avalanche) CreateAnsibleDir() error {
 }
 
 func (app *Avalanche) CreateTerraformDir() error {
+	nodesDir := app.GetNodesDir()
+	if _, err := os.Stat(nodesDir); os.IsNotExist(err) {
+		err = os.Mkdir(nodesDir, constants.DefaultPerms755)
+		if err != nil {
+			return err
+		}
+	}
 	nodeTerraformDir := app.GetTerraformDir()
 	if _, err := os.Stat(nodeTerraformDir); os.IsNotExist(err) {
 		err = os.Mkdir(nodeTerraformDir, constants.DefaultPerms755)

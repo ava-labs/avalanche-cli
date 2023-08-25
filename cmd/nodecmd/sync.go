@@ -42,6 +42,9 @@ You can check the subnet bootstrap status by calling avalanche node status <clus
 func syncSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	subnetName := args[1]
+	if err := checkCluster(clusterName); err != nil {
+		return err
+	}
 	if err := setupAnsible(); err != nil {
 		return err
 	}
