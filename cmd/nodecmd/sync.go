@@ -30,7 +30,7 @@ func newSyncCmd() *cobra.Command {
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
 The node sync command enables all nodes in a cluster to be bootstrapped to a Subnet. 
-You can check the subnet bootstrap status by calling avalanche node status clusterName --subnet`,
+You can check the subnet bootstrap status by calling avalanche node status <clusterName> --subnet <subnetName>`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(2),
 		RunE:         syncSubnet,
