@@ -22,7 +22,7 @@ import (
 
 func newValidateSubnetCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "subnet [clusterName]",
+		Use:   "subnet [clusterName] [subnetName]",
 		Short: "(ALPHA Warning) Join a Subnet as a validator",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
@@ -30,12 +30,13 @@ The node validate subnet command enables all nodes in a cluster to be validators
 If the command is run before the nodes are Primary Network validators, the command will first
 make the nodes Primary Network validators before making them Subnet validators. 
 If The command is run before the nodes are bootstrapped on the Primary Network, the command will fail. 
-You can check the bootstrap status by calling avalanche node status <clusterName>`,
+You can check the bootstrap status by calling avalanche node status <clusterName>
+If The command is run before the nodes are synced to the subnet, the command will fail.
+You can check the subnet sync status by calling avalanche node status <clusterName> --subnet <subnetName>`,
 		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
+		Args:         cobra.ExactArgs(2),
 		RunE:         validateSubnet,
 	}
-	cmd.Flags().StringVar(&subnetName, "subnet", "", "specify the subnet the node is validating")
 	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "set up validator in testnet (alias to `fuji`)")
 	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "set up validator in fuji (alias to `testnet`")
 	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "set up validator in mainnet")
@@ -126,6 +127,7 @@ func waitForNodeToBePrimaryNetworkValidator(nodeID ids.NodeID) error {
 
 func validateSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
+	subnetName := args[1]
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
