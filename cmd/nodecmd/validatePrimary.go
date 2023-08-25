@@ -353,6 +353,9 @@ func addNodeAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network)
 
 func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
+	if err := checkCluster(clusterName); err != nil {
+		return err
+	}
 	err := setupAnsible()
 	if err != nil {
 		return err
