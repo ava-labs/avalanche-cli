@@ -111,6 +111,42 @@ func (d *PublicDeployer) AddValidator(
 	return false, tx, remainingSubnetAuthKeys, nil
 }
 
+// AddValidatorPrimaryNetwork adds node as Primary Network Validator
+func (d *PublicDeployer) AddValidatorPrimaryNetwork(
+	nodeID ids.NodeID,
+	weight uint64,
+	startTime time.Time,
+	duration time.Duration,
+	recipientAddr ids.ShortID,
+	shares uint32,
+) error {
+	wallet, err := d.loadWallet()
+	if err != nil {
+		return err
+	}
+	validator := &txs.Validator{
+		NodeID: nodeID,
+		Start:  uint64(startTime.Unix()),
+		End:    uint64(startTime.Add(duration).Unix()),
+		Wght:   weight,
+	}
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign AddValidator transaction on the ledger device *** ")
+	}
+	owner := &secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs: []ids.ShortID{
+			recipientAddr,
+		},
+	}
+	tx, err := wallet.P().IssueAddValidatorTx(validator, owner, shares)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", tx.ID().String())
+	return nil
+}
+
 func (d *PublicDeployer) CreateAssetTx(
 	subnetID ids.ID,
 	tokenName string,

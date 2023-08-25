@@ -60,44 +60,62 @@ const (
 
 	CliInstallationURL    = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
 	ExpectedCliInstallErr = "resource temporarily unavailable"
-
-	KeyDir     = "key"
-	KeySuffix  = ".pk"
-	YAMLSuffix = ".yml"
-	ConfigDir  = "config"
+	EIPLimitErr           = "AddressLimitExceeded"
+	KeyDir                = "key"
+	KeySuffix             = ".pk"
+	YAMLSuffix            = ".yml"
+	ConfigDir             = "config"
 
 	Enable = "enable"
 
 	Disable = "disable"
 
-	TimeParseLayout    = "2006-01-02 15:04:05"
-	MinStakeDuration   = 24 * 14 * time.Hour
-	MaxStakeDuration   = 24 * 365 * time.Hour
-	MaxStakeWeight     = 100
-	MinStakeWeight     = 1
-	DefaultStakeWeight = 20
+	TimeParseLayout             = "2006-01-02 15:04:05"
+	MinStakeWeight              = 1
+	DefaultStakeWeight          = 20
+	AVAXSymbol                  = "AVAX"
+	DefaultFujiStakeDuration    = "48h"
+	DefaultMainnetStakeDuration = "336h"
 	// The absolute minimum is 25 seconds, but set to 1 minute to allow for
 	// time to go through the command
-	StakingStartLeadTime               = 1 * time.Minute
-	StakingMinimumLeadTime             = 25 * time.Second
-	TerraformNodeConfigFile            = "node_config.tf"
-	AvalancheCLISuffix                 = "-avalanche-cli"
-	AWSDefaultCredential               = "default"
-	CertSuffix                         = "-kp.pem"
-	AWSSecurityGroupSuffix             = "-sg"
-	SSHTCPPort                         = 22
-	AvalanchegoAPIPort                 = 9650
-	AvalanchegoP2PPort                 = 9651
-	OutboundPort                       = 0
-	Terraform                          = "terraform"
-	AnsiblePlaybook                    = "ansible-playbook"
-	SetupNodePlaybook                  = "playbook/setupNode.yml"
-	AnsibleInventoryDir                = "inventories"
-	AnsibleInventoryFlag               = "-i"
-	AnsibleExtraArgsIdentitiesOnlyFlag = "--ssh-extra-args='-o IdentitiesOnly=yes'"
-	DefaultConfigFileName              = ".avalanche-cli"
-	DefaultConfigFileType              = "json"
-	WriteReadReadPerms                 = 0o644
+	StakingStartLeadTime                  = 5 * time.Minute
+	StakingMinimumLeadTime                = 25 * time.Second
+	PrimaryNetworkValidatingStartLeadTime = 20 * time.Second
+	AWSCloudServerRunningState            = "running"
+	TerraformNodeConfigFile               = "node_config.tf"
+	AvalancheCLISuffix                    = "-avalanche-cli"
+	AWSDefaultCredential                  = "default"
+	CertSuffix                            = "-kp.pem"
+	AWSSecurityGroupSuffix                = "-sg"
+	ExportSubnetSuffix                    = "-export.dat"
+	SSHTCPPort                            = 22
+	AvalanchegoAPIPort                    = 9650
+	AvalanchegoP2PPort                    = 9651
+	CloudServerStorageSize                = 1000
+	OutboundPort                          = 0
+	Terraform                             = "terraform"
+	AnsiblePlaybook                       = "ansible-playbook"
+	SetupNodePlaybook                     = "playbook/setupNode.yml"
+	CopyStakingFilesPlaybook              = "playbook/copyStakingFiles.yml"
+	ExportSubnetPlaybook                  = "playbook/exportSubnet.yml"
+	GetNodeIDPlaybook                     = "playbook/getNodeID.yml"
+	IsBootstrappedPlaybook                = "playbook/isBootstrapped.yml"
+	IsSubnetSyncedPlaybook                = "playbook/isSubnetSynced.yml"
+	TrackSubnetPlaybook                   = "playbook/trackSubnet.yml"
+	AvalancheGoVersionPlaybook            = "playbook/avalancheGoVersion.yml"
+	IsBootstrappedJSONFile                = "isBootstrapped.json"
+	AvalancheGoVersionJSONFile            = "avalancheGoVersion.json"
+	NodeIDJSONFile                        = "nodeID.json"
+	SubnetSyncJSONFile                    = "isSubnetSynced.json"
+	AnsibleInventoryDir                   = "inventories"
+	AnsiblePlaybookDir                    = "playbook"
+	AnsibleStatusDir                      = "status"
+	AnsibleInventoryFlag                  = "-i"
+	AnsibleExtraArgsIdentitiesOnlyFlag    = "--ssh-extra-args='-o IdentitiesOnly=yes'"
+	AnsibleExtraVarsFlag                  = "--extra-vars"
+	DefaultConfigFileName                 = ".avalanche-cli"
+	DefaultConfigFileType                 = "json"
+	WriteReadReadPerms                    = 0o644
 
 	CustomVMDir = "vms"
 

@@ -42,6 +42,17 @@ the --output flag.`,
 	return cmd
 }
 
+func CallExportSubnet(subnetName, exportPath string, network models.Network) error {
+	switch network {
+	case models.Mainnet:
+		deployMainnet = true
+	case models.Fuji:
+		deployTestnet = true
+	}
+	exportOutput = exportPath
+	return exportSubnet(nil, []string{subnetName})
+}
+
 func exportSubnet(_ *cobra.Command, args []string) error {
 	var err error
 	if exportOutput == "" {

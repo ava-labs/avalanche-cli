@@ -64,7 +64,7 @@ func stats(_ *cobra.Command, args []string) error {
 		network = models.NetworkFromString(networkStr)
 	}
 
-	chains, err := validateSubnetNameAndGetChains(args)
+	chains, err := ValidateSubnetNameAndGetChains(args)
 	if err != nil {
 		return err
 	}

@@ -24,7 +24,7 @@ func vmidCmd() *cobra.Command {
 }
 
 func printVMID(_ *cobra.Command, args []string) error {
-	chains, err := validateSubnetNameAndGetChains(args)
+	chains, err := ValidateSubnetNameAndGetChains(args)
 	if err != nil {
 		return err
 	}

@@ -116,6 +116,10 @@ func (app *Avalanche) GetNodeConfigPath(nodeName string) string {
 	return filepath.Join(app.GetNodesDir(), nodeName, constants.NodeCloudConfigFileName)
 }
 
+func (app *Avalanche) GetNodeInstanceDirPath(nodeName string) string {
+	return filepath.Join(app.GetNodesDir(), nodeName)
+}
+
 func (app *Avalanche) GetAnsibleDir() string {
 	return filepath.Join(app.GetNodesDir(), constants.AnsibleDir)
 }
@@ -132,6 +136,13 @@ func (app *Avalanche) CreateAnsibleDir() error {
 }
 
 func (app *Avalanche) CreateTerraformDir() error {
+	nodesDir := app.GetNodesDir()
+	if _, err := os.Stat(nodesDir); os.IsNotExist(err) {
+		err = os.Mkdir(nodesDir, constants.DefaultPerms755)
+		if err != nil {
+			return err
+		}
+	}
 	nodeTerraformDir := app.GetTerraformDir()
 	if _, err := os.Stat(nodeTerraformDir); os.IsNotExist(err) {
 		err = os.Mkdir(nodeTerraformDir, constants.DefaultPerms755)
@@ -154,7 +165,7 @@ func (app *Avalanche) CreateAnsibleInventoryDir() error {
 }
 
 func (app *Avalanche) CreateAnsiblePlaybookDir() error {
-	playbookDir := filepath.Join(app.GetAnsibleDir(), "playbook")
+	playbookDir := filepath.Join(app.GetAnsibleDir(), constants.AnsiblePlaybookDir)
 	if _, err := os.Stat(playbookDir); os.IsNotExist(err) {
 		err = os.Mkdir(playbookDir, constants.DefaultPerms755)
 		if err != nil {
@@ -584,6 +595,17 @@ func (app *Avalanche) LoadElasticSubnetConfig(subnetName string) (models.Elastic
 	return esc, err
 }
 
+func (app *Avalanche) LoadClusterNodeConfig(nodeName string) (models.NodeConfig, error) {
+	nodeConfigPath := app.GetNodeConfigPath(nodeName)
+	jsonBytes, err := os.ReadFile(nodeConfigPath)
+	if err != nil {
+		return models.NodeConfig{}, err
+	}
+	var nodeConfig models.NodeConfig
+	err = json.Unmarshal(jsonBytes, &nodeConfig)
+	return nodeConfig, err
+}
+
 func (app *Avalanche) LoadClusterConfig() (models.ClusterConfig, error) {
 	clusterConfigPath := app.GetClusterConfigPath()
 	jsonBytes, err := os.ReadFile(clusterConfigPath)
@@ -634,4 +656,53 @@ func (app *Avalanche) CheckCertInSSHDir(certName string) (bool, error) {
 
 func (app *Avalanche) GetAnsibleInventoryPath(clusterName string) string {
 	return filepath.Join(app.GetNodesDir(), constants.AnsibleInventoryDir, clusterName)
+}
+
+func (app *Avalanche) GetAnsibleStatusDir() string {
+	return filepath.Join(app.GetAnsibleDir(), constants.AnsibleStatusDir)
+}
+
+func (app *Avalanche) GetBootstrappedJSONFile() string {
+	return filepath.Join(app.GetAnsibleStatusDir(), constants.IsBootstrappedJSONFile)
+}
+
+func (app *Avalanche) GetAvalancheGoJSONFile() string {
+	return filepath.Join(app.GetAnsibleStatusDir(), constants.AvalancheGoVersionJSONFile)
+}
+
+func (app *Avalanche) GetNodeIDJSONFile() string {
+	return filepath.Join(app.GetAnsibleStatusDir(), constants.NodeIDJSONFile)
+}
+
+func (app *Avalanche) GetSubnetSyncJSONFile() string {
+	return filepath.Join(app.GetAnsibleStatusDir(), constants.SubnetSyncJSONFile)
+}
+
+func (app *Avalanche) SetupAnsibleEnv() error {
+	err := os.RemoveAll(app.GetAnsibleDir())
+	if err != nil {
+		return err
+	}
+	err = app.CreateAnsibleDir()
+	if err != nil {
+		return err
+	}
+	return app.CreateAnsiblePlaybookDir()
+}
+
+// CreateAnsibleStatusFile creates file named fileName in .avalanche-cli ansible status directory
+func (app *Avalanche) CreateAnsibleStatusFile(filePath string) error {
+	if err := os.MkdirAll(app.GetAnsibleStatusDir(), constants.DefaultPerms755); err != nil {
+		return err
+	}
+	statusFile, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	return statusFile.Close()
+}
+
+// RemoveAnsibleStatusDir deletes avalanche ansible status dir in .avalanche-cli
+func (app *Avalanche) RemoveAnsibleStatusDir() error {
+	return os.RemoveAll(app.GetAnsibleStatusDir())
 }

@@ -64,6 +64,17 @@ Testnet or Mainnet.`,
 	return cmd
 }
 
+func CallAddValidator(subnetName, nodeID string, network models.Network) error {
+	switch network {
+	case models.Mainnet:
+		deployMainnet = true
+	case models.Fuji:
+		deployTestnet = true
+	}
+	nodeIDStr = nodeID
+	return addValidator(nil, []string{subnetName})
+}
+
 func addValidator(_ *cobra.Command, args []string) error {
 	var (
 		nodeID ids.NodeID
@@ -126,7 +137,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		network = models.Local
 	}
 
-	chains, err := validateSubnetNameAndGetChains(args)
+	chains, err := ValidateSubnetNameAndGetChains(args)
 	if err != nil {
 		return err
 	}
@@ -219,10 +230,16 @@ func addValidator(_ *cobra.Command, args []string) error {
 	return err
 }
 
-func promptDuration(start time.Time) (time.Duration, error) {
+func PromptDuration(start time.Time, network models.Network) (time.Duration, error) {
 	for {
 		txt := "How long should this validator be validating? Enter a duration, e.g. 8760h. Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\""
-		d, err := app.Prompt.CaptureDuration(txt)
+		var d time.Duration
+		var err error
+		if network == models.Fuji {
+			d, err = app.Prompt.CaptureFujiDuration(txt)
+		} else {
+			d, err = app.Prompt.CaptureMainnetDuration(txt)
+		}
 		if err != nil {
 			return 0, err
 		}
@@ -331,7 +348,7 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bo
 				return time.Time{}, 0, err
 			}
 		default:
-			duration, err = promptDuration(start)
+			duration, err = PromptDuration(start, network)
 			if err != nil {
 				return time.Time{}, 0, err
 			}

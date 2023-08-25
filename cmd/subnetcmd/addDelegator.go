@@ -61,7 +61,7 @@ these prompts by providing the values with flags.`,
 }
 
 func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
-	chains, err := validateSubnetNameAndGetChains(args)
+	chains, err := ValidateSubnetNameAndGetChains(args)
 	if err != nil {
 		return err
 	}
