@@ -105,35 +105,47 @@ func SetSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, ipInT
 }
 
 // SetElasticIP attach elastic IP to our ec2 instance
-func SetElasticIP(rootBody *hclwrite.Body) {
+func SetElasticIP(rootBody *hclwrite.Body, numNodes uint32) {
 	eip := rootBody.AppendNewBlock("resource", []string{"aws_eip", "myeip"})
 	eipBody := eip.Body()
-	eipBody.SetAttributeValue("vpc", cty.BoolVal(true))
-
-	eipAssoc := rootBody.AppendNewBlock("resource", []string{"aws_eip_association", "eip_assoc"})
-	eipAssocBody := eipAssoc.Body()
-	eipAssocBody.SetAttributeTraversal("instance_id", hcl.Traversal{
+	eipBody.SetAttributeValue("count", cty.NumberIntVal(int64(numNodes)))
+	eipBody.SetAttributeTraversal("instance", hcl.Traversal{
 		hcl.TraverseRoot{
 			Name: "aws_instance",
 		},
 		hcl.TraverseAttr{
-			Name: "aws_node[0]",
+			Name: "aws_node[count.index]",
 		},
 		hcl.TraverseAttr{
 			Name: "id",
 		},
 	})
-	eipAssocBody.SetAttributeTraversal("allocation_id", hcl.Traversal{
-		hcl.TraverseRoot{
-			Name: "aws_eip",
-		},
-		hcl.TraverseAttr{
-			Name: "myeip",
-		},
-		hcl.TraverseAttr{
-			Name: "id",
-		},
-	})
+	eipBody.SetAttributeValue("vpc", cty.BoolVal(true))
+
+	//eipAssoc := rootBody.AppendNewBlock("resource", []string{"aws_eip_association", "eip_assoc"})
+	//eipAssocBody := eipAssoc.Body()
+	//eipAssocBody.SetAttributeTraversal("instance_id", hcl.Traversal{
+	//	hcl.TraverseRoot{
+	//		Name: "aws_instance",
+	//	},
+	//	hcl.TraverseAttr{
+	//		Name: "aws_node[0]",
+	//	},
+	//	hcl.TraverseAttr{
+	//		Name: "id",
+	//	},
+	//})
+	//eipAssocBody.SetAttributeTraversal("allocation_id", hcl.Traversal{
+	//	hcl.TraverseRoot{
+	//		Name: "aws_eip",
+	//	},
+	//	hcl.TraverseAttr{
+	//		Name: "myeip",
+	//	},
+	//	hcl.TraverseAttr{
+	//		Name: "id",
+	//	},
+	//})
 }
 
 // SetKeyPair define the key pair that we will create in our EC2 instance if it doesn't exist yet and download the .pem file to home dir
@@ -215,7 +227,7 @@ func SetOutput(rootBody *hclwrite.Body) {
 			Name: "aws_eip",
 		},
 		hcl.TraverseAttr{
-			Name: "myeip",
+			Name: "myeip[*]",
 		},
 		hcl.TraverseAttr{
 			Name: "public_ip",
@@ -229,7 +241,7 @@ func SetOutput(rootBody *hclwrite.Body) {
 			Name: "aws_instance",
 		},
 		hcl.TraverseAttr{
-			Name: "aws_node[0]",
+			Name: "aws_node[*]",
 		},
 		hcl.TraverseAttr{
 			Name: "id",
@@ -244,37 +256,54 @@ func RemoveDirectory(terraformDir string) error {
 
 // RunTerraform executes terraform apply function that creates the EC2 instances based on the .tf file provided
 // returns the AWS node-ID and node IP
-func RunTerraform(terraformDir string) (string, string, error) {
-	var instanceID string
-	var publicIP string
+func RunTerraform(terraformDir string) ([]string, []string, error) {
 	cmd := exec.Command(constants.Terraform, "init") //nolint:gosec
 	cmd.Dir = terraformDir
 	if err := cmd.Run(); err != nil {
-		return "", "", err
+		return nil, nil, err
 	}
 	cmd = exec.Command(constants.Terraform, "apply", "-auto-approve") //nolint:gosec
 	cmd.Dir = terraformDir
 	utils.SetupRealtimeCLIOutput(cmd)
 	if err := cmd.Run(); err != nil {
-		return "", "", err
+		return nil, nil, err
 	}
 
 	cmd = exec.Command(constants.Terraform, "output", "instance_id") //nolint:gosec
 	cmd.Dir = terraformDir
 	instanceIDOutput, err := cmd.Output()
 	if err != nil {
-		return "", "", err
+		return nil, nil, err
 	}
-	instanceID = string(instanceIDOutput)
 	cmd = exec.Command(constants.Terraform, "output", "instance_ip") //nolint:gosec
 	cmd.Dir = terraformDir
 	eipOutput, err := cmd.Output()
 	if err != nil {
-		return "", "", err
+		return nil, nil, err
 	}
-	publicIP = string(eipOutput)
-	// eip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
-	return instanceID[1 : len(instanceID)-2], publicIP[1 : len(publicIP)-2], nil
+
+	instanceIDs := []string{}
+	instanceIDOutputWoSpace := strings.TrimSpace(string(instanceIDOutput))
+	// eip and nodeID outputs are bounded by [ and ,] , we need to remove them
+	trimmedInstanceID := instanceIDOutputWoSpace[1 : len(instanceIDOutputWoSpace)-3]
+	splitInstanceID := strings.Split(trimmedInstanceID, ",")
+	for _, instanceID := range splitInstanceID {
+		instanceIDWoSpace := strings.TrimSpace(instanceID)
+		// eip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
+		instanceIDs = append(instanceIDs, instanceIDWoSpace[1:len(instanceIDWoSpace)-1])
+	}
+
+	publicIPs := []string{}
+	eipOutputWoSpace := strings.TrimSpace(string(eipOutput))
+	// eip and nodeID outputs are bounded by [ and ,] , we need to remove them
+	trimmedPublicIP := eipOutputWoSpace[1 : len(eipOutputWoSpace)-3]
+	splitPublicIP := strings.Split(trimmedPublicIP, ",")
+	for _, publicIP := range splitPublicIP {
+		publicIPWoSpace := strings.TrimSpace(publicIP)
+		// eip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
+		publicIPs = append(publicIPs, publicIPWoSpace[1:len(publicIPWoSpace)-1])
+	}
+	return instanceIDs, publicIPs, nil
 }
 
 func CheckIsInstalled() error {

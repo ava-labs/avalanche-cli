@@ -25,7 +25,7 @@ var config []byte
 
 // CreateAnsibleHostInventory creates inventory file to be used for Ansible playbook commands
 // specifies the ip address of the cloud server and the corresponding ssh cert path for the cloud server
-func CreateAnsibleHostInventory(inventoryPath, ip, certFilePath string) error {
+func CreateAnsibleHostInventory(inventoryPath, certFilePath string, publicIPs []string) error {
 	if err := os.MkdirAll(inventoryPath, os.ModePerm); err != nil {
 		return err
 	}
@@ -34,14 +34,18 @@ func CreateAnsibleHostInventory(inventoryPath, ip, certFilePath string) error {
 	if err != nil {
 		return err
 	}
-	alias := "aws-node "
-	alias += "ansible_host="
-	alias += ip
-	alias += " ansible_user=ubuntu "
-	alias += fmt.Sprintf("ansible_ssh_private_key_file=%s", certFilePath)
-	alias += " ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
-	_, err = inventoryFile.WriteString(alias + "\n")
-	return err
+	for _, publicIP := range publicIPs {
+		alias := fmt.Sprintf("aws_node_%s", publicIP)
+		alias += " ansible_host="
+		alias += publicIP
+		alias += " ansible_user=ubuntu "
+		alias += fmt.Sprintf("ansible_ssh_private_key_file=%s", certFilePath)
+		alias += " ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
+		if _, err = inventoryFile.WriteString(alias + "\n"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func Setup(ansibleDir string) error {
@@ -97,8 +101,8 @@ func RunAnsibleSetupNodePlaybook(configPath, ansibleDir, inventoryPath, avalanch
 
 // RunAnsibleCopyStakingFilesPlaybook copies staker.crt and staker.key into local machine so users can back up their node
 // these files are stored in .avalanche-cli/nodes/<nodeID> dir
-func RunAnsibleCopyStakingFilesPlaybook(ansibleDir, nodeInstanceDirPath, inventoryPath string) error {
-	playbookInputs := "nodeInstanceDirPath=" + nodeInstanceDirPath + "/"
+func RunAnsibleCopyStakingFilesPlaybook(ansibleDir, hostAlias, nodeInstanceDirPath, inventoryPath string) error {
+	playbookInputs := "target=" + hostAlias + " nodeInstanceDirPath=" + nodeInstanceDirPath + "/"
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.CopyStakingFilesPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	utils.SetupRealtimeCLIOutput(cmd)
