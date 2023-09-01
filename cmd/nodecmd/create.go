@@ -328,7 +328,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	}
 
 	// Create new EC2 client
-	instanceID, elasticIP, certFilePath, keyPairName, err := createEC2Instance(rootBody, ec2Svc, hclFile, region, ami, certName, prefix, securityGroupName)
+	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instance(rootBody, ec2Svc, hclFile, region, ami, certName, prefix, securityGroupName)
 	if err != nil {
 		if err.Error() == constants.EIPLimitErr {
 			ux.Logger.PrintToUser("Failed to create AWS cloud server, please try creating again in a different region")
@@ -336,7 +336,7 @@ func createNode(_ *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser("Failed to create AWS cloud server")
 		}
 		// we stop created instance so that user doesn't pay for unused EC2 instance
-		instanceID, instanceIDErr := terraform.GetInstanceID(app.GetTerraformDir())
+		instanceIDs, instanceIDErr := terraform.GetInstanceIDs(app.GetTerraformDir())
 		if instanceIDErr != nil {
 			return instanceIDErr
 		}
@@ -354,7 +354,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	inventoryPath := app.GetAnsibleInventoryPath(clusterName)
-	if err := ansible.CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
+	if err := ansible.CreateAnsibleHostInventory(inventoryPath, certFilePath, elasticIPs); err != nil {
 		return err
 	}
 	time.Sleep(15 * time.Second)
@@ -367,15 +367,20 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err := runAnsible(inventoryPath, avalancheGoVersion); err != nil {
 		return err
 	}
-	err = createClusterNodeConfig(instanceID, region, ami, keyPairName, certFilePath, securityGroupName, elasticIP, clusterName)
+	err = createClusterNodeConfig(instanceIDs, elasticIPs, region, ami, keyPairName, certFilePath, securityGroupName, clusterName)
 	if err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
-	if err := ansible.RunAnsibleCopyStakingFilesPlaybook(app.GetAnsibleDir(), app.GetNodeInstanceDirPath(instanceID), inventoryPath); err != nil {
-		return err
+	for i, instanceID := range instanceIDs {
+		nodeInstanceDirPath := app.GetNodeInstanceDirPath(instanceID)
+		// ansible host alias's name is formatted as aws_node_{publicIP}
+		nodeInstanceAnsibleAlias := fmt.Sprintf("aws_node_%s", elasticIPs[i])
+		if err := ansible.RunAnsibleCopyStakingFilesPlaybook(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
+			return err
+		}
 	}
-	PrintResults(instanceID, elasticIP, certFilePath, region)
+	PrintResults(instanceIDs, elasticIPs, certFilePath, region)
 	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node is bootstrapping!")
 	return nil
 }
@@ -515,7 +520,7 @@ func promptAvalancheGoReferenceChoice() (string, error) {
 	}
 }
 
-func PrintResults(instanceID, elasticIP, certFilePath, region string) {
+func PrintResults(instanceIDs, elasticIPs []string, certFilePath, region string) {
 	ux.Logger.PrintToUser("VALIDATOR SUCCESSFULLY SET UP!")
 	ux.Logger.PrintToUser("Please wait until validator is successfully boostrapped to run further commands on validator")
 	ux.Logger.PrintToUser("")
