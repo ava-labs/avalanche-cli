@@ -521,20 +521,28 @@ func promptAvalancheGoReferenceChoice() (string, error) {
 }
 
 func PrintResults(instanceIDs, elasticIPs []string, certFilePath, region string) {
-	ux.Logger.PrintToUser("VALIDATOR SUCCESSFULLY SET UP!")
-	ux.Logger.PrintToUser("Please wait until validator is successfully boostrapped to run further commands on validator")
+	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintToUser("AVALANCHE NODE(S) SUCCESSFULLY SET UP!")
+	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintToUser("Please wait until the node(s) are successfully bootstrapped to run further commands on the node(s)")
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Here are the details of the set up validator: ")
-	ux.Logger.PrintToUser(fmt.Sprintf("Cloud Instance ID: %s", instanceID))
-	ux.Logger.PrintToUser(fmt.Sprintf("Elastic IP: %s", elasticIP))
-	ux.Logger.PrintToUser(fmt.Sprintf("Cloud Region: %s", region))
-	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Here are the details of the set up node(s): ")
+	for i, instanceID := range instanceIDs {
+		if len(instanceIDs) > 1 {
+			hostAliasName := fmt.Sprintf("aws_node_%s", elasticIPs[i])
+			ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", hostAliasName))
+		}
+		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Instance ID: %s", instanceID))
+		ux.Logger.PrintToUser(fmt.Sprintf("Elastic IP: %s", elasticIPs[i]))
+		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Region: %s", region))
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(fmt.Sprintf("staker.crt and staker.key are stored at %s. If anything happens to your node or the machine node runs on, these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID)))
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("To ssh to node, run: ")
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(fmt.Sprintf("ssh -o IdentitiesOnly=yes ubuntu@%s -i %s", elasticIPs[i], certFilePath))
+		ux.Logger.PrintToUser("")
+	}
 	ux.Logger.PrintToUser(fmt.Sprintf("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", certFilePath))
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(fmt.Sprintf("staker.crt and staker.key are stored at %s. If anything happens to your node or the machine node runs on, these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID)))
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("To ssh to validator, run: ")
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(fmt.Sprintf("ssh -o IdentitiesOnly=yes ubuntu@%s -i %s", elasticIP, certFilePath))
 	ux.Logger.PrintToUser("")
 }
