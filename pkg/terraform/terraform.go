@@ -105,7 +105,7 @@ func SetSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, ipInT
 }
 
 // SetElasticIP attach elastic IP to our ec2 instance
-func SetElasticIP(rootBody *hclwrite.Body) {
+func SetElasticIP(rootBody *hclwrite.Body, numNodes uint32) {
 	eip := rootBody.AppendNewBlock("resource", []string{"aws_eip", "myeip"})
 	eipBody := eip.Body()
 	eipBody.SetAttributeValue("vpc", cty.BoolVal(true))
