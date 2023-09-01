@@ -339,5 +339,6 @@ func TestUpdateToCustomBin(t *testing.T) {
 	diskSC, err := app.LoadSidecar(subnetName)
 	assert.NoError(err)
 	assert.Equal(models.VMTypeFromString(models.CustomVM), diskSC.VM)
+	assert.Equal(26, diskSC.RPCVersion)
 	assert.Empty(diskSC.VMVersion)
 }
