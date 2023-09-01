@@ -283,7 +283,7 @@ func createEC2Instance(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	ux.Logger.PrintToUser("A new EC2 instance is successfully created in AWS!")
+	ux.Logger.PrintToUser("New EC2 instance(s) successfully created in AWS!")
 	if !useExistingKeyPair {
 		// takes the cert file downloaded from AWS through terraform and moves it to .ssh directory
 		err = addCertToSSH(certName)
@@ -386,7 +386,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		}
 	}
 	PrintResults(instanceIDs, elasticIPs, certFilePath, region)
-	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node is bootstrapping!")
+	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	return nil
 }
 
@@ -533,6 +533,7 @@ func PrintResults(instanceIDs, elasticIPs []string, certFilePath, region string)
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Here are the details of the set up node(s): ")
 	for i, instanceID := range instanceIDs {
+		ux.Logger.PrintToUser("======================================")
 		if len(instanceIDs) > 1 {
 			hostAliasName := fmt.Sprintf("aws_node_%s", elasticIPs[i])
 			ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", hostAliasName))
@@ -547,6 +548,7 @@ func PrintResults(instanceIDs, elasticIPs []string, certFilePath, region string)
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(fmt.Sprintf("ssh -o IdentitiesOnly=yes ubuntu@%s -i %s", elasticIPs[i], certFilePath))
 		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("======================================")
 	}
 	ux.Logger.PrintToUser(fmt.Sprintf("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", certFilePath))
 	ux.Logger.PrintToUser("")

@@ -268,7 +268,7 @@ func GetInstanceIDs(terraformDir string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	var instanceIDs []string
+	instanceIDs := []string{}
 	instanceIDOutputWoSpace := strings.TrimSpace(string(instanceIDOutput))
 	// eip and nodeID outputs are bounded by [ and ,] , we need to remove them
 	trimmedInstanceID := instanceIDOutputWoSpace[1 : len(instanceIDOutputWoSpace)-3]
@@ -288,7 +288,7 @@ func GetPublicIPs(terraformDir string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	var publicIPs []string
+	publicIPs := []string{}
 	eipOutputWoSpace := strings.TrimSpace(string(eipOutput))
 	// eip and nodeID outputs are bounded by [ and ,] , we need to remove them
 	trimmedPublicIP := eipOutputWoSpace[1 : len(eipOutputWoSpace)-3]
