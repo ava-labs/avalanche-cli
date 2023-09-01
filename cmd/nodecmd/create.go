@@ -340,13 +340,18 @@ func createNode(_ *cobra.Command, args []string) error {
 		if instanceIDErr != nil {
 			return instanceIDErr
 		}
-		ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s...", instanceID))
-		if stopErr := awsAPI.StopInstance(ec2Svc, instanceID, "", false); stopErr != nil {
-			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop cloud server instance %s", instanceID))
-			ux.Logger.PrintToUser(fmt.Sprintf("Stop cloud server instance %s on AWS console to prevent charges", instanceID))
-			return stopErr
+		for i, instanceID := range instanceIDs {
+			ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s...", instanceID))
+			if stopErr := awsAPI.StopInstance(ec2Svc, instanceID, "", false); stopErr != nil {
+				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop cloud server instance %s", instanceID))
+				ux.Logger.PrintToUser("Stop the following instance(s) on AWS console to prevent charges:")
+				for j := i; j < len(instanceIDs); j++ {
+					ux.Logger.PrintToUser(instanceIDs[j])
+				}
+				return stopErr
+			}
+			ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s stopped", instanceID))
 		}
-		ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s stopped", instanceID))
 		return err
 	}
 	err = terraform.RemoveDirectory(app.GetTerraformDir())
