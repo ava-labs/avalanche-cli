@@ -13,16 +13,23 @@ import (
 func CreateCustomSubnetConfig(app *application.Avalanche, subnetName string, genesisPath, vmPath string) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating custom VM subnet %s", subnetName)
 
+	rpcVersion, err := GetVMBinaryProtocolVersion(vmPath)
+	if err != nil {
+		return nil, &models.Sidecar{}, err
+	}
+
 	genesisBytes, err := loadCustomGenesis(app, genesisPath)
 	if err != nil {
 		return nil, &models.Sidecar{}, err
 	}
 
 	sc := &models.Sidecar{
-		Name:      subnetName,
-		VM:        models.CustomVM,
-		Subnet:    subnetName,
-		TokenName: "",
+		Name:       subnetName,
+		VM:         models.CustomVM,
+		VMVersion:  "",
+		RPCVersion: rpcVersion,
+		Subnet:     subnetName,
+		TokenName:  "",
 	}
 
 	err = CopyCustomVM(app, subnetName, vmPath)

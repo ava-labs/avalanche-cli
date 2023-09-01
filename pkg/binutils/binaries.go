@@ -228,6 +228,8 @@ func (pbd *pluginBinaryDownloader) UpgradeVM(vmID, vmBin string) error {
 	// target of VM install
 	binaryPath := filepath.Join(pbd.app.GetPluginsDir(), vmID)
 
+	fmt.Println(binaryPath)
+
 	// check if binary is already present, it should already exist
 	if _, err := os.Stat(binaryPath); errors.Is(err, os.ErrNotExist) {
 		return errors.New("vm binary does not exist, are you sure this Subnet is ready to upgrade?")

@@ -292,7 +292,11 @@ func updateToCustomBin(sc models.Sidecar, networkToUpgrade, binaryPath string) e
 	}
 
 	sc.VM = models.CustomVM
-	targetVersion = ""
+	sc.RPCVersion, err = vm.GetVMBinaryProtocolVersion(binaryPath)
+	if err != nil {
+		return fmt.Errorf("unable to get RPC version: %w", err)
+	}
+	targetVersion := ""
 
 	return updateVMByNetwork(sc, targetVersion, networkToUpgrade)
 }
@@ -329,7 +333,11 @@ func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
 	case models.CustomVM:
 		// get the path to the already copied binary
 		vmBin = binutils.SetupCustomBin(app, sc.Name)
-		rpcVersion = 0
+
+		rpcVersion, err = vm.GetVMBinaryProtocolVersion(vmBin)
+		if err != nil {
+			return fmt.Errorf("unable to get RPC version: %w", err)
+		}
 	default:
 		return errors.New("unknown VM type " + string(sc.VM))
 	}
