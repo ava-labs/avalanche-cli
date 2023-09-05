@@ -3,6 +3,7 @@
 package vm
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -15,7 +16,7 @@ func CreateCustomSubnetConfig(app *application.Avalanche, subnetName string, gen
 
 	rpcVersion, err := GetVMBinaryProtocolVersion(vmPath)
 	if err != nil {
-		return nil, &models.Sidecar{}, err
+		return nil, &models.Sidecar{}, fmt.Errorf("unable to get RPC version: %w", err)
 	}
 
 	genesisBytes, err := loadCustomGenesis(app, genesisPath)
