@@ -124,7 +124,6 @@ func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) 
 		subnetName,
 		"--"+constants.SkipUpdateFlag,
 	)
-	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		var (
