@@ -315,12 +315,12 @@ func checkClusterIsBootstrapped(clusterName string, printOutput bool) ([]string,
 	return notBootstrappedNodes, nil
 }
 
-func getClusterNodeID(clusterName string) (string, error) {
-	ux.Logger.PrintToUser("Getting node id ...")
+func getClusterNodeID(clusterName, hostAlias string) (string, error) {
+	ux.Logger.PrintToUser(fmt.Sprintf("Getting node id for node %s...", hostAlias))
 	if err := app.CreateAnsibleStatusFile(app.GetNodeIDJSONFile()); err != nil {
 		return "", err
 	}
-	if err := ansible.RunAnsiblePlaybookGetNodeID(app.GetAnsibleDir(), app.GetNodeIDJSONFile(), app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
+	if err := ansible.RunAnsiblePlaybookGetNodeID(app.GetAnsibleDir(), app.GetNodeIDJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), hostAlias); err != nil {
 		return "", err
 	}
 	nodeID, err := parseNodeIDOutput(app.GetNodeIDJSONFile())
@@ -375,16 +375,39 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	if len(notBootstrappedNodes) > 0 {
 		return fmt.Errorf("node(s) %s are not bootstrapped yet, please try again later", notBootstrappedNodes)
 	}
-	nodeIDStr, err := getClusterNodeID(clusterName)
+	hostAliases, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryFilePath(clusterName))
 	if err != nil {
 		return err
 	}
-	nodeID, err := ids.NodeIDFromString(nodeIDStr)
-	if err != nil {
-		return err
+	failedNodes := []string{}
+	nodeErrors := []error{}
+	for _, host := range hostAliases {
+		nodeIDStr, err := getClusterNodeID(clusterName, host)
+		if err != nil {
+			failedNodes = append(failedNodes, host)
+			nodeErrors = append(nodeErrors, err)
+			continue
+		}
+		nodeID, err := ids.NodeIDFromString(nodeIDStr)
+		if err != nil {
+			failedNodes = append(failedNodes, host)
+			nodeErrors = append(nodeErrors, err)
+			continue
+		}
+		_, err = addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji)
+		if err != nil {
+			failedNodes = append(failedNodes, host)
+			nodeErrors = append(nodeErrors, err)
+		}
 	}
-	_, err = addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji)
-	return err
+	if len(failedNodes) > 0 {
+		ux.Logger.PrintToUser("Failed nodes: ")
+		for i, node := range failedNodes {
+			ux.Logger.PrintToUser(fmt.Sprintf("node %s failed due to %s", node, nodeErrors[i]))
+		}
+		return fmt.Errorf("node(s) %s failed to validate the Primary Network", failedNodes)
+	}
+	return nil
 }
 
 // convertNanoAvaxToAvaxString converts nanoAVAX to AVAX

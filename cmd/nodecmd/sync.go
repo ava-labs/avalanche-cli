@@ -5,11 +5,12 @@ package nodecmd
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	"golang.org/x/exp/slices"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
@@ -71,7 +72,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if len(untrackedNodes) > 0 {
-		return err
+		return fmt.Errorf("node(s) %s failed to sync with subnet %s", untrackedNodes, subnetName)
 	}
 	ux.Logger.PrintToUser("Node(s) successfully started syncing with Subnet!")
 	ux.Logger.PrintToUser(fmt.Sprintf("Check node subnet syncing status with avalanche node status %s --subnet %s", clusterName, subnetName))
@@ -168,7 +169,7 @@ func trackSubnet(clusterName, subnetToTrack string, network models.Network) ([]s
 		if err = subnetcmd.CallExportSubnet(subnetToTrack, subnetPath, network); err != nil {
 			return nil, err
 		}
-		if err = ansible.RunAnsiblePlaybookExportSubnet(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), subnetPath, "/tmp"); err != nil {
+		if err = ansible.RunAnsiblePlaybookExportSubnet(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), subnetPath, "/tmp", host); err != nil {
 			return nil, err
 		}
 		// runs avalanche join subnet command

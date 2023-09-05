@@ -132,8 +132,8 @@ func RunAnsibleCopyStakingFilesPlaybook(ansibleDir, hostAlias, nodeInstanceDirPa
 }
 
 // RunAnsiblePlaybookExportSubnet exports deployed Subnet from local machine to cloud server
-func RunAnsiblePlaybookExportSubnet(ansibleDir, inventoryPath, exportPath, cloudServerSubnetPath string) error {
-	playbookInputs := "originSubnetPath=" + exportPath + " destSubnetPath=" + cloudServerSubnetPath
+func RunAnsiblePlaybookExportSubnet(ansibleDir, inventoryPath, exportPath, cloudServerSubnetPath, hostAlias string) error {
+	playbookInputs := "target=" + hostAlias + " originSubnetPath=" + exportPath + " destSubnetPath=" + cloudServerSubnetPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.ExportSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	utils.SetupRealtimeCLIOutput(cmd)
@@ -166,16 +166,16 @@ func RunAnsiblePlaybookCheckBootstrapped(ansibleDir, isBootstrappedPath, invento
 }
 
 // RunAnsiblePlaybookGetNodeID gets node ID of cloud server
-func RunAnsiblePlaybookGetNodeID(ansibleDir, nodeIDPath, inventoryPath string) error {
-	playbookInputs := "nodeIDJsonPath=" + nodeIDPath
+func RunAnsiblePlaybookGetNodeID(ansibleDir, nodeIDPath, inventoryPath, hostAlias string) error {
+	playbookInputs := "target=" + hostAlias + " nodeIDJsonPath=" + nodeIDPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.GetNodeIDPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	return cmd.Run()
 }
 
 // RunAnsiblePlaybookSubnetSyncStatus checks if node is synced to subnet
-func RunAnsiblePlaybookSubnetSyncStatus(ansibleDir, subnetSyncPath, blockchainID, inventoryPath string) error {
-	playbookInputs := "blockchainID=" + blockchainID + " subnetSyncPath=" + subnetSyncPath
+func RunAnsiblePlaybookSubnetSyncStatus(ansibleDir, subnetSyncPath, blockchainID, inventoryPath, hostAlias string) error {
+	playbookInputs := "target=" + hostAlias + " blockchainID=" + blockchainID + " subnetSyncPath=" + subnetSyncPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsSubnetSyncedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	return cmd.Run()

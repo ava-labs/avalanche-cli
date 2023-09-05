@@ -3,9 +3,6 @@
 package nodecmd
 
 import (
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 )
 
@@ -35,19 +32,19 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if subnetName != "" {
-		if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
-			return err
-		}
-		sc, err := app.LoadSidecar(subnetName)
-		if err != nil {
-			return err
-		}
-		blockchainID := sc.Networks[models.Fuji.String()].BlockchainID
-		if blockchainID == ids.Empty {
-			return ErrNoBlockchainID
-		}
-		_, err = getNodeSubnetSyncStatus(blockchainID.String(), clusterName, true, false)
-		return err
+		//if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
+		//	return err
+		//}
+		//sc, err := app.LoadSidecar(subnetName)
+		//if err != nil {
+		//	return err
+		//}
+		//blockchainID := sc.Networks[models.Fuji.String()].BlockchainID
+		//if blockchainID == ids.Empty {
+		//	return ErrNoBlockchainID
+		//}
+		//_, err = getNodeSubnetSyncStatus(blockchainID.String(), clusterName, true, false)
+		//return err
 	}
 	_, err := checkClusterIsBootstrapped(clusterName, true)
 	return err
