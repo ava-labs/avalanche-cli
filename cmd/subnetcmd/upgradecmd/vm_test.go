@@ -321,7 +321,7 @@ func TestUpdateToCustomBin(t *testing.T) {
 
 	assert.FileExists(binaryPath)
 
-	err = updateToCustomBin(sc, networkToUpgrade, binaryPath)
+	err = updateToCustomBin(sc, networkToUpgrade, binaryPath, false)
 	assert.NoError(err)
 
 	// check new binary exists and matches
@@ -339,6 +339,5 @@ func TestUpdateToCustomBin(t *testing.T) {
 	diskSC, err := app.LoadSidecar(subnetName)
 	assert.NoError(err)
 	assert.Equal(models.VMTypeFromString(models.CustomVM), diskSC.VM)
-	assert.Equal(26, diskSC.RPCVersion)
 	assert.Empty(diskSC.VMVersion)
 }

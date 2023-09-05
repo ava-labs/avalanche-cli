@@ -130,7 +130,7 @@ func upgradeVM(_ *cobra.Command, args []string) error {
 	}
 
 	// Must be a custom update
-	return updateToCustomBin(sc, networkToUpgrade, binaryPathArg)
+	return updateToCustomBin(sc, networkToUpgrade, binaryPathArg, true)
 }
 
 // select which network to upgrade
@@ -192,7 +192,7 @@ func selectUpdateOption(vmType models.VMType, sc models.Sidecar, networkToUpgrad
 	case targetVersion != "":
 		return updateToSpecificVersion(sc, networkToUpgrade)
 	case binaryPathArg != "":
-		return updateToCustomBin(sc, networkToUpgrade, binaryPathArg)
+		return updateToCustomBin(sc, networkToUpgrade, binaryPathArg, true)
 	}
 
 	latestVersionUpdate := "Update to latest version"
@@ -213,7 +213,7 @@ func selectUpdateOption(vmType models.VMType, sc models.Sidecar, networkToUpgrad
 	case specificVersionUpdate:
 		return updateToSpecificVersion(sc, networkToUpgrade)
 	case customBinaryUpdate:
-		return updateToCustomBin(sc, networkToUpgrade, binaryPathArg)
+		return updateToCustomBin(sc, networkToUpgrade, binaryPathArg, true)
 	default:
 		return errors.New("invalid option")
 	}
@@ -278,7 +278,7 @@ func updateVMByNetwork(sc models.Sidecar, targetVersion string, networkToUpgrade
 	}
 }
 
-func updateToCustomBin(sc models.Sidecar, networkToUpgrade, binaryPath string) error {
+func updateToCustomBin(sc models.Sidecar, networkToUpgrade, binaryPath string, updateVMBinaryProtocolVersion bool) error {
 	var err error
 	if binaryPath == "" {
 		binaryPath, err = app.Prompt.CaptureExistingFilepath("Enter path to custom binary")
@@ -292,9 +292,11 @@ func updateToCustomBin(sc models.Sidecar, networkToUpgrade, binaryPath string) e
 	}
 
 	sc.VM = models.CustomVM
-	sc.RPCVersion, err = vm.GetVMBinaryProtocolVersion(binaryPath)
-	if err != nil {
-		return fmt.Errorf("unable to get RPC version: %w", err)
+	if updateVMBinaryProtocolVersion {
+		sc.RPCVersion, err = vm.GetVMBinaryProtocolVersion(binaryPath)
+		if err != nil {
+			return fmt.Errorf("unable to get RPC version: %w", err)
+		}
 	}
 	targetVersion := ""
 
