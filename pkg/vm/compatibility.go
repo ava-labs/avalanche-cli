@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strconv"
+	"syscall"
 	"time"
 
 	pb "github.com/ava-labs/avalanchego/proto/pb/vm/runtime"
@@ -98,6 +99,14 @@ func GetVMBinaryProtocolVersion(vmPath string) (int, error) {
 	case protocolVersion = <-versionQueryInitializer.protocolVersionCh:
 	case <-timeout.C:
 		return 0, fmt.Errorf("%w", runtime.ErrHandshakeFailed)
+	}
+
+	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+		return 0, err
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return 0, err
 	}
 
 	return int(protocolVersion), nil
