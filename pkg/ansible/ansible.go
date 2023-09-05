@@ -4,12 +4,14 @@
 package ansible
 
 import (
+	"bufio"
 	"embed"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
@@ -25,7 +27,7 @@ var config []byte
 
 // CreateAnsibleHostInventory creates inventory file to be used for Ansible playbook commands
 // specifies the ip address of the cloud server and the corresponding ssh cert path for the cloud server
-func CreateAnsibleHostInventory(inventoryPath, certFilePath string, publicIPs []string) error {
+func CreateAnsibleHostInventory(inventoryPath, certFilePath string, publicIPs, instanceIDs []string) error {
 	if err := os.MkdirAll(inventoryPath, os.ModePerm); err != nil {
 		return err
 	}
@@ -34,10 +36,10 @@ func CreateAnsibleHostInventory(inventoryPath, certFilePath string, publicIPs []
 	if err != nil {
 		return err
 	}
-	for _, publicIP := range publicIPs {
-		alias := fmt.Sprintf("aws_node_%s", publicIP)
+	for i, instanceID := range instanceIDs {
+		alias := fmt.Sprintf("aws_node_%s", instanceID)
 		alias += " ansible_host="
-		alias += publicIP
+		alias += publicIPs[i]
 		alias += " ansible_user=ubuntu "
 		alias += fmt.Sprintf("ansible_ssh_private_key_file=%s", certFilePath)
 		alias += " ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
@@ -54,6 +56,26 @@ func Setup(ansibleDir string) error {
 		return err
 	}
 	return WritePlaybookFiles(ansibleDir)
+}
+
+// GetAnsibleHostsFromInventory gets alias of all hosts in an inventory file
+func GetAnsibleHostsFromInventory(inventoryPath string) ([]string, error) {
+	hostAliases := []string{}
+	file, err := os.Open(inventoryPath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		// host alias is first element in each line of host inventory file
+		hostAlias := strings.Split(scanner.Text(), " ")[0]
+		hostAliases = append(hostAliases, hostAlias)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return hostAliases, nil
 }
 
 func WritePlaybookFiles(ansibleDir string) error {
@@ -119,8 +141,8 @@ func RunAnsiblePlaybookExportSubnet(ansibleDir, inventoryPath, exportPath, cloud
 }
 
 // RunAnsiblePlaybookTrackSubnet runs avalanche subnet join <subnetName> in cloud server
-func RunAnsiblePlaybookTrackSubnet(ansibleDir, subnetName, importPath, inventoryPath string) error {
-	playbookInputs := "subnetExportFileName=" + importPath + " subnetName=" + subnetName
+func RunAnsiblePlaybookTrackSubnet(ansibleDir, subnetName, importPath, inventoryPath, hostAlias string) error {
+	playbookInputs := "target=" + hostAlias + " subnetExportFileName=" + importPath + " subnetName=" + subnetName
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.TrackSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	utils.SetupRealtimeCLIOutput(cmd)
@@ -128,17 +150,17 @@ func RunAnsiblePlaybookTrackSubnet(ansibleDir, subnetName, importPath, inventory
 }
 
 // RunAnsiblePlaybookCheckBootstrapped checks if node is bootstrapped to primary network
-func RunAnsiblePlaybookCheckAvalancheGoVersion(ansibleDir, avalancheGoPath, inventoryPath string) error {
-	playbookInput := "avalancheGoJsonPath=" + avalancheGoPath
+func RunAnsiblePlaybookCheckAvalancheGoVersion(ansibleDir, avalancheGoPath, inventoryPath, hostAlias string) error {
+	playbookInput := "target=" + hostAlias + " avalancheGoJsonPath=" + avalancheGoPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.AvalancheGoVersionPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInput, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	return cmd.Run()
 }
 
 // RunAnsiblePlaybookCheckBootstrapped checks if node is bootstrapped to primary network
-func RunAnsiblePlaybookCheckBootstrapped(ansibleDir, isBootstrappedPath, inventoryPath string) error {
-	isBootstrappedJSONPath := "isBootstrappedJsonPath=" + isBootstrappedPath
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsBootstrappedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, isBootstrappedJSONPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+func RunAnsiblePlaybookCheckBootstrapped(ansibleDir, isBootstrappedPath, inventoryPath, hostAlias string) error {
+	playbookInputs := "target=" + hostAlias + " isBootstrappedJsonPath=" + isBootstrappedPath
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsBootstrappedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	return cmd.Run()
 }

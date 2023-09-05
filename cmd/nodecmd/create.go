@@ -358,8 +358,8 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	inventoryPath := app.GetAnsibleInventoryPath(clusterName)
-	if err := ansible.CreateAnsibleHostInventory(inventoryPath, certFilePath, elasticIPs); err != nil {
+	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
+	if err := ansible.CreateAnsibleHostInventory(inventoryPath, certFilePath, elasticIPs, instanceIDs); err != nil {
 		return err
 	}
 	time.Sleep(15 * time.Second)
@@ -377,10 +377,10 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
-	for i, instanceID := range instanceIDs {
+	for _, instanceID := range instanceIDs {
 		nodeInstanceDirPath := app.GetNodeInstanceDirPath(instanceID)
-		// ansible host alias's name is formatted as aws_node_{publicIP}
-		nodeInstanceAnsibleAlias := fmt.Sprintf("aws_node_%s", elasticIPs[i])
+		// ansible host alias's name is formatted as aws_node_{instanceID}
+		nodeInstanceAnsibleAlias := fmt.Sprintf("aws_node_%s", instanceID)
 		if err := ansible.RunAnsibleCopyStakingFilesPlaybook(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
 			return err
 		}
@@ -535,7 +535,7 @@ func PrintResults(instanceIDs, elasticIPs []string, certFilePath, region string)
 	for i, instanceID := range instanceIDs {
 		ux.Logger.PrintToUser("======================================")
 		if len(instanceIDs) > 1 {
-			hostAliasName := fmt.Sprintf("aws_node_%s", elasticIPs[i])
+			hostAliasName := fmt.Sprintf("aws_node_%s", instanceID)
 			ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", hostAliasName))
 		}
 		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Instance ID: %s", instanceID))

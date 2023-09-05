@@ -53,7 +53,7 @@ func removeDeletedNodeDirectory(clusterName string) error {
 }
 
 func removeClusterInventoryDir(clusterName string) error {
-	return os.RemoveAll(app.GetAnsibleInventoryPath(clusterName))
+	return os.RemoveAll(app.GetAnsibleInventoryDirPath(clusterName))
 }
 
 func getDeleteConfigConfirmation(instanceID string) error {

@@ -654,8 +654,12 @@ func (app *Avalanche) CheckCertInSSHDir(certName string) (bool, error) {
 	return true, nil
 }
 
-func (app *Avalanche) GetAnsibleInventoryPath(clusterName string) string {
+func (app *Avalanche) GetAnsibleInventoryDirPath(clusterName string) string {
 	return filepath.Join(app.GetNodesDir(), constants.AnsibleInventoryDir, clusterName)
+}
+
+func (app *Avalanche) GetAnsibleInventoryFilePath(clusterName string) string {
+	return filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.AnsibleHostInventoryFileName)
 }
 
 func (app *Avalanche) GetAnsibleStatusDir() string {

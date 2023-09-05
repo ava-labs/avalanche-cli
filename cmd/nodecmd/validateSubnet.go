@@ -5,6 +5,7 @@ package nodecmd
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"time"
@@ -89,7 +90,7 @@ func getNodeSubnetSyncStatus(blockchainID, clusterName string, printOutput, errO
 	if err := app.CreateAnsibleStatusFile(app.GetSubnetSyncJSONFile()); err != nil {
 		return false, err
 	}
-	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(app.GetAnsibleDir(), app.GetSubnetSyncJSONFile(), blockchainID, app.GetAnsibleInventoryPath(clusterName)); err != nil {
+	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(app.GetAnsibleDir(), app.GetSubnetSyncJSONFile(), blockchainID, app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
 		return false, err
 	}
 	subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile(), printOutput)
@@ -127,7 +128,7 @@ func waitForNodeToBePrimaryNetworkValidator(nodeID ids.NodeID) error {
 
 func validateSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	subnetName := args[1]
+	subnetName = args[1]
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
@@ -135,12 +136,12 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	isBootstrapped, err := checkNodeIsBootstrapped(clusterName, false)
+	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName, false)
 	if err != nil {
 		return err
 	}
-	if !isBootstrapped {
-		return errors.New("node is not bootstrapped yet, please try again later")
+	if len(notBootstrappedNodes) > 0 {
+		return fmt.Errorf("node(s) %s are not bootstrapped yet, please try again later", notBootstrappedNodes)
 	}
 	nodeIDStr, err := getClusterNodeID(clusterName)
 	if err != nil {

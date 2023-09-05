@@ -77,7 +77,7 @@ func printJSONOutput(byteValue []byte) error {
 	return nil
 }
 
-func parseBootstrappedOutput(filePath string, printOutput bool) (bool, error) {
+func parseBootstrappedOutput(filePath, hostAlias string, printOutput bool) (bool, error) {
 	jsonFile, err := os.Open(filePath)
 	if err != nil {
 		return false, err
@@ -89,6 +89,7 @@ func parseBootstrappedOutput(filePath string, printOutput bool) (bool, error) {
 		return false, err
 	}
 	if printOutput {
+		ux.Logger.PrintToUser(fmt.Sprintf("Bootstrap status for node %s:", hostAlias))
 		if err = printJSONOutput(byteValue); err != nil {
 			return false, err
 		}
@@ -286,25 +287,32 @@ func getDefaultMaxValidationTime(start time.Time, network models.Network) (time.
 	return d, nil
 }
 
-func checkNodeIsBootstrapped(clusterName string, printOutput bool) (bool, error) {
-	ux.Logger.PrintToUser("Checking if node is bootstrapped to Primary Network ...")
-	if err := app.CreateAnsibleStatusFile(app.GetBootstrappedJSONFile()); err != nil {
-		return false, err
-	}
-	if err := ansible.RunAnsiblePlaybookCheckBootstrapped(app.GetAnsibleDir(), app.GetBootstrappedJSONFile(), app.GetAnsibleInventoryPath(clusterName)); err != nil {
-		return false, err
-	}
-	isBootstrapped, err := parseBootstrappedOutput(app.GetBootstrappedJSONFile(), printOutput)
+func checkClusterIsBootstrapped(clusterName string, printOutput bool) ([]string, error) {
+	hostAliases, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryFilePath(clusterName))
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	if err := app.RemoveAnsibleStatusDir(); err != nil {
-		return false, err
+	notBootstrappedNodes := []string{}
+	ux.Logger.PrintToUser(fmt.Sprintf("Checking if node(s) in cluster %s are bootstrapped to Primary Network ...", clusterName))
+	for _, host := range hostAliases {
+		if err := app.CreateAnsibleStatusFile(app.GetBootstrappedJSONFile()); err != nil {
+			return nil, err
+		}
+		if err := ansible.RunAnsiblePlaybookCheckBootstrapped(app.GetAnsibleDir(), app.GetBootstrappedJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
+			return nil, err
+		}
+		isBootstrapped, err := parseBootstrappedOutput(app.GetBootstrappedJSONFile(), host, printOutput)
+		if err != nil {
+			return nil, err
+		}
+		if err := app.RemoveAnsibleStatusDir(); err != nil {
+			return nil, err
+		}
+		if !isBootstrapped {
+			notBootstrappedNodes = append(notBootstrappedNodes, host)
+		}
 	}
-	if isBootstrapped {
-		return true, nil
-	}
-	return false, nil
+	return notBootstrappedNodes, nil
 }
 
 func getClusterNodeID(clusterName string) (string, error) {
@@ -312,7 +320,7 @@ func getClusterNodeID(clusterName string) (string, error) {
 	if err := app.CreateAnsibleStatusFile(app.GetNodeIDJSONFile()); err != nil {
 		return "", err
 	}
-	if err := ansible.RunAnsiblePlaybookGetNodeID(app.GetAnsibleDir(), app.GetNodeIDJSONFile(), app.GetAnsibleInventoryPath(clusterName)); err != nil {
+	if err := ansible.RunAnsiblePlaybookGetNodeID(app.GetAnsibleDir(), app.GetNodeIDJSONFile(), app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
 		return "", err
 	}
 	nodeID, err := parseNodeIDOutput(app.GetNodeIDJSONFile())
@@ -360,12 +368,12 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	isBootstrapped, err := checkNodeIsBootstrapped(clusterName, false)
+	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName, false)
 	if err != nil {
 		return err
 	}
-	if !isBootstrapped {
-		return errors.New("node is not bootstrapped yet, please try again later")
+	if len(notBootstrappedNodes) > 0 {
+		return fmt.Errorf("node(s) %s are not bootstrapped yet, please try again later", notBootstrappedNodes)
 	}
 	nodeIDStr, err := getClusterNodeID(clusterName)
 	if err != nil {
