@@ -158,6 +158,8 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 		return nil, err
 	}
 
+	subnetEVMversions = filterAvailableVersions(subnetEVMversions)
+
 	// now get the avalanchego compatibility object
 	avagoCompat, err := getAvagoCompatibility(mapper)
 	if err != nil {
@@ -321,4 +323,17 @@ func reverseSemverSort(slice []string) []string {
 		reverse[idx] = s
 	}
 	return reverse
+}
+
+func filterAvailableVersions(versions []string) []string {
+	availableVersions := []string{}
+	for _, v := range versions {
+		resp, err := binutils.CheckReleaseVersion(logging.NoLog{}, constants.SubnetEVMRepoName, v)
+		if err != nil {
+			continue
+		}
+		availableVersions = append(availableVersions, v)
+		resp.Body.Close()
+	}
+	return availableVersions
 }
