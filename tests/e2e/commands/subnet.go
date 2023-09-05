@@ -124,6 +124,7 @@ func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) 
 		subnetName,
 		"--"+constants.SkipUpdateFlag,
 	)
+	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		var (
@@ -136,6 +137,7 @@ func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) 
 		fmt.Println(string(output))
 		utils.PrintStdErr(err)
 		fmt.Println(stderr)
+		gomega.Expect(err).Should(gomega.BeNil())
 	}
 
 	// Config should now exist

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"syscall"
@@ -83,6 +84,10 @@ func GetVMBinaryProtocolVersion(vmPath string) (int, error) {
 	// configure EngineAddresKey vm environment variable so the vm knows where to locate the runtime service
 	serverAddr := listener.Addr()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", runtime.EngineAddressKey, serverAddr.String()))
+
+	// get plugin stdout/stderr
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
 	// start the vm
 	if err := cmd.Start(); err != nil {
