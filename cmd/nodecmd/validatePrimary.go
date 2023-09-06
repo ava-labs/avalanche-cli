@@ -145,7 +145,7 @@ func getMinStakingAmount(network models.Network) (uint64, error) {
 }
 
 func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network) error {
-	ux.Logger.PrintToUser("Adding node as a Primary Network Validator...")
+	ux.Logger.PrintToUser(fmt.Sprintf("Adding node %s as a Primary Network Validator...", nodeID.String()))
 	var (
 		start time.Time
 		err   error
@@ -316,7 +316,7 @@ func checkClusterIsBootstrapped(clusterName string, printOutput bool) ([]string,
 }
 
 func getClusterNodeID(clusterName, hostAlias string) (string, error) {
-	ux.Logger.PrintToUser(fmt.Sprintf("Getting node id for node %s...", hostAlias))
+	ux.Logger.PrintToUser(fmt.Sprintf("Getting Avalanche node id for node %s...", hostAlias))
 	if err := app.CreateAnsibleStatusFile(app.GetNodeIDJSONFile()); err != nil {
 		return "", err
 	}
@@ -330,6 +330,7 @@ func getClusterNodeID(clusterName, hostAlias string) (string, error) {
 	if err = app.RemoveAnsibleStatusDir(); err != nil {
 		return "", err
 	}
+	ux.Logger.PrintToUser(fmt.Sprintf("Avalanche node id is %s", nodeID))
 	return nodeID, err
 }
 
@@ -353,7 +354,7 @@ func addNodeAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network)
 		if err = joinAsPrimaryNetworkValidator(nodeID, network); err != nil {
 			return false, err
 		}
-		ux.Logger.PrintToUser("Node successfully added as Primary Network validator!")
+		ux.Logger.PrintToUser(fmt.Sprintf("Node %s successfully added as Primary Network validator!", nodeID.String()))
 		return true, nil
 	}
 	return false, nil
@@ -406,6 +407,8 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser(fmt.Sprintf("node %s failed due to %s", node, nodeErrors[i]))
 		}
 		return fmt.Errorf("node(s) %s failed to validate the Primary Network", failedNodes)
+	} else {
+		ux.Logger.PrintToUser(fmt.Sprintf("All nodes in cluster %s are successfully added as Primary Network validators!"), clusterName)
 	}
 	return nil
 }

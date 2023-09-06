@@ -76,12 +76,13 @@ func parseSubnetSyncOutput(filePath string, printOutput bool) (string, error) {
 	return "", errors.New("unable to parse subnet sync status")
 }
 
-func addNodeAsSubnetValidator(nodeID string, network models.Network) error {
+func addNodeAsSubnetValidator(nodeID string, network models.Network, currentNodeIndex, nodeCount int) error {
 	ux.Logger.PrintToUser("Adding the node as a Subnet Validator...")
 	if err := subnetcmd.CallAddValidator(subnetName, nodeID, network); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Node successfully added as Subnet validator!")
+	ux.Logger.PrintToUser(fmt.Sprintf("Node %s successfully added as Subnet validator! (%d / %d)", nodeID, currentNodeIndex+1, nodeCount))
+	ux.Logger.PrintToUser("======================================")
 	return nil
 }
 
@@ -160,7 +161,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	}
 	failedNodes := []string{}
 	nodeErrors := []error{}
-	for _, host := range hostAliases {
+	for i, host := range hostAliases {
 		nodeIDStr, err := getClusterNodeID(clusterName, host)
 		if err != nil {
 			failedNodes = append(failedNodes, host)
@@ -199,7 +200,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 				continue
 			}
 		}
-		err = addNodeAsSubnetValidator(nodeIDStr, models.Fuji)
+		err = addNodeAsSubnetValidator(nodeIDStr, models.Fuji, i, len(hostAliases))
 		if err != nil {
 			failedNodes = append(failedNodes, host)
 			nodeErrors = append(nodeErrors, err)
@@ -211,6 +212,8 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser(fmt.Sprintf("node %s failed due to %s", node, nodeErrors[i]))
 		}
 		return fmt.Errorf("node(s) %s failed to validate subnet %s", failedNodes, subnetName)
+	} else {
+		ux.Logger.PrintToUser(fmt.Sprintf("All nodes in cluster %s are successfully added as Subnet validators!"), clusterName)
 	}
 	return nil
 }
