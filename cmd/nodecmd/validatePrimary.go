@@ -408,7 +408,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("node(s) %s failed to validate the Primary Network", failedNodes)
 	} else {
-		ux.Logger.PrintToUser(fmt.Sprintf("All nodes in cluster %s are successfully added as Primary Network validators!"), clusterName)
+		ux.Logger.PrintToUser(fmt.Sprintf("All nodes in cluster %s are successfully added as Primary Network validators!", clusterName))
 	}
 	return nil
 }

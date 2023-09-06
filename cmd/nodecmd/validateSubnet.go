@@ -213,7 +213,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("node(s) %s failed to validate subnet %s", failedNodes, subnetName)
 	} else {
-		ux.Logger.PrintToUser(fmt.Sprintf("All nodes in cluster %s are successfully added as Subnet validators!"), clusterName)
+		ux.Logger.PrintToUser(fmt.Sprintf("All nodes in cluster %s are successfully added as Subnet validators!", clusterName))
 	}
 	return nil
 }
