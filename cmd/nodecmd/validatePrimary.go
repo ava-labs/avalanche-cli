@@ -3,7 +3,6 @@
 package nodecmd
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -68,16 +67,7 @@ Network.`,
 	return cmd
 }
 
-func printJSONOutput(byteValue []byte) error {
-	var prettyJSON bytes.Buffer
-	if err := json.Indent(&prettyJSON, byteValue, "", "   "); err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser(prettyJSON.String())
-	return nil
-}
-
-func parseBootstrappedOutput(filePath, hostAlias string, printOutput bool) (bool, error) {
+func parseBootstrappedOutput(filePath string) (bool, error) {
 	jsonFile, err := os.Open(filePath)
 	if err != nil {
 		return false, err
@@ -87,12 +77,6 @@ func parseBootstrappedOutput(filePath, hostAlias string, printOutput bool) (bool
 	var result map[string]interface{}
 	if err := json.Unmarshal(byteValue, &result); err != nil {
 		return false, err
-	}
-	if printOutput {
-		ux.Logger.PrintToUser(fmt.Sprintf("Bootstrap status for node %s:", hostAlias))
-		if err = printJSONOutput(byteValue); err != nil {
-			return false, err
-		}
 	}
 	isBootstrappedInterface, ok := result["result"].(map[string]interface{})
 	if ok {
@@ -287,7 +271,7 @@ func getDefaultMaxValidationTime(start time.Time, network models.Network) (time.
 	return d, nil
 }
 
-func checkClusterIsBootstrapped(clusterName string, printOutput bool) ([]string, error) {
+func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
 	hostAliases, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryFilePath(clusterName))
 	if err != nil {
 		return nil, err
@@ -301,7 +285,7 @@ func checkClusterIsBootstrapped(clusterName string, printOutput bool) ([]string,
 		if err := ansible.RunAnsiblePlaybookCheckBootstrapped(app.GetAnsibleDir(), app.GetBootstrappedJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
 			return nil, err
 		}
-		isBootstrapped, err := parseBootstrappedOutput(app.GetBootstrappedJSONFile(), host, printOutput)
+		isBootstrapped, err := parseBootstrappedOutput(app.GetBootstrappedJSONFile())
 		if err != nil {
 			return nil, err
 		}
@@ -369,7 +353,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName, false)
+	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
 	if err != nil {
 		return err
 	}

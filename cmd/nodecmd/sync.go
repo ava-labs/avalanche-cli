@@ -50,7 +50,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 		return err
 	}
-	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName, false)
+	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
 	if err != nil {
 		return err
 	}

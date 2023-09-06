@@ -50,7 +50,7 @@ You can check the subnet sync status by calling avalanche node status <clusterNa
 	return cmd
 }
 
-func parseSubnetSyncOutput(filePath string, printOutput bool) (string, error) {
+func parseSubnetSyncOutput(filePath string) (string, error) {
 	jsonFile, err := os.Open(filePath)
 	if err != nil {
 		return "", err
@@ -60,11 +60,6 @@ func parseSubnetSyncOutput(filePath string, printOutput bool) (string, error) {
 	var result map[string]interface{}
 	if err := json.Unmarshal(byteValue, &result); err != nil {
 		return "", err
-	}
-	if printOutput {
-		if err = printJSONOutput(byteValue); err != nil {
-			return "", err
-		}
 	}
 	statusInterface, ok := result["result"].(map[string]interface{})
 	if ok {
@@ -86,20 +81,31 @@ func addNodeAsSubnetValidator(nodeID string, network models.Network, currentNode
 	return nil
 }
 
-func getNodeSubnetSyncStatus(blockchainID, clusterName, hostAlias string, printOutput, errOnValidating bool) (bool, error) {
-	ux.Logger.PrintToUser("Checking if node is synced to subnet ...")
+func getNodeSubnetSyncStatus(blockchainID, clusterName, hostAlias string, statusOutput, errOnValidating bool) (bool, error) {
+	if statusOutput {
+		ux.Logger.PrintToUser(fmt.Sprintf("Checking if node %s is synced to subnet ...", hostAlias))
+	} else {
+		ux.Logger.PrintToUser("Checking if node is synced to subnet ...")
+	}
 	if err := app.CreateAnsibleStatusFile(app.GetSubnetSyncJSONFile()); err != nil {
 		return false, err
 	}
 	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(app.GetAnsibleDir(), app.GetSubnetSyncJSONFile(), blockchainID, app.GetAnsibleInventoryDirPath(clusterName), hostAlias); err != nil {
 		return false, err
 	}
-	subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile(), printOutput)
+	subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile())
 	if err != nil {
 		return false, err
 	}
 	if err = app.RemoveAnsibleStatusDir(); err != nil {
 		return false, err
+	}
+	// if function is called from status command
+	if statusOutput {
+		if subnetSyncStatus == status.Validating.String() {
+			return true, nil
+		}
+		return false, nil
 	}
 	if subnetSyncStatus == status.Syncing.String() {
 		return true, nil
@@ -137,7 +143,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName, false)
+	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
 	if err != nil {
 		return err
 	}
