@@ -138,7 +138,7 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) error {
 			ux.Logger.PrintToUser("To modify your Custom VM binary: avalanche subnet upgrade vm %s --config", subnetName)
 		}
 		ux.Logger.PrintToUser("")
-		return fmt.Errorf("the Avalanche Go version of cluster %s is incompatible with Subnet EVM RPC version of %s", clusterName, subnetName)
+		return fmt.Errorf("the Avalanche Go version of cluster %s is incompatible with VM RPC version of %s", clusterName, subnetName)
 	}
 	return nil
 }
