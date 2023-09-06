@@ -9,6 +9,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
 
@@ -89,6 +90,24 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
+	}
+
+	if sc.VM == models.CustomVM {
+		if sc.CustomVMRepoURL == "" {
+			ux.Logger.PrintToUser("Custom VM source code repository, branch and build script must be defined for export")
+			sc.CustomVMRepoURL, err = app.Prompt.CaptureString("URL for source code repository")
+			if err != nil {
+				return err
+			}
+			sc.CustomVMBranch, err = app.Prompt.CaptureString("Branch")
+			if err != nil {
+				return err
+			}
+			sc.CustomVMBuildCmd, err = app.Prompt.CaptureString("Build script path inside repository")
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	gen, err := app.LoadRawGenesis(subnetName, network)
