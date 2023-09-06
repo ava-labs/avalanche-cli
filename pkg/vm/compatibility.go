@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
+	"io"
 	"path/filepath"
 	"strconv"
 	"syscall"
@@ -85,13 +85,19 @@ func GetVMBinaryProtocolVersion(vmPath string) (int, error) {
 	serverAddr := listener.Addr()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", runtime.EngineAddressKey, serverAddr.String()))
 
-	// get plugin stdout/stderr
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// get plugin stdout/stderr plugins
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get vm stdout pipe: %w", err)
+	}
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get vm stderr pipe: %w", err)
+	}
 
 	// start the vm
 	if err := cmd.Start(); err != nil {
-		return 0, fmt.Errorf("failed to start process: %w", err)
+		return 0, fmt.Errorf("failed to start vm: %w", err)
 	}
 
 	// define handshake timeout
@@ -103,18 +109,35 @@ func GetVMBinaryProtocolVersion(vmPath string) (int, error) {
 	select {
 	case protocolVersion = <-versionQueryInitializer.protocolVersionCh:
 	case <-timeout.C:
-		return 0, fmt.Errorf("%w", runtime.ErrHandshakeFailed)
+		_ = dumpProcessOutput(stdoutPipe, stderrPipe)
+		return 0, fmt.Errorf("timeout while waiting for vm protocol version: %w", runtime.ErrHandshakeFailed)
 	}
 
 	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
-		return 0, err
+		_ = dumpProcessOutput(stdoutPipe, stderrPipe)
+		return 0, fmt.Errorf("failure signaling termination to vm: %w", err)
 	}
 
 	if err := cmd.Wait(); err != nil {
-		return 0, err
+		_ = dumpProcessOutput(stdoutPipe, stderrPipe)
+		return 0, fmt.Errorf("failure waiting for vm termination: %w", err)
 	}
 
 	return int(protocolVersion), nil
+}
+
+func dumpProcessOutput(stdoutPipe io.ReadCloser, stderrPipe io.ReadCloser) error {
+	stdout, err := io.ReadAll(stdoutPipe)
+	if err != nil {
+		return err
+	}
+	stderr, err := io.ReadAll(stderrPipe)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(stdout))
+	fmt.Println(string(stderr))
+	return nil
 }
 
 func GetRPCProtocolVersion(app *application.Avalanche, vmType models.VMType, vmVersion string) (int, error) {

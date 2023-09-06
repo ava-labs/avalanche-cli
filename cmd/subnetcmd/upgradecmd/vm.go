@@ -287,7 +287,7 @@ func updateToCustomBin(sc models.Sidecar, networkToUpgrade, binaryPath string, u
 		}
 	}
 
-	if err := vm.CopyCustomVM(app, sc.Name, binaryPath); err != nil {
+	if err := app.CopyVMBinary(binaryPath, sc.Name); err != nil {
 		return err
 	}
 
