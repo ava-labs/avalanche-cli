@@ -103,7 +103,7 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			sc.CustomVMBuildCmd, err = app.Prompt.CaptureString("Build script path inside repository")
+			sc.CustomVMBuildScript, err = app.Prompt.CaptureString("Build script path inside repository")
 			if err != nil {
 				return err
 			}
