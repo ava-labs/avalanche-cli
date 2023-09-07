@@ -61,6 +61,11 @@ func newTestMapper(t *testing.T) *testMapper {
 }
 
 // implement VersionMapper
+func (*testMapper) FilterAvailableVersions(versions []string) []string {
+	return versions
+}
+
+// implement VersionMapper
 func (*testMapper) GetEligibleVersions(sorted []string, _ string, _ *application.Avalanche) ([]string, error) {
 	// tests were written with the assumption that the first version is always in progress
 	return sorted[1:], nil
