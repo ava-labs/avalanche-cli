@@ -227,6 +227,22 @@ func RunAnsiblePlaybookSetupBuildEnv(ansibleDir, inventoryPath string) error {
 	return cmdErr
 }
 
+// RunAnsiblePlaybookSetupCLIFromSource installs any CLI branch from source
+func RunAnsiblePlaybookSetupCLIFromSource(ansibleDir, inventoryPath, cliBranch string) error {
+	playbookInputs := "cliBranch=" + cliBranch
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupCLIFromSourcePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
 func CheckIsInstalled() error {
 	if err := exec.Command(constants.AnsiblePlaybook).Run(); errors.Is(err, exec.ErrNotFound) { //nolint:gosec
 		ux.Logger.PrintToUser("Ansible tool is not available. It is a necessary dependency for CLI to set up a remote node.")

@@ -104,6 +104,7 @@ const (
 	TrackSubnetPlaybook                   = "playbook/trackSubnet.yml"
 	AvalancheGoVersionPlaybook            = "playbook/avalancheGoVersion.yml"
 	SetupBuildEnvPlaybook                 = "playbook/setupBuildEnv.yml"
+	SetupCLIFromSourcePlaybook            = "playbook/setupCLIFromSource.yml"
 	IsBootstrappedJSONFile                = "isBootstrapped.json"
 	AvalancheGoVersionJSONFile            = "avalancheGoVersion.json"
 	NodeIDJSONFile                        = "nodeID.json"
