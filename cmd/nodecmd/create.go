@@ -358,12 +358,16 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err := runAnsible(inventoryPath, avalancheGoVersion); err != nil {
 		return err
 	}
+	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance...")
+	if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), app.GetAnsibleInventoryPath(clusterName)); err != nil {
+		return err
+	}
 	err = createClusterNodeConfig(instanceID, region, ami, keyPairName, certFilePath, securityGroupName, elasticIP, clusterName)
 	if err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
-	if err := ansible.RunAnsibleCopyStakingFilesPlaybook(app.GetAnsibleDir(), app.GetNodeInstanceDirPath(instanceID), inventoryPath); err != nil {
+	if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), app.GetNodeInstanceDirPath(instanceID), inventoryPath); err != nil {
 		return err
 	}
 	PrintResults(instanceID, elasticIP, certFilePath, region)
@@ -386,7 +390,7 @@ func runAnsible(inventoryPath, avalancheGoVersion string) error {
 	if err != nil {
 		return err
 	}
-	return ansible.RunAnsibleSetupNodePlaybook(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion)
+	return ansible.RunAnsiblePlaybookSetupNode(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion)
 }
 
 func requestAWSAccountAuth() error {

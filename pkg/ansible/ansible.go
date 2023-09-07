@@ -85,9 +85,9 @@ func WriteCfgFile(ansibleDir string) error {
 	return err
 }
 
-// RunAnsibleSetupNodePlaybook installs avalanche go and avalanche-cli. It also copies the user's
+// RunAnsiblePlaybookSetupNode installs avalanche go and avalanche-cli. It also copies the user's
 // metric preferences in configFilePath from local machine to cloud server
-func RunAnsibleSetupNodePlaybook(configPath, ansibleDir, inventoryPath, avalancheGoVersion string) error {
+func RunAnsiblePlaybookSetupNode(configPath, ansibleDir, inventoryPath, avalancheGoVersion string) error {
 	playbookInputs := "configFilePath=" + configPath + " avalancheGoVersion=" + avalancheGoVersion
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
@@ -95,9 +95,9 @@ func RunAnsibleSetupNodePlaybook(configPath, ansibleDir, inventoryPath, avalanch
 	return cmd.Run()
 }
 
-// RunAnsibleCopyStakingFilesPlaybook copies staker.crt and staker.key into local machine so users can back up their node
+// RunAnsiblePlaybookCopyStakingFiles copies staker.crt and staker.key into local machine so users can back up their node
 // these files are stored in .avalanche-cli/nodes/<nodeID> dir
-func RunAnsibleCopyStakingFilesPlaybook(ansibleDir, nodeInstanceDirPath, inventoryPath string) error {
+func RunAnsiblePlaybookCopyStakingFiles(ansibleDir, nodeInstanceDirPath, inventoryPath string) error {
 	playbookInputs := "nodeInstanceDirPath=" + nodeInstanceDirPath + "/"
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.CopyStakingFilesPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
@@ -152,6 +152,14 @@ func RunAnsiblePlaybookSubnetSyncStatus(ansibleDir, subnetSyncPath, blockchainID
 	playbookInputs := "blockchainID=" + blockchainID + " subnetSyncPath=" + subnetSyncPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsSubnetSyncedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
+	return cmd.Run()
+}
+
+// RunAnsiblePlaybookSetupBuildEnv installs gcc, golang, rust
+func RunAnsiblePlaybookSetupBuildEnv(ansibleDir, inventoryPath string) error {
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupBuildEnvPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	utils.SetupRealtimeCLIOutput(cmd)
 	return cmd.Run()
 }
 

@@ -103,6 +103,7 @@ const (
 	IsSubnetSyncedPlaybook                = "playbook/isSubnetSynced.yml"
 	TrackSubnetPlaybook                   = "playbook/trackSubnet.yml"
 	AvalancheGoVersionPlaybook            = "playbook/avalancheGoVersion.yml"
+	SetupBuildEnvPlaybook                 = "playbook/setupBuildEnv.yml"
 	IsBootstrappedJSONFile                = "isBootstrapped.json"
 	AvalancheGoVersionJSONFile            = "avalancheGoVersion.json"
 	NodeIDJSONFile                        = "nodeID.json"
