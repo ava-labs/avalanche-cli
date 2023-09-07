@@ -4,20 +4,20 @@
 package ansible
 
 import (
+	"bytes"
 	"embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"bytes"
-	"encoding/json"
 
-	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 //go:embed playbook/*
@@ -144,16 +144,14 @@ func displayErrMsg(buffer *bytes.Buffer) error {
 			if err := json.Unmarshal([]byte(line), &jsonMap); err != nil {
 				return err
 			}
-			fmt.Println("UNO")
-			fmt.Println(jsonMap)
-			fmt.Println("DOS")
-			fmt.Println(jsonMap["stderr_lines"])
-			fmt.Println("TRES")
-			stderrLines, ok := jsonMap["stderr_lines"].([]string)
+			stderrLines, ok := jsonMap["stderr_lines"].([]interface{})
 			if ok && len(stderrLines) > 0 {
-				fmt.Println()
-				fmt.Println(logging.Red.Wrap(stderrLines[0]))
-				fmt.Println()
+				stderrLine, ok := stderrLines[0].(string)
+				if ok {
+					fmt.Println()
+					fmt.Println(logging.Red.Wrap("Message from cloud node:" + stderrLine))
+					fmt.Println()
+				}
 			}
 		}
 	}
