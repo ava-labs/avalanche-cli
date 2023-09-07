@@ -13,7 +13,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var exportOutput string
+var (
+	exportOutput        string
+	customVMRepoURL     string
+	customVMBranch      string
+	customVMBuildScript string
+)
 
 // avalanche subnet list
 func newExportCmd() *cobra.Command {
@@ -40,6 +45,9 @@ the --output flag.`,
 	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "export `local` genesis")
 	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "export `fuji` genesis")
 	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "export `fuji` genesis")
+	cmd.Flags().StringVar(&customVMRepoURL, "custom-vm-repo-url", "", "custom vm repository url")
+	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch")
+	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
 	return cmd
 }
 
@@ -94,17 +102,30 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 
 	if sc.VM == models.CustomVM {
 		if sc.CustomVMRepoURL == "" {
-			ux.Logger.PrintToUser("Custom VM source code repository, branch and build script must be defined for export")
-			sc.CustomVMRepoURL, err = app.Prompt.CaptureString("URL for source code repository")
-			if err != nil {
-				return err
+			ux.Logger.PrintToUser("Custom VM source code repository, branch and build script not defined for subnet. Filling in the details now.")
+			if customVMRepoURL == "" {
+				customVMRepoURL, err = app.Prompt.CaptureString("URL for source code repository")
+				if err != nil {
+					return err
+				}
 			}
-			sc.CustomVMBranch, err = app.Prompt.CaptureString("Branch")
-			if err != nil {
-				return err
+			if customVMBranch == "" {
+				customVMBranch, err = app.Prompt.CaptureString("Branch")
+				if err != nil {
+					return err
+				}
 			}
-			sc.CustomVMBuildScript, err = app.Prompt.CaptureString("Build script path inside repository")
-			if err != nil {
+			if customVMBuildScript == "" {
+				customVMBuildScript, err = app.Prompt.CaptureString("Build script path inside repository")
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+			sc.CustomVMRepoURL = customVMRepoURL
+			sc.CustomVMBranch = customVMBranch
+			sc.CustomVMBuildScript = customVMBuildScript
+			if err := app.UpdateSidecar(&sc); err != nil {
 				return err
 			}
 		}
