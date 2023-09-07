@@ -56,9 +56,9 @@ func removeClusterInventoryDir(clusterName string) error {
 	return os.RemoveAll(app.GetAnsibleInventoryDirPath(clusterName))
 }
 
-func getDeleteConfigConfirmation(instanceID string) error {
+func getDeleteConfigConfirmation() error {
 	confirm := "Running this command will delete all stored files associated with your cloud server. Do you want to proceed? " +
-		fmt.Sprintf("Stored files can be found at %s", app.GetNodeInstanceDirPath(instanceID))
+		fmt.Sprintf("Stored files can be found at %s", app.GetNodesDir())
 	yes, err := app.Prompt.CaptureYesNo(confirm)
 	if err != nil {
 		return err
@@ -69,10 +69,7 @@ func getDeleteConfigConfirmation(instanceID string) error {
 	return nil
 }
 
-func removeConfigFiles(clusterName string) error {
-	if err := removeDeletedNodeDirectory(clusterName); err != nil {
-		return err
-	}
+func removeClusterConfigFiles(clusterName string) error {
 	if err := removeClusterInventoryDir(clusterName); err != nil {
 		return err
 	}
@@ -84,38 +81,70 @@ func stopNode(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
+	if err := getDeleteConfigConfirmation(); err != nil {
+		return err
+	}
 	clusterNodes, err := getClusterNodes(clusterName)
 	if err != nil {
 		return err
 	}
-	nodeConfig, err := app.LoadClusterNodeConfig(clusterNodes[0])
-	if err != nil {
-		return err
+	failedNodes := []string{}
+	nodeErrors := []error{}
+	lastRegion := ""
+	var ec2Svc *ec2.EC2
+	for _, node := range clusterNodes {
+		nodeConfig, err := app.LoadClusterNodeConfig(node)
+		if err != nil {
+			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err.Error()))
+			failedNodes = append(failedNodes, node)
+			nodeErrors = append(nodeErrors, err)
+			continue
+		}
+		if nodeConfig.Region != lastRegion {
+			sess, err := getAWSCloudCredentials(nodeConfig.Region, true)
+			if err != nil {
+				return err
+			}
+			ec2Svc = ec2.New(sess)
+			lastRegion = nodeConfig.Region
+		}
+		isRunning, err := awsAPI.CheckInstanceIsRunning(ec2Svc, nodeConfig.NodeID)
+		if err != nil {
+			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err.Error()))
+			failedNodes = append(failedNodes, node)
+			nodeErrors = append(nodeErrors, err)
+			continue
+		}
+		if !isRunning {
+			noRunningNodeErr := fmt.Errorf("no running node with instance id %s is found in cluster %s", nodeConfig.NodeID, clusterName)
+			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, noRunningNodeErr))
+			failedNodes = append(failedNodes, node)
+			nodeErrors = append(nodeErrors, noRunningNodeErr)
+			continue
+		}
+		ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
+		if err = awsAPI.StopInstance(ec2Svc, nodeConfig.NodeID, nodeConfig.ElasticIP, true); err != nil {
+			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err.Error()))
+			failedNodes = append(failedNodes, node)
+			nodeErrors = append(nodeErrors, err)
+			continue
+		}
+		ux.Logger.PrintToUser(fmt.Sprintf("Node instance %s in cluster %s successfully stopped!", nodeConfig.NodeID, clusterName))
+		if err := removeDeletedNodeDirectory(node); err != nil {
+			ux.Logger.PrintToUser(fmt.Sprintf("Failed to delete node config for node %s due to %s", node, err.Error()))
+			return err
+		}
 	}
-	if err = getDeleteConfigConfirmation(nodeConfig.NodeID); err != nil {
-		return err
+	if len(failedNodes) > 0 {
+		ux.Logger.PrintToUser("Failed nodes: ")
+		for i, node := range failedNodes {
+			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
+		}
+		return fmt.Errorf("failed to stop node(s) %s", failedNodes)
+	} else {
+		ux.Logger.PrintToUser(fmt.Sprintf("All nodes in cluster %s are successfully stopped!", clusterName))
 	}
-	sess, err := getAWSCloudCredentials(nodeConfig.Region)
-	if err != nil {
-		return err
-	}
-	ec2Svc := ec2.New(sess)
-	isRunning, err := awsAPI.CheckInstanceIsRunning(ec2Svc, nodeConfig.NodeID)
-	if err != nil {
-		return err
-	}
-	if !isRunning {
-		return fmt.Errorf("no running node with instance id %s is found in cluster %s", nodeConfig.NodeID, clusterName)
-	}
-	ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
-	if err = awsAPI.StopInstance(ec2Svc, nodeConfig.NodeID, nodeConfig.ElasticIP, true); err != nil {
-		return err
-	}
-	if err = removeConfigFiles(clusterName); err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser(fmt.Sprintf("Node instance %s in cluster %s successfully stopped!", nodeConfig.NodeID, clusterName))
-	return nil
+	return removeClusterConfigFiles(clusterName)
 }
 
 func checkCluster(clusterName string) error {
