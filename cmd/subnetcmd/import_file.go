@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/spf13/cobra"
 )
 
@@ -168,6 +169,13 @@ func importFromFile(importPath string) error {
 		}
 		if info.Mode()&0x0100 == 0 {
 			return fmt.Errorf("custom VM binary %s not executable. Expected build script to create an executable file", vmPath)
+		}
+		rpcVersion, err := vm.GetVMBinaryProtocolVersion(vmPath)
+		if err != nil {
+			return fmt.Errorf("unable to get custom binary RPC version: %w", err)
+		}
+		if rpcVersion != importable.Sidecar.RPCVersion {
+			return fmt.Errorf("RPC version mismatch between sidecar and vm binary (%d vs %d)", importable.Sidecar.RPCVersion, rpcVersion)
 		}
 	}
 
