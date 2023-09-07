@@ -144,18 +144,40 @@ func displayErrMsg(buffer *bytes.Buffer) error {
 			if err := json.Unmarshal([]byte(line), &jsonMap); err != nil {
 				return err
 			}
+			toDump := []string{}
+			stdoutLines, ok := jsonMap["stdout_lines"].([]interface{})
+			if ok {
+				toDump = append(toDump, getStringSeqFromISeq(stdoutLines)...)
+			}
 			stderrLines, ok := jsonMap["stderr_lines"].([]interface{})
-			if ok && len(stderrLines) > 0 {
-				stderrLine, ok := stderrLines[0].(string)
-				if ok {
-					fmt.Println()
-					fmt.Println(logging.Red.Wrap("Message from cloud node:" + stderrLine))
-					fmt.Println()
+			if ok {
+				toDump = append(toDump, getStringSeqFromISeq(stderrLines)...)
+			}
+			if len(toDump) > 0 {
+				fmt.Println()
+				fmt.Println(logging.Red.Wrap("Message from cloud node:"))
+				for _, l := range toDump {
+					fmt.Println("  " + logging.Red.Wrap(l))
 				}
+				fmt.Println()
 			}
 		}
 	}
 	return nil
+}
+
+func getStringSeqFromISeq(lines []interface{}) []string {
+	seq := []string{}
+	for _, lineI := range lines {
+		line, ok := lineI.(string)
+		if ok {
+			if strings.Contains(line, "Usage:") {
+				break
+			}
+			seq = append(seq, line)
+		}
+	}
+	return seq
 }
 
 // RunAnsiblePlaybookCheckBootstrapped checks if node is bootstrapped to primary network
@@ -194,8 +216,15 @@ func RunAnsiblePlaybookSubnetSyncStatus(ansibleDir, subnetSyncPath, blockchainID
 func RunAnsiblePlaybookSetupBuildEnv(ansibleDir, inventoryPath string) error {
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupBuildEnvPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
-	utils.SetupRealtimeCLIOutput(cmd, true, true)
-	return cmd.Run()
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
 }
 
 func CheckIsInstalled() error {

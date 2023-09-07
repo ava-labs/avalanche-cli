@@ -22,3 +22,12 @@
         echo >> ~/.bashrc
         echo export PATH=\$PATH:~/.cargo/bin >> ~/.bashrc
         bash -i -c "cargo version"
+    - name: install unreleased avalanche-cli
+      shell: |
+        CLI_BRANCH=custom-vms-cloud-4
+        cd ~
+        rm -rf avalanche-cli
+        git clone --single-branch -b $CLI_BRANCH https://github.com/ava-labs/avalanche-cli 
+        cd avalanche-cli
+        bash -i -c ./scripts/build.sh
+        cp bin/avalanche ~/bin/avalanche

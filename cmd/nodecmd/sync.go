@@ -62,11 +62,9 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance ...")
-	/*
-		if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), app.GetAnsibleInventoryPath(clusterName)); err != nil {
-			return err
-		}
-	*/
+	if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), app.GetAnsibleInventoryPath(clusterName)); err != nil {
+		return err
+	}
 	return trackSubnet(clusterName, subnetName, models.Fuji)
 }
 
