@@ -10,9 +10,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
+	"bytes"
+	"encoding/json"
 
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
@@ -91,7 +94,7 @@ func RunAnsiblePlaybookSetupNode(configPath, ansibleDir, inventoryPath, avalanch
 	playbookInputs := "configFilePath=" + configPath + " avalancheGoVersion=" + avalancheGoVersion
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
-	utils.SetupRealtimeCLIOutput(cmd)
+	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	return cmd.Run()
 }
 
@@ -101,7 +104,7 @@ func RunAnsiblePlaybookCopyStakingFiles(ansibleDir, nodeInstanceDirPath, invento
 	playbookInputs := "nodeInstanceDirPath=" + nodeInstanceDirPath + "/"
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.CopyStakingFilesPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
-	utils.SetupRealtimeCLIOutput(cmd)
+	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	return cmd.Run()
 }
 
@@ -110,7 +113,7 @@ func RunAnsiblePlaybookExportSubnet(ansibleDir, inventoryPath, exportPath, cloud
 	playbookInputs := "originSubnetPath=" + exportPath + " destSubnetPath=" + cloudServerSubnetPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.ExportSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
-	utils.SetupRealtimeCLIOutput(cmd)
+	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	return cmd.Run()
 }
 
@@ -119,8 +122,42 @@ func RunAnsiblePlaybookTrackSubnet(ansibleDir, subnetName, importPath, inventory
 	playbookInputs := "subnetExportFileName=" + importPath + " subnetName=" + subnetName
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.TrackSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
-	utils.SetupRealtimeCLIOutput(cmd)
-	return cmd.Run()
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
+func displayErrMsg(buffer *bytes.Buffer) error {
+	for _, line := range strings.Split(buffer.String(), "\n") {
+		if strings.Contains(line, "FAILED") {
+			i := strings.Index(line, "{")
+			if i >= 0 {
+				line = line[i:]
+			}
+			var jsonMap map[string]interface{}
+			if err := json.Unmarshal([]byte(line), &jsonMap); err != nil {
+				return err
+			}
+			fmt.Println("UNO")
+			fmt.Println(jsonMap)
+			fmt.Println("DOS")
+			fmt.Println(jsonMap["stderr_lines"])
+			fmt.Println("TRES")
+			stderrLines, ok := jsonMap["stderr_lines"].([]string)
+			if ok && len(stderrLines) > 0 {
+				fmt.Println()
+				fmt.Println(logging.Red.Wrap(stderrLines[0]))
+				fmt.Println()
+			}
+		}
+	}
+	return nil
 }
 
 // RunAnsiblePlaybookCheckBootstrapped checks if node is bootstrapped to primary network
@@ -159,7 +196,7 @@ func RunAnsiblePlaybookSubnetSyncStatus(ansibleDir, subnetSyncPath, blockchainID
 func RunAnsiblePlaybookSetupBuildEnv(ansibleDir, inventoryPath string) error {
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupBuildEnvPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
-	utils.SetupRealtimeCLIOutput(cmd)
+	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	return cmd.Run()
 }
 

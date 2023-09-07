@@ -205,7 +205,7 @@ func createEC2Instance(rootBody *hclwrite.Body,
 	if err := terraform.SetCloudCredentials(rootBody, region); err != nil {
 		return "", "", "", "", err
 	}
-	ux.Logger.PrintToUser("Creating a new EC2 instance on AWS...")
+	ux.Logger.PrintToUser("Creating a new EC2 instance on AWS ...")
 	var useExistingKeyPair bool
 	keyPairExists, err := awsAPI.CheckKeyPairExists(ec2Svc, keyPairName)
 	if err != nil {
@@ -331,7 +331,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		if instanceIDErr != nil {
 			return instanceIDErr
 		}
-		ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s...", instanceID))
+		ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s ...", instanceID))
 		if stopErr := awsAPI.StopInstance(ec2Svc, instanceID, "", false); stopErr != nil {
 			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop cloud server instance %s", instanceID))
 			ux.Logger.PrintToUser(fmt.Sprintf("Stop cloud server instance %s on AWS console to prevent charges", instanceID))
@@ -354,11 +354,11 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance...")
+	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance ...")
 	if err := runAnsible(inventoryPath, avalancheGoVersion); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance...")
+	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance ...")
 	if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), app.GetAnsibleInventoryPath(clusterName)); err != nil {
 		return err
 	}
@@ -366,7 +366,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
+	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine ...")
 	if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), app.GetNodeInstanceDirPath(instanceID), inventoryPath); err != nil {
 		return err
 	}
@@ -445,7 +445,7 @@ func addCertToSSH(certName string) error {
 		return err
 	}
 	cmd := exec.Command("ssh-add", certFilePath)
-	utils.SetupRealtimeCLIOutput(cmd)
+	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	return cmd.Run()
 }
 
