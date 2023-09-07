@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/ava-labs/avalanchego/genesis"
@@ -128,7 +129,7 @@ func getMinStakingAmount(network models.Network) (uint64, error) {
 	return minValStake, nil
 }
 
-func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network) error {
+func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, nodeIndex int) error {
 	ux.Logger.PrintToUser(fmt.Sprintf("Adding node %s as a Primary Network Validator...", nodeID.String()))
 	var (
 		start time.Time
@@ -177,7 +178,7 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network) er
 	if weight < minValStake {
 		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", minValStake, weight)
 	}
-	start, duration, err = getTimeParametersPrimaryNetwork(network)
+	start, duration, err = getTimeParametersPrimaryNetwork(network, nodeIndex)
 	if err != nil {
 		return err
 	}
@@ -220,7 +221,7 @@ func promptWeightPrimaryNetwork(network models.Network) (uint64, error) {
 	}
 }
 
-func getTimeParametersPrimaryNetwork(network models.Network) (time.Time, time.Duration, error) {
+func getTimeParametersPrimaryNetwork(network models.Network, nodeIndex int) (time.Time, time.Duration, error) {
 	const (
 		defaultDurationOption = "Minimum staking duration on primary network"
 		custom                = "Custom"
@@ -236,7 +237,7 @@ func getTimeParametersPrimaryNetwork(network models.Network) (time.Time, time.Du
 
 		switch durationOption {
 		case defaultDurationOption:
-			duration, err = getDefaultMaxValidationTime(start, network)
+			duration, err = getDefaultValidationTime(start, network, nodeIndex)
 			if err != nil {
 				return time.Time{}, 0, err
 			}
@@ -250,11 +251,19 @@ func getTimeParametersPrimaryNetwork(network models.Network) (time.Time, time.Du
 	return start, duration, nil
 }
 
-func getDefaultMaxValidationTime(start time.Time, network models.Network) (time.Duration, error) {
+func getDefaultValidationTime(start time.Time, network models.Network, nodeIndex int) (time.Duration, error) {
 	durationStr := constants.DefaultFujiStakeDuration
 	if network == models.Mainnet {
 		durationStr = constants.DefaultMainnetStakeDuration
 	}
+	durationInt, err := strconv.Atoi(durationStr[:len(durationStr)-1])
+	if err != nil {
+		return 0, err
+	}
+	// stagger expiration time by 1 day for each added node
+	durationAddition := 24 * nodeIndex
+	durationStr = strconv.Itoa(durationInt+durationAddition) + "h"
+	fmt.Printf("obtained subnet duration %s \n", durationStr)
 	d, err := time.ParseDuration(durationStr)
 	if err != nil {
 		return 0, err
@@ -329,13 +338,13 @@ func checkNodeIsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Networ
 
 // addNodeAsPrimaryNetworkValidator returns bool if node is added as primary network validator
 // as it impacts the output in adding node as subnet validator in the next steps
-func addNodeAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network) (bool, error) {
+func addNodeAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, nodeIndex int) (bool, error) {
 	isValidator, err := checkNodeIsPrimaryNetworkValidator(nodeID, network)
 	if err != nil {
 		return false, err
 	}
 	if !isValidator {
-		if err = joinAsPrimaryNetworkValidator(nodeID, network); err != nil {
+		if err = joinAsPrimaryNetworkValidator(nodeID, network, nodeIndex); err != nil {
 			return false, err
 		}
 		ux.Logger.PrintToUser(fmt.Sprintf("Node %s successfully added as Primary Network validator!", nodeID.String()))
@@ -366,7 +375,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	}
 	failedNodes := []string{}
 	nodeErrors := []error{}
-	for _, host := range hostAliases {
+	for i, host := range hostAliases {
 		nodeIDStr, err := getClusterNodeID(clusterName, host)
 		if err != nil {
 			failedNodes = append(failedNodes, host)
@@ -379,7 +388,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
-		_, err = addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji)
+		_, err = addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji, i)
 		if err != nil {
 			failedNodes = append(failedNodes, host)
 			nodeErrors = append(nodeErrors, err)

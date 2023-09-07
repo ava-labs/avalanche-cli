@@ -193,7 +193,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			nodeErrors = append(nodeErrors, errors.New("node is not synced to subnet yet, please try again later"))
 			continue
 		}
-		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji)
+		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji, i)
 		if err != nil {
 			failedNodes = append(failedNodes, host)
 			nodeErrors = append(nodeErrors, err)
