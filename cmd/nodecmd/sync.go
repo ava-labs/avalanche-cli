@@ -65,7 +65,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), app.GetAnsibleInventoryPath(clusterName)); err != nil {
 		return err
 	}
-	if err := ansible.RunAnsiblePlaybookSetupCLIFromSource(app.GetAnsibleDir(), app.GetAnsibleInventoryPath(clusterName), "custom-vms-cloud-4"); err != nil {
+	if err := ansible.RunAnsiblePlaybookSetupCLIFromSource(app.GetAnsibleDir(), app.GetAnsibleInventoryPath(clusterName), constants.CloudCLIBranch); err != nil {
 		return err
 	}
 	return trackSubnet(clusterName, subnetName, models.Fuji)

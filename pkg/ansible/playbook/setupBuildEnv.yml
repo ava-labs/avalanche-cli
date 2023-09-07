@@ -9,8 +9,8 @@
       shell: |
         GOFILE=go1.21.1.linux-amd64.tar.gz
         cd ~
-        rm -rf $GOFILE go
-        wget https://go.dev/dl/$GOFILE
+        sudo rm -rf $GOFILE go
+        wget -nv https://go.dev/dl/$GOFILE
         tar xfz $GOFILE
         echo >> ~/.bashrc
         echo export PATH=\$PATH:~/go/bin >> ~/.bashrc
