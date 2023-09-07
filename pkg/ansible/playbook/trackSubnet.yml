@@ -1,6 +1,27 @@
 ---
 - hosts: all
   tasks:
+    - name: install gcc
+      shell: |
+        sudo apt install gcc -y
+        gcc --version
+    - name: install go
+      shell: |
+        GOFILE=go1.21.1.linux-amd64.tar.gz
+        cd ~
+        rm -rf $GOFILE go
+        wget https://go.dev/dl/$GOFILE
+        tar xfz $GOFILE
+        echo >> ~/.bashrc
+        echo export PATH=\$PATH:~/go/bin >> ~/.bashrc
+        echo export CGO_ENABLED=1 >> ~/.bashrc
+        bash -i -c "go version"
+    - name: install rust
+      shell: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s - -y
+        echo >> ~/.bashrc
+        echo export PATH=\$PATH:~/.cargo/bin >> ~/.bashrc
+        bash -i -c "cargo version"
     - name: import subnet
       shell: /home/ubuntu/bin/avalanche subnet import file {{ subnetExportFileName }} --force
     - name: avalanche join subnet
