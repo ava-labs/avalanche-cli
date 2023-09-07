@@ -9,6 +9,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
@@ -103,25 +104,45 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 	if sc.VM == models.CustomVM {
 		if sc.CustomVMRepoURL == "" {
 			ux.Logger.PrintToUser("Custom VM source code repository, branch and build script not defined for subnet. Filling in the details now.")
+			if customVMRepoURL != "" {
+				ux.Logger.PrintToUser("Checking source code repository URL %s", customVMRepoURL)
+				if err := prompts.ValidateURL(customVMRepoURL); err != nil {
+					ux.Logger.PrintToUser("Invalid repository url %s: %s", customVMRepoURL, err)
+					customVMRepoURL = ""
+				}
+			}
 			if customVMRepoURL == "" {
-				customVMRepoURL, err = app.Prompt.CaptureString("URL for source code repository")
+				customVMRepoURL, err = app.Prompt.CaptureURL("Source code repository URL")
 				if err != nil {
 					return err
+				}
+			}
+			if customVMBranch != "" {
+				ux.Logger.PrintToUser("Checking branch %s", customVMBranch)
+				if err := prompts.ValidateRepoBranch(customVMRepoURL, customVMBranch); err != nil {
+					ux.Logger.PrintToUser("Invalid repository branch %s: %s", customVMBranch, err)
+					customVMBranch = ""
 				}
 			}
 			if customVMBranch == "" {
-				customVMBranch, err = app.Prompt.CaptureString("Branch")
+				customVMBranch, err = app.Prompt.CaptureRepoBranch("Branch", customVMRepoURL)
 				if err != nil {
 					return err
+				}
+			}
+			if customVMBuildScript != "" {
+				ux.Logger.PrintToUser("Checking build script %s", customVMBuildScript)
+				if err := prompts.ValidateRepoFile(customVMRepoURL, customVMBranch, customVMBuildScript); err != nil {
+					ux.Logger.PrintToUser("Invalid repository build script %s: %s", customVMBuildScript, err)
+					customVMBuildScript = ""
 				}
 			}
 			if customVMBuildScript == "" {
-				customVMBuildScript, err = app.Prompt.CaptureString("Build script path inside repository")
+				customVMBuildScript, err = app.Prompt.CaptureRepoFile("Build script", customVMRepoURL, customVMBranch)
 				if err != nil {
 					return err
 				}
 			}
-			return nil
 			sc.CustomVMRepoURL = customVMRepoURL
 			sc.CustomVMBranch = customVMBranch
 			sc.CustomVMBuildScript = customVMBuildScript
