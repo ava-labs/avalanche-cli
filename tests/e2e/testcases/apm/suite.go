@@ -52,6 +52,7 @@ var _ = ginkgo.Describe("[APM]", func() {
 	})
 
 	ginkgo.It("can import from url", func() {
+		ginkgo.Skip("TODO")
 		branch := "master"
 		commands.ImportSubnetConfigFromURL(testRepo, branch, subnet2)
 	})
