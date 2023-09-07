@@ -136,6 +136,8 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid version string, should be semantic version (ex: v1.1.1): %s", vmVersion)
 	}
 
+	fmt.Println("UNO")
+
 	switch subnetType {
 	case models.SubnetEvm:
 		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(app, subnetName, genesisFile, vmVersion)
@@ -159,9 +161,11 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	if err = app.CreateSidecar(sc); err != nil {
 		return err
 	}
-	err = sendMetrics(cmd, subnetType.RepoName(), subnetName)
-	if err != nil {
-		return err
+	if subnetType == models.SubnetEvm {
+		err = sendMetrics(cmd, subnetType.RepoName(), subnetName)
+		if err != nil {
+			return err
+		}
 	}
 	ux.Logger.PrintToUser("Successfully created subnet configuration")
 	return nil
