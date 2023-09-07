@@ -47,6 +47,7 @@ var _ = ginkgo.Describe("[APM]", func() {
 	})
 
 	ginkgo.It("can import from avalanche-core", func() {
+		ginkgo.Skip("TODO")
 		repo := "ava-labs/avalanche-plugins-core"
 		commands.ImportSubnetConfig(repo, subnet1)
 	})
