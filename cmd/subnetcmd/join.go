@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/plugins"
@@ -37,6 +39,8 @@ var (
 	avagoConfigPath string
 	// path to avalanchego plugin dir
 	pluginDir string
+	// path to avalanchego datadir dir
+	dataDir string
 	// if true, print the manual instructions to screen
 	printManual bool
 	// if true, doesn't ask for overwriting the config file
@@ -45,6 +49,8 @@ var (
 	joinElastic bool
 	// for permissionless subnet only: how much subnet native token will be staked in the validator
 	stakeAmount uint64
+
+	errNoBlockchainID = errors.New("failed to find the blockchain ID for this subnet, has it been deployed/created on this network?")
 )
 
 // avalanche subnet deploy
@@ -71,6 +77,7 @@ This command currently only supports Subnets deployed on the Fuji Testnet and Ma
 	}
 	cmd.Flags().StringVar(&avagoConfigPath, "avalanchego-config", "", "file path of the avalanchego config file")
 	cmd.Flags().StringVar(&pluginDir, "plugin-dir", "", "file path of avalanchego's plugin directory")
+	cmd.Flags().StringVar(&dataDir, "data-dir", "", "path of avalanchego's data dir directory")
 	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "join on `fuji` (alias for `testnet`)")
 	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
 	cmd.Flags().BoolVar(&deployLocal, "local", false, "join on `local` (for elastic subnet only)")
@@ -97,6 +104,7 @@ func joinCmd(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	subnetName := chains[0]
 
 	sc, err := app.LoadSidecar(subnetName)
@@ -277,9 +285,89 @@ func joinCmd(_ *cobra.Command, args []string) error {
 
 	ux.Logger.PrintToUser("VM binary written to %s", vmPath)
 
+	if forceWrite {
+		if err := writeAvagoChainConfigFiles(app, dataDir, subnetName, sc, network); err != nil {
+			return err
+		}
+	}
+
 	if err := plugins.EditConfigFile(app, subnetIDStr, networkLower, avagoConfigPath, forceWrite); err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func writeAvagoChainConfigFiles(
+	app *application.Avalanche,
+	dataDir string,
+	subnetName string,
+	sc models.Sidecar,
+	network models.Network,
+) error {
+	if dataDir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+		dataDir = filepath.Join(home, ".avalanchego")
+	}
+
+	subnetID := sc.Networks[network.String()].SubnetID
+	if subnetID == ids.Empty {
+		return errNoSubnetID
+	}
+	subnetIDStr := subnetID.String()
+	blockchainID := sc.Networks[network.String()].BlockchainID
+	if blockchainID == ids.Empty {
+		return errNoBlockchainID
+	}
+	blockchainIDStr := blockchainID.String()
+
+	configsPath := filepath.Join(dataDir, "configs")
+
+	if app.AvagoSubnetConfigExists(subnetName) {
+		subnetConfigsPath := filepath.Join(configsPath, "subnets")
+		if err := os.MkdirAll(subnetConfigsPath, constants.DefaultPerms755); err != nil {
+			return err
+		}
+		subnetConfig, err := app.LoadRawAvagoSubnetConfig(subnetName)
+		if err != nil {
+			return err
+		}
+		subnetConfigPath := filepath.Join(subnetConfigsPath, subnetIDStr+".json")
+		if err := os.WriteFile(subnetConfigPath, subnetConfig, constants.DefaultPerms755); err != nil {
+			return err
+		}
+	}
+
+	if app.ChainConfigExists(subnetName) || app.NetworkUpgradeExists(subnetName) {
+		chainConfigsPath := filepath.Join(configsPath, "chains", blockchainIDStr)
+		if err := os.MkdirAll(chainConfigsPath, constants.DefaultPerms755); err != nil {
+			return err
+		}
+		if app.ChainConfigExists(subnetName) {
+			chainConfig, err := app.LoadRawChainConfig(subnetName)
+			if err != nil {
+				return err
+			}
+			chainConfigPath := filepath.Join(chainConfigsPath, "config.json")
+			if err := os.WriteFile(chainConfigPath, chainConfig, constants.DefaultPerms755); err != nil {
+				return err
+			}
+		}
+		if app.NetworkUpgradeExists(subnetName) {
+			networkUpgrades, err := app.LoadRawNetworkUpgrades(subnetName)
+			if err != nil {
+				return err
+			}
+			networkUpgradesPath := filepath.Join(chainConfigsPath, "upgrade.json")
+			if err := os.WriteFile(networkUpgradesPath, networkUpgrades, constants.DefaultPerms755); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 

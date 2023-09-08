@@ -4,6 +4,7 @@ package subnetcmd
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -96,6 +97,11 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 	}
 
 	subnetName := args[0]
+
+	if !app.SidecarExists(subnetName) {
+		return fmt.Errorf("invalid subnet %q", subnetName)
+	}
+
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
@@ -157,9 +163,33 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	var chainConfig, subnetConfig, networkUpgrades []byte
+
+	if app.ChainConfigExists(subnetName) {
+		chainConfig, err = app.LoadRawChainConfig(subnetName)
+		if err != nil {
+			return err
+		}
+	}
+	if app.AvagoSubnetConfigExists(subnetName) {
+		subnetConfig, err = app.LoadRawAvagoSubnetConfig(subnetName)
+		if err != nil {
+			return err
+		}
+	}
+	if app.NetworkUpgradeExists(subnetName) {
+		networkUpgrades, err = app.LoadRawNetworkUpgrades(subnetName)
+		if err != nil {
+			return err
+		}
+	}
+
 	exportData := models.Exportable{
-		Sidecar: sc,
-		Genesis: gen,
+		Sidecar:         sc,
+		Genesis:         gen,
+		ChainConfig:     chainConfig,
+		SubnetConfig:    subnetConfig,
+		NetworkUpgrades: networkUpgrades,
 	}
 
 	exportBytes, err := json.Marshal(exportData)
