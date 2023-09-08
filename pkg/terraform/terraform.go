@@ -104,8 +104,8 @@ func SetSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, ipInT
 	}
 }
 
-// SetElasticIP attach elastic IP to our ec2 instance
-func SetElasticIP(rootBody *hclwrite.Body, numNodes uint32) {
+// SetElasticIPs attach elastic IP to our ec2 instance
+func SetElasticIPs(rootBody *hclwrite.Body, numNodes uint32) {
 	eip := rootBody.AppendNewBlock("resource", []string{"aws_eip", "myeip"})
 	eipBody := eip.Body()
 	eipBody.SetAttributeValue("count", cty.NumberIntVal(int64(numNodes)))
@@ -163,8 +163,8 @@ func SetKeyPair(rootBody *hclwrite.Body, keyName, certName string) {
 	})
 }
 
-// SetupInstance adds aws_instance section in terraform state file where we configure all the necessary components of the desired ec2 instance
-func SetupInstance(rootBody *hclwrite.Body, securityGroupName string, useExistingKeyPair bool, existingKeyPairName, ami string, numNodes uint32) {
+// SetupInstances adds aws_instance section in terraform state file where we configure all the necessary components of the desired ec2 instance
+func SetupInstances(rootBody *hclwrite.Body, securityGroupName string, useExistingKeyPair bool, existingKeyPairName, ami string, numNodes uint32) {
 	awsInstance := rootBody.AppendNewBlock("resource", []string{"aws_instance", "aws_node"})
 	awsInstanceBody := awsInstance.Body()
 	awsInstanceBody.SetAttributeValue("count", cty.NumberIntVal(int64(numNodes)))
@@ -195,7 +195,7 @@ func SetupInstance(rootBody *hclwrite.Body, securityGroupName string, useExistin
 
 // SetOutput adds output section in terraform state file so that we can call terraform output command and print instance_ip and instance_id to user
 func SetOutput(rootBody *hclwrite.Body) {
-	outputEip := rootBody.AppendNewBlock("output", []string{"instance_ip"})
+	outputEip := rootBody.AppendNewBlock("output", []string{"instance_ips"})
 	outputEipBody := outputEip.Body()
 	outputEipBody.SetAttributeTraversal("value", hcl.Traversal{
 		hcl.TraverseRoot{
@@ -209,7 +209,7 @@ func SetOutput(rootBody *hclwrite.Body) {
 		},
 	})
 
-	outputInstanceID := rootBody.AppendNewBlock("output", []string{"instance_id"})
+	outputInstanceID := rootBody.AppendNewBlock("output", []string{"instance_ids"})
 	outputInstanceIDBody := outputInstanceID.Body()
 	outputInstanceIDBody.SetAttributeTraversal("value", hcl.Traversal{
 		hcl.TraverseRoot{
@@ -230,7 +230,7 @@ func RemoveDirectory(terraformDir string) error {
 }
 
 // RunTerraform executes terraform apply function that creates the EC2 instances based on the .tf file provided
-// returns the AWS node-ID and node IP
+// returns a list of AWS node-IDs and node IPs
 func RunTerraform(terraformDir string) ([]string, []string, error) {
 	cmd := exec.Command(constants.Terraform, "init") //nolint:gosec
 	cmd.Dir = terraformDir
@@ -262,18 +262,18 @@ func RunTerraform(terraformDir string) ([]string, []string, error) {
 }
 
 func GetInstanceIDs(terraformDir string) ([]string, error) {
-	cmd := exec.Command(constants.Terraform, "output", "instance_id") //nolint:gosec
+	cmd := exec.Command(constants.Terraform, "output", "instance_ids") //nolint:gosec
 	cmd.Dir = terraformDir
-	instanceIDOutput, err := cmd.Output()
+	instanceIDsOutput, err := cmd.Output()
 	if err != nil {
 		return nil, err
 	}
 	instanceIDs := []string{}
-	instanceIDOutputWoSpace := strings.TrimSpace(string(instanceIDOutput))
+	instanceIDsOutputWoSpace := strings.TrimSpace(string(instanceIDsOutput))
 	// eip and nodeID outputs are bounded by [ and ,] , we need to remove them
-	trimmedInstanceID := instanceIDOutputWoSpace[1 : len(instanceIDOutputWoSpace)-3]
-	splitInstanceID := strings.Split(trimmedInstanceID, ",")
-	for _, instanceID := range splitInstanceID {
+	trimmedInstanceIDs := instanceIDsOutputWoSpace[1 : len(instanceIDsOutputWoSpace)-3]
+	splitInstanceIDs := strings.Split(trimmedInstanceIDs, ",")
+	for _, instanceID := range splitInstanceIDs {
 		instanceIDWoSpace := strings.TrimSpace(instanceID)
 		// eip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
 		instanceIDs = append(instanceIDs, instanceIDWoSpace[1:len(instanceIDWoSpace)-1])
@@ -282,18 +282,18 @@ func GetInstanceIDs(terraformDir string) ([]string, error) {
 }
 
 func GetPublicIPs(terraformDir string) ([]string, error) {
-	cmd := exec.Command(constants.Terraform, "output", "instance_ip") //nolint:gosec
+	cmd := exec.Command(constants.Terraform, "output", "instance_ips") //nolint:gosec
 	cmd.Dir = terraformDir
-	eipOutput, err := cmd.Output()
+	eipsOutput, err := cmd.Output()
 	if err != nil {
 		return nil, err
 	}
 	publicIPs := []string{}
-	eipOutputWoSpace := strings.TrimSpace(string(eipOutput))
+	eipsOutputWoSpace := strings.TrimSpace(string(eipsOutput))
 	// eip and nodeID outputs are bounded by [ and ,] , we need to remove them
-	trimmedPublicIP := eipOutputWoSpace[1 : len(eipOutputWoSpace)-3]
-	splitPublicIP := strings.Split(trimmedPublicIP, ",")
-	for _, publicIP := range splitPublicIP {
+	trimmedPublicIPs := eipsOutputWoSpace[1 : len(eipsOutputWoSpace)-3]
+	splitPublicIPs := strings.Split(trimmedPublicIPs, ",")
+	for _, publicIP := range splitPublicIPs {
 		publicIPWoSpace := strings.TrimSpace(publicIP)
 		// eip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
 		publicIPs = append(publicIPs, publicIPWoSpace[1:len(publicIPWoSpace)-1])
