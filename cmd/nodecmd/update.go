@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanchego/ids"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 
@@ -51,22 +50,6 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 	}
 	if !isBootstrapped {
 		return errors.New("node is not bootstrapped yet, please try again later")
-	}
-	sc, err := app.LoadSidecar(subnetName)
-	if err != nil {
-		return err
-	}
-	blockchainID := sc.Networks[models.Fuji.String()].BlockchainID
-	if blockchainID == ids.Empty {
-		return ErrNoBlockchainID
-	}
-	// the node is supposed to be synced to the subnet
-	isSubnetSynced, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, false, true)
-	if err != nil {
-		return err
-	}
-	if !isSubnetSynced {
-		return errors.New("node is not synced to subnet")
 	}
 	if err := checkAvalancheGoVersionCompatible(clusterName, subnetName); err != nil {
 		return err
