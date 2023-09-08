@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
@@ -102,9 +103,30 @@ func configure(_ *cobra.Command, args []string) error {
 }
 
 func updateConf(subnet, path, filename string) error {
-	fileBytes, err := utils.ValidateJSON(path)
+	sc, err := app.LoadSidecar(subnet)
 	if err != nil {
 		return err
+	}
+	var (
+		fileBytes    []byte
+		validateJSON bool
+	)
+	if filename == constants.SubnetConfigFileName {
+		validateJSON = true
+	}
+	if filename == constants.ChainConfigFileName && sc.VM == models.SubnetEvm {
+		validateJSON = true
+	}
+	if validateJSON {
+		fileBytes, err = utils.ValidateJSON(path)
+		if err != nil {
+			return err
+		}
+	} else {
+		fileBytes, err = os.ReadFile(path)
+		if err != nil {
+			return err
+		}
 	}
 	subnetDir := filepath.Join(app.GetSubnetDir(), subnet)
 	if err := os.MkdirAll(subnetDir, constants.DefaultPerms755); err != nil {

@@ -115,7 +115,7 @@ const (
 	AnsibleInventoryFlag                  = "-i"
 	AnsibleExtraArgsIdentitiesOnlyFlag    = "--ssh-extra-args='-o IdentitiesOnly=yes'"
 	AnsibleExtraVarsFlag                  = "--extra-vars"
-	CloudCLIBranch                        = "custom-vms-cloud-4"
+	CloudCLIBranch                        = "custom-vms-cloud-8"
 	DefaultConfigFileName                 = ".avalanche-cli"
 	DefaultConfigFileType                 = "json"
 	WriteReadReadPerms                    = 0o644
