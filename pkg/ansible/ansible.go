@@ -174,6 +174,14 @@ func displayErrMsg(buffer *bytes.Buffer) error {
 			if ok {
 				toDump = append(toDump, getStringSeqFromISeq(stderrLines)...)
 			}
+			msgLine, ok := jsonMap["msg"].(string)
+			if ok {
+				toDump = append(toDump, msgLine)
+			}
+			contentLine, ok := jsonMap["content"].(string)
+			if ok {
+				toDump = append(toDump, contentLine)
+			}
 			if len(toDump) > 0 {
 				fmt.Println()
 				fmt.Println(logging.Red.Wrap("Message from cloud node:"))
