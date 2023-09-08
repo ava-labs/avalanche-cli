@@ -123,7 +123,7 @@ func stopNode(_ *cobra.Command, args []string) error {
 			continue
 		}
 		ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
-		if err = awsAPI.StopInstance(ec2Svc, nodeConfig.NodeID, nodeConfig.ElasticIP, true); err != nil {
+		if err := awsAPI.StopInstance(ec2Svc, nodeConfig.NodeID, nodeConfig.ElasticIP, true); err != nil {
 			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err.Error()))
 			failedNodes = append(failedNodes, node)
 			nodeErrors = append(nodeErrors, err)
