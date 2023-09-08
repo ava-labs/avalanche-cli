@@ -102,6 +102,7 @@ const (
 	IsBootstrappedPlaybook                = "playbook/isBootstrapped.yml"
 	IsSubnetSyncedPlaybook                = "playbook/isSubnetSynced.yml"
 	TrackSubnetPlaybook                   = "playbook/trackSubnet.yml"
+	UpdateSubnetPlaybook                  = "playbook/updateSubnet.yml"
 	AvalancheGoVersionPlaybook            = "playbook/avalancheGoVersion.yml"
 	SetupBuildEnvPlaybook                 = "playbook/setupBuildEnv.yml"
 	SetupCLIFromSourcePlaybook            = "playbook/setupCLIFromSource.yml"
@@ -115,7 +116,7 @@ const (
 	AnsibleInventoryFlag                  = "-i"
 	AnsibleExtraArgsIdentitiesOnlyFlag    = "--ssh-extra-args='-o IdentitiesOnly=yes'"
 	AnsibleExtraVarsFlag                  = "--extra-vars"
-	CloudCLIBranch                        = "custom-vms-cloud-8"
+	CloudCLIBranch                        = "custom-vms-cloud-9"
 	DefaultConfigFileName                 = ".avalanche-cli"
 	DefaultConfigFileType                 = "json"
 	WriteReadReadPerms                    = 0o644
