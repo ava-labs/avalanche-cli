@@ -321,7 +321,7 @@ func TestUpdateToCustomBin(t *testing.T) {
 
 	assert.FileExists(binaryPath)
 
-	err = updateToCustomBin(sc, networkToUpgrade, binaryPath)
+	err = updateToCustomBin(sc, networkToUpgrade, binaryPath, false)
 	assert.NoError(err)
 
 	// check new binary exists and matches

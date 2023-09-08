@@ -310,7 +310,7 @@ func (app *Avalanche) CopyVMBinary(inputFilename string, subnetName string) erro
 		return err
 	}
 	vmPath := app.GetCustomVMPath(subnetName)
-	return os.WriteFile(vmPath, vmBytes, constants.WriteReadReadPerms)
+	return os.WriteFile(vmPath, vmBytes, constants.DefaultPerms755)
 }
 
 func (app *Avalanche) CopyKeyFile(inputFilename string, keyName string) error {
