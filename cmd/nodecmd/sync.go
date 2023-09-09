@@ -99,7 +99,7 @@ func checkForCompatibleAvagoVersion(configuredRPCVersion int) ([]string, error) 
 }
 
 func checkAvalancheGoVersionCompatible(clusterName, subnetName string) error {
-	ux.Logger.PrintToUser(fmt.Sprintf("Checking compatibility of avalanche go version in cluster %s with Subnet EVM RPC of subnet %s ...", clusterName, subnetName))
+	ux.Logger.PrintToUser(fmt.Sprintf("Checking compatibility of avalanche go version in cluster %s with VM RPC of subnet %s ...", clusterName, subnetName))
 	err := app.CreateAnsibleDir()
 	if err != nil {
 		return err
@@ -126,11 +126,19 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) error {
 		return err
 	}
 	if !slices.Contains(compatibleVersions, avalancheGoVersion) {
-		ux.Logger.PrintToUser(fmt.Sprintf("Compatible Avalanche Go versions are %s", strings.Join(compatibleVersions, ", ")))
-		ux.Logger.PrintToUser("Either modify your Avalanche Go version or modify your Subnet-EVM version")
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(fmt.Sprintf("Current Avalanche Go version is %s", avalancheGoVersion))
+		ux.Logger.PrintToUser(fmt.Sprintf("VM-Compatible Avalanche Go versions are: %s", strings.Join(compatibleVersions, ", ")))
+		ux.Logger.PrintToUser("Either modify your Avalanche Go version or modify your VM version")
 		ux.Logger.PrintToUser("To modify your Avalanche Go version: https://docs.avax.network/nodes/maintain/upgrade-your-avalanchego-node")
-		ux.Logger.PrintToUser("To modify your Subnet-EVM version: https://docs.avax.network/build/subnet/upgrade/upgrade-subnet-vm")
-		return fmt.Errorf("the Avalanche Go version of cluster %s is incompatible with Subnet EVM RPC version of %s", clusterName, subnetName)
+		switch sc.VM {
+		case models.SubnetEvm:
+			ux.Logger.PrintToUser("To modify your Subnet-EVM version: https://docs.avax.network/build/subnet/upgrade/upgrade-subnet-vm")
+		case models.CustomVM:
+			ux.Logger.PrintToUser("To modify your Custom VM binary: avalanche subnet upgrade vm %s --config", subnetName)
+		}
+		ux.Logger.PrintToUser("")
+		return fmt.Errorf("the Avalanche Go version of cluster %s is incompatible with VM RPC version of %s", clusterName, subnetName)
 	}
 	return nil
 }

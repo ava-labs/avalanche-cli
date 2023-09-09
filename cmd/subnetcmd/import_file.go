@@ -122,6 +122,18 @@ func importFromFile(importPath string) error {
 		return errors.New("subnet already exists. Use --" + forceFlag + " parameter to overwrite")
 	}
 
+	if importable.Sidecar.VM == models.CustomVM {
+		if importable.Sidecar.CustomVMRepoURL == "" {
+			return fmt.Errorf("repository url must be defined for custom vm import")
+		}
+		if importable.Sidecar.CustomVMBranch == "" {
+			return fmt.Errorf("repository branch must be defined for custom vm import")
+		}
+		if importable.Sidecar.CustomVMBuildScript == "" {
+			return fmt.Errorf("build script must be defined for custom vm import")
+		}
+	}
+
 	err = app.WriteGenesisFile(subnetName, importable.Genesis)
 	if err != nil {
 		return err

@@ -27,18 +27,21 @@ type ElasticSubnet struct {
 }
 
 type Sidecar struct {
-	Name            string
-	VM              VMType
-	VMVersion       string
-	RPCVersion      int
-	Subnet          string
-	TokenName       string
-	ChainID         string
-	Version         string
-	Networks        map[string]NetworkData
-	ElasticSubnet   map[string]ElasticSubnet
-	ImportedFromAPM bool
-	ImportedVMID    string
+	Name                string
+	VM                  VMType
+	VMVersion           string
+	RPCVersion          int
+	Subnet              string
+	TokenName           string
+	ChainID             string
+	Version             string
+	Networks            map[string]NetworkData
+	ElasticSubnet       map[string]ElasticSubnet
+	ImportedFromAPM     bool
+	ImportedVMID        string
+	CustomVMRepoURL     string
+	CustomVMBranch      string
+	CustomVMBuildScript string
 }
 
 func (sc Sidecar) GetVMID() (string, error) {

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/http"
 	"net/mail"
 	"net/url"
 	"os"
@@ -120,7 +121,7 @@ func validateBiggerThanZero(input string) error {
 	return nil
 }
 
-func validateURL(input string) error {
+func validateURLFormat(input string) error {
 	_, err := url.ParseRequestURI(input)
 	if err != nil {
 		return err
@@ -200,4 +201,54 @@ func validateNewFilepath(input string) error {
 		return nil
 	}
 	return errors.New("file already exists")
+}
+
+func validateNonEmpty(input string) error {
+	if input == "" {
+		return errors.New("string cannot be empty")
+	}
+	return nil
+}
+
+func RequestURL(url string) (*http.Response, error) {
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request for url %s: %w", url, err)
+	}
+	token := os.Getenv(constants.GithubAPITokenEnvVarName)
+	if token != "" {
+		// avoid rate limitation issues at CI
+		request.Header.Set("authorization", fmt.Sprintf("Bearer %s", token))
+	}
+	resp, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected http status code: %d", resp.StatusCode)
+	}
+	return resp, nil
+}
+
+func ValidateURL(url string) error {
+	if err := validateURLFormat(url); err != nil {
+		return err
+	}
+	resp, err := RequestURL(url)
+	if err != nil {
+		return err
+	}
+	// will just ignore this error, url is already validated
+	_ = resp.Body.Close()
+	return nil
+}
+
+func ValidateRepoBranch(repo string, branch string) error {
+	url := repo + "/tree/" + branch
+	return ValidateURL(url)
+}
+
+func ValidateRepoFile(repo string, branch string, file string) error {
+	url := repo + "/blob/" + branch + "/" + file
+	return ValidateURL(url)
 }
