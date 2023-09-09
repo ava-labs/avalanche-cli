@@ -187,18 +187,24 @@ func importFromFile(importPath string) error {
 		if err := app.WriteChainConfigFile(subnetName, importable.ChainConfig); err != nil {
 			return err
 		}
+	} else {
+		_ = os.RemoveAll(app.GetChainConfigPath(subnetName))
 	}
 
 	if importable.SubnetConfig != nil {
 		if err := app.WriteAvagoSubnetConfigFile(subnetName, importable.SubnetConfig); err != nil {
 			return err
 		}
+	} else {
+		_ = os.RemoveAll(app.GetAvagoSubnetConfigPath(subnetName))
 	}
 
 	if importable.NetworkUpgrades != nil {
 		if err := app.WriteNetworkUpgradesFile(subnetName, importable.NetworkUpgrades); err != nil {
 			return err
 		}
+	} else {
+		_ = os.RemoveAll(app.GetUpgradeBytesFilepath(subnetName))
 	}
 
 	if err := app.CreateSidecar(&importable.Sidecar); err != nil {

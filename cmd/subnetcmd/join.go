@@ -326,8 +326,9 @@ func writeAvagoChainConfigFiles(
 
 	configsPath := filepath.Join(dataDir, "configs")
 
+	subnetConfigsPath := filepath.Join(configsPath, "subnets")
+	subnetConfigPath := filepath.Join(subnetConfigsPath, subnetIDStr+".json")
 	if app.AvagoSubnetConfigExists(subnetName) {
-		subnetConfigsPath := filepath.Join(configsPath, "subnets")
 		if err := os.MkdirAll(subnetConfigsPath, constants.DefaultPerms755); err != nil {
 			return err
 		}
@@ -335,10 +336,11 @@ func writeAvagoChainConfigFiles(
 		if err != nil {
 			return err
 		}
-		subnetConfigPath := filepath.Join(subnetConfigsPath, subnetIDStr+".json")
 		if err := os.WriteFile(subnetConfigPath, subnetConfig, constants.DefaultPerms755); err != nil {
 			return err
 		}
+	} else {
+		_ = os.RemoveAll(subnetConfigPath)
 	}
 
 	if app.ChainConfigExists(subnetName) || app.NetworkUpgradeExists(subnetName) {
@@ -346,25 +348,29 @@ func writeAvagoChainConfigFiles(
 		if err := os.MkdirAll(chainConfigsPath, constants.DefaultPerms755); err != nil {
 			return err
 		}
+		chainConfigPath := filepath.Join(chainConfigsPath, "config.json")
 		if app.ChainConfigExists(subnetName) {
 			chainConfig, err := app.LoadRawChainConfig(subnetName)
 			if err != nil {
 				return err
 			}
-			chainConfigPath := filepath.Join(chainConfigsPath, "config.json")
 			if err := os.WriteFile(chainConfigPath, chainConfig, constants.DefaultPerms755); err != nil {
 				return err
 			}
+		} else {
+			_ = os.RemoveAll(chainConfigPath)
 		}
+		networkUpgradesPath := filepath.Join(chainConfigsPath, "upgrade.json")
 		if app.NetworkUpgradeExists(subnetName) {
 			networkUpgrades, err := app.LoadRawNetworkUpgrades(subnetName)
 			if err != nil {
 				return err
 			}
-			networkUpgradesPath := filepath.Join(chainConfigsPath, "upgrade.json")
 			if err := os.WriteFile(networkUpgradesPath, networkUpgrades, constants.DefaultPerms755); err != nil {
 				return err
 			}
+		} else {
+			_ = os.RemoveAll(networkUpgradesPath)
 		}
 	}
 
