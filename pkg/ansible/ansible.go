@@ -172,7 +172,7 @@ func RunAnsiblePlaybookUpdateSubnet(ansibleDir, subnetName, importPath, inventor
 
 func displayErrMsg(buffer *bytes.Buffer) error {
 	for _, line := range strings.Split(buffer.String(), "\n") {
-		if strings.Contains(line, "FAILED") {
+		if strings.Contains(line, "FAILED") || strings.Contains(line, "UNREACHABLE") {
 			i := strings.Index(line, "{")
 			if i >= 0 {
 				line = line[i:]
