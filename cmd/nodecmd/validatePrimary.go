@@ -33,7 +33,6 @@ var (
 	deployTestnet   bool
 	deployMainnet   bool
 	keyName         string
-	subnetName      string
 	useLedger       bool
 	ledgerAddresses []string
 	weight          uint64

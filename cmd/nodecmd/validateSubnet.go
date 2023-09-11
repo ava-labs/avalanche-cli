@@ -75,7 +75,7 @@ func parseSubnetSyncOutput(filePath string, printOutput bool) (string, error) {
 	return "", errors.New("unable to parse subnet sync status")
 }
 
-func addNodeAsSubnetValidator(nodeID string, network models.Network) error {
+func addNodeAsSubnetValidator(subnetName string, nodeID string, network models.Network) error {
 	ux.Logger.PrintToUser("Adding the node as a Subnet Validator...")
 	if err := subnetcmd.CallAddValidator(subnetName, nodeID, network); err != nil {
 		return err
@@ -178,5 +178,5 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	return addNodeAsSubnetValidator(nodeIDStr, models.Fuji)
+	return addNodeAsSubnetValidator(subnetName, nodeIDStr, models.Fuji)
 }

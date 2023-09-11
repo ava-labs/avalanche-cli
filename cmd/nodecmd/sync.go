@@ -152,19 +152,19 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) error {
 
 // trackSubnet exports deployed subnet in user's local machine to cloud server and calls node to
 // start tracking the specified subnet (similar to avalanche subnet join <subnetName> command)
-func trackSubnet(clusterName, subnetToTrack string, network models.Network) error {
+func trackSubnet(clusterName, subnetName string, network models.Network) error {
 	subnetPath := "/tmp/" + subnetName + constants.ExportSubnetSuffix
-	if err := subnetcmd.CallExportSubnet(subnetToTrack, subnetPath, network); err != nil {
+	if err := subnetcmd.CallExportSubnet(subnetName, subnetPath, network); err != nil {
 		return err
 	}
 	if err := ansible.RunAnsiblePlaybookExportSubnet(app.GetAnsibleDir(), app.GetAnsibleInventoryPath(clusterName), subnetPath, "/tmp"); err != nil {
 		return err
 	}
 	// runs avalanche join subnet command
-	if err := ansible.RunAnsiblePlaybookTrackSubnet(app.GetAnsibleDir(), subnetToTrack, subnetPath, app.GetAnsibleInventoryPath(clusterName)); err != nil {
+	if err := ansible.RunAnsiblePlaybookTrackSubnet(app.GetAnsibleDir(), subnetName, subnetPath, app.GetAnsibleInventoryPath(clusterName)); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Node successfully started syncing with Subnet!")
-	ux.Logger.PrintToUser(fmt.Sprintf("Check node subnet syncing status with avalanche node status %s --subnet %s", clusterName, subnetToTrack))
+	ux.Logger.PrintToUser(fmt.Sprintf("Check node subnet syncing status with avalanche node status %s --subnet %s", clusterName, subnetName))
 	return nil
 }
