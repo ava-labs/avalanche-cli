@@ -16,6 +16,7 @@ import (
 
 var (
 	subnetConf       string
+	nodeConf         string
 	chainConf        string
 	perNodeChainConf string
 )
@@ -27,12 +28,14 @@ func newConfigureCmd() *cobra.Command {
 		Short: "Adds additional config files for the avalanchego nodes",
 		Long: `AvalancheGo nodes support several different configuration files. Subnets have their own
 Subnet config which applies to all chains/VMs in the Subnet. Each chain within the Subnet
-can have its own chain config. This command allows you to set both config files.`,
+can have its own chain config. A chain can also have special requirements for the AvalancheGo node 
+configuration itself. This command allows you to set all those files.`,
 		SilenceUsage: true,
 		RunE:         configure,
 		Args:         cobra.ExactArgs(1),
 	}
 
+	cmd.Flags().StringVar(&nodeConf, "node-config", "", "path to avalanchego node configuration")
 	cmd.Flags().StringVar(&subnetConf, "subnet-config", "", "path to the subnet configuration")
 	cmd.Flags().StringVar(&chainConf, "chain-config", "", "path to the chain configuration")
 	cmd.Flags().StringVar(&perNodeChainConf, "per-node-chain-config", "", "path to per node chain configuration for local network")
@@ -50,9 +53,13 @@ func configure(_ *cobra.Command, args []string) error {
 		chainLabel        = constants.ChainConfigFileName
 		perNodeChainLabel = constants.PerNodeChainConfigFileName
 		subnetLabel       = constants.SubnetConfigFileName
+		nodeLabel         = constants.NodeConfigFileName
 	)
 	configsToLoad := map[string]string{}
 
+	if nodeConf != "" {
+		configsToLoad[nodeLabel] = nodeConf
+	}
 	if subnetConf != "" {
 		configsToLoad[subnetLabel] = subnetConf
 	}
@@ -65,7 +72,7 @@ func configure(_ *cobra.Command, args []string) error {
 
 	// no flags provided
 	if len(configsToLoad) == 0 {
-		options := []string{chainLabel, subnetLabel, perNodeChainLabel}
+		options := []string{chainLabel, subnetLabel, nodeLabel, perNodeChainLabel}
 		selected, err := app.Prompt.CaptureList("Which configuration file would you like to provide?", options)
 		if err != nil {
 			return err
