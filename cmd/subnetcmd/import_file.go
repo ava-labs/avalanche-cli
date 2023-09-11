@@ -149,7 +149,7 @@ func importFromFile(importPath string) error {
 
 		// get branch from repo
 		cmd := exec.Command("git", "clone", "--single-branch", "-b", importable.Sidecar.CustomVMBranch, importable.Sidecar.CustomVMRepoURL, repoDir) //nolint:gosec
-		utils.SetupRealtimeCLIOutput(cmd)
+		utils.SetupRealtimeCLIOutput(cmd, true, true)
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("could not clone git branch %s of repository %s: %w", importable.Sidecar.CustomVMBranch, importable.Sidecar.CustomVMRepoURL, err)
 		}
@@ -159,7 +159,7 @@ func importFromFile(importPath string) error {
 		// build
 		cmd = exec.Command(importable.Sidecar.CustomVMBuildScript, vmPath) //nolint:gosec
 		cmd.Dir = repoDir
-		utils.SetupRealtimeCLIOutput(cmd)
+		utils.SetupRealtimeCLIOutput(cmd, true, true)
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("error building custom vm binary using script %s on repo %s: %w", importable.Sidecar.CustomVMBuildScript, importable.Sidecar.CustomVMRepoURL, err)
 		}

@@ -103,6 +103,9 @@ const (
 	IsSubnetSyncedPlaybook                = "playbook/isSubnetSynced.yml"
 	TrackSubnetPlaybook                   = "playbook/trackSubnet.yml"
 	AvalancheGoVersionPlaybook            = "playbook/avalancheGoVersion.yml"
+	SetupBuildEnvPlaybook                 = "playbook/setupBuildEnv.yml"
+	SetupCLIFromSourcePlaybook            = "playbook/setupCLIFromSource.yml"
+	BuildEnvGolangVersion                 = "1.21.1"
 	IsBootstrappedJSONFile                = "isBootstrapped.json"
 	AvalancheGoVersionJSONFile            = "avalancheGoVersion.json"
 	NodeIDJSONFile                        = "nodeID.json"
@@ -113,6 +116,7 @@ const (
 	AnsibleInventoryFlag                  = "-i"
 	AnsibleExtraArgsIdentitiesOnlyFlag    = "--ssh-extra-args='-o IdentitiesOnly=yes'"
 	AnsibleExtraVarsFlag                  = "--extra-vars"
+	CloudCLIBranch                        = "custom-vms-cloud-4"
 	DefaultConfigFileName                 = ".avalanche-cli"
 	DefaultConfigFileType                 = "json"
 	WriteReadReadPerms                    = 0o644

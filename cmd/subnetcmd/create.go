@@ -159,9 +159,11 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	if err = app.CreateSidecar(sc); err != nil {
 		return err
 	}
-	err = sendMetrics(cmd, subnetType.RepoName(), subnetName)
-	if err != nil {
-		return err
+	if subnetType == models.SubnetEvm {
+		err = sendMetrics(cmd, subnetType.RepoName(), subnetName)
+		if err != nil {
+			return err
+		}
 	}
 	ux.Logger.PrintToUser("Successfully created subnet configuration")
 	return nil

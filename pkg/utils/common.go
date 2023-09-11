@@ -9,9 +9,18 @@ import (
 	"os/exec"
 )
 
-func SetupRealtimeCLIOutput(cmd *exec.Cmd) {
-	var stdBuffer bytes.Buffer
-	mw := io.MultiWriter(os.Stdout, &stdBuffer)
-	cmd.Stdout = mw
-	cmd.Stderr = mw
+func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr bool) (*bytes.Buffer, *bytes.Buffer) {
+	var stdoutBuffer bytes.Buffer
+	var stderrBuffer bytes.Buffer
+	if redirectStdout {
+		cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuffer)
+	} else {
+		cmd.Stdout = io.MultiWriter(&stdoutBuffer)
+	}
+	if redirectStderr {
+		cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuffer)
+	} else {
+		cmd.Stderr = io.MultiWriter(&stderrBuffer)
+	}
+	return &stdoutBuffer, &stderrBuffer
 }
