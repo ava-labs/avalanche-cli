@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
@@ -103,21 +103,11 @@ func configure(_ *cobra.Command, args []string) error {
 }
 
 func updateConf(subnet, path, filename string) error {
-	sc, err := app.LoadSidecar(subnet)
-	if err != nil {
-		return err
-	}
 	var (
-		fileBytes    []byte
-		validateJSON bool
+		fileBytes []byte
+		err       error
 	)
-	if filename == constants.SubnetConfigFileName {
-		validateJSON = true
-	}
-	if filename == constants.ChainConfigFileName && sc.VM == models.SubnetEvm {
-		validateJSON = true
-	}
-	if validateJSON {
+	if strings.ToLower(filepath.Ext(filename)) == "json" {
 		fileBytes, err = utils.ValidateJSON(path)
 		if err != nil {
 			return err
