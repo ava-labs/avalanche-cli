@@ -104,7 +104,7 @@ func SetSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, ipInT
 	}
 }
 
-// SetElasticIPs attach elastic IP to our ec2 instance
+// SetElasticIPs attach elastic IP(s) to the associated ec2 instance(s)
 func SetElasticIPs(rootBody *hclwrite.Body, numNodes uint32) {
 	eip := rootBody.AppendNewBlock("resource", []string{"aws_eip", "myeip"})
 	eipBody := eip.Body()
@@ -163,7 +163,7 @@ func SetKeyPair(rootBody *hclwrite.Body, keyName, certName string) {
 	})
 }
 
-// SetupInstances adds aws_instance section in terraform state file where we configure all the necessary components of the desired ec2 instance
+// SetupInstances adds aws_instance section in terraform state file where we configure all the necessary components of the desired ec2 instance(s)
 func SetupInstances(rootBody *hclwrite.Body, securityGroupName string, useExistingKeyPair bool, existingKeyPairName, ami string, numNodes uint32) {
 	awsInstance := rootBody.AppendNewBlock("resource", []string{"aws_instance", "aws_node"})
 	awsInstanceBody := awsInstance.Body()

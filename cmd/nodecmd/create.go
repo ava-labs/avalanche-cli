@@ -356,7 +356,6 @@ func createNode(_ *cobra.Command, args []string) error {
 		for _, instanceID := range instanceIDs {
 			ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s...", instanceID))
 			if stopErr := awsAPI.StopInstance(ec2Svc, instanceID, "", false); stopErr != nil {
-				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop cloud server instance %s due to %s", instanceID, stopErr.Error()))
 				failedNodes = append(failedNodes, instanceID)
 				nodeErrors = append(nodeErrors, stopErr)
 			}
