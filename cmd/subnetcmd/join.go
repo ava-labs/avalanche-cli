@@ -291,9 +291,9 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	extraFlagsConfigFile := ""
+	subnetAvagoConfigFile := ""
 	if app.AvagoNodeConfigExists(subnetName) {
-		extraFlagsConfigFile = app.GetAvagoNodeConfigPath(subnetName)
+		subnetAvagoConfigFile = app.GetAvagoNodeConfigPath(subnetName)
 	}
 
 	if err := plugins.EditConfigFile(
@@ -302,7 +302,7 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		networkLower,
 		avagoConfigPath,
 		forceWrite,
-		extraFlagsConfigFile,
+		subnetAvagoConfigFile,
 	); err != nil {
 		return err
 	}

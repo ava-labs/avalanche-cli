@@ -22,7 +22,7 @@ func EditConfigFile(
 	networkID string,
 	configFile string,
 	forceWrite bool,
-	extraFlagsConfigFile string,
+	subnetAvagoConfigFile string,
 ) error {
 	if !forceWrite {
 		warn := "This will edit your existing config file. This edit is nondestructive,\n" +
@@ -49,16 +49,20 @@ func EditConfigFile(
 		return fmt.Errorf("failed to unpack the config file %s to JSON: %w", configFile, err)
 	}
 
-	if extraFlagsConfigFile != "" {
-		extraFlagsFileBytes, err := os.ReadFile(extraFlagsConfigFile)
+	if subnetAvagoConfigFile != "" {
+		subnetAvagoConfigFileBytes, err := os.ReadFile(subnetAvagoConfigFile)
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("failed to load extra flags from subnet avago config file %s: %w", extraFlagsConfigFile, err)
+			return fmt.Errorf("failed to load extra flags from subnet avago config file %s: %w", subnetAvagoConfigFile, err)
 		}
-		var extraFlagsAvagoConfig map[string]interface{}
-		if err := json.Unmarshal(extraFlagsFileBytes, &extraFlagsAvagoConfig); err != nil {
-			return fmt.Errorf("failed to unpack the config file %s to JSON: %w", extraFlagsConfigFile, err)
+		var subnetAvagoConfig map[string]interface{}
+		if err := json.Unmarshal(subnetAvagoConfigFileBytes, &subnetAvagoConfig); err != nil {
+			return fmt.Errorf("failed to unpack the config file %s to JSON: %w", subnetAvagoConfigFile, err)
 		}
-		for k, v := range extraFlagsAvagoConfig {
+		for k, v := range subnetAvagoConfig {
+			if k == "track-subnets" || k == "whitelisted-subnets" {
+				ux.Logger.PrintToUser("ignoring configuration setting for %q, a subnet's avago conf should not change it", k)
+				continue
+			}
 			avagoConfig[k] = v
 		}
 	}

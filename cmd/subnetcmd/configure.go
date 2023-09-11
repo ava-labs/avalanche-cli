@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	subnetConf       string
 	nodeConf         string
+	subnetConf       string
 	chainConf        string
 	perNodeChainConf string
 )
@@ -72,7 +72,7 @@ func configure(_ *cobra.Command, args []string) error {
 
 	// no flags provided
 	if len(configsToLoad) == 0 {
-		options := []string{chainLabel, subnetLabel, nodeLabel, perNodeChainLabel}
+		options := []string{nodeLabel, chainLabel, subnetLabel, perNodeChainLabel}
 		selected, err := app.Prompt.CaptureList("Which configuration file would you like to provide?", options)
 		if err != nil {
 			return err
