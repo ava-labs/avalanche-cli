@@ -7,7 +7,7 @@
         gcc --version
     - name: install go
       shell: |
-        GOFILE=go1.21.1.linux-amd64.tar.gz
+        GOFILE=go{{ goVersion }}.linux-amd64.tar.gz
         cd ~
         sudo rm -rf $GOFILE go
         wget -nv https://go.dev/dl/$GOFILE
