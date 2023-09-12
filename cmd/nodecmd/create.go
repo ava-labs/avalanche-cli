@@ -593,8 +593,8 @@ func PrintResults(instanceIDs, elasticIPs []string, certFilePath, region string,
 			publicIP = publicIPMap[instanceID]
 		}
 		ux.Logger.PrintToUser("======================================")
-		hostAliasName := fmt.Sprintf("aws_node_%s", publicIP)
-		ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", hostAliasName))
+		ansibleHostID := fmt.Sprintf("aws_node_%s", instanceID)
+		ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", ansibleHostID))
 		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Instance ID: %s", instanceID))
 		ux.Logger.PrintToUser(fmt.Sprintf("Public IP: %s", publicIP))
 		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Region: %s", region))
@@ -603,7 +603,7 @@ func PrintResults(instanceIDs, elasticIPs []string, certFilePath, region string,
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("To ssh to node, run: ")
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(fmt.Sprintf("ssh -o IdentitiesOnly=yes ubuntu@%s -i %s", elasticIPs[i], certFilePath))
+		ux.Logger.PrintToUser(fmt.Sprintf("ssh -o IdentitiesOnly=yes ubuntu@%s -i %s", publicIP, certFilePath))
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("======================================")
 	}
