@@ -71,7 +71,6 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("obtained results %s \n", notBootstrappedNodes)
 	printOutput(ansibleHostIDs, notBootstrappedNodes, clusterName, subnetName)
 	return nil
 }
