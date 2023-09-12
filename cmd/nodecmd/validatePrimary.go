@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/ava-labs/avalanchego/genesis"
@@ -29,15 +30,15 @@ import (
 )
 
 var (
-	deployTestnet   bool
-	deployMainnet   bool
-	keyName         string
-	subnetName      string
-	useLedger       bool
-	ledgerAddresses []string
-	weight          uint64
-	duration        time.Duration
-
+	deployTestnet                bool
+	deployMainnet                bool
+	keyName                      string
+	subnetName                   string
+	useLedger                    bool
+	ledgerAddresses              []string
+	weight                       uint64
+	duration                     time.Duration
+	useCustomDuration            bool
 	ErrMutuallyExlusiveKeyLedger = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet        = errors.New("--key is not available for mainnet operations")
 	ErrNoBlockchainID            = errors.New("failed to find the blockchain ID for this subnet, has it been deployed/created on this network?")
@@ -128,7 +129,7 @@ func getMinStakingAmount(network models.Network) (uint64, error) {
 	return minValStake, nil
 }
 
-func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network) error {
+func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, nodeIndex int) error {
 	ux.Logger.PrintToUser(fmt.Sprintf("Adding node %s as a Primary Network Validator...", nodeID.String()))
 	var (
 		start time.Time
@@ -177,7 +178,7 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network) er
 	if weight < minValStake {
 		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", minValStake, weight)
 	}
-	start, duration, err = getTimeParametersPrimaryNetwork(network)
+	start, duration, err = getTimeParametersPrimaryNetwork(network, nodeIndex)
 	if err != nil {
 		return err
 	}
@@ -220,53 +221,71 @@ func promptWeightPrimaryNetwork(network models.Network) (uint64, error) {
 	}
 }
 
-func getTimeParametersPrimaryNetwork(network models.Network) (time.Time, time.Duration, error) {
+func getTimeParametersPrimaryNetwork(network models.Network, nodeIndex int) (time.Time, time.Duration, error) {
 	const (
 		defaultDurationOption = "Minimum staking duration on primary network"
 		custom                = "Custom"
 	)
+	var err error
 	start := time.Now().Add(constants.PrimaryNetworkValidatingStartLeadTime)
-	if duration == 0 {
-		msg := "How long should your validator validate for?"
-		durationOptions := []string{defaultDurationOption, custom}
-		durationOption, err := app.Prompt.CaptureList(msg, durationOptions)
+	if useCustomDuration && duration != 0 {
+		return start, duration, nil
+	}
+	if duration != 0 {
+		duration, err = getDefaultValidationTime(start, network, nodeIndex)
 		if err != nil {
 			return time.Time{}, 0, err
 		}
-
-		switch durationOption {
-		case defaultDurationOption:
-			duration, err = getDefaultMaxValidationTime(start, network)
-			if err != nil {
-				return time.Time{}, 0, err
-			}
-		default:
-			duration, err = subnetcmd.PromptDuration(start, network)
-			if err != nil {
-				return time.Time{}, 0, err
-			}
+		return start, duration, nil
+	}
+	msg := "How long should your validator validate for?"
+	durationOptions := []string{defaultDurationOption, custom}
+	durationOption, err := app.Prompt.CaptureList(msg, durationOptions)
+	if err != nil {
+		return time.Time{}, 0, err
+	}
+	switch durationOption {
+	case defaultDurationOption:
+		duration, err = getDefaultValidationTime(start, network, nodeIndex)
+		if err != nil {
+			return time.Time{}, 0, err
+		}
+	default:
+		useCustomDuration = true
+		duration, err = subnetcmd.PromptDuration(start, network)
+		if err != nil {
+			return time.Time{}, 0, err
 		}
 	}
 	return start, duration, nil
 }
 
-func getDefaultMaxValidationTime(start time.Time, network models.Network) (time.Duration, error) {
+func getDefaultValidationTime(start time.Time, network models.Network, nodeIndex int) (time.Duration, error) {
 	durationStr := constants.DefaultFujiStakeDuration
 	if network == models.Mainnet {
 		durationStr = constants.DefaultMainnetStakeDuration
 	}
+	durationInt, err := strconv.Atoi(durationStr[:len(durationStr)-1])
+	if err != nil {
+		return 0, err
+	}
+	// stagger expiration time by 1 day for each added node
+	durationAddition := 24 * nodeIndex
+	durationStr = strconv.Itoa(durationInt+durationAddition) + "h"
 	d, err := time.ParseDuration(durationStr)
 	if err != nil {
 		return 0, err
 	}
 	end := start.Add(d)
-	confirm := fmt.Sprintf("Your validator will finish staking by %s", end.Format(constants.TimeParseLayout))
-	yes, err := app.Prompt.CaptureYesNo(confirm)
-	if err != nil {
-		return 0, err
-	}
-	if !yes {
-		return 0, errors.New("you have to confirm staking duration")
+	if nodeIndex == 0 {
+		confirm := fmt.Sprintf("Your validator will finish staking by %s", end.Format(constants.TimeParseLayout))
+		yes, err := app.Prompt.CaptureYesNo(confirm)
+		if err != nil {
+			return 0, err
+		}
+		if !yes {
+			return 0, errors.New("you have to confirm staking duration")
+		}
 	}
 	return d, nil
 }
@@ -329,13 +348,13 @@ func checkNodeIsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Networ
 
 // addNodeAsPrimaryNetworkValidator returns bool if node is added as primary network validator
 // as it impacts the output in adding node as subnet validator in the next steps
-func addNodeAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network) (bool, error) {
+func addNodeAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, nodeIndex int) (bool, error) {
 	isValidator, err := checkNodeIsPrimaryNetworkValidator(nodeID, network)
 	if err != nil {
 		return false, err
 	}
 	if !isValidator {
-		if err = joinAsPrimaryNetworkValidator(nodeID, network); err != nil {
+		if err = joinAsPrimaryNetworkValidator(nodeID, network, nodeIndex); err != nil {
 			return false, err
 		}
 		ux.Logger.PrintToUser(fmt.Sprintf("Node %s successfully added as Primary Network validator!", nodeID.String()))
@@ -366,21 +385,25 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	}
 	failedNodes := []string{}
 	nodeErrors := []error{}
-	for _, host := range ansibleNodeIDs {
+	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
+	for i, host := range ansibleNodeIDs {
 		nodeIDStr, err := getClusterNodeID(clusterName, host)
 		if err != nil {
+			ux.Logger.PrintToUser(fmt.Sprintf("Failed to add node %s as Primary Network validator due to %s", host, err.Error()))
 			failedNodes = append(failedNodes, host)
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
 		nodeID, err := ids.NodeIDFromString(nodeIDStr)
 		if err != nil {
+			ux.Logger.PrintToUser(fmt.Sprintf("Failed to add node %s as Primary Network validator due to %s", host, err.Error()))
 			failedNodes = append(failedNodes, host)
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
-		_, err = addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji)
+		_, err = addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji, i)
 		if err != nil {
+			ux.Logger.PrintToUser(fmt.Sprintf("Failed to add node %s as Primary Network validator due to %s", host, err.Error()))
 			failedNodes = append(failedNodes, host)
 			nodeErrors = append(nodeErrors, err)
 		}
