@@ -57,6 +57,7 @@ func removeClusterInventoryDir(clusterName string) error {
 }
 
 func getDeleteConfigConfirmation() error {
+	ux.Logger.PrintToUser("Please note that if your node(s) are validating a Subnet, stopping them could cause Subnet instability and it is irreversible")
 	confirm := "Running this command will delete all stored files associated with your cloud server. Do you want to proceed? " +
 		fmt.Sprintf("Stored files can be found at %s", app.GetNodesDir())
 	yes, err := app.Prompt.CaptureYesNo(confirm)

@@ -300,7 +300,7 @@ func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
 }
 
 func getClusterNodeID(clusterName, ansibleNodeIDs string) (string, error) {
-	ux.Logger.PrintToUser(fmt.Sprintf("Getting Avalanche node id for node %s...", ansibleNodeIDs))
+	ux.Logger.PrintToUser(fmt.Sprintf("Getting Avalanche node id for host %s...", ansibleNodeIDs))
 	if err := app.CreateAnsibleStatusFile(app.GetNodeIDJSONFile()); err != nil {
 		return "", err
 	}

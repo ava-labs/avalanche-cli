@@ -62,10 +62,10 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if len(incompatibleNodes) > 0 {
-		ux.Logger.PrintToUser("Either modify your Avalanche Go version or modify your Subnet-EVM version")
+		ux.Logger.PrintToUser("Either modify your Avalanche Go version or modify your VM version")
 		ux.Logger.PrintToUser("To modify your Avalanche Go version: https://docs.avax.network/nodes/maintain/upgrade-your-avalanchego-node")
-		ux.Logger.PrintToUser("To modify your Subnet-EVM version: https://docs.avax.network/build/subnet/upgrade/upgrade-subnet-vm")
-		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with Subnet EVM RPC version of %s", incompatibleNodes, subnetName)
+		ux.Logger.PrintToUser("If you are using Subnet-EVM, to modify your Subnet-EVM version: https://docs.avax.network/build/subnet/upgrade/upgrade-subnet-vm")
+		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
 	}
 	untrackedNodes, err := trackSubnet(clusterName, subnetName, models.Fuji)
 	if err != nil {
