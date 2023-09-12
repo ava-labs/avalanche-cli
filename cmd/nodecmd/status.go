@@ -105,23 +105,4 @@ func printOutput(hostAliases, notBootstrappedHosts []string, clusterName, subnet
 			ux.Logger.PrintToUser(fmt.Sprintf("Node %s %s synced to Subnet %s", host, isBootstrappedStr, subnetName))
 		}
 	}
-
-	//for _, notBootstrappedHost := range notBootstrappedHosts {
-	//	hostIsBootstrapped := true
-	//	for _, host := range hostAliases {
-	//		if notBootstrappedHost == host {
-	//			hostIsBootstrapped = false
-	//		}
-	//		break
-	//	}
-	//	isBootstrappedStr := "is not"
-	//	if hostIsBootstrapped {
-	//		isBootstrappedStr = "is"
-	//	}
-	//	if subnetName == "" {
-	//		ux.Logger.PrintToUser(fmt.Sprintf("Node %s %s bootstrapped to Primary Network", host, isBootstrappedStr))
-	//	} else {
-	//		ux.Logger.PrintToUser(fmt.Sprintf("Node %s %s synced to Subnet %s", host, isBootstrappedStr, subnetName))
-	//	}
-	//}
 }
