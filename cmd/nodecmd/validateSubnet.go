@@ -167,6 +167,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	}
 	failedNodes := []string{}
 	nodeErrors := []error{}
+	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
 	for i, host := range ansibleNodeIDs {
 		nodeIDStr, err := getClusterNodeID(clusterName, host)
 		if err != nil {
