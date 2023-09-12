@@ -117,14 +117,14 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string
 	if err := app.CreateAnsibleDir(); err != nil {
 		return nil, err
 	}
-	hostAliases, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	ansibleNodeIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return nil, err
 	}
 	ux.Logger.PrintToUser(fmt.Sprintf("Checking compatibility of avalanche go version in cluster %s with Subnet EVM RPC of subnet %s ...", clusterName, subnetName))
 	compatibleVersions := []string{}
 	incompatibleNodes := []string{}
-	for _, host := range hostAliases {
+	for _, host := range ansibleNodeIDs {
 		if err := app.CreateAnsibleStatusFile(app.GetAvalancheGoJSONFile()); err != nil {
 			return nil, err
 		}
@@ -163,7 +163,7 @@ func trackSubnet(clusterName, subnetToTrack string, network models.Network) ([]s
 	if err != nil {
 		return nil, err
 	}
-	subnetPath := "/tmp/" + subnetName + constants.ExportSubnetSuffix
+	subnetPath := "/tmp/" + subnetToTrack + constants.ExportSubnetSuffix
 	untrackedNodes := []string{}
 	for _, host := range hostAliases {
 		if err = subnetcmd.CallExportSubnet(subnetToTrack, subnetPath, network); err != nil {

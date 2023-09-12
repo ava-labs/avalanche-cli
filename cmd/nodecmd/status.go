@@ -56,7 +56,7 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 		}
 		notSyncedNodes := []string{}
 		for _, host := range ansibleHostIDs {
-			isSubnetSynced, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, host, true, false)
+			isSubnetSynced, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, host, true)
 			if err != nil {
 				return err
 			}

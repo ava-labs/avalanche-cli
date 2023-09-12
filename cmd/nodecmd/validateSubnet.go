@@ -71,7 +71,7 @@ func parseSubnetSyncOutput(filePath string) (string, error) {
 	return "", errors.New("unable to parse subnet sync status")
 }
 
-func addNodeAsSubnetValidator(nodeID string, network models.Network, currentNodeIndex, nodeCount int) error {
+func addNodeAsSubnetValidator(nodeID, subnetName string, network models.Network, currentNodeIndex, nodeCount int) error {
 	ux.Logger.PrintToUser("Adding the node as a Subnet Validator...")
 	if err := subnetcmd.CallAddValidator(subnetName, nodeID, network); err != nil {
 		return err
@@ -81,16 +81,16 @@ func addNodeAsSubnetValidator(nodeID string, network models.Network, currentNode
 	return nil
 }
 
-func getNodeSubnetSyncStatus(blockchainID, clusterName, hostAlias string, statusOutput, errOnValidating bool) (bool, error) {
-	if statusOutput {
-		ux.Logger.PrintToUser(fmt.Sprintf("Checking if node %s is synced to subnet ...", hostAlias))
-	} else {
-		ux.Logger.PrintToUser("Checking if node is synced to subnet ...")
-	}
+// getNodeSubnetSyncStatus checks if node ansibleNodeID is bootstrapped to blockchain blockchainID
+// if getNodeSubnetSyncStatus is called from node validate subnet command, it will fail if
+// node status is not 'syncing'. If getNodeSubnetSyncStatus is called from node status command,
+// it will return true node status is 'syncing'
+func getNodeSubnetSyncStatus(blockchainID, clusterName, ansibleNodeID string, statusOutput bool) (bool, error) {
+	ux.Logger.PrintToUser(fmt.Sprintf("Checking if node %s is synced to subnet ...", ansibleNodeID))
 	if err := app.CreateAnsibleStatusFile(app.GetSubnetSyncJSONFile()); err != nil {
 		return false, err
 	}
-	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(app.GetAnsibleDir(), app.GetSubnetSyncJSONFile(), blockchainID, app.GetAnsibleInventoryDirPath(clusterName), hostAlias); err != nil {
+	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(app.GetAnsibleDir(), app.GetSubnetSyncJSONFile(), blockchainID, app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
 		return false, err
 	}
 	subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile())
@@ -109,7 +109,7 @@ func getNodeSubnetSyncStatus(blockchainID, clusterName, hostAlias string, status
 	}
 	if subnetSyncStatus == status.Syncing.String() {
 		return true, nil
-	} else if subnetSyncStatus == status.Validating.String() && errOnValidating {
+	} else if subnetSyncStatus == status.Validating.String() {
 		return false, errors.New("node is already a subnet validator")
 	}
 	return false, nil
@@ -161,13 +161,13 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if blockchainID == ids.Empty {
 		return ErrNoBlockchainID
 	}
-	hostAliases, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	ansibleNodeIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
 	failedNodes := []string{}
 	nodeErrors := []error{}
-	for i, host := range hostAliases {
+	for i, host := range ansibleNodeIDs {
 		nodeIDStr, err := getClusterNodeID(clusterName, host)
 		if err != nil {
 			failedNodes = append(failedNodes, host)
@@ -181,7 +181,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			continue
 		}
 		// we have to check if node is synced to subnet before adding the node as a validator
-		isSubnetSynced, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, host, false, true)
+		isSubnetSynced, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, host, false)
 		if err != nil {
 			ux.Logger.PrintToUser(fmt.Sprintf("Failed to get subnet sync status for node %s", host))
 			failedNodes = append(failedNodes, host)
@@ -206,7 +206,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 				continue
 			}
 		}
-		err = addNodeAsSubnetValidator(nodeIDStr, models.Fuji, i, len(hostAliases))
+		err = addNodeAsSubnetValidator(nodeIDStr, subnetName, models.Fuji, i, len(ansibleNodeIDs))
 		if err != nil {
 			failedNodes = append(failedNodes, host)
 			nodeErrors = append(nodeErrors, err)

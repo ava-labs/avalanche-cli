@@ -272,13 +272,13 @@ func getDefaultMaxValidationTime(start time.Time, network models.Network) (time.
 }
 
 func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
-	hostAliases, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	ansibleNodeIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return nil, err
 	}
 	notBootstrappedNodes := []string{}
 	ux.Logger.PrintToUser(fmt.Sprintf("Checking if node(s) in cluster %s are bootstrapped to Primary Network ...", clusterName))
-	for _, host := range hostAliases {
+	for _, host := range ansibleNodeIDs {
 		if err := app.CreateAnsibleStatusFile(app.GetBootstrappedJSONFile()); err != nil {
 			return nil, err
 		}
@@ -299,12 +299,12 @@ func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
 	return notBootstrappedNodes, nil
 }
 
-func getClusterNodeID(clusterName, hostAlias string) (string, error) {
-	ux.Logger.PrintToUser(fmt.Sprintf("Getting Avalanche node id for node %s...", hostAlias))
+func getClusterNodeID(clusterName, ansibleNodeIDs string) (string, error) {
+	ux.Logger.PrintToUser(fmt.Sprintf("Getting Avalanche node id for node %s...", ansibleNodeIDs))
 	if err := app.CreateAnsibleStatusFile(app.GetNodeIDJSONFile()); err != nil {
 		return "", err
 	}
-	if err := ansible.RunAnsiblePlaybookGetNodeID(app.GetAnsibleDir(), app.GetNodeIDJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), hostAlias); err != nil {
+	if err := ansible.RunAnsiblePlaybookGetNodeID(app.GetAnsibleDir(), app.GetNodeIDJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeIDs); err != nil {
 		return "", err
 	}
 	nodeID, err := parseNodeIDOutput(app.GetNodeIDJSONFile())
@@ -360,13 +360,13 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	if len(notBootstrappedNodes) > 0 {
 		return fmt.Errorf("node(s) %s are not bootstrapped yet, please try again later", notBootstrappedNodes)
 	}
-	hostAliases, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	ansibleNodeIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
 	failedNodes := []string{}
 	nodeErrors := []error{}
-	for _, host := range hostAliases {
+	for _, host := range ansibleNodeIDs {
 		nodeIDStr, err := getClusterNodeID(clusterName, host)
 		if err != nil {
 			failedNodes = append(failedNodes, host)
