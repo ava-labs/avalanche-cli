@@ -27,7 +27,9 @@ var config []byte
 
 // CreateAnsibleHostInventory creates inventory file to be used for Ansible playbook commands
 // specifies the ip address of the cloud server and the corresponding ssh cert path for the cloud server
-func CreateAnsibleHostInventory(inventoryDirPath, certFilePath string, publicIPs, instanceIDs []string) error {
+// if publicIPs is empty, that means that user is not using elastic IP and we are using publicIPMap
+// to get the host IP
+func CreateAnsibleHostInventory(inventoryDirPath, certFilePath string, publicIPs, instanceIDs []string, publicIPMap map[string]string) error {
 	if err := os.MkdirAll(inventoryDirPath, os.ModePerm); err != nil {
 		return err
 	}
@@ -39,7 +41,11 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath string, publicIPs
 	for i, instanceID := range instanceIDs {
 		inventoryContent := fmt.Sprintf("aws_node_%s", instanceID)
 		inventoryContent += " ansible_host="
-		inventoryContent += publicIPs[i]
+		if len(publicIPs) > 0 {
+			inventoryContent += publicIPs[i]
+		} else {
+			inventoryContent += publicIPMap[instanceID]
+		}
 		inventoryContent += " ansible_user=ubuntu "
 		inventoryContent += fmt.Sprintf("ansible_ssh_private_key_file=%s", certFilePath)
 		inventoryContent += " ansible_ssh_common_args='-o StrictHostKeyChecking=no'"

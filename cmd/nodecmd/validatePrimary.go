@@ -35,6 +35,7 @@ var (
 	keyName                      string
 	subnetName                   string
 	useLedger                    bool
+	useEIP                       bool
 	ledgerAddresses              []string
 	weight                       uint64
 	duration                     time.Duration
