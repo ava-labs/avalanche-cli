@@ -385,7 +385,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	}
 	failedNodes := []string{}
 	nodeErrors := []error{}
-	for i, host := range hostAliases {
+	for i, host := range ansibleNodeIDs {
 		nodeIDStr, err := getClusterNodeID(clusterName, host)
 		if err != nil {
 			ux.Logger.PrintToUser(fmt.Sprintf("Failed to add node %s as Primary Network validator due to %s", host, err.Error()))
