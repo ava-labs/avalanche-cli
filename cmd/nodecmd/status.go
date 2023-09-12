@@ -38,7 +38,7 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 	if err := setupAnsible(); err != nil {
 		return err
 	}
-	hostAliases, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryFilePath(clusterName))
+	ansibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
@@ -55,8 +55,8 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 			return ErrNoBlockchainID
 		}
 		notSyncedNodes := []string{}
-		for _, host := range hostAliases {
-			isSubnetSynced, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, host, true, false)
+		for _, host := range ansibleHostIDs {
+			isSubnetSynced, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, host, true)
 			if err != nil {
 				return err
 			}
@@ -64,20 +64,20 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 				notSyncedNodes = append(notSyncedNodes, host)
 			}
 		}
-		printOutput(hostAliases, notSyncedNodes, clusterName, false)
+		printOutput(ansibleHostIDs, notSyncedNodes, clusterName, subnetName)
 		return nil
 	}
 	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
 	if err != nil {
 		return err
 	}
-	printOutput(hostAliases, notBootstrappedNodes, clusterName, true)
+	printOutput(ansibleHostIDs, notBootstrappedNodes, clusterName, subnetName)
 	return nil
 }
 
-func printOutput(hostAliases, notBootstrappedHosts []string, clusterName string, primaryNetwork bool) {
+func printOutput(hostAliases, notBootstrappedHosts []string, clusterName, subnetName string) {
 	if len(notBootstrappedHosts) == 0 {
-		if primaryNetwork {
+		if subnetName == "" {
 			ux.Logger.PrintToUser(fmt.Sprintf("All nodes in cluster %s are bootstrapped to Primary Network!", clusterName))
 		} else {
 			ux.Logger.PrintToUser(fmt.Sprintf("All nodes in cluster %s are synced to Subnet %s", clusterName, subnetName))
@@ -94,18 +94,14 @@ func printOutput(hostAliases, notBootstrappedHosts []string, clusterName string,
 			}
 			break
 		}
+		isBootstrappedStr := "is not"
 		if hostIsBootstrapped {
-			if primaryNetwork {
-				ux.Logger.PrintToUser(fmt.Sprintf("Node %s is bootstrapped to Primary Network", host))
-			} else {
-				ux.Logger.PrintToUser(fmt.Sprintf("Node %s is synced to Subnet %s", host, subnetName))
-			}
+			isBootstrappedStr = "is"
+		}
+		if subnetName == "" {
+			ux.Logger.PrintToUser(fmt.Sprintf("Node %s %s bootstrapped to Primary Network", host, isBootstrappedStr))
 		} else {
-			if primaryNetwork {
-				ux.Logger.PrintToUser(fmt.Sprintf("Node %s is not bootstrapped to Primary Network", host))
-			} else {
-				ux.Logger.PrintToUser(fmt.Sprintf("Node %s is not synced to Subnet %s", host, subnetName))
-			}
+			ux.Logger.PrintToUser(fmt.Sprintf("Node %s %s synced to Subnet %s", host, isBootstrappedStr, subnetName))
 		}
 	}
 }

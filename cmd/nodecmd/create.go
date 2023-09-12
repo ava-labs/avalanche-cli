@@ -93,14 +93,14 @@ func createClusterNodeConfig(nodeIDs, publicIPs []string, region, ami, keyPairNa
 		if err != nil {
 			return err
 		}
-		if err = updateClusterConfig(nodeIDs[i], keyPairName, certPath, clusterName); err != nil {
+		if err = addNodeToClusterConfig(nodeIDs[i], clusterName); err != nil {
 			return err
 		}
 	}
-	return nil
+	return updateKeyPairClusterConfig(keyPairName, certPath)
 }
 
-func updateClusterConfig(nodeID, keyPairName, certPath, clusterName string) error {
+func updateKeyPairClusterConfig(keyPairName, certPath string) error {
 	clusterConfig := models.ClusterConfig{}
 	var err error
 	if app.ClusterConfigExists() {
@@ -109,12 +109,23 @@ func updateClusterConfig(nodeID, keyPairName, certPath, clusterName string) erro
 			return err
 		}
 	}
-
 	if clusterConfig.KeyPair == nil {
 		clusterConfig.KeyPair = make(map[string]string)
 	}
 	if _, ok := clusterConfig.KeyPair[keyPairName]; !ok {
 		clusterConfig.KeyPair[keyPairName] = certPath
+	}
+	return app.WriteClusterConfigFile(&clusterConfig)
+}
+
+func addNodeToClusterConfig(nodeID, clusterName string) error {
+	clusterConfig := models.ClusterConfig{}
+	var err error
+	if app.ClusterConfigExists() {
+		clusterConfig, err = app.LoadClusterConfig()
+		if err != nil {
+			return err
+		}
 	}
 	if clusterConfig.Clusters == nil {
 		clusterConfig.Clusters = make(map[string][]string)
@@ -136,9 +147,15 @@ func printNoCredentialsOutput() {
 }
 
 // getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
-func getAWSCloudCredentials(region string) (*session.Session, error) {
-	if err := requestAWSAccountAuth(); err != nil {
-		return &session.Session{}, err
+func getAWSCloudCredentials(region string, stopNode bool) (*session.Session, error) {
+	if stopNode {
+		if err := requestStopAWSNodeAuth(); err != nil {
+			return &session.Session{}, err
+		}
+	} else {
+		if err := requestAWSAccountAuth(); err != nil {
+			return &session.Session{}, err
+		}
 	}
 	creds := credentials.NewSharedCredentials("", constants.AWSDefaultCredential)
 	if _, err := creds.Get(); err != nil {
@@ -185,7 +202,7 @@ func getAWSCloudConfig() (*ec2.EC2, string, string, error) {
 			return nil, "", "", err
 		}
 	}
-	sess, err := getAWSCloudCredentials(region)
+	sess, err := getAWSCloudCredentials(region, false)
 	if err != nil {
 		return nil, "", "", err
 	}
@@ -197,8 +214,8 @@ func getAWSCloudConfig() (*ec2.EC2, string, string, error) {
 	return ec2Svc, region, ami, nil
 }
 
-// createEC2Instance creates terraform .tf file and runs terraform exec function to create ec2 instance
-func createEC2Instance(rootBody *hclwrite.Body,
+// createEC2Instances creates terraform .tf file and runs terraform exec function to create ec2 instances
+func createEC2Instances(rootBody *hclwrite.Body,
 	ec2Svc *ec2.EC2,
 	hclFile *hclwrite.File,
 	region,
@@ -268,8 +285,8 @@ func createEC2Instance(rootBody *hclwrite.Body,
 		ipInHTTP := awsAPI.CheckUserIPInSg(sg, userIPAddress, constants.AvalanchegoAPIPort)
 		terraform.SetSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
 	}
-	terraform.SetElasticIP(rootBody, numNodes)
-	terraform.SetupInstance(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami, numNodes)
+	terraform.SetElasticIPs(rootBody, numNodes)
+	terraform.SetupInstances(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami, numNodes)
 	terraform.SetOutput(rootBody)
 	err = app.CreateTerraformDir()
 	if err != nil {
@@ -327,30 +344,37 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Create new EC2 client
-	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instance(rootBody, ec2Svc, hclFile, region, ami, certName, prefix, securityGroupName)
+	// Create new EC2 instances
+	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(rootBody, ec2Svc, hclFile, region, ami, certName, prefix, securityGroupName)
 	if err != nil {
 		if err.Error() == constants.EIPLimitErr {
 			ux.Logger.PrintToUser("Failed to create AWS cloud server, please try creating again in a different region")
 		} else {
 			ux.Logger.PrintToUser("Failed to create AWS cloud server")
 		}
-		// we stop created instance so that user doesn't pay for unused EC2 instance
+		// we stop created instances so that user doesn't pay for unused EC2 instances
 		instanceIDs, instanceIDErr := terraform.GetInstanceIDs(app.GetTerraformDir())
 		if instanceIDErr != nil {
 			return instanceIDErr
 		}
-		for i, instanceID := range instanceIDs {
+		failedNodes := []string{}
+		nodeErrors := []error{}
+		for _, instanceID := range instanceIDs {
 			ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s...", instanceID))
 			if stopErr := awsAPI.StopInstance(ec2Svc, instanceID, "", false); stopErr != nil {
-				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop cloud server instance %s", instanceID))
-				ux.Logger.PrintToUser("Stop the following instance(s) on AWS console to prevent charges:")
-				for j := i; j < len(instanceIDs); j++ {
-					ux.Logger.PrintToUser(instanceIDs[j])
-				}
-				return stopErr
+				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop cloud server instance %s due to %s", instanceID, stopErr.Error()))
+				failedNodes = append(failedNodes, instanceID)
+				nodeErrors = append(nodeErrors, stopErr)
 			}
 			ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s stopped", instanceID))
+		}
+		if len(failedNodes) > 0 {
+			ux.Logger.PrintToUser("Failed nodes: ")
+			for i, node := range failedNodes {
+				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
+			}
+			ux.Logger.PrintToUser("Stop the above instance(s) on AWS console to prevent charges")
+			return fmt.Errorf("failed to stop node(s) %s", failedNodes)
 		}
 		return err
 	}
@@ -415,6 +439,20 @@ func requestAWSAccountAuth() error {
 	ux.Logger.PrintToUser("- Set up EC2 instance(s) and other components (such as security groups, key pairs and elastic IPs)")
 	ux.Logger.PrintToUser("- Set up the EC2 instance(s) to validate the Avalanche Primary Network")
 	ux.Logger.PrintToUser("- Set up the EC2 instance(s) to validate Subnets")
+	yes, err := app.Prompt.CaptureYesNo("I authorize Avalanche-CLI to access my AWS account")
+	if err != nil {
+		return err
+	}
+	if !yes {
+		return errors.New("user did not give authorization to Avalanche-CLI to access AWS account")
+	}
+	return nil
+}
+
+func requestStopAWSNodeAuth() error {
+	ux.Logger.PrintToUser("Do you authorize Avalanche-CLI to access your AWS account to stop your Avalanche Validator node?")
+	ux.Logger.PrintToUser("By clicking yes, you are authorizing Avalanche-CLI to:")
+	ux.Logger.PrintToUser("- Stop EC2 instance(s) and other components (such as elastic IPs)")
 	yes, err := app.Prompt.CaptureYesNo("I authorize Avalanche-CLI to access my AWS account")
 	if err != nil {
 		return err
@@ -534,10 +572,8 @@ func PrintResults(instanceIDs, elasticIPs []string, certFilePath, region string)
 	ux.Logger.PrintToUser("Here are the details of the set up node(s): ")
 	for i, instanceID := range instanceIDs {
 		ux.Logger.PrintToUser("======================================")
-		if len(instanceIDs) > 1 {
-			hostAliasName := fmt.Sprintf("aws_node_%s", instanceID)
-			ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", hostAliasName))
-		}
+		hostAliasName := fmt.Sprintf("aws_node_%s", elasticIPs[i])
+		ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", hostAliasName))
 		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Instance ID: %s", instanceID))
 		ux.Logger.PrintToUser(fmt.Sprintf("Elastic IP: %s", elasticIPs[i]))
 		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Region: %s", region))

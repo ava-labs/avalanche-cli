@@ -658,10 +658,6 @@ func (app *Avalanche) GetAnsibleInventoryDirPath(clusterName string) string {
 	return filepath.Join(app.GetNodesDir(), constants.AnsibleInventoryDir, clusterName)
 }
 
-func (app *Avalanche) GetAnsibleInventoryFilePath(clusterName string) string {
-	return filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.AnsibleHostInventoryFileName)
-}
-
 func (app *Avalanche) GetAnsibleStatusDir() string {
 	return filepath.Join(app.GetAnsibleDir(), constants.AnsibleStatusDir)
 }
