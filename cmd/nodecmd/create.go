@@ -586,15 +586,17 @@ func PrintResults(instanceIDs, elasticIPs []string, certFilePath, region string,
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Here are the details of the set up node(s): ")
 	for i, instanceID := range instanceIDs {
+		publicIP := ""
+		if len(elasticIPs) > 0 {
+			publicIP = elasticIPs[i]
+		} else {
+			publicIP = publicIPMap[instanceID]
+		}
 		ux.Logger.PrintToUser("======================================")
-		hostAliasName := fmt.Sprintf("aws_node_%s", elasticIPs[i])
+		hostAliasName := fmt.Sprintf("aws_node_%s", publicIP)
 		ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", hostAliasName))
 		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Instance ID: %s", instanceID))
-		if len(elasticIPs) > 0 {
-			ux.Logger.PrintToUser(fmt.Sprintf("Elastic IP: %s", elasticIPs[i]))
-		} else {
-			ux.Logger.PrintToUser(fmt.Sprintf("Public IP: %s", publicIPMap[instanceID]))
-		}
+		ux.Logger.PrintToUser(fmt.Sprintf("Public IP: %s", publicIP))
 		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Region: %s", region))
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(fmt.Sprintf("staker.crt and staker.key are stored at %s. If anything happens to your node or the machine node runs on, these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID)))
