@@ -54,6 +54,7 @@ will apply to all nodes in the cluster`,
 		Args:         cobra.ExactArgs(1),
 		RunE:         createNode,
 	}
+	cmd.Flags().BoolVar(&useEIP, "use-elastic-ip", true, "attach Elastic IP on AWS coud servers")
 
 	return cmd
 }
@@ -279,9 +280,11 @@ func createEC2Instances(rootBody *hclwrite.Body,
 		ipInHTTP := awsAPI.CheckUserIPInSg(sg, userIPAddress, constants.AvalanchegoAPIPort)
 		terraform.SetSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
 	}
-	terraform.SetElasticIPs(rootBody, numNodes)
+	if useEIP {
+		terraform.SetElasticIPs(rootBody, numNodes)
+	}
 	terraform.SetupInstances(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami, numNodes)
-	terraform.SetOutput(rootBody)
+	terraform.SetOutput(rootBody, useEIP)
 	err = app.CreateTerraformDir()
 	if err != nil {
 		return nil, nil, "", "", err
@@ -290,7 +293,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	instanceIDs, elasticIPs, err := terraform.RunTerraform(app.GetTerraformDir())
+	instanceIDs, elasticIPs, err := terraform.RunTerraform(app.GetTerraformDir(), useEIP)
 	if err != nil {
 		return nil, nil, "", "", err
 	}
@@ -374,6 +377,12 @@ func createNode(_ *cobra.Command, args []string) error {
 	err = terraform.RemoveDirectory(app.GetTerraformDir())
 	if err != nil {
 		return err
+	}
+	if !useEIP {
+		publicIPMap, err := awsAPI.GetInstancePublicIPs(ec2Svc, instanceIDs)
+		if err != nil {
+			return err
+		}
 	}
 	inventoryPath := app.GetAnsibleInventoryPath(clusterName)
 	if err := ansible.CreateAnsibleHostInventory(inventoryPath, certFilePath, elasticIPs); err != nil {
