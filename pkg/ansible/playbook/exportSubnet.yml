@@ -1,5 +1,5 @@
 ---
-- hosts: all
+- hosts: "{{ target }}"
   tasks:
     - name: copy exported subnet VM spec to cloud server
       copy:
