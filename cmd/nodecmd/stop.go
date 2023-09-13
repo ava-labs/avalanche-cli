@@ -5,6 +5,7 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"os"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
@@ -102,7 +103,7 @@ func stopNode(_ *cobra.Command, args []string) error {
 			continue
 		}
 		if nodeConfig.Region != lastRegion {
-			sess, err := getAWSCloudCredentials(nodeConfig.Region, true)
+			sess, err := getAWSCloudCredentials(nodeConfig.Region, constants.StopAWSNode)
 			if err != nil {
 				return err
 			}

@@ -33,8 +33,8 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath string, publicIPs
 	if err := os.MkdirAll(inventoryDirPath, os.ModePerm); err != nil {
 		return err
 	}
-	inventoryHostsFile := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
-	inventoryFile, err := os.Create(inventoryHostsFile)
+	inventoryHostsFilePath := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
+	inventoryFile, err := os.Create(inventoryHostsFilePath)
 	if err != nil {
 		return err
 	}
@@ -203,6 +203,66 @@ func CheckIsInstalled() error {
 		ux.Logger.PrintToUser("Please follow install instructions at https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html and try again")
 		ux.Logger.PrintToUser("")
 		return err
+	}
+	return nil
+}
+
+// mapNodeToInventoryHost creates a map with nodeID as key and its corresponding ansible inventory host information as value
+func mapNodeToInventoryHost(inventoryDirPath string) (map[string]string, error) {
+	inventoryHostsFile := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
+	ansibleInventoryHostMap := make(map[string]string)
+	file, err := os.Open(inventoryHostsFile)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		// host alias is first element in each line of host inventory file
+		// host alias has name format "aws_node_<nodeID>"
+		ansibleHostID := strings.Split(scanner.Text(), " ")[0]
+		nodeID := strings.Split(ansibleHostID, "_")[2]
+		ansibleInventoryHostMap[nodeID] = scanner.Text()
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return ansibleInventoryHostMap, nil
+}
+
+// UpdateInventoryHostPublicIP first maps existing ansible inventory host file content
+// then it deletes the inventory file and regenerates a new ansible inventory file where it will fetch public IP
+// of nodes without elastic IP and update its value in the new ansible inventory file
+func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]string) error {
+	ansibleHostMap, err := mapNodeToInventoryHost(inventoryDirPath)
+	if err != nil {
+		return err
+	}
+	inventoryHostsFilePath := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
+	if err = os.Remove(inventoryHostsFilePath); err != nil {
+		return err
+	}
+	inventoryFile, err := os.Create(inventoryHostsFilePath)
+	if err != nil {
+		return err
+	}
+	for nodeID, ansibleHostContent := range ansibleHostMap {
+		_, ok := nodesWoEIP[nodeID]
+		if !ok {
+			if _, err = inventoryFile.WriteString(ansibleHostContent + "\n"); err != nil {
+				return err
+			}
+		} else {
+			ansibleHostInfo := strings.Split(ansibleHostContent, " ")
+			ansiblePublicIP := "ansible_host=" + nodesWoEIP[nodeID]
+			newAnsibleHostInfo := []string{}
+			newAnsibleHostInfo = append(newAnsibleHostInfo, ansibleHostInfo[0])
+			newAnsibleHostInfo = append(newAnsibleHostInfo, ansiblePublicIP)
+			newAnsibleHostInfo = append(newAnsibleHostInfo, ansibleHostInfo[2:]...)
+			if _, err = inventoryFile.WriteString(strings.Join(newAnsibleHostInfo[:], " ") + "\n"); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

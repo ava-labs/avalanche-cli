@@ -5,6 +5,8 @@ package nodecmd
 import (
 	"encoding/json"
 	"fmt"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"io"
 	"os"
 	"strings"
@@ -38,6 +40,65 @@ You can check the subnet bootstrap status by calling avalanche node status <clus
 	return cmd
 }
 
+func getNodesWoEIPInAnsibleInventory(clusterNodes []string) []string {
+	nodesWoEIP := []string{}
+	for _, node := range clusterNodes {
+		nodeConfig, err := app.LoadClusterNodeConfig(node)
+		if err != nil {
+			continue
+		}
+		if nodeConfig.ElasticIP == "" {
+			nodesWoEIP = append(nodesWoEIP, node)
+		}
+	}
+	return nodesWoEIP
+}
+
+func getPublicIPForNodesWoEIP(nodesWoEIP []string) (map[string]string, error) {
+	lastRegion := ""
+	var ec2Svc *ec2.EC2
+	publicIPMap := make(map[string]string)
+	for _, node := range nodesWoEIP {
+		nodeConfig, err := app.LoadClusterNodeConfig(node)
+		if err != nil {
+			return nil, err
+		}
+		if nodeConfig.Region != lastRegion {
+			sess, err := getAWSCloudCredentials(nodeConfig.Region, constants.GetAWSNodeIP)
+			if err != nil {
+				return nil, err
+			}
+			ec2Svc = ec2.New(sess)
+			lastRegion = nodeConfig.Region
+		}
+		publicIP, err := awsAPI.GetInstancePublicIPs(ec2Svc, []string{node})
+		if err != nil {
+			return nil, err
+		}
+		publicIPMap[node] = publicIP[node]
+	}
+	return publicIPMap, nil
+}
+
+func handleNodesWoEIP(clusterName string) error {
+	clusterNodes, err := getClusterNodes(clusterName)
+	if err != nil {
+		return err
+	}
+	nodesWoEIP := getNodesWoEIPInAnsibleInventory(clusterNodes)
+	if len(nodesWoEIP) > 0 {
+		publicIP, err := getPublicIPForNodesWoEIP(nodesWoEIP)
+		if err != nil {
+			return err
+		}
+		err = ansible.UpdateInventoryHostPublicIP(app.GetAnsibleInventoryDirPath(clusterName), publicIP)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func syncSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	subnetName := args[1]
@@ -45,6 +106,9 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if err := setupAnsible(); err != nil {
+		return err
+	}
+	if err := handleNodesWoEIP(clusterName); err != nil {
 		return err
 	}
 	if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {

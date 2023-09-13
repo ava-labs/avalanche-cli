@@ -79,13 +79,11 @@ func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
 
 // createClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
 // also creates cluster config in .avalanche-cli/nodes storing various key pair and security group info for all clusters
-func createClusterNodeConfig(nodeIDs, publicIPs []string, region, ami, keyPairName, certPath, sg, clusterName string, publicIPMap map[string]string) error {
+func createClusterNodeConfig(nodeIDs, publicIPs []string, region, ami, keyPairName, certPath, sg, clusterName string) error {
 	for i := range nodeIDs {
 		publicIP := ""
 		if len(publicIPs) > 0 {
 			publicIP = publicIPs[i]
-		} else {
-			publicIP = publicIPMap[nodeIDs[i]]
 		}
 		nodeConfig := models.NodeConfig{
 			NodeID:        nodeIDs[i],
@@ -154,12 +152,12 @@ func printNoCredentialsOutput() {
 }
 
 // getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
-func getAWSCloudCredentials(region string, stopNode bool) (*session.Session, error) {
-	if stopNode {
+func getAWSCloudCredentials(region, awsCommand string) (*session.Session, error) {
+	if awsCommand == constants.StopAWSNode {
 		if err := requestStopAWSNodeAuth(); err != nil {
 			return &session.Session{}, err
 		}
-	} else {
+	} else if awsCommand == constants.CreateAWSNode {
 		if err := requestAWSAccountAuth(); err != nil {
 			return &session.Session{}, err
 		}
@@ -209,7 +207,7 @@ func getAWSCloudConfig() (*ec2.EC2, string, string, error) {
 			return nil, "", "", err
 		}
 	}
-	sess, err := getAWSCloudCredentials(region, false)
+	sess, err := getAWSCloudCredentials(region, constants.CreateAWSNode)
 	if err != nil {
 		return nil, "", "", err
 	}
@@ -411,7 +409,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err := runAnsible(inventoryPath, avalancheGoVersion); err != nil {
 		return err
 	}
-	err = createClusterNodeConfig(instanceIDs, elasticIPs, region, ami, keyPairName, certFilePath, securityGroupName, clusterName, publicIPMap)
+	err = createClusterNodeConfig(instanceIDs, elasticIPs, region, ami, keyPairName, certFilePath, securityGroupName, clusterName)
 	if err != nil {
 		return err
 	}

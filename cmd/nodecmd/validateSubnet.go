@@ -143,6 +143,9 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if err := handleNodesWoEIP(clusterName); err != nil {
+		return err
+	}
 	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
 	if err != nil {
 		return err
