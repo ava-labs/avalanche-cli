@@ -259,7 +259,7 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]
 			newAnsibleHostInfo = append(newAnsibleHostInfo, ansibleHostInfo[0])
 			newAnsibleHostInfo = append(newAnsibleHostInfo, ansiblePublicIP)
 			newAnsibleHostInfo = append(newAnsibleHostInfo, ansibleHostInfo[2:]...)
-			if _, err = inventoryFile.WriteString(strings.Join(newAnsibleHostInfo[:], " ") + "\n"); err != nil {
+			if _, err = inventoryFile.WriteString(strings.Join(newAnsibleHostInfo, " ") + "\n"); err != nil {
 				return err
 			}
 		}

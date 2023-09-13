@@ -5,8 +5,9 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"os"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
