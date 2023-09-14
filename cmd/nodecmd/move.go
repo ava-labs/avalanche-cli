@@ -3,9 +3,6 @@
 package nodecmd
 
 import (
-	"errors"
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/spf13/cobra"
 )
 
@@ -30,23 +27,11 @@ func moveNode(_ *cobra.Command, args []string) error {
 	if err := checkCluster(originClusterName); err != nil {
 		return err
 	}
-	if err := setupAnsible(); err != nil {
-		return err
-	}
-	if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
-		return err
-	}
-	isBootstrapped, err := checkNodeIsBootstrapped(clusterName, false)
-	if err != nil {
-		return err
-	}
-	if !isBootstrapped {
-		return errors.New("node is not bootstrapped yet, please try again later")
-	}
-	if err := checkAvalancheGoVersionCompatible(clusterName, subnetName); err != nil {
-		return err
-	}
-	return trackSubnet(clusterName, subnetName, models.Fuji)
+	//networkStr, err := app.Prompt.CaptureList(
+	//	"Choose a network to deploy on",
+	//	[]string{models.Local.String(), models.Fuji.String(), models.Mainnet.String()},
+	//)
+	return nil
 }
 
 func updateClusterConfig() {
