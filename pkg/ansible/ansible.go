@@ -4,8 +4,8 @@
 package ansible
 
 import (
-	"bytes"
 	"bufio"
+	"bytes"
 	"embed"
 	"encoding/json"
 	"errors"
@@ -14,8 +14,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"

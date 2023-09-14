@@ -396,10 +396,10 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance ...")
-	if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), app.GetAnsibleInventoryPath(clusterName)); err != nil {
+	if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath); err != nil {
 		return err
 	}
-	if err := ansible.RunAnsiblePlaybookSetupCLIFromSource(app.GetAnsibleDir(), app.GetAnsibleInventoryPath(clusterName), constants.CloudCLIBranch); err != nil {
+	if err := ansible.RunAnsiblePlaybookSetupCLIFromSource(app.GetAnsibleDir(), inventoryPath, constants.CloudCLIBranch); err != nil {
 		return err
 	}
 	err = createClusterNodeConfig(instanceIDs, elasticIPs, region, ami, keyPairName, certFilePath, securityGroupName, clusterName)
@@ -411,7 +411,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		nodeInstanceDirPath := app.GetNodeInstanceDirPath(instanceID)
 		// ansible host alias's name is formatted as aws_node_{instanceID}
 		nodeInstanceAnsibleAlias := fmt.Sprintf("aws_node_%s", instanceID)
-		if err := ansible.RunAnsibleCopyStakingFilesPlaybook(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
+		if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
 			return err
 		}
 	}
