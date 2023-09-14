@@ -76,11 +76,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
 	}
-	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance ...")
-	if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
-		return err
-	}
-	if err := ansible.RunAnsiblePlaybookSetupCLIFromSource(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), constants.CloudCLIBranch); err != nil {
+	if err := setupBuildEnv(clusterName); err != nil {
 		return err
 	}
 	untrackedNodes, err := trackSubnet(clusterName, subnetName, models.Fuji)

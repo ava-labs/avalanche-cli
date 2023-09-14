@@ -395,15 +395,10 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err := runAnsible(inventoryPath, avalancheGoVersion); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance ...")
-	if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath); err != nil {
+	if err := setupBuildEnv(clusterName); err != nil {
 		return err
 	}
-	if err := ansible.RunAnsiblePlaybookSetupCLIFromSource(app.GetAnsibleDir(), inventoryPath, constants.CloudCLIBranch); err != nil {
-		return err
-	}
-	err = createClusterNodeConfig(instanceIDs, elasticIPs, region, ami, keyPairName, certFilePath, securityGroupName, clusterName)
-	if err != nil {
+	if err := createClusterNodeConfig(instanceIDs, elasticIPs, region, ami, keyPairName, certFilePath, securityGroupName, clusterName); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
@@ -436,6 +431,27 @@ func runAnsible(inventoryPath, avalancheGoVersion string) error {
 		return err
 	}
 	return ansible.RunAnsiblePlaybookSetupNode(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion)
+}
+
+func setupBuildEnv(clusterName string) error {
+	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance ...")
+	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
+	ansibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	failedNodes := []string{}
+	for _, host := range ansibleHostIDs {
+		if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath, host); err != nil {
+			failedNodes = append(failedNodes, host)
+			continue
+		}
+		if err := ansible.RunAnsiblePlaybookSetupCLIFromSource(app.GetAnsibleDir(), inventoryPath, constants.CloudCLIBranch, host); err != nil {
+			failedNodes = append(failedNodes, host)
+			continue
+		}
+	}
+	return fmt.Errorf("failed to setup build environment on nodes %s", failedNodes)
 }
 
 func requestAWSAccountAuth() error {
