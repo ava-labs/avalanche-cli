@@ -154,9 +154,25 @@ func RunAnsiblePlaybookTrackSubnet(ansibleDir, subnetName, importPath, inventory
 	return cmdErr
 }
 
+// RunAnsiblePlaybookUpdateSubnet runs avalanche subnet join <subnetName> in cloud server using update subnet info
+func RunAnsiblePlaybookUpdateSubnet(ansibleDir, subnetName, importPath, inventoryPath string) error {
+	playbookInputs := "subnetExportFileName=" + importPath + " subnetName=" + subnetName
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.UpdateSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
 func displayErrMsg(buffer *bytes.Buffer) error {
 	for _, line := range strings.Split(buffer.String(), "\n") {
-		if strings.Contains(line, "FAILED") {
+		if strings.Contains(line, "FAILED") || strings.Contains(line, "UNREACHABLE") {
 			i := strings.Index(line, "{")
 			if i >= 0 {
 				line = line[i:]

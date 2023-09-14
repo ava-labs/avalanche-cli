@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -102,9 +103,20 @@ func configure(_ *cobra.Command, args []string) error {
 }
 
 func updateConf(subnet, path, filename string) error {
-	fileBytes, err := utils.ValidateJSON(path)
-	if err != nil {
-		return err
+	var (
+		fileBytes []byte
+		err       error
+	)
+	if strings.ToLower(filepath.Ext(filename)) == "json" {
+		fileBytes, err = utils.ValidateJSON(path)
+		if err != nil {
+			return err
+		}
+	} else {
+		fileBytes, err = os.ReadFile(path)
+		if err != nil {
+			return err
+		}
 	}
 	subnetDir := filepath.Join(app.GetSubnetDir(), subnet)
 	if err := os.MkdirAll(subnetDir, constants.DefaultPerms755); err != nil {
