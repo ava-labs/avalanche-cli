@@ -85,34 +85,22 @@ func addNodeAsSubnetValidator(nodeID, subnetName string, network models.Network,
 // if getNodeSubnetSyncStatus is called from node validate subnet command, it will fail if
 // node status is not 'syncing'. If getNodeSubnetSyncStatus is called from node status command,
 // it will return true node status is 'syncing'
-func getNodeSubnetSyncStatus(blockchainID, clusterName, ansibleNodeID string, statusOutput bool) (bool, error) {
+func getNodeSubnetSyncStatus(blockchainID, clusterName, ansibleNodeID string) (string, error) {
 	ux.Logger.PrintToUser(fmt.Sprintf("Checking if node %s is synced to subnet ...", ansibleNodeID))
 	if err := app.CreateAnsibleStatusFile(app.GetSubnetSyncJSONFile()); err != nil {
-		return false, err
+		return "", err
 	}
 	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(app.GetAnsibleDir(), app.GetSubnetSyncJSONFile(), blockchainID, app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
-		return false, err
+		return "", err
 	}
 	subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile())
 	if err != nil {
-		return false, err
+		return "", err
 	}
 	if err = app.RemoveAnsibleStatusDir(); err != nil {
-		return false, err
+		return "", err
 	}
-	// if function is called from status command
-	if statusOutput {
-		if subnetSyncStatus == status.Validating.String() {
-			return true, nil
-		}
-		return false, nil
-	}
-	if subnetSyncStatus == status.Syncing.String() {
-		return true, nil
-	} else if subnetSyncStatus == status.Validating.String() {
-		return false, errors.New("node is already a subnet validator")
-	}
-	return false, nil
+	return subnetSyncStatus, nil
 }
 
 func waitForNodeToBePrimaryNetworkValidator(nodeID ids.NodeID) error {
@@ -184,17 +172,22 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			continue
 		}
 		// we have to check if node is synced to subnet before adding the node as a validator
-		isSubnetSynced, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, host, false)
+		subnetSyncStatus, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, host)
 		if err != nil {
 			ux.Logger.PrintToUser(fmt.Sprintf("Failed to get subnet sync status for node %s", host))
 			failedNodes = append(failedNodes, host)
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
-		if !isSubnetSynced {
-			ux.Logger.PrintToUser(fmt.Sprintf("Failed to add node %s as subnet validator as node is not synced to subnet yet", host))
+		if subnetSyncStatus != status.Syncing.String() {
 			failedNodes = append(failedNodes, host)
-			nodeErrors = append(nodeErrors, errors.New("node is not synced to subnet yet, please try again later"))
+			if subnetSyncStatus == status.Validating.String() {
+				ux.Logger.PrintToUser(fmt.Sprintf("Failed to add node %s as subnet validator as node is already a subnet validator", host))
+				nodeErrors = append(nodeErrors, errors.New("node is already a subnet validator"))
+			} else {
+				ux.Logger.PrintToUser(fmt.Sprintf("Failed to add node %s as subnet validator as node is not synced to subnet yet", host))
+				nodeErrors = append(nodeErrors, errors.New("node is not synced to subnet yet, please try again later"))
+			}
 			continue
 		}
 		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji, i)
