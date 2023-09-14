@@ -439,9 +439,6 @@ func setupBuildEnv(clusterName string) error {
 	if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath, "all"); err != nil {
 		return err
 	}
-	if err := ansible.RunAnsiblePlaybookSetupCLIFromSource(app.GetAnsibleDir(), inventoryPath, constants.CloudCLIBranch, "all"); err != nil {
-		return err
-	}
 	return nil
 }
 

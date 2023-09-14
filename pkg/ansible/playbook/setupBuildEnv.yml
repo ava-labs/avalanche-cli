@@ -3,10 +3,12 @@
   tasks:
     - name: install gcc
       shell: |
+        gcc --version && exit
         sudo apt install gcc -y
         gcc --version
     - name: install go
       shell: |
+        bash -i -c "go version" && exit
         GOFILE=go{{ goVersion }}.linux-amd64.tar.gz
         cd ~
         sudo rm -rf $GOFILE go
@@ -18,6 +20,7 @@
         bash -i -c "go version"
     - name: install rust
       shell: |
+        bash -i -c "cargo version" && exit
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s - -y
         echo >> ~/.bashrc
         echo export PATH=\$PATH:~/.cargo/bin >> ~/.bashrc
