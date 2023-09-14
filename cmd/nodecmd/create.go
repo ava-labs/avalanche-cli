@@ -377,6 +377,9 @@ func createNode(_ *cobra.Command, args []string) error {
 		}
 		return err
 	}
+	if err := createClusterNodeConfig(instanceIDs, elasticIPs, region, ami, keyPairName, certFilePath, securityGroupName, clusterName); err != nil {
+		return err
+	}
 	err = terraform.RemoveDirectory(app.GetTerraformDir())
 	if err != nil {
 		return err
@@ -391,19 +394,11 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance ...")
+	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance(s) ...")
 	if err := runAnsible(inventoryPath, avalancheGoVersion); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance ...")
-	if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath); err != nil {
-		return err
-	}
-	if err := ansible.RunAnsiblePlaybookSetupCLIFromSource(app.GetAnsibleDir(), inventoryPath, constants.CloudCLIBranch); err != nil {
-		return err
-	}
-	err = createClusterNodeConfig(instanceIDs, elasticIPs, region, ami, keyPairName, certFilePath, securityGroupName, clusterName)
-	if err != nil {
+	if err := setupBuildEnv(clusterName); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
@@ -436,6 +431,15 @@ func runAnsible(inventoryPath, avalancheGoVersion string) error {
 		return err
 	}
 	return ansible.RunAnsiblePlaybookSetupNode(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion)
+}
+
+func setupBuildEnv(clusterName string) error {
+	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance(s) ...")
+	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
+	if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath, "all"); err != nil {
+		return err
+	}
+	return nil
 }
 
 func requestAWSAccountAuth() error {

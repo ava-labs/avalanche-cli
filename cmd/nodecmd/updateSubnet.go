@@ -69,11 +69,7 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
 	}
-	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance ...")
-	if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
-		return err
-	}
-	if err := ansible.RunAnsiblePlaybookSetupCLIFromSource(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), constants.CloudCLIBranch); err != nil {
+	if err := setupBuildEnv(clusterName); err != nil {
 		return err
 	}
 	nonUpdatedNodes, err := doUpdateSubnet(clusterName, subnetName, models.Fuji)
@@ -105,7 +101,7 @@ func doUpdateSubnet(clusterName, subnetName string, network models.Network) ([]s
 			return nil, err
 		}
 		// runs avalanche update subnet command
-		if err = ansible.RunAnsiblePlaybookUpdateSubnet(app.GetAnsibleDir(), subnetName, subnetPath, app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
+		if err = ansible.RunAnsiblePlaybookUpdateSubnet(app.GetAnsibleDir(), subnetName, subnetPath, app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
 			nonUpdatedNodes = append(nonUpdatedNodes, host)
 		}
 	}

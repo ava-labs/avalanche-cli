@@ -185,8 +185,8 @@ func RunAnsiblePlaybookTrackSubnet(ansibleDir, subnetName, importPath, inventory
 }
 
 // RunAnsiblePlaybookUpdateSubnet runs avalanche subnet join <subnetName> in cloud server using update subnet info
-func RunAnsiblePlaybookUpdateSubnet(ansibleDir, subnetName, importPath, inventoryPath string) error {
-	playbookInputs := "subnetExportFileName=" + importPath + " subnetName=" + subnetName
+func RunAnsiblePlaybookUpdateSubnet(ansibleDir, subnetName, importPath, inventoryPath, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID + " subnetExportFileName=" + importPath + " subnetName=" + subnetName
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.UpdateSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
@@ -324,8 +324,8 @@ func RunAnsiblePlaybookSubnetSyncStatus(ansibleDir, subnetSyncPath, blockchainID
 }
 
 // RunAnsiblePlaybookSetupBuildEnv installs gcc, golang, rust
-func RunAnsiblePlaybookSetupBuildEnv(ansibleDir, inventoryPath string) error {
-	playbookInputs := "goVersion=" + constants.BuildEnvGolangVersion
+func RunAnsiblePlaybookSetupBuildEnv(ansibleDir, inventoryPath, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID + " goVersion=" + constants.BuildEnvGolangVersion
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupBuildEnvPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
@@ -340,8 +340,8 @@ func RunAnsiblePlaybookSetupBuildEnv(ansibleDir, inventoryPath string) error {
 }
 
 // RunAnsiblePlaybookSetupCLIFromSource installs any CLI branch from source
-func RunAnsiblePlaybookSetupCLIFromSource(ansibleDir, inventoryPath, cliBranch string) error {
-	playbookInputs := "cliBranch=" + cliBranch
+func RunAnsiblePlaybookSetupCLIFromSource(ansibleDir, inventoryPath, cliBranch, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID + " cliBranch=" + cliBranch
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupCLIFromSourcePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
