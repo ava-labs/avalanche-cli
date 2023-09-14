@@ -78,24 +78,29 @@ func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
 
 // createClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
 // also creates cluster config in .avalanche-cli/nodes storing various key pair and security group info for all clusters
-func createClusterNodeConfig(nodeID, region, ami, keyPairName, certPath, sg, eip, clusterName string) error {
-	nodeConfig := models.NodeConfig{
-		NodeID:        nodeID,
-		Region:        region,
-		AMI:           ami,
-		KeyPair:       keyPairName,
-		CertPath:      certPath,
-		SecurityGroup: sg,
-		ElasticIP:     eip,
+func createClusterNodeConfig(nodeIDs, publicIPs []string, region, ami, keyPairName, certPath, sg, clusterName string) error {
+	for i := range nodeIDs {
+		nodeConfig := models.NodeConfig{
+			NodeID:        nodeIDs[i],
+			Region:        region,
+			AMI:           ami,
+			KeyPair:       keyPairName,
+			CertPath:      certPath,
+			SecurityGroup: sg,
+			ElasticIP:     publicIPs[i],
+		}
+		err := app.CreateNodeCloudConfigFile(nodeIDs[i], &nodeConfig)
+		if err != nil {
+			return err
+		}
+		if err = addNodeToClusterConfig(nodeIDs[i], clusterName); err != nil {
+			return err
+		}
 	}
-	err := app.CreateNodeCloudConfigFile(nodeID, &nodeConfig)
-	if err != nil {
-		return err
-	}
-	return updateClusterConfig(nodeID, keyPairName, certPath, clusterName)
+	return updateKeyPairClusterConfig(keyPairName, certPath)
 }
 
-func updateClusterConfig(nodeID, keyPairName, certPath, clusterName string) error {
+func updateKeyPairClusterConfig(keyPairName, certPath string) error {
 	clusterConfig := models.ClusterConfig{}
 	var err error
 	if app.ClusterConfigExists() {
@@ -104,12 +109,23 @@ func updateClusterConfig(nodeID, keyPairName, certPath, clusterName string) erro
 			return err
 		}
 	}
-
 	if clusterConfig.KeyPair == nil {
 		clusterConfig.KeyPair = make(map[string]string)
 	}
 	if _, ok := clusterConfig.KeyPair[keyPairName]; !ok {
 		clusterConfig.KeyPair[keyPairName] = certPath
+	}
+	return app.WriteClusterConfigFile(&clusterConfig)
+}
+
+func addNodeToClusterConfig(nodeID, clusterName string) error {
+	clusterConfig := models.ClusterConfig{}
+	var err error
+	if app.ClusterConfigExists() {
+		clusterConfig, err = app.LoadClusterConfig()
+		if err != nil {
+			return err
+		}
 	}
 	if clusterConfig.Clusters == nil {
 		clusterConfig.Clusters = make(map[string][]string)
@@ -131,9 +147,15 @@ func printNoCredentialsOutput() {
 }
 
 // getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
-func getAWSCloudCredentials(region string) (*session.Session, error) {
-	if err := requestAWSAccountAuth(); err != nil {
-		return &session.Session{}, err
+func getAWSCloudCredentials(region string, stopNode bool) (*session.Session, error) {
+	if stopNode {
+		if err := requestStopAWSNodeAuth(); err != nil {
+			return &session.Session{}, err
+		}
+	} else {
+		if err := requestAWSAccountAuth(); err != nil {
+			return &session.Session{}, err
+		}
 	}
 	creds := credentials.NewSharedCredentials("", constants.AWSDefaultCredential)
 	if _, err := creds.Get(); err != nil {
@@ -180,7 +202,7 @@ func getAWSCloudConfig() (*ec2.EC2, string, string, error) {
 			return nil, "", "", err
 		}
 	}
-	sess, err := getAWSCloudCredentials(region)
+	sess, err := getAWSCloudCredentials(region, false)
 	if err != nil {
 		return nil, "", "", err
 	}
@@ -192,8 +214,8 @@ func getAWSCloudConfig() (*ec2.EC2, string, string, error) {
 	return ec2Svc, region, ami, nil
 }
 
-// createEC2Instance creates terraform .tf file and runs terraform exec function to create ec2 instance
-func createEC2Instance(rootBody *hclwrite.Body,
+// createEC2Instances creates terraform .tf file and runs terraform exec function to create ec2 instances
+func createEC2Instances(rootBody *hclwrite.Body,
 	ec2Svc *ec2.EC2,
 	hclFile *hclwrite.File,
 	region,
@@ -201,19 +223,23 @@ func createEC2Instance(rootBody *hclwrite.Body,
 	certName,
 	keyPairName,
 	securityGroupName string,
-) (string, string, string, string, error) {
+) ([]string, []string, string, string, error) {
 	if err := terraform.SetCloudCredentials(rootBody, region); err != nil {
-		return "", "", "", "", err
+		return nil, nil, "", "", err
 	}
-	ux.Logger.PrintToUser("Creating a new EC2 instance on AWS ...")
+	numNodes, err := app.Prompt.CaptureUint32("How many nodes do you want to set up on AWS?")
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	ux.Logger.PrintToUser("Creating new EC2 instance(s) on AWS...")
 	var useExistingKeyPair bool
 	keyPairExists, err := awsAPI.CheckKeyPairExists(ec2Svc, keyPairName)
 	if err != nil {
-		return "", "", "", "", err
+		return nil, nil, "", "", err
 	}
 	certInSSHDir, err := app.CheckCertInSSHDir(certName)
 	if err != nil {
-		return "", "", "", "", err
+		return nil, nil, "", "", err
 	}
 	if !keyPairExists {
 		if !certInSSHDir {
@@ -224,7 +250,7 @@ func createEC2Instance(rootBody *hclwrite.Body,
 			ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in AWS", keyPairName))
 			certName, keyPairName, err = promptKeyPairName(ec2Svc)
 			if err != nil {
-				return "", "", "", "", err
+				return nil, nil, "", "", err
 			}
 			terraform.SetKeyPair(rootBody, keyPairName, certName)
 		}
@@ -237,18 +263,18 @@ func createEC2Instance(rootBody *hclwrite.Body,
 			ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName))
 			certName, keyPairName, err = promptKeyPairName(ec2Svc)
 			if err != nil {
-				return "", "", "", "", err
+				return nil, nil, "", "", err
 			}
 			terraform.SetKeyPair(rootBody, keyPairName, certName)
 		}
 	}
 	securityGroupExists, sg, err := awsAPI.CheckSecurityGroupExists(ec2Svc, securityGroupName)
 	if err != nil {
-		return "", "", "", "", err
+		return nil, nil, "", "", err
 	}
 	userIPAddress, err := getIPAddress()
 	if err != nil {
-		return "", "", "", "", err
+		return nil, nil, "", "", err
 	}
 	if !securityGroupExists {
 		ux.Logger.PrintToUser(fmt.Sprintf("Creating new security group %s in AWS", securityGroupName))
@@ -259,34 +285,34 @@ func createEC2Instance(rootBody *hclwrite.Body,
 		ipInHTTP := awsAPI.CheckUserIPInSg(sg, userIPAddress, constants.AvalanchegoAPIPort)
 		terraform.SetSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
 	}
-	terraform.SetElasticIP(rootBody)
-	terraform.SetupInstance(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami)
+	terraform.SetElasticIPs(rootBody, numNodes)
+	terraform.SetupInstances(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami, numNodes)
 	terraform.SetOutput(rootBody)
 	err = app.CreateTerraformDir()
 	if err != nil {
-		return "", "", "", "", err
+		return nil, nil, "", "", err
 	}
 	err = terraform.SaveConf(app.GetTerraformDir(), hclFile)
 	if err != nil {
-		return "", "", "", "", err
+		return nil, nil, "", "", err
 	}
-	instanceID, elasticIP, err := terraform.RunTerraform(app.GetTerraformDir())
+	instanceIDs, elasticIPs, err := terraform.RunTerraform(app.GetTerraformDir())
 	if err != nil {
-		return "", "", "", "", err
+		return nil, nil, "", "", err
 	}
-	ux.Logger.PrintToUser("A new EC2 instance is successfully created in AWS!")
+	ux.Logger.PrintToUser("New EC2 instance(s) successfully created in AWS!")
 	if !useExistingKeyPair {
 		// takes the cert file downloaded from AWS through terraform and moves it to .ssh directory
 		err = addCertToSSH(certName)
 		if err != nil {
-			return "", "", "", "", err
+			return nil, nil, "", "", err
 		}
 	}
 	sshCertPath, err := app.GetSSHCertFilePath(certName)
 	if err != nil {
-		return "", "", "", "", err
+		return nil, nil, "", "", err
 	}
-	return instanceID, elasticIP, sshCertPath, keyPairName, nil
+	return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
 }
 
 func createNode(_ *cobra.Command, args []string) error {
@@ -318,34 +344,45 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Create new EC2 client
-	instanceID, elasticIP, certFilePath, keyPairName, err := createEC2Instance(rootBody, ec2Svc, hclFile, region, ami, certName, prefix, securityGroupName)
+	// Create new EC2 instances
+	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(rootBody, ec2Svc, hclFile, region, ami, certName, prefix, securityGroupName)
 	if err != nil {
 		if err.Error() == constants.EIPLimitErr {
 			ux.Logger.PrintToUser("Failed to create AWS cloud server, please try creating again in a different region")
 		} else {
 			ux.Logger.PrintToUser("Failed to create AWS cloud server")
 		}
-		// we stop created instance so that user doesn't pay for unused EC2 instance
-		instanceID, instanceIDErr := terraform.GetInstanceID(app.GetTerraformDir())
+		// we stop created instances so that user doesn't pay for unused EC2 instances
+		instanceIDs, instanceIDErr := terraform.GetInstanceIDs(app.GetTerraformDir())
 		if instanceIDErr != nil {
 			return instanceIDErr
 		}
-		ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s ...", instanceID))
-		if stopErr := awsAPI.StopInstance(ec2Svc, instanceID, "", false); stopErr != nil {
-			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop cloud server instance %s", instanceID))
-			ux.Logger.PrintToUser(fmt.Sprintf("Stop cloud server instance %s on AWS console to prevent charges", instanceID))
-			return stopErr
+		failedNodes := []string{}
+		nodeErrors := []error{}
+		for _, instanceID := range instanceIDs {
+			ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s...", instanceID))
+			if stopErr := awsAPI.StopInstance(ec2Svc, instanceID, "", false); stopErr != nil {
+				failedNodes = append(failedNodes, instanceID)
+				nodeErrors = append(nodeErrors, stopErr)
+			}
+			ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s stopped", instanceID))
 		}
-		ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s stopped", instanceID))
+		if len(failedNodes) > 0 {
+			ux.Logger.PrintToUser("Failed nodes: ")
+			for i, node := range failedNodes {
+				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
+			}
+			ux.Logger.PrintToUser("Stop the above instance(s) on AWS console to prevent charges")
+			return fmt.Errorf("failed to stop node(s) %s", failedNodes)
+		}
 		return err
 	}
 	err = terraform.RemoveDirectory(app.GetTerraformDir())
 	if err != nil {
 		return err
 	}
-	inventoryPath := app.GetAnsibleInventoryPath(clusterName)
-	if err := ansible.CreateAnsibleHostInventory(inventoryPath, elasticIP, certFilePath); err != nil {
+	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
+	if err := ansible.CreateAnsibleHostInventory(inventoryPath, certFilePath, elasticIPs, instanceIDs); err != nil {
 		return err
 	}
 	time.Sleep(15 * time.Second)
@@ -365,16 +402,21 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err := ansible.RunAnsiblePlaybookSetupCLIFromSource(app.GetAnsibleDir(), app.GetAnsibleInventoryPath(clusterName), constants.CloudCLIBranch); err != nil {
 		return err
 	}
-	err = createClusterNodeConfig(instanceID, region, ami, keyPairName, certFilePath, securityGroupName, elasticIP, clusterName)
+	err = createClusterNodeConfig(instanceIDs, elasticIPs, region, ami, keyPairName, certFilePath, securityGroupName, clusterName)
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine ...")
-	if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), app.GetNodeInstanceDirPath(instanceID), inventoryPath); err != nil {
-		return err
+	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
+	for _, instanceID := range instanceIDs {
+		nodeInstanceDirPath := app.GetNodeInstanceDirPath(instanceID)
+		// ansible host alias's name is formatted as aws_node_{instanceID}
+		nodeInstanceAnsibleAlias := fmt.Sprintf("aws_node_%s", instanceID)
+		if err := ansible.RunAnsibleCopyStakingFilesPlaybook(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
+			return err
+		}
 	}
-	PrintResults(instanceID, elasticIP, certFilePath, region)
-	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node is bootstrapping!")
+	PrintResults(instanceIDs, elasticIPs, certFilePath, region)
+	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	return nil
 }
 
@@ -403,6 +445,20 @@ func requestAWSAccountAuth() error {
 	ux.Logger.PrintToUser("- Set up EC2 instance(s) and other components (such as security groups, key pairs and elastic IPs)")
 	ux.Logger.PrintToUser("- Set up the EC2 instance(s) to validate the Avalanche Primary Network")
 	ux.Logger.PrintToUser("- Set up the EC2 instance(s) to validate Subnets")
+	yes, err := app.Prompt.CaptureYesNo("I authorize Avalanche-CLI to access my AWS account")
+	if err != nil {
+		return err
+	}
+	if !yes {
+		return errors.New("user did not give authorization to Avalanche-CLI to access AWS account")
+	}
+	return nil
+}
+
+func requestStopAWSNodeAuth() error {
+	ux.Logger.PrintToUser("Do you authorize Avalanche-CLI to access your AWS account to stop your Avalanche Validator node?")
+	ux.Logger.PrintToUser("By clicking yes, you are authorizing Avalanche-CLI to:")
+	ux.Logger.PrintToUser("- Stop EC2 instance(s) and other components (such as elastic IPs)")
 	yes, err := app.Prompt.CaptureYesNo("I authorize Avalanche-CLI to access my AWS account")
 	if err != nil {
 		return err
@@ -513,21 +569,29 @@ func promptAvalancheGoReferenceChoice() (string, error) {
 	}
 }
 
-func PrintResults(instanceID, elasticIP, certFilePath, region string) {
-	ux.Logger.PrintToUser("VALIDATOR SUCCESSFULLY SET UP!")
-	ux.Logger.PrintToUser("Please wait until validator is successfully boostrapped to run further commands on validator")
+func PrintResults(instanceIDs, elasticIPs []string, certFilePath, region string) {
+	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintToUser("AVALANCHE NODE(S) SUCCESSFULLY SET UP!")
+	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintToUser("Please wait until the node(s) are successfully bootstrapped to run further commands on the node(s)")
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Here are the details of the set up validator: ")
-	ux.Logger.PrintToUser(fmt.Sprintf("Cloud Instance ID: %s", instanceID))
-	ux.Logger.PrintToUser(fmt.Sprintf("Elastic IP: %s", elasticIP))
-	ux.Logger.PrintToUser(fmt.Sprintf("Cloud Region: %s", region))
-	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Here are the details of the set up node(s): ")
+	for i, instanceID := range instanceIDs {
+		ux.Logger.PrintToUser("======================================")
+		hostAliasName := fmt.Sprintf("aws_node_%s", elasticIPs[i])
+		ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", hostAliasName))
+		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Instance ID: %s", instanceID))
+		ux.Logger.PrintToUser(fmt.Sprintf("Elastic IP: %s", elasticIPs[i]))
+		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Region: %s", region))
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(fmt.Sprintf("staker.crt and staker.key are stored at %s. If anything happens to your node or the machine node runs on, these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID)))
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("To ssh to node, run: ")
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(fmt.Sprintf("ssh -o IdentitiesOnly=yes ubuntu@%s -i %s", elasticIPs[i], certFilePath))
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("======================================")
+	}
 	ux.Logger.PrintToUser(fmt.Sprintf("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", certFilePath))
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(fmt.Sprintf("staker.crt and staker.key are stored at %s. If anything happens to your node or the machine node runs on, these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID)))
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("To ssh to validator, run: ")
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(fmt.Sprintf("ssh -o IdentitiesOnly=yes ubuntu@%s -i %s", elasticIP, certFilePath))
 	ux.Logger.PrintToUser("")
 }

@@ -16,19 +16,20 @@ const (
 	AvalancheCliBinDir = "bin"
 	RunDir             = "runs"
 
-	SuffixSeparator             = "_"
-	SidecarFileName             = "sidecar.json"
-	GenesisFileName             = "genesis.json"
-	GenesisMainnetFileName      = "genesis_mainnet.json"
-	ElasticSubnetConfigFileName = "elastic_subnet_config.json"
-	SidecarSuffix               = SuffixSeparator + SidecarFileName
-	GenesisSuffix               = SuffixSeparator + GenesisFileName
-	NodeFileName                = "node.json"
-	NodeCloudConfigFileName     = "node_cloud_config.json"
-	TerraformDir                = "terraform"
-	AnsibleDir                  = "ansible"
-	ClusterConfigFileName       = "cluster_config.json"
-	SidecarVersion              = "1.4.0"
+	SuffixSeparator              = "_"
+	SidecarFileName              = "sidecar.json"
+	GenesisFileName              = "genesis.json"
+	GenesisMainnetFileName       = "genesis_mainnet.json"
+	ElasticSubnetConfigFileName  = "elastic_subnet_config.json"
+	SidecarSuffix                = SuffixSeparator + SidecarFileName
+	GenesisSuffix                = SuffixSeparator + GenesisFileName
+	NodeFileName                 = "node.json"
+	NodeCloudConfigFileName      = "node_cloud_config.json"
+	TerraformDir                 = "terraform"
+	AnsibleDir                   = "ansible"
+	AnsibleHostInventoryFileName = "hosts"
+	ClusterConfigFileName        = "cluster_config.json"
+	SidecarVersion               = "1.4.0"
 
 	MaxLogFileSize   = 4
 	MaxNumOfLogFiles = 5
