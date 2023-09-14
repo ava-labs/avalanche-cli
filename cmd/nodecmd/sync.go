@@ -62,10 +62,22 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if len(incompatibleNodes) > 0 {
+		sc, err := app.LoadSidecar(subnetName)
+		if err != nil {
+			return err
+		}
 		ux.Logger.PrintToUser("Either modify your Avalanche Go version or modify your VM version")
 		ux.Logger.PrintToUser("To modify your Avalanche Go version: https://docs.avax.network/nodes/maintain/upgrade-your-avalanchego-node")
-		ux.Logger.PrintToUser("If you are using Subnet-EVM, to modify your Subnet-EVM version: https://docs.avax.network/build/subnet/upgrade/upgrade-subnet-vm")
+		switch sc.VM {
+		case models.SubnetEvm:
+			ux.Logger.PrintToUser("To modify your Subnet-EVM version: https://docs.avax.network/build/subnet/upgrade/upgrade-subnet-vm")
+		case models.CustomVM:
+			ux.Logger.PrintToUser("To modify your Custom VM binary: avalanche subnet upgrade vm %s --config", subnetName)
+		}
 		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
+	}
+	if err := setupBuildEnv(clusterName); err != nil {
+		return err
 	}
 	untrackedNodes, err := trackSubnet(clusterName, subnetName, models.Fuji)
 	if err != nil {
@@ -158,22 +170,22 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string
 
 // trackSubnet exports deployed subnet in user's local machine to cloud server and calls node to
 // start tracking the specified subnet (similar to avalanche subnet join <subnetName> command)
-func trackSubnet(clusterName, subnetToTrack string, network models.Network) ([]string, error) {
+func trackSubnet(clusterName, subnetName string, network models.Network) ([]string, error) {
+	subnetPath := "/tmp/" + subnetName + constants.ExportSubnetSuffix
+	if err := subnetcmd.CallExportSubnet(subnetName, subnetPath, network); err != nil {
+		return nil, err
+	}
 	hostAliases, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return nil, err
 	}
-	subnetPath := "/tmp/" + subnetToTrack + constants.ExportSubnetSuffix
 	untrackedNodes := []string{}
 	for _, host := range hostAliases {
-		if err = subnetcmd.CallExportSubnet(subnetToTrack, subnetPath, network); err != nil {
-			return nil, err
-		}
 		if err = ansible.RunAnsiblePlaybookExportSubnet(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), subnetPath, "/tmp", host); err != nil {
 			return nil, err
 		}
 		// runs avalanche join subnet command
-		if err = ansible.RunAnsiblePlaybookTrackSubnet(app.GetAnsibleDir(), subnetToTrack, subnetPath, app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
+		if err = ansible.RunAnsiblePlaybookTrackSubnet(app.GetAnsibleDir(), subnetName, subnetPath, app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
 			untrackedNodes = append(untrackedNodes, host)
 		}
 	}

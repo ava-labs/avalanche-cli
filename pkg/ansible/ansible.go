@@ -5,7 +5,9 @@ package ansible
 
 import (
 	"bufio"
+	"bytes"
 	"embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -13,10 +15,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 //go:embed playbook/*
@@ -112,26 +114,40 @@ func WriteCfgFile(ansibleDir string) error {
 	return err
 }
 
-// RunAnsibleSetupNodePlaybook installs avalanche go and avalanche-cli. It also copies the user's
+// RunAnsiblePlaybookSetupNode installs avalanche go and avalanche-cli. It also copies the user's
 // metric preferences in configFilePath from local machine to cloud server
 // targets all hosts in ansible inventory file
-func RunAnsibleSetupNodePlaybook(configPath, ansibleDir, inventoryPath, avalancheGoVersion string) error {
+func RunAnsiblePlaybookSetupNode(configPath, ansibleDir, inventoryPath, avalancheGoVersion string) error {
 	playbookInputs := "configFilePath=" + configPath + " avalancheGoVersion=" + avalancheGoVersion
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
-	utils.SetupRealtimeCLIOutput(cmd)
-	return cmd.Run()
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
 }
 
-// RunAnsibleCopyStakingFilesPlaybook copies staker.crt and staker.key into local machine so users can back up their node
+// RunAnsiblePlaybookCopyStakingFiles copies staker.crt and staker.key into local machine so users can back up their node
 // these files are stored in .avalanche-cli/nodes/<nodeID> dir
 // targets a specific host ansibleHostID in ansible inventory file
-func RunAnsibleCopyStakingFilesPlaybook(ansibleDir, ansibleHostID, nodeInstanceDirPath, inventoryPath string) error {
+func RunAnsiblePlaybookCopyStakingFiles(ansibleDir, ansibleHostID, nodeInstanceDirPath, inventoryPath string) error {
 	playbookInputs := "target=" + ansibleHostID + " nodeInstanceDirPath=" + nodeInstanceDirPath + "/"
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.CopyStakingFilesPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
-	utils.SetupRealtimeCLIOutput(cmd)
-	return cmd.Run()
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
 }
 
 // RunAnsiblePlaybookExportSubnet exports deployed Subnet from local machine to cloud server
@@ -140,8 +156,15 @@ func RunAnsiblePlaybookExportSubnet(ansibleDir, inventoryPath, exportPath, cloud
 	playbookInputs := "target=" + ansibleHostID + " originSubnetPath=" + exportPath + " destSubnetPath=" + cloudServerSubnetPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.ExportSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
-	utils.SetupRealtimeCLIOutput(cmd)
-	return cmd.Run()
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
 }
 
 // RunAnsiblePlaybookTrackSubnet runs avalanche subnet join <subnetName> in cloud server
@@ -150,8 +173,86 @@ func RunAnsiblePlaybookTrackSubnet(ansibleDir, subnetName, importPath, inventory
 	playbookInputs := "target=" + ansibleHostID + " subnetExportFileName=" + importPath + " subnetName=" + subnetName
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.TrackSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
-	utils.SetupRealtimeCLIOutput(cmd)
-	return cmd.Run()
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
+// RunAnsiblePlaybookUpdateSubnet runs avalanche subnet join <subnetName> in cloud server using update subnet info
+func RunAnsiblePlaybookUpdateSubnet(ansibleDir, subnetName, importPath, inventoryPath, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID + " subnetExportFileName=" + importPath + " subnetName=" + subnetName
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.UpdateSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
+func displayErrMsg(buffer *bytes.Buffer) error {
+	for _, line := range strings.Split(buffer.String(), "\n") {
+		if strings.Contains(line, "FAILED") || strings.Contains(line, "UNREACHABLE") {
+			i := strings.Index(line, "{")
+			if i >= 0 {
+				line = line[i:]
+			}
+			var jsonMap map[string]interface{}
+			if err := json.Unmarshal([]byte(line), &jsonMap); err != nil {
+				return err
+			}
+			toDump := []string{}
+			stdoutLines, ok := jsonMap["stdout_lines"].([]interface{})
+			if ok {
+				toDump = append(toDump, getStringSeqFromISeq(stdoutLines)...)
+			}
+			stderrLines, ok := jsonMap["stderr_lines"].([]interface{})
+			if ok {
+				toDump = append(toDump, getStringSeqFromISeq(stderrLines)...)
+			}
+			msgLine, ok := jsonMap["msg"].(string)
+			if ok {
+				toDump = append(toDump, msgLine)
+			}
+			contentLine, ok := jsonMap["content"].(string)
+			if ok {
+				toDump = append(toDump, contentLine)
+			}
+			if len(toDump) > 0 {
+				fmt.Println()
+				fmt.Println(logging.Red.Wrap("Message from cloud node:"))
+				for _, l := range toDump {
+					fmt.Println("  " + logging.Red.Wrap(l))
+				}
+				fmt.Println()
+			}
+		}
+	}
+	return nil
+}
+
+func getStringSeqFromISeq(lines []interface{}) []string {
+	seq := []string{}
+	for _, lineI := range lines {
+		line, ok := lineI.(string)
+		if ok {
+			if strings.Contains(line, "Usage:") {
+				break
+			}
+			seq = append(seq, line)
+		}
+	}
+	return seq
 }
 
 // RunAnsiblePlaybookCheckAvalancheGoVersion checks if node is bootstrapped to primary network
@@ -160,7 +261,15 @@ func RunAnsiblePlaybookCheckAvalancheGoVersion(ansibleDir, avalancheGoPath, inve
 	playbookInput := "target=" + ansibleHostID + " avalancheGoJsonPath=" + avalancheGoPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.AvalancheGoVersionPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInput, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
-	return cmd.Run()
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, false, false)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
 }
 
 // RunAnsiblePlaybookCheckBootstrapped checks if node is bootstrapped to primary network
@@ -169,7 +278,15 @@ func RunAnsiblePlaybookCheckBootstrapped(ansibleDir, isBootstrappedPath, invento
 	playbookInputs := "target=" + ansibleHostID + " isBootstrappedJsonPath=" + isBootstrappedPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsBootstrappedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
-	return cmd.Run()
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, false, false)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
 }
 
 // RunAnsiblePlaybookGetNodeID gets node ID of cloud server
@@ -178,7 +295,15 @@ func RunAnsiblePlaybookGetNodeID(ansibleDir, nodeIDPath, inventoryPath, ansibleH
 	playbookInputs := "target=" + ansibleHostID + " nodeIDJsonPath=" + nodeIDPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.GetNodeIDPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
-	return cmd.Run()
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, false, false)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
 }
 
 // RunAnsiblePlaybookSubnetSyncStatus checks if node is synced to subnet
@@ -187,7 +312,47 @@ func RunAnsiblePlaybookSubnetSyncStatus(ansibleDir, subnetSyncPath, blockchainID
 	playbookInputs := "target=" + ansibleHostID + " blockchainID=" + blockchainID + " subnetSyncPath=" + subnetSyncPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsSubnetSyncedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
-	return cmd.Run()
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, false, false)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
+// RunAnsiblePlaybookSetupBuildEnv installs gcc, golang, rust
+func RunAnsiblePlaybookSetupBuildEnv(ansibleDir, inventoryPath, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID + " goVersion=" + constants.BuildEnvGolangVersion
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupBuildEnvPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
+// RunAnsiblePlaybookSetupCLIFromSource installs any CLI branch from source
+func RunAnsiblePlaybookSetupCLIFromSource(ansibleDir, inventoryPath, cliBranch, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID + " cliBranch=" + cliBranch
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupCLIFromSourcePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
 }
 
 func CheckIsInstalled() error {

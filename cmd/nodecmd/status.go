@@ -13,6 +13,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var subnetName string
+
 func newStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status [clusterName]",

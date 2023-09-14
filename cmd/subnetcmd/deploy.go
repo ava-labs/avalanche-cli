@@ -300,9 +300,11 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = checkDefaultAddressNotInAlloc(network, chain)
-	if err != nil {
-		return err
+	if sc.VM == models.SubnetEvm {
+		err = checkDefaultAddressNotInAlloc(network, chain)
+		if err != nil {
+			return err
+		}
 	}
 
 	sidecar, err := app.LoadSidecar(chain)
@@ -347,14 +349,11 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("unknown vm: %s", sidecar.VM)
 		}
 
-		// skip rpc check if using custom vm
-		if sidecar.VM != models.CustomVM {
-			// check if selected version matches what is currently running
-			nc := localnetworkinterface.NewStatusChecker()
-			userProvidedAvagoVersion, err = CheckForInvalidDeployAndGetAvagoVersion(nc, sidecar.RPCVersion)
-			if err != nil {
-				return err
-			}
+		// check if selected version matches what is currently running
+		nc := localnetworkinterface.NewStatusChecker()
+		userProvidedAvagoVersion, err = CheckForInvalidDeployAndGetAvagoVersion(nc, sidecar.RPCVersion)
+		if err != nil {
+			return err
 		}
 
 		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, vmBin)

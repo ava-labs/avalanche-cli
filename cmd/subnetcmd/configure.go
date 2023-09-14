@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -14,6 +15,7 @@ import (
 )
 
 var (
+	nodeConf         string
 	subnetConf       string
 	chainConf        string
 	perNodeChainConf string
@@ -26,12 +28,14 @@ func newConfigureCmd() *cobra.Command {
 		Short: "Adds additional config files for the avalanchego nodes",
 		Long: `AvalancheGo nodes support several different configuration files. Subnets have their own
 Subnet config which applies to all chains/VMs in the Subnet. Each chain within the Subnet
-can have its own chain config. This command allows you to set both config files.`,
+can have its own chain config. A chain can also have special requirements for the AvalancheGo node 
+configuration itself. This command allows you to set all those files.`,
 		SilenceUsage: true,
 		RunE:         configure,
 		Args:         cobra.ExactArgs(1),
 	}
 
+	cmd.Flags().StringVar(&nodeConf, "node-config", "", "path to avalanchego node configuration")
 	cmd.Flags().StringVar(&subnetConf, "subnet-config", "", "path to the subnet configuration")
 	cmd.Flags().StringVar(&chainConf, "chain-config", "", "path to the chain configuration")
 	cmd.Flags().StringVar(&perNodeChainConf, "per-node-chain-config", "", "path to per node chain configuration for local network")
@@ -49,9 +53,13 @@ func configure(_ *cobra.Command, args []string) error {
 		chainLabel        = constants.ChainConfigFileName
 		perNodeChainLabel = constants.PerNodeChainConfigFileName
 		subnetLabel       = constants.SubnetConfigFileName
+		nodeLabel         = constants.NodeConfigFileName
 	)
 	configsToLoad := map[string]string{}
 
+	if nodeConf != "" {
+		configsToLoad[nodeLabel] = nodeConf
+	}
 	if subnetConf != "" {
 		configsToLoad[subnetLabel] = subnetConf
 	}
@@ -64,7 +72,7 @@ func configure(_ *cobra.Command, args []string) error {
 
 	// no flags provided
 	if len(configsToLoad) == 0 {
-		options := []string{chainLabel, subnetLabel, perNodeChainLabel}
+		options := []string{nodeLabel, chainLabel, subnetLabel, perNodeChainLabel}
 		selected, err := app.Prompt.CaptureList("Which configuration file would you like to provide?", options)
 		if err != nil {
 			return err
@@ -102,16 +110,28 @@ func configure(_ *cobra.Command, args []string) error {
 }
 
 func updateConf(subnet, path, filename string) error {
-	fileBytes, err := utils.ValidateJSON(path)
-	if err != nil {
-		return err
+	var (
+		fileBytes []byte
+		err       error
+	)
+	if strings.ToLower(filepath.Ext(filename)) == "json" {
+		fileBytes, err = utils.ValidateJSON(path)
+		if err != nil {
+			return err
+		}
+	} else {
+		fileBytes, err = os.ReadFile(path)
+		if err != nil {
+			return err
+		}
 	}
 	subnetDir := filepath.Join(app.GetSubnetDir(), subnet)
 	if err := os.MkdirAll(subnetDir, constants.DefaultPerms755); err != nil {
 		return err
 	}
 	fileName := filepath.Join(subnetDir, filename)
-	if err := os.WriteFile(fileName, fileBytes, constants.DefaultPerms755); err != nil {
+	_ = os.RemoveAll(fileName)
+	if err := os.WriteFile(fileName, fileBytes, constants.WriteReadReadPerms); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("File %s successfully written", fileName)

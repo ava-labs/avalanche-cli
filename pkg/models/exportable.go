@@ -4,6 +4,10 @@
 package models
 
 type Exportable struct {
-	Sidecar Sidecar
-	Genesis []byte
+	Sidecar         Sidecar
+	Genesis         []byte
+	ChainConfig     []byte
+	SubnetConfig    []byte
+	NetworkUpgrades []byte
+	NodeConfig      []byte
 }

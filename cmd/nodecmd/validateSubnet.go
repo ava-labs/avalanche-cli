@@ -135,7 +135,7 @@ func waitForNodeToBePrimaryNetworkValidator(nodeID ids.NodeID) error {
 
 func validateSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	subnetName = args[1]
+	subnetName := args[1]
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
