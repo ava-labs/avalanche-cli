@@ -436,10 +436,6 @@ func runAnsible(inventoryPath, avalancheGoVersion string) error {
 func setupBuildEnv(clusterName string) error {
 	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance(s) ...")
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	ansibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return err
-	}
 	if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath, "all"); err != nil {
 		return err
 	}
