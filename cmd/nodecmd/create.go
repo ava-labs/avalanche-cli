@@ -394,9 +394,13 @@ func createNode(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+	} else {
+		for i, node := range instanceIDs {
+			publicIPMap[node] = elasticIPs[i]
+		}
 	}
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	if err := ansible.CreateAnsibleHostInventory(inventoryPath, certFilePath, elasticIPs, instanceIDs, publicIPMap); err != nil {
+	if err := ansible.CreateAnsibleHostInventory(inventoryPath, certFilePath, publicIPMap); err != nil {
 		return err
 	}
 	time.Sleep(15 * time.Second)
@@ -406,7 +410,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance...")
-	if err := runAnsible(inventoryPath, avalancheGoVersion); err != nil {
+	if err := runAnsible(inventoryPath, avalancheGoVersion, clusterName); err != nil {
 		return err
 	}
 	err = createClusterNodeConfig(instanceIDs, elasticIPs, region, ami, keyPairName, certFilePath, securityGroupName, clusterName)
@@ -422,23 +426,26 @@ func createNode(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	PrintResults(instanceIDs, elasticIPs, certFilePath, region, publicIPMap)
+	PrintResults(certFilePath, region, publicIPMap)
 	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	return nil
 }
 
 // setupAnsible we need to remove existing ansible directory and its contents in .avalanche-cli dir
 // before calling every ansible run command just in case there is a change in playbook
-func setupAnsible() error {
+func setupAnsible(clusterName string) error {
 	err := app.SetupAnsibleEnv()
 	if err != nil {
 		return err
 	}
-	return ansible.Setup(app.GetAnsibleDir())
+	if err = ansible.Setup(app.GetAnsibleDir()); err != nil {
+		return err
+	}
+	return updateAnsiblePublicIPs(clusterName)
 }
 
-func runAnsible(inventoryPath, avalancheGoVersion string) error {
-	err := setupAnsible()
+func runAnsible(inventoryPath, avalancheGoVersion, clusterName string) error {
+	err := setupAnsible(clusterName)
 	if err != nil {
 		return err
 	}
@@ -576,20 +583,16 @@ func promptAvalancheGoReferenceChoice() (string, error) {
 	}
 }
 
-func PrintResults(instanceIDs, elasticIPs []string, certFilePath, region string, publicIPMap map[string]string) {
+func PrintResults(certFilePath, region string, publicIPMap map[string]string) {
 	ux.Logger.PrintToUser("======================================")
 	ux.Logger.PrintToUser("AVALANCHE NODE(S) SUCCESSFULLY SET UP!")
 	ux.Logger.PrintToUser("======================================")
 	ux.Logger.PrintToUser("Please wait until the node(s) are successfully bootstrapped to run further commands on the node(s)")
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Here are the details of the set up node(s): ")
-	for i, instanceID := range instanceIDs {
+	for instanceID := range publicIPMap {
 		publicIP := ""
-		if len(elasticIPs) > 0 {
-			publicIP = elasticIPs[i]
-		} else {
-			publicIP = publicIPMap[instanceID]
-		}
+		publicIP = publicIPMap[instanceID]
 		ux.Logger.PrintToUser("======================================")
 		ansibleHostID := fmt.Sprintf("aws_node_%s", instanceID)
 		ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", ansibleHostID))

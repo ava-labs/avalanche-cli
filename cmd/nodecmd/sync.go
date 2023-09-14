@@ -81,7 +81,7 @@ func getPublicIPForNodesWoEIP(nodesWoEIP []string) (map[string]string, error) {
 	return publicIPMap, nil
 }
 
-func handleNodesWoEIP(clusterName string) error {
+func updateAnsiblePublicIPs(clusterName string) error {
 	clusterNodes, err := getClusterNodes(clusterName)
 	if err != nil {
 		return err
@@ -106,10 +106,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	if err := setupAnsible(); err != nil {
-		return err
-	}
-	if err := handleNodesWoEIP(clusterName); err != nil {
+	if err := setupAnsible(clusterName); err != nil {
 		return err
 	}
 	if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {

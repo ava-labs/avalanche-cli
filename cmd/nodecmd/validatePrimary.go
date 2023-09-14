@@ -369,11 +369,8 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	err := setupAnsible()
+	err := setupAnsible(clusterName)
 	if err != nil {
-		return err
-	}
-	if err := handleNodesWoEIP(clusterName); err != nil {
 		return err
 	}
 	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)

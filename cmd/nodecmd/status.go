@@ -35,10 +35,7 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	if err := setupAnsible(); err != nil {
-		return err
-	}
-	if err := handleNodesWoEIP(clusterName); err != nil {
+	if err := setupAnsible(clusterName); err != nil {
 		return err
 	}
 	ansibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
