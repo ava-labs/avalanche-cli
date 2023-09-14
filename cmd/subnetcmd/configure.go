@@ -130,7 +130,8 @@ func updateConf(subnet, path, filename string) error {
 		return err
 	}
 	fileName := filepath.Join(subnetDir, filename)
-	if err := os.WriteFile(fileName, fileBytes, constants.DefaultPerms755); err != nil {
+	_ = os.RemoveAll(fileName)
+	if err := os.WriteFile(fileName, fileBytes, constants.WriteReadReadPerms); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("File %s successfully written", fileName)
