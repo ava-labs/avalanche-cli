@@ -1,5 +1,5 @@
 ---
-- hosts: all
+- hosts: "{{ target }}"
   tasks:
     - name: get Node ID
       uri:

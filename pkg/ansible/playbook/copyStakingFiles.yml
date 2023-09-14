@@ -1,5 +1,5 @@
 ---
-- hosts: all
+- hosts: "{{ target }}"
   tasks:
     - name: copy staker.crt to local machine
       fetch:

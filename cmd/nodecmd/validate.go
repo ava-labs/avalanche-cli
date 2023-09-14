@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// avalanche subnet
 func NewValidateCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "validate",

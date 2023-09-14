@@ -3,8 +3,12 @@
 package nodecmd
 
 import (
+	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 )
@@ -34,6 +38,10 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 	if err := setupAnsible(); err != nil {
 		return err
 	}
+	ansibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
 	if subnetName != "" {
 		if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 			return err
@@ -46,9 +54,54 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 		if blockchainID == ids.Empty {
 			return ErrNoBlockchainID
 		}
-		_, err = getNodeSubnetSyncStatus(blockchainID.String(), clusterName, true, false)
+		notSyncedNodes := []string{}
+		for _, host := range ansibleHostIDs {
+			isSubnetSynced, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, host, true)
+			if err != nil {
+				return err
+			}
+			if !isSubnetSynced {
+				notSyncedNodes = append(notSyncedNodes, host)
+			}
+		}
+		printOutput(ansibleHostIDs, notSyncedNodes, clusterName, subnetName)
+		return nil
+	}
+	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
+	if err != nil {
 		return err
 	}
-	_, err := checkNodeIsBootstrapped(clusterName, true)
-	return err
+	printOutput(ansibleHostIDs, notBootstrappedNodes, clusterName, subnetName)
+	return nil
+}
+
+func printOutput(hostAliases, notBootstrappedHosts []string, clusterName, subnetName string) {
+	if len(notBootstrappedHosts) == 0 {
+		if subnetName == "" {
+			ux.Logger.PrintToUser(fmt.Sprintf("All nodes in cluster %s are bootstrapped to Primary Network!", clusterName))
+		} else {
+			ux.Logger.PrintToUser(fmt.Sprintf("All nodes in cluster %s are synced to Subnet %s", clusterName, subnetName))
+		}
+		return
+	}
+	ux.Logger.PrintToUser(fmt.Sprintf("Node(s) Status For Cluster %s", clusterName))
+	ux.Logger.PrintToUser("======================================")
+	for _, host := range hostAliases {
+		hostIsBootstrapped := true
+		for _, notBootstrappedHost := range notBootstrappedHosts {
+			if notBootstrappedHost == host {
+				hostIsBootstrapped = false
+				break
+			}
+		}
+		isBootstrappedStr := "is not"
+		if hostIsBootstrapped {
+			isBootstrappedStr = "is"
+		}
+		if subnetName == "" {
+			ux.Logger.PrintToUser(fmt.Sprintf("Node %s %s bootstrapped to Primary Network", host, isBootstrappedStr))
+		} else {
+			ux.Logger.PrintToUser(fmt.Sprintf("Node %s %s synced to Subnet %s", host, isBootstrappedStr, subnetName))
+		}
+	}
 }
