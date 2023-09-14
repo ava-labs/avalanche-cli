@@ -163,8 +163,14 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	var chainConfig, subnetConfig, networkUpgrades []byte
+	var nodeConfig, chainConfig, subnetConfig, networkUpgrades []byte
 
+	if app.AvagoNodeConfigExists(subnetName) {
+		nodeConfig, err = app.LoadRawAvagoNodeConfig(subnetName)
+		if err != nil {
+			return err
+		}
+	}
 	if app.ChainConfigExists(subnetName) {
 		chainConfig, err = app.LoadRawChainConfig(subnetName)
 		if err != nil {
@@ -187,6 +193,7 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 	exportData := models.Exportable{
 		Sidecar:         sc,
 		Genesis:         gen,
+		NodeConfig:      nodeConfig,
 		ChainConfig:     chainConfig,
 		SubnetConfig:    subnetConfig,
 		NetworkUpgrades: networkUpgrades,

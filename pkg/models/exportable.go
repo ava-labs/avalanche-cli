@@ -9,4 +9,5 @@ type Exportable struct {
 	ChainConfig     []byte
 	SubnetConfig    []byte
 	NetworkUpgrades []byte
+	NodeConfig      []byte
 }

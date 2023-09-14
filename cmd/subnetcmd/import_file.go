@@ -183,6 +183,14 @@ func importFromFile(importPath string) error {
 		return err
 	}
 
+	if importable.NodeConfig != nil {
+		if err := app.WriteAvagoNodeConfigFile(subnetName, importable.NodeConfig); err != nil {
+			return err
+		}
+	} else {
+		_ = os.RemoveAll(app.GetAvagoNodeConfigPath(subnetName))
+	}
+
 	if importable.ChainConfig != nil {
 		if err := app.WriteChainConfigFile(subnetName, importable.ChainConfig); err != nil {
 			return err

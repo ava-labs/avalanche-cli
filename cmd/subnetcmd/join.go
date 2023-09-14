@@ -291,7 +291,19 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	if err := plugins.EditConfigFile(app, subnetIDStr, networkLower, avagoConfigPath, forceWrite); err != nil {
+	subnetAvagoConfigFile := ""
+	if app.AvagoNodeConfigExists(subnetName) {
+		subnetAvagoConfigFile = app.GetAvagoNodeConfigPath(subnetName)
+	}
+
+	if err := plugins.EditConfigFile(
+		app,
+		subnetIDStr,
+		networkLower,
+		avagoConfigPath,
+		forceWrite,
+		subnetAvagoConfigFile,
+	); err != nil {
 		return err
 	}
 

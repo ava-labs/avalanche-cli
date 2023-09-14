@@ -100,6 +100,10 @@ func (app *Avalanche) GetGenesisPath(subnetName string) string {
 	return filepath.Join(app.GetSubnetDir(), subnetName, constants.GenesisFileName)
 }
 
+func (app *Avalanche) GetAvagoNodeConfigPath(subnetName string) string {
+	return filepath.Join(app.GetSubnetDir(), subnetName, constants.NodeConfigFileName)
+}
+
 func (app *Avalanche) GetChainConfigPath(subnetName string) string {
 	return filepath.Join(app.GetSubnetDir(), subnetName, constants.ChainConfigFileName)
 }
@@ -271,6 +275,11 @@ func (app *Avalanche) WriteGenesisMainnetFile(subnetName string, genesisBytes []
 	return app.writeFile(genesisPath, genesisBytes)
 }
 
+func (app *Avalanche) WriteAvagoNodeConfigFile(subnetName string, bs []byte) error {
+	path := app.GetAvagoNodeConfigPath(subnetName)
+	return app.writeFile(path, bs)
+}
+
 func (app *Avalanche) WriteChainConfigFile(subnetName string, bs []byte) error {
 	path := app.GetChainConfigPath(subnetName)
 	return app.writeFile(path, bs)
@@ -289,6 +298,12 @@ func (app *Avalanche) WriteNetworkUpgradesFile(subnetName string, bs []byte) err
 func (app *Avalanche) GenesisExists(subnetName string) bool {
 	genesisPath := app.GetGenesisPath(subnetName)
 	_, err := os.Stat(genesisPath)
+	return err == nil
+}
+
+func (app *Avalanche) AvagoNodeConfigExists(subnetName string) bool {
+	path := app.GetAvagoNodeConfigPath(subnetName)
+	_, err := os.Stat(path)
 	return err == nil
 }
 
@@ -389,6 +404,10 @@ func (app *Avalanche) LoadRawGenesis(subnetName string, network models.Network) 
 		}
 	}
 	return genesisBytes, err
+}
+
+func (app *Avalanche) LoadRawAvagoNodeConfig(subnetName string) ([]byte, error) {
+	return os.ReadFile(app.GetAvagoNodeConfigPath(subnetName))
 }
 
 func (app *Avalanche) LoadRawChainConfig(subnetName string) ([]byte, error) {
