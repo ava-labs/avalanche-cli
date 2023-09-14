@@ -81,7 +81,7 @@ func GetVMBinaryProtocolVersion(vmPath string) (int, error) {
 	}
 	cmd := subprocess.NewCmd(absoluteVMPath)
 
-	// configure EngineAddresKey vm environment variable so the vm knows where to locate the runtime service
+	// configure EngineAddressKey vm environment variable so the vm knows where to locate the runtime service
 	serverAddr := listener.Addr()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", runtime.EngineAddressKey, serverAddr.String()))
 
