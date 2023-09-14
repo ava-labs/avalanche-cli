@@ -377,6 +377,9 @@ func createNode(_ *cobra.Command, args []string) error {
 		}
 		return err
 	}
+	if err := createClusterNodeConfig(instanceIDs, elasticIPs, region, ami, keyPairName, certFilePath, securityGroupName, clusterName); err != nil {
+		return err
+	}
 	err = terraform.RemoveDirectory(app.GetTerraformDir())
 	if err != nil {
 		return err
@@ -391,14 +394,11 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance ...")
+	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance(s) ...")
 	if err := runAnsible(inventoryPath, avalancheGoVersion); err != nil {
 		return err
 	}
 	if err := setupBuildEnv(clusterName); err != nil {
-		return err
-	}
-	if err := createClusterNodeConfig(instanceIDs, elasticIPs, region, ami, keyPairName, certFilePath, securityGroupName, clusterName); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
@@ -434,24 +434,19 @@ func runAnsible(inventoryPath, avalancheGoVersion string) error {
 }
 
 func setupBuildEnv(clusterName string) error {
-	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance ...")
+	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance(s) ...")
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
 	ansibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
-	failedNodes := []string{}
-	for _, host := range ansibleHostIDs {
-		if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath, host); err != nil {
-			failedNodes = append(failedNodes, host)
-			continue
-		}
-		if err := ansible.RunAnsiblePlaybookSetupCLIFromSource(app.GetAnsibleDir(), inventoryPath, constants.CloudCLIBranch, host); err != nil {
-			failedNodes = append(failedNodes, host)
-			continue
-		}
+	if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath, "all"); err != nil {
+		return err
 	}
-	return fmt.Errorf("failed to setup build environment on nodes %s", failedNodes)
+	if err := ansible.RunAnsiblePlaybookSetupCLIFromSource(app.GetAnsibleDir(), inventoryPath, constants.CloudCLIBranch, "all"); err != nil {
+		return err
+	}
+	return nil
 }
 
 func requestAWSAccountAuth() error {
