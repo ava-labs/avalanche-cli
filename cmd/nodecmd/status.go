@@ -103,15 +103,15 @@ func printOutput(hostAliases, notBootstrappedHosts, subnetSyncedHosts, subnetVal
 		if slices.Contains(notBootstrappedHosts, host) {
 			hostIsBootstrapped = false
 		}
-		isBootstrappedStr := "is not"
-		if hostIsBootstrapped {
-			isBootstrappedStr = "is"
-		}
 		hostStatus := "synced to"
 		if slices.Contains(subnetValidatingHosts, host) {
 			hostStatus = "validator of"
 		}
 		if subnetName == "" {
+			isBootstrappedStr := "is not"
+			if hostIsBootstrapped {
+				isBootstrappedStr = "is"
+			}
 			ux.Logger.PrintToUser("Node %s %s bootstrapped to Primary Network", host, isBootstrappedStr)
 		} else {
 			if !hostIsBootstrapped {
