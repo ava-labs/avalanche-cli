@@ -340,6 +340,9 @@ func (d *PublicDeployer) AddPermissionlessValidator(
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign Add Permissionless Validator hash on the ledger device *** ")
 	}
+	if subnetAssetID == ids.Empty {
+		subnetAssetID = wallet.P().AVAXAssetID()
+	}
 	txID, err := d.issueAddPermissionlessValidatorTX(recipientAddr, stakeAmount, subnetID, nodeID, subnetAssetID, startTime, endTime, wallet)
 	if err != nil {
 		return ids.Empty, err
