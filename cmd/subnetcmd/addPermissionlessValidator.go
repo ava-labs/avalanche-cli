@@ -43,7 +43,7 @@ in the Primary Network`,
 	return cmd
 }
 
-func addPermissionlessValidator(_ *cobra.Command, args []string) error {
+func addPermissionlessValidator(_ *cobra.Command, _ []string) error {
 	var (
 		nodeID ids.NodeID
 		start  time.Time
