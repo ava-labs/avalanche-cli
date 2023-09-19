@@ -384,6 +384,9 @@ func createNode(_ *cobra.Command, args []string) error {
 		}
 		return err
 	}
+	if err := createClusterNodeConfig(instanceIDs, elasticIPs, region, ami, keyPairName, certFilePath, securityGroupName, clusterName); err != nil {
+		return err
+	}
 	err = terraform.RemoveDirectory(app.GetTerraformDir())
 	if err != nil {
 		return err
@@ -409,12 +412,11 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance...")
+	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance(s)...")
 	if err := runAnsible(inventoryPath, avalancheGoVersion, clusterName); err != nil {
 		return err
 	}
-	err = createClusterNodeConfig(instanceIDs, elasticIPs, region, ami, keyPairName, certFilePath, securityGroupName, clusterName)
-	if err != nil {
+	if err := setupBuildEnv(clusterName); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
@@ -422,7 +424,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		nodeInstanceDirPath := app.GetNodeInstanceDirPath(instanceID)
 		// ansible host alias's name is formatted as aws_node_{instanceID}
 		nodeInstanceAnsibleAlias := fmt.Sprintf("aws_node_%s", instanceID)
-		if err := ansible.RunAnsibleCopyStakingFilesPlaybook(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
+		if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
 			return err
 		}
 	}
@@ -449,7 +451,16 @@ func runAnsible(inventoryPath, avalancheGoVersion, clusterName string) error {
 	if err != nil {
 		return err
 	}
-	return ansible.RunAnsibleSetupNodePlaybook(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion)
+	return ansible.RunAnsiblePlaybookSetupNode(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion)
+}
+
+func setupBuildEnv(clusterName string) error {
+	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance(s) ...")
+	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
+	if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath, "all"); err != nil {
+		return err
+	}
+	return nil
 }
 
 func requestAWSAccountAuth() error {
@@ -518,7 +529,7 @@ func addCertToSSH(certName string) error {
 		return err
 	}
 	cmd := exec.Command("ssh-add", certFilePath)
-	utils.SetupRealtimeCLIOutput(cmd)
+	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	return cmd.Run()
 }
 

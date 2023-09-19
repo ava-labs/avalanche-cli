@@ -3,6 +3,7 @@
 package vm
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -18,16 +19,28 @@ func CreateCustomSubnetConfig(app *application.Avalanche, subnetName string, gen
 		return nil, &models.Sidecar{}, err
 	}
 
-	sc := &models.Sidecar{
-		Name:      subnetName,
-		VM:        models.CustomVM,
-		Subnet:    subnetName,
-		TokenName: "",
+	if vmPath == "" {
+		vmPath, err = app.Prompt.CaptureExistingFilepath("Enter path to vm binary")
+		if err != nil {
+			return nil, &models.Sidecar{}, err
+		}
 	}
 
-	err = CopyCustomVM(app, subnetName, vmPath)
+	rpcVersion, err := GetVMBinaryProtocolVersion(vmPath)
+	if err != nil {
+		return nil, &models.Sidecar{}, fmt.Errorf("unable to get RPC version: %w", err)
+	}
 
-	return genesisBytes, sc, err
+	sc := &models.Sidecar{
+		Name:       subnetName,
+		VM:         models.CustomVM,
+		VMVersion:  "",
+		RPCVersion: rpcVersion,
+		Subnet:     subnetName,
+		TokenName:  "",
+	}
+
+	return genesisBytes, sc, app.CopyVMBinary(vmPath, subnetName)
 }
 
 func loadCustomGenesis(app *application.Avalanche, genesisPath string) ([]byte, error) {
@@ -41,16 +54,4 @@ func loadCustomGenesis(app *application.Avalanche, genesisPath string) ([]byte, 
 
 	genesisBytes, err := os.ReadFile(genesisPath)
 	return genesisBytes, err
-}
-
-func CopyCustomVM(app *application.Avalanche, subnetName string, vmPath string) error {
-	var err error
-	if vmPath == "" {
-		vmPath, err = app.Prompt.CaptureExistingFilepath("Enter path to vm binary")
-		if err != nil {
-			return err
-		}
-	}
-
-	return app.CopyVMBinary(vmPath, subnetName)
 }

@@ -106,7 +106,11 @@ const (
 	IsBootstrappedPlaybook                = "playbook/isBootstrapped.yml"
 	IsSubnetSyncedPlaybook                = "playbook/isSubnetSynced.yml"
 	TrackSubnetPlaybook                   = "playbook/trackSubnet.yml"
+	UpdateSubnetPlaybook                  = "playbook/updateSubnet.yml"
 	AvalancheGoVersionPlaybook            = "playbook/avalancheGoVersion.yml"
+	SetupBuildEnvPlaybook                 = "playbook/setupBuildEnv.yml"
+	SetupCLIFromSourcePlaybook            = "playbook/setupCLIFromSource.yml"
+	BuildEnvGolangVersion                 = "1.21.1"
 	IsBootstrappedJSONFile                = "isBootstrapped.json"
 	AvalancheGoVersionJSONFile            = "avalancheGoVersion.json"
 	NodeIDJSONFile                        = "nodeID.json"
@@ -117,6 +121,7 @@ const (
 	AnsibleInventoryFlag                  = "-i"
 	AnsibleExtraArgsIdentitiesOnlyFlag    = "--ssh-extra-args='-o IdentitiesOnly=yes'"
 	AnsibleExtraVarsFlag                  = "--extra-vars"
+	CloudCLIBranch                        = "custom-vms-cloud-10"
 	DefaultConfigFileName                 = ".avalanche-cli"
 	DefaultConfigFileType                 = "json"
 	WriteReadReadPerms                    = 0o644
@@ -156,6 +161,7 @@ const (
 	SubnetConfigFileName       = "subnet.json"
 	ChainConfigFileName        = "chain.json"
 	PerNodeChainConfigFileName = "per-node-chain.json"
+	NodeConfigFileName         = "node-config.json"
 
 	GitRepoCommitName  = "Avalanche-CLI"
 	GitRepoCommitEmail = "info@avax.network"

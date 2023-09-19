@@ -22,6 +22,7 @@ func EditConfigFile(
 	networkID string,
 	configFile string,
 	forceWrite bool,
+	subnetAvagoConfigFile string,
 ) error {
 	if !forceWrite {
 		warn := "This will edit your existing config file. This edit is nondestructive,\n" +
@@ -46,6 +47,24 @@ func EditConfigFile(
 	var avagoConfig map[string]interface{}
 	if err := json.Unmarshal(fileBytes, &avagoConfig); err != nil {
 		return fmt.Errorf("failed to unpack the config file %s to JSON: %w", configFile, err)
+	}
+
+	if subnetAvagoConfigFile != "" {
+		subnetAvagoConfigFileBytes, err := os.ReadFile(subnetAvagoConfigFile)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("failed to load extra flags from subnet avago config file %s: %w", subnetAvagoConfigFile, err)
+		}
+		var subnetAvagoConfig map[string]interface{}
+		if err := json.Unmarshal(subnetAvagoConfigFileBytes, &subnetAvagoConfig); err != nil {
+			return fmt.Errorf("failed to unpack the config file %s to JSON: %w", subnetAvagoConfigFile, err)
+		}
+		for k, v := range subnetAvagoConfig {
+			if k == "track-subnets" || k == "whitelisted-subnets" {
+				ux.Logger.PrintToUser("ignoring configuration setting for %q, a subnet's avago conf should not change it", k)
+				continue
+			}
+			avagoConfig[k] = v
+		}
 	}
 
 	// Banff.10: "track-subnets" instead of "whitelisted-subnets"

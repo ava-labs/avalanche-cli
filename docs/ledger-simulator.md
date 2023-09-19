@@ -77,7 +77,7 @@ as it does not support avalanche-cli local network id 1337.
 
 For that, currently the tests operate against a modified version of `v0.7.2`, available as `app_s.elf` binary.
 
-For a real ledger device to be used with the tests, it should be loaded with a supporting version, currently avaialble on dev branch of ledger-avalanche.
+For a real ledger device to be used with the tests, it should be loaded with a supporting version, currently available on dev branch of ledger-avalanche.
 
 It is expected for next downloadable version to:
 

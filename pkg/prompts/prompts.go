@@ -71,6 +71,9 @@ type Prompter interface {
 	CaptureNoYes(promptStr string) (bool, error)
 	CaptureList(promptStr string, options []string) (string, error)
 	CaptureString(promptStr string) (string, error)
+	CaptureURL(promptStr string) (string, error)
+	CaptureRepoBranch(promptStr string, repo string) (string, error)
+	CaptureRepoFile(promptStr string, repo string, branch string) (string, error)
 	CaptureGitURL(promptStr string) (*url.URL, error)
 	CaptureStringAllowEmpty(promptStr string) (string, error)
 	CaptureEmail(promptStr string) (string, error)
@@ -492,15 +495,64 @@ func (*realPrompter) CaptureStringAllowEmpty(promptStr string) (string, error) {
 	return str, nil
 }
 
+func (*realPrompter) CaptureURL(promptStr string) (string, error) {
+	for {
+		var err error
+		prompt := promptui.Prompt{
+			Label:    promptStr,
+			Validate: validateURLFormat,
+		}
+		str, err := prompt.Run()
+		if err != nil {
+			return "", err
+		}
+		if err = ValidateURL(str); err == nil {
+			return str, nil
+		}
+		ux.Logger.PrintToUser("Invalid URL: %s", err)
+	}
+}
+
+func (*realPrompter) CaptureRepoBranch(promptStr string, repo string) (string, error) {
+	for {
+		var err error
+		prompt := promptui.Prompt{
+			Label:    promptStr,
+			Validate: validateNonEmpty,
+		}
+		str, err := prompt.Run()
+		if err != nil {
+			return "", err
+		}
+		if err = ValidateRepoBranch(repo, str); err == nil {
+			return str, nil
+		}
+		ux.Logger.PrintToUser("Invalid Repo Branch: %s", err)
+	}
+}
+
+func (*realPrompter) CaptureRepoFile(promptStr string, repo string, branch string) (string, error) {
+	for {
+		var err error
+		prompt := promptui.Prompt{
+			Label:    promptStr,
+			Validate: validateNonEmpty,
+		}
+		str, err := prompt.Run()
+		if err != nil {
+			return "", err
+		}
+		if err = ValidateRepoFile(repo, branch, str); err == nil {
+			return str, nil
+		}
+		ux.Logger.PrintToUser("Invalid Repo File: %s", err)
+	}
+}
+
 func (*realPrompter) CaptureString(promptStr string) (string, error) {
 	prompt := promptui.Prompt{
-		Label: promptStr,
-		Validate: func(input string) error {
-			if input == "" {
-				return errors.New("string cannot be empty")
-			}
-			return nil
-		},
+		Label:    promptStr,
+		Validate: validateNonEmpty,
 	}
 
 	str, err := prompt.Run()
@@ -514,7 +566,7 @@ func (*realPrompter) CaptureString(promptStr string) (string, error) {
 func (*realPrompter) CaptureGitURL(promptStr string) (*url.URL, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
-		Validate: validateURL,
+		Validate: validateURLFormat,
 	}
 
 	str, err := prompt.Run()

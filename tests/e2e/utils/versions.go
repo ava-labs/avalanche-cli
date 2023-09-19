@@ -55,6 +55,7 @@ type VersionMapper interface {
 	GetApp() *application.Avalanche
 	GetLatestAvagoByProtoVersion(app *application.Avalanche, rpcVersion int, url string) (string, error)
 	GetEligibleVersions(sortedVersions []string, repoName string, app *application.Avalanche) ([]string, error)
+	FilterAvailableVersions(versions []string) []string
 }
 
 // NewVersionMapper returns the default VersionMapper for e2e tests
@@ -127,6 +128,19 @@ func (*versionMapper) GetEligibleVersions(sortedVersions []string, repoName stri
 	return eligible, nil
 }
 
+func (*versionMapper) FilterAvailableVersions(versions []string) []string {
+	availableVersions := []string{}
+	for _, v := range versions {
+		resp, err := binutils.CheckReleaseVersion(logging.NoLog{}, constants.SubnetEVMRepoName, v)
+		if err != nil {
+			continue
+		}
+		availableVersions = append(availableVersions, v)
+		resp.Body.Close()
+	}
+	return availableVersions
+}
+
 // GetVersionMapping returns a map of specific VMs resp. Avalanchego e2e context keys
 // to the actual version which corresponds to that key.
 // This allows the e2e test to know what version to download and run.
@@ -157,6 +171,8 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	subnetEVMversions = mapper.FilterAvailableVersions(subnetEVMversions)
 
 	// now get the avalanchego compatibility object
 	avagoCompat, err := getAvagoCompatibility(mapper)
