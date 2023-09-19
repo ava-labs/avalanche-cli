@@ -124,12 +124,6 @@ func (d *PublicDeployer) AddValidatorPrimaryNetwork(
 	if err != nil {
 		return err
 	}
-	validator := &txs.Validator{
-		NodeID: nodeID,
-		Start:  uint64(startTime.Unix()),
-		End:    uint64(startTime.Add(duration).Unix()),
-		Wght:   weight,
-	}
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign AddValidator transaction on the ledger device *** ")
 	}
@@ -139,7 +133,21 @@ func (d *PublicDeployer) AddValidatorPrimaryNetwork(
 			recipientAddr,
 		},
 	}
-	tx, err := wallet.P().IssueAddValidatorTx(validator, owner, shares)
+	tx, err := wallet.P().IssueAddPermissionlessValidatorTx(
+		&txs.SubnetValidator{
+			Validator: txs.Validator{
+				NodeID: nodeID,
+				Start:  uint64(startTime.Unix()),
+				End:    uint64(startTime.Add(duration).Unix()),
+				Wght:   weight,
+			},
+			Subnet: ids.Empty,
+		},
+		&signer.Empty{},
+		wallet.P().AVAXAssetID(),
+		owner,
+		owner,
+		shares)
 	if err != nil {
 		return err
 	}
