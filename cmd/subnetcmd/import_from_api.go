@@ -169,7 +169,7 @@ func importRunningSubnet(*cobra.Command, []string) error {
 
 	createChainTx, ok := tx.Unsigned.(*txs.CreateChainTx)
 	if !ok {
-		return fmt.Errorf("expected a CreateChainTx, got %T", createChainTx)
+		return fmt.Errorf("expected a CreateChainTx, got %T", tx.Unsigned)
 	}
 
 	vmID = createChainTx.VMID
@@ -270,7 +270,7 @@ func importRunningSubnet(*cobra.Command, []string) error {
 		return fmt.Errorf("failed creating the sidecar for import: %w", err)
 	}
 
-	ux.Logger.PrintToUser("Subnet %s imported successfully", sc.Name)
+	ux.Logger.PrintToUser("Subnet %q imported successfully", sc.Name)
 
 	return nil
 }
