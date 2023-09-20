@@ -406,7 +406,8 @@ func createAWSInstance(usr *user.User) (CloudConfig, error) {
 		}
 		return CloudConfig{}, nil
 	}
-	awsCloudConfig := CloudConfig{instanceIDs,
+	awsCloudConfig := CloudConfig{
+		instanceIDs,
 		elasticIPs,
 		region,
 		keyPairName,
@@ -464,7 +465,8 @@ func createGCPInstance(usr *user.User) (CloudConfig, error) {
 		}
 		return CloudConfig{}, nil
 	}
-	awsCloudConfig := CloudConfig{instanceIDs,
+	awsCloudConfig := CloudConfig{
+		instanceIDs,
 		elasticIPs,
 		region,
 		keyPairName,
