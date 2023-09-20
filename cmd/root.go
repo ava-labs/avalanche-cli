@@ -5,12 +5,13 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/cmd/primarycmd"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/cmd/primarycmd"
 
 	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
 
