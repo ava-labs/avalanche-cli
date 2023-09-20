@@ -674,7 +674,7 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 		proofOfPossession,
 		assetID,
 		owner,
-		&secp256k1fx.OutputOwners{},
+		owner,
 		delegationFee,
 		options...)
 	if err != nil {
