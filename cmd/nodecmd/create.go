@@ -503,6 +503,9 @@ func createNode(_ *cobra.Command, args []string) error {
 	} else {
 		cloudConfig, err = createGCPInstance(usr)
 	}
+	if err != nil {
+		return err
+	}
 	if err := createClusterNodeConfig(cloudConfig, clusterName); err != nil {
 		return err
 	}
