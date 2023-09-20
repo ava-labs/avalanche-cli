@@ -122,8 +122,11 @@ const (
 	DefaultConfigFileName                 = ".avalanche-cli"
 	DefaultConfigFileType                 = "json"
 	WriteReadReadPerms                    = 0o644
-
-	CustomVMDir = "vms"
+	AWSCloudService                       = "Amazon Web Services"
+	GCPCloudService                       = "Google Cloud Platform"
+	AWSNodeAnsiblePrefix                  = "aws_node"
+	GCPNodeAnsiblePrefix                  = "gcp_node"
+	CustomVMDir                           = "vms"
 
 	AvaLabsOrg          = "ava-labs"
 	AvalancheGoRepoName = "avalanchego"
