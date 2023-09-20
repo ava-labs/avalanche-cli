@@ -173,10 +173,6 @@ func addValidator(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", minValStake, weight)
 	}
 
-	start, duration, err = nodecmd.GetTimeParametersPrimaryNetwork(network, 0)
-	if err != nil {
-		return err
-	}
 	kc, err := subnetcmd.GetKeychain(useLedger, ledgerAddresses, keyName, network)
 	if err != nil {
 		return err
@@ -186,6 +182,10 @@ func addValidator(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	popBytes, err := json.Marshal(jsonPop)
+	if err != nil {
+		return err
+	}
+	start, duration, err = nodecmd.GetTimeParametersPrimaryNetwork(network, 0)
 	if err != nil {
 		return err
 	}
