@@ -11,3 +11,8 @@
         src: /home/ubuntu/.avalanchego/staking/staker.key
         dest: "{{ nodeInstanceDirPath }}"
         flat: true
+    - name: copy signer.key to local machine
+      fetch:
+        src: /home/ubuntu/.avalanchego/staking/signer.key
+        dest: "{{ nodeInstanceDirPath }}"
+        flat: true
