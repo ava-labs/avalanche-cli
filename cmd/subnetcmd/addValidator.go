@@ -171,7 +171,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Your subnet auth keys for add validator tx creation: %s", subnetAuthKeys)
 
 	if nodeIDStr == "" {
-		nodeID, err = promptNodeID()
+		nodeID, err = PromptNodeID()
 		if err != nil {
 			return err
 		}
@@ -183,7 +183,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	}
 
 	if weight == 0 {
-		weight, err = promptWeight()
+		weight, err = PromptWeight()
 		if err != nil {
 			return err
 		}
@@ -191,7 +191,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", constants.MinStakeWeight, weight)
 	}
 
-	start, duration, err = getTimeParameters(network, nodeID, true)
+	start, duration, err = GetTimeParameters(network, nodeID, true)
 	if err != nil {
 		return err
 	}
@@ -285,7 +285,7 @@ func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime t
 	return 0, errors.New("nodeID not found in validator set: " + nodeID.String())
 }
 
-func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bool) (time.Time, time.Duration, error) {
+func GetTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bool) (time.Time, time.Duration, error) {
 	var (
 		start time.Time
 		err   error
@@ -362,7 +362,7 @@ func promptStart() (time.Time, error) {
 	return app.Prompt.CaptureDate(txt)
 }
 
-func promptNodeID() (ids.NodeID, error) {
+func PromptNodeID() (ids.NodeID, error) {
 	ux.Logger.PrintToUser("Next, we need the NodeID of the validator you want to whitelist.")
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions about how to query the NodeID from your node")
@@ -372,7 +372,7 @@ func promptNodeID() (ids.NodeID, error) {
 	return app.Prompt.CaptureNodeID(txt)
 }
 
-func promptWeight() (uint64, error) {
+func PromptWeight() (uint64, error) {
 	defaultWeight := fmt.Sprintf("Default (%d)", constants.DefaultStakeWeight)
 	txt := "What stake weight would you like to assign to the validator?"
 	weightOptions := []string{defaultWeight, "Custom"}

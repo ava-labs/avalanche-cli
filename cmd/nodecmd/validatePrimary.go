@@ -110,7 +110,7 @@ func parseNodeIDOutput(fileName string) (string, error) {
 	return "", errors.New("unable to parse node ID")
 }
 
-func getMinStakingAmount(network models.Network) (uint64, error) {
+func GetMinStakingAmount(network models.Network) (uint64, error) {
 	var apiURL string
 	switch network {
 	case models.Mainnet:
@@ -164,12 +164,12 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 	default:
 		return errors.New("unsupported network")
 	}
-	minValStake, err := getMinStakingAmount(network)
+	minValStake, err := GetMinStakingAmount(network)
 	if err != nil {
 		return err
 	}
 	if weight == 0 {
-		weight, err = promptWeightPrimaryNetwork(network)
+		weight, err = PromptWeightPrimaryNetwork(network)
 		if err != nil {
 			return err
 		}
@@ -177,7 +177,7 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 	if weight < minValStake {
 		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", minValStake, weight)
 	}
-	start, duration, err = getTimeParametersPrimaryNetwork(network, nodeIndex)
+	start, duration, err = GetTimeParametersPrimaryNetwork(network, nodeIndex)
 	if err != nil {
 		return err
 	}
@@ -188,10 +188,9 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 	}
 	recipientAddr := kc.Addresses().List()[0]
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	printNodeJoinPrimaryNetworkOutput(nodeID, network, start)
+	PrintNodeJoinPrimaryNetworkOutput(nodeID, weight, network, start)
 	// we set the starting time for node to be a Primary Network Validator to be in 1 minute
 	// we use min delegation fee as default
-	// TODO: add prompt for delegation fee for mainnet
 	delegationFee := genesis.FujiParams.MinDelegationFee
 	if network == models.Mainnet {
 		delegationFee = genesis.MainnetParams.MinDelegationFee
@@ -199,7 +198,7 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 	return deployer.AddValidatorPrimaryNetwork(nodeID, weight, start, duration, recipientAddr, delegationFee)
 }
 
-func promptWeightPrimaryNetwork(network models.Network) (uint64, error) {
+func PromptWeightPrimaryNetwork(network models.Network) (uint64, error) {
 	defaultStake := genesis.FujiParams.MinValidatorStake
 	if network == models.Mainnet {
 		defaultStake = genesis.MainnetParams.MinValidatorStake
@@ -220,7 +219,7 @@ func promptWeightPrimaryNetwork(network models.Network) (uint64, error) {
 	}
 }
 
-func getTimeParametersPrimaryNetwork(network models.Network, nodeIndex int) (time.Time, time.Duration, error) {
+func GetTimeParametersPrimaryNetwork(network models.Network, nodeIndex int) (time.Time, time.Duration, error) {
 	const (
 		defaultDurationOption = "Minimum staking duration on primary network"
 		custom                = "Custom"
@@ -424,7 +423,7 @@ func convertNanoAvaxToAvaxString(weight uint64) string {
 	return fmt.Sprintf("%.2f %s", float64(weight)/float64(units.Avax), constants.AVAXSymbol)
 }
 
-func printNodeJoinPrimaryNetworkOutput(nodeID ids.NodeID, network models.Network, start time.Time) {
+func PrintNodeJoinPrimaryNetworkOutput(nodeID ids.NodeID, weight uint64, network models.Network, start time.Time) {
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
 	ux.Logger.PrintToUser("Network: %s", network.String())
 	ux.Logger.PrintToUser("Start time: %s", start.Format(constants.TimeParseLayout))

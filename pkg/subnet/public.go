@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanchego/vms/platformvm/reward"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 
 	"github.com/ava-labs/avalanchego/vms/components/avax"
@@ -332,8 +331,16 @@ func (d *PublicDeployer) AddPermissionlessValidator(
 	startTime uint64,
 	endTime uint64,
 	recipientAddr ids.ShortID,
+	delegationFee uint32,
+	popBytes []byte,
 ) (ids.ID, error) {
-	wallet, err := d.loadWallet(subnetID)
+	var wallet primary.Wallet
+	var err error
+	if subnetID == ids.Empty {
+		wallet, err = d.loadWallet()
+	} else {
+		wallet, err = d.loadWallet(subnetID)
+	}
 	if err != nil {
 		return ids.Empty, err
 	}
@@ -343,7 +350,7 @@ func (d *PublicDeployer) AddPermissionlessValidator(
 	if subnetAssetID == ids.Empty {
 		subnetAssetID = wallet.P().AVAXAssetID()
 	}
-	txID, err := d.issueAddPermissionlessValidatorTX(recipientAddr, stakeAmount, subnetID, nodeID, subnetAssetID, startTime, endTime, wallet)
+	txID, err := d.issueAddPermissionlessValidatorTX(recipientAddr, stakeAmount, subnetID, nodeID, subnetAssetID, startTime, endTime, wallet, delegationFee, popBytes)
 	if err != nil {
 		return ids.Empty, err
 	}
@@ -634,6 +641,8 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 	startTime uint64,
 	endTime uint64,
 	wallet primary.Wallet,
+	delegationFee uint32,
+	popBytes []byte,
 ) (ids.ID, error) {
 	options := d.getMultisigTxOptions([]ids.ShortID{})
 	owner := &secp256k1fx.OutputOwners{
@@ -641,6 +650,17 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 		Addrs: []ids.ShortID{
 			recipientAddr,
 		},
+	}
+	var proofOfPossession signer.Signer
+	if subnetID == ids.Empty {
+		pop := &signer.ProofOfPossession{}
+		err := pop.UnmarshalJSON(popBytes)
+		if err != nil {
+			return ids.Empty, err
+		}
+		proofOfPossession = pop
+	} else {
+		proofOfPossession = &signer.Empty{}
 	}
 	tx, err := wallet.P().IssueAddPermissionlessValidatorTx(&txs.SubnetValidator{
 		Validator: txs.Validator{
@@ -651,11 +671,11 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 		},
 		Subnet: subnetID,
 	},
-		&signer.Empty{},
+		proofOfPossession,
 		assetID,
 		owner,
 		&secp256k1fx.OutputOwners{},
-		reward.PercentDenominator,
+		delegationFee,
 		options...)
 	if err != nil {
 		return ids.Empty, err

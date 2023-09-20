@@ -5,6 +5,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/cmd/primarycmd"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -69,6 +70,7 @@ in with avalanche subnet create myNewSubnet.`,
 
 	// add sub commands
 	rootCmd.AddCommand(subnetcmd.NewCmd(app))
+	rootCmd.AddCommand(primarycmd.NewCmd(app))
 	rootCmd.AddCommand(networkcmd.NewCmd(app))
 	rootCmd.AddCommand(keycmd.NewCmd(app))
 

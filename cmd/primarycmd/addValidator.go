@@ -1,31 +1,56 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2023, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package subnetcmd
+package primarycmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/genesis"
 	"os"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 )
 
+var (
+	deployTestnet                bool
+	deployMainnet                bool
+	keyName                      string
+	subnetAuthKeys               []string
+	outputTxPath                 string
+	useLedger                    bool
+	ledgerAddresses              []string
+	nodeIDStr                    string
+	weight                       uint64
+	startTimeStr                 string
+	duration                     time.Duration
+	ErrMutuallyExlusiveKeyLedger = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
+	ErrStoredKeyOnMainnet        = errors.New("--key is not available for mainnet operations")
+)
+
+type jsonProofOfPossession struct {
+	PublicKey         string `json:"publicKey"`
+	ProofOfPossession string `json:"proofOfPossession"`
+}
+
 // avalanche subnet deploy
-func newAddPermissionlessValidatorCmd() *cobra.Command {
+func newAddValidatorCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "addPermissionlessValidator",
-		Short: "Add a permissionless validator to Primary Network",
-		Long: `The subnet addPermissionlessValidator adds a node as permissionless validator 
+		Use:   "addValidator",
+		Short: "Add a validator to Primary Network",
+		Long: `The primary addValidator command adds a node as a validator 
 in the Primary Network`,
 		SilenceUsage: true,
-		RunE:         addPermissionlessValidator,
+		RunE:         addValidator,
 		Args:         cobra.ExactArgs(0),
 	}
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
@@ -43,7 +68,24 @@ in the Primary Network`,
 	return cmd
 }
 
-func addPermissionlessValidator(_ *cobra.Command, _ []string) error {
+func promptProofOfPossession() (jsonProofOfPossession, error) {
+	ux.Logger.PrintToUser("Next, we need the public key and proof of possession of the node's BLS")
+	ux.Logger.PrintToUser("SSH into the node and call info.getNodeID API to get the node's BLS info")
+	ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions on calling info.getNodeID API")
+	txt := "What is the public key of the node's BLS?"
+	publicKey, err := app.Prompt.CaptureString(txt)
+	if err != nil {
+		return jsonProofOfPossession{}, err
+	}
+	txt = "What is the proof of possession of the node's BLS?"
+	pop, err := app.Prompt.CaptureString(txt)
+	if err != nil {
+		return jsonProofOfPossession{}, err
+	}
+	return jsonProofOfPossession{PublicKey: publicKey, ProofOfPossession: pop}, nil
+}
+
+func addValidator(_ *cobra.Command, _ []string) error {
 	var (
 		nodeID ids.NodeID
 		start  time.Time
@@ -106,7 +148,7 @@ func addPermissionlessValidator(_ *cobra.Command, _ []string) error {
 	}
 
 	if nodeIDStr == "" {
-		nodeID, err = promptNodeID()
+		nodeID, err = subnetcmd.PromptNodeID()
 		if err != nil {
 			return err
 		}
@@ -117,38 +159,43 @@ func addPermissionlessValidator(_ *cobra.Command, _ []string) error {
 		}
 	}
 
-	if weight == 0 {
-		weight, err = promptWeight()
-		if err != nil {
-			return err
-		}
-	} else if weight < constants.MinStakeWeight {
-		return fmt.Errorf("illegal stake amount, must be greater than or equal to %d: %d", constants.MinStakeWeight, weight)
-	}
-
-	start, duration, err = getTimeParameters(network, nodeID, true)
+	minValStake, err := nodecmd.GetMinStakingAmount(network)
 	if err != nil {
 		return err
 	}
+	if weight == 0 {
+		weight, err = nodecmd.PromptWeightPrimaryNetwork(network)
+		if err != nil {
+			return err
+		}
+	}
+	if weight < minValStake {
+		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", minValStake, weight)
+	}
 
-	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
-	ux.Logger.PrintToUser("Network: %s", network.String())
-	ux.Logger.PrintToUser("Start time: %s", start.Format(constants.TimeParseLayout))
-	ux.Logger.PrintToUser("End time: %s", start.Add(duration).Format(constants.TimeParseLayout))
-	ux.Logger.PrintToUser("Stake Amount: %d", weight)
-	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
-
-	// get keychain accessory
-	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
+	start, duration, err = nodecmd.GetTimeParametersPrimaryNetwork(network, 0)
+	if err != nil {
+		return err
+	}
+	kc, err := subnetcmd.GetKeychain(useLedger, ledgerAddresses, keyName, network)
+	if err != nil {
+		return err
+	}
+	jsonPop, err := promptProofOfPossession()
+	if err != nil {
+		return err
+	}
+	popBytes, err := json.Marshal(jsonPop)
 	if err != nil {
 		return err
 	}
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	nodecmd.PrintNodeJoinPrimaryNetworkOutput(nodeID, weight, network, start)
 	recipientAddr := kc.Addresses().List()[0]
-	txID, err := deployer.AddPermissionlessValidator(ids.Empty, ids.Empty, nodeID, weight, uint64(start.Unix()), uint64(start.Add(duration).Unix()), recipientAddr)
-	if err != nil {
-		return err
+	delegationFee := genesis.FujiParams.MinDelegationFee
+	if network == models.Mainnet {
+		delegationFee = genesis.MainnetParams.MinDelegationFee
 	}
-	ux.Logger.PrintToUser("TXID: %s", txID.String())
+	_, err = deployer.AddPermissionlessValidator(ids.Empty, ids.Empty, nodeID, weight, uint64(start.Unix()), uint64(start.Add(duration).Unix()), recipientAddr, delegationFee, popBytes)
 	return err
 }

@@ -70,7 +70,5 @@ manage your Subnet configurations and live deployments.`,
 	cmd.AddCommand(newValidatorsCmd())
 	// subnet addPermissionlessDelegator
 	cmd.AddCommand(newAddPermissionlessDelegatorCmd())
-	// subnet addPermissionlessValidator
-	cmd.AddCommand(newAddPermissionlessValidatorCmd())
 	return cmd
 }
