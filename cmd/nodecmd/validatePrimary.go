@@ -192,7 +192,7 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 	}
 	recipientAddr := kc.Addresses().List()[0]
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	//PrintNodeJoinPrimaryNetworkOutput(nodeID, weight, network, start)
+	PrintNodeJoinPrimaryNetworkOutput(nodeID, weight, network, start)
 	// we set the starting time for node to be a Primary Network Validator to be in 1 minute
 	// we use min delegation fee as default
 	delegationFee := genesis.FujiParams.MinDelegationFee
