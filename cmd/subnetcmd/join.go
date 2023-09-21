@@ -457,7 +457,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	if network == models.Mainnet {
 		delegationFee = genesis.MainnetParams.MinDelegationFee
 	}
-	txID, err := deployer.AddPermissionlessValidator(subnetID, assetID, nodeID, stakedTokenAmount, uint64(start.Unix()), uint64(endTime.Unix()), recipientAddr, delegationFee, nil)
+	txID, err := deployer.AddPermissionlessValidator(subnetID, assetID, nodeID, stakedTokenAmount, uint64(start.Unix()), uint64(endTime.Unix()), recipientAddr, delegationFee, nil, nil)
 	if err != nil {
 		return err
 	}

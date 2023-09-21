@@ -189,7 +189,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	_, err = deployer.AddPermissionlessValidator(ids.Empty, ids.Empty, nodeID, weight, uint64(start.Unix()), uint64(start.Add(duration).Unix()), recipientAddr, delegationFee, popBytes)
+	_, err = deployer.AddPermissionlessValidator(ids.Empty, ids.Empty, nodeID, weight, uint64(start.Unix()), uint64(start.Add(duration).Unix()), recipientAddr, delegationFee, popBytes, nil)
 	return err
 }
 

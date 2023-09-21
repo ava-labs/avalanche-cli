@@ -10,7 +10,12 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanchego/utils/crypto/bls"
+	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/utils/units"
@@ -22,7 +27,6 @@ import (
 	subnetcmd "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
@@ -128,7 +132,7 @@ func GetMinStakingAmount(network models.Network) (uint64, error) {
 	return minValStake, nil
 }
 
-func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, nodeIndex int) error {
+func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, nodeIndex int, signingKeyPath string) error {
 	ux.Logger.PrintToUser(fmt.Sprintf("Adding node %s as a Primary Network Validator...", nodeID.String()))
 	var (
 		start time.Time
@@ -188,14 +192,23 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 	}
 	recipientAddr := kc.Addresses().List()[0]
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
-	PrintNodeJoinPrimaryNetworkOutput(nodeID, weight, network, start)
+	//PrintNodeJoinPrimaryNetworkOutput(nodeID, weight, network, start)
 	// we set the starting time for node to be a Primary Network Validator to be in 1 minute
 	// we use min delegation fee as default
 	delegationFee := genesis.FujiParams.MinDelegationFee
 	if network == models.Mainnet {
 		delegationFee = genesis.MainnetParams.MinDelegationFee
 	}
-	return deployer.AddValidatorPrimaryNetwork(nodeID, weight, start, duration, recipientAddr, delegationFee)
+	blsKeyBytes, err := os.ReadFile(signingKeyPath)
+	if err != nil {
+		return err
+	}
+	blsSk, err := bls.SecretKeyFromBytes(blsKeyBytes)
+	if err != nil {
+		return err
+	}
+	_, err = deployer.AddPermissionlessValidator(ids.Empty, ids.Empty, nodeID, weight, uint64(start.Unix()), uint64(start.Add(duration).Unix()), recipientAddr, delegationFee, nil, signer.NewProofOfPossession(blsSk))
+	return err
 }
 
 func PromptWeightPrimaryNetwork(network models.Network) (uint64, error) {
@@ -346,13 +359,14 @@ func checkNodeIsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Networ
 
 // addNodeAsPrimaryNetworkValidator returns bool if node is added as primary network validator
 // as it impacts the output in adding node as subnet validator in the next steps
-func addNodeAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, nodeIndex int) (bool, error) {
+func addNodeAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, nodeIndex int, host string) (bool, error) {
 	isValidator, err := checkNodeIsPrimaryNetworkValidator(nodeID, network)
 	if err != nil {
 		return false, err
 	}
 	if !isValidator {
-		if err = joinAsPrimaryNetworkValidator(nodeID, network, nodeIndex); err != nil {
+		signingKeyPath := app.GetNodeBLSSecretKeyPath(strings.Split(host, "_")[2])
+		if err = joinAsPrimaryNetworkValidator(nodeID, network, nodeIndex, signingKeyPath); err != nil {
 			return false, err
 		}
 		ux.Logger.PrintToUser(fmt.Sprintf("Node %s successfully added as Primary Network validator!", nodeID.String()))
@@ -399,7 +413,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
-		_, err = addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji, i)
+		_, err = addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji, i, host)
 		if err != nil {
 			ux.Logger.PrintToUser(fmt.Sprintf("Failed to add node %s as Primary Network validator due to %s", host, err.Error()))
 			failedNodes = append(failedNodes, host)
