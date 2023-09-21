@@ -514,7 +514,7 @@ func RunLedgerSim(
 			}
 			if line == "PRESS ENTER TO END SIMULATOR" {
 				<-interactionEndCh
-				io.WriteString(stdinPipe, "\n")
+				_, _ = io.WriteString(stdinPipe, "\n")
 			}
 			if showStdout {
 				fmt.Println(line)
