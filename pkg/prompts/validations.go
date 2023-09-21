@@ -85,6 +85,13 @@ func validateNodeID(input string) error {
 	return err
 }
 
+func validateBLSInfo(str string) error {
+	if !(len(str) >= 2 && str[0] == '0' && (str[1] == 'x' || str[1] == 'X')) {
+		return errors.New("invalid input")
+	}
+	return nil
+}
+
 func validateAddress(input string) error {
 	if !common.IsHexAddress(input) {
 		return errors.New("invalid address")

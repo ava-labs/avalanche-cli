@@ -9,25 +9,25 @@ import (
 	"os"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/genesis"
-
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanchego/ids"
+
+	"github.com/ava-labs/avalanche-cli/pkg/application"
+
+	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/spf13/cobra"
 )
 
 var (
-	deployTestnet                bool
-	deployMainnet                bool
+	validateTestnet              bool
+	validateMainnet              bool
 	keyName                      string
-	subnetAuthKeys               []string
-	outputTxPath                 string
 	useLedger                    bool
 	ledgerAddresses              []string
 	nodeIDStr                    string
@@ -54,16 +54,14 @@ in the Primary Network`,
 		RunE:         addValidator,
 		Args:         cobra.ExactArgs(0),
 	}
-	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
+	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
 	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
-	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "join on `fuji` (alias for `testnet`)")
-	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
-	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
-	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate add validator tx")
-	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the add validator tx")
+	cmd.Flags().BoolVar(&validateTestnet, "fuji", false, "join on `fuji` (alias for `testnet`)")
+	cmd.Flags().BoolVar(&validateTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
+	cmd.Flags().BoolVar(&validateMainnet, "mainnet", false, "join on `mainnet`")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	return cmd
@@ -74,12 +72,12 @@ func promptProofOfPossession() (jsonProofOfPossession, error) {
 	ux.Logger.PrintToUser("SSH into the node and call info.getNodeID API to get the node's BLS info")
 	ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions on calling info.getNodeID API")
 	txt := "What is the public key of the node's BLS?"
-	publicKey, err := app.Prompt.CaptureString(txt)
+	publicKey, err := app.Prompt.CaptureBLSInfo(txt)
 	if err != nil {
 		return jsonProofOfPossession{}, err
 	}
 	txt = "What is the proof of possession of the node's BLS?"
-	pop, err := app.Prompt.CaptureString(txt)
+	pop, err := app.Prompt.CaptureBLSInfo(txt)
 	if err != nil {
 		return jsonProofOfPossession{}, err
 	}
@@ -95,9 +93,9 @@ func addValidator(_ *cobra.Command, _ []string) error {
 
 	var network models.Network
 	switch {
-	case deployTestnet:
+	case validateTestnet:
 		network = models.Fuji
-	case deployMainnet:
+	case validateMainnet:
 		network = models.Mainnet
 	}
 
@@ -110,12 +108,6 @@ func addValidator(_ *cobra.Command, _ []string) error {
 			return err
 		}
 		network = models.NetworkFromString(networkStr)
-	}
-
-	if outputTxPath != "" {
-		if _, err := os.Stat(outputTxPath); err == nil {
-			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
-		}
 	}
 
 	if len(ledgerAddresses) > 0 {
@@ -193,10 +185,45 @@ func addValidator(_ *cobra.Command, _ []string) error {
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	nodecmd.PrintNodeJoinPrimaryNetworkOutput(nodeID, weight, network, start)
 	recipientAddr := kc.Addresses().List()[0]
-	delegationFee := genesis.FujiParams.MinDelegationFee
-	if network == models.Mainnet {
-		delegationFee = genesis.MainnetParams.MinDelegationFee
+	delegationFee, err := getDelegationFeeOption(app, network)
+	if err != nil {
+		return err
 	}
 	_, err = deployer.AddPermissionlessValidator(ids.Empty, ids.Empty, nodeID, weight, uint64(start.Unix()), uint64(start.Add(duration).Unix()), recipientAddr, delegationFee, popBytes)
 	return err
+}
+
+func getDelegationFeeOption(app *application.Avalanche, network models.Network) (uint32, error) {
+	ux.Logger.PrintToUser("What would you like to set the delegation fee to?")
+	defaultFee := genesis.FujiParams.MinDelegationFee
+	if network == models.Mainnet {
+		defaultFee = genesis.MainnetParams.MinDelegationFee
+	}
+	defaultOption := fmt.Sprintf("Default Delegation Fee (%d%%)", defaultFee/10000)
+	delegationFeePrompt := "Delegation Fee"
+	feeOption, err := app.Prompt.CaptureList(
+		delegationFeePrompt,
+		[]string{defaultOption, "Custom"},
+	)
+	if err != nil {
+		return 0, err
+	}
+	if feeOption != defaultOption {
+		ux.Logger.PrintToUser("Note that 20 000 is equivalent to 2%%")
+		delegationFee, err := app.Prompt.CapturePositiveInt(
+			delegationFeePrompt,
+			[]prompts.Comparator{
+				{
+					Label: "Min Delegation Fee",
+					Type:  prompts.MoreThanEq,
+					Value: uint64(defaultFee),
+				},
+			},
+		)
+		if err != nil {
+			return 0, err
+		}
+		return uint32(delegationFee), nil
+	}
+	return defaultFee, nil
 }

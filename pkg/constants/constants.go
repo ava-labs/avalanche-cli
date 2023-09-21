@@ -162,7 +162,6 @@ const (
 
 	GitRepoCommitName  = "Avalanche-CLI"
 	GitRepoCommitEmail = "info@avax.network"
-
 	AvaLabsMaintainers = "ava-labs"
 
 	UpgradeBytesFileName      = "upgrade.json"

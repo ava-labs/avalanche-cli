@@ -71,6 +71,7 @@ type Prompter interface {
 	CaptureNoYes(promptStr string) (bool, error)
 	CaptureList(promptStr string, options []string) (string, error)
 	CaptureString(promptStr string) (string, error)
+	CaptureBLSInfo(promptStr string) (string, error)
 	CaptureURL(promptStr string) (string, error)
 	CaptureRepoBranch(promptStr string, repo string) (string, error)
 	CaptureRepoFile(promptStr string, repo string, branch string) (string, error)
@@ -551,9 +552,23 @@ func (*realPrompter) CaptureRepoFile(promptStr string, repo string, branch strin
 
 func (*realPrompter) CaptureString(promptStr string) (string, error) {
 	prompt := promptui.Prompt{
-		Label:       promptStr,
-		Validate:    validateNonEmpty,
-		HideEntered: true,
+		Label:    promptStr,
+		Validate: validateNonEmpty,
+	}
+
+	str, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return str, nil
+}
+
+func (*realPrompter) CaptureBLSInfo(promptStr string) (string, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateBLSInfo,
+		Mask:     '⌘',
 	}
 
 	str, err := prompt.Run()

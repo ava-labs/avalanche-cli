@@ -344,6 +344,7 @@ func (d *PublicDeployer) AddPermissionlessValidator(
 	if subnetAssetID == ids.Empty {
 		subnetAssetID = wallet.P().AVAXAssetID()
 	}
+	// popBytes is a marshalled json object containing publicKey and proofOfPossession of the node's BLS info
 	txID, err := d.issueAddPermissionlessValidatorTX(recipientAddr, stakeAmount, subnetID, nodeID, subnetAssetID, startTime, endTime, wallet, delegationFee, popBytes)
 	if err != nil {
 		return ids.Empty, err
