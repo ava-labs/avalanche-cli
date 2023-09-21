@@ -1,4 +1,10 @@
+import { createInterface } from "readline";
 import Zemu, { DEFAULT_START_OPTIONS } from "@zondax/zemu";
+
+const rl = createInterface({
+	input: process.stdin,
+	output: process.stdout
+});
 
 const Resolve = require('path').resolve
 
@@ -9,11 +15,14 @@ const grpcPort = 3002;
 const transportPort = 9998;
 const speculosApiPort = 5000;
 
-const numApprovals = parseInt(process.argv[2], 10);
-const waitSeconds = parseInt(process.argv[3], 10);
+var numApprovals = parseInt(process.argv[2], 10);
+if (isNaN(numApprovals)) {
+	numApprovals = 0;
+}
+
 var appSeed = "equip will roof matter pink blind book anxiety banner elbow sun young";
-if (process.argv[4] != undefined) {
-  appSeed = process.argv[4];
+if (process.argv[3] != undefined) {
+  appSeed = process.argv[3];
 }
 
 const options = {
@@ -35,12 +44,11 @@ async function main() {
   await sim.waitForText("Ready", waitTimeout, true);
   const readyScreen = await sim.snapshot();
 
-  console.log("")
-  console.log("SIMULATED LEDGER DEV READY")
-
-  await Zemu.sleep(waitSeconds*1000);
+  console.log("");
+  console.log("SIMULATED LEDGER DEV READY");
 
   for (let i = 0; i < numApprovals; i++) {
+    console.log("Ready to approve tx", i+1, "of", numApprovals);
     await sim.deleteEvents();
     await sim.waitUntilScreenIs(readyScreen, waitTimeout);
     await sim.waitUntilScreenIsNot(readyScreen, waitTimeout);
@@ -48,6 +56,11 @@ async function main() {
   }
 
   await Zemu.sleep(waitUntilClose);
+
+  await new Promise(resolve => {
+    rl.question("PRESS ENTER TO END SIMULATOR\n", resolve)
+  });
+
   await sim.close();
   await Zemu.stopAllEmuContainers();
 }
