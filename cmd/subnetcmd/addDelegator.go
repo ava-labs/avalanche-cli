@@ -120,7 +120,7 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	start, stakeDuration, err := GetTimeParameters(network, nodeID, false)
+	start, stakeDuration, err := getTimeParameters(network, nodeID, false)
 	if err != nil {
 		return err
 	}

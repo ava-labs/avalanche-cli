@@ -191,7 +191,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", constants.MinStakeWeight, weight)
 	}
 
-	start, duration, err = GetTimeParameters(network, nodeID, true)
+	start, duration, err = getTimeParameters(network, nodeID, true)
 	if err != nil {
 		return err
 	}
@@ -285,7 +285,7 @@ func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime t
 	return 0, errors.New("nodeID not found in validator set: " + nodeID.String())
 }
 
-func GetTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bool) (time.Time, time.Duration, error) {
+func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bool) (time.Time, time.Duration, error) {
 	var (
 		start time.Time
 		err   error

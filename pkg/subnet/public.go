@@ -334,13 +334,7 @@ func (d *PublicDeployer) AddPermissionlessValidator(
 	delegationFee uint32,
 	popBytes []byte,
 ) (ids.ID, error) {
-	var wallet primary.Wallet
-	var err error
-	if subnetID == ids.Empty {
-		wallet, err = d.loadWallet()
-	} else {
-		wallet, err = d.loadWallet(subnetID)
-	}
+	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
 		return ids.Empty, err
 	}
@@ -512,8 +506,14 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error
 	default:
 		return nil, fmt.Errorf("unsupported public network")
 	}
-
-	wallet, err := primary.NewWalletWithTxs(ctx, api, d.kc, preloadTxs...)
+	// filter out ids.Empty txs
+	filteredTxs := []ids.ID{}
+	for i := range preloadTxs {
+		if preloadTxs[i] != ids.Empty {
+			filteredTxs = append(filteredTxs, preloadTxs[i])
+		}
+	}
+	wallet, err := primary.NewWalletWithTxs(ctx, api, d.kc, filteredTxs...)
 	if err != nil {
 		return nil, err
 	}
@@ -632,6 +632,8 @@ func (d *PublicDeployer) createTransformSubnetTX(
 	return &tx, nil
 }
 
+// issueAddPermissionlessValidatorTX calls addPermissionlessValidatorTx API on P-Chain
+// if subnetID is empty, node nodeID is going to be added as a validator on Primary Network
 func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 	recipientAddr ids.ShortID,
 	stakeAmount uint64,

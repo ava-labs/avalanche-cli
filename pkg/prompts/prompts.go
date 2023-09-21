@@ -551,8 +551,9 @@ func (*realPrompter) CaptureRepoFile(promptStr string, repo string, branch strin
 
 func (*realPrompter) CaptureString(promptStr string) (string, error) {
 	prompt := promptui.Prompt{
-		Label:    promptStr,
-		Validate: validateNonEmpty,
+		Label:       promptStr,
+		Validate:    validateNonEmpty,
+		HideEntered: true,
 	}
 
 	str, err := prompt.Run()

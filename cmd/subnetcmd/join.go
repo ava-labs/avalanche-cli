@@ -415,7 +415,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	if err != nil {
 		return err
 	}
-	start, stakeDuration, err := GetTimeParameters(network, nodeID, true)
+	start, stakeDuration, err := getTimeParameters(network, nodeID, true)
 	if err != nil {
 		return err
 	}
