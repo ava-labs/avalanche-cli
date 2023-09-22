@@ -98,8 +98,9 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 	})
 
 	ginkgo.It("deploy subnet to mainnet", func() {
+		var interactionEndCh, ledgerSimEndCh chan struct{}
 		if os.Getenv("LEDGER_SIM") != "" {
-			_, _ = utils.StartLedgerSim(8, ledger1Seed, true)
+			interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(8, ledger1Seed, true)
 		}
 		// fund ledger address
 		feeConfig := genesis.MainnetParams.TxFeeConfig
@@ -122,6 +123,8 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			_ = commands.SimulateMainnetAddValidator(subnetName, nodeInfo.ID, start, "24h", "20")
 			nodeIdx++
 		}
+		close(interactionEndCh)
+		<-ledgerSimEndCh
 		fmt.Println(logging.LightBlue.Wrap("EXECUTING NON INTERACTIVE PART OF THE TEST: JOIN/WHITELIST/WAIT/HARDHAT"))
 		// join to copy vm binary and update config file
 		for _, nodeInfo := range nodeInfos {
