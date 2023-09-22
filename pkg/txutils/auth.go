@@ -69,6 +69,8 @@ func GetRemainingSigners(tx *txs.Tx, controlKeys []string) ([]string, []string, 
 	if err != nil {
 		return nil, nil, err
 	}
+	fmt.Println("LA POSTA")
+	fmt.Println(authSigners)
 	emptySig := [secp256k1.SignatureLen]byte{}
 	// we should have at least 1 cred for output owners and 1 cred for subnet auth
 	if len(tx.Creds) < 2 {

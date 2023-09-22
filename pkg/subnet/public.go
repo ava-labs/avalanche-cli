@@ -415,10 +415,14 @@ func (d *PublicDeployer) DeployBlockchain(
 		return false, ids.Empty, nil, nil, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
 
+	fmt.Println("OTRO TANTO")
+	fmt.Println(controlKeys)
+	fmt.Println(subnetAuthKeysStrs)
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
 		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
+	fmt.Println(subnetAuthKeys)
 
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign CreateChain transaction on the ledger device *** ")
@@ -712,6 +716,10 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 	if err != nil {
 		return ids.Empty, fmt.Errorf("failure parsing control keys: %w", err)
 	}
+	fmt.Println("CONTROL KEYS")
+	fmt.Println(threshold)
+	fmt.Println(controlKeys)
+	fmt.Println(addrs)
 	owners := &secp256k1fx.OutputOwners{
 		Addrs:     addrs,
 		Threshold: threshold,
