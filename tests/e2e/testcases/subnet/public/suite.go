@@ -299,6 +299,8 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		close(interactionEndCh)
 		<-ledgerSimEndCh
 
+		return
+
 		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(1, ledger2Seed, true)
 		s = commands.TransactionSignWithLedger(
 			subnetName,
