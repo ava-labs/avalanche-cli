@@ -6,6 +6,7 @@ package terraformGCP
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -18,11 +19,12 @@ import (
 )
 
 // SetCloudCredentials sets AWS account credentials defined in .aws dir in user home dir
-func SetCloudCredentials(rootBody *hclwrite.Body, region string) error {
-	provider := rootBody.AppendNewBlock("provider", []string{"aws"})
+func SetCloudCredentials(rootBody *hclwrite.Body, region, zone, credentialsPath string) error {
+	provider := rootBody.AppendNewBlock("provider", []string{"google"})
 	providerBody := provider.Body()
 	providerBody.SetAttributeValue("region", cty.StringVal(region))
-	providerBody.SetAttributeValue("profile", cty.StringVal("default"))
+	providerBody.SetAttributeValue("zone", cty.StringVal(zone))
+	providerBody.SetAttributeValue("credentials", cty.StringVal(credentialsPath))
 	return nil
 }
 
@@ -53,124 +55,98 @@ func addNewSecurityGroupRule(rootBody *hclwrite.Body, sgRuleName, sgID, sgType, 
 	securityGroupRuleBody.SetAttributeValue("security_group_id", cty.StringVal(sgID))
 }
 
-// SetSecurityGroup whitelists the ip addresses allowed to ssh into cloud server
-func SetSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName string) {
-	inputIPAddress := ipAddress + "/32"
-	securityGroup := rootBody.AppendNewBlock("resource", []string{"aws_security_group", "ssh_avax_sg"})
-	securityGroupBody := securityGroup.Body()
-	securityGroupBody.SetAttributeValue("name", cty.StringVal(securityGroupName))
-	securityGroupBody.SetAttributeValue("description", cty.StringVal("Allow SSH, AVAX HTTP outbound traffic"))
-
-	// enable inbound access for ip address inputIPAddress in port 22
-	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "TCP", "tcp", inputIPAddress, constants.SSHTCPPort)
-	// "0.0.0.0/0" is a must-have ip address value for inbound and outbound calls
-	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", "tcp", "0.0.0.0/0", constants.AvalanchegoAPIPort)
-	// enable inbound access for ip address inputIPAddress in port 9650
-	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", "tcp", inputIPAddress, constants.AvalanchegoAPIPort)
-	// "0.0.0.0/0" is a must-have ip address value for inbound and outbound calls
-	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX Staking", "tcp", "0.0.0.0/0", constants.AvalanchegoP2PPort)
-	addSecurityGroupRuleToSg(securityGroupBody, "egress", "Outbound traffic", "-1", "0.0.0.0/0", constants.OutboundPort)
+// SetNetwork houses the firewall (AWS security group equivalent) for GCP
+func SetNetwork(rootBody *hclwrite.Body, ipAddress, networkName string) {
+	network := rootBody.AppendNewBlock("resource", []string{"google_compute_network", "networkName"})
+	networkBody := network.Body()
+	networkBody.SetAttributeValue("name", cty.StringVal(networkName))
+	SetFirewallRule(rootBody, "0.0.0.0/0", fmt.Sprintf("%s_%s", networkName, "default"), networkName, []string{"9650", "9651"})
+	SetFirewallRule(rootBody, ipAddress+"/32", fmt.Sprintf("%s_%s", networkName, strings.ReplaceAll(ipAddress, ".", "")), networkName, []string{"22", "9650"})
 }
 
-func SetSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, ipInTCP, ipInHTTP bool) {
-	inputIPAddress := ipAddress + "/32"
-	if !ipInTCP {
-		sgRuleName := "ipTcp" + strings.ReplaceAll(ipAddress, ".", "")
-		addNewSecurityGroupRule(rootBody, sgRuleName, sgID, "ingress", "tcp", inputIPAddress, constants.SSHTCPPort)
-	}
-	if !ipInHTTP {
-		sgRuleName := "ipHttp" + strings.ReplaceAll(ipAddress, ".", "")
-		addNewSecurityGroupRule(rootBody, sgRuleName, sgID, "ingress", "tcp", inputIPAddress, constants.AvalanchegoAPIPort)
-	}
-}
-
-// SetElasticIPs attach elastic IP(s) to the associated ec2 instance(s)
-func SetElasticIPs(rootBody *hclwrite.Body, numNodes uint32) {
-	eip := rootBody.AppendNewBlock("resource", []string{"aws_eip", "myeip"})
-	eipBody := eip.Body()
-	eipBody.SetAttributeValue("count", cty.NumberIntVal(int64(numNodes)))
-	eipBody.SetAttributeTraversal("instance", hcl.Traversal{
+func SetFirewallRule(rootBody *hclwrite.Body, ipAddress, firewallName, networkName string, ports []string) {
+	firewall := rootBody.AppendNewBlock("resource", []string{"google_compute_firewall", firewallName})
+	firewallBody := firewall.Body()
+	firewallBody.SetAttributeValue("name", cty.StringVal(firewallName))
+	firewallBody.SetAttributeTraversal("network", hcl.Traversal{
 		hcl.TraverseRoot{
-			Name: "aws_instance",
+			Name: "google_compute_network",
 		},
 		hcl.TraverseAttr{
-			Name: "aws_node[count.index]",
+			Name: networkName,
+		},
+		hcl.TraverseAttr{
+			Name: "name",
+		},
+	})
+	firewallAllow := firewallBody.AppendNewBlock("allow", []string{})
+	firewallAllowBody := firewallAllow.Body()
+	firewallAllowBody.SetAttributeValue("protocol", cty.StringVal("tcp"))
+	var allowPortList []cty.Value
+	for i := range ports {
+		allowPortList = append(allowPortList, cty.StringVal(ports[i]))
+	}
+	firewallAllowBody.SetAttributeValue("ports", cty.ListVal(allowPortList))
+	var allowIPList []cty.Value
+	allowIPList = append(allowIPList, cty.StringVal(ipAddress))
+	firewallBody.SetAttributeValue("source_ranges", cty.ListVal(allowIPList))
+}
+
+// SetPublicIP attach static IP(s) to the associated Google VM instance(s)
+func SetPublicIP(rootBody *hclwrite.Body, nodeName string) {
+	staticIPName := fmt.Sprintf("static-ip-%s", nodeName)
+	eip := rootBody.AppendNewBlock("resource", []string{"google_compute_address", staticIPName})
+	eipBody := eip.Body()
+	eipBody.SetAttributeValue("provider", cty.StringVal("google"))
+	eipBody.SetAttributeValue("name", cty.StringVal(staticIPName))
+	eipBody.SetAttributeValue("address_type", cty.StringVal("EXTERNAL"))
+	eipBody.SetAttributeValue("network_tier", cty.StringVal("PREMIUM"))
+}
+
+// SetupInstances adds aws_instance section in terraform state file where we configure all the necessary components of the desired ec2 instance(s)
+func SetupInstances(rootBody *hclwrite.Body, networkName, certPath, ami, staticIPName, gcp_username string) {
+	gcpInstance := rootBody.AppendNewBlock("resource", []string{"google_compute_instance", "gcp_node"})
+	gcpInstanceBody := gcpInstance.Body()
+	gcpInstanceBody.SetAttributeValue("provider", cty.StringVal("google"))
+	gcpInstanceBody.SetAttributeValue("machine_type", cty.StringVal("e2-micro"))
+	metadata := gcpInstanceBody.AppendNewBlock("metadata", []string{})
+	metadataBody := metadata.Body()
+	metadataBody.SetAttributeValue("ssh-keys", cty.StringVal(fmt.Sprintf("%s:${file(%s)}", gcp_username, certPath)))
+
+	networkInterface := gcpInstanceBody.AppendNewBlock("network_interface", []string{})
+	networkInterfaceBody := networkInterface.Body()
+	networkInterfaceBody.SetAttributeTraversal("network", hcl.Traversal{
+		hcl.TraverseRoot{
+			Name: "google_compute_network",
+		},
+		hcl.TraverseAttr{
+			Name: networkName,
 		},
 		hcl.TraverseAttr{
 			Name: "id",
 		},
 	})
-	eipBody.SetAttributeValue("vpc", cty.BoolVal(true))
-}
-
-// SetKeyPair define the key pair that we will create in our EC2 instance if it doesn't exist yet and download the .pem file to home dir
-func SetKeyPair(rootBody *hclwrite.Body, keyName, certName string) {
-	// define the encryption we are using for the key pair
-	tlsPrivateKey := rootBody.AppendNewBlock("resource", []string{"tls_private_key", "pk"})
-	tlsPrivateKeyBody := tlsPrivateKey.Body()
-	tlsPrivateKeyBody.SetAttributeValue("algorithm", cty.StringVal("RSA"))
-	tlsPrivateKeyBody.SetAttributeValue("rsa_bits", cty.NumberIntVal(4096))
-
-	// define the encryption we are using for the key pair
-	keyPair := rootBody.AppendNewBlock("resource", []string{"aws_key_pair", "kp"})
-	keyPairBody := keyPair.Body()
-	keyPairBody.SetAttributeValue("key_name", cty.StringVal(keyName))
-	keyPairBody.SetAttributeTraversal("public_key", hcl.Traversal{
+	accessConfig := networkInterfaceBody.AppendNewBlock("access_config", []string{})
+	accessConfigBody := accessConfig.Body()
+	accessConfigBody.SetAttributeTraversal("nat_ip", hcl.Traversal{
 		hcl.TraverseRoot{
-			Name: "tls_private_key",
+			Name: "google_compute_network",
 		},
 		hcl.TraverseAttr{
-			Name: "pk",
+			Name: staticIPName,
 		},
 		hcl.TraverseAttr{
-			Name: "public_key_openssh",
+			Name: "address",
 		},
 	})
 
-	tfKey := rootBody.AppendNewBlock("resource", []string{"local_file", "tf-key"})
-	tfKeyBody := tfKey.Body()
-	tfKeyBody.SetAttributeValue("filename", cty.StringVal(certName))
-	tfKeyBody.SetAttributeTraversal("content", hcl.Traversal{
-		hcl.TraverseRoot{
-			Name: "tls_private_key",
-		},
-		hcl.TraverseAttr{
-			Name: "pk",
-		},
-		hcl.TraverseAttr{
-			Name: "private_key_pem",
-		},
-	})
-}
+	bootDisk := gcpInstanceBody.AppendNewBlock("boot_disk", []string{})
+	bootDiskBody := bootDisk.Body()
+	initParams := bootDiskBody.AppendNewBlock("initialize_params", []string{})
+	initParamsBody := initParams.Body()
+	initParamsBody.SetAttributeValue("image", cty.StringVal(ami))
 
-// SetupInstances adds aws_instance section in terraform state file where we configure all the necessary components of the desired ec2 instance(s)
-func SetupInstances(rootBody *hclwrite.Body, securityGroupName string, useExistingKeyPair bool, existingKeyPairName, ami string, numNodes uint32) {
-	awsInstance := rootBody.AppendNewBlock("resource", []string{"aws_instance", "aws_node"})
-	awsInstanceBody := awsInstance.Body()
-	awsInstanceBody.SetAttributeValue("count", cty.NumberIntVal(int64(numNodes)))
-	awsInstanceBody.SetAttributeValue("ami", cty.StringVal(ami))
-	awsInstanceBody.SetAttributeValue("instance_type", cty.StringVal("c5.2xlarge"))
-	if !useExistingKeyPair {
-		awsInstanceBody.SetAttributeTraversal("key_name", hcl.Traversal{
-			hcl.TraverseRoot{
-				Name: "aws_key_pair",
-			},
-			hcl.TraverseAttr{
-				Name: "kp",
-			},
-			hcl.TraverseAttr{
-				Name: "key_name",
-			},
-		})
-	} else {
-		awsInstanceBody.SetAttributeValue("key_name", cty.StringVal(existingKeyPairName))
-	}
-	var securityGroupList []cty.Value
-	securityGroupList = append(securityGroupList, cty.StringVal(securityGroupName))
-	awsInstanceBody.SetAttributeValue("security_groups", cty.ListVal(securityGroupList))
-	rootBlockDevice := awsInstanceBody.AppendNewBlock("root_block_device", []string{})
-	rootBlockDeviceBody := rootBlockDevice.Body()
-	rootBlockDeviceBody.SetAttributeValue("volume_size", cty.NumberIntVal(constants.CloudServerStorageSize))
+	gcpInstanceBody.SetAttributeValue("allow_stopping_for_update", cty.BoolVal(true))
 }
 
 // SetOutput adds output section in terraform state file so that we can call terraform output command and print instance_ip and instance_id to user
@@ -225,53 +201,55 @@ func RunTerraform(terraformDir string) ([]string, []string, error) {
 		}
 		return nil, nil, err
 	}
-	instanceIDs, err := GetInstanceIDs(terraformDir)
-	if err != nil {
-		return nil, nil, err
-	}
-	publicIPs, err := GetPublicIPs(terraformDir)
-	if err != nil {
-		return nil, nil, err
-	}
-	return instanceIDs, publicIPs, nil
+	//instanceIDs, err := GetInstanceIDs(terraformDir)
+	//if err != nil {
+	//	return nil, nil, err
+	//}
+	//publicIPs, err := GetPublicIPs(terraformDir)
+	//if err != nil {
+	//	return nil, nil, err
+	//}
+	//return instanceIDs, publicIPs, nil
+	return nil, nil, nil
 }
 
-func GetInstanceIDs(terraformDir string) ([]string, error) {
-	cmd := exec.Command(constants.Terraform, "output", "instance_ids") //nolint:gosec
-	cmd.Dir = terraformDir
-	instanceIDsOutput, err := cmd.Output()
-	if err != nil {
-		return nil, err
-	}
-	instanceIDs := []string{}
-	instanceIDsOutputWoSpace := strings.TrimSpace(string(instanceIDsOutput))
-	// eip and nodeID outputs are bounded by [ and ,] , we need to remove them
-	trimmedInstanceIDs := instanceIDsOutputWoSpace[1 : len(instanceIDsOutputWoSpace)-3]
-	splitInstanceIDs := strings.Split(trimmedInstanceIDs, ",")
-	for _, instanceID := range splitInstanceIDs {
-		instanceIDWoSpace := strings.TrimSpace(instanceID)
-		// eip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
-		instanceIDs = append(instanceIDs, instanceIDWoSpace[1:len(instanceIDWoSpace)-1])
-	}
-	return instanceIDs, nil
-}
-
-func GetPublicIPs(terraformDir string) ([]string, error) {
-	cmd := exec.Command(constants.Terraform, "output", "instance_ips") //nolint:gosec
-	cmd.Dir = terraformDir
-	eipsOutput, err := cmd.Output()
-	if err != nil {
-		return nil, err
-	}
-	publicIPs := []string{}
-	eipsOutputWoSpace := strings.TrimSpace(string(eipsOutput))
-	// eip and nodeID outputs are bounded by [ and ,] , we need to remove them
-	trimmedPublicIPs := eipsOutputWoSpace[1 : len(eipsOutputWoSpace)-3]
-	splitPublicIPs := strings.Split(trimmedPublicIPs, ",")
-	for _, publicIP := range splitPublicIPs {
-		publicIPWoSpace := strings.TrimSpace(publicIP)
-		// eip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
-		publicIPs = append(publicIPs, publicIPWoSpace[1:len(publicIPWoSpace)-1])
-	}
-	return publicIPs, nil
-}
+//
+//func GetInstanceIDs(terraformDir string) ([]string, error) {
+//	cmd := exec.Command(constants.Terraform, "output", "instance_ids") //nolint:gosec
+//	cmd.Dir = terraformDir
+//	instanceIDsOutput, err := cmd.Output()
+//	if err != nil {
+//		return nil, err
+//	}
+//	instanceIDs := []string{}
+//	instanceIDsOutputWoSpace := strings.TrimSpace(string(instanceIDsOutput))
+//	// eip and nodeID outputs are bounded by [ and ,] , we need to remove them
+//	trimmedInstanceIDs := instanceIDsOutputWoSpace[1 : len(instanceIDsOutputWoSpace)-3]
+//	splitInstanceIDs := strings.Split(trimmedInstanceIDs, ",")
+//	for _, instanceID := range splitInstanceIDs {
+//		instanceIDWoSpace := strings.TrimSpace(instanceID)
+//		// eip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
+//		instanceIDs = append(instanceIDs, instanceIDWoSpace[1:len(instanceIDWoSpace)-1])
+//	}
+//	return instanceIDs, nil
+//}
+//
+//func GetPublicIPs(terraformDir string) ([]string, error) {
+//	cmd := exec.Command(constants.Terraform, "output", "instance_ips") //nolint:gosec
+//	cmd.Dir = terraformDir
+//	eipsOutput, err := cmd.Output()
+//	if err != nil {
+//		return nil, err
+//	}
+//	publicIPs := []string{}
+//	eipsOutputWoSpace := strings.TrimSpace(string(eipsOutput))
+//	// eip and nodeID outputs are bounded by [ and ,] , we need to remove them
+//	trimmedPublicIPs := eipsOutputWoSpace[1 : len(eipsOutputWoSpace)-3]
+//	splitPublicIPs := strings.Split(trimmedPublicIPs, ",")
+//	for _, publicIP := range splitPublicIPs {
+//		publicIPWoSpace := strings.TrimSpace(publicIP)
+//		// eip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
+//		publicIPs = append(publicIPs, publicIPWoSpace[1:len(publicIPWoSpace)-1])
+//	}
+//	return publicIPs, nil
+//}
