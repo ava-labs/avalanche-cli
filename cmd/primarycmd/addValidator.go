@@ -71,13 +71,17 @@ func promptProofOfPossession() (jsonProofOfPossession, error) {
 	ux.Logger.PrintToUser("Next, we need the public key and proof of possession of the node's BLS")
 	ux.Logger.PrintToUser("SSH into the node and call info.getNodeID API to get the node's BLS info")
 	ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions on calling info.getNodeID API")
-	txt := "What is the public key of the node's BLS?"
-	publicKey, err := app.Prompt.CaptureBLSInfo(txt)
+	txt := "What is the public key of the node's BLS?:"
+	ux.Logger.PrintToUser(txt)
+	var publicKey string
+	_, err := fmt.Scanln(&publicKey)
 	if err != nil {
 		return jsonProofOfPossession{}, err
 	}
-	txt = "What is the proof of possession of the node's BLS?"
-	pop, err := app.Prompt.CaptureBLSInfo(txt)
+	txt = "What is the proof of possession of the node's BLS?:"
+	ux.Logger.PrintToUser(txt)
+	var pop string
+	_, err = fmt.Scanln(&pop)
 	if err != nil {
 		return jsonProofOfPossession{}, err
 	}
