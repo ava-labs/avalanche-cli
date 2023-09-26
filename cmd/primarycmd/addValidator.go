@@ -34,6 +34,8 @@ var (
 	weight                       uint64
 	startTimeStr                 string
 	duration                     time.Duration
+	publicKey                    string
+	pop                          string
 	ErrMutuallyExlusiveKeyLedger = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet        = errors.New("--key is not available for mainnet operations")
 )
@@ -64,26 +66,45 @@ in the Primary Network`,
 	cmd.Flags().BoolVar(&validateMainnet, "mainnet", false, "join on `mainnet`")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
+	cmd.Flags().StringVar(&publicKey, "public-key", "", "set the BLS public key of the validator to add")
+	cmd.Flags().StringVar(&pop, "proof-of-possession", "", "set the BLS proof of possession of the validator to add")
 	return cmd
 }
 
 func promptProofOfPossession() (jsonProofOfPossession, error) {
-	ux.Logger.PrintToUser("Next, we need the public key and proof of possession of the node's BLS")
-	ux.Logger.PrintToUser("SSH into the node and call info.getNodeID API to get the node's BLS info")
-	ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions on calling info.getNodeID API")
-	txt := "What is the public key of the node's BLS?:"
-	ux.Logger.PrintToUser(txt)
-	var publicKey string
-	_, err := fmt.Scanln(&publicKey)
-	if err != nil {
-		return jsonProofOfPossession{}, err
+	if publicKey != "" {
+		err := prompts.ValidateHexa(publicKey)
+		if err != nil {
+			ux.Logger.PrintToUser("Format error in given public key: %s", err)
+			publicKey = ""
+		}
 	}
-	txt = "What is the proof of possession of the node's BLS?:"
-	ux.Logger.PrintToUser(txt)
-	var pop string
-	_, err = fmt.Scanln(&pop)
-	if err != nil {
-		return jsonProofOfPossession{}, err
+	if pop != "" {
+		err := prompts.ValidateHexa(pop)
+		if err != nil {
+			ux.Logger.PrintToUser("Format error in given proof of possession: %s", err)
+			pop = ""
+		}
+	}
+	if publicKey == "" || pop == "" {
+		ux.Logger.PrintToUser("Next, we need the public key and proof of possession of the node's BLS")
+		ux.Logger.PrintToUser("SSH into the node and call info.getNodeID API to get the node's BLS info")
+		ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions on calling info.getNodeID API")
+	}
+	var err error
+	if publicKey == "" {
+		txt := "What is the public key of the node's BLS?:"
+		publicKey, err = app.Prompt.CaptureValidatedString(txt, prompts.ValidateHexa)
+		if err != nil {
+			return jsonProofOfPossession{}, err
+		}
+	}
+	if pop == "" {
+		txt := "What is the proof of possession of the node's BLS?:"
+		pop, err = app.Prompt.CaptureValidatedString(txt, prompts.ValidateHexa)
+		if err != nil {
+			return jsonProofOfPossession{}, err
+		}
 	}
 	return jsonProofOfPossession{PublicKey: publicKey, ProofOfPossession: pop}, nil
 }
