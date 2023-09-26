@@ -177,7 +177,7 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 	if weight < minValStake {
 		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", minValStake, weight)
 	}
-	start, duration, err = GetTimeParametersPrimaryNetwork(network, nodeIndex)
+	start, duration, err = GetTimeParametersPrimaryNetwork(network, nodeIndex, duration)
 	if err != nil {
 		return err
 	}
@@ -219,17 +219,17 @@ func PromptWeightPrimaryNetwork(network models.Network) (uint64, error) {
 	}
 }
 
-func GetTimeParametersPrimaryNetwork(network models.Network, nodeIndex int) (time.Time, time.Duration, error) {
+func GetTimeParametersPrimaryNetwork(network models.Network, nodeIndex int, validationDuration time.Duration) (time.Time, time.Duration, error) {
 	const (
 		defaultDurationOption = "Minimum staking duration on primary network"
 		custom                = "Custom"
 	)
 	var err error
 	start := time.Now().Add(constants.PrimaryNetworkValidatingStartLeadTime)
-	if useCustomDuration && duration != 0 {
+	if useCustomDuration && validationDuration != 0 {
 		return start, duration, nil
 	}
-	if duration != 0 {
+	if validationDuration != 0 {
 		duration, err = getDefaultValidationTime(start, network, nodeIndex)
 		if err != nil {
 			return time.Time{}, 0, err

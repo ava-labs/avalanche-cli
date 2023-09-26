@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"time"
 
@@ -203,7 +204,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	start, duration, err = nodecmd.GetTimeParametersPrimaryNetwork(network, 0)
+	start, duration, err = nodecmd.GetTimeParametersPrimaryNetwork(network, 0, duration)
 	if err != nil {
 		return err
 	}
@@ -248,7 +249,10 @@ func getDelegationFeeOption(app *application.Avalanche, network models.Network) 
 		if err != nil {
 			return 0, err
 		}
-		return uint32(delegationFee), nil
+		if delegationFee > 0 && delegationFee <= math.MaxUint32 {
+			return uint32(delegationFee), nil
+		}
+		return 0, fmt.Errorf("invalid delegation fee")
 	}
 	return defaultFee, nil
 }
