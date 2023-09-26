@@ -19,49 +19,23 @@ import (
 )
 
 // SetCloudCredentials sets AWS account credentials defined in .aws dir in user home dir
-func SetCloudCredentials(rootBody *hclwrite.Body, region, zone, credentialsPath string) error {
+func SetCloudCredentials(rootBody *hclwrite.Body, region, zone, credentialsPath, projectName string) error {
 	provider := rootBody.AppendNewBlock("provider", []string{"google"})
 	providerBody := provider.Body()
+	providerBody.SetAttributeValue("project", cty.StringVal(projectName))
 	providerBody.SetAttributeValue("region", cty.StringVal(region))
 	providerBody.SetAttributeValue("zone", cty.StringVal(zone))
 	providerBody.SetAttributeValue("credentials", cty.StringVal(credentialsPath))
 	return nil
 }
 
-// addSecurityGroupRuleToSg is to add sg rule to new sg
-func addSecurityGroupRuleToSg(securityGroupBody *hclwrite.Body, sgType, description, protocol, ip string, port int64) {
-	inboundGroup := securityGroupBody.AppendNewBlock(sgType, []string{})
-	inboundGroupBody := inboundGroup.Body()
-	inboundGroupBody.SetAttributeValue("description", cty.StringVal(description))
-	inboundGroupBody.SetAttributeValue("from_port", cty.NumberIntVal(port))
-	inboundGroupBody.SetAttributeValue("to_port", cty.NumberIntVal(port))
-	inboundGroupBody.SetAttributeValue("protocol", cty.StringVal(protocol))
-	var ipList []cty.Value
-	ipList = append(ipList, cty.StringVal(ip))
-	inboundGroupBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
-}
-
-// addNewSecurityGroupRule is to add sg rule to existing sg
-func addNewSecurityGroupRule(rootBody *hclwrite.Body, sgRuleName, sgID, sgType, protocol, ip string, port int64) {
-	securityGroupRule := rootBody.AppendNewBlock("resource", []string{"aws_security_group_rule", sgRuleName})
-	securityGroupRuleBody := securityGroupRule.Body()
-	securityGroupRuleBody.SetAttributeValue("type", cty.StringVal(sgType))
-	securityGroupRuleBody.SetAttributeValue("from_port", cty.NumberIntVal(port))
-	securityGroupRuleBody.SetAttributeValue("to_port", cty.NumberIntVal(port))
-	securityGroupRuleBody.SetAttributeValue("protocol", cty.StringVal(protocol))
-	var ipList []cty.Value
-	ipList = append(ipList, cty.StringVal(ip))
-	securityGroupRuleBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
-	securityGroupRuleBody.SetAttributeValue("security_group_id", cty.StringVal(sgID))
-}
-
 // SetNetwork houses the firewall (AWS security group equivalent) for GCP
 func SetNetwork(rootBody *hclwrite.Body, ipAddress, networkName string) {
-	network := rootBody.AppendNewBlock("resource", []string{"google_compute_network", "networkName"})
+	network := rootBody.AppendNewBlock("resource", []string{"google_compute_network", networkName})
 	networkBody := network.Body()
 	networkBody.SetAttributeValue("name", cty.StringVal(networkName))
-	SetFirewallRule(rootBody, "0.0.0.0/0", fmt.Sprintf("%s_%s", networkName, "default"), networkName, []string{"9650", "9651"})
-	SetFirewallRule(rootBody, ipAddress+"/32", fmt.Sprintf("%s_%s", networkName, strings.ReplaceAll(ipAddress, ".", "")), networkName, []string{"22", "9650"})
+	SetFirewallRule(rootBody, "0.0.0.0/0", fmt.Sprintf("%s-%s", networkName, "default"), networkName, []string{"9650", "9651"})
+	SetFirewallRule(rootBody, ipAddress+"/32", fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")), networkName, []string{"22", "9650"})
 }
 
 func SetFirewallRule(rootBody *hclwrite.Body, ipAddress, firewallName, networkName string, ports []string) {
@@ -97,22 +71,20 @@ func SetPublicIP(rootBody *hclwrite.Body, nodeName string) {
 	staticIPName := fmt.Sprintf("static-ip-%s", nodeName)
 	eip := rootBody.AppendNewBlock("resource", []string{"google_compute_address", staticIPName})
 	eipBody := eip.Body()
-	eipBody.SetAttributeValue("provider", cty.StringVal("google"))
 	eipBody.SetAttributeValue("name", cty.StringVal(staticIPName))
 	eipBody.SetAttributeValue("address_type", cty.StringVal("EXTERNAL"))
 	eipBody.SetAttributeValue("network_tier", cty.StringVal("PREMIUM"))
 }
 
 // SetupInstances adds aws_instance section in terraform state file where we configure all the necessary components of the desired ec2 instance(s)
-func SetupInstances(rootBody *hclwrite.Body, networkName, certPath, ami, staticIPName, gcp_username string) {
-	gcpInstance := rootBody.AppendNewBlock("resource", []string{"google_compute_instance", "gcp_node"})
+func SetupInstances(rootBody *hclwrite.Body, networkName, sshKeyPath, ami, staticIPName, instanceName, gcp_username string) {
+	gcpInstance := rootBody.AppendNewBlock("resource", []string{"google_compute_instance", "gcp-node"})
 	gcpInstanceBody := gcpInstance.Body()
-	gcpInstanceBody.SetAttributeValue("provider", cty.StringVal("google"))
-	gcpInstanceBody.SetAttributeValue("machine_type", cty.StringVal("e2-micro"))
-	metadata := gcpInstanceBody.AppendNewBlock("metadata", []string{})
-	metadataBody := metadata.Body()
-	metadataBody.SetAttributeValue("ssh-keys", cty.StringVal(fmt.Sprintf("%s:${file(%s)}", gcp_username, certPath)))
-
+	gcpInstanceBody.SetAttributeValue("name", cty.StringVal(instanceName))
+	gcpInstanceBody.SetAttributeValue("machine_type", cty.StringVal("e2-standard-8"))
+	metadataMap := make(map[string]cty.Value)
+	metadataMap["ssh-keys"] = cty.StringVal(fmt.Sprintf("%s:${file(%s)}", gcp_username, sshKeyPath))
+	gcpInstanceBody.SetAttributeValue("metadata", cty.ObjectVal(metadataMap))
 	networkInterface := gcpInstanceBody.AppendNewBlock("network_interface", []string{})
 	networkInterfaceBody := networkInterface.Body()
 	networkInterfaceBody.SetAttributeTraversal("network", hcl.Traversal{
@@ -130,7 +102,7 @@ func SetupInstances(rootBody *hclwrite.Body, networkName, certPath, ami, staticI
 	accessConfigBody := accessConfig.Body()
 	accessConfigBody.SetAttributeTraversal("nat_ip", hcl.Traversal{
 		hcl.TraverseRoot{
-			Name: "google_compute_network",
+			Name: "google_compute_address",
 		},
 		hcl.TraverseAttr{
 			Name: staticIPName,
@@ -196,6 +168,7 @@ func RunTerraform(terraformDir string) ([]string, []string, error) {
 	cmd.Stdout = mw
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
+		fmt.Printf("err is %s \n", err)
 		if strings.Contains(stderr.String(), constants.EIPLimitErr) {
 			return nil, nil, errors.New(constants.EIPLimitErr)
 		}

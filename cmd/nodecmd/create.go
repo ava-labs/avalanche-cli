@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	terraformGCP "github.com/ava-labs/avalanche-cli/pkg/terraform/gcp"
+	"golang.org/x/exp/rand"
 	"net"
 	"os"
 	"os/exec"
@@ -257,6 +259,125 @@ func getAWSCloudConfig() (*ec2.EC2, string, string, error) {
 	return ec2Svc, region, ami, nil
 }
 
+func randomString(length int) string {
+	rand.Seed(uint64(time.Now().UnixNano()))
+	chars := "abcdefghijklmnopqrstuvwxyz0123456789"
+	result := make([]byte, length)
+	for i := 0; i < length; i++ {
+		result[i] = chars[rand.Intn(len(chars))]
+	}
+	return string(result)
+}
+
+// createGCEInstances creates terraform .tf file and runs terraform exec function to create Google Compute Engine VM instances
+func createGCEInstances(rootBody *hclwrite.Body,
+	ec2Svc *ec2.EC2,
+	hclFile *hclwrite.File,
+	region,
+	zone,
+	ami,
+	sshKeyPath,
+	keyPairName,
+	securityGroupName,
+	credentialsPath string,
+) ([]string, []string, string, string, error) {
+	if err := terraformGCP.SetCloudCredentials(rootBody, region, zone, credentialsPath, "second-abacus-399120"); err != nil {
+		return nil, nil, "", "", err
+	}
+	//numNodes, err := app.Prompt.CaptureUint32("How many nodes do you want to set up on AWS?")
+	//if err != nil {
+	//	return nil, nil, "", "", err
+	//}
+	ux.Logger.PrintToUser("Creating new VM instance(s) on Google Compute Engine...")
+	//var useExistingKeyPair bool
+	//keyPairExists, err := awsAPI.CheckKeyPairExists(ec2Svc, keyPairName)
+	//if err != nil {
+	//	return nil, nil, "", "", err
+	//}
+	//certInSSHDir, err := app.CheckCertInSSHDir(certName)
+	//if err != nil {
+	//	return nil, nil, "", "", err
+	//}
+	//if !keyPairExists {
+	//	if !certInSSHDir {
+	//		ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s in AWS", keyPairName))
+	//		terraformAWS.SetKeyPair(rootBody, keyPairName, certName)
+	//	} else {
+	//		ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists on your .ssh directory but not on AWS", keyPairName))
+	//		ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in AWS", keyPairName))
+	//		certName, keyPairName, err = promptKeyPairName(ec2Svc)
+	//		if err != nil {
+	//			return nil, nil, "", "", err
+	//		}
+	//		terraformAWS.SetKeyPair(rootBody, keyPairName, certName)
+	//	}
+	//} else {
+	//	if certInSSHDir {
+	//		ux.Logger.PrintToUser(fmt.Sprintf("Using existing key pair %s in AWS", keyPairName))
+	//		useExistingKeyPair = true
+	//	} else {
+	//		ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists in AWS", keyPairName))
+	//		ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName))
+	//		certName, keyPairName, err = promptKeyPairName(ec2Svc)
+	//		if err != nil {
+	//			return nil, nil, "", "", err
+	//		}
+	//		terraformAWS.SetKeyPair(rootBody, keyPairName, certName)
+	//	}
+	//}
+	//securityGroupExists, sg, err := awsAPI.CheckSecurityGroupExists(ec2Svc, securityGroupName)
+	//if err != nil {
+	//	return nil, nil, "", "", err
+	//}
+	userIPAddress, err := getIPAddress()
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	ux.Logger.PrintToUser(fmt.Sprintf("Creating new security group %s in AWS", securityGroupName))
+	//if !securityGroupExists {
+	//	ux.Logger.PrintToUser(fmt.Sprintf("Creating new security group %s in AWS", securityGroupName))
+	//	terraformAWS.SetSecurityGroup(rootBody, userIPAddress, securityGroupName)
+	//} else {
+	//	ux.Logger.PrintToUser(fmt.Sprintf("Using existing security group %s in AWS", securityGroupName))
+	//	ipInTCP := awsAPI.CheckUserIPInSg(sg, userIPAddress, constants.SSHTCPPort)
+	//	ipInHTTP := awsAPI.CheckUserIPInSg(sg, userIPAddress, constants.AvalanchegoAPIPort)
+	//	terraformAWS.SetSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
+	//}
+	nodeName := fmt.Sprintf("gcp-node-%s", randomString(5))
+	publicIPName := fmt.Sprintf("static-ip-%s", nodeName)
+	terraformGCP.SetPublicIP(rootBody, nodeName)
+	terraformGCP.SetNetwork(rootBody, userIPAddress, keyPairName)
+	terraformGCP.SetupInstances(rootBody, keyPairName, sshKeyPath, ami, publicIPName, nodeName, "raymond_sukanto")
+	//terraformGCP.SetOutput(rootBody)
+	err = app.CreateTerraformDir()
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	err = terraform.SaveConf(app.GetTerraformDir(), hclFile)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	//instanceIDs, elasticIPs, err := terraformGCP.RunTerraform(app.GetTerraformDir())
+	_, _, err = terraformGCP.RunTerraform(app.GetTerraformDir())
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	ux.Logger.PrintToUser("New VM instance(s) successfully created in Google Cloud Engine!")
+	//if !useExistingKeyPair {
+	//	// takes the cert file downloaded from AWS through terraform and moves it to .ssh directory
+	//	err = addCertToSSH(certName)
+	//	if err != nil {
+	//		return nil, nil, "", "", err
+	//	}
+	//}
+	//sshCertPath, err := app.GetSSHCertFilePath(certName)
+	//if err != nil {
+	//	return nil, nil, "", "", err
+	//}
+	//return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
+	return nil, nil, "", keyPairName, nil
+}
+
 // createEC2Instances creates terraform .tf file and runs terraform exec function to create ec2 instances
 func createEC2Instances(rootBody *hclwrite.Body,
 	ec2Svc *ec2.EC2,
@@ -266,7 +387,6 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	certName,
 	keyPairName,
 	securityGroupName string,
-	// ) ([]string, []string, string, string, error) {
 ) ([]string, []string, string, string, error) {
 	if err := terraformAWS.SetCloudCredentials(rootBody, region); err != nil {
 		return nil, nil, "", "", err
@@ -419,77 +539,52 @@ func createAWSInstance(usr *user.User) (CloudConfig, error) {
 }
 
 func createGCPInstance(usr *user.User) (CloudConfig, error) {
-	// Get AWS Credential, region and AMI
-	ec2Svc, region, ami, err := getAWSCloudConfig()
-	if err != nil {
-		return CloudConfig{}, nil
-	}
+	// Get GCP Credential, region and Image ID
+	//gcpSvc, region, ami, err := getGCPConfig()
+	//if err != nil {
+	//	return CloudConfig{}, nil
+	//}
+	ami := "ubuntu-os-cloud/ubuntu-2004-focal-v20220712"
+	region := "us-east1"
+	zone := "us-east1-b"
+	credentialsPath := "/Users/raymondsukanto/Desktop/second-abacus-399120-fa18aefc3f7e.json"
 	prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
-	certName := prefix + "-" + region + constants.CertSuffix
-	securityGroupName := prefix + "-" + region + constants.AWSSecurityGroupSuffix
+	firewallName := prefix + "-" + region + constants.AWSSecurityGroupSuffix
 	hclFile, rootBody, err := terraform.InitConf()
 	if err != nil {
 		return CloudConfig{}, nil
 	}
 
 	// Create new EC2 instances
-	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(rootBody, ec2Svc, hclFile, region, ami, certName, prefix, securityGroupName)
+	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(rootBody, nil, hclFile, region, zone, ami, "/Users/raymondsukanto/.ssh/gcp-test3.pub", prefix, firewallName, credentialsPath)
 	if err != nil {
-		if err.Error() == constants.EIPLimitErr {
-			ux.Logger.PrintToUser("Failed to create AWS cloud server, please try creating again in a different region")
-		} else {
-			ux.Logger.PrintToUser("Failed to create AWS cloud server")
-		}
-		// we stop created instances so that user doesn't pay for unused EC2 instances
-		instanceIDs, instanceIDErr := terraformAWS.GetInstanceIDs(app.GetTerraformDir())
-		if instanceIDErr != nil {
-			return CloudConfig{}, instanceIDErr
-		}
-		failedNodes := []string{}
-		nodeErrors := []error{}
-		for _, instanceID := range instanceIDs {
-			ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s...", instanceID))
-			if stopErr := awsAPI.StopInstance(ec2Svc, instanceID, "", false); stopErr != nil {
-				failedNodes = append(failedNodes, instanceID)
-				nodeErrors = append(nodeErrors, stopErr)
-			}
-			ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s stopped", instanceID))
-		}
-		if len(failedNodes) > 0 {
-			ux.Logger.PrintToUser("Failed nodes: ")
-			for i, node := range failedNodes {
-				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
-			}
-			ux.Logger.PrintToUser("Stop the above instance(s) on AWS console to prevent charges")
-			return CloudConfig{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)
-		}
 		return CloudConfig{}, nil
 	}
-	awsCloudConfig := CloudConfig{
+	gcpCloudConfig := CloudConfig{
 		instanceIDs,
 		elasticIPs,
 		region,
 		keyPairName,
-		securityGroupName,
+		firewallName,
 		certFilePath,
 		ami,
 	}
-	return awsCloudConfig, nil
+	return gcpCloudConfig, nil
 }
 
 func createNode(_ *cobra.Command, args []string) error {
-	clusterName := args[0]
-	cloudService, err := promptCloudService()
-	if err != nil {
-		return err
-	}
+	//clusterName := args[0]
+	//cloudService, err := promptCloudService()
+	//if err != nil {
+	//	return err
+	//}
 	if err := terraform.CheckIsInstalled(); err != nil {
 		return err
 	}
 	if err := ansible.CheckIsInstalled(); err != nil {
 		return err
 	}
-	err = terraform.RemoveDirectory(app.GetTerraformDir())
+	err := terraform.RemoveDirectory(app.GetTerraformDir())
 	if err != nil {
 		return err
 	}
@@ -497,54 +592,55 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	cloudConfig := CloudConfig{}
-	if cloudService == constants.AWSCloudService {
-		cloudConfig, err = createAWSInstance(usr)
-	} else {
-		cloudConfig, err = createGCPInstance(usr)
-	}
-	if err != nil {
-		return err
-	}
-	if err := createClusterNodeConfig(cloudConfig, clusterName); err != nil {
-		return err
-	}
-	err = terraform.RemoveDirectory(app.GetTerraformDir())
-	if err != nil {
-		return err
-	}
-	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	if err := ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudConfig.PublicIPs, cloudConfig.InstanceIDs); err != nil {
-		return err
-	}
-	time.Sleep(15 * time.Second)
-
-	avalancheGoVersion, err := getAvalancheGoVersion()
-	if err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
-	if err := runAnsible(inventoryPath, avalancheGoVersion); err != nil {
-		return err
-	}
-	if err := setupBuildEnv(clusterName); err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
-	for _, instanceID := range cloudConfig.InstanceIDs {
-		nodeInstanceDirPath := app.GetNodeInstanceDirPath(instanceID)
-		// ansible host alias's name is formatted as ansiblePrefix_{instanceID}
-		ansiblePrefix := constants.AWSNodeAnsiblePrefix
-		if cloudService == constants.GCPCloudService {
-			ansiblePrefix = constants.GCPNodeAnsiblePrefix
-		}
-		nodeInstanceAnsibleAlias := fmt.Sprintf("%s_%s", ansiblePrefix, instanceID)
-		if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
-			return err
-		}
-	}
-	PrintResults(cloudConfig)
-	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
+	//cloudConfig := CloudConfig{}
+	//if cloudService == constants.AWSCloudService {
+	//	cloudConfig, err = createAWSInstance(usr)
+	//} else {
+	//	cloudConfig, err = createGCPInstance(usr)
+	//}
+	//if err != nil {
+	//	return err
+	//}
+	_, err = createGCPInstance(usr)
+	//if err := createClusterNodeConfig(cloudConfig, clusterName); err != nil {
+	//	return err
+	//}
+	//err = terraform.RemoveDirectory(app.GetTerraformDir())
+	//if err != nil {
+	//	return err
+	//}
+	//inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
+	//if err := ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudConfig.PublicIPs, cloudConfig.InstanceIDs); err != nil {
+	//	return err
+	//}
+	//time.Sleep(15 * time.Second)
+	//
+	//avalancheGoVersion, err := getAvalancheGoVersion()
+	//if err != nil {
+	//	return err
+	//}
+	//ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
+	//if err := runAnsible(inventoryPath, avalancheGoVersion); err != nil {
+	//	return err
+	//}
+	//if err := setupBuildEnv(clusterName); err != nil {
+	//	return err
+	//}
+	//ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
+	//for _, instanceID := range cloudConfig.InstanceIDs {
+	//	nodeInstanceDirPath := app.GetNodeInstanceDirPath(instanceID)
+	//	// ansible host alias's name is formatted as ansiblePrefix_{instanceID}
+	//	ansiblePrefix := constants.AWSNodeAnsiblePrefix
+	//	if cloudService == constants.GCPCloudService {
+	//		ansiblePrefix = constants.GCPNodeAnsiblePrefix
+	//	}
+	//	nodeInstanceAnsibleAlias := fmt.Sprintf("%s_%s", ansiblePrefix, instanceID)
+	//	if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
+	//		return err
+	//	}
+	//}
+	//PrintResults(cloudConfig)
+	//ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	return nil
 }
 
