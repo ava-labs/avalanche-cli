@@ -661,16 +661,10 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 		if err != nil {
 			return ids.Empty, err
 		}
-		err = pop.Verify()
-		if err != nil {
-			return ids.Empty, err
-		}
-		fmt.Printf("%#v\n", pop)
 		proofOfPossession = pop
 	} else {
 		proofOfPossession = &signer.Empty{}
 	}
-	return ids.Empty, fmt.Errorf("CHAU")
 	tx, err := wallet.P().IssueAddPermissionlessValidatorTx(&txs.SubnetValidator{
 		Validator: txs.Validator{
 			NodeID: nodeID,
