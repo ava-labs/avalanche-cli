@@ -29,7 +29,7 @@ const (
 	AnsibleDir                   = "ansible"
 	AnsibleHostInventoryFileName = "hosts"
 	ClusterConfigFileName        = "cluster_config.json"
-	BLSSecretKeyFileName         = "signer.key"
+	BLSFileName                  = "signer.key"
 	SidecarVersion               = "1.4.0"
 
 	MaxLogFileSize   = 4
