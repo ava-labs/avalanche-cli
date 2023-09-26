@@ -3,6 +3,7 @@
 package prompts
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -11,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanchego/genesis"
@@ -251,4 +253,21 @@ func ValidateRepoBranch(repo string, branch string) error {
 func ValidateRepoFile(repo string, branch string, file string) error {
 	url := repo + "/blob/" + branch + "/" + file
 	return ValidateURL(url)
+}
+
+func ValidateHexa(input string) error {
+	if input == "" {
+		return errors.New("string cannot be empty")
+	}
+	if len(input) < 2 || strings.ToLower(input[:2]) != "0x" {
+		return errors.New("hexa string has not 0x prefix")
+	}
+	if len(input) == 2 {
+		return errors.New("no hexa digits in string")
+	}
+	_, err := hex.DecodeString(input[2:])
+	if err != nil {
+		return errors.New("string not in hexa format")
+	}
+	return err
 }
