@@ -33,6 +33,7 @@ var (
 	ledgerAddresses              []string
 	nodeIDStr                    string
 	weight                       uint64
+	delegationFee                uint32
 	startTimeStr                 string
 	duration                     time.Duration
 	publicKey                    string
@@ -69,6 +70,7 @@ in the Primary Network`,
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().StringVar(&publicKey, "public-key", "", "set the BLS public key of the validator to add")
 	cmd.Flags().StringVar(&pop, "proof-of-possession", "", "set the BLS proof of possession of the validator to add")
+	cmd.Flags().Uint32Var(&delegationFee, "delegation-fee", 0, "set the delegation fee (20 000 is equivalent to 2%)")
 	return cmd
 }
 
@@ -94,14 +96,14 @@ func promptProofOfPossession() (jsonProofOfPossession, error) {
 	}
 	var err error
 	if publicKey == "" {
-		txt := "What is the public key of the node's BLS?:"
+		txt := "What is the public key of the node's BLS?"
 		publicKey, err = app.Prompt.CaptureValidatedString(txt, prompts.ValidateHexa)
 		if err != nil {
 			return jsonProofOfPossession{}, err
 		}
 	}
 	if pop == "" {
-		txt := "What is the proof of possession of the node's BLS?:"
+		txt := "What is the proof of possession of the node's BLS?"
 		pop, err = app.Prompt.CaptureValidatedString(txt, prompts.ValidateHexa)
 		if err != nil {
 			return jsonProofOfPossession{}, err
@@ -204,16 +206,26 @@ func addValidator(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	start, duration, err = nodecmd.GetTimeParametersPrimaryNetwork(network, 0, duration)
+	start, duration, err = nodecmd.GetTimeParametersPrimaryNetwork(network, 0, duration, startTimeStr)
 	if err != nil {
 		return err
 	}
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	nodecmd.PrintNodeJoinPrimaryNetworkOutput(nodeID, weight, network, start)
 	recipientAddr := kc.Addresses().List()[0]
-	delegationFee, err := getDelegationFeeOption(app, network)
-	if err != nil {
-		return err
+	if delegationFee != 0 {
+		delegationFee, err = getDelegationFeeOption(app, network)
+		if err != nil {
+			return err
+		}
+	} else {
+		defaultFee := genesis.FujiParams.MinDelegationFee
+		if network == models.Mainnet {
+			defaultFee = genesis.MainnetParams.MinDelegationFee
+		}
+		if delegationFee < defaultFee {
+			return fmt.Errorf("delegation fee has to be larger than %d", defaultFee)
+		}
 	}
 	_, err = deployer.AddPermissionlessValidator(ids.Empty, ids.Empty, nodeID, weight, uint64(start.Unix()), uint64(start.Add(duration).Unix()), recipientAddr, delegationFee, popBytes)
 	return err
