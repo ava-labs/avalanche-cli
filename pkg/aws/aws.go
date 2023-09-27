@@ -95,6 +95,35 @@ func CheckUserIPInSg(sg *ec2.SecurityGroup, currentIP string, port int64) bool {
 	return false
 }
 
+// GetInstancePublicIPs gets public IP(s) of EC2 instance(s) without elastic IP and returns a map
+// with ec2 instance id as key and public ip as value
+func GetInstancePublicIPs(ec2Svc *ec2.EC2, nodeIDs []string) (map[string]string, error) {
+	nodeIDsInput := []*string{}
+	for _, nodeID := range nodeIDs {
+		nodeIDsInput = append(nodeIDsInput, aws.String(nodeID))
+	}
+	instanceInput := &ec2.DescribeInstancesInput{
+		InstanceIds: nodeIDsInput,
+	}
+	instanceResults, err := ec2Svc.DescribeInstances(instanceInput)
+	if err != nil {
+		return nil, err
+	}
+	reservations := instanceResults.Reservations
+	if len(reservations) == 0 {
+		return nil, ErrNoInstanceState
+	}
+	instanceIDToIP := make(map[string]string)
+	for i := range reservations {
+		instances := reservations[i].Instances
+		if len(instances) == 0 {
+			return nil, ErrNoInstanceState
+		}
+		instanceIDToIP[*instances[0].InstanceId] = *instances[0].PublicIpAddress
+	}
+	return instanceIDToIP, nil
+}
+
 // CheckInstanceIsRunning checks that EC2 instance nodeID is running in AWS
 func CheckInstanceIsRunning(ec2Svc *ec2.EC2, nodeID string) (bool, error) {
 	instanceInput := &ec2.DescribeInstancesInput{

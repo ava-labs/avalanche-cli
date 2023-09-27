@@ -38,6 +38,7 @@ var (
 	deployMainnet                bool
 	keyName                      string
 	useLedger                    bool
+	useEIP                       bool
 	ledgerAddresses              []string
 	weight                       uint64
 	startTimeStr                 string
@@ -390,7 +391,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	err := setupAnsible()
+	err := setupAnsible(clusterName)
 	if err != nil {
 		return err
 	}
