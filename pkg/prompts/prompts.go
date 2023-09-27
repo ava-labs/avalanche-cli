@@ -18,8 +18,8 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/manifoldco/promptui"
-	"golang.org/x/mod/semver"
 	"golang.org/x/exp/slices"
+	"golang.org/x/mod/semver"
 )
 
 const (
@@ -714,16 +714,12 @@ func GetSubnetAuthKeys(prompt Prompter, walletKey string, controlKeys []string, 
 	filteredControlKeys = append(filteredControlKeys, controlKeys...)
 	if slices.Contains(controlKeys, walletKey) {
 		ux.Logger.PrintToUser("Adding wallet key %s to the tx subnet auth keys as it is a subnet control key", walletKey)
-		fmt.Println("CONTROL PRE", filteredControlKeys)
-		fmt.Println("AUTH    PRE", subnetAuthKeys)
 		subnetAuthKeys = append(subnetAuthKeys, walletKey)
 		index, err := getIndexInSlice(filteredControlKeys, walletKey)
 		if err != nil {
 			return nil, err
 		}
 		filteredControlKeys = append(filteredControlKeys[:index], filteredControlKeys[index+1:]...)
-		fmt.Println("CONTROL POS", filteredControlKeys)
-		fmt.Println("AUTH    POS", subnetAuthKeys)
 	}
 	for len(subnetAuthKeys) != int(threshold) {
 		subnetAuthKey, err := prompt.CaptureList(

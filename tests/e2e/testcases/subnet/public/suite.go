@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	//"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
@@ -259,7 +259,6 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		txPath, err := utils.GetTmpFilePath(txFnamePrefix)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		/*
 		// obtain ledger1 addr
 		interactionEndCh, ledgerSimEndCh := utils.StartLedgerSim(0, ledger1Seed, false)
 		ledger1Addr, err := utils.GetLedgerAddress(models.Local, 0)
@@ -280,44 +279,47 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		close(interactionEndCh)
 		<-ledgerSimEndCh
-		*/
 
-		ledger1Addr := "P-custom1jkjatcy2vxfx3st0kft8p0jup6k4ucxugtzhlc"
-		ledger2Addr := "P-custom12aw5g22a62u28y2c355x48swpxygr0l6lmuw8l"
-		ledger3Addr := "P-custom1nlnmukqavlv4gzw8y4q9ugl6jsjyj58xegwjkd"
+		// start the deploy process with ledger2
+		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(3, ledger2Seed, true)
 
-		interactionEndCh, ledgerSimEndCh := utils.StartLedgerSim(3, ledger1Seed, true)
-		err = utils.FundLedgerAddress(genesis.MainnetParams.TxFeeConfig.CreateSubnetTxFee + genesis.MainnetParams.TxFeeConfig.CreateBlockchainTxFee)
+		// multisig deploy from unfunded ledger2 should not create any subnet/blockchain
 		gomega.Expect(err).Should(gomega.BeNil())
 		s := commands.SimulateMultisigMainnetDeploy(
 			subnetName,
 			[]string{ledger1Addr, ledger2Addr, ledger3Addr},
 			[]string{ledger2Addr, ledger3Addr},
 			txPath,
-			false,
+			true,
 		)
-		close(interactionEndCh)
-		<-ledgerSimEndCh
+		toMatch := "(?s).+Ledger addresses:.+  " + ledger2Addr + ".+Error: insufficient funds.+"
+		matched, err := regexp.MatchString(toMatch, s)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
-		return
+		// let's fund the ledger
+		err = utils.FundLedgerAddress(genesis.MainnetParams.TxFeeConfig.CreateSubnetTxFee + genesis.MainnetParams.TxFeeConfig.CreateBlockchainTxFee)
 
-		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(1, ledger2Seed, true)
-		s = commands.TransactionSignWithLedger(
+		// multisig deploy from funded ledger2 should create the subnet but not deploy the blockchain,
+		// instead signing the tx and creating the tx file to wait for ledger3's signature
+		gomega.Expect(err).Should(gomega.BeNil())
+		s = commands.SimulateMultisigMainnetDeploy(
 			subnetName,
+			[]string{ledger1Addr, ledger2Addr, ledger3Addr},
+			[]string{ledger2Addr, ledger3Addr},
 			txPath,
 			false,
 		)
+		toMatch = "(?s).+Ledger addresses:.+  " + ledger2Addr + ".+Subnet has been created with ID.+" +
+			"1 of 2 required Blockchain Creation signatures have been signed\\. Saving tx to disk to enable remaining signing\\..+" +
+			"Addresses remaining to sign the tx\\s+" + ledger3Addr + ".+"
+		matched, err = regexp.MatchString(toMatch, s)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
+
+		// wait for end of ledger2 simulation
 		close(interactionEndCh)
 		<-ledgerSimEndCh
-
-		s = commands.TransactionCommit(
-			subnetName,
-			txPath,
-			false,
-		)
-
-		return
-
 
 		// try to commit before signature is complete (no funded wallet needed for commit)
 		s = commands.TransactionCommit(
@@ -325,10 +327,10 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			txPath,
 			true,
 		)
-		toMatch := "(?s).*1 of 2 required signatures have been signed\\..+" +
+		toMatch = "(?s).*1 of 2 required signatures have been signed\\..+" +
 			"Addresses remaining to sign the tx\\s+" + ledger3Addr +
 			".+Error: tx is not fully signed.+"
-			matched, err := regexp.MatchString(toMatch, s)
+		matched, err = regexp.MatchString(toMatch, s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
