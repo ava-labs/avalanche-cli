@@ -227,7 +227,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 			return fmt.Errorf("delegation fee has to be larger than %d", defaultFee)
 		}
 	}
-	_, err = deployer.AddPermissionlessValidator(ids.Empty, ids.Empty, nodeID, weight, uint64(start.Unix()), uint64(start.Add(duration).Unix()), recipientAddr, delegationFee, popBytes)
+	_, err = deployer.AddPermissionlessValidator(ids.Empty, ids.Empty, nodeID, weight, uint64(start.Unix()), uint64(start.Add(duration).Unix()), recipientAddr, delegationFee, popBytes, nil)
 	return err
 }
 
