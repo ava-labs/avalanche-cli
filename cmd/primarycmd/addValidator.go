@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"time"
 
@@ -32,8 +33,11 @@ var (
 	ledgerAddresses              []string
 	nodeIDStr                    string
 	weight                       uint64
+	delegationFee                uint32
 	startTimeStr                 string
 	duration                     time.Duration
+	publicKey                    string
+	pop                          string
 	ErrMutuallyExlusiveKeyLedger = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet        = errors.New("--key is not available for mainnet operations")
 )
@@ -64,22 +68,46 @@ in the Primary Network`,
 	cmd.Flags().BoolVar(&validateMainnet, "mainnet", false, "join on `mainnet`")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
+	cmd.Flags().StringVar(&publicKey, "public-key", "", "set the BLS public key of the validator to add")
+	cmd.Flags().StringVar(&pop, "proof-of-possession", "", "set the BLS proof of possession of the validator to add")
+	cmd.Flags().Uint32Var(&delegationFee, "delegation-fee", 0, "set the delegation fee (20 000 is equivalent to 2%)")
 	return cmd
 }
 
 func promptProofOfPossession() (jsonProofOfPossession, error) {
-	ux.Logger.PrintToUser("Next, we need the public key and proof of possession of the node's BLS")
-	ux.Logger.PrintToUser("SSH into the node and call info.getNodeID API to get the node's BLS info")
-	ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions on calling info.getNodeID API")
-	txt := "What is the public key of the node's BLS?"
-	publicKey, err := app.Prompt.CaptureBLSInfo(txt)
-	if err != nil {
-		return jsonProofOfPossession{}, err
+	if publicKey != "" {
+		err := prompts.ValidateHexa(publicKey)
+		if err != nil {
+			ux.Logger.PrintToUser("Format error in given public key: %s", err)
+			publicKey = ""
+		}
 	}
-	txt = "What is the proof of possession of the node's BLS?"
-	pop, err := app.Prompt.CaptureBLSInfo(txt)
-	if err != nil {
-		return jsonProofOfPossession{}, err
+	if pop != "" {
+		err := prompts.ValidateHexa(pop)
+		if err != nil {
+			ux.Logger.PrintToUser("Format error in given proof of possession: %s", err)
+			pop = ""
+		}
+	}
+	if publicKey == "" || pop == "" {
+		ux.Logger.PrintToUser("Next, we need the public key and proof of possession of the node's BLS")
+		ux.Logger.PrintToUser("SSH into the node and call info.getNodeID API to get the node's BLS info")
+		ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions on calling info.getNodeID API")
+	}
+	var err error
+	if publicKey == "" {
+		txt := "What is the public key of the node's BLS?"
+		publicKey, err = app.Prompt.CaptureValidatedString(txt, prompts.ValidateHexa)
+		if err != nil {
+			return jsonProofOfPossession{}, err
+		}
+	}
+	if pop == "" {
+		txt := "What is the proof of possession of the node's BLS?"
+		pop, err = app.Prompt.CaptureValidatedString(txt, prompts.ValidateHexa)
+		if err != nil {
+			return jsonProofOfPossession{}, err
+		}
 	}
 	return jsonProofOfPossession{PublicKey: publicKey, ProofOfPossession: pop}, nil
 }
@@ -178,18 +206,28 @@ func addValidator(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	start, duration, err = nodecmd.GetTimeParametersPrimaryNetwork(network, 0)
+	start, duration, err = nodecmd.GetTimeParametersPrimaryNetwork(network, 0, duration, startTimeStr)
 	if err != nil {
 		return err
 	}
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	nodecmd.PrintNodeJoinPrimaryNetworkOutput(nodeID, weight, network, start)
 	recipientAddr := kc.Addresses().List()[0]
-	delegationFee, err := getDelegationFeeOption(app, network)
-	if err != nil {
-		return err
+	if delegationFee != 0 {
+		delegationFee, err = getDelegationFeeOption(app, network)
+		if err != nil {
+			return err
+		}
+	} else {
+		defaultFee := genesis.FujiParams.MinDelegationFee
+		if network == models.Mainnet {
+			defaultFee = genesis.MainnetParams.MinDelegationFee
+		}
+		if delegationFee < defaultFee {
+			return fmt.Errorf("delegation fee has to be larger than %d", defaultFee)
+		}
 	}
-	_, err = deployer.AddPermissionlessValidator(ids.Empty, ids.Empty, nodeID, weight, uint64(start.Unix()), uint64(start.Add(duration).Unix()), recipientAddr, delegationFee, popBytes, nil)
+	_, err = deployer.AddPermissionlessValidator(ids.Empty, ids.Empty, nodeID, weight, uint64(start.Unix()), uint64(start.Add(duration).Unix()), recipientAddr, delegationFee, popBytes)
 	return err
 }
 
@@ -223,7 +261,10 @@ func getDelegationFeeOption(app *application.Avalanche, network models.Network) 
 		if err != nil {
 			return 0, err
 		}
-		return uint32(delegationFee), nil
+		if delegationFee > 0 && delegationFee <= math.MaxUint32 {
+			return uint32(delegationFee), nil
+		}
+		return 0, fmt.Errorf("invalid delegation fee")
 	}
 	return defaultFee, nil
 }

@@ -71,7 +71,7 @@ type Prompter interface {
 	CaptureNoYes(promptStr string) (bool, error)
 	CaptureList(promptStr string, options []string) (string, error)
 	CaptureString(promptStr string) (string, error)
-	CaptureBLSInfo(promptStr string) (string, error)
+	CaptureValidatedString(promptStr string, validator func(string) error) (string, error)
 	CaptureURL(promptStr string) (string, error)
 	CaptureRepoBranch(promptStr string, repo string) (string, error)
 	CaptureRepoFile(promptStr string, repo string, branch string) (string, error)
@@ -564,11 +564,10 @@ func (*realPrompter) CaptureString(promptStr string) (string, error) {
 	return str, nil
 }
 
-func (*realPrompter) CaptureBLSInfo(promptStr string) (string, error) {
+func (*realPrompter) CaptureValidatedString(promptStr string, validator func(string) error) (string, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
-		Validate: validateBLSInfo,
-		Mask:     '⌘',
+		Validate: validator,
 	}
 
 	str, err := prompt.Run()

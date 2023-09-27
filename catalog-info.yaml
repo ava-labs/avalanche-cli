@@ -14,6 +14,7 @@ spec:
   type: service
   owner: platform-tooling
   lifecycle: production
+  system: platform
   dependsOn:
     - component:avalanchego
     - component:avalanche-network-runner

@@ -453,29 +453,29 @@ func SetHardhatRPC(rpc string) error {
 
 func StartLedgerSim(
 	iters int,
-	secondsToWait int,
 	seed string,
 	showStdout bool,
-) chan struct{} {
+) (chan struct{}, chan struct{}) {
 	ledgerSimReadyCh := make(chan struct{})
+	interactionEndCh := make(chan struct{})
 	ledgerSimEndCh := make(chan struct{})
 	go func() {
 		defer ginkgo.GinkgoRecover()
-		err := RunLedgerSim(iters, secondsToWait, seed, ledgerSimReadyCh, ledgerSimEndCh, showStdout)
+		err := RunLedgerSim(iters, seed, ledgerSimReadyCh, interactionEndCh, ledgerSimEndCh, showStdout)
 		if err != nil {
 			fmt.Println(err)
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
 	}()
 	<-ledgerSimReadyCh
-	return ledgerSimEndCh
+	return interactionEndCh, ledgerSimEndCh
 }
 
 func RunLedgerSim(
 	iters int,
-	secondsToWait int,
 	seed string,
 	ledgerSimReadyCh chan struct{},
+	interactionEndCh chan struct{},
 	ledgerSimEndCh chan struct{},
 	showStdout bool,
 ) error {
@@ -483,11 +483,14 @@ func RunLedgerSim(
 		"ts-node",
 		basicLedgerSimScript,
 		fmt.Sprintf("%d", iters),
-		fmt.Sprintf("%d", secondsToWait),
 		seed,
 	)
 	cmd.Dir = ledgerSimDir
 
+	stdinPipe, err := cmd.StdinPipe()
+	if err != nil {
+		return err
+	}
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -508,6 +511,10 @@ func RunLedgerSim(
 			line = strings.TrimSpace(line)
 			if line == "SIMULATED LEDGER DEV READY" {
 				close(ledgerSimReadyCh)
+			}
+			if line == "PRESS ENTER TO END SIMULATOR" {
+				<-interactionEndCh
+				_, _ = io.WriteString(stdinPipe, "\n")
 			}
 			if showStdout {
 				fmt.Println(line)

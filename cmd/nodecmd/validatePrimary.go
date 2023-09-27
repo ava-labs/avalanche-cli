@@ -40,6 +40,7 @@ var (
 	useLedger                    bool
 	ledgerAddresses              []string
 	weight                       uint64
+	startTimeStr                 string
 	duration                     time.Duration
 	useCustomDuration            bool
 	ErrMutuallyExlusiveKeyLedger = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
@@ -65,6 +66,7 @@ Network.`,
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().Uint64Var(&weight, "stake-amount", 0, "how many AVAX to stake in the validator")
+	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long validator validates for after start time")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 
@@ -181,7 +183,7 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 	if weight < minValStake {
 		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", minValStake, weight)
 	}
-	start, duration, err = GetTimeParametersPrimaryNetwork(network, nodeIndex)
+	start, duration, err = GetTimeParametersPrimaryNetwork(network, nodeIndex, duration, startTimeStr)
 	if err != nil {
 		return err
 	}
@@ -232,17 +234,25 @@ func PromptWeightPrimaryNetwork(network models.Network) (uint64, error) {
 	}
 }
 
-func GetTimeParametersPrimaryNetwork(network models.Network, nodeIndex int) (time.Time, time.Duration, error) {
+func GetTimeParametersPrimaryNetwork(network models.Network, nodeIndex int, validationDuration time.Duration, validationStartTimeStr string) (time.Time, time.Duration, error) {
 	const (
 		defaultDurationOption = "Minimum staking duration on primary network"
 		custom                = "Custom"
 	)
 	var err error
-	start := time.Now().Add(constants.PrimaryNetworkValidatingStartLeadTime)
-	if useCustomDuration && duration != 0 {
+	var start time.Time
+	if validationStartTimeStr != "" {
+		start, err = time.Parse(constants.TimeParseLayout, validationStartTimeStr)
+		if err != nil {
+			return time.Time{}, 0, err
+		}
+	} else {
+		start = time.Now().Add(constants.PrimaryNetworkValidatingStartLeadTime)
+	}
+	if useCustomDuration && validationDuration != 0 {
 		return start, duration, nil
 	}
-	if duration != 0 {
+	if validationDuration != 0 {
 		duration, err = getDefaultValidationTime(start, network, nodeIndex)
 		if err != nil {
 			return time.Time{}, 0, err
