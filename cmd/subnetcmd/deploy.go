@@ -469,13 +469,19 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	walletKeys, err := loadCreationKeys(network, kc)
+	if err != nil {
+		return err
+	}
+	walletKey := walletKeys[0]
+
 	// get keys for blockchain tx signing
 	if subnetAuthKeys != nil {
-		if err := prompts.CheckSubnetAuthKeys(subnetAuthKeys, controlKeys, threshold); err != nil {
+		if err := prompts.CheckSubnetAuthKeys(walletKey, subnetAuthKeys, controlKeys, threshold); err != nil {
 			return err
 		}
 	} else {
-		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, controlKeys, threshold)
+		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, walletKey, controlKeys, threshold)
 		if err != nil {
 			return err
 		}

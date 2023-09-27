@@ -137,6 +137,12 @@ func addValidator(_ *cobra.Command, args []string) error {
 		network = models.Local
 	}
 
+	// get keychain accesor
+	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
+	if err != nil {
+		return err
+	}
+
 	chains, err := ValidateSubnetNameAndGetChains(args)
 	if err != nil {
 		return err
@@ -157,13 +163,19 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	walletKeys, err := loadCreationKeys(network, kc)
+	if err != nil {
+		return err
+	}
+	walletKey := walletKeys[0]
+
 	// get keys for add validator tx signing
 	if subnetAuthKeys != nil {
-		if err := prompts.CheckSubnetAuthKeys(subnetAuthKeys, controlKeys, threshold); err != nil {
+		if err := prompts.CheckSubnetAuthKeys(walletKey, subnetAuthKeys, controlKeys, threshold); err != nil {
 			return err
 		}
 	} else {
-		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, controlKeys, threshold)
+		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, walletKey, controlKeys, threshold)
 		if err != nil {
 			return err
 		}
@@ -203,11 +215,6 @@ func addValidator(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Weight: %d", weight)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
-	// get keychain accesor
-	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
-	if err != nil {
-		return err
-	}
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidator(controlKeys, subnetAuthKeys, subnetID, nodeID, weight, start, duration)
 	if err != nil {

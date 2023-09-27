@@ -259,15 +259,8 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		txPath, err := utils.GetTmpFilePath(txFnamePrefix)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		// obtain ledger1 addr
-		interactionEndCh, ledgerSimEndCh := utils.StartLedgerSim(0, ledger1Seed, false)
-		ledger1Addr, err := utils.GetLedgerAddress(models.Local, 0)
-		gomega.Expect(err).Should(gomega.BeNil())
-		close(interactionEndCh)
-		<-ledgerSimEndCh
-
 		// obtain ledger2 addr
-		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(0, ledger2Seed, false)
+		interactionEndCh, ledgerSimEndCh := utils.StartLedgerSim(0, ledger2Seed, false)
 		ledger2Addr, err := utils.GetLedgerAddress(models.Local, 0)
 		gomega.Expect(err).Should(gomega.BeNil())
 		close(interactionEndCh)
@@ -280,19 +273,27 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		close(interactionEndCh)
 		<-ledgerSimEndCh
 
-		// start the deploy process with ledger2
-		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(3, ledger2Seed, true)
+		// ledger4 addr
+		// will not be used to sign, only as a extra control key, so no sim is needed to generate it
+		ledger4Addr := "P-custom18g2tekxzt60j3sn8ymjx6qvk96xunhctkyzckt"
 
-		// multisig deploy from unfunded ledger2 should not create any subnet/blockchain
+		// start the deploy process with ledger1
+		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(3, ledger1Seed, true)
+
+		// obtain ledger1 addr
+		ledger1Addr, err := utils.GetLedgerAddress(models.Local, 0)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// multisig deploy from unfunded ledger1 should not create any subnet/blockchain
 		gomega.Expect(err).Should(gomega.BeNil())
 		s := commands.SimulateMultisigMainnetDeploy(
 			subnetName,
-			[]string{ledger1Addr, ledger2Addr, ledger3Addr},
+			[]string{ledger2Addr, ledger3Addr, ledger4Addr},
 			[]string{ledger2Addr, ledger3Addr},
 			txPath,
 			true,
 		)
-		toMatch := "(?s).+Ledger addresses:.+  " + ledger2Addr + ".+Error: insufficient funds.+"
+		toMatch := "(?s).+Ledger addresses:.+  " + ledger1Addr + ".+Error: insufficient funds.+"
 		matched, err := regexp.MatchString(toMatch, s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
@@ -300,26 +301,23 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		// let's fund the ledger
 		err = utils.FundLedgerAddress(genesis.MainnetParams.TxFeeConfig.CreateSubnetTxFee + genesis.MainnetParams.TxFeeConfig.CreateBlockchainTxFee)
 
-		// multisig deploy from funded ledger2 should create the subnet but not deploy the blockchain,
-		// instead signing the tx and creating the tx file to wait for ledger3's signature
+		// multisig deploy from funded ledger1 should create the subnet but not deploy the blockchain,
+		// instead signing only its tx fee as it is not a subnet auth key,
+		// and creating the tx file to wait for subnet auths from ledger2 and ledger3
 		gomega.Expect(err).Should(gomega.BeNil())
 		s = commands.SimulateMultisigMainnetDeploy(
 			subnetName,
-			[]string{ledger1Addr, ledger2Addr, ledger3Addr},
+			[]string{ledger2Addr, ledger3Addr, ledger4Addr},
 			[]string{ledger2Addr, ledger3Addr},
 			txPath,
 			false,
 		)
-		toMatch = "(?s).+Ledger addresses:.+  " + ledger2Addr + ".+Subnet has been created with ID.+" +
-			"1 of 2 required Blockchain Creation signatures have been signed\\. Saving tx to disk to enable remaining signing\\..+" +
-			"Addresses remaining to sign the tx\\s+" + ledger3Addr + ".+"
+		toMatch = "(?s).+Ledger addresses:.+  " + ledger1Addr + ".+Subnet has been created with ID.+" +
+			"0 of 2 required Blockchain Creation signatures have been signed\\. Saving tx to disk to enable remaining signing\\..+" +
+			"Addresses remaining to sign the tx\\s+" + ledger2Addr + ".+" + ledger3Addr + ".+"
 		matched, err = regexp.MatchString(toMatch, s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
-
-		// wait for end of ledger2 simulation
-		close(interactionEndCh)
-		<-ledgerSimEndCh
 
 		// try to commit before signature is complete (no funded wallet needed for commit)
 		s = commands.TransactionCommit(
@@ -327,27 +325,28 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			txPath,
 			true,
 		)
-		toMatch = "(?s).*1 of 2 required signatures have been signed\\..+" +
-			"Addresses remaining to sign the tx\\s+" + ledger3Addr +
+		toMatch = "(?s).*0 of 2 required signatures have been signed\\..+" +
+			"Addresses remaining to sign the tx\\s+" + ledger2Addr + ".+" + ledger3Addr + ".+" +
 			".+Error: tx is not fully signed.+"
 		matched, err = regexp.MatchString(toMatch, s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
 		// try to sign using unauthorized ledger1
-		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(0, ledger1Seed, true)
 		s = commands.TransactionSignWithLedger(
 			subnetName,
 			txPath,
 			true,
 		)
-		close(interactionEndCh)
-		<-ledgerSimEndCh
 		toMatch = "(?s).+Ledger addresses:.+  " + ledger1Addr + ".+There are no required subnet auth keys present in the wallet.+" +
-			"Expected one of:\\s+" + ledger3Addr + ".+Error: no remaining signer address present in wallet.*"
+			"Expected one of:\\s+" + ledger2Addr + ".+" + ledger3Addr + ".+Error: no remaining signer address present in wallet.*"
 		matched, err = regexp.MatchString(toMatch, s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
+
+		// wait for end of ledger1 simulation
+		close(interactionEndCh)
+		<-ledgerSimEndCh
 
 		// try to commit before signature is complete
 		s = commands.TransactionCommit(
@@ -355,27 +354,41 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			txPath,
 			true,
 		)
-		toMatch = "(?s).*1 of 2 required signatures have been signed\\..+" +
-			"Addresses remaining to sign the tx\\s+" + ledger3Addr +
+		toMatch = "(?s).*0 of 2 required signatures have been signed\\..+" +
+			"Addresses remaining to sign the tx\\s+" + ledger2Addr + ".+" + ledger3Addr + ".+" +
 			".+Error: tx is not fully signed.+"
 		matched, err = regexp.MatchString(toMatch, s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
+		// sign using ledger2
+		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(1, ledger2Seed, true)
+		s = commands.TransactionSignWithLedger(
+			subnetName,
+			txPath,
+			false,
+		)
+		toMatch = "(?s).+Ledger addresses:.+  " + ledger2Addr + ".+1 of 2 required Tx signatures have been signed\\..+" +
+			"Addresses remaining to sign the tx\\s+" + ledger3Addr + ".*"
+		matched, err = regexp.MatchString(toMatch, s)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
+
 		// try to sign using ledger2 which already signed
-		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(0, ledger2Seed, true)
 		s = commands.TransactionSignWithLedger(
 			subnetName,
 			txPath,
 			true,
 		)
-		close(interactionEndCh)
-		<-ledgerSimEndCh
 		toMatch = "(?s).+Ledger addresses:.+  " + ledger2Addr + ".+There are no required subnet auth keys present in the wallet.+" +
 			"Expected one of:\\s+" + ledger3Addr + ".+Error: no remaining signer address present in wallet.*"
 		matched, err = regexp.MatchString(toMatch, s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
+
+		// wait for end of ledger2 simulation
+		close(interactionEndCh)
+		<-ledgerSimEndCh
 
 		// try to commit before signature is complete
 		s = commands.TransactionCommit(
@@ -397,26 +410,25 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			txPath,
 			false,
 		)
-		close(interactionEndCh)
-		<-ledgerSimEndCh
 		toMatch = "(?s).+Ledger addresses:.+  " + ledger3Addr + ".+Tx is fully signed, and ready to be committed.+"
 		matched, err = regexp.MatchString(toMatch, s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
 		// try to sign using ledger3 which already signedtx is already fully signed"
-		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(0, ledger3Seed, true)
 		s = commands.TransactionSignWithLedger(
 			subnetName,
 			txPath,
 			true,
 		)
-		close(interactionEndCh)
-		<-ledgerSimEndCh
 		toMatch = "(?s).*Tx is fully signed, and ready to be committed.+Error: tx is already fully signed"
 		matched, err = regexp.MatchString(toMatch, s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
+
+		// wait for end of ledger3 simulation
+		close(interactionEndCh)
+		<-ledgerSimEndCh
 
 		// commit after complete signature
 		s = commands.TransactionCommit(
