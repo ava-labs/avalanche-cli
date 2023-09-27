@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/cmd/primarycmd"
+
 	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
 
 	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
@@ -69,6 +71,7 @@ in with avalanche subnet create myNewSubnet.`,
 
 	// add sub commands
 	rootCmd.AddCommand(subnetcmd.NewCmd(app))
+	rootCmd.AddCommand(primarycmd.NewCmd(app))
 	rootCmd.AddCommand(networkcmd.NewCmd(app))
 	rootCmd.AddCommand(keycmd.NewCmd(app))
 
