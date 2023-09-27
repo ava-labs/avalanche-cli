@@ -8,6 +8,9 @@ import (
 	"fmt"
 	terraformGCP "github.com/ava-labs/avalanche-cli/pkg/terraform/gcp"
 	"golang.org/x/exp/rand"
+	"golang.org/x/net/context"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/compute/v1"
 	"net"
 	"os"
 	"os/exec"
@@ -198,34 +201,112 @@ func promptKeyPairName(ec2Svc *ec2.EC2) (string, string, error) {
 }
 
 func getGCPConfig() (*ec2.EC2, string, string, error) {
-	usEast1 := "us-east-1"
-	usEast2 := "us-east-2"
-	usWest1 := "us-west-1"
-	usWest2 := "us-west-2"
-	customRegion := "Choose custom region (list of regions available at https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html)"
-	region, err := app.Prompt.CaptureList(
-		"Which AWS region do you want to set up your node in?",
-		[]string{usEast1, usEast2, usWest1, usWest2, customRegion},
-	)
+	//usEast := "us-east1-b"
+	//usCentral := "us-central1-c"
+	//usWest := "us-west1-b"
+	//customRegion := "Choose custom zone (list of zones available at https://cloud.google.com/compute/docs/regions-zones)"
+	//zonePromptTxt := "Which GCP zone do you want to set up your node in?"
+	//zone, err := app.Prompt.CaptureList(
+	//	zonePromptTxt,
+	//	[]string{usEast, usCentral, usWest, customRegion},
+	//)
+	//if err != nil {
+	//	return nil, "", "", err
+	//}
+	//if zone == customRegion {
+	//	zone, err = app.Prompt.CaptureString(zonePromptTxt)
+	//	if err != nil {
+	//		return nil, "", "", err
+	//	}
+	//}
+	//projectName, err := app.Prompt.CaptureString("What is the name of your Google Cloud project?")
+	//if err != nil {
+	//	return nil, "", "", err
+	//}
+	//gcpCredentialPath, err := app.Prompt.CaptureString("What is the file path to your Google Cloud credential JSON file?")
+	//if err != nil {
+	//	return nil, "", "", err
+	//}
+
+	////
+	//sess, err := getAWSCloudCredentials(region, false)
+	//if err != nil {
+	//	return nil, "", "", err
+	//}
+	//ec2Svc := ec2.New(sess)
+
+	//ami, err := awsAPI.GetUbuntuAMIID(ec2Svc)
+	//if err != nil {
+	//	return nil, "", "", err
+	//}
+	/////
+	//os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", gcpCredentialPath)
+	os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "/Users/raymondsukanto/Desktop/second-abacus-399120-fa18aefc3f7e.json")
+	ctx := context.Background()
+	client, err := google.DefaultClient(ctx, compute.ComputeScope)
 	if err != nil {
-		return nil, "", "", err
+		fmt.Println(err)
 	}
-	if region == customRegion {
-		region, err = app.Prompt.CaptureString("Which AWS region do you want to set up your node in?")
-		if err != nil {
-			return nil, "", "", err
-		}
+	computeService, err := compute.New(client)
+
+	imageListCall := computeService.Images.List("ubuntu-os-cloud").Filter("cpuPlatform = Intel Skylake")
+	imageList, err := imageListCall.Do()
+	//fmt.Printf("obtained imageList name %s \n", imageList.Items)
+	fmt.Printf("len of items %d \n", len(imageList.Items))
+	for _, image := range imageList.Items {
+		//if image.Architecture == "X86_64" {
+		//	fmt.Printf("obtained imageList name %s \n", image.Name)
+		//}
+		fmt.Printf("obtained imageList name %s \n", image.Name)
+		fmt.Printf("obtained imageList family %s \n", image.Family)
+		//if image.Family
+		//fmt.Printf("obtained imageList name %s \n", image.Name)
+		//fmt.Printf("obtained imageList name %s \n", image.Architecture)
 	}
-	sess, err := getAWSCloudCredentials(region, false)
-	if err != nil {
-		return nil, "", "", err
-	}
-	ec2Svc := ec2.New(sess)
-	ami, err := awsAPI.GetUbuntuAMIID(ec2Svc)
-	if err != nil {
-		return nil, "", "", err
-	}
-	return ec2Svc, region, ami, nil
+	//
+	//regionListCall := computeService.Regions.List(projectName)
+	//regionList, err := regionListCall.Do()
+	//for _, instance := range regionList.Items {
+	//	fmt.Printf("obtained regionList name %s \n", instance.Name)
+	//	fmt.Printf("obtained regionList name %s \n", instance.Status)
+	//}
+	////zoneListCall := computeService.Zones.List("second-abacus-399120")
+	////zoneList, err := zoneListCall.Do()
+	//if err != nil {
+	//	return nil, "", "", err
+	//}
+	//instanceListCall := computeService.Instances.List(projectName, "us-east1-b")
+	//instanceList, err := instanceListCall.Do()
+	//if err != nil {
+	//	return nil, "", "", err
+	//} else {
+	//	for _, instance := range instanceList.Items {
+	//		fmt.Printf("obtained instance name %s \n", instance.Name)
+	//		fmt.Printf("obtained instance name %s \n", instance.Status)
+	//	}
+	//}
+	////for _, zone := range zoneList.Items {
+	////	fmt.Printf("obtained zone name %s \n", zone.Name)
+	////	instanceListCall := computeService.Instances.List("second-abacus-399120", zone.Name)
+	////	instanceList, err := instanceListCall.Do()
+	////	if err != nil {
+	////		return nil, "", "", err
+	////	} else {
+	////		for _, instance := range instanceList.Items {
+	////			fmt.Printf("obtained instance name %s \n", instance.Name)
+	////			fmt.Printf("obtained instance name %s \n", instance.Status)
+	////		}
+	////	}
+	////}
+	//firewallListCall := computeService.Firewalls.List("second-abacus-399120")
+	//firewallList, err := firewallListCall.Do()
+	//if err != nil {
+	//	return nil, "", "", err
+	//}
+	//for _, firewall := range firewallList.Items {
+	//	fmt.Printf("firewall name %s \n", firewall.Name)
+	//}
+	return nil, "", "", nil
 }
 
 func getAWSCloudConfig() (*ec2.EC2, string, string, error) {
@@ -540,36 +621,37 @@ func createAWSInstance(usr *user.User) (CloudConfig, error) {
 
 func createGCPInstance(usr *user.User) (CloudConfig, error) {
 	// Get GCP Credential, region and Image ID
-	//gcpSvc, region, ami, err := getGCPConfig()
+	_, _, _, err := getGCPConfig()
+	if err != nil {
+		return CloudConfig{}, nil
+	}
+	//ami := "ubuntu-os-cloud/ubuntu-2004-focal-v20220712"
+	//region := "us-east1"
+	//zone := "us-east1-b"
+	//credentialsPath := "/Users/raymondsukanto/Desktop/second-abacus-399120-fa18aefc3f7e.json"
+	//prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
+	//firewallName := prefix + "-" + region + constants.AWSSecurityGroupSuffix
+	//hclFile, rootBody, err := terraform.InitConf()
 	//if err != nil {
 	//	return CloudConfig{}, nil
 	//}
-	ami := "ubuntu-os-cloud/ubuntu-2004-focal-v20220712"
-	region := "us-east1"
-	zone := "us-east1-b"
-	credentialsPath := "/Users/raymondsukanto/Desktop/second-abacus-399120-fa18aefc3f7e.json"
-	prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
-	firewallName := prefix + "-" + region + constants.AWSSecurityGroupSuffix
-	hclFile, rootBody, err := terraform.InitConf()
-	if err != nil {
-		return CloudConfig{}, nil
-	}
-
-	// Create new EC2 instances
-	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(rootBody, nil, hclFile, region, zone, ami, "/Users/raymondsukanto/.ssh/gcp-test3.pub", prefix, firewallName, credentialsPath)
-	if err != nil {
-		return CloudConfig{}, nil
-	}
-	gcpCloudConfig := CloudConfig{
-		instanceIDs,
-		elasticIPs,
-		region,
-		keyPairName,
-		firewallName,
-		certFilePath,
-		ami,
-	}
-	return gcpCloudConfig, nil
+	//
+	//// Create new EC2 instances
+	//instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(rootBody, nil, hclFile, region, zone, ami, "/Users/raymondsukanto/.ssh/gcp-test3.pub", prefix, firewallName, credentialsPath)
+	//if err != nil {
+	//	return CloudConfig{}, nil
+	//}
+	//gcpCloudConfig := CloudConfig{
+	//	instanceIDs,
+	//	elasticIPs,
+	//	region,
+	//	keyPairName,
+	//	firewallName,
+	//	certFilePath,
+	//	ami,
+	//}
+	//return gcpCloudConfig, nil
+	return CloudConfig{}, nil
 }
 
 func createNode(_ *cobra.Command, args []string) error {
