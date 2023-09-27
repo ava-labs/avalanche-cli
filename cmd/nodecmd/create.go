@@ -401,7 +401,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err := setupBuildEnv(clusterName); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
+	ux.Logger.PrintToUser("Copying staker.crt, staker.key and signer.key to local machine...")
 	for _, instanceID := range instanceIDs {
 		nodeInstanceDirPath := app.GetNodeInstanceDirPath(instanceID)
 		// ansible host alias's name is formatted as aws_node_{instanceID}
@@ -588,7 +588,7 @@ func PrintResults(instanceIDs, elasticIPs []string, certFilePath, region string)
 		ux.Logger.PrintToUser(fmt.Sprintf("Elastic IP: %s", elasticIPs[i]))
 		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Region: %s", region))
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(fmt.Sprintf("staker.crt and staker.key are stored at %s. If anything happens to your node or the machine node runs on, these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID)))
+		ux.Logger.PrintToUser(fmt.Sprintf("staker.crt, staker.key and signer.key are stored at %s. If anything happens to your node or the machine node runs on, these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID)))
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("To ssh to node, run: ")
 		ux.Logger.PrintToUser("")

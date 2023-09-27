@@ -132,7 +132,7 @@ func RunAnsiblePlaybookSetupNode(configPath, ansibleDir, inventoryPath, avalanch
 	return cmdErr
 }
 
-// RunAnsiblePlaybookCopyStakingFiles copies staker.crt and staker.key into local machine so users can back up their node
+// RunAnsiblePlaybookCopyStakingFiles copies staker.crt, staker.key and signer.key into local machine so users can back up their node
 // these files are stored in .avalanche-cli/nodes/<nodeID> dir
 // targets a specific host ansibleHostID in ansible inventory file
 func RunAnsiblePlaybookCopyStakingFiles(ansibleDir, ansibleHostID, nodeInstanceDirPath, inventoryPath string) error {
