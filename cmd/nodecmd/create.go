@@ -28,6 +28,7 @@ import (
 
 	subnet "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
+	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/terraform/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -163,6 +164,26 @@ func printNoCredentialsOutput() {
 	ux.Logger.PrintToUser("More info can be found at https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-creds")
 }
 
+func getGCPCloudCredentials() (*compute.Service, error) {
+	var err error
+	var gcpCredentialsPath string
+	clusterConfig := models.ClusterConfig{}
+	if app.ClusterConfigExists() {
+		clusterConfig, err = app.LoadClusterConfig()
+		if err != nil {
+			return nil, err
+		}
+	}
+	os.Setenv(constants.GCPCredentialsEnvVar, gcpCredentialPath)
+	//os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "/Users/raymondsukanto/Desktop/second-abacus-399120-fa18aefc3f7e.json")
+	ctx := context.Background()
+	client, err := google.DefaultClient(ctx, compute.ComputeScope)
+	if err != nil {
+		return nil, err
+	}
+	return compute.New(client)
+}
+
 // getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
 func getAWSCloudCredentials(region string, stopNode bool) (*session.Session, error) {
 	if stopNode {
@@ -201,32 +222,32 @@ func promptKeyPairName(ec2Svc *ec2.EC2) (string, string, error) {
 }
 
 func getGCPConfig() (*ec2.EC2, string, string, error) {
-	//usEast := "us-east1-b"
-	//usCentral := "us-central1-c"
-	//usWest := "us-west1-b"
-	//customRegion := "Choose custom zone (list of zones available at https://cloud.google.com/compute/docs/regions-zones)"
-	//zonePromptTxt := "Which GCP zone do you want to set up your node in?"
-	//zone, err := app.Prompt.CaptureList(
-	//	zonePromptTxt,
-	//	[]string{usEast, usCentral, usWest, customRegion},
-	//)
-	//if err != nil {
-	//	return nil, "", "", err
-	//}
-	//if zone == customRegion {
-	//	zone, err = app.Prompt.CaptureString(zonePromptTxt)
-	//	if err != nil {
-	//		return nil, "", "", err
-	//	}
-	//}
-	//projectName, err := app.Prompt.CaptureString("What is the name of your Google Cloud project?")
-	//if err != nil {
-	//	return nil, "", "", err
-	//}
-	//gcpCredentialPath, err := app.Prompt.CaptureString("What is the file path to your Google Cloud credential JSON file?")
-	//if err != nil {
-	//	return nil, "", "", err
-	//}
+	usEast := "us-east1-b"
+	usCentral := "us-central1-c"
+	usWest := "us-west1-b"
+	customRegion := "Choose custom zone (list of zones available at https://cloud.google.com/compute/docs/regions-zones)"
+	zonePromptTxt := "Which GCP zone do you want to set up your node in?"
+	zone, err := app.Prompt.CaptureList(
+		zonePromptTxt,
+		[]string{usEast, usCentral, usWest, customRegion},
+	)
+	if err != nil {
+		return nil, "", "", err
+	}
+	if zone == customRegion {
+		zone, err = app.Prompt.CaptureString(zonePromptTxt)
+		if err != nil {
+			return nil, "", "", err
+		}
+	}
+	projectName, err := app.Prompt.CaptureString("What is the name of your Google Cloud project?")
+	if err != nil {
+		return nil, "", "", err
+	}
+	gcpCredentialPath, err := app.Prompt.CaptureString("What is the file path to your Google Cloud credential JSON file?")
+	if err != nil {
+		return nil, "", "", err
+	}
 
 	////
 	//sess, err := getAWSCloudCredentials(region, false)
@@ -235,30 +256,30 @@ func getGCPConfig() (*ec2.EC2, string, string, error) {
 	//}
 	//ec2Svc := ec2.New(sess)
 
-	//ami, err := awsAPI.GetUbuntuAMIID(ec2Svc)
-	//if err != nil {
-	//	return nil, "", "", err
-	//}
-	/////
-	//os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", gcpCredentialPath)
-	os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "/Users/raymondsukanto/Desktop/second-abacus-399120-fa18aefc3f7e.json")
+	os.Setenv(constants.GCPCredentialsEnvVar, gcpCredentialPath)
+	//os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "/Users/raymondsukanto/Desktop/second-abacus-399120-fa18aefc3f7e.json")
 	ctx := context.Background()
 	client, err := google.DefaultClient(ctx, compute.ComputeScope)
 	if err != nil {
 		fmt.Println(err)
 	}
 	computeService, err := compute.New(client)
-
-	imageListCall := computeService.Images.List("ubuntu-os-cloud").Filter("cpuPlatform = Intel Skylake")
+	imageID, err := gcpAPI.GetUbuntuImageID(computeService)
+	if err != nil {
+		return nil, "", "", err
+	}
+	imageListCall := computeService.Images.List(constants.GCPDefaultImageProvider).Filter(constants.GCPImageFilter)
 	imageList, err := imageListCall.Do()
-	//fmt.Printf("obtained imageList name %s \n", imageList.Items)
-	fmt.Printf("len of items %d \n", len(imageList.Items))
 	for _, image := range imageList.Items {
 		//if image.Architecture == "X86_64" {
 		//	fmt.Printf("obtained imageList name %s \n", image.Name)
 		//}
-		fmt.Printf("obtained imageList name %s \n", image.Name)
-		fmt.Printf("obtained imageList family %s \n", image.Family)
+		if image.Deprecated == nil {
+			fmt.Printf("obtained imageList name %s \n", image.Name)
+			fmt.Printf("obtained imageList family %s \n", image.Family)
+			fmt.Printf("obtained imageList family %s \n", image.Architecture)
+		}
+
 		//if image.Family
 		//fmt.Printf("obtained imageList name %s \n", image.Name)
 		//fmt.Printf("obtained imageList name %s \n", image.Architecture)
