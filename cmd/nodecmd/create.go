@@ -54,6 +54,7 @@ will apply to all nodes in the cluster`,
 		Args:         cobra.ExactArgs(1),
 		RunE:         createNode,
 	}
+	cmd.Flags().BoolVar(&useEIP, "use-elastic-ip", true, "attach Elastic IP on AWS coud servers")
 
 	return cmd
 }
@@ -80,6 +81,10 @@ func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
 // also creates cluster config in .avalanche-cli/nodes storing various key pair and security group info for all clusters
 func createClusterNodeConfig(nodeIDs, publicIPs []string, region, ami, keyPairName, certPath, sg, clusterName string) error {
 	for i := range nodeIDs {
+		publicIP := ""
+		if len(publicIPs) > 0 {
+			publicIP = publicIPs[i]
+		}
 		nodeConfig := models.NodeConfig{
 			NodeID:        nodeIDs[i],
 			Region:        region,
@@ -87,7 +92,7 @@ func createClusterNodeConfig(nodeIDs, publicIPs []string, region, ami, keyPairNa
 			KeyPair:       keyPairName,
 			CertPath:      certPath,
 			SecurityGroup: sg,
-			ElasticIP:     publicIPs[i],
+			ElasticIP:     publicIP,
 		}
 		err := app.CreateNodeCloudConfigFile(nodeIDs[i], &nodeConfig)
 		if err != nil {
@@ -147,12 +152,12 @@ func printNoCredentialsOutput() {
 }
 
 // getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
-func getAWSCloudCredentials(region string, stopNode bool) (*session.Session, error) {
-	if stopNode {
+func getAWSCloudCredentials(region, awsCommand string) (*session.Session, error) {
+	if awsCommand == constants.StopAWSNode {
 		if err := requestStopAWSNodeAuth(); err != nil {
 			return &session.Session{}, err
 		}
-	} else {
+	} else if awsCommand == constants.CreateAWSNode {
 		if err := requestAWSAccountAuth(); err != nil {
 			return &session.Session{}, err
 		}
@@ -202,7 +207,7 @@ func getAWSCloudConfig() (*ec2.EC2, string, string, error) {
 			return nil, "", "", err
 		}
 	}
-	sess, err := getAWSCloudCredentials(region, false)
+	sess, err := getAWSCloudCredentials(region, constants.CreateAWSNode)
 	if err != nil {
 		return nil, "", "", err
 	}
@@ -285,9 +290,11 @@ func createEC2Instances(rootBody *hclwrite.Body,
 		ipInHTTP := awsAPI.CheckUserIPInSg(sg, userIPAddress, constants.AvalanchegoAPIPort)
 		terraform.SetSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
 	}
-	terraform.SetElasticIPs(rootBody, numNodes)
+	if useEIP {
+		terraform.SetElasticIPs(rootBody, numNodes)
+	}
 	terraform.SetupInstances(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami, numNodes)
-	terraform.SetOutput(rootBody)
+	terraform.SetOutput(rootBody, useEIP)
 	err = app.CreateTerraformDir()
 	if err != nil {
 		return nil, nil, "", "", err
@@ -296,7 +303,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	instanceIDs, elasticIPs, err := terraform.RunTerraform(app.GetTerraformDir())
+	instanceIDs, elasticIPs, err := terraform.RunTerraform(app.GetTerraformDir(), useEIP)
 	if err != nil {
 		return nil, nil, "", "", err
 	}
@@ -384,8 +391,19 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	publicIPMap := map[string]string{}
+	if !useEIP {
+		publicIPMap, err = awsAPI.GetInstancePublicIPs(ec2Svc, instanceIDs)
+		if err != nil {
+			return err
+		}
+	} else {
+		for i, node := range instanceIDs {
+			publicIPMap[node] = elasticIPs[i]
+		}
+	}
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	if err := ansible.CreateAnsibleHostInventory(inventoryPath, certFilePath, elasticIPs, instanceIDs); err != nil {
+	if err := ansible.CreateAnsibleHostInventory(inventoryPath, certFilePath, publicIPMap); err != nil {
 		return err
 	}
 	time.Sleep(15 * time.Second)
@@ -394,8 +412,8 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance(s) ...")
-	if err := runAnsible(inventoryPath, avalancheGoVersion); err != nil {
+	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance(s)...")
+	if err := runAnsible(inventoryPath, avalancheGoVersion, clusterName); err != nil {
 		return err
 	}
 	if err := setupBuildEnv(clusterName); err != nil {
@@ -410,23 +428,26 @@ func createNode(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	PrintResults(instanceIDs, elasticIPs, certFilePath, region)
+	PrintResults(certFilePath, region, publicIPMap)
 	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	return nil
 }
 
 // setupAnsible we need to remove existing ansible directory and its contents in .avalanche-cli dir
 // before calling every ansible run command just in case there is a change in playbook
-func setupAnsible() error {
+func setupAnsible(clusterName string) error {
 	err := app.SetupAnsibleEnv()
 	if err != nil {
 		return err
 	}
-	return ansible.Setup(app.GetAnsibleDir())
+	if err = ansible.Setup(app.GetAnsibleDir()); err != nil {
+		return err
+	}
+	return updateAnsiblePublicIPs(clusterName)
 }
 
-func runAnsible(inventoryPath, avalancheGoVersion string) error {
-	err := setupAnsible()
+func runAnsible(inventoryPath, avalancheGoVersion, clusterName string) error {
+	err := setupAnsible(clusterName)
 	if err != nil {
 		return err
 	}
@@ -573,26 +594,28 @@ func promptAvalancheGoReferenceChoice() (string, error) {
 	}
 }
 
-func PrintResults(instanceIDs, elasticIPs []string, certFilePath, region string) {
+func PrintResults(certFilePath, region string, publicIPMap map[string]string) {
 	ux.Logger.PrintToUser("======================================")
 	ux.Logger.PrintToUser("AVALANCHE NODE(S) SUCCESSFULLY SET UP!")
 	ux.Logger.PrintToUser("======================================")
 	ux.Logger.PrintToUser("Please wait until the node(s) are successfully bootstrapped to run further commands on the node(s)")
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Here are the details of the set up node(s): ")
-	for i, instanceID := range instanceIDs {
+	for instanceID := range publicIPMap {
+		publicIP := ""
+		publicIP = publicIPMap[instanceID]
 		ux.Logger.PrintToUser("======================================")
-		hostAliasName := fmt.Sprintf("aws_node_%s", elasticIPs[i])
-		ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", hostAliasName))
+		ansibleHostID := fmt.Sprintf("aws_node_%s", instanceID)
+		ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", ansibleHostID))
 		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Instance ID: %s", instanceID))
-		ux.Logger.PrintToUser(fmt.Sprintf("Elastic IP: %s", elasticIPs[i]))
+		ux.Logger.PrintToUser(fmt.Sprintf("Public IP: %s", publicIP))
 		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Region: %s", region))
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(fmt.Sprintf("staker.crt and staker.key are stored at %s. If anything happens to your node or the machine node runs on, these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID)))
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("To ssh to node, run: ")
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(fmt.Sprintf("ssh -o IdentitiesOnly=yes ubuntu@%s -i %s", elasticIPs[i], certFilePath))
+		ux.Logger.PrintToUser(fmt.Sprintf("ssh -o IdentitiesOnly=yes ubuntu@%s -i %s", publicIP, certFilePath))
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("======================================")
 	}

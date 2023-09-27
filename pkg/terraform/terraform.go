@@ -194,21 +194,22 @@ func SetupInstances(rootBody *hclwrite.Body, securityGroupName string, useExisti
 }
 
 // SetOutput adds output section in terraform state file so that we can call terraform output command and print instance_ip and instance_id to user
-func SetOutput(rootBody *hclwrite.Body) {
-	outputEip := rootBody.AppendNewBlock("output", []string{"instance_ips"})
-	outputEipBody := outputEip.Body()
-	outputEipBody.SetAttributeTraversal("value", hcl.Traversal{
-		hcl.TraverseRoot{
-			Name: "aws_eip",
-		},
-		hcl.TraverseAttr{
-			Name: "myeip[*]",
-		},
-		hcl.TraverseAttr{
-			Name: "public_ip",
-		},
-	})
-
+func SetOutput(rootBody *hclwrite.Body, useEIP bool) {
+	if useEIP {
+		outputEip := rootBody.AppendNewBlock("output", []string{"instance_ips"})
+		outputEipBody := outputEip.Body()
+		outputEipBody.SetAttributeTraversal("value", hcl.Traversal{
+			hcl.TraverseRoot{
+				Name: "aws_eip",
+			},
+			hcl.TraverseAttr{
+				Name: "myeip[*]",
+			},
+			hcl.TraverseAttr{
+				Name: "public_ip",
+			},
+		})
+	}
 	outputInstanceID := rootBody.AppendNewBlock("output", []string{"instance_ids"})
 	outputInstanceIDBody := outputInstanceID.Body()
 	outputInstanceIDBody.SetAttributeTraversal("value", hcl.Traversal{
@@ -231,7 +232,7 @@ func RemoveDirectory(terraformDir string) error {
 
 // RunTerraform executes terraform apply function that creates the EC2 instances based on the .tf file provided
 // returns a list of AWS node-IDs and node IPs
-func RunTerraform(terraformDir string) ([]string, []string, error) {
+func RunTerraform(terraformDir string, useEIP bool) ([]string, []string, error) {
 	cmd := exec.Command(constants.Terraform, "init") //nolint:gosec
 	cmd.Dir = terraformDir
 	if err := cmd.Run(); err != nil {
@@ -254,9 +255,12 @@ func RunTerraform(terraformDir string) ([]string, []string, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	publicIPs, err := GetPublicIPs(terraformDir)
-	if err != nil {
-		return nil, nil, err
+	publicIPs := []string{}
+	if useEIP {
+		publicIPs, err = GetPublicIPs(terraformDir)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 	return instanceIDs, publicIPs, nil
 }
