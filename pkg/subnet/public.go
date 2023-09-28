@@ -299,6 +299,7 @@ func (d *PublicDeployer) AddPermissionlessValidator(
 	popBytes []byte,
 	proofOfPossession *signer.ProofOfPossession,
 ) (ids.ID, error) {
+	fmt.Printf("subnetID %s \n", subnetID.String())
 	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
 		return ids.Empty, err
@@ -309,6 +310,7 @@ func (d *PublicDeployer) AddPermissionlessValidator(
 	if subnetAssetID == ids.Empty {
 		subnetAssetID = wallet.P().AVAXAssetID()
 	}
+	fmt.Printf("subnetAssetID %s \n", subnetAssetID.String())
 	// popBytes is a marshalled json object containing publicKey and proofOfPossession of the node's BLS info
 	txID, err := d.issueAddPermissionlessValidatorTX(recipientAddr, stakeAmount, subnetID, nodeID, subnetAssetID, startTime, endTime, wallet, delegationFee, popBytes, proofOfPossession)
 	if err != nil {
@@ -614,7 +616,7 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 	popBytes []byte,
 	blsProof *signer.ProofOfPossession,
 ) (ids.ID, error) {
-	options := d.getMultisigTxOptions([]ids.ShortID{})
+	//options := d.getMultisigTxOptions([]ids.ShortID{})
 	owner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
 		Addrs: []ids.ShortID{
@@ -636,6 +638,7 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 	} else {
 		proofOfPossession = &signer.Empty{}
 	}
+	fmt.Printf("proofOfPossession %s \n", proofOfPossession)
 	tx, err := wallet.P().IssueAddPermissionlessValidatorTx(&txs.SubnetValidator{
 		Validator: txs.Validator{
 			NodeID: nodeID,
@@ -649,8 +652,7 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 		assetID,
 		owner,
 		owner,
-		delegationFee,
-		options...)
+		delegationFee)
 	if err != nil {
 		return ids.Empty, err
 	}
