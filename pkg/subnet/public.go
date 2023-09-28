@@ -616,7 +616,7 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 	popBytes []byte,
 	blsProof *signer.ProofOfPossession,
 ) (ids.ID, error) {
-	//options := d.getMultisigTxOptions([]ids.ShortID{})
+	options := d.getMultisigTxOptions([]ids.ShortID{})
 	owner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
 		Addrs: []ids.ShortID{
@@ -652,7 +652,8 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 		assetID,
 		owner,
 		owner,
-		delegationFee)
+		delegationFee,
+		options...)
 	if err != nil {
 		return ids.Empty, err
 	}
