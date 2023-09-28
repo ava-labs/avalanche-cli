@@ -166,6 +166,14 @@ func printNoCredentialsOutput() {
 	ux.Logger.PrintToUser("More info can be found at https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-creds")
 }
 
+func getServiceAccountKeyFilepath() (string, error) {
+	ux.Logger.PrintToUser("To create a VM instance in GCP, we will need your service account credentials")
+	ux.Logger.PrintToUser("Please follow instructions detailed at https://developers.google.com/workspace/guides/create-credentials#service-account to set up a GCP service account")
+	ux.Logger.PrintToUser("Once completed, please enter the filepath to the JSON file containing the public/private key pair")
+	ux.Logger.PrintToUser("For example: /Users/username/sample-project.json")
+	return app.Prompt.CaptureString("What is the filepath to the credentials JSON file?")
+}
+
 func getGCPCloudCredentials() (*compute.Service, string, error) {
 	var err error
 	var gcpCredentialsPath string
@@ -176,12 +184,14 @@ func getGCPCloudCredentials() (*compute.Service, string, error) {
 			return nil, "", err
 		}
 		gcpCredentialsPath = clusterConfig.ServiceAccountKeyFilepath
+		if gcpCredentialsPath == "" {
+			gcpCredentialsPath, err = getServiceAccountKeyFilepath()
+			if err != nil {
+				return nil, "", err
+			}
+		}
 	} else {
-		ux.Logger.PrintToUser("To create a VM instance in GCP, we will need your service account credentials")
-		ux.Logger.PrintToUser("Please follow instructions detailed at https://developers.google.com/workspace/guides/create-credentials#service-account to set up a GCP service account")
-		ux.Logger.PrintToUser("Once completed, please enter the filepath to the JSON file containing the public/private key pair")
-		ux.Logger.PrintToUser("For example: /Users/username/sample-project.json")
-		gcpCredentialsPath, err = app.Prompt.CaptureString("What is the filepath to the credentials JSON file?")
+		gcpCredentialsPath, err = getServiceAccountKeyFilepath()
 		if err != nil {
 			return nil, "", err
 		}
@@ -258,6 +268,7 @@ func getGCPConfig() (*compute.Service, string, string, string, string, error) {
 	}
 	gcpClient, gcpCredentialFilePath, err := getGCPCloudCredentials()
 	if err != nil {
+		fmt.Printf("we have error here %s \n", err)
 		return nil, "", "", "", "", err
 	}
 	imageID, err := gcpAPI.GetUbuntuImageID(gcpClient)
@@ -314,14 +325,13 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	hclFile *hclwrite.File,
 	zone,
 	ami,
-	keyPairName,
-	networkName,
+	cliDefaultName,
 	projectName,
-	gcpUserName,
-	certName,
 	credentialsPath string,
 ) ([]string, []string, string, string, error) {
-	sshKeyPath := fmt.Sprintf("~/.ssh/%s", keyPairName)
+	keyPairName := fmt.Sprintf("%s-keypair", cliDefaultName)
+	sshKeyPath, err := app.GetSSHCertFilePath(keyPairName)
+	networkName := fmt.Sprintf("%s-network", cliDefaultName)
 	if err := terraformGCP.SetCloudCredentials(rootBody, zone, credentialsPath, projectName); err != nil {
 		return nil, nil, "", "", err
 	}
@@ -330,19 +340,17 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	//	return nil, nil, "", "", err
 	//}
 	ux.Logger.PrintToUser("Creating new VM instance(s) on Google Compute Engine...")
-	certInSSHDir, err := app.CheckCertInSSHDir(certName)
+	certInSSHDir, err := app.CheckCertInSSHDir(fmt.Sprintf("%s-keypair.pub", cliDefaultName))
 	if err != nil {
 		return nil, nil, "", "", err
 	}
 	if !certInSSHDir {
-		ux.Logger.PrintToUser("Creating new SSH key pair %s in GCP", keyPairName)
+		ux.Logger.PrintToUser("Creating new SSH key pair %s in GCP", sshKeyPath)
 		ux.Logger.PrintToUser("For more information regarding SSH key pair in GCP, please head to https://cloud.google.com/compute/docs/connect/create-ssh-keys")
-		userName, err := app.Prompt.CaptureString("What is the username that you would like to use for SSH Key Pair?")
+		_, err = exec.Command("ssh-keygen", "-t", "rsa", "-f", sshKeyPath, "-C", keyPairName, "-b", "2048").Output()
 		if err != nil {
 			return nil, nil, "", "", err
 		}
-		cmd := exec.Command("ssh-keygen", "-t", "rsa", "-f", sshKeyPath, "-C", userName, "-b", "2048")
-		utils.SetupRealtimeCLIOutput(cmd, true, true)
 	}
 
 	networkExists, err := gcpAPI.CheckNetworkExists(gcpClient, projectName, networkName)
@@ -353,10 +361,9 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	ux.Logger.PrintToUser(fmt.Sprintf("Creating new network %s in GCP", networkName))
 	if !networkExists {
 		ux.Logger.PrintToUser(fmt.Sprintf("Creating new network %s in GCP", networkName))
-		terraformGCP.SetNetwork(rootBody, userIPAddress, keyPairName)
+		terraformGCP.SetNetwork(rootBody, userIPAddress, networkName)
 	} else {
 		ux.Logger.PrintToUser(fmt.Sprintf("Using existing network %s in GCP", networkName))
 		firewallName := fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(userIPAddress, ".", ""))
@@ -371,7 +378,11 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	nodeName := fmt.Sprintf("gcp-node-%s", randomString(5))
 	publicIPName := fmt.Sprintf("static-ip-%s", nodeName)
 	terraformGCP.SetPublicIP(rootBody, nodeName)
-	terraformGCP.SetupInstances(rootBody, keyPairName, sshKeyPath, ami, publicIPName, nodeName, gcpUserName)
+	sshPublicKey, err := os.ReadFile(fmt.Sprintf("%s.pub", sshKeyPath))
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	terraformGCP.SetupInstances(rootBody, networkName, string(sshPublicKey), ami, publicIPName, nodeName, keyPairName)
 	//terraformGCP.SetOutput(rootBody)
 	err = app.CreateTerraformDir()
 	if err != nil {
@@ -399,7 +410,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	//	return nil, nil, "", "", err
 	//}
 	//return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
-	return nil, nil, "", keyPairName, nil
+	return nil, nil, "", "", nil
 }
 
 // createEC2Instances creates terraform .tf file and runs terraform exec function to create ec2 instances
@@ -568,27 +579,13 @@ func createGCPInstance(usr *user.User) (CloudConfig, error) {
 	if err != nil {
 		return CloudConfig{}, nil
 	}
-	//ami := "ubuntu-os-cloud/ubuntu-2004-focal-v20220712"
-	//region := "us-east1"
-	//zone := "us-east1-b"
-	//credentialsPath := "/Users/raymondsukanto/Desktop/second-abacus-399120-fa18aefc3f7e.json"
-	defaultAvalancheCLIPrefix := usr.Username + "-" + constants.AvalancheCLISuffix
-	//firewallName := prefix + "-" + region + constants.AWSSecurityGroupSuffix
+	defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 	hclFile, rootBody, err := terraform.InitConf()
 	if err != nil {
 		return CloudConfig{}, nil
 	}
-	//zone,
-	//	ami,
-	//	sshKeyPath,
-	//	keyPairName,
-	//	networkName,
-	//	projectName,
-	//	gcpUserName,
-	//	certName,
-	//	credentialsPath string,
-	// Create new EC2 instances
-	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(rootBody, gcpClient, hclFile, zone, imageID, prefix, firewallName, projectName, "", certName, credentialsPath)
+	//instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(rootBody, gcpClient, hclFile, zone, imageID, defaultAvalancheCLIPrefix, gcpProjectName, "", gcpCredentialFilepath)
+	_, _, _, _, err = createGCEInstances(rootBody, gcpClient, hclFile, zone, imageID, defaultAvalancheCLIPrefix, gcpProjectName, gcpCredentialFilepath)
 	if err != nil {
 		return CloudConfig{}, nil
 	}
@@ -631,10 +628,10 @@ func createNode(_ *cobra.Command, args []string) error {
 	//} else {
 	//	cloudConfig, err = createGCPInstance(usr)
 	//}
-	//if err != nil {
-	//	return err
-	//}
 	_, err = createGCPInstance(usr)
+	if err != nil {
+		return err
+	}
 	//if err := createClusterNodeConfig(cloudConfig, clusterName); err != nil {
 	//	return err
 	//}

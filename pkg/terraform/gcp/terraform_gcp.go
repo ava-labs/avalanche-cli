@@ -80,13 +80,13 @@ func SetPublicIP(rootBody *hclwrite.Body, nodeName string) {
 }
 
 // SetupInstances adds aws_instance section in terraform state file where we configure all the necessary components of the desired ec2 instance(s)
-func SetupInstances(rootBody *hclwrite.Body, networkName, sshKeyPath, ami, staticIPName, instanceName, gcp_username string) {
+func SetupInstances(rootBody *hclwrite.Body, networkName, sshPublicKey, ami, staticIPName, instanceName, keyPairName string) {
 	gcpInstance := rootBody.AppendNewBlock("resource", []string{"google_compute_instance", "gcp-node"})
 	gcpInstanceBody := gcpInstance.Body()
 	gcpInstanceBody.SetAttributeValue("name", cty.StringVal(instanceName))
 	gcpInstanceBody.SetAttributeValue("machine_type", cty.StringVal("e2-standard-8"))
 	metadataMap := make(map[string]cty.Value)
-	metadataMap["ssh-keys"] = cty.StringVal(fmt.Sprintf("%s:${file(%s)}", gcp_username, sshKeyPath))
+	metadataMap["ssh-keys"] = cty.StringVal(fmt.Sprintf("%s:%s", keyPairName, strings.TrimSuffix(sshPublicKey, "\n")))
 	gcpInstanceBody.SetAttributeValue("metadata", cty.ObjectVal(metadataMap))
 	networkInterface := gcpInstanceBody.AppendNewBlock("network_interface", []string{})
 	networkInterfaceBody := networkInterface.Body()
@@ -171,7 +171,6 @@ func RunTerraform(terraformDir string) ([]string, []string, error) {
 	cmd.Stdout = mw
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("err is %s \n", err)
 		if strings.Contains(stderr.String(), constants.EIPLimitErr) {
 			return nil, nil, errors.New(constants.EIPLimitErr)
 		}
