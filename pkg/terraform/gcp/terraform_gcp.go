@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -19,7 +20,9 @@ import (
 )
 
 // SetCloudCredentials sets AWS account credentials defined in .aws dir in user home dir
-func SetCloudCredentials(rootBody *hclwrite.Body, region, zone, credentialsPath, projectName string) error {
+func SetCloudCredentials(rootBody *hclwrite.Body, zone, credentialsPath, projectName string) error {
+	// zone's format is us-east1-b, region's format is us-east1
+	region := strings.Join(strings.Split(zone, "-")[:2], "-")
 	provider := rootBody.AppendNewBlock("provider", []string{"google"})
 	providerBody := provider.Body()
 	providerBody.SetAttributeValue("project", cty.StringVal(projectName))
@@ -34,8 +37,8 @@ func SetNetwork(rootBody *hclwrite.Body, ipAddress, networkName string) {
 	network := rootBody.AppendNewBlock("resource", []string{"google_compute_network", networkName})
 	networkBody := network.Body()
 	networkBody.SetAttributeValue("name", cty.StringVal(networkName))
-	SetFirewallRule(rootBody, "0.0.0.0/0", fmt.Sprintf("%s-%s", networkName, "default"), networkName, []string{"9650", "9651"})
-	SetFirewallRule(rootBody, ipAddress+"/32", fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")), networkName, []string{"22", "9650"})
+	SetFirewallRule(rootBody, "0.0.0.0/0", fmt.Sprintf("%s-%s", networkName, "default"), networkName, []string{strconv.Itoa(constants.AvalanchegoAPIPort), strconv.Itoa(constants.AvalanchegoP2PPort)})
+	SetFirewallRule(rootBody, ipAddress+"/32", fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)})
 }
 
 func SetFirewallRule(rootBody *hclwrite.Body, ipAddress, firewallName, networkName string, ports []string) {

@@ -15,6 +15,8 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -164,24 +166,34 @@ func printNoCredentialsOutput() {
 	ux.Logger.PrintToUser("More info can be found at https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-creds")
 }
 
-func getGCPCloudCredentials() (*compute.Service, error) {
+func getGCPCloudCredentials() (*compute.Service, string, error) {
 	var err error
 	var gcpCredentialsPath string
 	clusterConfig := models.ClusterConfig{}
 	if app.ClusterConfigExists() {
 		clusterConfig, err = app.LoadClusterConfig()
 		if err != nil {
-			return nil, err
+			return nil, "", err
+		}
+		gcpCredentialsPath = clusterConfig.ServiceAccountKeyFilepath
+	} else {
+		ux.Logger.PrintToUser("To create a VM instance in GCP, we will need your service account credentials")
+		ux.Logger.PrintToUser("Please follow instructions detailed at https://developers.google.com/workspace/guides/create-credentials#service-account to set up a GCP service account")
+		ux.Logger.PrintToUser("Once completed, please enter the filepath to the JSON file containing the public/private key pair")
+		ux.Logger.PrintToUser("For example: /Users/username/sample-project.json")
+		gcpCredentialsPath, err = app.Prompt.CaptureString("What is the filepath to the credentials JSON file?")
+		if err != nil {
+			return nil, "", err
 		}
 	}
-	os.Setenv(constants.GCPCredentialsEnvVar, gcpCredentialPath)
-	//os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "/Users/raymondsukanto/Desktop/second-abacus-399120-fa18aefc3f7e.json")
+	os.Setenv(constants.GCPCredentialsEnvVar, gcpCredentialsPath)
 	ctx := context.Background()
 	client, err := google.DefaultClient(ctx, compute.ComputeScope)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return compute.New(client)
+	computeService, err := compute.New(client)
+	return computeService, gcpCredentialsPath, err
 }
 
 // getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
@@ -221,7 +233,7 @@ func promptKeyPairName(ec2Svc *ec2.EC2) (string, string, error) {
 	return certName, newKeyPairName, nil
 }
 
-func getGCPConfig() (*ec2.EC2, string, string, error) {
+func getGCPConfig() (*compute.Service, string, string, string, string, error) {
 	usEast := "us-east1-b"
 	usCentral := "us-central1-c"
 	usWest := "us-west1-b"
@@ -232,102 +244,27 @@ func getGCPConfig() (*ec2.EC2, string, string, error) {
 		[]string{usEast, usCentral, usWest, customRegion},
 	)
 	if err != nil {
-		return nil, "", "", err
+		return nil, "", "", "", "", err
 	}
 	if zone == customRegion {
 		zone, err = app.Prompt.CaptureString(zonePromptTxt)
 		if err != nil {
-			return nil, "", "", err
+			return nil, "", "", "", "", err
 		}
 	}
 	projectName, err := app.Prompt.CaptureString("What is the name of your Google Cloud project?")
 	if err != nil {
-		return nil, "", "", err
+		return nil, "", "", "", "", err
 	}
-	gcpCredentialPath, err := app.Prompt.CaptureString("What is the file path to your Google Cloud credential JSON file?")
+	gcpClient, gcpCredentialFilePath, err := getGCPCloudCredentials()
 	if err != nil {
-		return nil, "", "", err
+		return nil, "", "", "", "", err
 	}
-
-	////
-	//sess, err := getAWSCloudCredentials(region, false)
-	//if err != nil {
-	//	return nil, "", "", err
-	//}
-	//ec2Svc := ec2.New(sess)
-
-	os.Setenv(constants.GCPCredentialsEnvVar, gcpCredentialPath)
-	//os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "/Users/raymondsukanto/Desktop/second-abacus-399120-fa18aefc3f7e.json")
-	ctx := context.Background()
-	client, err := google.DefaultClient(ctx, compute.ComputeScope)
+	imageID, err := gcpAPI.GetUbuntuImageID(gcpClient)
 	if err != nil {
-		fmt.Println(err)
+		return nil, "", "", "", "", err
 	}
-	computeService, err := compute.New(client)
-	imageID, err := gcpAPI.GetUbuntuImageID(computeService)
-	if err != nil {
-		return nil, "", "", err
-	}
-	imageListCall := computeService.Images.List(constants.GCPDefaultImageProvider).Filter(constants.GCPImageFilter)
-	imageList, err := imageListCall.Do()
-	for _, image := range imageList.Items {
-		//if image.Architecture == "X86_64" {
-		//	fmt.Printf("obtained imageList name %s \n", image.Name)
-		//}
-		if image.Deprecated == nil {
-			fmt.Printf("obtained imageList name %s \n", image.Name)
-			fmt.Printf("obtained imageList family %s \n", image.Family)
-			fmt.Printf("obtained imageList family %s \n", image.Architecture)
-		}
-
-		//if image.Family
-		//fmt.Printf("obtained imageList name %s \n", image.Name)
-		//fmt.Printf("obtained imageList name %s \n", image.Architecture)
-	}
-	//
-	//regionListCall := computeService.Regions.List(projectName)
-	//regionList, err := regionListCall.Do()
-	//for _, instance := range regionList.Items {
-	//	fmt.Printf("obtained regionList name %s \n", instance.Name)
-	//	fmt.Printf("obtained regionList name %s \n", instance.Status)
-	//}
-	////zoneListCall := computeService.Zones.List("second-abacus-399120")
-	////zoneList, err := zoneListCall.Do()
-	//if err != nil {
-	//	return nil, "", "", err
-	//}
-	//instanceListCall := computeService.Instances.List(projectName, "us-east1-b")
-	//instanceList, err := instanceListCall.Do()
-	//if err != nil {
-	//	return nil, "", "", err
-	//} else {
-	//	for _, instance := range instanceList.Items {
-	//		fmt.Printf("obtained instance name %s \n", instance.Name)
-	//		fmt.Printf("obtained instance name %s \n", instance.Status)
-	//	}
-	//}
-	////for _, zone := range zoneList.Items {
-	////	fmt.Printf("obtained zone name %s \n", zone.Name)
-	////	instanceListCall := computeService.Instances.List("second-abacus-399120", zone.Name)
-	////	instanceList, err := instanceListCall.Do()
-	////	if err != nil {
-	////		return nil, "", "", err
-	////	} else {
-	////		for _, instance := range instanceList.Items {
-	////			fmt.Printf("obtained instance name %s \n", instance.Name)
-	////			fmt.Printf("obtained instance name %s \n", instance.Status)
-	////		}
-	////	}
-	////}
-	//firewallListCall := computeService.Firewalls.List("second-abacus-399120")
-	//firewallList, err := firewallListCall.Do()
-	//if err != nil {
-	//	return nil, "", "", err
-	//}
-	//for _, firewall := range firewallList.Items {
-	//	fmt.Printf("firewall name %s \n", firewall.Name)
-	//}
-	return nil, "", "", nil
+	return gcpClient, zone, imageID, gcpCredentialFilePath, projectName, nil
 }
 
 func getAWSCloudConfig() (*ec2.EC2, string, string, error) {
@@ -373,17 +310,19 @@ func randomString(length int) string {
 
 // createGCEInstances creates terraform .tf file and runs terraform exec function to create Google Compute Engine VM instances
 func createGCEInstances(rootBody *hclwrite.Body,
-	ec2Svc *ec2.EC2,
+	gcpClient *compute.Service,
 	hclFile *hclwrite.File,
-	region,
 	zone,
 	ami,
-	sshKeyPath,
 	keyPairName,
-	securityGroupName,
+	networkName,
+	projectName,
+	gcpUserName,
+	certName,
 	credentialsPath string,
 ) ([]string, []string, string, string, error) {
-	if err := terraformGCP.SetCloudCredentials(rootBody, region, zone, credentialsPath, "second-abacus-399120"); err != nil {
+	sshKeyPath := fmt.Sprintf("~/.ssh/%s", keyPairName)
+	if err := terraformGCP.SetCloudCredentials(rootBody, zone, credentialsPath, projectName); err != nil {
 		return nil, nil, "", "", err
 	}
 	//numNodes, err := app.Prompt.CaptureUint32("How many nodes do you want to set up on AWS?")
@@ -391,65 +330,48 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	//	return nil, nil, "", "", err
 	//}
 	ux.Logger.PrintToUser("Creating new VM instance(s) on Google Compute Engine...")
-	//var useExistingKeyPair bool
-	//keyPairExists, err := awsAPI.CheckKeyPairExists(ec2Svc, keyPairName)
-	//if err != nil {
-	//	return nil, nil, "", "", err
-	//}
-	//certInSSHDir, err := app.CheckCertInSSHDir(certName)
-	//if err != nil {
-	//	return nil, nil, "", "", err
-	//}
-	//if !keyPairExists {
-	//	if !certInSSHDir {
-	//		ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s in AWS", keyPairName))
-	//		terraformAWS.SetKeyPair(rootBody, keyPairName, certName)
-	//	} else {
-	//		ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists on your .ssh directory but not on AWS", keyPairName))
-	//		ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in AWS", keyPairName))
-	//		certName, keyPairName, err = promptKeyPairName(ec2Svc)
-	//		if err != nil {
-	//			return nil, nil, "", "", err
-	//		}
-	//		terraformAWS.SetKeyPair(rootBody, keyPairName, certName)
-	//	}
-	//} else {
-	//	if certInSSHDir {
-	//		ux.Logger.PrintToUser(fmt.Sprintf("Using existing key pair %s in AWS", keyPairName))
-	//		useExistingKeyPair = true
-	//	} else {
-	//		ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists in AWS", keyPairName))
-	//		ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName))
-	//		certName, keyPairName, err = promptKeyPairName(ec2Svc)
-	//		if err != nil {
-	//			return nil, nil, "", "", err
-	//		}
-	//		terraformAWS.SetKeyPair(rootBody, keyPairName, certName)
-	//	}
-	//}
-	//securityGroupExists, sg, err := awsAPI.CheckSecurityGroupExists(ec2Svc, securityGroupName)
-	//if err != nil {
-	//	return nil, nil, "", "", err
-	//}
+	certInSSHDir, err := app.CheckCertInSSHDir(certName)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	if !certInSSHDir {
+		ux.Logger.PrintToUser("Creating new SSH key pair %s in GCP", keyPairName)
+		ux.Logger.PrintToUser("For more information regarding SSH key pair in GCP, please head to https://cloud.google.com/compute/docs/connect/create-ssh-keys")
+		userName, err := app.Prompt.CaptureString("What is the username that you would like to use for SSH Key Pair?")
+		if err != nil {
+			return nil, nil, "", "", err
+		}
+		cmd := exec.Command("ssh-keygen", "-t", "rsa", "-f", sshKeyPath, "-C", userName, "-b", "2048")
+		utils.SetupRealtimeCLIOutput(cmd, true, true)
+	}
+
+	networkExists, err := gcpAPI.CheckNetworkExists(gcpClient, projectName, networkName)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
 	userIPAddress, err := getIPAddress()
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	ux.Logger.PrintToUser(fmt.Sprintf("Creating new security group %s in AWS", securityGroupName))
-	//if !securityGroupExists {
-	//	ux.Logger.PrintToUser(fmt.Sprintf("Creating new security group %s in AWS", securityGroupName))
-	//	terraformAWS.SetSecurityGroup(rootBody, userIPAddress, securityGroupName)
-	//} else {
-	//	ux.Logger.PrintToUser(fmt.Sprintf("Using existing security group %s in AWS", securityGroupName))
-	//	ipInTCP := awsAPI.CheckUserIPInSg(sg, userIPAddress, constants.SSHTCPPort)
-	//	ipInHTTP := awsAPI.CheckUserIPInSg(sg, userIPAddress, constants.AvalanchegoAPIPort)
-	//	terraformAWS.SetSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
-	//}
+	ux.Logger.PrintToUser(fmt.Sprintf("Creating new network %s in GCP", networkName))
+	if !networkExists {
+		ux.Logger.PrintToUser(fmt.Sprintf("Creating new network %s in GCP", networkName))
+		terraformGCP.SetNetwork(rootBody, userIPAddress, keyPairName)
+	} else {
+		ux.Logger.PrintToUser(fmt.Sprintf("Using existing network %s in GCP", networkName))
+		firewallName := fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(userIPAddress, ".", ""))
+		firewallExists, err := gcpAPI.CheckFirewallExists(gcpClient, projectName, firewallName)
+		if err != nil {
+			return nil, nil, "", "", err
+		}
+		if !firewallExists {
+			terraformGCP.SetFirewallRule(rootBody, userIPAddress+"/32", firewallName, networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)})
+		}
+	}
 	nodeName := fmt.Sprintf("gcp-node-%s", randomString(5))
 	publicIPName := fmt.Sprintf("static-ip-%s", nodeName)
 	terraformGCP.SetPublicIP(rootBody, nodeName)
-	terraformGCP.SetNetwork(rootBody, userIPAddress, keyPairName)
-	terraformGCP.SetupInstances(rootBody, keyPairName, sshKeyPath, ami, publicIPName, nodeName, "raymond_sukanto")
+	terraformGCP.SetupInstances(rootBody, keyPairName, sshKeyPath, ami, publicIPName, nodeName, gcpUserName)
 	//terraformGCP.SetOutput(rootBody)
 	err = app.CreateTerraformDir()
 	if err != nil {
@@ -641,8 +563,8 @@ func createAWSInstance(usr *user.User) (CloudConfig, error) {
 }
 
 func createGCPInstance(usr *user.User) (CloudConfig, error) {
-	// Get GCP Credential, region and Image ID
-	_, _, _, err := getGCPConfig()
+	// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
+	gcpClient, zone, imageID, gcpCredentialFilepath, gcpProjectName, err := getGCPConfig()
 	if err != nil {
 		return CloudConfig{}, nil
 	}
@@ -650,18 +572,26 @@ func createGCPInstance(usr *user.User) (CloudConfig, error) {
 	//region := "us-east1"
 	//zone := "us-east1-b"
 	//credentialsPath := "/Users/raymondsukanto/Desktop/second-abacus-399120-fa18aefc3f7e.json"
-	//prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
+	defaultAvalancheCLIPrefix := usr.Username + "-" + constants.AvalancheCLISuffix
 	//firewallName := prefix + "-" + region + constants.AWSSecurityGroupSuffix
-	//hclFile, rootBody, err := terraform.InitConf()
-	//if err != nil {
-	//	return CloudConfig{}, nil
-	//}
-	//
-	//// Create new EC2 instances
-	//instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(rootBody, nil, hclFile, region, zone, ami, "/Users/raymondsukanto/.ssh/gcp-test3.pub", prefix, firewallName, credentialsPath)
-	//if err != nil {
-	//	return CloudConfig{}, nil
-	//}
+	hclFile, rootBody, err := terraform.InitConf()
+	if err != nil {
+		return CloudConfig{}, nil
+	}
+	//zone,
+	//	ami,
+	//	sshKeyPath,
+	//	keyPairName,
+	//	networkName,
+	//	projectName,
+	//	gcpUserName,
+	//	certName,
+	//	credentialsPath string,
+	// Create new EC2 instances
+	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(rootBody, gcpClient, hclFile, zone, imageID, prefix, firewallName, projectName, "", certName, credentialsPath)
+	if err != nil {
+		return CloudConfig{}, nil
+	}
 	//gcpCloudConfig := CloudConfig{
 	//	instanceIDs,
 	//	elasticIPs,
