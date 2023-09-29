@@ -335,10 +335,10 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if err := terraformGCP.SetCloudCredentials(rootBody, zone, credentialsPath, projectName); err != nil {
 		return nil, nil, "", "", err
 	}
-	//numNodes, err := app.Prompt.CaptureUint32("How many nodes do you want to set up on AWS?")
-	//if err != nil {
-	//	return nil, nil, "", "", err
-	//}
+	numNodes, err := app.Prompt.CaptureUint32("How many nodes do you want to set up on GCP?")
+	if err != nil {
+		return nil, nil, "", "", err
+	}
 	ux.Logger.PrintToUser("Creating new VM instance(s) on Google Compute Engine...")
 	certInSSHDir, err := app.CheckCertInSSHDir(fmt.Sprintf("%s-keypair.pub", cliDefaultName))
 	if err != nil {
@@ -377,13 +377,13 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	}
 	nodeName := fmt.Sprintf("gcp-node-%s", randomString(5))
 	publicIPName := fmt.Sprintf("static-ip-%s", nodeName)
-	terraformGCP.SetPublicIP(rootBody, nodeName)
+	terraformGCP.SetPublicIP(rootBody, nodeName, numNodes)
 	sshPublicKey, err := os.ReadFile(fmt.Sprintf("%s.pub", sshKeyPath))
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	terraformGCP.SetupInstances(rootBody, networkName, string(sshPublicKey), ami, publicIPName, nodeName, keyPairName)
-	//terraformGCP.SetOutput(rootBody)
+	terraformGCP.SetupInstances(rootBody, networkName, string(sshPublicKey), ami, publicIPName, nodeName, keyPairName, numNodes)
+	terraformGCP.SetOutput(rootBody)
 	err = app.CreateTerraformDir()
 	if err != nil {
 		return nil, nil, "", "", err

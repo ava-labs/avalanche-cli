@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"io"
 	"os"
 	"os/exec"
@@ -70,20 +71,59 @@ func SetFirewallRule(rootBody *hclwrite.Body, ipAddress, firewallName, networkNa
 }
 
 // SetPublicIP attach static IP(s) to the associated Google VM instance(s)
-func SetPublicIP(rootBody *hclwrite.Body, nodeName string) {
+func SetPublicIP(rootBody *hclwrite.Body, nodeName string, numNodes uint32) {
 	staticIPName := fmt.Sprintf("static-ip-%s", nodeName)
 	eip := rootBody.AppendNewBlock("resource", []string{"google_compute_address", staticIPName})
 	eipBody := eip.Body()
-	eipBody.SetAttributeValue("name", cty.StringVal(staticIPName))
+	eipBody.SetAttributeRaw("name", createCustomTokens(staticIPName))
+	eipBody.SetAttributeValue("count", cty.NumberIntVal(int64(numNodes)))
 	eipBody.SetAttributeValue("address_type", cty.StringVal("EXTERNAL"))
 	eipBody.SetAttributeValue("network_tier", cty.StringVal("PREMIUM"))
 }
 
+func createCustomTokens(tokenName string) hclwrite.Tokens {
+	return hclwrite.Tokens{
+		{
+			Type:  hclsyntax.TokenOQuote,
+			Bytes: []byte(`"`),
+		},
+		{
+			Type:  hclsyntax.TokenQuotedLit,
+			Bytes: []byte(fmt.Sprintf(`%s-`, tokenName)),
+		},
+		{
+			Type:  hclsyntax.TokenTemplateInterp,
+			Bytes: []byte(`${`),
+		},
+		{
+			Type:  hclsyntax.TokenIdent,
+			Bytes: []byte(`count`),
+		},
+		{
+			Type:  hclsyntax.TokenDot,
+			Bytes: []byte(`.`),
+		},
+		{
+			Type:  hclsyntax.TokenIdent,
+			Bytes: []byte(`index`),
+		},
+		{
+			Type:  hclsyntax.TokenTemplateSeqEnd,
+			Bytes: []byte(`}`),
+		},
+		{
+			Type:  hclsyntax.TokenCQuote,
+			Bytes: []byte(`"`),
+		},
+	}
+}
+
 // SetupInstances adds aws_instance section in terraform state file where we configure all the necessary components of the desired ec2 instance(s)
-func SetupInstances(rootBody *hclwrite.Body, networkName, sshPublicKey, ami, staticIPName, instanceName, keyPairName string) {
+func SetupInstances(rootBody *hclwrite.Body, networkName, sshPublicKey, ami, staticIPName, instanceName, keyPairName string, numNodes uint32) {
 	gcpInstance := rootBody.AppendNewBlock("resource", []string{"google_compute_instance", "gcp-node"})
 	gcpInstanceBody := gcpInstance.Body()
-	gcpInstanceBody.SetAttributeValue("name", cty.StringVal(instanceName))
+	gcpInstanceBody.SetAttributeRaw("name", createCustomTokens(instanceName))
+	gcpInstanceBody.SetAttributeValue("count", cty.NumberIntVal(int64(numNodes)))
 	gcpInstanceBody.SetAttributeValue("machine_type", cty.StringVal("e2-standard-8"))
 	metadataMap := make(map[string]cty.Value)
 	metadataMap["ssh-keys"] = cty.StringVal(fmt.Sprintf("%s:%s", keyPairName, strings.TrimSuffix(sshPublicKey, "\n")))
@@ -108,7 +148,7 @@ func SetupInstances(rootBody *hclwrite.Body, networkName, sshPublicKey, ami, sta
 			Name: "google_compute_address",
 		},
 		hcl.TraverseAttr{
-			Name: staticIPName,
+			Name: fmt.Sprintf("%s[count.index]", staticIPName),
 		},
 		hcl.TraverseAttr{
 			Name: "address",
@@ -120,6 +160,7 @@ func SetupInstances(rootBody *hclwrite.Body, networkName, sshPublicKey, ami, sta
 	initParams := bootDiskBody.AppendNewBlock("initialize_params", []string{})
 	initParamsBody := initParams.Body()
 	initParamsBody.SetAttributeValue("image", cty.StringVal(ami))
+	initParamsBody.SetAttributeValue("size", cty.NumberIntVal(1000))
 
 	gcpInstanceBody.SetAttributeValue("allow_stopping_for_update", cty.BoolVal(true))
 }
@@ -130,27 +171,13 @@ func SetOutput(rootBody *hclwrite.Body) {
 	outputEipBody := outputEip.Body()
 	outputEipBody.SetAttributeTraversal("value", hcl.Traversal{
 		hcl.TraverseRoot{
-			Name: "aws_eip",
+			Name: "google_compute_instance",
 		},
 		hcl.TraverseAttr{
-			Name: "myeip[*]",
+			Name: "gcp-node[*]",
 		},
 		hcl.TraverseAttr{
-			Name: "public_ip",
-		},
-	})
-
-	outputInstanceID := rootBody.AppendNewBlock("output", []string{"instance_ids"})
-	outputInstanceIDBody := outputInstanceID.Body()
-	outputInstanceIDBody.SetAttributeTraversal("value", hcl.Traversal{
-		hcl.TraverseRoot{
-			Name: "aws_instance",
-		},
-		hcl.TraverseAttr{
-			Name: "aws_node[*]",
-		},
-		hcl.TraverseAttr{
-			Name: "id",
+			Name: "network_interface.0.access_config.0.nat_ip",
 		},
 	})
 }
