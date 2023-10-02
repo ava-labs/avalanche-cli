@@ -345,7 +345,8 @@ func createGCEInstances(rootBody *hclwrite.Body,
 		return nil, nil, "", "", err
 	}
 	ux.Logger.PrintToUser("Creating new VM instance(s) on Google Compute Engine...")
-	certInSSHDir, err := app.CheckCertInSSHDir(fmt.Sprintf("%s-keypair.pub", cliDefaultName))
+	defaultSSHCertName := fmt.Sprintf("%s-keypair.pub", cliDefaultName)
+	certInSSHDir, err := app.CheckCertInSSHDir(defaultSSHCertName)
 	if err != nil {
 		return nil, nil, "", "", err
 	}
@@ -397,25 +398,20 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	//instanceIDs, elasticIPs, err := terraformGCP.RunTerraform(app.GetTerraformDir())
-	_, _, err = terraformGCP.RunTerraform(app.GetTerraformDir())
+	elasticIPs, err := terraformGCP.RunTerraform(app.GetTerraformDir())
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	ux.Logger.PrintToUser("New VM instance(s) successfully created in Google Cloud Engine!")
-	//if !useExistingKeyPair {
-	//	// takes the cert file downloaded from AWS through terraform and moves it to .ssh directory
-	//	err = addCertToSSH(certName)
-	//	if err != nil {
-	//		return nil, nil, "", "", err
-	//	}
-	//}
-	//sshCertPath, err := app.GetSSHCertFilePath(certName)
-	//if err != nil {
-	//	return nil, nil, "", "", err
-	//}
-	//return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
-	return nil, nil, "", "", nil
+	instanceIDs := []string{}
+	for i := 0; i < int(numNodes); i++ {
+		instanceIDs = append(instanceIDs, fmt.Sprintf("%s-%s", nodeName, strconv.Itoa(i)))
+	}
+	ux.Logger.PrintToUser("New GCE instance(s) successfully created in Google Cloud Engine!")
+	sshCertPath, err := app.GetSSHCertFilePath(defaultSSHCertName)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
 }
 
 // createEC2Instances creates terraform .tf file and runs terraform exec function to create ec2 instances
@@ -586,22 +582,21 @@ func createGCPInstance(usr *user.User) (CloudConfig, error) {
 	if err != nil {
 		return CloudConfig{}, nil
 	}
-	//instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(rootBody, gcpClient, hclFile, zone, imageID, defaultAvalancheCLIPrefix, gcpProjectName, "", gcpCredentialFilepath)
-	_, _, _, _, err = createGCEInstances(rootBody, gcpClient, hclFile, zone, imageID, defaultAvalancheCLIPrefix, gcpProjectName, gcpCredentialFilepath)
+	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(rootBody, gcpClient, hclFile, zone, imageID, defaultAvalancheCLIPrefix, gcpProjectName, gcpCredentialFilepath)
+	//_, _, _, _, err = createGCEInstances(rootBody, gcpClient, hclFile, zone, imageID, defaultAvalancheCLIPrefix, gcpProjectName, gcpCredentialFilepath)
 	if err != nil {
 		return CloudConfig{}, nil
 	}
-	//gcpCloudConfig := CloudConfig{
-	//	instanceIDs,
-	//	elasticIPs,
-	//	region,
-	//	keyPairName,
-	//	firewallName,
-	//	certFilePath,
-	//	ami,
-	//}
-	//return gcpCloudConfig, nil
-	return CloudConfig{}, nil
+	gcpCloudConfig := CloudConfig{
+		instanceIDs,
+		elasticIPs,
+		zone,
+		keyPairName,
+		fmt.Sprintf("%s-network", defaultAvalancheCLIPrefix),
+		certFilePath,
+		imageID,
+	}
+	return gcpCloudConfig, nil
 }
 
 func createNode(_ *cobra.Command, args []string) error {
@@ -645,50 +640,52 @@ func createNode(_ *cobra.Command, args []string) error {
 		}
 	} else {
 		cloudConfig, err = createGCPInstance(usr)
+		if err != nil {
+			return err
+		}
+		for i, node := range cloudConfig.InstanceIDs {
+			publicIPMap[node] = cloudConfig.PublicIPs[i]
+		}
 	}
-	//_, err = createGCPInstance(usr)
-	//if err != nil {
-	//	return err
-	//}
 	if err := createClusterNodeConfig(cloudConfig, clusterName); err != nil {
 		return err
 	}
-	err = terraform.RemoveDirectory(app.GetTerraformDir())
-	if err != nil {
-		return err
-	}
+	//err = terraform.RemoveDirectory(app.GetTerraformDir())
+	//if err != nil {
+	//	return err
+	//}
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	if err := ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, publicIPMap); err != nil {
+	if err := ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
 		return err
 	}
-	time.Sleep(15 * time.Second)
-
-	avalancheGoVersion, err := getAvalancheGoVersion()
-	if err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
-	if err := runAnsible(inventoryPath, avalancheGoVersion, clusterName); err != nil {
-		return err
-	}
-	if err := setupBuildEnv(clusterName); err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
-	for _, instanceID := range cloudConfig.InstanceIDs {
-		nodeInstanceDirPath := app.GetNodeInstanceDirPath(instanceID)
-		// ansible host alias's name is formatted as ansiblePrefix_{instanceID}
-		ansiblePrefix := constants.AWSNodeAnsiblePrefix
-		if cloudService == constants.GCPCloudService {
-			ansiblePrefix = constants.GCPNodeAnsiblePrefix
-		}
-		nodeInstanceAnsibleAlias := fmt.Sprintf("%s_%s", ansiblePrefix, instanceID)
-		if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
-			return err
-		}
-	}
-	PrintResults(cloudConfig, publicIPMap)
-	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
+	//time.Sleep(15 * time.Second)
+	//
+	//avalancheGoVersion, err := getAvalancheGoVersion()
+	//if err != nil {
+	//	return err
+	//}
+	//ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
+	//if err := runAnsible(inventoryPath, avalancheGoVersion, clusterName); err != nil {
+	//	return err
+	//}
+	//if err := setupBuildEnv(clusterName); err != nil {
+	//	return err
+	//}
+	//ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
+	//for _, instanceID := range cloudConfig.InstanceIDs {
+	//	nodeInstanceDirPath := app.GetNodeInstanceDirPath(instanceID)
+	//	// ansible host alias's name is formatted as ansiblePrefix_{instanceID}
+	//	ansiblePrefix := constants.AWSNodeAnsiblePrefix
+	//	if cloudService == constants.GCPCloudService {
+	//		ansiblePrefix = constants.GCPNodeAnsiblePrefix
+	//	}
+	//	nodeInstanceAnsibleAlias := fmt.Sprintf("%s_%s", ansiblePrefix, instanceID)
+	//	if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
+	//		return err
+	//	}
+	//}
+	//PrintResults(cloudConfig, publicIPMap)
+	//ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	return nil
 }
 

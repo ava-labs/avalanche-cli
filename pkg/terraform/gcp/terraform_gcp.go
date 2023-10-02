@@ -5,7 +5,6 @@ package terraformGCP
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"io"
@@ -20,7 +19,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-// SetCloudCredentials sets AWS account credentials defined in .aws dir in user home dir
+// SetCloudCredentials sets GCP account credentials defined in service account JSON file
 func SetCloudCredentials(rootBody *hclwrite.Body, zone, credentialsPath, projectName string) error {
 	// zone's format is us-east1-b, region's format is us-east1
 	region := strings.Join(strings.Split(zone, "-")[:2], "-")
@@ -81,6 +80,7 @@ func SetPublicIP(rootBody *hclwrite.Body, nodeName string, numNodes uint32) {
 	eipBody.SetAttributeValue("network_tier", cty.StringVal("PREMIUM"))
 }
 
+// createCustomTokens enables usage of ${} in terraform files
 func createCustomTokens(tokenName string) hclwrite.Tokens {
 	return hclwrite.Tokens{
 		{
@@ -118,7 +118,7 @@ func createCustomTokens(tokenName string) hclwrite.Tokens {
 	}
 }
 
-// SetupInstances adds aws_instance section in terraform state file where we configure all the necessary components of the desired ec2 instance(s)
+// SetupInstances adds google_compute_instance section in terraform state file where we configure all the necessary components of the desired GCE instance(s)
 func SetupInstances(rootBody *hclwrite.Body, networkName, sshPublicKey, ami, staticIPName, instanceName, keyPairName string, numNodes uint32) {
 	gcpInstance := rootBody.AppendNewBlock("resource", []string{"google_compute_instance", "gcp-node"})
 	gcpInstanceBody := gcpInstance.Body()
@@ -182,13 +182,13 @@ func SetOutput(rootBody *hclwrite.Body) {
 	})
 }
 
-// RunTerraform executes terraform apply function that creates the EC2 instances based on the .tf file provided
-// returns a list of AWS node-IDs and node IPs
-func RunTerraform(terraformDir string) ([]string, []string, error) {
+// RunTerraform executes terraform apply function that creates the GCE instances based on the .tf file provided
+// returns a list of GCP node IPs
+func RunTerraform(terraformDir string) ([]string, error) {
 	cmd := exec.Command(constants.Terraform, "init") //nolint:gosec
 	cmd.Dir = terraformDir
 	if err := cmd.Run(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	cmd = exec.Command(constants.Terraform, "apply", "-auto-approve") //nolint:gosec
 	cmd.Dir = terraformDir
@@ -198,60 +198,27 @@ func RunTerraform(terraformDir string) ([]string, []string, error) {
 	cmd.Stdout = mw
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		if strings.Contains(stderr.String(), constants.EIPLimitErr) {
-			return nil, nil, errors.New(constants.EIPLimitErr)
-		}
-		return nil, nil, err
+		return nil, err
 	}
-	//instanceIDs, err := GetInstanceIDs(terraformDir)
-	//if err != nil {
-	//	return nil, nil, err
-	//}
-	//publicIPs, err := GetPublicIPs(terraformDir)
-	//if err != nil {
-	//	return nil, nil, err
-	//}
-	//return instanceIDs, publicIPs, nil
-	return nil, nil, nil
+	return GetPublicIPs(terraformDir)
 }
 
-//
-//func GetInstanceIDs(terraformDir string) ([]string, error) {
-//	cmd := exec.Command(constants.Terraform, "output", "instance_ids") //nolint:gosec
-//	cmd.Dir = terraformDir
-//	instanceIDsOutput, err := cmd.Output()
-//	if err != nil {
-//		return nil, err
-//	}
-//	instanceIDs := []string{}
-//	instanceIDsOutputWoSpace := strings.TrimSpace(string(instanceIDsOutput))
-//	// eip and nodeID outputs are bounded by [ and ,] , we need to remove them
-//	trimmedInstanceIDs := instanceIDsOutputWoSpace[1 : len(instanceIDsOutputWoSpace)-3]
-//	splitInstanceIDs := strings.Split(trimmedInstanceIDs, ",")
-//	for _, instanceID := range splitInstanceIDs {
-//		instanceIDWoSpace := strings.TrimSpace(instanceID)
-//		// eip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
-//		instanceIDs = append(instanceIDs, instanceIDWoSpace[1:len(instanceIDWoSpace)-1])
-//	}
-//	return instanceIDs, nil
-//}
-//
-//func GetPublicIPs(terraformDir string) ([]string, error) {
-//	cmd := exec.Command(constants.Terraform, "output", "instance_ips") //nolint:gosec
-//	cmd.Dir = terraformDir
-//	eipsOutput, err := cmd.Output()
-//	if err != nil {
-//		return nil, err
-//	}
-//	publicIPs := []string{}
-//	eipsOutputWoSpace := strings.TrimSpace(string(eipsOutput))
-//	// eip and nodeID outputs are bounded by [ and ,] , we need to remove them
-//	trimmedPublicIPs := eipsOutputWoSpace[1 : len(eipsOutputWoSpace)-3]
-//	splitPublicIPs := strings.Split(trimmedPublicIPs, ",")
-//	for _, publicIP := range splitPublicIPs {
-//		publicIPWoSpace := strings.TrimSpace(publicIP)
-//		// eip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
-//		publicIPs = append(publicIPs, publicIPWoSpace[1:len(publicIPWoSpace)-1])
-//	}
-//	return publicIPs, nil
-//}
+func GetPublicIPs(terraformDir string) ([]string, error) {
+	cmd := exec.Command(constants.Terraform, "output", "instance_ips") //nolint:gosec
+	cmd.Dir = terraformDir
+	ipsOutput, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	publicIPs := []string{}
+	ipsOutputWoSpace := strings.TrimSpace(string(ipsOutput))
+	// ip and nodeID outputs are bounded by [ and ,] , we need to remove them
+	trimmedPublicIPs := ipsOutputWoSpace[1 : len(ipsOutputWoSpace)-3]
+	splitPublicIPs := strings.Split(trimmedPublicIPs, ",")
+	for _, publicIP := range splitPublicIPs {
+		publicIPWoSpace := strings.TrimSpace(publicIP)
+		// ip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
+		publicIPs = append(publicIPs, publicIPWoSpace[1:len(publicIPWoSpace)-1])
+	}
+	return publicIPs, nil
+}

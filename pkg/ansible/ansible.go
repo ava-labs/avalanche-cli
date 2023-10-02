@@ -31,7 +31,7 @@ var config []byte
 // specifies the ip address of the cloud server and the corresponding ssh cert path for the cloud server
 // if publicIPs is empty, that means that user is not using elastic IP and we are using publicIPMap
 // to get the host IP
-func CreateAnsibleHostInventory(inventoryDirPath, certFilePath string, publicIPMap map[string]string) error {
+func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService string, publicIPMap map[string]string) error {
 	if err := os.MkdirAll(inventoryDirPath, os.ModePerm); err != nil {
 		return err
 	}
@@ -42,6 +42,10 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath string, publicIPM
 	}
 	for instanceID := range publicIPMap {
 		inventoryContent := fmt.Sprintf("aws_node_%s", instanceID)
+		if cloudService == constants.GCPCloudService {
+			// we have formatted instance ID to start with gcp_node
+			inventoryContent = instanceID
+		}
 		inventoryContent += " ansible_host="
 		inventoryContent += publicIPMap[instanceID]
 		inventoryContent += " ansible_user=ubuntu "
