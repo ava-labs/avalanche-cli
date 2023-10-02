@@ -687,7 +687,7 @@ func createNode(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	PrintResults(cloudConfig)
+	PrintResults(cloudConfig, publicIPMap)
 	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	return nil
 }
