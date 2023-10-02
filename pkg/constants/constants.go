@@ -28,7 +28,11 @@ const (
 	TerraformDir                 = "terraform"
 	AnsibleDir                   = "ansible"
 	AnsibleHostInventoryFileName = "hosts"
+	StopAWSNode                  = "stop-aws-node"
+	CreateAWSNode                = "create-aws-node"
+	GetAWSNodeIP                 = "get-aws-node-ip"
 	ClusterConfigFileName        = "cluster_config.json"
+	BLSFileName                  = "signer.key"
 	SidecarVersion               = "1.4.0"
 
 	MaxLogFileSize   = 4
@@ -168,7 +172,6 @@ const (
 
 	GitRepoCommitName  = "Avalanche-CLI"
 	GitRepoCommitEmail = "info@avax.network"
-
 	AvaLabsMaintainers = "ava-labs"
 
 	UpgradeBytesFileName      = "upgrade.json"

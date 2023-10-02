@@ -73,6 +73,7 @@ will apply to all nodes in the cluster`,
 		Args:         cobra.ExactArgs(1),
 		RunE:         createNode,
 	}
+	cmd.Flags().BoolVar(&useEIP, "use-elastic-ip", true, "attach Elastic IP on AWS coud servers")
 
 	return cmd
 }
@@ -100,6 +101,10 @@ func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
 // func createClusterNodeConfig(nodeIDs, publicIPs []string, region, ami, keyPairName, certPath, sg, clusterName string) error {
 func createClusterNodeConfig(cloudConfig CloudConfig, clusterName string) error {
 	for i := range cloudConfig.InstanceIDs {
+    publicIP := ""
+		if len(cloudConfig.PublicIPs) > 0 {
+			publicIP = cloudConfig.PublicIPs[i]
+		}
 		nodeConfig := models.NodeConfig{
 			NodeID:        cloudConfig.InstanceIDs[i],
 			Region:        cloudConfig.Region,
@@ -107,7 +112,7 @@ func createClusterNodeConfig(cloudConfig CloudConfig, clusterName string) error 
 			KeyPair:       cloudConfig.KeyPair,
 			CertPath:      cloudConfig.CertFilePath,
 			SecurityGroup: cloudConfig.SecurityGroup,
-			ElasticIP:     cloudConfig.PublicIPs[i],
+			ElasticIP:     publicIP,
 		}
 		err := app.CreateNodeCloudConfigFile(cloudConfig.InstanceIDs[i], &nodeConfig)
 		if err != nil {
@@ -207,12 +212,12 @@ func getGCPCloudCredentials() (*compute.Service, string, error) {
 }
 
 // getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
-func getAWSCloudCredentials(region string, stopNode bool) (*session.Session, error) {
-	if stopNode {
+func getAWSCloudCredentials(region, awsCommand string) (*session.Session, error) {
+	if awsCommand == constants.StopAWSNode {
 		if err := requestStopAWSNodeAuth(); err != nil {
 			return &session.Session{}, err
 		}
-	} else {
+	} else if awsCommand == constants.CreateAWSNode {
 		if err := requestAWSAccountAuth(); err != nil {
 			return &session.Session{}, err
 		}
@@ -297,7 +302,7 @@ func getAWSCloudConfig() (*ec2.EC2, string, string, error) {
 			return nil, "", "", err
 		}
 	}
-	sess, err := getAWSCloudCredentials(region, false)
+	sess, err := getAWSCloudCredentials(region, constants.CreateAWSNode)
 	if err != nil {
 		return nil, "", "", err
 	}
@@ -484,9 +489,11 @@ func createEC2Instances(rootBody *hclwrite.Body,
 		ipInHTTP := awsAPI.CheckUserIPInSg(sg, userIPAddress, constants.AvalanchegoAPIPort)
 		terraformAWS.SetSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
 	}
-	terraformAWS.SetElasticIPs(rootBody, numNodes)
-	terraformAWS.SetupInstances(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami, numNodes)
-	terraformAWS.SetOutput(rootBody)
+	if useEIP {
+		terraform.SetElasticIPs(rootBody, numNodes)
+	}
+	terraform.SetupInstances(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami, numNodes)
+	terraform.SetOutput(rootBody, useEIP)
 	err = app.CreateTerraformDir()
 	if err != nil {
 		return nil, nil, "", "", err
@@ -495,7 +502,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	instanceIDs, elasticIPs, err := terraformAWS.RunTerraform(app.GetTerraformDir())
+	instanceIDs, elasticIPs, err := terraform.RunTerraform(app.GetTerraformDir(), useEIP)
 	if err != nil {
 		return nil, nil, "", "", err
 	}
@@ -639,6 +646,17 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	publicIPMap := map[string]string{}
+	if !useEIP {
+		publicIPMap, err = awsAPI.GetInstancePublicIPs(ec2Svc, instanceIDs)
+		if err != nil {
+			return err
+		}
+	} else {
+		for i, node := range instanceIDs {
+			publicIPMap[node] = elasticIPs[i]
+		}
+	}
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
 	if err := ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudConfig.PublicIPs, cloudConfig.InstanceIDs); err != nil {
 		return err
@@ -676,16 +694,19 @@ func createNode(_ *cobra.Command, args []string) error {
 
 // setupAnsible we need to remove existing ansible directory and its contents in .avalanche-cli dir
 // before calling every ansible run command just in case there is a change in playbook
-func setupAnsible() error {
+func setupAnsible(clusterName string) error {
 	err := app.SetupAnsibleEnv()
 	if err != nil {
 		return err
 	}
-	return ansible.Setup(app.GetAnsibleDir())
+	if err = ansible.Setup(app.GetAnsibleDir()); err != nil {
+		return err
+	}
+	return updateAnsiblePublicIPs(clusterName)
 }
 
-func runAnsible(inventoryPath, avalancheGoVersion string) error {
-	err := setupAnsible()
+func runAnsible(inventoryPath, avalancheGoVersion, clusterName string) error {
+	err := setupAnsible(clusterName)
 	if err != nil {
 		return err
 	}

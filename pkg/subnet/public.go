@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanchego/vms/platformvm/reward"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 
 	"github.com/ava-labs/avalanchego/vms/components/avax"
@@ -109,42 +108,6 @@ func (d *PublicDeployer) AddValidator(
 
 	ux.Logger.PrintToUser("Partial tx created")
 	return false, tx, remainingSubnetAuthKeys, nil
-}
-
-// AddValidatorPrimaryNetwork adds node as Primary Network Validator
-func (d *PublicDeployer) AddValidatorPrimaryNetwork(
-	nodeID ids.NodeID,
-	weight uint64,
-	startTime time.Time,
-	duration time.Duration,
-	recipientAddr ids.ShortID,
-	shares uint32,
-) error {
-	wallet, err := d.loadWallet()
-	if err != nil {
-		return err
-	}
-	validator := &txs.Validator{
-		NodeID: nodeID,
-		Start:  uint64(startTime.Unix()),
-		End:    uint64(startTime.Add(duration).Unix()),
-		Wght:   weight,
-	}
-	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign AddValidator transaction on the ledger device *** ")
-	}
-	owner := &secp256k1fx.OutputOwners{
-		Threshold: 1,
-		Addrs: []ids.ShortID{
-			recipientAddr,
-		},
-	}
-	tx, err := wallet.P().IssueAddValidatorTx(validator, owner, shares)
-	if err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", tx.ID().String())
-	return nil
 }
 
 func (d *PublicDeployer) CreateAssetTx(
@@ -332,6 +295,9 @@ func (d *PublicDeployer) AddPermissionlessValidator(
 	startTime uint64,
 	endTime uint64,
 	recipientAddr ids.ShortID,
+	delegationFee uint32,
+	popBytes []byte,
+	proofOfPossession *signer.ProofOfPossession,
 ) (ids.ID, error) {
 	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
@@ -340,7 +306,11 @@ func (d *PublicDeployer) AddPermissionlessValidator(
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign Add Permissionless Validator hash on the ledger device *** ")
 	}
-	txID, err := d.issueAddPermissionlessValidatorTX(recipientAddr, stakeAmount, subnetID, nodeID, subnetAssetID, startTime, endTime, wallet)
+	if subnetAssetID == ids.Empty {
+		subnetAssetID = wallet.P().AVAXAssetID()
+	}
+	// popBytes is a marshalled json object containing publicKey and proofOfPossession of the node's BLS info
+	txID, err := d.issueAddPermissionlessValidatorTX(recipientAddr, stakeAmount, subnetID, nodeID, subnetAssetID, startTime, endTime, wallet, delegationFee, popBytes, proofOfPossession)
 	if err != nil {
 		return ids.Empty, err
 	}
@@ -362,7 +332,7 @@ func (d *PublicDeployer) AddPermissionlessDelegator(
 		return ids.Empty, err
 	}
 	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign Add Permissionless Validator hash on the ledger device *** ")
+		ux.Logger.PrintToUser("*** Please sign Add Permissionless Delegator hash on the ledger device *** ")
 	}
 	txID, err := d.issueAddPermissionlessDelegatorTX(recipientAddr, stakeAmount, subnetID, nodeID, subnetAssetID, startTime, endTime, wallet)
 	if err != nil {
@@ -502,8 +472,14 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error
 	default:
 		return nil, fmt.Errorf("unsupported public network")
 	}
-
-	wallet, err := primary.NewWalletWithTxs(ctx, api, d.kc, preloadTxs...)
+	// filter out ids.Empty txs
+	filteredTxs := []ids.ID{}
+	for i := range preloadTxs {
+		if preloadTxs[i] != ids.Empty {
+			filteredTxs = append(filteredTxs, preloadTxs[i])
+		}
+	}
+	wallet, err := primary.NewWalletWithTxs(ctx, api, d.kc, filteredTxs...)
 	if err != nil {
 		return nil, err
 	}
@@ -622,6 +598,9 @@ func (d *PublicDeployer) createTransformSubnetTX(
 	return &tx, nil
 }
 
+// issueAddPermissionlessValidatorTX calls addPermissionlessValidatorTx API on P-Chain
+// if subnetID is empty, node nodeID is going to be added as a validator on Primary Network
+// if popBytes is empty, that means that we are using BLS proof generated from signer.key file
 func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 	recipientAddr ids.ShortID,
 	stakeAmount uint64,
@@ -631,6 +610,9 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 	startTime uint64,
 	endTime uint64,
 	wallet primary.Wallet,
+	delegationFee uint32,
+	popBytes []byte,
+	blsProof *signer.ProofOfPossession,
 ) (ids.ID, error) {
 	options := d.getMultisigTxOptions([]ids.ShortID{})
 	owner := &secp256k1fx.OutputOwners{
@@ -638,6 +620,21 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 		Addrs: []ids.ShortID{
 			recipientAddr,
 		},
+	}
+	var proofOfPossession signer.Signer
+	if subnetID == ids.Empty {
+		if popBytes != nil {
+			pop := &signer.ProofOfPossession{}
+			err := pop.UnmarshalJSON(popBytes)
+			if err != nil {
+				return ids.Empty, err
+			}
+			proofOfPossession = pop
+		} else {
+			proofOfPossession = blsProof
+		}
+	} else {
+		proofOfPossession = &signer.Empty{}
 	}
 	tx, err := wallet.P().IssueAddPermissionlessValidatorTx(&txs.SubnetValidator{
 		Validator: txs.Validator{
@@ -648,11 +645,11 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 		},
 		Subnet: subnetID,
 	},
-		&signer.Empty{},
+		proofOfPossession,
 		assetID,
 		owner,
-		&secp256k1fx.OutputOwners{},
-		reward.PercentDenominator,
+		owner,
+		delegationFee,
 		options...)
 	if err != nil {
 		return ids.Empty, err

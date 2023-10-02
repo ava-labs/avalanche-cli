@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/manifoldco/promptui"
+	"golang.org/x/exp/slices"
 	"golang.org/x/mod/semver"
 )
 
@@ -71,6 +72,7 @@ type Prompter interface {
 	CaptureNoYes(promptStr string) (bool, error)
 	CaptureList(promptStr string, options []string) (string, error)
 	CaptureString(promptStr string) (string, error)
+	CaptureValidatedString(promptStr string, validator func(string) error) (string, error)
 	CaptureURL(promptStr string) (string, error)
 	CaptureRepoBranch(promptStr string, repo string) (string, error)
 	CaptureRepoFile(promptStr string, repo string, branch string) (string, error)
@@ -563,6 +565,20 @@ func (*realPrompter) CaptureString(promptStr string) (string, error) {
 	return str, nil
 }
 
+func (*realPrompter) CaptureValidatedString(promptStr string, validator func(string) error) (string, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validator,
+	}
+
+	str, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return str, nil
+}
+
 func (*realPrompter) CaptureGitURL(promptStr string) (*url.URL, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
@@ -680,7 +696,10 @@ func getIndexInSlice[T comparable](list []T, element T) (int, error) {
 // check subnet authorization criteria:
 // - [subnetAuthKeys] satisfy subnet's [threshold]
 // - [subnetAuthKeys] is a subset of subnet's [controlKeys]
-func CheckSubnetAuthKeys(subnetAuthKeys []string, controlKeys []string, threshold uint32) error {
+func CheckSubnetAuthKeys(walletKey string, subnetAuthKeys []string, controlKeys []string, threshold uint32) error {
+	if slices.Contains(controlKeys, walletKey) && !slices.Contains(subnetAuthKeys, walletKey) {
+		return fmt.Errorf("wallet key %s is a subnet control key so it must be included in subnet auth keys", walletKey)
+	}
 	if len(subnetAuthKeys) != int(threshold) {
 		return fmt.Errorf("number of given subnet auth differs from the threshold")
 	}
@@ -701,13 +720,22 @@ func CheckSubnetAuthKeys(subnetAuthKeys []string, controlKeys []string, threshol
 
 // get subnet authorization keys from the user, as a subset of the subnet's [controlKeys]
 // with a len equal to the subnet's [threshold]
-func GetSubnetAuthKeys(prompt Prompter, controlKeys []string, threshold uint32) ([]string, error) {
+func GetSubnetAuthKeys(prompt Prompter, walletKey string, controlKeys []string, threshold uint32) ([]string, error) {
 	if len(controlKeys) == int(threshold) {
 		return controlKeys, nil
 	}
 	subnetAuthKeys := []string{}
 	filteredControlKeys := []string{}
 	filteredControlKeys = append(filteredControlKeys, controlKeys...)
+	if slices.Contains(controlKeys, walletKey) {
+		ux.Logger.PrintToUser("Adding wallet key %s to the tx subnet auth keys as it is a subnet control key", walletKey)
+		subnetAuthKeys = append(subnetAuthKeys, walletKey)
+		index, err := getIndexInSlice(filteredControlKeys, walletKey)
+		if err != nil {
+			return nil, err
+		}
+		filteredControlKeys = append(filteredControlKeys[:index], filteredControlKeys[index+1:]...)
+	}
 	for len(subnetAuthKeys) != int(threshold) {
 		subnetAuthKey, err := prompt.CaptureList(
 			"Choose a subnet auth key",

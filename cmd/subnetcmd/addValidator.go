@@ -137,6 +137,12 @@ func addValidator(_ *cobra.Command, args []string) error {
 		network = models.Local
 	}
 
+	// get keychain accesor
+	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
+	if err != nil {
+		return err
+	}
+
 	chains, err := ValidateSubnetNameAndGetChains(args)
 	if err != nil {
 		return err
@@ -157,13 +163,19 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	walletKeys, err := loadCreationKeys(network, kc)
+	if err != nil {
+		return err
+	}
+	walletKey := walletKeys[0]
+
 	// get keys for add validator tx signing
 	if subnetAuthKeys != nil {
-		if err := prompts.CheckSubnetAuthKeys(subnetAuthKeys, controlKeys, threshold); err != nil {
+		if err := prompts.CheckSubnetAuthKeys(walletKey, subnetAuthKeys, controlKeys, threshold); err != nil {
 			return err
 		}
 	} else {
-		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, controlKeys, threshold)
+		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, walletKey, controlKeys, threshold)
 		if err != nil {
 			return err
 		}
@@ -171,7 +183,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Your subnet auth keys for add validator tx creation: %s", subnetAuthKeys)
 
 	if nodeIDStr == "" {
-		nodeID, err = promptNodeID()
+		nodeID, err = PromptNodeID()
 		if err != nil {
 			return err
 		}
@@ -183,7 +195,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	}
 
 	if weight == 0 {
-		weight, err = promptWeight()
+		weight, err = PromptWeight()
 		if err != nil {
 			return err
 		}
@@ -203,11 +215,6 @@ func addValidator(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Weight: %d", weight)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
-	// get keychain accesor
-	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
-	if err != nil {
-		return err
-	}
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidator(controlKeys, subnetAuthKeys, subnetID, nodeID, weight, start, duration)
 	if err != nil {
@@ -362,7 +369,7 @@ func promptStart() (time.Time, error) {
 	return app.Prompt.CaptureDate(txt)
 }
 
-func promptNodeID() (ids.NodeID, error) {
+func PromptNodeID() (ids.NodeID, error) {
 	ux.Logger.PrintToUser("Next, we need the NodeID of the validator you want to whitelist.")
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions about how to query the NodeID from your node")
@@ -372,7 +379,7 @@ func promptNodeID() (ids.NodeID, error) {
 	return app.Prompt.CaptureNodeID(txt)
 }
 
-func promptWeight() (uint64, error) {
+func PromptWeight() (uint64, error) {
 	defaultWeight := fmt.Sprintf("Default (%d)", constants.DefaultStakeWeight)
 	txt := "What stake weight would you like to assign to the validator?"
 	weightOptions := []string{defaultWeight, "Custom"}

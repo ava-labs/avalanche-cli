@@ -199,6 +199,10 @@ func (app *Avalanche) GetClusterConfigPath() string {
 	return filepath.Join(app.GetNodesDir(), constants.ClusterConfigFileName)
 }
 
+func (app *Avalanche) GetNodeBLSSecretKeyPath(instanceID string) string {
+	return filepath.Join(app.GetNodeInstanceDirPath(instanceID), constants.BLSFileName)
+}
+
 func (app *Avalanche) GetElasticSubnetConfigPath(subnetName string) string {
 	return filepath.Join(app.GetSubnetDir(), subnetName, constants.ElasticSubnetConfigFileName)
 }

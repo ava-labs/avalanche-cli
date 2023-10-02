@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 
@@ -102,7 +104,7 @@ func stopNode(_ *cobra.Command, args []string) error {
 			continue
 		}
 		if nodeConfig.Region != lastRegion {
-			sess, err := getAWSCloudCredentials(nodeConfig.Region, true)
+			sess, err := getAWSCloudCredentials(nodeConfig.Region, constants.StopAWSNode)
 			if err != nil {
 				return err
 			}
