@@ -603,18 +603,18 @@ func createGCPInstance(usr *user.User) (CloudConfig, error) {
 }
 
 func createNode(_ *cobra.Command, args []string) error {
-	//clusterName := args[0]
-	//cloudService, err := promptCloudService()
-	//if err != nil {
-	//	return err
-	//}
+	clusterName := args[0]
+	cloudService, err := promptCloudService()
+	if err != nil {
+		return err
+	}
 	if err := terraform.CheckIsInstalled(); err != nil {
 		return err
 	}
 	if err := ansible.CheckIsInstalled(); err != nil {
 		return err
 	}
-	err := terraform.RemoveDirectory(app.GetTerraformDir())
+	err = terraform.RemoveDirectory(app.GetTerraformDir())
 	if err != nil {
 		return err
 	}
@@ -622,55 +622,55 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	//cloudConfig := CloudConfig{}
-	//if cloudService == constants.AWSCloudService {
-	//	cloudConfig, err = createAWSInstance(usr)
-	//} else {
-	//	cloudConfig, err = createGCPInstance(usr)
-	//}
+	cloudConfig := CloudConfig{}
+	if cloudService == constants.AWSCloudService {
+		cloudConfig, err = createAWSInstance(usr)
+	} else {
+		cloudConfig, err = createGCPInstance(usr)
+	}
 	_, err = createGCPInstance(usr)
 	if err != nil {
 		return err
 	}
-	//if err := createClusterNodeConfig(cloudConfig, clusterName); err != nil {
-	//	return err
-	//}
-	//err = terraform.RemoveDirectory(app.GetTerraformDir())
-	//if err != nil {
-	//	return err
-	//}
-	//inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	//if err := ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudConfig.PublicIPs, cloudConfig.InstanceIDs); err != nil {
-	//	return err
-	//}
-	//time.Sleep(15 * time.Second)
-	//
-	//avalancheGoVersion, err := getAvalancheGoVersion()
-	//if err != nil {
-	//	return err
-	//}
-	//ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
-	//if err := runAnsible(inventoryPath, avalancheGoVersion); err != nil {
-	//	return err
-	//}
-	//if err := setupBuildEnv(clusterName); err != nil {
-	//	return err
-	//}
-	//ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
-	//for _, instanceID := range cloudConfig.InstanceIDs {
-	//	nodeInstanceDirPath := app.GetNodeInstanceDirPath(instanceID)
-	//	// ansible host alias's name is formatted as ansiblePrefix_{instanceID}
-	//	ansiblePrefix := constants.AWSNodeAnsiblePrefix
-	//	if cloudService == constants.GCPCloudService {
-	//		ansiblePrefix = constants.GCPNodeAnsiblePrefix
-	//	}
-	//	nodeInstanceAnsibleAlias := fmt.Sprintf("%s_%s", ansiblePrefix, instanceID)
-	//	if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
-	//		return err
-	//	}
-	//}
-	//PrintResults(cloudConfig)
-	//ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
+	if err := createClusterNodeConfig(cloudConfig, clusterName); err != nil {
+		return err
+	}
+	err = terraform.RemoveDirectory(app.GetTerraformDir())
+	if err != nil {
+		return err
+	}
+	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
+	if err := ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudConfig.PublicIPs, cloudConfig.InstanceIDs); err != nil {
+		return err
+	}
+	time.Sleep(15 * time.Second)
+
+	avalancheGoVersion, err := getAvalancheGoVersion()
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
+	if err := runAnsible(inventoryPath, avalancheGoVersion); err != nil {
+		return err
+	}
+	if err := setupBuildEnv(clusterName); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
+	for _, instanceID := range cloudConfig.InstanceIDs {
+		nodeInstanceDirPath := app.GetNodeInstanceDirPath(instanceID)
+		// ansible host alias's name is formatted as ansiblePrefix_{instanceID}
+		ansiblePrefix := constants.AWSNodeAnsiblePrefix
+		if cloudService == constants.GCPCloudService {
+			ansiblePrefix = constants.GCPNodeAnsiblePrefix
+		}
+		nodeInstanceAnsibleAlias := fmt.Sprintf("%s_%s", ansiblePrefix, instanceID)
+		if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
+			return err
+		}
+	}
+	PrintResults(cloudConfig)
+	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	return nil
 }
 
