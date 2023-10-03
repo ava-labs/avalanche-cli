@@ -577,17 +577,17 @@ func createGCPInstance(usr *user.User) (CloudConfig, error) {
 	// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
 	gcpClient, zone, imageID, gcpCredentialFilepath, gcpProjectName, err := getGCPConfig()
 	if err != nil {
-		return CloudConfig{}, nil
+		return CloudConfig{}, err
 	}
 	defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 	hclFile, rootBody, err := terraform.InitConf()
 	if err != nil {
-		return CloudConfig{}, nil
+		return CloudConfig{}, err
 	}
 	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(rootBody, gcpClient, hclFile, zone, imageID, defaultAvalancheCLIPrefix, gcpProjectName, gcpCredentialFilepath)
 	if err != nil {
 		ux.Logger.PrintToUser("Failed to create GCP cloud server")
-		return CloudConfig{}, nil
+		return CloudConfig{}, err
 	}
 	gcpCloudConfig := CloudConfig{
 		instanceIDs,
@@ -630,6 +630,9 @@ func createNode(_ *cobra.Command, args []string) error {
 			return err
 		}
 		cloudConfig, err = createAWSInstance(ec2Svc, region, ami, usr)
+		if err != nil {
+			return err
+		}
 		if !useEIP {
 			publicIPMap, err = awsAPI.GetInstancePublicIPs(ec2Svc, cloudConfig.InstanceIDs)
 			if err != nil {
@@ -660,7 +663,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err := ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
 		return err
 	}
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	avalancheGoVersion, err := getAvalancheGoVersion()
 	if err != nil {
