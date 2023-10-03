@@ -1,7 +1,7 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-package terraformGCP
+package terraformgcp
 
 import (
 	"fmt"
@@ -58,7 +58,7 @@ func SetFirewallRule(rootBody *hclwrite.Body, ipAddress, firewallName, networkNa
 	firewallAllow := firewallBody.AppendNewBlock("allow", []string{})
 	firewallAllowBody := firewallAllow.Body()
 	firewallAllowBody.SetAttributeValue("protocol", cty.StringVal("tcp"))
-	var allowPortList []cty.Value
+	allowPortList := []cty.Value{}
 	for i := range ports {
 		allowPortList = append(allowPortList, cty.StringVal(ports[i]))
 	}

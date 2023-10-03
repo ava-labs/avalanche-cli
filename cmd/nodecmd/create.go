@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	terraformGCP "github.com/ava-labs/avalanche-cli/pkg/terraform/gcp"
+	terraformgcp "github.com/ava-labs/avalanche-cli/pkg/terraform/gcp"
 	"golang.org/x/exp/rand"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
@@ -202,7 +202,7 @@ func getGCPCloudCredentials() (*compute.Service, string, error) {
 			return nil, "", err
 		}
 	}
-	err = os.Setenv(constants.GCPCredEnvVar, gcpCredentialsPath)
+	err = os.Setenv(constants.GCPEnvVar, gcpCredentialsPath)
 	if err != nil {
 		return nil, "", err
 	}
@@ -339,8 +339,11 @@ func createGCEInstances(rootBody *hclwrite.Body,
 ) ([]string, []string, string, string, error) {
 	keyPairName := fmt.Sprintf("%s-keypair", cliDefaultName)
 	sshKeyPath, err := app.GetSSHCertFilePath(keyPairName)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
 	networkName := fmt.Sprintf("%s-network", cliDefaultName)
-	if err := terraformGCP.SetCloudCredentials(rootBody, zone, credentialsPath, projectName); err != nil {
+	if err := terraformgcp.SetCloudCredentials(rootBody, zone, credentialsPath, projectName); err != nil {
 		return nil, nil, "", "", err
 	}
 	numNodes, err := app.Prompt.CaptureUint32("How many nodes do you want to set up on GCP?")
@@ -371,7 +374,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	}
 	if !networkExists {
 		ux.Logger.PrintToUser(fmt.Sprintf("Creating new network %s in GCP", networkName))
-		terraformGCP.SetNetwork(rootBody, userIPAddress, networkName)
+		terraformgcp.SetNetwork(rootBody, userIPAddress, networkName)
 	} else {
 		ux.Logger.PrintToUser(fmt.Sprintf("Using existing network %s in GCP", networkName))
 		firewallName := fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(userIPAddress, ".", ""))
@@ -380,18 +383,18 @@ func createGCEInstances(rootBody *hclwrite.Body,
 			return nil, nil, "", "", err
 		}
 		if !firewallExists {
-			terraformGCP.SetFirewallRule(rootBody, userIPAddress+"/32", firewallName, networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)})
+			terraformgcp.SetFirewallRule(rootBody, userIPAddress+"/32", firewallName, networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)})
 		}
 	}
 	nodeName := fmt.Sprintf("gcp-node-%s", randomString(5))
 	publicIPName := fmt.Sprintf("static-ip-%s", nodeName)
-	terraformGCP.SetPublicIP(rootBody, nodeName, numNodes)
+	terraformgcp.SetPublicIP(rootBody, nodeName, numNodes)
 	sshPublicKey, err := os.ReadFile(fmt.Sprintf("%s.pub", sshKeyPath))
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	terraformGCP.SetupInstances(rootBody, networkName, string(sshPublicKey), ami, publicIPName, nodeName, numNodes)
-	terraformGCP.SetOutput(rootBody)
+	terraformgcp.SetupInstances(rootBody, networkName, string(sshPublicKey), ami, publicIPName, nodeName, numNodes)
+	terraformgcp.SetOutput(rootBody)
 	err = app.CreateTerraformDir()
 	if err != nil {
 		return nil, nil, "", "", err
@@ -400,7 +403,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	elasticIPs, err := terraformGCP.RunTerraform(app.GetTerraformDir())
+	elasticIPs, err := terraformgcp.RunTerraform(app.GetTerraformDir())
 	if err != nil {
 		return nil, nil, "", "", err
 	}
@@ -426,7 +429,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	keyPairName,
 	securityGroupName string,
 ) ([]string, []string, string, string, error) {
-	if err := terraformAWS.SetCloudCredentials(rootBody, region); err != nil {
+	if err := terraformaws.SetCloudCredentials(rootBody, region); err != nil {
 		return nil, nil, "", "", err
 	}
 	numNodes, err := app.Prompt.CaptureUint32("How many nodes do you want to set up on AWS?")
@@ -446,7 +449,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	if !keyPairExists {
 		if !certInSSHDir {
 			ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s in AWS", keyPairName))
-			terraformAWS.SetKeyPair(rootBody, keyPairName, certName)
+			terraformaws.SetKeyPair(rootBody, keyPairName, certName)
 		} else {
 			ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists on your .ssh directory but not on AWS", keyPairName))
 			ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in AWS", keyPairName))
@@ -454,7 +457,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 			if err != nil {
 				return nil, nil, "", "", err
 			}
-			terraformAWS.SetKeyPair(rootBody, keyPairName, certName)
+			terraformaws.SetKeyPair(rootBody, keyPairName, certName)
 		}
 	} else {
 		if certInSSHDir {
@@ -467,7 +470,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 			if err != nil {
 				return nil, nil, "", "", err
 			}
-			terraformAWS.SetKeyPair(rootBody, keyPairName, certName)
+			terraformaws.SetKeyPair(rootBody, keyPairName, certName)
 		}
 	}
 	securityGroupExists, sg, err := awsAPI.CheckSecurityGroupExists(ec2Svc, securityGroupName)
@@ -480,18 +483,18 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	}
 	if !securityGroupExists {
 		ux.Logger.PrintToUser(fmt.Sprintf("Creating new security group %s in AWS", securityGroupName))
-		terraformAWS.SetSecurityGroup(rootBody, userIPAddress, securityGroupName)
+		terraformaws.SetSecurityGroup(rootBody, userIPAddress, securityGroupName)
 	} else {
 		ux.Logger.PrintToUser(fmt.Sprintf("Using existing security group %s in AWS", securityGroupName))
 		ipInTCP := awsAPI.CheckUserIPInSg(sg, userIPAddress, constants.SSHTCPPort)
 		ipInHTTP := awsAPI.CheckUserIPInSg(sg, userIPAddress, constants.AvalanchegoAPIPort)
-		terraformAWS.SetSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
+		terraformaws.SetSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
 	}
 	if useEIP {
-		terraformAWS.SetElasticIPs(rootBody, numNodes)
+		terraformaws.SetElasticIPs(rootBody, numNodes)
 	}
-	terraformAWS.SetupInstances(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami, numNodes)
-	terraformAWS.SetOutput(rootBody, useEIP)
+	terraformaws.SetupInstances(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami, numNodes)
+	terraformaws.SetOutput(rootBody, useEIP)
 	err = app.CreateTerraformDir()
 	if err != nil {
 		return nil, nil, "", "", err
@@ -500,7 +503,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	instanceIDs, elasticIPs, err := terraformAWS.RunTerraform(app.GetTerraformDir(), useEIP)
+	instanceIDs, elasticIPs, err := terraformaws.RunTerraform(app.GetTerraformDir(), useEIP)
 	if err != nil {
 		return nil, nil, "", "", err
 	}
@@ -537,7 +540,7 @@ func createAWSInstance(ec2Svc *ec2.EC2, region, ami string, usr *user.User) (Clo
 			ux.Logger.PrintToUser("Failed to create AWS cloud server")
 		}
 		// we stop created instances so that user doesn't pay for unused EC2 instances
-		instanceIDs, instanceIDErr := terraformAWS.GetInstanceIDs(app.GetTerraformDir())
+		instanceIDs, instanceIDErr := terraformaws.GetInstanceIDs(app.GetTerraformDir())
 		if instanceIDErr != nil {
 			return CloudConfig{}, instanceIDErr
 		}
