@@ -273,7 +273,6 @@ func getGCPConfig() (*compute.Service, string, string, string, string, error) {
 	}
 	gcpClient, gcpCredentialFilePath, err := getGCPCloudCredentials()
 	if err != nil {
-		fmt.Printf("we have error here %s \n", err)
 		return nil, "", "", "", "", err
 	}
 	imageID, err := gcpAPI.GetUbuntuImageID(gcpClient)
@@ -345,15 +344,14 @@ func createGCEInstances(rootBody *hclwrite.Body,
 		return nil, nil, "", "", err
 	}
 	ux.Logger.PrintToUser("Creating new VM instance(s) on Google Compute Engine...")
-	defaultSSHCertName := fmt.Sprintf("%s-keypair.pub", cliDefaultName)
-	certInSSHDir, err := app.CheckCertInSSHDir(defaultSSHCertName)
+	certInSSHDir, err := app.CheckCertInSSHDir(fmt.Sprintf("%s-keypair.pub", cliDefaultName))
 	if err != nil {
 		return nil, nil, "", "", err
 	}
 	if !certInSSHDir {
 		ux.Logger.PrintToUser("Creating new SSH key pair %s in GCP", sshKeyPath)
 		ux.Logger.PrintToUser("For more information regarding SSH key pair in GCP, please head to https://cloud.google.com/compute/docs/connect/create-ssh-keys")
-		_, err = exec.Command("ssh-keygen", "-t", "rsa", "-f", sshKeyPath, "-C", keyPairName, "-b", "2048").Output()
+		_, err = exec.Command("ssh-keygen", "-t", "rsa", "-f", sshKeyPath, "-C", "ubuntu", "-b", "2048").Output()
 		if err != nil {
 			return nil, nil, "", "", err
 		}
@@ -407,7 +405,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 		instanceIDs = append(instanceIDs, fmt.Sprintf("%s-%s", nodeName, strconv.Itoa(i)))
 	}
 	ux.Logger.PrintToUser("New GCE instance(s) successfully created in Google Cloud Engine!")
-	sshCertPath, err := app.GetSSHCertFilePath(defaultSSHCertName)
+	sshCertPath, err := app.GetSSHCertFilePath(fmt.Sprintf("%s-keypair", cliDefaultName))
 	if err != nil {
 		return nil, nil, "", "", err
 	}
@@ -486,10 +484,10 @@ func createEC2Instances(rootBody *hclwrite.Body,
 		terraformAWS.SetSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
 	}
 	if useEIP {
-		terraform.SetElasticIPs(rootBody, numNodes)
+		terraformAWS.SetElasticIPs(rootBody, numNodes)
 	}
-	terraform.SetupInstances(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami, numNodes)
-	terraform.SetOutput(rootBody, useEIP)
+	terraformAWS.SetupInstances(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami, numNodes)
+	terraformAWS.SetOutput(rootBody, useEIP)
 	err = app.CreateTerraformDir()
 	if err != nil {
 		return nil, nil, "", "", err
@@ -498,7 +496,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	instanceIDs, elasticIPs, err := terraform.RunTerraform(app.GetTerraformDir(), useEIP)
+	instanceIDs, elasticIPs, err := terraformAWS.RunTerraform(app.GetTerraformDir(), useEIP)
 	if err != nil {
 		return nil, nil, "", "", err
 	}
@@ -583,8 +581,8 @@ func createGCPInstance(usr *user.User) (CloudConfig, error) {
 		return CloudConfig{}, nil
 	}
 	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(rootBody, gcpClient, hclFile, zone, imageID, defaultAvalancheCLIPrefix, gcpProjectName, gcpCredentialFilepath)
-	//_, _, _, _, err = createGCEInstances(rootBody, gcpClient, hclFile, zone, imageID, defaultAvalancheCLIPrefix, gcpProjectName, gcpCredentialFilepath)
 	if err != nil {
+		ux.Logger.PrintToUser("Failed to create GCP cloud server")
 		return CloudConfig{}, nil
 	}
 	gcpCloudConfig := CloudConfig{
@@ -650,42 +648,42 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err := createClusterNodeConfig(cloudConfig, clusterName); err != nil {
 		return err
 	}
-	//err = terraform.RemoveDirectory(app.GetTerraformDir())
-	//if err != nil {
-	//	return err
-	//}
+	err = terraform.RemoveDirectory(app.GetTerraformDir())
+	if err != nil {
+		return err
+	}
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
 	if err := ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
 		return err
 	}
-	//time.Sleep(15 * time.Second)
-	//
-	//avalancheGoVersion, err := getAvalancheGoVersion()
-	//if err != nil {
-	//	return err
-	//}
-	//ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
-	//if err := runAnsible(inventoryPath, avalancheGoVersion, clusterName); err != nil {
-	//	return err
-	//}
-	//if err := setupBuildEnv(clusterName); err != nil {
-	//	return err
-	//}
-	//ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
-	//for _, instanceID := range cloudConfig.InstanceIDs {
-	//	nodeInstanceDirPath := app.GetNodeInstanceDirPath(instanceID)
-	//	// ansible host alias's name is formatted as ansiblePrefix_{instanceID}
-	//	ansiblePrefix := constants.AWSNodeAnsiblePrefix
-	//	if cloudService == constants.GCPCloudService {
-	//		ansiblePrefix = constants.GCPNodeAnsiblePrefix
-	//	}
-	//	nodeInstanceAnsibleAlias := fmt.Sprintf("%s_%s", ansiblePrefix, instanceID)
-	//	if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
-	//		return err
-	//	}
-	//}
-	//PrintResults(cloudConfig, publicIPMap)
-	//ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
+	time.Sleep(20 * time.Second)
+
+	avalancheGoVersion, err := getAvalancheGoVersion()
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
+	if err := runAnsible(inventoryPath, avalancheGoVersion, clusterName); err != nil {
+		return err
+	}
+	if err := setupBuildEnv(clusterName); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
+	for _, instanceID := range cloudConfig.InstanceIDs {
+		nodeInstanceDirPath := app.GetNodeInstanceDirPath(instanceID)
+		// ansible host alias's name is formatted as ansiblePrefix_{instanceID}
+		nodeInstanceAnsibleAlias := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, instanceID)
+		if cloudService == constants.GCPCloudService {
+			// ansible host alias's name for gcp is already formatted as gcp-node-i{instanceID}
+			nodeInstanceAnsibleAlias = instanceID
+		}
+		if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
+			return err
+		}
+	}
+	PrintResults(cloudConfig, publicIPMap, cloudService)
+	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	return nil
 }
 
@@ -860,7 +858,7 @@ func promptCloudService() (string, error) {
 	return chosenCloudService, nil
 }
 
-func PrintResults(cloudConfig CloudConfig, publicIPMap map[string]string) {
+func PrintResults(cloudConfig CloudConfig, publicIPMap map[string]string, cloudService string) {
 	ux.Logger.PrintToUser("======================================")
 	ux.Logger.PrintToUser("AVALANCHE NODE(S) SUCCESSFULLY SET UP!")
 	ux.Logger.PrintToUser("======================================")
@@ -872,6 +870,9 @@ func PrintResults(cloudConfig CloudConfig, publicIPMap map[string]string) {
 		publicIP = publicIPMap[instanceID]
 		ux.Logger.PrintToUser("======================================")
 		ansibleHostID := fmt.Sprintf("aws_node_%s", cloudConfig.InstanceIDs[i])
+		if cloudService == constants.GCPCloudService {
+			ansibleHostID = cloudConfig.InstanceIDs[i]
+		}
 		ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", ansibleHostID))
 		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Instance ID: %s", instanceID))
 		ux.Logger.PrintToUser(fmt.Sprintf("Public IP: %s", publicIP))
@@ -881,7 +882,7 @@ func PrintResults(cloudConfig CloudConfig, publicIPMap map[string]string) {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("To ssh to node, run: ")
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(fmt.Sprintf("ssh -o IdentitiesOnly=yes ubuntu@%s -i %s", publicIP, cloudConfig.CertFilePath))
+		ux.Logger.PrintToUser(fmt.Sprintf("ssh -o IdentitiesOnly=yes -o StrictHostKeyChecking=no ubuntu@%s -i %s", publicIP, cloudConfig.CertFilePath))
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("======================================")
 	}

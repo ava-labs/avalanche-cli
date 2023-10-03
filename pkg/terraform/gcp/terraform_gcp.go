@@ -4,11 +4,9 @@
 package terraformGCP
 
 import (
-	"bytes"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"io"
-	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -126,7 +124,7 @@ func SetupInstances(rootBody *hclwrite.Body, networkName, sshPublicKey, ami, sta
 	gcpInstanceBody.SetAttributeValue("count", cty.NumberIntVal(int64(numNodes)))
 	gcpInstanceBody.SetAttributeValue("machine_type", cty.StringVal("e2-standard-8"))
 	metadataMap := make(map[string]cty.Value)
-	metadataMap["ssh-keys"] = cty.StringVal(fmt.Sprintf("%s:%s", keyPairName, strings.TrimSuffix(sshPublicKey, "\n")))
+	metadataMap["ssh-keys"] = cty.StringVal(fmt.Sprintf("ubuntu:%s", strings.TrimSuffix(sshPublicKey, "\n")))
 	gcpInstanceBody.SetAttributeValue("metadata", cty.ObjectVal(metadataMap))
 	networkInterface := gcpInstanceBody.AppendNewBlock("network_interface", []string{})
 	networkInterfaceBody := networkInterface.Body()
@@ -192,11 +190,7 @@ func RunTerraform(terraformDir string) ([]string, error) {
 	}
 	cmd = exec.Command(constants.Terraform, "apply", "-auto-approve") //nolint:gosec
 	cmd.Dir = terraformDir
-	var stdBuffer bytes.Buffer
-	var stderr bytes.Buffer
-	mw := io.MultiWriter(os.Stdout, &stdBuffer)
-	cmd.Stdout = mw
-	cmd.Stderr = &stderr
+	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	if err := cmd.Run(); err != nil {
 		return nil, err
 	}

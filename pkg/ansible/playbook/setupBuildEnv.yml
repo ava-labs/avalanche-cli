@@ -1,6 +1,9 @@
 ---
 - hosts: "{{ target }}"
   tasks:
+    - name: update Ubuntu
+      shell: |
+        sudo apt update
     - name: install gcc
       shell: |
         gcc --version && exit
