@@ -5,11 +5,12 @@ package terraformGCP
 
 import (
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/hashicorp/hcl/v2"
@@ -117,7 +118,7 @@ func createCustomTokens(tokenName string) hclwrite.Tokens {
 }
 
 // SetupInstances adds google_compute_instance section in terraform state file where we configure all the necessary components of the desired GCE instance(s)
-func SetupInstances(rootBody *hclwrite.Body, networkName, sshPublicKey, ami, staticIPName, instanceName, keyPairName string, numNodes uint32) {
+func SetupInstances(rootBody *hclwrite.Body, networkName, sshPublicKey, ami, staticIPName, instanceName string, numNodes uint32) {
 	gcpInstance := rootBody.AppendNewBlock("resource", []string{"google_compute_instance", "gcp-node"})
 	gcpInstanceBody := gcpInstance.Body()
 	gcpInstanceBody.SetAttributeRaw("name", createCustomTokens(instanceName))

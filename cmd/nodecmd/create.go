@@ -6,11 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	terraformGCP "github.com/ava-labs/avalanche-cli/pkg/terraform/gcp"
-	"golang.org/x/exp/rand"
-	"golang.org/x/net/context"
-	"golang.org/x/oauth2/google"
-	"google.golang.org/api/compute/v1"
 	"net"
 	"os"
 	"os/exec"
@@ -18,6 +13,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	terraformGCP "github.com/ava-labs/avalanche-cli/pkg/terraform/gcp"
+	"golang.org/x/exp/rand"
+	"golang.org/x/net/context"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/compute/v1"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
@@ -201,7 +202,10 @@ func getGCPCloudCredentials() (*compute.Service, string, error) {
 			return nil, "", err
 		}
 	}
-	os.Setenv(constants.GCPCredentialsEnvVar, gcpCredentialsPath)
+	err = os.Setenv(constants.GCPCredEnvVar, gcpCredentialsPath)
+	if err != nil {
+		return nil, "", err
+	}
 	ctx := context.Background()
 	client, err := google.DefaultClient(ctx, compute.ComputeScope)
 	if err != nil {
@@ -386,7 +390,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	terraformGCP.SetupInstances(rootBody, networkName, string(sshPublicKey), ami, publicIPName, nodeName, keyPairName, numNodes)
+	terraformGCP.SetupInstances(rootBody, networkName, string(sshPublicKey), ami, publicIPName, nodeName, numNodes)
 	terraformGCP.SetOutput(rootBody)
 	err = app.CreateTerraformDir()
 	if err != nil {

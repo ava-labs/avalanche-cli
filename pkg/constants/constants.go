@@ -92,7 +92,7 @@ const (
 	AWSDefaultCredential                  = "default"
 	GCPDefaultImageProvider               = "ubuntu-os-cloud"
 	GCPImageFilter                        = "family=ubuntu-2004* AND architecture=x86_64"
-	GCPCredentialsEnvVar                  = "GOOGLE_APPLICATION_CREDENTIALS"
+	GCPCredEnvVar                         = "GOOGLE_APPLICATION_CREDENTIALS"
 	CertSuffix                            = "-kp.pem"
 	AWSSecurityGroupSuffix                = "-sg"
 	ExportSubnetSuffix                    = "-export.dat"

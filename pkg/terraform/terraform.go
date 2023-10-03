@@ -5,12 +5,13 @@ package terraform
 
 import (
 	"errors"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/hashicorp/hcl/v2/hclwrite"
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/hashicorp/hcl/v2/hclwrite"
 )
 
 // InitConf creates hclFile where we define all terraform configuration in hclFile.Body() and create .tf file where we save the content in
