@@ -3,166 +3,155 @@
 package nodecmd
 
 import (
-	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/hashicorp/hcl/v2/hclwrite"
 	"os"
 	"os/exec"
 	"os/user"
+	"strconv"
+	"strings"
+	"time"
 
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
+	terraformgcp "github.com/ava-labs/avalanche-cli/pkg/terraform/gcp"
+	"golang.org/x/exp/rand"
+	"golang.org/x/net/context"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/compute/v1"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/hashicorp/hcl/v2/hclwrite"
+
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+
+	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
-	terraformaws "github.com/ava-labs/avalanche-cli/pkg/terraform/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
-func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
-	ux.Logger.PrintToUser("What do you want to name your key pair?")
-	for {
-		newKeyPairName, err := app.Prompt.CaptureString("Key Pair Name")
+func getServiceAccountKeyFilepath() (string, error) {
+	ux.Logger.PrintToUser("To create a VM instance in GCP, we will need your service account credentials")
+	ux.Logger.PrintToUser("Please follow instructions detailed at https://developers.google.com/workspace/guides/create-credentials#service-account to set up a GCP service account")
+	ux.Logger.PrintToUser("Once completed, please enter the filepath to the JSON file containing the public/private key pair")
+	ux.Logger.PrintToUser("For example: /Users/username/sample-project.json")
+	return app.Prompt.CaptureString("What is the filepath to the credentials JSON file?")
+}
+
+func getGCPCloudCredentials() (*compute.Service, string, error) {
+	var err error
+	var gcpCredentialsPath string
+	clusterConfig := models.ClusterConfig{}
+	if app.ClusterConfigExists() {
+		clusterConfig, err = app.LoadClusterConfig()
 		if err != nil {
-			return "", err
+			return nil, "", err
 		}
-		keyPairExists, err := awsAPI.CheckKeyPairExists(ec2Svc, newKeyPairName)
-		if err != nil {
-			return "", err
-		}
-		if !keyPairExists {
-			return newKeyPairName, nil
-		}
-		ux.Logger.PrintToUser(fmt.Sprintf("Key Pair named %s already exists", newKeyPairName))
-	}
-}
-
-// getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
-func getAWSCloudCredentials(region, awsCommand string) (*session.Session, error) {
-	if awsCommand == constants.StopAWSNode {
-		if err := requestStopAWSNodeAuth(); err != nil {
-			return &session.Session{}, err
-		}
-	} else if awsCommand == constants.CreateAWSNode {
-		if err := requestAWSAccountAuth(); err != nil {
-			return &session.Session{}, err
-		}
-	}
-	creds := credentials.NewSharedCredentials("", constants.AWSDefaultCredential)
-	if _, err := creds.Get(); err != nil {
-		printNoCredentialsOutput()
-		return &session.Session{}, err
-	}
-	// Load session from shared config
-	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String(region),
-		Credentials: creds,
-	})
-	if err != nil {
-		return &session.Session{}, err
-	}
-	return sess, nil
-}
-
-// promptKeyPairName get custom name for key pair if the default key pair name that we use cannot be used for this EC2 instance
-func promptKeyPairName(ec2Svc *ec2.EC2) (string, string, error) {
-	newKeyPairName, err := getNewKeyPairName(ec2Svc)
-	if err != nil {
-		return "", "", err
-	}
-	certName := newKeyPairName + constants.CertSuffix
-	return certName, newKeyPairName, nil
-}
-
-func getAWSCloudConfig() (*ec2.EC2, string, string, error) {
-	usEast1 := "us-east-1"
-	usEast2 := "us-east-2"
-	usWest1 := "us-west-1"
-	usWest2 := "us-west-2"
-	customRegion := "Choose custom region (list of regions available at https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html)"
-	region, err := app.Prompt.CaptureList(
-		"Which AWS region do you want to set up your node in?",
-		[]string{usEast1, usEast2, usWest1, usWest2, customRegion},
-	)
-	if err != nil {
-		return nil, "", "", err
-	}
-	if region == customRegion {
-		region, err = app.Prompt.CaptureString("Which AWS region do you want to set up your node in?")
-		if err != nil {
-			return nil, "", "", err
-		}
-	}
-	sess, err := getAWSCloudCredentials(region, constants.CreateAWSNode)
-	if err != nil {
-		return nil, "", "", err
-	}
-	ec2Svc := ec2.New(sess)
-	ami, err := awsAPI.GetUbuntuAMIID(ec2Svc)
-	if err != nil {
-		return nil, "", "", err
-	}
-	return ec2Svc, region, ami, nil
-}
-
-// createEC2Instances creates terraform .tf file and runs terraform exec function to create ec2 instances
-func createEC2Instances(rootBody *hclwrite.Body,
-	ec2Svc *ec2.EC2,
-	hclFile *hclwrite.File,
-	region,
-	ami,
-	certName,
-	keyPairName,
-	securityGroupName string,
-) ([]string, []string, string, string, error) {
-	if err := terraformaws.SetCloudCredentials(rootBody, region); err != nil {
-		return nil, nil, "", "", err
-	}
-	numNodes, err := app.Prompt.CaptureUint32("How many nodes do you want to set up on AWS?")
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	ux.Logger.PrintToUser("Creating new EC2 instance(s) on AWS...")
-	var useExistingKeyPair bool
-	keyPairExists, err := awsAPI.CheckKeyPairExists(ec2Svc, keyPairName)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	certInSSHDir, err := app.CheckCertInSSHDir(certName)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	if !keyPairExists {
-		if !certInSSHDir {
-			ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s in AWS", keyPairName))
-			terraformaws.SetKeyPair(rootBody, keyPairName, certName)
-		} else {
-			ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists on your .ssh directory but not on AWS", keyPairName))
-			ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in AWS", keyPairName))
-			certName, keyPairName, err = promptKeyPairName(ec2Svc)
+		gcpCredentialsPath = clusterConfig.ServiceAccountKeyFilepath
+		if gcpCredentialsPath == "" {
+			gcpCredentialsPath, err = getServiceAccountKeyFilepath()
 			if err != nil {
-				return nil, nil, "", "", err
+				return nil, "", err
 			}
-			terraformaws.SetKeyPair(rootBody, keyPairName, certName)
 		}
 	} else {
-		if certInSSHDir {
-			ux.Logger.PrintToUser(fmt.Sprintf("Using existing key pair %s in AWS", keyPairName))
-			useExistingKeyPair = true
-		} else {
-			ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists in AWS", keyPairName))
-			ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName))
-			certName, keyPairName, err = promptKeyPairName(ec2Svc)
-			if err != nil {
-				return nil, nil, "", "", err
-			}
-			terraformaws.SetKeyPair(rootBody, keyPairName, certName)
+		gcpCredentialsPath, err = getServiceAccountKeyFilepath()
+		if err != nil {
+			return nil, "", err
 		}
 	}
-	securityGroupExists, sg, err := awsAPI.CheckSecurityGroupExists(ec2Svc, securityGroupName)
+	err = os.Setenv(constants.GCPEnvVar, gcpCredentialsPath)
+	if err != nil {
+		return nil, "", err
+	}
+	ctx := context.Background()
+	client, err := google.DefaultClient(ctx, compute.ComputeScope)
+	if err != nil {
+		return nil, "", err
+	}
+	computeService, err := compute.New(client)
+	return computeService, gcpCredentialsPath, err
+}
+
+func getGCPConfig() (*compute.Service, string, string, string, string, error) {
+	usEast := "us-east1-b"
+	usCentral := "us-central1-c"
+	usWest := "us-west1-b"
+	customRegion := "Choose custom zone (list of zones available at https://cloud.google.com/compute/docs/regions-zones)"
+	zonePromptTxt := "Which GCP zone do you want to set up your node in?"
+	zone, err := app.Prompt.CaptureList(
+		zonePromptTxt,
+		[]string{usEast, usCentral, usWest, customRegion},
+	)
+	if err != nil {
+		return nil, "", "", "", "", err
+	}
+	if zone == customRegion {
+		zone, err = app.Prompt.CaptureString(zonePromptTxt)
+		if err != nil {
+			return nil, "", "", "", "", err
+		}
+	}
+	projectName, err := app.Prompt.CaptureString("What is the name of your Google Cloud project?")
+	if err != nil {
+		return nil, "", "", "", "", err
+	}
+	gcpClient, gcpCredentialFilePath, err := getGCPCloudCredentials()
+	if err != nil {
+		return nil, "", "", "", "", err
+	}
+	imageID, err := gcpAPI.GetUbuntuImageID(gcpClient)
+	if err != nil {
+		return nil, "", "", "", "", err
+	}
+	return gcpClient, zone, imageID, gcpCredentialFilePath, projectName, nil
+}
+
+func randomString(length int) string {
+	rand.Seed(uint64(time.Now().UnixNano()))
+	chars := "abcdefghijklmnopqrstuvwxyz0123456789"
+	result := make([]byte, length)
+	for i := 0; i < length; i++ {
+		result[i] = chars[rand.Intn(len(chars))]
+	}
+	return string(result)
+}
+
+// createGCEInstances creates terraform .tf file and runs terraform exec function to create Google Compute Engine VM instances
+func createGCEInstances(rootBody *hclwrite.Body,
+	gcpClient *compute.Service,
+	hclFile *hclwrite.File,
+	zone,
+	ami,
+	cliDefaultName,
+	projectName,
+	credentialsPath string,
+) ([]string, []string, string, string, error) {
+	keyPairName := fmt.Sprintf("%s-keypair", cliDefaultName)
+	sshKeyPath, err := app.GetSSHCertFilePath(keyPairName)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	networkName := fmt.Sprintf("%s-network", cliDefaultName)
+	if err := terraformgcp.SetCloudCredentials(rootBody, zone, credentialsPath, projectName); err != nil {
+		return nil, nil, "", "", err
+	}
+	numNodes, err := app.Prompt.CaptureUint32("How many nodes do you want to set up on GCP?")
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	ux.Logger.PrintToUser("Creating new VM instance(s) on Google Compute Engine...")
+	certInSSHDir, err := app.CheckCertInSSHDir(fmt.Sprintf("%s-keypair.pub", cliDefaultName))
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	if !certInSSHDir {
+		ux.Logger.PrintToUser("Creating new SSH key pair %s in GCP", sshKeyPath)
+		ux.Logger.PrintToUser("For more information regarding SSH key pair in GCP, please head to https://cloud.google.com/compute/docs/connect/create-ssh-keys")
+		_, err = exec.Command("ssh-keygen", "-t", "rsa", "-f", sshKeyPath, "-C", "ubuntu", "-b", "2048").Output()
+		if err != nil {
+			return nil, nil, "", "", err
+		}
+	}
+
+	networkExists, err := gcpAPI.CheckNetworkExists(gcpClient, projectName, networkName)
 	if err != nil {
 		return nil, nil, "", "", err
 	}
@@ -170,20 +159,30 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	if !securityGroupExists {
-		ux.Logger.PrintToUser(fmt.Sprintf("Creating new security group %s in AWS", securityGroupName))
-		terraformaws.SetSecurityGroup(rootBody, userIPAddress, securityGroupName)
+	if !networkExists {
+		ux.Logger.PrintToUser(fmt.Sprintf("Creating new network %s in GCP", networkName))
+		terraformgcp.SetNetwork(rootBody, userIPAddress, networkName)
 	} else {
-		ux.Logger.PrintToUser(fmt.Sprintf("Using existing security group %s in AWS", securityGroupName))
-		ipInTCP := awsAPI.CheckUserIPInSg(sg, userIPAddress, constants.SSHTCPPort)
-		ipInHTTP := awsAPI.CheckUserIPInSg(sg, userIPAddress, constants.AvalanchegoAPIPort)
-		terraformaws.SetSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
+		ux.Logger.PrintToUser(fmt.Sprintf("Using existing network %s in GCP", networkName))
+		terraformgcp.SetExistingNetwork(rootBody, networkName)
+		firewallName := fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(userIPAddress, ".", ""))
+		firewallExists, err := gcpAPI.CheckFirewallExists(gcpClient, projectName, firewallName)
+		if err != nil {
+			return nil, nil, "", "", err
+		}
+		if !firewallExists {
+			terraformgcp.SetFirewallRule(rootBody, userIPAddress+"/32", firewallName, networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)}, true)
+		}
 	}
-	if useEIP {
-		terraformaws.SetElasticIPs(rootBody, numNodes)
+	nodeName := randomString(5)
+	publicIPName := fmt.Sprintf("static-ip-%s", nodeName)
+	terraformgcp.SetPublicIP(rootBody, nodeName, numNodes)
+	sshPublicKey, err := os.ReadFile(fmt.Sprintf("%s.pub", sshKeyPath))
+	if err != nil {
+		return nil, nil, "", "", err
 	}
-	terraformaws.SetupInstances(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami, numNodes)
-	terraformaws.SetOutput(rootBody, useEIP)
+	terraformgcp.SetupInstances(rootBody, networkName, string(sshPublicKey), ami, publicIPName, nodeName, numNodes, networkExists)
+	terraformgcp.SetOutput(rootBody)
 	err = app.CreateTerraformDir()
 	if err != nil {
 		return nil, nil, "", "", err
@@ -192,126 +191,46 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	instanceIDs, elasticIPs, err := terraformaws.RunTerraform(app.GetTerraformDir(), useEIP)
+	elasticIPs, err := terraformgcp.RunTerraform(app.GetTerraformDir())
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	ux.Logger.PrintToUser("New EC2 instance(s) successfully created in AWS!")
-	if !useExistingKeyPair {
-		// takes the cert file downloaded from AWS through terraform and moves it to .ssh directory
-		err = addCertToSSH(certName)
-		if err != nil {
-			return nil, nil, "", "", err
-		}
+	instanceIDs := []string{}
+	for i := 0; i < int(numNodes); i++ {
+		instanceIDs = append(instanceIDs, fmt.Sprintf("%s-%s", nodeName, strconv.Itoa(i)))
 	}
-	sshCertPath, err := app.GetSSHCertFilePath(certName)
+	ux.Logger.PrintToUser("New GCE instance(s) successfully created in Google Cloud Engine!")
+	sshCertPath, err := app.GetSSHCertFilePath(fmt.Sprintf("%s-keypair", cliDefaultName))
 	if err != nil {
 		return nil, nil, "", "", err
 	}
 	return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
 }
 
-func createAWSInstance(ec2Svc *ec2.EC2, region, ami string, usr *user.User) (CloudConfig, error) {
-	prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
-	certName := prefix + "-" + region + constants.CertSuffix
-	securityGroupName := prefix + "-" + region + constants.AWSSecurityGroupSuffix
+func createGCPInstance(usr *user.User) (CloudConfig, error) {
+	// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
+	gcpClient, zone, imageID, gcpCredentialFilepath, gcpProjectName, err := getGCPConfig()
+	if err != nil {
+		return CloudConfig{}, err
+	}
+	defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 	hclFile, rootBody, err := terraform.InitConf()
 	if err != nil {
-		return CloudConfig{}, nil
+		return CloudConfig{}, err
 	}
-
-	// Create new EC2 instances
-	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(rootBody, ec2Svc, hclFile, region, ami, certName, prefix, securityGroupName)
+	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(rootBody, gcpClient, hclFile, zone, imageID, defaultAvalancheCLIPrefix, gcpProjectName, gcpCredentialFilepath)
 	if err != nil {
-		if err.Error() == constants.EIPLimitErr {
-			ux.Logger.PrintToUser("Failed to create AWS cloud server, please try creating again in a different region")
-		} else {
-			ux.Logger.PrintToUser("Failed to create AWS cloud server")
-		}
-		// we stop created instances so that user doesn't pay for unused EC2 instances
-		instanceIDs, instanceIDErr := terraformaws.GetInstanceIDs(app.GetTerraformDir())
-		if instanceIDErr != nil {
-			return CloudConfig{}, instanceIDErr
-		}
-		failedNodes := []string{}
-		nodeErrors := []error{}
-		for _, instanceID := range instanceIDs {
-			ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s...", instanceID))
-			if stopErr := awsAPI.StopInstance(ec2Svc, instanceID, "", false); stopErr != nil {
-				failedNodes = append(failedNodes, instanceID)
-				nodeErrors = append(nodeErrors, stopErr)
-			}
-			ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s stopped", instanceID))
-		}
-		if len(failedNodes) > 0 {
-			ux.Logger.PrintToUser("Failed nodes: ")
-			for i, node := range failedNodes {
-				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
-			}
-			ux.Logger.PrintToUser("Stop the above instance(s) on AWS console to prevent charges")
-			return CloudConfig{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)
-		}
-		return CloudConfig{}, nil
+		ux.Logger.PrintToUser("Failed to create GCP cloud server")
+		return CloudConfig{}, err
 	}
-	awsCloudConfig := CloudConfig{
+	gcpCloudConfig := CloudConfig{
 		instanceIDs,
 		elasticIPs,
-		region,
+		zone,
 		keyPairName,
-		securityGroupName,
+		fmt.Sprintf("%s-network", defaultAvalancheCLIPrefix),
 		certFilePath,
-		ami,
+		imageID,
 	}
-	return awsCloudConfig, nil
-}
-
-func requestAWSAccountAuth() error {
-	ux.Logger.PrintToUser("Do you authorize Avalanche-CLI to access your AWS account to set-up your Avalanche Validator node?")
-	ux.Logger.PrintToUser("Please note that you will be charged for AWS usage.")
-	ux.Logger.PrintToUser("By clicking yes, you are authorizing Avalanche-CLI to:")
-	ux.Logger.PrintToUser("- Set up EC2 instance(s) and other components (such as security groups, key pairs and elastic IPs)")
-	ux.Logger.PrintToUser("- Set up the EC2 instance(s) to validate the Avalanche Primary Network")
-	ux.Logger.PrintToUser("- Set up the EC2 instance(s) to validate Subnets")
-	yes, err := app.Prompt.CaptureYesNo("I authorize Avalanche-CLI to access my AWS account")
-	if err != nil {
-		return err
-	}
-	if !yes {
-		return errors.New("user did not give authorization to Avalanche-CLI to access AWS account")
-	}
-	return nil
-}
-
-func requestStopAWSNodeAuth() error {
-	ux.Logger.PrintToUser("Do you authorize Avalanche-CLI to access your AWS account to stop your Avalanche Validator node?")
-	ux.Logger.PrintToUser("By clicking yes, you are authorizing Avalanche-CLI to:")
-	ux.Logger.PrintToUser("- Stop EC2 instance(s) and other components (such as elastic IPs)")
-	yes, err := app.Prompt.CaptureYesNo("I authorize Avalanche-CLI to access my AWS account")
-	if err != nil {
-		return err
-	}
-	if !yes {
-		return errors.New("user did not give authorization to Avalanche-CLI to access AWS account")
-	}
-	return nil
-}
-
-// addCertToSSH takes the cert file downloaded from AWS through terraform and moves it to .ssh directory
-func addCertToSSH(certName string) error {
-	certPath := app.GetTempCertPath(certName)
-	err := os.Chmod(certPath, 0o400)
-	if err != nil {
-		return err
-	}
-	certFilePath, err := app.GetSSHCertFilePath(certName)
-	if err != nil {
-		return err
-	}
-	err = os.Rename(certPath, certFilePath)
-	if err != nil {
-		return err
-	}
-	cmd := exec.Command("ssh-add", certFilePath)
-	utils.SetupRealtimeCLIOutput(cmd, true, true)
-	return cmd.Run()
+	return gcpCloudConfig, nil
 }
