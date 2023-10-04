@@ -33,7 +33,7 @@ import (
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
-	"github.com/ava-labs/avalanche-cli/pkg/terraform/aws"
+	terraformaws "github.com/ava-labs/avalanche-cli/pkg/terraform/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
