@@ -207,21 +207,21 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
 }
 
-func createGCPInstance(usr *user.User) (CloudConfig, error) {
+func createGCPInstance(usr *user.User) (CloudConfig, string, error) {
 	// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
 	gcpClient, zone, imageID, gcpCredentialFilepath, gcpProjectName, err := getGCPConfig()
 	if err != nil {
-		return CloudConfig{}, err
+		return CloudConfig{}, "", err
 	}
 	defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 	hclFile, rootBody, err := terraform.InitConf()
 	if err != nil {
-		return CloudConfig{}, err
+		return CloudConfig{}, "", err
 	}
 	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(rootBody, gcpClient, hclFile, zone, imageID, defaultAvalancheCLIPrefix, gcpProjectName, gcpCredentialFilepath)
 	if err != nil {
 		ux.Logger.PrintToUser("Failed to create GCP cloud server")
-		return CloudConfig{}, err
+		return CloudConfig{}, "", err
 	}
 	gcpCloudConfig := CloudConfig{
 		instanceIDs,
@@ -232,5 +232,18 @@ func createGCPInstance(usr *user.User) (CloudConfig, error) {
 		certFilePath,
 		imageID,
 	}
-	return gcpCloudConfig, nil
+	return gcpCloudConfig, gcpCredentialFilepath, nil
+}
+
+func updateClusterConfigGCPKeyFilepath(serviceAccountKeyFilepath string) error {
+	clusterConfig := models.ClusterConfig{}
+	var err error
+	if app.ClusterConfigExists() {
+		clusterConfig, err = app.LoadClusterConfig()
+		if err != nil {
+			return err
+		}
+	}
+	clusterConfig.ServiceAccountKeyFilepath = serviceAccountKeyFilepath
+	return app.WriteClusterConfigFile(&clusterConfig)
 }

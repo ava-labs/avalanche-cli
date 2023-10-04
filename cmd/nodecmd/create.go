@@ -158,6 +158,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	}
 	cloudConfig := CloudConfig{}
 	publicIPMap := map[string]string{}
+	gcpCredentialFilepath := ""
 	if cloudService == constants.AWSCloudService {
 		// Get AWS Credential, region and AMI
 		ec2Svc, region, ami, err := getAWSCloudConfig()
@@ -179,7 +180,7 @@ func createNode(_ *cobra.Command, args []string) error {
 			}
 		}
 	} else {
-		cloudConfig, err = createGCPInstance(usr)
+		cloudConfig, gcpCredentialFilepath, err = createGCPInstance(usr)
 		if err != nil {
 			return err
 		}
@@ -187,7 +188,10 @@ func createNode(_ *cobra.Command, args []string) error {
 			publicIPMap[node] = cloudConfig.PublicIPs[i]
 		}
 	}
-	if err := createClusterNodeConfig(cloudConfig, clusterName); err != nil {
+	if err = createClusterNodeConfig(cloudConfig, clusterName); err != nil {
+		return err
+	}
+	if err = updateClusterConfigGCPKeyFilepath(gcpCredentialFilepath); err != nil {
 		return err
 	}
 	err = terraform.RemoveDirectory(app.GetTerraformDir())
@@ -195,7 +199,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	if err := ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
+	if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
 		return err
 	}
 	time.Sleep(30 * time.Second)
@@ -205,10 +209,10 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
-	if err := runAnsible(inventoryPath, avalancheGoVersion, clusterName); err != nil {
+	if err = runAnsible(inventoryPath, avalancheGoVersion, clusterName); err != nil {
 		return err
 	}
-	if err := setupBuildEnv(clusterName); err != nil {
+	if err = setupBuildEnv(clusterName); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
@@ -219,7 +223,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		if cloudService == constants.GCPCloudService {
 			nodeInstanceAnsibleAlias = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, instanceID)
 		}
-		if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
+		if err = ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
 			return err
 		}
 	}

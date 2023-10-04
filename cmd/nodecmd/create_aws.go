@@ -5,12 +5,13 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/hashicorp/hcl/v2/hclwrite"
 	"os"
 	"os/exec"
 	"os/user"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/hashicorp/hcl/v2/hclwrite"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
