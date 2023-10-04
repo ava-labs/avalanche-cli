@@ -3,7 +3,7 @@
 package models
 
 type ClusterConfig struct {
-	KeyPair                   map[string]string   // maps key pair name to cert path
-	Clusters                  map[string][]string // maps clusterName to nodeID list
-	ServiceAccountKeyFilepath string              // GCP Only: filepath to service account JSON key
+	KeyPair   map[string]string   // maps key pair name to cert path
+	Clusters  map[string][]string // maps clusterName to nodeID list
+	GCPConfig map[string]string   // GCP Only: project name and filepath to service account JSON key
 }

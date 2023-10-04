@@ -35,39 +35,48 @@ func getServiceAccountKeyFilepath() (string, error) {
 	return app.Prompt.CaptureString("What is the filepath to the credentials JSON file?")
 }
 
-func getGCPCloudCredentials() (*compute.Service, string, error) {
+func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 	var err error
 	var gcpCredentialsPath string
+	var gcpProjectName string
 	clusterConfig := models.ClusterConfig{}
 	if app.ClusterConfigExists() {
 		clusterConfig, err = app.LoadClusterConfig()
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
-		gcpCredentialsPath = clusterConfig.ServiceAccountKeyFilepath
-		if gcpCredentialsPath == "" {
-			gcpCredentialsPath, err = getServiceAccountKeyFilepath()
-			if err != nil {
-				return nil, "", err
+		if clusterConfig.GCPConfig != nil {
+			if _, ok := clusterConfig.GCPConfig[constants.GCPProjectNameClusterConfig]; ok {
+				gcpProjectName = clusterConfig.GCPConfig[constants.GCPProjectNameClusterConfig]
+			}
+			if _, ok := clusterConfig.GCPConfig[constants.GCPServiceAccountFilePathClusterConfig]; ok {
+				gcpCredentialsPath = clusterConfig.GCPConfig[constants.GCPServiceAccountFilePathClusterConfig]
 			}
 		}
-	} else {
+	}
+	if gcpProjectName == "" {
+		gcpProjectName, err = app.Prompt.CaptureString("What is the name of your Google Cloud project?")
+		if err != nil {
+			return nil, "", "", err
+		}
+	}
+	if gcpCredentialsPath == "" {
 		gcpCredentialsPath, err = getServiceAccountKeyFilepath()
 		if err != nil {
-			return nil, "", err
+			return nil, "", "", err
 		}
 	}
 	err = os.Setenv(constants.GCPEnvVar, gcpCredentialsPath)
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 	ctx := context.Background()
 	client, err := google.DefaultClient(ctx, compute.ComputeScope)
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 	computeService, err := compute.New(client)
-	return computeService, gcpCredentialsPath, err
+	return computeService, gcpProjectName, gcpCredentialsPath, err
 }
 
 func getGCPConfig() (*compute.Service, string, string, string, string, error) {
@@ -89,11 +98,7 @@ func getGCPConfig() (*compute.Service, string, string, string, string, error) {
 			return nil, "", "", "", "", err
 		}
 	}
-	projectName, err := app.Prompt.CaptureString("What is the name of your Google Cloud project?")
-	if err != nil {
-		return nil, "", "", "", "", err
-	}
-	gcpClient, gcpCredentialFilePath, err := getGCPCloudCredentials()
+	gcpClient, projectName, gcpCredentialFilePath, err := getGCPCloudCredentials()
 	if err != nil {
 		return nil, "", "", "", "", err
 	}
@@ -207,21 +212,21 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
 }
 
-func createGCPInstance(usr *user.User) (CloudConfig, string, error) {
+func createGCPInstance(usr *user.User) (CloudConfig, string, string, error) {
 	// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
 	gcpClient, zone, imageID, gcpCredentialFilepath, gcpProjectName, err := getGCPConfig()
 	if err != nil {
-		return CloudConfig{}, "", err
+		return CloudConfig{}, "", "", err
 	}
 	defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 	hclFile, rootBody, err := terraform.InitConf()
 	if err != nil {
-		return CloudConfig{}, "", err
+		return CloudConfig{}, "", "", err
 	}
 	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(rootBody, gcpClient, hclFile, zone, imageID, defaultAvalancheCLIPrefix, gcpProjectName, gcpCredentialFilepath)
 	if err != nil {
 		ux.Logger.PrintToUser("Failed to create GCP cloud server")
-		return CloudConfig{}, "", err
+		return CloudConfig{}, "", "", err
 	}
 	gcpCloudConfig := CloudConfig{
 		instanceIDs,
@@ -232,10 +237,10 @@ func createGCPInstance(usr *user.User) (CloudConfig, string, error) {
 		certFilePath,
 		imageID,
 	}
-	return gcpCloudConfig, gcpCredentialFilepath, nil
+	return gcpCloudConfig, gcpProjectName, gcpCredentialFilepath, nil
 }
 
-func updateClusterConfigGCPKeyFilepath(serviceAccountKeyFilepath string) error {
+func updateClusterConfigGCPKeyFilepath(projectName, serviceAccountKeyFilepath string) error {
 	clusterConfig := models.ClusterConfig{}
 	var err error
 	if app.ClusterConfigExists() {
@@ -244,6 +249,10 @@ func updateClusterConfigGCPKeyFilepath(serviceAccountKeyFilepath string) error {
 			return err
 		}
 	}
-	clusterConfig.ServiceAccountKeyFilepath = serviceAccountKeyFilepath
+	if clusterConfig.GCPConfig == nil {
+		clusterConfig.GCPConfig = make(map[string]string)
+	}
+	clusterConfig.GCPConfig[constants.GCPProjectNameClusterConfig] = projectName
+	clusterConfig.GCPConfig[constants.GCPServiceAccountFilePathClusterConfig] = serviceAccountKeyFilepath
 	return app.WriteClusterConfigFile(&clusterConfig)
 }

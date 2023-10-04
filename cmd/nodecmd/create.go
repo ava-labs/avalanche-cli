@@ -158,6 +158,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	}
 	cloudConfig := CloudConfig{}
 	publicIPMap := map[string]string{}
+	gcpProjectName := ""
 	gcpCredentialFilepath := ""
 	if cloudService == constants.AWSCloudService {
 		// Get AWS Credential, region and AMI
@@ -180,7 +181,7 @@ func createNode(_ *cobra.Command, args []string) error {
 			}
 		}
 	} else {
-		cloudConfig, gcpCredentialFilepath, err = createGCPInstance(usr)
+		cloudConfig, gcpProjectName, gcpCredentialFilepath, err = createGCPInstance(usr)
 		if err != nil {
 			return err
 		}
@@ -191,7 +192,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err = createClusterNodeConfig(cloudConfig, clusterName); err != nil {
 		return err
 	}
-	if err = updateClusterConfigGCPKeyFilepath(gcpCredentialFilepath); err != nil {
+	if err = updateClusterConfigGCPKeyFilepath(gcpProjectName, gcpCredentialFilepath); err != nil {
 		return err
 	}
 	err = terraform.RemoveDirectory(app.GetTerraformDir())
