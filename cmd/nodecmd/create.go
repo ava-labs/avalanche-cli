@@ -882,7 +882,6 @@ func PrintResults(cloudConfig CloudConfig, publicIPMap map[string]string, cloudS
 		ux.Logger.PrintToUser("======================================")
 		ansibleHostID := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, cloudConfig.InstanceIDs[i])
 		if cloudService == constants.GCPCloudService {
-			ansibleHostID = cloudConfig.InstanceIDs[i]
 			ansibleHostID = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, cloudConfig.InstanceIDs[i])
 		}
 		ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", ansibleHostID))
