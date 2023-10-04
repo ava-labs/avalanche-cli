@@ -384,7 +384,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 			return nil, nil, "", "", err
 		}
 		if !firewallExists {
-			terraformgcp.SetFirewallRule(rootBody, userIPAddress+"/32", firewallName, networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)})
+			terraformgcp.SetFirewallRule(rootBody, userIPAddress+"/32", firewallName, networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)}, true)
 		}
 	}
 	nodeName := randomString(5)
@@ -394,7 +394,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	terraformgcp.SetupInstances(rootBody, networkName, string(sshPublicKey), ami, publicIPName, nodeName, numNodes)
+	terraformgcp.SetupInstances(rootBody, networkName, string(sshPublicKey), ami, publicIPName, nodeName, numNodes, networkExists)
 	terraformgcp.SetOutput(rootBody)
 	err = app.CreateTerraformDir()
 	if err != nil {
@@ -720,7 +720,7 @@ func runAnsible(inventoryPath, avalancheGoVersion, clusterName string) error {
 }
 
 func setupBuildEnv(clusterName string) error {
-	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance(s) ...")
+	ux.Logger.PrintToUser("Installing Custom VM build environment on the cloud server(s) ...")
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
 	if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath, "all"); err != nil {
 		return err

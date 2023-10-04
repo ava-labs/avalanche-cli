@@ -43,17 +43,21 @@ func SetNetwork(rootBody *hclwrite.Body, ipAddress, networkName string) {
 	network := rootBody.AppendNewBlock("resource", []string{"google_compute_network", networkName})
 	networkBody := network.Body()
 	networkBody.SetAttributeValue("name", cty.StringVal(networkName))
-	SetFirewallRule(rootBody, "0.0.0.0/0", fmt.Sprintf("%s-%s", networkName, "default"), networkName, []string{strconv.Itoa(constants.AvalanchegoAPIPort), strconv.Itoa(constants.AvalanchegoP2PPort)})
-	SetFirewallRule(rootBody, ipAddress+"/32", fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)})
+	SetFirewallRule(rootBody, "0.0.0.0/0", fmt.Sprintf("%s-%s", networkName, "default"), networkName, []string{strconv.Itoa(constants.AvalanchegoAPIPort), strconv.Itoa(constants.AvalanchegoP2PPort)}, false)
+	SetFirewallRule(rootBody, ipAddress+"/32", fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)}, false)
 }
 
-func SetFirewallRule(rootBody *hclwrite.Body, ipAddress, firewallName, networkName string, ports []string) {
+func SetFirewallRule(rootBody *hclwrite.Body, ipAddress, firewallName, networkName string, ports []string, networkExists bool) {
 	firewall := rootBody.AppendNewBlock("resource", []string{"google_compute_firewall", firewallName})
 	firewallBody := firewall.Body()
 	firewallBody.SetAttributeValue("name", cty.StringVal(firewallName))
+	networkRoot := "google_compute_network"
+	if networkExists {
+		networkRoot = "data.google_compute_network"
+	}
 	firewallBody.SetAttributeTraversal("network", hcl.Traversal{
 		hcl.TraverseRoot{
-			Name: "google_compute_network",
+			Name: networkRoot,
 		},
 		hcl.TraverseAttr{
 			Name: networkName,
@@ -125,7 +129,7 @@ func createCustomTokens(tokenName string) hclwrite.Tokens {
 }
 
 // SetupInstances adds google_compute_instance section in terraform state file where we configure all the necessary components of the desired GCE instance(s)
-func SetupInstances(rootBody *hclwrite.Body, networkName, sshPublicKey, ami, staticIPName, instanceName string, numNodes uint32) {
+func SetupInstances(rootBody *hclwrite.Body, networkName, sshPublicKey, ami, staticIPName, instanceName string, numNodes uint32, networkExists bool) {
 	gcpInstance := rootBody.AppendNewBlock("resource", []string{"google_compute_instance", "gcp-node"})
 	gcpInstanceBody := gcpInstance.Body()
 	gcpInstanceBody.SetAttributeRaw("name", createCustomTokens(instanceName))
@@ -136,9 +140,13 @@ func SetupInstances(rootBody *hclwrite.Body, networkName, sshPublicKey, ami, sta
 	gcpInstanceBody.SetAttributeValue("metadata", cty.ObjectVal(metadataMap))
 	networkInterface := gcpInstanceBody.AppendNewBlock("network_interface", []string{})
 	networkInterfaceBody := networkInterface.Body()
+	networkRoot := "google_compute_network"
+	if networkExists {
+		networkRoot = "data.google_compute_network"
+	}
 	networkInterfaceBody.SetAttributeTraversal("network", hcl.Traversal{
 		hcl.TraverseRoot{
-			Name: "google_compute_network",
+			Name: networkRoot,
 		},
 		hcl.TraverseAttr{
 			Name: networkName,
