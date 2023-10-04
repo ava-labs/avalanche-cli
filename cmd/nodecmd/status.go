@@ -122,7 +122,7 @@ func printOutput(hostAvalanchegoVersions map[string]string, hostAliases, notBoot
 	ux.Logger.PrintToUser("Node(s) Status For Cluster %s", clusterName)
 	ux.Logger.PrintToUser("======================================")
 	for _, host := range hostAliases {
-		hostWithVersion := fmt.Sprintf("%s (%s) ", host, hostAvalanchegoVersions[host])
+		hostWithVersion := fmt.Sprintf("%s (%s)", host, hostAvalanchegoVersions[host])
 		hostIsBootstrapped := true
 		if slices.Contains(notBootstrappedHosts, host) {
 			hostIsBootstrapped = false
