@@ -91,9 +91,9 @@ func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]models.Hos
 		host := models.Host{
 			NodeID:            parsedHost[0],
 			IP:                strings.Split(parsedHost[1], "=")[1],
-			SshUser:           strings.Split(parsedHost[2], "=")[1],
-			SshPrivateKeyPath: strings.Split(parsedHost[3], "=")[1],
-			SshCommonArgs:     strings.Split(parsedHost[4], "=")[1],
+			SSHUser:           strings.Split(parsedHost[2], "=")[1],
+			SSHPrivateKeyPath: strings.Split(parsedHost[3], "=")[1],
+			SSHCommonArgs:     strings.Split(parsedHost[4], "=")[1],
 		}
 		inventory = append(inventory, host)
 	}

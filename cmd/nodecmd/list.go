@@ -50,7 +50,7 @@ func list(_ *cobra.Command, _ []string) error {
 			return err
 		}
 		for _, clusterNode := range clusterNodes {
-			ux.Logger.PrintToUser(fmt.Sprintf("  Node %q to connect: %s", clusterNode, utils.GetSshConnectionString(ansibleHosts["aws_node_"+clusterNode].IP, ansibleHosts["aws_node_"+clusterNode].SshPrivateKeyPath)))
+			ux.Logger.PrintToUser(fmt.Sprintf("  Node %q to connect: %s", clusterNode, utils.GetSSHConnectionString(ansibleHosts["aws_node_"+clusterNode].IP, ansibleHosts["aws_node_"+clusterNode].SSHPrivateKeyPath)))
 		}
 	}
 	return nil

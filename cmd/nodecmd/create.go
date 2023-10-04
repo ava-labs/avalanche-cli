@@ -615,7 +615,7 @@ func PrintResults(certFilePath, region string, publicIPMap map[string]string) {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("To ssh to node, run: ")
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(utils.GetSshConnectionString(publicIP, certFilePath))
+		ux.Logger.PrintToUser(utils.GetSSHConnectionString(publicIP, certFilePath))
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("======================================")
 	}
