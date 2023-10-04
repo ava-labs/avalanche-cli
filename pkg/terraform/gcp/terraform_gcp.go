@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/terraform"
+
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
@@ -210,25 +212,5 @@ func RunTerraform(terraformDir string) ([]string, error) {
 	if err := cmd.Run(); err != nil {
 		return nil, err
 	}
-	return GetPublicIPs(terraformDir)
-}
-
-func GetPublicIPs(terraformDir string) ([]string, error) {
-	cmd := exec.Command(constants.Terraform, "output", "instance_ips") //nolint:gosec
-	cmd.Dir = terraformDir
-	ipsOutput, err := cmd.Output()
-	if err != nil {
-		return nil, err
-	}
-	publicIPs := []string{}
-	ipsOutputWoSpace := strings.TrimSpace(string(ipsOutput))
-	// ip and nodeID outputs are bounded by [ and ,] , we need to remove them
-	trimmedPublicIPs := ipsOutputWoSpace[1 : len(ipsOutputWoSpace)-3]
-	splitPublicIPs := strings.Split(trimmedPublicIPs, ",")
-	for _, publicIP := range splitPublicIPs {
-		publicIPWoSpace := strings.TrimSpace(publicIP)
-		// ip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
-		publicIPs = append(publicIPs, publicIPWoSpace[1:len(publicIPWoSpace)-1])
-	}
-	return publicIPs, nil
+	return terraform.GetPublicIPs(terraformDir)
 }

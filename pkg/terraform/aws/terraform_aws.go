@@ -11,6 +11,8 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/terraform"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
@@ -232,7 +234,7 @@ func RunTerraform(terraformDir string, useEIP bool) ([]string, []string, error) 
 	}
 	publicIPs := []string{}
 	if useEIP {
-		publicIPs, err = GetPublicIPs(terraformDir)
+		publicIPs, err = terraform.GetPublicIPs(terraformDir)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -258,24 +260,4 @@ func GetInstanceIDs(terraformDir string) ([]string, error) {
 		instanceIDs = append(instanceIDs, instanceIDWoSpace[1:len(instanceIDWoSpace)-1])
 	}
 	return instanceIDs, nil
-}
-
-func GetPublicIPs(terraformDir string) ([]string, error) {
-	cmd := exec.Command(constants.Terraform, "output", "instance_ips") //nolint:gosec
-	cmd.Dir = terraformDir
-	eipsOutput, err := cmd.Output()
-	if err != nil {
-		return nil, err
-	}
-	publicIPs := []string{}
-	eipsOutputWoSpace := strings.TrimSpace(string(eipsOutput))
-	// eip and nodeID outputs are bounded by [ and ,] , we need to remove them
-	trimmedPublicIPs := eipsOutputWoSpace[1 : len(eipsOutputWoSpace)-3]
-	splitPublicIPs := strings.Split(trimmedPublicIPs, ",")
-	for _, publicIP := range splitPublicIPs {
-		publicIPWoSpace := strings.TrimSpace(publicIP)
-		// eip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
-		publicIPs = append(publicIPs, publicIPWoSpace[1:len(publicIPWoSpace)-1])
-	}
-	return publicIPs, nil
 }

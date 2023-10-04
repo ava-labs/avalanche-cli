@@ -686,7 +686,6 @@ func createNode(_ *cobra.Command, args []string) error {
 		// ansible host alias's name is formatted as ansiblePrefix_{instanceID}
 		nodeInstanceAnsibleAlias := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, instanceID)
 		if cloudService == constants.GCPCloudService {
-			// ansible host alias's name for gcp is already formatted as gcp-node-i{instanceID}
 			nodeInstanceAnsibleAlias = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, instanceID)
 		}
 		if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
