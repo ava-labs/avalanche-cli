@@ -25,14 +25,14 @@ The node status command gets the bootstrap status of all nodes in a cluster with
 To get the bootstrap status of a node with a Subnet, use --subnet flag`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
-		RunE:         statusSubnet,
+		RunE:         statusNode,
 	}
 	cmd.Flags().StringVar(&subnetName, "subnet", "", "specify the subnet the node is syncing with")
 
 	return cmd
 }
 
-func statusSubnet(_ *cobra.Command, args []string) error {
+func statusNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	if err := checkCluster(clusterName); err != nil {
 		return err

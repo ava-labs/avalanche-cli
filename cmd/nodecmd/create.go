@@ -377,6 +377,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 		terraformgcp.SetNetwork(rootBody, userIPAddress, networkName)
 	} else {
 		ux.Logger.PrintToUser(fmt.Sprintf("Using existing network %s in GCP", networkName))
+		terraformgcp.SetExistingNetwork(rootBody, networkName)
 		firewallName := fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(userIPAddress, ".", ""))
 		firewallExists, err := gcpAPI.CheckFirewallExists(gcpClient, projectName, firewallName)
 		if err != nil {
@@ -386,7 +387,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 			terraformgcp.SetFirewallRule(rootBody, userIPAddress+"/32", firewallName, networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)})
 		}
 	}
-	nodeName := fmt.Sprintf("gcp-node-%s", randomString(5))
+	nodeName := randomString(5)
 	publicIPName := fmt.Sprintf("static-ip-%s", nodeName)
 	terraformgcp.SetPublicIP(rootBody, nodeName, numNodes)
 	sshPublicKey, err := os.ReadFile(fmt.Sprintf("%s.pub", sshKeyPath))
@@ -686,7 +687,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		nodeInstanceAnsibleAlias := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, instanceID)
 		if cloudService == constants.GCPCloudService {
 			// ansible host alias's name for gcp is already formatted as gcp-node-i{instanceID}
-			nodeInstanceAnsibleAlias = instanceID
+			nodeInstanceAnsibleAlias = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, instanceID)
 		}
 		if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
 			return err
@@ -879,9 +880,10 @@ func PrintResults(cloudConfig CloudConfig, publicIPMap map[string]string, cloudS
 		publicIP := ""
 		publicIP = publicIPMap[instanceID]
 		ux.Logger.PrintToUser("======================================")
-		ansibleHostID := fmt.Sprintf("aws_node_%s", cloudConfig.InstanceIDs[i])
+		ansibleHostID := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, cloudConfig.InstanceIDs[i])
 		if cloudService == constants.GCPCloudService {
 			ansibleHostID = cloudConfig.InstanceIDs[i]
+			ansibleHostID = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, cloudConfig.InstanceIDs[i])
 		}
 		ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", ansibleHostID))
 		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Instance ID: %s", instanceID))

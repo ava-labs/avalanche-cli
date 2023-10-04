@@ -31,6 +31,13 @@ func SetCloudCredentials(rootBody *hclwrite.Body, zone, credentialsPath, project
 	return nil
 }
 
+// SetExistingNetwork uses existing network in GCP
+func SetExistingNetwork(rootBody *hclwrite.Body, networkName string) {
+	network := rootBody.AppendNewBlock("data", []string{"google_compute_network", networkName})
+	networkBody := network.Body()
+	networkBody.SetAttributeValue("name", cty.StringVal(networkName))
+}
+
 // SetNetwork houses the firewall (AWS security group equivalent) for GCP
 func SetNetwork(rootBody *hclwrite.Body, ipAddress, networkName string) {
 	network := rootBody.AppendNewBlock("resource", []string{"google_compute_network", networkName})

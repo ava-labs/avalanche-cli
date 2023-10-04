@@ -41,10 +41,9 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 		return err
 	}
 	for instanceID := range publicIPMap {
-		inventoryContent := fmt.Sprintf("aws_node_%s", instanceID)
+		inventoryContent := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, instanceID)
 		if cloudService == constants.GCPCloudService {
-			// we have formatted instance ID to start with gcp_node
-			inventoryContent = instanceID
+			inventoryContent = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, instanceID)
 		}
 		inventoryContent += " ansible_host="
 		inventoryContent += publicIPMap[instanceID]
