@@ -423,7 +423,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	for _, instanceID := range instanceIDs {
 		nodeInstanceDirPath := app.GetNodeInstanceDirPath(instanceID)
 		// ansible host alias's name is formatted as aws_node_{instanceID}
-		nodeInstanceAnsibleAlias := fmt.Sprintf("aws_node_%s", instanceID)
+		nodeInstanceAnsibleAlias := fmt.Sprintf("%s%s", constants.AnsibleAWSNodePrefix, instanceID)
 		if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
 			return err
 		}
@@ -605,7 +605,7 @@ func PrintResults(certFilePath, region string, publicIPMap map[string]string) {
 		publicIP := ""
 		publicIP = publicIPMap[instanceID]
 		ux.Logger.PrintToUser("======================================")
-		ansibleHostID := fmt.Sprintf("aws_node_%s", instanceID)
+		ansibleHostID := fmt.Sprintf("%s%s", constants.AnsibleAWSNodePrefix, instanceID)
 		ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", ansibleHostID))
 		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Instance ID: %s", instanceID))
 		ux.Logger.PrintToUser(fmt.Sprintf("Public IP: %s", publicIP))
@@ -615,7 +615,7 @@ func PrintResults(certFilePath, region string, publicIPMap map[string]string) {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("To ssh to node, run: ")
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(fmt.Sprintf("ssh -o IdentitiesOnly=yes ubuntu@%s -i %s", publicIP, certFilePath))
+		ux.Logger.PrintToUser(utils.GetSSHConnectionString(publicIP, certFilePath))
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("======================================")
 	}
