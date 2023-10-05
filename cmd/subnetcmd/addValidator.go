@@ -299,7 +299,7 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bo
 	)
 
 	const (
-		defaultStartOption    = "Start in one minute"
+		defaultStartOption    = "Start in five minutes"
 		defaultDurationOption = "Until primary network validator expires"
 		custom                = "Custom"
 	)
