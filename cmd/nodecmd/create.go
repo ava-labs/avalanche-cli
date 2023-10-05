@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"net"
 	"os/exec"
 	"os/user"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
@@ -378,7 +379,6 @@ func PrintResults(cloudConfig CloudConfig, publicIPMap map[string]string, cloudS
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("To ssh to node, run: ")
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(fmt.Sprintf("ssh -o IdentitiesOnly=yes -o StrictHostKeyChecking=no ubuntu@%s -i %s", publicIP, cloudConfig.CertFilePath))
 		ux.Logger.PrintToUser(utils.GetSSHConnectionString(publicIP, cloudConfig.CertFilePath))
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("======================================")
