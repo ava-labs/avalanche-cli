@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -67,8 +68,20 @@ func Setup(ansibleDir string) error {
 
 // GetAnsibleHostsFromInventory gets alias of all hosts in an inventory file
 func GetAnsibleHostsFromInventory(inventoryDirPath string) ([]string, error) {
-	inventoryHostsFile := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
 	ansibleHostIDs := []string{}
+	inventory, err := GetInventoryFromAnsibleInventoryFile(inventoryDirPath)
+	if err != nil {
+		return nil, err
+	}
+	for _, host := range inventory {
+		ansibleHostIDs = append(ansibleHostIDs, host.NodeID)
+	}
+	return ansibleHostIDs, nil
+}
+
+func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]models.Host, error) {
+	inventory := []models.Host{}
+	inventoryHostsFile := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
 	file, err := os.Open(inventoryHostsFile)
 	if err != nil {
 		return nil, err
@@ -77,13 +90,32 @@ func GetAnsibleHostsFromInventory(inventoryDirPath string) ([]string, error) {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		// host alias is first element in each line of host inventory file
-		ansibleHostID := strings.Split(scanner.Text(), " ")[0]
-		ansibleHostIDs = append(ansibleHostIDs, ansibleHostID)
+		parsedHost := strings.Split(scanner.Text(), " ")
+		host := models.Host{
+			NodeID:            parsedHost[0],
+			IP:                strings.Split(parsedHost[1], "=")[1],
+			SSHUser:           strings.Split(parsedHost[2], "=")[1],
+			SSHPrivateKeyPath: strings.Split(parsedHost[3], "=")[1],
+			SSHCommonArgs:     strings.Split(parsedHost[4], "=")[1],
+		}
+		inventory = append(inventory, host)
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err
 	}
-	return ansibleHostIDs, nil
+	return inventory, nil
+}
+
+func GetHostMapfromAnsibleInventory(inventoryDirPath string) (map[string]models.Host, error) {
+	hostMap := map[string]models.Host{}
+	inventory, err := GetInventoryFromAnsibleInventoryFile(inventoryDirPath)
+	if err != nil {
+		return nil, err
+	}
+	for _, host := range inventory {
+		hostMap[host.NodeID] = host
+	}
+	return hostMap, nil
 }
 
 func WritePlaybookFiles(ansibleDir string) error {

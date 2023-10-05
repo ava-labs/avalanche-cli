@@ -3,8 +3,11 @@
 package nodecmd
 
 import (
+	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
@@ -44,6 +47,24 @@ func statusNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	ux.Logger.PrintToUser(fmt.Sprintf("Collecting data for node(s) in cluster %s ...", clusterName))
+	avalanchegoVersionForNode := map[string]string{}
+	for _, host := range ansibleHostIDs {
+		if err := app.CreateAnsibleStatusFile(app.GetAvalancheGoJSONFile()); err != nil {
+			return err
+		}
+		if err := ansible.RunAnsiblePlaybookCheckAvalancheGoVersion(app.GetAnsibleDir(), app.GetAvalancheGoJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
+			return err
+		}
+		avalancheGoVersion, err := parseAvalancheGoOutput(app.GetAvalancheGoJSONFile())
+		if err != nil {
+			avalancheGoVersion = constants.AvalancheGoVersionUnknown
+		}
+		if err := app.RemoveAnsibleStatusDir(); err != nil {
+			return err
+		}
+		avalanchegoVersionForNode[host] = avalancheGoVersion
+	}
 	if subnetName != "" {
 		if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 			return err
@@ -73,18 +94,18 @@ func statusNode(_ *cobra.Command, args []string) error {
 				notSyncedNodes = append(notSyncedNodes, host)
 			}
 		}
-		printOutput(ansibleHostIDs, notSyncedNodes, subnetSyncedNodes, subnetValidatingNodes, clusterName, subnetName)
+		printOutput(avalanchegoVersionForNode, ansibleHostIDs, notSyncedNodes, subnetSyncedNodes, subnetValidatingNodes, clusterName, subnetName)
 		return nil
 	}
 	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
 	if err != nil {
 		return err
 	}
-	printOutput(ansibleHostIDs, notBootstrappedNodes, nil, nil, clusterName, subnetName)
+	printOutput(avalanchegoVersionForNode, ansibleHostIDs, notBootstrappedNodes, nil, nil, clusterName, subnetName)
 	return nil
 }
 
-func printOutput(hostAliases, notBootstrappedHosts, subnetSyncedHosts, subnetValidatingHosts []string, clusterName, subnetName string) {
+func printOutput(hostAvalanchegoVersions map[string]string, hostAliases, notBootstrappedHosts, subnetSyncedHosts, subnetValidatingHosts []string, clusterName, subnetName string) {
 	if len(notBootstrappedHosts) == 0 {
 		if subnetName == "" {
 			ux.Logger.PrintToUser("All nodes in cluster %s are bootstrapped to Primary Network!", clusterName)
@@ -101,6 +122,7 @@ func printOutput(hostAliases, notBootstrappedHosts, subnetSyncedHosts, subnetVal
 	ux.Logger.PrintToUser("Node(s) Status For Cluster %s", clusterName)
 	ux.Logger.PrintToUser("======================================")
 	for _, host := range hostAliases {
+		hostWithVersion := fmt.Sprintf("%s (%s)", host, hostAvalanchegoVersions[host])
 		hostIsBootstrapped := true
 		if slices.Contains(notBootstrappedHosts, host) {
 			hostIsBootstrapped = false
@@ -114,12 +136,12 @@ func printOutput(hostAliases, notBootstrappedHosts, subnetSyncedHosts, subnetVal
 			if hostIsBootstrapped {
 				isBootstrappedStr = "is"
 			}
-			ux.Logger.PrintToUser("Node %s %s bootstrapped to Primary Network", host, isBootstrappedStr)
+			ux.Logger.PrintToUser("Node %s %s bootstrapped to Primary Network", hostWithVersion, isBootstrappedStr)
 		} else {
 			if !hostIsBootstrapped {
-				ux.Logger.PrintToUser("Node %s is not synced to Subnet %s", host, subnetName)
+				ux.Logger.PrintToUser("Node %s is not synced to Subnet %s", hostWithVersion, subnetName)
 			} else {
-				ux.Logger.PrintToUser("Node %s is %s Subnet %s", host, hostStatus, subnetName)
+				ux.Logger.PrintToUser("Node %s is %s Subnet %s", hostWithVersion, hostStatus, subnetName)
 			}
 		}
 	}

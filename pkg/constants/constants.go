@@ -124,6 +124,7 @@ const (
 	AnsibleStatusDir                       = "status"
 	AnsibleInventoryFlag                   = "-i"
 	AnsibleExtraArgsIdentitiesOnlyFlag     = "--ssh-extra-args='-o IdentitiesOnly=yes'"
+	AnsibleSSHParams                       = "-o IdentitiesOnly=yes -o StrictHostKeyChecking=no"
 	AnsibleExtraVarsFlag                   = "--extra-vars"
 	CloudCLIBranch                         = "custom-vms-cloud-10"
 	DefaultConfigFileName                  = ".avalanche-cli"
@@ -131,6 +132,7 @@ const (
 	WriteReadReadPerms                     = 0o644
 	AWSCloudService                        = "Amazon Web Services"
 	GCPCloudService                        = "Google Cloud Platform"
+	AnsibleSSHUser                         = "ubuntu"
 	AWSNodeAnsiblePrefix                   = "aws_node"
 	GCPNodeAnsiblePrefix                   = "gcp_node"
 	GCPProjectNameClusterConfig            = "projectName"
@@ -181,6 +183,7 @@ const (
 	NotAvailableLabel         = "Not available"
 	BackendCmd                = "avalanche-cli-backend"
 
+	AvalancheGoVersionUnknown            = "n/a"
 	AvalancheGoCompatibilityVersionAdded = "v1.9.2"
 	AvalancheGoCompatibilityURL          = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
 	SubnetEVMRPCCompatibilityURL         = "https://raw.githubusercontent.com/ava-labs/subnet-evm/master/compatibility.json"
