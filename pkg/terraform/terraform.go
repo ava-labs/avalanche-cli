@@ -120,7 +120,7 @@ func SetElasticIPs(rootBody *hclwrite.Body, numNodes uint32) {
 			Name: "id",
 		},
 	})
-	eipBody.SetAttributeValue("vpc", cty.BoolVal(true))
+	eipBody.SetAttributeValue("domain", cty.StringVal("vpc"))
 }
 
 // SetKeyPair define the key pair that we will create in our EC2 instance if it doesn't exist yet and download the .pem file to home dir
