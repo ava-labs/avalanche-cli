@@ -42,7 +42,7 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath string, publicIPM
 		return err
 	}
 	for instanceID := range publicIPMap {
-		inventoryContent := fmt.Sprintf("aws_node_%s", instanceID)
+		inventoryContent := fmt.Sprintf("%s%s", constants.AnsibleAWSNodePrefix, instanceID)
 		inventoryContent += " ansible_host="
 		inventoryContent += publicIPMap[instanceID]
 		inventoryContent += " ansible_user=ubuntu "

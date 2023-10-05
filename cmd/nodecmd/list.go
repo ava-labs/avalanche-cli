@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -50,7 +51,7 @@ func list(_ *cobra.Command, _ []string) error {
 			return err
 		}
 		for _, clusterNode := range clusterNodes {
-			ux.Logger.PrintToUser(fmt.Sprintf("  Node %q to connect: %s", clusterNode, utils.GetSSHConnectionString(ansibleHosts["aws_node_"+clusterNode].IP, ansibleHosts["aws_node_"+clusterNode].SSHPrivateKeyPath)))
+			ux.Logger.PrintToUser(fmt.Sprintf("  Node %q to connect: %s", clusterNode, utils.GetSSHConnectionString(ansibleHosts[constants.AnsibleAWSNodePrefix+clusterNode].IP, ansibleHosts[constants.AnsibleAWSNodePrefix+clusterNode].SSHPrivateKeyPath)))
 		}
 	}
 	return nil
