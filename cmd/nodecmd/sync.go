@@ -5,13 +5,14 @@ package nodecmd
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"strings"
+
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"google.golang.org/api/compute/v1"
-	"io"
-	"os"
-	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"golang.org/x/exp/slices"
