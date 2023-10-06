@@ -164,10 +164,10 @@ func StopAWSNode(ec2Svc *ec2.EC2, nodeConfig models.NodeConfig, clusterName stri
 		return noRunningNodeErr
 	}
 	ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
-	return stopInstance(ec2Svc, nodeConfig.NodeID, nodeConfig.ElasticIP, true)
+	return StopInstance(ec2Svc, nodeConfig.NodeID, nodeConfig.ElasticIP, true)
 }
 
-func stopInstance(ec2Svc *ec2.EC2, instanceID, publicIP string, releasePublicIP bool) error {
+func StopInstance(ec2Svc *ec2.EC2, instanceID, publicIP string, releasePublicIP bool) error {
 	input := &ec2.StopInstancesInput{
 		InstanceIds: []*string{aws.String(instanceID)},
 	}
