@@ -5,6 +5,7 @@ package gcp
 
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"golang.org/x/exp/slices"
 	"google.golang.org/api/compute/v1"
 )
 
@@ -52,4 +53,23 @@ func CheckNetworkExists(gcpClient *compute.Service, projectName, networkName str
 		}
 	}
 	return false, nil
+}
+
+// GetInstancePublicIPs gets public IP(s) of GCP instance(s) without static IP and returns a map
+// with gcp instance id as key and public ip as value
+func GetInstancePublicIPs(gcpClient *compute.Service, projectName, zone string, nodeIDs []string) (map[string]string, error) {
+	instancesListCall := gcpClient.Instances.List(projectName, zone)
+	instancesList, err := instancesListCall.Do()
+	if err != nil {
+		return nil, err
+	}
+	instanceIDToIP := make(map[string]string)
+	for _, instance := range instancesList.Items {
+		if slices.Contains(nodeIDs, instance.Name) {
+			if len(instance.NetworkInterfaces) > 0 && len(instance.NetworkInterfaces[0].AccessConfigs) > 0 {
+				instanceIDToIP[instance.Name] = instance.NetworkInterfaces[0].AccessConfigs[0].NatIP
+			}
+		}
+	}
+	return instanceIDToIP, nil
 }

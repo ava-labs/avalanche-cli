@@ -158,19 +158,21 @@ func SetupInstances(rootBody *hclwrite.Body, networkName, sshPublicKey, ami, sta
 		},
 	})
 	accessConfig := networkInterfaceBody.AppendNewBlock("access_config", []string{})
-	accessConfigBody := accessConfig.Body()
-	accessConfigBody.SetAttributeTraversal("nat_ip", hcl.Traversal{
-		hcl.TraverseRoot{
-			Name: "google_compute_address",
-		},
-		hcl.TraverseAttr{
-			Name: fmt.Sprintf("%s[count.index]", staticIPName),
-		},
-		hcl.TraverseAttr{
-			Name: "address",
-		},
-	})
-
+	// don't add google_compute_address if user is not using public IP
+	if staticIPName != "" {
+		accessConfigBody := accessConfig.Body()
+		accessConfigBody.SetAttributeTraversal("nat_ip", hcl.Traversal{
+			hcl.TraverseRoot{
+				Name: "google_compute_address",
+			},
+			hcl.TraverseAttr{
+				Name: fmt.Sprintf("%s[count.index]", staticIPName),
+			},
+			hcl.TraverseAttr{
+				Name: "address",
+			},
+		})
+	}
 	bootDisk := gcpInstanceBody.AppendNewBlock("boot_disk", []string{})
 	bootDiskBody := bootDisk.Body()
 	initParams := bootDiskBody.AppendNewBlock("initialize_params", []string{})
@@ -200,7 +202,7 @@ func SetOutput(rootBody *hclwrite.Body) {
 
 // RunTerraform executes terraform apply function that creates the GCE instances based on the .tf file provided
 // returns a list of GCP node IPs
-func RunTerraform(terraformDir string) ([]string, error) {
+func RunTerraform(terraformDir string, useEIP bool) ([]string, error) {
 	cmd := exec.Command(constants.Terraform, "init") //nolint:gosec
 	cmd.Dir = terraformDir
 	if err := cmd.Run(); err != nil {
@@ -212,5 +214,13 @@ func RunTerraform(terraformDir string) ([]string, error) {
 	if err := cmd.Run(); err != nil {
 		return nil, err
 	}
-	return terraform.GetPublicIPs(terraformDir)
+	var publicIPs []string
+	var err error
+	if useEIP {
+		publicIPs, err = terraform.GetPublicIPs(terraformDir)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return publicIPs, nil
 }

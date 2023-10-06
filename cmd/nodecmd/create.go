@@ -11,17 +11,17 @@ import (
 	"os/user"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
-
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
+	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/terraform"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 
 	subnet "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
-	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
@@ -58,7 +58,7 @@ will apply to all nodes in the cluster`,
 		Args:         cobra.ExactArgs(1),
 		RunE:         createNode,
 	}
-	cmd.Flags().BoolVar(&useEIP, "use-elastic-ip", true, "attach Elastic IP on AWS coud servers")
+	cmd.Flags().BoolVar(&useStaticIP, "use-static-ip", true, "attach static Public IP on cloud servers")
 
 	return cmd
 }
@@ -66,7 +66,7 @@ will apply to all nodes in the cluster`,
 // createClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
 // also creates cluster config in .avalanche-cli/nodes storing various key pair and security group info for all clusters
 // func createClusterNodeConfig(nodeIDs, publicIPs []string, region, ami, keyPairName, certPath, sg, clusterName string) error {
-func createClusterNodeConfig(cloudConfig CloudConfig, clusterName string) error {
+func createClusterNodeConfig(cloudConfig CloudConfig, clusterName, cloudService string) error {
 	for i := range cloudConfig.InstanceIDs {
 		publicIP := ""
 		if len(cloudConfig.PublicIPs) > 0 {
@@ -80,6 +80,7 @@ func createClusterNodeConfig(cloudConfig CloudConfig, clusterName string) error 
 			CertPath:      cloudConfig.CertFilePath,
 			SecurityGroup: cloudConfig.SecurityGroup,
 			ElasticIP:     publicIP,
+			CloudService:  cloudService,
 		}
 		err := app.CreateNodeCloudConfigFile(cloudConfig.InstanceIDs[i], &nodeConfig)
 		if err != nil {
@@ -172,7 +173,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if !useEIP {
+		if !useStaticIP {
 			publicIPMap, err = awsAPI.GetInstancePublicIPs(ec2Svc, cloudConfig.InstanceIDs)
 			if err != nil {
 				return err
@@ -183,19 +184,35 @@ func createNode(_ *cobra.Command, args []string) error {
 			}
 		}
 	} else {
-		cloudConfig, gcpProjectName, gcpCredentialFilepath, err = createGCPInstance(usr)
+		// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
+		gcpClient, zone, imageID, credentialFilepath, projectName, err := getGCPConfig()
 		if err != nil {
 			return err
 		}
-		for i, node := range cloudConfig.InstanceIDs {
-			publicIPMap[node] = cloudConfig.PublicIPs[i]
+		cloudConfig, err = createGCPInstance(usr, gcpClient, zone, imageID, credentialFilepath, projectName)
+		if err != nil {
+			return err
 		}
+		if !useStaticIP {
+			publicIPMap, err = gcpAPI.GetInstancePublicIPs(gcpClient, projectName, zone, cloudConfig.InstanceIDs)
+			if err != nil {
+				return err
+			}
+		} else {
+			for i, node := range cloudConfig.InstanceIDs {
+				publicIPMap[node] = cloudConfig.PublicIPs[i]
+			}
+		}
+		gcpProjectName = projectName
+		gcpCredentialFilepath = credentialFilepath
 	}
-	if err = createClusterNodeConfig(cloudConfig, clusterName); err != nil {
+	if err = createClusterNodeConfig(cloudConfig, clusterName, cloudService); err != nil {
 		return err
 	}
-	if err = updateClusterConfigGCPKeyFilepath(gcpProjectName, gcpCredentialFilepath); err != nil {
-		return err
+	if cloudService == constants.GCPCloudService {
+		if err = updateClusterConfigGCPKeyFilepath(gcpProjectName, gcpCredentialFilepath); err != nil {
+			return err
+		}
 	}
 	err = terraform.RemoveDirectory(app.GetTerraformDir())
 	if err != nil {

@@ -5,12 +5,13 @@ package nodecmd
 import (
 	"encoding/json"
 	"fmt"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
+	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
+	"github.com/aws/aws-sdk-go/service/ec2"
+	"google.golang.org/api/compute/v1"
 	"io"
 	"os"
 	"strings"
-
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
-	"github.com/aws/aws-sdk-go/service/ec2"
 
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"golang.org/x/exp/slices"
@@ -41,42 +42,58 @@ You can check the subnet bootstrap status by calling avalanche node status <clus
 	return cmd
 }
 
-func getNodesWoEIPInAnsibleInventory(clusterNodes []string) []string {
-	nodesWoEIP := []string{}
+func getNodesWoEIPInAnsibleInventory(clusterNodes []string) []models.NodeConfig {
+	nodesWoEIP := []models.NodeConfig{}
 	for _, node := range clusterNodes {
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
 		if err != nil {
 			continue
 		}
 		if nodeConfig.ElasticIP == "" {
-			nodesWoEIP = append(nodesWoEIP, node)
+			nodesWoEIP = append(nodesWoEIP, nodeConfig)
 		}
 	}
 	return nodesWoEIP
 }
 
-func getPublicIPForNodesWoEIP(nodesWoEIP []string) (map[string]string, error) {
+func getPublicIPForNodesWoEIP(nodesWoEIP []models.NodeConfig) (map[string]string, error) {
 	lastRegion := ""
 	var ec2Svc *ec2.EC2
 	publicIPMap := make(map[string]string)
+	var gcpClient *compute.Service
+	var gcpProjectName string
 	for _, node := range nodesWoEIP {
-		nodeConfig, err := app.LoadClusterNodeConfig(node)
-		if err != nil {
-			return nil, err
+		if node.Region != lastRegion {
+			if node.CloudService == "" || node.CloudService == constants.AWSCloudService {
+				// check for empty because we didn't set this value when it was only on AWS
+				sess, err := getAWSCloudCredentials(node.Region, constants.GetAWSNodeIP)
+				if err != nil {
+					return nil, err
+				}
+				ec2Svc = ec2.New(sess)
+			}
+			lastRegion = node.Region
 		}
-		if nodeConfig.Region != lastRegion {
-			sess, err := getAWSCloudCredentials(nodeConfig.Region, constants.GetAWSNodeIP)
+		var publicIP map[string]string
+		var err error
+		if node.CloudService == constants.GCPCloudService {
+			if gcpClient == nil {
+				gcpClient, gcpProjectName, _, err = getGCPCloudCredentials()
+				if err != nil {
+					return nil, err
+				}
+			}
+			publicIP, err = gcpAPI.GetInstancePublicIPs(gcpClient, gcpProjectName, node.Region, []string{node.NodeID})
 			if err != nil {
 				return nil, err
 			}
-			ec2Svc = ec2.New(sess)
-			lastRegion = nodeConfig.Region
+		} else {
+			publicIP, err = awsAPI.GetInstancePublicIPs(ec2Svc, []string{node.NodeID})
+			if err != nil {
+				return nil, err
+			}
 		}
-		publicIP, err := awsAPI.GetInstancePublicIPs(ec2Svc, []string{node})
-		if err != nil {
-			return nil, err
-		}
-		publicIPMap[node] = publicIP[node]
+		publicIPMap[node.NodeID] = publicIP[node.NodeID]
 	}
 	return publicIPMap, nil
 }

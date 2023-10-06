@@ -180,11 +180,11 @@ func createEC2Instances(rootBody *hclwrite.Body,
 		ipInHTTP := awsAPI.CheckUserIPInSg(sg, userIPAddress, constants.AvalanchegoAPIPort)
 		terraformaws.SetSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
 	}
-	if useEIP {
+	if useStaticIP {
 		terraformaws.SetElasticIPs(rootBody, numNodes)
 	}
 	terraformaws.SetupInstances(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami, numNodes)
-	terraformaws.SetOutput(rootBody, useEIP)
+	terraformaws.SetOutput(rootBody, useStaticIP)
 	err = app.CreateTerraformDir()
 	if err != nil {
 		return nil, nil, "", "", err
@@ -193,7 +193,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	instanceIDs, elasticIPs, err := terraformaws.RunTerraform(app.GetTerraformDir(), useEIP)
+	instanceIDs, elasticIPs, err := terraformaws.RunTerraform(app.GetTerraformDir(), useStaticIP)
 	if err != nil {
 		return nil, nil, "", "", err
 	}

@@ -111,7 +111,7 @@ func getGCPConfig() (*compute.Service, string, string, string, string, error) {
 
 func randomString(length int) string {
 	rand.Seed(uint64(time.Now().UnixNano()))
-	chars := "abcdefghijklmnopqrstuvwxyz0123456789"
+	chars := "abcdefghijklmnopqrstuvwxyz"
 	result := make([]byte, length)
 	for i := 0; i < length; i++ {
 		result[i] = chars[rand.Intn(len(chars))]
@@ -180,14 +180,19 @@ func createGCEInstances(rootBody *hclwrite.Body,
 		}
 	}
 	nodeName := randomString(5)
-	publicIPName := fmt.Sprintf("static-ip-%s", nodeName)
-	terraformgcp.SetPublicIP(rootBody, nodeName, numNodes)
+	publicIPName := ""
+	if useStaticIP {
+		publicIPName = fmt.Sprintf("static-ip-%s", nodeName)
+		terraformgcp.SetPublicIP(rootBody, nodeName, numNodes)
+	}
 	sshPublicKey, err := os.ReadFile(fmt.Sprintf("%s.pub", sshKeyPath))
 	if err != nil {
 		return nil, nil, "", "", err
 	}
 	terraformgcp.SetupInstances(rootBody, networkName, string(sshPublicKey), ami, publicIPName, nodeName, numNodes, networkExists)
-	terraformgcp.SetOutput(rootBody)
+	if useStaticIP {
+		terraformgcp.SetOutput(rootBody)
+	}
 	err = app.CreateTerraformDir()
 	if err != nil {
 		return nil, nil, "", "", err
@@ -196,7 +201,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	elasticIPs, err := terraformgcp.RunTerraform(app.GetTerraformDir())
+	elasticIPs, err := terraformgcp.RunTerraform(app.GetTerraformDir(), useStaticIP)
 	if err != nil {
 		return nil, nil, "", "", err
 	}
@@ -212,21 +217,16 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
 }
 
-func createGCPInstance(usr *user.User) (CloudConfig, string, string, error) {
-	// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
-	gcpClient, zone, imageID, gcpCredentialFilepath, gcpProjectName, err := getGCPConfig()
-	if err != nil {
-		return CloudConfig{}, "", "", err
-	}
+func createGCPInstance(usr *user.User, gcpClient *compute.Service, zone, imageID, gcpCredentialFilepath, gcpProjectName string) (CloudConfig, error) {
 	defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 	hclFile, rootBody, err := terraform.InitConf()
 	if err != nil {
-		return CloudConfig{}, "", "", err
+		return CloudConfig{}, err
 	}
 	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(rootBody, gcpClient, hclFile, zone, imageID, defaultAvalancheCLIPrefix, gcpProjectName, gcpCredentialFilepath)
 	if err != nil {
 		ux.Logger.PrintToUser("Failed to create GCP cloud server")
-		return CloudConfig{}, "", "", err
+		return CloudConfig{}, err
 	}
 	gcpCloudConfig := CloudConfig{
 		instanceIDs,
@@ -237,7 +237,7 @@ func createGCPInstance(usr *user.User) (CloudConfig, string, string, error) {
 		certFilePath,
 		imageID,
 	}
-	return gcpCloudConfig, gcpProjectName, gcpCredentialFilepath, nil
+	return gcpCloudConfig, nil
 }
 
 func updateClusterConfigGCPKeyFilepath(projectName, serviceAccountKeyFilepath string) error {
@@ -252,7 +252,11 @@ func updateClusterConfigGCPKeyFilepath(projectName, serviceAccountKeyFilepath st
 	if clusterConfig.GCPConfig == nil {
 		clusterConfig.GCPConfig = make(map[string]string)
 	}
-	clusterConfig.GCPConfig[constants.GCPProjectNameClusterConfig] = projectName
-	clusterConfig.GCPConfig[constants.GCPServiceAccountFilePathClusterConfig] = serviceAccountKeyFilepath
+	if projectName != "" {
+		clusterConfig.GCPConfig[constants.GCPProjectNameClusterConfig] = projectName
+	}
+	if serviceAccountKeyFilepath != "" {
+		clusterConfig.GCPConfig[constants.GCPServiceAccountFilePathClusterConfig] = serviceAccountKeyFilepath
+	}
 	return app.WriteClusterConfigFile(&clusterConfig)
 }
