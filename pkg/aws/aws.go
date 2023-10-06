@@ -6,10 +6,11 @@ package aws
 import (
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"sort"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
