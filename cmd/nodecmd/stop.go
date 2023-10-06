@@ -5,6 +5,8 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
+	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
+	"google.golang.org/api/compute/v1"
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -95,6 +97,8 @@ func stopNode(_ *cobra.Command, args []string) error {
 	nodeErrors := []error{}
 	lastRegion := ""
 	var ec2Svc *ec2.EC2
+	var gcpClient *compute.Service
+	var gcpProjectName string
 	for _, node := range clusterNodes {
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
 		if err != nil {
@@ -103,34 +107,35 @@ func stopNode(_ *cobra.Command, args []string) error {
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
-		if nodeConfig.Region != lastRegion {
-			sess, err := getAWSCloudCredentials(nodeConfig.Region, constants.StopAWSNode)
-			if err != nil {
-				return err
+		if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
+			// need to check if it's empty because we didn't set cloud service when only using AWS
+			if nodeConfig.Region != lastRegion {
+				sess, err := getAWSCloudCredentials(nodeConfig.Region, constants.StopAWSNode)
+				if err != nil {
+					return err
+				}
+				ec2Svc = ec2.New(sess)
+				lastRegion = nodeConfig.Region
 			}
-			ec2Svc = ec2.New(sess)
-			lastRegion = nodeConfig.Region
-		}
-		isRunning, err := awsAPI.CheckInstanceIsRunning(ec2Svc, nodeConfig.NodeID)
-		if err != nil {
-			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err.Error()))
-			failedNodes = append(failedNodes, node)
-			nodeErrors = append(nodeErrors, err)
-			continue
-		}
-		if !isRunning {
-			noRunningNodeErr := fmt.Errorf("no running node with instance id %s is found in cluster %s", nodeConfig.NodeID, clusterName)
-			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, noRunningNodeErr))
-			failedNodes = append(failedNodes, node)
-			nodeErrors = append(nodeErrors, noRunningNodeErr)
-			continue
-		}
-		ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
-		if err := awsAPI.StopInstance(ec2Svc, nodeConfig.NodeID, nodeConfig.ElasticIP, true); err != nil {
-			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err.Error()))
-			failedNodes = append(failedNodes, node)
-			nodeErrors = append(nodeErrors, err)
-			continue
+			if err = awsAPI.StopAWSNode(ec2Svc, nodeConfig, clusterName); err != nil {
+				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err.Error()))
+				failedNodes = append(failedNodes, node)
+				nodeErrors = append(nodeErrors, err)
+				continue
+			}
+		} else {
+			if gcpClient == nil {
+				gcpClient, gcpProjectName, _, err = getGCPCloudCredentials()
+				if err != nil {
+					return err
+				}
+			}
+			if err = gcpAPI.StopGCPNode(gcpClient, nodeConfig, gcpProjectName, clusterName); err != nil {
+				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err.Error()))
+				failedNodes = append(failedNodes, node)
+				nodeErrors = append(nodeErrors, err)
+				continue
+			}
 		}
 		ux.Logger.PrintToUser(fmt.Sprintf("Node instance %s in cluster %s successfully stopped!", nodeConfig.NodeID, clusterName))
 		if err := removeDeletedNodeDirectory(node); err != nil {
