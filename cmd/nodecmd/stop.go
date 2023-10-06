@@ -5,9 +5,10 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
+	"os"
+
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
 	"google.golang.org/api/compute/v1"
-	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
