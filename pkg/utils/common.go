@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr bool) (*bytes.Buffer, *bytes.Buffer) {
@@ -23,4 +24,21 @@ func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr b
 		cmd.Stderr = io.MultiWriter(&stderrBuffer)
 	}
 	return &stdoutBuffer, &stderrBuffer
+}
+
+func SplitKeyValueStringToMap(str string, delimiter string) map[string]string {
+	kvMap := make(map[string]string)
+	if str == "" {
+		return kvMap
+	}
+	entries := strings.Split(str, delimiter)
+	for _, e := range entries {
+		parts := strings.Split(e, "=")
+		if len(parts) >= 2 {
+			kvMap[parts[0]] = parts[1]
+		} else {
+			kvMap[parts[0]] = parts[0]
+		}
+	}
+	return kvMap
 }
