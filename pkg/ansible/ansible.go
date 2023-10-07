@@ -400,19 +400,6 @@ func CheckIsInstalled() error {
 	return nil
 }
 
-// getInventoryHostMap creates a map with nodeID as key and its corresponding ansible inventory host information as value
-func getInventoryHostMap(inventoryDirPath string) (map[string]string, error) {
-	inventory, err := GetInventoryFromAnsibleInventoryFile(inventoryDirPath)
-	if err != nil {
-		return nil, err
-	}
-	ansibleInventoryHostMap := make(map[string]string)
-	for _, host := range inventory {
-		ansibleInventoryHostMap[host.GetNodeID()] = host.GetAnsibleParams()
-	}
-	return ansibleInventoryHostMap, nil
-}
-
 // UpdateInventoryHostPublicIP first maps existing ansible inventory host file content
 // then it deletes the inventory file and regenerates a new ansible inventory file where it will fetch public IP
 // of nodes without elastic IP and update its value in the new ansible inventory file
