@@ -3,6 +3,7 @@
 package nodecmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -202,12 +203,12 @@ func createGCEInstances(rootBody *hclwrite.Body,
 		return nil, nil, "", "", err
 	}
 	elasticIPs, err := terraformgcp.RunTerraform(app.GetTerraformDir(), useStaticIP)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
 	instanceIDs := []string{}
 	for i := 0; i < int(numNodes); i++ {
 		instanceIDs = append(instanceIDs, fmt.Sprintf("%s-%s", nodeName, strconv.Itoa(i)))
+	}
+	if err != nil {
+		return instanceIDs, nil, "", "", errors.New(constants.ErrCreatingGCPNode)
 	}
 	ux.Logger.PrintToUser("New GCE instance(s) successfully created in Google Cloud Engine!")
 	sshCertPath, err := app.GetSSHCertFilePath(fmt.Sprintf("%s-keypair", cliDefaultName))
@@ -217,7 +218,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
 }
 
-func createGCPInstance(usr *user.User, gcpClient *compute.Service, zone, imageID, gcpCredentialFilepath, gcpProjectName string) (CloudConfig, error) {
+func createGCPInstance(usr *user.User, gcpClient *compute.Service, zone, imageID, gcpCredentialFilepath, gcpProjectName, clusterName string) (CloudConfig, error) {
 	defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 	hclFile, rootBody, err := terraform.InitConf()
 	if err != nil {
@@ -226,6 +227,31 @@ func createGCPInstance(usr *user.User, gcpClient *compute.Service, zone, imageID
 	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(rootBody, gcpClient, hclFile, zone, imageID, defaultAvalancheCLIPrefix, gcpProjectName, gcpCredentialFilepath)
 	if err != nil {
 		ux.Logger.PrintToUser("Failed to create GCP cloud server")
+		if err.Error() == constants.ErrCreatingGCPNode {
+			// we stop created instances so that user doesn't pay for unused GCP instances
+			failedNodes := []string{}
+			nodeErrors := []error{}
+			for _, instanceID := range instanceIDs {
+				nodeConfig := models.NodeConfig{
+					NodeID: instanceID,
+					Region: zone,
+				}
+				if stopErr := gcpAPI.StopGCPNode(gcpClient, nodeConfig, gcpProjectName, clusterName, false); err != nil {
+					failedNodes = append(failedNodes, instanceID)
+					nodeErrors = append(nodeErrors, stopErr)
+					continue
+				}
+				ux.Logger.PrintToUser(fmt.Sprintf("GCP cloud server instance %s stopped", instanceID))
+			}
+			if len(failedNodes) > 0 {
+				ux.Logger.PrintToUser("Failed nodes: ")
+				for i, node := range failedNodes {
+					ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
+				}
+				ux.Logger.PrintToUser("Stop the above instance(s) on GCP console to prevent charges")
+				return CloudConfig{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)
+			}
+		}
 		return CloudConfig{}, err
 	}
 	gcpCloudConfig := CloudConfig{

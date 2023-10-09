@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
 	"google.golang.org/api/compute/v1"
@@ -119,7 +120,6 @@ func stopNode(_ *cobra.Command, args []string) error {
 				lastRegion = nodeConfig.Region
 			}
 			if err = awsAPI.StopAWSNode(ec2Svc, nodeConfig, clusterName); err != nil {
-				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err.Error()))
 				failedNodes = append(failedNodes, node)
 				nodeErrors = append(nodeErrors, err)
 				continue
@@ -131,8 +131,7 @@ func stopNode(_ *cobra.Command, args []string) error {
 					return err
 				}
 			}
-			if err = gcpAPI.StopGCPNode(gcpClient, nodeConfig, gcpProjectName, clusterName); err != nil {
-				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err.Error()))
+			if err = gcpAPI.StopGCPNode(gcpClient, nodeConfig, gcpProjectName, clusterName, true); err != nil {
 				failedNodes = append(failedNodes, node)
 				nodeErrors = append(nodeErrors, err)
 				continue
@@ -147,7 +146,11 @@ func stopNode(_ *cobra.Command, args []string) error {
 	if len(failedNodes) > 0 {
 		ux.Logger.PrintToUser("Failed nodes: ")
 		for i, node := range failedNodes {
-			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
+			if strings.Contains(nodeErrors[i].Error(), constants.ErrReleasingGCPStaticIP) {
+				ux.Logger.PrintToUser(fmt.Sprintf("Node is stopped, but failed to release static ip address for node %s due to %s", node, nodeErrors[i]))
+			} else {
+				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
+			}
 		}
 		return fmt.Errorf("failed to stop node(s) %s", failedNodes)
 	} else {

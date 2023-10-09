@@ -252,7 +252,7 @@ func createAWSInstance(ec2Svc *ec2.EC2, region, ami string, usr *user.User) (Clo
 			ux.Logger.PrintToUser("Stop the above instance(s) on AWS console to prevent charges")
 			return CloudConfig{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)
 		}
-		return CloudConfig{}, nil
+		return CloudConfig{}, errors.New(constants.ErrCreatingAWSNode)
 	}
 	awsCloudConfig := CloudConfig{
 		instanceIDs,

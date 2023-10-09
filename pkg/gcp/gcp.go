@@ -92,10 +92,9 @@ func checkInstanceIsRunning(gcpClient *compute.Service, projectName, zone, nodeI
 	return true, nil
 }
 
-func StopGCPNode(gcpClient *compute.Service, nodeConfig models.NodeConfig, projectName, clusterName string) error {
+func StopGCPNode(gcpClient *compute.Service, nodeConfig models.NodeConfig, projectName, clusterName string, releasePublicIP bool) error {
 	isRunning, err := checkInstanceIsRunning(gcpClient, projectName, nodeConfig.Region, nodeConfig.NodeID)
 	if err != nil {
-		ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", nodeConfig.NodeID, err.Error()))
 		return err
 	}
 	if !isRunning {
@@ -107,16 +106,13 @@ func StopGCPNode(gcpClient *compute.Service, nodeConfig models.NodeConfig, proje
 	if _, err = instancesStopCall.Do(); err != nil {
 		return err
 	}
-	if err != nil {
-		return err
-	}
-	if nodeConfig.ElasticIP != "" {
+	if releasePublicIP && nodeConfig.ElasticIP != "" {
 		ux.Logger.PrintToUser(fmt.Sprintf("Releasing static IP address %s ...", nodeConfig.ElasticIP))
 		// GCP node region is stored in format of "us-east1-b", we need "us-east1"
 		region := strings.Join(strings.Split(nodeConfig.Region, "-")[:2], "-")
 		addressReleaseCall := gcpClient.Addresses.Delete(projectName, region, fmt.Sprintf("%s-%s", constants.GCPStaticIPPrefix, nodeConfig.NodeID))
 		if _, err = addressReleaseCall.Do(); err != nil {
-			return err
+			return fmt.Errorf("%s, %s", constants.ErrReleasingGCPStaticIP, err)
 		}
 	}
 	return nil

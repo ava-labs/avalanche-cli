@@ -189,7 +189,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		cloudConfig, err = createGCPInstance(usr, gcpClient, zone, imageID, credentialFilepath, projectName)
+		cloudConfig, err = createGCPInstance(usr, gcpClient, zone, imageID, credentialFilepath, projectName, clusterName)
 		if err != nil {
 			return err
 		}

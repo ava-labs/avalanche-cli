@@ -63,13 +63,16 @@ const (
 	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/" + BootstrapSnapshotLocalPath
 	BootstrapSnapshotSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/sha256sum.txt"
 
-	CliInstallationURL    = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
-	ExpectedCliInstallErr = "resource temporarily unavailable"
-	EIPLimitErr           = "AddressLimitExceeded"
-	KeyDir                = "key"
-	KeySuffix             = ".pk"
-	YAMLSuffix            = ".yml"
-	ConfigDir             = "config"
+	CliInstallationURL      = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
+	ExpectedCliInstallErr   = "resource temporarily unavailable"
+	EIPLimitErr             = "AddressLimitExceeded"
+	ErrCreatingAWSNode      = "failed to create AWS Node"
+	ErrCreatingGCPNode      = "failed to create GCP Node"
+	ErrReleasingGCPStaticIP = "failed to release gcp static ip"
+	KeyDir                  = "key"
+	KeySuffix               = ".pk"
+	YAMLSuffix              = ".yml"
+	ConfigDir               = "config"
 
 	Enable = "enable"
 
