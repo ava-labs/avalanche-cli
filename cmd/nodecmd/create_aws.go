@@ -196,7 +196,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	}
 	instanceIDs, elasticIPs, err := terraformaws.RunTerraform(app.GetTerraformDir(), useStaticIP)
 	if err != nil {
-		return nil, nil, "", "", fmt.Errorf("%s, %s", constants.ErrCreatingAWSNode, err)
+		return nil, nil, "", "", fmt.Errorf("%s, %w", constants.ErrCreatingAWSNode, err)
 	}
 	ux.Logger.PrintToUser("New EC2 instance(s) successfully created in AWS!")
 	if !useExistingKeyPair {

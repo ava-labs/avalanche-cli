@@ -112,7 +112,7 @@ func StopGCPNode(gcpClient *compute.Service, nodeConfig models.NodeConfig, proje
 		region := strings.Join(strings.Split(nodeConfig.Region, "-")[:2], "-")
 		addressReleaseCall := gcpClient.Addresses.Delete(projectName, region, fmt.Sprintf("%s-%s", constants.GCPStaticIPPrefix, nodeConfig.NodeID))
 		if _, err = addressReleaseCall.Do(); err != nil {
-			return fmt.Errorf("%s, %s", constants.ErrReleasingGCPStaticIP, err)
+			return fmt.Errorf("%s, %w", constants.ErrReleasingGCPStaticIP, err)
 		}
 	}
 	return nil
