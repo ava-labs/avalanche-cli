@@ -138,11 +138,11 @@ const (
 	GCPProjectNameClusterConfig            = "projectName"
 	GCPServiceAccountFilePathClusterConfig = "serviceAccountFilePath"
 	CustomVMDir                            = "vms"
-
-	AvaLabsOrg          = "ava-labs"
-	AvalancheGoRepoName = "avalanchego"
-	SubnetEVMRepoName   = "subnet-evm"
-	CliRepoName         = "avalanche-cli"
+	GCPStaticIPPrefix                      = "static-ip"
+	AvaLabsOrg                             = "ava-labs"
+	AvalancheGoRepoName                    = "avalanchego"
+	SubnetEVMRepoName                      = "subnet-evm"
+	CliRepoName                            = "avalanche-cli"
 
 	AvalancheGoInstallDir = "avalanchego"
 	SubnetEVMInstallDir   = "subnet-evm"

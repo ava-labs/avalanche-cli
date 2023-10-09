@@ -83,7 +83,7 @@ func SetFirewallRule(rootBody *hclwrite.Body, ipAddress, firewallName, networkNa
 
 // SetPublicIP attach static IP(s) to the associated Google VM instance(s)
 func SetPublicIP(rootBody *hclwrite.Body, nodeName string, numNodes uint32) {
-	staticIPName := fmt.Sprintf("static-ip-%s", nodeName)
+	staticIPName := fmt.Sprintf("%s-%s", constants.GCPStaticIPPrefix, nodeName)
 	eip := rootBody.AppendNewBlock("resource", []string{"google_compute_address", staticIPName})
 	eipBody := eip.Body()
 	eipBody.SetAttributeRaw("name", createCustomTokens(staticIPName))

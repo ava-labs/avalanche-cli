@@ -5,6 +5,7 @@ package gcp
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -108,6 +109,15 @@ func StopGCPNode(gcpClient *compute.Service, nodeConfig models.NodeConfig, proje
 	}
 	if err != nil {
 		return err
+	}
+	if nodeConfig.ElasticIP != "" {
+		ux.Logger.PrintToUser(fmt.Sprintf("Releasing static IP address %s ...", nodeConfig.ElasticIP))
+		// GCP node region is stored in format of "us-east1-b", we need "us-east1"
+		region := strings.Join(strings.Split(nodeConfig.Region, "-")[:2], "-")
+		addressReleaseCall := gcpClient.Addresses.Delete(projectName, region, fmt.Sprintf("%s-%s", constants.GCPStaticIPPrefix, nodeConfig.NodeID))
+		if _, err = addressReleaseCall.Do(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
