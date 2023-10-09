@@ -202,11 +202,11 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	elasticIPs, err := terraformgcp.RunTerraform(app.GetTerraformDir(), useStaticIP)
 	instanceIDs := []string{}
 	for i := 0; i < int(numNodes); i++ {
 		instanceIDs = append(instanceIDs, fmt.Sprintf("%s-%s", nodeName, strconv.Itoa(i)))
 	}
+	elasticIPs, err := terraformgcp.RunTerraform(app.GetTerraformDir(), useStaticIP)
 	if err != nil {
 		return instanceIDs, nil, "", "", errors.New(constants.ErrCreatingGCPNode)
 	}
