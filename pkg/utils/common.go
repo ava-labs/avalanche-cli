@@ -7,9 +7,26 @@ import (
 	"io"
 	"os"
 	"os/exec"
+
+	"github.com/melbahja/goph"
 )
 
 func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr bool) (*bytes.Buffer, *bytes.Buffer) {
+	var stdoutBuffer bytes.Buffer
+	var stderrBuffer bytes.Buffer
+	if redirectStdout {
+		cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuffer)
+	} else {
+		cmd.Stdout = io.MultiWriter(&stdoutBuffer)
+	}
+	if redirectStderr {
+		cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuffer)
+	} else {
+		cmd.Stderr = io.MultiWriter(&stderrBuffer)
+	}
+	return &stdoutBuffer, &stderrBuffer
+}
+func SetupRealtimeCLISSHOutput(cmd *goph.Cmd, redirectStdout bool, redirectStderr bool) (*bytes.Buffer, *bytes.Buffer) {
 	var stdoutBuffer bytes.Buffer
 	var stderrBuffer bytes.Buffer
 	if redirectStdout {
