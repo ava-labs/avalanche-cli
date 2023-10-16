@@ -9,6 +9,7 @@ import (
 	"net"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -222,6 +223,10 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
 		return err
 	}
+	tempInventoryPath := app.GetTempAnsibleInventoryDirPath(clusterName)
+	if err = ansible.CreateTempAnsibleHostInventory(tempInventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
+		return err
+	}
 	time.Sleep(30 * time.Second)
 
 	avalancheGoVersion, err := getAvalancheGoVersion()
@@ -229,10 +234,13 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
-	if err = runAnsible(inventoryPath, avalancheGoVersion, clusterName); err != nil {
+	if err = runAnsible(tempInventoryPath, avalancheGoVersion, clusterName); err != nil {
 		return err
 	}
-	if err = setupBuildEnv(clusterName); err != nil {
+	if err = setupBuildEnv(tempInventoryPath); err != nil {
+		return err
+	}
+	if err = ansible.RemoveTempInventoryDirectory(filepath.Join(app.GetNodesDir(), constants.AnsibleTempInventoryDir)); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
@@ -273,13 +281,9 @@ func runAnsible(inventoryPath, avalancheGoVersion, clusterName string) error {
 	return ansible.RunAnsiblePlaybookSetupNode(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion)
 }
 
-func setupBuildEnv(clusterName string) error {
+func setupBuildEnv(inventoryPath string) error {
 	ux.Logger.PrintToUser("Installing Custom VM build environment on the cloud server(s) ...")
-	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath, "all"); err != nil {
-		return err
-	}
-	return nil
+	return ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath, "all")
 }
 
 func getIPAddress() (string, error) {

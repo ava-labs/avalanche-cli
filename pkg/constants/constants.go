@@ -120,6 +120,7 @@ const (
 	NodeIDJSONFile                         = "nodeID.json"
 	SubnetSyncJSONFile                     = "isSubnetSynced.json"
 	AnsibleInventoryDir                    = "inventories"
+	AnsibleTempInventoryDir                = "temp_inventories"
 	AnsiblePlaybookDir                     = "playbook"
 	AnsibleStatusDir                       = "status"
 	AnsibleInventoryFlag                   = "-i"

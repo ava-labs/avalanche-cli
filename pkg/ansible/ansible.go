@@ -37,6 +37,36 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 		return err
 	}
 	inventoryHostsFilePath := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
+	inventoryFile, err := os.OpenFile(inventoryHostsFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer inventoryFile.Close()
+	for instanceID := range publicIPMap {
+		inventoryContent := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, instanceID)
+		if cloudService == constants.GCPCloudService {
+			inventoryContent = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, instanceID)
+		}
+		inventoryContent += " ansible_host="
+		inventoryContent += publicIPMap[instanceID]
+		inventoryContent += " ansible_user=ubuntu "
+		inventoryContent += fmt.Sprintf("ansible_ssh_private_key_file=%s", certFilePath)
+		inventoryContent += " ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
+		if _, err = inventoryFile.WriteString(inventoryContent + "\n"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// CreateTempAnsibleHostInventory creates inventory file in temp_inventory directory to be used for
+// Ansible playbook create commands so that all create commands can be run concurrently on all newly
+// created nodes and not applied to existing nodes in the cluster
+func CreateTempAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService string, publicIPMap map[string]string) error {
+	if err := os.MkdirAll(inventoryDirPath, os.ModePerm); err != nil {
+		return err
+	}
+	inventoryHostsFilePath := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
 	inventoryFile, err := os.Create(inventoryHostsFilePath)
 	if err != nil {
 		return err
@@ -56,6 +86,12 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 		}
 	}
 	return nil
+}
+
+// RemoveTempInventoryDirectory remove temp inventory directory used for storing ansible inventory
+// info for newly created hosts
+func RemoveTempInventoryDirectory(tempInventoryDir string) error {
+	return os.RemoveAll(tempInventoryDir)
 }
 
 func Setup(ansibleDir string) error {
