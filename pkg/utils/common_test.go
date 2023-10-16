@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// TestSpitString test case
+// TestSpitStringWithQuotes test case
 func TestSpitStringWithQuotes(t *testing.T) {
 	input1 := " arg1 arg2 'hello world' "
 	expected1 := []string{"arg1", "arg2", "'hello world'"}
@@ -74,5 +74,4 @@ func TestSplitKeyValueStringToMap(t *testing.T) {
 	if !reflect.DeepEqual(result5, expected5) {
 		t.Errorf("Expected %v, but got %v", expected5, result5)
 	}
-
 }
