@@ -45,9 +45,9 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath string, publicIPM
 		inventoryContent := fmt.Sprintf("%s%s", constants.AnsibleAWSNodePrefix, instanceID)
 		inventoryContent += " ansible_host="
 		inventoryContent += publicIPMap[instanceID]
-		inventoryContent += " ansible_user=ubuntu "
-		inventoryContent += fmt.Sprintf("ansible_ssh_private_key_file=%s", certFilePath)
-		inventoryContent += " ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
+		inventoryContent += " ansible_user=ubuntu"
+		inventoryContent += fmt.Sprintf(" ansible_ssh_private_key_file=%s", certFilePath)
+		inventoryContent += fmt.Sprintf(" ansible_ssh_common_args='%s'", constants.AnsibleSSHParams)
 		if _, err = inventoryFile.WriteString(inventoryContent + "\n"); err != nil {
 			return err
 		}
@@ -87,7 +87,10 @@ func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]models.Hos
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		// host alias is first element in each line of host inventory file
-		parsedHost := utils.SplitKeyValueStringToMap(scanner.Text(), " ")
+		parsedHost, err := utils.SplitKeyValueStringToMap(scanner.Text(), " ")
+		if err != nil {
+			return nil, err
+		}
 		host := models.Host{
 			NodeID:            strings.Split(scanner.Text(), " ")[0],
 			IP:                parsedHost["ansible_host"],
@@ -95,6 +98,7 @@ func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]models.Hos
 			SSHPrivateKeyPath: parsedHost["ansible_ssh_private_key_file"],
 			SSHCommonArgs:     parsedHost["ansible_ssh_common_args"],
 		}
+
 		inventory = append(inventory, host)
 	}
 	if err := scanner.Err(); err != nil {

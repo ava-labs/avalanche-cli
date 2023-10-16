@@ -26,19 +26,32 @@ func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr b
 	return &stdoutBuffer, &stderrBuffer
 }
 
-func SplitKeyValueStringToMap(str string, delimiter string) map[string]string {
+// SplitKeyValueStringToMap splits a string with multiple key-value pairs separated by delimiter.
+// Delimiter must be a single character
+func SplitKeyValueStringToMap(str string, delimiter string) (map[string]string, error) {
 	kvMap := make(map[string]string)
-	if str == "" {
-		return kvMap
+	if str == "" || len(delimiter) == 0 {
+		return kvMap, nil
 	}
-	entries := strings.Split(str, delimiter)
+	entries := SplitStringWithQuotes(str, rune(delimiter[0]))
 	for _, e := range entries {
 		parts := strings.Split(e, "=")
 		if len(parts) >= 2 {
-			kvMap[parts[0]] = parts[1]
+			kvMap[parts[0]] = strings.Trim(strings.Join(parts[1:], "="), "'")
 		} else {
-			kvMap[parts[0]] = parts[0]
+			kvMap[parts[0]] = strings.Trim(parts[0], "'")
 		}
 	}
-	return kvMap
+	return kvMap, nil
+}
+
+// SplitString split string with a rune comma ignore quoted
+func SplitStringWithQuotes(str string, r rune) []string {
+	quoted := false
+	return strings.FieldsFunc(str, func(r1 rune) bool {
+		if r1 == '\'' {
+			quoted = !quoted
+		}
+		return !quoted && r1 == r
+	})
 }

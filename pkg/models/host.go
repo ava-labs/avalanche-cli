@@ -36,6 +36,6 @@ func (h Host) GetAnsibleParams() string {
 		fmt.Sprintf("ansible_host=%s", h.IP),
 		fmt.Sprintf("ansible_user=%s", h.SSHUser),
 		fmt.Sprintf("ansible_ssh_private_key_file=%s", h.SSHPrivateKeyPath),
-		fmt.Sprintf("ansible_ssh_common_args=%s", h.SSHCommonArgs),
+		fmt.Sprintf("ansible_ssh_common_args='%s'", h.SSHCommonArgs),
 	}, " ")
 }
