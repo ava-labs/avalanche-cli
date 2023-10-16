@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Git checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
           path: avalanche-cli
@@ -60,7 +60,7 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install gcc-aarch64-linux-gnu
       - name: Checkout osxcross
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: tpoechtrager/osxcross
           path: osxcross
