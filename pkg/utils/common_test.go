@@ -62,13 +62,13 @@ func TestSplitKeyValueStringToMap(t *testing.T) {
 	}
 
 	// Test case 5: real life scenario
-	input5 := "aws_node_i-009713a2ebe873b86 ansible_host=127.0.0.1 ansible_user=ubuntu ansible_ssh_private_key_file=/Users/user/.ssh/kp.pem ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
+	input5 := "aws_node_i-009713a2ebe873b86 ansible_host=127.0.0.1 ansible_user=ubuntu ansible_ssh_private_key_file=/Users/user/.ssh/kp.pem ansible_ssh_common_args='-o IdentitiesOnly=yes -o StrictHostKeyChecking=no'"
 	expected5 := map[string]string{
 		"aws_node_i-009713a2ebe873b86": "aws_node_i-009713a2ebe873b86",
 		"ansible_host":                 "127.0.0.1",
 		"ansible_user":                 "ubuntu",
 		"ansible_ssh_private_key_file": "/Users/user/.ssh/kp.pem",
-		"ansible_ssh_common_args":      "-o StrictHostKeyChecking=no",
+		"ansible_ssh_common_args":      "-o IdentitiesOnly=yes -o StrictHostKeyChecking=no",
 	}
 	result5, _ := SplitKeyValueStringToMap(input5, " ")
 	if !reflect.DeepEqual(result5, expected5) {
