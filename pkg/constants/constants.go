@@ -124,7 +124,7 @@ const (
 	AnsiblePlaybookDir                     = "playbook"
 	AnsibleStatusDir                       = "status"
 	AnsibleInventoryFlag                   = "-i"
-	AnsibleExtraArgsIdentitiesOnlyFlag     = "--ssh-extra-args='-o IdentitiesOnly=yes'"
+	AnsibleExtraArgsIdentitiesOnlyFlag     = "--ssh-extra-args='-o IdentitiesOnly=yes -o StrictHostKeyChecking=no'"
 	AnsibleSSHParams                       = "-o IdentitiesOnly=yes -o StrictHostKeyChecking=no"
 	AnsibleExtraVarsFlag                   = "--extra-vars"
 	CloudCLIBranch                         = "custom-vms-cloud-10"

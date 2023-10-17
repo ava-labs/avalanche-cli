@@ -8,6 +8,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
-func GetSSHConnectionString(publicIP, certFilePath string) string {
-	return fmt.Sprintf("ssh %s %s@%s -i %s", constants.AnsibleSSHParams, constants.AnsibleSSHUser, publicIP, certFilePath)
+func GetSSHConnectionString(params, publicIP, certFilePath string) string {
+	if params == "" {
+		params = constants.AnsibleSSHParams
+	}
+	return fmt.Sprintf("ssh %s %s %s@%s -i %s", constants.AnsibleSSHParams, params, constants.AnsibleSSHUser, publicIP, certFilePath)
 }
