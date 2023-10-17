@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -413,18 +414,19 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance(s)...")
-	if err := runAnsible(inventoryPath, avalancheGoVersion, clusterName); err != nil {
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
+	if err != nil {
 		return err
 	}
-	if err := setupBuildEnv(clusterName); err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
-	for _, instanceID := range instanceIDs {
-		nodeInstanceDirPath := app.GetNodeInstanceDirPath(instanceID)
-		// ansible host alias's name is formatted as aws_node_{instanceID}
-		nodeInstanceAnsibleAlias := fmt.Sprintf("%s%s", constants.AnsibleAWSNodePrefix, instanceID)
-		if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
+	for _, host := range hosts {
+		if err := ssh.RunSSHSetupNode(host, app.GetConfigPath(), avalancheGoVersion); err != nil {
+			return err
+		}
+		if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
+		if err := ssh.RunSSHCopyStakingFiles(host, app.GetConfigPath(), app.GetNodeInstanceDirPath(host.CloudNodeID())); err != nil {
 			return err
 		}
 	}

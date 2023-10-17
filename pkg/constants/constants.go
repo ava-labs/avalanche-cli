@@ -41,6 +41,7 @@ const (
 
 	RequestTimeout    = 3 * time.Minute
 	E2ERequestTimeout = 30 * time.Second
+	DefaultSSHTimeout = 30 * time.Second
 
 	SimulatePublicNetwork = "SIMULATE_PUBLIC_NETWORK"
 	FujiAPIEndpoint       = "https://api.avax-test.network"

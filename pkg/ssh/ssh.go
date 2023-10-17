@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"text/template"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -15,14 +14,14 @@ import (
 )
 
 type scriptInputs struct {
-	avalancheGoVersion   string
-	subnetExportFileName string
-	subnetName           string
-	goVersion            string
-	cliBranch            string
+	AvalancheGoVersion   string
+	SubnetExportFileName string
+	SubnetName           string
+	GoVersion            string
+	CliBranch            string
 }
 
-//go:embed shell/*
+//go:embed shell/*.sh
 var script embed.FS
 
 // RunSSHSetupNode runs provided script path over ssh.
@@ -42,7 +41,7 @@ func RunOverSSH(id string, host models.Host, scriptPath string, templateVars scr
 	if err != nil {
 		return err
 	}
-	cmd, err := host.Command(script.String(), nil, context.Background(), time.Second*300)
+	cmd, err := host.Command(script.String(), nil, context.Background())
 	if err != nil {
 		return err
 	}
@@ -85,7 +84,7 @@ func PostOverSSH(host models.Host, path string, requestBody string) ([]byte, err
 // RunSSHSetupNode runs script to setup node
 func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string) error {
 	//name: setup node
-	if err := RunOverSSH("SetupNode", host, "ssh/shell/setupNode.sh", scriptInputs{avalancheGoVersion: avalancheGoVersion}); err != nil {
+	if err := RunOverSSH("SetupNode", host, "shell/setupNode.sh", scriptInputs{AvalancheGoVersion: avalancheGoVersion}); err != nil {
 		return err
 	}
 
@@ -121,22 +120,22 @@ func RunSSHExportSubnet(host models.Host, exportPath, cloudServerSubnetPath stri
 // RunSSHExportSubnet exports deployed Subnet from local machine to cloud server
 // targets a specific host ansibleHostID in ansible inventory file
 func RunSSHTrackSubnet(host models.Host, subnetName, importPath string) error {
-	return RunOverSSH("TrackSubnet", host, "ssh/shell/trackSubnet.sh", scriptInputs{subnetName: subnetName, subnetExportFileName: importPath})
+	return RunOverSSH("TrackSubnet", host, "shell/trackSubnet.sh", scriptInputs{SubnetName: subnetName, SubnetExportFileName: importPath})
 }
 
 // RunSSHUpdateSubnet runs avalanche subnet join <subnetName> in cloud server using update subnet info
 func RunSSHUpdateSubnet(host models.Host, subnetName, importPath string) error {
-	return RunOverSSH("TrackSubnet", host, "ssh/shell/updateSubnet.sh", scriptInputs{subnetName: subnetName, subnetExportFileName: importPath})
+	return RunOverSSH("TrackSubnet", host, "shell/updateSubnet.sh", scriptInputs{SubnetName: subnetName, SubnetExportFileName: importPath})
 }
 
 // RunSSHSetupBuildEnv installs gcc, golang, rust and etc
 func RunSSHSetupBuildEnv(host models.Host) error {
-	return RunOverSSH("setupBuildEnv", host, "ssh/shell/setupBuildEnv.sh", scriptInputs{goVersion: constants.BuildEnvGolangVersion})
+	return RunOverSSH("setupBuildEnv", host, "shell/setupBuildEnv.sh", scriptInputs{GoVersion: constants.BuildEnvGolangVersion})
 }
 
 // RunSSHSetupCLIFromSource installs any CLI branch from source
 func RunSSHSetupCLIFromSource(host models.Host, cliBranch string) error {
-	return RunOverSSH("setupCLIFromSource", host, "ssh/shell/setupCLIFromSource.sh", scriptInputs{cliBranch: cliBranch})
+	return RunOverSSH("setupCLIFromSource", host, "shell/setupCLIFromSource.sh", scriptInputs{CliBranch: cliBranch})
 }
 
 // RunSSHCheckAvalancheGoVersion checks node avalanchego version

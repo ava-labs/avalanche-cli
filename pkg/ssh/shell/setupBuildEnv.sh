@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
 install_go() {
-  GOFILE=go{{ .goVersion }}.linux-amd64.tar.gz
+  # trunk-ignore(shellcheck/SC1083)
+  # trunk-ignore(shellcheck/SC1083)
+  GOFILE=go{{ .GoVersion }}.linux-amd64.tar.gz
   cd ~
   sudo rm -rf $GOFILE go
   wget -nv https://go.dev/dl/$GOFILE

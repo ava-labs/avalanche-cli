@@ -8,10 +8,11 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"time"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/melbahja/goph"
+	"golang.org/x/crypto/ssh"
 )
 
 type Host struct {
@@ -29,14 +30,29 @@ const (
 	localhost = "127.0.0.1"
 )
 
+func (h Host) CloudNodeID() string {
+	if strings.HasPrefix(h.NodeID, constants.AnsibleAWSNodePrefix) {
+		return strings.TrimPrefix(h.NodeID, constants.AnsibleAWSNodePrefix)
+	}
+	//default behaviour - TODO refactor for other clouds
+	return strings.Join(strings.Split(h.NodeID, "_")[:2], "_")
+}
+
 func (h Host) Connect() error {
 	// Start new ssh connection with private key.
 	auth, err := goph.Key(h.SSHPrivateKeyPath, "")
 	if err != nil {
 		return err
 	}
-
-	client, err := goph.NewUnknown(h.SSHUser, h.IP, auth)
+	//client, err := goph.NewUnknown(h.SSHUser, h.IP, auth)
+	client, err := goph.NewConn(&goph.Config{
+		User:     h.SSHUser,
+		Addr:     h.IP,
+		Port:     22,
+		Auth:     auth,
+		Timeout:  constants.DefaultSSHTimeout,
+		Callback: ssh.InsecureIgnoreHostKey(),
+	})
 	if err != nil {
 		return err
 	}
@@ -70,20 +86,22 @@ func (h Host) Close() error {
 	return h.client.Close()
 }
 
-func (h Host) Command(script string, env []string, ctx context.Context, timeout time.Duration) (*goph.Cmd, error) {
+func (h Host) Command(script string, env []string, ctx context.Context) (*goph.Cmd, error) {
+	fmt.Println("about to connect via ssh")
 	if h.client == nil {
 		if err := h.Connect(); err != nil {
 			return nil, err
 		}
 	}
-	if timeout > 0 {
-		h.client.Config.Timeout = timeout
-	}
+	fmt.Println("connected")
 	cmd, err := h.client.CommandContext(ctx, shell, script)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("context")
 	cmd.Env = env
+	fmt.Println("env")
+	fmt.Println(cmd)
 	return cmd, nil
 }
 

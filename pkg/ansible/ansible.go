@@ -312,6 +312,7 @@ func RunAnsiblePlaybookCheckBootstrapped(ansibleDir, isBootstrappedPath, invento
 	playbookInputs := "target=" + ansibleHostID + " isBootstrappedJsonPath=" + isBootstrappedPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsBootstrappedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
+	fmt.Println(cmd)
 	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, false, false)
 	cmdErr := cmd.Run()
 	if err := displayErrMsg(stdoutBuffer); err != nil {
