@@ -30,7 +30,7 @@ const (
 	localhost = "127.0.0.1"
 )
 
-func (h Host) CloudNodeID() string {
+func (h Host) GetNodeID() string {
 	if strings.HasPrefix(h.NodeID, constants.AnsibleAWSNodePrefix) {
 		return strings.TrimPrefix(h.NodeID, constants.AnsibleAWSNodePrefix)
 	}
@@ -138,10 +138,6 @@ func (h Host) Forward() error {
 		}
 	}()
 	return nil
-}
-
-func (h Host) GetNodeID() string {
-	return strings.TrimPrefix(h.NodeID, constants.AnsibleAWSNodePrefix)
 }
 
 func (h Host) ConvertToNodeID(nodeName string) string {

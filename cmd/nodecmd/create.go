@@ -426,7 +426,7 @@ func createNode(_ *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
-		if err := ssh.RunSSHCopyStakingFiles(host, app.GetConfigPath(), app.GetNodeInstanceDirPath(host.CloudNodeID())); err != nil {
+		if err := ssh.RunSSHCopyStakingFiles(host, app.GetConfigPath(), app.GetNodeInstanceDirPath(host.GetNodeID())); err != nil {
 			return err
 		}
 	}
