@@ -7,7 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
-  "strings"
+	"strings"
 
 	"github.com/melbahja/goph"
 )
@@ -42,6 +42,7 @@ func SetupRealtimeCLISSHOutput(cmd *goph.Cmd, redirectStdout bool, redirectStder
 		cmd.Stderr = io.MultiWriter(&stderrBuffer)
 	}
 	return &stdoutBuffer, &stderrBuffer
+}
 
 // SplitKeyValueStringToMap splits a string with multiple key-value pairs separated by delimiter.
 // Delimiter must be a single character
