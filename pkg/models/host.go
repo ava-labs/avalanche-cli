@@ -5,8 +5,6 @@ package models
 import (
 	"fmt"
 	"strings"
-
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
 type Host struct {
@@ -15,20 +13,6 @@ type Host struct {
 	SSHUser           string
 	SSHPrivateKeyPath string
 	SSHCommonArgs     string
-}
-
-func (h Host) GetNodeID() string {
-	return strings.TrimPrefix(h.NodeID, constants.AnsibleAWSNodePrefix)
-}
-
-func (h Host) ConvertToNodeID(nodeName string) string {
-	h = Host{
-		NodeID:            nodeName,
-		SSHUser:           "ubuntu",
-		SSHPrivateKeyPath: "",
-		SSHCommonArgs:     "",
-	}
-	return h.GetNodeID()
 }
 
 func (h Host) GetAnsibleParams() string {

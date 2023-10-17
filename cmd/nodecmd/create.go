@@ -400,7 +400,7 @@ func PrintResults(cloudConfig CloudConfig, publicIPMap map[string]string, cloudS
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("To ssh to node, run: ")
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(utils.GetSSHConnectionString("", publicIP, certFilePath))
+		ux.Logger.PrintToUser(utils.GetSSHConnectionString(publicIP, cloudConfig.CertFilePath))
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("======================================")
 	}

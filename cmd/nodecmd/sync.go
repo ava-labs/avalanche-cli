@@ -63,8 +63,9 @@ func getPublicIPForNodesWoEIP(nodesWoEIP []models.NodeConfig) (map[string]string
 	publicIPMap := make(map[string]string)
 	var gcpClient *compute.Service
 	var gcpProjectName string
+	ux.Logger.PrintToUser("Getting Public IPs for nodes without static IPs ...")
 	for _, node := range nodesWoEIP {
-		if node.Region != lastRegion {
+		if lastRegion == "" || node.Region != lastRegion {
 			if node.CloudService == "" || node.CloudService == constants.AWSCloudService {
 				// check for empty because we didn't set this value when it was only on AWS
 				sess, err := getAWSCloudCredentials(node.Region, constants.GetAWSNodeIP)
