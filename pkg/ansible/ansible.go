@@ -30,18 +30,25 @@ var config []byte
 
 // CreateAnsibleHostInventory creates inventory file to be used for Ansible playbook commands
 // specifies the ip address of the cloud server and the corresponding ssh cert path for the cloud server
-// if publicIPs is empty, that means that user is not using elastic IP and we are using publicIPMap
-// to get the host IP
-func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService string, publicIPMap map[string]string) error {
+// if createTempInventory is true, it creates inventory file in temp_inventory directory to be used for
+// Ansible playbook create commands so that all create commands can be run concurrently on all newly
+// created nodes and not applied to existing nodes in the cluster
+func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService string, publicIPMap map[string]string, createTempInventory bool) error {
 	if err := os.MkdirAll(inventoryDirPath, os.ModePerm); err != nil {
 		return err
 	}
+	var inventoryFile *os.File
+	var err error
 	inventoryHostsFilePath := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
-	inventoryFile, err := os.OpenFile(inventoryHostsFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
-	if err != nil {
-		return err
+	if createTempInventory {
+		inventoryFile, err = os.Create(inventoryHostsFilePath)
+	} else {
+		inventoryFile, err = os.OpenFile(inventoryHostsFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+		if err != nil {
+			return err
+		}
+		defer inventoryFile.Close()
 	}
-	defer inventoryFile.Close()
 	for instanceID := range publicIPMap {
 		inventoryContent := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, instanceID)
 		if cloudService == constants.GCPCloudService {
@@ -459,16 +466,15 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]
 	if err != nil {
 		return err
 	}
-	for node, ansibleHostContent := range inventory {
+	for host, ansibleHostContent := range inventory {
 		// trim prefix aws_node / gcp_node
-		strings.Split(node, "_")
-		splitNodeName := strings.Split(node, "_")
+		splitNodeName := strings.Split(host, "_")
 		nodeID := splitNodeName[len(splitNodeName)-1]
 		_, ok := nodesWoEIP[nodeID]
 		if ok {
 			ansibleHostContent.IP = nodesWoEIP[nodeID]
 		}
-		if _, err = inventoryFile.WriteString(node + " " + ansibleHostContent.GetAnsibleParams() + "\n"); err != nil {
+		if _, err = inventoryFile.WriteString(host + " " + ansibleHostContent.GetAnsibleParams() + "\n"); err != nil {
 			return err
 		}
 	}

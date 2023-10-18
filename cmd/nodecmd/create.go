@@ -220,11 +220,11 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
+	if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap, false); err != nil {
 		return err
 	}
 	tempInventoryPath := app.GetTempAnsibleInventoryDirPath(clusterName)
-	if err = ansible.CreateTempAnsibleHostInventory(tempInventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
+	if err = ansible.CreateAnsibleHostInventory(tempInventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap, true); err != nil {
 		return err
 	}
 	time.Sleep(30 * time.Second)
