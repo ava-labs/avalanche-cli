@@ -57,41 +57,6 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 	return nil
 }
 
-// CreateTempAnsibleHostInventory creates inventory file in temp_inventory directory to be used for
-// Ansible playbook create commands so that all create commands can be run concurrently on all newly
-// created nodes and not applied to existing nodes in the cluster
-func CreateTempAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService string, publicIPMap map[string]string) error {
-	if err := os.MkdirAll(inventoryDirPath, os.ModePerm); err != nil {
-		return err
-	}
-	inventoryHostsFilePath := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
-	inventoryFile, err := os.Create(inventoryHostsFilePath)
-	if err != nil {
-		return err
-	}
-	for instanceID := range publicIPMap {
-		inventoryContent := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, instanceID)
-		if cloudService == constants.GCPCloudService {
-			inventoryContent = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, instanceID)
-		}
-		inventoryContent += " ansible_host="
-		inventoryContent += publicIPMap[instanceID]
-		inventoryContent += " ansible_user=ubuntu"
-		inventoryContent += fmt.Sprintf(" ansible_ssh_private_key_file=%s", certFilePath)
-		inventoryContent += fmt.Sprintf(" ansible_ssh_common_args='%s'", constants.AnsibleSSHInventoryParams)
-		if _, err = inventoryFile.WriteString(inventoryContent + "\n"); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// RemoveTempInventoryDirectory remove temp inventory directory used for storing ansible inventory
-// info for newly created hosts
-func RemoveTempInventoryDirectory(tempInventoryDir string) error {
-	return os.RemoveAll(tempInventoryDir)
-}
-
 func Setup(ansibleDir string) error {
 	err := WriteCfgFile(ansibleDir)
 	if err != nil {
