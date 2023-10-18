@@ -42,6 +42,9 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 	inventoryHostsFilePath := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
 	if createTempInventory {
 		inventoryFile, err = os.Create(inventoryHostsFilePath)
+		if err != nil {
+			return err
+		}
 	} else {
 		inventoryFile, err = os.OpenFile(inventoryHostsFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 		if err != nil {
