@@ -328,9 +328,6 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err := terraform.CheckIsInstalled(); err != nil {
 		return err
 	}
-	if err := ansible.CheckIsInstalled(); err != nil {
-		return err
-	}
 	err := terraform.RemoveDirectory(app.GetTerraformDir())
 	if err != nil {
 		return err
@@ -442,25 +439,21 @@ func setupAnsible(clusterName string) error {
 	if err != nil {
 		return err
 	}
-	if err = ansible.Setup(app.GetAnsibleDir()); err != nil {
-		return err
-	}
 	return updateAnsiblePublicIPs(clusterName)
-}
-
-func runAnsible(inventoryPath, avalancheGoVersion, clusterName string) error {
-	err := setupAnsible(clusterName)
-	if err != nil {
-		return err
-	}
-	return ansible.RunAnsiblePlaybookSetupNode(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion)
 }
 
 func setupBuildEnv(clusterName string) error {
 	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance(s) ...")
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath, "all"); err != nil {
+	
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
+	if err != nil {
 		return err
+	}
+	for _, host := range hosts {
+		if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
+			return err
+		}
 	}
 	return nil
 }

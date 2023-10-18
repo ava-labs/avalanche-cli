@@ -10,7 +10,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
 
 type scriptInputs struct {
@@ -41,21 +40,7 @@ func RunOverSSH(id string, host models.Host, scriptPath string, templateVars scr
 	if err != nil {
 		return err
 	}
-	cmd, err := host.Command(script.String(), nil, context.Background())
-	if err != nil {
-		return err
-	}
-
-	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLISSHOutput(cmd, true, true)
-	// execute commands in script
-	cmdErr := cmd.Run()
-	if err := utils.DisplayErrMsg(stdoutBuffer); err != nil {
-		return err
-	}
-	if err := utils.DisplayErrMsg(stderrBuffer); err != nil {
-		return err
-	}
-	return cmdErr
+	return host.Command(script.String(), nil, context.Background())
 }
 
 func PostOverSSH(host models.Host, path string, requestBody string) ([]byte, error) {
@@ -83,12 +68,12 @@ func PostOverSSH(host models.Host, path string, requestBody string) ([]byte, err
 
 // RunSSHSetupNode runs script to setup node
 func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string) error {
-	//name: setup node
+	// name: setup node
 	if err := RunOverSSH("SetupNode", host, "shell/setupNode.sh", scriptInputs{AvalancheGoVersion: avalancheGoVersion}); err != nil {
 		return err
 	}
 
-	//name: copy metrics config to cloud server
+	// name: copy metrics config to cloud server
 	if err := host.Upload(configPath, fmt.Sprintf("/home/ubuntu/.avalanche-cli/%s", filepath.Base(configPath))); err != nil {
 		return err
 	}
@@ -96,15 +81,15 @@ func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string) er
 }
 
 func RunSSHCopyStakingFiles(host models.Host, configPath, nodeInstanceDirPath string) error {
-	//name: copy staker.crt to local machine
+	// name: copy staker.crt to local machine
 	if err := host.Download("/home/ubuntu/.avalanchego/staking/staker.crt", fmt.Sprintf("%s/staker.crt", nodeInstanceDirPath)); err != nil {
 		return err
 	}
-	//name: copy staker.key to local machine
+	// name: copy staker.key to local machine
 	if err := host.Download("/home/ubuntu/.avalanchego/staking/staker.key", fmt.Sprintf("%s/staker.key", nodeInstanceDirPath)); err != nil {
 		return err
 	}
-	//name: copy signer.key to local machine
+	// name: copy signer.key to local machine
 	if err := host.Download("/home/ubuntu/.avalanchego/staking/signer.key", fmt.Sprintf("%s/signer.key", nodeInstanceDirPath)); err != nil {
 		return err
 	}
@@ -113,7 +98,7 @@ func RunSSHCopyStakingFiles(host models.Host, configPath, nodeInstanceDirPath st
 
 // RunSSHExportSubnet exports deployed Subnet from local machine to cloud server
 func RunSSHExportSubnet(host models.Host, exportPath, cloudServerSubnetPath string) error {
-	//name: copy exported subnet VM spec to cloud server
+	// name: copy exported subnet VM spec to cloud server
 	return host.Upload(exportPath, cloudServerSubnetPath)
 }
 
