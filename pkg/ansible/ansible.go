@@ -55,14 +55,6 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath string, publicIPM
 	return nil
 }
 
-func Setup(ansibleDir string) error {
-	err := WriteCfgFile(ansibleDir)
-	if err != nil {
-		return err
-	}
-	return WritePlaybookFiles(ansibleDir)
-}
-
 // GetAnsibleHostsFromInventory gets alias of all hosts in an inventory file
 func GetAnsibleHostsFromInventory(inventoryDirPath string) ([]string, error) {
 	ansibleHostIDs := []string{}
@@ -117,39 +109,6 @@ func GetHostMapfromAnsibleInventory(inventoryDirPath string) (map[string]models.
 		hostMap[host.NodeID] = host
 	}
 	return hostMap, nil
-}
-
-func WritePlaybookFiles(ansibleDir string) error {
-	playbookDir := filepath.Join(ansibleDir, "playbook")
-	files, err := playbook.ReadDir("playbook")
-	if err != nil {
-		return err
-	}
-
-	for _, file := range files {
-		fileContent, err := playbook.ReadFile(fmt.Sprintf("%s/%s", "playbook", file.Name()))
-		if err != nil {
-			return err
-		}
-		playbookFile, err := os.Create(filepath.Join(playbookDir, file.Name()))
-		if err != nil {
-			return err
-		}
-		_, err = playbookFile.Write(fileContent)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func WriteCfgFile(ansibleDir string) error {
-	cfgFile, err := os.Create(filepath.Join(ansibleDir, "ansible.cfg"))
-	if err != nil {
-		return err
-	}
-	_, err = cfgFile.Write(config)
-	return err
 }
 
 // RunAnsiblePlaybookSetupNode installs avalanche go and avalanche-cli. It also copies the user's

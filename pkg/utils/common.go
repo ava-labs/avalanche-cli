@@ -28,20 +28,14 @@ func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr b
 	return &stdoutBuffer, &stderrBuffer
 }
 
-func SetupRealtimeCLISSHOutput(cmd *goph.Cmd, redirectStdout bool, redirectStderr bool) (*bytes.Buffer, *bytes.Buffer) {
+func SetupRealtimeCLISSHOutput(cmd *goph.Cmd, redirectStdout bool) (*bytes.Buffer) {
 	var stdoutBuffer bytes.Buffer
-	var stderrBuffer bytes.Buffer
 	if redirectStdout {
 		cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuffer)
 	} else {
 		cmd.Stdout = io.MultiWriter(&stdoutBuffer)
 	}
-	if redirectStderr {
-		cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuffer)
-	} else {
-		cmd.Stderr = io.MultiWriter(&stderrBuffer)
-	}
-	return &stdoutBuffer, &stderrBuffer
+	return &stdoutBuffer
 }
 
 // SplitKeyValueStringToMap splits a string with multiple key-value pairs separated by delimiter.

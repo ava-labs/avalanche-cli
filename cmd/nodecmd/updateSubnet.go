@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 
@@ -91,18 +92,17 @@ func doUpdateSubnet(clusterName, subnetName string, network models.Network) ([]s
 	if err := subnetcmd.CallExportSubnet(subnetName, subnetPath, network); err != nil {
 		return nil, err
 	}
-	hostAliases, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return nil, err
-	}
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	nonUpdatedNodes := []string{}
-	for _, host := range hostAliases {
-		if err = ansible.RunAnsiblePlaybookExportSubnet(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), subnetPath, "/tmp", host); err != nil {
-			return nil, err
+	if err != nil {
+		return nil,err
+	}
+	for _, host := range hosts {
+		if err := ssh.RunSSHExportSubnet(host, subnetPath,"/tmp"); err != nil {
+			return nil,err
 		}
-		// runs avalanche update subnet command
-		if err = ansible.RunAnsiblePlaybookUpdateSubnet(app.GetAnsibleDir(), subnetName, subnetPath, app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
-			nonUpdatedNodes = append(nonUpdatedNodes, host)
+		if err := ssh.RunSSHUpdateSubnet(host,subnetName,subnetPath); err != nil {
+			nonUpdatedNodes = append(nonUpdatedNodes, host.NodeID)
 		}
 	}
 	return nonUpdatedNodes, nil

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 
@@ -313,12 +314,30 @@ func getDefaultValidationTime(start time.Time, network models.Network, nodeIndex
 }
 
 func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
-	ansibleNodeIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	notBootstrappedNodes := []string{}
+	ux.Logger.PrintToUser(fmt.Sprintf("Checking if node(s) in cluster %s are bootstrapped to Primary Network ...", clusterName))
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return nil, err
 	}
-	notBootstrappedNodes := []string{}
-	ux.Logger.PrintToUser(fmt.Sprintf("Checking if node(s) in cluster %s are bootstrapped to Primary Network ...", clusterName))
+	for _, host := range hosts {
+		if err := ssh.RunSSHCheckBootstrapped(host); err != nil {
+			return nil,err
+		}
+		if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
+		if err := ssh.RunSSHCopyStakingFiles(host, app.GetConfigPath(), app.GetNodeInstanceDirPath(host.GetNodeID())); err != nil {
+			return err
+		}
+	}
+	if err != nil {
+		return err
+	}
+	
+
+/*
 	for _, host := range ansibleNodeIDs {
 		if err := app.CreateAnsibleStatusFile(app.GetBootstrappedJSONFile()); err != nil {
 			return nil, err
@@ -337,6 +356,7 @@ func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
 			notBootstrappedNodes = append(notBootstrappedNodes, host)
 		}
 	}
+	*/
 	return notBootstrappedNodes, nil
 }
 
