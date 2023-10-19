@@ -206,7 +206,7 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string
 				nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown, Err: err}
 			}
 			nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: avalancheGoVersion, Err: nil}
-		}(nodeResultChannel,host)
+		}(nodeResultChannel, host)
 	}
 	parallelWaitGroup.Wait()
 	close(nodeResultChannel)
@@ -253,7 +253,7 @@ func trackSubnet(clusterName, subnetName string, network models.Network) ([]stri
 			if err := ssh.RunSSHTrackSubnet(host, subnetName, subnetPath); err != nil {
 				nodeResultChannel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
 			}
-		}(nodeResultChannel,host)
+		}(nodeResultChannel, host)
 	}
 	parallelWaitGroup.Wait()
 	close(nodeResultChannel)

@@ -70,7 +70,7 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 				avalancheGoVersionCh <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown, Err: err}
 			}
 			avalancheGoVersionCh <- models.NodeStringResult{NodeID: host.NodeID, Value: avalancheGoVersion, Err: nil}
-		}(nodeResultChannel,host)
+		}(nodeResultChannel, host)
 	}
 	parallelWaitGroup.Wait()
 	close(nodeResultChannel)
@@ -106,7 +106,7 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 					nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: "", Err: err}
 				}
 				nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: subnetSyncStatus, Err: nil}
-			}(nodeResultChannel,host)
+			}(nodeResultChannel, host)
 		}
 		parallelWaitGroup.Wait()
 		close(nodeResultChannel)

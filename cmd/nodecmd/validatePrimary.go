@@ -321,7 +321,7 @@ func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
 				nodeResultChannel <- models.NodeBooleanResult{NodeID: host.NodeID, Value: false, Err: err}
 			}
 			nodeResultChannel <- models.NodeBooleanResult{NodeID: host.NodeID, Value: isBootstrapped, Err: err}
-		}(nodeResultChannel,host)
+		}(nodeResultChannel, host)
 	}
 	parallelWaitGroup.Wait()
 	close(nodeResultChannel)

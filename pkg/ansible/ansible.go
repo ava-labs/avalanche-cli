@@ -95,19 +95,6 @@ func GetHostListFromAnsibleInventory(inventoryDirPath string) ([]string, error) 
 	}
 	return hostList, nil
 }
-func getStringSeqFromISeq(lines []interface{}) []string {
-	seq := []string{}
-	for _, lineI := range lines {
-		line, ok := lineI.(string)
-		if ok {
-			if strings.Contains(line, "Usage:") {
-				break
-			}
-			seq = append(seq, line)
-		}
-	}
-	return seq
-}
 
 // UpdateInventoryHostPublicIP first maps existing ansible inventory host file content
 // then it deletes the inventory file and regenerates a new ansible inventory file where it will fetch public IP

@@ -470,7 +470,7 @@ func setupBuildEnv(clusterName string) error {
 			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
 				nodeResultChannel <- err
 			}
-		}(nodeResultChannel,host)
+		}(nodeResultChannel, host)
 	}
 	parallelWaitGroup.Wait()
 	close(nodeResultChannel)
