@@ -1,0 +1,5 @@
+---
+- hosts: "{{ target }}"
+  tasks:
+    - name: update avalanche go
+      shell: ./avalanchego-installer.sh

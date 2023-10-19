@@ -1,0 +1,16 @@
+---
+- hosts: "{{ target }}"
+  tasks:
+    - name: download new subnet EVM release
+      shell: wget "{{ subnetEVMReleaseURL }}"
+    - name: unpack new subnet EVM release
+      shell: tar xvf "{{ subnetEVMArchive}}"
+    - name: stop node - stop avalanchego
+      shell: sudo systemctl stop avalanchego
+    - name: replace subnet EVM binary
+      shell: cp subnet-evm "{{ subnetEVMBinaryPath }}"
+    - name: stop start - start avalanchego
+      shell: sudo systemctl start avalanchego
+
+
+

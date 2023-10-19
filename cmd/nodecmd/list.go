@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -51,7 +52,12 @@ func list(_ *cobra.Command, _ []string) error {
 			return err
 		}
 		for _, clusterNode := range clusterNodes {
-			hostName := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, clusterNode)
+			var hostName string
+			if strings.HasPrefix(clusterNode, "i-") {
+				hostName = fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, clusterNode)
+			} else {
+				hostName = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, clusterNode)
+			}
 			ux.Logger.PrintToUser(fmt.Sprintf("  Node %q to connect: %s", clusterNode, utils.GetSSHConnectionString(ansibleHosts[hostName].IP, ansibleHosts[hostName].SSHPrivateKeyPath)))
 		}
 	}
