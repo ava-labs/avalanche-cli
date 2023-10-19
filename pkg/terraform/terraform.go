@@ -185,6 +185,9 @@ func SetupInstances(rootBody *hclwrite.Body, securityGroupName string, useExisti
 	} else {
 		awsInstanceBody.SetAttributeValue("key_name", cty.StringVal(existingKeyPairName))
 	}
+	maintenanceOptions:=awsInstanceBody.AppendNewBlock("maintenance_options", []string{})
+	maintenanceOptionsBody:=maintenanceOptions.Body()
+	maintenanceOptionsBody.SetAttributeValue("auto_recovery", cty.StringVal("default"))
 	var securityGroupList []cty.Value
 	securityGroupList = append(securityGroupList, cty.StringVal(securityGroupName))
 	awsInstanceBody.SetAttributeValue("security_groups", cty.ListVal(securityGroupList))
