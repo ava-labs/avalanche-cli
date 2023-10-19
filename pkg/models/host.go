@@ -62,7 +62,8 @@ func (h Host) Connect(timeout time.Duration) (*goph.Client, error) {
 		Port:     22,
 		Auth:     auth,
 		Timeout:  timeout,
-		Callback: ssh.InsecureIgnoreHostKey(), // #nosec G106
+		// #nosec G106
+		Callback: ssh.InsecureIgnoreHostKey(),
 	})
 	if err != nil {
 		return nil, err
