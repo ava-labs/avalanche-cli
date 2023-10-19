@@ -423,7 +423,7 @@ func createNode(_ *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
-		if err := ssh.RunSSHCopyStakingFiles(host, app.GetConfigPath(), app.GetNodeInstanceDirPath(host.GetNodeID())); err != nil {
+		if err := ssh.RunSSHCopyStakingFiles(host, app.GetConfigPath(), app.GetNodeInstanceDirPath(host.GetInstanceID())); err != nil {
 			return err
 		}
 	}
@@ -435,17 +435,13 @@ func createNode(_ *cobra.Command, args []string) error {
 // setupAnsible we need to remove existing ansible directory and its contents in .avalanche-cli dir
 // before calling every ansible run command just in case there is a change in playbook
 func setupAnsible(clusterName string) error {
-	err := app.SetupAnsibleEnv()
-	if err != nil {
-		return err
-	}
 	return updateAnsiblePublicIPs(clusterName)
 }
 
 func setupBuildEnv(clusterName string) error {
 	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance(s) ...")
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	
+
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
 	if err != nil {
 		return err

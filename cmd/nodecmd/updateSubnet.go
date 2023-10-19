@@ -95,13 +95,13 @@ func doUpdateSubnet(clusterName, subnetName string, network models.Network) ([]s
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	nonUpdatedNodes := []string{}
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	for _, host := range hosts {
-		if err := ssh.RunSSHExportSubnet(host, subnetPath,"/tmp"); err != nil {
-			return nil,err
+		if err := ssh.RunSSHExportSubnet(host, subnetPath, "/tmp"); err != nil {
+			return nil, err
 		}
-		if err := ssh.RunSSHUpdateSubnet(host,subnetName,subnetPath); err != nil {
+		if err := ssh.RunSSHUpdateSubnet(host, subnetName, subnetPath); err != nil {
 			nonUpdatedNodes = append(nonUpdatedNodes, host.NodeID)
 		}
 	}

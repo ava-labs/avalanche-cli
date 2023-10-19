@@ -47,7 +47,7 @@ func list(_ *cobra.Command, _ []string) error {
 			return err
 		}
 		ansibleHosts, err := ansible.GetHostMapfromAnsibleInventory(app.GetAnsibleInventoryDirPath(clusterName))
-		
+
 		if err != nil {
 			return err
 		}

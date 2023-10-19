@@ -34,7 +34,7 @@ const (
 //
 // Returns:
 //   - string: The node ID of the host.
-func (h Host) GetNodeID() string {
+func (h Host) GetInstanceID() string {
 	if strings.HasPrefix(h.NodeID, constants.AnsibleAWSNodePrefix) {
 		return strings.TrimPrefix(h.NodeID, constants.AnsibleAWSNodePrefix)
 	}
@@ -129,7 +129,7 @@ func (h Host) Forward(httpRequest string) ([]byte,error) {
 	}
 	proxy, err := client.DialTCP("tcp", nil, avalancheGoAddr)
 	if err != nil {
-		return nil, fmt.Errorf("unable to port forward to %s via %s", client.Conn.RemoteAddr, "ssh")
+		return nil, fmt.Errorf("unable to port forward to %s via %s", client.Conn.RemoteAddr(), "ssh")
 	}
 	defer proxy.Close()
 	//send request to server
@@ -149,14 +149,14 @@ func (h Host) Forward(httpRequest string) ([]byte,error) {
 // ConvertToNodeID converts a node name to a node ID.
 //
 // It takes a nodeName string as a parameter and returns a string representing the node ID.
-func (h Host) ConvertToNodeID(nodeName string) string {
+func (h Host) ConvertToInstanceID(nodeID string) string {
 	h = Host{
-		NodeID:            nodeName,
+		NodeID:            nodeID,
 		SSHUser:           "ubuntu",
 		SSHPrivateKeyPath: "",
 		SSHCommonArgs:     "",
 	}
-	return h.GetNodeID()
+	return h.GetInstanceID()
 }
 
 // GetAnsibleParams returns the string representation of the Ansible parameters for the Host.

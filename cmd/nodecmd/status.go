@@ -44,13 +44,12 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 	if err := setupAnsible(clusterName); err != nil {
 		return err
 	}
-	ansibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	ux.Logger.PrintToUser(fmt.Sprintf("Collecting data for node(s) in cluster %s ...", clusterName))
+	avalanchegoVersionForNode := map[string]string{}
+	ansibleHostIDs, err := ansible.GetHostListFromAnsibleInventory(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser(fmt.Sprintf("Collecting data for node(s) in cluster %s ...", clusterName))
-	avalanchegoVersionForNode := map[string]string{}
-
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
@@ -81,18 +80,18 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 		notSyncedNodes := []string{}
 		subnetSyncedNodes := []string{}
 		subnetValidatingNodes := []string{}
-		for _, host := range ansibleHostIDs {
+		for _, host := range hosts {
 			subnetSyncStatus, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, host)
 			if err != nil {
 				return err
 			}
 			switch subnetSyncStatus {
 			case status.Syncing.String():
-				subnetSyncedNodes = append(subnetSyncedNodes, host)
+				subnetSyncedNodes = append(subnetSyncedNodes, host.NodeID)
 			case status.Validating.String():
-				subnetValidatingNodes = append(subnetValidatingNodes, host)
+				subnetValidatingNodes = append(subnetValidatingNodes, host.NodeID)
 			default:
-				notSyncedNodes = append(notSyncedNodes, host)
+				notSyncedNodes = append(notSyncedNodes, host.NodeID)
 			}
 		}
 		printOutput(avalanchegoVersionForNode, ansibleHostIDs, notSyncedNodes, subnetSyncedNodes, subnetValidatingNodes, clusterName, subnetName)

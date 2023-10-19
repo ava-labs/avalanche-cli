@@ -139,7 +139,7 @@ func RunSSHGetNodeID(host models.Host) ([]byte, error) {
 }
 
 // SubnetSyncStatus checks if node is synced to subnet
-func SubnetSyncStatus(host models.Host, blockchainID string) ([]byte, error) {
+func RunSSHSubnetSyncStatus(host models.Host, blockchainID string) ([]byte, error) {
 	// Craft and send the HTTP POST request
 	requestBody := fmt.Sprintf("{\"jsonrpc\":\"2.0\", \"id\":1,\"method\" :\"platform.getBlockchainStatus\", \"params\": {\"blockchainID\":\"%s\"}}", blockchainID)
 	return PostOverSSH(host, "/ext/bc/P", requestBody)
