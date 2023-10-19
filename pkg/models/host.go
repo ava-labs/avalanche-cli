@@ -57,11 +57,11 @@ func (h Host) Connect(timeout time.Duration) (*goph.Client, error) {
 		return nil, err
 	}
 	client, err := goph.NewConn(&goph.Config{
-		User:     h.SSHUser,
-		Addr:     h.IP,
-		Port:     22,
-		Auth:     auth,
-		Timeout:  timeout,
+		User:    h.SSHUser,
+		Addr:    h.IP,
+		Port:    22,
+		Auth:    auth,
+		Timeout: timeout,
 		// #nosec G106
 		Callback: ssh.InsecureIgnoreHostKey(),
 	})
