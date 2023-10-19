@@ -62,7 +62,7 @@ func (h Host) Connect(timeout time.Duration) (*goph.Client, error) {
 		Port:     22,
 		Auth:     auth,
 		Timeout:  timeout,
-		Callback: ssh.InsecureIgnoreHostKey(), // #nosec G106 -- consistent with ansible
+		Callback: ssh.InsecureIgnoreHostKey(), // #nosec G106
 	})
 	if err != nil {
 		return nil, err
