@@ -66,7 +66,6 @@ func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string) er
 	if err := RunOverSSH("SetupNode", host, "shell/setupNode.sh", scriptInputs{AvalancheGoVersion: avalancheGoVersion}); err != nil {
 		return err
 	}
-
 	// name: copy metrics config to cloud server
 	if err := host.Upload(configPath, fmt.Sprintf("/home/ubuntu/.avalanche-cli/%s", filepath.Base(configPath))); err != nil {
 		return err

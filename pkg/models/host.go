@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/melbahja/goph"
@@ -46,7 +47,10 @@ func (h Host) GetInstanceID() string {
 // Connect starts a new SSH connection with the provided private key.
 //
 // It returns a pointer to a goph.Client and an error.
-func (h Host) Connect() (*goph.Client, error) {
+func (h Host) Connect(timeout time.Duration) (*goph.Client, error) {
+	if timeout == 0 {
+		timeout = constants.SSHScriptTimeout
+	}
 	// Start new ssh connection with private key.
 	auth, err := goph.Key(h.SSHPrivateKeyPath, "")
 	if err != nil {
@@ -57,7 +61,7 @@ func (h Host) Connect() (*goph.Client, error) {
 		Addr:     h.IP,
 		Port:     22,
 		Auth:     auth,
-		Timeout:  constants.DefaultSSHTimeout,
+		Timeout:  timeout,
 		Callback: ssh.InsecureIgnoreHostKey(),
 	})
 	if err != nil {
@@ -72,7 +76,7 @@ func (h Host) Connect() (*goph.Client, error) {
 // remoteFile: the path of the remote file to be created or overwritten.
 // error: an error if there was a problem during the upload process.
 func (h Host) Upload(localFile string, remoteFile string) error {
-	client, err := h.Connect()
+	client, err := h.Connect(constants.SSHFileOpsTimeout)
 	if err != nil {
 		return err
 	}
@@ -86,7 +90,7 @@ func (h Host) Upload(localFile string, remoteFile string) error {
 // localFile: the path to the file on the local machine.
 // error: returns an error if there was a problem downloading the file.
 func (h Host) Download(remoteFile string, localFile string) error {
-	client, err := h.Connect()
+	client, err := h.Connect(constants.SSHFileOpsTimeout)
 	if err != nil {
 		return err
 	}
@@ -99,7 +103,7 @@ func (h Host) Download(remoteFile string, localFile string) error {
 // It takes a script string, an environment []string, and a context.Context as parameters.
 // It returns a *goph.Cmd and an error.
 func (h Host) Command(script string, env []string, ctx context.Context) error {
-	client, err := h.Connect()
+	client, err := h.Connect(constants.SSHScriptTimeout)
 	if err != nil {
 		return err
 	}
@@ -118,7 +122,7 @@ func (h Host) Command(script string, env []string, ctx context.Context) error {
 //
 // It returns an error if there was an issue connecting to the remote address or if there was an error in the port forwarding process.
 func (h Host) Forward(httpRequest string) ([]byte, []byte, error) {
-	client, err := h.Connect()
+	client, err := h.Connect(constants.SSHPOSTTimeout)
 	if err != nil {
 		return nil, nil, err
 	}

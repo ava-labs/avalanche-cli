@@ -42,19 +42,6 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath string, publicIPM
 	return nil
 }
 
-// GetAnsibleHostsFromInventory gets alias of all hosts in an inventory file
-/*func GetAnsibleHostsFromInventory(inventoryDirPath string) ([]string, error) {
-	ansibleHostIDs := []string{}
-	inventory, err := GetInventoryFromAnsibleInventoryFile(inventoryDirPath)
-	if err != nil {
-		return nil, err
-	}
-	for _, host := range inventory {
-		ansibleHostIDs = append(ansibleHostIDs, host.NodeID)
-	}
-	return ansibleHostIDs, nil
-}
-*/
 func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]models.Host, error) {
 	inventory := []models.Host{}
 	inventoryHostsFile := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
