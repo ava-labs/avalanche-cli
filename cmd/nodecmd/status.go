@@ -59,7 +59,7 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 	parallelWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
 		parallelWaitGroup.Add(1)
-		go func(avalancheGoVersionCh chan models.NodeStringResult) {
+		go func(avalancheGoVersionCh chan models.NodeStringResult, host models.Host) {
 			defer parallelWaitGroup.Done()
 			resp, err := ssh.RunSSHCheckAvalancheGoVersion(host)
 			if err != nil {
@@ -70,7 +70,7 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 				avalancheGoVersionCh <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown, Err: err}
 			}
 			avalancheGoVersionCh <- models.NodeStringResult{NodeID: host.NodeID, Value: avalancheGoVersion, Err: nil}
-		}(nodeResultChannel)
+		}(nodeResultChannel,host)
 	}
 	parallelWaitGroup.Wait()
 	close(nodeResultChannel)
@@ -99,14 +99,14 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 		parallelWaitGroup := sync.WaitGroup{}
 		for _, host := range hosts {
 			parallelWaitGroup.Add(1)
-			go func(SubnetSyncStatusCh chan models.NodeStringResult) {
+			go func(nodeResultChannel chan models.NodeStringResult, host models.Host) {
 				defer parallelWaitGroup.Done()
 				subnetSyncStatus, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, host)
 				if err != nil {
 					nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: "", Err: err}
 				}
 				nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: subnetSyncStatus, Err: nil}
-			}(nodeResultChannel)
+			}(nodeResultChannel,host)
 		}
 		parallelWaitGroup.Wait()
 		close(nodeResultChannel)

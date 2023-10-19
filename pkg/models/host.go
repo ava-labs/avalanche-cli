@@ -102,20 +102,20 @@ func (h Host) Download(remoteFile string, localFile string) error {
 //
 // It takes a script string, an environment []string, and a context.Context as parameters.
 // It returns a *goph.Cmd and an error.
-func (h Host) Command(script string, env []string, ctx context.Context) error {
+func (h Host) Command(script string, env []string, ctx context.Context) ([]byte, error) {
 	client, err := h.Connect(constants.SSHScriptTimeout)
 	if err != nil {
-		return err
+		return nil,err
 	}
 	defer client.Close()
 	cmd, err := client.CommandContext(ctx, shell, script)
 	if err != nil {
-		return err
+		return nil,err
 	}
 	if env != nil {
 		cmd.Env = env
 	}
-	return cmd.Run()
+	return cmd.CombinedOutput()
 }
 
 // Forward forwards the TCP connection to a remote address.

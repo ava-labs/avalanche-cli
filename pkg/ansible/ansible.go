@@ -64,7 +64,7 @@ func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]models.Hos
 			SSHPrivateKeyPath: parsedHost["ansible_ssh_private_key_file"],
 			SSHCommonArgs:     parsedHost["ansible_ssh_common_args"],
 		}
-
+		fmt.Println(host)
 		inventory = append(inventory, host)
 	}
 	if err := scanner.Err(); err != nil {

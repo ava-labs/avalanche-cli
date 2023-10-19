@@ -418,27 +418,28 @@ func createNode(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance(s)...")
 	ux.Logger.PrintToUser("Staker.crt and staker.key will be copied to local machine...")
 
+	fmt.Println(hosts)
 	// run over ssh in parallel
-	errChannel := make(chan error, len(hosts))
+	nodeResultChannel := make(chan error, len(hosts))
 	parallelWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
 		parallelWaitGroup.Add(1)
-		go func(errChanel chan error) {
+		go func(nodeResultChannel chan error, host models.Host) {
 			defer parallelWaitGroup.Done()
 			if err := ssh.RunSSHSetupNode(host, app.GetConfigPath(), avalancheGoVersion); err != nil {
-				errChanel <- err
+				nodeResultChannel <- err
 			}
 			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
-				errChanel <- err
+				nodeResultChannel <- err
 			}
 			if err := ssh.RunSSHCopyStakingFiles(host, app.GetConfigPath(), app.GetNodeInstanceDirPath(host.GetInstanceID())); err != nil {
-				errChanel <- err
+				nodeResultChannel <- err
 			}
-		}(errChannel)
+		}(nodeResultChannel, host)
 	}
 	parallelWaitGroup.Wait()
-	close(errChannel)
-	for err := range errChannel {
+	close(nodeResultChannel)
+	for err := range nodeResultChannel {
 		return err // return first error
 	}
 	PrintResults(certFilePath, region, publicIPMap)
@@ -461,20 +462,20 @@ func setupBuildEnv(clusterName string) error {
 		return err
 	}
 	// run over ssh in parallel
-	errChannel := make(chan error, len(hosts))
+	nodeResultChannel := make(chan error, len(hosts))
 	parallelWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
 		parallelWaitGroup.Add(1)
-		go func(errChanel chan error) {
+		go func(nodeResultChannel chan error, host models.Host) {
 			defer parallelWaitGroup.Done()
 			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
-				errChanel <- err
+				nodeResultChannel <- err
 			}
-		}(errChannel)
+		}(nodeResultChannel,host)
 	}
 	parallelWaitGroup.Wait()
-	close(errChannel)
-	for err := range errChannel {
+	close(nodeResultChannel)
+	for err := range nodeResultChannel {
 		return err // return first error
 	}
 	return nil

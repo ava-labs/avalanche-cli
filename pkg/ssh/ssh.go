@@ -40,7 +40,10 @@ func RunOverSSH(id string, host models.Host, scriptPath string, templateVars scr
 	if err != nil {
 		return err
 	}
-	return host.Command(script.String(), nil, context.Background())
+	_, err = host.Command(script.String(), nil, context.Background())
+	fmt.Println(host.NodeID)
+	fmt.Println("-------------------")
+	return err
 }
 
 func PostOverSSH(host models.Host, path string, requestBody string) ([]byte, error) {

@@ -195,7 +195,7 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string
 	parallelWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
 		parallelWaitGroup.Add(1)
-		go func(avalancheGoVersionCh chan models.NodeStringResult) {
+		go func(nodeResultChannel chan models.NodeStringResult, host models.Host) {
 			defer parallelWaitGroup.Done()
 			resp, err := ssh.RunSSHCheckAvalancheGoVersion(host)
 			if err != nil {
@@ -206,7 +206,7 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string
 				nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown, Err: err}
 			}
 			nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: avalancheGoVersion, Err: nil}
-		}(nodeResultChannel)
+		}(nodeResultChannel,host)
 	}
 	parallelWaitGroup.Wait()
 	close(nodeResultChannel)
@@ -245,15 +245,15 @@ func trackSubnet(clusterName, subnetName string, network models.Network) ([]stri
 	parallelWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
 		parallelWaitGroup.Add(1)
-		go func(errChanel chan models.NodeErrorResult) {
+		go func(nodeResultChannel chan models.NodeErrorResult, host models.Host) {
 			defer parallelWaitGroup.Done()
 			if err := ssh.RunSSHExportSubnet(host, subnetPath, "/tmp"); err != nil {
-				errChanel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
+				nodeResultChannel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
 			}
 			if err := ssh.RunSSHTrackSubnet(host, subnetName, subnetPath); err != nil {
-				errChanel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
+				nodeResultChannel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
 			}
-		}(nodeResultChannel)
+		}(nodeResultChannel,host)
 	}
 	parallelWaitGroup.Wait()
 	close(nodeResultChannel)
