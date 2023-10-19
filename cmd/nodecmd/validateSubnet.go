@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
@@ -78,7 +79,7 @@ func addNodeAsSubnetValidator(nodeID, subnetName string, network models.Network,
 // if getNodeSubnetSyncStatus is called from node validate subnet command, it will fail if
 // node status is not 'syncing'. If getNodeSubnetSyncStatus is called from node status command,
 // it will return true node status is 'syncing'
-func getNodeSubnetSyncStatus(blockchainID, clusterName string, host models.Host) (string, error) {
+func getNodeSubnetSyncStatus(blockchainID string, host models.Host) (string, error) {
 	ux.Logger.PrintToUser("Checking if node %s is synced to subnet ...", host.NodeID)
 	resp, err := ssh.RunSSHSubnetSyncStatus(host, blockchainID)
 	if err != nil {
@@ -141,9 +142,30 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
 	failedNodes := []string{}
 	nodeErrors := []error{}
-	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
+
+	NodeSubnetSyncStatus := map[string]string{}
+	nodeResultChannel := make(chan models.NodeStringResult, len(hosts))
+	parallelWaitGroup := sync.WaitGroup{}
+	for _, host := range hosts {
+		parallelWaitGroup.Add(1)
+		go func(nodeResultChannel chan models.NodeStringResult, host models.Host) {
+			defer parallelWaitGroup.Done()
+			subnetSyncStatus, err := getNodeSubnetSyncStatus(blockchainID.String(), host)
+			nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: subnetSyncStatus, Err: err}
+		}(nodeResultChannel, host)
+	}
+	parallelWaitGroup.Wait()
+	close(nodeResultChannel)
+	for NodeSubnetSyncStatusResult := range nodeResultChannel {
+		if NodeSubnetSyncStatusResult.Err != nil {
+			NodeSubnetSyncStatus[NodeSubnetSyncStatusResult.NodeID] = ""
+		} else {
+			NodeSubnetSyncStatus[NodeSubnetSyncStatusResult.NodeID] = NodeSubnetSyncStatusResult.Value
+		}
+	}
 	for i, host := range hosts {
 		nodeIDStr, err := getClusterNodeID(clusterName, host)
 		if err != nil {
@@ -160,8 +182,8 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			continue
 		}
 		// we have to check if node is synced to subnet before adding the node as a validator
-		subnetSyncStatus, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, host)
-		if err != nil {
+		subnetSyncStatus := NodeSubnetSyncStatus[host.NodeID]
+		if subnetSyncStatus == "" {
 			ux.Logger.PrintToUser("Failed to get subnet sync status for node %s", host)
 			failedNodes = append(failedNodes, host.NodeID)
 			nodeErrors = append(nodeErrors, err)
