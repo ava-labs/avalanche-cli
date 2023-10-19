@@ -7,4 +7,4 @@ sudo systemctl stop avalanchego
 #name: avalanche join subnet
 /home/ubuntu/bin/avalanche subnet join {{ .SubnetName }} --fuji --avalanchego-config /home/ubuntu/.avalanchego/configs/node.json --plugin-dir /home/ubuntu/.avalanchego/plugins --force-write
 #name: restart node - start avalanchego
-shell: sudo systemctl start avalanchego
+sudo systemctl start avalanchego

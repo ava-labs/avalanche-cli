@@ -18,10 +18,10 @@ install_rust() {
 }
 
 #name: update apt data and install dependencies
-DEBIAN_FRONTEND=noninteractive apt-get -y update
-DEBIAN_FRONTEND=noninteractive apt-get -y install wget curl git sudo
+DEBIAN_FRONTEND=noninteractive sudo apt-get -y update
+DEBIAN_FRONTEND=noninteractive sudo apt-get -y install wget curl git
 #name: install gcc if not available
-gcc --version || DEBIAN_FRONTEND=noninteractive apt-get -y install gcc
+gcc --version || DEBIAN_FRONTEND=noninteractive sudo apt-get -y install gcc
 #name: install go
 go version || install_go
 #name: install rust
