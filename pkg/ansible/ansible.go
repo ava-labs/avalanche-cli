@@ -30,17 +30,16 @@ var config []byte
 
 // CreateAnsibleHostInventory creates inventory file to be used for Ansible playbook commands
 // specifies the ip address of the cloud server and the corresponding ssh cert path for the cloud server
-// if publicIPs is empty, that means that user is not using elastic IP and we are using publicIPMap
-// to get the host IP
 func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService string, publicIPMap map[string]string) error {
 	if err := os.MkdirAll(inventoryDirPath, os.ModePerm); err != nil {
 		return err
 	}
 	inventoryHostsFilePath := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
-	inventoryFile, err := os.Create(inventoryHostsFilePath)
+	inventoryFile, err := os.OpenFile(inventoryHostsFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
 	}
+	defer inventoryFile.Close()
 	for instanceID := range publicIPMap {
 		inventoryContent := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, instanceID)
 		if cloudService == constants.GCPCloudService {
@@ -48,9 +47,9 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 		}
 		inventoryContent += " ansible_host="
 		inventoryContent += publicIPMap[instanceID]
-		inventoryContent += " ansible_user=ubuntu "
-		inventoryContent += fmt.Sprintf("ansible_ssh_private_key_file=%s", certFilePath)
-		inventoryContent += " ansible_ssh_common_args='-o StrictHostKeyChecking=no'"
+		inventoryContent += " ansible_user=ubuntu"
+		inventoryContent += fmt.Sprintf(" ansible_ssh_private_key_file=%s", certFilePath)
+		inventoryContent += fmt.Sprintf(" ansible_ssh_common_args='%s'", constants.AnsibleSSHInventoryParams)
 		if _, err = inventoryFile.WriteString(inventoryContent + "\n"); err != nil {
 			return err
 		}
@@ -90,14 +89,18 @@ func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]models.Hos
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		// host alias is first element in each line of host inventory file
-		parsedHost := strings.Split(scanner.Text(), " ")
-		host := models.Host{
-			NodeID:            parsedHost[0],
-			IP:                strings.Split(parsedHost[1], "=")[1],
-			SSHUser:           strings.Split(parsedHost[2], "=")[1],
-			SSHPrivateKeyPath: strings.Split(parsedHost[3], "=")[1],
-			SSHCommonArgs:     strings.Split(parsedHost[4], "=")[1],
+		parsedHost, err := utils.SplitKeyValueStringToMap(scanner.Text(), " ")
+		if err != nil {
+			return nil, err
 		}
+		host := models.Host{
+			NodeID:            strings.Split(scanner.Text(), " ")[0],
+			IP:                parsedHost["ansible_host"],
+			SSHUser:           parsedHost["ansible_user"],
+			SSHPrivateKeyPath: parsedHost["ansible_ssh_private_key_file"],
+			SSHCommonArgs:     parsedHost["ansible_ssh_common_args"],
+		}
+
 		inventory = append(inventory, host)
 	}
 	if err := scanner.Err(); err != nil {
@@ -154,8 +157,8 @@ func WriteCfgFile(ansibleDir string) error {
 // RunAnsiblePlaybookSetupNode installs avalanche go and avalanche-cli. It also copies the user's
 // metric preferences in configFilePath from local machine to cloud server
 // targets all hosts in ansible inventory file
-func RunAnsiblePlaybookSetupNode(configPath, ansibleDir, inventoryPath, avalancheGoVersion string) error {
-	playbookInputs := "configFilePath=" + configPath + " avalancheGoVersion=" + avalancheGoVersion
+func RunAnsiblePlaybookSetupNode(configPath, ansibleDir, inventoryPath, avalancheGoVersion, ansibleHostIDs string) error {
+	playbookInputs := "target=" + ansibleHostIDs + " configFilePath=" + configPath + " avalancheGoVersion=" + avalancheGoVersion
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
@@ -403,36 +406,11 @@ func CheckIsInstalled() error {
 	return nil
 }
 
-// getInventoryHostMap creates a map with nodeID as key and its corresponding ansible inventory host information as value
-func getInventoryHostMap(inventoryDirPath string) (map[string]string, error) {
-	inventoryHostsFile := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
-	ansibleInventoryHostMap := make(map[string]string)
-	file, err := os.Open(inventoryHostsFile)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		// host alias is first element in each line of host inventory file
-		// host alias has name format "aws_node_<nodeID>"
-		ansibleHostID := strings.Split(scanner.Text(), " ")[0]
-		ansibleHostIDSplit := strings.Split(ansibleHostID, "_")
-		if len(ansibleHostIDSplit) > 2 {
-			ansibleInventoryHostMap[ansibleHostIDSplit[2]] = scanner.Text()
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-	return ansibleInventoryHostMap, nil
-}
-
 // UpdateInventoryHostPublicIP first maps existing ansible inventory host file content
 // then it deletes the inventory file and regenerates a new ansible inventory file where it will fetch public IP
 // of nodes without elastic IP and update its value in the new ansible inventory file
 func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]string) error {
-	ansibleHostMap, err := getInventoryHostMap(inventoryDirPath)
+	inventory, err := GetHostMapfromAnsibleInventory(inventoryDirPath)
 	if err != nil {
 		return err
 	}
@@ -444,24 +422,16 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]
 	if err != nil {
 		return err
 	}
-	for nodeID, ansibleHostContent := range ansibleHostMap {
+	for host, ansibleHostContent := range inventory {
+		// trim prefix aws_node / gcp_node
+		splitNodeName := strings.Split(host, "_")
+		nodeID := splitNodeName[len(splitNodeName)-1]
 		_, ok := nodesWoEIP[nodeID]
-		if !ok {
-			if _, err = inventoryFile.WriteString(ansibleHostContent + "\n"); err != nil {
-				return err
-			}
-		} else {
-			ansibleHostInfo := strings.Split(ansibleHostContent, " ")
-			ansiblePublicIP := "ansible_host=" + nodesWoEIP[nodeID]
-			newAnsibleHostInfo := []string{}
-			if len(ansibleHostInfo) > 2 {
-				newAnsibleHostInfo = append(newAnsibleHostInfo, ansibleHostInfo[0])
-				newAnsibleHostInfo = append(newAnsibleHostInfo, ansiblePublicIP)
-				newAnsibleHostInfo = append(newAnsibleHostInfo, ansibleHostInfo[2:]...)
-			}
-			if _, err = inventoryFile.WriteString(strings.Join(newAnsibleHostInfo, " ") + "\n"); err != nil {
-				return err
-			}
+		if ok {
+			ansibleHostContent.IP = nodesWoEIP[nodeID]
+		}
+		if _, err = inventoryFile.WriteString(host + " " + ansibleHostContent.GetAnsibleParams() + "\n"); err != nil {
+			return err
 		}
 	}
 	return nil

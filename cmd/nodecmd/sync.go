@@ -63,8 +63,9 @@ func getPublicIPForNodesWoEIP(nodesWoEIP []models.NodeConfig) (map[string]string
 	publicIPMap := make(map[string]string)
 	var gcpClient *compute.Service
 	var gcpProjectName string
+	ux.Logger.PrintToUser("Getting Public IPs for nodes without static IPs ...")
 	for _, node := range nodesWoEIP {
-		if node.Region != lastRegion {
+		if lastRegion == "" || node.Region != lastRegion {
 			if node.CloudService == "" || node.CloudService == constants.AWSCloudService {
 				// check for empty because we didn't set this value when it was only on AWS
 				sess, err := getAWSCloudCredentials(node.Region, constants.GetAWSNodeIP)
@@ -156,7 +157,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
 	}
-	if err := setupBuildEnv(clusterName); err != nil {
+	if err := setupBuildEnv(app.GetAnsibleInventoryDirPath(clusterName), ""); err != nil {
 		return err
 	}
 	untrackedNodes, err := trackSubnet(clusterName, subnetName, models.Fuji)
