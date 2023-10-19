@@ -314,13 +314,13 @@ func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
 			defer parallelWaitGroup.Done()
 			var resp []byte
 			if resp, err = ssh.RunSSHCheckBootstrapped(host); err != nil {
-				errChanel <- models.NodeBooleanResult{NodeID: host.NodeID,Value: false, Err: err}
+				errChanel <- models.NodeBooleanResult{NodeID: host.NodeID, Value: false, Err: err}
 			}
 			isBootstrapped, err := parseBootstrappedOutput(resp)
 			if err != nil {
-				errChanel <- models.NodeBooleanResult{NodeID: host.NodeID,Value: false, Err: err}
+				errChanel <- models.NodeBooleanResult{NodeID: host.NodeID, Value: false, Err: err}
 			}
-			errChanel <- models.NodeBooleanResult{NodeID: host.NodeID,Value: isBootstrapped, Err: err}
+			errChanel <- models.NodeBooleanResult{NodeID: host.NodeID, Value: isBootstrapped, Err: err}
 		}(nodeResultChannel)
 	}
 	parallelWaitGroup.Wait()
@@ -332,7 +332,7 @@ func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
 		if !nodeResult.Value {
 			notBootstrappedNodes = append(notBootstrappedNodes, nodeResult.NodeID)
 		}
-		
+
 	}
 	return notBootstrappedNodes, nil
 }

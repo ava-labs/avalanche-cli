@@ -439,7 +439,7 @@ func createNode(_ *cobra.Command, args []string) error {
 	parallelWaitGroup.Wait()
 	close(errChannel)
 	for err := range errChannel {
-		return err //return first error
+		return err // return first error
 	}
 	PrintResults(certFilePath, region, publicIPMap)
 	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
@@ -475,7 +475,7 @@ func setupBuildEnv(clusterName string) error {
 	parallelWaitGroup.Wait()
 	close(errChannel)
 	for err := range errChannel {
-		return err //return first error
+		return err // return first error
 	}
 	return nil
 }

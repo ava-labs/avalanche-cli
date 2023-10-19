@@ -99,7 +99,7 @@ func doUpdateSubnet(clusterName, subnetName string, network models.Network) ([]s
 		return nil, err
 	}
 	nodeResultChannel := make(chan models.NodeErrorResult, len(hosts))
-	parallelWaitGroup := sync.WaitGroup{}	
+	parallelWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
 		parallelWaitGroup.Add(1)
 		go func(errChanel chan models.NodeErrorResult) {

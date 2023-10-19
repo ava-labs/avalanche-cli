@@ -191,7 +191,7 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string
 	if err != nil {
 		return nil, err
 	}
-	nodeResultChannel := make(chan models.NodeStringResult, len(hosts)) 
+	nodeResultChannel := make(chan models.NodeStringResult, len(hosts))
 	parallelWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
 		parallelWaitGroup.Add(1)
@@ -199,11 +199,11 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string
 			defer parallelWaitGroup.Done()
 			resp, err := ssh.RunSSHCheckAvalancheGoVersion(host)
 			if err != nil {
-				nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown,Err:err}
+				nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown, Err: err}
 			}
 			avalancheGoVersion, err := parseAvalancheGoOutput(resp)
 			if err != nil {
-				nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown,Err:err}
+				nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown, Err: err}
 			}
 			nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: avalancheGoVersion, Err: nil}
 		}(nodeResultChannel)

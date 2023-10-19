@@ -39,7 +39,7 @@ func (h Host) GetInstanceID() string {
 	if strings.HasPrefix(h.NodeID, constants.AnsibleAWSNodePrefix) {
 		return strings.TrimPrefix(h.NodeID, constants.AnsibleAWSNodePrefix)
 	}
-	//default behaviour - TODO refactor for other clouds
+	// default behaviour - TODO refactor for other clouds
 	return strings.Join(strings.Split(h.NodeID, "_")[:2], "_")
 }
 
@@ -120,33 +120,32 @@ func (h Host) Command(script string, env []string, ctx context.Context) error {
 func (h Host) Forward(httpRequest string) ([]byte, []byte, error) {
 	client, err := h.Connect()
 	if err != nil {
-		return nil,nil, err
+		return nil, nil, err
 	}
 	defer client.Close()
-	avalancheGoEndpoint := strings.TrimPrefix(constants.LocalAPIEndpoint,"http://")
+	avalancheGoEndpoint := strings.TrimPrefix(constants.LocalAPIEndpoint, "http://")
 	avalancheGoAddr, err := net.ResolveTCPAddr("tcp", avalancheGoEndpoint)
 	if err != nil {
-		return nil,nil,err
+		return nil, nil, err
 	}
 	proxy, err := client.DialTCP("tcp", nil, avalancheGoAddr)
 	if err != nil {
-		return nil, nil,fmt.Errorf("unable to port forward to %s via %s", client.Conn.RemoteAddr(), "ssh")
+		return nil, nil, fmt.Errorf("unable to port forward to %s via %s", client.Conn.RemoteAddr(), "ssh")
 	}
 	defer proxy.Close()
-	//send request to server
+	// send request to server
 	proxy.Write([]byte(httpRequest))
 	if err != nil {
-		return nil, nil,err
+		return nil, nil, err
 	}
 	// Read and print the server's response
 	response := make([]byte, 10240)
 	responseLength, err := proxy.Read(response)
 	if err != nil {
-		return nil, nil,err
+		return nil, nil, err
 	}
 	header, body := SplitHTTPResponse(response[0 : responseLength-1])
-	return header,body, nil
-
+	return header, body, nil
 }
 
 // ConvertToNodeID converts a node name to a node ID.
@@ -175,14 +174,13 @@ func (h Host) GetAnsibleParams() string {
 	}, " ")
 }
 
-
 // splitHTTPResponse splits an HTTP response into headers and body.
 //
 // It takes a byte slice `response` as a parameter, which represents the HTTP response.
 // The function returns two byte slices - `headers` and `body` - representing the headers and body of the response, respectively.
 func SplitHTTPResponse(response []byte) ([]byte, []byte) {
 	// Find the position of the double line break separating the headers and the body
-	doubleLineBreak := []byte{'\r','\n','\r','\n'}
+	doubleLineBreak := []byte{'\r', '\n', '\r', '\n'}
 	index := bytes.Index(response, doubleLineBreak)
 
 	if index == -1 {

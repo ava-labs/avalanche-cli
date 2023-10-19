@@ -55,7 +55,7 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	nodeResultChannel := make(chan models.NodeStringResult, len(hosts)) 
+	nodeResultChannel := make(chan models.NodeStringResult, len(hosts))
 	parallelWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
 		parallelWaitGroup.Add(1)
@@ -63,11 +63,11 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 			defer parallelWaitGroup.Done()
 			resp, err := ssh.RunSSHCheckAvalancheGoVersion(host)
 			if err != nil {
-				avalancheGoVersionCh <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown,Err:err}
+				avalancheGoVersionCh <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown, Err: err}
 			}
 			avalancheGoVersion, err := parseAvalancheGoOutput(resp)
 			if err != nil {
-				avalancheGoVersionCh <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown,Err:err}
+				avalancheGoVersionCh <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown, Err: err}
 			}
 			avalancheGoVersionCh <- models.NodeStringResult{NodeID: host.NodeID, Value: avalancheGoVersion, Err: nil}
 		}(nodeResultChannel)
@@ -95,17 +95,17 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 		notSyncedNodes := []string{}
 		subnetSyncedNodes := []string{}
 		subnetValidatingNodes := []string{}
-		nodeResultChannel := make(chan models.NodeStringResult, len(hosts)) 
+		nodeResultChannel := make(chan models.NodeStringResult, len(hosts))
 		parallelWaitGroup := sync.WaitGroup{}
 		for _, host := range hosts {
 			parallelWaitGroup.Add(1)
-			go func(SubnetSyncStatusCh chan  models.NodeStringResult) {
+			go func(SubnetSyncStatusCh chan models.NodeStringResult) {
 				defer parallelWaitGroup.Done()
 				subnetSyncStatus, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, host)
 				if err != nil {
-					nodeResultChannel <-  models.NodeStringResult{NodeID: host.NodeID, Value: "", Err: err}
+					nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: "", Err: err}
 				}
-				nodeResultChannel <-  models.NodeStringResult{NodeID: host.NodeID, Value: subnetSyncStatus, Err: nil}
+				nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: subnetSyncStatus, Err: nil}
 			}(nodeResultChannel)
 		}
 		parallelWaitGroup.Wait()
