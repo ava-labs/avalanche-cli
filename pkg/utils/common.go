@@ -12,6 +12,15 @@ import (
 	"github.com/melbahja/goph"
 )
 
+// SetupRealtimeCLIOutput sets up the real-time CLI output for a given command.
+//
+// It takes the following parameters:
+// - cmd: a pointer to the exec.Cmd struct representing the command to be executed.
+// - redirectStdout: a boolean indicating whether to redirect the standard output of the command.
+// - redirectStderr: a boolean indicating whether to redirect the standard error of the command.
+//
+// It returns two pointers to bytes.Buffer structs: one for capturing the standard output
+// and one for capturing the standard error.
 func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr bool) (*bytes.Buffer, *bytes.Buffer) {
 	var stdoutBuffer bytes.Buffer
 	var stderrBuffer bytes.Buffer

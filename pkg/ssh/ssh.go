@@ -52,12 +52,12 @@ func PostOverSSH(host models.Host, path string, requestBody string) ([]byte, err
 		"Content-Length: %d\r\n"+
 		"Content-Type: application/json\r\n\r\n", path, "127.0.0.1", len(requestBody))
 	httpRequest := requestHeaders + requestBody
-	//_, err = host.TCPProxy.Write([]byte(httpRequest))
-	response, err := host.Forward(httpRequest)
+	//ignore response header
+	_, responseBody, err := host.Forward(httpRequest)
 	if err != nil {
 		return nil, err
 	}
-	return response,nil
+	return responseBody,nil
 }
 
 // RunSSHSetupNode runs script to setup node
