@@ -5,16 +5,14 @@ package nodecmd
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
@@ -154,16 +152,9 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func parseAvalancheGoOutput(fileName string) (string, error) {
-	jsonFile, err := os.Open(fileName)
-	if err != nil {
-		return "", err
-	}
-	defer jsonFile.Close()
-	byteValue, _ := io.ReadAll(jsonFile)
-
+func parseAvalancheGoOutput(byteValue []byte) (string, error) {
 	var result map[string]interface{}
-	if err = json.Unmarshal(byteValue, &result); err != nil {
+	if err := json.Unmarshal(byteValue, &result); err != nil {
 		return "", err
 	}
 	nodeIDInterface, ok := result["result"].(map[string]interface{})
@@ -192,25 +183,20 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string
 	if err := app.CreateAnsibleDir(); err != nil {
 		return nil, err
 	}
-	ansibleNodeIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return nil, err
-	}
 	ux.Logger.PrintToUser(fmt.Sprintf("Checking compatibility of avalanche go version in cluster %s with Subnet EVM RPC of subnet %s ...", clusterName, subnetName))
 	compatibleVersions := []string{}
 	incompatibleNodes := []string{}
-	for _, host := range ansibleNodeIDs {
-		if err := app.CreateAnsibleStatusFile(app.GetAvalancheGoJSONFile()); err != nil {
-			return nil, err
-		}
-		if err := ansible.RunAnsiblePlaybookCheckAvalancheGoVersion(app.GetAnsibleDir(), app.GetAvalancheGoJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
-			return nil, err
-		}
-		avalancheGoVersion, err := parseAvalancheGoOutput(app.GetAvalancheGoJSONFile())
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return nil, err
+	}
+	for _, host := range hosts {
+		resp, err := ssh.RunSSHCheckAvalancheGoVersion(host)
 		if err != nil {
 			return nil, err
 		}
-		if err := app.RemoveAnsibleStatusDir(); err != nil {
+		avalancheGoVersion, err := parseAvalancheGoOutput(resp)
+		if err != nil {
 			return nil, err
 		}
 		sc, err := app.LoadSidecar(subnetName)
@@ -222,7 +208,7 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string
 			return nil, err
 		}
 		if !slices.Contains(compatibleVersions, avalancheGoVersion) {
-			incompatibleNodes = append(incompatibleNodes, host)
+			incompatibleNodes = append(incompatibleNodes, host.NodeID)
 		}
 	}
 	if len(incompatibleNodes) > 0 {
@@ -241,13 +227,13 @@ func trackSubnet(clusterName, subnetName string, network models.Network) ([]stri
 	untrackedNodes := []string{}
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	for _, host := range hosts {
-		if err := ssh.RunSSHExportSubnet(host,  subnetPath, "/tmp"); err != nil {
-			return nil,err
+		if err := ssh.RunSSHExportSubnet(host, subnetPath, "/tmp"); err != nil {
+			return nil, err
 		}
-		if err := ssh.RunSSHTrackSubnet(host,subnetName,subnetPath); err != nil {
+		if err := ssh.RunSSHTrackSubnet(host, subnetName, subnetPath); err != nil {
 			untrackedNodes = append(untrackedNodes, host.NodeID)
 		}
 	}

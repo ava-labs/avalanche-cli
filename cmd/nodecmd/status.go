@@ -9,6 +9,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
@@ -49,21 +50,21 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser(fmt.Sprintf("Collecting data for node(s) in cluster %s ...", clusterName))
 	avalanchegoVersionForNode := map[string]string{}
-	for _, host := range ansibleHostIDs {
-		if err := app.CreateAnsibleStatusFile(app.GetAvalancheGoJSONFile()); err != nil {
+
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	for _, host := range hosts {
+		resp, err := ssh.RunSSHCheckAvalancheGoVersion(host)
+		if err != nil {
 			return err
 		}
-		if err := ansible.RunAnsiblePlaybookCheckAvalancheGoVersion(app.GetAnsibleDir(), app.GetAvalancheGoJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
-			return err
-		}
-		avalancheGoVersion, err := parseAvalancheGoOutput(app.GetAvalancheGoJSONFile())
+		avalancheGoVersion, err := parseAvalancheGoOutput(resp)
 		if err != nil {
 			avalancheGoVersion = constants.AvalancheGoVersionUnknown
 		}
-		if err := app.RemoveAnsibleStatusDir(); err != nil {
-			return err
-		}
-		avalanchegoVersionForNode[host] = avalancheGoVersion
+		avalanchegoVersionForNode[host.NodeID] = avalancheGoVersion
 	}
 	if subnetName != "" {
 		if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {

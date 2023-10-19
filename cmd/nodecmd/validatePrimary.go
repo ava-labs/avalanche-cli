@@ -321,12 +321,12 @@ func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
 		return nil, err
 	}
 	for _, host := range hosts {
-		if err := ssh.RunSSHCheckBootstrapped(host); err != nil {
+		if _, err := ssh.RunSSHCheckBootstrapped(host); err != nil {
 			return nil, err
 		}
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	/*

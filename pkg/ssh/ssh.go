@@ -47,23 +47,17 @@ func PostOverSSH(host models.Host, path string, requestBody string) ([]byte, err
 	if path == "" {
 		path = "/ext/info"
 	}
-	host.Forward()
 	requestHeaders := fmt.Sprintf("POST %s HTTP/1.1\r\n"+
 		"Host: %s\r\n"+
 		"Content-Length: %d\r\n"+
 		"Content-Type: application/json\r\n\r\n", path, "127.0.0.1", len(requestBody))
 	httpRequest := requestHeaders + requestBody
-	_, err := host.TCPProxy.Write([]byte(httpRequest))
+	//_, err = host.TCPProxy.Write([]byte(httpRequest))
+	response, err := host.Forward(httpRequest)
 	if err != nil {
 		return nil, err
 	}
-	// Read and print the server's response
-	response := make([]byte, 10240)
-	responseLength, err := host.TCPProxy.Read(response)
-	if err != nil {
-		return nil, err
-	}
-	return response[0 : responseLength-1], nil
+	return response,nil
 }
 
 // RunSSHSetupNode runs script to setup node

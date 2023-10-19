@@ -3,10 +3,8 @@
 package models
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"net"
 	"strings"
 
@@ -21,7 +19,6 @@ type Host struct {
 	SSHUser           string
 	SSHPrivateKeyPath string
 	SSHCommonArgs     string
-	TCPProxy          *bytes.Buffer
 }
 
 const (
@@ -48,11 +45,11 @@ func (h Host) GetNodeID() string {
 // Connect starts a new SSH connection with the provided private key.
 //
 // It returns a pointer to a goph.Client and an error.
-func (h Host) Connect() (*goph.Client,error) {
+func (h Host) Connect() (*goph.Client, error) {
 	// Start new ssh connection with private key.
 	auth, err := goph.Key(h.SSHPrivateKeyPath, "")
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	client, err := goph.NewConn(&goph.Config{
 		User:     h.SSHUser,
@@ -63,9 +60,9 @@ func (h Host) Connect() (*goph.Client,error) {
 		Callback: ssh.InsecureIgnoreHostKey(),
 	})
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
-	return client,nil
+	return client, nil
 }
 
 // Upload uploads a local file to a remote file on the host.
@@ -77,7 +74,7 @@ func (h Host) Upload(localFile string, remoteFile string) error {
 	client, err := h.Connect()
 	if err != nil {
 		return err
-	} 
+	}
 	defer client.Close()
 	return client.Upload(localFile, remoteFile)
 }
@@ -91,7 +88,7 @@ func (h Host) Download(remoteFile string, localFile string) error {
 	client, err := h.Connect()
 	if err != nil {
 		return err
-	} 
+	}
 	defer client.Close()
 	return client.Download(remoteFile, localFile)
 }
@@ -119,39 +116,34 @@ func (h Host) Command(script string, env []string, ctx context.Context) error {
 // Forward forwards the TCP connection to a remote address.
 //
 // It returns an error if there was an issue connecting to the remote address or if there was an error in the port forwarding process.
-func (h Host) Forward() error {
+func (h Host) Forward(httpRequest string) ([]byte,error) {
 	client, err := h.Connect()
 	if err != nil {
-		return err
+		return nil,err
 	}
 	defer client.Close()
-	remoteAddr, err := net.ResolveTCPAddr("tcp", constants.LocalAPIEndpoint)
+	avalancheGoEndpoint := strings.TrimPrefix(constants.LocalAPIEndpoint,"http://")
+	avalancheGoAddr, err := net.ResolveTCPAddr("tcp", avalancheGoEndpoint)
 	if err != nil {
-		return err
+		return nil,err
 	}
-	proxy, err := client.DialTCP("tcp", nil, remoteAddr)
+	proxy, err := client.DialTCP("tcp", nil, avalancheGoAddr)
 	if err != nil {
-		return fmt.Errorf("unable to port forward to %s via %s", constants.LocalAPIEndpoint, "ssh")
+		return nil, fmt.Errorf("unable to port forward to %s via %s", client.Conn.RemoteAddr, "ssh")
 	}
-
-	errorChan := make(chan error)
-
-	// Copy localConn.Reader to sshConn.Writer
-	go func() {
-		_, err = io.Copy(h.TCPProxy, proxy)
-		if err != nil {
-			errorChan <- err
-		}
-	}()
-
-	// Copy sshConn.Reader to localConn.Writer
-	go func() {
-		_, err = io.Copy(proxy, h.TCPProxy)
-		if err != nil {
-			errorChan <- err
-		}
-	}()
-	return nil
+	defer proxy.Close()
+	//send request to server
+	proxy.Write([]byte(httpRequest))
+	if err != nil {
+		return nil, err
+	}
+	// Read and print the server's response
+	response := make([]byte, 10240)
+	responseLength, err := proxy.Read(response)
+	if err != nil {
+		return nil, err
+	}
+	return response[0 : responseLength-1], nil
 }
 
 // ConvertToNodeID converts a node name to a node ID.
