@@ -41,8 +41,6 @@ func RunOverSSH(id string, host models.Host, scriptPath string, templateVars scr
 		return err
 	}
 	_, err = host.Command(script.String(), nil, context.Background())
-	fmt.Println(host.NodeID)
-	fmt.Println("-------------------")
 	return err
 }
 

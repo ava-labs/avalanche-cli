@@ -418,7 +418,6 @@ func createNode(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance(s)...")
 	ux.Logger.PrintToUser("Staker.crt and staker.key will be copied to local machine...")
 
-	fmt.Println(hosts)
 	// run over ssh in parallel
 	nodeResultChannel := make(chan error, len(hosts))
 	parallelWaitGroup := sync.WaitGroup{}
