@@ -431,7 +431,7 @@ func createNode(_ *cobra.Command, args []string) error {
 			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
 				nodeResultChannel <- err
 			}
-			if err := ssh.RunSSHCopyStakingFiles(host, app.GetConfigPath(), app.GetNodeInstanceDirPath(host.GetInstanceID())); err != nil {
+			if err := ssh.RunSSHCopyStakingFiles(host, app.GetNodeInstanceDirPath(host.GetInstanceID())); err != nil {
 				nodeResultChannel <- err
 			}
 		}(nodeResultChannel, host)

@@ -37,7 +37,7 @@ func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr b
 	return &stdoutBuffer, &stderrBuffer
 }
 
-func SetupRealtimeCLISSHOutput(cmd *goph.Cmd, redirectStdout bool) (*bytes.Buffer) {
+func SetupRealtimeCLISSHOutput(cmd *goph.Cmd, redirectStdout bool) *bytes.Buffer {
 	var stdoutBuffer bytes.Buffer
 	if redirectStdout {
 		cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuffer)

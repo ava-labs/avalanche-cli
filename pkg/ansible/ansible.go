@@ -85,13 +85,15 @@ func GetHostMapfromAnsibleInventory(inventoryDirPath string) (map[string]models.
 }
 
 func GetHostListFromAnsibleInventory(inventoryDirPath string) ([]string, error) {
-	hosts,err :=GetHostMapfromAnsibleInventory(inventoryDirPath)
+	hosts, err := GetHostMapfromAnsibleInventory(inventoryDirPath)
 	if err != nil {
 		return nil, err
 	}
-	var hostList []string
+	hostList := make([]string, len(hosts))
+	i := 0
 	for _, host := range hosts {
-		hostList = append(hostList, host.NodeID)
+		hostList[i] = host.NodeID
+		i++
 	}
 	return hostList, nil
 }

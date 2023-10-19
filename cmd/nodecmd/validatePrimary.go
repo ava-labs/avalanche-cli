@@ -332,12 +332,11 @@ func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
 		if !nodeResult.Value {
 			notBootstrappedNodes = append(notBootstrappedNodes, nodeResult.NodeID)
 		}
-
 	}
 	return notBootstrappedNodes, nil
 }
 
-func getClusterNodeID(clusterName string, host models.Host) (string, error) {
+func getClusterNodeID(host models.Host) (string, error) {
 	ux.Logger.PrintToUser(fmt.Sprintf("Getting Avalanche node id for host %s...", host.NodeID))
 	resp, err := ssh.RunSSHGetNodeID(host)
 	if err != nil {
@@ -402,7 +401,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	nodeErrors := []error{}
 	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
 	for i, host := range hosts {
-		nodeIDStr, err := getClusterNodeID(clusterName, host)
+		nodeIDStr, err := getClusterNodeID(host)
 		if err != nil {
 			ux.Logger.PrintToUser(fmt.Sprintf("Failed to add node %s as Primary Network validator due to %s", host, err.Error()))
 			failedNodes = append(failedNodes, host.NodeID)

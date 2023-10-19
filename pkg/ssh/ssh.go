@@ -74,7 +74,7 @@ func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string) er
 	return nil
 }
 
-func RunSSHCopyStakingFiles(host models.Host, configPath, nodeInstanceDirPath string) error {
+func RunSSHCopyStakingFiles(host models.Host, nodeInstanceDirPath string) error {
 	// name: copy staker.crt to local machine
 	if err := host.Download("/home/ubuntu/.avalanchego/staking/staker.crt", fmt.Sprintf("%s/staker.crt", nodeInstanceDirPath)); err != nil {
 		return err

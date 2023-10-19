@@ -146,7 +146,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	failedNodes := []string{}
 	nodeErrors := []error{}
 
-	NodeSubnetSyncStatus := map[string]string{}
+	nodeSubnetSyncStatus := map[string]string{}
 	nodeResultChannel := make(chan models.NodeStringResult, len(hosts))
 	parallelWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
@@ -159,15 +159,15 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	}
 	parallelWaitGroup.Wait()
 	close(nodeResultChannel)
-	for NodeSubnetSyncStatusResult := range nodeResultChannel {
-		if NodeSubnetSyncStatusResult.Err != nil {
-			NodeSubnetSyncStatus[NodeSubnetSyncStatusResult.NodeID] = ""
+	for nodeSubnetSyncStatusResult := range nodeResultChannel {
+		if nodeSubnetSyncStatusResult.Err != nil {
+			nodeSubnetSyncStatus[nodeSubnetSyncStatusResult.NodeID] = ""
 		} else {
-			NodeSubnetSyncStatus[NodeSubnetSyncStatusResult.NodeID] = NodeSubnetSyncStatusResult.Value
+			nodeSubnetSyncStatus[nodeSubnetSyncStatusResult.NodeID] = nodeSubnetSyncStatusResult.Value
 		}
 	}
 	for i, host := range hosts {
-		nodeIDStr, err := getClusterNodeID(clusterName, host)
+		nodeIDStr, err := getClusterNodeID(host)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err.Error())
 			failedNodes = append(failedNodes, host.NodeID)
@@ -182,7 +182,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			continue
 		}
 		// we have to check if node is synced to subnet before adding the node as a validator
-		subnetSyncStatus := NodeSubnetSyncStatus[host.NodeID]
+		subnetSyncStatus := nodeSubnetSyncStatus[host.NodeID]
 		if subnetSyncStatus == "" {
 			ux.Logger.PrintToUser("Failed to get subnet sync status for node %s", host)
 			failedNodes = append(failedNodes, host.NodeID)

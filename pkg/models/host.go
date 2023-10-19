@@ -62,7 +62,7 @@ func (h Host) Connect(timeout time.Duration) (*goph.Client, error) {
 		Port:     22,
 		Auth:     auth,
 		Timeout:  timeout,
-		Callback: ssh.InsecureIgnoreHostKey(),
+		Callback: ssh.InsecureIgnoreHostKey(), // #nosec G106 -- consistent with ansible
 	})
 	if err != nil {
 		return nil, err
@@ -105,12 +105,12 @@ func (h Host) Download(remoteFile string, localFile string) error {
 func (h Host) Command(script string, env []string, ctx context.Context) ([]byte, error) {
 	client, err := h.Connect(constants.SSHScriptTimeout)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	defer client.Close()
 	cmd, err := client.CommandContext(ctx, shell, script)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	if env != nil {
 		cmd.Env = env
@@ -138,7 +138,7 @@ func (h Host) Forward(httpRequest string) ([]byte, []byte, error) {
 	}
 	defer proxy.Close()
 	// send request to server
-	proxy.Write([]byte(httpRequest))
+	_, err = proxy.Write([]byte(httpRequest))
 	if err != nil {
 		return nil, nil, err
 	}
