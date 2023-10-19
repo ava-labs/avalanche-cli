@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
@@ -97,12 +98,25 @@ func doUpdateSubnet(clusterName, subnetName string, network models.Network) ([]s
 	if err != nil {
 		return nil, err
 	}
+	nodeResultChannel := make(chan models.NodeErrorResult, len(hosts))
+	parallelWaitGroup := sync.WaitGroup{}	
 	for _, host := range hosts {
-		if err := ssh.RunSSHExportSubnet(host, subnetPath, "/tmp"); err != nil {
-			return nil, err
-		}
-		if err := ssh.RunSSHUpdateSubnet(host, subnetName, subnetPath); err != nil {
-			nonUpdatedNodes = append(nonUpdatedNodes, host.NodeID)
+		parallelWaitGroup.Add(1)
+		go func(errChanel chan models.NodeErrorResult) {
+			defer parallelWaitGroup.Done()
+			if err := ssh.RunSSHExportSubnet(host, subnetPath, "/tmp"); err != nil {
+				errChanel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
+			}
+			if err := ssh.RunSSHUpdateSubnet(host, subnetName, subnetPath); err != nil {
+				errChanel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
+			}
+		}(nodeResultChannel)
+	}
+	parallelWaitGroup.Wait()
+	close(nodeResultChannel)
+	for nodeErr := range nodeResultChannel {
+		if nodeErr.Err != nil {
+			nonUpdatedNodes = append(nonUpdatedNodes, nodeErr.NodeID)
 		}
 	}
 	return nonUpdatedNodes, nil

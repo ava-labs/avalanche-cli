@@ -7,9 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -74,13 +74,7 @@ Network.`,
 	return cmd
 }
 
-func parseBootstrappedOutput(filePath string) (bool, error) {
-	jsonFile, err := os.Open(filePath)
-	if err != nil {
-		return false, err
-	}
-	defer jsonFile.Close()
-	byteValue, _ := io.ReadAll(jsonFile)
+func parseBootstrappedOutput(byteValue []byte) (bool, error) {
 	var result map[string]interface{}
 	if err := json.Unmarshal(byteValue, &result); err != nil {
 		return false, err
@@ -312,35 +306,34 @@ func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	nodeResultChannel := make(chan models.NodeBooleanResult, len(hosts))
+	parallelWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
-		if _, err := ssh.RunSSHCheckBootstrapped(host); err != nil {
-			return nil, err
-		}
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	/*
-		for _, host := range ansibleNodeIDs {
-			if err := app.CreateAnsibleStatusFile(app.GetBootstrappedJSONFile()); err != nil {
-				return nil, err
+		parallelWaitGroup.Add(1)
+		go func(errChanel chan models.NodeBooleanResult) {
+			defer parallelWaitGroup.Done()
+			var resp []byte
+			if resp, err = ssh.RunSSHCheckBootstrapped(host); err != nil {
+				errChanel <- models.NodeBooleanResult{NodeID: host.NodeID,Value: false, Err: err}
 			}
-			if err := ansible.RunAnsiblePlaybookCheckBootstrapped(app.GetAnsibleDir(), app.GetBootstrappedJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
-				return nil, err
-			}
-			isBootstrapped, err := parseBootstrappedOutput(app.GetBootstrappedJSONFile())
+			isBootstrapped, err := parseBootstrappedOutput(resp)
 			if err != nil {
-				return nil, err
+				errChanel <- models.NodeBooleanResult{NodeID: host.NodeID,Value: false, Err: err}
 			}
-			if err := app.RemoveAnsibleStatusDir(); err != nil {
-				return nil, err
-			}
-			if !isBootstrapped {
-				notBootstrappedNodes = append(notBootstrappedNodes, host)
-			}
+			errChanel <- models.NodeBooleanResult{NodeID: host.NodeID,Value: isBootstrapped, Err: err}
+		}(nodeResultChannel)
+	}
+	parallelWaitGroup.Wait()
+	close(nodeResultChannel)
+	for nodeResult := range nodeResultChannel {
+		if nodeResult.Err != nil {
+			return nil, nodeResult.Err
 		}
-	*/
+		if !nodeResult.Value {
+			notBootstrappedNodes = append(notBootstrappedNodes, nodeResult.NodeID)
+		}
+		
+	}
 	return notBootstrappedNodes, nil
 }
 

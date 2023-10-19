@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"sync"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -410,22 +411,35 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance(s)...")
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
 	if err != nil {
 		return err
 	}
+	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance(s)...")
+	ux.Logger.PrintToUser("Staker.crt and staker.key will be copied to local machine...")
+
+	// run over ssh in parallel
+	errChannel := make(chan error, len(hosts))
+	parallelWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
-		if err := ssh.RunSSHSetupNode(host, app.GetConfigPath(), avalancheGoVersion); err != nil {
-			return err
-		}
-		if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
-			return err
-		}
-		ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
-		if err := ssh.RunSSHCopyStakingFiles(host, app.GetConfigPath(), app.GetNodeInstanceDirPath(host.GetInstanceID())); err != nil {
-			return err
-		}
+		parallelWaitGroup.Add(1)
+		go func(errChanel chan error) {
+			defer parallelWaitGroup.Done()
+			if err := ssh.RunSSHSetupNode(host, app.GetConfigPath(), avalancheGoVersion); err != nil {
+				errChanel <- err
+			}
+			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
+				errChanel <- err
+			}
+			if err := ssh.RunSSHCopyStakingFiles(host, app.GetConfigPath(), app.GetNodeInstanceDirPath(host.GetInstanceID())); err != nil {
+				errChanel <- err
+			}
+		}(errChannel)
+	}
+	parallelWaitGroup.Wait()
+	close(errChannel)
+	for err := range errChannel {
+		return err //return first error
 	}
 	PrintResults(certFilePath, region, publicIPMap)
 	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
@@ -446,10 +460,22 @@ func setupBuildEnv(clusterName string) error {
 	if err != nil {
 		return err
 	}
+	// run over ssh in parallel
+	errChannel := make(chan error, len(hosts))
+	parallelWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
-		if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
-			return err
-		}
+		parallelWaitGroup.Add(1)
+		go func(errChanel chan error) {
+			defer parallelWaitGroup.Done()
+			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
+				errChanel <- err
+			}
+		}(errChannel)
+	}
+	parallelWaitGroup.Wait()
+	close(errChannel)
+	for err := range errChannel {
+		return err //return first error
 	}
 	return nil
 }

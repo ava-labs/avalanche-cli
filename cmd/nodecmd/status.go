@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -54,16 +55,30 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	nodeResultChannel := make(chan models.NodeStringResult, len(hosts)) 
+	parallelWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
-		resp, err := ssh.RunSSHCheckAvalancheGoVersion(host)
-		if err != nil {
-			return err
+		parallelWaitGroup.Add(1)
+		go func(avalancheGoVersionCh chan models.NodeStringResult) {
+			defer parallelWaitGroup.Done()
+			resp, err := ssh.RunSSHCheckAvalancheGoVersion(host)
+			if err != nil {
+				avalancheGoVersionCh <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown,Err:err}
+			}
+			avalancheGoVersion, err := parseAvalancheGoOutput(resp)
+			if err != nil {
+				avalancheGoVersionCh <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown,Err:err}
+			}
+			avalancheGoVersionCh <- models.NodeStringResult{NodeID: host.NodeID, Value: avalancheGoVersion, Err: nil}
+		}(nodeResultChannel)
+	}
+	parallelWaitGroup.Wait()
+	close(nodeResultChannel)
+	for avalancheGoVersionResult := range nodeResultChannel {
+		if avalancheGoVersionResult.Err != nil {
+			return avalancheGoVersionResult.Err
 		}
-		avalancheGoVersion, err := parseAvalancheGoOutput(resp)
-		if err != nil {
-			avalancheGoVersion = constants.AvalancheGoVersionUnknown
-		}
-		avalanchegoVersionForNode[host.NodeID] = avalancheGoVersion
+		avalanchegoVersionForNode[avalancheGoVersionResult.NodeID] = avalancheGoVersionResult.Value
 	}
 	if subnetName != "" {
 		if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
@@ -80,18 +95,32 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 		notSyncedNodes := []string{}
 		subnetSyncedNodes := []string{}
 		subnetValidatingNodes := []string{}
+		nodeResultChannel := make(chan models.NodeStringResult, len(hosts)) 
+		parallelWaitGroup := sync.WaitGroup{}
 		for _, host := range hosts {
-			subnetSyncStatus, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, host)
-			if err != nil {
-				return err
+			parallelWaitGroup.Add(1)
+			go func(SubnetSyncStatusCh chan  models.NodeStringResult) {
+				defer parallelWaitGroup.Done()
+				subnetSyncStatus, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, host)
+				if err != nil {
+					nodeResultChannel <-  models.NodeStringResult{NodeID: host.NodeID, Value: "", Err: err}
+				}
+				nodeResultChannel <-  models.NodeStringResult{NodeID: host.NodeID, Value: subnetSyncStatus, Err: nil}
+			}(nodeResultChannel)
+		}
+		parallelWaitGroup.Wait()
+		close(nodeResultChannel)
+		for SubnetSyncStatusResult := range nodeResultChannel {
+			if SubnetSyncStatusResult.Err != nil {
+				return SubnetSyncStatusResult.Err
 			}
-			switch subnetSyncStatus {
+			switch SubnetSyncStatusResult.Value {
 			case status.Syncing.String():
-				subnetSyncedNodes = append(subnetSyncedNodes, host.NodeID)
+				subnetSyncedNodes = append(subnetSyncedNodes, SubnetSyncStatusResult.NodeID)
 			case status.Validating.String():
-				subnetValidatingNodes = append(subnetValidatingNodes, host.NodeID)
+				subnetValidatingNodes = append(subnetValidatingNodes, SubnetSyncStatusResult.NodeID)
 			default:
-				notSyncedNodes = append(notSyncedNodes, host.NodeID)
+				notSyncedNodes = append(notSyncedNodes, SubnetSyncStatusResult.NodeID)
 			}
 		}
 		printOutput(avalanchegoVersionForNode, ansibleHostIDs, notSyncedNodes, subnetSyncedNodes, subnetValidatingNodes, clusterName, subnetName)

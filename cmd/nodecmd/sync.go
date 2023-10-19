@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
@@ -190,15 +191,26 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string
 	if err != nil {
 		return nil, err
 	}
+	nodeResultChannel := make(chan models.NodeStringResult, len(hosts)) 
+	parallelWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
-		resp, err := ssh.RunSSHCheckAvalancheGoVersion(host)
-		if err != nil {
-			return nil, err
-		}
-		avalancheGoVersion, err := parseAvalancheGoOutput(resp)
-		if err != nil {
-			return nil, err
-		}
+		parallelWaitGroup.Add(1)
+		go func(avalancheGoVersionCh chan models.NodeStringResult) {
+			defer parallelWaitGroup.Done()
+			resp, err := ssh.RunSSHCheckAvalancheGoVersion(host)
+			if err != nil {
+				nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown,Err:err}
+			}
+			avalancheGoVersion, err := parseAvalancheGoOutput(resp)
+			if err != nil {
+				nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown,Err:err}
+			}
+			nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: avalancheGoVersion, Err: nil}
+		}(nodeResultChannel)
+	}
+	parallelWaitGroup.Wait()
+	close(nodeResultChannel)
+	for avalancheGoVersion := range nodeResultChannel {
 		sc, err := app.LoadSidecar(subnetName)
 		if err != nil {
 			return nil, err
@@ -207,8 +219,8 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string
 		if err != nil {
 			return nil, err
 		}
-		if !slices.Contains(compatibleVersions, avalancheGoVersion) {
-			incompatibleNodes = append(incompatibleNodes, host.NodeID)
+		if !slices.Contains(compatibleVersions, avalancheGoVersion.Value) {
+			incompatibleNodes = append(incompatibleNodes, avalancheGoVersion.NodeID)
 		}
 	}
 	if len(incompatibleNodes) > 0 {
@@ -229,12 +241,25 @@ func trackSubnet(clusterName, subnetName string, network models.Network) ([]stri
 	if err != nil {
 		return nil, err
 	}
+	nodeResultChannel := make(chan models.NodeErrorResult, len(hosts))
+	parallelWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
-		if err := ssh.RunSSHExportSubnet(host, subnetPath, "/tmp"); err != nil {
-			return nil, err
-		}
-		if err := ssh.RunSSHTrackSubnet(host, subnetName, subnetPath); err != nil {
-			untrackedNodes = append(untrackedNodes, host.NodeID)
+		parallelWaitGroup.Add(1)
+		go func(errChanel chan models.NodeErrorResult) {
+			defer parallelWaitGroup.Done()
+			if err := ssh.RunSSHExportSubnet(host, subnetPath, "/tmp"); err != nil {
+				errChanel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
+			}
+			if err := ssh.RunSSHTrackSubnet(host, subnetName, subnetPath); err != nil {
+				errChanel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
+			}
+		}(nodeResultChannel)
+	}
+	parallelWaitGroup.Wait()
+	close(nodeResultChannel)
+	for nodeErr := range nodeResultChannel {
+		if nodeErr.Err != nil {
+			untrackedNodes = append(untrackedNodes, nodeErr.NodeID)
 		}
 	}
 	return untrackedNodes, nil
