@@ -442,7 +442,7 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 	})
 
 	ginkgo.It("can deploy a subnet-evm with old version", func() {
-		subnetEVMVersion := "v0.5.4"
+		subnetEVMVersion := "v0.5.3"
 
 		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
