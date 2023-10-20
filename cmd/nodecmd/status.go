@@ -52,6 +52,7 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 	if err := app.CreateAnsibleStatusDir(); err != nil {
 		return err
 	}
+	defer app.RemoveAnsibleStatusDir()
 	if err := ansible.RunAnsiblePlaybookCheckAvalancheGoVersion(app.GetAnsibleDir(), app.GetAvalancheGoJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), "all"); err != nil {
 		return err
 	}
@@ -61,9 +62,6 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 			avalancheGoVersion = constants.AvalancheGoVersionUnknown
 		}
 		avalanchegoVersionForNode[host] = avalancheGoVersion
-	}
-	if err := app.RemoveAnsibleStatusDir(); err != nil {
-		return err
 	}
 	if subnetName != "" {
 		if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
@@ -80,9 +78,6 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 		notSyncedNodes := []string{}
 		subnetSyncedNodes := []string{}
 		subnetValidatingNodes := []string{}
-		if err := app.CreateAnsibleStatusDir(); err != nil {
-			return err
-		}
 		if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(app.GetAnsibleDir(), app.GetSubnetSyncJSONFile(), blockchainID.String(), app.GetAnsibleInventoryDirPath(clusterName), "all"); err != nil {
 			return err
 		}
@@ -100,14 +95,14 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 				notSyncedNodes = append(notSyncedNodes, host)
 			}
 		}
-		if err = app.RemoveAnsibleStatusDir(); err != nil {
-			return err
-		}
 		printOutput(avalanchegoVersionForNode, ansibleHostIDs, notSyncedNodes, subnetSyncedNodes, subnetValidatingNodes, clusterName, subnetName)
 		return nil
 	}
 	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
 	if err != nil {
+		return err
+	}
+	if err := app.RemoveAnsibleStatusDir(); err != nil {
 		return err
 	}
 	printOutput(avalanchegoVersionForNode, ansibleHostIDs, notBootstrappedNodes, nil, nil, clusterName, subnetName)
