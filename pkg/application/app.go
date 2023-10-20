@@ -4,6 +4,7 @@ package application
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -602,8 +603,14 @@ func (*Avalanche) writeFile(path string, bytes []byte) error {
 	return os.WriteFile(path, bytes, constants.WriteReadReadPerms)
 }
 
-func (app *Avalanche) LoadConfig() (models.Config, error) {
+func (app *Avalanche) LoadConfig(path string) (models.Config, error) {
 	configPath := app.GetConfigPath()
+	if path != "" {
+		configPath = path
+	} 
+	if !app.ConfigFileExists(configPath) {
+		return models.Config{},errors.New("config file does not exists")
+	}
 	jsonBytes, err := os.ReadFile(configPath)
 	if err != nil {
 		return models.Config{}, err
@@ -614,8 +621,11 @@ func (app *Avalanche) LoadConfig() (models.Config, error) {
 	return config, err
 }
 
-func (app *Avalanche) ConfigFileExists() bool {
+func (app *Avalanche) ConfigFileExists(path string) bool {
 	configPath := app.GetConfigPath()
+	if path != "" {
+		configPath = path
+	}
 	_, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -625,8 +635,11 @@ func (app *Avalanche) ConfigFileExists() bool {
 	return true
 }
 
-func (app *Avalanche) WriteConfigFile(bytes []byte) error {
+func (app *Avalanche) WriteConfigFile(bytes []byte, path string) error {
 	configPath := app.GetConfigPath()
+	if path != "" {
+		configPath = path
+	}
 	return app.writeFile(configPath, bytes)
 }
 

@@ -58,7 +58,7 @@ func PrintMetricsOptOutPrompt() {
 func saveMetricsConfig(app *application.Avalanche, metricsEnabled bool) {
 	config := models.Config{MetricsEnabled: metricsEnabled}
 	jsonBytes, _ := json.Marshal(&config)
-	_ = app.WriteConfigFile(jsonBytes)
+	_ = app.WriteConfigFile(jsonBytes,"")
 }
 
 func HandleUserMetricsPreference(app *application.Avalanche) error {
@@ -79,7 +79,7 @@ func HandleUserMetricsPreference(app *application.Avalanche) error {
 
 func userIsOptedIn(app *application.Avalanche) bool {
 	// if config file is not found or unable to be read, will return false (user is not opted in)
-	config, err := app.LoadConfig()
+	config, err := app.LoadConfig("")
 	if err != nil {
 		return false
 	}

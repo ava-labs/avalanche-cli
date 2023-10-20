@@ -56,5 +56,5 @@ func saveMetricsPreferences(enableMetrics bool) error {
 		return err
 	}
 
-	return app.WriteConfigFile(jsonBytes)
+	return app.WriteConfigFile(jsonBytes,"")
 }
