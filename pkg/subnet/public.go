@@ -482,9 +482,9 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error
 	wallet, err := primary.MakeWallet(
 		ctx,
 		&primary.WalletConfig{
-			URI:          api,
-			AVAXKeychain: d.kc,
-			EthKeychain:  secp256k1fx.NewKeychain(),
+			URI:              api,
+			AVAXKeychain:     d.kc,
+			EthKeychain:      secp256k1fx.NewKeychain(),
 			PChainTxsToFetch: set.Of(filteredTxs...),
 		},
 	)
