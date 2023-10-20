@@ -52,7 +52,9 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 	if err := app.CreateAnsibleStatusDir(); err != nil {
 		return err
 	}
-	defer app.RemoveAnsibleStatusDir()
+	defer func() {
+		_ = app.RemoveAnsibleStatusDir()
+	}()
 	if err := ansible.RunAnsiblePlaybookCheckAvalancheGoVersion(app.GetAnsibleDir(), app.GetAvalancheGoJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), "all"); err != nil {
 		return err
 	}
@@ -100,9 +102,6 @@ func statusSubnet(_ *cobra.Command, args []string) error {
 	}
 	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
 	if err != nil {
-		return err
-	}
-	if err := app.RemoveAnsibleStatusDir(); err != nil {
 		return err
 	}
 	printOutput(avalanchegoVersionForNode, ansibleHostIDs, notBootstrappedNodes, nil, nil, clusterName, subnetName)
