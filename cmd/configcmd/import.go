@@ -9,8 +9,9 @@ import (
 )
 
 var (
-	importInput        string
+	importInput string
 )
+
 // avalanche transaction sign
 func newImportCmd() *cobra.Command {
 	cmd := &cobra.Command{
