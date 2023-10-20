@@ -43,7 +43,7 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath string, publicIPM
 	}
 	for instanceID := range publicIPMap {
 		ansibleHostContent := models.Host{
-			NodeID:            fmt.Sprintf("%s%s",constants.AnsibleAWSNodePrefix, instanceID),
+			NodeID:            fmt.Sprintf("%s%s", constants.AnsibleAWSNodePrefix, instanceID),
 			IP:                publicIPMap[instanceID],
 			SSHUser:           "ubuntu",
 			SSHPrivateKeyPath: certFilePath,
