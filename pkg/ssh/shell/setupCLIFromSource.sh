@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#name: install avalanche-cli from source
+echo {{ .Log }}TASK [install avalanche-cli from source]
 cd ~
 rm -rf avalanche-cli
 git clone --single-branch -b {{ .CliBranch }} https://github.com/ava-labs/avalanche-cli 

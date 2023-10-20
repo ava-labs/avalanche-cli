@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
-#name: get avalanche go script
+echo {{ .Log }}TASK [get avalanche go script]
 wget -nd -m https://raw.githubusercontent.com/ava-labs/avalanche-docs/master/scripts/avalanchego-installer.sh
-#name: modify permissions
+echo {{ .Log }}TASK [modify permissions]
 chmod 755 avalanchego-installer.sh
-#name: call avalanche go install script
+echo {{ .Log }}TASK [call avalanche go install script]
 ./avalanchego-installer.sh --ip static --rpc private --state-sync on --fuji --version {{ .AvalancheGoVersion }}
-#name: get avalanche cli install script
+echo {{ .Log }}TASK [get avalanche cli install script]
 wget -nd -m https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh
-#name: modify permissions
+echo {{ .Log }}TASK [modify permissions]
 chmod 755 install.sh
-#name: run install script
+echo {{ .Log }}TASK [run install script]
 ./install.sh -n
-#name: create .avalanche-cli dir
+echo {{ .Log }}TASK [create .avalanche-cli dir]
 mkdir -p .avalanche-cli

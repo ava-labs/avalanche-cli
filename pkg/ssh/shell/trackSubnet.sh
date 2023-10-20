@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-#name: import subnet
+echo {{ .Log }}TASK [import subnet]
 /home/ubuntu/bin/avalanche subnet import file {{ .SubnetExportFileName }} --force
-#name: avalanche join subnet
+echo {{ .Log }}TASK [avalanche join subnet]
 /home/ubuntu/bin/avalanche subnet join {{ .SubnetName }} --fuji --avalanchego-config /home/ubuntu/.avalanchego/configs/node.json --plugin-dir /home/ubuntu/.avalanchego/plugins --force-write
-#name: restart node - restart avalanchego
+echo {{ .Log }}TASK [restart node - restart avalanchego]
 sudo systemctl restart avalanchego

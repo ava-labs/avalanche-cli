@@ -17,12 +17,12 @@ install_rust() {
   echo export PATH=\$PATH:~/.cargo/bin >> ~/.bashrc 
 }
 
-#name: update apt data and install dependencies
+echo {{ .Log }}TASK [update apt data and install dependencies] 
 DEBIAN_FRONTEND=noninteractive sudo apt-get -y update
 DEBIAN_FRONTEND=noninteractive sudo apt-get -y install wget curl git
-#name: install gcc if not available
+echo {{ .Log }}TASK [install gcc if not available]
 gcc --version || DEBIAN_FRONTEND=noninteractive sudo apt-get -y install gcc
-#name: install go
+echo {{ .Log }}TASK [install go]
 go version || install_go
-#name: install rust
+echo {{ .Log }}TASK [install rust]
 cargo version || install_rust

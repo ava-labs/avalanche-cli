@@ -3,18 +3,22 @@
 package ssh
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"embed"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
 type scriptInputs struct {
+	Log               string
 	AvalancheGoVersion   string
 	SubnetExportFileName string
 	SubnetName           string
@@ -25,9 +29,16 @@ type scriptInputs struct {
 //go:embed shell/*.sh
 var script embed.FS
 
+
+func ScriptLog(line string, nodeID string) string {
+	line = strings.TrimPrefix(line,constants.SSHScriptLogFilter) + " " // add space
+	return fmt.Sprintf("[%s] %s", nodeID, line)
+}
+
 // RunSSHSetupNode runs provided script path over ssh.
 // This script can be template as it will be rendered using scriptInputs vars
 func RunOverSSH(id string, host models.Host, scriptPath string, templateVars scriptInputs) error {
+	templateVars.Log = constants.SSHScriptLogFilter // set log filter
 	shellScript, err := script.ReadFile(scriptPath)
 	if err != nil {
 		return err
@@ -42,7 +53,18 @@ func RunOverSSH(id string, host models.Host, scriptPath string, templateVars scr
 	if err != nil {
 		return err
 	}
-	_, err = host.Command(script.String(), nil, context.Background())
+	scriptLog, err := host.Command(script.String(), nil, context.Background()) // TODO pass context from consumer
+	//provide logs
+	logReader := bytes.NewReader(scriptLog)
+    scanner := bufio.NewScanner(logReader)
+	ux.Logger.PrintToUser(fmt.Sprintf("TASK [%s]", host.NodeID))
+	for scanner.Scan() {
+        line := scanner.Text()
+        if strings.HasPrefix(line, templateVars.Log) {
+			ux.Logger.PrintToUser(ScriptLog(line,host.NodeID))
+        }
+    }
+	
 	return err
 }
 
@@ -66,7 +88,7 @@ func PostOverSSH(host models.Host, path string, requestBody string) ([]byte, err
 // RunSSHSetupNode runs script to setup node
 func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string) error {
 	// name: setup node
-	if err := RunOverSSH("SetupNode", host, "shell/setupNode.sh", scriptInputs{AvalancheGoVersion: avalancheGoVersion}); err != nil {
+	if err := RunOverSSH("SetupNode", host, "shell/setupNode.sh", scriptInputs{AvalancheGoVersion: avalancheGoVersion});err != nil {
 		return err
 	}
 	// name: copy metrics config to cloud server

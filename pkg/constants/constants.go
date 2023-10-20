@@ -44,6 +44,7 @@ const (
 	SSHScriptTimeout  = 600 * time.Second
 	SSHFileOpsTimeout = 60 * time.Second
 	SSHPOSTTimeout    = 10 * time.Second
+	SSHScriptLogFilter = "_AvalancheCLI_LOG_"
 
 	SimulatePublicNetwork = "SIMULATE_PUBLIC_NETWORK"
 	FujiAPIEndpoint       = "https://api.avax-test.network"
