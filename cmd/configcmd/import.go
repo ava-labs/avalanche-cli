@@ -8,10 +8,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	importInput string
-)
-
 // avalanche transaction sign
 func newImportCmd() *cobra.Command {
 	cmd := &cobra.Command{

@@ -8,9 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	exportOutput string
-)
+var exportOutput string
 
 // avalanche transaction sign
 func newExportCmd() *cobra.Command {
