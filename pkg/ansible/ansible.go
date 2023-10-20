@@ -88,9 +88,9 @@ func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]models.Hos
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		splitSting := strings.Split(scanner.Text(), " ")
-		nodeID := splitSting[0]
-		parsedHost, err := utils.SplitKeyValueStringToMap(strings.Join(splitSting[1:], " "), "=")
+		splitString := strings.Split(scanner.Text(), " ")
+		nodeID := splitString[0]
+		parsedHost, err := utils.SplitKeyValueStringToMap(strings.Join(splitString[1:], " "), "=")
 		if err != nil {
 			return nil, err
 		}
