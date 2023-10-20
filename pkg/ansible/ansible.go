@@ -42,14 +42,14 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath string, publicIPM
 		return err
 	}
 	for instanceID := range publicIPMap {
-		currentHost := models.Host{
+		ansibleHostContent := models.Host{
 			NodeID:            instanceID,
 			IP:                publicIPMap[instanceID],
 			SSHUser:           "ubuntu",
 			SSHPrivateKeyPath: certFilePath,
 			SSHCommonArgs:     constants.AnsibleSSHParams,
 		}
-		inventoryContent := currentHost.GetAnsibleParams()
+		inventoryContent := ansibleHostContent.GetAnsibleInventoryRecord()
 		if _, err = inventoryFile.WriteString(inventoryContent + "\n"); err != nil {
 			return err
 		}
@@ -427,12 +427,12 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]
 		nodeID := ansibleHostContent.ConvertToNodeID(node)
 		_, ok := nodesWoEIP[nodeID]
 		if !ok {
-			if _, err = inventoryFile.WriteString(node + " " + ansibleHostContent.GetAnsibleParams() + "\n"); err != nil {
+			if _, err = inventoryFile.WriteString(ansibleHostContent.GetAnsibleInventoryRecord() + "\n"); err != nil {
 				return err
 			}
 		} else {
 			ansibleHostContent.IP = nodesWoEIP[nodeID]
-			if _, err = inventoryFile.WriteString(node + " " + ansibleHostContent.GetAnsibleParams() + "\n"); err != nil {
+			if _, err = inventoryFile.WriteString(ansibleHostContent.GetAnsibleInventoryRecord() + "\n"); err != nil {
 				return err
 			}
 		}
