@@ -88,13 +88,13 @@ func addNodeAsSubnetValidator(nodeID, subnetName string, network models.Network,
 // it will return true node status is 'syncing'
 func getNodeSubnetSyncStatus(blockchainID, clusterName, ansibleNodeID string) (string, error) {
 	ux.Logger.PrintToUser("Checking if node %s is synced to subnet ...", ansibleNodeID)
-	if err := app.CreateAnsibleStatusFile(app.GetSubnetSyncJSONFile()); err != nil {
+	if err := app.CreateAnsibleStatusDir(); err != nil {
 		return "", err
 	}
 	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(app.GetAnsibleDir(), app.GetSubnetSyncJSONFile(), blockchainID, app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
 		return "", err
 	}
-	subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile())
+	subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile() + "." + ansibleNodeID)
 	if err != nil {
 		return "", err
 	}

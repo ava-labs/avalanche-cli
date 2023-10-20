@@ -198,18 +198,15 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string
 	ux.Logger.PrintToUser(fmt.Sprintf("Checking compatibility of avalanche go version in cluster %s with Subnet EVM RPC of subnet %s ...", clusterName, subnetName))
 	compatibleVersions := []string{}
 	incompatibleNodes := []string{}
+	if err := app.CreateAnsibleStatusDir(); err != nil {
+		return nil, err
+	}
+	if err := ansible.RunAnsiblePlaybookCheckAvalancheGoVersion(app.GetAnsibleDir(), app.GetAvalancheGoJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), "all"); err != nil {
+		return nil, err
+	}
 	for _, host := range ansibleNodeIDs {
-		if err := app.CreateAnsibleStatusFile(app.GetAvalancheGoJSONFile()); err != nil {
-			return nil, err
-		}
-		if err := ansible.RunAnsiblePlaybookCheckAvalancheGoVersion(app.GetAnsibleDir(), app.GetAvalancheGoJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
-			return nil, err
-		}
-		avalancheGoVersion, err := parseAvalancheGoOutput(app.GetAvalancheGoJSONFile())
+		avalancheGoVersion, err := parseAvalancheGoOutput(app.GetAvalancheGoJSONFile() + "." + host)
 		if err != nil {
-			return nil, err
-		}
-		if err := app.RemoveAnsibleStatusDir(); err != nil {
 			return nil, err
 		}
 		sc, err := app.LoadSidecar(subnetName)
@@ -223,6 +220,9 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string
 		if !slices.Contains(compatibleVersions, avalancheGoVersion) {
 			incompatibleNodes = append(incompatibleNodes, host)
 		}
+	}
+	if err := app.RemoveAnsibleStatusDir(); err != nil {
+		return nil, err
 	}
 	if len(incompatibleNodes) > 0 {
 		ux.Logger.PrintToUser(fmt.Sprintf("Compatible Avalanche Go versions are %s", strings.Join(compatibleVersions, ", ")))

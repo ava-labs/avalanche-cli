@@ -296,6 +296,7 @@ func getStringSeqFromISeq(lines []interface{}) []string {
 // RunAnsiblePlaybookCheckAvalancheGoVersion checks if node is bootstrapped to primary network
 // targets a specific host ansibleHostID in ansible inventory file
 func RunAnsiblePlaybookCheckAvalancheGoVersion(ansibleDir, avalancheGoPath, inventoryPath, ansibleHostID string) error {
+	fmt.Println("GOVERSION")
 	playbookInput := "target=" + ansibleHostID + " avalancheGoJsonPath=" + avalancheGoPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.AvalancheGoVersionPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInput, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
@@ -313,6 +314,7 @@ func RunAnsiblePlaybookCheckAvalancheGoVersion(ansibleDir, avalancheGoPath, inve
 // RunAnsiblePlaybookCheckBootstrapped checks if node is bootstrapped to primary network
 // targets a specific host ansibleHostID in ansible inventory file
 func RunAnsiblePlaybookCheckBootstrapped(ansibleDir, isBootstrappedPath, inventoryPath, ansibleHostID string) error {
+	fmt.Println("BOOTSTRAPPED")
 	playbookInputs := "target=" + ansibleHostID + " isBootstrappedJsonPath=" + isBootstrappedPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsBootstrappedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
@@ -347,6 +349,7 @@ func RunAnsiblePlaybookGetNodeID(ansibleDir, nodeIDPath, inventoryPath, ansibleH
 // RunAnsiblePlaybookSubnetSyncStatus checks if node is synced to subnet
 // targets a specific host ansibleHostID in ansible inventory file
 func RunAnsiblePlaybookSubnetSyncStatus(ansibleDir, subnetSyncPath, blockchainID, inventoryPath, ansibleHostID string) error {
+	fmt.Println("SYNC")
 	playbookInputs := "target=" + ansibleHostID + " blockchainID=" + blockchainID + " subnetSyncPath=" + subnetSyncPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsSubnetSyncedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir

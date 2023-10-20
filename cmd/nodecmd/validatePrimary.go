@@ -319,23 +319,23 @@ func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
 	}
 	notBootstrappedNodes := []string{}
 	ux.Logger.PrintToUser(fmt.Sprintf("Checking if node(s) in cluster %s are bootstrapped to Primary Network ...", clusterName))
+	if err := app.CreateAnsibleStatusDir(); err != nil {
+		return nil, err
+	}
+	if err := ansible.RunAnsiblePlaybookCheckBootstrapped(app.GetAnsibleDir(), app.GetBootstrappedJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), "all"); err != nil {
+		return nil, err
+	}
 	for _, host := range ansibleNodeIDs {
-		if err := app.CreateAnsibleStatusFile(app.GetBootstrappedJSONFile()); err != nil {
-			return nil, err
-		}
-		if err := ansible.RunAnsiblePlaybookCheckBootstrapped(app.GetAnsibleDir(), app.GetBootstrappedJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
-			return nil, err
-		}
-		isBootstrapped, err := parseBootstrappedOutput(app.GetBootstrappedJSONFile())
+		isBootstrapped, err := parseBootstrappedOutput(app.GetBootstrappedJSONFile() + "." + host)
 		if err != nil {
-			return nil, err
-		}
-		if err := app.RemoveAnsibleStatusDir(); err != nil {
 			return nil, err
 		}
 		if !isBootstrapped {
 			notBootstrappedNodes = append(notBootstrappedNodes, host)
 		}
+	}
+	if err := app.RemoveAnsibleStatusDir(); err != nil {
+		return nil, err
 	}
 	return notBootstrappedNodes, nil
 }
