@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -420,13 +421,13 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
+	ansibleHostIDs := []string{}
 	for _, instanceID := range instanceIDs {
-		nodeInstanceDirPath := app.GetNodeInstanceDirPath(instanceID)
-		// ansible host alias's name is formatted as aws_node_{instanceID}
-		nodeInstanceAnsibleAlias := fmt.Sprintf("%s%s", constants.AnsibleAWSNodePrefix, instanceID)
-		if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
-			return err
-		}
+		ansibleHostID := fmt.Sprintf("%s%s", constants.AnsibleAWSNodePrefix, instanceID)
+		ansibleHostIDs = append(ansibleHostIDs, ansibleHostID)
+	}
+	if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), strings.Join(ansibleHostIDs, ","), app.GetNodesDir(), inventoryPath); err != nil {
+		return err
 	}
 	PrintResults(certFilePath, region, publicIPMap)
 	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
