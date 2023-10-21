@@ -353,13 +353,12 @@ func getClusterNodeIDs(clusterName string, ansibleNodeIDs []string) (map[string]
 	nodeIDMap := map[string]string{}
 	failedNodes := map[string]error{}
 	for _, host := range ansibleNodeIDs {
-		ux.Logger.PrintToUser("Getting Avalanche node id for host %s...", host)
 		nodeID, err := parseNodeIDOutput(app.GetNodeIDJSONFile() + "." + host)
 		if err != nil {
 			failedNodes[host] = err
 			continue
 		}
-		ux.Logger.PrintToUser("Avalanche node id is %s", nodeID)
+		ux.Logger.PrintToUser("Avalanche node id for host %s is %s", host, nodeID)
 		nodeIDMap[host] = nodeID
 	}
 	return nodeIDMap, failedNodes, nil
