@@ -31,6 +31,7 @@ import (
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
+	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
@@ -166,7 +167,15 @@ func IssueTransformSubnetTx(
 ) (ids.ID, ids.ID, error) {
 	ctx := context.Background()
 	api := constants.LocalAPIEndpoint
-	wallet, err := primary.NewWalletWithTxs(ctx, api, kc, subnetID)
+	wallet, err := primary.MakeWallet(
+		ctx,
+		&primary.WalletConfig{
+			URI:              api,
+			AVAXKeychain:     kc,
+			EthKeychain:      secp256k1fx.NewKeychain(),
+			PChainTxsToFetch: set.Of(subnetID),
+		},
+	)
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
@@ -215,7 +224,15 @@ func IssueAddPermissionlessValidatorTx(
 ) (ids.ID, error) {
 	ctx := context.Background()
 	api := constants.LocalAPIEndpoint
-	wallet, err := primary.NewWalletWithTxs(ctx, api, kc, subnetID)
+	wallet, err := primary.MakeWallet(
+		ctx,
+		&primary.WalletConfig{
+			URI:              api,
+			AVAXKeychain:     kc,
+			EthKeychain:      secp256k1fx.NewKeychain(),
+			PChainTxsToFetch: set.Of(subnetID),
+		},
+	)
 	if err != nil {
 		return ids.Empty, err
 	}
@@ -261,7 +278,15 @@ func IssueAddPermissionlessDelegatorTx(
 ) (ids.ID, error) {
 	ctx := context.Background()
 	api := constants.LocalAPIEndpoint
-	wallet, err := primary.NewWalletWithTxs(ctx, api, kc, subnetID)
+	wallet, err := primary.MakeWallet(
+		ctx,
+		&primary.WalletConfig{
+			URI:              api,
+			AVAXKeychain:     kc,
+			EthKeychain:      secp256k1fx.NewKeychain(),
+			PChainTxsToFetch: set.Of(subnetID),
+		},
+	)
 	if err != nil {
 		return ids.Empty, err
 	}
@@ -307,7 +332,7 @@ func GetCurrentSupply(subnetID ids.ID) error {
 	pClient := platformvm.NewClient(api)
 	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
 	defer cancel()
-	_, err := pClient.GetCurrentSupply(ctx, subnetID)
+	_, _, err := pClient.GetCurrentSupply(ctx, subnetID)
 	return err
 }
 
@@ -771,7 +796,15 @@ func GetLocallyDeployedSubnets() (map[string]struct{}, error) {
 func IssueRemoveSubnetValidatorTx(kc keychain.Keychain, subnetID ids.ID, nodeID ids.NodeID) (ids.ID, error) {
 	ctx := context.Background()
 	api := constants.LocalAPIEndpoint
-	wallet, err := primary.NewWalletWithTxs(ctx, api, kc, subnetID)
+	wallet, err := primary.MakeWallet(
+		ctx,
+		&primary.WalletConfig{
+			URI:              api,
+			AVAXKeychain:     kc,
+			EthKeychain:      secp256k1fx.NewKeychain(),
+			PChainTxsToFetch: set.Of(subnetID),
+		},
+	)
 	if err != nil {
 		return ids.Empty, err
 	}
