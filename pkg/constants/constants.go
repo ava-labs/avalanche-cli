@@ -161,12 +161,14 @@ const (
 	// #nosec G101
 	GithubAPITokenEnvVarName = "AVALANCHE_CLI_GITHUB_TOKEN"
 
-	ReposDir       = "repos"
-	SubnetDir      = "subnets"
-	NodesDir       = "nodes"
-	VMDir          = "vms"
-	ChainConfigDir = "chains"
-
+	ReposDir                   = "repos"
+	SubnetDir                  = "subnets"
+	NodesDir                   = "nodes"
+	VMDir                      = "vms"
+	ChainConfigDir             = "chains"
+	AVMKeyName                 = "avm"
+	EVMKeyName                 = "avm"
+	PlatformKeyName            = "platform"
 	SubnetType                 = "subnet type"
 	PrecompileType             = "precompile type"
 	CustomAirdrop              = "custom-airdrop"
