@@ -607,9 +607,9 @@ func (app *Avalanche) LoadConfig(path string) (models.Config, error) {
 	configPath := app.GetConfigPath()
 	if path != "" {
 		configPath = path
-	} 
+	}
 	if !app.ConfigFileExists(configPath) {
-		return models.Config{},errors.New("config file does not exists")
+		return models.Config{}, errors.New("config file does not exists")
 	}
 	jsonBytes, err := os.ReadFile(configPath)
 	if err != nil {

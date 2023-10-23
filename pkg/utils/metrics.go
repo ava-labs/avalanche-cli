@@ -58,7 +58,7 @@ func PrintMetricsOptOutPrompt() {
 func saveMetricsConfig(app *application.Avalanche, metricsEnabled bool) {
 	config := models.Config{MetricsEnabled: metricsEnabled}
 	jsonBytes, _ := json.Marshal(&config)
-	_ = app.WriteConfigFile(jsonBytes,"")
+	_ = app.WriteConfigFile(jsonBytes, "")
 }
 
 func HandleUserMetricsPreference(app *application.Avalanche) error {
