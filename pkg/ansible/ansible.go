@@ -436,3 +436,37 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]
 	}
 	return nil
 }
+
+// RunAnsiblePlaybookUpgradeAvalancheGo upgrades avalanche go version of node
+// targets a specific host ansibleHostID in ansible inventory file
+func RunAnsiblePlaybookUpgradeAvalancheGo(ansibleDir, inventoryPath, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.UpgradeAvalancheGoPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, false, false)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
+// RunAnsiblePlaybookUpgradeSubnetEVM upgrades subnetEVM version of node
+// targets a specific host ansibleHostID in ansible inventory file
+func RunAnsiblePlaybookUpgradeSubnetEVM(ansibleDir, subnetEVMReleaseURL, subnetEVMArchive, subnetEVMBinaryPath, inventoryPath, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID + " subnetEVMReleaseURL=" + subnetEVMReleaseURL + " subnetEVMArchive=" + subnetEVMArchive + " subnetEVMBinaryPath=" + subnetEVMBinaryPath
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.UpgradeSubnetEVMPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, false, false)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
