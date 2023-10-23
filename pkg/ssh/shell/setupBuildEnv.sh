@@ -1,5 +1,9 @@
-#!/usr/bin/env bash
-
+#name:{{ .Log }}TASK [update apt data and install dependencies] 
+DEBIAN_FRONTEND=noninteractive sudo apt-get -y update
+DEBIAN_FRONTEND=noninteractive sudo apt-get -y install wget curl git
+#name:{{ .Log }}TASK [install gcc if not available]
+gcc --version || DEBIAN_FRONTEND=noninteractive sudo apt-get -y install gcc
+#name:{{ .Log }}TASK [install go]
 install_go() {
   GOFILE=go{{ .GoVersion }}.linux-amd64.tar.gz
   cd ~
@@ -10,19 +14,11 @@ install_go() {
   echo export PATH=\$PATH:~/go/bin:~/bin >> ~/.bashrc
   echo export CGO_ENABLED=1 >> ~/.bashrc
 }
-
+go version || install_go
+#name:{{ .Log }}TASK [install rust]
 install_rust() {
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s - -y
   echo >> ~/.bashrc
   echo export PATH=\$PATH:~/.cargo/bin >> ~/.bashrc 
 }
-
-echo {{ .Log }}TASK [update apt data and install dependencies] 
-DEBIAN_FRONTEND=noninteractive sudo apt-get -y update
-DEBIAN_FRONTEND=noninteractive sudo apt-get -y install wget curl git
-echo {{ .Log }}TASK [install gcc if not available]
-gcc --version || DEBIAN_FRONTEND=noninteractive sudo apt-get -y install gcc
-echo {{ .Log }}TASK [install go]
-go version || install_go
-echo {{ .Log }}TASK [install rust]
 cargo version || install_rust

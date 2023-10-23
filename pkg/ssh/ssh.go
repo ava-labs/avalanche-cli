@@ -3,11 +3,11 @@
 package ssh
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"embed"
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -18,7 +18,7 @@ import (
 )
 
 type scriptInputs struct {
-	Log               string
+	Log                  string
 	AvalancheGoVersion   string
 	SubnetExportFileName string
 	SubnetName           string
@@ -29,10 +29,45 @@ type scriptInputs struct {
 //go:embed shell/*.sh
 var script embed.FS
 
-
 func ScriptLog(line string, nodeID string) string {
-	line = strings.TrimPrefix(line,constants.SSHScriptLogFilter) + " " // add space
+	line = strings.TrimPrefix(line, constants.SSHScriptLogFilter) + " " // add space
 	return fmt.Sprintf("[%s] %s", nodeID, line)
+}
+
+func splitScript(input *bytes.Buffer, separatorPrefix string) ([]*bytes.Buffer, []string, error) {
+	var buffers []*bytes.Buffer
+	separators := []string{""}
+	currentBuffer := &bytes.Buffer{}
+	_, err := currentBuffer.WriteString("#/usr/bin/env bash\n")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for {
+		line, err := input.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, nil, err
+		}
+		if strings.HasPrefix(line, separatorPrefix) {
+			buffers = append(buffers, currentBuffer)
+			currentBuffer = &bytes.Buffer{}
+			_, err := currentBuffer.WriteString("#/usr/bin/env bash\n")
+			if err != nil {
+				return nil, nil, err
+			}
+			separators = append(separators, line)
+		} else {
+			_, err = currentBuffer.WriteString(line)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+	}
+	buffers = append(buffers, currentBuffer) // Add the last buffer to the result
+	return buffers, separators, nil
 }
 
 // RunSSHSetupNode runs provided script path over ssh.
@@ -53,19 +88,21 @@ func RunOverSSH(id string, host models.Host, scriptPath string, templateVars scr
 	if err != nil {
 		return err
 	}
-	scriptLog, err := host.Command(script.String(), nil, context.Background()) // TODO pass context from consumer
-	//provide logs
-	logReader := bytes.NewReader(scriptLog)
-    scanner := bufio.NewScanner(logReader)
-	ux.Logger.PrintToUser(fmt.Sprintf("TASK [%s]", host.NodeID))
-	for scanner.Scan() {
-        line := scanner.Text()
-        if strings.HasPrefix(line, templateVars.Log) {
-			ux.Logger.PrintToUser(ScriptLog(line,host.NodeID))
-        }
-    }
-	
-	return err
+	tasks, taskTitle, err := splitScript(&script, fmt.Sprintf("#name:%s", constants.SSHScriptLogFilter))
+	if err != nil {
+		return err
+	}
+	for n, task := range tasks {
+		if taskTitle[n] == "" {
+			continue
+		}
+		ux.Logger.PrintToUser(ScriptLog(strings.TrimPrefix(taskTitle[n], fmt.Sprintf("#name:%s", constants.SSHScriptLogFilter)), host.NodeID))
+		_, err := host.Command(task.String(), nil, context.Background()) // TODO pass context from consumer, get debug script output
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func PostOverSSH(host models.Host, path string, requestBody string) ([]byte, error) {
@@ -88,7 +125,7 @@ func PostOverSSH(host models.Host, path string, requestBody string) ([]byte, err
 // RunSSHSetupNode runs script to setup node
 func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string) error {
 	// name: setup node
-	if err := RunOverSSH("SetupNode", host, "shell/setupNode.sh", scriptInputs{AvalancheGoVersion: avalancheGoVersion});err != nil {
+	if err := RunOverSSH("SetupNode", host, "shell/setupNode.sh", scriptInputs{AvalancheGoVersion: avalancheGoVersion}); err != nil {
 		return err
 	}
 	// name: copy metrics config to cloud server
