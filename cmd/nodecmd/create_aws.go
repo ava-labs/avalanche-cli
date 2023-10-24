@@ -232,6 +232,7 @@ func createAWSInstance(ec2Svc *ec2.EC2, region, ami string, usr *user.User) (Clo
 		}
 		if strings.Contains(err.Error(), constants.ErrCreatingAWSNode) {
 			// we stop created instances so that user doesn't pay for unused EC2 instances
+			ux.Logger.PrintToUser("Stopping all created AWS instances due to error to prevent charge for unused AWS instances...")
 			instanceIDs, instanceIDErr := terraformaws.GetInstanceIDs(app.GetTerraformDir())
 			if instanceIDErr != nil {
 				return CloudConfig{}, instanceIDErr

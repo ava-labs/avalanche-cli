@@ -229,6 +229,7 @@ func createGCPInstance(usr *user.User, gcpClient *compute.Service, zone, imageID
 		ux.Logger.PrintToUser("Failed to create GCP cloud server")
 		if err.Error() == constants.ErrCreatingGCPNode {
 			// we stop created instances so that user doesn't pay for unused GCP instances
+			ux.Logger.PrintToUser("Stopping all created GCP instances due to error to prevent charge for unused GCP instances...")
 			failedNodes := []string{}
 			nodeErrors := []error{}
 			for _, instanceID := range instanceIDs {
