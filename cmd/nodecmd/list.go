@@ -4,7 +4,6 @@ package nodecmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
