@@ -298,6 +298,7 @@ func getStringSeqFromISeq(lines []interface{}) []string {
 // RunAnsiblePlaybookCheckAvalancheGoVersion checks if node is bootstrapped to primary network
 // targets a specific host ansibleHostID in ansible inventory file
 func RunAnsiblePlaybookCheckAvalancheGoVersion(ansibleDir, avalancheGoPath, inventoryPath, ansibleHostID string) error {
+	fmt.Printf("running RunAnsiblePlaybookCheckAvalancheGoVersion %s \n", ansibleHostID)
 	playbookInput := "target=" + ansibleHostID + " avalancheGoJsonPath=" + avalancheGoPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.AvalancheGoVersionPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInput, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
@@ -443,7 +444,7 @@ func RunAnsiblePlaybookUpgradeAvalancheGo(ansibleDir, inventoryPath, ansibleHost
 	playbookInputs := "target=" + ansibleHostID
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.UpgradeAvalancheGoPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
-	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, false, false)
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
 	cmdErr := cmd.Run()
 	if err := displayErrMsg(stdoutBuffer); err != nil {
 		return err
@@ -460,7 +461,7 @@ func RunAnsiblePlaybookUpgradeSubnetEVM(ansibleDir, subnetEVMReleaseURL, subnetE
 	playbookInputs := "target=" + ansibleHostID + " subnetEVMReleaseURL=" + subnetEVMReleaseURL + " subnetEVMArchive=" + subnetEVMArchive + " subnetEVMBinaryPath=" + subnetEVMBinaryPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.UpgradeSubnetEVMPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
-	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, false, false)
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
 	cmdErr := cmd.Run()
 	if err := displayErrMsg(stdoutBuffer); err != nil {
 		return err

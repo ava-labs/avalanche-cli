@@ -169,7 +169,7 @@ const (
 	VMDir                      = "vms"
 	ChainConfigDir             = "chains"
 	AVMKeyName                 = "avm"
-	EVMKeyName                 = "avm"
+	EVMKeyName                 = "evm"
 	PlatformKeyName            = "platform"
 	SubnetType                 = "subnet type"
 	PrecompileType             = "precompile type"
