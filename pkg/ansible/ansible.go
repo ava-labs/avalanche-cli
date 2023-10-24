@@ -88,13 +88,14 @@ func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]models.Hos
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		// host alias is first element in each line of host inventory file
-		parsedHost, err := utils.SplitKeyValueStringToMap(scanner.Text(), " ")
+		splitString := strings.Split(scanner.Text(), " ")
+		nodeID := splitString[0]
+		parsedHost, err := utils.SplitKeyValueStringToMap(strings.Join(splitString[1:], " "), "=")
 		if err != nil {
 			return nil, err
 		}
 		host := models.Host{
-			NodeID:            strings.Split(scanner.Text(), " ")[0],
+			NodeID:            nodeID,
 			IP:                parsedHost["ansible_host"],
 			SSHUser:           parsedHost["ansible_user"],
 			SSHPrivateKeyPath: parsedHost["ansible_ssh_private_key_file"],

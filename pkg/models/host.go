@@ -17,6 +17,7 @@ type Host struct {
 
 func (h Host) GetAnsibleParams() string {
 	return strings.Join([]string{
+		h.NodeID,
 		fmt.Sprintf("ansible_host=%s", h.IP),
 		fmt.Sprintf("ansible_user=%s", h.SSHUser),
 		fmt.Sprintf("ansible_ssh_private_key_file=%s", h.SSHPrivateKeyPath),
