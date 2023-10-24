@@ -45,13 +45,9 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 		if err != nil {
 			return nil, "", "", err
 		}
-		if clusterConfig.GCPConfig != nil {
-			if _, ok := clusterConfig.GCPConfig[constants.GCPProjectNameClusterConfig]; ok {
-				gcpProjectName = clusterConfig.GCPConfig[constants.GCPProjectNameClusterConfig]
-			}
-			if _, ok := clusterConfig.GCPConfig[constants.GCPServiceAccountFilePathClusterConfig]; ok {
-				gcpCredentialsPath = clusterConfig.GCPConfig[constants.GCPServiceAccountFilePathClusterConfig]
-			}
+		if clusterConfig.GCPConfig != (models.GCPConfig{}) {
+			gcpProjectName = clusterConfig.GCPConfig.ProjectName
+			gcpCredentialsPath = clusterConfig.GCPConfig.ServiceAccFilePath
 		}
 	}
 	if gcpProjectName == "" {
@@ -249,14 +245,11 @@ func updateClusterConfigGCPKeyFilepath(projectName, serviceAccountKeyFilepath st
 			return err
 		}
 	}
-	if clusterConfig.GCPConfig == nil {
-		clusterConfig.GCPConfig = make(map[string]string)
-	}
 	if projectName != "" {
-		clusterConfig.GCPConfig[constants.GCPProjectNameClusterConfig] = projectName
+		clusterConfig.GCPConfig.ProjectName = projectName
 	}
 	if serviceAccountKeyFilepath != "" {
-		clusterConfig.GCPConfig[constants.GCPServiceAccountFilePathClusterConfig] = serviceAccountKeyFilepath
+		clusterConfig.GCPConfig.ServiceAccFilePath = serviceAccountKeyFilepath
 	}
 	return app.WriteClusterConfigFile(&clusterConfig)
 }
