@@ -375,7 +375,7 @@ func promptAvalancheGoReferenceChoice() (string, error) {
 }
 
 func promptCloudService() (string, error) {
-	txt := "Which cloud service would you like to launch your Avalanche Node in?"
+	txt := "Which cloud service would you like to launch your Avalanche Node(s) in?"
 	cloudOptions := []string{constants.AWSCloudService, constants.GCPCloudService}
 	chosenCloudService, err := app.Prompt.CaptureList(txt, cloudOptions)
 	if err != nil {
