@@ -4,7 +4,6 @@ package nodecmd
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"os/exec"
 	"os/user"
@@ -141,9 +140,6 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	}
 	numNodes, err := app.Prompt.CaptureUint32("How many nodes do you want to set up on GCP?")
 	if err != nil {
-		return nil, nil, "", "", err
-	}
-	if numNodes < math.MaxInt8 {
 		return nil, nil, "", "", err
 	}
 	ux.Logger.PrintToUser("Creating new VM instance(s) on Google Compute Engine...")
