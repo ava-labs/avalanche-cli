@@ -42,12 +42,14 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath string, publicIPM
 		return err
 	}
 	for instanceID := range publicIPMap {
-		inventoryContent := fmt.Sprintf("%s%s", constants.AnsibleAWSNodePrefix, instanceID)
-		inventoryContent += " ansible_host="
-		inventoryContent += publicIPMap[instanceID]
-		inventoryContent += " ansible_user=ubuntu"
-		inventoryContent += fmt.Sprintf(" ansible_ssh_private_key_file=%s", certFilePath)
-		inventoryContent += fmt.Sprintf(" ansible_ssh_common_args='%s'", constants.AnsibleSSHParams)
+		ansibleHostContent := models.Host{
+			NodeID:            fmt.Sprintf("%s%s", constants.AnsibleAWSNodePrefix, instanceID),
+			IP:                publicIPMap[instanceID],
+			SSHUser:           "ubuntu",
+			SSHPrivateKeyPath: certFilePath,
+			SSHCommonArgs:     constants.AnsibleSSHParams,
+		}
+		inventoryContent := ansibleHostContent.GetAnsibleInventoryRecord()
 		if _, err = inventoryFile.WriteString(inventoryContent + "\n"); err != nil {
 			return err
 		}
@@ -86,13 +88,14 @@ func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]models.Hos
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		// host alias is first element in each line of host inventory file
-		parsedHost, err := utils.SplitKeyValueStringToMap(scanner.Text(), " ")
+		splitString := strings.Split(scanner.Text(), " ")
+		nodeID := splitString[0]
+		parsedHost, err := utils.SplitKeyValueStringToMap(strings.Join(splitString[1:], " "), "=")
 		if err != nil {
 			return nil, err
 		}
 		host := models.Host{
-			NodeID:            strings.Split(scanner.Text(), " ")[0],
+			NodeID:            nodeID,
 			IP:                parsedHost["ansible_host"],
 			SSHUser:           parsedHost["ansible_user"],
 			SSHPrivateKeyPath: parsedHost["ansible_ssh_private_key_file"],
@@ -424,12 +427,12 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]
 		nodeID := ansibleHostContent.ConvertToNodeID(node)
 		_, ok := nodesWoEIP[nodeID]
 		if !ok {
-			if _, err = inventoryFile.WriteString(node + " " + ansibleHostContent.GetAnsibleParams() + "\n"); err != nil {
+			if _, err = inventoryFile.WriteString(ansibleHostContent.GetAnsibleInventoryRecord() + "\n"); err != nil {
 				return err
 			}
 		} else {
 			ansibleHostContent.IP = nodesWoEIP[nodeID]
-			if _, err = inventoryFile.WriteString(node + " " + ansibleHostContent.GetAnsibleParams() + "\n"); err != nil {
+			if _, err = inventoryFile.WriteString(ansibleHostContent.GetAnsibleInventoryRecord() + "\n"); err != nil {
 				return err
 			}
 		}
