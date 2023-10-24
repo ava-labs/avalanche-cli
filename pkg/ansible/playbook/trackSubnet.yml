@@ -1,5 +1,6 @@
 ---
 - hosts: "{{ target }}"
+  gather_facts: no
   tasks:
     - name: import subnet
       shell: bash -i -c "/home/ubuntu/bin/avalanche subnet import file {{ subnetExportFileName }} --force"
