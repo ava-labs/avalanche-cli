@@ -45,13 +45,9 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 		if err != nil {
 			return nil, "", "", err
 		}
-		if clusterConfig.GCPConfig != nil {
-			if _, ok := clusterConfig.GCPConfig[constants.GCPProjectNameClusterConfig]; ok {
-				gcpProjectName = clusterConfig.GCPConfig[constants.GCPProjectNameClusterConfig]
-			}
-			if _, ok := clusterConfig.GCPConfig[constants.GCPServiceAccountFilePathClusterConfig]; ok {
-				gcpCredentialsPath = clusterConfig.GCPConfig[constants.GCPServiceAccountFilePathClusterConfig]
-			}
+		if clusterConfig.GCPConfig != (models.GCPConfig{}) {
+			gcpProjectName = clusterConfig.GCPConfig.ProjectName
+			gcpCredentialsPath = clusterConfig.GCPConfig.ServiceAccFilePath
 		}
 	}
 	if gcpProjectName == "" {
@@ -138,7 +134,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if err := terraformgcp.SetCloudCredentials(rootBody, zone, credentialsPath, projectName); err != nil {
 		return nil, nil, "", "", err
 	}
-	numNodes, err := app.Prompt.CaptureUint32("How many nodes do you want to set up on GCP?")
+	numNodes, err := app.Prompt.CaptureInt("How many nodes do you want to set up on GCP?")
 	if err != nil {
 		return nil, nil, "", "", err
 	}
@@ -206,7 +202,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 		return nil, nil, "", "", err
 	}
 	instanceIDs := []string{}
-	for i := 0; i < int(numNodes); i++ {
+	for i := 0; i < numNodes; i++ {
 		instanceIDs = append(instanceIDs, fmt.Sprintf("%s-%s", nodeName, strconv.Itoa(i)))
 	}
 	ux.Logger.PrintToUser("New GCE instance(s) successfully created in Google Cloud Engine!")
@@ -249,14 +245,11 @@ func updateClusterConfigGCPKeyFilepath(projectName, serviceAccountKeyFilepath st
 			return err
 		}
 	}
-	if clusterConfig.GCPConfig == nil {
-		clusterConfig.GCPConfig = make(map[string]string)
-	}
 	if projectName != "" {
-		clusterConfig.GCPConfig[constants.GCPProjectNameClusterConfig] = projectName
+		clusterConfig.GCPConfig.ProjectName = projectName
 	}
 	if serviceAccountKeyFilepath != "" {
-		clusterConfig.GCPConfig[constants.GCPServiceAccountFilePathClusterConfig] = serviceAccountKeyFilepath
+		clusterConfig.GCPConfig.ServiceAccFilePath = serviceAccountKeyFilepath
 	}
 	return app.WriteClusterConfigFile(&clusterConfig)
 }

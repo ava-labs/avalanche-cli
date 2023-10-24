@@ -82,7 +82,7 @@ func SetFirewallRule(rootBody *hclwrite.Body, ipAddress, firewallName, networkNa
 }
 
 // SetPublicIP attach static IP(s) to the associated Google VM instance(s)
-func SetPublicIP(rootBody *hclwrite.Body, nodeName string, numNodes uint32) {
+func SetPublicIP(rootBody *hclwrite.Body, nodeName string, numNodes int) {
 	staticIPName := fmt.Sprintf("static-ip-%s", nodeName)
 	eip := rootBody.AppendNewBlock("resource", []string{"google_compute_address", staticIPName})
 	eipBody := eip.Body()
@@ -131,7 +131,7 @@ func createCustomTokens(tokenName string) hclwrite.Tokens {
 }
 
 // SetupInstances adds google_compute_instance section in terraform state file where we configure all the necessary components of the desired GCE instance(s)
-func SetupInstances(rootBody *hclwrite.Body, networkName, sshPublicKey, ami, staticIPName, instanceName string, numNodes uint32, networkExists bool) {
+func SetupInstances(rootBody *hclwrite.Body, networkName, sshPublicKey, ami, staticIPName, instanceName string, numNodes int, networkExists bool) {
 	gcpInstance := rootBody.AppendNewBlock("resource", []string{"google_compute_instance", "gcp-node"})
 	gcpInstanceBody := gcpInstance.Body()
 	gcpInstanceBody.SetAttributeRaw("name", createCustomTokens(instanceName))

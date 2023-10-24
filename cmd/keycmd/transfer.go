@@ -324,7 +324,14 @@ func transferF(*cobra.Command, []string) error {
 	}
 
 	if send {
-		wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
+		wallet, err := primary.MakeWallet(
+			context.Background(),
+			&primary.WalletConfig{
+				URI:          apiEndpoint,
+				AVAXKeychain: kc,
+				EthKeychain:  secp256k1fx.NewKeychain(),
+			},
+		)
 		if err != nil {
 			return err
 		}
@@ -345,7 +352,14 @@ func transferF(*cobra.Command, []string) error {
 		}
 	} else {
 		if receiveRecoveryStep == 0 {
-			wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
+			wallet, err := primary.MakeWallet(
+				context.Background(),
+				&primary.WalletConfig{
+					URI:          apiEndpoint,
+					AVAXKeychain: kc,
+					EthKeychain:  secp256k1fx.NewKeychain(),
+				},
+			)
 			if err != nil {
 				ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
 				return err
@@ -362,7 +376,14 @@ func transferF(*cobra.Command, []string) error {
 			receiveRecoveryStep++
 		}
 		if receiveRecoveryStep == 1 {
-			wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
+			wallet, err := primary.MakeWallet(
+				context.Background(),
+				&primary.WalletConfig{
+					URI:          apiEndpoint,
+					AVAXKeychain: kc,
+					EthKeychain:  secp256k1fx.NewKeychain(),
+				},
+			)
 			if err != nil {
 				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("ERROR: restart from this step by using the same command with extra arguments: --%s %d", receiveRecoveryStepFlag, receiveRecoveryStep)))
 				return err
@@ -387,7 +408,14 @@ func transferF(*cobra.Command, []string) error {
 			receiveRecoveryStep++
 		}
 		if receiveRecoveryStep == 2 {
-			wallet, err := primary.NewWalletWithTxs(context.Background(), apiEndpoint, kc)
+			wallet, err := primary.MakeWallet(
+				context.Background(),
+				&primary.WalletConfig{
+					URI:          apiEndpoint,
+					AVAXKeychain: kc,
+					EthKeychain:  secp256k1fx.NewKeychain(),
+				},
+			)
 			if err != nil {
 				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("ERROR: restart from this step by using the same command with extra arguments: --%s %d", receiveRecoveryStepFlag, receiveRecoveryStep)))
 				return err

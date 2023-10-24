@@ -12,3 +12,8 @@ type NodeConfig struct {
 	ElasticIP     string // public IP address of the cloud server
 	CloudService  string // which cloud service node is hosted on (AWS / GCP)
 }
+
+type GCPConfig struct {
+	ProjectName        string // name of GCP Project
+	ServiceAccFilePath string // location of GCP service account key file path
+}

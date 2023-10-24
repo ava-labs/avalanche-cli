@@ -52,10 +52,12 @@ func list(_ *cobra.Command, _ []string) error {
 			return err
 		}
 		for _, clusterNode := range clusterNodes {
-			var hostName string
-			if strings.HasPrefix(clusterNode, "i-") {
-				hostName = fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, clusterNode)
-			} else {
+			nodeConfig, err := app.LoadClusterNodeConfig(clusterNode)
+			if err != nil {
+				return err
+			}
+			hostName := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, clusterNode)
+			if nodeConfig.CloudService == constants.GCPCloudService {
 				hostName = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, clusterNode)
 			}
 			ux.Logger.PrintToUser(fmt.Sprintf("  Node %q to connect: %s", clusterNode, utils.GetSSHConnectionString(ansibleHosts[hostName].IP, ansibleHosts[hostName].SSHPrivateKeyPath)))
