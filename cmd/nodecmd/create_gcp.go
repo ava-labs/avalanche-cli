@@ -143,7 +143,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	if numNodes < math.MaxInt {
+	if numNodes < math.MaxInt8 {
 		return nil, nil, "", "", err
 	}
 	ux.Logger.PrintToUser("Creating new VM instance(s) on Google Compute Engine...")
