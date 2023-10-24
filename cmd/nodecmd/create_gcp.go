@@ -134,7 +134,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if err := terraformgcp.SetCloudCredentials(rootBody, zone, credentialsPath, projectName); err != nil {
 		return nil, nil, "", "", err
 	}
-	numNodes, err := app.Prompt.CaptureUint32("How many nodes do you want to set up on GCP?")
+	numNodes, err := app.Prompt.CaptureInt("How many nodes do you want to set up on GCP?")
 	if err != nil {
 		return nil, nil, "", "", err
 	}
@@ -202,7 +202,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 		return nil, nil, "", "", err
 	}
 	instanceIDs := []string{}
-	for i := 0; i < int(numNodes); i++ {
+	for i := 0; i < numNodes; i++ {
 		instanceIDs = append(instanceIDs, fmt.Sprintf("%s-%s", nodeName, strconv.Itoa(i)))
 	}
 	ux.Logger.PrintToUser("New GCE instance(s) successfully created in Google Cloud Engine!")
