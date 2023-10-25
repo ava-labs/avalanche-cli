@@ -30,7 +30,7 @@ func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr b
 // Delimiter must be a single character
 func SplitKeyValueStringToMap(str string, delimiter string) (map[string]string, error) {
 	kvMap := make(map[string]string)
-	if str == "" || len(delimiter) == 0 {
+	if str == "" || len(delimiter) != 1 {
 		return kvMap, nil
 	}
 	entries := SplitStringWithQuotes(str, rune(delimiter[0]))

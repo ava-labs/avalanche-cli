@@ -845,7 +845,14 @@ func FundLedgerAddress(amount uint64) error {
 	}
 	var kc keychain.Keychain
 	kc = sk.KeyChain()
-	wallet, err := primary.NewWalletWithTxs(context.Background(), constants.LocalAPIEndpoint, kc)
+	wallet, err := primary.MakeWallet(
+		context.Background(),
+		&primary.WalletConfig{
+			URI:          constants.LocalAPIEndpoint,
+			AVAXKeychain: kc,
+			EthKeychain:  secp256k1fx.NewKeychain(),
+		},
+	)
 	if err != nil {
 		return err
 	}
@@ -872,7 +879,14 @@ func FundLedgerAddress(amount uint64) error {
 	if err != nil {
 		return err
 	}
-	wallet, err = primary.NewWalletWithTxs(context.Background(), constants.LocalAPIEndpoint, kc)
+	wallet, err = primary.MakeWallet(
+		context.Background(),
+		&primary.WalletConfig{
+			URI:          constants.LocalAPIEndpoint,
+			AVAXKeychain: kc,
+			EthKeychain:  secp256k1fx.NewKeychain(),
+		},
+	)
 	if err != nil {
 		return err
 	}

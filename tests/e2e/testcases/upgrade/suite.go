@@ -31,11 +31,11 @@ const (
 	subnetName       = "e2eSubnetTest"
 	secondSubnetName = "e2eSecondSubnetTest"
 
-	subnetEVMVersion1 = "v0.5.3"
-	subnetEVMVersion2 = "v0.5.5"
+	subnetEVMVersion1 = "v0.5.5"
+	subnetEVMVersion2 = "v0.5.6"
 
-	avagoRPC1Version = "v1.10.8"
-	avagoRPC2Version = "v1.10.9"
+	avagoRPC1Version = "v1.10.11"
+	avagoRPC2Version = "v1.10.12"
 
 	controlKeys = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 	keyName     = "ewoq"

@@ -30,24 +30,26 @@ var config []byte
 
 // CreateAnsibleHostInventory creates inventory file to be used for Ansible playbook commands
 // specifies the ip address of the cloud server and the corresponding ssh cert path for the cloud server
-// if publicIPs is empty, that means that user is not using elastic IP and we are using publicIPMap
-// to get the host IP
-func CreateAnsibleHostInventory(inventoryDirPath, certFilePath string, publicIPMap map[string]string) error {
+func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService string, publicIPMap map[string]string) error {
 	if err := os.MkdirAll(inventoryDirPath, os.ModePerm); err != nil {
 		return err
 	}
 	inventoryHostsFilePath := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
-	inventoryFile, err := os.Create(inventoryHostsFilePath)
+	inventoryFile, err := os.OpenFile(inventoryHostsFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
 	}
+	defer inventoryFile.Close()
 	for instanceID := range publicIPMap {
-		inventoryContent := fmt.Sprintf("%s%s", constants.AnsibleAWSNodePrefix, instanceID)
+		inventoryContent := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, instanceID)
+		if cloudService == constants.GCPCloudService {
+			inventoryContent = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, instanceID)
+		}
 		inventoryContent += " ansible_host="
 		inventoryContent += publicIPMap[instanceID]
 		inventoryContent += " ansible_user=ubuntu"
 		inventoryContent += fmt.Sprintf(" ansible_ssh_private_key_file=%s", certFilePath)
-		inventoryContent += fmt.Sprintf(" ansible_ssh_common_args='%s'", constants.AnsibleSSHParams)
+		inventoryContent += fmt.Sprintf(" ansible_ssh_common_args='%s'", constants.AnsibleSSHInventoryParams)
 		if _, err = inventoryFile.WriteString(inventoryContent + "\n"); err != nil {
 			return err
 		}
@@ -98,7 +100,6 @@ func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]models.Hos
 			SSHPrivateKeyPath: parsedHost["ansible_ssh_private_key_file"],
 			SSHCommonArgs:     parsedHost["ansible_ssh_common_args"],
 		}
-
 		inventory = append(inventory, host)
 	}
 	if err := scanner.Err(); err != nil {
@@ -155,8 +156,8 @@ func WriteCfgFile(ansibleDir string) error {
 // RunAnsiblePlaybookSetupNode installs avalanche go and avalanche-cli. It also copies the user's
 // metric preferences in configFilePath from local machine to cloud server
 // targets all hosts in ansible inventory file
-func RunAnsiblePlaybookSetupNode(configPath, ansibleDir, inventoryPath, avalancheGoVersion string) error {
-	playbookInputs := "configFilePath=" + configPath + " avalancheGoVersion=" + avalancheGoVersion
+func RunAnsiblePlaybookSetupNode(configPath, ansibleDir, inventoryPath, avalancheGoVersion, ansibleHostIDs string) error {
+	playbookInputs := "target=" + ansibleHostIDs + " configFilePath=" + configPath + " avalancheGoVersion=" + avalancheGoVersion
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
@@ -420,18 +421,16 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]
 	if err != nil {
 		return err
 	}
-	for node, ansibleHostContent := range inventory {
-		nodeID := ansibleHostContent.ConvertToNodeID(node)
+	for host, ansibleHostContent := range inventory {
+		// trim prefix aws_node / gcp_node
+		splitNodeName := strings.Split(host, "_")
+		nodeID := splitNodeName[len(splitNodeName)-1]
 		_, ok := nodesWoEIP[nodeID]
-		if !ok {
-			if _, err = inventoryFile.WriteString(node + " " + ansibleHostContent.GetAnsibleParams() + "\n"); err != nil {
-				return err
-			}
-		} else {
+		if ok {
 			ansibleHostContent.IP = nodesWoEIP[nodeID]
-			if _, err = inventoryFile.WriteString(node + " " + ansibleHostContent.GetAnsibleParams() + "\n"); err != nil {
-				return err
-			}
+		}
+		if _, err = inventoryFile.WriteString(host + " " + ansibleHostContent.GetAnsibleParams() + "\n"); err != nil {
+			return err
 		}
 	}
 	return nil
