@@ -33,7 +33,7 @@ func migrateConfig(_ *cobra.Command, args []string) error {
 	if !app.ConfigFileExists(oldConfigFilename) {
 		return fmt.Errorf("depricated configuration file %s does not exist", oldConfigFilename)
 	} else {
-		//load old config
+		// load old config
 		viper.SetConfigFile(oldConfigFilename)
 		if err := viper.MergeInConfig(); err != nil {
 			return err
@@ -42,7 +42,7 @@ func migrateConfig(_ *cobra.Command, args []string) error {
 		viper.SafeWriteConfig()
 		ux.Logger.PrintToUser("Configuration migrated to %s", viper.ConfigFileUsed())
 		ux.Logger.PrintToUser("Depricated configuration file %s removed", oldConfigFilename)
-		//remove old configuration file
+		// remove old configuration file
 		if err := os.Remove(oldConfigFilename); err != nil {
 			return fmt.Errorf("failed to remove depricated configuration file %s", oldConfigFilename)
 		}

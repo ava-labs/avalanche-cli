@@ -312,7 +312,7 @@ func initConfig() {
 		viper.AddConfigPath(fmt.Sprintf("%s/%s", home, constants.BaseDirName))
 		viper.SetConfigName(constants.DefaultConfigFileName)
 		viper.SetConfigType(constants.DefaultConfigFileType)
-		//migrate old config
+		// migrate old config
 		oldConfig := fmt.Sprintf("%s/%s.%s", home, constants.OldConfigFileName, constants.DefaultConfigFileType)
 		if app.ConfigFileExists(oldConfig) {
 			ux.Logger.PrintToUser("-----------------------------------------------------------------------")
