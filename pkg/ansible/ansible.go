@@ -426,11 +426,15 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]
 		splitNodeName := strings.Split(host, "_")
 		nodeID := splitNodeName[len(splitNodeName)-1]
 		_, ok := nodesWoEIP[nodeID]
-		if ok {
+		if !ok {
+			if _, err = inventoryFile.WriteString(ansibleHostContent.GetAnsibleInventoryRecord() + "\n"); err != nil {
+				return err
+			}
+		} else {
 			ansibleHostContent.IP = nodesWoEIP[nodeID]
-		}
-		if _, err = inventoryFile.WriteString(host + " " + ansibleHostContent.GetAnsibleParams() + "\n"); err != nil {
-			return err
+			if _, err = inventoryFile.WriteString(ansibleHostContent.GetAnsibleInventoryRecord() + "\n"); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
