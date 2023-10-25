@@ -38,7 +38,7 @@ var (
 	deployMainnet                bool
 	keyName                      string
 	useLedger                    bool
-	useEIP                       bool
+	useStaticIP                  bool
 	ledgerAddresses              []string
 	weight                       uint64
 	startTimeStr                 string

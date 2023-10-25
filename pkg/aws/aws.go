@@ -9,6 +9,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -124,8 +127,8 @@ func GetInstancePublicIPs(ec2Svc *ec2.EC2, nodeIDs []string) (map[string]string,
 	return instanceIDToIP, nil
 }
 
-// CheckInstanceIsRunning checks that EC2 instance nodeID is running in AWS
-func CheckInstanceIsRunning(ec2Svc *ec2.EC2, nodeID string) (bool, error) {
+// checkInstanceIsRunning checks that EC2 instance nodeID is running in AWS
+func checkInstanceIsRunning(ec2Svc *ec2.EC2, nodeID string) (bool, error) {
 	instanceInput := &ec2.DescribeInstancesInput{
 		InstanceIds: []*string{
 			aws.String(nodeID),
@@ -148,6 +151,20 @@ func CheckInstanceIsRunning(ec2Svc *ec2.EC2, nodeID string) (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+func StopAWSNode(ec2Svc *ec2.EC2, nodeConfig models.NodeConfig, clusterName string) error {
+	isRunning, err := checkInstanceIsRunning(ec2Svc, nodeConfig.NodeID)
+	if err != nil {
+		ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", nodeConfig.NodeID, err.Error()))
+		return err
+	}
+	if !isRunning {
+		noRunningNodeErr := fmt.Errorf("no running node with instance id %s is found in cluster %s", nodeConfig.NodeID, clusterName)
+		return noRunningNodeErr
+	}
+	ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
+	return StopInstance(ec2Svc, nodeConfig.NodeID, nodeConfig.ElasticIP, true)
 }
 
 func StopInstance(ec2Svc *ec2.EC2, instanceID, publicIP string, releasePublicIP bool) error {

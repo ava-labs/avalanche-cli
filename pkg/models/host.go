@@ -5,8 +5,6 @@ package models
 import (
 	"fmt"
 	"strings"
-
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
 type Host struct {
@@ -17,21 +15,7 @@ type Host struct {
 	SSHCommonArgs     string
 }
 
-func (h Host) GetNodeID() string {
-	return strings.TrimPrefix(h.NodeID, constants.AnsibleAWSNodePrefix)
-}
-
-func (h Host) ConvertToNodeID(nodeName string) string {
-	h = Host{
-		NodeID:            nodeName,
-		SSHUser:           "ubuntu",
-		SSHPrivateKeyPath: "",
-		SSHCommonArgs:     "",
-	}
-	return h.GetNodeID()
-}
-
-func (h Host) GetAnsibleInventoryRecord() string {
+func (h Host) GetAnsibleParams() string {
 	return strings.Join([]string{
 		h.NodeID,
 		fmt.Sprintf("ansible_host=%s", h.IP),
