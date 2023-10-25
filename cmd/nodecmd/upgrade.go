@@ -4,7 +4,6 @@ package nodecmd
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -29,7 +28,7 @@ func newUpgradeCmd() *cobra.Command {
 The node update command suite provides a collection of commands for nodes to update
 their avalanchego or VM version.
 
-You can check the status after update by calling avalanche node status`,
+You can check the status after upgrade by calling avalanche node status`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
 		RunE:         upgrade,
@@ -47,24 +46,18 @@ func upgrade(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("toUpgradeNodes %s \n", toUpgradeNodes)
 	for node, toUpgrade := range toUpgradeNodes {
-		fmt.Printf("current node %s \n", node)
 		// toUpgradeNodes either has value of avalancheGo or subnetEvm or avalancheGo,subnetEvm
 		toUpgradeItems := strings.Split(toUpgrade, ",")
-		fmt.Printf("toUpgradeItems %s \n", toUpgradeItems)
 		for _, toUpGradeItem := range toUpgradeItems {
-			fmt.Printf("toUpGradeItem %s \n", toUpGradeItem)
 			// toUpGradeItem either has value format of avalancheGo=<versionNum> or subnetEvm=<versionNum>
 			upgradeInfo := strings.Split(toUpGradeItem, "=")
-			fmt.Printf("upgradeInfo %s \n", upgradeInfo)
 			if strings.Contains(toUpGradeItem, constants.AvalancheGoRepoName) {
 				if err = upgradeAvalancheGo(clusterName, node, upgradeInfo[1]); err != nil {
 					return err
 				}
-				fmt.Printf("upgrade avalanche go %s \n", upgradeInfo[1])
 			} else if strings.Contains(toUpGradeItem, constants.SubnetEVMRepoName) {
-				// subnetEVM version has value format of n8Anw9kErmgk7KHviddYtecCmziLZTphDwfL1V2DfnFjWZXbE:<versionNum> or subnetEvm=<versionNum>
+				// subnetEVM version has value format of n8Anw9kErmgk7KHviddYtecCmziLZTphDwfL1V2DfnFjWZXbE:<versionNum>
 				subnetEVMVersionInfo := strings.Split(upgradeInfo[1], ":")
 				subnetEMVersionToUpgradeTo := subnetEVMVersionInfo[1]
 				subnetEMVersionToUpgradeToWoPrefix := strings.TrimPrefix(subnetEMVersionToUpgradeTo, "v")
@@ -74,33 +67,18 @@ func upgrade(_ *cobra.Command, args []string) error {
 				if err = upgradeSubnetEVM(clusterName, subnetEVMReleaseURL, subnetEVMArchive, subnetEVMBinaryPath, node, subnetEMVersionToUpgradeTo); err != nil {
 					return err
 				}
-				fmt.Printf("upgrade subnet evm %s \n", subnetEVMVersionInfo[1])
 			}
 		}
 	}
 	return nil
 }
 
-func upgradeAvalancheGo(clusterName, ansibleNodeID, avaGoVersionToUpdateTo string) error {
-	ux.Logger.PrintToUser("Upgrading Avalanche Go version of node %s to version %s ...", ansibleNodeID, avaGoVersionToUpdateTo)
-	if err := ansible.RunAnsiblePlaybookUpgradeAvalancheGo(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("Successfully upgraded Avalanche Go version of node %s!", ansibleNodeID)
-	ux.Logger.PrintToUser("======================================")
-	return nil
-}
-
-func upgradeSubnetEVM(clusterName, subnetEVMReleaseURL, subnetEVMArchive, subnetEVMBinaryPath, ansibleNodeID, subnetEVMVersion string) error {
-	ux.Logger.PrintToUser("Upgrading SubnetEVM version of node %s to version %s ...", ansibleNodeID, subnetEVMVersion)
-	if err := ansible.RunAnsiblePlaybookUpgradeSubnetEVM(app.GetAnsibleDir(), subnetEVMReleaseURL, subnetEVMArchive, subnetEVMBinaryPath, app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("Successfully upgraded SubnetEVM version of node %s!", ansibleNodeID)
-	ux.Logger.PrintToUser("======================================")
-	return nil
-}
-
+// getNodesToBeUpgraded gets the node versions of all nodes in cluster clusterName and checks which
+// nodes needs to have Avalanche Go & SubnetEVM upgraded. It first checks the subnet EVM version -
+// it will install the newest subnet EVM version and install the latest avalanche Go that is still compatible with the Subnet EVM version
+// if the node is not tracking any subnet, it will just install latestAvagoVersion
+// sample return result map[aws_node_i-006e0fbf1df7e2198:avalanchego=v1.10.13,subnet-evm=n8Anw9kErmgk7KHuuxRag42nR4xhhBeePH2MkwSxfGNPiaCJs:v0.5.7
+// aws_node_i-06af8a2ebbeb1bf01:avalanchego=v1.10.13,subnet-evm=n8Anw9kErmgk7KHuuxRag42nR4xhhBeePH2MkwSxfGNPiaCJs:v0.5.7]
 func getNodesToBeUpgraded(clusterName string) (map[string]string, error) {
 	latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 		constants.AvaLabsOrg,
@@ -109,7 +87,6 @@ func getNodesToBeUpgraded(clusterName string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("latest avalanchego version %s \n", latestAvagoVersion)
 	latestSubnetEVMVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 		constants.AvaLabsOrg,
 		constants.SubnetEVMRepoName,
@@ -117,12 +94,10 @@ func getNodesToBeUpgraded(clusterName string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("latestSubnetEVMVersion version %s \n", latestSubnetEVMVersion)
 	rpcVersion, err := vm.GetRPCProtocolVersion(app, models.SubnetEvm, latestSubnetEVMVersion)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("rpcVersion version %s \n", rpcVersion)
 	ansibleNodeIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return nil, err
@@ -147,9 +122,7 @@ func getNodesToBeUpgraded(clusterName string) (map[string]string, error) {
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
-		fmt.Printf("obtianed vmVersions %s \n", vmVersions)
 		currentAvalancheGoVersion := vmVersions[constants.PlatformKeyName]
-		fmt.Printf("obtianed currentAvalancheGoVersion %s \n", currentAvalancheGoVersion)
 		var avalancheGoVersionToUpdateTo string
 		var subnetEVMVersionToUpdateTo string
 		for vmName, vmVersion := range vmVersions {
@@ -157,9 +130,7 @@ func getNodesToBeUpgraded(clusterName string) (map[string]string, error) {
 			// "vmVersions":{"avm":"v1.10.12","evm":"v0.12.5","n8Anw9kErmgk7KHviddYtecCmziLZTphDwfL1V2DfnFjWZXbE":"v0.5.6","platform":"v1.10.12"}},
 			// we need to get the VM ID of the subnets that the node is currently validating, in the example above it is n8Anw9kErmgk7KHviddYtecCmziLZTphDwfL1V2DfnFjWZXbE
 			if vmName != constants.PlatformKeyName && vmName != constants.EVMKeyName && vmName != constants.AVMKeyName {
-				fmt.Printf("vmName %s \n", vmName)
 				if vmVersion != latestSubnetEVMVersion {
-					fmt.Printf("not equal to latestSubnetEVMVersion %s, %s \n", vmVersion, latestSubnetEVMVersion)
 					// update subnet EVM version
 					ux.Logger.PrintToUser("Upgrading Subnet EVM version for node %s from version %s to version %s", host, vmVersion, latestSubnetEVMVersion)
 					subnetEVMVersionToUpdateTo = fmt.Sprintf("%s:%s", vmName, latestSubnetEVMVersion)
@@ -178,9 +149,11 @@ func getNodesToBeUpgraded(clusterName string) (map[string]string, error) {
 		}
 		if currentAvalancheGoVersion != avalancheGoVersionToUpdateTo {
 			// if node is currently not tracking any subnet, we will just update node to the latest avalanche go version
-			if avalancheGoVersionToUpdateTo == "" {
+			if avalancheGoVersionToUpdateTo == "" && currentAvalancheGoVersion != latestAvagoVersion {
+				ux.Logger.PrintToUser("Upgrading Avalanche Go version for node %s from version %s to version %s", host, currentAvalancheGoVersion, latestAvagoVersion)
 				nodesToUpgrade[host] = constants.AvalancheGoRepoName + "=" + latestAvagoVersion
 			} else {
+				ux.Logger.PrintToUser("Upgrading Avalanche Go version for node %s from version %s to version %s", host, currentAvalancheGoVersion, avalancheGoVersionToUpdateTo)
 				nodesToUpgrade[host] = constants.AvalancheGoRepoName + "=" + avalancheGoVersionToUpdateTo
 			}
 		}
@@ -201,22 +174,31 @@ func getNodesToBeUpgraded(clusterName string) (map[string]string, error) {
 		for i, node := range failedNodes {
 			ux.Logger.PrintToUser("node %s failed due to %s", node, nodeErrors[i])
 		}
-		return nil, fmt.Errorf("node(s) %s failed to validate subnet %s", failedNodes, subnetName)
+		return nil, fmt.Errorf("failed to upgrade node(s) %s", failedNodes)
 	} else {
-		ux.Logger.PrintToUser("All nodes in cluster %s are successfully added as Subnet validators!", clusterName)
+		ux.Logger.PrintToUser("All nodes in cluster %s are successfully upgraded!", clusterName)
 	}
 	return nodesToUpgrade, nil
 }
 
-func checkIfAvaGoSubnetEVMCompatible(avalancheGoVersion string, rpcVersion int) (bool, error) {
-	compatibleVersions, err := checkForCompatibleAvagoVersion(rpcVersion)
-	if err != nil {
-		return false, err
+func upgradeAvalancheGo(clusterName, ansibleNodeID, avaGoVersionToUpdateTo string) error {
+	ux.Logger.PrintToUser("Upgrading Avalanche Go version of node %s to version %s ...", ansibleNodeID, avaGoVersionToUpdateTo)
+	if err := ansible.RunAnsiblePlaybookUpgradeAvalancheGo(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
+		return err
 	}
-	if !slices.Contains(compatibleVersions, avalancheGoVersion) {
-		return false, errors.New("incompatible avalancheGoVersion")
+	ux.Logger.PrintToUser("Successfully upgraded Avalanche Go version of node %s!", ansibleNodeID)
+	ux.Logger.PrintToUser("======================================")
+	return nil
+}
+
+func upgradeSubnetEVM(clusterName, subnetEVMReleaseURL, subnetEVMArchive, subnetEVMBinaryPath, ansibleNodeID, subnetEVMVersion string) error {
+	ux.Logger.PrintToUser("Upgrading SubnetEVM version of node %s to version %s ...", ansibleNodeID, subnetEVMVersion)
+	if err := ansible.RunAnsiblePlaybookUpgradeSubnetEVM(app.GetAnsibleDir(), subnetEVMReleaseURL, subnetEVMArchive, subnetEVMBinaryPath, app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
+		return err
 	}
-	return true, nil
+	ux.Logger.PrintToUser("Successfully upgraded SubnetEVM version of node %s!", ansibleNodeID)
+	ux.Logger.PrintToUser("======================================")
+	return nil
 }
 
 func parseNodeVersionOutput(fileName string) (map[string]interface{}, error) {
@@ -237,7 +219,6 @@ func parseNodeVersionOutput(fileName string) (map[string]interface{}, error) {
 		if ok {
 			return vmVersions, nil
 		} else {
-			fmt.Printf("not ok ")
 		}
 	}
 	return nil, nil
