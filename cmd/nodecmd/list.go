@@ -51,8 +51,15 @@ func list(_ *cobra.Command, _ []string) error {
 			return err
 		}
 		for _, clusterNode := range clusterNodes {
-			hostID := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, clusterNode)
-			ux.Logger.PrintToUser(fmt.Sprintf("  Node %q to connect: %s", clusterNode, utils.GetSSHConnectionString(ansibleHosts[hostID].IP, ansibleHosts[hostID].SSHPrivateKeyPath)))
+			nodeConfig, err := app.LoadClusterNodeConfig(clusterNode)
+			if err != nil {
+				return err
+			}
+			hostName := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, clusterNode)
+			if nodeConfig.CloudService == constants.GCPCloudService {
+				hostName = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, clusterNode)
+			}
+			ux.Logger.PrintToUser(fmt.Sprintf("  Node %q to connect: %s", clusterNode, utils.GetSSHConnectionString(ansibleHosts[hostName].IP, ansibleHosts[hostName].SSHPrivateKeyPath)))
 		}
 	}
 	return nil

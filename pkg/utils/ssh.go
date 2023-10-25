@@ -9,5 +9,5 @@ import (
 )
 
 func GetSSHConnectionString(publicIP, certFilePath string) string {
-	return fmt.Sprintf("ssh %s %s@%s -i %s", constants.AnsibleSSHParams, constants.AnsibleSSHUser, publicIP, certFilePath)
+	return fmt.Sprintf("ssh %s %s@%s -i %s", constants.AnsibleSSHShellParams, constants.AnsibleSSHUser, publicIP, certFilePath)
 }

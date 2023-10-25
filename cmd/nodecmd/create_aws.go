@@ -123,7 +123,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	if err := terraformaws.SetCloudCredentials(rootBody, region); err != nil {
 		return nil, nil, "", "", err
 	}
-	numNodes, err := app.Prompt.CaptureUint32("How many nodes do you want to set up on AWS?")
+	numNodes, err := app.Prompt.CaptureInt("How many nodes do you want to set up on AWS?")
 	if err != nil {
 		return nil, nil, "", "", err
 	}
