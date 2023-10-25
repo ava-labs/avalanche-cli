@@ -11,6 +11,3 @@
       shell: cp subnet-evm "{{ subnetEVMBinaryPath }}"
     - name: stop start - start avalanchego
       shell: sudo systemctl start avalanchego
-
-
-
