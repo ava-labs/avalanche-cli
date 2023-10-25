@@ -55,9 +55,11 @@ func PrintMetricsOptOutPrompt() {
 		"You can also read our privacy statement <https://www.avalabs.org/privacy-policy> to learn more.\n")
 }
 
-func saveMetricsConfig(app *application.Avalanche, metricsEnabled bool) {
+func saveMetricsConfig(metricsEnabled bool) {
 	viper.Set(constants.MetricsEnabled, metricsEnabled)
-	viper.WriteConfig()
+	if err := viper.SafeWriteConfig(); err != nil {
+		ux.Logger.PrintToUser("Error saving metrics config: " + err.Error())
+	}
 }
 
 func HandleUserMetricsPreference(app *application.Avalanche) error {
@@ -72,16 +74,16 @@ func HandleUserMetricsPreference(app *application.Avalanche) error {
 	} else {
 		ux.Logger.PrintToUser("Thank you for opting in Avalanche CLI usage metrics collection")
 	}
-	saveMetricsConfig(app, yes)
+	saveMetricsConfig(yes)
 	return nil
 }
 
-func userIsOptedIn(app *application.Avalanche) bool {
+func userIsOptedIn() bool {
 	return viper.GetBool(constants.MetricsEnabled)
 }
 
-func HandleTracking(cmd *cobra.Command, app *application.Avalanche, flags map[string]string) {
-	if userIsOptedIn(app) {
+func HandleTracking(cmd *cobra.Command, flags map[string]string) {
+	if userIsOptedIn() {
 		if !cmd.HasSubCommands() && checkCommandIsNotCompletion(cmd) {
 			TrackMetrics(cmd, flags)
 		}

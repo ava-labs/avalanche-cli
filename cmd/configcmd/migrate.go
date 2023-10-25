@@ -26,7 +26,7 @@ func newMigrateCmd() *cobra.Command {
 	return cmd
 }
 
-func migrateConfig(_ *cobra.Command, args []string) error {
+func migrateConfig(_ *cobra.Command, _ []string) error {
 	home, err := os.UserHomeDir()
 	cobra.CheckErr(err)
 	oldConfigFilename := fmt.Sprintf("%s/%s.%s", home, constants.OldConfigFileName, constants.DefaultConfigFileType)
@@ -39,7 +39,9 @@ func migrateConfig(_ *cobra.Command, args []string) error {
 			return err
 		}
 		viper.SetConfigFile(fmt.Sprintf("%s/%s/%s", home, constants.BaseDirName, constants.DefaultConfigFileName))
-		viper.SafeWriteConfig()
+		if err := viper.SafeWriteConfig(); err != nil {
+			return err
+		}
 		ux.Logger.PrintToUser("Configuration migrated to %s", viper.ConfigFileUsed())
 		ux.Logger.PrintToUser("Depricated configuration file %s removed", oldConfigFilename)
 		// remove old configuration file

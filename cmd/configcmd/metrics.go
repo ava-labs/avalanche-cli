@@ -47,6 +47,6 @@ func handleMetricsSettings(_ *cobra.Command, args []string) error {
 
 func saveMetricsPreferences(enableMetrics bool) error {
 	viper.Set(constants.MetricsEnabled, enableMetrics)
-	viper.SafeWriteConfig()
-	return nil
+	err := viper.SafeWriteConfig()
+	return err
 }

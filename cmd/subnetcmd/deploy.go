@@ -368,7 +368,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 		flags := make(map[string]string)
 		flags[constants.Network] = network.String()
-		utilspkg.HandleTracking(cmd, app, flags)
+		utilspkg.HandleTracking(cmd, flags)
 		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
 
 	case models.Fuji:
@@ -532,7 +532,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	flags := make(map[string]string)
 	flags[constants.Network] = network.String()
-	utilspkg.HandleTracking(cmd, app, flags)
+	utilspkg.HandleTracking(cmd, flags)
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?

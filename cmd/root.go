@@ -204,7 +204,7 @@ func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
 }
 
 func handleTracking(cmd *cobra.Command, _ []string) {
-	utils.HandleTracking(cmd, app, nil)
+	utils.HandleTracking(cmd, nil)
 }
 
 func setupEnv() (string, error) {
@@ -322,7 +322,6 @@ func initConfig() {
 		} else {
 			return
 		}
-
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
