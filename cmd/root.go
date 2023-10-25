@@ -317,10 +317,8 @@ func initConfig() {
 		if app.ConfigFileExists(oldConfig) {
 			ux.Logger.PrintToUser("-----------------------------------------------------------------------")
 			ux.Logger.PrintToUser("WARNING: Depricated configuration file was found in %s", oldConfig)
-			ux.Logger.PrintToUser("Please run avalanche config migrate to migrate it to new default location %s", constants.DefaultConfigFileName)
+			ux.Logger.PrintToUser("Please run `avalanche config migrate` to migrate it to new default location %s", constants.DefaultConfigFileName)
 			ux.Logger.PrintToUser("-----------------------------------------------------------------------")
-		} else {
-			return
 		}
 	}
 
