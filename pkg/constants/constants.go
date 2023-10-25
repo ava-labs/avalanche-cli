@@ -126,9 +126,11 @@ const (
 	AnsibleSSHUser                        = "ubuntu"
 	AnsibleAWSNodePrefix                  = "aws_node_"
 	CloudCLIBranch                        = "custom-vms-cloud-10"
-	DefaultConfigFileName                 = ".avalanche-cli"
+	OldConfigFileName                     = ".avalanche-cli"
+	DefaultConfigFileName                 = "config"
 	DefaultConfigFileType                 = "json"
 	WriteReadReadPerms                    = 0o644
+	MetricsEnabled                        = "MetricsEnabled"
 
 	CustomVMDir = "vms"
 

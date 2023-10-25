@@ -5,7 +5,6 @@ package utils
 import (
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/user"
@@ -13,7 +12,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 
@@ -21,6 +20,7 @@ import (
 
 	"github.com/posthog/posthog-go"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // telemetryToken value is set at build and install scripts using ldflags
@@ -56,9 +56,8 @@ func PrintMetricsOptOutPrompt() {
 }
 
 func saveMetricsConfig(app *application.Avalanche, metricsEnabled bool) {
-	config := models.Config{MetricsEnabled: metricsEnabled}
-	jsonBytes, _ := json.Marshal(&config)
-	_ = app.WriteConfigFile(jsonBytes, "")
+	viper.Set(constants.MetricsEnabled, metricsEnabled)
+	viper.WriteConfig()
 }
 
 func HandleUserMetricsPreference(app *application.Avalanche) error {
@@ -78,12 +77,7 @@ func HandleUserMetricsPreference(app *application.Avalanche) error {
 }
 
 func userIsOptedIn(app *application.Avalanche) bool {
-	// if config file is not found or unable to be read, will return false (user is not opted in)
-	config, err := app.LoadConfig("")
-	if err != nil {
-		return false
-	}
-	return config.MetricsEnabled
+	return viper.GetBool(constants.MetricsEnabled)
 }
 
 func HandleTracking(cmd *cobra.Command, app *application.Avalanche, flags map[string]string) {

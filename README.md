@@ -66,7 +66,7 @@ avalanche network start
 
 ## Modifying your Subnet Deployment
 
-You can provide a global node config to edit the way your local avalanchego nodes perform under the hood. To provide such a config, you need to create an avalanche-cli config file. By default, a config file is read in from $HOME/.avalanche-cli.json. If none exists, no error will occur. To provide a config from a custom location, run any command with the flag `--config <pathToConfig>`.
+You can provide a global node config to edit the way your local avalanchego nodes perform under the hood. To provide such a config, you need to create an avalanche-cli config file. By default, a config file is read in from $HOME/.avalanche-cli/config. If none exists, no error will occur. To provide a config from a custom location, run any command with the flag `--config <pathToConfig>`.
 
 To specify the global node config, provide it as a body for the `node-config` key. Ex:
 

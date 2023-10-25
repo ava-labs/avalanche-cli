@@ -26,9 +26,6 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	app = injectedApp
 	// set user metrics collection preferences cmd
 	cmd.AddCommand(newMetricsCmd())
-	// export config to the file
-	cmd.AddCommand(newExportCmd())
-	// import config from the file
-	cmd.AddCommand(newImportCmd())
+	cmd.AddCommand(newMigrateCmd())
 	return cmd
 }

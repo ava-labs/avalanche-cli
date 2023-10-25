@@ -4,7 +4,6 @@ package application
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -601,24 +600,6 @@ func (*Avalanche) writeFile(path string, bytes []byte) error {
 	}
 
 	return os.WriteFile(path, bytes, constants.WriteReadReadPerms)
-}
-
-func (app *Avalanche) LoadConfig(path string) (models.Config, error) {
-	configPath := app.GetConfigPath()
-	if path != "" {
-		configPath = path
-	}
-	if !app.ConfigFileExists(configPath) {
-		return models.Config{}, errors.New("config file does not exists")
-	}
-	jsonBytes, err := os.ReadFile(configPath)
-	if err != nil {
-		return models.Config{}, err
-	}
-
-	var config models.Config
-	err = json.Unmarshal(jsonBytes, &config)
-	return config, err
 }
 
 func (app *Avalanche) ConfigFileExists(path string) bool {

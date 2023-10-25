@@ -3,13 +3,12 @@
 package configcmd
 
 import (
-	"encoding/json"
 	"errors"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // avalanche transaction sign
@@ -47,14 +46,7 @@ func handleMetricsSettings(_ *cobra.Command, args []string) error {
 }
 
 func saveMetricsPreferences(enableMetrics bool) error {
-	config := models.Config{
-		MetricsEnabled: enableMetrics,
-	}
-
-	jsonBytes, err := json.Marshal(&config)
-	if err != nil {
-		return err
-	}
-
-	return app.WriteConfigFile(jsonBytes, "")
+	viper.Set(constants.MetricsEnabled, enableMetrics)
+	viper.SafeWriteConfig()
+	return nil
 }

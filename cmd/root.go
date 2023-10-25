@@ -65,7 +65,7 @@ in with avalanche subnet create myNewSubnet.`,
 	// Disable printing the completion command
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.avalanche-cli.json)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.avalanche-cli/config)")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "ERROR", "log level for the application")
 	rootCmd.PersistentFlags().BoolVar(&skipCheck, constants.SkipUpdateFlag, false, "skip check for new versions")
 
@@ -309,9 +309,20 @@ func initConfig() {
 		// Search for default config.
 		home, err := os.UserHomeDir()
 		cobra.CheckErr(err)
-		viper.AddConfigPath(home)
-		viper.SetConfigType(constants.DefaultConfigFileType)
+		viper.AddConfigPath(fmt.Sprintf("%s/%s", home, constants.BaseDirName))
 		viper.SetConfigName(constants.DefaultConfigFileName)
+		viper.SetConfigType(constants.DefaultConfigFileType)
+		//migrate old config
+		oldConfig := fmt.Sprintf("%s/%s.%s", home, constants.OldConfigFileName, constants.DefaultConfigFileType)
+		if app.ConfigFileExists(oldConfig) {
+			ux.Logger.PrintToUser("-----------------------------------------------------------------------")
+			ux.Logger.PrintToUser("WARNING: Depricated configuration file was found in %s", oldConfig)
+			ux.Logger.PrintToUser("Please run avalanche config migrate to migrate it to new default location %s", constants.DefaultConfigFileName)
+			ux.Logger.PrintToUser("-----------------------------------------------------------------------")
+		} else {
+			return
+		}
+
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match
