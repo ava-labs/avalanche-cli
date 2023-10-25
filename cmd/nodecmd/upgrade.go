@@ -6,6 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"strings"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -14,9 +18,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
-	"io"
-	"os"
-	"strings"
 )
 
 func newUpgradeCmd() *cobra.Command {
@@ -88,7 +89,6 @@ func upgradeAvalancheGo(clusterName, ansibleNodeID, avaGoVersionToUpdateTo strin
 	ux.Logger.PrintToUser("Successfully upgraded Avalanche Go version of node %s!", ansibleNodeID)
 	ux.Logger.PrintToUser("======================================")
 	return nil
-
 }
 
 func upgradeSubnetEVM(clusterName, subnetEVMReleaseURL, subnetEVMArchive, subnetEVMBinaryPath, ansibleNodeID, subnetEVMVersion string) error {
