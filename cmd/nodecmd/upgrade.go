@@ -218,7 +218,6 @@ func parseNodeVersionOutput(fileName string) (map[string]interface{}, error) {
 		vmVersions, ok := nodeIDInterface["vmVersions"].(map[string]interface{})
 		if ok {
 			return vmVersions, nil
-		} else {
 		}
 	}
 	return nil, nil
