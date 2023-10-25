@@ -161,34 +161,20 @@ func getNodesToBeUpgraded(clusterName string) (map[string]string, error) {
 				if vmVersion != latestSubnetEVMVersion {
 					fmt.Printf("not equal to latestSubnetEVMVersion %s, %s \n", vmVersion, latestSubnetEVMVersion)
 					// update subnet EVM version
-					ux.Logger.PrintToUser("Upgrading Subnet EVM version for node %s from version to version %s", host, vmVersion, latestSubnetEVMVersion)
-					// check if highest avalanche go version compatible with current highest rpc,
-					isCompatible, err := checkIfAvaGoSubnetEVMCompatible(latestAvagoVersion, rpcVersion)
-					if err != nil {
-						failedNodes = append(failedNodes, host)
-						nodeErrors = append(nodeErrors, err)
-					}
-					avalancheGoVersionToUpdateTo = latestAvagoVersion
+					ux.Logger.PrintToUser("Upgrading Subnet EVM version for node %s from version %s to version %s", host, vmVersion, latestSubnetEVMVersion)
 					subnetEVMVersionToUpdateTo = fmt.Sprintf("%s:%s", vmName, latestSubnetEVMVersion)
-					if !isCompatible {
-						// if highest avalanche go version not compatible with current highest rpc,
-						// find the highest version of avalanche go that is still compatible with current highest rpc
-						avalancheGoVersionToUpdateTo, err = GetLatestAvagoVersionForRPC(rpcVersion)
-						if err != nil {
-							failedNodes = append(failedNodes, host)
-							nodeErrors = append(nodeErrors, err)
-						}
-					}
-				} else {
-					// if we are not updating subnet evm version, just update avalanche go to the latest version
-					// that is still compatible with current rpc version
-					avalancheGoVersionToUpdateTo, err = GetLatestAvagoVersionForRPC(rpcVersion)
-					if err != nil {
-						failedNodes = append(failedNodes, host)
-						nodeErrors = append(nodeErrors, err)
-					}
+				}
+				// find the highest version of avalanche go that is still compatible with current highest rpc
+				avalancheGoVersionToUpdateTo, err = GetLatestAvagoVersionForRPC(rpcVersion)
+				if err != nil {
+					failedNodes = append(failedNodes, host)
+					nodeErrors = append(nodeErrors, err)
+					continue
 				}
 			}
+		}
+		if slices.Contains(failedNodes, host) {
+			continue
 		}
 		if currentAvalancheGoVersion != avalancheGoVersionToUpdateTo {
 			// if node is currently not tracking any subnet, we will just update node to the latest avalanche go version

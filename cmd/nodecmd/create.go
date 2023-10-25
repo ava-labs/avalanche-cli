@@ -323,7 +323,7 @@ func getAvalancheGoVersion() (string, error) {
 	}
 	if chosenOption != "latest" {
 		if chosenOption == "custom" {
-			customVersion, err := app.Prompt.CaptureString("Which version of AvalancheGo would you like to install?")
+			customVersion, err := app.Prompt.CaptureString("Which version of AvalancheGo would you like to install? (Use format v1.10.13)")
 			if err != nil {
 				return "", err
 			}
