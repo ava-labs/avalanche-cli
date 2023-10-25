@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -195,7 +196,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	}
 	instanceIDs, elasticIPs, err := terraformaws.RunTerraform(app.GetTerraformDir(), useStaticIP)
 	if err != nil {
-		return nil, nil, "", "", err
+		return nil, nil, "", "", fmt.Errorf("%s, %w", constants.ErrCreatingAWSNode, err)
 	}
 	ux.Logger.PrintToUser("New EC2 instance(s) successfully created in AWS!")
 	if !useExistingKeyPair {
@@ -229,30 +230,33 @@ func createAWSInstance(ec2Svc *ec2.EC2, region, ami string, usr *user.User) (Clo
 		} else {
 			ux.Logger.PrintToUser("Failed to create AWS cloud server")
 		}
-		// we stop created instances so that user doesn't pay for unused EC2 instances
-		instanceIDs, instanceIDErr := terraformaws.GetInstanceIDs(app.GetTerraformDir())
-		if instanceIDErr != nil {
-			return CloudConfig{}, instanceIDErr
-		}
-		failedNodes := []string{}
-		nodeErrors := []error{}
-		for _, instanceID := range instanceIDs {
-			ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s...", instanceID))
-			if stopErr := awsAPI.StopInstance(ec2Svc, instanceID, "", false); stopErr != nil {
-				failedNodes = append(failedNodes, instanceID)
-				nodeErrors = append(nodeErrors, stopErr)
+		if strings.Contains(err.Error(), constants.ErrCreatingAWSNode) {
+			// we stop created instances so that user doesn't pay for unused EC2 instances
+			ux.Logger.PrintToUser("Stopping all created AWS instances due to error to prevent charge for unused AWS instances...")
+			instanceIDs, instanceIDErr := terraformaws.GetInstanceIDs(app.GetTerraformDir())
+			if instanceIDErr != nil {
+				return CloudConfig{}, instanceIDErr
 			}
-			ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s stopped", instanceID))
-		}
-		if len(failedNodes) > 0 {
-			ux.Logger.PrintToUser("Failed nodes: ")
-			for i, node := range failedNodes {
-				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
+			failedNodes := []string{}
+			nodeErrors := []error{}
+			for _, instanceID := range instanceIDs {
+				ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s...", instanceID))
+				if stopErr := awsAPI.StopInstance(ec2Svc, instanceID, "", false); stopErr != nil {
+					failedNodes = append(failedNodes, instanceID)
+					nodeErrors = append(nodeErrors, stopErr)
+				}
+				ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s stopped", instanceID))
 			}
-			ux.Logger.PrintToUser("Stop the above instance(s) on AWS console to prevent charges")
-			return CloudConfig{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)
+			if len(failedNodes) > 0 {
+				ux.Logger.PrintToUser("Failed nodes: ")
+				for i, node := range failedNodes {
+					ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
+				}
+				ux.Logger.PrintToUser("Stop the above instance(s) on AWS console to prevent charges")
+				return CloudConfig{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)
+			}
 		}
-		return CloudConfig{}, nil
+		return CloudConfig{}, err
 	}
 	awsCloudConfig := CloudConfig{
 		instanceIDs,
