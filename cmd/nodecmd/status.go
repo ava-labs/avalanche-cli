@@ -140,7 +140,7 @@ func printOutput(hostAliases []string, avagoVersions map[string]string, notBoots
 	for _, host := range hostAliases {
 		boostrappedStatus := logging.Green.Wrap("OK")
 		if slices.Contains(notBootstrappedHosts, host) {
-			boostrappedStatus = logging.Red.Wrap("ERR")
+			boostrappedStatus = logging.Red.Wrap("NOT BOOTSTRAPPED")
 		}
 		row := []string{
 			host,
@@ -148,12 +148,12 @@ func printOutput(hostAliases []string, avagoVersions map[string]string, notBoots
 			boostrappedStatus,
 		}
 		if subnetName != "" {
-			syncedStatus := logging.Red.Wrap("ERR")
+			syncedStatus := logging.Red.Wrap("NOT BOOTSTRAPPED")
 			if slices.Contains(subnetSyncedHosts, host) {
-				syncedStatus = logging.Green.Wrap("Synced")
+				syncedStatus = logging.Green.Wrap("SYNCED")
 			}
 			if slices.Contains(subnetValidatingHosts, host) {
-				syncedStatus = logging.Green.Wrap("Validating")
+				syncedStatus = logging.Green.Wrap("VALIDATING")
 			}
 			row = append(row, syncedStatus)
 		}
