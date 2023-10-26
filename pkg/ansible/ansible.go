@@ -173,9 +173,9 @@ func RunAnsiblePlaybookSetupNode(configPath, ansibleDir, inventoryPath, avalanch
 
 // RunAnsiblePlaybookCopyStakingFiles copies staker.crt and staker.key into local machine so users can back up their node
 // these files are stored in .avalanche-cli/nodes/<nodeID> dir
-// targets a specific host ansibleHostID in ansible inventory file
-func RunAnsiblePlaybookCopyStakingFiles(ansibleDir, ansibleHostID, nodeInstanceDirPath, inventoryPath string) error {
-	playbookInputs := "target=" + ansibleHostID + " nodeInstanceDirPath=" + nodeInstanceDirPath + "/"
+// targets a specific hosts ansibleHostIDs in ansible inventory file
+func RunAnsiblePlaybookCopyStakingFiles(ansibleDir, ansibleHostIDs, nodesDirPath, inventoryPath string) error {
+	playbookInputs := "target=" + ansibleHostIDs + " nodesDirPath=" + nodesDirPath + "/"
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.CopyStakingFilesPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)

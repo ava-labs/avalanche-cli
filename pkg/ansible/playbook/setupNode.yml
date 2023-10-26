@@ -1,5 +1,6 @@
 ---
 - hosts: "{{ target }}"
+  gather_facts: no
   tasks:
     - name: get avalanche go script
       shell: wget -nd -m https://raw.githubusercontent.com/ava-labs/avalanche-docs/master/scripts/avalanchego-installer.sh

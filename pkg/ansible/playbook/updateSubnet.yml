@@ -1,5 +1,6 @@
 ---
 - hosts: "{{ target }}"
+  gather_facts: no
   tasks:
     - name: stop node - stop avalanchego
       shell: sudo systemctl stop avalanchego
