@@ -150,10 +150,10 @@ func printOutput(hostAliases []string, avagoVersions map[string]string, notBoots
 		if subnetName != "" {
 			syncedStatus := logging.Red.Wrap("NOT BOOTSTRAPPED")
 			if slices.Contains(subnetSyncedHosts, host) {
-				syncedStatus = logging.Green.Wrap("Synced")
+				syncedStatus = logging.Green.Wrap("SYNCED")
 			}
 			if slices.Contains(subnetValidatingHosts, host) {
-				syncedStatus = logging.Green.Wrap("Validating")
+				syncedStatus = logging.Green.Wrap("VALIDATING")
 			}
 			row = append(row, syncedStatus)
 		}
