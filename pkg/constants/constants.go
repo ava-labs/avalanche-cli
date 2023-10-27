@@ -100,6 +100,8 @@ const (
 	AWSSecurityGroupSuffix                 = "-sg"
 	ExportSubnetSuffix                     = "-export.dat"
 	SSHTCPPort                             = 22
+	AvalanchegoMonitoringPort              = 9090
+	AvalanchegoGrafanaPort                 = 3000
 	AvalanchegoAPIPort                     = 9650
 	AvalanchegoP2PPort                     = 9651
 	CloudServerStorageSize                 = 1000
@@ -107,6 +109,7 @@ const (
 	Terraform                              = "terraform"
 	AnsiblePlaybook                        = "ansible-playbook"
 	SetupNodePlaybook                      = "playbook/setupNode.yml"
+	SetupNodeMonitoringPlaybook            = "playbook/setupMonitoring.yml"
 	CopyStakingFilesPlaybook               = "playbook/copyStakingFiles.yml"
 	ExportSubnetPlaybook                   = "playbook/exportSubnet.yml"
 	GetNodeIDPlaybook                      = "playbook/getNodeID.yml"

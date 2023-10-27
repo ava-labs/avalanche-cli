@@ -274,7 +274,10 @@ func runAnsible(inventoryPath, avalancheGoVersion, clusterName, ansibleHostIDs s
 	if err != nil {
 		return err
 	}
-	return ansible.RunAnsiblePlaybookSetupNode(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion, ansibleHostIDs)
+	if err = ansible.RunAnsiblePlaybookSetupNode(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion, ansibleHostIDs); err != nil {
+		return err
+	}
+	return ansible.RunAnsiblePlaybookSetupMonitoring(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion, ansibleHostIDs)
 }
 
 func setupBuildEnv(inventoryPath, ansibleHostIDs string) error {

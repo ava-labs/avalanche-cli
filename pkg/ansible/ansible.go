@@ -171,6 +171,23 @@ func RunAnsiblePlaybookSetupNode(configPath, ansibleDir, inventoryPath, avalanch
 	return cmdErr
 }
 
+// RunAnsiblePlaybookSetupMonitoring sets up monitoring in cloud server
+// targets all hosts in ansible inventory file
+func RunAnsiblePlaybookSetupMonitoring(configPath, ansibleDir, inventoryPath, avalancheGoVersion, ansibleHostIDs string) error {
+	playbookInputs := "target=" + ansibleHostIDs + " configFilePath=" + configPath + " avalancheGoVersion=" + avalancheGoVersion
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupNodeMonitoringPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
 // RunAnsiblePlaybookCopyStakingFiles copies staker.crt and staker.key into local machine so users can back up their node
 // these files are stored in .avalanche-cli/nodes/<nodeID> dir
 // targets a specific hosts ansibleHostIDs in ansible inventory file
