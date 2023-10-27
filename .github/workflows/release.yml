@@ -12,12 +12,12 @@ jobs:
     steps:
       - uses: actions/setup-go@v3
         with:
-          go-version: "1.19"
+          go-version: "1.20"
       - uses: actions/checkout@v3
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.49
+          version: v1.52
           working-directory: .
           args: --timeout 3m
       - name: Install license check
@@ -29,7 +29,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        go: ["1.19"]
+        go: ["1.20"]
         os: [ubuntu-20.04]
     steps:
       - uses: actions/checkout@v3
@@ -54,7 +54,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: "1.19"
+          go-version: "1.20"
       - name: Set up arm64 cross compiler
         run: |
           sudo apt-get -y update
