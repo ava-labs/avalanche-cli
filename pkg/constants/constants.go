@@ -32,6 +32,8 @@ const (
 	CreateAWSNode                = "create-aws-node"
 	GetAWSNodeIP                 = "get-aws-node-ip"
 	ClusterConfigFileName        = "cluster_config.json"
+	StakerCertFileName           = "staker.crt"
+	StakerKeyFileName            = "staker.key"
 	BLSFileName                  = "signer.key"
 	SidecarVersion               = "1.4.0"
 
