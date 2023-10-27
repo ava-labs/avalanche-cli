@@ -405,6 +405,10 @@ func PrintResults(cloudConfig CloudConfig, publicIPMap map[string]string, cloudS
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(utils.GetSSHConnectionString(publicIP, cloudConfig.CertFilePath))
 		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("To view node monitoring dashboard, visit the following link in your browser: ")
+		ux.Logger.PrintToUser(fmt.Sprintf("http://%s:3000/dashboards", publicIP))
+		ux.Logger.PrintToUser("Log in with username: admin, password: admin")
+		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("======================================")
 	}
 	ux.Logger.PrintToUser(fmt.Sprintf("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", cloudConfig.CertFilePath))
