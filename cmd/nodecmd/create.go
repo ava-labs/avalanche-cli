@@ -277,7 +277,7 @@ func runAnsible(inventoryPath, avalancheGoVersion, clusterName, ansibleHostIDs s
 	if err != nil {
 		return err
 	}
-	if err := DistributeStakingCertAndKey(app.GetNodesDir(), strings.Split(ansibleHostIDs, ","), inventoryPath); err != nil {
+	if err := DistributeStakingCertAndKey(strings.Split(ansibleHostIDs, ","), inventoryPath); err != nil {
 		return err
 	}
 	return ansible.RunAnsiblePlaybookSetupNode(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion, ansibleHostIDs)
@@ -304,25 +304,27 @@ func GenerateStakingCertAndKey(nodesDirPath string) error {
 		return err
 	}
 	blsSignerKeyBytes, _, err := utils.NewBlsSignerCertAndKeyBytes()
+	if err != nil {
+		return err
+	}
 	if err := os.WriteFile(filepath.Join(nodesDirPath, constants.BLSFileName), blsSignerKeyBytes, 0o600); err != nil {
 		return err
 	}
 	return nil
 }
 
-func DistributeStakingCertAndKey(nodesDirPath string, ansibleHostIDs []string, inventoryPath string) error {
+func DistributeStakingCertAndKey(ansibleHostIDs []string, inventoryPath string) error {
 	ux.Logger.PrintToUser("Copying %s and %s staker.key to remote machine(s)...", constants.StakerCertFileName, constants.StakerKeyFileName)
 	var wg sync.WaitGroup
 	for _, hostID := range ansibleHostIDs {
 		h := strings.Split(hostID, "_")
 		instanceID := h[len(h)-1] // TODO fix it
 		wg.Add(1)
-		go func(keyPath string) error {
+		go func(keyPath string) {
 			defer wg.Done()
 			if err := GenerateStakingCertAndKey(keyPath); err != nil {
-				return err
+				ux.Logger.PrintToUser("Failed to generate %s and %s", constants.StakerCertFileName, constants.StakerKeyFileName)
 			}
-			return nil
 		}(filepath.Join(app.GetNodesDir(), instanceID))
 	}
 	wg.Wait()
