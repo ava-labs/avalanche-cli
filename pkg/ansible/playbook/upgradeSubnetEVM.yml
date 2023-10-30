@@ -1,5 +1,6 @@
 ---
 - hosts: "{{ target }}"
+  gather_facts: no
   tasks:
     - name: download new subnet EVM release
       shell: wget "{{ subnetEVMReleaseURL }}"

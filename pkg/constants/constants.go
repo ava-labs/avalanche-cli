@@ -141,6 +141,9 @@ const (
 	GCPNodeAnsiblePrefix                   = "gcp_node"
 	GCPProjectNameClusterConfig            = "projectName"
 	GCPServiceAccountFilePathClusterConfig = "serviceAccountFilePath"
+	SubnetEVMReleaseURL                    = "https://github.com/ava-labs/subnet-evm/releases/download/%s/%s"
+	SubnetEVMArchive                       = "subnet-evm_%s_linux_amd64.tar.gz"
+	SubnetEVMBinaryPath                    = "/home/ubuntu/.avalanchego/plugins/%s"
 	CustomVMDir                            = "vms"
 
 	AvaLabsOrg          = "ava-labs"
