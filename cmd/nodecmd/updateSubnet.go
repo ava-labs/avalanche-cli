@@ -4,8 +4,10 @@ package nodecmd
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 
@@ -69,7 +71,7 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
 	}
-	if err := setupBuildEnv(app.GetAnsibleInventoryDirPath(clusterName), ""); err != nil {
+	if err := setupBuildEnv(app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
 		return err
 	}
 	nonUpdatedNodes, err := doUpdateSubnet(clusterName, subnetName, models.Fuji)
@@ -91,18 +93,30 @@ func doUpdateSubnet(clusterName, subnetName string, network models.Network) ([]s
 	if err := subnetcmd.CallExportSubnet(subnetName, subnetPath, network); err != nil {
 		return nil, err
 	}
-	if err := ansible.RunAnsiblePlaybookExportSubnet(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), subnetPath, "/tmp", "all"); err != nil {
-		return nil, err
-	}
-	hostAliases, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	nonUpdatedNodes := []string{}
 	if err != nil {
 		return nil, err
 	}
-	nonUpdatedNodes := []string{}
-	for _, host := range hostAliases {
-		// runs avalanche update subnet command
-		if err = ansible.RunAnsiblePlaybookUpdateSubnet(app.GetAnsibleDir(), subnetName, subnetPath, app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
-			nonUpdatedNodes = append(nonUpdatedNodes, host)
+	nodeResultChannel := make(chan models.NodeErrorResult, len(hosts))
+	parallelWaitGroup := sync.WaitGroup{}
+	for _, host := range hosts {
+		parallelWaitGroup.Add(1)
+		go func(nodeResultChannel chan models.NodeErrorResult, host models.Host) {
+			defer parallelWaitGroup.Done()
+			if err := ssh.RunSSHExportSubnet(host, subnetPath, "/tmp"); err != nil {
+				nodeResultChannel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
+			}
+			if err := ssh.RunSSHUpdateSubnet(host, subnetName, subnetPath); err != nil {
+				nodeResultChannel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
+			}
+		}(nodeResultChannel, host)
+	}
+	parallelWaitGroup.Wait()
+	close(nodeResultChannel)
+	for nodeErr := range nodeResultChannel {
+		if nodeErr.Err != nil {
+			nonUpdatedNodes = append(nonUpdatedNodes, nodeErr.NodeID)
 		}
 	}
 	return nonUpdatedNodes, nil

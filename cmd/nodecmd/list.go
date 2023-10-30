@@ -59,7 +59,7 @@ func list(_ *cobra.Command, _ []string) error {
 			if nodeConfig.CloudService == constants.GCPCloudService {
 				hostName = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, clusterNode)
 			}
-			ux.Logger.PrintToUser(fmt.Sprintf("  Node %q to connect: %s", clusterNode, utils.GetSSHConnectionString(ansibleHosts[hostName].IP, ansibleHosts[hostName].SSHPrivateKeyPath)))
+			ux.Logger.PrintToUser(fmt.Sprintf("  Node %q to connect: %s", clusterNode, utils.GetSSHConnectionString("", ansibleHosts[hostName].IP, ansibleHosts[hostName].SSHPrivateKeyPath)))
 		}
 	}
 	return nil

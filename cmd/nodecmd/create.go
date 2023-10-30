@@ -9,12 +9,13 @@ import (
 	"net"
 	"os/exec"
 	"os/user"
-	"strings"
+	"sync"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
@@ -149,9 +150,6 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err := terraform.CheckIsInstalled(); err != nil {
 		return err
 	}
-	if err := ansible.CheckIsInstalled(); err != nil {
-		return err
-	}
 	err = terraform.RemoveDirectory(app.GetTerraformDir())
 	if err != nil {
 		return err
@@ -215,10 +213,6 @@ func createNode(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	err = terraform.RemoveDirectory(app.GetTerraformDir())
-	if err != nil {
-		return err
-	}
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
 	if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
 		return err
@@ -230,26 +224,33 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
-	ansibleHostIDs := []string{}
-	for _, instanceID := range cloudConfig.InstanceIDs {
-		var ansibleHostName string
-		if cloudService == constants.GCPCloudService {
-			ansibleHostName = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, instanceID)
-		} else {
-			ansibleHostName = fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, instanceID)
-		}
-		ansibleHostIDs = append(ansibleHostIDs, ansibleHostName)
-	}
-	createdAnsibleHostIDs := strings.Join(ansibleHostIDs, ",")
-	if err = runAnsible(inventoryPath, avalancheGoVersion, clusterName, createdAnsibleHostIDs); err != nil {
+	ux.Logger.PrintToUser("Staker.crt and staker.key will be copied to local machine...")
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
+	if err != nil {
 		return err
 	}
-	if err = setupBuildEnv(inventoryPath, createdAnsibleHostIDs); err != nil {
-		return err
+	// run over ssh in parallel
+	nodeResultChannel := make(chan error, len(hosts))
+	parallelWaitGroup := sync.WaitGroup{}
+	for _, host := range hosts {
+		parallelWaitGroup.Add(1)
+		go func(nodeResultChannel chan error, host models.Host) {
+			defer parallelWaitGroup.Done()
+			if err := ssh.RunSSHSetupNode(host, app.GetConfigPath(), avalancheGoVersion); err != nil {
+				nodeResultChannel <- err
+			}
+			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
+				nodeResultChannel <- err
+			}
+			if err := ssh.RunSSHCopyStakingFiles(host, app.GetNodeInstanceDirPath(host.GetInstanceID())); err != nil {
+				nodeResultChannel <- err
+			}
+		}(nodeResultChannel, host)
 	}
-	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
-	if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), strings.Join(ansibleHostIDs, ","), app.GetNodesDir(), inventoryPath); err != nil {
-		return err
+	parallelWaitGroup.Wait()
+	close(nodeResultChannel)
+	for err := range nodeResultChannel {
+		return err // return first error
 	}
 	PrintResults(cloudConfig, publicIPMap, cloudService)
 	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
@@ -259,31 +260,35 @@ func createNode(_ *cobra.Command, args []string) error {
 // setupAnsible we need to remove existing ansible directory and its contents in .avalanche-cli dir
 // before calling every ansible run command just in case there is a change in playbook
 func setupAnsible(clusterName string) error {
-	err := app.SetupAnsibleEnv()
-	if err != nil {
-		return err
-	}
-	if err = ansible.Setup(app.GetAnsibleDir()); err != nil {
-		return err
-	}
 	return updateAnsiblePublicIPs(clusterName)
 }
 
-func runAnsible(inventoryPath, avalancheGoVersion, clusterName, ansibleHostIDs string) error {
-	err := setupAnsible(clusterName)
+func setupBuildEnv(clusterName string) error {
+	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance(s) ...")
+	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
+
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
 	if err != nil {
 		return err
 	}
-	return ansible.RunAnsiblePlaybookSetupNode(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion, ansibleHostIDs)
-}
-
-func setupBuildEnv(inventoryPath, ansibleHostIDs string) error {
-	ux.Logger.PrintToUser("Installing Custom VM build environment on the cloud server(s) ...")
-	ansibleTargetHosts := "all"
-	if ansibleHostIDs != "" {
-		ansibleTargetHosts = ansibleHostIDs
+	// run over ssh in parallel
+	nodeResultChannel := make(chan error, len(hosts))
+	parallelWaitGroup := sync.WaitGroup{}
+	for _, host := range hosts {
+		parallelWaitGroup.Add(1)
+		go func(nodeResultChannel chan error, host models.Host) {
+			defer parallelWaitGroup.Done()
+			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
+				nodeResultChannel <- err
+			}
+		}(nodeResultChannel, host)
 	}
-	return ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath, ansibleTargetHosts)
+	parallelWaitGroup.Wait()
+	close(nodeResultChannel)
+	for err := range nodeResultChannel {
+		return err // return first error
+	}
+	return nil
 }
 
 func getIPAddress() (string, error) {
@@ -400,7 +405,7 @@ func PrintResults(cloudConfig CloudConfig, publicIPMap map[string]string, cloudS
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("To ssh to node, run: ")
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(utils.GetSSHConnectionString(publicIP, cloudConfig.CertFilePath))
+		ux.Logger.PrintToUser(utils.GetSSHConnectionString("", publicIP, cloudConfig.CertFilePath))
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("======================================")
 	}

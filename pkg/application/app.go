@@ -754,23 +754,6 @@ func (app *Avalanche) GetSubnetSyncJSONFile() string {
 	return filepath.Join(app.GetAnsibleStatusDir(), constants.SubnetSyncJSONFile)
 }
 
-func (app *Avalanche) SetupAnsibleEnv() error {
-	err := os.RemoveAll(app.GetAnsibleDir())
-	if err != nil {
-		return err
-	}
-	err = app.CreateAnsibleDir()
-	if err != nil {
-		return err
-	}
-	return app.CreateAnsiblePlaybookDir()
-}
-
-// CreateAnsibleStatusDir creates the ansible status directory inside .avalanche-cli
-func (app *Avalanche) CreateAnsibleStatusDir() error {
-	return os.MkdirAll(app.GetAnsibleStatusDir(), constants.DefaultPerms755)
-}
-
 // CreateAnsibleStatusFile creates file named fileName in .avalanche-cli ansible status directory
 func (app *Avalanche) CreateAnsibleStatusFile(filePath string) error {
 	if err := os.MkdirAll(app.GetAnsibleStatusDir(), constants.DefaultPerms755); err != nil {

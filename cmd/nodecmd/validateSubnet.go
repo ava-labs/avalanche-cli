@@ -6,14 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"os"
-	"strings"
+	"sync"
 	"time"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 
 	subnetcmd "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -51,13 +50,7 @@ You can check the subnet sync status by calling avalanche node status <clusterNa
 	return cmd
 }
 
-func parseSubnetSyncOutput(filePath string) (string, error) {
-	jsonFile, err := os.Open(filePath)
-	if err != nil {
-		return "", err
-	}
-	defer jsonFile.Close()
-	byteValue, _ := io.ReadAll(jsonFile)
+func parseSubnetSyncOutput(byteValue []byte) (string, error) {
 	var result map[string]interface{}
 	if err := json.Unmarshal(byteValue, &result); err != nil {
 		return "", err
@@ -86,19 +79,14 @@ func addNodeAsSubnetValidator(nodeID, subnetName string, network models.Network,
 // if getNodeSubnetSyncStatus is called from node validate subnet command, it will fail if
 // node status is not 'syncing'. If getNodeSubnetSyncStatus is called from node status command,
 // it will return true node status is 'syncing'
-func getNodeSubnetSyncStatus(blockchainID, clusterName, ansibleNodeID string) (string, error) {
-	ux.Logger.PrintToUser("Checking if node %s is synced to subnet ...", ansibleNodeID)
-	if err := app.CreateAnsibleStatusDir(); err != nil {
-		return "", err
-	}
-	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(app.GetAnsibleDir(), app.GetSubnetSyncJSONFile(), blockchainID, app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
-		return "", err
-	}
-	subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile() + "." + ansibleNodeID)
+func getNodeSubnetSyncStatus(blockchainID string, host models.Host) (string, error) {
+	ux.Logger.PrintToUser("Checking if node %s is synced to subnet ...", host.NodeID)
+	resp, err := ssh.RunSSHSubnetSyncStatus(host, blockchainID)
 	if err != nil {
 		return "", err
 	}
-	if err = app.RemoveAnsibleStatusDir(); err != nil {
+	subnetSyncStatus, err := parseSubnetSyncOutput(resp)
+	if err != nil {
 		return "", err
 	}
 	return subnetSyncStatus, nil
@@ -150,46 +138,59 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if blockchainID == ids.Empty {
 		return ErrNoBlockchainID
 	}
-	ansibleNodeIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
-	nodeIDMap, failedNodesMap, err := getClusterNodeIDs(clusterName, ansibleNodeIDs)
-	if err != nil {
-		return err
-	}
+	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
 	failedNodes := []string{}
 	nodeErrors := []error{}
-	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
-	for i, host := range ansibleNodeIDs {
-		nodeIDStr, b := nodeIDMap[host]
-		if !b {
-			err, b := failedNodesMap[host]
-			if !b {
-				return fmt.Errorf("expected to found an error for non mapped node")
-			}
-			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err)
-			failedNodes = append(failedNodes, host)
+
+	nodeSubnetSyncStatus := map[string]string{}
+	nodeResultChannel := make(chan models.NodeStringResult, len(hosts))
+	parallelWaitGroup := sync.WaitGroup{}
+	for _, host := range hosts {
+		parallelWaitGroup.Add(1)
+		go func(nodeResultChannel chan models.NodeStringResult, host models.Host) {
+			defer parallelWaitGroup.Done()
+			subnetSyncStatus, err := getNodeSubnetSyncStatus(blockchainID.String(), host)
+			nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: subnetSyncStatus, Err: err}
+		}(nodeResultChannel, host)
+	}
+	parallelWaitGroup.Wait()
+	close(nodeResultChannel)
+	for nodeSubnetSyncStatusResult := range nodeResultChannel {
+		if nodeSubnetSyncStatusResult.Err != nil {
+			nodeSubnetSyncStatus[nodeSubnetSyncStatusResult.NodeID] = ""
+		} else {
+			nodeSubnetSyncStatus[nodeSubnetSyncStatusResult.NodeID] = nodeSubnetSyncStatusResult.Value
+		}
+	}
+	for i, host := range hosts {
+		nodeIDStr, err := getClusterNodeID(host)
+		if err != nil {
+			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err.Error())
+			failedNodes = append(failedNodes, host.NodeID)
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
 		nodeID, err := ids.NodeIDFromString(nodeIDStr)
 		if err != nil {
-			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err)
-			failedNodes = append(failedNodes, host)
+			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err.Error())
+			failedNodes = append(failedNodes, host.NodeID)
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
 		// we have to check if node is synced to subnet before adding the node as a validator
-		subnetSyncStatus, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, host)
-		if err != nil {
+		subnetSyncStatus := nodeSubnetSyncStatus[host.NodeID]
+		if subnetSyncStatus == "" {
 			ux.Logger.PrintToUser("Failed to get subnet sync status for node %s", host)
-			failedNodes = append(failedNodes, host)
+			failedNodes = append(failedNodes, host.NodeID)
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
 		if subnetSyncStatus != status.Syncing.String() {
-			failedNodes = append(failedNodes, host)
+			failedNodes = append(failedNodes, host.NodeID)
 			if subnetSyncStatus == status.Validating.String() {
 				ux.Logger.PrintToUser("Failed to add node %s as subnet validator as node is already a subnet validator", host)
 				nodeErrors = append(nodeErrors, errors.New("node is already a subnet validator"))
@@ -199,25 +200,25 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			}
 			continue
 		}
-		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji, i, strings.Split(host, "_")[2])
+		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji, i, host.GetInstanceID())
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err.Error())
-			failedNodes = append(failedNodes, host)
+			failedNodes = append(failedNodes, host.NodeID)
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
 		if addedNodeAsPrimaryNetworkValidator {
 			if err := waitForNodeToBePrimaryNetworkValidator(nodeID); err != nil {
 				ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err.Error())
-				failedNodes = append(failedNodes, host)
+				failedNodes = append(failedNodes, host.NodeID)
 				nodeErrors = append(nodeErrors, err)
 				continue
 			}
 		}
-		err = addNodeAsSubnetValidator(nodeIDStr, subnetName, models.Fuji, i, len(ansibleNodeIDs))
+		err = addNodeAsSubnetValidator(nodeIDStr, subnetName, models.Fuji, i, len(hosts))
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err.Error())
-			failedNodes = append(failedNodes, host)
+			failedNodes = append(failedNodes, host.NodeID)
 			nodeErrors = append(nodeErrors, err)
 		}
 	}

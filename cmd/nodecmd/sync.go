@@ -5,17 +5,17 @@ package nodecmd
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"os"
 	"strings"
+	"sync"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"golang.org/x/exp/slices"
 	"google.golang.org/api/compute/v1"
 
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
@@ -157,7 +157,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
 	}
-	if err := setupBuildEnv(app.GetAnsibleInventoryDirPath(clusterName), ""); err != nil {
+	if err := setupBuildEnv(app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
 		return err
 	}
 	untrackedNodes, err := trackSubnet(clusterName, subnetName, models.Fuji)
@@ -172,16 +172,9 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func parseAvalancheGoOutput(fileName string) (string, error) {
-	jsonFile, err := os.Open(fileName)
-	if err != nil {
-		return "", err
-	}
-	defer jsonFile.Close()
-	byteValue, _ := io.ReadAll(jsonFile)
-
+func parseAvalancheGoOutput(byteValue []byte) (string, error) {
 	var result map[string]interface{}
-	if err = json.Unmarshal(byteValue, &result); err != nil {
+	if err := json.Unmarshal(byteValue, &result); err != nil {
 		return "", err
 	}
 	nodeIDInterface, ok := result["result"].(map[string]interface{})
@@ -210,24 +203,33 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string
 	if err := app.CreateAnsibleDir(); err != nil {
 		return nil, err
 	}
-	ansibleNodeIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return nil, err
-	}
 	ux.Logger.PrintToUser(fmt.Sprintf("Checking compatibility of avalanche go version in cluster %s with Subnet EVM RPC of subnet %s ...", clusterName, subnetName))
 	compatibleVersions := []string{}
 	incompatibleNodes := []string{}
-	if err := app.CreateAnsibleStatusDir(); err != nil {
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
 		return nil, err
 	}
-	if err := ansible.RunAnsiblePlaybookCheckAvalancheGoVersion(app.GetAnsibleDir(), app.GetAvalancheGoJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), "all"); err != nil {
-		return nil, err
+	nodeResultChannel := make(chan models.NodeStringResult, len(hosts))
+	parallelWaitGroup := sync.WaitGroup{}
+	for _, host := range hosts {
+		parallelWaitGroup.Add(1)
+		go func(nodeResultChannel chan models.NodeStringResult, host models.Host) {
+			defer parallelWaitGroup.Done()
+			resp, err := ssh.RunSSHCheckAvalancheGoVersion(host)
+			if err != nil {
+				nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown, Err: err}
+			}
+			avalancheGoVersion, err := parseAvalancheGoOutput(resp)
+			if err != nil {
+				nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown, Err: err}
+			}
+			nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: avalancheGoVersion, Err: nil}
+		}(nodeResultChannel, host)
 	}
-	for _, host := range ansibleNodeIDs {
-		avalancheGoVersion, err := parseAvalancheGoOutput(app.GetAvalancheGoJSONFile() + "." + host)
-		if err != nil {
-			return nil, err
-		}
+	parallelWaitGroup.Wait()
+	close(nodeResultChannel)
+	for avalancheGoVersion := range nodeResultChannel {
 		sc, err := app.LoadSidecar(subnetName)
 		if err != nil {
 			return nil, err
@@ -236,12 +238,9 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string
 		if err != nil {
 			return nil, err
 		}
-		if !slices.Contains(compatibleVersions, avalancheGoVersion) {
-			incompatibleNodes = append(incompatibleNodes, host)
+		if !slices.Contains(compatibleVersions, avalancheGoVersion.Value) {
+			incompatibleNodes = append(incompatibleNodes, avalancheGoVersion.NodeID)
 		}
-	}
-	if err := app.RemoveAnsibleStatusDir(); err != nil {
-		return nil, err
 	}
 	if len(incompatibleNodes) > 0 {
 		ux.Logger.PrintToUser(fmt.Sprintf("Compatible Avalanche Go versions are %s", strings.Join(compatibleVersions, ", ")))
@@ -256,18 +255,30 @@ func trackSubnet(clusterName, subnetName string, network models.Network) ([]stri
 	if err := subnetcmd.CallExportSubnet(subnetName, subnetPath, network); err != nil {
 		return nil, err
 	}
-	if err := ansible.RunAnsiblePlaybookExportSubnet(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), subnetPath, "/tmp", "all"); err != nil {
-		return nil, err
-	}
-	hostAliases, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	untrackedNodes := []string{}
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return nil, err
 	}
-	untrackedNodes := []string{}
-	for _, host := range hostAliases {
-		// runs avalanche join subnet command
-		if err = ansible.RunAnsiblePlaybookTrackSubnet(app.GetAnsibleDir(), subnetName, subnetPath, app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
-			untrackedNodes = append(untrackedNodes, host)
+	nodeResultChannel := make(chan models.NodeErrorResult, len(hosts))
+	parallelWaitGroup := sync.WaitGroup{}
+	for _, host := range hosts {
+		parallelWaitGroup.Add(1)
+		go func(nodeResultChannel chan models.NodeErrorResult, host models.Host) {
+			defer parallelWaitGroup.Done()
+			if err := ssh.RunSSHExportSubnet(host, subnetPath, "/tmp"); err != nil {
+				nodeResultChannel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
+			}
+			if err := ssh.RunSSHTrackSubnet(host, subnetName, subnetPath); err != nil {
+				nodeResultChannel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
+			}
+		}(nodeResultChannel, host)
+	}
+	parallelWaitGroup.Wait()
+	close(nodeResultChannel)
+	for nodeErr := range nodeResultChannel {
+		if nodeErr.Err != nil {
+			untrackedNodes = append(untrackedNodes, nodeErr.NodeID)
 		}
 	}
 	return untrackedNodes, nil

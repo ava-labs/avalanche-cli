@@ -39,8 +39,12 @@ const (
 	MaxNumOfLogFiles = 5
 	RetainOldFiles   = 0 // retain all old log files
 
-	RequestTimeout    = 3 * time.Minute
-	E2ERequestTimeout = 30 * time.Second
+	RequestTimeout     = 3 * time.Minute
+	E2ERequestTimeout  = 30 * time.Second
+	SSHScriptTimeout   = 600 * time.Second
+	SSHFileOpsTimeout  = 60 * time.Second
+	SSHPOSTTimeout     = 10 * time.Second
+	SSHScriptLogFilter = "_AvalancheCLI_LOG_"
 
 	SimulatePublicNetwork = "SIMULATE_PUBLIC_NETWORK"
 	FujiAPIEndpoint       = "https://api.avax-test.network"
@@ -128,8 +132,7 @@ const (
 	AnsibleStatusDir                       = "status"
 	AnsibleInventoryFlag                   = "-i"
 	AnsibleExtraArgsIdentitiesOnlyFlag     = "--ssh-extra-args='-o IdentitiesOnly=yes'"
-	AnsibleSSHShellParams                  = "-o IdentitiesOnly=yes -o StrictHostKeyChecking=no"
-	AnsibleSSHInventoryParams              = "-o StrictHostKeyChecking=no"
+	AnsibleSSHParams                       = "-o IdentitiesOnly=yes -o StrictHostKeyChecking=no"
 	AnsibleExtraVarsFlag                   = "--extra-vars"
 	CloudCLIBranch                         = "custom-vms-cloud-10"
 	DefaultConfigFileName                  = ".avalanche-cli"
