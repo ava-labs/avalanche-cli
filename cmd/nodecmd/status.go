@@ -96,9 +96,6 @@ func statusNode(_ *cobra.Command, args []string) error {
 		if blockchainID == ids.Empty {
 			return ErrNoBlockchainID
 		}
-		notSyncedNodes := []string{}
-		subnetSyncedNodes := []string{}
-		subnetValidatingNodes := []string{}
 		nodeResultChannel := make(chan models.NodeStringResult, len(hosts))
 		parallelWaitGroup := sync.WaitGroup{}
 		for _, host := range hosts {

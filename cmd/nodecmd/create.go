@@ -229,7 +229,7 @@ func createNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	createdHosts := ansible.FilterHostsByNodeID(hosts, cloudConfig.InstanceIDs)
-	//waiting for all nodes to become accessible
+	// waiting for all nodes to become accessible
 	createdResultChannel := make(chan error, len(hosts))
 	createdWaitGroup := sync.WaitGroup{}
 	for _, host := range createdHosts {
