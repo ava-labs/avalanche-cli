@@ -26,7 +26,6 @@ const (
 	NodeFileName                 = "node.json"
 	NodeCloudConfigFileName      = "node_cloud_config.json"
 	TerraformDir                 = "terraform"
-	AnsibleDir                   = "ansible"
 	AnsibleHostInventoryFileName = "hosts"
 	StopAWSNode                  = "stop-aws-node"
 	CreateAWSNode                = "create-aws-node"

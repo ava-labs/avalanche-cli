@@ -333,9 +333,6 @@ func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
 			notBootstrappedNodes = append(notBootstrappedNodes, nodeResult.NodeID)
 		}
 	}
-	if err := app.RemoveAnsibleStatusDir(); err != nil {
-		return nil, err
-	}
 	return notBootstrappedNodes, nil
 }
 

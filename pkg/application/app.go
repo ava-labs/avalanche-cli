@@ -132,21 +132,6 @@ func (app *Avalanche) GetNodeInstanceDirPath(nodeName string) string {
 	return filepath.Join(app.GetNodesDir(), nodeName)
 }
 
-func (app *Avalanche) GetAnsibleDir() string {
-	return filepath.Join(app.GetNodesDir(), constants.AnsibleDir)
-}
-
-func (app *Avalanche) CreateAnsibleDir() error {
-	ansibleDir := app.GetAnsibleDir()
-	if _, err := os.Stat(ansibleDir); os.IsNotExist(err) {
-		err = os.Mkdir(ansibleDir, constants.DefaultPerms755)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (app *Avalanche) CreateTerraformDir() error {
 	nodesDir := app.GetNodesDir()
 	if _, err := os.Stat(nodesDir); os.IsNotExist(err) {
@@ -169,17 +154,6 @@ func (app *Avalanche) CreateAnsibleInventoryDir() error {
 	inventoriesDir := filepath.Join(app.GetNodesDir(), constants.AnsibleInventoryDir)
 	if _, err := os.Stat(inventoriesDir); os.IsNotExist(err) {
 		err = os.Mkdir(inventoriesDir, constants.DefaultPerms755)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (app *Avalanche) CreateAnsiblePlaybookDir() error {
-	playbookDir := filepath.Join(app.GetAnsibleDir(), constants.AnsiblePlaybookDir)
-	if _, err := os.Stat(playbookDir); os.IsNotExist(err) {
-		err = os.Mkdir(playbookDir, constants.DefaultPerms755)
 		if err != nil {
 			return err
 		}
@@ -732,41 +706,4 @@ func (app *Avalanche) CheckCertInSSHDir(certName string) (bool, error) {
 
 func (app *Avalanche) GetAnsibleInventoryDirPath(clusterName string) string {
 	return filepath.Join(app.GetNodesDir(), constants.AnsibleInventoryDir, clusterName)
-}
-
-func (app *Avalanche) GetAnsibleStatusDir() string {
-	return filepath.Join(app.GetAnsibleDir(), constants.AnsibleStatusDir)
-}
-
-func (app *Avalanche) GetBootstrappedJSONFile() string {
-	return filepath.Join(app.GetAnsibleStatusDir(), constants.IsBootstrappedJSONFile)
-}
-
-func (app *Avalanche) GetAvalancheGoJSONFile() string {
-	return filepath.Join(app.GetAnsibleStatusDir(), constants.AvalancheGoVersionJSONFile)
-}
-
-func (app *Avalanche) GetNodeIDJSONFile() string {
-	return filepath.Join(app.GetAnsibleStatusDir(), constants.NodeIDJSONFile)
-}
-
-func (app *Avalanche) GetSubnetSyncJSONFile() string {
-	return filepath.Join(app.GetAnsibleStatusDir(), constants.SubnetSyncJSONFile)
-}
-
-// CreateAnsibleStatusFile creates file named fileName in .avalanche-cli ansible status directory
-func (app *Avalanche) CreateAnsibleStatusFile(filePath string) error {
-	if err := os.MkdirAll(app.GetAnsibleStatusDir(), constants.DefaultPerms755); err != nil {
-		return err
-	}
-	statusFile, err := os.Create(filePath)
-	if err != nil {
-		return err
-	}
-	return statusFile.Close()
-}
-
-// RemoveAnsibleStatusDir deletes avalanche ansible status dir in .avalanche-cli
-func (app *Avalanche) RemoveAnsibleStatusDir() error {
-	return os.RemoveAll(app.GetAnsibleStatusDir())
 }

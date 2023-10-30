@@ -200,9 +200,6 @@ func checkForCompatibleAvagoVersion(configuredRPCVersion int) ([]string, error) 
 }
 
 func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string, error) {
-	if err := app.CreateAnsibleDir(); err != nil {
-		return nil, err
-	}
 	ux.Logger.PrintToUser(fmt.Sprintf("Checking compatibility of avalanche go version in cluster %s with Subnet EVM RPC of subnet %s ...", clusterName, subnetName))
 	compatibleVersions := []string{}
 	incompatibleNodes := []string{}
