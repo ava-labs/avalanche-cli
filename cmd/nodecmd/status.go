@@ -59,6 +59,9 @@ func statusNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
+	if err != nil {
+		return err
+	}
 	nodeResultChannel := make(chan models.NodeStringResult, len(hosts))
 	parallelWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {

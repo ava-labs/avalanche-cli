@@ -252,7 +252,6 @@ func createNode(_ *cobra.Command, args []string) error {
 	nodeResultChannel := make(chan error, len(hosts))
 	parallelWaitGroup := sync.WaitGroup{}
 	for _, host := range createdHosts {
-
 		parallelWaitGroup.Add(1)
 		go func(nodeResultChannel chan error, host models.Host) {
 			defer parallelWaitGroup.Done()
