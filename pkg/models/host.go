@@ -38,9 +38,9 @@ const (
 //   - string: The node ID of the host.
 func (h Host) GetInstanceID() string {
 	if strings.HasPrefix(h.NodeID, constants.AWSNodeAnsiblePrefix) {
-		return strings.TrimPrefix(h.NodeID, constants.AWSNodeAnsiblePrefix)
+		return strings.TrimPrefix(h.NodeID, constants.AWSNodeAnsiblePrefix+"_")
 	} else if strings.HasPrefix(h.NodeID, constants.GCPNodeAnsiblePrefix) {
-		return strings.TrimPrefix(h.NodeID, constants.GCPNodeAnsiblePrefix)
+		return strings.TrimPrefix(h.NodeID, constants.GCPNodeAnsiblePrefix+"_")
 	}
 	// default behaviour - TODO refactor for other clouds
 	return strings.Join(strings.Split(h.NodeID, "_")[:2], "_")
@@ -180,6 +180,25 @@ func (h Host) GetAnsibleParams() string {
 		fmt.Sprintf("ansible_ssh_private_key_file=%s", h.SSHPrivateKeyPath),
 		fmt.Sprintf("ansible_ssh_common_args='%s'", h.SSHCommonArgs),
 	}, " ")
+}
+
+// WaitForSSHPort waits for the SSH port to become available on the host.
+func (h Host) WaitForSSHPort(timeout time.Duration) error {
+	start := time.Now()
+	deadline := start.Add(timeout)
+
+	for {
+		if time.Now().After(deadline) {
+			return fmt.Errorf("Timeout: SSH port %d on host %s is not avaliable after %ds", constants.SSHTCPPort, h.IP, timeout)
+		}
+
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", h.IP, constants.SSHTCPPort), time.Second)
+		if err == nil {
+			return nil
+		}
+		defer conn.Close()
+		time.Sleep(1 * time.Second)
+	}
 }
 
 // splitHTTPResponse splits an HTTP response into headers and body.

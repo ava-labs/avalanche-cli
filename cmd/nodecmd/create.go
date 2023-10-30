@@ -6,8 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
-	"os/exec"
+	"net/http"
 	"os/user"
 	"sync"
 	"time"
@@ -217,22 +218,41 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
 		return err
 	}
-	time.Sleep(30 * time.Second)
 
 	avalancheGoVersion, err := getAvalancheGoVersion()
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
-	ux.Logger.PrintToUser("Staker.crt and staker.key will be copied to local machine...")
+	ux.Logger.PrintToUser("Waiting for created node(s) to become accessible...")
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
 	if err != nil {
 		return err
 	}
+	createdHosts := ansible.FilterHostsByNodeID(hosts, cloudConfig.InstanceIDs)
+	//waiting for all nodes to become accessible
+	createdResultChannel := make(chan error, len(hosts))
+	createdWaitGroup := sync.WaitGroup{}
+	for _, host := range createdHosts {
+		createdWaitGroup.Add(1)
+		go func(nodeResultChannel chan error, host models.Host) {
+			defer createdWaitGroup.Done()
+			if err := host.WaitForSSHPort(60 * time.Second); err != nil {
+				nodeResultChannel <- err
+			}
+		}(createdResultChannel, host)
+	}
+	createdWaitGroup.Wait()
+	close(createdResultChannel)
+	for err := range createdResultChannel {
+		return err // return first error
+	}
+	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
+	ux.Logger.PrintToUser("Staker.crt and staker.key will be copied to local machine...")
 	// run over ssh in parallel
 	nodeResultChannel := make(chan error, len(hosts))
 	parallelWaitGroup := sync.WaitGroup{}
-	for _, host := range hosts {
+	for _, host := range createdHosts {
+
 		parallelWaitGroup.Add(1)
 		go func(nodeResultChannel chan error, host models.Host) {
 			defer parallelWaitGroup.Done()
@@ -292,14 +312,26 @@ func setupBuildEnv(clusterName string) error {
 }
 
 func getIPAddress() (string, error) {
-	ipOutput, err := exec.Command("curl", "https://api.ipify.org?format=json").Output()
+	resp, err := http.Get("https://api.ipify.org?format=json")
 	if err != nil {
 		return "", err
 	}
-	var result map[string]interface{}
-	if err = json.Unmarshal(ipOutput, &result); err != nil {
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.New("HTTP request failed")
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
 		return "", err
 	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", err
+	}
+
 	ipAddress, ok := result["ip"].(string)
 	if ok {
 		if net.ParseIP(ipAddress) == nil {
@@ -307,6 +339,7 @@ func getIPAddress() (string, error) {
 		}
 		return ipAddress, nil
 	}
+
 	return "", errors.New("no IP address found")
 }
 

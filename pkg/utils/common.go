@@ -76,3 +76,13 @@ func SplitStringWithQuotes(str string, r rune) []string {
 		return !quoted && r1 == r
 	})
 }
+
+// ListContains checks if a given value is present  as substring in a list of strings or vise versa
+func ListContains(list []string, value string) bool {
+	for _, v := range list {
+		if strings.Contains(v, value) || strings.Contains(value, v) {
+			return true
+		}
+	}
+	return false
+}

@@ -44,6 +44,7 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 	return nil
 }
 
+// GetInventoryFromAnsibleInventoryFile retrieves the inventory of hosts from an Ansible inventory file.
 func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]models.Host, error) {
 	inventory := []models.Host{}
 	inventoryHostsFile := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
@@ -74,6 +75,17 @@ func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]models.Hos
 	return inventory, nil
 }
 
+// FilterHostsByNodeID filters the given list of hosts based on the provided node IDs.
+func FilterHostsByNodeID(hosts []models.Host, nodeIDs []string) []models.Host {
+	var filteredHosts []models.Host
+	for _, host := range hosts {
+		if utils.ListContains(nodeIDs, host.NodeID) {
+			filteredHosts = append(filteredHosts, host)
+		}
+	}
+	return filteredHosts
+}
+
 func GetHostMapfromAnsibleInventory(inventoryDirPath string) (map[string]models.Host, error) {
 	hostMap := map[string]models.Host{}
 	inventory, err := GetInventoryFromAnsibleInventoryFile(inventoryDirPath)
@@ -86,6 +98,7 @@ func GetHostMapfromAnsibleInventory(inventoryDirPath string) (map[string]models.
 	return hostMap, nil
 }
 
+// GetHostListFromAnsibleInventory returns a list of hosts from an Ansible inventory.
 func GetHostListFromAnsibleInventory(inventoryDirPath string) ([]string, error) {
 	hosts, err := GetHostMapfromAnsibleInventory(inventoryDirPath)
 	if err != nil {
