@@ -134,11 +134,11 @@ func (d *PublicDeployer) CreateAssetTx(
 		initialState,
 	)
 	if err != nil {
-		return ids.Empty, err
+		return ids.Empty, fmt.Errorf("error building tx: %w", err)
 	}
 	tx := avmtxs.Tx{Unsigned: unsignedTx}
 	if err := wallet.X().Signer().Sign(context.Background(), &tx); err != nil {
-		return ids.Empty, err
+		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
 	}
 
 	ctx, cancel := utils.GetAPIContext()
@@ -149,7 +149,9 @@ func (d *PublicDeployer) CreateAssetTx(
 	)
 	if err != nil {
 		if ctx.Err() != nil {
-			err = fmt.Errorf("timeout issuing/verifying tx with ID: %w", tx.ID(), err)
+			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+		} else {
+			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
 		}
 		return ids.Empty, err
 	}
@@ -188,11 +190,11 @@ func (d *PublicDeployer) ExportToPChainTx(
 		},
 	)
 	if err != nil {
-		return ids.Empty, err
+		return ids.Empty, fmt.Errorf("error building tx: %w", err)
 	}
 	tx := avmtxs.Tx{Unsigned: unsignedTx}
 	if err := wallet.X().Signer().Sign(context.Background(), &tx); err != nil {
-		return ids.Empty, err
+		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
 	}
 
 	ctx, cancel := utils.GetAPIContext()
@@ -203,7 +205,9 @@ func (d *PublicDeployer) ExportToPChainTx(
 	)
 	if err != nil {
 		if ctx.Err() != nil {
-			err = fmt.Errorf("timeout issuing/verifying tx with ID: %w", tx.ID(), err)
+			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+		} else {
+			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
 		}
 		return ids.Empty, err
 	}
@@ -230,11 +234,11 @@ func (d *PublicDeployer) ImportFromXChain(
 		owner,
 	)
 	if err != nil {
-		return ids.Empty, err
+		return ids.Empty, fmt.Errorf("error building tx: %w", err)
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
 	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-		return ids.Empty, err
+		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
 	}
 
 	ctx, cancel := utils.GetAPIContext()
@@ -245,7 +249,9 @@ func (d *PublicDeployer) ImportFromXChain(
 	)
 	if err != nil {
 		if ctx.Err() != nil {
-			err = fmt.Errorf("timeout issuing/verifying tx with ID: %w", tx.ID(), err)
+			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+		} else {
+			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
 		}
 		return ids.Empty, err
 	}
@@ -484,6 +490,8 @@ func (d *PublicDeployer) Commit(
 	err = wallet.P().IssueTx(tx, common.WithContext(ctx))
 	if err != nil && ctx.Err() != nil {
 		err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+	} else {
+		err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
 	}
 	return tx.ID(), err
 }
@@ -594,12 +602,12 @@ func (d *PublicDeployer) createBlockchainTx(
 		options...,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error building tx: %w", err)
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
 	// sign with current wallet
 	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error signing tx: %w", err)
 	}
 	return &tx, nil
 }
@@ -613,12 +621,12 @@ func (d *PublicDeployer) createAddSubnetValidatorTx(
 	// create tx
 	unsignedTx, err := wallet.P().Builder().NewAddSubnetValidatorTx(validator, options...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error building tx: %w", err)
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
 	// sign with current wallet
 	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error signing tx: %w", err)
 	}
 	return &tx, nil
 }
@@ -633,12 +641,12 @@ func (d *PublicDeployer) createRemoveValidatorTX(
 	// create tx
 	unsignedTx, err := wallet.P().Builder().NewRemoveSubnetValidatorTx(nodeID, subnetID, options...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error building tx: %w", err)
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
 	// sign with current wallet
 	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error signing tx: %w", err)
 	}
 	return &tx, nil
 }
@@ -657,12 +665,12 @@ func (d *PublicDeployer) createTransformSubnetTX(
 		elasticSubnetConfig.MinStakeDuration, elasticSubnetConfig.MaxStakeDuration, elasticSubnetConfig.MinDelegationFee,
 		elasticSubnetConfig.MinDelegatorStake, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement, options...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error building tx: %w", err)
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
 	// sign with current wallet
 	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error signing tx: %w", err)
 	}
 	return &tx, nil
 }
@@ -727,11 +735,11 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 		options...,
 	)
 	if err != nil {
-		return ids.Empty, err
+		return ids.Empty, fmt.Errorf("error building tx: %w", err)
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
 	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-		return ids.Empty, err
+		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
 	}
 
 	ctx, cancel := utils.GetAPIContext()
@@ -742,7 +750,9 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 	)
 	if err != nil {
 		if ctx.Err() != nil {
-			err = fmt.Errorf("timeout issuing/verifying tx with ID: %w", tx.ID(), err)
+			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+		} else {
+			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
 		}
 		return ids.Empty, err
 	}
@@ -786,11 +796,11 @@ func (d *PublicDeployer) issueAddPermissionlessDelegatorTX(
 		options...,
 	)
 	if err != nil {
-		return ids.Empty, err
+		return ids.Empty, fmt.Errorf("error building tx: %w", err)
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
 	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-		return ids.Empty, err
+		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
 	}
 
 	ctx, cancel := utils.GetAPIContext()
@@ -801,7 +811,9 @@ func (d *PublicDeployer) issueAddPermissionlessDelegatorTX(
 	)
 	if err != nil {
 		if ctx.Err() != nil {
-			err = fmt.Errorf("timeout issuing/verifying tx with ID: %w", tx.ID(), err)
+			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+		} else {
+			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
 		}
 		return ids.Empty, err
 	}
@@ -814,7 +826,7 @@ func (*PublicDeployer) signTx(
 	wallet primary.Wallet,
 ) error {
 	if err := wallet.P().Signer().Sign(context.Background(), tx); err != nil {
-		return err
+		return fmt.Errorf("error signing tx: %w", err)
 	}
 	return nil
 }
@@ -836,11 +848,11 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 		owners,
 	)
 	if err != nil {
-		return ids.Empty, err
+		return ids.Empty, fmt.Errorf("error building tx: %w", err)
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
 	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-		return ids.Empty, err
+		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
 	}
 
 	ctx, cancel := utils.GetAPIContext()
@@ -851,7 +863,9 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 	)
 	if err != nil {
 		if ctx.Err() != nil {
-			err = fmt.Errorf("timeout issuing/verifying tx with ID: %w", tx.ID(), err)
+			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+		} else {
+			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
 		}
 		return ids.Empty, err
 	}

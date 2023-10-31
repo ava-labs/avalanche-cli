@@ -206,7 +206,17 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 	if err != nil {
 		return err
 	}
-	_, err = deployer.AddPermissionlessValidator(ids.Empty, ids.Empty, nodeID, weight, uint64(start.Unix()), uint64(start.Add(duration).Unix()), recipientAddr, delegationFee, nil, signer.NewProofOfPossession(blsSk))
+	_, err = deployer.AddPermissionlessValidator(
+		ids.Empty,
+		ids.Empty,
+		nodeID, weight,
+		uint64(start.Unix()),
+		uint64(start.Add(duration).Unix()),
+		recipientAddr,
+		delegationFee,
+		nil,
+		signer.NewProofOfPossession(blsSk),
+	)
 	return err
 }
 

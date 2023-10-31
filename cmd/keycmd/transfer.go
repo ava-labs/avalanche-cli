@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
@@ -21,8 +22,10 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
+	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 	"github.com/spf13/cobra"
 )
 
@@ -344,10 +347,34 @@ func transferF(*cobra.Command, []string) error {
 		}
 		outputs := []*avax.TransferableOutput{output}
 		ux.Logger.PrintToUser("Issuing ExportTx P -> X")
+
 		if ledgerIndex != wrongLedgerIndexVal {
 			ux.Logger.PrintToUser("*** Please sign 'Export Tx / P to X Chain' transaction on the ledger device *** ")
 		}
-		if _, err := wallet.P().IssueExportTx(wallet.X().BlockchainID(), outputs); err != nil {
+		unsignedTx, err := wallet.P().Builder().NewExportTx(
+			wallet.X().BlockchainID(),
+			outputs,
+		)
+		if err != nil {
+			return fmt.Errorf("error building tx: %w", err)
+		}
+		tx := txs.Tx{Unsigned: unsignedTx}
+		if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+			return fmt.Errorf("error signing tx: %w", err)
+		}
+
+		ctx, cancel := utils.GetAPIContext()
+		defer cancel()
+		err = wallet.P().IssueTx(
+			&tx,
+			common.WithContext(ctx),
+		)
+		if err != nil {
+			if ctx.Err() != nil {
+				err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+			} else {
+				err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+			}
 			return err
 		}
 	} else {
