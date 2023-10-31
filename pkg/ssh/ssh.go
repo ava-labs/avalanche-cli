@@ -38,7 +38,7 @@ func splitScript(input *bytes.Buffer, separatorPrefix string) ([]*bytes.Buffer, 
 	var buffers []*bytes.Buffer
 	separators := []string{""}
 	currentBuffer := &bytes.Buffer{}
-	_, err := currentBuffer.WriteString("#/usr/bin/env bash\n")
+	_, err := currentBuffer.WriteString("#/usr/bin/env bash\nset -euo pipefail\n")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -54,7 +54,7 @@ func splitScript(input *bytes.Buffer, separatorPrefix string) ([]*bytes.Buffer, 
 		if strings.HasPrefix(line, separatorPrefix) {
 			buffers = append(buffers, currentBuffer)
 			currentBuffer = &bytes.Buffer{}
-			_, err := currentBuffer.WriteString("#/usr/bin/env bash\n")
+			_, err := currentBuffer.WriteString("#/usr/bin/env bash\nset -euo pipefail\n")
 			if err != nil {
 				return nil, nil, err
 			}

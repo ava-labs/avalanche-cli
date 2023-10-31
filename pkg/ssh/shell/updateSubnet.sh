@@ -1,4 +1,3 @@
-set -e
 #name:{{ .Log }}TASK [stop node - stop avalanchego]
 sudo systemctl stop avalanchego
 #name:{{ .Log }}TASK [import subnet]
