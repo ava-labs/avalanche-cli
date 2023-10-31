@@ -228,9 +228,8 @@ func (d *PublicDeployer) ImportFromXChain(
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign X -> P Chain Import Transaction hash on the ledger device *** ")
 	}
-	xChainID := wallet.X().BlockchainID()
 	unsignedTx, err := wallet.P().Builder().NewImportTx(
-		xChainID,
+		wallet.X().BlockchainID(),
 		owner,
 	)
 	if err != nil {
