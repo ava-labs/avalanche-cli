@@ -24,6 +24,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/set"
+	avmtxs "github.com/ava-labs/avalanchego/vms/avm/txs"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -126,22 +127,33 @@ func (d *PublicDeployer) CreateAssetTx(
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign Create Asset Transaction hash on the ledger device *** ")
 	}
-
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	tx, err := wallet.X().IssueCreateAssetTx(
+	unsignedTx, err := wallet.X().Builder().NewCreateAssetTx(
 		tokenName,
 		tokenSymbol,
 		denomination,
 		initialState,
-		common.WithContext(ctx),
 	)
-	if err != nil && ctx.Err() != nil {
-		err = fmt.Errorf("timeout issuing/verifying tx: %w", err)
-	}
 	if err != nil {
 		return ids.Empty, err
 	}
+	tx := avmtxs.Tx{Unsigned: unsignedTx}
+	if err := wallet.X().Signer().Sign(context.Background(), &tx); err != nil {
+		return ids.Empty, err
+	}
+
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	err = wallet.X().IssueTx(
+		&tx,
+		common.WithContext(ctx),
+	)
+	if err != nil {
+		if ctx.Err() != nil {
+			err = fmt.Errorf("timeout issuing/verifying tx with ID: %w", tx.ID(), err)
+		}
+		return ids.Empty, err
+	}
+
 	ux.Logger.PrintToUser("Create Asset Transaction successful, transaction ID: %s", tx.ID())
 	ux.Logger.PrintToUser("Now exporting asset to P-Chain ...")
 	return tx.ID(), err
@@ -161,10 +173,8 @@ func (d *PublicDeployer) ExportToPChainTx(
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign X -> P Chain Export Transaction hash on the ledger device *** ")
 	}
-
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	tx, err := wallet.X().IssueExportTx(ids.Empty,
+	unsignedTx, err := wallet.X().Builder().NewExportTx(
+		ids.Empty,
 		[]*avax.TransferableOutput{
 			{
 				Asset: avax.Asset{
@@ -176,14 +186,28 @@ func (d *PublicDeployer) ExportToPChainTx(
 				},
 			},
 		},
-		common.WithContext(ctx),
 	)
-	if err != nil && ctx.Err() != nil {
-		err = fmt.Errorf("timeout issuing/verifying tx: %w", err)
-	}
 	if err != nil {
 		return ids.Empty, err
 	}
+	tx := avmtxs.Tx{Unsigned: unsignedTx}
+	if err := wallet.X().Signer().Sign(context.Background(), &tx); err != nil {
+		return ids.Empty, err
+	}
+
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	err = wallet.X().IssueTx(
+		&tx,
+		common.WithContext(ctx),
+	)
+	if err != nil {
+		if ctx.Err() != nil {
+			err = fmt.Errorf("timeout issuing/verifying tx with ID: %w", tx.ID(), err)
+		}
+		return ids.Empty, err
+	}
+
 	ux.Logger.PrintToUser("Export to P-Chain Transaction successful, transaction ID: %s", tx.ID())
 	ux.Logger.PrintToUser("Now importing asset from X-Chain ...")
 	return tx.ID(), nil
@@ -200,18 +224,32 @@ func (d *PublicDeployer) ImportFromXChain(
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign X -> P Chain Import Transaction hash on the ledger device *** ")
 	}
-	xWallet := wallet.X()
-	xChainID := xWallet.BlockchainID()
-
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	tx, err := wallet.P().IssueImportTx(xChainID, owner, common.WithContext(ctx))
-	if err != nil && ctx.Err() != nil {
-		err = fmt.Errorf("timeout issuing/verifying tx: %w", err)
-	}
+	xChainID := wallet.X().BlockchainID()
+	unsignedTx, err := wallet.P().Builder().NewImportTx(
+		xChainID,
+		owner,
+	)
 	if err != nil {
 		return ids.Empty, err
 	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return ids.Empty, err
+	}
+
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	err = wallet.P().IssueTx(
+		&tx,
+		common.WithContext(ctx),
+	)
+	if err != nil {
+		if ctx.Err() != nil {
+			err = fmt.Errorf("timeout issuing/verifying tx with ID: %w", tx.ID(), err)
+		}
+		return ids.Empty, err
+	}
+
 	ux.Logger.PrintToUser("Import from X Chain Transaction successful, transaction ID: %s", tx.ID())
 	ux.Logger.PrintToUser("Now transforming subnet into elastic subnet ...")
 	return tx.ID(), err
@@ -327,9 +365,6 @@ func (d *PublicDeployer) AddPermissionlessValidator(
 	if err != nil {
 		return ids.Empty, err
 	}
-	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign Add Permissionless Validator hash on the ledger device *** ")
-	}
 	if subnetAssetID == ids.Empty {
 		subnetAssetID = wallet.P().AVAXAssetID()
 	}
@@ -354,9 +389,6 @@ func (d *PublicDeployer) AddPermissionlessDelegator(
 	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
 		return ids.Empty, err
-	}
-	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign Add Permissionless Delegator hash on the ledger device *** ")
 	}
 	txID, err := d.issueAddPermissionlessDelegatorTX(recipientAddr, stakeAmount, subnetID, nodeID, subnetAssetID, startTime, endTime, wallet)
 	if err != nil {
@@ -673,10 +705,11 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 	} else {
 		proofOfPossession = &signer.Empty{}
 	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	options = append(options, common.WithContext(ctx))
-	tx, err := wallet.P().IssueAddPermissionlessValidatorTx(
+
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign Add Permissionless Validator hash on the ledger device *** ")
+	}
+	unsignedTx, err := wallet.P().Builder().NewAddPermissionlessValidatorTx(
 		&txs.SubnetValidator{
 			Validator: txs.Validator{
 				NodeID: nodeID,
@@ -696,6 +729,24 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 	if err != nil {
 		return ids.Empty, err
 	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return ids.Empty, err
+	}
+
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	err = wallet.P().IssueTx(
+		&tx,
+		common.WithContext(ctx),
+	)
+	if err != nil {
+		if ctx.Err() != nil {
+			err = fmt.Errorf("timeout issuing/verifying tx with ID: %w", tx.ID(), err)
+		}
+		return ids.Empty, err
+	}
+
 	return tx.ID(), nil
 }
 
@@ -716,10 +767,11 @@ func (d *PublicDeployer) issueAddPermissionlessDelegatorTX(
 			recipientAddr,
 		},
 	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	options = append(options, common.WithContext(ctx))
-	tx, err := wallet.P().IssueAddPermissionlessDelegatorTx(
+
+	if d.usingLedger {
+		ux.Logger.PrintToUser("*** Please sign Add Permissionless Delegator hash on the ledger device *** ")
+	}
+	unsignedTx, err := wallet.P().Builder().NewAddPermissionlessDelegatorTx(
 		&txs.SubnetValidator{
 			Validator: txs.Validator{
 				NodeID: nodeID,
@@ -736,6 +788,24 @@ func (d *PublicDeployer) issueAddPermissionlessDelegatorTX(
 	if err != nil {
 		return ids.Empty, err
 	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return ids.Empty, err
+	}
+
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	err = wallet.P().IssueTx(
+		&tx,
+		common.WithContext(ctx),
+	)
+	if err != nil {
+		if ctx.Err() != nil {
+			err = fmt.Errorf("timeout issuing/verifying tx with ID: %w", tx.ID(), err)
+		}
+		return ids.Empty, err
+	}
+
 	return tx.ID(), nil
 }
 
@@ -762,12 +832,30 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign CreateSubnet transaction on the ledger device *** ")
 	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	tx, err := wallet.P().IssueCreateSubnetTx(owners, common.WithContext(ctx))
+	unsignedTx, err := wallet.P().Builder().NewCreateSubnetTx(
+		owners,
+	)
 	if err != nil {
 		return ids.Empty, err
 	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return ids.Empty, err
+	}
+
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	err = wallet.P().IssueTx(
+		&tx,
+		common.WithContext(ctx),
+	)
+	if err != nil {
+		if ctx.Err() != nil {
+			err = fmt.Errorf("timeout issuing/verifying tx with ID: %w", tx.ID(), err)
+		}
+		return ids.Empty, err
+	}
+
 	return tx.ID(), nil
 }
 
