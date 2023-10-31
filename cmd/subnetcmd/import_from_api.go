@@ -3,13 +3,13 @@
 package subnetcmd
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -113,7 +113,7 @@ func importRunningSubnet(*cobra.Command, []string) error {
 			if err != nil {
 				return err
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+			ctx, cancel := utils.GetAPIContext()
 			defer cancel()
 			infoAPI := info.NewClient(nodeURL)
 			options := []rpc.Option{}
@@ -145,7 +145,7 @@ func importRunningSubnet(*cobra.Command, []string) error {
 		pubAPI = constants.MainnetAPIEndpoint
 	}
 	client := platformvm.NewClient(pubAPI)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	options := []rpc.Option{}
 

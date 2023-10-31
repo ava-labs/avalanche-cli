@@ -66,5 +66,5 @@ func GetANRContext() (context.Context, context.CancelFunc) {
 
 // Context for API requests
 func GetAPIContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	return context.WithTimeout(context.Background(), constants.APIRequestTimeout)
 }

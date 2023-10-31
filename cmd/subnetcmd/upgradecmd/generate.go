@@ -17,6 +17,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -27,7 +28,7 @@ import (
 	"github.com/ava-labs/subnet-evm/precompile/contracts/nativeminter"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/rewardmanager"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
-	"github.com/ava-labs/subnet-evm/utils"
+	subnetevmutils "github.com/ava-labs/subnet-evm/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/spf13/cobra"
@@ -248,7 +249,7 @@ func promptNativeMintParams(precompiles *[]params.PrecompileUpgrade, date time.T
 	}
 
 	config := nativeminter.NewConfig(
-		utils.NewUint64(uint64(date.Unix())),
+		subnetevmutils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
 		initialMint,
@@ -272,7 +273,7 @@ func promptRewardManagerParams(precompiles *[]params.PrecompileUpgrade, date tim
 	}
 
 	config := rewardmanager.NewConfig(
-		utils.NewUint64(uint64(date.Unix())),
+		subnetevmutils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
 		initialConfig,
@@ -308,7 +309,7 @@ func promptFeeManagerParams(precompiles *[]params.PrecompileUpgrade, date time.T
 	}
 
 	config := feemanager.NewConfig(
-		utils.NewUint64(uint64(date.Unix())),
+		subnetevmutils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
 		feeConfig,
@@ -327,7 +328,7 @@ func promptContractAllowListParams(precompiles *[]params.PrecompileUpgrade, date
 	}
 
 	config := deployerallowlist.NewConfig(
-		utils.NewUint64(uint64(date.Unix())),
+		subnetevmutils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
 	)
@@ -345,7 +346,7 @@ func promptTxAllowListParams(precompiles *[]params.PrecompileUpgrade, date time.
 	}
 
 	config := txallowlist.NewConfig(
-		utils.NewUint64(uint64(date.Unix())),
+		subnetevmutils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
 	)
@@ -417,7 +418,7 @@ func ensureAdminsHaveBalance(admins []common.Address, subnetName string) error {
 
 func getAccountBalance(ctx context.Context, cClient ethclient.Client, addrStr string) (float64, error) {
 	addr := common.HexToAddress(addrStr)
-	ctx, cancel := context.WithTimeout(ctx, constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	balance, err := cClient.BalanceAt(ctx, addr, nil)
 	defer cancel()
 	if err != nil {

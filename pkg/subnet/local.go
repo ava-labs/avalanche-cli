@@ -330,7 +330,7 @@ func (d *LocalDeployer) StartServer() error {
 func GetCurrentSupply(subnetID ids.ID) error {
 	api := constants.LocalAPIEndpoint
 	pClient := platformvm.NewClient(api)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	_, _, err := pClient.GetCurrentSupply(ctx, subnetID)
 	return err
@@ -818,7 +818,7 @@ func IssueRemoveSubnetValidatorTx(kc keychain.Keychain, subnetID ids.ID, nodeID 
 func GetSubnetValidators(subnetID ids.ID) ([]platformvm.ClientPermissionlessValidator, error) {
 	api := constants.LocalAPIEndpoint
 	pClient := platformvm.NewClient(api)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 
 	return pClient.GetCurrentValidators(ctx, subnetID, nil)
@@ -827,7 +827,7 @@ func GetSubnetValidators(subnetID ids.ID) ([]platformvm.ClientPermissionlessVali
 func CheckNodeIsInSubnetPendingValidators(subnetID ids.ID, nodeID string) (bool, error) {
 	api := constants.LocalAPIEndpoint
 	pClient := platformvm.NewClient(api)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 
 	pVals, _, err := pClient.GetPendingValidators(ctx, subnetID, nil)

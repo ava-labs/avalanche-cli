@@ -11,25 +11,19 @@ import (
 	"strings"
 	"time"
 
-	utilspkg "github.com/ava-labs/avalanche-cli/pkg/utils"
-
-	"github.com/ava-labs/avalanche-cli/pkg/txutils"
-
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanchego/vms/components/verify"
-
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
-
-	"github.com/ava-labs/avalanchego/genesis"
-
 	es "github.com/ava-labs/avalanche-cli/pkg/elasticsubnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	subnet "github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/txutils"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	utilspkg "github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/vms/components/verify"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
@@ -715,7 +709,7 @@ func CheckSubnetIsElastic(subnetID ids.ID, network models.Network) (bool, error)
 		return false, fmt.Errorf("invalid network: %s", network)
 	}
 	pClient := platformvm.NewClient(apiURL)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	_, _, err := pClient.GetCurrentSupply(ctx, subnetID)
 	if err != nil {

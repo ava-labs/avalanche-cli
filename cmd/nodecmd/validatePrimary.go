@@ -3,7 +3,6 @@
 package nodecmd
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,23 +12,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
-	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
-
-	"github.com/ava-labs/avalanchego/genesis"
-	"github.com/ava-labs/avalanchego/utils/units"
-
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-
 	subnetcmd "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/crypto/bls"
+	"github.com/ava-labs/avalanchego/utils/units"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 	"github.com/spf13/cobra"
 )
 
@@ -126,7 +122,7 @@ func GetMinStakingAmount(network models.Network) (uint64, error) {
 		apiURL = constants.FujiAPIEndpoint
 	}
 	pClient := platformvm.NewClient(apiURL)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	minValStake, _, err := pClient.GetMinStake(ctx, ids.Empty)
 	if err != nil {

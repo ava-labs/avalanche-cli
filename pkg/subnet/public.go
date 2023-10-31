@@ -17,8 +17,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-network-runner/utils"
+	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -126,7 +127,7 @@ func (d *PublicDeployer) CreateAssetTx(
 		ux.Logger.PrintToUser("*** Please sign Create Asset Transaction hash on the ledger device *** ")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	tx, err := wallet.X().IssueCreateAssetTx(
 		tokenName,
@@ -161,7 +162,7 @@ func (d *PublicDeployer) ExportToPChainTx(
 		ux.Logger.PrintToUser("*** Please sign X -> P Chain Export Transaction hash on the ledger device *** ")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	tx, err := wallet.X().IssueExportTx(ids.Empty,
 		[]*avax.TransferableOutput{
@@ -202,7 +203,7 @@ func (d *PublicDeployer) ImportFromXChain(
 	xWallet := wallet.X()
 	xChainID := xWallet.BlockchainID()
 
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	tx, err := wallet.P().IssueImportTx(xChainID, owner, common.WithContext(ctx))
 	if err != nil && ctx.Err() != nil {
@@ -403,7 +404,7 @@ func (d *PublicDeployer) DeployBlockchain(
 		return false, ids.Empty, nil, nil, err
 	}
 
-	vmID, err := utils.VMID(chain)
+	vmID, err := anrutils.VMID(chain)
 	if err != nil {
 		return false, ids.Empty, nil, nil, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
@@ -446,7 +447,7 @@ func (d *PublicDeployer) Commit(
 	if err != nil {
 		return ids.Empty, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	err = wallet.P().IssueTx(tx, common.WithContext(ctx))
 	if err != nil && ctx.Err() != nil {
@@ -672,7 +673,7 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 	} else {
 		proofOfPossession = &signer.Empty{}
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	options = append(options, common.WithContext(ctx))
 	tx, err := wallet.P().IssueAddPermissionlessValidatorTx(
@@ -715,7 +716,7 @@ func (d *PublicDeployer) issueAddPermissionlessDelegatorTX(
 			recipientAddr,
 		},
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	options = append(options, common.WithContext(ctx))
 	tx, err := wallet.P().IssueAddPermissionlessDelegatorTx(
@@ -761,7 +762,7 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign CreateSubnet transaction on the ledger device *** ")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	tx, err := wallet.P().IssueCreateSubnetTx(owners, common.WithContext(ctx))
 	if err != nil {
@@ -800,7 +801,7 @@ func IsSubnetValidator(subnetID ids.ID, nodeID ids.NodeID, network models.Networ
 		return false, fmt.Errorf("invalid network: %s", network)
 	}
 	pClient := platformvm.NewClient(apiURL)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 
 	vals, err := pClient.GetCurrentValidators(ctx, subnetID, []ids.NodeID{nodeID})
@@ -822,7 +823,7 @@ func GetPublicSubnetValidators(subnetID ids.ID, network models.Network) ([]platf
 		return nil, fmt.Errorf("invalid network: %s", network)
 	}
 	pClient := platformvm.NewClient(apiURL)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 
 	vals, err := pClient.GetCurrentValidators(ctx, subnetID, []ids.NodeID{})

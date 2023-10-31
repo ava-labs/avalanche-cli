@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
@@ -277,7 +278,7 @@ func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime t
 	}
 
 	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	platformCli := platformvm.NewClient(uri)
 	vs, err := platformCli.GetCurrentValidators(ctx, avago_constants.PrimaryNetworkID, nil)
 	cancel()

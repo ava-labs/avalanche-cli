@@ -11,22 +11,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
-	"github.com/ava-labs/avalanche-network-runner/server"
-
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
-
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/plugins"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -748,7 +746,7 @@ func getAssetBalance(ctx context.Context, pClient platformvm.Client, addr string
 	if err != nil {
 		return 0, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	resp, err := pClient.GetBalance(ctx, []ids.ShortID{pID})
 	cancel()
 	if err != nil {
