@@ -399,35 +399,33 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	failedNodes := []string{}
-	nodeErrors := []error{}
+	nodeError := map[string]error{}
 	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
 	for i, host := range hosts {
 		nodeIDStr, err := getClusterNodeID(host)
 		if err != nil {
 			ux.Logger.PrintToUser(fmt.Sprintf("Failed to add node %s as Primary Network validator due to %s", host, err.Error()))
-			failedNodes = append(failedNodes, host.NodeID)
-			nodeErrors = append(nodeErrors, err)
+			nodeError[host.NodeID] = err
 			continue
 		}
 		nodeID, err := ids.NodeIDFromString(nodeIDStr)
 		if err != nil {
 			ux.Logger.PrintToUser(fmt.Sprintf("Failed to add node %s as Primary Network validator due to %s", host, err.Error()))
-			failedNodes = append(failedNodes, host.NodeID)
-			nodeErrors = append(nodeErrors, err)
+			nodeError[host.NodeID] = err
 			continue
 		}
 		_, err = addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji, i, host.GetInstanceID())
 		if err != nil {
 			ux.Logger.PrintToUser(fmt.Sprintf("Failed to add node %s as Primary Network validator due to %s", host, err.Error()))
-			failedNodes = append(failedNodes, host.NodeID)
-			nodeErrors = append(nodeErrors, err)
+			nodeError[host.NodeID] = err
 		}
 	}
-	if len(failedNodes) > 0 {
+	if len(nodeError) > 0 {
 		ux.Logger.PrintToUser("Failed nodes: ")
-		for i, node := range failedNodes {
-			ux.Logger.PrintToUser(fmt.Sprintf("node %s failed due to %s", node, nodeErrors[i]))
+		failedNodes := []string{}
+		for node, err := range nodeError {
+			ux.Logger.PrintToUser(fmt.Sprintf("node %s failed due to %s", node, err))
+			failedNodes = append(failedNodes, node)
 		}
 		return fmt.Errorf("node(s) %s failed to validate the Primary Network", failedNodes)
 	} else {

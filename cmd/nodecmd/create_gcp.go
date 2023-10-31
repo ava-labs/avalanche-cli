@@ -226,24 +226,24 @@ func createGCPInstance(usr *user.User, gcpClient *compute.Service, zone, imageID
 		if err.Error() == constants.ErrCreatingGCPNode {
 			// we stop created instances so that user doesn't pay for unused GCP instances
 			ux.Logger.PrintToUser("Stopping all created GCP instances due to error to prevent charge for unused GCP instances...")
-			failedNodes := []string{}
-			nodeErrors := []error{}
+			nodeError := map[string]error{}
 			for _, instanceID := range instanceIDs {
 				nodeConfig := models.NodeConfig{
 					NodeID: instanceID,
 					Region: zone,
 				}
 				if stopErr := gcpAPI.StopGCPNode(gcpClient, nodeConfig, gcpProjectName, clusterName, false); err != nil {
-					failedNodes = append(failedNodes, instanceID)
-					nodeErrors = append(nodeErrors, stopErr)
+					nodeError[instanceID] = stopErr
 					continue
 				}
 				ux.Logger.PrintToUser(fmt.Sprintf("GCP cloud server instance %s stopped", instanceID))
 			}
-			if len(failedNodes) > 0 {
+			if len(nodeError) > 0 {
 				ux.Logger.PrintToUser("Failed nodes: ")
-				for i, node := range failedNodes {
-					ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
+				failedNodes := []string{}
+				for node, err := range nodeError {
+					ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err))
+					failedNodes = append(failedNodes, node)
 				}
 				ux.Logger.PrintToUser("Stop the above instance(s) on GCP console to prevent charges")
 				return CloudConfig{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)

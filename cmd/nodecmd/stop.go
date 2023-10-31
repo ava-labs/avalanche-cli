@@ -95,8 +95,7 @@ func stopNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	failedNodes := []string{}
-	nodeErrors := []error{}
+	nodeError := map[string]error{}
 	lastRegion := ""
 	var ec2Svc *ec2.EC2
 	var gcpClient *compute.Service
@@ -105,8 +104,7 @@ func stopNode(_ *cobra.Command, args []string) error {
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
 		if err != nil {
 			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err.Error()))
-			failedNodes = append(failedNodes, node)
-			nodeErrors = append(nodeErrors, err)
+			nodeError[node] = err
 			continue
 		}
 		if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
@@ -120,8 +118,7 @@ func stopNode(_ *cobra.Command, args []string) error {
 				lastRegion = nodeConfig.Region
 			}
 			if err = awsAPI.StopAWSNode(ec2Svc, nodeConfig, clusterName); err != nil {
-				failedNodes = append(failedNodes, node)
-				nodeErrors = append(nodeErrors, err)
+				nodeError[node] = err
 				continue
 			}
 		} else {
@@ -132,8 +129,7 @@ func stopNode(_ *cobra.Command, args []string) error {
 				}
 			}
 			if err = gcpAPI.StopGCPNode(gcpClient, nodeConfig, gcpProjectName, clusterName, true); err != nil {
-				failedNodes = append(failedNodes, node)
-				nodeErrors = append(nodeErrors, err)
+				nodeError[node] = err
 				continue
 			}
 		}
@@ -143,14 +139,16 @@ func stopNode(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	if len(failedNodes) > 0 {
+	if len(nodeError) > 0 {
 		ux.Logger.PrintToUser("Failed nodes: ")
-		for i, node := range failedNodes {
-			if strings.Contains(nodeErrors[i].Error(), constants.ErrReleasingGCPStaticIP) {
+		failedNodes := []string{}
+		for node, err := range nodeError {
+			if strings.Contains(err.Error(), constants.ErrReleasingGCPStaticIP) {
 				ux.Logger.PrintToUser(fmt.Sprintf("Node is stopped, but failed to release static ip address for node %s due to %s", node, nodeErrors[i]))
 			} else {
-				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
+				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err))
 			}
+			failedNodes = append(failedNodes, node)
 		}
 		return fmt.Errorf("failed to stop node(s) %s", failedNodes)
 	} else {

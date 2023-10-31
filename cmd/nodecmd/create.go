@@ -223,36 +223,18 @@ func createNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Waiting for created node(s) to become accessible...")
-	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
+	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
 	if err != nil {
 		return err
 	}
-	createdHosts := ansible.FilterHostsByNodeID(hosts, cloudConfig.InstanceIDs)
+	hosts := ansible.FilterHostsByNodeID(allHosts, cloudConfig.InstanceIDs)
 	// waiting for all nodes to become accessible
-	createdResultChannel := make(chan error, len(hosts))
-	createdWaitGroup := sync.WaitGroup{}
-	for _, host := range createdHosts {
-		createdWaitGroup.Add(1)
-		go func(nodeResultChannel chan error, host models.Host) {
-			defer createdWaitGroup.Done()
-			if err := host.WaitForSSHPort(60 * time.Second); err != nil {
-				nodeResultChannel <- err
-				return
-			}
-		}(createdResultChannel, host)
-	}
-	createdWaitGroup.Wait()
-	close(createdResultChannel)
-	for err := range createdResultChannel {
-		return err // return first error
-	}
+	waitForHosts(hosts)
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
-	ux.Logger.PrintToUser("Staker.crt and staker.key will be copied to local machine...")
 	// run over ssh in parallel
 	nodeResultChannel := make(chan error, len(hosts))
 	parallelWaitGroup := sync.WaitGroup{}
-	for _, host := range createdHosts {
+	for _, host := range hosts {
 		parallelWaitGroup.Add(1)
 		go func(nodeResultChannel chan error, host models.Host) {
 			defer parallelWaitGroup.Done()
@@ -278,6 +260,27 @@ func createNode(_ *cobra.Command, args []string) error {
 	PrintResults(cloudConfig, publicIPMap, cloudService)
 	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	return nil
+}
+
+// waitForHosts waits for all hosts to become available via SSH.
+func waitForHosts(hosts []models.Host) error {
+	createdResultChannel := make(chan error, len(hosts))
+	createdWaitGroup := sync.WaitGroup{}
+	for _, host := range hosts {
+		createdWaitGroup.Add(1)
+		go func(nodeResultChannel chan error, host models.Host) {
+			defer createdWaitGroup.Done()
+			if err := host.WaitForSSHPort(60 * time.Second); err != nil {
+				nodeResultChannel <- err
+				return
+			}
+		}(createdResultChannel, host)
+	}
+	createdWaitGroup.Wait()
+	close(createdResultChannel)
+	for err := range createdResultChannel {
+		return err // return first error
+	}
 }
 
 // setupAnsible we need to remove existing ansible directory and its contents in .avalanche-cli dir

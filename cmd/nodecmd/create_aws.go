@@ -237,20 +237,20 @@ func createAWSInstance(ec2Svc *ec2.EC2, region, ami string, usr *user.User) (Clo
 			if instanceIDErr != nil {
 				return CloudConfig{}, instanceIDErr
 			}
-			failedNodes := []string{}
-			nodeErrors := []error{}
+			nodeError := map[string]error{}
 			for _, instanceID := range instanceIDs {
 				ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s...", instanceID))
 				if stopErr := awsAPI.StopInstance(ec2Svc, instanceID, "", false); stopErr != nil {
-					failedNodes = append(failedNodes, instanceID)
-					nodeErrors = append(nodeErrors, stopErr)
+					nodeError[instanceID] = stopErr
 				}
 				ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s stopped", instanceID))
 			}
-			if len(failedNodes) > 0 {
+			if len(nodeError) > 0 {
 				ux.Logger.PrintToUser("Failed nodes: ")
-				for i, node := range failedNodes {
-					ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
+				failedNodes := []string{}
+				for node, err := range nodeError {
+					ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err))
+					failedNodes = append(failedNodes, node)
 				}
 				ux.Logger.PrintToUser("Stop the above instance(s) on AWS console to prevent charges")
 				return CloudConfig{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)

@@ -143,9 +143,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
-	failedNodes := []string{}
-	nodeErrors := []error{}
-
+	nodeError := map[string]error{}
 	nodeSubnetSyncStatus := map[string]string{}
 	nodeResultChannel := make(chan models.NodeStringResult, len(hosts))
 	parallelWaitGroup := sync.WaitGroup{}
@@ -170,62 +168,57 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 		nodeIDStr, err := getClusterNodeID(host)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err.Error())
-			failedNodes = append(failedNodes, host.NodeID)
-			nodeErrors = append(nodeErrors, err)
+			nodeError[host.NodeID] = err
 			continue
 		}
 		nodeID, err := ids.NodeIDFromString(nodeIDStr)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err.Error())
-			failedNodes = append(failedNodes, host.NodeID)
-			nodeErrors = append(nodeErrors, err)
+			nodeError[host.NodeID] = err
 			continue
 		}
 		// we have to check if node is synced to subnet before adding the node as a validator
 		subnetSyncStatus := nodeSubnetSyncStatus[host.NodeID]
 		if subnetSyncStatus == "" {
 			ux.Logger.PrintToUser("Failed to get subnet sync status for node %s", host)
-			failedNodes = append(failedNodes, host.NodeID)
-			nodeErrors = append(nodeErrors, err)
+			nodeError[host.NodeID] = err
 			continue
 		}
 		if subnetSyncStatus != status.Syncing.String() {
-			failedNodes = append(failedNodes, host.NodeID)
 			if subnetSyncStatus == status.Validating.String() {
 				ux.Logger.PrintToUser("Failed to add node %s as subnet validator as node is already a subnet validator", host)
-				nodeErrors = append(nodeErrors, errors.New("node is already a subnet validator"))
+				nodeError[host.NodeID] = errors.New("node is already a subnet validator")
 			} else {
 				ux.Logger.PrintToUser("Failed to add node %s as subnet validator as node is not synced to subnet yet", host)
-				nodeErrors = append(nodeErrors, errors.New("node is not synced to subnet yet, please try again later"))
+				nodeError[host.NodeID] = errors.New("node is already a subnet validator")
 			}
 			continue
 		}
 		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji, i, host.GetInstanceID())
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err.Error())
-			failedNodes = append(failedNodes, host.NodeID)
-			nodeErrors = append(nodeErrors, err)
+			nodeError[host.NodeID] = err
 			continue
 		}
 		if addedNodeAsPrimaryNetworkValidator {
 			if err := waitForNodeToBePrimaryNetworkValidator(nodeID); err != nil {
 				ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err.Error())
-				failedNodes = append(failedNodes, host.NodeID)
-				nodeErrors = append(nodeErrors, err)
+				nodeError[host.NodeID] = err
 				continue
 			}
 		}
 		err = addNodeAsSubnetValidator(nodeIDStr, subnetName, models.Fuji, i, len(hosts))
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err.Error())
-			failedNodes = append(failedNodes, host.NodeID)
-			nodeErrors = append(nodeErrors, err)
+			nodeError[host.NodeID] = err
 		}
 	}
-	if len(failedNodes) > 0 {
+	if len(nodeError) > 0 {
 		ux.Logger.PrintToUser("Failed nodes: ")
-		for i, node := range failedNodes {
-			ux.Logger.PrintToUser("node %s failed due to %s", node, nodeErrors[i])
+		failedNodes := []string{}
+		for node, err := range nodeError {
+			ux.Logger.PrintToUser("node %s failed due to %s", node, err)
+			failedNodes = append(failedNodes, node)
 		}
 		return fmt.Errorf("node(s) %s failed to validate subnet %s", failedNodes, subnetName)
 	} else {
