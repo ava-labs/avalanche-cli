@@ -191,12 +191,10 @@ func (h Host) WaitForSSHPort(timeout time.Duration) error {
 		if time.Now().After(deadline) {
 			return fmt.Errorf("timeout: SSH port %d on host %s is not available after %ds", constants.SSHTCPPort, h.IP, timeout)
 		}
-
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", h.IP, constants.SSHTCPPort), time.Second)
+		_, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", h.IP, constants.SSHTCPPort), time.Second)
 		if err == nil {
 			return nil
 		}
-		defer conn.Close()
 		time.Sleep(1 * time.Second)
 	}
 }
