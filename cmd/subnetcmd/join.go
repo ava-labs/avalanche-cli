@@ -658,9 +658,8 @@ func promptStakeAmount(subnetName string, isValidator bool, network models.Netwo
 		if err != nil {
 			return 0, err
 		}
-		ctx := context.Background()
 		pClient := platformvm.NewClient(constants.LocalAPIEndpoint)
-		walletBalance, err := getAssetBalance(ctx, pClient, ewoqPChainAddr, esc.AssetID)
+		walletBalance, err := getAssetBalance(pClient, ewoqPChainAddr, esc.AssetID)
 		if err != nil {
 			return 0, err
 		}
@@ -741,7 +740,7 @@ take effect.`
 	ux.Logger.PrintToUser(msg, vmPath, subnetID, networkID, subnetID, subnetID)
 }
 
-func getAssetBalance(ctx context.Context, pClient platformvm.Client, addr string, assetID ids.ID) (uint64, error) {
+func getAssetBalance(pClient platformvm.Client, addr string, assetID ids.ID) (uint64, error) {
 	pID, err := address.ParseToID(addr)
 	if err != nil {
 		return 0, err

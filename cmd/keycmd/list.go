@@ -3,7 +3,6 @@
 package keycmd
 
 import (
-	"context"
 	"fmt"
 	"math/big"
 	"os"
@@ -331,7 +330,7 @@ func getPChainAddrInfo(
 	kind string,
 	name string,
 ) (addressInfo, error) {
-	balance, err := getPChainBalanceStr(context.Background(), pClients[network], pChainAddr)
+	balance, err := getPChainBalanceStr(pClients[network], pChainAddr)
 	if err != nil {
 		// just ignore local network errors
 		if network != models.Local {
@@ -355,7 +354,7 @@ func getCChainAddrInfo(
 	kind string,
 	name string,
 ) (addressInfo, error) {
-	cChainBalance, err := getCChainBalanceStr(context.Background(), cClients[network], cChainAddr)
+	cChainBalance, err := getCChainBalanceStr(cClients[network], cChainAddr)
 	if err != nil {
 		// just ignore local network errors
 		if network != models.Local {
@@ -391,7 +390,7 @@ func printAddrInfos(addrInfos []addressInfo) {
 	table.Render()
 }
 
-func getCChainBalanceStr(ctx context.Context, cClient ethclient.Client, addrStr string) (string, error) {
+func getCChainBalanceStr(cClient ethclient.Client, addrStr string) (string, error) {
 	addr := common.HexToAddress(addrStr)
 	ctx, cancel := utils.GetAPIContext()
 	balance, err := cClient.BalanceAt(ctx, addr, nil)
@@ -413,7 +412,7 @@ func getCChainBalanceStr(ctx context.Context, cClient ethclient.Client, addrStr 
 	return balanceStr, nil
 }
 
-func getPChainBalanceStr(ctx context.Context, pClient platformvm.Client, addr string) (string, error) {
+func getPChainBalanceStr(pClient platformvm.Client, addr string) (string, error) {
 	pID, err := address.ParseToID(addr)
 	if err != nil {
 		return "", err

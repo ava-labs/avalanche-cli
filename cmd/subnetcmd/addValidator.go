@@ -3,7 +3,6 @@
 package subnetcmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -277,7 +276,6 @@ func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime t
 		return 0, fmt.Errorf("unsupported public network")
 	}
 
-	ctx := context.Background()
 	ctx, cancel := utils.GetAPIContext()
 	platformCli := platformvm.NewClient(uri)
 	vs, err := platformCli.GetCurrentValidators(ctx, avago_constants.PrimaryNetworkID, nil)

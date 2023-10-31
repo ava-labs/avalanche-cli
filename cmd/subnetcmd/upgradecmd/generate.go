@@ -3,7 +3,6 @@
 package upgradecmd
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -373,7 +372,7 @@ func ensureAdminsHaveBalanceLocalNetwork(admins []common.Address, blockchainID s
 
 	for _, admin := range admins {
 		// we can break at the first admin who has a non-zero balance
-		accountBalance, err := getAccountBalance(context.Background(), cClient, admin.String())
+		accountBalance, err := getAccountBalance(cClient, admin.String())
 		if err != nil {
 			return err
 		}
@@ -416,7 +415,7 @@ func ensureAdminsHaveBalance(admins []common.Address, subnetName string) error {
 	return nil
 }
 
-func getAccountBalance(ctx context.Context, cClient ethclient.Client, addrStr string) (float64, error) {
+func getAccountBalance(cClient ethclient.Client, addrStr string) (float64, error) {
 	addr := common.HexToAddress(addrStr)
 	ctx, cancel := utils.GetAPIContext()
 	balance, err := cClient.BalanceAt(ctx, addr, nil)
