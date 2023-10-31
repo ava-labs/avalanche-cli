@@ -42,7 +42,6 @@ func splitScript(input *bytes.Buffer, separatorPrefix string) ([]*bytes.Buffer, 
 	if err != nil {
 		return nil, nil, err
 	}
-
 	for {
 		line, err := input.ReadString('\n')
 		if err != nil {

@@ -193,9 +193,10 @@ func (h Host) WaitForSSHPort(timeout time.Duration) error {
 		}
 		_, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", h.IP, constants.SSHTCPPort), time.Second)
 		if err == nil {
+			time.Sleep(2 * time.Second)
 			return nil
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(2 * time.Second)
 	}
 }
 
