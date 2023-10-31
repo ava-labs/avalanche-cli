@@ -1,3 +1,4 @@
+set -e
 #name:{{ .Log }}TASK [get avalanche go script]
 wget -nd -m https://raw.githubusercontent.com/ava-labs/avalanche-docs/master/scripts/avalanchego-installer.sh
 #name:{{ .Log }}TASK [modify permissions]

@@ -1,3 +1,4 @@
+set -e
 #name:{{ .Log }}TASK [install avalanche-cli from source]
 cd ~
 rm -rf avalanche-cli
