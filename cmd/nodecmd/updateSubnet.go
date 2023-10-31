@@ -18,10 +18,10 @@ import (
 func newUpdateSubnetCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "subnet [clusterName] [subnetName]",
-		Short: "(ALPHA Warning) Update nodes in a cluster with latest subnet configuration",
+		Short: "(ALPHA Warning) Update nodes in a cluster with latest subnet configuration and VM for custom VM",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
-The node update subnet command updates all nodes in a cluster with latest Subnet configuration.
+The node update subnet command updates all nodes in a cluster with latest Subnet configuration and VM for custom VM.
 You can check the updated subnet bootstrap status by calling avalanche node status <clusterName> --subnet <subnetName>`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(2),

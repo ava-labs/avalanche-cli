@@ -321,11 +321,14 @@ func getAvalancheGoVersion() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if chosenOption != "latest" {
-		if chosenOption == "custom" {
+	if chosenOption != constants.LatestAvalancheGo {
+		if chosenOption == constants.CustomAvalancheGo {
 			customVersion, err := app.Prompt.CaptureString("Which version of AvalancheGo would you like to install? (Use format v1.10.13)")
 			if err != nil {
 				return "", err
+			}
+			if !strings.HasPrefix(customVersion, "v") {
+				return "", errors.New("invalid avalanche go version")
 			}
 			return customVersion, nil
 		}
@@ -339,7 +342,7 @@ func getAvalancheGoVersion() (string, error) {
 		}
 		return customAvagoVersion, nil
 	}
-	return chosenOption, nil
+	return "latest", nil
 }
 
 func GetLatestAvagoVersionForRPC(configuredRPCVersion int) (string, error) {
@@ -365,9 +368,9 @@ func promptAvalancheGoReferenceChoice() (string, error) {
 
 	switch versionOption {
 	case defaultVersion:
-		return "latest", nil
+		return constants.LatestAvalancheGo, nil
 	case "Custom":
-		return "custom", nil
+		return constants.CustomVMDir, nil
 	default:
 		for {
 			subnetName, err := app.Prompt.CaptureString("Which Subnet would you like to use to choose the avalanche go version?")

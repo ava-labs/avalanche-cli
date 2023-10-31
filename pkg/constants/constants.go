@@ -101,6 +101,8 @@ const (
 	AvalanchegoP2PPort                     = 9651
 	CloudServerStorageSize                 = 1000
 	OutboundPort                           = 0
+	LatestAvalancheGo                      = "latestAvalancheGo"
+	CustomAvalancheGo                      = "customAvalancheGo"
 	Terraform                              = "terraform"
 	AnsiblePlaybook                        = "ansible-playbook"
 	SetupNodePlaybook                      = "playbook/setupNode.yml"
