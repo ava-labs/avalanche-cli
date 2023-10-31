@@ -116,6 +116,7 @@ const (
 	SetupCLIFromSourcePlaybook             = "playbook/setupCLIFromSource.yml"
 	UpgradeAvalancheGoPlaybook             = "playbook/upgradeAvalancheGo.yml"
 	UpgradeSubnetEVMPlaybook               = "playbook/upgradeSubnetEVM.yml"
+	GetNewSubnetEVMPlaybook                = "playbook/getNewSubnetEVMRelease.yml"
 	BuildEnvGolangVersion                  = "1.21.1"
 	IsBootstrappedJSONFile                 = "isBootstrapped.json"
 	AvalancheGoVersionJSONFile             = "avalancheGoVersion.json"

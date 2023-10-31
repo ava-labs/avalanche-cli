@@ -19,6 +19,7 @@ type GCPConfig struct {
 }
 
 type NodeUpgradeInfo struct {
-	AvalancheGoVersion string            // avalanche go version to update to on cloud server
-	SubnetEVMInfo      map[string]string // maps ID of Subnet EVM to be upgraded to subnet EVM version to update to
+	AvalancheGoVersion    string   // avalanche go version to update to on cloud server
+	SubnetEVMVersion      string   // subnet EVM version to update to on cloud server
+	SubnetEVMIDsToUpgrade []string // list of ID of Subnet EVM to be upgraded to subnet EVM version to update to
 }

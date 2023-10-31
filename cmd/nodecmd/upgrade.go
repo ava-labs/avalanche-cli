@@ -55,13 +55,18 @@ func upgrade(_ *cobra.Command, args []string) error {
 				return err
 			}
 		}
-		for vmID, subnetEVMVersionToUpgradeTo := range upgradeInfo.SubnetEVMInfo {
-			subnetEMVersionToUpgradeToWoPrefix := strings.TrimPrefix(subnetEVMVersionToUpgradeTo, "v")
-			subnetEVMArchive := fmt.Sprintf(constants.SubnetEVMArchive, subnetEMVersionToUpgradeToWoPrefix)
-			subnetEVMReleaseURL := fmt.Sprintf(constants.SubnetEVMReleaseURL, subnetEVMVersionToUpgradeTo, subnetEVMArchive)
-			subnetEVMBinaryPath := fmt.Sprintf(constants.SubnetEVMBinaryPath, vmID)
-			if err = upgradeSubnetEVM(clusterName, subnetEVMReleaseURL, subnetEVMArchive, subnetEVMBinaryPath, node, subnetEVMVersionToUpgradeTo); err != nil {
+		if upgradeInfo.SubnetEVMVersion != "" {
+			subnetEVMVersionToUpgradeToWoPrefix := strings.TrimPrefix(upgradeInfo.SubnetEVMVersion, "v")
+			subnetEVMArchive := fmt.Sprintf(constants.SubnetEVMArchive, subnetEVMVersionToUpgradeToWoPrefix)
+			subnetEVMReleaseURL := fmt.Sprintf(constants.SubnetEVMReleaseURL, upgradeInfo.SubnetEVMVersion, subnetEVMArchive)
+			if err = getNewSubnetEVMRelease(clusterName, subnetEVMReleaseURL, subnetEVMArchive, node, upgradeInfo.SubnetEVMVersion); err != nil {
 				return err
+			}
+			for _, vmID := range upgradeInfo.SubnetEVMIDsToUpgrade {
+				subnetEVMBinaryPath := fmt.Sprintf(constants.SubnetEVMBinaryPath, vmID)
+				if err = upgradeSubnetEVM(clusterName, subnetEVMBinaryPath, node, upgradeInfo.SubnetEVMVersion); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -118,7 +123,7 @@ func getNodesUpgradeInfo(clusterName string) (map[string]models.NodeUpgradeInfo,
 		currentAvalancheGoVersion := vmVersions[constants.PlatformKeyName]
 		avalancheGoVersionToUpdateTo := latestAvagoVersion
 		nodeUpgradeInfo := models.NodeUpgradeInfo{}
-		nodeUpgradeInfo.SubnetEVMInfo = make(map[string]string)
+		nodeUpgradeInfo.SubnetEVMIDsToUpgrade = []string{}
 		for vmName, vmVersion := range vmVersions {
 			// when calling info.getNodeVersion, this is what we get
 			// "vmVersions":{"avm":"v1.10.12","evm":"v0.12.5","n8Anw9kErmgk7KHviddYtecCmziLZTphDwfL1V2DfnFjWZXbE":"v0.5.6","platform":"v1.10.12"}},
@@ -127,7 +132,8 @@ func getNodesUpgradeInfo(clusterName string) (map[string]models.NodeUpgradeInfo,
 				if vmVersion != latestSubnetEVMVersion {
 					// update subnet EVM version
 					ux.Logger.PrintToUser("Upgrading Subnet EVM version for node %s from version %s to version %s", host, vmVersion, latestSubnetEVMVersion)
-					nodeUpgradeInfo.SubnetEVMInfo[vmName] = latestSubnetEVMVersion
+					nodeUpgradeInfo.SubnetEVMVersion = latestSubnetEVMVersion
+					nodeUpgradeInfo.SubnetEVMIDsToUpgrade = append(nodeUpgradeInfo.SubnetEVMIDsToUpgrade, vmName)
 				}
 				// find the highest version of avalanche go that is still compatible with current highest rpc
 				avalancheGoVersionToUpdateTo, err = GetLatestAvagoVersionForRPC(rpcVersion)
@@ -180,12 +186,22 @@ func upgradeAvalancheGo(clusterName, ansibleNodeID, avaGoVersionToUpdateTo strin
 	return nil
 }
 
-func upgradeSubnetEVM(clusterName, subnetEVMReleaseURL, subnetEVMArchive, subnetEVMBinaryPath, ansibleNodeID, subnetEVMVersion string) error {
+func upgradeSubnetEVM(clusterName, subnetEVMBinaryPath, ansibleNodeID, subnetEVMVersion string) error {
 	ux.Logger.PrintToUser("Upgrading SubnetEVM version of node %s to version %s ...", ansibleNodeID, subnetEVMVersion)
-	if err := ansible.RunAnsiblePlaybookUpgradeSubnetEVM(app.GetAnsibleDir(), subnetEVMReleaseURL, subnetEVMArchive, subnetEVMBinaryPath, app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
+	if err := ansible.RunAnsiblePlaybookUpgradeSubnetEVM(app.GetAnsibleDir(), subnetEVMBinaryPath, app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Successfully upgraded SubnetEVM version of node %s!", ansibleNodeID)
+	ux.Logger.PrintToUser("======================================")
+	return nil
+}
+
+func getNewSubnetEVMRelease(clusterName, subnetEVMReleaseURL, subnetEVMArchive, ansibleNodeID, subnetEVMVersion string) error {
+	ux.Logger.PrintToUser("Getting new SubnetEVM version %s ...", subnetEVMVersion)
+	if err := ansible.RunAnsiblePlaybookGetNewSubnetEVM(app.GetAnsibleDir(), subnetEVMReleaseURL, subnetEVMArchive, app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Successfully downloaded SubnetEVM version for node %s!", ansibleNodeID)
 	ux.Logger.PrintToUser("======================================")
 	return nil
 }

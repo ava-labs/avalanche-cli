@@ -297,7 +297,6 @@ func getStringSeqFromISeq(lines []interface{}) []string {
 // RunAnsiblePlaybookCheckAvalancheGoVersion checks if node is bootstrapped to primary network
 // targets a specific host ansibleHostID in ansible inventory file
 func RunAnsiblePlaybookCheckAvalancheGoVersion(ansibleDir, avalancheGoPath, inventoryPath, ansibleHostID string) error {
-	fmt.Printf("running RunAnsiblePlaybookCheckAvalancheGoVersion %s \n", ansibleHostID)
 	playbookInput := "target=" + ansibleHostID + " avalancheGoJsonPath=" + avalancheGoPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.AvalancheGoVersionPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInput, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
@@ -456,9 +455,26 @@ func RunAnsiblePlaybookUpgradeAvalancheGo(ansibleDir, inventoryPath, ansibleHost
 
 // RunAnsiblePlaybookUpgradeSubnetEVM upgrades subnetEVM version of node
 // targets a specific host ansibleHostID in ansible inventory file
-func RunAnsiblePlaybookUpgradeSubnetEVM(ansibleDir, subnetEVMReleaseURL, subnetEVMArchive, subnetEVMBinaryPath, inventoryPath, ansibleHostID string) error {
-	playbookInputs := "target=" + ansibleHostID + " subnetEVMReleaseURL=" + subnetEVMReleaseURL + " subnetEVMArchive=" + subnetEVMArchive + " subnetEVMBinaryPath=" + subnetEVMBinaryPath
+func RunAnsiblePlaybookUpgradeSubnetEVM(ansibleDir, subnetEVMBinaryPaths, inventoryPath, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID + " subnetEVMBinaryPath=" + subnetEVMBinaryPaths
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.UpgradeSubnetEVMPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
+// RunAnsiblePlaybookGetNewSubnetEVM downloads and unzips new subnetEVM version
+// targets a specific host ansibleHostID in ansible inventory file
+func RunAnsiblePlaybookGetNewSubnetEVM(ansibleDir, subnetEVMReleaseURL, subnetEVMArchive, inventoryPath, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID + " subnetEVMReleaseURL=" + subnetEVMReleaseURL + " subnetEVMArchive=" + subnetEVMArchive
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.GetNewSubnetEVMPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
 	cmdErr := cmd.Run()
