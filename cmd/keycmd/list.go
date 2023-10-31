@@ -392,7 +392,7 @@ func printAddrInfos(addrInfos []addressInfo) {
 
 func getCChainBalanceStr(ctx context.Context, cClient ethclient.Client, addrStr string) (string, error) {
 	addr := common.HexToAddress(addrStr)
-	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
+	ctx, cancel := context.WithTimeout(ctx, constants.E2ERequestTimeout)
 	balance, err := cClient.BalanceAt(ctx, addr, nil)
 	cancel()
 	if err != nil {
@@ -417,7 +417,7 @@ func getPChainBalanceStr(ctx context.Context, pClient platformvm.Client, addr st
 	if err != nil {
 		return "", err
 	}
-	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
+	ctx, cancel := context.WithTimeout(ctx, constants.E2ERequestTimeout)
 	resp, err := pClient.GetBalance(ctx, []ids.ShortID{pID})
 	cancel()
 	if err != nil {

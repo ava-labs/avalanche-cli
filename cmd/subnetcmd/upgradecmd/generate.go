@@ -417,7 +417,7 @@ func ensureAdminsHaveBalance(admins []common.Address, subnetName string) error {
 
 func getAccountBalance(ctx context.Context, cClient ethclient.Client, addrStr string) (float64, error) {
 	addr := common.HexToAddress(addrStr)
-	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
+	ctx, cancel := context.WithTimeout(ctx, constants.E2ERequestTimeout)
 	balance, err := cClient.BalanceAt(ctx, addr, nil)
 	defer cancel()
 	if err != nil {

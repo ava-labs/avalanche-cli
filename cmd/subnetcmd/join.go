@@ -746,7 +746,7 @@ func getAssetBalance(ctx context.Context, pClient platformvm.Client, addr string
 	if err != nil {
 		return 0, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
+	ctx, cancel := context.WithTimeout(ctx, constants.E2ERequestTimeout)
 	resp, err := pClient.GetBalance(ctx, []ids.ShortID{pID})
 	cancel()
 	if err != nil {

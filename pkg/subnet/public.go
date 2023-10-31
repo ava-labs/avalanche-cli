@@ -126,7 +126,18 @@ func (d *PublicDeployer) CreateAssetTx(
 		ux.Logger.PrintToUser("*** Please sign Create Asset Transaction hash on the ledger device *** ")
 	}
 
-	tx, err := wallet.X().IssueCreateAssetTx(tokenName, tokenSymbol, denomination, initialState)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+	tx, err := wallet.X().IssueCreateAssetTx(
+		tokenName,
+		tokenSymbol,
+		denomination,
+		initialState,
+		common.WithContext(ctx),
+	)
+	if err != nil && ctx.Err() != nil {
+		err = fmt.Errorf("timeout issuing/verifying tx: %w", err)
+	}
 	if err != nil {
 		return ids.Empty, err
 	}
@@ -150,6 +161,8 @@ func (d *PublicDeployer) ExportToPChainTx(
 		ux.Logger.PrintToUser("*** Please sign X -> P Chain Export Transaction hash on the ledger device *** ")
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
 	tx, err := wallet.X().IssueExportTx(ids.Empty,
 		[]*avax.TransferableOutput{
 			{
@@ -161,7 +174,12 @@ func (d *PublicDeployer) ExportToPChainTx(
 					OutputOwners: *owner,
 				},
 			},
-		})
+		},
+		common.WithContext(ctx),
+	)
+	if err != nil && ctx.Err() != nil {
+		err = fmt.Errorf("timeout issuing/verifying tx: %w", err)
+	}
 	if err != nil {
 		return ids.Empty, err
 	}
@@ -184,7 +202,12 @@ func (d *PublicDeployer) ImportFromXChain(
 	xWallet := wallet.X()
 	xChainID := xWallet.BlockchainID()
 
-	tx, err := wallet.P().IssueImportTx(xChainID, owner)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+	tx, err := wallet.P().IssueImportTx(xChainID, owner, common.WithContext(ctx))
+	if err != nil && ctx.Err() != nil {
+		err = fmt.Errorf("timeout issuing/verifying tx: %w", err)
+	}
 	if err != nil {
 		return ids.Empty, err
 	}
@@ -423,7 +446,12 @@ func (d *PublicDeployer) Commit(
 	if err != nil {
 		return ids.Empty, err
 	}
-	err = wallet.P().IssueTx(tx)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+	err = wallet.P().IssueTx(tx, common.WithContext(ctx))
+	if err != nil && ctx.Err() != nil {
+		err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+	}
 	return tx.ID(), err
 }
 
@@ -644,21 +672,26 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 	} else {
 		proofOfPossession = &signer.Empty{}
 	}
-	tx, err := wallet.P().IssueAddPermissionlessValidatorTx(&txs.SubnetValidator{
-		Validator: txs.Validator{
-			NodeID: nodeID,
-			Start:  startTime,
-			End:    endTime,
-			Wght:   stakeAmount,
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+	options = append(options, common.WithContext(ctx))
+	tx, err := wallet.P().IssueAddPermissionlessValidatorTx(
+		&txs.SubnetValidator{
+			Validator: txs.Validator{
+				NodeID: nodeID,
+				Start:  startTime,
+				End:    endTime,
+				Wght:   stakeAmount,
+			},
+			Subnet: subnetID,
 		},
-		Subnet: subnetID,
-	},
 		proofOfPossession,
 		assetID,
 		owner,
 		owner,
 		delegationFee,
-		options...)
+		options...,
+	)
 	if err != nil {
 		return ids.Empty, err
 	}
@@ -682,6 +715,9 @@ func (d *PublicDeployer) issueAddPermissionlessDelegatorTX(
 			recipientAddr,
 		},
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+	options = append(options, common.WithContext(ctx))
 	tx, err := wallet.P().IssueAddPermissionlessDelegatorTx(
 		&txs.SubnetValidator{
 			Validator: txs.Validator{
@@ -722,11 +758,12 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 		Threshold: threshold,
 		Locktime:  0,
 	}
-	opts := []common.Option{}
 	if d.usingLedger {
 		ux.Logger.PrintToUser("*** Please sign CreateSubnet transaction on the ledger device *** ")
 	}
-	tx, err := wallet.P().IssueCreateSubnetTx(owners, opts...)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	defer cancel()
+	tx, err := wallet.P().IssueCreateSubnetTx(owners, common.WithContext(ctx))
 	if err != nil {
 		return ids.Empty, err
 	}
