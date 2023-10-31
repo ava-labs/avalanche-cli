@@ -374,7 +374,8 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	runDir := d.app.GetRunDir()
 
-	ctx := binutils.GetAsyncContext()
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
 
 	// loading sidecar before it's needed so we catch any error early
 	sc, err := d.app.LoadSidecar(chain)
@@ -780,7 +781,8 @@ func GetLocallyDeployedSubnets() (map[string]struct{}, error) {
 		return nil, err
 	}
 
-	ctx := binutils.GetAsyncContext()
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
 	resp, err := cli.Status(ctx)
 	if err != nil {
 		return nil, err

@@ -4,10 +4,13 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
 func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr bool) (*bytes.Buffer, *bytes.Buffer) {
@@ -54,4 +57,14 @@ func SplitStringWithQuotes(str string, r rune) []string {
 		}
 		return !quoted && r1 == r
 	})
+}
+
+// Context for ANR network operations
+func GetANRContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), constants.ANRRequestTimeout)
+}
+
+// Context for API requests
+func GetAPIContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
 }

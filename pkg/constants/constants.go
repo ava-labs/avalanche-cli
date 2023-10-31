@@ -39,7 +39,7 @@ const (
 	MaxNumOfLogFiles = 5
 	RetainOldFiles   = 0 // retain all old log files
 
-	RequestTimeout    = 3 * time.Minute
+	ANRRequestTimeout = 3 * time.Minute
 	E2ERequestTimeout = 30 * time.Second
 
 	SimulatePublicNetwork = "SIMULATE_PUBLIC_NETWORK"

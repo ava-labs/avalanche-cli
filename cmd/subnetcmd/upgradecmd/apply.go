@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	ANRclient "github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/server"
@@ -142,7 +143,8 @@ func applyLocalNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar)
 		ux.Logger.PrintToUser(ErrNetworkNotStartedOutput)
 		return err
 	}
-	ctx := binutils.GetAsyncContext()
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
 
 	// first let's get the status
 	status, err := cli.Status(ctx)
