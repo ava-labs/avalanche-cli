@@ -197,9 +197,7 @@ func determineAvagoVersion(userProvidedAvagoVersion string) (string, error) {
 }
 
 func checkNetworkIsAlreadyBootstrapped(ctx context.Context, cli client.Client) (bool, error) {
-	fmt.Println("STATUS PRE")
 	_, err := cli.Status(ctx)
-	fmt.Println(err)
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {
 			return false, nil
