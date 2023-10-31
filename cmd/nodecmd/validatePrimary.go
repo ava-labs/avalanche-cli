@@ -315,10 +315,12 @@ func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
 			var resp []byte
 			if resp, err = ssh.RunSSHCheckBootstrapped(host); err != nil {
 				nodeResultChannel <- models.NodeBooleanResult{NodeID: host.NodeID, Value: false, Err: err}
+				return
 			}
 			isBootstrapped, err := parseBootstrappedOutput(resp)
 			if err != nil {
 				nodeResultChannel <- models.NodeBooleanResult{NodeID: host.NodeID, Value: false, Err: err}
+				return
 			}
 			nodeResultChannel <- models.NodeBooleanResult{NodeID: host.NodeID, Value: isBootstrapped, Err: err}
 		}(nodeResultChannel, host)

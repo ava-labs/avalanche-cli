@@ -71,10 +71,12 @@ func statusNode(_ *cobra.Command, args []string) error {
 			resp, err := ssh.RunSSHCheckAvalancheGoVersion(host)
 			if err != nil {
 				nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown, Err: err}
+				return
 			}
 			avalancheGoVersion, err := parseAvalancheGoOutput(resp)
 			if err != nil {
 				nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown, Err: err}
+				return
 			}
 			nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: avalancheGoVersion, Err: nil}
 		}(nodeResultChannel, host)
@@ -108,6 +110,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 				subnetSyncStatus, err := getNodeSubnetSyncStatus(blockchainID.String(), host)
 				if err != nil {
 					nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: "", Err: err}
+					return
 				}
 				nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: subnetSyncStatus, Err: nil}
 			}(nodeResultChannel, host)

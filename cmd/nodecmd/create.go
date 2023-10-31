@@ -238,6 +238,7 @@ func createNode(_ *cobra.Command, args []string) error {
 			defer createdWaitGroup.Done()
 			if err := host.WaitForSSHPort(60 * time.Second); err != nil {
 				nodeResultChannel <- err
+				return
 			}
 		}(createdResultChannel, host)
 	}
@@ -255,14 +256,17 @@ func createNode(_ *cobra.Command, args []string) error {
 		parallelWaitGroup.Add(1)
 		go func(nodeResultChannel chan error, host models.Host) {
 			defer parallelWaitGroup.Done()
-			if err := ssh.RunSSHSetupNode(host, app.GetConfigPath(), avalancheGoVersion); err != nil {
-				nodeResultChannel <- err
-			}
 			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
 				nodeResultChannel <- err
+				return
+			}
+			if err := ssh.RunSSHSetupNode(host, app.GetConfigPath(), avalancheGoVersion); err != nil {
+				nodeResultChannel <- err
+				return
 			}
 			if err := ssh.RunSSHCopyStakingFiles(host, app.GetNodeInstanceDirPath(host.GetInstanceID())); err != nil {
 				nodeResultChannel <- err
+				return
 			}
 		}(nodeResultChannel, host)
 	}
@@ -299,6 +303,7 @@ func setupBuildEnv(clusterName string) error {
 			defer parallelWaitGroup.Done()
 			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
 				nodeResultChannel <- err
+				return
 			}
 		}(nodeResultChannel, host)
 	}

@@ -216,10 +216,12 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string
 			resp, err := ssh.RunSSHCheckAvalancheGoVersion(host)
 			if err != nil {
 				nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown, Err: err}
+				return
 			}
 			avalancheGoVersion, err := parseAvalancheGoOutput(resp)
 			if err != nil {
 				nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: constants.AvalancheGoVersionUnknown, Err: err}
+				return
 			}
 			nodeResultChannel <- models.NodeStringResult{NodeID: host.NodeID, Value: avalancheGoVersion, Err: nil}
 		}(nodeResultChannel, host)
@@ -265,9 +267,11 @@ func trackSubnet(clusterName, subnetName string, network models.Network) ([]stri
 			defer parallelWaitGroup.Done()
 			if err := ssh.RunSSHExportSubnet(host, subnetPath, "/tmp"); err != nil {
 				nodeResultChannel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
+				return
 			}
 			if err := ssh.RunSSHTrackSubnet(host, subnetName, subnetPath); err != nil {
 				nodeResultChannel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
+				return
 			}
 		}(nodeResultChannel, host)
 	}

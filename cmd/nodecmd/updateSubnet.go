@@ -106,9 +106,11 @@ func doUpdateSubnet(clusterName, subnetName string, network models.Network) ([]s
 			defer parallelWaitGroup.Done()
 			if err := ssh.RunSSHExportSubnet(host, subnetPath, "/tmp"); err != nil {
 				nodeResultChannel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
+				return
 			}
 			if err := ssh.RunSSHUpdateSubnet(host, subnetName, subnetPath); err != nil {
 				nodeResultChannel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
+				return
 			}
 		}(nodeResultChannel, host)
 	}
