@@ -97,6 +97,7 @@ const (
 	GCPDefaultImageProvider                      = "ubuntu-os-cloud"
 	GCPImageFilter                               = "family=ubuntu-2004* AND architecture=x86_64"
 	GCPEnvVar                                    = "GOOGLE_APPLICATION_CREDENTIALS"
+	GCPDefaultAuthKeyPath                        = "~/.config/gcloud/application_default_credentials.json"
 	CertSuffix                                   = "-kp.pem"
 	AWSSecurityGroupSuffix                       = "-sg"
 	ExportSubnetSuffix                           = "-export.dat"
