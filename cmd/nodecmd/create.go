@@ -229,49 +229,62 @@ func createNode(_ *cobra.Command, args []string) error {
 	}
 	hosts := ansible.FilterHostsByNodeID(allHosts, cloudConfig.InstanceIDs)
 	// waiting for all nodes to become accessible
-	waitForHosts(hosts)
+	failedHost := waitForHosts(hosts)
+	for _, node := range failedHost {
+		ux.Logger.PrintToUser("Instance %s failed to provision. Please check instance logs for more information", node.NodeID)
+	}
+	if len(failedHost) > 0 {
+		return fmt.Errorf("failed to provision node(s) %s", failedHost)
+	}
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
 	// run over ssh in parallel
-	nodeResultChannel := make(chan error, len(hosts))
+	nodeResultChannel := make(chan models.NodeErrorResult, len(hosts))
 	parallelWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
 		parallelWaitGroup.Add(1)
-		go func(nodeResultChannel chan error, host models.Host) {
+		go func(nodeResultChannel chan models.NodeErrorResult, host models.Host) {
 			defer parallelWaitGroup.Done()
 			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
-				nodeResultChannel <- err
+				nodeResultChannel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
 				return
 			}
 			if err := ssh.RunSSHSetupNode(host, app.GetConfigPath(), avalancheGoVersion); err != nil {
-				nodeResultChannel <- err
+				nodeResultChannel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
 				return
 			}
 			if err := ssh.RunSSHCopyStakingFiles(host, app.GetNodeInstanceDirPath(host.GetInstanceID())); err != nil {
-				nodeResultChannel <- err
+				nodeResultChannel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
 				return
 			}
 		}(nodeResultChannel, host)
 	}
 	parallelWaitGroup.Wait()
 	close(nodeResultChannel)
-	for err := range nodeResultChannel {
-		return err // return first error
+	failedNodes := []string{}
+	for nodeErr := range nodeResultChannel {
+		ux.Logger.PrintToUser(fmt.Sprintf("Failed to deploy node %s due to %s", nodeErr.NodeID, nodeErr.Err))
+		failedNodes = append(failedNodes, nodeErr.NodeID)
 	}
-	PrintResults(cloudConfig, publicIPMap, cloudService)
-	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
+	if len(failedNodes) > 0 {
+		return fmt.Errorf("failed to deploy node(s) %s", failedNodes)
+	} else {
+		PrintResults(cloudConfig, publicIPMap, cloudService)
+		ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
+	}
 	return nil
 }
 
 // waitForHosts waits for all hosts to become available via SSH.
-func waitForHosts(hosts []models.Host) error {
-	createdResultChannel := make(chan error, len(hosts))
+func waitForHosts(hosts []models.Host) map[string]error {
+	hostError := make(map[string]error)
+	createdResultChannel := make(chan models.NodeErrorResult, len(hosts))
 	createdWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
 		createdWaitGroup.Add(1)
-		go func(nodeResultChannel chan error, host models.Host) {
+		go func(nodeResultChannel chan models.NodeErrorResult, host models.Host) {
 			defer createdWaitGroup.Done()
-			if err := host.WaitForSSHPort(60 * time.Second); err != nil {
-				nodeResultChannel <- err
+			if err := host.WaitForSSHShell(60 * time.Second); err != nil {
+				nodeResultChannel <- models.NodeErrorResult{NodeID: host.GetInstanceID(), Err: err}
 				return
 			}
 		}(createdResultChannel, host)
@@ -279,8 +292,9 @@ func waitForHosts(hosts []models.Host) error {
 	createdWaitGroup.Wait()
 	close(createdResultChannel)
 	for err := range createdResultChannel {
-		return err // return first error
+		hostError[err.NodeID] = err.Err
 	}
+	return hostError
 }
 
 // setupAnsible we need to remove existing ansible directory and its contents in .avalanche-cli dir
@@ -289,35 +303,37 @@ func setupAnsible(clusterName string) error {
 	return updateAnsiblePublicIPs(clusterName)
 }
 
-func setupBuildEnv(clusterName string) error {
+func setupBuildEnv(clusterName string) map[string]error {
 	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance(s) ...")
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-
+	hostError := make(map[string]error)
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
 	if err != nil {
-		return err
+		hostError["allNodes"] = err
+		return hostError
 	}
 	// run over ssh in parallel
-	nodeResultChannel := make(chan error, len(hosts))
+	nodeResultChannel := make(chan models.NodeErrorResult, len(hosts))
 	parallelWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
 		parallelWaitGroup.Add(1)
-		go func(nodeResultChannel chan error, host models.Host) {
+		go func(nodeResultChannel chan models.NodeErrorResult, host models.Host) {
 			defer parallelWaitGroup.Done()
 			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
-				nodeResultChannel <- err
+				nodeResultChannel <- models.NodeErrorResult{NodeID: host.GetInstanceID(), Err: err}
 				return
 			}
 		}(nodeResultChannel, host)
 	}
 	parallelWaitGroup.Wait()
 	close(nodeResultChannel)
-	for err := range nodeResultChannel {
-		return err // return first error
+	for nodeErr := range nodeResultChannel {
+		hostError[nodeErr.NodeID] = nodeErr.Err
 	}
-	return nil
+	return hostError
 }
 
+// getIPAddress returns the IP address of the machine running the function.
 func getIPAddress() (string, error) {
 	resp, err := http.Get("https://api.ipify.org?format=json")
 	if err != nil {

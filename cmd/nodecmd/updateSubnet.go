@@ -71,8 +71,13 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
 	}
-	if err := setupBuildEnv(app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
-		return err
+	if nodeErrors := setupBuildEnv(app.GetAnsibleInventoryDirPath(clusterName)); nodeErrors != nil {
+		failedNodes := []string{}
+		for node, err := range nodeErrors {
+			ux.Logger.PrintToUser(fmt.Sprintf("Failed to setup build env for  %s due to %s", node, err))
+			failedNodes = append(failedNodes, node)
+		}
+		return fmt.Errorf("node(s) %s failed to setup build env", failedNodes)
 	}
 	nonUpdatedNodes, err := doUpdateSubnet(clusterName, subnetName, models.Fuji)
 	if err != nil {

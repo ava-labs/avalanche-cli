@@ -193,6 +193,25 @@ func (h Host) WaitForSSHPort(timeout time.Duration) error {
 		}
 		_, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", h.IP, constants.SSHTCPPort), time.Second)
 		if err == nil {
+			time.Sleep(1 * time.Second)
+			return nil
+		}
+		time.Sleep(1 * time.Second)
+	}
+}
+
+// WaitForSSHShell waits for the SSH shell to be available on the host within the specified timeout.
+func (h Host) WaitForSSHShell(timeout time.Duration) error {
+	h.WaitForSSHPort(timeout)
+	start := time.Now()
+	deadline := start.Add(timeout)
+
+	for {
+		if time.Now().After(deadline) {
+			return fmt.Errorf("timeout: SSH shell on host %s is not available after %ds", h.IP, timeout)
+		}
+		_, err := h.Command("echo", nil, context.Background())
+		if err == nil {
 			time.Sleep(2 * time.Second)
 			return nil
 		}
