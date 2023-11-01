@@ -207,13 +207,12 @@ func (h Host) WaitForSSHShell(timeout time.Duration) error {
 	}
 	start := time.Now()
 	deadline := start.Add(timeout)
-
 	for {
 		if time.Now().After(deadline) {
 			return fmt.Errorf("timeout: SSH shell on host %s is not available after %ds", h.IP, timeout)
 		}
-		_, err := h.Command("echo", nil, context.Background())
-		if err == nil {
+		output, err := h.Command("echo", nil, context.Background())
+		if err == nil || len(output) > 0 {
 			time.Sleep(2 * time.Second)
 			return nil
 		}
