@@ -133,6 +133,8 @@ const (
 	AnsibleSSHInventoryParams                    = "-o StrictHostKeyChecking=no"
 	AnsibleExtraVarsFlag                         = "--extra-vars"
 	CloudCLIBranch                               = "custom-vms-cloud-10"
+	MetricsEnabled                               = "MetricsEnabled"
+	OldConfigFileName                            = ".avalanche-cli"
 	DefaultConfigFileName                        = "config"
 	DefaultConfigFileType                        = "json"
 	WriteReadReadPerms                           = 0o644
