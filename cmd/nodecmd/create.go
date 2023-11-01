@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os/user"
 	"sync"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
@@ -20,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -230,13 +230,13 @@ func createNode(_ *cobra.Command, args []string) error {
 	hosts := ansible.FilterHostsByNodeID(allHosts, cloudConfig.InstanceIDs)
 	// waiting for all nodes to become accessible
 	failedHostMap := waitForHosts(hosts)
-	failedHost := []string{}
+	failedHosts := []string{}
 	for node, err := range failedHostMap {
 		ux.Logger.PrintToUser("Instance %s failed to provision with error %s. Please check instance logs for more information", node, err)
-		failedHost = append(failedHost, node)
+		failedHosts = append(failedHosts, node)
 	}
-	if len(failedHost) > 0 {
-		return fmt.Errorf("failed to provision node(s) %s", failedHost)
+	if len(failedHosts) > 0 {
+		return fmt.Errorf("failed to provision node(s) %s", failedHosts)
 	}
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
 	// run over ssh in parallel
@@ -246,11 +246,11 @@ func createNode(_ *cobra.Command, args []string) error {
 		parallelWaitGroup.Add(1)
 		go func(nodeResultChannel chan models.NodeErrorResult, host models.Host) {
 			defer parallelWaitGroup.Done()
-			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
+			if err := ssh.RunSSHSetupNode(host, app.GetConfigPath(), avalancheGoVersion); err != nil {
 				nodeResultChannel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
 				return
 			}
-			if err := ssh.RunSSHSetupNode(host, app.GetConfigPath(), avalancheGoVersion); err != nil {
+			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
 				nodeResultChannel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
 				return
 			}
@@ -266,6 +266,17 @@ func createNode(_ *cobra.Command, args []string) error {
 	for nodeErr := range nodeResultChannel {
 		ux.Logger.PrintToUser(fmt.Sprintf("Failed to deploy node %s due to %s", nodeErr.NodeID, nodeErr.Err))
 		failedNodes = append(failedNodes, nodeErr.NodeID)
+	}
+	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintToUser("AVALANCHE NODE(S) STATUS")
+	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintToUser("")
+	for _, node := range hosts {
+		if slices.Contains(failedNodes, node.NodeID) {
+			ux.Logger.PrintToUser("Node %s is ERROR", node.NodeID)
+		} else {
+			ux.Logger.PrintToUser("Node %s is CREATED", node.NodeID)
+		}
 	}
 	if len(failedNodes) > 0 {
 		return fmt.Errorf("failed to deploy node(s) %s", failedNodes)
@@ -285,7 +296,7 @@ func waitForHosts(hosts []models.Host) map[string]error {
 		createdWaitGroup.Add(1)
 		go func(nodeResultChannel chan models.NodeErrorResult, host models.Host) {
 			defer createdWaitGroup.Done()
-			if err := host.WaitForSSHShell(60 * time.Second); err != nil {
+			if err := host.WaitForSSHShell(constants.SSHFileOpsTimeout); err != nil {
 				nodeResultChannel <- models.NodeErrorResult{NodeID: host.GetInstanceID(), Err: err}
 				return
 			}

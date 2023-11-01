@@ -1,6 +1,3 @@
-#name:{{ .Log }}TASK [update apt data and install dependencies] 
-DEBIAN_FRONTEND=noninteractive sudo apt-get -y update
-DEBIAN_FRONTEND=noninteractive sudo apt-get -y install wget curl git
 #name:{{ .Log }}TASK [install gcc if not available]
 gcc --version || DEBIAN_FRONTEND=noninteractive sudo apt-get -y install gcc
 #name:{{ .Log }}TASK [install go]

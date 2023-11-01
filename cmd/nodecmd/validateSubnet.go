@@ -190,7 +190,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 				nodeError[host.NodeID] = errors.New("node is already a subnet validator")
 			} else {
 				ux.Logger.PrintToUser("Failed to add node %s as subnet validator as node is not synced to subnet yet", host)
-				nodeError[host.NodeID] = errors.New("node is already a subnet validator")
+				nodeError[host.NodeID] = errors.New("node is not synced to subnet yet, please try again later")
 			}
 			continue
 		}

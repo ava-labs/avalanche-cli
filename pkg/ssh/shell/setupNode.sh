@@ -1,3 +1,6 @@
+#name:{{ .Log }}TASK [update apt data and install dependencies] 
+DEBIAN_FRONTEND=noninteractive sudo apt-get -y update
+DEBIAN_FRONTEND=noninteractive sudo apt-get -y install wget curl git
 #name:{{ .Log }}TASK [get avalanche go script]
 wget -nd -m https://raw.githubusercontent.com/ava-labs/avalanche-docs/master/scripts/avalanchego-installer.sh
 #name:{{ .Log }}TASK [modify permissions]

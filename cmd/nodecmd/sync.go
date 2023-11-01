@@ -157,7 +157,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
 	}
-	if nodeErrors := setupBuildEnv(app.GetAnsibleInventoryDirPath(clusterName)); nodeErrors != nil {
+	if nodeErrors := setupBuildEnv(clusterName); nodeErrors != nil {
 		failedNodes := []string{}
 		for node, err := range nodeErrors {
 			ux.Logger.PrintToUser(fmt.Sprintf("Failed to setup build env for  %s due to %s", node, err))
