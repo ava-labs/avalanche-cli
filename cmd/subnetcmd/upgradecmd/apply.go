@@ -143,10 +143,10 @@ func applyLocalNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar)
 		ux.Logger.PrintToUser(ErrNetworkNotStartedOutput)
 		return err
 	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
 
 	// first let's get the status
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
 	status, err := cli.Status(ctx)
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {
@@ -176,6 +176,10 @@ func applyLocalNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar)
 		return errors.New(
 			"failed to find deployment information about this subnet in state - aborting")
 	}
+
+	// into ANR network ops
+	ctx, cancel = utils.GetANRContext()
+	defer cancel()
 
 	// save a temporary snapshot
 	snapName := subnetName + tmpSnapshotInfix + time.Now().Format(timestampFormat)
