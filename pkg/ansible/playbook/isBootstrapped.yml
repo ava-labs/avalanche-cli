@@ -1,5 +1,6 @@
 ---
 - hosts: "{{ target }}"
+  gather_facts: no
   tasks:
     - name: check if node is bootstrapped
       uri:
@@ -12,6 +13,6 @@
           Content-Type: "application/json"
       register: command_output
     - copy:
-        dest: "{{ isBootstrappedJsonPath }}"
+        dest: "{{ isBootstrappedJsonPath }}.{{ inventory_hostname }}"
         content: "{{ command_output[\"content\"] | from_json | to_nice_json }}"
       delegate_to: localhost

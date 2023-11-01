@@ -88,13 +88,13 @@ func addNodeAsSubnetValidator(nodeID, subnetName string, network models.Network,
 // it will return true node status is 'syncing'
 func getNodeSubnetSyncStatus(blockchainID, clusterName, ansibleNodeID string) (string, error) {
 	ux.Logger.PrintToUser("Checking if node %s is synced to subnet ...", ansibleNodeID)
-	if err := app.CreateAnsibleStatusFile(app.GetSubnetSyncJSONFile()); err != nil {
+	if err := app.CreateAnsibleStatusDir(); err != nil {
 		return "", err
 	}
 	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(app.GetAnsibleDir(), app.GetSubnetSyncJSONFile(), blockchainID, app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
 		return "", err
 	}
-	subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile())
+	subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile() + "." + ansibleNodeID)
 	if err != nil {
 		return "", err
 	}
@@ -154,20 +154,28 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	nodeIDMap, failedNodesMap, err := getClusterNodeIDs(clusterName, ansibleNodeIDs)
+	if err != nil {
+		return err
+	}
 	failedNodes := []string{}
 	nodeErrors := []error{}
 	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
 	for i, host := range ansibleNodeIDs {
-		nodeIDStr, err := getClusterNodeID(clusterName, host)
-		if err != nil {
-			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err.Error())
+		nodeIDStr, b := nodeIDMap[host]
+		if !b {
+			err, b := failedNodesMap[host]
+			if !b {
+				return fmt.Errorf("expected to found an error for non mapped node")
+			}
+			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err)
 			failedNodes = append(failedNodes, host)
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
 		nodeID, err := ids.NodeIDFromString(nodeIDStr)
 		if err != nil {
-			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err.Error())
+			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err)
 			failedNodes = append(failedNodes, host)
 			nodeErrors = append(nodeErrors, err)
 			continue

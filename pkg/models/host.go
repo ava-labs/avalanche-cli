@@ -15,7 +15,7 @@ type Host struct {
 	SSHCommonArgs     string
 }
 
-func (h Host) GetAnsibleParams() string {
+func (h Host) GetAnsibleInventoryRecord() string {
 	return strings.Join([]string{
 		h.NodeID,
 		fmt.Sprintf("ansible_host=%s", h.IP),
