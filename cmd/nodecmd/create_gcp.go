@@ -30,6 +30,9 @@ import (
 )
 
 func getServiceAccountKeyFilepath() (string, error) {
+	ux.Logger.PrintToUser("To create a VM instance in GCP, we will need your or service account credentials")
+	ux.Logger.PrintToUser("Please follow instructions detailed at https://developers.google.com/workspace/guides/create-credentials#service-account to set up a GCP service account")
+	ux.Logger.PrintToUser("Or use https://cloud.google.com/sdk/docs/authorizing#user-account for authorization without a service account")
 	credJSONFilePath, err := app.Prompt.CaptureStringAllowEmpty(fmt.Sprintf("What is the filepath to the credentials JSON file?[default:%s]", constants.GCPDefaultAuthKeyPath))
 	if credJSONFilePath == "" {
 		credJSONFilePath = constants.GCPDefaultAuthKeyPath
