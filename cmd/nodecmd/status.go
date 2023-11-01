@@ -42,6 +42,8 @@ To get the bootstrap status of a node with a Subnet, use --subnet flag`,
 
 func statusNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
+	nodeErrors := map[string]error{}
+	ansibleHostIDs := []string{}
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
@@ -50,10 +52,6 @@ func statusNode(_ *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser(fmt.Sprintf("Collecting data for node(s) in cluster %s ...", clusterName))
 	avalanchegoVersionForNode := map[string]string{}
-	ansibleHostIDs, err := ansible.GetHostListFromAnsibleInventory(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return err
-	}
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
@@ -85,10 +83,11 @@ func statusNode(_ *cobra.Command, args []string) error {
 	close(nodeResultChannel)
 	for avalancheGoVersionResult := range nodeResultChannel {
 		if avalancheGoVersionResult.Err != nil {
-			return avalancheGoVersionResult.Err
+			nodeErrors[avalancheGoVersionResult.NodeID] = avalancheGoVersionResult.Err
 		}
 		avalanchegoVersionForNode[avalancheGoVersionResult.NodeID] = avalancheGoVersionResult.Value
 	}
+	errorHosts := []string{}
 	notSyncedNodes := []string{}
 	subnetSyncedNodes := []string{}
 	subnetValidatingNodes := []string{}
@@ -119,7 +118,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 		close(nodeResultChannel)
 		for SubnetSyncStatusResult := range nodeResultChannel {
 			if SubnetSyncStatusResult.Err != nil {
-				return SubnetSyncStatusResult.Err
+				nodeErrors[SubnetSyncStatusResult.NodeID] = SubnetSyncStatusResult.Err
 			}
 			switch SubnetSyncStatusResult.Value {
 			case status.Syncing.String():
@@ -131,11 +130,17 @@ func statusNode(_ *cobra.Command, args []string) error {
 			}
 		}
 	}
-	printOutput(ansibleHostIDs, avalanchegoVersionForNode, notBootstrappedNodes, notSyncedNodes, subnetSyncedNodes, subnetValidatingNodes, clusterName, subnetName)
+	for _, node := range hosts {
+		ansibleHostIDs = append(ansibleHostIDs, node.NodeID)
+	}
+	for failedNode := range nodeErrors {
+		errorHosts = append(errorHosts, failedNode)
+	}
+	printOutput(ansibleHostIDs, avalanchegoVersionForNode, notBootstrappedNodes, notSyncedNodes, subnetSyncedNodes, errorHosts, subnetValidatingNodes, clusterName, subnetName)
 	return nil
 }
 
-func printOutput(hostAliases []string, avagoVersions map[string]string, notBootstrappedHosts, notSyncedHosts, subnetSyncedHosts, subnetValidatingHosts []string, clusterName, subnetName string) {
+func printOutput(hostAliases []string, avagoVersions map[string]string, notBootstrappedHosts, notSyncedHosts, subnetSyncedHosts, errorHosts, subnetValidatingHosts []string, clusterName, subnetName string) {
 	if subnetName == "" && len(notBootstrappedHosts) == 0 {
 		ux.Logger.PrintToUser("All nodes in cluster %s are bootstrapped to Primary Network!", clusterName)
 	}
@@ -165,6 +170,9 @@ func printOutput(hostAliases []string, avagoVersions map[string]string, notBoots
 		if slices.Contains(notBootstrappedHosts, host) {
 			boostrappedStatus = logging.Red.Wrap("NOT BOOTSTRAPPED")
 		}
+		if slices.Contains(errorHosts, host) {
+			boostrappedStatus = logging.Red.Wrap("ERROR")
+		}
 		row := []string{
 			host,
 			avagoVersions[host],
@@ -177,6 +185,9 @@ func printOutput(hostAliases []string, avagoVersions map[string]string, notBoots
 			}
 			if slices.Contains(subnetValidatingHosts, host) {
 				syncedStatus = logging.Green.Wrap("VALIDATING")
+			}
+			if slices.Contains(errorHosts, host) {
+				syncedStatus = logging.Red.Wrap("ERROR")
 			}
 			row = append(row, syncedStatus)
 		}
