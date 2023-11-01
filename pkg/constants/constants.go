@@ -91,7 +91,8 @@ const (
 	// time to go through the command
 	StakingStartLeadTime                   = 5 * time.Minute
 	StakingMinimumLeadTime                 = 25 * time.Second
-	PrimaryNetworkValidatingStartLeadTime  = 20 * time.Second
+	PrimaryNetworkValidatingStartLeadTimeNodeCmd = 20 * time.Second
+	PrimaryNetworkValidatingStartLeadTime        = 1 * time.Minute
 	AWSCloudServerRunningState             = "running"
 	TerraformNodeConfigFile                = "node_config.tf"
 	AvalancheCLISuffix                     = "-avalanche-cli"
