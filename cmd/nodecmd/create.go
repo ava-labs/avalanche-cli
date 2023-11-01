@@ -230,8 +230,8 @@ func createNode(_ *cobra.Command, args []string) error {
 	hosts := ansible.FilterHostsByNodeID(allHosts, cloudConfig.InstanceIDs)
 	// waiting for all nodes to become accessible
 	failedHost := waitForHosts(hosts)
-	for _, node := range failedHost {
-		ux.Logger.PrintToUser("Instance %s failed to provision. Please check instance logs for more information", node.NodeID)
+	for node, err := range failedHost {
+		ux.Logger.PrintToUser("Instance %s failed to provision with error %s. Please check instance logs for more information", node, err)
 	}
 	if len(failedHost) > 0 {
 		return fmt.Errorf("failed to provision node(s) %s", failedHost)
