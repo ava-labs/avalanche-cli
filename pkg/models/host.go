@@ -202,7 +202,9 @@ func (h Host) WaitForSSHPort(timeout time.Duration) error {
 
 // WaitForSSHShell waits for the SSH shell to be available on the host within the specified timeout.
 func (h Host) WaitForSSHShell(timeout time.Duration) error {
-	h.WaitForSSHPort(timeout)
+	if err := h.WaitForSSHPort(timeout); err != nil {
+		return err
+	}
 	start := time.Now()
 	deadline := start.Add(timeout)
 
