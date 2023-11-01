@@ -487,10 +487,12 @@ func (d *PublicDeployer) Commit(
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	err = wallet.P().IssueTx(tx, common.WithContext(ctx))
-	if err != nil && ctx.Err() != nil {
-		err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
-	} else {
-		err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+	if err != nil {
+		if ctx.Err() != nil {
+			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+		} else {
+			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+		}
 	}
 	return tx.ID(), err
 }
