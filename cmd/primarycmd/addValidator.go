@@ -206,7 +206,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	start, duration, err = nodecmd.GetTimeParametersPrimaryNetwork(network, 0, duration, startTimeStr)
+	start, duration, err = nodecmd.GetTimeParametersPrimaryNetwork(network, 0, duration, startTimeStr, false)
 	if err != nil {
 		return err
 	}
