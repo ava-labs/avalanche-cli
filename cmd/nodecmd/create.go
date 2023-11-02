@@ -60,7 +60,7 @@ will apply to all nodes in the cluster`,
 		RunE:         createNode,
 	}
 	cmd.Flags().BoolVar(&useStaticIP, "use-static-ip", true, "attach static Public IP on cloud servers")
-
+	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
 	return cmd
 }
 
@@ -131,11 +131,11 @@ func addNodeToClusterConfig(nodeID, clusterName string) error {
 	return app.WriteClusterConfigFile(&clusterConfig)
 }
 
-func printNoCredentialsOutput() {
+func printNoCredentialsOutput(awsProfile string) {
 	ux.Logger.PrintToUser("No AWS credentials file found in ~/.aws/credentials")
 	ux.Logger.PrintToUser("Create a file called 'credentials' with the contents below, and add the file to ~/.aws/ directory")
 	ux.Logger.PrintToUser("===========BEGINNING OF FILE===========")
-	ux.Logger.PrintToUser("[default]\naws_access_key_id=<AWS_ACCESS_KEY>\naws_secret_access_key=<AWS_SECRET_ACCESS_KEY>")
+	ux.Logger.PrintToUser("[%s]\naws_access_key_id=<AWS_ACCESS_KEY>\naws_secret_access_key=<AWS_SECRET_ACCESS_KEY>", awsProfile)
 	ux.Logger.PrintToUser("===========END OF FILE===========")
 	ux.Logger.PrintToUser("More info can be found at https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-creds")
 }

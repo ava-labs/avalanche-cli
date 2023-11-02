@@ -39,6 +39,7 @@ var (
 	keyName                      string
 	useLedger                    bool
 	useStaticIP                  bool
+	awsProfile                   string
 	ledgerAddresses              []string
 	weight                       uint64
 	startTimeStr                 string

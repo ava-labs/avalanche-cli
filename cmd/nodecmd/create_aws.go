@@ -43,7 +43,7 @@ func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
 }
 
 // getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
-func getAWSCloudCredentials(region, awsCommand string) (*session.Session, error) {
+func getAWSCloudCredentials(awsProfile, region, awsCommand string) (*session.Session, error) {
 	if awsCommand == constants.StopAWSNode {
 		if err := requestStopAWSNodeAuth(); err != nil {
 			return &session.Session{}, err
@@ -53,10 +53,14 @@ func getAWSCloudCredentials(region, awsCommand string) (*session.Session, error)
 			return &session.Session{}, err
 		}
 	}
-	creds := credentials.NewSharedCredentials("", constants.AWSDefaultCredential)
+	// use env variables first and fallback to shared config
+	creds := credentials.NewEnvCredentials()
 	if _, err := creds.Get(); err != nil {
-		printNoCredentialsOutput()
-		return &session.Session{}, err
+		creds = credentials.NewSharedCredentials("", awsProfile)
+		if _, err := creds.Get(); err != nil {
+			printNoCredentialsOutput(awsProfile)
+			return &session.Session{}, err
+		}
 	}
 	// Load session from shared config
 	sess, err := session.NewSession(&aws.Config{
@@ -98,7 +102,7 @@ func getAWSCloudConfig() (*ec2.EC2, string, string, error) {
 			return nil, "", "", err
 		}
 	}
-	sess, err := getAWSCloudCredentials(region, constants.CreateAWSNode)
+	sess, err := getAWSCloudCredentials(awsProfile, region, constants.CreateAWSNode)
 	if err != nil {
 		return nil, "", "", err
 	}
@@ -120,7 +124,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	keyPairName,
 	securityGroupName string,
 ) ([]string, []string, string, string, error) {
-	if err := terraformaws.SetCloudCredentials(rootBody, region); err != nil {
+	if err := terraformaws.SetCloudCredentials(rootBody, awsProfile, region); err != nil {
 		return nil, nil, "", "", err
 	}
 	numNodes, err := app.Prompt.CaptureInt("How many nodes do you want to set up on AWS?")
@@ -226,9 +230,9 @@ func createAWSInstance(ec2Svc *ec2.EC2, region, ami string, usr *user.User) (Clo
 	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(rootBody, ec2Svc, hclFile, region, ami, certName, prefix, securityGroupName)
 	if err != nil {
 		if err.Error() == constants.EIPLimitErr {
-			ux.Logger.PrintToUser("Failed to create AWS cloud server, please try creating again in a different region")
+			ux.Logger.PrintToUser("Failed to create AWS cloud server(s), please try creating again in a different region")
 		} else {
-			ux.Logger.PrintToUser("Failed to create AWS cloud server")
+			ux.Logger.PrintToUser("Failed to create AWS cloud server(s)")
 		}
 		if strings.Contains(err.Error(), constants.ErrCreatingAWSNode) {
 			// we stop created instances so that user doesn't pay for unused EC2 instances

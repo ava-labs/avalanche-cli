@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/hashicorp/hcl/v2"
@@ -20,11 +21,11 @@ import (
 )
 
 // SetCloudCredentials sets AWS account credentials defined in .aws dir in user home dir
-func SetCloudCredentials(rootBody *hclwrite.Body, region string) error {
+func SetCloudCredentials(rootBody *hclwrite.Body, awsProfile, region string) error {
 	provider := rootBody.AppendNewBlock("provider", []string{"aws"})
 	providerBody := provider.Body()
 	providerBody.SetAttributeValue("region", cty.StringVal(region))
-	providerBody.SetAttributeValue("profile", cty.StringVal("default"))
+	providerBody.SetAttributeValue("profile", cty.StringVal(awsProfile))
 	return nil
 }
 
@@ -211,6 +212,7 @@ func SetOutput(rootBody *hclwrite.Body, useEIP bool) {
 // returns a list of AWS node-IDs and node IPs
 func RunTerraform(terraformDir string, useEIP bool) ([]string, []string, error) {
 	cmd := exec.Command(constants.Terraform, "init") //nolint:gosec
+	cmd.Env = utils.FilterStringsByPrefix(os.Environ(), "AWS_")
 	cmd.Dir = terraformDir
 	if err := cmd.Run(); err != nil {
 		return nil, nil, err

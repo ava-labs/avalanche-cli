@@ -55,3 +55,14 @@ func SplitStringWithQuotes(str string, r rune) []string {
 		return !quoted && r1 == r
 	})
 }
+
+// FilterStringsByPrefix filters a slice of strings by a given prefix.
+func FilterStringsByPrefix(str []string, prefix string) []string {
+	result := []string{}
+	for _, s := range str {
+		if strings.HasPrefix(s, prefix) {
+			result = append(result, s)
+		}
+	}
+	return result
+}
