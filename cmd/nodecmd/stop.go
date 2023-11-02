@@ -22,9 +22,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	authorizeRemove bool
-)
+var authorizeRemove bool
 
 func newStopCmd() *cobra.Command {
 	cmd := &cobra.Command{

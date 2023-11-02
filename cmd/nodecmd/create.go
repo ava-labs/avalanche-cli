@@ -346,7 +346,7 @@ func getIPAddress() (string, error) {
 func getAvalancheGoVersion() (string, error) {
 	version := ""
 	subnet := ""
-	if useLatestAvalanchego {
+	if useLatestAvalanchego { //nolint: gocritic
 		version = "latest"
 	} else if useAvalanchegoFromSubnet != "" {
 		subnet = useAvalanchegoFromSubnet
