@@ -51,8 +51,6 @@ const (
 	EwoqPrivateKey = privKeyEncPfx + rawEwoqPk
 )
 
-var keyFactory = new(secp256k1.Factory)
-
 type SOp struct {
 	privKey        *secp256k1.PrivateKey
 	privKeyEncoded string
@@ -101,7 +99,7 @@ func NewSoft(networkID uint32, opts ...SOpOption) (*SoftKey, error) {
 	// generate a new one
 	if ret.privKey == nil {
 		var err error
-		ret.privKey, err = keyFactory.NewPrivateKey()
+		ret.privKey, err = secp256k1.NewPrivateKey()
 		if err != nil {
 			return nil, err
 		}
@@ -170,7 +168,7 @@ func LoadSoft(networkID uint32, keyPath string) (*SoftKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	privKey, err := keyFactory.ToPrivateKey(skBytes)
+	privKey, err := secp256k1.ToPrivateKey(skBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +225,7 @@ func decodePrivateKey(enc string) (*secp256k1.PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	privKey, err := keyFactory.ToPrivateKey(skBytes)
+	privKey, err := secp256k1.ToPrivateKey(skBytes)
 	if err != nil {
 		return nil, err
 	}
