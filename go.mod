@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/ava-labs/apm v0.0.4
 	github.com/ava-labs/avalanche-network-runner v1.7.3-0.20231026155506-24d0d6a39855
-	github.com/ava-labs/avalanchego v1.10.16-0.20231102031027-f1436b05c25a
+	github.com/ava-labs/avalanchego v1.10.16-0.20231102202919-b890036c1af1
 	github.com/ava-labs/coreth v0.12.8-rc.1
 	github.com/ava-labs/subnet-evm v0.5.3
 	github.com/aws/aws-sdk-go v1.44.301
@@ -51,7 +51,7 @@ require (
 	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/agext/levenshtein v1.2.1 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
-	github.com/ava-labs/ledger-avalanche/go v0.0.0-20231102023311-de3d38450f0d // indirect
+	github.com/ava-labs/ledger-avalanche/go v0.0.0-20231102202641-ae2ebdaeac34 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.3 // indirect
