@@ -29,6 +29,9 @@ import (
 )
 
 func getServiceAccountKeyFilepath() (string, error) {
+	if cmdLineGCPCredentialsPath != "" {
+		return cmdLineGCPCredentialsPath, nil
+	}
 	ux.Logger.PrintToUser("To create a VM instance in GCP, we will need your service account credentials")
 	ux.Logger.PrintToUser("Please follow instructions detailed at https://developers.google.com/workspace/guides/create-credentials#service-account to set up a GCP service account")
 	ux.Logger.PrintToUser("Once completed, please enter the filepath to the JSON file containing the public/private key pair")
@@ -52,9 +55,13 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 		}
 	}
 	if gcpProjectName == "" {
-		gcpProjectName, err = app.Prompt.CaptureString("What is the name of your Google Cloud project?")
-		if err != nil {
-			return nil, "", "", err
+		if cmdLineGCPProjectName != "" {
+			gcpProjectName = cmdLineGCPProjectName
+		} else {
+			gcpProjectName, err = app.Prompt.CaptureString("What is the name of your Google Cloud project?")
+			if err != nil {
+				return nil, "", "", err
+			}
 		}
 	}
 	if gcpCredentialsPath == "" {
@@ -76,23 +83,26 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 	return computeService, gcpProjectName, gcpCredentialsPath, err
 }
 
-func getGCPConfig() (*compute.Service, string, string, string, string, error) {
-	usEast := "us-east1-b"
-	usCentral := "us-central1-c"
-	usWest := "us-west1-b"
-	customRegion := "Choose custom zone (list of zones available at https://cloud.google.com/compute/docs/regions-zones)"
-	zonePromptTxt := "Which GCP zone do you want to set up your node in?"
-	zone, err := app.Prompt.CaptureList(
-		zonePromptTxt,
-		[]string{usEast, usCentral, usWest, customRegion},
-	)
-	if err != nil {
-		return nil, "", "", "", "", err
-	}
-	if zone == customRegion {
-		zone, err = app.Prompt.CaptureString(zonePromptTxt)
+func getGCPConfig(zone string) (*compute.Service, string, string, string, string, error) {
+	if zone == "" {
+		usEast := "us-east1-b"
+		usCentral := "us-central1-c"
+		usWest := "us-west1-b"
+		customRegion := "Choose custom zone (list of zones available at https://cloud.google.com/compute/docs/regions-zones)"
+		zonePromptTxt := "Which GCP zone do you want to set up your node in?"
+		var err error
+		zone, err = app.Prompt.CaptureList(
+			zonePromptTxt,
+			[]string{usEast, usCentral, usWest, customRegion},
+		)
 		if err != nil {
 			return nil, "", "", "", "", err
+		}
+		if zone == customRegion {
+			zone, err = app.Prompt.CaptureString(zonePromptTxt)
+			if err != nil {
+				return nil, "", "", "", "", err
+			}
 		}
 	}
 	gcpClient, projectName, gcpCredentialFilePath, err := getGCPCloudCredentials()
@@ -120,6 +130,7 @@ func randomString(length int) string {
 func createGCEInstances(rootBody *hclwrite.Body,
 	gcpClient *compute.Service,
 	hclFile *hclwrite.File,
+	numNodes int,
 	zone,
 	ami,
 	cliDefaultName,
@@ -135,9 +146,11 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if err := terraformgcp.SetCloudCredentials(rootBody, zone, credentialsPath, projectName); err != nil {
 		return nil, nil, "", "", err
 	}
-	numNodes, err := app.Prompt.CaptureInt("How many nodes do you want to set up on GCP?")
-	if err != nil {
-		return nil, nil, "", "", err
+	if numNodes <= 0 {
+		numNodes, err = app.Prompt.CaptureInt("How many nodes do you want to set up on GCP?")
+		if err != nil {
+			return nil, nil, "", "", err
+		}
 	}
 	ux.Logger.PrintToUser("Creating new VM instance(s) on Google Compute Engine...")
 	certInSSHDir, err := app.CheckCertInSSHDir(fmt.Sprintf("%s-keypair.pub", cliDefaultName))
@@ -214,13 +227,32 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
 }
 
-func createGCPInstance(usr *user.User, gcpClient *compute.Service, zone, imageID, gcpCredentialFilepath, gcpProjectName, clusterName string) (CloudConfig, error) {
+func createGCPInstance(
+	usr *user.User,
+	gcpClient *compute.Service,
+	numNodes int,
+	zone string,
+	imageID string,
+	gcpCredentialFilepath string,
+	gcpProjectName string,
+	clusterName string,
+) (CloudConfig, error) {
 	defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 	hclFile, rootBody, err := terraform.InitConf()
 	if err != nil {
 		return CloudConfig{}, err
 	}
-	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(rootBody, gcpClient, hclFile, zone, imageID, defaultAvalancheCLIPrefix, gcpProjectName, gcpCredentialFilepath)
+	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(
+		rootBody,
+		gcpClient,
+		hclFile,
+		numNodes,
+		zone,
+		imageID,
+		defaultAvalancheCLIPrefix,
+		gcpProjectName,
+		gcpCredentialFilepath,
+	)
 	if err != nil {
 		ux.Logger.PrintToUser("Failed to create GCP cloud server")
 		if err.Error() == constants.ErrCreatingGCPNode {
