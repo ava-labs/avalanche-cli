@@ -33,15 +33,15 @@ func getServiceAccountKeyFilepath() (string, error) {
 	ux.Logger.PrintToUser("To create a VM instance in GCP, you can use your account credentials")
 	ux.Logger.PrintToUser("Please follow instructions detailed at https://developers.google.com/workspace/guides/create-credentials#service-account to set up a GCP service account")
 	ux.Logger.PrintToUser("Or use https://cloud.google.com/sdk/docs/authorizing#user-account for authorization without a service account")
-	GCPCustomAuthKeyPath := "Choose custom path for credentials JSON file"
+	customAuthKeyPath := "Choose custom path for credentials JSON file"
 	credJSONFilePath, err := app.Prompt.CaptureList(
 		"What is the filepath to the credentials JSON file?",
-		[]string{constants.GCPDefaultAuthKeyPath, GCPCustomAuthKeyPath},
+		[]string{constants.GCPDefaultAuthKeyPath, customAuthKeyPath},
 	)
 	if err != nil {
 		return "", err
 	}
-	if credJSONFilePath == GCPCustomAuthKeyPath {
+	if credJSONFilePath == customAuthKeyPath {
 		credJSONFilePath, err = app.Prompt.CaptureString("What is the custom filepath to the credentials JSON file?")
 		if err != nil {
 			return "", err
