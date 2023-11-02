@@ -147,7 +147,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if !certInSSHDir {
 		ux.Logger.PrintToUser("Creating new SSH key pair %s in GCP", sshKeyPath)
 		ux.Logger.PrintToUser("For more information regarding SSH key pair in GCP, please head to https://cloud.google.com/compute/docs/connect/create-ssh-keys")
-		_, err = exec.Command("ssh-keygen", "-t", "rsa", "-f", sshKeyPath, "-C", "ubuntu", "-b", "2048").Output()
+		_, err = exec.Command("ssh-keygen", "-t", "rsa", "-f", sshKeyPath, "-C", constants.AnsibleSSHUser, "-b", "2048").Output()
 		if err != nil {
 			return nil, nil, "", "", err
 		}

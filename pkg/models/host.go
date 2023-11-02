@@ -161,7 +161,7 @@ func (h Host) Forward(httpRequest string) ([]byte, []byte, error) {
 func (h Host) ConvertToInstanceID(nodeID string) string {
 	h = Host{
 		NodeID:            nodeID,
-		SSHUser:           "ubuntu",
+		SSHUser:           constants.AnsibleSSHUser,
 		SSHPrivateKeyPath: "",
 		SSHCommonArgs:     "",
 	}
