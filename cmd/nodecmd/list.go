@@ -57,7 +57,7 @@ func list(_ *cobra.Command, _ []string) error {
 			if err != nil {
 				return err
 			}
-			hostName, err := ansible.ToAnsibleInstanceID(nodeConfig.CloudService, clusterNode)
+			hostName, err := models.HostCloudIDToAnsibleID(nodeConfig.CloudService, clusterNode)
 			if err != nil {
 				return err
 			}

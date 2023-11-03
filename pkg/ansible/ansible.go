@@ -41,7 +41,7 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 	}
 	defer inventoryFile.Close()
 	for instanceID := range publicIPMap {
-		ansibleInstanceID, err := ToAnsibleInstanceID(cloudService, instanceID)
+		ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, instanceID)
 		if err != nil {
 			return err
 		}
@@ -406,7 +406,7 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]
 		return err
 	}
 	for host, ansibleHostContent := range inventory {
-		_, nodeID, err := FromAnsibleInstanceID(host)
+		_, nodeID, err := models.HostAnsibleIDToCloudID(host)
 		if err != nil {
 			return err
 		}
@@ -423,30 +423,4 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]
 		}
 	}
 	return nil
-}
-
-func ToAnsibleInstanceID(cloudService string, instanceID string) (string, error) {
-	switch cloudService {
-	case constants.GCPCloudService:
-		return fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, instanceID), nil
-	case constants.AWSCloudService:
-		return fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, instanceID), nil
-	}
-	return "", fmt.Errorf("unknown cloud service %s", cloudService)
-}
-
-func FromAnsibleInstanceID(ansibleInstanceID string) (string, string, error) {
-	splitID := strings.Split(ansibleInstanceID, "_")
-	if len(splitID) < 2 {
-		return "", "", fmt.Errorf("invalid format on ansible instance id %s", ansibleInstanceID)
-	}
-	cloudServicePrefix := strings.Join(splitID[:len(splitID)-1], "_")
-	instanceID := splitID[len(splitID)-1]
-	switch cloudServicePrefix {
-	case constants.GCPNodeAnsiblePrefix:
-		return constants.GCPCloudService, instanceID, nil
-	case constants.AWSNodeAnsiblePrefix:
-		return constants.AWSCloudService, instanceID, nil
-	}
-	return "", "", fmt.Errorf("unknown cloud service prefix %s", cloudServicePrefix)
 }

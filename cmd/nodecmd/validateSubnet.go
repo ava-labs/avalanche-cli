@@ -195,7 +195,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			}
 			continue
 		}
-		_, clusterNodeID, err := ansible.FromAnsibleInstanceID(ansibleNodeID)
+		_, clusterNodeID, err := models.HostAnsibleIDToCloudID(ansibleNodeID)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", ansibleNodeID, err.Error())
 			failedNodes = append(failedNodes, ansibleNodeID)

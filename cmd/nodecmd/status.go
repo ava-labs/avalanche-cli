@@ -52,7 +52,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	hostIDs, err := utils.MapWithError(ansibleHostIDs, func(s string) (string, error) { _, o, err := ansible.FromAnsibleInstanceID(s); return o, err })
+	hostIDs, err := utils.MapWithError(ansibleHostIDs, func(s string) (string, error) { _, o, err := models.HostAnsibleIDToCloudID(s); return o, err })
 	if err != nil {
 		return err
 	}

@@ -324,7 +324,7 @@ func getNodeIDs(ansibleNodeIDs []string) (map[string]string, map[string]error) {
 	nodeIDMap := map[string]string{}
 	failedNodes := map[string]error{}
 	for _, ansibleNodeID := range ansibleNodeIDs {
-		_, cloudNodeID, err := ansible.FromAnsibleInstanceID(ansibleNodeID)
+		_, cloudNodeID, err := models.HostAnsibleIDToCloudID(ansibleNodeID)
 		if err != nil {
 			failedNodes[ansibleNodeID] = err
 			continue
@@ -410,7 +410,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
-		_, clusterNodeID, err := ansible.FromAnsibleInstanceID(ansibleNodeID)
+		_, clusterNodeID, err := models.HostAnsibleIDToCloudID(ansibleNodeID)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as Primary Network due to %s", ansibleNodeID, err.Error())
 			failedNodes = append(failedNodes, ansibleNodeID)

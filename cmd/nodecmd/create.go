@@ -202,7 +202,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
-	ansibleHostIDs, err := utils.MapWithError(cloudConfig.InstanceIDs, func(s string) (string, error) { return ansible.ToAnsibleInstanceID(cloudService, s) })
+	ansibleHostIDs, err := utils.MapWithError(cloudConfig.InstanceIDs, func(s string) (string, error) { return models.HostCloudIDToAnsibleID(cloudService, s) })
 	if err != nil {
 		return err
 	}
@@ -371,7 +371,7 @@ func distributeStakingCertAndKey(ansibleHostIDs []string, inventoryPath string) 
 	ux.Logger.PrintToUser("Generating staking keys in local machine...")
 	eg := errgroup.Group{}
 	for _, ansibleInstanceID := range ansibleHostIDs {
-		_, instanceID, err := ansible.FromAnsibleInstanceID(ansibleInstanceID)
+		_, instanceID, err := models.HostAnsibleIDToCloudID(ansibleInstanceID)
 		if err != nil {
 			return err
 		}
