@@ -122,8 +122,11 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	if err := migrations.RunMigrations(app); err != nil {
 		return err
 	}
-
-	if os.Getenv("RUN_E2E") == "" && !app.ConfigFileExists() {
+	// check for metrics config
+	home, err := os.UserHomeDir()
+	cobra.CheckErr(err)
+	metricConfigFilename := filepath.Join(home, constants.MetricsConfigFileName)
+	if os.Getenv("RUN_E2E") == "" && !app.ConfigFileExists() && !app.FileExists(metricConfigFilename) {
 		err = utils.HandleUserMetricsPreference(app)
 		if err != nil {
 			return err
@@ -313,10 +316,10 @@ func initConfig() {
 		// Search for default config.
 		configFilename := fmt.Sprintf("%s.%s", constants.DefaultConfigFileName, constants.DefaultConfigFileType)
 		viper.AddConfigPath(filepath.Join(home, constants.BaseDirName))
-		viper.SetConfigName(configFilename)
+		viper.SetConfigName(constants.DefaultConfigFileName)
 		viper.SetConfigType(constants.DefaultConfigFileType)
 		// migrate old config
-		if application.FileExists(oldConfig) || application.FileExists(metricsConfig) {
+		if app.FileExists(oldConfig) || app.FileExists(metricsConfig) {
 			ux.Logger.PrintToUser("-----------------------------------------------------------------------")
 			ux.Logger.PrintToUser("WARNING: Old configuration file was found in %s and/or %s", oldConfig, metricsConfig)
 			ux.Logger.PrintToUser("Please run `avalanche config migrate` to migrate it to new default location %s", filepath.Join(home, constants.BaseDirName, configFilename))

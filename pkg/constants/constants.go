@@ -76,7 +76,6 @@ const (
 	KeyDir                  = "key"
 	KeySuffix               = ".pk"
 	YAMLSuffix              = ".yml"
-	ConfigDir               = "config"
 
 	Enable = "enable"
 
@@ -140,7 +139,7 @@ const (
 	CloudCLIBranch                               = "custom-vms-cloud-10"
 	ConfigMetricsEnabled                         = "MetricsEnabled"
 	OldConfigFileName                            = ".avalanche-cli.json"
-	MetricsConfigFileName                        = "config/config"
+	MetricsConfigFileName                        = ".avalanche-cli/config"
 	DefaultConfigFileName                        = "config"
 	DefaultConfigFileType                        = "json"
 	AWSCloudService                              = "Amazon Web Services"

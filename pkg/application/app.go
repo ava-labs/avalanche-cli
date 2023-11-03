@@ -122,7 +122,7 @@ func (app *Avalanche) GetSidecarPath(subnetName string) string {
 }
 
 func (app *Avalanche) GetConfigPath() string {
-	return filepath.Join(app.baseDir, constants.ConfigDir)
+	return fmt.Sprintf("%s.%s", filepath.Join(app.baseDir, constants.DefaultConfigFileName), constants.DefaultConfigFileType)
 }
 
 func (app *Avalanche) GetNodeConfigPath(nodeName string) string {
@@ -604,15 +604,7 @@ func (*Avalanche) writeFile(path string, bytes []byte) error {
 }
 
 func (app *Avalanche) ConfigFileExists() bool {
-	return FileExists(app.GetConfigPath())
-}
-
-func (app *Avalanche) WriteConfigFile(bytes []byte, path string) error {
-	configPath := app.GetConfigPath()
-	if path != "" {
-		configPath = path
-	}
-	return app.writeFile(configPath, bytes)
+	return app.FileExists(app.GetConfigPath())
 }
 
 func (app *Avalanche) CreateNodeCloudConfigFile(nodeName string, nodeConfig *models.NodeConfig) error {
@@ -781,7 +773,7 @@ func (app *Avalanche) SetConfigValue(key string, value interface{}) error {
 }
 
 // FileExists checks if a file exists.
-func FileExists(filename string) bool {
+func (app *Avalanche) FileExists(filename string) bool {
 	info, err := os.Stat(filename)
 	if os.IsNotExist(err) {
 		return false
