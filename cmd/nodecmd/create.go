@@ -213,7 +213,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err = setupBuildEnv(inventoryPath, createdAnsibleHostIDs); err != nil {
 		return err
 	}
-	PrintResults(cloudConfig, publicIPMap, ansibleHostIDs)
+	printResults(cloudConfig, publicIPMap, ansibleHostIDs)
 	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	return nil
 }
@@ -377,20 +377,25 @@ func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePa
 }
 
 func distributeStakingCertAndKey(ansibleHostIDs []string, inventoryPath string) error {
-	ux.Logger.PrintToUser("Copying %s and %s staker.key to remote machine(s)...", constants.StakerCertFileName, constants.StakerKeyFileName)
+	ux.Logger.PrintToUser("Generating staking keys in local machine...")
 	eg := errgroup.Group{}
-	for _, hostID := range ansibleHostIDs {
-		currentHostID := hostID
-		h := strings.Split(currentHostID, "_")
-		instanceID := h[len(h)-1] // TODO fix it
+	for _, ansibleInstanceID := range ansibleHostIDs {
+		_, instanceID, err := ansible.FromAnsibleInstanceID(ansibleInstanceID)
+		if err != nil {
+			return err
+		}
 		keyPath := filepath.Join(app.GetNodesDir(), instanceID)
 		eg.Go(func() error {
-			nodeID, err := generateNodeCertAndKeys(filepath.Join(keyPath, constants.StakerCertFileName), filepath.Join(keyPath, constants.StakerKeyFileName), filepath.Join(keyPath, constants.BLSKeyFileName))
+			nodeID, err := generateNodeCertAndKeys(
+				filepath.Join(keyPath, constants.StakerCertFileName),
+				filepath.Join(keyPath, constants.StakerKeyFileName),
+				filepath.Join(keyPath, constants.BLSKeyFileName),
+			)
 			if err != nil {
-				ux.Logger.PrintToUser("Failed to generate %s and %s", constants.StakerCertFileName, constants.StakerKeyFileName)
+				ux.Logger.PrintToUser("Failed to generate staking keys for host %s", instanceID)
 				return err
 			} else {
-				ux.Logger.PrintToUser("Generated staking keys for host %s[%s] ", currentHostID, nodeID.String())
+				ux.Logger.PrintToUser("Generated staking keys for host %s[%s] ", instanceID, nodeID.String())
 			}
 			return nil
 		})
@@ -398,10 +403,8 @@ func distributeStakingCertAndKey(ansibleHostIDs []string, inventoryPath string) 
 	if err := eg.Wait(); err != nil {
 		return err
 	}
-	if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), strings.Join(ansibleHostIDs, ","), app.GetNodesDir(), inventoryPath); err != nil {
-		return err
-	}
-	return nil
+	ux.Logger.PrintToUser("Copying staking keys to remote machine(s)...")
+	return ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), strings.Join(ansibleHostIDs, ","), app.GetNodesDir(), inventoryPath)
 }
 
 func getIPAddress() (string, error) {
@@ -513,7 +516,7 @@ func setCloudService() (string, error) {
 	return chosenCloudService, nil
 }
 
-func PrintResults(cloudConfig CloudConfig, publicIPMap map[string]string, ansibleHostIDs []string) {
+func printResults(cloudConfig CloudConfig, publicIPMap map[string]string, ansibleHostIDs []string) {
 	ux.Logger.PrintToUser("======================================")
 	ux.Logger.PrintToUser("AVALANCHE NODE(S) SUCCESSFULLY SET UP!")
 	ux.Logger.PrintToUser("======================================")

@@ -37,6 +37,9 @@ func list(_ *cobra.Command, _ []string) error {
 			return err
 		}
 	}
+	if len(clusterConfig.Clusters) == 0 {
+		ux.Logger.PrintToUser("There are no clusters defined.")
+	}
 	for clusterName, clusterNodes := range clusterConfig.Clusters {
 		ux.Logger.PrintToUser(fmt.Sprintf("Cluster %q", clusterName))
 		if err := checkCluster(clusterName); err != nil {
