@@ -65,7 +65,7 @@ in with avalanche subnet create myNewSubnet.`,
 	// Disable printing the completion command
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.avalanche-cli/config)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.avalanche-cli/config.json)")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "ERROR", "log level for the application")
 	rootCmd.PersistentFlags().BoolVar(&skipCheck, constants.SkipUpdateFlag, false, "skip check for new versions")
 
@@ -123,7 +123,7 @@ func createApp(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	if os.Getenv("RUN_E2E") == "" && !app.ConfigFileExists("") {
+	if os.Getenv("RUN_E2E") == "" && !app.ConfigFileExists() {
 		err = utils.HandleUserMetricsPreference(app)
 		if err != nil {
 			return err
@@ -302,33 +302,41 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	home, err := os.UserHomeDir()
+	cobra.CheckErr(err)
+	oldConfig := filepath.Join(home, constants.OldConfigFileName)
+	metricsConfig := filepath.Join(home, constants.MetricsConfigFileName)
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
 	} else {
 		// Search for default config.
-		home, err := os.UserHomeDir()
-		cobra.CheckErr(err)
-		viper.AddConfigPath(fmt.Sprintf("%s/%s", home, constants.BaseDirName))
-		viper.SetConfigName(constants.DefaultConfigFileName)
+		configFilename := fmt.Sprintf("%s.%s", constants.DefaultConfigFileName, constants.DefaultConfigFileType)
+		viper.AddConfigPath(filepath.Join(home, constants.BaseDirName))
+		viper.SetConfigName(configFilename)
 		viper.SetConfigType(constants.DefaultConfigFileType)
 		// migrate old config
-		oldConfig := fmt.Sprintf("%s/%s.%s", home, constants.OldConfigFileName, constants.DefaultConfigFileType)
-		if app.ConfigFileExists(oldConfig) {
+		if application.FileExists(oldConfig) || application.FileExists(metricsConfig) {
 			ux.Logger.PrintToUser("-----------------------------------------------------------------------")
-			ux.Logger.PrintToUser("WARNING: Depricated configuration file was found in %s", oldConfig)
-			ux.Logger.PrintToUser("Please run `avalanche config migrate` to migrate it to new default location %s", constants.DefaultConfigFileName)
+			ux.Logger.PrintToUser("WARNING: Old configuration file was found in %s and/or %s", oldConfig, metricsConfig)
+			ux.Logger.PrintToUser("Please run `avalanche config migrate` to migrate it to new default location %s", filepath.Join(home, constants.BaseDirName, configFilename))
 			ux.Logger.PrintToUser("-----------------------------------------------------------------------")
 		}
 	}
-
 	viper.AutomaticEnv() // read in environment variables that match
-
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		app.Log.Info("Using config file", zap.String("config-file", viper.ConfigFileUsed()))
 	} else {
 		app.Log.Info("No log file found")
+	}
+	// check if metrics setting is available, and if not load metricConfig
+	if !viper.IsSet(constants.ConfigMetricsEnabled) {
+		viper.SetConfigFile(metricsConfig)
+		app.Log.Info("Using old metrics configuration file", zap.String("config-file", metricsConfig))
+		if err := viper.MergeInConfig(); err != nil {
+			app.Log.Info("Error loadingold metrics configuration file", zap.String("config-file", metricsConfig))
+		}
 	}
 }
 

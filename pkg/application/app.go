@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
+	"github.com/spf13/viper"
 )
 
 type Avalanche struct {
@@ -602,18 +603,8 @@ func (*Avalanche) writeFile(path string, bytes []byte) error {
 	return os.WriteFile(path, bytes, constants.WriteReadReadPerms)
 }
 
-func (app *Avalanche) ConfigFileExists(path string) bool {
-	configPath := app.GetConfigPath()
-	if path != "" {
-		configPath = path
-	}
-	_, err := os.ReadFile(configPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false
-		}
-	}
-	return true
+func (app *Avalanche) ConfigFileExists() bool {
+	return FileExists(app.GetConfigPath())
 }
 
 func (app *Avalanche) WriteConfigFile(bytes []byte, path string) error {
@@ -780,4 +771,20 @@ func (app *Avalanche) CreateAnsibleStatusFile(filePath string) error {
 // RemoveAnsibleStatusDir deletes avalanche ansible status dir in .avalanche-cli
 func (app *Avalanche) RemoveAnsibleStatusDir() error {
 	return os.RemoveAll(app.GetAnsibleStatusDir())
+}
+
+// SetConfigValue sets the value of a configuration key.
+func (app *Avalanche) SetConfigValue(key string, value interface{}) error {
+	viper.Set(key, value)
+	err := viper.SafeWriteConfig()
+	return err
+}
+
+// FileExists checks if a file exists.
+func FileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
 }

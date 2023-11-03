@@ -12,9 +12,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
@@ -27,6 +26,7 @@ import (
 var (
 	telemetryToken    = ""
 	telemetryInstance = "https://app.posthog.com"
+	app               *application.Avalanche
 )
 
 func GetCLIVersion() string {
@@ -55,11 +55,8 @@ func PrintMetricsOptOutPrompt() {
 		"You can also read our privacy statement <https://www.avalabs.org/privacy-policy> to learn more.\n")
 }
 
-func saveMetricsConfig(metricsEnabled bool) {
-	viper.Set(constants.MetricsEnabled, metricsEnabled)
-	if err := viper.SafeWriteConfig(); err != nil {
-		ux.Logger.PrintToUser("Error saving metrics config: " + err.Error())
-	}
+func saveMetricsConfig(metricsEnabled bool) error {
+	return app.SetConfigValue(constants.ConfigMetricsEnabled, metricsEnabled)
 }
 
 func HandleUserMetricsPreference(app *application.Avalanche) error {
@@ -74,12 +71,14 @@ func HandleUserMetricsPreference(app *application.Avalanche) error {
 	} else {
 		ux.Logger.PrintToUser("Thank you for opting in Avalanche CLI usage metrics collection")
 	}
-	saveMetricsConfig(yes)
+	if err = saveMetricsConfig(yes); err != nil {
+		return err
+	}
 	return nil
 }
 
 func userIsOptedIn() bool {
-	return viper.GetBool(constants.MetricsEnabled)
+	return viper.GetBool(constants.ConfigMetricsEnabled)
 }
 
 func HandleTracking(cmd *cobra.Command, flags map[string]string) {

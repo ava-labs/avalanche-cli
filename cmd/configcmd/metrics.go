@@ -8,10 +8,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
-// avalanche transaction sign
+// avalanche config metrics command
 func newMetricsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "metrics [enable | disable]",
@@ -46,7 +45,5 @@ func handleMetricsSettings(_ *cobra.Command, args []string) error {
 }
 
 func saveMetricsPreferences(enableMetrics bool) error {
-	viper.Set(constants.MetricsEnabled, enableMetrics)
-	err := viper.SafeWriteConfig()
-	return err
+	return app.SetConfigValue(constants.ConfigMetricsEnabled, enableMetrics)
 }
