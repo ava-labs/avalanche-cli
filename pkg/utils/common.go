@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/user"
 	"strings"
 )
 
@@ -54,4 +55,12 @@ func SplitStringWithQuotes(str string, r rune) []string {
 		}
 		return !quoted && r1 == r
 	})
+}
+
+func GetRealFilePath(path string) string {
+	if strings.HasPrefix(path, "~") {
+		usr, _ := user.Current()
+		path = strings.Replace(path, "~", usr.HomeDir, 1)
+	}
+	return path
 }

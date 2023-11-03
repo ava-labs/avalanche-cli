@@ -135,7 +135,7 @@ func GetMinStakingAmount(network models.Network) (uint64, error) {
 	return minValStake, nil
 }
 
-func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, nodeIndex int, signingKeyPath string) error {
+func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, nodeIndex int, signingKeyPath string, nodeCmd bool) error {
 	ux.Logger.PrintToUser(fmt.Sprintf("Adding node %s as a Primary Network Validator...", nodeID.String()))
 	var (
 		start time.Time
@@ -184,7 +184,7 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 	if weight < minValStake {
 		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", minValStake, weight)
 	}
-	start, duration, err = GetTimeParametersPrimaryNetwork(network, nodeIndex, duration, startTimeStr)
+	start, duration, err = GetTimeParametersPrimaryNetwork(network, nodeIndex, duration, startTimeStr, nodeCmd)
 	if err != nil {
 		return err
 	}
@@ -235,7 +235,7 @@ func PromptWeightPrimaryNetwork(network models.Network) (uint64, error) {
 	}
 }
 
-func GetTimeParametersPrimaryNetwork(network models.Network, nodeIndex int, validationDuration time.Duration, validationStartTimeStr string) (time.Time, time.Duration, error) {
+func GetTimeParametersPrimaryNetwork(network models.Network, nodeIndex int, validationDuration time.Duration, validationStartTimeStr string, nodeCmd bool) (time.Time, time.Duration, error) {
 	const (
 		defaultDurationOption = "Minimum staking duration on primary network"
 		custom                = "Custom"
@@ -248,7 +248,10 @@ func GetTimeParametersPrimaryNetwork(network models.Network, nodeIndex int, vali
 			return time.Time{}, 0, err
 		}
 	} else {
-		start = time.Now().Add(constants.PrimaryNetworkValidatingStartLeadTime)
+		start = time.Now().Add(constants.PrimaryNetworkValidatingStartLeadTimeNodeCmd)
+		if !nodeCmd {
+			start = time.Now().Add(constants.PrimaryNetworkValidatingStartLeadTime)
+		}
 	}
 	if useCustomDuration && validationDuration != 0 {
 		return start, duration, nil
@@ -382,7 +385,7 @@ func addNodeAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network,
 	}
 	if !isValidator {
 		signingKeyPath := app.GetNodeBLSSecretKeyPath(instanceID)
-		if err = joinAsPrimaryNetworkValidator(nodeID, network, nodeIndex, signingKeyPath); err != nil {
+		if err = joinAsPrimaryNetworkValidator(nodeID, network, nodeIndex, signingKeyPath, true); err != nil {
 			return false, err
 		}
 		ux.Logger.PrintToUser(fmt.Sprintf("Node %s successfully added as Primary Network validator!", nodeID.String()))
