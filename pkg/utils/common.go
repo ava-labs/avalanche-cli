@@ -57,6 +57,14 @@ func SplitStringWithQuotes(str string, r rune) []string {
 	})
 }
 
+func GetRealFilePath(path string) string {
+	if strings.HasPrefix(path, "~") {
+		usr, _ := user.Current()
+		path = strings.Replace(path, "~", usr.HomeDir, 1)
+	}
+	return path
+}
+
 func Map[T, U any](input []T, f func(T) U) []U {
 	output := make([]U, 0, len(input))
 	for _, e := range input {
@@ -75,12 +83,4 @@ func MapWithError[T, U any](input []T, f func(T) (U, error)) ([]U, error) {
 		output = append(output, o)
 	}
 	return output, nil
-}
-
-func GetRealFilePath(path string) string {
-	if strings.HasPrefix(path, "~") {
-		usr, _ := user.Current()
-		path = strings.Replace(path, "~", usr.HomeDir, 1)
-	}
-	return path
 }
