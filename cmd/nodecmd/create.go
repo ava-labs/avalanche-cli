@@ -285,15 +285,6 @@ func addNodeToClusterConfig(nodeID, clusterName string) error {
 	return app.WriteClusterConfigFile(&clusterConfig)
 }
 
-func printNoCredentialsOutput() {
-	ux.Logger.PrintToUser("No AWS credentials file found in ~/.aws/credentials")
-	ux.Logger.PrintToUser("Create a file called 'credentials' with the contents below, and add the file to ~/.aws/ directory")
-	ux.Logger.PrintToUser("===========BEGINNING OF FILE===========")
-	ux.Logger.PrintToUser("[default]\naws_access_key_id=<AWS_ACCESS_KEY>\naws_secret_access_key=<AWS_SECRET_ACCESS_KEY>")
-	ux.Logger.PrintToUser("===========END OF FILE===========")
-	ux.Logger.PrintToUser("More info can be found at https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-creds")
-}
-
 // setupAnsible we need to remove existing ansible directory and its contents in .avalanche-cli dir
 // before calling every ansible run command just in case there is a change in playbook
 func setupAnsible(clusterName string) error {
@@ -335,7 +326,7 @@ func getNodeID(nodeDir string) (ids.NodeID, error) {
 	if err != nil {
 		return ids.EmptyNodeID, err
 	}
-	nodeID, err := utils.ToNodeID(keyBytes, certBytes)
+	nodeID, err := utils.ToNodeID(certBytes, keyBytes)
 	if err != nil {
 		return ids.EmptyNodeID, err
 	}
