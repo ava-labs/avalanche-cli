@@ -13,6 +13,7 @@ import (
 	"time"
 
 	terraformgcp "github.com/ava-labs/avalanche-cli/pkg/terraform/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"golang.org/x/exp/rand"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
@@ -29,11 +30,24 @@ import (
 )
 
 func getServiceAccountKeyFilepath() (string, error) {
-	ux.Logger.PrintToUser("To create a VM instance in GCP, we will need your service account credentials")
+	ux.Logger.PrintToUser("To create a VM instance in GCP, you can use your account credentials")
 	ux.Logger.PrintToUser("Please follow instructions detailed at https://developers.google.com/workspace/guides/create-credentials#service-account to set up a GCP service account")
-	ux.Logger.PrintToUser("Once completed, please enter the filepath to the JSON file containing the public/private key pair")
-	ux.Logger.PrintToUser("For example: /Users/username/sample-project.json")
-	return app.Prompt.CaptureString("What is the filepath to the credentials JSON file?")
+	ux.Logger.PrintToUser("Or use https://cloud.google.com/sdk/docs/authorizing#user-account for authorization without a service account")
+	customAuthKeyPath := "Choose custom path for credentials JSON file"
+	credJSONFilePath, err := app.Prompt.CaptureList(
+		"What is the filepath to the credentials JSON file?",
+		[]string{constants.GCPDefaultAuthKeyPath, customAuthKeyPath},
+	)
+	if err != nil {
+		return "", err
+	}
+	if credJSONFilePath == customAuthKeyPath {
+		credJSONFilePath, err = app.Prompt.CaptureString("What is the custom filepath to the credentials JSON file?")
+		if err != nil {
+			return "", err
+		}
+	}
+	return utils.GetRealFilePath(credJSONFilePath), err
 }
 
 func getGCPCloudCredentials() (*compute.Service, string, string, error) {
