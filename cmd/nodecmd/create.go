@@ -27,6 +27,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	avalancheGoReferenceChoiceLatest = "latest"
+	avalancheGoReferenceChoiceSubnet = "subnet"
+)
+
+var (
+	useAWS                          bool
+	useGCP                          bool
+	cmdLineRegion                   string
+	authorizeAccess                 bool
+	numNodes                        int
+	useLatestAvalanchegoVersion     bool
+	useAvalanchegoVersionFromSubnet string
+	cmdLineGCPCredentialsPath       string
+	cmdLineGCPProjectName           string
+	cmdLineAlternativeKeyPairName   string
+)
+
 type CloudConfig struct {
 	InstanceIDs   []string
 	PublicIPs     []string
@@ -57,9 +75,19 @@ and users can call node commands with <clusterName> so that the command
 will apply to all nodes in the cluster`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
-		RunE:         createNode,
+		RunE:         createNodes,
 	}
 	cmd.Flags().BoolVar(&useStaticIP, "use-static-ip", true, "attach static Public IP on cloud servers")
+	cmd.Flags().BoolVar(&useAWS, "aws", false, "create node/s in AWS cloud")
+	cmd.Flags().BoolVar(&useGCP, "gcp", false, "create node/s in GCP cloud")
+	cmd.Flags().StringVar(&cmdLineRegion, "region", "", "create node/s in given region")
+	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to create cloud resources")
+	cmd.Flags().IntVar(&numNodes, "num-nodes", 0, "number of nodes to create")
+	cmd.Flags().BoolVar(&useLatestAvalanchegoVersion, "latest-avalanchego-version", false, "install latest avalanchego version on node/s")
+	cmd.Flags().StringVar(&useAvalanchegoVersionFromSubnet, "avalanchego-version-from-subnet", "", "install latest avalanchego version, that is compatible with the given subnet, on node/s")
+	cmd.Flags().StringVar(&cmdLineGCPCredentialsPath, "gcp-credentials", "", "use given GCP credentials")
+	cmd.Flags().StringVar(&cmdLineGCPProjectName, "gcp-project", "", "use given GCP project")
+	cmd.Flags().StringVar(&cmdLineAlternativeKeyPairName, "alternative-key-pair-name", "", "key pair name to use if default one generates conflicts")
 
 	return cmd
 }
@@ -140,11 +168,23 @@ func printNoCredentialsOutput() {
 	ux.Logger.PrintToUser("More info can be found at https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-creds")
 }
 
-func createNode(_ *cobra.Command, args []string) error {
+func createNodes(_ *cobra.Command, args []string) error {
+	if useLatestAvalanchegoVersion && useAvalanchegoVersionFromSubnet != "" {
+		return fmt.Errorf("could not use both latest avalanchego version and avalanchego version based on given subnet")
+	}
+	if useAWS && useGCP {
+		return fmt.Errorf("could not use both AWS and GCP cloud options")
+	}
 	clusterName := args[0]
-	cloudService, err := promptCloudService()
+	cloudService, err := setCloudService()
 	if err != nil {
 		return err
+	}
+	if cloudService != constants.GCPCloudService && cmdLineGCPCredentialsPath != "" {
+		return fmt.Errorf("set to use GCP credentials but cloud option is not GCP")
+	}
+	if cloudService != constants.GCPCloudService && cmdLineGCPProjectName != "" {
+		return fmt.Errorf("set to use GCP project but cloud option is not GCP")
 	}
 	if err := terraform.CheckIsInstalled(); err != nil {
 		return err
@@ -166,11 +206,11 @@ func createNode(_ *cobra.Command, args []string) error {
 	gcpCredentialFilepath := ""
 	if cloudService == constants.AWSCloudService {
 		// Get AWS Credential, region and AMI
-		ec2Svc, region, ami, err := getAWSCloudConfig()
+		ec2Svc, region, ami, err := getAWSCloudConfig(cmdLineRegion, authorizeAccess)
 		if err != nil {
 			return err
 		}
-		cloudConfig, err = createAWSInstance(ec2Svc, region, ami, usr)
+		cloudConfig, err = createAWSInstances(ec2Svc, numNodes, region, ami, usr)
 		if err != nil {
 			return err
 		}
@@ -186,11 +226,11 @@ func createNode(_ *cobra.Command, args []string) error {
 		}
 	} else {
 		// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
-		gcpClient, zone, imageID, credentialFilepath, projectName, err := getGCPConfig()
+		gcpClient, zone, imageID, credentialFilepath, projectName, err := getGCPConfig(cmdLineRegion)
 		if err != nil {
 			return err
 		}
-		cloudConfig, err = createGCPInstance(usr, gcpClient, zone, imageID, credentialFilepath, projectName, clusterName)
+		cloudConfig, err = createGCPInstance(usr, gcpClient, numNodes, zone, imageID, credentialFilepath, projectName, clusterName)
 		if err != nil {
 			return err
 		}
@@ -309,22 +349,35 @@ func getIPAddress() (string, error) {
 // or if they want to use the newest Avalanche Go Version that is still compatible with Subnet EVM
 // version of their choice
 func getAvalancheGoVersion() (string, error) {
-	chosenOption, err := promptAvalancheGoReferenceChoice()
-	if err != nil {
-		return "", err
-	}
-	if chosenOption != "latest" {
-		sc, err := app.LoadSidecar(chosenOption)
+	version := ""
+	subnet := ""
+	if useLatestAvalanchegoVersion { //nolint: gocritic
+		version = "latest"
+	} else if useAvalanchegoVersionFromSubnet != "" {
+		subnet = useAvalanchegoVersionFromSubnet
+	} else {
+		choice, subnetChoice, err := promptAvalancheGoReferenceChoice()
 		if err != nil {
 			return "", err
 		}
-		customAvagoVersion, err := GetLatestAvagoVersionForRPC(sc.RPCVersion)
+		switch choice {
+		case avalancheGoReferenceChoiceLatest:
+			version = "latest"
+		case avalancheGoReferenceChoiceSubnet:
+			subnet = subnetChoice
+		}
+	}
+	if subnet != "" {
+		sc, err := app.LoadSidecar(subnet)
 		if err != nil {
 			return "", err
 		}
-		return customAvagoVersion, nil
+		version, err = GetLatestAvagoVersionForRPC(sc.RPCVersion)
+		if err != nil {
+			return "", err
+		}
 	}
-	return chosenOption, nil
+	return version, nil
 }
 
 func GetLatestAvagoVersionForRPC(configuredRPCVersion int) (string, error) {
@@ -339,34 +392,40 @@ func GetLatestAvagoVersionForRPC(configuredRPCVersion int) (string, error) {
 // promptAvalancheGoReferenceChoice returns user's choice of either using the latest Avalanche Go
 // version or using the latest Avalanche Go version that is still compatible with the subnet that user
 // wants the cloud server to track
-func promptAvalancheGoReferenceChoice() (string, error) {
+func promptAvalancheGoReferenceChoice() (string, string, error) {
 	defaultVersion := "Use latest Avalanche Go Version"
 	txt := "What version of Avalanche Go would you like to install in the node?"
 	versionOptions := []string{defaultVersion, "Use the deployed Subnet's VM version that the node will be validating"}
 	versionOption, err := app.Prompt.CaptureList(txt, versionOptions)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	switch versionOption {
 	case defaultVersion:
-		return "latest", nil
+		return avalancheGoReferenceChoiceLatest, "", nil
 	default:
 		for {
 			subnetName, err := app.Prompt.CaptureString("Which Subnet would you like to use to choose the avalanche go version?")
 			if err != nil {
-				return "", err
+				return "", "", err
 			}
 			_, err = subnet.ValidateSubnetNameAndGetChains([]string{subnetName})
 			if err == nil {
-				return subnetName, nil
+				return avalancheGoReferenceChoiceSubnet, subnetName, nil
 			}
 			ux.Logger.PrintToUser(fmt.Sprintf("no subnet named %s found", subnetName))
 		}
 	}
 }
 
-func promptCloudService() (string, error) {
+func setCloudService() (string, error) {
+	if useAWS {
+		return constants.AWSCloudService, nil
+	}
+	if useGCP {
+		return constants.GCPCloudService, nil
+	}
 	txt := "Which cloud service would you like to launch your Avalanche Node(s) in?"
 	cloudOptions := []string{constants.AWSCloudService, constants.GCPCloudService}
 	chosenCloudService, err := app.Prompt.CaptureList(txt, cloudOptions)
