@@ -20,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
 	"golang.org/x/sync/errgroup"
 
@@ -293,34 +294,38 @@ func setupBuildEnv(inventoryPath, ansibleHostIDs string) error {
 	return ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath, ansibleTargetHosts)
 }
 
-func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePath string) error {
+func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePath string) (ids.NodeID, error) {
 	certBytes, keyBytes, err := staking.NewCertAndKeyBytes()
 	if err != nil {
-		return err
+		return ids.NodeID{}, err
+	}
+	nodeID, err := utils.ToNodeID(certBytes, keyBytes)
+	if err != nil {
+		return ids.NodeID{}, err
 	}
 	if err := os.MkdirAll(filepath.Dir(stakerCertFilePath), constants.DefaultPerms755); err != nil {
-		return err
+		return ids.NodeID{}, err
 	}
 	if err := os.WriteFile(stakerCertFilePath, certBytes, constants.WriteReadUserOnlyPerms); err != nil {
-		return err
+		return ids.NodeID{}, err
 	}
 	if err := os.MkdirAll(filepath.Dir(stakerKeyFilePath), constants.DefaultPerms755); err != nil {
-		return err
+		return ids.NodeID{}, err
 	}
 	if err := os.WriteFile(stakerKeyFilePath, keyBytes, constants.WriteReadUserOnlyPerms); err != nil {
-		return err
+		return ids.NodeID{}, err
 	}
 	blsSignerKeyBytes, err := utils.NewBlsSecretKeyBytes()
 	if err != nil {
-		return err
+		return ids.NodeID{}, err
 	}
 	if err := os.MkdirAll(filepath.Dir(blsKeyFilePath), constants.DefaultPerms755); err != nil {
-		return err
+		return ids.NodeID{}, err
 	}
 	if err := os.WriteFile(blsKeyFilePath, blsSignerKeyBytes, constants.WriteReadUserOnlyPerms); err != nil {
-		return err
+		return ids.NodeID{}, err
 	}
-	return nil
+	return nodeID, nil
 }
 
 func DistributeStakingCertAndKey(ansibleHostIDs []string, inventoryPath string) error {
@@ -331,11 +336,12 @@ func DistributeStakingCertAndKey(ansibleHostIDs []string, inventoryPath string) 
 		instanceID := h[len(h)-1] // TODO fix it
 		keyPath := filepath.Join(app.GetNodesDir(), instanceID)
 		eg.Go(func() error {
-			if err := generateNodeCertAndKeys(filepath.Join(keyPath, constants.StakerCertFileName), filepath.Join(keyPath, constants.StakerKeyFileName), filepath.Join(keyPath, constants.BLSKeyFileName)); err != nil {
+			nodeID, err := generateNodeCertAndKeys(filepath.Join(keyPath, constants.StakerCertFileName), filepath.Join(keyPath, constants.StakerKeyFileName), filepath.Join(keyPath, constants.BLSKeyFileName))
+			if err != nil {
 				ux.Logger.PrintToUser("Failed to generate %s and %s", constants.StakerCertFileName, constants.StakerKeyFileName)
 				return err
 			} else {
-				ux.Logger.PrintToUser("Generated %s %s %s", constants.StakerCertFileName, constants.StakerKeyFileName, constants.BLSKeyFileName)
+				ux.Logger.PrintToUser("Generated %s %s %s for host %s[%s] ", constants.StakerCertFileName, constants.StakerKeyFileName, constants.BLSKeyFileName, hostID, nodeID.String())
 			}
 			return nil
 		})
