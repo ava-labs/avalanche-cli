@@ -27,17 +27,22 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	avalancheGoReferenceChoiceLatest = "latest"
+	avalancheGoReferenceChoiceSubnet = "subnet"
+)
+
 var (
-	useAWS                        bool
-	useGCP                        bool
-	cmdLineRegion                 string
-	authorizeAccess               bool
-	numNodes                      int
-	useLatestAvalanchego          bool
-	useAvalanchegoFromSubnet      string
-	cmdLineGCPCredentialsPath     string
-	cmdLineGCPProjectName         string
-	cmdLineAlternativeKeyPairName string
+	useAWS                          bool
+	useGCP                          bool
+	cmdLineRegion                   string
+	authorizeAccess                 bool
+	numNodes                        int
+	useLatestAvalanchegoVersion     bool
+	useAvalanchegoVersionFromSubnet string
+	cmdLineGCPCredentialsPath       string
+	cmdLineGCPProjectName           string
+	cmdLineAlternativeKeyPairName   string
 )
 
 type CloudConfig struct {
@@ -78,8 +83,8 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().StringVar(&cmdLineRegion, "region", "", "create node/s in given region")
 	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to create cloud resources")
 	cmd.Flags().IntVar(&numNodes, "num-nodes", 0, "number of nodes to create")
-	cmd.Flags().BoolVar(&useLatestAvalanchego, "latest-avalanchego", false, "install latest avalanchego on node/s")
-	cmd.Flags().StringVar(&useAvalanchegoFromSubnet, "avalanchego-from-subnet", "", "install latest avalanchego, compatible with given subnet, on node/s")
+	cmd.Flags().BoolVar(&useLatestAvalanchegoVersion, "latest-avalanchego-version", false, "install latest avalanchego version on node/s")
+	cmd.Flags().StringVar(&useAvalanchegoVersionFromSubnet, "avalanchego-version-from-subnet", "", "install latest avalanchego version, that is compatible with the given subnet, on node/s")
 	cmd.Flags().StringVar(&cmdLineGCPCredentialsPath, "gcp-credentials", "", "use given GCP credentials")
 	cmd.Flags().StringVar(&cmdLineGCPProjectName, "gcp-project", "", "use given GCP project")
 	cmd.Flags().StringVar(&cmdLineAlternativeKeyPairName, "alternative-key-pair-name", "", "key pair name to use if default one generates conflicts")
@@ -164,8 +169,8 @@ func printNoCredentialsOutput() {
 }
 
 func createNodes(_ *cobra.Command, args []string) error {
-	if useLatestAvalanchego && useAvalanchegoFromSubnet != "" {
-		return fmt.Errorf("could not use both latest avalanchego and avalanchego based on given subnet")
+	if useLatestAvalanchegoVersion && useAvalanchegoVersionFromSubnet != "" {
+		return fmt.Errorf("could not use both latest avalanchego version and avalanchego version based on given subnet")
 	}
 	if useAWS && useGCP {
 		return fmt.Errorf("could not use both AWS and GCP cloud options")
@@ -346,15 +351,20 @@ func getIPAddress() (string, error) {
 func getAvalancheGoVersion() (string, error) {
 	version := ""
 	subnet := ""
-	if useLatestAvalanchego { //nolint: gocritic
+	if useLatestAvalanchegoVersion { //nolint: gocritic
 		version = "latest"
-	} else if useAvalanchegoFromSubnet != "" {
-		subnet = useAvalanchegoFromSubnet
+	} else if useAvalanchegoVersionFromSubnet != "" {
+		subnet = useAvalanchegoVersionFromSubnet
 	} else {
-		var err error
-		version, subnet, err = promptAvalancheGoReferenceChoice()
+		choice, subnetChoice, err := promptAvalancheGoReferenceChoice()
 		if err != nil {
 			return "", err
+		}
+		switch choice {
+		case avalancheGoReferenceChoiceLatest:
+			version = "latest"
+		case avalancheGoReferenceChoiceSubnet:
+			subnet = subnetChoice
 		}
 	}
 	if subnet != "" {
@@ -393,7 +403,7 @@ func promptAvalancheGoReferenceChoice() (string, string, error) {
 
 	switch versionOption {
 	case defaultVersion:
-		return "latest", "", nil
+		return avalancheGoReferenceChoiceLatest, "", nil
 	default:
 		for {
 			subnetName, err := app.Prompt.CaptureString("Which Subnet would you like to use to choose the avalanche go version?")
@@ -402,7 +412,7 @@ func promptAvalancheGoReferenceChoice() (string, string, error) {
 			}
 			_, err = subnet.ValidateSubnetNameAndGetChains([]string{subnetName})
 			if err == nil {
-				return "subnet", subnetName, nil
+				return avalancheGoReferenceChoiceSubnet, subnetName, nil
 			}
 			ux.Logger.PrintToUser(fmt.Sprintf("no subnet named %s found", subnetName))
 		}
