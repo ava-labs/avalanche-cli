@@ -22,6 +22,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var authorizeRemove bool
+
 func newStopCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stop [clusterName]",
@@ -33,8 +35,10 @@ The node stop command stops a running node in cloud server
 Note that a stopped node may still incur cloud server storage fees.`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
-		RunE:         stopNode,
+		RunE:         stopNodes,
 	}
+	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to release cloud resources")
+	cmd.Flags().BoolVar(&authorizeRemove, "authorize-remove", false, "authorize CLI to remove all local files related to cloud nodes")
 
 	return cmd
 }
@@ -63,6 +67,9 @@ func removeClusterInventoryDir(clusterName string) error {
 }
 
 func getDeleteConfigConfirmation() error {
+	if authorizeRemove {
+		return nil
+	}
 	ux.Logger.PrintToUser("Please note that if your node(s) are validating a Subnet, stopping them could cause Subnet instability and it is irreversible")
 	confirm := "Running this command will delete all stored files associated with your cloud server. Do you want to proceed? " +
 		fmt.Sprintf("Stored files can be found at %s", app.GetNodesDir())
@@ -83,7 +90,7 @@ func removeClusterConfigFiles(clusterName string) error {
 	return removeNodeFromClusterConfig(clusterName)
 }
 
-func stopNode(_ *cobra.Command, args []string) error {
+func stopNodes(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	if err := checkCluster(clusterName); err != nil {
 		return err
@@ -112,7 +119,7 @@ func stopNode(_ *cobra.Command, args []string) error {
 		if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
 			// need to check if it's empty because we didn't set cloud service when only using AWS
 			if nodeConfig.Region != lastRegion {
-				sess, err := getAWSCloudCredentials(nodeConfig.Region, constants.StopAWSNode)
+				sess, err := getAWSCloudCredentials(nodeConfig.Region, constants.StopAWSNode, authorizeAccess)
 				if err != nil {
 					return err
 				}

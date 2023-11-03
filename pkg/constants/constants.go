@@ -7,7 +7,9 @@ import (
 )
 
 const (
-	DefaultPerms755 = 0o755
+	DefaultPerms755        = 0o755
+	WriteReadReadPerms     = 0o644
+	WriteReadUserOnlyPerms = 0o600
 
 	BaseDirName = ".avalanche-cli"
 	LogDir      = "logs"
@@ -32,7 +34,9 @@ const (
 	CreateAWSNode                = "create-aws-node"
 	GetAWSNodeIP                 = "get-aws-node-ip"
 	ClusterConfigFileName        = "cluster_config.json"
-	BLSFileName                  = "signer.key"
+	StakerCertFileName           = "staker.crt"
+	StakerKeyFileName            = "staker.key"
+	BLSKeyFileName               = "signer.key"
 	SidecarVersion               = "1.4.0"
 
 	MaxLogFileSize   = 4
@@ -97,6 +101,7 @@ const (
 	GCPDefaultImageProvider                      = "ubuntu-os-cloud"
 	GCPImageFilter                               = "family=ubuntu-2004* AND architecture=x86_64"
 	GCPEnvVar                                    = "GOOGLE_APPLICATION_CREDENTIALS"
+	GCPDefaultAuthKeyPath                        = "~/.config/gcloud/application_default_credentials.json"
 	CertSuffix                                   = "-kp.pem"
 	AWSSecurityGroupSuffix                       = "-sg"
 	ExportSubnetSuffix                           = "-export.dat"
@@ -137,7 +142,6 @@ const (
 	OldConfigFileName                            = ".avalanche-cli"
 	DefaultConfigFileName                        = "config"
 	DefaultConfigFileType                        = "json"
-	WriteReadReadPerms                           = 0o644
 	AWSCloudService                              = "Amazon Web Services"
 	GCPCloudService                              = "Google Cloud Platform"
 	AnsibleSSHUser                               = "ubuntu"
