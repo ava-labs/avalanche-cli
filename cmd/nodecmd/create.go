@@ -292,7 +292,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err = setupBuildEnv(inventoryPath, createdAnsibleHostIDs); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
+	ux.Logger.PrintToUser("Copying staking keys to local machine...")
 	if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), strings.Join(ansibleHostIDs, ","), app.GetNodesDir(), inventoryPath); err != nil {
 		return err
 	}
@@ -372,7 +372,8 @@ func distributeStakingCertAndKey(ansibleHostIDs []string, inventoryPath string) 
 	ux.Logger.PrintToUser("Copying %s and %s staker.key to remote machine(s)...", constants.StakerCertFileName, constants.StakerKeyFileName)
 	eg := errgroup.Group{}
 	for _, hostID := range ansibleHostIDs {
-		h := strings.Split(hostID, "_")
+		currentHostID := hostID
+		h := strings.Split(currentHostID, "_")
 		instanceID := h[len(h)-1] // TODO fix it
 		keyPath := filepath.Join(app.GetNodesDir(), instanceID)
 		eg.Go(func() error {
@@ -381,7 +382,7 @@ func distributeStakingCertAndKey(ansibleHostIDs []string, inventoryPath string) 
 				ux.Logger.PrintToUser("Failed to generate %s and %s", constants.StakerCertFileName, constants.StakerKeyFileName)
 				return err
 			} else {
-				ux.Logger.PrintToUser("Generated %s %s %s for host %s[%s] ", constants.StakerCertFileName, constants.StakerKeyFileName, constants.BLSKeyFileName, hostID, nodeID.String())
+				ux.Logger.PrintToUser("Generated staking keys for host %s[%s] ", currentHostID, nodeID.String())
 			}
 			return nil
 		})
