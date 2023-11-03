@@ -766,7 +766,7 @@ func (app *Avalanche) RemoveAnsibleStatusDir() error {
 }
 
 // SetConfigValue sets the value of a configuration key.
-func (app *Avalanche) SetConfigValue(key string, value interface{}) error {
+func (_ *Avalanche) SetConfigValue(key string, value interface{}) error {
 	viper.Set(key, value)
 	err := viper.SafeWriteConfig()
 	return err
