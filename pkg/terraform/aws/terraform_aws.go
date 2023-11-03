@@ -6,6 +6,7 @@ package terraformaws
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -21,10 +22,13 @@ import (
 )
 
 // SetCloudCredentials sets AWS account credentials defined in .aws dir in user home dir
-func SetCloudCredentials(rootBody *hclwrite.Body, awsProfile, region string) error {
+func SetCloudCredentials(rootBody *hclwrite.Body, useAWSEnvVars bool, awsProfile, region string) error {
 	provider := rootBody.AppendNewBlock("provider", []string{"aws"})
 	providerBody := provider.Body()
 	providerBody.SetAttributeValue("region", cty.StringVal(region))
+	/*if !useAWSEnvVars {
+		providerBody.SetAttributeValue("profile", cty.StringVal(awsProfile))
+	}*/
 	providerBody.SetAttributeValue("profile", cty.StringVal(awsProfile))
 	return nil
 }
@@ -211,17 +215,23 @@ func SetOutput(rootBody *hclwrite.Body, useEIP bool) {
 // RunTerraform executes terraform apply function that creates the EC2 instances based on the .tf file provided
 // returns a list of AWS node-IDs and node IPs
 func RunTerraform(terraformDir string, useEIP bool) ([]string, []string, error) {
-	cmd := exec.Command(constants.Terraform, "init") //nolint:gosec
-	cmd.Env = utils.FilterStringsByPrefix(os.Environ(), "AWS_")
-	cmd.Dir = terraformDir
-	if err := cmd.Run(); err != nil {
-		return nil, nil, err
-	}
-	cmd = exec.Command(constants.Terraform, "apply", "-auto-approve") //nolint:gosec
-	cmd.Dir = terraformDir
 	var stdBuffer bytes.Buffer
 	var stderr bytes.Buffer
 	mw := io.MultiWriter(os.Stdout, &stdBuffer)
+
+	cmd := exec.Command(constants.Terraform, "init") //nolint:gosec
+	cmd.Env = utils.FilterStringsByPrefix(os.Environ(), "AWS_")
+	cmd.Stdout = mw
+	cmd.Stderr = &stderr
+	fmt.Println(cmd.Env)
+	cmd.Dir = terraformDir
+	if err := cmd.Run(); err != nil {
+		fmt.Println(err)
+		return nil, nil, err
+	}
+	cmd = exec.Command(constants.Terraform, "apply", "-auto-approve") //nolint:gosec
+	fmt.Println(cmd.Env)
+	cmd.Dir = terraformDir
 	cmd.Stdout = mw
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {

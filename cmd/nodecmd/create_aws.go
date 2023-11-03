@@ -55,6 +55,7 @@ func getAWSCloudCredentials(awsProfile, region, awsCommand string) (*session.Ses
 	}
 	// use env variables first and fallback to shared config
 	creds := credentials.NewEnvCredentials()
+	useAWSEnvVars = true
 	if _, err := creds.Get(); err != nil {
 		creds = credentials.NewSharedCredentials("", awsProfile)
 		if _, err := creds.Get(); err != nil {
@@ -124,7 +125,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	keyPairName,
 	securityGroupName string,
 ) ([]string, []string, string, string, error) {
-	if err := terraformaws.SetCloudCredentials(rootBody, awsProfile, region); err != nil {
+	if err := terraformaws.SetCloudCredentials(rootBody, useAWSEnvVars, awsProfile, region); err != nil {
 		return nil, nil, "", "", err
 	}
 	numNodes, err := app.Prompt.CaptureInt("How many nodes do you want to set up on AWS?")
