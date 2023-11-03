@@ -7,8 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -18,6 +20,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/staking"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -287,7 +292,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err = setupBuildEnv(inventoryPath, createdAnsibleHostIDs); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
+	ux.Logger.PrintToUser("Copying staking keys to local machine...")
 	if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), strings.Join(ansibleHostIDs, ","), app.GetNodesDir(), inventoryPath); err != nil {
 		return err
 	}
@@ -314,6 +319,9 @@ func runAnsible(inventoryPath, avalancheGoVersion, clusterName, ansibleHostIDs s
 	if err != nil {
 		return err
 	}
+	if err := distributeStakingCertAndKey(strings.Split(ansibleHostIDs, ","), inventoryPath); err != nil {
+		return err
+	}
 	return ansible.RunAnsiblePlaybookSetupNode(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion, ansibleHostIDs)
 }
 
@@ -324,6 +332,68 @@ func setupBuildEnv(inventoryPath, ansibleHostIDs string) error {
 		ansibleTargetHosts = ansibleHostIDs
 	}
 	return ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath, ansibleTargetHosts)
+}
+
+func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePath string) (ids.NodeID, error) {
+	certBytes, keyBytes, err := staking.NewCertAndKeyBytes()
+	if err != nil {
+		return ids.EmptyNodeID, err
+	}
+	nodeID, err := utils.ToNodeID(certBytes, keyBytes)
+	if err != nil {
+		return ids.EmptyNodeID, err
+	}
+	if err := os.MkdirAll(filepath.Dir(stakerCertFilePath), constants.DefaultPerms755); err != nil {
+		return ids.EmptyNodeID, err
+	}
+	if err := os.WriteFile(stakerCertFilePath, certBytes, constants.WriteReadUserOnlyPerms); err != nil {
+		return ids.EmptyNodeID, err
+	}
+	if err := os.MkdirAll(filepath.Dir(stakerKeyFilePath), constants.DefaultPerms755); err != nil {
+		return ids.EmptyNodeID, err
+	}
+	if err := os.WriteFile(stakerKeyFilePath, keyBytes, constants.WriteReadUserOnlyPerms); err != nil {
+		return ids.EmptyNodeID, err
+	}
+	blsSignerKeyBytes, err := utils.NewBlsSecretKeyBytes()
+	if err != nil {
+		return ids.EmptyNodeID, err
+	}
+	if err := os.MkdirAll(filepath.Dir(blsKeyFilePath), constants.DefaultPerms755); err != nil {
+		return ids.EmptyNodeID, err
+	}
+	if err := os.WriteFile(blsKeyFilePath, blsSignerKeyBytes, constants.WriteReadUserOnlyPerms); err != nil {
+		return ids.EmptyNodeID, err
+	}
+	return nodeID, nil
+}
+
+func distributeStakingCertAndKey(ansibleHostIDs []string, inventoryPath string) error {
+	ux.Logger.PrintToUser("Copying %s and %s staker.key to remote machine(s)...", constants.StakerCertFileName, constants.StakerKeyFileName)
+	eg := errgroup.Group{}
+	for _, hostID := range ansibleHostIDs {
+		currentHostID := hostID
+		h := strings.Split(currentHostID, "_")
+		instanceID := h[len(h)-1] // TODO fix it
+		keyPath := filepath.Join(app.GetNodesDir(), instanceID)
+		eg.Go(func() error {
+			nodeID, err := generateNodeCertAndKeys(filepath.Join(keyPath, constants.StakerCertFileName), filepath.Join(keyPath, constants.StakerKeyFileName), filepath.Join(keyPath, constants.BLSKeyFileName))
+			if err != nil {
+				ux.Logger.PrintToUser("Failed to generate %s and %s", constants.StakerCertFileName, constants.StakerKeyFileName)
+				return err
+			} else {
+				ux.Logger.PrintToUser("Generated staking keys for host %s[%s] ", currentHostID, nodeID.String())
+			}
+			return nil
+		})
+	}
+	if err := eg.Wait(); err != nil {
+		return err
+	}
+	if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), strings.Join(ansibleHostIDs, ","), app.GetNodesDir(), inventoryPath); err != nil {
+		return err
+	}
+	return nil
 }
 
 func getIPAddress() (string, error) {

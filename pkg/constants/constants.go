@@ -7,7 +7,9 @@ import (
 )
 
 const (
-	DefaultPerms755 = 0o755
+	DefaultPerms755        = 0o755
+	WriteReadReadPerms     = 0o644
+	WriteReadUserOnlyPerms = 0o600
 
 	BaseDirName = ".avalanche-cli"
 	LogDir      = "logs"
@@ -32,7 +34,9 @@ const (
 	CreateAWSNode                = "create-aws-node"
 	GetAWSNodeIP                 = "get-aws-node-ip"
 	ClusterConfigFileName        = "cluster_config.json"
-	BLSFileName                  = "signer.key"
+	StakerCertFileName           = "staker.crt"
+	StakerKeyFileName            = "staker.key"
+	BLSKeyFileName               = "signer.key"
 	SidecarVersion               = "1.4.0"
 
 	MaxLogFileSize   = 4
@@ -136,7 +140,6 @@ const (
 	CloudCLIBranch                               = "custom-vms-cloud-10"
 	DefaultConfigFileName                        = ".avalanche-cli"
 	DefaultConfigFileType                        = "json"
-	WriteReadReadPerms                           = 0o644
 	AWSCloudService                              = "Amazon Web Services"
 	GCPCloudService                              = "Google Cloud Platform"
 	AnsibleSSHUser                               = "ubuntu"
