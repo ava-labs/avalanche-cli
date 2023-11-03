@@ -41,10 +41,11 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 	}
 	defer inventoryFile.Close()
 	for instanceID := range publicIPMap {
-		inventoryContent := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, instanceID)
-		if cloudService == constants.GCPCloudService {
-			inventoryContent = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, instanceID)
+		ansibleInstanceID, err := ToAnsibleInstanceID(cloudService, instanceID)
+		if err != nil {
+			return err
 		}
+		inventoryContent := ansibleInstanceID
 		inventoryContent += " ansible_host="
 		inventoryContent += publicIPMap[instanceID]
 		inventoryContent += " ansible_user=ubuntu"
@@ -328,23 +329,6 @@ func RunAnsiblePlaybookCheckBootstrapped(ansibleDir, isBootstrappedPath, invento
 	return cmdErr
 }
 
-// RunAnsiblePlaybookGetNodeID gets node ID of cloud server
-// targets a specific host ansibleHostID in ansible inventory file
-func RunAnsiblePlaybookGetNodeID(ansibleDir, nodeIDPath, inventoryPath, ansibleHostID string) error {
-	playbookInputs := "target=" + ansibleHostID + " nodeIDJsonPath=" + nodeIDPath
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.GetNodeIDPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	cmd.Dir = ansibleDir
-	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, false, false)
-	cmdErr := cmd.Run()
-	if err := displayErrMsg(stdoutBuffer); err != nil {
-		return err
-	}
-	if err := displayErrMsg(stderrBuffer); err != nil {
-		return err
-	}
-	return cmdErr
-}
-
 // RunAnsiblePlaybookSubnetSyncStatus checks if node is synced to subnet
 // targets a specific host ansibleHostID in ansible inventory file
 func RunAnsiblePlaybookSubnetSyncStatus(ansibleDir, subnetSyncPath, blockchainID, inventoryPath, ansibleHostID string) error {
@@ -422,9 +406,10 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]
 		return err
 	}
 	for host, ansibleHostContent := range inventory {
-		// trim prefix aws_node / gcp_node
-		splitNodeName := strings.Split(host, "_")
-		nodeID := splitNodeName[len(splitNodeName)-1]
+		_, nodeID, err := FromAnsibleInstanceID(host)
+		if err != nil {
+			return err
+		}
 		_, ok := nodesWoEIP[nodeID]
 		if !ok {
 			if _, err = inventoryFile.WriteString(ansibleHostContent.GetAnsibleInventoryRecord() + "\n"); err != nil {
@@ -438,4 +423,30 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]
 		}
 	}
 	return nil
+}
+
+func ToAnsibleInstanceID(cloudService string, instanceID string) (string, error) {
+	switch cloudService {
+	case constants.GCPCloudService:
+		return fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, instanceID), nil
+	case constants.AWSCloudService:
+		return fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, instanceID), nil
+	}
+	return "", fmt.Errorf("unknown cloud service %s", cloudService)
+}
+
+func FromAnsibleInstanceID(ansibleInstanceID string) (string, string, error) {
+	splitID := strings.Split(ansibleInstanceID, "_")
+	if len(splitID) < 2 {
+		return "", "", fmt.Errorf("invalid format on ansible instance id %s", ansibleInstanceID)
+	}
+	cloudServicePrefix := strings.Join(splitID[:len(splitID)-1], "_")
+	instanceID := splitID[len(splitID)-1]
+	switch cloudServicePrefix {
+	case constants.GCPNodeAnsiblePrefix:
+		return constants.GCPCloudService, instanceID, nil
+	case constants.AWSNodeAnsiblePrefix:
+		return constants.AWSCloudService, instanceID, nil
+	}
+	return "", "", fmt.Errorf("unknown cloud service prefix %s", cloudServicePrefix)
 }

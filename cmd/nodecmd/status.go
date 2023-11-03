@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -48,6 +49,17 @@ func statusNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ansibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	hostIDs, err := utils.MapWithError(ansibleHostIDs, func(s string) (string, error) { _, o, err := ansible.FromAnsibleInstanceID(s); return o, err })
+	if err != nil {
+		return err
+	}
+	nodeIDs, err := utils.MapWithError(hostIDs, func(s string) (string, error) {
+		n, err := getNodeID(app.GetNodeInstanceDirPath(s))
+		return n.String(), err
+	})
 	if err != nil {
 		return err
 	}
@@ -108,11 +120,33 @@ func statusNode(_ *cobra.Command, args []string) error {
 			}
 		}
 	}
-	printOutput(ansibleHostIDs, avalanchegoVersionForNode, notBootstrappedNodes, notSyncedNodes, subnetSyncedNodes, subnetValidatingNodes, clusterName, subnetName)
+	printOutput(
+		hostIDs,
+		ansibleHostIDs,
+		nodeIDs,
+		avalanchegoVersionForNode,
+		notBootstrappedNodes,
+		notSyncedNodes,
+		subnetSyncedNodes,
+		subnetValidatingNodes,
+		clusterName,
+		subnetName,
+	)
 	return nil
 }
 
-func printOutput(hostAliases []string, avagoVersions map[string]string, notBootstrappedHosts, notSyncedHosts, subnetSyncedHosts, subnetValidatingHosts []string, clusterName, subnetName string) {
+func printOutput(
+	hostIDs []string,
+	hostAliases []string,
+	nodeIDs []string,
+	avagoVersions map[string]string,
+	notBootstrappedHosts []string,
+	notSyncedHosts []string,
+	subnetSyncedHosts []string,
+	subnetValidatingHosts []string,
+	clusterName string,
+	subnetName string,
+) {
 	if subnetName == "" && len(notBootstrappedHosts) == 0 {
 		ux.Logger.PrintToUser("All nodes in cluster %s are bootstrapped to Primary Network!", clusterName)
 	}
@@ -124,31 +158,31 @@ func printOutput(hostAliases []string, avagoVersions map[string]string, notBoots
 		}
 		ux.Logger.PrintToUser("All nodes in cluster %s are %s Subnet %s", clusterName, status, subnetName)
 	}
-
 	ux.Logger.PrintToUser("")
 	tit := fmt.Sprintf("STATUS FOR CLUSTER: %s", clusterName)
 	ux.Logger.PrintToUser(tit)
 	ux.Logger.PrintToUser(strings.Repeat("=", len(tit)))
 	ux.Logger.PrintToUser("")
-	header := []string{"Node", "Avago Version", "Primary Network"}
+	header := []string{"Cloud ID", "Node ID", "Avago Version", "Primary Network"}
 	if subnetName != "" {
 		header = append(header, "Subnet "+subnetName)
 	}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetRowLine(true)
-	for _, host := range hostAliases {
+	for i, host := range hostAliases {
 		boostrappedStatus := logging.Green.Wrap("OK")
 		if slices.Contains(notBootstrappedHosts, host) {
-			boostrappedStatus = logging.Red.Wrap("NOT BOOTSTRAPPED")
+			boostrappedStatus = logging.Red.Wrap("NOT_BOOTSTRAPPED")
 		}
 		row := []string{
-			host,
+			hostIDs[i],
+			nodeIDs[i],
 			avagoVersions[host],
 			boostrappedStatus,
 		}
 		if subnetName != "" {
-			syncedStatus := logging.Red.Wrap("NOT BOOTSTRAPPED")
+			syncedStatus := logging.Red.Wrap("NOT_BOOTSTRAPPED")
 			if slices.Contains(subnetSyncedHosts, host) {
 				syncedStatus = logging.Green.Wrap("SYNCED")
 			}

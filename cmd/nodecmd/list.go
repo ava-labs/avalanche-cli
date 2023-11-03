@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -55,11 +54,17 @@ func list(_ *cobra.Command, _ []string) error {
 			if err != nil {
 				return err
 			}
-			hostName := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, clusterNode)
-			if nodeConfig.CloudService == constants.GCPCloudService {
-				hostName = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, clusterNode)
+			hostName, err := ansible.ToAnsibleInstanceID(nodeConfig.CloudService, clusterNode)
+			if err != nil {
+				return err
 			}
-			ux.Logger.PrintToUser(fmt.Sprintf("  Node %q to connect: %s", clusterNode, utils.GetSSHConnectionString(ansibleHosts[hostName].IP, ansibleHosts[hostName].SSHPrivateKeyPath)))
+			nodeID, err := getNodeID(app.GetNodeInstanceDirPath(clusterNode))
+			if err != nil {
+				return err
+			}
+			ux.Logger.PrintToUser(fmt.Sprintf("  Node %s", clusterNode))
+			ux.Logger.PrintToUser(fmt.Sprintf("    Avalanche ID: %s", nodeID.String()))
+			ux.Logger.PrintToUser(fmt.Sprintf("    SSH cmd: %s", utils.GetSSHConnectionString(ansibleHosts[hostName].IP, ansibleHosts[hostName].SSHPrivateKeyPath)))
 		}
 	}
 	return nil

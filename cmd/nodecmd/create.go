@@ -22,7 +22,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -30,6 +29,8 @@ import (
 	subnet "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
+
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -95,82 +96,6 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().StringVar(&cmdLineAlternativeKeyPairName, "alternative-key-pair-name", "", "key pair name to use if default one generates conflicts")
 
 	return cmd
-}
-
-// createClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
-// also creates cluster config in .avalanche-cli/nodes storing various key pair and security group info for all clusters
-// func createClusterNodeConfig(nodeIDs, publicIPs []string, region, ami, keyPairName, certPath, sg, clusterName string) error {
-func createClusterNodeConfig(cloudConfig CloudConfig, clusterName, cloudService string) error {
-	for i := range cloudConfig.InstanceIDs {
-		publicIP := ""
-		if len(cloudConfig.PublicIPs) > 0 {
-			publicIP = cloudConfig.PublicIPs[i]
-		}
-		nodeConfig := models.NodeConfig{
-			NodeID:        cloudConfig.InstanceIDs[i],
-			Region:        cloudConfig.Region,
-			AMI:           cloudConfig.ImageID,
-			KeyPair:       cloudConfig.KeyPair,
-			CertPath:      cloudConfig.CertFilePath,
-			SecurityGroup: cloudConfig.SecurityGroup,
-			ElasticIP:     publicIP,
-			CloudService:  cloudService,
-		}
-		err := app.CreateNodeCloudConfigFile(cloudConfig.InstanceIDs[i], &nodeConfig)
-		if err != nil {
-			return err
-		}
-		if err = addNodeToClusterConfig(cloudConfig.InstanceIDs[i], clusterName); err != nil {
-			return err
-		}
-	}
-	return updateKeyPairClusterConfig(cloudConfig)
-}
-
-func updateKeyPairClusterConfig(cloudConfig CloudConfig) error {
-	clusterConfig := models.ClusterConfig{}
-	var err error
-	if app.ClusterConfigExists() {
-		clusterConfig, err = app.LoadClusterConfig()
-		if err != nil {
-			return err
-		}
-	}
-	if clusterConfig.KeyPair == nil {
-		clusterConfig.KeyPair = make(map[string]string)
-	}
-	if _, ok := clusterConfig.KeyPair[cloudConfig.KeyPair]; !ok {
-		clusterConfig.KeyPair[cloudConfig.KeyPair] = cloudConfig.CertFilePath
-	}
-	return app.WriteClusterConfigFile(&clusterConfig)
-}
-
-func addNodeToClusterConfig(nodeID, clusterName string) error {
-	clusterConfig := models.ClusterConfig{}
-	var err error
-	if app.ClusterConfigExists() {
-		clusterConfig, err = app.LoadClusterConfig()
-		if err != nil {
-			return err
-		}
-	}
-	if clusterConfig.Clusters == nil {
-		clusterConfig.Clusters = make(map[string][]string)
-	}
-	if _, ok := clusterConfig.Clusters[clusterName]; !ok {
-		clusterConfig.Clusters[clusterName] = []string{}
-	}
-	clusterConfig.Clusters[clusterName] = append(clusterConfig.Clusters[clusterName], nodeID)
-	return app.WriteClusterConfigFile(&clusterConfig)
-}
-
-func printNoCredentialsOutput() {
-	ux.Logger.PrintToUser("No AWS credentials file found in ~/.aws/credentials")
-	ux.Logger.PrintToUser("Create a file called 'credentials' with the contents below, and add the file to ~/.aws/ directory")
-	ux.Logger.PrintToUser("===========BEGINNING OF FILE===========")
-	ux.Logger.PrintToUser("[default]\naws_access_key_id=<AWS_ACCESS_KEY>\naws_secret_access_key=<AWS_SECRET_ACCESS_KEY>")
-	ux.Logger.PrintToUser("===========END OF FILE===========")
-	ux.Logger.PrintToUser("More info can be found at https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-creds")
 }
 
 func createNodes(_ *cobra.Command, args []string) error {
@@ -264,26 +189,22 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
-		return err
-	}
+
 	time.Sleep(30 * time.Second)
 
 	avalancheGoVersion, err := getAvalancheGoVersion()
 	if err != nil {
 		return err
 	}
+	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
+	if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
+		return err
+	}
+
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
-	ansibleHostIDs := []string{}
-	for _, instanceID := range cloudConfig.InstanceIDs {
-		var ansibleHostName string
-		if cloudService == constants.GCPCloudService {
-			ansibleHostName = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, instanceID)
-		} else {
-			ansibleHostName = fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, instanceID)
-		}
-		ansibleHostIDs = append(ansibleHostIDs, ansibleHostName)
+	ansibleHostIDs, err := utils.MapWithError(cloudConfig.InstanceIDs, func(s string) (string, error) { return ansible.ToAnsibleInstanceID(cloudService, s) })
+	if err != nil {
+		return err
 	}
 	createdAnsibleHostIDs := strings.Join(ansibleHostIDs, ",")
 	if err = runAnsible(inventoryPath, avalancheGoVersion, clusterName, createdAnsibleHostIDs); err != nil {
@@ -292,13 +213,85 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err = setupBuildEnv(inventoryPath, createdAnsibleHostIDs); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Copying staking keys to local machine...")
-	if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), strings.Join(ansibleHostIDs, ","), app.GetNodesDir(), inventoryPath); err != nil {
-		return err
-	}
-	PrintResults(cloudConfig, publicIPMap, cloudService)
+	PrintResults(cloudConfig, publicIPMap, ansibleHostIDs)
 	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	return nil
+}
+
+// createClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
+// also creates cluster config in .avalanche-cli/nodes storing various key pair and security group info for all clusters
+// func createClusterNodeConfig(nodeIDs, publicIPs []string, region, ami, keyPairName, certPath, sg, clusterName string) error {
+func createClusterNodeConfig(cloudConfig CloudConfig, clusterName, cloudService string) error {
+	for i := range cloudConfig.InstanceIDs {
+		publicIP := ""
+		if len(cloudConfig.PublicIPs) > 0 {
+			publicIP = cloudConfig.PublicIPs[i]
+		}
+		nodeConfig := models.NodeConfig{
+			NodeID:        cloudConfig.InstanceIDs[i],
+			Region:        cloudConfig.Region,
+			AMI:           cloudConfig.ImageID,
+			KeyPair:       cloudConfig.KeyPair,
+			CertPath:      cloudConfig.CertFilePath,
+			SecurityGroup: cloudConfig.SecurityGroup,
+			ElasticIP:     publicIP,
+			CloudService:  cloudService,
+		}
+		err := app.CreateNodeCloudConfigFile(cloudConfig.InstanceIDs[i], &nodeConfig)
+		if err != nil {
+			return err
+		}
+		if err = addNodeToClusterConfig(cloudConfig.InstanceIDs[i], clusterName); err != nil {
+			return err
+		}
+	}
+	return updateKeyPairClusterConfig(cloudConfig)
+}
+
+func updateKeyPairClusterConfig(cloudConfig CloudConfig) error {
+	clusterConfig := models.ClusterConfig{}
+	var err error
+	if app.ClusterConfigExists() {
+		clusterConfig, err = app.LoadClusterConfig()
+		if err != nil {
+			return err
+		}
+	}
+	if clusterConfig.KeyPair == nil {
+		clusterConfig.KeyPair = make(map[string]string)
+	}
+	if _, ok := clusterConfig.KeyPair[cloudConfig.KeyPair]; !ok {
+		clusterConfig.KeyPair[cloudConfig.KeyPair] = cloudConfig.CertFilePath
+	}
+	return app.WriteClusterConfigFile(&clusterConfig)
+}
+
+func addNodeToClusterConfig(nodeID, clusterName string) error {
+	clusterConfig := models.ClusterConfig{}
+	var err error
+	if app.ClusterConfigExists() {
+		clusterConfig, err = app.LoadClusterConfig()
+		if err != nil {
+			return err
+		}
+	}
+	if clusterConfig.Clusters == nil {
+		clusterConfig.Clusters = make(map[string][]string)
+	}
+	if _, ok := clusterConfig.Clusters[clusterName]; !ok {
+		clusterConfig.Clusters[clusterName] = []string{}
+	}
+	clusterConfig.Clusters[clusterName] = append(clusterConfig.Clusters[clusterName], nodeID)
+	return app.WriteClusterConfigFile(&clusterConfig)
+}
+
+func printNoCredentialsOutput() {
+	ux.Logger.PrintToUser("No AWS credentials file found in ~/.aws/credentials")
+	ux.Logger.PrintToUser("Create a file called 'credentials' with the contents below, and add the file to ~/.aws/ directory")
+	ux.Logger.PrintToUser("===========BEGINNING OF FILE===========")
+	ux.Logger.PrintToUser("[default]\naws_access_key_id=<AWS_ACCESS_KEY>\naws_secret_access_key=<AWS_SECRET_ACCESS_KEY>")
+	ux.Logger.PrintToUser("===========END OF FILE===========")
+	ux.Logger.PrintToUser("More info can be found at https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-creds")
 }
 
 // setupAnsible we need to remove existing ansible directory and its contents in .avalanche-cli dir
@@ -315,8 +308,7 @@ func setupAnsible(clusterName string) error {
 }
 
 func runAnsible(inventoryPath, avalancheGoVersion, clusterName, ansibleHostIDs string) error {
-	err := setupAnsible(clusterName)
-	if err != nil {
+	if err := setupAnsible(clusterName); err != nil {
 		return err
 	}
 	if err := distributeStakingCertAndKey(strings.Split(ansibleHostIDs, ","), inventoryPath); err != nil {
@@ -332,6 +324,22 @@ func setupBuildEnv(inventoryPath, ansibleHostIDs string) error {
 		ansibleTargetHosts = ansibleHostIDs
 	}
 	return ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath, ansibleTargetHosts)
+}
+
+func getNodeID(nodeDir string) (ids.NodeID, error) {
+	certBytes, err := os.ReadFile(filepath.Join(nodeDir, constants.StakerCertFileName))
+	if err != nil {
+		return ids.EmptyNodeID, err
+	}
+	keyBytes, err := os.ReadFile(filepath.Join(nodeDir, constants.StakerKeyFileName))
+	if err != nil {
+		return ids.EmptyNodeID, err
+	}
+	nodeID, err := utils.ToNodeID(keyBytes, certBytes)
+	if err != nil {
+		return ids.EmptyNodeID, err
+	}
+	return nodeID, nil
 }
 
 func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePath string) (ids.NodeID, error) {
@@ -505,7 +513,7 @@ func setCloudService() (string, error) {
 	return chosenCloudService, nil
 }
 
-func PrintResults(cloudConfig CloudConfig, publicIPMap map[string]string, cloudService string) {
+func PrintResults(cloudConfig CloudConfig, publicIPMap map[string]string, ansibleHostIDs []string) {
 	ux.Logger.PrintToUser("======================================")
 	ux.Logger.PrintToUser("AVALANCHE NODE(S) SUCCESSFULLY SET UP!")
 	ux.Logger.PrintToUser("======================================")
@@ -516,11 +524,7 @@ func PrintResults(cloudConfig CloudConfig, publicIPMap map[string]string, cloudS
 		publicIP := ""
 		publicIP = publicIPMap[instanceID]
 		ux.Logger.PrintToUser("======================================")
-		ansibleHostID := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, cloudConfig.InstanceIDs[i])
-		if cloudService == constants.GCPCloudService {
-			ansibleHostID = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, cloudConfig.InstanceIDs[i])
-		}
-		ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", ansibleHostID))
+		ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", ansibleHostIDs[i]))
 		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Instance ID: %s", instanceID))
 		ux.Logger.PrintToUser(fmt.Sprintf("Public IP: %s", publicIP))
 		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Region: %s", cloudConfig.Region))
