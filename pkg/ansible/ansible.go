@@ -35,7 +35,7 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 		return err
 	}
 	inventoryHostsFilePath := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
-	inventoryFile, err := os.OpenFile(inventoryHostsFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	inventoryFile, err := os.OpenFile(inventoryHostsFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, constants.WriteReadReadPerms)
 	if err != nil {
 		return err
 	}

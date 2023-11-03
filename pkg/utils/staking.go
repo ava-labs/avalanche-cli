@@ -8,27 +8,18 @@ import (
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 )
 
-func NewStakingCertAndKeyBytes() ([]byte, []byte, error) {
-	cBytes, kBytes, err := staking.NewCertAndKeyBytes()
-	if err != nil {
-		return nil, nil, err
-	}
-	return cBytes, kBytes, nil
-}
-
-func NewBlsSignerCertAndKeyBytes() ([]byte, []byte, error) {
+func NewBlsSecretKeyBytes() ([]byte, error) {
 	blsSignerKey, err := bls.NewSecretKey()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	blsPublicBytes := bls.PublicKeyToBytes(bls.PublicFromSecretKey(blsSignerKey))
-	return bls.SecretKeyToBytes(blsSignerKey), blsPublicBytes, nil
+	return bls.SecretKeyToBytes(blsSignerKey), nil
 }
 
-func GetNodeID(certBytes []byte, keyBytes []byte) (string, error) {
+func ToNodeID(certBytes []byte, keyBytes []byte) (ids.NodeID, error) {
 	cert, err := staking.LoadTLSCertFromBytes(keyBytes, certBytes)
 	if err != nil {
-		return "", err
+		return ids.NodeID{}, err
 	}
-	return ids.NodeIDFromCert(staking.CertificateFromX509(cert.Leaf)).String(), nil
+	return ids.NodeIDFromCert(staking.CertificateFromX509(cert.Leaf)), nil
 }

@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/cb58"
 	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
@@ -265,7 +266,7 @@ func (m *SoftKey) Encode() string {
 // Saves the private key to disk with hex encoding.
 func (m *SoftKey) Save(p string) error {
 	k := hex.EncodeToString(m.privKeyRaw)
-	return os.WriteFile(p, []byte(k), fsModeWrite)
+	return os.WriteFile(p, []byte(k), constants.WriteReadUserOnlyPerms)
 }
 
 func (m *SoftKey) P() []string {
@@ -325,8 +326,6 @@ func (m *SoftKey) spend(output *avax.UTXO, time uint64) (
 	}
 	return input, psigners, nil
 }
-
-const fsModeWrite = 0o600
 
 func (m *SoftKey) Addresses() []ids.ShortID {
 	return []ids.ShortID{m.privKey.PublicKey().Address()}

@@ -12,7 +12,6 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -21,6 +20,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanchego/staking"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -292,22 +293,31 @@ func setupBuildEnv(inventoryPath, ansibleHostIDs string) error {
 	return ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath, ansibleTargetHosts)
 }
 
-func GenerateStakingCertAndKey(nodesDirPath string) error {
-	certBytes, keyBytes, err := utils.NewStakingCertAndKeyBytes()
+func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePath string) error {
+	certBytes, keyBytes, err := staking.NewCertAndKeyBytes()
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(nodesDirPath, constants.StakerCertFileName), certBytes, 0o600); err != nil {
+	if err := os.MkdirAll(filepath.Dir(stakerCertFilePath), constants.DefaultPerms755); err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(nodesDirPath, constants.StakerKeyFileName), keyBytes, 0o600); err != nil {
+	if err := os.WriteFile(stakerCertFilePath, certBytes, constants.WriteReadUserOnlyPerms); err != nil {
 		return err
 	}
-	blsSignerKeyBytes, _, err := utils.NewBlsSignerCertAndKeyBytes()
+	if err := os.MkdirAll(filepath.Dir(stakerKeyFilePath), constants.DefaultPerms755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(stakerKeyFilePath, keyBytes, constants.WriteReadUserOnlyPerms); err != nil {
+		return err
+	}
+	blsSignerKeyBytes, err := utils.NewBlsSecretKeyBytes()
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(nodesDirPath, constants.BLSFileName), blsSignerKeyBytes, 0o600); err != nil {
+	if err := os.MkdirAll(filepath.Dir(blsKeyFilePath), constants.DefaultPerms755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(blsKeyFilePath, blsSignerKeyBytes, constants.WriteReadUserOnlyPerms); err != nil {
 		return err
 	}
 	return nil
@@ -315,19 +325,25 @@ func GenerateStakingCertAndKey(nodesDirPath string) error {
 
 func DistributeStakingCertAndKey(ansibleHostIDs []string, inventoryPath string) error {
 	ux.Logger.PrintToUser("Copying %s and %s staker.key to remote machine(s)...", constants.StakerCertFileName, constants.StakerKeyFileName)
-	var wg sync.WaitGroup
+	eg := errgroup.Group{}
 	for _, hostID := range ansibleHostIDs {
 		h := strings.Split(hostID, "_")
 		instanceID := h[len(h)-1] // TODO fix it
-		wg.Add(1)
-		go func(keyPath string) {
-			defer wg.Done()
-			if err := GenerateStakingCertAndKey(keyPath); err != nil {
+		keyPath := filepath.Join(app.GetNodesDir(), instanceID)
+		eg.Go(func() error {
+			if err := generateNodeCertAndKeys(filepath.Join(keyPath, constants.StakerCertFileName), filepath.Join(keyPath, constants.StakerKeyFileName), filepath.Join(keyPath, constants.BLSKeyFileName)); err != nil {
 				ux.Logger.PrintToUser("Failed to generate %s and %s", constants.StakerCertFileName, constants.StakerKeyFileName)
+				return err
+			} else {
+				ux.Logger.PrintToUser("Generated %s %s %s", constants.StakerCertFileName, constants.StakerKeyFileName, constants.BLSKeyFileName)
 			}
-		}(filepath.Join(app.GetNodesDir(), instanceID))
+			return nil
+		})
 	}
-	wg.Wait()
+	err := eg.Wait()
+	if err != nil {
+		return err
+	}
 	if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), strings.Join(ansibleHostIDs, ","), app.GetNodesDir(), inventoryPath); err != nil {
 		return err
 	}
