@@ -5,7 +5,6 @@ package configcmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -28,11 +27,9 @@ func newMigrateCmd() *cobra.Command {
 }
 
 func migrateConfig(_ *cobra.Command, _ []string) error {
-	home, err := os.UserHomeDir()
-	cobra.CheckErr(err)
-	oldConfigFilename := filepath.Join(home, constants.OldConfigFileName)
-	metricConfigFilename := filepath.Join(home, constants.MetricsConfigFileName)
-	viperConfigFilename := fmt.Sprintf("%s.%s", filepath.Join(home, constants.BaseDirName, constants.DefaultConfigFileName), constants.DefaultConfigFileType)
+	oldConfigFilename := app.UserHomePath(constants.OldConfigFileName)
+	metricConfigFilename := app.UserHomePath(constants.MetricsConfigFileName)
+	viperConfigFilename := fmt.Sprintf("%s.%s", app.UserHomePath(constants.BaseDirName, constants.DefaultConfigFileName), constants.DefaultConfigFileType)
 	if app.FileExists(viperConfigFilename) {
 		ux.Logger.PrintToUser("Configuration file %s already exists. Configuration migration is not required.", viperConfigFilename)
 		return nil

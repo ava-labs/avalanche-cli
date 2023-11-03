@@ -318,11 +318,7 @@ func writeAvagoChainConfigFiles(
 	network models.Network,
 ) error {
 	if dataDir == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return err
-		}
-		dataDir = filepath.Join(home, ".avalanchego")
+		dataDir = app.UserHomePath(".avalanchego")
 	}
 
 	subnetID := sc.Networks[network.String()].SubnetID

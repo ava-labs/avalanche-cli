@@ -773,10 +773,20 @@ func (app *Avalanche) SetConfigValue(key string, value interface{}) error {
 }
 
 // FileExists checks if a file exists.
-func (app *Avalanche) FileExists(filename string) bool {
+func (_ *Avalanche) FileExists(filename string) bool {
 	info, err := os.Stat(filename)
 	if os.IsNotExist(err) {
 		return false
 	}
 	return !info.IsDir()
+}
+
+// UserHomePath returns the absolute path of a file located in the user's home directory.
+func (_ *Avalanche) UserHomePath(filePath ...string) string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return filepath.Join(filePath...)
+	}
+	fullPath := append([]string{home}, filePath...)
+	return filepath.Join(fullPath...)
 }

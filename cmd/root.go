@@ -122,11 +122,7 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	if err := migrations.RunMigrations(app); err != nil {
 		return err
 	}
-	// check for metrics config
-	home, err := os.UserHomeDir()
-	cobra.CheckErr(err)
-	metricConfigFilename := filepath.Join(home, constants.MetricsConfigFileName)
-	if os.Getenv("RUN_E2E") == "" && !app.ConfigFileExists() && !app.FileExists(metricConfigFilename) {
+	if os.Getenv("RUN_E2E") == "" && !app.ConfigFileExists() && !app.FileExists(app.UserHomePath(constants.MetricsConfigFileName)) {
 		err = utils.HandleUserMetricsPreference(app)
 		if err != nil {
 			return err
@@ -305,24 +301,22 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	home, err := os.UserHomeDir()
-	cobra.CheckErr(err)
-	oldConfig := filepath.Join(home, constants.OldConfigFileName)
-	metricsConfig := filepath.Join(home, constants.MetricsConfigFileName)
+	oldConfig := app.UserHomePath(constants.OldConfigFileName)
+	metricsConfig := app.UserHomePath(constants.MetricsConfigFileName)
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
 	} else {
 		// Search for default config.
 		configFilename := fmt.Sprintf("%s.%s", constants.DefaultConfigFileName, constants.DefaultConfigFileType)
-		viper.AddConfigPath(filepath.Join(home, constants.BaseDirName))
+		viper.AddConfigPath(app.UserHomePath(constants.BaseDirName))
 		viper.SetConfigName(constants.DefaultConfigFileName)
 		viper.SetConfigType(constants.DefaultConfigFileType)
 		// migrate old config
 		if app.FileExists(oldConfig) || app.FileExists(metricsConfig) {
 			ux.Logger.PrintToUser("-----------------------------------------------------------------------")
 			ux.Logger.PrintToUser("WARNING: Old configuration file was found in %s and/or %s", oldConfig, metricsConfig)
-			ux.Logger.PrintToUser("Please run `avalanche config migrate` to migrate it to new default location %s", filepath.Join(home, constants.BaseDirName, configFilename))
+			ux.Logger.PrintToUser("Please run `avalanche config migrate` to migrate it to new default location %s", app.UserHomePath(constants.BaseDirName, configFilename))
 			ux.Logger.PrintToUser("-----------------------------------------------------------------------")
 		}
 	}
