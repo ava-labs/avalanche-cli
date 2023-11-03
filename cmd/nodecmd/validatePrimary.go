@@ -40,7 +40,6 @@ var (
 	useLedger                    bool
 	useStaticIP                  bool
 	awsProfile                   string
-	useAWSEnvVars                bool
 	ledgerAddresses              []string
 	weight                       uint64
 	startTimeStr                 string

@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 )
@@ -51,7 +50,7 @@ func CheckIsInstalled() error {
 
 func GetPublicIPs(terraformDir string) ([]string, error) {
 	cmd := exec.Command(constants.Terraform, "output", "instance_ips") //nolint:gosec
-	cmd.Env = utils.FilterStringsByPrefix(os.Environ(), "AWS_")
+	cmd.Env = append(cmd.Env, os.Environ()...)
 	cmd.Dir = terraformDir
 	ipsOutput, err := cmd.Output()
 	if err != nil {
