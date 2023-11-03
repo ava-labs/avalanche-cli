@@ -319,7 +319,7 @@ func runAnsible(inventoryPath, avalancheGoVersion, clusterName, ansibleHostIDs s
 	if err != nil {
 		return err
 	}
-	if err := DistributeStakingCertAndKey(strings.Split(ansibleHostIDs, ","), inventoryPath); err != nil {
+	if err := distributeStakingCertAndKey(strings.Split(ansibleHostIDs, ","), inventoryPath); err != nil {
 		return err
 	}
 	return ansible.RunAnsiblePlaybookSetupNode(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion, ansibleHostIDs)
@@ -337,38 +337,38 @@ func setupBuildEnv(inventoryPath, ansibleHostIDs string) error {
 func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePath string) (ids.NodeID, error) {
 	certBytes, keyBytes, err := staking.NewCertAndKeyBytes()
 	if err != nil {
-		return ids.NodeID{}, err
+		return ids.EmptyNodeID, err
 	}
 	nodeID, err := utils.ToNodeID(certBytes, keyBytes)
 	if err != nil {
-		return ids.NodeID{}, err
+		return ids.EmptyNodeID, err
 	}
 	if err := os.MkdirAll(filepath.Dir(stakerCertFilePath), constants.DefaultPerms755); err != nil {
-		return ids.NodeID{}, err
+		return ids.EmptyNodeID, err
 	}
 	if err := os.WriteFile(stakerCertFilePath, certBytes, constants.WriteReadUserOnlyPerms); err != nil {
-		return ids.NodeID{}, err
+		return ids.EmptyNodeID, err
 	}
 	if err := os.MkdirAll(filepath.Dir(stakerKeyFilePath), constants.DefaultPerms755); err != nil {
-		return ids.NodeID{}, err
+		return ids.EmptyNodeID, err
 	}
 	if err := os.WriteFile(stakerKeyFilePath, keyBytes, constants.WriteReadUserOnlyPerms); err != nil {
-		return ids.NodeID{}, err
+		return ids.EmptyNodeID, err
 	}
 	blsSignerKeyBytes, err := utils.NewBlsSecretKeyBytes()
 	if err != nil {
-		return ids.NodeID{}, err
+		return ids.EmptyNodeID, err
 	}
 	if err := os.MkdirAll(filepath.Dir(blsKeyFilePath), constants.DefaultPerms755); err != nil {
-		return ids.NodeID{}, err
+		return ids.EmptyNodeID, err
 	}
 	if err := os.WriteFile(blsKeyFilePath, blsSignerKeyBytes, constants.WriteReadUserOnlyPerms); err != nil {
-		return ids.NodeID{}, err
+		return ids.EmptyNodeID, err
 	}
 	return nodeID, nil
 }
 
-func DistributeStakingCertAndKey(ansibleHostIDs []string, inventoryPath string) error {
+func distributeStakingCertAndKey(ansibleHostIDs []string, inventoryPath string) error {
 	ux.Logger.PrintToUser("Copying %s and %s staker.key to remote machine(s)...", constants.StakerCertFileName, constants.StakerKeyFileName)
 	eg := errgroup.Group{}
 	for _, hostID := range ansibleHostIDs {
@@ -386,8 +386,7 @@ func DistributeStakingCertAndKey(ansibleHostIDs []string, inventoryPath string) 
 			return nil
 		})
 	}
-	err := eg.Wait()
-	if err != nil {
+	if err := eg.Wait(); err != nil {
 		return err
 	}
 	if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), strings.Join(ansibleHostIDs, ","), app.GetNodesDir(), inventoryPath); err != nil {
