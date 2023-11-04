@@ -102,7 +102,7 @@ func CheckUserIPInSg(sg *ec2.SecurityGroup, currentIP string, port int64) bool {
 // GetInstancePublicIPs gets public IP(s) of EC2 instance(s) without elastic IP and returns a map
 // with ec2 instance id as key and public ip as value
 func GetInstancePublicIPs(ec2Svc *ec2.EC2, nodeIDs []string) (map[string]string, error) {
-	nodeIDsInput := utils.Map(nodeIDs, func(e string) *string { return aws.String(e) })
+	nodeIDsInput := utils.Map(nodeIDs, aws.String)
 	instanceInput := &ec2.DescribeInstancesInput{
 		InstanceIds: nodeIDsInput,
 	}
