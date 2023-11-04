@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -101,10 +102,7 @@ func CheckUserIPInSg(sg *ec2.SecurityGroup, currentIP string, port int64) bool {
 // GetInstancePublicIPs gets public IP(s) of EC2 instance(s) without elastic IP and returns a map
 // with ec2 instance id as key and public ip as value
 func GetInstancePublicIPs(ec2Svc *ec2.EC2, nodeIDs []string) (map[string]string, error) {
-	nodeIDsInput := []*string{}
-	for _, nodeID := range nodeIDs {
-		nodeIDsInput = append(nodeIDsInput, aws.String(nodeID))
-	}
+	nodeIDsInput := utils.Map(nodeIDs, func(e string) *string { return aws.String(e) })
 	instanceInput := &ec2.DescribeInstancesInput{
 		InstanceIds: nodeIDsInput,
 	}
