@@ -5,6 +5,7 @@ package configcmd
 import (
 	"errors"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
@@ -45,5 +46,5 @@ func handleMetricsSettings(_ *cobra.Command, args []string) error {
 }
 
 func saveMetricsPreferences(enableMetrics bool) error {
-	return app.SetConfigValue(constants.ConfigMetricsEnabled, enableMetrics)
+	return application.SetConfigValue(constants.ConfigMetricsEnabled, enableMetrics)
 }

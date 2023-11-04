@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
@@ -604,7 +605,7 @@ func (*Avalanche) writeFile(path string, bytes []byte) error {
 }
 
 func (app *Avalanche) ConfigFileExists() bool {
-	return app.FileExists(app.GetConfigPath())
+	return utils.FileExists(app.GetConfigPath())
 }
 
 func (app *Avalanche) CreateNodeCloudConfigFile(nodeName string, nodeConfig *models.NodeConfig) error {
@@ -766,27 +767,8 @@ func (app *Avalanche) RemoveAnsibleStatusDir() error {
 }
 
 // SetConfigValue sets the value of a configuration key.
-func (_ *Avalanche) SetConfigValue(key string, value interface{}) error {
+func SetConfigValue(key string, value interface{}) error {
 	viper.Set(key, value)
 	err := viper.SafeWriteConfig()
 	return err
-}
-
-// FileExists checks if a file exists.
-func (_ *Avalanche) FileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return !info.IsDir()
-}
-
-// UserHomePath returns the absolute path of a file located in the user's home directory.
-func (_ *Avalanche) UserHomePath(filePath ...string) string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return filepath.Join(filePath...)
-	}
-	fullPath := append([]string{home}, filePath...)
-	return filepath.Join(fullPath...)
 }

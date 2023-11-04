@@ -11,7 +11,7 @@ import (
 	"unicode"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -196,7 +196,7 @@ func sendMetrics(cmd *cobra.Command, repoName, subnetName string) error {
 	precompilesJoined := strings.Join(precompiles, ",")
 	flags[constants.PrecompileType] = precompilesJoined
 	flags[constants.NumberOfAirdrops] = strconv.Itoa(numAirdropAddresses)
-	utils.HandleTracking(cmd, flags)
+	metrics.HandleTracking(cmd, flags)
 	return nil
 }
 

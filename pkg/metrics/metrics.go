@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package utils
+package metrics
 
 import (
 	"crypto/sha256"
@@ -56,7 +56,7 @@ func PrintMetricsOptOutPrompt() {
 }
 
 func saveMetricsConfig(metricsEnabled bool) error {
-	return app.SetConfigValue(constants.ConfigMetricsEnabled, metricsEnabled)
+	return application.SetConfigValue(constants.ConfigMetricsEnabled, metricsEnabled)
 }
 
 func HandleUserMetricsPreference(app *application.Avalanche) error {

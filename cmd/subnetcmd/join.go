@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-network-runner/server"
 
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -318,7 +319,7 @@ func writeAvagoChainConfigFiles(
 	network models.Network,
 ) error {
 	if dataDir == "" {
-		dataDir = app.UserHomePath(".avalanchego")
+		dataDir = utils.UserHomePath(".avalanchego")
 	}
 
 	subnetID := sc.Networks[network.String()].SubnetID
