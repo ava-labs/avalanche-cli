@@ -83,7 +83,7 @@ in with avalanche subnet create myNewSubnet.`,
 	rootCmd.AddCommand(transactioncmd.NewCmd(app))
 
 	// add config command
-	rootCmd.AddCommand(configcmd.NewCmd(app))
+	rootCmd.AddCommand(configcmd.NewCmd())
 
 	// add update command
 	rootCmd.AddCommand(updatecmd.NewCmd(app, Version))

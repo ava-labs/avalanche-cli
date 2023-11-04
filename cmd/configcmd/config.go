@@ -5,11 +5,10 @@ package configcmd
 import (
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/spf13/cobra"
 )
 
-func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
+func NewCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Modify configuration for Avalanche-CLI",
