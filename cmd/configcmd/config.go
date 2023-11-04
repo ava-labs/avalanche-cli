@@ -9,8 +9,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var app *application.Avalanche
-
 func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
@@ -23,7 +21,6 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 			}
 		},
 	}
-	app = injectedApp
 	// set user metrics collection preferences cmd
 	cmd.AddCommand(newMetricsCmd())
 	cmd.AddCommand(newMigrateCmd())

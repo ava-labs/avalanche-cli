@@ -26,7 +26,6 @@ import (
 var (
 	telemetryToken    = ""
 	telemetryInstance = "https://app.posthog.com"
-	app               *application.Avalanche
 )
 
 func GetCLIVersion() string {
