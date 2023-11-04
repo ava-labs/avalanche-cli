@@ -746,10 +746,6 @@ func (app *Avalanche) GetAvalancheGoJSONFile() string {
 	return filepath.Join(app.GetAnsibleStatusDir(), constants.AvalancheGoVersionJSONFile)
 }
 
-func (app *Avalanche) GetNodeIDJSONFile() string {
-	return filepath.Join(app.GetAnsibleStatusDir(), constants.NodeIDJSONFile)
-}
-
 func (app *Avalanche) GetSubnetSyncJSONFile() string {
 	return filepath.Join(app.GetAnsibleStatusDir(), constants.SubnetSyncJSONFile)
 }

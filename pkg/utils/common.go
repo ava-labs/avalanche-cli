@@ -64,3 +64,33 @@ func GetRealFilePath(path string) string {
 	}
 	return path
 }
+
+func Filter[T any](input []T, f func(T) bool) []T {
+	output := make([]T, 0, len(input))
+	for _, e := range input {
+		if f(e) {
+			output = append(output, e)
+		}
+	}
+	return output
+}
+
+func Map[T, U any](input []T, f func(T) U) []U {
+	output := make([]U, 0, len(input))
+	for _, e := range input {
+		output = append(output, f(e))
+	}
+	return output
+}
+
+func MapWithError[T, U any](input []T, f func(T) (U, error)) ([]U, error) {
+	output := make([]U, 0, len(input))
+	for _, e := range input {
+		o, err := f(e)
+		if err != nil {
+			return nil, err
+		}
+		output = append(output, o)
+	}
+	return output, nil
+}

@@ -10,7 +10,6 @@ import (
 	"io"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -93,28 +92,6 @@ func parseBootstrappedOutput(filePath string) (bool, error) {
 		}
 	}
 	return false, errors.New("unable to parse node bootstrap status")
-}
-
-func parseNodeIDOutput(fileName string) (string, error) {
-	jsonFile, err := os.Open(fileName)
-	if err != nil {
-		return "", err
-	}
-	defer jsonFile.Close()
-	byteValue, _ := io.ReadAll(jsonFile)
-
-	var result map[string]interface{}
-	if err = json.Unmarshal(byteValue, &result); err != nil {
-		return "", err
-	}
-	nodeIDInterface, ok := result["result"].(map[string]interface{})
-	if ok {
-		nodeID, ok := nodeIDInterface["nodeID"].(string)
-		if ok {
-			return nodeID, nil
-		}
-	}
-	return "", errors.New("unable to parse node ID")
 }
 
 func GetMinStakingAmount(network models.Network) (uint64, error) {
@@ -328,13 +305,13 @@ func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
 	if err := ansible.RunAnsiblePlaybookCheckBootstrapped(app.GetAnsibleDir(), app.GetBootstrappedJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), "all"); err != nil {
 		return nil, err
 	}
-	for _, host := range ansibleNodeIDs {
-		isBootstrapped, err := parseBootstrappedOutput(app.GetBootstrappedJSONFile() + "." + host)
+	for _, ansibleNodeID := range ansibleNodeIDs {
+		isBootstrapped, err := parseBootstrappedOutput(app.GetBootstrappedJSONFile() + "." + ansibleNodeID)
 		if err != nil {
 			return nil, err
 		}
 		if !isBootstrapped {
-			notBootstrappedNodes = append(notBootstrappedNodes, host)
+			notBootstrappedNodes = append(notBootstrappedNodes, ansibleNodeID)
 		}
 	}
 	if err := app.RemoveAnsibleStatusDir(); err != nil {
@@ -343,28 +320,24 @@ func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
 	return notBootstrappedNodes, nil
 }
 
-func getClusterNodeIDs(clusterName string, ansibleNodeIDs []string) (map[string]string, map[string]error, error) {
-	if err := app.CreateAnsibleStatusDir(); err != nil {
-		return nil, nil, err
-	}
-	defer func() {
-		_ = app.RemoveAnsibleStatusDir()
-	}()
-	if err := ansible.RunAnsiblePlaybookGetNodeID(app.GetAnsibleDir(), app.GetNodeIDJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), strings.Join(ansibleNodeIDs, ",")); err != nil {
-		return nil, nil, err
-	}
+func getNodeIDs(ansibleNodeIDs []string) (map[string]string, map[string]error) {
 	nodeIDMap := map[string]string{}
 	failedNodes := map[string]error{}
-	for _, host := range ansibleNodeIDs {
-		nodeID, err := parseNodeIDOutput(app.GetNodeIDJSONFile() + "." + host)
+	for _, ansibleNodeID := range ansibleNodeIDs {
+		_, cloudNodeID, err := models.HostAnsibleIDToCloudID(ansibleNodeID)
 		if err != nil {
-			failedNodes[host] = err
+			failedNodes[ansibleNodeID] = err
 			continue
 		}
-		ux.Logger.PrintToUser("Avalanche node id for host %s is %s", host, nodeID)
-		nodeIDMap[host] = nodeID
+		nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudNodeID))
+		if err != nil {
+			failedNodes[ansibleNodeID] = err
+			continue
+		}
+		ux.Logger.PrintToUser("Avalanche node id for host %s is %s", ansibleNodeID, nodeID)
+		nodeIDMap[ansibleNodeID] = nodeID.String()
 	}
-	return nodeIDMap, failedNodes, nil
+	return nodeIDMap, failedNodes
 }
 
 // checkNodeIsPrimaryNetworkValidator only returns err if node is already a Primary Network validator
@@ -414,36 +387,40 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	nodeIDMap, failedNodesMap, err := getClusterNodeIDs(clusterName, ansibleNodeIDs)
-	if err != nil {
-		return err
-	}
+	nodeIDMap, failedNodesMap := getNodeIDs(ansibleNodeIDs)
 	failedNodes := []string{}
 	nodeErrors := []error{}
 	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
-	for i, host := range ansibleNodeIDs {
-		nodeIDStr, b := nodeIDMap[host]
+	for i, ansibleNodeID := range ansibleNodeIDs {
+		nodeIDStr, b := nodeIDMap[ansibleNodeID]
 		if !b {
-			err, b := failedNodesMap[host]
+			err, b := failedNodesMap[ansibleNodeID]
 			if !b {
 				return fmt.Errorf("expected to found an error for non mapped node")
 			}
-			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host, err)
-			failedNodes = append(failedNodes, host)
+			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", ansibleNodeID, err)
+			failedNodes = append(failedNodes, ansibleNodeID)
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
 		nodeID, err := ids.NodeIDFromString(nodeIDStr)
 		if err != nil {
-			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host, err)
-			failedNodes = append(failedNodes, host)
+			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", ansibleNodeID, err)
+			failedNodes = append(failedNodes, ansibleNodeID)
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
-		_, err = addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji, i, strings.Split(host, "_")[2])
+		_, clusterNodeID, err := models.HostAnsibleIDToCloudID(ansibleNodeID)
 		if err != nil {
-			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host, err)
-			failedNodes = append(failedNodes, host)
+			ux.Logger.PrintToUser("Failed to add node %s as Primary Network due to %s", ansibleNodeID, err.Error())
+			failedNodes = append(failedNodes, ansibleNodeID)
+			nodeErrors = append(nodeErrors, err)
+			continue
+		}
+		_, err = addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji, i, clusterNodeID)
+		if err != nil {
+			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", ansibleNodeID, err)
+			failedNodes = append(failedNodes, ansibleNodeID)
 			nodeErrors = append(nodeErrors, err)
 		}
 	}

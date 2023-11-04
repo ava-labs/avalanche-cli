@@ -46,6 +46,25 @@ func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
 	}
 }
 
+func printNoCredentialsOutput() {
+	ux.Logger.PrintToUser("No AWS credentials file found in ~/.aws/credentials")
+	ux.Logger.PrintToUser("Create a file called 'credentials' with the contents below, and add the file to ~/.aws/ directory")
+	ux.Logger.PrintToUser("===========BEGINNING OF FILE===========")
+	ux.Logger.PrintToUser("[default]\naws_access_key_id=<AWS_ACCESS_KEY>\naws_secret_access_key=<AWS_SECRET_ACCESS_KEY>")
+	ux.Logger.PrintToUser("===========END OF FILE===========")
+	ux.Logger.PrintToUser("More info can be found at https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-creds")
+}
+
+func printExpiredCredentialsOutput() {
+	ux.Logger.PrintToUser("AWS credentials expired")
+	ux.Logger.PrintToUser("Fill in ~/.aws/credentials with updated contents following the format below")
+	ux.Logger.PrintToUser("===========BEGINNING OF FILE===========")
+	ux.Logger.PrintToUser("[default]\naws_access_key_id=<AWS_ACCESS_KEY>\naws_secret_access_key=<AWS_SECRET_ACCESS_KEY>")
+	ux.Logger.PrintToUser("===========END OF FILE===========")
+	ux.Logger.PrintToUser("More info can be found at https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-creds")
+	ux.Logger.PrintToUser("")
+}
+
 // getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
 func getAWSCloudCredentials(region, awsCommand string, authorizeAccess bool) (*session.Session, error) {
 	if !authorizeAccess {
@@ -114,6 +133,9 @@ func getAWSCloudConfig(region string, authorizeAccess bool) (*ec2.EC2, string, s
 	ec2Svc := ec2.New(sess)
 	ami, err := awsAPI.GetUbuntuAMIID(ec2Svc)
 	if err != nil {
+		if strings.Contains(err.Error(), "RequestExpired: Request has expired") {
+			printExpiredCredentialsOutput()
+		}
 		return nil, "", "", err
 	}
 	return ec2Svc, region, ami, nil
