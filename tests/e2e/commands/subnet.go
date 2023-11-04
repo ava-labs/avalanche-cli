@@ -21,10 +21,6 @@ import (
 	"github.com/onsi/gomega"
 )
 
-const (
-	WriteReadReadPerms = 0o644
-)
-
 /* #nosec G204 */
 func CreateSubnetEvmConfig(subnetName string, genesisPath string) (string, string) {
 	mapper := utils.NewVersionMapper()
@@ -176,7 +172,7 @@ func WriteGenesis(subnetName string, bytes []byte) error {
 	if err := os.MkdirAll(filepath.Dir(path), constants.DefaultPerms755); err != nil {
 		return err
 	}
-	return os.WriteFile(path, bytes, WriteReadReadPerms)
+	return os.WriteFile(path, bytes, constants.WriteReadReadPerms)
 }
 
 func GetMainnetGenesis(subnetName string) (core.Genesis, error) {
