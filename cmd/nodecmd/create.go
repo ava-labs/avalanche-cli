@@ -105,6 +105,9 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if useAWS && useGCP {
 		return fmt.Errorf("could not use both AWS and GCP cloud options")
 	}
+	if !useAWS && awsProfile != constants.AWSDefaultCredential {
+		return fmt.Errorf("could not use AWS profile for non AWS cloud option")
+	}
 	clusterName := args[0]
 	cloudService, err := setCloudService()
 	if err != nil {
