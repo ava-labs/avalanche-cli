@@ -3,22 +3,21 @@
 package models
 
 import (
-	"fmt"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 )
 
-type Network int64
+type NetworkKind int64
 
 const (
-	Undefined Network = iota
+	Undefined NetworkKind = iota
 	Mainnet
 	Fuji
 	Local
+	Devnet
 )
 
-func (s Network) String() string {
+func (s NetworkKind) String() string {
 	switch s {
 	case Mainnet:
 		return "Mainnet"
@@ -26,42 +25,58 @@ func (s Network) String() string {
 		return "Fuji"
 	case Local:
 		return "Local Network"
+	case Devnet:
+		return "Devnet"
 	}
-	return "Unknown Network"
+	return "invalid network"
 }
 
-func (s Network) NetworkID() (uint32, error) {
-	switch s {
-	case Mainnet:
-		return avago_constants.MainnetID, nil
-	case Fuji:
-		return avago_constants.FujiID, nil
-	case Local:
-		return constants.LocalNetworkID, nil
+type Network struct {
+	Kind     NetworkKind
+	Id       uint32
+	Endpoint string
+}
+
+var (
+	UndefinedNetwork = NewNetwork(Undefined, 0, "")
+	LocalNetwork     = NewNetwork(Local, constants.LocalNetworkID, constants.LocalAPIEndpoint)
+	DevnetNetwork    = NewNetwork(Devnet, constants.DevnetNetworkID, constants.DevnetAPIEndpoint)
+	FujiNetwork      = NewNetwork(Fuji, avago_constants.FujiID, constants.FujiAPIEndpoint)
+	MainnetNetwork   = NewNetwork(Mainnet, avago_constants.MainnetID, constants.MainnetAPIEndpoint)
+)
+
+func NewNetwork(kind NetworkKind, id uint32, endpoint string) Network {
+	return Network{
+		Kind:     kind,
+		Id:       id,
+		Endpoint: endpoint,
 	}
-	return 0, fmt.Errorf("unsupported network")
 }
 
 func NetworkFromString(s string) Network {
 	switch s {
 	case Mainnet.String():
-		return Mainnet
+		return MainnetNetwork
 	case Fuji.String():
-		return Fuji
+		return FujiNetwork
 	case Local.String():
-		return Local
+		return LocalNetwork
+	case Devnet.String():
+		return DevnetNetwork
 	}
-	return Undefined
+	return UndefinedNetwork
 }
 
 func NetworkFromNetworkID(networkID uint32) Network {
 	switch networkID {
 	case avago_constants.MainnetID:
-		return Mainnet
+		return MainnetNetwork
 	case avago_constants.FujiID:
-		return Fuji
+		return FujiNetwork
 	case constants.LocalNetworkID:
-		return Local
+		return LocalNetwork
+	case constants.DevnetNetworkID:
+		return DevnetNetwork
 	}
-	return Undefined
+	return UndefinedNetwork
 }

@@ -5,20 +5,16 @@
     - name: get host id
       shell: echo {{ inventory_hostname}} | awk -F_ '{print $NF}'
       register: host_id
-    - name: ensures {{ project_root }}/conf dir exists
+    - name: ensures dest dir exists
       file: 
         path: "/home/ubuntu/.avalanchego/staking/"
         state: directory
         recurse: yes
-    - name: copy staker.crt to remote machine
+    - name: copy staking files to remote machine
       copy:
-        dest: /home/ubuntu/.avalanchego/staking/staker.crt
-        src: "{{ nodesDirPath }}{{ host_id.stdout }}/staker.crt"
-    - name: copy staker.key to remote machine
-      copy:
-        dest: /home/ubuntu/.avalanchego/staking/staker.key
-        src: "{{ nodesDirPath }}{{ host_id.stdout }}/staker.key"
-    - name: copy signer.key to remote machine
-      copy:
-        dest: /home/ubuntu/.avalanchego/staking/signer.key
-        src: "{{ nodesDirPath }}{{ host_id.stdout }}/signer.key"
+        src: "{{ item }}"
+        dest: /home/ubuntu/.avalanchego/staking/
+      loop:
+        - "{{ nodesDirPath }}{{ host_id.stdout }}/staker.crt"
+        - "{{ nodesDirPath }}{{ host_id.stdout }}/staker.key"
+        - "{{ nodesDirPath }}{{ host_id.stdout }}/signer.key"
