@@ -11,15 +11,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/cmd/primarycmd"
-
-	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
-
-	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
-
 	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/keycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
+	"github.com/ava-labs/avalanche-cli/cmd/primarycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/transactioncmd"
 	"github.com/ava-labs/avalanche-cli/cmd/updatecmd"
@@ -45,6 +42,7 @@ var (
 	Version   = ""
 	cfgFile   string
 	skipCheck bool
+	enableAPM bool
 )
 
 func NewRootCmd() *cobra.Command {
@@ -68,6 +66,7 @@ in with avalanche subnet create myNewSubnet.`,
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.avalanche-cli.json)")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "ERROR", "log level for the application")
 	rootCmd.PersistentFlags().BoolVar(&skipCheck, constants.SkipUpdateFlag, false, "skip check for new versions")
+	rootCmd.PersistentFlags().BoolVar(&enableAPM, "enable-apm", false, "enable APM usage")
 
 	// add sub commands
 	rootCmd.AddCommand(subnetcmd.NewCmd(app))
@@ -105,7 +104,7 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	app.Setup(baseDir, log, cf, prompts.NewPrompter(), application.NewDownloader())
 
 	// Setup APM, skip if running a hidden command
-	if !cmd.Hidden {
+	if !cmd.Hidden && enableAPM {
 		usr, err := user.Current()
 		if err != nil {
 			app.Log.Error("unable to get system user")
