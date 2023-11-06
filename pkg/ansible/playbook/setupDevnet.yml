@@ -1,0 +1,27 @@
+---
+- hosts: "{{ target }}"
+  gather_facts: no
+  tasks:
+    - name: get host id
+      shell: echo {{ inventory_hostname}} | awk -F_ '{print $NF}'
+      register: host_id
+    - name: ensures dest dir exists
+      file: 
+        path: "/home/ubuntu/.avalanchego/configs/"
+        state: directory
+        recurse: yes
+    - name: copy genesis and avalanchego config to remote machine
+      copy:
+        src: "{{ item }}"
+        dest: /home/ubuntu/.avalanchego/configs/
+      loop:
+        - "{{ nodesDirPath }}{{ host_id.stdout }}/genesis.json"
+        - "{{ nodesDirPath }}{{ host_id.stdout }}/node.json"
+    - name: stop node
+      shell: sudo systemctl stop avalanchego
+    - name: remove previous avalanchego db and logs
+      shell: |
+        rm -rf /home/ubuntu/.avalanchego/db/
+        rm -rf /home/ubuntu/.avalanchego/logs/
+    - name: start node
+      shell: sudo systemctl start avalanchego
