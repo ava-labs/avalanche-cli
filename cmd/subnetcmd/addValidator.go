@@ -277,6 +277,7 @@ func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime t
 	}
 
 	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
 	platformCli := platformvm.NewClient(uri)
 	vs, err := platformCli.GetCurrentValidators(ctx, avago_constants.PrimaryNetworkID, nil)
 	cancel()
