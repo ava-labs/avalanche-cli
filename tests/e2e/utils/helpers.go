@@ -29,7 +29,7 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
-	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -868,7 +868,7 @@ func FundLedgerAddress(amount uint64) error {
 		},
 	}
 	outputs := []*avax.TransferableOutput{output}
-	if _, err := wallet.X().IssueExportTx(avago_constants.PlatformChainID, outputs); err != nil {
+	if _, err := wallet.X().IssueExportTx(avagoconstants.PlatformChainID, outputs); err != nil {
 		return err
 	}
 

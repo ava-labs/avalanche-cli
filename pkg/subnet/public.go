@@ -21,6 +21,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/set"
@@ -171,50 +172,19 @@ func (d *PublicDeployer) ExportToPChainTx(
 	if err != nil {
 		return ids.Empty, err
 	}
-
-	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign X -> P Chain Export Transaction hash on the ledger device *** ")
-	}
-	unsignedTx, err := wallet.X().Builder().NewExportTx(
-		ids.Empty,
-		[]*avax.TransferableOutput{
-			{
-				Asset: avax.Asset{
-					ID: subnetAssetID,
-				},
-				Out: &secp256k1fx.TransferOutput{
-					Amt:          assetAmount,
-					OutputOwners: *owner,
-				},
-			},
-		},
+	txID, err := IssueXToPExportTx(
+		wallet,
+		d.usingLedger,
+		subnetAssetID,
+		assetAmount,
+		owner,
 	)
 	if err != nil {
-		return ids.Empty, fmt.Errorf("error building tx: %w", err)
+		return txID, err
 	}
-	tx := avmtxs.Tx{Unsigned: unsignedTx}
-	if err := wallet.X().Signer().Sign(context.Background(), &tx); err != nil {
-		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
-	}
-
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	err = wallet.X().IssueTx(
-		&tx,
-		common.WithContext(ctx),
-	)
-	if err != nil {
-		if ctx.Err() != nil {
-			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
-		} else {
-			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
-		}
-		return ids.Empty, err
-	}
-
-	ux.Logger.PrintToUser("Export to P-Chain Transaction successful, transaction ID: %s", tx.ID())
+	ux.Logger.PrintToUser("Export to P-Chain Transaction successful, transaction ID: %s", txID)
 	ux.Logger.PrintToUser("Now importing asset from X-Chain ...")
-	return tx.ID(), nil
+	return txID, nil
 }
 
 func (d *PublicDeployer) ImportFromXChain(
@@ -225,39 +195,17 @@ func (d *PublicDeployer) ImportFromXChain(
 	if err != nil {
 		return ids.Empty, err
 	}
-	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign X -> P Chain Import Transaction hash on the ledger device *** ")
-	}
-	unsignedTx, err := wallet.P().Builder().NewImportTx(
-		wallet.X().BlockchainID(),
+	txID, err := IssuePFromXImportTx(
+		wallet,
+		d.usingLedger,
 		owner,
 	)
 	if err != nil {
-		return ids.Empty, fmt.Errorf("error building tx: %w", err)
+		return txID, err
 	}
-	tx := txs.Tx{Unsigned: unsignedTx}
-	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
-	}
-
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	err = wallet.P().IssueTx(
-		&tx,
-		common.WithContext(ctx),
-	)
-	if err != nil {
-		if ctx.Err() != nil {
-			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
-		} else {
-			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
-		}
-		return ids.Empty, err
-	}
-
-	ux.Logger.PrintToUser("Import from X Chain Transaction successful, transaction ID: %s", tx.ID())
+	ux.Logger.PrintToUser("Import from X Chain Transaction successful, transaction ID: %s", txID)
 	ux.Logger.PrintToUser("Now transforming subnet into elastic subnet ...")
-	return tx.ID(), err
+	return txID, nil
 }
 
 func (d *PublicDeployer) TransformSubnetTx(
@@ -930,4 +878,88 @@ func GetPublicSubnetValidators(subnetID ids.ID, network models.Network) ([]platf
 	}
 
 	return vals, nil
+}
+
+func IssueXToPExportTx(
+	wallet primary.Wallet,
+	usingLedger bool,
+	assetID ids.ID,
+	amount uint64,
+	owner *secp256k1fx.OutputOwners,
+) (ids.ID, error) {
+	if usingLedger {
+		ux.Logger.PrintToUser("*** Please sign X -> P Chain Export Transaction hash on the ledger device *** ")
+	}
+	unsignedTx, err := wallet.X().Builder().NewExportTx(
+		avagoconstants.PlatformChainID,
+		[]*avax.TransferableOutput{
+			{
+				Asset: avax.Asset{
+					ID: assetID,
+				},
+				Out: &secp256k1fx.TransferOutput{
+					Amt:          amount,
+					OutputOwners: *owner,
+				},
+			},
+		},
+	)
+	if err != nil {
+		return ids.Empty, fmt.Errorf("error building tx: %w", err)
+	}
+	tx := avmtxs.Tx{Unsigned: unsignedTx}
+	if err := wallet.X().Signer().Sign(context.Background(), &tx); err != nil {
+		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
+	}
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	err = wallet.X().IssueTx(
+		&tx,
+		common.WithContext(ctx),
+	)
+	if err != nil {
+		if ctx.Err() != nil {
+			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+		} else {
+			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+		}
+		return tx.ID(), err
+	}
+	return tx.ID(), nil
+}
+
+func IssuePFromXImportTx(
+	wallet primary.Wallet,
+	usingLedger bool,
+	owner *secp256k1fx.OutputOwners,
+) (ids.ID, error) {
+	if usingLedger {
+		ux.Logger.PrintToUser("*** Please sign X -> P Chain Import Transaction hash on the ledger device *** ")
+	}
+	unsignedTx, err := wallet.P().Builder().NewImportTx(
+		wallet.X().BlockchainID(),
+		owner,
+	)
+	if err != nil {
+		return ids.Empty, fmt.Errorf("error building tx: %w", err)
+	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
+	}
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	err = wallet.P().IssueTx(
+		&tx,
+		common.WithContext(ctx),
+	)
+	if err != nil {
+		if ctx.Err() != nil {
+			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+		} else {
+			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+		}
+		return tx.ID(), err
+	}
+	return tx.ID(), err
 }

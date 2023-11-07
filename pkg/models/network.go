@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 )
 
 type Network int64
@@ -33,9 +33,9 @@ func (s Network) String() string {
 func (s Network) NetworkID() (uint32, error) {
 	switch s {
 	case Mainnet:
-		return avago_constants.MainnetID, nil
+		return avagoconstants.MainnetID, nil
 	case Fuji:
-		return avago_constants.FujiID, nil
+		return avagoconstants.FujiID, nil
 	case Local:
 		return constants.LocalNetworkID, nil
 	}
@@ -56,9 +56,9 @@ func NetworkFromString(s string) Network {
 
 func NetworkFromNetworkID(networkID uint32) Network {
 	switch networkID {
-	case avago_constants.MainnetID:
+	case avagoconstants.MainnetID:
 		return Mainnet
-	case avago_constants.FujiID:
+	case avagoconstants.FujiID:
 		return Fuji
 	case constants.LocalNetworkID:
 		return Local

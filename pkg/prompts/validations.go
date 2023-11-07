@@ -21,7 +21,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
-	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -148,7 +148,7 @@ func validatePChainFujiAddress(input string) error {
 	if err != nil {
 		return err
 	}
-	if hrp != avago_constants.FujiHRP {
+	if hrp != avagoconstants.FujiHRP {
 		return errors.New("this is not a fuji address")
 	}
 	return nil
@@ -159,7 +159,7 @@ func validatePChainMainAddress(input string) error {
 	if err != nil {
 		return err
 	}
-	if hrp != avago_constants.MainnetHRP {
+	if hrp != avagoconstants.MainnetHRP {
 		return errors.New("this is not a mainnet address")
 	}
 	return nil
@@ -172,7 +172,7 @@ func validatePChainLocalAddress(input string) error {
 	}
 	// ANR uses the `custom` HRP for local networks,
 	// but the `local` HRP also exists...
-	if hrp != avago_constants.LocalHRP && hrp != avago_constants.FallbackHRP {
+	if hrp != avagoconstants.LocalHRP && hrp != avagoconstants.FallbackHRP {
 		return errors.New("this is not a local nor custom address")
 	}
 	return nil
