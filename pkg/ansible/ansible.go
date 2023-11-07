@@ -427,8 +427,8 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]
 
 // RunAnsiblePlaybookUpgradeAvalancheGo upgrades avalanche go version of node
 // targets a specific host ansibleHostID in ansible inventory file
-func RunAnsiblePlaybookUpgradeAvalancheGo(ansibleDir, inventoryPath, ansibleHostID string) error {
-	playbookInputs := "target=" + ansibleHostID
+func RunAnsiblePlaybookUpgradeAvalancheGo(ansibleDir, inventoryPath, ansibleHostID, avalancheGoVersion string) error {
+	playbookInputs := "target=" + ansibleHostID + " avalancheGoVersion=" + avalancheGoVersion
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.UpgradeAvalancheGoPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)

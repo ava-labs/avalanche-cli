@@ -49,8 +49,10 @@ func upgrade(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("obtained toUpgradeNodesMap %s \n ", toUpgradeNodesMap)
 	for node, upgradeInfo := range toUpgradeNodesMap {
 		if upgradeInfo.AvalancheGoVersion != "" {
+			fmt.Printf("upgrading avlanachego %s \n ", upgradeInfo.AvalancheGoVersion)
 			if err = upgradeAvalancheGo(clusterName, node, upgradeInfo.AvalancheGoVersion); err != nil {
 				return err
 			}
@@ -62,16 +64,17 @@ func upgrade(_ *cobra.Command, args []string) error {
 			if err = getNewSubnetEVMRelease(clusterName, subnetEVMReleaseURL, subnetEVMArchive, node, upgradeInfo.SubnetEVMVersion); err != nil {
 				return err
 			}
-			if err = startNode(clusterName, node); err != nil {
+			if err = stopNode(clusterName, node); err != nil {
 				return err
 			}
 			for _, vmID := range upgradeInfo.SubnetEVMIDsToUpgrade {
 				subnetEVMBinaryPath := fmt.Sprintf(constants.SubnetEVMBinaryPath, vmID)
+				fmt.Printf("upgrading upgradeSubnetEVM %s  for binary %s \n  ", upgradeInfo.SubnetEVMVersion, subnetEVMBinaryPath)
 				if err = upgradeSubnetEVM(clusterName, subnetEVMBinaryPath, node, upgradeInfo.SubnetEVMVersion); err != nil {
 					return err
 				}
 			}
-			if err = stopNode(clusterName, node); err != nil {
+			if err = startNode(clusterName, node); err != nil {
 				return err
 			}
 		}
@@ -120,9 +123,8 @@ func getNodesUpgradeInfo(clusterName string) (map[string]models.NodeUpgradeInfo,
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
-		vmVersions, err := parseNodeVersionOutput(app.GetAvalancheGoJSONFile())
+		vmVersions, err := parseNodeVersionOutput(app.GetAvalancheGoJSONFile() + "." + host)
 		if err != nil {
-			fmt.Printf("we here parseNodeVersionOutput")
 			failedNodes = append(failedNodes, host)
 			nodeErrors = append(nodeErrors, err)
 			continue
@@ -132,7 +134,6 @@ func getNodesUpgradeInfo(clusterName string) (map[string]models.NodeUpgradeInfo,
 		nodeUpgradeInfo := models.NodeUpgradeInfo{}
 		nodeUpgradeInfo.SubnetEVMIDsToUpgrade = []string{}
 		for vmName, vmVersion := range vmVersions {
-			fmt.Printf("we here vmVersions loop")
 			// when calling info.getNodeVersion, this is what we get
 			// "vmVersions":{"avm":"v1.10.12","evm":"v0.12.5","n8Anw9kErmgk7KHviddYtecCmziLZTphDwfL1V2DfnFjWZXbE":"v0.5.6","platform":"v1.10.12"}},
 			// we need to get the VM ID of the subnets that the node is currently validating, in the example above it is n8Anw9kErmgk7KHviddYtecCmziLZTphDwfL1V2DfnFjWZXbE
@@ -167,13 +168,11 @@ func getNodesUpgradeInfo(clusterName string) (map[string]models.NodeUpgradeInfo,
 		}
 	}
 	if len(failedNodes) > 0 {
-		ux.Logger.PrintToUser("Failed nodes: ")
+		ux.Logger.PrintToUser("Failed to upgrade nodes: ")
 		for i, node := range failedNodes {
-			ux.Logger.PrintToUser("node %s failed due to %s", node, nodeErrors[i])
+			ux.Logger.PrintToUser("node %s failed to upgrade due to %s", node, nodeErrors[i])
 		}
 		return nil, fmt.Errorf("failed to upgrade node(s) %s", failedNodes)
-	} else {
-		ux.Logger.PrintToUser("All nodes in cluster %s are successfully upgraded!", clusterName)
 	}
 	return nodesToUpgrade, nil
 }
@@ -186,7 +185,7 @@ func checkIfKeyIsStandardVMName(vmName string) bool {
 
 func upgradeAvalancheGo(clusterName, ansibleNodeID, avaGoVersionToUpdateTo string) error {
 	ux.Logger.PrintToUser("Upgrading Avalanche Go version of node %s to version %s ...", ansibleNodeID, avaGoVersionToUpdateTo)
-	if err := ansible.RunAnsiblePlaybookUpgradeAvalancheGo(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
+	if err := ansible.RunAnsiblePlaybookUpgradeAvalancheGo(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID, avaGoVersionToUpdateTo); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Successfully upgraded Avalanche Go version of node %s!", ansibleNodeID)
@@ -230,7 +229,6 @@ func getNewSubnetEVMRelease(clusterName, subnetEVMReleaseURL, subnetEVMArchive, 
 
 func parseNodeVersionOutput(fileName string) (map[string]interface{}, error) {
 	jsonFile, err := os.Open(fileName)
-	fmt.Printf("filename %s \n", fileName)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +243,6 @@ func parseNodeVersionOutput(fileName string) (map[string]interface{}, error) {
 	}
 	nodeIDInterface, ok := result["result"].(map[string]interface{})
 	if ok {
-		fmt.Printf("nodeIDInterface %s \n", nodeIDInterface)
 		vmVersions, ok := nodeIDInterface["vmVersions"].(map[string]interface{})
 		if ok {
 			return vmVersions, nil
