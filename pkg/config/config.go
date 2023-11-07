@@ -8,14 +8,38 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 )
 
 type Config struct{}
 
 func New() *Config {
 	return &Config{}
+}
+
+func (*Config) SetConfig(log logging.Logger, s string) {
+	viper.SetConfigType("json")
+	viper.SetConfigFile(s)
+	viper.AutomaticEnv() // read in environment variables that match
+	// If a config file is found, read it in.
+	if err := viper.ReadInConfig(); err == nil {
+		log.Info("Using config file", zap.String("config-file", s))
+	} else {
+		log.Info("No log file found")
+	}
+}
+
+func (*Config) MergeConfig(log logging.Logger, s string) {
+	prevS := viper.ConfigFileUsed()
+	viper.SetConfigFile(s)
+	log.Info("Merging configuration file", zap.String("config-file", s))
+	if err := viper.MergeInConfig(); err != nil {
+		log.Info("Error loading configuration file", zap.String("config-file", s))
+	}
+	viper.SetConfigFile(prevS)
 }
 
 func (*Config) GetConfigPath() string {

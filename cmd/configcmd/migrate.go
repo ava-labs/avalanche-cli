@@ -29,14 +29,14 @@ func newMigrateCmd() *cobra.Command {
 
 func migrateConfig(_ *cobra.Command, _ []string) error {
 	oldConfigFilename := utils.UserHomePath(constants.OldConfigFileName)
-	metricConfigFilename := utils.UserHomePath(constants.MetricsConfigFileName)
-	viperConfigFilename := fmt.Sprintf("%s.%s", utils.UserHomePath(constants.BaseDirName, constants.DefaultConfigFileName), constants.DefaultConfigFileType)
-	if utils.FileExists(viperConfigFilename) {
-		ux.Logger.PrintToUser("Configuration file %s already exists. Configuration migration is not required.", viperConfigFilename)
+	oldMetricsConfigFilename := utils.UserHomePath(constants.OldMetricsConfigFileName)
+	configFileName := app.Conf.GetConfigPath()
+	if utils.FileExists(configFileName) {
+		ux.Logger.PrintToUser("Configuration file %s already exists. Configuration migration is not required.", configFileName)
 		return nil
 	}
-	if !utils.FileExists(oldConfigFilename) && !utils.FileExists(metricConfigFilename) {
-		ux.Logger.PrintToUser("Old configuration file %s or %s not found. Configuration migration is not required.", oldConfigFilename, metricConfigFilename)
+	if !utils.FileExists(oldConfigFilename) && !utils.FileExists(oldMetricsConfigFilename) {
+		ux.Logger.PrintToUser("Old configuration file %s or %s not found. Configuration migration is not required.", oldConfigFilename, oldMetricsConfigFilename)
 		return nil
 	} else {
 		// load old config
@@ -46,17 +46,17 @@ func migrateConfig(_ *cobra.Command, _ []string) error {
 				return err
 			}
 		}
-		if utils.FileExists(metricConfigFilename) {
-			viper.SetConfigFile(metricConfigFilename)
+		if utils.FileExists(oldMetricsConfigFilename) {
+			viper.SetConfigFile(oldMetricsConfigFilename)
 			if err := viper.MergeInConfig(); err != nil {
 				return err
 			}
 		}
-		viper.SetConfigFile(constants.DefaultConfigFileName)
-		if err := viper.SafeWriteConfig(); err != nil {
+		viper.SetConfigFile(configFileName)
+		if err := viper.WriteConfig(); err != nil {
 			return err
 		}
-		ux.Logger.PrintToUser("Configuration migrated to %s", viperConfigFilename)
+		ux.Logger.PrintToUser("Configuration migrated to %s", configFileName)
 		// remove old configuration file
 		if utils.FileExists(oldConfigFilename) {
 			if err := os.Remove(oldConfigFilename); err != nil {
@@ -64,11 +64,11 @@ func migrateConfig(_ *cobra.Command, _ []string) error {
 			}
 			ux.Logger.PrintToUser("Old configuration file %s removed", oldConfigFilename)
 		}
-		if utils.FileExists(metricConfigFilename) {
-			if err := os.Remove(metricConfigFilename); err != nil {
-				return fmt.Errorf("failed to remove old configuration file %s", metricConfigFilename)
+		if utils.FileExists(oldMetricsConfigFilename) {
+			if err := os.Remove(oldMetricsConfigFilename); err != nil {
+				return fmt.Errorf("failed to remove old configuration file %s", oldMetricsConfigFilename)
 			}
-			ux.Logger.PrintToUser("Old configuration file %s removed", metricConfigFilename)
+			ux.Logger.PrintToUser("Old configuration file %s removed", oldMetricsConfigFilename)
 		}
 		return nil
 	}

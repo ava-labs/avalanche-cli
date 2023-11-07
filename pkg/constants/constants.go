@@ -143,9 +143,8 @@ const (
 	ConfigNodeConfigKey          = "node-config"
 	ConfigMetricsEnabledKey      = "MetricsEnabled"
 	OldConfigFileName            = ".avalanche-cli.json"
-	MetricsConfigFileName        = ".avalanche-cli/config"
-	DefaultConfigFileName        = "config"
-	DefaultConfigFileType        = "json"
+	OldMetricsConfigFileName     = ".avalanche-cli/config"
+	DefaultConfigFileName        = ".avalanche-cli/config.json"
 
 	AWSCloudService      = "Amazon Web Services"
 	GCPCloudService      = "Google Cloud Platform"

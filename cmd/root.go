@@ -35,7 +35,6 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
 
@@ -123,7 +122,7 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	if err := migrations.RunMigrations(app); err != nil {
 		return err
 	}
-	if os.Getenv("RUN_E2E") == "" && !app.Conf.ConfigFileExists() && !utils.FileExists(utils.UserHomePath(constants.MetricsConfigFileName)) {
+	if os.Getenv("RUN_E2E") == "" && !app.Conf.ConfigFileExists() && !utils.FileExists(utils.UserHomePath(constants.OldMetricsConfigFileName)) {
 		err = metrics.HandleUserMetricsPreference(app)
 		if err != nil {
 			return err
@@ -303,38 +302,20 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
 	oldConfig := utils.UserHomePath(constants.OldConfigFileName)
-	metricsConfig := utils.UserHomePath(constants.MetricsConfigFileName)
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Search for default config.
-		configFilename := fmt.Sprintf("%s.%s", constants.DefaultConfigFileName, constants.DefaultConfigFileType)
-		viper.AddConfigPath(utils.UserHomePath(constants.BaseDirName))
-		viper.SetConfigName(constants.DefaultConfigFileName)
-		viper.SetConfigType(constants.DefaultConfigFileType)
-		// migrate old config
-		if utils.FileExists(oldConfig) || utils.FileExists(metricsConfig) {
-			ux.Logger.PrintToUser("-----------------------------------------------------------------------")
-			ux.Logger.PrintToUser("WARNING: Old configuration file was found in %s and/or %s", oldConfig, metricsConfig)
-			ux.Logger.PrintToUser("Please run `avalanche config migrate` to migrate it to new default location %s", utils.UserHomePath(constants.BaseDirName, configFilename))
-			ux.Logger.PrintToUser("-----------------------------------------------------------------------")
-		}
+	oldMetricsConfig := utils.UserHomePath(constants.OldMetricsConfigFileName)
+	if utils.FileExists(oldConfig) || utils.FileExists(oldMetricsConfig) {
+		ux.Logger.PrintToUser("-----------------------------------------------------------------------")
+		ux.Logger.PrintToUser("WARNING: Old configuration file was found in %s and/or %s", oldConfig, oldMetricsConfig)
+		ux.Logger.PrintToUser("Please run `avalanche config migrate` to migrate it to new default location %s", cfgFile)
+		ux.Logger.PrintToUser("-----------------------------------------------------------------------")
 	}
-	viper.AutomaticEnv() // read in environment variables that match
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		app.Log.Info("Using config file", zap.String("config-file", viper.ConfigFileUsed()))
-	} else {
-		app.Log.Info("No log file found")
+	if cfgFile == "" {
+		cfgFile = utils.UserHomePath(constants.DefaultConfigFileName)
 	}
+	app.Conf.SetConfig(app.Log, cfgFile)
 	// check if metrics setting is available, and if not load metricConfig
-	if !viper.IsSet(constants.ConfigMetricsEnabledKey) {
-		viper.SetConfigFile(metricsConfig)
-		app.Log.Info("Using old metrics configuration file", zap.String("config-file", metricsConfig))
-		if err := viper.MergeInConfig(); err != nil {
-			app.Log.Info("Error loadingold metrics configuration file", zap.String("config-file", metricsConfig))
-		}
+	if !app.Conf.ConfigValueIsSet(constants.ConfigMetricsEnabledKey) {
+		app.Conf.MergeConfig(app.Log, oldMetricsConfig)
 	}
 }
 
