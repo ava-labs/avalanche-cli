@@ -50,7 +50,7 @@ func CheckIsInstalled() error {
 
 func GetPublicIPs(terraformDir string) ([]string, error) {
 	cmd := exec.Command(constants.Terraform, "output", "instance_ips") //nolint:gosec
-	cmd.Env = append(cmd.Env, os.Environ()...)
+	cmd.Env = os.Environ()
 	cmd.Dir = terraformDir
 	ipsOutput, err := cmd.Output()
 	if err != nil {

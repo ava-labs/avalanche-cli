@@ -24,9 +24,7 @@ func SetCloudCredentials(rootBody *hclwrite.Body, awsProfile, region string) err
 	provider := rootBody.AppendNewBlock("provider", []string{"aws"})
 	providerBody := provider.Body()
 	providerBody.SetAttributeValue("region", cty.StringVal(region))
-	if awsProfile != constants.AWSDefaultCredential {
-		providerBody.SetAttributeValue("profile", cty.StringVal(awsProfile))
-	}
+	providerBody.SetAttributeValue("profile", cty.StringVal(awsProfile))
 	return nil
 }
 
@@ -222,7 +220,7 @@ func RunTerraform(terraformDir string, useEIP bool) ([]string, []string, error) 
 		return nil, nil, err
 	}
 	cmd = exec.Command(constants.Terraform, "apply", "-auto-approve") //nolint:gosec
-	cmd.Env = append(cmd.Env, os.Environ()...)
+	cmd.Env = os.Environ()
 	cmd.Dir = terraformDir
 	cmd.Stdout = mw
 	cmd.Stderr = &stderr

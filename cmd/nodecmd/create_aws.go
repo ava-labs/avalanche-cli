@@ -47,12 +47,16 @@ func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
 }
 
 func printNoCredentialsOutput(awsProfile string) {
-	ux.Logger.PrintToUser("No AWS credentials file found in ~/.aws/credentials")
-	ux.Logger.PrintToUser("Create a file called 'credentials' with the contents below, and add the file to ~/.aws/ directory")
+	ux.Logger.PrintToUser("No AWS credentials found in file ~/.aws/credentials or in env variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
+	ux.Logger.PrintToUser("Please make sure correspoding keys are set in [%s] section in ~/.aws/credentials", awsProfile)
+	ux.Logger.PrintToUser("Or create a file called 'credentials' with the contents below, and add the file to ~/.aws/ directory if it's not already there")
 	ux.Logger.PrintToUser("===========BEGINNING OF FILE===========")
 	ux.Logger.PrintToUser("[%s]\naws_access_key_id=<AWS_ACCESS_KEY>\naws_secret_access_key=<AWS_SECRET_ACCESS_KEY>", awsProfile)
 	ux.Logger.PrintToUser("===========END OF FILE===========")
 	ux.Logger.PrintToUser("More info can be found at https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-creds")
+	ux.Logger.PrintToUser("Also you can set environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
+	ux.Logger.PrintToUser("Please use https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html#envvars-set for more details")
+
 }
 
 func printExpiredCredentialsOutput(awsProfile string) {
@@ -108,7 +112,7 @@ func promptKeyPairName(ec2Svc *ec2.EC2) (string, string, error) {
 	return certName, newKeyPairName, nil
 }
 
-func getAWSCloudConfig(region string, authorizeAccess bool) (*ec2.EC2, string, string, error) {
+func getAWSCloudConfig(awsProfile string, region string, authorizeAccess bool) (*ec2.EC2, string, string, error) {
 	if region == "" {
 		var err error
 		usEast1 := "us-east-1"
@@ -150,6 +154,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	ec2Svc *ec2.EC2,
 	hclFile *hclwrite.File,
 	numNodes int,
+	awsProfile,
 	region,
 	ami,
 	certName,
@@ -262,7 +267,7 @@ func createAWSInstances(ec2Svc *ec2.EC2, numNodes int, region, ami string, usr *
 	}
 
 	// Create new EC2 instances
-	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(rootBody, ec2Svc, hclFile, numNodes, region, ami, certName, prefix, securityGroupName)
+	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(rootBody, ec2Svc, hclFile, numNodes, awsProfile, region, ami, certName, prefix, securityGroupName)
 	if err != nil {
 		if err.Error() == constants.EIPLimitErr {
 			ux.Logger.PrintToUser("Failed to create AWS cloud server(s), please try creating again in a different region")
