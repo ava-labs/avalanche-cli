@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"net"
 	"os"
 	"os/exec"
@@ -14,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
