@@ -14,8 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
@@ -439,8 +437,7 @@ func getAvalancheGoVersion() (string, error) {
 		case avalancheGoReferenceChoiceLatest:
 			version = "latest"
 		case avalancheGoReferenceChoiceCustom:
-			txt := "Which version of AvalancheGo would you like to install? (Use format v1.10.13)"
-			customVersion, err := app.Prompt.CaptureValidatedString(txt, prompts.ValidateAvalancheGoVersion)
+			customVersion, err := app.Prompt.CaptureVersion("Which version of AvalancheGo would you like to install? (Use format v1.10.13)")
 			if err != nil {
 				return "", err
 			}

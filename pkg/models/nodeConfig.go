@@ -12,9 +12,3 @@ type NodeConfig struct {
 	ElasticIP     string // public IP address of the cloud server
 	CloudService  string // which cloud service node is hosted on (AWS / GCP)
 }
-
-type NodeUpgradeInfo struct {
-	AvalancheGoVersion    string   // avalanche go version to update to on cloud server
-	SubnetEVMVersion      string   // subnet EVM version to update to on cloud server
-	SubnetEVMIDsToUpgrade []string // list of ID of Subnet EVM to be upgraded to subnet EVM version to update to
-}
