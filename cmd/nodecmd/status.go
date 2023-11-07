@@ -94,11 +94,16 @@ func statusNode(_ *cobra.Command, args []string) error {
 	subnetSyncedNodes := []string{}
 	subnetValidatingNodes := []string{}
 	if subnetName != "" {
+		clustersConfig, err := app.LoadClustersConfig()
+		if err != nil {
+			return err
+		}
+		network := clustersConfig.Clusters[clusterName].Network
 		sc, err := app.LoadSidecar(subnetName)
 		if err != nil {
 			return err
 		}
-		blockchainID := sc.Networks[models.Fuji.String()].BlockchainID
+		blockchainID := sc.Networks[network.Kind.String()].BlockchainID
 		if blockchainID == ids.Empty {
 			return ErrNoBlockchainID
 		}
