@@ -59,8 +59,7 @@ var (
 	mainnetChainID           string
 	skipCreatePrompt         bool
 
-	errMutuallyExlusiveNetworks           = errors.New("--local, --fuji/--testnet, --mainnet are mutually exclusive")
-	errMutuallyExlusiveNetworksWithDevnet = errors.New("--local, --devnet, --fuji/--testnet, --mainnet are mutually exclusive")
+	errMutuallyExlusiveNetworks = errors.New("--local, --fuji/--testnet, --mainnet are mutually exclusive")
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 
