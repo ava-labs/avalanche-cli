@@ -4,20 +4,20 @@ package subnetcmd
 
 import (
 	"fmt"
-	"strings"
 	"os"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
-	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
-	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"golang.org/x/exp/slices"
 )
 
@@ -211,3 +211,38 @@ func GetKeychain(
 	return sf.KeyChain(), nil
 }
 
+func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]uint32, error) {
+	addresses, err := address.ParseToIDs(addressesStr)
+	if err != nil {
+		return []uint32{}, fmt.Errorf("failure parsing given ledger addresses: %w", err)
+	}
+	// maps the indices of addresses to their corresponding ledger indices
+	indexMap := map[int]uint32{}
+	// for all ledger indices to search for, find if the ledger address belongs to the input
+	// addresses and, if so, add the index pair to indexMap, breaking the loop if
+	// all addresses were found
+	for ledgerIndex := uint32(0); ledgerIndex < numLedgerAddressesToSearch; ledgerIndex++ {
+		ledgerAddress, err := ledgerDevice.Addresses([]uint32{ledgerIndex})
+		if err != nil {
+			return []uint32{}, err
+		}
+		for addressesIndex, addr := range addresses {
+			if addr == ledgerAddress[0] {
+				indexMap[addressesIndex] = ledgerIndex
+			}
+		}
+		if len(indexMap) == len(addresses) {
+			break
+		}
+	}
+	// create ledgerIndices from indexMap
+	ledgerIndices := []uint32{}
+	for addressesIndex := range addresses {
+		ledgerIndex, ok := indexMap[addressesIndex]
+		if !ok {
+			return []uint32{}, fmt.Errorf("address %s not found on ledger", addressesStr[addressesIndex])
+		}
+		ledgerIndices = append(ledgerIndices, ledgerIndex)
+	}
+	return ledgerIndices, nil
+}

@@ -799,42 +799,6 @@ func PrintRemainingToSignMsg(
 	ux.Logger.PrintToUser("")
 }
 
-func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]uint32, error) {
-	addresses, err := address.ParseToIDs(addressesStr)
-	if err != nil {
-		return []uint32{}, fmt.Errorf("failure parsing given ledger addresses: %w", err)
-	}
-	// maps the indices of addresses to their corresponding ledger indices
-	indexMap := map[int]uint32{}
-	// for all ledger indices to search for, find if the ledger address belongs to the input
-	// addresses and, if so, add the index pair to indexMap, breaking the loop if
-	// all addresses were found
-	for ledgerIndex := uint32(0); ledgerIndex < numLedgerAddressesToSearch; ledgerIndex++ {
-		ledgerAddress, err := ledgerDevice.Addresses([]uint32{ledgerIndex})
-		if err != nil {
-			return []uint32{}, err
-		}
-		for addressesIndex, addr := range addresses {
-			if addr == ledgerAddress[0] {
-				indexMap[addressesIndex] = ledgerIndex
-			}
-		}
-		if len(indexMap) == len(addresses) {
-			break
-		}
-	}
-	// create ledgerIndices from indexMap
-	ledgerIndices := []uint32{}
-	for addressesIndex := range addresses {
-		ledgerIndex, ok := indexMap[addressesIndex]
-		if !ok {
-			return []uint32{}, fmt.Errorf("address %s not found on ledger", addressesStr[addressesIndex])
-		}
-		ledgerIndices = append(ledgerIndices, ledgerIndex)
-	}
-	return ledgerIndices, nil
-}
-
 func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID) error {
 	vmID, err := anrutils.VMID(chain)
 	if err != nil {
