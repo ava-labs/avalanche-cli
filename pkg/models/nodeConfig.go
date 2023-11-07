@@ -13,11 +13,6 @@ type NodeConfig struct {
 	CloudService  string // which cloud service node is hosted on (AWS / GCP)
 }
 
-type GCPConfig struct {
-	ProjectName        string // name of GCP Project
-	ServiceAccFilePath string // location of GCP service account key file path
-}
-
 type NodeUpgradeInfo struct {
 	AvalancheGoVersion    string   // avalanche go version to update to on cloud server
 	SubnetEVMVersion      string   // subnet EVM version to update to on cloud server

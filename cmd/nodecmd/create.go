@@ -36,6 +36,7 @@ import (
 const (
 	avalancheGoReferenceChoiceLatest = "latest"
 	avalancheGoReferenceChoiceSubnet = "subnet"
+	avalancheGoReferenceChoiceCustom = "custom"
 )
 
 var (
@@ -435,12 +436,7 @@ func getAvalancheGoVersion() (string, error) {
 		switch choice {
 		case avalancheGoReferenceChoiceLatest:
 			version = "latest"
-		case avalancheGoReferenceChoiceSubnet:
-			subnet = subnetChoice
-		}
-	}
-	if chosenOption != constants.LatestAvalancheGo {
-		if chosenOption == constants.CustomAvalancheGo {
+		case avalancheGoReferenceChoiceCustom:
 			customVersion, err := app.Prompt.CaptureString("Which version of AvalancheGo would you like to install? (Use format v1.10.13)")
 			if err != nil {
 				return "", err
@@ -448,8 +444,11 @@ func getAvalancheGoVersion() (string, error) {
 			if !strings.HasPrefix(customVersion, "v") {
 				return "", errors.New("invalid avalanche go version")
 			}
-			return customVersion, nil
+			version = customVersion
+		case avalancheGoReferenceChoiceSubnet:
+			subnet = subnetChoice
 		}
+	}
 	if subnet != "" {
 		sc, err := app.LoadSidecar(subnet)
 		if err != nil {
@@ -488,7 +487,7 @@ func promptAvalancheGoReferenceChoice() (string, string, error) {
 	case defaultVersion:
 		return avalancheGoReferenceChoiceLatest, "", nil
 	case "Custom":
-		return constants.CustomVMDir, nil
+		return avalancheGoReferenceChoiceCustom, "", nil
 	default:
 		for {
 			subnetName, err := app.Prompt.CaptureString("Which Subnet would you like to use to choose the avalanche go version?")
