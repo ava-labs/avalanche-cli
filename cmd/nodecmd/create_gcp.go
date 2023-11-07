@@ -3,6 +3,7 @@
 package nodecmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	terraformgcp "github.com/ava-labs/avalanche-cli/pkg/terraform/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"golang.org/x/exp/rand"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
@@ -28,11 +30,27 @@ import (
 )
 
 func getServiceAccountKeyFilepath() (string, error) {
-	ux.Logger.PrintToUser("To create a VM instance in GCP, we will need your service account credentials")
+	if cmdLineGCPCredentialsPath != "" {
+		return cmdLineGCPCredentialsPath, nil
+	}
+	ux.Logger.PrintToUser("To create a VM instance in GCP, you can use your account credentials")
 	ux.Logger.PrintToUser("Please follow instructions detailed at https://developers.google.com/workspace/guides/create-credentials#service-account to set up a GCP service account")
-	ux.Logger.PrintToUser("Once completed, please enter the filepath to the JSON file containing the public/private key pair")
-	ux.Logger.PrintToUser("For example: /Users/username/sample-project.json")
-	return app.Prompt.CaptureString("What is the filepath to the credentials JSON file?")
+	ux.Logger.PrintToUser("Or use https://cloud.google.com/sdk/docs/authorizing#user-account for authorization without a service account")
+	customAuthKeyPath := "Choose custom path for credentials JSON file"
+	credJSONFilePath, err := app.Prompt.CaptureList(
+		"What is the filepath to the credentials JSON file?",
+		[]string{constants.GCPDefaultAuthKeyPath, customAuthKeyPath},
+	)
+	if err != nil {
+		return "", err
+	}
+	if credJSONFilePath == customAuthKeyPath {
+		credJSONFilePath, err = app.Prompt.CaptureString("What is the custom filepath to the credentials JSON file?")
+		if err != nil {
+			return "", err
+		}
+	}
+	return utils.GetRealFilePath(credJSONFilePath), err
 }
 
 func getGCPCloudCredentials() (*compute.Service, string, string, error) {
@@ -51,9 +69,13 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 		}
 	}
 	if gcpProjectName == "" {
-		gcpProjectName, err = app.Prompt.CaptureString("What is the name of your Google Cloud project?")
-		if err != nil {
-			return nil, "", "", err
+		if cmdLineGCPProjectName != "" {
+			gcpProjectName = cmdLineGCPProjectName
+		} else {
+			gcpProjectName, err = app.Prompt.CaptureString("What is the name of your Google Cloud project?")
+			if err != nil {
+				return nil, "", "", err
+			}
 		}
 	}
 	if gcpCredentialsPath == "" {
@@ -75,23 +97,26 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 	return computeService, gcpProjectName, gcpCredentialsPath, err
 }
 
-func getGCPConfig() (*compute.Service, string, string, string, string, error) {
-	usEast := "us-east1-b"
-	usCentral := "us-central1-c"
-	usWest := "us-west1-b"
-	customRegion := "Choose custom zone (list of zones available at https://cloud.google.com/compute/docs/regions-zones)"
-	zonePromptTxt := "Which GCP zone do you want to set up your node in?"
-	zone, err := app.Prompt.CaptureList(
-		zonePromptTxt,
-		[]string{usEast, usCentral, usWest, customRegion},
-	)
-	if err != nil {
-		return nil, "", "", "", "", err
-	}
-	if zone == customRegion {
-		zone, err = app.Prompt.CaptureString(zonePromptTxt)
+func getGCPConfig(zone string) (*compute.Service, string, string, string, string, error) {
+	if zone == "" {
+		usEast := "us-east1-b"
+		usCentral := "us-central1-c"
+		usWest := "us-west1-b"
+		customRegion := "Choose custom zone (list of zones available at https://cloud.google.com/compute/docs/regions-zones)"
+		zonePromptTxt := "Which GCP zone do you want to set up your node in?"
+		var err error
+		zone, err = app.Prompt.CaptureList(
+			zonePromptTxt,
+			[]string{usEast, usCentral, usWest, customRegion},
+		)
 		if err != nil {
 			return nil, "", "", "", "", err
+		}
+		if zone == customRegion {
+			zone, err = app.Prompt.CaptureString(zonePromptTxt)
+			if err != nil {
+				return nil, "", "", "", "", err
+			}
 		}
 	}
 	gcpClient, projectName, gcpCredentialFilePath, err := getGCPCloudCredentials()
@@ -119,6 +144,7 @@ func randomString(length int) string {
 func createGCEInstances(rootBody *hclwrite.Body,
 	gcpClient *compute.Service,
 	hclFile *hclwrite.File,
+	numNodes int,
 	zone,
 	ami,
 	cliDefaultName,
@@ -134,9 +160,11 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if err := terraformgcp.SetCloudCredentials(rootBody, zone, credentialsPath, projectName); err != nil {
 		return nil, nil, "", "", err
 	}
-	numNodes, err := app.Prompt.CaptureInt("How many nodes do you want to set up on GCP?")
-	if err != nil {
-		return nil, nil, "", "", err
+	if numNodes <= 0 {
+		numNodes, err = app.Prompt.CaptureInt("How many nodes do you want to set up on GCP?")
+		if err != nil {
+			return nil, nil, "", "", err
+		}
 	}
 	ux.Logger.PrintToUser("Creating new VM instance(s) on Google Compute Engine...")
 	certInSSHDir, err := app.CheckCertInSSHDir(fmt.Sprintf("%s-keypair.pub", cliDefaultName))
@@ -197,13 +225,13 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	elasticIPs, err := terraformgcp.RunTerraform(app.GetTerraformDir(), useStaticIP)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
 	instanceIDs := []string{}
 	for i := 0; i < numNodes; i++ {
 		instanceIDs = append(instanceIDs, fmt.Sprintf("%s-%s", nodeName, strconv.Itoa(i)))
+	}
+	elasticIPs, err := terraformgcp.RunTerraform(app.GetTerraformDir(), useStaticIP)
+	if err != nil {
+		return instanceIDs, nil, "", "", errors.New(constants.ErrCreatingGCPNode)
 	}
 	ux.Logger.PrintToUser("New GCE instance(s) successfully created in Google Cloud Engine!")
 	sshCertPath, err := app.GetSSHCertFilePath(fmt.Sprintf("%s-keypair", cliDefaultName))
@@ -213,15 +241,60 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
 }
 
-func createGCPInstance(usr *user.User, gcpClient *compute.Service, zone, imageID, gcpCredentialFilepath, gcpProjectName string) (CloudConfig, error) {
+func createGCPInstance(
+	usr *user.User,
+	gcpClient *compute.Service,
+	numNodes int,
+	zone string,
+	imageID string,
+	gcpCredentialFilepath string,
+	gcpProjectName string,
+	clusterName string,
+) (CloudConfig, error) {
 	defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 	hclFile, rootBody, err := terraform.InitConf()
 	if err != nil {
 		return CloudConfig{}, err
 	}
-	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(rootBody, gcpClient, hclFile, zone, imageID, defaultAvalancheCLIPrefix, gcpProjectName, gcpCredentialFilepath)
+	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(
+		rootBody,
+		gcpClient,
+		hclFile,
+		numNodes,
+		zone,
+		imageID,
+		defaultAvalancheCLIPrefix,
+		gcpProjectName,
+		gcpCredentialFilepath,
+	)
 	if err != nil {
 		ux.Logger.PrintToUser("Failed to create GCP cloud server")
+		if err.Error() == constants.ErrCreatingGCPNode {
+			// we stop created instances so that user doesn't pay for unused GCP instances
+			ux.Logger.PrintToUser("Stopping all created GCP instances due to error to prevent charge for unused GCP instances...")
+			failedNodes := []string{}
+			nodeErrors := []error{}
+			for _, instanceID := range instanceIDs {
+				nodeConfig := models.NodeConfig{
+					NodeID: instanceID,
+					Region: zone,
+				}
+				if stopErr := gcpAPI.StopGCPNode(gcpClient, nodeConfig, gcpProjectName, clusterName, false); err != nil {
+					failedNodes = append(failedNodes, instanceID)
+					nodeErrors = append(nodeErrors, stopErr)
+					continue
+				}
+				ux.Logger.PrintToUser(fmt.Sprintf("GCP cloud server instance %s stopped", instanceID))
+			}
+			if len(failedNodes) > 0 {
+				ux.Logger.PrintToUser("Failed nodes: ")
+				for i, node := range failedNodes {
+					ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
+				}
+				ux.Logger.PrintToUser("Stop the above instance(s) on GCP console to prevent charges")
+				return CloudConfig{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)
+			}
+		}
 		return CloudConfig{}, err
 	}
 	gcpCloudConfig := CloudConfig{

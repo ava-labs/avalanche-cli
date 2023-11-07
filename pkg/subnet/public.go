@@ -17,8 +17,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-network-runner/utils"
+	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -380,7 +381,7 @@ func (d *PublicDeployer) DeployBlockchain(
 		return false, ids.Empty, nil, nil, err
 	}
 
-	vmID, err := utils.VMID(chain)
+	vmID, err := anrutils.VMID(chain)
 	if err != nil {
 		return false, ids.Empty, nil, nil, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
@@ -473,12 +474,7 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error
 		return nil, fmt.Errorf("unsupported public network")
 	}
 	// filter out ids.Empty txs
-	filteredTxs := []ids.ID{}
-	for i := range preloadTxs {
-		if preloadTxs[i] != ids.Empty {
-			filteredTxs = append(filteredTxs, preloadTxs[i])
-		}
-	}
+	filteredTxs := utils.Filter(preloadTxs, func(e ids.ID) bool { return e != ids.Empty })
 	wallet, err := primary.MakeWallet(
 		ctx,
 		&primary.WalletConfig{

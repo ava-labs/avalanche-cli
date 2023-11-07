@@ -6,6 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
+
+	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
+	"google.golang.org/api/compute/v1"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
@@ -18,6 +22,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var authorizeRemove bool
+
 func newStopCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stop [clusterName]",
@@ -29,8 +35,10 @@ The node stop command stops a running node in cloud server
 Note that a stopped node may still incur cloud server storage fees.`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
-		RunE:         stopNode,
+		RunE:         stopNodes,
 	}
+	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to release cloud resources")
+	cmd.Flags().BoolVar(&authorizeRemove, "authorize-remove", false, "authorize CLI to remove all local files related to cloud nodes")
 
 	return cmd
 }
@@ -59,6 +67,9 @@ func removeClusterInventoryDir(clusterName string) error {
 }
 
 func getDeleteConfigConfirmation() error {
+	if authorizeRemove {
+		return nil
+	}
 	ux.Logger.PrintToUser("Please note that if your node(s) are validating a Subnet, stopping them could cause Subnet instability and it is irreversible")
 	confirm := "Running this command will delete all stored files associated with your cloud server. Do you want to proceed? " +
 		fmt.Sprintf("Stored files can be found at %s", app.GetNodesDir())
@@ -79,7 +90,7 @@ func removeClusterConfigFiles(clusterName string) error {
 	return removeNodeFromClusterConfig(clusterName)
 }
 
-func stopNode(_ *cobra.Command, args []string) error {
+func stopNodes(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	if err := checkCluster(clusterName); err != nil {
 		return err
@@ -95,6 +106,8 @@ func stopNode(_ *cobra.Command, args []string) error {
 	nodeErrors := []error{}
 	lastRegion := ""
 	var ec2Svc *ec2.EC2
+	var gcpClient *compute.Service
+	var gcpProjectName string
 	for _, node := range clusterNodes {
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
 		if err != nil {
@@ -103,34 +116,38 @@ func stopNode(_ *cobra.Command, args []string) error {
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
-		if nodeConfig.Region != lastRegion {
-			sess, err := getAWSCloudCredentials(nodeConfig.Region, constants.StopAWSNode)
-			if err != nil {
-				return err
+		if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
+			// need to check if it's empty because we didn't set cloud service when only using AWS
+			if nodeConfig.Region != lastRegion {
+				sess, err := getAWSCloudCredentials(nodeConfig.Region, constants.StopAWSNode, authorizeAccess)
+				if err != nil {
+					return err
+				}
+				ec2Svc = ec2.New(sess)
+				lastRegion = nodeConfig.Region
 			}
-			ec2Svc = ec2.New(sess)
-			lastRegion = nodeConfig.Region
-		}
-		isRunning, err := awsAPI.CheckInstanceIsRunning(ec2Svc, nodeConfig.NodeID)
-		if err != nil {
-			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err.Error()))
-			failedNodes = append(failedNodes, node)
-			nodeErrors = append(nodeErrors, err)
-			continue
-		}
-		if !isRunning {
-			noRunningNodeErr := fmt.Errorf("no running node with instance id %s is found in cluster %s", nodeConfig.NodeID, clusterName)
-			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, noRunningNodeErr))
-			failedNodes = append(failedNodes, node)
-			nodeErrors = append(nodeErrors, noRunningNodeErr)
-			continue
-		}
-		ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
-		if err := awsAPI.StopInstance(ec2Svc, nodeConfig.NodeID, nodeConfig.ElasticIP, true); err != nil {
-			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err.Error()))
-			failedNodes = append(failedNodes, node)
-			nodeErrors = append(nodeErrors, err)
-			continue
+			if err = awsAPI.StopAWSNode(ec2Svc, nodeConfig, clusterName); err != nil {
+				if strings.Contains(err.Error(), "RequestExpired: Request has expired") {
+					ux.Logger.PrintToUser("")
+					printExpiredCredentialsOutput()
+					return nil
+				}
+				failedNodes = append(failedNodes, node)
+				nodeErrors = append(nodeErrors, err)
+				continue
+			}
+		} else {
+			if gcpClient == nil {
+				gcpClient, gcpProjectName, _, err = getGCPCloudCredentials()
+				if err != nil {
+					return err
+				}
+			}
+			if err = gcpAPI.StopGCPNode(gcpClient, nodeConfig, gcpProjectName, clusterName, true); err != nil {
+				failedNodes = append(failedNodes, node)
+				nodeErrors = append(nodeErrors, err)
+				continue
+			}
 		}
 		ux.Logger.PrintToUser(fmt.Sprintf("Node instance %s in cluster %s successfully stopped!", nodeConfig.NodeID, clusterName))
 		if err := removeDeletedNodeDirectory(node); err != nil {
@@ -141,7 +158,11 @@ func stopNode(_ *cobra.Command, args []string) error {
 	if len(failedNodes) > 0 {
 		ux.Logger.PrintToUser("Failed nodes: ")
 		for i, node := range failedNodes {
-			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
+			if strings.Contains(nodeErrors[i].Error(), constants.ErrReleasingGCPStaticIP) {
+				ux.Logger.PrintToUser(fmt.Sprintf("Node is stopped, but failed to release static ip address for node %s due to %s", node, nodeErrors[i]))
+			} else {
+				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
+			}
 		}
 		return fmt.Errorf("failed to stop node(s) %s", failedNodes)
 	} else {

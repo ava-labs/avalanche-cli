@@ -9,6 +9,10 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -98,10 +102,7 @@ func CheckUserIPInSg(sg *ec2.SecurityGroup, currentIP string, port int64) bool {
 // GetInstancePublicIPs gets public IP(s) of EC2 instance(s) without elastic IP and returns a map
 // with ec2 instance id as key and public ip as value
 func GetInstancePublicIPs(ec2Svc *ec2.EC2, nodeIDs []string) (map[string]string, error) {
-	nodeIDsInput := []*string{}
-	for _, nodeID := range nodeIDs {
-		nodeIDsInput = append(nodeIDsInput, aws.String(nodeID))
-	}
+	nodeIDsInput := utils.Map(nodeIDs, aws.String)
 	instanceInput := &ec2.DescribeInstancesInput{
 		InstanceIds: nodeIDsInput,
 	}
@@ -124,8 +125,8 @@ func GetInstancePublicIPs(ec2Svc *ec2.EC2, nodeIDs []string) (map[string]string,
 	return instanceIDToIP, nil
 }
 
-// CheckInstanceIsRunning checks that EC2 instance nodeID is running in AWS
-func CheckInstanceIsRunning(ec2Svc *ec2.EC2, nodeID string) (bool, error) {
+// checkInstanceIsRunning checks that EC2 instance nodeID is running in AWS
+func checkInstanceIsRunning(ec2Svc *ec2.EC2, nodeID string) (bool, error) {
 	instanceInput := &ec2.DescribeInstancesInput{
 		InstanceIds: []*string{
 			aws.String(nodeID),
@@ -148,6 +149,20 @@ func CheckInstanceIsRunning(ec2Svc *ec2.EC2, nodeID string) (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+func StopAWSNode(ec2Svc *ec2.EC2, nodeConfig models.NodeConfig, clusterName string) error {
+	isRunning, err := checkInstanceIsRunning(ec2Svc, nodeConfig.NodeID)
+	if err != nil {
+		ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", nodeConfig.NodeID, err.Error()))
+		return err
+	}
+	if !isRunning {
+		noRunningNodeErr := fmt.Errorf("no running node with instance id %s is found in cluster %s", nodeConfig.NodeID, clusterName)
+		return noRunningNodeErr
+	}
+	ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
+	return StopInstance(ec2Svc, nodeConfig.NodeID, nodeConfig.ElasticIP, true)
 }
 
 func StopInstance(ec2Svc *ec2.EC2, instanceID, publicIP string, releasePublicIP bool) error {

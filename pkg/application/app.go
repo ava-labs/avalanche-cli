@@ -200,7 +200,7 @@ func (app *Avalanche) GetClusterConfigPath() string {
 }
 
 func (app *Avalanche) GetNodeBLSSecretKeyPath(instanceID string) string {
-	return filepath.Join(app.GetNodeInstanceDirPath(instanceID), constants.BLSFileName)
+	return filepath.Join(app.GetNodeInstanceDirPath(instanceID), constants.BLSKeyFileName)
 }
 
 func (app *Avalanche) GetElasticSubnetConfigPath(subnetName string) string {
@@ -746,10 +746,6 @@ func (app *Avalanche) GetAvalancheGoJSONFile() string {
 	return filepath.Join(app.GetAnsibleStatusDir(), constants.AvalancheGoVersionJSONFile)
 }
 
-func (app *Avalanche) GetNodeIDJSONFile() string {
-	return filepath.Join(app.GetAnsibleStatusDir(), constants.NodeIDJSONFile)
-}
-
 func (app *Avalanche) GetSubnetSyncJSONFile() string {
 	return filepath.Join(app.GetAnsibleStatusDir(), constants.SubnetSyncJSONFile)
 }
@@ -764,6 +760,11 @@ func (app *Avalanche) SetupAnsibleEnv() error {
 		return err
 	}
 	return app.CreateAnsiblePlaybookDir()
+}
+
+// CreateAnsibleStatusDir creates the ansible status directory inside .avalanche-cli
+func (app *Avalanche) CreateAnsibleStatusDir() error {
+	return os.MkdirAll(app.GetAnsibleStatusDir(), constants.DefaultPerms755)
 }
 
 // CreateAnsibleStatusFile creates file named fileName in .avalanche-cli ansible status directory

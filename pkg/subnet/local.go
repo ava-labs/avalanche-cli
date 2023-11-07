@@ -47,10 +47,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	WriteReadReadPerms = 0o644
-)
-
 type LocalDeployer struct {
 	procChecker        binutils.ProcessChecker
 	binChecker         binutils.BinaryChecker
@@ -710,7 +706,7 @@ func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 		if err != nil {
 			return fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
 		}
-		if err := os.WriteFile(bootstrapSnapshotArchivePath, bootstrapSnapshotBytes, WriteReadReadPerms); err != nil {
+		if err := os.WriteFile(bootstrapSnapshotArchivePath, bootstrapSnapshotBytes, constants.WriteReadReadPerms); err != nil {
 			return fmt.Errorf("failed writing down bootstrap snapshot: %w", err)
 		}
 	}

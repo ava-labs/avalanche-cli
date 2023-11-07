@@ -35,16 +35,17 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 		return err
 	}
 	inventoryHostsFilePath := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
-	inventoryFile, err := os.OpenFile(inventoryHostsFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	inventoryFile, err := os.OpenFile(inventoryHostsFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, constants.WriteReadReadPerms)
 	if err != nil {
 		return err
 	}
 	defer inventoryFile.Close()
 	for instanceID := range publicIPMap {
-		inventoryContent := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, instanceID)
-		if cloudService == constants.GCPCloudService {
-			inventoryContent = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, instanceID)
+		ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, instanceID)
+		if err != nil {
+			return err
 		}
+		inventoryContent := ansibleInstanceID
 		inventoryContent += " ansible_host="
 		inventoryContent += publicIPMap[instanceID]
 		inventoryContent += " ansible_user=ubuntu"
@@ -173,9 +174,9 @@ func RunAnsiblePlaybookSetupNode(configPath, ansibleDir, inventoryPath, avalanch
 
 // RunAnsiblePlaybookCopyStakingFiles copies staker.crt and staker.key into local machine so users can back up their node
 // these files are stored in .avalanche-cli/nodes/<nodeID> dir
-// targets a specific host ansibleHostID in ansible inventory file
-func RunAnsiblePlaybookCopyStakingFiles(ansibleDir, ansibleHostID, nodeInstanceDirPath, inventoryPath string) error {
-	playbookInputs := "target=" + ansibleHostID + " nodeInstanceDirPath=" + nodeInstanceDirPath + "/"
+// targets a specific hosts ansibleHostIDs in ansible inventory file
+func RunAnsiblePlaybookCopyStakingFiles(ansibleDir, ansibleHostIDs, nodesDirPath, inventoryPath string) error {
+	playbookInputs := "target=" + ansibleHostIDs + " nodesDirPath=" + nodesDirPath + "/"
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.CopyStakingFilesPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
@@ -328,23 +329,6 @@ func RunAnsiblePlaybookCheckBootstrapped(ansibleDir, isBootstrappedPath, invento
 	return cmdErr
 }
 
-// RunAnsiblePlaybookGetNodeID gets node ID of cloud server
-// targets a specific host ansibleHostID in ansible inventory file
-func RunAnsiblePlaybookGetNodeID(ansibleDir, nodeIDPath, inventoryPath, ansibleHostID string) error {
-	playbookInputs := "target=" + ansibleHostID + " nodeIDJsonPath=" + nodeIDPath
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.GetNodeIDPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	cmd.Dir = ansibleDir
-	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, false, false)
-	cmdErr := cmd.Run()
-	if err := displayErrMsg(stdoutBuffer); err != nil {
-		return err
-	}
-	if err := displayErrMsg(stderrBuffer); err != nil {
-		return err
-	}
-	return cmdErr
-}
-
 // RunAnsiblePlaybookSubnetSyncStatus checks if node is synced to subnet
 // targets a specific host ansibleHostID in ansible inventory file
 func RunAnsiblePlaybookSubnetSyncStatus(ansibleDir, subnetSyncPath, blockchainID, inventoryPath, ansibleHostID string) error {
@@ -422,15 +406,20 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]
 		return err
 	}
 	for host, ansibleHostContent := range inventory {
-		// trim prefix aws_node / gcp_node
-		splitNodeName := strings.Split(host, "_")
-		nodeID := splitNodeName[len(splitNodeName)-1]
-		_, ok := nodesWoEIP[nodeID]
-		if ok {
-			ansibleHostContent.IP = nodesWoEIP[nodeID]
-		}
-		if _, err = inventoryFile.WriteString(host + " " + ansibleHostContent.GetAnsibleParams() + "\n"); err != nil {
+		_, nodeID, err := models.HostAnsibleIDToCloudID(host)
+		if err != nil {
 			return err
+		}
+		_, ok := nodesWoEIP[nodeID]
+		if !ok {
+			if _, err = inventoryFile.WriteString(ansibleHostContent.GetAnsibleInventoryRecord() + "\n"); err != nil {
+				return err
+			}
+		} else {
+			ansibleHostContent.IP = nodesWoEIP[nodeID]
+			if _, err = inventoryFile.WriteString(ansibleHostContent.GetAnsibleInventoryRecord() + "\n"); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

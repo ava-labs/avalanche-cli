@@ -7,7 +7,9 @@ import (
 )
 
 const (
-	DefaultPerms755 = 0o755
+	DefaultPerms755        = 0o755
+	WriteReadReadPerms     = 0o644
+	WriteReadUserOnlyPerms = 0o600
 
 	BaseDirName = ".avalanche-cli"
 	LogDir      = "logs"
@@ -32,7 +34,9 @@ const (
 	CreateAWSNode                = "create-aws-node"
 	GetAWSNodeIP                 = "get-aws-node-ip"
 	ClusterConfigFileName        = "cluster_config.json"
-	BLSFileName                  = "signer.key"
+	StakerCertFileName           = "staker.crt"
+	StakerKeyFileName            = "staker.key"
+	BLSKeyFileName               = "signer.key"
 	SidecarVersion               = "1.4.0"
 
 	MaxLogFileSize   = 4
@@ -63,13 +67,16 @@ const (
 	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/" + BootstrapSnapshotLocalPath
 	BootstrapSnapshotSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/sha256sum.txt"
 
-	CliInstallationURL    = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
-	ExpectedCliInstallErr = "resource temporarily unavailable"
-	EIPLimitErr           = "AddressLimitExceeded"
-	KeyDir                = "key"
-	KeySuffix             = ".pk"
-	YAMLSuffix            = ".yml"
-	ConfigDir             = "config"
+	CliInstallationURL      = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
+	ExpectedCliInstallErr   = "resource temporarily unavailable"
+	EIPLimitErr             = "AddressLimitExceeded"
+	ErrCreatingAWSNode      = "failed to create AWS Node"
+	ErrCreatingGCPNode      = "failed to create GCP Node"
+	ErrReleasingGCPStaticIP = "failed to release gcp static ip"
+	KeyDir                  = "key"
+	KeySuffix               = ".pk"
+	YAMLSuffix              = ".yml"
+	ConfigDir               = "config"
 
 	Enable = "enable"
 
@@ -83,76 +90,73 @@ const (
 	DefaultMainnetStakeDuration = "336h"
 	// The absolute minimum is 25 seconds, but set to 1 minute to allow for
 	// time to go through the command
-	StakingStartLeadTime                   = 5 * time.Minute
-	StakingMinimumLeadTime                 = 25 * time.Second
-	PrimaryNetworkValidatingStartLeadTime  = 20 * time.Second
-	AWSCloudServerRunningState             = "running"
-	TerraformNodeConfigFile                = "node_config.tf"
-	AvalancheCLISuffix                     = "-avalanche-cli"
-	AWSDefaultCredential                   = "default"
-	GCPDefaultImageProvider                = "ubuntu-os-cloud"
-	GCPImageFilter                         = "family=ubuntu-2004* AND architecture=x86_64"
-	GCPEnvVar                              = "GOOGLE_APPLICATION_CREDENTIALS"
-	CertSuffix                             = "-kp.pem"
-	AWSSecurityGroupSuffix                 = "-sg"
-	ExportSubnetSuffix                     = "-export.dat"
-	SSHTCPPort                             = 22
-	AvalanchegoAPIPort                     = 9650
-	AvalanchegoP2PPort                     = 9651
-	CloudServerStorageSize                 = 1000
-	OutboundPort                           = 0
-	LatestAvalancheGo                      = "latestAvalancheGo"
+	StakingStartLeadTime                         = 5 * time.Minute
+	StakingMinimumLeadTime                       = 25 * time.Second
+	PrimaryNetworkValidatingStartLeadTimeNodeCmd = 20 * time.Second
+	PrimaryNetworkValidatingStartLeadTime        = 1 * time.Minute
+	AWSCloudServerRunningState                   = "running"
+	TerraformNodeConfigFile                      = "node_config.tf"
+	AvalancheCLISuffix                           = "-avalanche-cli"
+	AWSDefaultCredential                         = "default"
+	GCPDefaultImageProvider                      = "ubuntu-os-cloud"
+	GCPImageFilter                               = "family=ubuntu-2004* AND architecture=x86_64"
+	GCPEnvVar                                    = "GOOGLE_APPLICATION_CREDENTIALS"
+	GCPDefaultAuthKeyPath                        = "~/.config/gcloud/application_default_credentials.json"
+	CertSuffix                                   = "-kp.pem"
+	AWSSecurityGroupSuffix                       = "-sg"
+	ExportSubnetSuffix                           = "-export.dat"
+	SSHTCPPort                                   = 22
+	AvalanchegoAPIPort                           = 9650
+	AvalanchegoP2PPort                           = 9651
+	CloudServerStorageSize                       = 1000
+	OutboundPort                                 = 0
+	Terraform                                    = "terraform"
+	AnsiblePlaybook                              = "ansible-playbook"
+	SetupNodePlaybook                            = "playbook/setupNode.yml"
+	CopyStakingFilesPlaybook                     = "playbook/copyStakingFiles.yml"
+	ExportSubnetPlaybook                         = "playbook/exportSubnet.yml"
+	IsBootstrappedPlaybook                       = "playbook/isBootstrapped.yml"
+	IsSubnetSyncedPlaybook                       = "playbook/isSubnetSynced.yml"
+	TrackSubnetPlaybook                          = "playbook/trackSubnet.yml"
+	UpdateSubnetPlaybook                         = "playbook/updateSubnet.yml"
+	AvalancheGoVersionPlaybook                   = "playbook/avalancheGoVersion.yml"
+	SetupBuildEnvPlaybook                        = "playbook/setupBuildEnv.yml"
+	SetupCLIFromSourcePlaybook                   = "playbook/setupCLIFromSource.yml"
+	BuildEnvGolangVersion                        = "1.21.1"
+	IsBootstrappedJSONFile                       = "isBootstrapped.json"
+	AvalancheGoVersionJSONFile                   = "avalancheGoVersion.json"
+	SubnetSyncJSONFile                           = "isSubnetSynced.json"
+	AnsibleInventoryDir                          = "inventories"
+	AnsibleTempInventoryDir                      = "temp_inventories"
+	AnsiblePlaybookDir                           = "playbook"
+	AnsibleStatusDir                             = "status"
+	AnsibleInventoryFlag                         = "-i"
+	AnsibleExtraArgsIdentitiesOnlyFlag           = "--ssh-extra-args='-o IdentitiesOnly=yes'"
+	AnsibleSSHShellParams                        = "-o IdentitiesOnly=yes -o StrictHostKeyChecking=no"
+	AnsibleSSHInventoryParams                    = "-o StrictHostKeyChecking=no"
+	AnsibleExtraVarsFlag                         = "--extra-vars"
+	CloudCLIBranch                               = "custom-vms-cloud-10"
+	DefaultConfigFileName                        = ".avalanche-cli"
+	DefaultConfigFileType                        = "json"
+	AWSCloudService                              = "Amazon Web Services"
+	GCPCloudService                              = "Google Cloud Platform"
+	AnsibleSSHUser                               = "ubuntu"
+	AWSNodeAnsiblePrefix                         = "aws_node"
+	GCPNodeAnsiblePrefix                         = "gcp_node"
+	CustomVMDir                                  = "vms"
+	GCPStaticIPPrefix                            = "static-ip"
+	AvaLabsOrg                                   = "ava-labs"
+	AvalancheGoRepoName                          = "avalanchego"
+	SubnetEVMRepoName                            = "subnet-evm"
+	CliRepoName                                  = "avalanche-cli"
+  LatestAvalancheGo                      = "latestAvalancheGo"
 	CustomAvalancheGo                      = "customAvalancheGo"
-	Terraform                              = "terraform"
-	AnsiblePlaybook                        = "ansible-playbook"
-	SetupNodePlaybook                      = "playbook/setupNode.yml"
-	CopyStakingFilesPlaybook               = "playbook/copyStakingFiles.yml"
-	ExportSubnetPlaybook                   = "playbook/exportSubnet.yml"
-	GetNodeIDPlaybook                      = "playbook/getNodeID.yml"
-	IsBootstrappedPlaybook                 = "playbook/isBootstrapped.yml"
-	IsSubnetSyncedPlaybook                 = "playbook/isSubnetSynced.yml"
-	TrackSubnetPlaybook                    = "playbook/trackSubnet.yml"
-	UpdateSubnetPlaybook                   = "playbook/updateSubnet.yml"
-	AvalancheGoVersionPlaybook             = "playbook/avalancheGoVersion.yml"
-	SetupBuildEnvPlaybook                  = "playbook/setupBuildEnv.yml"
-	SetupCLIFromSourcePlaybook             = "playbook/setupCLIFromSource.yml"
-	UpgradeAvalancheGoPlaybook             = "playbook/upgradeAvalancheGo.yml"
+  UpgradeAvalancheGoPlaybook             = "playbook/upgradeAvalancheGo.yml"
 	UpgradeSubnetEVMPlaybook               = "playbook/upgradeSubnetEVM.yml"
 	GetNewSubnetEVMPlaybook                = "playbook/getNewSubnetEVMRelease.yml"
-	BuildEnvGolangVersion                  = "1.21.1"
-	IsBootstrappedJSONFile                 = "isBootstrapped.json"
-	AvalancheGoVersionJSONFile             = "avalancheGoVersion.json"
-	NodeIDJSONFile                         = "nodeID.json"
-	SubnetSyncJSONFile                     = "isSubnetSynced.json"
-	AnsibleInventoryDir                    = "inventories"
-	AnsibleTempInventoryDir                = "temp_inventories"
-	AnsiblePlaybookDir                     = "playbook"
-	AnsibleStatusDir                       = "status"
-	AnsibleInventoryFlag                   = "-i"
-	AnsibleExtraArgsIdentitiesOnlyFlag     = "--ssh-extra-args='-o IdentitiesOnly=yes'"
-	AnsibleSSHShellParams                  = "-o IdentitiesOnly=yes -o StrictHostKeyChecking=no"
-	AnsibleSSHInventoryParams              = "-o StrictHostKeyChecking=no"
-	AnsibleExtraVarsFlag                   = "--extra-vars"
-	CloudCLIBranch                         = "custom-vms-cloud-10"
-	DefaultConfigFileName                  = ".avalanche-cli"
-	DefaultConfigFileType                  = "json"
-	WriteReadReadPerms                     = 0o644
-	AWSCloudService                        = "Amazon Web Services"
-	GCPCloudService                        = "Google Cloud Platform"
-	AnsibleSSHUser                         = "ubuntu"
-	AWSNodeAnsiblePrefix                   = "aws_node"
-	GCPNodeAnsiblePrefix                   = "gcp_node"
-	GCPProjectNameClusterConfig            = "projectName"
-	GCPServiceAccountFilePathClusterConfig = "serviceAccountFilePath"
-	SubnetEVMReleaseURL                    = "https://github.com/ava-labs/subnet-evm/releases/download/%s/%s"
+  SubnetEVMReleaseURL                    = "https://github.com/ava-labs/subnet-evm/releases/download/%s/%s"
 	SubnetEVMArchive                       = "subnet-evm_%s_linux_amd64.tar.gz"
 	SubnetEVMBinaryPath                    = "/home/ubuntu/.avalanchego/plugins/%s"
-	CustomVMDir                            = "vms"
-
-	AvaLabsOrg          = "ava-labs"
-	AvalancheGoRepoName = "avalanchego"
-	SubnetEVMRepoName   = "subnet-evm"
-	CliRepoName         = "avalanche-cli"
 
 	AvalancheGoInstallDir = "avalanchego"
 	SubnetEVMInstallDir   = "subnet-evm"

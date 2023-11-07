@@ -4,7 +4,12 @@
 package gcp
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"golang.org/x/exp/slices"
 	"google.golang.org/api/compute/v1"
 )
@@ -72,4 +77,43 @@ func GetInstancePublicIPs(gcpClient *compute.Service, projectName, zone string, 
 		}
 	}
 	return instanceIDToIP, nil
+}
+
+// checkInstanceIsRunning checks that GCP instance nodeID is running in GCP
+func checkInstanceIsRunning(gcpClient *compute.Service, projectName, zone, nodeID string) (bool, error) {
+	instanceGetCall := gcpClient.Instances.Get(projectName, zone, nodeID)
+	instance, err := instanceGetCall.Do()
+	if err != nil {
+		return false, err
+	}
+	if instance.Status != "RUNNING" {
+		return false, fmt.Errorf("error %s is not running", nodeID)
+	}
+	return true, nil
+}
+
+func StopGCPNode(gcpClient *compute.Service, nodeConfig models.NodeConfig, projectName, clusterName string, releasePublicIP bool) error {
+	isRunning, err := checkInstanceIsRunning(gcpClient, projectName, nodeConfig.Region, nodeConfig.NodeID)
+	if err != nil {
+		return err
+	}
+	if !isRunning {
+		noRunningNodeErr := fmt.Errorf("no running node with instance id %s is found in cluster %s", nodeConfig.NodeID, clusterName)
+		return noRunningNodeErr
+	}
+	ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
+	instancesStopCall := gcpClient.Instances.Stop(projectName, nodeConfig.Region, nodeConfig.NodeID)
+	if _, err = instancesStopCall.Do(); err != nil {
+		return err
+	}
+	if releasePublicIP && nodeConfig.ElasticIP != "" {
+		ux.Logger.PrintToUser(fmt.Sprintf("Releasing static IP address %s ...", nodeConfig.ElasticIP))
+		// GCP node region is stored in format of "us-east1-b", we need "us-east1"
+		region := strings.Join(strings.Split(nodeConfig.Region, "-")[:2], "-")
+		addressReleaseCall := gcpClient.Addresses.Delete(projectName, region, fmt.Sprintf("%s-%s", constants.GCPStaticIPPrefix, nodeConfig.NodeID))
+		if _, err = addressReleaseCall.Do(); err != nil {
+			return fmt.Errorf("%s, %w", constants.ErrReleasingGCPStaticIP, err)
+		}
+	}
+	return nil
 }
