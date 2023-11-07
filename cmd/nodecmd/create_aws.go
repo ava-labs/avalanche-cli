@@ -25,32 +25,57 @@ import (
 )
 
 func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
-	ux.Logger.PrintToUser("What do you want to name your key pair?")
+	newKeyPairName := cmdLineAlternativeKeyPairName
 	for {
-		newKeyPairName, err := app.Prompt.CaptureString("Key Pair Name")
+		if newKeyPairName != "" {
+			keyPairExists, err := awsAPI.CheckKeyPairExists(ec2Svc, newKeyPairName)
+			if err != nil {
+				return "", err
+			}
+			if !keyPairExists {
+				return newKeyPairName, nil
+			}
+			ux.Logger.PrintToUser(fmt.Sprintf("Key Pair named %s already exists", newKeyPairName))
+		}
+		ux.Logger.PrintToUser("What do you want to name your key pair?")
+		var err error
+		newKeyPairName, err = app.Prompt.CaptureString("Key Pair Name")
 		if err != nil {
 			return "", err
 		}
-		keyPairExists, err := awsAPI.CheckKeyPairExists(ec2Svc, newKeyPairName)
-		if err != nil {
-			return "", err
-		}
-		if !keyPairExists {
-			return newKeyPairName, nil
-		}
-		ux.Logger.PrintToUser(fmt.Sprintf("Key Pair named %s already exists", newKeyPairName))
 	}
 }
 
+func printNoCredentialsOutput() {
+	ux.Logger.PrintToUser("No AWS credentials file found in ~/.aws/credentials")
+	ux.Logger.PrintToUser("Create a file called 'credentials' with the contents below, and add the file to ~/.aws/ directory")
+	ux.Logger.PrintToUser("===========BEGINNING OF FILE===========")
+	ux.Logger.PrintToUser("[default]\naws_access_key_id=<AWS_ACCESS_KEY>\naws_secret_access_key=<AWS_SECRET_ACCESS_KEY>")
+	ux.Logger.PrintToUser("===========END OF FILE===========")
+	ux.Logger.PrintToUser("More info can be found at https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-creds")
+}
+
+func printExpiredCredentialsOutput() {
+	ux.Logger.PrintToUser("AWS credentials expired")
+	ux.Logger.PrintToUser("Fill in ~/.aws/credentials with updated contents following the format below")
+	ux.Logger.PrintToUser("===========BEGINNING OF FILE===========")
+	ux.Logger.PrintToUser("[default]\naws_access_key_id=<AWS_ACCESS_KEY>\naws_secret_access_key=<AWS_SECRET_ACCESS_KEY>")
+	ux.Logger.PrintToUser("===========END OF FILE===========")
+	ux.Logger.PrintToUser("More info can be found at https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-creds")
+	ux.Logger.PrintToUser("")
+}
+
 // getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
-func getAWSCloudCredentials(region, awsCommand string) (*session.Session, error) {
-	if awsCommand == constants.StopAWSNode {
-		if err := requestStopAWSNodeAuth(); err != nil {
-			return &session.Session{}, err
-		}
-	} else if awsCommand == constants.CreateAWSNode {
-		if err := requestAWSAccountAuth(); err != nil {
-			return &session.Session{}, err
+func getAWSCloudCredentials(region, awsCommand string, authorizeAccess bool) (*session.Session, error) {
+	if !authorizeAccess {
+		if awsCommand == constants.StopAWSNode {
+			if err := requestStopAWSNodeAuth(); err != nil {
+				return &session.Session{}, err
+			}
+		} else if awsCommand == constants.CreateAWSNode {
+			if err := requestAWSAccountAuth(); err != nil {
+				return &session.Session{}, err
+			}
 		}
 	}
 	creds := credentials.NewSharedCredentials("", constants.AWSDefaultCredential)
@@ -79,32 +104,38 @@ func promptKeyPairName(ec2Svc *ec2.EC2) (string, string, error) {
 	return certName, newKeyPairName, nil
 }
 
-func getAWSCloudConfig() (*ec2.EC2, string, string, error) {
-	usEast1 := "us-east-1"
-	usEast2 := "us-east-2"
-	usWest1 := "us-west-1"
-	usWest2 := "us-west-2"
-	customRegion := "Choose custom region (list of regions available at https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html)"
-	region, err := app.Prompt.CaptureList(
-		"Which AWS region do you want to set up your node in?",
-		[]string{usEast1, usEast2, usWest1, usWest2, customRegion},
-	)
-	if err != nil {
-		return nil, "", "", err
-	}
-	if region == customRegion {
-		region, err = app.Prompt.CaptureString("Which AWS region do you want to set up your node in?")
+func getAWSCloudConfig(region string, authorizeAccess bool) (*ec2.EC2, string, string, error) {
+	if region == "" {
+		var err error
+		usEast1 := "us-east-1"
+		usEast2 := "us-east-2"
+		usWest1 := "us-west-1"
+		usWest2 := "us-west-2"
+		customRegion := "Choose custom region (list of regions available at https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html)"
+		region, err = app.Prompt.CaptureList(
+			"Which AWS region do you want to set up your node in?",
+			[]string{usEast1, usEast2, usWest1, usWest2, customRegion},
+		)
 		if err != nil {
 			return nil, "", "", err
 		}
+		if region == customRegion {
+			region, err = app.Prompt.CaptureString("Which AWS region do you want to set up your node in?")
+			if err != nil {
+				return nil, "", "", err
+			}
+		}
 	}
-	sess, err := getAWSCloudCredentials(region, constants.CreateAWSNode)
+	sess, err := getAWSCloudCredentials(region, constants.CreateAWSNode, authorizeAccess)
 	if err != nil {
 		return nil, "", "", err
 	}
 	ec2Svc := ec2.New(sess)
 	ami, err := awsAPI.GetUbuntuAMIID(ec2Svc)
 	if err != nil {
+		if strings.Contains(err.Error(), "RequestExpired: Request has expired") {
+			printExpiredCredentialsOutput()
+		}
 		return nil, "", "", err
 	}
 	return ec2Svc, region, ami, nil
@@ -114,6 +145,7 @@ func getAWSCloudConfig() (*ec2.EC2, string, string, error) {
 func createEC2Instances(rootBody *hclwrite.Body,
 	ec2Svc *ec2.EC2,
 	hclFile *hclwrite.File,
+	numNodes int,
 	region,
 	ami,
 	certName,
@@ -123,9 +155,12 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	if err := terraformaws.SetCloudCredentials(rootBody, region); err != nil {
 		return nil, nil, "", "", err
 	}
-	numNodes, err := app.Prompt.CaptureInt("How many nodes do you want to set up on AWS?")
-	if err != nil {
-		return nil, nil, "", "", err
+	if numNodes <= 0 {
+		var err error
+		numNodes, err = app.Prompt.CaptureInt("How many nodes do you want to set up on AWS?")
+		if err != nil {
+			return nil, nil, "", "", err
+		}
 	}
 	ux.Logger.PrintToUser("Creating new EC2 instance(s) on AWS...")
 	var useExistingKeyPair bool
@@ -213,7 +248,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
 }
 
-func createAWSInstance(ec2Svc *ec2.EC2, region, ami string, usr *user.User) (CloudConfig, error) {
+func createAWSInstances(ec2Svc *ec2.EC2, numNodes int, region, ami string, usr *user.User) (CloudConfig, error) {
 	prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
 	certName := prefix + "-" + region + constants.CertSuffix
 	securityGroupName := prefix + "-" + region + constants.AWSSecurityGroupSuffix
@@ -223,7 +258,7 @@ func createAWSInstance(ec2Svc *ec2.EC2, region, ami string, usr *user.User) (Clo
 	}
 
 	// Create new EC2 instances
-	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(rootBody, ec2Svc, hclFile, region, ami, certName, prefix, securityGroupName)
+	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(rootBody, ec2Svc, hclFile, numNodes, region, ami, certName, prefix, securityGroupName)
 	if err != nil {
 		if err.Error() == constants.EIPLimitErr {
 			ux.Logger.PrintToUser("Failed to create AWS cloud server, please try creating again in a different region")

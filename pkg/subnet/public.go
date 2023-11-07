@@ -543,12 +543,7 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error
 		return nil, fmt.Errorf("unsupported public network")
 	}
 	// filter out ids.Empty txs
-	filteredTxs := []ids.ID{}
-	for i := range preloadTxs {
-		if preloadTxs[i] != ids.Empty {
-			filteredTxs = append(filteredTxs, preloadTxs[i])
-		}
-	}
+	filteredTxs := utils.Filter(preloadTxs, func(e ids.ID) bool { return e != ids.Empty })
 	wallet, err := primary.MakeWallet(
 		ctx,
 		&primary.WalletConfig{

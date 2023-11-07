@@ -68,7 +68,7 @@ func getPublicIPForNodesWoEIP(nodesWoEIP []models.NodeConfig) (map[string]string
 		if lastRegion == "" || node.Region != lastRegion {
 			if node.CloudService == "" || node.CloudService == constants.AWSCloudService {
 				// check for empty because we didn't set this value when it was only on AWS
-				sess, err := getAWSCloudCredentials(node.Region, constants.GetAWSNodeIP)
+				sess, err := getAWSCloudCredentials(node.Region, constants.GetAWSNodeIP, true)
 				if err != nil {
 					return nil, err
 				}

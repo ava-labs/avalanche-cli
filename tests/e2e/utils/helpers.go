@@ -419,7 +419,7 @@ func ParseGreeterAddress(output string) error {
 		return err
 	}
 
-	return os.WriteFile(greeterFile, file, 0o600)
+	return os.WriteFile(greeterFile, file, constants.WriteReadUserOnlyPerms)
 }
 
 type confFile struct {
@@ -449,7 +449,7 @@ func SetHardhatRPC(rpc string) error {
 		return err
 	}
 
-	return os.WriteFile(confFilePath, file, 0o600)
+	return os.WriteFile(confFilePath, file, constants.WriteReadUserOnlyPerms)
 }
 
 func StartLedgerSim(
