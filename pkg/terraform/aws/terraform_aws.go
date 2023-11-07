@@ -24,7 +24,9 @@ func SetCloudCredentials(rootBody *hclwrite.Body, awsProfile, region string) err
 	provider := rootBody.AppendNewBlock("provider", []string{"aws"})
 	providerBody := provider.Body()
 	providerBody.SetAttributeValue("region", cty.StringVal(region))
-	providerBody.SetAttributeValue("profile", cty.StringVal(awsProfile))
+	if awsProfile != constants.AWSDefaultCredential {
+		providerBody.SetAttributeValue("profile", cty.StringVal(awsProfile))
+	}
 	return nil
 }
 

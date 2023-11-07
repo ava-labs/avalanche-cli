@@ -47,7 +47,8 @@ func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
 }
 
 func printNoCredentialsOutput(awsProfile string) {
-	ux.Logger.PrintToUser("No AWS credentials found in file ~/.aws/credentials or in env variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
+	ux.Logger.PrintToUser("No AWS credentials found in file ~/.aws/credentials ")
+	ux.Logger.PrintToUser("or in env variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
 	ux.Logger.PrintToUser("Please make sure correspoding keys are set in [%s] section in ~/.aws/credentials", awsProfile)
 	ux.Logger.PrintToUser("Or create a file called 'credentials' with the contents below, and add the file to ~/.aws/ directory if it's not already there")
 	ux.Logger.PrintToUser("===========BEGINNING OF FILE===========")
