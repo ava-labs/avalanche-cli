@@ -62,11 +62,17 @@ func upgrade(_ *cobra.Command, args []string) error {
 			if err = getNewSubnetEVMRelease(clusterName, subnetEVMReleaseURL, subnetEVMArchive, node, upgradeInfo.SubnetEVMVersion); err != nil {
 				return err
 			}
+			if err = startNode(clusterName, node); err != nil {
+				return err
+			}
 			for _, vmID := range upgradeInfo.SubnetEVMIDsToUpgrade {
 				subnetEVMBinaryPath := fmt.Sprintf(constants.SubnetEVMBinaryPath, vmID)
 				if err = upgradeSubnetEVM(clusterName, subnetEVMBinaryPath, node, upgradeInfo.SubnetEVMVersion); err != nil {
 					return err
 				}
+			}
+			if err = stopNode(clusterName, node); err != nil {
+				return err
 			}
 		}
 	}
@@ -116,6 +122,7 @@ func getNodesUpgradeInfo(clusterName string) (map[string]models.NodeUpgradeInfo,
 		}
 		vmVersions, err := parseNodeVersionOutput(app.GetAvalancheGoJSONFile())
 		if err != nil {
+			fmt.Printf("we here parseNodeVersionOutput")
 			failedNodes = append(failedNodes, host)
 			nodeErrors = append(nodeErrors, err)
 			continue
@@ -125,6 +132,7 @@ func getNodesUpgradeInfo(clusterName string) (map[string]models.NodeUpgradeInfo,
 		nodeUpgradeInfo := models.NodeUpgradeInfo{}
 		nodeUpgradeInfo.SubnetEVMIDsToUpgrade = []string{}
 		for vmName, vmVersion := range vmVersions {
+			fmt.Printf("we here vmVersions loop")
 			// when calling info.getNodeVersion, this is what we get
 			// "vmVersions":{"avm":"v1.10.12","evm":"v0.12.5","n8Anw9kErmgk7KHviddYtecCmziLZTphDwfL1V2DfnFjWZXbE":"v0.5.6","platform":"v1.10.12"}},
 			// we need to get the VM ID of the subnets that the node is currently validating, in the example above it is n8Anw9kErmgk7KHviddYtecCmziLZTphDwfL1V2DfnFjWZXbE
@@ -186,6 +194,20 @@ func upgradeAvalancheGo(clusterName, ansibleNodeID, avaGoVersionToUpdateTo strin
 	return nil
 }
 
+func stopNode(clusterName, ansibleNodeID string) error {
+	if err := ansible.RunAnsiblePlaybookStopNode(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
+		return err
+	}
+	return nil
+}
+
+func startNode(clusterName, ansibleNodeID string) error {
+	if err := ansible.RunAnsiblePlaybookStartNode(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
+		return err
+	}
+	return nil
+}
+
 func upgradeSubnetEVM(clusterName, subnetEVMBinaryPath, ansibleNodeID, subnetEVMVersion string) error {
 	ux.Logger.PrintToUser("Upgrading SubnetEVM version of node %s to version %s ...", ansibleNodeID, subnetEVMVersion)
 	if err := ansible.RunAnsiblePlaybookUpgradeSubnetEVM(app.GetAnsibleDir(), subnetEVMBinaryPath, app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
@@ -208,6 +230,7 @@ func getNewSubnetEVMRelease(clusterName, subnetEVMReleaseURL, subnetEVMArchive, 
 
 func parseNodeVersionOutput(fileName string) (map[string]interface{}, error) {
 	jsonFile, err := os.Open(fileName)
+	fmt.Printf("filename %s \n", fileName)
 	if err != nil {
 		return nil, err
 	}
@@ -222,6 +245,7 @@ func parseNodeVersionOutput(fileName string) (map[string]interface{}, error) {
 	}
 	nodeIDInterface, ok := result["result"].(map[string]interface{})
 	if ok {
+		fmt.Printf("nodeIDInterface %s \n", nodeIDInterface)
 		vmVersions, ok := nodeIDInterface["vmVersions"].(map[string]interface{})
 		if ok {
 			return vmVersions, nil

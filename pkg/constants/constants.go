@@ -151,6 +151,8 @@ const (
 	CliRepoName                                  = "avalanche-cli"
 	UpgradeAvalancheGoPlaybook                   = "playbook/upgradeAvalancheGo.yml"
 	UpgradeSubnetEVMPlaybook                     = "playbook/upgradeSubnetEVM.yml"
+	StopNodePlaybook                             = "playbook/stopNode.yml"
+	StartNodePlaybook                            = "playbook/startNode.yml"
 	GetNewSubnetEVMPlaybook                      = "playbook/getNewSubnetEVMRelease.yml"
 	SubnetEVMReleaseURL                          = "https://github.com/ava-labs/subnet-evm/releases/download/%s/%s"
 	SubnetEVMArchive                             = "subnet-evm_%s_linux_amd64.tar.gz"
