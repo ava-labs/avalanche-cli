@@ -19,20 +19,22 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/config"
 	coreth_params "github.com/ava-labs/coreth/params"
-	"github.com/spf13/cobra"
 )
 
 // difference between unlock schedule locktime and startime in original genesis
-const genesisLocktimeStartimeDelta = 2836800
+const (
+	genesisLocktimeStartimeDelta = 2836800
+	hexa0Str                     = "0x0"
+)
 
 func generateCustomCchainGenesis() ([]byte, error) {
 	cChainGenesisMap := map[string]interface{}{}
 	cChainGenesisMap["config"] = coreth_params.AvalancheLocalChainConfig
-	cChainGenesisMap["nonce"] = "0x0"
-	cChainGenesisMap["timestamp"] = "0x0"
+	cChainGenesisMap["nonce"] = hexa0Str
+	cChainGenesisMap["timestamp"] = hexa0Str
 	cChainGenesisMap["extraData"] = "0x00"
 	cChainGenesisMap["gasLimit"] = "0x5f5e100"
-	cChainGenesisMap["difficulty"] = "0x0"
+	cChainGenesisMap["difficulty"] = hexa0Str
 	cChainGenesisMap["mixHash"] = "0x0000000000000000000000000000000000000000000000000000000000000000"
 	cChainGenesisMap["coinbase"] = "0x0000000000000000000000000000000000000000"
 	cChainGenesisMap["alloc"] = map[string]interface{}{
@@ -40,8 +42,8 @@ func generateCustomCchainGenesis() ([]byte, error) {
 			"balance": "0x295BE96E64066972000000",
 		},
 	}
-	cChainGenesisMap["number"] = "0x0"
-	cChainGenesisMap["gasUsed"] = "0x0"
+	cChainGenesisMap["number"] = hexa0Str
+	cChainGenesisMap["gasUsed"] = hexa0Str
 	cChainGenesisMap["parentHash"] = "0x0000000000000000000000000000000000000000000000000000000000000000"
 	return json.Marshal(cChainGenesisMap)
 }
@@ -102,10 +104,6 @@ func generateCustomGenesis(networkID uint32, walletAddr string, stakingAddr stri
 	return json.MarshalIndent(genesisMap, "", " ")
 }
 
-func devnetCmd(_ *cobra.Command, args []string) error {
-	return setupDevnet(args[0])
-}
-
 func setupDevnet(clusterName string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
@@ -136,25 +134,25 @@ func setupDevnet(clusterName string) error {
 	// set devnet network
 	network := models.DevnetNetwork
 	network.Endpoint = "http://" + ansibleHosts[ansibleHostIDs[0]].IP + ":9650"
-	ux.Logger.PrintToUser("Devnet Network Id: %d", network.Id)
+	ux.Logger.PrintToUser("Devnet Network Id: %d", network.ID)
 	ux.Logger.PrintToUser("Devnet Endpoint: %s", network.Endpoint)
 
 	// get random staking key for devnet genesis
-	k, err := key.NewSoft(network.Id)
+	k, err := key.NewSoft(network.ID)
 	if err != nil {
 		return err
 	}
 	stakingAddrStr := k.X()[0]
 
 	// get ewoq key as funded key for devnet genesis
-	k, err = key.LoadEwoq(network.Id)
+	k, err = key.LoadEwoq(network.ID)
 	if err != nil {
 		return err
 	}
 	walletAddrStr := k.X()[0]
 
 	// create genesis file at each node dir
-	genesisBytes, err := generateCustomGenesis(network.Id, walletAddrStr, stakingAddrStr, nodeIDs)
+	genesisBytes, err := generateCustomGenesis(network.ID, walletAddrStr, stakingAddrStr, nodeIDs)
 	if err != nil {
 		return err
 	}
@@ -173,7 +171,7 @@ func setupDevnet(clusterName string) error {
 		confMap := map[string]interface{}{}
 		confMap[config.HTTPHostKey] = ""
 		confMap[config.PublicIPKey] = ansibleHosts[ansibleHostID].IP
-		confMap[config.NetworkNameKey] = fmt.Sprintf("network-%d", network.Id)
+		confMap[config.NetworkNameKey] = fmt.Sprintf("network-%d", network.ID)
 		confMap[config.BootstrapIDsKey] = strings.Join(bootstrapIDs, ",")
 		confMap[config.BootstrapIPsKey] = strings.Join(bootstrapIPs, ",")
 		confMap[config.GenesisFileKey] = "/home/ubuntu/.avalanchego/configs/genesis.json"

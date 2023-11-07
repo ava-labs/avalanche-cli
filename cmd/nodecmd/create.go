@@ -27,7 +27,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 
-	subnet "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 
@@ -277,49 +276,47 @@ func createClusterNodeConfig(network models.Network, cloudConfig CloudConfig, cl
 }
 
 func updateKeyPairClustersConfig(cloudConfig CloudConfig) error {
-	clusterConfig := models.ClustersConfig{}
+	clustersConfig := models.ClustersConfig{}
 	var err error
 	if app.ClustersConfigExists() {
-		clusterConfig, err = app.LoadClustersConfig()
+		clustersConfig, err = app.LoadClustersConfig()
 		if err != nil {
 			return err
 		}
 	}
-	if clusterConfig.KeyPair == nil {
-		clusterConfig.KeyPair = make(map[string]string)
+	if clustersConfig.KeyPair == nil {
+		clustersConfig.KeyPair = make(map[string]string)
 	}
-	if _, ok := clusterConfig.KeyPair[cloudConfig.KeyPair]; !ok {
-		clusterConfig.KeyPair[cloudConfig.KeyPair] = cloudConfig.CertFilePath
+	if _, ok := clustersConfig.KeyPair[cloudConfig.KeyPair]; !ok {
+		clustersConfig.KeyPair[cloudConfig.KeyPair] = cloudConfig.CertFilePath
 	}
-	return app.WriteClustersConfigFile(&clusterConfig)
+	return app.WriteClustersConfigFile(&clustersConfig)
 }
 
 func addNodeToClustersConfig(network models.Network, nodeID, clusterName string) error {
-	clusterConfig := models.ClustersConfig{}
+	clustersConfig := models.ClustersConfig{}
 	var err error
 	if app.ClustersConfigExists() {
-		clusterConfig, err = app.LoadClustersConfig()
+		clustersConfig, err = app.LoadClustersConfig()
 		if err != nil {
 			return err
 		}
 	}
-	if clusterConfig.Clusters == nil {
-		clusterConfig.Clusters = make(map[string]models.ClusterConfig)
+	if clustersConfig.Clusters == nil {
+		clustersConfig.Clusters = make(map[string]models.ClusterConfig)
 	}
-	if _, ok := clusterConfig.Clusters[clusterName]; !ok {
-		clusterConfig.Clusters[clusterName] = models.ClusterConfig{
+	if _, ok := clustersConfig.Clusters[clusterName]; !ok {
+		clustersConfig.Clusters[clusterName] = models.ClusterConfig{
 			Network: network,
 			Nodes:   []string{},
 		}
-
 	}
-	nodes := clusterConfig.Clusters[clusterName].Nodes
-	nodes = append(clusterConfig.Clusters[clusterName].Nodes, nodeID)
-	clusterConfig.Clusters[clusterName] = models.ClusterConfig{
+	nodes := clustersConfig.Clusters[clusterName].Nodes
+	clustersConfig.Clusters[clusterName] = models.ClusterConfig{
 		Network: network,
-		Nodes:   nodes,
+		Nodes:   append(nodes, nodeID),
 	}
-	return app.WriteClustersConfigFile(&clusterConfig)
+	return app.WriteClustersConfigFile(&clustersConfig)
 }
 
 // setupAnsible we need to remove existing ansible directory and its contents in .avalanche-cli dir
@@ -526,7 +523,7 @@ func promptAvalancheGoReferenceChoice() (string, string, error) {
 			if err != nil {
 				return "", "", err
 			}
-			_, err = subnet.ValidateSubnetNameAndGetChains([]string{subnetName})
+			_, err = subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName})
 			if err == nil {
 				return avalancheGoReferenceChoiceSubnet, subnetName, nil
 			}

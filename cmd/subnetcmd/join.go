@@ -687,9 +687,9 @@ func printJoinCmd(subnetID string, network models.Network, vmPath string) {
 	networkIDValue := ""
 	switch network.Kind {
 	case models.Local:
-		networkIDValue = fmt.Sprintf("network-%d", network.Id)
+		networkIDValue = fmt.Sprintf("network-%d", network.ID)
 	case models.Devnet:
-		networkIDValue = fmt.Sprintf("network-%d", network.Id)
+		networkIDValue = fmt.Sprintf("network-%d", network.ID)
 	case models.Fuji:
 		networkIDValue = "fuji"
 	case models.Mainnet:

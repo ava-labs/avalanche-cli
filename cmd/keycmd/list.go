@@ -231,7 +231,7 @@ func getStoredKeyInfo(
 	addrInfos := []addressInfo{}
 	for _, network := range networks {
 		keyName := strings.TrimSuffix(filepath.Base(keyPath), constants.KeySuffix)
-		sk, err := key.LoadSoft(network.Id, keyPath)
+		sk, err := key.LoadSoft(network.ID, keyPath)
 		if err != nil {
 			return nil, err
 		}
@@ -291,7 +291,7 @@ func getLedgerIndexInfo(
 ) ([]addressInfo, error) {
 	addrInfos := []addressInfo{}
 	for _, network := range networks {
-		pChainAddr, err := address.Format("P", key.GetHRP(network.Id), addr[:])
+		pChainAddr, err := address.Format("P", key.GetHRP(network.ID), addr[:])
 		if err != nil {
 			return nil, err
 		}

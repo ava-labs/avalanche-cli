@@ -79,7 +79,7 @@ func GetOwners(network models.Network, subnetID ids.ID) ([]string, uint32, error
 	}
 	controlKeys := owner.Addrs
 	threshold := owner.Threshold
-	hrp := key.GetHRP(network.Id)
+	hrp := key.GetHRP(network.ID)
 	controlKeysStrs := []string{}
 	for _, addr := range controlKeys {
 		addrStr, err := address.Format("P", hrp, addr[:])

@@ -240,7 +240,7 @@ func transferF(*cobra.Command, []string) error {
 	var kc keychain.Keychain
 	if keyName != "" {
 		keyPath := app.GetKeyPath(keyName)
-		sk, err := key.LoadSoft(network.Id, keyPath)
+		sk, err := key.LoadSoft(network.ID, keyPath)
 		if err != nil {
 			return err
 		}
@@ -271,7 +271,7 @@ func transferF(*cobra.Command, []string) error {
 		}
 	} else {
 		receiverAddr = kc.Addresses().List()[0]
-		receiverAddrStr, err = address.Format("P", key.GetHRP(network.Id), receiverAddr[:])
+		receiverAddrStr, err = address.Format("P", key.GetHRP(network.ID), receiverAddr[:])
 		if err != nil {
 			return err
 		}
@@ -281,7 +281,7 @@ func transferF(*cobra.Command, []string) error {
 	ux.Logger.PrintToUser("this operation is going to:")
 	if send {
 		addr := kc.Addresses().List()[0]
-		addrStr, err := address.Format("P", key.GetHRP(network.Id), addr[:])
+		addrStr, err := address.Format("P", key.GetHRP(network.ID), addr[:])
 		if err != nil {
 			return err
 		}

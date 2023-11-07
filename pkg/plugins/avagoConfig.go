@@ -109,9 +109,9 @@ func EditConfigFile(
 	networkIDValue := ""
 	switch network.Kind {
 	case models.Local:
-		networkIDValue = "network-" + fmt.Sprint(network.Id)
+		networkIDValue = "network-" + fmt.Sprint(network.ID)
 	case models.Devnet:
-		networkIDValue = "network-" + fmt.Sprint(network.Id)
+		networkIDValue = "network-" + fmt.Sprint(network.ID)
 	case models.Fuji:
 		networkIDValue = "fuji"
 	case models.Mainnet:

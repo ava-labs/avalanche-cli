@@ -33,7 +33,7 @@ func (s NetworkKind) String() string {
 
 type Network struct {
 	Kind     NetworkKind
-	Id       uint32
+	ID       uint32
 	Endpoint string
 }
 
@@ -48,7 +48,7 @@ var (
 func NewNetwork(kind NetworkKind, id uint32, endpoint string) Network {
 	return Network{
 		Kind:     kind,
-		Id:       id,
+		ID:       id,
 		Endpoint: endpoint,
 	}
 }
