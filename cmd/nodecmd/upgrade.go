@@ -49,10 +49,8 @@ func upgrade(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("obtained toUpgradeNodesMap %s \n ", toUpgradeNodesMap)
 	for node, upgradeInfo := range toUpgradeNodesMap {
 		if upgradeInfo.AvalancheGoVersion != "" {
-			fmt.Printf("upgrading avlanachego %s \n ", upgradeInfo.AvalancheGoVersion)
 			if err = upgradeAvalancheGo(clusterName, node, upgradeInfo.AvalancheGoVersion); err != nil {
 				return err
 			}
@@ -69,7 +67,6 @@ func upgrade(_ *cobra.Command, args []string) error {
 			}
 			for _, vmID := range upgradeInfo.SubnetEVMIDsToUpgrade {
 				subnetEVMBinaryPath := fmt.Sprintf(constants.SubnetEVMBinaryPath, vmID)
-				fmt.Printf("upgrading upgradeSubnetEVM %s  for binary %s \n  ", upgradeInfo.SubnetEVMVersion, subnetEVMBinaryPath)
 				if err = upgradeSubnetEVM(clusterName, subnetEVMBinaryPath, node, upgradeInfo.SubnetEVMVersion); err != nil {
 					return err
 				}
