@@ -105,19 +105,7 @@ func EditConfigFile(
 	// Banf.10 changes from "whitelisted-subnets" to "track-subnets"
 	delete(avagoConfig, "whitelisted-subnets")
 	avagoConfig["track-subnets"] = newVal
-
-	networkIDValue := ""
-	switch network.Kind {
-	case models.Local:
-		networkIDValue = "network-" + fmt.Sprint(network.ID)
-	case models.Devnet:
-		networkIDValue = "network-" + fmt.Sprint(network.ID)
-	case models.Fuji:
-		networkIDValue = "fuji"
-	case models.Mainnet:
-		networkIDValue = "mainnet"
-	}
-	avagoConfig["network-id"] = networkIDValue
+	avagoConfig["network-id"] = network.NetworkIDFlagValue()
 
 	writeBytes, err := json.MarshalIndent(avagoConfig, "", "  ")
 	if err != nil {

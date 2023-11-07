@@ -55,6 +55,11 @@ func NewNetwork(kind NetworkKind, id uint32, endpoint string) Network {
 	}
 }
 
+func NewDevnetNetwork(ip string, port int) Network {
+	endpoint := fmt.Sprintf("http://%s:%d", ip, port)
+	return NewNetwork(Devnet, constants.DevnetNetworkID, endpoint)
+}
+
 func NetworkFromString(s string) Network {
 	switch s {
 	case Mainnet.String():
@@ -89,4 +94,18 @@ func (n Network) Name() string {
 
 func (n Network) CChainEndpoint() string {
 	return fmt.Sprintf("%s/ext/bc/%s/rpc", n.Endpoint, "C")
+}
+
+func (n Network) NetworkIDFlagValue() string {
+	switch n.Kind {
+	case Local:
+		return fmt.Sprintf("network-%d", n.ID)
+	case Devnet:
+		return fmt.Sprintf("network-%d", n.ID)
+	case Fuji:
+		return "fuji"
+	case Mainnet:
+		return "mainnet"
+	}
+	return "invalid-network"
 }

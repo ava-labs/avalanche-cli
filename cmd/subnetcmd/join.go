@@ -684,17 +684,6 @@ func promptStakeAmount(subnetName string, isValidator bool, network models.Netwo
 }
 
 func printJoinCmd(subnetID string, network models.Network, vmPath string) {
-	networkIDValue := ""
-	switch network.Kind {
-	case models.Local:
-		networkIDValue = fmt.Sprintf("network-%d", network.ID)
-	case models.Devnet:
-		networkIDValue = fmt.Sprintf("network-%d", network.ID)
-	case models.Fuji:
-		networkIDValue = "fuji"
-	case models.Mainnet:
-		networkIDValue = "mainnet"
-	}
 	msg := `
 To setup your node, you must do two things:
 
@@ -728,7 +717,7 @@ this tool will try to update the file automatically (make sure it can write to i
 After you update your config, you will need to restart your node for the changes to
 take effect.`
 
-	ux.Logger.PrintToUser(msg, vmPath, subnetID, networkIDValue, subnetID, subnetID)
+	ux.Logger.PrintToUser(msg, vmPath, subnetID, network.NetworkIDFlagValue(), subnetID, subnetID)
 }
 
 func getAssetBalance(ctx context.Context, pClient platformvm.Client, addr string, assetID ids.ID) (uint64, error) {

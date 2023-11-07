@@ -153,17 +153,14 @@ func transferF(*cobra.Command, []string) error {
 	}
 
 	var network models.Network
-	if local {
+	switch {
+	case local:
 		network = models.LocalNetwork
-	}
-	if testnet {
+	case testnet:
 		network = models.FujiNetwork
-	}
-	if mainnet {
+	case mainnet:
 		network = models.MainnetNetwork
-	}
-	if network.Kind == models.Undefined {
-		// no flag was set, prompt user
+	default:
 		networkStr, err := app.Prompt.CaptureList(
 			"Network to use",
 			[]string{models.Mainnet.String(), models.Fuji.String(), models.Local.String()},

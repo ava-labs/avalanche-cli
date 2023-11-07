@@ -226,7 +226,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		return err
 	}
 	createdAnsibleHostIDs := strings.Join(ansibleHostIDs, ",")
-	if err = runAnsible(network, inventoryPath, avalancheGoVersion, clusterName, createdAnsibleHostIDs); err != nil {
+	if err = runAnsible(inventoryPath, network, avalancheGoVersion, clusterName, createdAnsibleHostIDs); err != nil {
 		return err
 	}
 	if err = setupBuildEnv(inventoryPath, createdAnsibleHostIDs); err != nil {
@@ -332,7 +332,7 @@ func setupAnsible(clusterName string) error {
 	return updateAnsiblePublicIPs(clusterName)
 }
 
-func runAnsible(network models.Network, inventoryPath, avalancheGoVersion, clusterName, ansibleHostIDs string) error {
+func runAnsible(inventoryPath string, network models.Network, avalancheGoVersion, clusterName, ansibleHostIDs string) error {
 	if err := setupAnsible(clusterName); err != nil {
 		return err
 	}
