@@ -160,7 +160,7 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		network = models.LocalNetwork
 	}
 
-	subnetID := sc.Networks[network.Kind.String()].SubnetID
+	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
@@ -316,12 +316,12 @@ func writeAvagoChainConfigFiles(
 		dataDir = filepath.Join(home, ".avalanchego")
 	}
 
-	subnetID := sc.Networks[network.Kind.String()].SubnetID
+	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
 	subnetIDStr := subnetID.String()
-	blockchainID := sc.Networks[network.Kind.String()].BlockchainID
+	blockchainID := sc.Networks[network.Name()].BlockchainID
 	if blockchainID == ids.Empty {
 		return errNoBlockchainID
 	}
@@ -390,7 +390,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 		return ErrMutuallyExlusiveKeyLedger
 	}
 
-	subnetID := sc.Networks[network.Kind.String()].SubnetID
+	subnetID := sc.Networks[network.Name()].SubnetID
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
 		subnetID = sc.Networks[models.Local.String()].SubnetID
 	}
@@ -473,7 +473,7 @@ func printAddPermissionlessValOutput(txID ids.ID, nodeID ids.NodeID, network mod
 	ux.Logger.PrintToUser("Validator successfully joined elastic subnet!")
 	ux.Logger.PrintToUser("TX ID: %s", txID.String())
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
-	ux.Logger.PrintToUser("Network: %s", network.Kind.String())
+	ux.Logger.PrintToUser("Network: %s", network.Name())
 	ux.Logger.PrintToUser("Start time: %s", start.UTC().Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("End time: %s", endTime.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("Stake Amount: %d", stakedTokenAmount)

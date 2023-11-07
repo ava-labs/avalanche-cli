@@ -142,7 +142,7 @@ func importRunningSubnet(*cobra.Command, []string) error {
 	defer cancel()
 	options := []rpc.Option{}
 
-	ux.Logger.PrintToUser("Getting information from the %s network...", network.Kind.String())
+	ux.Logger.PrintToUser("Getting information from the %s network...", network.Name())
 
 	txBytes, err := client.GetTx(ctx, blockchainID, options...)
 	if err != nil {
@@ -205,7 +205,7 @@ func importRunningSubnet(*cobra.Command, []string) error {
 		Name: subnetName,
 		VM:   vmType,
 		Networks: map[string]models.NetworkData{
-			network.Kind.String(): {
+			network.Name(): {
 				SubnetID:     subnetID,
 				BlockchainID: blockchainID,
 			},

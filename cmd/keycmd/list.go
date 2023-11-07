@@ -125,7 +125,7 @@ func getClients(networks []models.Network, cchain bool) (
 	for _, network := range networks {
 		pClients[network] = platformvm.NewClient(network.Endpoint)
 		if cchain {
-			cClients[network], err = ethclient.Dial(fmt.Sprintf("%s/ext/bc/%s/rpc", network.Endpoint, "C"))
+			cClients[network], err = ethclient.Dial(network.CChainEndpoint())
 			if err != nil {
 				return nil, nil, err
 			}
@@ -330,7 +330,7 @@ func getPChainAddrInfo(
 		chain:   "P-Chain (Bech32 format)",
 		address: pChainAddr,
 		balance: balance,
-		network: network.Kind.String(),
+		network: network.Name(),
 	}, nil
 }
 
@@ -354,7 +354,7 @@ func getCChainAddrInfo(
 		chain:   "C-Chain (Ethereum hex format)",
 		address: cChainAddr,
 		balance: cChainBalance,
-		network: network.Kind.String(),
+		network: network.Name(),
 	}, nil
 }
 

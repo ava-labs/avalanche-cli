@@ -232,7 +232,7 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 		return ErrMutuallyExlusiveKeyLedger
 	}
 
-	subnetID := sc.Networks[network.Kind.String()].SubnetID
+	subnetID := sc.Networks[network.Name()].SubnetID
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
 		subnetID = sc.Networks[models.Local.String()].SubnetID
 	}
@@ -394,7 +394,7 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	flags := make(map[string]string)
-	flags[constants.Network] = network.Kind.String()
+	flags[constants.Network] = network.Name()
 	if !isFullySigned {
 		flags[constants.MultiSig] = "multi-sig"
 	} else {
@@ -727,8 +727,8 @@ func checkIfTxHasOccurred(
 	if sc.ElasticSubnet == nil {
 		return false, ids.Empty
 	}
-	if sc.ElasticSubnet[network.Kind.String()].Txs != nil {
-		txID, ok := sc.ElasticSubnet[network.Kind.String()].Txs[txName]
+	if sc.ElasticSubnet[network.Name()].Txs != nil {
+		txID, ok := sc.ElasticSubnet[network.Name()].Txs[txName]
 		if ok {
 			return true, txID
 		}

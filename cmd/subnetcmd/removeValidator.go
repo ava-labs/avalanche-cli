@@ -128,7 +128,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	subnetID := sc.Networks[network.Kind.String()].SubnetID
+	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
@@ -180,7 +180,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
-	ux.Logger.PrintToUser("Network: %s", network.Kind.String())
+	ux.Logger.PrintToUser("Network: %s", network.Name())
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to remove the specified validator...")
 
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)

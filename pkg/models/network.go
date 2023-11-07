@@ -3,6 +3,8 @@
 package models
 
 import (
+	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 )
@@ -17,8 +19,8 @@ const (
 	Devnet
 )
 
-func (s NetworkKind) String() string {
-	switch s {
+func (nk NetworkKind) String() string {
+	switch nk {
 	case Mainnet:
 		return "Mainnet"
 	case Fuji:
@@ -79,4 +81,12 @@ func NetworkFromNetworkID(networkID uint32) Network {
 		return DevnetNetwork
 	}
 	return UndefinedNetwork
+}
+
+func (n Network) Name() string {
+	return n.Kind.String()
+}
+
+func (n Network) CChainEndpoint() string {
+	return fmt.Sprintf("%s/ext/bc/%s/rpc", n.Endpoint, "C")
 }

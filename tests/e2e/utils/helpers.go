@@ -193,7 +193,7 @@ func AddSubnetIDToSidecar(subnetName string, network models.Network, subnetID st
 	if err != nil {
 		return err
 	}
-	sc.Networks[network.Kind.String()] = models.NetworkData{
+	sc.Networks[network.Name()] = models.NetworkData{
 		SubnetID: subnetIDstr,
 	}
 

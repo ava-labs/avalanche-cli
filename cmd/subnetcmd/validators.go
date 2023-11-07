@@ -75,7 +75,7 @@ func printValidators(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	deployInfo, ok := sc.Networks[network.Kind.String()]
+	deployInfo, ok := sc.Networks[network.Name()]
 	if !ok {
 		return errors.New("no deployment found for subnet")
 	}
