@@ -195,8 +195,8 @@ func (app *Avalanche) GetTempCertPath(certName string) string {
 	return filepath.Join(app.GetTerraformDir(), certName)
 }
 
-func (app *Avalanche) GetClusterConfigPath() string {
-	return filepath.Join(app.GetNodesDir(), constants.ClusterConfigFileName)
+func (app *Avalanche) GetClustersConfigPath() string {
+	return filepath.Join(app.GetNodesDir(), constants.ClustersConfigFileName)
 }
 
 func (app *Avalanche) GetNodeBLSSecretKeyPath(instanceID string) string {
@@ -329,8 +329,8 @@ func (app *Avalanche) NetworkUpgradeExists(subnetName string) bool {
 	return err == nil
 }
 
-func (app *Avalanche) ClusterConfigExists() bool {
-	_, err := os.Stat(app.GetClusterConfigPath())
+func (app *Avalanche) ClustersConfigExists() bool {
+	_, err := os.Stat(app.GetClustersConfigPath())
 	return err == nil
 }
 
@@ -400,7 +400,7 @@ func (app *Avalanche) LoadRawGenesis(subnetName string, network models.Network) 
 	if err != nil {
 		return nil, err
 	}
-	if network == models.Mainnet {
+	if network.Kind == models.Mainnet {
 		genesisPath = app.GetGenesisMainnetPath(subnetName)
 		genesisMainnetBytes, err := os.ReadFile(genesisPath)
 		if err == nil {
@@ -483,7 +483,7 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	if sc.Networks == nil {
 		sc.Networks = make(map[string]models.NetworkData)
 	}
-	sc.Networks[network.String()] = models.NetworkData{
+	sc.Networks[network.Kind.String()] = models.NetworkData{
 		SubnetID:     subnetID,
 		BlockchainID: blockchainID,
 		RPCVersion:   sc.RPCVersion,
@@ -506,8 +506,8 @@ func (app *Avalanche) UpdateSidecarElasticSubnet(
 	if sc.ElasticSubnet == nil {
 		sc.ElasticSubnet = make(map[string]models.ElasticSubnet)
 	}
-	partialTxs := sc.ElasticSubnet[network.String()].Txs
-	sc.ElasticSubnet[network.String()] = models.ElasticSubnet{
+	partialTxs := sc.ElasticSubnet[network.Kind.String()].Txs
+	sc.ElasticSubnet[network.Kind.String()] = models.ElasticSubnet{
 		SubnetID:    subnetID,
 		AssetID:     assetID,
 		PChainTXID:  pchainTXID,
@@ -527,12 +527,12 @@ func (app *Avalanche) UpdateSidecarPermissionlessValidator(
 	nodeID string,
 	txID ids.ID,
 ) error {
-	elasticSubnet := sc.ElasticSubnet[network.String()]
+	elasticSubnet := sc.ElasticSubnet[network.Kind.String()]
 	if elasticSubnet.Validators == nil {
 		elasticSubnet.Validators = make(map[string]models.PermissionlessValidators)
 	}
 	elasticSubnet.Validators[nodeID] = models.PermissionlessValidators{TxID: txID}
-	sc.ElasticSubnet[network.String()] = elasticSubnet
+	sc.ElasticSubnet[network.Kind.String()] = elasticSubnet
 	if err := app.UpdateSidecar(sc); err != nil {
 		return err
 	}
@@ -549,11 +549,11 @@ func (app *Avalanche) UpdateSidecarElasticSubnetPartialTx(
 		sc.ElasticSubnet = make(map[string]models.ElasticSubnet)
 	}
 	partialTxs := make(map[string]ids.ID)
-	if sc.ElasticSubnet[network.String()].Txs != nil {
-		partialTxs = sc.ElasticSubnet[network.String()].Txs
+	if sc.ElasticSubnet[network.Kind.String()].Txs != nil {
+		partialTxs = sc.ElasticSubnet[network.Kind.String()].Txs
 	}
 	partialTxs[txName] = txID
-	sc.ElasticSubnet[network.String()] = models.ElasticSubnet{
+	sc.ElasticSubnet[network.Kind.String()] = models.ElasticSubnet{
 		Txs: partialTxs,
 	}
 	return app.UpdateSidecar(sc)
@@ -682,29 +682,29 @@ func (app *Avalanche) LoadClusterNodeConfig(nodeName string) (models.NodeConfig,
 	return nodeConfig, err
 }
 
-func (app *Avalanche) LoadClusterConfig() (models.ClusterConfig, error) {
-	clusterConfigPath := app.GetClusterConfigPath()
-	jsonBytes, err := os.ReadFile(clusterConfigPath)
+func (app *Avalanche) LoadClustersConfig() (models.ClustersConfig, error) {
+	clustersConfigPath := app.GetClustersConfigPath()
+	jsonBytes, err := os.ReadFile(clustersConfigPath)
 	if err != nil {
-		return models.ClusterConfig{}, err
+		return models.ClustersConfig{}, err
 	}
-	var clusterConfig models.ClusterConfig
-	err = json.Unmarshal(jsonBytes, &clusterConfig)
-	return clusterConfig, err
+	var clustersConfig models.ClustersConfig
+	err = json.Unmarshal(jsonBytes, &clustersConfig)
+	return clustersConfig, err
 }
 
-func (app *Avalanche) WriteClusterConfigFile(clusterConfig *models.ClusterConfig) error {
-	clusterConfigPath := app.GetClusterConfigPath()
-	if err := os.MkdirAll(filepath.Dir(clusterConfigPath), constants.DefaultPerms755); err != nil {
+func (app *Avalanche) WriteClustersConfigFile(clustersConfig *models.ClustersConfig) error {
+	clustersConfigPath := app.GetClustersConfigPath()
+	if err := os.MkdirAll(filepath.Dir(clustersConfigPath), constants.DefaultPerms755); err != nil {
 		return err
 	}
 
-	clusterConfigBytes, err := json.MarshalIndent(clusterConfig, "", "    ")
+	clustersConfigBytes, err := json.MarshalIndent(clustersConfig, "", "    ")
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(clusterConfigPath, clusterConfigBytes, constants.WriteReadReadPerms)
+	return os.WriteFile(clustersConfigPath, clustersConfigBytes, constants.WriteReadReadPerms)
 }
 
 func (*Avalanche) GetSSHCertFilePath(certName string) (string, error) {

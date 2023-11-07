@@ -109,7 +109,7 @@ func waitForNodeToBePrimaryNetworkValidator(nodeID ids.NodeID) error {
 	time.Sleep(20 * time.Second)
 	// long polling: try up to 5 times
 	for i := 0; i < 5; i++ {
-		isValidator, err := checkNodeIsPrimaryNetworkValidator(nodeID, models.Fuji)
+		isValidator, err := checkNodeIsPrimaryNetworkValidator(nodeID, models.FujiNetwork)
 		if err != nil {
 			return err
 		}
@@ -202,7 +202,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
-		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji, i, clusterNodeID)
+		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(nodeID, models.FujiNetwork, i, clusterNodeID)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", ansibleNodeID, err.Error())
 			failedNodes = append(failedNodes, ansibleNodeID)
@@ -217,7 +217,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 				continue
 			}
 		}
-		err = addNodeAsSubnetValidator(nodeIDStr, subnetName, models.Fuji, i, len(ansibleNodeIDs))
+		err = addNodeAsSubnetValidator(nodeIDStr, subnetName, models.FujiNetwork, i, len(ansibleNodeIDs))
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", ansibleNodeID, err.Error())
 			failedNodes = append(failedNodes, ansibleNodeID)

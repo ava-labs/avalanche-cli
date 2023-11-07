@@ -47,17 +47,17 @@ func printValidators(_ *cobra.Command, args []string) error {
 		return errMutuallyExlusiveNetworks
 	}
 
-	var network models.Network
+	network := models.UndefinedNetwork
 	switch {
 	case validatorsLocal:
-		network = models.Local
+		network = models.LocalNetwork
 	case validatorsTestnet:
-		network = models.Fuji
+		network = models.FujiNetwork
 	case validatorsMainnet:
-		network = models.Mainnet
+		network = models.MainnetNetwork
 	}
 
-	if network == models.Undefined {
+	if network.Kind == models.Undefined {
 		// no flag was set, prompt user
 		networkStr, err := app.Prompt.CaptureList(
 			"Choose a network to list validators from",
@@ -75,14 +75,14 @@ func printValidators(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	deployInfo, ok := sc.Networks[network.String()]
+	deployInfo, ok := sc.Networks[network.Kind.String()]
 	if !ok {
 		return errors.New("no deployment found for subnet")
 	}
 
 	subnetID := deployInfo.SubnetID
 
-	if network == models.Local {
+	if network.Kind == models.Local {
 		return printLocalValidators(subnetID)
 	} else {
 		return printPublicValidators(subnetID, network)

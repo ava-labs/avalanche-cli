@@ -74,15 +74,15 @@ flag.`,
 func importRunningSubnet(*cobra.Command, []string) error {
 	var err error
 
-	var network models.Network
+	network := models.UndefinedNetwork
 	switch {
 	case deployTestnet:
-		network = models.Fuji
+		network = models.FujiNetwork
 	case deployMainnet:
-		network = models.Mainnet
+		network = models.MainnetNetwork
 	}
 
-	if network == models.Undefined {
+	if network.Kind == models.Undefined {
 		networkStr, err := app.Prompt.CaptureList(
 			"Choose a network to import from",
 			[]string{models.Fuji.String(), models.Mainnet.String()},
@@ -137,19 +137,12 @@ func importRunningSubnet(*cobra.Command, []string) error {
 		}
 	}
 
-	var pubAPI string
-	switch network {
-	case models.Fuji:
-		pubAPI = constants.FujiAPIEndpoint
-	case models.Mainnet:
-		pubAPI = constants.MainnetAPIEndpoint
-	}
-	client := platformvm.NewClient(pubAPI)
+	client := platformvm.NewClient(network.Endpoint)
 	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
 	defer cancel()
 	options := []rpc.Option{}
 
-	ux.Logger.PrintToUser("Getting information from the %s network...", network.String())
+	ux.Logger.PrintToUser("Getting information from the %s network...", network.Kind.String())
 
 	txBytes, err := client.GetTx(ctx, blockchainID, options...)
 	if err != nil {
@@ -212,7 +205,7 @@ func importRunningSubnet(*cobra.Command, []string) error {
 		Name: subnetName,
 		VM:   vmType,
 		Networks: map[string]models.NetworkData{
-			network.String(): {
+			network.Kind.String(): {
 				SubnetID:     subnetID,
 				BlockchainID: blockchainID,
 			},

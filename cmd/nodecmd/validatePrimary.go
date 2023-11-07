@@ -95,14 +95,7 @@ func parseBootstrappedOutput(filePath string) (bool, error) {
 }
 
 func GetMinStakingAmount(network models.Network) (uint64, error) {
-	var apiURL string
-	switch network {
-	case models.Mainnet:
-		apiURL = constants.MainnetAPIEndpoint
-	case models.Fuji:
-		apiURL = constants.FujiAPIEndpoint
-	}
-	pClient := platformvm.NewClient(apiURL)
+	pClient := platformvm.NewClient(network.Endpoint)
 	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
 	defer cancel()
 	minValStake, _, err := pClient.GetMinStake(ctx, ids.Empty)
@@ -120,9 +113,9 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 	)
 	switch {
 	case deployTestnet:
-		network = models.Fuji
+		network = models.FujiNetwork
 	case deployMainnet:
-		network = models.Mainnet
+		network = models.MainnetNetwork
 	}
 	if len(ledgerAddresses) > 0 {
 		useLedger = true
@@ -132,7 +125,7 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 		return ErrMutuallyExlusiveKeyLedger
 	}
 
-	switch network {
+	switch network.Kind {
 	case models.Fuji:
 		if !useLedger && keyName == "" {
 			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "pay transaction fees", app.GetKeyDir())
@@ -176,7 +169,7 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 	// we set the starting time for node to be a Primary Network Validator to be in 1 minute
 	// we use min delegation fee as default
 	delegationFee := genesis.FujiParams.MinDelegationFee
-	if network == models.Mainnet {
+	if network.Kind == models.Mainnet {
 		delegationFee = genesis.MainnetParams.MinDelegationFee
 	}
 	blsKeyBytes, err := os.ReadFile(signingKeyPath)
@@ -193,7 +186,7 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 
 func PromptWeightPrimaryNetwork(network models.Network) (uint64, error) {
 	defaultStake := genesis.FujiParams.MinValidatorStake
-	if network == models.Mainnet {
+	if network.Kind == models.Mainnet {
 		defaultStake = genesis.MainnetParams.MinValidatorStake
 	}
 	defaultWeight := fmt.Sprintf("Default (%s)", convertNanoAvaxToAvaxString(defaultStake))
@@ -264,7 +257,7 @@ func GetTimeParametersPrimaryNetwork(network models.Network, nodeIndex int, vali
 
 func getDefaultValidationTime(start time.Time, network models.Network, nodeIndex int) (time.Duration, error) {
 	durationStr := constants.DefaultFujiStakeDuration
-	if network == models.Mainnet {
+	if network.Kind == models.Mainnet {
 		durationStr = constants.DefaultMainnetStakeDuration
 	}
 	durationInt, err := strconv.Atoi(durationStr[:len(durationStr)-1])
@@ -417,7 +410,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
-		_, err = addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji, i, clusterNodeID)
+		_, err = addNodeAsPrimaryNetworkValidator(nodeID, models.FujiNetwork, i, clusterNodeID)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", ansibleNodeID, err)
 			failedNodes = append(failedNodes, ansibleNodeID)
@@ -443,7 +436,7 @@ func convertNanoAvaxToAvaxString(weight uint64) string {
 
 func PrintNodeJoinPrimaryNetworkOutput(nodeID ids.NodeID, weight uint64, network models.Network, start time.Time) {
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
-	ux.Logger.PrintToUser("Network: %s", network.String())
+	ux.Logger.PrintToUser("Network: %s", network.Kind.String())
 	ux.Logger.PrintToUser("Start time: %s", start.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("End time: %s", start.Add(duration).Format(constants.TimeParseLayout))
 	// we need to divide by 10 ^ 9 since we were using nanoAvax

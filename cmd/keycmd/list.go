@@ -119,18 +119,13 @@ func getClients(networks []models.Network, cchain bool) (
 	map[models.Network]ethclient.Client,
 	error,
 ) {
-	apiEndpoints := map[models.Network]string{
-		models.Fuji:    constants.FujiAPIEndpoint,
-		models.Mainnet: constants.MainnetAPIEndpoint,
-		models.Local:   constants.LocalAPIEndpoint,
-	}
 	var err error
 	pClients := map[models.Network]platformvm.Client{}
 	cClients := map[models.Network]ethclient.Client{}
 	for _, network := range networks {
-		pClients[network] = platformvm.NewClient(apiEndpoints[network])
+		pClients[network] = platformvm.NewClient(network.Endpoint)
 		if cchain {
-			cClients[network], err = ethclient.Dial(fmt.Sprintf("%s/ext/bc/%s/rpc", apiEndpoints[network], "C"))
+			cClients[network], err = ethclient.Dial(fmt.Sprintf("%s/ext/bc/%s/rpc", network.Endpoint, "C"))
 			if err != nil {
 				return nil, nil, err
 			}
@@ -152,13 +147,13 @@ func listKeys(*cobra.Command, []string) error {
 	var addrInfos []addressInfo
 	networks := []models.Network{}
 	if local || all {
-		networks = append(networks, models.Local)
+		networks = append(networks, models.LocalNetwork)
 	}
 	if testnet || all {
-		networks = append(networks, models.Fuji)
+		networks = append(networks, models.FujiNetwork)
 	}
 	if mainnet || all {
-		networks = append(networks, models.Mainnet)
+		networks = append(networks, models.MainnetNetwork)
 	}
 	if len(networks) == 0 {
 		// no flag was set, prompt user
@@ -235,12 +230,8 @@ func getStoredKeyInfo(
 ) ([]addressInfo, error) {
 	addrInfos := []addressInfo{}
 	for _, network := range networks {
-		networkID, err := network.NetworkID()
-		if err != nil {
-			return nil, err
-		}
 		keyName := strings.TrimSuffix(filepath.Base(keyPath), constants.KeySuffix)
-		sk, err := key.LoadSoft(networkID, keyPath)
+		sk, err := key.LoadSoft(network.Id, keyPath)
 		if err != nil {
 			return nil, err
 		}
@@ -300,11 +291,7 @@ func getLedgerIndexInfo(
 ) ([]addressInfo, error) {
 	addrInfos := []addressInfo{}
 	for _, network := range networks {
-		networkID, err := network.NetworkID()
-		if err != nil {
-			return nil, err
-		}
-		pChainAddr, err := address.Format("P", key.GetHRP(networkID), addr[:])
+		pChainAddr, err := address.Format("P", key.GetHRP(network.Id), addr[:])
 		if err != nil {
 			return nil, err
 		}
@@ -333,7 +320,7 @@ func getPChainAddrInfo(
 	balance, err := getPChainBalanceStr(context.Background(), pClients[network], pChainAddr)
 	if err != nil {
 		// just ignore local network errors
-		if network != models.Local {
+		if network.Kind != models.Local {
 			return addressInfo{}, err
 		}
 	}
@@ -343,7 +330,7 @@ func getPChainAddrInfo(
 		chain:   "P-Chain (Bech32 format)",
 		address: pChainAddr,
 		balance: balance,
-		network: network.String(),
+		network: network.Kind.String(),
 	}, nil
 }
 
@@ -357,7 +344,7 @@ func getCChainAddrInfo(
 	cChainBalance, err := getCChainBalanceStr(context.Background(), cClients[network], cChainAddr)
 	if err != nil {
 		// just ignore local network errors
-		if network != models.Local {
+		if network.Kind != models.Local {
 			return addressInfo{}, err
 		}
 	}
@@ -367,7 +354,7 @@ func getCChainAddrInfo(
 		chain:   "C-Chain (Ethereum hex format)",
 		address: cChainAddr,
 		balance: cChainBalance,
-		network: network.String(),
+		network: network.Kind.String(),
 	}, nil
 }
 

@@ -122,12 +122,12 @@ func addValidator(_ *cobra.Command, _ []string) error {
 	var network models.Network
 	switch {
 	case validateTestnet:
-		network = models.Fuji
+		network = models.FujiNetwork
 	case validateMainnet:
-		network = models.Mainnet
+		network = models.MainnetNetwork
 	}
 
-	if network == models.Undefined {
+	if network.Kind == models.Undefined {
 		networkStr, err := app.Prompt.CaptureList(
 			"Choose a network to add validator to.",
 			[]string{models.Fuji.String(), models.Mainnet.String()},
@@ -146,7 +146,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 		return ErrMutuallyExlusiveKeyLedger
 	}
 
-	switch network {
+	switch network.Kind {
 	case models.Fuji:
 		if !useLedger && keyName == "" {
 			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "pay transaction fees", app.GetKeyDir())
@@ -165,7 +165,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 
 	// used in E2E to simulate public network execution paths on a local network
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.Local
+		network = models.LocalNetwork
 	}
 
 	if nodeIDStr == "" {
@@ -220,7 +220,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 		}
 	} else {
 		defaultFee := genesis.FujiParams.MinDelegationFee
-		if network == models.Mainnet {
+		if network.Kind == models.Mainnet {
 			defaultFee = genesis.MainnetParams.MinDelegationFee
 		}
 		if delegationFee < defaultFee {
@@ -234,7 +234,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 func getDelegationFeeOption(app *application.Avalanche, network models.Network) (uint32, error) {
 	ux.Logger.PrintToUser("What would you like to set the delegation fee to?")
 	defaultFee := genesis.FujiParams.MinDelegationFee
-	if network == models.Mainnet {
+	if network.Kind == models.Mainnet {
 		defaultFee = genesis.MainnetParams.MinDelegationFee
 	}
 	defaultOption := fmt.Sprintf("Default Delegation Fee (%d%%)", defaultFee/10000)

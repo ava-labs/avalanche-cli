@@ -70,25 +70,17 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	var network models.Network
-	switch {
-	case deployLocal:
-		network = models.Local
-	case deployMainnet:
-		network = models.Mainnet
-	case deployTestnet:
-		network = models.Fuji
-	}
 
-	if network == models.Undefined {
-		networkStr, err := app.Prompt.CaptureList(
-			"Choose a network for the node to be a delegator in",
-			[]string{models.Local.String(), models.Fuji.String(), models.Mainnet.String()},
-		)
-		if err != nil {
-			return err
-		}
-		network = models.NetworkFromString(networkStr)
+	network, err := GetNetworkFromCmdLineFlags(
+		deployLocal,
+		false,
+		deployTestnet,
+		deployMainnet,
+		"",
+		[]models.NetworkKind{models.Local, models.Fuji, models.Mainnet},
+	)
+	if err != nil {
+		return err
 	}
 
 	if outputTxPath != "" {
@@ -104,7 +96,7 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 	if useLedger && keyName != "" {
 		return ErrMutuallyExlusiveKeyLedger
 	}
-	subnetID := sc.Networks[network.String()].SubnetID
+	subnetID := sc.Networks[network.Kind.String()].SubnetID
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
 		subnetID = sc.Networks[models.Local.String()].SubnetID
 	}
@@ -126,7 +118,7 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 	}
 	endTime := start.Add(stakeDuration)
 
-	switch network {
+	switch network.Kind {
 	case models.Local:
 		return handleAddPermissionlessDelegatorLocal(subnetName, network, nodeID, stakedTokenAmount, start, endTime)
 	case models.Fuji:
@@ -142,7 +134,7 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 
 	// used in E2E to simulate public network execution paths on a local network
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.Local
+		network = models.LocalNetwork
 	}
 
 	// get keychain accessor
@@ -169,7 +161,7 @@ func printAddPermissionlessDelOutput(txID ids.ID, nodeID ids.NodeID, network mod
 	ux.Logger.PrintToUser("Node successfully added as delegator!")
 	ux.Logger.PrintToUser("TX ID: %s", txID.String())
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
-	ux.Logger.PrintToUser("Network: %s", network.String())
+	ux.Logger.PrintToUser("Network: %s", network.Kind.String())
 	ux.Logger.PrintToUser("Start time: %s", start.UTC().Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("End time: %s", endTime.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("Stake Amount: %d", stakedTokenAmount)
@@ -188,10 +180,10 @@ func handleAddPermissionlessDelegatorLocal(subnetName string, network models.Net
 	}
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction addPermissionlessDelegatorTx...")
 	ux.Logger.PrintToUser("")
-	assetID := sc.ElasticSubnet[network.String()].AssetID
+	assetID := sc.ElasticSubnet[network.Kind.String()].AssetID
 	testKey := genesis.EWOQKey
 	keyChain := secp256k1fx.NewKeychain(testKey)
-	subnetID := sc.Networks[network.String()].SubnetID
+	subnetID := sc.Networks[network.Kind.String()].SubnetID
 	txID, err := subnet.IssueAddPermissionlessDelegatorTx(keyChain, subnetID, nodeID, stakedTokenAmount, assetID, uint64(start.Unix()), uint64(endTime.Unix()))
 	if err != nil {
 		return err

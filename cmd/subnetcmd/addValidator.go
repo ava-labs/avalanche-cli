@@ -65,7 +65,7 @@ Testnet or Mainnet.`,
 }
 
 func CallAddValidator(subnetName, nodeID string, network models.Network) error {
-	switch network {
+	switch network.Kind {
 	case models.Mainnet:
 		deployMainnet = true
 	case models.Fuji:
@@ -82,23 +82,16 @@ func addValidator(_ *cobra.Command, args []string) error {
 		err    error
 	)
 
-	var network models.Network
-	switch {
-	case deployTestnet:
-		network = models.Fuji
-	case deployMainnet:
-		network = models.Mainnet
-	}
-
-	if network == models.Undefined {
-		networkStr, err := app.Prompt.CaptureList(
-			"Choose a network to add validator to.",
-			[]string{models.Fuji.String(), models.Mainnet.String()},
-		)
-		if err != nil {
-			return err
-		}
-		network = models.NetworkFromString(networkStr)
+	network, err := GetNetworkFromCmdLineFlags(
+		deployLocal,
+		false,
+		deployTestnet,
+		deployMainnet,
+		"",
+		[]models.NetworkKind{models.Local, models.Fuji, models.Mainnet},
+	)
+	if err != nil {
+		return err
 	}
 
 	if outputTxPath != "" {
@@ -115,7 +108,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return ErrMutuallyExlusiveKeyLedger
 	}
 
-	switch network {
+	switch network.Kind {
 	case models.Fuji:
 		if !useLedger && keyName == "" {
 			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "pay transaction fees", app.GetKeyDir())
@@ -134,7 +127,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 
 	// used in E2E to simulate public network execution paths on a local network
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.Local
+		network = models.LocalNetwork
 	}
 
 	// get keychain accesor
@@ -153,7 +146,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	subnetID := sc.Networks[network.String()].SubnetID
+	subnetID := sc.Networks[network.Kind.String()].SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
@@ -209,7 +202,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
-	ux.Logger.PrintToUser("Network: %s", network.String())
+	ux.Logger.PrintToUser("Network: %s", network.Kind.String())
 	ux.Logger.PrintToUser("Start time: %s", start.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("End time: %s", start.Add(duration).Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("Weight: %d", weight)
@@ -242,7 +235,7 @@ func PromptDuration(start time.Time, network models.Network) (time.Duration, err
 		txt := "How long should this validator be validating? Enter a duration, e.g. 8760h. Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\""
 		var d time.Duration
 		var err error
-		if network == models.Fuji {
+		if network.Kind == models.Fuji {
 			d, err = app.Prompt.CaptureFujiDuration(txt)
 		} else {
 			d, err = app.Prompt.CaptureMainnetDuration(txt)
@@ -263,22 +256,9 @@ func PromptDuration(start time.Time, network models.Network) (time.Duration, err
 }
 
 func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime time.Time) (time.Duration, error) {
-	var uri string
-	switch network {
-	case models.Fuji:
-		uri = constants.FujiAPIEndpoint
-	case models.Mainnet:
-		uri = constants.MainnetAPIEndpoint
-	case models.Local:
-		// used for E2E testing of public related paths
-		uri = constants.LocalAPIEndpoint
-	default:
-		return 0, fmt.Errorf("unsupported public network")
-	}
-
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
-	platformCli := platformvm.NewClient(uri)
+	platformCli := platformvm.NewClient(network.Endpoint)
 	vs, err := platformCli.GetCurrentValidators(ctx, avago_constants.PrimaryNetworkID, nil)
 	cancel()
 	if err != nil {
