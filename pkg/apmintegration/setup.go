@@ -12,18 +12,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/spf13/afero"
-	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
-)
-
-const (
-	credentialsFileKey  = "credentials-file"
-	adminAPIEndpointKey = "admin-api-endpoint"
 )
 
 // Note, you can only call this method once per run
 func SetupApm(app *application.Avalanche, apmBaseDir string) error {
-	credentials, err := initCredentials()
+	credentials, err := initCredentials(app)
 	if err != nil {
 		return err
 	}
@@ -48,7 +42,7 @@ func SetupApm(app *application.Avalanche, apmBaseDir string) error {
 	apmConfig := apm.Config{
 		Directory:        apmBaseDir,
 		Auth:             credentials,
-		AdminAPIEndpoint: viper.GetString(adminAPIEndpointKey),
+		AdminAPIEndpoint: app.Conf.GetConfigStringValue(constants.ConfigAPMAdminAPIEndpointKey),
 		PluginDir:        app.GetAPMPluginDir(),
 		Fs:               fs,
 	}
@@ -66,13 +60,13 @@ func SetupApm(app *application.Avalanche, apmBaseDir string) error {
 // If we need to use custom git credentials (say for private repos).
 // the zero value for credentials is safe to use.
 // Stolen from APM repo
-func initCredentials() (http.BasicAuth, error) {
+func initCredentials(app *application.Avalanche) (http.BasicAuth, error) {
 	result := http.BasicAuth{}
 
-	if viper.IsSet(credentialsFileKey) {
+	if app.Conf.ConfigValueIsSet(constants.ConfigAPMCredentialsFileKey) {
 		credentials := &config.Credential{}
 
-		bytes, err := os.ReadFile(viper.GetString(credentialsFileKey))
+		bytes, err := os.ReadFile(app.Conf.GetConfigStringValue(constants.ConfigAPMCredentialsFileKey))
 		if err != nil {
 			return result, err
 		}

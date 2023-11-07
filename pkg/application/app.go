@@ -13,11 +13,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
-	"github.com/spf13/viper"
 )
 
 type Avalanche struct {
@@ -120,10 +118,6 @@ func (app *Avalanche) GetGenesisMainnetPath(subnetName string) string {
 
 func (app *Avalanche) GetSidecarPath(subnetName string) string {
 	return filepath.Join(app.GetSubnetDir(), subnetName, constants.SidecarFileName)
-}
-
-func (app *Avalanche) GetConfigPath() string {
-	return fmt.Sprintf("%s.%s", filepath.Join(app.baseDir, constants.DefaultConfigFileName), constants.DefaultConfigFileType)
 }
 
 func (app *Avalanche) GetNodeConfigPath(nodeName string) string {
@@ -604,10 +598,6 @@ func (*Avalanche) writeFile(path string, bytes []byte) error {
 	return os.WriteFile(path, bytes, constants.WriteReadReadPerms)
 }
 
-func (app *Avalanche) ConfigFileExists() bool {
-	return utils.FileExists(app.GetConfigPath())
-}
-
 func (app *Avalanche) CreateNodeCloudConfigFile(nodeName string, nodeConfig *models.NodeConfig) error {
 	nodeConfigPath := app.GetNodeConfigPath(nodeName)
 	if err := os.MkdirAll(filepath.Dir(nodeConfigPath), constants.DefaultPerms755); err != nil {
@@ -764,11 +754,4 @@ func (app *Avalanche) CreateAnsibleStatusFile(filePath string) error {
 // RemoveAnsibleStatusDir deletes avalanche ansible status dir in .avalanche-cli
 func (app *Avalanche) RemoveAnsibleStatusDir() error {
 	return os.RemoveAll(app.GetAnsibleStatusDir())
-}
-
-// SetConfigValue sets the value of a configuration key.
-func SetConfigValue(key string, value interface{}) error {
-	viper.Set(key, value)
-	err := viper.SafeWriteConfig()
-	return err
 }

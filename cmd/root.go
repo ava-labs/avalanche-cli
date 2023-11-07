@@ -83,7 +83,7 @@ in with avalanche subnet create myNewSubnet.`,
 	rootCmd.AddCommand(transactioncmd.NewCmd(app))
 
 	// add config command
-	rootCmd.AddCommand(configcmd.NewCmd())
+	rootCmd.AddCommand(configcmd.NewCmd(app))
 
 	// add update command
 	rootCmd.AddCommand(updatecmd.NewCmd(app, Version))
@@ -123,7 +123,7 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	if err := migrations.RunMigrations(app); err != nil {
 		return err
 	}
-	if os.Getenv("RUN_E2E") == "" && !app.ConfigFileExists() && !utils.FileExists(utils.UserHomePath(constants.MetricsConfigFileName)) {
+	if os.Getenv("RUN_E2E") == "" && !app.Conf.ConfigFileExists() && !utils.FileExists(utils.UserHomePath(constants.MetricsConfigFileName)) {
 		err = metrics.HandleUserMetricsPreference(app)
 		if err != nil {
 			return err
@@ -204,7 +204,7 @@ func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
 }
 
 func handleTracking(cmd *cobra.Command, _ []string) {
-	metrics.HandleTracking(cmd, nil)
+	metrics.HandleTracking(cmd, app, nil)
 }
 
 func setupEnv() (string, error) {
@@ -329,7 +329,7 @@ func initConfig() {
 		app.Log.Info("No log file found")
 	}
 	// check if metrics setting is available, and if not load metricConfig
-	if !viper.IsSet(constants.ConfigMetricsEnabled) {
+	if !viper.IsSet(constants.ConfigMetricsEnabledKey) {
 		viper.SetConfigFile(metricsConfig)
 		app.Log.Info("Using old metrics configuration file", zap.String("config-file", metricsConfig))
 		if err := viper.MergeInConfig(); err != nil {
