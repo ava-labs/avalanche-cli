@@ -22,8 +22,8 @@ import (
 )
 
 func fillNetworkDetails(network *models.Network) error {
-	if network.Kind == models.Devnet && network.Endpoint == "" {
-		endpoint, err := app.Prompt.CaptureString("Devnet Network Endpoint")
+	if network.Endpoint == "" {
+		endpoint, err := app.Prompt.CaptureString(fmt.Sprintf("%s Network Endpoint", network.Kind.String()))
 		if err != nil {
 			return err
 		}
