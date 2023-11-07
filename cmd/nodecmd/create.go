@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"net"
 	"os"
 	"os/exec"
@@ -437,12 +438,10 @@ func getAvalancheGoVersion() (string, error) {
 		case avalancheGoReferenceChoiceLatest:
 			version = "latest"
 		case avalancheGoReferenceChoiceCustom:
-			customVersion, err := app.Prompt.CaptureString("Which version of AvalancheGo would you like to install? (Use format v1.10.13)")
+			txt := "Which version of AvalancheGo would you like to install? (Use format v1.10.13)"
+			customVersion, err := app.Prompt.CaptureValidatedString(txt, prompts.ValidateAvalancheGoVersion)
 			if err != nil {
 				return "", err
-			}
-			if !strings.HasPrefix(customVersion, "v") {
-				return "", errors.New("invalid avalanche go version")
 			}
 			version = customVersion
 		case avalancheGoReferenceChoiceSubnet:

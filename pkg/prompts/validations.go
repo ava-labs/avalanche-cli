@@ -271,3 +271,10 @@ func ValidateHexa(input string) error {
 	}
 	return err
 }
+
+func ValidateAvalancheGoVersion(input string) error {
+	if !strings.HasPrefix(input, "v") {
+		return errors.New("invalid avalanche go version")
+	}
+	return nil
+}

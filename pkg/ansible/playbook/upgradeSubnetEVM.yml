@@ -5,6 +5,6 @@
     - name: stop node - stop avalanchego
       shell: sudo systemctl stop avalanchego
     - name: replace subnet EVM binary
-      shell: cp subnet-evm "{{ subnetEVMBinaryPath }}"
+      shell: for binaryPath in {{ subnetEVMBinaryPaths }} ; do cp subnet-evm $binaryPath ; done
     - name: stop start - start avalanchego
       shell: sudo systemctl start avalanchego
