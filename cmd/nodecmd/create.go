@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
@@ -26,7 +27,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 
-	subnet "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 
@@ -36,9 +36,13 @@ import (
 const (
 	avalancheGoReferenceChoiceLatest = "latest"
 	avalancheGoReferenceChoiceSubnet = "subnet"
+	avalancheGoReferenceChoiceCustom = "custom"
 )
 
 var (
+	createOnFuji                    bool
+	createDevnet                    bool
+	createOnMainnet                 bool
 	useAWS                          bool
 	useGCP                          bool
 	cmdLineRegion                   string
@@ -95,6 +99,8 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().StringVar(&cmdLineGCPProjectName, "gcp-project", "", "use given GCP project")
 	cmd.Flags().StringVar(&cmdLineAlternativeKeyPairName, "alternative-key-pair-name", "", "key pair name to use if default one generates conflicts")
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
+	cmd.Flags().BoolVar(&createOnFuji, "fuji", false, "create node/s in Fuji Network")
+	cmd.Flags().BoolVar(&createDevnet, "devnet", false, "create node/s into a new Devnet")
 	return cmd
 }
 
@@ -109,6 +115,19 @@ func createNodes(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("could not use AWS profile for non AWS cloud option")
 	}
 	clusterName := args[0]
+
+	network, err := subnetcmd.GetNetworkFromCmdLineFlags(
+		false,
+		createDevnet,
+		createOnFuji,
+		createOnMainnet,
+		"",
+		[]models.NetworkKind{models.Fuji, models.Devnet},
+	)
+	if err != nil {
+		return err
+	}
+
 	cloudService, err := setCloudService()
 	if err != nil {
 		return err
@@ -180,11 +199,12 @@ func createNodes(_ *cobra.Command, args []string) error {
 		gcpProjectName = projectName
 		gcpCredentialFilepath = credentialFilepath
 	}
-	if err = createClusterNodeConfig(cloudConfig, clusterName, cloudService); err != nil {
+
+	if err = createClusterNodeConfig(network, cloudConfig, clusterName, cloudService); err != nil {
 		return err
 	}
 	if cloudService == constants.GCPCloudService {
-		if err = updateClusterConfigGCPKeyFilepath(gcpProjectName, gcpCredentialFilepath); err != nil {
+		if err = updateClustersConfigGCPKeyFilepath(gcpProjectName, gcpCredentialFilepath); err != nil {
 			return err
 		}
 	}
@@ -210,12 +230,20 @@ func createNodes(_ *cobra.Command, args []string) error {
 		return err
 	}
 	createdAnsibleHostIDs := strings.Join(ansibleHostIDs, ",")
-	if err = runAnsible(inventoryPath, avalancheGoVersion, clusterName, createdAnsibleHostIDs); err != nil {
+	if err = runAnsible(inventoryPath, network, avalancheGoVersion, clusterName, createdAnsibleHostIDs); err != nil {
 		return err
 	}
 	if err = setupBuildEnv(inventoryPath, createdAnsibleHostIDs); err != nil {
 		return err
 	}
+
+	if network.Kind == models.Devnet {
+		ux.Logger.PrintToUser("Setting up Devnet ...")
+		if err := setupDevnet(clusterName); err != nil {
+			return err
+		}
+	}
+
 	printResults(cloudConfig, publicIPMap, ansibleHostIDs)
 	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	return nil
@@ -224,7 +252,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 // createClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
 // also creates cluster config in .avalanche-cli/nodes storing various key pair and security group info for all clusters
 // func createClusterNodeConfig(nodeIDs, publicIPs []string, region, ami, keyPairName, certPath, sg, clusterName string) error {
-func createClusterNodeConfig(cloudConfig CloudConfig, clusterName, cloudService string) error {
+func createClusterNodeConfig(network models.Network, cloudConfig CloudConfig, clusterName, cloudService string) error {
 	for i := range cloudConfig.InstanceIDs {
 		publicIP := ""
 		if len(cloudConfig.PublicIPs) > 0 {
@@ -244,48 +272,55 @@ func createClusterNodeConfig(cloudConfig CloudConfig, clusterName, cloudService 
 		if err != nil {
 			return err
 		}
-		if err = addNodeToClusterConfig(cloudConfig.InstanceIDs[i], clusterName); err != nil {
+		if err = addNodeToClustersConfig(network, cloudConfig.InstanceIDs[i], clusterName); err != nil {
 			return err
 		}
 	}
-	return updateKeyPairClusterConfig(cloudConfig)
+	return updateKeyPairClustersConfig(cloudConfig)
 }
 
-func updateKeyPairClusterConfig(cloudConfig CloudConfig) error {
-	clusterConfig := models.ClusterConfig{}
+func updateKeyPairClustersConfig(cloudConfig CloudConfig) error {
+	clustersConfig := models.ClustersConfig{}
 	var err error
-	if app.ClusterConfigExists() {
-		clusterConfig, err = app.LoadClusterConfig()
+	if app.ClustersConfigExists() {
+		clustersConfig, err = app.LoadClustersConfig()
 		if err != nil {
 			return err
 		}
 	}
-	if clusterConfig.KeyPair == nil {
-		clusterConfig.KeyPair = make(map[string]string)
+	if clustersConfig.KeyPair == nil {
+		clustersConfig.KeyPair = make(map[string]string)
 	}
-	if _, ok := clusterConfig.KeyPair[cloudConfig.KeyPair]; !ok {
-		clusterConfig.KeyPair[cloudConfig.KeyPair] = cloudConfig.CertFilePath
+	if _, ok := clustersConfig.KeyPair[cloudConfig.KeyPair]; !ok {
+		clustersConfig.KeyPair[cloudConfig.KeyPair] = cloudConfig.CertFilePath
 	}
-	return app.WriteClusterConfigFile(&clusterConfig)
+	return app.WriteClustersConfigFile(&clustersConfig)
 }
 
-func addNodeToClusterConfig(nodeID, clusterName string) error {
-	clusterConfig := models.ClusterConfig{}
+func addNodeToClustersConfig(network models.Network, nodeID, clusterName string) error {
+	clustersConfig := models.ClustersConfig{}
 	var err error
-	if app.ClusterConfigExists() {
-		clusterConfig, err = app.LoadClusterConfig()
+	if app.ClustersConfigExists() {
+		clustersConfig, err = app.LoadClustersConfig()
 		if err != nil {
 			return err
 		}
 	}
-	if clusterConfig.Clusters == nil {
-		clusterConfig.Clusters = make(map[string][]string)
+	if clustersConfig.Clusters == nil {
+		clustersConfig.Clusters = make(map[string]models.ClusterConfig)
 	}
-	if _, ok := clusterConfig.Clusters[clusterName]; !ok {
-		clusterConfig.Clusters[clusterName] = []string{}
+	if _, ok := clustersConfig.Clusters[clusterName]; !ok {
+		clustersConfig.Clusters[clusterName] = models.ClusterConfig{
+			Network: network,
+			Nodes:   []string{},
+		}
 	}
-	clusterConfig.Clusters[clusterName] = append(clusterConfig.Clusters[clusterName], nodeID)
-	return app.WriteClusterConfigFile(&clusterConfig)
+	nodes := clustersConfig.Clusters[clusterName].Nodes
+	clustersConfig.Clusters[clusterName] = models.ClusterConfig{
+		Network: network,
+		Nodes:   append(nodes, nodeID),
+	}
+	return app.WriteClustersConfigFile(&clustersConfig)
 }
 
 // setupAnsible we need to remove existing ansible directory and its contents in .avalanche-cli dir
@@ -301,14 +336,21 @@ func setupAnsible(clusterName string) error {
 	return updateAnsiblePublicIPs(clusterName)
 }
 
-func runAnsible(inventoryPath, avalancheGoVersion, clusterName, ansibleHostIDs string) error {
+func runAnsible(inventoryPath string, network models.Network, avalancheGoVersion, clusterName, ansibleHostIDs string) error {
 	if err := setupAnsible(clusterName); err != nil {
 		return err
 	}
 	if err := distributeStakingCertAndKey(strings.Split(ansibleHostIDs, ","), inventoryPath); err != nil {
 		return err
 	}
-	return ansible.RunAnsiblePlaybookSetupNode(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion, ansibleHostIDs)
+	return ansible.RunAnsiblePlaybookSetupNode(
+		app.Conf.GetConfigPath(),
+		app.GetAnsibleDir(),
+		inventoryPath,
+		avalancheGoVersion,
+		fmt.Sprint(network.Kind == models.Devnet),
+		ansibleHostIDs,
+	)
 }
 
 func setupBuildEnv(inventoryPath, ansibleHostIDs string) error {
@@ -438,6 +480,12 @@ func getAvalancheGoVersion() (string, error) {
 		switch choice {
 		case avalancheGoReferenceChoiceLatest:
 			version = "latest"
+		case avalancheGoReferenceChoiceCustom:
+			customVersion, err := app.Prompt.CaptureVersion("Which version of AvalancheGo would you like to install? (Use format v1.10.13)")
+			if err != nil {
+				return "", err
+			}
+			version = customVersion
 		case avalancheGoReferenceChoiceSubnet:
 			subnet = subnetChoice
 		}
@@ -470,7 +518,7 @@ func GetLatestAvagoVersionForRPC(configuredRPCVersion int) (string, error) {
 func promptAvalancheGoReferenceChoice() (string, string, error) {
 	defaultVersion := "Use latest Avalanche Go Version"
 	txt := "What version of Avalanche Go would you like to install in the node?"
-	versionOptions := []string{defaultVersion, "Use the deployed Subnet's VM version that the node will be validating"}
+	versionOptions := []string{defaultVersion, "Use the deployed Subnet's VM version that the node will be validating", "Custom"}
 	versionOption, err := app.Prompt.CaptureList(txt, versionOptions)
 	if err != nil {
 		return "", "", err
@@ -479,13 +527,15 @@ func promptAvalancheGoReferenceChoice() (string, string, error) {
 	switch versionOption {
 	case defaultVersion:
 		return avalancheGoReferenceChoiceLatest, "", nil
+	case "Custom":
+		return avalancheGoReferenceChoiceCustom, "", nil
 	default:
 		for {
 			subnetName, err := app.Prompt.CaptureString("Which Subnet would you like to use to choose the avalanche go version?")
 			if err != nil {
 				return "", "", err
 			}
-			_, err = subnet.ValidateSubnetNameAndGetChains([]string{subnetName})
+			_, err = subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName})
 			if err == nil {
 				return avalancheGoReferenceChoiceSubnet, subnetName, nil
 			}

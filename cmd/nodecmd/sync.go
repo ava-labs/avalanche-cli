@@ -160,7 +160,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	if err := setupBuildEnv(app.GetAnsibleInventoryDirPath(clusterName), ""); err != nil {
 		return err
 	}
-	untrackedNodes, err := trackSubnet(clusterName, subnetName, models.Fuji)
+	untrackedNodes, err := trackSubnet(clusterName, subnetName, models.FujiNetwork)
 	if err != nil {
 		return err
 	}
