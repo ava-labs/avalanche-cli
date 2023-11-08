@@ -11,15 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/txutils"
-
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanchego/vms/components/verify"
-
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	es "github.com/ava-labs/avalanche-cli/pkg/elasticsubnet"
+	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	subnet "github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -400,7 +394,7 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 	} else {
 		flags[constants.MultiSig] = "non-multi-sig"
 	}
-	utils.HandleTracking(cmd, app, flags)
+	metrics.HandleTracking(cmd, app, flags)
 	if !isFullySigned {
 		if err := SaveNotFullySignedTx(
 			"Transform Subnet",
@@ -492,7 +486,7 @@ func transformElasticSubnetLocal(sc models.Sidecar, subnetName string, tokenName
 	PrintTransformResults(subnetName, txID, subnetID, tokenName, tokenSymbol, assetID)
 	flags := make(map[string]string)
 	flags[constants.Network] = models.Local.String()
-	utils.HandleTracking(cmd, app, flags)
+	metrics.HandleTracking(cmd, app, flags)
 	return nil
 }
 
