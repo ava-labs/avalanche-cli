@@ -11,7 +11,7 @@ import (
 func newUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update",
-		Short: "(ALPHA Warning) Update avalanchego or VM config  for all node in a cluster",
+		Short: "(ALPHA Warning) Update avalanchego or VM config for all node in a cluster",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
 The node update command suite provides a collection of commands for nodes to update

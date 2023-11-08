@@ -19,7 +19,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-type NodeUpgradeInfo struct {
+type nodeUpgradeInfo struct {
 	AvalancheGoVersion    string   // avalanche go version to update to on cloud server
 	SubnetEVMVersion      string   // subnet EVM version to update to on cloud server
 	SubnetEVMIDsToUpgrade []string // list of ID of Subnet EVM to be upgraded to subnet EVM version to update to
@@ -89,7 +89,7 @@ func upgrade(_ *cobra.Command, args []string) error {
 // nodes needs to have Avalanche Go & SubnetEVM upgraded. It first checks the subnet EVM version -
 // it will install the newest subnet EVM version and install the latest avalanche Go that is still compatible with the Subnet EVM version
 // if the node is not tracking any subnet, it will just install latestAvagoVersion
-func getNodesUpgradeInfo(clusterName string) (map[string]NodeUpgradeInfo, error) {
+func getNodesUpgradeInfo(clusterName string) (map[string]nodeUpgradeInfo, error) {
 	latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 		constants.AvaLabsOrg,
 		constants.AvalancheGoRepoName,
@@ -114,7 +114,7 @@ func getNodesUpgradeInfo(clusterName string) (map[string]NodeUpgradeInfo, error)
 	}
 	failedNodes := []string{}
 	nodeErrors := []error{}
-	nodesToUpgrade := make(map[string]NodeUpgradeInfo)
+	nodesToUpgrade := make(map[string]nodeUpgradeInfo)
 	for _, host := range ansibleNodeIDs {
 		if err := app.CreateAnsibleStatusFile(app.GetAvalancheGoJSONFile()); err != nil {
 			failedNodes = append(failedNodes, host)
@@ -134,7 +134,7 @@ func getNodesUpgradeInfo(clusterName string) (map[string]NodeUpgradeInfo, error)
 		}
 		currentAvalancheGoVersion := vmVersions[constants.PlatformKeyName]
 		avalancheGoVersionToUpdateTo := latestAvagoVersion
-		nodeUpgradeInfo := NodeUpgradeInfo{}
+		nodeUpgradeInfo := nodeUpgradeInfo{}
 		nodeUpgradeInfo.SubnetEVMIDsToUpgrade = []string{}
 		for vmName, vmVersion := range vmVersions {
 			// when calling info.getNodeVersion, this is what we get
