@@ -3,6 +3,7 @@
 package subnetcmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -19,6 +20,13 @@ import (
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"golang.org/x/exp/slices"
+)
+
+var (
+	ErrMutuallyExlusiveKeySource = errors.New("key source flags --key, --ewoq, --ledger/--ledger-addrs are mutually exclusive")
+	ErrStoredKeyOrEwoqOnMainnet  = errors.New("key sources --key, --ewoq are not available for mainnet operations")
+	ErrNonEwoqKeyOnDevnet        = errors.New("key source --ewoq is the only one available for devnet operations")
+	ErrEwoqKeyOnFuji             = errors.New("key source --ewoq is not available for fuji operations")
 )
 
 func fillNetworkDetails(network *models.Network) error {

@@ -63,13 +63,8 @@ var (
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 
-	ErrMutuallyExlusiveKeySource = errors.New("key source flags --key, --ewoq, --ledger/--ledger-addrs are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
-
-	ErrStoredKeyOrEwoqOnMainnet = errors.New("key sources --key, --ewoq are not available for mainnet operations")
-	ErrNonEwoqKeyOnDevnet       = errors.New("key source --ewoq is the only one available for devnet operations")
-	ErrEwoqKeyOnFuji            = errors.New("key source --ewoq is not available for fuji operations")
-	ErrStoredKeyOnMainnet       = errors.New("key --key is not available for mainnet operations")
+	ErrStoredKeyOnMainnet        = errors.New("key --key is not available for mainnet operations")
 )
 
 // avalanche subnet deploy
