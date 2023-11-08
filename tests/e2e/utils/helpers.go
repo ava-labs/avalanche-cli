@@ -25,10 +25,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
-	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -431,7 +432,7 @@ func SetHardhatRPC(rpc string) error {
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	chainIDBig, err := client.ChainID(ctx)
 	cancel()
 	if err != nil {
@@ -645,22 +646,21 @@ func RestartNodesWithWhitelistedSubnets(whitelistedSubnets string) error {
 	if err != nil {
 		return err
 	}
-	rootCtx := context.Background()
-	ctx, cancel := context.WithTimeout(rootCtx, constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	resp, err := cli.Status(ctx)
 	cancel()
 	if err != nil {
 		return err
 	}
 	for _, nodeName := range resp.ClusterInfo.NodeNames {
-		ctx, cancel := context.WithTimeout(rootCtx, constants.E2ERequestTimeout)
+		ctx, cancel := utils.GetAPIContext()
 		_, err := cli.RestartNode(ctx, nodeName, client.WithWhitelistedSubnets(whitelistedSubnets))
 		cancel()
 		if err != nil {
 			return err
 		}
 	}
-	ctx, cancel = context.WithTimeout(rootCtx, constants.E2ERequestTimeout)
+	ctx, cancel = utils.GetAPIContext()
 	_, err = cli.Health(ctx)
 	cancel()
 	if err != nil {
@@ -678,8 +678,7 @@ type NodeInfo struct {
 }
 
 func GetNodeVMVersion(nodeURI string, vmid string) (string, error) {
-	rootCtx := context.Background()
-	ctx, cancel := context.WithTimeout(rootCtx, constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 
 	client := info.NewClient(nodeURI)
 	versionInfo, err := client.GetNodeVersion(ctx)
@@ -701,8 +700,7 @@ func GetNodesInfo() (map[string]NodeInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	rootCtx := context.Background()
-	ctx, cancel := context.WithTimeout(rootCtx, constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	resp, err := cli.Status(ctx)
 	cancel()
 	if err != nil {
@@ -749,11 +747,11 @@ func WaitSubnetValidators(subnetIDStr string, nodeInfos map[string]NodeInfo) err
 	if err != nil {
 		return err
 	}
-	mainCtx, mainCtxCancel := context.WithTimeout(context.Background(), time.Second*30)
+	mainCtx, mainCtxCancel := utils.GetAPIContext()
 	defer mainCtxCancel()
 	for {
 		ready := true
-		ctx, ctxCancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+		ctx, ctxCancel := utils.GetAPIContext()
 		vs, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
 		ctxCancel()
 		if err != nil {
@@ -866,7 +864,7 @@ func FundLedgerAddress(amount uint64) error {
 		},
 	}
 	outputs := []*avax.TransferableOutput{output}
-	if _, err := wallet.X().IssueExportTx(avago_constants.PlatformChainID, outputs); err != nil {
+	if _, err := wallet.X().IssueExportTx(avagoconstants.PlatformChainID, outputs); err != nil {
 		return err
 	}
 
@@ -991,7 +989,7 @@ func CheckAllNodesAreCurrentValidators(subnetName string) (bool, error) {
 
 	api := constants.LocalAPIEndpoint
 	pClient := platformvm.NewClient(api)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 
 	validators, err := pClient.GetCurrentValidators(ctx, subnetID, nil)

@@ -11,11 +11,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/server"
-	"github.com/ava-labs/avalanche-network-runner/utils"
+	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -69,7 +70,8 @@ func StartNetwork(*cobra.Command, []string) error {
 		return err
 	}
 
-	ctx := binutils.GetAsyncContext()
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
 
 	bootstrapped, err := checkNetworkIsAlreadyBootstrapped(ctx, cli)
 	if err != nil {
@@ -90,7 +92,7 @@ func StartNetwork(*cobra.Command, []string) error {
 	ux.Logger.PrintToUser(startMsg)
 
 	outputDirPrefix := path.Join(app.GetRunDir(), "network")
-	outputDir, err := utils.MkDirWithTimestamp(outputDirPrefix)
+	outputDir, err := anrutils.MkDirWithTimestamp(outputDirPrefix)
 	if err != nil {
 		return err
 	}

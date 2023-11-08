@@ -10,18 +10,23 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
-	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
+	avmtxs "github.com/ava-labs/avalanchego/vms/avm/txs"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
+	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 	"github.com/spf13/cobra"
 )
 
@@ -330,10 +335,34 @@ func transferF(*cobra.Command, []string) error {
 		}
 		outputs := []*avax.TransferableOutput{output}
 		ux.Logger.PrintToUser("Issuing ExportTx P -> X")
+
 		if ledgerIndex != wrongLedgerIndexVal {
 			ux.Logger.PrintToUser("*** Please sign 'Export Tx / P to X Chain' transaction on the ledger device *** ")
 		}
-		if _, err := wallet.P().IssueExportTx(wallet.X().BlockchainID(), outputs); err != nil {
+		unsignedTx, err := wallet.P().Builder().NewExportTx(
+			wallet.X().BlockchainID(),
+			outputs,
+		)
+		if err != nil {
+			return fmt.Errorf("error building tx: %w", err)
+		}
+		tx := txs.Tx{Unsigned: unsignedTx}
+		if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+			return fmt.Errorf("error signing tx: %w", err)
+		}
+
+		ctx, cancel := utils.GetAPIContext()
+		defer cancel()
+		err = wallet.P().IssueTx(
+			&tx,
+			common.WithContext(ctx),
+		)
+		if err != nil {
+			if ctx.Err() != nil {
+				err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+			} else {
+				err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+			}
 			return err
 		}
 	} else {
@@ -354,10 +383,36 @@ func transferF(*cobra.Command, []string) error {
 			if ledgerIndex != wrongLedgerIndexVal {
 				ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
 			}
-			if _, err = wallet.X().IssueImportTx(avago_constants.PlatformChainID, &to); err != nil {
+			unsignedTx, err := wallet.X().Builder().NewImportTx(
+				avagoconstants.PlatformChainID,
+				&to,
+			)
+			if err != nil {
+				ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
+				return fmt.Errorf("error building tx: %w", err)
+			}
+			tx := avmtxs.Tx{Unsigned: unsignedTx}
+			if err := wallet.X().Signer().Sign(context.Background(), &tx); err != nil {
+				ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
+				return fmt.Errorf("error signing tx: %w", err)
+			}
+
+			ctx, cancel := utils.GetAPIContext()
+			defer cancel()
+			err = wallet.X().IssueTx(
+				&tx,
+				common.WithContext(ctx),
+			)
+			if err != nil {
+				if ctx.Err() != nil {
+					err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+				} else {
+					err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+				}
 				ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
 				return err
 			}
+
 			time.Sleep(2 * time.Second)
 			receiveRecoveryStep++
 		}
@@ -374,19 +429,15 @@ func transferF(*cobra.Command, []string) error {
 				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("ERROR: restart from this step by using the same command with extra arguments: --%s %d", receiveRecoveryStepFlag, receiveRecoveryStep)))
 				return err
 			}
-			output := &avax.TransferableOutput{
-				Asset: avax.Asset{ID: wallet.P().AVAXAssetID()},
-				Out: &secp256k1fx.TransferOutput{
-					Amt:          amount + fee*1,
-					OutputOwners: to,
-				},
-			}
-			outputs := []*avax.TransferableOutput{output}
 			ux.Logger.PrintToUser("Issuing ExportTx X -> P")
-			if ledgerIndex != wrongLedgerIndexVal {
-				ux.Logger.PrintToUser("*** Please sign 'Export Tx / X to P Chain' transaction on the ledger device *** ")
-			}
-			if _, err := wallet.X().IssueExportTx(avago_constants.PlatformChainID, outputs); err != nil {
+			_, err = subnet.IssueXToPExportTx(
+				wallet,
+				ledgerIndex != wrongLedgerIndexVal,
+				wallet.P().AVAXAssetID(),
+				amount+fee*1,
+				&to,
+			)
+			if err != nil {
 				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("ERROR: restart from this step by using the same command with extra arguments: --%s %d", receiveRecoveryStepFlag, receiveRecoveryStep)))
 				return err
 			}
@@ -407,10 +458,12 @@ func transferF(*cobra.Command, []string) error {
 				return err
 			}
 			ux.Logger.PrintToUser("Issuing ImportTx X -> P")
-			if ledgerIndex != wrongLedgerIndexVal {
-				ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
-			}
-			if _, err = wallet.P().IssueImportTx(wallet.X().BlockchainID(), &to); err != nil {
+			_, err = subnet.IssuePFromXImportTx(
+				wallet,
+				ledgerIndex != wrongLedgerIndexVal,
+				&to,
+			)
+			if err != nil {
 				ux.Logger.PrintToUser(logging.LightRed.Wrap(fmt.Sprintf("ERROR: restart from this step by using the same command with extra arguments: --%s %d", receiveRecoveryStepFlag, receiveRecoveryStep)))
 				return err
 			}

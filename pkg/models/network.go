@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 )
 
 type NetworkKind int64
@@ -43,8 +43,8 @@ var (
 	UndefinedNetwork = NewNetwork(Undefined, 0, "")
 	LocalNetwork     = NewNetwork(Local, constants.LocalNetworkID, constants.LocalAPIEndpoint)
 	DevnetNetwork    = NewNetwork(Devnet, constants.DevnetNetworkID, constants.DevnetAPIEndpoint)
-	FujiNetwork      = NewNetwork(Fuji, avago_constants.FujiID, constants.FujiAPIEndpoint)
-	MainnetNetwork   = NewNetwork(Mainnet, avago_constants.MainnetID, constants.MainnetAPIEndpoint)
+	FujiNetwork      = NewNetwork(Fuji, avagoconstants.FujiID, constants.FujiAPIEndpoint)
+	MainnetNetwork   = NewNetwork(Mainnet, avagoconstants.MainnetID, constants.MainnetAPIEndpoint)
 )
 
 func NewNetwork(kind NetworkKind, id uint32, endpoint string) Network {
@@ -76,9 +76,9 @@ func NetworkFromString(s string) Network {
 
 func NetworkFromNetworkID(networkID uint32) Network {
 	switch networkID {
-	case avago_constants.MainnetID:
+	case avagoconstants.MainnetID:
 		return MainnetNetwork
-	case avago_constants.FujiID:
+	case avagoconstants.FujiID:
 		return FujiNetwork
 	case constants.LocalNetworkID:
 		return LocalNetwork

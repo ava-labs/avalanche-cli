@@ -3,7 +3,6 @@
 package keycmd
 
 import (
-	"context"
 	"fmt"
 	"math/big"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -317,7 +317,7 @@ func getPChainAddrInfo(
 	kind string,
 	name string,
 ) (addressInfo, error) {
-	balance, err := getPChainBalanceStr(context.Background(), pClients[network], pChainAddr)
+	balance, err := getPChainBalanceStr(pClients[network], pChainAddr)
 	if err != nil {
 		// just ignore local network errors
 		if network.Kind != models.Local {
@@ -341,7 +341,7 @@ func getCChainAddrInfo(
 	kind string,
 	name string,
 ) (addressInfo, error) {
-	cChainBalance, err := getCChainBalanceStr(context.Background(), cClients[network], cChainAddr)
+	cChainBalance, err := getCChainBalanceStr(cClients[network], cChainAddr)
 	if err != nil {
 		// just ignore local network errors
 		if network.Kind != models.Local {
@@ -377,9 +377,9 @@ func printAddrInfos(addrInfos []addressInfo) {
 	table.Render()
 }
 
-func getCChainBalanceStr(ctx context.Context, cClient ethclient.Client, addrStr string) (string, error) {
+func getCChainBalanceStr(cClient ethclient.Client, addrStr string) (string, error) {
 	addr := common.HexToAddress(addrStr)
-	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	balance, err := cClient.BalanceAt(ctx, addr, nil)
 	cancel()
 	if err != nil {
@@ -399,12 +399,12 @@ func getCChainBalanceStr(ctx context.Context, cClient ethclient.Client, addrStr 
 	return balanceStr, nil
 }
 
-func getPChainBalanceStr(ctx context.Context, pClient platformvm.Client, addr string) (string, error) {
+func getPChainBalanceStr(pClient platformvm.Client, addr string) (string, error) {
 	pID, err := address.ParseToID(addr)
 	if err != nil {
 		return "", err
 	}
-	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	resp, err := pClient.GetBalance(ctx, []ids.ShortID{pID})
 	cancel()
 	if err != nil {

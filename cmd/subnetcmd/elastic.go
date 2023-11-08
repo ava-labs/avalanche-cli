@@ -11,25 +11,18 @@ import (
 	"strings"
 	"time"
 
-	utilspkg "github.com/ava-labs/avalanche-cli/pkg/utils"
-
-	"github.com/ava-labs/avalanche-cli/pkg/txutils"
-
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanchego/vms/components/verify"
-
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
-
-	"github.com/ava-labs/avalanchego/genesis"
-
 	es "github.com/ava-labs/avalanche-cli/pkg/elasticsubnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	subnet "github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/txutils"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/vms/components/verify"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
@@ -400,7 +393,7 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 	} else {
 		flags[constants.MultiSig] = "non-multi-sig"
 	}
-	utilspkg.HandleTracking(cmd, app, flags)
+	utils.HandleTracking(cmd, app, flags)
 	if !isFullySigned {
 		if err := SaveNotFullySignedTx(
 			"Transform Subnet",
@@ -492,7 +485,7 @@ func transformElasticSubnetLocal(sc models.Sidecar, subnetName string, tokenName
 	PrintTransformResults(subnetName, txID, subnetID, tokenName, tokenSymbol, assetID)
 	flags := make(map[string]string)
 	flags[constants.Network] = models.Local.String()
-	utilspkg.HandleTracking(cmd, app, flags)
+	utils.HandleTracking(cmd, app, flags)
 	return nil
 }
 
@@ -706,7 +699,7 @@ func getTokenDenomination() (int, error) {
 
 func CheckSubnetIsElastic(subnetID ids.ID, network models.Network) (bool, error) {
 	pClient := platformvm.NewClient(network.Endpoint)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	_, _, err := pClient.GetCurrentSupply(ctx, subnetID)
 	if err != nil {
