@@ -439,3 +439,86 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]
 	}
 	return nil
 }
+
+// RunAnsiblePlaybookUpgradeAvalancheGo upgrades avalanche go version of node
+// targets a specific host ansibleHostID in ansible inventory file
+func RunAnsiblePlaybookUpgradeAvalancheGo(ansibleDir, inventoryPath, ansibleHostID, avalancheGoVersion string) error {
+	playbookInputs := "target=" + ansibleHostID + " avalancheGoVersion=" + avalancheGoVersion
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.UpgradeAvalancheGoPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
+// RunAnsiblePlaybookStartNode starts avalanche go
+func RunAnsiblePlaybookStartNode(ansibleDir, inventoryPath, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.StartNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
+// RunAnsiblePlaybookStopNode stop avalanche go
+func RunAnsiblePlaybookStopNode(ansibleDir, inventoryPath, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.StopNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
+// RunAnsiblePlaybookUpgradeSubnetEVM upgrades subnetEVM version of node
+// targets a specific host ansibleHostID in ansible inventory file
+func RunAnsiblePlaybookUpgradeSubnetEVM(ansibleDir, subnetEVMBinaryPaths, inventoryPath, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID + " subnetEVMBinaryPath=" + subnetEVMBinaryPaths
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.UpgradeSubnetEVMPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
+// RunAnsiblePlaybookGetNewSubnetEVM downloads and unzips new subnetEVM version
+// targets a specific host ansibleHostID in ansible inventory file
+func RunAnsiblePlaybookGetNewSubnetEVM(ansibleDir, subnetEVMReleaseURL, subnetEVMArchive, inventoryPath, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID + " subnetEVMReleaseURL=" + subnetEVMReleaseURL + " subnetEVMArchive=" + subnetEVMArchive
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.GetNewSubnetEVMPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
