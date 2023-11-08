@@ -129,7 +129,7 @@ func stopNodes(_ *cobra.Command, args []string) error {
 			if err = awsAPI.StopAWSNode(ec2Svc, nodeConfig, clusterName); err != nil {
 				if strings.Contains(err.Error(), "RequestExpired: Request has expired") {
 					ux.Logger.PrintToUser("")
-					printExpiredCredentialsOutput()
+					printExpiredCredentialsOutput(awsProfile)
 					return nil
 				}
 				failedNodes = append(failedNodes, node)
