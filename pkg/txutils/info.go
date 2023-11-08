@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanchego/ids"
@@ -33,11 +32,11 @@ func GetNetwork(tx *txs.Tx) (models.Network, error) {
 	case *txs.AddPermissionlessValidatorTx:
 		networkID = unsignedTx.NetworkID
 	default:
-		return models.Undefined, fmt.Errorf("unexpected unsigned tx type %T", unsignedTx)
+		return models.UndefinedNetwork, fmt.Errorf("unexpected unsigned tx type %T", unsignedTx)
 	}
 	network := models.NetworkFromNetworkID(networkID)
-	if network == models.Undefined {
-		return models.Undefined, fmt.Errorf("undefined network model for tx")
+	if network.Kind == models.Undefined {
+		return models.UndefinedNetwork, fmt.Errorf("undefined network model for tx")
 	}
 	return network, nil
 }
@@ -60,18 +59,7 @@ func IsCreateChainTx(tx *txs.Tx) bool {
 }
 
 func GetOwners(network models.Network, subnetID ids.ID) ([]string, uint32, error) {
-	var api string
-	switch network {
-	case models.Fuji:
-		api = constants.FujiAPIEndpoint
-	case models.Mainnet:
-		api = constants.MainnetAPIEndpoint
-	case models.Local:
-		api = constants.LocalAPIEndpoint
-	default:
-		return nil, 0, fmt.Errorf("network not supported")
-	}
-	pClient := platformvm.NewClient(api)
+	pClient := platformvm.NewClient(network.Endpoint)
 	ctx := context.Background()
 	txBytes, err := pClient.GetTx(ctx, subnetID)
 	if err != nil {
@@ -91,11 +79,7 @@ func GetOwners(network models.Network, subnetID ids.ID) ([]string, uint32, error
 	}
 	controlKeys := owner.Addrs
 	threshold := owner.Threshold
-	networkID, err := network.NetworkID()
-	if err != nil {
-		return nil, 0, err
-	}
-	hrp := key.GetHRP(networkID)
+	hrp := key.GetHRP(network.ID)
 	controlKeysStrs := []string{}
 	for _, addr := range controlKeys {
 		addrStr, err := address.Format("P", hrp, addr[:])

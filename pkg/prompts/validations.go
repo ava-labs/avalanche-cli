@@ -179,7 +179,7 @@ func validatePChainLocalAddress(input string) error {
 }
 
 func getPChainValidationFunc(network models.Network) func(string) error {
-	switch network {
+	switch network.Kind {
 	case models.Fuji:
 		return validatePChainFujiAddress
 	case models.Mainnet:

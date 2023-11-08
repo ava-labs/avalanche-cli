@@ -261,14 +261,14 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 
 		// obtain ledger2 addr
 		interactionEndCh, ledgerSimEndCh := utils.StartLedgerSim(0, ledger2Seed, false)
-		ledger2Addr, err := utils.GetLedgerAddress(models.Local, 0)
+		ledger2Addr, err := utils.GetLedgerAddress(models.LocalNetwork, 0)
 		gomega.Expect(err).Should(gomega.BeNil())
 		close(interactionEndCh)
 		<-ledgerSimEndCh
 
 		// obtain ledger3 addr
 		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(0, ledger3Seed, false)
-		ledger3Addr, err := utils.GetLedgerAddress(models.Local, 0)
+		ledger3Addr, err := utils.GetLedgerAddress(models.LocalNetwork, 0)
 		gomega.Expect(err).Should(gomega.BeNil())
 		close(interactionEndCh)
 		<-ledgerSimEndCh
@@ -281,7 +281,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(3, ledger1Seed, true)
 
 		// obtain ledger1 addr
-		ledger1Addr, err := utils.GetLedgerAddress(models.Local, 0)
+		ledger1Addr, err := utils.GetLedgerAddress(models.LocalNetwork, 0)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// multisig deploy from unfunded ledger1 should not create any subnet/blockchain

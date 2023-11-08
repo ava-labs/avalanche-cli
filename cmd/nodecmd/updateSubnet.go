@@ -72,7 +72,7 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 	if err := setupBuildEnv(app.GetAnsibleInventoryDirPath(clusterName), ""); err != nil {
 		return err
 	}
-	nonUpdatedNodes, err := doUpdateSubnet(clusterName, subnetName, models.Fuji)
+	nonUpdatedNodes, err := doUpdateSubnet(clusterName, subnetName, models.FujiNetwork)
 	if err != nil {
 		return err
 	}

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -159,17 +158,14 @@ func transferF(*cobra.Command, []string) error {
 	}
 
 	var network models.Network
-	if local {
-		network = models.Local
-	}
-	if testnet {
-		network = models.Fuji
-	}
-	if mainnet {
-		network = models.Mainnet
-	}
-	if network == models.Undefined {
-		// no flag was set, prompt user
+	switch {
+	case local:
+		network = models.LocalNetwork
+	case testnet:
+		network = models.FujiNetwork
+	case mainnet:
+		network = models.MainnetNetwork
+	default:
 		networkStr, err := app.Prompt.CaptureList(
 			"Network to use",
 			[]string{models.Mainnet.String(), models.Fuji.String(), models.Local.String()},
@@ -180,10 +176,7 @@ func transferF(*cobra.Command, []string) error {
 		network = models.NetworkFromString(networkStr)
 	}
 
-	networkID, err := network.NetworkID()
-	if err != nil {
-		return err
-	}
+	var err error
 
 	if !send && !receive {
 		option, err := app.Prompt.CaptureList(
@@ -239,17 +232,17 @@ func transferF(*cobra.Command, []string) error {
 	}
 	amount := uint64(amountFlt * float64(units.Avax))
 
-	fees := map[models.Network]uint64{
+	fees := map[models.NetworkKind]uint64{
 		models.Fuji:    genesis.FujiParams.TxFeeConfig.TxFee,
 		models.Mainnet: genesis.MainnetParams.TxFeeConfig.TxFee,
 		models.Local:   genesis.LocalParams.TxFeeConfig.TxFee,
 	}
-	fee := fees[network]
+	fee := fees[network.Kind]
 
 	var kc keychain.Keychain
 	if keyName != "" {
 		keyPath := app.GetKeyPath(keyName)
-		sk, err := key.LoadSoft(networkID, keyPath)
+		sk, err := key.LoadSoft(network.ID, keyPath)
 		if err != nil {
 			return err
 		}
@@ -280,7 +273,7 @@ func transferF(*cobra.Command, []string) error {
 		}
 	} else {
 		receiverAddr = kc.Addresses().List()[0]
-		receiverAddrStr, err = address.Format("P", key.GetHRP(networkID), receiverAddr[:])
+		receiverAddrStr, err = address.Format("P", key.GetHRP(network.ID), receiverAddr[:])
 		if err != nil {
 			return err
 		}
@@ -290,7 +283,7 @@ func transferF(*cobra.Command, []string) error {
 	ux.Logger.PrintToUser("this operation is going to:")
 	if send {
 		addr := kc.Addresses().List()[0]
-		addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
+		addrStr, err := address.Format("P", key.GetHRP(network.ID), addr[:])
 		if err != nil {
 			return err
 		}
@@ -316,13 +309,6 @@ func transferF(*cobra.Command, []string) error {
 		}
 	}
 
-	apiEndpoints := map[models.Network]string{
-		models.Fuji:    constants.FujiAPIEndpoint,
-		models.Mainnet: constants.MainnetAPIEndpoint,
-		models.Local:   constants.LocalAPIEndpoint,
-	}
-	apiEndpoint := apiEndpoints[network]
-
 	to := secp256k1fx.OutputOwners{
 		Threshold: 1,
 		Addrs:     []ids.ShortID{receiverAddr},
@@ -332,7 +318,7 @@ func transferF(*cobra.Command, []string) error {
 		wallet, err := primary.MakeWallet(
 			context.Background(),
 			&primary.WalletConfig{
-				URI:          apiEndpoint,
+				URI:          network.Endpoint,
 				AVAXKeychain: kc,
 				EthKeychain:  secp256k1fx.NewKeychain(),
 			},
@@ -384,7 +370,7 @@ func transferF(*cobra.Command, []string) error {
 			wallet, err := primary.MakeWallet(
 				context.Background(),
 				&primary.WalletConfig{
-					URI:          apiEndpoint,
+					URI:          network.Endpoint,
 					AVAXKeychain: kc,
 					EthKeychain:  secp256k1fx.NewKeychain(),
 				},
@@ -434,7 +420,7 @@ func transferF(*cobra.Command, []string) error {
 			wallet, err := primary.MakeWallet(
 				context.Background(),
 				&primary.WalletConfig{
-					URI:          apiEndpoint,
+					URI:          network.Endpoint,
 					AVAXKeychain: kc,
 					EthKeychain:  secp256k1fx.NewKeychain(),
 				},
@@ -462,7 +448,7 @@ func transferF(*cobra.Command, []string) error {
 			wallet, err := primary.MakeWallet(
 				context.Background(),
 				&primary.WalletConfig{
-					URI:          apiEndpoint,
+					URI:          network.Endpoint,
 					AVAXKeychain: kc,
 					EthKeychain:  secp256k1fx.NewKeychain(),
 				},
