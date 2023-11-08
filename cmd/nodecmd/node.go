@@ -44,5 +44,7 @@ rest of the commands to maintain your node and make your node a Subnet Validator
 	cmd.AddCommand(newListCmd())
 	// node update
 	cmd.AddCommand(newUpdateCmd())
+	// node upgrade
+	cmd.AddCommand(newUpgradeCmd())
 	return cmd
 }

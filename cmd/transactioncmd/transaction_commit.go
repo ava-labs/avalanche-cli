@@ -52,7 +52,7 @@ func commitTx(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	subnetID := sc.Networks[network.String()].SubnetID
+	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}

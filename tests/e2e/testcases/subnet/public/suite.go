@@ -261,14 +261,14 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 
 		// obtain ledger2 addr
 		interactionEndCh, ledgerSimEndCh := utils.StartLedgerSim(0, ledger2Seed, false)
-		ledger2Addr, err := utils.GetLedgerAddress(models.Local, 0)
+		ledger2Addr, err := utils.GetLedgerAddress(models.LocalNetwork, 0)
 		gomega.Expect(err).Should(gomega.BeNil())
 		close(interactionEndCh)
 		<-ledgerSimEndCh
 
 		// obtain ledger3 addr
 		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(0, ledger3Seed, false)
-		ledger3Addr, err := utils.GetLedgerAddress(models.Local, 0)
+		ledger3Addr, err := utils.GetLedgerAddress(models.LocalNetwork, 0)
 		gomega.Expect(err).Should(gomega.BeNil())
 		close(interactionEndCh)
 		<-ledgerSimEndCh
@@ -281,7 +281,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(3, ledger1Seed, true)
 
 		// obtain ledger1 addr
-		ledger1Addr, err := utils.GetLedgerAddress(models.Local, 0)
+		ledger1Addr, err := utils.GetLedgerAddress(models.LocalNetwork, 0)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// multisig deploy from unfunded ledger1 should not create any subnet/blockchain
@@ -293,7 +293,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			txPath,
 			true,
 		)
-		toMatch := "(?s).+Ledger addresses:.+  " + ledger1Addr + ".+Error: insufficient funds.+"
+		toMatch := "(?s).+Ledger addresses:.+  " + ledger1Addr + ".+Error: error building tx: insufficient funds.+"
 		matched, err := regexp.MatchString(toMatch, s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
@@ -447,7 +447,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			txPath,
 			true,
 		)
-		toMatch = "(?s).*Error: failed to decode client response: couldn't issue tx: failed to read consumed.+"
+		toMatch = "(?s).*Error: error issuing tx with ID.+: failed to decode client response: couldn't issue tx: failed to read consumed.+"
 		matched, err = regexp.MatchString(toMatch, s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)

@@ -44,7 +44,7 @@ func createKey(_ *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.PrintToUser("Key created")
-		networks := []models.Network{models.Fuji, models.Mainnet}
+		networks := []models.Network{models.FujiNetwork, models.MainnetNetwork}
 		cchain := true
 		pClients, cClients, err := getClients(networks, cchain)
 		if err != nil {

@@ -47,10 +47,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	WriteReadReadPerms = 0o644
-)
-
 type LocalDeployer struct {
 	procChecker        binutils.ProcessChecker
 	binChecker         binutils.BinaryChecker
@@ -330,7 +326,7 @@ func (d *LocalDeployer) StartServer() error {
 func GetCurrentSupply(subnetID ids.ID) error {
 	api := constants.LocalAPIEndpoint
 	pClient := platformvm.NewClient(api)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	_, _, err := pClient.GetCurrentSupply(ctx, subnetID)
 	return err
@@ -374,7 +370,8 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	runDir := d.app.GetRunDir()
 
-	ctx := binutils.GetAsyncContext()
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
 
 	// loading sidecar before it's needed so we catch any error early
 	sc, err := d.app.LoadSidecar(chain)
@@ -710,7 +707,7 @@ func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 		if err != nil {
 			return fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
 		}
-		if err := os.WriteFile(bootstrapSnapshotArchivePath, bootstrapSnapshotBytes, WriteReadReadPerms); err != nil {
+		if err := os.WriteFile(bootstrapSnapshotArchivePath, bootstrapSnapshotBytes, constants.WriteReadReadPerms); err != nil {
 			return fmt.Errorf("failed writing down bootstrap snapshot: %w", err)
 		}
 	}
@@ -780,7 +777,8 @@ func GetLocallyDeployedSubnets() (map[string]struct{}, error) {
 		return nil, err
 	}
 
-	ctx := binutils.GetAsyncContext()
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
 	resp, err := cli.Status(ctx)
 	if err != nil {
 		return nil, err
@@ -816,7 +814,7 @@ func IssueRemoveSubnetValidatorTx(kc keychain.Keychain, subnetID ids.ID, nodeID 
 func GetSubnetValidators(subnetID ids.ID) ([]platformvm.ClientPermissionlessValidator, error) {
 	api := constants.LocalAPIEndpoint
 	pClient := platformvm.NewClient(api)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 
 	return pClient.GetCurrentValidators(ctx, subnetID, nil)
@@ -825,7 +823,7 @@ func GetSubnetValidators(subnetID ids.ID) ([]platformvm.ClientPermissionlessVali
 func CheckNodeIsInSubnetPendingValidators(subnetID ids.ID, nodeID string) (bool, error) {
 	api := constants.LocalAPIEndpoint
 	pClient := platformvm.NewClient(api)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 
 	pVals, _, err := pClient.GetPendingValidators(ctx, subnetID, nil)

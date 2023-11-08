@@ -4,6 +4,7 @@ package networkcmd
 
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/spf13/cobra"
@@ -30,7 +31,8 @@ func networkStatus(*cobra.Command, []string) error {
 		return err
 	}
 
-	ctx := binutils.GetAsyncContext()
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
 	status, err := cli.Status(ctx)
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {

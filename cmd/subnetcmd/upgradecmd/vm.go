@@ -11,10 +11,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/plugins"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/server"
-	"github.com/ava-labs/avalanche-network-runner/utils"
+	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -314,7 +315,7 @@ func updateFutureVM(sc models.Sidecar, targetVersion string) error {
 }
 
 func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
-	vmid, err := utils.VMID(sc.Name)
+	vmid, err := anrutils.VMID(sc.Name)
 	if err != nil {
 		return err
 	}
@@ -392,7 +393,8 @@ func isServerRunning() (bool, error) {
 	} else if err != nil {
 		return false, err
 	}
-	ctx := binutils.GetAsyncContext()
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
 
 	_, err = cli.Status(ctx)
 
