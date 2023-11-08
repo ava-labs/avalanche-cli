@@ -40,7 +40,7 @@ func list(_ *cobra.Command, _ []string) error {
 		ux.Logger.PrintToUser("There are no clusters defined.")
 	}
 	for clusterName, clusterConf := range clustersConfig.Clusters {
-		ux.Logger.PrintToUser("Cluster %q (%s)", clusterName, clusterConf.Network.Kind.String())
+		ux.Logger.PrintToUser("Cluster %q (%s)", clusterName, clusterConf.Network.Name())
 		if err := checkCluster(clusterName); err != nil {
 			return err
 		}

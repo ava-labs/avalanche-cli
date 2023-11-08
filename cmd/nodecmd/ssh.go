@@ -3,6 +3,8 @@
 package nodecmd
 
 import (
+	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -16,7 +18,7 @@ import (
 func newSSHCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ssh [clusterName] [cmd]",
-		Short: "(ALPHA Warning) Execute ssh command on node/s",
+		Short: "(ALPHA Warning) Execute ssh command on node(s)",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
 The node ssh command execute a given command using ssh on all nodes in the cluster.
@@ -42,9 +44,10 @@ func sshNode(_ *cobra.Command, args []string) error {
 		}
 		if len(clustersConfig.Clusters) == 0 {
 			ux.Logger.PrintToUser("There are no clusters defined.")
+			return nil
 		}
 		for clusterName, clusterConfig := range clustersConfig.Clusters {
-			ux.Logger.PrintToUser("Cluster %q (%s)", clusterName, clusterConfig.Network.Kind.String())
+			ux.Logger.PrintToUser("Cluster %q (%s)", clusterName, clusterConfig.Network.Name())
 			if err := sshCluster([]string{clusterName}, "  "); err != nil {
 				return err
 			}
@@ -76,11 +79,15 @@ func sshCluster(args []string, indent string) error {
 		if err != nil {
 			return err
 		}
-		cmdLine := utils.GetSSHConnectionString(ansibleHosts[host].IP, ansibleHosts[host].SSHPrivateKeyPath) + " " + strings.Join(args[1:], " ")
+		cmdLine := utils.GetSSHConnectionString(
+			ansibleHosts[host].IP,
+			fmt.Sprintf("%s %s", ansibleHosts[host].SSHPrivateKeyPath, strings.Join(args[1:], " ")),
+		)
 		ux.Logger.PrintToUser("%s[%s] %s", indent, cloudID, cmdLine)
-		if len(args) > 1 {
+		if len(args) != 0 {
 			splitCmdLine := strings.Split(cmdLine, " ")
 			cmd := exec.Command(splitCmdLine[0], splitCmdLine[1:]...) //nolint: gosec
+			cmd.Env = os.Environ()
 			_, _ = utils.SetupRealtimeCLIOutput(cmd, true, true)
 			err = cmd.Run()
 			if err != nil {
