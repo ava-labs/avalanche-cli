@@ -54,7 +54,7 @@ the --output flag.`,
 }
 
 func CallExportSubnet(subnetName, exportPath string, network models.Network) error {
-	switch network {
+	switch network.Kind {
 	case models.Mainnet:
 		deployMainnet = true
 	case models.Fuji:
@@ -73,19 +73,16 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	var network models.Network
-	if deployMainnet {
-		network = models.Mainnet
-	}
+	network := models.UndefinedNetwork
 	switch {
 	case deployLocal:
-		network = models.Local
+		network = models.LocalNetwork
 	case deployTestnet:
-		network = models.Fuji
+		network = models.FujiNetwork
 	case deployMainnet:
-		network = models.Mainnet
+		network = models.MainnetNetwork
 	}
-	if network == models.Undefined {
+	if network.Kind == models.Undefined {
 		networkStr, err := app.Prompt.CaptureList(
 			"Choose which network's genesis to export",
 			[]string{models.Local.String(), models.Fuji.String(), models.Mainnet.String()},

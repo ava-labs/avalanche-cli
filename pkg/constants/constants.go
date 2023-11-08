@@ -33,7 +33,7 @@ const (
 	StopAWSNode                  = "stop-aws-node"
 	CreateAWSNode                = "create-aws-node"
 	GetAWSNodeIP                 = "get-aws-node-ip"
-	ClusterConfigFileName        = "cluster_config.json"
+	ClustersConfigFileName       = "cluster_config.json"
 	StakerCertFileName           = "staker.crt"
 	StakerKeyFileName            = "staker.key"
 	BLSKeyFileName               = "signer.key"
@@ -53,6 +53,9 @@ const (
 	// this depends on bootstrap snapshot
 	LocalAPIEndpoint = "http://127.0.0.1:9650"
 	LocalNetworkID   = 1337
+
+	DevnetAPIEndpoint = "http://127.0.0.1:9650"
+	DevnetNetworkID   = 1338
 
 	DefaultTokenName = "TEST"
 
@@ -114,6 +117,7 @@ const (
 	AnsiblePlaybook                              = "ansible-playbook"
 	SetupNodePlaybook                            = "playbook/setupNode.yml"
 	CopyStakingFilesPlaybook                     = "playbook/copyStakingFiles.yml"
+	SetupDevnetPlaybook                          = "playbook/setupDevnet.yml"
 	ExportSubnetPlaybook                         = "playbook/exportSubnet.yml"
 	IsBootstrappedPlaybook                       = "playbook/isBootstrapped.yml"
 	IsSubnetSyncedPlaybook                       = "playbook/isSubnetSynced.yml"

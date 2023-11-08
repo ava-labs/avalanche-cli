@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/cb58"
 	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
@@ -40,6 +41,7 @@ type SoftKey struct {
 	privKeyEncoded string
 
 	pAddr string
+	xAddr string
 
 	keyChain *secp256k1fx.Keychain
 }
@@ -52,7 +54,10 @@ const (
 	EwoqPrivateKey = privKeyEncPfx + rawEwoqPk
 )
 
-var keyFactory = new(secp256k1.Factory)
+var (
+	keyFactory   = new(secp256k1.Factory)
+	ewoqKeyBytes = []byte("56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027")
+)
 
 type SOp struct {
 	privKey        *secp256k1.PrivateKey
@@ -137,6 +142,10 @@ func NewSoft(networkID uint32, opts ...SOpOption) (*SoftKey, error) {
 	if err != nil {
 		return nil, err
 	}
+	m.xAddr, err = address.Format("X", hrp, m.privKey.PublicKey().Address().Bytes())
+	if err != nil {
+		return nil, err
+	}
 
 	return m, nil
 }
@@ -147,7 +156,16 @@ func LoadSoft(networkID uint32, keyPath string) (*SoftKey, error) {
 	if err != nil {
 		return nil, err
 	}
+	return LoadSoftFromBytes(networkID, kb)
+}
 
+func LoadEwoq(networkID uint32) (*SoftKey, error) {
+	ux.Logger.PrintToUser("Loading EWOQ key")
+	return LoadSoftFromBytes(networkID, ewoqKeyBytes)
+}
+
+// LoadSoftFromBytes loads the private key from bytes and creates the corresponding SoftKey.
+func LoadSoftFromBytes(networkID uint32, kb []byte) (*SoftKey, error) {
 	// in case, it's already encoded
 	k, err := NewSoft(networkID, WithPrivateKeyEncoded(string(kb)))
 	if err == nil {
@@ -271,6 +289,10 @@ func (m *SoftKey) Save(p string) error {
 
 func (m *SoftKey) P() []string {
 	return []string{m.pAddr}
+}
+
+func (m *SoftKey) X() []string {
+	return []string{m.xAddr}
 }
 
 func (m *SoftKey) Spends(outputs []*avax.UTXO, opts ...OpOption) (

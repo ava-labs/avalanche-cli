@@ -460,25 +460,12 @@ func (d *PublicDeployer) Sign(
 
 func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error) {
 	ctx := context.Background()
-
-	var api string
-	switch d.network {
-	case models.Fuji:
-		api = constants.FujiAPIEndpoint
-	case models.Mainnet:
-		api = constants.MainnetAPIEndpoint
-	case models.Local:
-		// used for E2E testing of public related paths
-		api = constants.LocalAPIEndpoint
-	default:
-		return nil, fmt.Errorf("unsupported public network")
-	}
 	// filter out ids.Empty txs
 	filteredTxs := utils.Filter(preloadTxs, func(e ids.ID) bool { return e != ids.Empty })
 	wallet, err := primary.MakeWallet(
 		ctx,
 		&primary.WalletConfig{
-			URI:              api,
+			URI:              d.network.Endpoint,
 			AVAXKeychain:     d.kc,
 			EthKeychain:      secp256k1fx.NewKeychain(),
 			PChainTxsToFetch: set.Of(filteredTxs...),
@@ -749,16 +736,7 @@ func (d *PublicDeployer) checkWalletHasSubnetAuthAddresses(subnetAuth []ids.Shor
 }
 
 func IsSubnetValidator(subnetID ids.ID, nodeID ids.NodeID, network models.Network) (bool, error) {
-	var apiURL string
-	switch network {
-	case models.Mainnet:
-		apiURL = constants.MainnetAPIEndpoint
-	case models.Fuji:
-		apiURL = constants.FujiAPIEndpoint
-	default:
-		return false, fmt.Errorf("invalid network: %s", network)
-	}
-	pClient := platformvm.NewClient(apiURL)
+	pClient := platformvm.NewClient(network.Endpoint)
 	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
 	defer cancel()
 
@@ -771,16 +749,7 @@ func IsSubnetValidator(subnetID ids.ID, nodeID ids.NodeID, network models.Networ
 }
 
 func GetPublicSubnetValidators(subnetID ids.ID, network models.Network) ([]platformvm.ClientPermissionlessValidator, error) {
-	var apiURL string
-	switch network {
-	case models.Mainnet:
-		apiURL = constants.MainnetAPIEndpoint
-	case models.Fuji:
-		apiURL = constants.FujiAPIEndpoint
-	default:
-		return nil, fmt.Errorf("invalid network: %s", network)
-	}
-	pClient := platformvm.NewClient(apiURL)
+	pClient := platformvm.NewClient(network.Endpoint)
 	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
 	defer cancel()
 

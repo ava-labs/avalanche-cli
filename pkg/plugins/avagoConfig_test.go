@@ -12,6 +12,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/internal/testutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -22,9 +23,10 @@ const (
 	subnetName1 = "TEST_subnet"
 	subnetName2 = "TEST_copied_subnet"
 
-	subnetID  = "testSubNet"
-	networkID = "67443"
+	subnetID = "testSubNet"
 )
+
+var network = models.Network{ID: 67443}
 
 // testing backward compatibility
 func TestEditConfigFileWithOldPattern(t *testing.T) {
@@ -52,7 +54,7 @@ func TestEditConfigFileWithOldPattern(t *testing.T) {
 	err = os.WriteFile(configPath, configBytes, 0o600)
 	require.NoError(err)
 
-	err = EditConfigFile(ap, subnetID, networkID, configPath, true, "")
+	err = EditConfigFile(ap, subnetID, network, configPath, true, "")
 	require.NoError(err)
 
 	fileBytes, err := os.ReadFile(configPath)
@@ -94,7 +96,7 @@ func TestEditConfigFileWithNewPattern(t *testing.T) {
 	err = os.WriteFile(configPath, configBytes, 0o600)
 	require.NoError(err)
 
-	err = EditConfigFile(ap, subnetID, networkID, configPath, true, "")
+	err = EditConfigFile(ap, subnetID, network, configPath, true, "")
 	require.NoError(err)
 
 	fileBytes, err := os.ReadFile(configPath)
@@ -135,7 +137,7 @@ func TestEditConfigFileWithNoSettings(t *testing.T) {
 	err = os.WriteFile(configPath, configBytes, 0o600)
 	require.NoError(err)
 
-	err = EditConfigFile(ap, subnetID, networkID, configPath, true, "")
+	err = EditConfigFile(ap, subnetID, network, configPath, true, "")
 	require.NoError(err)
 
 	fileBytes, err := os.ReadFile(configPath)

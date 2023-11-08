@@ -193,7 +193,7 @@ func AddSubnetIDToSidecar(subnetName string, network models.Network, subnetID st
 	if err != nil {
 		return err
 	}
-	sc.Networks[network.String()] = models.NetworkData{
+	sc.Networks[network.Name()] = models.NetworkData{
 		SubnetID: subnetIDstr,
 	}
 
@@ -809,11 +809,7 @@ func GetLedgerAddress(network models.Network, index uint32) (string, error) {
 		return "", fmt.Errorf("no ledger addresses available")
 	}
 	ledgerAddr := ledgerAddrs[0]
-	networkID, err := network.NetworkID()
-	if err != nil {
-		return "", err
-	}
-	hrp := key.GetHRP(networkID)
+	hrp := key.GetHRP(network.ID)
 	ledgerAddrStr, err := address.Format("P", hrp, ledgerAddr[:])
 	if err != nil {
 		return "", err
