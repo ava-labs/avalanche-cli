@@ -98,9 +98,9 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().StringVar(&cmdLineGCPCredentialsPath, "gcp-credentials", "", "use given GCP credentials")
 	cmd.Flags().StringVar(&cmdLineGCPProjectName, "gcp-project", "", "use given GCP project")
 	cmd.Flags().StringVar(&cmdLineAlternativeKeyPairName, "alternative-key-pair-name", "", "key pair name to use if default one generates conflicts")
+	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
 	cmd.Flags().BoolVar(&createOnFuji, "fuji", false, "create node/s in Fuji Network")
 	cmd.Flags().BoolVar(&createDevnet, "devnet", false, "create node/s into a new Devnet")
-
 	return cmd
 }
 
@@ -110,6 +110,9 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 	if useAWS && useGCP {
 		return fmt.Errorf("could not use both AWS and GCP cloud options")
+	}
+	if !useAWS && awsProfile != constants.AWSDefaultCredential {
+		return fmt.Errorf("could not use AWS profile for non AWS cloud option")
 	}
 	clusterName := args[0]
 
@@ -155,11 +158,11 @@ func createNodes(_ *cobra.Command, args []string) error {
 	gcpCredentialFilepath := ""
 	if cloudService == constants.AWSCloudService {
 		// Get AWS Credential, region and AMI
-		ec2Svc, region, ami, err := getAWSCloudConfig(cmdLineRegion, authorizeAccess)
+		ec2Svc, region, ami, err := getAWSCloudConfig(awsProfile, cmdLineRegion, authorizeAccess)
 		if err != nil {
 			return err
 		}
-		cloudConfig, err = createAWSInstances(ec2Svc, numNodes, region, ami, usr)
+		cloudConfig, err = createAWSInstances(ec2Svc, numNodes, awsProfile, region, ami, usr)
 		if err != nil {
 			return err
 		}
