@@ -114,8 +114,8 @@ func createNodes(_ *cobra.Command, args []string) error {
 
 	endpoint := ""
 	if createDevnet {
-		// avoid prompt for endpoint on devnet
-		endpoint = "fake"
+		// avoid prompt asking for endpoint if Devnet, it will be set later on when the info is available
+		endpoint = "toIgnore"
 	}
 	network, err := subnetcmd.GetNetworkFromCmdLineFlags(
 		false,
