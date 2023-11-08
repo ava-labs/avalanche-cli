@@ -196,7 +196,7 @@ func sendMetrics(cmd *cobra.Command, repoName, subnetName string) error {
 	precompilesJoined := strings.Join(precompiles, ",")
 	flags[constants.PrecompileType] = precompilesJoined
 	flags[constants.NumberOfAirdrops] = strconv.Itoa(numAirdropAddresses)
-	metrics.HandleTracking(cmd, flags)
+	metrics.HandleTracking(cmd, app, flags)
 	return nil
 }
 

@@ -19,7 +19,6 @@ import (
 
 	"github.com/posthog/posthog-go"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // telemetryToken value is set at build and install scripts using ldflags
@@ -54,8 +53,8 @@ func PrintMetricsOptOutPrompt() {
 		"You can also read our privacy statement <https://www.avalabs.org/privacy-policy> to learn more.\n")
 }
 
-func saveMetricsConfig(metricsEnabled bool) error {
-	return application.SetConfigValue(constants.ConfigMetricsEnabled, metricsEnabled)
+func saveMetricsConfig(app *application.Avalanche, metricsEnabled bool) error {
+	return app.Conf.SetConfigValue(constants.ConfigMetricsEnabledKey, metricsEnabled)
 }
 
 func HandleUserMetricsPreference(app *application.Avalanche) error {
@@ -70,18 +69,18 @@ func HandleUserMetricsPreference(app *application.Avalanche) error {
 	} else {
 		ux.Logger.PrintToUser("Thank you for opting in Avalanche CLI usage metrics collection")
 	}
-	if err = saveMetricsConfig(yes); err != nil {
+	if err = saveMetricsConfig(app, yes); err != nil {
 		return err
 	}
 	return nil
 }
 
-func userIsOptedIn() bool {
-	return viper.GetBool(constants.ConfigMetricsEnabled)
+func userIsOptedIn(app *application.Avalanche) bool {
+	return app.Conf.GetConfigBoolValue(constants.ConfigMetricsEnabledKey)
 }
 
-func HandleTracking(cmd *cobra.Command, flags map[string]string) {
-	if userIsOptedIn() {
+func HandleTracking(cmd *cobra.Command, app *application.Avalanche, flags map[string]string) {
+	if userIsOptedIn(app) {
 		if !cmd.HasSubCommands() && checkCommandIsNotCompletion(cmd) {
 			TrackMetrics(cmd, flags)
 		}

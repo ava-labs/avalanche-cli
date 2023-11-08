@@ -5,10 +5,14 @@ package configcmd
 import (
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
+
 	"github.com/spf13/cobra"
 )
 
-func NewCmd() *cobra.Command {
+var app *application.Avalanche
+
+func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Modify configuration for Avalanche-CLI",
@@ -20,6 +24,7 @@ func NewCmd() *cobra.Command {
 			}
 		},
 	}
+	app = injectedApp
 	// set user metrics collection preferences cmd
 	cmd.AddCommand(newMetricsCmd())
 	cmd.AddCommand(newMigrateCmd())
