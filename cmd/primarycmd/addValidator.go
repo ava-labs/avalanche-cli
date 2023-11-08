@@ -125,9 +125,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 		network = models.FujiNetwork
 	case validateMainnet:
 		network = models.MainnetNetwork
-	}
-
-	if network.Kind == models.Undefined {
+	default:
 		networkStr, err := app.Prompt.CaptureList(
 			"Choose a network to add validator to.",
 			[]string{models.Fuji.String(), models.Mainnet.String()},
