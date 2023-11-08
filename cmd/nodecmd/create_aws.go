@@ -48,7 +48,7 @@ func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
 
 func printNoCredentialsOutput(awsProfile string) {
 	ux.Logger.PrintToUser("No AWS credentials found in file ~/.aws/credentials ")
-	ux.Logger.PrintToUser("or in env variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
+	ux.Logger.PrintToUser("Or in environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
 	ux.Logger.PrintToUser("Please make sure correspoding keys are set in [%s] section in ~/.aws/credentials", awsProfile)
 	ux.Logger.PrintToUser("Or create a file called 'credentials' with the contents below, and add the file to ~/.aws/ directory if it's not already there")
 	ux.Logger.PrintToUser("===========BEGINNING OF FILE===========")
@@ -62,7 +62,9 @@ func printNoCredentialsOutput(awsProfile string) {
 
 func printExpiredCredentialsOutput(awsProfile string) {
 	ux.Logger.PrintToUser("AWS credentials expired")
-	ux.Logger.PrintToUser("Fill in ~/.aws/credentials with updated contents following the format below")
+	ux.Logger.PrintToUser("Please update your environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
+	ux.Logger.PrintToUser("Following https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html#envvars-set")
+	ux.Logger.PrintToUser("Or fill in ~/.aws/credentials with updated contents following the format below")
 	ux.Logger.PrintToUser("===========BEGINNING OF FILE===========")
 	ux.Logger.PrintToUser("[%s]\naws_access_key_id=<AWS_ACCESS_KEY>\naws_secret_access_key=<AWS_SECRET_ACCESS_KEY>", awsProfile)
 	ux.Logger.PrintToUser("===========END OF FILE===========")
@@ -258,7 +260,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
 }
 
-func createAWSInstances(ec2Svc *ec2.EC2, numNodes int, region, ami string, usr *user.User) (CloudConfig, error) {
+func createAWSInstances(ec2Svc *ec2.EC2, numNodes int, awsProfile, region, ami string, usr *user.User) (CloudConfig, error) {
 	prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
 	certName := prefix + "-" + region + constants.CertSuffix
 	securityGroupName := prefix + "-" + region + constants.AWSSecurityGroupSuffix

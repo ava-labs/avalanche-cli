@@ -162,7 +162,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		cloudConfig, err = createAWSInstances(ec2Svc, numNodes, region, ami, usr)
+		cloudConfig, err = createAWSInstances(ec2Svc, numNodes, awsProfile, region, ami, usr)
 		if err != nil {
 			return err
 		}
