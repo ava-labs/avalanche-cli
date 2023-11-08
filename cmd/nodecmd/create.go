@@ -341,7 +341,7 @@ func runAnsible(inventoryPath string, network models.Network, avalancheGoVersion
 		return err
 	}
 	return ansible.RunAnsiblePlaybookSetupNode(
-		app.GetConfigPath(),
+		app.Conf.GetConfigPath(),
 		app.GetAnsibleDir(),
 		inventoryPath,
 		avalancheGoVersion,

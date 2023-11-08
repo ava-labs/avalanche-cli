@@ -3,16 +3,14 @@
 package configcmd
 
 import (
-	"encoding/json"
 	"errors"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
 
-// avalanche transaction sign
+// avalanche config metrics command
 func newMetricsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "metrics [enable | disable]",
@@ -47,14 +45,5 @@ func handleMetricsSettings(_ *cobra.Command, args []string) error {
 }
 
 func saveMetricsPreferences(enableMetrics bool) error {
-	config := models.Config{
-		MetricsEnabled: enableMetrics,
-	}
-
-	jsonBytes, err := json.Marshal(&config)
-	if err != nil {
-		return err
-	}
-
-	return app.WriteConfigFile(jsonBytes)
+	return app.Conf.SetConfigValue(constants.ConfigMetricsEnabledKey, enableMetrics)
 }

@@ -17,11 +17,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
+	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
@@ -351,7 +351,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 		flags := make(map[string]string)
 		flags[constants.Network] = network.Name()
-		utils.HandleTracking(cmd, app, flags)
+		metrics.HandleTracking(cmd, app, flags)
 		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
 
 	case models.Fuji:
@@ -515,7 +515,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	flags := make(map[string]string)
 	flags[constants.Network] = network.Name()
-	utils.HandleTracking(cmd, app, flags)
+	metrics.HandleTracking(cmd, app, flags)
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
