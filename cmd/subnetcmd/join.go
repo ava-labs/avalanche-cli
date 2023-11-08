@@ -10,21 +10,20 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
-	"github.com/ava-labs/avalanche-network-runner/server"
-
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
-
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/plugins"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -160,7 +159,7 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		network = models.LocalNetwork
 	}
 
-	subnetID := sc.Networks[network.Kind.String()].SubnetID
+	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
@@ -316,12 +315,12 @@ func writeAvagoChainConfigFiles(
 		dataDir = filepath.Join(home, ".avalanchego")
 	}
 
-	subnetID := sc.Networks[network.Kind.String()].SubnetID
+	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
 	subnetIDStr := subnetID.String()
-	blockchainID := sc.Networks[network.Kind.String()].BlockchainID
+	blockchainID := sc.Networks[network.Name()].BlockchainID
 	if blockchainID == ids.Empty {
 		return errNoBlockchainID
 	}
@@ -390,7 +389,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 		return ErrMutuallyExlusiveKeyLedger
 	}
 
-	subnetID := sc.Networks[network.Kind.String()].SubnetID
+	subnetID := sc.Networks[network.Name()].SubnetID
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
 		subnetID = sc.Networks[models.Local.String()].SubnetID
 	}
@@ -473,7 +472,7 @@ func printAddPermissionlessValOutput(txID ids.ID, nodeID ids.NodeID, network mod
 	ux.Logger.PrintToUser("Validator successfully joined elastic subnet!")
 	ux.Logger.PrintToUser("TX ID: %s", txID.String())
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
-	ux.Logger.PrintToUser("Network: %s", network.Kind.String())
+	ux.Logger.PrintToUser("Network: %s", network.Name())
 	ux.Logger.PrintToUser("Start time: %s", start.UTC().Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("End time: %s", endTime.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("Stake Amount: %d", stakedTokenAmount)
@@ -546,7 +545,8 @@ func getLocalNetworkIDs() ([]string, error) {
 		return nil, err
 	}
 
-	ctx := binutils.GetAsyncContext()
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
 	status, err := cli.Status(ctx)
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {
@@ -637,9 +637,8 @@ func promptStakeAmount(subnetName string, isValidator bool, network models.Netwo
 		if err != nil {
 			return 0, err
 		}
-		ctx := context.Background()
 		pClient := platformvm.NewClient(constants.LocalAPIEndpoint)
-		walletBalance, err := getAssetBalance(ctx, pClient, ewoqPChainAddr, esc.AssetID)
+		walletBalance, err := getAssetBalance(pClient, ewoqPChainAddr, esc.AssetID)
 		if err != nil {
 			return 0, err
 		}
@@ -684,17 +683,6 @@ func promptStakeAmount(subnetName string, isValidator bool, network models.Netwo
 }
 
 func printJoinCmd(subnetID string, network models.Network, vmPath string) {
-	networkIDValue := ""
-	switch network.Kind {
-	case models.Local:
-		networkIDValue = fmt.Sprintf("network-%d", network.ID)
-	case models.Devnet:
-		networkIDValue = fmt.Sprintf("network-%d", network.ID)
-	case models.Fuji:
-		networkIDValue = "fuji"
-	case models.Mainnet:
-		networkIDValue = "mainnet"
-	}
 	msg := `
 To setup your node, you must do two things:
 
@@ -728,15 +716,15 @@ this tool will try to update the file automatically (make sure it can write to i
 After you update your config, you will need to restart your node for the changes to
 take effect.`
 
-	ux.Logger.PrintToUser(msg, vmPath, subnetID, networkIDValue, subnetID, subnetID)
+	ux.Logger.PrintToUser(msg, vmPath, subnetID, network.NetworkIDFlagValue(), subnetID, subnetID)
 }
 
-func getAssetBalance(ctx context.Context, pClient platformvm.Client, addr string, assetID ids.ID) (uint64, error) {
+func getAssetBalance(pClient platformvm.Client, addr string, assetID ids.ID) (uint64, error) {
 	pID, err := address.ParseToID(addr)
 	if err != nil {
 		return 0, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	resp, err := pClient.GetBalance(ctx, []ids.ShortID{pID})
 	cancel()
 	if err != nil {
