@@ -3,7 +3,6 @@
 package nodecmd
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,23 +11,20 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
-	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
-
-	"github.com/ava-labs/avalanchego/genesis"
-	"github.com/ava-labs/avalanchego/utils/units"
-
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-
 	subnetcmd "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/crypto/bls"
+	"github.com/ava-labs/avalanchego/utils/units"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 	"github.com/spf13/cobra"
 )
 
@@ -96,7 +92,7 @@ func parseBootstrappedOutput(filePath string) (bool, error) {
 
 func GetMinStakingAmount(network models.Network) (uint64, error) {
 	pClient := platformvm.NewClient(network.Endpoint)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	minValStake, _, err := pClient.GetMinStake(ctx, ids.Empty)
 	if err != nil {
@@ -180,7 +176,17 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 	if err != nil {
 		return err
 	}
-	_, err = deployer.AddPermissionlessValidator(ids.Empty, ids.Empty, nodeID, weight, uint64(start.Unix()), uint64(start.Add(duration).Unix()), recipientAddr, delegationFee, nil, signer.NewProofOfPossession(blsSk))
+	_, err = deployer.AddPermissionlessValidator(
+		ids.Empty,
+		ids.Empty,
+		nodeID, weight,
+		uint64(start.Unix()),
+		uint64(start.Add(duration).Unix()),
+		recipientAddr,
+		delegationFee,
+		nil,
+		signer.NewProofOfPossession(blsSk),
+	)
 	return err
 }
 
@@ -436,7 +442,7 @@ func convertNanoAvaxToAvaxString(weight uint64) string {
 
 func PrintNodeJoinPrimaryNetworkOutput(nodeID ids.NodeID, weight uint64, network models.Network, start time.Time) {
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
-	ux.Logger.PrintToUser("Network: %s", network.Kind.String())
+	ux.Logger.PrintToUser("Network: %s", network.Name())
 	ux.Logger.PrintToUser("Start time: %s", start.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("End time: %s", start.Add(duration).Format(constants.TimeParseLayout))
 	// we need to divide by 10 ^ 9 since we were using nanoAvax

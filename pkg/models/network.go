@@ -3,8 +3,10 @@
 package models
 
 import (
+	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 )
 
 type NetworkKind int64
@@ -17,8 +19,8 @@ const (
 	Devnet
 )
 
-func (s NetworkKind) String() string {
-	switch s {
+func (nk NetworkKind) String() string {
+	switch nk {
 	case Mainnet:
 		return "Mainnet"
 	case Fuji:
@@ -41,8 +43,8 @@ var (
 	UndefinedNetwork = NewNetwork(Undefined, 0, "")
 	LocalNetwork     = NewNetwork(Local, constants.LocalNetworkID, constants.LocalAPIEndpoint)
 	DevnetNetwork    = NewNetwork(Devnet, constants.DevnetNetworkID, constants.DevnetAPIEndpoint)
-	FujiNetwork      = NewNetwork(Fuji, avago_constants.FujiID, constants.FujiAPIEndpoint)
-	MainnetNetwork   = NewNetwork(Mainnet, avago_constants.MainnetID, constants.MainnetAPIEndpoint)
+	FujiNetwork      = NewNetwork(Fuji, avagoconstants.FujiID, constants.FujiAPIEndpoint)
+	MainnetNetwork   = NewNetwork(Mainnet, avagoconstants.MainnetID, constants.MainnetAPIEndpoint)
 )
 
 func NewNetwork(kind NetworkKind, id uint32, endpoint string) Network {
@@ -51,6 +53,11 @@ func NewNetwork(kind NetworkKind, id uint32, endpoint string) Network {
 		ID:       id,
 		Endpoint: endpoint,
 	}
+}
+
+func NewDevnetNetwork(ip string, port int) Network {
+	endpoint := fmt.Sprintf("http://%s:%d", ip, port)
+	return NewNetwork(Devnet, constants.DevnetNetworkID, endpoint)
 }
 
 func NetworkFromString(s string) Network {
@@ -69,9 +76,9 @@ func NetworkFromString(s string) Network {
 
 func NetworkFromNetworkID(networkID uint32) Network {
 	switch networkID {
-	case avago_constants.MainnetID:
+	case avagoconstants.MainnetID:
 		return MainnetNetwork
-	case avago_constants.FujiID:
+	case avagoconstants.FujiID:
 		return FujiNetwork
 	case constants.LocalNetworkID:
 		return LocalNetwork
@@ -79,4 +86,26 @@ func NetworkFromNetworkID(networkID uint32) Network {
 		return DevnetNetwork
 	}
 	return UndefinedNetwork
+}
+
+func (n Network) Name() string {
+	return n.Kind.String()
+}
+
+func (n Network) CChainEndpoint() string {
+	return fmt.Sprintf("%s/ext/bc/%s/rpc", n.Endpoint, "C")
+}
+
+func (n Network) NetworkIDFlagValue() string {
+	switch n.Kind {
+	case Local:
+		return fmt.Sprintf("network-%d", n.ID)
+	case Devnet:
+		return fmt.Sprintf("network-%d", n.ID)
+	case Fuji:
+		return "fuji"
+	case Mainnet:
+		return "mainnet"
+	}
+	return "invalid-network"
 }

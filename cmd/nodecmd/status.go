@@ -103,7 +103,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		blockchainID := sc.Networks[network.Kind.String()].BlockchainID
+		blockchainID := sc.Networks[network.Name()].BlockchainID
 		if blockchainID == ids.Empty {
 			return ErrNoBlockchainID
 		}

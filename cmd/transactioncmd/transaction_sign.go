@@ -94,7 +94,7 @@ func signTx(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	subnetID := sc.Networks[network.Kind.String()].SubnetID
+	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}

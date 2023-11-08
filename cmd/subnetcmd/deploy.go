@@ -313,7 +313,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	// deploy based on chosen network
-	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Kind.String())
+	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
 	chainGenesis, err := app.LoadRawGenesis(chain, network)
 	if err != nil {
 		return err
@@ -377,7 +377,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		flags := make(map[string]string)
-		flags[constants.Network] = network.Kind.String()
+		flags[constants.Network] = network.Name()
 		utils.HandleTracking(cmd, app, flags)
 		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
 	}
@@ -411,7 +411,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 		createSubnet = false
 	} else if sidecar.Networks != nil {
-		model, ok := sidecar.Networks[network.Kind.String()]
+		model, ok := sidecar.Networks[network.Name()]
 		if ok {
 			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
 				subnetID = model.SubnetID
@@ -530,7 +530,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	flags := make(map[string]string)
-	flags[constants.Network] = network.Kind.String()
+	flags[constants.Network] = network.Name()
 	utils.HandleTracking(cmd, app, flags)
 
 	// update sidecar

@@ -3,7 +3,6 @@
 package subnetcmd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -14,9 +13,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
-	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/spf13/cobra"
 )
@@ -146,7 +146,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	subnetID := sc.Networks[network.Kind.String()].SubnetID
+	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
@@ -202,7 +202,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
-	ux.Logger.PrintToUser("Network: %s", network.Kind.String())
+	ux.Logger.PrintToUser("Network: %s", network.Name())
 	ux.Logger.PrintToUser("Start time: %s", start.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("End time: %s", start.Add(duration).Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("Weight: %d", weight)
@@ -256,10 +256,10 @@ func PromptDuration(start time.Time, network models.Network) (time.Duration, err
 }
 
 func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime time.Time) (time.Duration, error) {
-	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
 	platformCli := platformvm.NewClient(network.Endpoint)
-	vs, err := platformCli.GetCurrentValidators(ctx, avago_constants.PrimaryNetworkID, nil)
+	vs, err := platformCli.GetCurrentValidators(ctx, avagoconstants.PrimaryNetworkID, nil)
 	cancel()
 	if err != nil {
 		return 0, err

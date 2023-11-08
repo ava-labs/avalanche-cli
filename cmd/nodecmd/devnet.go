@@ -23,8 +23,11 @@ import (
 
 // difference between unlock schedule locktime and startime in original genesis
 const (
-	genesisLocktimeStartimeDelta = 2836800
-	hexa0Str                     = "0x0"
+	genesisLocktimeStartimeDelta    = 2836800
+	hexa0Str                        = "0x0"
+	defaultLocalCChainFundedAddress = "8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
+	defaultLocalCChainFundedBalance = "0x295BE96E64066972000000"
+	allocationCommonEthAddress      = "0xb3d82b1367d362de99ab59a658165aff520cbd4d"
 )
 
 func generateCustomCchainGenesis() ([]byte, error) {
@@ -38,8 +41,8 @@ func generateCustomCchainGenesis() ([]byte, error) {
 	cChainGenesisMap["mixHash"] = "0x0000000000000000000000000000000000000000000000000000000000000000"
 	cChainGenesisMap["coinbase"] = "0x0000000000000000000000000000000000000000"
 	cChainGenesisMap["alloc"] = map[string]interface{}{
-		"8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC": map[string]interface{}{
-			"balance": "0x295BE96E64066972000000",
+		defaultLocalCChainFundedAddress: map[string]interface{}{
+			"balance": defaultLocalCChainFundedBalance,
 		},
 	}
 	cChainGenesisMap["number"] = hexa0Str
@@ -78,7 +81,7 @@ func generateCustomGenesis(networkID uint32, walletAddr string, stakingAddr stri
 	allocations := []interface{}{}
 	alloc := map[string]interface{}{
 		"avaxAddr":      walletAddr,
-		"ethAddr":       "0xb3d82b1367d362de99ab59a658165aff520cbd4d",
+		"ethAddr":       allocationCommonEthAddress,
 		"initialAmount": 300000000000000000,
 		"unlockSchedule": []interface{}{
 			map[string]interface{}{"amount": 20000000000000000},
@@ -88,7 +91,7 @@ func generateCustomGenesis(networkID uint32, walletAddr string, stakingAddr stri
 	allocations = append(allocations, alloc)
 	alloc = map[string]interface{}{
 		"avaxAddr":      stakingAddr,
-		"ethAddr":       "0xb3d82b1367d362de99ab59a658165aff520cbd4d",
+		"ethAddr":       allocationCommonEthAddress,
 		"initialAmount": 0,
 		"unlockSchedule": []interface{}{
 			map[string]interface{}{"amount": 10000000000000000, "locktime": lockTime},
@@ -132,8 +135,7 @@ func setupDevnet(clusterName string) error {
 	}
 
 	// set devnet network
-	network := models.DevnetNetwork
-	network.Endpoint = "http://" + ansibleHosts[ansibleHostIDs[0]].IP + ":9650"
+	network := models.NewDevnetNetwork(ansibleHosts[ansibleHostIDs[0]].IP, 9650)
 	ux.Logger.PrintToUser("Devnet Network Id: %d", network.ID)
 	ux.Logger.PrintToUser("Devnet Endpoint: %s", network.Endpoint)
 

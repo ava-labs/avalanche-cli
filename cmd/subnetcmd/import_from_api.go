@@ -3,13 +3,13 @@
 package subnetcmd
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -113,7 +113,7 @@ func importRunningSubnet(*cobra.Command, []string) error {
 			if err != nil {
 				return err
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
+			ctx, cancel := utils.GetAPIContext()
 			defer cancel()
 			infoAPI := info.NewClient(nodeURL)
 			options := []rpc.Option{}
@@ -138,11 +138,11 @@ func importRunningSubnet(*cobra.Command, []string) error {
 	}
 
 	client := platformvm.NewClient(network.Endpoint)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	options := []rpc.Option{}
 
-	ux.Logger.PrintToUser("Getting information from the %s network...", network.Kind.String())
+	ux.Logger.PrintToUser("Getting information from the %s network...", network.Name())
 
 	txBytes, err := client.GetTx(ctx, blockchainID, options...)
 	if err != nil {
@@ -205,7 +205,7 @@ func importRunningSubnet(*cobra.Command, []string) error {
 		Name: subnetName,
 		VM:   vmType,
 		Networks: map[string]models.NetworkData{
-			network.Kind.String(): {
+			network.Name(): {
 				SubnetID:     subnetID,
 				BlockchainID: blockchainID,
 			},
