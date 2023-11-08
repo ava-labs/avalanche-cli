@@ -36,6 +36,7 @@ import (
 const (
 	avalancheGoReferenceChoiceLatest = "latest"
 	avalancheGoReferenceChoiceSubnet = "subnet"
+	avalancheGoReferenceChoiceCustom = "custom"
 )
 
 var (
@@ -481,6 +482,12 @@ func getAvalancheGoVersion() (string, error) {
 		switch choice {
 		case avalancheGoReferenceChoiceLatest:
 			version = "latest"
+		case avalancheGoReferenceChoiceCustom:
+			customVersion, err := app.Prompt.CaptureVersion("Which version of AvalancheGo would you like to install? (Use format v1.10.13)")
+			if err != nil {
+				return "", err
+			}
+			version = customVersion
 		case avalancheGoReferenceChoiceSubnet:
 			subnet = subnetChoice
 		}
@@ -513,7 +520,7 @@ func GetLatestAvagoVersionForRPC(configuredRPCVersion int) (string, error) {
 func promptAvalancheGoReferenceChoice() (string, string, error) {
 	defaultVersion := "Use latest Avalanche Go Version"
 	txt := "What version of Avalanche Go would you like to install in the node?"
-	versionOptions := []string{defaultVersion, "Use the deployed Subnet's VM version that the node will be validating"}
+	versionOptions := []string{defaultVersion, "Use the deployed Subnet's VM version that the node will be validating", "Custom"}
 	versionOption, err := app.Prompt.CaptureList(txt, versionOptions)
 	if err != nil {
 		return "", "", err
@@ -522,6 +529,8 @@ func promptAvalancheGoReferenceChoice() (string, string, error) {
 	switch versionOption {
 	case defaultVersion:
 		return avalancheGoReferenceChoiceLatest, "", nil
+	case "Custom":
+		return avalancheGoReferenceChoiceCustom, "", nil
 	default:
 		for {
 			subnetName, err := app.Prompt.CaptureString("Which Subnet would you like to use to choose the avalanche go version?")
