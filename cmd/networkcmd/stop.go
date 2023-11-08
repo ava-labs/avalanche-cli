@@ -7,6 +7,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/local"
 	"github.com/ava-labs/avalanche-network-runner/server"
@@ -53,7 +54,8 @@ func saveNetwork() error {
 		return err
 	}
 
-	ctx := binutils.GetAsyncContext()
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
 
 	_, err = cli.RemoveSnapshot(ctx, snapshotName)
 	if err != nil {

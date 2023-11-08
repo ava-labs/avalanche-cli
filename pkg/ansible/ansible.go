@@ -41,10 +41,11 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 	}
 	defer inventoryFile.Close()
 	for instanceID := range publicIPMap {
-		inventoryContent := fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, instanceID)
-		if cloudService == constants.GCPCloudService {
-			inventoryContent = fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, instanceID)
+		ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, instanceID)
+		if err != nil {
+			return err
 		}
+		inventoryContent := ansibleInstanceID
 		inventoryContent += " ansible_host="
 		inventoryContent += publicIPMap[instanceID]
 		inventoryContent += " ansible_user=ubuntu"
@@ -156,8 +157,8 @@ func WriteCfgFile(ansibleDir string) error {
 // RunAnsiblePlaybookSetupNode installs avalanche go and avalanche-cli. It also copies the user's
 // metric preferences in configFilePath from local machine to cloud server
 // targets all hosts in ansible inventory file
-func RunAnsiblePlaybookSetupNode(configPath, ansibleDir, inventoryPath, avalancheGoVersion, ansibleHostIDs string) error {
-	playbookInputs := "target=" + ansibleHostIDs + " configFilePath=" + configPath + " avalancheGoVersion=" + avalancheGoVersion
+func RunAnsiblePlaybookSetupNode(configPath, ansibleDir, inventoryPath, avalancheGoVersion, setDevnet, ansibleHostIDs string) error {
+	playbookInputs := "target=" + ansibleHostIDs + " configFilePath=" + configPath + " avalancheGoVersion=" + avalancheGoVersion + " setDevnet=" + setDevnet
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
@@ -177,6 +178,21 @@ func RunAnsiblePlaybookSetupNode(configPath, ansibleDir, inventoryPath, avalanch
 func RunAnsiblePlaybookCopyStakingFiles(ansibleDir, ansibleHostIDs, nodesDirPath, inventoryPath string) error {
 	playbookInputs := "target=" + ansibleHostIDs + " nodesDirPath=" + nodesDirPath + "/"
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.CopyStakingFilesPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
+func RunAnsiblePlaybookSetupDevnet(ansibleDir, ansibleHostIDs, nodesDirPath, inventoryPath string) error {
+	playbookInputs := "target=" + ansibleHostIDs + " nodesDirPath=" + nodesDirPath + "/"
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupDevnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
 	cmdErr := cmd.Run()
@@ -328,23 +344,6 @@ func RunAnsiblePlaybookCheckBootstrapped(ansibleDir, isBootstrappedPath, invento
 	return cmdErr
 }
 
-// RunAnsiblePlaybookGetNodeID gets node ID of cloud server
-// targets a specific host ansibleHostID in ansible inventory file
-func RunAnsiblePlaybookGetNodeID(ansibleDir, nodeIDPath, inventoryPath, ansibleHostID string) error {
-	playbookInputs := "target=" + ansibleHostID + " nodeIDJsonPath=" + nodeIDPath
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.GetNodeIDPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	cmd.Dir = ansibleDir
-	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, false, false)
-	cmdErr := cmd.Run()
-	if err := displayErrMsg(stdoutBuffer); err != nil {
-		return err
-	}
-	if err := displayErrMsg(stderrBuffer); err != nil {
-		return err
-	}
-	return cmdErr
-}
-
 // RunAnsiblePlaybookSubnetSyncStatus checks if node is synced to subnet
 // targets a specific host ansibleHostID in ansible inventory file
 func RunAnsiblePlaybookSubnetSyncStatus(ansibleDir, subnetSyncPath, blockchainID, inventoryPath, ansibleHostID string) error {
@@ -422,9 +421,10 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]
 		return err
 	}
 	for host, ansibleHostContent := range inventory {
-		// trim prefix aws_node / gcp_node
-		splitNodeName := strings.Split(host, "_")
-		nodeID := splitNodeName[len(splitNodeName)-1]
+		_, nodeID, err := models.HostAnsibleIDToCloudID(host)
+		if err != nil {
+			return err
+		}
 		_, ok := nodesWoEIP[nodeID]
 		if !ok {
 			if _, err = inventoryFile.WriteString(ansibleHostContent.GetAnsibleInventoryRecord() + "\n"); err != nil {
@@ -438,4 +438,87 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]
 		}
 	}
 	return nil
+}
+
+// RunAnsiblePlaybookUpgradeAvalancheGo upgrades avalanche go version of node
+// targets a specific host ansibleHostID in ansible inventory file
+func RunAnsiblePlaybookUpgradeAvalancheGo(ansibleDir, inventoryPath, ansibleHostID, avalancheGoVersion string) error {
+	playbookInputs := "target=" + ansibleHostID + " avalancheGoVersion=" + avalancheGoVersion
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.UpgradeAvalancheGoPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
+// RunAnsiblePlaybookStartNode starts avalanche go
+func RunAnsiblePlaybookStartNode(ansibleDir, inventoryPath, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.StartNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
+// RunAnsiblePlaybookStopNode stop avalanche go
+func RunAnsiblePlaybookStopNode(ansibleDir, inventoryPath, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.StopNodePlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
+// RunAnsiblePlaybookUpgradeSubnetEVM upgrades subnetEVM version of node
+// targets a specific host ansibleHostID in ansible inventory file
+func RunAnsiblePlaybookUpgradeSubnetEVM(ansibleDir, subnetEVMBinaryPaths, inventoryPath, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID + " subnetEVMBinaryPath=" + subnetEVMBinaryPaths
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.UpgradeSubnetEVMPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
+// RunAnsiblePlaybookGetNewSubnetEVM downloads and unzips new subnetEVM version
+// targets a specific host ansibleHostID in ansible inventory file
+func RunAnsiblePlaybookGetNewSubnetEVM(ansibleDir, subnetEVMReleaseURL, subnetEVMArchive, inventoryPath, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID + " subnetEVMReleaseURL=" + subnetEVMReleaseURL + " subnetEVMArchive=" + subnetEVMArchive
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.GetNewSubnetEVMPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
 }

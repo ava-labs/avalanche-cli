@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	ANRclient "github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/server"
@@ -142,9 +143,10 @@ func applyLocalNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar)
 		ux.Logger.PrintToUser(ErrNetworkNotStartedOutput)
 		return err
 	}
-	ctx := binutils.GetAsyncContext()
 
 	// first let's get the status
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
 	status, err := cli.Status(ctx)
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {
@@ -174,6 +176,10 @@ func applyLocalNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar)
 		return errors.New(
 			"failed to find deployment information about this subnet in state - aborting")
 	}
+
+	// into ANR network ops
+	ctx, cancel = utils.GetANRContext()
+	defer cancel()
 
 	// save a temporary snapshot
 	snapName := subnetName + tmpSnapshotInfix + time.Now().Format(timestampFormat)

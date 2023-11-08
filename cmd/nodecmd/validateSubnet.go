@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
@@ -110,7 +109,7 @@ func waitForNodeToBePrimaryNetworkValidator(nodeID ids.NodeID) error {
 	time.Sleep(20 * time.Second)
 	// long polling: try up to 5 times
 	for i := 0; i < 5; i++ {
-		isValidator, err := checkNodeIsPrimaryNetworkValidator(nodeID, models.Fuji)
+		isValidator, err := checkNodeIsPrimaryNetworkValidator(nodeID, models.FujiNetwork)
 		if err != nil {
 			return err
 		}
@@ -154,70 +153,74 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	nodeIDMap, failedNodesMap, err := getClusterNodeIDs(clusterName, ansibleNodeIDs)
-	if err != nil {
-		return err
-	}
+	nodeIDMap, failedNodesMap := getNodeIDs(ansibleNodeIDs)
 	failedNodes := []string{}
 	nodeErrors := []error{}
 	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
-	for i, host := range ansibleNodeIDs {
-		nodeIDStr, b := nodeIDMap[host]
+	for i, ansibleNodeID := range ansibleNodeIDs {
+		nodeIDStr, b := nodeIDMap[ansibleNodeID]
 		if !b {
-			err, b := failedNodesMap[host]
+			err, b := failedNodesMap[ansibleNodeID]
 			if !b {
 				return fmt.Errorf("expected to found an error for non mapped node")
 			}
-			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err)
-			failedNodes = append(failedNodes, host)
+			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", ansibleNodeID, err)
+			failedNodes = append(failedNodes, ansibleNodeID)
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
 		nodeID, err := ids.NodeIDFromString(nodeIDStr)
 		if err != nil {
-			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err)
-			failedNodes = append(failedNodes, host)
+			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", ansibleNodeID, err)
+			failedNodes = append(failedNodes, ansibleNodeID)
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
 		// we have to check if node is synced to subnet before adding the node as a validator
-		subnetSyncStatus, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, host)
+		subnetSyncStatus, err := getNodeSubnetSyncStatus(blockchainID.String(), clusterName, ansibleNodeID)
 		if err != nil {
-			ux.Logger.PrintToUser("Failed to get subnet sync status for node %s", host)
-			failedNodes = append(failedNodes, host)
+			ux.Logger.PrintToUser("Failed to get subnet sync status for node %s", ansibleNodeID)
+			failedNodes = append(failedNodes, ansibleNodeID)
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
 		if subnetSyncStatus != status.Syncing.String() {
-			failedNodes = append(failedNodes, host)
+			failedNodes = append(failedNodes, ansibleNodeID)
 			if subnetSyncStatus == status.Validating.String() {
-				ux.Logger.PrintToUser("Failed to add node %s as subnet validator as node is already a subnet validator", host)
+				ux.Logger.PrintToUser("Failed to add node %s as subnet validator as node is already a subnet validator", ansibleNodeID)
 				nodeErrors = append(nodeErrors, errors.New("node is already a subnet validator"))
 			} else {
-				ux.Logger.PrintToUser("Failed to add node %s as subnet validator as node is not synced to subnet yet", host)
+				ux.Logger.PrintToUser("Failed to add node %s as subnet validator as node is not synced to subnet yet", ansibleNodeID)
 				nodeErrors = append(nodeErrors, errors.New("node is not synced to subnet yet, please try again later"))
 			}
 			continue
 		}
-		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji, i, strings.Split(host, "_")[2])
+		_, clusterNodeID, err := models.HostAnsibleIDToCloudID(ansibleNodeID)
 		if err != nil {
-			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err.Error())
-			failedNodes = append(failedNodes, host)
+			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", ansibleNodeID, err.Error())
+			failedNodes = append(failedNodes, ansibleNodeID)
+			nodeErrors = append(nodeErrors, err)
+			continue
+		}
+		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(nodeID, models.FujiNetwork, i, clusterNodeID)
+		if err != nil {
+			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", ansibleNodeID, err.Error())
+			failedNodes = append(failedNodes, ansibleNodeID)
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
 		if addedNodeAsPrimaryNetworkValidator {
 			if err := waitForNodeToBePrimaryNetworkValidator(nodeID); err != nil {
-				ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err.Error())
-				failedNodes = append(failedNodes, host)
+				ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", ansibleNodeID, err.Error())
+				failedNodes = append(failedNodes, ansibleNodeID)
 				nodeErrors = append(nodeErrors, err)
 				continue
 			}
 		}
-		err = addNodeAsSubnetValidator(nodeIDStr, subnetName, models.Fuji, i, len(ansibleNodeIDs))
+		err = addNodeAsSubnetValidator(nodeIDStr, subnetName, models.FujiNetwork, i, len(ansibleNodeIDs))
 		if err != nil {
-			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host, err.Error())
-			failedNodes = append(failedNodes, host)
+			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", ansibleNodeID, err.Error())
+			failedNodes = append(failedNodes, ansibleNodeID)
 			nodeErrors = append(nodeErrors, err)
 		}
 	}

@@ -3,13 +3,13 @@
 package subnetcmd
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -74,15 +74,15 @@ flag.`,
 func importRunningSubnet(*cobra.Command, []string) error {
 	var err error
 
-	var network models.Network
+	network := models.UndefinedNetwork
 	switch {
 	case deployTestnet:
-		network = models.Fuji
+		network = models.FujiNetwork
 	case deployMainnet:
-		network = models.Mainnet
+		network = models.MainnetNetwork
 	}
 
-	if network == models.Undefined {
+	if network.Kind == models.Undefined {
 		networkStr, err := app.Prompt.CaptureList(
 			"Choose a network to import from",
 			[]string{models.Fuji.String(), models.Mainnet.String()},
@@ -113,7 +113,7 @@ func importRunningSubnet(*cobra.Command, []string) error {
 			if err != nil {
 				return err
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
+			ctx, cancel := utils.GetAPIContext()
 			defer cancel()
 			infoAPI := info.NewClient(nodeURL)
 			options := []rpc.Option{}
@@ -137,19 +137,12 @@ func importRunningSubnet(*cobra.Command, []string) error {
 		}
 	}
 
-	var pubAPI string
-	switch network {
-	case models.Fuji:
-		pubAPI = constants.FujiAPIEndpoint
-	case models.Mainnet:
-		pubAPI = constants.MainnetAPIEndpoint
-	}
-	client := platformvm.NewClient(pubAPI)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
+	client := platformvm.NewClient(network.Endpoint)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	options := []rpc.Option{}
 
-	ux.Logger.PrintToUser("Getting information from the %s network...", network.String())
+	ux.Logger.PrintToUser("Getting information from the %s network...", network.Name())
 
 	txBytes, err := client.GetTx(ctx, blockchainID, options...)
 	if err != nil {
@@ -212,7 +205,7 @@ func importRunningSubnet(*cobra.Command, []string) error {
 		Name: subnetName,
 		VM:   vmType,
 		Networks: map[string]models.NetworkData{
-			network.String(): {
+			network.Name(): {
 				SubnetID:     subnetID,
 				BlockchainID: blockchainID,
 			},

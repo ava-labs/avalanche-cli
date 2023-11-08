@@ -33,7 +33,7 @@ const (
 	StopAWSNode                  = "stop-aws-node"
 	CreateAWSNode                = "create-aws-node"
 	GetAWSNodeIP                 = "get-aws-node-ip"
-	ClusterConfigFileName        = "cluster_config.json"
+	ClustersConfigFileName       = "cluster_config.json"
 	StakerCertFileName           = "staker.crt"
 	StakerKeyFileName            = "staker.key"
 	BLSKeyFileName               = "signer.key"
@@ -43,8 +43,8 @@ const (
 	MaxNumOfLogFiles = 5
 	RetainOldFiles   = 0 // retain all old log files
 
-	RequestTimeout    = 3 * time.Minute
-	E2ERequestTimeout = 30 * time.Second
+	ANRRequestTimeout = 3 * time.Minute
+	APIRequestTimeout = 30 * time.Second
 
 	SimulatePublicNetwork = "SIMULATE_PUBLIC_NETWORK"
 	FujiAPIEndpoint       = "https://api.avax-test.network"
@@ -53,6 +53,9 @@ const (
 	// this depends on bootstrap snapshot
 	LocalAPIEndpoint = "http://127.0.0.1:9650"
 	LocalNetworkID   = 1337
+
+	DevnetAPIEndpoint = "http://127.0.0.1:9650"
+	DevnetNetworkID   = 1338
 
 	DefaultTokenName = "TEST"
 
@@ -113,8 +116,8 @@ const (
 	AnsiblePlaybook                              = "ansible-playbook"
 	SetupNodePlaybook                            = "playbook/setupNode.yml"
 	CopyStakingFilesPlaybook                     = "playbook/copyStakingFiles.yml"
+	SetupDevnetPlaybook                          = "playbook/setupDevnet.yml"
 	ExportSubnetPlaybook                         = "playbook/exportSubnet.yml"
-	GetNodeIDPlaybook                            = "playbook/getNodeID.yml"
 	IsBootstrappedPlaybook                       = "playbook/isBootstrapped.yml"
 	IsSubnetSyncedPlaybook                       = "playbook/isSubnetSynced.yml"
 	TrackSubnetPlaybook                          = "playbook/trackSubnet.yml"
@@ -125,7 +128,6 @@ const (
 	BuildEnvGolangVersion                        = "1.21.1"
 	IsBootstrappedJSONFile                       = "isBootstrapped.json"
 	AvalancheGoVersionJSONFile                   = "avalancheGoVersion.json"
-	NodeIDJSONFile                               = "nodeID.json"
 	SubnetSyncJSONFile                           = "isSubnetSynced.json"
 	AnsibleInventoryDir                          = "inventories"
 	AnsibleTempInventoryDir                      = "temp_inventories"
@@ -146,17 +148,25 @@ const (
 	OldMetricsConfigFileName     = ".avalanche-cli/config"
 	DefaultConfigFileName        = ".avalanche-cli/config.json"
 
-	AWSCloudService      = "Amazon Web Services"
-	GCPCloudService      = "Google Cloud Platform"
-	AnsibleSSHUser       = "ubuntu"
-	AWSNodeAnsiblePrefix = "aws_node"
-	GCPNodeAnsiblePrefix = "gcp_node"
-	CustomVMDir          = "vms"
-	GCPStaticIPPrefix    = "static-ip"
-	AvaLabsOrg           = "ava-labs"
-	AvalancheGoRepoName  = "avalanchego"
-	SubnetEVMRepoName    = "subnet-evm"
-	CliRepoName          = "avalanche-cli"
+	AWSCloudService            = "Amazon Web Services"
+	GCPCloudService            = "Google Cloud Platform"
+	AnsibleSSHUser             = "ubuntu"
+	AWSNodeAnsiblePrefix       = "aws_node"
+	GCPNodeAnsiblePrefix       = "gcp_node"
+	CustomVMDir                = "vms"
+	GCPStaticIPPrefix          = "static-ip"
+	AvaLabsOrg                 = "ava-labs"
+	AvalancheGoRepoName        = "avalanchego"
+	SubnetEVMRepoName          = "subnet-evm"
+	CliRepoName                = "avalanche-cli"
+	UpgradeAvalancheGoPlaybook = "playbook/upgradeAvalancheGo.yml"
+	UpgradeSubnetEVMPlaybook   = "playbook/upgradeSubnetEVM.yml"
+	StopNodePlaybook           = "playbook/stopNode.yml"
+	StartNodePlaybook          = "playbook/startNode.yml"
+	GetNewSubnetEVMPlaybook    = "playbook/getNewSubnetEVMRelease.yml"
+	SubnetEVMReleaseURL        = "https://github.com/ava-labs/subnet-evm/releases/download/%s/%s"
+	SubnetEVMArchive           = "subnet-evm_%s_linux_amd64.tar.gz"
+	SubnetEVMBinaryPath        = "/home/ubuntu/.avalanchego/plugins/%s"
 
 	AvalancheGoInstallDir = "avalanchego"
 	SubnetEVMInstallDir   = "subnet-evm"
@@ -173,12 +183,14 @@ const (
 	// #nosec G101
 	GithubAPITokenEnvVarName = "AVALANCHE_CLI_GITHUB_TOKEN"
 
-	ReposDir       = "repos"
-	SubnetDir      = "subnets"
-	NodesDir       = "nodes"
-	VMDir          = "vms"
-	ChainConfigDir = "chains"
-
+	ReposDir                   = "repos"
+	SubnetDir                  = "subnets"
+	NodesDir                   = "nodes"
+	VMDir                      = "vms"
+	ChainConfigDir             = "chains"
+	AVMKeyName                 = "avm"
+	EVMKeyName                 = "evm"
+	PlatformKeyName            = "platform"
 	SubnetType                 = "subnet type"
 	PrecompileType             = "precompile type"
 	CustomAirdrop              = "custom-airdrop"

@@ -39,15 +39,15 @@ func newStatsCmd() *cobra.Command {
 }
 
 func stats(_ *cobra.Command, args []string) error {
-	var network models.Network
+	network := models.UndefinedNetwork
 	switch {
 	case deployTestnet:
-		network = models.Fuji
+		network = models.FujiNetwork
 	case deployMainnet:
-		network = models.Mainnet
+		network = models.MainnetNetwork
 	}
 
-	if network == models.Undefined {
+	if network.Kind == models.Undefined {
 		networkStr, err := app.Prompt.CaptureList(
 			"Choose a network from which you want to get the statistics (this command only supports public networks)",
 			[]string{models.Fuji.String(), models.Mainnet.String()},
@@ -75,7 +75,7 @@ func stats(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	subnetID := sc.Networks[network.String()].SubnetID
+	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
 		return errors.New("no subnetID found for the provided subnet name; has this subnet actually been deployed to this network?")
 	}
@@ -290,21 +290,8 @@ func findAPIEndpoint(network models.Network) (platformvm.Client, info.Client) {
 		}
 	}
 
-	var url string
-	// try public APIs
-	switch network {
-	case models.Fuji:
-		url = constants.FujiAPIEndpoint
-	case models.Mainnet:
-		url = constants.MainnetAPIEndpoint
-	}
-	// unsupported network
-	if url == "" {
-		return nil, nil
-	}
-
 	// create client to public API
-	c = platformvm.NewClient(url)
+	c = platformvm.NewClient(network.Endpoint)
 	// try calling it to make sure it actually worked
 	_, err = c.GetHeight(ctx)
 	if err == nil {

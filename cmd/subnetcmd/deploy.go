@@ -13,19 +13,18 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
-	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	"github.com/ava-labs/avalanche-network-runner/utils"
+	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
@@ -136,7 +135,7 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 }
 
 func checkDefaultAddressNotInAlloc(network models.Network, chain string) error {
-	if network != models.Local && os.Getenv(constants.SimulatePublicNetwork) == "" {
+	if network.Kind != models.Local && network.Kind != models.Devnet && os.Getenv(constants.SimulatePublicNetwork) == "" {
 		genesis, err := app.LoadEvmGenesis(chain)
 		if err != nil {
 			return err
@@ -252,41 +251,25 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return errors.New("unable to deploy subnets imported from a repo")
 	}
 
-	// get the network to deploy to
-	var network models.Network
-
-	if !flags.EnsureMutuallyExclusive([]bool{deployLocal, deployTestnet, deployMainnet}) {
-		return errMutuallyExlusiveNetworks
-	}
-
 	if outputTxPath != "" {
 		if _, err := os.Stat(outputTxPath); err == nil {
 			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
 		}
 	}
 
-	switch {
-	case deployLocal:
-		network = models.Local
-	case deployTestnet:
-		network = models.Fuji
-	case deployMainnet:
-		network = models.Mainnet
+	network, err := GetNetworkFromCmdLineFlags(
+		deployLocal,
+		false,
+		deployTestnet,
+		deployMainnet,
+		"",
+		[]models.NetworkKind{models.Local, models.Devnet, models.Fuji, models.Mainnet},
+	)
+	if err != nil {
+		return err
 	}
 
-	if network == models.Undefined {
-		// no flag was set, prompt user
-		networkStr, err := app.Prompt.CaptureList(
-			"Choose a network to deploy on",
-			[]string{models.Local.String(), models.Fuji.String(), models.Mainnet.String()},
-		)
-		if err != nil {
-			return err
-		}
-		network = models.NetworkFromString(networkStr)
-	}
-
-	if network == models.Mainnet || os.Getenv(constants.SimulatePublicNetwork) != "" {
+	if network.Kind == models.Mainnet || os.Getenv(constants.SimulatePublicNetwork) != "" {
 		err = handleMainnetChainID(chain)
 		if err != nil {
 			return err
@@ -294,7 +277,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	// deploy based on chosen network
-	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.String())
+	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
 	chainGenesis, err := app.LoadRawGenesis(chain, network)
 	if err != nil {
 		return err
@@ -331,7 +314,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return ErrMutuallyExlusiveKeyLedger
 	}
 
-	switch network {
+	switch network.Kind {
 	case models.Local:
 		app.Log.Debug("Deploy local")
 
@@ -367,8 +350,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		flags := make(map[string]string)
-		flags[constants.Network] = network.String()
-		metrics.HandleTracking(cmd, app, flags)
+		flags[constants.Network] = network.Name()
+		utils.HandleTracking(cmd, app, flags)
 		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
 
 	case models.Fuji:
@@ -391,7 +374,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// used in E2E to simulate public network execution paths on a local network
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.Local
+		network = models.LocalNetwork
 	}
 
 	// from here on we are assuming a public deploy
@@ -412,7 +395,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 		createSubnet = false
 	} else if sidecar.Networks != nil {
-		model, ok := sidecar.Networks[network.String()]
+		model, ok := sidecar.Networks[network.Name()]
 		if ok {
 			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
 				subnetID = model.SubnetID
@@ -531,8 +514,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	flags := make(map[string]string)
-	flags[constants.Network] = network.String()
-	metrics.HandleTracking(cmd, app, flags)
+	flags[constants.Network] = network.Name()
+	utils.HandleTracking(cmd, app, flags)
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
@@ -559,7 +542,7 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain
 	} else {
 		creation = "Use fee-paying key"
 	}
-	if network == models.Mainnet {
+	if network.Kind == models.Mainnet {
 		listOptions = []string{creation, custom}
 	} else {
 		listOptions = []string{creation, useAll, custom}
@@ -593,11 +576,6 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain
 }
 
 func useAllKeys(network models.Network) ([]string, error) {
-	networkID, err := network.NetworkID()
-	if err != nil {
-		return nil, err
-	}
-
 	existing := []string{}
 
 	files, err := os.ReadDir(app.GetKeyDir())
@@ -614,7 +592,7 @@ func useAllKeys(network models.Network) ([]string, error) {
 	}
 
 	for _, kp := range keyPaths {
-		k, err := key.LoadSoft(networkID, kp)
+		k, err := key.LoadSoft(network.ID, kp)
 		if err != nil {
 			return nil, err
 		}
@@ -630,11 +608,7 @@ func loadCreationKeys(network models.Network, kc keychain.Keychain) ([]string, e
 	if len(addrs) == 0 {
 		return nil, fmt.Errorf("no creation addresses found")
 	}
-	networkID, err := network.NetworkID()
-	if err != nil {
-		return nil, err
-	}
-	hrp := key.GetHRP(networkID)
+	hrp := key.GetHRP(network.ID)
 	addrsStr := []string{}
 	for _, addr := range addrs {
 		addrStr, err := address.Format("P", hrp, addr[:])
@@ -816,10 +790,6 @@ func GetKeychain(
 ) (keychain.Keychain, error) {
 	// get keychain accessor
 	var kc keychain.Keychain
-	networkID, err := network.NetworkID()
-	if err != nil {
-		return kc, err
-	}
 	if useLedger {
 		ledgerDevice, err := ledger.New()
 		if err != nil {
@@ -843,7 +813,7 @@ func GetKeychain(
 		}
 		addrStrs := []string{}
 		for _, addr := range addresses {
-			addrStr, err := address.Format("P", key.GetHRP(networkID), addr[:])
+			addrStr, err := address.Format("P", key.GetHRP(network.ID), addr[:])
 			if err != nil {
 				return kc, err
 			}
@@ -855,7 +825,7 @@ func GetKeychain(
 		}
 		return keychain.NewLedgerKeychainFromIndices(ledgerDevice, ledgerIndices)
 	}
-	sf, err := key.LoadSoft(networkID, app.GetKeyPath(keyName))
+	sf, err := key.LoadSoft(network.ID, app.GetKeyPath(keyName))
 	if err != nil {
 		return kc, err
 	}
@@ -899,7 +869,7 @@ func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]ui
 }
 
 func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID) error {
-	vmID, err := utils.VMID(chain)
+	vmID, err := anrutils.VMID(chain)
 	if err != nil {
 		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}

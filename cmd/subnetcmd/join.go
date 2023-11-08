@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -20,13 +19,18 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/plugins"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -117,17 +121,17 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		return errors.New("--fuji and --mainnet are mutually exclusive")
 	}
 
-	var network models.Network
+	network := models.UndefinedNetwork
 	switch {
 	case deployLocal:
-		network = models.Local
+		network = models.LocalNetwork
 	case deployTestnet:
-		network = models.Fuji
+		network = models.FujiNetwork
 	case deployMainnet:
-		network = models.Mainnet
+		network = models.MainnetNetwork
 	}
 
-	if network == models.Undefined {
+	if network.Kind == models.Undefined {
 		if joinElastic {
 			selectedNetwork, err := promptNetworkElastic(sc, "Which network is the elastic subnet that the node wants to join on?")
 			if err != nil {
@@ -135,9 +139,9 @@ func joinCmd(_ *cobra.Command, args []string) error {
 			}
 			switch selectedNetwork {
 			case localDeployment:
-				network = models.Local
+				network = models.LocalNetwork
 			case fujiDeployment:
-				network = models.Fuji
+				network = models.FujiNetwork
 			case mainnetDeployment:
 				return errors.New("joining elastic subnet is not yet supported on Mainnet")
 			}
@@ -149,12 +153,6 @@ func joinCmd(_ *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			// flag provided
-			networkStr = strings.Title(networkStr)
-			// as we are allowing a flag, we need to check if a supported network has been provided
-			if !(networkStr == models.Fuji.String() || networkStr == models.Mainnet.String()) {
-				return errors.New("unsupported network")
-			}
 			network = models.NetworkFromString(networkStr)
 		}
 	}
@@ -165,12 +163,10 @@ func joinCmd(_ *cobra.Command, args []string) error {
 
 	// used in E2E to simulate public network execution paths on a local network
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.Local
+		network = models.LocalNetwork
 	}
 
-	networkLower := strings.ToLower(network.String())
-
-	subnetID := sc.Networks[network.String()].SubnetID
+	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
@@ -182,7 +178,7 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		printJoinCmd(subnetIDStr, networkLower, vmPath)
+		printJoinCmd(subnetIDStr, network, vmPath)
 		return nil
 	}
 
@@ -207,7 +203,7 @@ func joinCmd(_ *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			printJoinCmd(subnetIDStr, networkLower, vmPath)
+			printJoinCmd(subnetIDStr, network, vmPath)
 			return nil
 		}
 	}
@@ -300,7 +296,7 @@ func joinCmd(_ *cobra.Command, args []string) error {
 	if err := plugins.EditConfigFile(
 		app,
 		subnetIDStr,
-		networkLower,
+		network,
 		avagoConfigPath,
 		forceWrite,
 		subnetAvagoConfigFile,
@@ -322,12 +318,12 @@ func writeAvagoChainConfigFiles(
 		dataDir = utils.UserHomePath(".avalanchego")
 	}
 
-	subnetID := sc.Networks[network.String()].SubnetID
+	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
 	subnetIDStr := subnetID.String()
-	blockchainID := sc.Networks[network.String()].BlockchainID
+	blockchainID := sc.Networks[network.Name()].BlockchainID
 	if blockchainID == ids.Empty {
 		return errNoBlockchainID
 	}
@@ -396,7 +392,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 		return ErrMutuallyExlusiveKeyLedger
 	}
 
-	subnetID := sc.Networks[network.String()].SubnetID
+	subnetID := sc.Networks[network.Name()].SubnetID
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
 		subnetID = sc.Networks[models.Local.String()].SubnetID
 	}
@@ -419,7 +415,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	endTime := start.Add(stakeDuration)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction for the provided validator to join elastic subnet...")
 	ux.Logger.PrintToUser("")
-	switch network {
+	switch network.Kind {
 	case models.Local:
 		return handleValidatorJoinElasticSubnetLocal(sc, network, subnetName, nodeID, stakedTokenAmount, start, endTime)
 	case models.Fuji:
@@ -436,7 +432,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	}
 	// used in E2E to simulate public network execution paths on a local network
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.Local
+		network = models.LocalNetwork
 	}
 
 	// get keychain accessor
@@ -451,7 +447,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 		return err
 	}
 	delegationFee := genesis.FujiParams.MinDelegationFee
-	if network == models.Mainnet {
+	if network.Kind == models.Mainnet {
 		delegationFee = genesis.MainnetParams.MinDelegationFee
 	}
 	txID, err := deployer.AddPermissionlessValidator(subnetID, assetID, nodeID, stakedTokenAmount, uint64(start.Unix()), uint64(endTime.Unix()), recipientAddr, delegationFee, nil, nil)
@@ -466,19 +462,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 }
 
 func getSubnetAssetID(subnetID ids.ID, network models.Network) (ids.ID, error) {
-	var api string
-	switch network {
-	case models.Fuji:
-		api = constants.FujiAPIEndpoint
-	case models.Mainnet:
-		api = constants.MainnetAPIEndpoint
-	case models.Local:
-		api = constants.LocalAPIEndpoint
-	default:
-		return ids.Empty, fmt.Errorf("network not supported")
-	}
-
-	pClient := platformvm.NewClient(api)
+	pClient := platformvm.NewClient(network.Endpoint)
 	ctx := context.Background()
 	assetID, err := pClient.GetStakingAssetID(ctx, subnetID)
 	if err != nil {
@@ -491,7 +475,7 @@ func printAddPermissionlessValOutput(txID ids.ID, nodeID ids.NodeID, network mod
 	ux.Logger.PrintToUser("Validator successfully joined elastic subnet!")
 	ux.Logger.PrintToUser("TX ID: %s", txID.String())
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
-	ux.Logger.PrintToUser("Network: %s", network.String())
+	ux.Logger.PrintToUser("Network: %s", network.Name())
 	ux.Logger.PrintToUser("Start time: %s", start.UTC().Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("End time: %s", endTime.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("Stake Amount: %d", stakedTokenAmount)
@@ -500,7 +484,7 @@ func printAddPermissionlessValOutput(txID ids.ID, nodeID ids.NodeID, network mod
 func handleValidatorJoinElasticSubnetLocal(sc models.Sidecar, network models.Network, subnetName string, nodeID ids.NodeID,
 	stakedTokenAmount uint64, start time.Time, endTime time.Time,
 ) error {
-	if network != models.Local {
+	if network.Kind != models.Local {
 		return errors.New("unsupported network")
 	}
 	if !checkIfSubnetIsElasticOnLocal(sc) {
@@ -515,7 +499,7 @@ func handleValidatorJoinElasticSubnetLocal(sc models.Sidecar, network models.Net
 		return err
 	}
 	printAddPermissionlessValOutput(txID, nodeID, network, start, endTime, stakedTokenAmount)
-	if err = app.UpdateSidecarPermissionlessValidator(&sc, models.Local, nodeID.String(), txID); err != nil {
+	if err = app.UpdateSidecarPermissionlessValidator(&sc, models.LocalNetwork, nodeID.String(), txID); err != nil {
 		return fmt.Errorf("joining permissionless subnet was successful, but failed to update sidecar: %w", err)
 	}
 	return nil
@@ -564,7 +548,8 @@ func getLocalNetworkIDs() ([]string, error) {
 		return nil, err
 	}
 
-	ctx := binutils.GetAsyncContext()
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
 	status, err := cli.Status(ctx)
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {
@@ -584,7 +569,7 @@ func getLocalNetworkIDs() ([]string, error) {
 
 func promptNodeIDToAdd(subnetID ids.ID, isValidator bool, network models.Network) (ids.NodeID, error) {
 	if nodeIDStr == "" {
-		if network != models.Local {
+		if network.Kind != models.Local {
 			promptStr := "Please enter the Node ID of the node that you would like to add to the elastic subnet"
 			if !isValidator {
 				promptStr = "Please enter the Node ID of the validator that you would like to delegate to"
@@ -638,7 +623,7 @@ func promptStakeAmount(subnetName string, isValidator bool, network models.Netwo
 	if stakeAmount > 0 {
 		return stakeAmount, nil
 	}
-	if network == models.Local {
+	if network.Kind == models.Local {
 		esc, err := app.LoadElasticSubnetConfig(subnetName)
 		if err != nil {
 			return 0, err
@@ -655,9 +640,8 @@ func promptStakeAmount(subnetName string, isValidator bool, network models.Netwo
 		if err != nil {
 			return 0, err
 		}
-		ctx := context.Background()
 		pClient := platformvm.NewClient(constants.LocalAPIEndpoint)
-		walletBalance, err := getAssetBalance(ctx, pClient, ewoqPChainAddr, esc.AssetID)
+		walletBalance, err := getAssetBalance(pClient, ewoqPChainAddr, esc.AssetID)
 		if err != nil {
 			return 0, err
 		}
@@ -701,7 +685,7 @@ func promptStakeAmount(subnetName string, isValidator bool, network models.Netwo
 	return initialSupply, nil
 }
 
-func printJoinCmd(subnetID string, networkID string, vmPath string) {
+func printJoinCmd(subnetID string, network models.Network, vmPath string) {
 	msg := `
 To setup your node, you must do two things:
 
@@ -735,15 +719,15 @@ this tool will try to update the file automatically (make sure it can write to i
 After you update your config, you will need to restart your node for the changes to
 take effect.`
 
-	ux.Logger.PrintToUser(msg, vmPath, subnetID, networkID, subnetID, subnetID)
+	ux.Logger.PrintToUser(msg, vmPath, subnetID, network.NetworkIDFlagValue(), subnetID, subnetID)
 }
 
-func getAssetBalance(ctx context.Context, pClient platformvm.Client, addr string, assetID ids.ID) (uint64, error) {
+func getAssetBalance(pClient platformvm.Client, addr string, assetID ids.ID) (uint64, error) {
 	pID, err := address.ParseToID(addr)
 	if err != nil {
 		return 0, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, constants.RequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	resp, err := pClient.GetBalance(ctx, []ids.ShortID{pID})
 	cancel()
 	if err != nil {

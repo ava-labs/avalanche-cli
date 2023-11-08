@@ -57,15 +57,15 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 	var err error
 	var gcpCredentialsPath string
 	var gcpProjectName string
-	clusterConfig := models.ClusterConfig{}
-	if app.ClusterConfigExists() {
-		clusterConfig, err = app.LoadClusterConfig()
+	clustersConfig := models.ClustersConfig{}
+	if app.ClustersConfigExists() {
+		clustersConfig, err = app.LoadClustersConfig()
 		if err != nil {
 			return nil, "", "", err
 		}
-		if clusterConfig.GCPConfig != (models.GCPConfig{}) {
-			gcpProjectName = clusterConfig.GCPConfig.ProjectName
-			gcpCredentialsPath = clusterConfig.GCPConfig.ServiceAccFilePath
+		if clustersConfig.GCPConfig != (models.GCPConfig{}) {
+			gcpProjectName = clustersConfig.GCPConfig.ProjectName
+			gcpCredentialsPath = clustersConfig.GCPConfig.ServiceAccFilePath
 		}
 	}
 	if gcpProjectName == "" {
@@ -309,20 +309,20 @@ func createGCPInstance(
 	return gcpCloudConfig, nil
 }
 
-func updateClusterConfigGCPKeyFilepath(projectName, serviceAccountKeyFilepath string) error {
-	clusterConfig := models.ClusterConfig{}
+func updateClustersConfigGCPKeyFilepath(projectName, serviceAccountKeyFilepath string) error {
+	clustersConfig := models.ClustersConfig{}
 	var err error
-	if app.ClusterConfigExists() {
-		clusterConfig, err = app.LoadClusterConfig()
+	if app.ClustersConfigExists() {
+		clustersConfig, err = app.LoadClustersConfig()
 		if err != nil {
 			return err
 		}
 	}
 	if projectName != "" {
-		clusterConfig.GCPConfig.ProjectName = projectName
+		clustersConfig.GCPConfig.ProjectName = projectName
 	}
 	if serviceAccountKeyFilepath != "" {
-		clusterConfig.GCPConfig.ServiceAccFilePath = serviceAccountKeyFilepath
+		clustersConfig.GCPConfig.ServiceAccFilePath = serviceAccountKeyFilepath
 	}
-	return app.WriteClusterConfigFile(&clusterConfig)
+	return app.WriteClustersConfigFile(&clustersConfig)
 }

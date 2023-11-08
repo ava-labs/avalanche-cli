@@ -4,11 +4,14 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"os"
 	"os/exec"
 	"os/user"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
 func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr bool) (*bytes.Buffer, *bytes.Buffer) {
@@ -57,10 +60,50 @@ func SplitStringWithQuotes(str string, r rune) []string {
 	})
 }
 
+// Context for ANR network operations
+func GetANRContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), constants.ANRRequestTimeout)
+}
+
+// Context for API requests
+func GetAPIContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), constants.APIRequestTimeout)
+}
+
 func GetRealFilePath(path string) string {
 	if strings.HasPrefix(path, "~") {
 		usr, _ := user.Current()
 		path = strings.Replace(path, "~", usr.HomeDir, 1)
 	}
 	return path
+}
+
+func Filter[T any](input []T, f func(T) bool) []T {
+	output := make([]T, 0, len(input))
+	for _, e := range input {
+		if f(e) {
+			output = append(output, e)
+		}
+	}
+	return output
+}
+
+func Map[T, U any](input []T, f func(T) U) []U {
+	output := make([]U, 0, len(input))
+	for _, e := range input {
+		output = append(output, f(e))
+	}
+	return output
+}
+
+func MapWithError[T, U any](input []T, f func(T) (U, error)) ([]U, error) {
+	output := make([]U, 0, len(input))
+	for _, e := range input {
+		o, err := f(e)
+		if err != nil {
+			return nil, err
+		}
+		output = append(output, o)
+	}
+	return output, nil
 }
