@@ -68,7 +68,7 @@ func getPublicIPForNodesWoEIP(nodesWoEIP []models.NodeConfig) (map[string]string
 		if lastRegion == "" || node.Region != lastRegion {
 			if node.CloudService == "" || node.CloudService == constants.AWSCloudService {
 				// check for empty because we didn't set this value when it was only on AWS
-				sess, err := getAWSCloudCredentials(node.Region, constants.GetAWSNodeIP, true)
+				sess, err := getAWSCloudCredentials(awsProfile, node.Region, constants.GetAWSNodeIP, true)
 				if err != nil {
 					return nil, err
 				}
@@ -167,7 +167,12 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	if err := setupBuildEnv(app.GetAnsibleInventoryDirPath(clusterName), ""); err != nil {
 		return err
 	}
-	untrackedNodes, err := trackSubnet(clusterName, subnetName, models.FujiNetwork)
+	clustersConfig, err := app.LoadClustersConfig()
+	if err != nil {
+		return err
+	}
+	network := clustersConfig.Clusters[clusterName].Network
+	untrackedNodes, err := trackSubnet(clusterName, subnetName, network)
 	if err != nil {
 		return err
 	}
@@ -263,7 +268,10 @@ func trackSubnet(clusterName, subnetName string, network models.Network) ([]stri
 	if err := subnetcmd.CallExportSubnet(subnetName, subnetPath, network); err != nil {
 		return nil, err
 	}
-	if err := ansible.RunAnsiblePlaybookExportSubnet(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), subnetPath, "/tmp", "all"); err != nil {
+	if err := ansible.RunAnsiblePlaybookSetupCLIFromSource(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), constants.SetupCLIFromSourceBranch, "all"); err != nil {
+		return nil, err
+	}
+	if err := ansible.RunAnsiblePlaybookExportSubnet(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), subnetPath, "all"); err != nil {
 		return nil, err
 	}
 	hostAliases, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
@@ -273,7 +281,7 @@ func trackSubnet(clusterName, subnetName string, network models.Network) ([]stri
 	untrackedNodes := []string{}
 	for _, host := range hostAliases {
 		// runs avalanche join subnet command
-		if err = ansible.RunAnsiblePlaybookTrackSubnet(app.GetAnsibleDir(), subnetName, subnetPath, app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
+		if err = ansible.RunAnsiblePlaybookTrackSubnet(app.GetAnsibleDir(), network, subnetName, subnetPath, app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
 			untrackedNodes = append(untrackedNodes, host)
 		}
 	}

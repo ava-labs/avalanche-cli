@@ -91,7 +91,7 @@ func doUpdateSubnet(clusterName, subnetName string, network models.Network) ([]s
 	if err := subnetcmd.CallExportSubnet(subnetName, subnetPath, network); err != nil {
 		return nil, err
 	}
-	if err := ansible.RunAnsiblePlaybookExportSubnet(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), subnetPath, "/tmp", "all"); err != nil {
+	if err := ansible.RunAnsiblePlaybookExportSubnet(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), subnetPath, "all"); err != nil {
 		return nil, err
 	}
 	hostAliases, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
