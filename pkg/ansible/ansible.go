@@ -207,8 +207,8 @@ func RunAnsiblePlaybookSetupDevnet(ansibleDir, ansibleHostIDs, nodesDirPath, inv
 
 // RunAnsiblePlaybookExportSubnet exports deployed Subnet from local machine to cloud server
 // targets a specific host ansibleHostID in ansible inventory file
-func RunAnsiblePlaybookExportSubnet(ansibleDir, inventoryPath, exportPath, cloudServerSubnetPath, ansibleHostID string) error {
-	playbookInputs := "target=" + ansibleHostID + " originSubnetPath=" + exportPath + " destSubnetPath=" + cloudServerSubnetPath
+func RunAnsiblePlaybookExportSubnet(ansibleDir, inventoryPath, subnetPath, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID + " subnetPath=" + subnetPath
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.ExportSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
@@ -224,8 +224,26 @@ func RunAnsiblePlaybookExportSubnet(ansibleDir, inventoryPath, exportPath, cloud
 
 // RunAnsiblePlaybookTrackSubnet runs avalanche subnet join <subnetName> in cloud server
 // targets a specific host ansibleHostID in ansible inventory file
-func RunAnsiblePlaybookTrackSubnet(ansibleDir, subnetName, importPath, inventoryPath, ansibleHostID string) error {
-	playbookInputs := "target=" + ansibleHostID + " subnetExportFileName=" + importPath + " subnetName=" + subnetName
+func RunAnsiblePlaybookTrackSubnet(
+	ansibleDir string,
+	network models.Network,
+	subnetName string,
+	importPath string,
+	inventoryPath string,
+	ansibleHostID string,
+) error {
+	networkFlag := ""
+	switch network.Kind {
+	case models.Local:
+		networkFlag = "--local"
+	case models.Devnet:
+		networkFlag = "--devnet"
+	case models.Fuji:
+		networkFlag = "--fuji"
+	case models.Mainnet:
+		networkFlag = "--mainnet"
+	}
+	playbookInputs := "target=" + ansibleHostID + " subnetExportFileName=" + importPath + " subnetName=" + subnetName + " networkFlag=" + networkFlag
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.TrackSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
