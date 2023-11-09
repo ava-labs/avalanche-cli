@@ -23,11 +23,11 @@ import (
 )
 
 var (
-	nodeIDStr        string
-	weight           uint64
-	startTimeStr     string
-	duration         time.Duration
-	defaultValidator bool
+	nodeIDStr              string
+	weight                 uint64
+	startTimeStr           string
+	duration               time.Duration
+	defaultValidatorParams bool
 
 	errNoSubnetID = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 )
@@ -55,7 +55,7 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
 	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
-	cmd.Flags().BoolVar(&defaultValidator, "default-validator", false, "use default weight/start/duration params for subnet validator")
+	cmd.Flags().BoolVar(&defaultValidatorParams, "default-validator-params", false, "use default weight/start/duration params for subnet validator")
 
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
 	cmd.Flags().StringVar(&endpoint, "endpoint", "", "use the given endpoint for network operations")
@@ -85,7 +85,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 	kc, err := GetKeychainFromCmdLineFlags(
-		"pay transaction fees",
+		constants.PayTxsFeesMsg,
 		network,
 		keyName,
 		useEwoq,
@@ -95,16 +95,16 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return CallAddValidator(network, kc, useLedger, args[0], nodeIDStr, defaultValidator)
+	return CallAddValidator(network, kc, useLedger, args[0], nodeIDStr, defaultValidatorParams)
 }
 
 func CallAddValidator(
 	network models.Network,
 	kc keychain.Keychain,
-	useLedgerParam bool,
+	useLedgerSetting bool,
 	subnetName string,
 	nodeIDStr string,
-	defaultValidatorParam bool,
+	defaultValidatorParamsSetting bool,
 ) error {
 	var (
 		nodeID ids.NodeID
@@ -112,11 +112,11 @@ func CallAddValidator(
 		err    error
 	)
 
-	useLedger = useLedgerParam
-	defaultValidator = defaultValidatorParam
+	useLedger = useLedgerSetting
+	defaultValidatorParams = defaultValidatorParamsSetting
 
 	if outputTxPath != "" {
-		if _, err := os.Stat(outputTxPath); err == nil {
+		if utils.FileExists(outputTxPath) {
 			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
 		}
 	}
@@ -273,7 +273,7 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bo
 		defaultStakingStartLeadTime = constants.DevnetStakingStartLeadTime
 	}
 
-	if defaultValidator {
+	if defaultValidatorParams {
 		start = time.Now().Add(defaultStakingStartLeadTime)
 		duration, err = getMaxValidationTime(network, nodeID, start)
 		if err != nil {
@@ -364,7 +364,7 @@ func PromptNodeID() (ids.NodeID, error) {
 }
 
 func PromptWeight() (uint64, error) {
-	if defaultValidator {
+	if defaultValidatorParams {
 		return constants.DefaultStakeWeight, nil
 	}
 	defaultWeight := fmt.Sprintf("Default (%d)", constants.DefaultStakeWeight)

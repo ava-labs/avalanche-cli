@@ -46,7 +46,7 @@ var (
 	weight                       uint64
 	startTimeStr                 string
 	duration                     time.Duration
-	defaultValidator             bool
+	defaultValidatorParams       bool
 	useCustomDuration            bool
 	ErrMutuallyExlusiveKeyLedger = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet        = errors.New("--key is not available for mainnet operations")
@@ -152,12 +152,16 @@ func joinAsPrimaryNetworkValidator(
 	PrintNodeJoinPrimaryNetworkOutput(nodeID, weight, network, start)
 	// we set the starting time for node to be a Primary Network Validator to be in 1 minute
 	// we use min delegation fee as default
-	delegationFee := genesis.FujiParams.MinDelegationFee
-	if network.Kind == models.Mainnet {
+	var delegationFee uint32
+	switch network.Kind {
+	case models.Mainnet:
 		delegationFee = genesis.MainnetParams.MinDelegationFee
-	}
-	if network.Kind == models.Devnet {
+	case models.Fuji:
+		delegationFee = genesis.FujiParams.MinDelegationFee
+	case models.Devnet:
 		delegationFee = genesis.LocalParams.MinDelegationFee
+	default:
+		return fmt.Errorf("unsupported network")
 	}
 	blsKeyBytes, err := os.ReadFile(signingKeyPath)
 	if err != nil {
@@ -167,17 +171,32 @@ func joinAsPrimaryNetworkValidator(
 	if err != nil {
 		return err
 	}
-	_, err = deployer.AddPermissionlessValidator(ids.Empty, ids.Empty, nodeID, weight, uint64(start.Unix()), uint64(start.Add(duration).Unix()), recipientAddr, delegationFee, nil, signer.NewProofOfPossession(blsSk))
+	_, err = deployer.AddPermissionlessValidator(
+		ids.Empty,
+		ids.Empty,
+		nodeID,
+		weight,
+		uint64(start.Unix()),
+		uint64(start.Add(duration).Unix()),
+		recipientAddr,
+		delegationFee,
+		nil,
+		signer.NewProofOfPossession(blsSk),
+	)
 	return err
 }
 
 func PromptWeightPrimaryNetwork(network models.Network) (uint64, error) {
-	defaultStake := genesis.FujiParams.MinValidatorStake
-	if network.Kind == models.Mainnet {
+	var defaultStake uint64
+	switch network.Kind {
+	case models.Mainnet:
 		defaultStake = genesis.MainnetParams.MinValidatorStake
-	}
-	if network.Kind == models.Devnet {
+	case models.Fuji:
+		defaultStake = genesis.FujiParams.MinValidatorStake
+	case models.Devnet:
 		defaultStake = genesis.LocalParams.MinValidatorStake
+	default:
+		return 0, fmt.Errorf("unsupported network")
 	}
 	defaultWeight := fmt.Sprintf("Default (%s)", convertNanoAvaxToAvaxString(defaultStake))
 	txt := "What stake weight would you like to assign to the validator?"
@@ -370,7 +389,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	network := clustersConfig.Clusters[clusterName].Network
 
 	kc, err := subnetcmd.GetKeychainFromCmdLineFlags(
-		"pay transaction fees",
+		constants.PayTxsFeesMsg,
 		network,
 		keyName,
 		useEwoq,
@@ -381,8 +400,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = setupAnsible(clusterName)
-	if err != nil {
+	if err := setupAnsible(clusterName); err != nil {
 		return err
 	}
 	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
@@ -459,7 +477,7 @@ func convertNanoAvaxToAvaxString(weight uint64) string {
 
 func PrintNodeJoinPrimaryNetworkOutput(nodeID ids.NodeID, weight uint64, network models.Network, start time.Time) {
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
-	ux.Logger.PrintToUser("Network: %s", network.Kind.String())
+	ux.Logger.PrintToUser("Network: %s", network.Name())
 	ux.Logger.PrintToUser("Start time: %s", start.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("End time: %s", start.Add(duration).Format(constants.TimeParseLayout))
 	// we need to divide by 10 ^ 9 since we were using nanoAvax

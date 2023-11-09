@@ -381,7 +381,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// from here on we are assuming a public deploy
 
 	kc, err := GetKeychainFromCmdLineFlags(
-		"pay transaction fees",
+		constants.PayTxsFeesMsg,
 		network,
 		keyName,
 		useEwoq,

@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 
 	subnetcmd "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
@@ -54,7 +55,7 @@ You can check the subnet sync status by calling avalanche node status <clusterNa
 	cmd.Flags().Uint64Var(&weight, "stake-amount", 0, "how many AVAX to stake in the validator")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long validator validates for after start time")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
-	cmd.Flags().BoolVar(&defaultValidator, "default-validator", false, "use default weight/start/duration params for subnet validator")
+	cmd.Flags().BoolVar(&defaultValidatorParams, "default-validator-params", false, "use default weight/start/duration params for subnet validator")
 
 	return cmd
 }
@@ -80,7 +81,15 @@ func parseSubnetSyncOutput(filePath string) (string, error) {
 	return "", errors.New("unable to parse subnet sync status")
 }
 
-func addNodeAsSubnetValidator(network models.Network, kc keychain.Keychain, useLedger bool, nodeID, subnetName string, currentNodeIndex, nodeCount int) error {
+func addNodeAsSubnetValidator(
+	network models.Network,
+	kc keychain.Keychain,
+	useLedger bool,
+	nodeID string,
+	subnetName string,
+	currentNodeIndex int,
+	nodeCount int,
+) error {
 	ux.Logger.PrintToUser("Adding the node as a Subnet Validator...")
 	if err := subnetcmd.CallAddValidator(
 		network,
@@ -88,7 +97,7 @@ func addNodeAsSubnetValidator(network models.Network, kc keychain.Keychain, useL
 		useLedger,
 		subnetName,
 		nodeID,
-		defaultValidator,
+		defaultValidatorParams,
 	); err != nil {
 		return err
 	}
@@ -155,7 +164,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	network := clustersConfig.Clusters[clusterName].Network
 
 	kc, err := subnetcmd.GetKeychainFromCmdLineFlags(
-		"pay transaction fees",
+		constants.PayTxsFeesMsg,
 		network,
 		keyName,
 		useEwoq,
@@ -166,8 +175,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = setupAnsible(clusterName)
-	if err != nil {
+	if err := setupAnsible(clusterName); err != nil {
 		return err
 	}
 	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)

@@ -234,4 +234,6 @@ const (
 	DefaultWalletCreationTimeout = 5 * time.Second
 
 	DefaultConfirmTxTimeout = 20 * time.Second
+
+	PayTxsFeesMsg = "pay transaction fees"
 )

@@ -227,7 +227,7 @@ func printOutput(
 			hostIDs[i],
 			nodeIDs[i],
 			ansibleHosts[ansibleHostID].IP,
-			clustersConfig.Clusters[clusterName].Network.Kind.String(),
+			clustersConfig.Clusters[clusterName].Network.Name(),
 			avagoVersions[ansibleHostID],
 			boostrappedStatus,
 			healthyStatus,
