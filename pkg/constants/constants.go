@@ -54,7 +54,7 @@ const (
 	LocalAPIEndpoint = "http://127.0.0.1:9650"
 	LocalNetworkID   = 1337
 
-	DevnetAPIEndpoint = "http://127.0.0.1:9650"
+	DevnetAPIEndpoint = ""
 	DevnetNetworkID   = 1338
 
 	DefaultTokenName = "TEST"
@@ -119,13 +119,16 @@ const (
 	SetupDevnetPlaybook                          = "playbook/setupDevnet.yml"
 	ExportSubnetPlaybook                         = "playbook/exportSubnet.yml"
 	IsBootstrappedPlaybook                       = "playbook/isBootstrapped.yml"
+	IsHealthyPlaybook                            = "playbook/isHealthy.yml"
 	IsSubnetSyncedPlaybook                       = "playbook/isSubnetSynced.yml"
 	TrackSubnetPlaybook                          = "playbook/trackSubnet.yml"
 	UpdateSubnetPlaybook                         = "playbook/updateSubnet.yml"
 	AvalancheGoVersionPlaybook                   = "playbook/avalancheGoVersion.yml"
 	SetupBuildEnvPlaybook                        = "playbook/setupBuildEnv.yml"
 	SetupCLIFromSourcePlaybook                   = "playbook/setupCLIFromSource.yml"
+	SetupCLIFromSourceBranch                     = "devnet-subnet-sync"
 	BuildEnvGolangVersion                        = "1.21.1"
+	IsHealthyJSONFile                            = "isHealthy.json"
 	IsBootstrappedJSONFile                       = "isBootstrapped.json"
 	AvalancheGoVersionJSONFile                   = "avalancheGoVersion.json"
 	SubnetSyncJSONFile                           = "isSubnetSynced.json"
@@ -138,7 +141,6 @@ const (
 	AnsibleSSHShellParams                        = "-o IdentitiesOnly=yes -o StrictHostKeyChecking=no"
 	AnsibleSSHInventoryParams                    = "-o StrictHostKeyChecking=no"
 	AnsibleExtraVarsFlag                         = "--extra-vars"
-	CloudCLIBranch                               = "custom-vms-cloud-10"
 
 	ConfigAPMCredentialsFileKey  = "credentials-file"
 	ConfigAPMAdminAPIEndpointKey = "admin-api-endpoint"
