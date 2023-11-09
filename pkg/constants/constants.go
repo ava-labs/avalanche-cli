@@ -54,7 +54,7 @@ const (
 	LocalAPIEndpoint = "http://127.0.0.1:9650"
 	LocalNetworkID   = 1337
 
-	DevnetAPIEndpoint = "http://127.0.0.1:9650"
+	DevnetAPIEndpoint = ""
 	DevnetNetworkID   = 1338
 
 	DefaultTokenName = "TEST"
@@ -119,6 +119,7 @@ const (
 	SetupDevnetPlaybook                          = "playbook/setupDevnet.yml"
 	ExportSubnetPlaybook                         = "playbook/exportSubnet.yml"
 	IsBootstrappedPlaybook                       = "playbook/isBootstrapped.yml"
+	IsHealthyPlaybook                            = "playbook/isHealthy.yml"
 	IsSubnetSyncedPlaybook                       = "playbook/isSubnetSynced.yml"
 	TrackSubnetPlaybook                          = "playbook/trackSubnet.yml"
 	UpdateSubnetPlaybook                         = "playbook/updateSubnet.yml"
@@ -126,6 +127,7 @@ const (
 	SetupBuildEnvPlaybook                        = "playbook/setupBuildEnv.yml"
 	SetupCLIFromSourcePlaybook                   = "playbook/setupCLIFromSource.yml"
 	BuildEnvGolangVersion                        = "1.21.1"
+	IsHealthyJSONFile                            = "isHealthy.json"
 	IsBootstrappedJSONFile                       = "isBootstrapped.json"
 	AvalancheGoVersionJSONFile                   = "avalancheGoVersion.json"
 	SubnetSyncJSONFile                           = "isSubnetSynced.json"
