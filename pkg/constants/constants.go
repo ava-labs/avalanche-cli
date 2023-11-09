@@ -126,6 +126,7 @@ const (
 	AvalancheGoVersionPlaybook                   = "playbook/avalancheGoVersion.yml"
 	SetupBuildEnvPlaybook                        = "playbook/setupBuildEnv.yml"
 	SetupCLIFromSourcePlaybook                   = "playbook/setupCLIFromSource.yml"
+	SetupCLIFromSourceBranch                     = "devnet-subnet-sync"
 	BuildEnvGolangVersion                        = "1.21.1"
 	IsHealthyJSONFile                            = "isHealthy.json"
 	IsBootstrappedJSONFile                       = "isBootstrapped.json"
@@ -140,7 +141,6 @@ const (
 	AnsibleSSHShellParams                        = "-o IdentitiesOnly=yes -o StrictHostKeyChecking=no"
 	AnsibleSSHInventoryParams                    = "-o StrictHostKeyChecking=no"
 	AnsibleExtraVarsFlag                         = "--extra-vars"
-	CloudCLIBranch                               = "custom-vms-cloud-10"
 
 	ConfigAPMCredentialsFileKey  = "credentials-file"
 	ConfigAPMAdminAPIEndpointKey = "admin-api-endpoint"

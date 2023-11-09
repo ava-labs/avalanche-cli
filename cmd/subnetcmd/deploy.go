@@ -42,6 +42,7 @@ const numLedgerAddressesToSearch = 1000
 
 var (
 	deployLocal              bool
+	deployDevnet             bool
 	deployTestnet            bool
 	deployMainnet            bool
 	sameControlKey           bool
