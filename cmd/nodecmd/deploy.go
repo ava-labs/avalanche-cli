@@ -71,13 +71,14 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		case models.CustomVM:
 			ux.Logger.PrintToUser("To modify your Custom VM binary: avalanche subnet upgrade vm %s --config", subnetName)
 		}
+		ux.Logger.PrintToUser("Yoy can use \"avalanche node upgrade\" to upgrade Avalanche Go and/or Subnet-EVM to their latest versions")
 		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
 	}
 
 	deployLocal := false
 	deployDevnet := true
 	deployTestnet := false
-	ddeployMainnet := false
+	deployMainnet := false
 	endpoint := clustersConfig.Clusters[clusterName].Network.Endpoint
 	keyNameParam := ""
 	useLedgerParam := false
@@ -90,7 +91,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		deployLocal,
 		deployDevnet,
 		deployTestnet,
-		ddeployMainnet,
+		deployMainnet,
 		endpoint,
 		keyNameParam,
 		useLedgerParam,

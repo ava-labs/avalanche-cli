@@ -114,7 +114,7 @@ func CallDeploy(
 	deployLocalParam bool,
 	deployDevnetParam bool,
 	deployTestnetParam bool,
-	ddeployMainnetParam bool,
+	deployMainnetParam bool,
 	endpointParam string,
 	keyNameParam string,
 	useLedgerParam bool,
@@ -123,7 +123,7 @@ func CallDeploy(
 ) error {
 	deployLocal = deployLocalParam
 	deployTestnet = deployTestnetParam
-	deployMainnet = ddeployMainnetParam
+	deployMainnet = deployMainnetParam
 	deployDevnet = deployDevnetParam
 	endpoint = endpointParam
 	sameControlKey = sameControlKeyParam
