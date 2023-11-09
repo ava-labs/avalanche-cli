@@ -33,7 +33,7 @@ rest of the commands to maintain your node and make your node a Subnet Validator
 	// node create
 	cmd.AddCommand(newCreateCmd())
 	// node validate
-	cmd.AddCommand(NewValidateCmd(app))
+	cmd.AddCommand(NewValidateCmd())
 	// node sync cluster --subnet subnetName
 	cmd.AddCommand(newSyncCmd())
 	// node stop
@@ -44,6 +44,8 @@ rest of the commands to maintain your node and make your node a Subnet Validator
 	cmd.AddCommand(newListCmd())
 	// node update
 	cmd.AddCommand(newUpdateCmd())
+	// node devnet
+	cmd.AddCommand(newDevnetCmd())
 	// node upgrade
 	cmd.AddCommand(newUpgradeCmd())
 	// node ssh

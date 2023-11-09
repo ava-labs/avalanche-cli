@@ -138,6 +138,13 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if len(notBootstrappedNodes) > 0 {
 		return fmt.Errorf("node(s) %s are not bootstrapped yet, please try again later", notBootstrappedNodes)
 	}
+	notHealthyNodes, err := checkClusterIsHealthy(clusterName)
+	if err != nil {
+		return err
+	}
+	if len(notHealthyNodes) > 0 {
+		return fmt.Errorf("node(s) %s are not healthy, please fix the issue and again", notHealthyNodes)
+	}
 	if _, err = subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 		return err
 	}

@@ -433,7 +433,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	}
 
 	// get keychain accessor
-	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
+	kc, err := GetKeychain(false, useLedger, ledgerAddresses, keyName, network)
 	if err != nil {
 		return err
 	}

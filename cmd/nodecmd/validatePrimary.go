@@ -156,7 +156,7 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 		return err
 	}
 
-	kc, err := subnetcmd.GetKeychain(useLedger, ledgerAddresses, keyName, network)
+	kc, err := subnetcmd.GetKeychain(false, useLedger, ledgerAddresses, keyName, network)
 	if err != nil {
 		return err
 	}
@@ -382,6 +382,13 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	}
 	if len(notBootstrappedNodes) > 0 {
 		return fmt.Errorf("node(s) %s are not bootstrapped yet, please try again later", notBootstrappedNodes)
+	}
+	notHealthyNodes, err := checkClusterIsHealthy(clusterName)
+	if err != nil {
+		return err
+	}
+	if len(notHealthyNodes) > 0 {
+		return fmt.Errorf("node(s) %s are not healthy, please fix the issue and again", notHealthyNodes)
 	}
 	ansibleNodeIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {

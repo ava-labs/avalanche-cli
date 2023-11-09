@@ -27,7 +27,6 @@ import (
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
-	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
@@ -45,6 +44,7 @@ var (
 	deployDevnet             bool
 	deployTestnet            bool
 	deployMainnet            bool
+	endpoint                 string
 	sameControlKey           bool
 	keyName                  string
 	threshold                uint32
@@ -53,15 +53,18 @@ var (
 	userProvidedAvagoVersion string
 	outputTxPath             string
 	useLedger                bool
+	useEwoq                  bool
 	ledgerAddresses          []string
 	subnetIDStr              string
 	mainnetChainID           string
 	skipCreatePrompt         bool
 
-	errMutuallyExlusiveNetworks    = errors.New("--local, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
+	errMutuallyExlusiveNetworks = errors.New("--local, --fuji/--testnet, --mainnet are mutually exclusive")
+
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
-	ErrMutuallyExlusiveKeyLedger   = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
-	ErrStoredKeyOnMainnet          = errors.New("--key is not available for mainnet operations")
+
+	ErrMutuallyExlusiveKeyLedger = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
+	ErrStoredKeyOnMainnet        = errors.New("key --key is not available for mainnet operations")
 )
 
 // avalanche subnet deploy
@@ -84,22 +87,50 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 		PersistentPostRun: handlePostRun,
 		Args:              cobra.ExactArgs(1),
 	}
+	cmd.Flags().StringVar(&endpoint, "endpoint", "", "use the given endpoint for network operations")
 	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
+	cmd.Flags().BoolVar(&deployDevnet, "devnet", false, "deploy to a devnet network")
 	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "deploy to testnet (alias to `fuji`)")
 	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "deploy to fuji (alias to `testnet`")
 	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "deploy to mainnet")
 	cmd.Flags().StringVar(&userProvidedAvagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
-	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
+	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet deploy only]")
 	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use creation key as control key")
 	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to make subnet changes")
 	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may make subnet changes")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate chain creation")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
-	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
+	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet deploy only]")
+	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
-	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "deploy into given subnet id [fuji/mainnet deploy only]")
+	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "deploy into given subnet id")
 	cmd.Flags().StringVar(&mainnetChainID, "mainnet-chain-id", "", "use different ChainID for mainnet deployment")
 	return cmd
+}
+
+func CallDeploy(
+	cmd *cobra.Command,
+	subnetName string,
+	deployLocalParam bool,
+	deployDevnetParam bool,
+	deployTestnetParam bool,
+	deployMainnetParam bool,
+	endpointParam string,
+	keyNameParam string,
+	useLedgerParam bool,
+	useEwoqParam bool,
+	sameControlKeyParam bool,
+) error {
+	deployLocal = deployLocalParam
+	deployTestnet = deployTestnetParam
+	deployMainnet = deployMainnetParam
+	deployDevnet = deployDevnetParam
+	endpoint = endpointParam
+	sameControlKey = sameControlKeyParam
+	keyName = keyNameParam
+	useLedger = useLedgerParam
+	useEwoq = useEwoqParam
+	return deploySubnet(cmd, []string{subnetName})
 }
 
 func getChainsInSubnet(subnetName string) ([]string, error) {
@@ -260,10 +291,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	network, err := GetNetworkFromCmdLineFlags(
 		deployLocal,
-		false,
+		deployDevnet,
 		deployTestnet,
 		deployMainnet,
-		"",
+		endpoint,
 		[]models.NetworkKind{models.Local, models.Devnet, models.Fuji, models.Mainnet},
 	)
 	if err != nil {
@@ -305,19 +336,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to validate genesis format: %w", err)
 	}
 
-	genesisPath := app.GetGenesisPath(chain)
-
-	if len(ledgerAddresses) > 0 {
-		useLedger = true
-	}
-
-	if useLedger && keyName != "" {
-		return ErrMutuallyExlusiveKeyLedger
-	}
-
-	switch network.Kind {
-	case models.Local:
+	if network.Kind == models.Local {
 		app.Log.Debug("Deploy local")
+
+		genesisPath := app.GetGenesisPath(chain)
 
 		// copy vm binary to the expected location, first downloading it if necessary
 		var vmBin string
@@ -354,36 +376,25 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		flags[constants.Network] = network.Name()
 		metrics.HandleTracking(cmd, app, flags)
 		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
+	}
 
-	case models.Fuji:
-		if !useLedger && keyName == "" {
-			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "pay transaction fees", app.GetKeyDir())
-			if err != nil {
-				return err
-			}
-		}
+	// from here on we are assuming a public deploy
 
-	case models.Mainnet:
-		useLedger = true
-		if keyName != "" {
-			return ErrStoredKeyOnMainnet
-		}
-
-	default:
-		return errors.New("not implemented")
+	kc, err := GetKeychainFromCmdLineFlags(
+		"pay transaction fees",
+		network,
+		keyName,
+		useEwoq,
+		&useLedger,
+		ledgerAddresses,
+	)
+	if err != nil {
+		return err
 	}
 
 	// used in E2E to simulate public network execution paths on a local network
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
 		network = models.LocalNetwork
-	}
-
-	// from here on we are assuming a public deploy
-
-	// get keychain accessor
-	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
-	if err != nil {
-		return err
 	}
 
 	createSubnet := true
@@ -781,92 +792,6 @@ func PrintRemainingToSignMsg(
 	ux.Logger.PrintToUser("Signing command:")
 	ux.Logger.PrintToUser("  avalanche transaction sign %s --input-tx-filepath %s", chain, outputTxPath)
 	ux.Logger.PrintToUser("")
-}
-
-func GetKeychain(
-	useLedger bool,
-	ledgerAddresses []string,
-	keyName string,
-	network models.Network,
-) (keychain.Keychain, error) {
-	// get keychain accessor
-	var kc keychain.Keychain
-	if useLedger {
-		ledgerDevice, err := ledger.New()
-		if err != nil {
-			return kc, err
-		}
-		// ask for addresses here to print user msg for ledger interaction
-		// set ledger indices
-		var ledgerIndices []uint32
-		if len(ledgerAddresses) == 0 {
-			ledgerIndices = []uint32{0}
-		} else {
-			ledgerIndices, err = getLedgerIndices(ledgerDevice, ledgerAddresses)
-			if err != nil {
-				return kc, err
-			}
-		}
-		// get formatted addresses for ux
-		addresses, err := ledgerDevice.Addresses(ledgerIndices)
-		if err != nil {
-			return kc, err
-		}
-		addrStrs := []string{}
-		for _, addr := range addresses {
-			addrStr, err := address.Format("P", key.GetHRP(network.ID), addr[:])
-			if err != nil {
-				return kc, err
-			}
-			addrStrs = append(addrStrs, addrStr)
-		}
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Ledger addresses: "))
-		for _, addrStr := range addrStrs {
-			ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("  %s", addrStr)))
-		}
-		return keychain.NewLedgerKeychainFromIndices(ledgerDevice, ledgerIndices)
-	}
-	sf, err := key.LoadSoft(network.ID, app.GetKeyPath(keyName))
-	if err != nil {
-		return kc, err
-	}
-	return sf.KeyChain(), nil
-}
-
-func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]uint32, error) {
-	addresses, err := address.ParseToIDs(addressesStr)
-	if err != nil {
-		return []uint32{}, fmt.Errorf("failure parsing given ledger addresses: %w", err)
-	}
-	// maps the indices of addresses to their corresponding ledger indices
-	indexMap := map[int]uint32{}
-	// for all ledger indices to search for, find if the ledger address belongs to the input
-	// addresses and, if so, add the index pair to indexMap, breaking the loop if
-	// all addresses were found
-	for ledgerIndex := uint32(0); ledgerIndex < numLedgerAddressesToSearch; ledgerIndex++ {
-		ledgerAddress, err := ledgerDevice.Addresses([]uint32{ledgerIndex})
-		if err != nil {
-			return []uint32{}, err
-		}
-		for addressesIndex, addr := range addresses {
-			if addr == ledgerAddress[0] {
-				indexMap[addressesIndex] = ledgerIndex
-			}
-		}
-		if len(indexMap) == len(addresses) {
-			break
-		}
-	}
-	// create ledgerIndices from indexMap
-	ledgerIndices := []uint32{}
-	for addressesIndex := range addresses {
-		ledgerIndex, ok := indexMap[addressesIndex]
-		if !ok {
-			return []uint32{}, fmt.Errorf("address %s not found on ledger", addressesStr[addressesIndex])
-		}
-		ledgerIndices = append(ledgerIndices, ledgerIndex)
-	}
-	return ledgerIndices, nil
 }
 
 func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID) error {
