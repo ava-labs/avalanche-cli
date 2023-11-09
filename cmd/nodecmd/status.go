@@ -103,6 +103,19 @@ func statusNode(_ *cobra.Command, args []string) error {
 	subnetSyncedNodes := []string{}
 	subnetValidatingNodes := []string{}
 	if subnetName != "" {
+		clustersConfig, err := app.LoadClustersConfig()
+		if err != nil {
+			return err
+		}
+		network := clustersConfig.Clusters[clusterName].Network
+		sc, err := app.LoadSidecar(subnetName)
+		if err != nil {
+			return err
+		}
+		blockchainID := sc.Networks[network.Name()].BlockchainID
+		if blockchainID == ids.Empty {
+			return ErrNoBlockchainID
+		}
 		hostsToCheckSyncStatus := []string{}
 		for _, ansibleHostID := range ansibleHostIDs {
 			if slices.Contains(notBootstrappedNodes, ansibleHostID) {
@@ -112,19 +125,6 @@ func statusNode(_ *cobra.Command, args []string) error {
 			}
 		}
 		if len(hostsToCheckSyncStatus) != 0 {
-			clustersConfig, err := app.LoadClustersConfig()
-			if err != nil {
-				return err
-			}
-			network := clustersConfig.Clusters[clusterName].Network
-			sc, err := app.LoadSidecar(subnetName)
-			if err != nil {
-				return err
-			}
-			blockchainID := sc.Networks[network.Kind.String()].BlockchainID
-			if blockchainID == ids.Empty {
-				return ErrNoBlockchainID
-			}
 			if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(
 				app.GetAnsibleDir(),
 				app.GetSubnetSyncJSONFile(),
