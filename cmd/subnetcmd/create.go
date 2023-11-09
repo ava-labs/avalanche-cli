@@ -66,6 +66,9 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
 	cmd.Flags().BoolVar(&useLatestVersion, latest, false, "use latest VM version, takes precedence over --vm-version")
 	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
+	cmd.Flags().StringVar(&customVMRepoURL, "custom-vm-repo-url", "", "custom vm repository url")
+	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch")
+	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
 	return cmd
 }
 
@@ -143,7 +146,14 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	case models.CustomVM:
-		genesisBytes, sc, err = vm.CreateCustomSubnetConfig(app, subnetName, genesisFile, vmFile)
+		genesisBytes, sc, err = vm.CreateCustomSubnetConfig(
+			app,
+			subnetName,
+			genesisFile,
+			customVMRepoURL,
+			customVMBranch,
+			customVMBuildScript,
+		)
 		if err != nil {
 			return err
 		}
