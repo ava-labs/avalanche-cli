@@ -27,7 +27,6 @@ import (
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
-	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
@@ -44,6 +43,8 @@ var (
 	deployLocal              bool
 	deployTestnet            bool
 	deployMainnet            bool
+	deployDevnet             bool
+	endpoint                 string
 	sameControlKey           bool
 	keyName                  string
 	threshold                uint32
@@ -52,6 +53,7 @@ var (
 	userProvidedAvagoVersion string
 	outputTxPath             string
 	useLedger                bool
+	useEwoq                  bool
 	ledgerAddresses          []string
 	subnetIDStr              string
 	mainnetChainID           string
@@ -380,7 +382,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// from here on we are assuming a public deploy
 
 	// get keychain accessor
-	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
+	kc, err := GetKeychain(false, useLedger, ledgerAddresses, keyName, network)
 	if err != nil {
 		return err
 	}
@@ -780,92 +782,6 @@ func PrintRemainingToSignMsg(
 	ux.Logger.PrintToUser("Signing command:")
 	ux.Logger.PrintToUser("  avalanche transaction sign %s --input-tx-filepath %s", chain, outputTxPath)
 	ux.Logger.PrintToUser("")
-}
-
-func GetKeychain(
-	useLedger bool,
-	ledgerAddresses []string,
-	keyName string,
-	network models.Network,
-) (keychain.Keychain, error) {
-	// get keychain accessor
-	var kc keychain.Keychain
-	if useLedger {
-		ledgerDevice, err := ledger.New()
-		if err != nil {
-			return kc, err
-		}
-		// ask for addresses here to print user msg for ledger interaction
-		// set ledger indices
-		var ledgerIndices []uint32
-		if len(ledgerAddresses) == 0 {
-			ledgerIndices = []uint32{0}
-		} else {
-			ledgerIndices, err = getLedgerIndices(ledgerDevice, ledgerAddresses)
-			if err != nil {
-				return kc, err
-			}
-		}
-		// get formatted addresses for ux
-		addresses, err := ledgerDevice.Addresses(ledgerIndices)
-		if err != nil {
-			return kc, err
-		}
-		addrStrs := []string{}
-		for _, addr := range addresses {
-			addrStr, err := address.Format("P", key.GetHRP(network.ID), addr[:])
-			if err != nil {
-				return kc, err
-			}
-			addrStrs = append(addrStrs, addrStr)
-		}
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Ledger addresses: "))
-		for _, addrStr := range addrStrs {
-			ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("  %s", addrStr)))
-		}
-		return keychain.NewLedgerKeychainFromIndices(ledgerDevice, ledgerIndices)
-	}
-	sf, err := key.LoadSoft(network.ID, app.GetKeyPath(keyName))
-	if err != nil {
-		return kc, err
-	}
-	return sf.KeyChain(), nil
-}
-
-func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]uint32, error) {
-	addresses, err := address.ParseToIDs(addressesStr)
-	if err != nil {
-		return []uint32{}, fmt.Errorf("failure parsing given ledger addresses: %w", err)
-	}
-	// maps the indices of addresses to their corresponding ledger indices
-	indexMap := map[int]uint32{}
-	// for all ledger indices to search for, find if the ledger address belongs to the input
-	// addresses and, if so, add the index pair to indexMap, breaking the loop if
-	// all addresses were found
-	for ledgerIndex := uint32(0); ledgerIndex < numLedgerAddressesToSearch; ledgerIndex++ {
-		ledgerAddress, err := ledgerDevice.Addresses([]uint32{ledgerIndex})
-		if err != nil {
-			return []uint32{}, err
-		}
-		for addressesIndex, addr := range addresses {
-			if addr == ledgerAddress[0] {
-				indexMap[addressesIndex] = ledgerIndex
-			}
-		}
-		if len(indexMap) == len(addresses) {
-			break
-		}
-	}
-	// create ledgerIndices from indexMap
-	ledgerIndices := []uint32{}
-	for addressesIndex := range addresses {
-		ledgerIndex, ok := indexMap[addressesIndex]
-		if !ok {
-			return []uint32{}, fmt.Errorf("address %s not found on ledger", addressesStr[addressesIndex])
-		}
-		ledgerIndices = append(ledgerIndices, ledgerIndex)
-	}
-	return ledgerIndices, nil
 }
 
 func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID) error {

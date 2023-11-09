@@ -54,7 +54,7 @@ const (
 	LocalAPIEndpoint = "http://127.0.0.1:9650"
 	LocalNetworkID   = 1337
 
-	DevnetAPIEndpoint = "http://127.0.0.1:9650"
+	DevnetAPIEndpoint = ""
 	DevnetNetworkID   = 1338
 
 	DefaultTokenName = "TEST"
@@ -92,6 +92,7 @@ const (
 	DefaultMainnetStakeDuration = "336h"
 	// The absolute minimum is 25 seconds, but set to 1 minute to allow for
 	// time to go through the command
+	DevnetStakingStartLeadTime                   = 30 * time.Second
 	StakingStartLeadTime                         = 5 * time.Minute
 	StakingMinimumLeadTime                       = 25 * time.Second
 	PrimaryNetworkValidatingStartLeadTimeNodeCmd = 20 * time.Second
