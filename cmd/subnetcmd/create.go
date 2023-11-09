@@ -65,7 +65,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
 	cmd.Flags().BoolVar(&useLatestVersion, latest, false, "use latest VM version, takes precedence over --vm-version")
 	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
-	cmd.Flags().StringVar(&vmFile, "vm", "", "file path of custom vm to use")
+	cmd.Flags().StringVar(&vmFile, "custom-vm-binary-path", "", "file path of custom vm to use (deprecation warning: will be generated if not given)")
 	cmd.Flags().StringVar(&customVMRepoURL, "custom-vm-repo-url", "", "custom vm repository url")
 	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch")
 	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
