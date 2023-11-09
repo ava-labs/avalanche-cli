@@ -84,7 +84,7 @@ func sshCluster(args []string, indent string) error {
 			fmt.Sprintf("%s %s", ansibleHosts[host].SSHPrivateKeyPath, strings.Join(args[1:], " ")),
 		)
 		ux.Logger.PrintToUser("%s[%s] %s", indent, cloudID, cmdLine)
-		if len(args) != 0 {
+		if len(args) > 1 {
 			splitCmdLine := strings.Split(cmdLine, " ")
 			cmd := exec.Command(splitCmdLine[0], splitCmdLine[1:]...) //nolint: gosec
 			cmd.Env = os.Environ()
