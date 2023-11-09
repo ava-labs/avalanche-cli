@@ -109,6 +109,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 }
 
 func CallDeploy(
+	cmd *cobra.Command,
 	subnetName string,
 	deployLocalParam bool,
 	deployDevnetParam bool,
@@ -129,7 +130,7 @@ func CallDeploy(
 	keyName = keyNameParam
 	useLedger = useLedgerParam
 	useEwoq = useEwoqParam
-	return deploySubnet(nil, []string{subnetName})
+	return deploySubnet(cmd, []string{subnetName})
 }
 
 func getChainsInSubnet(subnetName string) ([]string, error) {

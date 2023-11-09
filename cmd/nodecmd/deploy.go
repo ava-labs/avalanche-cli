@@ -17,18 +17,17 @@ func newDeployCmd() *cobra.Command {
 		Short: "(ALPHA Warning) Deploy a subnet into a devnet cluster",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
-The node deploy command deploys a subnet into a devnet cluster, creating subnet and blockchain txs for it.
+The node devnet deploy command deploys a subnet into a devnet cluster, creating subnet and blockchain txs for it.
 It saves the deploy info both locally and remotely.
 `,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(2),
 		RunE:         deploySubnet,
 	}
-
 	return cmd
 }
 
-func deploySubnet(_ *cobra.Command, args []string) error {
+func deploySubnet(cmd *cobra.Command, args []string) error {
 	clusterName := args[0]
 	subnetName := args[1]
 	if err := checkCluster(clusterName); err != nil {
@@ -86,6 +85,7 @@ func deploySubnet(_ *cobra.Command, args []string) error {
 	sameControlKey := true
 
 	if err := subnetcmd.CallDeploy(
+		cmd,
 		subnetName,
 		deployLocal,
 		deployDevnet,
