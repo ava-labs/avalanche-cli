@@ -215,7 +215,7 @@ func printOutput(
 	table.SetHeader(header)
 	table.SetRowLine(true)
 	for i, ansibleHostID := range ansibleHostIDs {
-		boostrappedStatus := logging.Green.Wrap("OK")
+		boostrappedStatus := logging.Green.Wrap("BOOTSTRAPPED")
 		if slices.Contains(notBootstrappedHosts, ansibleHostID) {
 			boostrappedStatus = logging.Red.Wrap("NOT_BOOTSTRAPPED")
 		}
