@@ -11,27 +11,34 @@ import (
 	"strconv"
 	"time"
 
-	subnetcmd "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanchego/utils/crypto/bls"
+	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
+	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
+
+	"github.com/ava-labs/avalanchego/genesis"
+	"github.com/ava-labs/avalanchego/utils/units"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+
+	subnetcmd "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
-	"github.com/ava-labs/avalanchego/utils/units"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 	"github.com/spf13/cobra"
 )
 
 var (
+	deployDevnet                 bool
 	deployTestnet                bool
 	deployMainnet                bool
+	endpoint                     string
 	keyName                      string
+	useEwoq                      bool
 	useLedger                    bool
 	useStaticIP                  bool
 	awsProfile                   string
@@ -39,6 +46,7 @@ var (
 	weight                       uint64
 	startTimeStr                 string
 	duration                     time.Duration
+	defaultValidatorParams       bool
 	useCustomDuration            bool
 	ErrMutuallyExlusiveKeyLedger = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet        = errors.New("--key is not available for mainnet operations")
@@ -57,15 +65,20 @@ Network.`,
 		Args:         cobra.ExactArgs(1),
 		RunE:         validatePrimaryNetwork,
 	}
+
+	cmd.Flags().BoolVarP(&deployDevnet, "devnet", "d", false, "set up validator in devnet")
 	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "set up validator in testnet (alias to `fuji`)")
 	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "set up validator in fuji (alias to `testnet`")
 	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "set up validator in mainnet")
+
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
+	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
+	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
+
 	cmd.Flags().Uint64Var(&weight, "stake-amount", 0, "how many AVAX to stake in the validator")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long validator validates for after start time")
-	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 
 	return cmd
 }
@@ -102,42 +115,20 @@ func GetMinStakingAmount(network models.Network) (uint64, error) {
 	return minValStake, nil
 }
 
-func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, nodeIndex int, signingKeyPath string, nodeCmd bool) error {
+func joinAsPrimaryNetworkValidator(
+	network models.Network,
+	kc keychain.Keychain,
+	useLedger bool,
+	nodeID ids.NodeID,
+	nodeIndex int,
+	signingKeyPath string,
+	nodeCmd bool,
+) error {
 	ux.Logger.PrintToUser(fmt.Sprintf("Adding node %s as a Primary Network Validator...", nodeID.String()))
 	var (
 		start time.Time
 		err   error
 	)
-	switch {
-	case deployTestnet:
-		network = models.FujiNetwork
-	case deployMainnet:
-		network = models.MainnetNetwork
-	}
-	if len(ledgerAddresses) > 0 {
-		useLedger = true
-	}
-
-	if useLedger && keyName != "" {
-		return ErrMutuallyExlusiveKeyLedger
-	}
-
-	switch network.Kind {
-	case models.Fuji:
-		if !useLedger && keyName == "" {
-			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "pay transaction fees", app.GetKeyDir())
-			if err != nil {
-				return err
-			}
-		}
-	case models.Mainnet:
-		useLedger = true
-		if keyName != "" {
-			return ErrStoredKeyOnMainnet
-		}
-	default:
-		return errors.New("unsupported network")
-	}
 	minValStake, err := GetMinStakingAmount(network)
 	if err != nil {
 		return err
@@ -156,18 +147,21 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 		return err
 	}
 
-	kc, err := subnetcmd.GetKeychain(false, useLedger, ledgerAddresses, keyName, network)
-	if err != nil {
-		return err
-	}
 	recipientAddr := kc.Addresses().List()[0]
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	PrintNodeJoinPrimaryNetworkOutput(nodeID, weight, network, start)
 	// we set the starting time for node to be a Primary Network Validator to be in 1 minute
 	// we use min delegation fee as default
-	delegationFee := genesis.FujiParams.MinDelegationFee
-	if network.Kind == models.Mainnet {
+	var delegationFee uint32
+	switch network.Kind {
+	case models.Mainnet:
 		delegationFee = genesis.MainnetParams.MinDelegationFee
+	case models.Fuji:
+		delegationFee = genesis.FujiParams.MinDelegationFee
+	case models.Devnet:
+		delegationFee = genesis.LocalParams.MinDelegationFee
+	default:
+		return fmt.Errorf("unsupported network")
 	}
 	blsKeyBytes, err := os.ReadFile(signingKeyPath)
 	if err != nil {
@@ -180,7 +174,8 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 	_, err = deployer.AddPermissionlessValidator(
 		ids.Empty,
 		ids.Empty,
-		nodeID, weight,
+		nodeID,
+		weight,
 		uint64(start.Unix()),
 		uint64(start.Add(duration).Unix()),
 		recipientAddr,
@@ -192,9 +187,16 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 }
 
 func PromptWeightPrimaryNetwork(network models.Network) (uint64, error) {
-	defaultStake := genesis.FujiParams.MinValidatorStake
-	if network.Kind == models.Mainnet {
+	var defaultStake uint64
+	switch network.Kind {
+	case models.Mainnet:
 		defaultStake = genesis.MainnetParams.MinValidatorStake
+	case models.Fuji:
+		defaultStake = genesis.FujiParams.MinValidatorStake
+	case models.Devnet:
+		defaultStake = genesis.LocalParams.MinValidatorStake
+	default:
+		return 0, fmt.Errorf("unsupported network")
 	}
 	defaultWeight := fmt.Sprintf("Default (%s)", convertNanoAvaxToAvaxString(defaultStake))
 	txt := "What stake weight would you like to assign to the validator?"
@@ -351,14 +353,21 @@ func checkNodeIsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Networ
 
 // addNodeAsPrimaryNetworkValidator returns bool if node is added as primary network validator
 // as it impacts the output in adding node as subnet validator in the next steps
-func addNodeAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, nodeIndex int, instanceID string) (bool, error) {
+func addNodeAsPrimaryNetworkValidator(
+	network models.Network,
+	kc keychain.Keychain,
+	useLedger bool,
+	nodeID ids.NodeID,
+	nodeIndex int,
+	instanceID string,
+) (bool, error) {
 	isValidator, err := checkNodeIsPrimaryNetworkValidator(nodeID, network)
 	if err != nil {
 		return false, err
 	}
 	if !isValidator {
 		signingKeyPath := app.GetNodeBLSSecretKeyPath(instanceID)
-		if err = joinAsPrimaryNetworkValidator(nodeID, network, nodeIndex, signingKeyPath, true); err != nil {
+		if err = joinAsPrimaryNetworkValidator(network, kc, useLedger, nodeID, nodeIndex, signingKeyPath, true); err != nil {
 			return false, err
 		}
 		ux.Logger.PrintToUser(fmt.Sprintf("Node %s successfully added as Primary Network validator!", nodeID.String()))
@@ -372,8 +381,26 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	err := setupAnsible(clusterName)
+
+	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {
+		return err
+	}
+	network := clustersConfig.Clusters[clusterName].Network
+
+	kc, err := subnetcmd.GetKeychainFromCmdLineFlags(
+		constants.PayTxsFeesMsg,
+		network,
+		keyName,
+		useEwoq,
+		&useLedger,
+		ledgerAddresses,
+	)
+	if err != nil {
+		return err
+	}
+
+	if err := setupAnsible(clusterName); err != nil {
 		return err
 	}
 	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
@@ -424,7 +451,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
-		_, err = addNodeAsPrimaryNetworkValidator(nodeID, models.FujiNetwork, i, clusterNodeID)
+		_, err = addNodeAsPrimaryNetworkValidator(network, kc, useLedger, nodeID, i, clusterNodeID)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", ansibleNodeID, err)
 			failedNodes = append(failedNodes, ansibleNodeID)

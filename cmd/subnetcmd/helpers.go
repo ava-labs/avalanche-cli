@@ -31,7 +31,7 @@ var (
 
 func fillNetworkDetails(network *models.Network) error {
 	if network.Endpoint == "" {
-		endpoint, err := app.Prompt.CaptureString(fmt.Sprintf("%s Network Endpoint", network.Kind.String()))
+		endpoint, err := app.Prompt.CaptureString(fmt.Sprintf("%s Network Endpoint", network.Name()))
 		if err != nil {
 			return err
 		}

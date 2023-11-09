@@ -17,15 +17,17 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/spf13/cobra"
 )
 
 var (
-	nodeIDStr    string
-	weight       uint64
-	startTimeStr string
-	duration     time.Duration
+	nodeIDStr              string
+	weight                 uint64
+	startTimeStr           string
+	duration               time.Duration
+	defaultValidatorParams bool
 
 	errNoSubnetID = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 )
@@ -49,80 +51,74 @@ Testnet or Mainnet.`,
 		RunE:         addValidator,
 		Args:         cobra.ExactArgs(1),
 	}
-	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
+	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
 	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
+	cmd.Flags().BoolVar(&defaultValidatorParams, "default-validator-params", false, "use default weight/start/duration params for subnet validator")
+
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
-	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "join on `fuji` (alias for `testnet`)")
-	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
-	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
+	cmd.Flags().StringVar(&endpoint, "endpoint", "", "use the given endpoint for network operations")
+	cmd.Flags().BoolVar(&deployLocal, "local", false, "add subnet validator on `local`")
+	cmd.Flags().BoolVar(&deployDevnet, "devnet", false, "add subnet validator on `devnet`")
+	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "add subnet validator on `fuji` (alias for `testnet`)")
+	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "add subnet validator on `testnet` (alias for `fuji`)")
+	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "add subnet validator on `mainnet`")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate add validator tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the add validator tx")
-	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
+	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
+	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	return cmd
 }
 
-func CallAddValidator(subnetName, nodeID string, network models.Network) error {
-	switch network.Kind {
-	case models.Mainnet:
-		deployMainnet = true
-	case models.Fuji:
-		deployTestnet = true
+func addValidator(_ *cobra.Command, args []string) error {
+	network, err := GetNetworkFromCmdLineFlags(
+		deployLocal,
+		deployDevnet,
+		deployTestnet,
+		deployMainnet,
+		endpoint,
+		[]models.NetworkKind{models.Local, models.Devnet, models.Fuji, models.Mainnet},
+	)
+	if err != nil {
+		return err
 	}
-	nodeIDStr = nodeID
-	return addValidator(nil, []string{subnetName})
+	kc, err := GetKeychainFromCmdLineFlags(
+		constants.PayTxsFeesMsg,
+		network,
+		keyName,
+		useEwoq,
+		&useLedger,
+		ledgerAddresses,
+	)
+	if err != nil {
+		return err
+	}
+	return CallAddValidator(network, kc, useLedger, args[0], nodeIDStr, defaultValidatorParams)
 }
 
-func addValidator(_ *cobra.Command, args []string) error {
+func CallAddValidator(
+	network models.Network,
+	kc keychain.Keychain,
+	useLedgerSetting bool,
+	subnetName string,
+	nodeIDStr string,
+	defaultValidatorParamsSetting bool,
+) error {
 	var (
 		nodeID ids.NodeID
 		start  time.Time
 		err    error
 	)
 
-	network, err := GetNetworkFromCmdLineFlags(
-		deployLocal,
-		false,
-		deployTestnet,
-		deployMainnet,
-		"",
-		[]models.NetworkKind{models.Local, models.Fuji, models.Mainnet},
-	)
-	if err != nil {
-		return err
-	}
+	useLedger = useLedgerSetting
+	defaultValidatorParams = defaultValidatorParamsSetting
 
 	if outputTxPath != "" {
-		if _, err := os.Stat(outputTxPath); err == nil {
+		if utils.FileExists(outputTxPath) {
 			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
 		}
-	}
-
-	if len(ledgerAddresses) > 0 {
-		useLedger = true
-	}
-
-	if useLedger && keyName != "" {
-		return ErrMutuallyExlusiveKeyLedger
-	}
-
-	switch network.Kind {
-	case models.Fuji:
-		if !useLedger && keyName == "" {
-			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "pay transaction fees", app.GetKeyDir())
-			if err != nil {
-				return err
-			}
-		}
-	case models.Mainnet:
-		useLedger = true
-		if keyName != "" {
-			return ErrStoredKeyOnMainnet
-		}
-	default:
-		return errors.New("unsupported network")
 	}
 
 	// used in E2E to simulate public network execution paths on a local network
@@ -130,17 +126,11 @@ func addValidator(_ *cobra.Command, args []string) error {
 		network = models.LocalNetwork
 	}
 
-	// get keychain accesor
-	kc, err := GetKeychain(false, useLedger, ledgerAddresses, keyName, network)
+	_, err = ValidateSubnetNameAndGetChains([]string{subnetName})
 	if err != nil {
 		return err
 	}
 
-	chains, err := ValidateSubnetNameAndGetChains(args)
-	if err != nil {
-		return err
-	}
-	subnetName := chains[0]
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
@@ -278,6 +268,20 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bo
 		err   error
 	)
 
+	defaultStakingStartLeadTime := constants.StakingStartLeadTime
+	if network.Kind == models.Devnet {
+		defaultStakingStartLeadTime = constants.DevnetStakingStartLeadTime
+	}
+
+	if defaultValidatorParams {
+		start = time.Now().Add(defaultStakingStartLeadTime)
+		duration, err = getMaxValidationTime(network, nodeID, start)
+		if err != nil {
+			return time.Time{}, 0, err
+		}
+		return start, duration, nil
+	}
+
 	const (
 		defaultStartOption    = "Start in five minutes"
 		defaultDurationOption = "Until primary network validator expires"
@@ -300,7 +304,7 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bo
 
 		switch startTimeOption {
 		case defaultStartOption:
-			start = time.Now().Add(constants.StakingStartLeadTime)
+			start = time.Now().Add(defaultStakingStartLeadTime)
 		default:
 			start, err = promptStart()
 			if err != nil {
@@ -360,6 +364,9 @@ func PromptNodeID() (ids.NodeID, error) {
 }
 
 func PromptWeight() (uint64, error) {
+	if defaultValidatorParams {
+		return constants.DefaultStakeWeight, nil
+	}
 	defaultWeight := fmt.Sprintf("Default (%d)", constants.DefaultStakeWeight)
 	txt := "What stake weight would you like to assign to the validator?"
 	weightOptions := []string{defaultWeight, "Custom"}
