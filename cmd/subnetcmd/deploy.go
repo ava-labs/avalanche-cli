@@ -44,7 +44,6 @@ var (
 	deployDevnet             bool
 	deployTestnet            bool
 	deployMainnet            bool
-	deployDevnet             bool
 	endpoint                 string
 	sameControlKey           bool
 	keyName                  string
