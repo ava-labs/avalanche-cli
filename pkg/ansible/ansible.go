@@ -362,6 +362,21 @@ func RunAnsiblePlaybookCheckBootstrapped(ansibleDir, isBootstrappedPath, invento
 	return cmdErr
 }
 
+func RunAnsiblePlaybookCheckHealthy(ansibleDir, isHealthyPath, inventoryPath, ansibleHostID string) error {
+	playbookInputs := "target=" + ansibleHostID + " isHealthyJsonPath=" + isHealthyPath
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsHealthyPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, false, false)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
 // RunAnsiblePlaybookSubnetSyncStatus checks if node is synced to subnet
 // targets a specific host ansibleHostID in ansible inventory file
 func RunAnsiblePlaybookSubnetSyncStatus(ansibleDir, subnetSyncPath, blockchainID, inventoryPath, ansibleHostID string) error {

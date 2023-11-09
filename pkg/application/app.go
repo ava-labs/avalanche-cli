@@ -710,6 +710,10 @@ func (app *Avalanche) GetBootstrappedJSONFile() string {
 	return filepath.Join(app.GetAnsibleStatusDir(), constants.IsBootstrappedJSONFile)
 }
 
+func (app *Avalanche) GetHealthyJSONFile() string {
+	return filepath.Join(app.GetAnsibleStatusDir(), constants.IsHealthyJSONFile)
+}
+
 func (app *Avalanche) GetAvalancheGoJSONFile() string {
 	return filepath.Join(app.GetAnsibleStatusDir(), constants.AvalancheGoVersionJSONFile)
 }
