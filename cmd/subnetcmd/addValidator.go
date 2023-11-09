@@ -126,11 +126,10 @@ func CallAddValidator(
 		network = models.LocalNetwork
 	}
 
-	chains, err := ValidateSubnetNameAndGetChains([]string{subnetName})
+	_, err = ValidateSubnetNameAndGetChains([]string{subnetName})
 	if err != nil {
 		return err
 	}
-	subnetName = chains[0]
 
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {

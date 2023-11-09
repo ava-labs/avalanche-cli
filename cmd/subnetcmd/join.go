@@ -48,7 +48,8 @@ var (
 	// for permissionless subnet only: how much subnet native token will be staked in the validator
 	stakeAmount uint64
 
-	errNoBlockchainID = errors.New("failed to find the blockchain ID for this subnet, has it been deployed/created on this network?")
+	errNoBlockchainID                     = errors.New("failed to find the blockchain ID for this subnet, has it been deployed/created on this network?")
+	errMutuallyExlusiveNetworksWithDevnet = errors.New("--local, --devnet, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 )
 
 // avalanche subnet deploy
@@ -79,6 +80,7 @@ This command currently only supports Subnets deployed on the Fuji Testnet and Ma
 	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "join on `fuji` (alias for `testnet`)")
 	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
 	cmd.Flags().BoolVar(&deployLocal, "local", false, "join on `local` (for elastic subnet only)")
+	cmd.Flags().BoolVar(&deployDevnet, "devnet", false, "join on `devnet`")
 	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
 	cmd.Flags().BoolVar(&printManual, "print", false, "if true, print the manual config without prompting")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to check")
@@ -110,14 +112,16 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if !flags.EnsureMutuallyExclusive([]bool{deployMainnet, deployTestnet}) {
-		return errors.New("--fuji and --mainnet are mutually exclusive")
+	if !flags.EnsureMutuallyExclusive([]bool{deployMainnet, deployTestnet, deployLocal, deployDevnet}) {
+		return errMutuallyExlusiveNetworksWithDevnet
 	}
 
 	network := models.UndefinedNetwork
 	switch {
 	case deployLocal:
 		network = models.LocalNetwork
+	case deployDevnet:
+		network = models.DevnetNetwork
 	case deployTestnet:
 		network = models.FujiNetwork
 	case deployMainnet:
