@@ -60,12 +60,12 @@ configuration, pass the -f flag.`,
 		PersistentPostRun: handlePostRun,
 	}
 	cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
-	cmd.Flags().StringVar(&vmFile, "vm", "", "file path of custom vm to use")
 	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the Subnet-EVM as the base template")
 	cmd.Flags().StringVar(&vmVersion, "vm-version", "", "version of vm template to use")
 	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
 	cmd.Flags().BoolVar(&useLatestVersion, latest, false, "use latest VM version, takes precedence over --vm-version")
 	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
+	cmd.Flags().StringVar(&vmFile, "vm", "", "file path of custom vm to use")
 	cmd.Flags().StringVar(&customVMRepoURL, "custom-vm-repo-url", "", "custom vm repository url")
 	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch")
 	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
@@ -153,6 +153,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			customVMRepoURL,
 			customVMBranch,
 			customVMBuildScript,
+			vmFile,
 		)
 		if err != nil {
 			return err

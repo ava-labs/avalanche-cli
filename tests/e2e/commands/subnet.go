@@ -118,6 +118,12 @@ func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) 
 		vmPath,
 		"--custom",
 		subnetName,
+		"--custom-vm-repo-url",
+		"https://github.com/ava-labs/hypersdk/",
+		"--custom-vm-branch",
+		"main",
+		"--custom-vm-build-script",
+		"examples/tokenvm/scripts/build.sh",
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()

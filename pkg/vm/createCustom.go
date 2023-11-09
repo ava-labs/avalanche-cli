@@ -24,6 +24,7 @@ func CreateCustomSubnetConfig(
 	customVMRepoURL string,
 	customVMBranch string,
 	customVMBuildScript string,
+	vmPath string,
 ) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating custom VM subnet %s", subnetName)
 
@@ -44,11 +45,16 @@ func CreateCustomSubnetConfig(
 		return nil, &models.Sidecar{}, err
 	}
 
-	if err := BuildCustomVM(app, sc); err != nil {
-		return nil, &models.Sidecar{}, err
+	if vmPath == "" {
+		if err := BuildCustomVM(app, sc); err != nil {
+			return nil, &models.Sidecar{}, err
+		}
+		vmPath = app.GetCustomVMPath(subnetName)
+	} else {
+		if err := app.CopyVMBinary(vmPath, subnetName); err != nil {
+			return nil, &models.Sidecar{}, err
+		}
 	}
-
-	vmPath := app.GetCustomVMPath(subnetName)
 
 	rpcVersion, err := GetVMBinaryProtocolVersion(vmPath)
 	if err != nil {
