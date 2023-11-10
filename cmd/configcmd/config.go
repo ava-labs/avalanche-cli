@@ -28,6 +28,6 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	// set user metrics collection preferences cmd
 	cmd.AddCommand(newMetricsCmd())
 	cmd.AddCommand(newMigrateCmd())
-	cmd.AddCommand(new1NodeCmd())
+	cmd.AddCommand(newSingleNodeCmd())
 	return cmd
 }

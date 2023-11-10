@@ -74,10 +74,10 @@ const (
 	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/" + BootstrapSnapshotLocalPath
 	BootstrapSnapshotSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/sha256sum.txt"
 
-	BootstrapSnapshot1NodeArchiveName = "bootstrapSnapshot1Node.tar.gz"
-	BootstrapSnapshot1NodeLocalPath   = "assets/" + BootstrapSnapshot1NodeArchiveName
-	BootstrapSnapshot1NodeURL         = "https://github.com/ava-labs/avalanche-cli/raw/one-node/" + BootstrapSnapshot1NodeLocalPath
-	BootstrapSnapshot1NodeSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/one-node/assets/sha256sum1Node.txt"
+	BootstrapSnapshotSingleNodeArchiveName = "bootstrapSnapshotSingleNode.tar.gz"
+	BootstrapSnapshotSingleNodeLocalPath   = "assets/" + BootstrapSnapshotSingleNodeArchiveName
+	BootstrapSnapshotSingleNodeURL         = "https://github.com/ava-labs/avalanche-cli/raw/one-node/" + BootstrapSnapshotSingleNodeLocalPath
+	BootstrapSnapshotSingleNodeSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/one-node/assets/sha256sumSingleNode.txt"
 
 	CliInstallationURL      = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
 	ExpectedCliInstallErr   = "resource temporarily unavailable"
@@ -156,7 +156,7 @@ const (
 	ConfigAPMAdminAPIEndpointKey = "admin-api-endpoint"
 	ConfigNodeConfigKey          = "node-config"
 	ConfigMetricsEnabledKey      = "MetricsEnabled"
-	Config1NodeEnabledKey        = "1NodeEnabled"
+	ConfigSingleNodeEnabledKey   = "SingleNodeEnabled"
 	OldConfigFileName            = ".avalanche-cli.json"
 	OldMetricsConfigFileName     = ".avalanche-cli/config"
 	DefaultConfigFileName        = ".avalanche-cli/config.json"

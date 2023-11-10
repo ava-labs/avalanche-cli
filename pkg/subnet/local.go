@@ -556,8 +556,8 @@ func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte) err
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path
 func (d *LocalDeployer) SetupLocalEnv() (string, error) {
-	config1NodeEnabled := d.app.Conf.GetConfigBoolValue(constants.Config1NodeEnabledKey)
-	err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false, config1NodeEnabled)
+	configSingleNodeEnabled := d.app.Conf.GetConfigBoolValue(constants.ConfigSingleNodeEnabledKey)
+	err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false, configSingleNodeEnabled)
 	if err != nil {
 		return "", fmt.Errorf("failed setting up snapshots: %w", err)
 	}
@@ -655,10 +655,10 @@ func (d *LocalDeployer) removeInstalledPlugin(
 	return d.binaryDownloader.RemoveVM(vmID.String())
 }
 
-func getExpectedDefaultSnapshotSHA256Sum(oneNode bool) (string, error) {
+func getExpectedDefaultSnapshotSHA256Sum(isSingleNode bool) (string, error) {
 	url := constants.BootstrapSnapshotSHA256URL
-	if oneNode {
-		url = constants.BootstrapSnapshot1NodeSHA256URL
+	if isSingleNode {
+		url = constants.BootstrapSnapshotSingleNodeSHA256URL
 	}
 	resp, err := http.Get(url)
 	if err != nil {
@@ -673,8 +673,8 @@ func getExpectedDefaultSnapshotSHA256Sum(oneNode bool) (string, error) {
 		return "", fmt.Errorf("failed downloading sha256 sums: %w", err)
 	}
 	path := constants.BootstrapSnapshotLocalPath
-	if oneNode {
-		path = constants.BootstrapSnapshot1NodeLocalPath
+	if isSingleNode {
+		path = constants.BootstrapSnapshotSingleNodeLocalPath
 	}
 	expectedSum, err := utils.SearchSHA256File(sha256FileBytes, path)
 	if err != nil {
@@ -685,10 +685,10 @@ func getExpectedDefaultSnapshotSHA256Sum(oneNode bool) (string, error) {
 
 // Initialize default snapshot with bootstrap snapshot archive
 // If force flag is set to true, overwrite the default snapshot if it exists
-func SetDefaultSnapshot(snapshotsDir string, force bool, oneNode bool) error {
+func SetDefaultSnapshot(snapshotsDir string, force bool, isSingleNode bool) error {
 	bootstrapSnapshotArchivePath := filepath.Join(snapshotsDir, constants.BootstrapSnapshotArchiveName)
-	if oneNode {
-		bootstrapSnapshotArchivePath = filepath.Join(snapshotsDir, constants.BootstrapSnapshot1NodeArchiveName)
+	if isSingleNode {
+		bootstrapSnapshotArchivePath = filepath.Join(snapshotsDir, constants.BootstrapSnapshotSingleNodeArchiveName)
 	}
 	// will download either if file not exists or if sha256 sum is not the same
 	downloadSnapshot := false
@@ -699,7 +699,7 @@ func SetDefaultSnapshot(snapshotsDir string, force bool, oneNode bool) error {
 		if err != nil {
 			return err
 		}
-		expectedSum, err := getExpectedDefaultSnapshotSHA256Sum(oneNode)
+		expectedSum, err := getExpectedDefaultSnapshotSHA256Sum(isSingleNode)
 		if err != nil {
 			ux.Logger.PrintToUser("Warning: failure verifying that the local snapshot is the latest one: %s", err)
 		} else if gotSum != expectedSum {
@@ -708,8 +708,8 @@ func SetDefaultSnapshot(snapshotsDir string, force bool, oneNode bool) error {
 	}
 	if downloadSnapshot {
 		url := constants.BootstrapSnapshotURL
-		if oneNode {
-			url = constants.BootstrapSnapshot1NodeURL
+		if isSingleNode {
+			url = constants.BootstrapSnapshotSingleNodeURL
 		}
 		resp, err := http.Get(url)
 		if err != nil {
