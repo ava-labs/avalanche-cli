@@ -121,6 +121,19 @@ func GetHostMapfromAnsibleInventory(inventoryDirPath string) (map[string]models.
 	return hostMap, nil
 }
 
+// FilterHostsByNodeID filters a slice of hosts by their node IDs.
+func FilterHostsByNodeID(hosts []models.Host, cloudIDs []string) []models.Host {
+	filteredHosts := []models.Host{}
+	for _, host := range hosts {
+		for _, cloudID := range cloudIDs {
+			if host.GetCloudID() == cloudID {
+				filteredHosts = append(filteredHosts, host)
+			}
+		}
+	}
+	return filteredHosts
+}
+
 func WritePlaybookFiles(ansibleDir string) error {
 	playbookDir := filepath.Join(ansibleDir, "playbook")
 	files, err := playbook.ReadDir("playbook")

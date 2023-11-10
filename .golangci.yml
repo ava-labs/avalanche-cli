@@ -1,5 +1,6 @@
 # https://golangci-lint.run/usage/configuration/
 run:
+  allow-parallel-runners: true
   timeout: 10m
   # skip auto-generated files.
   skip-files:
