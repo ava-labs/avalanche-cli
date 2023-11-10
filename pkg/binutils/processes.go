@@ -250,7 +250,6 @@ func KillgRPCServerProcess(app *application.Avalanche) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("PEPE")
 	defer cli.Close()
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
