@@ -5,6 +5,7 @@ package config
 
 import (
 	"encoding/json"
+	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -22,6 +23,8 @@ func New() *Config {
 
 func (*Config) SetConfig(log logging.Logger, s string) {
 	viper.SetConfigType("json")
+	d := filepath.Dir(s)
+	viper.AddConfigPath(d)
 	viper.SetConfigFile(s)
 	viper.AutomaticEnv() // read in environment variables that match
 	// If a config file is found, read it in.
@@ -53,7 +56,7 @@ func (c *Config) ConfigFileExists() bool {
 // SetConfigValue sets the value of a configuration key.
 func (*Config) SetConfigValue(key string, value interface{}) error {
 	viper.Set(key, value)
-	err := viper.SafeWriteConfig()
+	err := viper.WriteConfig()
 	return err
 }
 
