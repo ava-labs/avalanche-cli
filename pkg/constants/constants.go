@@ -43,8 +43,9 @@ const (
 	MaxNumOfLogFiles = 5
 	RetainOldFiles   = 0 // retain all old log files
 
-	ANRRequestTimeout = 3 * time.Minute
-	APIRequestTimeout = 30 * time.Second
+	ANRRequestTimeout   = 3 * time.Minute
+	APIRequestTimeout   = 30 * time.Second
+	FastGRPCDialTimeout = 100 * time.Millisecond
 
 	SimulatePublicNetwork = "SIMULATE_PUBLIC_NETWORK"
 
@@ -64,9 +65,9 @@ const (
 
 	// it's unlikely anyone would want to name a snapshot `default`
 	// but let's add some more entropy
-	SnapshotsDirName             = "snapshots"
+	SnapshotsDirName = "snapshots"
 
-	DefaultSnapshotName          = "default-1654102509"
+	DefaultSnapshotName = "default-1654102509"
 
 	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
 	BootstrapSnapshotLocalPath   = "assets/" + BootstrapSnapshotArchiveName
@@ -155,6 +156,7 @@ const (
 	ConfigAPMAdminAPIEndpointKey = "admin-api-endpoint"
 	ConfigNodeConfigKey          = "node-config"
 	ConfigMetricsEnabledKey      = "MetricsEnabled"
+	Config1NodeEnabledKey        = "1NodeEnabled"
 	OldConfigFileName            = ".avalanche-cli.json"
 	OldMetricsConfigFileName     = ".avalanche-cli/config"
 	DefaultConfigFileName        = ".avalanche-cli/config.json"

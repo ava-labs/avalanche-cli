@@ -46,7 +46,9 @@ configuration.`,
 func clean(*cobra.Command, []string) error {
 	app.Log.Info("killing gRPC server process...")
 
-	if err := subnet.SetDefaultSnapshot(app.GetSnapshotsDir(), true, true); err != nil {
+	config1NodeEnabled := app.Conf.GetConfigBoolValue(constants.Config1NodeEnabledKey)
+
+	if err := subnet.SetDefaultSnapshot(app.GetSnapshotsDir(), true, config1NodeEnabled); err != nil {
 		app.Log.Warn("failed resetting default snapshot", zap.Error(err))
 	}
 

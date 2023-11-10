@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/ava-labs/apm v0.0.4
-	github.com/ava-labs/avalanche-network-runner v1.7.3-0.20231110160645-1d31bc8a0d31
+	github.com/ava-labs/avalanche-network-runner v1.7.3-0.20231110173600-7f0ab0f30ff9
 	github.com/ava-labs/avalanchego v1.10.15
 	github.com/ava-labs/coreth v0.12.8-rc.1
 	github.com/ava-labs/subnet-evm v0.5.3

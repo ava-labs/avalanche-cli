@@ -556,7 +556,8 @@ func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte) err
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path
 func (d *LocalDeployer) SetupLocalEnv() (string, error) {
-	err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false, true)
+	config1NodeEnabled := d.app.Conf.GetConfigBoolValue(constants.Config1NodeEnabledKey)
+	err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false, config1NodeEnabled)
 	if err != nil {
 		return "", fmt.Errorf("failed setting up snapshots: %w", err)
 	}
@@ -710,7 +711,6 @@ func SetDefaultSnapshot(snapshotsDir string, force bool, oneNode bool) error {
 		if oneNode {
 			url = constants.BootstrapSnapshot1NodeURL
 		}
-		fmt.Println(url)
 		resp, err := http.Get(url)
 		if err != nil {
 			return fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
