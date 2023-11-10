@@ -76,8 +76,8 @@ const (
 
 	BootstrapSnapshotSingleNodeArchiveName = "bootstrapSnapshotSingleNode.tar.gz"
 	BootstrapSnapshotSingleNodeLocalPath   = "assets/" + BootstrapSnapshotSingleNodeArchiveName
-	BootstrapSnapshotSingleNodeURL         = "https://github.com/ava-labs/avalanche-cli/raw/one-node/" + BootstrapSnapshotSingleNodeLocalPath
-	BootstrapSnapshotSingleNodeSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/one-node/assets/sha256sumSingleNode.txt"
+	BootstrapSnapshotSingleNodeURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/" + BootstrapSnapshotSingleNodeLocalPath
+	BootstrapSnapshotSingleNodeSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/sha256sumSingleNode.txt"
 
 	CliInstallationURL      = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
 	ExpectedCliInstallErr   = "resource temporarily unavailable"
