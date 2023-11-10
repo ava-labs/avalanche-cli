@@ -65,11 +65,18 @@ const (
 	// it's unlikely anyone would want to name a snapshot `default`
 	// but let's add some more entropy
 	SnapshotsDirName             = "snapshots"
+
 	DefaultSnapshotName          = "default-1654102509"
+
 	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
 	BootstrapSnapshotLocalPath   = "assets/" + BootstrapSnapshotArchiveName
 	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/" + BootstrapSnapshotLocalPath
 	BootstrapSnapshotSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/sha256sum.txt"
+
+	BootstrapSnapshot1NodeArchiveName = "bootstrapSnapshot1Node.tar.gz"
+	BootstrapSnapshot1NodeLocalPath   = "assets/" + BootstrapSnapshot1NodeArchiveName
+	BootstrapSnapshot1NodeURL         = "https://github.com/ava-labs/avalanche-cli/raw/one-node/" + BootstrapSnapshot1NodeLocalPath
+	BootstrapSnapshot1NodeSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/one-node/assets/sha256sum1Node.txt"
 
 	CliInstallationURL      = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
 	ExpectedCliInstallErr   = "resource temporarily unavailable"
