@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
@@ -33,7 +32,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"golang.org/x/exp/slices"
-	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -392,23 +390,6 @@ func setupAnsible(clusterName string) error {
 	return updateAnsiblePublicIPs(clusterName)
 }
 
-func runAnsible(inventoryPath string, network models.Network, avalancheGoVersion, clusterName, ansibleHostIDs string) error {
-	if err := setupAnsible(clusterName); err != nil {
-		return err
-	}
-	if err := distributeStakingCertAndKey(strings.Split(ansibleHostIDs, ","), inventoryPath); err != nil {
-		return err
-	}
-	return ansible.RunAnsiblePlaybookSetupNode(
-		app.Conf.GetConfigPath(),
-		app.GetAnsibleDir(),
-		inventoryPath,
-		avalancheGoVersion,
-		fmt.Sprint(network.Kind == models.Devnet),
-		ansibleHostIDs,
-	)
-}
-
 func setupBuildEnv(inventoryPath, ansibleHostIDs string) error {
 	ux.Logger.PrintToUser("Installing Custom VM build environment on the cloud server(s) ...")
 	ansibleTargetHosts := "all"
@@ -466,37 +447,6 @@ func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePa
 		return ids.EmptyNodeID, err
 	}
 	return nodeID, nil
-}
-
-func distributeStakingCertAndKey(ansibleHostIDs []string, inventoryPath string) error {
-	ux.Logger.PrintToUser("Generating staking keys in local machine...")
-	eg := errgroup.Group{}
-	for _, ansibleInstanceID := range ansibleHostIDs {
-		_, instanceID, err := models.HostAnsibleIDToCloudID(ansibleInstanceID)
-		if err != nil {
-			return err
-		}
-		keyPath := filepath.Join(app.GetNodesDir(), instanceID)
-		eg.Go(func() error {
-			nodeID, err := generateNodeCertAndKeys(
-				filepath.Join(keyPath, constants.StakerCertFileName),
-				filepath.Join(keyPath, constants.StakerKeyFileName),
-				filepath.Join(keyPath, constants.BLSKeyFileName),
-			)
-			if err != nil {
-				ux.Logger.PrintToUser("Failed to generate staking keys for host %s", instanceID)
-				return err
-			} else {
-				ux.Logger.PrintToUser("Generated staking keys for host %s[%s] ", instanceID, nodeID.String())
-			}
-			return nil
-		})
-	}
-	if err := eg.Wait(); err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("Copying staking keys to remote machine(s)...")
-	return ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), strings.Join(ansibleHostIDs, ","), app.GetNodesDir(), inventoryPath)
 }
 
 func provideStakingCertAndKey(host models.Host) error {
