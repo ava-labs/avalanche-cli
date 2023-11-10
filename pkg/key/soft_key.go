@@ -55,7 +55,6 @@ const (
 )
 
 var (
-	keyFactory   = new(secp256k1.Factory)
 	ewoqKeyBytes = []byte("56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027")
 )
 
@@ -107,7 +106,7 @@ func NewSoft(networkID uint32, opts ...SOpOption) (*SoftKey, error) {
 	// generate a new one
 	if ret.privKey == nil {
 		var err error
-		ret.privKey, err = keyFactory.NewPrivateKey()
+		ret.privKey, err = secp256k1.NewPrivateKey()
 		if err != nil {
 			return nil, err
 		}
@@ -189,7 +188,7 @@ func LoadSoftFromBytes(networkID uint32, kb []byte) (*SoftKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	privKey, err := keyFactory.ToPrivateKey(skBytes)
+	privKey, err := secp256k1.ToPrivateKey(skBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +245,7 @@ func decodePrivateKey(enc string) (*secp256k1.PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	privKey, err := keyFactory.ToPrivateKey(skBytes)
+	privKey, err := secp256k1.ToPrivateKey(skBytes)
 	if err != nil {
 		return nil, err
 	}
