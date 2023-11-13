@@ -187,7 +187,7 @@ func RunSSHUpdateSubnet(host models.Host, subnetName, importPath string) error {
 }
 
 // RunSSHSetupBuildEnv installs gcc, golang, rust and etc
-func RunSSHSetupBuildEnv(host models.Host, params interface{}) error {
+func RunSSHSetupBuildEnv(host models.Host, _ interface{}) error {
 	return RunOverSSH("setupBuildEnv", host, "shell/setupBuildEnv.sh", scriptInputs{GoVersion: constants.BuildEnvGolangVersion})
 }
 

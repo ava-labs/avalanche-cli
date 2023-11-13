@@ -250,15 +250,15 @@ func createNodes(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
 	failedNodes := utils.RunInWaitGroupWithError(hosts,
 		[]models.HostFuncWithParams{
-			models.HostFuncWithParams{
+			{
 				Func:   provideStakingCertAndKey,
 				Params: []string{},
 			},
-			models.HostFuncWithParams{
+			{
 				Func:   ssh.RunSSHSetupNode,
 				Params: []string{app.Conf.GetConfigPath(), avalancheGoVersion},
 			},
-			models.HostFuncWithParams{
+			{
 				Func:   ssh.RunSSHSetupBuildEnv,
 				Params: []string{},
 			},
@@ -432,7 +432,7 @@ func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePa
 	return nodeID, nil
 }
 
-func provideStakingCertAndKey(host models.Host, params interface{}) error {
+func provideStakingCertAndKey(host models.Host, _ interface{}) error {
 	instanceID := host.GetCloudID()
 	keyPath := filepath.Join(app.GetNodesDir(), instanceID)
 	nodeID, err := generateNodeCertAndKeys(
