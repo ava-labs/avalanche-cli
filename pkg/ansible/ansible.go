@@ -555,3 +555,20 @@ func RunAnsiblePlaybookGetNewSubnetEVM(ansibleDir, subnetEVMReleaseURL, subnetEV
 	}
 	return cmdErr
 }
+
+// RunAnsiblePlaybookSetupMonitoring sets up monitoring in cloud server
+// targets all hosts in ansible inventory file
+func RunAnsiblePlaybookSetupMonitoring(ansibleDir, inventoryPath, ansibleHostIDs string) error {
+	playbookInputs := "target=" + ansibleHostIDs
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupNodeMonitoringPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}

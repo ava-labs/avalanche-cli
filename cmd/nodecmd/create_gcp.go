@@ -195,12 +195,30 @@ func createGCEInstances(rootBody *hclwrite.Body,
 		ux.Logger.PrintToUser(fmt.Sprintf("Using existing network %s in GCP", networkName))
 		terraformgcp.SetExistingNetwork(rootBody, networkName)
 		firewallName := fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(userIPAddress, ".", ""))
-		firewallExists, err := gcpAPI.CheckFirewallExists(gcpClient, projectName, firewallName)
+		firewallExists, err := gcpAPI.CheckFirewallExists(gcpClient, projectName, firewallName, false)
 		if err != nil {
 			return nil, nil, "", "", err
 		}
 		if !firewallExists {
-			terraformgcp.SetFirewallRule(rootBody, userIPAddress+"/32", firewallName, networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)}, true)
+			terraformgcp.SetFirewallRule(rootBody, userIPAddress+"/32", firewallName, networkName, []string{
+				strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort),
+				strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
+			}, true)
+		} else {
+			firewallMonitoringName := fmt.Sprintf("%s-monitoring", firewallName)
+			// check that firewallName contains the monitoring ports
+			firewallContainsMonitoringPorts, err := gcpAPI.CheckFirewallExists(gcpClient, projectName, firewallName, true)
+			if err != nil {
+				return nil, nil, "", "", err
+			}
+			// check that the separate monitoring firewall doesn't exist
+			firewallExists, err = gcpAPI.CheckFirewallExists(gcpClient, projectName, firewallMonitoringName, false)
+			if err != nil {
+				return nil, nil, "", "", err
+			}
+			if !firewallContainsMonitoringPorts && !firewallExists {
+				terraformgcp.SetFirewallRule(rootBody, userIPAddress+"/32", firewallMonitoringName, networkName, []string{strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort)}, true)
+			}
 		}
 	}
 	nodeName := randomString(5)

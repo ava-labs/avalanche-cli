@@ -348,14 +348,17 @@ func runAnsible(inventoryPath string, network models.Network, avalancheGoVersion
 	if err := distributeStakingCertAndKey(strings.Split(ansibleHostIDs, ","), inventoryPath); err != nil {
 		return err
 	}
-	return ansible.RunAnsiblePlaybookSetupNode(
+	if err := ansible.RunAnsiblePlaybookSetupNode(
 		app.Conf.GetConfigPath(),
 		app.GetAnsibleDir(),
 		inventoryPath,
 		avalancheGoVersion,
 		fmt.Sprint(network.Kind == models.Devnet),
 		ansibleHostIDs,
-	)
+	); err != nil {
+		return err
+	}
+	return ansible.RunAnsiblePlaybookSetupMonitoring(app.GetAnsibleDir(), inventoryPath, ansibleHostIDs)
 }
 
 func setupBuildEnv(inventoryPath, ansibleHostIDs string) error {
@@ -586,6 +589,10 @@ func printResults(cloudConfig CloudConfig, publicIPMap map[string]string, ansibl
 		ux.Logger.PrintToUser("To ssh to node, run: ")
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(utils.GetSSHConnectionString(publicIP, cloudConfig.CertFilePath))
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("To view node monitoring dashboard, visit the following link in your browser: ")
+		ux.Logger.PrintToUser(fmt.Sprintf("http://%s:3000/dashboards", publicIP))
+		ux.Logger.PrintToUser("Log in with username: admin, password: admin")
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("======================================")
 	}

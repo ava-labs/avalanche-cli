@@ -6,6 +6,8 @@ package terraformaws
 import (
 	"bytes"
 	"errors"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"io"
 	"os"
 	"os/exec"
@@ -44,10 +46,10 @@ func addSecurityGroupRuleToSg(securityGroupBody *hclwrite.Body, sgType, descript
 }
 
 // addNewSecurityGroupRule is to add sg rule to existing sg
-func addNewSecurityGroupRule(rootBody *hclwrite.Body, sgRuleName, sgID, sgType, protocol, ip string, port int64) {
+func addNewSecurityGroupRule(rootBody *hclwrite.Body, sgRuleName, sgID, protocol, ip string, port int64) {
 	securityGroupRule := rootBody.AppendNewBlock("resource", []string{"aws_security_group_rule", sgRuleName})
 	securityGroupRuleBody := securityGroupRule.Body()
-	securityGroupRuleBody.SetAttributeValue("type", cty.StringVal(sgType))
+	securityGroupRuleBody.SetAttributeValue("type", cty.StringVal("ingress"))
 	securityGroupRuleBody.SetAttributeValue("from_port", cty.NumberIntVal(port))
 	securityGroupRuleBody.SetAttributeValue("to_port", cty.NumberIntVal(port))
 	securityGroupRuleBody.SetAttributeValue("protocol", cty.StringVal(protocol))
@@ -71,20 +73,36 @@ func SetSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName stri
 	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", "tcp", "0.0.0.0/0", constants.AvalanchegoAPIPort)
 	// enable inbound access for ip address inputIPAddress in port 9650
 	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", "tcp", inputIPAddress, constants.AvalanchegoAPIPort)
+	// enable inbound access for ip address inputIPAddress in port 9090
+	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", "tcp", inputIPAddress, constants.AvalanchegoMonitoringPort)
+	// enable inbound access for ip address inputIPAddress in port 3000
+	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", "tcp", inputIPAddress, constants.AvalanchegoGrafanaPort)
 	// "0.0.0.0/0" is a must-have ip address value for inbound and outbound calls
 	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX Staking", "tcp", "0.0.0.0/0", constants.AvalanchegoP2PPort)
 	addSecurityGroupRuleToSg(securityGroupBody, "egress", "Outbound traffic", "-1", "0.0.0.0/0", constants.OutboundPort)
 }
 
-func SetSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, ipInTCP, ipInHTTP bool) {
+func SetSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, sg *ec2.SecurityGroup) {
 	inputIPAddress := ipAddress + "/32"
+	ipInTCP := awsAPI.CheckUserIPInSg(sg, ipAddress, constants.SSHTCPPort)
 	if !ipInTCP {
 		sgRuleName := "ipTcp" + strings.ReplaceAll(ipAddress, ".", "")
-		addNewSecurityGroupRule(rootBody, sgRuleName, sgID, "ingress", "tcp", inputIPAddress, constants.SSHTCPPort)
+		addNewSecurityGroupRule(rootBody, sgRuleName, sgID, "tcp", inputIPAddress, constants.SSHTCPPort)
 	}
+	ipInHTTP := awsAPI.CheckUserIPInSg(sg, ipAddress, constants.AvalanchegoAPIPort)
 	if !ipInHTTP {
 		sgRuleName := "ipHttp" + strings.ReplaceAll(ipAddress, ".", "")
-		addNewSecurityGroupRule(rootBody, sgRuleName, sgID, "ingress", "tcp", inputIPAddress, constants.AvalanchegoAPIPort)
+		addNewSecurityGroupRule(rootBody, sgRuleName, sgID, "tcp", inputIPAddress, constants.AvalanchegoAPIPort)
+	}
+	ipInMonitoring := awsAPI.CheckUserIPInSg(sg, ipAddress, constants.AvalanchegoMonitoringPort)
+	if !ipInMonitoring {
+		sgRuleName := "ipMonitoring" + strings.ReplaceAll(ipAddress, ".", "")
+		addNewSecurityGroupRule(rootBody, sgRuleName, sgID, "tcp", inputIPAddress, constants.AvalanchegoMonitoringPort)
+	}
+	ipInGrafana := awsAPI.CheckUserIPInSg(sg, ipAddress, constants.AvalanchegoGrafanaPort)
+	if !ipInGrafana {
+		sgRuleName := "ipGrafana" + strings.ReplaceAll(ipAddress, ".", "")
+		addNewSecurityGroupRule(rootBody, sgRuleName, sgID, "tcp", inputIPAddress, constants.AvalanchegoGrafanaPort)
 	}
 }
 

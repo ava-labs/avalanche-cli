@@ -5,6 +5,7 @@ package gcp
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -31,7 +32,7 @@ func GetUbuntuImageID(gcpClient *compute.Service) (string, error) {
 }
 
 // CheckFirewallExists checks that firewall firewallName exists in GCP project projectName
-func CheckFirewallExists(gcpClient *compute.Service, projectName, firewallName string) (bool, error) {
+func CheckFirewallExists(gcpClient *compute.Service, projectName, firewallName string, checkMonitoring bool) (bool, error) {
 	firewallListCall := gcpClient.Firewalls.List(projectName)
 	firewallList, err := firewallListCall.Do()
 	if err != nil {
@@ -39,6 +40,13 @@ func CheckFirewallExists(gcpClient *compute.Service, projectName, firewallName s
 	}
 	for _, firewall := range firewallList.Items {
 		if firewall.Name == firewallName {
+			if checkMonitoring {
+				for _, allowed := range firewall.Allowed {
+					if !(slices.Contains(allowed.Ports, strconv.Itoa(constants.AvalanchegoGrafanaPort)) && slices.Contains(allowed.Ports, strconv.Itoa(constants.AvalanchegoMonitoringPort))) {
+						return false, nil
+					}
+				}
+			}
 			return true, nil
 		}
 	}
