@@ -18,3 +18,12 @@ type NodeBooleanResult struct {
 	Value  bool
 	Err    error
 }
+
+type HostFuncWithParams struct {
+	Func   func(host Host, params interface{}) error
+	Params interface{}
+}
+
+func (f *HostFuncWithParams) Run(host Host) error {
+	return f.Func(host, f.Params)
+}

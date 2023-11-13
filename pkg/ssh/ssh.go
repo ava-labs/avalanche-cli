@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -132,7 +133,15 @@ func PostOverSSH(host models.Host, path string, requestBody string) ([]byte, err
 }
 
 // RunSSHSetupNode runs script to setup node
-func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string) error {
+func RunSSHSetupNode(host models.Host, params interface{}) error {
+	var configPath string
+	var avalancheGoVersion string
+	if strSlice, ok := params.([]string); ok {
+		configPath = strSlice[0]
+		avalancheGoVersion = strSlice[1]
+	} else {
+		return errors.New("failed to parse params")
+	}
 	// name: setup node
 	if err := RunOverSSH("SetupNode", host, "shell/setupNode.sh", scriptInputs{AvalancheGoVersion: avalancheGoVersion}); err != nil {
 		return err
@@ -178,7 +187,7 @@ func RunSSHUpdateSubnet(host models.Host, subnetName, importPath string) error {
 }
 
 // RunSSHSetupBuildEnv installs gcc, golang, rust and etc
-func RunSSHSetupBuildEnv(host models.Host) error {
+func RunSSHSetupBuildEnv(host models.Host, params interface{}) error {
 	return RunOverSSH("setupBuildEnv", host, "shell/setupBuildEnv.sh", scriptInputs{GoVersion: constants.BuildEnvGolangVersion})
 }
 

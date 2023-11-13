@@ -248,43 +248,28 @@ func createNodes(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
-	nodeResultChannel := make(chan models.NodeErrorResult, len(hosts))
-	parallelWaitGroup := sync.WaitGroup{}
-	for _, host := range hosts {
-		parallelWaitGroup.Add(1)
-		go func(nodeResultChannel chan models.NodeErrorResult, host models.Host) {
-			defer parallelWaitGroup.Done()
-			if err := provideStakingCertAndKey(host); err != nil {
-				nodeResultChannel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
-				return
-			}
-			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), avalancheGoVersion); err != nil {
-				nodeResultChannel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
-				return
-			}
-			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
-				nodeResultChannel <- models.NodeErrorResult{NodeID: host.NodeID, Err: err}
-				return
-			}
-		}(nodeResultChannel, host)
-	}
-	parallelWaitGroup.Wait()
-	close(nodeResultChannel)
-	failedNodes := map[string]error{}
-	for nodeErr := range nodeResultChannel {
-		ux.Logger.PrintToUser(fmt.Sprintf("Failed to deploy node %s due to %s", nodeErr.NodeID, nodeErr.Err))
-		failedNodes[nodeErr.NodeID] = nodeErr.Err
-	}
+	failedNodes := utils.RunInWaitGroupWithError(hosts,
+		[]models.HostFuncWithParams{
+			models.HostFuncWithParams{
+				Func:   provideStakingCertAndKey,
+				Params: []string{},
+			},
+			models.HostFuncWithParams{
+				Func:   ssh.RunSSHSetupNode,
+				Params: []string{app.Conf.GetConfigPath(), avalancheGoVersion},
+			},
+			models.HostFuncWithParams{
+				Func:   ssh.RunSSHSetupBuildEnv,
+				Params: []string{},
+			},
+		})
+
 	if network.Kind == models.Devnet {
 		ux.Logger.PrintToUser("Setting up Devnet ...")
 		if err := setupDevnet(clusterName); err != nil {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("======================================")
-	ux.Logger.PrintToUser("AVALANCHE NODE(S) STATUS")
-	ux.Logger.PrintToUser("======================================")
-	ux.Logger.PrintToUser("")
 	for _, node := range hosts {
 		if failedNodes[node.NodeID] != nil {
 			ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, failedNodes[node.NodeID])
@@ -447,7 +432,7 @@ func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePa
 	return nodeID, nil
 }
 
-func provideStakingCertAndKey(host models.Host) error {
+func provideStakingCertAndKey(host models.Host, params interface{}) error {
 	instanceID := host.GetCloudID()
 	keyPath := filepath.Join(app.GetNodesDir(), instanceID)
 	nodeID, err := generateNodeCertAndKeys(
