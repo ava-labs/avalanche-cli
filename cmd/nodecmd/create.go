@@ -30,8 +30,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
-
-	"golang.org/x/exp/slices"
 )
 
 const (
@@ -272,10 +270,10 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 	parallelWaitGroup.Wait()
 	close(nodeResultChannel)
-	failedNodes := []string{}
+	failedNodes := map[string]error{}
 	for nodeErr := range nodeResultChannel {
 		ux.Logger.PrintToUser(fmt.Sprintf("Failed to deploy node %s due to %s", nodeErr.NodeID, nodeErr.Err))
-		failedNodes = append(failedNodes, nodeErr.NodeID)
+		failedNodes[nodeErr.NodeID] = nodeErr.Err
 	}
 	if network.Kind == models.Devnet {
 		ux.Logger.PrintToUser("Setting up Devnet ...")
@@ -288,8 +286,8 @@ func createNodes(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("======================================")
 	ux.Logger.PrintToUser("")
 	for _, node := range hosts {
-		if slices.Contains(failedNodes, node.NodeID) {
-			ux.Logger.PrintToUser("Node %s is ERROR", node.NodeID)
+		if failedNodes[node.NodeID] != nil {
+			ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, failedNodes[node.NodeID])
 		} else {
 			ux.Logger.PrintToUser("Node %s is CREATED", node.NodeID)
 		}
