@@ -212,10 +212,10 @@ func createNodes(_ *cobra.Command, args []string) error {
 	monitoringInstanceNodeID := ""
 	monitoringInstancePublicIP := ""
 	if separateMonitoringInstance {
-		//take the last instance ID and public IP and assign them as those of the monitoring instance
+		// take the last instance ID and public IP and assign them as those of the monitoring instance
 		monitoringInstanceNodeID = cloudConfig.InstanceIDs[len(cloudConfig.InstanceIDs)-1]
 		monitoringInstancePublicIP = cloudConfig.PublicIPs[len(cloudConfig.PublicIPs)-1]
-		//remove these values from instanceIDs and publicIPs
+		// remove these values from instanceIDs and publicIPs
 		cloudConfig.InstanceIDs = cloudConfig.InstanceIDs[:len(cloudConfig.InstanceIDs)-1]
 		cloudConfig.PublicIPs = cloudConfig.PublicIPs[:len(cloudConfig.PublicIPs)-1]
 	}
