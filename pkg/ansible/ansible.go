@@ -15,6 +15,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"golang.org/x/exp/slices"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -125,10 +127,8 @@ func GetHostMapfromAnsibleInventory(inventoryDirPath string) (map[string]models.
 func FilterHostsByNodeID(hosts []models.Host, cloudIDs []string) []models.Host {
 	filteredHosts := []models.Host{}
 	for _, host := range hosts {
-		for _, cloudID := range cloudIDs {
-			if host.GetCloudID() == cloudID {
-				filteredHosts = append(filteredHosts, host)
-			}
+		if slices.Contains(cloudIDs, host.GetCloudID()) {
+			filteredHosts = append(filteredHosts, host)
 		}
 	}
 	return filteredHosts

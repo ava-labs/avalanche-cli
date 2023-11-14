@@ -17,6 +17,8 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+const sleepBetweenChecks = 1 * time.Second
+
 type Host struct {
 	NodeID            string
 	IP                string
@@ -213,14 +215,12 @@ func (h Host) WaitForSSHPort(timeout time.Duration) error {
 
 	for {
 		if time.Now().After(deadline) {
-			return fmt.Errorf("timeout: SSH port %d on host %s is not available after %ds", constants.SSHTCPPort, h.IP, timeout)
+			return fmt.Errorf("timeout: SSH port %d on host %s is not available after %ds", constants.SSHTCPPort, h.IP, timeout.Seconds())
 		}
-		_, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", h.IP, constants.SSHTCPPort), time.Second)
-		if err == nil {
-			time.Sleep(1 * time.Second)
+		if _, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", h.IP, constants.SSHTCPPort), time.Second); err == nil {
 			return nil
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(sleepBetweenChecks)
 	}
 }
 
@@ -237,10 +237,9 @@ func (h Host) WaitForSSHShell(timeout time.Duration) error {
 		}
 		output, err := h.Command("echo", nil, context.Background())
 		if err == nil || len(output) > 0 {
-			time.Sleep(2 * time.Second)
 			return nil
 		}
-		time.Sleep(2 * time.Second)
+		time.Sleep(sleepBetweenChecks)
 	}
 }
 

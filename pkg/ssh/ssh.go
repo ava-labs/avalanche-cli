@@ -145,16 +145,16 @@ func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string) er
 }
 
 func RunSSHUploadStakingFiles(host models.Host, nodeInstanceDirPath string) error {
-	if err := host.MkdirAll(constants.NodeStakingPath); err != nil {
+	if err := host.MkdirAll(constants.CloudNodeStakingPath); err != nil {
 		return err
 	}
-	if err := host.Upload(filepath.Join(nodeInstanceDirPath, constants.StakerCertFileName), filepath.Join(constants.NodeStakingPath, constants.StakerCertFileName)); err != nil {
+	if err := host.Upload(filepath.Join(nodeInstanceDirPath, constants.StakerCertFileName), filepath.Join(constants.CloudNodeStakingPath, constants.StakerCertFileName)); err != nil {
 		return err
 	}
-	if err := host.Upload(filepath.Join(nodeInstanceDirPath, constants.StakerKeyFileName), filepath.Join(constants.NodeStakingPath, constants.StakerKeyFileName)); err != nil {
+	if err := host.Upload(filepath.Join(nodeInstanceDirPath, constants.StakerKeyFileName), filepath.Join(constants.CloudNodeStakingPath, constants.StakerKeyFileName)); err != nil {
 		return err
 	}
-	if err := host.Upload(filepath.Join(nodeInstanceDirPath, constants.BLSKeyFileName), filepath.Join(constants.NodeStakingPath, constants.BLSKeyFileName)); err != nil {
+	if err := host.Upload(filepath.Join(nodeInstanceDirPath, constants.BLSKeyFileName), filepath.Join(constants.CloudNodeStakingPath, constants.BLSKeyFileName)); err != nil {
 		return err
 	}
 	return nil
