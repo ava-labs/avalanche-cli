@@ -1,3 +1,4 @@
+#!/ust/bin/env bash
 #name:{{ .Log }}TASK [import subnet]
 /home/ubuntu/bin/avalanche subnet import file {{ .SubnetExportFileName }} --force
 #name:{{ .Log }}TASK [avalanche join subnet]

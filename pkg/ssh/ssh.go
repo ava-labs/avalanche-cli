@@ -4,12 +4,9 @@ package ssh
 
 import (
 	"bytes"
-	"context"
 	"embed"
 	"fmt"
-	"io"
 	"path/filepath"
-	"strings"
 	"text/template"
 	"time"
 
@@ -19,7 +16,6 @@ import (
 )
 
 type scriptInputs struct {
-	Log                  string
 	AvalancheGoVersion   string
 	SubnetExportFileName string
 	SubnetName           string
@@ -30,57 +26,21 @@ type scriptInputs struct {
 //go:embed shell/*.sh
 var script embed.FS
 
-func ScriptLog(line string, nodeID string) string {
-	line = strings.TrimPrefix(line, constants.SSHScriptLogFilter) + " " // add space
+// scriptLog formats the given line of a script log with the provided nodeID.
+func scriptLog(nodeID string, line string) string {
 	return fmt.Sprintf("[%s] %s", nodeID, line)
-}
-
-func splitScript(input *bytes.Buffer, separatorPrefix string) ([]*bytes.Buffer, []string, error) {
-	var buffers []*bytes.Buffer
-	separators := []string{""}
-	currentBuffer := &bytes.Buffer{}
-	_, err := currentBuffer.WriteString("#/usr/bin/env bash\nset -euo pipefail\n")
-	if err != nil {
-		return nil, nil, err
-	}
-	for {
-		line, err := input.ReadString('\n')
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, nil, err
-		}
-		if strings.HasPrefix(line, separatorPrefix) {
-			buffers = append(buffers, currentBuffer)
-			currentBuffer = &bytes.Buffer{}
-			_, err := currentBuffer.WriteString("#/usr/bin/env bash\nset -euo pipefail\n")
-			if err != nil {
-				return nil, nil, err
-			}
-			separators = append(separators, line)
-		} else {
-			_, err = currentBuffer.WriteString(line)
-			if err != nil {
-				return nil, nil, err
-			}
-		}
-	}
-	buffers = append(buffers, currentBuffer) // Add the last buffer to the result
-	return buffers, separators, nil
 }
 
 // RunSSHSetupNode runs provided script path over ssh.
 // This script can be template as it will be rendered using scriptInputs vars
-func RunOverSSH(id string, host models.Host, scriptPath string, templateVars scriptInputs) error {
-	templateVars.Log = constants.SSHScriptLogFilter // set log filter
+func RunOverSSH(scriptDesc string, host models.Host, scriptPath string, templateVars scriptInputs) error {
 	shellScript, err := script.ReadFile(scriptPath)
 	if err != nil {
 		return err
 	}
 
 	var script bytes.Buffer
-	t, err := template.New(id).Parse(string(shellScript))
+	t, err := template.New(scriptDesc).Parse(string(shellScript))
 	if err != nil {
 		return err
 	}
@@ -88,24 +48,14 @@ func RunOverSSH(id string, host models.Host, scriptPath string, templateVars scr
 	if err != nil {
 		return err
 	}
-	tasks, taskTitle, err := splitScript(&script, fmt.Sprintf("#name:%s", constants.SSHScriptLogFilter))
+	ux.Logger.PrintToUser(scriptLog(host.NodeID, scriptDesc))
+	if _, err := host.Command(script.String(), nil, host.Connection.Ctx); isSSHHandshakeEOFError(err) {
+		// retry once after pause
+		time.Sleep(2 * constants.SSHSleepBetweenChecks)
+		_, err = host.Command(script.String(), nil, host.Connection.Ctx)
+	}
 	if err != nil {
 		return err
-	}
-	for n, task := range tasks {
-		if taskTitle[n] == "" {
-			continue
-		}
-		ux.Logger.PrintToUser(ScriptLog(strings.TrimPrefix(taskTitle[n], fmt.Sprintf("#name:%s", constants.SSHScriptLogFilter)), host.NodeID))
-		_, err := host.Command(task.String(), nil, context.Background()) // TODO pass context from consumer, get debug script output
-		if isSSHHandshakeEOFError(err) {
-			// retry once after pause
-			time.Sleep(5 * time.Second)
-			_, err = host.Command(task.String(), nil, context.Background())
-		}
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -134,7 +84,7 @@ func PostOverSSH(host models.Host, path string, requestBody string) ([]byte, err
 // RunSSHSetupNode runs script to setup node
 func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string) error {
 	// name: setup node
-	if err := RunOverSSH("SetupNode", host, "shell/setupNode.sh", scriptInputs{AvalancheGoVersion: avalancheGoVersion}); err != nil {
+	if err := RunOverSSH("Setup Node", host, "shell/setupNode.sh", scriptInputs{AvalancheGoVersion: avalancheGoVersion}); err != nil {
 		return err
 	}
 	// name: copy metrics config to cloud server
@@ -169,22 +119,22 @@ func RunSSHExportSubnet(host models.Host, exportPath, cloudServerSubnetPath stri
 // RunSSHExportSubnet exports deployed Subnet from local machine to cloud server
 // targets a specific host ansibleHostID in ansible inventory file
 func RunSSHTrackSubnet(host models.Host, subnetName, importPath string) error {
-	return RunOverSSH("TrackSubnet", host, "shell/trackSubnet.sh", scriptInputs{SubnetName: subnetName, SubnetExportFileName: importPath})
+	return RunOverSSH("Track Subnet", host, "shell/trackSubnet.sh", scriptInputs{SubnetName: subnetName, SubnetExportFileName: importPath})
 }
 
 // RunSSHUpdateSubnet runs avalanche subnet join <subnetName> in cloud server using update subnet info
 func RunSSHUpdateSubnet(host models.Host, subnetName, importPath string) error {
-	return RunOverSSH("TrackSubnet", host, "shell/updateSubnet.sh", scriptInputs{SubnetName: subnetName, SubnetExportFileName: importPath})
+	return RunOverSSH("Track Subnet", host, "shell/updateSubnet.sh", scriptInputs{SubnetName: subnetName, SubnetExportFileName: importPath})
 }
 
 // RunSSHSetupBuildEnv installs gcc, golang, rust and etc
 func RunSSHSetupBuildEnv(host models.Host) error {
-	return RunOverSSH("setupBuildEnv", host, "shell/setupBuildEnv.sh", scriptInputs{GoVersion: constants.BuildEnvGolangVersion})
+	return RunOverSSH("Setup Build Env", host, "shell/setupBuildEnv.sh", scriptInputs{GoVersion: constants.BuildEnvGolangVersion})
 }
 
 // RunSSHSetupCLIFromSource installs any CLI branch from source
 func RunSSHSetupCLIFromSource(host models.Host, cliBranch string) error {
-	return RunOverSSH("setupCLIFromSource", host, "shell/setupCLIFromSource.sh", scriptInputs{CliBranch: cliBranch})
+	return RunOverSSH("Setup CLI From Source", host, "shell/setupCLIFromSource.sh", scriptInputs{CliBranch: cliBranch})
 }
 
 // RunSSHCheckAvalancheGoVersion checks node avalanchego version

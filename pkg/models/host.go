@@ -17,7 +17,9 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const sleepBetweenChecks = 1 * time.Second
+const (
+	maxResponseSize = 102400
+)
 
 type Host struct {
 	NodeID            string
@@ -25,44 +27,26 @@ type Host struct {
 	SSHUser           string
 	SSHPrivateKeyPath string
 	SSHCommonArgs     string
+	Connection        *HostConnection
 }
 
-const (
-	shell     = "/bin/bash"
-	localhost = "127.0.0.1"
-)
-
-// GetNodeID returns the node ID of the host.
-//
-// It checks if the node ID has a prefix of constants.AWSNodeAnsiblePrefix
-// and removes the prefix if present. Otherwise, it joins the first two parts
-// of the node ID split by "_" and returns the result.
-//
-// Returns:
-//   - string: The node ID of the host.
-func (h Host) GetCloudID() string {
-	if strings.HasPrefix(h.NodeID, constants.AWSNodeAnsiblePrefix) {
-		return strings.TrimPrefix(h.NodeID, constants.AWSNodeAnsiblePrefix+"_")
-	} else if strings.HasPrefix(h.NodeID, constants.GCPNodeAnsiblePrefix) {
-		return strings.TrimPrefix(h.NodeID, constants.GCPNodeAnsiblePrefix+"_")
-	}
-	// default behaviour - TODO refactor for other clouds
-	return strings.Join(strings.Split(h.NodeID, "_")[:2], "_")
+type HostConnection struct {
+	Client    *goph.Client
+	Ctx       context.Context
+	ctxCancel context.CancelFunc
 }
 
-// Connect starts a new SSH connection with the provided private key.
-//
-// It returns a pointer to a goph.Client and an error.
-func (h Host) Connect(timeout time.Duration) (*goph.Client, error) {
+func NewHostConnection(h Host, timeout time.Duration) *HostConnection {
+	p := new(HostConnection)
 	if timeout == 0 {
 		timeout = constants.SSHScriptTimeout
 	}
-	// Start new ssh connection with private key.
+	p.Ctx, p.ctxCancel = context.WithTimeout(context.Background(), timeout)
 	auth, err := goph.Key(h.SSHPrivateKeyPath, "")
 	if err != nil {
-		return nil, err
+		return nil
 	}
-	client, err := goph.NewConn(&goph.Config{
+	p.Client, err = goph.NewConn(&goph.Config{
 		User:    h.SSHUser,
 		Addr:    h.IP,
 		Port:    22,
@@ -72,42 +56,67 @@ func (h Host) Connect(timeout time.Duration) (*goph.Client, error) {
 		Callback: ssh.InsecureIgnoreHostKey(),
 	})
 	if err != nil {
-		return nil, err
+		return nil
 	}
-	return client, nil
+	return p
+}
+
+// GetCloudID returns the node ID of the host.
+func (h Host) GetCloudID() string {
+	_, cloudID, err := HostAnsibleIDToCloudID(h.NodeID)
+	if err != nil {
+		return cloudID
+	}
+	return ""
+}
+
+// Connect starts a new SSH connection with the provided private key.
+//
+// It returns a pointer to a goph.Client and an error.
+func (h Host) Connect(timeout time.Duration) error {
+	h.Connection = NewHostConnection(h, timeout)
+	if h.notConnected() {
+		return fmt.Errorf("failed to connect to host %s", h.IP)
+	}
+	return nil
+}
+
+func (h Host) notConnected() bool {
+	return h.Connection == nil
+}
+
+func (h Host) Disconnect() error {
+	if h.notConnected() {
+		return nil
+	}
+	return h.Connection.Client.Close()
 }
 
 // Upload uploads a local file to a remote file on the host.
 func (h Host) Upload(localFile string, remoteFile string) error {
-	client, err := h.Connect(constants.SSHFileOpsTimeout)
-	if err != nil {
-		return err
+	if h.notConnected() {
+		h.Connect(constants.SSHFileOpsTimeout)
 	}
-	defer client.Close()
-	return client.Upload(localFile, remoteFile)
+	return h.Connection.Client.Upload(localFile, remoteFile)
 }
 
 // Download downloads a file from the remote server to the local machine.
 func (h Host) Download(remoteFile string, localFile string) error {
-	client, err := h.Connect(constants.SSHFileOpsTimeout)
-	if err != nil {
-		return err
+	if h.notConnected() {
+		h.Connect(constants.SSHFileOpsTimeout)
 	}
-	defer client.Close()
 	if err := os.MkdirAll(filepath.Dir(localFile), os.ModePerm); err != nil {
 		return err
 	}
-	return client.Download(remoteFile, localFile)
+	return h.Connection.Client.Download(remoteFile, localFile)
 }
 
 // MkdirAll creates a folder on the remote server.
 func (h Host) MkdirAll(remoteDir string) error {
-	client, err := h.Connect(constants.SSHFileOpsTimeout)
-	if err != nil {
-		return err
+	if h.notConnected() {
+		h.Connect(constants.SSHFileOpsTimeout)
 	}
-	defer client.Close()
-	sftp, err := client.NewSftp()
+	sftp, err := h.Connection.Client.NewSftp()
 	if err != nil {
 		return err
 	}
@@ -117,12 +126,10 @@ func (h Host) MkdirAll(remoteDir string) error {
 
 // Command executes a shell command on a remote host.
 func (h Host) Command(script string, env []string, ctx context.Context) ([]byte, error) {
-	client, err := h.Connect(constants.SSHScriptTimeout)
-	if err != nil {
-		return nil, err
+	if h.notConnected() {
+		h.Connect(constants.SSHScriptTimeout)
 	}
-	defer client.Close()
-	cmd, err := client.CommandContext(ctx, shell, script)
+	cmd, err := h.Connection.Client.CommandContext(ctx, constants.SSHShell, script)
 	if err != nil {
 		return nil, err
 	}
@@ -136,19 +143,17 @@ func (h Host) Command(script string, env []string, ctx context.Context) ([]byte,
 //
 // It returns an error if there was an issue connecting to the remote address or if there was an error in the port forwarding process.
 func (h Host) Forward(httpRequest string) ([]byte, []byte, error) {
-	client, err := h.Connect(constants.SSHPOSTTimeout)
-	if err != nil {
-		return nil, nil, err
+	if h.notConnected() {
+		h.Connect(constants.SSHPOSTTimeout)
 	}
-	defer client.Close()
 	avalancheGoEndpoint := strings.TrimPrefix(constants.LocalAPIEndpoint, "http://")
 	avalancheGoAddr, err := net.ResolveTCPAddr("tcp", avalancheGoEndpoint)
 	if err != nil {
 		return nil, nil, err
 	}
-	proxy, err := client.DialTCP("tcp", nil, avalancheGoAddr)
+	proxy, err := h.Connection.Client.DialTCP("tcp", nil, avalancheGoAddr)
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to port forward to %s via %s", client.Conn.RemoteAddr(), "ssh")
+		return nil, nil, fmt.Errorf("unable to port forward to %s via %s", h.Connection.Client.Conn.RemoteAddr(), "ssh")
 	}
 	defer proxy.Close()
 	// send request to server
@@ -157,26 +162,13 @@ func (h Host) Forward(httpRequest string) ([]byte, []byte, error) {
 		return nil, nil, err
 	}
 	// Read and print the server's response
-	response := make([]byte, 10240)
+	response := make([]byte, maxResponseSize)
 	responseLength, err := proxy.Read(response)
 	if err != nil {
 		return nil, nil, err
 	}
-	header, body := SplitHTTPResponse(response[0 : responseLength-1])
+	header, body := SplitHTTPResponse(response[:responseLength])
 	return header, body, nil
-}
-
-// ConvertToNodeID converts a node name to a node ID.
-//
-// It takes a nodeName string as a parameter and returns a string representing the node ID.
-func (h Host) ToCloudID(nodeID string) string {
-	h = Host{
-		NodeID:            nodeID,
-		SSHUser:           constants.AnsibleSSHUser,
-		SSHPrivateKeyPath: "",
-		SSHCommonArgs:     "",
-	}
-	return h.GetCloudID()
 }
 
 func (h Host) GetAnsibleInventoryRecord() string {
@@ -220,7 +212,7 @@ func (h Host) WaitForSSHPort(timeout time.Duration) error {
 		if _, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", h.IP, constants.SSHTCPPort), time.Second); err == nil {
 			return nil
 		}
-		time.Sleep(sleepBetweenChecks)
+		time.Sleep(constants.SSHSleepBetweenChecks)
 	}
 }
 
@@ -239,7 +231,7 @@ func (h Host) WaitForSSHShell(timeout time.Duration) error {
 		if err == nil || len(output) > 0 {
 			return nil
 		}
-		time.Sleep(sleepBetweenChecks)
+		time.Sleep(constants.SSHSleepBetweenChecks)
 	}
 }
 

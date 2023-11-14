@@ -44,11 +44,12 @@ const (
 	MaxNumOfLogFiles = 5
 	RetainOldFiles   = 0 // retain all old log files
 
-	SSHScriptTimeout   = 120 * time.Second
-	SSHFileOpsTimeout  = 30 * time.Second
-	SSHPOSTTimeout     = 10 * time.Second
-	SSHScriptLogFilter = "_AvalancheCLI_LOG_"
-	SSHShell           = "/bin/bash"
+	SSHScriptTimeout      = 120 * time.Second
+	SSHFileOpsTimeout     = 30 * time.Second
+	SSHPOSTTimeout        = 10 * time.Second
+	SSHSleepBetweenChecks = 1 * time.Second
+	SSHScriptLogFilter    = "_AvalancheCLI_LOG_"
+	SSHShell              = "/bin/bash"
 
 	ANRRequestTimeout = 3 * time.Minute
 	APIRequestTimeout = 30 * time.Second
