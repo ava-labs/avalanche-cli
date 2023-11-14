@@ -3,6 +3,9 @@
 package nodecmd
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/spf13/cobra"
 )
@@ -35,9 +38,45 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 func wiz(cmd *cobra.Command, args []string) error {
 	clusterName := args[0]
 	subnetName := args[1]
+	exists, err := clusterExists(clusterName)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return fmt.Errorf("cluster %s already exists", clusterName)
+	}
+	if !app.SidecarExists(subnetName) {
+		fmt.Println("creating subnet")
+		return nil
+	}
+	// node create
 	createDevnet = true
 	useAvalanchegoVersionFromSubnet = subnetName
-	// check there is no clusterName ...
-	// if there is no subnet, create it
-	return createNodes(cmd, []string{clusterName})
+	err = createNodes(cmd, []string{clusterName})
+	if err != nil {
+		return err
+	}
+	err = waitForHealthyCluster(clusterName, 30*time.Second)
+	if err != nil {
+		return err
+	}
+	err = deploySubnet(cmd, []string{clusterName, subnetName})
+	return err
+}
+
+func waitForHealthyCluster(clusterName string, timeout time.Duration) error {
+	endTime := time.Now().Add(timeout)
+	for {
+		notHealthyNodes, err := checkClusterIsHealthy(clusterName)
+		if err != nil {
+			return err
+		}
+		if len(notHealthyNodes) == 0 {
+			return nil
+		}
+		time.Sleep(5*time.Second)
+		if time.Now().After(endTime) {
+			return fmt.Errorf("cluster not healthy after %d seconds", timeout.Seconds())
+		}
+	}
 }
