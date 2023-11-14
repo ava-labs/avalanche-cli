@@ -15,13 +15,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"golang.org/x/exp/slices"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"golang.org/x/exp/slices"
 )
 
 //go:embed playbook/*
