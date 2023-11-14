@@ -30,7 +30,7 @@ var config []byte
 
 // CreateAnsibleHostInventory creates inventory file to be used for Ansible playbook commands
 // specifies the ip address of the cloud server and the corresponding ssh cert path for the cloud server
-func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService string, publicIPMap map[string]string) error {
+func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService, monitoringInstanceNodeID string, publicIPMap map[string]string) error {
 	if err := os.MkdirAll(inventoryDirPath, os.ModePerm); err != nil {
 		return err
 	}
@@ -41,6 +41,10 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 	}
 	defer inventoryFile.Close()
 	for instanceID := range publicIPMap {
+		// don't include monitoring instance in ansible inventory file
+		if instanceID == monitoringInstanceNodeID {
+			continue
+		}
 		ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, instanceID)
 		if err != nil {
 			return err

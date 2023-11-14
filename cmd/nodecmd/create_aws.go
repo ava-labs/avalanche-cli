@@ -172,6 +172,15 @@ func createEC2Instances(rootBody *hclwrite.Body,
 		if err != nil {
 			return nil, nil, "", "", err
 		}
+		if !separateMonitoringInstance {
+			separateMonitoringInstance, err = app.Prompt.CaptureYesNo("Do you want to set up a separate instance to host monitoring? (This enables you to monitor all your set up instances in one dashboard)")
+			if err != nil {
+				return nil, nil, "", "", err
+			}
+		}
+	}
+	if separateMonitoringInstance {
+		numNodes += 1
 	}
 	ux.Logger.PrintToUser("Creating new EC2 instance(s) on AWS...")
 	var useExistingKeyPair bool
@@ -240,7 +249,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	}
 	instanceIDs, elasticIPs, err := terraformaws.RunTerraform(app.GetTerraformDir(), useStaticIP)
 	if err != nil {
-		return nil, nil, "", "", fmt.Errorf("%s, %w", constants.ErrCreatingAWSNode, err)
+		return nil, nil, "", "", err
 	}
 	ux.Logger.PrintToUser("New EC2 instance(s) successfully created in AWS!")
 	if !useExistingKeyPair {

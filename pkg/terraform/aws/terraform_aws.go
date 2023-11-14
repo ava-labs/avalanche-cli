@@ -47,13 +47,13 @@ func addSecurityGroupRuleToSg(securityGroupBody *hclwrite.Body, sgType, descript
 }
 
 // addNewSecurityGroupRule is to add sg rule to existing sg
-func addNewSecurityGroupRule(rootBody *hclwrite.Body, sgRuleName, sgID, protocol, ip string, port int64) {
+func addNewSecurityGroupRule(rootBody *hclwrite.Body, sgRuleName, sgID, ip string, port int64) {
 	securityGroupRule := rootBody.AppendNewBlock("resource", []string{"aws_security_group_rule", sgRuleName})
 	securityGroupRuleBody := securityGroupRule.Body()
 	securityGroupRuleBody.SetAttributeValue("type", cty.StringVal("ingress"))
 	securityGroupRuleBody.SetAttributeValue("from_port", cty.NumberIntVal(port))
 	securityGroupRuleBody.SetAttributeValue("to_port", cty.NumberIntVal(port))
-	securityGroupRuleBody.SetAttributeValue("protocol", cty.StringVal(protocol))
+	securityGroupRuleBody.SetAttributeValue("protocol", cty.StringVal("tcp"))
 	var ipList []cty.Value
 	ipList = append(ipList, cty.StringVal(ip))
 	securityGroupRuleBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
@@ -88,22 +88,22 @@ func SetSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, sg *e
 	ipInTCP := awsAPI.CheckUserIPInSg(sg, ipAddress, constants.SSHTCPPort)
 	if !ipInTCP {
 		sgRuleName := "ipTcp" + strings.ReplaceAll(ipAddress, ".", "")
-		addNewSecurityGroupRule(rootBody, sgRuleName, sgID, "tcp", inputIPAddress, constants.SSHTCPPort)
+		addNewSecurityGroupRule(rootBody, sgRuleName, sgID, inputIPAddress, constants.SSHTCPPort)
 	}
 	ipInHTTP := awsAPI.CheckUserIPInSg(sg, ipAddress, constants.AvalanchegoAPIPort)
 	if !ipInHTTP {
 		sgRuleName := "ipHttp" + strings.ReplaceAll(ipAddress, ".", "")
-		addNewSecurityGroupRule(rootBody, sgRuleName, sgID, "tcp", inputIPAddress, constants.AvalanchegoAPIPort)
+		addNewSecurityGroupRule(rootBody, sgRuleName, sgID, inputIPAddress, constants.AvalanchegoAPIPort)
 	}
 	ipInMonitoring := awsAPI.CheckUserIPInSg(sg, ipAddress, constants.AvalanchegoMonitoringPort)
 	if !ipInMonitoring {
 		sgRuleName := "ipMonitoring" + strings.ReplaceAll(ipAddress, ".", "")
-		addNewSecurityGroupRule(rootBody, sgRuleName, sgID, "tcp", inputIPAddress, constants.AvalanchegoMonitoringPort)
+		addNewSecurityGroupRule(rootBody, sgRuleName, sgID, inputIPAddress, constants.AvalanchegoMonitoringPort)
 	}
 	ipInGrafana := awsAPI.CheckUserIPInSg(sg, ipAddress, constants.AvalanchegoGrafanaPort)
 	if !ipInGrafana {
 		sgRuleName := "ipGrafana" + strings.ReplaceAll(ipAddress, ".", "")
-		addNewSecurityGroupRule(rootBody, sgRuleName, sgID, "tcp", inputIPAddress, constants.AvalanchegoGrafanaPort)
+		addNewSecurityGroupRule(rootBody, sgRuleName, sgID, inputIPAddress, constants.AvalanchegoGrafanaPort)
 	}
 }
 
