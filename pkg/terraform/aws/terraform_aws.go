@@ -6,12 +6,13 @@ package terraformaws
 import (
 	"bytes"
 	"errors"
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
-	"github.com/aws/aws-sdk-go/service/ec2"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
+
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
+	"github.com/aws/aws-sdk-go/service/ec2"
 
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 
