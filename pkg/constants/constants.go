@@ -48,6 +48,7 @@ const (
 	SSHFileOpsTimeout  = 30 * time.Second
 	SSHPOSTTimeout     = 10 * time.Second
 	SSHScriptLogFilter = "_AvalancheCLI_LOG_"
+	SSHShell           = "/bin/bash"
 
 	ANRRequestTimeout = 3 * time.Minute
 	APIRequestTimeout = 30 * time.Second
