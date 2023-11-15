@@ -355,14 +355,17 @@ func runAnsible(inventoryPath string, network models.Network, avalancheGoVersion
 	if err := distributeStakingCertAndKey(strings.Split(ansibleHostIDs, ","), inventoryPath); err != nil {
 		return err
 	}
-	return ansible.RunAnsiblePlaybookSetupNode(
+	if err := ansible.RunAnsiblePlaybookSetupNode(
 		app.Conf.GetConfigPath(),
 		app.GetAnsibleDir(),
 		inventoryPath,
 		avalancheGoVersion,
 		fmt.Sprint(network.Kind == models.Devnet),
 		ansibleHostIDs,
-	)
+	); err != nil {
+		return err
+	}
+	return ansible.RunAnsiblePlaybookSetupCLIFromSource(app.GetAnsibleDir(), inventoryPath, constants.SetupCLIFromSourceBranch, ansibleHostIDs)
 }
 
 func setupBuildEnv(inventoryPath, ansibleHostIDs string) error {

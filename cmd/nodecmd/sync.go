@@ -164,9 +164,6 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
 	}
-	if err := setupBuildEnv(app.GetAnsibleInventoryDirPath(clusterName), ""); err != nil {
-		return err
-	}
 	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {
 		return err
@@ -268,22 +265,11 @@ func trackSubnet(clusterName, subnetName string, network models.Network) ([]stri
 	if err := subnetcmd.CallExportSubnet(subnetName, subnetPath, network); err != nil {
 		return nil, err
 	}
-	if err := ansible.RunAnsiblePlaybookSetupCLIFromSource(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), constants.SetupCLIFromSourceBranch, "all"); err != nil {
-		return nil, err
-	}
 	if err := ansible.RunAnsiblePlaybookExportSubnet(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), subnetPath, "all"); err != nil {
 		return nil, err
 	}
-	hostAliases, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return nil, err
-	}
 	untrackedNodes := []string{}
-	for _, host := range hostAliases {
-		// runs avalanche join subnet command
-		if err = ansible.RunAnsiblePlaybookTrackSubnet(app.GetAnsibleDir(), network, subnetName, subnetPath, app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
-			untrackedNodes = append(untrackedNodes, host)
-		}
-	}
-	return untrackedNodes, nil
+	// runs avalanche join subnet command
+	err := ansible.RunAnsiblePlaybookTrackSubnet(app.GetAnsibleDir(), network, subnetName, subnetPath, app.GetAnsibleInventoryDirPath(clusterName), "all")
+	return untrackedNodes, err
 }
