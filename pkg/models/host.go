@@ -72,14 +72,10 @@ func (h *Host) GetCloudID() string {
 // Connect starts a new SSH connection with the provided private key.
 func (h *Host) Connect(timeout time.Duration) error {
 	h.Connection = NewHostConnection(*h, timeout)
-	if h.notConnected() {
+	if !h.Connected() {
 		return fmt.Errorf("failed to connect to host %s", h.IP)
 	}
 	return nil
-}
-
-func (h *Host) notConnected() bool {
-	return !h.Connected()
 }
 
 func (h *Host) Connected() bool {
@@ -87,7 +83,7 @@ func (h *Host) Connected() bool {
 }
 
 func (h *Host) Disconnect() error {
-	if h.notConnected() {
+	if !h.Connected() {
 		return nil
 	}
 	return h.Connection.Client.Close()
@@ -95,16 +91,20 @@ func (h *Host) Disconnect() error {
 
 // Upload uploads a local file to a remote file on the host.
 func (h *Host) Upload(localFile string, remoteFile string) error {
-	if h.notConnected() {
-		h.Connect(constants.SSHFileOpsTimeout)
+	if !h.Connected() {
+		if err := h.Connect(constants.SSHFileOpsTimeout); err != nil {
+			return err
+		}
 	}
 	return h.Connection.Client.Upload(localFile, remoteFile)
 }
 
 // Download downloads a file from the remote server to the local machine.
 func (h *Host) Download(remoteFile string, localFile string) error {
-	if h.notConnected() {
-		h.Connect(constants.SSHFileOpsTimeout)
+	if !h.Connected() {
+		if err := h.Connect(constants.SSHScriptTimeout); err != nil {
+			return err
+		}
 	}
 	if err := os.MkdirAll(filepath.Dir(localFile), os.ModePerm); err != nil {
 		return err
@@ -114,8 +114,10 @@ func (h *Host) Download(remoteFile string, localFile string) error {
 
 // MkdirAll creates a folder on the remote server.
 func (h *Host) MkdirAll(remoteDir string) error {
-	if h.notConnected() {
-		h.Connect(constants.SSHFileOpsTimeout)
+	if !h.Connected() {
+		if err := h.Connect(constants.SSHScriptTimeout); err != nil {
+			return err
+		}
 	}
 	sftp, err := h.Connection.Client.NewSftp()
 	if err != nil {
@@ -127,8 +129,10 @@ func (h *Host) MkdirAll(remoteDir string) error {
 
 // Command executes a shell command on a remote host.
 func (h *Host) Command(script string, env []string, ctx context.Context) ([]byte, error) {
-	if h.notConnected() {
-		h.Connect(constants.SSHScriptTimeout)
+	if !h.Connected() {
+		if err := h.Connect(constants.SSHScriptTimeout); err != nil {
+			return nil, err
+		}
 	}
 	if h.Connected() {
 		cmd, err := h.Connection.Client.CommandContext(ctx, constants.SSHShell, script)
@@ -146,8 +150,10 @@ func (h *Host) Command(script string, env []string, ctx context.Context) ([]byte
 
 // Forward forwards the TCP connection to a remote address.
 func (h *Host) Forward(httpRequest string) ([]byte, []byte, error) {
-	if h.notConnected() {
-		h.Connect(constants.SSHPOSTTimeout)
+	if !h.Connected() {
+		if err := h.Connect(constants.SSHPOSTTimeout); err != nil {
+			return nil, nil, err
+		}
 	}
 	avalancheGoEndpoint := strings.TrimPrefix(constants.LocalAPIEndpoint, "http://")
 	avalancheGoAddr, err := net.ResolveTCPAddr("tcp", avalancheGoEndpoint)
@@ -247,21 +253,15 @@ func (h *Host) WaitForSSHShell(timeout time.Duration) error {
 }
 
 // splitHTTPResponse splits an HTTP response into headers and body.
-//
-// It takes a byte slice `response` as a parameter, which represents the HTTP response.
-// The function returns two byte slices - `headers` and `body` - representing the headers and body of the response, respectively.
 func SplitHTTPResponse(response []byte) ([]byte, []byte) {
 	// Find the position of the double line break separating the headers and the body
 	doubleLineBreak := []byte{'\r', '\n', '\r', '\n'}
 	index := bytes.Index(response, doubleLineBreak)
-
 	if index == -1 {
 		return nil, response
 	}
-
 	// Split the response into headers and body
 	headers := response[:index]
 	body := response[index+len(doubleLineBreak):]
-
 	return headers, body
 }
