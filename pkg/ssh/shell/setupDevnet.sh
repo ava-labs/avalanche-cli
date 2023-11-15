@@ -5,4 +5,4 @@ sudo systemctl stop avalanchego
 rm -rf /home/ubuntu/.avalanchego/db/
 rm -rf /home/ubuntu/.avalanchego/logs/
 #name:TASK [start node]
-shell: sudo systemctl start avalanchego
+sudo systemctl start avalanchego

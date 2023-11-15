@@ -98,7 +98,7 @@ func RunSSHSetupDevNet(host models.Host, nodeInstanceDirPath string) error {
 		return err
 	}
 	// name: setup devnet
-	return RunOverSSH("Setup DevNet", host, "shell/cleanupDevnet.sh", scriptInputs{})
+	return RunOverSSH("Setup DevNet", host, "shell/setupDevnet.sh", scriptInputs{})
 }
 
 // RunSSHUploadStakingFiles uploads staking files to a remote host via SSH.
