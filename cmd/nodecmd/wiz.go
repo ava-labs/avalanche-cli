@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -25,6 +26,18 @@ const (
 	syncCheckTimeout      = 1 * time.Minute
 	validateCheckPoolTime = 10 * time.Second
 	validateCheckTimeout  = 1 * time.Minute
+)
+
+var (
+	forceSubnetCreate   bool
+	subnetGenesisFile   string
+	useEvmSubnet        bool
+	useCustomSubnet     bool
+	evmVersion          string
+	useLatestEvmVersion bool
+	customVMRepoURL     string
+	customVMBranch      string
+	customVMBuildScript string
 )
 
 func newWizCmd() *cobra.Command {
@@ -50,6 +63,16 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&cmdLineAlternativeKeyPairName, "alternative-key-pair-name", "", "key pair name to use if default one generates conflicts")
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
 	cmd.Flags().BoolVar(&defaultValidatorParams, "default-validator-params", false, "use default weight/start/duration params for subnet validator")
+
+	cmd.Flags().BoolVar(&forceSubnetCreate, "force-subnet-create", false, "overwrite the existing subnet configuration if one exists")
+	cmd.Flags().StringVar(&subnetGenesisFile, "subnet-genesis", "", "file path of the subnet genesis")
+	cmd.Flags().BoolVar(&useEvmSubnet, "evm-subnet", false, "use Subnet-EVM as the subnet virtual machine")
+	cmd.Flags().BoolVar(&useCustomSubnet, "custom-subnet", false, "use a custom VM as the subnet virtual machine")
+	cmd.Flags().StringVar(&evmVersion, "evm-version", "", "version of Subnet-Evm to use")
+	cmd.Flags().BoolVar(&useLatestEvmVersion, "latest-evm-version", false, "use latest Subnet-Evm version")
+	cmd.Flags().StringVar(&customVMRepoURL, "custom-vm-repo-url", "", "custom vm repository url")
+	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch")
+	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
 	return cmd
 }
 
@@ -63,12 +86,27 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if exists {
 		return fmt.Errorf("cluster %s already exists", clusterName)
 	}
-	if !app.SidecarExists(subnetName) {
+	if !app.SidecarExists(subnetName) || forceSubnetCreate {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Creating the subnet"))
 		ux.Logger.PrintToUser("")
-		return nil
+		if err := subnetcmd.CallCreate(
+			cmd,
+			subnetName,
+			forceSubnetCreate,
+			subnetGenesisFile,
+			useEvmSubnet,
+			useCustomSubnet,
+			evmVersion,
+			useLatestEvmVersion,
+			customVMRepoURL,
+			customVMBranch,
+			customVMBuildScript,
+		); err != nil {
+			return err
+		}
 	}
+	return nil
 	createDevnet = true
 	useAvalanchegoVersionFromSubnet = subnetName
 	ux.Logger.PrintToUser("")
