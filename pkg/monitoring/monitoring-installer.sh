@@ -245,10 +245,10 @@ install_exporter() {
     echo "  - job_name: 'avalanchego'"
     echo "    metrics_path: '/ext/metrics'"
     echo "    static_configs:"
-    echo "      - targets: [$2]"
+    echo "      - targets: ['$2']"
     echo "  - job_name: 'avalanchego-machine'"
     echo "    static_configs:"
-    echo "      - targets: [$3]"
+    echo "      - targets: ['$3']"
     echo "        labels:"
     echo "          alias: 'machine'"
   }>>prometheus.yml
