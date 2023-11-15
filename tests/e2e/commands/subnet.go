@@ -97,7 +97,7 @@ func ConfigurePerNodeChainConfig(subnetName string, perNodeChainConfigPath strin
 }
 
 /* #nosec G204 */
-func CreateCustomVMConfig(subnetName string, genesisPath string, vmVersion string) {
+func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -116,10 +116,12 @@ func CreateCustomVMConfig(subnetName string, genesisPath string, vmVersion strin
 		genesisPath,
 		"--custom",
 		subnetName,
+		"--custom-vm-path",
+		vmPath,
 		"--custom-vm-repo-url",
 		"https://github.com/ava-labs/subnet-evm/",
 		"--custom-vm-branch",
-		vmVersion,
+		"main",
 		"--custom-vm-build-script",
 		"scripts/build.sh",
 		"--"+constants.SkipUpdateFlag,

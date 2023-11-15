@@ -170,11 +170,10 @@ func BuildCustomVM(
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("error building custom vm binary using script %s on repo %s: %w", sc.CustomVMBuildScript, sc.CustomVMRepoURL, err)
 	}
-	info, err := os.Stat(vmPath)
-	if errors.Is(err, os.ErrNotExist) {
+	if !utils.FileExists(vmPath) {
 		return fmt.Errorf("custom VM binary %s not found. Expected build script to create it as specified on the first script argument", vmPath)
 	}
-	if info.Mode()&0x0100 == 0 {
+	if !utils.IsExecutable(vmPath) {
 		return fmt.Errorf("custom VM binary %s not executable. Expected build script to create an executable file", vmPath)
 	}
 	return nil
