@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	maxResponseSize = 102400
+	maxResponseSize = 102400 // 100KB should be enough to read the avalanchego response
 )
 
 type Host struct {
