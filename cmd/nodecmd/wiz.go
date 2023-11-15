@@ -7,7 +7,13 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
+)
+
+const (
+	healthCheckPoolTime = 10 * time.Second
+	healthCheckTimeout  = 1 * time.Minute
 )
 
 func newWizCmd() *cobra.Command {
@@ -56,7 +62,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = waitForHealthyCluster(clusterName, 30*time.Second)
+	err = waitForHealthyCluster(clusterName, healthCheckTimeout)
 	if err != nil {
 		return err
 	}
@@ -65,18 +71,24 @@ func wiz(cmd *cobra.Command, args []string) error {
 }
 
 func waitForHealthyCluster(clusterName string, timeout time.Duration) error {
-	endTime := time.Now().Add(timeout)
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Waiting for node(s) in cluster %s to be healthy...", clusterName)
+	ux.Logger.PrintToUser("")
+	startTime := time.Now()
 	for {
 		notHealthyNodes, err := checkClusterIsHealthy(clusterName)
 		if err != nil {
 			return err
 		}
 		if len(notHealthyNodes) == 0 {
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("Nodes healthy after %d seconds", uint32(time.Since(startTime).Seconds()))
+			ux.Logger.PrintToUser("")
 			return nil
 		}
-		time.Sleep(5*time.Second)
-		if time.Now().After(endTime) {
-			return fmt.Errorf("cluster not healthy after %d seconds", timeout.Seconds())
+		time.Sleep(healthCheckPoolTime)
+		if time.Since(startTime) > timeout {
+			return fmt.Errorf("cluster not healthy after %d seconds", uint32(timeout.Seconds()))
 		}
 	}
 }
