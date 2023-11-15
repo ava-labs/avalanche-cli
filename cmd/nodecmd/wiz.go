@@ -109,10 +109,16 @@ func waitForHealthyCluster(clusterName string, timeout time.Duration) error {
 			ux.Logger.PrintToUser("")
 			return nil
 		}
-		time.Sleep(healthCheckPoolTime)
 		if time.Since(startTime) > timeout {
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("Unhealthy Nodes")
+			for _, failedNode := range notHealthyNodes {
+				ux.Logger.PrintToUser("  " + failedNode)
+			}
+			ux.Logger.PrintToUser("")
 			return fmt.Errorf("cluster not healthy after %d seconds", uint32(timeout.Seconds()))
 		}
+		time.Sleep(healthCheckPoolTime)
 	}
 }
 
@@ -163,7 +169,6 @@ func waitForClusterSubnetStatus(
 			ux.Logger.PrintToUser("")
 			return nil
 		}
-		time.Sleep(poolTime)
 		if time.Since(startTime) > timeout {
 			ux.Logger.PrintToUser("Nodes not %s %s", targetStatus.String(), subnetName)
 			for _, failedNode := range failedNodes {
@@ -172,5 +177,6 @@ func waitForClusterSubnetStatus(
 			ux.Logger.PrintToUser("")
 			return fmt.Errorf("cluster not %s subnet %s after %d seconds", strings.ToLower(targetStatus.String()), subnetName, uint32(timeout.Seconds()))
 		}
+		time.Sleep(poolTime)
 	}
 }
