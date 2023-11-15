@@ -46,7 +46,7 @@ func NewHostConnection(h Host, timeout time.Duration) *HostConnection {
 	if err != nil {
 		return nil
 	}
-	p.Client, err = goph.NewConn(&goph.Config{
+	cl, err := goph.NewConn(&goph.Config{
 		User:    h.SSHUser,
 		Addr:    h.IP,
 		Port:    22,
@@ -57,35 +57,36 @@ func NewHostConnection(h Host, timeout time.Duration) *HostConnection {
 	})
 	if err != nil {
 		return nil
+	} else {
+		p.Client = cl
 	}
 	return p
 }
 
 // GetCloudID returns the node ID of the host.
-func (h Host) GetCloudID() string {
-	_, cloudID, err := HostAnsibleIDToCloudID(h.NodeID)
-	if err != nil {
-		return cloudID
-	}
-	return ""
+func (h *Host) GetCloudID() string {
+	_, cloudID, _ := HostAnsibleIDToCloudID(h.NodeID)
+	return cloudID
 }
 
 // Connect starts a new SSH connection with the provided private key.
-//
-// It returns a pointer to a goph.Client and an error.
-func (h Host) Connect(timeout time.Duration) error {
-	h.Connection = NewHostConnection(h, timeout)
+func (h *Host) Connect(timeout time.Duration) error {
+	h.Connection = NewHostConnection(*h, timeout)
 	if h.notConnected() {
 		return fmt.Errorf("failed to connect to host %s", h.IP)
 	}
 	return nil
 }
 
-func (h Host) notConnected() bool {
-	return h.Connection == nil
+func (h *Host) notConnected() bool {
+	return !h.Connected()
 }
 
-func (h Host) Disconnect() error {
+func (h *Host) Connected() bool {
+	return h.Connection != nil
+}
+
+func (h *Host) Disconnect() error {
 	if h.notConnected() {
 		return nil
 	}
@@ -93,7 +94,7 @@ func (h Host) Disconnect() error {
 }
 
 // Upload uploads a local file to a remote file on the host.
-func (h Host) Upload(localFile string, remoteFile string) error {
+func (h *Host) Upload(localFile string, remoteFile string) error {
 	if h.notConnected() {
 		h.Connect(constants.SSHFileOpsTimeout)
 	}
@@ -101,7 +102,7 @@ func (h Host) Upload(localFile string, remoteFile string) error {
 }
 
 // Download downloads a file from the remote server to the local machine.
-func (h Host) Download(remoteFile string, localFile string) error {
+func (h *Host) Download(remoteFile string, localFile string) error {
 	if h.notConnected() {
 		h.Connect(constants.SSHFileOpsTimeout)
 	}
@@ -112,7 +113,7 @@ func (h Host) Download(remoteFile string, localFile string) error {
 }
 
 // MkdirAll creates a folder on the remote server.
-func (h Host) MkdirAll(remoteDir string) error {
+func (h *Host) MkdirAll(remoteDir string) error {
 	if h.notConnected() {
 		h.Connect(constants.SSHFileOpsTimeout)
 	}
@@ -125,24 +126,26 @@ func (h Host) MkdirAll(remoteDir string) error {
 }
 
 // Command executes a shell command on a remote host.
-func (h Host) Command(script string, env []string, ctx context.Context) ([]byte, error) {
+func (h *Host) Command(script string, env []string, ctx context.Context) ([]byte, error) {
 	if h.notConnected() {
 		h.Connect(constants.SSHScriptTimeout)
 	}
-	cmd, err := h.Connection.Client.CommandContext(ctx, constants.SSHShell, script)
-	if err != nil {
-		return nil, err
+	if h.Connected() {
+		cmd, err := h.Connection.Client.CommandContext(ctx, constants.SSHShell, script)
+		if err != nil {
+			return nil, err
+		}
+		if env != nil {
+			cmd.Env = env
+		}
+		return cmd.CombinedOutput()
+	} else {
+		return nil, fmt.Errorf("failed to connect to host %s", h.IP)
 	}
-	if env != nil {
-		cmd.Env = env
-	}
-	return cmd.CombinedOutput()
 }
 
 // Forward forwards the TCP connection to a remote address.
-//
-// It returns an error if there was an issue connecting to the remote address or if there was an error in the port forwarding process.
-func (h Host) Forward(httpRequest string) ([]byte, []byte, error) {
+func (h *Host) Forward(httpRequest string) ([]byte, []byte, error) {
 	if h.notConnected() {
 		h.Connect(constants.SSHPOSTTimeout)
 	}
@@ -171,7 +174,7 @@ func (h Host) Forward(httpRequest string) ([]byte, []byte, error) {
 	return header, body, nil
 }
 
-func (h Host) GetAnsibleInventoryRecord() string {
+func (h *Host) GetAnsibleInventoryRecord() string {
 	return strings.Join([]string{
 		h.NodeID,
 		fmt.Sprintf("ansible_host=%s", h.IP),
@@ -201,13 +204,13 @@ func HostAnsibleIDToCloudID(hostAnsibleID string) (string, string, error) {
 }
 
 // WaitForSSHPort waits for the SSH port to become available on the host.
-func (h Host) WaitForSSHPort(timeout time.Duration) error {
+func (h *Host) WaitForSSHPort(timeout time.Duration) error {
 	start := time.Now()
 	deadline := start.Add(timeout)
 
 	for {
 		if time.Now().After(deadline) {
-			return fmt.Errorf("timeout: SSH port %d on host %s is not available after %ds", constants.SSHTCPPort, h.IP, timeout.Seconds())
+			return fmt.Errorf("timeout: SSH port %d on host %s is not available after %vs", constants.SSHTCPPort, h.IP, timeout.Seconds())
 		}
 		if _, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", h.IP, constants.SSHTCPPort), time.Second); err == nil {
 			return nil
@@ -217,7 +220,7 @@ func (h Host) WaitForSSHPort(timeout time.Duration) error {
 }
 
 // WaitForSSHShell waits for the SSH shell to be available on the host within the specified timeout.
-func (h Host) WaitForSSHShell(timeout time.Duration) error {
+func (h *Host) WaitForSSHShell(timeout time.Duration) error {
 	if err := h.WaitForSSHPort(timeout); err != nil {
 		return err
 	}
@@ -227,11 +230,19 @@ func (h Host) WaitForSSHShell(timeout time.Duration) error {
 		if time.Now().After(deadline) {
 			return fmt.Errorf("timeout: SSH shell on host %s is not available after %ds", h.IP, int(timeout.Seconds()))
 		}
-		output, err := h.Command("echo", nil, context.Background())
-		if err == nil || len(output) > 0 {
-			return nil
+		if err := h.Connect(timeout); err != nil {
+			time.Sleep(constants.SSHSleepBetweenChecks)
+			continue
+		}
+		if h.Connected() {
+			output, err := h.Command("echo", nil, context.Background())
+			fmt.Println(string(output))
+			if err == nil || len(output) > 0 {
+				return nil
+			}
 		}
 		time.Sleep(constants.SSHSleepBetweenChecks)
+		fmt.Println("---------------WAIT FOR SSH SHELL---------------")
 	}
 }
 

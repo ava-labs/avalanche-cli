@@ -216,15 +216,15 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := updateAnsiblePublicIPs(clusterName); err != nil {
-		return err
-	}
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
 	avalancheGoVersion, err := getAvalancheGoVersion()
 	if err != nil {
 		return err
 	}
 	if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
+		return err
+	}
+	if err := updateAnsiblePublicIPs(clusterName); err != nil {
 		return err
 	}
 	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
@@ -251,17 +251,21 @@ func createNodes(_ *cobra.Command, args []string) error {
 	for _, host := range hosts {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host models.Host) {
+			fmt.Println("------------------0")
 			defer wg.Done()
 			host.Connect(constants.SSHScriptTimeout)
+			fmt.Println("------------------1")
 			defer host.Disconnect()
 			if err := provideStakingCertAndKey(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
+			fmt.Println("------------------2")
 			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), avalancheGoVersion); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
+			fmt.Println("------------------3")
 			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
@@ -625,7 +629,7 @@ func waitForHosts(hosts []models.Host) *models.NodeResults {
 		createdWaitGroup.Add(1)
 		go func(nodeResults *models.NodeResults, host models.Host) {
 			defer createdWaitGroup.Done()
-			if err := host.WaitForSSHShell(constants.SSHFileOpsTimeout); err != nil {
+			if err := host.WaitForSSHShell(2 * constants.SSHFileOpsTimeout); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
