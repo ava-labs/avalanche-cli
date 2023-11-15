@@ -53,7 +53,7 @@ func NewHostConnection(h Host, timeout time.Duration) *HostConnection {
 		Auth:    auth,
 		Timeout: timeout,
 		// #nosec G106
-		Callback: ssh.InsecureIgnoreHostKey(), //we don't verify host key ( similar to ansible)
+		Callback: ssh.InsecureIgnoreHostKey(), // we don't verify host key ( similar to ansible)
 	})
 	if err != nil {
 		return nil
