@@ -13,15 +13,18 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
 	"github.com/spf13/cobra"
 )
 
 const (
-	healthCheckPoolTime = 10 * time.Second
-	healthCheckTimeout  = 1 * time.Minute
-	syncCheckPoolTime   = 10 * time.Second
-	syncCheckTimeout    = 1 * time.Minute
+	healthCheckPoolTime   = 10 * time.Second
+	healthCheckTimeout    = 1 * time.Minute
+	syncCheckPoolTime     = 10 * time.Second
+	syncCheckTimeout      = 1 * time.Minute
+	validateCheckPoolTime = 10 * time.Second
+	validateCheckTimeout  = 1 * time.Minute
 )
 
 func newWizCmd() *cobra.Command {
@@ -46,6 +49,7 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&cmdLineGCPProjectName, "gcp-project", "", "use given GCP project")
 	cmd.Flags().StringVar(&cmdLineAlternativeKeyPairName, "alternative-key-pair-name", "", "key pair name to use if default one generates conflicts")
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
+	cmd.Flags().BoolVar(&defaultValidatorParams, "default-validator-params", false, "use default weight/start/duration params for subnet validator")
 	return cmd
 }
 
@@ -71,15 +75,28 @@ func wiz(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		err = waitForHealthyCluster(clusterName, healthCheckTimeout)
-		if err != nil {
-			return err
-		}
-		err = deploySubnet(cmd, []string{clusterName, subnetName})
 	*/
 	/*
-		err := syncSubnet(cmd, []string{clusterName, subnetName})
-	*/
+	 */
+	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("Deploying the subnet"))
+	ux.Logger.PrintToUser("")
+	if err := deploySubnet(cmd, []string{clusterName, subnetName}); err != nil {
+		return err
+	}
+
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("Setting the nodes as subnet trackers"))
+	ux.Logger.PrintToUser("")
+	if err := syncSubnet(cmd, []string{clusterName, subnetName}); err != nil {
+		return err
+	}
+	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
+		return err
+	}
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
@@ -88,15 +105,30 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if blockchainID == ids.Empty {
 		return ErrNoBlockchainID
 	}
-	err = waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Syncing, syncCheckTimeout, syncCheckPoolTime)
-	err = waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Validating, syncCheckTimeout, syncCheckPoolTime)
-	return err
+	if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Syncing, syncCheckTimeout, syncCheckPoolTime); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("Adding nodes as subnet validators"))
+	ux.Logger.PrintToUser("")
+	if err := validateSubnet(cmd, []string{clusterName, subnetName}); err != nil {
+		return err
+	}
+	if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Validating, validateCheckTimeout, validateCheckPoolTime); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s has been created and is validating subnet %s!"), clusterName, subnetName)
+	return nil
 }
 
-func waitForHealthyCluster(clusterName string, timeout time.Duration) error {
+func waitForHealthyCluster(
+	clusterName string,
+	timeout time.Duration,
+	poolTime time.Duration,
+) error {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Waiting for node(s) in cluster %s to be healthy...", clusterName)
-	ux.Logger.PrintToUser("")
 	startTime := time.Now()
 	for {
 		notHealthyNodes, err := checkClusterIsHealthy(clusterName)
@@ -118,7 +150,7 @@ func waitForHealthyCluster(clusterName string, timeout time.Duration) error {
 			ux.Logger.PrintToUser("")
 			return fmt.Errorf("cluster not healthy after %d seconds", uint32(timeout.Seconds()))
 		}
-		time.Sleep(healthCheckPoolTime)
+		time.Sleep(poolTime)
 	}
 }
 
@@ -145,7 +177,6 @@ func waitForClusterSubnetStatus(
 	}
 	startTime := time.Now()
 	for {
-		failedNodes := []string{}
 		if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(
 			app.GetAnsibleDir(),
 			app.GetSubnetSyncJSONFile(),
@@ -155,6 +186,7 @@ func waitForClusterSubnetStatus(
 		); err != nil {
 			return err
 		}
+		failedNodes := []string{}
 		for _, ansibleHostID := range ansibleHostIDs {
 			subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile() + "." + ansibleHostID)
 			if err != nil {
