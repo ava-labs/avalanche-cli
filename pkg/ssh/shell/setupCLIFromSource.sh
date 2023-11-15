@@ -1,4 +1,4 @@
-#!/ust/bin/env bash
+#!/usr/bin/env bash
 #name:TASK [install avalanche-cli from source]
 cd ~
 rm -rf avalanche-cli

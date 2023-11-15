@@ -22,6 +22,7 @@ type scriptInputs struct {
 	GoVersion            string
 	CliBranch            string
 	IsDevNet             bool
+	NetworkFlag          string
 }
 
 //go:embed shell/*.sh
@@ -124,8 +125,8 @@ func RunSSHExportSubnet(host models.Host, exportPath, cloudServerSubnetPath stri
 
 // RunSSHExportSubnet exports deployed Subnet from local machine to cloud server
 // targets a specific host ansibleHostID in ansible inventory file
-func RunSSHTrackSubnet(host models.Host, subnetName, importPath string) error {
-	return RunOverSSH("Track Subnet", host, "shell/trackSubnet.sh", scriptInputs{SubnetName: subnetName, SubnetExportFileName: importPath})
+func RunSSHTrackSubnet(host models.Host, subnetName, importPath, networkFlag string) error {
+	return RunOverSSH("Track Subnet", host, "shell/trackSubnet.sh", scriptInputs{SubnetName: subnetName, SubnetExportFileName: importPath, NetworkFlag: networkFlag})
 }
 
 // RunSSHUpdateSubnet runs avalanche subnet join <subnetName> in cloud server using update subnet info

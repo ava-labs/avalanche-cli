@@ -6,7 +6,6 @@ package ansible
 import (
 	"bufio"
 	"bytes"
-	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,12 +20,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 )
-
-//go:embed playbook/*
-var playbook embed.FS
-
-//go:embed ansible.cfg
-var config []byte
 
 // CreateAnsibleHostInventory creates inventory file to be used for Ansible playbook commands
 // specifies the ip address of the cloud server and the corresponding ssh cert path for the cloud server
@@ -56,14 +49,6 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 		}
 	}
 	return nil
-}
-
-func Setup(ansibleDir string) error {
-	err := WriteCfgFile(ansibleDir)
-	if err != nil {
-		return err
-	}
-	return WritePlaybookFiles(ansibleDir)
 }
 
 // GetAnsibleHostsFromInventory gets alias of all hosts in an inventory file
@@ -109,6 +94,22 @@ func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]models.Hos
 	return inventory, nil
 }
 
+func GetHostByNodeID(nodeID string, inventoryDirPath string) (models.Host, error) {
+	allHosts, err := GetInventoryFromAnsibleInventoryFile(inventoryDirPath)
+	if err != nil {
+		return models.Host{}, err
+	} else {
+		hosts := utils.Filter(allHosts, func(h models.Host) bool { return h.NodeID == nodeID })
+		if len(hosts) == 1 {
+			return hosts[0], nil
+		} else if len(hosts) == 0 {
+			return models.Host{}, errors.New("host not found")
+		} else {
+			return models.Host{}, errors.New("multiple hosts found")
+		}
+	}
+}
+
 func GetHostMapfromAnsibleInventory(inventoryDirPath string) (map[string]models.Host, error) {
 	hostMap := map[string]models.Host{}
 	inventory, err := GetInventoryFromAnsibleInventoryFile(inventoryDirPath)
@@ -119,74 +120,6 @@ func GetHostMapfromAnsibleInventory(inventoryDirPath string) (map[string]models.
 		hostMap[host.NodeID] = host
 	}
 	return hostMap, nil
-}
-
-// RunAnsiblePlaybookExportSubnet exports deployed Subnet from local machine to cloud server
-// targets a specific host ansibleHostID in ansible inventory file
-func RunAnsiblePlaybookExportSubnet(ansibleDir, inventoryPath, subnetPath, ansibleHostID string) error {
-	playbookInputs := "target=" + ansibleHostID + " subnetPath=" + subnetPath
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.ExportSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	cmd.Dir = ansibleDir
-	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
-	cmdErr := cmd.Run()
-	if err := displayErrMsg(stdoutBuffer); err != nil {
-		return err
-	}
-	if err := displayErrMsg(stderrBuffer); err != nil {
-		return err
-	}
-	return cmdErr
-}
-
-// RunAnsiblePlaybookTrackSubnet runs avalanche subnet join <subnetName> in cloud server
-// targets a specific host ansibleHostID in ansible inventory file
-func RunAnsiblePlaybookTrackSubnet(
-	ansibleDir string,
-	network models.Network,
-	subnetName string,
-	importPath string,
-	inventoryPath string,
-	ansibleHostID string,
-) error {
-	networkFlag := ""
-	switch network.Kind {
-	case models.Local:
-		networkFlag = "--local"
-	case models.Devnet:
-		networkFlag = "--devnet"
-	case models.Fuji:
-		networkFlag = "--fuji"
-	case models.Mainnet:
-		networkFlag = "--mainnet"
-	}
-	playbookInputs := "target=" + ansibleHostID + " subnetExportFileName=" + importPath + " subnetName=" + subnetName + " networkFlag=" + networkFlag
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.TrackSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	cmd.Dir = ansibleDir
-	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
-	cmdErr := cmd.Run()
-	if err := displayErrMsg(stdoutBuffer); err != nil {
-		return err
-	}
-	if err := displayErrMsg(stderrBuffer); err != nil {
-		return err
-	}
-	return cmdErr
-}
-
-// RunAnsiblePlaybookUpdateSubnet runs avalanche subnet join <subnetName> in cloud server using update subnet info
-func RunAnsiblePlaybookUpdateSubnet(ansibleDir, subnetName, importPath, inventoryPath, ansibleHostID string) error {
-	playbookInputs := "target=" + ansibleHostID + " subnetExportFileName=" + importPath + " subnetName=" + subnetName
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.UpdateSubnetPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	cmd.Dir = ansibleDir
-	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
-	cmdErr := cmd.Run()
-	if err := displayErrMsg(stdoutBuffer); err != nil {
-		return err
-	}
-	if err := displayErrMsg(stderrBuffer); err != nil {
-		return err
-	}
-	return cmdErr
 }
 
 func displayErrMsg(buffer *bytes.Buffer) error {
@@ -242,55 +175,6 @@ func getStringSeqFromISeq(lines []interface{}) []string {
 		}
 	}
 	return seq
-}
-
-// RunAnsiblePlaybookCheckAvalancheGoVersion checks if node is bootstrapped to primary network
-// targets a specific host ansibleHostID in ansible inventory file
-func RunAnsiblePlaybookCheckAvalancheGoVersion(ansibleDir, avalancheGoPath, inventoryPath, ansibleHostID string) error {
-	playbookInput := "target=" + ansibleHostID + " avalancheGoJsonPath=" + avalancheGoPath
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.AvalancheGoVersionPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInput, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	cmd.Dir = ansibleDir
-	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, false, false)
-	cmdErr := cmd.Run()
-	if err := displayErrMsg(stdoutBuffer); err != nil {
-		return err
-	}
-	if err := displayErrMsg(stderrBuffer); err != nil {
-		return err
-	}
-	return cmdErr
-}
-
-// RunAnsiblePlaybookCheckBootstrapped checks if node is bootstrapped to primary network
-// targets a specific host ansibleHostID in ansible inventory file
-func RunAnsiblePlaybookCheckBootstrapped(ansibleDir, isBootstrappedPath, inventoryPath, ansibleHostID string) error {
-	playbookInputs := "target=" + ansibleHostID + " isBootstrappedJsonPath=" + isBootstrappedPath
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsBootstrappedPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	cmd.Dir = ansibleDir
-	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, false, false)
-	cmdErr := cmd.Run()
-	if err := displayErrMsg(stdoutBuffer); err != nil {
-		return err
-	}
-	if err := displayErrMsg(stderrBuffer); err != nil {
-		return err
-	}
-	return cmdErr
-}
-
-func RunAnsiblePlaybookCheckHealthy(ansibleDir, isHealthyPath, inventoryPath, ansibleHostID string) error {
-	playbookInputs := "target=" + ansibleHostID + " isHealthyJsonPath=" + isHealthyPath
-	cmd := exec.Command(constants.AnsiblePlaybook, constants.IsHealthyPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
-	cmd.Dir = ansibleDir
-	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, false, false)
-	cmdErr := cmd.Run()
-	if err := displayErrMsg(stdoutBuffer); err != nil {
-		return err
-	}
-	if err := displayErrMsg(stderrBuffer); err != nil {
-		return err
-	}
-	return cmdErr
 }
 
 // RunAnsiblePlaybookSubnetSyncStatus checks if node is synced to subnet
