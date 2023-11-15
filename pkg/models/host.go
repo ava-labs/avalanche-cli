@@ -213,7 +213,6 @@ func HostAnsibleIDToCloudID(hostAnsibleID string) (string, string, error) {
 func (h *Host) WaitForSSHPort(timeout time.Duration) error {
 	start := time.Now()
 	deadline := start.Add(timeout)
-
 	for {
 		if time.Now().After(deadline) {
 			return fmt.Errorf("timeout: SSH port %d on host %s is not available after %vs", constants.SSHTCPPort, h.IP, timeout.Seconds())
@@ -248,7 +247,6 @@ func (h *Host) WaitForSSHShell(timeout time.Duration) error {
 			}
 		}
 		time.Sleep(constants.SSHSleepBetweenChecks)
-		fmt.Println("---------------WAIT FOR SSH SHELL---------------")
 	}
 }
 
