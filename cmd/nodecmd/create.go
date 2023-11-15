@@ -242,18 +242,8 @@ func createNodes(_ *cobra.Command, args []string) error {
 		return err
 	}
 	createdAnsibleHostIDs := strings.Join(ansibleHostIDs, ",")
-	if err = runAnsible(inventoryPath, network, avalancheGoVersion, clusterName, createdAnsibleHostIDs); err != nil {
+	if err := runAnsible(inventoryPath, network, avalancheGoVersion, clusterName, createdAnsibleHostIDs); err != nil {
 		return err
-	}
-	if err = setupBuildEnv(inventoryPath, createdAnsibleHostIDs); err != nil {
-		return err
-	}
-
-	if network.Kind == models.Devnet {
-		ux.Logger.PrintToUser("Setting up Devnet ...")
-		if err := setupDevnet(clusterName); err != nil {
-			return err
-		}
 	}
 
 	printResults(cloudConfig, publicIPMap, ansibleHostIDs)
@@ -365,7 +355,19 @@ func runAnsible(inventoryPath string, network models.Network, avalancheGoVersion
 	); err != nil {
 		return err
 	}
-	return ansible.RunAnsiblePlaybookSetupCLIFromSource(app.GetAnsibleDir(), inventoryPath, constants.SetupCLIFromSourceBranch, ansibleHostIDs)
+	if err := setupBuildEnv(inventoryPath, ansibleHostIDs); err != nil {
+		return err
+	}
+	if err := ansible.RunAnsiblePlaybookSetupCLIFromSource(app.GetAnsibleDir(), inventoryPath, constants.SetupCLIFromSourceBranch, ansibleHostIDs); err != nil {
+		return err
+	}
+	if network.Kind == models.Devnet {
+		ux.Logger.PrintToUser("Setting up Devnet ...")
+		if err := setupDevnet(clusterName); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func setupBuildEnv(inventoryPath, ansibleHostIDs string) error {
