@@ -136,9 +136,7 @@ func waitForHealthyCluster(
 			return err
 		}
 		if len(notHealthyNodes) == 0 {
-			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser("Nodes healthy after %d seconds", uint32(time.Since(startTime).Seconds()))
-			ux.Logger.PrintToUser("")
 			return nil
 		}
 		if time.Since(startTime) > timeout {
@@ -164,7 +162,6 @@ func waitForClusterSubnetStatus(
 ) error {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Waiting for node(s) in cluster %s to be %s subnet %s...", clusterName, strings.ToLower(targetStatus.String()), subnetName)
-	ux.Logger.PrintToUser("")
 	if err := app.CreateAnsibleStatusDir(); err != nil {
 		return err
 	}
@@ -198,7 +195,6 @@ func waitForClusterSubnetStatus(
 		}
 		if len(failedNodes) == 0 {
 			ux.Logger.PrintToUser("Nodes %s %s after %d seconds", targetStatus.String(), subnetName, uint32(time.Since(startTime).Seconds()))
-			ux.Logger.PrintToUser("")
 			return nil
 		}
 		if time.Since(startTime) > timeout {
