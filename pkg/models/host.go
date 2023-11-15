@@ -241,7 +241,6 @@ func (h *Host) WaitForSSHShell(timeout time.Duration) error {
 		}
 		if h.Connected() {
 			output, err := h.Command("echo", nil, context.Background())
-			fmt.Println(string(output))
 			if err == nil || len(output) > 0 {
 				return nil
 			}
