@@ -31,7 +31,7 @@ func scriptLog(nodeID string, line string) string {
 	return fmt.Sprintf("[%s] %s", nodeID, line)
 }
 
-// RunSSHSetupNode runs provided script path over ssh.
+// RunOverSSH runs provided script path over ssh.
 // This script can be template as it will be rendered using scriptInputs vars
 func RunOverSSH(scriptDesc string, host models.Host, scriptPath string, templateVars scriptInputs) error {
 	shellScript, err := script.ReadFile(scriptPath)
@@ -88,12 +88,25 @@ func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string) er
 		return err
 	}
 	// name: copy metrics config to cloud server
-	if err := host.Upload(configPath, fmt.Sprintf("/home/ubuntu/.avalanche-cli/%s", filepath.Base(configPath))); err != nil {
-		return err
-	}
-	return nil
+	return host.Upload(configPath, fmt.Sprintf("/home/ubuntu/.avalanche-cli/%s", filepath.Base(configPath)))
 }
 
+// RunSSHSetupDevNet runs script to setup devnet
+func RunSSHSetupDevNet(host models.Host, nodeInstanceDirPath string) error {
+	if err := host.MkdirAll(constants.CloudNodeConfigPath); err != nil {
+		return err
+	}
+	if err := host.Upload(filepath.Join(nodeInstanceDirPath, constants.GenesisFileName), filepath.Join(constants.CloudNodeConfigPath, constants.GenesisFileName)); err != nil {
+		return err
+	}
+	if err := host.Upload(filepath.Join(nodeInstanceDirPath, constants.NodeFileName), filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName)); err != nil {
+		return err
+	}
+	// name: setup devnet
+	return RunOverSSH("Setup DevNet", host, "shell/cleanupDevnet.sh", scriptInputs{})
+}
+
+// RunSSHUploadStakingFiles uploads staking files to a remote host via SSH.
 func RunSSHUploadStakingFiles(host models.Host, nodeInstanceDirPath string) error {
 	if err := host.MkdirAll(constants.CloudNodeStakingPath); err != nil {
 		return err
@@ -104,10 +117,7 @@ func RunSSHUploadStakingFiles(host models.Host, nodeInstanceDirPath string) erro
 	if err := host.Upload(filepath.Join(nodeInstanceDirPath, constants.StakerKeyFileName), filepath.Join(constants.CloudNodeStakingPath, constants.StakerKeyFileName)); err != nil {
 		return err
 	}
-	if err := host.Upload(filepath.Join(nodeInstanceDirPath, constants.BLSKeyFileName), filepath.Join(constants.CloudNodeStakingPath, constants.BLSKeyFileName)); err != nil {
-		return err
-	}
-	return nil
+	return host.Upload(filepath.Join(nodeInstanceDirPath, constants.BLSKeyFileName), filepath.Join(constants.CloudNodeStakingPath, constants.BLSKeyFileName))
 }
 
 // RunSSHExportSubnet exports deployed Subnet from local machine to cloud server

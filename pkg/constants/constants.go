@@ -181,6 +181,7 @@ const (
 	SubnetEVMArchive             = "subnet-evm_%s_linux_amd64.tar.gz"
 	CloudNodeSubnetEvmBinaryPath = "/home/ubuntu/.avalanchego/plugins/%s"
 	CloudNodeStakingPath         = "/home/ubuntu/.avalanchego/staking/"
+	CloudNodeConfigPath          = "/home/ubuntu/.avalanchego/configs/"
 
 	AvalancheGoInstallDir = "avalanchego"
 	SubnetEVMInstallDir   = "subnet-evm"
