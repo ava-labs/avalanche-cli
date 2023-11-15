@@ -251,21 +251,17 @@ func createNodes(_ *cobra.Command, args []string) error {
 	for _, host := range hosts {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host models.Host) {
-			fmt.Println("------------------0")
 			defer wg.Done()
 			host.Connect(constants.SSHScriptTimeout)
-			fmt.Println("------------------1")
 			defer host.Disconnect()
 			if err := provideStakingCertAndKey(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
-			fmt.Println("------------------2")
 			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), avalancheGoVersion); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
-			fmt.Println("------------------3")
 			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
