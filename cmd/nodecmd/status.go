@@ -74,11 +74,11 @@ func statusNode(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	notHealthyNodes, err := checkClusterIsHealthy(clusterName)
+	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
 	if err != nil {
 		return err
 	}
-	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
+	notHealthyNodes, err := checkClusterIsHealthy(clusterName)
 	if err != nil {
 		return err
 	}
@@ -227,7 +227,7 @@ func printOutput(
 			hostIDs[i],
 			nodeIDs[i],
 			ansibleHosts[ansibleHostID].IP,
-			clustersConfig.Clusters[clusterName].Network.Kind.String(),
+			clustersConfig.Clusters[clusterName].Network.Name(),
 			avagoVersions[ansibleHostID],
 			boostrappedStatus,
 			healthyStatus,

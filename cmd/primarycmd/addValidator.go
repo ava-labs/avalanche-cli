@@ -147,7 +147,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 	switch network.Kind {
 	case models.Fuji:
 		if !useLedger && keyName == "" {
-			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "pay transaction fees", app.GetKeyDir())
+			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, constants.PayTxsFeesMsg, app.GetKeyDir())
 			if err != nil {
 				return err
 			}
@@ -192,7 +192,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", minValStake, weight)
 	}
 
-	kc, err := subnetcmd.GetKeychain(useLedger, ledgerAddresses, keyName, network)
+	kc, err := subnetcmd.GetKeychain(false, useLedger, ledgerAddresses, keyName, network)
 	if err != nil {
 		return err
 	}

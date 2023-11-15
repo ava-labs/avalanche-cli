@@ -34,6 +34,7 @@ const (
 	CreateAWSNode                = "create-aws-node"
 	GetAWSNodeIP                 = "get-aws-node-ip"
 	ClustersConfigFileName       = "cluster_config.json"
+	ClustersConfigVersion        = "1"
 	StakerCertFileName           = "staker.crt"
 	StakerKeyFileName            = "staker.key"
 	BLSKeyFileName               = "signer.key"
@@ -47,8 +48,9 @@ const (
 	APIRequestTimeout = 30 * time.Second
 
 	SimulatePublicNetwork = "SIMULATE_PUBLIC_NETWORK"
-	FujiAPIEndpoint       = "https://api.avax-test.network"
-	MainnetAPIEndpoint    = "https://api.avax.network"
+
+	FujiAPIEndpoint    = "https://api.avax-test.network"
+	MainnetAPIEndpoint = "https://api.avax.network"
 
 	// this depends on bootstrap snapshot
 	LocalAPIEndpoint = "http://127.0.0.1:9650"
@@ -92,6 +94,7 @@ const (
 	DefaultMainnetStakeDuration = "336h"
 	// The absolute minimum is 25 seconds, but set to 1 minute to allow for
 	// time to go through the command
+	DevnetStakingStartLeadTime                   = 30 * time.Second
 	StakingStartLeadTime                         = 5 * time.Minute
 	StakingMinimumLeadTime                       = 25 * time.Second
 	PrimaryNetworkValidatingStartLeadTimeNodeCmd = 20 * time.Second
@@ -232,4 +235,6 @@ const (
 	DefaultWalletCreationTimeout = 5 * time.Second
 
 	DefaultConfirmTxTimeout = 20 * time.Second
+
+	PayTxsFeesMsg = "pay transaction fees"
 )
