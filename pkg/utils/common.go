@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/melbahja/goph"
 )
 
 func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr bool) (*bytes.Buffer, *bytes.Buffer) {
@@ -29,16 +28,6 @@ func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr b
 		cmd.Stderr = io.MultiWriter(&stderrBuffer)
 	}
 	return &stdoutBuffer, &stderrBuffer
-}
-
-func SetupRealtimeCLISSHOutput(cmd *goph.Cmd, redirectStdout bool) *bytes.Buffer {
-	var stdoutBuffer bytes.Buffer
-	if redirectStdout {
-		cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuffer)
-	} else {
-		cmd.Stdout = io.MultiWriter(&stdoutBuffer)
-	}
-	return &stdoutBuffer
 }
 
 // SplitKeyValueStringToMap splits a string with multiple key-value pairs separated by delimiter.
@@ -117,14 +106,4 @@ func MapWithError[T, U any](input []T, f func(T) (U, error)) ([]U, error) {
 		output = append(output, o)
 	}
 	return output, nil
-}
-
-// ListContains checks if a given value is present  as substring in a list of strings or vise versa
-func ListContains(list []string, value string) bool {
-	for _, v := range list {
-		if strings.Contains(v, value) || strings.Contains(value, v) {
-			return true
-		}
-	}
-	return false
 }

@@ -20,7 +20,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"golang.org/x/exp/slices"
 )
 
 //go:embed playbook/*
@@ -120,17 +119,6 @@ func GetHostMapfromAnsibleInventory(inventoryDirPath string) (map[string]models.
 		hostMap[host.NodeID] = host
 	}
 	return hostMap, nil
-}
-
-// FilterHostsByNodeID filters a slice of hosts by their node IDs.
-func FilterHostsByNodeID(hosts []models.Host, cloudIDs []string) []models.Host {
-	filteredHosts := []models.Host{}
-	for _, host := range hosts {
-		if slices.Contains(cloudIDs, host.GetCloudID()) {
-			filteredHosts = append(filteredHosts, host)
-		}
-	}
-	return filteredHosts
 }
 
 func WritePlaybookFiles(ansibleDir string) error {

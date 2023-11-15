@@ -24,6 +24,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
+	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -231,7 +232,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	hosts := ansible.FilterHostsByNodeID(allHosts, cloudConfig.InstanceIDs)
+	hosts := utils.Filter(allHosts, func(h models.Host) bool { return slices.Contains(cloudConfig.InstanceIDs, h.GetCloudID()) })
 	// waiting for all nodes to become accessible
 	failedHosts := waitForHosts(hosts)
 	if failedHosts.Len() > 0 {

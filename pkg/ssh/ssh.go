@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
+	"net/url"
 	"path/filepath"
 	"text/template"
 
@@ -58,10 +59,14 @@ func PostOverSSH(host models.Host, path string, requestBody string) ([]byte, err
 	if path == "" {
 		path = "/ext/info"
 	}
+	localhost, err := url.Parse(constants.LocalAPIEndpoint)
+	if err != nil {
+		return nil, err
+	}
 	requestHeaders := fmt.Sprintf("POST %s HTTP/1.1\r\n"+
 		"Host: %s\r\n"+
 		"Content-Length: %d\r\n"+
-		"Content-Type: application/json\r\n\r\n", path, "127.0.0.1", len(requestBody))
+		"Content-Type: application/json\r\n\r\n", path, localhost.Host, len(requestBody))
 	httpRequest := requestHeaders + requestBody
 	// ignore response header
 	_, responseBody, err := host.Forward(httpRequest)
@@ -78,7 +83,7 @@ func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string) er
 		return err
 	}
 	// name: copy metrics config to cloud server
-	return host.Upload(configPath, fmt.Sprintf("/home/ubuntu/.avalanche-cli/%s", filepath.Base(configPath)))
+	return host.Upload(configPath, filepath.Join(constants.CloudNodeConfigBasePath, filepath.Base(configPath)))
 }
 
 // RunSSHSetupDevNet runs script to setup devnet
