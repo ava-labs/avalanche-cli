@@ -132,6 +132,10 @@ func (app *Avalanche) GetAnsibleDir() string {
 	return filepath.Join(app.GetNodesDir(), constants.AnsibleDir)
 }
 
+func (app *Avalanche) GetMonitoringDir() string {
+	return filepath.Join(app.GetNodesDir(), constants.MonitoringDir)
+}
+
 func (app *Avalanche) CreateAnsibleDir() error {
 	ansibleDir := app.GetAnsibleDir()
 	if _, err := os.Stat(ansibleDir); os.IsNotExist(err) {
@@ -737,6 +741,10 @@ func (app *Avalanche) GetAnsibleStatusDir() string {
 
 func (app *Avalanche) GetBootstrappedJSONFile() string {
 	return filepath.Join(app.GetAnsibleStatusDir(), constants.IsBootstrappedJSONFile)
+}
+
+func (app *Avalanche) GetMonitoringScriptFile() string {
+	return filepath.Join(app.GetMonitoringDir(), constants.MonitoringScriptFile)
 }
 
 func (app *Avalanche) GetHealthyJSONFile() string {

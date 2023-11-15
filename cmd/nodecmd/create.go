@@ -386,7 +386,10 @@ func runAnsible(inventoryPath string, network models.Network, avalancheGoVersion
 	); err != nil {
 		return err
 	}
-	return ansible.RunAnsiblePlaybookSetupMonitoring(app.GetAnsibleDir(), inventoryPath, ansibleHostIDs)
+	if !separateMonitoringInstance {
+		return ansible.RunAnsiblePlaybookSetupMonitoring(app.GetAnsibleDir(), inventoryPath, ansibleHostIDs)
+	}
+	return ansible.RunAnsiblePlaybookSetupSeparateMonitoring(app.GetAnsibleDir(), inventoryPath, ansibleHostIDs, app.GetMonitoringScriptFile(), "\\'localhost:9650\\',\\'54.215.90.166:9650\\'", "\\'localhost:9100\\',\\'54.215.90.166:9100\\'")
 }
 
 func setupBuildEnv(inventoryPath, ansibleHostIDs string) error {

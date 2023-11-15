@@ -576,3 +576,21 @@ func RunAnsiblePlaybookSetupMonitoring(ansibleDir, inventoryPath, ansibleHostIDs
 	}
 	return cmdErr
 }
+
+// RunAnsiblePlaybookSetupSeparateMonitoring sets up monitoring in a separate cloud server
+// targets all hosts in ansible inventory file
+func RunAnsiblePlaybookSetupSeparateMonitoring(ansibleDir, inventoryPath, ansibleHostIDs, monitoringScriptPath, arg1, arg2 string) error {
+	fmt.Printf("running RunAnsiblePlaybookSetupSeparateMonitoring %s %s %s \n", monitoringScriptPath, arg1, arg2)
+	playbookInputs := "target=" + ansibleHostIDs + " monitoringScriptPath=" + monitoringScriptPath + " arg1=" + arg1 + " arg2=" + arg2
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupNodeSeparateMonitoringPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
