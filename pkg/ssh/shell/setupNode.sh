@@ -16,3 +16,7 @@ wget -nd -m https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/script
 chmod 755 install.sh
 #name:TASK [run install script]
 ./install.sh -n
+{{if .IsDevNet}}
+#name:TASK [stop avalanchego in case of devnet]
+sudo systemctl stop avalanchego
+{{end}}

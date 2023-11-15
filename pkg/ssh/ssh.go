@@ -21,6 +21,7 @@ type scriptInputs struct {
 	SubnetName           string
 	GoVersion            string
 	CliBranch            string
+	IsDevNet             bool
 }
 
 //go:embed shell/*.sh
@@ -77,9 +78,9 @@ func PostOverSSH(host models.Host, path string, requestBody string) ([]byte, err
 }
 
 // RunSSHSetupNode runs script to setup node
-func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string) error {
+func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string, IsDevNet bool) error {
 	// name: setup node
-	if err := RunOverSSH("Setup Node", host, "shell/setupNode.sh", scriptInputs{AvalancheGoVersion: avalancheGoVersion}); err != nil {
+	if err := RunOverSSH("Setup Node", host, "shell/setupNode.sh", scriptInputs{AvalancheGoVersion: avalancheGoVersion, IsDevNet: IsDevNet}); err != nil {
 		return err
 	}
 	// name: copy metrics config to cloud server
