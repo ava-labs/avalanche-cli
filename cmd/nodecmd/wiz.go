@@ -56,28 +56,28 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 func wiz(cmd *cobra.Command, args []string) error {
 	clusterName := args[0]
 	subnetName := args[1]
-	/*
-		exists, err := clusterExists(clusterName)
-		if err != nil {
-			return err
-		}
-		if exists {
-			return fmt.Errorf("cluster %s already exists", clusterName)
-		}
-		if !app.SidecarExists(subnetName) {
-			fmt.Println("creating subnet")
-			return nil
-		}
-		// node create
-		createDevnet = true
-		useAvalanchegoVersionFromSubnet = subnetName
-		err = createNodes(cmd, []string{clusterName})
-		if err != nil {
-			return err
-		}
-	*/
-	/*
-	 */
+	exists, err := clusterExists(clusterName)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return fmt.Errorf("cluster %s already exists", clusterName)
+	}
+	if !app.SidecarExists(subnetName) {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(logging.Green.Wrap("Creating the subnet"))
+		ux.Logger.PrintToUser("")
+		return nil
+	}
+	createDevnet = true
+	useAvalanchegoVersionFromSubnet = subnetName
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("Creating the devnet"))
+	ux.Logger.PrintToUser("")
+	err = createNodes(cmd, []string{clusterName})
+	if err != nil {
+		return err
+	}
 	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err
 	}
