@@ -157,6 +157,13 @@ func RunSSHCheckBootstrapped(host models.Host) ([]byte, error) {
 	return PostOverSSH(host, "", requestBody)
 }
 
+// RunSSHCheckHealthy checks if node is healthy
+func RunSSHCheckHealthy(host models.Host) ([]byte, error) {
+	// Craft and send the HTTP POST request
+	requestBody := "{\"jsonrpc\":\"2.0\", \"id\":1,\"method\" :\"health.health\"}"
+	return PostOverSSH(host, "ext/health", requestBody)
+}
+
 // RunSSHGetNodeID reads nodeID from avalanchego
 func RunSSHGetNodeID(host models.Host) ([]byte, error) {
 	// Craft and send the HTTP POST request

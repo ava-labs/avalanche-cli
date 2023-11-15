@@ -48,9 +48,6 @@ func upgrade(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	if err := setupAnsible(clusterName); err != nil {
-		return err
-	}
 	toUpgradeNodesMap, err := getNodesUpgradeInfo(clusterName)
 	if err != nil {
 		return err

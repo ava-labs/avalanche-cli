@@ -296,7 +296,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 
 	if wgResults.HasErrors() {
-		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErroHosts())
+		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHosts())
 	} else {
 		printResults(cloudConfig, publicIPMap, ansibleHostIDs)
 		ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
@@ -376,28 +376,6 @@ func addNodeToClustersConfig(network models.Network, nodeID, clusterName string)
 		Nodes:   append(nodes, nodeID),
 	}
 	return app.WriteClustersConfigFile(&clustersConfig)
-}
-
-// setupAnsible we need to remove existing ansible directory and its contents in .avalanche-cli dir
-// before calling every ansible run command just in case there is a change in playbook
-func setupAnsible(clusterName string) error {
-	err := app.SetupAnsibleEnv()
-	if err != nil {
-		return err
-	}
-	if err = ansible.Setup(app.GetAnsibleDir()); err != nil {
-		return err
-	}
-	return updateAnsiblePublicIPs(clusterName)
-}
-
-func setupBuildEnv(inventoryPath, ansibleHostIDs string) error {
-	ux.Logger.PrintToUser("Installing Custom VM build environment on the cloud server(s) ...")
-	ansibleTargetHosts := "all"
-	if ansibleHostIDs != "" {
-		ansibleTargetHosts = ansibleHostIDs
-	}
-	return ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath, ansibleTargetHosts)
 }
 
 func getNodeID(nodeDir string) (ids.NodeID, error) {

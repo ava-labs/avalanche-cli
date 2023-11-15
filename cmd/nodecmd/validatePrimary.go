@@ -400,9 +400,6 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := setupAnsible(clusterName); err != nil {
-		return err
-	}
 	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
 	if err != nil {
 		return err
@@ -417,6 +414,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	if len(notHealthyNodes) > 0 {
 		return fmt.Errorf("node(s) %s are not healthy, please fix the issue and again", notHealthyNodes)
 	}
+	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
 	ansibleNodeIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
@@ -424,7 +422,6 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	nodeIDMap, failedNodesMap := getNodeIDs(ansibleNodeIDs)
 	failedNodes := []string{}
 	nodeErrors := []error{}
-	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
 	for i, ansibleNodeID := range ansibleNodeIDs {
 		nodeIDStr, b := nodeIDMap[ansibleNodeID]
 		if !b {

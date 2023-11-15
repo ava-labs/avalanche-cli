@@ -225,7 +225,7 @@ func setupDevnet(clusterName string) error {
 	}
 	// stop execution if at least one node failed
 	if wgResults.HasErrors() {
-		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErroHosts())
+		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHosts())
 	}
 
 	// update cluster config with network information

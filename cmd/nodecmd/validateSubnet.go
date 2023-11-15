@@ -175,9 +175,6 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := setupAnsible(clusterName); err != nil {
-		return err
-	}
 	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
 	if err != nil {
 		return err

@@ -8,9 +8,11 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"google.golang.org/api/compute/v1"
 
@@ -125,9 +127,6 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	if err := setupAnsible(clusterName); err != nil {
-		return err
-	}
 	if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 		return err
 	}
@@ -164,8 +163,34 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
 	}
-	if err := setupBuildEnv(app.GetAnsibleInventoryDirPath(clusterName), ""); err != nil {
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
 		return err
+	}
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	for _, host := range hosts {
+		wg.Add(1)
+		go func(nodeResults *models.NodeResults, host models.Host) {
+			defer wg.Done()
+			if err := host.Connect(constants.SSHPOSTTimeout); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			defer func() {
+				if err := host.Disconnect(); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+				}
+			}()
+			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+		}(&wgResults, host)
+	}
+	wg.Wait()
+	if wgResults.HasErrors() {
+		return fmt.Errorf("failed to get setup build env for node(s) %s", wgResults.GetErrorHosts())
 	}
 	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {

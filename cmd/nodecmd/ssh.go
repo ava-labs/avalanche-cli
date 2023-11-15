@@ -63,27 +63,13 @@ func sshCluster(args []string, indent string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	if err := setupAnsible(clusterName); err != nil {
-		return err
-	}
-	ansibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
-	ansibleHosts, err := ansible.GetHostMapfromAnsibleInventory(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return err
-	}
-	for _, host := range ansibleHostIDs {
-		_, cloudID, err := models.HostAnsibleIDToCloudID(host)
-		if err != nil {
-			return err
-		}
-		cmdLine := utils.GetSSHConnectionString(
-			ansibleHosts[host].IP,
-			fmt.Sprintf("%s %s", ansibleHosts[host].SSHPrivateKeyPath, strings.Join(args[1:], " ")),
-		)
-		ux.Logger.PrintToUser("%s[%s] %s", indent, cloudID, cmdLine)
+	for _, host := range hosts {
+		cmdLine := fmt.Sprintf("%s %s", utils.GetSSHConnectionString(host.IP, host.SSHPrivateKeyPath), strings.Join(args[1:], " "))
+		ux.Logger.PrintToUser("%s[%s] %s", indent, host.GetCloudID(), cmdLine)
 		if len(args) > 1 {
 			splitCmdLine := strings.Split(cmdLine, " ")
 			cmd := exec.Command(splitCmdLine[0], splitCmdLine[1:]...) //nolint: gosec
