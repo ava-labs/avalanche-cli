@@ -199,8 +199,15 @@ func setupDevnet(clusterName string) error {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host models.Host) {
 			defer wg.Done()
-			host.Connect(constants.SSHScriptTimeout)
-			defer host.Disconnect()
+			if err := host.Connect(constants.SSHScriptTimeout); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			defer func() {
+				if err := host.Disconnect(); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+				}
+			}()
 			keyPath := filepath.Join(app.GetNodesDir(), host.GetCloudID())
 			if err := ssh.RunSSHSetupDevNet(host, keyPath); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)

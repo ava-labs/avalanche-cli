@@ -39,7 +39,7 @@ func (nr *NodeResults) Len() int {
 func (nr *NodeResults) GetNodeList() []string {
 	nr.Lock.Lock()
 	defer nr.Lock.Unlock()
-	var nodes []string
+	nodes := []string{}
 	for _, node := range nr.Results {
 		nodes = append(nodes, node.NodeID)
 	}

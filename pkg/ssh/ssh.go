@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"text/template"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -49,19 +48,10 @@ func RunOverSSH(scriptDesc string, host models.Host, scriptPath string, template
 		return err
 	}
 	ux.Logger.PrintToUser(scriptLog(host.NodeID, scriptDesc))
-	if _, err := host.Command(script.String(), nil, host.Connection.Ctx); isSSHHandshakeEOFError(err) {
-		// retry once after pause
-		time.Sleep(2 * constants.SSHSleepBetweenChecks)
-		_, err = host.Command(script.String(), nil, host.Connection.Ctx)
-	}
-	if err != nil {
+	if _, err := host.Command(script.String(), nil, host.Connection.Ctx); err != nil {
 		return err
 	}
 	return nil
-}
-
-func isSSHHandshakeEOFError(err error) bool {
-	return err != nil && err.Error() == "ssh: handshake failed: EOF"
 }
 
 func PostOverSSH(host models.Host, path string, requestBody string) ([]byte, error) {

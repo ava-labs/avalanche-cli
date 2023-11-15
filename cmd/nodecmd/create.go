@@ -252,8 +252,15 @@ func createNodes(_ *cobra.Command, args []string) error {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host models.Host) {
 			defer wg.Done()
-			host.Connect(constants.SSHScriptTimeout)
-			defer host.Disconnect()
+			if err := host.Connect(constants.SSHScriptTimeout); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			defer func() {
+				if err := host.Disconnect(); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+				}
+			}()
 			if err := provideStakingCertAndKey(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
