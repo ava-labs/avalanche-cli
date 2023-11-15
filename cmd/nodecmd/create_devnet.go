@@ -216,15 +216,6 @@ func setupDevnet(clusterName string) error {
 			ux.Logger.PrintToUser("Node %s is SETUP as devnet", node.NodeID)
 		}
 	}
-	// update node/s genesis + conf and start
-	if err := ansible.RunAnsiblePlaybookSetupDevnet(
-		app.GetAnsibleDir(),
-		strings.Join(ansibleHostIDs, ","),
-		app.GetNodesDir(),
-		app.GetAnsibleInventoryDirPath(clusterName),
-	); err != nil {
-		return err
-	}
 
 	// update cluster config with network information
 	clustersConfig, err := app.LoadClustersConfig()
