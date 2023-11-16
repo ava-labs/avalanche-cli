@@ -132,6 +132,10 @@ func (app *Avalanche) GetAnsibleDir() string {
 	return filepath.Join(app.GetNodesDir(), constants.AnsibleDir)
 }
 
+func (app *Avalanche) GetNodeConfigDir(nodeID string) string {
+	return filepath.Join(app.GetNodeConfigPath(), constants.AnsibleDir)
+}
+
 func (app *Avalanche) GetMonitoringDir() string {
 	return filepath.Join(app.GetNodesDir(), constants.MonitoringDir)
 }
@@ -743,6 +747,14 @@ func (app *Avalanche) GetBootstrappedJSONFile() string {
 	return filepath.Join(app.GetAnsibleStatusDir(), constants.IsBootstrappedJSONFile)
 }
 
+func (app *Avalanche) GetNodeConfigDir() string {
+	return filepath.Join(app.GetAnsibleDir(), constants.NodeConfigJSONFile)
+}
+
+func (app *Avalanche) GetNodeConfigJSONFile() string {
+	return filepath.Join(app.GetAnsibleDir(), constants.NodeConfigJSONFile)
+}
+
 func (app *Avalanche) GetMonitoringScriptFile() string {
 	return filepath.Join(app.GetMonitoringDir(), constants.MonitoringScriptFile)
 }
@@ -774,6 +786,11 @@ func (app *Avalanche) SetupAnsibleEnv() error {
 // CreateAnsibleStatusDir creates the ansible status directory inside .avalanche-cli
 func (app *Avalanche) CreateAnsibleStatusDir() error {
 	return os.MkdirAll(app.GetAnsibleStatusDir(), constants.DefaultPerms755)
+}
+
+// CreateAnsibleStatusDir creates the ansible status directory inside .avalanche-cli
+func (app *Avalanche) CreateAnsibleNodeConfigDir() error {
+	return os.MkdirAll(app.GetNodeConfigDir(), constants.DefaultPerms755)
 }
 
 // CreateAnsibleStatusFile creates file named fileName in .avalanche-cli ansible status directory

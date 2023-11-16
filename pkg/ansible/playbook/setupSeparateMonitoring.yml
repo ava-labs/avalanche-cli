@@ -13,6 +13,6 @@
     - name: install Grafana
       shell: ./monitoring-separate-installer.sh --2
     - name: set up node_exporter
-      shell: ./monitoring-separate-installer.sh --3 "{{ arg1 }}" "{{ arg2 }}"
+      shell: ./monitoring-separate-installer.sh --3 "{{ avalancheGoPorts }}" "{{ machinePorts }}"
     - name: set up dashboards
       shell: ./monitoring-separate-installer.sh --4

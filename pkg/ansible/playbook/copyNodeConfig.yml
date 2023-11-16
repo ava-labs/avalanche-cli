@@ -1,0 +1,9 @@
+---
+- hosts: "{{ target }}"
+  gather_facts: no
+  tasks:
+    - name: copy node config to local machine
+      fetch:
+        src: /home/ubuntu/.avalanchego/configs/node.json
+        dest: "{{ nodeConfigPath }}.{{ inventory_hostname }}"
+        flat: true

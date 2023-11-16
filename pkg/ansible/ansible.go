@@ -579,10 +579,26 @@ func RunAnsiblePlaybookSetupMonitoring(ansibleDir, inventoryPath, ansibleHostIDs
 
 // RunAnsiblePlaybookSetupSeparateMonitoring sets up monitoring in a separate cloud server
 // targets all hosts in ansible inventory file
-func RunAnsiblePlaybookSetupSeparateMonitoring(ansibleDir, inventoryPath, ansibleHostIDs, monitoringScriptPath, arg1, arg2 string) error {
-	fmt.Printf("running RunAnsiblePlaybookSetupSeparateMonitoring %s %s %s \n", monitoringScriptPath, arg1, arg2)
-	playbookInputs := "target=" + ansibleHostIDs + " monitoringScriptPath=" + monitoringScriptPath + " arg1=" + arg1 + " arg2=" + arg2
+func RunAnsiblePlaybookSetupSeparateMonitoring(ansibleDir, inventoryPath, ansibleHostIDs, monitoringScriptPath, avalancheGoPorts, machinePorts string) error {
+	playbookInputs := "target=" + ansibleHostIDs + " monitoringScriptPath=" + monitoringScriptPath + " avalancheGoPorts=" + avalancheGoPorts + " machinePorts=" + machinePorts
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupNodeSeparateMonitoringPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
+// RunAnsiblePlaybookCopyNodeConfig copies avalanche go config json from cloud server to local machine
+func RunAnsiblePlaybookCopyNodeConfig(ansibleDir, inventoryPath, ansibleHostIDs, nodeConfigPath string) error {
+	fmt.Printf("RunAnsiblePlaybookCopyNodeConfig %s %s \n", ansibleHostIDs, nodeConfigPath)
+	playbookInputs := "target=" + ansibleHostIDs + " nodeConfigPath=" + nodeConfigPath
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.CopyNodeConfigPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
 	cmdErr := cmd.Run()

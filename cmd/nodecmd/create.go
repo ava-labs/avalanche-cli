@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -17,15 +18,14 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
-
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
@@ -250,6 +250,19 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err = runAnsible(inventoryPath, network, avalancheGoVersion, clusterName, createdAnsibleHostIDs); err != nil {
 		return err
 	}
+	if separateMonitoringInstance {
+		if err := app.CreateAnsibleStatusDir(); err != nil {
+			return nil, err
+		}
+		if err = ansible.RunAnsiblePlaybookCopyNodeConfig(app.GetAnsibleDir(), inventoryPath, createdAnsibleHostIDs, app.GetNodeConfigJSONFile()); err != nil {
+			return err
+		}
+		for _, ansibleNodeID := range ansibleHostIDs {
+			if err = addHttpHostToConfigFile(app.GetNodeConfigJSONFile() + "." + ansibleNodeID); err != nil {
+				return err
+			}
+		}
+	}
 	if err = setupBuildEnv(inventoryPath, createdAnsibleHostIDs); err != nil {
 		return err
 	}
@@ -300,6 +313,25 @@ func createClusterNodeConfig(network models.Network, cloudConfig CloudConfig, cl
 		}
 	}
 	return updateKeyPairClustersConfig(cloudConfig)
+}
+
+func addHttpHostToConfigFile(filePath string) error {
+	jsonFile, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+	defer jsonFile.Close()
+	byteValue, _ := io.ReadAll(jsonFile)
+	var result map[string]interface{}
+	if err := json.Unmarshal(byteValue, &result); err != nil {
+		return err
+	}
+	result["http-host"] = "0.0.0.0"
+	byteValue, err = json.MarshalIndent(result, "", "    ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filePath, byteValue, constants.WriteReadReadPerms)
 }
 
 func updateKeyPairClustersConfig(cloudConfig CloudConfig) error {

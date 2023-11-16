@@ -1,0 +1,8 @@
+---
+- hosts: "{{ target }}"
+  gather_facts: no
+  tasks:
+    - name: copy updated avalanche go node config to cloud server
+      copy:
+        src: "{{ nodeConfigPath }}.{{ inventory_hostname }}"
+        dest: /home/ubuntu/.avalanchego/configs/node.json
