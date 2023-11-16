@@ -52,7 +52,9 @@ func checkClusterIsHealthy(clusterName string) ([]string, error) {
 	if wgResults.HasErrors() {
 		return nil, fmt.Errorf("failed to get health status for node(s) %s", wgResults.GetErrorHosts())
 	}
-	return utils.Filter(wgResults.GetNodeList(), func(nodeID string) bool { return wgResults.GetResultMap()[nodeID] == false }), nil
+	return utils.Filter(wgResults.GetNodeList(), func(nodeID string) bool {
+		return !wgResults.GetResultMap()[nodeID].(bool)
+	}), nil
 }
 
 func parseHealthyOutput(byteValue []byte) (bool, error) {

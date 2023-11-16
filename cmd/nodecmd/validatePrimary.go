@@ -326,7 +326,9 @@ func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
 	if wgResults.HasErrors() {
 		return nil, fmt.Errorf("failed to get avalanchego bootrapp status for node(s) %s", wgResults.GetErrorHosts())
 	}
-	return utils.Filter(wgResults.GetNodeList(), func(nodeID string) bool { return wgResults.GetResultMap()[nodeID] == false }), nil
+	return utils.Filter(wgResults.GetNodeList(), func(nodeID string) bool {
+		return !wgResults.GetResultMap()[nodeID].(bool)
+	}), nil
 }
 
 func getNodeIDs(ansibleNodeIDs []string) (map[string]string, map[string]error) {

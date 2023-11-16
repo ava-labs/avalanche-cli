@@ -95,11 +95,12 @@ func GetHostByNodeID(nodeID string, inventoryDirPath string) (models.Host, error
 		return models.Host{}, err
 	} else {
 		hosts := utils.Filter(allHosts, func(h models.Host) bool { return h.NodeID == nodeID })
-		if len(hosts) == 1 {
+		switch len(hosts) {
+		case 1:
 			return hosts[0], nil
-		} else if len(hosts) == 0 {
+		case 0:
 			return models.Host{}, errors.New("host not found")
-		} else {
+		default:
 			return models.Host{}, errors.New("multiple hosts found")
 		}
 	}
