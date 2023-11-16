@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
+	"path/filepath"
 	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -96,7 +97,7 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
-		return fmt.Errorf("failed to get setup build env for node(s) %s", wgResults.GetErrorHosts())
+		return fmt.Errorf("failed to get setup build env for node(s) %s", wgResults.GetErroHostMap())
 	}
 	nonUpdatedNodes, err := doUpdateSubnet(clusterName, subnetName, models.FujiNetwork)
 	if err != nil {
@@ -136,11 +137,12 @@ func doUpdateSubnet(clusterName, subnetName string, network models.Network) ([]s
 					nodeResults.AddResult(host.NodeID, nil, err)
 				}
 			}()
-			if err := ssh.RunSSHExportSubnet(host, subnetPath, "/tmp"); err != nil {
+			subnetExportPath := filepath.Join("/tmp", filepath.Base(subnetPath))
+			if err := ssh.RunSSHExportSubnet(host, subnetPath, subnetExportPath); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
-			if err := ssh.RunSSHUpdateSubnet(host, subnetName, subnetPath); err != nil {
+			if err := ssh.RunSSHUpdateSubnet(host, subnetName, subnetExportPath); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
@@ -148,7 +150,7 @@ func doUpdateSubnet(clusterName, subnetName string, network models.Network) ([]s
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
-		return nil, fmt.Errorf("failed to track subnet for node(s) %s", wgResults.GetErrorHosts())
+		return nil, fmt.Errorf("failed to track subnet for node(s) %s", wgResults.GetErroHostMap())
 	}
 	return wgResults.GetErrorHosts(), nil
 }

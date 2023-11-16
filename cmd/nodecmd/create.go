@@ -293,7 +293,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 
 	if wgResults.HasErrors() {
-		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHosts())
+		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErroHostMap())
 	} else {
 		printResults(cloudConfig, publicIPMap, ansibleHostIDs)
 		ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")

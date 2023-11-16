@@ -50,7 +50,7 @@ func checkClusterIsHealthy(clusterName string) ([]string, error) {
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
-		return nil, fmt.Errorf("failed to get health status for node(s) %s", wgResults.GetErrorHosts())
+		return nil, fmt.Errorf("failed to get health status for node(s) %s", wgResults.GetErroHostMap())
 	}
 	return utils.Filter(wgResults.GetNodeList(), func(nodeID string) bool {
 		return !wgResults.GetResultMap()[nodeID].(bool)

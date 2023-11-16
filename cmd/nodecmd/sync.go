@@ -5,6 +5,7 @@ package nodecmd
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -188,8 +189,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
-		fmt.Println(wgResults.GetErroHostMap())
-		return fmt.Errorf("failed to get setup build env for node(s) %s", wgResults.GetErrorHosts())
+		return fmt.Errorf("failed to get setup build env for node(s) %s", wgResults.GetErroHostMap())
 	}
 	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {
@@ -276,7 +276,7 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
-		return nil, fmt.Errorf("failed to get avalanchego version for node(s) %s", wgResults.GetErrorHosts())
+		return nil, fmt.Errorf("failed to get avalanchego version for node(s) %s", wgResults.GetErroHostMap())
 	}
 	for nodeID, avalancheGoVersion := range wgResults.GetResultMap() {
 		sc, err := app.LoadSidecar(subnetName)
@@ -338,11 +338,12 @@ func trackSubnet(clusterName, subnetName string, network models.Network) ([]stri
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
-			if err := ssh.RunSSHExportSubnet(host, subnetPath, "/tmp"); err != nil {
+			subnetExportPath := filepath.Join("/tmp", filepath.Base(subnetPath))
+			if err := ssh.RunSSHExportSubnet(host, subnetPath, subnetExportPath); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
-			if err := ssh.RunSSHTrackSubnet(host, subnetName, subnetPath, networkFlag); err != nil {
+			if err := ssh.RunSSHTrackSubnet(host, subnetName, subnetExportPath, networkFlag); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
@@ -350,7 +351,8 @@ func trackSubnet(clusterName, subnetName string, network models.Network) ([]stri
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
-		return nil, fmt.Errorf("failed to track subnet for node(s) %s", wgResults.GetErrorHosts())
+		fmt.Println(wgResults.GetErroHostMap())
+		return nil, fmt.Errorf("failed to track subnet for node(s) %s", wgResults.GetErroHostMap())
 	}
 	return wgResults.GetErrorHosts(), nil
 }
