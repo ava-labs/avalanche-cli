@@ -218,7 +218,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 		cloudConfig.InstanceIDs = cloudConfig.InstanceIDs[:len(cloudConfig.InstanceIDs)-1]
 		cloudConfig.PublicIPs = cloudConfig.PublicIPs[:len(cloudConfig.PublicIPs)-1]
 	}
-	fmt.Printf("result of monitoring instance %s %s", monitoringInstanceNodeID, monitoringInstancePublicIP)
 	if cloudService == constants.GCPCloudService {
 		if err = updateClustersConfigGCPKeyFilepath(gcpProjectName, gcpCredentialFilepath); err != nil {
 			return err
@@ -236,8 +235,14 @@ func createNodes(_ *cobra.Command, args []string) error {
 		return err
 	}
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, monitoringInstanceNodeID, publicIPMap); err != nil {
+	monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), "monitoring")
+	if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, monitoringInstanceNodeID, publicIPMap, false); err != nil {
 		return err
+	}
+	if separateMonitoringInstance {
+		if err = ansible.CreateAnsibleHostInventory(monitoringInventoryPath, cloudConfig.CertFilePath, cloudService, monitoringInstanceNodeID, publicIPMap, true); err != nil {
+			return err
+		}
 	}
 
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
@@ -250,8 +255,28 @@ func createNodes(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if separateMonitoringInstance {
+		avalancheGoPorts := []string{}
+		machinePorts := []string{}
+		for _, publicIP := range cloudConfig.PublicIPs {
+			avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("\\'%s:9650\\'", publicIP))
+			machinePorts = append(machinePorts, fmt.Sprintf("\\'%s:9100\\'", publicIP))
+		}
+		monitoringHostID, err := utils.MapWithError([]string{monitoringInstanceNodeID}, func(s string) (string, error) { return models.HostCloudIDToAnsibleID(cloudService, s) })
+		if err != nil {
+			return err
+		}
+		fmt.Printf("monitoringhostid %s \n", monitoringHostID)
+		//if err = ansible.RunAnsiblePlaybookSetupSeparateMonitoring(app.GetAnsibleDir(),
+		//	monitoringInventoryPath, strings.Join(monitoringHostID, ","), app.GetMonitoringScriptFile(),
+		//	"\\'localhost:9650\\',\\'54.215.90.166:9650\\'", "\\'localhost:9100\\',\\'54.215.90.166:9100\\'"); err != nil {
+		//	return err
+		//}
+		if err = ansible.RunAnsiblePlaybookSetupSeparateMonitoring(app.GetAnsibleDir(),
+			monitoringInventoryPath, strings.Join(monitoringHostID, ","), app.GetMonitoringScriptFile(),
+			strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
+			return err
+		}
 		for _, ansibleNodeID := range ansibleHostIDs {
-			fmt.Printf("creating ansible nodeconfig %s \n", ansibleNodeID)
 			if err = app.CreateAnsibleNodeConfigDir(ansibleNodeID); err != nil {
 				return err
 			}
@@ -279,7 +304,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	printResults(cloudConfig, publicIPMap, ansibleHostIDs)
+	printResults(cloudConfig, publicIPMap, ansibleHostIDs, monitoringInstancePublicIP)
 	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	return nil
 }
@@ -426,7 +451,7 @@ func runAnsible(inventoryPath string, network models.Network, avalancheGoVersion
 	if !separateMonitoringInstance {
 		return ansible.RunAnsiblePlaybookSetupMonitoring(app.GetAnsibleDir(), inventoryPath, ansibleHostIDs)
 	}
-	return ansible.RunAnsiblePlaybookSetupSeparateMonitoring(app.GetAnsibleDir(), inventoryPath, ansibleHostIDs, app.GetMonitoringScriptFile(), "\\'localhost:9650\\',\\'54.215.90.166:9650\\'", "\\'localhost:9100\\',\\'54.215.90.166:9100\\'")
+	return nil
 }
 
 func setupBuildEnv(inventoryPath, ansibleHostIDs string) error {
@@ -636,7 +661,7 @@ func setCloudService() (string, error) {
 	return chosenCloudService, nil
 }
 
-func printResults(cloudConfig CloudConfig, publicIPMap map[string]string, ansibleHostIDs []string) {
+func printResults(cloudConfig CloudConfig, publicIPMap map[string]string, ansibleHostIDs []string, monitoringHostIP string) {
 	ux.Logger.PrintToUser("======================================")
 	ux.Logger.PrintToUser("AVALANCHE NODE(S) SUCCESSFULLY SET UP!")
 	ux.Logger.PrintToUser("======================================")
@@ -657,12 +682,21 @@ func printResults(cloudConfig CloudConfig, publicIPMap map[string]string, ansibl
 		ux.Logger.PrintToUser("To ssh to node, run: ")
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(utils.GetSSHConnectionString(publicIP, cloudConfig.CertFilePath))
+		if !separateMonitoringInstance {
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("To view node monitoring dashboard, visit the following link in your browser: ")
+			ux.Logger.PrintToUser(fmt.Sprintf("http://%s:3000/dashboards", publicIP))
+			ux.Logger.PrintToUser("Log in with username: admin, password: admin")
+			ux.Logger.PrintToUser("")
+		}
+		ux.Logger.PrintToUser("======================================")
+	}
+	if separateMonitoringInstance {
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("To view node monitoring dashboard, visit the following link in your browser: ")
-		ux.Logger.PrintToUser(fmt.Sprintf("http://%s:3000/dashboards", publicIP))
+		ux.Logger.PrintToUser("To view unified node monitoring dashboard, visit the following link in your browser: ")
+		ux.Logger.PrintToUser(fmt.Sprintf("http://%s:3000/dashboards", monitoringHostIP))
 		ux.Logger.PrintToUser("Log in with username: admin, password: admin")
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("======================================")
 	}
 	ux.Logger.PrintToUser(fmt.Sprintf("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", cloudConfig.CertFilePath))
 	ux.Logger.PrintToUser("")
