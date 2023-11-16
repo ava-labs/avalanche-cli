@@ -743,10 +743,6 @@ func (app *Avalanche) GetBootstrappedJSONFile() string {
 	return filepath.Join(app.GetAnsibleStatusDir(), constants.IsBootstrappedJSONFile)
 }
 
-func (app *Avalanche) GetNodeConfigDir() string {
-	return filepath.Join(app.GetAnsibleDir(), constants.NodeConfigJSONFile)
-}
-
 func (app *Avalanche) GetNodeConfigJSONFile(nodeID string) string {
 	return filepath.Join(app.GetAnsibleDir(), nodeID, constants.NodeConfigJSONFile)
 }
