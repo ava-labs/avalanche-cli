@@ -76,8 +76,8 @@ const (
 	DefaultSnapshotName          = "default-1654102509"
 	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
 	BootstrapSnapshotLocalPath   = "assets/" + BootstrapSnapshotArchiveName
-	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/" + BootstrapSnapshotLocalPath
-	BootstrapSnapshotSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/sha256sum.txt"
+	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/update-snapshot-validator-times/" + BootstrapSnapshotLocalPath
+	BootstrapSnapshotSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/update-snapshot-validator-times/assets/sha256sum.txt"
 
 	CliInstallationURL      = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
 	ExpectedCliInstallErr   = "resource temporarily unavailable"
