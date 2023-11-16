@@ -146,9 +146,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err := terraform.CheckIsInstalled(); err != nil {
 		return err
 	}
-	if err := ansible.CheckIsInstalled(); err != nil {
-		return err
-	}
 	err = terraform.RemoveDirectory(app.GetTerraformDir())
 	if err != nil {
 		return err

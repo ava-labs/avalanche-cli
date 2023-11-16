@@ -23,6 +23,9 @@ type scriptInputs struct {
 	CliBranch            string
 	IsDevNet             bool
 	NetworkFlag          string
+	SubnetEVMBinaryPath  string
+	SubnetEVMReleaseURL  string
+	SubnetEVMArchive     string
 }
 
 //go:embed shell/*.sh
@@ -86,6 +89,36 @@ func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string, is
 	}
 	// name: copy metrics config to cloud server
 	return host.Upload(configPath, filepath.Join(constants.CloudNodeConfigBasePath, filepath.Base(configPath)))
+}
+
+// RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
+func RunSSHUpgradeAvalanchego(host models.Host, avalancheGoVersion string) error {
+	// name: setup node
+	return RunOverSSH("Upgrade Avalanchego", host, "shell/upgradeAvalancheGo.sh", scriptInputs{AvalancheGoVersion: avalancheGoVersion})
+}
+
+// RunSSHStartNode runs script to start avalanchego
+func RunSSHStartNode(host models.Host) error {
+	// name: setup node
+	return RunOverSSH("Start Avalanchego", host, "shell/startNode.sh", scriptInputs{})
+}
+
+// RunSSHStopNode runs script to stop avalanchego
+func RunSSHStopNode(host models.Host) error {
+	// name: setup node
+	return RunOverSSH("Stop Avalanchego", host, "shell/stopNode.sh", scriptInputs{})
+}
+
+// RunSSHUpgradeSubnetEVM runs script to upgrade subnet evm
+func RunSSHUpgradeSubnetEVM(host models.Host, subnetEVMBinaryPath string) error {
+	// name: setup node
+	return RunOverSSH("Upgrade Subnet EVM", host, "shell/upgradeSubnetEVM.sh", scriptInputs{SubnetEVMBinaryPath: subnetEVMBinaryPath})
+}
+
+// RunSSHGetNewSubnetEVMRelease runs script to download new subnet evm
+func RunSSHGetNewSubnetEVMRelease(host models.Host, subnetEVMReleaseURL, subnetEVMArchive string) error {
+	// name: setup node
+	return RunOverSSH("Upgrade Subnet EVM", host, "shell/upgradeSubnetEVM.sh", scriptInputs{SubnetEVMReleaseURL: subnetEVMReleaseURL, SubnetEVMArchive: subnetEVMArchive})
 }
 
 // RunSSHSetupDevNet runs script to setup devnet

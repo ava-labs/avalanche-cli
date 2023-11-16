@@ -206,7 +206,9 @@ func checkIfKeyIsStandardVMName(vmName string) bool {
 
 func upgradeAvalancheGo(clusterName, ansibleNodeID, avaGoVersionToUpdateTo string) error {
 	ux.Logger.PrintToUser("Upgrading Avalanche Go version of node %s to version %s ...", ansibleNodeID, avaGoVersionToUpdateTo)
-	if err := ansible.RunAnsiblePlaybookUpgradeAvalancheGo(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID, avaGoVersionToUpdateTo); err != nil {
+	if host, err := ansible.GetHostByNodeID(ansibleNodeID, app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
+		return err
+	} else if err := ssh.RunSSHUpgradeAvalanchego(host, avaGoVersionToUpdateTo); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Successfully upgraded Avalanche Go version of node %s!", ansibleNodeID)
@@ -215,22 +217,26 @@ func upgradeAvalancheGo(clusterName, ansibleNodeID, avaGoVersionToUpdateTo strin
 }
 
 func stopNode(clusterName, ansibleNodeID string) error {
-	if err := ansible.RunAnsiblePlaybookStopNode(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
+	if host, err := ansible.GetHostByNodeID(ansibleNodeID, app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
 		return err
+	} else {
+		return ssh.RunSSHStopNode(host)
 	}
-	return nil
 }
 
 func startNode(clusterName, ansibleNodeID string) error {
-	if err := ansible.RunAnsiblePlaybookStartNode(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
+	if host, err := ansible.GetHostByNodeID(ansibleNodeID, app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
 		return err
+	} else {
+		return ssh.RunSSHStartNode(host)
 	}
-	return nil
 }
 
 func upgradeSubnetEVM(clusterName, subnetEVMBinaryPath, ansibleNodeID, subnetEVMVersion string) error {
 	ux.Logger.PrintToUser("Upgrading SubnetEVM version of node %s to version %s ...", ansibleNodeID, subnetEVMVersion)
-	if err := ansible.RunAnsiblePlaybookUpgradeSubnetEVM(app.GetAnsibleDir(), subnetEVMBinaryPath, app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
+	if host, err := ansible.GetHostByNodeID(ansibleNodeID, app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
+		return err
+	} else if err := ssh.RunSSHUpgradeSubnetEVM(host, subnetEVMBinaryPath); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Successfully upgraded SubnetEVM version of node %s!", ansibleNodeID)
@@ -240,7 +246,9 @@ func upgradeSubnetEVM(clusterName, subnetEVMBinaryPath, ansibleNodeID, subnetEVM
 
 func getNewSubnetEVMRelease(clusterName, subnetEVMReleaseURL, subnetEVMArchive, ansibleNodeID, subnetEVMVersion string) error {
 	ux.Logger.PrintToUser("Getting new SubnetEVM version %s ...", subnetEVMVersion)
-	if err := ansible.RunAnsiblePlaybookGetNewSubnetEVM(app.GetAnsibleDir(), subnetEVMReleaseURL, subnetEVMArchive, app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
+	if host, err := ansible.GetHostByNodeID(ansibleNodeID, app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
+		return err
+	} else if err := ssh.RunSSHGetNewSubnetEVMRelease(host, subnetEVMReleaseURL, subnetEVMArchive); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Successfully downloaded SubnetEVM version for node %s!", ansibleNodeID)
