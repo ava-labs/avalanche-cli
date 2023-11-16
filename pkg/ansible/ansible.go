@@ -595,10 +595,25 @@ func RunAnsiblePlaybookSetupSeparateMonitoring(ansibleDir, inventoryPath, ansibl
 }
 
 // RunAnsiblePlaybookCopyNodeConfig copies avalanche go config json from cloud server to local machine
-func RunAnsiblePlaybookCopyNodeConfig(ansibleDir, inventoryPath, ansibleHostIDs, nodeConfigPath string) error {
-	fmt.Printf("RunAnsiblePlaybookCopyNodeConfig %s %s \n", ansibleHostIDs, nodeConfigPath)
-	playbookInputs := "target=" + ansibleHostIDs + " nodeConfigPath=" + nodeConfigPath
+func RunAnsiblePlaybookCopyNodeConfig(ansibleDir, inventoryPath, ansibleHostIDs string) error {
+	playbookInputs := "target=" + ansibleHostIDs + " ansibleDir=" + ansibleDir
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.CopyNodeConfigPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
+// RunAnsiblePlaybookUpdateNodeConfig updates avalanche go config json in cloud server from local machine
+func RunAnsiblePlaybookUpdateNodeConfig(ansibleDir, inventoryPath, ansibleHostIDs string) error {
+	playbookInputs := "target=" + ansibleHostIDs + " ansibleDir=" + ansibleDir
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.UpdateNodeConfigPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
 	cmdErr := cmd.Run()

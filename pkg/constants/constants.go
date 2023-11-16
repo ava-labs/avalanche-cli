@@ -184,6 +184,7 @@ const (
 	SetupNodeMonitoringPlaybook         = "playbook/setupMonitoring.yml"
 	SetupNodeSeparateMonitoringPlaybook = "playbook/setupSeparateMonitoring.yml"
 	CopyNodeConfigPlaybook              = "playbook/copyNodeConfig.yml"
+	UpdateNodeConfigPlaybook            = "playbook/updateNodeConfig.yml"
 	AvalancheGoInstallDir               = "avalanchego"
 	SubnetEVMInstallDir                 = "subnet-evm"
 

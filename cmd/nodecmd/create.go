@@ -6,15 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net"
-	"os"
-	"os/exec"
-	"os/user"
-	"path/filepath"
-	"strings"
-	"time"
-
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
@@ -26,6 +17,14 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
+	"io"
+	"net"
+	"os"
+	"os/exec"
+	"os/user"
+	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
@@ -251,16 +250,22 @@ func createNodes(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if separateMonitoringInstance {
-		if err := app.CreateAnsibleStatusDir(); err != nil {
-			return nil, err
+		for _, ansibleNodeID := range ansibleHostIDs {
+			fmt.Printf("creating ansible nodeconfig %s \n", ansibleNodeID)
+			if err = app.CreateAnsibleNodeConfigDir(ansibleNodeID); err != nil {
+				return err
+			}
 		}
-		if err = ansible.RunAnsiblePlaybookCopyNodeConfig(app.GetAnsibleDir(), inventoryPath, createdAnsibleHostIDs, app.GetNodeConfigJSONFile()); err != nil {
+		if err = ansible.RunAnsiblePlaybookCopyNodeConfig(app.GetAnsibleDir(), inventoryPath, createdAnsibleHostIDs); err != nil {
 			return err
 		}
 		for _, ansibleNodeID := range ansibleHostIDs {
-			if err = addHttpHostToConfigFile(app.GetNodeConfigJSONFile() + "." + ansibleNodeID); err != nil {
+			if err = addHttpHostToConfigFile(app.GetNodeConfigJSONFile(ansibleNodeID)); err != nil {
 				return err
 			}
+		}
+		if err = ansible.RunAnsiblePlaybookUpdateNodeConfig(app.GetAnsibleDir(), inventoryPath, createdAnsibleHostIDs); err != nil {
+			return err
 		}
 	}
 	if err = setupBuildEnv(inventoryPath, createdAnsibleHostIDs); err != nil {

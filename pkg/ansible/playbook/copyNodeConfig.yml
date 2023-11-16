@@ -5,5 +5,5 @@
     - name: copy node config to local machine
       fetch:
         src: /home/ubuntu/.avalanchego/configs/node.json
-        dest: "{{ nodeConfigPath }}.{{ inventory_hostname }}"
+        dest: "{{ ansibleDir }}/{{ inventory_hostname }}/node.json"
         flat: true

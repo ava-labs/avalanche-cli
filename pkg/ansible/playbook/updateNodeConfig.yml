@@ -2,7 +2,9 @@
 - hosts: "{{ target }}"
   gather_facts: no
   tasks:
-    - name: copy updated avalanche go node config to cloud server
+    - name: copy updated avalanche go node config tr cloud server
       copy:
-        src: "{{ nodeConfigPath }}.{{ inventory_hostname }}"
+        src: "{{ ansibleDir }}/{{ inventory_hostname }}/node.json"
         dest: /home/ubuntu/.avalanchego/configs/node.json
+    - name: restart node
+      shell: sudo systemctl restart avalanchego
