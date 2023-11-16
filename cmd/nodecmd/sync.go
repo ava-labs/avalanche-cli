@@ -171,7 +171,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host models.Host) {
 			defer wg.Done()
-			if err := host.Connect(constants.SSHPOSTTimeout); err != nil {
+			if err := host.Connect(constants.SSHScriptTimeout); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
@@ -188,6 +188,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
+		fmt.Println(wgResults.GetErroHostMap())
 		return fmt.Errorf("failed to get setup build env for node(s) %s", wgResults.GetErrorHosts())
 	}
 	clustersConfig, err := app.LoadClustersConfig()
