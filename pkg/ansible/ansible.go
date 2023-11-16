@@ -606,7 +606,6 @@ func RunAnsiblePlaybookSetupMonitoring(ansibleDir, inventoryPath, ansibleHostIDs
 // RunAnsiblePlaybookSetupSeparateMonitoring sets up monitoring in a separate cloud server
 // targets all hosts in ansible inventory file
 func RunAnsiblePlaybookSetupSeparateMonitoring(ansibleDir, inventoryPath, ansibleHostIDs, monitoringScriptPath, avalancheGoPorts, machinePorts string) error {
-	fmt.Printf("RunAnsiblePlaybookSetupSeparateMonitoring %s %s %s \n", ansibleHostIDs, avalancheGoPorts, machinePorts)
 	playbookInputs := "target=" + ansibleHostIDs + " monitoringScriptPath=" + monitoringScriptPath + " avalancheGoPorts=" + avalancheGoPorts + " machinePorts=" + machinePorts
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupNodeSeparateMonitoringPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir

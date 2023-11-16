@@ -265,12 +265,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("monitoringhostid %s \n", monitoringHostID)
-		//if err = ansible.RunAnsiblePlaybookSetupSeparateMonitoring(app.GetAnsibleDir(),
-		//	monitoringInventoryPath, strings.Join(monitoringHostID, ","), app.GetMonitoringScriptFile(),
-		//	"\\'localhost:9650\\',\\'54.215.90.166:9650\\'", "\\'localhost:9100\\',\\'54.215.90.166:9100\\'"); err != nil {
-		//	return err
-		//}
 		if err = ansible.RunAnsiblePlaybookSetupSeparateMonitoring(app.GetAnsibleDir(),
 			monitoringInventoryPath, strings.Join(monitoringHostID, ","), app.GetMonitoringScriptFile(),
 			strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
