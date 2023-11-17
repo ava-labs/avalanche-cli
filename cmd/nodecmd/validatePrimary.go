@@ -324,7 +324,7 @@ func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
-		return nil, fmt.Errorf("failed to get avalanchego bootrapp status for node(s) %s", wgResults.GetErroHostMap())
+		return nil, fmt.Errorf("failed to get avalanchego bootrapp status for node(s) %s", wgResults.GetErrorHostMap())
 	}
 	return utils.Filter(wgResults.GetNodeList(), func(nodeID string) bool {
 		return !wgResults.GetResultMap()[nodeID].(bool)

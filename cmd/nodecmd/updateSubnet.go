@@ -97,7 +97,7 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
-		return fmt.Errorf("failed to get setup build env for node(s) %s", wgResults.GetErroHostMap())
+		return fmt.Errorf("failed to get setup build env for node(s) %s", wgResults.GetErrorHostMap())
 	}
 	nonUpdatedNodes, err := doUpdateSubnet(clusterName, subnetName, models.FujiNetwork)
 	if err != nil {
@@ -150,7 +150,7 @@ func doUpdateSubnet(clusterName, subnetName string, network models.Network) ([]s
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
-		return nil, fmt.Errorf("failed to track subnet for node(s) %s", wgResults.GetErroHostMap())
+		return nil, fmt.Errorf("failed to track subnet for node(s) %s", wgResults.GetErrorHostMap())
 	}
 	return wgResults.GetErrorHosts(), nil
 }

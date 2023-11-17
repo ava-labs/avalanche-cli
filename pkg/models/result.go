@@ -56,7 +56,7 @@ func (nr *NodeResults) GetNodeList() []string {
 	return nodes
 }
 
-func (nr *NodeResults) GetErroHostMap() map[string]error {
+func (nr *NodeResults) GetErrorHostMap() map[string]error {
 	nr.Lock.Lock()
 	defer nr.Lock.Unlock()
 	hostErrors := make(map[string]error)
@@ -80,7 +80,7 @@ func (nr *NodeResults) HasNodeIDWithError(nodeID string) bool {
 }
 
 func (nr *NodeResults) HasErrors() bool {
-	return len(nr.GetErroHostMap()) > 0
+	return len(nr.GetErrorHostMap()) > 0
 }
 
 func (nr *NodeResults) GetErrorHosts() []string {

@@ -189,7 +189,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
-		return fmt.Errorf("failed to get setup build env for node(s) %s", wgResults.GetErroHostMap())
+		return fmt.Errorf("failed to get setup build env for node(s) %s", wgResults.GetErrorHostMap())
 	}
 	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {
@@ -276,7 +276,7 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
-		return nil, fmt.Errorf("failed to get avalanchego version for node(s) %s", wgResults.GetErroHostMap())
+		return nil, fmt.Errorf("failed to get avalanchego version for node(s) %s", wgResults.GetErrorHostMap())
 	}
 	for nodeID, avalancheGoVersion := range wgResults.GetResultMap() {
 		sc, err := app.LoadSidecar(subnetName)
@@ -351,8 +351,8 @@ func trackSubnet(clusterName, subnetName string, network models.Network) ([]stri
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
-		fmt.Println(wgResults.GetErroHostMap())
-		return nil, fmt.Errorf("failed to track subnet for node(s) %s", wgResults.GetErroHostMap())
+		fmt.Println(wgResults.GetErrorHostMap())
+		return nil, fmt.Errorf("failed to track subnet for node(s) %s", wgResults.GetErrorHostMap())
 	}
 	return wgResults.GetErrorHosts(), nil
 }

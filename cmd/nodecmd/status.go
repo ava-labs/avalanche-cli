@@ -115,7 +115,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
-		return fmt.Errorf("failed to get avalanchego version for node(s) %s", wgResults.GetErroHostMap())
+		return fmt.Errorf("failed to get avalanchego version for node(s) %s", wgResults.GetErrorHostMap())
 	}
 	avalanchegoVersionForNode := map[string]string{}
 	for nodeID, avalanchegoVersion := range wgResults.GetResultMap() {
@@ -179,7 +179,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 			}
 			wg.Wait()
 			if wgResults.HasErrors() {
-				return fmt.Errorf("failed to check sync status for node(s) %s", wgResults.GetErroHostMap())
+				return fmt.Errorf("failed to check sync status for node(s) %s", wgResults.GetErrorHostMap())
 			}
 			for nodeID, subnetSyncStatus := range wgResults.GetResultMap() {
 				switch subnetSyncStatus {
