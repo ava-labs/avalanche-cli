@@ -15,6 +15,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.17.0
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/manifoldco/promptui v0.9.0
+	github.com/melbahja/goph v1.4.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo/v2 v2.12.0
 	github.com/onsi/gomega v1.27.10
@@ -26,6 +27,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/zclconf/go-cty v1.13.0
 	go.uber.org/zap v1.24.0
+	golang.org/x/crypto v0.14.0
 	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
 	golang.org/x/mod v0.12.0
 	golang.org/x/net v0.17.0
@@ -115,6 +117,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/klauspost/compress v1.15.15 // indirect
+	github.com/kr/fs v0.1.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
@@ -132,6 +135,7 @@ require (
 	github.com/pires/go-proxyproto v0.6.2 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pkg/sftp v1.13.5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.16.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
@@ -173,7 +177,6 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/mock v0.2.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/sync v0.4.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/term v0.13.0 // indirect
