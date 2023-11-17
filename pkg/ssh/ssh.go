@@ -54,6 +54,10 @@ func RunOverSSH(scriptDesc string, host models.Host, scriptPath string, template
 		return err
 	}
 	ux.Logger.PrintToUser(scriptLog(host.NodeID, scriptDesc))
+	//make sure we are connected
+	if err := host.Connect(constants.SSHScriptTimeout); err != nil {
+		return err
+	}
 	if _, err := host.Command(script.String(), nil, host.Connection.Ctx); err != nil {
 		return err
 	}
@@ -83,7 +87,6 @@ func PostOverSSH(host models.Host, path string, requestBody string) ([]byte, err
 
 // RunSSHSetupNode runs script to setup node
 func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string, isDevNet bool) error {
-	// name: setup node
 	if err := RunOverSSH("Setup Node", host, "shell/setupNode.sh", scriptInputs{AvalancheGoVersion: avalancheGoVersion, IsDevNet: isDevNet}); err != nil {
 		return err
 	}
@@ -93,31 +96,26 @@ func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string, is
 
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
 func RunSSHUpgradeAvalanchego(host models.Host, avalancheGoVersion string) error {
-	// name: setup node
 	return RunOverSSH("Upgrade Avalanchego", host, "shell/upgradeAvalancheGo.sh", scriptInputs{AvalancheGoVersion: avalancheGoVersion})
 }
 
 // RunSSHStartNode runs script to start avalanchego
 func RunSSHStartNode(host models.Host) error {
-	// name: setup node
 	return RunOverSSH("Start Avalanchego", host, "shell/startNode.sh", scriptInputs{})
 }
 
 // RunSSHStopNode runs script to stop avalanchego
 func RunSSHStopNode(host models.Host) error {
-	// name: setup node
 	return RunOverSSH("Stop Avalanchego", host, "shell/stopNode.sh", scriptInputs{})
 }
 
 // RunSSHUpgradeSubnetEVM runs script to upgrade subnet evm
 func RunSSHUpgradeSubnetEVM(host models.Host, subnetEVMBinaryPath string) error {
-	// name: setup node
 	return RunOverSSH("Upgrade Subnet EVM", host, "shell/upgradeSubnetEVM.sh", scriptInputs{SubnetEVMBinaryPath: subnetEVMBinaryPath})
 }
 
 // RunSSHGetNewSubnetEVMRelease runs script to download new subnet evm
 func RunSSHGetNewSubnetEVMRelease(host models.Host, subnetEVMReleaseURL, subnetEVMArchive string) error {
-	// name: setup node
 	return RunOverSSH("Upgrade Subnet EVM", host, "shell/upgradeSubnetEVM.sh", scriptInputs{SubnetEVMReleaseURL: subnetEVMReleaseURL, SubnetEVMArchive: subnetEVMArchive})
 }
 
