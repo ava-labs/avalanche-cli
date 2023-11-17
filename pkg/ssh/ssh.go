@@ -58,7 +58,8 @@ func RunOverSSH(scriptDesc string, host models.Host, scriptPath string, template
 	if err := host.Connect(constants.SSHScriptTimeout); err != nil {
 		return err
 	}
-	if _, err := host.Command(script.String(), nil, host.Connection.Ctx); err != nil {
+	if s, err := host.Command(script.String(), nil, host.Connection.Ctx); err != nil {
+		fmt.Println(string(s))
 		return err
 	}
 	return nil
