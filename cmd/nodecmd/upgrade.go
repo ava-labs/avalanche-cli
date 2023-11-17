@@ -72,7 +72,7 @@ func upgrade(_ *cobra.Command, args []string) error {
 				return err
 			}
 			for _, vmID := range upgradeInfo.SubnetEVMIDsToUpgrade {
-				subnetEVMBinaryPath := fmt.Sprintf(constants.SubnetEVMBinaryPath, vmID)
+				subnetEVMBinaryPath := fmt.Sprintf(constants.CloudNodeSubnetEvmBinaryPath, vmID)
 				if err = upgradeSubnetEVM(clusterName, subnetEVMBinaryPath, node, upgradeInfo.SubnetEVMVersion); err != nil {
 					return err
 				}
