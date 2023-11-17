@@ -58,15 +58,6 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService, mo
 			if err != nil {
 				return err
 			}
-			//inventoryContent := ansibleInstanceID
-			//inventoryContent += " ansible_host="
-			//inventoryContent += publicIPMap[instanceID]
-			//inventoryContent += " ansible_user=ubuntu"
-			//inventoryContent += fmt.Sprintf(" ansible_ssh_private_key_file=%s", certFilePath)
-			//inventoryContent += fmt.Sprintf(" ansible_ssh_common_args='%s'", constants.AnsibleSSHInventoryParams)
-			//if _, err = inventoryFile.WriteString(inventoryContent + "\n"); err != nil {
-			//	return err
-			//}
 			if err = writeToInventoryFile(inventoryFile, ansibleInstanceID, publicIPMap[instanceID], certFilePath); err != nil {
 				return err
 			}
@@ -591,6 +582,22 @@ func RunAnsiblePlaybookGetNewSubnetEVM(ansibleDir, subnetEVMReleaseURL, subnetEV
 func RunAnsiblePlaybookSetupMonitoring(ansibleDir, inventoryPath, ansibleHostIDs string) error {
 	playbookInputs := "target=" + ansibleHostIDs
 	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupNodeMonitoringPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}
+
+// RunAnsiblePlaybookSetupMachineMetrics enables machine metrics of cloud server to be sent to the monitoring instance
+func RunAnsiblePlaybookSetupMachineMetrics(ansibleDir, inventoryPath, ansibleHostIDs string) error {
+	playbookInputs := "target=" + ansibleHostIDs
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.SetupNodeMachineMetricsPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
 	cmd.Dir = ansibleDir
 	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
 	cmdErr := cmd.Run()

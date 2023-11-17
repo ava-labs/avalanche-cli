@@ -442,10 +442,10 @@ func runAnsible(inventoryPath string, network models.Network, avalancheGoVersion
 	); err != nil {
 		return err
 	}
-	//if !separateMonitoringInstance {
-	//	return ansible.RunAnsiblePlaybookSetupMonitoring(app.GetAnsibleDir(), inventoryPath, ansibleHostIDs)
-	//}
-	return nil
+	if !separateMonitoringInstance {
+		return ansible.RunAnsiblePlaybookSetupMonitoring(app.GetAnsibleDir(), inventoryPath, ansibleHostIDs)
+	}
+	return ansible.RunAnsiblePlaybookSetupMachineMetrics(app.GetAnsibleDir(), inventoryPath, ansibleHostIDs)
 }
 
 func setupBuildEnv(inventoryPath, ansibleHostIDs string) error {

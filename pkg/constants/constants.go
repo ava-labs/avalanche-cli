@@ -178,10 +178,12 @@ const (
 	SubnetEVMArchive                    = "subnet-evm_%s_linux_amd64.tar.gz"
 	SubnetEVMBinaryPath                 = "/home/ubuntu/.avalanchego/plugins/%s"
 	AvalanchegoMonitoringPort           = 9090
+	AvalanchegoMachineMetricsPort       = 9100
 	AvalanchegoGrafanaPort              = 3000
 	MetricsLocalHost                    = "localhost:9090"
 	AvalancheGoLocalHost                = "localhost:9100"
 	SetupNodeMonitoringPlaybook         = "playbook/setupMonitoring.yml"
+	SetupNodeMachineMetricsPlaybook     = "playbook/setupMachineMetrics.yml"
 	SetupNodeSeparateMonitoringPlaybook = "playbook/setupSeparateMonitoring.yml"
 	CopyNodeConfigPlaybook              = "playbook/copyNodeConfig.yml"
 	UpdateNodeConfigPlaybook            = "playbook/updateNodeConfig.yml"
