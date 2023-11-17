@@ -121,7 +121,7 @@ func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) 
 		"--custom-vm-repo-url",
 		"https://github.com/ava-labs/subnet-evm/",
 		"--custom-vm-branch",
-		"main",
+		"master",
 		"--custom-vm-build-script",
 		"scripts/build.sh",
 		"--"+constants.SkipUpdateFlag,
