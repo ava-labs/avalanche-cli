@@ -116,7 +116,7 @@ func RunSSHUpgradeSubnetEVM(host models.Host, subnetEVMBinaryPath string) error 
 
 // RunSSHGetNewSubnetEVMRelease runs script to download new subnet evm
 func RunSSHGetNewSubnetEVMRelease(host models.Host, subnetEVMReleaseURL, subnetEVMArchive string) error {
-	return RunOverSSH("Upgrade Subnet EVM", host, "shell/upgradeSubnetEVM.sh", scriptInputs{SubnetEVMReleaseURL: subnetEVMReleaseURL, SubnetEVMArchive: subnetEVMArchive})
+	return RunOverSSH("Get Subnet EVM Release", host, "shell/getNewSubnetEVMRelease.sh", scriptInputs{SubnetEVMReleaseURL: subnetEVMReleaseURL, SubnetEVMArchive: subnetEVMArchive})
 }
 
 // RunSSHSetupDevNet runs script to setup devnet

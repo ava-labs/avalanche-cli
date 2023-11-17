@@ -182,11 +182,6 @@ func getNodesUpgradeInfo(clusterName string) (map[string]nodeUpgradeInfo, error)
 			nodeUpgradeInfo.AvalancheGoVersion = avalancheGoVersionToUpdateTo
 		}
 		nodesToUpgrade[host] = nodeUpgradeInfo
-		if err := app.RemoveAnsibleStatusDir(); err != nil {
-			failedNodes = append(failedNodes, host)
-			nodeErrors = append(nodeErrors, err)
-			continue
-		}
 	}
 	if len(failedNodes) > 0 {
 		ux.Logger.PrintToUser("Failed to upgrade nodes: ")

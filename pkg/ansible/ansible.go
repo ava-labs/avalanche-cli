@@ -16,7 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
 
-// CreateAnsibleHostInventory creates inventory file to be used for Ansible playbook commands
+// CreateAnsibleHostInventory creates inventory file for ansible
 // specifies the ip address of the cloud server and the corresponding ssh cert path for the cloud server
 func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService string, publicIPMap map[string]string) error {
 	if err := os.MkdirAll(inventoryDirPath, os.ModePerm); err != nil {
