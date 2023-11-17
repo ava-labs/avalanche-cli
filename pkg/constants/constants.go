@@ -34,6 +34,7 @@ const (
 	CreateAWSNode                = "create-aws-node"
 	GetAWSNodeIP                 = "get-aws-node-ip"
 	ClustersConfigFileName       = "cluster_config.json"
+	ClustersConfigVersion        = "1"
 	StakerCertFileName           = "staker.crt"
 	StakerKeyFileName            = "staker.key"
 	BLSKeyFileName               = "signer.key"
@@ -46,6 +47,13 @@ const (
 	ANRRequestTimeout   = 3 * time.Minute
 	APIRequestTimeout   = 30 * time.Second
 	FastGRPCDialTimeout = 100 * time.Millisecond
+
+	SSHScriptTimeout      = 120 * time.Second
+	SSHFileOpsTimeout     = 30 * time.Second
+	SSHPOSTTimeout        = 10 * time.Second
+	SSHSleepBetweenChecks = 1 * time.Second
+	SSHScriptLogFilter    = "_AvalancheCLI_LOG_"
+	SSHShell              = "/bin/bash"
 
 	SimulatePublicNetwork = "SIMULATE_PUBLIC_NETWORK"
 
@@ -161,25 +169,28 @@ const (
 	OldMetricsConfigFileName     = ".avalanche-cli/config"
 	DefaultConfigFileName        = ".avalanche-cli/config.json"
 
-	AWSCloudService            = "Amazon Web Services"
-	GCPCloudService            = "Google Cloud Platform"
-	AnsibleSSHUser             = "ubuntu"
-	AWSNodeAnsiblePrefix       = "aws_node"
-	GCPNodeAnsiblePrefix       = "gcp_node"
-	CustomVMDir                = "vms"
-	GCPStaticIPPrefix          = "static-ip"
-	AvaLabsOrg                 = "ava-labs"
-	AvalancheGoRepoName        = "avalanchego"
-	SubnetEVMRepoName          = "subnet-evm"
-	CliRepoName                = "avalanche-cli"
-	UpgradeAvalancheGoPlaybook = "playbook/upgradeAvalancheGo.yml"
-	UpgradeSubnetEVMPlaybook   = "playbook/upgradeSubnetEVM.yml"
-	StopNodePlaybook           = "playbook/stopNode.yml"
-	StartNodePlaybook          = "playbook/startNode.yml"
-	GetNewSubnetEVMPlaybook    = "playbook/getNewSubnetEVMRelease.yml"
-	SubnetEVMReleaseURL        = "https://github.com/ava-labs/subnet-evm/releases/download/%s/%s"
-	SubnetEVMArchive           = "subnet-evm_%s_linux_amd64.tar.gz"
-	SubnetEVMBinaryPath        = "/home/ubuntu/.avalanchego/plugins/%s"
+	AWSCloudService              = "Amazon Web Services"
+	GCPCloudService              = "Google Cloud Platform"
+	AnsibleSSHUser               = "ubuntu"
+	AWSNodeAnsiblePrefix         = "aws_node"
+	GCPNodeAnsiblePrefix         = "gcp_node"
+	CustomVMDir                  = "vms"
+	GCPStaticIPPrefix            = "static-ip"
+	AvaLabsOrg                   = "ava-labs"
+	AvalancheGoRepoName          = "avalanchego"
+	SubnetEVMRepoName            = "subnet-evm"
+	CliRepoName                  = "avalanche-cli"
+	UpgradeAvalancheGoPlaybook   = "playbook/upgradeAvalancheGo.yml"
+	UpgradeSubnetEVMPlaybook     = "playbook/upgradeSubnetEVM.yml"
+	StopNodePlaybook             = "playbook/stopNode.yml"
+	StartNodePlaybook            = "playbook/startNode.yml"
+	GetNewSubnetEVMPlaybook      = "playbook/getNewSubnetEVMRelease.yml"
+	SubnetEVMReleaseURL          = "https://github.com/ava-labs/subnet-evm/releases/download/%s/%s"
+	SubnetEVMArchive             = "subnet-evm_%s_linux_amd64.tar.gz"
+	CloudNodeConfigBasePath      = "/home/ubuntu/.avalanchego/"
+	CloudNodeSubnetEvmBinaryPath = "/home/ubuntu/.avalanchego/plugins/%s"
+	CloudNodeStakingPath         = "/home/ubuntu/.avalanchego/staking/"
+	CloudNodeConfigPath          = "/home/ubuntu/.avalanchego/configs/"
 
 	AvalancheGoInstallDir = "avalanchego"
 	SubnetEVMInstallDir   = "subnet-evm"

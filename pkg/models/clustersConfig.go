@@ -13,6 +13,7 @@ type ClusterConfig struct {
 }
 
 type ClustersConfig struct {
+	Version   string
 	KeyPair   map[string]string        // maps key pair name to cert path
 	Clusters  map[string]ClusterConfig // maps clusterName to nodeID list + network kind
 	GCPConfig GCPConfig                // stores GCP project name and filepath to service account JSON key

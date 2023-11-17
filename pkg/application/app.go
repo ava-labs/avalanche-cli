@@ -657,8 +657,36 @@ func (app *Avalanche) LoadClustersConfig() (models.ClustersConfig, error) {
 		return models.ClustersConfig{}, err
 	}
 	var clustersConfig models.ClustersConfig
-	err = json.Unmarshal(jsonBytes, &clustersConfig)
-	return clustersConfig, err
+	var clustersConfigMap map[string]interface{}
+	if err := json.Unmarshal(jsonBytes, &clustersConfigMap); err != nil {
+		return models.ClustersConfig{}, err
+	}
+	v, ok := clustersConfigMap["Version"]
+	if !ok {
+		// backwards compatibility V0
+		var clustersConfigV0 models.ClustersConfigV0
+		if err := json.Unmarshal(jsonBytes, &clustersConfigV0); err != nil {
+			return models.ClustersConfig{}, err
+		}
+		clustersConfig.Version = constants.ClustersConfigVersion
+		clustersConfig.KeyPair = clustersConfigV0.KeyPair
+		clustersConfig.GCPConfig = clustersConfigV0.GCPConfig
+		clustersConfig.Clusters = map[string]models.ClusterConfig{}
+		for clusterName, nodes := range clustersConfigV0.Clusters {
+			clustersConfig.Clusters[clusterName] = models.ClusterConfig{
+				Nodes:   nodes,
+				Network: models.FujiNetwork,
+			}
+		}
+		return clustersConfig, err
+	}
+	if v == constants.ClustersConfigVersion {
+		if err := json.Unmarshal(jsonBytes, &clustersConfig); err != nil {
+			return models.ClustersConfig{}, err
+		}
+		return clustersConfig, err
+	}
+	return models.ClustersConfig{}, fmt.Errorf("unsupported clusters config version %s", v)
 }
 
 func (app *Avalanche) WriteClustersConfigFile(clustersConfig *models.ClustersConfig) error {
@@ -667,6 +695,7 @@ func (app *Avalanche) WriteClustersConfigFile(clustersConfig *models.ClustersCon
 		return err
 	}
 
+	clustersConfig.Version = constants.ClustersConfigVersion
 	clustersConfigBytes, err := json.MarshalIndent(clustersConfig, "", "    ")
 	if err != nil {
 		return err
