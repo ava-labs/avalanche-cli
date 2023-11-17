@@ -123,7 +123,7 @@ const (
 	CloudServerStorageSize                       = 1000
 	OutboundPort                                 = 0
 	Terraform                                    = "terraform"
-	SetupCLIFromSourceBranch                     = "devnet-subnet-sync"
+	SetupCLIFromSourceBranch                     = "devnet-wiz"
 	BuildEnvGolangVersion                        = "1.21.1"
 	IsHealthyJSONFile                            = "isHealthy.json"
 	IsBootstrappedJSONFile                       = "isBootstrapped.json"
