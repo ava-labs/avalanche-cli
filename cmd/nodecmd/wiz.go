@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"sync"
 
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -214,35 +216,49 @@ func waitForClusterSubnetStatus(
 ) error {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Waiting for node(s) in cluster %s to be %s subnet %s...", clusterName, strings.ToLower(targetStatus.String()), subnetName)
-	if err := app.CreateAnsibleStatusDir(); err != nil {
-		return err
-	}
-	defer func() {
-		_ = app.RemoveAnsibleStatusDir()
-	}()
-	ansibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
 	startTime := time.Now()
 	for {
-		if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(
-			app.GetAnsibleDir(),
-			app.GetSubnetSyncJSONFile(),
-			blockchainID.String(),
-			app.GetAnsibleInventoryDirPath(clusterName),
-			"all",
-		); err != nil {
-			return err
+
+		wg := sync.WaitGroup{}
+		wgResults := models.NodeResults{}
+		for _, host := range hosts {
+			wg.Add(1)
+			go func(nodeResults *models.NodeResults, host models.Host) {
+				defer wg.Done()
+				if err := host.Connect(constants.SSHScriptTimeout); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+					return
+				}
+				defer func() {
+					if err := host.Disconnect(); err != nil {
+						nodeResults.AddResult(host.NodeID, nil, err)
+					}
+				}()
+				if syncstatus, err := ssh.RunSSHSubnetSyncStatus(host, blockchainID.String()); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+					return
+				} else {
+					if subnetSyncStatus, err := parseSubnetSyncOutput(syncstatus); err != nil {
+						nodeResults.AddResult(host.NodeID, nil, err)
+						return
+					} else {
+						nodeResults.AddResult(host.NodeID, subnetSyncStatus, err)
+					}
+				}
+			}(&wgResults, host)
+		}
+		wg.Wait()
+		if wgResults.HasErrors() {
+			return fmt.Errorf("failed to check sync status for node(s) %s", wgResults.GetErrorHostMap())
 		}
 		failedNodes := []string{}
-		for _, ansibleHostID := range ansibleHostIDs {
-			subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile() + "." + ansibleHostID)
-			if err != nil {
-				return err
-			}
+		for host, subnetSyncStatus := range wgResults.GetResultMap() {
 			if subnetSyncStatus != targetStatus.String() {
-				failedNodes = append(failedNodes, ansibleHostID)
+				failedNodes = append(failedNodes, host)
 			}
 		}
 		if len(failedNodes) == 0 {
