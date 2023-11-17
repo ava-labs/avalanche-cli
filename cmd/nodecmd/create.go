@@ -6,31 +6,31 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
-	"strings"
-	"time"
+	"sync"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
+	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
-
-	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -217,31 +217,77 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	time.Sleep(30 * time.Second)
-
+	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
 	avalancheGoVersion, err := getAvalancheGoVersion()
 	if err != nil {
 		return err
 	}
-	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
 	if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
 		return err
 	}
+	if err := updateAnsiblePublicIPs(clusterName); err != nil {
+		return err
+	}
+	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
+	if err != nil {
+		return err
+	}
+	hosts := utils.Filter(allHosts, func(h models.Host) bool { return slices.Contains(cloudConfig.InstanceIDs, h.GetCloudID()) })
+	// waiting for all nodes to become accessible
+	failedHosts := waitForHosts(hosts)
+	if failedHosts.Len() > 0 {
+		for _, result := range failedHosts.GetResults() {
+			ux.Logger.PrintToUser("Instance %s failed to provision with error %s. Please check instance logs for more information", result.NodeID, result.Err)
+		}
+		return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
+	}
 
-	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
 	ansibleHostIDs, err := utils.MapWithError(cloudConfig.InstanceIDs, func(s string) (string, error) { return models.HostCloudIDToAnsibleID(cloudService, s) })
 	if err != nil {
 		return err
 	}
-	createdAnsibleHostIDs := strings.Join(ansibleHostIDs, ",")
-	if err = runAnsible(inventoryPath, network, avalancheGoVersion, clusterName, createdAnsibleHostIDs); err != nil {
-		return err
+	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	for _, host := range hosts {
+		wg.Add(1)
+		go func(nodeResults *models.NodeResults, host models.Host) {
+			defer wg.Done()
+			if err := host.Connect(constants.SSHScriptTimeout); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			defer func() {
+				if err := host.Disconnect(); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+				}
+			}()
+			if err := provideStakingCertAndKey(host); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), avalancheGoVersion, network.Kind == models.Devnet); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+		}(&wgResults, host)
 	}
-	if err = setupBuildEnv(inventoryPath, createdAnsibleHostIDs); err != nil {
-		return err
+	wg.Wait()
+	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintToUser("AVALANCHE NODE(S) STATUS")
+	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintToUser("")
+	for _, node := range hosts {
+		if wgResults.HasNodeIDWithError(node.NodeID) {
+			ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErroHostMap()[node.NodeID])
+		} else {
+			ux.Logger.PrintToUser("Node %s is CREATED", node.NodeID)
+		}
 	}
-
 	if network.Kind == models.Devnet {
 		ux.Logger.PrintToUser("Setting up Devnet ...")
 		if err := setupDevnet(clusterName); err != nil {
@@ -249,8 +295,12 @@ func createNodes(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	printResults(cloudConfig, publicIPMap, ansibleHostIDs)
-	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
+	if wgResults.HasErrors() {
+		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErroHosts())
+	} else {
+		printResults(cloudConfig, publicIPMap, ansibleHostIDs)
+		ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
+	}
 	return nil
 }
 
@@ -341,23 +391,6 @@ func setupAnsible(clusterName string) error {
 	return updateAnsiblePublicIPs(clusterName)
 }
 
-func runAnsible(inventoryPath string, network models.Network, avalancheGoVersion, clusterName, ansibleHostIDs string) error {
-	if err := setupAnsible(clusterName); err != nil {
-		return err
-	}
-	if err := distributeStakingCertAndKey(strings.Split(ansibleHostIDs, ","), inventoryPath); err != nil {
-		return err
-	}
-	return ansible.RunAnsiblePlaybookSetupNode(
-		app.Conf.GetConfigPath(),
-		app.GetAnsibleDir(),
-		inventoryPath,
-		avalancheGoVersion,
-		fmt.Sprint(network.Kind == models.Devnet),
-		ansibleHostIDs,
-	)
-}
-
 func setupBuildEnv(inventoryPath, ansibleHostIDs string) error {
 	ux.Logger.PrintToUser("Installing Custom VM build environment on the cloud server(s) ...")
 	ansibleTargetHosts := "all"
@@ -417,46 +450,44 @@ func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePa
 	return nodeID, nil
 }
 
-func distributeStakingCertAndKey(ansibleHostIDs []string, inventoryPath string) error {
-	ux.Logger.PrintToUser("Generating staking keys in local machine...")
-	eg := errgroup.Group{}
-	for _, ansibleInstanceID := range ansibleHostIDs {
-		_, instanceID, err := models.HostAnsibleIDToCloudID(ansibleInstanceID)
-		if err != nil {
-			return err
-		}
-		keyPath := filepath.Join(app.GetNodesDir(), instanceID)
-		eg.Go(func() error {
-			nodeID, err := generateNodeCertAndKeys(
-				filepath.Join(keyPath, constants.StakerCertFileName),
-				filepath.Join(keyPath, constants.StakerKeyFileName),
-				filepath.Join(keyPath, constants.BLSKeyFileName),
-			)
-			if err != nil {
-				ux.Logger.PrintToUser("Failed to generate staking keys for host %s", instanceID)
-				return err
-			} else {
-				ux.Logger.PrintToUser("Generated staking keys for host %s[%s] ", instanceID, nodeID.String())
-			}
-			return nil
-		})
-	}
-	if err := eg.Wait(); err != nil {
+func provideStakingCertAndKey(host models.Host) error {
+	instanceID := host.GetCloudID()
+	keyPath := filepath.Join(app.GetNodesDir(), instanceID)
+	nodeID, err := generateNodeCertAndKeys(
+		filepath.Join(keyPath, constants.StakerCertFileName),
+		filepath.Join(keyPath, constants.StakerKeyFileName),
+		filepath.Join(keyPath, constants.BLSKeyFileName),
+	)
+	if err != nil {
+		ux.Logger.PrintToUser("Failed to generate staking keys for host %s", instanceID)
 		return err
+	} else {
+		ux.Logger.PrintToUser("Generated staking keys for host %s[%s] ", instanceID, nodeID.String())
 	}
-	ux.Logger.PrintToUser("Copying staking keys to remote machine(s)...")
-	return ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), strings.Join(ansibleHostIDs, ","), app.GetNodesDir(), inventoryPath)
+	return ssh.RunSSHUploadStakingFiles(host, keyPath)
 }
 
 func getIPAddress() (string, error) {
-	ipOutput, err := exec.Command("curl", "https://api.ipify.org?format=json").Output()
+	resp, err := http.Get("https://api.ipify.org?format=json")
 	if err != nil {
 		return "", err
 	}
-	var result map[string]interface{}
-	if err = json.Unmarshal(ipOutput, &result); err != nil {
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.New("HTTP request failed")
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
 		return "", err
 	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", err
+	}
+
 	ipAddress, ok := result["ip"].(string)
 	if ok {
 		if net.ParseIP(ipAddress) == nil {
@@ -464,6 +495,7 @@ func getIPAddress() (string, error) {
 		}
 		return ipAddress, nil
 	}
+
 	return "", errors.New("no IP address found")
 }
 
@@ -591,4 +623,22 @@ func printResults(cloudConfig CloudConfig, publicIPMap map[string]string, ansibl
 	}
 	ux.Logger.PrintToUser(fmt.Sprintf("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", cloudConfig.CertFilePath))
 	ux.Logger.PrintToUser("")
+}
+
+// waitForHosts waits for all hosts to become available via SSH.
+func waitForHosts(hosts []models.Host) *models.NodeResults {
+	hostErrors := models.NodeResults{}
+	createdWaitGroup := sync.WaitGroup{}
+	for _, host := range hosts {
+		createdWaitGroup.Add(1)
+		go func(nodeResults *models.NodeResults, host models.Host) {
+			defer createdWaitGroup.Done()
+			if err := host.WaitForSSHShell(2 * constants.SSHFileOpsTimeout); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+		}(&hostErrors, host)
+	}
+	createdWaitGroup.Wait()
+	return &hostErrors
 }
