@@ -44,15 +44,16 @@ const (
 	MaxNumOfLogFiles = 5
 	RetainOldFiles   = 0 // retain all old log files
 
+	ANRRequestTimeout   = 3 * time.Minute
+	APIRequestTimeout   = 30 * time.Second
+	FastGRPCDialTimeout = 100 * time.Millisecond
+
 	SSHScriptTimeout      = 120 * time.Second
 	SSHFileOpsTimeout     = 30 * time.Second
 	SSHPOSTTimeout        = 10 * time.Second
 	SSHSleepBetweenChecks = 1 * time.Second
 	SSHScriptLogFilter    = "_AvalancheCLI_LOG_"
 	SSHShell              = "/bin/bash"
-
-	ANRRequestTimeout = 3 * time.Minute
-	APIRequestTimeout = 30 * time.Second
 
 	SimulatePublicNetwork = "SIMULATE_PUBLIC_NETWORK"
 
@@ -72,12 +73,19 @@ const (
 
 	// it's unlikely anyone would want to name a snapshot `default`
 	// but let's add some more entropy
-	SnapshotsDirName             = "snapshots"
-	DefaultSnapshotName          = "default-1654102509"
+	SnapshotsDirName = "snapshots"
+
+	DefaultSnapshotName = "default-1654102509"
+
 	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
 	BootstrapSnapshotLocalPath   = "assets/" + BootstrapSnapshotArchiveName
 	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/" + BootstrapSnapshotLocalPath
 	BootstrapSnapshotSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/sha256sum.txt"
+
+	BootstrapSnapshotSingleNodeArchiveName = "bootstrapSnapshotSingleNode.tar.gz"
+	BootstrapSnapshotSingleNodeLocalPath   = "assets/" + BootstrapSnapshotSingleNodeArchiveName
+	BootstrapSnapshotSingleNodeURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/" + BootstrapSnapshotSingleNodeLocalPath
+	BootstrapSnapshotSingleNodeSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/sha256sumSingleNode.txt"
 
 	CliInstallationURL      = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
 	ExpectedCliInstallErr   = "resource temporarily unavailable"
@@ -142,6 +150,7 @@ const (
 	ConfigAPMAdminAPIEndpointKey = "admin-api-endpoint"
 	ConfigNodeConfigKey          = "node-config"
 	ConfigMetricsEnabledKey      = "MetricsEnabled"
+	ConfigSingleNodeEnabledKey   = "SingleNodeEnabled"
 	OldConfigFileName            = ".avalanche-cli.json"
 	OldMetricsConfigFileName     = ".avalanche-cli/config"
 	DefaultConfigFileName        = ".avalanche-cli/config.json"

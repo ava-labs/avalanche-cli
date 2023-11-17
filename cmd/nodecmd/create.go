@@ -116,17 +116,13 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 	clusterName := args[0]
 
-	endpoint := ""
-	if createDevnet {
-		// avoid prompt asking for endpoint if Devnet, it will be set later on when the info is available
-		endpoint = "toIgnore"
-	}
 	network, err := subnetcmd.GetNetworkFromCmdLineFlags(
 		false,
 		createDevnet,
 		createOnFuji,
 		createOnMainnet,
-		endpoint,
+		"",
+		false,
 		[]models.NetworkKind{models.Fuji, models.Devnet},
 	)
 	if err != nil {

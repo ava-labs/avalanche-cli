@@ -222,7 +222,6 @@ func waitForClusterSubnetStatus(
 	}
 	startTime := time.Now()
 	for {
-
 		wg := sync.WaitGroup{}
 		wgResults := models.NodeResults{}
 		for _, host := range hosts {
