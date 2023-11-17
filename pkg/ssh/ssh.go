@@ -54,7 +54,7 @@ func RunOverSSH(scriptDesc string, host models.Host, scriptPath string, template
 		return err
 	}
 	ux.Logger.PrintToUser(scriptLog(host.NodeID, scriptDesc))
-	//make sure we are connected
+	// make sure we are connected
 	if err := host.Connect(constants.SSHScriptTimeout); err != nil {
 		return err
 	}
