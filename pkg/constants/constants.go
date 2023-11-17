@@ -48,7 +48,7 @@ const (
 	APIRequestTimeout   = 30 * time.Second
 	FastGRPCDialTimeout = 100 * time.Millisecond
 
-	SSHScriptTimeout      = 120 * time.Second
+	SSHScriptTimeout      = 5 * time.Minute
 	SSHFileOpsTimeout     = 30 * time.Second
 	SSHPOSTTimeout        = 10 * time.Second
 	SSHSleepBetweenChecks = 1 * time.Second
@@ -131,7 +131,7 @@ const (
 	CloudServerStorageSize                       = 1000
 	OutboundPort                                 = 0
 	Terraform                                    = "terraform"
-	SetupCLIFromSourceBranch                     = "devnet-subnet-sync"
+	SetupCLIFromSourceBranch                     = "main"
 	BuildEnvGolangVersion                        = "1.21.1"
 	IsHealthyJSONFile                            = "isHealthy.json"
 	IsBootstrappedJSONFile                       = "isBootstrapped.json"
@@ -172,6 +172,7 @@ const (
 	CloudNodeSubnetEvmBinaryPath = "/home/ubuntu/.avalanchego/plugins/%s"
 	CloudNodeStakingPath         = "/home/ubuntu/.avalanchego/staking/"
 	CloudNodeConfigPath          = "/home/ubuntu/.avalanchego/configs/"
+	CloudNodeCLIConfigBasePath   = "/home/ubuntu/.avalanche-cli/"
 
 	AvalancheGoInstallDir = "avalanchego"
 	SubnetEVMInstallDir   = "subnet-evm"
