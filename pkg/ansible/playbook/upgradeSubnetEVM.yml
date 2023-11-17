@@ -1,6 +1,0 @@
----
-- hosts: "{{ target }}"
-  gather_facts: no
-  tasks:
-    - name: replace subnet EVM binary
-      shell: cp subnet-evm {{ subnetEVMBinaryPath }}

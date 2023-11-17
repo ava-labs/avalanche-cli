@@ -44,9 +44,6 @@ func list(_ *cobra.Command, _ []string) error {
 		if err := checkCluster(clusterName); err != nil {
 			return err
 		}
-		if err := setupAnsible(clusterName); err != nil {
-			return err
-		}
 		ansibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
 		if err != nil {
 			return err

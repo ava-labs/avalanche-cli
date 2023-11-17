@@ -6,14 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"os"
 	"time"
 
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 
 	subnetcmd "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -60,13 +59,7 @@ You can check the subnet sync status by calling avalanche node status <clusterNa
 	return cmd
 }
 
-func parseSubnetSyncOutput(filePath string) (string, error) {
-	jsonFile, err := os.Open(filePath)
-	if err != nil {
-		return "", err
-	}
-	defer jsonFile.Close()
-	byteValue, _ := io.ReadAll(jsonFile)
+func parseSubnetSyncOutput(byteValue []byte) (string, error) {
 	var result map[string]interface{}
 	if err := json.Unmarshal(byteValue, &result); err != nil {
 		return "", err
@@ -112,20 +105,19 @@ func addNodeAsSubnetValidator(
 // it will return true node status is 'syncing'
 func getNodeSubnetSyncStatus(blockchainID, clusterName, ansibleNodeID string) (string, error) {
 	ux.Logger.PrintToUser("Checking if node %s is synced to subnet ...", ansibleNodeID)
-	if err := app.CreateAnsibleStatusDir(); err != nil {
-		return "", err
-	}
-	if err := ansible.RunAnsiblePlaybookSubnetSyncStatus(app.GetAnsibleDir(), app.GetSubnetSyncJSONFile(), blockchainID, app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
-		return "", err
-	}
-	subnetSyncStatus, err := parseSubnetSyncOutput(app.GetSubnetSyncJSONFile() + "." + ansibleNodeID)
+	host, err := ansible.GetHostByNodeID(ansibleNodeID, app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return "", err
 	}
-	if err = app.RemoveAnsibleStatusDir(); err != nil {
+	if resp, err := ssh.RunSSHSubnetSyncStatus(host, blockchainID); err != nil {
 		return "", err
+	} else {
+		if subnetSyncStatus, err := parseSubnetSyncOutput(resp); err != nil {
+			return "", err
+		} else {
+			return subnetSyncStatus, nil
+		}
 	}
-	return subnetSyncStatus, nil
 }
 
 func waitForNodeToBePrimaryNetworkValidator(network models.Network, nodeID ids.NodeID) error {
@@ -175,9 +167,6 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := setupAnsible(clusterName); err != nil {
-		return err
-	}
 	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
 	if err != nil {
 		return err

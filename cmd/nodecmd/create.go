@@ -146,9 +146,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err := terraform.CheckIsInstalled(); err != nil {
 		return err
 	}
-	if err := ansible.CheckIsInstalled(); err != nil {
-		return err
-	}
 	err = terraform.RemoveDirectory(app.GetTerraformDir())
 	if err != nil {
 		return err
@@ -294,7 +291,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("")
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
-			ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErroHostMap()[node.NodeID])
+			ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
 		} else {
 			ux.Logger.PrintToUser("Node %s is CREATED", node.NodeID)
 		}
@@ -307,7 +304,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 
 	if wgResults.HasErrors() {
-		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErroHosts())
+		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
 	} else {
 		printResults(cloudConfig, publicIPMap, ansibleHostIDs)
 		ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
@@ -387,19 +384,6 @@ func addNodeToClustersConfig(network models.Network, nodeID, clusterName string)
 		Nodes:   append(nodes, nodeID),
 	}
 	return app.WriteClustersConfigFile(&clustersConfig)
-}
-
-// setupAnsible we need to remove existing ansible directory and its contents in .avalanche-cli dir
-// before calling every ansible run command just in case there is a change in playbook
-func setupAnsible(clusterName string) error {
-	err := app.SetupAnsibleEnv()
-	if err != nil {
-		return err
-	}
-	if err = ansible.Setup(app.GetAnsibleDir()); err != nil {
-		return err
-	}
-	return updateAnsiblePublicIPs(clusterName)
 }
 
 func getNodeID(nodeDir string) (ids.NodeID, error) {

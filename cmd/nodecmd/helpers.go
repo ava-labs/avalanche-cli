@@ -5,48 +5,59 @@ package nodecmd
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"os"
+	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
 func checkClusterIsHealthy(clusterName string) ([]string, error) {
-	ansibleNodeIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return nil, err
 	}
-	notHealthyNodes := []string{}
 	ux.Logger.PrintToUser(fmt.Sprintf("Checking if node(s) in cluster %s are healthy ...", clusterName))
-	if err := app.CreateAnsibleStatusDir(); err != nil {
-		return nil, err
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	for _, host := range hosts {
+		wg.Add(1)
+		go func(nodeResults *models.NodeResults, host models.Host) {
+			defer wg.Done()
+			if err := host.Connect(constants.SSHPOSTTimeout); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			defer func() {
+				if err := host.Disconnect(); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+				}
+			}()
+			if resp, err := ssh.RunSSHCheckHealthy(host); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			} else {
+				if isHealthy, err := parseHealthyOutput(resp); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+				} else {
+					nodeResults.AddResult(host.NodeID, isHealthy, err)
+				}
+			}
+		}(&wgResults, host)
 	}
-	if err := ansible.RunAnsiblePlaybookCheckHealthy(app.GetAnsibleDir(), app.GetHealthyJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), "all"); err != nil {
-		return nil, err
+	wg.Wait()
+	if wgResults.HasErrors() {
+		return nil, fmt.Errorf("failed to get health status for node(s) %s", wgResults.GetErrorHostMap())
 	}
-	for _, ansibleNodeID := range ansibleNodeIDs {
-		isHealthy, err := parseHealthyOutput(app.GetHealthyJSONFile() + "." + ansibleNodeID)
-		if err != nil {
-			return nil, err
-		}
-		if !isHealthy {
-			notHealthyNodes = append(notHealthyNodes, ansibleNodeID)
-		}
-	}
-	if err := app.RemoveAnsibleStatusDir(); err != nil {
-		return nil, err
-	}
-	return notHealthyNodes, nil
+	return utils.Filter(wgResults.GetNodeList(), func(nodeID string) bool {
+		return !wgResults.GetResultMap()[nodeID].(bool)
+	}), nil
 }
 
-func parseHealthyOutput(filePath string) (bool, error) {
-	jsonFile, err := os.Open(filePath)
-	if err != nil {
-		return false, err
-	}
-	defer jsonFile.Close()
-	byteValue, _ := io.ReadAll(jsonFile)
+func parseHealthyOutput(byteValue []byte) (bool, error) {
 	var result map[string]interface{}
 	if err := json.Unmarshal(byteValue, &result); err != nil {
 		return false, err

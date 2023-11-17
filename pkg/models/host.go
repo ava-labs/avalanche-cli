@@ -37,6 +37,9 @@ type HostConnection struct {
 }
 
 func NewHostConnection(h Host, timeout time.Duration) *HostConnection {
+	if h.Connection != nil { // reuse connection if it exists
+		return h.Connection
+	}
 	p := new(HostConnection)
 	if timeout == 0 {
 		timeout = constants.SSHScriptTimeout

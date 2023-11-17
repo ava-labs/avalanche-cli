@@ -1,8 +1,0 @@
----
-- hosts: "{{ target }}"
-  gather_facts: no
-  tasks:
-    - name: copy exported subnet VM spec to cloud server
-      copy:
-        src: "{{ subnetPath }}"
-        dest: "{{ subnetPath }}"
