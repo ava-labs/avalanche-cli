@@ -12,7 +12,7 @@ import (
 // avalanche config singlenode command
 func newSingleNodeCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "singlenode [enable | disable]",
+		Use:          "singleNode [enable | disable]",
 		Short:        "opt in or out of single node local network",
 		Long:         "set user preference between single node and five nodes local network",
 		RunE:         handleSingleNodeSettings,
