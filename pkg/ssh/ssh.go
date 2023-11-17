@@ -22,6 +22,10 @@ type scriptInputs struct {
 	GoVersion            string
 	CliBranch            string
 	IsDevNet             bool
+	NetworkFlag          string
+	SubnetEVMBinaryPath  string
+	SubnetEVMReleaseURL  string
+	SubnetEVMArchive     string
 }
 
 //go:embed shell/*.sh
@@ -50,6 +54,10 @@ func RunOverSSH(scriptDesc string, host models.Host, scriptPath string, template
 		return err
 	}
 	ux.Logger.PrintToUser(scriptLog(host.NodeID, scriptDesc))
+	// make sure we are connected
+	if err := host.Connect(constants.SSHScriptTimeout); err != nil {
+		return err
+	}
 	if _, err := host.Command(script.String(), nil, host.Connection.Ctx); err != nil {
 		return err
 	}
@@ -79,12 +87,36 @@ func PostOverSSH(host models.Host, path string, requestBody string) ([]byte, err
 
 // RunSSHSetupNode runs script to setup node
 func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string, isDevNet bool) error {
-	// name: setup node
 	if err := RunOverSSH("Setup Node", host, "shell/setupNode.sh", scriptInputs{AvalancheGoVersion: avalancheGoVersion, IsDevNet: isDevNet}); err != nil {
 		return err
 	}
 	// name: copy metrics config to cloud server
 	return host.Upload(configPath, filepath.Join(constants.CloudNodeConfigBasePath, filepath.Base(configPath)))
+}
+
+// RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
+func RunSSHUpgradeAvalanchego(host models.Host, avalancheGoVersion string) error {
+	return RunOverSSH("Upgrade Avalanchego", host, "shell/upgradeAvalancheGo.sh", scriptInputs{AvalancheGoVersion: avalancheGoVersion})
+}
+
+// RunSSHStartNode runs script to start avalanchego
+func RunSSHStartNode(host models.Host) error {
+	return RunOverSSH("Start Avalanchego", host, "shell/startNode.sh", scriptInputs{})
+}
+
+// RunSSHStopNode runs script to stop avalanchego
+func RunSSHStopNode(host models.Host) error {
+	return RunOverSSH("Stop Avalanchego", host, "shell/stopNode.sh", scriptInputs{})
+}
+
+// RunSSHUpgradeSubnetEVM runs script to upgrade subnet evm
+func RunSSHUpgradeSubnetEVM(host models.Host, subnetEVMBinaryPath string) error {
+	return RunOverSSH("Upgrade Subnet EVM", host, "shell/upgradeSubnetEVM.sh", scriptInputs{SubnetEVMBinaryPath: subnetEVMBinaryPath})
+}
+
+// RunSSHGetNewSubnetEVMRelease runs script to download new subnet evm
+func RunSSHGetNewSubnetEVMRelease(host models.Host, subnetEVMReleaseURL, subnetEVMArchive string) error {
+	return RunOverSSH("Get Subnet EVM Release", host, "shell/getNewSubnetEVMRelease.sh", scriptInputs{SubnetEVMReleaseURL: subnetEVMReleaseURL, SubnetEVMArchive: subnetEVMArchive})
 }
 
 // RunSSHSetupDevNet runs script to setup devnet
@@ -124,8 +156,8 @@ func RunSSHExportSubnet(host models.Host, exportPath, cloudServerSubnetPath stri
 
 // RunSSHExportSubnet exports deployed Subnet from local machine to cloud server
 // targets a specific host ansibleHostID in ansible inventory file
-func RunSSHTrackSubnet(host models.Host, subnetName, importPath string) error {
-	return RunOverSSH("Track Subnet", host, "shell/trackSubnet.sh", scriptInputs{SubnetName: subnetName, SubnetExportFileName: importPath})
+func RunSSHTrackSubnet(host models.Host, subnetName, importPath, networkFlag string) error {
+	return RunOverSSH("Track Subnet", host, "shell/trackSubnet.sh", scriptInputs{SubnetName: subnetName, SubnetExportFileName: importPath, NetworkFlag: networkFlag})
 }
 
 // RunSSHUpdateSubnet runs avalanche subnet join <subnetName> in cloud server using update subnet info
@@ -155,6 +187,13 @@ func RunSSHCheckBootstrapped(host models.Host) ([]byte, error) {
 	// Craft and send the HTTP POST request
 	requestBody := "{\"jsonrpc\":\"2.0\", \"id\":1,\"method\" :\"info.isBootstrapped\", \"params\": {\"chain\":\"X\"}}"
 	return PostOverSSH(host, "", requestBody)
+}
+
+// RunSSHCheckHealthy checks if node is healthy
+func RunSSHCheckHealthy(host models.Host) ([]byte, error) {
+	// Craft and send the HTTP POST request
+	requestBody := "{\"jsonrpc\":\"2.0\", \"id\":1,\"method\":\"health.health\"}"
+	return PostOverSSH(host, "/ext/health", requestBody)
 }
 
 // RunSSHGetNodeID reads nodeID from avalanchego

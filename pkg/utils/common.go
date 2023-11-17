@@ -5,6 +5,7 @@ package utils
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -106,4 +107,16 @@ func MapWithError[T, U any](input []T, f func(T) (U, error)) ([]U, error) {
 		output = append(output, o)
 	}
 	return output, nil
+}
+
+// ConvertInterfaceToMap converts a given value to a map[string]interface{}.
+func ConvertInterfaceToMap(value interface{}) (map[string]interface{}, error) {
+	// Check if the underlying type is a map
+	switch v := value.(type) {
+	case map[string]interface{}:
+		// If it's a map, return it
+		return v, nil
+	default:
+		return nil, fmt.Errorf("unsupported type: %T", value)
+	}
 }

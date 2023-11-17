@@ -33,9 +33,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	if err := setupAnsible(clusterName); err != nil {
-		return err
-	}
 	if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 		return err
 	}

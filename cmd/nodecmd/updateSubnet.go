@@ -4,8 +4,11 @@ package nodecmd
 
 import (
 	"fmt"
+	"path/filepath"
+	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 
@@ -37,9 +40,6 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	if err := setupAnsible(clusterName); err != nil {
-		return err
-	}
 	if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 		return err
 	}
@@ -69,8 +69,35 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
 	}
-	if err := setupBuildEnv(app.GetAnsibleInventoryDirPath(clusterName), ""); err != nil {
+
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
 		return err
+	}
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	for _, host := range hosts {
+		wg.Add(1)
+		go func(nodeResults *models.NodeResults, host models.Host) {
+			defer wg.Done()
+			if err := host.Connect(constants.SSHScriptTimeout); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			defer func() {
+				if err := host.Disconnect(); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+				}
+			}()
+			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+		}(&wgResults, host)
+	}
+	wg.Wait()
+	if wgResults.HasErrors() {
+		return fmt.Errorf("failed to get setup build env for node(s) %s", wgResults.GetErrorHostMap())
 	}
 	nonUpdatedNodes, err := doUpdateSubnet(clusterName, subnetName, models.FujiNetwork)
 	if err != nil {
@@ -91,19 +118,39 @@ func doUpdateSubnet(clusterName, subnetName string, network models.Network) ([]s
 	if err := subnetcmd.CallExportSubnet(subnetName, subnetPath, network); err != nil {
 		return nil, err
 	}
-	if err := ansible.RunAnsiblePlaybookExportSubnet(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), subnetPath, "all"); err != nil {
-		return nil, err
-	}
-	hostAliases, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return nil, err
 	}
-	nonUpdatedNodes := []string{}
-	for _, host := range hostAliases {
-		// runs avalanche update subnet command
-		if err = ansible.RunAnsiblePlaybookUpdateSubnet(app.GetAnsibleDir(), subnetName, subnetPath, app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
-			nonUpdatedNodes = append(nonUpdatedNodes, host)
-		}
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	for _, host := range hosts {
+		wg.Add(1)
+		go func(nodeResults *models.NodeResults, host models.Host) {
+			defer wg.Done()
+			if err := host.Connect(constants.SSHScriptTimeout); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			defer func() {
+				if err := host.Disconnect(); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+				}
+			}()
+			subnetExportPath := filepath.Join("/tmp", filepath.Base(subnetPath))
+			if err := ssh.RunSSHExportSubnet(host, subnetPath, subnetExportPath); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			if err := ssh.RunSSHUpdateSubnet(host, subnetName, subnetExportPath); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+		}(&wgResults, host)
 	}
-	return nonUpdatedNodes, nil
+	wg.Wait()
+	if wgResults.HasErrors() {
+		return nil, fmt.Errorf("failed to track subnet for node(s) %s", wgResults.GetErrorHostMap())
+	}
+	return wgResults.GetErrorHosts(), nil
 }

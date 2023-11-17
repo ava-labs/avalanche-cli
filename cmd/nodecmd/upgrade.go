@@ -5,14 +5,15 @@ package nodecmd
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"os"
 	"strings"
+	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/spf13/cobra"
@@ -46,9 +47,6 @@ You can check the status after upgrade by calling avalanche node status`,
 func upgrade(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	if err := checkCluster(clusterName); err != nil {
-		return err
-	}
-	if err := setupAnsible(clusterName); err != nil {
 		return err
 	}
 	toUpgradeNodesMap, err := getNodesUpgradeInfo(clusterName)
@@ -108,29 +106,49 @@ func getNodesUpgradeInfo(clusterName string) (map[string]nodeUpgradeInfo, error)
 	if err != nil {
 		return nil, err
 	}
-	ansibleNodeIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return nil, err
-	}
 	failedNodes := []string{}
 	nodeErrors := []error{}
 	nodesToUpgrade := make(map[string]nodeUpgradeInfo)
-	for _, host := range ansibleNodeIDs {
-		if err := app.CreateAnsibleStatusFile(app.GetAvalancheGoJSONFile()); err != nil {
-			failedNodes = append(failedNodes, host)
-			nodeErrors = append(nodeErrors, err)
-			continue
-		}
-		if err := ansible.RunAnsiblePlaybookCheckAvalancheGoVersion(app.GetAnsibleDir(), app.GetAvalancheGoJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
-			failedNodes = append(failedNodes, host)
-			nodeErrors = append(nodeErrors, err)
-			continue
-		}
-		vmVersions, err := parseNodeVersionOutput(app.GetAvalancheGoJSONFile() + "." + host)
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return nil, err
+	}
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	for _, host := range hosts {
+		wg.Add(1)
+		go func(nodeResults *models.NodeResults, host models.Host) {
+			defer wg.Done()
+			if err := host.Connect(constants.SSHPOSTTimeout); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			defer func() {
+				if err := host.Disconnect(); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+				}
+			}()
+			if resp, err := ssh.RunSSHCheckAvalancheGoVersion(host); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			} else {
+				if vmVersions, err := parseNodeVersionOutput(resp); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+				} else {
+					nodeResults.AddResult(host.NodeID, vmVersions, err)
+				}
+			}
+		}(&wgResults, host)
+	}
+	wg.Wait()
+	if wgResults.HasErrors() {
+		return nil, fmt.Errorf("failed to get avalanchego version for node(s) %s", wgResults.GetErrorHostMap())
+	}
+
+	for host, vmVersionsInterface := range wgResults.GetResultMap() {
+		vmVersions, err := utils.ConvertInterfaceToMap(vmVersionsInterface)
 		if err != nil {
-			failedNodes = append(failedNodes, host)
-			nodeErrors = append(nodeErrors, err)
-			continue
+			return nil, err
 		}
 		currentAvalancheGoVersion := vmVersions[constants.PlatformKeyName]
 		avalancheGoVersionToUpdateTo := latestAvagoVersion
@@ -164,11 +182,6 @@ func getNodesUpgradeInfo(clusterName string) (map[string]nodeUpgradeInfo, error)
 			nodeUpgradeInfo.AvalancheGoVersion = avalancheGoVersionToUpdateTo
 		}
 		nodesToUpgrade[host] = nodeUpgradeInfo
-		if err := app.RemoveAnsibleStatusDir(); err != nil {
-			failedNodes = append(failedNodes, host)
-			nodeErrors = append(nodeErrors, err)
-			continue
-		}
 	}
 	if len(failedNodes) > 0 {
 		ux.Logger.PrintToUser("Failed to upgrade nodes: ")
@@ -188,7 +201,9 @@ func checkIfKeyIsStandardVMName(vmName string) bool {
 
 func upgradeAvalancheGo(clusterName, ansibleNodeID, avaGoVersionToUpdateTo string) error {
 	ux.Logger.PrintToUser("Upgrading Avalanche Go version of node %s to version %s ...", ansibleNodeID, avaGoVersionToUpdateTo)
-	if err := ansible.RunAnsiblePlaybookUpgradeAvalancheGo(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID, avaGoVersionToUpdateTo); err != nil {
+	if host, err := ansible.GetHostByNodeID(ansibleNodeID, app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
+		return err
+	} else if err := ssh.RunSSHUpgradeAvalanchego(host, avaGoVersionToUpdateTo); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Successfully upgraded Avalanche Go version of node %s!", ansibleNodeID)
@@ -197,22 +212,26 @@ func upgradeAvalancheGo(clusterName, ansibleNodeID, avaGoVersionToUpdateTo strin
 }
 
 func stopNode(clusterName, ansibleNodeID string) error {
-	if err := ansible.RunAnsiblePlaybookStopNode(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
+	if host, err := ansible.GetHostByNodeID(ansibleNodeID, app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
 		return err
+	} else {
+		return ssh.RunSSHStopNode(host)
 	}
-	return nil
 }
 
 func startNode(clusterName, ansibleNodeID string) error {
-	if err := ansible.RunAnsiblePlaybookStartNode(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
+	if host, err := ansible.GetHostByNodeID(ansibleNodeID, app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
 		return err
+	} else {
+		return ssh.RunSSHStartNode(host)
 	}
-	return nil
 }
 
 func upgradeSubnetEVM(clusterName, subnetEVMBinaryPath, ansibleNodeID, subnetEVMVersion string) error {
 	ux.Logger.PrintToUser("Upgrading SubnetEVM version of node %s to version %s ...", ansibleNodeID, subnetEVMVersion)
-	if err := ansible.RunAnsiblePlaybookUpgradeSubnetEVM(app.GetAnsibleDir(), subnetEVMBinaryPath, app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
+	if host, err := ansible.GetHostByNodeID(ansibleNodeID, app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
+		return err
+	} else if err := ssh.RunSSHUpgradeSubnetEVM(host, subnetEVMBinaryPath); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Successfully upgraded SubnetEVM version of node %s!", ansibleNodeID)
@@ -222,7 +241,9 @@ func upgradeSubnetEVM(clusterName, subnetEVMBinaryPath, ansibleNodeID, subnetEVM
 
 func getNewSubnetEVMRelease(clusterName, subnetEVMReleaseURL, subnetEVMArchive, ansibleNodeID, subnetEVMVersion string) error {
 	ux.Logger.PrintToUser("Getting new SubnetEVM version %s ...", subnetEVMVersion)
-	if err := ansible.RunAnsiblePlaybookGetNewSubnetEVM(app.GetAnsibleDir(), subnetEVMReleaseURL, subnetEVMArchive, app.GetAnsibleInventoryDirPath(clusterName), ansibleNodeID); err != nil {
+	if host, err := ansible.GetHostByNodeID(ansibleNodeID, app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
+		return err
+	} else if err := ssh.RunSSHGetNewSubnetEVMRelease(host, subnetEVMReleaseURL, subnetEVMArchive); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Successfully downloaded SubnetEVM version for node %s!", ansibleNodeID)
@@ -230,18 +251,9 @@ func getNewSubnetEVMRelease(clusterName, subnetEVMReleaseURL, subnetEVMArchive, 
 	return nil
 }
 
-func parseNodeVersionOutput(fileName string) (map[string]interface{}, error) {
-	jsonFile, err := os.Open(fileName)
-	if err != nil {
-		return nil, err
-	}
-	defer jsonFile.Close()
-	byteValue, err := io.ReadAll(jsonFile)
-	if err != nil {
-		return nil, err
-	}
+func parseNodeVersionOutput(byteValue []byte) (map[string]interface{}, error) {
 	var result map[string]interface{}
-	if err = json.Unmarshal(byteValue, &result); err != nil {
+	if err := json.Unmarshal(byteValue, &result); err != nil {
 		return nil, err
 	}
 	nodeIDInterface, ok := result["result"].(map[string]interface{})
