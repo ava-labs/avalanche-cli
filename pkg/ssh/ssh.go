@@ -92,7 +92,7 @@ func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string, is
 		return err
 	}
 	// name: copy metrics config to cloud server
-	return host.Upload(configPath, filepath.Join(constants.CloudNodeConfigBasePath, filepath.Base(configPath)))
+	return host.Upload(configPath, filepath.Join(constants.CloudNodeCLIConfigBasePath, filepath.Base(configPath)))
 }
 
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego

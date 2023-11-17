@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#name:TASK [install avalanche-cli from source]
+export PATH=$PATH:~/go/bin
 cd ~
 rm -rf avalanche-cli
 git clone --single-branch -b {{ .CliBranch }} https://github.com/ava-labs/avalanche-cli 

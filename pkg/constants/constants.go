@@ -163,6 +163,7 @@ const (
 	CloudNodeSubnetEvmBinaryPath = "/home/ubuntu/.avalanchego/plugins/%s"
 	CloudNodeStakingPath         = "/home/ubuntu/.avalanchego/staking/"
 	CloudNodeConfigPath          = "/home/ubuntu/.avalanchego/configs/"
+	CloudNodeCLIConfigBasePath   = "/home/ubuntu/.avalanche-cli/"
 
 	AvalancheGoInstallDir = "avalanchego"
 	SubnetEVMInstallDir   = "subnet-evm"
