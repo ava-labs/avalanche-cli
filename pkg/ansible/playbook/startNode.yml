@@ -1,6 +1,0 @@
----
-- hosts: "{{ target }}"
-  gather_facts: no
-  tasks:
-    - name: start node - start avalanchego
-      shell: sudo systemctl start avalanchego

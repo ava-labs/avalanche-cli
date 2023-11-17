@@ -218,14 +218,14 @@ func setupDevnet(clusterName string) error {
 	wg.Wait()
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
-			ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErroHostMap()[node.NodeID])
+			ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
 		} else {
 			ux.Logger.PrintToUser("Node %s is SETUP as devnet", node.NodeID)
 		}
 	}
 	// stop execution if at least one node failed
 	if wgResults.HasErrors() {
-		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErroHosts())
+		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
 	}
 
 	// update cluster config with network information

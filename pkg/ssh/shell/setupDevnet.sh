@@ -1,4 +1,4 @@
-#!/ust/bin/env bash
+#!/usr/bin/env bash
 #name:TASK [stop node]
 sudo systemctl stop avalanchego
 #name:TASK [remove previous avalanchego db and logs]

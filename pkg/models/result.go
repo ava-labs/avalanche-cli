@@ -30,6 +30,16 @@ func (nr *NodeResults) GetResults() []NodeResult {
 	return nr.Results
 }
 
+func (nr *NodeResults) GetResultMap() map[string]interface{} {
+	nr.Lock.Lock()
+	defer nr.Lock.Unlock()
+	result := map[string]interface{}{}
+	for _, node := range nr.Results {
+		result[node.NodeID] = node.Value
+	}
+	return result
+}
+
 func (nr *NodeResults) Len() int {
 	nr.Lock.Lock()
 	defer nr.Lock.Unlock()
@@ -46,7 +56,7 @@ func (nr *NodeResults) GetNodeList() []string {
 	return nodes
 }
 
-func (nr *NodeResults) GetErroHostMap() map[string]error {
+func (nr *NodeResults) GetErrorHostMap() map[string]error {
 	nr.Lock.Lock()
 	defer nr.Lock.Unlock()
 	hostErrors := make(map[string]error)
@@ -70,10 +80,10 @@ func (nr *NodeResults) HasNodeIDWithError(nodeID string) bool {
 }
 
 func (nr *NodeResults) HasErrors() bool {
-	return len(nr.GetErroHostMap()) > 0
+	return len(nr.GetErrorHostMap()) > 0
 }
 
-func (nr *NodeResults) GetErroHosts() []string {
+func (nr *NodeResults) GetErrorHosts() []string {
 	var nodes []string
 	for _, node := range nr.Results {
 		if node.Err != nil {
