@@ -4,7 +4,6 @@ package ssh
 
 import (
 	"bytes"
-	"context"
 	"embed"
 	"fmt"
 	"net/url"
@@ -66,9 +65,7 @@ func RunOverSSH(
 	if err := host.Connect(); err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	if s, err := host.Command(script.String(), nil, ctx); err != nil {
+	if s, err := host.Command(script.String(), nil, timeout); err != nil {
 		fmt.Println(string(s))
 		return err
 	}
@@ -88,22 +85,8 @@ func PostOverSSH(host *models.Host, path string, requestBody string) ([]byte, er
 		"Content-Length: %d\r\n"+
 		"Content-Type: application/json\r\n\r\n", path, localhost.Host, len(requestBody))
 	httpRequest := requestHeaders + requestBody
-	responseCh := make(chan []byte)
-	errCh := make(chan error)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.SSHPOSTTimeout)
-	defer cancel()
-	go func() {
-		// ignore response header
-		_, responseBody, err := host.Forward(httpRequest)
-		errCh <- err
-		responseCh <- responseBody
-	}()
-	select {
-	case <-ctx.Done():
-		return nil, fmt.Errorf("post over ssh timeout of %d seconds for host %s", uint(constants.SSHPOSTTimeout.Seconds()), host.IP)
-	case err = <-errCh:
-	}
-	responseBody := <-responseCh
+	// ignore response header
+	_, responseBody, err := host.Forward(httpRequest, constants.SSHPOSTTimeout)
 	return responseBody, err
 }
 
@@ -183,7 +166,10 @@ func RunSSHGetNewSubnetEVMRelease(host *models.Host, subnetEVMReleaseURL, subnet
 
 // RunSSHSetupDevNet runs script to setup devnet
 func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
-	if err := host.MkdirAll(constants.CloudNodeConfigPath); err != nil {
+	if err := host.MkdirAll(
+		constants.CloudNodeConfigPath,
+		constants.SSHDirOpsTimeout,
+	); err != nil {
 		return err
 	}
 	if err := host.Upload(
@@ -212,7 +198,10 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 
 // RunSSHUploadStakingFiles uploads staking files to a remote host via SSH.
 func RunSSHUploadStakingFiles(host *models.Host, nodeInstanceDirPath string) error {
-	if err := host.MkdirAll(constants.CloudNodeStakingPath); err != nil {
+	if err := host.MkdirAll(
+		constants.CloudNodeStakingPath,
+		constants.SSHDirOpsTimeout,
+	); err != nil {
 		return err
 	}
 	if err := host.Upload(

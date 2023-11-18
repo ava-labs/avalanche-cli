@@ -92,18 +92,18 @@ func (h *Host) Upload(localFile string, remoteFile string, timeout time.Duration
 			return err
 		}
 	}
-	errCh := make(chan error)
+	var err error
+	ch := make(chan struct{})
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	go func() {
-		err := h.Connection.Upload(localFile, remoteFile)
-		errCh <- err
+		err = h.Connection.Upload(localFile, remoteFile)
+		close(ch)
 	}()
-	var err error
 	select {
 	case <-ctx.Done():
 		return fmt.Errorf("upload timeout of %d seconds for host %s", uint(timeout.Seconds()), h.IP)
-	case err = <-errCh:
+	case <-ch:
 	}
 	return err
 
@@ -119,24 +119,48 @@ func (h *Host) Download(remoteFile string, localFile string, timeout time.Durati
 	if err := os.MkdirAll(filepath.Dir(localFile), os.ModePerm); err != nil {
 		return err
 	}
-	errCh := make(chan error)
+	var err error
+	ch := make(chan struct{})
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	go func() {
-		err := h.Connection.Download(remoteFile, localFile)
-		errCh <- err
+		err = h.Connection.Download(remoteFile, localFile)
+		close(ch)
 	}()
-	var err error
 	select {
 	case <-ctx.Done():
 		return fmt.Errorf("download timeout of %d seconds for host %s", uint(timeout.Seconds()), h.IP)
-	case err = <-errCh:
+	case <-ch:
 	}
 	return err
 }
 
 // MkdirAll creates a folder on the remote server.
-func (h *Host) MkdirAll(remoteDir string) error {
+func (h *Host) MkdirAll(remoteDir string, timeout time.Duration) error {
+	if !h.Connected() {
+		if err := h.Connect(); err != nil {
+			return err
+		}
+	}
+	var err error
+	ch := make(chan struct{})
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	go func() {
+		err = h.UntimedMkdirAll(remoteDir)
+		close(ch)
+	}()
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("mkdir timeout of %d seconds for host %s", uint(timeout.Seconds()), h.IP)
+	case <-ch:
+	}
+	return err
+}
+
+// UntimedMkdirAll creates a folder on the remote server.
+// Does not support timeouts on the operation.
+func (h *Host) UntimedMkdirAll(remoteDir string) error {
 	if !h.Connected() {
 		if err := h.Connect(); err != nil {
 			return err
@@ -151,28 +175,54 @@ func (h *Host) MkdirAll(remoteDir string) error {
 }
 
 // Command executes a shell command on a remote host.
-func (h *Host) Command(script string, env []string, ctx context.Context) ([]byte, error) {
+func (h *Host) Command(script string, env []string, timeout time.Duration) ([]byte, error) {
 	if !h.Connected() {
 		if err := h.Connect(); err != nil {
 			return nil, err
 		}
 	}
-	if h.Connected() {
-		cmd, err := h.Connection.CommandContext(ctx, constants.SSHShell, script)
-		if err != nil {
-			return nil, err
-		}
-		if env != nil {
-			cmd.Env = env
-		}
-		return cmd.CombinedOutput()
-	} else {
-		return nil, fmt.Errorf("failed to connect to host %s", h.IP)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	cmd, err := h.Connection.CommandContext(ctx, constants.SSHShell, script)
+	if err != nil {
+		return nil, err
 	}
+	if env != nil {
+		cmd.Env = env
+	}
+	return cmd.CombinedOutput()
 }
 
 // Forward forwards the TCP connection to a remote address.
-func (h *Host) Forward(httpRequest string) ([]byte, []byte, error) {
+func (h *Host) Forward(httpRequest string, timeout time.Duration) ([]byte, []byte, error) {
+	if !h.Connected() {
+		if err := h.Connect(); err != nil {
+			return nil, nil, err
+		}
+	}
+	var (
+		header []byte
+		body   []byte
+		err    error
+	)
+	ch := make(chan struct{})
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	go func() {
+		header, body, err = h.UntimedForward(httpRequest)
+		close(ch)
+	}()
+	select {
+	case <-ctx.Done():
+		return nil, nil, fmt.Errorf("post over ssh timeout of %d seconds for host %s", uint(timeout.Seconds()), h.IP)
+	case <-ch:
+	}
+	return header, body, err
+}
+
+// UntimedForward forwards the TCP connection to a remote address.
+// Does not support timeouts on the operation.
+func (h *Host) UntimedForward(httpRequest string) ([]byte, []byte, error) {
 	if !h.Connected() {
 		if err := h.Connect(); err != nil {
 			return nil, nil, err
@@ -262,7 +312,7 @@ func (h *Host) WaitForSSHShell(timeout time.Duration) error {
 			continue
 		}
 		if h.Connected() {
-			output, err := h.Command("echo", nil, context.Background())
+			output, err := h.Command("echo", nil, timeout)
 			if err == nil || len(output) > 0 {
 				return nil
 			}
