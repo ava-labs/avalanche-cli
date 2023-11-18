@@ -46,27 +46,6 @@ To get the bootstrap status of a node with a Subnet, use --subnet flag`,
 	return cmd
 }
 
-func connectHosts(hosts []*models.Host) models.NodeResults {
-	wg := sync.WaitGroup{}
-	wgResults := models.NodeResults{}
-	for _, host := range hosts {
-		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
-			defer wg.Done()
-			err := host.Connect()
-			nodeResults.AddResult(host.NodeID, nil, err)
-		}(&wgResults, host)
-	}
-	wg.Wait()
-	return wgResults //nolint:govet
-}
-
-func disconnectHosts(hosts []*models.Host) {
-	for _, host := range hosts {
-		_ = host.Disconnect()
-	}
-}
-
 func statusNode(_ *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		return list(nil, nil)
