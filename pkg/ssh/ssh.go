@@ -88,12 +88,23 @@ func PostOverSSH(host *models.Host, path string, requestBody string) ([]byte, er
 		"Content-Length: %d\r\n"+
 		"Content-Type: application/json\r\n\r\n", path, localhost.Host, len(requestBody))
 	httpRequest := requestHeaders + requestBody
-	// ignore response header
-	_, responseBody, err := host.Forward(httpRequest)
-	if err != nil {
-		return nil, err
+	responseCh := make(chan []byte)
+	errCh := make(chan error)
+	ctx, cancel := context.WithTimeout(context.Background(), constants.SSHPOSTTimeout)
+	defer cancel()
+	go func() {
+		// ignore response header
+		_, responseBody, err := host.Forward(httpRequest)
+		errCh <- err
+		responseCh <- responseBody
+	}()
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf("post over ssh timeout of %d seconds for host %s", uint(constants.SSHPOSTTimeout.Seconds()), host.IP)
+	case err = <-errCh:
 	}
-	return responseBody, nil
+	responseBody := <-responseCh
+	return responseBody, err
 }
 
 // RunSSHSetupNode runs script to setup node
@@ -108,7 +119,11 @@ func RunSSHSetupNode(host *models.Host, configPath, avalancheGoVersion string, i
 		return err
 	}
 	// name: copy metrics config to cloud server
-	return host.Upload(configPath, filepath.Join(constants.CloudNodeCLIConfigBasePath, filepath.Base(configPath)))
+	return host.Upload(
+		configPath,
+		filepath.Join(constants.CloudNodeCLIConfigBasePath, filepath.Base(configPath)),
+		constants.SSHFileOpsTimeout,
+	)
 }
 
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
@@ -171,10 +186,18 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 	if err := host.MkdirAll(constants.CloudNodeConfigPath); err != nil {
 		return err
 	}
-	if err := host.Upload(filepath.Join(nodeInstanceDirPath, constants.GenesisFileName), filepath.Join(constants.CloudNodeConfigPath, constants.GenesisFileName)); err != nil {
+	if err := host.Upload(
+		filepath.Join(nodeInstanceDirPath, constants.GenesisFileName),
+		filepath.Join(constants.CloudNodeConfigPath, constants.GenesisFileName),
+		constants.SSHFileOpsTimeout,
+	); err != nil {
 		return err
 	}
-	if err := host.Upload(filepath.Join(nodeInstanceDirPath, constants.NodeFileName), filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName)); err != nil {
+	if err := host.Upload(
+		filepath.Join(nodeInstanceDirPath, constants.NodeFileName),
+		filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName),
+		constants.SSHFileOpsTimeout,
+	); err != nil {
 		return err
 	}
 	// name: setup devnet
@@ -192,19 +215,35 @@ func RunSSHUploadStakingFiles(host *models.Host, nodeInstanceDirPath string) err
 	if err := host.MkdirAll(constants.CloudNodeStakingPath); err != nil {
 		return err
 	}
-	if err := host.Upload(filepath.Join(nodeInstanceDirPath, constants.StakerCertFileName), filepath.Join(constants.CloudNodeStakingPath, constants.StakerCertFileName)); err != nil {
+	if err := host.Upload(
+		filepath.Join(nodeInstanceDirPath, constants.StakerCertFileName),
+		filepath.Join(constants.CloudNodeStakingPath, constants.StakerCertFileName),
+		constants.SSHFileOpsTimeout,
+	); err != nil {
 		return err
 	}
-	if err := host.Upload(filepath.Join(nodeInstanceDirPath, constants.StakerKeyFileName), filepath.Join(constants.CloudNodeStakingPath, constants.StakerKeyFileName)); err != nil {
+	if err := host.Upload(
+		filepath.Join(nodeInstanceDirPath, constants.StakerKeyFileName),
+		filepath.Join(constants.CloudNodeStakingPath, constants.StakerKeyFileName),
+		constants.SSHFileOpsTimeout,
+	); err != nil {
 		return err
 	}
-	return host.Upload(filepath.Join(nodeInstanceDirPath, constants.BLSKeyFileName), filepath.Join(constants.CloudNodeStakingPath, constants.BLSKeyFileName))
+	return host.Upload(
+		filepath.Join(nodeInstanceDirPath, constants.BLSKeyFileName),
+		filepath.Join(constants.CloudNodeStakingPath, constants.BLSKeyFileName),
+		constants.SSHFileOpsTimeout,
+	)
 }
 
 // RunSSHExportSubnet exports deployed Subnet from local machine to cloud server
 func RunSSHExportSubnet(host *models.Host, exportPath, cloudServerSubnetPath string) error {
 	// name: copy exported subnet VM spec to cloud server
-	return host.Upload(exportPath, cloudServerSubnetPath)
+	return host.Upload(
+		exportPath,
+		cloudServerSubnetPath,
+		constants.SSHFileOpsTimeout,
+	)
 }
 
 // RunSSHExportSubnet exports deployed Subnet from local machine to cloud server

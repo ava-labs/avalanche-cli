@@ -86,17 +86,31 @@ func (h *Host) Disconnect() error {
 }
 
 // Upload uploads a local file to a remote file on the host.
-func (h *Host) Upload(localFile string, remoteFile string) error {
+func (h *Host) Upload(localFile string, remoteFile string, timeout time.Duration) error {
 	if !h.Connected() {
 		if err := h.Connect(); err != nil {
 			return err
 		}
 	}
-	return h.Connection.Upload(localFile, remoteFile)
+	errCh := make(chan error)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	go func() {
+		err := h.Connection.Upload(localFile, remoteFile)
+		errCh <- err
+	}()
+	var err error
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("upload timeout of %d seconds for host %s", uint(timeout.Seconds()), h.IP)
+	case err = <-errCh:
+	}
+	return err
+
 }
 
 // Download downloads a file from the remote server to the local machine.
-func (h *Host) Download(remoteFile string, localFile string) error {
+func (h *Host) Download(remoteFile string, localFile string, timeout time.Duration) error {
 	if !h.Connected() {
 		if err := h.Connect(); err != nil {
 			return err
@@ -105,7 +119,20 @@ func (h *Host) Download(remoteFile string, localFile string) error {
 	if err := os.MkdirAll(filepath.Dir(localFile), os.ModePerm); err != nil {
 		return err
 	}
-	return h.Connection.Download(remoteFile, localFile)
+	errCh := make(chan error)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	go func() {
+		err := h.Connection.Download(remoteFile, localFile)
+		errCh <- err
+	}()
+	var err error
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("upload timeout of %d seconds for host %s", uint(timeout.Seconds()), h.IP)
+	case err = <-errCh:
+	}
+	return err
 }
 
 // MkdirAll creates a folder on the remote server.
@@ -162,8 +189,7 @@ func (h *Host) Forward(httpRequest string) ([]byte, []byte, error) {
 	}
 	defer proxy.Close()
 	// send request to server
-	_, err = proxy.Write([]byte(httpRequest))
-	if err != nil {
+	if _, err = proxy.Write([]byte(httpRequest)); err != nil {
 		return nil, nil, err
 	}
 	// Read and print the server's response
@@ -222,10 +248,10 @@ func (h *Host) WaitForSSHPort(timeout time.Duration) error {
 
 // WaitForSSHShell waits for the SSH shell to be available on the host within the specified timeout.
 func (h *Host) WaitForSSHShell(timeout time.Duration) error {
+	start := time.Now()
 	if err := h.WaitForSSHPort(timeout); err != nil {
 		return err
 	}
-	start := time.Now()
 	deadline := start.Add(timeout)
 	for {
 		if time.Now().After(deadline) {

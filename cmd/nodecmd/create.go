@@ -606,7 +606,7 @@ func waitForHosts(hosts []*models.Host) *models.NodeResults {
 		createdWaitGroup.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer createdWaitGroup.Done()
-			if err := host.WaitForSSHShell(2 * constants.SSHFileOpsTimeout); err != nil {
+			if err := host.WaitForSSHShell(constants.SSHServerStartTimeout); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
