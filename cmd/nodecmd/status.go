@@ -58,7 +58,7 @@ func connectHosts(hosts []*models.Host) models.NodeResults {
 		}(&wgResults, host)
 	}
 	wg.Wait()
-	return wgResults
+	return wgResults //nolint:govet
 }
 
 func disconnectHosts(hosts []*models.Host) {
