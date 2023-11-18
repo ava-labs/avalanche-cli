@@ -239,6 +239,9 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	defer disconnectHosts(hosts)
+
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
@@ -250,11 +253,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
-			defer func() {
-				if err := host.Disconnect(); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-				}
-			}()
 			if err := provideStakingCertAndKey(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
@@ -287,7 +285,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 	if network.Kind == models.Devnet {
 		ux.Logger.PrintToUser("Setting up Devnet ...")
-		if err := setupDevnet(clusterName); err != nil {
+		if err := setupDevnet(clusterName, hosts); err != nil {
 			return err
 		}
 	}

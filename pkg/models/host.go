@@ -60,6 +60,7 @@ func (h *Host) GetCloudID() string {
 
 // Connect starts a new SSH connection with the provided private key.
 func (h *Host) Connect() error {
+	fmt.Println("CONNECTING TO", h.IP)
 	if h.Connection != nil {
 		return nil
 	}
@@ -78,6 +79,7 @@ func (h *Host) Connected() bool {
 }
 
 func (h *Host) Disconnect() error {
+	fmt.Println("DISCONNECTING FROM", h.IP)
 	if h.Connection == nil {
 		return nil
 	}

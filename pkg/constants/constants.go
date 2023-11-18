@@ -48,7 +48,7 @@ const (
 	APIRequestTimeout   = 30 * time.Second
 	FastGRPCDialTimeout = 100 * time.Millisecond
 
-	SSHScriptTimeout      = 5 * time.Minute
+	SSHScriptTimeout      = 2 * time.Minute
 	SSHFileOpsTimeout     = 30 * time.Second
 	SSHPOSTTimeout        = 10 * time.Second
 	SSHSleepBetweenChecks = 1 * time.Second
