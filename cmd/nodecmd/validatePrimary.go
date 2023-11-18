@@ -271,22 +271,18 @@ func getDefaultValidationTime(start time.Time, network models.Network, nodeIndex
 	return d, nil
 }
 
-func getNodeIDs(ansibleNodeIDs []string) (map[string]string, map[string]error) {
+func getNodeIDs(hosts []*models.Host) (map[string]string, map[string]error) {
 	nodeIDMap := map[string]string{}
 	failedNodes := map[string]error{}
-	for _, ansibleNodeID := range ansibleNodeIDs {
-		_, cloudNodeID, err := models.HostAnsibleIDToCloudID(ansibleNodeID)
-		if err != nil {
-			failedNodes[ansibleNodeID] = err
-			continue
-		}
+	for _, host := range hosts {
+		cloudNodeID := host.GetCloudID()
 		nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudNodeID))
 		if err != nil {
-			failedNodes[ansibleNodeID] = err
+			failedNodes[host.NodeID] = err
 			continue
 		}
-		ux.Logger.PrintToUser("Avalanche node id for host %s is %s", ansibleNodeID, nodeID)
-		nodeIDMap[ansibleNodeID] = nodeID.String()
+		ux.Logger.PrintToUser("Avalanche node id for host %s is %s", host.NodeID, nodeID)
+		nodeIDMap[host.NodeID] = nodeID.String()
 	}
 	return nodeIDMap, failedNodes
 }
@@ -349,14 +345,20 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	defer disconnectHosts(hosts)
+
+	notBootstrappedNodes, err := checkHostsAreBootstrapped(hosts)
 	if err != nil {
 		return err
 	}
 	if len(notBootstrappedNodes) > 0 {
 		return fmt.Errorf("node(s) %s are not bootstrapped yet, please try again later", notBootstrappedNodes)
 	}
-	notHealthyNodes, err := checkClusterIsHealthy(clusterName)
+	notHealthyNodes, err := checkHostsAreHealthy(hosts)
 	if err != nil {
 		return err
 	}
@@ -364,43 +366,39 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("node(s) %s are not healthy, please fix the issue and again", notHealthyNodes)
 	}
 	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
-	ansibleNodeIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return err
-	}
-	nodeIDMap, failedNodesMap := getNodeIDs(ansibleNodeIDs)
+	nodeIDMap, failedNodesMap := getNodeIDs(hosts)
 	failedNodes := []string{}
 	nodeErrors := []error{}
-	for i, ansibleNodeID := range ansibleNodeIDs {
-		nodeIDStr, b := nodeIDMap[ansibleNodeID]
+	for i, host := range hosts {
+		nodeIDStr, b := nodeIDMap[host.NodeID]
 		if !b {
-			err, b := failedNodesMap[ansibleNodeID]
+			err, b := failedNodesMap[host.NodeID]
 			if !b {
 				return fmt.Errorf("expected to found an error for non mapped node")
 			}
-			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", ansibleNodeID, err)
-			failedNodes = append(failedNodes, ansibleNodeID)
+			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host.NodeID, err)
+			failedNodes = append(failedNodes, host.NodeID)
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
 		nodeID, err := ids.NodeIDFromString(nodeIDStr)
 		if err != nil {
-			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", ansibleNodeID, err)
-			failedNodes = append(failedNodes, ansibleNodeID)
+			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host.NodeID, err)
+			failedNodes = append(failedNodes, host.NodeID)
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
-		_, clusterNodeID, err := models.HostAnsibleIDToCloudID(ansibleNodeID)
+		_, clusterNodeID, err := models.HostAnsibleIDToCloudID(host.NodeID)
 		if err != nil {
-			ux.Logger.PrintToUser("Failed to add node %s as Primary Network due to %s", ansibleNodeID, err.Error())
-			failedNodes = append(failedNodes, ansibleNodeID)
+			ux.Logger.PrintToUser("Failed to add node %s as Primary Network due to %s", host.NodeID, err.Error())
+			failedNodes = append(failedNodes, host.NodeID)
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
 		_, err = addNodeAsPrimaryNetworkValidator(network, kc, useLedger, nodeID, i, clusterNodeID)
 		if err != nil {
-			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", ansibleNodeID, err)
-			failedNodes = append(failedNodes, ansibleNodeID)
+			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host.NodeID, err)
+			failedNodes = append(failedNodes, host.NodeID)
 			nodeErrors = append(nodeErrors, err)
 		}
 	}

@@ -77,7 +77,6 @@ func statusNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
 	defer disconnectHosts(hosts)
 
 	notBootstrappedNodes, err := checkHostsAreBootstrapped(hosts)
