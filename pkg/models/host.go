@@ -129,7 +129,7 @@ func (h *Host) Download(remoteFile string, localFile string, timeout time.Durati
 	var err error
 	select {
 	case <-ctx.Done():
-		return fmt.Errorf("upload timeout of %d seconds for host %s", uint(timeout.Seconds()), h.IP)
+		return fmt.Errorf("download timeout of %d seconds for host %s", uint(timeout.Seconds()), h.IP)
 	case err = <-errCh:
 	}
 	return err
