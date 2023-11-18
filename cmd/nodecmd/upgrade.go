@@ -113,6 +113,9 @@ func getNodesUpgradeInfo(clusterName string) (map[string]nodeUpgradeInfo, error)
 	if err != nil {
 		return nil, err
 	}
+
+	defer disconnectHosts(hosts)
+
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
@@ -123,11 +126,6 @@ func getNodesUpgradeInfo(clusterName string) (map[string]nodeUpgradeInfo, error)
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
-			defer func() {
-				if err := host.Disconnect(); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-				}
-			}()
 			if resp, err := ssh.RunSSHCheckAvalancheGoVersion(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
