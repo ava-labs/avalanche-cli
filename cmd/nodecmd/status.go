@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -24,8 +23,6 @@ import (
 )
 
 var subnetName string
-
-const statusCmdTimeout = 1 * time.Minute
 
 func newStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
