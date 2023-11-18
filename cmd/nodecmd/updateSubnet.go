@@ -62,7 +62,7 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 	if len(notHealthyNodes) > 0 {
 		return fmt.Errorf("node(s) %s are not healthy, please fix the issue and again", notHealthyNodes)
 	}
-	incompatibleNodes, err := checkAvalancheGoVersionCompatibleAtHosts(hosts, subnetName)
+	incompatibleNodes, err := checkAvalancheGoVersionCompatible(hosts, subnetName)
 	if err != nil {
 		return err
 	}

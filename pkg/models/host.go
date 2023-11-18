@@ -106,7 +106,6 @@ func (h *Host) Upload(localFile string, remoteFile string, timeout time.Duration
 	case <-ch:
 	}
 	return err
-
 }
 
 // Download downloads a file from the remote server to the local machine.

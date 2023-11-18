@@ -6,9 +6,9 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/spf13/cobra"
 )
 
@@ -56,7 +56,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	if len(notHealthyNodes) > 0 {
 		return fmt.Errorf("node(s) %s are not healthy yet, please try again later", notHealthyNodes)
 	}
-	incompatibleNodes, err := checkAvalancheGoVersionCompatibleAtHosts(hosts, subnetName)
+	incompatibleNodes, err := checkAvalancheGoVersionCompatible(hosts, subnetName)
 	if err != nil {
 		return err
 	}

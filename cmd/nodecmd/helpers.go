@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
@@ -28,48 +27,6 @@ func checkHostsAreHealthy(hosts []*models.Host) ([]string, error) {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			if resp, err := ssh.RunSSHCheckHealthy(host); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			} else {
-				if isHealthy, err := parseHealthyOutput(resp); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-				} else {
-					nodeResults.AddResult(host.NodeID, isHealthy, err)
-				}
-			}
-		}(&wgResults, host)
-	}
-	wg.Wait()
-	if wgResults.HasErrors() {
-		return nil, fmt.Errorf("failed to get health status for node(s) %s", wgResults.GetErrorHostMap())
-	}
-	return utils.Filter(wgResults.GetNodeList(), func(nodeID string) bool {
-		return !wgResults.GetResultMap()[nodeID].(bool)
-	}), nil
-}
-
-func checkClusterIsHealthy(clusterName string) ([]string, error) {
-	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return nil, err
-	}
-	ux.Logger.PrintToUser(fmt.Sprintf("Checking if node(s) in cluster %s are healthy ...", clusterName))
-	wg := sync.WaitGroup{}
-	wgResults := models.NodeResults{}
-	for _, host := range hosts {
-		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
-			defer wg.Done()
-			if err := host.Connect(); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			defer func() {
-				if err := host.Disconnect(); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-				}
-			}()
 			if resp, err := ssh.RunSSHCheckHealthy(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
@@ -135,48 +92,6 @@ func checkHostsAreBootstrapped(hosts []*models.Host) ([]string, error) {
 	}), nil
 }
 
-func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
-	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return nil, err
-	}
-	ux.Logger.PrintToUser(fmt.Sprintf("Checking if node(s) in cluster %s are bootstrapped to Primary Network ...", clusterName))
-	wg := sync.WaitGroup{}
-	wgResults := models.NodeResults{}
-	for _, host := range hosts {
-		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
-			defer wg.Done()
-			if err := host.Connect(); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			defer func() {
-				if err := host.Disconnect(); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-				}
-			}()
-			if resp, err := ssh.RunSSHCheckBootstrapped(host); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			} else {
-				if isBootstrapped, err := parseBootstrappedOutput(resp); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-				} else {
-					nodeResults.AddResult(host.NodeID, isBootstrapped, err)
-				}
-			}
-		}(&wgResults, host)
-	}
-	wg.Wait()
-	if wgResults.HasErrors() {
-		return nil, fmt.Errorf("failed to get avalanchego bootrapp status for node(s) %s", wgResults.GetErrorHostMap())
-	}
-	return utils.Filter(wgResults.GetNodeList(), func(nodeID string) bool {
-		return !wgResults.GetResultMap()[nodeID].(bool)
-	}), nil
-}
-
 func parseBootstrappedOutput(byteValue []byte) (bool, error) {
 	var result map[string]interface{}
 	if err := json.Unmarshal(byteValue, &result); err != nil {
@@ -192,7 +107,7 @@ func parseBootstrappedOutput(byteValue []byte) (bool, error) {
 	return false, errors.New("unable to parse node bootstrap status")
 }
 
-func checkAvalancheGoVersionCompatibleAtHosts(hosts []*models.Host, subnetName string) ([]string, error) {
+func checkAvalancheGoVersionCompatible(hosts []*models.Host, subnetName string) ([]string, error) {
 	ux.Logger.PrintToUser("Checking compatibility of node(s) avalanche go version with Subnet EVM RPC of subnet %s ...", subnetName)
 	compatibleVersions := []string{}
 	incompatibleNodes := []string{}
@@ -202,64 +117,6 @@ func checkAvalancheGoVersionCompatibleAtHosts(hosts []*models.Host, subnetName s
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			if resp, err := ssh.RunSSHCheckAvalancheGoVersion(host); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			} else {
-				if avalancheGoVersion, err := parseAvalancheGoOutput(resp); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-				} else {
-					nodeResults.AddResult(host.NodeID, avalancheGoVersion, err)
-				}
-			}
-		}(&wgResults, host)
-	}
-	wg.Wait()
-	if wgResults.HasErrors() {
-		return nil, fmt.Errorf("failed to get avalanchego version for node(s) %s", wgResults.GetErrorHostMap())
-	}
-	for nodeID, avalancheGoVersion := range wgResults.GetResultMap() {
-		sc, err := app.LoadSidecar(subnetName)
-		if err != nil {
-			return nil, err
-		}
-		compatibleVersions, err = checkForCompatibleAvagoVersion(sc.RPCVersion)
-		if err != nil {
-			return nil, err
-		}
-		if !slices.Contains(compatibleVersions, fmt.Sprintf("%v", avalancheGoVersion)) {
-			incompatibleNodes = append(incompatibleNodes, nodeID)
-		}
-	}
-	if len(incompatibleNodes) > 0 {
-		ux.Logger.PrintToUser(fmt.Sprintf("Compatible Avalanche Go versions are %s", strings.Join(compatibleVersions, ", ")))
-	}
-	return incompatibleNodes, nil
-}
-
-func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string, error) {
-	ux.Logger.PrintToUser(fmt.Sprintf("Checking compatibility of avalanche go version in cluster %s with Subnet EVM RPC of subnet %s ...", clusterName, subnetName))
-	compatibleVersions := []string{}
-	incompatibleNodes := []string{}
-	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return nil, err
-	}
-	wg := sync.WaitGroup{}
-	wgResults := models.NodeResults{}
-	for _, host := range hosts {
-		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
-			defer wg.Done()
-			if err := host.Connect(); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			defer func() {
-				if err := host.Disconnect(); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-				}
-			}()
 			if resp, err := ssh.RunSSHCheckAvalancheGoVersion(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
@@ -320,21 +177,6 @@ func checkForCompatibleAvagoVersion(configuredRPCVersion int) ([]string, error) 
 		return nil, err
 	}
 	return compatibleAvagoVersions, nil
-}
-
-func connectHosts(hosts []*models.Host) models.NodeResults {
-	wg := sync.WaitGroup{}
-	wgResults := models.NodeResults{}
-	for _, host := range hosts {
-		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
-			defer wg.Done()
-			err := host.Connect()
-			nodeResults.AddResult(host.NodeID, nil, err)
-		}(&wgResults, host)
-	}
-	wg.Wait()
-	return wgResults //nolint:govet
 }
 
 func disconnectHosts(hosts []*models.Host) {
