@@ -40,7 +40,7 @@ func NewHostConnection(h *Host) (*goph.Client, error) {
 	cl, err := goph.NewConn(&goph.Config{
 		User:    h.SSHUser,
 		Addr:    h.IP,
-		Port:    22,
+		Port:    constants.SSHTCPPort,
 		Auth:    auth,
 		Timeout: sshConnectionTimeout,
 		// #nosec G106
