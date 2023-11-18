@@ -80,12 +80,6 @@ func statusNode(_ *cobra.Command, args []string) error {
 
 	defer disconnectHosts(hosts)
 
-	ux.Logger.PrintToUser("Connecting to node(s)")
-	wgResults := connectHosts(hosts)
-	if wgResults.HasErrors() {
-		return fmt.Errorf("failed to connect to node(s) %s", wgResults.GetErrorHostMap())
-	}
-
 	notBootstrappedNodes, err := checkHostsAreBootstrapped(hosts)
 	if err != nil {
 		return err
@@ -99,7 +93,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Getting avalanchego version of node(s)")
 
 	wg := sync.WaitGroup{}
-	wgResults = models.NodeResults{}
+	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
