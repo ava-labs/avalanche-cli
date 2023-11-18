@@ -81,7 +81,7 @@ func (h *Host) Disconnect() error {
 	if h.Connection == nil {
 		return nil
 	}
-	err := h.Connection.Client.Close()
+	err := h.Connection.Close()
 	return err
 }
 
@@ -156,9 +156,9 @@ func (h *Host) Forward(httpRequest string) ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	proxy, err := h.Connection.Client.DialTCP("tcp", nil, avalancheGoAddr)
+	proxy, err := h.Connection.DialTCP("tcp", nil, avalancheGoAddr)
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to port forward to %s via %s", h.Connection.Client.Conn.RemoteAddr(), "ssh")
+		return nil, nil, fmt.Errorf("unable to port forward to %s via %s", h.Connection.RemoteAddr(), "ssh")
 	}
 	defer proxy.Close()
 	// send request to server
