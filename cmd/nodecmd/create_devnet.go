@@ -197,7 +197,7 @@ func setupDevnet(clusterName string) error {
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host models.Host) {
+		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
 			if err := host.Connect(constants.SSHScriptTimeout); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)

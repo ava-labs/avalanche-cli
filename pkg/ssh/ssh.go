@@ -38,7 +38,7 @@ func scriptLog(nodeID string, line string) string {
 
 // RunOverSSH runs provided script path over ssh.
 // This script can be template as it will be rendered using scriptInputs vars
-func RunOverSSH(scriptDesc string, host models.Host, scriptPath string, templateVars scriptInputs) error {
+func RunOverSSH(scriptDesc string, host *models.Host, scriptPath string, templateVars scriptInputs) error {
 	shellScript, err := script.ReadFile(scriptPath)
 	if err != nil {
 		return err
@@ -65,7 +65,7 @@ func RunOverSSH(scriptDesc string, host models.Host, scriptPath string, template
 	return nil
 }
 
-func PostOverSSH(host models.Host, path string, requestBody string) ([]byte, error) {
+func PostOverSSH(host *models.Host, path string, requestBody string) ([]byte, error) {
 	if path == "" {
 		path = "/ext/info"
 	}
@@ -87,7 +87,7 @@ func PostOverSSH(host models.Host, path string, requestBody string) ([]byte, err
 }
 
 // RunSSHSetupNode runs script to setup node
-func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string, isDevNet bool) error {
+func RunSSHSetupNode(host *models.Host, configPath, avalancheGoVersion string, isDevNet bool) error {
 	if err := RunOverSSH("Setup Node", host, "shell/setupNode.sh", scriptInputs{AvalancheGoVersion: avalancheGoVersion, IsDevNet: isDevNet}); err != nil {
 		return err
 	}
@@ -96,32 +96,32 @@ func RunSSHSetupNode(host models.Host, configPath, avalancheGoVersion string, is
 }
 
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
-func RunSSHUpgradeAvalanchego(host models.Host, avalancheGoVersion string) error {
+func RunSSHUpgradeAvalanchego(host *models.Host, avalancheGoVersion string) error {
 	return RunOverSSH("Upgrade Avalanchego", host, "shell/upgradeAvalancheGo.sh", scriptInputs{AvalancheGoVersion: avalancheGoVersion})
 }
 
 // RunSSHStartNode runs script to start avalanchego
-func RunSSHStartNode(host models.Host) error {
+func RunSSHStartNode(host *models.Host) error {
 	return RunOverSSH("Start Avalanchego", host, "shell/startNode.sh", scriptInputs{})
 }
 
 // RunSSHStopNode runs script to stop avalanchego
-func RunSSHStopNode(host models.Host) error {
+func RunSSHStopNode(host *models.Host) error {
 	return RunOverSSH("Stop Avalanchego", host, "shell/stopNode.sh", scriptInputs{})
 }
 
 // RunSSHUpgradeSubnetEVM runs script to upgrade subnet evm
-func RunSSHUpgradeSubnetEVM(host models.Host, subnetEVMBinaryPath string) error {
+func RunSSHUpgradeSubnetEVM(host *models.Host, subnetEVMBinaryPath string) error {
 	return RunOverSSH("Upgrade Subnet EVM", host, "shell/upgradeSubnetEVM.sh", scriptInputs{SubnetEVMBinaryPath: subnetEVMBinaryPath})
 }
 
 // RunSSHGetNewSubnetEVMRelease runs script to download new subnet evm
-func RunSSHGetNewSubnetEVMRelease(host models.Host, subnetEVMReleaseURL, subnetEVMArchive string) error {
+func RunSSHGetNewSubnetEVMRelease(host *models.Host, subnetEVMReleaseURL, subnetEVMArchive string) error {
 	return RunOverSSH("Get Subnet EVM Release", host, "shell/getNewSubnetEVMRelease.sh", scriptInputs{SubnetEVMReleaseURL: subnetEVMReleaseURL, SubnetEVMArchive: subnetEVMArchive})
 }
 
 // RunSSHSetupDevNet runs script to setup devnet
-func RunSSHSetupDevNet(host models.Host, nodeInstanceDirPath string) error {
+func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 	if err := host.MkdirAll(constants.CloudNodeConfigPath); err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func RunSSHSetupDevNet(host models.Host, nodeInstanceDirPath string) error {
 }
 
 // RunSSHUploadStakingFiles uploads staking files to a remote host via SSH.
-func RunSSHUploadStakingFiles(host models.Host, nodeInstanceDirPath string) error {
+func RunSSHUploadStakingFiles(host *models.Host, nodeInstanceDirPath string) error {
 	if err := host.MkdirAll(constants.CloudNodeStakingPath); err != nil {
 		return err
 	}
@@ -150,62 +150,62 @@ func RunSSHUploadStakingFiles(host models.Host, nodeInstanceDirPath string) erro
 }
 
 // RunSSHExportSubnet exports deployed Subnet from local machine to cloud server
-func RunSSHExportSubnet(host models.Host, exportPath, cloudServerSubnetPath string) error {
+func RunSSHExportSubnet(host *models.Host, exportPath, cloudServerSubnetPath string) error {
 	// name: copy exported subnet VM spec to cloud server
 	return host.Upload(exportPath, cloudServerSubnetPath)
 }
 
 // RunSSHExportSubnet exports deployed Subnet from local machine to cloud server
 // targets a specific host ansibleHostID in ansible inventory file
-func RunSSHTrackSubnet(host models.Host, subnetName, importPath, networkFlag string) error {
+func RunSSHTrackSubnet(host *models.Host, subnetName, importPath, networkFlag string) error {
 	return RunOverSSH("Track Subnet", host, "shell/trackSubnet.sh", scriptInputs{SubnetName: subnetName, SubnetExportFileName: importPath, NetworkFlag: networkFlag})
 }
 
 // RunSSHUpdateSubnet runs avalanche subnet join <subnetName> in cloud server using update subnet info
-func RunSSHUpdateSubnet(host models.Host, subnetName, importPath string) error {
+func RunSSHUpdateSubnet(host *models.Host, subnetName, importPath string) error {
 	return RunOverSSH("Track Subnet", host, "shell/updateSubnet.sh", scriptInputs{SubnetName: subnetName, SubnetExportFileName: importPath})
 }
 
 // RunSSHSetupBuildEnv installs gcc, golang, rust and etc
-func RunSSHSetupBuildEnv(host models.Host) error {
+func RunSSHSetupBuildEnv(host *models.Host) error {
 	return RunOverSSH("Setup Build Env", host, "shell/setupBuildEnv.sh", scriptInputs{GoVersion: constants.BuildEnvGolangVersion})
 }
 
 // RunSSHSetupCLIFromSource installs any CLI branch from source
-func RunSSHSetupCLIFromSource(host models.Host, cliBranch string) error {
+func RunSSHSetupCLIFromSource(host *models.Host, cliBranch string) error {
 	return RunOverSSH("Setup CLI From Source", host, "shell/setupCLIFromSource.sh", scriptInputs{CliBranch: cliBranch})
 }
 
 // RunSSHCheckAvalancheGoVersion checks node avalanchego version
-func RunSSHCheckAvalancheGoVersion(host models.Host) ([]byte, error) {
+func RunSSHCheckAvalancheGoVersion(host *models.Host) ([]byte, error) {
 	// Craft and send the HTTP POST request
 	requestBody := "{\"jsonrpc\":\"2.0\", \"id\":1,\"method\" :\"info.getNodeVersion\"}"
 	return PostOverSSH(host, "", requestBody)
 }
 
 // RunSSHCheckBootstrapped checks if node is bootstrapped to primary network
-func RunSSHCheckBootstrapped(host models.Host) ([]byte, error) {
+func RunSSHCheckBootstrapped(host *models.Host) ([]byte, error) {
 	// Craft and send the HTTP POST request
 	requestBody := "{\"jsonrpc\":\"2.0\", \"id\":1,\"method\" :\"info.isBootstrapped\", \"params\": {\"chain\":\"X\"}}"
 	return PostOverSSH(host, "", requestBody)
 }
 
 // RunSSHCheckHealthy checks if node is healthy
-func RunSSHCheckHealthy(host models.Host) ([]byte, error) {
+func RunSSHCheckHealthy(host *models.Host) ([]byte, error) {
 	// Craft and send the HTTP POST request
 	requestBody := "{\"jsonrpc\":\"2.0\", \"id\":1,\"method\":\"health.health\"}"
 	return PostOverSSH(host, "/ext/health", requestBody)
 }
 
 // RunSSHGetNodeID reads nodeID from avalanchego
-func RunSSHGetNodeID(host models.Host) ([]byte, error) {
+func RunSSHGetNodeID(host *models.Host) ([]byte, error) {
 	// Craft and send the HTTP POST request
 	requestBody := "{\"jsonrpc\":\"2.0\", \"id\":1,\"method\" :\"info.getNodeID\"}"
 	return PostOverSSH(host, "", requestBody)
 }
 
 // SubnetSyncStatus checks if node is synced to subnet
-func RunSSHSubnetSyncStatus(host models.Host, blockchainID string) ([]byte, error) {
+func RunSSHSubnetSyncStatus(host *models.Host, blockchainID string) ([]byte, error) {
 	// Craft and send the HTTP POST request
 	requestBody := fmt.Sprintf("{\"jsonrpc\":\"2.0\", \"id\":1,\"method\" :\"platform.getBlockchainStatus\", \"params\": {\"blockchainID\":\"%s\"}}", blockchainID)
 	return PostOverSSH(host, "/ext/bc/P", requestBody)

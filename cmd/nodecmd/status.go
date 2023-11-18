@@ -7,10 +7,10 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -24,6 +24,8 @@ import (
 )
 
 var subnetName string
+
+const statusCmdTimeout = 1 * time.Minute
 
 func newStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -42,6 +44,27 @@ To get the bootstrap status of a node with a Subnet, use --subnet flag`,
 	cmd.Flags().StringVar(&subnetName, "subnet", "", "specify the subnet the node is syncing with")
 
 	return cmd
+}
+
+func connectHosts(hosts []*models.Host) models.NodeResults {
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	for _, host := range hosts {
+		wg.Add(1)
+		go func(nodeResults *models.NodeResults, host *models.Host) {
+			defer wg.Done()
+			err := host.Connect(statusCmdTimeout)
+			nodeResults.AddResult(host.NodeID, nil, err)
+		}(&wgResults, host)
+	}
+	wg.Wait()
+	return wgResults
+}
+
+func disconnectHosts(hosts []*models.Host) {
+	for _, host := range hosts {
+		_ = host.Disconnect()
+	}
 }
 
 func statusNode(_ *cobra.Command, args []string) error {
@@ -73,34 +96,38 @@ func statusNode(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
-	if err != nil {
-		return err
-	}
-	notHealthyNodes, err := checkClusterIsHealthy(clusterName)
-	if err != nil {
-		return err
-	}
 
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
+
+	defer disconnectHosts(hosts)
+
+	ux.Logger.PrintToUser("Connecting to node(s)")
+	wgResults := connectHosts(hosts)
+	if wgResults.HasErrors() {
+		return fmt.Errorf("failed to connect to node(s) %s", wgResults.GetErrorHostMap())
+	}
+
+	notBootstrappedNodes, err := checkHostsAreBootstrapped(hosts)
+	if err != nil {
+		return err
+	}
+
+	notHealthyNodes, err := checkHostsAreHealthy(hosts)
+	if err != nil {
+		return err
+	}
+
+	ux.Logger.PrintToUser("Getting avalanchego version of node(s)")
+
 	wg := sync.WaitGroup{}
-	wgResults := models.NodeResults{}
+	wgResults = models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host models.Host) {
+		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			if err := host.Connect(constants.SSHPOSTTimeout); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			defer func() {
-				if err := host.Disconnect(); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-				}
-			}()
 			if resp, err := ssh.RunSSHCheckAvalancheGoVersion(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
@@ -148,22 +175,14 @@ func statusNode(_ *cobra.Command, args []string) error {
 			}
 		}
 		if len(hostsToCheckSyncStatus) != 0 {
-			hostsToCheck := utils.Filter(hosts, func(h models.Host) bool { return slices.Contains(hostsToCheckSyncStatus, h.NodeID) })
+			ux.Logger.PrintToUser("Getting subnet sync status of node(s)")
+			hostsToCheck := utils.Filter(hosts, func(h *models.Host) bool { return slices.Contains(hostsToCheckSyncStatus, h.NodeID) })
 			wg := sync.WaitGroup{}
 			wgResults := models.NodeResults{}
 			for _, host := range hostsToCheck {
 				wg.Add(1)
-				go func(nodeResults *models.NodeResults, host models.Host) {
+				go func(nodeResults *models.NodeResults, host *models.Host) {
 					defer wg.Done()
-					if err := host.Connect(constants.SSHScriptTimeout); err != nil {
-						nodeResults.AddResult(host.NodeID, nil, err)
-						return
-					}
-					defer func() {
-						if err := host.Disconnect(); err != nil {
-							nodeResults.AddResult(host.NodeID, nil, err)
-						}
-					}()
 					if syncstatus, err := ssh.RunSSHSubnetSyncStatus(host, blockchainID.String()); err != nil {
 						nodeResults.AddResult(host.NodeID, nil, err)
 						return
@@ -223,7 +242,7 @@ func printOutput(
 	clustersConfig models.ClustersConfig,
 	hostIDs []string,
 	ansibleHostIDs []string,
-	ansibleHosts map[string]models.Host,
+	ansibleHosts map[string]*models.Host,
 	nodeIDs []string,
 	avagoVersions map[string]string,
 	notHealthyHosts []string,

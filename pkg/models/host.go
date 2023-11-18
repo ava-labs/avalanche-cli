@@ -18,7 +18,9 @@ import (
 )
 
 const (
-	maxResponseSize = 102400 // 100KB should be enough to read the avalanchego response
+	maxResponseSize      = 102400          // 100KB should be enough to read the avalanchego response
+	sshConnectionTimeout = 3 * time.Second // usually takes less than 2
+	sshConnectionRetries = 5
 )
 
 type Host struct {
@@ -31,39 +33,37 @@ type Host struct {
 }
 
 type HostConnection struct {
-	Client    *goph.Client
-	Ctx       context.Context
-	ctxCancel context.CancelFunc
+	Client *goph.Client
+	Ctx    context.Context
+	Cancel context.CancelFunc
 }
 
-func NewHostConnection(h Host, timeout time.Duration) *HostConnection {
-	if h.Connection != nil { // reuse connection if it exists
-		return h.Connection
-	}
-	p := new(HostConnection)
+func NewHostConnection(h Host, timeout time.Duration) (*HostConnection, error) {
 	if timeout == 0 {
 		timeout = constants.SSHScriptTimeout
 	}
-	p.Ctx, p.ctxCancel = context.WithTimeout(context.Background(), timeout)
 	auth, err := goph.Key(h.SSHPrivateKeyPath, "")
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	cl, err := goph.NewConn(&goph.Config{
 		User:    h.SSHUser,
 		Addr:    h.IP,
 		Port:    22,
 		Auth:    auth,
-		Timeout: timeout,
+		Timeout: sshConnectionTimeout,
 		// #nosec G106
 		Callback: ssh.InsecureIgnoreHostKey(), // we don't verify host key ( similar to ansible)
 	})
 	if err != nil {
-		return nil
-	} else {
-		p.Client = cl
+		return nil, err
 	}
-	return p
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	return &HostConnection{
+		Client: cl,
+		Ctx:    ctx,
+		Cancel: cancel,
+	}, nil
 }
 
 // GetCloudID returns the node ID of the host.
@@ -74,9 +74,15 @@ func (h *Host) GetCloudID() string {
 
 // Connect starts a new SSH connection with the provided private key.
 func (h *Host) Connect(timeout time.Duration) error {
-	h.Connection = NewHostConnection(*h, timeout)
-	if !h.Connected() {
-		return fmt.Errorf("failed to connect to host %s", h.IP)
+	if h.Connection != nil {
+		return nil
+	}
+	var err error
+	for i := 0; h.Connection == nil && i < sshConnectionRetries; i++ {
+		h.Connection, err = NewHostConnection(*h, timeout)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to connect to host %s: %w", h.IP, err)
 	}
 	return nil
 }
@@ -86,10 +92,11 @@ func (h *Host) Connected() bool {
 }
 
 func (h *Host) Disconnect() error {
-	if !h.Connected() {
+	if h.Connection == nil {
 		return nil
 	}
-	return h.Connection.Client.Close()
+	err := h.Connection.Client.Close()
+	return err
 }
 
 // Upload uploads a local file to a remote file on the host.

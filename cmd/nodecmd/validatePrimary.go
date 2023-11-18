@@ -3,12 +3,10 @@
 package nodecmd
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
@@ -19,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanchego/utils/units"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 
@@ -82,21 +79,6 @@ Network.`,
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long validator validates for after start time")
 
 	return cmd
-}
-
-func parseBootstrappedOutput(byteValue []byte) (bool, error) {
-	var result map[string]interface{}
-	if err := json.Unmarshal(byteValue, &result); err != nil {
-		return false, err
-	}
-	isBootstrappedInterface, ok := result["result"].(map[string]interface{})
-	if ok {
-		isBootstrapped, ok := isBootstrappedInterface["isBootstrapped"].(bool)
-		if ok {
-			return isBootstrapped, nil
-		}
-	}
-	return false, errors.New("unable to parse node bootstrap status")
 }
 
 func GetMinStakingAmount(network models.Network) (uint64, error) {
@@ -287,48 +269,6 @@ func getDefaultValidationTime(start time.Time, network models.Network, nodeIndex
 		}
 	}
 	return d, nil
-}
-
-func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
-	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return nil, err
-	}
-	ux.Logger.PrintToUser(fmt.Sprintf("Checking if node(s) in cluster %s are bootstrapped to Primary Network ...", clusterName))
-	wg := sync.WaitGroup{}
-	wgResults := models.NodeResults{}
-	for _, host := range hosts {
-		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host models.Host) {
-			defer wg.Done()
-			if err := host.Connect(constants.SSHPOSTTimeout); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			defer func() {
-				if err := host.Disconnect(); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-				}
-			}()
-			if resp, err := ssh.RunSSHCheckBootstrapped(host); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			} else {
-				if isBootstrapped, err := parseBootstrappedOutput(resp); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-				} else {
-					nodeResults.AddResult(host.NodeID, isBootstrapped, err)
-				}
-			}
-		}(&wgResults, host)
-	}
-	wg.Wait()
-	if wgResults.HasErrors() {
-		return nil, fmt.Errorf("failed to get avalanchego bootrapp status for node(s) %s", wgResults.GetErrorHostMap())
-	}
-	return utils.Filter(wgResults.GetNodeList(), func(nodeID string) bool {
-		return !wgResults.GetResultMap()[nodeID].(bool)
-	}), nil
 }
 
 func getNodeIDs(ansibleNodeIDs []string) (map[string]string, map[string]error) {

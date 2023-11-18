@@ -225,7 +225,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	hosts := utils.Filter(allHosts, func(h models.Host) bool { return slices.Contains(cloudConfig.InstanceIDs, h.GetCloudID()) })
+	hosts := utils.Filter(allHosts, func(h *models.Host) bool { return slices.Contains(cloudConfig.InstanceIDs, h.GetCloudID()) })
 	// waiting for all nodes to become accessible
 	failedHosts := waitForHosts(hosts)
 	if failedHosts.Len() > 0 {
@@ -244,7 +244,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host models.Host) {
+		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
 			if err := host.Connect(constants.SSHScriptTimeout); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
@@ -425,7 +425,7 @@ func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePa
 	return nodeID, nil
 }
 
-func provideStakingCertAndKey(host models.Host) error {
+func provideStakingCertAndKey(host *models.Host) error {
 	instanceID := host.GetCloudID()
 	keyPath := filepath.Join(app.GetNodesDir(), instanceID)
 	nodeID, err := generateNodeCertAndKeys(
@@ -601,12 +601,12 @@ func printResults(cloudConfig CloudConfig, publicIPMap map[string]string, ansibl
 }
 
 // waitForHosts waits for all hosts to become available via SSH.
-func waitForHosts(hosts []models.Host) *models.NodeResults {
+func waitForHosts(hosts []*models.Host) *models.NodeResults {
 	hostErrors := models.NodeResults{}
 	createdWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
 		createdWaitGroup.Add(1)
-		go func(nodeResults *models.NodeResults, host models.Host) {
+		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer createdWaitGroup.Done()
 			if err := host.WaitForSSHShell(2 * constants.SSHFileOpsTimeout); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
