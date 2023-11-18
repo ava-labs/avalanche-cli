@@ -271,6 +271,9 @@ func createAWSInstances(ec2Svc *ec2.EC2, numNodes int, awsProfile, region, ami s
 	// Create new EC2 instances
 	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(rootBody, ec2Svc, hclFile, numNodes, awsProfile, region, ami, certName, prefix, securityGroupName)
 	if err != nil {
+		if strings.Contains(err.Error(), terraformaws.TerraformInitErrorStr) {
+			return CloudConfig{}, err
+		}
 		if err.Error() == constants.EIPLimitErr {
 			ux.Logger.PrintToUser("Failed to create AWS cloud server(s), please try creating again in a different region")
 		} else {
@@ -286,7 +289,7 @@ func createAWSInstances(ec2Svc *ec2.EC2, numNodes int, awsProfile, region, ami s
 			failedNodes := []string{}
 			nodeErrors := []error{}
 			for _, instanceID := range instanceIDs {
-				ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s...", instanceID))
+				ux.Logger.PrintToUser("Stopping AWS cloud server %s...", instanceID)
 				if stopErr := awsAPI.StopInstance(ec2Svc, instanceID, "", false); stopErr != nil {
 					failedNodes = append(failedNodes, instanceID)
 					nodeErrors = append(nodeErrors, stopErr)
