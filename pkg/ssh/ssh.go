@@ -61,10 +61,6 @@ func RunOverSSH(
 		return err
 	}
 	ux.Logger.PrintToUser(scriptLog(host.NodeID, scriptDesc))
-	// make sure we are connected
-	if err := host.Connect(); err != nil {
-		return err
-	}
 	if s, err := host.Command(script.String(), nil, timeout); err != nil {
 		fmt.Println(string(s))
 		return err
