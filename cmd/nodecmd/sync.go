@@ -207,10 +207,6 @@ func trackSubnet(
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			if err := ssh.RunSSHSetupCLIFromSource(host, constants.SetupCLIFromSourceBranch); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
 			subnetExportPath := filepath.Join("/tmp", filepath.Base(subnetPath))
 			if err := ssh.RunSSHExportSubnet(host, subnetPath, subnetExportPath); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
