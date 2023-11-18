@@ -172,7 +172,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			if err := host.Connect(constants.SSHScriptTimeout); err != nil {
+			if err := host.Connect(); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
@@ -253,7 +253,7 @@ func checkAvalancheGoVersionCompatible(clusterName, subnetName string) ([]string
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			if err := host.Connect(constants.SSHPOSTTimeout); err != nil {
+			if err := host.Connect(); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
@@ -325,7 +325,7 @@ func trackSubnet(clusterName, subnetName string, network models.Network) ([]stri
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			if err := host.Connect(constants.SSHScriptTimeout); err != nil {
+			if err := host.Connect(); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}

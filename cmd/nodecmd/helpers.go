@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -57,7 +56,7 @@ func checkClusterIsHealthy(clusterName string) ([]string, error) {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			if err := host.Connect(constants.SSHPOSTTimeout); err != nil {
+			if err := host.Connect(); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
@@ -143,7 +142,7 @@ func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			if err := host.Connect(constants.SSHPOSTTimeout); err != nil {
+			if err := host.Connect(); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}

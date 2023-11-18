@@ -29,19 +29,10 @@ type Host struct {
 	SSHUser           string
 	SSHPrivateKeyPath string
 	SSHCommonArgs     string
-	Connection        *HostConnection
+	Connection        *goph.Client
 }
 
-type HostConnection struct {
-	Client *goph.Client
-	Ctx    context.Context
-	Cancel context.CancelFunc
-}
-
-func NewHostConnection(h Host, timeout time.Duration) (*HostConnection, error) {
-	if timeout == 0 {
-		timeout = constants.SSHScriptTimeout
-	}
+func NewHostConnection(h *Host) (*goph.Client, error) {
 	auth, err := goph.Key(h.SSHPrivateKeyPath, "")
 	if err != nil {
 		return nil, err
@@ -58,12 +49,7 @@ func NewHostConnection(h Host, timeout time.Duration) (*HostConnection, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	return &HostConnection{
-		Client: cl,
-		Ctx:    ctx,
-		Cancel: cancel,
-	}, nil
+	return cl, nil
 }
 
 // GetCloudID returns the node ID of the host.
@@ -73,13 +59,13 @@ func (h *Host) GetCloudID() string {
 }
 
 // Connect starts a new SSH connection with the provided private key.
-func (h *Host) Connect(timeout time.Duration) error {
+func (h *Host) Connect() error {
 	if h.Connection != nil {
 		return nil
 	}
 	var err error
 	for i := 0; h.Connection == nil && i < sshConnectionRetries; i++ {
-		h.Connection, err = NewHostConnection(*h, timeout)
+		h.Connection, err = NewHostConnection(h)
 	}
 	if err != nil {
 		return fmt.Errorf("failed to connect to host %s: %w", h.IP, err)
@@ -102,34 +88,34 @@ func (h *Host) Disconnect() error {
 // Upload uploads a local file to a remote file on the host.
 func (h *Host) Upload(localFile string, remoteFile string) error {
 	if !h.Connected() {
-		if err := h.Connect(constants.SSHFileOpsTimeout); err != nil {
+		if err := h.Connect(); err != nil {
 			return err
 		}
 	}
-	return h.Connection.Client.Upload(localFile, remoteFile)
+	return h.Connection.Upload(localFile, remoteFile)
 }
 
 // Download downloads a file from the remote server to the local machine.
 func (h *Host) Download(remoteFile string, localFile string) error {
 	if !h.Connected() {
-		if err := h.Connect(constants.SSHScriptTimeout); err != nil {
+		if err := h.Connect(); err != nil {
 			return err
 		}
 	}
 	if err := os.MkdirAll(filepath.Dir(localFile), os.ModePerm); err != nil {
 		return err
 	}
-	return h.Connection.Client.Download(remoteFile, localFile)
+	return h.Connection.Download(remoteFile, localFile)
 }
 
 // MkdirAll creates a folder on the remote server.
 func (h *Host) MkdirAll(remoteDir string) error {
 	if !h.Connected() {
-		if err := h.Connect(constants.SSHScriptTimeout); err != nil {
+		if err := h.Connect(); err != nil {
 			return err
 		}
 	}
-	sftp, err := h.Connection.Client.NewSftp()
+	sftp, err := h.Connection.NewSftp()
 	if err != nil {
 		return err
 	}
@@ -140,12 +126,12 @@ func (h *Host) MkdirAll(remoteDir string) error {
 // Command executes a shell command on a remote host.
 func (h *Host) Command(script string, env []string, ctx context.Context) ([]byte, error) {
 	if !h.Connected() {
-		if err := h.Connect(constants.SSHScriptTimeout); err != nil {
+		if err := h.Connect(); err != nil {
 			return nil, err
 		}
 	}
 	if h.Connected() {
-		cmd, err := h.Connection.Client.CommandContext(ctx, constants.SSHShell, script)
+		cmd, err := h.Connection.CommandContext(ctx, constants.SSHShell, script)
 		if err != nil {
 			return nil, err
 		}
@@ -161,7 +147,7 @@ func (h *Host) Command(script string, env []string, ctx context.Context) ([]byte
 // Forward forwards the TCP connection to a remote address.
 func (h *Host) Forward(httpRequest string) ([]byte, []byte, error) {
 	if !h.Connected() {
-		if err := h.Connect(constants.SSHPOSTTimeout); err != nil {
+		if err := h.Connect(); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -245,7 +231,7 @@ func (h *Host) WaitForSSHShell(timeout time.Duration) error {
 		if time.Now().After(deadline) {
 			return fmt.Errorf("timeout: SSH shell on host %s is not available after %ds", h.IP, int(timeout.Seconds()))
 		}
-		if err := h.Connect(timeout); err != nil {
+		if err := h.Connect(); err != nil {
 			time.Sleep(constants.SSHSleepBetweenChecks)
 			continue
 		}

@@ -53,7 +53,7 @@ func connectHosts(hosts []*models.Host) models.NodeResults {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			err := host.Connect(statusCmdTimeout)
+			err := host.Connect()
 			nodeResults.AddResult(host.NodeID, nil, err)
 		}(&wgResults, host)
 	}
