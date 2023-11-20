@@ -194,3 +194,39 @@ func StopInstance(ec2Svc *ec2.EC2, instanceID, publicIP string, releasePublicIP 
 	}
 	return nil
 }
+
+func AddSecurityGroupRule(ec2Svc *ec2.EC2, monitoringHostPublicIP, securityGroupName string) error {
+	_, sg, err := CheckSecurityGroupExists(ec2Svc, securityGroupName)
+	if err != nil {
+		return err
+	}
+	MachinePortInt64 := int64(constants.AvalanchegoMachineMetricsPort)
+	AvalancheGoPortInt64 := int64(constants.AvalanchegoAPIPort)
+	addSgRuleInput := &ec2.AuthorizeSecurityGroupIngressInput{
+		GroupId: sg.GroupId,
+		IpPermissions: []*ec2.IpPermission{
+			{
+				FromPort:   &MachinePortInt64,
+				IpProtocol: aws.String("TCP"),
+				IpRanges: []*ec2.IpRange{
+					{
+						CidrIp: aws.String(monitoringHostPublicIP),
+					},
+				},
+			},
+			{
+				FromPort:   &AvalancheGoPortInt64,
+				IpProtocol: aws.String("TCP"),
+				IpRanges: []*ec2.IpRange{
+					{
+						CidrIp: aws.String(monitoringHostPublicIP),
+					},
+				},
+			},
+		},
+	}
+	if _, err := ec2Svc.AuthorizeSecurityGroupIngress(addSgRuleInput); err != nil {
+		return err
+	}
+	return nil
+}

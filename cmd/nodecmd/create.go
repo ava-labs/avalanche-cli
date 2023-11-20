@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -181,6 +182,11 @@ func createNodes(_ *cobra.Command, args []string) error {
 				publicIPMap[node] = cloudConfig.PublicIPs[i]
 			}
 		}
+		if separateMonitoringInstance {
+			if err = awsAPI.AddSecurityGroupRule(ec2Svc, cloudConfig.PublicIPs[len(cloudConfig.PublicIPs)-1], cloudConfig.SecurityGroup); err != nil {
+				return err
+			}
+		}
 	} else {
 		// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
 		gcpClient, zone, imageID, credentialFilepath, projectName, err := getGCPConfig(cmdLineRegion)
@@ -258,8 +264,8 @@ func createNodes(_ *cobra.Command, args []string) error {
 		avalancheGoPorts := []string{}
 		machinePorts := []string{}
 		for _, publicIP := range cloudConfig.PublicIPs {
-			avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("\\'%s:9650\\'", publicIP))
-			machinePorts = append(machinePorts, fmt.Sprintf("\\'%s:9100\\'", publicIP))
+			avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("\\'%s:%s\\'", publicIP, strconv.Itoa(constants.AvalanchegoAPIPort)))
+			machinePorts = append(machinePorts, fmt.Sprintf("\\'%s:%s\\'", publicIP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
 		}
 		monitoringHostID, err := utils.MapWithError([]string{monitoringInstanceNodeID}, func(s string) (string, error) { return models.HostCloudIDToAnsibleID(cloudService, s) })
 		if err != nil {
