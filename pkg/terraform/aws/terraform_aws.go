@@ -67,8 +67,6 @@ func SetSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName stri
 
 	// enable inbound access for ip address inputIPAddress in port 22
 	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "TCP", "tcp", inputIPAddress, constants.SSHTCPPort)
-	// "0.0.0.0/0" is a must-have ip address value for inbound and outbound calls
-	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", "tcp", "0.0.0.0/0", constants.AvalanchegoAPIPort)
 	// enable inbound access for ip address inputIPAddress in port 9650
 	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", "tcp", inputIPAddress, constants.AvalanchegoAPIPort)
 	// "0.0.0.0/0" is a must-have ip address value for inbound and outbound calls
