@@ -200,26 +200,26 @@ func AddSecurityGroupRule(ec2Svc *ec2.EC2, monitoringHostPublicIP, securityGroup
 	if err != nil {
 		return err
 	}
-	MachinePortInt64 := int64(constants.AvalanchegoMachineMetricsPort)
-	AvalancheGoPortInt64 := int64(constants.AvalanchegoAPIPort)
 	addSgRuleInput := &ec2.AuthorizeSecurityGroupIngressInput{
 		GroupId: sg.GroupId,
 		IpPermissions: []*ec2.IpPermission{
 			{
-				FromPort:   &MachinePortInt64,
-				IpProtocol: aws.String("TCP"),
+				FromPort:   aws.Int64(constants.AvalanchegoMachineMetricsPort),
+				ToPort:     aws.Int64(constants.AvalanchegoMachineMetricsPort),
+				IpProtocol: aws.String("tcp"),
 				IpRanges: []*ec2.IpRange{
 					{
-						CidrIp: aws.String(monitoringHostPublicIP),
+						CidrIp: aws.String(monitoringHostPublicIP + "/32"),
 					},
 				},
 			},
 			{
-				FromPort:   &AvalancheGoPortInt64,
-				IpProtocol: aws.String("TCP"),
+				FromPort:   aws.Int64(constants.AvalanchegoAPIPort),
+				ToPort:     aws.Int64(constants.AvalanchegoAPIPort),
+				IpProtocol: aws.String("tcp"),
 				IpRanges: []*ec2.IpRange{
 					{
-						CidrIp: aws.String(monitoringHostPublicIP),
+						CidrIp: aws.String(monitoringHostPublicIP + "/32"),
 					},
 				},
 			},
