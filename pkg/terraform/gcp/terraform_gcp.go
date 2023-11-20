@@ -46,7 +46,7 @@ func SetNetwork(rootBody *hclwrite.Body, ipAddress, networkName string) {
 	networkBody := network.Body()
 	networkBody.SetAttributeValue("name", cty.StringVal(networkName))
 	SetFirewallRule(rootBody, "0.0.0.0/0", fmt.Sprintf("%s-%s", networkName, "default"), networkName, []string{strconv.Itoa(constants.AvalanchegoP2PPort)}, false)
-	SetFirewallRule(rootBody, ipAddress+"/32", fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")),
+	SetFirewallRule(rootBody, ipAddress+constants.IPAddressSuffix, fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")),
 		networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort), strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort)}, false)
 }
 
@@ -71,7 +71,7 @@ func SetFirewallRule(rootBody *hclwrite.Body, ipAddress, firewallName, networkNa
 	})
 	firewallAllow := firewallBody.AppendNewBlock("allow", []string{})
 	firewallAllowBody := firewallAllow.Body()
-	firewallAllowBody.SetAttributeValue("protocol", cty.StringVal("tcp"))
+	firewallAllowBody.SetAttributeValue("protocol", cty.StringVal(constants.TCPProtocol))
 	allowPortList := []cty.Value{}
 	for i := range ports {
 		allowPortList = append(allowPortList, cty.StringVal(ports[i]))

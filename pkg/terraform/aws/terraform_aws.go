@@ -53,7 +53,7 @@ func addNewSecurityGroupRule(rootBody *hclwrite.Body, sgRuleName, sgID, ip strin
 	securityGroupRuleBody.SetAttributeValue("type", cty.StringVal("ingress"))
 	securityGroupRuleBody.SetAttributeValue("from_port", cty.NumberIntVal(port))
 	securityGroupRuleBody.SetAttributeValue("to_port", cty.NumberIntVal(port))
-	securityGroupRuleBody.SetAttributeValue("protocol", cty.StringVal("tcp"))
+	securityGroupRuleBody.SetAttributeValue("protocol", cty.StringVal(constants.TCPProtocol))
 	var ipList []cty.Value
 	ipList = append(ipList, cty.StringVal(ip))
 	securityGroupRuleBody.SetAttributeValue("cidr_blocks", cty.ListVal(ipList))
@@ -62,27 +62,27 @@ func addNewSecurityGroupRule(rootBody *hclwrite.Body, sgRuleName, sgID, ip strin
 
 // SetSecurityGroup whitelists the ip addresses allowed to ssh into cloud server
 func SetSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName string) {
-	inputIPAddress := ipAddress + "/32"
+	inputIPAddress := ipAddress + constants.IPAddressSuffix
 	securityGroup := rootBody.AppendNewBlock("resource", []string{"aws_security_group", "ssh_avax_sg"})
 	securityGroupBody := securityGroup.Body()
 	securityGroupBody.SetAttributeValue("name", cty.StringVal(securityGroupName))
 	securityGroupBody.SetAttributeValue("description", cty.StringVal("Allow SSH, AVAX HTTP outbound traffic"))
 
 	// enable inbound access for ip address inputIPAddress in port 22
-	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "TCP", "tcp", inputIPAddress, constants.SSHTCPPort)
+	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "TCP", constants.TCPProtocol, inputIPAddress, constants.SSHTCPPort)
 	// enable inbound access for ip address inputIPAddress in port 9650
-	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", "tcp", inputIPAddress, constants.AvalanchegoAPIPort)
+	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", constants.TCPProtocol, inputIPAddress, constants.AvalanchegoAPIPort)
 	// enable inbound access for ip address inputIPAddress in port 9090
-	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", "tcp", inputIPAddress, constants.AvalanchegoMonitoringPort)
+	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", constants.TCPProtocol, inputIPAddress, constants.AvalanchegoMonitoringPort)
 	// enable inbound access for ip address inputIPAddress in port 3000
-	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", "tcp", inputIPAddress, constants.AvalanchegoGrafanaPort)
+	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", constants.TCPProtocol, inputIPAddress, constants.AvalanchegoGrafanaPort)
 	// "0.0.0.0/0" is a must-have ip address value for inbound and outbound calls
-	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX Staking", "tcp", "0.0.0.0/0", constants.AvalanchegoP2PPort)
+	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX Staking", constants.TCPProtocol, "0.0.0.0/0", constants.AvalanchegoP2PPort)
 	addSecurityGroupRuleToSg(securityGroupBody, "egress", "Outbound traffic", "-1", "0.0.0.0/0", constants.OutboundPort)
 }
 
 func SetSecurityGroupRule(rootBody *hclwrite.Body, ipAddress, sgID string, sg *ec2.SecurityGroup) {
-	inputIPAddress := ipAddress + "/32"
+	inputIPAddress := ipAddress + constants.IPAddressSuffix
 	ipInTCP := awsAPI.CheckUserIPInSg(sg, ipAddress, constants.SSHTCPPort)
 	if !ipInTCP {
 		sgRuleName := "ipTcp" + strings.ReplaceAll(ipAddress, ".", "")

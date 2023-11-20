@@ -134,13 +134,11 @@ const (
 	BuildEnvGolangVersion                        = "1.21.1"
 	IsHealthyJSONFile                            = "isHealthy.json"
 	IsBootstrappedJSONFile                       = "isBootstrapped.json"
-	NodeConfigDir                                = "node_config"
 	NodeConfigJSONFile                           = "node.json"
 	MonitoringScriptFile                         = "monitoring-separate-installer.sh"
 	AvalancheGoVersionJSONFile                   = "avalancheGoVersion.json"
 	SubnetSyncJSONFile                           = "isSubnetSynced.json"
 	AnsibleInventoryDir                          = "inventories"
-	AnsibleTempInventoryDir                      = "temp_inventories"
 	AnsiblePlaybookDir                           = "playbook"
 	AnsibleStatusDir                             = "status"
 	AnsibleNodeConfigDir                         = "node_config"
@@ -180,6 +178,8 @@ const (
 	AvalanchegoMonitoringPort           = 9090
 	AvalanchegoMachineMetricsPort       = 9100
 	AvalanchegoGrafanaPort              = 3000
+	IPAddressSuffix                     = "/32"
+	TCPProtocol                         = "tcp"
 	MetricsLocalHost                    = "localhost:9090"
 	AvalancheGoLocalHost                = "localhost:9100"
 	SetupNodeMonitoringPlaybook         = "playbook/setupMonitoring.yml"

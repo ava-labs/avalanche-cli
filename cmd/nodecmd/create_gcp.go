@@ -200,7 +200,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 			return nil, nil, "", "", err
 		}
 		if !firewallExists {
-			terraformgcp.SetFirewallRule(rootBody, userIPAddress+"/32", firewallName, networkName, []string{
+			terraformgcp.SetFirewallRule(rootBody, userIPAddress+constants.IPAddressSuffix, firewallName, networkName, []string{
 				strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort),
 				strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
 			}, true)
@@ -217,7 +217,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 				return nil, nil, "", "", err
 			}
 			if !firewallContainsMonitoringPorts && !firewallExists {
-				terraformgcp.SetFirewallRule(rootBody, userIPAddress+"/32", firewallMonitoringName, networkName, []string{strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort)}, true)
+				terraformgcp.SetFirewallRule(rootBody, userIPAddress+constants.IPAddressSuffix, firewallMonitoringName, networkName, []string{strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort)}, true)
 			}
 		}
 	}

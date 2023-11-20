@@ -206,20 +206,20 @@ func AddSecurityGroupRule(ec2Svc *ec2.EC2, monitoringHostPublicIP, securityGroup
 			{
 				FromPort:   aws.Int64(constants.AvalanchegoMachineMetricsPort),
 				ToPort:     aws.Int64(constants.AvalanchegoMachineMetricsPort),
-				IpProtocol: aws.String("tcp"),
+				IpProtocol: aws.String(constants.TCPProtocol),
 				IpRanges: []*ec2.IpRange{
 					{
-						CidrIp: aws.String(monitoringHostPublicIP + "/32"),
+						CidrIp: aws.String(monitoringHostPublicIP + constants.IPAddressSuffix),
 					},
 				},
 			},
 			{
 				FromPort:   aws.Int64(constants.AvalanchegoAPIPort),
 				ToPort:     aws.Int64(constants.AvalanchegoAPIPort),
-				IpProtocol: aws.String("tcp"),
+				IpProtocol: aws.String(constants.TCPProtocol),
 				IpRanges: []*ec2.IpRange{
 					{
-						CidrIp: aws.String(monitoringHostPublicIP + "/32"),
+						CidrIp: aws.String(monitoringHostPublicIP + constants.IPAddressSuffix),
 					},
 				},
 			},
