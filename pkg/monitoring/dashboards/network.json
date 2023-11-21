@@ -24,7 +24,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 4,
+  "id": 6,
   "links": [
     {
       "icon": "external link",
@@ -54,7 +54,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Stake weighted average uptime of your node, as reported by network peers. If this falls below 80% node probably won't be rewarded for the current staking period.",
       "fieldConfig": {
@@ -63,6 +64,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -76,6 +78,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -153,10 +156,16 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "avalanche_network_node_uptime_weighted_average{job=\"avalanchego\"}",
+          "expr": "avalanche_network_node_uptime_weighted_average{instance=~\"$host\",job=\"avalanchego\"}",
           "interval": "",
           "legendFormat": "Uptime average",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -165,7 +174,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Percentage of the stake that view your node as sufficiently online and correct to vote that node be awarded at the end of the staking period.",
       "fieldConfig": {
@@ -174,6 +184,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -187,6 +198,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -260,10 +272,16 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "avalanche_network_node_uptime_rewarding_stake{job=\"avalanchego\"}",
+          "expr": "avalanche_network_node_uptime_rewarding_stake{instance=~\"$host\",job=\"avalanchego\"}",
           "interval": "",
           "legendFormat": "Rewarding stake",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -308,7 +326,8 @@
         "notifications": []
       },
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of network peers the node is connected to",
       "fieldConfig": {
@@ -317,6 +336,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -330,6 +350,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -387,11 +408,17 @@
       "pluginVersion": "8.0.6",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "avalanche_network_peers{job=\"avalanchego\"}",
+          "expr": "avalanche_network_peers{instance=~\"$host\",job=\"avalanchego\"}",
           "format": "time_series",
           "interval": "",
           "legendFormat": "Peers connected",
+          "range": true,
           "refId": "B"
         }
       ],
@@ -400,7 +427,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Shows the amount of time this node will wait for a response to a request before considering the request failed, and the average time it takes to get a response to a request.",
       "fieldConfig": {
@@ -409,6 +437,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -422,6 +451,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -481,18 +511,30 @@
       "pluginVersion": "8.0.3",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "avalanche_requests_current_timeout",
+          "expr": "avalanche_requests_current_timeout{instance=~\"$host\"}",
           "interval": "",
           "legendFormat": "Timeout",
+          "range": true,
           "refId": "A"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "avalanche_requests_average_latency",
+          "expr": "avalanche_requests_average_latency{instance=~\"$host\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "Response Time",
+          "range": true,
           "refId": "B"
         }
       ],
@@ -501,7 +543,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of outstanding requests related to consensus/bootstrapping. Doesn't include handshake messages.",
       "fieldConfig": {
@@ -510,6 +553,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -523,6 +567,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 4,
@@ -580,10 +625,16 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "avalanche_requests_outstanding",
+          "expr": "avalanche_requests_outstanding{instance=~\"$host\"}",
           "interval": "",
           "legendFormat": "Outstanding Requests",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -592,7 +643,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "From all chains",
       "fieldConfig": {
@@ -601,6 +653,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -614,6 +667,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -675,133 +729,241 @@
       "pluginVersion": "8.0.3",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_accepted_received{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_accepted_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "accepted",
+          "range": true,
           "refId": "A"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_accepted_received{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_accepted_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get accepted",
+          "range": true,
           "refId": "B"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_accepted_frontier_received{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_accepted_frontier_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get accepted frontier",
+          "range": true,
           "refId": "C"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_ancestors_received{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_ancestors_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get ancestors",
+          "range": true,
           "refId": "D"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_put_received{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_put_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "put",
+          "range": true,
           "refId": "E"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_multi_put_received{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_multi_put_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "multiput",
+          "range": true,
           "refId": "F"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_version_received{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_version_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get version",
+          "range": true,
           "refId": "G"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_peerlist_received{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_peerlist_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get peerlist",
+          "range": true,
           "refId": "H"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_pull_query_received{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_pull_query_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "pull query",
+          "range": true,
           "refId": "I"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_push_query_received{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_push_query_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "push query",
+          "range": true,
           "refId": "J"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_version_received{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_version_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "version",
+          "range": true,
           "refId": "K"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_ping_received{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_ping_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "ping",
+          "range": true,
           "refId": "L"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_pong_received{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_pong_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "pong",
+          "range": true,
           "refId": "M"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_received{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get",
+          "range": true,
           "refId": "N"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_chits_received{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_chits_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "chits",
+          "range": true,
           "refId": "O"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_gossip_received{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_app_gossip_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app gossip",
+          "range": true,
           "refId": "P"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_request_received{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_app_request_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app request",
+          "range": true,
           "refId": "Q"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_response_received{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_app_response_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app response",
+          "range": true,
           "refId": "R"
         }
       ],
@@ -810,7 +972,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "From all chains",
       "fieldConfig": {
@@ -819,6 +982,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -832,6 +996,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -893,120 +1058,228 @@
       "pluginVersion": "8.0.3",
       "targets": [
         {
-          "expr": "rate(avalanche_network_accepted_sent{job=\"avalanchego\"}[1m])",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(avalanche_network_accepted_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "accepted",
+          "range": true,
           "refId": "A"
         },
         {
-          "expr": "rate(avalanche_network_get_accepted_sent{job=\"avalanchego\"}[1m])",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(avalanche_network_get_accepted_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get accepted",
+          "range": true,
           "refId": "B"
         },
         {
-          "expr": "rate(avalanche_network_get_accepted_frontier_sent{job=\"avalanchego\"}[1m])",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(avalanche_network_get_accepted_frontier_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get accepted frontier",
+          "range": true,
           "refId": "C"
         },
         {
-          "expr": "rate(avalanche_network_get_ancestors_sent{job=\"avalanchego\"}[1m])",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(avalanche_network_get_ancestors_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get ancestors",
+          "range": true,
           "refId": "D"
         },
         {
-          "expr": "rate(avalanche_network_put_sent{job=\"avalanchego\"}[1m])",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(avalanche_network_put_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "put",
+          "range": true,
           "refId": "E"
         },
         {
-          "expr": "rate(avalanche_network_multi_put_sent{job=\"avalanchego\"}[1m])",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(avalanche_network_multi_put_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "multiput",
+          "range": true,
           "refId": "F"
         },
         {
-          "expr": "rate(avalanche_network_get_version_sent{job=\"avalanchego\"}[1m])",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(avalanche_network_get_version_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get version",
+          "range": true,
           "refId": "G"
         },
         {
-          "expr": "rate(avalanche_network_get_peerlist_sent{job=\"avalanchego\"}[1m])",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(avalanche_network_get_peerlist_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get peerlist",
+          "range": true,
           "refId": "H"
         },
         {
-          "expr": "rate(avalanche_network_pull_query_sent{job=\"avalanchego\"}[1m])",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(avalanche_network_pull_query_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "pull query",
+          "range": true,
           "refId": "I"
         },
         {
-          "expr": "rate(avalanche_network_push_query_sent{job=\"avalanchego\"}[1m])",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(avalanche_network_push_query_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "push query",
+          "range": true,
           "refId": "J"
         },
         {
-          "expr": "rate(avalanche_network_version_sent{job=\"avalanchego\"}[1m])",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(avalanche_network_version_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "version",
+          "range": true,
           "refId": "K"
         },
         {
-          "expr": "rate(avalanche_network_ping_sent{job=\"avalanchego\"}[1m])",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(avalanche_network_ping_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "ping",
+          "range": true,
           "refId": "L"
         },
         {
-          "expr": "rate(avalanche_network_pong_sent{job=\"avalanchego\"}[1m])",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(avalanche_network_pong_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "pong",
+          "range": true,
           "refId": "M"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_sent{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get",
+          "range": true,
           "refId": "N"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_chits_sent{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_chits_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "chits",
+          "range": true,
           "refId": "O"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_gossip_sent{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_app_gossip_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app gossip",
+          "range": true,
           "refId": "P"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_request_sent{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_app_request_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app request",
+          "range": true,
           "refId": "Q"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_response_sent{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_app_response_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app response",
+          "range": true,
           "refId": "R"
         }
       ],
@@ -1015,7 +1288,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "From all chains",
       "fieldConfig": {
@@ -1024,6 +1298,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisGridShow": true,
@@ -1038,6 +1313,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1099,184 +1375,220 @@
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_accepted_received_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_accepted_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "accepted",
+          "range": true,
           "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_accepted_received_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_accepted_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get accepted",
+          "range": true,
           "refId": "B"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_accepted_frontier_received_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_accepted_frontier_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get accepted frontier",
+          "range": true,
           "refId": "C"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_ancestors_received_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_ancestors_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get ancestors",
+          "range": true,
           "refId": "D"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_put_received_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_put_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "put",
+          "range": true,
           "refId": "E"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_multi_put_received_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_multi_put_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "multiput",
+          "range": true,
           "refId": "F"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_version_received_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_version_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get version",
+          "range": true,
           "refId": "G"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_peerlist_received_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_peerlist_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get peerlist",
+          "range": true,
           "refId": "H"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_pull_query_received_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_pull_query_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "pull query",
+          "range": true,
           "refId": "I"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_push_query_received_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_push_query_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "push query",
+          "range": true,
           "refId": "J"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_version_received_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_version_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "version",
+          "range": true,
           "refId": "K"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_ping_received_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_ping_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "ping",
+          "range": true,
           "refId": "L"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_pong_received_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_pong_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "pong",
+          "range": true,
           "refId": "M"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_received_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get",
+          "range": true,
           "refId": "N"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_chits_received_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_chits_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "chits",
+          "range": true,
           "refId": "O"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_gossip_received_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_app_gossip_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app gossip",
+          "range": true,
           "refId": "P"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_request_received_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_app_request_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app request",
+          "range": true,
           "refId": "Q"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_response_received_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_app_response_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app response",
+          "range": true,
           "refId": "R"
         }
       ],
@@ -1285,7 +1597,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "From all chains",
       "fieldConfig": {
@@ -1294,6 +1607,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisGridShow": true,
@@ -1308,6 +1622,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1369,184 +1684,220 @@
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_accepted_sent_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_accepted_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "accepted",
+          "range": true,
           "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_accepted_sent_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_accepted_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get accepted",
+          "range": true,
           "refId": "B"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_accepted_frontier_sent_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_accepted_frontier_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get accepted frontier",
+          "range": true,
           "refId": "C"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_ancestors_sent_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_ancestors_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get ancestors",
+          "range": true,
           "refId": "D"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_put_sent_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_put_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "put",
+          "range": true,
           "refId": "E"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_multi_put_sent_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_multi_put_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "multiput",
+          "range": true,
           "refId": "F"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_version_sent_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_version_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get version",
+          "range": true,
           "refId": "G"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_peerlist_sent_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_peerlist_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get peerlist",
+          "range": true,
           "refId": "H"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_pull_query_sent_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_pull_query_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "pull query",
+          "range": true,
           "refId": "I"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_push_query_sent_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_push_query_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "push query",
+          "range": true,
           "refId": "J"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_version_sent_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_version_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "version",
+          "range": true,
           "refId": "K"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_ping_sent_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_ping_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "ping",
+          "range": true,
           "refId": "L"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_pong_sent_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_pong_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "pong",
+          "range": true,
           "refId": "M"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_sent_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get",
+          "range": true,
           "refId": "N"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_chits_sent_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_chits_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "chits",
+          "range": true,
           "refId": "O"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_gossip_sent_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_app_gossip_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app gossip",
+          "range": true,
           "refId": "P"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_request_sent_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_app_request_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app request",
+          "range": true,
           "refId": "Q"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_response_sent_bytes{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_app_response_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app response",
+          "range": true,
           "refId": "R"
         }
       ],
@@ -1555,7 +1906,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "From all chains",
       "fieldConfig": {
@@ -1564,6 +1916,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisGridShow": true,
@@ -1578,6 +1931,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1639,184 +1993,220 @@
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_accepted_received_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_accepted_received{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_accepted_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_accepted_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "accepted",
+          "range": true,
           "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_get_accepted_received_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_get_accepted_received{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_get_accepted_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_get_accepted_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get accepted",
+          "range": true,
           "refId": "B"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_get_accepted_frontier_received_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_get_accepted_frontier_received{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_get_accepted_frontier_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_get_accepted_frontier_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get accepted frontier",
+          "range": true,
           "refId": "C"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_get_ancestors_received_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_get_ancestors_received{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_get_ancestors_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_get_ancestors_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get ancestors",
+          "range": true,
           "refId": "D"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_put_received_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_put_received{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_put_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_put_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "put",
+          "range": true,
           "refId": "E"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_multi_put_received_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_multi_put_received{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_multi_put_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_multi_put_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "multiput",
+          "range": true,
           "refId": "F"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_get_version_received_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_get_version_received{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_get_version_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_get_version_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get version",
+          "range": true,
           "refId": "G"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_get_peerlist_received_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_get_peerlist_received{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_get_peerlist_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_get_peerlist_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get peerlist",
+          "range": true,
           "refId": "H"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_pull_query_received_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_pull_query_received{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_pull_query_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_pull_query_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "pull query",
+          "range": true,
           "refId": "I"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_push_query_received_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_push_query_received{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_push_query_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_push_query_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "push query",
+          "range": true,
           "refId": "J"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_version_received_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_version_received{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_version_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_version_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "version",
+          "range": true,
           "refId": "K"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_ping_received_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_ping_received{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_ping_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_ping_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "ping",
+          "range": true,
           "refId": "L"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_pong_received_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_pong_received{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_pong_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_pong_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "pong",
+          "range": true,
           "refId": "M"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_get_received_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_get_received{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_get_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_get_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get",
+          "range": true,
           "refId": "N"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_chits_received_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_chits_received{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_chits_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_chits_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "chits",
+          "range": true,
           "refId": "O"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_app_gossip_received_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_app_gossip_received{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_app_gossip_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_app_gossip_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app gossip",
+          "range": true,
           "refId": "P"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_app_request_received_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_app_request_received{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_app_request_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_app_request_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app request",
+          "range": true,
           "refId": "Q"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_app_response_received_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_app_response_received{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_app_response_received_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_app_response_received{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app response",
+          "range": true,
           "refId": "R"
         }
       ],
@@ -1825,7 +2215,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "From all chains",
       "fieldConfig": {
@@ -1834,6 +2225,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisGridShow": true,
@@ -1848,6 +2240,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1909,184 +2302,220 @@
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_accepted_sent_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_accepted_sent{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_accepted_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_accepted_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "accepted",
+          "range": true,
           "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_get_accepted_sent_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_get_accepted_sent{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_get_accepted_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_get_accepted_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get accepted",
+          "range": true,
           "refId": "B"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_get_accepted_frontier_sent_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_get_accepted_frontier_sent{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_get_accepted_frontier_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_get_accepted_frontier_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get accepted frontier",
+          "range": true,
           "refId": "C"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_get_ancestors_sent_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_get_ancestors_sent{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_get_ancestors_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_get_ancestors_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get ancestors",
+          "range": true,
           "refId": "D"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_put_sent_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_put_sent{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_put_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_put_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "put",
+          "range": true,
           "refId": "E"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_multi_put_sent_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_multi_put_sent{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_multi_put_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_multi_put_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "multiput",
+          "range": true,
           "refId": "F"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_get_version_sent_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_get_version_sent{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_get_version_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_get_version_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get version",
+          "range": true,
           "refId": "G"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_get_peerlist_sent_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_get_peerlist_sent{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_get_peerlist_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_get_peerlist_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get peerlist",
+          "range": true,
           "refId": "H"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_pull_query_sent_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_pull_query_sent{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_pull_query_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_pull_query_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "pull query",
+          "range": true,
           "refId": "I"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_push_query_sent_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_push_query_sent{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_push_query_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_push_query_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "push query",
+          "range": true,
           "refId": "J"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_version_sent_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_version_sent{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_version_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_version_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "version",
+          "range": true,
           "refId": "K"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_ping_sent_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_ping_sent{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_ping_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_ping_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "ping",
+          "range": true,
           "refId": "L"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_pong_sent_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_pong_sent{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_pong_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_pong_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "pong",
+          "range": true,
           "refId": "M"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_get_sent_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_get_sent{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_get_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_get_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get",
+          "range": true,
           "refId": "N"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_chits_sent_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_chits_sent{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_chits_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_chits_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "chits",
+          "range": true,
           "refId": "O"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_app_gossip_sent_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_app_gossip_sent{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_app_gossip_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_app_gossip_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app gossip",
+          "range": true,
           "refId": "P"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_app_request_sent_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_app_request_sent{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_app_request_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_app_request_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app request",
+          "range": true,
           "refId": "Q"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_app_response_sent_bytes{job=\"avalanchego\"}[1m])/increase(avalanche_network_app_response_sent{job=\"avalanchego\"}[1m])",
+          "expr": "increase(avalanche_network_app_response_sent_bytes{instance=~\"$host\",job=\"avalanchego\"}[1m])/increase(avalanche_network_app_response_sent{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app response",
+          "range": true,
           "refId": "R"
         }
       ],
@@ -2105,6 +2534,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2118,6 +2548,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -2201,20 +2632,24 @@
       "targets": [
         {
           "datasource": "Prometheus",
+          "editorMode": "code",
           "exemplar": true,
           "expr": "increase(avalanche_network_pull_query_sent{job=\"avalanchego\"}[5m])",
           "hide": true,
           "interval": "",
           "legendFormat": "pull query",
+          "range": true,
           "refId": "A"
         },
         {
           "datasource": "Prometheus",
+          "editorMode": "code",
           "exemplar": true,
           "expr": "increase(avalanche_network_push_query_sent{job=\"avalanchego\"}[5m])",
           "hide": true,
           "interval": "",
           "legendFormat": "push query",
+          "range": true,
           "refId": "B"
         },
         {
@@ -2260,7 +2695,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of messages that are queued to be sent to peers",
       "fieldConfig": {
@@ -2269,6 +2705,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2282,6 +2719,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -2340,10 +2778,16 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "avalanche_network_throttler_outbound_awaiting_release",
+          "expr": "avalanche_network_throttler_outbound_awaiting_release{instance=~\"$host\"}",
           "interval": "",
           "legendFormat": "Messages",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -2352,7 +2796,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Amount of the stake in AVAX that is benched (ignored) because the nodes are unhealthy",
       "fieldConfig": {
@@ -2361,6 +2806,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2374,6 +2820,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -2435,23 +2882,41 @@
       "pluginVersion": "8.0.3",
       "targets": [
         {
-          "expr": "avalanche_X_benchlist_benched_weight/1000000000",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "avalanche_X_benchlist_benched_weight{instance=~\"$host\"}/1000000000",
           "interval": "",
           "legendFormat": "X chain",
+          "range": true,
           "refId": "A"
         },
         {
-          "expr": "avalanche_P_benchlist_benched_weight/1000000000",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "avalanche_P_benchlist_benched_weight{instance=~\"$host\"}/1000000000",
           "hide": false,
           "interval": "",
           "legendFormat": "P Chain",
+          "range": true,
           "refId": "B"
         },
         {
-          "expr": "avalanche_C_benchlist_benched_weight/1000000000",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "avalanche_C_benchlist_benched_weight{instance=~\"$host\"}/1000000000",
           "hide": false,
           "interval": "",
           "legendFormat": "C Chain",
+          "range": true,
           "refId": "C"
         }
       ],
@@ -2476,7 +2941,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of messages waiting to acquire bytes from the inbound message throttler.",
       "fieldConfig": {
@@ -2485,6 +2951,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2498,6 +2965,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -2556,10 +3024,16 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "avalanche_network_byte_throttler_inbound_awaiting_acquire",
+          "expr": "avalanche_network_byte_throttler_inbound_awaiting_acquire{instance=~\"$host\"}",
           "interval": "",
           "legendFormat": "Messages Awaiting Acquire",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -2568,7 +3042,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of bytes left in the validator byte allocation of the inbound message throttler",
       "fieldConfig": {
@@ -2577,6 +3052,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2591,6 +3067,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -2650,10 +3127,16 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "avalanche_network_byte_throttler_inbound_remaining_validator_bytes",
+          "expr": "avalanche_network_byte_throttler_inbound_remaining_validator_bytes{instance=~\"$host\"}",
           "interval": "",
           "legendFormat": "Bytes Remaining",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -2662,7 +3145,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The amount of time, on average, that we wait to acquire bytes from the throttler before reading a message.",
       "fieldConfig": {
@@ -2671,6 +3155,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2684,6 +3169,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -2739,10 +3225,16 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_byte_throttler_inbound_acquire_latency_sum[2m])/increase(avalanche_network_byte_throttler_inbound_acquire_latency_count[2m])",
+          "expr": "increase(avalanche_network_byte_throttler_inbound_acquire_latency_sum{instance=~\"$host\"}[2m])/increase(avalanche_network_byte_throttler_inbound_acquire_latency_count{instance=~\"$host\"}[2m])",
           "interval": "",
           "legendFormat": "Acquire",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -2751,7 +3243,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The amount of time, on average, that we wait to acquire from the throttler before reading a message.",
       "fieldConfig": {
@@ -2760,6 +3253,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2773,6 +3267,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -2828,10 +3323,16 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_buffer_throttler_inbound_acquire_latency_sum[2m])/increase(avalanche_network_buffer_throttler_inbound_acquire_latency_count[2m])",
+          "expr": "increase(avalanche_network_buffer_throttler_inbound_acquire_latency_sum{instance=~\"$host\"}[2m])/increase(avalanche_network_buffer_throttler_inbound_acquire_latency_count{instance=~\"$host\"}[2m])",
           "interval": "",
           "legendFormat": "Acquire",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -2840,7 +3341,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of messages that are currently being handled and haven't yet returned their bytes to the inbound message throttler.",
       "fieldConfig": {
@@ -2849,6 +3351,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2862,6 +3365,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -2920,10 +3424,16 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "avalanche_network_byte_throttler_inbound_awaiting_release",
+          "expr": "avalanche_network_byte_throttler_inbound_awaiting_release{instance=~\"$host\"}",
           "interval": "",
           "legendFormat": "Messages Awaiting Release",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -2932,7 +3442,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of messages waiting to acquire from the inbound message buffer throttler.",
       "fieldConfig": {
@@ -2941,6 +3452,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2954,6 +3466,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -3011,10 +3524,16 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "avalanche_network_buffer_throttler_inbound_awaiting_acquire",
+          "expr": "avalanche_network_buffer_throttler_inbound_awaiting_acquire{instance=~\"$host\"}",
           "interval": "",
           "legendFormat": "Messages Awaiting",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -3023,7 +3542,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of bytes left in the at-large byte allocation of the inbound message throttler",
       "fieldConfig": {
@@ -3032,6 +3552,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -3046,6 +3567,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -3104,10 +3626,16 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "avalanche_network_byte_throttler_inbound_remaining_at_large_bytes",
+          "expr": "avalanche_network_byte_throttler_inbound_remaining_at_large_bytes{instance=~\"$host\"}",
           "interval": "",
           "legendFormat": "Remaining Bytes",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -3116,7 +3644,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of messages waiting to acquire bytes from the inbound bandwidth throttler.",
       "fieldConfig": {
@@ -3125,6 +3654,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -3138,6 +3668,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -3196,10 +3727,16 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "avalanche_network_bandwidth_throttler_inbound_awaiting_acquire",
+          "expr": "avalanche_network_bandwidth_throttler_inbound_awaiting_acquire{instance=~\"$host\"}",
           "interval": "",
           "legendFormat": "Messages Awaiting Acquire",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -3224,7 +3761,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of bytes left in the at-large byte allocation of the outbound message throttler",
       "fieldConfig": {
@@ -3233,6 +3771,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -3247,6 +3786,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -3305,10 +3845,16 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "avalanche_network_throttler_outbound_remaining_at_large_bytes",
+          "expr": "avalanche_network_throttler_outbound_remaining_at_large_bytes{instance=~\"$host\"}",
           "interval": "",
           "legendFormat": "Bytes Remaining",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -3317,7 +3863,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of bytes left in the validator byte allocation of the outbound message throttler",
       "fieldConfig": {
@@ -3326,6 +3873,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -3340,6 +3888,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -3394,10 +3943,16 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "avalanche_network_throttler_outbound_remaining_validator_bytes",
+          "expr": "avalanche_network_throttler_outbound_remaining_validator_bytes{instance=~\"$host\"}",
           "interval": "",
           "legendFormat": "Bytes Remaining",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -3422,7 +3977,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "From all chains",
       "fieldConfig": {
@@ -3431,6 +3987,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -3444,6 +4001,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -3503,126 +4061,228 @@
       "pluginVersion": "8.0.3",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_accepted_failed{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_accepted_failed{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "accepted",
+          "range": true,
           "refId": "A"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_accepted_failed{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_accepted_failed{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get accepted",
+          "range": true,
           "refId": "B"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_accepted_frontier_failed{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_accepted_frontier_failed{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get accepted frontier",
+          "range": true,
           "refId": "C"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_ancestors_failed{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_ancestors_failed{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get ancestors",
+          "range": true,
           "refId": "D"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_put_failed{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_put_failed{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "put",
+          "range": true,
           "refId": "E"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_multi_put_failed{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_multi_put_failed{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "multiput",
+          "range": true,
           "refId": "F"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_version_failed{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_version_failed{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get version",
+          "range": true,
           "refId": "G"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_get_peerlist_failed{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_get_peerlist_failed{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "get peerlist",
+          "range": true,
           "refId": "H"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_pull_query_failed{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_pull_query_failed{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "pull query",
+          "range": true,
           "refId": "I"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_push_query_failed{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_push_query_failed{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "push query",
+          "range": true,
           "refId": "J"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_version_failed{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_version_failed{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "version",
+          "range": true,
           "refId": "K"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_ping_failed{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_ping_failed{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "ping",
+          "range": true,
           "refId": "L"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_pong_failed{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_pong_failed{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "interval": "",
           "legendFormat": "pong",
+          "range": true,
           "refId": "M"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_chits_failed{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_chits_failed{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "chits",
+          "range": true,
           "refId": "N"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_gossip_failed{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_app_gossip_failed{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app gossip",
+          "range": true,
           "refId": "O"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_request_failed{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_app_request_failed{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app request",
+          "range": true,
           "refId": "P"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_response_failed{job=\"avalanchego\"}[1m])",
+          "expr": "rate(avalanche_network_app_response_failed{instance=~\"$host\",job=\"avalanchego\"}[1m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app response",
+          "range": true,
           "refId": "Q"
         }
       ],
@@ -3631,7 +4291,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of messages that could not be parsed because they were of unknown type or invalidly formatted.",
       "fieldConfig": {
@@ -3640,6 +4301,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -3653,6 +4315,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -3706,10 +4369,16 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_msgs_failed_to_parse[1m])>0",
+          "expr": "increase(avalanche_network_msgs_failed_to_parse{instance=~\"$host\"}[1m])>0",
           "interval": "",
           "legendFormat": "Failed to Parse",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -3718,7 +4387,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of inbound messages dropped (not processed) due to expiration in last minute.",
       "fieldConfig": {
@@ -3727,6 +4397,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -3740,6 +4411,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -3797,10 +4469,16 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_P_handler_expired[1m])+increase(avalanche_C_handler_expired[1m])+increase(avalanche_X_handler_expired[1m])",
+          "expr": "increase(avalanche_P_handler_expired{instance=~\"$host\"}[1m])+increase(avalanche_C_handler_expired{instance=~\"$host\"}[1m])+increase(avalanche_X_handler_expired{instance=~\"$host\"}[1m])",
           "interval": "",
           "legendFormat": "Messages Dropped",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -3809,7 +4487,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of outbound messages dropped (not sent) due to rate-limiting in the last minute",
       "fieldConfig": {
@@ -3818,6 +4497,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -3831,6 +4511,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -3884,10 +4565,16 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_throttler_outbound_acquire_failures[1m])",
+          "expr": "increase(avalanche_network_throttler_outbound_acquire_failures{instance=~\"$host\"}[1m])",
           "interval": "",
           "legendFormat": "Messages Dropped",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -3896,7 +4583,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of inbound connections dropped due to inbound connection rate-limiting",
       "fieldConfig": {
@@ -3905,6 +4593,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -3918,6 +4607,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -3971,10 +4661,16 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_network_inbound_conn_throttler_rate_limited[1m])",
+          "expr": "increase(avalanche_network_inbound_conn_throttler_rate_limited{instance=~\"$host\"}[1m])",
           "interval": "",
           "legendFormat": "Rate-Limited",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -3999,7 +4695,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "",
       "fieldConfig": {
@@ -4008,6 +4705,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -4021,6 +4719,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -4086,7 +4785,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "(increase(avalanche_network_codec_gzip_push_query_compress_time_sum[5m])+1)/(increase(avalanche_network_codec_gzip_push_query_compress_time_count[5m])+1)",
+          "expr": "(increase(avalanche_network_codec_gzip_push_query_compress_time_sum{instance=~\"$host\"}[5m])+1)/(increase(avalanche_network_codec_gzip_push_query_compress_time_count{instance=~\"$host\"}[5m])+1)",
           "hide": false,
           "interval": "",
           "legendFormat": "Push Query",
@@ -4099,7 +4798,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "(increase(avalanche_network_codec_gzip_put_compress_time_sum[5m])+1)/(increase(avalanche_network_codec_gzip_put_compress_time_count[5m])+1)",
+          "expr": "(increase(avalanche_network_codec_gzip_put_compress_time_sum{instance=~\"$host\"}[5m])+1)/(increase(avalanche_network_codec_gzip_put_compress_time_count{instance=~\"$host\"}[5m])+1)",
           "hide": false,
           "interval": "",
           "legendFormat": "Put",
@@ -4112,7 +4811,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "(increase(avalanche_network_codec_gzip_peerlist_compress_time_sum[5m])+1)/(increase(avalanche_network_codec_gzip_peerlist_compress_time_count[5m])+1)",
+          "expr": "(increase(avalanche_network_codec_gzip_peerlist_compress_time_sum{instance=~\"$host\"}[5m])+1)/(increase(avalanche_network_codec_gzip_peerlist_compress_time_count{instance=~\"$host\"}[5m])+1)",
           "hide": false,
           "interval": "",
           "legendFormat": "Peer List",
@@ -4125,7 +4824,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "(increase(avalanche_network_codec_gzip_app_gossip_compress_time_sum[5m])+1)/(increase(avalanche_network_codec_gzip_app_gossip_compress_time_count[5m])+1)",
+          "expr": "(increase(avalanche_network_codec_gzip_app_gossip_compress_time_sum{instance=~\"$host\"}[5m])+1)/(increase(avalanche_network_codec_gzip_app_gossip_compress_time_count{instance=~\"$host\"}[5m])+1)",
           "hide": false,
           "interval": "",
           "legendFormat": "App Gossip",
@@ -4138,7 +4837,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "(increase(avalanche_network_codec_gzip_app_request_compress_time_sum[5m])+1)/(increase(avalanche_network_codec_gzip_app_request_compress_time_count[5m])+1)",
+          "expr": "(increase(avalanche_network_codec_gzip_app_request_compress_time_sum{instance=~\"$host\"}[5m])+1)/(increase(avalanche_network_codec_gzip_app_request_compress_time_count{instance=~\"$host\"}[5m])+1)",
           "hide": false,
           "interval": "",
           "legendFormat": "App Request",
@@ -4151,7 +4850,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "(increase(avalanche_network_codec_app_gzip_response_compress_time_sum[5m])+1)/(increase(avalanche_network_codec_gzip_app_response_compress_time_count[5m])+1)",
+          "expr": "(increase(avalanche_network_codec_app_gzip_response_compress_time_sum{instance=~\"$host\"}[5m])+1)/(increase(avalanche_network_codec_gzip_app_response_compress_time_count{instance=~\"$host\"}[5m])+1)",
           "hide": false,
           "interval": "",
           "legendFormat": "App Response",
@@ -4164,7 +4863,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "",
       "fieldConfig": {
@@ -4173,6 +4873,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -4186,6 +4887,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -4251,7 +4953,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "(increase(avalanche_network_codec_gzip_push_query_compress_time_sum[5m])+1)/(increase(avalanche_network_codec_gzip_push_query_compress_time_count[5m])+1)",
+          "expr": "(increase(avalanche_network_codec_gzip_push_query_compress_time_sum{instance=~\"$host\"}[5m])+1)/(increase(avalanche_network_codec_gzip_push_query_compress_time_count{instance=~\"$host\"}[5m])+1)",
           "hide": false,
           "interval": "",
           "legendFormat": "Push Query",
@@ -4264,7 +4966,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "(increase(avalanche_network_codec_gzip_put_compress_time_sum[5m])+1)/(increase(avalanche_network_codec_gzip_put_compress_time_count[5m])+1)",
+          "expr": "(increase(avalanche_network_codec_gzip_put_compress_time_sum{instance=~\"$host\"}[5m])+1)/(increase(avalanche_network_codec_gzip_put_compress_time_count{instance=~\"$host\"}[5m])+1)",
           "hide": false,
           "interval": "",
           "legendFormat": "Put",
@@ -4277,7 +4979,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "(increase(avalanche_network_codec_gzip_peerlist_compress_time_sum[5m])+1)/(increase(avalanche_network_codec_gzip_peerlist_compress_time_count[5m])+1)",
+          "expr": "(increase(avalanche_network_codec_gzip_peerlist_compress_time_sum{instance=~\"$host\"}[5m])+1)/(increase(avalanche_network_codec_gzip_peerlist_compress_time_count{instance=~\"$host\"}[5m])+1)",
           "hide": false,
           "interval": "",
           "legendFormat": "Peer List",
@@ -4290,7 +4992,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "(increase(avalanche_network_codec_gzip_app_gossip_compress_time_sum[5m])+1)/(increase(avalanche_network_codec_gzip_app_gossip_compress_time_count[5m])+1)",
+          "expr": "(increase(avalanche_network_codec_gzip_app_gossip_compress_time_sum{instance=~\"$host\"}[5m])+1)/(increase(avalanche_network_codec_gzip_app_gossip_compress_time_count{instance=~\"$host\"}[5m])+1)",
           "hide": false,
           "interval": "",
           "legendFormat": "App Gossip",
@@ -4303,7 +5005,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "(increase(avalanche_network_codec_gzip_app_request_compress_time_sum[5m])+1)/(increase(avalanche_network_codec_gzip_app_request_compress_time_count[5m])+1)",
+          "expr": "(increase(avalanche_network_codec_gzip_app_request_compress_time_sum{instance=~\"$host\"}[5m])+1)/(increase(avalanche_network_codec_gzip_app_request_compress_time_count{instance=~\"$host\"}[5m])+1)",
           "hide": false,
           "interval": "",
           "legendFormat": "App Request",
@@ -4316,7 +5018,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "(increase(avalanche_network_codec_app_gzip_response_compress_time_sum[5m])+1)/(increase(avalanche_network_codec_gzip_app_response_compress_time_count[5m])+1)",
+          "expr": "(increase(avalanche_network_codec_app_gzip_response_compress_time_sum{instance=~\"$host\"}[5m])+1)/(increase(avalanche_network_codec_gzip_app_response_compress_time_count{instance=~\"$host\"}[5m])+1)",
           "hide": false,
           "interval": "",
           "legendFormat": "App Response",
@@ -4329,7 +5031,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "",
       "fieldConfig": {
@@ -4338,6 +5041,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -4351,6 +5055,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -4416,7 +5121,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_codec_zstd_push_query_compress_time_sum[5m])",
+          "expr": "rate(avalanche_network_codec_zstd_push_query_compress_time_sum{instance=~\"$host\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "Push Query",
@@ -4429,7 +5134,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_codec_zstd_put_compress_time_sum[5m])",
+          "expr": "rate(avalanche_network_codec_zstd_put_compress_time_sum{instance=~\"$host\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "Put",
@@ -4442,7 +5147,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_codec_zstd_peerlist_compress_time_sum[5m])",
+          "expr": "rate(avalanche_network_codec_zstd_peerlist_compress_time_sum{instance=~\"$host\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "Peer List",
@@ -4455,7 +5160,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_codec_zstd_app_gossip_compress_time_sum[5m])",
+          "expr": "rate(avalanche_network_codec_zstd_app_gossip_compress_time_sum{instance=~\"$host\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "App Gossip",
@@ -4468,7 +5173,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_codec_zstd_app_request_compress_time_sum[5m])",
+          "expr": "rate(avalanche_network_codec_zstd_app_request_compress_time_sum{instance=~\"$host\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "App Request",
@@ -4481,7 +5186,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_codec_zstd_app_response_compress_time_sum[5m])",
+          "expr": "rate(avalanche_network_codec_zstd_app_response_compress_time_sum{instance=~\"$host\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "App Response",
@@ -4494,7 +5199,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "",
       "fieldConfig": {
@@ -4503,6 +5209,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -4516,6 +5223,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -4581,7 +5289,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "(increase(avalanche_network_codec_zstd_push_query_compress_time_sum[5m])+1)/(increase(avalanche_network_codec_zstd_push_query_compress_time_count[5m])+1)",
+          "expr": "(increase(avalanche_network_codec_zstd_push_query_compress_time_sum{instance=~\"$host\"}[5m])+1)/(increase(avalanche_network_codec_zstd_push_query_compress_time_count{instance=~\"$host\"}[5m])+1)",
           "hide": false,
           "interval": "",
           "legendFormat": "Push Query",
@@ -4594,7 +5302,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "(increase(avalanche_network_codec_zstd_put_compress_time_sum[5m])+1)/(increase(avalanche_network_codec_zstd_put_compress_time_count[5m])+1)",
+          "expr": "(increase(avalanche_network_codec_zstd_put_compress_time_sum{instance=~\"$host\"}[5m])+1)/(increase(avalanche_network_codec_zstd_put_compress_time_count{instance=~\"$host\"}[5m])+1)",
           "hide": false,
           "interval": "",
           "legendFormat": "Put",
@@ -4607,7 +5315,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "(increase(avalanche_network_codec_zstd_peerlist_compress_time_sum[5m])+1)/(increase(avalanche_network_codec_zstd_peerlist_compress_time_count[5m])+1)",
+          "expr": "(increase(avalanche_network_codec_zstd_peerlist_compress_time_sum{instance=~\"$host\"}[5m])+1)/(increase(avalanche_network_codec_zstd_peerlist_compress_time_count{instance=~\"$host\"}[5m])+1)",
           "hide": false,
           "interval": "",
           "legendFormat": "Peer List",
@@ -4620,7 +5328,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "(increase(avalanche_network_codec_zstd_app_gossip_compress_time_sum[5m])+1)/(increase(avalanche_network_codec_zstd_app_gossip_compress_time_count[5m])+1)",
+          "expr": "(increase(avalanche_network_codec_zstd_app_gossip_compress_time_sum{instance=~\"$host\"}[5m])+1)/(increase(avalanche_network_codec_zstd_app_gossip_compress_time_count{instance=~\"$host\"}[5m])+1)",
           "hide": false,
           "interval": "",
           "legendFormat": "App Gossip",
@@ -4633,7 +5341,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "(increase(avalanche_network_codec_zstd_app_request_compress_time_sum[5m])+1)/(increase(avalanche_network_codec_zstd_app_request_compress_time_count[5m])+1)",
+          "expr": "(increase(avalanche_network_codec_zstd_app_request_compress_time_sum{instance=~\"$host\"}[5m])+1)/(increase(avalanche_network_codec_zstd_app_request_compress_time_count{instance=~\"$host\"}[5m])+1)",
           "hide": false,
           "interval": "",
           "legendFormat": "App Request",
@@ -4646,7 +5354,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "(increase(avalanche_network_codec_app_zstd_response_compress_time_sum[5m])+1)/(increase(avalanche_network_codec_zstd_app_response_compress_time_count[5m])+1)",
+          "expr": "(increase(avalanche_network_codec_app_zstd_response_compress_time_sum{instance=~\"$host\"}[5m])+1)/(increase(avalanche_network_codec_zstd_app_response_compress_time_count{instance=~\"$host\"}[5m])+1)",
           "hide": false,
           "interval": "",
           "legendFormat": "App Response",
@@ -4659,7 +5367,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Rate at which we save bytes (don't send/receive them over the network) by compressing messages/receiving compressed messages.",
       "fieldConfig": {
@@ -4668,6 +5377,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -4681,6 +5391,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -4739,114 +5450,198 @@
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_multi_put_compression_saved_received_bytes_sum[5m])",
+          "expr": "rate(avalanche_network_multi_put_compression_saved_received_bytes_sum{instance=~\"$host\"}[5m])",
           "interval": "",
           "legendFormat": "Inbound Multiput",
+          "range": true,
           "refId": "A"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_multi_put_compression_saved_sent_bytes_sum[5m])",
+          "expr": "rate(avalanche_network_multi_put_compression_saved_sent_bytes_sum{instance=~\"$host\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "Outbound Multiput",
+          "range": true,
           "refId": "B"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_put_compression_saved_received_bytes_sum[5m])",
+          "expr": "rate(avalanche_network_put_compression_saved_received_bytes_sum{instance=~\"$host\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "Inbound Put",
+          "range": true,
           "refId": "C"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_put_compression_saved_sent_bytes_sum[5m])",
+          "expr": "rate(avalanche_network_put_compression_saved_sent_bytes_sum{instance=~\"$host\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "Outbound Put",
+          "range": true,
           "refId": "D"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_push_query_compression_saved_received_bytes_sum[5m])",
+          "expr": "rate(avalanche_network_push_query_compression_saved_received_bytes_sum{instance=~\"$host\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "Inbound Push Query",
+          "range": true,
           "refId": "E"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_push_query_compression_saved_sent_bytes_sum[5m])",
+          "expr": "rate(avalanche_network_push_query_compression_saved_sent_bytes_sum{instance=~\"$host\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "Outbound Push Query",
+          "range": true,
           "refId": "F"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_peerlist_compression_saved_received_bytes_sum[5m])",
+          "expr": "rate(avalanche_network_peerlist_compression_saved_received_bytes_sum{instance=~\"$host\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "Inbound Peer List",
+          "range": true,
           "refId": "G"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_peerlist_compression_saved_sent_bytes_sum[5m])",
+          "expr": "rate(avalanche_network_peerlist_compression_saved_sent_bytes_sum{instance=~\"$host\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "Outbound Peer List",
+          "range": true,
           "refId": "H"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_gossip_compression_saved_received_bytes_sum[5m])",
+          "expr": "rate(avalanche_network_app_gossip_compression_saved_received_bytes_sum{instance=~\"$host\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "Inbound App Gossip",
+          "range": true,
           "refId": "I"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_gossip_compression_saved_sent_bytes_sum[5m])",
+          "expr": "rate(avalanche_network_app_gossip_compression_saved_sent_bytes_sum{instance=~\"$host\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "Outbound App Gossip",
+          "range": true,
           "refId": "J"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_request_compression_saved_received_bytes_sum[5m])",
+          "expr": "rate(avalanche_network_app_request_compression_saved_received_bytes_sum{instance=~\"$host\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "Inbound App Request",
+          "range": true,
           "refId": "K"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_request_compression_saved_sent_bytes_sum[5m])",
+          "expr": "rate(avalanche_network_app_request_compression_saved_sent_bytes_sum{instance=~\"$host\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "Outbound App Request",
+          "range": true,
           "refId": "L"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_response_compression_saved_received_bytes_sum[5m])",
+          "expr": "rate(avalanche_network_app_response_compression_saved_received_bytes_sum{instance=~\"$host\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "Inbound App Response",
+          "range": true,
           "refId": "M"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_network_app_response_compression_saved_sent_bytes_sum[5m])",
+          "expr": "rate(avalanche_network_app_response_compression_saved_sent_bytes_sum{instance=~\"$host\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "Outbound App Response",
+          "range": true,
           "refId": "N"
         }
       ],
@@ -4855,13 +5650,36 @@
     }
   ],
   "refresh": "10s",
-  "schemaVersion": 37,
-  "style": "dark",
+  "schemaVersion": 38,
   "tags": [
     "Avalanche"
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "184.73.245.13:9650",
+          "value": "184.73.245.13:9650"
+        },
+        "definition": "label_values(instance)",
+        "hide": 0,
+        "includeAll": true,
+        "multi": false,
+        "name": "host",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(instance)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "/9650/",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
   },
   "time": {
     "from": "now-3h",
@@ -4883,6 +5701,6 @@
   "timezone": "",
   "title": "Network",
   "uid": "jB1TgdZ7z",
-  "version": 11,
+  "version": 32,
   "weekStart": ""
 }

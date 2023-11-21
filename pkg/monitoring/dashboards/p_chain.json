@@ -3,7 +3,10 @@
     "list": [
       {
         "builtIn": 1,
-        "datasource": "-- Grafana --",
+        "datasource": {
+          "type": "datasource",
+          "uid": "grafana"
+        },
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
@@ -19,9 +22,9 @@
     ]
   },
   "editable": true,
-  "gnetId": null,
+  "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 50,
+  "id": 7,
   "links": [
     {
       "icon": "external link",
@@ -31,15 +34,22 @@
       "type": "dashboards"
     }
   ],
+  "liveNow": false,
   "panels": [
     {
-      "datasource": "Prometheus",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -51,6 +61,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -100,43 +111,61 @@
             "max"
           ],
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
-          "mode": "single"
+          "mode": "single",
+          "sort": "none"
         }
       },
       "pluginVersion": "8.0.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "round(increase(avalanche_P_blks_accepted_count{job=\"avalanchego\"}[1m]))>0",
+          "expr": "round(increase(avalanche_P_blks_accepted_count{instance=~\"$host\",job=\"avalanchego\"}[1m]))>0",
           "interval": "",
           "legendFormat": "Accepted",
+          "range": true,
           "refId": "A"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "round(increase(avalanche_P_blks_acc_count{job=\"avalanchego\"}[1m]))>0",
+          "expr": "round(increase(avalanche_P_blks_acc_count{instance=~\"$host\",job=\"avalanchego\"}[1m]))>0",
           "hide": false,
           "interval": "",
           "legendFormat": "",
+          "range": true,
           "refId": "B"
         }
       ],
-      "timeFrom": null,
-      "timeShift": null,
       "title": "Accepted Blocks in Last Minute",
       "type": "timeseries"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -148,6 +177,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -193,29 +223,38 @@
             "max"
           ],
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
-          "mode": "single"
+          "mode": "single",
+          "sort": "none"
         }
       },
       "pluginVersion": "8.0.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "round(increase(avalanche_P_blks_rejected_count{job=\"avalanchego\"}[1m]))>0",
+          "expr": "round(increase(avalanche_P_blks_rejected_count{instance=~\"$host\",job=\"avalanchego\"}[1m]))>0",
           "interval": "",
           "legendFormat": "Rejected",
+          "range": true,
           "refId": "A"
         }
       ],
-      "timeFrom": null,
-      "timeShift": null,
       "title": "Rejected Blocks in Last Minute",
       "type": "timeseries"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "description": "The average time between a block's issuance and acceptance by this node over the last 5 minutes.",
       "fieldConfig": {
         "defaults": {
@@ -223,6 +262,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -234,6 +276,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -279,28 +322,37 @@
             "max"
           ],
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
-          "mode": "single"
+          "mode": "single",
+          "sort": "none"
         }
       },
       "pluginVersion": "8.0.4",
       "targets": [
         {
-          "expr": "rate(avalanche_P_blks_accepted_sum{job=\"avalanchego\"}[5m]) / rate(avalanche_P_blks_accepted_count{job=\"avalanchego\"}[5m])",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(avalanche_P_blks_accepted_sum{instance=~\"$host\",job=\"avalanchego\"}[5m]) / rate(avalanche_P_blks_accepted_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "Avg Acceptance Latency",
+          "range": true,
           "refId": "A"
         }
       ],
-      "timeFrom": null,
-      "timeShift": null,
       "title": "Average Block Acceptance Latency",
       "type": "timeseries"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "description": "The average time between a block's issuance and rejection by this node over the last 5 minutes.",
       "fieldConfig": {
         "defaults": {
@@ -308,6 +360,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -319,6 +374,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -364,35 +420,47 @@
             "max"
           ],
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
-          "mode": "single"
+          "mode": "single",
+          "sort": "none"
         }
       },
       "pluginVersion": "8.0.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_blks_rejected_sum{job=\"avalanchego\"}[5m]) / rate(avalanche_P_blks_rejected_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_blks_rejected_sum{instance=~\"$host\",job=\"avalanchego\"}[5m]) / rate(avalanche_P_blks_rejected_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "Rejection Latency",
+          "range": true,
           "refId": "A"
         }
       ],
-      "timeFrom": null,
-      "timeShift": null,
       "title": "Average Block Rejection Latency",
       "type": "timeseries"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "Transactions",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -404,6 +472,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -454,28 +523,37 @@
             "max"
           ],
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
-          "mode": "single"
+          "mode": "single",
+          "sort": "none"
         }
       },
       "pluginVersion": "8.0.4",
       "targets": [
         {
-          "expr": "avalanche_P_blks_processing{job=\"avalanchego\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "avalanche_P_blks_processing{instance=~\"$host\",job=\"avalanchego\"}",
           "interval": "",
           "legendFormat": "Transactions",
+          "range": true,
           "refId": "A"
         }
       ],
-      "timeFrom": null,
-      "timeShift": null,
       "title": "Processing Blocks",
       "type": "timeseries"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "description": "Percentage of queries for which we receive chits on time.",
       "fieldConfig": {
         "defaults": {
@@ -483,6 +561,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -494,6 +575,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -544,30 +626,38 @@
             "min"
           ],
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
-          "mode": "single"
+          "mode": "single",
+          "sort": "none"
         }
       },
       "pluginVersion": "8.0.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "(increase(avalanche_P_handler_chits_count{job=\"avalanchego\"}[5m]) + 1) / (increase(avalanche_P_handler_chits_count{job=\"avalanchego\"}[5m]) + increase(avalanche_P_handler_query_failed_count{job=\"avalanchego\"}[5m]) + 1)",
+          "expr": "(increase(avalanche_P_handler_chits_count{instance=~\"$host\",job=\"avalanchego\"}[5m]) + 1) / (increase(avalanche_P_handler_chits_count{instance=~\"$host\",job=\"avalanchego\"}[5m]) + increase(avalanche_P_handler_query_failed_count{instance=~\"$host\",job=\"avalanchego\"}[5m]) + 1)",
           "instant": false,
           "interval": "",
           "legendFormat": "% Successful",
           "refId": "A"
         }
       ],
-      "timeFrom": null,
-      "timeShift": null,
       "title": "Percentage of Successful Queries",
       "type": "timeseries"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "description": "Measures how much of each second is being spent handling different kinds of messages on the P-Chain.\nThe value for chits, for example, is the number of seconds spent handling chits messages per second, over the last 30 seconds.",
       "fieldConfig": {
         "defaults": {
@@ -575,6 +665,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "seconds/second",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -586,6 +679,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -634,138 +728,237 @@
             "max"
           ],
           "displayMode": "table",
-          "placement": "right"
+          "placement": "right",
+          "showLegend": true
         },
         "tooltip": {
-          "mode": "single"
+          "mode": "single",
+          "sort": "none"
         }
       },
       "pluginVersion": "8.0.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_pull_query_sum{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_pull_query_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "pull query",
+          "range": true,
           "refId": "A"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_push_query_sum{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_push_query_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "push query",
+          "range": true,
           "refId": "B"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_chits_sum{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_chits_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "chits",
+          "range": true,
           "refId": "C"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_accepted_sum{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_accepted_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "accepted",
+          "range": true,
           "refId": "D"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_get_sum{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_get_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "get",
+          "range": true,
           "refId": "E"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_put_sum{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_put_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "put",
+          "range": true,
           "refId": "F"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_multiput_sum{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_multiput_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "multiput",
+          "range": true,
           "refId": "G"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_get_ancestors_sum{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_get_ancestors_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "get ancestors",
+          "range": true,
           "refId": "H"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_get_failed_sum{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_get_failed_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "get failed",
+          "range": true,
           "refId": "I"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_query_failed_sum{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_query_failed_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "query failed",
+          "range": true,
           "refId": "J"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_get_accepted_sum{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_get_accepted_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "get accepted",
+          "range": true,
           "refId": "K"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_get_ancestors_failed_sum{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_get_ancestors_failed_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "get ancestors failed",
+          "range": true,
           "refId": "L"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_app_request_sum{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_app_request_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app request ",
+          "range": true,
           "refId": "N"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_app_request_failed_sum{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_app_request_failed_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app request failed ",
+          "range": true,
           "refId": "M"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_app_response_sum{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_app_response_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app response",
+          "range": true,
           "refId": "O"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_app_gossip_sum{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_app_gossip_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app gossip",
+          "range": true,
           "refId": "P"
         }
       ],
-      "timeFrom": null,
-      "timeShift": null,
       "title": "Message Handling Time (Total)",
       "type": "timeseries"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "description": "Measures how long each kind of request on the P-Chain takes to handle.\nThe value for chits, for example, is how long, in seconds, it takes to handle a chits message.",
       "fieldConfig": {
         "defaults": {
@@ -773,6 +966,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "seconds",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -784,6 +980,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -832,138 +1029,237 @@
             "max"
           ],
           "displayMode": "table",
-          "placement": "right"
+          "placement": "right",
+          "showLegend": true
         },
         "tooltip": {
-          "mode": "single"
+          "mode": "single",
+          "sort": "none"
         }
       },
       "pluginVersion": "8.0.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_pull_query_sum{job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_pull_query_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_pull_query_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_pull_query_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "pull query",
+          "range": true,
           "refId": "A"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_push_query_sum{job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_push_query_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_push_query_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_push_query_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "push query",
+          "range": true,
           "refId": "B"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_chits_sum{job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_chits_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_chits_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_chits_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "chits",
+          "range": true,
           "refId": "C"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_accepted_sum{job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_accepted_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_accepted_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_accepted_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "accepted",
+          "range": true,
           "refId": "D"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_get_sum{job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_get_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_get_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_get_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "get",
+          "range": true,
           "refId": "E"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_put_sum{job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_put_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_put_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_put_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "put",
+          "range": true,
           "refId": "F"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_multiput_sum{job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_multi_put_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_multiput_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_multi_put_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "multiput",
+          "range": true,
           "refId": "G"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_get_ancestors_sum{job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_get_ancestors_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_get_ancestors_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_get_ancestors_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "get ancestors",
+          "range": true,
           "refId": "H"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_get_failed_sum{job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_get_failed_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_get_failed_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_get_failed_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "get failed",
+          "range": true,
           "refId": "I"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_query_failed_sum{job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_query_failed_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_query_failed_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_query_failed_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "query failed",
+          "range": true,
           "refId": "J"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_get_accepted_sum{job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_get_accepted_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_get_accepted_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_get_accepted_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "get accepted",
+          "range": true,
           "refId": "K"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_get_ancestors_failed_sum{job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_get_ancestors_failed_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_get_ancestors_failed_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_get_ancestors_failed_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "get ancestors failed",
+          "range": true,
           "refId": "L"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_app_request_sum{job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_app_request_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_app_request_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_app_request_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app request",
+          "range": true,
           "refId": "M"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_app_request_failed_sum{job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_app_request_failed_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_app_request_failed_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_app_request_failed_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app request failed",
+          "range": true,
           "refId": "N"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_app_gossip_sum{job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_app_gossip_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_app_gossip_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_app_gossip_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app gossip",
+          "range": true,
           "refId": "O"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_app_response_sum{job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_app_response_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_app_response_sum{instance=~\"$host\",job=\"avalanchego\"}[5m])/rate(avalanche_P_handler_app_response_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app response",
+          "range": true,
           "refId": "P"
         }
       ],
-      "timeFrom": null,
-      "timeShift": null,
       "title": "Message Handling Time (per Message)",
       "type": "timeseries"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "description": "The total stake of validators currently \"benched\" due to poor query responsiveness. Queries to these validators will immediately timeout until they are removed from the \"bench.\"",
       "fieldConfig": {
         "defaults": {
@@ -971,6 +1267,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -982,6 +1281,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1032,29 +1332,38 @@
             "max"
           ],
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
-          "mode": "single"
+          "mode": "single",
+          "sort": "none"
         }
       },
       "pluginVersion": "8.0.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "avg_over_time(avalanche_P_benchlist_benched_weight{job=\"avalanchego\"}[15m]) / 10^9",
+          "expr": "avg_over_time(avalanche_P_benchlist_benched_weight{instance=~\"$host\",job=\"avalanchego\"}[15m]) / 10^9",
           "interval": "",
           "legendFormat": "AVAX Benched",
+          "range": true,
           "refId": "A"
         }
       ],
-      "timeFrom": null,
-      "timeShift": null,
       "title": "AVAX Benched",
       "type": "timeseries"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "description": "Measures how many of each kind of message are received per second on the P-Chain.",
       "fieldConfig": {
         "defaults": {
@@ -1062,6 +1371,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "Messages received/s",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1073,6 +1385,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1121,138 +1434,237 @@
             "max"
           ],
           "displayMode": "table",
-          "placement": "right"
+          "placement": "right",
+          "showLegend": true
         },
         "tooltip": {
-          "mode": "single"
+          "mode": "single",
+          "sort": "none"
         }
       },
       "pluginVersion": "8.0.4",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_pull_query_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_pull_query_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "pull query",
+          "range": true,
           "refId": "A"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_push_query_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_push_query_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "push query",
+          "range": true,
           "refId": "B"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_chits_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_chits_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "chits",
+          "range": true,
           "refId": "C"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_accepted_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_accepted_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "accepted",
+          "range": true,
           "refId": "D"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_get_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_get_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "get",
+          "range": true,
           "refId": "E"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_put_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_put_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "put",
+          "range": true,
           "refId": "F"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_multi_put_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_multi_put_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "multiput",
+          "range": true,
           "refId": "G"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_get_ancestors_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_get_ancestors_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "get ancestors",
+          "range": true,
           "refId": "H"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_get_failed_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_get_failed_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "get failed",
+          "range": true,
           "refId": "I"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_query_failed_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_query_failed_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "query failed",
+          "range": true,
           "refId": "J"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_get_accepted_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_get_accepted_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "get accepted",
+          "range": true,
           "refId": "K"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_get_ancestors_failed_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_get_ancestors_failed_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "interval": "",
           "legendFormat": "get ancestors failed",
+          "range": true,
           "refId": "L"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_app_request_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_app_request_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app request",
+          "range": true,
           "refId": "P"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_app_request_failed_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_app_request_failed_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app request failed",
+          "range": true,
           "refId": "M"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_app_response_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_app_response_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app response",
+          "range": true,
           "refId": "N"
         },
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(avalanche_P_handler_app_gossip_count{job=\"avalanchego\"}[5m])",
+          "expr": "rate(avalanche_P_handler_app_gossip_count{instance=~\"$host\",job=\"avalanchego\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "app gossip",
+          "range": true,
           "refId": "O"
         }
       ],
-      "timeFrom": null,
-      "timeShift": null,
       "title": "Messages Received per Second",
       "type": "timeseries"
     },
     {
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "description": "",
       "fieldConfig": {
         "defaults": {
@@ -1260,6 +1672,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "axisSoftMax": 1,
@@ -1273,6 +1688,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1313,18 +1729,26 @@
         "legend": {
           "calcs": [],
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
-          "mode": "single"
+          "mode": "single",
+          "sort": "none"
         }
       },
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(avalanche_P_vm_block_cache_hit[5m])/(increase(avalanche_P_vm_block_cache_hit[5m])+increase(avalanche_P_vm_block_cache_miss[5m]))",
+          "expr": "increase(avalanche_P_vm_block_cache_hit{instance=~\"$host\"}[5m])/(increase(avalanche_P_vm_block_cache_hit{instance=~\"$host\"}[5m])+increase(avalanche_P_vm_block_cache_miss{instance=~\"$host\"}[5m]))",
           "interval": "",
           "legendFormat": "Hit Rate",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -1332,13 +1756,19 @@
       "type": "timeseries"
     },
     {
-      "datasource": "Prometheus",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "axisSoftMin": 0,
@@ -1351,6 +1781,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1400,35 +1831,47 @@
             "max"
           ],
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
-          "mode": "single"
+          "mode": "single",
+          "sort": "none"
         }
       },
       "pluginVersion": "8.0.5",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "avalanche_P_handler_unprocessed_msgs_len",
+          "expr": "avalanche_P_handler_unprocessed_msgs_len{instance=~\"$host\"}",
           "interval": "",
           "legendFormat": "Pending Messages",
+          "range": true,
           "refId": "A"
         }
       ],
-      "timeFrom": null,
-      "timeShift": null,
       "title": "Unprocessed Incoming Messages",
       "type": "timeseries"
     },
     {
-      "datasource": null,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -1440,6 +1883,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1489,35 +1933,64 @@
             "max"
           ],
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
-          "mode": "single"
+          "mode": "single",
+          "sort": "none"
         }
       },
       "pluginVersion": "8.1.4",
       "targets": [
         {
-          "expr": "increase(avalanche_P_handler_expired[1m])",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "increase(avalanche_P_handler_expired{instance=~\"$host\"}[1m])",
           "interval": "",
           "legendFormat": "Expired",
+          "range": true,
           "refId": "A"
         }
       ],
-      "timeFrom": null,
-      "timeShift": null,
       "title": "Incoming Messages Expired in Last Minute",
       "type": "timeseries"
     }
   ],
   "refresh": "10s",
-  "schemaVersion": 30,
-  "style": "dark",
+  "schemaVersion": 38,
   "tags": [
     "Avalanche"
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "184.73.245.13:9650",
+          "value": "184.73.245.13:9650"
+        },
+        "definition": "label_values(instance)",
+        "hide": 0,
+        "includeAll": true,
+        "multi": false,
+        "name": "host",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(instance)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "/9650/",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
   },
   "time": {
     "from": "now-24h",
@@ -1540,5 +2013,6 @@
   "timezone": "",
   "title": "P-Chain",
   "uid": "uWlS20i7z",
-  "version": 36
+  "version": 15,
+  "weekStart": ""
 }

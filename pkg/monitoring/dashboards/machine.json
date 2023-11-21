@@ -25,7 +25,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 2,
+  "id": 4,
   "links": [
     {
       "icon": "external link",
@@ -81,7 +81,8 @@
         ]
       },
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "",
       "fieldConfig": {
@@ -90,6 +91,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -101,6 +105,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -152,7 +157,8 @@
             "max"
           ],
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "single",
@@ -162,10 +168,16 @@
       "pluginVersion": "8.0.5",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "(1 - avg(irate(node_cpu_seconds_total{job=~\"avalanchego-machine\", mode=\"idle\"}[1m])) by (instance)) * 100",
+          "expr": "(1 - avg(irate(node_cpu_seconds_total{instance=~\"$machine\", job=~\"avalanchego-machine\", mode=\"idle\"}[1m])) by (instance)) * 100",
           "interval": "",
           "legendFormat": "CPU",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -178,7 +190,8 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "",
       "fill": 1,
@@ -209,7 +222,7 @@
         "alertThreshold": true
       },
       "percentage": false,
-      "pluginVersion": "8.5.3",
+      "pluginVersion": "10.2.1",
       "pointradius": 2,
       "points": false,
       "renderer": "flot",
@@ -219,9 +232,15 @@
       "steppedLine": false,
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
           "expr": "node_hwmon_temp_celsius{chip=\"platform_coretemp_0\"}",
           "interval": "",
           "legendFormat": "{{sensor}}",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -258,7 +277,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Include I/O from applications other than AvalancheGo",
       "fieldConfig": {
@@ -267,6 +287,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -278,6 +301,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -327,7 +351,8 @@
             "max"
           ],
           "displayMode": "table",
-          "placement": "right"
+          "placement": "right",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "single",
@@ -337,16 +362,28 @@
       "pluginVersion": "8.0.5",
       "targets": [
         {
-          "expr": "rate(node_network_receive_bytes_total[5m])",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(node_network_receive_bytes_total{instance=~\"$machine\"}[5m])",
           "interval": "",
           "legendFormat": "Receive {{device}}",
+          "range": true,
           "refId": "A"
         },
         {
-          "expr": "rate(node_network_transmit_bytes_total[5m])",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(node_network_transmit_bytes_total{instance=~\"$machine\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "Transmit {{device}}",
+          "range": true,
           "refId": "B"
         }
       ],
@@ -355,7 +392,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Includes I/O from applications other than AvalancheGo",
       "fieldConfig": {
@@ -364,6 +402,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -375,6 +416,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -420,7 +462,8 @@
             "max"
           ],
           "displayMode": "table",
-          "placement": "right"
+          "placement": "right",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "single",
@@ -433,19 +476,23 @@
           "datasource": {
             "type": "prometheus"
           },
-          "expr": "rate(node_disk_read_bytes_total[5m])",
+          "editorMode": "code",
+          "expr": "rate(node_disk_read_bytes_total{instance=~\"$machine\"}[5m])",
           "interval": "",
           "legendFormat": "Read {{device}}",
+          "range": true,
           "refId": "A"
         },
         {
           "datasource": {
             "type": "prometheus"
           },
-          "expr": "rate(node_disk_written_bytes_total[5m])",
+          "editorMode": "code",
+          "expr": "rate(node_disk_written_bytes_total{instance=~\"$machine\"}[5m])",
           "hide": false,
           "interval": "",
           "legendFormat": "Write {{device}}",
+          "range": true,
           "refId": "B"
         }
       ],
@@ -493,7 +540,8 @@
         ]
       },
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -501,6 +549,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -512,6 +563,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -563,7 +615,8 @@
             "max"
           ],
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "single",
@@ -576,10 +629,12 @@
           "datasource": {
             "type": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "100 * (node_memory_MemTotal_bytes{job=~\"avalanchego-machine\"} - node_memory_MemFree_bytes{job=~\"avalanchego-machine\"} - node_memory_Buffers_bytes{job=~\"avalanchego-machine\"} - node_memory_Cached_bytes{job=~\"avalanchego-machine\"}) / node_memory_MemTotal_bytes{job=~\"avalanchego-machine\"}",
+          "expr": "100 * (node_memory_MemTotal_bytes{instance=~\"$machine\",job=~\"avalanchego-machine\"} - node_memory_MemFree_bytes{instance=~\"$machine\",job=~\"avalanchego-machine\"} - node_memory_Buffers_bytes{instance=~\"$machine\",job=~\"avalanchego-machine\"} - node_memory_Cached_bytes{instance=~\"$machine\",job=~\"avalanchego-machine\"}) / node_memory_MemTotal_bytes{instance=~\"$machine\",job=~\"avalanchego-machine\"}",
           "interval": "",
           "legendFormat": "Memory",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -623,7 +678,8 @@
         "notifications": []
       },
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -631,6 +687,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -642,6 +701,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "smooth",
             "lineWidth": 1,
             "pointSize": 5,
@@ -693,7 +753,8 @@
             "max"
           ],
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "single",
@@ -703,9 +764,15 @@
       "pluginVersion": "8.0.5",
       "targets": [
         {
-          "expr": "max(((node_filesystem_size_bytes{job=~\"avalanchego-machine\", fstype=~\"ext4|vfat\"} - node_filesystem_free_bytes{job=~\"avalanchego-machine\", fstype=~\"ext4|vfat\"}) / node_filesystem_size_bytes{job=~\"avalanchego-machine\", fstype=~\"ext4|vfat\"}) * 100) by (instance)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "max(((node_filesystem_size_bytes{instance=~\"$machine\",job=~\"avalanchego-machine\", fstype=~\"ext4|vfat\"} - node_filesystem_free_bytes{instance=~\"$machine\",job=~\"avalanchego-machine\", fstype=~\"ext4|vfat\"}) / node_filesystem_size_bytes{instance=~\"$machine\",job=~\"avalanchego-machine\", fstype=~\"ext4|vfat\"}) * 100) by (instance)",
           "interval": "",
           "legendFormat": "Disk",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -714,7 +781,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of parallel execution threads in the client runtime",
       "fieldConfig": {
@@ -723,6 +791,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -734,6 +805,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -778,7 +850,8 @@
             "max"
           ],
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "single",
@@ -791,7 +864,7 @@
             "type": "prometheus"
           },
           "editorMode": "code",
-          "expr": "avalanche_go_goroutines{job=~\"avalanchego\"}",
+          "expr": "avalanche_go_goroutines{instance=~\"$host\",job=~\"avalanchego\"}",
           "interval": "",
           "legendFormat": "goroutines",
           "range": true,
@@ -803,7 +876,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of open file handles the client is keeping",
       "fieldConfig": {
@@ -812,6 +886,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
@@ -823,6 +900,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -867,7 +945,8 @@
             "max"
           ],
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "single",
@@ -880,7 +959,7 @@
             "type": "prometheus"
           },
           "editorMode": "code",
-          "expr": "avalanche_process_open_fds{job=~\"avalanchego\"}",
+          "expr": "avalanche_process_open_fds{instance=~\"$host\",job=~\"avalanchego\"}",
           "legendFormat": "Open files",
           "range": true,
           "refId": "A"
@@ -891,7 +970,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "avalanche_process_max_fds{job=~\"avalanchego\"}",
+          "expr": "avalanche_process_max_fds{instance=~\"$host\",job=~\"avalanchego\"}",
           "hide": false,
           "instant": false,
           "legendFormat": "Max number allowed",
@@ -904,13 +983,59 @@
     }
   ],
   "refresh": "10s",
-  "schemaVersion": 36,
-  "style": "dark",
+  "schemaVersion": 38,
   "tags": [
     "Avalanche"
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "184.73.245.13:9100",
+          "value": "184.73.245.13:9100"
+        },
+        "definition": "label_values(instance)",
+        "hide": 0,
+        "includeAll": true,
+        "multi": false,
+        "name": "machine",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(instance)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "/9100/",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "184.73.245.13:9650",
+          "value": "184.73.245.13:9650"
+        },
+        "definition": "label_values(instance)",
+        "hide": 0,
+        "includeAll": true,
+        "multi": false,
+        "name": "host",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(instance)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "/9650/",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
   },
   "time": {
     "from": "now-1h",
@@ -932,6 +1057,6 @@
   "timezone": "",
   "title": "Machine Metrics",
   "uid": "DHT8r2znz",
-  "version": 2,
+  "version": 9,
   "weekStart": ""
 }
