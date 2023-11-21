@@ -658,3 +658,20 @@ func RunAnsiblePlaybookUpdateNodeConfig(ansibleDir, inventoryPath, ansibleHostID
 	}
 	return cmdErr
 }
+
+// RunAnsiblePlaybookCopyMonitoringDashboard copies modified grafana dashboard JSON file to cloud server
+// targets all hosts in ansible inventory file
+func RunAnsiblePlaybookCopyMonitoringDashboard(ansibleDir, inventoryPath, ansibleHostIDs, monitoringScriptPath string) error {
+	playbookInputs := "target=" + ansibleHostIDs + " monitoringDashboardPath=" + monitoringScriptPath
+	cmd := exec.Command(constants.AnsiblePlaybook, constants.CopyMonitoringDashboardPlaybook, constants.AnsibleInventoryFlag, inventoryPath, constants.AnsibleExtraVarsFlag, playbookInputs, constants.AnsibleExtraArgsIdentitiesOnlyFlag) //nolint:gosec
+	cmd.Dir = ansibleDir
+	stdoutBuffer, stderrBuffer := utils.SetupRealtimeCLIOutput(cmd, true, true)
+	cmdErr := cmd.Run()
+	if err := displayErrMsg(stdoutBuffer); err != nil {
+		return err
+	}
+	if err := displayErrMsg(stderrBuffer); err != nil {
+		return err
+	}
+	return cmdErr
+}

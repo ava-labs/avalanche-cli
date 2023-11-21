@@ -12,11 +12,14 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
+	"github.com/spf13/cobra"
 	"io"
 	"net"
 	"os"
@@ -26,9 +29,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/spf13/cobra"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -269,6 +269,13 @@ func createNodes(_ *cobra.Command, args []string) error {
 		}
 		monitoringHostID, err := utils.MapWithError([]string{monitoringInstanceNodeID}, func(s string) (string, error) { return models.HostCloudIDToAnsibleID(cloudService, s) })
 		if err != nil {
+			return err
+		}
+		if err = monitoring.WriteMonitoringJSONFiles(app.GetMonitoringDir()); err != nil {
+			return err
+		}
+		if err = ansible.RunAnsiblePlaybookCopyMonitoringDashboard(app.GetAnsibleDir(),
+			monitoringInventoryPath, strings.Join(monitoringHostID, ","), app.GetMonitoringDashboardDir()+"/"); err != nil {
 			return err
 		}
 		if err = ansible.RunAnsiblePlaybookSetupSeparateMonitoring(app.GetAnsibleDir(),

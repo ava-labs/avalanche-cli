@@ -751,6 +751,10 @@ func (app *Avalanche) GetMonitoringScriptFile() string {
 	return filepath.Join(app.GetMonitoringDir(), constants.MonitoringScriptFile)
 }
 
+func (app *Avalanche) GetMonitoringDashboardDir() string {
+	return filepath.Join(app.GetMonitoringDir(), constants.DashboardsDir)
+}
+
 func (app *Avalanche) GetHealthyJSONFile() string {
 	return filepath.Join(app.GetAnsibleStatusDir(), constants.IsHealthyJSONFile)
 }
