@@ -157,6 +157,7 @@ func SetupInstances(rootBody *hclwrite.Body,
 	staticIPName string,
 	instanceName string,
 	numNodes []int,
+	instanceType string,
 	networkExists bool,
 ) {
 	for i, zone := range zones {
@@ -165,7 +166,7 @@ func SetupInstances(rootBody *hclwrite.Body,
 		gcpInstanceBody.SetAttributeRaw("name", createCustomTokens(instanceName))
 		gcpInstanceBody.SetAttributeValue("provider", cty.StringVal(terraformProviderName(zone)))
 		gcpInstanceBody.SetAttributeValue("count", cty.NumberIntVal(int64(numNodes[i])))
-		gcpInstanceBody.SetAttributeValue("machine_type", cty.StringVal("e2-standard-8"))
+		gcpInstanceBody.SetAttributeValue("machine_type", cty.StringVal(instanceType))
 		metadataMap := make(map[string]cty.Value)
 		metadataMap["ssh-keys"] = cty.StringVal(fmt.Sprintf("ubuntu:%s", strings.TrimSuffix(sshPublicKey, "\n")))
 		gcpInstanceBody.SetAttributeValue("metadata", cty.ObjectVal(metadataMap))
@@ -228,7 +229,6 @@ func SetOutput(rootBody *hclwrite.Body, zones []string) {
 				Name: "network_interface.0.access_config.0.nat_ip",
 			},
 		})
-
 	}
 }
 

@@ -84,7 +84,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().StringSliceVar(&cmdLineRegion, "region", []string{""}, "create node/s in given region")
 	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to create cloud resources")
 	cmd.Flags().IntSliceVar(&numNodes, "num-nodes", []int{}, "number of nodes to create")
-	cmd.Flags().StringVar(&nodeType, "node-type", "c5.2xlarge", "cloud instance type")
+	cmd.Flags().StringVar(&nodeType, "node-type", "", "cloud instance type")
 	cmd.Flags().BoolVar(&useLatestAvalanchegoVersion, "latest-avalanchego-version", false, "install latest avalanchego version on node/s")
 	cmd.Flags().StringVar(&useAvalanchegoVersionFromSubnet, "avalanchego-version-from-subnet", "", "install latest avalanchego version, that is compatible with the given subnet, on node/s")
 	cmd.Flags().StringVar(&cmdLineGCPCredentialsPath, "gcp-credentials", "", "use given GCP credentials")
@@ -96,7 +96,7 @@ will apply to all nodes in the cluster`,
 	return cmd
 }
 
-func createNodes(_ *cobra.Command, args []string) error {
+func preCreateChecks() error {
 	if useLatestAvalanchegoVersion && useAvalanchegoVersionFromSubnet != "" {
 		return fmt.Errorf("could not use both latest avalanchego version and avalanchego version based on given subnet")
 	}
@@ -108,6 +108,22 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 	if len(cmdLineRegion) != len(numNodes) {
 		return fmt.Errorf("number of regions and number of nodes must be equal")
+	}
+	// set default instance type
+	switch {
+	case nodeType == "" && useAWS:
+		nodeType = "c5.2xlarge"
+	case nodeType == "" && useGCP:
+		nodeType = "e2-standard-8"
+	default:
+		return fmt.Errorf("can't set default instance type")
+	}
+	return nil
+}
+
+func createNodes(_ *cobra.Command, args []string) error {
+	if err := preCreateChecks(); err != nil {
+		return err
 	}
 	clusterName := args[0]
 
@@ -153,8 +169,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	publicIPMap := map[string]string{}
 	gcpProjectName := ""
 	gcpCredentialFilepath := ""
-	if cloudService == constants.AWSCloudService {
-		// Get AWS Credential, region and AMI
+	if cloudService == constants.AWSCloudService { // Get AWS Credential, region and AMI
 		regions, ec2Svc, ami, err := getAWSCloudConfig(awsProfile, cmdLineRegion, authorizeAccess)
 		if err != nil {
 			return err
@@ -175,14 +190,13 @@ func createNodes(_ *cobra.Command, args []string) error {
 				}
 			}
 		}
-
 	} else {
 		// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
 		gcpClient, zones, imageID, credentialFilepath, projectName, err := getGCPConfig(cmdLineRegion)
 		if err != nil {
 			return err
 		}
-		cloudConfig, err = createGCPInstance(usr, gcpClient, numNodes, zones, imageID, credentialFilepath, projectName, clusterName)
+		cloudConfig, err = createGCPInstance(usr, gcpClient, nodeType, numNodes, zones, imageID, credentialFilepath, projectName, clusterName)
 		if err != nil {
 			return err
 		}

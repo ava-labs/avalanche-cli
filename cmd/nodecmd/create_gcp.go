@@ -145,6 +145,7 @@ func randomString(length int) string {
 func createGCEInstances(rootBody *hclwrite.Body,
 	gcpClient *compute.Service,
 	hclFile *hclwrite.File,
+	instanceType string,
 	numNodes []int,
 	zones []string,
 	ami,
@@ -222,7 +223,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	terraformgcp.SetupInstances(rootBody, zones, networkName, string(sshPublicKey), ami, publicIPName, nodeName, numNodes, networkExists)
+	terraformgcp.SetupInstances(rootBody, zones, networkName, string(sshPublicKey), ami, publicIPName, nodeName, numNodes, instanceType, networkExists)
 	if useStaticIP {
 		terraformgcp.SetOutput(rootBody, zones)
 	}
@@ -257,6 +258,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 func createGCPInstance(
 	usr *user.User,
 	gcpClient *compute.Service,
+	instanceType string,
 	numNodes []int,
 	zones []string,
 	imageID string,
@@ -273,6 +275,7 @@ func createGCPInstance(
 		rootBody,
 		gcpClient,
 		hclFile,
+		instanceType,
 		numNodes,
 		zones,
 		imageID,

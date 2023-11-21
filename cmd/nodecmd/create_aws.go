@@ -154,7 +154,6 @@ func getAWSCloudConfig(awsProfile string, regions []string, authorizeAccess bool
 			}
 			return nil, nil, nil, err
 		}
-
 	}
 	return regions, ec2SvcMap, amiMap, nil
 }
@@ -259,7 +258,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 		if useStaticIP {
 			terraformaws.SetElasticIPs(rootBody, region, instanceConf[region].NumNodes)
 		}
-		terraformaws.SetupInstances(rootBody, region, securityGroupName, useExistingKeyPair[region], keyPairName[region], ami[region], instanceConf[region].NumNodes)
+		terraformaws.SetupInstances(rootBody, region, securityGroupName, useExistingKeyPair[region], keyPairName[region], ami[region], instanceConf[region].NumNodes, instanceConf[region].InstanceType)
 		terraformaws.SetOutput(rootBody, regions, useStaticIP)
 	}
 
@@ -276,7 +275,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 		return nil, nil, nil, nil, fmt.Errorf("%s, %w", constants.ErrCreatingAWSNode, err)
 	}
 	ux.Logger.PrintToUser("New EC2 instance(s) successfully created in AWS!")
-	var sshCertPath map[string]string
+	sshCertPath := map[string]string{}
 	for _, region := range regions {
 		if !useExistingKeyPair[region] {
 			// takes the cert file downloaded from AWS through terraform and moves it to .ssh directory
@@ -310,6 +309,7 @@ func createAWSInstances(
 			Prefix:            prefix,
 			CertName:          prefix + "-" + region + constants.CertSuffix,
 			SecurityGroupName: prefix + "-" + region + constants.AWSSecurityGroupSuffix,
+			InstanceType:      nodeType,
 		}
 	}
 
