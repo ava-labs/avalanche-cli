@@ -97,37 +97,38 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 	return computeService, gcpProjectName, gcpCredentialsPath, err
 }
 
-func getGCPConfig(zone string) (*compute.Service, string, string, string, string, error) {
-	if zone == "" {
+func getGCPConfig(zones []string) (*compute.Service, []string, string, string, string, error) {
+	if len(zones) == 0 {
 		usEast := "us-east1-b"
 		usCentral := "us-central1-c"
 		usWest := "us-west1-b"
 		customRegion := "Choose custom zone (list of zones available at https://cloud.google.com/compute/docs/regions-zones)"
-		zonePromptTxt := "Which GCP zone do you want to set up your node in?"
 		var err error
-		zone, err = app.Prompt.CaptureList(
-			zonePromptTxt,
+		userZone, err := app.Prompt.CaptureList(
+			"Which GCP zone do you want to set up your node in?",
 			[]string{usEast, usCentral, usWest, customRegion},
 		)
 		if err != nil {
-			return nil, "", "", "", "", err
+			return nil, nil, "", "", "", err
 		}
-		if zone == customRegion {
-			zone, err = app.Prompt.CaptureString(zonePromptTxt)
+		if userZone == customRegion {
+			userZoneList, err := app.Prompt.CaptureString("Which GCP zones do you want to set up your node in? Use comma to separate multiple zones")
 			if err != nil {
-				return nil, "", "", "", "", err
+				return nil, nil, "", "", "", err
+			} else {
+				zones = utils.SplitComaSeparatedString(userZoneList)
 			}
 		}
 	}
 	gcpClient, projectName, gcpCredentialFilePath, err := getGCPCloudCredentials()
 	if err != nil {
-		return nil, "", "", "", "", err
+		return nil, nil, "", "", "", err
 	}
 	imageID, err := gcpAPI.GetUbuntuImageID(gcpClient)
 	if err != nil {
-		return nil, "", "", "", "", err
+		return nil, nil, "", "", "", err
 	}
-	return gcpClient, zone, imageID, gcpCredentialFilePath, projectName, nil
+	return gcpClient, zones, imageID, gcpCredentialFilePath, projectName, nil
 }
 
 func randomString(length int) string {
@@ -144,27 +145,35 @@ func randomString(length int) string {
 func createGCEInstances(rootBody *hclwrite.Body,
 	gcpClient *compute.Service,
 	hclFile *hclwrite.File,
-	numNodes int,
-	zone,
+	numNodes []int,
+	zones []string,
 	ami,
 	cliDefaultName,
 	projectName,
 	credentialsPath string,
-) ([]string, []string, string, string, error) {
+) (map[string][]string, map[string][]string, string, string, error) {
 	keyPairName := fmt.Sprintf("%s-keypair", cliDefaultName)
 	sshKeyPath, err := app.GetSSHCertFilePath(keyPairName)
 	if err != nil {
 		return nil, nil, "", "", err
 	}
 	networkName := fmt.Sprintf("%s-network", cliDefaultName)
-	if err := terraformgcp.SetCloudCredentials(rootBody, zone, credentialsPath, projectName); err != nil {
+	if err := terraformgcp.SetCloudCredentials(rootBody, zones, credentialsPath, projectName); err != nil {
 		return nil, nil, "", "", err
 	}
-	if numNodes <= 0 {
-		numNodes, err = app.Prompt.CaptureInt("How many nodes do you want to set up on GCP?")
+	if len(numNodes) == 0 {
+		var err error
+		numNodesStr, err := app.Prompt.CaptureValidatedString("How many nodes do you want to set up on GCP?. Please use comma to separate multiple numbers in case of multiple nodes", func(input string) error {
+			integers := utils.SplitComaSeparatedUInt(input)
+			if integers == nil {
+				return fmt.Errorf("invalid input")
+			}
+			return nil
+		})
 		if err != nil {
 			return nil, nil, "", "", err
 		}
+		numNodes = utils.SplitComaSeparatedUInt(numNodesStr)
 	}
 	ux.Logger.PrintToUser("Creating new VM instance(s) on Google Compute Engine...")
 	certInSSHDir, err := app.CheckCertInSSHDir(fmt.Sprintf("%s-keypair.pub", cliDefaultName))
@@ -207,15 +216,15 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	publicIPName := ""
 	if useStaticIP {
 		publicIPName = fmt.Sprintf("static-ip-%s", nodeName)
-		terraformgcp.SetPublicIP(rootBody, nodeName, numNodes)
+		terraformgcp.SetPublicIP(rootBody, zones, nodeName, numNodes)
 	}
 	sshPublicKey, err := os.ReadFile(fmt.Sprintf("%s.pub", sshKeyPath))
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	terraformgcp.SetupInstances(rootBody, networkName, string(sshPublicKey), ami, publicIPName, nodeName, numNodes, networkExists)
+	terraformgcp.SetupInstances(rootBody, zones, networkName, string(sshPublicKey), ami, publicIPName, nodeName, numNodes, networkExists)
 	if useStaticIP {
-		terraformgcp.SetOutput(rootBody)
+		terraformgcp.SetOutput(rootBody, zones)
 	}
 	err = app.CreateTerraformDir()
 	if err != nil {
@@ -225,11 +234,15 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	instanceIDs := []string{}
-	for i := 0; i < numNodes; i++ {
-		instanceIDs = append(instanceIDs, fmt.Sprintf("%s-%s", nodeName, strconv.Itoa(i)))
+	instanceIDs := map[string][]string{}
+	for z, zone := range zones {
+		instanceIDs[zone] = []string{}
+		for i := 0; i < numNodes[z]; i++ {
+			instanceIDs[zone] = append(instanceIDs[zone], fmt.Sprintf("%s-%s-%s", nodeName, zone, strconv.Itoa(i)))
+		}
 	}
-	elasticIPs, err := terraformgcp.RunTerraform(app.GetTerraformDir(), useStaticIP)
+
+	elasticIPs, err := terraformgcp.RunTerraform(app.GetTerraformDir(), zones, useStaticIP)
 	if err != nil {
 		return instanceIDs, nil, "", "", errors.New(constants.ErrCreatingGCPNode)
 	}
@@ -244,24 +257,24 @@ func createGCEInstances(rootBody *hclwrite.Body,
 func createGCPInstance(
 	usr *user.User,
 	gcpClient *compute.Service,
-	numNodes int,
-	zone string,
+	numNodes []int,
+	zones []string,
 	imageID string,
 	gcpCredentialFilepath string,
 	gcpProjectName string,
 	clusterName string,
-) (CloudConfig, error) {
+) (models.CloudConfigMap, error) {
 	defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 	hclFile, rootBody, err := terraform.InitConf()
 	if err != nil {
-		return CloudConfig{}, err
+		return models.CloudConfigMap{}, err
 	}
 	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(
 		rootBody,
 		gcpClient,
 		hclFile,
 		numNodes,
-		zone,
+		zones,
 		imageID,
 		defaultAvalancheCLIPrefix,
 		gcpProjectName,
@@ -272,41 +285,44 @@ func createGCPInstance(
 		if err.Error() == constants.ErrCreatingGCPNode {
 			// we stop created instances so that user doesn't pay for unused GCP instances
 			ux.Logger.PrintToUser("Stopping all created GCP instances due to error to prevent charge for unused GCP instances...")
-			failedNodes := []string{}
-			nodeErrors := []error{}
-			for _, instanceID := range instanceIDs {
-				nodeConfig := models.NodeConfig{
-					NodeID: instanceID,
-					Region: zone,
+			failedNodes := map[string]error{}
+			for zone, zoneInstances := range instanceIDs {
+				for _, instanceID := range zoneInstances {
+					nodeConfig := models.NodeConfig{
+						NodeID: instanceID,
+						Region: zone,
+					}
+					if stopErr := gcpAPI.StopGCPNode(gcpClient, nodeConfig, gcpProjectName, clusterName, false); err != nil {
+						failedNodes[instanceID] = stopErr
+						continue
+					}
+					ux.Logger.PrintToUser(fmt.Sprintf("GCP cloud server instance %s stopped in %s zone", instanceID, zone))
 				}
-				if stopErr := gcpAPI.StopGCPNode(gcpClient, nodeConfig, gcpProjectName, clusterName, false); err != nil {
-					failedNodes = append(failedNodes, instanceID)
-					nodeErrors = append(nodeErrors, stopErr)
-					continue
-				}
-				ux.Logger.PrintToUser(fmt.Sprintf("GCP cloud server instance %s stopped", instanceID))
 			}
 			if len(failedNodes) > 0 {
 				ux.Logger.PrintToUser("Failed nodes: ")
-				for i, node := range failedNodes {
-					ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
+				for node, err := range failedNodes {
+					ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err))
 				}
 				ux.Logger.PrintToUser("Stop the above instance(s) on GCP console to prevent charges")
-				return CloudConfig{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)
+				return models.CloudConfigMap{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)
 			}
 		}
-		return CloudConfig{}, err
+		return models.CloudConfigMap{}, err
 	}
-	gcpCloudConfig := CloudConfig{
-		instanceIDs,
-		elasticIPs,
-		zone,
-		keyPairName,
-		fmt.Sprintf("%s-network", defaultAvalancheCLIPrefix),
-		certFilePath,
-		imageID,
+	ccm := models.CloudConfigMap{}
+	for _, zone := range zones {
+		ccm[zone] = models.CloudConfig{
+			InstanceIDs:   instanceIDs[zone],
+			PublicIPs:     elasticIPs[zone],
+			Region:        zone,
+			KeyPair:       keyPairName,
+			SecurityGroup: fmt.Sprintf("%s-network", defaultAvalancheCLIPrefix),
+			CertFilePath:  certFilePath,
+			ImageID:       imageID,
+		}
 	}
-	return gcpCloudConfig, nil
+	return ccm, nil
 }
 
 func updateClustersConfigGCPKeyFilepath(projectName, serviceAccountKeyFilepath string) error {

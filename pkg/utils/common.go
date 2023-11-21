@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"strconv"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -119,4 +120,26 @@ func ConvertInterfaceToMap(value interface{}) (map[string]interface{}, error) {
 	default:
 		return nil, fmt.Errorf("unsupported type: %T", value)
 	}
+}
+
+// SplitComaSeparatedString splits and trims a comma-separated string into a slice of strings.
+func SplitComaSeparatedString(s string) []string {
+	cl := strings.Split(s, ",")
+	for i := range cl {
+		cl[i] = strings.TrimSpace(cl[i])
+	}
+	return cl
+}
+
+// SplitComaSeparatedInt splits a comma-separated string into a slice of integers.
+func SplitComaSeparatedUInt(s string) []int {
+	n := []int{}
+	for _, item := range strings.Split(s, ",") {
+		num, err := strconv.Atoi(item)
+		if err != nil || num <= 0 {
+			return nil
+		}
+		n = append(n, num)
+	}
+	return n
 }
