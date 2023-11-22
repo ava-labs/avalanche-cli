@@ -259,8 +259,8 @@ func createEC2Instances(rootBody *hclwrite.Body,
 			terraformaws.SetElasticIPs(rootBody, region, instanceConf[region].NumNodes)
 		}
 		terraformaws.SetupInstances(rootBody, region, securityGroupName, useExistingKeyPair[region], keyPairName[region], ami[region], instanceConf[region].NumNodes, instanceConf[region].InstanceType)
-		terraformaws.SetOutput(rootBody, regions, useStaticIP)
 	}
+	terraformaws.SetOutput(rootBody, regions, useStaticIP)
 
 	err = app.CreateTerraformDir()
 	if err != nil {
@@ -332,13 +332,6 @@ func createAWSInstances(
 			instanceIDs, instanceIDErr := terraformaws.GetInstanceIDs(app.GetTerraformDir(), regions)
 			if instanceIDErr != nil {
 				return models.CloudConfigMap{}, instanceIDErr
-			}
-			instanceRegion, instanceRegionErr := terraformaws.GetInstanceRegions(app.GetTerraformDir())
-			if instanceRegionErr != nil {
-				return models.CloudConfigMap{}, instanceRegionErr
-			}
-			if len(instanceIDs) != len(instanceRegion) {
-				return models.CloudConfigMap{}, fmt.Errorf("number of instance IDs %d does not match number of instance regions %d", len(instanceIDs), len(instanceRegion))
 			}
 			failedNodes := map[string]error{}
 			for region, regionInstanceID := range instanceIDs {

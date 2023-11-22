@@ -213,11 +213,16 @@ func createGCEInstances(rootBody *hclwrite.Body,
 			terraformgcp.SetFirewallRule(rootBody, userIPAddress+"/32", firewallName, networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)}, true)
 		}
 	}
-	nodeName := randomString(5)
-	publicIPName := ""
+	nodeName := map[string]string{}
+	for _, zone := range zones {
+		nodeName[zone] = randomString(5)
+	}
+	publicIPName := map[string]string{}
 	if useStaticIP {
-		publicIPName = fmt.Sprintf("static-ip-%s", nodeName)
-		terraformgcp.SetPublicIP(rootBody, zones, nodeName, numNodes)
+		for i, zone := range zones {
+			publicIPName[zone] = fmt.Sprintf("static-ip-%s", nodeName[zone])
+			terraformgcp.SetPublicIP(rootBody, zone, nodeName[zone], numNodes[i])
+		}
 	}
 	sshPublicKey, err := os.ReadFile(fmt.Sprintf("%s.pub", sshKeyPath))
 	if err != nil {
@@ -239,7 +244,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	for z, zone := range zones {
 		instanceIDs[zone] = []string{}
 		for i := 0; i < numNodes[z]; i++ {
-			instanceIDs[zone] = append(instanceIDs[zone], fmt.Sprintf("%s-%s-%s", nodeName, zone, strconv.Itoa(i)))
+			instanceIDs[zone] = append(instanceIDs[zone], fmt.Sprintf("%s-%s", nodeName[zone], strconv.Itoa(i)))
 		}
 	}
 

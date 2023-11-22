@@ -22,10 +22,17 @@ import (
 
 // SetCloudCredentials sets GCP account credentials defined in service account JSON file
 func SetCloudCredentials(rootBody *hclwrite.Body, zones []string, credentialsPath, projectName string) error {
+	// set default provider
+	region := strings.Join(strings.Split(zones[0], "-")[:2], "-")
+	provider := rootBody.AppendNewBlock("provider", []string{"google"})
+	providerBody := provider.Body()
+	providerBody.SetAttributeValue("project", cty.StringVal(projectName))
+	providerBody.SetAttributeValue("region", cty.StringVal(region))
+	providerBody.SetAttributeValue("credentials", cty.StringVal(credentialsPath))
 	for _, zone := range zones {
 		// zone's format is us-east1-b, region's format is us-east1
 		region := strings.Join(strings.Split(zone, "-")[:2], "-")
-		provider := rootBody.AppendNewBlock("provider", []string{"gcp"})
+		provider := rootBody.AppendNewBlock("provider", []string{"google"})
 		providerBody := provider.Body()
 		providerBody.SetAttributeValue("alias", cty.StringVal(zone))
 		providerBody.SetAttributeValue("project", cty.StringVal(projectName))
@@ -85,17 +92,22 @@ func SetFirewallRule(rootBody *hclwrite.Body, ipAddress, firewallName, networkNa
 }
 
 // SetPublicIP attach static IP(s) to the associated Google VM instance(s)
-func SetPublicIP(rootBody *hclwrite.Body, zones []string, nodeName string, numNodes []int) {
-	for i, zone := range zones {
-		staticIPName := terraformStaticIPName(zone, nodeName)
-		eip := rootBody.AppendNewBlock("resource", []string{"google_compute_address", staticIPName})
-		eipBody := eip.Body()
-		eipBody.SetAttributeRaw("name", createCustomTokens(staticIPName))
-		eipBody.SetAttributeValue("count", cty.NumberIntVal(int64(numNodes[i])))
-		eipBody.SetAttributeValue("provider", cty.StringVal(terraformProviderName(zone)))
-		eipBody.SetAttributeValue("address_type", cty.StringVal("EXTERNAL"))
-		eipBody.SetAttributeValue("network_tier", cty.StringVal("PREMIUM"))
-	}
+func SetPublicIP(rootBody *hclwrite.Body, zone string, nodeName string, numNodes int) {
+	staticIPName := terraformStaticIPName(nodeName)
+	eip := rootBody.AppendNewBlock("resource", []string{"google_compute_address", staticIPName})
+	eipBody := eip.Body()
+	eipBody.SetAttributeRaw("name", createCustomTokens(staticIPName))
+	eipBody.SetAttributeValue("count", cty.NumberIntVal(int64(numNodes)))
+	eipBody.SetAttributeTraversal("provider", hcl.Traversal{
+		hcl.TraverseRoot{
+			Name: "google",
+		},
+		hcl.TraverseAttr{
+			Name: zone,
+		},
+	})
+	eipBody.SetAttributeValue("address_type", cty.StringVal("EXTERNAL"))
+	eipBody.SetAttributeValue("network_tier", cty.StringVal("PREMIUM"))
 }
 
 // createCustomTokens enables usage of ${} in terraform files
@@ -140,12 +152,8 @@ func terraformNodeName(zone string) string {
 	return fmt.Sprintf("gcp-node-%s", zone)
 }
 
-func terraformStaticIPName(zone string, nodeName string) string {
-	return fmt.Sprintf("%s-%s-%s", constants.GCPStaticIPPrefix, zone, nodeName)
-}
-
-func terraformProviderName(zone string) string {
-	return fmt.Sprintf("gcp.%s", zone)
+func terraformStaticIPName(nodeName string) string {
+	return fmt.Sprintf("%s-%s", constants.GCPStaticIPPrefix, nodeName)
 }
 
 // SetupInstances adds google_compute_instance section in terraform state file where we configure all the necessary components of the desired GCE instance(s)
@@ -154,8 +162,8 @@ func SetupInstances(rootBody *hclwrite.Body,
 	networkName string,
 	sshPublicKey string,
 	ami string,
-	staticIPName string,
-	instanceName string,
+	staticIPName map[string]string,
+	nodeName map[string]string,
 	numNodes []int,
 	instanceType string,
 	networkExists bool,
@@ -163,8 +171,15 @@ func SetupInstances(rootBody *hclwrite.Body,
 	for i, zone := range zones {
 		gcpInstance := rootBody.AppendNewBlock("resource", []string{"google_compute_instance", terraformNodeName(zone)})
 		gcpInstanceBody := gcpInstance.Body()
-		gcpInstanceBody.SetAttributeRaw("name", createCustomTokens(instanceName))
-		gcpInstanceBody.SetAttributeValue("provider", cty.StringVal(terraformProviderName(zone)))
+		gcpInstanceBody.SetAttributeRaw("name", createCustomTokens(nodeName[zone]))
+		gcpInstanceBody.SetAttributeTraversal("provider", hcl.Traversal{
+			hcl.TraverseRoot{
+				Name: "google",
+			},
+			hcl.TraverseAttr{
+				Name: zone,
+			},
+		})
 		gcpInstanceBody.SetAttributeValue("count", cty.NumberIntVal(int64(numNodes[i])))
 		gcpInstanceBody.SetAttributeValue("machine_type", cty.StringVal(instanceType))
 		metadataMap := make(map[string]cty.Value)
@@ -189,14 +204,14 @@ func SetupInstances(rootBody *hclwrite.Body,
 		})
 		accessConfig := networkInterfaceBody.AppendNewBlock("access_config", []string{})
 		// don't add google_compute_address if user is not using public IP
-		if staticIPName != "" {
+		if staticIPName[zone] != "" {
 			accessConfigBody := accessConfig.Body()
 			accessConfigBody.SetAttributeTraversal("nat_ip", hcl.Traversal{
 				hcl.TraverseRoot{
 					Name: "google_compute_address",
 				},
 				hcl.TraverseAttr{
-					Name: fmt.Sprintf("%s[count.index]", staticIPName),
+					Name: fmt.Sprintf("%s[count.index]", terraformStaticIPName(nodeName[zone])),
 				},
 				hcl.TraverseAttr{
 					Name: "address",
