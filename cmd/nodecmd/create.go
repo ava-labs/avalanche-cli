@@ -12,7 +12,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -20,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 	"io"
 	"net"
 	"os"
@@ -29,8 +29,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -271,7 +269,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if err = monitoring.WriteMonitoringJSONFiles(app.GetMonitoringDir()); err != nil {
+		if err = app.SetupMonitoringEnv(); err != nil {
 			return err
 		}
 		if err = ansible.RunAnsiblePlaybookCopyMonitoringDashboard(app.GetAnsibleDir(),

@@ -5,6 +5,7 @@ package application
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"os"
 	"path/filepath"
 
@@ -140,6 +141,28 @@ func (app *Avalanche) CreateAnsibleDir() error {
 	ansibleDir := app.GetAnsibleDir()
 	if _, err := os.Stat(ansibleDir); os.IsNotExist(err) {
 		err = os.Mkdir(ansibleDir, constants.DefaultPerms755)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (app *Avalanche) CreateMonitoringDir() error {
+	monitoringDir := app.GetMonitoringDir()
+	if _, err := os.Stat(monitoringDir); os.IsNotExist(err) {
+		err = os.Mkdir(monitoringDir, constants.DefaultPerms755)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (app *Avalanche) CreateMonitoringDashboardDir() error {
+	monitoringDashboardDir := app.GetMonitoringDashboardDir()
+	if _, err := os.Stat(monitoringDashboardDir); os.IsNotExist(err) {
+		err = os.Mkdir(monitoringDashboardDir, constants.DefaultPerms755)
 		if err != nil {
 			return err
 		}
@@ -777,6 +800,22 @@ func (app *Avalanche) SetupAnsibleEnv() error {
 		return err
 	}
 	return app.CreateAnsiblePlaybookDir()
+}
+
+func (app *Avalanche) SetupMonitoringEnv() error {
+	err := os.RemoveAll(app.GetMonitoringDir())
+	if err != nil {
+		return err
+	}
+	err = app.CreateMonitoringDir()
+	if err != nil {
+		return err
+	}
+	err = app.CreateMonitoringDashboardDir()
+	if err != nil {
+		return err
+	}
+	return monitoring.Setup(app.GetMonitoringDir())
 }
 
 // CreateAnsibleStatusDir creates the ansible status directory inside .avalanche-cli
