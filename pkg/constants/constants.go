@@ -155,6 +155,7 @@ const (
 	ConfigAPMAdminAPIEndpointKey = "admin-api-endpoint"
 	ConfigNodeConfigKey          = "node-config"
 	ConfigMetricsEnabledKey      = "MetricsEnabled"
+	ConfigAutorizeCloudAccessKey = "AutorizeCloudAccess"
 	ConfigSingleNodeEnabledKey   = "SingleNodeEnabled"
 	OldConfigFileName            = ".avalanche-cli.json"
 	OldMetricsConfigFileName     = ".avalanche-cli/config"

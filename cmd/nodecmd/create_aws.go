@@ -72,8 +72,8 @@ func printExpiredCredentialsOutput(awsProfile string) {
 }
 
 // getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
-func getAWSCloudCredentials(awsProfile, region, awsCommand string, authorizeAccess bool) (*session.Session, error) {
-	if !authorizeAccess {
+func getAWSCloudCredentials(awsProfile, region, awsCommand string) (*session.Session, error) {
+	if !(authorizeAccess || authorizedAccessFromSettings()) {
 		if awsCommand == constants.StopAWSNode {
 			if err := requestStopAWSNodeAuth(); err != nil {
 				return &session.Session{}, err
@@ -114,7 +114,7 @@ func promptKeyPairName(ec2Svc *ec2.EC2) (string, string, error) {
 	return certName, newKeyPairName, nil
 }
 
-func getAWSCloudConfig(awsProfile string, region string, authorizeAccess bool) (*ec2.EC2, string, string, error) {
+func getAWSCloudConfig(awsProfile string, region string) (*ec2.EC2, string, string, error) {
 	if region == "" {
 		var err error
 		usEast1 := "us-east-1"
@@ -136,7 +136,7 @@ func getAWSCloudConfig(awsProfile string, region string, authorizeAccess bool) (
 			}
 		}
 	}
-	sess, err := getAWSCloudCredentials(awsProfile, region, constants.CreateAWSNode, authorizeAccess)
+	sess, err := getAWSCloudCredentials(awsProfile, region, constants.CreateAWSNode)
 	if err != nil {
 		return nil, "", "", err
 	}
@@ -323,6 +323,9 @@ func requestAWSAccountAuth() error {
 	if err != nil {
 		return err
 	}
+	if err := app.Conf.SetConfigValue(constants.ConfigAutorizeCloudAccessKey, yes); err != nil {
+		return err
+	}
 	if !yes {
 		return errors.New("user did not give authorization to Avalanche-CLI to access AWS account")
 	}
@@ -335,6 +338,9 @@ func requestStopAWSNodeAuth() error {
 	ux.Logger.PrintToUser("- Stop EC2 instance(s) and other components (such as elastic IPs)")
 	yes, err := app.Prompt.CaptureYesNo("I authorize Avalanche-CLI to access my AWS account")
 	if err != nil {
+		return err
+	}
+	if err := app.Conf.SetConfigValue(constants.ConfigAutorizeCloudAccessKey, yes); err != nil {
 		return err
 	}
 	if !yes {
