@@ -166,22 +166,6 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	if err := terraformaws.SetCloudCredentials(rootBody, awsProfile, region); err != nil {
 		return nil, nil, "", "", err
 	}
-	if numNodes <= 0 {
-		var err error
-		numNodes, err = app.Prompt.CaptureInt("How many nodes do you want to set up on AWS?")
-		if err != nil {
-			return nil, nil, "", "", err
-		}
-		if !separateMonitoringInstance {
-			separateMonitoringInstance, err = app.Prompt.CaptureYesNo("Do you want to set up a separate instance to host monitoring? (This enables you to monitor all your set up instances in one dashboard)")
-			if err != nil {
-				return nil, nil, "", "", err
-			}
-		}
-	}
-	if separateMonitoringInstance {
-		numNodes += 1
-	}
 	ux.Logger.PrintToUser("Creating new EC2 instance(s) on AWS...")
 	var useExistingKeyPair bool
 	keyPairExists, err := awsAPI.CheckKeyPairExists(ec2Svc, keyPairName)
@@ -278,6 +262,9 @@ func createAWSInstances(ec2Svc *ec2.EC2, numNodes int, awsProfile, region, ami s
 	// Create new EC2 instances
 	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(rootBody, ec2Svc, hclFile, numNodes, awsProfile, region, ami, certName, prefix, securityGroupName)
 	if err != nil {
+		if strings.Contains(err.Error(), terraformaws.TerraformInitErrorStr) {
+			return CloudConfig{}, err
+		}
 		if err.Error() == constants.EIPLimitErr {
 			ux.Logger.PrintToUser("Failed to create AWS cloud server(s), please try creating again in a different region")
 		} else {
@@ -293,7 +280,7 @@ func createAWSInstances(ec2Svc *ec2.EC2, numNodes int, awsProfile, region, ami s
 			failedNodes := []string{}
 			nodeErrors := []error{}
 			for _, instanceID := range instanceIDs {
-				ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s...", instanceID))
+				ux.Logger.PrintToUser("Stopping AWS cloud server %s...", instanceID)
 				if stopErr := awsAPI.StopInstance(ec2Svc, instanceID, "", false); stopErr != nil {
 					failedNodes = append(failedNodes, instanceID)
 					nodeErrors = append(nodeErrors, stopErr)

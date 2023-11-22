@@ -16,6 +16,15 @@ func FileExists(filename string) bool {
 	return !info.IsDir()
 }
 
+// IsExecutable checks if a file is executable.
+func IsExecutable(filename string) bool {
+	if !FileExists(filename) {
+		return false
+	}
+	info, _ := os.Stat(filename)
+	return info.Mode()&0x0100 != 0
+}
+
 // UserHomePath returns the absolute path of a file located in the user's home directory.
 func UserHomePath(filePath ...string) string {
 	home, err := os.UserHomeDir()

@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"path"
 	"syscall"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -46,6 +47,7 @@ func NewProcessChecker() ProcessChecker {
 
 type GRPCClientOp struct {
 	avoidRPCVersionCheck bool
+	dialTimeout          time.Duration
 }
 
 type GRPCClientOpOption func(*GRPCClientOp)
@@ -62,9 +64,17 @@ func WithAvoidRPCVersionCheck(avoidRPCVersionCheck bool) GRPCClientOpOption {
 	}
 }
 
+func WithDialTimeout(dialTimeout time.Duration) GRPCClientOpOption {
+	return func(op *GRPCClientOp) {
+		op.dialTimeout = dialTimeout
+	}
+}
+
 // NewGRPCClient hides away the details (params) of creating a gRPC server connection
 func NewGRPCClient(opts ...GRPCClientOpOption) (client.Client, error) {
-	op := GRPCClientOp{}
+	op := GRPCClientOp{
+		dialTimeout: gRPCDialTimeout,
+	}
 	op.applyOpts(opts)
 	logLevel, err := logging.ToLevel(gRPCClientLogLevel)
 	if err != nil {
@@ -80,7 +90,7 @@ func NewGRPCClient(opts ...GRPCClientOpOption) (client.Client, error) {
 	}
 	client, err := client.New(client.Config{
 		Endpoint:    gRPCServerEndpoint,
-		DialTimeout: gRPCDialTimeout,
+		DialTimeout: op.dialTimeout,
 	}, log)
 	if errors.Is(err, context.DeadlineExceeded) {
 		err = ErrGRPCTimeout
@@ -233,7 +243,10 @@ func StartServerProcess(app *application.Avalanche) error {
 }
 
 func KillgRPCServerProcess(app *application.Avalanche) error {
-	cli, err := NewGRPCClient(WithAvoidRPCVersionCheck(true))
+	cli, err := NewGRPCClient(
+		WithAvoidRPCVersionCheck(true),
+		WithDialTimeout(constants.FastGRPCDialTimeout),
+	)
 	if err != nil {
 		return err
 	}

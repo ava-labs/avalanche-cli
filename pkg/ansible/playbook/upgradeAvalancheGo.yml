@@ -1,6 +1,0 @@
----
-- hosts: "{{ target }}"
-  gather_facts: no
-  tasks:
-    - name: update avalanche go
-      shell: ./avalanchego-installer.sh --version {{ avalancheGoVersion }}

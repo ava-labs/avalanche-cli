@@ -9,12 +9,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/config"
@@ -107,14 +109,12 @@ func generateCustomGenesis(networkID uint32, walletAddr string, stakingAddr stri
 	return json.MarshalIndent(genesisMap, "", " ")
 }
 
-func setupDevnet(clusterName string) error {
+func setupDevnet(clusterName string, hosts []*models.Host) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	if err := setupAnsible(clusterName); err != nil {
-		return err
-	}
-	ansibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
+	ansibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(inventoryPath)
 	if err != nil {
 		return err
 	}
@@ -188,15 +188,31 @@ func setupDevnet(clusterName string) error {
 			return err
 		}
 	}
-
 	// update node/s genesis + conf and start
-	if err := ansible.RunAnsiblePlaybookSetupDevnet(
-		app.GetAnsibleDir(),
-		strings.Join(ansibleHostIDs, ","),
-		app.GetNodesDir(),
-		app.GetAnsibleInventoryDirPath(clusterName),
-	); err != nil {
-		return err
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	for _, host := range hosts {
+		wg.Add(1)
+		go func(nodeResults *models.NodeResults, host *models.Host) {
+			defer wg.Done()
+			keyPath := filepath.Join(app.GetNodesDir(), host.GetCloudID())
+			if err := ssh.RunSSHSetupDevNet(host, keyPath); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+		}(&wgResults, host)
+	}
+	wg.Wait()
+	for _, node := range hosts {
+		if wgResults.HasNodeIDWithError(node.NodeID) {
+			ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
+		} else {
+			ux.Logger.PrintToUser("Node %s is SETUP as devnet", node.NodeID)
+		}
+	}
+	// stop execution if at least one node failed
+	if wgResults.HasErrors() {
+		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
 	}
 
 	// update cluster config with network information

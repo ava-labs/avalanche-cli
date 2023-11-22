@@ -5,7 +5,6 @@ package application
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"os"
 	"path/filepath"
 
@@ -192,17 +191,6 @@ func (app *Avalanche) CreateAnsibleInventoryDir() error {
 	inventoriesDir := filepath.Join(app.GetNodesDir(), constants.AnsibleInventoryDir)
 	if _, err := os.Stat(inventoriesDir); os.IsNotExist(err) {
 		err = os.Mkdir(inventoriesDir, constants.DefaultPerms755)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (app *Avalanche) CreateAnsiblePlaybookDir() error {
-	playbookDir := filepath.Join(app.GetAnsibleDir(), constants.AnsiblePlaybookDir)
-	if _, err := os.Stat(playbookDir); os.IsNotExist(err) {
-		err = os.Mkdir(playbookDir, constants.DefaultPerms755)
 		if err != nil {
 			return err
 		}
@@ -758,89 +746,10 @@ func (app *Avalanche) GetAnsibleInventoryDirPath(clusterName string) string {
 	return filepath.Join(app.GetNodesDir(), constants.AnsibleInventoryDir, clusterName)
 }
 
-func (app *Avalanche) GetAnsibleStatusDir() string {
-	return filepath.Join(app.GetAnsibleDir(), constants.AnsibleStatusDir)
-}
-
-func (app *Avalanche) GetBootstrappedJSONFile() string {
-	return filepath.Join(app.GetAnsibleStatusDir(), constants.IsBootstrappedJSONFile)
-}
-
-func (app *Avalanche) GetNodeConfigJSONFile(nodeID string) string {
-	return filepath.Join(app.GetAnsibleDir(), nodeID, constants.NodeConfigJSONFile)
-}
-
 func (app *Avalanche) GetMonitoringScriptFile() string {
 	return filepath.Join(app.GetMonitoringDir(), constants.MonitoringScriptFile)
 }
 
 func (app *Avalanche) GetMonitoringDashboardDir() string {
 	return filepath.Join(app.GetMonitoringDir(), constants.DashboardsDir)
-}
-
-func (app *Avalanche) GetHealthyJSONFile() string {
-	return filepath.Join(app.GetAnsibleStatusDir(), constants.IsHealthyJSONFile)
-}
-
-func (app *Avalanche) GetAvalancheGoJSONFile() string {
-	return filepath.Join(app.GetAnsibleStatusDir(), constants.AvalancheGoVersionJSONFile)
-}
-
-func (app *Avalanche) GetSubnetSyncJSONFile() string {
-	return filepath.Join(app.GetAnsibleStatusDir(), constants.SubnetSyncJSONFile)
-}
-
-func (app *Avalanche) SetupAnsibleEnv() error {
-	err := os.RemoveAll(app.GetAnsibleDir())
-	if err != nil {
-		return err
-	}
-	err = app.CreateAnsibleDir()
-	if err != nil {
-		return err
-	}
-	return app.CreateAnsiblePlaybookDir()
-}
-
-func (app *Avalanche) SetupMonitoringEnv() error {
-	err := os.RemoveAll(app.GetMonitoringDir())
-	if err != nil {
-		return err
-	}
-	err = app.CreateMonitoringDir()
-	if err != nil {
-		return err
-	}
-	err = app.CreateMonitoringDashboardDir()
-	if err != nil {
-		return err
-	}
-	return monitoring.Setup(app.GetMonitoringDir())
-}
-
-// CreateAnsibleStatusDir creates the ansible status directory inside .avalanche-cli
-func (app *Avalanche) CreateAnsibleStatusDir() error {
-	return os.MkdirAll(app.GetAnsibleStatusDir(), constants.DefaultPerms755)
-}
-
-// CreateAnsibleNodeConfigDir creates the ansible node config directory specific for nodeID inside .avalanche-cli
-func (app *Avalanche) CreateAnsibleNodeConfigDir(nodeID string) error {
-	return os.MkdirAll(filepath.Join(app.GetAnsibleDir(), nodeID), constants.DefaultPerms755)
-}
-
-// CreateAnsibleStatusFile creates file named fileName in .avalanche-cli ansible status directory
-func (app *Avalanche) CreateAnsibleStatusFile(filePath string) error {
-	if err := os.MkdirAll(app.GetAnsibleStatusDir(), constants.DefaultPerms755); err != nil {
-		return err
-	}
-	statusFile, err := os.Create(filePath)
-	if err != nil {
-		return err
-	}
-	return statusFile.Close()
-}
-
-// RemoveAnsibleStatusDir deletes avalanche ansible status dir in .avalanche-cli
-func (app *Avalanche) RemoveAnsibleStatusDir() error {
-	return os.RemoveAll(app.GetAnsibleStatusDir())
 }

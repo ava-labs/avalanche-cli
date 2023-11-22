@@ -42,6 +42,19 @@ configuration itself. This command allows you to set all those files.`,
 	return cmd
 }
 
+func CallConfigure(
+	cmd *cobra.Command,
+	subnetName string,
+	chainConfParam string,
+	subnetConfParam string,
+	nodeConfParam string,
+) error {
+	chainConf = chainConfParam
+	subnetConf = subnetConfParam
+	nodeConf = nodeConfParam
+	return configure(cmd, []string{subnetName})
+}
+
 func configure(_ *cobra.Command, args []string) error {
 	chains, err := ValidateSubnetNameAndGetChains(args)
 	if err != nil {
