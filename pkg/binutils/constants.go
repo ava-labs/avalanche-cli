@@ -6,8 +6,8 @@ import "time"
 
 const (
 	gRPCClientLogLevel  = "error"
-	gRPCServerEndpoint  = ":8097"
-	gRPCGatewayEndpoint = ":8098"
+	gRPCServerEndpoint  = "localhost:8097"
+	gRPCGatewayEndpoint = "localhost:8098"
 	gRPCDialTimeout     = 10 * time.Second
 
 	avalanchegoBinPrefix = "avalanchego-"
