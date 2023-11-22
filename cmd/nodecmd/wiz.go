@@ -113,14 +113,16 @@ func wiz(cmd *cobra.Command, args []string) error {
 		); err != nil {
 			return err
 		}
-		if err := subnetcmd.CallConfigure(
-			cmd,
-			subnetName,
-			chainConf,
-			subnetConf,
-			nodeConf,
-		); err != nil {
-			return err
+		if chainConf != "" || subnetConf != "" || nodeConf != "" {
+			if err := subnetcmd.CallConfigure(
+				cmd,
+				subnetName,
+				chainConf,
+				subnetConf,
+				nodeConf,
+			); err != nil {
+				return err
+			}
 		}
 	}
 	createDevnet = true
