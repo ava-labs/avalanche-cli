@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"os/user"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
@@ -119,4 +120,24 @@ func ConvertInterfaceToMap(value interface{}) (map[string]interface{}, error) {
 	default:
 		return nil, fmt.Errorf("unsupported type: %T", value)
 	}
+}
+
+func TimedFunction(f func() (interface{}, error), name string, timeout time.Duration) (interface{}, error) {
+	var (
+		ret interface{}
+		err error
+	)
+	ch := make(chan struct{})
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	go func() {
+		ret, err = f()
+		close(ch)
+	}()
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf("%s timeout of %d seconds", name, uint(timeout.Seconds()))
+	case <-ch:
+	}
+	return ret, err
 }

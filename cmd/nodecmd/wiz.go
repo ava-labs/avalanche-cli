@@ -183,9 +183,14 @@ func waitForHealthyCluster(
 ) error {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Waiting for node(s) in cluster %s to be healthy...", clusterName)
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	defer disconnectHosts(hosts)
 	startTime := time.Now()
 	for {
-		notHealthyNodes, err := checkClusterIsHealthy(clusterName)
+		notHealthyNodes, err := checkHostsAreHealthy(hosts)
 		if err != nil {
 			return err
 		}
@@ -220,23 +225,15 @@ func waitForClusterSubnetStatus(
 	if err != nil {
 		return err
 	}
+	defer disconnectHosts(hosts)
 	startTime := time.Now()
 	for {
 		wg := sync.WaitGroup{}
 		wgResults := models.NodeResults{}
 		for _, host := range hosts {
 			wg.Add(1)
-			go func(nodeResults *models.NodeResults, host models.Host) {
+			go func(nodeResults *models.NodeResults, host *models.Host) {
 				defer wg.Done()
-				if err := host.Connect(constants.SSHScriptTimeout); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-					return
-				}
-				defer func() {
-					if err := host.Disconnect(); err != nil {
-						nodeResults.AddResult(host.NodeID, nil, err)
-					}
-				}()
 				if syncstatus, err := ssh.RunSSHSubnetSyncStatus(host, blockchainID.String()); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					return
