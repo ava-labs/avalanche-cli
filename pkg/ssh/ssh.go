@@ -267,6 +267,9 @@ func RunSSHSetupBuildEnv(host *models.Host) error {
 
 // RunSSHSetupCLIFromSource installs any CLI branch from source
 func RunSSHSetupCLIFromSource(host *models.Host, cliBranch string) error {
+	if !constants.EnableSetupCLIFromSource {
+		return nil
+	}
 	return RunOverSSH(
 		"Setup CLI From Source",
 		host,
