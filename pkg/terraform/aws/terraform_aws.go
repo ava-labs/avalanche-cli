@@ -4,20 +4,21 @@
 package terraformaws
 
 import (
-	"bytes"
 	"errors"
-	"io"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/terraform"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/terraform"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/zclconf/go-cty/cty"
 )
+
+const TerraformInitErrorStr = "terraform init error"
 
 // SetCloudCredentials sets AWS account credentials defined in .aws dir in user home dir
 func SetCloudCredentials(rootBody *hclwrite.Body, awsProfile, region string) error {
@@ -210,20 +211,16 @@ func SetOutput(rootBody *hclwrite.Body, useEIP bool) {
 // RunTerraform executes terraform apply function that creates the EC2 instances based on the .tf file provided
 // returns a list of AWS node-IDs and node IPs
 func RunTerraform(terraformDir string, useEIP bool) ([]string, []string, error) {
-	var stdBuffer bytes.Buffer
-	var stderr bytes.Buffer
-	mw := io.MultiWriter(os.Stdout, &stdBuffer)
 	cmd := exec.Command(constants.Terraform, "init") //nolint:gosec
 	cmd.Dir = terraformDir
-	cmd.Stdout = mw
+	_, _ = utils.SetupRealtimeCLIOutput(cmd, true, true)
 	if err := cmd.Run(); err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("%s: %w", TerraformInitErrorStr, err)
 	}
 	cmd = exec.Command(constants.Terraform, "apply", "-auto-approve") //nolint:gosec
 	cmd.Env = os.Environ()
 	cmd.Dir = terraformDir
-	cmd.Stdout = mw
-	cmd.Stderr = &stderr
+	_, stderr := utils.SetupRealtimeCLIOutput(cmd, true, true)
 	if err := cmd.Run(); err != nil {
 		if strings.Contains(stderr.String(), constants.EIPLimitErr) {
 			return nil, nil, errors.New(constants.EIPLimitErr)

@@ -43,14 +43,26 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 	if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 		return err
 	}
-	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	defer disconnectHosts(hosts)
+	notBootstrappedNodes, err := checkHostsAreBootstrapped(hosts)
 	if err != nil {
 		return err
 	}
 	if len(notBootstrappedNodes) > 0 {
 		return fmt.Errorf("node(s) %s are not bootstrapped yet, please try again later", notBootstrappedNodes)
 	}
-	incompatibleNodes, err := checkAvalancheGoVersionCompatible(clusterName, subnetName)
+	notHealthyNodes, err := checkHostsAreHealthy(hosts)
+	if err != nil {
+		return err
+	}
+	if len(notHealthyNodes) > 0 {
+		return fmt.Errorf("node(s) %s are not healthy, please fix the issue and again", notHealthyNodes)
+	}
+	incompatibleNodes, err := checkAvalancheGoVersionCompatible(hosts, subnetName)
 	if err != nil {
 		return err
 	}
@@ -69,37 +81,12 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
 	}
-
-	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {
 		return err
 	}
-	wg := sync.WaitGroup{}
-	wgResults := models.NodeResults{}
-	for _, host := range hosts {
-		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host models.Host) {
-			defer wg.Done()
-			if err := host.Connect(constants.SSHScriptTimeout); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			defer func() {
-				if err := host.Disconnect(); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-				}
-			}()
-			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-		}(&wgResults, host)
-	}
-	wg.Wait()
-	if wgResults.HasErrors() {
-		return fmt.Errorf("failed to get setup build env for node(s) %s", wgResults.GetErrorHostMap())
-	}
-	nonUpdatedNodes, err := doUpdateSubnet(clusterName, subnetName, models.FujiNetwork)
+	network := clustersConfig.Clusters[clusterName].Network
+	nonUpdatedNodes, err := doUpdateSubnet(hosts, subnetName, network)
 	if err != nil {
 		return err
 	}
@@ -113,30 +100,21 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 
 // doUpdateSubnet exports deployed subnet in user's local machine to cloud server and calls node to
 // restart tracking the specified subnet (similar to avalanche subnet join <subnetName> command)
-func doUpdateSubnet(clusterName, subnetName string, network models.Network) ([]string, error) {
+func doUpdateSubnet(
+	hosts []*models.Host,
+	subnetName string,
+	network models.Network,
+) ([]string, error) {
 	subnetPath := "/tmp/" + subnetName + constants.ExportSubnetSuffix
 	if err := subnetcmd.CallExportSubnet(subnetName, subnetPath, network); err != nil {
-		return nil, err
-	}
-	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
 		return nil, err
 	}
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host models.Host) {
+		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			if err := host.Connect(constants.SSHScriptTimeout); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			defer func() {
-				if err := host.Disconnect(); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-				}
-			}()
 			subnetExportPath := filepath.Join("/tmp", filepath.Base(subnetPath))
 			if err := ssh.RunSSHExportSubnet(host, subnetPath, subnetExportPath); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
@@ -150,7 +128,7 @@ func doUpdateSubnet(clusterName, subnetName string, network models.Network) ([]s
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
-		return nil, fmt.Errorf("failed to track subnet for node(s) %s", wgResults.GetErrorHostMap())
+		return nil, fmt.Errorf("failed to update subnet for node(s) %s", wgResults.GetErrorHostMap())
 	}
 	return wgResults.GetErrorHosts(), nil
 }

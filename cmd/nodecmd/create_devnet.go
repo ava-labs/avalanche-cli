@@ -109,7 +109,7 @@ func generateCustomGenesis(networkID uint32, walletAddr string, stakingAddr stri
 	return json.MarshalIndent(genesisMap, "", " ")
 }
 
-func setupDevnet(clusterName string) error {
+func setupDevnet(clusterName string, hosts []*models.Host) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
@@ -189,25 +189,12 @@ func setupDevnet(clusterName string) error {
 		}
 	}
 	// update node/s genesis + conf and start
-	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
-	if err != nil {
-		return err
-	}
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host models.Host) {
+		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			if err := host.Connect(constants.SSHScriptTimeout); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			defer func() {
-				if err := host.Disconnect(); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-				}
-			}()
 			keyPath := filepath.Join(app.GetNodesDir(), host.GetCloudID())
 			if err := ssh.RunSSHSetupDevNet(host, keyPath); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)

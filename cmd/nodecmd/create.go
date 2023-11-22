@@ -225,7 +225,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	hosts := utils.Filter(allHosts, func(h models.Host) bool { return slices.Contains(cloudConfig.InstanceIDs, h.GetCloudID()) })
+	hosts := utils.Filter(allHosts, func(h *models.Host) bool { return slices.Contains(cloudConfig.InstanceIDs, h.GetCloudID()) })
 	// waiting for all nodes to become accessible
 	failedHosts := waitForHosts(hosts)
 	if failedHosts.Len() > 0 {
@@ -239,22 +239,20 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	defer disconnectHosts(hosts)
+
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host models.Host) {
+		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			if err := host.Connect(constants.SSHScriptTimeout); err != nil {
+			if err := host.Connect(); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
-			defer func() {
-				if err := host.Disconnect(); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-				}
-			}()
 			if err := provideStakingCertAndKey(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
@@ -287,7 +285,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 	if network.Kind == models.Devnet {
 		ux.Logger.PrintToUser("Setting up Devnet ...")
-		if err := setupDevnet(clusterName); err != nil {
+		if err := setupDevnet(clusterName, hosts); err != nil {
 			return err
 		}
 	}
@@ -425,7 +423,7 @@ func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePa
 	return nodeID, nil
 }
 
-func provideStakingCertAndKey(host models.Host) error {
+func provideStakingCertAndKey(host *models.Host) error {
 	instanceID := host.GetCloudID()
 	keyPath := filepath.Join(app.GetNodesDir(), instanceID)
 	nodeID, err := generateNodeCertAndKeys(
@@ -601,14 +599,14 @@ func printResults(cloudConfig CloudConfig, publicIPMap map[string]string, ansibl
 }
 
 // waitForHosts waits for all hosts to become available via SSH.
-func waitForHosts(hosts []models.Host) *models.NodeResults {
+func waitForHosts(hosts []*models.Host) *models.NodeResults {
 	hostErrors := models.NodeResults{}
 	createdWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
 		createdWaitGroup.Add(1)
-		go func(nodeResults *models.NodeResults, host models.Host) {
+		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer createdWaitGroup.Done()
-			if err := host.WaitForSSHShell(2 * constants.SSHFileOpsTimeout); err != nil {
+			if err := host.WaitForSSHShell(constants.SSHServerStartTimeout); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}

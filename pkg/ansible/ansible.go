@@ -59,8 +59,8 @@ func GetAnsibleHostsFromInventory(inventoryDirPath string) ([]string, error) {
 	return ansibleHostIDs, nil
 }
 
-func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]models.Host, error) {
-	inventory := []models.Host{}
+func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]*models.Host, error) {
+	inventory := []*models.Host{}
 	inventoryHostsFile := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
 	file, err := os.Open(inventoryHostsFile)
 	if err != nil {
@@ -74,7 +74,7 @@ func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]models.Hos
 		if err != nil {
 			return nil, err
 		}
-		host := models.Host{
+		host := &models.Host{
 			NodeID:            strings.Split(scanner.Text(), " ")[0],
 			IP:                parsedHost["ansible_host"],
 			SSHUser:           parsedHost["ansible_user"],
@@ -89,25 +89,25 @@ func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]models.Hos
 	return inventory, nil
 }
 
-func GetHostByNodeID(nodeID string, inventoryDirPath string) (models.Host, error) {
+func GetHostByNodeID(nodeID string, inventoryDirPath string) (*models.Host, error) {
 	allHosts, err := GetInventoryFromAnsibleInventoryFile(inventoryDirPath)
 	if err != nil {
-		return models.Host{}, err
+		return nil, err
 	} else {
-		hosts := utils.Filter(allHosts, func(h models.Host) bool { return h.NodeID == nodeID })
+		hosts := utils.Filter(allHosts, func(h *models.Host) bool { return h.NodeID == nodeID })
 		switch len(hosts) {
 		case 1:
 			return hosts[0], nil
 		case 0:
-			return models.Host{}, errors.New("host not found")
+			return nil, errors.New("host not found")
 		default:
-			return models.Host{}, errors.New("multiple hosts found")
+			return nil, errors.New("multiple hosts found")
 		}
 	}
 }
 
-func GetHostMapfromAnsibleInventory(inventoryDirPath string) (map[string]models.Host, error) {
-	hostMap := map[string]models.Host{}
+func GetHostMapfromAnsibleInventory(inventoryDirPath string) (map[string]*models.Host, error) {
+	hostMap := map[string]*models.Host{}
 	inventory, err := GetInventoryFromAnsibleInventoryFile(inventoryDirPath)
 	if err != nil {
 		return nil, err
