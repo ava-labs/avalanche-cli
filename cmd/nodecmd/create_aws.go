@@ -321,6 +321,9 @@ func createAWSInstances(
 	// Create new EC2 instances
 	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(rootBody, ec2Svc, hclFile, numNodes, awsProfile, regions, ami, instanceConf)
 	if err != nil {
+		if strings.Contains(err.Error(), terraformaws.TerraformInitErrorStr) {
+			return models.CloudConfigMap{}, err
+		}
 		if err.Error() == constants.EIPLimitErr {
 			ux.Logger.PrintToUser("Failed to create AWS cloud server(s), please try creating again in a different region")
 		} else {

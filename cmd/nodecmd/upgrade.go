@@ -49,13 +49,18 @@ func upgrade(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	toUpgradeNodesMap, err := getNodesUpgradeInfo(clusterName)
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
-	for node, upgradeInfo := range toUpgradeNodesMap {
+	defer disconnectHosts(hosts)
+	toUpgradeNodesMap, err := getNodesUpgradeInfo(hosts)
+	if err != nil {
+		return err
+	}
+	for host, upgradeInfo := range toUpgradeNodesMap {
 		if upgradeInfo.AvalancheGoVersion != "" {
-			if err = upgradeAvalancheGo(clusterName, node, upgradeInfo.AvalancheGoVersion); err != nil {
+			if err := upgradeAvalancheGo(host, upgradeInfo.AvalancheGoVersion); err != nil {
 				return err
 			}
 		}
@@ -63,19 +68,19 @@ func upgrade(_ *cobra.Command, args []string) error {
 			subnetEVMVersionToUpgradeToWoPrefix := strings.TrimPrefix(upgradeInfo.SubnetEVMVersion, "v")
 			subnetEVMArchive := fmt.Sprintf(constants.SubnetEVMArchive, subnetEVMVersionToUpgradeToWoPrefix)
 			subnetEVMReleaseURL := fmt.Sprintf(constants.SubnetEVMReleaseURL, upgradeInfo.SubnetEVMVersion, subnetEVMArchive)
-			if err = getNewSubnetEVMRelease(clusterName, subnetEVMReleaseURL, subnetEVMArchive, node, upgradeInfo.SubnetEVMVersion); err != nil {
+			if err := getNewSubnetEVMRelease(host, subnetEVMReleaseURL, subnetEVMArchive, upgradeInfo.SubnetEVMVersion); err != nil {
 				return err
 			}
-			if err = stopNode(clusterName, node); err != nil {
+			if err := ssh.RunSSHStopNode(host); err != nil {
 				return err
 			}
 			for _, vmID := range upgradeInfo.SubnetEVMIDsToUpgrade {
 				subnetEVMBinaryPath := fmt.Sprintf(constants.CloudNodeSubnetEvmBinaryPath, vmID)
-				if err = upgradeSubnetEVM(clusterName, subnetEVMBinaryPath, node, upgradeInfo.SubnetEVMVersion); err != nil {
+				if err := upgradeSubnetEVM(host, subnetEVMBinaryPath, upgradeInfo.SubnetEVMVersion); err != nil {
 					return err
 				}
 			}
-			if err = startNode(clusterName, node); err != nil {
+			if err := ssh.RunSSHStartNode(host); err != nil {
 				return err
 			}
 		}
@@ -83,11 +88,11 @@ func upgrade(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-// getNodesUpgradeInfo gets the node versions of all nodes in cluster clusterName and checks which
+// getNodesUpgradeInfo gets the node versions of all given nodes and checks which
 // nodes needs to have Avalanche Go & SubnetEVM upgraded. It first checks the subnet EVM version -
 // it will install the newest subnet EVM version and install the latest avalanche Go that is still compatible with the Subnet EVM version
 // if the node is not tracking any subnet, it will just install latestAvagoVersion
-func getNodesUpgradeInfo(clusterName string) (map[string]nodeUpgradeInfo, error) {
+func getNodesUpgradeInfo(hosts []*models.Host) (map[*models.Host]nodeUpgradeInfo, error) {
 	latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 		constants.AvaLabsOrg,
 		constants.AvalancheGoRepoName,
@@ -108,26 +113,14 @@ func getNodesUpgradeInfo(clusterName string) (map[string]nodeUpgradeInfo, error)
 	}
 	failedNodes := []string{}
 	nodeErrors := []error{}
-	nodesToUpgrade := make(map[string]nodeUpgradeInfo)
-	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return nil, err
-	}
+	nodesToUpgrade := make(map[*models.Host]nodeUpgradeInfo)
+
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host models.Host) {
+		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			if err := host.Connect(constants.SSHPOSTTimeout); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			defer func() {
-				if err := host.Disconnect(); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-				}
-			}()
 			if resp, err := ssh.RunSSHCheckAvalancheGoVersion(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
@@ -145,7 +138,12 @@ func getNodesUpgradeInfo(clusterName string) (map[string]nodeUpgradeInfo, error)
 		return nil, fmt.Errorf("failed to get avalanchego version for node(s) %s", wgResults.GetErrorHostMap())
 	}
 
-	for host, vmVersionsInterface := range wgResults.GetResultMap() {
+	nodeIDToHost := map[string]*models.Host{}
+	for _, host := range hosts {
+		nodeIDToHost[host.NodeID] = host
+	}
+
+	for hostID, vmVersionsInterface := range wgResults.GetResultMap() {
 		vmVersions, err := utils.ConvertInterfaceToMap(vmVersionsInterface)
 		if err != nil {
 			return nil, err
@@ -161,27 +159,27 @@ func getNodesUpgradeInfo(clusterName string) (map[string]nodeUpgradeInfo, error)
 			if !checkIfKeyIsStandardVMName(vmName) {
 				if vmVersion != latestSubnetEVMVersion {
 					// update subnet EVM version
-					ux.Logger.PrintToUser("Upgrading Subnet EVM version for node %s from version %s to version %s", host, vmVersion, latestSubnetEVMVersion)
+					ux.Logger.PrintToUser("Upgrading Subnet EVM version for node %s from version %s to version %s", hostID, vmVersion, latestSubnetEVMVersion)
 					nodeUpgradeInfo.SubnetEVMVersion = latestSubnetEVMVersion
 					nodeUpgradeInfo.SubnetEVMIDsToUpgrade = append(nodeUpgradeInfo.SubnetEVMIDsToUpgrade, vmName)
 				}
 				// find the highest version of avalanche go that is still compatible with current highest rpc
 				avalancheGoVersionToUpdateTo, err = GetLatestAvagoVersionForRPC(rpcVersion)
 				if err != nil {
-					failedNodes = append(failedNodes, host)
+					failedNodes = append(failedNodes, hostID)
 					nodeErrors = append(nodeErrors, err)
 					continue
 				}
 			}
 		}
-		if slices.Contains(failedNodes, host) {
+		if slices.Contains(failedNodes, hostID) {
 			continue
 		}
 		if currentAvalancheGoVersion != avalancheGoVersionToUpdateTo {
-			ux.Logger.PrintToUser("Upgrading Avalanche Go version for node %s from version %s to version %s", host, currentAvalancheGoVersion, avalancheGoVersionToUpdateTo)
+			ux.Logger.PrintToUser("Upgrading Avalanche Go version for node %s from version %s to version %s", hostID, currentAvalancheGoVersion, avalancheGoVersionToUpdateTo)
 			nodeUpgradeInfo.AvalancheGoVersion = avalancheGoVersionToUpdateTo
 		}
-		nodesToUpgrade[host] = nodeUpgradeInfo
+		nodesToUpgrade[nodeIDToHost[hostID]] = nodeUpgradeInfo
 	}
 	if len(failedNodes) > 0 {
 		ux.Logger.PrintToUser("Failed to upgrade nodes: ")
@@ -199,54 +197,44 @@ func checkIfKeyIsStandardVMName(vmName string) bool {
 	return slices.Contains(standardVMNames, vmName)
 }
 
-func upgradeAvalancheGo(clusterName, ansibleNodeID, avaGoVersionToUpdateTo string) error {
-	ux.Logger.PrintToUser("Upgrading Avalanche Go version of node %s to version %s ...", ansibleNodeID, avaGoVersionToUpdateTo)
-	if host, err := ansible.GetHostByNodeID(ansibleNodeID, app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
-		return err
-	} else if err := ssh.RunSSHUpgradeAvalanchego(host, avaGoVersionToUpdateTo); err != nil {
+func upgradeAvalancheGo(
+	host *models.Host,
+	avaGoVersionToUpdateTo string,
+) error {
+	ux.Logger.PrintToUser("Upgrading Avalanche Go version of node %s to version %s ...", host.NodeID, avaGoVersionToUpdateTo)
+	if err := ssh.RunSSHUpgradeAvalanchego(host, avaGoVersionToUpdateTo); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Successfully upgraded Avalanche Go version of node %s!", ansibleNodeID)
+	ux.Logger.PrintToUser("Successfully upgraded Avalanche Go version of node %s!", host.NodeID)
 	ux.Logger.PrintToUser("======================================")
 	return nil
 }
 
-func stopNode(clusterName, ansibleNodeID string) error {
-	if host, err := ansible.GetHostByNodeID(ansibleNodeID, app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
-		return err
-	} else {
-		return ssh.RunSSHStopNode(host)
-	}
-}
-
-func startNode(clusterName, ansibleNodeID string) error {
-	if host, err := ansible.GetHostByNodeID(ansibleNodeID, app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
-		return err
-	} else {
-		return ssh.RunSSHStartNode(host)
-	}
-}
-
-func upgradeSubnetEVM(clusterName, subnetEVMBinaryPath, ansibleNodeID, subnetEVMVersion string) error {
-	ux.Logger.PrintToUser("Upgrading SubnetEVM version of node %s to version %s ...", ansibleNodeID, subnetEVMVersion)
-	if host, err := ansible.GetHostByNodeID(ansibleNodeID, app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
-		return err
-	} else if err := ssh.RunSSHUpgradeSubnetEVM(host, subnetEVMBinaryPath); err != nil {
+func upgradeSubnetEVM(
+	host *models.Host,
+	subnetEVMBinaryPath string,
+	subnetEVMVersion string,
+) error {
+	ux.Logger.PrintToUser("Upgrading SubnetEVM version of node %s to version %s ...", host.NodeID, subnetEVMVersion)
+	if err := ssh.RunSSHUpgradeSubnetEVM(host, subnetEVMBinaryPath); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Successfully upgraded SubnetEVM version of node %s!", ansibleNodeID)
+	ux.Logger.PrintToUser("Successfully upgraded SubnetEVM version of node %s!", host.NodeID)
 	ux.Logger.PrintToUser("======================================")
 	return nil
 }
 
-func getNewSubnetEVMRelease(clusterName, subnetEVMReleaseURL, subnetEVMArchive, ansibleNodeID, subnetEVMVersion string) error {
+func getNewSubnetEVMRelease(
+	host *models.Host,
+	subnetEVMReleaseURL string,
+	subnetEVMArchive string,
+	subnetEVMVersion string,
+) error {
 	ux.Logger.PrintToUser("Getting new SubnetEVM version %s ...", subnetEVMVersion)
-	if host, err := ansible.GetHostByNodeID(ansibleNodeID, app.GetAnsibleInventoryDirPath(clusterName)); err != nil {
-		return err
-	} else if err := ssh.RunSSHGetNewSubnetEVMRelease(host, subnetEVMReleaseURL, subnetEVMArchive); err != nil {
+	if err := ssh.RunSSHGetNewSubnetEVMRelease(host, subnetEVMReleaseURL, subnetEVMArchive); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Successfully downloaded SubnetEVM version for node %s!", ansibleNodeID)
+	ux.Logger.PrintToUser("Successfully downloaded SubnetEVM version for node %s!", host.NodeID)
 	ux.Logger.PrintToUser("======================================")
 	return nil
 }

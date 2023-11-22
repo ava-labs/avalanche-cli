@@ -12,6 +12,7 @@ import (
 	"os/user"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
@@ -142,4 +143,24 @@ func SplitComaSeparatedUInt(s string) []int {
 		n = append(n, num)
 	}
 	return n
+}
+
+func TimedFunction(f func() (interface{}, error), name string, timeout time.Duration) (interface{}, error) {
+	var (
+		ret interface{}
+		err error
+	)
+	ch := make(chan struct{})
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	go func() {
+		ret, err = f()
+		close(ch)
+	}()
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf("%s timeout of %d seconds", name, uint(timeout.Seconds()))
+	case <-ch:
+	}
+	return ret, err
 }

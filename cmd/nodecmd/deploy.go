@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
@@ -43,15 +44,19 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	if clustersConfig.Clusters[clusterName].Network.Kind != models.Devnet {
 		return fmt.Errorf("node deploy command must be applied to devnet clusters")
 	}
-
-	notHealthyNodes, err := checkClusterIsHealthy(clusterName)
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	defer disconnectHosts(hosts)
+	notHealthyNodes, err := checkHostsAreHealthy(hosts)
 	if err != nil {
 		return err
 	}
 	if len(notHealthyNodes) > 0 {
 		return fmt.Errorf("node(s) %s are not healthy yet, please try again later", notHealthyNodes)
 	}
-	incompatibleNodes, err := checkAvalancheGoVersionCompatible(clusterName, subnetName)
+	incompatibleNodes, err := checkAvalancheGoVersionCompatible(hosts, subnetName)
 	if err != nil {
 		return err
 	}

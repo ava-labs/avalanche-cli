@@ -79,6 +79,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		deployTestnet,
 		deployMainnet,
 		endpoint,
+		true,
 		[]models.NetworkKind{models.Local, models.Devnet, models.Fuji, models.Mainnet},
 	)
 	if err != nil {

@@ -4,9 +4,9 @@ go 1.20
 
 require (
 	github.com/ava-labs/apm v0.0.4
-	github.com/ava-labs/avalanche-network-runner v1.7.3-0.20231020180921-5e8632e09f57
-	github.com/ava-labs/avalanchego v1.10.13
-	github.com/ava-labs/coreth v0.12.6-rc.2
+	github.com/ava-labs/avalanche-network-runner v1.7.3
+	github.com/ava-labs/avalanchego v1.10.15
+	github.com/ava-labs/coreth v0.12.8-rc.1
 	github.com/ava-labs/subnet-evm v0.5.3
 	github.com/aws/aws-sdk-go v1.44.301
 	github.com/docker/docker v24.0.5+incompatible
@@ -28,7 +28,7 @@ require (
 	github.com/zclconf/go-cty v1.13.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.14.0
-	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
+	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df
 	golang.org/x/mod v0.12.0
 	golang.org/x/net v0.17.0
 	golang.org/x/oauth2 v0.13.0
@@ -43,7 +43,6 @@ require (
 	cloud.google.com/go/compute v1.23.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	dario.cat/mergo v1.0.0 // indirect
-	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/DataDog/zstd v1.5.2 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect
@@ -141,7 +140,7 @@ require (
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.10.1 // indirect
-	github.com/rogpeppe/go-internal v1.9.0 // indirect
+	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
