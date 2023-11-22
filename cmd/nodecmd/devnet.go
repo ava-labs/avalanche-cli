@@ -25,5 +25,7 @@ You can check the updated status by calling avalanche node status <clusterName>`
 	}
 	// node devnet deploy
 	cmd.AddCommand(newDeployCmd())
+	// node devnet wiz
+	cmd.AddCommand(newWizCmd())
 	return cmd
 }

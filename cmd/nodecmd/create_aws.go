@@ -166,13 +166,6 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	if err := terraformaws.SetCloudCredentials(rootBody, awsProfile, region); err != nil {
 		return nil, nil, "", "", err
 	}
-	if numNodes <= 0 {
-		var err error
-		numNodes, err = app.Prompt.CaptureInt("How many nodes do you want to set up on AWS?")
-		if err != nil {
-			return nil, nil, "", "", err
-		}
-	}
 	ux.Logger.PrintToUser("Creating new EC2 instance(s) on AWS...")
 	var useExistingKeyPair bool
 	keyPairExists, err := awsAPI.CheckKeyPairExists(ec2Svc, keyPairName)

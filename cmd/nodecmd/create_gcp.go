@@ -160,12 +160,6 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if err := terraformgcp.SetCloudCredentials(rootBody, zone, credentialsPath, projectName); err != nil {
 		return nil, nil, "", "", err
 	}
-	if numNodes <= 0 {
-		numNodes, err = app.Prompt.CaptureInt("How many nodes do you want to set up on GCP?")
-		if err != nil {
-			return nil, nil, "", "", err
-		}
-	}
 	ux.Logger.PrintToUser("Creating new VM instance(s) on Google Compute Engine...")
 	certInSSHDir, err := app.CheckCertInSSHDir(fmt.Sprintf("%s-keypair.pub", cliDefaultName))
 	if err != nil {

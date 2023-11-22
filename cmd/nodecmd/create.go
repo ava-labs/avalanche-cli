@@ -146,6 +146,13 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if numNodes <= 0 {
+		var err error
+		numNodes, err = app.Prompt.CaptureInt("How many nodes do you want to set up?")
+		if err != nil {
+			return err
+		}
+	}
 	usr, err := user.Current()
 	if err != nil {
 		return err
