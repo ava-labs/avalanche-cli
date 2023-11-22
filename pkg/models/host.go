@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 )
@@ -92,18 +93,15 @@ func (h *Host) Upload(localFile string, remoteFile string, timeout time.Duration
 			return err
 		}
 	}
-	var err error
-	ch := make(chan struct{})
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	go func() {
-		err = h.Connection.Upload(localFile, remoteFile)
-		close(ch)
-	}()
-	select {
-	case <-ctx.Done():
-		return fmt.Errorf("upload timeout of %d seconds for host %s", uint(timeout.Seconds()), h.IP)
-	case <-ch:
+	_, err := utils.TimedFunction(
+		func() (interface{}, error) {
+			return nil, h.Connection.Upload(localFile, remoteFile)
+		},
+		"upload",
+		timeout,
+	)
+	if err != nil {
+		err = fmt.Errorf("%w for host %s", err, h.IP)
 	}
 	return err
 }
@@ -118,18 +116,15 @@ func (h *Host) Download(remoteFile string, localFile string, timeout time.Durati
 	if err := os.MkdirAll(filepath.Dir(localFile), os.ModePerm); err != nil {
 		return err
 	}
-	var err error
-	ch := make(chan struct{})
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	go func() {
-		err = h.Connection.Download(remoteFile, localFile)
-		close(ch)
-	}()
-	select {
-	case <-ctx.Done():
-		return fmt.Errorf("download timeout of %d seconds for host %s", uint(timeout.Seconds()), h.IP)
-	case <-ch:
+	_, err := utils.TimedFunction(
+		func() (interface{}, error) {
+			return nil, h.Connection.Download(remoteFile, localFile)
+		},
+		"download",
+		timeout,
+	)
+	if err != nil {
+		err = fmt.Errorf("%w for host %s", err, h.IP)
 	}
 	return err
 }
@@ -141,18 +136,15 @@ func (h *Host) MkdirAll(remoteDir string, timeout time.Duration) error {
 			return err
 		}
 	}
-	var err error
-	ch := make(chan struct{})
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	go func() {
-		err = h.UntimedMkdirAll(remoteDir)
-		close(ch)
-	}()
-	select {
-	case <-ctx.Done():
-		return fmt.Errorf("mkdir timeout of %d seconds for host %s", uint(timeout.Seconds()), h.IP)
-	case <-ch:
+	_, err := utils.TimedFunction(
+		func() (interface{}, error) {
+			return nil, h.UntimedMkdirAll(remoteDir)
+		},
+		"mkdir",
+		timeout,
+	)
+	if err != nil {
+		err = fmt.Errorf("%w for host %s", err, h.IP)
 	}
 	return err
 }
@@ -199,23 +191,20 @@ func (h *Host) Forward(httpRequest string, timeout time.Duration) ([]byte, []byt
 			return nil, nil, err
 		}
 	}
-	var (
-		header []byte
-		body   []byte
-		err    error
+	retI, err := utils.TimedFunction(
+		func() (interface{}, error) {
+			header, body, err := h.UntimedForward(httpRequest)
+			return [][]byte{header, body}, err
+		},
+		"post over ssh",
+		timeout,
 	)
-	ch := make(chan struct{})
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	go func() {
-		header, body, err = h.UntimedForward(httpRequest)
-		close(ch)
-	}()
-	select {
-	case <-ctx.Done():
-		return nil, nil, fmt.Errorf("post over ssh timeout of %d seconds for host %s", uint(timeout.Seconds()), h.IP)
-	case <-ch:
+	if err != nil {
+		err = fmt.Errorf("%w for host %s", err, h.IP)
 	}
+	ret := retI.([][]byte)
+	header := ret[0]
+	body := ret[1]
 	return header, body, err
 }
 
