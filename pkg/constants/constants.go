@@ -134,6 +134,7 @@ const (
 	OutboundPort                                 = 0
 	Terraform                                    = "terraform"
 	SetupCLIFromSourceBranch                     = "main"
+	EnableSetupCLIFromSource                     = false
 	BuildEnvGolangVersion                        = "1.21.1"
 	IsHealthyJSONFile                            = "isHealthy.json"
 	IsBootstrappedJSONFile                       = "isBootstrapped.json"
