@@ -293,7 +293,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err = app.SetupMonitoringEnv(); err != nil {
 			return err
 		}
-		if err := ssh.RunSSHCopyMonitoringDashboard(monitoringHost, app.GetMonitoringDashboardDir()+"/"); err != nil {
+		if err := ssh.RunSSHCopyMonitoringDashboards(monitoringHost, app.GetMonitoringDashboardDir()+"/"); err != nil {
 			return err
 		}
 		if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost, app.GetMonitoringScriptFile(), strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {

@@ -7,12 +7,14 @@ import (
 	"embed"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"text/template"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
@@ -317,15 +319,27 @@ func RunSSHSubnetSyncStatus(host *models.Host, blockchainID string) ([]byte, err
 	return PostOverSSH(host, "/ext/bc/P", requestBody)
 }
 
-func RunSSHCopyMonitoringDashboard(host *models.Host, monitoringDashboardPath string) error {
+func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath string) error {
+	if !utils.FileExists(monitoringDashboardPath) {
+		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
+	}
 	if err := host.MkdirAll("/home/ubuntu/dashboards", constants.SSHFileOpsTimeout); err != nil {
 		return err
 	}
-	return host.Upload(
-		monitoringDashboardPath,
-		filepath.Join("/home/ubuntu/dashboards", filepath.Base(monitoringDashboardPath)),
-		constants.SSHFileOpsTimeout,
-	)
+	dashboards, err := os.ReadDir(monitoringDashboardPath)
+	if err != nil {
+		return err
+	}
+	for _, dashboard := range dashboards {
+		if err := host.Upload(
+			filepath.Join(monitoringDashboardPath, dashboard.Name()),
+			filepath.Join("/home/ubuntu/dashboards", dashboard.Name()),
+			constants.SSHFileOpsTimeout,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func RunSSHSetupMonitoring(host *models.Host) error {
