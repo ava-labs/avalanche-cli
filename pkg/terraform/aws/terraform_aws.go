@@ -11,13 +11,10 @@ import (
 	"strings"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
-	"github.com/aws/aws-sdk-go/service/ec2"
-
-	"github.com/ava-labs/avalanche-cli/pkg/terraform"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/zclconf/go-cty/cty"

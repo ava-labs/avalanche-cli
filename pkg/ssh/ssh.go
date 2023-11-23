@@ -17,16 +17,19 @@ import (
 )
 
 type scriptInputs struct {
-	AvalancheGoVersion   string
-	SubnetExportFileName string
-	SubnetName           string
-	GoVersion            string
-	CliBranch            string
-	IsDevNet             bool
-	NetworkFlag          string
-	SubnetEVMBinaryPath  string
-	SubnetEVMReleaseURL  string
-	SubnetEVMArchive     string
+	AvalancheGoVersion      string
+	SubnetExportFileName    string
+	SubnetName              string
+	GoVersion               string
+	CliBranch               string
+	IsDevNet                bool
+	NetworkFlag             string
+	SubnetEVMBinaryPath     string
+	SubnetEVMReleaseURL     string
+	SubnetEVMArchive        string
+	MonitoringDashboardPath string
+	AvalancheGoPorts        string
+	MachinePorts            string
 }
 
 //go:embed shell/*.sh
@@ -312,4 +315,78 @@ func RunSSHSubnetSyncStatus(host *models.Host, blockchainID string) ([]byte, err
 	// Craft and send the HTTP POST request
 	requestBody := fmt.Sprintf("{\"jsonrpc\":\"2.0\", \"id\":1,\"method\" :\"platform.getBlockchainStatus\", \"params\": {\"blockchainID\":\"%s\"}}", blockchainID)
 	return PostOverSSH(host, "/ext/bc/P", requestBody)
+}
+
+func RunSSHCopyMonitoringDashboard(host *models.Host, monitoringDashboardPath string) error {
+	if err := host.MkdirAll("/home/ubuntu/dashboards", constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	return host.Upload(
+		monitoringDashboardPath,
+		filepath.Join("/home/ubuntu/dashboards", filepath.Base(monitoringDashboardPath)),
+		constants.SSHFileOpsTimeout,
+	)
+}
+
+func RunSSHSetupMonitoring(host *models.Host) error {
+	return RunOverSSH(
+		"Setup  Monitoring",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/setupMonitoring.sh",
+		scriptInputs{},
+	)
+}
+
+func RunSSHSetupMachineMetrics(host *models.Host) error {
+	return RunOverSSH(
+		"Setup Machine Metrics",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/setupMachineMetrics.sh",
+		scriptInputs{},
+	)
+}
+
+func RunSSHSetupSeparateMonitoring(host *models.Host, monitoringDashboardPath, avalancheGoPorts, machinePorts string) error {
+	if err := host.Upload(
+		monitoringDashboardPath,
+		fmt.Sprintf("/home/ubuntu/%s", filepath.Base(monitoringDashboardPath)),
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
+	}
+	return RunOverSSH(
+		"Setup Separate Monitoring",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/setupSeparateMonitoring.sh",
+		scriptInputs{
+			MonitoringDashboardPath: monitoringDashboardPath,
+			AvalancheGoPorts:        avalancheGoPorts,
+			MachinePorts:            machinePorts,
+		},
+	)
+}
+
+func RunSSHDownloadNodeConfig(host *models.Host, nodeInstanceDirPath string) error {
+	return host.Download(
+		filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName),
+		filepath.Join(nodeInstanceDirPath, constants.NodeFileName),
+		constants.SSHFileOpsTimeout,
+	)
+}
+
+func RunSSHUploadNodeConfig(host *models.Host, nodeInstanceDirPath string) error {
+	if err := host.MkdirAll(
+		constants.CloudNodeConfigPath,
+		constants.SSHDirOpsTimeout,
+	); err != nil {
+		return err
+	}
+	return host.Upload(
+		filepath.Join(nodeInstanceDirPath, constants.NodeFileName),
+		filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName),
+		constants.SSHFileOpsTimeout,
+	)
 }

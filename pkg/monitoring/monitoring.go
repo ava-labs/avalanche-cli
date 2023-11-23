@@ -6,9 +6,10 @@ package monitoring
 import (
 	"embed"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"os"
 	"path/filepath"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
 //go:embed dashboards/*

@@ -6,20 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/terraform"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/staking"
-	"github.com/spf13/cobra"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"net"
 	"net/http"
@@ -28,7 +14,23 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
+	"sync"
+
+	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
+	"github.com/ava-labs/avalanche-cli/pkg/terraform"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/staking"
+	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 )
 
 const (
@@ -150,12 +152,11 @@ func createNodes(_ *cobra.Command, args []string) error {
 		numNodes, err = app.Prompt.CaptureInt("How many nodes do you want to set up?")
 		if err != nil {
 			return err
-			
 		}
 		if !separateMonitoringInstance {
 			separateMonitoringInstance, err = app.Prompt.CaptureYesNo("Do you want to set up a separate instance to host monitoring? (This enables you to monitor all your set up instances in one dashboard)")
 			if err != nil {
-				return nil, nil, "", "", err
+				return err
 			}
 		}
 	}
@@ -243,13 +244,17 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
 	monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), "monitoring")
 	if separateMonitoringInstance {
 		if err = ansible.CreateAnsibleHostInventory(monitoringInventoryPath, cloudConfig.CertFilePath, cloudService, monitoringInstanceNodeID, publicIPMap, true); err != nil {
 			return err
 		}
-	if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
+	}
+	monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
+	if err != nil {
+		return err
+	}
+	if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, monitoringInstanceNodeID, publicIPMap, false); err != nil {
 		return err
 	}
 	if err := updateAnsiblePublicIPs(clusterName); err != nil {
@@ -275,26 +280,23 @@ func createNodes(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if separateMonitoringInstance {
+		if len(monitoringHosts) != 1 {
+			return fmt.Errorf("expected only one monitoring host, found %d", len(monitoringHosts))
+		}
+		monitoringHost := monitoringHosts[0]
 		avalancheGoPorts := []string{}
 		machinePorts := []string{}
 		for _, publicIP := range cloudConfig.PublicIPs {
 			avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("\\'%s:%s\\'", publicIP, strconv.Itoa(constants.AvalanchegoAPIPort)))
 			machinePorts = append(machinePorts, fmt.Sprintf("\\'%s:%s\\'", publicIP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
 		}
-		monitoringHostID, err := utils.MapWithError([]string{monitoringInstanceNodeID}, func(s string) (string, error) { return models.HostCloudIDToAnsibleID(cloudService, s) })
-		if err != nil {
-			return err
-		}
 		if err = app.SetupMonitoringEnv(); err != nil {
 			return err
 		}
-		if err = ansible.RunAnsiblePlaybookCopyMonitoringDashboard(app.GetAnsibleDir(),
-			monitoringInventoryPath, strings.Join(monitoringHostID, ","), app.GetMonitoringDashboardDir()+"/"); err != nil {
+		if err := ssh.RunSSHCopyMonitoringDashboard(monitoringHost, app.GetMonitoringDashboardDir()+"/"); err != nil {
 			return err
 		}
-		if err = ansible.RunAnsiblePlaybookSetupSeparateMonitoring(app.GetAnsibleDir(),
-			monitoringInventoryPath, strings.Join(monitoringHostID, ","), app.GetMonitoringScriptFile(),
-			strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
+		if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost, app.GetMonitoringScriptFile(), strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
 			return err
 		}
 		for _, ansibleNodeID := range ansibleHostIDs {
@@ -302,16 +304,34 @@ func createNodes(_ *cobra.Command, args []string) error {
 				return err
 			}
 		}
-		if err = ansible.RunAnsiblePlaybookCopyNodeConfig(app.GetAnsibleDir(), inventoryPath, createdAnsibleHostIDs); err != nil {
-			return err
+		// download node configs
+		wg := sync.WaitGroup{}
+		wgResults := models.NodeResults{}
+		for _, host := range hosts {
+			wg.Add(1)
+			go func(nodeResults *models.NodeResults, host *models.Host) {
+				defer wg.Done()
+				nodeDirPath := app.GetNodeInstanceDirPath(host.GetCloudID())
+				if err := ssh.RunSSHDownloadNodeConfig(host, nodeDirPath); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+					return
+				}
+				if err = addHTTPHostToConfigFile(app.GetNodeConfigJSONFile(host.NodeID)); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+					return
+				}
+				if err := ssh.RunSSHUploadNodeConfig(host, nodeDirPath); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+					return
+				}
+			}(&wgResults, host)
 		}
-		for _, ansibleNodeID := range ansibleHostIDs {
-			if err = addHttpHostToConfigFile(app.GetNodeConfigJSONFile(ansibleNodeID)); err != nil {
-				return err
+		wg.Wait()
+		for _, node := range hosts {
+			if wgResults.HasNodeIDWithError(node.NodeID) {
+				ux.Logger.PrintToUser("Node %s is ERROR with error: %w", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
+				return fmt.Errorf("node %s failed to setup with error: %w", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
 			}
-		}
-		if err = ansible.RunAnsiblePlaybookUpdateNodeConfig(app.GetAnsibleDir(), inventoryPath, createdAnsibleHostIDs); err != nil {
-			return err
 		}
 	}
 
@@ -333,6 +353,17 @@ func createNodes(_ *cobra.Command, args []string) error {
 			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), avalancheGoVersion, network.Kind == models.Devnet); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
+			}
+			if separateMonitoringInstance {
+				if err := ssh.RunSSHSetupMachineMetrics(host); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+					return
+				}
+			} else {
+				if err := ssh.RunSSHSetupMonitoring(host); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+					return
+				}
 			}
 			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
@@ -366,7 +397,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if wgResults.HasErrors() {
 		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
 	} else {
-		printResults(cloudConfig, publicIPMap, ansibleHostIDs)
+		printResults(cloudConfig, publicIPMap, ansibleHostIDs, monitoringInstancePublicIP)
 		ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	}
 	return nil
@@ -408,7 +439,7 @@ func createClusterNodeConfig(network models.Network, cloudConfig CloudConfig, cl
 	return updateKeyPairClustersConfig(cloudConfig)
 }
 
-func addHttpHostToConfigFile(filePath string) error {
+func addHTTPHostToConfigFile(filePath string) error {
 	jsonFile, err := os.Open(filePath)
 	if err != nil {
 		return err
