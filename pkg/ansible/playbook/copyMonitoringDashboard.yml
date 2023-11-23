@@ -1,8 +1,0 @@
----
-- hosts: "{{ target }}"
-  gather_facts: no
-  tasks:
-    - name: copy monitoring script to cloud server
-      copy:
-        src: "{{ monitoringDashboardPath }}"
-        dest: /home/ubuntu/dashboards/

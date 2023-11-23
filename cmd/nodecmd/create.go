@@ -329,7 +329,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		wg.Wait()
 		for _, node := range hosts {
 			if wgResults.HasNodeIDWithError(node.NodeID) {
-				ux.Logger.PrintToUser("Node %s is ERROR with error: %w", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
+				ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
 				return fmt.Errorf("node %s failed to setup with error: %w", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
 			}
 		}
