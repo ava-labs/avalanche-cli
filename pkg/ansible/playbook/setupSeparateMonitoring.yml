@@ -1,8 +1,10 @@
----
-- hosts: "{{ target }}"
-  gather_facts: no
-  tasks:
-    - name: copy monitoring script to cloud server
+#!/usr/bin/env bash
+#name:TASK [copy monitoring script to cloud server]  
+#name:TASK [copy monitoring script to cloud server]  
+#name:TASK [copy monitoring script to cloud server]  
+#name:TASK [copy monitoring script to cloud server]  
+#name:TASK [copy monitoring script to cloud server]  
+
       copy:
         src: "{{ monitoringScriptPath }}"
         dest: /home/ubuntu/

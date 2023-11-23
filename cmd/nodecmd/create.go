@@ -260,6 +260,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		return err
 	}
 	hosts := utils.Filter(allHosts, func(h *models.Host) bool { return slices.Contains(cloudConfig.InstanceIDs, h.GetCloudID()) })
+	defer disconnectHosts(hosts)
 	// waiting for all nodes to become accessible
 	failedHosts := waitForHosts(hosts)
 	if failedHosts.Len() > 0 {
@@ -271,10 +272,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 
 	ansibleHostIDs, err := utils.MapWithError(cloudConfig.InstanceIDs, func(s string) (string, error) { return models.HostCloudIDToAnsibleID(cloudService, s) })
 	if err != nil {
-		return err
-	}
-	createdAnsibleHostIDs := strings.Join(ansibleHostIDs, ",")
-	if err = runAnsible(inventoryPath, network, avalancheGoVersion, clusterName, createdAnsibleHostIDs); err != nil {
 		return err
 	}
 	if separateMonitoringInstance {
@@ -317,11 +314,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	if err = setupBuildEnv(inventoryPath, createdAnsibleHostIDs); err != nil {
-		return err
-	}
-
-	defer disconnectHosts(hosts)
 
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
 	wg := sync.WaitGroup{}
