@@ -284,6 +284,8 @@ func createNodes(_ *cobra.Command, args []string) error {
 			return fmt.Errorf("expected only one monitoring host, found %d", len(monitoringHosts))
 		}
 		monitoringHost := monitoringHosts[0]
+		// remove monitoring host from created hosts list
+		hosts = utils.Filter(hosts, func(h *models.Host) bool { return h.NodeID != monitoringHost.NodeID })
 		avalancheGoPorts := []string{}
 		machinePorts := []string{}
 		for _, publicIP := range cloudConfig.PublicIPs {
