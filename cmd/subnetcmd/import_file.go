@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"os/user"
+	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/apmintegration"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -194,6 +196,15 @@ func importFromFile(importPath string) error {
 }
 
 func importFromAPM() error {
+	// setup apm
+	usr, err := user.Current()
+	if err != nil {
+		return err
+	}
+	apmBaseDir := filepath.Join(usr.HomeDir, constants.APMDir)
+	if err = apmintegration.SetupApm(app, apmBaseDir); err != nil {
+		return err
+	}
 	installedRepos, err := apmintegration.GetRepos(app)
 	if err != nil {
 		return err
