@@ -166,7 +166,7 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 	return chains, nil
 }
 
-func checkDefaultAddressNotInAlloc(network models.Network, chain string) error {
+func checkSubnetEVMDefaultAddressNotInAlloc(network models.Network, chain string) error {
 	if network.Kind != models.Local && network.Kind != models.Devnet && os.Getenv(constants.SimulatePublicNetwork) == "" {
 		genesis, err := app.LoadEvmGenesis(chain)
 		if err != nil {
@@ -220,7 +220,7 @@ func createMainnetGenesis(chain string) error {
 	return app.WriteGenesisMainnetFile(chain, prettyJSON.Bytes())
 }
 
-func handleMainnetChainID(chain string) error {
+func handleSubnetEVMMainnetChainID(chain string) error {
 	genesisMainnetPath := app.GetGenesisMainnetPath(chain)
 	_, err := os.ReadFile(genesisMainnetPath)
 	if err != nil && os.IsNotExist(err) {
@@ -302,25 +302,35 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if network.Kind == models.Mainnet || os.Getenv(constants.SimulatePublicNetwork) != "" {
-		err = handleMainnetChainID(chain)
+	isEVMGenesis, err := hasSubnetEVMGenesis(network, chain)
+	if err != nil {
+		return err
+	}
+	if sc.VM == models.SubnetEvm && !isEVMGenesis {
+		return fmt.Errorf("failed to validate SubnetEVM genesis format")
+	}
+
+	if isEVMGenesis {
+		// is is a subnet evm or a custom vm based on subnet evm
+		if network.Kind == models.Mainnet || os.Getenv(constants.SimulatePublicNetwork) != "" {
+			err = handleSubnetEVMMainnetChainID(chain)
+			if err != nil {
+				return err
+			}
+		}
+		err = checkSubnetEVMDefaultAddressNotInAlloc(network, chain)
 		if err != nil {
 			return err
 		}
 	}
+
+	return fmt.Errorf("PEPE")
 
 	// deploy based on chosen network
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
 	chainGenesis, err := app.LoadRawGenesis(chain, network)
 	if err != nil {
 		return err
-	}
-
-	if sc.VM == models.SubnetEvm {
-		err = checkDefaultAddressNotInAlloc(network, chain)
-		if err != nil {
-			return err
-		}
 	}
 
 	sidecar, err := app.LoadSidecar(chain)
@@ -857,4 +867,19 @@ func CheckForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.Statu
 		}
 	}
 	return desiredAvagoVersion, nil
+}
+
+func hasSubnetEVMGenesis(network models.Network, subnetName string) (bool, error) {
+	if _, err := app.LoadRawGenesis(subnetName, network); err != nil {
+		return false, err
+	}
+	// from here, we are sure to have a genesis file
+	genesis, err := app.LoadEvmGenesis(subnetName)
+	if err != nil {
+		return false, nil
+	}
+	if err := genesis.Verify(); err != nil {
+		return false, nil
+	}
+	return true, nil
 }
