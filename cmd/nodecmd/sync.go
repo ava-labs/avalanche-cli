@@ -198,7 +198,7 @@ func trackSubnet(
 	case models.Mainnet:
 		networkFlag = "--mainnet"
 	}
-	if err := subnetcmd.CallExportSubnet(subnetName, subnetPath, network); err != nil {
+	if err := subnetcmd.CallExportSubnet(subnetName, subnetPath); err != nil {
 		return nil, err
 	}
 	wg := sync.WaitGroup{}

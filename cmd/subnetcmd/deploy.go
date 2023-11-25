@@ -3,11 +3,9 @@
 package subnetcmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -30,7 +28,6 @@ import (
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
-	"github.com/ava-labs/coreth/core"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -187,33 +184,53 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	return deploySubnet(cmd, args)
 }
 
+func updateSubnetEVMGenesisChainID(genesisBytes []byte, newChainID uint) ([]byte, error) {
+	var genesisMap map[string]interface{}
+	if err := json.Unmarshal(genesisBytes, &genesisMap); err != nil {
+		return nil, err
+	}
+	configI, ok := genesisMap["config"]
+	if !ok {
+		return nil, fmt.Errorf("config field not found on genesis")
+	}
+	config, ok := configI.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("expected genesis config field to be a map[string]interface, found %T", configI)
+	}
+	config["chainId"] = float64(newChainID)
+	return json.MarshalIndent(genesisMap, "", "  ")
+}
+
 func createMainnetGenesis(chain string) error {
-	evmGenesis, err := app.LoadEvmGenesis(chain)
-	if err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("Enter your subnet's ChainID. It can be any positive integer.")
-	var chainID *big.Int
-	chainID, err = app.Prompt.CapturePositiveBigInt("ChainID")
-	if err != nil {
-		return err
-	}
-	evmGenesis.Config.ChainID = chainID
-	jsonBytes, err := evmGenesis.MarshalJSON()
-	if err != nil {
-		return err
-	}
-	var prettyJSON bytes.Buffer
-	err = json.Indent(&prettyJSON, jsonBytes, "", "    ")
-	if err != nil {
-		return err
-	}
-	return app.WriteGenesisMainnetFile(chain, prettyJSON.Bytes())
+	return nil
+	/*
+		evmGenesis, err := app.LoadEvmGenesis(chain)
+		if err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("Enter your subnet's ChainID. It can be any positive integer.")
+		var chainID *big.Int
+		chainID, err = app.Prompt.CapturePositiveBigInt("ChainID")
+		if err != nil {
+			return err
+		}
+		evmGenesis.Config.ChainID = chainID
+		jsonBytes, err := evmGenesis.MarshalJSON()
+		if err != nil {
+			return err
+		}
+		var prettyJSON bytes.Buffer
+		err = json.Indent(&prettyJSON, jsonBytes, "", "    ")
+		if err != nil {
+			return err
+		}
+		return app.WriteGenesisMainnetFile(chain, prettyJSON.Bytes())
+	*/
 }
 
 // updates sidecar with genesis mainnet id to use
 // given either by cmdline flag, original genesis id, or id obtained from the user
-func handleSubnetEVMMainnetChainID(sc *models.Sidecar, subnetName string) error {
+func getSubnetEVMMainnetChainID(sc *models.Sidecar, subnetName string) error {
 	// get original chain id
 	evmGenesis, err := app.LoadEvmGenesis(subnetName)
 	if err != nil {
@@ -269,8 +286,6 @@ func handleSubnetEVMMainnetChainID(sc *models.Sidecar, subnetName string) error 
 			sc.SubnetEVMMainnetChainID = uint(newChainID)
 		}
 	}
-	fmt.Printf("%#v\n", sc)
-	return fmt.Errorf("PEPITO")
 	return app.UpdateSidecar(sc)
 }
 
@@ -303,12 +318,12 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	chain := chains[0]
 
-	sc, err := app.LoadSidecar(chain)
+	sidecar, err := app.LoadSidecar(chain)
 	if err != nil {
 		return fmt.Errorf("failed to load sidecar for later update: %w", err)
 	}
 
-	if sc.ImportedFromAPM {
+	if sidecar.ImportedFromAPM {
 		return errors.New("unable to deploy subnets imported from a repo")
 	}
 
@@ -331,18 +346,27 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	isEVMGenesis, err := hasSubnetEVMGenesis(network, chain)
+	isEVMGenesis, err := hasSubnetEVMGenesis(chain)
 	if err != nil {
 		return err
 	}
-	if sc.VM == models.SubnetEvm && !isEVMGenesis {
+	if sidecar.VM == models.SubnetEvm && !isEVMGenesis {
 		return fmt.Errorf("failed to validate SubnetEVM genesis format")
+	}
+
+	chainGenesis, err := app.LoadRawGenesis(chain)
+	if err != nil {
+		return err
 	}
 
 	if isEVMGenesis {
 		// is is a subnet evm or a custom vm based on subnet evm
 		if network.Kind == models.Mainnet || os.Getenv(constants.SimulatePublicNetwork) != "" {
-			err = handleSubnetEVMMainnetChainID(&sc, chain)
+			err = getSubnetEVMMainnetChainID(&sidecar, chain)
+			if err != nil {
+				return err
+			}
+			chainGenesis, err = updateSubnetEVMGenesisChainID(chainGenesis, sidecar.SubnetEVMMainnetChainID)
 			if err != nil {
 				return err
 			}
@@ -353,28 +377,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	return fmt.Errorf("PEPE")
-
-	// deploy based on chosen network
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
-	chainGenesis, err := app.LoadRawGenesis(chain, network)
-	if err != nil {
-		return err
-	}
-
-	sidecar, err := app.LoadSidecar(chain)
-	if err != nil {
-		return err
-	}
-
-	// validate genesis as far as possible previous to deploy
-	if sidecar.VM == models.SubnetEvm {
-		var genesis core.Genesis
-		err = json.Unmarshal(chainGenesis, &genesis)
-	}
-	if err != nil {
-		return fmt.Errorf("failed to validate genesis format: %w", err)
-	}
 
 	if network.Kind == models.Local {
 		app.Log.Debug("Deploy local")
@@ -898,8 +901,8 @@ func CheckForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.Statu
 	return desiredAvagoVersion, nil
 }
 
-func hasSubnetEVMGenesis(network models.Network, subnetName string) (bool, error) {
-	if _, err := app.LoadRawGenesis(subnetName, network); err != nil {
+func hasSubnetEVMGenesis(subnetName string) (bool, error) {
+	if _, err := app.LoadRawGenesis(subnetName); err != nil {
 		return false, err
 	}
 	// from here, we are sure to have a genesis file
