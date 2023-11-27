@@ -360,6 +360,10 @@ func SimulateMainnetDeploy(
 	err = os.Setenv(constants.SimulatePublicNetwork, "true")
 	gomega.Expect(err).Should(gomega.BeNil())
 
+	if mainnetChainID == 0 {
+		mainnetChainID = subnetEVMMainnetChainID
+	}
+
 	// Deploy subnet locally
 	return utils.ExecCommand(
 		CLIBinary,
