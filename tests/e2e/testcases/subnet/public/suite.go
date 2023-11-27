@@ -108,7 +108,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println()
 		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
-		s := commands.SimulateMainnetDeploy(subnetName, 0)
+		s := commands.SimulateMainnetDeploy(subnetName, 0, false)
 		// deploy
 		subnetID, err := utils.ParsePublicDeployOutput(s)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -157,16 +157,15 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 	})
 
 	ginkgo.It("deploy subnet with new chain id", func() {
-		genesisBytes, _ := os.ReadFile(utils.SubnetEvmGenesisPath)
-		_ = commands.WriteGenesis(subnetName, genesisBytes)
-		s := commands.SimulateMainnetDeploy(subnetName, mainnetChainID)
-		_, err := utils.ParsePublicDeployOutput(s)
+		subnetMainnetChainID, err := utils.GetSubnetEVMMainneChainID(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
-
-		mainnetGenesis, err := commands.GetMainnetGenesis(subnetName)
+		gomega.Expect(subnetMainnetChainID).Should(gomega.Equal(uint(0)))
+		_ = commands.SimulateMainnetDeploy(subnetName, mainnetChainID, true)
+		subnetMainnetChainID, err = utils.GetSubnetEVMMainneChainID(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(mainnetGenesis.Config.ChainID.String()).Should(gomega.Equal(mainnetChainID))
+		gomega.Expect(subnetMainnetChainID).Should(gomega.Equal(uint(mainnetChainID)))
 	})
+
 	ginkgo.It("can transform a deployed SubnetEvm subnet to elastic subnet only on fuji", func() {
 		subnetIDStr, _ := deploySubnetToFuji()
 		subnetID, err := ids.FromString(subnetIDStr)
