@@ -32,7 +32,7 @@ const (
 	ledger2Seed    = "ledger2"
 	ledger3Seed    = "ledger3"
 	txFnamePrefix  = "avalanche-cli-tx-"
-	mainnetChainID = "123456"
+	mainnetChainID = 123456
 )
 
 func deploySubnetToFuji() (string, map[string]utils.NodeInfo) {
@@ -108,7 +108,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println()
 		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
-		s := commands.SimulateMainnetDeploy(subnetName)
+		s := commands.SimulateMainnetDeploy(subnetName, 0)
 		// deploy
 		subnetID, err := utils.ParsePublicDeployOutput(s)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -159,7 +159,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 	ginkgo.It("deploy subnet with new chain id", func() {
 		genesisBytes, _ := os.ReadFile(utils.SubnetEvmGenesisPath)
 		_ = commands.WriteGenesis(subnetName, genesisBytes)
-		s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys, mainnetChainID)
+		s := commands.SimulateMainnetDeploy(subnetName, mainnetChainID)
 		_, err := utils.ParsePublicDeployOutput(s)
 		gomega.Expect(err).Should(gomega.BeNil())
 

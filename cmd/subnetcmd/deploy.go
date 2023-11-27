@@ -334,7 +334,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	if isEVMGenesis {
 		// is is a subnet evm or a custom vm based on subnet evm
-		if network.Kind == models.Mainnet || os.Getenv(constants.SimulatePublicNetwork) != "" {
+		if network.Kind == models.Mainnet {
 			err = getSubnetEVMMainnetChainID(&sidecar, chain)
 			if err != nil {
 				return err

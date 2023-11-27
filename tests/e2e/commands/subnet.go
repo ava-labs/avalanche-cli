@@ -303,7 +303,6 @@ func SimulateFujiDeploy(
 	subnetName string,
 	key string,
 	controlKeys string,
-	newChainID string,
 ) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -329,24 +328,6 @@ func SimulateFujiDeploy(
 		subnetName,
 		"--"+constants.SkipUpdateFlag,
 	)
-	if newChainID != "" {
-		cmd = exec.Command(
-			CLIBinary,
-			SubnetCmd,
-			"deploy",
-			"--fuji",
-			"--threshold",
-			"1",
-			"--key",
-			key,
-			"--control-keys",
-			controlKeys,
-			"--mainnet-chain-id",
-			newChainID,
-			subnetName,
-			"--"+constants.SkipUpdateFlag,
-		)
-	}
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -366,6 +347,7 @@ func SimulateFujiDeploy(
 /* #nosec G204 */
 func SimulateMainnetDeploy(
 	subnetName string,
+	mainnetChainID uint,
 ) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -376,19 +358,24 @@ func SimulateMainnetDeploy(
 	err = os.Setenv(constants.SimulatePublicNetwork, "true")
 	gomega.Expect(err).Should(gomega.BeNil())
 
+	cmdLineArgs := []string{
+		SubnetCmd,
+		"deploy",
+		"--mainnet",
+		"--threshold",
+		"1",
+		"--same-control-key",
+		subnetName,
+		"--" + constants.SkipUpdateFlag,
+	}
+	if mainnetChainID != 0 {
+		cmdLineArgs = append(cmdLineArgs, "--mainnet-chain-id", fmt.Sprint(mainnetChainID))
+	}
+
 	// Deploy subnet locally
 	return utils.ExecCommand(
 		CLIBinary,
-		[]string{
-			SubnetCmd,
-			"deploy",
-			"--mainnet",
-			"--threshold",
-			"1",
-			"--same-control-key",
-			subnetName,
-			"--" + constants.SkipUpdateFlag,
-		},
+		cmdLineArgs,
 		true,
 		false,
 	)
