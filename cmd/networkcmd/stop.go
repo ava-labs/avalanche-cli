@@ -3,10 +3,12 @@
 package networkcmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/local"
 	"github.com/ava-labs/avalanche-network-runner/server"
@@ -35,9 +37,13 @@ default snapshot with network start.`,
 }
 
 func StopNetwork(*cobra.Command, []string) error {
-	err := saveNetwork()
+	if err := saveNetwork(); errors.Is(err, binutils.ErrGRPCTimeout) {
+		// no server to kill
+		return nil
+	}
 
-	if err := binutils.KillgRPCServerProcess(app); err != nil {
+	var err error
+	if err = binutils.KillgRPCServerProcess(app); err != nil {
 		app.Log.Warn("failed killing server process", zap.Error(err))
 		fmt.Println(err)
 	} else {
@@ -48,12 +54,16 @@ func StopNetwork(*cobra.Command, []string) error {
 }
 
 func saveNetwork() error {
-	cli, err := binutils.NewGRPCClient(binutils.WithAvoidRPCVersionCheck(true))
+	cli, err := binutils.NewGRPCClient(
+		binutils.WithAvoidRPCVersionCheck(true),
+		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+	)
 	if err != nil {
 		return err
 	}
 
-	ctx := binutils.GetAsyncContext()
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
 
 	_, err = cli.RemoveSnapshot(ctx, snapshotName)
 	if err != nil {

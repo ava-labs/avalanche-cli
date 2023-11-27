@@ -22,6 +22,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var authorizeRemove bool
+
 func newStopCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stop [clusterName]",
@@ -33,25 +35,27 @@ The node stop command stops a running node in cloud server
 Note that a stopped node may still incur cloud server storage fees.`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
-		RunE:         stopNode,
+		RunE:         stopNodes,
 	}
+	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to release cloud resources")
+	cmd.Flags().BoolVar(&authorizeRemove, "authorize-remove", false, "authorize CLI to remove all local files related to cloud nodes")
 
 	return cmd
 }
 
-func removeNodeFromClusterConfig(clusterName string) error {
-	clusterConfig := models.ClusterConfig{}
+func removeNodeFromClustersConfig(clusterName string) error {
+	clustersConfig := models.ClustersConfig{}
 	var err error
-	if app.ClusterConfigExists() {
-		clusterConfig, err = app.LoadClusterConfig()
+	if app.ClustersConfigExists() {
+		clustersConfig, err = app.LoadClustersConfig()
 		if err != nil {
 			return err
 		}
 	}
-	if clusterConfig.Clusters != nil {
-		delete(clusterConfig.Clusters, clusterName)
+	if clustersConfig.Clusters != nil {
+		delete(clustersConfig.Clusters, clusterName)
 	}
-	return app.WriteClusterConfigFile(&clusterConfig)
+	return app.WriteClustersConfigFile(&clustersConfig)
 }
 
 func removeDeletedNodeDirectory(clusterName string) error {
@@ -63,6 +67,9 @@ func removeClusterInventoryDir(clusterName string) error {
 }
 
 func getDeleteConfigConfirmation() error {
+	if authorizeRemove {
+		return nil
+	}
 	ux.Logger.PrintToUser("Please note that if your node(s) are validating a Subnet, stopping them could cause Subnet instability and it is irreversible")
 	confirm := "Running this command will delete all stored files associated with your cloud server. Do you want to proceed? " +
 		fmt.Sprintf("Stored files can be found at %s", app.GetNodesDir())
@@ -76,14 +83,14 @@ func getDeleteConfigConfirmation() error {
 	return nil
 }
 
-func removeClusterConfigFiles(clusterName string) error {
+func removeClustersConfigFiles(clusterName string) error {
 	if err := removeClusterInventoryDir(clusterName); err != nil {
 		return err
 	}
-	return removeNodeFromClusterConfig(clusterName)
+	return removeNodeFromClustersConfig(clusterName)
 }
 
-func stopNode(_ *cobra.Command, args []string) error {
+func stopNodes(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	if err := checkCluster(clusterName); err != nil {
 		return err
@@ -112,7 +119,7 @@ func stopNode(_ *cobra.Command, args []string) error {
 		if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
 			// need to check if it's empty because we didn't set cloud service when only using AWS
 			if nodeConfig.Region != lastRegion {
-				sess, err := getAWSCloudCredentials(nodeConfig.Region, constants.StopAWSNode)
+				sess, err := getAWSCloudCredentials(awsProfile, nodeConfig.Region, constants.StopAWSNode, authorizeAccess)
 				if err != nil {
 					return err
 				}
@@ -120,6 +127,11 @@ func stopNode(_ *cobra.Command, args []string) error {
 				lastRegion = nodeConfig.Region
 			}
 			if err = awsAPI.StopAWSNode(ec2Svc, nodeConfig, clusterName); err != nil {
+				if strings.Contains(err.Error(), "RequestExpired: Request has expired") {
+					ux.Logger.PrintToUser("")
+					printExpiredCredentialsOutput(awsProfile)
+					return nil
+				}
 				failedNodes = append(failedNodes, node)
 				nodeErrors = append(nodeErrors, err)
 				continue
@@ -156,7 +168,7 @@ func stopNode(_ *cobra.Command, args []string) error {
 	} else {
 		ux.Logger.PrintToUser(fmt.Sprintf("All nodes in cluster %s are successfully stopped!", clusterName))
 	}
-	return removeClusterConfigFiles(clusterName)
+	return removeClustersConfigFiles(clusterName)
 }
 
 func checkCluster(clusterName string) error {
@@ -165,20 +177,33 @@ func checkCluster(clusterName string) error {
 }
 
 func getClusterNodes(clusterName string) ([]string, error) {
-	clusterConfig := models.ClusterConfig{}
-	if app.ClusterConfigExists() {
+	clustersConfig := models.ClustersConfig{}
+	if app.ClustersConfigExists() {
 		var err error
-		clusterConfig, err = app.LoadClusterConfig()
+		clustersConfig, err = app.LoadClustersConfig()
 		if err != nil {
 			return nil, err
 		}
 	}
-	if _, ok := clusterConfig.Clusters[clusterName]; !ok {
+	if _, ok := clustersConfig.Clusters[clusterName]; !ok {
 		return nil, fmt.Errorf("cluster %q does not exist", clusterName)
 	}
-	clusterNodes := clusterConfig.Clusters[clusterName]
+	clusterNodes := clustersConfig.Clusters[clusterName].Nodes
 	if len(clusterNodes) == 0 {
 		return nil, fmt.Errorf("no nodes found in cluster %s", clusterName)
 	}
 	return clusterNodes, nil
+}
+
+func clusterExists(clusterName string) (bool, error) {
+	clustersConfig := models.ClustersConfig{}
+	if app.ClustersConfigExists() {
+		var err error
+		clustersConfig, err = app.LoadClustersConfig()
+		if err != nil {
+			return false, err
+		}
+	}
+	_, ok := clustersConfig.Clusters[clusterName]
+	return ok, nil
 }

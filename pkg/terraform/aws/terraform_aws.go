@@ -4,27 +4,30 @@
 package terraformaws
 
 import (
-	"bytes"
 	"errors"
-	"io"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/terraform"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/terraform"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/zclconf/go-cty/cty"
 )
 
+const TerraformInitErrorStr = "terraform init error"
+
 // SetCloudCredentials sets AWS account credentials defined in .aws dir in user home dir
-func SetCloudCredentials(rootBody *hclwrite.Body, region string) error {
+func SetCloudCredentials(rootBody *hclwrite.Body, awsProfile, region string) error {
 	provider := rootBody.AppendNewBlock("provider", []string{"aws"})
 	providerBody := provider.Body()
 	providerBody.SetAttributeValue("region", cty.StringVal(region))
-	providerBody.SetAttributeValue("profile", cty.StringVal("default"))
+	if awsProfile != constants.AWSDefaultCredential {
+		providerBody.SetAttributeValue("profile", cty.StringVal(awsProfile))
+	}
 	return nil
 }
 
@@ -65,8 +68,6 @@ func SetSecurityGroup(rootBody *hclwrite.Body, ipAddress, securityGroupName stri
 
 	// enable inbound access for ip address inputIPAddress in port 22
 	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "TCP", "tcp", inputIPAddress, constants.SSHTCPPort)
-	// "0.0.0.0/0" is a must-have ip address value for inbound and outbound calls
-	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", "tcp", "0.0.0.0/0", constants.AvalanchegoAPIPort)
 	// enable inbound access for ip address inputIPAddress in port 9650
 	addSecurityGroupRuleToSg(securityGroupBody, "ingress", "AVAX HTTP", "tcp", inputIPAddress, constants.AvalanchegoAPIPort)
 	// "0.0.0.0/0" is a must-have ip address value for inbound and outbound calls
@@ -212,16 +213,14 @@ func SetOutput(rootBody *hclwrite.Body, useEIP bool) {
 func RunTerraform(terraformDir string, useEIP bool) ([]string, []string, error) {
 	cmd := exec.Command(constants.Terraform, "init") //nolint:gosec
 	cmd.Dir = terraformDir
+	_, _ = utils.SetupRealtimeCLIOutput(cmd, true, true)
 	if err := cmd.Run(); err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("%s: %w", TerraformInitErrorStr, err)
 	}
 	cmd = exec.Command(constants.Terraform, "apply", "-auto-approve") //nolint:gosec
+	cmd.Env = os.Environ()
 	cmd.Dir = terraformDir
-	var stdBuffer bytes.Buffer
-	var stderr bytes.Buffer
-	mw := io.MultiWriter(os.Stdout, &stdBuffer)
-	cmd.Stdout = mw
-	cmd.Stderr = &stderr
+	_, stderr := utils.SetupRealtimeCLIOutput(cmd, true, true)
 	if err := cmd.Run(); err != nil {
 		if strings.Contains(stderr.String(), constants.EIPLimitErr) {
 			return nil, nil, errors.New(constants.EIPLimitErr)

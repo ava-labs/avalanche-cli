@@ -5,11 +5,10 @@ package nodecmd
 import (
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/spf13/cobra"
 )
 
-func NewValidateCmd(injectedApp *application.Avalanche) *cobra.Command {
+func NewValidateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "validate",
 		Short: "(ALPHA Warning) Join Primary Network or Subnet as validator",
@@ -26,7 +25,6 @@ will fail. You can check the bootstrap status by calling avalanche node status <
 			}
 		},
 	}
-	app = injectedApp
 	// node validate primary cluster
 	cmd.AddCommand(newValidatePrimaryCmd())
 	// node validate subnet cluster subnetName

@@ -44,7 +44,16 @@ func createKey(_ *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.PrintToUser("Key created")
-		networks := []models.Network{models.Fuji, models.Mainnet}
+	} else {
+		// Load key from file
+		// TODO add validation that key is legal
+		ux.Logger.PrintToUser("Loading user key...")
+		if err := app.CopyKeyFile(filename, keyName); err != nil {
+			return err
+		}
+		keyPath := app.GetKeyPath(keyName)
+		ux.Logger.PrintToUser("Key loaded")
+		networks := []models.Network{models.FujiNetwork, models.MainnetNetwork}
 		cchain := true
 		pClients, cClients, err := getClients(networks, cchain)
 		if err != nil {
@@ -55,14 +64,6 @@ func createKey(_ *cobra.Command, args []string) error {
 			return err
 		}
 		printAddrInfos(addrInfos)
-	} else {
-		// Load key from file
-		// TODO add validation that key is legal
-		ux.Logger.PrintToUser("Loading user key...")
-		if err := app.CopyKeyFile(filename, keyName); err != nil {
-			return err
-		}
-		ux.Logger.PrintToUser("Key loaded")
 	}
 
 	return nil

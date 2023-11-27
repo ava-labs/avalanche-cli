@@ -47,10 +47,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	WriteReadReadPerms = 0o644
-)
-
 type LocalDeployer struct {
 	procChecker        binutils.ProcessChecker
 	binChecker         binutils.BinaryChecker
@@ -78,7 +74,7 @@ func NewLocalDeployer(app *application.Avalanche, avagoVersion string, vmBin str
 
 type getGRPCClientFunc func(...binutils.GRPCClientOpOption) (client.Client, error)
 
-type setDefaultSnapshotFunc func(string, bool) error
+type setDefaultSnapshotFunc func(string, bool, bool) error
 
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
@@ -330,7 +326,7 @@ func (d *LocalDeployer) StartServer() error {
 func GetCurrentSupply(subnetID ids.ID) error {
 	api := constants.LocalAPIEndpoint
 	pClient := platformvm.NewClient(api)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	_, _, err := pClient.GetCurrentSupply(ctx, subnetID)
 	return err
@@ -374,7 +370,8 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	runDir := d.app.GetRunDir()
 
-	ctx := binutils.GetAsyncContext()
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
 
 	// loading sidecar before it's needed so we catch any error early
 	sc, err := d.app.LoadSidecar(chain)
@@ -559,7 +556,8 @@ func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte) err
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path
 func (d *LocalDeployer) SetupLocalEnv() (string, error) {
-	err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false)
+	configSingleNodeEnabled := d.app.Conf.GetConfigBoolValue(constants.ConfigSingleNodeEnabledKey)
+	err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false, configSingleNodeEnabled)
 	if err != nil {
 		return "", fmt.Errorf("failed setting up snapshots: %w", err)
 	}
@@ -657,8 +655,12 @@ func (d *LocalDeployer) removeInstalledPlugin(
 	return d.binaryDownloader.RemoveVM(vmID.String())
 }
 
-func getExpectedDefaultSnapshotSHA256Sum() (string, error) {
-	resp, err := http.Get(constants.BootstrapSnapshotSHA256URL)
+func getExpectedDefaultSnapshotSHA256Sum(isSingleNode bool) (string, error) {
+	url := constants.BootstrapSnapshotSHA256URL
+	if isSingleNode {
+		url = constants.BootstrapSnapshotSingleNodeSHA256URL
+	}
+	resp, err := http.Get(url)
 	if err != nil {
 		return "", fmt.Errorf("failed downloading sha256 sums: %w", err)
 	}
@@ -670,7 +672,11 @@ func getExpectedDefaultSnapshotSHA256Sum() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed downloading sha256 sums: %w", err)
 	}
-	expectedSum, err := utils.SearchSHA256File(sha256FileBytes, constants.BootstrapSnapshotLocalPath)
+	path := constants.BootstrapSnapshotLocalPath
+	if isSingleNode {
+		path = constants.BootstrapSnapshotSingleNodeLocalPath
+	}
+	expectedSum, err := utils.SearchSHA256File(sha256FileBytes, path)
 	if err != nil {
 		return "", fmt.Errorf("failed obtaining snapshot sha256 sum: %w", err)
 	}
@@ -679,8 +685,11 @@ func getExpectedDefaultSnapshotSHA256Sum() (string, error) {
 
 // Initialize default snapshot with bootstrap snapshot archive
 // If force flag is set to true, overwrite the default snapshot if it exists
-func SetDefaultSnapshot(snapshotsDir string, force bool) error {
+func SetDefaultSnapshot(snapshotsDir string, force bool, isSingleNode bool) error {
 	bootstrapSnapshotArchivePath := filepath.Join(snapshotsDir, constants.BootstrapSnapshotArchiveName)
+	if isSingleNode {
+		bootstrapSnapshotArchivePath = filepath.Join(snapshotsDir, constants.BootstrapSnapshotSingleNodeArchiveName)
+	}
 	// will download either if file not exists or if sha256 sum is not the same
 	downloadSnapshot := false
 	if _, err := os.Stat(bootstrapSnapshotArchivePath); os.IsNotExist(err) {
@@ -690,7 +699,7 @@ func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 		if err != nil {
 			return err
 		}
-		expectedSum, err := getExpectedDefaultSnapshotSHA256Sum()
+		expectedSum, err := getExpectedDefaultSnapshotSHA256Sum(isSingleNode)
 		if err != nil {
 			ux.Logger.PrintToUser("Warning: failure verifying that the local snapshot is the latest one: %s", err)
 		} else if gotSum != expectedSum {
@@ -698,7 +707,11 @@ func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 		}
 	}
 	if downloadSnapshot {
-		resp, err := http.Get(constants.BootstrapSnapshotURL)
+		url := constants.BootstrapSnapshotURL
+		if isSingleNode {
+			url = constants.BootstrapSnapshotSingleNodeURL
+		}
+		resp, err := http.Get(url)
 		if err != nil {
 			return fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
 		}
@@ -710,7 +723,7 @@ func SetDefaultSnapshot(snapshotsDir string, force bool) error {
 		if err != nil {
 			return fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
 		}
-		if err := os.WriteFile(bootstrapSnapshotArchivePath, bootstrapSnapshotBytes, WriteReadReadPerms); err != nil {
+		if err := os.WriteFile(bootstrapSnapshotArchivePath, bootstrapSnapshotBytes, constants.WriteReadReadPerms); err != nil {
 			return fmt.Errorf("failed writing down bootstrap snapshot: %w", err)
 		}
 	}
@@ -780,7 +793,8 @@ func GetLocallyDeployedSubnets() (map[string]struct{}, error) {
 		return nil, err
 	}
 
-	ctx := binutils.GetAsyncContext()
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
 	resp, err := cli.Status(ctx)
 	if err != nil {
 		return nil, err
@@ -816,7 +830,7 @@ func IssueRemoveSubnetValidatorTx(kc keychain.Keychain, subnetID ids.ID, nodeID 
 func GetSubnetValidators(subnetID ids.ID) ([]platformvm.ClientPermissionlessValidator, error) {
 	api := constants.LocalAPIEndpoint
 	pClient := platformvm.NewClient(api)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 
 	return pClient.GetCurrentValidators(ctx, subnetID, nil)
@@ -825,7 +839,7 @@ func GetSubnetValidators(subnetID ids.ID) ([]platformvm.ClientPermissionlessVali
 func CheckNodeIsInSubnetPendingValidators(subnetID ids.ID, nodeID string) (bool, error) {
 	api := constants.LocalAPIEndpoint
 	pClient := platformvm.NewClient(api)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 
 	pVals, _, err := pClient.GetPendingValidators(ctx, subnetID, nil)

@@ -3,18 +3,14 @@
 package nodecmd
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
+	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 
 	"github.com/ava-labs/avalanchego/genesis"
@@ -28,21 +24,27 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 )
 
 var (
+	deployDevnet                 bool
 	deployTestnet                bool
 	deployMainnet                bool
+	endpoint                     string
 	keyName                      string
+	useEwoq                      bool
 	useLedger                    bool
 	useStaticIP                  bool
+	awsProfile                   string
 	ledgerAddresses              []string
 	weight                       uint64
 	startTimeStr                 string
 	duration                     time.Duration
+	defaultValidatorParams       bool
 	useCustomDuration            bool
 	ErrMutuallyExlusiveKeyLedger = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet        = errors.New("--key is not available for mainnet operations")
@@ -61,72 +63,27 @@ Network.`,
 		Args:         cobra.ExactArgs(1),
 		RunE:         validatePrimaryNetwork,
 	}
+
+	cmd.Flags().BoolVarP(&deployDevnet, "devnet", "d", false, "set up validator in devnet")
 	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "set up validator in testnet (alias to `fuji`)")
 	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "set up validator in fuji (alias to `testnet`")
 	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "set up validator in mainnet")
+
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
+	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
+	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
+
 	cmd.Flags().Uint64Var(&weight, "stake-amount", 0, "how many AVAX to stake in the validator")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long validator validates for after start time")
-	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 
 	return cmd
 }
 
-func parseBootstrappedOutput(filePath string) (bool, error) {
-	jsonFile, err := os.Open(filePath)
-	if err != nil {
-		return false, err
-	}
-	defer jsonFile.Close()
-	byteValue, _ := io.ReadAll(jsonFile)
-	var result map[string]interface{}
-	if err := json.Unmarshal(byteValue, &result); err != nil {
-		return false, err
-	}
-	isBootstrappedInterface, ok := result["result"].(map[string]interface{})
-	if ok {
-		isBootstrapped, ok := isBootstrappedInterface["isBootstrapped"].(bool)
-		if ok {
-			return isBootstrapped, nil
-		}
-	}
-	return false, errors.New("unable to parse node bootstrap status")
-}
-
-func parseNodeIDOutput(fileName string) (string, error) {
-	jsonFile, err := os.Open(fileName)
-	if err != nil {
-		return "", err
-	}
-	defer jsonFile.Close()
-	byteValue, _ := io.ReadAll(jsonFile)
-
-	var result map[string]interface{}
-	if err = json.Unmarshal(byteValue, &result); err != nil {
-		return "", err
-	}
-	nodeIDInterface, ok := result["result"].(map[string]interface{})
-	if ok {
-		nodeID, ok := nodeIDInterface["nodeID"].(string)
-		if ok {
-			return nodeID, nil
-		}
-	}
-	return "", errors.New("unable to parse node ID")
-}
-
 func GetMinStakingAmount(network models.Network) (uint64, error) {
-	var apiURL string
-	switch network {
-	case models.Mainnet:
-		apiURL = constants.MainnetAPIEndpoint
-	case models.Fuji:
-		apiURL = constants.FujiAPIEndpoint
-	}
-	pClient := platformvm.NewClient(apiURL)
-	ctx, cancel := context.WithTimeout(context.Background(), constants.E2ERequestTimeout)
+	pClient := platformvm.NewClient(network.Endpoint)
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	minValStake, _, err := pClient.GetMinStake(ctx, ids.Empty)
 	if err != nil {
@@ -135,42 +92,20 @@ func GetMinStakingAmount(network models.Network) (uint64, error) {
 	return minValStake, nil
 }
 
-func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, nodeIndex int, signingKeyPath string) error {
+func joinAsPrimaryNetworkValidator(
+	network models.Network,
+	kc keychain.Keychain,
+	useLedger bool,
+	nodeID ids.NodeID,
+	nodeIndex int,
+	signingKeyPath string,
+	nodeCmd bool,
+) error {
 	ux.Logger.PrintToUser(fmt.Sprintf("Adding node %s as a Primary Network Validator...", nodeID.String()))
 	var (
 		start time.Time
 		err   error
 	)
-	switch {
-	case deployTestnet:
-		network = models.Fuji
-	case deployMainnet:
-		network = models.Mainnet
-	}
-	if len(ledgerAddresses) > 0 {
-		useLedger = true
-	}
-
-	if useLedger && keyName != "" {
-		return ErrMutuallyExlusiveKeyLedger
-	}
-
-	switch network {
-	case models.Fuji:
-		if !useLedger && keyName == "" {
-			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "pay transaction fees", app.GetKeyDir())
-			if err != nil {
-				return err
-			}
-		}
-	case models.Mainnet:
-		useLedger = true
-		if keyName != "" {
-			return ErrStoredKeyOnMainnet
-		}
-	default:
-		return errors.New("unsupported network")
-	}
 	minValStake, err := GetMinStakingAmount(network)
 	if err != nil {
 		return err
@@ -184,23 +119,26 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 	if weight < minValStake {
 		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", minValStake, weight)
 	}
-	start, duration, err = GetTimeParametersPrimaryNetwork(network, nodeIndex, duration, startTimeStr)
+	start, duration, err = GetTimeParametersPrimaryNetwork(network, nodeIndex, duration, startTimeStr, nodeCmd)
 	if err != nil {
 		return err
 	}
 
-	kc, err := subnetcmd.GetKeychain(useLedger, ledgerAddresses, keyName, network)
-	if err != nil {
-		return err
-	}
 	recipientAddr := kc.Addresses().List()[0]
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	PrintNodeJoinPrimaryNetworkOutput(nodeID, weight, network, start)
 	// we set the starting time for node to be a Primary Network Validator to be in 1 minute
 	// we use min delegation fee as default
-	delegationFee := genesis.FujiParams.MinDelegationFee
-	if network == models.Mainnet {
+	var delegationFee uint32
+	switch network.Kind {
+	case models.Mainnet:
 		delegationFee = genesis.MainnetParams.MinDelegationFee
+	case models.Fuji:
+		delegationFee = genesis.FujiParams.MinDelegationFee
+	case models.Devnet:
+		delegationFee = genesis.LocalParams.MinDelegationFee
+	default:
+		return fmt.Errorf("unsupported network")
 	}
 	blsKeyBytes, err := os.ReadFile(signingKeyPath)
 	if err != nil {
@@ -210,14 +148,32 @@ func joinAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, no
 	if err != nil {
 		return err
 	}
-	_, err = deployer.AddPermissionlessValidator(ids.Empty, ids.Empty, nodeID, weight, uint64(start.Unix()), uint64(start.Add(duration).Unix()), recipientAddr, delegationFee, nil, signer.NewProofOfPossession(blsSk))
+	_, err = deployer.AddPermissionlessValidator(
+		ids.Empty,
+		ids.Empty,
+		nodeID,
+		weight,
+		uint64(start.Unix()),
+		uint64(start.Add(duration).Unix()),
+		recipientAddr,
+		delegationFee,
+		nil,
+		signer.NewProofOfPossession(blsSk),
+	)
 	return err
 }
 
 func PromptWeightPrimaryNetwork(network models.Network) (uint64, error) {
-	defaultStake := genesis.FujiParams.MinValidatorStake
-	if network == models.Mainnet {
+	var defaultStake uint64
+	switch network.Kind {
+	case models.Mainnet:
 		defaultStake = genesis.MainnetParams.MinValidatorStake
+	case models.Fuji:
+		defaultStake = genesis.FujiParams.MinValidatorStake
+	case models.Devnet:
+		defaultStake = genesis.LocalParams.MinValidatorStake
+	default:
+		return 0, fmt.Errorf("unsupported network")
 	}
 	defaultWeight := fmt.Sprintf("Default (%s)", convertNanoAvaxToAvaxString(defaultStake))
 	txt := "What stake weight would you like to assign to the validator?"
@@ -235,7 +191,7 @@ func PromptWeightPrimaryNetwork(network models.Network) (uint64, error) {
 	}
 }
 
-func GetTimeParametersPrimaryNetwork(network models.Network, nodeIndex int, validationDuration time.Duration, validationStartTimeStr string) (time.Time, time.Duration, error) {
+func GetTimeParametersPrimaryNetwork(network models.Network, nodeIndex int, validationDuration time.Duration, validationStartTimeStr string, nodeCmd bool) (time.Time, time.Duration, error) {
 	const (
 		defaultDurationOption = "Minimum staking duration on primary network"
 		custom                = "Custom"
@@ -248,7 +204,10 @@ func GetTimeParametersPrimaryNetwork(network models.Network, nodeIndex int, vali
 			return time.Time{}, 0, err
 		}
 	} else {
-		start = time.Now().Add(constants.PrimaryNetworkValidatingStartLeadTime)
+		start = time.Now().Add(constants.PrimaryNetworkValidatingStartLeadTimeNodeCmd)
+		if !nodeCmd {
+			start = time.Now().Add(constants.PrimaryNetworkValidatingStartLeadTime)
+		}
 	}
 	if useCustomDuration && validationDuration != 0 {
 		return start, duration, nil
@@ -284,7 +243,7 @@ func GetTimeParametersPrimaryNetwork(network models.Network, nodeIndex int, vali
 
 func getDefaultValidationTime(start time.Time, network models.Network, nodeIndex int) (time.Duration, error) {
 	durationStr := constants.DefaultFujiStakeDuration
-	if network == models.Mainnet {
+	if network.Kind == models.Mainnet {
 		durationStr = constants.DefaultMainnetStakeDuration
 	}
 	durationInt, err := strconv.Atoi(durationStr[:len(durationStr)-1])
@@ -312,56 +271,20 @@ func getDefaultValidationTime(start time.Time, network models.Network, nodeIndex
 	return d, nil
 }
 
-func checkClusterIsBootstrapped(clusterName string) ([]string, error) {
-	ansibleNodeIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return nil, err
-	}
-	notBootstrappedNodes := []string{}
-	ux.Logger.PrintToUser(fmt.Sprintf("Checking if node(s) in cluster %s are bootstrapped to Primary Network ...", clusterName))
-	if err := app.CreateAnsibleStatusDir(); err != nil {
-		return nil, err
-	}
-	if err := ansible.RunAnsiblePlaybookCheckBootstrapped(app.GetAnsibleDir(), app.GetBootstrappedJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), "all"); err != nil {
-		return nil, err
-	}
-	for _, host := range ansibleNodeIDs {
-		isBootstrapped, err := parseBootstrappedOutput(app.GetBootstrappedJSONFile() + "." + host)
-		if err != nil {
-			return nil, err
-		}
-		if !isBootstrapped {
-			notBootstrappedNodes = append(notBootstrappedNodes, host)
-		}
-	}
-	if err := app.RemoveAnsibleStatusDir(); err != nil {
-		return nil, err
-	}
-	return notBootstrappedNodes, nil
-}
-
-func getClusterNodeIDs(clusterName string, ansibleNodeIDs []string) (map[string]string, map[string]error, error) {
-	if err := app.CreateAnsibleStatusDir(); err != nil {
-		return nil, nil, err
-	}
-	defer func() {
-		_ = app.RemoveAnsibleStatusDir()
-	}()
-	if err := ansible.RunAnsiblePlaybookGetNodeID(app.GetAnsibleDir(), app.GetNodeIDJSONFile(), app.GetAnsibleInventoryDirPath(clusterName), strings.Join(ansibleNodeIDs, ",")); err != nil {
-		return nil, nil, err
-	}
+func getNodeIDs(hosts []*models.Host) (map[string]string, map[string]error) {
 	nodeIDMap := map[string]string{}
 	failedNodes := map[string]error{}
-	for _, host := range ansibleNodeIDs {
-		nodeID, err := parseNodeIDOutput(app.GetNodeIDJSONFile() + "." + host)
+	for _, host := range hosts {
+		cloudNodeID := host.GetCloudID()
+		nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudNodeID))
 		if err != nil {
-			failedNodes[host] = err
+			failedNodes[host.NodeID] = err
 			continue
 		}
-		ux.Logger.PrintToUser("Avalanche node id for host %s is %s", host, nodeID)
-		nodeIDMap[host] = nodeID
+		ux.Logger.PrintToUser("Avalanche node id for host %s is %s", host.NodeID, nodeID)
+		nodeIDMap[host.NodeID] = nodeID.String()
 	}
-	return nodeIDMap, failedNodes, nil
+	return nodeIDMap, failedNodes
 }
 
 // checkNodeIsPrimaryNetworkValidator only returns err if node is already a Primary Network validator
@@ -375,14 +298,21 @@ func checkNodeIsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Networ
 
 // addNodeAsPrimaryNetworkValidator returns bool if node is added as primary network validator
 // as it impacts the output in adding node as subnet validator in the next steps
-func addNodeAsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network, nodeIndex int, instanceID string) (bool, error) {
+func addNodeAsPrimaryNetworkValidator(
+	network models.Network,
+	kc keychain.Keychain,
+	useLedger bool,
+	nodeID ids.NodeID,
+	nodeIndex int,
+	instanceID string,
+) (bool, error) {
 	isValidator, err := checkNodeIsPrimaryNetworkValidator(nodeID, network)
 	if err != nil {
 		return false, err
 	}
 	if !isValidator {
 		signingKeyPath := app.GetNodeBLSSecretKeyPath(instanceID)
-		if err = joinAsPrimaryNetworkValidator(nodeID, network, nodeIndex, signingKeyPath); err != nil {
+		if err = joinAsPrimaryNetworkValidator(network, kc, useLedger, nodeID, nodeIndex, signingKeyPath, true); err != nil {
 			return false, err
 		}
 		ux.Logger.PrintToUser(fmt.Sprintf("Node %s successfully added as Primary Network validator!", nodeID.String()))
@@ -396,51 +326,79 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	err := setupAnsible(clusterName)
+
+	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {
 		return err
 	}
-	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
+	network := clustersConfig.Clusters[clusterName].Network
+
+	kc, err := subnetcmd.GetKeychainFromCmdLineFlags(
+		constants.PayTxsFeesMsg,
+		network,
+		keyName,
+		useEwoq,
+		&useLedger,
+		ledgerAddresses,
+	)
+	if err != nil {
+		return err
+	}
+
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	defer disconnectHosts(hosts)
+
+	notBootstrappedNodes, err := checkHostsAreBootstrapped(hosts)
 	if err != nil {
 		return err
 	}
 	if len(notBootstrappedNodes) > 0 {
 		return fmt.Errorf("node(s) %s are not bootstrapped yet, please try again later", notBootstrappedNodes)
 	}
-	ansibleNodeIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	notHealthyNodes, err := checkHostsAreHealthy(hosts)
 	if err != nil {
 		return err
 	}
-	nodeIDMap, failedNodesMap, err := getClusterNodeIDs(clusterName, ansibleNodeIDs)
-	if err != nil {
-		return err
+	if len(notHealthyNodes) > 0 {
+		return fmt.Errorf("node(s) %s are not healthy, please fix the issue and again", notHealthyNodes)
 	}
+	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
+	nodeIDMap, failedNodesMap := getNodeIDs(hosts)
 	failedNodes := []string{}
 	nodeErrors := []error{}
-	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
-	for i, host := range ansibleNodeIDs {
-		nodeIDStr, b := nodeIDMap[host]
+	for i, host := range hosts {
+		nodeIDStr, b := nodeIDMap[host.NodeID]
 		if !b {
-			err, b := failedNodesMap[host]
+			err, b := failedNodesMap[host.NodeID]
 			if !b {
 				return fmt.Errorf("expected to found an error for non mapped node")
 			}
-			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host, err)
-			failedNodes = append(failedNodes, host)
+			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host.NodeID, err)
+			failedNodes = append(failedNodes, host.NodeID)
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
 		nodeID, err := ids.NodeIDFromString(nodeIDStr)
 		if err != nil {
-			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host, err)
-			failedNodes = append(failedNodes, host)
+			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host.NodeID, err)
+			failedNodes = append(failedNodes, host.NodeID)
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
-		_, err = addNodeAsPrimaryNetworkValidator(nodeID, models.Fuji, i, strings.Split(host, "_")[2])
+		_, clusterNodeID, err := models.HostAnsibleIDToCloudID(host.NodeID)
 		if err != nil {
-			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host, err)
-			failedNodes = append(failedNodes, host)
+			ux.Logger.PrintToUser("Failed to add node %s as Primary Network due to %s", host.NodeID, err.Error())
+			failedNodes = append(failedNodes, host.NodeID)
+			nodeErrors = append(nodeErrors, err)
+			continue
+		}
+		_, err = addNodeAsPrimaryNetworkValidator(network, kc, useLedger, nodeID, i, clusterNodeID)
+		if err != nil {
+			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host.NodeID, err)
+			failedNodes = append(failedNodes, host.NodeID)
 			nodeErrors = append(nodeErrors, err)
 		}
 	}
@@ -463,7 +421,7 @@ func convertNanoAvaxToAvaxString(weight uint64) string {
 
 func PrintNodeJoinPrimaryNetworkOutput(nodeID ids.NodeID, weight uint64, network models.Network, start time.Time) {
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
-	ux.Logger.PrintToUser("Network: %s", network.String())
+	ux.Logger.PrintToUser("Network: %s", network.Name())
 	ux.Logger.PrintToUser("Start time: %s", start.Format(constants.TimeParseLayout))
 	ux.Logger.PrintToUser("End time: %s", start.Add(duration).Format(constants.TimeParseLayout))
 	// we need to divide by 10 ^ 9 since we were using nanoAvax

@@ -45,6 +45,7 @@ the --output flag.`,
 	)
 	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "export `mainnet` genesis")
 	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "export `local` genesis")
+	cmd.Flags().BoolVarP(&deployDevnet, "devnet", "d", false, "export `devnet` genesis")
 	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "export `fuji` genesis")
 	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "export `fuji` genesis")
 	cmd.Flags().StringVar(&customVMRepoURL, "custom-vm-repo-url", "", "custom vm repository url")
@@ -54,11 +55,15 @@ the --output flag.`,
 }
 
 func CallExportSubnet(subnetName, exportPath string, network models.Network) error {
-	switch network {
+	switch network.Kind {
 	case models.Mainnet:
 		deployMainnet = true
 	case models.Fuji:
 		deployTestnet = true
+	case models.Local:
+		deployLocal = true
+	case models.Devnet:
+		deployDevnet = true
 	}
 	exportOutput = exportPath
 	return exportSubnet(nil, []string{subnetName})
@@ -73,22 +78,21 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	var network models.Network
-	if deployMainnet {
-		network = models.Mainnet
-	}
+	network := models.UndefinedNetwork
 	switch {
 	case deployLocal:
-		network = models.Local
+		network = models.LocalNetwork
+	case deployDevnet:
+		network = models.DevnetNetwork
 	case deployTestnet:
-		network = models.Fuji
+		network = models.FujiNetwork
 	case deployMainnet:
-		network = models.Mainnet
+		network = models.MainnetNetwork
 	}
-	if network == models.Undefined {
+	if network.Kind == models.Undefined {
 		networkStr, err := app.Prompt.CaptureList(
 			"Choose which network's genesis to export",
-			[]string{models.Local.String(), models.Fuji.String(), models.Mainnet.String()},
+			[]string{models.Local.String(), models.Devnet.String(), models.Fuji.String(), models.Mainnet.String()},
 		)
 		if err != nil {
 			return err

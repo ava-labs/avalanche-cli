@@ -12,13 +12,15 @@ import (
 	"os/signal"
 	"path"
 	"syscall"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/server"
-	"github.com/ava-labs/avalanche-network-runner/utils"
+	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/docker/docker/pkg/reexec"
@@ -45,6 +47,7 @@ func NewProcessChecker() ProcessChecker {
 
 type GRPCClientOp struct {
 	avoidRPCVersionCheck bool
+	dialTimeout          time.Duration
 }
 
 type GRPCClientOpOption func(*GRPCClientOp)
@@ -61,9 +64,17 @@ func WithAvoidRPCVersionCheck(avoidRPCVersionCheck bool) GRPCClientOpOption {
 	}
 }
 
+func WithDialTimeout(dialTimeout time.Duration) GRPCClientOpOption {
+	return func(op *GRPCClientOp) {
+		op.dialTimeout = dialTimeout
+	}
+}
+
 // NewGRPCClient hides away the details (params) of creating a gRPC server connection
 func NewGRPCClient(opts ...GRPCClientOpOption) (client.Client, error) {
-	op := GRPCClientOp{}
+	op := GRPCClientOp{
+		dialTimeout: gRPCDialTimeout,
+	}
 	op.applyOpts(opts)
 	logLevel, err := logging.ToLevel(gRPCClientLogLevel)
 	if err != nil {
@@ -79,13 +90,14 @@ func NewGRPCClient(opts ...GRPCClientOpOption) (client.Client, error) {
 	}
 	client, err := client.New(client.Config{
 		Endpoint:    gRPCServerEndpoint,
-		DialTimeout: gRPCDialTimeout,
+		DialTimeout: op.dialTimeout,
 	}, log)
 	if errors.Is(err, context.DeadlineExceeded) {
 		err = ErrGRPCTimeout
 	}
 	if client != nil && !op.avoidRPCVersionCheck {
-		ctx := GetAsyncContext()
+		ctx, cancel := utils.GetAPIContext()
+		defer cancel()
 		rpcVersion, err := client.RPCVersion(ctx)
 		if err != nil {
 			return nil, err
@@ -195,7 +207,7 @@ func StartServerProcess(app *application.Avalanche) error {
 	cmd := exec.Command(thisBin, args...)
 
 	outputDirPrefix := path.Join(app.GetRunDir(), "server")
-	outputDir, err := utils.MkDirWithTimestamp(outputDirPrefix)
+	outputDir, err := anrutils.MkDirWithTimestamp(outputDirPrefix)
 	if err != nil {
 		return err
 	}
@@ -230,26 +242,17 @@ func StartServerProcess(app *application.Avalanche) error {
 	return nil
 }
 
-// GetAsyncContext returns a timeout context with the cancel function suppressed
-func GetAsyncContext() context.Context {
-	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
-	// don't call since "start" is async
-	// and the top-level context here "ctx" is passed
-	// to all underlying function calls
-	// just set the timeout to halt "Start" async ops
-	// when the deadline is reached
-	_ = cancel
-
-	return ctx
-}
-
 func KillgRPCServerProcess(app *application.Avalanche) error {
-	cli, err := NewGRPCClient(WithAvoidRPCVersionCheck(true))
+	cli, err := NewGRPCClient(
+		WithAvoidRPCVersionCheck(true),
+		WithDialTimeout(constants.FastGRPCDialTimeout),
+	)
 	if err != nil {
 		return err
 	}
 	defer cli.Close()
-	ctx := GetAsyncContext()
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
 	_, err = cli.Stop(ctx)
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {

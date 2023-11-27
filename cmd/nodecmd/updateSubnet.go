@@ -4,8 +4,11 @@ package nodecmd
 
 import (
 	"fmt"
+	"path/filepath"
+	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 
@@ -18,10 +21,10 @@ import (
 func newUpdateSubnetCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "subnet [clusterName] [subnetName]",
-		Short: "(ALPHA Warning) Update nodes in a cluster with latest subnet configuration and virtual machine",
+		Short: "(ALPHA Warning) Update nodes in a cluster with latest subnet configuration and VM for custom VM",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
-The node update subnet command updates all nodes in a cluster with latest Subnet configuration and virtual machine.
+The node update subnet command updates all nodes in a cluster with latest Subnet configuration and VM for custom VM.
 You can check the updated subnet bootstrap status by calling avalanche node status <clusterName> --subnet <subnetName>`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(2),
@@ -37,20 +40,29 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	if err := setupAnsible(clusterName); err != nil {
-		return err
-	}
 	if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 		return err
 	}
-	notBootstrappedNodes, err := checkClusterIsBootstrapped(clusterName)
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	defer disconnectHosts(hosts)
+	notBootstrappedNodes, err := checkHostsAreBootstrapped(hosts)
 	if err != nil {
 		return err
 	}
 	if len(notBootstrappedNodes) > 0 {
 		return fmt.Errorf("node(s) %s are not bootstrapped yet, please try again later", notBootstrappedNodes)
 	}
-	incompatibleNodes, err := checkAvalancheGoVersionCompatible(clusterName, subnetName)
+	notHealthyNodes, err := checkHostsAreHealthy(hosts)
+	if err != nil {
+		return err
+	}
+	if len(notHealthyNodes) > 0 {
+		return fmt.Errorf("node(s) %s are not healthy, please fix the issue and again", notHealthyNodes)
+	}
+	incompatibleNodes, err := checkAvalancheGoVersionCompatible(hosts, subnetName)
 	if err != nil {
 		return err
 	}
@@ -69,10 +81,12 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
 	}
-	if err := setupBuildEnv(app.GetAnsibleInventoryDirPath(clusterName), ""); err != nil {
+	clustersConfig, err := app.LoadClustersConfig()
+	if err != nil {
 		return err
 	}
-	nonUpdatedNodes, err := doUpdateSubnet(clusterName, subnetName, models.Fuji)
+	network := clustersConfig.Clusters[clusterName].Network
+	nonUpdatedNodes, err := doUpdateSubnet(hosts, subnetName, network)
 	if err != nil {
 		return err
 	}
@@ -86,24 +100,35 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 
 // doUpdateSubnet exports deployed subnet in user's local machine to cloud server and calls node to
 // restart tracking the specified subnet (similar to avalanche subnet join <subnetName> command)
-func doUpdateSubnet(clusterName, subnetName string, network models.Network) ([]string, error) {
+func doUpdateSubnet(
+	hosts []*models.Host,
+	subnetName string,
+	network models.Network,
+) ([]string, error) {
 	subnetPath := "/tmp/" + subnetName + constants.ExportSubnetSuffix
 	if err := subnetcmd.CallExportSubnet(subnetName, subnetPath, network); err != nil {
 		return nil, err
 	}
-	if err := ansible.RunAnsiblePlaybookExportSubnet(app.GetAnsibleDir(), app.GetAnsibleInventoryDirPath(clusterName), subnetPath, "/tmp", "all"); err != nil {
-		return nil, err
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	for _, host := range hosts {
+		wg.Add(1)
+		go func(nodeResults *models.NodeResults, host *models.Host) {
+			defer wg.Done()
+			subnetExportPath := filepath.Join("/tmp", filepath.Base(subnetPath))
+			if err := ssh.RunSSHExportSubnet(host, subnetPath, subnetExportPath); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			if err := ssh.RunSSHUpdateSubnet(host, subnetName, subnetExportPath); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+		}(&wgResults, host)
 	}
-	hostAliases, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return nil, err
+	wg.Wait()
+	if wgResults.HasErrors() {
+		return nil, fmt.Errorf("failed to update subnet for node(s) %s", wgResults.GetErrorHostMap())
 	}
-	nonUpdatedNodes := []string{}
-	for _, host := range hostAliases {
-		// runs avalanche update subnet command
-		if err = ansible.RunAnsiblePlaybookUpdateSubnet(app.GetAnsibleDir(), subnetName, subnetPath, app.GetAnsibleInventoryDirPath(clusterName), host); err != nil {
-			nonUpdatedNodes = append(nonUpdatedNodes, host)
-		}
-	}
-	return nonUpdatedNodes, nil
+	return wgResults.GetErrorHosts(), nil
 }

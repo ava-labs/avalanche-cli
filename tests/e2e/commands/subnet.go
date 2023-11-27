@@ -21,10 +21,6 @@ import (
 	"github.com/onsi/gomega"
 )
 
-const (
-	WriteReadReadPerms = 0o644
-)
-
 /* #nosec G204 */
 func CreateSubnetEvmConfig(subnetName string, genesisPath string) (string, string) {
 	mapper := utils.NewVersionMapper()
@@ -118,10 +114,16 @@ func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) 
 		"create",
 		"--genesis",
 		genesisPath,
-		"--vm",
-		vmPath,
 		"--custom",
 		subnetName,
+		"--custom-vm-path",
+		vmPath,
+		"--custom-vm-repo-url",
+		"https://github.com/ava-labs/subnet-evm/",
+		"--custom-vm-branch",
+		"master",
+		"--custom-vm-build-script",
+		"scripts/build.sh",
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
@@ -176,7 +178,7 @@ func WriteGenesis(subnetName string, bytes []byte) error {
 	if err := os.MkdirAll(filepath.Dir(path), constants.DefaultPerms755); err != nil {
 		return err
 	}
-	return os.WriteFile(path, bytes, WriteReadReadPerms)
+	return os.WriteFile(path, bytes, constants.WriteReadReadPerms)
 }
 
 func GetMainnetGenesis(subnetName string) (core.Genesis, error) {
@@ -934,7 +936,7 @@ func SimulateGetSubnetStatsFuji(subnetName, subnetID string) string {
 	// add the subnet ID to the `fuji` section so that the `stats` command
 	// can find it (as this is a simulation with a `local` network,
 	// it got written in to the `local` network section)
-	err = utils.AddSubnetIDToSidecar(subnetName, models.Fuji, subnetID)
+	err = utils.AddSubnetIDToSidecar(subnetName, models.FujiNetwork, subnetID)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// run stats
 	cmd := exec.Command(
