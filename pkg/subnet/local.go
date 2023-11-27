@@ -56,10 +56,17 @@ type LocalDeployer struct {
 	backendStartedHere bool
 	setDefaultSnapshot setDefaultSnapshotFunc
 	avagoVersion       string
+	avagoBinaryPath    string
 	vmBin              string
 }
 
-func NewLocalDeployer(app *application.Avalanche, avagoVersion string, vmBin string) *LocalDeployer {
+// uses either avagoVersion or avagoBinaryPath
+func NewLocalDeployer(
+	app *application.Avalanche,
+	avagoVersion string,
+	avagoBinaryPath string,
+	vmBin string,
+) *LocalDeployer {
 	return &LocalDeployer{
 		procChecker:        binutils.NewProcessChecker(),
 		binChecker:         binutils.NewBinaryChecker(),
@@ -68,6 +75,7 @@ func NewLocalDeployer(app *application.Avalanche, avagoVersion string, vmBin str
 		app:                app,
 		setDefaultSnapshot: SetDefaultSnapshot,
 		avagoVersion:       avagoVersion,
+		avagoBinaryPath:    avagoBinaryPath,
 		vmBin:              vmBin,
 	}
 }
@@ -562,13 +570,18 @@ func (d *LocalDeployer) SetupLocalEnv() (string, error) {
 		return "", fmt.Errorf("failed setting up snapshots: %w", err)
 	}
 
-	avagoDir, err := d.setupLocalEnv()
-	if err != nil {
-		return "", fmt.Errorf("failed setting up local environment: %w", err)
+	avalancheGoBinPath := ""
+	if d.avagoBinaryPath != "" {
+		avalancheGoBinPath = d.avagoBinaryPath
+	} else {
+		avagoDir, err := d.setupLocalEnv()
+		if err != nil {
+			return "", fmt.Errorf("failed setting up local environment: %w", err)
+		}
+		avalancheGoBinPath = filepath.Join(avagoDir, "avalanchego")
 	}
 
 	pluginDir := d.app.GetPluginsDir()
-	avalancheGoBinPath := filepath.Join(avagoDir, "avalanchego")
 
 	if err := os.MkdirAll(pluginDir, constants.DefaultPerms755); err != nil {
 		return "", fmt.Errorf("could not create pluginDir %s", pluginDir)

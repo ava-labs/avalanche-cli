@@ -44,7 +44,7 @@ type PublicDeployer struct {
 
 func NewPublicDeployer(app *application.Avalanche, usingLedger bool, kc keychain.Keychain, network models.Network) *PublicDeployer {
 	return &PublicDeployer{
-		LocalDeployer: *NewLocalDeployer(app, "", ""),
+		LocalDeployer: *NewLocalDeployer(app, "", "", ""),
 		app:           app,
 		usingLedger:   usingLedger,
 		kc:            kc,

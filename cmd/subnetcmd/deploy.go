@@ -58,6 +58,7 @@ var (
 	subnetIDStr              string
 	mainnetChainID           string
 	skipCreatePrompt         bool
+	avagoBinaryPath          string
 
 	errMutuallyExlusiveNetworks = errors.New("--local, --fuji/--testnet, --mainnet are mutually exclusive")
 
@@ -105,6 +106,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "deploy into given subnet id")
 	cmd.Flags().StringVar(&mainnetChainID, "mainnet-chain-id", "", "use different ChainID for mainnet deployment")
+	cmd.Flags().StringVar(&avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
 	return cmd
 }
 
@@ -356,14 +358,16 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("unknown vm: %s", sidecar.VM)
 		}
 
-		// check if selected version matches what is currently running
-		nc := localnetworkinterface.NewStatusChecker()
-		userProvidedAvagoVersion, err = CheckForInvalidDeployAndGetAvagoVersion(nc, sidecar.RPCVersion)
-		if err != nil {
-			return err
+		if avagoBinaryPath == "" {
+			// check if selected version matches what is currently running
+			nc := localnetworkinterface.NewStatusChecker()
+			userProvidedAvagoVersion, err = CheckForInvalidDeployAndGetAvagoVersion(nc, sidecar.RPCVersion)
+			if err != nil {
+				return err
+			}
 		}
 
-		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, vmBin)
+		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin)
 		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
 		if err != nil {
 			if deployer.BackendStartedHere() {

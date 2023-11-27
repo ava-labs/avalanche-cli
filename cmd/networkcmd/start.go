@@ -23,6 +23,7 @@ import (
 var (
 	userProvidedAvagoVersion string
 	snapshotName             string
+	avagoBinaryPath          string
 )
 
 const latest = "latest"
@@ -43,18 +44,24 @@ already running.`,
 	}
 
 	cmd.Flags().StringVar(&userProvidedAvagoVersion, "avalanchego-version", latest, "use this version of avalanchego (ex: v1.17.12)")
+	cmd.Flags().StringVar(&avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
 	cmd.Flags().StringVar(&snapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to start the network from")
 
 	return cmd
 }
 
 func StartNetwork(*cobra.Command, []string) error {
-	avagoVersion, err := determineAvagoVersion(userProvidedAvagoVersion)
-	if err != nil {
-		return err
+	var (
+		err          error
+		avagoVersion string
+	)
+	if avagoBinaryPath == "" {
+		avagoVersion, err = determineAvagoVersion(userProvidedAvagoVersion)
+		if err != nil {
+			return err
+		}
 	}
-
-	sd := subnet.NewLocalDeployer(app, avagoVersion, "")
+	sd := subnet.NewLocalDeployer(app, avagoVersion, avagoBinaryPath, "")
 
 	if err := sd.StartServer(); err != nil {
 		return err
