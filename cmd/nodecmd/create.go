@@ -82,6 +82,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().BoolVar(&useAWS, "aws", false, "create node/s in AWS cloud")
 	cmd.Flags().BoolVar(&useGCP, "gcp", false, "create node/s in GCP cloud")
 	cmd.Flags().StringSliceVar(&cmdLineRegion, "region", []string{""}, "create node/s in given region")
+	cmd.Flags().StringSliceVar(&cmdLineRegion, "regions", []string{""}, "alias to --region")
 	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to create cloud resources")
 	cmd.Flags().IntSliceVar(&numNodes, "num-nodes", []int{}, "number of nodes to create")
 	cmd.Flags().StringVar(&nodeType, "node-type", "default", "cloud instance type")
