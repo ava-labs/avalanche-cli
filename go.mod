@@ -4,9 +4,9 @@ go 1.20
 
 require (
 	github.com/ava-labs/apm v0.0.4
-	github.com/ava-labs/avalanche-network-runner v1.7.3-0.20231026155506-24d0d6a39855
-	github.com/ava-labs/avalanchego v1.10.16-0.20231106204246-d4fb34f0e44d
-	github.com/ava-labs/coreth v0.12.8-rc.1
+	github.com/ava-labs/avalanche-network-runner v1.7.3
+	github.com/ava-labs/avalanchego v1.10.16
+	github.com/ava-labs/coreth v0.12.9-rc.5
 	github.com/ava-labs/subnet-evm v0.5.3
 	github.com/aws/aws-sdk-go v1.44.301
 	github.com/docker/docker v24.0.5+incompatible
@@ -25,7 +25,7 @@ require (
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
 	github.com/zclconf/go-cty v1.13.0
-	go.uber.org/zap v1.24.0
+	go.uber.org/zap v1.26.0
 	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df
 	golang.org/x/mod v0.12.0
 	golang.org/x/net v0.17.0
