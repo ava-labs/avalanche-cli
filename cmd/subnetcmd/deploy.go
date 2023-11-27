@@ -265,7 +265,7 @@ func getSubnetEVMMainnetChainID(sc *models.Sidecar, subnetName string) error {
 			sc.SubnetEVMMainnetChainID = uint(originalChainID)
 		} else {
 			ux.Logger.PrintToUser("Enter your subnet's ChainID. It can be any positive integer != %d.", originalChainID)
-			newChainID, err := app.Prompt.CaptureUint64Compare(
+			newChainID, err := app.Prompt.CapturePositiveInt(
 				"ChainID",
 				[]prompts.Comparator{
 					{
