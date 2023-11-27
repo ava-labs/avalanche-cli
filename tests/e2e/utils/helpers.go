@@ -949,6 +949,14 @@ func GetSubnetEVMMainneChainID(subnetName string) (uint, error) {
 	return sc.SubnetEVMMainnetChainID, nil
 }
 
+func IsCustomVM(subnetName string) (bool, error) {
+	sc, err := getSideCar(subnetName)
+	if err != nil {
+		return false, err
+	}
+	return sc.VM == models.CustomVM, nil
+}
+
 func GetValidators(subnetName string) ([]string, error) {
 	sc, err := getSideCar(subnetName)
 	if err != nil {

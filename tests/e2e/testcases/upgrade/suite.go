@@ -374,9 +374,11 @@ var _ = ginkgo.Describe("[Upgrade local network]", ginkgo.Ordered, func() {
 
 		containsVersion2 = strings.Contains(output, binaryToVersion[utils.SoloSubnetEVMKey2])
 		gomega.Expect(containsVersion2).Should(gomega.BeFalse())
+
 		// the following indicates it is a custom VM
-		containsCustomVM := strings.Contains(output, "Printing genesis")
-		gomega.Expect(containsCustomVM).Should(gomega.BeTrue())
+		isCustom, err := utils.IsCustomVM(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(isCustom).Should(gomega.BeTrue())
 
 		commands.DeleteSubnetConfig(subnetName)
 	})
