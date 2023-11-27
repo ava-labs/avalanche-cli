@@ -21,6 +21,8 @@ import (
 	"github.com/onsi/gomega"
 )
 
+const subnetEVMMainnetChainID 11
+
 /* #nosec G204 */
 func CreateSubnetEvmConfig(subnetName string, genesisPath string) (string, string) {
 	mapper := utils.NewVersionMapper()
@@ -347,7 +349,7 @@ func SimulateFujiDeploy(
 /* #nosec G204 */
 func SimulateMainnetDeploy(
 	subnetName string,
-	subnetEVMMainnetChainID int,
+	mainnetChainID int,
 ) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -369,7 +371,7 @@ func SimulateMainnetDeploy(
 			"1",
 			"--same-control-key",
 			"--mainnet-chain-id",
-			fmt.Sprint(subnetEVMMainnetChainID),
+			fmt.Sprint(mainnetChainID),
 			subnetName,
 			"--" + constants.SkipUpdateFlag,
 		},
@@ -382,7 +384,6 @@ func SimulateMainnetDeploy(
 /* #nosec G204 */
 func SimulateMultisigMainnetDeploy(
 	subnetName string,
-	subnetEVMMainnetChainID int,
 	subnetControlAddrs []string,
 	chainCreationAuthAddrs []string,
 	txPath string,
