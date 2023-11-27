@@ -29,5 +29,6 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd.AddCommand(newMetricsCmd())
 	cmd.AddCommand(newMigrateCmd())
 	cmd.AddCommand(newSingleNodeCmd())
+	cmd.AddCommand(newAutorizeCloudAccessCmd())
 	return cmd
 }

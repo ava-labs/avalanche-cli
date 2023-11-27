@@ -126,8 +126,8 @@ func NewGRPCServer(snapshotsDir string) (server.Server, error) {
 		return nil, err
 	}
 	return server.New(server.Config{
-		Port:                gRPCServerEndpoint,
-		GwPort:              gRPCGatewayEndpoint,
+		Port:                gRPCServerPort,
+		GwPort:              gRPCGatewayPort,
 		DialTimeout:         gRPCDialTimeout,
 		SnapshotsDir:        snapshotsDir,
 		RedirectNodesOutput: false,

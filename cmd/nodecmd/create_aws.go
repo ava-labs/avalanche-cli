@@ -383,6 +383,9 @@ func requestAWSAccountAuth() error {
 	if err != nil {
 		return err
 	}
+	if err := app.Conf.SetConfigValue(constants.ConfigAutorizeCloudAccessKey, yes); err != nil {
+		return err
+	}
 	if !yes {
 		return errors.New("user did not give authorization to Avalanche-CLI to access AWS account")
 	}
@@ -395,6 +398,9 @@ func requestStopAWSNodeAuth() error {
 	ux.Logger.PrintToUser("- Stop EC2 instance(s) and other components (such as elastic IPs)")
 	yes, err := app.Prompt.CaptureYesNo("I authorize Avalanche-CLI to access my AWS account")
 	if err != nil {
+		return err
+	}
+	if err := app.Conf.SetConfigValue(constants.ConfigAutorizeCloudAccessKey, yes); err != nil {
 		return err
 	}
 	if !yes {
