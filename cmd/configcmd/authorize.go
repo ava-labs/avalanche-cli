@@ -38,7 +38,7 @@ func handleAutorizeCloudAccess(_ *cobra.Command, args []string) error {
 		}
 	case constants.Disable:
 		ux.Logger.PrintToUser("Avalanche-CLI Cloud access has been disabled.")
-		ux.Logger.PrintToUser("You can re-enable cloud access by running 'avalanche config authorize-cloud-access enable'")
+		ux.Logger.PrintToUser("You can re-enable Cloud access by running 'avalanche config authorize-cloud-access enable'")
 		err := saveAutorizeCloudAccessPreferences(false)
 		if err != nil {
 			return err
