@@ -288,6 +288,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		s := commands.SimulateMultisigMainnetDeploy(
 			subnetName,
+			mainnetChainID,
 			[]string{ledger2Addr, ledger3Addr, ledger4Addr},
 			[]string{ledger2Addr, ledger3Addr},
 			txPath,
@@ -307,6 +308,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		s = commands.SimulateMultisigMainnetDeploy(
 			subnetName,
+			mainnetChainID,
 			[]string{ledger2Addr, ledger3Addr, ledger4Addr},
 			[]string{ledger2Addr, ledger3Addr},
 			txPath,

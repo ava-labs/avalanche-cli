@@ -347,7 +347,7 @@ func SimulateFujiDeploy(
 /* #nosec G204 */
 func SimulateMainnetDeploy(
 	subnetName string,
-	mainnetChainID uint,
+	subnetEVMMainnetChainID int,
 ) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -358,24 +358,21 @@ func SimulateMainnetDeploy(
 	err = os.Setenv(constants.SimulatePublicNetwork, "true")
 	gomega.Expect(err).Should(gomega.BeNil())
 
-	cmdLineArgs := []string{
-		SubnetCmd,
-		"deploy",
-		"--mainnet",
-		"--threshold",
-		"1",
-		"--same-control-key",
-		subnetName,
-		"--" + constants.SkipUpdateFlag,
-	}
-	if mainnetChainID != 0 {
-		cmdLineArgs = append(cmdLineArgs, "--mainnet-chain-id", fmt.Sprint(mainnetChainID))
-	}
-
 	// Deploy subnet locally
 	return utils.ExecCommand(
 		CLIBinary,
-		cmdLineArgs,
+		[]string{
+			SubnetCmd,
+			"deploy",
+			"--mainnet",
+			"--threshold",
+			"1",
+			"--same-control-key",
+			"--mainnet-chain-id",
+			fmt.Sprint(subnetEVMMainnetChainID),
+			subnetName,
+			"--" + constants.SkipUpdateFlag,
+		},
 		true,
 		false,
 	)
@@ -385,6 +382,7 @@ func SimulateMainnetDeploy(
 /* #nosec G204 */
 func SimulateMultisigMainnetDeploy(
 	subnetName string,
+	subnetEVMMainnetChainID int,
 	subnetControlAddrs []string,
 	chainCreationAuthAddrs []string,
 	txPath string,
@@ -412,6 +410,8 @@ func SimulateMultisigMainnetDeploy(
 			strings.Join(chainCreationAuthAddrs, ","),
 			"--output-tx-path",
 			txPath,
+			"--mainnet-chain-id",
+			fmt.Sprint(subnetEVMMainnetChainID),
 			subnetName,
 			"--" + constants.SkipUpdateFlag,
 		},
