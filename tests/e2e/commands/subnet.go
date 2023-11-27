@@ -21,7 +21,7 @@ import (
 	"github.com/onsi/gomega"
 )
 
-const subnetEVMMainnetChainID 11
+const subnetEVMMainnetChainID = 11
 
 /* #nosec G204 */
 func CreateSubnetEvmConfig(subnetName string, genesisPath string) (string, string) {
