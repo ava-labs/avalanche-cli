@@ -37,7 +37,7 @@ const (
 
 func deploySubnetToFuji() (string, map[string]utils.NodeInfo) {
 	// deploy
-	s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys, "")
+	s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys)
 	subnetID, err := utils.ParsePublicDeployOutput(s)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// add validators to subnet
