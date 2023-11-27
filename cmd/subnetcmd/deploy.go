@@ -201,33 +201,6 @@ func updateSubnetEVMGenesisChainID(genesisBytes []byte, newChainID uint) ([]byte
 	return json.MarshalIndent(genesisMap, "", "  ")
 }
 
-func createMainnetGenesis(chain string) error {
-	return nil
-	/*
-		evmGenesis, err := app.LoadEvmGenesis(chain)
-		if err != nil {
-			return err
-		}
-		ux.Logger.PrintToUser("Enter your subnet's ChainID. It can be any positive integer.")
-		var chainID *big.Int
-		chainID, err = app.Prompt.CapturePositiveBigInt("ChainID")
-		if err != nil {
-			return err
-		}
-		evmGenesis.Config.ChainID = chainID
-		jsonBytes, err := evmGenesis.MarshalJSON()
-		if err != nil {
-			return err
-		}
-		var prettyJSON bytes.Buffer
-		err = json.Indent(&prettyJSON, jsonBytes, "", "    ")
-		if err != nil {
-			return err
-		}
-		return app.WriteGenesisMainnetFile(chain, prettyJSON.Bytes())
-	*/
-}
-
 // updates sidecar with genesis mainnet id to use
 // given either by cmdline flag, original genesis id, or id obtained from the user
 func getSubnetEVMMainnetChainID(sc *models.Sidecar, subnetName string) error {
