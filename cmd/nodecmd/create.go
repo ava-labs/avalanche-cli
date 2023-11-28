@@ -53,6 +53,7 @@ var (
 	cmdLineGCPCredentialsPath       string
 	cmdLineGCPProjectName           string
 	cmdLineAlternativeKeyPairName   string
+	setUpMonitoring                 bool
 )
 
 type CloudConfig struct {
@@ -154,11 +155,18 @@ func createNodes(_ *cobra.Command, args []string) error {
 			return err
 		}
 		if !separateMonitoringInstance {
+			setUpMonitoring, err = app.Prompt.CaptureYesNo("Do you want to set up monitoring for your instances? (This enables you to monitor validator and machine metrics)")
+			if err != nil {
+				return err
+			}
 			separateMonitoringInstance, err = app.Prompt.CaptureYesNo("Do you want to set up a separate instance to host monitoring? (This enables you to monitor all your set up instances in one dashboard)")
 			if err != nil {
 				return err
 			}
 		}
+	}
+	if separateMonitoringInstance {
+		numNodes += 1
 	}
 	usr, err := user.Current()
 	if err != nil {
@@ -274,7 +282,49 @@ func createNodes(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
 	}
-
+	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	for _, host := range hosts {
+		wg.Add(1)
+		go func(nodeResults *models.NodeResults, host *models.Host) {
+			defer wg.Done()
+			if err := host.Connect(); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			if err := provideStakingCertAndKey(host); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), avalancheGoVersion, network.Kind == models.Devnet); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			if separateMonitoringInstance {
+				if err := ssh.RunSSHSetupMachineMetrics(host); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+					return
+				}
+			} else {
+				if setUpMonitoring {
+					if err := ssh.RunSSHSetupMonitoring(host); err != nil {
+						nodeResults.AddResult(host.NodeID, nil, err)
+						return
+					}
+				}
+			}
+			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			if err := ssh.RunSSHSetupCLIFromSource(host, constants.SetupCLIFromSourceBranch); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+		}(&wgResults, host)
+	}
+	wg.Wait()
 	ansibleHostIDs, err := utils.MapWithError(cloudConfig.InstanceIDs, func(s string) (string, error) { return models.HostCloudIDToAnsibleID(cloudService, s) })
 	if err != nil {
 		return err
@@ -336,48 +386,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 		}
 	}
-
-	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
-	wg := sync.WaitGroup{}
-	wgResults := models.NodeResults{}
-	for _, host := range hosts {
-		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
-			defer wg.Done()
-			if err := host.Connect(); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			if err := provideStakingCertAndKey(host); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), avalancheGoVersion, network.Kind == models.Devnet); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			if separateMonitoringInstance {
-				if err := ssh.RunSSHSetupMachineMetrics(host); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-					return
-				}
-			} else {
-				if err := ssh.RunSSHSetupMonitoring(host); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-					return
-				}
-			}
-			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			if err := ssh.RunSSHSetupCLIFromSource(host, constants.SetupCLIFromSourceBranch); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-		}(&wgResults, host)
-	}
-	wg.Wait()
 	ux.Logger.PrintToUser("======================================")
 	ux.Logger.PrintToUser("AVALANCHE NODE(S) STATUS")
 	ux.Logger.PrintToUser("======================================")

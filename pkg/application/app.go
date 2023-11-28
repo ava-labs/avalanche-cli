@@ -5,6 +5,7 @@ package application
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"os"
 	"path/filepath"
 
@@ -150,8 +151,8 @@ func (app *Avalanche) CreateAnsibleDir() error {
 
 func (app *Avalanche) CreateMonitoringDir() error {
 	monitoringDir := app.GetMonitoringDir()
-	if _, err := os.Stat(monitoringDir); os.IsNotExist(err) {
-		err = os.Mkdir(monitoringDir, constants.DefaultPerms755)
+	if !utils.DirectoryExists(monitoringDir) {
+		err := os.Mkdir(monitoringDir, constants.DefaultPerms755)
 		if err != nil {
 			return err
 		}
@@ -161,8 +162,8 @@ func (app *Avalanche) CreateMonitoringDir() error {
 
 func (app *Avalanche) CreateMonitoringDashboardDir() error {
 	monitoringDashboardDir := app.GetMonitoringDashboardDir()
-	if _, err := os.Stat(monitoringDashboardDir); os.IsNotExist(err) {
-		err = os.Mkdir(monitoringDashboardDir, constants.DefaultPerms755)
+	if !utils.DirectoryExists(monitoringDashboardDir) {
+		err := os.Mkdir(monitoringDashboardDir, constants.DefaultPerms755)
 		if err != nil {
 			return err
 		}
