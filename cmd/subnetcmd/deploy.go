@@ -3,11 +3,9 @@
 package subnetcmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -30,7 +28,6 @@ import (
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
-	"github.com/ava-labs/coreth/core"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -56,7 +53,7 @@ var (
 	useEwoq                  bool
 	ledgerAddresses          []string
 	subnetIDStr              string
-	mainnetChainID           string
+	mainnetChainID           uint32
 	skipCreatePrompt         bool
 
 	errMutuallyExlusiveNetworks = errors.New("--local, --fuji/--testnet, --mainnet are mutually exclusive")
@@ -104,7 +101,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "deploy into given subnet id")
-	cmd.Flags().StringVar(&mainnetChainID, "mainnet-chain-id", "", "use different ChainID for mainnet deployment")
+	cmd.Flags().Uint32Var(&mainnetChainID, "mainnet-chain-id", 0, "use given ChainID for mainnet deployment")
 	return cmd
 }
 
@@ -166,7 +163,7 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 	return chains, nil
 }
 
-func checkDefaultAddressNotInAlloc(network models.Network, chain string) error {
+func checkSubnetEVMDefaultAddressNotInAlloc(network models.Network, chain string) error {
 	if network.Kind != models.Local && network.Kind != models.Devnet && os.Getenv(constants.SimulatePublicNetwork) == "" {
 		genesis, err := app.LoadEvmGenesis(chain)
 		if err != nil {
@@ -187,62 +184,82 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	return deploySubnet(cmd, args)
 }
 
-func createMainnetGenesis(chain string) error {
-	evmGenesis, err := app.LoadEvmGenesis(chain)
+func updateSubnetEVMGenesisChainID(genesisBytes []byte, newChainID uint) ([]byte, error) {
+	var genesisMap map[string]interface{}
+	if err := json.Unmarshal(genesisBytes, &genesisMap); err != nil {
+		return nil, err
+	}
+	configI, ok := genesisMap["config"]
+	if !ok {
+		return nil, fmt.Errorf("config field not found on genesis")
+	}
+	config, ok := configI.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("expected genesis config field to be a map[string]interface, found %T", configI)
+	}
+	config["chainId"] = float64(newChainID)
+	return json.MarshalIndent(genesisMap, "", "  ")
+}
+
+// updates sidecar with genesis mainnet id to use
+// given either by cmdline flag, original genesis id, or id obtained from the user
+func getSubnetEVMMainnetChainID(sc *models.Sidecar, subnetName string) error {
+	// get original chain id
+	evmGenesis, err := app.LoadEvmGenesis(subnetName)
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Enter your subnet's ChainID. It can be any positive integer.")
-	var chainID *big.Int
-	if mainnetChainID != "" {
-		newChainID := new(big.Int)
-		newChainID, ok := newChainID.SetString(mainnetChainID, 10)
-		if !ok {
-			return errors.New("SetString: error")
-		}
-		chainID = newChainID
-	} else {
-		chainID, err = app.Prompt.CapturePositiveBigInt("ChainID")
+	if evmGenesis.Config == nil {
+		return fmt.Errorf("invalid subnet evm genesis format: config is nil")
+	}
+	if evmGenesis.Config.ChainID == nil {
+		return fmt.Errorf("invalid subnet evm genesis format: config chain id is nil")
+	}
+	originalChainID := evmGenesis.Config.ChainID.Uint64()
+	// handle cmdline flag if given
+	if mainnetChainID != 0 {
+		sc.SubnetEVMMainnetChainID = uint(mainnetChainID)
+	}
+	// prompt the user
+	if sc.SubnetEVMMainnetChainID == 0 {
+		useSameChainID := "Use same ChainID"
+		useNewChainID := "Use new ChainID"
+		listOptions := []string{useNewChainID, useSameChainID}
+		newChainIDPrompt := "Using the same ChainID for both Fuji and Mainnet could lead to a replay attack. Do you want to use a different ChainID?"
+		var (
+			err      error
+			decision string
+		)
+		decision, err = app.Prompt.CaptureList(newChainIDPrompt, listOptions)
 		if err != nil {
 			return err
 		}
-	}
-	evmGenesis.Config.ChainID = chainID
-	jsonBytes, err := evmGenesis.MarshalJSON()
-	if err != nil {
-		return err
-	}
-	var prettyJSON bytes.Buffer
-	err = json.Indent(&prettyJSON, jsonBytes, "", "    ")
-	if err != nil {
-		return err
-	}
-	return app.WriteGenesisMainnetFile(chain, prettyJSON.Bytes())
-}
-
-func handleMainnetChainID(chain string) error {
-	genesisMainnetPath := app.GetGenesisMainnetPath(chain)
-	_, err := os.ReadFile(genesisMainnetPath)
-	if err != nil && os.IsNotExist(err) {
-		useSameChainID := "Use same ChainID"
-		createNewGenesis := "Use new ChainID"
-		listOptions := []string{createNewGenesis, useSameChainID}
-		newChainIDPrompt := "Using the same ChainID for both Fuji and Mainnet could lead to a replay attack. Do you want to use a different ChainID?"
-		var decision string
-		if mainnetChainID == "" && os.Getenv(constants.SimulatePublicNetwork) == "" {
-			decision, err = app.Prompt.CaptureList(newChainIDPrompt, listOptions)
+		if decision == useSameChainID {
+			sc.SubnetEVMMainnetChainID = uint(originalChainID)
+		} else {
+			ux.Logger.PrintToUser("Enter your subnet's ChainID. It can be any positive integer != %d.", originalChainID)
+			newChainID, err := app.Prompt.CapturePositiveInt(
+				"ChainID",
+				[]prompts.Comparator{
+					{
+						Label: "Zero",
+						Type:  prompts.MoreThan,
+						Value: 0,
+					},
+					{
+						Label: "Original Chain ID",
+						Type:  prompts.NotEq,
+						Value: originalChainID,
+					},
+				},
+			)
 			if err != nil {
 				return err
 			}
-		}
-		if mainnetChainID != "" || decision == createNewGenesis {
-			err = createMainnetGenesis(chain)
-			if err != nil {
-				return err
-			}
+			sc.SubnetEVMMainnetChainID = uint(newChainID)
 		}
 	}
-	return nil
+	return app.UpdateSidecar(sc)
 }
 
 // deploySubnet is the cobra command run for deploying subnets
@@ -274,12 +291,12 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	chain := chains[0]
 
-	sc, err := app.LoadSidecar(chain)
+	sidecar, err := app.LoadSidecar(chain)
 	if err != nil {
 		return fmt.Errorf("failed to load sidecar for later update: %w", err)
 	}
 
-	if sc.ImportedFromAPM {
+	if sidecar.ImportedFromAPM {
 		return errors.New("unable to deploy subnets imported from a repo")
 	}
 
@@ -302,40 +319,38 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if network.Kind == models.Mainnet || os.Getenv(constants.SimulatePublicNetwork) != "" {
-		err = handleMainnetChainID(chain)
+	isEVMGenesis, err := hasSubnetEVMGenesis(chain)
+	if err != nil {
+		return err
+	}
+	if sidecar.VM == models.SubnetEvm && !isEVMGenesis {
+		return fmt.Errorf("failed to validate SubnetEVM genesis format")
+	}
+
+	chainGenesis, err := app.LoadRawGenesis(chain)
+	if err != nil {
+		return err
+	}
+
+	if isEVMGenesis {
+		// is is a subnet evm or a custom vm based on subnet evm
+		if network.Kind == models.Mainnet {
+			err = getSubnetEVMMainnetChainID(&sidecar, chain)
+			if err != nil {
+				return err
+			}
+			chainGenesis, err = updateSubnetEVMGenesisChainID(chainGenesis, sidecar.SubnetEVMMainnetChainID)
+			if err != nil {
+				return err
+			}
+		}
+		err = checkSubnetEVMDefaultAddressNotInAlloc(network, chain)
 		if err != nil {
 			return err
 		}
 	}
 
-	// deploy based on chosen network
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
-	chainGenesis, err := app.LoadRawGenesis(chain, network)
-	if err != nil {
-		return err
-	}
-
-	if sc.VM == models.SubnetEvm {
-		err = checkDefaultAddressNotInAlloc(network, chain)
-		if err != nil {
-			return err
-		}
-	}
-
-	sidecar, err := app.LoadSidecar(chain)
-	if err != nil {
-		return err
-	}
-
-	// validate genesis as far as possible previous to deploy
-	if sidecar.VM == models.SubnetEvm {
-		var genesis core.Genesis
-		err = json.Unmarshal(chainGenesis, &genesis)
-	}
-	if err != nil {
-		return fmt.Errorf("failed to validate genesis format: %w", err)
-	}
 
 	if network.Kind == models.Local {
 		app.Log.Debug("Deploy local")
@@ -857,4 +872,19 @@ func CheckForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.Statu
 		}
 	}
 	return desiredAvagoVersion, nil
+}
+
+func hasSubnetEVMGenesis(subnetName string) (bool, error) {
+	if _, err := app.LoadRawGenesis(subnetName); err != nil {
+		return false, err
+	}
+	// from here, we are sure to have a genesis file
+	genesis, err := app.LoadEvmGenesis(subnetName)
+	if err != nil {
+		return false, nil
+	}
+	if err := genesis.Verify(); err != nil {
+		return false, nil
+	}
+	return true, nil
 }

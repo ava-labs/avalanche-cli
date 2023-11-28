@@ -3,7 +3,6 @@
 package nodecmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -73,17 +72,9 @@ func printExpiredCredentialsOutput(awsProfile string) {
 }
 
 // getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
-func getAWSCloudCredentials(awsProfile string, region string, awsCommand string, authorizeAccess bool) (*session.Session, error) {
-	if !authorizeAccess {
-		if awsCommand == constants.StopAWSNode {
-			if err := requestStopAWSNodeAuth(); err != nil {
-				return &session.Session{}, err
-			}
-		} else if awsCommand == constants.CreateAWSNode {
-			if err := requestAWSAccountAuth(); err != nil {
-				return &session.Session{}, err
-			}
-		}
+func getAWSCloudCredentials(awsProfile, region string) (*session.Session, error) {
+	if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
+		return nil, fmt.Errorf("cloud access is required")
 	}
 	// use env variables first and fallback to shared config
 	creds := credentials.NewEnvCredentials()
@@ -370,44 +361,6 @@ func createAWSInstances(
 		}
 	}
 	return awsCloudConfig, nil
-}
-
-func requestAWSAccountAuth() error {
-	ux.Logger.PrintToUser("Do you authorize Avalanche-CLI to access your AWS account to set-up your Avalanche Validator node?")
-	ux.Logger.PrintToUser("Please note that you will be charged for AWS usage.")
-	ux.Logger.PrintToUser("By clicking yes, you are authorizing Avalanche-CLI to:")
-	ux.Logger.PrintToUser("- Set up EC2 instance(s) and other components (such as security groups, key pairs and elastic IPs)")
-	ux.Logger.PrintToUser("- Set up the EC2 instance(s) to validate the Avalanche Primary Network")
-	ux.Logger.PrintToUser("- Set up the EC2 instance(s) to validate Subnets")
-	yes, err := app.Prompt.CaptureYesNo("I authorize Avalanche-CLI to access my AWS account")
-	if err != nil {
-		return err
-	}
-	if err := app.Conf.SetConfigValue(constants.ConfigAutorizeCloudAccessKey, yes); err != nil {
-		return err
-	}
-	if !yes {
-		return errors.New("user did not give authorization to Avalanche-CLI to access AWS account")
-	}
-	return nil
-}
-
-func requestStopAWSNodeAuth() error {
-	ux.Logger.PrintToUser("Do you authorize Avalanche-CLI to access your AWS account to stop your Avalanche Validator node?")
-	ux.Logger.PrintToUser("By clicking yes, you are authorizing Avalanche-CLI to:")
-	ux.Logger.PrintToUser("- Stop EC2 instance(s) and other components (such as elastic IPs)")
-	yes, err := app.Prompt.CaptureYesNo("I authorize Avalanche-CLI to access my AWS account")
-	if err != nil {
-		return err
-	}
-	if err := app.Conf.SetConfigValue(constants.ConfigAutorizeCloudAccessKey, yes); err != nil {
-		return err
-	}
-	if !yes {
-		return errors.New("user did not give authorization to Avalanche-CLI to access AWS account")
-	}
-	authorizeAccess = true
-	return nil
 }
 
 // addCertToSSH takes the cert file downloaded from AWS through terraform and moves it to .ssh directory

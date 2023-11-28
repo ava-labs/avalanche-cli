@@ -64,7 +64,7 @@ func getPublicIPForNodesWoEIP(nodesWoEIP []models.NodeConfig) (map[string]string
 		if lastRegion == "" || node.Region != lastRegion {
 			if node.CloudService == "" || node.CloudService == constants.AWSCloudService {
 				// check for empty because we didn't set this value when it was only on AWS
-				sess, err := getAWSCloudCredentials(awsProfile, node.Region, constants.GetAWSNodeIP)
+				sess, err := getAWSCloudCredentials(awsProfile, node.Region)
 				if err != nil {
 					return nil, err
 				}
@@ -198,7 +198,7 @@ func trackSubnet(
 	case models.Mainnet:
 		networkFlag = "--mainnet"
 	}
-	if err := subnetcmd.CallExportSubnet(subnetName, subnetPath, network); err != nil {
+	if err := subnetcmd.CallExportSubnet(subnetName, subnetPath); err != nil {
 		return nil, err
 	}
 	wg := sync.WaitGroup{}
