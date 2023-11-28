@@ -318,11 +318,10 @@ func createNodes(_ *cobra.Command, args []string) error {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
-			// DO WE NEED THIS? We already installed CLI in setUpNode
-			//if err := ssh.RunSSHSetupCLIFromSource(host, constants.SetupCLIFromSourceBranch); err != nil {
-			//	nodeResults.AddResult(host.NodeID, nil, err)
-			//	return
-			//}
+			if err := ssh.RunSSHSetupCLIFromSource(host, constants.SetupCLIFromSourceBranch); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
 		}(&wgResults, host)
 	}
 	wg.Wait()
@@ -374,6 +373,10 @@ func createNodes(_ *cobra.Command, args []string) error {
 					return
 				}
 				if err := ssh.RunSSHUploadNodeConfig(host, nodeDirPath); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+					return
+				}
+				if err := ssh.RunSSHRestartNode(host); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					return
 				}

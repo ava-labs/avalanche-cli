@@ -143,6 +143,17 @@ func RunSSHStopNode(host *models.Host) error {
 	)
 }
 
+// RunSSHRestartNode runs script to restart avalanchego
+func RunSSHRestartNode(host *models.Host) error {
+	return RunOverSSH(
+		"Restart Avalanchego",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/restartNode.sh",
+		scriptInputs{},
+	)
+}
+
 // RunSSHUpgradeSubnetEVM runs script to upgrade subnet evm
 func RunSSHUpgradeSubnetEVM(host *models.Host, subnetEVMBinaryPath string) error {
 	return RunOverSSH(
@@ -377,9 +388,8 @@ func RunSSHSetupSeparateMonitoring(host *models.Host, monitoringDashboardPath, a
 		constants.SSHScriptTimeout,
 		"shell/setupSeparateMonitoring.sh",
 		scriptInputs{
-			MonitoringDashboardPath: monitoringDashboardPath,
-			AvalancheGoPorts:        avalancheGoPorts,
-			MachinePorts:            machinePorts,
+			AvalancheGoPorts: avalancheGoPorts,
+			MachinePorts:     machinePorts,
 		},
 	)
 }
