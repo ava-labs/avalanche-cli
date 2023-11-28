@@ -622,3 +622,23 @@ func waitForHosts(hosts []*models.Host) *models.NodeResults {
 	createdWaitGroup.Wait()
 	return &hostErrors
 }
+
+// requestCloudAuth makes sure user agree to
+func requestCloudAuth(cloudName string) error {
+	ux.Logger.PrintToUser("Do you authorize Avalanche-CLI to access your %s account?", cloudName)
+	ux.Logger.PrintToUser("By clicking yes, you are authorizing Avalanche-CLI to:")
+	ux.Logger.PrintToUser("- Create Cloud instance(s) and other components (such as elastic IPs)")
+	ux.Logger.PrintToUser("- Start/Stop Cloud instance(s) and other components (such as elastic IPs) previously created by Avalanche-CLI")
+	ux.Logger.PrintToUser("- Delete Cloud instance(s) and other components (such as elastic IPs) previously created by Avalanche-CLI")
+	yes, err := app.Prompt.CaptureYesNo(fmt.Sprintf("I authorize Avalanche-CLI to access my %s account", cloudName))
+	if err != nil {
+		return err
+	}
+	if err := app.Conf.SetConfigValue(constants.ConfigAutorizeCloudAccessKey, yes); err != nil {
+		return err
+	}
+	if !yes {
+		return fmt.Errorf("user did not give authorization to Avalanche-CLI to access %s account", cloudName)
+	}
+	return nil
+}

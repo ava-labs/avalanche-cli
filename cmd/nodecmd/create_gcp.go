@@ -54,6 +54,9 @@ func getServiceAccountKeyFilepath() (string, error) {
 }
 
 func getGCPCloudCredentials() (*compute.Service, string, string, error) {
+	if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
+		return nil, "", "", fmt.Errorf("cloud access is required")
+	}
 	var err error
 	var gcpCredentialsPath string
 	var gcpProjectName string
