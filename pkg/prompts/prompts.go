@@ -35,6 +35,7 @@ const (
 	LessThanEq = "Less Than Or Eq"
 	MoreThanEq = "More Than Or Eq"
 	MoreThan   = "More Than"
+	NotEq      = "Not Eq"
 )
 
 var errNoKeys = errors.New("no keys")
@@ -58,6 +59,10 @@ func (comparator *Comparator) Validate(val uint64) error {
 	case MoreThanEq:
 		if val < comparator.Value {
 			return fmt.Errorf(fmt.Sprintf("the value must be bigger than or equal to %s (%d)", comparator.Label, comparator.Value))
+		}
+	case NotEq:
+		if val == comparator.Value {
+			return fmt.Errorf(fmt.Sprintf("the value must be different than %s (%d)", comparator.Label, comparator.Value))
 		}
 	}
 	return nil
