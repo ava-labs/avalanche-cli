@@ -106,7 +106,7 @@ func promptKeyPairName(ec2Svc *ec2.EC2) (string, string, error) {
 	return certName, newKeyPairName, nil
 }
 
-func getAWSCloudConfig(awsProfile string, regions []string, authorizeAccess bool) ([]string, map[string]*ec2.EC2, map[string]string, error) {
+func getAWSCloudConfig(awsProfile string, regions []string) ([]string, map[string]*ec2.EC2, map[string]string, error) {
 	if len(regions) == 0 {
 		var err error
 		usEast1 := "us-east-1"

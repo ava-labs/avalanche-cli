@@ -165,7 +165,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	gcpProjectName := ""
 	gcpCredentialFilepath := ""
 	if cloudService == constants.AWSCloudService { // Get AWS Credential, region and AMI
-		regions, ec2Svc, ami, err := getAWSCloudConfig(awsProfile, cmdLineRegion, authorizeAccess)
+		regions, ec2Svc, ami, err := getAWSCloudConfig(awsProfile, cmdLineRegion)
 		if err != nil {
 			return err
 		}
