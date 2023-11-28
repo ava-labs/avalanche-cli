@@ -320,7 +320,7 @@ func RunSSHSubnetSyncStatus(host *models.Host, blockchainID string) ([]byte, err
 }
 
 func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath string) error {
-	if !utils.FileExists(monitoringDashboardPath) {
+	if !utils.DirectoryExists(monitoringDashboardPath) {
 		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
 	}
 	if err := host.MkdirAll("/home/ubuntu/dashboards", constants.SSHFileOpsTimeout); err != nil {
@@ -363,6 +363,7 @@ func RunSSHSetupMachineMetrics(host *models.Host) error {
 }
 
 func RunSSHSetupSeparateMonitoring(host *models.Host, monitoringDashboardPath, avalancheGoPorts, machinePorts string) error {
+	fmt.Printf("running RunSSHSetupSeparateMonitoring on  %s, %s \n", avalancheGoPorts, machinePorts)
 	if err := host.Upload(
 		monitoringDashboardPath,
 		fmt.Sprintf("/home/ubuntu/%s", filepath.Base(monitoringDashboardPath)),
