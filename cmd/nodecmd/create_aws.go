@@ -133,7 +133,7 @@ func getAWSCloudConfig(awsProfile string, regions []string, authorizeAccess bool
 	ec2SvcMap := map[string]*ec2.EC2{}
 	amiMap := map[string]string{}
 	for _, region := range regions {
-		sess, err := getAWSCloudCredentials(awsProfile, region, constants.CreateAWSNode, authorizeAccess)
+		sess, err := getAWSCloudCredentials(awsProfile, region)
 		if err != nil {
 			return nil, nil, nil, err
 		}
