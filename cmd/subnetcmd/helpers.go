@@ -15,11 +15,19 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/units"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"golang.org/x/exp/slices"
+)
+
+const (
+	numLedgerIndicesToSearch           = 1000
+	numLedgerIndicesToSearchForBalance = 100
 )
 
 var (
@@ -183,7 +191,11 @@ func GetKeychain(
 		// set ledger indices
 		var ledgerIndices []uint32
 		if len(ledgerAddresses) == 0 {
-			ledgerIndices = []uint32{0}
+			fee := genesis.FujiParams.CreateSubnetTxFee + genesis.FujiParams.CreateBlockchainTxFee
+			ledgerIndices, err = searchForFundedLedgerIndices(network, ledgerDevice, uint(fee))
+			if err != nil {
+				return kc, err
+			}
 		} else {
 			ledgerIndices, err = getLedgerIndices(ledgerDevice, ledgerAddresses)
 			if err != nil {
@@ -233,7 +245,7 @@ func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]ui
 	// for all ledger indices to search for, find if the ledger address belongs to the input
 	// addresses and, if so, add the index pair to indexMap, breaking the loop if
 	// all addresses were found
-	for ledgerIndex := uint32(0); ledgerIndex < numLedgerAddressesToSearch; ledgerIndex++ {
+	for ledgerIndex := uint32(0); ledgerIndex < numLedgerIndicesToSearch; ledgerIndex++ {
 		ledgerAddress, err := ledgerDevice.Addresses([]uint32{ledgerIndex})
 		if err != nil {
 			return []uint32{}, err
@@ -255,6 +267,39 @@ func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]ui
 			return []uint32{}, fmt.Errorf("address %s not found on ledger", addressesStr[addressesIndex])
 		}
 		ledgerIndices = append(ledgerIndices, ledgerIndex)
+	}
+	return ledgerIndices, nil
+}
+
+// search for a set of indices that pay a given amount
+func searchForFundedLedgerIndices(network models.Network, ledgerDevice keychain.Ledger, amount uint) ([]uint32, error) {
+	ux.Logger.PrintToUser("Looking for ledger indices to pay for %f AVAX...", float64(amount)/float64(units.Avax))
+	pClient := platformvm.NewClient(network.Endpoint)
+	totalBalance := uint(0)
+	ledgerIndices := []uint32{}
+	for ledgerIndex := uint32(0); ledgerIndex < numLedgerIndicesToSearchForBalance; ledgerIndex++ {
+		ledgerAddress, err := ledgerDevice.Addresses([]uint32{ledgerIndex})
+		if err != nil {
+			return []uint32{}, err
+		}
+		ctx, cancel := utils.GetAPIContext()
+		resp, err := pClient.GetBalance(ctx, ledgerAddress)
+		cancel()
+		if err != nil {
+			return nil, err
+		}
+		if resp.Balance > 0 {
+			ux.Logger.PrintToUser("  Found index %d with %f AVAX", ledgerIndex, float64(resp.Balance)/float64(units.Avax))
+			totalBalance += uint(resp.Balance)
+			ledgerIndices = append(ledgerIndices, ledgerIndex)
+		}
+		if totalBalance >= amount {
+			break
+		}
+	}
+	if totalBalance < amount {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Not enough funds in the first %d indices of Ledger"), numLedgerIndicesToSearchForBalance)
+		return nil, fmt.Errorf("Not enough funds on ledger")
 	}
 	return ledgerIndices, nil
 }

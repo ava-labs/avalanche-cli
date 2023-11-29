@@ -495,10 +495,11 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error
 
 func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []ids.ShortID) []common.Option {
 	options := []common.Option{}
-	walletAddr := d.kc.Addresses().List()[0]
+	walletAddrs := d.kc.Addresses().List()
+	changeAddr := walletAddrs[0]
 	// addrs to use for signing
 	customAddrsSet := set.Set[ids.ShortID]{}
-	customAddrsSet.Add(walletAddr)
+	customAddrsSet.Add(walletAddrs...)
 	if len(subnetAuthKeys) > 0 {
 		customAddrsSet.Add(subnetAuthKeys...)
 	}
@@ -506,7 +507,7 @@ func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []ids.ShortID) []co
 	// set change to go to wallet addr (instead of any other subnet auth key)
 	changeOwner := &secp256k1fx.OutputOwners{
 		Threshold: 1,
-		Addrs:     []ids.ShortID{walletAddr},
+		Addrs:     []ids.ShortID{changeAddr},
 	}
 	options = append(options, common.WithChangeOwner(changeOwner))
 	return options

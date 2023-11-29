@@ -34,8 +34,6 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-const numLedgerAddressesToSearch = 1000
-
 var (
 	deployLocal              bool
 	deployDevnet             bool
@@ -646,7 +644,7 @@ func loadCreationKeys(network models.Network, kc keychain.Keychain) ([]string, e
 		addrsStr = append(addrsStr, addrStr)
 	}
 
-	return addrsStr, nil
+	return addrsStr[:1], nil
 }
 
 func enterCustomKeys(network models.Network) ([]string, bool, error) {
