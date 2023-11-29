@@ -5,9 +5,10 @@ package application
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"os"
 	"path/filepath"
+
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/apm/apm"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
