@@ -339,8 +339,8 @@ func createNodes(_ *cobra.Command, args []string) error {
 		avalancheGoPorts := []string{}
 		machinePorts := []string{}
 		for _, publicIP := range cloudConfig.PublicIPs {
-			avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("\\'%s:%s\\'", publicIP, strconv.Itoa(constants.AvalanchegoAPIPort)))
-			machinePorts = append(machinePorts, fmt.Sprintf("\\'%s:%s\\'", publicIP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
+			avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("'%s:%s'", publicIP, strconv.Itoa(constants.AvalanchegoAPIPort)))
+			machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", publicIP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
 		}
 		if err = app.SetupMonitoringEnv(); err != nil {
 			return err
@@ -363,7 +363,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			wg.Add(1)
 			go func(nodeResults *models.NodeResults, host *models.Host) {
 				defer wg.Done()
-				nodeDirPath := app.GetNodeInstanceDirPath(host.GetCloudID())
+				nodeDirPath := app.GetNodeInstanceAvaGoConfigDirPath(host.NodeID)
 				if err := ssh.RunSSHDownloadNodeConfig(host, nodeDirPath); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					return
@@ -378,6 +378,9 @@ func createNodes(_ *cobra.Command, args []string) error {
 				}
 				if err := ssh.RunSSHRestartNode(host); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
+					return
+				}
+				if err := os.RemoveAll(nodeDirPath); err != nil {
 					return
 				}
 			}(&wgResults, host)

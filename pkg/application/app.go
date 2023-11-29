@@ -131,6 +131,10 @@ func (app *Avalanche) GetNodeInstanceDirPath(nodeName string) string {
 	return filepath.Join(app.GetNodesDir(), nodeName)
 }
 
+func (app *Avalanche) GetNodeInstanceAvaGoConfigDirPath(nodeName string) string {
+	return filepath.Join(app.GetAnsibleDir(), nodeName)
+}
+
 func (app *Avalanche) GetAnsibleDir() string {
 	return filepath.Join(app.GetNodesDir(), constants.AnsibleDir)
 }
