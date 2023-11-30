@@ -90,7 +90,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "deploy to mainnet")
 	cmd.Flags().StringVar(&userProvidedAvagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet deploy only]")
-	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use creation key as control key")
+	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use the fee-paying key as control key")
 	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to make subnet changes")
 	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may make subnet changes")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate chain creation")
@@ -439,9 +439,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if len(controlKeys) > 0 && sameControlKey {
 			return errMutuallyExlusiveControlKeys
 		}
-		// use creation key as control key
+		// use first fee-paying key as control key
 		if sameControlKey {
-			controlKeys, err = loadCreationKeys(network, kc)
+			controlKeys, err = loadFirstFeePayingKey(network, kc)
 			if err != nil {
 				return err
 			}
@@ -482,7 +482,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	walletKeys, err := loadCreationKeys(network, kc)
+	walletKeys, err := loadFirstFeePayingKey(network, kc)
 	if err != nil {
 		return err
 	}
@@ -565,17 +565,17 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain
 		custom = "Custom list"
 	)
 
-	var creation string
+	var feePaying string
 	var listOptions []string
 	if useLedger {
-		creation = "Use ledger address"
+		feePaying = "Use ledger address"
 	} else {
-		creation = "Use fee-paying key"
+		feePaying = "Use fee-paying key"
 	}
 	if network.Kind == models.Mainnet {
-		listOptions = []string{creation, custom}
+		listOptions = []string{feePaying, custom}
 	} else {
-		listOptions = []string{creation, useAll, custom}
+		listOptions = []string{feePaying, useAll, custom}
 	}
 
 	listDecision, err := app.Prompt.CaptureList(moreKeysPrompt, listOptions)
@@ -589,8 +589,8 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain
 	)
 
 	switch listDecision {
-	case creation:
-		keys, err = loadCreationKeys(network, kc)
+	case feePaying:
+		keys, err = loadFirstFeePayingKey(network, kc)
 	case useAll:
 		keys, err = useAllKeys(network)
 	case custom:
@@ -633,7 +633,7 @@ func useAllKeys(network models.Network) ([]string, error) {
 	return existing, nil
 }
 
-func loadCreationKeys(network models.Network, kc keychain.Keychain) ([]string, error) {
+func loadFirstFeePayingKey(network models.Network, kc keychain.Keychain) ([]string, error) {
 	addrs := kc.Addresses().List()
 	if len(addrs) == 0 {
 		return nil, fmt.Errorf("no creation addresses found")

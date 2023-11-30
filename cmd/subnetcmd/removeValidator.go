@@ -139,7 +139,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	walletKeys, err := loadCreationKeys(network, kc)
+	walletKeys, err := loadFirstFeePayingKey(network, kc)
 	if err != nil {
 		return err
 	}
