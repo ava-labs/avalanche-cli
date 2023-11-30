@@ -85,10 +85,6 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
 	fee := network.GenesisParams().AddSubnetValidatorFee
 	kc, err := GetKeychainFromCmdLineFlags(
 		constants.PayTxsFeesMsg,
@@ -101,6 +97,10 @@ func addValidator(_ *cobra.Command, args []string) error {
 	)
 	if err != nil {
 		return err
+	}
+	// used in E2E to simulate public network execution paths on a local network
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		network = models.LocalNetwork
 	}
 	return CallAddValidator(network, kc, useLedger, args[0], nodeIDStr, defaultValidatorParams)
 }

@@ -160,11 +160,6 @@ func addValidator(_ *cobra.Command, _ []string) error {
 		return errors.New("unsupported network")
 	}
 
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
-
 	if nodeIDStr == "" {
 		nodeID, err = subnetcmd.PromptNodeID()
 		if err != nil {
@@ -196,6 +191,12 @@ func addValidator(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+
+	// used in E2E to simulate public network execution paths on a local network
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		network = models.LocalNetwork
+	}
+
 	jsonPop, err := promptProofOfPossession()
 	if err != nil {
 		return err

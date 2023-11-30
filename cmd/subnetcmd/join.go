@@ -428,17 +428,18 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 		return errors.New("unsupported network")
 	}
 
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
-
 	// get keychain accessor
 	fee := network.GenesisParams().AddSubnetValidatorFee
 	kc, err := GetKeychain(false, useLedger, ledgerAddresses, keyName, network, fee)
 	if err != nil {
 		return err
 	}
+
+	// used in E2E to simulate public network execution paths on a local network
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		network = models.LocalNetwork
+	}
+
 	recipientAddr := kc.Addresses().List()[0]
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	assetID, err := getSubnetAssetID(subnetID, network)

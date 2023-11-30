@@ -112,16 +112,16 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		return errors.New("unsupported network")
 	}
 
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
-
 	// get keychain accesor
 	fee := network.GenesisParams().TxFee
 	kc, err := GetKeychain(false, useLedger, ledgerAddresses, keyName, network, fee)
 	if err != nil {
 		return err
+	}
+
+	// used in E2E to simulate public network execution paths on a local network
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		network = models.LocalNetwork
 	}
 
 	sc, err := app.LoadSidecar(subnetName)

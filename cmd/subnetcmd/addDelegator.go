@@ -133,16 +133,16 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 		return errors.New("addPermissionlessDelegator is not yet supported on Mainnet")
 	}
 
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
-
 	// get keychain accessor
 	fee := network.GenesisParams().AddSubnetDelegatorFee
 	kc, err := GetKeychain(false, useLedger, ledgerAddresses, keyName, network, fee)
 	if err != nil {
 		return err
+	}
+
+	// used in E2E to simulate public network execution paths on a local network
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		network = models.LocalNetwork
 	}
 
 	recipientAddr := kc.Addresses().List()[0]

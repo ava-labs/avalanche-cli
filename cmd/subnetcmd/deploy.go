@@ -412,11 +412,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
-
 	fee := network.GenesisParams().CreateBlockchainTxFee
 	if createSubnet {
 		fee += network.GenesisParams().CreateSubnetTxFee
@@ -432,6 +427,11 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	)
 	if err != nil {
 		return err
+	}
+
+	// used in E2E to simulate public network execution paths on a local network
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		network = models.LocalNetwork
 	}
 
 	if createSubnet {
