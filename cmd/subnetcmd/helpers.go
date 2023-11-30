@@ -192,9 +192,13 @@ func GetKeychain(
 		// set ledger indices
 		var ledgerIndices []uint32
 		if len(ledgerAddresses) == 0 {
-			ledgerIndices, err = searchForFundedLedgerIndices(network, ledgerDevice, requiredFunds)
-			if err != nil {
-				return kc, err
+			if requiredFunds > 0 {
+				ledgerIndices, err = searchForFundedLedgerIndices(network, ledgerDevice, requiredFunds)
+				if err != nil {
+					return kc, err
+				}
+			} else {
+				ledgerIndices = []uint32{0}
 			}
 		} else {
 			ledgerIndices, err = getLedgerIndices(ledgerDevice, ledgerAddresses)
@@ -238,7 +242,7 @@ func GetKeychain(
 func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]uint32, error) {
 	addresses, err := address.ParseToIDs(addressesStr)
 	if err != nil {
-		return []uint32{}, fmt.Errorf("failure parsing given ledger addresses: %w", err)
+		return []uint32{}, fmt.Errorf("failure parsing ledger addresses: %w", err)
 	}
 	// maps the indices of addresses to their corresponding ledger indices
 	indexMap := map[int]uint32{}
@@ -264,7 +268,7 @@ func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]ui
 	for addressesIndex := range addresses {
 		ledgerIndex, ok := indexMap[addressesIndex]
 		if !ok {
-			return []uint32{}, fmt.Errorf("address %s not found on ledger", addressesStr[addressesIndex])
+			continue
 		}
 		ledgerIndices = append(ledgerIndices, ledgerIndex)
 	}

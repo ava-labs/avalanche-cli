@@ -299,12 +299,12 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 
 		// let's fund the ledger
 		genesisParams := genesis.MainnetParams
-		err := utils.FundLedgerAddress(genesisParams.CreateSubnetTxFee + genesisParams.CreateBlockchainTxFee + genesisParams.TxFee)
+		err = utils.FundLedgerAddress(genesisParams.CreateSubnetTxFee + genesisParams.CreateBlockchainTxFee + genesisParams.TxFee)
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		// multisig deploy from funded ledger1 should create the subnet but not deploy the blockchain,
 		// instead signing only its tx fee as it is not a subnet auth key,
 		// and creating the tx file to wait for subnet auths from ledger2 and ledger3
-		gomega.Expect(err).Should(gomega.BeNil())
 		s = commands.SimulateMultisigMainnetDeploy(
 			subnetName,
 			[]string{ledger2Addr, ledger3Addr, ledger4Addr},

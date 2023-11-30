@@ -116,6 +116,10 @@ func signTx(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("tx is already fully signed")
 	}
 
+	if len(ledgerAddresses) == 0 {
+		ledgerAddresses = remainingSubnetAuthKeys
+	}
+
 	// get keychain accessor
 	kc, err := subnetcmd.GetKeychain(false, useLedger, ledgerAddresses, keyName, network, 0)
 	if err != nil {
