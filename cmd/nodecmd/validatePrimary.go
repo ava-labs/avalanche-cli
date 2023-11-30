@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 
-	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/utils/units"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -129,17 +128,7 @@ func joinAsPrimaryNetworkValidator(
 	PrintNodeJoinPrimaryNetworkOutput(nodeID, weight, network, start)
 	// we set the starting time for node to be a Primary Network Validator to be in 1 minute
 	// we use min delegation fee as default
-	var delegationFee uint32
-	switch network.Kind {
-	case models.Mainnet:
-		delegationFee = genesis.MainnetParams.MinDelegationFee
-	case models.Fuji:
-		delegationFee = genesis.FujiParams.MinDelegationFee
-	case models.Devnet:
-		delegationFee = genesis.LocalParams.MinDelegationFee
-	default:
-		return fmt.Errorf("unsupported network")
-	}
+	delegationFee := network.GenesisParams().MinDelegationFee
 	blsKeyBytes, err := os.ReadFile(signingKeyPath)
 	if err != nil {
 		return err
@@ -164,17 +153,7 @@ func joinAsPrimaryNetworkValidator(
 }
 
 func PromptWeightPrimaryNetwork(network models.Network) (uint64, error) {
-	var defaultStake uint64
-	switch network.Kind {
-	case models.Mainnet:
-		defaultStake = genesis.MainnetParams.MinValidatorStake
-	case models.Fuji:
-		defaultStake = genesis.FujiParams.MinValidatorStake
-	case models.Devnet:
-		defaultStake = genesis.LocalParams.MinValidatorStake
-	default:
-		return 0, fmt.Errorf("unsupported network")
-	}
+	defaultStake := network.GenesisParams().MinValidatorStake
 	defaultWeight := fmt.Sprintf("Default (%s)", convertNanoAvaxToAvaxString(defaultStake))
 	txt := "What stake weight would you like to assign to the validator?"
 	weightOptions := []string{defaultWeight, "Custom"}

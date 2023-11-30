@@ -21,7 +21,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/spf13/cobra"
 )
 
@@ -218,10 +217,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 			return err
 		}
 	} else {
-		defaultFee := genesis.FujiParams.MinDelegationFee
-		if network.Kind == models.Mainnet {
-			defaultFee = genesis.MainnetParams.MinDelegationFee
-		}
+		defaultFee := network.GenesisParams().MinDelegationFee
 		if delegationFee < defaultFee {
 			return fmt.Errorf("delegation fee has to be larger than %d", defaultFee)
 		}
@@ -232,10 +228,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 
 func getDelegationFeeOption(app *application.Avalanche, network models.Network) (uint32, error) {
 	ux.Logger.PrintToUser("What would you like to set the delegation fee to?")
-	defaultFee := genesis.FujiParams.MinDelegationFee
-	if network.Kind == models.Mainnet {
-		defaultFee = genesis.MainnetParams.MinDelegationFee
-	}
+	defaultFee := network.GenesisParams().MinDelegationFee
 	defaultOption := fmt.Sprintf("Default Delegation Fee (%d%%)", defaultFee/10000)
 	delegationFeePrompt := "Delegation Fee"
 	feeOption, err := app.Prompt.CaptureList(
