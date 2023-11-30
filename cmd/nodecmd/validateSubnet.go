@@ -161,8 +161,25 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	}
 	defer disconnectHosts(hosts)
 
-	// TODO also check if primary validators and add fee
-	fee := network.GenesisParams().AddSubnetValidatorFee * uint64(len(hosts))
+	nodeIDMap, failedNodesMap := getNodeIDs(hosts)
+
+	nonPrimaryValidators := 0
+	for hostNodeID, nodeIDStr := range nodeIDMap {
+		nodeID, err := ids.NodeIDFromString(nodeIDStr)
+		if err != nil {
+			ux.Logger.PrintToUser("Failed to verify if node %s is a primary network validator due to %s", hostNodeID, err)
+			continue
+		}
+		isValidator, err := checkNodeIsPrimaryNetworkValidator(nodeID, network)
+		if err != nil {
+			ux.Logger.PrintToUser("Failed to verify if node %s is a primary network validator due to %s", hostNodeID, err)
+			continue
+		}
+		if !isValidator {
+			nonPrimaryValidators++
+		}
+	}
+	fee := network.GenesisParams().AddPrimaryNetworkValidatorFee*uint64(nonPrimaryValidators) + network.GenesisParams().AddSubnetValidatorFee*uint64(len(hosts))
 	kc, err := subnetcmd.GetKeychainFromCmdLineFlags(
 		constants.PayTxsFeesMsg,
 		network,
@@ -198,7 +215,6 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if blockchainID == ids.Empty {
 		return ErrNoBlockchainID
 	}
-	nodeIDMap, failedNodesMap := getNodeIDs(hosts)
 	nodeErrors := map[string]error{}
 	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
 	for i, host := range hosts {
