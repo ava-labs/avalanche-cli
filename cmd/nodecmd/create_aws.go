@@ -162,6 +162,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	certName,
 	keyPairName,
 	securityGroupName string,
+	forMonitoring bool,
 ) ([]string, []string, string, string, error) {
 	if err := terraformaws.SetCloudCredentials(rootBody, awsProfile, region); err != nil {
 		return nil, nil, "", "", err
@@ -221,7 +222,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	if useStaticIP {
 		terraformaws.SetElasticIPs(rootBody, numNodes)
 	}
-	terraformaws.SetupInstances(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami, numNodes)
+	terraformaws.SetupInstances(rootBody, securityGroupName, useExistingKeyPair, forMonitoring, keyPairName, ami, numNodes)
 	terraformaws.SetOutput(rootBody, useStaticIP)
 	err = app.CreateTerraformDir()
 	if err != nil {
@@ -250,7 +251,7 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
 }
 
-func createAWSInstances(ec2Svc *ec2.EC2, numNodes int, awsProfile, region, ami string, usr *user.User) (CloudConfig, error) {
+func createAWSInstances(ec2Svc *ec2.EC2, numNodes int, awsProfile, region, ami string, usr *user.User, forMonitoring bool) (CloudConfig, error) {
 	prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
 	certName := prefix + "-" + region + constants.CertSuffix
 	securityGroupName := prefix + "-" + region + constants.AWSSecurityGroupSuffix
@@ -260,7 +261,7 @@ func createAWSInstances(ec2Svc *ec2.EC2, numNodes int, awsProfile, region, ami s
 	}
 
 	// Create new EC2 instances
-	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(rootBody, ec2Svc, hclFile, numNodes, awsProfile, region, ami, certName, prefix, securityGroupName)
+	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(rootBody, ec2Svc, hclFile, numNodes, awsProfile, region, ami, certName, prefix, securityGroupName, forMonitoring)
 	if err != nil {
 		if strings.Contains(err.Error(), terraformaws.TerraformInitErrorStr) {
 			return CloudConfig{}, err

@@ -18,7 +18,7 @@ import (
 
 // CreateAnsibleHostInventory creates inventory file for ansible
 // specifies the ip address of the cloud server and the corresponding ssh cert path for the cloud server
-func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService, monitoringInstanceNodeID string, publicIPMap map[string]string, forMonitoring bool) error {
+func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService string, publicIPMap map[string]string) error {
 	if err := os.MkdirAll(inventoryDirPath, os.ModePerm); err != nil {
 		return err
 	}
@@ -28,27 +28,32 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService, mo
 		return err
 	}
 	defer inventoryFile.Close()
-	if forMonitoring {
-		ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, monitoringInstanceNodeID)
+	//if forMonitoring {
+	//	ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, monitoringInstanceNodeID)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	if err = writeToInventoryFile(inventoryFile, ansibleInstanceID, publicIPMap[monitoringInstanceNodeID], certFilePath); err != nil {
+	//		return err
+	//	}
+	//} else {
+	//	for instanceID := range publicIPMap {
+	//		ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, instanceID)
+	//		if err != nil {
+	//			return err
+	//		}
+	//		if err = writeToInventoryFile(inventoryFile, ansibleInstanceID, publicIPMap[instanceID], certFilePath); err != nil {
+	//			return err
+	//		}
+	//	}
+	//}
+	for instanceID := range publicIPMap {
+		ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, instanceID)
 		if err != nil {
 			return err
 		}
-		if err = writeToInventoryFile(inventoryFile, ansibleInstanceID, publicIPMap[monitoringInstanceNodeID], certFilePath); err != nil {
+		if err = writeToInventoryFile(inventoryFile, ansibleInstanceID, publicIPMap[instanceID], certFilePath); err != nil {
 			return err
-		}
-	} else {
-		for instanceID := range publicIPMap {
-			// don't include monitoring instance in ansible inventory file
-			if instanceID == monitoringInstanceNodeID {
-				continue
-			}
-			ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, instanceID)
-			if err != nil {
-				return err
-			}
-			if err = writeToInventoryFile(inventoryFile, ansibleInstanceID, publicIPMap[instanceID], certFilePath); err != nil {
-				return err
-			}
 		}
 	}
 	return nil

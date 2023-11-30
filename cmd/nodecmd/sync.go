@@ -115,6 +115,21 @@ func updateAnsiblePublicIPs(clusterName string) error {
 	return nil
 }
 
+func updateAnsibleMonitoringPublicIP(clusterName, monitoringHostID string) error {
+	nodesWoEIP := getNodesWoEIPInAnsibleInventory([]string{monitoringHostID})
+	if len(nodesWoEIP) > 0 {
+		publicIP, err := getPublicIPForNodesWoEIP(nodesWoEIP)
+		if err != nil {
+			return err
+		}
+		err = ansible.UpdateInventoryHostPublicIP(filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), "monitoring"), publicIP)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func syncSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	subnetName := args[1]

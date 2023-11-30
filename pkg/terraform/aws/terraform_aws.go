@@ -165,7 +165,7 @@ func SetKeyPair(rootBody *hclwrite.Body, keyName, certName string) {
 }
 
 // SetupInstances adds aws_instance section in terraform state file where we configure all the necessary components of the desired ec2 instance(s)
-func SetupInstances(rootBody *hclwrite.Body, securityGroupName string, useExistingKeyPair bool, existingKeyPairName, ami string, numNodes int) {
+func SetupInstances(rootBody *hclwrite.Body, securityGroupName string, useExistingKeyPair, forMonitoring bool, existingKeyPairName, ami string, numNodes int) {
 	awsInstance := rootBody.AppendNewBlock("resource", []string{"aws_instance", "aws_node"})
 	awsInstanceBody := awsInstance.Body()
 	awsInstanceBody.SetAttributeValue("count", cty.NumberIntVal(int64(numNodes)))
@@ -189,9 +189,11 @@ func SetupInstances(rootBody *hclwrite.Body, securityGroupName string, useExisti
 	var securityGroupList []cty.Value
 	securityGroupList = append(securityGroupList, cty.StringVal(securityGroupName))
 	awsInstanceBody.SetAttributeValue("security_groups", cty.ListVal(securityGroupList))
-	rootBlockDevice := awsInstanceBody.AppendNewBlock("root_block_device", []string{})
-	rootBlockDeviceBody := rootBlockDevice.Body()
-	rootBlockDeviceBody.SetAttributeValue("volume_size", cty.NumberIntVal(constants.CloudServerStorageSize))
+	if !forMonitoring {
+		rootBlockDevice := awsInstanceBody.AppendNewBlock("root_block_device", []string{})
+		rootBlockDeviceBody := rootBlockDevice.Body()
+		rootBlockDeviceBody.SetAttributeValue("volume_size", cty.NumberIntVal(constants.CloudServerStorageSize))
+	}
 }
 
 // SetOutput adds output section in terraform state file so that we can call terraform output command and print instance_ip and instance_id to user

@@ -165,14 +165,15 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 		}
 	}
-	if separateMonitoringInstance {
-		numNodes += 1
-	}
+	//if separateMonitoringInstance {
+	//	numNodes += 1
+	//}
 	usr, err := user.Current()
 	if err != nil {
 		return err
 	}
 	cloudConfig := CloudConfig{}
+	monitoringCloudConfig := CloudConfig{}
 	publicIPMap := map[string]string{}
 	gcpProjectName := ""
 	gcpCredentialFilepath := ""
@@ -182,22 +183,37 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		cloudConfig, err = createAWSInstances(ec2Svc, numNodes, awsProfile, region, ami, usr)
+		cloudConfig, err = createAWSInstances(ec2Svc, numNodes, awsProfile, region, ami, usr, false)
 		if err != nil {
 			return err
+		}
+		if separateMonitoringInstance {
+			err = terraform.RemoveDirectory(app.GetTerraformDir())
+			if err != nil {
+				return err
+			}
+			monitoringCloudConfig, err = createAWSInstances(ec2Svc, 1, awsProfile, region, ami, usr, true)
+			if err != nil {
+				return err
+			}
 		}
 		if !useStaticIP {
 			publicIPMap, err = awsAPI.GetInstancePublicIPs(ec2Svc, cloudConfig.InstanceIDs)
 			if err != nil {
 				return err
 			}
+			monitoringPublicIPMap, err := awsAPI.GetInstancePublicIPs(ec2Svc, monitoringCloudConfig.InstanceIDs)
+			if err != nil {
+				return err
+			}
+			monitoringCloudConfig.PublicIPs = []string{monitoringPublicIPMap[monitoringCloudConfig.InstanceIDs[0]]}
 		} else {
 			for i, node := range cloudConfig.InstanceIDs {
 				publicIPMap[node] = cloudConfig.PublicIPs[i]
 			}
 		}
 		if separateMonitoringInstance {
-			if err = awsAPI.AddSecurityGroupRule(ec2Svc, cloudConfig.PublicIPs[len(cloudConfig.PublicIPs)-1], cloudConfig.SecurityGroup); err != nil {
+			if err = awsAPI.AddSecurityGroupRule(ec2Svc, monitoringCloudConfig.PublicIPs[0], monitoringCloudConfig.SecurityGroup); err != nil {
 				return err
 			}
 		}
@@ -225,18 +241,8 @@ func createNodes(_ *cobra.Command, args []string) error {
 		gcpCredentialFilepath = credentialFilepath
 	}
 
-	if err = createClusterNodeConfig(network, cloudConfig, clusterName, cloudService); err != nil {
+	if err = createClusterNodeConfig(network, cloudConfig, monitoringCloudConfig, clusterName, cloudService); err != nil {
 		return err
-	}
-	monitoringInstanceNodeID := ""
-	monitoringInstancePublicIP := ""
-	if separateMonitoringInstance {
-		// take the last instance ID and public IP and assign them as those of the monitoring instance
-		monitoringInstanceNodeID = cloudConfig.InstanceIDs[len(cloudConfig.InstanceIDs)-1]
-		monitoringInstancePublicIP = cloudConfig.PublicIPs[len(cloudConfig.PublicIPs)-1]
-		// remove these values from instanceIDs and publicIPs
-		cloudConfig.InstanceIDs = cloudConfig.InstanceIDs[:len(cloudConfig.InstanceIDs)-1]
-		cloudConfig.PublicIPs = cloudConfig.PublicIPs[:len(cloudConfig.PublicIPs)-1]
 	}
 	if cloudService == constants.GCPCloudService {
 		if err = updateClustersConfigGCPKeyFilepath(gcpProjectName, gcpCredentialFilepath); err != nil {
@@ -254,7 +260,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 	monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), "monitoring")
 	if separateMonitoringInstance {
-		if err = ansible.CreateAnsibleHostInventory(monitoringInventoryPath, cloudConfig.CertFilePath, cloudService, monitoringInstanceNodeID, publicIPMap, true); err != nil {
+		if err = ansible.CreateAnsibleHostInventory(monitoringInventoryPath, monitoringCloudConfig.CertFilePath, cloudService, map[string]string{monitoringCloudConfig.InstanceIDs[0]: monitoringCloudConfig.PublicIPs[0]}); err != nil {
 			return err
 		}
 	}
@@ -262,10 +268,13 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, monitoringInstanceNodeID, publicIPMap, false); err != nil {
+	if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
 		return err
 	}
 	if err := updateAnsiblePublicIPs(clusterName); err != nil {
+		return err
+	}
+	if err := updateAnsibleMonitoringPublicIP(clusterName, monitoringCloudConfig.InstanceIDs[0]); err != nil {
 		return err
 	}
 	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
@@ -334,8 +343,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 			return fmt.Errorf("expected only one monitoring host, found %d", len(monitoringHosts))
 		}
 		monitoringHost := monitoringHosts[0]
-		// remove monitoring host from created hosts list
-		hosts = utils.Filter(hosts, func(h *models.Host) bool { return h.NodeID != monitoringHost.NodeID })
 		avalancheGoPorts := []string{}
 		machinePorts := []string{}
 		for _, publicIP := range cloudConfig.PublicIPs {
@@ -414,7 +421,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if wgResults.HasErrors() {
 		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
 	} else {
-		printResults(cloudConfig, publicIPMap, ansibleHostIDs, monitoringInstancePublicIP)
+		printResults(cloudConfig, publicIPMap, ansibleHostIDs, monitoringCloudConfig.PublicIPs[0])
 		ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	}
 	return nil
@@ -423,7 +430,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 // createClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
 // also creates cluster config in .avalanche-cli/nodes storing various key pair and security group info for all clusters
 // func createClusterNodeConfig(nodeIDs, publicIPs []string, region, ami, keyPairName, certPath, sg, clusterName string) error {
-func createClusterNodeConfig(network models.Network, cloudConfig CloudConfig, clusterName, cloudService string) error {
+func createClusterNodeConfig(network models.Network, cloudConfig, monitorCloudConfig CloudConfig, clusterName, cloudService string) error {
 	for i := range cloudConfig.InstanceIDs {
 		publicIP := ""
 		if len(cloudConfig.PublicIPs) > 0 {
@@ -443,15 +450,26 @@ func createClusterNodeConfig(network models.Network, cloudConfig CloudConfig, cl
 		if err != nil {
 			return err
 		}
-		if i == len(cloudConfig.InstanceIDs)-1 && separateMonitoringInstance {
-			if err = addNodeToClustersConfig(network, cloudConfig.InstanceIDs[i], clusterName, true); err != nil {
-				return err
-			}
-		} else {
-			if err = addNodeToClustersConfig(network, cloudConfig.InstanceIDs[i], clusterName, false); err != nil {
-				return err
-			}
+		if err = addNodeToClustersConfig(network, cloudConfig.InstanceIDs[i], clusterName, false); err != nil {
+			return err
 		}
+	}
+	nodeConfig := models.NodeConfig{
+		NodeID:        monitorCloudConfig.InstanceIDs[0],
+		Region:        monitorCloudConfig.Region,
+		AMI:           monitorCloudConfig.ImageID,
+		KeyPair:       monitorCloudConfig.KeyPair,
+		CertPath:      monitorCloudConfig.CertFilePath,
+		SecurityGroup: monitorCloudConfig.SecurityGroup,
+		ElasticIP:     monitorCloudConfig.PublicIPs[0],
+		CloudService:  cloudService,
+	}
+	err := app.CreateNodeCloudConfigFile(monitorCloudConfig.InstanceIDs[0], &nodeConfig)
+	if err != nil {
+		return err
+	}
+	if err := addNodeToClustersConfig(network, monitorCloudConfig.InstanceIDs[0], clusterName, true); err != nil {
+		return err
 	}
 	return updateKeyPairClustersConfig(cloudConfig)
 }
