@@ -17,11 +17,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
-	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/set"
 	avmtxs "github.com/ava-labs/avalanchego/vms/avm/txs"
@@ -37,12 +37,12 @@ var ErrNoSubnetAuthKeysInWallet = errors.New("auth wallet does not contain subne
 type PublicDeployer struct {
 	LocalDeployer
 	usingLedger bool
-	kc          keychain.Keychain
+	kc          *keychain.Keychain
 	network     models.Network
 	app         *application.Avalanche
 }
 
-func NewPublicDeployer(app *application.Avalanche, usingLedger bool, kc keychain.Keychain, network models.Network) *PublicDeployer {
+func NewPublicDeployer(app *application.Avalanche, usingLedger bool, kc *keychain.Keychain, network models.Network) *PublicDeployer {
 	return &PublicDeployer{
 		LocalDeployer: *NewLocalDeployer(app, "", ""),
 		app:           app,
@@ -482,7 +482,7 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error
 		ctx,
 		&primary.WalletConfig{
 			URI:              d.network.Endpoint,
-			AVAXKeychain:     d.kc,
+			AVAXKeychain:     d.kc.Keychain,
 			EthKeychain:      secp256k1fx.NewKeychain(),
 			PChainTxsToFetch: set.Of(filteredTxs...),
 		},

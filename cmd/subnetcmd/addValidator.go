@@ -18,7 +18,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
-	avagokeychain "github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/spf13/cobra"
 )
@@ -109,7 +108,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 
 func CallAddValidator(
 	network models.Network,
-	kc avagokeychain.Keychain,
+	kc *keychain.Keychain,
 	useLedgerSetting bool,
 	subnetName string,
 	nodeIDStr string,

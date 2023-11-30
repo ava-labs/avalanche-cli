@@ -20,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 )
@@ -36,6 +37,25 @@ var (
 	ErrEwoqKeyOnFuji             = errors.New("key source --ewoq is not available for fuji operations")
 )
 
+type Keychain struct {
+	Keychain keychain.Keychain
+	UsesLedger bool
+	LedgerIndices []uint32
+}
+
+func NewKeychain(keychain keychain.Keychain, ledgerIndices []uint32) *Keychain {
+	usesLedger := len(ledgerIndices) > 0
+	return &Keychain{
+		Keychain: keychain,
+		UsesLedger: usesLedger,
+		LedgerIndices: ledgerIndices,
+	}
+}
+
+func (kc *Keychain) Addresses() set.Set[ids.ShortID] {
+	return kc.Keychain.Addresses()
+}
+
 func GetKeychainFromCmdLineFlags(
 	app *application.Avalanche,
 	keychainGoal string,
@@ -45,7 +65,7 @@ func GetKeychainFromCmdLineFlags(
 	useLedger *bool,
 	ledgerAddresses []string,
 	requiredFunds uint64,
-) (keychain.Keychain, error) {
+) (*Keychain, error) {
 	// set ledger usage flag if ledger addresses are given
 	if len(ledgerAddresses) > 0 {
 		*useLedger = true
@@ -100,13 +120,12 @@ func GetKeychain(
 	keyName string,
 	network models.Network,
 	requiredFunds uint64,
-) (keychain.Keychain, error) {
+) (*Keychain, error) {
 	// get keychain accessor
-	var kc keychain.Keychain
 	if useLedger {
 		ledgerDevice, err := ledger.New()
 		if err != nil {
-			return kc, err
+			return nil, err
 		}
 		// ask for addresses here to print user msg for ledger interaction
 		// set ledger indices
@@ -114,14 +133,14 @@ func GetKeychain(
 		if requiredFunds > 0 {
 			ledgerIndicesAux, err := searchForFundedLedgerIndices(network, ledgerDevice, requiredFunds)
 			if err != nil {
-				return kc, err
+				return nil, err
 			}
 			ledgerIndices = append(ledgerIndices, ledgerIndicesAux...)
 		}
 		if len(ledgerAddresses) > 0 {
 			ledgerIndicesAux, err := getLedgerIndices(ledgerDevice, ledgerAddresses)
 			if err != nil {
-				return kc, err
+				return nil, err
 			}
 			ledgerIndices = append(ledgerIndices, ledgerIndicesAux...)
 		}
@@ -134,13 +153,13 @@ func GetKeychain(
 		// get formatted addresses for ux
 		addresses, err := ledgerDevice.Addresses(ledgerIndices)
 		if err != nil {
-			return kc, err
+			return nil, err
 		}
 		addrStrs := []string{}
 		for _, addr := range addresses {
 			addrStr, err := address.Format("P", key.GetHRP(network.ID), addr[:])
 			if err != nil {
-				return kc, err
+				return nil, err
 			}
 			addrStrs = append(addrStrs, addrStr)
 		}
@@ -148,20 +167,26 @@ func GetKeychain(
 		for _, addrStr := range addrStrs {
 			ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("  %s", addrStr)))
 		}
-		return keychain.NewLedgerKeychainFromIndices(ledgerDevice, ledgerIndices)
+		kc, err := keychain.NewLedgerKeychainFromIndices(ledgerDevice, ledgerIndices)
+		if err != nil {
+			return nil, err
+		}
+		return NewKeychain(kc, ledgerIndices), nil
 	}
 	if useEwoq {
 		sf, err := key.LoadEwoq(network.ID)
 		if err != nil {
-			return kc, err
+			return nil, err
 		}
-		return sf.KeyChain(), nil
+		kc := sf.KeyChain()
+		return NewKeychain(kc, nil), nil
 	}
 	sf, err := key.LoadSoft(network.ID, app.GetKeyPath(keyName))
 	if err != nil {
-		return kc, err
+		return nil, err
 	}
-	return sf.KeyChain(), nil
+	kc := sf.KeyChain()
+	return NewKeychain(kc, nil), nil
 }
 
 func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]uint32, error) {
