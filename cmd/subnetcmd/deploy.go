@@ -394,6 +394,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// from here on we are assuming a public deploy
 
+	fee := genesis.FujiParams.CreateSubnetTxFee + genesis.FujiParams.CreateBlockchainTxFee
+
 	kc, err := GetKeychainFromCmdLineFlags(
 		constants.PayTxsFeesMsg,
 		network,

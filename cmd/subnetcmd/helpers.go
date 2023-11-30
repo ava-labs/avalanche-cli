@@ -126,6 +126,7 @@ func GetKeychainFromCmdLineFlags(
 	useEwoq bool,
 	useLedger *bool,
 	ledgerAddresses []string,
+	minAmountToPay uint,
 ) (keychain.Keychain, error) {
 	// set ledger usage flag if ledger addresses are given
 	if len(ledgerAddresses) > 0 {
@@ -170,7 +171,7 @@ func GetKeychainFromCmdLineFlags(
 	}
 
 	// get keychain accessor
-	return GetKeychain(useEwoq, *useLedger, ledgerAddresses, keyName, network)
+	return GetKeychain(useEwoq, *useLedger, ledgerAddresses, keyName, network, minAmountToPay)
 }
 
 func GetKeychain(
@@ -179,6 +180,7 @@ func GetKeychain(
 	ledgerAddresses []string,
 	keyName string,
 	network models.Network,
+	minAmountToPay uint,
 ) (keychain.Keychain, error) {
 	// get keychain accessor
 	var kc keychain.Keychain
@@ -191,8 +193,7 @@ func GetKeychain(
 		// set ledger indices
 		var ledgerIndices []uint32
 		if len(ledgerAddresses) == 0 {
-			fee := genesis.FujiParams.CreateSubnetTxFee + genesis.FujiParams.CreateBlockchainTxFee
-			ledgerIndices, err = searchForFundedLedgerIndices(network, ledgerDevice, uint(fee))
+			ledgerIndices, err = searchForFundedLedgerIndices(network, ledgerDevice, expectedAmountToPay)
 			if err != nil {
 				return kc, err
 			}
