@@ -38,11 +38,8 @@ default snapshot with network start.`,
 }
 
 func StopNetwork(*cobra.Command, []string) error {
-	t0 := time.Now()
-
 	if err := saveNetwork(); errors.Is(err, binutils.ErrGRPCTimeout) {
 		// no server to kill
-		fmt.Println(time.Since(t0))
 		return nil
 	}
 
