@@ -394,28 +394,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// from here on we are assuming a public deploy
 
-	fee := genesis.FujiParams.CreateSubnetTxFee + genesis.FujiParams.CreateBlockchainTxFee
-
-	kc, err := GetKeychainFromCmdLineFlags(
-		constants.PayTxsFeesMsg,
-		network,
-		keyName,
-		useEwoq,
-		&useLedger,
-		ledgerAddresses,
-	)
-	if err != nil {
-		return err
-	}
-
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
-
 	createSubnet := true
 	var subnetID ids.ID
-
 	if subnetIDStr != "" {
 		subnetID, err = ids.FromString(subnetIDStr)
 		if err != nil {
@@ -430,6 +410,29 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 				createSubnet = false
 			}
 		}
+	}
+
+	fee := network.GenesisParams().CreateBlockchainTxFee
+	if createSubnet {
+		fee += network.GenesisParams().CreateSubnetTxFee
+	}
+
+	kc, err := GetKeychainFromCmdLineFlags(
+		constants.PayTxsFeesMsg,
+		network,
+		keyName,
+		useEwoq,
+		&useLedger,
+		ledgerAddresses,
+		fee,
+	)
+	if err != nil {
+		return err
+	}
+
+	// used in E2E to simulate public network execution paths on a local network
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		network = models.LocalNetwork
 	}
 
 	if createSubnet {

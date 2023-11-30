@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanchego/genesis"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 )
 
@@ -108,4 +109,18 @@ func (n Network) NetworkIDFlagValue() string {
 		return "mainnet"
 	}
 	return "invalid-network"
+}
+
+func (n Network) GenesisParams() *genesis.Params {
+	switch n.Kind {
+	case Local:
+		return &genesis.LocalParams
+	case Devnet:
+		return &genesis.LocalParams
+	case Fuji:
+		return &genesis.FujiParams
+	case Mainnet:
+		return &genesis.MainnetParams
+	}
+	return nil
 }
