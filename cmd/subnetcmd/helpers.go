@@ -15,7 +15,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -126,7 +125,7 @@ func GetKeychainFromCmdLineFlags(
 	useEwoq bool,
 	useLedger *bool,
 	ledgerAddresses []string,
-	requiredFunds uint,
+	requiredFunds uint64,
 ) (keychain.Keychain, error) {
 	// set ledger usage flag if ledger addresses are given
 	if len(ledgerAddresses) > 0 {
@@ -180,7 +179,7 @@ func GetKeychain(
 	ledgerAddresses []string,
 	keyName string,
 	network models.Network,
-	requiredFunds uint,
+	requiredFunds uint64,
 ) (keychain.Keychain, error) {
 	// get keychain accessor
 	var kc keychain.Keychain
@@ -273,10 +272,10 @@ func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]ui
 }
 
 // search for a set of indices that pay a given amount
-func searchForFundedLedgerIndices(network models.Network, ledgerDevice keychain.Ledger, amount uint) ([]uint32, error) {
+func searchForFundedLedgerIndices(network models.Network, ledgerDevice keychain.Ledger, amount uint64) ([]uint32, error) {
 	ux.Logger.PrintToUser("Looking for ledger indices to pay for %f AVAX...", float64(amount)/float64(units.Avax))
 	pClient := platformvm.NewClient(network.Endpoint)
-	totalBalance := uint(0)
+	totalBalance := uint64(0)
 	ledgerIndices := []uint32{}
 	for ledgerIndex := uint32(0); ledgerIndex < numLedgerIndicesToSearchForBalance; ledgerIndex++ {
 		ledgerAddress, err := ledgerDevice.Addresses([]uint32{ledgerIndex})
@@ -291,7 +290,7 @@ func searchForFundedLedgerIndices(network models.Network, ledgerDevice keychain.
 		}
 		if resp.Balance > 0 {
 			ux.Logger.PrintToUser("  Found index %d with %f AVAX", ledgerIndex, float64(resp.Balance)/float64(units.Avax))
-			totalBalance += uint(resp.Balance)
+			totalBalance += uint64(resp.Balance)
 			ledgerIndices = append(ledgerIndices, ledgerIndex)
 		}
 		if totalBalance >= amount {

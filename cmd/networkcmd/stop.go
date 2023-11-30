@@ -5,6 +5,7 @@ package networkcmd
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -37,8 +38,11 @@ default snapshot with network start.`,
 }
 
 func StopNetwork(*cobra.Command, []string) error {
+	t0 := time.Now()
+
 	if err := saveNetwork(); errors.Is(err, binutils.ErrGRPCTimeout) {
 		// no server to kill
+		fmt.Println(time.Since(t0))
 		return nil
 	}
 

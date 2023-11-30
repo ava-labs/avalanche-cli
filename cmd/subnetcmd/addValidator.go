@@ -85,6 +85,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	fee := network.GenesisParams().AddSubnetValidatorFee
 	kc, err := GetKeychainFromCmdLineFlags(
 		constants.PayTxsFeesMsg,
 		network,
@@ -92,6 +93,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		useEwoq,
 		&useLedger,
 		ledgerAddresses,
+		fee,
 	)
 	if err != nil {
 		return err
