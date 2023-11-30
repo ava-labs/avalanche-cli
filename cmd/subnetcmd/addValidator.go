@@ -85,6 +85,10 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	// used in E2E to simulate public network execution paths on a local network
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		network = models.LocalNetwork
+	}
 	fee := network.GenesisParams().AddSubnetValidatorFee
 	kc, err := GetKeychainFromCmdLineFlags(
 		constants.PayTxsFeesMsg,
@@ -122,11 +126,6 @@ func CallAddValidator(
 		if utils.FileExists(outputTxPath) {
 			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
 		}
-	}
-
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
 	}
 
 	_, err = ValidateSubnetNameAndGetChains([]string{subnetName})

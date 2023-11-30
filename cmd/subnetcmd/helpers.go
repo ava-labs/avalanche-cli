@@ -299,7 +299,7 @@ func searchForFundedLedgerIndices(network models.Network, ledgerDevice keychain.
 	}
 	if totalBalance < amount {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Not enough funds in the first %d indices of Ledger"), numLedgerIndicesToSearchForBalance)
-		return nil, fmt.Errorf("Not enough funds on ledger")
+		return nil, fmt.Errorf("not enough funds on ledger")
 	}
 	return ledgerIndices, nil
 }

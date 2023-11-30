@@ -427,13 +427,15 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	default:
 		return errors.New("unsupported network")
 	}
+
 	// used in E2E to simulate public network execution paths on a local network
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
 		network = models.LocalNetwork
 	}
 
 	// get keychain accessor
-	kc, err := GetKeychain(false, useLedger, ledgerAddresses, keyName, network)
+	fee := network.GenesisParams().AddSubnetValidatorFee
+	kc, err := GetKeychain(false, useLedger, ledgerAddresses, keyName, network, fee)
 	if err != nil {
 		return err
 	}
@@ -443,10 +445,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	if err != nil {
 		return err
 	}
-	delegationFee := genesis.FujiParams.MinDelegationFee
-	if network.Kind == models.Mainnet {
-		delegationFee = genesis.MainnetParams.MinDelegationFee
-	}
+	delegationFee := network.GenesisParams().MinDelegationFee
 	txID, err := deployer.AddPermissionlessValidator(subnetID, assetID, nodeID, stakedTokenAmount, uint64(start.Unix()), uint64(endTime.Unix()), recipientAddr, delegationFee, nil, nil)
 	if err != nil {
 		return err

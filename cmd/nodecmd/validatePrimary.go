@@ -333,6 +333,13 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	}
 	network := clustersConfig.Clusters[clusterName].Network
 
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	defer disconnectHosts(hosts)
+
+	fee := network.GenesisParams().AddPrimaryNetworkValidatorFee * uint64(len(hosts))
 	kc, err := subnetcmd.GetKeychainFromCmdLineFlags(
 		constants.PayTxsFeesMsg,
 		network,
@@ -340,16 +347,11 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 		useEwoq,
 		&useLedger,
 		ledgerAddresses,
+		fee,
 	)
 	if err != nil {
 		return err
 	}
-
-	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return err
-	}
-	defer disconnectHosts(hosts)
 
 	notBootstrappedNodes, err := checkHostsAreBootstrapped(hosts)
 	if err != nil {

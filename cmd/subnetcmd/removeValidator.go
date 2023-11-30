@@ -118,7 +118,8 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	}
 
 	// get keychain accesor
-	kc, err := GetKeychain(false, useLedger, ledgerAddresses, keyName, network)
+	fee := network.GenesisParams().TxFee
+	kc, err := GetKeychain(false, useLedger, ledgerAddresses, keyName, network, fee)
 	if err != nil {
 		return err
 	}
