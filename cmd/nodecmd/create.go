@@ -165,9 +165,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 		}
 	}
-	//if separateMonitoringInstance {
-	//	numNodes += 1
-	//}
 	usr, err := user.Current()
 	if err != nil {
 		return err

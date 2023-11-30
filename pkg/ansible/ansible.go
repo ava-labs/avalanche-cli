@@ -28,25 +28,6 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 		return err
 	}
 	defer inventoryFile.Close()
-	//if forMonitoring {
-	//	ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, monitoringInstanceNodeID)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	if err = writeToInventoryFile(inventoryFile, ansibleInstanceID, publicIPMap[monitoringInstanceNodeID], certFilePath); err != nil {
-	//		return err
-	//	}
-	//} else {
-	//	for instanceID := range publicIPMap {
-	//		ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, instanceID)
-	//		if err != nil {
-	//			return err
-	//		}
-	//		if err = writeToInventoryFile(inventoryFile, ansibleInstanceID, publicIPMap[instanceID], certFilePath); err != nil {
-	//			return err
-	//		}
-	//	}
-	//}
 	for instanceID := range publicIPMap {
 		ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, instanceID)
 		if err != nil {
