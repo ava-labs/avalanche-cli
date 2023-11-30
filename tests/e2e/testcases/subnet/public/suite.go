@@ -292,7 +292,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			txPath,
 			true,
 		)
-		toMatch := "(?s).+Ledger addresses:.+  " + ledger1Addr + ".+Error: error building tx: insufficient funds.+"
+		toMatch := "(?s).+Not enough funds in the first .+ indices of Ledger.+Error: not enough funds on ledger.+"
 		matched, err := regexp.MatchString(toMatch, s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
