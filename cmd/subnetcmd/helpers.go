@@ -19,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"golang.org/x/exp/slices"
@@ -191,20 +192,25 @@ func GetKeychain(
 		// ask for addresses here to print user msg for ledger interaction
 		// set ledger indices
 		var ledgerIndices []uint32
-		if len(ledgerAddresses) == 0 {
-			if requiredFunds > 0 {
-				ledgerIndices, err = searchForFundedLedgerIndices(network, ledgerDevice, requiredFunds)
-				if err != nil {
-					return kc, err
-				}
-			} else {
-				ledgerIndices = []uint32{0}
-			}
-		} else {
-			ledgerIndices, err = getLedgerIndices(ledgerDevice, ledgerAddresses)
+		if requiredFunds > 0 {
+			ledgerIndicesAux, err := searchForFundedLedgerIndices(network, ledgerDevice, requiredFunds)
 			if err != nil {
 				return kc, err
 			}
+			ledgerIndices = append(ledgerIndices, ledgerIndicesAux...)
+		}
+		if len(ledgerAddresses) > 0 {
+			ledgerIndicesAux, err := getLedgerIndices(ledgerDevice, ledgerAddresses)
+			if err != nil {
+				return kc, err
+			}
+			ledgerIndices = append(ledgerIndices, ledgerIndicesAux...)
+		}
+		ledgerIndicesSet := set.Set[uint32]{}
+		ledgerIndicesSet.Add(ledgerIndices...)
+		ledgerIndices = ledgerIndicesSet.List()
+		if len(ledgerIndices) == 0 {
+			ledgerIndices = []uint32{0}
 		}
 		// get formatted addresses for ux
 		addresses, err := ledgerDevice.Addresses(ledgerIndices)
@@ -277,7 +283,7 @@ func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]ui
 
 // search for a set of indices that pay a given amount
 func searchForFundedLedgerIndices(network models.Network, ledgerDevice keychain.Ledger, amount uint64) ([]uint32, error) {
-	ux.Logger.PrintToUser("Looking for ledger indices to pay for %f AVAX...", float64(amount)/float64(units.Avax))
+	ux.Logger.PrintToUser("Looking for ledger indices to pay for %.9f AVAX...", float64(amount)/float64(units.Avax))
 	pClient := platformvm.NewClient(network.Endpoint)
 	totalBalance := uint64(0)
 	ledgerIndices := []uint32{}
@@ -293,7 +299,7 @@ func searchForFundedLedgerIndices(network models.Network, ledgerDevice keychain.
 			return nil, err
 		}
 		if resp.Balance > 0 {
-			ux.Logger.PrintToUser("  Found index %d with %f AVAX", ledgerIndex, float64(resp.Balance)/float64(units.Avax))
+			ux.Logger.PrintToUser("  Found index %d with %.9f AVAX", ledgerIndex, float64(resp.Balance)/float64(units.Avax))
 			totalBalance += uint64(resp.Balance)
 			ledgerIndices = append(ledgerIndices, ledgerIndex)
 		}
