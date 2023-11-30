@@ -13,6 +13,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	es "github.com/ava-labs/avalanche-cli/pkg/elasticsubnet"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -300,7 +301,7 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 
 	// get keychain accessor
 	fee := network.GenesisParams().CreateAssetTxFee + network.GenesisParams().TransformSubnetTxFee + network.GenesisParams().TxFee*2
-	kc, err := GetKeychain(false, useLedger, ledgerAddresses, keyName, network, fee)
+	kc, err := keychain.GetKeychain(app, false, useLedger, ledgerAddresses, keyName, network, fee)
 	if err != nil {
 		return err
 	}

@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -114,7 +115,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 
 	// get keychain accesor
 	fee := network.GenesisParams().TxFee
-	kc, err := GetKeychain(false, useLedger, ledgerAddresses, keyName, network, fee)
+	kc, err := keychain.GetKeychain(app, false, useLedger, ledgerAddresses, keyName, network, fee)
 	if err != nil {
 		return err
 	}

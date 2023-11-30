@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -135,7 +136,7 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 
 	// get keychain accessor
 	fee := network.GenesisParams().AddSubnetDelegatorFee
-	kc, err := GetKeychain(false, useLedger, ledgerAddresses, keyName, network, fee)
+	kc, err := keychain.GetKeychain(app, false, useLedger, ledgerAddresses, keyName, network, fee)
 	if err != nil {
 		return err
 	}

@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/plugins"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -430,7 +431,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 
 	// get keychain accessor
 	fee := network.GenesisParams().AddSubnetValidatorFee
-	kc, err := GetKeychain(false, useLedger, ledgerAddresses, keyName, network, fee)
+	kc, err := keychain.GetKeychain(app, false, useLedger, ledgerAddresses, keyName, network, fee)
 	if err != nil {
 		return err
 	}

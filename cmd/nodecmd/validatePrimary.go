@@ -10,12 +10,13 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
-	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
+	avagokeychain "github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 
 	"github.com/ava-labs/avalanchego/utils/units"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 
@@ -93,7 +94,7 @@ func GetMinStakingAmount(network models.Network) (uint64, error) {
 
 func joinAsPrimaryNetworkValidator(
 	network models.Network,
-	kc keychain.Keychain,
+	kc avagokeychain.Keychain,
 	useLedger bool,
 	nodeID ids.NodeID,
 	nodeIndex int,
@@ -279,7 +280,7 @@ func checkNodeIsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Networ
 // as it impacts the output in adding node as subnet validator in the next steps
 func addNodeAsPrimaryNetworkValidator(
 	network models.Network,
-	kc keychain.Keychain,
+	kc avagokeychain.Keychain,
 	useLedger bool,
 	nodeID ids.NodeID,
 	nodeIndex int,
@@ -319,7 +320,8 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	defer disconnectHosts(hosts)
 
 	fee := network.GenesisParams().AddPrimaryNetworkValidatorFee * uint64(len(hosts))
-	kc, err := subnetcmd.GetKeychainFromCmdLineFlags(
+	kc, err := keychain.GetKeychainFromCmdLineFlags(
+		app,
 		constants.PayTxsFeesMsg,
 		network,
 		keyName,

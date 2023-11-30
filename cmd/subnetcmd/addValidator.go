@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -17,7 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
-	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
+	avagokeychain "github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/spf13/cobra"
 )
@@ -86,7 +87,8 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 	fee := network.GenesisParams().AddSubnetValidatorFee
-	kc, err := GetKeychainFromCmdLineFlags(
+	kc, err := keychain.GetKeychainFromCmdLineFlags(
+		app,
 		constants.PayTxsFeesMsg,
 		network,
 		keyName,
@@ -107,7 +109,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 
 func CallAddValidator(
 	network models.Network,
-	kc keychain.Keychain,
+	kc avagokeychain.Keychain,
 	useLedgerSetting bool,
 	subnetName string,
 	nodeIDStr string,

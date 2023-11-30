@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -24,7 +25,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
+	avagokeychain "github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
@@ -416,7 +417,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	if createSubnet {
 		fee += network.GenesisParams().CreateSubnetTxFee
 	}
-	kc, err := GetKeychainFromCmdLineFlags(
+	kc, err := keychain.GetKeychainFromCmdLineFlags(
+		app,
 		constants.PayTxsFeesMsg,
 		network,
 		keyName,
@@ -552,7 +554,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
 }
 
-func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain) ([]string, bool, error) {
+func getControlKeys(network models.Network, useLedger bool, kc avagokeychain.Keychain) ([]string, bool, error) {
 	controlKeysInitialPrompt := "Configure which addresses may make changes to the subnet.\n" +
 		"These addresses are known as your control keys. You will also\n" +
 		"set how many control keys are required to make a subnet change (the threshold)."
@@ -633,7 +635,7 @@ func useAllKeys(network models.Network) ([]string, error) {
 	return existing, nil
 }
 
-func loadFirstFeePayingKey(network models.Network, kc keychain.Keychain) ([]string, error) {
+func loadFirstFeePayingKey(network models.Network, kc avagokeychain.Keychain) ([]string, error) {
 	addrs := kc.Addresses().List()
 	if len(addrs) == 0 {
 		return nil, fmt.Errorf("no creation addresses found")

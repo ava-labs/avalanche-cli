@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
+	avagokeychain "github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -16,6 +16,7 @@ import (
 
 	subnetcmd "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
@@ -77,7 +78,7 @@ func parseSubnetSyncOutput(byteValue []byte) (string, error) {
 
 func addNodeAsSubnetValidator(
 	network models.Network,
-	kc keychain.Keychain,
+	kc avagokeychain.Keychain,
 	useLedger bool,
 	nodeID string,
 	subnetName string,
@@ -180,7 +181,8 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 		}
 	}
 	fee := network.GenesisParams().AddPrimaryNetworkValidatorFee*uint64(nonPrimaryValidators) + network.GenesisParams().AddSubnetValidatorFee*uint64(len(hosts))
-	kc, err := subnetcmd.GetKeychainFromCmdLineFlags(
+	kc, err := keychain.GetKeychainFromCmdLineFlags(
+		app,
 		constants.PayTxsFeesMsg,
 		network,
 		keyName,

@@ -18,6 +18,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -187,7 +188,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 	}
 
 	fee := network.GenesisParams().AddPrimaryNetworkValidatorFee
-	kc, err := subnetcmd.GetKeychain(false, useLedger, ledgerAddresses, keyName, network, fee)
+	kc, err := keychain.GetKeychain(app, false, useLedger, ledgerAddresses, keyName, network, fee)
 	if err != nil {
 		return err
 	}
