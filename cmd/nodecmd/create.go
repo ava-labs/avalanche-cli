@@ -342,7 +342,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		monitoringHost := monitoringHosts[0]
 		avalancheGoPorts := []string{}
 		machinePorts := []string{}
-		for _, publicIP := range cloudConfig.PublicIPs {
+		for _, publicIP := range publicIPMap {
 			avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("'%s:%s'", publicIP, strconv.Itoa(constants.AvalanchegoAPIPort)))
 			machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", publicIP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
 		}
@@ -451,6 +451,11 @@ func createClusterNodeConfig(network models.Network, cloudConfig, monitorCloudCo
 			return err
 		}
 	}
+	publicIP := ""
+	if useStaticIP {
+		publicIP = monitorCloudConfig.PublicIPs[0]
+	}
+
 	nodeConfig := models.NodeConfig{
 		NodeID:        monitorCloudConfig.InstanceIDs[0],
 		Region:        monitorCloudConfig.Region,
@@ -458,7 +463,7 @@ func createClusterNodeConfig(network models.Network, cloudConfig, monitorCloudCo
 		KeyPair:       monitorCloudConfig.KeyPair,
 		CertPath:      monitorCloudConfig.CertFilePath,
 		SecurityGroup: monitorCloudConfig.SecurityGroup,
-		ElasticIP:     monitorCloudConfig.PublicIPs[0],
+		ElasticIP:     publicIP,
 		CloudService:  cloudService,
 	}
 	err := app.CreateNodeCloudConfigFile(monitorCloudConfig.InstanceIDs[0], &nodeConfig)
