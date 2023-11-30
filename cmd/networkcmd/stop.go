@@ -5,7 +5,6 @@ package networkcmd
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
