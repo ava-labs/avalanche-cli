@@ -4,14 +4,14 @@
 package terraformgcp
 
 import (
+	"context"
 	"fmt"
-	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/terraform"
+	"google.golang.org/api/compute/v1"
 
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -20,17 +20,177 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-// SetCloudCredentials sets GCP account credentials defined in service account JSON file
-func SetCloudCredentials(rootBody *hclwrite.Body, zone, credentialsPath, projectName string) error {
-	// zone's format is us-east1-b, region's format is us-east1
-	region := strings.Join(strings.Split(zone, "-")[:2], "-")
-	provider := rootBody.AppendNewBlock("provider", []string{"google"})
-	providerBody := provider.Body()
-	providerBody.SetAttributeValue("project", cty.StringVal(projectName))
-	providerBody.SetAttributeValue("region", cty.StringVal(region))
-	providerBody.SetAttributeValue("zone", cty.StringVal(zone))
-	providerBody.SetAttributeValue("credentials", cty.StringVal(credentialsPath))
-	return nil
+type gcpCloud struct {
+	gcpClient *compute.Service
+	ctx       context.Context
+	projectID string
+}
+
+func NewGCPCloud(gcpClient *compute.Service, projectID string, ctx context.Context) (*gcpCloud, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return &gcpCloud{
+		gcpClient: gcpClient,
+		projectID: projectID,
+		ctx:       ctx,
+	}, nil
+}
+
+// waitForOperation waits for a Google Cloud operation to complete.
+func (c *gcpCloud) waitForOperation(operation *compute.Operation, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		// Get the status of the operation
+		getOperation, err := c.gcpClient.GlobalOperations.Get(c.projectID, operation.Name).Do()
+		if err != nil {
+			return fmt.Errorf("Error getting operation status: %v", err)
+		}
+
+		// Check if the operation has completed
+		if getOperation.Status == "DONE" {
+			if getOperation.Error != nil {
+				return fmt.Errorf("Operation failed: %v", getOperation.Error)
+			}
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("Operation did not complete within the specified timeout")
+		}
+		// Wait before checking the status again
+		select {
+		case <-c.ctx.Done():
+			return fmt.Errorf("Operation canceled")
+		case <-time.After(1 * time.Second):
+		}
+	}
+}
+
+// SetExistingNetwork uses existing network in GCP
+func (c *gcpCloud) SetExistingNetwork(networkName string) (*compute.Network, error) {
+	network, err := c.gcpClient.Networks.Get(c.projectID, networkName).Do()
+	if err != nil {
+		return nil, fmt.Errorf("Error getting network %s: %v", networkName, err)
+	}
+	return network, nil
+}
+
+// SetNetwork creates a new network in GCP
+func (c *gcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network, error) {
+	insertOp, err := c.gcpClient.Networks.Insert(c.projectID, &compute.Network{
+		Name: networkName,
+	}).Do()
+	if err != nil {
+		return nil, fmt.Errorf("Error creating network %s: %v", networkName, err)
+	}
+	if err := c.waitForOperation(insertOp, constants.CloudOperationTimeout); err != nil {
+		return nil, err
+	}
+	// Retrieve the created firewall
+	createdNetwork, err := c.gcpClient.Networks.Get(c.projectID, networkName).Do()
+	if err != nil {
+		return nil, fmt.Errorf("Error retrieving created networks %s: %v", networkName, err)
+	}
+
+	// Create firewall rules
+	if _, err := c.SetFirewallRule("0.0.0.0/0", fmt.Sprintf("%s-%s", networkName, "default"), networkName, []string{strconv.Itoa(constants.AvalanchegoP2PPort)}, false); err != nil {
+		return nil, err
+	}
+	if _, err := c.SetFirewallRule(ipAddress+"/32", fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)}, false); err != nil {
+		return nil, err
+	}
+
+	return createdNetwork, nil
+}
+
+// SetFirewallRule creates a new firewall rule in GCP
+func (c *gcpCloud) SetFirewallRule(ipAddress, firewallName, networkName string, ports []string, networkExists bool) (*compute.Firewall, error) {
+	firewall := &compute.Firewall{
+		Name:    firewallName,
+		Network: fmt.Sprintf("projects/%s/global/networks/%s", c.projectID, networkName),
+		Allowed: []*compute.FirewallAllowed{{IPProtocol: "tcp", Ports: ports}},
+		SourceRanges: []string{
+			ipAddress,
+		},
+	}
+
+	insertOp, err := c.gcpClient.Firewalls.Insert(c.projectID, firewall).Do()
+	if err != nil {
+		return nil, fmt.Errorf("Error creating firewall rule %s: %v", firewallName, err)
+	}
+	if err := c.waitForOperation(insertOp, constants.CloudOperationTimeout); err != nil {
+		return nil, err
+	}
+	return c.gcpClient.Firewalls.Get(c.projectID, firewallName).Do()
+}
+
+// SetPublicIP creates a static IP in GCP
+func (c *gcpCloud) SetPublicIP(region, nodeName string, numNodes int) (*compute.Address, error) {
+	staticIPName := fmt.Sprintf("%s-%s", "GCPStaticIPPrefix", nodeName)
+	address := &compute.Address{
+		Name:        staticIPName,
+		AddressType: "EXTERNAL",
+		NetworkTier: "PREMIUM",
+	}
+
+	insertOp, err := c.gcpClient.Addresses.Insert(c.projectID, region, address).Do()
+	if err != nil {
+		return nil, fmt.Errorf("Error creating static IP %s: %v", staticIPName, err)
+	}
+	if err := c.waitForOperation(insertOp, constants.CloudOperationTimeout); err != nil {
+		return nil, err
+	}
+	return c.gcpClient.Addresses.Get(c.projectID, region, staticIPName).Do()
+}
+
+// SetupInstances creates GCP instances
+func (c *gcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami, staticIPName, instanceName string, numNodes int, networkExists bool) (*compute.Instance, error) {
+	sshKey := fmt.Sprintf("ubuntu:%s", strings.TrimSuffix(sshPublicKey, "\n"))
+	automaticRestart := true
+	instance := &compute.Instance{
+		Name:        instanceName,
+		MachineType: fmt.Sprintf("projects/%s/zones/%s/machineTypes/e2-standard-8", c.projectID, zone),
+		Metadata: &compute.Metadata{
+			Items: []*compute.MetadataItems{
+				{Key: "ssh-keys", Value: &sshKey},
+			},
+		},
+		NetworkInterfaces: []*compute.NetworkInterface{
+			{
+				Network: fmt.Sprintf("projects/%s/global/networks/%s", c.projectID, networkName),
+				AccessConfigs: []*compute.AccessConfig{
+					{
+						Name: "External NAT",
+					},
+				},
+			},
+		},
+		Disks: []*compute.AttachedDisk{
+			{
+				InitializeParams: &compute.AttachedDiskInitializeParams{
+					DiskSizeGb: 1000,
+				},
+				Boot:       true, // Set this if it's the boot disk
+				AutoDelete: true,
+				Source:     ami, // Specify the source image here
+			},
+		},
+		Scheduling: &compute.Scheduling{
+			AutomaticRestart: &automaticRestart,
+		},
+	}
+	if staticIPName != "" {
+		instance.NetworkInterfaces[0].AccessConfigs[0].NatIP = staticIPName
+	}
+
+	insertOp, err := c.gcpClient.Instances.Insert(c.projectID, zone, instance).Do()
+	if err != nil {
+		return nil, fmt.Errorf("Error creating instance %s: %v", instanceName, err)
+	}
+	if err := c.waitForOperation(insertOp, constants.CloudOperationTimeout); err != nil {
+		return nil, err
+	}
+	return c.gcpClient.Instances.Get(c.projectID, zone, instanceName).Do()
 }
 
 // SetExistingNetwork uses existing network in GCP
@@ -198,29 +358,4 @@ func SetOutput(rootBody *hclwrite.Body) {
 			Name: "network_interface.0.access_config.0.nat_ip",
 		},
 	})
-}
-
-// RunTerraform executes terraform apply function that creates the GCE instances based on the .tf file provided
-// returns a list of GCP node IPs
-func RunTerraform(terraformDir string, useEIP bool) ([]string, error) {
-	cmd := exec.Command(constants.Terraform, "init") //nolint:gosec
-	cmd.Dir = terraformDir
-	if err := cmd.Run(); err != nil {
-		return nil, err
-	}
-	cmd = exec.Command(constants.Terraform, "apply", "-auto-approve") //nolint:gosec
-	cmd.Dir = terraformDir
-	utils.SetupRealtimeCLIOutput(cmd, true, true)
-	if err := cmd.Run(); err != nil {
-		return nil, err
-	}
-	var publicIPs []string
-	var err error
-	if useEIP {
-		publicIPs, err = terraform.GetPublicIPs(terraformDir)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return publicIPs, nil
 }

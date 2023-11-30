@@ -54,6 +54,13 @@ require (
 	github.com/agext/levenshtein v1.2.1 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/ava-labs/ledger-avalanche/go v0.0.0-20231102202641-ae2ebdaeac34 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.23.3 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.2.6 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.5.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.138.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.10.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.10.6 // indirect
+	github.com/aws/smithy-go v1.18.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.3 // indirect
