@@ -125,7 +125,7 @@ func ConvertInterfaceToMap(value interface{}) (map[string]interface{}, error) {
 
 // SplitComaSeparatedString splits and trims a comma-separated string into a slice of strings.
 func SplitComaSeparatedString(s string) []string {
-	return Map(strings.Split(s, ","), func(s string) string { return strings.TrimSpace(s) })
+	return Map(strings.Split(s, ","), strings.TrimSpace)
 }
 
 // SplitComaSeparatedInt splits a comma-separated string into a slice of integers.
