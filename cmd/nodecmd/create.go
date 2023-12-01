@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
@@ -24,6 +25,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
+	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -109,6 +111,13 @@ func preCreateChecks() error {
 	if len(utils.Unique(cmdLineRegion)) != len(numNodes) {
 		return fmt.Errorf("number of regions and number of nodes must be equal. Please make sure list of regions is unique")
 	}
+	if len(numNodes) > 0 {
+		for _, num := range numNodes {
+			if num <= 0 {
+				return fmt.Errorf("number of nodes per region must be greater than 0")
+			}
+		}
+	}
 	// set default instance type
 	switch {
 	case nodeType == "default" && useAWS:
@@ -164,7 +173,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	gcpProjectName := ""
 	gcpCredentialFilepath := ""
 	if cloudService == constants.AWSCloudService { // Get AWS Credential, region and AMI
-		regions, numNodes, ec2SvcMap, ami, err := getAWSCloudConfig(awsProfile, cmdLineRegion)
+		regions, numNodes, ec2SvcMap, ami, err := getAWSCloudConfig(awsProfile)
 		if err != nil {
 			return err
 		}
@@ -189,7 +198,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		}
 	} else {
 		// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
-		gcpClient, zones, imageID, credentialFilepath, projectName, err := getGCPConfig(cmdLineRegion)
+		gcpClient, zones, numNodes, imageID, credentialFilepath, projectName, err := getGCPConfig()
 		if err != nil {
 			return err
 		}
@@ -658,4 +667,66 @@ func requestCloudAuth(cloudName string) error {
 		return fmt.Errorf("user did not give authorization to Avalanche-CLI to access %s account", cloudName)
 	}
 	return nil
+}
+
+func getRegionsNodeNum(cloudName string) (
+	map[string]int,
+	error,
+) {
+	type CloudPrompt struct {
+		defaultLocations []string
+		locationName     string
+		locationsListURL string
+	}
+
+	supportedClouds := map[string]CloudPrompt{
+		constants.AWSCloudService: {
+			defaultLocations: []string{"us-east-1", "us-east-2", "us-west-1", "us-west-2"},
+			locationName:     "AWS Region",
+			locationsListURL: "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html",
+		},
+		constants.GCPCloudService: {
+			defaultLocations: []string{"us-east1-b", "us-central1-c", "us-west1-b"},
+			locationName:     "Google Zone",
+			locationsListURL: "https://cloud.google.com/compute/docs/regions-zones/",
+		},
+	}
+
+	if _, ok := supportedClouds[cloudName]; !ok {
+		return nil, fmt.Errorf("cloud %s is not supported", cloudName)
+	}
+
+	nodes := map[string]int{}
+	awsCustomRegion := fmt.Sprintf("Choose custom %s (list of %ss available at %s)", supportedClouds[cloudName].locationName, supportedClouds[cloudName].locationName, supportedClouds[cloudName].locationsListURL)
+	additionalRegionPrompt := fmt.Sprintf("Would you like to add additional %s?", supportedClouds[cloudName].locationName)
+	for {
+		userRegion, err := app.Prompt.CaptureList(
+			fmt.Sprintf("Which %s do you want to set up your node(s) in?", supportedClouds[cloudName].locationName),
+			supportedClouds[cloudName].defaultLocations,
+		)
+		if err != nil {
+			return nil, err
+		}
+		if userRegion == awsCustomRegion {
+			userRegion, err = app.Prompt.CaptureString(fmt.Sprintf("Which %s do you want to set up your node in?", supportedClouds[cloudName].locationName))
+			if err != nil {
+				return nil, err
+			}
+		}
+		numNodes, err := app.Prompt.CaptureUint32(fmt.Sprintf("How many nodes do you want to set up in %s %s?.", userRegion, supportedClouds[cloudName].locationName))
+		if err != nil {
+			return nil, err
+		}
+		nodes[userRegion] = int(numNodes)
+
+		currentInput := utils.Map(maps.Keys(nodes), func(region string) string { return fmt.Sprintf("[%s]:%d", region, nodes[region]) })
+		ux.Logger.PrintToUser("Current selection: " + strings.Join(currentInput, " "))
+		yes, err := app.Prompt.CaptureNoYes(additionalRegionPrompt)
+		if err != nil {
+			return nil, err
+		}
+		if !yes {
+			return nodes, nil
+		}
+	}
 }

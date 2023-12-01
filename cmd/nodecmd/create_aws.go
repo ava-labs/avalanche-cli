@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/hashicorp/hcl/v2/hclwrite"
+	"golang.org/x/exp/maps"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
@@ -106,50 +107,25 @@ func promptKeyPairName(ec2Svc *ec2.EC2) (string, string, error) {
 	return certName, newKeyPairName, nil
 }
 
-func getAWSCloudConfig(awsProfile string, regions []string) ([]string, []int, map[string]*ec2.EC2, map[string]string, error) {
-	if len(regions) == 0 {
+func getAWSCloudConfig(awsProfile string) ([]string, []int, map[string]*ec2.EC2, map[string]string, error) {
+	finalRegions := map[string]int{}
+	switch {
+	case len(numNodes) != len(utils.Unique(cmdLineRegion)):
+		return nil, nil, nil, nil, fmt.Errorf("number of nodes and regions should be the same")
+	case len(cmdLineRegion) == 0 && len(numNodes) == 0:
 		var err error
-		usEast1 := "us-east-1"
-		usEast2 := "us-east-2"
-		usWest1 := "us-west-1"
-		usWest2 := "us-west-2"
-		customRegion := "Choose custom region (list of regions available at https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html)"
-		userRegion, err := app.Prompt.CaptureList(
-			"Which AWS region do you want to set up your node(s) in?",
-			[]string{usEast1, usEast2, usWest1, usWest2, customRegion},
-		)
+		finalRegions, err = getRegionsNodeNum(constants.AWSCloudService)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
-		if userRegion == customRegion {
-			userRegionList, err := app.Prompt.CaptureString("Which AWS region do you want to set up your node in? Use comma to separate multiple regions")
-			if err != nil {
-				return nil, nil, nil, nil, err
-			} else {
-				regions = utils.Unique(utils.SplitComaSeparatedString(userRegionList))
-			}
+	default:
+		for i, region := range cmdLineRegion {
+			finalRegions[region] = numNodes[i]
 		}
-	}
-	if len(numNodes) == 0 {
-		var err error
-		numNodesStr, err := app.Prompt.CaptureValidatedString("How many nodes do you want to set up on AWS?. Please use comma to separate multiple numbers in case of multiple nodes", func(input string) error {
-			integers := utils.SplitComaSeparatedInt(input)
-			if integers == nil || !utils.IsUnsignedSlice(integers) {
-				return fmt.Errorf("invalid input")
-			}
-			return nil
-		})
-		if err != nil {
-			return nil, nil, nil, nil, err
-		}
-		numNodes = utils.SplitComaSeparatedInt(numNodesStr)
-	}
-	if len(numNodes) != len(regions) {
-		return nil, nil, nil, nil, fmt.Errorf("number of nodes and regions should be same")
 	}
 	ec2SvcMap := map[string]*ec2.EC2{}
 	amiMap := map[string]string{}
-	for _, region := range regions {
+	for region := range finalRegions {
 		sess, err := getAWSCloudCredentials(awsProfile, region)
 		if err != nil {
 			return nil, nil, nil, nil, err
@@ -163,7 +139,7 @@ func getAWSCloudConfig(awsProfile string, regions []string) ([]string, []int, ma
 			return nil, nil, nil, nil, err
 		}
 	}
-	return regions, numNodes, ec2SvcMap, amiMap, nil
+	return maps.Keys(finalRegions), maps.Values(finalRegions), ec2SvcMap, amiMap, nil
 }
 
 // createEC2Instances creates terraform .tf file and runs terraform exec function to create ec2 instances

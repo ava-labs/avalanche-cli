@@ -14,6 +14,7 @@ import (
 
 	terraformgcp "github.com/ava-labs/avalanche-cli/pkg/terraform/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"golang.org/x/exp/maps"
 	"golang.org/x/exp/rand"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
@@ -100,38 +101,31 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 	return computeService, gcpProjectName, gcpCredentialsPath, err
 }
 
-func getGCPConfig(zones []string) (*compute.Service, []string, string, string, string, error) {
-	if len(zones) == 0 {
-		usEast := "us-east1-b"
-		usCentral := "us-central1-c"
-		usWest := "us-west1-b"
-		customRegion := "Choose custom zone (list of zones available at https://cloud.google.com/compute/docs/regions-zones)"
+func getGCPConfig() (*compute.Service, []string, []int, string, string, string, error) {
+	finalZones := map[string]int{}
+	switch {
+	case len(numNodes) != len(utils.Unique(cmdLineRegion)):
+		return nil, nil, nil, "", "", "", errors.New("number of regions and number of nodes must be equal. Please make sure list of regions is unique")
+	case len(cmdLineRegion) == 0 && len(numNodes) == 0:
 		var err error
-		userZone, err := app.Prompt.CaptureList(
-			"Which GCP zone do you want to set up your node in?",
-			[]string{usEast, usCentral, usWest, customRegion},
-		)
+		finalZones, err = getRegionsNodeNum(constants.AWSCloudService)
 		if err != nil {
-			return nil, nil, "", "", "", err
+			return nil, nil, nil, "", "", "", err
 		}
-		if userZone == customRegion {
-			userZoneList, err := app.Prompt.CaptureString("Which GCP zones do you want to set up your node in? Use comma to separate multiple zones")
-			if err != nil {
-				return nil, nil, "", "", "", err
-			} else {
-				zones = utils.SplitComaSeparatedString(userZoneList)
-			}
+	default:
+		for i, region := range cmdLineRegion {
+			finalZones[region] = numNodes[i]
 		}
 	}
 	gcpClient, projectName, gcpCredentialFilePath, err := getGCPCloudCredentials()
 	if err != nil {
-		return nil, nil, "", "", "", err
+		return nil, nil, nil, "", "", "", err
 	}
 	imageID, err := gcpAPI.GetUbuntuImageID(gcpClient)
 	if err != nil {
-		return nil, nil, "", "", "", err
+		return nil, nil, nil, "", "", "", err
 	}
-	return gcpClient, zones, imageID, gcpCredentialFilePath, projectName, nil
+	return gcpClient, maps.Keys(finalZones), maps.Values(finalZones), imageID, gcpCredentialFilePath, projectName, nil
 }
 
 func randomString(length int) string {
@@ -164,20 +158,6 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	networkName := fmt.Sprintf("%s-network", cliDefaultName)
 	if err := terraformgcp.SetCloudCredentials(rootBody, zones, credentialsPath, projectName); err != nil {
 		return nil, nil, "", "", err
-	}
-	if len(numNodes) == 0 {
-		var err error
-		numNodesStr, err := app.Prompt.CaptureValidatedString("How many nodes do you want to set up on GCP?. Please use comma to separate multiple numbers in case of multiple nodes", func(input string) error {
-			integers := utils.SplitComaSeparatedInt(input)
-			if integers == nil || !utils.IsUnsignedSlice(integers) {
-				return fmt.Errorf("invalid input")
-			}
-			return nil
-		})
-		if err != nil {
-			return nil, nil, "", "", err
-		}
-		numNodes = utils.SplitComaSeparatedInt(numNodesStr)
 	}
 	ux.Logger.PrintToUser("Creating new VM instance(s) on Google Compute Engine...")
 	certInSSHDir, err := app.CheckCertInSSHDir(fmt.Sprintf("%s-keypair.pub", cliDefaultName))
