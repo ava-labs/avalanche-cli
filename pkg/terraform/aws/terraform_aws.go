@@ -281,8 +281,7 @@ func SetOutput(rootBody *hclwrite.Body, regions []string, useEIP bool) {
 	}
 }
 
-// RunTerraform executes terraform apply function that creates the EC2 instances based on the .tf file provided
-// returns a list of AWS node-IDs and node IPs
+// RunTerraform runs the Terraform command in the specified directory with the given regions and useEIP flag.
 func RunTerraform(terraformDir string, regions []string, useEIP bool) (map[string][]string, map[string][]string, error) {
 	cmd := exec.Command(constants.Terraform, "init") //nolint:gosec
 	cmd.Dir = terraformDir
@@ -314,6 +313,15 @@ func RunTerraform(terraformDir string, regions []string, useEIP bool) (map[strin
 	return instanceIDs, publicIPs, nil
 }
 
+// GetInstanceIDs retrieves the instance IDs for the specified Terraform directory and regions.
+//
+// Parameters:
+// - terraformDir: The directory path of the Terraform configuration.
+// - regions: A slice of strings representing the regions to retrieve instance IDs for.
+//
+// Returns:
+// - A map[string][]string containing the instance IDs for each region.
+// - An error if there was a problem retrieving the instance IDs.
 func GetInstanceIDs(terraformDir string, regions []string) (map[string][]string, error) {
 	instanceIDs := map[string][]string{}
 	for _, region := range regions {

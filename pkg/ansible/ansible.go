@@ -18,7 +18,7 @@ import (
 
 // CreateAnsibleHostInventory creates inventory file for ansible
 // specifies the ip address of the cloud server and the corresponding ssh cert path for the cloud server
-func CreateAnsibleHostInventory(inventoryDirPath string, cloudConfigMap models.CloudConfigMap, cloudService string, publicIPMap map[string]string) error {
+func CreateAnsibleHostInventory(inventoryDirPath string, cloudConfigMap models.CloudConfig, cloudService string, publicIPMap map[string]string) error {
 	if err := os.MkdirAll(inventoryDirPath, os.ModePerm); err != nil {
 		return err
 	}

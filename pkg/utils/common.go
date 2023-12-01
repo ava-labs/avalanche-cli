@@ -125,26 +125,28 @@ func ConvertInterfaceToMap(value interface{}) (map[string]interface{}, error) {
 
 // SplitComaSeparatedString splits and trims a comma-separated string into a slice of strings.
 func SplitComaSeparatedString(s string) []string {
-	cl := strings.Split(s, ",")
-	for i := range cl {
-		cl[i] = strings.TrimSpace(cl[i])
-	}
-	return cl
+	return Map(strings.Split(s, ","), func(s string) string { return strings.TrimSpace(s) })
 }
 
 // SplitComaSeparatedInt splits a comma-separated string into a slice of integers.
-func SplitComaSeparatedUInt(s string) []int {
-	n := []int{}
-	for _, item := range strings.Split(s, ",") {
-		num, err := strconv.Atoi(item)
-		if err != nil || num <= 0 {
-			return nil
-		}
-		n = append(n, num)
-	}
-	return n
+func SplitComaSeparatedInt(s string) []int {
+	return Map(SplitComaSeparatedString(s), func(item string) int {
+		num, _ := strconv.Atoi(item)
+		return num
+	})
 }
 
+// IsUnsignedSlice returns true if all elements in the slice are unsigned integers.
+func IsUnsignedSlice(n []int) bool {
+	for _, v := range n {
+		if v < 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// TimedFunction is a function that executes the given function `f` within a specified timeout duration.
 func TimedFunction(f func() (interface{}, error), name string, timeout time.Duration) (interface{}, error) {
 	var (
 		ret interface{}
@@ -163,4 +165,18 @@ func TimedFunction(f func() (interface{}, error), name string, timeout time.Dura
 	case <-ch:
 	}
 	return ret, err
+}
+
+// Unique returns a new slice containing only the unique elements from the input slice.
+func Unique(slice []string) []string {
+	visited := make(map[string]bool)
+	uniqueSlice := make([]string, 0)
+	for _, element := range slice {
+		if !visited[element] {
+			// If the element is not visited, add it to the uniqueSlice
+			uniqueSlice = append(uniqueSlice, element)
+			visited[element] = true
+		}
+	}
+	return uniqueSlice
 }

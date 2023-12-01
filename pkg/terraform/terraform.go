@@ -48,6 +48,14 @@ func CheckIsInstalled() error {
 	return nil
 }
 
+// GetPublicIPs retrieves the public IP addresses for instances in different zones.
+//
+// It takes in the following parameters:
+// - terraformDir: the directory where the Terraform configuration is located.
+// - zones: a list of zones for which to retrieve the public IP addresses.
+//
+// It returns a map of zones to arrays of corresponding public IP addresses.
+// If an error occurs, it returns nil and the error.
 func GetPublicIPs(terraformDir string, zones []string) (map[string][]string, error) {
 	publicIPs := map[string][]string{}
 	for _, zone := range zones {

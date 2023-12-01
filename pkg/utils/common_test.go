@@ -75,3 +75,22 @@ func TestSplitKeyValueStringToMap(t *testing.T) {
 		t.Errorf("Expected %v, but got %v", expected5, result5)
 	}
 }
+
+func TestUnique(t *testing.T) {
+	tests := []struct {
+		input    []string
+		expected []string
+	}{
+		{[]string{"apple", "orange", "apple", "banana", "orange"}, []string{"apple", "orange", "banana"}},
+		{[]string{"dog", "cat", "dog", "bird", "cat"}, []string{"dog", "cat", "bird"}},
+		{[]string{"one", "two", "three", "four", "five"}, []string{"one", "two", "three", "four", "five"}},
+		// Add more test cases as needed
+	}
+
+	for _, test := range tests {
+		result := Unique(test.input)
+		if !reflect.DeepEqual(result, test.expected) {
+			t.Errorf("Unique(%v) = %v, expected %v", test.input, result, test.expected)
+		}
+	}
+}

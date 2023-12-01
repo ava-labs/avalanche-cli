@@ -168,8 +168,8 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if len(numNodes) == 0 {
 		var err error
 		numNodesStr, err := app.Prompt.CaptureValidatedString("How many nodes do you want to set up on GCP?. Please use comma to separate multiple numbers in case of multiple nodes", func(input string) error {
-			integers := utils.SplitComaSeparatedUInt(input)
-			if integers == nil {
+			integers := utils.SplitComaSeparatedInt(input)
+			if integers == nil || !utils.IsUnsignedSlice(integers) {
 				return fmt.Errorf("invalid input")
 			}
 			return nil
@@ -177,7 +177,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 		if err != nil {
 			return nil, nil, "", "", err
 		}
-		numNodes = utils.SplitComaSeparatedUInt(numNodesStr)
+		numNodes = utils.SplitComaSeparatedInt(numNodesStr)
 	}
 	ux.Logger.PrintToUser("Creating new VM instance(s) on Google Compute Engine...")
 	certInSSHDir, err := app.CheckCertInSSHDir(fmt.Sprintf("%s-keypair.pub", cliDefaultName))
@@ -273,11 +273,11 @@ func createGCPInstance(
 	gcpCredentialFilepath string,
 	gcpProjectName string,
 	clusterName string,
-) (models.CloudConfigMap, error) {
+) (models.CloudConfig, error) {
 	defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 	hclFile, rootBody, err := terraform.InitConf()
 	if err != nil {
-		return models.CloudConfigMap{}, err
+		return models.CloudConfig{}, err
 	}
 	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(
 		rootBody,
@@ -316,17 +316,16 @@ func createGCPInstance(
 					ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err))
 				}
 				ux.Logger.PrintToUser("Stop the above instance(s) on GCP console to prevent charges")
-				return models.CloudConfigMap{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)
+				return models.CloudConfig{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)
 			}
 		}
-		return models.CloudConfigMap{}, err
+		return models.CloudConfig{}, err
 	}
-	ccm := models.CloudConfigMap{}
+	ccm := models.CloudConfig{}
 	for _, zone := range zones {
-		ccm[zone] = models.CloudConfig{
+		ccm[zone] = models.RegionConfig{
 			InstanceIDs:   instanceIDs[zone],
 			PublicIPs:     elasticIPs[zone],
-			Region:        zone,
 			KeyPair:       keyPairName,
 			SecurityGroup: fmt.Sprintf("%s-network", defaultAvalancheCLIPrefix),
 			CertFilePath:  certFilePath,
