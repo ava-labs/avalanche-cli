@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -82,8 +83,13 @@ func (kc *Keychain) PChainFormattedStrAddresses() ([]string, error) {
 	return addrsStr, nil
 }
 
+func sortUint32(arr []uint32) {
+	sort.Slice(arr, func(i, j int) bool { return arr[i] < arr[j] })
+}
+
 func (kc *Keychain) AddAddresses(addresses []string) error {
 	if kc.UsesLedger {
+		prevNumIndices := len(kc.LedgerIndices)
 		ledgerIndicesAux, err := getLedgerIndices(kc.Ledger, addresses)
 		if err != nil {
 			return err
@@ -92,35 +98,17 @@ func (kc *Keychain) AddAddresses(addresses []string) error {
 		ledgerIndicesSet := set.Set[uint32]{}
 		ledgerIndicesSet.Add(kc.LedgerIndices...)
 		kc.LedgerIndices = ledgerIndicesSet.List()
-		if err := showLedgerAddresses(kc.Network, kc.Ledger, kc.LedgerIndices); err != nil {
-			return err
+		sortUint32(kc.LedgerIndices)
+		if len(kc.LedgerIndices) != prevNumIndices {
+			if err := showLedgerAddresses(kc.Network, kc.Ledger, kc.LedgerIndices); err != nil {
+				return err
+			}
 		}
 		avagoKc, err := keychain.NewLedgerKeychainFromIndices(kc.Ledger, kc.LedgerIndices)
 		if err != nil {
 			return err
 		}
 		kc.Keychain = avagoKc
-	}
-	return nil
-}
-
-func showLedgerAddresses(network models.Network, ledgerDevice keychain.Ledger, ledgerIndices []uint32) error {
-	// get formatted addresses for ux
-	addresses, err := ledgerDevice.Addresses(ledgerIndices)
-	if err != nil {
-		return err
-	}
-	addrStrs := []string{}
-	for _, addr := range addresses {
-		addrStr, err := address.Format("P", key.GetHRP(network.ID), addr[:])
-		if err != nil {
-			return err
-		}
-		addrStrs = append(addrStrs, addrStr)
-	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("Ledger addresses: "))
-	for _, addrStr := range addrStrs {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("  %s", addrStr)))
 	}
 	return nil
 }
@@ -196,9 +184,8 @@ func GetKeychain(
 		if err != nil {
 			return nil, err
 		}
-		// ask for addresses here to print user msg for ledger interaction
-		// set ledger indices
-		var ledgerIndices []uint32
+		// always have index 0, for change
+		ledgerIndices := []uint32{0}
 		if requiredFunds > 0 {
 			ledgerIndicesAux, err := searchForFundedLedgerIndices(network, ledgerDevice, requiredFunds)
 			if err != nil {
@@ -216,9 +203,7 @@ func GetKeychain(
 		ledgerIndicesSet := set.Set[uint32]{}
 		ledgerIndicesSet.Add(ledgerIndices...)
 		ledgerIndices = ledgerIndicesSet.List()
-		if len(ledgerIndices) == 0 {
-			ledgerIndices = []uint32{0}
-		}
+		sortUint32(ledgerIndices)
 		if err := showLedgerAddresses(network, ledgerDevice, ledgerIndices); err != nil {
 			return nil, err
 		}
@@ -261,6 +246,7 @@ func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]ui
 		}
 		for addressesIndex, addr := range addresses {
 			if addr == ledgerAddress[0] {
+				ux.Logger.PrintToUser("  Found index %d for address %s", ledgerIndex, addressesStr[addressesIndex])
 				indexMap[addressesIndex] = ledgerIndex
 			}
 		}
@@ -311,4 +297,25 @@ func searchForFundedLedgerIndices(network models.Network, ledgerDevice keychain.
 		return nil, fmt.Errorf("not enough funds on ledger")
 	}
 	return ledgerIndices, nil
+}
+
+func showLedgerAddresses(network models.Network, ledgerDevice keychain.Ledger, ledgerIndices []uint32) error {
+	// get formatted addresses for ux
+	addresses, err := ledgerDevice.Addresses(ledgerIndices)
+	if err != nil {
+		return err
+	}
+	addrStrs := []string{}
+	for _, addr := range addresses {
+		addrStr, err := address.Format("P", key.GetHRP(network.ID), addr[:])
+		if err != nil {
+			return err
+		}
+		addrStrs = append(addrStrs, addrStr)
+	}
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("Ledger addresses: "))
+	for _, addrStr := range addrStrs {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("  %s", addrStr)))
+	}
+	return nil
 }

@@ -140,6 +140,11 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	// add control keys to the keychain whenever possible
+	if err := kc.AddAddresses(controlKeys); err != nil {
+		return err
+	}
+
 	kcKeys, err := kc.PChainFormattedStrAddresses()
 	if err != nil {
 		return err

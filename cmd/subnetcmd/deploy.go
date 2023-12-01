@@ -483,6 +483,11 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// add control keys to the keychain whenever possible
+	if err := kc.AddAddresses(controlKeys); err != nil {
+		return err
+	}
+
 	kcKeys, err := kc.PChainFormattedStrAddresses()
 	if err != nil {
 		return err
@@ -500,10 +505,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 	}
 	ux.Logger.PrintToUser("Your subnet auth keys for chain creation: %s", subnetAuthKeys)
-
-	if err := kc.AddAddresses(subnetAuthKeys); err != nil {
-		return err
-	}
 
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)

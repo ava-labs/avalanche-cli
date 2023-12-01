@@ -501,9 +501,7 @@ func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []ids.ShortID) []co
 	// addrs to use for signing
 	customAddrsSet := set.Set[ids.ShortID]{}
 	customAddrsSet.Add(walletAddrs...)
-	if len(subnetAuthKeys) > 0 {
-		customAddrsSet.Add(subnetAuthKeys...)
-	}
+	customAddrsSet.Add(subnetAuthKeys...)
 	options = append(options, common.WithCustomAddresses(customAddrsSet))
 	// set change to go to wallet addr (instead of any other subnet auth key)
 	changeOwner := &secp256k1fx.OutputOwners{
