@@ -159,9 +159,11 @@ func createNodes(_ *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			separateMonitoringInstance, err = app.Prompt.CaptureYesNo("Do you want to set up a separate instance to host monitoring? (This enables you to monitor all your set up instances in one dashboard)")
-			if err != nil {
-				return err
+			if setUpMonitoring {
+				separateMonitoringInstance, err = app.Prompt.CaptureYesNo("Do you want to set up a separate instance to host monitoring? (This enables you to monitor all your set up instances in one dashboard)")
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
