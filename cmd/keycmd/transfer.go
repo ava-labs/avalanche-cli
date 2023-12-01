@@ -427,6 +427,7 @@ func transferF(*cobra.Command, []string) error {
 			_, err = subnet.IssueXToPExportTx(
 				wallet,
 				ledgerIndex != wrongLedgerIndexVal,
+				true,
 				wallet.P().AVAXAssetID(),
 				amount+fee*1,
 				&to,
@@ -455,6 +456,7 @@ func transferF(*cobra.Command, []string) error {
 			_, err = subnet.IssuePFromXImportTx(
 				wallet,
 				ledgerIndex != wrongLedgerIndexVal,
+				true,
 				&to,
 			)
 			if err != nil {

@@ -94,7 +94,6 @@ func GetMinStakingAmount(network models.Network) (uint64, error) {
 func joinAsPrimaryNetworkValidator(
 	network models.Network,
 	kc *keychain.Keychain,
-	useLedger bool,
 	nodeID ids.NodeID,
 	nodeIndex int,
 	signingKeyPath string,
@@ -124,7 +123,7 @@ func joinAsPrimaryNetworkValidator(
 	}
 
 	recipientAddr := kc.Addresses().List()[0]
-	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	deployer := subnet.NewPublicDeployer(app, kc, network)
 	PrintNodeJoinPrimaryNetworkOutput(nodeID, weight, network, start)
 	// we set the starting time for node to be a Primary Network Validator to be in 1 minute
 	// we use min delegation fee as default
@@ -280,7 +279,6 @@ func checkNodeIsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Networ
 func addNodeAsPrimaryNetworkValidator(
 	network models.Network,
 	kc *keychain.Keychain,
-	useLedger bool,
 	nodeID ids.NodeID,
 	nodeIndex int,
 	instanceID string,
@@ -291,7 +289,7 @@ func addNodeAsPrimaryNetworkValidator(
 	}
 	if !isValidator {
 		signingKeyPath := app.GetNodeBLSSecretKeyPath(instanceID)
-		if err = joinAsPrimaryNetworkValidator(network, kc, useLedger, nodeID, nodeIndex, signingKeyPath, true); err != nil {
+		if err = joinAsPrimaryNetworkValidator(network, kc, nodeID, nodeIndex, signingKeyPath, true); err != nil {
 			return false, err
 		}
 		ux.Logger.PrintToUser(fmt.Sprintf("Node %s successfully added as Primary Network validator!", nodeID.String()))
@@ -325,7 +323,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 		network,
 		keyName,
 		useEwoq,
-		&useLedger,
+		useLedger,
 		ledgerAddresses,
 		fee,
 	)
@@ -377,7 +375,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 			nodeErrors = append(nodeErrors, err)
 			continue
 		}
-		_, err = addNodeAsPrimaryNetworkValidator(network, kc, useLedger, nodeID, i, clusterNodeID)
+		_, err = addNodeAsPrimaryNetworkValidator(network, kc, nodeID, i, clusterNodeID)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host.NodeID, err)
 			failedNodes = append(failedNodes, host.NodeID)

@@ -421,7 +421,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		network,
 		keyName,
 		useEwoq,
-		&useLedger,
+		useLedger,
 		ledgerAddresses,
 		fee,
 	)
@@ -502,7 +502,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Your subnet auth keys for chain creation: %s", subnetAuthKeys)
 
 	// deploy to public network
-	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	deployer := subnet.NewPublicDeployer(app, kc, network)
 
 	if createSubnet {
 		subnetID, err = deployer.DeploySubnet(controlKeys, threshold)

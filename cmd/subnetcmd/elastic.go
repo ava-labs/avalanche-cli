@@ -312,7 +312,7 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	recipientAddr := kc.Addresses().List()[0]
-	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	deployer := subnet.NewPublicDeployer(app, kc, network)
 	txHasOccurred, txID := checkIfTxHasOccurred(&sc, network, "CreateAssetTx")
 	var assetID ids.ID
 	// TODO: replace sleep functions with sticky API sessions

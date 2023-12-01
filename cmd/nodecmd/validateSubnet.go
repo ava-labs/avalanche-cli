@@ -186,7 +186,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 		network,
 		keyName,
 		useEwoq,
-		&useLedger,
+		useLedger,
 		ledgerAddresses,
 		fee,
 	)
@@ -253,7 +253,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			continue
 		}
 		clusterNodeID := host.GetCloudID()
-		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(network, kc, useLedger, nodeID, i, clusterNodeID)
+		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(network, kc, nodeID, i, clusterNodeID)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host.NodeID, err.Error())
 			nodeErrors[host.NodeID] = err

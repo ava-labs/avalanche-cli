@@ -54,6 +54,10 @@ func NewKeychain(network models.Network, keychain keychain.Keychain, ledgerIndic
 	}
 }
 
+func (kc *Keychain) OnlyOneKey() bool {
+	return len(kc.Keychain.Addresses()) == 1
+}
+
 func (kc *Keychain) Addresses() set.Set[ids.ShortID] {
 	return kc.Keychain.Addresses()
 }
@@ -82,17 +86,17 @@ func GetKeychainFromCmdLineFlags(
 	network models.Network,
 	keyName string,
 	useEwoq bool,
-	useLedger *bool,
+	useLedger bool,
 	ledgerAddresses []string,
 	requiredFunds uint64,
 ) (*Keychain, error) {
 	// set ledger usage flag if ledger addresses are given
 	if len(ledgerAddresses) > 0 {
-		*useLedger = true
+		useLedger = true
 	}
 
 	// check mutually exclusive flags
-	if !flags.EnsureMutuallyExclusive([]bool{*useLedger, useEwoq, keyName != ""}) {
+	if !flags.EnsureMutuallyExclusive([]bool{useLedger, useEwoq, keyName != ""}) {
 		return nil, ErrMutuallyExlusiveKeySource
 	}
 
@@ -100,7 +104,7 @@ func GetKeychainFromCmdLineFlags(
 	case network.Kind == models.Devnet:
 		// going to just use ewoq atm
 		useEwoq = true
-		if keyName != "" || *useLedger {
+		if keyName != "" || useLedger {
 			return nil, ErrNonEwoqKeyOnDevnet
 		}
 	case network.Kind == models.Fuji:
@@ -108,9 +112,9 @@ func GetKeychainFromCmdLineFlags(
 			return nil, ErrEwoqKeyOnFuji
 		}
 		// prompt the user if no key source was provided
-		if !*useLedger && keyName == "" {
+		if !useLedger && keyName == "" {
 			var err error
-			*useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, keychainGoal, app.GetKeyDir())
+			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, keychainGoal, app.GetKeyDir())
 			if err != nil {
 				return nil, err
 			}
@@ -120,7 +124,7 @@ func GetKeychainFromCmdLineFlags(
 		if keyName != "" || useEwoq {
 			return nil, ErrStoredKeyOrEwoqOnMainnet
 		}
-		*useLedger = true
+		useLedger = true
 	}
 
 	// will use default local keychain if simulating public network opeations on local
@@ -129,7 +133,7 @@ func GetKeychainFromCmdLineFlags(
 	}
 
 	// get keychain accessor
-	return GetKeychain(app, useEwoq, *useLedger, ledgerAddresses, keyName, network, requiredFunds)
+	return GetKeychain(app, useEwoq, useLedger, ledgerAddresses, keyName, network, requiredFunds)
 }
 
 func GetKeychain(

@@ -23,6 +23,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
 	avmtxs "github.com/ava-labs/avalanchego/vms/avm/txs"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -36,17 +37,15 @@ var ErrNoSubnetAuthKeysInWallet = errors.New("auth wallet does not contain subne
 
 type PublicDeployer struct {
 	LocalDeployer
-	usingLedger bool
-	kc          *keychain.Keychain
-	network     models.Network
-	app         *application.Avalanche
+	kc      *keychain.Keychain
+	network models.Network
+	app     *application.Avalanche
 }
 
-func NewPublicDeployer(app *application.Avalanche, usingLedger bool, kc *keychain.Keychain, network models.Network) *PublicDeployer {
+func NewPublicDeployer(app *application.Avalanche, kc *keychain.Keychain, network models.Network) *PublicDeployer {
 	return &PublicDeployer{
 		LocalDeployer: *NewLocalDeployer(app, "", ""),
 		app:           app,
-		usingLedger:   usingLedger,
 		kc:            kc,
 		network:       network,
 	}
@@ -84,8 +83,8 @@ func (d *PublicDeployer) AddValidator(
 		},
 		Subnet: subnetID,
 	}
-	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign SubnetValidator transaction on the ledger device *** ")
+	if d.kc.UsesLedger {
+		ux.Logger.PrintToUser("*** Please sign SubnetValidator transaction on the ledger device %s***", multipleTimesMsg(d.kc.OnlyOneKey()))
 	}
 
 	tx, err := d.createAddSubnetValidatorTx(subnetAuthKeys, validator, wallet)
@@ -124,8 +123,8 @@ func (d *PublicDeployer) CreateAssetTx(
 		return ids.Empty, err
 	}
 
-	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign Create Asset Transaction hash on the ledger device *** ")
+	if d.kc.UsesLedger {
+		ux.Logger.PrintToUser("*** Please sign Create Asset Transaction hash on the ledger device %s***", multipleTimesMsg(d.kc.OnlyOneKey()))
 	}
 	unsignedTx, err := wallet.X().Builder().NewCreateAssetTx(
 		tokenName,
@@ -173,7 +172,8 @@ func (d *PublicDeployer) ExportToPChainTx(
 	}
 	txID, err := IssueXToPExportTx(
 		wallet,
-		d.usingLedger,
+		d.kc.UsesLedger,
+		d.kc.OnlyOneKey(),
 		subnetAssetID,
 		assetAmount,
 		owner,
@@ -196,7 +196,8 @@ func (d *PublicDeployer) ImportFromXChain(
 	}
 	txID, err := IssuePFromXImportTx(
 		wallet,
-		d.usingLedger,
+		d.kc.UsesLedger,
+		d.kc.OnlyOneKey(),
 		owner,
 	)
 	if err != nil {
@@ -223,8 +224,8 @@ func (d *PublicDeployer) TransformSubnetTx(
 		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 
-	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign Transform Subnet hash on the ledger device *** ")
+	if d.kc.UsesLedger {
+		ux.Logger.PrintToUser("*** Please sign Transform Subnet hash on the ledger device %s***", multipleTimesMsg(d.kc.OnlyOneKey()))
 	}
 
 	tx, err := d.createTransformSubnetTX(subnetAuthKeys, elasticSubnetConfig, wallet, subnetAssetID)
@@ -273,8 +274,8 @@ func (d *PublicDeployer) RemoveValidator(
 		return false, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 
-	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign tx hash on the ledger device *** ")
+	if d.kc.UsesLedger {
+		ux.Logger.PrintToUser("*** Please sign tx hash on the ledger device %s***", multipleTimesMsg(d.kc.OnlyOneKey()))
 	}
 
 	tx, err := d.createRemoveValidatorTX(subnetAuthKeys, nodeID, subnetID, wallet)
@@ -398,8 +399,8 @@ func (d *PublicDeployer) DeployBlockchain(
 		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 
-	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign CreateChain transaction on the ledger device *** ")
+	if d.kc.UsesLedger {
+		ux.Logger.PrintToUser("*** Please sign CreateChain transaction on the ledger device %s***", multipleTimesMsg(d.kc.OnlyOneKey()))
 	}
 
 	tx, err := d.createBlockchainTx(subnetAuthKeys, chain, vmID, subnetID, genesis, wallet)
@@ -460,12 +461,12 @@ func (d *PublicDeployer) Sign(
 	if ok := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys); !ok {
 		return ErrNoSubnetAuthKeysInWallet
 	}
-	if d.usingLedger {
+	if d.kc.UsesLedger {
 		txName := txutils.GetLedgerDisplayName(tx)
 		if len(txName) == 0 {
-			ux.Logger.PrintToUser("*** Please sign tx hash on the ledger device *** ")
+			ux.Logger.PrintToUser("*** Please sign tx hash on the ledger device %s***", multipleTimesMsg(d.kc.OnlyOneKey()))
 		} else {
-			ux.Logger.PrintToUser("*** Please sign %s transaction on the ledger device *** ", txName)
+			ux.Logger.PrintToUser("*** Please sign %s transaction on the ledger device %s***", txName, multipleTimesMsg(d.kc.OnlyOneKey()))
 		}
 	}
 	if err := d.signTx(tx, wallet); err != nil {
@@ -645,8 +646,8 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 		proofOfPossession = &signer.Empty{}
 	}
 
-	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign Add Permissionless Validator hash on the ledger device *** ")
+	if d.kc.UsesLedger {
+		ux.Logger.PrintToUser("*** Please sign Add Permissionless Validator hash on the ledger device %s***", multipleTimesMsg(d.kc.OnlyOneKey()))
 	}
 	unsignedTx, err := wallet.P().Builder().NewAddPermissionlessValidatorTx(
 		&txs.SubnetValidator{
@@ -709,8 +710,8 @@ func (d *PublicDeployer) issueAddPermissionlessDelegatorTX(
 		},
 	}
 
-	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign Add Permissionless Delegator hash on the ledger device *** ")
+	if d.kc.UsesLedger {
+		ux.Logger.PrintToUser("*** Please sign Add Permissionless Delegator hash on the ledger device %s***", multipleTimesMsg(d.kc.OnlyOneKey()))
 	}
 	unsignedTx, err := wallet.P().Builder().NewAddPermissionlessDelegatorTx(
 		&txs.SubnetValidator{
@@ -772,8 +773,8 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 		Threshold: threshold,
 		Locktime:  0,
 	}
-	if d.usingLedger {
-		ux.Logger.PrintToUser("*** Please sign CreateSubnet transaction on the ledger device *** ")
+	if d.kc.UsesLedger {
+		ux.Logger.PrintToUser("*** Please sign CreateSubnet transaction on the ledger device %s*** ", multipleTimesMsg(d.kc.OnlyOneKey()))
 	}
 	unsignedTx, err := wallet.P().Builder().NewCreateSubnetTx(
 		owners,
@@ -852,12 +853,13 @@ func GetPublicSubnetValidators(subnetID ids.ID, network models.Network) ([]platf
 func IssueXToPExportTx(
 	wallet primary.Wallet,
 	usingLedger bool,
+	onlyOneKey bool,
 	assetID ids.ID,
 	amount uint64,
 	owner *secp256k1fx.OutputOwners,
 ) (ids.ID, error) {
 	if usingLedger {
-		ux.Logger.PrintToUser("*** Please sign X -> P Chain Export Transaction hash on the ledger device *** ")
+		ux.Logger.PrintToUser("*** Please sign X -> P Chain Export Transaction hash on the ledger device %s***", multipleTimesMsg(onlyOneKey))
 	}
 	unsignedTx, err := wallet.X().Builder().NewExportTx(
 		avagoconstants.PlatformChainID,
@@ -900,10 +902,11 @@ func IssueXToPExportTx(
 func IssuePFromXImportTx(
 	wallet primary.Wallet,
 	usingLedger bool,
+	onlyOneKey bool,
 	owner *secp256k1fx.OutputOwners,
 ) (ids.ID, error) {
 	if usingLedger {
-		ux.Logger.PrintToUser("*** Please sign X -> P Chain Import Transaction hash on the ledger device *** ")
+		ux.Logger.PrintToUser("*** Please sign X -> P Chain Import Transaction hash on the ledger device %s***", multipleTimesMsg(onlyOneKey))
 	}
 	unsignedTx, err := wallet.P().Builder().NewImportTx(
 		wallet.X().BlockchainID(),
@@ -931,4 +934,11 @@ func IssuePFromXImportTx(
 		return tx.ID(), err
 	}
 	return tx.ID(), err
+}
+
+func multipleTimesMsg(onlyOneKey bool) string {
+	if onlyOneKey {
+		return ""
+	}
+	return logging.LightBlue.Wrap("(you may be asked more than once) ")
 }

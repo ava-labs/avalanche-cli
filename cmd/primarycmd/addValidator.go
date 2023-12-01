@@ -210,7 +210,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	deployer := subnet.NewPublicDeployer(app, kc, network)
 	nodecmd.PrintNodeJoinPrimaryNetworkOutput(nodeID, weight, network, start)
 	recipientAddr := kc.Addresses().List()[0]
 	if delegationFee == 0 {

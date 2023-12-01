@@ -92,7 +92,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		network,
 		keyName,
 		useEwoq,
-		&useLedger,
+		useLedger,
 		ledgerAddresses,
 		fee,
 	)
@@ -200,7 +200,7 @@ func CallAddValidator(
 	ux.Logger.PrintToUser("Weight: %d", weight)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
-	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	deployer := subnet.NewPublicDeployer(app, kc, network)
 	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidator(controlKeys, subnetAuthKeys, subnetID, nodeID, weight, start, duration)
 	if err != nil {
 		return err
