@@ -24,7 +24,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 1,
+  "id": 4,
   "links": [
     {
       "icon": "external link",
@@ -264,7 +264,8 @@
     },
     {
       "datasource": {
-        "type": "prometheus"
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "",
       "fieldConfig": {
@@ -350,7 +351,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "avalanche_X_blks_processing{job=\"avalanchego\"}>0",
+          "expr": "avalanche_X_blks_processing{instance=~\"$host\", job=\"avalanchego\"}>0",
           "hide": false,
           "interval": "",
           "legendFormat": "Blocks",
@@ -1083,8 +1084,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1185,8 +1185,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1482,8 +1481,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1578,8 +1576,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1680,8 +1677,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1742,9 +1738,9 @@
     "list": [
       {
         "current": {
-          "selected": false,
-          "text": "184.73.245.13:9650",
-          "value": "184.73.245.13:9650"
+          "selected": true,
+          "text": "18.214.155.207:9650",
+          "value": "18.214.155.207:9650"
         },
         "datasource": {
           "type": "prometheus",
@@ -1790,6 +1786,6 @@
   "timezone": "",
   "title": "X-Chain",
   "uid": "ceRH2Am7z",
-  "version": 13,
+  "version": 3,
   "weekStart": ""
 }
