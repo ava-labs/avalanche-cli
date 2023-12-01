@@ -40,15 +40,17 @@ var (
 type Keychain struct {
 	Network       models.Network
 	Keychain      keychain.Keychain
+	Ledger        keychain.Ledger
 	UsesLedger    bool
 	LedgerIndices []uint32
 }
 
-func NewKeychain(network models.Network, keychain keychain.Keychain, ledgerIndices []uint32) *Keychain {
+func NewKeychain(network models.Network, keychain keychain.Keychain, ledger keychain.Ledger, ledgerIndices []uint32) *Keychain {
 	usesLedger := len(ledgerIndices) > 0
 	return &Keychain{
 		Network:       network,
 		Keychain:      keychain,
+		Ledger:        ledger,
 		UsesLedger:    usesLedger,
 		LedgerIndices: ledgerIndices,
 	}
@@ -78,6 +80,49 @@ func (kc *Keychain) PChainFormattedStrAddresses() ([]string, error) {
 	}
 
 	return addrsStr, nil
+}
+
+func (kc *Keychain) AddAddresses(addresses []string) error {
+	if kc.UsesLedger {
+		ledgerIndicesAux, err := getLedgerIndices(kc.Ledger, addresses)
+		if err != nil {
+			return err
+		}
+		kc.LedgerIndices = append(kc.LedgerIndices, ledgerIndicesAux...)
+		ledgerIndicesSet := set.Set[uint32]{}
+		ledgerIndicesSet.Add(kc.LedgerIndices...)
+		kc.LedgerIndices = ledgerIndicesSet.List()
+		if err := showLedgerAddresses(kc.Network, kc.Ledger, kc.LedgerIndices); err != nil {
+			return err
+		}
+		avagoKc, err := keychain.NewLedgerKeychainFromIndices(kc.Ledger, kc.LedgerIndices)
+		if err != nil {
+			return err
+		}
+		kc.Keychain = avagoKc
+	}
+	return nil
+}
+
+func showLedgerAddresses(network models.Network, ledgerDevice keychain.Ledger, ledgerIndices []uint32) error {
+	// get formatted addresses for ux
+	addresses, err := ledgerDevice.Addresses(ledgerIndices)
+	if err != nil {
+		return err
+	}
+	addrStrs := []string{}
+	for _, addr := range addresses {
+		addrStr, err := address.Format("P", key.GetHRP(network.ID), addr[:])
+		if err != nil {
+			return err
+		}
+		addrStrs = append(addrStrs, addrStr)
+	}
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("Ledger addresses: "))
+	for _, addrStr := range addrStrs {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("  %s", addrStr)))
+	}
+	return nil
 }
 
 func GetKeychainFromCmdLineFlags(
@@ -174,28 +219,14 @@ func GetKeychain(
 		if len(ledgerIndices) == 0 {
 			ledgerIndices = []uint32{0}
 		}
-		// get formatted addresses for ux
-		addresses, err := ledgerDevice.Addresses(ledgerIndices)
-		if err != nil {
+		if err := showLedgerAddresses(network, ledgerDevice, ledgerIndices); err != nil {
 			return nil, err
-		}
-		addrStrs := []string{}
-		for _, addr := range addresses {
-			addrStr, err := address.Format("P", key.GetHRP(network.ID), addr[:])
-			if err != nil {
-				return nil, err
-			}
-			addrStrs = append(addrStrs, addrStr)
-		}
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Ledger addresses: "))
-		for _, addrStr := range addrStrs {
-			ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("  %s", addrStr)))
 		}
 		kc, err := keychain.NewLedgerKeychainFromIndices(ledgerDevice, ledgerIndices)
 		if err != nil {
 			return nil, err
 		}
-		return NewKeychain(network, kc, ledgerIndices), nil
+		return NewKeychain(network, kc, ledgerDevice, ledgerIndices), nil
 	}
 	if useEwoq {
 		sf, err := key.LoadEwoq(network.ID)
@@ -203,14 +234,14 @@ func GetKeychain(
 			return nil, err
 		}
 		kc := sf.KeyChain()
-		return NewKeychain(network, kc, nil), nil
+		return NewKeychain(network, kc, nil, nil), nil
 	}
 	sf, err := key.LoadSoft(network.ID, app.GetKeyPath(keyName))
 	if err != nil {
 		return nil, err
 	}
 	kc := sf.KeyChain()
-	return NewKeychain(network, kc, nil), nil
+	return NewKeychain(network, kc, nil, nil), nil
 }
 
 func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]uint32, error) {
