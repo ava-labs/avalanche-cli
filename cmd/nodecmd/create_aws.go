@@ -106,7 +106,7 @@ func promptKeyPairName(ec2Svc *ec2.EC2) (string, string, error) {
 	return certName, newKeyPairName, nil
 }
 
-func getAWSCloudConfig(awsProfile string, regions []string) ([]string, map[string]*ec2.EC2, map[string]string, error) {
+func getAWSCloudConfig(awsProfile string, regions []string) ([]string, []int, map[string]*ec2.EC2, map[string]string, error) {
 	if len(regions) == 0 {
 		var err error
 		usEast1 := "us-east-1"
@@ -119,50 +119,17 @@ func getAWSCloudConfig(awsProfile string, regions []string) ([]string, map[strin
 			[]string{usEast1, usEast2, usWest1, usWest2, customRegion},
 		)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 		if userRegion == customRegion {
 			userRegionList, err := app.Prompt.CaptureString("Which AWS region do you want to set up your node in? Use comma to separate multiple regions")
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, nil, nil, err
 			} else {
 				regions = utils.Unique(utils.SplitComaSeparatedString(userRegionList))
 			}
 		}
 	}
-	ec2SvcMap := map[string]*ec2.EC2{}
-	amiMap := map[string]string{}
-	for _, region := range regions {
-		sess, err := getAWSCloudCredentials(awsProfile, region)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		ec2SvcMap[region] = ec2.New(sess)
-		amiMap[region], err = awsAPI.GetUbuntuAMIID(ec2SvcMap[region])
-		if err != nil {
-			if strings.Contains(err.Error(), "RequestExpired: Request has expired") {
-				printExpiredCredentialsOutput(awsProfile)
-			}
-			return nil, nil, nil, err
-		}
-	}
-	return regions, ec2SvcMap, amiMap, nil
-}
-
-// createEC2Instances creates terraform .tf file and runs terraform exec function to create ec2 instances
-func createEC2Instances(rootBody *hclwrite.Body,
-	ec2Svc map[string]*ec2.EC2,
-	hclFile *hclwrite.File,
-	numNodes []int,
-	awsProfile string,
-	regions []string,
-	ami map[string]string,
-	regionConf map[string]models.RegionConfig,
-) (map[string][]string, map[string][]string, map[string]string, map[string]string, error) {
-	if err := terraformaws.SetCloudCredentials(rootBody, awsProfile, regions); err != nil {
-		return nil, nil, nil, nil, err
-	}
-
 	if len(numNodes) == 0 {
 		var err error
 		numNodesStr, err := app.Prompt.CaptureValidatedString("How many nodes do you want to set up on AWS?. Please use comma to separate multiple numbers in case of multiple nodes", func(input string) error {
@@ -180,6 +147,39 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	if len(numNodes) != len(regions) {
 		return nil, nil, nil, nil, fmt.Errorf("number of nodes and regions should be same")
 	}
+	ec2SvcMap := map[string]*ec2.EC2{}
+	amiMap := map[string]string{}
+	for _, region := range regions {
+		sess, err := getAWSCloudCredentials(awsProfile, region)
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
+		ec2SvcMap[region] = ec2.New(sess)
+		amiMap[region], err = awsAPI.GetUbuntuAMIID(ec2SvcMap[region])
+		if err != nil {
+			if strings.Contains(err.Error(), "RequestExpired: Request has expired") {
+				printExpiredCredentialsOutput(awsProfile)
+			}
+			return nil, nil, nil, nil, err
+		}
+	}
+	return regions, numNodes, ec2SvcMap, amiMap, nil
+}
+
+// createEC2Instances creates terraform .tf file and runs terraform exec function to create ec2 instances
+func createEC2Instances(rootBody *hclwrite.Body,
+	ec2Svc map[string]*ec2.EC2,
+	hclFile *hclwrite.File,
+	numNodes []int,
+	awsProfile string,
+	regions []string,
+	ami map[string]string,
+	regionConf map[string]models.RegionConfig,
+) (map[string][]string, map[string][]string, map[string]string, map[string]string, error) {
+	if err := terraformaws.SetCloudCredentials(rootBody, awsProfile, regions); err != nil {
+		return nil, nil, nil, nil, err
+	}
+
 	for i, region := range regions {
 		if entry, ok := regionConf[region]; ok {
 			entry.NumNodes = numNodes[i]

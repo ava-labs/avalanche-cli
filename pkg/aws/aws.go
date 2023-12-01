@@ -110,6 +110,7 @@ func GetInstancePublicIPs(ec2Svc *ec2.EC2, nodeIDs []string) (map[string]string,
 		return nil, err
 	}
 	reservations := instanceResults.Reservations
+	fmt.Println(reservations)
 	if len(reservations) == 0 {
 		return nil, ErrNoInstanceState
 	}
