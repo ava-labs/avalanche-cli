@@ -452,7 +452,7 @@ func createClusterNodeConfig(network models.Network, cloudConfig, monitorCloudCo
 		}
 	}
 	publicIP := ""
-	if useStaticIP {
+	if separateMonitoringInstance && useStaticIP {
 		publicIP = monitorCloudConfig.PublicIPs[0]
 	}
 
