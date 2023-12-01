@@ -25,8 +25,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
-	avagokeychain "github.com/ava-labs/avalanchego/utils/crypto/keychain"
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/olekukonko/tablewriter"
@@ -443,15 +441,16 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 		// use first fee-paying key as control key
 		if sameControlKey {
-			controlKeys, err = loadFirstFeePayingKey(network, kc)
+			kcKeys, err := kc.PChainFormattedStrAddresses()
 			if err != nil {
 				return err
 			}
+			controlKeys = kcKeys[:1]
 		}
 		// prompt for control keys
 		if controlKeys == nil {
 			var cancelled bool
-			controlKeys, cancelled, err = getControlKeys(network, useLedger, kc)
+			controlKeys, cancelled, err = getControlKeys(kc)
 			if err != nil {
 				return err
 			}
@@ -484,19 +483,18 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	walletKeys, err := loadFirstFeePayingKey(network, kc)
+	kcKeys, err := kc.PChainFormattedStrAddresses()
 	if err != nil {
 		return err
 	}
-	walletKey := walletKeys[0]
 
 	// get keys for blockchain tx signing
 	if subnetAuthKeys != nil {
-		if err := prompts.CheckSubnetAuthKeys(walletKey, subnetAuthKeys, controlKeys, threshold); err != nil {
+		if err := prompts.CheckSubnetAuthKeys(kcKeys[0], subnetAuthKeys, controlKeys, threshold); err != nil {
 			return err
 		}
 	} else {
-		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, walletKey, controlKeys, threshold)
+		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, kcKeys[0], controlKeys, threshold)
 		if err != nil {
 			return err
 		}
@@ -554,7 +552,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
 }
 
-func getControlKeys(network models.Network, useLedger bool, kc avagokeychain.Keychain) ([]string, bool, error) {
+func getControlKeys(kc *keychain.Keychain) ([]string, bool, error) {
 	controlKeysInitialPrompt := "Configure which addresses may make changes to the subnet.\n" +
 		"These addresses are known as your control keys. You will also\n" +
 		"set how many control keys are required to make a subnet change (the threshold)."
@@ -569,12 +567,12 @@ func getControlKeys(network models.Network, useLedger bool, kc avagokeychain.Key
 
 	var feePaying string
 	var listOptions []string
-	if useLedger {
+	if kc.UsesLedger {
 		feePaying = "Use ledger address"
 	} else {
 		feePaying = "Use fee-paying key"
 	}
-	if network.Kind == models.Mainnet {
+	if kc.Network.Kind == models.Mainnet {
 		listOptions = []string{feePaying, custom}
 	} else {
 		listOptions = []string{feePaying, useAll, custom}
@@ -592,11 +590,13 @@ func getControlKeys(network models.Network, useLedger bool, kc avagokeychain.Key
 
 	switch listDecision {
 	case feePaying:
-		keys, err = loadFirstFeePayingKey(network, kc)
+		var kcKeys []string
+		kcKeys, err = kc.PChainFormattedStrAddresses()
+		keys = kcKeys[:1]
 	case useAll:
-		keys, err = useAllKeys(network)
+		keys, err = useAllKeys(kc.Network)
 	case custom:
-		keys, cancelled, err = enterCustomKeys(network)
+		keys, cancelled, err = enterCustomKeys(kc.Network)
 	}
 	if err != nil {
 		return nil, false, err
@@ -633,24 +633,6 @@ func useAllKeys(network models.Network) ([]string, error) {
 	}
 
 	return existing, nil
-}
-
-func loadFirstFeePayingKey(network models.Network, kc avagokeychain.Keychain) ([]string, error) {
-	addrs := kc.Addresses().List()
-	if len(addrs) == 0 {
-		return nil, fmt.Errorf("no creation addresses found")
-	}
-	hrp := key.GetHRP(network.ID)
-	addrsStr := []string{}
-	for _, addr := range addrs {
-		addrStr, err := address.Format("P", hrp, addr[:])
-		if err != nil {
-			return nil, err
-		}
-		addrsStr = append(addrsStr, addrStr)
-	}
-
-	return addrsStr[:1], nil
 }
 
 func enterCustomKeys(network models.Network) ([]string, bool, error) {

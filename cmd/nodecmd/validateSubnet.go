@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	avagokeychain "github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -78,7 +77,7 @@ func parseSubnetSyncOutput(byteValue []byte) (string, error) {
 
 func addNodeAsSubnetValidator(
 	network models.Network,
-	kc avagokeychain.Keychain,
+	kc *keychain.Keychain,
 	useLedger bool,
 	nodeID string,
 	subnetName string,

@@ -15,12 +15,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 )
@@ -38,22 +38,42 @@ var (
 )
 
 type Keychain struct {
-	Keychain keychain.Keychain
-	UsesLedger bool
+	Network       models.Network
+	Keychain      keychain.Keychain
+	UsesLedger    bool
 	LedgerIndices []uint32
 }
 
-func NewKeychain(keychain keychain.Keychain, ledgerIndices []uint32) *Keychain {
+func NewKeychain(network models.Network, keychain keychain.Keychain, ledgerIndices []uint32) *Keychain {
 	usesLedger := len(ledgerIndices) > 0
 	return &Keychain{
-		Keychain: keychain,
-		UsesLedger: usesLedger,
+		Network:       network,
+		Keychain:      keychain,
+		UsesLedger:    usesLedger,
 		LedgerIndices: ledgerIndices,
 	}
 }
 
 func (kc *Keychain) Addresses() set.Set[ids.ShortID] {
 	return kc.Keychain.Addresses()
+}
+
+func (kc *Keychain) PChainFormattedStrAddresses() ([]string, error) {
+	addrs := kc.Addresses().List()
+	if len(addrs) == 0 {
+		return nil, fmt.Errorf("no addresses in keychain")
+	}
+	hrp := key.GetHRP(kc.Network.ID)
+	addrsStr := []string{}
+	for _, addr := range addrs {
+		addrStr, err := address.Format("P", hrp, addr[:])
+		if err != nil {
+			return nil, err
+		}
+		addrsStr = append(addrsStr, addrStr)
+	}
+
+	return addrsStr, nil
 }
 
 func GetKeychainFromCmdLineFlags(
@@ -171,7 +191,7 @@ func GetKeychain(
 		if err != nil {
 			return nil, err
 		}
-		return NewKeychain(kc, ledgerIndices), nil
+		return NewKeychain(network, kc, ledgerIndices), nil
 	}
 	if useEwoq {
 		sf, err := key.LoadEwoq(network.ID)
@@ -179,14 +199,14 @@ func GetKeychain(
 			return nil, err
 		}
 		kc := sf.KeyChain()
-		return NewKeychain(kc, nil), nil
+		return NewKeychain(network, kc, nil), nil
 	}
 	sf, err := key.LoadSoft(network.ID, app.GetKeyPath(keyName))
 	if err != nil {
 		return nil, err
 	}
 	kc := sf.KeyChain()
-	return NewKeychain(kc, nil), nil
+	return NewKeychain(network, kc, nil), nil
 }
 
 func getLedgerIndices(ledgerDevice keychain.Ledger, addressesStr []string) ([]uint32, error) {

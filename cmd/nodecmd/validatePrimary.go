@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
-	avagokeychain "github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 
 	"github.com/ava-labs/avalanchego/utils/units"
@@ -94,7 +93,7 @@ func GetMinStakingAmount(network models.Network) (uint64, error) {
 
 func joinAsPrimaryNetworkValidator(
 	network models.Network,
-	kc avagokeychain.Keychain,
+	kc *keychain.Keychain,
 	useLedger bool,
 	nodeID ids.NodeID,
 	nodeIndex int,
@@ -280,7 +279,7 @@ func checkNodeIsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Networ
 // as it impacts the output in adding node as subnet validator in the next steps
 func addNodeAsPrimaryNetworkValidator(
 	network models.Network,
-	kc avagokeychain.Keychain,
+	kc *keychain.Keychain,
 	useLedger bool,
 	nodeID ids.NodeID,
 	nodeIndex int,
