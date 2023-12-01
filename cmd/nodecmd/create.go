@@ -261,17 +261,10 @@ func createNodes(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
-	if err != nil {
-		return err
-	}
 	if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
 		return err
 	}
 	if err := updateAnsiblePublicIPs(clusterName); err != nil {
-		return err
-	}
-	if err := updateAnsibleMonitoringPublicIP(clusterName, monitoringCloudConfig.InstanceIDs[0]); err != nil {
 		return err
 	}
 	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
@@ -336,6 +329,13 @@ func createNodes(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if separateMonitoringInstance {
+		if err := updateAnsibleMonitoringPublicIP(clusterName, monitoringCloudConfig.InstanceIDs[0]); err != nil {
+			return err
+		}
+		monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
+		if err != nil {
+			return err
+		}
 		if len(monitoringHosts) != 1 {
 			return fmt.Errorf("expected only one monitoring host, found %d", len(monitoringHosts))
 		}
@@ -418,7 +418,11 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if wgResults.HasErrors() {
 		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
 	} else {
-		printResults(cloudConfig, publicIPMap, ansibleHostIDs, monitoringCloudConfig.PublicIPs[0])
+		monitoringInstancePublicIP := ""
+		if separateMonitoringInstance {
+			monitoringInstancePublicIP = monitoringCloudConfig.PublicIPs[0]
+		}
+		printResults(cloudConfig, publicIPMap, ansibleHostIDs, monitoringInstancePublicIP)
 		ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	}
 	return nil
@@ -451,27 +455,28 @@ func createClusterNodeConfig(network models.Network, cloudConfig, monitorCloudCo
 			return err
 		}
 	}
-	publicIP := ""
-	if separateMonitoringInstance && useStaticIP {
-		publicIP = monitorCloudConfig.PublicIPs[0]
-	}
-
-	nodeConfig := models.NodeConfig{
-		NodeID:        monitorCloudConfig.InstanceIDs[0],
-		Region:        monitorCloudConfig.Region,
-		AMI:           monitorCloudConfig.ImageID,
-		KeyPair:       monitorCloudConfig.KeyPair,
-		CertPath:      monitorCloudConfig.CertFilePath,
-		SecurityGroup: monitorCloudConfig.SecurityGroup,
-		ElasticIP:     publicIP,
-		CloudService:  cloudService,
-	}
-	err := app.CreateNodeCloudConfigFile(monitorCloudConfig.InstanceIDs[0], &nodeConfig)
-	if err != nil {
-		return err
-	}
-	if err := addNodeToClustersConfig(network, monitorCloudConfig.InstanceIDs[0], clusterName, true); err != nil {
-		return err
+	if separateMonitoringInstance {
+		publicIP := ""
+		if useStaticIP {
+			publicIP = monitorCloudConfig.PublicIPs[0]
+		}
+		nodeConfig := models.NodeConfig{
+			NodeID:        monitorCloudConfig.InstanceIDs[0],
+			Region:        monitorCloudConfig.Region,
+			AMI:           monitorCloudConfig.ImageID,
+			KeyPair:       monitorCloudConfig.KeyPair,
+			CertPath:      monitorCloudConfig.CertFilePath,
+			SecurityGroup: monitorCloudConfig.SecurityGroup,
+			ElasticIP:     publicIP,
+			CloudService:  cloudService,
+		}
+		err := app.CreateNodeCloudConfigFile(monitorCloudConfig.InstanceIDs[0], &nodeConfig)
+		if err != nil {
+			return err
+		}
+		if err := addNodeToClustersConfig(network, monitorCloudConfig.InstanceIDs[0], clusterName, true); err != nil {
+			return err
+		}
 	}
 	return updateKeyPairClustersConfig(cloudConfig)
 }
