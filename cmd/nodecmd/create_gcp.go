@@ -108,7 +108,7 @@ func getGCPConfig() (*compute.Service, []string, []int, string, string, string, 
 		return nil, nil, nil, "", "", "", errors.New("number of regions and number of nodes must be equal. Please make sure list of regions is unique")
 	case len(cmdLineRegion) == 0 && len(numNodes) == 0:
 		var err error
-		finalZones, err = getRegionsNodeNum(constants.AWSCloudService)
+		finalZones, err = getRegionsNodeNum(constants.GCPCloudService)
 		if err != nil {
 			return nil, nil, nil, "", "", "", err
 		}
