@@ -501,7 +501,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser("Your subnet auth keys for chain creation: %s", subnetAuthKeys)
 
-	kc.AddAddresses(subnetAuthKeys)
+	if err := kc.AddAddresses(subnetAuthKeys); err != nil {
+		return err
+	}
 
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
