@@ -119,13 +119,6 @@ func preCreateChecks() error {
 			}
 		}
 	}
-	// set default instance type
-	switch {
-	case nodeType == "default" && useAWS:
-		nodeType = constants.AWSDefaultInstanceType
-	case nodeType == "default" && useGCP:
-		nodeType = constants.GCPDefaultInstanceType
-	}
 	return nil
 }
 
@@ -149,6 +142,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 
 	cloudService, err := setCloudService()
+	nodeType = setCloudInstanceType(cloudService)
 	if err != nil {
 		return err
 	}
@@ -600,6 +594,17 @@ func setCloudService() (string, error) {
 		return "", err
 	}
 	return chosenCloudService, nil
+}
+
+func setCloudInstanceType(cloudService string) string {
+	// set default instance type
+	switch {
+	case nodeType == "default" && cloudService == constants.AWSCloudService:
+		nodeType = constants.AWSDefaultInstanceType
+	case nodeType == "default" && cloudService == constants.GCPCloudService:
+		nodeType = constants.GCPDefaultInstanceType
+	}
+	return nodeType
 }
 
 func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]string, ansibleHostIDs []string) {
