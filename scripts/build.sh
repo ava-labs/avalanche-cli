@@ -15,7 +15,7 @@ fi
 
 # Check for CGO_ENABLED
 if [[ $(go env CGO_ENABLED) = 0 ]]; then
-	echo "must have installed gcc, clang (macos), or have set CC to an appropriate C compiler"
+	echo "must have installed gcc (linux), clang (macos), or have set CC to an appropriate C compiler"
 	exit 1
 fi
 
