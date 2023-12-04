@@ -78,7 +78,7 @@ const (
 
 	DefaultSnapshotName = "default-1654102509"
 
-	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/update-snapshots-for-cchain-local-genesis-changes/"
+	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/main/"
 
 	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
 	BootstrapSnapshotLocalPath   = "assets/" + BootstrapSnapshotArchiveName
