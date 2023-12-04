@@ -14,14 +14,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	terraformaws "github.com/ava-labs/avalanche-cli/pkg/terraform/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/session"
 )
 
 func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
@@ -72,7 +70,7 @@ func printExpiredCredentialsOutput(awsProfile string) {
 }
 
 // getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
-func getAWSCloudCredentials(awsProfile, region, awsCommand string) (*session.Session, error) {
+func getAWSCloudCredentials(awsProfile, region, awsCommand string) (*awsAPI.AwsCloud, error) {
 	if !(authorizeAccess || authorizedAccessFromSettings()) {
 		if awsCommand == constants.StopAWSNode {
 			if err := requestStopAWSNodeAuth(); err != nil {
@@ -84,24 +82,7 @@ func getAWSCloudCredentials(awsProfile, region, awsCommand string) (*session.Ses
 			}
 		}
 	}
-	// use env variables first and fallback to shared config
-	creds := credentials.NewEnvCredentials()
-	if _, err := creds.Get(); err != nil {
-		creds = credentials.NewSharedCredentials("", awsProfile)
-		if _, err := creds.Get(); err != nil {
-			printNoCredentialsOutput(awsProfile)
-			return &session.Session{}, err
-		}
-	}
-	// Load session from shared config
-	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String(region),
-		Credentials: creds,
-	})
-	if err != nil {
-		return &session.Session{}, err
-	}
-	return sess, nil
+	return awsAPI.NewAwsCloud(awsProfile, region)
 }
 
 // promptKeyPairName get custom name for key pair if the default key pair name that we use cannot be used for this EC2 instance
@@ -114,7 +95,7 @@ func promptKeyPairName(ec2Svc *ec2.EC2) (string, string, error) {
 	return certName, newKeyPairName, nil
 }
 
-func getAWSCloudConfig(awsProfile string, region string) (*ec2.EC2, string, string, error) {
+func getAWSCloudConfig(awsProfile string, region string) (*awsAPI.AwsCloud, string, error) {
 	if region == "" {
 		var err error
 		usEast1 := "us-east-1"
@@ -127,28 +108,27 @@ func getAWSCloudConfig(awsProfile string, region string) (*ec2.EC2, string, stri
 			[]string{usEast1, usEast2, usWest1, usWest2, customRegion},
 		)
 		if err != nil {
-			return nil, "", "", err
+			return nil, "", err
 		}
 		if region == customRegion {
 			region, err = app.Prompt.CaptureString("Which AWS region do you want to set up your node in?")
 			if err != nil {
-				return nil, "", "", err
+				return nil, "", err
 			}
 		}
 	}
-	sess, err := getAWSCloudCredentials(awsProfile, region, constants.CreateAWSNode)
+	awsCloud, err := getAWSCloudCredentials(awsProfile, region, constants.CreateAWSNode)
 	if err != nil {
-		return nil, "", "", err
+		return nil, "", err
 	}
-	ec2Svc := ec2.New(sess)
-	ami, err := awsAPI.GetUbuntuAMIID(ec2Svc)
+	ami, err := awsCloud.GetUbuntuAMIID()
 	if err != nil {
 		if strings.Contains(err.Error(), "RequestExpired: Request has expired") {
 			printExpiredCredentialsOutput(awsProfile)
 		}
-		return nil, "", "", err
+		return nil, "", err
 	}
-	return ec2Svc, region, ami, nil
+	return awsCloud, ami, nil
 }
 
 // createEC2Instances creates terraform .tf file and runs terraform exec function to create ec2 instances
