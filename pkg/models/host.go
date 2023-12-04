@@ -13,12 +13,15 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 )
 
 const (
-	maxResponseSize = 102400 // 100KB should be enough to read the avalanchego response
+	maxResponseSize      = 102400          // 100KB should be enough to read the avalanchego response
+	sshConnectionTimeout = 3 * time.Second // usually takes less than 2
+	sshConnectionRetries = 5
 )
 
 type Host struct {
@@ -27,43 +30,27 @@ type Host struct {
 	SSHUser           string
 	SSHPrivateKeyPath string
 	SSHCommonArgs     string
-	Connection        *HostConnection
+	Connection        *goph.Client
 }
 
-type HostConnection struct {
-	Client    *goph.Client
-	Ctx       context.Context
-	ctxCancel context.CancelFunc
-}
-
-func NewHostConnection(h Host, timeout time.Duration) *HostConnection {
-	if h.Connection != nil { // reuse connection if it exists
-		return h.Connection
-	}
-	p := new(HostConnection)
-	if timeout == 0 {
-		timeout = constants.SSHScriptTimeout
-	}
-	p.Ctx, p.ctxCancel = context.WithTimeout(context.Background(), timeout)
+func NewHostConnection(h *Host) (*goph.Client, error) {
 	auth, err := goph.Key(h.SSHPrivateKeyPath, "")
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	cl, err := goph.NewConn(&goph.Config{
 		User:    h.SSHUser,
 		Addr:    h.IP,
-		Port:    22,
+		Port:    constants.SSHTCPPort,
 		Auth:    auth,
-		Timeout: timeout,
+		Timeout: sshConnectionTimeout,
 		// #nosec G106
 		Callback: ssh.InsecureIgnoreHostKey(), // we don't verify host key ( similar to ansible)
 	})
 	if err != nil {
-		return nil
-	} else {
-		p.Client = cl
+		return nil, err
 	}
-	return p
+	return cl, nil
 }
 
 // GetCloudID returns the node ID of the host.
@@ -73,10 +60,16 @@ func (h *Host) GetCloudID() string {
 }
 
 // Connect starts a new SSH connection with the provided private key.
-func (h *Host) Connect(timeout time.Duration) error {
-	h.Connection = NewHostConnection(*h, timeout)
-	if !h.Connected() {
-		return fmt.Errorf("failed to connect to host %s", h.IP)
+func (h *Host) Connect() error {
+	if h.Connection != nil {
+		return nil
+	}
+	var err error
+	for i := 0; h.Connection == nil && i < sshConnectionRetries; i++ {
+		h.Connection, err = NewHostConnection(h)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to connect to host %s: %w", h.IP, err)
 	}
 	return nil
 }
@@ -86,43 +79,85 @@ func (h *Host) Connected() bool {
 }
 
 func (h *Host) Disconnect() error {
-	if !h.Connected() {
+	if h.Connection == nil {
 		return nil
 	}
-	return h.Connection.Client.Close()
+	err := h.Connection.Close()
+	return err
 }
 
 // Upload uploads a local file to a remote file on the host.
-func (h *Host) Upload(localFile string, remoteFile string) error {
+func (h *Host) Upload(localFile string, remoteFile string, timeout time.Duration) error {
 	if !h.Connected() {
-		if err := h.Connect(constants.SSHFileOpsTimeout); err != nil {
+		if err := h.Connect(); err != nil {
 			return err
 		}
 	}
-	return h.Connection.Client.Upload(localFile, remoteFile)
+	_, err := utils.TimedFunction(
+		func() (interface{}, error) {
+			return nil, h.Connection.Upload(localFile, remoteFile)
+		},
+		"upload",
+		timeout,
+	)
+	if err != nil {
+		err = fmt.Errorf("%w for host %s", err, h.IP)
+	}
+	return err
 }
 
 // Download downloads a file from the remote server to the local machine.
-func (h *Host) Download(remoteFile string, localFile string) error {
+func (h *Host) Download(remoteFile string, localFile string, timeout time.Duration) error {
 	if !h.Connected() {
-		if err := h.Connect(constants.SSHScriptTimeout); err != nil {
+		if err := h.Connect(); err != nil {
 			return err
 		}
 	}
 	if err := os.MkdirAll(filepath.Dir(localFile), os.ModePerm); err != nil {
 		return err
 	}
-	return h.Connection.Client.Download(remoteFile, localFile)
+	_, err := utils.TimedFunction(
+		func() (interface{}, error) {
+			return nil, h.Connection.Download(remoteFile, localFile)
+		},
+		"download",
+		timeout,
+	)
+	if err != nil {
+		err = fmt.Errorf("%w for host %s", err, h.IP)
+	}
+	return err
 }
 
 // MkdirAll creates a folder on the remote server.
-func (h *Host) MkdirAll(remoteDir string) error {
+func (h *Host) MkdirAll(remoteDir string, timeout time.Duration) error {
 	if !h.Connected() {
-		if err := h.Connect(constants.SSHScriptTimeout); err != nil {
+		if err := h.Connect(); err != nil {
 			return err
 		}
 	}
-	sftp, err := h.Connection.Client.NewSftp()
+	_, err := utils.TimedFunction(
+		func() (interface{}, error) {
+			return nil, h.UntimedMkdirAll(remoteDir)
+		},
+		"mkdir",
+		timeout,
+	)
+	if err != nil {
+		err = fmt.Errorf("%w for host %s", err, h.IP)
+	}
+	return err
+}
+
+// UntimedMkdirAll creates a folder on the remote server.
+// Does not support timeouts on the operation.
+func (h *Host) UntimedMkdirAll(remoteDir string) error {
+	if !h.Connected() {
+		if err := h.Connect(); err != nil {
+			return err
+		}
+	}
+	sftp, err := h.Connection.NewSftp()
 	if err != nil {
 		return err
 	}
@@ -131,30 +166,53 @@ func (h *Host) MkdirAll(remoteDir string) error {
 }
 
 // Command executes a shell command on a remote host.
-func (h *Host) Command(script string, env []string, ctx context.Context) ([]byte, error) {
+func (h *Host) Command(script string, env []string, timeout time.Duration) ([]byte, error) {
 	if !h.Connected() {
-		if err := h.Connect(constants.SSHScriptTimeout); err != nil {
+		if err := h.Connect(); err != nil {
 			return nil, err
 		}
 	}
-	if h.Connected() {
-		cmd, err := h.Connection.Client.CommandContext(ctx, constants.SSHShell, script)
-		if err != nil {
-			return nil, err
-		}
-		if env != nil {
-			cmd.Env = env
-		}
-		return cmd.CombinedOutput()
-	} else {
-		return nil, fmt.Errorf("failed to connect to host %s", h.IP)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	cmd, err := h.Connection.CommandContext(ctx, constants.SSHShell, script)
+	if err != nil {
+		return nil, err
 	}
+	if env != nil {
+		cmd.Env = env
+	}
+	return cmd.CombinedOutput()
 }
 
 // Forward forwards the TCP connection to a remote address.
-func (h *Host) Forward(httpRequest string) ([]byte, []byte, error) {
+func (h *Host) Forward(httpRequest string, timeout time.Duration) ([]byte, []byte, error) {
 	if !h.Connected() {
-		if err := h.Connect(constants.SSHPOSTTimeout); err != nil {
+		if err := h.Connect(); err != nil {
+			return nil, nil, err
+		}
+	}
+	retI, err := utils.TimedFunction(
+		func() (interface{}, error) {
+			header, body, err := h.UntimedForward(httpRequest)
+			return [][]byte{header, body}, err
+		},
+		"post over ssh",
+		timeout,
+	)
+	if err != nil {
+		err = fmt.Errorf("%w for host %s", err, h.IP)
+	}
+	ret := retI.([][]byte)
+	header := ret[0]
+	body := ret[1]
+	return header, body, err
+}
+
+// UntimedForward forwards the TCP connection to a remote address.
+// Does not support timeouts on the operation.
+func (h *Host) UntimedForward(httpRequest string) ([]byte, []byte, error) {
+	if !h.Connected() {
+		if err := h.Connect(); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -163,14 +221,13 @@ func (h *Host) Forward(httpRequest string) ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	proxy, err := h.Connection.Client.DialTCP("tcp", nil, avalancheGoAddr)
+	proxy, err := h.Connection.DialTCP("tcp", nil, avalancheGoAddr)
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to port forward to %s via %s", h.Connection.Client.Conn.RemoteAddr(), "ssh")
+		return nil, nil, fmt.Errorf("unable to port forward to %s via %s", h.Connection.RemoteAddr(), "ssh")
 	}
 	defer proxy.Close()
 	// send request to server
-	_, err = proxy.Write([]byte(httpRequest))
-	if err != nil {
+	if _, err = proxy.Write([]byte(httpRequest)); err != nil {
 		return nil, nil, err
 	}
 	// Read and print the server's response
@@ -229,21 +286,21 @@ func (h *Host) WaitForSSHPort(timeout time.Duration) error {
 
 // WaitForSSHShell waits for the SSH shell to be available on the host within the specified timeout.
 func (h *Host) WaitForSSHShell(timeout time.Duration) error {
+	start := time.Now()
 	if err := h.WaitForSSHPort(timeout); err != nil {
 		return err
 	}
-	start := time.Now()
 	deadline := start.Add(timeout)
 	for {
 		if time.Now().After(deadline) {
 			return fmt.Errorf("timeout: SSH shell on host %s is not available after %ds", h.IP, int(timeout.Seconds()))
 		}
-		if err := h.Connect(timeout); err != nil {
+		if err := h.Connect(); err != nil {
 			time.Sleep(constants.SSHSleepBetweenChecks)
 			continue
 		}
 		if h.Connected() {
-			output, err := h.Command("echo", nil, context.Background())
+			output, err := h.Command("echo", nil, timeout)
 			if err == nil || len(output) > 0 {
 				return nil
 			}

@@ -54,6 +54,9 @@ func getServiceAccountKeyFilepath() (string, error) {
 }
 
 func getGCPCloudCredentials() (*compute.Service, string, string, error) {
+	if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
+		return nil, "", "", fmt.Errorf("cloud access is required")
+	}
 	var err error
 	var gcpCredentialsPath string
 	var gcpProjectName string
@@ -159,12 +162,6 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	networkName := fmt.Sprintf("%s-network", cliDefaultName)
 	if err := terraformgcp.SetCloudCredentials(rootBody, zone, credentialsPath, projectName); err != nil {
 		return nil, nil, "", "", err
-	}
-	if numNodes <= 0 {
-		numNodes, err = app.Prompt.CaptureInt("How many nodes do you want to set up on GCP?")
-		if err != nil {
-			return nil, nil, "", "", err
-		}
 	}
 	ux.Logger.PrintToUser("Creating new VM instance(s) on Google Compute Engine...")
 	certInSSHDir, err := app.CheckCertInSSHDir(fmt.Sprintf("%s-keypair.pub", cliDefaultName))

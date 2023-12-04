@@ -42,6 +42,8 @@ type Sidecar struct {
 	CustomVMRepoURL     string
 	CustomVMBranch      string
 	CustomVMBuildScript string
+	// SubnetEVM based VM's only
+	SubnetEVMMainnetChainID uint
 }
 
 func (sc Sidecar) GetVMID() (string, error) {

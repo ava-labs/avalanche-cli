@@ -45,7 +45,7 @@ func SetNetwork(rootBody *hclwrite.Body, ipAddress, networkName string) {
 	network := rootBody.AppendNewBlock("resource", []string{"google_compute_network", networkName})
 	networkBody := network.Body()
 	networkBody.SetAttributeValue("name", cty.StringVal(networkName))
-	SetFirewallRule(rootBody, "0.0.0.0/0", fmt.Sprintf("%s-%s", networkName, "default"), networkName, []string{strconv.Itoa(constants.AvalanchegoAPIPort), strconv.Itoa(constants.AvalanchegoP2PPort)}, false)
+	SetFirewallRule(rootBody, "0.0.0.0/0", fmt.Sprintf("%s-%s", networkName, "default"), networkName, []string{strconv.Itoa(constants.AvalanchegoP2PPort)}, false)
 	SetFirewallRule(rootBody, ipAddress+"/32", fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)}, false)
 }
 

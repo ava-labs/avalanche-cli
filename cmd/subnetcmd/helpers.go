@@ -46,6 +46,7 @@ func GetNetworkFromCmdLineFlags(
 	useFuji bool,
 	useMainnet bool,
 	endpoint string,
+	askForDevnetEndpoint bool,
 	supportedNetworkKinds []models.NetworkKind,
 ) (models.Network, error) {
 	// get network from flags
@@ -75,8 +76,10 @@ func GetNetworkFromCmdLineFlags(
 			return models.UndefinedNetwork, err
 		}
 		network = models.NetworkFromString(networkStr)
-		if err := fillNetworkDetails(&network); err != nil {
-			return models.UndefinedNetwork, err
+		if askForDevnetEndpoint {
+			if err := fillNetworkDetails(&network); err != nil {
+				return models.UndefinedNetwork, err
+			}
 		}
 		return network, nil
 	}
@@ -99,9 +102,10 @@ func GetNetworkFromCmdLineFlags(
 	if !flags.EnsureMutuallyExclusive([]bool{useLocal, useDevnet, useFuji, useMainnet}) {
 		return models.UndefinedNetwork, fmt.Errorf("network flags %s are mutually exclusive", supportedNetworksFlags)
 	}
-
-	if err := fillNetworkDetails(&network); err != nil {
-		return models.UndefinedNetwork, err
+	if askForDevnetEndpoint {
+		if err := fillNetworkDetails(&network); err != nil {
+			return models.UndefinedNetwork, err
+		}
 	}
 
 	return network, nil

@@ -116,17 +116,13 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 	clusterName := args[0]
 
-	endpoint := ""
-	if createDevnet {
-		// avoid prompt asking for endpoint if Devnet, it will be set later on when the info is available
-		endpoint = "toIgnore"
-	}
 	network, err := subnetcmd.GetNetworkFromCmdLineFlags(
 		false,
 		createDevnet,
 		createOnFuji,
 		createOnMainnet,
-		endpoint,
+		"",
+		false,
 		[]models.NetworkKind{models.Fuji, models.Devnet},
 	)
 	if err != nil {
@@ -150,6 +146,13 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if numNodes <= 0 {
+		var err error
+		numNodes, err = app.Prompt.CaptureInt("How many nodes do you want to set up?")
+		if err != nil {
+			return err
+		}
+	}
 	usr, err := user.Current()
 	if err != nil {
 		return err
@@ -160,7 +163,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	gcpCredentialFilepath := ""
 	if cloudService == constants.AWSCloudService {
 		// Get AWS Credential, region and AMI
-		ec2Svc, region, ami, err := getAWSCloudConfig(awsProfile, cmdLineRegion, authorizeAccess)
+		ec2Svc, region, ami, err := getAWSCloudConfig(awsProfile, cmdLineRegion)
 		if err != nil {
 			return err
 		}
@@ -229,7 +232,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	hosts := utils.Filter(allHosts, func(h models.Host) bool { return slices.Contains(cloudConfig.InstanceIDs, h.GetCloudID()) })
+	hosts := utils.Filter(allHosts, func(h *models.Host) bool { return slices.Contains(cloudConfig.InstanceIDs, h.GetCloudID()) })
 	// waiting for all nodes to become accessible
 	failedHosts := waitForHosts(hosts)
 	if failedHosts.Len() > 0 {
@@ -243,22 +246,20 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	defer disconnectHosts(hosts)
+
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host models.Host) {
+		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			if err := host.Connect(constants.SSHScriptTimeout); err != nil {
+			if err := host.Connect(); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
-			defer func() {
-				if err := host.Disconnect(); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-				}
-			}()
 			if err := provideStakingCertAndKey(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
@@ -268,6 +269,10 @@ func createNodes(_ *cobra.Command, args []string) error {
 				return
 			}
 			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			if err := ssh.RunSSHSetupCLIFromSource(host, constants.SetupCLIFromSourceBranch); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
@@ -287,7 +292,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 	if network.Kind == models.Devnet {
 		ux.Logger.PrintToUser("Setting up Devnet ...")
-		if err := setupDevnet(clusterName); err != nil {
+		if err := setupDevnet(clusterName, hosts); err != nil {
 			return err
 		}
 	}
@@ -425,7 +430,7 @@ func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePa
 	return nodeID, nil
 }
 
-func provideStakingCertAndKey(host models.Host) error {
+func provideStakingCertAndKey(host *models.Host) error {
 	instanceID := host.GetCloudID()
 	keyPath := filepath.Join(app.GetNodesDir(), instanceID)
 	nodeID, err := generateNodeCertAndKeys(
@@ -601,14 +606,14 @@ func printResults(cloudConfig CloudConfig, publicIPMap map[string]string, ansibl
 }
 
 // waitForHosts waits for all hosts to become available via SSH.
-func waitForHosts(hosts []models.Host) *models.NodeResults {
+func waitForHosts(hosts []*models.Host) *models.NodeResults {
 	hostErrors := models.NodeResults{}
 	createdWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
 		createdWaitGroup.Add(1)
-		go func(nodeResults *models.NodeResults, host models.Host) {
+		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer createdWaitGroup.Done()
-			if err := host.WaitForSSHShell(2 * constants.SSHFileOpsTimeout); err != nil {
+			if err := host.WaitForSSHShell(constants.SSHServerStartTimeout); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
@@ -616,4 +621,24 @@ func waitForHosts(hosts []models.Host) *models.NodeResults {
 	}
 	createdWaitGroup.Wait()
 	return &hostErrors
+}
+
+// requestCloudAuth makes sure user agree to
+func requestCloudAuth(cloudName string) error {
+	ux.Logger.PrintToUser("Do you authorize Avalanche-CLI to access your %s account?", cloudName)
+	ux.Logger.PrintToUser("By clicking yes, you are authorizing Avalanche-CLI to:")
+	ux.Logger.PrintToUser("- Create Cloud instance(s) and other components (such as elastic IPs)")
+	ux.Logger.PrintToUser("- Start/Stop Cloud instance(s) and other components (such as elastic IPs) previously created by Avalanche-CLI")
+	ux.Logger.PrintToUser("- Delete Cloud instance(s) and other components (such as elastic IPs) previously created by Avalanche-CLI")
+	yes, err := app.Prompt.CaptureYesNo(fmt.Sprintf("I authorize Avalanche-CLI to access my %s account", cloudName))
+	if err != nil {
+		return err
+	}
+	if err := app.Conf.SetConfigValue(constants.ConfigAutorizeCloudAccessKey, yes); err != nil {
+		return err
+	}
+	if !yes {
+		return fmt.Errorf("user did not give authorization to Avalanche-CLI to access %s account", cloudName)
+	}
+	return nil
 }

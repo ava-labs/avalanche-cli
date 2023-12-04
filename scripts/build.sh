@@ -13,6 +13,12 @@ else
     VERSION=$1
 fi
 
+# Check for CGO_ENABLED
+if [[ $(go env CGO_ENABLED) = 0 ]]; then
+	echo "must have installed gcc (linux), clang (macos), or have set CC to an appropriate C compiler"
+	exit 1
+fi
+
 # Set the CGO flags to use the portable version of BLST
 #
 # We use "export" here instead of just setting a bash variable because we need

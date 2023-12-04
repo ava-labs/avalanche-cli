@@ -119,7 +119,7 @@ func stopNodes(_ *cobra.Command, args []string) error {
 		if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
 			// need to check if it's empty because we didn't set cloud service when only using AWS
 			if nodeConfig.Region != lastRegion {
-				sess, err := getAWSCloudCredentials(awsProfile, nodeConfig.Region, constants.StopAWSNode, authorizeAccess)
+				sess, err := getAWSCloudCredentials(awsProfile, nodeConfig.Region)
 				if err != nil {
 					return err
 				}
@@ -193,4 +193,17 @@ func getClusterNodes(clusterName string) ([]string, error) {
 		return nil, fmt.Errorf("no nodes found in cluster %s", clusterName)
 	}
 	return clusterNodes, nil
+}
+
+func clusterExists(clusterName string) (bool, error) {
+	clustersConfig := models.ClustersConfig{}
+	if app.ClustersConfigExists() {
+		var err error
+		clustersConfig, err = app.LoadClustersConfig()
+		if err != nil {
+			return false, err
+		}
+	}
+	_, ok := clustersConfig.Clusters[clusterName]
+	return ok, nil
 }
