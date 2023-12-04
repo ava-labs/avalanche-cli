@@ -9,7 +9,7 @@ require (
 	github.com/ava-labs/coreth v0.12.9-rc.5
 	github.com/ava-labs/subnet-evm v0.5.3
 	github.com/aws/aws-sdk-go v1.44.301
-	github.com/docker/docker v24.0.5+incompatible
+	github.com/docker/docker v24.0.7+incompatible
 	github.com/ethereum/go-ethereum v1.12.0
 	github.com/go-git/go-git/v5 v5.8.1
 	github.com/hashicorp/hcl/v2 v2.17.0
