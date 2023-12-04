@@ -78,15 +78,17 @@ const (
 
 	DefaultSnapshotName = "default-1654102509"
 
+	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/update-snapshots-for-cchain-local-genesis-changes/"
+
 	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
 	BootstrapSnapshotLocalPath   = "assets/" + BootstrapSnapshotArchiveName
-	BootstrapSnapshotURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/" + BootstrapSnapshotLocalPath
-	BootstrapSnapshotSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/sha256sum.txt"
+	BootstrapSnapshotURL         = BootstrapSnapshotRawBranch + BootstrapSnapshotLocalPath
+	BootstrapSnapshotSHA256URL   = BootstrapSnapshotRawBranch + "assets/sha256sum.txt"
 
 	BootstrapSnapshotSingleNodeArchiveName = "bootstrapSnapshotSingleNode.tar.gz"
 	BootstrapSnapshotSingleNodeLocalPath   = "assets/" + BootstrapSnapshotSingleNodeArchiveName
-	BootstrapSnapshotSingleNodeURL         = "https://github.com/ava-labs/avalanche-cli/raw/main/" + BootstrapSnapshotSingleNodeLocalPath
-	BootstrapSnapshotSingleNodeSHA256URL   = "https://github.com/ava-labs/avalanche-cli/raw/main/assets/sha256sumSingleNode.txt"
+	BootstrapSnapshotSingleNodeURL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodeLocalPath
+	BootstrapSnapshotSingleNodeSHA256URL   = BootstrapSnapshotRawBranch + "assets/sha256sumSingleNode.txt"
 
 	CliInstallationURL      = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
 	ExpectedCliInstallErr   = "resource temporarily unavailable"
