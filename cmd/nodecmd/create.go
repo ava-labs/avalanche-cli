@@ -708,7 +708,7 @@ func getRegionsNodeNum(cloudName string) (
 	for {
 		userRegion, err := app.Prompt.CaptureList(
 			fmt.Sprintf("Which %s do you want to set up your node(s) in?", supportedClouds[cloudName].locationName),
-			supportedClouds[cloudName].defaultLocations,
+			append(supportedClouds[cloudName].defaultLocations, awsCustomRegion),
 		)
 		if err != nil {
 			return nil, err
@@ -719,7 +719,7 @@ func getRegionsNodeNum(cloudName string) (
 				return nil, err
 			}
 		}
-		numNodes, err := app.Prompt.CaptureUint32(fmt.Sprintf("How many nodes do you want to set up in %s %s?.", userRegion, supportedClouds[cloudName].locationName))
+		numNodes, err := app.Prompt.CaptureUint32(fmt.Sprintf("How many nodes do you want to set up in %s %s?", userRegion, supportedClouds[cloudName].locationName))
 		if err != nil {
 			return nil, err
 		}
