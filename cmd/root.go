@@ -24,7 +24,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/transactioncmd"
 	"github.com/ava-labs/avalanche-cli/cmd/updatecmd"
 	"github.com/ava-labs/avalanche-cli/internal/migrations"
-	"github.com/ava-labs/avalanche-cli/pkg/apmintegration"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -103,19 +102,6 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	}
 	cf := config.New()
 	app.Setup(baseDir, log, cf, prompts.NewPrompter(), application.NewDownloader())
-
-	// Setup APM, skip if running a hidden command
-	if !cmd.Hidden {
-		usr, err := user.Current()
-		if err != nil {
-			app.Log.Error("unable to get system user")
-			return err
-		}
-		apmBaseDir := filepath.Join(usr.HomeDir, constants.APMDir)
-		if err = apmintegration.SetupApm(app, apmBaseDir); err != nil {
-			return err
-		}
-	}
 
 	initConfig()
 

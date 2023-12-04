@@ -81,12 +81,7 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
 	}
-	clustersConfig, err := app.LoadClustersConfig()
-	if err != nil {
-		return err
-	}
-	network := clustersConfig.Clusters[clusterName].Network
-	nonUpdatedNodes, err := doUpdateSubnet(hosts, subnetName, network)
+	nonUpdatedNodes, err := doUpdateSubnet(hosts, subnetName)
 	if err != nil {
 		return err
 	}
@@ -103,10 +98,9 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 func doUpdateSubnet(
 	hosts []*models.Host,
 	subnetName string,
-	network models.Network,
 ) ([]string, error) {
 	subnetPath := "/tmp/" + subnetName + constants.ExportSubnetSuffix
-	if err := subnetcmd.CallExportSubnet(subnetName, subnetPath, network); err != nil {
+	if err := subnetcmd.CallExportSubnet(subnetName, subnetPath); err != nil {
 		return nil, err
 	}
 	wg := sync.WaitGroup{}
