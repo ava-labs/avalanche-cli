@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -716,6 +717,9 @@ func getRegionsNodeNum(cloudName string) (
 		numNodes, err := app.Prompt.CaptureUint32(fmt.Sprintf("How many nodes do you want to set up in %s %s?.", userRegion, supportedClouds[cloudName].locationName))
 		if err != nil {
 			return nil, err
+		}
+		if numNodes > uint32(math.MaxInt32) {
+			return nil, fmt.Errorf("number of nodes exceeds the range of a signed 32-bit integer")
 		}
 		nodes[userRegion] = int(numNodes)
 
