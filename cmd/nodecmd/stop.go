@@ -119,7 +119,7 @@ func stopNodes(_ *cobra.Command, args []string) error {
 		if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
 			// need to check if it's empty because we didn't set cloud service when only using AWS
 			if nodeConfig.Region != lastRegion {
-				sess, err := getAWSCloudCredentials(awsProfile, nodeConfig.Region, constants.StopAWSNode)
+				sess, err := getAWSCloudCredentials(awsProfile, nodeConfig.Region)
 				if err != nil {
 					return err
 				}

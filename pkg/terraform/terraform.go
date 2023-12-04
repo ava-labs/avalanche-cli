@@ -48,23 +48,35 @@ func CheckIsInstalled() error {
 	return nil
 }
 
-func GetPublicIPs(terraformDir string) ([]string, error) {
-	cmd := exec.Command(constants.Terraform, "output", "instance_ips") //nolint:gosec
-	cmd.Env = os.Environ()
-	cmd.Dir = terraformDir
-	ipsOutput, err := cmd.Output()
-	if err != nil {
-		return nil, err
+// GetPublicIPs retrieves the public IP addresses for instances in different zones.
+//
+// It takes in the following parameters:
+// - terraformDir: the directory where the Terraform configuration is located.
+// - zones: a list of zones for which to retrieve the public IP addresses.
+//
+// It returns a map of zones to arrays of corresponding public IP addresses.
+// If an error occurs, it returns nil and the error.
+func GetPublicIPs(terraformDir string, zones []string) (map[string][]string, error) {
+	publicIPs := map[string][]string{}
+	for _, zone := range zones {
+		cmd := exec.Command(constants.Terraform, "output", "instance_ips_"+zone) //nolint:gosec
+		cmd.Env = os.Environ()
+		cmd.Dir = terraformDir
+		ipsOutput, err := cmd.Output()
+		if err != nil {
+			return nil, err
+		}
+		ipsOutputWoSpace := strings.TrimSpace(string(ipsOutput))
+		// ip and nodeID outputs are bounded by [ and ,] , we need to remove them
+		trimmedPublicIPs := ipsOutputWoSpace[1 : len(ipsOutputWoSpace)-3]
+		splitPublicIPs := strings.Split(trimmedPublicIPs, ",")
+		publicIPs[zone] = []string{}
+		for _, publicIP := range splitPublicIPs {
+			publicIPWoSpace := strings.TrimSpace(publicIP)
+			// ip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
+			publicIPs[zone] = append(publicIPs[zone], publicIPWoSpace[1:len(publicIPWoSpace)-1])
+		}
 	}
-	publicIPs := []string{}
-	ipsOutputWoSpace := strings.TrimSpace(string(ipsOutput))
-	// ip and nodeID outputs are bounded by [ and ,] , we need to remove them
-	trimmedPublicIPs := ipsOutputWoSpace[1 : len(ipsOutputWoSpace)-3]
-	splitPublicIPs := strings.Split(trimmedPublicIPs, ",")
-	for _, publicIP := range splitPublicIPs {
-		publicIPWoSpace := strings.TrimSpace(publicIP)
-		// ip and nodeID both are bounded by double quotation "", we need to remove them before they can be used
-		publicIPs = append(publicIPs, publicIPWoSpace[1:len(publicIPWoSpace)-1])
-	}
+
 	return publicIPs, nil
 }

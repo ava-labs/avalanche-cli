@@ -112,10 +112,6 @@ func (app *Avalanche) GetAvagoSubnetConfigPath(subnetName string) string {
 	return filepath.Join(app.GetSubnetDir(), subnetName, constants.SubnetConfigFileName)
 }
 
-func (app *Avalanche) GetGenesisMainnetPath(subnetName string) string {
-	return filepath.Join(app.GetSubnetDir(), subnetName, constants.GenesisMainnetFileName)
-}
-
 func (app *Avalanche) GetSidecarPath(subnetName string) string {
 	return filepath.Join(app.GetSubnetDir(), subnetName, constants.SidecarFileName)
 }
@@ -258,12 +254,6 @@ func (app *Avalanche) WriteGenesisFile(subnetName string, genesisBytes []byte) e
 	return app.writeFile(genesisPath, genesisBytes)
 }
 
-func (app *Avalanche) WriteGenesisMainnetFile(subnetName string, genesisBytes []byte) error {
-	genesisPath := app.GetGenesisMainnetPath(subnetName)
-
-	return app.writeFile(genesisPath, genesisBytes)
-}
-
 func (app *Avalanche) WriteAvagoNodeConfigFile(subnetName string, bs []byte) error {
 	path := app.GetAvagoNodeConfigPath(subnetName)
 	return app.writeFile(path, bs)
@@ -379,20 +369,9 @@ func (app *Avalanche) LoadEvmGenesis(subnetName string) (core.Genesis, error) {
 	return gen, err
 }
 
-func (app *Avalanche) LoadRawGenesis(subnetName string, network models.Network) ([]byte, error) {
+func (app *Avalanche) LoadRawGenesis(subnetName string) ([]byte, error) {
 	genesisPath := app.GetGenesisPath(subnetName)
-	genesisBytes, err := os.ReadFile(genesisPath)
-	if err != nil {
-		return nil, err
-	}
-	if network.Kind == models.Mainnet {
-		genesisPath = app.GetGenesisMainnetPath(subnetName)
-		genesisMainnetBytes, err := os.ReadFile(genesisPath)
-		if err == nil {
-			genesisBytes = genesisMainnetBytes
-		}
-	}
-	return genesisBytes, err
+	return os.ReadFile(genesisPath)
 }
 
 func (app *Avalanche) LoadRawAvagoNodeConfig(subnetName string) ([]byte, error) {
