@@ -5,10 +5,11 @@ package binutils
 import "time"
 
 const (
-	gRPCClientLogLevel  = "error"
-	gRPCServerEndpoint  = ":8097"
-	gRPCGatewayEndpoint = ":8098"
-	gRPCDialTimeout     = 10 * time.Second
+	gRPCClientLogLevel = "error"
+	gRPCServerPort     = ":8097"
+	gRPCGatewayPort    = ":8098"
+	gRPCServerEndpoint = "localhost" + gRPCServerPort
+	gRPCDialTimeout    = 10 * time.Second
 
 	avalanchegoBinPrefix = "avalanchego-"
 	subnetEVMBinPrefix   = "subnet-evm-"

@@ -10,4 +10,5 @@ type NodeConfig struct {
 	CertPath      string // where the cert is stored in user's local machine ssh directory
 	SecurityGroup string // security group used on cloud server
 	ElasticIP     string // public IP address of the cloud server
+	CloudService  string // which cloud service node is hosted on (AWS / GCP)
 }

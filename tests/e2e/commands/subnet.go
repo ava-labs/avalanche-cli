@@ -4,7 +4,6 @@
 package commands
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -13,17 +12,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/subnet-evm/core"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/onsi/gomega"
 )
 
-const (
-	WriteReadReadPerms = 0o644
-)
+const subnetEVMMainnetChainID = 11
 
 /* #nosec G204 */
 func CreateSubnetEvmConfig(subnetName string, genesisPath string) (string, string) {
@@ -118,10 +113,16 @@ func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) 
 		"create",
 		"--genesis",
 		genesisPath,
-		"--vm",
-		vmPath,
 		"--custom",
 		subnetName,
+		"--custom-vm-path",
+		vmPath,
+		"--custom-vm-repo-url",
+		"https://github.com/ava-labs/subnet-evm/",
+		"--custom-vm-branch",
+		"master",
+		"--custom-vm-build-script",
+		"scripts/build.sh",
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
@@ -169,28 +170,6 @@ func DeleteSubnetConfig(subnetName string) {
 	exists, err = utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeFalse())
-}
-
-func WriteGenesis(subnetName string, bytes []byte) error {
-	path := filepath.Join(utils.GetSubnetDir(), subnetName, constants.GenesisFileName)
-	if err := os.MkdirAll(filepath.Dir(path), constants.DefaultPerms755); err != nil {
-		return err
-	}
-	return os.WriteFile(path, bytes, WriteReadReadPerms)
-}
-
-func GetMainnetGenesis(subnetName string) (core.Genesis, error) {
-	genesisMainnetPath := filepath.Join(utils.GetSubnetDir(), subnetName, constants.GenesisMainnetFileName)
-	genesisBytes, err := os.ReadFile(genesisMainnetPath)
-	if err != nil {
-		return core.Genesis{}, err
-	}
-	var genesis core.Genesis
-	err = json.Unmarshal(genesisBytes, &genesis)
-	if err != nil {
-		return core.Genesis{}, err
-	}
-	return genesis, nil
 }
 
 func DeleteElasticSubnetConfig(subnetName string) {
@@ -301,7 +280,6 @@ func SimulateFujiDeploy(
 	subnetName string,
 	key string,
 	controlKeys string,
-	newChainID string,
 ) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -327,24 +305,6 @@ func SimulateFujiDeploy(
 		subnetName,
 		"--"+constants.SkipUpdateFlag,
 	)
-	if newChainID != "" {
-		cmd = exec.Command(
-			CLIBinary,
-			SubnetCmd,
-			"deploy",
-			"--fuji",
-			"--threshold",
-			"1",
-			"--key",
-			key,
-			"--control-keys",
-			controlKeys,
-			"--mainnet-chain-id",
-			newChainID,
-			subnetName,
-			"--"+constants.SkipUpdateFlag,
-		)
-	}
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -364,6 +324,8 @@ func SimulateFujiDeploy(
 /* #nosec G204 */
 func SimulateMainnetDeploy(
 	subnetName string,
+	mainnetChainID int,
+	errorIsExpected bool,
 ) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -373,6 +335,10 @@ func SimulateMainnetDeploy(
 	// enable simulation of public network execution paths on a local network
 	err = os.Setenv(constants.SimulatePublicNetwork, "true")
 	gomega.Expect(err).Should(gomega.BeNil())
+
+	if mainnetChainID == 0 {
+		mainnetChainID = subnetEVMMainnetChainID
+	}
 
 	// Deploy subnet locally
 	return utils.ExecCommand(
@@ -384,11 +350,13 @@ func SimulateMainnetDeploy(
 			"--threshold",
 			"1",
 			"--same-control-key",
+			"--mainnet-chain-id",
+			fmt.Sprint(mainnetChainID),
 			subnetName,
 			"--" + constants.SkipUpdateFlag,
 		},
 		true,
-		false,
+		errorIsExpected,
 	)
 }
 
@@ -423,6 +391,8 @@ func SimulateMultisigMainnetDeploy(
 			strings.Join(chainCreationAuthAddrs, ","),
 			"--output-tx-path",
 			txPath,
+			"--mainnet-chain-id",
+			fmt.Sprint(subnetEVMMainnetChainID),
 			subnetName,
 			"--" + constants.SkipUpdateFlag,
 		},
@@ -934,7 +904,7 @@ func SimulateGetSubnetStatsFuji(subnetName, subnetID string) string {
 	// add the subnet ID to the `fuji` section so that the `stats` command
 	// can find it (as this is a simulation with a `local` network,
 	// it got written in to the `local` network section)
-	err = utils.AddSubnetIDToSidecar(subnetName, models.Fuji, subnetID)
+	err = utils.AddSubnetIDToSidecar(subnetName, models.FujiNetwork, subnetID)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// run stats
 	cmd := exec.Command(

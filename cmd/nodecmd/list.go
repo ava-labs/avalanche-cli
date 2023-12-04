@@ -5,6 +5,7 @@ package nodecmd
 import (
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
@@ -28,17 +29,39 @@ The node list command lists all clusters together with their nodes.`,
 
 func list(_ *cobra.Command, _ []string) error {
 	var err error
-	clusterConfig := models.ClusterConfig{}
-	if app.ClusterConfigExists() {
-		clusterConfig, err = app.LoadClusterConfig()
+	clustersConfig := models.ClustersConfig{}
+	if app.ClustersConfigExists() {
+		clustersConfig, err = app.LoadClustersConfig()
 		if err != nil {
 			return err
 		}
 	}
-	for clusterName, clusterNodes := range clusterConfig.Clusters {
-		ux.Logger.PrintToUser(fmt.Sprintf("Cluster %q", clusterName))
-		for _, clusterNode := range clusterNodes {
-			ux.Logger.PrintToUser(fmt.Sprintf("  Node %q", clusterNode))
+	if len(clustersConfig.Clusters) == 0 {
+		ux.Logger.PrintToUser("There are no clusters defined.")
+	}
+	for clusterName, clusterConf := range clustersConfig.Clusters {
+		ux.Logger.PrintToUser("Cluster %q (%s)", clusterName, clusterConf.Network.Name())
+		if err := checkCluster(clusterName); err != nil {
+			return err
+		}
+		ansibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+		if err != nil {
+			return err
+		}
+		ansibleHosts, err := ansible.GetHostMapfromAnsibleInventory(app.GetAnsibleInventoryDirPath(clusterName))
+		if err != nil {
+			return err
+		}
+		for _, ansibleHostID := range ansibleHostIDs {
+			_, cloudHostID, err := models.HostAnsibleIDToCloudID(ansibleHostID)
+			if err != nil {
+				return err
+			}
+			nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudHostID))
+			if err != nil {
+				return err
+			}
+			ux.Logger.PrintToUser(fmt.Sprintf("  Node %s (%s) %s", cloudHostID, nodeID.String(), ansibleHosts[ansibleHostID].IP))
 		}
 	}
 	return nil

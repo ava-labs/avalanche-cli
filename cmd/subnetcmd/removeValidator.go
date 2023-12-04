@@ -52,17 +52,17 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		err    error
 	)
 
-	var network models.Network
+	network := models.UndefinedNetwork
 	switch {
 	case deployTestnet:
-		network = models.Fuji
+		network = models.FujiNetwork
 	case deployMainnet:
-		network = models.Mainnet
+		network = models.MainnetNetwork
 	case deployLocal:
-		network = models.Local
+		network = models.LocalNetwork
 	}
 
-	if network == models.Undefined {
+	if network.Kind == models.Undefined {
 		networkStr, err := app.Prompt.CaptureList(
 			"Choose a network to remove a validator from",
 			[]string{models.Local.String(), models.Fuji.String(), models.Mainnet.String()},
@@ -93,12 +93,12 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	}
 	subnetName := chains[0]
 
-	switch network {
+	switch network.Kind {
 	case models.Local:
 		return removeFromLocal(subnetName)
 	case models.Fuji:
 		if !useLedger && keyName == "" {
-			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "pay transaction fees", app.GetKeyDir())
+			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, constants.PayTxsFeesMsg, app.GetKeyDir())
 			if err != nil {
 				return err
 			}
@@ -114,7 +114,13 @@ func removeValidator(_ *cobra.Command, args []string) error {
 
 	// used in E2E to simulate public network execution paths on a local network
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.Local
+		network = models.LocalNetwork
+	}
+
+	// get keychain accesor
+	kc, err := GetKeychain(false, useLedger, ledgerAddresses, keyName, network)
+	if err != nil {
+		return err
 	}
 
 	sc, err := app.LoadSidecar(subnetName)
@@ -122,7 +128,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	subnetID := sc.Networks[network.String()].SubnetID
+	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
@@ -132,13 +138,19 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	walletKeys, err := loadCreationKeys(network, kc)
+	if err != nil {
+		return err
+	}
+	walletKey := walletKeys[0]
+
 	// get keys for add validator tx signing
 	if subnetAuthKeys != nil {
-		if err := prompts.CheckSubnetAuthKeys(subnetAuthKeys, controlKeys, threshold); err != nil {
+		if err := prompts.CheckSubnetAuthKeys(walletKey, subnetAuthKeys, controlKeys, threshold); err != nil {
 			return err
 		}
 	} else {
-		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, controlKeys, threshold)
+		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, walletKey, controlKeys, threshold)
 		if err != nil {
 			return err
 		}
@@ -146,7 +158,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Your subnet auth keys for remove validator tx creation: %s", subnetAuthKeys)
 
 	if nodeIDStr == "" {
-		nodeID, err = promptNodeID()
+		nodeID, err = PromptNodeID()
 		if err != nil {
 			return err
 		}
@@ -168,14 +180,9 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
-	ux.Logger.PrintToUser("Network: %s", network.String())
+	ux.Logger.PrintToUser("Network: %s", network.Name())
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to remove the specified validator...")
 
-	// get keychain accesor
-	kc, err := GetKeychain(useLedger, ledgerAddresses, keyName, network)
-	if err != nil {
-		return err
-	}
 	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
 	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.RemoveValidator(controlKeys, subnetAuthKeys, subnetID, nodeID)
 	if err != nil {

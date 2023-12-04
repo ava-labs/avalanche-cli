@@ -3,6 +3,7 @@
 package prompts
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -11,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanchego/genesis"
@@ -19,7 +21,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
-	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -146,7 +148,7 @@ func validatePChainFujiAddress(input string) error {
 	if err != nil {
 		return err
 	}
-	if hrp != avago_constants.FujiHRP {
+	if hrp != avagoconstants.FujiHRP {
 		return errors.New("this is not a fuji address")
 	}
 	return nil
@@ -157,7 +159,7 @@ func validatePChainMainAddress(input string) error {
 	if err != nil {
 		return err
 	}
-	if hrp != avago_constants.MainnetHRP {
+	if hrp != avagoconstants.MainnetHRP {
 		return errors.New("this is not a mainnet address")
 	}
 	return nil
@@ -170,14 +172,14 @@ func validatePChainLocalAddress(input string) error {
 	}
 	// ANR uses the `custom` HRP for local networks,
 	// but the `local` HRP also exists...
-	if hrp != avago_constants.LocalHRP && hrp != avago_constants.FallbackHRP {
+	if hrp != avagoconstants.LocalHRP && hrp != avagoconstants.FallbackHRP {
 		return errors.New("this is not a local nor custom address")
 	}
 	return nil
 }
 
 func getPChainValidationFunc(network models.Network) func(string) error {
-	switch network {
+	switch network.Kind {
 	case models.Fuji:
 		return validatePChainFujiAddress
 	case models.Mainnet:
@@ -251,4 +253,21 @@ func ValidateRepoBranch(repo string, branch string) error {
 func ValidateRepoFile(repo string, branch string, file string) error {
 	url := repo + "/blob/" + branch + "/" + file
 	return ValidateURL(url)
+}
+
+func ValidateHexa(input string) error {
+	if input == "" {
+		return errors.New("string cannot be empty")
+	}
+	if len(input) < 2 || strings.ToLower(input[:2]) != "0x" {
+		return errors.New("hexa string has not 0x prefix")
+	}
+	if len(input) == 2 {
+		return errors.New("no hexa digits in string")
+	}
+	_, err := hex.DecodeString(input[2:])
+	if err != nil {
+		return errors.New("string not in hexa format")
+	}
+	return err
 }

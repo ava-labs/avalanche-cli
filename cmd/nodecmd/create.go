@@ -6,31 +6,64 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"os"
-	"os/exec"
 	"os/user"
-	"time"
+	"path/filepath"
+	"sync"
 
+	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
+	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
+	"github.com/ava-labs/avalanche-cli/pkg/terraform"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/staking"
+	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/hashicorp/hcl/v2/hclwrite"
-
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 
-	subnet "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
-	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/spf13/cobra"
 )
+
+const (
+	avalancheGoReferenceChoiceLatest = "latest"
+	avalancheGoReferenceChoiceSubnet = "subnet"
+	avalancheGoReferenceChoiceCustom = "custom"
+)
+
+var (
+	createOnFuji                    bool
+	createDevnet                    bool
+	createOnMainnet                 bool
+	useAWS                          bool
+	useGCP                          bool
+	cmdLineRegion                   string
+	authorizeAccess                 bool
+	numNodes                        int
+	useLatestAvalanchegoVersion     bool
+	useAvalanchegoVersionFromSubnet string
+	cmdLineGCPCredentialsPath       string
+	cmdLineGCPProjectName           string
+	cmdLineAlternativeKeyPairName   string
+)
+
+type CloudConfig struct {
+	InstanceIDs   []string
+	PublicIPs     []string
+	Region        string
+	KeyPair       string
+	SecurityGroup string
+	CertFilePath  string
+	ImageID       string
+}
 
 func newCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -52,436 +85,389 @@ and users can call node commands with <clusterName> so that the command
 will apply to all nodes in the cluster`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
-		RunE:         createNode,
+		RunE:         createNodes,
 	}
-
+	cmd.Flags().BoolVar(&useStaticIP, "use-static-ip", true, "attach static Public IP on cloud servers")
+	cmd.Flags().BoolVar(&useAWS, "aws", false, "create node/s in AWS cloud")
+	cmd.Flags().BoolVar(&useGCP, "gcp", false, "create node/s in GCP cloud")
+	cmd.Flags().StringVar(&cmdLineRegion, "region", "", "create node/s in given region")
+	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to create cloud resources")
+	cmd.Flags().IntVar(&numNodes, "num-nodes", 0, "number of nodes to create")
+	cmd.Flags().BoolVar(&useLatestAvalanchegoVersion, "latest-avalanchego-version", false, "install latest avalanchego version on node/s")
+	cmd.Flags().StringVar(&useAvalanchegoVersionFromSubnet, "avalanchego-version-from-subnet", "", "install latest avalanchego version, that is compatible with the given subnet, on node/s")
+	cmd.Flags().StringVar(&cmdLineGCPCredentialsPath, "gcp-credentials", "", "use given GCP credentials")
+	cmd.Flags().StringVar(&cmdLineGCPProjectName, "gcp-project", "", "use given GCP project")
+	cmd.Flags().StringVar(&cmdLineAlternativeKeyPairName, "alternative-key-pair-name", "", "key pair name to use if default one generates conflicts")
+	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
+	cmd.Flags().BoolVar(&createOnFuji, "fuji", false, "create node/s in Fuji Network")
+	cmd.Flags().BoolVar(&createDevnet, "devnet", false, "create node/s into a new Devnet")
 	return cmd
 }
 
-func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
-	ux.Logger.PrintToUser("What do you want to name your key pair?")
-	for {
-		newKeyPairName, err := app.Prompt.CaptureString("Key Pair Name")
-		if err != nil {
-			return "", err
-		}
-		keyPairExists, err := awsAPI.CheckKeyPairExists(ec2Svc, newKeyPairName)
-		if err != nil {
-			return "", err
-		}
-		if !keyPairExists {
-			return newKeyPairName, nil
-		}
-		ux.Logger.PrintToUser(fmt.Sprintf("Key Pair named %s already exists", newKeyPairName))
+func createNodes(_ *cobra.Command, args []string) error {
+	if useLatestAvalanchegoVersion && useAvalanchegoVersionFromSubnet != "" {
+		return fmt.Errorf("could not use both latest avalanchego version and avalanchego version based on given subnet")
 	}
-}
+	if useAWS && useGCP {
+		return fmt.Errorf("could not use both AWS and GCP cloud options")
+	}
+	if !useAWS && awsProfile != constants.AWSDefaultCredential {
+		return fmt.Errorf("could not use AWS profile for non AWS cloud option")
+	}
+	clusterName := args[0]
 
-// createClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
-// also creates cluster config in .avalanche-cli/nodes storing various key pair and security group info for all clusters
-func createClusterNodeConfig(nodeIDs, publicIPs []string, region, ami, keyPairName, certPath, sg, clusterName string) error {
-	for i := range nodeIDs {
-		nodeConfig := models.NodeConfig{
-			NodeID:        nodeIDs[i],
-			Region:        region,
-			AMI:           ami,
-			KeyPair:       keyPairName,
-			CertPath:      certPath,
-			SecurityGroup: sg,
-			ElasticIP:     publicIPs[i],
-		}
-		err := app.CreateNodeCloudConfigFile(nodeIDs[i], &nodeConfig)
-		if err != nil {
-			return err
-		}
-		if err = addNodeToClusterConfig(nodeIDs[i], clusterName); err != nil {
-			return err
-		}
-	}
-	return updateKeyPairClusterConfig(keyPairName, certPath)
-}
-
-func updateKeyPairClusterConfig(keyPairName, certPath string) error {
-	clusterConfig := models.ClusterConfig{}
-	var err error
-	if app.ClusterConfigExists() {
-		clusterConfig, err = app.LoadClusterConfig()
-		if err != nil {
-			return err
-		}
-	}
-	if clusterConfig.KeyPair == nil {
-		clusterConfig.KeyPair = make(map[string]string)
-	}
-	if _, ok := clusterConfig.KeyPair[keyPairName]; !ok {
-		clusterConfig.KeyPair[keyPairName] = certPath
-	}
-	return app.WriteClusterConfigFile(&clusterConfig)
-}
-
-func addNodeToClusterConfig(nodeID, clusterName string) error {
-	clusterConfig := models.ClusterConfig{}
-	var err error
-	if app.ClusterConfigExists() {
-		clusterConfig, err = app.LoadClusterConfig()
-		if err != nil {
-			return err
-		}
-	}
-	if clusterConfig.Clusters == nil {
-		clusterConfig.Clusters = make(map[string][]string)
-	}
-	if _, ok := clusterConfig.Clusters[clusterName]; !ok {
-		clusterConfig.Clusters[clusterName] = []string{}
-	}
-	clusterConfig.Clusters[clusterName] = append(clusterConfig.Clusters[clusterName], nodeID)
-	return app.WriteClusterConfigFile(&clusterConfig)
-}
-
-func printNoCredentialsOutput() {
-	ux.Logger.PrintToUser("No AWS credentials file found in ~/.aws/credentials")
-	ux.Logger.PrintToUser("Create a file called 'credentials' with the contents below, and add the file to ~/.aws/ directory")
-	ux.Logger.PrintToUser("===========BEGINNING OF FILE===========")
-	ux.Logger.PrintToUser("[default]\naws_access_key_id=<AWS_ACCESS_KEY>\naws_secret_access_key=<AWS_SECRET_ACCESS_KEY>")
-	ux.Logger.PrintToUser("===========END OF FILE===========")
-	ux.Logger.PrintToUser("More info can be found at https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-creds")
-}
-
-// getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
-func getAWSCloudCredentials(region string, stopNode bool) (*session.Session, error) {
-	if stopNode {
-		if err := requestStopAWSNodeAuth(); err != nil {
-			return &session.Session{}, err
-		}
-	} else {
-		if err := requestAWSAccountAuth(); err != nil {
-			return &session.Session{}, err
-		}
-	}
-	creds := credentials.NewSharedCredentials("", constants.AWSDefaultCredential)
-	if _, err := creds.Get(); err != nil {
-		printNoCredentialsOutput()
-		return &session.Session{}, err
-	}
-	// Load session from shared config
-	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String(region),
-		Credentials: creds,
-	})
-	if err != nil {
-		return &session.Session{}, err
-	}
-	return sess, nil
-}
-
-// promptKeyPairName get custom name for key pair if the default key pair name that we use cannot be used for this EC2 instance
-func promptKeyPairName(ec2Svc *ec2.EC2) (string, string, error) {
-	newKeyPairName, err := getNewKeyPairName(ec2Svc)
-	if err != nil {
-		return "", "", err
-	}
-	certName := newKeyPairName + constants.CertSuffix
-	return certName, newKeyPairName, nil
-}
-
-func getAWSCloudConfig() (*ec2.EC2, string, string, error) {
-	usEast1 := "us-east-1"
-	usEast2 := "us-east-2"
-	usWest1 := "us-west-1"
-	usWest2 := "us-west-2"
-	customRegion := "Choose custom region (list of regions available at https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html)"
-	region, err := app.Prompt.CaptureList(
-		"Which AWS region do you want to set up your node in?",
-		[]string{usEast1, usEast2, usWest1, usWest2, customRegion},
+	network, err := subnetcmd.GetNetworkFromCmdLineFlags(
+		false,
+		createDevnet,
+		createOnFuji,
+		createOnMainnet,
+		"",
+		false,
+		[]models.NetworkKind{models.Fuji, models.Devnet},
 	)
 	if err != nil {
-		return nil, "", "", err
+		return err
 	}
-	if region == customRegion {
-		region, err = app.Prompt.CaptureString("Which AWS region do you want to set up your node in?")
-		if err != nil {
-			return nil, "", "", err
-		}
-	}
-	sess, err := getAWSCloudCredentials(region, false)
-	if err != nil {
-		return nil, "", "", err
-	}
-	ec2Svc := ec2.New(sess)
-	ami, err := awsAPI.GetUbuntuAMIID(ec2Svc)
-	if err != nil {
-		return nil, "", "", err
-	}
-	return ec2Svc, region, ami, nil
-}
 
-// createEC2Instances creates terraform .tf file and runs terraform exec function to create ec2 instances
-func createEC2Instances(rootBody *hclwrite.Body,
-	ec2Svc *ec2.EC2,
-	hclFile *hclwrite.File,
-	region,
-	ami,
-	certName,
-	keyPairName,
-	securityGroupName string,
-) ([]string, []string, string, string, error) {
-	if err := terraform.SetCloudCredentials(rootBody, region); err != nil {
-		return nil, nil, "", "", err
-	}
-	numNodes, err := app.Prompt.CaptureUint32("How many nodes do you want to set up on AWS?")
+	cloudService, err := setCloudService()
 	if err != nil {
-		return nil, nil, "", "", err
+		return err
 	}
-	ux.Logger.PrintToUser("Creating new EC2 instance(s) on AWS...")
-	var useExistingKeyPair bool
-	keyPairExists, err := awsAPI.CheckKeyPairExists(ec2Svc, keyPairName)
-	if err != nil {
-		return nil, nil, "", "", err
+	if cloudService != constants.GCPCloudService && cmdLineGCPCredentialsPath != "" {
+		return fmt.Errorf("set to use GCP credentials but cloud option is not GCP")
 	}
-	certInSSHDir, err := app.CheckCertInSSHDir(certName)
-	if err != nil {
-		return nil, nil, "", "", err
+	if cloudService != constants.GCPCloudService && cmdLineGCPProjectName != "" {
+		return fmt.Errorf("set to use GCP project but cloud option is not GCP")
 	}
-	if !keyPairExists {
-		if !certInSSHDir {
-			ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s in AWS", keyPairName))
-			terraform.SetKeyPair(rootBody, keyPairName, certName)
-		} else {
-			ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists on your .ssh directory but not on AWS", keyPairName))
-			ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in AWS", keyPairName))
-			certName, keyPairName, err = promptKeyPairName(ec2Svc)
-			if err != nil {
-				return nil, nil, "", "", err
-			}
-			terraform.SetKeyPair(rootBody, keyPairName, certName)
-		}
-	} else {
-		if certInSSHDir {
-			ux.Logger.PrintToUser(fmt.Sprintf("Using existing key pair %s in AWS", keyPairName))
-			useExistingKeyPair = true
-		} else {
-			ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists in AWS", keyPairName))
-			ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName))
-			certName, keyPairName, err = promptKeyPairName(ec2Svc)
-			if err != nil {
-				return nil, nil, "", "", err
-			}
-			terraform.SetKeyPair(rootBody, keyPairName, certName)
-		}
-	}
-	securityGroupExists, sg, err := awsAPI.CheckSecurityGroupExists(ec2Svc, securityGroupName)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	userIPAddress, err := getIPAddress()
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	if !securityGroupExists {
-		ux.Logger.PrintToUser(fmt.Sprintf("Creating new security group %s in AWS", securityGroupName))
-		terraform.SetSecurityGroup(rootBody, userIPAddress, securityGroupName)
-	} else {
-		ux.Logger.PrintToUser(fmt.Sprintf("Using existing security group %s in AWS", securityGroupName))
-		ipInTCP := awsAPI.CheckUserIPInSg(sg, userIPAddress, constants.SSHTCPPort)
-		ipInHTTP := awsAPI.CheckUserIPInSg(sg, userIPAddress, constants.AvalanchegoAPIPort)
-		terraform.SetSecurityGroupRule(rootBody, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
-	}
-	terraform.SetElasticIPs(rootBody, numNodes)
-	terraform.SetupInstances(rootBody, securityGroupName, useExistingKeyPair, keyPairName, ami, numNodes)
-	terraform.SetOutput(rootBody)
-	err = app.CreateTerraformDir()
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	err = terraform.SaveConf(app.GetTerraformDir(), hclFile)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	instanceIDs, elasticIPs, err := terraform.RunTerraform(app.GetTerraformDir())
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	ux.Logger.PrintToUser("New EC2 instance(s) successfully created in AWS!")
-	if !useExistingKeyPair {
-		// takes the cert file downloaded from AWS through terraform and moves it to .ssh directory
-		err = addCertToSSH(certName)
-		if err != nil {
-			return nil, nil, "", "", err
-		}
-	}
-	sshCertPath, err := app.GetSSHCertFilePath(certName)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
-}
-
-func createNode(_ *cobra.Command, args []string) error {
-	clusterName := args[0]
 	if err := terraform.CheckIsInstalled(); err != nil {
-		return err
-	}
-	if err := ansible.CheckIsInstalled(); err != nil {
-		return err
-	}
-	err := terraform.RemoveDirectory(app.GetTerraformDir())
-	if err != nil {
-		return err
-	}
-	usr, err := user.Current()
-	if err != nil {
-		return err
-	}
-	// Get AWS Credential, region and AMI
-	ec2Svc, region, ami, err := getAWSCloudConfig()
-	if err != nil {
-		return err
-	}
-	prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
-	certName := prefix + "-" + region + constants.CertSuffix
-	securityGroupName := prefix + "-" + region + constants.AWSSecurityGroupSuffix
-	hclFile, rootBody, err := terraform.InitConf()
-	if err != nil {
-		return err
-	}
-
-	// Create new EC2 instances
-	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(rootBody, ec2Svc, hclFile, region, ami, certName, prefix, securityGroupName)
-	if err != nil {
-		if err.Error() == constants.EIPLimitErr {
-			ux.Logger.PrintToUser("Failed to create AWS cloud server, please try creating again in a different region")
-		} else {
-			ux.Logger.PrintToUser("Failed to create AWS cloud server")
-		}
-		// we stop created instances so that user doesn't pay for unused EC2 instances
-		instanceIDs, instanceIDErr := terraform.GetInstanceIDs(app.GetTerraformDir())
-		if instanceIDErr != nil {
-			return instanceIDErr
-		}
-		failedNodes := []string{}
-		nodeErrors := []error{}
-		for _, instanceID := range instanceIDs {
-			ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s...", instanceID))
-			if stopErr := awsAPI.StopInstance(ec2Svc, instanceID, "", false); stopErr != nil {
-				failedNodes = append(failedNodes, instanceID)
-				nodeErrors = append(nodeErrors, stopErr)
-			}
-			ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s stopped", instanceID))
-		}
-		if len(failedNodes) > 0 {
-			ux.Logger.PrintToUser("Failed nodes: ")
-			for i, node := range failedNodes {
-				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
-			}
-			ux.Logger.PrintToUser("Stop the above instance(s) on AWS console to prevent charges")
-			return fmt.Errorf("failed to stop node(s) %s", failedNodes)
-		}
-		return err
-	}
-	if err := createClusterNodeConfig(instanceIDs, elasticIPs, region, ami, keyPairName, certFilePath, securityGroupName, clusterName); err != nil {
 		return err
 	}
 	err = terraform.RemoveDirectory(app.GetTerraformDir())
 	if err != nil {
 		return err
 	}
-	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	if err := ansible.CreateAnsibleHostInventory(inventoryPath, certFilePath, elasticIPs, instanceIDs); err != nil {
+	if numNodes <= 0 {
+		var err error
+		numNodes, err = app.Prompt.CaptureInt("How many nodes do you want to set up?")
+		if err != nil {
+			return err
+		}
+	}
+	usr, err := user.Current()
+	if err != nil {
 		return err
 	}
-	time.Sleep(15 * time.Second)
+	cloudConfig := CloudConfig{}
+	publicIPMap := map[string]string{}
+	gcpProjectName := ""
+	gcpCredentialFilepath := ""
+	if cloudService == constants.AWSCloudService {
+		// Get AWS Credential, region and AMI
+		ec2Svc, region, ami, err := getAWSCloudConfig(awsProfile, cmdLineRegion)
+		if err != nil {
+			return err
+		}
+		cloudConfig, err = createAWSInstances(ec2Svc, numNodes, awsProfile, region, ami, usr)
+		if err != nil {
+			return err
+		}
+		if !useStaticIP {
+			publicIPMap, err = awsAPI.GetInstancePublicIPs(ec2Svc, cloudConfig.InstanceIDs)
+			if err != nil {
+				return err
+			}
+		} else {
+			for i, node := range cloudConfig.InstanceIDs {
+				publicIPMap[node] = cloudConfig.PublicIPs[i]
+			}
+		}
+	} else {
+		// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
+		gcpClient, zone, imageID, credentialFilepath, projectName, err := getGCPConfig(cmdLineRegion)
+		if err != nil {
+			return err
+		}
+		cloudConfig, err = createGCPInstance(usr, gcpClient, numNodes, zone, imageID, credentialFilepath, projectName, clusterName)
+		if err != nil {
+			return err
+		}
+		if !useStaticIP {
+			publicIPMap, err = gcpAPI.GetInstancePublicIPs(gcpClient, projectName, zone, cloudConfig.InstanceIDs)
+			if err != nil {
+				return err
+			}
+		} else {
+			for i, node := range cloudConfig.InstanceIDs {
+				publicIPMap[node] = cloudConfig.PublicIPs[i]
+			}
+		}
+		gcpProjectName = projectName
+		gcpCredentialFilepath = credentialFilepath
+	}
 
+	if err = createClusterNodeConfig(network, cloudConfig, clusterName, cloudService); err != nil {
+		return err
+	}
+	if cloudService == constants.GCPCloudService {
+		if err = updateClustersConfigGCPKeyFilepath(gcpProjectName, gcpCredentialFilepath); err != nil {
+			return err
+		}
+	}
+	err = terraform.RemoveDirectory(app.GetTerraformDir())
+	if err != nil {
+		return err
+	}
+	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
 	avalancheGoVersion, err := getAvalancheGoVersion()
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created EC2 instance(s) ...")
-	if err := runAnsible(inventoryPath, avalancheGoVersion); err != nil {
+	if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
 		return err
 	}
-	if err := setupBuildEnv(clusterName); err != nil {
+	if err := updateAnsiblePublicIPs(clusterName); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Copying staker.crt and staker.key to local machine...")
-	for _, instanceID := range instanceIDs {
-		nodeInstanceDirPath := app.GetNodeInstanceDirPath(instanceID)
-		// ansible host alias's name is formatted as aws_node_{instanceID}
-		nodeInstanceAnsibleAlias := fmt.Sprintf("aws_node_%s", instanceID)
-		if err := ansible.RunAnsiblePlaybookCopyStakingFiles(app.GetAnsibleDir(), nodeInstanceAnsibleAlias, nodeInstanceDirPath, inventoryPath); err != nil {
+	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
+	if err != nil {
+		return err
+	}
+	hosts := utils.Filter(allHosts, func(h *models.Host) bool { return slices.Contains(cloudConfig.InstanceIDs, h.GetCloudID()) })
+	// waiting for all nodes to become accessible
+	failedHosts := waitForHosts(hosts)
+	if failedHosts.Len() > 0 {
+		for _, result := range failedHosts.GetResults() {
+			ux.Logger.PrintToUser("Instance %s failed to provision with error %s. Please check instance logs for more information", result.NodeID, result.Err)
+		}
+		return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
+	}
+
+	ansibleHostIDs, err := utils.MapWithError(cloudConfig.InstanceIDs, func(s string) (string, error) { return models.HostCloudIDToAnsibleID(cloudService, s) })
+	if err != nil {
+		return err
+	}
+
+	defer disconnectHosts(hosts)
+
+	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	for _, host := range hosts {
+		wg.Add(1)
+		go func(nodeResults *models.NodeResults, host *models.Host) {
+			defer wg.Done()
+			if err := host.Connect(); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			if err := provideStakingCertAndKey(host); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), avalancheGoVersion, network.Kind == models.Devnet); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			if err := ssh.RunSSHSetupCLIFromSource(host, constants.SetupCLIFromSourceBranch); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+		}(&wgResults, host)
+	}
+	wg.Wait()
+	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintToUser("AVALANCHE NODE(S) STATUS")
+	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintToUser("")
+	for _, node := range hosts {
+		if wgResults.HasNodeIDWithError(node.NodeID) {
+			ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
+		} else {
+			ux.Logger.PrintToUser("Node %s is CREATED", node.NodeID)
+		}
+	}
+	if network.Kind == models.Devnet {
+		ux.Logger.PrintToUser("Setting up Devnet ...")
+		if err := setupDevnet(clusterName, hosts); err != nil {
 			return err
 		}
 	}
-	PrintResults(instanceIDs, elasticIPs, certFilePath, region)
-	ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
-	return nil
-}
 
-// setupAnsible we need to remove existing ansible directory and its contents in .avalanche-cli dir
-// before calling every ansible run command just in case there is a change in playbook
-func setupAnsible() error {
-	err := app.SetupAnsibleEnv()
-	if err != nil {
-		return err
-	}
-	return ansible.Setup(app.GetAnsibleDir())
-}
-
-func runAnsible(inventoryPath, avalancheGoVersion string) error {
-	err := setupAnsible()
-	if err != nil {
-		return err
-	}
-	return ansible.RunAnsiblePlaybookSetupNode(app.GetConfigPath(), app.GetAnsibleDir(), inventoryPath, avalancheGoVersion)
-}
-
-func setupBuildEnv(clusterName string) error {
-	ux.Logger.PrintToUser("Installing Custom VM build environment on the EC2 instance(s) ...")
-	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	if err := ansible.RunAnsiblePlaybookSetupBuildEnv(app.GetAnsibleDir(), inventoryPath, "all"); err != nil {
-		return err
+	if wgResults.HasErrors() {
+		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
+	} else {
+		printResults(cloudConfig, publicIPMap, ansibleHostIDs)
+		ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	}
 	return nil
 }
 
-func requestAWSAccountAuth() error {
-	ux.Logger.PrintToUser("Do you authorize Avalanche-CLI to access your AWS account to set-up your Avalanche Validator node?")
-	ux.Logger.PrintToUser("Please note that you will be charged for AWS usage.")
-	ux.Logger.PrintToUser("By clicking yes, you are authorizing Avalanche-CLI to:")
-	ux.Logger.PrintToUser("- Set up EC2 instance(s) and other components (such as security groups, key pairs and elastic IPs)")
-	ux.Logger.PrintToUser("- Set up the EC2 instance(s) to validate the Avalanche Primary Network")
-	ux.Logger.PrintToUser("- Set up the EC2 instance(s) to validate Subnets")
-	yes, err := app.Prompt.CaptureYesNo("I authorize Avalanche-CLI to access my AWS account")
-	if err != nil {
-		return err
+// createClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
+// also creates cluster config in .avalanche-cli/nodes storing various key pair and security group info for all clusters
+// func createClusterNodeConfig(nodeIDs, publicIPs []string, region, ami, keyPairName, certPath, sg, clusterName string) error {
+func createClusterNodeConfig(network models.Network, cloudConfig CloudConfig, clusterName, cloudService string) error {
+	for i := range cloudConfig.InstanceIDs {
+		publicIP := ""
+		if len(cloudConfig.PublicIPs) > 0 {
+			publicIP = cloudConfig.PublicIPs[i]
+		}
+		nodeConfig := models.NodeConfig{
+			NodeID:        cloudConfig.InstanceIDs[i],
+			Region:        cloudConfig.Region,
+			AMI:           cloudConfig.ImageID,
+			KeyPair:       cloudConfig.KeyPair,
+			CertPath:      cloudConfig.CertFilePath,
+			SecurityGroup: cloudConfig.SecurityGroup,
+			ElasticIP:     publicIP,
+			CloudService:  cloudService,
+		}
+		err := app.CreateNodeCloudConfigFile(cloudConfig.InstanceIDs[i], &nodeConfig)
+		if err != nil {
+			return err
+		}
+		if err = addNodeToClustersConfig(network, cloudConfig.InstanceIDs[i], clusterName); err != nil {
+			return err
+		}
 	}
-	if !yes {
-		return errors.New("user did not give authorization to Avalanche-CLI to access AWS account")
-	}
-	return nil
+	return updateKeyPairClustersConfig(cloudConfig)
 }
 
-func requestStopAWSNodeAuth() error {
-	ux.Logger.PrintToUser("Do you authorize Avalanche-CLI to access your AWS account to stop your Avalanche Validator node?")
-	ux.Logger.PrintToUser("By clicking yes, you are authorizing Avalanche-CLI to:")
-	ux.Logger.PrintToUser("- Stop EC2 instance(s) and other components (such as elastic IPs)")
-	yes, err := app.Prompt.CaptureYesNo("I authorize Avalanche-CLI to access my AWS account")
+func updateKeyPairClustersConfig(cloudConfig CloudConfig) error {
+	clustersConfig := models.ClustersConfig{}
+	var err error
+	if app.ClustersConfigExists() {
+		clustersConfig, err = app.LoadClustersConfig()
+		if err != nil {
+			return err
+		}
+	}
+	if clustersConfig.KeyPair == nil {
+		clustersConfig.KeyPair = make(map[string]string)
+	}
+	if _, ok := clustersConfig.KeyPair[cloudConfig.KeyPair]; !ok {
+		clustersConfig.KeyPair[cloudConfig.KeyPair] = cloudConfig.CertFilePath
+	}
+	return app.WriteClustersConfigFile(&clustersConfig)
+}
+
+func addNodeToClustersConfig(network models.Network, nodeID, clusterName string) error {
+	clustersConfig := models.ClustersConfig{}
+	var err error
+	if app.ClustersConfigExists() {
+		clustersConfig, err = app.LoadClustersConfig()
+		if err != nil {
+			return err
+		}
+	}
+	if clustersConfig.Clusters == nil {
+		clustersConfig.Clusters = make(map[string]models.ClusterConfig)
+	}
+	if _, ok := clustersConfig.Clusters[clusterName]; !ok {
+		clustersConfig.Clusters[clusterName] = models.ClusterConfig{
+			Network: network,
+			Nodes:   []string{},
+		}
+	}
+	nodes := clustersConfig.Clusters[clusterName].Nodes
+	clustersConfig.Clusters[clusterName] = models.ClusterConfig{
+		Network: network,
+		Nodes:   append(nodes, nodeID),
+	}
+	return app.WriteClustersConfigFile(&clustersConfig)
+}
+
+func getNodeID(nodeDir string) (ids.NodeID, error) {
+	certBytes, err := os.ReadFile(filepath.Join(nodeDir, constants.StakerCertFileName))
 	if err != nil {
+		return ids.EmptyNodeID, err
+	}
+	keyBytes, err := os.ReadFile(filepath.Join(nodeDir, constants.StakerKeyFileName))
+	if err != nil {
+		return ids.EmptyNodeID, err
+	}
+	nodeID, err := utils.ToNodeID(certBytes, keyBytes)
+	if err != nil {
+		return ids.EmptyNodeID, err
+	}
+	return nodeID, nil
+}
+
+func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePath string) (ids.NodeID, error) {
+	certBytes, keyBytes, err := staking.NewCertAndKeyBytes()
+	if err != nil {
+		return ids.EmptyNodeID, err
+	}
+	nodeID, err := utils.ToNodeID(certBytes, keyBytes)
+	if err != nil {
+		return ids.EmptyNodeID, err
+	}
+	if err := os.MkdirAll(filepath.Dir(stakerCertFilePath), constants.DefaultPerms755); err != nil {
+		return ids.EmptyNodeID, err
+	}
+	if err := os.WriteFile(stakerCertFilePath, certBytes, constants.WriteReadUserOnlyPerms); err != nil {
+		return ids.EmptyNodeID, err
+	}
+	if err := os.MkdirAll(filepath.Dir(stakerKeyFilePath), constants.DefaultPerms755); err != nil {
+		return ids.EmptyNodeID, err
+	}
+	if err := os.WriteFile(stakerKeyFilePath, keyBytes, constants.WriteReadUserOnlyPerms); err != nil {
+		return ids.EmptyNodeID, err
+	}
+	blsSignerKeyBytes, err := utils.NewBlsSecretKeyBytes()
+	if err != nil {
+		return ids.EmptyNodeID, err
+	}
+	if err := os.MkdirAll(filepath.Dir(blsKeyFilePath), constants.DefaultPerms755); err != nil {
+		return ids.EmptyNodeID, err
+	}
+	if err := os.WriteFile(blsKeyFilePath, blsSignerKeyBytes, constants.WriteReadUserOnlyPerms); err != nil {
+		return ids.EmptyNodeID, err
+	}
+	return nodeID, nil
+}
+
+func provideStakingCertAndKey(host *models.Host) error {
+	instanceID := host.GetCloudID()
+	keyPath := filepath.Join(app.GetNodesDir(), instanceID)
+	nodeID, err := generateNodeCertAndKeys(
+		filepath.Join(keyPath, constants.StakerCertFileName),
+		filepath.Join(keyPath, constants.StakerKeyFileName),
+		filepath.Join(keyPath, constants.BLSKeyFileName),
+	)
+	if err != nil {
+		ux.Logger.PrintToUser("Failed to generate staking keys for host %s", instanceID)
 		return err
+	} else {
+		ux.Logger.PrintToUser("Generated staking keys for host %s[%s] ", instanceID, nodeID.String())
 	}
-	if !yes {
-		return errors.New("user did not give authorization to Avalanche-CLI to access AWS account")
-	}
-	return nil
+	return ssh.RunSSHUploadStakingFiles(host, keyPath)
 }
 
 func getIPAddress() (string, error) {
-	ipOutput, err := exec.Command("curl", "https://api.ipify.org?format=json").Output()
+	resp, err := http.Get("https://api.ipify.org?format=json")
 	if err != nil {
 		return "", err
 	}
-	var result map[string]interface{}
-	if err = json.Unmarshal(ipOutput, &result); err != nil {
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.New("HTTP request failed")
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
 		return "", err
 	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", err
+	}
+
 	ipAddress, ok := result["ip"].(string)
 	if ok {
 		if net.ParseIP(ipAddress) == nil {
@@ -489,49 +475,49 @@ func getIPAddress() (string, error) {
 		}
 		return ipAddress, nil
 	}
-	return "", errors.New("no IP address found")
-}
 
-// addCertToSSH takes the cert file downloaded from AWS through terraform and moves it to .ssh directory
-func addCertToSSH(certName string) error {
-	certPath := app.GetTempCertPath(certName)
-	err := os.Chmod(certPath, 0o400)
-	if err != nil {
-		return err
-	}
-	certFilePath, err := app.GetSSHCertFilePath(certName)
-	if err != nil {
-		return err
-	}
-	err = os.Rename(certPath, certFilePath)
-	if err != nil {
-		return err
-	}
-	cmd := exec.Command("ssh-add", certFilePath)
-	utils.SetupRealtimeCLIOutput(cmd, true, true)
-	return cmd.Run()
+	return "", errors.New("no IP address found")
 }
 
 // getAvalancheGoVersion asks users whether they want to install the newest Avalanche Go version
 // or if they want to use the newest Avalanche Go Version that is still compatible with Subnet EVM
 // version of their choice
 func getAvalancheGoVersion() (string, error) {
-	chosenOption, err := promptAvalancheGoReferenceChoice()
-	if err != nil {
-		return "", err
-	}
-	if chosenOption != "latest" {
-		sc, err := app.LoadSidecar(chosenOption)
+	version := ""
+	subnet := ""
+	if useLatestAvalanchegoVersion { //nolint: gocritic
+		version = "latest"
+	} else if useAvalanchegoVersionFromSubnet != "" {
+		subnet = useAvalanchegoVersionFromSubnet
+	} else {
+		choice, subnetChoice, err := promptAvalancheGoReferenceChoice()
 		if err != nil {
 			return "", err
 		}
-		customAvagoVersion, err := GetLatestAvagoVersionForRPC(sc.RPCVersion)
+		switch choice {
+		case avalancheGoReferenceChoiceLatest:
+			version = "latest"
+		case avalancheGoReferenceChoiceCustom:
+			customVersion, err := app.Prompt.CaptureVersion("Which version of AvalancheGo would you like to install? (Use format v1.10.13)")
+			if err != nil {
+				return "", err
+			}
+			version = customVersion
+		case avalancheGoReferenceChoiceSubnet:
+			subnet = subnetChoice
+		}
+	}
+	if subnet != "" {
+		sc, err := app.LoadSidecar(subnet)
 		if err != nil {
 			return "", err
 		}
-		return customAvagoVersion, nil
+		version, err = GetLatestAvagoVersionForRPC(sc.RPCVersion)
+		if err != nil {
+			return "", err
+		}
 	}
-	return chosenOption, nil
+	return version, nil
 }
 
 func GetLatestAvagoVersionForRPC(configuredRPCVersion int) (string, error) {
@@ -546,56 +532,113 @@ func GetLatestAvagoVersionForRPC(configuredRPCVersion int) (string, error) {
 // promptAvalancheGoReferenceChoice returns user's choice of either using the latest Avalanche Go
 // version or using the latest Avalanche Go version that is still compatible with the subnet that user
 // wants the cloud server to track
-func promptAvalancheGoReferenceChoice() (string, error) {
+func promptAvalancheGoReferenceChoice() (string, string, error) {
 	defaultVersion := "Use latest Avalanche Go Version"
 	txt := "What version of Avalanche Go would you like to install in the node?"
-	versionOptions := []string{defaultVersion, "Use the deployed Subnet's VM version that the node will be validating"}
+	versionOptions := []string{defaultVersion, "Use the deployed Subnet's VM version that the node will be validating", "Custom"}
 	versionOption, err := app.Prompt.CaptureList(txt, versionOptions)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	switch versionOption {
 	case defaultVersion:
-		return "latest", nil
+		return avalancheGoReferenceChoiceLatest, "", nil
+	case "Custom":
+		return avalancheGoReferenceChoiceCustom, "", nil
 	default:
 		for {
 			subnetName, err := app.Prompt.CaptureString("Which Subnet would you like to use to choose the avalanche go version?")
 			if err != nil {
-				return "", err
+				return "", "", err
 			}
-			_, err = subnet.ValidateSubnetNameAndGetChains([]string{subnetName})
+			_, err = subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName})
 			if err == nil {
-				return subnetName, nil
+				return avalancheGoReferenceChoiceSubnet, subnetName, nil
 			}
 			ux.Logger.PrintToUser(fmt.Sprintf("no subnet named %s found", subnetName))
 		}
 	}
 }
 
-func PrintResults(instanceIDs, elasticIPs []string, certFilePath, region string) {
+func setCloudService() (string, error) {
+	if useAWS {
+		return constants.AWSCloudService, nil
+	}
+	if useGCP {
+		return constants.GCPCloudService, nil
+	}
+	txt := "Which cloud service would you like to launch your Avalanche Node(s) in?"
+	cloudOptions := []string{constants.AWSCloudService, constants.GCPCloudService}
+	chosenCloudService, err := app.Prompt.CaptureList(txt, cloudOptions)
+	if err != nil {
+		return "", err
+	}
+	return chosenCloudService, nil
+}
+
+func printResults(cloudConfig CloudConfig, publicIPMap map[string]string, ansibleHostIDs []string) {
 	ux.Logger.PrintToUser("======================================")
 	ux.Logger.PrintToUser("AVALANCHE NODE(S) SUCCESSFULLY SET UP!")
 	ux.Logger.PrintToUser("======================================")
 	ux.Logger.PrintToUser("Please wait until the node(s) are successfully bootstrapped to run further commands on the node(s)")
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Here are the details of the set up node(s): ")
-	for i, instanceID := range instanceIDs {
+	for i, instanceID := range cloudConfig.InstanceIDs {
+		publicIP := ""
+		publicIP = publicIPMap[instanceID]
 		ux.Logger.PrintToUser("======================================")
-		hostAliasName := fmt.Sprintf("aws_node_%s", elasticIPs[i])
-		ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", hostAliasName))
+		ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", ansibleHostIDs[i]))
 		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Instance ID: %s", instanceID))
-		ux.Logger.PrintToUser(fmt.Sprintf("Elastic IP: %s", elasticIPs[i]))
-		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Region: %s", region))
+		ux.Logger.PrintToUser(fmt.Sprintf("Public IP: %s", publicIP))
+		ux.Logger.PrintToUser(fmt.Sprintf("Cloud Region: %s", cloudConfig.Region))
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(fmt.Sprintf("staker.crt and staker.key are stored at %s. If anything happens to your node or the machine node runs on, these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID)))
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("To ssh to node, run: ")
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(fmt.Sprintf("ssh -o IdentitiesOnly=yes ubuntu@%s -i %s", elasticIPs[i], certFilePath))
+		ux.Logger.PrintToUser(utils.GetSSHConnectionString(publicIP, cloudConfig.CertFilePath))
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("======================================")
 	}
-	ux.Logger.PrintToUser(fmt.Sprintf("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", certFilePath))
+	ux.Logger.PrintToUser(fmt.Sprintf("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", cloudConfig.CertFilePath))
 	ux.Logger.PrintToUser("")
+}
+
+// waitForHosts waits for all hosts to become available via SSH.
+func waitForHosts(hosts []*models.Host) *models.NodeResults {
+	hostErrors := models.NodeResults{}
+	createdWaitGroup := sync.WaitGroup{}
+	for _, host := range hosts {
+		createdWaitGroup.Add(1)
+		go func(nodeResults *models.NodeResults, host *models.Host) {
+			defer createdWaitGroup.Done()
+			if err := host.WaitForSSHShell(constants.SSHServerStartTimeout); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+		}(&hostErrors, host)
+	}
+	createdWaitGroup.Wait()
+	return &hostErrors
+}
+
+// requestCloudAuth makes sure user agree to
+func requestCloudAuth(cloudName string) error {
+	ux.Logger.PrintToUser("Do you authorize Avalanche-CLI to access your %s account?", cloudName)
+	ux.Logger.PrintToUser("By clicking yes, you are authorizing Avalanche-CLI to:")
+	ux.Logger.PrintToUser("- Create Cloud instance(s) and other components (such as elastic IPs)")
+	ux.Logger.PrintToUser("- Start/Stop Cloud instance(s) and other components (such as elastic IPs) previously created by Avalanche-CLI")
+	ux.Logger.PrintToUser("- Delete Cloud instance(s) and other components (such as elastic IPs) previously created by Avalanche-CLI")
+	yes, err := app.Prompt.CaptureYesNo(fmt.Sprintf("I authorize Avalanche-CLI to access my %s account", cloudName))
+	if err != nil {
+		return err
+	}
+	if err := app.Conf.SetConfigValue(constants.ConfigAutorizeCloudAccessKey, yes); err != nil {
+		return err
+	}
+	if !yes {
+		return fmt.Errorf("user did not give authorization to Avalanche-CLI to access %s account", cloudName)
+	}
+	return nil
 }

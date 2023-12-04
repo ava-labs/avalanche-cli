@@ -11,7 +11,6 @@ import (
 	"io"
 	"path/filepath"
 	"strconv"
-	"syscall"
 	"time"
 
 	pb "github.com/ava-labs/avalanchego/proto/pb/vm/runtime"
@@ -113,14 +112,10 @@ func GetVMBinaryProtocolVersion(vmPath string) (int, error) {
 		return 0, fmt.Errorf("timeout while waiting for vm protocol version: %w", runtime.ErrHandshakeFailed)
 	}
 
-	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+	// no need for a clean process termination
+	if err := cmd.Process.Kill(); err != nil {
 		_ = dumpProcessOutput(stdoutPipe, stderrPipe)
-		return 0, fmt.Errorf("failure signaling termination to vm: %w", err)
-	}
-
-	if err := cmd.Wait(); err != nil {
-		_ = dumpProcessOutput(stdoutPipe, stderrPipe)
-		return 0, fmt.Errorf("failure waiting for vm termination: %w", err)
+		return 0, fmt.Errorf("failure killing vm: %w", err)
 	}
 
 	return int(protocolVersion), nil

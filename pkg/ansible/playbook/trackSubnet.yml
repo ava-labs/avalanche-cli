@@ -1,9 +1,0 @@
----
-- hosts: "{{ target }}"
-  tasks:
-    - name: import subnet
-      shell: bash -i -c "/home/ubuntu/bin/avalanche subnet import file {{ subnetExportFileName }} --force"
-    - name: avalanche join subnet
-      shell: /home/ubuntu/bin/avalanche subnet join {{ subnetName }} --fuji --avalanchego-config /home/ubuntu/.avalanchego/configs/node.json --plugin-dir /home/ubuntu/.avalanchego/plugins --force-write
-    - name: restart node - restart avalanchego
-      shell: sudo systemctl restart avalanchego

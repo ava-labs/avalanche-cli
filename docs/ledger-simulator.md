@@ -13,10 +13,10 @@ It uses the `@zondax/zemu` js library to:
 - Previous steps can take some time. Once the app and rpc entry is ready, it prints a custom msg `SIMULATED LEDGER DEV READY` as a means to communicate 
   with the test code (or the user) that the simulator can start receiving requests (eg connect to it, ask for addresses, etc).
 - Instructs the simulated app (using simulated button presses from the zemu library) to sign `numApprovals` transactions. This number of transactions
-  to be approved must be in concordance with the number of transactions that the golang test asks the ledger to approve. In the meantime, the avalanche app
-  can also be queried by golang code so as for example to get the ledger addresses.
-- Wait for all transactions to be received and approved
-- Wait a user-given number of seconds.
+  to be approved must be in concordance with the number of transactions that the golang test asks the ledger to approve. 
+- Wait for all transactions to be received and approved. In the meantime, the avalanche app can be queried by golang code so as
+  for example to get the ledger addresses.
+- Wait for the user to press enter to end the simulator. In the meantime, the avalanche app can be queried by golang code.
 - Close the rpc entry point, closes the simulator, stops and remove the docker container.
 
 So, two main points of interaction with the simulated avalanche ledger app are available:
@@ -24,16 +24,15 @@ So, two main points of interaction with the simulated avalanche ledger app are a
 1. Interaction with the ledger from the golang app as if it were a real device: asking for addresses, sending txs to be signed.
 2. Interaction with the simulated physical ledger from the typescript code: pressing the ledger buttons in order to sign the transactions.
 
-The script receives three arguments: 
+The script receives two arguments: 
 
 - the number of transactions to sign (could be zero)
-- the number of seconds to wait after signing 
 - the seed for the ledger, that controls the ledger addresses (could be one word)
 
 Eg to start the ledger app and sign one transaction (will wait -with timeout- for that transaction to be sent):
 
 ```bash
-ts-node launcheAndApproveTxs.ts 1 0 ledger-seed
+ts-node launcheAndApproveTxs.ts 1 ledger-seed
 ```
 
 It can be executed directly by command line, or from inside golang test code.
@@ -56,14 +55,16 @@ Currently the rpc endpoint is hardcoded in ledger golang library to: `127.0.0.1:
 
 ## How a golang test executes and interacts with the typescript script
 
-The test should call `utils.StartLedgerSim(numApprovals, waitSeconds, ledgerSeed, showStdout)` by providing:
+The test should call `utils.StartLedgerSim(numApprovals, ledgerSeed, showStdout)` by providing:
 
 - number of txs to be approved by the ledger
-- number of seconds to be wait by ledger after approvals
 - seed for the ledger
 - wether to show stdout
 
-The function returns a channel that should be waited for to be confident the simulator stopped.
+The function returns two channels:
+
+- first one should be closed to notify the simulator that it can start shutdown process
+- second one should be waited for to be confident that the simulator stopped.
 
 See example on `deploy subnet to mainnet` test
 

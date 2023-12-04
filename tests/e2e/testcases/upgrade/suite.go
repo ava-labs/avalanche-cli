@@ -31,11 +31,11 @@ const (
 	subnetName       = "e2eSubnetTest"
 	secondSubnetName = "e2eSecondSubnetTest"
 
-	subnetEVMVersion1 = "v0.5.3"
-	subnetEVMVersion2 = "v0.5.5"
+	subnetEVMVersion1 = "v0.5.5"
+	subnetEVMVersion2 = "v0.5.6"
 
-	avagoRPC1Version = "v1.10.8"
-	avagoRPC2Version = "v1.10.9"
+	avagoRPC1Version = "v1.10.11"
+	avagoRPC2Version = "v1.10.12"
 
 	controlKeys = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 	keyName     = "ewoq"
@@ -374,9 +374,11 @@ var _ = ginkgo.Describe("[Upgrade local network]", ginkgo.Ordered, func() {
 
 		containsVersion2 = strings.Contains(output, binaryToVersion[utils.SoloSubnetEVMKey2])
 		gomega.Expect(containsVersion2).Should(gomega.BeFalse())
+
 		// the following indicates it is a custom VM
-		containsCustomVM := strings.Contains(output, "Printing genesis")
-		gomega.Expect(containsCustomVM).Should(gomega.BeTrue())
+		isCustom, err := utils.IsCustomVM(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(isCustom).Should(gomega.BeTrue())
 
 		commands.DeleteSubnetConfig(subnetName)
 	})
@@ -386,7 +388,7 @@ var _ = ginkgo.Describe("[Upgrade local network]", ginkgo.Ordered, func() {
 		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, binaryToVersion[utils.SoloSubnetEVMKey1])
 
 		// Simulate fuji deployment
-		s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys, "")
+		s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys)
 		subnetID, err := utils.ParsePublicDeployOutput(s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		// add validators to subnet

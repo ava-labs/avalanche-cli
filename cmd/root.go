@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/cmd/primarycmd"
+
 	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
 
 	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
@@ -22,17 +24,16 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/transactioncmd"
 	"github.com/ava-labs/avalanche-cli/cmd/updatecmd"
 	"github.com/ava-labs/avalanche-cli/internal/migrations"
-	"github.com/ava-labs/avalanche-cli/pkg/apmintegration"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
 
@@ -63,12 +64,13 @@ in with avalanche subnet create myNewSubnet.`,
 	// Disable printing the completion command
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.avalanche-cli.json)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.avalanche-cli/config.json)")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "ERROR", "log level for the application")
 	rootCmd.PersistentFlags().BoolVar(&skipCheck, constants.SkipUpdateFlag, false, "skip check for new versions")
 
 	// add sub commands
 	rootCmd.AddCommand(subnetcmd.NewCmd(app))
+	rootCmd.AddCommand(primarycmd.NewCmd(app))
 	rootCmd.AddCommand(networkcmd.NewCmd(app))
 	rootCmd.AddCommand(keycmd.NewCmd(app))
 
@@ -101,27 +103,13 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	cf := config.New()
 	app.Setup(baseDir, log, cf, prompts.NewPrompter(), application.NewDownloader())
 
-	// Setup APM, skip if running a hidden command
-	if !cmd.Hidden {
-		usr, err := user.Current()
-		if err != nil {
-			app.Log.Error("unable to get system user")
-			return err
-		}
-		apmBaseDir := filepath.Join(usr.HomeDir, constants.APMDir)
-		if err = apmintegration.SetupApm(app, apmBaseDir); err != nil {
-			return err
-		}
-	}
-
 	initConfig()
 
 	if err := migrations.RunMigrations(app); err != nil {
 		return err
 	}
-
-	if os.Getenv("RUN_E2E") == "" && !app.ConfigFileExists() {
-		err = utils.HandleUserMetricsPreference(app)
+	if os.Getenv("RUN_E2E") == "" && !app.Conf.ConfigFileExists() && !utils.FileExists(utils.UserHomePath(constants.OldMetricsConfigFileName)) {
+		err = metrics.HandleUserMetricsPreference(app)
 		if err != nil {
 			return err
 		}
@@ -201,7 +189,7 @@ func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
 }
 
 func handleTracking(cmd *cobra.Command, _ []string) {
-	utils.HandleTracking(cmd, app, nil)
+	metrics.HandleTracking(cmd, app, nil)
 }
 
 func setupEnv() (string, error) {
@@ -299,25 +287,21 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Search for default config.
-		home, err := os.UserHomeDir()
-		cobra.CheckErr(err)
-		viper.AddConfigPath(home)
-		viper.SetConfigType(constants.DefaultConfigFileType)
-		viper.SetConfigName(constants.DefaultConfigFileName)
+	oldConfig := utils.UserHomePath(constants.OldConfigFileName)
+	oldMetricsConfig := utils.UserHomePath(constants.OldMetricsConfigFileName)
+	if utils.FileExists(oldConfig) || utils.FileExists(oldMetricsConfig) {
+		ux.Logger.PrintToUser("-----------------------------------------------------------------------")
+		ux.Logger.PrintToUser("WARNING: Old configuration file was found in %s and/or %s", oldConfig, oldMetricsConfig)
+		ux.Logger.PrintToUser("Please run `avalanche config migrate` to migrate it to new default location %s", cfgFile)
+		ux.Logger.PrintToUser("-----------------------------------------------------------------------")
 	}
-
-	viper.AutomaticEnv() // read in environment variables that match
-
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		app.Log.Info("Using config file", zap.String("config-file", viper.ConfigFileUsed()))
-	} else {
-		app.Log.Info("No log file found")
+	if cfgFile == "" {
+		cfgFile = utils.UserHomePath(constants.DefaultConfigFileName)
+	}
+	app.Conf.SetConfig(app.Log, cfgFile)
+	// check if metrics setting is available, and if not load metricConfig
+	if !app.Conf.ConfigValueIsSet(constants.ConfigMetricsEnabledKey) {
+		app.Conf.MergeConfig(app.Log, oldMetricsConfig)
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+
 	"github.com/spf13/cobra"
 )
 
@@ -26,6 +27,8 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	app = injectedApp
 	// set user metrics collection preferences cmd
 	cmd.AddCommand(newMetricsCmd())
-
+	cmd.AddCommand(newMigrateCmd())
+	cmd.AddCommand(newSingleNodeCmd())
+	cmd.AddCommand(newAutorizeCloudAccessCmd())
 	return cmd
 }

@@ -50,13 +50,16 @@ flag, the command instead prints out the raw genesis file.`,
 	return cmd
 }
 
-func printGenesis(subnetName string) error {
+func printGenesis(sc models.Sidecar, subnetName string) error {
 	genesisFile := app.GetGenesisPath(subnetName)
 	gen, err := os.ReadFile(genesisFile)
 	if err != nil {
 		return err
 	}
 	fmt.Println(string(gen))
+	if sc.SubnetEVMMainnetChainID != 0 {
+		fmt.Printf("Genesis is set to be deployed to Mainnet with Chain Id %d\n", sc.SubnetEVMMainnetChainID)
+	}
 	return nil
 }
 
@@ -78,6 +81,7 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 
 	table.Append([]string{"Subnet Name", sc.Subnet})
 	table.Append([]string{"ChainID", genesis.Config.ChainID.String()})
+	table.Append([]string{"Mainnet ChainID", fmt.Sprint(sc.SubnetEVMMainnetChainID)})
 	table.Append([]string{"Token Name", app.GetTokenName(sc.Subnet)})
 	table.Append([]string{"VM Version", sc.VMVersion})
 	if sc.ImportedVMID != "" {
@@ -272,22 +276,22 @@ func readGenesis(_ *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("The provided subnet name %q does not exist", subnetName)
 		return nil
 	}
-	if printGenesisOnly {
-		return printGenesis(subnetName)
-	}
-	// read in sidecar
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
 	}
-
-	switch sc.VM {
-	case models.SubnetEvm:
-		return describeSubnetEvmGenesis(sc)
-	default:
-		app.Log.Warn("Unknown genesis format", zap.Any("vm-type", sc.VM))
-		ux.Logger.PrintToUser("Printing genesis")
-		err = printGenesis(subnetName)
+	if printGenesisOnly {
+		return printGenesis(sc, subnetName)
 	}
-	return err
+
+	isEVM, err := hasSubnetEVMGenesis(subnetName)
+	if err != nil {
+		return err
+	}
+	if isEVM {
+		return describeSubnetEvmGenesis(sc)
+	}
+	app.Log.Warn("Unknown genesis format", zap.Any("vm-type", sc.VM))
+	ux.Logger.PrintToUser("Printing genesis")
+	return printGenesis(sc, subnetName)
 }

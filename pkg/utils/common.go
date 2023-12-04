@@ -4,9 +4,16 @@ package utils
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"os/user"
+	"strings"
+	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
 func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr bool) (*bytes.Buffer, *bytes.Buffer) {
@@ -23,4 +30,114 @@ func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr b
 		cmd.Stderr = io.MultiWriter(&stderrBuffer)
 	}
 	return &stdoutBuffer, &stderrBuffer
+}
+
+// SplitKeyValueStringToMap splits a string with multiple key-value pairs separated by delimiter.
+// Delimiter must be a single character
+func SplitKeyValueStringToMap(str string, delimiter string) (map[string]string, error) {
+	kvMap := make(map[string]string)
+	if str == "" || len(delimiter) != 1 {
+		return kvMap, nil
+	}
+	entries := SplitStringWithQuotes(str, rune(delimiter[0]))
+	for _, e := range entries {
+		parts := strings.Split(e, "=")
+		if len(parts) >= 2 {
+			kvMap[parts[0]] = strings.Trim(strings.Join(parts[1:], "="), "'")
+		} else {
+			kvMap[parts[0]] = strings.Trim(parts[0], "'")
+		}
+	}
+	return kvMap, nil
+}
+
+// SplitString split string with a rune comma ignore quoted
+func SplitStringWithQuotes(str string, r rune) []string {
+	quoted := false
+	return strings.FieldsFunc(str, func(r1 rune) bool {
+		if r1 == '\'' {
+			quoted = !quoted
+		}
+		return !quoted && r1 == r
+	})
+}
+
+// Context for ANR network operations
+func GetANRContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), constants.ANRRequestTimeout)
+}
+
+// Context for API requests
+func GetAPIContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), constants.APIRequestTimeout)
+}
+
+func GetRealFilePath(path string) string {
+	if strings.HasPrefix(path, "~") {
+		usr, _ := user.Current()
+		path = strings.Replace(path, "~", usr.HomeDir, 1)
+	}
+	return path
+}
+
+func Filter[T any](input []T, f func(T) bool) []T {
+	output := make([]T, 0, len(input))
+	for _, e := range input {
+		if f(e) {
+			output = append(output, e)
+		}
+	}
+	return output
+}
+
+func Map[T, U any](input []T, f func(T) U) []U {
+	output := make([]U, 0, len(input))
+	for _, e := range input {
+		output = append(output, f(e))
+	}
+	return output
+}
+
+func MapWithError[T, U any](input []T, f func(T) (U, error)) ([]U, error) {
+	output := make([]U, 0, len(input))
+	for _, e := range input {
+		o, err := f(e)
+		if err != nil {
+			return nil, err
+		}
+		output = append(output, o)
+	}
+	return output, nil
+}
+
+// ConvertInterfaceToMap converts a given value to a map[string]interface{}.
+func ConvertInterfaceToMap(value interface{}) (map[string]interface{}, error) {
+	// Check if the underlying type is a map
+	switch v := value.(type) {
+	case map[string]interface{}:
+		// If it's a map, return it
+		return v, nil
+	default:
+		return nil, fmt.Errorf("unsupported type: %T", value)
+	}
+}
+
+func TimedFunction(f func() (interface{}, error), name string, timeout time.Duration) (interface{}, error) {
+	var (
+		ret interface{}
+		err error
+	)
+	ch := make(chan struct{})
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	go func() {
+		ret, err = f()
+		close(ch)
+	}()
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf("%s timeout of %d seconds", name, uint(timeout.Seconds()))
+	case <-ch:
+	}
+	return ret, err
 }
