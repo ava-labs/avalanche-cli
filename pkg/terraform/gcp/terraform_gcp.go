@@ -21,15 +21,25 @@ import (
 )
 
 // SetCloudCredentials sets GCP account credentials defined in service account JSON file
-func SetCloudCredentials(rootBody *hclwrite.Body, zone, credentialsPath, projectName string) error {
-	// zone's format is us-east1-b, region's format is us-east1
-	region := strings.Join(strings.Split(zone, "-")[:2], "-")
+func SetCloudCredentials(rootBody *hclwrite.Body, zones []string, credentialsPath, projectName string) error {
+	// set default provider
+	region := strings.Join(strings.Split(zones[0], "-")[:2], "-")
 	provider := rootBody.AppendNewBlock("provider", []string{"google"})
 	providerBody := provider.Body()
 	providerBody.SetAttributeValue("project", cty.StringVal(projectName))
 	providerBody.SetAttributeValue("region", cty.StringVal(region))
-	providerBody.SetAttributeValue("zone", cty.StringVal(zone))
 	providerBody.SetAttributeValue("credentials", cty.StringVal(credentialsPath))
+	for _, zone := range zones {
+		// zone's format is us-east1-b, region's format is us-east1
+		region := strings.Join(strings.Split(zone, "-")[:2], "-")
+		provider := rootBody.AppendNewBlock("provider", []string{"google"})
+		providerBody := provider.Body()
+		providerBody.SetAttributeValue("alias", cty.StringVal(zone))
+		providerBody.SetAttributeValue("project", cty.StringVal(projectName))
+		providerBody.SetAttributeValue("region", cty.StringVal(region))
+		providerBody.SetAttributeValue("zone", cty.StringVal(zone))
+		providerBody.SetAttributeValue("credentials", cty.StringVal(credentialsPath))
+	}
 	return nil
 }
 
@@ -82,12 +92,20 @@ func SetFirewallRule(rootBody *hclwrite.Body, ipAddress, firewallName, networkNa
 }
 
 // SetPublicIP attach static IP(s) to the associated Google VM instance(s)
-func SetPublicIP(rootBody *hclwrite.Body, nodeName string, numNodes int) {
-	staticIPName := fmt.Sprintf("%s-%s", constants.GCPStaticIPPrefix, nodeName)
+func SetPublicIP(rootBody *hclwrite.Body, zone string, nodeName string, numNodes int) {
+	staticIPName := terraformStaticIPName(nodeName)
 	eip := rootBody.AppendNewBlock("resource", []string{"google_compute_address", staticIPName})
 	eipBody := eip.Body()
 	eipBody.SetAttributeRaw("name", createCustomTokens(staticIPName))
 	eipBody.SetAttributeValue("count", cty.NumberIntVal(int64(numNodes)))
+	eipBody.SetAttributeTraversal("provider", hcl.Traversal{
+		hcl.TraverseRoot{
+			Name: "google",
+		},
+		hcl.TraverseAttr{
+			Name: zone,
+		},
+	})
 	eipBody.SetAttributeValue("address_type", cty.StringVal("EXTERNAL"))
 	eipBody.SetAttributeValue("network_tier", cty.StringVal("PREMIUM"))
 }
@@ -130,79 +148,108 @@ func createCustomTokens(tokenName string) hclwrite.Tokens {
 	}
 }
 
+func terraformNodeName(zone string) string {
+	return fmt.Sprintf("gcp-node-%s", zone)
+}
+
+func terraformStaticIPName(nodeName string) string {
+	return fmt.Sprintf("%s-%s", constants.GCPStaticIPPrefix, nodeName)
+}
+
 // SetupInstances adds google_compute_instance section in terraform state file where we configure all the necessary components of the desired GCE instance(s)
-func SetupInstances(rootBody *hclwrite.Body, networkName, sshPublicKey, ami, staticIPName, instanceName string, numNodes int, networkExists bool) {
-	gcpInstance := rootBody.AppendNewBlock("resource", []string{"google_compute_instance", "gcp-node"})
-	gcpInstanceBody := gcpInstance.Body()
-	gcpInstanceBody.SetAttributeRaw("name", createCustomTokens(instanceName))
-	gcpInstanceBody.SetAttributeValue("count", cty.NumberIntVal(int64(numNodes)))
-	gcpInstanceBody.SetAttributeValue("machine_type", cty.StringVal("e2-standard-8"))
-	metadataMap := make(map[string]cty.Value)
-	metadataMap["ssh-keys"] = cty.StringVal(fmt.Sprintf("ubuntu:%s", strings.TrimSuffix(sshPublicKey, "\n")))
-	gcpInstanceBody.SetAttributeValue("metadata", cty.ObjectVal(metadataMap))
-	networkInterface := gcpInstanceBody.AppendNewBlock("network_interface", []string{})
-	networkInterfaceBody := networkInterface.Body()
-	networkRoot := "google_compute_network"
-	if networkExists {
-		networkRoot = "data.google_compute_network"
-	}
-	networkInterfaceBody.SetAttributeTraversal("network", hcl.Traversal{
-		hcl.TraverseRoot{
-			Name: networkRoot,
-		},
-		hcl.TraverseAttr{
-			Name: networkName,
-		},
-		hcl.TraverseAttr{
-			Name: "id",
-		},
-	})
-	accessConfig := networkInterfaceBody.AppendNewBlock("access_config", []string{})
-	// don't add google_compute_address if user is not using public IP
-	if staticIPName != "" {
-		accessConfigBody := accessConfig.Body()
-		accessConfigBody.SetAttributeTraversal("nat_ip", hcl.Traversal{
+func SetupInstances(rootBody *hclwrite.Body,
+	zones []string,
+	networkName string,
+	sshPublicKey string,
+	ami string,
+	staticIPName map[string]string,
+	nodeName map[string]string,
+	numNodes []int,
+	instanceType string,
+	networkExists bool,
+) {
+	for i, zone := range zones {
+		gcpInstance := rootBody.AppendNewBlock("resource", []string{"google_compute_instance", terraformNodeName(zone)})
+		gcpInstanceBody := gcpInstance.Body()
+		gcpInstanceBody.SetAttributeRaw("name", createCustomTokens(nodeName[zone]))
+		gcpInstanceBody.SetAttributeTraversal("provider", hcl.Traversal{
 			hcl.TraverseRoot{
-				Name: "google_compute_address",
+				Name: "google",
 			},
 			hcl.TraverseAttr{
-				Name: fmt.Sprintf("%s[count.index]", staticIPName),
-			},
-			hcl.TraverseAttr{
-				Name: "address",
+				Name: zone,
 			},
 		})
+		gcpInstanceBody.SetAttributeValue("count", cty.NumberIntVal(int64(numNodes[i])))
+		gcpInstanceBody.SetAttributeValue("machine_type", cty.StringVal(instanceType))
+		metadataMap := make(map[string]cty.Value)
+		metadataMap["ssh-keys"] = cty.StringVal(fmt.Sprintf("ubuntu:%s", strings.TrimSuffix(sshPublicKey, "\n")))
+		gcpInstanceBody.SetAttributeValue("metadata", cty.ObjectVal(metadataMap))
+		networkInterface := gcpInstanceBody.AppendNewBlock("network_interface", []string{})
+		networkInterfaceBody := networkInterface.Body()
+		networkRoot := "google_compute_network"
+		if networkExists {
+			networkRoot = "data.google_compute_network"
+		}
+		networkInterfaceBody.SetAttributeTraversal("network", hcl.Traversal{
+			hcl.TraverseRoot{
+				Name: networkRoot,
+			},
+			hcl.TraverseAttr{
+				Name: networkName,
+			},
+			hcl.TraverseAttr{
+				Name: "id",
+			},
+		})
+		accessConfig := networkInterfaceBody.AppendNewBlock("access_config", []string{})
+		// don't add google_compute_address if user is not using public IP
+		if staticIPName[zone] != "" {
+			accessConfigBody := accessConfig.Body()
+			accessConfigBody.SetAttributeTraversal("nat_ip", hcl.Traversal{
+				hcl.TraverseRoot{
+					Name: "google_compute_address",
+				},
+				hcl.TraverseAttr{
+					Name: fmt.Sprintf("%s[count.index]", terraformStaticIPName(nodeName[zone])),
+				},
+				hcl.TraverseAttr{
+					Name: "address",
+				},
+			})
+		}
+		bootDisk := gcpInstanceBody.AppendNewBlock("boot_disk", []string{})
+		bootDiskBody := bootDisk.Body()
+		initParams := bootDiskBody.AppendNewBlock("initialize_params", []string{})
+		initParamsBody := initParams.Body()
+		initParamsBody.SetAttributeValue("image", cty.StringVal(ami))
+		initParamsBody.SetAttributeValue("size", cty.NumberIntVal(1000))
+		gcpInstanceBody.SetAttributeValue("allow_stopping_for_update", cty.BoolVal(true))
 	}
-	bootDisk := gcpInstanceBody.AppendNewBlock("boot_disk", []string{})
-	bootDiskBody := bootDisk.Body()
-	initParams := bootDiskBody.AppendNewBlock("initialize_params", []string{})
-	initParamsBody := initParams.Body()
-	initParamsBody.SetAttributeValue("image", cty.StringVal(ami))
-	initParamsBody.SetAttributeValue("size", cty.NumberIntVal(1000))
-
-	gcpInstanceBody.SetAttributeValue("allow_stopping_for_update", cty.BoolVal(true))
 }
 
 // SetOutput adds output section in terraform state file so that we can call terraform output command and print instance_ip and instance_id to user
-func SetOutput(rootBody *hclwrite.Body) {
-	outputEip := rootBody.AppendNewBlock("output", []string{"instance_ips"})
-	outputEipBody := outputEip.Body()
-	outputEipBody.SetAttributeTraversal("value", hcl.Traversal{
-		hcl.TraverseRoot{
-			Name: "google_compute_instance",
-		},
-		hcl.TraverseAttr{
-			Name: "gcp-node[*]",
-		},
-		hcl.TraverseAttr{
-			Name: "network_interface.0.access_config.0.nat_ip",
-		},
-	})
+func SetOutput(rootBody *hclwrite.Body, zones []string) {
+	for _, zone := range zones {
+		outputEip := rootBody.AppendNewBlock("output", []string{"instance_ips_" + zone})
+		outputEipBody := outputEip.Body()
+		outputEipBody.SetAttributeTraversal("value", hcl.Traversal{
+			hcl.TraverseRoot{
+				Name: "google_compute_instance",
+			},
+			hcl.TraverseAttr{
+				Name: fmt.Sprintf("%s[*]", terraformNodeName(zone)),
+			},
+			hcl.TraverseAttr{
+				Name: "network_interface.0.access_config.0.nat_ip",
+			},
+		})
+	}
 }
 
 // RunTerraform executes terraform apply function that creates the GCE instances based on the .tf file provided
 // returns a list of GCP node IPs
-func RunTerraform(terraformDir string, useEIP bool) ([]string, error) {
+func RunTerraform(terraformDir string, zones []string, useEIP bool) (map[string][]string, error) {
 	cmd := exec.Command(constants.Terraform, "init") //nolint:gosec
 	cmd.Dir = terraformDir
 	if err := cmd.Run(); err != nil {
@@ -214,10 +261,10 @@ func RunTerraform(terraformDir string, useEIP bool) ([]string, error) {
 	if err := cmd.Run(); err != nil {
 		return nil, err
 	}
-	var publicIPs []string
+	var publicIPs map[string][]string
 	var err error
 	if useEIP {
-		publicIPs, err = terraform.GetPublicIPs(terraformDir)
+		publicIPs, err = terraform.GetPublicIPs(terraformDir, zones)
 		if err != nil {
 			return nil, err
 		}

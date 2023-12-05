@@ -31,7 +31,6 @@ func CheckKeyPairExists(ec2Svc *ec2.EC2, kpName string) (bool, error) {
 			aws.String(kpName),
 		},
 	}
-
 	_, err := ec2Svc.DescribeKeyPairs(keyPairInput)
 	if err != nil {
 		if strings.Contains(err.Error(), "InvalidKeyPair.NotFound") {

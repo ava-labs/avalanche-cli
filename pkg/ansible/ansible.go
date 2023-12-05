@@ -18,7 +18,7 @@ import (
 
 // CreateAnsibleHostInventory creates inventory file for ansible
 // specifies the ip address of the cloud server and the corresponding ssh cert path for the cloud server
-func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService string, publicIPMap map[string]string) error {
+func CreateAnsibleHostInventory(inventoryDirPath string, cloudConfigMap models.CloudConfig, cloudService string, publicIPMap map[string]string) error {
 	if err := os.MkdirAll(inventoryDirPath, os.ModePerm); err != nil {
 		return err
 	}
@@ -28,19 +28,21 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 		return err
 	}
 	defer inventoryFile.Close()
-	for instanceID := range publicIPMap {
-		ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, instanceID)
-		if err != nil {
-			return err
-		}
-		inventoryContent := ansibleInstanceID
-		inventoryContent += " ansible_host="
-		inventoryContent += publicIPMap[instanceID]
-		inventoryContent += " ansible_user=ubuntu"
-		inventoryContent += fmt.Sprintf(" ansible_ssh_private_key_file=%s", certFilePath)
-		inventoryContent += fmt.Sprintf(" ansible_ssh_common_args='%s'", constants.AnsibleSSHInventoryParams)
-		if _, err = inventoryFile.WriteString(inventoryContent + "\n"); err != nil {
-			return err
+	for _, cloudConfig := range cloudConfigMap {
+		for _, instanceID := range cloudConfig.InstanceIDs {
+			ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, instanceID)
+			if err != nil {
+				return err
+			}
+			inventoryContent := ansibleInstanceID
+			inventoryContent += " ansible_host="
+			inventoryContent += publicIPMap[instanceID]
+			inventoryContent += " ansible_user=ubuntu"
+			inventoryContent += fmt.Sprintf(" ansible_ssh_private_key_file=%s", cloudConfig.CertFilePath)
+			inventoryContent += fmt.Sprintf(" ansible_ssh_common_args='%s'", constants.AnsibleSSHInventoryParams)
+			if _, err = inventoryFile.WriteString(inventoryContent + "\n"); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

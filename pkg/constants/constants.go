@@ -164,6 +164,8 @@ const (
 
 	AWSCloudService              = "Amazon Web Services"
 	GCPCloudService              = "Google Cloud Platform"
+	AWSDefaultInstanceType       = "c5.2xlarge"
+	GCPDefaultInstanceType       = "e2-standard-8"
 	AnsibleSSHUser               = "ubuntu"
 	AWSNodeAnsiblePrefix         = "aws_node"
 	GCPNodeAnsiblePrefix         = "gcp_node"
