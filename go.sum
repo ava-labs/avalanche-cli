@@ -85,8 +85,8 @@ github.com/ava-labs/coreth v0.12.9-rc.5 h1:xYBgNm1uOPfUdUNm8+fS8ellHnEd4qfFNb6uZ
 github.com/ava-labs/coreth v0.12.9-rc.5/go.mod h1:rECKQfGFDeodrwGPlJSvFUJDbVr30jSMIVjQLi6pNX4=
 github.com/ava-labs/ledger-avalanche/go v0.0.0-20231102202641-ae2ebdaeac34 h1:mg9Uw6oZFJKytJxgxnl3uxZOs/SB8CVHg6Io4Tf99Zc=
 github.com/ava-labs/ledger-avalanche/go v0.0.0-20231102202641-ae2ebdaeac34/go.mod h1:pJxaT9bUgeRNVmNRgtCHb7sFDIRKy7CzTQVi8gGNT6g=
-github.com/ava-labs/subnet-evm v0.5.3 h1:BSMTk/V/5++T+idx+jnky6eeQoxsbCDVSxi8O+w/GaU=
-github.com/ava-labs/subnet-evm v0.5.3/go.mod h1:PQX3iqPutCrs1pewZ27J+OcTHAJhjLKpMK/fpKn808g=
+github.com/ava-labs/subnet-evm v0.5.9 h1:IYWj5j83C2oterPOrxOix6/qYCua85HTQ/viMFHNPOM=
+github.com/ava-labs/subnet-evm v0.5.9/go.mod h1:n4/abB4BYU1xlAqD15uKz6pRROOh/5u5Jxf4JPK6DbY=
 github.com/aws/aws-sdk-go v1.44.301 h1:VofuXktwHFTBUvoPiHxQis/3uKgu0RtgUwLtNujd3Zs=
 github.com/aws/aws-sdk-go v1.44.301/go.mod h1:aVsgQcEevwlmQ7qHE9I3h+dtQgpqhFB+i8Phjh7fkwI=
 github.com/aymerick/raymond v2.0.3-0.20180322193309-b565731e1464+incompatible/go.mod h1:osfaiScAUVup+UC9Nfq76eWqDhXlp+4UYaA8uhTBO6g=
