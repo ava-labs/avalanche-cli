@@ -315,17 +315,3 @@ func (h *Host) WaitForSSHShell(timeout time.Duration) error {
 		time.Sleep(constants.SSHSleepBetweenChecks)
 	}
 }
-
-// splitHTTPResponse splits an HTTP response into headers and body.
-func SplitHTTPResponse(response []byte) ([]byte, []byte) {
-	// Find the position of the double line break separating the headers and the body
-	doubleLineBreak := []byte{'\r', '\n', '\r', '\n'}
-	index := bytes.Index(response, doubleLineBreak)
-	if index == -1 {
-		return nil, response
-	}
-	// Split the response into headers and body
-	headers := response[:index]
-	body := response[index+len(doubleLineBreak):]
-	return headers, body
-}
