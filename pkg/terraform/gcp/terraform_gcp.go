@@ -132,7 +132,7 @@ func createCustomTokens(tokenName string) hclwrite.Tokens {
 }
 
 // SetupInstances adds google_compute_instance section in terraform state file where we configure all the necessary components of the desired GCE instance(s)
-func SetupInstances(rootBody *hclwrite.Body, networkName, sshPublicKey, ami, staticIPName, instanceName string, numNodes int, networkExists bool) {
+func SetupInstances(rootBody *hclwrite.Body, networkName, sshPublicKey, ami, staticIPName, instanceName string, numNodes int, networkExists, forMonitoring bool) {
 	gcpInstance := rootBody.AppendNewBlock("resource", []string{"google_compute_instance", "gcp-node"})
 	gcpInstanceBody := gcpInstance.Body()
 	gcpInstanceBody.SetAttributeRaw("name", createCustomTokens(instanceName))
@@ -179,7 +179,11 @@ func SetupInstances(rootBody *hclwrite.Body, networkName, sshPublicKey, ami, sta
 	initParams := bootDiskBody.AppendNewBlock("initialize_params", []string{})
 	initParamsBody := initParams.Body()
 	initParamsBody.SetAttributeValue("image", cty.StringVal(ami))
-	initParamsBody.SetAttributeValue("size", cty.NumberIntVal(1000))
+	if !forMonitoring {
+		initParamsBody.SetAttributeValue("size", cty.NumberIntVal(1000))
+	} else {
+		initParamsBody.SetAttributeValue("size", cty.NumberIntVal(10))
+	}
 
 	gcpInstanceBody.SetAttributeValue("allow_stopping_for_update", cty.BoolVal(true))
 }

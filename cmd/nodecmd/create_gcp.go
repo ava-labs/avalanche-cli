@@ -150,6 +150,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	cliDefaultName,
 	projectName,
 	credentialsPath string,
+	forMonitoring bool,
 ) ([]string, []string, string, string, error) {
 	keyPairName := fmt.Sprintf("%s-keypair", cliDefaultName)
 	sshKeyPath, err := app.GetSSHCertFilePath(keyPairName)
@@ -225,7 +226,7 @@ func createGCEInstances(rootBody *hclwrite.Body,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	terraformgcp.SetupInstances(rootBody, networkName, string(sshPublicKey), ami, publicIPName, nodeName, numNodes, networkExists)
+	terraformgcp.SetupInstances(rootBody, networkName, string(sshPublicKey), ami, publicIPName, nodeName, numNodes, networkExists, forMonitoring)
 	if useStaticIP {
 		terraformgcp.SetOutput(rootBody)
 	}
@@ -257,11 +258,12 @@ func createGCPInstance(
 	usr *user.User,
 	gcpClient *compute.Service,
 	numNodes int,
-	zone string,
-	imageID string,
-	gcpCredentialFilepath string,
-	gcpProjectName string,
+	zone,
+	imageID,
+	gcpCredentialFilepath,
+	gcpProjectName,
 	clusterName string,
+	forMonitoring bool,
 ) (CloudConfig, error) {
 	defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 	hclFile, rootBody, err := terraform.InitConf()
@@ -278,6 +280,7 @@ func createGCPInstance(
 		defaultAvalancheCLIPrefix,
 		gcpProjectName,
 		gcpCredentialFilepath,
+		forMonitoring,
 	)
 	if err != nil {
 		ux.Logger.PrintToUser("Failed to create GCP cloud server")

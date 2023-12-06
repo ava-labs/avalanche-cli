@@ -125,3 +125,29 @@ func StopGCPNode(gcpClient *compute.Service, nodeConfig models.NodeConfig, proje
 	}
 	return nil
 }
+
+func AddFirewall(gcpClient *compute.Service, monitoringHostPublicIP, networkName, projectName string) error {
+	firewallName := fmt.Sprintf("%s-%s-monitoring", networkName, strings.ReplaceAll(monitoringHostPublicIP, ".", ""))
+	firewallExists, err := CheckFirewallExists(gcpClient, projectName, firewallName, true)
+	if err != nil {
+		return err
+	}
+	if !firewallExists {
+		allowedFirewall := compute.FirewallAllowed{
+			IPProtocol: "tcp",
+			Ports:      []string{strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort)},
+		}
+
+		firewall := compute.Firewall{
+			Name:         firewallName,
+			Allowed:      []*compute.FirewallAllowed{&allowedFirewall},
+			Network:      fmt.Sprintf("global/networks/%s", networkName),
+			SourceRanges: []string{monitoringHostPublicIP + constants.IPAddressSuffix},
+		}
+		instancesStopCall := gcpClient.Firewalls.Insert(projectName, &firewall)
+		if _, err = instancesStopCall.Do(); err != nil {
+			return err
+		}
+	}
+	return nil
+}

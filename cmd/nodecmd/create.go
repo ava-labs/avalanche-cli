@@ -220,9 +220,19 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		cloudConfig, err = createGCPInstance(usr, gcpClient, numNodes, zone, imageID, credentialFilepath, projectName, clusterName)
+		cloudConfig, err = createGCPInstance(usr, gcpClient, numNodes, zone, imageID, credentialFilepath, projectName, clusterName, false)
 		if err != nil {
 			return err
+		}
+		if separateMonitoringInstance {
+			err = terraform.RemoveDirectory(app.GetTerraformDir())
+			if err != nil {
+				return err
+			}
+			monitoringCloudConfig, err = createGCPInstance(usr, gcpClient, 1, zone, imageID, credentialFilepath, projectName, clusterName, true)
+			if err != nil {
+				return err
+			}
 		}
 		if !useStaticIP {
 			publicIPMap, err = gcpAPI.GetInstancePublicIPs(gcpClient, projectName, zone, cloudConfig.InstanceIDs)
@@ -236,6 +246,11 @@ func createNodes(_ *cobra.Command, args []string) error {
 		}
 		gcpProjectName = projectName
 		gcpCredentialFilepath = credentialFilepath
+		if separateMonitoringInstance {
+			if err = gcpAPI.AddFirewall(gcpClient, monitoringCloudConfig.PublicIPs[0], fmt.Sprintf("%s-network", usr.Username+constants.AvalancheCLISuffix), projectName); err != nil {
+				return err
+			}
+		}
 	}
 
 	if err = createClusterNodeConfig(network, cloudConfig, monitoringCloudConfig, clusterName, cloudService); err != nil {
