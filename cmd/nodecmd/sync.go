@@ -3,15 +3,14 @@
 package nodecmd
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"sync"
 
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
-	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
+	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"google.golang.org/api/compute/v1"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
@@ -55,38 +54,40 @@ func getNodesWoEIPInAnsibleInventory(clusterNodes []string) []models.NodeConfig 
 
 func getPublicIPForNodesWoEIP(nodesWoEIP []models.NodeConfig) (map[string]string, error) {
 	lastRegion := ""
-	var ec2Svc *ec2.EC2
+	var ec2Svc *awsAPI.AwsCloud
+	var err error
 	publicIPMap := make(map[string]string)
-	var gcpClient *compute.Service
-	var gcpProjectName string
+	var gcpCloud *gcpAPI.GcpCloud
 	ux.Logger.PrintToUser("Getting Public IPs for nodes without static IPs ...")
 	for _, node := range nodesWoEIP {
 		if lastRegion == "" || node.Region != lastRegion {
 			if node.CloudService == "" || node.CloudService == constants.AWSCloudService {
-				// check for empty because we didn't set this value when it was only on AWS
-				sess, err := getAWSCloudCredentials(awsProfile, node.Region)
+				ec2Svc, err = awsAPI.NewAwsCloud(awsProfile, node.Region)
 				if err != nil {
 					return nil, err
 				}
-				ec2Svc = ec2.New(sess)
 			}
 			lastRegion = node.Region
 		}
 		var publicIP map[string]string
 		var err error
 		if node.CloudService == constants.GCPCloudService {
-			if gcpClient == nil {
-				gcpClient, gcpProjectName, _, err = getGCPCloudCredentials()
+			if gcpCloud == nil {
+				gcpClient, projectName, _, err := getGCPCloudCredentials()
+				if err != nil {
+					return nil, err
+				}
+				gcpCloud, err = gcpAPI.NewGcpCloud(gcpClient, projectName, context.Background())
 				if err != nil {
 					return nil, err
 				}
 			}
-			publicIP, err = gcpAPI.GetInstancePublicIPs(gcpClient, gcpProjectName, node.Region, []string{node.NodeID})
+			publicIP, err = gcpCloud.GetInstancePublicIPs(node.Region, []string{node.NodeID})
 			if err != nil {
 				return nil, err
 			}
 		} else {
-			publicIP, err = awsAPI.GetInstancePublicIPs(ec2Svc, []string{node.NodeID})
+			publicIP, err = ec2Svc.GetInstancePublicIPs([]string{node.NodeID})
 			if err != nil {
 				return nil, err
 			}

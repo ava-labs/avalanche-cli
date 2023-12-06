@@ -19,8 +19,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/servce/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 )
 
 var (
@@ -30,7 +30,6 @@ var (
 
 type AwsCloud struct {
 	ec2Client *ec2.Client
-	region    string
 	ctx       context.Context
 }
 
@@ -48,7 +47,6 @@ func NewAwsCloud(awsProfile, region string) (*AwsCloud, error) {
 
 	return &AwsCloud{
 		ec2Client: ec2.NewFromConfig(cfg),
-		region:    region,
 		ctx:       ctx,
 	}, nil
 }
@@ -81,7 +79,7 @@ func (c *AwsCloud) CheckSecurityGroupExists(sgName string) (bool, types.Security
 	return true, sg.SecurityGroups[0], nil
 }
 
-func (c *AwsCloud) AddSecurityGroupRule(direction, groupID, protocol, ip string, port int32) error {
+func (c *AwsCloud) AddSecurityGroupRule(groupID, direction, protocol, ip string, port int32) error {
 	switch direction {
 	case "ingress":
 		if _, err := c.ec2Client.AuthorizeSecurityGroupIngress(c.ctx, &ec2.AuthorizeSecurityGroupIngressInput{
@@ -125,14 +123,14 @@ func (c *AwsCloud) AddSecurityGroupRule(direction, groupID, protocol, ip string,
 	return nil
 }
 
-func (c *AwsCloud) createEC2Instances(count int32, amiID, instanceType, keyName, securityGroupID string) ([]string, error) {
+func (c *AwsCloud) CreateEC2Instances(count int, amiID, instanceType, keyName, securityGroupID string) ([]string, error) {
 	runResult, err := c.ec2Client.RunInstances(c.ctx, &ec2.RunInstancesInput{
 		ImageId:          aws.String(amiID),
 		InstanceType:     types.InstanceType(instanceType),
 		KeyName:          aws.String(keyName),
 		SecurityGroupIds: []string{securityGroupID},
 		MinCount:         aws.Int32(1),
-		MaxCount:         aws.Int32(count),
+		MaxCount:         aws.Int32(int32(count)),
 	})
 	if err != nil {
 		return nil, err
@@ -211,6 +209,7 @@ func (c *AwsCloud) StopAWSNode(nodeConfig models.NodeConfig, clusterName string)
 	ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
 	return c.StopInstance(nodeConfig.NodeID, nodeConfig.ElasticIP, true)
 }
+
 func (c *AwsCloud) StopInstance(instanceID, publicIP string, releasePublicIP bool) error {
 	input := &ec2.StopInstancesInput{
 		InstanceIds: []string{instanceID},
@@ -258,6 +257,7 @@ func (c *AwsCloud) AssociateEIP(instanceID, allocationID string) error {
 	}
 	return nil
 }
+
 func (c *AwsCloud) CreateAndDownloadKeyPair(keyName string, privateKeyFilePath string) error {
 	createKeyPairOutput, err := c.ec2Client.CreateKeyPair(c.ctx, &ec2.CreateKeyPairInput{
 		KeyName: aws.String(keyName),
@@ -266,33 +266,33 @@ func (c *AwsCloud) CreateAndDownloadKeyPair(keyName string, privateKeyFilePath s
 		return err
 	}
 	privateKeyMaterial := *createKeyPairOutput.KeyMaterial
-	err = os.WriteFile(privateKeyFilePath, []byte(privateKeyMaterial), 0600)
+	err = os.WriteFile(privateKeyFilePath, []byte(privateKeyMaterial), 0o600)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (c *AwsCloud) SetupSecurityGroup(ipAddress, securityGroupName string) error {
+func (c *AwsCloud) SetupSecurityGroup(ipAddress, securityGroupName string) (string, error) {
 	inputIPAddress := ipAddress + "/32"
 	sgID, err := c.CreateSecurityGroup(securityGroupName, "Allow SSH, AVAX HTTP outbound traffic")
 	if err != nil {
-		return err
+		return "", err
 	}
-	if err := c.AddSecurityGroupRule("ingress", sgID, "tcp", inputIPAddress, constants.SSHTCPPort); err != nil {
-		return err
+	if err := c.AddSecurityGroupRule(sgID, "ingress", "tcp", inputIPAddress, constants.SSHTCPPort); err != nil {
+		return "", err
 	}
 
-	if err := c.AddSecurityGroupRule("ingress", sgID, "tcp", inputIPAddress, constants.AvalanchegoAPIPort); err != nil {
-		return err
+	if err := c.AddSecurityGroupRule(sgID, "ingress", "tcp", inputIPAddress, constants.AvalanchegoAPIPort); err != nil {
+		return "", err
 	}
-	if err := c.AddSecurityGroupRule("ingress", sgID, "tcp", "0.0.0.0/0", constants.AvalanchegoP2PPort); err != nil {
-		return err
+	if err := c.AddSecurityGroupRule(sgID, "ingress", "tcp", "0.0.0.0/0", constants.AvalanchegoP2PPort); err != nil {
+		return "", err
 	}
-	if err := c.AddSecurityGroupRule("egress", sgID, "-1", "0.0.0.0/0", constants.OutboundPort); err != nil {
-		return err
+	if err := c.AddSecurityGroupRule(sgID, "egress", "-1", "0.0.0.0/0", constants.OutboundPort); err != nil {
+		return "", err
 	}
-	return nil
+	return sgID, nil
 }
 
 func CheckUserIPInSg(sg *types.SecurityGroup, currentIP string, port int32) bool {
