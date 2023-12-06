@@ -98,9 +98,20 @@ func stopNodes(_ *cobra.Command, args []string) error {
 	if err := getDeleteConfigConfirmation(); err != nil {
 		return err
 	}
+	nodesToStop := []string{}
 	clusterNodes, err := getClusterNodes(clusterName)
 	if err != nil {
 		return err
+	}
+	for _, node := range clusterNodes {
+		nodesToStop = append(nodesToStop, node)
+	}
+	monitoringNode, err := getClusterMonitoringNode(clusterName)
+	if err != nil {
+		return err
+	}
+	if monitoringNode != "" {
+		nodesToStop = append(nodesToStop, monitoringNode)
 	}
 	failedNodes := []string{}
 	nodeErrors := []error{}
@@ -108,7 +119,7 @@ func stopNodes(_ *cobra.Command, args []string) error {
 	var ec2Svc *ec2.EC2
 	var gcpClient *compute.Service
 	var gcpProjectName string
-	for _, node := range clusterNodes {
+	for _, node := range nodesToStop {
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
 		if err != nil {
 			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err.Error()))
@@ -193,6 +204,21 @@ func getClusterNodes(clusterName string) ([]string, error) {
 		return nil, fmt.Errorf("no nodes found in cluster %s", clusterName)
 	}
 	return clusterNodes, nil
+}
+
+func getClusterMonitoringNode(clusterName string) (string, error) {
+	clustersConfig := models.ClustersConfig{}
+	if app.ClustersConfigExists() {
+		var err error
+		clustersConfig, err = app.LoadClustersConfig()
+		if err != nil {
+			return "", err
+		}
+	}
+	if _, ok := clustersConfig.Clusters[clusterName]; !ok {
+		return "", fmt.Errorf("cluster %q does not exist", clusterName)
+	}
+	return clustersConfig.Clusters[clusterName].MonitoringInstance, nil
 }
 
 func clusterExists(clusterName string) (bool, error) {
