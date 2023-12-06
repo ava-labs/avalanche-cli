@@ -177,8 +177,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	}
 	if !networkExists {
 		ux.Logger.PrintToUser(fmt.Sprintf("Creating new network %s in GCP", networkName))
-		_, err := gcpClient.SetupNetwork(userIPAddress, networkName)
-		if err != nil {
+		if _, err := gcpClient.SetupNetwork(userIPAddress, networkName); err != nil {
 			return nil, nil, "", "", err
 		}
 	} else {
