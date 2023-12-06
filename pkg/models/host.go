@@ -203,7 +203,10 @@ func (h *Host) Forward(httpRequest string, timeout time.Duration) ([]byte, error
 	if err != nil {
 		err = fmt.Errorf("%w for host %s", err, h.IP)
 	}
-	ret := retI.([]byte)
+	ret := []byte(nil)
+	if retI != nil {
+		ret = retI.([]byte)
+	}
 	return ret, err
 }
 
