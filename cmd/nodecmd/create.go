@@ -163,7 +163,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodes, awsProfile, regions, ami, usr)
+		cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodes, regions, ami, usr)
 		if err != nil {
 			return err
 		}
@@ -188,7 +188,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		cloudConfigMap, err = createGCPInstance(usr, gcpClient, nodeType, numNodes, zones, imageID, credentialFilepath, clusterName)
+		cloudConfigMap, err = createGCPInstance(usr, gcpClient, nodeType, numNodes, zones, imageID, clusterName)
 		if err != nil {
 			return err
 		}

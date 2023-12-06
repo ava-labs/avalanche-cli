@@ -75,13 +75,12 @@ func getAWSCloudCredentials(awsProfile, region string) (*awsAPI.AwsCloud, error)
 }
 
 // promptKeyPairName get custom name for key pair if the default key pair name that we use cannot be used for this EC2 instance
-func promptKeyPairName(ec2 *awsAPI.AwsCloud) (string, string, error) {
+func promptKeyPairName(ec2 *awsAPI.AwsCloud) (string, error) {
 	newKeyPairName, err := getNewKeyPairName(ec2)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
-	certName := newKeyPairName + constants.CertSuffix
-	return certName, newKeyPairName, nil
+	return newKeyPairName, nil
 }
 
 func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[string]string, error) {
@@ -106,6 +105,9 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 		var err error
 		ec2SvcMap[region], err = getAWSCloudCredentials(awsProfile, region)
 		if err != nil {
+			if !strings.Contains(err.Error(), "cloud access is required") {
+				printNoCredentialsOutput(awsProfile)
+			}
 			return nil, nil, err
 		}
 		amiMap[region], err = ec2SvcMap[region].GetUbuntuAMIID()
@@ -168,7 +170,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			} else {
 				ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists on your .ssh directory but not on AWS", regionConf[region].Prefix))
 				ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in AWS[%s]", regionConf[region].Prefix, region))
-				certName, keyPairName[region], err = promptKeyPairName(ec2Svc[region])
+				keyPairName[region], err = promptKeyPairName(ec2Svc[region])
 				if err != nil {
 					return nil, nil, nil, nil, err
 				}
@@ -183,7 +185,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			} else {
 				ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists in AWS[%s]", keyPairName, region))
 				ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName))
-				certName, keyPairName[region], err = promptKeyPairName(ec2Svc[region])
+				keyPairName[region], err = promptKeyPairName(ec2Svc[region])
 				if err != nil {
 					return nil, nil, nil, nil, err
 				}
@@ -273,7 +275,6 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 func createAWSInstances(
 	ec2Svc map[string]*awsAPI.AwsCloud,
 	nodeType string, numNodes []int,
-	awsProfile string,
 	regions []string,
 	ami map[string]string,
 	usr *user.User) (

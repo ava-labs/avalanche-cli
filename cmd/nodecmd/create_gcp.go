@@ -145,8 +145,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	numNodes []int,
 	zones []string,
 	ami,
-	cliDefaultName,
-	credentialsPath string,
+	cliDefaultName string,
 ) (map[string][]string, map[string][]string, string, string, error) {
 	keyPairName := fmt.Sprintf("%s-keypair", cliDefaultName)
 	sshKeyPath, err := app.GetSSHCertFilePath(keyPairName)
@@ -242,7 +241,6 @@ func createGCPInstance(
 	numNodes []int,
 	zones []string,
 	imageID string,
-	gcpCredentialFilepath string,
 	clusterName string,
 ) (models.CloudConfig, error) {
 	defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
@@ -253,7 +251,6 @@ func createGCPInstance(
 		zones,
 		imageID,
 		defaultAvalancheCLIPrefix,
-		gcpCredentialFilepath,
 	)
 	if err != nil {
 		ux.Logger.PrintToUser("Failed to create GCP cloud server")

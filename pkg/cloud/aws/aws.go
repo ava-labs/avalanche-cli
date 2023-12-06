@@ -138,7 +138,7 @@ func (c *AwsCloud) CreateEC2Instances(count int, amiID, instanceType, keyName, s
 	switch len(runResult.Instances) {
 	case 0:
 		return nil, fmt.Errorf("no instances created")
-	case int(count):
+	case count:
 		instanceIDs := utils.Map(runResult.Instances, func(instance types.Instance) string {
 			return *instance.InstanceId
 		})

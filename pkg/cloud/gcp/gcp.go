@@ -37,13 +37,13 @@ func NewGcpCloud(gcpClient *compute.Service, projectID string, ctx context.Conte
 }
 
 // waitForOperation waits for a Google Cloud operation to complete.
-func (c *GcpCloud) waitForOperation(operation *compute.Operation, timeout time.Duration) error {
-	deadline := time.Now().Add(timeout)
+func (c *GcpCloud) waitForOperation(operation *compute.Operation) error {
+	deadline := time.Now().Add(constants.CloudOperationTimeout)
 	for {
 		// Get the status of the operation
 		getOperation, err := c.gcpClient.GlobalOperations.Get(c.projectID, operation.Name).Do()
 		if err != nil {
-			return fmt.Errorf("error getting operation status: %v", err)
+			return fmt.Errorf("error getting operation status: %w", err)
 		}
 
 		// Check if the operation has completed
@@ -69,7 +69,7 @@ func (c *GcpCloud) waitForOperation(operation *compute.Operation, timeout time.D
 func (c *GcpCloud) SetExistingNetwork(networkName string) (*compute.Network, error) {
 	network, err := c.gcpClient.Networks.Get(c.projectID, networkName).Do()
 	if err != nil {
-		return nil, fmt.Errorf("error getting network %s: %v", networkName, err)
+		return nil, fmt.Errorf("error getting network %s: %w", networkName, err)
 	}
 	return network, nil
 }
@@ -80,15 +80,15 @@ func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network
 		Name: networkName,
 	}).Do()
 	if err != nil {
-		return nil, fmt.Errorf("error creating network %s: %v", networkName, err)
+		return nil, fmt.Errorf("error creating network %s: %w", networkName, err)
 	}
-	if err := c.waitForOperation(insertOp, constants.CloudOperationTimeout); err != nil {
+	if err := c.waitForOperation(insertOp); err != nil {
 		return nil, err
 	}
 	// Retrieve the created firewall
 	createdNetwork, err := c.gcpClient.Networks.Get(c.projectID, networkName).Do()
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving created networks %s: %v", networkName, err)
+		return nil, fmt.Errorf("error retrieving created networks %s: %w", networkName, err)
 	}
 
 	// Create firewall rules
@@ -115,9 +115,9 @@ func (c *GcpCloud) SetFirewallRule(ipAddress, firewallName, networkName string, 
 
 	insertOp, err := c.gcpClient.Firewalls.Insert(c.projectID, firewall).Do()
 	if err != nil {
-		return nil, fmt.Errorf("error creating firewall rule %s: %v", firewallName, err)
+		return nil, fmt.Errorf("error creating firewall rule %s: %w", firewallName, err)
 	}
-	if err := c.waitForOperation(insertOp, constants.CloudOperationTimeout); err != nil {
+	if err := c.waitForOperation(insertOp); err != nil {
 		return nil, err
 	}
 	return c.gcpClient.Firewalls.Get(c.projectID, firewallName).Do()
@@ -137,17 +137,17 @@ func (c *GcpCloud) SetPublicIP(region, nodeName string, numNodes int) ([]string,
 
 		insertOp, err := c.gcpClient.Addresses.Insert(c.projectID, region, address).Do()
 		if err != nil {
-			return nil, nil, fmt.Errorf("error creating static IP %s: %v", staticIPName, err)
+			return nil, nil, fmt.Errorf("error creating static IP %s: %w", staticIPName, err)
 		}
-		if err := c.waitForOperation(insertOp, constants.CloudOperationTimeout); err != nil {
+		if err := c.waitForOperation(insertOp); err != nil {
 			return nil, nil, err
 		}
-		PublicIP, err := c.gcpClient.Addresses.Get(c.projectID, region, staticIPName).Do()
+		computeIP, err := c.gcpClient.Addresses.Get(c.projectID, region, staticIPName).Do()
 		if err != nil {
-			return nil, nil, fmt.Errorf("error retrieving created static IP %s: %v", staticIPName, err)
+			return nil, nil, fmt.Errorf("error retrieving created static IP %s: %w", staticIPName, err)
 		}
-		publicIPName = append(publicIPName, PublicIP.Name)
-		publicIP = append(publicIP, PublicIP.Address)
+		publicIPName = append(publicIPName, computeIP.Name)
+		publicIP = append(publicIP, computeIP.Address)
 	}
 
 	return publicIPName, publicIP, nil
@@ -201,14 +201,14 @@ func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, s
 
 		insertOp, err := c.gcpClient.Instances.Insert(c.projectID, zone, instance).Do()
 		if err != nil {
-			return nil, fmt.Errorf("error creating instance %s: %v", instanceName, err)
+			return nil, fmt.Errorf("error creating instance %s: %w", instanceName, err)
 		}
-		if err := c.waitForOperation(insertOp, constants.CloudOperationTimeout); err != nil {
+		if err := c.waitForOperation(insertOp); err != nil {
 			return nil, err
 		}
 		instances[i], err = c.gcpClient.Instances.Get(c.projectID, zone, instanceName).Do()
 		if err != nil {
-			return nil, fmt.Errorf("error retrieving created instance %s: %v", instanceName, err)
+			return nil, fmt.Errorf("error retrieving created instance %s: %w", instanceName, err)
 		}
 	}
 	return instances, nil
