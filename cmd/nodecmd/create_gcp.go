@@ -199,11 +199,10 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	for _, zone := range zones {
 		nodeName[zone] = randomString(5)
 	}
-	publicIPName := map[string][]string{}
 	publicIP := map[string][]string{}
 	if useStaticIP {
 		for i, zone := range zones {
-			publicIPName[zone], publicIP[zone], err = gcpClient.SetPublicIP(zone, nodeName[zone], numNodes[i])
+			publicIP[zone], err = gcpClient.SetPublicIP(zone, nodeName[zone], numNodes[i])
 			if err != nil {
 				return nil, nil, "", "", err
 			}
@@ -214,7 +213,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 		return nil, nil, "", "", err
 	}
 	for i, zone := range zones {
-		_, err := gcpClient.SetupInstances(zone, networkName, string(sshPublicKey), ami, publicIPName[zone], nodeName[zone], numNodes[i], instanceType)
+		_, err := gcpClient.SetupInstances(zone, networkName, string(sshPublicKey), ami, publicIP[zone], nodeName[zone], numNodes[i], instanceType)
 		if err != nil {
 			return nil, nil, "", "", err
 		}

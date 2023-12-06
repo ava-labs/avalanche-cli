@@ -37,11 +37,28 @@ func NewGcpCloud(gcpClient *compute.Service, projectID string, ctx context.Conte
 }
 
 // waitForOperation waits for a Google Cloud operation to complete.
-func (c *GcpCloud) waitForOperation(operation *compute.Operation) error {
+func (c *GcpCloud) waitForOperation(operation *compute.Operation, scope string) error {
 	deadline := time.Now().Add(constants.CloudOperationTimeout)
 	for {
+		if operation.Status == "DONE" {
+			if operation.Error != nil {
+				return fmt.Errorf("operation failed: %v", operation.Error)
+			}
+			return nil
+		}
 		// Get the status of the operation
-		getOperation, err := c.gcpClient.GlobalOperations.Get(c.projectID, operation.Name).Do()
+		var getOperation *compute.Operation
+		var err error
+		// Check if the operation is a zone or region specific or global operation
+		switch {
+		case isRegion(scope):
+			getOperation, err = c.gcpClient.RegionOperations.Get(c.projectID, scope, operation.Name).Do()
+		case isZone(scope):
+			getOperation, err = c.gcpClient.ZoneOperations.Get(c.projectID, scope, operation.Name).Do()
+		default:
+			getOperation, err = c.gcpClient.GlobalOperations.Get(c.projectID, operation.Name).Do()
+		}
+
 		if err != nil {
 			return fmt.Errorf("error getting operation status: %w", err)
 		}
@@ -82,8 +99,12 @@ func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network
 	if err != nil {
 		return nil, fmt.Errorf("error creating network %s: %w", networkName, err)
 	}
-	if err := c.waitForOperation(insertOp); err != nil {
-		return nil, err
+	if insertOp != nil {
+		if err := c.waitForOperation(insertOp, ""); err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("error creating network %s: %w", networkName, err)
 	}
 	// Retrieve the created firewall
 	createdNetwork, err := c.gcpClient.Networks.Get(c.projectID, networkName).Do()
@@ -117,45 +138,52 @@ func (c *GcpCloud) SetFirewallRule(ipAddress, firewallName, networkName string, 
 	if err != nil {
 		return nil, fmt.Errorf("error creating firewall rule %s: %w", firewallName, err)
 	}
-	if err := c.waitForOperation(insertOp); err != nil {
-		return nil, err
+	if insertOp != nil {
+		if err := c.waitForOperation(insertOp, ""); err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("error creating firewall rule %s: %w", firewallName, err)
 	}
 	return c.gcpClient.Firewalls.Get(c.projectID, firewallName).Do()
 }
 
 // SetPublicIP creates a static IP in GCP
-func (c *GcpCloud) SetPublicIP(region, nodeName string, numNodes int) ([]string, []string, error) {
-	publicIPName := []string{}
+func (c *GcpCloud) SetPublicIP(zone, nodeName string, numNodes int) ([]string, error) {
 	publicIP := []string{}
 	for i := 0; i < numNodes; i++ {
-		staticIPName := fmt.Sprintf("%s-%s", "GCPStaticIPPrefix", nodeName)
+		staticIPName := fmt.Sprintf("%s-%s", constants.GCPStaticIPPrefix, nodeName)
 		address := &compute.Address{
 			Name:        staticIPName,
 			AddressType: "EXTERNAL",
 			NetworkTier: "PREMIUM",
 		}
-
+		region := zoneToRegion(zone)
 		insertOp, err := c.gcpClient.Addresses.Insert(c.projectID, region, address).Do()
 		if err != nil {
-			return nil, nil, fmt.Errorf("error creating static IP %s: %w", staticIPName, err)
+			return nil, fmt.Errorf("error creating static IP 1 %s: %w", staticIPName, err)
 		}
-		if err := c.waitForOperation(insertOp); err != nil {
-			return nil, nil, err
+		if insertOp != nil {
+			if err := c.waitForOperation(insertOp, region); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, fmt.Errorf("error creating static IP 2 %s", staticIPName)
 		}
 		computeIP, err := c.gcpClient.Addresses.Get(c.projectID, region, staticIPName).Do()
 		if err != nil {
-			return nil, nil, fmt.Errorf("error retrieving created static IP %s: %w", staticIPName, err)
+			return nil, fmt.Errorf("error retrieving created static IP %s: %w", staticIPName, err)
 		}
-		publicIPName = append(publicIPName, computeIP.Name)
 		publicIP = append(publicIP, computeIP.Address)
 	}
 
-	return publicIPName, publicIP, nil
+	return publicIP, nil
 }
 
 // SetupInstances creates GCP instances
-func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, staticIPName []string, instancePrefix string, numNodes int, instanceType string) ([]*compute.Instance, error) {
-	if len(staticIPName) != numNodes {
+func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, staticIP []string, instancePrefix string, numNodes int, instanceType string) ([]*compute.Instance, error) {
+	fmt.Println()
+	if len(staticIP) > 0 && len(staticIP) != numNodes {
 		return nil, fmt.Errorf("len(staticIPName) != numNodes")
 	}
 	instances := make([]*compute.Instance, numNodes)
@@ -184,27 +212,31 @@ func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, s
 			Disks: []*compute.AttachedDisk{
 				{
 					InitializeParams: &compute.AttachedDiskInitializeParams{
-						DiskSizeGb: 1000,
+						DiskSizeGb:  1000,
+						SourceImage: fmt.Sprintf("projects/%s/global/images/%s", "ubuntu-os-cloud", ami),
 					},
 					Boot:       true, // Set this if it's the boot disk
 					AutoDelete: true,
-					Source:     ami, // Specify the source image here
 				},
 			},
 			Scheduling: &compute.Scheduling{
 				AutomaticRestart: &automaticRestart,
 			},
 		}
-		if staticIPName != nil {
-			instance.NetworkInterfaces[0].AccessConfigs[0].NatIP = staticIPName[i]
+		if staticIP != nil {
+			instance.NetworkInterfaces[0].AccessConfigs[0].NatIP = staticIP[i]
 		}
 
 		insertOp, err := c.gcpClient.Instances.Insert(c.projectID, zone, instance).Do()
 		if err != nil {
 			return nil, fmt.Errorf("error creating instance %s: %w", instanceName, err)
 		}
-		if err := c.waitForOperation(insertOp); err != nil {
-			return nil, err
+		if insertOp != nil {
+			if err := c.waitForOperation(insertOp, zone); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, fmt.Errorf("error creating instance %s", instanceName)
 		}
 		instances[i], err = c.gcpClient.Instances.Get(c.projectID, zone, instanceName).Do()
 		if err != nil {
@@ -320,4 +352,20 @@ func (c *GcpCloud) StopGCPNode(nodeConfig models.NodeConfig, clusterName string,
 		}
 	}
 	return nil
+}
+
+func zoneToRegion(zone string) string {
+	splitZone := strings.Split(zone, "-")
+	if len(splitZone) < 2 {
+		return ""
+	}
+	return strings.Join(splitZone[:2], "-")
+}
+
+func isRegion(s string) bool {
+	return len(strings.Split(s, "-")) == 2
+}
+
+func isZone(s string) bool {
+	return len(strings.Split(s, "-")) == 3
 }
