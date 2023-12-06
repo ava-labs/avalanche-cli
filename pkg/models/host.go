@@ -3,10 +3,12 @@
 package models
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -185,16 +187,15 @@ func (h *Host) Command(script string, env []string, timeout time.Duration) ([]by
 }
 
 // Forward forwards the TCP connection to a remote address.
-func (h *Host) Forward(httpRequest string, timeout time.Duration) ([]byte, []byte, error) {
+func (h *Host) Forward(httpRequest string, timeout time.Duration) ([]byte, error) {
 	if !h.Connected() {
 		if err := h.Connect(); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 	retI, err := utils.TimedFunction(
 		func() (interface{}, error) {
-			header, body, err := h.UntimedForward(httpRequest)
-			return [][]byte{header, body}, err
+			return h.UntimedForward(httpRequest)
 		},
 		"post over ssh",
 		timeout,
@@ -202,42 +203,48 @@ func (h *Host) Forward(httpRequest string, timeout time.Duration) ([]byte, []byt
 	if err != nil {
 		err = fmt.Errorf("%w for host %s", err, h.IP)
 	}
-	ret := retI.([][]byte)
-	header := ret[0]
-	body := ret[1]
-	return header, body, err
+	ret := retI.([]byte)
+	return ret, err
 }
 
 // UntimedForward forwards the TCP connection to a remote address.
 // Does not support timeouts on the operation.
-func (h *Host) UntimedForward(httpRequest string) ([]byte, []byte, error) {
+func (h *Host) UntimedForward(httpRequest string) ([]byte, error) {
 	if !h.Connected() {
 		if err := h.Connect(); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 	avalancheGoEndpoint := strings.TrimPrefix(constants.LocalAPIEndpoint, "http://")
 	avalancheGoAddr, err := net.ResolveTCPAddr("tcp", avalancheGoEndpoint)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	proxy, err := h.Connection.DialTCP("tcp", nil, avalancheGoAddr)
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to port forward to %s via %s", h.Connection.RemoteAddr(), "ssh")
+		return nil, fmt.Errorf("unable to port forward to %s via %s", h.Connection.RemoteAddr(), "ssh")
 	}
 	defer proxy.Close()
 	// send request to server
 	if _, err = proxy.Write([]byte(httpRequest)); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	// Read and print the server's response
 	response := make([]byte, maxResponseSize)
 	responseLength, err := proxy.Read(response)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	header, body := SplitHTTPResponse(response[:responseLength])
-	return header, body, nil
+	reader := bufio.NewReader(bytes.NewReader(response[:responseLength]))
+	parsedResponse, err := http.ReadResponse(reader, nil)
+	if err != nil {
+		return nil, err
+	}
+	buffer := new(bytes.Buffer)
+	if _, err = buffer.ReadFrom(parsedResponse.Body); err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
 }
 
 func (h *Host) GetAnsibleInventoryRecord() string {
@@ -307,18 +314,4 @@ func (h *Host) WaitForSSHShell(timeout time.Duration) error {
 		}
 		time.Sleep(constants.SSHSleepBetweenChecks)
 	}
-}
-
-// splitHTTPResponse splits an HTTP response into headers and body.
-func SplitHTTPResponse(response []byte) ([]byte, []byte) {
-	// Find the position of the double line break separating the headers and the body
-	doubleLineBreak := []byte{'\r', '\n', '\r', '\n'}
-	index := bytes.Index(response, doubleLineBreak)
-	if index == -1 {
-		return nil, response
-	}
-	// Split the response into headers and body
-	headers := response[:index]
-	body := response[index+len(doubleLineBreak):]
-	return headers, body
 }

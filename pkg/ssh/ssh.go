@@ -81,9 +81,7 @@ func PostOverSSH(host *models.Host, path string, requestBody string) ([]byte, er
 		"Content-Length: %d\r\n"+
 		"Content-Type: application/json\r\n\r\n", path, localhost.Host, len(requestBody))
 	httpRequest := requestHeaders + requestBody
-	// ignore response header
-	_, responseBody, err := host.Forward(httpRequest, constants.SSHPOSTTimeout)
-	return responseBody, err
+	return host.Forward(httpRequest, constants.SSHPOSTTimeout)
 }
 
 // RunSSHSetupNode runs script to setup node
