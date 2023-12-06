@@ -241,7 +241,9 @@ func (h *Host) UntimedForward(httpRequest string) ([]byte, error) {
 		return nil, err
 	}
 	buffer := new(bytes.Buffer)
-	buffer.ReadFrom(parsedResponse.Body)
+	if _, err = buffer.ReadFrom(parsedResponse.Body); err != nil {
+		return nil, err
+	}
 	return buffer.Bytes(), nil
 }
 
