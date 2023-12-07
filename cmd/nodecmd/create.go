@@ -189,6 +189,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
+
 			monitoringCloudConfig, err = createAWSInstances(ec2Svc, 1, awsProfile, region, ami, usr, true)
 			if err != nil {
 				return err
@@ -515,6 +516,57 @@ func addHTTPHostToConfigFile(filePath string) error {
 	return os.WriteFile(filePath, byteValue, constants.WriteReadReadPerms)
 }
 
+func createSeparateMonitoringInstance(clusterName string) error {
+	if app.ClustersConfigExists() {
+		clustersConfig, err := app.LoadClustersConfig()
+		if err != nil {
+			return err
+		}
+		if clustersConfig.Clusters[clusterName].MonitoringInstance != "" {
+
+		}
+	} else {
+
+	}
+}
+func syncNodeWithExistingMonitoringInstance() error {
+	// download node configs
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	for _, host := range hosts {
+		wg.Add(1)
+		go func(nodeResults *models.NodeResults, host *models.Host) {
+			defer wg.Done()
+			nodeDirPath := app.GetNodeInstanceAvaGoConfigDirPath(host.NodeID)
+			if err := ssh.RunSSHDownloadNodeConfig(host, nodeDirPath); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			if err = addHTTPHostToConfigFile(app.GetNodeConfigJSONFile(host.NodeID)); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			if err := ssh.RunSSHUploadNodeConfig(host, nodeDirPath); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			if err := ssh.RunSSHRestartNode(host); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				return
+			}
+			if err := os.RemoveAll(nodeDirPath); err != nil {
+				return
+			}
+		}(&wgResults, host)
+	}
+	wg.Wait()
+	for _, node := range hosts {
+		if wgResults.HasNodeIDWithError(node.NodeID) {
+			ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
+			return fmt.Errorf("node %s failed to setup with error: %w", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
+		}
+	}
+}
 func updateKeyPairClustersConfig(cloudConfig CloudConfig) error {
 	clustersConfig := models.ClustersConfig{}
 	var err error
