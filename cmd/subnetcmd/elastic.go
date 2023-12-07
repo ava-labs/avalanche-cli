@@ -13,6 +13,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	es "github.com/ava-labs/avalanche-cli/pkg/elasticsubnet"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -297,19 +298,18 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 	default:
 		return errors.New("unsupported network")
 	}
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
 
 	// get keychain accessor
-	kc, err := GetKeychain(false, useLedger, ledgerAddresses, keyName, network)
+	fee := network.GenesisParams().CreateAssetTxFee + network.GenesisParams().TransformSubnetTxFee + network.GenesisParams().TxFee*2
+	kc, err := keychain.GetKeychain(app, false, useLedger, ledgerAddresses, keyName, network, fee)
 	if err != nil {
 		return err
 	}
 
+	network.HandlePublicNetworkSimulation()
+
 	recipientAddr := kc.Addresses().List()[0]
-	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	deployer := subnet.NewPublicDeployer(app, kc, network)
 	txHasOccurred, txID := checkIfTxHasOccurred(&sc, network, "CreateAssetTx")
 	var assetID ids.ID
 	// TODO: replace sleep functions with sticky API sessions
@@ -364,19 +364,23 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	walletKeys, err := loadCreationKeys(network, kc)
+	// add control keys to the keychain whenever possible
+	if err := kc.AddAddresses(controlKeys); err != nil {
+		return err
+	}
+
+	kcKeys, err := kc.PChainFormattedStrAddresses()
 	if err != nil {
 		return err
 	}
-	walletKey := walletKeys[0]
 
 	// get keys for add validator tx signing
 	if subnetAuthKeys != nil {
-		if err := prompts.CheckSubnetAuthKeys(walletKey, subnetAuthKeys, controlKeys, threshold); err != nil {
+		if err := prompts.CheckSubnetAuthKeys(kcKeys, subnetAuthKeys, controlKeys, threshold); err != nil {
 			return err
 		}
 	} else {
-		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, walletKey, controlKeys, threshold)
+		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, kcKeys, controlKeys, threshold)
 		if err != nil {
 			return err
 		}

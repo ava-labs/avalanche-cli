@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/plugins"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -158,10 +159,7 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		return handleValidatorJoinElasticSubnet(sc, network, subnetName)
 	}
 
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
+	network.HandlePublicNetworkSimulation()
 
 	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
@@ -427,26 +425,23 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	default:
 		return errors.New("unsupported network")
 	}
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
 
 	// get keychain accessor
-	kc, err := GetKeychain(false, useLedger, ledgerAddresses, keyName, network)
+	fee := network.GenesisParams().AddSubnetValidatorFee
+	kc, err := keychain.GetKeychain(app, false, useLedger, ledgerAddresses, keyName, network, fee)
 	if err != nil {
 		return err
 	}
+
+	network.HandlePublicNetworkSimulation()
+
 	recipientAddr := kc.Addresses().List()[0]
-	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	deployer := subnet.NewPublicDeployer(app, kc, network)
 	assetID, err := getSubnetAssetID(subnetID, network)
 	if err != nil {
 		return err
 	}
-	delegationFee := genesis.FujiParams.MinDelegationFee
-	if network.Kind == models.Mainnet {
-		delegationFee = genesis.MainnetParams.MinDelegationFee
-	}
+	delegationFee := network.GenesisParams().MinDelegationFee
 	txID, err := deployer.AddPermissionlessValidator(subnetID, assetID, nodeID, stakedTokenAmount, uint64(start.Unix()), uint64(endTime.Unix()), recipientAddr, delegationFee, nil, nil)
 	if err != nil {
 		return err

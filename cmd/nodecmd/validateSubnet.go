@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -16,6 +15,7 @@ import (
 
 	subnetcmd "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
@@ -77,7 +77,7 @@ func parseSubnetSyncOutput(byteValue []byte) (string, error) {
 
 func addNodeAsSubnetValidator(
 	network models.Network,
-	kc keychain.Keychain,
+	kc *keychain.Keychain,
 	useLedger bool,
 	nodeID string,
 	subnetName string,
@@ -155,23 +155,44 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	}
 	network := clustersConfig.Clusters[clusterName].Network
 
-	kc, err := subnetcmd.GetKeychainFromCmdLineFlags(
-		constants.PayTxsFeesMsg,
-		network,
-		keyName,
-		useEwoq,
-		&useLedger,
-		ledgerAddresses,
-	)
-	if err != nil {
-		return err
-	}
-
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
 	defer disconnectHosts(hosts)
+
+	nodeIDMap, failedNodesMap := getNodeIDs(hosts)
+
+	nonPrimaryValidators := 0
+	for hostNodeID, nodeIDStr := range nodeIDMap {
+		nodeID, err := ids.NodeIDFromString(nodeIDStr)
+		if err != nil {
+			ux.Logger.PrintToUser("Failed to verify if node %s is a primary network validator due to %s", hostNodeID, err)
+			continue
+		}
+		isValidator, err := checkNodeIsPrimaryNetworkValidator(nodeID, network)
+		if err != nil {
+			ux.Logger.PrintToUser("Failed to verify if node %s is a primary network validator due to %s", hostNodeID, err)
+			continue
+		}
+		if !isValidator {
+			nonPrimaryValidators++
+		}
+	}
+	fee := network.GenesisParams().AddPrimaryNetworkValidatorFee*uint64(nonPrimaryValidators) + network.GenesisParams().AddSubnetValidatorFee*uint64(len(hosts))
+	kc, err := keychain.GetKeychainFromCmdLineFlags(
+		app,
+		constants.PayTxsFeesMsg,
+		network,
+		keyName,
+		useEwoq,
+		useLedger,
+		ledgerAddresses,
+		fee,
+	)
+	if err != nil {
+		return err
+	}
 
 	notBootstrappedNodes, err := checkHostsAreBootstrapped(hosts)
 	if err != nil {
@@ -195,7 +216,6 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if blockchainID == ids.Empty {
 		return ErrNoBlockchainID
 	}
-	nodeIDMap, failedNodesMap := getNodeIDs(hosts)
 	nodeErrors := map[string]error{}
 	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
 	for i, host := range hosts {
@@ -233,7 +253,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			continue
 		}
 		clusterNodeID := host.GetCloudID()
-		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(network, kc, useLedger, nodeID, i, clusterNodeID)
+		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(network, kc, nodeID, i, clusterNodeID)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host.NodeID, err.Error())
 			nodeErrors[host.NodeID] = err
