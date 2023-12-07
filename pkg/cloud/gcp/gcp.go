@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"golang.org/x/exp/slices"
+	"golang.org/x/sync/errgroup"
 
 	"google.golang.org/api/compute/v1"
 
@@ -31,6 +32,7 @@ type GcpCloud struct {
 	projectID string
 }
 
+// NewGcpCloud creates a GCP cloud
 func NewGcpCloud(gcpClient *compute.Service, projectID string, ctx context.Context) (*GcpCloud, error) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -42,11 +44,13 @@ func NewGcpCloud(gcpClient *compute.Service, projectID string, ctx context.Conte
 	}, nil
 }
 
+// getNameFromURL gets the name from the URL
 func getNameFromURL(url string) string {
 	parts := strings.Split(url, "/")
 	return parts[len(parts)-1]
 }
 
+// getOperationScope gets the scope of the operation
 func getOperationScope(operation *compute.Operation) (string, string) {
 	if operation.Zone != "" {
 		return opScopeZone, getNameFromURL(operation.Zone)
@@ -206,66 +210,88 @@ func (c *GcpCloud) SetPublicIP(zone, nodeName string, numNodes int) ([]string, e
 
 // SetupInstances creates GCP instances
 func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, staticIP []string, instancePrefix string, numNodes int, instanceType string) ([]*compute.Instance, error) {
-	fmt.Println()
+	parallelism := 8
 	if len(staticIP) > 0 && len(staticIP) != numNodes {
 		return nil, fmt.Errorf("len(staticIPName) != numNodes")
 	}
 	instances := make([]*compute.Instance, numNodes)
+	instancesChan := make(chan *compute.Instance, numNodes)
 	sshKey := fmt.Sprintf("ubuntu:%s", strings.TrimSuffix(sshPublicKey, "\n"))
 	automaticRestart := true
+
+	eg := &errgroup.Group{}
+	eg.SetLimit(parallelism)
 	for i := 0; i < numNodes; i++ {
-		instanceName := fmt.Sprintf("%s-%d", instancePrefix, i)
-		instance := &compute.Instance{
-			Name:        instanceName,
-			MachineType: fmt.Sprintf("projects/%s/zones/%s/machineTypes/%s", c.projectID, zone, instanceType),
-			Metadata: &compute.Metadata{
-				Items: []*compute.MetadataItems{
-					{Key: "ssh-keys", Value: &sshKey},
+		currentIndex := i
+		eg.Go(func() error {
+			instanceName := fmt.Sprintf("%s-%d", instancePrefix, currentIndex)
+			instance := &compute.Instance{
+				Name:        instanceName,
+				MachineType: fmt.Sprintf("projects/%s/zones/%s/machineTypes/%s", c.projectID, zone, instanceType),
+				Metadata: &compute.Metadata{
+					Items: []*compute.MetadataItems{
+						{Key: "ssh-keys", Value: &sshKey},
+					},
 				},
-			},
-			NetworkInterfaces: []*compute.NetworkInterface{
-				{
-					Network: fmt.Sprintf("projects/%s/global/networks/%s", c.projectID, networkName),
-					AccessConfigs: []*compute.AccessConfig{
-						{
-							Name: "External NAT",
+				NetworkInterfaces: []*compute.NetworkInterface{
+					{
+						Network: fmt.Sprintf("projects/%s/global/networks/%s", c.projectID, networkName),
+						AccessConfigs: []*compute.AccessConfig{
+							{
+								Name: "External NAT",
+							},
 						},
 					},
 				},
-			},
-			Disks: []*compute.AttachedDisk{
-				{
-					InitializeParams: &compute.AttachedDiskInitializeParams{
-						DiskSizeGb:  1000,
-						SourceImage: fmt.Sprintf("projects/%s/global/images/%s", "ubuntu-os-cloud", ami),
+				Disks: []*compute.AttachedDisk{
+					{
+						InitializeParams: &compute.AttachedDiskInitializeParams{
+							DiskSizeGb:  1000,
+							SourceImage: fmt.Sprintf("projects/%s/global/images/%s", "ubuntu-os-cloud", ami),
+						},
+						Boot:       true, // Set this if it's the boot disk
+						AutoDelete: true,
 					},
-					Boot:       true, // Set this if it's the boot disk
-					AutoDelete: true,
 				},
-			},
-			Scheduling: &compute.Scheduling{
-				AutomaticRestart: &automaticRestart,
-			},
-		}
-		if staticIP != nil {
-			instance.NetworkInterfaces[0].AccessConfigs[0].NatIP = staticIP[i]
-		}
-
-		insertOp, err := c.gcpClient.Instances.Insert(c.projectID, zone, instance).Do()
-		if err != nil {
-			return nil, fmt.Errorf("error creating instance %s: %w", instanceName, err)
-		}
-		if insertOp != nil {
-			if err := c.waitForOperation(insertOp); err != nil {
-				return nil, err
+				Scheduling: &compute.Scheduling{
+					AutomaticRestart: &automaticRestart,
+				},
 			}
-		} else {
-			return nil, fmt.Errorf("error creating instance %s", instanceName)
-		}
-		instances[i], err = c.gcpClient.Instances.Get(c.projectID, zone, instanceName).Do()
-		if err != nil {
-			return nil, fmt.Errorf("error retrieving created instance %s: %w", instanceName, err)
-		}
+			if staticIP != nil {
+				instance.NetworkInterfaces[0].AccessConfigs[0].NatIP = staticIP[currentIndex]
+			}
+
+			insertOp, err := c.gcpClient.Instances.Insert(c.projectID, zone, instance).Do()
+			if err != nil {
+				if isIPLimitExceededError(err) {
+					return fmt.Errorf("ip address limit exceeded when creating instance %s: %w", instanceName, err)
+				} else {
+					return fmt.Errorf("error creating instance %s: %w", instanceName, err)
+				}
+			}
+			if insertOp != nil {
+				if err := c.waitForOperation(insertOp); err != nil {
+					return fmt.Errorf("error waiting for operation: %w", err)
+				}
+			} else {
+				return fmt.Errorf("error creating instance %s", instanceName)
+			}
+
+			inst, err := c.gcpClient.Instances.Get(c.projectID, zone, instanceName).Do()
+			if err != nil {
+				return fmt.Errorf("error retrieving created instance %s: %w", instanceName, err)
+			}
+
+			instancesChan <- inst
+			return nil
+		})
+	}
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+	close(instancesChan)
+	for i := 0; i < numNodes; i++ {
+		instances[i] = <-instancesChan
 	}
 	return instances, nil
 }
@@ -352,6 +378,7 @@ func (c *GcpCloud) checkInstanceIsRunning(zone, nodeID string) (bool, error) {
 	return true, nil
 }
 
+// StopGCPNode stops GCP node in GCP
 func (c *GcpCloud) StopGCPNode(nodeConfig models.NodeConfig, clusterName string, releasePublicIP bool) error {
 	isRunning, err := c.checkInstanceIsRunning(nodeConfig.Region, nodeConfig.NodeID)
 	if err != nil {
@@ -378,10 +405,16 @@ func (c *GcpCloud) StopGCPNode(nodeConfig models.NodeConfig, clusterName string,
 	return nil
 }
 
+// zoneToRegion returns region from zone
 func zoneToRegion(zone string) string {
 	splitZone := strings.Split(zone, "-")
 	if len(splitZone) < 2 {
 		return ""
 	}
 	return strings.Join(splitZone[:2], "-")
+}
+
+// isIPLimitExceededError checks if error is IP limit exceeded
+func isIPLimitExceededError(err error) bool {
+	return strings.Contains(err.Error(), "IP address quota exceeded") || strings.Contains(err.Error(), "Insufficient IP addresses")
 }

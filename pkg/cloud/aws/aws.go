@@ -33,6 +33,7 @@ type AwsCloud struct {
 	ctx       context.Context
 }
 
+// NewAwsCloud creates an AWS cloud
 func NewAwsCloud(awsProfile, region string) (*AwsCloud, error) {
 	ctx := context.Background()
 	// Load session from shared config
@@ -49,6 +50,7 @@ func NewAwsCloud(awsProfile, region string) (*AwsCloud, error) {
 	}, nil
 }
 
+// CreateSecurityGroup creates a security group
 func (c *AwsCloud) CreateSecurityGroup(groupName, description string) (string, error) {
 	createSGOutput, err := c.ec2Client.CreateSecurityGroup(c.ctx, &ec2.CreateSecurityGroupInput{
 		GroupName:   aws.String(groupName),
@@ -60,6 +62,7 @@ func (c *AwsCloud) CreateSecurityGroup(groupName, description string) (string, e
 	return *createSGOutput.GroupId, nil
 }
 
+// CheckSecurityGroupExists checks if the given security group exists
 func (c *AwsCloud) CheckSecurityGroupExists(sgName string) (bool, types.SecurityGroup, error) {
 	sgInput := &ec2.DescribeSecurityGroupsInput{
 		GroupNames: []string{
@@ -77,6 +80,7 @@ func (c *AwsCloud) CheckSecurityGroupExists(sgName string) (bool, types.Security
 	return true, sg.SecurityGroups[0], nil
 }
 
+// AddSecurityGroupRule adds a rule to the given security group
 func (c *AwsCloud) AddSecurityGroupRule(groupID, direction, protocol, ip string, port int32) error {
 	switch direction {
 	case "ingress":
@@ -121,6 +125,7 @@ func (c *AwsCloud) AddSecurityGroupRule(groupID, direction, protocol, ip string,
 	return nil
 }
 
+// CreateEC2Instances creates EC2 instances
 func (c *AwsCloud) CreateEC2Instances(count int, amiID, instanceType, keyName, securityGroupID string) ([]string, error) {
 	runResult, err := c.ec2Client.RunInstances(c.ctx, &ec2.RunInstancesInput{
 		ImageId:          aws.String(amiID),
@@ -146,6 +151,7 @@ func (c *AwsCloud) CreateEC2Instances(count int, amiID, instanceType, keyName, s
 	}
 }
 
+// WaitForEC2Instances waits for the EC2 instances to be running
 func (c *AwsCloud) WaitForEC2Instances(nodeIDs []string) error {
 	instanceInput := &ec2.DescribeInstancesInput{
 		InstanceIds: nodeIDs,
@@ -181,6 +187,7 @@ func (c *AwsCloud) WaitForEC2Instances(nodeIDs []string) error {
 	return fmt.Errorf("timeout waiting for instances to be running")
 }
 
+// GetInstancePublicIPs returns a map from instance ID to public IP
 func (c *AwsCloud) GetInstancePublicIPs(nodeIDs []string) (map[string]string, error) {
 	instanceInput := &ec2.DescribeInstancesInput{
 		InstanceIds: nodeIDs,
@@ -207,6 +214,7 @@ func (c *AwsCloud) GetInstancePublicIPs(nodeIDs []string) (map[string]string, er
 	return instanceIDToIP, nil
 }
 
+// checkInstanceIsRunning checks that EC2 instance nodeID is running in EC2
 func (c *AwsCloud) checkInstanceIsRunning(nodeID string) (bool, error) {
 	instanceInput := &ec2.DescribeInstancesInput{
 		InstanceIds: []string{
@@ -232,6 +240,7 @@ func (c *AwsCloud) checkInstanceIsRunning(nodeID string) (bool, error) {
 	return false, nil
 }
 
+// StopAWSNode stops an EC2 instance with the given ID.
 func (c *AwsCloud) StopAWSNode(nodeConfig models.NodeConfig, clusterName string) error {
 	isRunning, err := c.checkInstanceIsRunning(nodeConfig.NodeID)
 	if err != nil {
@@ -246,6 +255,7 @@ func (c *AwsCloud) StopAWSNode(nodeConfig models.NodeConfig, clusterName string)
 	return c.StopInstance(nodeConfig.NodeID, nodeConfig.ElasticIP, true)
 }
 
+// StopInstance stops an EC2 instance with the given ID.
 func (c *AwsCloud) StopInstance(instanceID, publicIP string, releasePublicIP bool) error {
 	input := &ec2.StopInstancesInput{
 		InstanceIds: []string{instanceID},
@@ -276,14 +286,19 @@ func (c *AwsCloud) StopInstance(instanceID, publicIP string, releasePublicIP boo
 	return nil
 }
 
+// CreateEIP creates an Elastic IP address.
 func (c *AwsCloud) CreateEIP() (string, string, error) {
 	if addr, err := c.ec2Client.AllocateAddress(c.ctx, &ec2.AllocateAddressInput{}); err != nil {
+		if isEIPQuotaExceededError(err) {
+			return "", "", fmt.Errorf("Elastic IP quota exceeded: %v", err)
+		}
 		return "", "", err
 	} else {
 		return *addr.AllocationId, *addr.PublicIp, nil
 	}
 }
 
+// AssociateEIP associates an Elastic IP address with an EC2 instance.
 func (c *AwsCloud) AssociateEIP(instanceID, allocationID string) error {
 	if _, err := c.ec2Client.AssociateAddress(c.ctx, &ec2.AssociateAddressInput{
 		InstanceId:   aws.String(instanceID),
@@ -294,6 +309,7 @@ func (c *AwsCloud) AssociateEIP(instanceID, allocationID string) error {
 	return nil
 }
 
+// CreateAndDownloadKeyPair creates a new key pair and downloads the private key material to the specified file path.
 func (c *AwsCloud) CreateAndDownloadKeyPair(keyName string, privateKeyFilePath string) error {
 	createKeyPairOutput, err := c.ec2Client.CreateKeyPair(c.ctx, &ec2.CreateKeyPairInput{
 		KeyName: aws.String(keyName),
@@ -309,6 +325,7 @@ func (c *AwsCloud) CreateAndDownloadKeyPair(keyName string, privateKeyFilePath s
 	return nil
 }
 
+// SetupSecurityGroup sets up a security group for the AwsCloud instance.
 func (c *AwsCloud) SetupSecurityGroup(ipAddress, securityGroupName string) (string, error) {
 	inputIPAddress := ipAddress + "/32"
 	sgID, err := c.CreateSecurityGroup(securityGroupName, "Allow SSH, AVAX HTTP outbound traffic")
@@ -328,6 +345,7 @@ func (c *AwsCloud) SetupSecurityGroup(ipAddress, securityGroupName string) (stri
 	return sgID, nil
 }
 
+// CheckUserIPInSg checks if the user IP is present in the SecurityGroup.
 func CheckUserIPInSg(sg *types.SecurityGroup, currentIP string, port int32) bool {
 	for _, ipPermission := range sg.IpPermissions {
 		for _, ip := range ipPermission.IpRanges {
@@ -341,6 +359,7 @@ func CheckUserIPInSg(sg *types.SecurityGroup, currentIP string, port int32) bool
 	return false
 }
 
+// CheckKeyPairExists checks if the specified key pair exists in the AWS Cloud.
 func (c *AwsCloud) CheckKeyPairExists(kpName string) (bool, error) {
 	keyPairInput := &ec2.DescribeKeyPairsInput{
 		KeyNames: []string{kpName},
@@ -355,6 +374,7 @@ func (c *AwsCloud) CheckKeyPairExists(kpName string) (bool, error) {
 	return true, nil
 }
 
+// GetUbuntuAMIID returns the ID of the latest Ubuntu Amazon Machine Image (AMI).
 func (c *AwsCloud) GetUbuntuAMIID() (string, error) {
 	descriptionFilterValue := "Canonical, Ubuntu, 20.04 LTS, amd64*"
 	imageInput := &ec2.DescribeImagesInput{
@@ -378,4 +398,10 @@ func (c *AwsCloud) GetUbuntuAMIID() (string, error) {
 	// get image with the latest creation date
 	amiID := images.Images[0].ImageId
 	return *amiID, nil
+}
+
+// isEIPQuotaExceededError checks if the error is related to exceeding the quota for Elastic IP addresses.
+func isEIPQuotaExceededError(err error) bool {
+	// You may need to adjust this function based on the actual error messages returned by AWS
+	return err != nil && (utils.ContainsIgnoreCase(err.Error(), "limit exceeded") || utils.ContainsIgnoreCase(err.Error(), "elastic ip address limit exceeded"))
 }
