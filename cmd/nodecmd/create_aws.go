@@ -4,10 +4,8 @@ package nodecmd
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"os/user"
-	"path/filepath"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -156,7 +154,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		certName := regionConf[region].CertName
 		keyPairName[region] = regionConf[region].Prefix
 		securityGroupName := regionConf[region].SecurityGroupName
-		dotSSHDir, err := app.GetSSHCertFilePath(certName)
+		privKey, err := app.GetSSHCertFilePath(certName)
 		sgID := ""
 		if !keyPairExists {
 			if err != nil {
@@ -164,7 +162,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			}
 			if !certInSSHDir {
 				ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s in AWS[%s]", keyPairName, region))
-				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, filepath.Join(dotSSHDir, regionConf[region].Prefix)); err != nil {
+				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
 					return nil, nil, nil, nil, err
 				}
 			} else {
@@ -174,22 +172,22 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 				if err != nil {
 					return nil, nil, nil, nil, err
 				}
-				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, filepath.Join(dotSSHDir, keyPairName[region])); err != nil {
+				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
 					return nil, nil, nil, nil, err
 				}
 			}
 		} else {
 			if certInSSHDir {
-				ux.Logger.PrintToUser(fmt.Sprintf("Using existing key pair %s in AWS[%s]", keyPairName, region))
+				ux.Logger.PrintToUser(fmt.Sprintf("Using existing key pair %s in AWS[%s]", keyPairName[region], region))
 				useExistingKeyPair[region] = true
 			} else {
-				ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists in AWS[%s]", keyPairName, region))
+				ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists in AWS[%s]", keyPairName[region], region))
 				ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName))
 				keyPairName[region], err = promptKeyPairName(ec2Svc[region])
 				if err != nil {
 					return nil, nil, nil, nil, err
 				}
-				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, filepath.Join(dotSSHDir, keyPairName[region])); err != nil {
+				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
 					return nil, nil, nil, nil, err
 				}
 			}
@@ -222,15 +220,18 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 				}
 			}
 		}
-		sshCertPath[region] = filepath.Join(dotSSHDir, keyPairName[region])
-
+		sshCertPath[region] = privKey
 		if instanceIDs[region], err = ec2Svc[region].CreateEC2Instances(
 			regionConf[region].NumNodes,
 			ami[region],
 			regionConf[region].InstanceType,
-			regionConf[region].KeyPair,
+			keyPairName[region],
 			sgID,
 		); err != nil {
+			return nil, nil, nil, nil, err
+		}
+		ux.Logger.PrintToUser(fmt.Sprintf("Waiting for EC2 instances in AWS[%s]", region))
+		if err := ec2Svc[region].WaitForEC2Instances(instanceIDs[region]); err != nil {
 			return nil, nil, nil, nil, err
 		}
 		if useStaticIP {
@@ -240,7 +241,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 				if err != nil {
 					return nil, nil, nil, nil, err
 				}
-				if err := ec2Svc[region].AssociateEIP(allocationID, instanceIDs[region][count]); err != nil {
+				if err := ec2Svc[region].AssociateEIP(instanceIDs[region][count], allocationID); err != nil {
 					return nil, nil, nil, nil, err
 				}
 				publicIPs = append(publicIPs, publicIP)
@@ -337,16 +338,7 @@ func createAWSInstances(
 
 // addCertToSSH takes the cert file downloaded from AWS through terraform and moves it to .ssh directory
 func addCertToSSH(certName string) error {
-	certPath := app.GetTempCertPath(certName)
-	err := os.Chmod(certPath, 0o400)
-	if err != nil {
-		return err
-	}
 	certFilePath, err := app.GetSSHCertFilePath(certName)
-	if err != nil {
-		return err
-	}
-	err = os.Rename(certPath, certFilePath)
 	if err != nil {
 		return err
 	}

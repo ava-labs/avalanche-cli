@@ -10,6 +10,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -18,7 +19,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 )
@@ -38,13 +38,11 @@ func NewAwsCloud(awsProfile, region string) (*AwsCloud, error) {
 	// Load session from shared config
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion(region),
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("", "", "")),
 		config.WithSharedConfigProfile(awsProfile),
 	)
 	if err != nil {
 		return nil, err
 	}
-
 	return &AwsCloud{
 		ec2Client: ec2.NewFromConfig(cfg),
 		ctx:       ctx,
@@ -148,6 +146,41 @@ func (c *AwsCloud) CreateEC2Instances(count int, amiID, instanceType, keyName, s
 	}
 }
 
+func (c *AwsCloud) WaitForEC2Instances(nodeIDs []string) error {
+	instanceInput := &ec2.DescribeInstancesInput{
+		InstanceIds: nodeIDs,
+	}
+	// Custom waiter loop
+	maxAttempts := 100
+	delay := 1 * time.Second
+
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		// Describe instances to check their states
+		result, err := c.ec2Client.DescribeInstances(c.ctx, instanceInput)
+		if err != nil {
+			time.Sleep(delay)
+			continue
+		}
+
+		// Check if all instances are in the 'running' state
+		allRunning := true
+		for _, reservation := range result.Reservations {
+			for _, instance := range reservation.Instances {
+				if instance.State.Name != "running" {
+					allRunning = false
+					break
+				}
+			}
+		}
+		if allRunning {
+			return nil
+		}
+		// If not all instances are running, wait and retry
+		time.Sleep(delay)
+	}
+	return fmt.Errorf("timeout waiting for instances to be running")
+}
+
 func (c *AwsCloud) GetInstancePublicIPs(nodeIDs []string) (map[string]string, error) {
 	instanceInput := &ec2.DescribeInstancesInput{
 		InstanceIds: nodeIDs,
@@ -161,12 +194,15 @@ func (c *AwsCloud) GetInstancePublicIPs(nodeIDs []string) (map[string]string, er
 		return nil, ErrNoInstanceState
 	}
 	instanceIDToIP := make(map[string]string)
-	for i := range reservations {
-		instances := reservations[i].Instances
-		if len(instances) == 0 {
-			return nil, ErrNoInstanceState
+	for _, reservation := range instanceResults.Reservations {
+		for _, instance := range reservation.Instances {
+			instanceID := *instance.InstanceId
+			publicIP := ""
+			if instance.PublicIpAddress != nil {
+				publicIP = *instance.PublicIpAddress
+			}
+			instanceIDToIP[instanceID] = publicIP
 		}
-		instanceIDToIP[*instances[0].InstanceId] = *instances[0].PublicIpAddress
 	}
 	return instanceIDToIP, nil
 }
@@ -287,9 +323,6 @@ func (c *AwsCloud) SetupSecurityGroup(ipAddress, securityGroupName string) (stri
 		return "", err
 	}
 	if err := c.AddSecurityGroupRule(sgID, "ingress", "tcp", "0.0.0.0/0", constants.AvalanchegoP2PPort); err != nil {
-		return "", err
-	}
-	if err := c.AddSecurityGroupRule(sgID, "egress", "-1", "0.0.0.0/0", constants.OutboundPort); err != nil {
 		return "", err
 	}
 	return sgID, nil
