@@ -120,10 +120,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
+	network.HandlePublicNetworkSimulation()
 
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {

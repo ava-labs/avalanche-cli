@@ -306,10 +306,7 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
+	network.HandlePublicNetworkSimulation()
 
 	recipientAddr := kc.Addresses().List()[0]
 	deployer := subnet.NewPublicDeployer(app, kc, network)

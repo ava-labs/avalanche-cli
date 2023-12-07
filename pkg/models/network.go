@@ -4,6 +4,7 @@ package models
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/genesis"
@@ -123,4 +124,13 @@ func (n Network) GenesisParams() *genesis.Params {
 		return &genesis.MainnetParams
 	}
 	return nil
+}
+
+func (n *Network) HandlePublicNetworkSimulation() {
+	// used in E2E to simulate public network execution paths on a local network
+	if os.Getenv(constants.SimulatePublicNetwork) != "" {
+		n.Kind = Local
+		n.ID = constants.LocalNetworkID
+		n.Endpoint = constants.LocalAPIEndpoint
+	}
 }

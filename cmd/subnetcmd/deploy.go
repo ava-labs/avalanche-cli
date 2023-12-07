@@ -429,10 +429,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
+	network.HandlePublicNetworkSimulation()
 
 	if createSubnet {
 		// accept only one control keys specification
@@ -444,6 +441,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			kcKeys, err := kc.PChainFormattedStrAddresses()
 			if err != nil {
 				return err
+			}
+			if len(kcKeys) == 0 {
+				return fmt.Errorf("no keys found on keychain")
 			}
 			controlKeys = kcKeys[:1]
 		}
@@ -597,6 +597,12 @@ func getControlKeys(kc *keychain.Keychain) ([]string, bool, error) {
 	case feePaying:
 		var kcKeys []string
 		kcKeys, err = kc.PChainFormattedStrAddresses()
+		if err != nil {
+			return nil, false, err
+		}
+		if len(kcKeys) == 0 {
+			return nil, false, fmt.Errorf("no keys found on keychain")
+		}
 		keys = kcKeys[:1]
 	case useAll:
 		keys, err = useAllKeys(kc.Network)

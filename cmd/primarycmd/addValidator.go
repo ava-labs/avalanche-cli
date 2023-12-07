@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"os"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
@@ -193,10 +192,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
+	network.HandlePublicNetworkSimulation()
 
 	jsonPop, err := promptProofOfPossession()
 	if err != nil {

@@ -5,7 +5,6 @@ package subnetcmd
 import (
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -99,10 +98,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
+	network.HandlePublicNetworkSimulation()
 	return CallAddValidator(network, kc, useLedger, args[0], nodeIDStr, defaultValidatorParams)
 }
 

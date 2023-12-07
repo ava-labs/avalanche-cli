@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"sort"
 	"strings"
 	"time"
 
@@ -140,4 +141,8 @@ func TimedFunction(f func() (interface{}, error), name string, timeout time.Dura
 	case <-ch:
 	}
 	return ret, err
+}
+
+func SortUint32(arr []uint32) {
+	sort.Slice(arr, func(i, j int) bool { return arr[i] < arr[j] })
 }

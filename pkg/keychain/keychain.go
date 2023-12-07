@@ -5,12 +5,9 @@ package keychain
 import (
 	"errors"
 	"fmt"
-	"os"
-	"sort"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -57,7 +54,7 @@ func NewKeychain(network models.Network, keychain keychain.Keychain, ledger keyc
 	}
 }
 
-func (kc *Keychain) OnlyOneKey() bool {
+func (kc *Keychain) HasOnlyOneKey() bool {
 	return len(kc.Keychain.Addresses()) == 1
 }
 
@@ -83,10 +80,6 @@ func (kc *Keychain) PChainFormattedStrAddresses() ([]string, error) {
 	return addrsStr, nil
 }
 
-func sortUint32(arr []uint32) {
-	sort.Slice(arr, func(i, j int) bool { return arr[i] < arr[j] })
-}
-
 func (kc *Keychain) AddAddresses(addresses []string) error {
 	if kc.UsesLedger {
 		prevNumIndices := len(kc.LedgerIndices)
@@ -98,7 +91,7 @@ func (kc *Keychain) AddAddresses(addresses []string) error {
 		ledgerIndicesSet := set.Set[uint32]{}
 		ledgerIndicesSet.Add(kc.LedgerIndices...)
 		kc.LedgerIndices = ledgerIndicesSet.List()
-		sortUint32(kc.LedgerIndices)
+		utils.SortUint32(kc.LedgerIndices)
 		if len(kc.LedgerIndices) != prevNumIndices {
 			if err := showLedgerAddresses(kc.Network, kc.Ledger, kc.LedgerIndices); err != nil {
 				return err
@@ -160,10 +153,7 @@ func GetKeychainFromCmdLineFlags(
 		useLedger = true
 	}
 
-	// will use default local keychain if simulating public network opeations on local
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
+	network.HandlePublicNetworkSimulation()
 
 	// get keychain accessor
 	return GetKeychain(app, useEwoq, useLedger, ledgerAddresses, keyName, network, requiredFunds)
@@ -203,7 +193,7 @@ func GetKeychain(
 		ledgerIndicesSet := set.Set[uint32]{}
 		ledgerIndicesSet.Add(ledgerIndices...)
 		ledgerIndices = ledgerIndicesSet.List()
-		sortUint32(ledgerIndices)
+		utils.SortUint32(ledgerIndices)
 		if err := showLedgerAddresses(network, ledgerDevice, ledgerIndices); err != nil {
 			return nil, err
 		}
