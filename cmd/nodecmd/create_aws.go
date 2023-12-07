@@ -81,16 +81,16 @@ func promptKeyPairName(ec2 *awsAPI.AwsCloud) (string, error) {
 	return newKeyPairName, nil
 }
 
-func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[string]string, error) {
+func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[string]string, map[string]int, error) {
 	finalRegions := map[string]int{}
 	switch {
 	case len(numNodes) != len(utils.Unique(cmdLineRegion)):
-		return nil, nil, fmt.Errorf("number of nodes and regions should be the same")
+		return nil, nil, nil, fmt.Errorf("number of nodes and regions should be the same")
 	case len(cmdLineRegion) == 0 && len(numNodes) == 0:
 		var err error
 		finalRegions, err = getRegionsNodeNum(constants.AWSCloudService)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	default:
 		for i, region := range cmdLineRegion {
@@ -99,6 +99,7 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 	}
 	ec2SvcMap := map[string]*awsAPI.AwsCloud{}
 	amiMap := map[string]string{}
+	numNodesMap := map[string]int{}
 	for region := range finalRegions {
 		var err error
 		ec2SvcMap[region], err = getAWSCloudCredentials(awsProfile, region)
@@ -106,32 +107,25 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 			if !strings.Contains(err.Error(), "cloud access is required") {
 				printNoCredentialsOutput(awsProfile)
 			}
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		amiMap[region], err = ec2SvcMap[region].GetUbuntuAMIID()
 		if err != nil {
 			if strings.Contains(err.Error(), "RequestExpired: Request has expired") {
 				printExpiredCredentialsOutput(awsProfile)
 			}
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
+		numNodesMap[region] = finalRegions[region]
 	}
-	return ec2SvcMap, amiMap, nil
+	return ec2SvcMap, amiMap, numNodesMap, nil
 }
 
 // createEC2Instances creates  ec2 instances
 func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
-	numNodes []int,
 	regions []string,
-	ami map[string]string,
 	regionConf map[string]models.RegionConfig,
 ) (map[string][]string, map[string][]string, map[string]string, map[string]string, error) {
-	for i, region := range regions {
-		if entry, ok := regionConf[region]; ok {
-			entry.NumNodes = numNodes[i]
-			regionConf[region] = entry
-		}
-	}
 	ux.Logger.PrintToUser("Creating new EC2 instance(s) on AWS...")
 	userIPAddress, err := getIPAddress()
 	if err != nil {
@@ -223,7 +217,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		sshCertPath[region] = privKey
 		if instanceIDs[region], err = ec2Svc[region].CreateEC2Instances(
 			regionConf[region].NumNodes,
-			ami[region],
+			regionConf[region].ImageID,
 			regionConf[region].InstanceType,
 			keyPairName[region],
 			sgID,
@@ -275,7 +269,8 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 
 func createAWSInstances(
 	ec2Svc map[string]*awsAPI.AwsCloud,
-	nodeType string, numNodes []int,
+	nodeType string,
+	numNodes map[string]int,
 	regions []string,
 	ami map[string]string,
 	usr *user.User) (
@@ -287,14 +282,16 @@ func createAWSInstances(
 		prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
 		regionConf[region] = models.RegionConfig{
 			Prefix:            prefix,
+			ImageID:           ami[region],
 			CertName:          prefix + "-" + region + constants.CertSuffix,
 			SecurityGroupName: prefix + "-" + region + constants.AWSSecurityGroupSuffix,
+			NumNodes:          numNodes[region],
 			InstanceType:      nodeType,
 		}
 	}
 
 	// Create new EC2 instances
-	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(ec2Svc, numNodes, regions, ami, regionConf)
+	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(ec2Svc, regions, regionConf)
 	if err != nil {
 		if err.Error() == constants.EIPLimitErr {
 			ux.Logger.PrintToUser("Failed to create AWS cloud server(s), please try creating again in a different region")
