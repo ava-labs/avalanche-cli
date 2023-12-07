@@ -127,12 +127,12 @@ func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network
 	if err != nil {
 		return nil, fmt.Errorf("error creating network %s: %w", networkName, err)
 	}
-	if insertOp != nil {
+	if insertOp == nil {
+		return nil, fmt.Errorf("error creating network %s: %w", networkName, err)
+	} else {
 		if err := c.waitForOperation(insertOp); err != nil {
 			return nil, err
 		}
-	} else {
-		return nil, fmt.Errorf("error creating network %s: %w", networkName, err)
 	}
 	// Retrieve the created firewall
 	createdNetwork, err := c.gcpClient.Networks.Get(c.projectID, networkName).Do()
@@ -166,12 +166,12 @@ func (c *GcpCloud) SetFirewallRule(ipAddress, firewallName, networkName string, 
 	if err != nil {
 		return nil, fmt.Errorf("error creating firewall rule %s: %w", firewallName, err)
 	}
-	if insertOp != nil {
+	if insertOp == nil {
+		return nil, fmt.Errorf("error creating firewall rule %s: %w", firewallName, err)
+	} else {
 		if err := c.waitForOperation(insertOp); err != nil {
 			return nil, err
 		}
-	} else {
-		return nil, fmt.Errorf("error creating firewall rule %s: %w", firewallName, err)
 	}
 	return c.gcpClient.Firewalls.Get(c.projectID, firewallName).Do()
 }
@@ -191,12 +191,12 @@ func (c *GcpCloud) SetPublicIP(zone, nodeName string, numNodes int) ([]string, e
 		if err != nil {
 			return nil, fmt.Errorf("error creating static IP 1 %s: %w", staticIPName, err)
 		}
-		if insertOp != nil {
+		if insertOp == nil {
+			return nil, fmt.Errorf("error creating static IP 2 %s", staticIPName)
+		} else {
 			if err := c.waitForOperation(insertOp); err != nil {
 				return nil, err
 			}
-		} else {
-			return nil, fmt.Errorf("error creating static IP 2 %s", staticIPName)
 		}
 		computeIP, err := c.gcpClient.Addresses.Get(c.projectID, region, staticIPName).Do()
 		if err != nil {
@@ -260,7 +260,6 @@ func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, s
 			if staticIP != nil {
 				instance.NetworkInterfaces[0].AccessConfigs[0].NatIP = staticIP[currentIndex]
 			}
-
 			insertOp, err := c.gcpClient.Instances.Insert(c.projectID, zone, instance).Do()
 			if err != nil {
 				if isIPLimitExceededError(err) {
@@ -269,19 +268,17 @@ func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, s
 					return fmt.Errorf("error creating instance %s: %w", instanceName, err)
 				}
 			}
-			if insertOp != nil {
+			if insertOp == nil {
+				return fmt.Errorf("error creating instance %s", instanceName)
+			} else {
 				if err := c.waitForOperation(insertOp); err != nil {
 					return fmt.Errorf("error waiting for operation: %w", err)
 				}
-			} else {
-				return fmt.Errorf("error creating instance %s", instanceName)
 			}
-
 			inst, err := c.gcpClient.Instances.Get(c.projectID, zone, instanceName).Do()
 			if err != nil {
 				return fmt.Errorf("error retrieving created instance %s: %w", instanceName, err)
 			}
-
 			instancesChan <- inst
 			return nil
 		})

@@ -139,7 +139,7 @@ func randomString(length int) string {
 	return string(result)
 }
 
-// createGCEInstances creates terraform .tf file and runs terraform exec function to create Google Compute Engine VM instances
+// createGCEInstances creates Google Compute Engine VM instances
 func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	instanceType string,
 	numNodes []int,

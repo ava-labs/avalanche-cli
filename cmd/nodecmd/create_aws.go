@@ -119,7 +119,7 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 	return ec2SvcMap, amiMap, nil
 }
 
-// createEC2Instances creates terraform .tf file and runs terraform exec function to create ec2 instances
+// createEC2Instances creates  ec2 instances
 func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	numNodes []int,
 	regions []string,
@@ -258,7 +258,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	ux.Logger.PrintToUser("New EC2 instance(s) successfully created in AWS!")
 	for _, region := range regions {
 		if !useExistingKeyPair[region] {
-			// takes the cert file downloaded from AWS through terraform and moves it to .ssh directory
+			// takes the cert file downloaded from AWS and moves it to .ssh directory
 			err = addCertToSSH(regionConf[region].CertName)
 			if err != nil {
 				return nil, nil, nil, nil, err
@@ -336,7 +336,7 @@ func createAWSInstances(
 	return awsCloudConfig, nil
 }
 
-// addCertToSSH takes the cert file downloaded from AWS through terraform and moves it to .ssh directory
+// addCertToSSH takes the cert file downloaded from AWS and moves it to .ssh directory
 func addCertToSSH(certName string) error {
 	certFilePath, err := app.GetSSHCertFilePath(certName)
 	if err != nil {

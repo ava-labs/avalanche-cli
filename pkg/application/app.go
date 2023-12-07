@@ -150,10 +150,6 @@ func (app *Avalanche) CreateAnsibleInventoryDir() error {
 	return nil
 }
 
-func (app *Avalanche) GetTempCertPath(certName string) string {
-	return filepath.Join(os.TempDir(), certName)
-}
-
 func (app *Avalanche) GetClustersConfigPath() string {
 	return filepath.Join(app.GetNodesDir(), constants.ClustersConfigFileName)
 }

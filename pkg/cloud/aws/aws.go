@@ -290,7 +290,7 @@ func (c *AwsCloud) StopInstance(instanceID, publicIP string, releasePublicIP boo
 func (c *AwsCloud) CreateEIP() (string, string, error) {
 	if addr, err := c.ec2Client.AllocateAddress(c.ctx, &ec2.AllocateAddressInput{}); err != nil {
 		if isEIPQuotaExceededError(err) {
-			return "", "", fmt.Errorf("Elastic IP quota exceeded: %v", err)
+			return "", "", fmt.Errorf("elastic IP quota exceeded: %w", err)
 		}
 		return "", "", err
 	} else {
