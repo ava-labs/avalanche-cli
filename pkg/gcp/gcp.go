@@ -68,6 +68,7 @@ func GetInstancePublicIPs(gcpClient *compute.Service, projectName, zone string, 
 	if err != nil {
 		return nil, err
 	}
+
 	instanceIDToIP := make(map[string]string)
 	for _, instance := range instancesList.Items {
 		if slices.Contains(nodeIDs, instance.Name) {
