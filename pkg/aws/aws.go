@@ -200,33 +200,37 @@ func AddSecurityGroupRule(ec2Svc *ec2.EC2, monitoringHostPublicIP, securityGroup
 	if err != nil {
 		return err
 	}
-	addSgRuleInput := &ec2.AuthorizeSecurityGroupIngressInput{
-		GroupId: sg.GroupId,
-		IpPermissions: []*ec2.IpPermission{
-			{
-				FromPort:   aws.Int64(constants.AvalanchegoMachineMetricsPort),
-				ToPort:     aws.Int64(constants.AvalanchegoMachineMetricsPort),
-				IpProtocol: aws.String(constants.TCPProtocol),
-				IpRanges: []*ec2.IpRange{
-					{
-						CidrIp: aws.String(monitoringHostPublicIP + constants.IPAddressSuffix),
+	metricsPortInSG := CheckUserIPInSg(sg, monitoringHostPublicIP, constants.AvalanchegoMachineMetricsPort)
+	APIPortInSG := CheckUserIPInSg(sg, monitoringHostPublicIP, constants.AvalanchegoAPIPort)
+	if !metricsPortInSG && !APIPortInSG {
+		addSgRuleInput := &ec2.AuthorizeSecurityGroupIngressInput{
+			GroupId: sg.GroupId,
+			IpPermissions: []*ec2.IpPermission{
+				{
+					FromPort:   aws.Int64(constants.AvalanchegoMachineMetricsPort),
+					ToPort:     aws.Int64(constants.AvalanchegoMachineMetricsPort),
+					IpProtocol: aws.String(constants.TCPProtocol),
+					IpRanges: []*ec2.IpRange{
+						{
+							CidrIp: aws.String(monitoringHostPublicIP + constants.IPAddressSuffix),
+						},
+					},
+				},
+				{
+					FromPort:   aws.Int64(constants.AvalanchegoAPIPort),
+					ToPort:     aws.Int64(constants.AvalanchegoAPIPort),
+					IpProtocol: aws.String(constants.TCPProtocol),
+					IpRanges: []*ec2.IpRange{
+						{
+							CidrIp: aws.String(monitoringHostPublicIP + constants.IPAddressSuffix),
+						},
 					},
 				},
 			},
-			{
-				FromPort:   aws.Int64(constants.AvalanchegoAPIPort),
-				ToPort:     aws.Int64(constants.AvalanchegoAPIPort),
-				IpProtocol: aws.String(constants.TCPProtocol),
-				IpRanges: []*ec2.IpRange{
-					{
-						CidrIp: aws.String(monitoringHostPublicIP + constants.IPAddressSuffix),
-					},
-				},
-			},
-		},
-	}
-	if _, err := ec2Svc.AuthorizeSecurityGroupIngress(addSgRuleInput); err != nil {
-		return err
+		}
+		if _, err := ec2Svc.AuthorizeSecurityGroupIngress(addSgRuleInput); err != nil {
+			return err
+		}
 	}
 	return nil
 }

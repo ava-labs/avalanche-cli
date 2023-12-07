@@ -49,6 +49,7 @@ var (
 	authorizeAccess                 bool
 	numNodes                        int
 	useLatestAvalanchegoVersion     bool
+	existingMonitoringInstance      string
 	useAvalanchegoVersionFromSubnet string
 	cmdLineGCPCredentialsPath       string
 	cmdLineGCPProjectName           string
@@ -154,7 +155,11 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if !separateMonitoringInstance {
+		existingMonitoringInstance, err = getExistingMonitoringInstance(clusterName)
+		if err != nil {
+			return err
+		}
+		if !separateMonitoringInstance && existingMonitoringInstance == "" {
 			setUpMonitoring, err = app.Prompt.CaptureYesNo("Do you want to set up monitoring for your instances? (This enables you to monitor validator and machine metrics)")
 			if err != nil {
 				return err
@@ -184,13 +189,19 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if separateMonitoringInstance {
+		if separateMonitoringInstance && existingMonitoringInstance == "" {
 			err = terraform.RemoveDirectory(app.GetTerraformDir())
 			if err != nil {
 				return err
 			}
 
 			monitoringCloudConfig, err = createAWSInstances(ec2Svc, 1, awsProfile, region, ami, usr, true)
+			if err != nil {
+				return err
+			}
+		}
+		if existingMonitoringInstance != "" {
+			monitoringCloudConfig, err = getNodeCloudConfig(existingMonitoringInstance)
 			if err != nil {
 				return err
 			}
@@ -516,57 +527,19 @@ func addHTTPHostToConfigFile(filePath string) error {
 	return os.WriteFile(filePath, byteValue, constants.WriteReadReadPerms)
 }
 
-func createSeparateMonitoringInstance(clusterName string) error {
+func getExistingMonitoringInstance(clusterName string) (string, error) {
 	if app.ClustersConfigExists() {
 		clustersConfig, err := app.LoadClustersConfig()
 		if err != nil {
-			return err
+			return "", err
 		}
 		if clustersConfig.Clusters[clusterName].MonitoringInstance != "" {
-
-		}
-	} else {
-
-	}
-}
-func syncNodeWithExistingMonitoringInstance() error {
-	// download node configs
-	wg := sync.WaitGroup{}
-	wgResults := models.NodeResults{}
-	for _, host := range hosts {
-		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
-			defer wg.Done()
-			nodeDirPath := app.GetNodeInstanceAvaGoConfigDirPath(host.NodeID)
-			if err := ssh.RunSSHDownloadNodeConfig(host, nodeDirPath); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			if err = addHTTPHostToConfigFile(app.GetNodeConfigJSONFile(host.NodeID)); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			if err := ssh.RunSSHUploadNodeConfig(host, nodeDirPath); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			if err := ssh.RunSSHRestartNode(host); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			if err := os.RemoveAll(nodeDirPath); err != nil {
-				return
-			}
-		}(&wgResults, host)
-	}
-	wg.Wait()
-	for _, node := range hosts {
-		if wgResults.HasNodeIDWithError(node.NodeID) {
-			ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
-			return fmt.Errorf("node %s failed to setup with error: %w", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
+			return clustersConfig.Clusters[clusterName].MonitoringInstance, nil
 		}
 	}
+	return "", nil
 }
+
 func updateKeyPairClustersConfig(cloudConfig CloudConfig) error {
 	clustersConfig := models.ClustersConfig{}
 	var err error
@@ -875,4 +848,26 @@ func waitForHosts(hosts []*models.Host) *models.NodeResults {
 	}
 	createdWaitGroup.Wait()
 	return &hostErrors
+}
+
+func getNodeCloudConfig(node string) (CloudConfig, error) {
+	config, err := app.LoadClusterNodeConfig(node)
+	if err != nil {
+		return CloudConfig{}, err
+	}
+	elasticIP := []string{}
+	if config.ElasticIP != "" {
+		elasticIP = append(elasticIP, config.ElasticIP)
+	}
+	instanceIDs := []string{}
+	instanceIDs = append(instanceIDs, config.NodeID)
+	return CloudConfig{
+		instanceIDs,
+		elasticIP,
+		config.Region,
+		config.KeyPair,
+		config.SecurityGroup,
+		config.CertPath,
+		config.AMI,
+	}, nil
 }
