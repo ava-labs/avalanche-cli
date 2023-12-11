@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 )
 
@@ -111,8 +112,7 @@ func getNodesUpgradeInfo(hosts []*models.Host) (map[*models.Host]nodeUpgradeInfo
 	if err != nil {
 		return nil, err
 	}
-	failedNodes := []string{}
-	nodeErrors := []error{}
+	nodeErrors := map[string]error{}
 	nodesToUpgrade := make(map[*models.Host]nodeUpgradeInfo)
 
 	wg := sync.WaitGroup{}
@@ -166,13 +166,12 @@ func getNodesUpgradeInfo(hosts []*models.Host) (map[*models.Host]nodeUpgradeInfo
 				// find the highest version of avalanche go that is still compatible with current highest rpc
 				avalancheGoVersionToUpdateTo, err = GetLatestAvagoVersionForRPC(rpcVersion)
 				if err != nil {
-					failedNodes = append(failedNodes, hostID)
-					nodeErrors = append(nodeErrors, err)
+					nodeErrors[hostID] = err
 					continue
 				}
 			}
 		}
-		if slices.Contains(failedNodes, hostID) {
+		if _, hasFailed := nodeErrors[hostID]; hasFailed {
 			continue
 		}
 		if currentAvalancheGoVersion != avalancheGoVersionToUpdateTo {
@@ -181,12 +180,12 @@ func getNodesUpgradeInfo(hosts []*models.Host) (map[*models.Host]nodeUpgradeInfo
 		}
 		nodesToUpgrade[nodeIDToHost[hostID]] = nodeUpgradeInfo
 	}
-	if len(failedNodes) > 0 {
+	if len(nodeErrors) > 0 {
 		ux.Logger.PrintToUser("Failed to upgrade nodes: ")
-		for i, node := range failedNodes {
-			ux.Logger.PrintToUser("node %s failed to upgrade due to %s", node, nodeErrors[i])
+		for node, nodeErr := range nodeErrors {
+			ux.Logger.PrintToUser("node %s failed to upgrade due to %s", node, nodeErr)
 		}
-		return nil, fmt.Errorf("failed to upgrade node(s) %s", failedNodes)
+		return nil, fmt.Errorf("failed to upgrade node(s) %s", maps.Keys(nodeErrors))
 	}
 	return nodesToUpgrade, nil
 }
