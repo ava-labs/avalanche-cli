@@ -87,7 +87,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().StringSliceVar(&cmdLineRegion, "region", []string{}, "create node(s) in given region(s). Use comma to separate multiple regions")
 	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to create cloud resources")
 	cmd.Flags().IntSliceVar(&numNodes, "num-nodes", []int{}, "number of nodes to create per region(s). Use comma to separate multiple numbers for each region in the same order as --region flag")
-	cmd.Flags().StringVar(&nodeType, "node-type", "default", "cloud instance type")
+	cmd.Flags().StringVar(&nodeType, "node-type", "", "cloud instance type. Use 'default' to use recommended default instance type")
 	cmd.Flags().BoolVar(&useLatestAvalanchegoVersion, "latest-avalanchego-version", false, "install latest avalanchego version on node/s")
 	cmd.Flags().StringVar(&useAvalanchegoVersionFromSubnet, "avalanchego-version-from-subnet", "", "install latest avalanchego version, that is compatible with the given subnet, on node/s")
 	cmd.Flags().StringVar(&cmdLineGCPCredentialsPath, "gcp-credentials", "", "use given GCP credentials")
@@ -142,10 +142,14 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 
 	cloudService, err := setCloudService()
-	nodeType = setCloudInstanceType(cloudService)
 	if err != nil {
 		return err
 	}
+	nodeType, err = setCloudInstanceType(cloudService)
+	if err != nil {
+		return err
+	}
+
 	if cloudService != constants.GCPCloudService && cmdLineGCPCredentialsPath != "" {
 		return fmt.Errorf("set to use GCP credentials but cloud option is not GCP")
 	}
@@ -596,15 +600,50 @@ func setCloudService() (string, error) {
 	return chosenCloudService, nil
 }
 
-func setCloudInstanceType(cloudService string) string {
-	// set default instance type
-	switch {
+func setCloudInstanceType(cloudService string) (string, error) {
+	switch { // backwards compatibility
 	case nodeType == "default" && cloudService == constants.AWSCloudService:
 		nodeType = constants.AWSDefaultInstanceType
+		return nodeType, nil
 	case nodeType == "default" && cloudService == constants.GCPCloudService:
 		nodeType = constants.GCPDefaultInstanceType
+		return nodeType, nil
 	}
-	return nodeType
+	defaultNodeType := ""
+	nodeTypeOption2 := ""
+	nodeTypeOption3 := ""
+	customNodeType := "Choose custom instance type"
+	switch {
+	case cloudService == constants.AWSCloudService:
+		defaultNodeType = constants.AWSDefaultInstanceType
+		nodeTypeOption2 = "t3a.2xlarge" // burst
+		nodeTypeOption3 = "c5n.2xlarge"
+	case cloudService == constants.GCPCloudService:
+		defaultNodeType = constants.GCPDefaultInstanceType
+		nodeTypeOption2 = "c3-highcpu-8"
+		nodeTypeOption3 = "n2-standard-8"
+	}
+	if nodeType == "" {
+		defaultStr := "(default)"
+		nodeTypeStr, err := app.Prompt.CaptureList(
+			"Instance type to use",
+			[]string{fmt.Sprintf("%s %s", defaultNodeType, defaultStr), nodeTypeOption2, nodeTypeOption3, customNodeType},
+		)
+		if err != nil {
+			ux.Logger.PrintToUser("Failed to capture node type with error: %s", err.Error())
+			return "", err
+		}
+		nodeTypeStr = strings.ReplaceAll(nodeTypeStr, defaultStr, "") // remove (default) if any
+		if nodeTypeStr == customNodeType {
+			nodeTypeStr, err = app.Prompt.CaptureString("What instance type would you like to use? Please refer to https://docs.avax.network/nodes/run/node-manually#hardware-and-os-requirements for minimum hardware requirements")
+			if err != nil {
+				ux.Logger.PrintToUser("Failed to capture custom node type with error: %s", err.Error())
+				return "", err
+			}
+		}
+		return nodeTypeStr, nil
+	}
+	return nodeType, nil
 }
 
 func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]string, ansibleHostIDs []string) {
