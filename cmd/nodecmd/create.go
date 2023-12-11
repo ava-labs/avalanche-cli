@@ -264,7 +264,13 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 		}
 	}
-
+	//var existingMonitoredInstances []string
+	//if existingMonitoringInstance != "" {
+	//	existingMonitoredInstances, err = getExistingMonitoredInstances(clusterName)
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
 	if err = createClusterNodeConfig(network, cloudConfig, monitoringCloudConfig, clusterName, cloudService); err != nil {
 		return err
 	}
@@ -369,9 +375,17 @@ func createNodes(_ *cobra.Command, args []string) error {
 		monitoringHost := monitoringHosts[0]
 		avalancheGoPorts := []string{}
 		machinePorts := []string{}
-		for _, publicIP := range publicIPMap {
-			avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("'%s:%s'", publicIP, strconv.Itoa(constants.AvalanchegoAPIPort)))
-			machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", publicIP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
+		//for _, publicIP := range publicIPMap {
+		//	avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("'%s:%s'", publicIP, strconv.Itoa(constants.AvalanchegoAPIPort)))
+		//	machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", publicIP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
+		//}
+		hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+		if err != nil {
+			return err
+		}
+		for _, host := range hosts {
+			avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoAPIPort)))
+			machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
 		}
 		if err = app.SetupMonitoringEnv(); err != nil {
 			return err
@@ -538,6 +552,21 @@ func getExistingMonitoringInstance(clusterName string) (string, error) {
 		}
 	}
 	return "", nil
+}
+
+// only called when adding new instances to an existing monitoring instance
+// gets all the instances that are already being monitored by the monitoring instance
+func getExistingMonitoredInstances(clusterName string) ([]string, error) {
+	if app.ClustersConfigExists() {
+		clustersConfig, err := app.LoadClustersConfig()
+		if err != nil {
+			return nil, err
+		}
+		if len(clustersConfig.Clusters[clusterName].Nodes) > 0 {
+			return clustersConfig.Clusters[clusterName].Nodes, nil
+		}
+	}
+	return nil, fmt.Errorf("no existing instance is found in cluster %s", clusterName)
 }
 
 func updateKeyPairClustersConfig(cloudConfig CloudConfig) error {
