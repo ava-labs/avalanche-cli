@@ -142,10 +142,14 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 
 	cloudService, err := setCloudService()
-	nodeType = setCloudInstanceType(cloudService)
 	if err != nil {
 		return err
 	}
+	nodeType, err = setCloudInstanceType(cloudService)
+	if err != nil {
+		return err
+	}
+
 	if cloudService != constants.GCPCloudService && cmdLineGCPCredentialsPath != "" {
 		return fmt.Errorf("set to use GCP credentials but cloud option is not GCP")
 	}
@@ -596,14 +600,14 @@ func setCloudService() (string, error) {
 	return chosenCloudService, nil
 }
 
-func setCloudInstanceType(cloudService string) string {
+func setCloudInstanceType(cloudService string) (string, error) {
 	switch { // backwards compatibility
 	case nodeType == "default" && cloudService == constants.AWSCloudService:
 		nodeType = constants.AWSDefaultInstanceType
-		return nodeType
+		return nodeType, nil
 	case nodeType == "default" && cloudService == constants.GCPCloudService:
 		nodeType = constants.GCPDefaultInstanceType
-		return nodeType
+		return nodeType, nil
 	}
 	defaultNodeType := ""
 	nodeTypeOption2 := ""
@@ -620,24 +624,26 @@ func setCloudInstanceType(cloudService string) string {
 		nodeTypeOption3 = "n2-standard-8"
 	}
 	if nodeType == "" {
+		defaultStr := "(default)"
 		nodeTypeStr, err := app.Prompt.CaptureList(
 			"Instance type to use",
-			[]string{defaultNodeType, nodeTypeOption2, nodeTypeOption3, customNodeType},
+			[]string{fmt.Sprintf("%s %s", defaultNodeType, defaultStr), nodeTypeOption2, nodeTypeOption3, customNodeType},
 		)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to capture node type with error: %s", err.Error())
-			return ""
+			return "", err
 		}
+		nodeTypeStr = strings.ReplaceAll(nodeTypeStr, defaultStr, "") // remove (default) if any
 		if nodeTypeStr == customNodeType {
 			nodeTypeStr, err = app.Prompt.CaptureString("What instance type would you like to use? Please refer to https://docs.avax.network/nodes/run/node-manually#hardware-and-os-requirements for minimum hardware requirements.")
 			if err != nil {
 				ux.Logger.PrintToUser("Failed to capture custom node type with error: %s", err.Error())
-				return ""
+				return "", err
 			}
 		}
-		return nodeTypeStr
+		return nodeTypeStr, nil
 	}
-	return nodeType
+	return nodeType, nil
 }
 
 func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]string, ansibleHostIDs []string) {
