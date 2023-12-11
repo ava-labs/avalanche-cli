@@ -137,6 +137,14 @@ func (c *AwsCloud) CreateEC2Instances(count int, amiID, instanceType, keyName, s
 		SecurityGroupIds: []string{securityGroupID},
 		MinCount:         aws.Int32(1),
 		MaxCount:         aws.Int32(int32(count)),
+		BlockDeviceMappings: []types.BlockDeviceMapping{
+			{
+				DeviceName: aws.String("/dev/xvda"),
+				Ebs: &types.EbsBlockDevice{
+					VolumeSize: aws.Int32(1000),
+				},
+			},
+		},
 	})
 	if err != nil {
 		return nil, err
