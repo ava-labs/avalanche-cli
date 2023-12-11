@@ -224,7 +224,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		); err != nil {
 			return nil, nil, nil, nil, err
 		}
-		ux.Logger.PrintToUser(fmt.Sprintf("Waiting for EC2 instances in AWS[%s]", region))
+		ux.Logger.PrintToUser(fmt.Sprintf("Waiting for EC2 instances in AWS[%s] to be accessible via SSH", region))
 		if err := ec2Svc[region].WaitForEC2Instances(instanceIDs[region]); err != nil {
 			return nil, nil, nil, nil, err
 		}

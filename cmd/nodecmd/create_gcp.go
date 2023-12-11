@@ -176,12 +176,12 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 		return nil, nil, "", "", err
 	}
 	if !networkExists {
-		ux.Logger.PrintToUser(fmt.Sprintf("Creating new network %s in GCP", networkName))
+		ux.Logger.PrintToUser("Creating new network %s in GCP", networkName)
 		if _, err := gcpClient.SetupNetwork(userIPAddress, networkName); err != nil {
 			return nil, nil, "", "", err
 		}
 	} else {
-		ux.Logger.PrintToUser(fmt.Sprintf("Using existing network %s in GCP", networkName))
+		ux.Logger.PrintToUser("Using existing network %s in GCP", networkName)
 		firewallName := fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(userIPAddress, ".", ""))
 		firewallExists, err := gcpClient.CheckFirewallExists(firewallName)
 		if err != nil {
@@ -211,6 +211,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
+	ux.Logger.PrintToUser("Waiting for GCE instance(s) to be provisioned...")
 	for i, zone := range zones {
 		_, err := gcpClient.SetupInstances(zone, networkName, string(sshPublicKey), ami, publicIP[zone], nodeName[zone], numNodes[i], instanceType)
 		if err != nil {
@@ -224,7 +225,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 			instanceIDs[zone] = append(instanceIDs[zone], fmt.Sprintf("%s-%s", nodeName[zone], strconv.Itoa(i)))
 		}
 	}
-	ux.Logger.PrintToUser("New GCE instance(s) successfully created in Google Cloud Engine!")
+	ux.Logger.PrintToUser("New Compute instance(s) successfully created in GCP!")
 	sshCertPath, err := app.GetSSHCertFilePath(fmt.Sprintf("%s-keypair", cliDefaultName))
 	if err != nil {
 		return nil, nil, "", "", err
