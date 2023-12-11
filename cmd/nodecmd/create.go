@@ -641,7 +641,7 @@ func setCloudInstanceType(cloudService string) (string, error) {
 				return "", err
 			}
 		}
-		return nodeTypeStr, nil
+		return strings.Trim(nodeTypeStr, " "), nil
 	}
 	return nodeType, nil
 }
