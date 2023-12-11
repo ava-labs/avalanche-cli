@@ -204,7 +204,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			ipInHTTP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
 
 			if !ipInTCP {
-				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress, constants.SSHTCPPort); err != nil {
+				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress+"/32", constants.SSHTCPPort); err != nil {
 					return nil, nil, nil, nil, err
 				}
 			}
@@ -318,6 +318,7 @@ func createAWSInstances(
 			ux.Logger.PrintToUser("Stop the above instance(s) on AWS console to prevent charges")
 			return models.CloudConfig{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)
 		}
+		return models.CloudConfig{}, err
 	}
 	awsCloudConfig := models.CloudConfig{}
 	for _, region := range regions {

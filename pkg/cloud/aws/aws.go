@@ -82,6 +82,9 @@ func (c *AwsCloud) CheckSecurityGroupExists(sgName string) (bool, types.Security
 
 // AddSecurityGroupRule adds a rule to the given security group
 func (c *AwsCloud) AddSecurityGroupRule(groupID, direction, protocol, ip string, port int32) error {
+	if !strings.Contains(ip, "/") {
+		ip = fmt.Sprintf("%s/32", ip) // add netmask /32 if missing
+	}
 	switch direction {
 	case "ingress":
 		if _, err := c.ec2Client.AuthorizeSecurityGroupIngress(c.ctx, &ec2.AuthorizeSecurityGroupIngressInput{
@@ -327,16 +330,15 @@ func (c *AwsCloud) CreateAndDownloadKeyPair(keyName string, privateKeyFilePath s
 
 // SetupSecurityGroup sets up a security group for the AwsCloud instance.
 func (c *AwsCloud) SetupSecurityGroup(ipAddress, securityGroupName string) (string, error) {
-	inputIPAddress := ipAddress + "/32"
 	sgID, err := c.CreateSecurityGroup(securityGroupName, "Allow SSH, AVAX HTTP outbound traffic")
 	if err != nil {
 		return "", err
 	}
-	if err := c.AddSecurityGroupRule(sgID, "ingress", "tcp", inputIPAddress, constants.SSHTCPPort); err != nil {
+	if err := c.AddSecurityGroupRule(sgID, "ingress", "tcp", ipAddress, constants.SSHTCPPort); err != nil {
 		return "", err
 	}
 
-	if err := c.AddSecurityGroupRule(sgID, "ingress", "tcp", inputIPAddress, constants.AvalanchegoAPIPort); err != nil {
+	if err := c.AddSecurityGroupRule(sgID, "ingress", "tcp", ipAddress, constants.AvalanchegoAPIPort); err != nil {
 		return "", err
 	}
 	if err := c.AddSecurityGroupRule(sgID, "ingress", "tcp", "0.0.0.0/0", constants.AvalanchegoP2PPort); err != nil {
