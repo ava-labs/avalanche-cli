@@ -204,7 +204,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			ipInHTTP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
 
 			if !ipInTCP {
-				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress+"/32", constants.SSHTCPPort); err != nil {
+				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress, constants.SSHTCPPort); err != nil {
 					return nil, nil, nil, nil, err
 				}
 			}

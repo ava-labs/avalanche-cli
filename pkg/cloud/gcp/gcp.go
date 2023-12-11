@@ -144,7 +144,7 @@ func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network
 	if _, err := c.SetFirewallRule("0.0.0.0/0", fmt.Sprintf("%s-%s", networkName, "default"), networkName, []string{strconv.Itoa(constants.AvalanchegoP2PPort)}); err != nil {
 		return nil, err
 	}
-	if _, err := c.SetFirewallRule(ipAddress+"/32", fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)}); err != nil {
+	if _, err := c.SetFirewallRule(ipAddress, fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)}); err != nil {
 		return nil, err
 	}
 
@@ -153,6 +153,9 @@ func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network
 
 // SetFirewallRule creates a new firewall rule in GCP
 func (c *GcpCloud) SetFirewallRule(ipAddress, firewallName, networkName string, ports []string) (*compute.Firewall, error) {
+	if strings.Contains(ipAddress, "/") {
+		ipAddress = fmt.Sprintf("%s/32", ipAddress) // add netmask /32 if missing
+	}
 	firewall := &compute.Firewall{
 		Name:    firewallName,
 		Network: fmt.Sprintf("projects/%s/global/networks/%s", c.projectID, networkName),
