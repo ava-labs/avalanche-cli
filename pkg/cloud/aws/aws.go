@@ -139,7 +139,7 @@ func (c *AwsCloud) CreateEC2Instances(count int, amiID, instanceType, keyName, s
 		MaxCount:         aws.Int32(int32(count)),
 		BlockDeviceMappings: []types.BlockDeviceMapping{
 			{
-				DeviceName: aws.String("/dev/xvda"),
+				DeviceName: aws.String("/dev/sda1"), //ubuntu ami disk name
 				Ebs: &types.EbsBlockDevice{
 					VolumeSize: aws.Int32(1000),
 				},
