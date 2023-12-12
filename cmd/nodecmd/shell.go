@@ -47,7 +47,9 @@ func shellNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	selectedHost := utils.Filter(allHosts, func(h *models.Host) bool {
-		return h.GetCloudID() == nodeID || h.NodeID == nodeID || h.IP == nodeID
+		_, cloudHostID, _ := models.HostAnsibleIDToCloudID(h.NodeID)
+		hostNodeID, _ := getNodeID(app.GetNodeInstanceDirPath(cloudHostID))
+		return h.GetCloudID() == nodeID || hostNodeID.String() == nodeID || h.IP == nodeID
 	})
 	if len(selectedHost) == 0 {
 		return fmt.Errorf("node %s not found in cluster %s", nodeID, clusterName)
@@ -64,6 +66,6 @@ func shellNode(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("Shell closed to cluster: %s node: %s", clusterName, nodeID)
+	ux.Logger.PrintToUser("%s[%s] shell closed to %s", clusterName, selectedHost[0].GetCloudID(), selectedHost[0].IP)
 	return nil
 }
