@@ -196,10 +196,8 @@ func StopInstance(ec2Svc *ec2.EC2, instanceID, publicIP string, releasePublicIP 
 }
 
 func AddSecurityGroupRule(ec2Svc *ec2.EC2, monitoringHostPublicIP, securityGroupName string) error {
-	fmt.Printf("securityGroupName %s %s \n", securityGroupName, monitoringHostPublicIP)
 	_, sg, err := CheckSecurityGroupExists(ec2Svc, securityGroupName)
 	if err != nil {
-		fmt.Printf("we have error here %s \n", err)
 		return err
 	}
 	metricsPortInSG := CheckUserIPInSg(sg, monitoringHostPublicIP, constants.AvalanchegoMachineMetricsPort)
@@ -233,8 +231,6 @@ func AddSecurityGroupRule(ec2Svc *ec2.EC2, monitoringHostPublicIP, securityGroup
 		if _, err := ec2Svc.AuthorizeSecurityGroupIngress(addSgRuleInput); err != nil {
 			return err
 		}
-	} else {
-		fmt.Printf("didnt add new sg %s \n ", monitoringHostPublicIP)
 	}
 	return nil
 }

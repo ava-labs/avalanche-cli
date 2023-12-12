@@ -206,7 +206,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			fmt.Printf("monitoringCloudConfig %s %s \n", monitoringCloudConfig.InstanceIDs, monitoringCloudConfig.PublicIPs)
 		}
 		if !useStaticIP {
 			publicIPMap, err = awsAPI.GetInstancePublicIPs(ec2Svc, cloudConfig.InstanceIDs)
@@ -266,13 +265,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 		}
 	}
-	//var existingMonitoredInstances []string
-	//if existingMonitoringInstance != "" {
-	//	existingMonitoredInstances, err = getExistingMonitoredInstances(clusterName)
-	//	if err != nil {
-	//		return err
-	//	}
-	//}
 	if err = createClusterNodeConfig(network, cloudConfig, monitoringCloudConfig, clusterName, cloudService); err != nil {
 		return err
 	}
@@ -377,10 +369,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 		monitoringHost := monitoringHosts[0]
 		avalancheGoPorts := []string{}
 		machinePorts := []string{}
-		//for _, publicIP := range publicIPMap {
-		//	avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("'%s:%s'", publicIP, strconv.Itoa(constants.AvalanchegoAPIPort)))
-		//	machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", publicIP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
-		//}
 		inventoryHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 		if err != nil {
 			return err
@@ -390,8 +378,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 			machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
 		}
 		if existingMonitoringInstance != "" {
-			fmt.Printf("RunSSHUpdatePrometheusConfig")
-			fmt.Printf("avalancheGoPorts %s %s \n", avalancheGoPorts, machinePorts)
 			if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
 				return err
 			}
@@ -415,7 +401,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 		wg := sync.WaitGroup{}
 		wgResults := models.NodeResults{}
 		for _, host := range hosts {
-			fmt.Printf("update nodeconfig hosts %s \n", host)
 			wg.Add(1)
 			go func(nodeResults *models.NodeResults, host *models.Host) {
 				defer wg.Done()
@@ -563,21 +548,6 @@ func getExistingMonitoringInstance(clusterName string) (string, error) {
 		}
 	}
 	return "", nil
-}
-
-// only called when adding new instances to an existing monitoring instance
-// gets all the instances that are already being monitored by the monitoring instance
-func getExistingMonitoredInstances(clusterName string) ([]string, error) {
-	if app.ClustersConfigExists() {
-		clustersConfig, err := app.LoadClustersConfig()
-		if err != nil {
-			return nil, err
-		}
-		if len(clustersConfig.Clusters[clusterName].Nodes) > 0 {
-			return clustersConfig.Clusters[clusterName].Nodes, nil
-		}
-	}
-	return nil, fmt.Errorf("no existing instance is found in cluster %s", clusterName)
 }
 
 func updateKeyPairClustersConfig(cloudConfig CloudConfig) error {
