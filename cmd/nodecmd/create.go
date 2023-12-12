@@ -387,14 +387,20 @@ func createNodes(_ *cobra.Command, args []string) error {
 			avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoAPIPort)))
 			machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
 		}
-		if err = app.SetupMonitoringEnv(); err != nil {
-			return err
-		}
-		if err := ssh.RunSSHCopyMonitoringDashboards(monitoringHost, app.GetMonitoringDashboardDir()+"/"); err != nil {
-			return err
-		}
-		if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost, app.GetMonitoringScriptFile(), strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
-			return err
+		if existingMonitoringInstance != "" {
+			if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
+				return err
+			}
+		} else {
+			if err = app.SetupMonitoringEnv(); err != nil {
+				return err
+			}
+			if err := ssh.RunSSHCopyMonitoringDashboards(monitoringHost, app.GetMonitoringDashboardDir()+"/"); err != nil {
+				return err
+			}
+			if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost, app.GetMonitoringScriptFile(), strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
+				return err
+			}
 		}
 		for _, ansibleNodeID := range ansibleHostIDs {
 			if err = app.CreateAnsibleNodeConfigDir(ansibleNodeID); err != nil {
