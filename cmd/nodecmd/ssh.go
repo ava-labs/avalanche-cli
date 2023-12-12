@@ -75,7 +75,7 @@ func sshCluster(args []string, indent string) error {
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		cmdLine := fmt.Sprintf("%s %s", utils.GetSSHConnectionString(host.IP, host.SSHPrivateKeyPath), strings.Join(args[1:], " "))
-		ux.Logger.PrintToUser("%s[%s] RUN: %s", indent, host.GetCloudID(), cmdLine)
+		ux.Logger.PrintToUser("%s[%s] %s", indent, host.GetCloudID(), cmdLine)
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			if !isParallel {
