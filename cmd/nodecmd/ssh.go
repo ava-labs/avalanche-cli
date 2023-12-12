@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -14,6 +15,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
+
+var isParallel bool
 
 func newSSHCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -28,7 +31,7 @@ If no command is given, just prints the ssh cmdLine to be used to connect to eac
 		Args:         cobra.MinimumNArgs(0),
 		RunE:         sshNode,
 	}
-
+	cmd.Flags().BoolVar(&isParallel, "parallel", true, "run ssh command on all nodes in parallel")
 	return cmd
 }
 
@@ -67,20 +70,39 @@ func sshCluster(args []string, indent string) error {
 	if err != nil {
 		return err
 	}
+	wg := sync.WaitGroup{}
+	nowExecutingMutex := sync.Mutex{}
+	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		cmdLine := fmt.Sprintf("%s %s", utils.GetSSHConnectionString(host.IP, host.SSHPrivateKeyPath), strings.Join(args[1:], " "))
-		ux.Logger.PrintToUser("%s[%s] %s", indent, host.GetCloudID(), cmdLine)
-		if len(args) > 1 {
-			splitCmdLine := strings.Split(cmdLine, " ")
-			cmd := exec.Command(splitCmdLine[0], splitCmdLine[1:]...) //nolint: gosec
-			cmd.Env = os.Environ()
-			_, _ = utils.SetupRealtimeCLIOutput(cmd, true, true)
-			err = cmd.Run()
-			if err != nil {
-				ux.Logger.PrintToUser("Error: %s", err)
+		ux.Logger.PrintToUser("%s[%s] RUN: %s", indent, host.GetCloudID(), cmdLine)
+		wg.Add(1)
+		go func(nodeResults *models.NodeResults, host *models.Host) {
+			if !isParallel {
+				nowExecutingMutex.Lock()
+				defer nowExecutingMutex.Unlock()
 			}
-			ux.Logger.PrintToUser("")
-		}
+			defer wg.Done()
+			if len(args) > 1 {
+				splitCmdLine := strings.Split(cmdLine, " ")
+				cmd := exec.Command(splitCmdLine[0], splitCmdLine[1:]...) //nolint: gosec
+				cmd.Env = os.Environ()
+				outBuf, errBuf := utils.SetupRealtimeCLIOutput(cmd, false, false)
+				outBuf.ReadFrom(errBuf)
+				err = cmd.Run()
+				if err != nil {
+					nodeResults.AddResult(host.NodeID, outBuf, err)
+				}
+				nodeResults.AddResult(host.NodeID, outBuf, nil)
+			}
+		}(&wgResults, host)
+	}
+	wg.Wait()
+	if wgResults.HasErrors() {
+		return fmt.Errorf("failed to ssh node(s) %s", wgResults.GetErrorHostMap())
+	}
+	for hostID, result := range wgResults.GetResultMap() {
+		ux.Logger.PrintToUser("%s[%s] %s", indent, hostID, fmt.Sprintf("%v", result))
 	}
 	return nil
 }
