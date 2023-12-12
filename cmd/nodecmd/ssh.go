@@ -88,7 +88,12 @@ func sshCluster(args []string, indent string) error {
 				cmd := exec.Command(splitCmdLine[0], splitCmdLine[1:]...) //nolint: gosec
 				cmd.Env = os.Environ()
 				outBuf, errBuf := utils.SetupRealtimeCLIOutput(cmd, false, false)
-				outBuf.ReadFrom(errBuf)
+				if !isParallel {
+					_, _ = utils.SetupRealtimeCLIOutput(cmd, true, true)
+				}
+				if _, err := outBuf.ReadFrom(errBuf); err != nil {
+					nodeResults.AddResult(host.NodeID, outBuf, err)
+				}
 				err = cmd.Run()
 				if err != nil {
 					nodeResults.AddResult(host.NodeID, outBuf, err)
@@ -101,8 +106,10 @@ func sshCluster(args []string, indent string) error {
 	if wgResults.HasErrors() {
 		return fmt.Errorf("failed to ssh node(s) %s", wgResults.GetErrorHostMap())
 	}
-	for hostID, result := range wgResults.GetResultMap() {
-		ux.Logger.PrintToUser("%s[%s] %s", indent, hostID, fmt.Sprintf("%v", result))
+	if isParallel {
+		for hostID, result := range wgResults.GetResultMap() {
+			ux.Logger.PrintToUser("%s[%s] %s", indent, hostID, fmt.Sprintf("%v", result))
+		}
 	}
 	return nil
 }
