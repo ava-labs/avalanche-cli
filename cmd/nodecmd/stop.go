@@ -135,6 +135,9 @@ func stopNodes(_ *cobra.Command, args []string) error {
 				continue
 			}
 		} else {
+			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
+				return fmt.Errorf("cloud access is required")
+			}
 			if gcpClient == nil {
 				gcpClient, gcpProjectName, _, err = getGCPCloudCredentials()
 				if err != nil {

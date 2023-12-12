@@ -172,6 +172,9 @@ func createNodes(_ *cobra.Command, args []string) error {
 	gcpProjectName := ""
 	gcpCredentialFilepath := ""
 	if cloudService == constants.AWSCloudService { // Get AWS Credential, region and AMI
+		if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
+			return fmt.Errorf("cloud access is required")
+		}
 		regions, numNodes, ec2SvcMap, ami, err := getAWSCloudConfig(awsProfile)
 		if err != nil {
 			return err
@@ -196,6 +199,9 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 		}
 	} else {
+		if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
+			return fmt.Errorf("cloud access is required")
+		}
 		// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
 		gcpClient, zones, numNodes, imageID, credentialFilepath, projectName, err := getGCPConfig()
 		if err != nil {
