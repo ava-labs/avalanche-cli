@@ -201,8 +201,8 @@ func AddSecurityGroupRule(ec2Svc *ec2.EC2, monitoringHostPublicIP, securityGroup
 		return err
 	}
 	metricsPortInSG := CheckUserIPInSg(sg, monitoringHostPublicIP, constants.AvalanchegoMachineMetricsPort)
-	APIPortInSG := CheckUserIPInSg(sg, monitoringHostPublicIP, constants.AvalanchegoAPIPort)
-	if !metricsPortInSG && !APIPortInSG {
+	apiPortInSG := CheckUserIPInSg(sg, monitoringHostPublicIP, constants.AvalanchegoAPIPort)
+	if !metricsPortInSG && !apiPortInSG {
 		addSgRuleInput := &ec2.AuthorizeSecurityGroupIngressInput{
 			GroupId: sg.GroupId,
 			IpPermissions: []*ec2.IpPermission{
