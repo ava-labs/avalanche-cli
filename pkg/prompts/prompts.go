@@ -724,9 +724,11 @@ func getIndexInSlice[T comparable](list []T, element T) (int, error) {
 // check subnet authorization criteria:
 // - [subnetAuthKeys] satisfy subnet's [threshold]
 // - [subnetAuthKeys] is a subset of subnet's [controlKeys]
-func CheckSubnetAuthKeys(walletKey string, subnetAuthKeys []string, controlKeys []string, threshold uint32) error {
-	if slices.Contains(controlKeys, walletKey) && !slices.Contains(subnetAuthKeys, walletKey) {
-		return fmt.Errorf("wallet key %s is a subnet control key so it must be included in subnet auth keys", walletKey)
+func CheckSubnetAuthKeys(walletKeys []string, subnetAuthKeys []string, controlKeys []string, threshold uint32) error {
+	for _, walletKey := range walletKeys {
+		if slices.Contains(controlKeys, walletKey) && !slices.Contains(subnetAuthKeys, walletKey) {
+			return fmt.Errorf("wallet key %s is a subnet control key so it must be included in subnet auth keys", walletKey)
+		}
 	}
 	if len(subnetAuthKeys) != int(threshold) {
 		return fmt.Errorf("number of given subnet auth differs from the threshold")
@@ -748,21 +750,23 @@ func CheckSubnetAuthKeys(walletKey string, subnetAuthKeys []string, controlKeys 
 
 // get subnet authorization keys from the user, as a subset of the subnet's [controlKeys]
 // with a len equal to the subnet's [threshold]
-func GetSubnetAuthKeys(prompt Prompter, walletKey string, controlKeys []string, threshold uint32) ([]string, error) {
+func GetSubnetAuthKeys(prompt Prompter, walletKeys []string, controlKeys []string, threshold uint32) ([]string, error) {
 	if len(controlKeys) == int(threshold) {
 		return controlKeys, nil
 	}
 	subnetAuthKeys := []string{}
 	filteredControlKeys := []string{}
 	filteredControlKeys = append(filteredControlKeys, controlKeys...)
-	if slices.Contains(controlKeys, walletKey) {
-		ux.Logger.PrintToUser("Adding wallet key %s to the tx subnet auth keys as it is a subnet control key", walletKey)
-		subnetAuthKeys = append(subnetAuthKeys, walletKey)
-		index, err := getIndexInSlice(filteredControlKeys, walletKey)
-		if err != nil {
-			return nil, err
+	for _, walletKey := range walletKeys {
+		if slices.Contains(controlKeys, walletKey) {
+			ux.Logger.PrintToUser("Adding wallet key %s to the tx subnet auth keys as it is a subnet control key", walletKey)
+			subnetAuthKeys = append(subnetAuthKeys, walletKey)
+			index, err := getIndexInSlice(filteredControlKeys, walletKey)
+			if err != nil {
+				return nil, err
+			}
+			filteredControlKeys = append(filteredControlKeys[:index], filteredControlKeys[index+1:]...)
 		}
-		filteredControlKeys = append(filteredControlKeys[:index], filteredControlKeys[index+1:]...)
 	}
 	for len(subnetAuthKeys) != int(threshold) {
 		subnetAuthKey, err := prompt.CaptureList(

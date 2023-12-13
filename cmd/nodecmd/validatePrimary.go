@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
-	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
+	"golang.org/x/exp/maps"
 
-	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/utils/units"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 
@@ -94,8 +94,7 @@ func GetMinStakingAmount(network models.Network) (uint64, error) {
 
 func joinAsPrimaryNetworkValidator(
 	network models.Network,
-	kc keychain.Keychain,
-	useLedger bool,
+	kc *keychain.Keychain,
 	nodeID ids.NodeID,
 	nodeIndex int,
 	signingKeyPath string,
@@ -125,21 +124,11 @@ func joinAsPrimaryNetworkValidator(
 	}
 
 	recipientAddr := kc.Addresses().List()[0]
-	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	deployer := subnet.NewPublicDeployer(app, kc, network)
 	PrintNodeJoinPrimaryNetworkOutput(nodeID, weight, network, start)
 	// we set the starting time for node to be a Primary Network Validator to be in 1 minute
 	// we use min delegation fee as default
-	var delegationFee uint32
-	switch network.Kind {
-	case models.Mainnet:
-		delegationFee = genesis.MainnetParams.MinDelegationFee
-	case models.Fuji:
-		delegationFee = genesis.FujiParams.MinDelegationFee
-	case models.Devnet:
-		delegationFee = genesis.LocalParams.MinDelegationFee
-	default:
-		return fmt.Errorf("unsupported network")
-	}
+	delegationFee := network.GenesisParams().MinDelegationFee
 	blsKeyBytes, err := os.ReadFile(signingKeyPath)
 	if err != nil {
 		return err
@@ -164,17 +153,7 @@ func joinAsPrimaryNetworkValidator(
 }
 
 func PromptWeightPrimaryNetwork(network models.Network) (uint64, error) {
-	var defaultStake uint64
-	switch network.Kind {
-	case models.Mainnet:
-		defaultStake = genesis.MainnetParams.MinValidatorStake
-	case models.Fuji:
-		defaultStake = genesis.FujiParams.MinValidatorStake
-	case models.Devnet:
-		defaultStake = genesis.LocalParams.MinValidatorStake
-	default:
-		return 0, fmt.Errorf("unsupported network")
-	}
+	defaultStake := network.GenesisParams().MinValidatorStake
 	defaultWeight := fmt.Sprintf("Default (%s)", convertNanoAvaxToAvaxString(defaultStake))
 	txt := "What stake weight would you like to assign to the validator?"
 	weightOptions := []string{defaultWeight, "Custom"}
@@ -300,8 +279,7 @@ func checkNodeIsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Networ
 // as it impacts the output in adding node as subnet validator in the next steps
 func addNodeAsPrimaryNetworkValidator(
 	network models.Network,
-	kc keychain.Keychain,
-	useLedger bool,
+	kc *keychain.Keychain,
 	nodeID ids.NodeID,
 	nodeIndex int,
 	instanceID string,
@@ -312,7 +290,7 @@ func addNodeAsPrimaryNetworkValidator(
 	}
 	if !isValidator {
 		signingKeyPath := app.GetNodeBLSSecretKeyPath(instanceID)
-		if err = joinAsPrimaryNetworkValidator(network, kc, useLedger, nodeID, nodeIndex, signingKeyPath, true); err != nil {
+		if err = joinAsPrimaryNetworkValidator(network, kc, nodeID, nodeIndex, signingKeyPath, true); err != nil {
 			return false, err
 		}
 		ux.Logger.PrintToUser(fmt.Sprintf("Node %s successfully added as Primary Network validator!", nodeID.String()))
@@ -333,23 +311,26 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	}
 	network := clustersConfig.Clusters[clusterName].Network
 
-	kc, err := subnetcmd.GetKeychainFromCmdLineFlags(
-		constants.PayTxsFeesMsg,
-		network,
-		keyName,
-		useEwoq,
-		&useLedger,
-		ledgerAddresses,
-	)
-	if err != nil {
-		return err
-	}
-
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
 	defer disconnectHosts(hosts)
+
+	fee := network.GenesisParams().AddPrimaryNetworkValidatorFee * uint64(len(hosts))
+	kc, err := keychain.GetKeychainFromCmdLineFlags(
+		app,
+		constants.PayTxsFeesMsg,
+		network,
+		keyName,
+		useEwoq,
+		useLedger,
+		ledgerAddresses,
+		fee,
+	)
+	if err != nil {
+		return err
+	}
 
 	notBootstrappedNodes, err := checkHostsAreBootstrapped(hosts)
 	if err != nil {
@@ -367,8 +348,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
 	nodeIDMap, failedNodesMap := getNodeIDs(hosts)
-	failedNodes := []string{}
-	nodeErrors := []error{}
+	nodeErrors := map[string]error{}
 	for i, host := range hosts {
 		nodeIDStr, b := nodeIDMap[host.NodeID]
 		if !b {
@@ -377,37 +357,33 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 				return fmt.Errorf("expected to found an error for non mapped node")
 			}
 			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host.NodeID, err)
-			failedNodes = append(failedNodes, host.NodeID)
-			nodeErrors = append(nodeErrors, err)
+			nodeErrors[host.NodeID] = err
 			continue
 		}
 		nodeID, err := ids.NodeIDFromString(nodeIDStr)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host.NodeID, err)
-			failedNodes = append(failedNodes, host.NodeID)
-			nodeErrors = append(nodeErrors, err)
+			nodeErrors[host.NodeID] = err
 			continue
 		}
 		_, clusterNodeID, err := models.HostAnsibleIDToCloudID(host.NodeID)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as Primary Network due to %s", host.NodeID, err.Error())
-			failedNodes = append(failedNodes, host.NodeID)
-			nodeErrors = append(nodeErrors, err)
+			nodeErrors[host.NodeID] = err
 			continue
 		}
-		_, err = addNodeAsPrimaryNetworkValidator(network, kc, useLedger, nodeID, i, clusterNodeID)
+		_, err = addNodeAsPrimaryNetworkValidator(network, kc, nodeID, i, clusterNodeID)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host.NodeID, err)
-			failedNodes = append(failedNodes, host.NodeID)
-			nodeErrors = append(nodeErrors, err)
+			nodeErrors[host.NodeID] = err
 		}
 	}
-	if len(failedNodes) > 0 {
+	if len(nodeErrors) > 0 {
 		ux.Logger.PrintToUser("Failed nodes: ")
-		for i, node := range failedNodes {
-			ux.Logger.PrintToUser(fmt.Sprintf("node %s failed due to %s", node, nodeErrors[i]))
+		for node, nodeErr := range nodeErrors {
+			ux.Logger.PrintToUser("node %s failed due to %v", node, nodeErr)
 		}
-		return fmt.Errorf("node(s) %s failed to validate the Primary Network", failedNodes)
+		return fmt.Errorf("node(s) %s failed to validate the Primary Network", maps.Keys(nodeErrors))
 	} else {
 		ux.Logger.PrintToUser(fmt.Sprintf("All nodes in cluster %s are successfully added as Primary Network validators!", clusterName))
 	}

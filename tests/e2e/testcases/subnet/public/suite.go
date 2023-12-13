@@ -103,8 +103,8 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(8, ledger1Seed, true)
 		}
 		// fund ledger address
-		feeConfig := genesis.MainnetParams.TxFeeConfig
-		err := utils.FundLedgerAddress(feeConfig.CreateSubnetTxFee + feeConfig.CreateBlockchainTxFee)
+		genesisParams := genesis.MainnetParams
+		err := utils.FundLedgerAddress(genesisParams.CreateSubnetTxFee + genesisParams.CreateBlockchainTxFee + genesisParams.TxFee)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println()
 		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
@@ -292,18 +292,19 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			txPath,
 			true,
 		)
-		toMatch := "(?s).+Ledger addresses:.+  " + ledger1Addr + ".+Error: error building tx: insufficient funds.+"
+		toMatch := "(?s).+Not enough funds in the first .+ indices of Ledger.+Error: not enough funds on ledger.+"
 		matched, err := regexp.MatchString(toMatch, s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
 		// let's fund the ledger
-		err = utils.FundLedgerAddress(genesis.MainnetParams.TxFeeConfig.CreateSubnetTxFee + genesis.MainnetParams.TxFeeConfig.CreateBlockchainTxFee)
+		genesisParams := genesis.MainnetParams
+		err = utils.FundLedgerAddress(genesisParams.CreateSubnetTxFee + genesisParams.CreateBlockchainTxFee + genesisParams.TxFee)
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		// multisig deploy from funded ledger1 should create the subnet but not deploy the blockchain,
 		// instead signing only its tx fee as it is not a subnet auth key,
 		// and creating the tx file to wait for subnet auths from ledger2 and ledger3
-		gomega.Expect(err).Should(gomega.BeNil())
 		s = commands.SimulateMultisigMainnetDeploy(
 			subnetName,
 			[]string{ledger2Addr, ledger3Addr, ledger4Addr},

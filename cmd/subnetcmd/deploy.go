@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -24,8 +25,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/olekukonko/tablewriter"
@@ -33,8 +32,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/mod/semver"
 )
-
-const numLedgerAddressesToSearch = 1000
 
 var (
 	deployLocal              bool
@@ -92,7 +89,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "deploy to mainnet")
 	cmd.Flags().StringVar(&userProvidedAvagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet deploy only]")
-	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use creation key as control key")
+	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use the fee-paying key as control key")
 	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to make subnet changes")
 	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may make subnet changes")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate chain creation")
@@ -396,26 +393,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// from here on we are assuming a public deploy
 
-	kc, err := GetKeychainFromCmdLineFlags(
-		constants.PayTxsFeesMsg,
-		network,
-		keyName,
-		useEwoq,
-		&useLedger,
-		ledgerAddresses,
-	)
-	if err != nil {
-		return err
-	}
-
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
-
 	createSubnet := true
 	var subnetID ids.ID
-
 	if subnetIDStr != "" {
 		subnetID, err = ids.FromString(subnetIDStr)
 		if err != nil {
@@ -432,22 +411,46 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	fee := network.GenesisParams().CreateBlockchainTxFee
+	if createSubnet {
+		fee += network.GenesisParams().CreateSubnetTxFee
+	}
+	kc, err := keychain.GetKeychainFromCmdLineFlags(
+		app,
+		constants.PayTxsFeesMsg,
+		network,
+		keyName,
+		useEwoq,
+		useLedger,
+		ledgerAddresses,
+		fee,
+	)
+	if err != nil {
+		return err
+	}
+
+	network.HandlePublicNetworkSimulation()
+
 	if createSubnet {
 		// accept only one control keys specification
 		if len(controlKeys) > 0 && sameControlKey {
 			return errMutuallyExlusiveControlKeys
 		}
-		// use creation key as control key
+		// use first fee-paying key as control key
 		if sameControlKey {
-			controlKeys, err = loadCreationKeys(network, kc)
+			kcKeys, err := kc.PChainFormattedStrAddresses()
 			if err != nil {
 				return err
 			}
+			if len(kcKeys) == 0 {
+				return fmt.Errorf("no keys found on keychain")
+			}
+			controlKeys = kcKeys[:1]
 		}
 		// prompt for control keys
 		if controlKeys == nil {
 			var cancelled bool
-			controlKeys, cancelled, err = getControlKeys(network, useLedger, kc)
+			controlKeys, cancelled, err = getControlKeys(kc)
 			if err != nil {
 				return err
 			}
@@ -480,19 +483,23 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	walletKeys, err := loadCreationKeys(network, kc)
+	// add control keys to the keychain whenever possible
+	if err := kc.AddAddresses(controlKeys); err != nil {
+		return err
+	}
+
+	kcKeys, err := kc.PChainFormattedStrAddresses()
 	if err != nil {
 		return err
 	}
-	walletKey := walletKeys[0]
 
 	// get keys for blockchain tx signing
 	if subnetAuthKeys != nil {
-		if err := prompts.CheckSubnetAuthKeys(walletKey, subnetAuthKeys, controlKeys, threshold); err != nil {
+		if err := prompts.CheckSubnetAuthKeys(kcKeys, subnetAuthKeys, controlKeys, threshold); err != nil {
 			return err
 		}
 	} else {
-		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, walletKey, controlKeys, threshold)
+		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, kcKeys, controlKeys, threshold)
 		if err != nil {
 			return err
 		}
@@ -500,7 +507,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Your subnet auth keys for chain creation: %s", subnetAuthKeys)
 
 	// deploy to public network
-	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	deployer := subnet.NewPublicDeployer(app, kc, network)
 
 	if createSubnet {
 		subnetID, err = deployer.DeploySubnet(controlKeys, threshold)
@@ -550,7 +557,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
 }
 
-func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain) ([]string, bool, error) {
+func getControlKeys(kc *keychain.Keychain) ([]string, bool, error) {
 	controlKeysInitialPrompt := "Configure which addresses may make changes to the subnet.\n" +
 		"These addresses are known as your control keys. You will also\n" +
 		"set how many control keys are required to make a subnet change (the threshold)."
@@ -563,17 +570,17 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain
 		custom = "Custom list"
 	)
 
-	var creation string
+	var feePaying string
 	var listOptions []string
-	if useLedger {
-		creation = "Use ledger address"
+	if kc.UsesLedger {
+		feePaying = "Use ledger address"
 	} else {
-		creation = "Use fee-paying key"
+		feePaying = "Use fee-paying key"
 	}
-	if network.Kind == models.Mainnet {
-		listOptions = []string{creation, custom}
+	if kc.Network.Kind == models.Mainnet {
+		listOptions = []string{feePaying, custom}
 	} else {
-		listOptions = []string{creation, useAll, custom}
+		listOptions = []string{feePaying, useAll, custom}
 	}
 
 	listDecision, err := app.Prompt.CaptureList(moreKeysPrompt, listOptions)
@@ -587,12 +594,20 @@ func getControlKeys(network models.Network, useLedger bool, kc keychain.Keychain
 	)
 
 	switch listDecision {
-	case creation:
-		keys, err = loadCreationKeys(network, kc)
+	case feePaying:
+		var kcKeys []string
+		kcKeys, err = kc.PChainFormattedStrAddresses()
+		if err != nil {
+			return nil, false, err
+		}
+		if len(kcKeys) == 0 {
+			return nil, false, fmt.Errorf("no keys found on keychain")
+		}
+		keys = kcKeys[:1]
 	case useAll:
-		keys, err = useAllKeys(network)
+		keys, err = useAllKeys(kc.Network)
 	case custom:
-		keys, cancelled, err = enterCustomKeys(network)
+		keys, cancelled, err = enterCustomKeys(kc.Network)
 	}
 	if err != nil {
 		return nil, false, err
@@ -629,24 +644,6 @@ func useAllKeys(network models.Network) ([]string, error) {
 	}
 
 	return existing, nil
-}
-
-func loadCreationKeys(network models.Network, kc keychain.Keychain) ([]string, error) {
-	addrs := kc.Addresses().List()
-	if len(addrs) == 0 {
-		return nil, fmt.Errorf("no creation addresses found")
-	}
-	hrp := key.GetHRP(network.ID)
-	addrsStr := []string{}
-	for _, addr := range addrs {
-		addrStr, err := address.Format("P", hrp, addr[:])
-		if err != nil {
-			return nil, err
-		}
-		addrsStr = append(addrsStr, addrStr)
-	}
-
-	return addrsStr, nil
 }
 
 func enterCustomKeys(network models.Network) ([]string, bool, error) {
