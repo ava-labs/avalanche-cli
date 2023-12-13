@@ -17,7 +17,7 @@ import (
 
 func newSSHCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "ssh [clusterName/NodeID/InstanceID/IP] [cmd]",
+		Use:   "ssh [clusterName|nodeID|instanceID|IP] [cmd]",
 		Short: "(ALPHA Warning) Execute ssh command on node(s)",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
