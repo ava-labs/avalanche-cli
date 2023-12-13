@@ -28,6 +28,8 @@ var (
 	startTimeStr           string
 	duration               time.Duration
 	defaultValidatorParams bool
+	useDefaultStartTime    bool
+	useDefaultDuration     bool
 
 	errNoSubnetID = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 )
@@ -54,10 +56,15 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
 	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
+
+	cmd.Flags().BoolVar(&useDefaultStartTime, "use-default-start-time", false, "use default start time for subnet validator (5 minutes from now, unless devnet which is 30 seconds)")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
+
+	cmd.Flags().BoolVar(&useDefaultDuration, "use-default-duration", false, "set duration so as to validate until primary validator ends its period")
+	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
+
 	cmd.Flags().BoolVar(&defaultValidatorParams, "default-validator-params", false, "use default weight/start/duration params for subnet validator")
 
-	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
 	cmd.Flags().StringVar(&endpoint, "endpoint", "", "use the given endpoint for network operations")
 	cmd.Flags().BoolVar(&deployLocal, "local", false, "add subnet validator on `local`")
 	cmd.Flags().BoolVar(&deployDevnet, "devnet", false, "add subnet validator on `devnet`")
@@ -288,6 +295,8 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bo
 		defaultDurationOption = "Until primary network validator expires"
 		custom                = "Custom"
 	)
+	fmt.Println(defaultStartOption)
+	return time.Time{}, 0, fmt.Errorf("pepe")
 
 	if startTimeStr == "" {
 		if isValidator {
