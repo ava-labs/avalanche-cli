@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	pb "github.com/ava-labs/avalanchego/proto/pb/vm/runtime"
+	"github.com/ava-labs/avalanchego/version"
 	"github.com/ava-labs/avalanchego/vms/rpcchainvm/grpcutils"
 	"github.com/ava-labs/avalanchego/vms/rpcchainvm/gruntime"
 	"github.com/ava-labs/avalanchego/vms/rpcchainvm/runtime"
@@ -23,6 +23,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"golang.org/x/mod/semver"
 )
 
@@ -175,14 +176,16 @@ func GetAvalancheGoVersionsForRPC(app *application.Avalanche, rpcVersion int, ur
 		return nil, err
 	}
 
-	eligibleVersions, ok := parsedCompat[strconv.Itoa(rpcVersion)]
+	eligibleVersions, ok := parsedCompat[uint(rpcVersion)]
 	if !ok {
 		return nil, ErrNoAvagoVersion
 	}
 
+	eligibleVersionsStrSlice := utils.Map(eligibleVersions, func(v *version.Semantic) string { return v.String() })
+
 	// versions are not necessarily sorted, so we need to sort them, tho this puts them in ascending order
-	semver.Sort(eligibleVersions)
-	return eligibleVersions, nil
+	semver.Sort(eligibleVersionsStrSlice)
+	return eligibleVersionsStrSlice, nil
 }
 
 // GetAvailableAvalancheGoVersions returns list of only available for download avalanche go versions,

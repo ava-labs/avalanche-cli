@@ -226,7 +226,7 @@ const (
 
 	AvalancheGoVersionUnknown            = "n/a"
 	AvalancheGoCompatibilityVersionAdded = "v1.9.2"
-	AvalancheGoCompatibilityURL          = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
+	AvalancheGoCompatibilityURL          = "https://raw.githubusercontent.com/ava-labs/avalanchego/simplify-version/version/compatibility.json"
 	SubnetEVMRPCCompatibilityURL         = "https://raw.githubusercontent.com/ava-labs/subnet-evm/master/compatibility.json"
 
 	YesLabel = "Yes"
