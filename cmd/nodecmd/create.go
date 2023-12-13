@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"io"
 	"net"
 	"net/http"
@@ -223,7 +224,14 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 		}
 		if separateMonitoringInstance {
-			if err = awsAPI.AddSecurityGroupRule(ec2Svc, monitoringCloudConfig.PublicIPs[0], monitoringCloudConfig.SecurityGroup); err != nil {
+			if monitoringCloudConfig.Region != cloudConfig.Region {
+				sess, err := getAWSCloudCredentials(awsProfile, cloudConfig.Region, "", true)
+				if err != nil {
+					return err
+				}
+				ec2Svc = ec2.New(sess)
+			}
+			if err = awsAPI.AddSecurityGroupRule(ec2Svc, monitoringCloudConfig.PublicIPs[0], cloudConfig.SecurityGroup); err != nil {
 				return err
 			}
 		}
