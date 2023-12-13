@@ -13,7 +13,6 @@ import (
 	"time"
 
 	pb "github.com/ava-labs/avalanchego/proto/pb/vm/runtime"
-	"github.com/ava-labs/avalanchego/version"
 	"github.com/ava-labs/avalanchego/vms/rpcchainvm/grpcutils"
 	"github.com/ava-labs/avalanchego/vms/rpcchainvm/gruntime"
 	"github.com/ava-labs/avalanchego/vms/rpcchainvm/runtime"
@@ -181,7 +180,7 @@ func GetAvalancheGoVersionsForRPC(app *application.Avalanche, rpcVersion int, ur
 		return nil, ErrNoAvagoVersion
 	}
 
-	eligibleVersionsStrSlice := utils.Map(eligibleVersions, func(v *version.Semantic) string { return v.String() })
+	eligibleVersionsStrSlice := utils.SemanticSliceToStringSlice(eligibleVersions)
 
 	// versions are not necessarily sorted, so we need to sort them, tho this puts them in ascending order
 	semver.Sort(eligibleVersionsStrSlice)

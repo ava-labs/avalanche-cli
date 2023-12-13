@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/mod/semver"
@@ -79,7 +79,7 @@ func (m *testMapper) GetLatestAvagoByProtoVersion(_ *application.Avalanche, rpcV
 	if err := json.Unmarshal(cBytes, &compat); err != nil {
 		return "", err
 	}
-	vers := compat[strconv.Itoa(rpcVersion)]
+	vers := utils.SemanticSliceToStringSlice(compat[uint(rpcVersion)])
 	if len(vers) == 0 {
 		return "", errors.New("test zero length versions")
 	}
@@ -198,14 +198,14 @@ func TestGetVersionMapping(t *testing.T) {
 				  }`,
 			sourceAvago: `{
 						"19": [
-							"v1.9.2",
-							"v1.9.3"
+							{"major": 1, "minor": 9, "patch": 2},
+							{"major": 1, "minor": 9, "patch": 3}
 						],
 						"18": [
-							"v1.9.1"
+							{"major": 1, "minor": 9, "patch": 1}
 						],
 						"17": [
-							"v1.9.0"
+							{"major": 1, "minor": 9, "patch": 0}
 						]
 				  }`,
 		},
@@ -237,14 +237,14 @@ func TestGetVersionMapping(t *testing.T) {
 			  }`,
 			sourceAvago: `{
 					"99": [
-						"v2.3.4",
-						"v2.3.3"
+						{"major": 2, "minor": 3, "patch": 4},
+						{"major": 2, "minor": 3, "patch": 3}
 					],
 					"18": [
-						"v1.9.1"
+						{"major": 1, "minor": 9, "patch": 1}
 					],
 					"17": [
-						"v1.9.0"
+						{"major": 1, "minor": 9, "patch": 0}
 					]
 			  }`,
 		},
@@ -278,26 +278,26 @@ func TestGetVersionMapping(t *testing.T) {
 			  }`,
 			sourceAvago: `{
 					"99": [
-						"v4.3.2"
+						{"major": 4, "minor": 3, "patch": 2}
 					],
 					"88": [
-						"v2.3.4"
+						{"major": 2, "minor": 3, "patch": 4}
 					],
 					"87": [
-						"v2.2.2"
+						{"major": 2, "minor": 2, "patch": 2}
 					],
 					"86": [
-						"v2.2.1"
+						{"major": 2, "minor": 2, "patch": 1}
 					],
 					"77": [
-						"v2.1.1",
-						"v2.1.0"
+						{"major": 2, "minor": 1, "patch": 1},
+						{"major": 2, "minor": 1, "patch": 0}
 					],
 					"18": [
-						"v1.9.1"
+						{"major": 1, "minor": 9, "patch": 1}
 					],
 					"17": [
-						"v1.9.0"
+						{"major": 1, "minor": 9, "patch": 0}
 					]
 			  }`,
 		},
@@ -339,14 +339,14 @@ func TestGetVersionMapping(t *testing.T) {
 			sourceEVM:  `{}`,
 			sourceAvago: `{
 					"99": [
-						"v2.3.4",
-						"v2.3.3"
+						{"major": 2, "minor": 3, "patch": 4},
+						{"major": 2, "minor": 3, "patch": 3}
 					],
 					"18": [
-						"v1.9.1"
+						{"major": 1, "minor": 9, "patch": 1}
 					],
 					"17": [
-						"v1.9.0"
+						{"major": 1, "minor": 9, "patch": 0}
 					]
 			  }`,
 		},

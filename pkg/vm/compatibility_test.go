@@ -21,10 +21,10 @@ const (
 
 var (
 	testSubnetEVMCompat = []byte("{\"rpcChainVMProtocolVersion\": {\"v0.4.2\": 18,\"v0.4.1\": 18,\"v0.4.0\": 17}}")
-	testAvagoCompat     = []byte("{\"19\": [\"v1.9.2\"],\"18\": [\"v1.9.1\"],\"17\": [\"v1.9.0\",\"v1.8.0\"]}")
-	testAvagoCompat2    = []byte("{\"19\": [\"v1.9.2\", \"v1.9.1\"],\"18\": [\"v1.9.0\"]}")
-	testAvagoCompat3    = []byte("{\"19\": [\"v1.9.1\", \"v1.9.2\"],\"18\": [\"v1.9.0\"]}")
-	testAvagoCompat4    = []byte("{\"19\": [\"v1.9.1\", \"v1.9.2\", \"v1.9.11\"],\"18\": [\"v1.9.0\"]}")
+	testAvagoCompat     = []byte("{\"19\": [{\"major\": 1, \"minor\": 9, \"patch\": 2}], \"18\": [{\"major\": 1, \"minor\": 9, \"patch\": 1}], \"17\": [{\"major\": 1, \"minor\": 9, \"patch\": 0},{\"major\": 1, \"minor\": 8, \"patch\": 0}]}")
+	testAvagoCompat2    = []byte("{\"19\": [{\"major\": 1, \"minor\": 9, \"patch\": 2}, {\"major\": 1, \"minor\": 9, \"patch\": 1}], \"18\": [{\"major\": 1, \"minor\": 9, \"patch\": 0}]}")
+	testAvagoCompat3    = []byte("{\"19\": [{\"major\": 1, \"minor\": 9, \"patch\": 1}, {\"major\": 1, \"minor\": 9, \"patch\": 2}], \"18\": [{\"major\": 1, \"minor\": 9, \"patch\": 0}]}")
+	testAvagoCompat4    = []byte("{\"19\": [{\"major\": 1, \"minor\": 9, \"patch\": 1}, {\"major\": 1, \"minor\": 9, \"patch\": 2}, {\"major\": 1, \"minor\": 9, \"patch\": 11}], \"18\": [{\"major\": 1, \"minor\": 9, \"patch\": 0}]}")
 )
 
 func TestGetRPCProtocolVersionSubnetEVM(t *testing.T) {

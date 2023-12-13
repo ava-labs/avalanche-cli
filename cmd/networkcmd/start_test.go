@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testAvagoCompat = []byte("{\"19\": [\"v1.9.2\"],\"18\": [\"v1.9.1\"],\"17\": [\"v1.9.0\",\"v1.8.0\"]}")
+var testAvagoCompat = []byte("{\"19\": [{\"major\": 1, \"minor\": 9, \"patch\": 2}],\"18\": [{\"major\": 1, \"minor\": 9, \"patch\": 1}],\"17\": [{\"major\": 1, \"minor\": 9, \"patch\": 0},{\"major\": 1, \"minor\": 8, \"patch\": 0}]}")
 
 func Test_determineAvagoVersion(t *testing.T) {
 	subnetName1 := "test1"
