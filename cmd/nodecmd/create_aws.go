@@ -4,7 +4,6 @@ package nodecmd
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"os/user"
 	"strings"
@@ -12,24 +11,17 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/hashicorp/hcl/v2/hclwrite"
 	"golang.org/x/exp/maps"
 
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
-	"github.com/ava-labs/avalanche-cli/pkg/terraform"
-	terraformaws "github.com/ava-labs/avalanche-cli/pkg/terraform/aws"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
-func getNewKeyPairName(ec2Svc *ec2.EC2) (string, error) {
+func getNewKeyPairName(ec2Svc *awsAPI.AwsCloud) (string, error) {
 	newKeyPairName := cmdLineAlternativeKeyPairName
 	for {
 		if newKeyPairName != "" {
-			keyPairExists, err := awsAPI.CheckKeyPairExists(ec2Svc, newKeyPairName)
+			keyPairExists, err := ec2Svc.CheckKeyPairExists(newKeyPairName)
 			if err != nil {
 				return "", err
 			}
@@ -73,96 +65,67 @@ func printExpiredCredentialsOutput(awsProfile string) {
 }
 
 // getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
-func getAWSCloudCredentials(awsProfile, region string) (*session.Session, error) {
+func getAWSCloudCredentials(awsProfile, region string) (*awsAPI.AwsCloud, error) {
 	if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 		return nil, fmt.Errorf("cloud access is required")
 	}
-	// use env variables first and fallback to shared config
-	creds := credentials.NewEnvCredentials()
-	if _, err := creds.Get(); err != nil {
-		creds = credentials.NewSharedCredentials("", awsProfile)
-		if _, err := creds.Get(); err != nil {
-			printNoCredentialsOutput(awsProfile)
-			return &session.Session{}, err
-		}
-	}
-	// Load session from shared config
-	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String(region),
-		Credentials: creds,
-	})
-	if err != nil {
-		return &session.Session{}, err
-	}
-	return sess, nil
+	return awsAPI.NewAwsCloud(awsProfile, region)
 }
 
 // promptKeyPairName get custom name for key pair if the default key pair name that we use cannot be used for this EC2 instance
-func promptKeyPairName(ec2Svc *ec2.EC2) (string, string, error) {
-	newKeyPairName, err := getNewKeyPairName(ec2Svc)
+func promptKeyPairName(ec2 *awsAPI.AwsCloud) (string, error) {
+	newKeyPairName, err := getNewKeyPairName(ec2)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
-	certName := newKeyPairName + constants.CertSuffix
-	return certName, newKeyPairName, nil
+	return newKeyPairName, nil
 }
 
-func getAWSCloudConfig(awsProfile string) ([]string, []int, map[string]*ec2.EC2, map[string]string, error) {
+func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[string]string, map[string]int, error) {
 	finalRegions := map[string]int{}
 	switch {
 	case len(numNodes) != len(utils.Unique(cmdLineRegion)):
-		return nil, nil, nil, nil, fmt.Errorf("number of nodes and regions should be the same")
+		return nil, nil, nil, fmt.Errorf("number of nodes and regions should be the same")
 	case len(cmdLineRegion) == 0 && len(numNodes) == 0:
 		var err error
 		finalRegions, err = getRegionsNodeNum(constants.AWSCloudService)
 		if err != nil {
-			return nil, nil, nil, nil, err
+			return nil, nil, nil, err
 		}
 	default:
 		for i, region := range cmdLineRegion {
 			finalRegions[region] = numNodes[i]
 		}
 	}
-	ec2SvcMap := map[string]*ec2.EC2{}
+	ec2SvcMap := map[string]*awsAPI.AwsCloud{}
 	amiMap := map[string]string{}
+	numNodesMap := map[string]int{}
 	for region := range finalRegions {
-		sess, err := getAWSCloudCredentials(awsProfile, region)
+		var err error
+		ec2SvcMap[region], err = getAWSCloudCredentials(awsProfile, region)
 		if err != nil {
-			return nil, nil, nil, nil, err
+			if !strings.Contains(err.Error(), "cloud access is required") {
+				printNoCredentialsOutput(awsProfile)
+			}
+			return nil, nil, nil, err
 		}
-		ec2SvcMap[region] = ec2.New(sess)
-		amiMap[region], err = awsAPI.GetUbuntuAMIID(ec2SvcMap[region])
+		amiMap[region], err = ec2SvcMap[region].GetUbuntuAMIID()
 		if err != nil {
 			if strings.Contains(err.Error(), "RequestExpired: Request has expired") {
 				printExpiredCredentialsOutput(awsProfile)
 			}
-			return nil, nil, nil, nil, err
+			return nil, nil, nil, err
 		}
+		numNodesMap[region] = finalRegions[region]
 	}
-	return maps.Keys(finalRegions), maps.Values(finalRegions), ec2SvcMap, amiMap, nil
+	return ec2SvcMap, amiMap, numNodesMap, nil
 }
 
-// createEC2Instances creates terraform .tf file and runs terraform exec function to create ec2 instances
-func createEC2Instances(rootBody *hclwrite.Body,
-	ec2Svc map[string]*ec2.EC2,
-	hclFile *hclwrite.File,
-	numNodes []int,
-	awsProfile string,
+// createEC2Instances creates  ec2 instances
+func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	regions []string,
-	ami map[string]string,
 	regionConf map[string]models.RegionConfig,
 ) (map[string][]string, map[string][]string, map[string]string, map[string]string, error) {
-	if err := terraformaws.SetCloudCredentials(rootBody, awsProfile, regions); err != nil {
-		return nil, nil, nil, nil, err
-	}
-
-	for i, region := range regions {
-		if entry, ok := regionConf[region]; ok {
-			entry.NumNodes = numNodes[i]
-			regionConf[region] = entry
-		}
-	}
-
 	ux.Logger.PrintToUser("Creating new EC2 instance(s) on AWS...")
 	userIPAddress, err := getIPAddress()
 	if err != nil {
@@ -170,8 +133,11 @@ func createEC2Instances(rootBody *hclwrite.Body,
 	}
 	useExistingKeyPair := map[string]bool{}
 	keyPairName := map[string]string{}
+	instanceIDs := map[string][]string{}
+	elasticIPs := map[string][]string{}
+	sshCertPath := map[string]string{}
 	for _, region := range regions {
-		keyPairExists, err := awsAPI.CheckKeyPairExists(ec2Svc[region], regionConf[region].Prefix)
+		keyPairExists, err := ec2Svc[region].CheckKeyPairExists(regionConf[region].Prefix)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -182,70 +148,111 @@ func createEC2Instances(rootBody *hclwrite.Body,
 		certName := regionConf[region].CertName
 		keyPairName[region] = regionConf[region].Prefix
 		securityGroupName := regionConf[region].SecurityGroupName
+		privKey, err := app.GetSSHCertFilePath(certName)
+		sgID := ""
 		if !keyPairExists {
+			if err != nil {
+				return nil, nil, nil, nil, err
+			}
 			if !certInSSHDir {
 				ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s in AWS[%s]", keyPairName, region))
-				terraformaws.SetKeyPair(rootBody, region, regionConf[region].Prefix, certName)
+				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
+					return nil, nil, nil, nil, err
+				}
 			} else {
 				ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists on your .ssh directory but not on AWS", regionConf[region].Prefix))
 				ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in AWS[%s]", regionConf[region].Prefix, region))
-				certName, keyPairName[region], err = promptKeyPairName(ec2Svc[region])
+				keyPairName[region], err = promptKeyPairName(ec2Svc[region])
 				if err != nil {
 					return nil, nil, nil, nil, err
 				}
-				terraformaws.SetKeyPair(rootBody, region, keyPairName[region], certName)
+				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
+					return nil, nil, nil, nil, err
+				}
 			}
 		} else {
 			if certInSSHDir {
-				ux.Logger.PrintToUser(fmt.Sprintf("Using existing key pair %s in AWS[%s]", keyPairName, region))
+				ux.Logger.PrintToUser(fmt.Sprintf("Using existing key pair %s in AWS[%s]", keyPairName[region], region))
 				useExistingKeyPair[region] = true
 			} else {
-				ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists in AWS[%s]", keyPairName, region))
+				ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists in AWS[%s]", keyPairName[region], region))
 				ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName))
-				certName, keyPairName[region], err = promptKeyPairName(ec2Svc[region])
+				keyPairName[region], err = promptKeyPairName(ec2Svc[region])
 				if err != nil {
 					return nil, nil, nil, nil, err
 				}
-				terraformaws.SetKeyPair(rootBody, region, keyPairName[region], certName)
+				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
+					return nil, nil, nil, nil, err
+				}
 			}
 		}
-		securityGroupExists, sg, err := awsAPI.CheckSecurityGroupExists(ec2Svc[region], regionConf[region].SecurityGroupName)
+		securityGroupExists, sg, err := ec2Svc[region].CheckSecurityGroupExists(regionConf[region].SecurityGroupName)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
 		if !securityGroupExists {
 			ux.Logger.PrintToUser(fmt.Sprintf("Creating new security group %s in AWS[%s]", securityGroupName, region))
-			terraformaws.SetSecurityGroup(rootBody, region, userIPAddress, securityGroupName)
+			if newSGID, err := ec2Svc[region].SetupSecurityGroup(userIPAddress, regionConf[region].SecurityGroupName); err != nil {
+				return nil, nil, nil, nil, err
+			} else {
+				sgID = newSGID
+			}
 		} else {
+			sgID = *sg.GroupId
 			ux.Logger.PrintToUser(fmt.Sprintf("Using existing security group %s in AWS[%s]", securityGroupName, region))
-			ipInTCP := awsAPI.CheckUserIPInSg(sg, userIPAddress, constants.SSHTCPPort)
-			ipInHTTP := awsAPI.CheckUserIPInSg(sg, userIPAddress, constants.AvalanchegoAPIPort)
-			terraformaws.SetSecurityGroupRule(rootBody, region, userIPAddress, *sg.GroupId, ipInTCP, ipInHTTP)
+			ipInTCP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.SSHTCPPort)
+			ipInHTTP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
+
+			if !ipInTCP {
+				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress, constants.SSHTCPPort); err != nil {
+					return nil, nil, nil, nil, err
+				}
+			}
+			if !ipInHTTP {
+				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress, constants.AvalanchegoAPIPort); err != nil {
+					return nil, nil, nil, nil, err
+				}
+			}
+		}
+		sshCertPath[region] = privKey
+		if instanceIDs[region], err = ec2Svc[region].CreateEC2Instances(
+			regionConf[region].NumNodes,
+			regionConf[region].ImageID,
+			regionConf[region].InstanceType,
+			keyPairName[region],
+			sgID,
+		); err != nil {
+			return nil, nil, nil, nil, err
+		}
+		ux.Logger.PrintToUser(fmt.Sprintf("Waiting for EC2 instances in AWS[%s] to be provisioned...", region))
+		if err := ec2Svc[region].WaitForEC2Instances(instanceIDs[region]); err != nil {
+			return nil, nil, nil, nil, err
 		}
 		if useStaticIP {
-			terraformaws.SetElasticIPs(rootBody, region, regionConf[region].NumNodes)
+			publicIPs := []string{}
+			for count := 0; count < regionConf[region].NumNodes; count++ {
+				allocationID, publicIP, err := ec2Svc[region].CreateEIP()
+				if err != nil {
+					return nil, nil, nil, nil, err
+				}
+				if err := ec2Svc[region].AssociateEIP(instanceIDs[region][count], allocationID); err != nil {
+					return nil, nil, nil, nil, err
+				}
+				publicIPs = append(publicIPs, publicIP)
+			}
+			elasticIPs[region] = publicIPs
+		} else {
+			instanceEIPMap, err := ec2Svc[region].GetInstancePublicIPs(instanceIDs[region])
+			if err != nil {
+				return nil, nil, nil, nil, err
+			}
+			elasticIPs[region] = maps.Values(instanceEIPMap)
 		}
-		terraformaws.SetupInstances(rootBody, region, securityGroupName, useExistingKeyPair[region], keyPairName[region], ami[region], regionConf[region].NumNodes, regionConf[region].InstanceType)
-	}
-	terraformaws.SetOutput(rootBody, regions, useStaticIP)
-
-	err = app.CreateTerraformDir()
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	err = terraform.SaveConf(app.GetTerraformDir(), hclFile)
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-	instanceIDs, elasticIPs, err := terraformaws.RunTerraform(app.GetTerraformDir(), regions, useStaticIP)
-	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("%s, %w", constants.ErrCreatingAWSNode, err)
 	}
 	ux.Logger.PrintToUser("New EC2 instance(s) successfully created in AWS!")
-	sshCertPath := map[string]string{}
 	for _, region := range regions {
 		if !useExistingKeyPair[region] {
-			// takes the cert file downloaded from AWS through terraform and moves it to .ssh directory
+			// takes the cert file downloaded from AWS and moves it to .ssh directory
 			err = addCertToSSH(regionConf[region].CertName)
 			if err != nil {
 				return nil, nil, nil, nil, err
@@ -256,13 +263,14 @@ func createEC2Instances(rootBody *hclwrite.Body,
 			return nil, nil, nil, nil, err
 		}
 	}
+	// instanceIDs, elasticIPs, certFilePath, keyPairName, err
 	return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
 }
 
 func createAWSInstances(
-	ec2Svc map[string]*ec2.EC2,
-	nodeType string, numNodes []int,
-	awsProfile string,
+	ec2Svc map[string]*awsAPI.AwsCloud,
+	nodeType string,
+	numNodes map[string]int,
 	regions []string,
 	ami map[string]string,
 	usr *user.User) (
@@ -274,55 +282,43 @@ func createAWSInstances(
 		prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
 		regionConf[region] = models.RegionConfig{
 			Prefix:            prefix,
+			ImageID:           ami[region],
 			CertName:          prefix + "-" + region + constants.CertSuffix,
 			SecurityGroupName: prefix + "-" + region + constants.AWSSecurityGroupSuffix,
+			NumNodes:          numNodes[region],
 			InstanceType:      nodeType,
 		}
 	}
 
-	hclFile, rootBody, err := terraform.InitConf()
-	if err != nil {
-		return models.CloudConfig{}, nil
-	}
-
 	// Create new EC2 instances
-	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(rootBody, ec2Svc, hclFile, numNodes, awsProfile, regions, ami, regionConf)
+	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(ec2Svc, regions, regionConf)
 	if err != nil {
-		if strings.Contains(err.Error(), terraformaws.TerraformInitErrorStr) {
-			return models.CloudConfig{}, err
-		}
 		if err.Error() == constants.EIPLimitErr {
 			ux.Logger.PrintToUser("Failed to create AWS cloud server(s), please try creating again in a different region")
 		} else {
-			ux.Logger.PrintToUser("Failed to create AWS cloud server(s)")
+			ux.Logger.PrintToUser("Failed to create AWS cloud server(s) with error: %s", err.Error())
 		}
-		if strings.Contains(err.Error(), constants.ErrCreatingAWSNode) {
-			// we stop created instances so that user doesn't pay for unused EC2 instances
-			ux.Logger.PrintToUser("Stopping all created AWS instances due to error to prevent charge for unused AWS instances...")
-			instanceIDs, instanceIDErr := terraformaws.GetInstanceIDs(app.GetTerraformDir(), regions)
-			if instanceIDErr != nil {
-				return models.CloudConfig{}, instanceIDErr
-			}
-			failedNodes := map[string]error{}
-			for region, regionInstanceID := range instanceIDs {
-				for _, instanceID := range regionInstanceID {
-					ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s...", instanceID))
-					if stopErr := awsAPI.StopInstance(ec2Svc[region], instanceID, "", false); stopErr != nil {
-						failedNodes[instanceID] = stopErr
-					}
-					ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s stopped", instanceID))
+		// we stop created instances so that user doesn't pay for unused EC2 instances
+		ux.Logger.PrintToUser("Stopping all created AWS instances due to error to prevent charge for unused AWS instances...")
+		failedNodes := map[string]error{}
+		for region, regionInstanceID := range instanceIDs {
+			for _, instanceID := range regionInstanceID {
+				ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s...", instanceID))
+				if stopErr := ec2Svc[region].StopInstance(instanceID, "", true); stopErr != nil {
+					failedNodes[instanceID] = stopErr
 				}
-			}
-			if len(failedNodes) > 0 {
-				ux.Logger.PrintToUser("Failed nodes: ")
-				for node, err := range failedNodes {
-					ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err))
-				}
-				ux.Logger.PrintToUser("Stop the above instance(s) on AWS console to prevent charges")
-				return models.CloudConfig{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)
+				ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s stopped", instanceID))
 			}
 		}
-		return nil, err
+		if len(failedNodes) > 0 {
+			ux.Logger.PrintToUser("Failed nodes: ")
+			for node, err := range failedNodes {
+				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err))
+			}
+			ux.Logger.PrintToUser("Stop the above instance(s) on AWS console to prevent charges")
+			return models.CloudConfig{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)
+		}
+		return models.CloudConfig{}, err
 	}
 	awsCloudConfig := models.CloudConfig{}
 	for _, region := range regions {
@@ -338,18 +334,9 @@ func createAWSInstances(
 	return awsCloudConfig, nil
 }
 
-// addCertToSSH takes the cert file downloaded from AWS through terraform and moves it to .ssh directory
+// addCertToSSH takes the cert file downloaded from AWS and moves it to .ssh directory
 func addCertToSSH(certName string) error {
-	certPath := app.GetTempCertPath(certName)
-	err := os.Chmod(certPath, 0o400)
-	if err != nil {
-		return err
-	}
 	certFilePath, err := app.GetSSHCertFilePath(certName)
-	if err != nil {
-		return err
-	}
-	err = os.Rename(certPath, certFilePath)
 	if err != nil {
 		return err
 	}

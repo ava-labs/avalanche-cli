@@ -20,10 +20,8 @@
 
 # ignore GoLand metafiles directory
 .idea/
-.terraform/
-.terraform.lock.hcl
 node_config.tf
-terraform.tfstate
+
 inventories/
 *logs/
 
