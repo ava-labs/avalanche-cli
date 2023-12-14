@@ -142,6 +142,9 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			return nil, nil, nil, nil, err
 		}
 		certInSSHDir, err := app.CheckCertInSSHDir(regionConf[region].CertName)
+		if useSSHAgent {
+			certInSSHDir = true // if using ssh agent, we consider that we have a cert on hand
+		}
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -149,19 +152,31 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		keyPairName[region] = regionConf[region].Prefix
 		securityGroupName := regionConf[region].SecurityGroupName
 		privKey, err := app.GetSSHCertFilePath(certName)
+		if useSSHAgent {
+			privKey = sshIdentity
+		}
 		sgID := ""
 		if !keyPairExists {
 			if err != nil {
 				return nil, nil, nil, nil, err
 			}
 			if !certInSSHDir {
-				ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s in AWS[%s]", keyPairName, region))
-				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
-					return nil, nil, nil, nil, err
+				ux.Logger.PrintToUser("Creating new key pair %s in AWS[%s]", keyPairName, region)
+				if useSSHAgent {
+					if err := ec2Svc[region].UploadKeyPair(regionConf[region].Prefix, privKey); err != nil {
+						return nil, nil, nil, nil, err
+					}
+				} else {
+					if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
+						return nil, nil, nil, nil, err
+					}
 				}
 			} else {
-				ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists on your .ssh directory but not on AWS", regionConf[region].Prefix))
-				ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in AWS[%s]", regionConf[region].Prefix, region))
+				if !useSSHAgent {
+					ux.Logger.PrintToUser("Default Key Pair named %s already exists on your .ssh directory but not on AWS", regionConf[region].Prefix)
+
+				}
+				ux.Logger.PrintToUser("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in AWS[%s]", regionConf[region].Prefix, region)
 				keyPairName[region], err = promptKeyPairName(ec2Svc[region])
 				if err != nil {
 					return nil, nil, nil, nil, err
@@ -172,11 +187,11 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			}
 		} else {
 			if certInSSHDir {
-				ux.Logger.PrintToUser(fmt.Sprintf("Using existing key pair %s in AWS[%s]", keyPairName[region], region))
+				ux.Logger.PrintToUser("Using existing key pair %s in AWS[%s]", keyPairName[region], region)
 				useExistingKeyPair[region] = true
 			} else {
-				ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists in AWS[%s]", keyPairName[region], region))
-				ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName))
+				ux.Logger.PrintToUser("Default Key Pair named %s already exists in AWS[%s]", keyPairName[region], region)
+				ux.Logger.PrintToUser("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName)
 				keyPairName[region], err = promptKeyPairName(ec2Svc[region])
 				if err != nil {
 					return nil, nil, nil, nil, err

@@ -179,9 +179,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	fmt.Println(useSSHAgent)
-	fmt.Println(sshIdentity)
-	os.Exit(0)
 	if cloudService == constants.AWSCloudService { // Get AWS Credential, region and AMI
 		ec2SvcMap, ami, numNodesMap, err := getAWSCloudConfig(awsProfile)
 		regions := maps.Keys(ec2SvcMap)

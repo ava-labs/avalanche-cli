@@ -336,6 +336,21 @@ func (c *AwsCloud) CreateAndDownloadKeyPair(keyName string, privateKeyFilePath s
 	return nil
 }
 
+func (c *AwsCloud) UploadKeyPair(keyName string, identity string) error {
+	createKeyPairOutput, err := c.ec2Client.CreateKeyPair(c.ctx, &ec2.CreateKeyPairInput{
+		KeyName: aws.String(keyName),
+	})
+	if err != nil {
+		return err
+	}
+	privateKeyMaterial := *createKeyPairOutput.KeyMaterial
+	err = os.WriteFile(privateKeyFilePath, []byte(privateKeyMaterial), 0o600)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // SetupSecurityGroup sets up a security group for the AwsCloud instance.
 func (c *AwsCloud) SetupSecurityGroup(ipAddress, securityGroupName string) (string, error) {
 	sgID, err := c.CreateSecurityGroup(securityGroupName, "Allow SSH, AVAX HTTP outbound traffic")
