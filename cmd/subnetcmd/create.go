@@ -33,6 +33,7 @@ var (
 	useCustom           bool
 	evmVersion          string
 	useLatestEvmVersion bool
+	useRepo             bool
 
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
@@ -65,10 +66,12 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
 	cmd.Flags().BoolVar(&useLatestEvmVersion, latest, false, "use latest Subnet-Evm version, takes precedence over --vm-version")
 	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
-	cmd.Flags().StringVar(&vmFile, "custom-vm-path", "", "file path of custom vm to use (deprecation warning: will be generated if not given)")
+	cmd.Flags().StringVar(&vmFile, "vm", "", "file path of custom vm to use. alias to custom-vm-path")
+	cmd.Flags().StringVar(&vmFile, "custom-vm-path", "", "file path of custom vm to use")
 	cmd.Flags().StringVar(&customVMRepoURL, "custom-vm-repo-url", "", "custom vm repository url")
 	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch")
 	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
+	cmd.Flags().BoolVar(&useRepo, "from-github-repo", false, "generate custom VM binary from github repository")
 	return cmd
 }
 
@@ -175,6 +178,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			app,
 			subnetName,
 			genesisFile,
+			useRepo,
 			customVMRepoURL,
 			customVMBranch,
 			customVMBuildScript,
