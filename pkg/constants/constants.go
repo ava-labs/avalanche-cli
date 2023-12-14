@@ -26,7 +26,6 @@ const (
 	GenesisSuffix                = SuffixSeparator + GenesisFileName
 	NodeFileName                 = "node.json"
 	NodeCloudConfigFileName      = "node_cloud_config.json"
-	TerraformDir                 = "terraform"
 	AnsibleDir                   = "ansible"
 	AnsibleHostInventoryFileName = "hosts"
 	StopAWSNode                  = "stop-aws-node"
@@ -42,6 +41,8 @@ const (
 	MaxLogFileSize   = 4
 	MaxNumOfLogFiles = 5
 	RetainOldFiles   = 0 // retain all old log files
+
+	CloudOperationTimeout = 2 * time.Minute
 
 	ANRRequestTimeout   = 3 * time.Minute
 	APIRequestTimeout   = 30 * time.Second
@@ -118,7 +119,6 @@ const (
 	PrimaryNetworkValidatingStartLeadTimeNodeCmd = 20 * time.Second
 	PrimaryNetworkValidatingStartLeadTime        = 1 * time.Minute
 	AWSCloudServerRunningState                   = "running"
-	TerraformNodeConfigFile                      = "node_config.tf"
 	AvalancheCLISuffix                           = "-avalanche-cli"
 	AWSDefaultCredential                         = "default"
 	GCPDefaultImageProvider                      = "ubuntu-os-cloud"
@@ -133,7 +133,6 @@ const (
 	AvalanchegoP2PPort                           = 9651
 	CloudServerStorageSize                       = 1000
 	OutboundPort                                 = 0
-	Terraform                                    = "terraform"
 	SetupCLIFromSourceBranch                     = "main"
 	// Set this one to true while testing changes that alter CLI execution on cloud nodes
 	// Disable it for releases to save cluster creation time

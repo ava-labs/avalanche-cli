@@ -18,10 +18,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
-	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
-	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/ids"
@@ -156,13 +153,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if cloudService != constants.GCPCloudService && cmdLineGCPProjectName != "" {
 		return fmt.Errorf("set to use GCP project but cloud option is not GCP")
 	}
-	if err := terraform.CheckIsInstalled(); err != nil {
-		return err
-	}
-	err = terraform.RemoveDirectory(app.GetTerraformDir())
-	if err != nil {
-		return err
-	}
 	usr, err := user.Current()
 	if err != nil {
 		return err
@@ -172,17 +162,18 @@ func createNodes(_ *cobra.Command, args []string) error {
 	gcpProjectName := ""
 	gcpCredentialFilepath := ""
 	if cloudService == constants.AWSCloudService { // Get AWS Credential, region and AMI
-		regions, numNodes, ec2SvcMap, ami, err := getAWSCloudConfig(awsProfile)
+		ec2SvcMap, ami, numNodesMap, err := getAWSCloudConfig(awsProfile)
+		regions := maps.Keys(ec2SvcMap)
 		if err != nil {
 			return err
 		}
-		cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodes, awsProfile, regions, ami, usr)
+		cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodesMap, regions, ami, usr)
 		if err != nil {
 			return err
 		}
 		for _, region := range regions {
 			if !useStaticIP {
-				tmpIPMap, err := awsAPI.GetInstancePublicIPs(ec2SvcMap[region], cloudConfigMap[region].InstanceIDs)
+				tmpIPMap, err := ec2SvcMap[region].GetInstancePublicIPs(cloudConfigMap[region].InstanceIDs)
 				if err != nil {
 					return err
 				}
@@ -201,13 +192,13 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		cloudConfigMap, err = createGCPInstance(usr, gcpClient, nodeType, numNodes, zones, imageID, credentialFilepath, projectName, clusterName)
+		cloudConfigMap, err = createGCPInstance(usr, gcpClient, nodeType, numNodes, zones, imageID, clusterName)
 		if err != nil {
 			return err
 		}
 		for _, zone := range zones {
 			if !useStaticIP {
-				tmpIPMap, err := gcpAPI.GetInstancePublicIPs(gcpClient, projectName, zone, cloudConfigMap[zone].InstanceIDs)
+				tmpIPMap, err := gcpClient.GetInstancePublicIPs(zone, cloudConfigMap[zone].InstanceIDs)
 				if err != nil {
 					return err
 				}
@@ -232,10 +223,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	err = terraform.RemoveDirectory(app.GetTerraformDir())
-	if err != nil {
-		return err
-	}
+
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
 	avalancheGoVersion, err := getAvalancheGoVersion()
 	if err != nil {

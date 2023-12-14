@@ -8,14 +8,13 @@ import (
 	"os"
 	"strings"
 
-	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
+	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 	"golang.org/x/exp/maps"
-	"google.golang.org/api/compute/v1"
+	"golang.org/x/net/context"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -105,9 +104,8 @@ func stopNodes(_ *cobra.Command, args []string) error {
 	}
 	nodeErrors := map[string]error{}
 	lastRegion := ""
-	var ec2Svc *ec2.EC2
-	var gcpClient *compute.Service
-	var gcpProjectName string
+	var ec2Svc *awsAPI.AwsCloud
+	var gcpCloud *gcpAPI.GcpCloud
 	for _, node := range clusterNodes {
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
 		if err != nil {
@@ -118,14 +116,13 @@ func stopNodes(_ *cobra.Command, args []string) error {
 		if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
 			// need to check if it's empty because we didn't set cloud service when only using AWS
 			if nodeConfig.Region != lastRegion {
-				sess, err := getAWSCloudCredentials(awsProfile, nodeConfig.Region)
+				ec2Svc, err = awsAPI.NewAwsCloud(awsProfile, nodeConfig.Region)
 				if err != nil {
 					return err
 				}
-				ec2Svc = ec2.New(sess)
 				lastRegion = nodeConfig.Region
 			}
-			if err = awsAPI.StopAWSNode(ec2Svc, nodeConfig, clusterName); err != nil {
+			if err = ec2Svc.StopAWSNode(nodeConfig, clusterName); err != nil {
 				if strings.Contains(err.Error(), "RequestExpired: Request has expired") {
 					ux.Logger.PrintToUser("")
 					printExpiredCredentialsOutput(awsProfile)
@@ -135,13 +132,17 @@ func stopNodes(_ *cobra.Command, args []string) error {
 				continue
 			}
 		} else {
-			if gcpClient == nil {
-				gcpClient, gcpProjectName, _, err = getGCPCloudCredentials()
+			if gcpCloud == nil {
+				gcpClient, projectName, _, err := getGCPCloudCredentials()
+				if err != nil {
+					return err
+				}
+				gcpCloud, err = gcpAPI.NewGcpCloud(gcpClient, projectName, context.Background())
 				if err != nil {
 					return err
 				}
 			}
-			if err = gcpAPI.StopGCPNode(gcpClient, nodeConfig, gcpProjectName, clusterName, true); err != nil {
+			if err = gcpCloud.StopGCPNode(nodeConfig, clusterName, true); err != nil {
 				nodeErrors[node] = err
 				continue
 			}
