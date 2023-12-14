@@ -20,6 +20,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/config"
+	"github.com/ava-labs/avalanchego/utils/crypto/bls"
+	"github.com/ava-labs/avalanchego/utils/formatting"
+	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 	coreth_params "github.com/ava-labs/coreth/params"
 )
 
@@ -53,7 +56,12 @@ func generateCustomCchainGenesis() ([]byte, error) {
 	return json.Marshal(cChainGenesisMap)
 }
 
-func generateCustomGenesis(networkID uint32, walletAddr string, stakingAddr string, nodeIDs []string) ([]byte, error) {
+func generateCustomGenesis(
+	networkID uint32,
+	walletAddr string,
+	stakingAddr string,
+	hosts []*models.Host,
+) ([]byte, error) {
 	genesisMap := map[string]interface{}{}
 
 	// cchain
@@ -68,11 +76,38 @@ func generateCustomGenesis(networkID uint32, walletAddr string, stakingAddr stri
 	startTime := time.Now().Unix()
 	genesisMap["startTime"] = startTime
 	initialStakers := []map[string]interface{}{}
-	for _, nodeID := range nodeIDs {
+	for _, host := range hosts {
+		nodeDirPath := app.GetNodeInstanceDirPath(host.GetCloudID())
+		blsPath := filepath.Join(nodeDirPath, constants.BLSKeyFileName)
+		blsKey, err := os.ReadFile(blsPath)
+		if err != nil {
+			return nil, err
+		}
+		blsSk, err := bls.SecretKeyFromBytes(blsKey)
+		if err != nil {
+			return nil, err
+		}
+		p := signer.NewProofOfPossession(blsSk)
+		pk, err := formatting.Encode(formatting.HexNC, p.PublicKey[:])
+		if err != nil {
+			return nil, err
+		}
+		pop, err := formatting.Encode(formatting.HexNC, p.ProofOfPossession[:])
+		if err != nil {
+			return nil, err
+		}
+		nodeID, err := getNodeID(nodeDirPath)
+		if err != nil {
+			return nil, err
+		}
 		initialStaker := map[string]interface{}{
 			"nodeID":        nodeID,
 			"rewardAddress": walletAddr,
 			"delegationFee": 1000000,
+			"signer": map[string]interface{}{
+				"proofOfPossession": pop,
+				"publicKey":         pk,
+			},
 		}
 		initialStakers = append(initialStakers, initialStaker)
 	}
@@ -154,7 +189,7 @@ func setupDevnet(clusterName string, hosts []*models.Host) error {
 	walletAddrStr := k.X()[0]
 
 	// create genesis file at each node dir
-	genesisBytes, err := generateCustomGenesis(network.ID, walletAddrStr, stakingAddrStr, nodeIDs)
+	genesisBytes, err := generateCustomGenesis(network.ID, walletAddrStr, stakingAddrStr, hosts)
 	if err != nil {
 		return err
 	}
