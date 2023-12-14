@@ -7,15 +7,16 @@ import (
 	"encoding/json"
 	"errors"
 	"sort"
-	"strconv"
 	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"golang.org/x/exp/maps"
 	"golang.org/x/mod/semver"
 )
 
@@ -185,15 +186,7 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 
 	// sort avago compatibility by highest available RPC versions
 	// to lowest (the map can not be iterated in a sorted way)
-	rpcs := make([]int, 0, len(avagoCompat))
-	for k := range avagoCompat {
-		// cannot use string sort
-		kint, err := strconv.Atoi(k)
-		if err != nil {
-			return nil, err
-		}
-		rpcs = append(rpcs, kint)
-	}
+	rpcs := utils.Map(maps.Keys(avagoCompat), func(n uint) int { return int(n) })
 	sort.Sort(sort.Reverse(sort.IntSlice(rpcs)))
 
 	// iterate the rpc versions
@@ -201,8 +194,7 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 	// and run with the same RPC version.
 	// This is required for the for the "can deploy with multiple avalanchego versions" test
 	for _, rpcVersion := range rpcs {
-		versionAsString := strconv.Itoa(rpcVersion)
-		versionsForRPC := avagoCompat[versionAsString]
+		versionsForRPC := utils.SemanticSliceToStringSlice(avagoCompat[uint(rpcVersion)])
 		// we need at least 2 versions for the same RPC version
 		if len(versionsForRPC) > 1 {
 			versionsForRPC = reverseSemverSort(versionsForRPC)

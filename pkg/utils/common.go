@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanchego/version"
 )
 
 func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr bool) (*bytes.Buffer, *bytes.Buffer) {
@@ -184,4 +185,8 @@ func Unique(slice []string) []string {
 		}
 	}
 	return uniqueSlice
+}
+
+func SemanticSliceToStringSlice(versions []*version.Semantic) []string {
+	return Map(versions, func(v *version.Semantic) string { return v.String() })
 }

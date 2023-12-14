@@ -3,8 +3,10 @@
 
 package models
 
+import "github.com/ava-labs/avalanchego/version"
+
 type VMCompatibility struct {
 	RPCChainVMProtocolVersion map[string]int `json:"rpcChainVMProtocolVersion"`
 }
 
-type AvagoCompatiblity map[string][]string
+type AvagoCompatiblity map[uint][]*version.Semantic
