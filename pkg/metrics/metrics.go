@@ -81,13 +81,13 @@ func userIsOptedIn(app *application.Avalanche) bool {
 
 func HandleTracking(cmd *cobra.Command, app *application.Avalanche, flags map[string]string) {
 	if userIsOptedIn(app) {
-		if !cmd.HasSubCommands() && checkCommandIsNotCompletion(cmd) {
+		if !cmd.HasSubCommands() && CheckCommandIsNotCompletion(cmd) {
 			TrackMetrics(cmd, flags)
 		}
 	}
 }
 
-func checkCommandIsNotCompletion(cmd *cobra.Command) bool {
+func CheckCommandIsNotCompletion(cmd *cobra.Command) bool {
 	result := strings.Fields(cmd.CommandPath())
 	if len(result) >= 2 && result[1] == "completion" {
 		return false

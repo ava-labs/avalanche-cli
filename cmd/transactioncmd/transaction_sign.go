@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -99,6 +100,14 @@ func signTx(_ *cobra.Command, args []string) error {
 		return errNoSubnetID
 	}
 
+	subnetIDFromTX, err := txutils.GetSubnetID(tx)
+	if err != nil {
+		return err
+	}
+	if subnetIDFromTX != ids.Empty {
+		subnetID = subnetIDFromTX
+	}
+
 	controlKeys, _, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
@@ -117,12 +126,17 @@ func signTx(_ *cobra.Command, args []string) error {
 	}
 
 	// get keychain accessor
-	kc, err := subnetcmd.GetKeychain(false, useLedger, ledgerAddresses, keyName, network)
+	kc, err := keychain.GetKeychain(app, false, useLedger, ledgerAddresses, keyName, network, 0)
 	if err != nil {
 		return err
 	}
 
-	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	// add control keys to the keychain whenever possible
+	if err := kc.AddAddresses(controlKeys); err != nil {
+		return err
+	}
+
+	deployer := subnet.NewPublicDeployer(app, kc, network)
 	if err := deployer.Sign(tx, remainingSubnetAuthKeys, subnetID); err != nil {
 		if errors.Is(err, subnet.ErrNoSubnetAuthKeysInWallet) {
 			ux.Logger.PrintToUser("There are no required subnet auth keys present in the wallet")

@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -133,19 +134,17 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 		return errors.New("addPermissionlessDelegator is not yet supported on Mainnet")
 	}
 
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
-
 	// get keychain accessor
-	kc, err := GetKeychain(false, useLedger, ledgerAddresses, keyName, network)
+	fee := network.GenesisParams().AddSubnetDelegatorFee
+	kc, err := keychain.GetKeychain(app, false, useLedger, ledgerAddresses, keyName, network, fee)
 	if err != nil {
 		return err
 	}
 
+	network.HandlePublicNetworkSimulation()
+
 	recipientAddr := kc.Addresses().List()[0]
-	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	deployer := subnet.NewPublicDeployer(app, kc, network)
 	assetID, err := getSubnetAssetID(subnetID, network)
 	if err != nil {
 		return err

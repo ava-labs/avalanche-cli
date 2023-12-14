@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
+	"golang.org/x/exp/maps"
 	"golang.org/x/net/context"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -101,17 +102,15 @@ func stopNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	failedNodes := []string{}
-	nodeErrors := []error{}
+	nodeErrors := map[string]error{}
 	lastRegion := ""
 	var ec2Svc *awsAPI.AwsCloud
 	var gcpCloud *gcpAPI.GcpCloud
 	for _, node := range clusterNodes {
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
 		if err != nil {
+			nodeErrors[node] = err
 			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err.Error()))
-			failedNodes = append(failedNodes, node)
-			nodeErrors = append(nodeErrors, err)
 			continue
 		}
 		if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
@@ -129,8 +128,7 @@ func stopNodes(_ *cobra.Command, args []string) error {
 					printExpiredCredentialsOutput(awsProfile)
 					return nil
 				}
-				failedNodes = append(failedNodes, node)
-				nodeErrors = append(nodeErrors, err)
+				nodeErrors[node] = err
 				continue
 			}
 		} else {
@@ -145,8 +143,7 @@ func stopNodes(_ *cobra.Command, args []string) error {
 				}
 			}
 			if err = gcpCloud.StopGCPNode(nodeConfig, clusterName, true); err != nil {
-				failedNodes = append(failedNodes, node)
-				nodeErrors = append(nodeErrors, err)
+				nodeErrors[node] = err
 				continue
 			}
 		}
@@ -156,16 +153,16 @@ func stopNodes(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	if len(failedNodes) > 0 {
+	if len(nodeErrors) > 0 {
 		ux.Logger.PrintToUser("Failed nodes: ")
-		for i, node := range failedNodes {
-			if strings.Contains(nodeErrors[i].Error(), constants.ErrReleasingGCPStaticIP) {
-				ux.Logger.PrintToUser(fmt.Sprintf("Node is stopped, but failed to release static ip address for node %s due to %s", node, nodeErrors[i]))
+		for node, nodeErr := range nodeErrors {
+			if strings.Contains(err.Error(), constants.ErrReleasingGCPStaticIP) {
+				ux.Logger.PrintToUser(fmt.Sprintf("Node is stopped, but failed to release static ip address for node %s due to %s", node, nodeErr))
 			} else {
-				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
+				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErr))
 			}
 		}
-		return fmt.Errorf("failed to stop node(s) %s", failedNodes)
+		return fmt.Errorf("failed to stop node(s) %s", maps.Keys(nodeErrors))
 	} else {
 		ux.Logger.PrintToUser(fmt.Sprintf("All nodes in cluster %s are successfully stopped!", clusterName))
 	}

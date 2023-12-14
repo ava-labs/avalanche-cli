@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
@@ -232,12 +231,7 @@ func transferF(*cobra.Command, []string) error {
 	}
 	amount := uint64(amountFlt * float64(units.Avax))
 
-	fees := map[models.NetworkKind]uint64{
-		models.Fuji:    genesis.FujiParams.TxFeeConfig.TxFee,
-		models.Mainnet: genesis.MainnetParams.TxFeeConfig.TxFee,
-		models.Local:   genesis.LocalParams.TxFeeConfig.TxFee,
-	}
-	fee := fees[network.Kind]
+	fee := network.GenesisParams().TxFee
 
 	var kc keychain.Keychain
 	if keyName != "" {
@@ -433,6 +427,7 @@ func transferF(*cobra.Command, []string) error {
 			_, err = subnet.IssueXToPExportTx(
 				wallet,
 				ledgerIndex != wrongLedgerIndexVal,
+				true,
 				wallet.P().AVAXAssetID(),
 				amount+fee*1,
 				&to,
@@ -461,6 +456,7 @@ func transferF(*cobra.Command, []string) error {
 			_, err = subnet.IssuePFromXImportTx(
 				wallet,
 				ledgerIndex != wrongLedgerIndexVal,
+				true,
 				&to,
 			)
 			if err != nil {

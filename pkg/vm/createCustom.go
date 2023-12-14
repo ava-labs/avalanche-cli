@@ -21,6 +21,7 @@ func CreateCustomSubnetConfig(
 	app *application.Avalanche,
 	subnetName string,
 	genesisPath string,
+	useRepo bool,
 	customVMRepoURL string,
 	customVMBranch string,
 	customVMBuildScript string,
@@ -41,11 +42,30 @@ func CreateCustomSubnetConfig(
 		TokenName: "",
 	}
 
-	if err := SetCustomVMSourceCodeFields(app, sc, customVMRepoURL, customVMBranch, customVMBuildScript); err != nil {
-		return nil, &models.Sidecar{}, err
+	if customVMRepoURL != "" || customVMBranch != "" || customVMBuildScript != "" {
+		useRepo = true
 	}
-
-	if vmPath == "" {
+	if vmPath == "" && !useRepo {
+		githubOption := "Download and build from a git repository (recommended for cloud deployments)"
+		localOption := "I already have a VM binary (local network deployments only)"
+		options := []string{githubOption, localOption}
+		option, err := app.Prompt.CaptureList("How do you want to set up the VM binary?", options)
+		if err != nil {
+			return nil, &models.Sidecar{}, err
+		}
+		if option == githubOption {
+			useRepo = true
+		} else {
+			vmPath, err = app.Prompt.CaptureExistingFilepath("Enter path to VM binary")
+			if err != nil {
+				return nil, &models.Sidecar{}, err
+			}
+		}
+	}
+	if useRepo {
+		if err := SetCustomVMSourceCodeFields(app, sc, customVMRepoURL, customVMBranch, customVMBuildScript); err != nil {
+			return nil, &models.Sidecar{}, err
+		}
 		if err := BuildCustomVM(app, sc); err != nil {
 			return nil, &models.Sidecar{}, err
 		}

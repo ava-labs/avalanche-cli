@@ -5,10 +5,10 @@ package subnetcmd
 import (
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -17,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
-	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/spf13/cobra"
 )
@@ -85,23 +84,27 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	kc, err := GetKeychainFromCmdLineFlags(
+	fee := network.GenesisParams().AddSubnetValidatorFee
+	kc, err := keychain.GetKeychainFromCmdLineFlags(
+		app,
 		constants.PayTxsFeesMsg,
 		network,
 		keyName,
 		useEwoq,
-		&useLedger,
+		useLedger,
 		ledgerAddresses,
+		fee,
 	)
 	if err != nil {
 		return err
 	}
+	network.HandlePublicNetworkSimulation()
 	return CallAddValidator(network, kc, useLedger, args[0], nodeIDStr, defaultValidatorParams)
 }
 
 func CallAddValidator(
 	network models.Network,
-	kc keychain.Keychain,
+	kc *keychain.Keychain,
 	useLedgerSetting bool,
 	subnetName string,
 	nodeIDStr string,
@@ -120,11 +123,6 @@ func CallAddValidator(
 		if utils.FileExists(outputTxPath) {
 			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
 		}
-	}
-
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
 	}
 
 	_, err = ValidateSubnetNameAndGetChains([]string{subnetName})
@@ -147,19 +145,23 @@ func CallAddValidator(
 		return err
 	}
 
-	walletKeys, err := loadCreationKeys(network, kc)
+	// add control keys to the keychain whenever possible
+	if err := kc.AddAddresses(controlKeys); err != nil {
+		return err
+	}
+
+	kcKeys, err := kc.PChainFormattedStrAddresses()
 	if err != nil {
 		return err
 	}
-	walletKey := walletKeys[0]
 
 	// get keys for add validator tx signing
 	if subnetAuthKeys != nil {
-		if err := prompts.CheckSubnetAuthKeys(walletKey, subnetAuthKeys, controlKeys, threshold); err != nil {
+		if err := prompts.CheckSubnetAuthKeys(kcKeys, subnetAuthKeys, controlKeys, threshold); err != nil {
 			return err
 		}
 	} else {
-		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, walletKey, controlKeys, threshold)
+		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, kcKeys, controlKeys, threshold)
 		if err != nil {
 			return err
 		}
@@ -199,7 +201,7 @@ func CallAddValidator(
 	ux.Logger.PrintToUser("Weight: %d", weight)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
-	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	deployer := subnet.NewPublicDeployer(app, kc, network)
 	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidator(controlKeys, subnetAuthKeys, subnetID, nodeID, weight, start, duration)
 	if err != nil {
 		return err
