@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -57,6 +58,8 @@ var (
 	cmdLineGCPCredentialsPath       string
 	cmdLineGCPProjectName           string
 	cmdLineAlternativeKeyPairName   string
+	useSSHAgent                     bool
+	sshIdentity                     string
 )
 
 func newCreateCmd() *cobra.Command {
@@ -96,6 +99,8 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
 	cmd.Flags().BoolVar(&createOnFuji, "fuji", false, "create node/s in Fuji Network")
 	cmd.Flags().BoolVar(&createDevnet, "devnet", false, "create node/s into a new Devnet")
+	cmd.Flags().BoolVar(&useSSHAgent, "use-ssh-agent", false, "use ssh agent for ssh")
+	cmd.Flags().StringVar(&sshIdentity, "ssh-identity", "", "use given ssh identity")
 	return cmd
 }
 
@@ -118,6 +123,12 @@ func preCreateChecks() error {
 				return fmt.Errorf("number of nodes per region must be greater than 0")
 			}
 		}
+	}
+	if len(sshIdentity) > 0 && !useSSHAgent {
+		return fmt.Errorf("could not use ssh identity without using ssh agent")
+	}
+	if useSSHAgent && !utils.IsSSHAgentAvailable() {
+		return fmt.Errorf("ssh agent is not available")
 	}
 	return nil
 }
@@ -171,6 +182,16 @@ func createNodes(_ *cobra.Command, args []string) error {
 	publicIPMap := map[string]string{}
 	gcpProjectName := ""
 	gcpCredentialFilepath := ""
+	// set ssh-Key
+	if useSSHAgent && sshIdentity == "" {
+		sshIdentity, err = setSSHIdentity()
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Println(useSSHAgent)
+	fmt.Println(sshIdentity)
+	os.Exit(0)
 	if cloudService == constants.AWSCloudService { // Get AWS Credential, region and AMI
 		regions, numNodes, ec2SvcMap, ami, err := getAWSCloudConfig(awsProfile)
 		if err != nil {
@@ -777,4 +798,26 @@ func getRegionsNodeNum(cloudName string) (
 			return nodes, nil
 		}
 	}
+}
+
+func setSSHIdentity() (string, error) {
+	const yubikeyMark = " [YubiKey] (recommended)"
+	sshIdentities, err := utils.ListSSHIdentity()
+	if err != nil {
+		return "", err
+	}
+	sshIdentities = utils.Map(sshIdentities, func(id string) string {
+		yubikeyPattern := `cardno:(\d+(_\d+)*)`
+		if len(regexp.MustCompile(yubikeyPattern).FindStringSubmatch(id)) > 0 {
+			return fmt.Sprintf("%s%s", id, yubikeyMark)
+		}
+		return id
+	})
+	sshIdentity, err := app.Prompt.CaptureList(
+		"Which SSH identity do you want to use?", sshIdentities,
+	)
+	if err != nil {
+		return "", err
+	}
+	return strings.Replace(sshIdentity, yubikeyMark, "", -1), nil
 }
