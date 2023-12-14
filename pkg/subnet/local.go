@@ -31,8 +31,8 @@ import (
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
-	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
@@ -702,7 +702,7 @@ func SetDefaultSnapshot(snapshotsDir string, forceReset bool, isSingleNode bool)
 	if isSingleNode {
 		bootstrapSnapshotArchivePath = filepath.Join(snapshotsDir, constants.BootstrapSnapshotSingleNodeArchiveName)
 	}
-	defaultSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-" + constants.DefaultSnapshotName)
+	defaultSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.DefaultSnapshotName)
 	defaultSnapshotInUse := false
 	if _, err := os.Stat(defaultSnapshotPath); err == nil {
 		defaultSnapshotInUse = true

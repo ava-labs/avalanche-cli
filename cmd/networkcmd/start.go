@@ -79,16 +79,15 @@ func StartNetwork(*cobra.Command, []string) error {
 	}
 
 	if bootstrapped {
-		if needsRestart {
-			if _, err := cli.Stop(ctx); err != nil {
-				return err
-			}
-			if err := app.ResetPluginsDir(); err != nil {
-				return err
-			}
-		} else {
+		if !needsRestart {
 			ux.Logger.PrintToUser("Network has already been booted.")
 			return nil
+		}
+		if _, err := cli.Stop(ctx); err != nil {
+			return err
+		}
+		if err := app.ResetPluginsDir(); err != nil {
+			return err
 		}
 	}
 
