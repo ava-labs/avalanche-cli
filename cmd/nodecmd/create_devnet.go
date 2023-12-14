@@ -60,7 +60,6 @@ func generateCustomGenesis(
 	networkID uint32,
 	walletAddr string,
 	stakingAddr string,
-	nodeIDs []string,
 	hosts []*models.Host,
 ) ([]byte, error) {
 	genesisMap := map[string]interface{}{}
@@ -98,6 +97,9 @@ func generateCustomGenesis(
 			return nil, err
 		}
 		nodeID, err := getNodeID(nodeDirPath)
+		if err != nil {
+			return nil, err
+		}
 		initialStaker := map[string]interface{}{
 			"nodeID":        nodeID,
 			"rewardAddress": walletAddr,
@@ -187,7 +189,7 @@ func setupDevnet(clusterName string, hosts []*models.Host) error {
 	walletAddrStr := k.X()[0]
 
 	// create genesis file at each node dir
-	genesisBytes, err := generateCustomGenesis(network.ID, walletAddrStr, stakingAddrStr, nodeIDs, hosts)
+	genesisBytes, err := generateCustomGenesis(network.ID, walletAddrStr, stakingAddrStr, hosts)
 	if err != nil {
 		return err
 	}
