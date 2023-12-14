@@ -46,8 +46,8 @@ func CreateCustomSubnetConfig(
 		useRepo = true
 	}
 	if vmPath == "" && !useRepo {
-		githubOption := "Download and build from a github repository"
-		localOption := "I already have a VM binary"
+		githubOption := "Download and build from a github repository (support for cloud iterations)"
+		localOption := "I already have a VM binary (local machine iterations only)"
 		options := []string{githubOption, localOption}
 		option, err := app.Prompt.CaptureList("How do you want to set up the VM binary?", options)
 		if err != nil {
