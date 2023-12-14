@@ -191,6 +191,6 @@ func getTestClientFunc(...binutils.GRPCClientOpOption) (client.Client, error) {
 	return c, nil
 }
 
-func fakeSetDefaultSnapshot(string, bool, bool) error {
-	return nil
+func fakeSetDefaultSnapshot(string, bool, bool) (bool, error) {
+	return false, nil
 }
