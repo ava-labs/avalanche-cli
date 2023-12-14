@@ -76,6 +76,21 @@ func (app *Avalanche) GetPluginsDir() string {
 	return filepath.Join(app.baseDir, constants.PluginDir)
 }
 
+// Remove all plugins from plugin dir
+func (app *Avalanche) ResetPluginsDir() error {
+	pluginDir := app.GetPluginsDir()
+	installedPlugins, err := os.ReadDir(pluginDir)
+	if err != nil {
+		return err
+	}
+	for _, plugin := range installedPlugins {
+		if err = os.Remove(filepath.Join(pluginDir, plugin.Name())); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (app *Avalanche) GetAvalanchegoBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.AvalancheGoInstallDir)
 }

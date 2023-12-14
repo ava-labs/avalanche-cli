@@ -48,7 +48,7 @@ func clean(*cobra.Command, []string) error {
 
 	configSingleNodeEnabled := app.Conf.GetConfigBoolValue(constants.ConfigSingleNodeEnabledKey)
 
-	if err := subnet.SetDefaultSnapshot(app.GetSnapshotsDir(), true, configSingleNodeEnabled); err != nil {
+	if _, err := subnet.SetDefaultSnapshot(app.GetSnapshotsDir(), true, configSingleNodeEnabled); err != nil {
 		app.Log.Warn("failed resetting default snapshot", zap.Error(err))
 	}
 
@@ -65,21 +65,14 @@ func clean(*cobra.Command, []string) error {
 		_ = killAllBackendsByName()
 	}
 
-	// Remove all plugins from plugin dir
-	pluginDir := app.GetPluginsDir()
-	installedPlugins, err := os.ReadDir(pluginDir)
-	if err != nil {
+	if err := app.ResetPluginsDir(); err != nil {
 		return err
 	}
-	for _, plugin := range installedPlugins {
-		if err = os.Remove(filepath.Join(pluginDir, plugin.Name())); err != nil {
-			return err
-		}
-	}
-	if err = removeLocalDeployInfoFromSidecars(); err != nil {
+
+	if err := removeLocalDeployInfoFromSidecars(); err != nil {
 		return err
 	}
-	if err = removeLocalElasticSubnetInfoFromSidecars(); err != nil {
+	if err := removeLocalElasticSubnetInfoFromSidecars(); err != nil {
 		return err
 	}
 	return nil
