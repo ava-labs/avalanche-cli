@@ -17,8 +17,10 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 )
 
 const (
@@ -43,6 +45,7 @@ var (
 	nodeConf            string
 	subnetConf          string
 	chainConf           string
+	validators          []string
 )
 
 func newWizCmd() *cobra.Command {
@@ -84,6 +87,7 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&chainConf, "chain-config", "", "path to the chain configuration for subnet")
 	cmd.Flags().BoolVar(&useLatestAvalanchegoVersion, "latest-avalanchego-version", false, "install latest avalanchego version on node/s")
 	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
+	cmd.Flags().StringSliceVar(&validators, "validators", []string{}, "deploy subnet into given comma separated list of validators. defaults to all cluster nodes")
 	return cmd
 }
 
@@ -150,6 +154,18 @@ func wiz(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Adding a subnet into a prexistent devnet"))
 		ux.Logger.PrintToUser("")
+	}
+
+	// check all validators are found
+	if len(validators) != 0 {
+		hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+		if err != nil {
+			return err
+		}
+		_, err = filterHosts(hosts, validators)
+		if err != nil {
+			return err
+		}
 	}
 
 	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
@@ -255,6 +271,12 @@ func waitForClusterSubnetStatus(
 	if err != nil {
 		return err
 	}
+	if len(validators) != 0 {
+		hosts, err = filterHosts(hosts, validators)
+		if err != nil {
+			return err
+		}
+	}
 	defer disconnectHosts(hosts)
 	startTime := time.Now()
 	for {
@@ -319,4 +341,33 @@ func checkClusterIsADevnet(clusterName string) error {
 		return fmt.Errorf("cluster %q is not a Devnet", clusterName)
 	}
 	return nil
+}
+
+func filterHosts(hosts []*models.Host, nodes []string) ([]*models.Host, error) {
+	indices := set.Set[int]{}
+	for _, node := range nodes {
+		added := false
+		for i, host := range hosts {
+			cloudID := host.GetCloudID()
+			ip := host.IP
+			nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
+			if err != nil {
+				return nil, err
+			}
+			if slices.Contains([]string{cloudID, ip, nodeID.String()}, node) {
+				added = true
+				indices.Add(i)
+			}
+		}
+		if !added {
+			return nil, fmt.Errorf("node %q not found", node)
+		}
+	}
+	filteredHosts := []*models.Host{}
+	for i, host := range hosts {
+		if indices.Contains(i) {
+			filteredHosts = append(filteredHosts, host)
+		}
+	}
+	return filteredHosts, nil
 }
