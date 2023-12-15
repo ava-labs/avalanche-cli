@@ -630,7 +630,7 @@ func setCloudInstanceType(cloudService string) (string, error) {
 		nodeTypeOption3 = "n2-standard-8"
 	}
 	if nodeType == "" {
-		defaultStr := "(default)"
+		defaultStr := "[default] (recommended)"
 		nodeTypeStr, err := app.Prompt.CaptureList(
 			"Instance type to use",
 			[]string{fmt.Sprintf("%s %s", defaultNodeType, defaultStr), nodeTypeOption2, nodeTypeOption3, customNodeType},

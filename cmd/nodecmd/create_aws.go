@@ -264,7 +264,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	}
 	ux.Logger.PrintToUser("New EC2 instance(s) successfully created in AWS!")
 	for _, region := range regions {
-		if !useExistingKeyPair[region] {
+		if !useExistingKeyPair[region] && !useSSHAgent {
 			// takes the cert file downloaded from AWS and moves it to .ssh directory
 			err = addCertToSSH(regionConf[region].CertName)
 			if err != nil {
