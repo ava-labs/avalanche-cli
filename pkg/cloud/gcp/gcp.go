@@ -379,7 +379,7 @@ func (c *GcpCloud) checkInstanceIsRunning(zone, nodeID string) (bool, error) {
 }
 
 // StopGCPNode stops GCP node in GCP
-func (c *GcpCloud) StopGCPNode(nodeConfig models.NodeConfig, clusterName string, releasePublicIP bool) error {
+func (c *GcpCloud) StopGCPNode(nodeConfig models.NodeConfig, clusterName string) error {
 	isRunning, err := c.checkInstanceIsRunning(nodeConfig.Region, nodeConfig.NodeID)
 	if err != nil {
 		return err
@@ -393,7 +393,7 @@ func (c *GcpCloud) StopGCPNode(nodeConfig models.NodeConfig, clusterName string,
 	if _, err = instancesStopCall.Do(); err != nil {
 		return err
 	}
-	if releasePublicIP && nodeConfig.ElasticIP != "" {
+	if nodeConfig.UseStaticIP {
 		ux.Logger.PrintToUser(fmt.Sprintf("Releasing static IP address %s ...", nodeConfig.ElasticIP))
 		// GCP node region is stored in format of "us-east1-b", we need "us-east1"
 		region := strings.Join(strings.Split(nodeConfig.Region, "-")[:2], "-")

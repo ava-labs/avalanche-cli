@@ -263,7 +263,7 @@ func (c *AwsCloud) StopAWSNode(nodeConfig models.NodeConfig, clusterName string)
 		return noRunningNodeErr
 	}
 	ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
-	return c.StopInstance(nodeConfig.NodeID, nodeConfig.ElasticIP, true)
+	return c.StopInstance(nodeConfig.NodeID, nodeConfig.ElasticIP, nodeConfig.UseStaticIP)
 }
 
 // StopInstance stops an EC2 instance with the given ID.
