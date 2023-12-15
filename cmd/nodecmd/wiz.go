@@ -54,7 +54,7 @@ func newWizCmd() *cobra.Command {
 The node wiz command creates a devnet and deploys, sync and validate a subnet into it. It creates the subnet if so needed.
 `,
 		SilenceUsage: true,
-		Args:         cobra.ExactArgs(2),
+		Args:         cobra.RangeArgs(1, 2),
 		RunE:         wiz,
 	}
 	cmd.Flags().BoolVar(&useStaticIP, "use-static-ip", true, "attach static Public IP on cloud servers")
@@ -82,20 +82,30 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&nodeConf, "node-config", "", "path to avalanchego node configuration for subnet")
 	cmd.Flags().StringVar(&subnetConf, "subnet-config", "", "path to the subnet configuration for subnet")
 	cmd.Flags().StringVar(&chainConf, "chain-config", "", "path to the chain configuration for subnet")
+	cmd.Flags().BoolVar(&useLatestAvalanchegoVersion, "latest-avalanchego-version", false, "install latest avalanchego version on node/s")
+	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
 	return cmd
 }
 
 func wiz(cmd *cobra.Command, args []string) error {
 	clusterName := args[0]
-	subnetName := args[1]
-	exists, err := clusterExists(clusterName)
+	subnetName := ""
+	if len(args) > 1 {
+		subnetName = args[1]
+	}
+	clusterAlreadyExists, err := clusterExists(clusterName)
 	if err != nil {
 		return err
 	}
-	if exists {
-		return fmt.Errorf("cluster %s already exists", clusterName)
+	if clusterAlreadyExists {
+		if err := checkClusterIsADevnet(clusterName); err != nil {
+			return err
+		}
 	}
-	if !app.SidecarExists(subnetName) || forceSubnetCreate {
+	if clusterAlreadyExists && subnetName == "" {
+		return fmt.Errorf("expecting to add subnet to existing cluster but no subnet-name was provided")
+	}
+	if subnetName != "" && (!app.SidecarExists(subnetName) || forceSubnetCreate) {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Creating the subnet"))
 		ux.Logger.PrintToUser("")
@@ -126,18 +136,31 @@ func wiz(cmd *cobra.Command, args []string) error {
 			}
 		}
 	}
-	createDevnet = true
-	useAvalanchegoVersionFromSubnet = subnetName
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Creating the devnet"))
-	ux.Logger.PrintToUser("")
-	err = createNodes(cmd, []string{clusterName})
-	if err != nil {
-		return err
+
+	if !clusterAlreadyExists {
+		createDevnet = true
+		useAvalanchegoVersionFromSubnet = subnetName
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(logging.Green.Wrap("Creating the devnet"))
+		ux.Logger.PrintToUser("")
+		if err := createNodes(cmd, []string{clusterName}); err != nil {
+			return err
+		}
+	} else {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(logging.Green.Wrap("Adding a subnet into a prexistent devnet"))
+		ux.Logger.PrintToUser("")
 	}
+
 	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err
 	}
+	if subnetName == "" {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s has been created!"), clusterName)
+		return nil
+	}
+
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser(logging.Green.Wrap("Deploying the subnet"))
 	ux.Logger.PrintToUser("")
@@ -274,4 +297,22 @@ func waitForClusterSubnetStatus(
 		}
 		time.Sleep(poolTime)
 	}
+}
+
+func checkClusterIsADevnet(clusterName string) error {
+	exists, err := clusterExists(clusterName)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("cluster %q does not exists", clusterName)
+	}
+	clustersConfig, err := app.LoadClustersConfig()
+	if err != nil {
+		return err
+	}
+	if clustersConfig.Clusters[clusterName].Network.Kind != models.Devnet {
+		return fmt.Errorf("cluster %q is not a Devnet", clusterName)
+	}
+	return nil
 }
