@@ -246,7 +246,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if separateMonitoringInstance {
+		if separateMonitoringInstance && existingMonitoringInstance == "" {
 			err = terraform.RemoveDirectory(app.GetTerraformDir())
 			if err != nil {
 				return err
@@ -256,11 +256,23 @@ func createNodes(_ *cobra.Command, args []string) error {
 				return err
 			}
 		}
+		if existingMonitoringInstance != "" {
+			separateMonitoringInstance = true
+			monitoringCloudConfig, err = getNodeCloudConfig(existingMonitoringInstance)
+			if err != nil {
+				return err
+			}
+		}
 		if !useStaticIP {
 			publicIPMap, err = gcpAPI.GetInstancePublicIPs(gcpClient, projectName, zone, cloudConfig.InstanceIDs)
 			if err != nil {
 				return err
 			}
+			monitoringPublicIPMap, err := gcpAPI.GetInstancePublicIPs(gcpClient, projectName, zone, monitoringCloudConfig.InstanceIDs)
+			if err != nil {
+				return err
+			}
+			monitoringCloudConfig.PublicIPs = []string{monitoringPublicIPMap[monitoringCloudConfig.InstanceIDs[0]]}
 		} else {
 			for i, node := range cloudConfig.InstanceIDs {
 				publicIPMap[node] = cloudConfig.PublicIPs[i]

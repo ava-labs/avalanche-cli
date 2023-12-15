@@ -31,6 +31,14 @@ func GetUbuntuImageID(gcpClient *compute.Service) (string, error) {
 	return imageID, nil
 }
 
+func checkFirewallIsForSeparateMonitoring(firewallName string) bool {
+	splitFirewall := strings.Split(firewallName, "-")
+	if len(splitFirewall) > 0 && splitFirewall[len(splitFirewall)-1] == "monitoring" {
+		return true
+	}
+	return false
+}
+
 // CheckFirewallExists checks that firewall firewallName exists in GCP project projectName
 func CheckFirewallExists(gcpClient *compute.Service, projectName, firewallName string, checkMonitoring bool) (bool, error) {
 	firewallListCall := gcpClient.Firewalls.List(projectName)
@@ -42,14 +50,21 @@ func CheckFirewallExists(gcpClient *compute.Service, projectName, firewallName s
 		if firewall.Name == firewallName {
 			if checkMonitoring {
 				for _, allowed := range firewall.Allowed {
+					fmt.Printf("allowed")
+					if checkFirewallIsForSeparateMonitoring(firewallName) {
+						return true, nil
+					}
 					if !(slices.Contains(allowed.Ports, strconv.Itoa(constants.AvalanchegoGrafanaPort)) && slices.Contains(allowed.Ports, strconv.Itoa(constants.AvalanchegoMonitoringPort))) {
+						fmt.Printf("we are returning false here \n")
 						return false, nil
 					}
 				}
 			}
+			fmt.Printf("we are returning true here \n")
 			return true, nil
 		}
 	}
+	fmt.Printf("we are returnign false at the end \n")
 	return false, nil
 }
 
@@ -130,9 +145,11 @@ func AddFirewall(gcpClient *compute.Service, monitoringHostPublicIP, networkName
 	firewallName := fmt.Sprintf("%s-%s-monitoring", networkName, strings.ReplaceAll(monitoringHostPublicIP, ".", ""))
 	firewallExists, err := CheckFirewallExists(gcpClient, projectName, firewallName, true)
 	if err != nil {
+		fmt.Printf("we have CheckFirewallExists err %s \n", err)
 		return err
 	}
 	if !firewallExists {
+		fmt.Printf("firewall doesn't exists \n")
 		allowedFirewall := compute.FirewallAllowed{
 			IPProtocol: "tcp",
 			Ports:      []string{strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort)},
@@ -148,6 +165,8 @@ func AddFirewall(gcpClient *compute.Service, monitoringHostPublicIP, networkName
 		if _, err = instancesStopCall.Do(); err != nil {
 			return err
 		}
+	} else {
+		fmt.Printf("firewall exists \n")
 	}
 	return nil
 }
