@@ -198,7 +198,11 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s has been created and is validating subnet %s!"), clusterName, subnetName)
+	if clusterAlreadyExists {
+		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is validating subnet %s!"), clusterName, subnetName)
+	} else {
+		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s has been created and is validating subnet %s!"), clusterName, subnetName)
+	}
 	return nil
 }
 
