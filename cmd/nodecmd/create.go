@@ -335,7 +335,7 @@ func createClusterNodeConfig(network models.Network, cloudConfigMap models.Cloud
 				SecurityGroup: cloudConfig.SecurityGroup,
 				ElasticIP:     publicIP,
 				CloudService:  cloudService,
-				HasDynamicIP:  !useStaticIP,
+				UseStaticIP:   useStaticIP,
 			}
 			err := app.CreateNodeCloudConfigFile(cloudConfig.InstanceIDs[i], &nodeConfig)
 			if err != nil {

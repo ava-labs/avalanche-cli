@@ -393,7 +393,7 @@ func (c *GcpCloud) StopGCPNode(nodeConfig models.NodeConfig, clusterName string)
 	if _, err = instancesStopCall.Do(); err != nil {
 		return err
 	}
-	if !nodeConfig.HasDynamicIP {
+	if nodeConfig.UseStaticIP {
 		ux.Logger.PrintToUser(fmt.Sprintf("Releasing static IP address %s ...", nodeConfig.ElasticIP))
 		// GCP node region is stored in format of "us-east1-b", we need "us-east1"
 		region := strings.Join(strings.Split(nodeConfig.Region, "-")[:2], "-")
