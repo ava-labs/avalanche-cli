@@ -29,8 +29,12 @@ var (
 	defaultValidatorParams bool
 	useDefaultStartTime    bool
 	useDefaultDuration     bool
+	useDefaultWeight       bool
 
-	errNoSubnetID = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
+	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
+	errMutuallyExclusiveDurationOptions = errors.New("--use-default-duration/--use-default-validator-params and --staking-period are mutually exclusive")
+	errMutuallyExclusiveStartOptions    = errors.New("--use-default-start-time/--use-default-validator-params and --start-time are mutually exclusive")
+	errMutuallyExclusiveWeightOptions   = errors.New("--use-default-validator-params and --weight are mutually exclusive")
 )
 
 // avalanche subnet deploy
@@ -126,6 +130,22 @@ func CallAddValidator(
 	useLedger = useLedgerSetting
 	defaultValidatorParams = defaultValidatorParamsSetting
 
+	if defaultValidatorParams {
+		useDefaultDuration = true
+		useDefaultStartTime = true
+		useDefaultWeight = true
+	}
+
+	if useDefaultDuration && duration != 0 {
+		return errMutuallyExclusiveDurationOptions
+	}
+	if useDefaultStartTime && startTimeStr != "" {
+		return errMutuallyExclusiveStartOptions
+	}
+	if useDefaultWeight && weight != 0 {
+		return errMutuallyExclusiveWeightOptions
+	}
+
 	if outputTxPath != "" {
 		if utils.FileExists(outputTxPath) {
 			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
@@ -187,16 +207,15 @@ func CallAddValidator(
 		}
 	}
 
-	if weight == 0 {
-		weight, err = PromptWeight()
-		if err != nil {
-			return err
-		}
-	} else if weight < constants.MinStakeWeight {
-		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", constants.MinStakeWeight, weight)
+	localWeight, err := getWeight()
+	if err != nil {
+		return err
+	}
+	if localWeight < constants.MinStakeWeight {
+		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", constants.MinStakeWeight, localWeight)
 	}
 
-	start, duration, err = getTimeParameters(network, nodeID, true)
+	start, localDuration, err := getTimeParameters(network, nodeID, true)
 	if err != nil {
 		return err
 	}
@@ -204,12 +223,12 @@ func CallAddValidator(
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
 	ux.Logger.PrintToUser("Network: %s", network.Name())
 	ux.Logger.PrintToUser("Start time: %s", start.Format(constants.TimeParseLayout))
-	ux.Logger.PrintToUser("End time: %s", start.Add(duration).Format(constants.TimeParseLayout))
-	ux.Logger.PrintToUser("Weight: %d", weight)
+	ux.Logger.PrintToUser("End time: %s", start.Add(localDuration).Format(constants.TimeParseLayout))
+	ux.Logger.PrintToUser("Weight: %d", localWeight)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
 	deployer := subnet.NewPublicDeployer(app, kc, network)
-	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidator(controlKeys, subnetAuthKeys, subnetID, nodeID, weight, start, duration)
+	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidator(controlKeys, subnetAuthKeys, subnetID, nodeID, localWeight, start, localDuration)
 	if err != nil {
 		return err
 	}
@@ -273,57 +292,45 @@ func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime t
 }
 
 func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bool) (time.Time, time.Duration, error) {
-	var (
-		start time.Time
-		err   error
-	)
-
 	defaultStakingStartLeadTime := constants.StakingStartLeadTime
 	if network.Kind == models.Devnet {
 		defaultStakingStartLeadTime = constants.DevnetStakingStartLeadTime
 	}
 
-	if defaultValidatorParams {
-		start = time.Now().Add(defaultStakingStartLeadTime)
-		duration, err = getMaxValidationTime(network, nodeID, start)
-		if err != nil {
-			return time.Time{}, 0, err
-		}
-		return start, duration, nil
-	}
+	const custom = "Custom"
 
-	const (
-		defaultStartOption    = "Start in five minutes"
-		defaultDurationOption = "Until primary network validator expires"
-		custom                = "Custom"
-	)
-	fmt.Println(defaultStartOption)
-	return time.Time{}, 0, fmt.Errorf("pepe")
-
-	if startTimeStr == "" {
+	// this sets either the global var startTimeStr or useDefaultStartTime to enable repeated execution with
+	// state keeping from node cmds
+	if startTimeStr == "" && !useDefaultStartTime {
 		if isValidator {
 			ux.Logger.PrintToUser("When should your validator start validating?\n" +
 				"If you validator is not ready by this time, subnet downtime can occur.")
 		} else {
 			ux.Logger.PrintToUser("When do you want to start delegating?\n")
 		}
-
+		defaultStartOption := "Start in " + ux.FormatDuration(defaultStakingStartLeadTime)
 		startTimeOptions := []string{defaultStartOption, custom}
 		startTimeOption, err := app.Prompt.CaptureList("Start time", startTimeOptions)
 		if err != nil {
 			return time.Time{}, 0, err
 		}
-
 		switch startTimeOption {
 		case defaultStartOption:
-			start = time.Now().Add(defaultStakingStartLeadTime)
+			useDefaultStartTime = true
 		default:
-			start, err = promptStart()
+			start, err := promptStart()
 			if err != nil {
 				return time.Time{}, 0, err
 			}
+			startTimeStr = start.Format(constants.TimeParseLayout)
 		}
-	} else {
+	}
+
+	var (
+		err   error
+		start time.Time
+	)
+	if startTimeStr != "" {
 		start, err = time.Parse(constants.TimeParseLayout, startTimeStr)
 		if err != nil {
 			return time.Time{}, 0, err
@@ -331,25 +338,26 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bo
 		if start.Before(time.Now().Add(constants.StakingMinimumLeadTime)) {
 			return time.Time{}, 0, fmt.Errorf("time should be at least %s in the future ", constants.StakingMinimumLeadTime)
 		}
+	} else {
+		start = time.Now().Add(defaultStakingStartLeadTime)
 	}
 
-	if duration == 0 {
+	// this sets either the global var duration or useDefaultDuration to enable repeated execution with
+	// state keeping from node cmds
+	if duration == 0 && !useDefaultDuration {
 		msg := "How long should your validator validate for?"
 		if !isValidator {
 			msg = "How long do you want to delegate for?"
 		}
+		const defaultDurationOption = "Until primary network validator expires"
 		durationOptions := []string{defaultDurationOption, custom}
 		durationOption, err := app.Prompt.CaptureList(msg, durationOptions)
 		if err != nil {
 			return time.Time{}, 0, err
 		}
-
 		switch durationOption {
 		case defaultDurationOption:
-			duration, err = getMaxValidationTime(network, nodeID, start)
-			if err != nil {
-				return time.Time{}, 0, err
-			}
+			useDefaultDuration = true
 		default:
 			duration, err = PromptDuration(start, network)
 			if err != nil {
@@ -357,7 +365,19 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bo
 			}
 		}
 	}
-	return start, duration, nil
+
+	var localDuration time.Duration
+	if useDefaultDuration {
+		// avoid setting both globals useDefaultDuration and duration
+		localDuration, err = getMaxValidationTime(network, nodeID, start)
+		if err != nil {
+			return time.Time{}, 0, err
+		}
+	} else {
+		localDuration = duration
+	}
+
+	return start, localDuration, nil
 }
 
 func promptStart() (time.Time, error) {
@@ -375,23 +395,29 @@ func PromptNodeID() (ids.NodeID, error) {
 	return app.Prompt.CaptureNodeID(txt)
 }
 
-func PromptWeight() (uint64, error) {
-	if defaultValidatorParams {
+func getWeight() (uint64, error) {
+	// this sets either the global var weight or useDefaultWeight to enable repeated execution with
+	// state keeping from node cmds
+	if weight == 0 && !useDefaultWeight {
+		defaultWeight := fmt.Sprintf("Default (%d)", constants.DefaultStakeWeight)
+		txt := "What stake weight would you like to assign to the validator?"
+		weightOptions := []string{defaultWeight, "Custom"}
+		weightOption, err := app.Prompt.CaptureList(txt, weightOptions)
+		if err != nil {
+			return 0, err
+		}
+		switch weightOption {
+		case defaultWeight:
+			useDefaultWeight = true
+		default:
+			weight, err = app.Prompt.CaptureWeight(txt)
+			if err != nil {
+				return 0, err
+			}
+		}
+	}
+	if useDefaultWeight {
 		return constants.DefaultStakeWeight, nil
 	}
-	defaultWeight := fmt.Sprintf("Default (%d)", constants.DefaultStakeWeight)
-	txt := "What stake weight would you like to assign to the validator?"
-	weightOptions := []string{defaultWeight, "Custom"}
-
-	weightOption, err := app.Prompt.CaptureList(txt, weightOptions)
-	if err != nil {
-		return 0, err
-	}
-
-	switch weightOption {
-	case defaultWeight:
-		return constants.DefaultStakeWeight, nil
-	default:
-		return app.Prompt.CaptureWeight(txt)
-	}
+	return weight, nil
 }
