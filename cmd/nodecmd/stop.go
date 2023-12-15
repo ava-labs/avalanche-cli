@@ -132,12 +132,11 @@ func stopNodes(_ *cobra.Command, args []string) error {
 					printExpiredCredentialsOutput(awsProfile)
 					return nil
 				}
-				if errors.Is(err, awsAPI.ErrNodeNotFoundToBeRunning) && ignoreAlreadyStopped {
-					ux.Logger.PrintToUser("node %s is already stopped", nodeConfig.NodeID)
+				if !(errors.Is(err, awsAPI.ErrNodeNotFoundToBeRunning) && ignoreAlreadyStopped) {
+					nodeErrors[node] = err
 					continue
 				}
-				nodeErrors[node] = err
-				continue
+				ux.Logger.PrintToUser("node %s is already stopped", nodeConfig.NodeID)
 			}
 		} else {
 			if gcpCloud == nil {
@@ -151,12 +150,11 @@ func stopNodes(_ *cobra.Command, args []string) error {
 				}
 			}
 			if err = gcpCloud.StopGCPNode(nodeConfig, clusterName, true); err != nil {
-				if errors.Is(err, gcpAPI.ErrNodeNotFoundToBeRunning) && ignoreAlreadyStopped {
-					ux.Logger.PrintToUser("node %s is already stopped", nodeConfig.NodeID)
+				if !(errors.Is(err, gcpAPI.ErrNodeNotFoundToBeRunning) && ignoreAlreadyStopped) {
+					nodeErrors[node] = err
 					continue
 				}
-				nodeErrors[node] = err
-				continue
+				ux.Logger.PrintToUser("node %s is already stopped", nodeConfig.NodeID)
 			}
 		}
 		ux.Logger.PrintToUser("Node instance %s in cluster %s successfully stopped!", nodeConfig.NodeID, clusterName)
