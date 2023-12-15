@@ -60,10 +60,10 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
 	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
 
-	cmd.Flags().BoolVar(&useDefaultStartTime, "use-default-start-time", false, "use default start time for subnet validator (5 minutes from now, unless devnet which is 30 seconds)")
+	cmd.Flags().BoolVar(&useDefaultStartTime, "default-start-time", false, "use default start time for subnet validator (5 minutes later for fuji & mainnet, 30 seconds later for devnet)")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
 
-	cmd.Flags().BoolVar(&useDefaultDuration, "use-default-duration", false, "set duration so as to validate until primary validator ends its period")
+	cmd.Flags().BoolVar(&useDefaultDuration, "default-duration", false, "set duration so as to validate until primary validator ends its period")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
 
 	cmd.Flags().BoolVar(&defaultValidatorParams, "default-validator-params", false, "use default weight/start/duration params for subnet validator")
@@ -207,15 +207,15 @@ func CallAddValidator(
 		}
 	}
 
-	localWeight, err := getWeight()
+	selectedWeight, err := getWeight()
 	if err != nil {
 		return err
 	}
-	if localWeight < constants.MinStakeWeight {
-		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", constants.MinStakeWeight, localWeight)
+	if selectedWeight < constants.MinStakeWeight {
+		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", constants.MinStakeWeight, selectedWeight)
 	}
 
-	start, localDuration, err := getTimeParameters(network, nodeID, true)
+	start, selectedDuration, err := getTimeParameters(network, nodeID, true)
 	if err != nil {
 		return err
 	}
@@ -223,12 +223,12 @@ func CallAddValidator(
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
 	ux.Logger.PrintToUser("Network: %s", network.Name())
 	ux.Logger.PrintToUser("Start time: %s", start.Format(constants.TimeParseLayout))
-	ux.Logger.PrintToUser("End time: %s", start.Add(localDuration).Format(constants.TimeParseLayout))
-	ux.Logger.PrintToUser("Weight: %d", localWeight)
+	ux.Logger.PrintToUser("End time: %s", start.Add(selectedDuration).Format(constants.TimeParseLayout))
+	ux.Logger.PrintToUser("Weight: %d", selectedWeight)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
 	deployer := subnet.NewPublicDeployer(app, kc, network)
-	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidator(controlKeys, subnetAuthKeys, subnetID, nodeID, localWeight, start, localDuration)
+	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidator(controlKeys, subnetAuthKeys, subnetID, nodeID, selectedWeight, start, selectedDuration)
 	if err != nil {
 		return err
 	}
@@ -366,18 +366,18 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bo
 		}
 	}
 
-	var localDuration time.Duration
+	var selectedDuration time.Duration
 	if useDefaultDuration {
 		// avoid setting both globals useDefaultDuration and duration
-		localDuration, err = getMaxValidationTime(network, nodeID, start)
+		selectedDuration, err = getMaxValidationTime(network, nodeID, start)
 		if err != nil {
 			return time.Time{}, 0, err
 		}
 	} else {
-		localDuration = duration
+		selectedDuration = duration
 	}
 
-	return start, localDuration, nil
+	return start, selectedDuration, nil
 }
 
 func promptStart() (time.Time, error) {
