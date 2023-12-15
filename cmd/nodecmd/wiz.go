@@ -85,8 +85,8 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&nodeConf, "node-config", "", "path to avalanchego node configuration for subnet")
 	cmd.Flags().StringVar(&subnetConf, "subnet-config", "", "path to the subnet configuration for subnet")
 	cmd.Flags().StringVar(&chainConf, "chain-config", "", "path to the chain configuration for subnet")
-	cmd.Flags().BoolVar(&useLatestAvalanchegoVersion, "latest-avalanchego-version", false, "install latest avalanchego version on node/s")
-	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
+	cmd.Flags().BoolVar(&useLatestAvalanchegoVersion, "latest-avalanchego", false, "install latest avalanchego version on node/s")
+	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "avalanchego-version", "", "install given avalanchego version on node/s")
 	cmd.Flags().StringSliceVar(&validators, "validators", []string{}, "deploy subnet into given comma separated list of validators. defaults to all cluster nodes")
 	return cmd
 }
@@ -145,14 +145,14 @@ func wiz(cmd *cobra.Command, args []string) error {
 		createDevnet = true
 		useAvalanchegoVersionFromSubnet = subnetName
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Creating the devnet"))
+		ux.Logger.PrintToUser(logging.Green.Wrap("Creating the devnet..."))
 		ux.Logger.PrintToUser("")
 		if err := createNodes(cmd, []string{clusterName}); err != nil {
 			return err
 		}
 	} else {
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Adding a subnet into a prexistent devnet"))
+		ux.Logger.PrintToUser(logging.Green.Wrap("Adding subnet into existing devnet %s..."), clusterName)
 		ux.Logger.PrintToUser("")
 	}
 
@@ -215,9 +215,9 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser("")
 	if clusterAlreadyExists {
-		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is validating subnet %s!"), clusterName, subnetName)
+		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is now validating subnet %s"), clusterName, subnetName)
 	} else {
-		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s has been created and is validating subnet %s!"), clusterName, subnetName)
+		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is successfully created and is now validating subnet %s!"), clusterName, subnetName)
 	}
 	return nil
 }
