@@ -35,6 +35,8 @@ You can check the subnet bootstrap status by calling avalanche node status <clus
 		RunE:         syncSubnet,
 	}
 
+	cmd.Flags().StringSliceVar(&validators, "validators", []string{}, "sync subnet into given comma separated list of validators. defaults to all cluster nodes")
+
 	return cmd
 }
 
@@ -128,6 +130,12 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
+	}
+	if len(validators) != 0 {
+		hosts, err = filterHosts(hosts, validators)
+		if err != nil {
+			return err
+		}
 	}
 	defer disconnectHosts(hosts)
 	notBootstrappedNodes, err := checkHostsAreBootstrapped(hosts)

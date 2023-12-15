@@ -294,7 +294,7 @@ func RunSSHCheckBootstrapped(host *models.Host) ([]byte, error) {
 // RunSSHCheckHealthy checks if node is healthy
 func RunSSHCheckHealthy(host *models.Host) ([]byte, error) {
 	// Craft and send the HTTP POST request
-	requestBody := "{\"jsonrpc\":\"2.0\", \"id\":1,\"method\":\"health.health\"}"
+	requestBody := "{\"jsonrpc\":\"2.0\", \"id\":1,\"method\":\"health.health\",\"params\": {\"tags\": [\"P\"]}}"
 	return PostOverSSH(host, "/ext/health", requestBody)
 }
 

@@ -16,6 +16,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
@@ -31,6 +32,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
+	"golang.org/x/mod/semver"
 )
 
 const (
@@ -50,6 +52,7 @@ var (
 	numNodes                        []int
 	nodeType                        string
 	useLatestAvalanchegoVersion     bool
+	useCustomAvalanchegoVersion     string
 	useAvalanchegoVersionFromSubnet string
 	cmdLineGCPCredentialsPath       string
 	cmdLineGCPProjectName           string
@@ -86,6 +89,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().IntSliceVar(&numNodes, "num-nodes", []int{}, "number of nodes to create per region(s). Use comma to separate multiple numbers for each region in the same order as --region flag")
 	cmd.Flags().StringVar(&nodeType, "node-type", "", "cloud instance type. Use 'default' to use recommended default instance type")
 	cmd.Flags().BoolVar(&useLatestAvalanchegoVersion, "latest-avalanchego-version", false, "install latest avalanchego version on node/s")
+	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
 	cmd.Flags().StringVar(&useAvalanchegoVersionFromSubnet, "avalanchego-version-from-subnet", "", "install latest avalanchego version, that is compatible with the given subnet, on node/s")
 	cmd.Flags().StringVar(&cmdLineGCPCredentialsPath, "gcp-credentials", "", "use given GCP credentials")
 	cmd.Flags().StringVar(&cmdLineGCPProjectName, "gcp-project", "", "use given GCP project")
@@ -97,8 +101,8 @@ will apply to all nodes in the cluster`,
 }
 
 func preCreateChecks() error {
-	if useLatestAvalanchegoVersion && useAvalanchegoVersionFromSubnet != "" {
-		return fmt.Errorf("could not use both latest avalanchego version and avalanchego version based on given subnet")
+	if !flags.EnsureMutuallyExclusive([]bool{useLatestAvalanchegoVersion, useAvalanchegoVersionFromSubnet != "", useCustomAvalanchegoVersion != ""}) {
+		return fmt.Errorf("latest avalanchego version, custom avalanchego version and avalanchego version based on given subnet, are mutually exclusive options")
 	}
 	if useAWS && useGCP {
 		return fmt.Errorf("could not use both AWS and GCP cloud options")
@@ -498,6 +502,11 @@ func getAvalancheGoVersion() (string, error) {
 	subnet := ""
 	if useLatestAvalanchegoVersion { //nolint: gocritic
 		version = "latest"
+	} else if useCustomAvalanchegoVersion != "" {
+		if !semver.IsValid(useCustomAvalanchegoVersion) {
+			return "", errors.New("custom avalanchego version must be a legal semantic version (ex: v1.1.1)")
+		}
+		version = useCustomAvalanchegoVersion
 	} else if useAvalanchegoVersionFromSubnet != "" {
 		subnet = useAvalanchegoVersionFromSubnet
 	} else {

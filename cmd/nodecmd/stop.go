@@ -156,7 +156,7 @@ func stopNodes(_ *cobra.Command, args []string) error {
 	if len(nodeErrors) > 0 {
 		ux.Logger.PrintToUser("Failed nodes: ")
 		for node, nodeErr := range nodeErrors {
-			if strings.Contains(err.Error(), constants.ErrReleasingGCPStaticIP) {
+			if strings.Contains(nodeErr.Error(), constants.ErrReleasingGCPStaticIP) {
 				ux.Logger.PrintToUser(fmt.Sprintf("Node is stopped, but failed to release static ip address for node %s due to %s", node, nodeErr))
 			} else {
 				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErr))
