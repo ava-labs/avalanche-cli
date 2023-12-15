@@ -142,7 +142,7 @@ func stopNodes(_ *cobra.Command, args []string) error {
 					return err
 				}
 			}
-			if err = gcpCloud.StopGCPNode(nodeConfig, clusterName, true); err != nil {
+			if err = gcpCloud.StopGCPNode(nodeConfig, clusterName); err != nil {
 				nodeErrors[node] = err
 				continue
 			}
