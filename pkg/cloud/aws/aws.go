@@ -337,15 +337,17 @@ func (c *AwsCloud) CreateAndDownloadKeyPair(keyName string, privateKeyFilePath s
 }
 
 func (c *AwsCloud) UploadKeyPair(keyName string, identity string) error {
-	createKeyPairOutput, err := c.ec2Client.CreateKeyPair(c.ctx, &ec2.CreateKeyPairInput{
-		KeyName: aws.String(keyName),
-	})
+	if !utils.IsSSHIdentityValid(identity) {
+		return fmt.Errorf("identity %s not found", identity)
+	}
+	publicKeyMaterial, err := utils.ReadSSHIdentityPublicKey(identity)
 	if err != nil {
 		return err
 	}
-	privateKeyMaterial := *createKeyPairOutput.KeyMaterial
-	err = os.WriteFile(privateKeyFilePath, []byte(privateKeyMaterial), 0o600)
-	if err != nil {
+	if _, err = c.ec2Client.ImportKeyPair(c.ctx, &ec2.ImportKeyPairInput{
+		KeyName:           aws.String(keyName),
+		PublicKeyMaterial: []byte(publicKeyMaterial),
+	}); err != nil {
 		return err
 	}
 	return nil

@@ -804,5 +804,5 @@ func setSSHIdentity() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return strings.Replace(sshIdentity, yubikeyMark, "", -1), nil
+	return strings.ReplaceAll(sshIdentity, yubikeyMark, ""), nil
 }
