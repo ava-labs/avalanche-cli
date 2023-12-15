@@ -15,7 +15,11 @@ import (
 
 // GetSSHConnectionString returns the SSH connection string for the given public IP and certificate file path.
 func GetSSHConnectionString(publicIP, certFilePath string) string {
-	return fmt.Sprintf("ssh %s %s@%s -i %s", constants.AnsibleSSHShellParams, constants.AnsibleSSHUser, publicIP, certFilePath)
+	if certFilePath != "" {
+		return fmt.Sprintf("ssh %s %s@%s -i %s", constants.AnsibleSSHShellParams, constants.AnsibleSSHUser, publicIP, certFilePath)
+	} else {
+		return fmt.Sprintf("ssh %s %s@%s", constants.AnsibleSSHUseAgentParams, constants.AnsibleSSHUser, publicIP)
+	}
 }
 
 // isSSHAgentAvailable checks if the SSH agent is available.
