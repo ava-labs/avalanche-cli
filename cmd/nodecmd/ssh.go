@@ -31,7 +31,7 @@ If no command is given, just prints the ssh cmdLine to be used to connect to eac
 		Args:         cobra.MinimumNArgs(0),
 		RunE:         sshNode,
 	}
-	cmd.Flags().BoolVar(&isParallel, "parallel", true, "run ssh command on all nodes in parallel")
+	cmd.Flags().BoolVar(&isParallel, "parallel", false, "run ssh command on all nodes in parallel")
 	return cmd
 }
 
