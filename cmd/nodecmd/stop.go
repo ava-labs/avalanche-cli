@@ -145,7 +145,7 @@ func stopNodes(_ *cobra.Command, args []string) error {
 					return err
 				}
 			}
-			if err = gcpCloud.StopGCPNode(nodeConfig, clusterName, true); err != nil {
+			if err = gcpCloud.StopGCPNode(nodeConfig, clusterName); err != nil {
 				if !errors.Is(err, gcpAPI.ErrNodeNotFoundToBeRunning) {
 					nodeErrors[node] = err
 					continue

@@ -11,4 +11,5 @@ type NodeConfig struct {
 	SecurityGroup string // security group used on cloud server
 	ElasticIP     string // public IP address of the cloud server
 	CloudService  string // which cloud service node is hosted on (AWS / GCP)
+	UseStaticIP   bool   // node has a static IP association
 }
