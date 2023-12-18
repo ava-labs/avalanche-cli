@@ -31,6 +31,7 @@ import (
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
@@ -74,7 +75,7 @@ func NewLocalDeployer(app *application.Avalanche, avagoVersion string, vmBin str
 
 type getGRPCClientFunc func(...binutils.GRPCClientOpOption) (client.Client, error)
 
-type setDefaultSnapshotFunc func(string, bool, bool) error
+type setDefaultSnapshotFunc func(string, bool, bool) (bool, error)
 
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
@@ -350,7 +351,7 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 //   - waits completion of operation
 //   - show status
 func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, error) {
-	avalancheGoBinPath, err := d.SetupLocalEnv()
+	needsRestart, avalancheGoBinPath, err := d.SetupLocalEnv()
 	if err != nil {
 		return ids.Empty, ids.Empty, err
 	}
@@ -397,6 +398,17 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		return ids.Empty, ids.Empty, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
 	d.app.Log.Debug("this VM will get ID", zap.String("vm-id", chainVMID.String()))
+
+	if networkBooted && needsRestart {
+		ux.Logger.PrintToUser("Restarting the network...")
+		if _, err := cli.Stop(ctx); err != nil {
+			return ids.Empty, ids.Empty, fmt.Errorf("failed to stop network: %w", err)
+		}
+		if err := d.app.ResetPluginsDir(); err != nil {
+			return ids.Empty, ids.Empty, fmt.Errorf("failed to reset plugins dir: %w", err)
+		}
+		networkBooted = false
+	}
 
 	if !networkBooted {
 		if err := d.startNetwork(ctx, cli, avalancheGoBinPath, runDir); err != nil {
@@ -555,28 +567,28 @@ func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte) err
 // * checks if avalanchego is installed in the local binary path
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path
-func (d *LocalDeployer) SetupLocalEnv() (string, error) {
+func (d *LocalDeployer) SetupLocalEnv() (bool, string, error) {
 	configSingleNodeEnabled := d.app.Conf.GetConfigBoolValue(constants.ConfigSingleNodeEnabledKey)
-	err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false, configSingleNodeEnabled)
+	needsRestart, err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false, configSingleNodeEnabled)
 	if err != nil {
-		return "", fmt.Errorf("failed setting up snapshots: %w", err)
+		return false, "", fmt.Errorf("failed setting up snapshots: %w", err)
 	}
 
 	avagoDir, err := d.setupLocalEnv()
 	if err != nil {
-		return "", fmt.Errorf("failed setting up local environment: %w", err)
+		return false, "", fmt.Errorf("failed setting up local environment: %w", err)
 	}
 
 	pluginDir := d.app.GetPluginsDir()
 	avalancheGoBinPath := filepath.Join(avagoDir, "avalanchego")
 
 	if err := os.MkdirAll(pluginDir, constants.DefaultPerms755); err != nil {
-		return "", fmt.Errorf("could not create pluginDir %s", pluginDir)
+		return false, "", fmt.Errorf("could not create pluginDir %s", pluginDir)
 	}
 
 	exists, err := storage.FolderExists(pluginDir)
 	if !exists || err != nil {
-		return "", fmt.Errorf("evaluated pluginDir to be %s but it does not exist", pluginDir)
+		return false, "", fmt.Errorf("evaluated pluginDir to be %s but it does not exist", pluginDir)
 	}
 
 	// TODO: we need some better version management here
@@ -584,11 +596,11 @@ func (d *LocalDeployer) SetupLocalEnv() (string, error) {
 	// * decide if force update or give user choice
 	exists, err = storage.FileExists(avalancheGoBinPath)
 	if !exists || err != nil {
-		return "", fmt.Errorf(
+		return false, "", fmt.Errorf(
 			"evaluated avalancheGoBinPath to be %s but it does not exist", avalancheGoBinPath)
 	}
 
-	return avalancheGoBinPath, nil
+	return needsRestart, avalancheGoBinPath, nil
 }
 
 func (d *LocalDeployer) setupLocalEnv() (string, error) {
@@ -685,10 +697,15 @@ func getExpectedDefaultSnapshotSHA256Sum(isSingleNode bool) (string, error) {
 
 // Initialize default snapshot with bootstrap snapshot archive
 // If force flag is set to true, overwrite the default snapshot if it exists
-func SetDefaultSnapshot(snapshotsDir string, force bool, isSingleNode bool) error {
+func SetDefaultSnapshot(snapshotsDir string, forceReset bool, isSingleNode bool) (bool, error) {
 	bootstrapSnapshotArchivePath := filepath.Join(snapshotsDir, constants.BootstrapSnapshotArchiveName)
 	if isSingleNode {
 		bootstrapSnapshotArchivePath = filepath.Join(snapshotsDir, constants.BootstrapSnapshotSingleNodeArchiveName)
+	}
+	defaultSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.DefaultSnapshotName)
+	defaultSnapshotInUse := false
+	if _, err := os.Stat(defaultSnapshotPath); err == nil {
+		defaultSnapshotInUse = true
 	}
 	// will download either if file not exists or if sha256 sum is not the same
 	downloadSnapshot := false
@@ -697,7 +714,7 @@ func SetDefaultSnapshot(snapshotsDir string, force bool, isSingleNode bool) erro
 	} else {
 		gotSum, err := utils.GetSHA256FromDisk(bootstrapSnapshotArchivePath)
 		if err != nil {
-			return err
+			return false, err
 		}
 		expectedSum, err := getExpectedDefaultSnapshotSHA256Sum(isSingleNode)
 		if err != nil {
@@ -706,6 +723,7 @@ func SetDefaultSnapshot(snapshotsDir string, force bool, isSingleNode bool) erro
 			downloadSnapshot = true
 		}
 	}
+	resetCurrentSnapshot := forceReset
 	if downloadSnapshot {
 		url := constants.BootstrapSnapshotURL
 		if isSingleNode {
@@ -713,36 +731,37 @@ func SetDefaultSnapshot(snapshotsDir string, force bool, isSingleNode bool) erro
 		}
 		resp, err := http.Get(url)
 		if err != nil {
-			return fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
+			return false, fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
 		}
 		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("failed downloading bootstrap snapshot: unexpected http status code: %d", resp.StatusCode)
+			return false, fmt.Errorf("failed downloading bootstrap snapshot: unexpected http status code: %d", resp.StatusCode)
 		}
 		defer resp.Body.Close()
 		bootstrapSnapshotBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
+			return false, fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
 		}
 		if err := os.WriteFile(bootstrapSnapshotArchivePath, bootstrapSnapshotBytes, constants.WriteReadReadPerms); err != nil {
-			return fmt.Errorf("failed writing down bootstrap snapshot: %w", err)
+			return false, fmt.Errorf("failed writing down bootstrap snapshot: %w", err)
 		}
+		if defaultSnapshotInUse {
+			ux.Logger.PrintToUser(logging.Yellow.Wrap("A new network snapshot image is available. Replacing the current one."))
+		}
+		resetCurrentSnapshot = true
 	}
-	defaultSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.DefaultSnapshotName)
-	if force {
+	if resetCurrentSnapshot {
 		if err := os.RemoveAll(defaultSnapshotPath); err != nil {
-			return fmt.Errorf("failed removing default snapshot: %w", err)
+			return false, fmt.Errorf("failed removing default snapshot: %w", err)
 		}
-	}
-	if _, err := os.Stat(defaultSnapshotPath); os.IsNotExist(err) {
 		bootstrapSnapshotBytes, err := os.ReadFile(bootstrapSnapshotArchivePath)
 		if err != nil {
-			return fmt.Errorf("failed reading bootstrap snapshot: %w", err)
+			return false, fmt.Errorf("failed reading bootstrap snapshot: %w", err)
 		}
 		if err := binutils.InstallArchive("tar.gz", bootstrapSnapshotBytes, snapshotsDir); err != nil {
-			return fmt.Errorf("failed installing bootstrap snapshot: %w", err)
+			return false, fmt.Errorf("failed installing bootstrap snapshot: %w", err)
 		}
 	}
-	return nil
+	return resetCurrentSnapshot, nil
 }
 
 // start the network

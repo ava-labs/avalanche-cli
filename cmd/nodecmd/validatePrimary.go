@@ -11,6 +11,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
+	"golang.org/x/exp/maps"
 
 	"github.com/ava-labs/avalanchego/utils/units"
 
@@ -347,8 +348,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
 	nodeIDMap, failedNodesMap := getNodeIDs(hosts)
-	failedNodes := []string{}
-	nodeErrors := []error{}
+	nodeErrors := map[string]error{}
 	for i, host := range hosts {
 		nodeIDStr, b := nodeIDMap[host.NodeID]
 		if !b {
@@ -357,37 +357,33 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 				return fmt.Errorf("expected to found an error for non mapped node")
 			}
 			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host.NodeID, err)
-			failedNodes = append(failedNodes, host.NodeID)
-			nodeErrors = append(nodeErrors, err)
+			nodeErrors[host.NodeID] = err
 			continue
 		}
 		nodeID, err := ids.NodeIDFromString(nodeIDStr)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host.NodeID, err)
-			failedNodes = append(failedNodes, host.NodeID)
-			nodeErrors = append(nodeErrors, err)
+			nodeErrors[host.NodeID] = err
 			continue
 		}
 		_, clusterNodeID, err := models.HostAnsibleIDToCloudID(host.NodeID)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as Primary Network due to %s", host.NodeID, err.Error())
-			failedNodes = append(failedNodes, host.NodeID)
-			nodeErrors = append(nodeErrors, err)
+			nodeErrors[host.NodeID] = err
 			continue
 		}
 		_, err = addNodeAsPrimaryNetworkValidator(network, kc, nodeID, i, clusterNodeID)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host.NodeID, err)
-			failedNodes = append(failedNodes, host.NodeID)
-			nodeErrors = append(nodeErrors, err)
+			nodeErrors[host.NodeID] = err
 		}
 	}
-	if len(failedNodes) > 0 {
+	if len(nodeErrors) > 0 {
 		ux.Logger.PrintToUser("Failed nodes: ")
-		for i, node := range failedNodes {
-			ux.Logger.PrintToUser(fmt.Sprintf("node %s failed due to %s", node, nodeErrors[i]))
+		for node, nodeErr := range nodeErrors {
+			ux.Logger.PrintToUser("node %s failed due to %v", node, nodeErr)
 		}
-		return fmt.Errorf("node(s) %s failed to validate the Primary Network", failedNodes)
+		return fmt.Errorf("node(s) %s failed to validate the Primary Network", maps.Keys(nodeErrors))
 	} else {
 		ux.Logger.PrintToUser(fmt.Sprintf("All nodes in cluster %s are successfully added as Primary Network validators!", clusterName))
 	}

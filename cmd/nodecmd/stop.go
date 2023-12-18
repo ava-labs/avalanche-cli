@@ -8,13 +8,13 @@ import (
 	"os"
 	"strings"
 
-	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
-	"google.golang.org/api/compute/v1"
+	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
+	"golang.org/x/exp/maps"
+	"golang.org/x/net/context"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -102,71 +102,75 @@ func stopNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	failedNodes := []string{}
-	nodeErrors := []error{}
+	nodeErrors := map[string]error{}
 	lastRegion := ""
-	var ec2Svc *ec2.EC2
-	var gcpClient *compute.Service
-	var gcpProjectName string
+	var ec2Svc *awsAPI.AwsCloud
+	var gcpCloud *gcpAPI.GcpCloud
 	for _, node := range clusterNodes {
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
 		if err != nil {
-			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err.Error()))
-			failedNodes = append(failedNodes, node)
-			nodeErrors = append(nodeErrors, err)
+			nodeErrors[node] = err
+			ux.Logger.PrintToUser("Failed to stop node %s due to %s", node, err.Error())
 			continue
 		}
 		if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
 			// need to check if it's empty because we didn't set cloud service when only using AWS
 			if nodeConfig.Region != lastRegion {
-				sess, err := getAWSCloudCredentials(awsProfile, nodeConfig.Region)
+				ec2Svc, err = awsAPI.NewAwsCloud(awsProfile, nodeConfig.Region)
 				if err != nil {
 					return err
 				}
-				ec2Svc = ec2.New(sess)
 				lastRegion = nodeConfig.Region
 			}
-			if err = awsAPI.StopAWSNode(ec2Svc, nodeConfig, clusterName); err != nil {
+			if err = ec2Svc.StopAWSNode(nodeConfig, clusterName); err != nil {
 				if strings.Contains(err.Error(), "RequestExpired: Request has expired") {
 					ux.Logger.PrintToUser("")
 					printExpiredCredentialsOutput(awsProfile)
 					return nil
 				}
-				failedNodes = append(failedNodes, node)
-				nodeErrors = append(nodeErrors, err)
-				continue
+				if !errors.Is(err, awsAPI.ErrNodeNotFoundToBeRunning) {
+					nodeErrors[node] = err
+					continue
+				}
+				ux.Logger.PrintToUser("node %s is already stopped", nodeConfig.NodeID)
 			}
 		} else {
-			if gcpClient == nil {
-				gcpClient, gcpProjectName, _, err = getGCPCloudCredentials()
+			if gcpCloud == nil {
+				gcpClient, projectName, _, err := getGCPCloudCredentials()
+				if err != nil {
+					return err
+				}
+				gcpCloud, err = gcpAPI.NewGcpCloud(gcpClient, projectName, context.Background())
 				if err != nil {
 					return err
 				}
 			}
-			if err = gcpAPI.StopGCPNode(gcpClient, nodeConfig, gcpProjectName, clusterName, true); err != nil {
-				failedNodes = append(failedNodes, node)
-				nodeErrors = append(nodeErrors, err)
-				continue
+			if err = gcpCloud.StopGCPNode(nodeConfig, clusterName); err != nil {
+				if !errors.Is(err, gcpAPI.ErrNodeNotFoundToBeRunning) {
+					nodeErrors[node] = err
+					continue
+				}
+				ux.Logger.PrintToUser("node %s is already stopped", nodeConfig.NodeID)
 			}
 		}
-		ux.Logger.PrintToUser(fmt.Sprintf("Node instance %s in cluster %s successfully stopped!", nodeConfig.NodeID, clusterName))
+		ux.Logger.PrintToUser("Node instance %s in cluster %s successfully stopped!", nodeConfig.NodeID, clusterName)
 		if err := removeDeletedNodeDirectory(node); err != nil {
-			ux.Logger.PrintToUser(fmt.Sprintf("Failed to delete node config for node %s due to %s", node, err.Error()))
+			ux.Logger.PrintToUser("Failed to delete node config for node %s due to %s", node, err.Error())
 			return err
 		}
 	}
-	if len(failedNodes) > 0 {
+	if len(nodeErrors) > 0 {
 		ux.Logger.PrintToUser("Failed nodes: ")
-		for i, node := range failedNodes {
-			if strings.Contains(nodeErrors[i].Error(), constants.ErrReleasingGCPStaticIP) {
-				ux.Logger.PrintToUser(fmt.Sprintf("Node is stopped, but failed to release static ip address for node %s due to %s", node, nodeErrors[i]))
+		for node, nodeErr := range nodeErrors {
+			if strings.Contains(nodeErr.Error(), constants.ErrReleasingGCPStaticIP) {
+				ux.Logger.PrintToUser("Node is stopped, but failed to release static ip address for node %s due to %s", node, nodeErr)
 			} else {
-				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErrors[i]))
+				ux.Logger.PrintToUser("Failed to stop node %s due to %s", node, nodeErr)
 			}
 		}
-		return fmt.Errorf("failed to stop node(s) %s", failedNodes)
+		return fmt.Errorf("failed to stop node(s) %s", maps.Keys(nodeErrors))
 	} else {
-		ux.Logger.PrintToUser(fmt.Sprintf("All nodes in cluster %s are successfully stopped!", clusterName))
+		ux.Logger.PrintToUser("All nodes in cluster %s are successfully stopped!", clusterName)
 	}
 	return removeClustersConfigFiles(clusterName)
 }
