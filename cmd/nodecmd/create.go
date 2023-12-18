@@ -16,12 +16,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
-	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
-	"github.com/ava-labs/avalanche-cli/pkg/terraform"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/ids"
@@ -34,6 +32,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
+	"golang.org/x/mod/semver"
 )
 
 const (
@@ -53,6 +52,7 @@ var (
 	numNodes                        []int
 	nodeType                        string
 	useLatestAvalanchegoVersion     bool
+	useCustomAvalanchegoVersion     string
 	useAvalanchegoVersionFromSubnet string
 	cmdLineGCPCredentialsPath       string
 	cmdLineGCPProjectName           string
@@ -89,6 +89,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().IntSliceVar(&numNodes, "num-nodes", []int{}, "number of nodes to create per region(s). Use comma to separate multiple numbers for each region in the same order as --region flag")
 	cmd.Flags().StringVar(&nodeType, "node-type", "", "cloud instance type. Use 'default' to use recommended default instance type")
 	cmd.Flags().BoolVar(&useLatestAvalanchegoVersion, "latest-avalanchego-version", false, "install latest avalanchego version on node/s")
+	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
 	cmd.Flags().StringVar(&useAvalanchegoVersionFromSubnet, "avalanchego-version-from-subnet", "", "install latest avalanchego version, that is compatible with the given subnet, on node/s")
 	cmd.Flags().StringVar(&cmdLineGCPCredentialsPath, "gcp-credentials", "", "use given GCP credentials")
 	cmd.Flags().StringVar(&cmdLineGCPProjectName, "gcp-project", "", "use given GCP project")
@@ -100,8 +101,8 @@ will apply to all nodes in the cluster`,
 }
 
 func preCreateChecks() error {
-	if useLatestAvalanchegoVersion && useAvalanchegoVersionFromSubnet != "" {
-		return fmt.Errorf("could not use both latest avalanchego version and avalanchego version based on given subnet")
+	if !flags.EnsureMutuallyExclusive([]bool{useLatestAvalanchegoVersion, useAvalanchegoVersionFromSubnet != "", useCustomAvalanchegoVersion != ""}) {
+		return fmt.Errorf("latest avalanchego version, custom avalanchego version and avalanchego version based on given subnet, are mutually exclusive options")
 	}
 	if useAWS && useGCP {
 		return fmt.Errorf("could not use both AWS and GCP cloud options")
@@ -156,13 +157,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if cloudService != constants.GCPCloudService && cmdLineGCPProjectName != "" {
 		return fmt.Errorf("set to use GCP project but cloud option is not GCP")
 	}
-	if err := terraform.CheckIsInstalled(); err != nil {
-		return err
-	}
-	err = terraform.RemoveDirectory(app.GetTerraformDir())
-	if err != nil {
-		return err
-	}
 	usr, err := user.Current()
 	if err != nil {
 		return err
@@ -172,17 +166,18 @@ func createNodes(_ *cobra.Command, args []string) error {
 	gcpProjectName := ""
 	gcpCredentialFilepath := ""
 	if cloudService == constants.AWSCloudService { // Get AWS Credential, region and AMI
-		regions, numNodes, ec2SvcMap, ami, err := getAWSCloudConfig(awsProfile)
+		ec2SvcMap, ami, numNodesMap, err := getAWSCloudConfig(awsProfile)
+		regions := maps.Keys(ec2SvcMap)
 		if err != nil {
 			return err
 		}
-		cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodes, awsProfile, regions, ami, usr)
+		cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodesMap, regions, ami, usr)
 		if err != nil {
 			return err
 		}
 		for _, region := range regions {
 			if !useStaticIP {
-				tmpIPMap, err := awsAPI.GetInstancePublicIPs(ec2SvcMap[region], cloudConfigMap[region].InstanceIDs)
+				tmpIPMap, err := ec2SvcMap[region].GetInstancePublicIPs(cloudConfigMap[region].InstanceIDs)
 				if err != nil {
 					return err
 				}
@@ -201,13 +196,13 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		cloudConfigMap, err = createGCPInstance(usr, gcpClient, nodeType, numNodes, zones, imageID, credentialFilepath, projectName, clusterName)
+		cloudConfigMap, err = createGCPInstance(usr, gcpClient, nodeType, numNodes, zones, imageID, clusterName)
 		if err != nil {
 			return err
 		}
 		for _, zone := range zones {
 			if !useStaticIP {
-				tmpIPMap, err := gcpAPI.GetInstancePublicIPs(gcpClient, projectName, zone, cloudConfigMap[zone].InstanceIDs)
+				tmpIPMap, err := gcpClient.GetInstancePublicIPs(zone, cloudConfigMap[zone].InstanceIDs)
 				if err != nil {
 					return err
 				}
@@ -232,10 +227,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	err = terraform.RemoveDirectory(app.GetTerraformDir())
-	if err != nil {
-		return err
-	}
+
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
 	avalancheGoVersion, err := getAvalancheGoVersion()
 	if err != nil {
@@ -343,6 +335,7 @@ func createClusterNodeConfig(network models.Network, cloudConfigMap models.Cloud
 				SecurityGroup: cloudConfig.SecurityGroup,
 				ElasticIP:     publicIP,
 				CloudService:  cloudService,
+				UseStaticIP:   useStaticIP,
 			}
 			err := app.CreateNodeCloudConfigFile(cloudConfig.InstanceIDs[i], &nodeConfig)
 			if err != nil {
@@ -510,6 +503,11 @@ func getAvalancheGoVersion() (string, error) {
 	subnet := ""
 	if useLatestAvalanchegoVersion { //nolint: gocritic
 		version = "latest"
+	} else if useCustomAvalanchegoVersion != "" {
+		if !semver.IsValid(useCustomAvalanchegoVersion) {
+			return "", errors.New("custom avalanchego version must be a legal semantic version (ex: v1.1.1)")
+		}
+		version = useCustomAvalanchegoVersion
 	} else if useAvalanchegoVersionFromSubnet != "" {
 		subnet = useAvalanchegoVersionFromSubnet
 	} else {
