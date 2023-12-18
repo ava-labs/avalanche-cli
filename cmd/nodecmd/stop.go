@@ -22,10 +22,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	authorizeRemove      bool
-	ignoreAlreadyStopped bool
-)
+var authorizeRemove bool
 
 func newStopCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -42,7 +39,6 @@ Note that a stopped node may still incur cloud server storage fees.`,
 	}
 	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to release cloud resources")
 	cmd.Flags().BoolVar(&authorizeRemove, "authorize-remove", false, "authorize CLI to remove all local files related to cloud nodes")
-	cmd.Flags().BoolVar(&ignoreAlreadyStopped, "ignore-already-stopped-nodes", false, "do not consider already stopped nodes as an error, and remove cluster info anyway")
 
 	return cmd
 }
@@ -132,7 +128,7 @@ func stopNodes(_ *cobra.Command, args []string) error {
 					printExpiredCredentialsOutput(awsProfile)
 					return nil
 				}
-				if !(errors.Is(err, awsAPI.ErrNodeNotFoundToBeRunning) && ignoreAlreadyStopped) {
+				if !errors.Is(err, awsAPI.ErrNodeNotFoundToBeRunning) {
 					nodeErrors[node] = err
 					continue
 				}
@@ -150,7 +146,7 @@ func stopNodes(_ *cobra.Command, args []string) error {
 				}
 			}
 			if err = gcpCloud.StopGCPNode(nodeConfig, clusterName, true); err != nil {
-				if !(errors.Is(err, gcpAPI.ErrNodeNotFoundToBeRunning) && ignoreAlreadyStopped) {
+				if !errors.Is(err, gcpAPI.ErrNodeNotFoundToBeRunning) {
 					nodeErrors[node] = err
 					continue
 				}
