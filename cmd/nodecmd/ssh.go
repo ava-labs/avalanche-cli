@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -14,6 +15,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
+
+var isParallel bool
 
 func newSSHCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -30,7 +33,7 @@ If no [cmd] is provided for the node, it will open ssh shell there.
 		Args:         cobra.MinimumNArgs(0),
 		RunE:         sshNode,
 	}
-
+	cmd.Flags().BoolVar(&isParallel, "parallel", false, "run ssh command on all nodes in parallel")
 	return cmd
 }
 
@@ -96,14 +99,41 @@ func sshNode(_ *cobra.Command, args []string) error {
 func sshHosts(hosts []*models.Host, cmd string) error {
 	if cmd != "" {
 		// execute cmd
+		wg := sync.WaitGroup{}
+		nowExecutingMutex := sync.Mutex{}
+		wgResults := models.NodeResults{}
 		for _, host := range hosts {
-			cmdLine := fmt.Sprintf("%s %s", utils.GetSSHConnectionString(host.IP, host.SSHPrivateKeyPath), cmd)
-			splitCmdLine := strings.Split(cmdLine, " ")
-			cmd := exec.Command(splitCmdLine[0], splitCmdLine[1:]...) //nolint: gosec
-			cmd.Env = os.Environ()
-			_, _ = utils.SetupRealtimeCLIOutput(cmd, true, true)
-			if err := cmd.Run(); err != nil {
-				ux.Logger.PrintToUser("Error: %s", err)
+			wg.Add(1)
+			go func(nodeResults *models.NodeResults, host *models.Host) {
+				if !isParallel {
+					nowExecutingMutex.Lock()
+					defer nowExecutingMutex.Unlock()
+				}
+				defer wg.Done()
+				splitCmdLine := strings.Split(cmd, " ")
+				cmd := exec.Command(splitCmdLine[0], splitCmdLine[1:]...) //nolint: gosec
+				cmd.Env = os.Environ()
+				outBuf, errBuf := utils.SetupRealtimeCLIOutput(cmd, false, false)
+				if !isParallel {
+					_, _ = utils.SetupRealtimeCLIOutput(cmd, true, true)
+				}
+				if _, err := outBuf.ReadFrom(errBuf); err != nil {
+					nodeResults.AddResult(host.NodeID, outBuf, err)
+				}
+				if err := cmd.Run(); err != nil {
+					nodeResults.AddResult(host.NodeID, outBuf, err)
+				} else {
+					nodeResults.AddResult(host.NodeID, outBuf, nil)
+				}
+			}(&wgResults, host)
+		}
+		wg.Wait()
+		if wgResults.HasErrors() {
+			return fmt.Errorf("failed to ssh node(s) %s", wgResults.GetErrorHostMap())
+		}
+		if isParallel {
+			for hostID, result := range wgResults.GetResultMap() {
+				ux.Logger.PrintToUser("[%s] %s", hostID, fmt.Sprintf("%v", result))
 			}
 		}
 	} else {
