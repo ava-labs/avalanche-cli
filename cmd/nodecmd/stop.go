@@ -110,7 +110,7 @@ func stopNodes(_ *cobra.Command, args []string) error {
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
 		if err != nil {
 			nodeErrors[node] = err
-			ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err.Error()))
+			ux.Logger.PrintToUser("Failed to stop node %s due to %s", node, err.Error())
 			continue
 		}
 		if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
@@ -128,8 +128,11 @@ func stopNodes(_ *cobra.Command, args []string) error {
 					printExpiredCredentialsOutput(awsProfile)
 					return nil
 				}
-				nodeErrors[node] = err
-				continue
+				if !errors.Is(err, awsAPI.ErrNodeNotFoundToBeRunning) {
+					nodeErrors[node] = err
+					continue
+				}
+				ux.Logger.PrintToUser("node %s is already stopped", nodeConfig.NodeID)
 			}
 		} else {
 			if gcpCloud == nil {
@@ -142,29 +145,32 @@ func stopNodes(_ *cobra.Command, args []string) error {
 					return err
 				}
 			}
-			if err = gcpCloud.StopGCPNode(nodeConfig, clusterName, true); err != nil {
-				nodeErrors[node] = err
-				continue
+			if err = gcpCloud.StopGCPNode(nodeConfig, clusterName); err != nil {
+				if !errors.Is(err, gcpAPI.ErrNodeNotFoundToBeRunning) {
+					nodeErrors[node] = err
+					continue
+				}
+				ux.Logger.PrintToUser("node %s is already stopped", nodeConfig.NodeID)
 			}
 		}
-		ux.Logger.PrintToUser(fmt.Sprintf("Node instance %s in cluster %s successfully stopped!", nodeConfig.NodeID, clusterName))
+		ux.Logger.PrintToUser("Node instance %s in cluster %s successfully stopped!", nodeConfig.NodeID, clusterName)
 		if err := removeDeletedNodeDirectory(node); err != nil {
-			ux.Logger.PrintToUser(fmt.Sprintf("Failed to delete node config for node %s due to %s", node, err.Error()))
+			ux.Logger.PrintToUser("Failed to delete node config for node %s due to %s", node, err.Error())
 			return err
 		}
 	}
 	if len(nodeErrors) > 0 {
 		ux.Logger.PrintToUser("Failed nodes: ")
 		for node, nodeErr := range nodeErrors {
-			if strings.Contains(err.Error(), constants.ErrReleasingGCPStaticIP) {
-				ux.Logger.PrintToUser(fmt.Sprintf("Node is stopped, but failed to release static ip address for node %s due to %s", node, nodeErr))
+			if strings.Contains(nodeErr.Error(), constants.ErrReleasingGCPStaticIP) {
+				ux.Logger.PrintToUser("Node is stopped, but failed to release static ip address for node %s due to %s", node, nodeErr)
 			} else {
-				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, nodeErr))
+				ux.Logger.PrintToUser("Failed to stop node %s due to %s", node, nodeErr)
 			}
 		}
 		return fmt.Errorf("failed to stop node(s) %s", maps.Keys(nodeErrors))
 	} else {
-		ux.Logger.PrintToUser(fmt.Sprintf("All nodes in cluster %s are successfully stopped!", clusterName))
+		ux.Logger.PrintToUser("All nodes in cluster %s are successfully stopped!", clusterName)
 	}
 	return removeClustersConfigFiles(clusterName)
 }

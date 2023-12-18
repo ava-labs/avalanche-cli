@@ -5,6 +5,7 @@ package gcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -25,6 +26,8 @@ const (
 	opScopeRegion = "region"
 	opScopeGlobal = "global"
 )
+
+var ErrNodeNotFoundToBeRunning = errors.New("node not found to be running")
 
 type GcpCloud struct {
 	gcpClient *compute.Service
@@ -379,21 +382,20 @@ func (c *GcpCloud) checkInstanceIsRunning(zone, nodeID string) (bool, error) {
 }
 
 // StopGCPNode stops GCP node in GCP
-func (c *GcpCloud) StopGCPNode(nodeConfig models.NodeConfig, clusterName string, releasePublicIP bool) error {
+func (c *GcpCloud) StopGCPNode(nodeConfig models.NodeConfig, clusterName string) error {
 	isRunning, err := c.checkInstanceIsRunning(nodeConfig.Region, nodeConfig.NodeID)
 	if err != nil {
 		return err
 	}
 	if !isRunning {
-		noRunningNodeErr := fmt.Errorf("no running node with instance id %s is found in cluster %s", nodeConfig.NodeID, clusterName)
-		return noRunningNodeErr
+		return fmt.Errorf("%w: instance %s, cluster %s", ErrNodeNotFoundToBeRunning, nodeConfig.NodeID, clusterName)
 	}
 	ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
 	instancesStopCall := c.gcpClient.Instances.Stop(c.projectID, nodeConfig.Region, nodeConfig.NodeID)
 	if _, err = instancesStopCall.Do(); err != nil {
 		return err
 	}
-	if releasePublicIP && nodeConfig.ElasticIP != "" {
+	if nodeConfig.UseStaticIP {
 		ux.Logger.PrintToUser(fmt.Sprintf("Releasing static IP address %s ...", nodeConfig.ElasticIP))
 		// GCP node region is stored in format of "us-east1-b", we need "us-east1"
 		region := strings.Join(strings.Split(nodeConfig.Region, "-")[:2], "-")

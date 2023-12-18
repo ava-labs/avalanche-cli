@@ -17,8 +17,10 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 )
 
 const (
@@ -43,6 +45,7 @@ var (
 	nodeConf            string
 	subnetConf          string
 	chainConf           string
+	validators          []string
 )
 
 func newWizCmd() *cobra.Command {
@@ -54,7 +57,7 @@ func newWizCmd() *cobra.Command {
 The node wiz command creates a devnet and deploys, sync and validate a subnet into it. It creates the subnet if so needed.
 `,
 		SilenceUsage: true,
-		Args:         cobra.ExactArgs(2),
+		Args:         cobra.RangeArgs(1, 2),
 		RunE:         wiz,
 	}
 	cmd.Flags().BoolVar(&useStaticIP, "use-static-ip", true, "attach static Public IP on cloud servers")
@@ -84,20 +87,31 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&chainConf, "chain-config", "", "path to the chain configuration for subnet")
 	cmd.Flags().BoolVar(&useSSHAgent, "use-ssh-agent", false, "use ssh agent for ssh")
 	cmd.Flags().StringVar(&sshIdentity, "ssh-identity", "", "use given ssh identity")
+	cmd.Flags().BoolVar(&useLatestAvalanchegoVersion, "latest-avalanchego", false, "install latest avalanchego version on node/s")
+	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "avalanchego-version", "", "install given avalanchego version on node/s")
+	cmd.Flags().StringSliceVar(&validators, "validators", []string{}, "deploy subnet into given comma separated list of validators. defaults to all cluster nodes")
 	return cmd
 }
 
 func wiz(cmd *cobra.Command, args []string) error {
 	clusterName := args[0]
-	subnetName := args[1]
-	exists, err := clusterExists(clusterName)
+	subnetName := ""
+	if len(args) > 1 {
+		subnetName = args[1]
+	}
+	clusterAlreadyExists, err := clusterExists(clusterName)
 	if err != nil {
 		return err
 	}
-	if exists {
-		return fmt.Errorf("cluster %s already exists", clusterName)
+	if clusterAlreadyExists {
+		if err := checkClusterIsADevnet(clusterName); err != nil {
+			return err
+		}
 	}
-	if !app.SidecarExists(subnetName) || forceSubnetCreate {
+	if clusterAlreadyExists && subnetName == "" {
+		return fmt.Errorf("expecting to add subnet to existing cluster but no subnet-name was provided")
+	}
+	if subnetName != "" && (!app.SidecarExists(subnetName) || forceSubnetCreate) {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Creating the subnet"))
 		ux.Logger.PrintToUser("")
@@ -128,18 +142,43 @@ func wiz(cmd *cobra.Command, args []string) error {
 			}
 		}
 	}
-	createDevnet = true
-	useAvalanchegoVersionFromSubnet = subnetName
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Creating the devnet"))
-	ux.Logger.PrintToUser("")
-	err = createNodes(cmd, []string{clusterName})
-	if err != nil {
-		return err
+
+	if !clusterAlreadyExists {
+		createDevnet = true
+		useAvalanchegoVersionFromSubnet = subnetName
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(logging.Green.Wrap("Creating the devnet..."))
+		ux.Logger.PrintToUser("")
+		if err := createNodes(cmd, []string{clusterName}); err != nil {
+			return err
+		}
+	} else {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(logging.Green.Wrap("Adding subnet into existing devnet %s..."), clusterName)
+		ux.Logger.PrintToUser("")
 	}
+
+	// check all validators are found
+	if len(validators) != 0 {
+		hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+		if err != nil {
+			return err
+		}
+		_, err = filterHosts(hosts, validators)
+		if err != nil {
+			return err
+		}
+	}
+
 	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err
 	}
+	if subnetName == "" {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s has been created!"), clusterName)
+		return nil
+	}
+
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser(logging.Green.Wrap("Deploying the subnet"))
 	ux.Logger.PrintToUser("")
@@ -177,7 +216,11 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s has been created and is validating subnet %s!"), clusterName, subnetName)
+	if clusterAlreadyExists {
+		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is now validating subnet %s"), clusterName, subnetName)
+	} else {
+		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is successfully created and is now validating subnet %s!"), clusterName, subnetName)
+	}
 	return nil
 }
 
@@ -230,6 +273,12 @@ func waitForClusterSubnetStatus(
 	if err != nil {
 		return err
 	}
+	if len(validators) != 0 {
+		hosts, err = filterHosts(hosts, validators)
+		if err != nil {
+			return err
+		}
+	}
 	defer disconnectHosts(hosts)
 	startTime := time.Now()
 	for {
@@ -276,4 +325,51 @@ func waitForClusterSubnetStatus(
 		}
 		time.Sleep(poolTime)
 	}
+}
+
+func checkClusterIsADevnet(clusterName string) error {
+	exists, err := clusterExists(clusterName)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("cluster %q does not exists", clusterName)
+	}
+	clustersConfig, err := app.LoadClustersConfig()
+	if err != nil {
+		return err
+	}
+	if clustersConfig.Clusters[clusterName].Network.Kind != models.Devnet {
+		return fmt.Errorf("cluster %q is not a Devnet", clusterName)
+	}
+	return nil
+}
+
+func filterHosts(hosts []*models.Host, nodes []string) ([]*models.Host, error) {
+	indices := set.Set[int]{}
+	for _, node := range nodes {
+		added := false
+		for i, host := range hosts {
+			cloudID := host.GetCloudID()
+			ip := host.IP
+			nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
+			if err != nil {
+				return nil, err
+			}
+			if slices.Contains([]string{cloudID, ip, nodeID.String()}, node) {
+				added = true
+				indices.Add(i)
+			}
+		}
+		if !added {
+			return nil, fmt.Errorf("node %q not found", node)
+		}
+	}
+	filteredHosts := []*models.Host{}
+	for i, host := range hosts {
+		if indices.Contains(i) {
+			filteredHosts = append(filteredHosts, host)
+		}
+	}
+	return filteredHosts, nil
 }
