@@ -48,10 +48,10 @@ dockers:
     - "--platform=linux/arm64"
     goarch: arm64
 docker_manifests:
-  - name_template: 'myorg/myuser:{{ .Tag }}'
+  - name_template: 'avaplatform/avalanche-cli:{{ .Tag }}'
     image_templates:
-    - 'myorg/myuser:{{ .Tag }}-amd64'
-    - 'myorg/myuser:{{ .Tag }}-arm64'
+    - 'avaplatform/avalanche-cli:{{ .Tag }}-amd64'
+    - 'avaplatform/avalanche-cli:{{ .Tag }}-arm64'
 release:
   # Repo in which the release will be created.
   # Default is extracted from the origin remote URL or empty if its private hosted.
