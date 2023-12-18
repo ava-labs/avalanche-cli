@@ -35,4 +35,4 @@ docker: ## check docker
 	docker --version || (echo "docker is not installed. Pls follow https://docs.docker.com/get-docker/" && exit 1)
 
 docker-build: docker ## Build docker image
-	docker build . -t avalanche
+	docker build . -t avalanche-cli
