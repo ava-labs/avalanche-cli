@@ -24,8 +24,9 @@ import (
 )
 
 var (
-	ErrNoInstanceState = errors.New("unable to get instance state")
-	ErrNoAddressFound  = errors.New("unable to get public IP address info on AWS")
+	ErrNoInstanceState         = errors.New("unable to get instance state")
+	ErrNoAddressFound          = errors.New("unable to get public IP address info on AWS")
+	ErrNodeNotFoundToBeRunning = errors.New("node not found to be running")
 )
 
 type AwsCloud struct {
@@ -259,8 +260,7 @@ func (c *AwsCloud) StopAWSNode(nodeConfig models.NodeConfig, clusterName string)
 		return err
 	}
 	if !isRunning {
-		noRunningNodeErr := fmt.Errorf("no running node with instance id %s is found in cluster %s", nodeConfig.NodeID, clusterName)
-		return noRunningNodeErr
+		return fmt.Errorf("%w: instance %s, cluster %s", ErrNodeNotFoundToBeRunning, nodeConfig.NodeID, clusterName)
 	}
 	ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
 	return c.StopInstance(nodeConfig.NodeID, nodeConfig.ElasticIP, nodeConfig.UseStaticIP)
