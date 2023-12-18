@@ -104,7 +104,6 @@ func sshHosts(hosts []*models.Host, cmd string) error {
 		wgResults := models.NodeResults{}
 		for _, host := range hosts {
 			wg.Add(1)
-
 			go func(nodeResults *models.NodeResults, host *models.Host) {
 				if !isParallel {
 					nowExecutingMutex.Lock()
