@@ -171,7 +171,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	userIPAddress, err := getIPAddress()
+	userIPAddress, err := utils.GetUserIPAddress()
 	if err != nil {
 		return nil, nil, "", "", err
 	}
@@ -234,7 +234,6 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 }
 
 func createGCPInstance(
-	usr *user.User,
 	gcpClient *gcpAPI.GcpCloud,
 	instanceType string,
 	numNodes []int,
@@ -242,14 +241,13 @@ func createGCPInstance(
 	imageID string,
 	clusterName string,
 ) (models.CloudConfig, error) {
-	defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(
 		gcpClient,
 		instanceType,
 		numNodes,
 		zones,
 		imageID,
-		defaultAvalancheCLIPrefix,
+		defaultAvalancheCLIPrefix(),
 	)
 	if err != nil {
 		ux.Logger.PrintToUser("Failed to create GCP cloud server")
@@ -285,7 +283,7 @@ func createGCPInstance(
 			InstanceIDs:   instanceIDs[zone],
 			PublicIPs:     elasticIPs[zone],
 			KeyPair:       keyPairName,
-			SecurityGroup: fmt.Sprintf("%s-network", defaultAvalancheCLIPrefix),
+			SecurityGroup: fmt.Sprintf("%s-network", defaultAvalancheCLIPrefix()),
 			CertFilePath:  certFilePath,
 			ImageID:       imageID,
 		}
@@ -309,4 +307,12 @@ func updateClustersConfigGCPKeyFilepath(projectName, serviceAccountKeyFilepath s
 		clustersConfig.GCPConfig.ServiceAccFilePath = serviceAccountKeyFilepath
 	}
 	return app.WriteClustersConfigFile(&clustersConfig)
+}
+
+func defaultAvalancheCLIPrefix() string {
+	usr, err := user.Current()
+	if err != nil {
+		return constants.AnsibleSSHUser + constants.AvalancheCLISuffix
+	}
+	return usr.Username + constants.AvalancheCLISuffix
 }

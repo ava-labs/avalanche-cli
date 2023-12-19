@@ -3,13 +3,9 @@
 package nodecmd
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math"
-	"net"
-	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -196,7 +192,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		cloudConfigMap, err = createGCPInstance(usr, gcpClient, nodeType, numNodes, zones, imageID, clusterName)
+		cloudConfigMap, err = createGCPInstance(gcpClient, nodeType, numNodes, zones, imageID, clusterName)
 		if err != nil {
 			return err
 		}
@@ -461,38 +457,6 @@ func provideStakingCertAndKey(host *models.Host) error {
 		ux.Logger.PrintToUser("Generated staking keys for host %s[%s] ", instanceID, nodeID.String())
 	}
 	return ssh.RunSSHUploadStakingFiles(host, keyPath)
-}
-
-func getIPAddress() (string, error) {
-	resp, err := http.Get("https://api.ipify.org?format=json")
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", errors.New("HTTP request failed")
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return "", err
-	}
-
-	ipAddress, ok := result["ip"].(string)
-	if ok {
-		if net.ParseIP(ipAddress) == nil {
-			return "", errors.New("invalid IP address")
-		}
-		return ipAddress, nil
-	}
-
-	return "", errors.New("no IP address found")
 }
 
 // getAvalancheGoVersion asks users whether they want to install the newest Avalanche Go version

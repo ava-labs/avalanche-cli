@@ -127,7 +127,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	regionConf map[string]models.RegionConfig,
 ) (map[string][]string, map[string][]string, map[string]string, map[string]string, error) {
 	ux.Logger.PrintToUser("Creating new EC2 instance(s) on AWS...")
-	userIPAddress, err := getIPAddress()
+	userIPAddress, err := utils.GetUserIPAddress()
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
