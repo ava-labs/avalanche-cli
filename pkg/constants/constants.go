@@ -79,7 +79,7 @@ const (
 
 	DefaultSnapshotName = "default-1654102509"
 
-	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/main/"
+	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/cchain-warp-snapshot/"
 
 	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
 	BootstrapSnapshotLocalPath   = "assets/" + BootstrapSnapshotArchiveName
