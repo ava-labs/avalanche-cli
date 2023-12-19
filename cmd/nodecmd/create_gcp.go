@@ -123,14 +123,14 @@ func getGCPConfig() (*gcpAPI.GcpCloud, map[string]int, string, string, string, e
 	finalZones := map[string]int{}
 	// verify regions are valid and place in random zones per region
 	for region, numNodes := range finalRegions {
-		if slices.Contains(gcpCloud.ListRegions(), region) {
+		if !slices.Contains(gcpCloud.ListRegions(), region) {
+			return nil, nil, "", "", "", fmt.Errorf("invalid region %s", region)
+		} else {
 			finalZone, err := gcpCloud.GetRandomZone(region)
 			if err != nil {
 				return nil, nil, "", "", "", err
 			}
 			finalZones[finalZone] = numNodes
-		} else {
-			return nil, nil, "", "", "", fmt.Errorf("invalid region %s", region)
 		}
 	}
 	imageID, err := gcpCloud.GetUbuntuImageID()
