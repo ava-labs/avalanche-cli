@@ -228,10 +228,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 		}
 		if separateMonitoringInstance {
-			//if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress, constants.SSHTCPPort); err != nil {
-			//	return nil, nil, nil, nil, err
-			//}
-			if err = monitoringEc2SvcMap[monitoringHostRegion].AddSecurityGroupRule(monitoringCloudConfig.PublicIPs[0], monitoringCloudConfig.SecurityGroup); err != nil {
+			if err = AddMonitoringSecurityGroupRule(monitoringEc2SvcMap, monitoringNodeConfig.PublicIPs[0], monitoringNodeConfig.SecurityGroup, monitoringHostRegion); err != nil {
 				return err
 			}
 		}
@@ -265,7 +262,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 
 	//if err = createClusterNodeConfig(network, cloudConfigMap, clusterName, cloudService); err != nil {
-	if err = createClusterNodeConfig(network, cloudConfig, monitoringCloudConfig, clusterName, cloudService); err != nil {
+	if err = createClusterNodeConfig(network, cloudConfigMap, monitoringCloudConfig, clusterName, cloudService); err != nil {
 		return err
 	}
 	if cloudService == constants.GCPCloudService {

@@ -269,6 +269,17 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
 }
 
+func AddMonitoringSecurityGroupRule(ec2Svc map[string]*awsAPI.AwsCloud, monitoringHostPublicIP, securityGroupName, region string) error {
+	_, sg, err := ec2Svc[region].CheckSecurityGroupExists(securityGroupName)
+	if err != nil {
+		return err
+	}
+	if err = ec2Svc[region].AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoMachineMetricsPort); err != nil {
+		return err
+	}
+	return ec2Svc[region].AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoAPIPort)
+}
+
 func createAWSInstances(
 	ec2Svc map[string]*awsAPI.AwsCloud,
 	nodeType string,
