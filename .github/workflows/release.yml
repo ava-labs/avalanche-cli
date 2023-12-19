@@ -75,6 +75,15 @@ jobs:
         env:
           MACOS_SDK_FNAME: MacOSX12.3.sdk.tar.xz
           MACOS_SDK_CHECKSUM: 3abd261ceb483c44295a6623fdffe5d44fc4ac2c872526576ec5ab5ad0f6e26c
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASS }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
