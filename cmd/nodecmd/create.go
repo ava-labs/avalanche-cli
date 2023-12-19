@@ -198,15 +198,15 @@ func createNodes(_ *cobra.Command, args []string) error {
 			return fmt.Errorf("cloud access is required")
 		}
 		// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
-		gcpClient, zones, numNodes, imageID, credentialFilepath, projectName, err := getGCPConfig()
+		gcpClient, numNodesMap, imageID, credentialFilepath, projectName, err := getGCPConfig()
 		if err != nil {
 			return err
 		}
-		cloudConfigMap, err = createGCPInstance(usr, gcpClient, nodeType, numNodes, zones, imageID, clusterName)
+		cloudConfigMap, err = createGCPInstance(usr, gcpClient, nodeType, numNodesMap, imageID, clusterName)
 		if err != nil {
 			return err
 		}
-		for _, zone := range zones {
+		for zone := range numNodesMap {
 			if !useStaticIP {
 				tmpIPMap, err := gcpClient.GetInstancePublicIPs(zone, cloudConfigMap[zone].InstanceIDs)
 				if err != nil {
@@ -735,8 +735,8 @@ func getRegionsNodeNum(cloudName string) (
 			locationsListURL: "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html",
 		},
 		constants.GCPCloudService: {
-			defaultLocations: []string{"us-east1-b", "us-central1-c", "us-west1-b"},
-			locationName:     "Google Zone",
+			defaultLocations: []string{"us-east1", "us-central1", "us-west1"},
+			locationName:     "Google Region",
 			locationsListURL: "https://cloud.google.com/compute/docs/regions-zones/",
 		},
 	}

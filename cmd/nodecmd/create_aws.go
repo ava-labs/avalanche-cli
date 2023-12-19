@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -105,6 +106,15 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 				printNoCredentialsOutput(awsProfile)
 			}
 			return nil, nil, nil, err
+		}
+		// verify regions are valid
+		availableRegions, err := ec2SvcMap[region].ListRegions()
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if slices.Contains(availableRegions, region) {
+			ux.Logger.PrintToUser("Region [%s] is not valid in your AWS profile", region)
+			return nil, nil, nil, fmt.Errorf("region [%s] is not valid", region)
 		}
 		amiMap[region], err = ec2SvcMap[region].GetUbuntuAMIID()
 		if err != nil {

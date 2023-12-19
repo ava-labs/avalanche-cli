@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -405,6 +406,44 @@ func (c *GcpCloud) StopGCPNode(nodeConfig models.NodeConfig, clusterName string)
 		}
 	}
 	return nil
+}
+
+// ListRegions returns a list of regions for the GcpCloud instance.
+func (c *GcpCloud) ListRegions() []string {
+	regionListCall := c.gcpClient.Regions.List(c.projectID)
+	regionList, err := regionListCall.Do()
+	if err != nil {
+		return nil
+	}
+	regions := []string{}
+	for _, region := range regionList.Items {
+		regions = append(regions, region.Name)
+	}
+	return regions
+}
+
+// ListZonesInRegion returns a list of zones in a specific region for a given project ID.
+func (c *GcpCloud) ListZonesInRegion(region string) ([]string, error) {
+	zoneListCall := c.gcpClient.Zones.List(c.projectID)
+	zoneListCall.Filter(fmt.Sprintf("region eq %s", region))
+	zoneList, err := zoneListCall.Do()
+	if err != nil {
+		return nil, err
+	}
+	zones := []string{}
+	for _, zone := range zoneList.Items {
+		zones = append(zones, zone.Name)
+	}
+	return zones, nil
+}
+
+// GetRandomZone returns a random zone in the specified region.
+func (c *GcpCloud) GetRandomZone(region string) (string, error) {
+	zones, err := c.ListZonesInRegion(region)
+	if err != nil {
+		return "", fmt.Errorf("error listing zones: %w", err)
+	}
+	return zones[rand.Intn(len(zones))], nil //nolint: gosec
 }
 
 // zoneToRegion returns region from zone
