@@ -426,14 +426,15 @@ func (c *GcpCloud) ListRegions() []string {
 // ListZonesInRegion returns a list of zones in a specific region for a given project ID.
 func (c *GcpCloud) ListZonesInRegion(region string) ([]string, error) {
 	zoneListCall := c.gcpClient.Zones.List(c.projectID)
-	zoneListCall.Filter(fmt.Sprintf("region eq %s", region))
 	zoneList, err := zoneListCall.Do()
 	if err != nil {
 		return nil, err
 	}
 	zones := []string{}
 	for _, zone := range zoneList.Items {
-		zones = append(zones, zone.Name)
+		if zone.Region == fmt.Sprintf("https://www.googleapis.com/compute/v1/projects/%s/regions/%s", c.projectID, region) {
+			zones = append(zones, zone.Name)
+		}
 	}
 	return zones, nil
 }
@@ -445,7 +446,10 @@ func (c *GcpCloud) GetRandomZone(region string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error listing zones: %w", err)
 	}
-	return zones[rand.Intn(len(zones))], nil //nolint: gosec
+	if len(zones) == 0 {
+		return "", fmt.Errorf("no zones found in region %s", region)
+	}
+	return zones[rand.Intn(len(zones))], nil
 }
 
 // zoneToRegion returns region from zone

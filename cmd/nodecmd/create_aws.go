@@ -98,23 +98,21 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 	ec2SvcMap := map[string]*awsAPI.AwsCloud{}
 	amiMap := map[string]string{}
 	numNodesMap := map[string]int{}
+	// verify regions are valid
+	if validRegions, err := checkRegions(maps.Keys(finalRegions)); err != nil {
+		return nil, nil, nil, err
+	} else if !validRegions {
+		return nil, nil, nil, fmt.Errorf("invalid regions provided for %s", constants.AWSCloudService)
+	}
 	for region := range finalRegions {
 		var err error
+
 		ec2SvcMap[region], err = getAWSCloudCredentials(awsProfile, region)
 		if err != nil {
 			if !strings.Contains(err.Error(), "cloud access is required") {
 				printNoCredentialsOutput(awsProfile)
 			}
 			return nil, nil, nil, err
-		}
-		// verify regions are valid
-		availableRegions, err := ec2SvcMap[region].ListRegions()
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		if slices.Contains(availableRegions, region) {
-			ux.Logger.PrintToUser("Region [%s] is not valid in your AWS profile", region)
-			return nil, nil, nil, fmt.Errorf("region [%s] is not valid", region)
 		}
 		amiMap[region], err = ec2SvcMap[region].GetUbuntuAMIID()
 		if err != nil {
@@ -350,4 +348,22 @@ func addCertToSSH(certName string) error {
 	cmd := exec.Command("ssh-add", certFilePath)
 	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	return cmd.Run()
+}
+
+// checkRegions checks if the given regions are available in AWS.
+func checkRegions(regions []string) (bool, error) {
+	regionChecker, err := getAWSCloudCredentials(awsProfile, "us-east-1")
+	if err != nil {
+		return false, err
+	}
+	availableRegions, err := regionChecker.ListRegions()
+	if err != nil {
+		return false, err
+	}
+	for _, region := range regions {
+		if !slices.Contains(availableRegions, region) {
+			return false, nil
+		}
+	}
+	return true, nil
 }
