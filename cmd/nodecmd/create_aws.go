@@ -125,6 +125,7 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	regions []string,
 	regionConf map[string]models.RegionConfig,
+	forMonitoring bool,
 ) (map[string][]string, map[string][]string, map[string]string, map[string]string, error) {
 	ux.Logger.PrintToUser("Creating new EC2 instance(s) on AWS...")
 	userIPAddress, err := getIPAddress()
@@ -221,6 +222,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			regionConf[region].InstanceType,
 			keyPairName[region],
 			sgID,
+			forMonitoring,
 		); err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -273,11 +275,11 @@ func createAWSInstances(
 	numNodes map[string]int,
 	regions []string,
 	ami map[string]string,
-	usr *user.User) (
+	usr *user.User,
+	forMonitoring bool) (
 	models.CloudConfig, error,
 ) {
 	regionConf := map[string]models.RegionConfig{}
-
 	for _, region := range regions {
 		prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
 		regionConf[region] = models.RegionConfig{
@@ -289,9 +291,8 @@ func createAWSInstances(
 			InstanceType:      nodeType,
 		}
 	}
-
 	// Create new EC2 instances
-	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(ec2Svc, regions, regionConf)
+	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(ec2Svc, regions, regionConf, forMonitoring)
 	if err != nil {
 		if err.Error() == constants.EIPLimitErr {
 			ux.Logger.PrintToUser("Failed to create AWS cloud server(s), please try creating again in a different region")
