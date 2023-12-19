@@ -263,8 +263,8 @@ func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, s
 					AutomaticRestart: &automaticRestart,
 				},
 				Labels: map[string]string{
-					"Name":       "avalanche",
-					"Managed-By": "avalanche-cli",
+					"name":       "avalanche",
+					"managed-by": "avalanche-cli",
 				},
 			}
 			if staticIP != nil {
