@@ -262,6 +262,10 @@ func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, s
 				Scheduling: &compute.Scheduling{
 					AutomaticRestart: &automaticRestart,
 				},
+				Labels: map[string]string{
+					"Name":       "avalanche",
+					"Managed-By": "avalanche-cli",
+				},
 			}
 			if staticIP != nil {
 				instance.NetworkInterfaces[0].AccessConfigs[0].NatIP = staticIP[currentIndex]

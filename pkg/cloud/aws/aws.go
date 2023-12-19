@@ -146,6 +146,21 @@ func (c *AwsCloud) CreateEC2Instances(count int, amiID, instanceType, keyName, s
 				},
 			},
 		},
+		TagSpecifications: []types.TagSpecification{
+			{
+				ResourceType: "instance",
+				Tags: []types.Tag{
+					{
+						Key:   aws.String("Name"),
+						Value: aws.String("avalanche"),
+					},
+					{
+						Key:   aws.String("Managed-By"),
+						Value: aws.String("avalanche-cli"),
+					},
+				},
+			},
+		},
 	})
 	if err != nil {
 		return nil, err

@@ -54,7 +54,6 @@ const (
 	SSHFileOpsTimeout     = 30 * time.Second
 	SSHPOSTTimeout        = 10 * time.Second
 	SSHSleepBetweenChecks = 1 * time.Second
-	SSHScriptLogFilter    = "_AvalancheCLI_LOG_"
 	SSHShell              = "/bin/bash"
 
 	SimulatePublicNetwork = "SIMULATE_PUBLIC_NETWORK"
