@@ -7,10 +7,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/exp/rand"
 
 	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
@@ -439,6 +440,7 @@ func (c *GcpCloud) ListZonesInRegion(region string) ([]string, error) {
 
 // GetRandomZone returns a random zone in the specified region.
 func (c *GcpCloud) GetRandomZone(region string) (string, error) {
+	rand.Seed(uint64(time.Now().UnixNano()))
 	zones, err := c.ListZonesInRegion(region)
 	if err != nil {
 		return "", fmt.Errorf("error listing zones: %w", err)
