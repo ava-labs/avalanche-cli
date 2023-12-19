@@ -66,9 +66,6 @@ func printExpiredCredentialsOutput(awsProfile string) {
 
 // getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
 func getAWSCloudCredentials(awsProfile, region string) (*awsAPI.AwsCloud, error) {
-	if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
-		return nil, fmt.Errorf("cloud access is required")
-	}
 	return awsAPI.NewAwsCloud(awsProfile, region)
 }
 
