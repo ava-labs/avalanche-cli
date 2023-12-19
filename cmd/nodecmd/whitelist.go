@@ -123,18 +123,25 @@ func whitelistIP(_ *cobra.Command, args []string) error {
 			}
 			ipInTCP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.SSHTCPPort)
 			ipInHTTP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
-
-			if !ipInTCP {
+			var alreadyWhitelisted bool
+			if ipInTCP {
+				alreadyWhitelisted = true
+			} else {
 				if err := ec2Svc.AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", userIPAddress, constants.SSHTCPPort); err != nil {
 					ux.Logger.PrintToUser("Failed to whitelist IP %s in %s cloud region %s for ssh access", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region)
 					return err
 				}
 			}
-			if !ipInHTTP {
+			if ipInHTTP {
+				alreadyWhitelisted = true
+			} else {
 				if err := ec2Svc.AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", userIPAddress, constants.AvalanchegoAPIPort); err != nil {
 					ux.Logger.PrintToUser("Failed to whitelist IP %s in %s cloud region %s for http access", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region)
 					return err
 				}
+			}
+			if alreadyWhitelisted {
+				ux.Logger.PrintToUser("IP %s is already whitelisted in %s cloud region %s. Skipping...", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region)
 			}
 		}
 	}
@@ -150,8 +157,8 @@ func whitelistIP(_ *cobra.Command, args []string) error {
 		}
 		ux.Logger.PrintToUser("Whitelisting IP %s in %s cloud", userIPAddress, constants.GCPCloudService)
 		_, err = gcpCloud.SetFirewallRule(userIPAddress, fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(userIPAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)})
-		if errors.IsAlreadyExists(err) {
-			ux.Logger.PrintToUser("IP %s already whitelisted in %s cloud", userIPAddress, constants.GCPCloudService)
+		if err != nil && errors.IsAlreadyExists(err) {
+			ux.Logger.PrintToUser("IP %s is already whitelisted in %s cloud. Skipping...", userIPAddress, constants.GCPCloudService)
 			return nil
 		}
 		if err != nil {

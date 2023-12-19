@@ -359,7 +359,7 @@ func (c *AwsCloud) SetupSecurityGroup(ipAddress, securityGroupName string) (stri
 func CheckUserIPInSg(sg *types.SecurityGroup, currentIP string, port int32) bool {
 	for _, ipPermission := range sg.IpPermissions {
 		for _, ip := range ipPermission.IpRanges {
-			if strings.Contains(*ip.CidrIp, currentIP) {
+			if strings.Contains(*ip.CidrIp, currentIP) || strings.Contains(*ip.CidrIp, fmt.Sprintf("%s/32", currentIP)) {
 				if *ipPermission.FromPort == port {
 					return true
 				}

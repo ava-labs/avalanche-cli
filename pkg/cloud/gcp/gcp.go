@@ -88,11 +88,9 @@ func (c *GcpCloud) waitForOperation(operation *compute.Operation) error {
 		default:
 			return fmt.Errorf("unknown operation scope: %s", scope)
 		}
-
 		if err != nil {
 			return fmt.Errorf("error getting operation status: %w", err)
 		}
-
 		// Check if the operation has completed
 		if getOperation.Status == "DONE" {
 			if getOperation.Error != nil {
@@ -108,6 +106,7 @@ func (c *GcpCloud) waitForOperation(operation *compute.Operation) error {
 		case <-c.ctx.Done():
 			return fmt.Errorf("operation canceled")
 		case <-time.After(1 * time.Second):
+			// Continue
 		}
 	}
 }
