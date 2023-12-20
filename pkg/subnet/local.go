@@ -725,8 +725,31 @@ func getExpectedDefaultSnapshotSHA256Sum(isSingleNode bool, isPreCortina17 bool)
 // Initialize default snapshot with bootstrap snapshot archive
 // If force flag is set to true, overwrite the default snapshot if it exists
 func SetDefaultSnapshot(snapshotsDir string, forceReset bool, avagoVersion string, isSingleNode bool) (bool, error) {
-	isPreCortina17 := semver.Compare(avagoVersion, constants.Cortina17Version) < 0
+	resetCurrentSnapshot := forceReset
+	isPreCortina17 := false
+	if avagoVersion != "" {
+		isPreCortina17 = semver.Compare(avagoVersion, constants.Cortina17Version) < 0
+	}
 	bootstrapSnapshotArchiveName, url, _, _ := getSnapshotLocs(isSingleNode, isPreCortina17)
+	currentBootstrapNamePath := filepath.Join(snapshotsDir, constants.CurrentBootstrapNamePath)
+	exists, err := storage.FileExists(currentBootstrapNamePath)
+	if err != nil {
+		return false, err
+	}
+	if exists {
+		currentBootstrapNameBytes, err := os.ReadFile(currentBootstrapNamePath)
+		if err != nil {
+			return false, err
+		}
+		currentBootstrapName := string(currentBootstrapNameBytes)
+		if currentBootstrapName != bootstrapSnapshotArchiveName {
+			// there is a snapshot image change.
+			resetCurrentSnapshot = true
+		}
+	} else {
+		// we have no ref of currently used snapshot image
+		resetCurrentSnapshot = true
+	}
 	bootstrapSnapshotArchivePath := filepath.Join(snapshotsDir, bootstrapSnapshotArchiveName)
 	defaultSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.DefaultSnapshotName)
 	defaultSnapshotInUse := false
@@ -749,7 +772,6 @@ func SetDefaultSnapshot(snapshotsDir string, forceReset bool, avagoVersion strin
 			downloadSnapshot = true
 		}
 	}
-	resetCurrentSnapshot := forceReset
 	if downloadSnapshot {
 		resp, err := http.Get(url)
 		if err != nil {
@@ -781,6 +803,9 @@ func SetDefaultSnapshot(snapshotsDir string, forceReset bool, avagoVersion strin
 		}
 		if err := binutils.InstallArchive("tar.gz", bootstrapSnapshotBytes, snapshotsDir); err != nil {
 			return false, fmt.Errorf("failed installing bootstrap snapshot: %w", err)
+		}
+		if err := os.WriteFile(currentBootstrapNamePath, []byte(bootstrapSnapshotArchiveName), constants.DefaultPerms755); err != nil {
+			return false, err
 		}
 	}
 	return resetCurrentSnapshot, nil
