@@ -81,7 +81,7 @@ const (
 
 	Cortina17Version = "v1.10.17"
 
-	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/cchain-warp-snapshot/"
+	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/main/"
 
 	CurrentBootstrapNamePath = "currentBootstrapName.txt"
 
