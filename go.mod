@@ -7,7 +7,7 @@ require (
 	github.com/ava-labs/avalanche-network-runner v1.7.4-0.20231204182757-5309eeea932f
 	github.com/ava-labs/avalanchego v1.10.17
 	github.com/ava-labs/coreth v0.12.9-rc.9
-	github.com/ava-labs/subnet-evm v0.5.3
+	github.com/ava-labs/subnet-evm v0.5.10
 	github.com/aws/aws-sdk-go-v2 v1.24.0
 	github.com/aws/aws-sdk-go-v2/config v1.25.11
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.139.0
