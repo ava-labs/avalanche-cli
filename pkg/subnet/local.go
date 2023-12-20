@@ -724,9 +724,8 @@ func getExpectedDefaultSnapshotSHA256Sum(isSingleNode bool, isPreCortina17 bool)
 
 // Initialize default snapshot with bootstrap snapshot archive
 // If force flag is set to true, overwrite the default snapshot if it exists
-func SetDefaultSnapshot(snapshotsDir string, forceReset bool, avagoVersion string, isSingleNode bool) (bool, error) {
-	resetCurrentSnapshot := forceReset
-	isPreCortina17 := false
+func SetDefaultSnapshot(snapshotsDir string, resetCurrentSnapshot bool, avagoVersion string, isSingleNode bool) (bool, error) {
+	var isPreCortina17 bool
 	if avagoVersion != "" {
 		isPreCortina17 = semver.Compare(avagoVersion, constants.Cortina17Version) < 0
 	}
