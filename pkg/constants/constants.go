@@ -79,7 +79,11 @@ const (
 
 	DefaultSnapshotName = "default-1654102509"
 
-	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/main/"
+	Cortina17Version = "v1.10.17"
+
+	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/cchain-warp-snapshot/"
+
+	CurrentBootstrapNamePath = "currentBootstrapName.txt"
 
 	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
 	BootstrapSnapshotLocalPath   = "assets/" + BootstrapSnapshotArchiveName
@@ -90,6 +94,16 @@ const (
 	BootstrapSnapshotSingleNodeLocalPath   = "assets/" + BootstrapSnapshotSingleNodeArchiveName
 	BootstrapSnapshotSingleNodeURL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodeLocalPath
 	BootstrapSnapshotSingleNodeSHA256URL   = BootstrapSnapshotRawBranch + "assets/sha256sumSingleNode.txt"
+
+	BootstrapSnapshotPreCortina17ArchiveName = "bootstrapSnapshot.PreCortina17.tar.gz"
+	BootstrapSnapshotPreCortina17LocalPath   = "assets/" + BootstrapSnapshotPreCortina17ArchiveName
+	BootstrapSnapshotPreCortina17URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotPreCortina17LocalPath
+	BootstrapSnapshotPreCortina17SHA256URL   = BootstrapSnapshotRawBranch + "assets/sha256sum.PreCortina17.txt"
+
+	BootstrapSnapshotSingleNodePreCortina17ArchiveName = "bootstrapSnapshotSingleNode.PreCortina17.tar.gz"
+	BootstrapSnapshotSingleNodePreCortina17LocalPath   = "assets/" + BootstrapSnapshotSingleNodePreCortina17ArchiveName
+	BootstrapSnapshotSingleNodePreCortina17URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreCortina17LocalPath
+	BootstrapSnapshotSingleNodePreCortina17SHA256URL   = BootstrapSnapshotRawBranch + "assets/sha256sumSingleNode.PreCortina17.txt"
 
 	CliInstallationURL      = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
 	ExpectedCliInstallErr   = "resource temporarily unavailable"
