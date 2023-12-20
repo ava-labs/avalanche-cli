@@ -111,7 +111,7 @@ func sshHosts(hosts []*models.Host, cmd string) error {
 				}
 				defer wg.Done()
 				splitCmdLine := strings.Split(utils.GetSSHConnectionString(host.IP, host.SSHPrivateKeyPath), " ")
-				splitCmdLine = append(splitCmdLine, fmt.Sprintf("\"%s\"", cmd))
+				splitCmdLine = append(splitCmdLine, cmd)
 				cmd := exec.Command(splitCmdLine[0], splitCmdLine[1:]...) //nolint: gosec
 				cmd.Env = os.Environ()
 				outBuf, errBuf := utils.SetupRealtimeCLIOutput(cmd, false, false)
