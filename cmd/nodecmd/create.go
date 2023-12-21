@@ -57,6 +57,7 @@ var (
 	cmdLineGCPCredentialsPath       string
 	cmdLineGCPProjectName           string
 	cmdLineAlternativeKeyPairName   string
+	devnetNumRPCNodes               int
 )
 
 func newCreateCmd() *cobra.Command {
@@ -97,6 +98,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
 	cmd.Flags().BoolVar(&createOnFuji, "fuji", false, "create node/s in Fuji Network")
 	cmd.Flags().BoolVar(&createDevnet, "devnet", false, "create node/s into a new Devnet")
+	cmd.Flags().IntVar(&devnetNumRPCNodes, "devnet-num-nodes", 1, "number of nodes to create in the new Devnet")
 	return cmd
 }
 
@@ -119,6 +121,9 @@ func preCreateChecks() error {
 				return fmt.Errorf("number of nodes per region must be greater than 0")
 			}
 		}
+	}
+	if devnetNumRPCNodes < 0 {
+		return fmt.Errorf("devnet number of nodes must be positive")
 	}
 	return nil
 }
@@ -161,8 +166,15 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	// for devnet add nonstake rpc nodes for each region with stake
+	if createDevnet {
+		numNodes = utils.Map(numNodes, func(n int) int {
+			return n + devnetNumRPCNodes
+		})
+	}
 	cloudConfigMap := models.CloudConfig{}
 	publicIPMap := map[string]string{}
+	rpcNodeIPMap := map[string]string{}
 	gcpProjectName := ""
 	gcpCredentialFilepath := ""
 	if cloudService == constants.AWSCloudService { // Get AWS Credential, region and AMI
@@ -192,6 +204,15 @@ func createNodes(_ *cobra.Command, args []string) error {
 					publicIPMap[node] = cloudConfigMap[region].PublicIPs[i]
 				}
 			}
+			// split publicIPMap to between stake and non-stake(rpc) nodes
+			_, rpcNodesInterface := utils.SplitSliceAt(cloudConfigMap[region].InstanceIDs, len(cloudConfigMap[region].InstanceIDs)-devnetNumRPCNodes)
+			rpcNodes, ok := rpcNodesInterface.([]string)
+			if !ok {
+				return fmt.Errorf("failed to convert rpc nodes")
+			}
+			for _, node := range rpcNodes {
+				rpcNodeIPMap[node] = publicIPMap[node]
+			}
 		}
 	} else {
 		if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
@@ -219,6 +240,15 @@ func createNodes(_ *cobra.Command, args []string) error {
 				for i, node := range cloudConfigMap[zone].InstanceIDs {
 					publicIPMap[node] = cloudConfigMap[zone].PublicIPs[i]
 				}
+			}
+			// split publicIPMap to between stake and non-stake(rpc) nodes
+			_, rpcNodesInterface := utils.SplitSliceAt(cloudConfigMap[zone].InstanceIDs, len(cloudConfigMap[zone].InstanceIDs)-devnetNumRPCNodes)
+			rpcNodes, ok := rpcNodesInterface.([]string)
+			if !ok {
+				return fmt.Errorf("failed to convert rpc nodes")
+			}
+			for _, node := range rpcNodes {
+				rpcNodeIPMap[node] = publicIPMap[node]
 			}
 		}
 		gcpProjectName = projectName
@@ -297,9 +327,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 	wg.Wait()
 	ux.Logger.PrintToUser("======================================")
-	ux.Logger.PrintToUser("AVALANCHE NODE(S) STATUS")
-	ux.Logger.PrintToUser("======================================")
-	ux.Logger.PrintToUser("")
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
 			ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
@@ -307,9 +334,12 @@ func createNodes(_ *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser("Node %s is CREATED", node.NodeID)
 		}
 	}
+
 	if network.Kind == models.Devnet {
+		ux.Logger.PrintToUser("======================================")
 		ux.Logger.PrintToUser("Setting up Devnet ...")
-		if err := setupDevnet(clusterName, hosts); err != nil {
+		ux.Logger.PrintToUser("======================================")
+		if err := setupDevnet(clusterName, hosts, rpcNodeIPMap); err != nil {
 			return err
 		}
 	}
@@ -317,7 +347,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if wgResults.HasErrors() {
 		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
 	} else {
-		printResults(cloudConfigMap, publicIPMap, ansibleHostIDs)
+		printResults(cloudConfigMap, publicIPMap, rpcNodeIPMap, ansibleHostIDs)
 		ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	}
 	return nil
@@ -650,7 +680,8 @@ func setCloudInstanceType(cloudService string) (string, error) {
 	return nodeType, nil
 }
 
-func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]string, ansibleHostIDs []string) {
+func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]string, rpcNodeIPMap map[string]string, ansibleHostIDs []string) {
+	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("======================================")
 	ux.Logger.PrintToUser("AVALANCHE NODE(S) SUCCESSFULLY SET UP!")
 	ux.Logger.PrintToUser("======================================")
@@ -658,22 +689,28 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Here are the details of the set up node(s): ")
 	for region, cloudConfig := range cloudConfigMap {
-		ux.Logger.PrintToUser(fmt.Sprintf("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", cloudConfig.CertFilePath))
+		ux.Logger.PrintToUser("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", cloudConfig.CertFilePath)
+		ux.Logger.PrintToUser("Region: [%s] ", region)
 		for i, instanceID := range cloudConfig.InstanceIDs {
-			publicIP := ""
-			publicIP = publicIPMap[instanceID]
 			ux.Logger.PrintToUser("======================================")
-			ux.Logger.PrintToUser(fmt.Sprintf("Node %s details: ", ansibleHostIDs[i]))
-			ux.Logger.PrintToUser(fmt.Sprintf("Cloud Instance ID: %s", instanceID))
-			ux.Logger.PrintToUser(fmt.Sprintf("Public IP: %s", publicIP))
-			ux.Logger.PrintToUser(fmt.Sprintf("Cloud Region: %s", region))
+			ux.Logger.PrintToUser("Node %s details: ", ansibleHostIDs[i])
+			ux.Logger.PrintToUser("Cloud Instance ID: %s", instanceID)
+			ux.Logger.PrintToUser("Public IP: %s", publicIPMap[instanceID])
+			ux.Logger.PrintToUser("Cloud Region: %s", region)
 			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser(fmt.Sprintf("staker.crt and staker.key are stored at %s. If anything happens to your node or the machine node runs on, these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID)))
+			ux.Logger.PrintToUser("staker.crt and staker.key are stored at %s. If anything happens to your node or the machine node runs on, these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID))
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser("To ssh to node, run: ")
+			ux.Logger.PrintToUser(utils.GetSSHConnectionString(publicIPMap[instanceID], cloudConfig.CertFilePath))
+			ux.Logger.PrintToUser("======================================")
+		}
+		if len(rpcNodeIPMap) > 0 {
 			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser(utils.GetSSHConnectionString(publicIP, cloudConfig.CertFilePath))
-			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("======================================")
+			ux.Logger.PrintToUser("Regional RPC Endpoints: ")
+			for _, rpcNode := range rpcNodeIPMap {
+				ux.Logger.PrintToUser("    http://%s:9650", rpcNode)
+			}
 			ux.Logger.PrintToUser("======================================")
 		}
 	}

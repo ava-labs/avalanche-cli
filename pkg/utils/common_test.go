@@ -94,3 +94,33 @@ func TestUnique(t *testing.T) {
 		}
 	}
 }
+
+func TestSplitSliceAt(t *testing.T) {
+	tests := []struct {
+		slice interface{}
+		index int
+		left  interface{}
+		right interface{}
+	}{
+		{[]string{"a", "b", "c", "d"}, 2, []string{"a", "b"}, []string{"c", "d"}},
+		{[]string{"x", "y", "z"}, 1, []string{"x"}, []string{"y", "z"}},
+		{[]string{"apple", "orange", "banana"}, 0, []string{}, []string{"apple", "orange", "banana"}},
+		{[]string{"pencil", "pen", "paper"}, 3, []string{"pencil", "pen", "paper"}, nil},
+		{[]string{"one", "two", "three"}, -1, []string{"one", "two", "three"}, nil},
+		{123, 2, 123, nil},
+		{[]int{1, 2, 3}, 5, []int{1, 2, 3}, nil},
+		{[]int{1, 2, 3}, 0, []int{}, []int{1, 2, 3}},
+	}
+
+	for _, test := range tests {
+		left, right := SplitSliceAt(test.slice, test.index)
+
+		if !reflect.DeepEqual(left, test.left) {
+			t.Errorf("For slice %v and index %d, expected left %v, but got %v", test.slice, test.index, test.left, left)
+		}
+
+		if !reflect.DeepEqual(right, test.right) {
+			t.Errorf("For slice %v and index %d, expected right %v, but got %v", test.slice, test.index, test.right, right)
+		}
+	}
+}

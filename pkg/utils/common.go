@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -189,4 +190,19 @@ func Unique(slice []string) []string {
 // containsIgnoreCase checks if the given string contains the specified substring, ignoring case.
 func ContainsIgnoreCase(s, substr string) bool {
 	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
+}
+
+// SplitSliceAt splits a slice at the given index and returns two new slices.
+func SplitSliceAt(slice interface{}, index int) (interface{}, interface{}) {
+	sliceValue := reflect.ValueOf(slice)
+	if sliceValue.Kind() != reflect.Slice {
+		return slice, nil
+	}
+	if sliceValue.Len() <= index || index < 0 {
+		return slice, nil
+	}
+	if index == 0 {
+		return reflect.MakeSlice(sliceValue.Type(), 0, 0).Interface(), slice
+	}
+	return sliceValue.Slice(0, index).Interface(), sliceValue.Slice(index, sliceValue.Len()).Interface()
 }
