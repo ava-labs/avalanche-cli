@@ -42,8 +42,8 @@ dockers:
     - "--pull"
     - "--platform=linux/amd64"
   - image_templates:
-    dockerfile: "{{ .Env.DOCKERFILE }}"
     - 'avaplatform/avalanche-cli:{{ .Tag }}-arm64'
+    dockerfile: "{{ .Env.DOCKERFILE }}"
     use: buildx
     build_flag_templates:
     - "--pull"
