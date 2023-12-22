@@ -691,6 +691,15 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 	for region, cloudConfig := range cloudConfigMap {
 		ux.Logger.PrintToUser("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", cloudConfig.CertFilePath)
 		ux.Logger.PrintToUser("Region: [%s] ", region)
+		if len(rpcNodeIPMap) > 0 {
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("======================================")
+			ux.Logger.PrintToUser("Regional RPC Endpoints: ")
+			for _, rpcNode := range rpcNodeIPMap {
+				ux.Logger.PrintToUser("    http://%s:9650", rpcNode)
+			}
+			ux.Logger.PrintToUser("======================================")
+		}
 		for i, instanceID := range cloudConfig.InstanceIDs {
 			ux.Logger.PrintToUser("======================================")
 			ux.Logger.PrintToUser("Node %s details: ", ansibleHostIDs[i])
@@ -702,17 +711,8 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser("To ssh to node, run: ")
 			ux.Logger.PrintToUser(utils.GetSSHConnectionString(publicIPMap[instanceID], cloudConfig.CertFilePath))
-			ux.Logger.PrintToUser("======================================")
 		}
-		if len(rpcNodeIPMap) > 0 {
-			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser("======================================")
-			ux.Logger.PrintToUser("Regional RPC Endpoints: ")
-			for _, rpcNode := range rpcNodeIPMap {
-				ux.Logger.PrintToUser("    http://%s:9650", rpcNode)
-			}
-			ux.Logger.PrintToUser("======================================")
-		}
+
 	}
 	ux.Logger.PrintToUser("")
 }

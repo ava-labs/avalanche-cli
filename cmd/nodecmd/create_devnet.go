@@ -225,7 +225,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, rpcNodeIPMap map[stri
 		if err := os.WriteFile(filepath.Join(app.GetNodeInstanceDirPath(host.GetCloudID()), "node.json"), confBytes, constants.WriteReadReadPerms); err != nil {
 			return err
 		}
-		if slices.Contains(hostsWithoutRPCIDs, host.GetCloudID()) {
+		if slices.Contains(hostsWithoutRPCIDs, host.NodeID) {
 			nodeID, err := getNodeID(app.GetNodeInstanceDirPath(host.GetCloudID()))
 			if err != nil {
 				return err
