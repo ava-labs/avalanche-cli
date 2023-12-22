@@ -32,11 +32,6 @@ type scriptInputs struct {
 //go:embed shell/*.sh
 var script embed.FS
 
-// scriptLog formats the given line of a script log with the provided nodeID.
-func scriptLog(nodeID string, line string) string {
-	return fmt.Sprintf("[%s] %s", nodeID, line)
-}
-
 // RunOverSSH runs provided script path over ssh.
 // This script can be template as it will be rendered using scriptInputs vars
 func RunOverSSH(
@@ -60,7 +55,7 @@ func RunOverSSH(
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser(scriptLog(host.NodeID, scriptDesc))
+	ux.Logger.SpinForParallelOperation(scriptDesc, host.NodeID)
 	if s, err := host.Command(script.String(), nil, timeout); err != nil {
 		fmt.Println(string(s))
 		return err

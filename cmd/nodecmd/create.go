@@ -178,6 +178,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		ux.Logger.SpinToUser("Waiting for public IPs for the node(s)...")
 		for _, region := range regions {
 			if !useStaticIP {
 				tmpIPMap, err := ec2SvcMap[region].GetInstancePublicIPs(cloudConfigMap[region].InstanceIDs)
@@ -206,6 +207,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		ux.Logger.SpinToUser("Waiting for public IPs for the  node(s)...")
 		for _, zone := range zones {
 			if !useStaticIP {
 				tmpIPMap, err := gcpClient.GetInstancePublicIPs(zone, cloudConfigMap[zone].InstanceIDs)
@@ -296,6 +298,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		}(&wgResults, host)
 	}
 	wg.Wait()
+	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("======================================")
 	ux.Logger.PrintToUser("AVALANCHE NODE(S) STATUS")
 	ux.Logger.PrintToUser("======================================")
