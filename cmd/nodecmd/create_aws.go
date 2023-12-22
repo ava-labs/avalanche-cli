@@ -221,7 +221,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		); err != nil {
 			return nil, nil, nil, nil, err
 		}
-		ux.Logger.SpinToUser("Waiting for EC2 instance(s) in AWS[%s] to be provisioned", region)
+		ux.Logger.SpinToUser("Waiting for EC2 instance(s) in AWS[%s] to be provisioned...", region)
 		if err := ec2Svc[region].WaitForEC2Instances(instanceIDs[region]); err != nil {
 			return nil, nil, nil, nil, err
 		}
