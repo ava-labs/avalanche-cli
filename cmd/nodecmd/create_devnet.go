@@ -214,7 +214,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, rpcNodeIPMap map[stri
 		confMap[config.NetworkNameKey] = fmt.Sprintf("network-%d", network.ID)
 		confMap[config.BootstrapIDsKey] = strings.Join(bootstrapIDs, ",")
 		confMap[config.BootstrapIPsKey] = strings.Join(bootstrapIPs, ",")
-		confMap[config.GenesisFileKey] = "/home/ubuntu/.avalanchego/configs/genesis.json"
+		confMap[config.GenesisFileKey] = filepath.Join(constants.CloudNodeConfigPath, "genesis.json")
 		confBytes, err := json.MarshalIndent(confMap, "", " ")
 		if err != nil {
 			return err
@@ -233,9 +233,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, rpcNodeIPMap map[stri
 			bootstrapIDs = append(bootstrapIDs, nodeID.String())
 			bootstrapIPs = append(bootstrapIPs, fmt.Sprintf("%s:9651", host.IP))
 		}
-
 	}
-
 	// update node/s genesis + conf and start
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}

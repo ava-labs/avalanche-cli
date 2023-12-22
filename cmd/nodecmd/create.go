@@ -713,7 +713,6 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 			ux.Logger.PrintToUser("To ssh to node, run: ")
 			ux.Logger.PrintToUser(utils.GetSSHConnectionString(publicIPMap[instanceID], cloudConfig.CertFilePath))
 		}
-
 	}
 	ux.Logger.PrintToUser("")
 }
