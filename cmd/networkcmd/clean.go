@@ -48,7 +48,7 @@ func clean(*cobra.Command, []string) error {
 
 	configSingleNodeEnabled := app.Conf.GetConfigBoolValue(constants.ConfigSingleNodeEnabledKey)
 
-	if _, err := subnet.SetDefaultSnapshot(app.GetSnapshotsDir(), true, configSingleNodeEnabled); err != nil {
+	if _, err := subnet.SetDefaultSnapshot(app.GetSnapshotsDir(), true, "", configSingleNodeEnabled); err != nil {
 		app.Log.Warn("failed resetting default snapshot", zap.Error(err))
 	}
 

@@ -358,7 +358,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		var vmBin string
 		switch sidecar.VM {
 		case models.SubnetEvm:
-			vmBin, err = binutils.SetupSubnetEVM(app, sidecar.VMVersion)
+			_, vmBin, err = binutils.SetupSubnetEVM(app, sidecar.VMVersion)
 			if err != nil {
 				return fmt.Errorf("failed to install subnet-evm: %w", err)
 			}

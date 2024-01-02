@@ -114,6 +114,9 @@ func stopNodes(_ *cobra.Command, args []string) error {
 			continue
 		}
 		if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
+			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
+				return fmt.Errorf("cloud access is required")
+			}
 			// need to check if it's empty because we didn't set cloud service when only using AWS
 			if nodeConfig.Region != lastRegion {
 				ec2Svc, err = awsAPI.NewAwsCloud(awsProfile, nodeConfig.Region)
@@ -135,6 +138,9 @@ func stopNodes(_ *cobra.Command, args []string) error {
 				ux.Logger.PrintToUser("node %s is already stopped", nodeConfig.NodeID)
 			}
 		} else {
+			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
+				return fmt.Errorf("cloud access is required")
+			}
 			if gcpCloud == nil {
 				gcpClient, projectName, _, err := getGCPCloudCredentials()
 				if err != nil {

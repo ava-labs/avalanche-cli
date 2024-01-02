@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"context"
+	"fmt"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
@@ -50,6 +51,9 @@ func getPublicIPForNodesWoEIP(nodesWoEIP []models.NodeConfig) (map[string]string
 		var publicIP map[string]string
 		var err error
 		if node.CloudService == constants.GCPCloudService {
+			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
+				return nil, fmt.Errorf("cloud access is required")
+			}
 			if gcpCloud == nil {
 				gcpClient, projectName, _, err := getGCPCloudCredentials()
 				if err != nil {
