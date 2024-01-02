@@ -100,7 +100,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
 	cmd.Flags().BoolVar(&createOnFuji, "fuji", false, "create node/s in Fuji Network")
 	cmd.Flags().BoolVar(&createDevnet, "devnet", false, "create node/s into a new Devnet")
-	cmd.Flags().BoolVar(&useSSHAgent, "use-ssh-agent", false, "use ssh agent for ssh")
+	cmd.Flags().BoolVar(&useSSHAgent, "use-ssh-agent", false, "use ssh agent(ex: Yubikey) for ssh auth")
 	cmd.Flags().StringVar(&sshIdentity, "ssh-identity", "", "use given ssh identity")
 	return cmd
 }
