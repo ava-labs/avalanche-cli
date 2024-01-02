@@ -110,7 +110,8 @@ func sshHosts(hosts []*models.Host, cmd string) error {
 					defer nowExecutingMutex.Unlock()
 				}
 				defer wg.Done()
-				splitCmdLine := strings.Split(cmd, " ")
+				splitCmdLine := strings.Split(utils.GetSSHConnectionString(host.IP, host.SSHPrivateKeyPath), " ")
+				splitCmdLine = append(splitCmdLine, cmd)
 				cmd := exec.Command(splitCmdLine[0], splitCmdLine[1:]...) //nolint: gosec
 				cmd.Env = os.Environ()
 				outBuf, errBuf := utils.SetupRealtimeCLIOutput(cmd, false, false)

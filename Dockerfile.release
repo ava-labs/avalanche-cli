@@ -1,0 +1,3 @@
+FROM debian:11-slim
+COPY avalanche /
+ENTRYPOINT [ "/avalanche" ]

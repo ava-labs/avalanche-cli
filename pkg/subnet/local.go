@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"golang.org/x/exp/maps"
+	"golang.org/x/mod/semver"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -75,7 +76,7 @@ func NewLocalDeployer(app *application.Avalanche, avagoVersion string, vmBin str
 
 type getGRPCClientFunc func(...binutils.GRPCClientOpOption) (client.Client, error)
 
-type setDefaultSnapshotFunc func(string, bool, bool) (bool, error)
+type setDefaultSnapshotFunc func(string, bool, string, bool) (bool, error)
 
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
@@ -568,15 +569,15 @@ func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte) err
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path
 func (d *LocalDeployer) SetupLocalEnv() (bool, string, error) {
-	configSingleNodeEnabled := d.app.Conf.GetConfigBoolValue(constants.ConfigSingleNodeEnabledKey)
-	needsRestart, err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false, configSingleNodeEnabled)
-	if err != nil {
-		return false, "", fmt.Errorf("failed setting up snapshots: %w", err)
-	}
-
-	avagoDir, err := d.setupLocalEnv()
+	avagoVersion, avagoDir, err := d.setupLocalEnv()
 	if err != nil {
 		return false, "", fmt.Errorf("failed setting up local environment: %w", err)
+	}
+
+	configSingleNodeEnabled := d.app.Conf.GetConfigBoolValue(constants.ConfigSingleNodeEnabledKey)
+	needsRestart, err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false, avagoVersion, configSingleNodeEnabled)
+	if err != nil {
+		return false, "", fmt.Errorf("failed setting up snapshots: %w", err)
 	}
 
 	pluginDir := d.app.GetPluginsDir()
@@ -603,7 +604,7 @@ func (d *LocalDeployer) SetupLocalEnv() (bool, string, error) {
 	return needsRestart, avalancheGoBinPath, nil
 }
 
-func (d *LocalDeployer) setupLocalEnv() (string, error) {
+func (d *LocalDeployer) setupLocalEnv() (string, string, error) {
 	return binutils.SetupAvalanchego(d.app, d.avagoVersion)
 }
 
@@ -667,11 +668,41 @@ func (d *LocalDeployer) removeInstalledPlugin(
 	return d.binaryDownloader.RemoveVM(vmID.String())
 }
 
-func getExpectedDefaultSnapshotSHA256Sum(isSingleNode bool) (string, error) {
-	url := constants.BootstrapSnapshotSHA256URL
+func getSnapshotLocs(isSingleNode bool, isPreCortina17 bool) (string, string, string, string) {
+	bootstrapSnapshotArchiveName := ""
+	url := ""
+	shaSumURL := ""
+	pathInShaSum := ""
 	if isSingleNode {
-		url = constants.BootstrapSnapshotSingleNodeSHA256URL
+		if isPreCortina17 {
+			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotSingleNodePreCortina17ArchiveName
+			url = constants.BootstrapSnapshotSingleNodePreCortina17URL
+			shaSumURL = constants.BootstrapSnapshotSingleNodePreCortina17SHA256URL
+			pathInShaSum = constants.BootstrapSnapshotSingleNodePreCortina17LocalPath
+		} else {
+			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotSingleNodeArchiveName
+			url = constants.BootstrapSnapshotSingleNodeURL
+			shaSumURL = constants.BootstrapSnapshotSingleNodeSHA256URL
+			pathInShaSum = constants.BootstrapSnapshotSingleNodeLocalPath
+		}
+	} else {
+		if isPreCortina17 {
+			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotPreCortina17ArchiveName
+			url = constants.BootstrapSnapshotPreCortina17URL
+			shaSumURL = constants.BootstrapSnapshotPreCortina17SHA256URL
+			pathInShaSum = constants.BootstrapSnapshotPreCortina17LocalPath
+		} else {
+			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotArchiveName
+			url = constants.BootstrapSnapshotURL
+			shaSumURL = constants.BootstrapSnapshotSHA256URL
+			pathInShaSum = constants.BootstrapSnapshotLocalPath
+		}
 	}
+	return bootstrapSnapshotArchiveName, url, shaSumURL, pathInShaSum
+}
+
+func getExpectedDefaultSnapshotSHA256Sum(isSingleNode bool, isPreCortina17 bool) (string, error) {
+	_, _, url, path := getSnapshotLocs(isSingleNode, isPreCortina17)
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", fmt.Errorf("failed downloading sha256 sums: %w", err)
@@ -684,10 +715,6 @@ func getExpectedDefaultSnapshotSHA256Sum(isSingleNode bool) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed downloading sha256 sums: %w", err)
 	}
-	path := constants.BootstrapSnapshotLocalPath
-	if isSingleNode {
-		path = constants.BootstrapSnapshotSingleNodeLocalPath
-	}
 	expectedSum, err := utils.SearchSHA256File(sha256FileBytes, path)
 	if err != nil {
 		return "", fmt.Errorf("failed obtaining snapshot sha256 sum: %w", err)
@@ -697,11 +724,32 @@ func getExpectedDefaultSnapshotSHA256Sum(isSingleNode bool) (string, error) {
 
 // Initialize default snapshot with bootstrap snapshot archive
 // If force flag is set to true, overwrite the default snapshot if it exists
-func SetDefaultSnapshot(snapshotsDir string, forceReset bool, isSingleNode bool) (bool, error) {
-	bootstrapSnapshotArchivePath := filepath.Join(snapshotsDir, constants.BootstrapSnapshotArchiveName)
-	if isSingleNode {
-		bootstrapSnapshotArchivePath = filepath.Join(snapshotsDir, constants.BootstrapSnapshotSingleNodeArchiveName)
+func SetDefaultSnapshot(snapshotsDir string, resetCurrentSnapshot bool, avagoVersion string, isSingleNode bool) (bool, error) {
+	var isPreCortina17 bool
+	if avagoVersion != "" {
+		isPreCortina17 = semver.Compare(avagoVersion, constants.Cortina17Version) < 0
 	}
+	bootstrapSnapshotArchiveName, url, _, _ := getSnapshotLocs(isSingleNode, isPreCortina17)
+	currentBootstrapNamePath := filepath.Join(snapshotsDir, constants.CurrentBootstrapNamePath)
+	exists, err := storage.FileExists(currentBootstrapNamePath)
+	if err != nil {
+		return false, err
+	}
+	if exists {
+		currentBootstrapNameBytes, err := os.ReadFile(currentBootstrapNamePath)
+		if err != nil {
+			return false, err
+		}
+		currentBootstrapName := string(currentBootstrapNameBytes)
+		if currentBootstrapName != bootstrapSnapshotArchiveName {
+			// there is a snapshot image change.
+			resetCurrentSnapshot = true
+		}
+	} else {
+		// we have no ref of currently used snapshot image
+		resetCurrentSnapshot = true
+	}
+	bootstrapSnapshotArchivePath := filepath.Join(snapshotsDir, bootstrapSnapshotArchiveName)
 	defaultSnapshotPath := filepath.Join(snapshotsDir, "anr-snapshot-"+constants.DefaultSnapshotName)
 	defaultSnapshotInUse := false
 	if _, err := os.Stat(defaultSnapshotPath); err == nil {
@@ -716,19 +764,14 @@ func SetDefaultSnapshot(snapshotsDir string, forceReset bool, isSingleNode bool)
 		if err != nil {
 			return false, err
 		}
-		expectedSum, err := getExpectedDefaultSnapshotSHA256Sum(isSingleNode)
+		expectedSum, err := getExpectedDefaultSnapshotSHA256Sum(isSingleNode, isPreCortina17)
 		if err != nil {
 			ux.Logger.PrintToUser("Warning: failure verifying that the local snapshot is the latest one: %s", err)
 		} else if gotSum != expectedSum {
 			downloadSnapshot = true
 		}
 	}
-	resetCurrentSnapshot := forceReset
 	if downloadSnapshot {
-		url := constants.BootstrapSnapshotURL
-		if isSingleNode {
-			url = constants.BootstrapSnapshotSingleNodeURL
-		}
 		resp, err := http.Get(url)
 		if err != nil {
 			return false, fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
@@ -759,6 +802,9 @@ func SetDefaultSnapshot(snapshotsDir string, forceReset bool, isSingleNode bool)
 		}
 		if err := binutils.InstallArchive("tar.gz", bootstrapSnapshotBytes, snapshotsDir); err != nil {
 			return false, fmt.Errorf("failed installing bootstrap snapshot: %w", err)
+		}
+		if err := os.WriteFile(currentBootstrapNamePath, []byte(bootstrapSnapshotArchiveName), constants.DefaultPerms755); err != nil {
+			return false, err
 		}
 	}
 	return resetCurrentSnapshot, nil

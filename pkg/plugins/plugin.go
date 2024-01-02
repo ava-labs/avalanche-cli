@@ -52,7 +52,7 @@ func CreatePlugin(app *application.Avalanche, subnetName string, pluginDir strin
 
 		switch sc.VM {
 		case models.SubnetEvm:
-			vmSourcePath, err = binutils.SetupSubnetEVM(app, sc.VMVersion)
+			_, vmSourcePath, err = binutils.SetupSubnetEVM(app, sc.VMVersion)
 			if err != nil {
 				return "", fmt.Errorf("failed to install subnet-evm: %w", err)
 			}
@@ -82,7 +82,7 @@ func CreatePluginFromVersion(
 
 	switch vm {
 	case models.SubnetEvm:
-		vmSourcePath, err = binutils.SetupSubnetEVM(app, version)
+		_, vmSourcePath, err = binutils.SetupSubnetEVM(app, version)
 		if err != nil {
 			return "", fmt.Errorf("failed to install subnet-evm: %w", err)
 		}
