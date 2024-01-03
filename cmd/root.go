@@ -108,7 +108,7 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	if err := migrations.RunMigrations(app); err != nil {
 		return err
 	}
-	if os.Getenv("RUN_E2E") == "" && !app.Conf.ConfigFileExists() && !utils.FileExists(utils.UserHomePath(constants.OldMetricsConfigFileName)) {
+	if os.Getenv("RUN_E2E") == "" && !app.Conf.ConfigFileExists() && !utils.FileExists(utils.UserHomePath(constants.OldMetricsConfigFileName)) && metrics.CheckCommandIsNotCompletion(cmd) {
 		err = metrics.HandleUserMetricsPreference(app)
 		if err != nil {
 			return err

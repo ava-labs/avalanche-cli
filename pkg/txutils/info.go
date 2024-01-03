@@ -16,7 +16,6 @@ import (
 )
 
 // get network model associated to tx
-// expect tx.Unsigned type to be in [txs.AddSubnetValidatorTx, txs.CreateChainTx]
 func GetNetwork(tx *txs.Tx) (models.Network, error) {
 	unsignedTx := tx.Unsigned
 	var networkID uint32
@@ -39,6 +38,27 @@ func GetNetwork(tx *txs.Tx) (models.Network, error) {
 		return models.UndefinedNetwork, fmt.Errorf("undefined network model for tx")
 	}
 	return network, nil
+}
+
+// get subnet id associated to tx
+func GetSubnetID(tx *txs.Tx) (ids.ID, error) {
+	unsignedTx := tx.Unsigned
+	var subnetID ids.ID
+	switch unsignedTx := unsignedTx.(type) {
+	case *txs.RemoveSubnetValidatorTx:
+		subnetID = unsignedTx.Subnet
+	case *txs.AddSubnetValidatorTx:
+		subnetID = unsignedTx.SubnetValidator.Subnet
+	case *txs.CreateChainTx:
+		subnetID = unsignedTx.SubnetID
+	case *txs.TransformSubnetTx:
+		subnetID = unsignedTx.Subnet
+	case *txs.AddPermissionlessValidatorTx:
+		subnetID = unsignedTx.Subnet
+	default:
+		return ids.Empty, fmt.Errorf("unexpected unsigned tx type %T", unsignedTx)
+	}
+	return subnetID, nil
 }
 
 func GetLedgerDisplayName(tx *txs.Tx) string {

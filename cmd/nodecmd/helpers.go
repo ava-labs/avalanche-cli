@@ -109,8 +109,14 @@ func parseBootstrappedOutput(byteValue []byte) (bool, error) {
 
 func checkAvalancheGoVersionCompatible(hosts []*models.Host, subnetName string) ([]string, error) {
 	ux.Logger.PrintToUser("Checking compatibility of node(s) avalanche go version with Subnet EVM RPC of subnet %s ...", subnetName)
-	compatibleVersions := []string{}
-	incompatibleNodes := []string{}
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return nil, err
+	}
+	compatibleVersions, err := checkForCompatibleAvagoVersion(sc.RPCVersion)
+	if err != nil {
+		return nil, err
+	}
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
@@ -133,15 +139,8 @@ func checkAvalancheGoVersionCompatible(hosts []*models.Host, subnetName string) 
 	if wgResults.HasErrors() {
 		return nil, fmt.Errorf("failed to get avalanchego version for node(s) %s", wgResults.GetErrorHostMap())
 	}
+	incompatibleNodes := []string{}
 	for nodeID, avalancheGoVersion := range wgResults.GetResultMap() {
-		sc, err := app.LoadSidecar(subnetName)
-		if err != nil {
-			return nil, err
-		}
-		compatibleVersions, err = checkForCompatibleAvagoVersion(sc.RPCVersion)
-		if err != nil {
-			return nil, err
-		}
 		if !slices.Contains(compatibleVersions, fmt.Sprintf("%v", avalancheGoVersion)) {
 			incompatibleNodes = append(incompatibleNodes, nodeID)
 		}

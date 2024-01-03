@@ -67,7 +67,7 @@ func StartNetwork(*cobra.Command, []string) error {
 		return err
 	}
 
-	avalancheGoBinPath, err := sd.SetupLocalEnv()
+	needsRestart, avalancheGoBinPath, err := sd.SetupLocalEnv()
 	if err != nil {
 		return err
 	}
@@ -86,8 +86,16 @@ func StartNetwork(*cobra.Command, []string) error {
 	}
 
 	if bootstrapped {
-		ux.Logger.PrintToUser("Network has already been booted.")
-		return nil
+		if !needsRestart {
+			ux.Logger.PrintToUser("Network has already been booted.")
+			return nil
+		}
+		if _, err := cli.Stop(ctx); err != nil {
+			return err
+		}
+		if err := app.ResetPluginsDir(); err != nil {
+			return err
+		}
 	}
 
 	var startMsg string

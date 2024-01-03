@@ -7,11 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/aws"
-	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"google.golang.org/api/compute/v1"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
@@ -36,83 +32,9 @@ You can check the subnet bootstrap status by calling avalanche node status <clus
 		RunE:         syncSubnet,
 	}
 
+	cmd.Flags().StringSliceVar(&validators, "validators", []string{}, "sync subnet into given comma separated list of validators. defaults to all cluster nodes")
+
 	return cmd
-}
-
-func getNodesWoEIPInAnsibleInventory(clusterNodes []string) []models.NodeConfig {
-	nodesWoEIP := []models.NodeConfig{}
-	for _, node := range clusterNodes {
-		nodeConfig, err := app.LoadClusterNodeConfig(node)
-		if err != nil {
-			continue
-		}
-		if nodeConfig.ElasticIP == "" {
-			nodesWoEIP = append(nodesWoEIP, nodeConfig)
-		}
-	}
-	return nodesWoEIP
-}
-
-func getPublicIPForNodesWoEIP(nodesWoEIP []models.NodeConfig) (map[string]string, error) {
-	lastRegion := ""
-	var ec2Svc *ec2.EC2
-	publicIPMap := make(map[string]string)
-	var gcpClient *compute.Service
-	var gcpProjectName string
-	ux.Logger.PrintToUser("Getting Public IPs for nodes without static IPs ...")
-	for _, node := range nodesWoEIP {
-		if lastRegion == "" || node.Region != lastRegion {
-			if node.CloudService == "" || node.CloudService == constants.AWSCloudService {
-				// check for empty because we didn't set this value when it was only on AWS
-				sess, err := getAWSCloudCredentials(awsProfile, node.Region)
-				if err != nil {
-					return nil, err
-				}
-				ec2Svc = ec2.New(sess)
-			}
-			lastRegion = node.Region
-		}
-		var publicIP map[string]string
-		var err error
-		if node.CloudService == constants.GCPCloudService {
-			if gcpClient == nil {
-				gcpClient, gcpProjectName, _, err = getGCPCloudCredentials()
-				if err != nil {
-					return nil, err
-				}
-			}
-			publicIP, err = gcpAPI.GetInstancePublicIPs(gcpClient, gcpProjectName, node.Region, []string{node.NodeID})
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			publicIP, err = awsAPI.GetInstancePublicIPs(ec2Svc, []string{node.NodeID})
-			if err != nil {
-				return nil, err
-			}
-		}
-		publicIPMap[node.NodeID] = publicIP[node.NodeID]
-	}
-	return publicIPMap, nil
-}
-
-func updateAnsiblePublicIPs(clusterName string) error {
-	clusterNodes, err := getClusterNodes(clusterName)
-	if err != nil {
-		return err
-	}
-	nodesWoEIP := getNodesWoEIPInAnsibleInventory(clusterNodes)
-	if len(nodesWoEIP) > 0 {
-		publicIP, err := getPublicIPForNodesWoEIP(nodesWoEIP)
-		if err != nil {
-			return err
-		}
-		err = ansible.UpdateInventoryHostPublicIP(app.GetAnsibleInventoryDirPath(clusterName), publicIP)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func syncSubnet(_ *cobra.Command, args []string) error {
@@ -127,6 +49,12 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
+	}
+	if len(validators) != 0 {
+		hosts, err = filterHosts(hosts, validators)
+		if err != nil {
+			return err
+		}
 	}
 	defer disconnectHosts(hosts)
 	notBootstrappedNodes, err := checkHostsAreBootstrapped(hosts)

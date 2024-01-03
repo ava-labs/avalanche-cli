@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"os"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
@@ -18,10 +17,10 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/spf13/cobra"
 )
 
@@ -161,11 +160,6 @@ func addValidator(_ *cobra.Command, _ []string) error {
 		return errors.New("unsupported network")
 	}
 
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
-
 	if nodeIDStr == "" {
 		nodeID, err = subnetcmd.PromptNodeID()
 		if err != nil {
@@ -192,10 +186,14 @@ func addValidator(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", minValStake, weight)
 	}
 
-	kc, err := subnetcmd.GetKeychain(false, useLedger, ledgerAddresses, keyName, network)
+	fee := network.GenesisParams().AddPrimaryNetworkValidatorFee
+	kc, err := keychain.GetKeychain(app, false, useLedger, ledgerAddresses, keyName, network, fee)
 	if err != nil {
 		return err
 	}
+
+	network.HandlePublicNetworkSimulation()
+
 	jsonPop, err := promptProofOfPossession()
 	if err != nil {
 		return err
@@ -208,7 +206,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	deployer := subnet.NewPublicDeployer(app, kc, network)
 	nodecmd.PrintNodeJoinPrimaryNetworkOutput(nodeID, weight, network, start)
 	recipientAddr := kc.Addresses().List()[0]
 	if delegationFee == 0 {
@@ -217,10 +215,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 			return err
 		}
 	} else {
-		defaultFee := genesis.FujiParams.MinDelegationFee
-		if network.Kind == models.Mainnet {
-			defaultFee = genesis.MainnetParams.MinDelegationFee
-		}
+		defaultFee := network.GenesisParams().MinDelegationFee
 		if delegationFee < defaultFee {
 			return fmt.Errorf("delegation fee has to be larger than %d", defaultFee)
 		}
@@ -231,10 +226,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 
 func getDelegationFeeOption(app *application.Avalanche, network models.Network) (uint32, error) {
 	ux.Logger.PrintToUser("What would you like to set the delegation fee to?")
-	defaultFee := genesis.FujiParams.MinDelegationFee
-	if network.Kind == models.Mainnet {
-		defaultFee = genesis.MainnetParams.MinDelegationFee
-	}
+	defaultFee := network.GenesisParams().MinDelegationFee
 	defaultOption := fmt.Sprintf("Default Delegation Fee (%d%%)", defaultFee/10000)
 	delegationFeePrompt := "Delegation Fee"
 	feeOption, err := app.Prompt.CaptureList(

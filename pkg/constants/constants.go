@@ -26,7 +26,6 @@ const (
 	GenesisSuffix                = SuffixSeparator + GenesisFileName
 	NodeFileName                 = "node.json"
 	NodeCloudConfigFileName      = "node_cloud_config.json"
-	TerraformDir                 = "terraform"
 	AnsibleDir                   = "ansible"
 	AnsibleHostInventoryFileName = "hosts"
 	StopAWSNode                  = "stop-aws-node"
@@ -42,6 +41,8 @@ const (
 	MaxLogFileSize   = 4
 	MaxNumOfLogFiles = 5
 	RetainOldFiles   = 0 // retain all old log files
+
+	CloudOperationTimeout = 2 * time.Minute
 
 	ANRRequestTimeout   = 3 * time.Minute
 	APIRequestTimeout   = 30 * time.Second
@@ -78,7 +79,11 @@ const (
 
 	DefaultSnapshotName = "default-1654102509"
 
+	Cortina17Version = "v1.10.17"
+
 	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/main/"
+
+	CurrentBootstrapNamePath = "currentBootstrapName.txt"
 
 	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
 	BootstrapSnapshotLocalPath   = "assets/" + BootstrapSnapshotArchiveName
@@ -89,6 +94,16 @@ const (
 	BootstrapSnapshotSingleNodeLocalPath   = "assets/" + BootstrapSnapshotSingleNodeArchiveName
 	BootstrapSnapshotSingleNodeURL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodeLocalPath
 	BootstrapSnapshotSingleNodeSHA256URL   = BootstrapSnapshotRawBranch + "assets/sha256sumSingleNode.txt"
+
+	BootstrapSnapshotPreCortina17ArchiveName = "bootstrapSnapshot.PreCortina17.tar.gz"
+	BootstrapSnapshotPreCortina17LocalPath   = "assets/" + BootstrapSnapshotPreCortina17ArchiveName
+	BootstrapSnapshotPreCortina17URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotPreCortina17LocalPath
+	BootstrapSnapshotPreCortina17SHA256URL   = BootstrapSnapshotRawBranch + "assets/sha256sum.PreCortina17.txt"
+
+	BootstrapSnapshotSingleNodePreCortina17ArchiveName = "bootstrapSnapshotSingleNode.PreCortina17.tar.gz"
+	BootstrapSnapshotSingleNodePreCortina17LocalPath   = "assets/" + BootstrapSnapshotSingleNodePreCortina17ArchiveName
+	BootstrapSnapshotSingleNodePreCortina17URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreCortina17LocalPath
+	BootstrapSnapshotSingleNodePreCortina17SHA256URL   = BootstrapSnapshotRawBranch + "assets/sha256sumSingleNode.PreCortina17.txt"
 
 	CliInstallationURL      = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
 	ExpectedCliInstallErr   = "resource temporarily unavailable"
@@ -118,7 +133,6 @@ const (
 	PrimaryNetworkValidatingStartLeadTimeNodeCmd = 20 * time.Second
 	PrimaryNetworkValidatingStartLeadTime        = 1 * time.Minute
 	AWSCloudServerRunningState                   = "running"
-	TerraformNodeConfigFile                      = "node_config.tf"
 	AvalancheCLISuffix                           = "-avalanche-cli"
 	AWSDefaultCredential                         = "default"
 	GCPDefaultImageProvider                      = "ubuntu-os-cloud"
@@ -133,7 +147,6 @@ const (
 	AvalanchegoP2PPort                           = 9651
 	CloudServerStorageSize                       = 1000
 	OutboundPort                                 = 0
-	Terraform                                    = "terraform"
 	SetupCLIFromSourceBranch                     = "main"
 	// Set this one to true while testing changes that alter CLI execution on cloud nodes
 	// Disable it for releases to save cluster creation time
@@ -164,6 +177,8 @@ const (
 
 	AWSCloudService              = "Amazon Web Services"
 	GCPCloudService              = "Google Cloud Platform"
+	AWSDefaultInstanceType       = "c5.2xlarge"
+	GCPDefaultInstanceType       = "e2-standard-8"
 	AnsibleSSHUser               = "ubuntu"
 	AWSNodeAnsiblePrefix         = "aws_node"
 	GCPNodeAnsiblePrefix         = "gcp_node"

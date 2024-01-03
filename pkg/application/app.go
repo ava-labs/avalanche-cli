@@ -76,6 +76,21 @@ func (app *Avalanche) GetPluginsDir() string {
 	return filepath.Join(app.baseDir, constants.PluginDir)
 }
 
+// Remove all plugins from plugin dir
+func (app *Avalanche) ResetPluginsDir() error {
+	pluginDir := app.GetPluginsDir()
+	installedPlugins, err := os.ReadDir(pluginDir)
+	if err != nil {
+		return err
+	}
+	for _, plugin := range installedPlugins {
+		if err = os.Remove(filepath.Join(pluginDir, plugin.Name())); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (app *Avalanche) GetAvalanchegoBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.AvalancheGoInstallDir)
 }
@@ -139,24 +154,6 @@ func (app *Avalanche) CreateAnsibleDir() error {
 	return nil
 }
 
-func (app *Avalanche) CreateTerraformDir() error {
-	nodesDir := app.GetNodesDir()
-	if _, err := os.Stat(nodesDir); os.IsNotExist(err) {
-		err = os.Mkdir(nodesDir, constants.DefaultPerms755)
-		if err != nil {
-			return err
-		}
-	}
-	nodeTerraformDir := app.GetTerraformDir()
-	if _, err := os.Stat(nodeTerraformDir); os.IsNotExist(err) {
-		err = os.Mkdir(nodeTerraformDir, constants.DefaultPerms755)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (app *Avalanche) CreateAnsibleInventoryDir() error {
 	inventoriesDir := filepath.Join(app.GetNodesDir(), constants.AnsibleInventoryDir)
 	if _, err := os.Stat(inventoriesDir); os.IsNotExist(err) {
@@ -166,14 +163,6 @@ func (app *Avalanche) CreateAnsibleInventoryDir() error {
 		}
 	}
 	return nil
-}
-
-func (app *Avalanche) GetTerraformDir() string {
-	return filepath.Join(app.GetNodesDir(), constants.TerraformDir)
-}
-
-func (app *Avalanche) GetTempCertPath(certName string) string {
-	return filepath.Join(app.GetTerraformDir(), certName)
 }
 
 func (app *Avalanche) GetClustersConfigPath() string {

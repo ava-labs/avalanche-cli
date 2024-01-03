@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -112,16 +113,14 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		return errors.New("unsupported network")
 	}
 
-	// used in E2E to simulate public network execution paths on a local network
-	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		network = models.LocalNetwork
-	}
-
 	// get keychain accesor
-	kc, err := GetKeychain(false, useLedger, ledgerAddresses, keyName, network)
+	fee := network.GenesisParams().TxFee
+	kc, err := keychain.GetKeychain(app, false, useLedger, ledgerAddresses, keyName, network, fee)
 	if err != nil {
 		return err
 	}
+
+	network.HandlePublicNetworkSimulation()
 
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
@@ -138,19 +137,23 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	walletKeys, err := loadCreationKeys(network, kc)
+	// add control keys to the keychain whenever possible
+	if err := kc.AddAddresses(controlKeys); err != nil {
+		return err
+	}
+
+	kcKeys, err := kc.PChainFormattedStrAddresses()
 	if err != nil {
 		return err
 	}
-	walletKey := walletKeys[0]
 
 	// get keys for add validator tx signing
 	if subnetAuthKeys != nil {
-		if err := prompts.CheckSubnetAuthKeys(walletKey, subnetAuthKeys, controlKeys, threshold); err != nil {
+		if err := prompts.CheckSubnetAuthKeys(kcKeys, subnetAuthKeys, controlKeys, threshold); err != nil {
 			return err
 		}
 	} else {
-		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, walletKey, controlKeys, threshold)
+		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, kcKeys, controlKeys, threshold)
 		if err != nil {
 			return err
 		}
@@ -183,7 +186,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Network: %s", network.Name())
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to remove the specified validator...")
 
-	deployer := subnet.NewPublicDeployer(app, useLedger, kc, network)
+	deployer := subnet.NewPublicDeployer(app, kc, network)
 	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.RemoveValidator(controlKeys, subnetAuthKeys, subnetID, nodeID)
 	if err != nil {
 		return err
