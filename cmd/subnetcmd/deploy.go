@@ -370,13 +370,14 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("unknown vm: %s", sidecar.VM)
 		}
 
+		// check if selected version matches what is currently running
+		nc := localnetworkinterface.NewStatusChecker()
+		avagoVersion, err := CheckForInvalidDeployAndGetAvagoVersion(nc, sidecar.RPCVersion)
+		if err != nil {
+			return err
+		}
 		if avagoBinaryPath == "" {
-			// check if selected version matches what is currently running
-			nc := localnetworkinterface.NewStatusChecker()
-			userProvidedAvagoVersion, err = CheckForInvalidDeployAndGetAvagoVersion(nc, sidecar.RPCVersion)
-			if err != nil {
-				return err
-			}
+			userProvidedAvagoVersion = avagoVersion
 		}
 
 		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin)

@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -29,6 +30,7 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
@@ -581,6 +583,22 @@ func (d *LocalDeployer) SetupLocalEnv() (bool, string, error) {
 	avalancheGoBinPath := ""
 	if d.avagoBinaryPath != "" {
 		avalancheGoBinPath = d.avagoBinaryPath
+		// get avago version from binary
+		out, err := exec.Command(avalancheGoBinPath, "--"+config.VersionKey).Output() //nolint
+		if err != nil {
+			return false, "", err
+		}
+		fullVersion := string(out)
+		splittedFullVersion := strings.Split(fullVersion, " ")
+		if len(splittedFullVersion) == 0 {
+			return false, "", fmt.Errorf("invalid avalanchego version: %q", fullVersion)
+		}
+		version := splittedFullVersion[0]
+		splittedVersion := strings.Split(version, "/")
+		if len(splittedVersion) != 2 {
+			return false, "", fmt.Errorf("invalid avalanchego version: %q", fullVersion)
+		}
+		avagoVersion = "v" + splittedVersion[1]
 	} else {
 		var (
 			avagoDir string
