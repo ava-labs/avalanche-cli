@@ -577,17 +577,21 @@ func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte) err
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path
 func (d *LocalDeployer) SetupLocalEnv() (bool, string, error) {
-    avagoVersion := ""
+	avagoVersion := ""
 	avalancheGoBinPath := ""
 	if d.avagoBinaryPath != "" {
 		avalancheGoBinPath = d.avagoBinaryPath
 	} else {
-        avagoVersion, avagoDir, err := d.setupLocalEnv()
+		var (
+			avagoDir string
+			err      error
+		)
+		avagoVersion, avagoDir, err = d.setupLocalEnv()
 		if err != nil {
-			return "", fmt.Errorf("failed setting up local environment: %w", err)
+			return false, "", fmt.Errorf("failed setting up local environment: %w", err)
 		}
 		avalancheGoBinPath = filepath.Join(avagoDir, "avalanchego")
-    }
+	}
 
 	configSingleNodeEnabled := d.app.Conf.GetConfigBoolValue(constants.ConfigSingleNodeEnabledKey)
 	needsRestart, err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false, avagoVersion, configSingleNodeEnabled)
