@@ -1,3 +1,8 @@
+
+#VERSIONS
+LOCALSTACK_VERSION=3.0.2
+#END OF VERSIONS
+
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -8,6 +13,12 @@ endif
 SHELL = /usr/bin/env bash -o pipefail
 #.SHELLFLAGS = -ec
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+
+#Detect OS
+UNAME := $(shell uname -s | tr A-Z a-z)
+ARCH :=$(shell uname -m | tr A-Z a-z)
+LOCALSTACK := $(shell command -v localstack 2> /dev/null)
+DOCKER:= $(shell command -v docker 2> /dev/null)
 
 all: build
 
@@ -32,7 +43,30 @@ run: build ## Run avalanche CLI
 	./bin/avalanche help
 	
 docker: ## check docker
-	docker --version || (echo "docker is not installed. Pls follow https://docs.docker.com/get-docker/" && exit 1)
+ifndef DOCKER
+$(error "No docker in $(PATH), pls follow https://docs.docker.com/get-docker/ to install")	
+endif
 
 docker-build: docker ## Build docker image
 	docker build . -t avalanche-cli
+
+localstack: docker
+ifndef LOCALSTACK
+	curl -Lo localstack-cli-$(LOCALSTACK_VERSION)-$(UNAME)-$(ARCH)-onefile.tar.gz https://github.com/localstack/localstack-cli/releases/download/v$(LOCALSTACK_VERSION)/localstack-cli-$(LOCALSTACK_VERSION)-$(UNAME)-$(ARCH)-onefile.tar.gz
+	sudo tar xvzf localstack-cli-$(LOCALSTACK_VERSION)-$(UNAME)-*-onefile.tar.gz -C /usr/local/bin
+	rm -f localstack-cli-$(LOCALSTACK_VERSION)-$(UNAME)-*-onefile.tar.gz
+else
+	echo "localstack is already installed"
+endif
+
+localstack-start: localstack
+	localstack start -d
+	localstack wait -t 30
+	export AWS_ENDPOINT_URL=http://localhost:4566
+	export AWS_REGION=us-east-1
+	export AWS_DEFAULT_REGION=us-east-1
+	export AWS_ACCESS_KEY_ID=test
+	export AWS_SECRET_ACCESS_KEY=test
+ 
+localstack-stop: localstack
+	localstack stop

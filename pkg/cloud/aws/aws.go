@@ -386,6 +386,10 @@ func (c *AwsCloud) CheckKeyPairExists(kpName string) (bool, error) {
 
 // GetUbuntuAMIID returns the ID of the latest Ubuntu Amazon Machine Image (AMI).
 func (c *AwsCloud) GetUbuntuAMIID() (string, error) {
+	// mock for e2e
+	if utils.IsE2E() {
+		return "ami-000001", nil
+	}
 	descriptionFilterValue := "Canonical, Ubuntu, 20.04 LTS, amd64*"
 	imageInput := &ec2.DescribeImagesInput{
 		Filters: []types.Filter{

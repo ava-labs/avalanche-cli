@@ -14,6 +14,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
@@ -96,7 +97,7 @@ func CheckCommandIsNotCompletion(cmd *cobra.Command) bool {
 }
 
 func TrackMetrics(command *cobra.Command, flags map[string]string) {
-	if telemetryToken == "" || os.Getenv("RUN_E2E") != "" {
+	if telemetryToken == "" || utils.IsE2E() {
 		return
 	}
 

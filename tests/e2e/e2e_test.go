@@ -5,10 +5,10 @@ package e2e
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"testing"
 
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/apm"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/errhandling"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/key"
@@ -25,7 +25,7 @@ import (
 )
 
 func TestE2e(t *testing.T) {
-	if os.Getenv("RUN_E2E") == "" {
+	if !utils.IsE2E() {
 		t.Skip("Environment variable RUN_E2E not set; skipping E2E tests")
 	}
 	gomega.RegisterFailHandler(ginkgo.Fail)
