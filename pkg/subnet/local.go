@@ -22,6 +22,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -426,6 +427,23 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			utils.FindErrorLogs(rootDir, backendLogDir)
 			return ids.Empty, ids.Empty, err
 		}
+	}
+
+	// latest check for rpc compatibility
+	statusChecker := localnetworkinterface.NewStatusChecker()
+	_, avagoRPCVersion, _, err := statusChecker.GetCurrentNetworkVersion()
+	if err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+	if avagoRPCVersion != sc.RPCVersion {
+		if !networkBooted {
+			_, _ = cli.Stop(ctx)
+		}
+		return ids.Empty, ids.Empty, fmt.Errorf(
+			"the avalanchego deployment uses rpc version %d but your subnet has version %d and is not compatible",
+			avagoRPCVersion,
+			sc.RPCVersion,
+		)
 	}
 
 	// get VM info
