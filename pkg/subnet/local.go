@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -21,6 +22,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -29,6 +31,7 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
@@ -58,10 +61,17 @@ type LocalDeployer struct {
 	backendStartedHere bool
 	setDefaultSnapshot setDefaultSnapshotFunc
 	avagoVersion       string
+	avagoBinaryPath    string
 	vmBin              string
 }
 
-func NewLocalDeployer(app *application.Avalanche, avagoVersion string, vmBin string) *LocalDeployer {
+// uses either avagoVersion or avagoBinaryPath
+func NewLocalDeployer(
+	app *application.Avalanche,
+	avagoVersion string,
+	avagoBinaryPath string,
+	vmBin string,
+) *LocalDeployer {
 	return &LocalDeployer{
 		procChecker:        binutils.NewProcessChecker(),
 		binChecker:         binutils.NewBinaryChecker(),
@@ -70,6 +80,7 @@ func NewLocalDeployer(app *application.Avalanche, avagoVersion string, vmBin str
 		app:                app,
 		setDefaultSnapshot: SetDefaultSnapshot,
 		avagoVersion:       avagoVersion,
+		avagoBinaryPath:    avagoBinaryPath,
 		vmBin:              vmBin,
 	}
 }
@@ -418,6 +429,23 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 	}
 
+	// latest check for rpc compatibility
+	statusChecker := localnetworkinterface.NewStatusChecker()
+	_, avagoRPCVersion, _, err := statusChecker.GetCurrentNetworkVersion()
+	if err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+	if avagoRPCVersion != sc.RPCVersion {
+		if !networkBooted {
+			_, _ = cli.Stop(ctx)
+		}
+		return ids.Empty, ids.Empty, fmt.Errorf(
+			"the avalanchego deployment uses rpc version %d but your subnet has version %d and is not compatible",
+			avagoRPCVersion,
+			sc.RPCVersion,
+		)
+	}
+
 	// get VM info
 	clusterInfo, err = WaitForHealthy(ctx, cli)
 	if err != nil {
@@ -569,9 +597,36 @@ func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte) err
 // * if not, it downloads it and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path
 func (d *LocalDeployer) SetupLocalEnv() (bool, string, error) {
-	avagoVersion, avagoDir, err := d.setupLocalEnv()
-	if err != nil {
-		return false, "", fmt.Errorf("failed setting up local environment: %w", err)
+	avagoVersion := ""
+	avalancheGoBinPath := ""
+	if d.avagoBinaryPath != "" {
+		avalancheGoBinPath = d.avagoBinaryPath
+		// get avago version from binary
+		out, err := exec.Command(avalancheGoBinPath, "--"+config.VersionKey).Output() //nolint
+		if err != nil {
+			return false, "", err
+		}
+		fullVersion := string(out)
+		splittedFullVersion := strings.Split(fullVersion, " ")
+		if len(splittedFullVersion) == 0 {
+			return false, "", fmt.Errorf("invalid avalanchego version: %q", fullVersion)
+		}
+		version := splittedFullVersion[0]
+		splittedVersion := strings.Split(version, "/")
+		if len(splittedVersion) != 2 {
+			return false, "", fmt.Errorf("invalid avalanchego version: %q", fullVersion)
+		}
+		avagoVersion = "v" + splittedVersion[1]
+	} else {
+		var (
+			avagoDir string
+			err      error
+		)
+		avagoVersion, avagoDir, err = d.setupLocalEnv()
+		if err != nil {
+			return false, "", fmt.Errorf("failed setting up local environment: %w", err)
+		}
+		avalancheGoBinPath = filepath.Join(avagoDir, "avalanchego")
 	}
 
 	configSingleNodeEnabled := d.app.Conf.GetConfigBoolValue(constants.ConfigSingleNodeEnabledKey)
@@ -581,7 +636,6 @@ func (d *LocalDeployer) SetupLocalEnv() (bool, string, error) {
 	}
 
 	pluginDir := d.app.GetPluginsDir()
-	avalancheGoBinPath := filepath.Join(avagoDir, "avalanchego")
 
 	if err := os.MkdirAll(pluginDir, constants.DefaultPerms755); err != nil {
 		return false, "", fmt.Errorf("could not create pluginDir %s", pluginDir)
