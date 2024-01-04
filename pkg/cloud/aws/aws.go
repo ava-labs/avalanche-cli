@@ -388,7 +388,7 @@ func (c *AwsCloud) CheckKeyPairExists(kpName string) (bool, error) {
 func (c *AwsCloud) GetUbuntuAMIID() (string, error) {
 	// mock for e2e
 	if utils.IsE2E() {
-		return "ami-000001", nil
+		return utils.E2EAwsAmi, nil
 	}
 	descriptionFilterValue := "Canonical, Ubuntu, 20.04 LTS, amd64*"
 	imageInput := &ec2.DescribeImagesInput{
