@@ -175,7 +175,24 @@ install_grafana() {
 
   exit 0
 }
-
+update_exporter() {
+  cp /etc/prometheus/prometheus.yml .
+    {
+      echo "  - job_name: 'avalanchego'"
+      echo "    metrics_path: '/ext/metrics'"
+      echo "    static_configs:"
+      echo "      - targets: [$2]"
+      echo "  - job_name: 'avalanchego-machine'"
+      echo "    static_configs:"
+      echo "      - targets: [$3]"
+      echo "        labels:"
+      echo "          alias: 'machine'"
+    }>>prometheus.yml
+    sudo cp prometheus.yml /etc/prometheus/
+    sudo systemctl restart prometheus
+    echo
+    echo "Done!"
+}
 install_exporter() {
   echo "AvalancheGo monitoring installer"
   echo "--------------------------------"
@@ -403,6 +420,10 @@ then
       ;;
     --5) #install extra dashboards
       install_extras
+      exit 0
+      ;;
+    --6) #update exporter
+      update_exporter $*
       exit 0
       ;;
     --help)

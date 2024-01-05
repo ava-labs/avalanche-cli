@@ -225,6 +225,19 @@ func RunSSHSetupSeparateMonitoring(host *models.Host, monitoringDashboardPath, a
 	)
 }
 
+func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePorts string) error {
+	return RunOverSSH(
+		"Update Prometheus Config",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/updatePrometheusConfig.sh",
+		scriptInputs{
+			AvalancheGoPorts: avalancheGoPorts,
+			MachinePorts:     machinePorts,
+		},
+	)
+}
+
 func RunSSHDownloadNodeConfig(host *models.Host, nodeInstanceDirPath string) error {
 	return host.Download(
 		filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName),
