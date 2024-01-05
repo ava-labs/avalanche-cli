@@ -286,9 +286,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	//if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfig.CertFilePath, cloudService, publicIPMap); err != nil {
-	//	return err
-	//}
+
 	if err := updateAnsiblePublicIPs(clusterName); err != nil {
 		return err
 	}
@@ -308,14 +306,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
 	}
-
-	ansibleHostIDs, err := utils.MapWithError(cloudConfigMap.GetAllInstanceIDs(), func(s string) (string, error) { return models.HostCloudIDToAnsibleID(cloudService, s) })
-	if err != nil {
-		return err
-	}
-
-	defer disconnectHosts(hosts)
-
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
