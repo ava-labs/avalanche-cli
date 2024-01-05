@@ -359,7 +359,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		}(&wgResults, host)
 	}
 	wg.Wait()
-	ansibleHostIDs, err := utils.MapWithError(cloudConfig.InstanceIDs, func(s string) (string, error) { return models.HostCloudIDToAnsibleID(cloudService, s) })
+	ansibleHostIDs, err := utils.MapWithError(cloudConfigMap.GetAllInstanceIDs(), func(s string) (string, error) { return models.HostCloudIDToAnsibleID(cloudService, s) })
 	if err != nil {
 		return err
 	}
@@ -448,8 +448,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if wgResults.HasErrors() {
 		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
 	} else {
-		//printResults(cloudConfigMap, publicIPMap, ansibleHostIDs)
-		printResults(cloudConfig, publicIPMap, ansibleHostIDs, monitoringInstancePublicIP)
+		printResults(cloudConfigMap, publicIPMap, ansibleHostIDs, monitoringNodeConfig.PublicIPs[0])
 		ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	}
 	return nil
@@ -508,6 +507,25 @@ func createClusterNodeConfig(network models.Network, cloudConfigMap models.Cloud
 		}
 	}
 	return nil
+}
+
+func addHTTPHostToConfigFile(filePath string) error {
+	jsonFile, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+	defer jsonFile.Close()
+	byteValue, _ := io.ReadAll(jsonFile)
+	var result map[string]interface{}
+	if err := json.Unmarshal(byteValue, &result); err != nil {
+		return err
+	}
+	result["http-host"] = "0.0.0.0"
+	byteValue, err = json.MarshalIndent(result, "", "    ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filePath, byteValue, constants.WriteReadReadPerms)
 }
 
 func updateKeyPairClustersConfig(cloudConfig models.NodeConfig) error {
@@ -812,7 +830,7 @@ func setCloudInstanceType(cloudService string) (string, error) {
 	return nodeType, nil
 }
 
-func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]string, ansibleHostIDs []string) {
+func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]string, ansibleHostIDs []string, monitoringHostIP string) {
 	ux.Logger.PrintToUser("======================================")
 	ux.Logger.PrintToUser("AVALANCHE NODE(S) SUCCESSFULLY SET UP!")
 	ux.Logger.PrintToUser("======================================")
@@ -838,6 +856,13 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser("======================================")
 		}
+	}
+	if separateMonitoringInstance {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("To view unified node monitoring dashboard, visit the following link in your browser: ")
+		ux.Logger.PrintToUser(fmt.Sprintf("http://%s:3000/dashboards", monitoringHostIP))
+		ux.Logger.PrintToUser("Log in with username: admin, password: admin")
+		ux.Logger.PrintToUser("")
 	}
 	ux.Logger.PrintToUser("")
 }

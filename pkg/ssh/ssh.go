@@ -108,6 +108,17 @@ func RunSSHSetupNode(host *models.Host, configPath, avalancheGoVersion string, i
 	)
 }
 
+// RunSSHRestartNode runs script to restart avalanchego
+func RunSSHRestartNode(host *models.Host) error {
+	return RunOverSSH(
+		"Restart Avalanchego",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/restartNode.sh",
+		scriptInputs{},
+	)
+}
+
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
 func RunSSHUpgradeAvalanchego(host *models.Host, avalancheGoVersion string) error {
 	return RunOverSSH(
