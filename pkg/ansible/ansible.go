@@ -47,11 +47,7 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 			}
 		}
 	} else {
-		fmt.Printf("we are here CreateAnsibleHostInventory \n")
 		for instanceID := range publicIPMap {
-			fmt.Printf("we are here publicipmap %s \n", instanceID)
-			fmt.Printf("inventoryDirPath %s \n", inventoryDirPath)
-			fmt.Printf("inventoryFile %s \n", inventoryFile)
 			ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, instanceID)
 			if err != nil {
 				return err
@@ -61,7 +57,6 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 			}
 		}
 	}
-
 	return nil
 }
 

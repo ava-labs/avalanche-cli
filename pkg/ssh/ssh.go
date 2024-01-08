@@ -6,12 +6,13 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"net/url"
 	"os"
 	"path/filepath"
 	"text/template"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -205,6 +206,7 @@ func RunSSHSetupMachineMetrics(host *models.Host) error {
 		scriptInputs{},
 	)
 }
+
 func RunSSHSetupSeparateMonitoring(host *models.Host, monitoringDashboardPath, avalancheGoPorts, machinePorts string) error {
 	if err := host.Upload(
 		monitoringDashboardPath,
@@ -342,8 +344,7 @@ func RunSSHExportSubnet(host *models.Host, exportPath, cloudServerSubnetPath str
 	)
 }
 
-// RunSSHExportSubnet exports deployed Subnet from local machine to cloud server
-// targets a specific host ansibleHostID in ansible inventory file
+// RunSSHTrackSubnet enables tracking of specified subnet
 func RunSSHTrackSubnet(host *models.Host, subnetName, importPath, networkFlag string) error {
 	return RunOverSSH(
 		"Track Subnet",

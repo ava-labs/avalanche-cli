@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"io"
 	"math"
 	"net"
@@ -17,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
@@ -202,7 +203,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 		monitoringEc2SvcMap := make(map[string]*awsAPI.AwsCloud)
 		monitoringNumNodesMap := make(map[string]int)
 		if separateMonitoringInstance && existingMonitoringInstance == "" {
-			//monitoringCloudConfig, err = createAWSInstances(ec2Svc, 1, awsProfile, region, ami, usr, true)
 			monitoringEc2SvcMap[monitoringHostRegion] = ec2SvcMap[monitoringHostRegion]
 			monitoringNumNodesMap[monitoringHostRegion] = 1
 			monitoringCloudConfig, err := createAWSInstances(monitoringEc2SvcMap, nodeType, monitoringNumNodesMap, []string{monitoringHostRegion}, ami, usr, true)
@@ -288,7 +288,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err = ansible.CreateAnsibleHostInventory(inventoryPath, "", cloudService, nil, cloudConfigMap); err != nil {
+	if err = ansible.CreateAnsibleHostInventory(inventoryPath, "", cloudService, publicIPMap, cloudConfigMap); err != nil {
 		return err
 	}
 	monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), "monitoring")
@@ -312,10 +312,8 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("allhosts %s \n", allHosts)
 	hosts := utils.Filter(allHosts, func(h *models.Host) bool { return slices.Contains(cloudConfigMap.GetAllInstanceIDs(), h.GetCloudID()) })
 	// waiting for all nodes to become accessible
-	fmt.Printf("hosts filtered %s \n", hosts)
 	failedHosts := waitForHosts(hosts)
 	if failedHosts.Len() > 0 {
 		for _, result := range failedHosts.GetResults() {
