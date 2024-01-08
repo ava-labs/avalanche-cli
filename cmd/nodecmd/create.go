@@ -288,9 +288,12 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if err = ansible.CreateAnsibleHostInventory(inventoryPath, "", cloudService, nil, cloudConfigMap); err != nil {
+		return err
+	}
 	monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), "monitoring")
 	if separateMonitoringInstance && existingMonitoringInstance == "" {
-		if err = ansible.CreateAnsibleHostInventory(monitoringInventoryPath, monitoringNodeConfig.CertFilePath, cloudService, map[string]string{monitoringNodeConfig.InstanceIDs[0]: monitoringNodeConfig.PublicIPs[0]}); err != nil {
+		if err = ansible.CreateAnsibleHostInventory(monitoringInventoryPath, monitoringNodeConfig.CertFilePath, cloudService, map[string]string{monitoringNodeConfig.InstanceIDs[0]: monitoringNodeConfig.PublicIPs[0]}, nil); err != nil {
 			return err
 		}
 	}
@@ -309,8 +312,10 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("allhosts %s \n", allHosts)
 	hosts := utils.Filter(allHosts, func(h *models.Host) bool { return slices.Contains(cloudConfigMap.GetAllInstanceIDs(), h.GetCloudID()) })
 	// waiting for all nodes to become accessible
+	fmt.Printf("hosts filtered %s \n", hosts)
 	failedHosts := waitForHosts(hosts)
 	if failedHosts.Len() > 0 {
 		for _, result := range failedHosts.GetResults() {

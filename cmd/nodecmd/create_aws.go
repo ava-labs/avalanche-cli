@@ -127,7 +127,12 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	regionConf map[string]models.RegionConfig,
 	forMonitoring bool,
 ) (map[string][]string, map[string][]string, map[string]string, map[string]string, error) {
-	ux.Logger.PrintToUser("Creating new EC2 instance(s) on AWS...")
+	if !forMonitoring {
+		ux.Logger.PrintToUser("Creating new EC2 instance(s) on AWS...")
+	} else {
+		ux.Logger.PrintToUser("Creating separate monitoring EC2 instance(s) on AWS...")
+	}
+
 	userIPAddress, err := getIPAddress()
 	if err != nil {
 		return nil, nil, nil, nil, err
@@ -270,6 +275,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 }
 
 func AddMonitoringSecurityGroupRule(ec2Svc map[string]*awsAPI.AwsCloud, monitoringHostPublicIP, securityGroupName, region string) error {
+	fmt.Printf("check security group exists %s \n", securityGroupName)
 	_, sg, err := ec2Svc[region].CheckSecurityGroupExists(securityGroupName)
 	if err != nil {
 		return err
