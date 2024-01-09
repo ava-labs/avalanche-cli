@@ -302,39 +302,27 @@ func CheckUserIPInSg(sg *ec2.SecurityGroup, currentIP string, port int64) bool {
 	return false
 }
 
-//// CheckAWSSecurityGroupExists checks that security group sgName exists in the AWS region and returns the security group object
-//func CheckAWSSecurityGroupExists(ec2Svc *ec2.EC2, sgName string) (bool, *ec2.SecurityGroup, error) {
-//	sgInput := &ec2.DescribeSecurityGroupsInput{
-//		GroupNames: []*string{
-//			aws.String(sgName),
-//		},
-//	}
-//
-//	sg, err := ec2Svc.DescribeSecurityGroups(sgInput)
-//	if err != nil {
-//		if strings.Contains(err.Error(), "InvalidGroup.NotFound") {
-//			return false, &ec2.SecurityGroup{}, nil
-//		}
-//		return false, &ec2.SecurityGroup{}, err
-//	}
-//	return true, sg.SecurityGroups[0], nil
-//}
-
 func AddMonitoringSecurityGroupRule(ec2Svc map[string]*awsAPI.AwsCloud, monitoringHostPublicIP, securityGroupName, region string) error {
-	// need to handle if securitygroup doesn't exist, need to create it first
-	_, sg, err := ec2Svc[region].CheckSecurityGroupExists(securityGroupName)
+	securityGroupExists, sg, err := ec2Svc[region].CheckSecurityGroupExists(securityGroupName)
 	if err != nil {
 		return err
 	}
-	//metricsPortInSG := CheckUserIPInSg(sg, monitoringHostPublicIP, constants.AvalanchegoMachineMetricsPort)
-	//apiPortInSG := CheckUserIPInSg(sg, monitoringHostPublicIP, constants.AvalanchegoAPIPort)
-	//if metricsPortInSG || apiPortInSG {
-	//	return nil
-	//}
-	if err = ec2Svc[region].AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoMachineMetricsPort); err != nil {
-		return err
+	if !securityGroupExists {
+		return fmt.Errorf("security group %s doesn't exist in region %s", securityGroupName, region)
 	}
-	return ec2Svc[region].AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoAPIPort)
+	metricsPortInSG := awsAPI.CheckUserIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoMachineMetricsPort)
+	apiPortInSG := awsAPI.CheckUserIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoAPIPort)
+	if !metricsPortInSG {
+		if err = ec2Svc[region].AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoMachineMetricsPort); err != nil {
+			return err
+		}
+	}
+	if !apiPortInSG {
+		if err = ec2Svc[region].AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoAPIPort); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func createAWSInstances(
