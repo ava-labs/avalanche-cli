@@ -4,7 +4,6 @@ package nodecmd
 
 import (
 	"fmt"
-	"github.com/aws/aws-sdk-go/service/ec2"
 	"os/exec"
 	"os/user"
 	"strings"
@@ -286,20 +285,6 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	}
 	// instanceIDs, elasticIPs, certFilePath, keyPairName, err
 	return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
-}
-
-// CheckUserIPInSg checks that the user's current IP address is included in the whitelisted security group sg in AWS so that user can ssh into ec2 instance
-func CheckUserIPInSg(sg *ec2.SecurityGroup, currentIP string, port int64) bool {
-	for _, ipPermission := range sg.IpPermissions {
-		for _, ip := range ipPermission.IpRanges {
-			if strings.Contains(ip.String(), currentIP) {
-				if *ipPermission.FromPort == port {
-					return true
-				}
-			}
-		}
-	}
-	return false
 }
 
 func AddMonitoringSecurityGroupRule(ec2Svc map[string]*awsAPI.AwsCloud, monitoringHostPublicIP, securityGroupName, region string) error {
