@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
+	"github.com/aws/aws-sdk-go/service/ec2"
 	"os/exec"
 	"os/user"
 	"strings"
@@ -79,6 +80,19 @@ func promptKeyPairName(ec2 *awsAPI.AwsCloud) (string, error) {
 		return "", err
 	}
 	return newKeyPairName, nil
+}
+
+func getAWSMonitoringEC2Svc(awsProfile, monitoringRegion string) (map[string]*awsAPI.AwsCloud, error) {
+	ec2SvcMap := map[string]*awsAPI.AwsCloud{}
+	var err error
+	ec2SvcMap[monitoringRegion], err = getAWSCloudCredentials(awsProfile, monitoringRegion)
+	if err != nil {
+		if !strings.Contains(err.Error(), "cloud access is required") {
+			printNoCredentialsOutput(awsProfile)
+		}
+		return nil, err
+	}
+	return ec2SvcMap, nil
 }
 
 func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[string]string, map[string]int, error) {
@@ -274,12 +288,49 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
 }
 
+// CheckUserIPInSg checks that the user's current IP address is included in the whitelisted security group sg in AWS so that user can ssh into ec2 instance
+func CheckUserIPInSg(sg *ec2.SecurityGroup, currentIP string, port int64) bool {
+	for _, ipPermission := range sg.IpPermissions {
+		for _, ip := range ipPermission.IpRanges {
+			if strings.Contains(ip.String(), currentIP) {
+				if *ipPermission.FromPort == port {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+//// CheckAWSSecurityGroupExists checks that security group sgName exists in the AWS region and returns the security group object
+//func CheckAWSSecurityGroupExists(ec2Svc *ec2.EC2, sgName string) (bool, *ec2.SecurityGroup, error) {
+//	sgInput := &ec2.DescribeSecurityGroupsInput{
+//		GroupNames: []*string{
+//			aws.String(sgName),
+//		},
+//	}
+//
+//	sg, err := ec2Svc.DescribeSecurityGroups(sgInput)
+//	if err != nil {
+//		if strings.Contains(err.Error(), "InvalidGroup.NotFound") {
+//			return false, &ec2.SecurityGroup{}, nil
+//		}
+//		return false, &ec2.SecurityGroup{}, err
+//	}
+//	return true, sg.SecurityGroups[0], nil
+//}
+
 func AddMonitoringSecurityGroupRule(ec2Svc map[string]*awsAPI.AwsCloud, monitoringHostPublicIP, securityGroupName, region string) error {
-	fmt.Printf("check security group exists %s \n", securityGroupName)
+	// need to handle if securitygroup doesn't exist, need to create it first
 	_, sg, err := ec2Svc[region].CheckSecurityGroupExists(securityGroupName)
 	if err != nil {
 		return err
 	}
+	//metricsPortInSG := CheckUserIPInSg(sg, monitoringHostPublicIP, constants.AvalanchegoMachineMetricsPort)
+	//apiPortInSG := CheckUserIPInSg(sg, monitoringHostPublicIP, constants.AvalanchegoAPIPort)
+	//if metricsPortInSG || apiPortInSG {
+	//	return nil
+	//}
 	if err = ec2Svc[region].AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoMachineMetricsPort); err != nil {
 		return err
 	}

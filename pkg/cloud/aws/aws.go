@@ -74,8 +74,10 @@ func (c *AwsCloud) CheckSecurityGroupExists(sgName string) (bool, types.Security
 	sg, err := c.ec2Client.DescribeSecurityGroups(c.ctx, sgInput)
 	if err != nil {
 		if strings.Contains(err.Error(), "InvalidGroup.NotFound") {
+			fmt.Printf("we have error here InvalidGroup.NotFound securitygroup empty %s \n", err)
 			return false, types.SecurityGroup{}, nil
 		}
+		fmt.Printf("we have error here InvalidGroup.NotFound securitygroup empty outside %s \n", err)
 		return false, types.SecurityGroup{}, err
 	}
 	return true, sg.SecurityGroups[0], nil

@@ -179,10 +179,12 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		monitoringHostRegion = regions[0]
 		existingMonitoringInstance, err = getExistingMonitoringInstance(clusterName)
 		if err != nil {
 			return err
+		}
+		if existingMonitoringInstance == "" {
+			monitoringHostRegion = regions[0]
 		}
 		if !separateMonitoringInstance && existingMonitoringInstance == "" {
 			setUpMonitoring, err = app.Prompt.CaptureYesNo("Do you want to set up monitoring for your instances? (This enables you to monitor validator and machine metrics)")
@@ -217,6 +219,11 @@ func createNodes(_ *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
+			monitoringHostRegion = monitoringNodeConfig.Region
+			monitoringEc2SvcMap, err = getAWSMonitoringEC2Svc(awsProfile, monitoringHostRegion)
+			if err != nil {
+				return err
+			}
 		}
 		if !useStaticIP {
 			monitoringPublicIPMap, err := monitoringEc2SvcMap[monitoringHostRegion].GetInstancePublicIPs(monitoringNodeConfig.InstanceIDs)
@@ -239,10 +246,10 @@ func createNodes(_ *cobra.Command, args []string) error {
 					publicIPMap[node] = cloudConfigMap[region].PublicIPs[i]
 				}
 			}
-		}
-		if separateMonitoringInstance {
-			if err = AddMonitoringSecurityGroupRule(monitoringEc2SvcMap, monitoringNodeConfig.PublicIPs[0], monitoringNodeConfig.SecurityGroup, monitoringHostRegion); err != nil {
-				return err
+			if separateMonitoringInstance {
+				if err = AddMonitoringSecurityGroupRule(ec2SvcMap, monitoringNodeConfig.PublicIPs[0], cloudConfigMap[region].SecurityGroup, region); err != nil {
+					return err
+				}
 			}
 		}
 	} else {
@@ -592,6 +599,7 @@ func getNodeCloudConfig(node string) (models.RegionConfig, error) {
 		SecurityGroupName: config.SecurityGroup,
 		CertFilePath:      config.CertPath,
 		ImageID:           config.AMI,
+		Region:            config.Region,
 	}, nil
 }
 
