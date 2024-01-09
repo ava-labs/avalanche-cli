@@ -266,6 +266,8 @@ func HostCloudIDToAnsibleID(cloudService string, hostCloudID string) (string, er
 		return fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, hostCloudID), nil
 	case constants.AWSCloudService:
 		return fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, hostCloudID), nil
+	case constants.E2EDocker:
+		return fmt.Sprintf("%s_%s", constants.E2EDocker, hostCloudID), nil
 	}
 	return "", fmt.Errorf("unknown cloud service %s", cloudService)
 }
@@ -275,6 +277,8 @@ func HostAnsibleIDToCloudID(hostAnsibleID string) (string, string, error) {
 		return constants.AWSCloudService, strings.TrimPrefix(hostAnsibleID, constants.AWSNodeAnsiblePrefix+"_"), nil
 	} else if strings.HasPrefix(hostAnsibleID, constants.GCPNodeAnsiblePrefix) {
 		return constants.GCPCloudService, strings.TrimPrefix(hostAnsibleID, constants.GCPNodeAnsiblePrefix+"_"), nil
+	} else if strings.HasPrefix(hostAnsibleID, constants.E2EDocker) {
+		return constants.E2EDocker, strings.TrimPrefix(hostAnsibleID, constants.E2EDocker+"_"), nil
 	}
 	return "", "", fmt.Errorf("unknown cloud service prefix in %s", hostAnsibleID)
 }

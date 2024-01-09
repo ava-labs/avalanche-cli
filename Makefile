@@ -45,7 +45,7 @@ run: build ## Run avalanche CLI
 colima: ## check colima
 ifndef COLIMA
 brew install colima
-brew install docker
+brew install docker docker-compose
 endif
 	
 docker: colima ## check docker
@@ -56,3 +56,5 @@ endif
 docker-build: docker ## Build docker image
 	docker build . -t avalanche-cli
 
+docker-e2e-build: docker build ## Build docker image for e2e
+	docker build -f Dockerfile.release ./bin -t avalanche-cli

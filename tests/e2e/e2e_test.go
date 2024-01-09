@@ -34,8 +34,15 @@ func TestE2e(t *testing.T) {
 }
 
 var _ = ginkgo.BeforeSuite(func() {
-	cmd := exec.Command("./scripts/build.sh")
+	cmd := exec.Command("make", "build")
 	out, err := cmd.CombinedOutput()
 	fmt.Println(string(out))
 	gomega.Expect(err).Should(gomega.BeNil())
+	// add docker-compose support
+	if utils.E2EDocker() {
+		cmd = exec.Command("make", "docker-e2e-build")
+		out, err = cmd.CombinedOutput()
+		fmt.Println(string(out))
+		gomega.Expect(err).Should(gomega.BeNil())
+	}
 })

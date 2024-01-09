@@ -165,67 +165,106 @@ func createNodes(_ *cobra.Command, args []string) error {
 	publicIPMap := map[string]string{}
 	gcpProjectName := ""
 	gcpCredentialFilepath := ""
-	if cloudService == constants.AWSCloudService { // Get AWS Credential, region and AMI
-		if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
-			return fmt.Errorf("cloud access is required")
-		}
-		ec2SvcMap, ami, numNodesMap, err := getAWSCloudConfig(awsProfile)
-		regions := maps.Keys(ec2SvcMap)
-		if err != nil {
-			return err
-		}
-		cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodesMap, regions, ami, usr)
-		if err != nil {
-			return err
-		}
-		for _, region := range regions {
-			if !useStaticIP {
-				tmpIPMap, err := ec2SvcMap[region].GetInstancePublicIPs(cloudConfigMap[region].InstanceIDs)
-				if err != nil {
-					return err
-				}
-				for node, ip := range tmpIPMap {
-					publicIPMap[node] = ip
-				}
-			} else {
-				for i, node := range cloudConfigMap[region].InstanceIDs {
-					publicIPMap[node] = cloudConfigMap[region].PublicIPs[i]
+	if !utils.IsE2E() {
+		if cloudService == constants.AWSCloudService { // Get AWS Credential, region and AMI
+			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
+				return fmt.Errorf("cloud access is required")
+			}
+			ec2SvcMap, ami, numNodesMap, err := getAWSCloudConfig(awsProfile)
+			regions := maps.Keys(ec2SvcMap)
+			if err != nil {
+				return err
+			}
+			cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodesMap, regions, ami, usr)
+			if err != nil {
+				return err
+			}
+			for _, region := range regions {
+				if !useStaticIP {
+					tmpIPMap, err := ec2SvcMap[region].GetInstancePublicIPs(cloudConfigMap[region].InstanceIDs)
+					if err != nil {
+						return err
+					}
+					for node, ip := range tmpIPMap {
+						publicIPMap[node] = ip
+					}
+				} else {
+					for i, node := range cloudConfigMap[region].InstanceIDs {
+						publicIPMap[node] = cloudConfigMap[region].PublicIPs[i]
+					}
 				}
 			}
+		} else {
+			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
+				return fmt.Errorf("cloud access is required")
+			}
+			// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
+			gcpClient, zones, numNodes, imageID, credentialFilepath, projectName, err := getGCPConfig()
+			if err != nil {
+				return err
+			}
+			cloudConfigMap, err = createGCPInstance(usr, gcpClient, nodeType, numNodes, zones, imageID, clusterName)
+			if err != nil {
+				return err
+			}
+			for _, zone := range zones {
+				if !useStaticIP {
+					tmpIPMap, err := gcpClient.GetInstancePublicIPs(zone, cloudConfigMap[zone].InstanceIDs)
+					if err != nil {
+						return err
+					}
+					for node, ip := range tmpIPMap {
+						publicIPMap[node] = ip
+					}
+				} else {
+					for i, node := range cloudConfigMap[zone].InstanceIDs {
+						publicIPMap[node] = cloudConfigMap[zone].PublicIPs[i]
+					}
+				}
+			}
+			gcpProjectName = projectName
+			gcpCredentialFilepath = credentialFilepath
 		}
 	} else {
-		if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
-			return fmt.Errorf("cloud access is required")
-		}
-		// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
-		gcpClient, zones, numNodes, imageID, credentialFilepath, projectName, err := getGCPConfig()
+		//override cloudConfig for E2E testing
+		cloudService = "docker"
+		defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
+		keyPairName := fmt.Sprintf("%s-keypair", defaultAvalancheCLIPrefix)
+		certPath, err := app.GetSSHCertFilePath(keyPairName)
+		dockerHostIDs := []string{"docker1", "docker2"}
 		if err != nil {
 			return err
 		}
-		cloudConfigMap, err = createGCPInstance(usr, gcpClient, nodeType, numNodes, zones, imageID, clusterName)
+		cloudConfigMap = models.CloudConfig{
+			"docker": {
+				InstanceIDs:       dockerHostIDs,
+				PublicIPs:         []string{fmt.Sprintf("%s.%d", constants.E2ENetworkPrefix, 2), fmt.Sprintf("%s.%d", constants.E2ENetworkPrefix, 3)},
+				KeyPair:           keyPairName,
+				SecurityGroup:     "docker",
+				CertFilePath:      certPath,
+				ImageID:           "docker",
+				Prefix:            "docker",
+				CertName:          "docker",
+				SecurityGroupName: "docker",
+				NumNodes:          2,
+				InstanceType:      "docker",
+			},
+		}
+		publicIPMap = map[string]string{
+			"docker1": cloudConfigMap["docker"].PublicIPs[0],
+			"docker2": cloudConfigMap["docker"].PublicIPs[1],
+		}
+		pubKeyString, err := os.ReadFile(fmt.Sprintf("%s.pub", certPath))
 		if err != nil {
 			return err
 		}
-		for _, zone := range zones {
-			if !useStaticIP {
-				tmpIPMap, err := gcpClient.GetInstancePublicIPs(zone, cloudConfigMap[zone].InstanceIDs)
-				if err != nil {
-					return err
-				}
-				for node, ip := range tmpIPMap {
-					publicIPMap[node] = ip
-				}
-			} else {
-				for i, node := range cloudConfigMap[zone].InstanceIDs {
-					publicIPMap[node] = cloudConfigMap[zone].PublicIPs[i]
-				}
-			}
+		dockerComposeFile, err := utils.SaveDockerComposeFile(len(dockerHostIDs), "focal", strings.TrimSuffix(string(pubKeyString), "\n"))
+		if err != nil {
+			return err
 		}
-		gcpProjectName = projectName
-		gcpCredentialFilepath = credentialFilepath
+		utils.StartDockerCompose(dockerComposeFile)
 	}
-
-	if err = createClusterNodeConfig(network, cloudConfigMap, clusterName, cloudService); err != nil {
+	if err = CreateClusterNodeConfig(network, cloudConfigMap, clusterName, cloudService); err != nil {
 		return err
 	}
 	if cloudService == constants.GCPCloudService {
@@ -323,9 +362,9 @@ func createNodes(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-// createClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
+// reateClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
 // also creates cluster config in .avalanche-cli/nodes storing various key pair and security group info for all clusters
-func createClusterNodeConfig(network models.Network, cloudConfigMap models.CloudConfig, clusterName, cloudService string) error {
+func CreateClusterNodeConfig(network models.Network, cloudConfigMap models.CloudConfig, clusterName, cloudService string) error {
 	for region, cloudConfig := range cloudConfigMap {
 		for i := range cloudConfig.InstanceIDs {
 			publicIP := ""
@@ -685,6 +724,8 @@ func waitForHosts(hosts []*models.Host) *models.NodeResults {
 	hostErrors := models.NodeResults{}
 	createdWaitGroup := sync.WaitGroup{}
 	for _, host := range hosts {
+		fmt.Println(host.NodeID)
+		fmt.Println(host.IP)
 		createdWaitGroup.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer createdWaitGroup.Done()
