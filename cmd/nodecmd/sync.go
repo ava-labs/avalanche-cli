@@ -7,15 +7,13 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/ava-labs/avalanche-cli/pkg/ssh"
-
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 )
 
@@ -71,15 +69,15 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	if len(notHealthyNodes) > 0 {
 		return fmt.Errorf("node(s) %s are not healthy, please fix the issue and again", notHealthyNodes)
 	}
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
+	}
 	incompatibleNodes, err := checkAvalancheGoVersionCompatible(hosts, subnetName)
 	if err != nil {
 		return err
 	}
 	if len(incompatibleNodes) > 0 {
-		sc, err := app.LoadSidecar(subnetName)
-		if err != nil {
-			return err
-		}
 		ux.Logger.PrintToUser("Either modify your Avalanche Go version or modify your VM version")
 		ux.Logger.PrintToUser("To modify your Avalanche Go version: https://docs.avax.network/nodes/maintain/upgrade-your-avalanchego-node")
 		switch sc.VM {
@@ -103,7 +101,10 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("node(s) %s failed to sync with subnet %s", untrackedNodes, subnetName)
 	}
 	ux.Logger.PrintToUser("Node(s) successfully started syncing with Subnet!")
-	ux.Logger.PrintToUser(fmt.Sprintf("Check node subnet syncing status with avalanche node status %s --subnet %s", clusterName, subnetName))
+	blockchainID := sc.Networks[network.Kind.String()].BlockchainID
+	if blockchainID != ids.Empty {
+		ux.Logger.PrintToUser(fmt.Sprintf("Check node subnet syncing status with avalanche node status %s --subnet %s", clusterName, subnetName))
+	}
 	return nil
 }
 

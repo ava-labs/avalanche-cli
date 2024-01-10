@@ -529,6 +529,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
+		// TODO: check that at least one validator exists, is online and is tracking the subnet
 		validators, err := subnet.GetPublicSubnetValidators(subnetID, network)
 		if err != nil {
 			return err
@@ -537,7 +538,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser("No subnet validators were found")
 			ux.Logger.PrintToUser("Please add validators to the subnet and then call deploy again to create the blockchain")
-			return nil
+			ux.Logger.PrintToUser("")
+			return fmt.Errorf("Add subnet validators before blockchain creation")
 		}
 		var (
 			isFullySigned           bool
