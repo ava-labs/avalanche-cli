@@ -11,7 +11,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"golang.org/x/exp/maps"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -243,7 +242,11 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			if err != nil {
 				return nil, nil, nil, nil, err
 			}
-			elasticIPs[region] = maps.Values(instanceEIPMap)
+			regionElasticIPs := []string{}
+			for _, instanceID := range instanceIDs[region] {
+				regionElasticIPs = append(regionElasticIPs, instanceEIPMap[instanceID])
+			}
+			elasticIPs[region] = regionElasticIPs
 		}
 	}
 	ux.Logger.PrintToUser("New EC2 instance(s) successfully created in AWS!")
