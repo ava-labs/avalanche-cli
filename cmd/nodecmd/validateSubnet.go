@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanchego/vms/platformvm/status"
+	//"github.com/ava-labs/avalanchego/vms/platformvm/status"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
@@ -216,6 +216,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if len(notHealthyNodes) > 0 {
 		return fmt.Errorf("node(s) %s are not healthy, please fix the issue and again", notHealthyNodes)
 	}
+	/*
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
@@ -224,6 +225,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if blockchainID == ids.Empty {
 		return ErrNoBlockchainID
 	}
+	*/
 	nodeErrors := map[string]error{}
 	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
 	for i, host := range hosts {
@@ -243,6 +245,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			nodeErrors[host.NodeID] = err
 			continue
 		}
+		/*
 		// we have to check if node is synced to subnet before adding the node as a validator
 		subnetSyncStatus, err := getNodeSubnetSyncStatus(host, blockchainID.String())
 		if err != nil {
@@ -260,6 +263,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			}
 			continue
 		}
+		*/
 		clusterNodeID := host.GetCloudID()
 		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(network, kc, nodeID, i, clusterNodeID)
 		if err != nil {
