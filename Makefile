@@ -46,6 +46,8 @@ colima: ## check colima
 ifndef COLIMA
 brew install colima
 brew install docker docker-compose
+brew install chipmk/tap/docker-mac-net-connect
+brew services start chipmk/tap/docker-mac-net-connect
 endif
 	
 docker: colima ## check docker
