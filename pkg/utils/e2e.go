@@ -4,6 +4,7 @@ package utils
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"html/template"
 	"os"
@@ -22,15 +23,16 @@ services:
     image: ubuntu:{{$version}}
     container_name: ubuntu_container{{$i}}
     networks:
-      custom_net:
+      e2e:
         ipv4_address: {{$ip}}
     command: >
-	    /bin/bash -c "export DEBIAN_FRONTEND=noninteractive; set -e; sshd -V || apt-get update && apt-get install -y sudo openssh-server; useradd -m -s /bin/bash ubuntu; 
-		  mkdir -p /home/ubuntu/.ssh; echo '{{$pubkey}}' > /home/ubuntu/.ssh/authorized_keys; chown -R ubuntu:sudo /home/ubuntu/.ssh; echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers;
+	    /bin/bash -c "export DEBIAN_FRONTEND=noninteractive; set -e; sshd -V || apt-get update && apt-get install -y sudo openssh-server;
+		  id ubuntu || useradd -m -s /bin/bash ubuntu; mkdir -p /home/ubuntu/.ssh;
+		  echo '{{$pubkey}}' | base64 -d > /home/ubuntu/.ssh/authorized_keys; chown -R ubuntu:sudo /home/ubuntu/.ssh; echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers;
 		  service ssh start && tail -f /dev/null"
 {{- end }}
 networks:
-  custom_net:
+  e2e:
     ipam:
       driver: default
       config:
@@ -65,9 +67,8 @@ func GenDockerComposeFile(nodes int, ubuntuVersion string, networkPrefix string,
 		IPs:           ips,
 		UbuntuVersion: ubuntuVersion,
 		NetworkPrefix: networkPrefix,
-		SSHPubKey:     sshPubKey,
+		SSHPubKey:     base64.StdEncoding.EncodeToString([]byte(sshPubKey)),
 	}
-	fmt.Println(config)
 	tmpl, err := template.New("docker-compose").Parse(strings.ReplaceAll(composeTemplate, "\t", "  "))
 	if err != nil {
 		return "", err
