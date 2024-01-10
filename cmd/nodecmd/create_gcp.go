@@ -206,7 +206,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	}
 	sshPublicKey := ""
 	if useSSHAgent {
-		sshPublicKey, err = utils.ReadSSHIdentityPublicKey(sshIdentity)
+		sshPublicKey, err = utils.ReadSSHAgentIdentityPublicKey(sshIdentity)
 		if err != nil {
 			return nil, nil, "", "", err
 		}

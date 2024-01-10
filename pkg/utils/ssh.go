@@ -27,22 +27,22 @@ func IsSSHAgentAvailable() bool {
 	return os.Getenv("SSH_AUTH_SOCK") != ""
 }
 
-func GetSSHAgent() (agent.ExtendedAgent, error) {
+func getSSHAgent() (agent.ExtendedAgent, error) {
 	if !IsSSHAgentAvailable() {
 		return nil, fmt.Errorf("SSH agent is not available")
 	}
 	sshAuthSock := os.Getenv("SSH_AUTH_SOCK")
 	conn, err := net.Dial("unix", sshAuthSock)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("SSH agent is not accepting connections: %w", err)
 	}
 	sshAgent := agent.NewClient(conn)
 	return sshAgent, nil
 }
 
-// ListSSHIdentity returns a list of SSH identities and any error encountered.
-func ListSSHIdentity() ([]string, error) {
-	sshAgent, err := GetSSHAgent()
+// ListSSHAgentIdentity returns a list of SSH identities from ssh-agent.
+func ListSSHAgentIdentities() ([]string, error) {
+	sshAgent, err := getSSHAgent()
 	if err != nil {
 		return nil, err
 	}
@@ -54,19 +54,23 @@ func ListSSHIdentity() ([]string, error) {
 	return identityList, nil
 }
 
-func IsSSHIdentityValid(identity string) bool {
-	identityList, err := ListSSHIdentity()
+func IsSSHAgentIdentityValid(identity string) (bool, error) {
+	identityList, err := ListSSHAgentIdentities()
 	if err != nil {
-		return false
+		return false, err
 	}
-	return slices.Contains(identityList, identity)
+	return slices.Contains(identityList, identity), nil
 }
 
-func ReadSSHIdentityPublicKey(identityName string) (string, error) {
-	if !IsSSHIdentityValid(identityName) {
+func ReadSSHAgentIdentityPublicKey(identityName string) (string, error) {
+	identityValid, err := IsSSHAgentIdentityValid(identityName)
+	if err != nil {
+		return "", err
+	}
+	if !identityValid {
 		return "", fmt.Errorf("identity %s not found", identityName)
 	}
-	sshAgent, err := GetSSHAgent()
+	sshAgent, err := getSSHAgent()
 	if err != nil {
 		return "", err
 	}

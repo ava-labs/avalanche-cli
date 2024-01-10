@@ -36,18 +36,17 @@ type Host struct {
 }
 
 func NewHostConnection(h *Host) (*goph.Client, error) {
-	var auth goph.Auth
-	var err error
+	var (
+		auth goph.Auth
+		err  error
+	)
 	if h.SSHPrivateKeyPath == "" {
 		auth, err = goph.UseAgent()
-		if err != nil {
-			return nil, err
-		}
 	} else {
 		auth, err = goph.Key(h.SSHPrivateKeyPath, "")
-		if err != nil {
-			return nil, err
-		}
+	}
+	if err != nil {
+		return nil, err
 	}
 	cl, err := goph.NewConn(&goph.Config{
 		User:    h.SSHUser,

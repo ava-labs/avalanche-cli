@@ -101,7 +101,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().BoolVar(&createOnFuji, "fuji", false, "create node/s in Fuji Network")
 	cmd.Flags().BoolVar(&createDevnet, "devnet", false, "create node/s into a new Devnet")
 	cmd.Flags().BoolVar(&useSSHAgent, "use-ssh-agent", false, "use ssh agent(ex: Yubikey) for ssh auth")
-	cmd.Flags().StringVar(&sshIdentity, "ssh-identity", "", "use given ssh identity")
+	cmd.Flags().StringVar(&sshIdentity, "ssh-agent-identity", "", "use given ssh identity(only for ssh agent). If not set, default will be used.")
 	return cmd
 }
 
@@ -125,7 +125,7 @@ func preCreateChecks() error {
 			}
 		}
 	}
-	if len(sshIdentity) > 0 && !useSSHAgent {
+	if sshIdentity != "" && !useSSHAgent {
 		return fmt.Errorf("could not use ssh identity without using ssh agent")
 	}
 	if useSSHAgent && !utils.IsSSHAgentAvailable() {
@@ -803,13 +803,14 @@ func getRegionsNodeNum(cloudName string) (
 
 func setSSHIdentity() (string, error) {
 	const yubikeyMark = " [YubiKey] (recommended)"
-	sshIdentities, err := utils.ListSSHIdentity()
+	const yubikeyPattern = `cardno:(\d+(_\d+)*)`
+	sshIdentities, err := utils.ListSSHAgentIdentities()
 	if err != nil {
 		return "", err
 	}
+	yubikeyRegexp := regexp.MustCompile(yubikeyPattern)
 	sshIdentities = utils.Map(sshIdentities, func(id string) string {
-		yubikeyPattern := `cardno:(\d+(_\d+)*)`
-		if len(regexp.MustCompile(yubikeyPattern).FindStringSubmatch(id)) > 0 {
+		if len(yubikeyRegexp.FindStringSubmatch(id)) > 0 {
 			return fmt.Sprintf("%s%s", id, yubikeyMark)
 		}
 		return id

@@ -156,7 +156,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			switch {
 			case useSSHAgent:
 				ux.Logger.PrintToUser("Using ssh agent identity %s to create key pair %s in AWS[%s]", sshIdentity, keyPairName[region], region)
-				if err := ec2Svc[region].UploadKeyPair(regionConf[region].Prefix, sshIdentity); err != nil {
+				if err := ec2Svc[region].UploadSSHIdentityKeyPair(regionConf[region].Prefix, sshIdentity); err != nil {
 					return nil, nil, nil, nil, err
 				}
 			case !useSSHAgent && certInSSHDir:

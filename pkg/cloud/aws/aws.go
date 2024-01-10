@@ -336,21 +336,24 @@ func (c *AwsCloud) CreateAndDownloadKeyPair(keyName string, privateKeyFilePath s
 	return nil
 }
 
-func (c *AwsCloud) UploadKeyPair(keyName string, identity string) error {
-	if !utils.IsSSHIdentityValid(identity) {
-		return fmt.Errorf("identity %s not found", identity)
-	}
-	publicKeyMaterial, err := utils.ReadSSHIdentityPublicKey(identity)
+// UploadSSHIdentityKeyPair uploads a key pair from ssh-agent identity to the AWS cloud.
+func (c *AwsCloud) UploadSSHIdentityKeyPair(keyName string, identity string) error {
+	identityValid, err := utils.IsSSHAgentIdentityValid(identity)
 	if err != nil {
 		return err
 	}
-	if _, err = c.ec2Client.ImportKeyPair(c.ctx, &ec2.ImportKeyPairInput{
-		KeyName:           aws.String(keyName),
-		PublicKeyMaterial: []byte(publicKeyMaterial),
-	}); err != nil {
+	if !identityValid {
+		return fmt.Errorf("ssh-agent identity: %s not found", identity)
+	}
+	publicKeyMaterial, err := utils.ReadSSHAgentIdentityPublicKey(identity)
+	if err != nil {
 		return err
 	}
-	return nil
+	_, err = c.ec2Client.ImportKeyPair(c.ctx, &ec2.ImportKeyPairInput{
+		KeyName:           aws.String(keyName),
+		PublicKeyMaterial: []byte(publicKeyMaterial),
+	})
+	return err
 }
 
 // SetupSecurityGroup sets up a security group for the AwsCloud instance.
