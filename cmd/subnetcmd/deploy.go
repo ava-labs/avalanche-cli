@@ -529,6 +529,16 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
+		validators, err := subnet.GetPublicSubnetValidators(subnetID, network)
+		if err != nil {
+			return err
+		}
+		if len(validators) == 0 {
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("No subnet validators were found")
+			ux.Logger.PrintToUser("Please add validators to the subnet and then call deploy again to create the blockchain")
+			return nil
+		}
 		var (
 			isFullySigned           bool
 			remainingSubnetAuthKeys []string
