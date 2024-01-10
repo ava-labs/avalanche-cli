@@ -416,9 +416,11 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	fee := network.GenesisParams().CreateBlockchainTxFee
+	var fee uint64
 	if createSubnet {
-		fee += network.GenesisParams().CreateSubnetTxFee
+		fee = network.GenesisParams().CreateSubnetTxFee
+	} else {
+		fee = network.GenesisParams().CreateBlockchainTxFee
 	}
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
@@ -514,6 +516,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
+	var blockchainID ids.ID
+
 	if createSubnet {
 		subnetID, err = deployer.DeploySubnet(controlKeys, threshold)
 		if err != nil {
@@ -524,33 +528,38 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-	}
-
-	isFullySigned, blockchainID, tx, remainingSubnetAuthKeys, err := deployer.DeployBlockchain(controlKeys, subnetAuthKeys, subnetID, chain, chainGenesis)
-	if err != nil {
-		ux.Logger.PrintToUser(logging.Red.Wrap(
-			fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
-		))
-	}
-
-	savePartialTx := !isFullySigned && err == nil
-
-	if err := PrintDeployResults(chain, subnetID, blockchainID); err != nil {
-		return err
-	}
-
-	if savePartialTx {
-		if err := SaveNotFullySignedTx(
-			"Blockchain Creation",
-			tx,
-			chain,
-			subnetAuthKeys,
-			remainingSubnetAuthKeys,
-			outputTxPath,
-			false,
-		); err != nil {
-			return err
+	} else {
+		var (
+			isFullySigned           bool
+			remainingSubnetAuthKeys []string
+			tx                      *txs.Tx
+		)
+		isFullySigned, blockchainID, tx, remainingSubnetAuthKeys, err = deployer.DeployBlockchain(controlKeys, subnetAuthKeys, subnetID, chain, chainGenesis)
+		if err != nil {
+			ux.Logger.PrintToUser(logging.Red.Wrap(
+				fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
+			))
 		}
+
+		savePartialTx := !isFullySigned && err == nil
+
+		if savePartialTx {
+			if err := SaveNotFullySignedTx(
+				"Blockchain Creation",
+				tx,
+				chain,
+				subnetAuthKeys,
+				remainingSubnetAuthKeys,
+				outputTxPath,
+				false,
+			); err != nil {
+				return err
+			}
+		}
+	}
+
+	if err := PrintDeployResults(createSubnet, chain, subnetID, blockchainID); err != nil {
+		return err
 	}
 
 	flags := make(map[string]string)
@@ -812,7 +821,7 @@ func PrintRemainingToSignMsg(
 	ux.Logger.PrintToUser("")
 }
 
-func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID) error {
+func PrintDeployResults(creatingSubnet bool, chain string, subnetID ids.ID, blockchainID ids.ID) error {
 	vmID, err := anrutils.VMID(chain)
 	if err != nil {
 		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
@@ -830,6 +839,10 @@ func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID) erro
 		table.Append([]string{"P-Chain TXID", blockchainID.String()})
 	}
 	table.Render()
+	if creatingSubnet {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Subnet created. Please add validators to it and then call deploy again to create the blockchain.")
+	}
 	return nil
 }
 
