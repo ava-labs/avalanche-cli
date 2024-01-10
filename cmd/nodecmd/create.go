@@ -242,9 +242,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err = ansible.CreateAnsibleHostInventory(inventoryPath, cloudConfigMap, cloudService, publicIPMap); err != nil {
 		return err
 	}
-	if err := updateAnsiblePublicIPs(clusterName); err != nil {
-		return err
-	}
 	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
 	if err != nil {
 		return err
