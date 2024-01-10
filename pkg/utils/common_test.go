@@ -96,31 +96,32 @@ func TestUnique(t *testing.T) {
 }
 
 func TestSplitSliceAt(t *testing.T) {
-	tests := []struct {
-		slice interface{}
-		index int
-		left  interface{}
-		right interface{}
-	}{
-		{[]string{"a", "b", "c", "d"}, 2, []string{"a", "b"}, []string{"c", "d"}},
-		{[]string{"x", "y", "z"}, 1, []string{"x"}, []string{"y", "z"}},
-		{[]string{"apple", "orange", "banana"}, 0, []string{}, []string{"apple", "orange", "banana"}},
-		{[]string{"pencil", "pen", "paper"}, 3, []string{"pencil", "pen", "paper"}, nil},
-		{[]string{"one", "two", "three"}, -1, []string{"one", "two", "three"}, nil},
-		{123, 2, 123, nil},
-		{[]int{1, 2, 3}, 5, []int{1, 2, 3}, nil},
-		{[]int{1, 2, 3}, 0, []int{}, []int{1, 2, 3}},
+	// Test case 1: Split at index 2
+	intSlice := []int{1, 2, 3, 4, 5}
+	firstPart, secondPart := SplitSliceAt(intSlice, 2)
+	expectedFirstPart := []int{1, 2}
+	expectedSecondPart := []int{3, 4, 5}
+	if !reflect.DeepEqual(firstPart, expectedFirstPart) {
+		t.Errorf("Expected first part %v, but got %v", expectedFirstPart, firstPart)
+	}
+	if !reflect.DeepEqual(secondPart, expectedSecondPart) {
+		t.Errorf("Expected second part %v, but got %v", expectedSecondPart, secondPart)
+	}
+	// Test case 2: Split at index 0
+	firstPart, secondPart = SplitSliceAt(intSlice, 0)
+	if firstPart != nil {
+		t.Errorf("Expected first part nil, but got %v", firstPart)
+	}
+	if !reflect.DeepEqual(secondPart, intSlice) {
+		t.Errorf("Expected second part %v, but got %v", intSlice, secondPart)
 	}
 
-	for _, test := range tests {
-		left, right := SplitSliceAt(test.slice, test.index)
-
-		if !reflect.DeepEqual(left, test.left) {
-			t.Errorf("For slice %v and index %d, expected left %v, but got %v", test.slice, test.index, test.left, left)
-		}
-
-		if !reflect.DeepEqual(right, test.right) {
-			t.Errorf("For slice %v and index %d, expected right %v, but got %v", test.slice, test.index, test.right, right)
-		}
+	// Test case 3: Split at index out of bounds
+	firstPart, secondPart = SplitSliceAt(intSlice, 10)
+	if !reflect.DeepEqual(firstPart, intSlice) {
+		t.Errorf("Expected first part %v, but got %v", intSlice, firstPart)
+	}
+	if secondPart != nil {
+		t.Errorf("Expected second part nil, but got %v", secondPart)
 	}
 }

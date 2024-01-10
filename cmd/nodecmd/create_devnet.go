@@ -147,7 +147,7 @@ func generateCustomGenesis(
 	return json.MarshalIndent(genesisMap, "", " ")
 }
 
-func setupDevnet(clusterName string, hosts []*models.Host, rpcNodeIPMap map[string]string) error {
+func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[string]string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
@@ -166,8 +166,8 @@ func setupDevnet(clusterName string, hosts []*models.Host, rpcNodeIPMap map[stri
 
 	// set devnet network
 	networkEndpoint := ""
-	if len(rpcNodeIPMap) > 0 {
-		networkEndpoint = maps.Values(rpcNodeIPMap)[0]
+	if len(apiNodeIPMap) > 0 {
+		networkEndpoint = maps.Values(apiNodeIPMap)[0]
 	} else {
 		networkEndpoint = ansibleHosts[ansibleHostIDs[0]].IP
 	}
@@ -191,10 +191,10 @@ func setupDevnet(clusterName string, hosts []*models.Host, rpcNodeIPMap map[stri
 
 	// exclude RPC nodes from genesis file generation as they will have no stake
 	hostsRPC := utils.Filter(hosts, func(h *models.Host) bool {
-		return slices.Contains(maps.Keys(rpcNodeIPMap), h.GetCloudID())
+		return slices.Contains(maps.Keys(apiNodeIPMap), h.GetCloudID())
 	})
 	hostsWithoutRPC := utils.Filter(hosts, func(h *models.Host) bool {
-		return !slices.Contains(maps.Keys(rpcNodeIPMap), h.GetCloudID())
+		return !slices.Contains(maps.Keys(apiNodeIPMap), h.GetCloudID())
 	})
 	hostsWithoutRPCIDs := utils.Map(hostsWithoutRPC, func(h *models.Host) string { return h.NodeID })
 

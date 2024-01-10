@@ -6,6 +6,7 @@ import "golang.org/x/exp/maps"
 
 type RegionConfig struct {
 	InstanceIDs       []string
+	APIInstanceIDs    []string
 	PublicIPs         []string
 	KeyPair           string
 	SecurityGroup     string
@@ -38,6 +39,14 @@ func (ccm *CloudConfig) GetAllInstanceIDs() []string {
 func (ccm *CloudConfig) GetInstanceIDsForRegion(region string) []string {
 	if regionConf, ok := (*ccm)[region]; ok {
 		return regionConf.InstanceIDs
+	}
+	return []string{}
+}
+
+// GetAPIInstanceIDsForRegion returns API instance IDs for specific region
+func (ccm *CloudConfig) GetAPIInstanceIDsForRegion(region string) []string {
+	if regionConf, ok := (*ccm)[region]; ok {
+		return regionConf.APIInstanceIDs
 	}
 	return []string{}
 }

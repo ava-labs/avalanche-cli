@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -192,17 +191,13 @@ func ContainsIgnoreCase(s, substr string) bool {
 	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }
 
-// SplitSliceAt splits a slice at the given index and returns two new slices.
-func SplitSliceAt(slice interface{}, index int) (interface{}, interface{}) {
-	sliceValue := reflect.ValueOf(slice)
-	if sliceValue.Kind() != reflect.Slice {
-		return slice, nil
-	}
-	if sliceValue.Len() <= index || index < 0 {
+// SplitSliceAt splits a slice at the given index and returns two new slices.func SplitSliceAt[T any](slice []T, index int) ([]T, []T) {
+func SplitSliceAt[T any](slice []T, index int) ([]T, []T) {
+	if index < 0 || index >= len(slice) {
 		return slice, nil
 	}
 	if index == 0 {
-		return reflect.MakeSlice(sliceValue.Type(), 0, 0).Interface(), slice
+		return nil, slice
 	}
-	return sliceValue.Slice(0, index).Interface(), sliceValue.Slice(index, sliceValue.Len()).Interface()
+	return slice[:index], slice[index:]
 }
