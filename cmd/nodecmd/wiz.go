@@ -155,7 +155,6 @@ func wiz(cmd *cobra.Command, args []string) error {
 	} else {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Adding subnet into existing devnet %s..."), clusterName)
-		ux.Logger.PrintToUser("")
 	}
 
 	// check all validators are found
@@ -179,35 +178,19 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	/*
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser(logging.Green.Wrap("Deploying the subnet"))
 	ux.Logger.PrintToUser("")
 	if err := deploySubnet(cmd, []string{clusterName, subnetName}); err != nil {
 		return err
 	}
-	*/
 
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Setting the nodes as subnet trackers"))
+	ux.Logger.PrintToUser(logging.Green.Wrap("Adding nodes as subnet validators"))
 	ux.Logger.PrintToUser("")
-	if err := syncSubnet(cmd, []string{clusterName, subnetName}); err != nil {
+	if err := validateSubnet(cmd, []string{clusterName, subnetName}); err != nil {
 		return err
 	}
-	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
-		return err
-	}
-
-	return nil
-
-	/*
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Adding nodes as subnet validators"))
-		ux.Logger.PrintToUser("")
-		if err := validateSubnet(cmd, []string{clusterName, subnetName}); err != nil {
-			return err
-		}
-	*/
 	if err := waitForSubnetValidators(clusterName, subnetName, validateCheckTimeout, validateCheckPoolTime); err != nil {
 		return err
 	}
@@ -216,6 +199,16 @@ func wiz(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser(logging.Green.Wrap("Deploying the blockchain"))
 	ux.Logger.PrintToUser("")
 	if err := deploySubnet(cmd, []string{clusterName, subnetName}); err != nil {
+		return err
+	}
+
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("Setting the nodes as subnet trackers"))
+	ux.Logger.PrintToUser("")
+	if err := syncSubnet(cmd, []string{clusterName, subnetName}); err != nil {
+		return err
+	}
+	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err
 	}
 
@@ -414,7 +407,10 @@ func checkForSubnetValidators(
 			return nil, err
 		}
 	}
-	hostIDs, err := utils.MapWithError(hosts, func(h *models.Host) (string, error) { _, o, err := models.HostAnsibleIDToCloudID(h.NodeID); return o, err })
+	hostIDs, err := utils.MapWithError(hosts, func(h *models.Host) (string, error) {
+		_, o, err := models.HostAnsibleIDToCloudID(h.NodeID)
+		return o, err
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -475,7 +471,7 @@ func waitForSubnetValidators(
 				ux.Logger.PrintToUser("  " + nonValidator)
 			}
 			ux.Logger.PrintToUser("")
-			return fmt.Errorf("Failed to verify all nodes are subnet validators after %d seconds", uint32(timeout.Seconds()))
+			return fmt.Errorf("failed to verify all nodes are subnet validators after %d seconds", uint32(timeout.Seconds()))
 		}
 		time.Sleep(poolTime)
 	}

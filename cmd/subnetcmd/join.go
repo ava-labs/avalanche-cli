@@ -49,7 +49,6 @@ var (
 	// for permissionless subnet only: how much subnet native token will be staked in the validator
 	stakeAmount uint64
 
-	errNoBlockchainID                     = errors.New("failed to find the blockchain ID for this subnet, has it been deployed/created on this network?")
 	errMutuallyExlusiveNetworksWithDevnet = errors.New("--local, --devnet, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
 )
 
