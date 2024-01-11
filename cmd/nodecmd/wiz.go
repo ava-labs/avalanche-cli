@@ -12,10 +12,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -192,45 +192,44 @@ func wiz(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser(logging.Green.Wrap("Setting the nodes as subnet trackers"))
 	ux.Logger.PrintToUser("")
 	/*
-	if err := syncSubnet(cmd, []string{clusterName, subnetName}); err != nil {
-		return err
-	}
+		if err := syncSubnet(cmd, []string{clusterName, subnetName}); err != nil {
+			return err
+		}
 	*/
 	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err
 	}
 
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Adding nodes as subnet validators"))
-	ux.Logger.PrintToUser("")
-	if err := validateSubnet(cmd, []string{clusterName, subnetName}); err != nil {
-		return err
-	}
+	/*
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(logging.Green.Wrap("Adding nodes as subnet validators"))
+		ux.Logger.PrintToUser("")
+		if err := validateSubnet(cmd, []string{clusterName, subnetName}); err != nil {
+			return err
+		}
+	*/
 	if err := waitForSubnetValidators(clusterName, subnetName, validateCheckTimeout, validateCheckPoolTime); err != nil {
 		return err
 	}
 
 	/*
-	sc, err := app.LoadSidecar(subnetName)
-	if err != nil {
-		return err
-	}
-	blockchainID := sc.Networks[models.Devnet.String()].BlockchainID
-	if blockchainID == ids.Empty {
-		return ErrNoBlockchainID
-	}
-	if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Syncing, syncCheckTimeout, syncCheckPoolTime); err != nil {
-		return err
-	}
-	if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Validating, validateCheckTimeout, validateCheckPoolTime); err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("")
-	if clusterAlreadyExists {
-		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is now validating subnet %s"), clusterName, subnetName)
-	} else {
-		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is successfully created and is now validating subnet %s!"), clusterName, subnetName)
-	}
+		sc, err := app.LoadSidecar(subnetName)
+		if err != nil {
+			return err
+		}
+		blockchainID := sc.Networks[models.Devnet.String()].BlockchainID
+		if blockchainID == ids.Empty {
+			return ErrNoBlockchainID
+		}
+		if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Validating, validateCheckTimeout, validateCheckPoolTime); err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("")
+		if clusterAlreadyExists {
+			ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is now validating subnet %s"), clusterName, subnetName)
+		} else {
+			ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is successfully created and is now validating subnet %s!"), clusterName, subnetName)
+		}
 	*/
 	return nil
 }
@@ -364,7 +363,6 @@ func getClusterNetwork(clusterName string) (models.Network, error) {
 	return clustersConfig.Clusters[clusterName].Network, nil
 }
 
-
 func filterHosts(hosts []*models.Host, nodes []string) ([]*models.Host, error) {
 	indices := set.Set[int]{}
 	for _, node := range nodes {
@@ -399,10 +397,17 @@ func checkForSubnetValidators(
 	subnetName string,
 ) ([]string, error) {
 	ux.Logger.PrintToUser("Checking if node(s) are subnet validator(s)")
-	ansibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return nil, err
 	}
+	if len(validators) != 0 {
+		hosts, err = filterHosts(hosts, validators)
+		if err != nil {
+			return nil, err
+		}
+	}
+	ansibleHostIDs := utils.Map(hosts, func(h *models.Host) string { return h.NodeID })
 	hostIDs, err := utils.MapWithError(ansibleHostIDs, func(s string) (string, error) { _, o, err := models.HostAnsibleIDToCloudID(s); return o, err })
 	if err != nil {
 		return nil, err

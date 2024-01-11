@@ -8,10 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	//"github.com/ava-labs/avalanchego/vms/platformvm/status"
-
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 
 	subnetcmd "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -100,26 +97,6 @@ func addNodeAsSubnetValidator(
 	ux.Logger.PrintToUser("Node %s successfully added as Subnet validator! (%d / %d)", nodeID, currentNodeIndex+1, nodeCount)
 	ux.Logger.PrintToUser("======================================")
 	return nil
-}
-
-// getNodeSubnetSyncStatus checks if node is bootstrapped to blockchain blockchainID
-// if getNodeSubnetSyncStatus is called from node validate subnet command, it will fail if
-// node status is not 'syncing'. If getNodeSubnetSyncStatus is called from node status command,
-// it will return true node status is 'syncing'
-func getNodeSubnetSyncStatus(
-	host *models.Host,
-	blockchainID string,
-) (string, error) {
-	ux.Logger.PrintToUser("Checking if node %s is synced to subnet ...", host.NodeID)
-	if resp, err := ssh.RunSSHSubnetSyncStatus(host, blockchainID); err != nil {
-		return "", err
-	} else {
-		if subnetSyncStatus, err := parseSubnetSyncOutput(resp); err != nil {
-			return "", err
-		} else {
-			return subnetSyncStatus, nil
-		}
-	}
 }
 
 func waitForNodeToBePrimaryNetworkValidator(network models.Network, nodeID ids.NodeID) error {
@@ -216,16 +193,6 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if len(notHealthyNodes) > 0 {
 		return fmt.Errorf("node(s) %s are not healthy, please fix the issue and again", notHealthyNodes)
 	}
-	/*
-	sc, err := app.LoadSidecar(subnetName)
-	if err != nil {
-		return err
-	}
-	blockchainID := sc.Networks[network.Name()].BlockchainID
-	if blockchainID == ids.Empty {
-		return ErrNoBlockchainID
-	}
-	*/
 	nodeErrors := map[string]error{}
 	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
 	for i, host := range hosts {
@@ -245,25 +212,6 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			nodeErrors[host.NodeID] = err
 			continue
 		}
-		/*
-		// we have to check if node is synced to subnet before adding the node as a validator
-		subnetSyncStatus, err := getNodeSubnetSyncStatus(host, blockchainID.String())
-		if err != nil {
-			ux.Logger.PrintToUser("Failed to get subnet sync status for node %s", host.NodeID)
-			nodeErrors[host.NodeID] = err
-			continue
-		}
-		if subnetSyncStatus != status.Syncing.String() {
-			if subnetSyncStatus == status.Validating.String() {
-				ux.Logger.PrintToUser("Failed to add node %s as subnet validator as node is already a subnet validator", host.NodeID)
-				nodeErrors[host.NodeID] = errors.New("node is already a subnet validator")
-			} else {
-				ux.Logger.PrintToUser("Failed to add node %s as subnet validator as node is not synced to subnet yet", host.NodeID)
-				nodeErrors[host.NodeID] = errors.New("node is not synced to subnet yet, please try again later")
-			}
-			continue
-		}
-		*/
 		clusterNodeID := host.GetCloudID()
 		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(network, kc, nodeID, i, clusterNodeID)
 		if err != nil {

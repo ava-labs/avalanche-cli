@@ -539,7 +539,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser("No subnet validators were found")
 			ux.Logger.PrintToUser("Please add validators to the subnet and then call deploy again to create the blockchain")
 			ux.Logger.PrintToUser("")
-			return fmt.Errorf("Add subnet validators before blockchain creation")
+			return fmt.Errorf("add subnet validators before blockchain creation")
 		}
 		var (
 			isFullySigned           bool
