@@ -180,25 +180,25 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 
 	/*
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Deploying the subnet"))
-		ux.Logger.PrintToUser("")
-		if err := deploySubnet(cmd, []string{clusterName, subnetName}); err != nil {
-			return err
-		}
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("Deploying the subnet"))
+	ux.Logger.PrintToUser("")
+	if err := deploySubnet(cmd, []string{clusterName, subnetName}); err != nil {
+		return err
+	}
 	*/
 
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser(logging.Green.Wrap("Setting the nodes as subnet trackers"))
 	ux.Logger.PrintToUser("")
-	/*
-		if err := syncSubnet(cmd, []string{clusterName, subnetName}); err != nil {
-			return err
-		}
-	*/
+	if err := syncSubnet(cmd, []string{clusterName, subnetName}); err != nil {
+		return err
+	}
 	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err
 	}
+
+	return nil
 
 	/*
 		ux.Logger.PrintToUser("")
@@ -212,25 +212,32 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	/*
-		sc, err := app.LoadSidecar(subnetName)
-		if err != nil {
-			return err
-		}
-		blockchainID := sc.Networks[models.Devnet.String()].BlockchainID
-		if blockchainID == ids.Empty {
-			return ErrNoBlockchainID
-		}
-		if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Validating, validateCheckTimeout, validateCheckPoolTime); err != nil {
-			return err
-		}
-		ux.Logger.PrintToUser("")
-		if clusterAlreadyExists {
-			ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is now validating subnet %s"), clusterName, subnetName)
-		} else {
-			ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is successfully created and is now validating subnet %s!"), clusterName, subnetName)
-		}
-	*/
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("Deploying the blockchain"))
+	ux.Logger.PrintToUser("")
+	if err := deploySubnet(cmd, []string{clusterName, subnetName}); err != nil {
+		return err
+	}
+
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
+	}
+	blockchainID := sc.Networks[models.Devnet.String()].BlockchainID
+	if blockchainID == ids.Empty {
+		return ErrNoBlockchainID
+	}
+	if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Validating, validateCheckTimeout, validateCheckPoolTime); err != nil {
+		return err
+	}
+
+	ux.Logger.PrintToUser("")
+	if clusterAlreadyExists {
+		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is now validating subnet %s"), clusterName, subnetName)
+	} else {
+		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is successfully created and is now validating subnet %s!"), clusterName, subnetName)
+	}
+
 	return nil
 }
 
@@ -407,8 +414,7 @@ func checkForSubnetValidators(
 			return nil, err
 		}
 	}
-	ansibleHostIDs := utils.Map(hosts, func(h *models.Host) string { return h.NodeID })
-	hostIDs, err := utils.MapWithError(ansibleHostIDs, func(s string) (string, error) { _, o, err := models.HostAnsibleIDToCloudID(s); return o, err })
+	hostIDs, err := utils.MapWithError(hosts, func(h *models.Host) (string, error) { _, o, err := models.HostAnsibleIDToCloudID(h.NodeID); return o, err })
 	if err != nil {
 		return nil, err
 	}

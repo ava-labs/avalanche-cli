@@ -319,10 +319,6 @@ func writeAvagoChainConfigFiles(
 	}
 	subnetIDStr := subnetID.String()
 	blockchainID := sc.Networks[network.Name()].BlockchainID
-	if blockchainID == ids.Empty {
-		return errNoBlockchainID
-	}
-	blockchainIDStr := blockchainID.String()
 
 	configsPath := filepath.Join(dataDir, "configs")
 
@@ -343,7 +339,9 @@ func writeAvagoChainConfigFiles(
 		_ = os.RemoveAll(subnetConfigPath)
 	}
 
-	if app.ChainConfigExists(subnetName) || app.NetworkUpgradeExists(subnetName) {
+	// can only create this files if the blockchain exists
+	if (app.ChainConfigExists(subnetName) || app.NetworkUpgradeExists(subnetName)) && blockchainID != ids.Empty {
+		blockchainIDStr := blockchainID.String()
 		chainConfigsPath := filepath.Join(configsPath, "chains", blockchainIDStr)
 		if err := os.MkdirAll(chainConfigsPath, constants.DefaultPerms755); err != nil {
 			return err
