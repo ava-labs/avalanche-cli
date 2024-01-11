@@ -93,7 +93,7 @@ func SaveDockerComposeFile(nodes int, ubuntuVersion string, sshPubKey string) (s
 	if err != nil {
 		return "", fmt.Errorf("error generating Docker Compose file: %v", err)
 	}
-	if err := os.WriteFile(tmpFile.Name(), []byte(composeFile), 0644); err != nil {
+	if err := os.WriteFile(tmpFile.Name(), []byte(composeFile), 0o644); err != nil {
 		return "", fmt.Errorf("error writing temporary file: %v", err)
 	}
 	return tmpFile.Name(), nil
@@ -116,4 +116,21 @@ func StopDockerCompose(filePath string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+// GenerateDockerHostIDs generates a list of Docker host IDs.
+func GenerateDockerHostIDs(numNodes int) []string {
+	var ids []string
+	for i := 1; i <= numNodes; i++ {
+		ids = append(ids, fmt.Sprintf("docker%d%s", i, RandomString(5)))
+	}
+	return ids
+}
+
+func GenerateDockerHostIPs(numNodes int) []string {
+	var ips []string
+	for i := 2; i <= numNodes+1; i++ {
+		ips = append(ips, fmt.Sprintf("%s.%d", constants.E2ENetworkPrefix, i+1))
+	}
+	return ips
 }

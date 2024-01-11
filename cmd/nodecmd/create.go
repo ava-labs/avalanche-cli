@@ -226,19 +226,19 @@ func createNodes(_ *cobra.Command, args []string) error {
 			gcpCredentialFilepath = credentialFilepath
 		}
 	} else {
-		//override cloudConfig for E2E testing
-		cloudService = "docker"
+		// override cloudConfig for E2E testing
 		defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 		keyPairName := fmt.Sprintf("%s-keypair", defaultAvalancheCLIPrefix)
 		certPath, err := app.GetSSHCertFilePath(keyPairName)
-		dockerHostIDs := []string{"docker1", "docker2"}
+		dockerNumNodes := utils.Sum(numNodes)
+		dockerHostIDs := utils.GenerateDockerHostIDs(dockerNumNodes)
 		if err != nil {
 			return err
 		}
 		cloudConfigMap = models.CloudConfig{
 			"docker": {
 				InstanceIDs:       dockerHostIDs,
-				PublicIPs:         []string{fmt.Sprintf("%s.%d", constants.E2ENetworkPrefix, 2), fmt.Sprintf("%s.%d", constants.E2ENetworkPrefix, 3)},
+				PublicIPs:         utils.GenerateDockerHostIPs(dockerNumNodes),
 				KeyPair:           keyPairName,
 				SecurityGroup:     "docker",
 				CertFilePath:      certPath,
@@ -246,13 +246,14 @@ func createNodes(_ *cobra.Command, args []string) error {
 				Prefix:            "docker",
 				CertName:          "docker",
 				SecurityGroupName: "docker",
-				NumNodes:          2,
+				NumNodes:          dockerNumNodes,
 				InstanceType:      "docker",
 			},
 		}
-		publicIPMap = map[string]string{
-			"docker1": cloudConfigMap["docker"].PublicIPs[0],
-			"docker2": cloudConfigMap["docker"].PublicIPs[1],
+		publicIPMap := map[string]string{}
+		for i, ip := range cloudConfigMap["docker"].PublicIPs {
+			publicIPMap[dockerHostIDs[i]] = ip
+			// no api nodes for E2E testing
 		}
 		pubKeyString, err := os.ReadFile(fmt.Sprintf("%s.pub", certPath))
 		if err != nil {
@@ -628,6 +629,9 @@ func promptAvalancheGoReferenceChoice() (string, string, error) {
 }
 
 func setCloudService() (string, error) {
+	if utils.IsE2E() && utils.E2EDocker() {
+		return constants.E2EDocker, nil
+	}
 	if useAWS {
 		return constants.AWSCloudService, nil
 	}
@@ -644,6 +648,9 @@ func setCloudService() (string, error) {
 }
 
 func setCloudInstanceType(cloudService string) (string, error) {
+	if utils.IsE2E() && utils.E2EDocker() {
+		return constants.E2EDocker, nil
+	}
 	switch { // backwards compatibility
 	case nodeType == "default" && cloudService == constants.AWSCloudService:
 		nodeType = constants.AWSDefaultInstanceType

@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"os/exec"
 	"os/user"
@@ -189,4 +190,24 @@ func Unique(slice []string) []string {
 // containsIgnoreCase checks if the given string contains the specified substring, ignoring case.
 func ContainsIgnoreCase(s, substr string) bool {
 	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
+}
+
+// RandomString generates a random string of the specified length.
+func RandomString(length int) string {
+	randG := rand.New(rand.NewSource(time.Now().UnixNano()))
+	chars := "abcdefghijklmnopqrstuvwxyz"
+	result := make([]byte, length)
+	for i := 0; i < length; i++ {
+		result[i] = chars[randG.Intn(len(chars))]
+	}
+	return string(result)
+}
+
+// Sum calculates the sum of all the elements in the given slice of integers.
+func Sum(s []int) int {
+	sum := 0
+	for _, v := range s {
+		sum += v
+	}
+	return sum
 }

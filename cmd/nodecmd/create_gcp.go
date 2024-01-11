@@ -10,11 +10,9 @@ import (
 	"os/user"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"golang.org/x/exp/maps"
-	"golang.org/x/exp/rand"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
@@ -126,16 +124,6 @@ func getGCPConfig() (*gcpAPI.GcpCloud, []string, []int, string, string, string, 
 	return gcpCloud, maps.Keys(finalZones), maps.Values(finalZones), imageID, gcpCredentialFilePath, projectName, nil
 }
 
-func randomString(length int) string {
-	rand.Seed(uint64(time.Now().UnixNano()))
-	chars := "abcdefghijklmnopqrstuvwxyz"
-	result := make([]byte, length)
-	for i := 0; i < length; i++ {
-		result[i] = chars[rand.Intn(len(chars))]
-	}
-	return string(result)
-}
-
 // createGCEInstances creates Google Compute Engine VM instances
 func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	instanceType string,
@@ -193,7 +181,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	}
 	nodeName := map[string]string{}
 	for _, zone := range zones {
-		nodeName[zone] = randomString(5)
+		nodeName[zone] = utils.RandomString(5)
 	}
 	publicIP := map[string][]string{}
 	if useStaticIP {
