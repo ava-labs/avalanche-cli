@@ -101,7 +101,7 @@ func SaveDockerComposeFile(nodes int, ubuntuVersion string, sshPubKey string) (s
 
 // StartDockerCompose is a function that starts Docker Compose.
 func StartDockerCompose(filePath string) error {
-	cmd := exec.Command("docker-compose", "-f", filePath, "up", "--detach")
+	cmd := exec.Command("docker-compose", "-f", filePath, "up", "--detach", "--remove-orphans")
 	fmt.Println("Starting Docker Compose... with command:", cmd.String())
 	cmd.Env = os.Environ()
 	cmd.Stdout = os.Stdout
@@ -122,14 +122,14 @@ func StopDockerCompose(filePath string) error {
 func GenerateDockerHostIDs(numNodes int) []string {
 	var ids []string
 	for i := 1; i <= numNodes; i++ {
-		ids = append(ids, fmt.Sprintf("docker%d%s", i, RandomString(5)))
+		ids = append(ids, fmt.Sprintf("docker%d-%s", i, RandomString(5)))
 	}
 	return ids
 }
 
 func GenerateDockerHostIPs(numNodes int) []string {
 	var ips []string
-	for i := 2; i <= numNodes+1; i++ {
+	for i := 1; i <= numNodes; i++ {
 		ips = append(ips, fmt.Sprintf("%s.%d", constants.E2ENetworkPrefix, i+1))
 	}
 	return ips

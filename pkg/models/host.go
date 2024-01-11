@@ -308,6 +308,9 @@ func (h *Host) WaitForSSHPort(timeout time.Duration) error {
 
 // WaitForSSHShell waits for the SSH shell to be available on the host within the specified timeout.
 func (h *Host) WaitForSSHShell(timeout time.Duration) error {
+	if h.IP == "" {
+		return fmt.Errorf("host IP is empty")
+	}
 	start := time.Now()
 	if err := h.WaitForSSHPort(timeout); err != nil {
 		return err

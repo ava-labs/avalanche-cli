@@ -250,7 +250,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 				InstanceType:      "docker",
 			},
 		}
-		publicIPMap := map[string]string{}
 		for i, ip := range cloudConfigMap["docker"].PublicIPs {
 			publicIPMap[dockerHostIDs[i]] = ip
 			// no api nodes for E2E testing

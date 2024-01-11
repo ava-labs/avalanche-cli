@@ -13,6 +13,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
@@ -95,6 +96,17 @@ func RunSSHSetupNode(host *models.Host, configPath, avalancheGoVersion string, i
 	); err != nil {
 		return err
 	}
+	if utils.IsE2E() && utils.E2EDocker() {
+		if err := RunOverSSH(
+			"E2E Start Avalanchego",
+			host,
+			constants.SSHScriptTimeout,
+			"shell/e2e_startNode.sh",
+			scriptInputs{},
+		); err != nil {
+			return err
+		}
+	}
 	// name: copy metrics config to cloud server
 	return host.Upload(
 		configPath,
@@ -116,6 +128,15 @@ func RunSSHUpgradeAvalanchego(host *models.Host, avalancheGoVersion string) erro
 
 // RunSSHStartNode runs script to start avalanchego
 func RunSSHStartNode(host *models.Host) error {
+	if utils.IsE2E() && utils.E2EDocker() {
+		return RunOverSSH(
+			"E2E Start Avalanchego",
+			host,
+			constants.SSHScriptTimeout,
+			"shell/e2e_startNode.sh",
+			scriptInputs{},
+		)
+	}
 	return RunOverSSH(
 		"Start Avalanchego",
 		host,
@@ -127,6 +148,15 @@ func RunSSHStartNode(host *models.Host) error {
 
 // RunSSHStopNode runs script to stop avalanchego
 func RunSSHStopNode(host *models.Host) error {
+	if utils.IsE2E() && utils.E2EDocker() {
+		return RunOverSSH(
+			"E2E Stop Avalanchego",
+			host,
+			constants.SSHScriptTimeout,
+			"shell/e2e_stopNode.sh",
+			scriptInputs{},
+		)
+	}
 	return RunOverSSH(
 		"Stop Avalanchego",
 		host,
