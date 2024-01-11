@@ -7,11 +7,6 @@ import (
 	ginkgo "github.com/onsi/ginkgo/v2"
 )
 
-const (
-	numNodes    = 2
-	clusterName = "e2e"
-)
-
 var _ = ginkgo.Describe("[SSH]", func() {
 	ginkgo.BeforeEach(func() {
 	})

@@ -263,7 +263,9 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		utils.StartDockerCompose(dockerComposeFile)
+		if err := utils.StartDockerCompose(dockerComposeFile); err != nil {
+			return err
+		}
 	}
 	if err = CreateClusterNodeConfig(network, cloudConfigMap, clusterName, cloudService); err != nil {
 		return err

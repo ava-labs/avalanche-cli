@@ -194,7 +194,7 @@ func ContainsIgnoreCase(s, substr string) bool {
 
 // RandomString generates a random string of the specified length.
 func RandomString(length int) string {
-	randG := rand.New(rand.NewSource(time.Now().UnixNano()))
+	randG := rand.New(rand.NewSource(time.Now().UnixNano())) // #nosec G404
 	chars := "abcdefghijklmnopqrstuvwxyz"
 	result := make([]byte, length)
 	for i := 0; i < length; i++ {

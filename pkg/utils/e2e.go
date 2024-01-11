@@ -87,14 +87,14 @@ func GenDockerComposeFile(nodes int, ubuntuVersion string, networkPrefix string,
 func SaveDockerComposeFile(nodes int, ubuntuVersion string, sshPubKey string) (string, error) {
 	tmpFile, err := os.CreateTemp("", "docker-compose-*.yml")
 	if err != nil {
-		return "", fmt.Errorf("error creating temporary file: %v", err)
+		return "", fmt.Errorf("error creating temporary file: %w", err)
 	}
 	composeFile, err := GenDockerComposeFile(nodes, ubuntuVersion, constants.E2ENetworkPrefix, sshPubKey)
 	if err != nil {
-		return "", fmt.Errorf("error generating Docker Compose file: %v", err)
+		return "", fmt.Errorf("error generating Docker Compose file: %w", err)
 	}
-	if err := os.WriteFile(tmpFile.Name(), []byte(composeFile), 0o644); err != nil {
-		return "", fmt.Errorf("error writing temporary file: %v", err)
+	if err := os.WriteFile(tmpFile.Name(), []byte(composeFile), 0o600); err != nil {
+		return "", fmt.Errorf("error writing temporary file: %w", err)
 	}
 	return tmpFile.Name(), nil
 }
