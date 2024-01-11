@@ -35,13 +35,7 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 				if err != nil {
 					return err
 				}
-				inventoryContent := ansibleInstanceID
-				inventoryContent += " ansible_host="
-				inventoryContent += publicIPMap[instanceID]
-				inventoryContent += " ansible_user=ubuntu"
-				inventoryContent += fmt.Sprintf(" ansible_ssh_private_key_file=%s", cloudConfig.CertFilePath)
-				inventoryContent += fmt.Sprintf(" ansible_ssh_common_args='%s'", constants.AnsibleSSHInventoryParams)
-				if _, err = inventoryFile.WriteString(inventoryContent + "\n"); err != nil {
+				if err = writeToInventoryFile(inventoryFile, ansibleInstanceID, publicIPMap[instanceID], cloudConfig.CertFilePath); err != nil {
 					return err
 				}
 			}
