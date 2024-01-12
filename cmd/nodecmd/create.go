@@ -248,7 +248,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 			if separateMonitoringInstance {
 				if err = AddMonitoringSecurityGroupRule(ec2SvcMap, monitoringNodeConfig.PublicIPs[0], cloudConfigMap[region].SecurityGroup, region); err != nil {
-					fmt.Printf("we have error here %s \n", AddMonitoringSecurityGroupRule)
 					return err
 				}
 			}
