@@ -19,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	"golang.org/x/exp/maps"
 )
 
 const (
@@ -260,7 +261,10 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		// as that will complicate too much the test flow
 		gomega.Expect(os.Getenv("LEDGER_SIM")).Should(gomega.Equal("true"), "multisig test not designed for real ledgers: please set env var LEDGER_SIM to true")
 
-		txPath, err := utils.GetTmpFilePath(txFnamePrefix)
+		deployTxPath, err := utils.GetTmpFilePath(txFnamePrefix)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		addValidatorTxPath, err := utils.GetTmpFilePath(txFnamePrefix)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// obtain ledger2 addr
@@ -294,7 +298,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			subnetName,
 			[]string{ledger2Addr, ledger3Addr, ledger4Addr},
 			[]string{ledger2Addr, ledger3Addr},
-			txPath,
+			deployTxPath,
 			true,
 		)
 		toMatch := "(?s).+Not enough funds in the first .+ indices of Ledger.+Error: not enough funds on ledger.+"
@@ -314,20 +318,96 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			subnetName,
 			[]string{ledger2Addr, ledger3Addr, ledger4Addr},
 			[]string{ledger2Addr, ledger3Addr},
-			txPath,
+			deployTxPath,
 			false,
 		)
 		toMatch = "(?s).+Ledger addresses:.+  " + ledger1Addr + ".+Subnet has been created with ID.+" +
-			"0 of 2 required Blockchain Creation signatures have been signed\\. Saving tx to disk to enable remaining signing\\..+" +
-			"Addresses remaining to sign the tx\\s+" + ledger2Addr + ".+" + ledger3Addr + ".+"
+			"Subnet created. Please add validators to it and then call deploy again to create the blockchain.+"
 		matched, err = regexp.MatchString(toMatch, s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
+		subnetID, err := utils.ParsePublicDeployOutput(s)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// just add one validator so as to be able to pass the create blockchain requirement
+		nodeInfos, err := utils.GetNodesInfo()
+		gomega.Expect(err).Should(gomega.BeNil())
+		nodeName := maps.Keys(nodeInfos)[0]
+		nodeInfo := nodeInfos[nodeName]
+		nodeInfos = map[string]utils.NodeInfo{
+			nodeName: nodeInfo,
+		}
+		for _, nodeInfo := range nodeInfos {
+			fmt.Println(nodeInfo)
+			start := time.Now().Add(time.Second * 60).UTC().Format("2006-01-02 15:04:05")
+			_ = commands.SimulateMultisigMainnetAddValidator(
+				subnetName,
+				nodeInfo.ID,
+				start,
+				"24h",
+				"20",
+				[]string{ledger2Addr, ledger3Addr},
+				addValidatorTxPath,
+			)
+		}
+
+		// wait for end of ledger1 simulation
+		close(interactionEndCh)
+		<-ledgerSimEndCh
+
+		// sign add validator tx using ledger 2
+		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(1, ledger2Seed, true)
+
+		_ = commands.TransactionSignWithLedger(
+			subnetName,
+			addValidatorTxPath,
+			false,
+		)
+
+		// wait for end of ledger2 simulation
+		close(interactionEndCh)
+		<-ledgerSimEndCh
+
+		// sign add validator tx using ledger 3
+		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(1, ledger3Seed, true)
+
+		_ = commands.TransactionSignWithLedger(
+			subnetName,
+			addValidatorTxPath,
+			false,
+		)
+
+		// wait for end of ledger3 simulation
+		close(interactionEndCh)
+		<-ledgerSimEndCh
+
+		// commit add validator after complete signature
+		_ = commands.TransactionCommit(
+			subnetName,
+			addValidatorTxPath,
+			false,
+		)
+
+		// wait for subnet walidators to be up
+		err = utils.WaitSubnetValidators(subnetID, nodeInfos)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// create blockchain tx using ledger 1
+		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(1, ledger1Seed, true)
+
+		_ = commands.SimulateMultisigMainnetDeploy(
+			subnetName,
+			[]string{ledger2Addr, ledger3Addr, ledger4Addr},
+			[]string{ledger2Addr, ledger3Addr},
+			deployTxPath,
+			false,
+		)
+
 		// try to commit before signature is complete (no funded wallet needed for commit)
 		s = commands.TransactionCommit(
 			subnetName,
-			txPath,
+			deployTxPath,
 			true,
 		)
 		toMatch = "(?s).*0 of 2 required signatures have been signed\\..+" +
@@ -340,7 +420,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		// try to sign using unauthorized ledger1
 		s = commands.TransactionSignWithLedger(
 			subnetName,
-			txPath,
+			deployTxPath,
 			true,
 		)
 		toMatch = "(?s).+Ledger addresses:.+  " + ledger1Addr + ".+There are no required subnet auth keys present in the wallet.+" +
@@ -356,7 +436,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		// try to commit before signature is complete
 		s = commands.TransactionCommit(
 			subnetName,
-			txPath,
+			deployTxPath,
 			true,
 		)
 		toMatch = "(?s).*0 of 2 required signatures have been signed\\..+" +
@@ -370,7 +450,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(1, ledger2Seed, true)
 		s = commands.TransactionSignWithLedger(
 			subnetName,
-			txPath,
+			deployTxPath,
 			false,
 		)
 		toMatch = "(?s).+Ledger addresses:.+  " + ledger2Addr + ".+1 of 2 required Tx signatures have been signed\\..+" +
@@ -382,7 +462,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		// try to sign using ledger2 which already signed
 		s = commands.TransactionSignWithLedger(
 			subnetName,
-			txPath,
+			deployTxPath,
 			true,
 		)
 		toMatch = "(?s).+Ledger addresses:.+  " + ledger2Addr + ".+There are no required subnet auth keys present in the wallet.+" +
@@ -398,7 +478,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		// try to commit before signature is complete
 		s = commands.TransactionCommit(
 			subnetName,
-			txPath,
+			deployTxPath,
 			true,
 		)
 		toMatch = "(?s).*1 of 2 required signatures have been signed\\..+" +
@@ -412,7 +492,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(1, ledger3Seed, true)
 		s = commands.TransactionSignWithLedger(
 			subnetName,
-			txPath,
+			deployTxPath,
 			false,
 		)
 		toMatch = "(?s).+Ledger addresses:.+  " + ledger3Addr + ".+Tx is fully signed, and ready to be committed.+"
@@ -423,7 +503,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		// try to sign using ledger3 which already signedtx is already fully signed"
 		s = commands.TransactionSignWithLedger(
 			subnetName,
-			txPath,
+			deployTxPath,
 			true,
 		)
 		toMatch = "(?s).*Tx is fully signed, and ready to be committed.+Error: tx is already fully signed"
@@ -438,7 +518,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		// commit after complete signature
 		s = commands.TransactionCommit(
 			subnetName,
-			txPath,
+			deployTxPath,
 			false,
 		)
 		toMatch = "(?s).+DEPLOYMENT RESULTS.+Blockchain ID.+"
@@ -449,7 +529,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		// try to commit again
 		s = commands.TransactionCommit(
 			subnetName,
-			txPath,
+			deployTxPath,
 			true,
 		)
 		toMatch = "(?s).*Error: error issuing tx with ID.+: failed to decode client response: couldn't issue tx: failed to read consumed.+"
