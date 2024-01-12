@@ -95,6 +95,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	network.HandlePublicNetworkSimulation()
 	fee := network.GenesisParams().AddSubnetValidatorFee
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
@@ -109,7 +110,6 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	network.HandlePublicNetworkSimulation()
 	return CallAddValidator(network, kc, useLedger, args[0], nodeIDStr, defaultValidatorParams)
 }
 

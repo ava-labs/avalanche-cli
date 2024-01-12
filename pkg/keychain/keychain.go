@@ -153,8 +153,6 @@ func GetKeychainFromCmdLineFlags(
 		useLedger = true
 	}
 
-	network.HandlePublicNetworkSimulation()
-
 	// get keychain accessor
 	return GetKeychain(app, useEwoq, useLedger, ledgerAddresses, keyName, network, requiredFunds)
 }
@@ -210,6 +208,9 @@ func GetKeychain(
 		}
 		kc := sf.KeyChain()
 		return NewKeychain(network, kc, nil, nil), nil
+	}
+	if keyName == "" {
+		return nil, fmt.Errorf("neither ledger, ewoq or key name was provided for %s", network.Kind)
 	}
 	sf, err := key.LoadSoft(network.ID, app.GetKeyPath(keyName))
 	if err != nil {

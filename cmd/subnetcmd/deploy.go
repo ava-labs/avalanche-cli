@@ -398,6 +398,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// from here on we are assuming a public deploy
 
+	network.HandlePublicNetworkSimulation()
+
 	createSubnet := true
 	var subnetID ids.ID
 	if subnetIDStr != "" {
@@ -435,8 +437,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	network.HandlePublicNetworkSimulation()
 
 	if createSubnet {
 		// accept only one control keys specification

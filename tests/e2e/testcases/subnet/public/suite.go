@@ -106,10 +106,10 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		genesisParams := genesis.MainnetParams
 		err := utils.FundLedgerAddress(genesisParams.CreateSubnetTxFee + genesisParams.CreateBlockchainTxFee + genesisParams.TxFee)
 		gomega.Expect(err).Should(gomega.BeNil())
+		// deploy subnet
 		fmt.Println()
 		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
 		s := commands.SimulateMainnetDeploy(subnetName, 0, false)
-		// deploy
 		subnetID, err := utils.ParsePublicDeployOutput(s)
 		gomega.Expect(err).Should(gomega.BeNil())
 		// add validators to subnet
@@ -123,6 +123,14 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			_ = commands.SimulateMainnetAddValidator(subnetName, nodeInfo.ID, start, "24h", "20")
 			nodeIdx++
 		}
+		// wait for subnet walidators to be up
+		err = utils.WaitSubnetValidators(subnetID, nodeInfos)
+		gomega.Expect(err).Should(gomega.BeNil())
+		// deploy blockchain
+		fmt.Println()
+		fmt.Println(logging.LightRed.Wrap("DEPLOYING BLOCKCHAIN. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
+		_ = commands.SimulateMainnetDeploy(subnetName, 0, false)
+
 		close(interactionEndCh)
 		<-ledgerSimEndCh
 		fmt.Println(logging.LightBlue.Wrap("EXECUTING NON INTERACTIVE PART OF THE TEST: JOIN/WHITELIST/WAIT/HARDHAT"))
@@ -140,9 +148,6 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		}
 		// update nodes whitelisted subnets
 		err = utils.RestartNodesWithWhitelistedSubnets(whitelistedSubnets)
-		gomega.Expect(err).Should(gomega.BeNil())
-		// wait for subnet walidators to be up
-		err = utils.WaitSubnetValidators(subnetID, nodeInfos)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// this is a simulation, so app is probably saving the info in the
