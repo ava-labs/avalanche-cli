@@ -11,7 +11,7 @@ import (
 	"github.com/onsi/gomega"
 )
 
-func Create(network string, numNodes int) string {
+func NodeCreate(network string, numNodes int) string {
 	/* #nosec G204 */
 	cmd := exec.Command(
 		CLIBinary,
@@ -30,7 +30,7 @@ func Create(network string, numNodes int) string {
 	return string(output)
 }
 
-func Status() string {
+func NodeStatus() string {
 	/* #nosec G204 */
 	cmd := exec.Command(
 		CLIBinary,
@@ -41,4 +41,17 @@ func Status() string {
 	output, err := cmd.Output()
 	gomega.Expect(err).Should(gomega.BeNil())
 	return string(output)
+}
+
+func NodeSSH(name, command string) {
+	/* #nosec G204 */
+	cmd := exec.Command(
+		CLIBinary,
+		"node",
+		"ssh",
+		name,
+		command,
+	)
+	_, err := cmd.Output()
+	gomega.Expect(err).Should(gomega.BeNil())
 }

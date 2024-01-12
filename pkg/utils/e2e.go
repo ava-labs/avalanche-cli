@@ -84,10 +84,21 @@ func GenDockerComposeFile(nodes int, ubuntuVersion string, networkPrefix string,
 }
 
 // SaveDockerComposeFile saves the Docker Compose file with the specified number of nodes and Ubuntu version.
-func SaveDockerComposeFile(nodes int, ubuntuVersion string, sshPubKey string) (string, error) {
-	tmpFile, err := os.CreateTemp("", "docker-compose-*.yml")
-	if err != nil {
-		return "", fmt.Errorf("error creating temporary file: %w", err)
+func SaveDockerComposeFile(fileName string, nodes int, ubuntuVersion string, sshPubKey string) (string, error) {
+	var (
+		tmpFile *os.File
+		err     error
+	)
+	if fileName != "" {
+		tmpFile, err = os.Create(fileName)
+		if err != nil {
+			return "", fmt.Errorf("error creating file %s: %w", fileName, err)
+		}
+	} else {
+		tmpFile, err = os.CreateTemp("", "docker-compose-*.yml")
+		if err != nil {
+			return "", fmt.Errorf("error creating temporary file: %w", err)
+		}
 	}
 	composeFile, err := GenDockerComposeFile(nodes, ubuntuVersion, constants.E2ENetworkPrefix, sshPubKey)
 	if err != nil {

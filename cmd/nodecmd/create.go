@@ -258,7 +258,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		dockerComposeFile, err := utils.SaveDockerComposeFile(len(dockerHostIDs), "focal", strings.TrimSuffix(string(pubKeyString), "\n"))
+		dockerComposeFile, err := utils.SaveDockerComposeFile(constants.E2EDockerComposeFile, len(dockerHostIDs), "focal", strings.TrimSuffix(string(pubKeyString), "\n"))
 		if err != nil {
 			return err
 		}
