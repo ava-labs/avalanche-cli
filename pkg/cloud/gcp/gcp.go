@@ -121,7 +121,7 @@ func (c *GcpCloud) SetExistingNetwork(networkName string) (*compute.Network, err
 	return network, nil
 }
 
-// SetNetwork creates a new network in GCP
+// SetupNetwork creates a new network in GCP
 func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network, error) {
 	insertOp, err := c.gcpClient.Networks.Insert(c.projectID, &compute.Network{
 		Name:                  networkName,
@@ -215,7 +215,7 @@ func (c *GcpCloud) SetPublicIP(zone, nodeName string, numNodes int) ([]string, e
 }
 
 // SetupInstances creates GCP instances
-func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, staticIP []string, instancePrefix string, numNodes int, instanceType string) ([]*compute.Instance, error) {
+func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, staticIP []string, instancePrefix string, numNodes int, instanceType string, forMonitoring bool) ([]*compute.Instance, error) {
 	parallelism := 8
 	if len(staticIP) > 0 && len(staticIP) != numNodes {
 		return nil, fmt.Errorf("len(staticIPName) != numNodes")
@@ -229,6 +229,12 @@ func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, s
 	eg.SetLimit(parallelism)
 	for i := 0; i < numNodes; i++ {
 		currentIndex := i
+		var cloudDiskSize int64
+		if !forMonitoring {
+			cloudDiskSize = 1000
+		} else {
+			cloudDiskSize = 10
+		}
 		eg.Go(func() error {
 			instanceName := fmt.Sprintf("%s-%d", instancePrefix, currentIndex)
 			instance := &compute.Instance{
@@ -252,7 +258,7 @@ func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, s
 				Disks: []*compute.AttachedDisk{
 					{
 						InitializeParams: &compute.AttachedDiskInitializeParams{
-							DiskSizeGb:  1000,
+							DiskSizeGb:  cloudDiskSize,
 							SourceImage: fmt.Sprintf("projects/%s/global/images/%s", "ubuntu-os-cloud", ami),
 						},
 						Boot:       true, // Set this if it's the boot disk
@@ -402,6 +408,33 @@ func (c *GcpCloud) StopGCPNode(nodeConfig models.NodeConfig, clusterName string)
 		addressReleaseCall := c.gcpClient.Addresses.Delete(c.projectID, region, fmt.Sprintf("%s-%s", constants.GCPStaticIPPrefix, nodeConfig.NodeID))
 		if _, err = addressReleaseCall.Do(); err != nil {
 			return fmt.Errorf("%s, %w", constants.ErrReleasingGCPStaticIP, err)
+		}
+	}
+	return nil
+}
+
+// AddFirewall adds firewall into an existing project in GCP
+func (c *GcpCloud) AddFirewall(monitoringHostPublicIP, networkName, projectName string) error {
+	firewallName := fmt.Sprintf("%s-%s-monitoring", networkName, strings.ReplaceAll(monitoringHostPublicIP, ".", ""))
+	firewallExists, err := c.CheckFirewallExists(firewallName)
+	if err != nil {
+		return err
+	}
+	if !firewallExists {
+		allowedFirewall := compute.FirewallAllowed{
+			IPProtocol: "tcp",
+			Ports:      []string{strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort)},
+		}
+
+		firewall := compute.Firewall{
+			Name:         firewallName,
+			Allowed:      []*compute.FirewallAllowed{&allowedFirewall},
+			Network:      fmt.Sprintf("global/networks/%s", networkName),
+			SourceRanges: []string{monitoringHostPublicIP + constants.IPAddressSuffix},
+		}
+		instancesStopCall := c.gcpClient.Firewalls.Insert(projectName, &firewall)
+		if _, err = instancesStopCall.Do(); err != nil {
+			return err
 		}
 	}
 	return nil

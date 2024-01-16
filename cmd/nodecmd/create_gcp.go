@@ -146,6 +146,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	zones []string,
 	ami,
 	cliDefaultName string,
+	forMonitoring bool,
 ) (map[string][]string, map[string][]string, string, string, error) {
 	keyPairName := fmt.Sprintf("%s-keypair", cliDefaultName)
 	sshKeyPath, err := app.GetSSHCertFilePath(keyPairName)
@@ -213,7 +214,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	}
 	ux.Logger.PrintToUser("Waiting for GCE instance(s) to be provisioned...")
 	for i, zone := range zones {
-		_, err := gcpClient.SetupInstances(zone, networkName, string(sshPublicKey), ami, publicIP[zone], nodeName[zone], numNodes[i], instanceType)
+		_, err := gcpClient.SetupInstances(zone, networkName, string(sshPublicKey), ami, publicIP[zone], nodeName[zone], numNodes[i], instanceType, forMonitoring)
 		if err != nil {
 			return nil, nil, "", "", err
 		}
@@ -241,6 +242,7 @@ func createGCPInstance(
 	zones []string,
 	imageID string,
 	clusterName string,
+	forMonitoring bool,
 ) (models.CloudConfig, error) {
 	defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(
@@ -250,6 +252,7 @@ func createGCPInstance(
 		zones,
 		imageID,
 		defaultAvalancheCLIPrefix,
+		forMonitoring,
 	)
 	if err != nil {
 		ux.Logger.PrintToUser("Failed to create GCP cloud server")
