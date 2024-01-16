@@ -128,7 +128,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 		return err
 	}
 	clusterName := args[0]
-
 	network, err := subnetcmd.GetNetworkFromCmdLineFlags(
 		false,
 		createDevnet,

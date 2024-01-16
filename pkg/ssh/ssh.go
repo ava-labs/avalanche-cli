@@ -24,6 +24,7 @@ type scriptInputs struct {
 	GoVersion            string
 	CliBranch            string
 	IsDevNet             bool
+	IsE2E                bool
 	NetworkFlag          string
 	SubnetEVMBinaryPath  string
 	SubnetEVMReleaseURL  string
@@ -92,7 +93,7 @@ func RunSSHSetupNode(host *models.Host, configPath, avalancheGoVersion string, i
 		host,
 		constants.SSHScriptTimeout,
 		"shell/setupNode.sh",
-		scriptInputs{AvalancheGoVersion: avalancheGoVersion, IsDevNet: isDevNet},
+		scriptInputs{AvalancheGoVersion: avalancheGoVersion, IsDevNet: isDevNet, IsE2E: utils.IsE2E()},
 	); err != nil {
 		return err
 	}
@@ -216,7 +217,7 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 		host,
 		constants.SSHScriptTimeout,
 		"shell/setupDevnet.sh",
-		scriptInputs{},
+		scriptInputs{IsE2E: utils.IsE2E()},
 	)
 }
 

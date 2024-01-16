@@ -39,6 +39,9 @@ lint: ## Run golangci-lint against code.
 build: fmt vet ## Build avalanche CLI binary.
 	scripts/build.sh
 
+fast-build:
+	scripts/build.sh
+
 run: build ## Run avalanche CLI
 	./bin/avalanche help
 

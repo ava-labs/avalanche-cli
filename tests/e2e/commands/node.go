@@ -4,6 +4,8 @@
 package commands
 
 import (
+	"fmt"
+	"os"
 	"os/exec"
 	"strconv"
 
@@ -20,11 +22,34 @@ func NodeCreate(network string, numNodes int) string {
 		constants.E2EClusterName,
 		"--use-static-ip=false",
 		"--latest-avalanchego-version=true",
-		"--region local",
+		"--region=local",
 		"--num-nodes="+strconv.Itoa(numNodes),
 		"--"+network,
 		"--node-type=docker",
 	)
+	cmd.Env = os.Environ()
+	fmt.Println("About to run: " + cmd.String())
+	output, err := cmd.Output()
+	gomega.Expect(err).Should(gomega.BeNil())
+	return string(output)
+}
+
+func NodeDevnet(numNodes int) string {
+	/* #nosec G204 */
+	cmd := exec.Command(
+		CLIBinary,
+		"node",
+		"create",
+		constants.E2EClusterName,
+		"--use-static-ip=false",
+		"--latest-avalanchego-version=true",
+		"--region=local",
+		"--num-nodes="+strconv.Itoa(numNodes),
+		"--devnet",
+		"--node-type=docker",
+	)
+	cmd.Env = os.Environ()
+	fmt.Println("About to run: " + cmd.String())
 	output, err := cmd.Output()
 	gomega.Expect(err).Should(gomega.BeNil())
 	return string(output)
@@ -43,7 +68,7 @@ func NodeStatus() string {
 	return string(output)
 }
 
-func NodeSSH(name, command string) {
+func NodeSSH(name, command string) string {
 	/* #nosec G204 */
 	cmd := exec.Command(
 		CLIBinary,
@@ -52,6 +77,33 @@ func NodeSSH(name, command string) {
 		name,
 		command,
 	)
+	cmd.Env = os.Environ()
+	fmt.Println("About to run: " + cmd.String())
+	output, err := cmd.Output()
+	gomega.Expect(err).Should(gomega.BeNil())
+	return string(output)
+}
+
+func ConfigMetrics() {
+	/* #nosec G204 */
+	cmd := exec.Command(
+		CLIBinary,
+		"config",
+		"metrics",
+		"disable",
+	)
 	_, err := cmd.Output()
 	gomega.Expect(err).Should(gomega.BeNil())
+}
+
+func NodeList() string {
+	/* #nosec G204 */
+	cmd := exec.Command(
+		CLIBinary,
+		"node",
+		"list",
+	)
+	output, err := cmd.Output()
+	gomega.Expect(err).Should(gomega.BeNil())
+	return string(output)
 }

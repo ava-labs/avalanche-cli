@@ -18,5 +18,9 @@ chmod 755 install.sh
 ./install.sh -n
 {{if .IsDevNet}}
 #name:TASK [stop avalanchego in case of devnet]
+{{if .IsE2E }}
+sudo pkill avalanchego || echo "avalanchego not running"
+{{ else }}
 sudo systemctl stop avalanchego
+{{end}}
 {{end}}
