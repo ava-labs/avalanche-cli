@@ -553,11 +553,10 @@ func getExistingMonitoringInstance(clusterName string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		if _, ok := clustersConfig.Clusters[clusterName]; !ok {
-			return "", fmt.Errorf("cluster %s not found in clusters config file", clusterName)
-		}
-		if clustersConfig.Clusters[clusterName].MonitoringInstance != "" {
-			return clustersConfig.Clusters[clusterName].MonitoringInstance, nil
+		if _, ok := clustersConfig.Clusters[clusterName]; ok {
+			if clustersConfig.Clusters[clusterName].MonitoringInstance != "" {
+				return clustersConfig.Clusters[clusterName].MonitoringInstance, nil
+			}
 		}
 	}
 	return "", nil
