@@ -54,7 +54,13 @@ func IsE2E() bool {
 
 // E2EDocker checks if the "RUN_E2E_DOCKER" environment variable is set.
 func E2EDocker() bool {
-	return os.Getenv("RUN_E2E_DOCKER") != ""
+	cmd := exec.Command("docker-compose", "--version")
+	cmd.Env = os.Environ()
+	err := cmd.Run()
+	if err != nil {
+		return false
+	}
+	return true
 }
 
 // GenDockerComposeFile generates a Docker Compose file with the specified number of nodes and Ubuntu version.

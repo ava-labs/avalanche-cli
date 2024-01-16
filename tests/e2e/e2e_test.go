@@ -9,17 +9,18 @@ import (
 	"testing"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	//_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/apm"
-	//_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/errhandling"
-	//_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/key"
-	//_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/network"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/apm"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/errhandling"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/key"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/network"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/node/create"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/node/devnet"
-	//_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/packageman"
-	//_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/root"
-	//_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet"
-	//_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet/local"
-	//_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet/public"
-	//_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/upgrade"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/packageman"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/root"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet/local"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet/public"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/upgrade"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/format"
@@ -39,12 +40,11 @@ var _ = ginkgo.BeforeSuite(func() {
 	out, err := cmd.CombinedOutput()
 	fmt.Println(string(out))
 	gomega.Expect(err).Should(gomega.BeNil())
-	// add docker-compose support
-	/*if utils.E2EDocker() {
+	// check if dockerfile can be built
+	if utils.E2EDocker() {
 		cmd = exec.Command("make", "docker-e2e-build")
 		out, err = cmd.CombinedOutput()
 		fmt.Println(string(out))
 		gomega.Expect(err).Should(gomega.BeNil())
 	}
-	*/
 })
