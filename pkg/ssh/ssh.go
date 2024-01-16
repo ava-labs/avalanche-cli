@@ -240,7 +240,7 @@ func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePo
 	)
 }
 
-func RunSSHDownloadNodeConfig(host *models.Host, nodeInstanceDirPath string) error {
+func RunSSHDownloadNodeMonitoringConfig(host *models.Host, nodeInstanceDirPath string) error {
 	return host.Download(
 		filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName),
 		filepath.Join(nodeInstanceDirPath, constants.NodeFileName),
@@ -248,7 +248,7 @@ func RunSSHDownloadNodeConfig(host *models.Host, nodeInstanceDirPath string) err
 	)
 }
 
-func RunSSHUploadNodeConfig(host *models.Host, nodeInstanceDirPath string) error {
+func RunSSHUploadNodeMonitoringConfig(host *models.Host, nodeInstanceDirPath string) error {
 	if err := host.MkdirAll(
 		constants.CloudNodeConfigPath,
 		constants.SSHDirOpsTimeout,

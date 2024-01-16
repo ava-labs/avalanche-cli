@@ -16,7 +16,6 @@ type RegionConfig struct {
 	SecurityGroupName string
 	NumNodes          int
 	InstanceType      string
-	Region            string
 }
 
 type CloudConfig map[string]RegionConfig

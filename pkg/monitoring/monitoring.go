@@ -5,7 +5,6 @@ package monitoring
 
 import (
 	"embed"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -27,21 +26,21 @@ func Setup(monitoringDir string) error {
 }
 
 func WriteMonitoringJSONFiles(monitoringDir string) error {
-	dashboardDir := filepath.Join(monitoringDir, "dashboards")
-	files, err := dashboards.ReadDir("dashboards")
+	dashboardDir := filepath.Join(monitoringDir, constants.DashboardsDir)
+	files, err := dashboards.ReadDir(constants.DashboardsDir)
 	if err != nil {
 		return err
 	}
 	for _, file := range files {
-		fileContent, err := dashboards.ReadFile(fmt.Sprintf("%s/%s", "dashboards", file.Name()))
+		fileContent, err := dashboards.ReadFile(filepath.Join(constants.DashboardsDir, file.Name()))
 		if err != nil {
 			return err
 		}
-		playbookFile, err := os.Create(filepath.Join(dashboardDir, file.Name()))
+		dashboardJSONFile, err := os.Create(filepath.Join(dashboardDir, file.Name()))
 		if err != nil {
 			return err
 		}
-		_, err = playbookFile.Write(fileContent)
+		_, err = dashboardJSONFile.Write(fileContent)
 		if err != nil {
 			return err
 		}

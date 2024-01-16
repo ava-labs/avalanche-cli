@@ -203,11 +203,9 @@ func createNodes(_ *cobra.Command, args []string) error {
 			return err
 		}
 		monitoringEc2SvcMap := make(map[string]*awsAPI.AwsCloud)
-		monitoringNumNodesMap := make(map[string]int)
 		if separateMonitoringInstance && existingMonitoringInstance == "" {
 			monitoringEc2SvcMap[monitoringHostRegion] = ec2SvcMap[monitoringHostRegion]
-			monitoringNumNodesMap[monitoringHostRegion] = 1
-			monitoringCloudConfig, err := createAWSInstances(monitoringEc2SvcMap, nodeType, monitoringNumNodesMap, []string{monitoringHostRegion}, ami, usr, true)
+			monitoringCloudConfig, err := createAWSInstances(monitoringEc2SvcMap, nodeType, map[string]int{monitoringHostRegion: 1}, []string{monitoringHostRegion}, ami, usr, true)
 			if err != nil {
 				return err
 			}
@@ -215,11 +213,10 @@ func createNodes(_ *cobra.Command, args []string) error {
 		}
 		if existingMonitoringInstance != "" {
 			separateMonitoringInstance = true
-			monitoringNodeConfig, err = getNodeCloudConfig(existingMonitoringInstance)
+			monitoringNodeConfig, monitoringHostRegion, err = getNodeCloudConfig(existingMonitoringInstance)
 			if err != nil {
 				return err
 			}
-			monitoringHostRegion = monitoringNodeConfig.Region
 			monitoringEc2SvcMap, err = getAWSMonitoringEC2Svc(awsProfile, monitoringHostRegion)
 			if err != nil {
 				return err
@@ -281,7 +278,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		gcpCredentialFilepath = credentialFilepath
 	}
 
-	if err = createClusterNodeConfig(network, cloudConfigMap, monitoringNodeConfig, clusterName, cloudService, monitoringHostRegion); err != nil {
+	if err = createClusterNodeConfig(network, cloudConfigMap, monitoringNodeConfig, monitoringHostRegion, clusterName, cloudService); err != nil {
 		return err
 	}
 	if cloudService == constants.GCPCloudService {
@@ -298,7 +295,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err = ansible.CreateAnsibleHostInventory(inventoryPath, "", cloudService, publicIPMap, cloudConfigMap); err != nil {
 		return err
 	}
-	monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), "monitoring")
+	monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
 	if separateMonitoringInstance && existingMonitoringInstance == "" {
 		if err = ansible.CreateAnsibleHostInventory(monitoringInventoryPath, monitoringNodeConfig.CertFilePath, cloudService, map[string]string{monitoringNodeConfig.InstanceIDs[0]: monitoringNodeConfig.PublicIPs[0]}, nil); err != nil {
 			return err
@@ -420,7 +417,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			go func(nodeResults *models.NodeResults, host *models.Host) {
 				defer wg.Done()
 				nodeDirPath := app.GetNodeInstanceAvaGoConfigDirPath(host.NodeID)
-				if err := ssh.RunSSHDownloadNodeConfig(host, nodeDirPath); err != nil {
+				if err := ssh.RunSSHDownloadNodeMonitoringConfig(host, nodeDirPath); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					return
 				}
@@ -428,7 +425,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					return
 				}
-				if err := ssh.RunSSHUploadNodeConfig(host, nodeDirPath); err != nil {
+				if err := ssh.RunSSHUploadNodeMonitoringConfig(host, nodeDirPath); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					return
 				}
@@ -478,7 +475,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 
 // createClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
 // also creates cluster config in .avalanche-cli/nodes storing various key pair and security group info for all clusters
-func createClusterNodeConfig(network models.Network, cloudConfigMap models.CloudConfig, monitorCloudConfig models.RegionConfig, clusterName, cloudService, monitoringHostRegion string) error {
+func createClusterNodeConfig(network models.Network, cloudConfigMap models.CloudConfig, monitorCloudConfig models.RegionConfig, monitoringHostRegion, clusterName, cloudService string) error {
 	for region, cloudConfig := range cloudConfigMap {
 		for i := range cloudConfig.InstanceIDs {
 			publicIP := ""
@@ -556,6 +553,9 @@ func getExistingMonitoringInstance(clusterName string) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		if _, ok := clustersConfig.Clusters[clusterName]; !ok {
+			return "", fmt.Errorf("cluster %s not found in clusters config file", clusterName)
+		}
 		if clustersConfig.Clusters[clusterName].MonitoringInstance != "" {
 			return clustersConfig.Clusters[clusterName].MonitoringInstance, nil
 		}
@@ -581,10 +581,10 @@ func updateKeyPairClustersConfig(cloudConfig models.NodeConfig) error {
 	return app.WriteClustersConfigFile(&clustersConfig)
 }
 
-func getNodeCloudConfig(node string) (models.RegionConfig, error) {
+func getNodeCloudConfig(node string) (models.RegionConfig, string, error) {
 	config, err := app.LoadClusterNodeConfig(node)
 	if err != nil {
-		return models.RegionConfig{}, err
+		return models.RegionConfig{}, "", err
 	}
 	elasticIP := []string{}
 	if config.ElasticIP != "" {
@@ -599,8 +599,7 @@ func getNodeCloudConfig(node string) (models.RegionConfig, error) {
 		SecurityGroupName: config.SecurityGroup,
 		CertFilePath:      config.CertPath,
 		ImageID:           config.AMI,
-		Region:            config.Region,
-	}, nil
+	}, config.Region, nil
 }
 
 func addNodeToClustersConfig(network models.Network, nodeID, clusterName string, isMonitoringInstance bool) error {

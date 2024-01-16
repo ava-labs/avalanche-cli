@@ -44,8 +44,7 @@ func updateAnsibleMonitoringPublicIP(clusterName, monitoringHostID string) error
 		if err != nil {
 			return err
 		}
-		err = ansible.UpdateInventoryHostPublicIP(filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), "monitoring"), publicIP)
-		if err != nil {
+		if err = ansible.UpdateInventoryHostPublicIP(filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir), publicIP); err != nil {
 			return err
 		}
 	}

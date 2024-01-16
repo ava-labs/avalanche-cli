@@ -698,7 +698,7 @@ func (app *Avalanche) CheckCertInSSHDir(certName string) (bool, error) {
 func (app *Avalanche) CreateMonitoringDir() error {
 	monitoringDir := app.GetMonitoringDir()
 	if !utils.DirectoryExists(monitoringDir) {
-		err := os.Mkdir(monitoringDir, constants.DefaultPerms755)
+		err := os.MkdirAll(monitoringDir, constants.DefaultPerms755)
 		if err != nil {
 			return err
 		}
@@ -709,7 +709,7 @@ func (app *Avalanche) CreateMonitoringDir() error {
 func (app *Avalanche) CreateMonitoringDashboardDir() error {
 	monitoringDashboardDir := app.GetMonitoringDashboardDir()
 	if !utils.DirectoryExists(monitoringDashboardDir) {
-		err := os.Mkdir(monitoringDashboardDir, constants.DefaultPerms755)
+		err := os.MkdirAll(monitoringDashboardDir, constants.DefaultPerms755)
 		if err != nil {
 			return err
 		}
