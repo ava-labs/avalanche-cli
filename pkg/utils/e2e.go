@@ -57,10 +57,7 @@ func E2EDocker() bool {
 	cmd := exec.Command("docker-compose", "--version")
 	cmd.Env = os.Environ()
 	err := cmd.Run()
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 // GenDockerComposeFile generates a Docker Compose file with the specified number of nodes and Ubuntu version.
