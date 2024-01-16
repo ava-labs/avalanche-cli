@@ -18,7 +18,7 @@ var (
 	NodeID   string
 )
 
-var _ = ginkgo.Describe("[NODE DEVNET]", func() {
+var _ = ginkgo.Describe("[Node devnet]", func() {
 	ginkgo.It("can create a node", func() {
 		output := commands.NodeDevnet(1)
 		fmt.Println(output)

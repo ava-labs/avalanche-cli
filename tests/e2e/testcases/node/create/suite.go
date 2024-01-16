@@ -18,7 +18,7 @@ var (
 	NodeID   string
 )
 
-var _ = ginkgo.Describe("[NODE CREATE]", func() {
+var _ = ginkgo.Describe("[Node create]", func() {
 	ginkgo.It("can create a node", func() {
 		output := commands.NodeCreate("fuji", 1)
 		gomega.Expect(output).To(gomega.ContainSubstring("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
