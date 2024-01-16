@@ -131,6 +131,7 @@ const (
 	SSHTCPPort                                   = 22
 	AvalanchegoAPIPort                           = 9650
 	AvalanchegoP2PPort                           = 9651
+	AvalanchegoGrafanaPort                       = 3000
 	CloudServerStorageSize                       = 1000
 	OutboundPort                                 = 0
 	SetupCLIFromSourceBranch                     = "main"

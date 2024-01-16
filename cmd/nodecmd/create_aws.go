@@ -221,6 +221,8 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			ux.Logger.PrintToUser(fmt.Sprintf("Using existing security group %s in AWS[%s]", securityGroupName, region))
 			ipInTCP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.SSHTCPPort)
 			ipInHTTP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
+			ipInMonitoring := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoMonitoringPort)
+			ipInGrafana := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoGrafanaPort)
 
 			if !ipInTCP {
 				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress, constants.SSHTCPPort); err != nil {
@@ -229,6 +231,16 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			}
 			if !ipInHTTP {
 				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress, constants.AvalanchegoAPIPort); err != nil {
+					return nil, nil, nil, nil, err
+				}
+			}
+			if !ipInMonitoring {
+				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress, constants.AvalanchegoMonitoringPort); err != nil {
+					return nil, nil, nil, nil, err
+				}
+			}
+			if !ipInGrafana {
+				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress, constants.AvalanchegoGrafanaPort); err != nil {
 					return nil, nil, nil, nil, err
 				}
 			}
