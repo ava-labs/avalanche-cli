@@ -11,7 +11,7 @@ import (
 	"github.com/ava-labs/subnet-evm/params"
 )
 
-func GetFeeConfig(config params.ChainConfig, app *application.Avalanche) (
+func GetFeeConfig(config params.ChainConfig, app *application.Avalanche, useDefault bool) (
 	params.ChainConfig,
 	statemachine.StateDirection,
 	error,
@@ -32,6 +32,13 @@ func GetFeeConfig(config params.ChainConfig, app *application.Avalanche) (
 		setGasStep                  = "Set block gas cost step"
 	)
 
+	config.FeeConfig = StarterFeeConfig
+
+	if useDefault {
+		config.FeeConfig.TargetGas = slowTarget
+		return config, statemachine.Forward, nil
+	}
+
 	feeConfigOptions := []string{useSlow, useMedium, useFast, customFee, goBackMsg}
 
 	feeDefault, err := app.Prompt.CaptureList(
@@ -41,8 +48,6 @@ func GetFeeConfig(config params.ChainConfig, app *application.Avalanche) (
 	if err != nil {
 		return config, statemachine.Stop, err
 	}
-
-	config.FeeConfig = StarterFeeConfig
 
 	switch feeDefault {
 	case useFast:

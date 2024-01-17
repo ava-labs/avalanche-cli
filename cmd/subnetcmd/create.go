@@ -32,6 +32,9 @@ var (
 	vmFile              string
 	useCustom           bool
 	evmVersion          string
+	evmChainID          uint64
+	evmToken            string
+	evmDefaults         bool
 	useLatestEvmVersion bool
 	useRepo             bool
 
@@ -63,6 +66,9 @@ configuration, pass the -f flag.`,
 	cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
 	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the Subnet-EVM as the base template")
 	cmd.Flags().StringVar(&evmVersion, "vm-version", "", "version of Subnet-Evm template to use")
+	cmd.Flags().Uint64Var(&evmChainID, "evm-chain-id", 0, "chain ID to use with Subnet-Evm")
+	cmd.Flags().StringVar(&evmToken, "evm-token", "", "token name to use with Subnet-Evm")
+	cmd.Flags().BoolVar(&evmDefaults, "evm-defaults", false, "use default settings for fees/airdrop/precompiles with Subnet-EVM")
 	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
 	cmd.Flags().BoolVar(&useLatestEvmVersion, latest, false, "use latest Subnet-Evm version, takes precedence over --vm-version")
 	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
@@ -83,6 +89,9 @@ func CallCreate(
 	useSubnetEvmParam bool,
 	useCustomParam bool,
 	evmVersionParam string,
+	evmChainIDParam uint64,
+	evmTokenParam string,
+	evmDefaultsParam bool,
 	useLatestEvmVersionParam bool,
 	customVMRepoURLParam string,
 	customVMBranchParam string,
@@ -92,6 +101,9 @@ func CallCreate(
 	genesisFile = genesisFileParam
 	useSubnetEvm = useSubnetEvmParam
 	evmVersion = evmVersionParam
+	evmChainID = evmChainIDParam
+	evmToken = evmTokenParam
+	evmDefaults = evmDefaultsParam
 	useLatestEvmVersion = useLatestEvmVersionParam
 	useCustom = useCustomParam
 	customVMRepoURL = customVMRepoURLParam
@@ -169,7 +181,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 
 	switch subnetType {
 	case models.SubnetEvm:
-		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(app, subnetName, genesisFile, evmVersion)
+		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(app, subnetName, genesisFile, evmVersion, evmChainID, evmToken, evmDefaults)
 		if err != nil {
 			return err
 		}
