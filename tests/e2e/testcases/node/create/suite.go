@@ -19,6 +19,10 @@ var (
 )
 
 var _ = ginkgo.Describe("[Node create]", func() {
+	ginkgo.BeforeEach(func() {
+		version := commands.GetVersion()
+		fmt.Println("[v" + version + "]")
+	})
 	ginkgo.It("can create a node", func() {
 		output := commands.NodeCreate("fuji", 1)
 		fmt.Println(output)
