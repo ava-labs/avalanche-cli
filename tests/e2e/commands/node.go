@@ -15,7 +15,7 @@ import (
 
 const e2eKeyPairName = "runner-avalanche-cli-keypair"
 
-func CreateKeyPair() string {
+func createKeyPair() string {
 	/* #nosec G204 */
 	cmd := exec.Command(
 		"ssh-keygen",
@@ -38,7 +38,7 @@ func CreateKeyPair() string {
 }
 
 func NodeCreate(network string, numNodes int) string {
-	CreateKeyPair()
+	createKeyPair()
 	/* #nosec G204 */
 	cmd := exec.Command(
 		CLIBinary,
