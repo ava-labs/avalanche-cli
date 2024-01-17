@@ -5,7 +5,6 @@ package nodecmd
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
@@ -39,7 +38,7 @@ func getPublicIPsForNodesWithDynamicIP(nodesWithDynamicIP []models.NodeConfig) (
 		ec2Svc     *awsAPI.AwsCloud
 		gcpCloud   *gcpAPI.GcpCloud
 	)
-	ux.Logger.PrintToUser("Getting Public IPs for nodes with dynamic IPs ...")
+	ux.Logger.PrintToUser("Getting Public IP(s) for node(s) with dynamic IP ...")
 	for _, node := range nodesWithDynamicIP {
 		if lastRegion == "" || node.Region != lastRegion {
 			if node.CloudService == "" || node.CloudService == constants.AWSCloudService {
@@ -72,7 +71,7 @@ func getPublicIPsForNodesWithDynamicIP(nodesWithDynamicIP []models.NodeConfig) (
 		} else {
 			publicIP, err = ec2Svc.GetInstancePublicIPs([]string{node.NodeID})
 			if err != nil {
-				if strings.Contains(err.Error(), "RequestExpired: Request has expired") {
+				if isExpiredCredentialError(err) {
 					ux.Logger.PrintToUser("")
 					printExpiredCredentialsOutput(awsProfile)
 				}
@@ -119,7 +118,7 @@ func updatePublicIPs(clusterName string) error {
 			}
 		}
 		if changed == 0 {
-			ux.Logger.PrintToUser("All node IPs are the same. No update needed")
+			ux.Logger.PrintToUser("No changes to IPs detected")
 			return nil
 		}
 		if err = ansible.UpdateInventoryHostPublicIP(app.GetAnsibleInventoryDirPath(clusterName), publicIPMap); err != nil {

@@ -51,6 +51,10 @@ func printNoCredentialsOutput(awsProfile string) {
 	ux.Logger.PrintToUser("Please use https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html#envvars-set for more details")
 }
 
+func isExpiredCredentialError(err error) bool {
+	return strings.Contains(err.Error(), "RequestExpired: Request has expired")
+}
+
 func printExpiredCredentialsOutput(awsProfile string) {
 	ux.Logger.PrintToUser("AWS credentials expired")
 	ux.Logger.PrintToUser("Please update your environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
@@ -107,7 +111,7 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 		}
 		amiMap[region], err = ec2SvcMap[region].GetUbuntuAMIID()
 		if err != nil {
-			if strings.Contains(err.Error(), "RequestExpired: Request has expired") {
+			if isExpiredCredentialError(err) {
 				printExpiredCredentialsOutput(awsProfile)
 			}
 			return nil, nil, nil, err
