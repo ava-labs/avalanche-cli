@@ -4,10 +4,6 @@
 package commands
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"os"
 	"os/exec"
@@ -16,41 +12,16 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/onsi/gomega"
-	"golang.org/x/crypto/ssh"
 )
 
 const e2eKeyPairName = "runner-avalanche-cli-keypair"
 
-func createKeyPair() {
-	home, err := os.UserHomeDir()
-	gomega.Expect(err).Should(gomega.BeNil())
-	privateKeyPath := filepath.Join(home, ".ssh", e2eKeyPairName)
-	pubKeyPath := filepath.Join(home, ".ssh", e2eKeyPairName+".pub")
-	err = os.MkdirAll(filepath.Join(home, ".ssh"), 0o700)
-	gomega.Expect(err).Should(gomega.BeNil())
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	gomega.Expect(err).Should(gomega.BeNil())
-	privateKeyFile, err := os.Create(privateKeyPath)
-	gomega.Expect(err).Should(gomega.BeNil())
-	defer privateKeyFile.Close()
-	privateKeyPEM := &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privateKey)}
-	err = pem.Encode(privateKeyFile, privateKeyPEM)
-	gomega.Expect(err).Should(gomega.BeNil())
-	pub, err := ssh.NewPublicKey(&privateKey.PublicKey)
-	gomega.Expect(err).Should(gomega.BeNil())
-	err = os.WriteFile(pubKeyPath, ssh.MarshalAuthorizedKey(pub), 0o600)
-	gomega.Expect(err).Should(gomega.BeNil())
-}
-
 func NodeCreate(network string, numNodes int) string {
-	createKeyPair()
 	home, err := os.UserHomeDir()
 	gomega.Expect(err).Should(gomega.BeNil())
-	privKey, err := os.Open(filepath.Join(home, ".ssh", e2eKeyPairName))
-	fmt.Print(privKey)
+	_, err = os.Open(filepath.Join(home, ".ssh", e2eKeyPairName))
 	gomega.Expect(err).Should(gomega.BeNil())
-	pubKey, err := os.Open(filepath.Join(home, ".ssh", e2eKeyPairName+".pub"))
-	fmt.Print(pubKey)
+	_, err = os.Open(filepath.Join(home, ".ssh", e2eKeyPairName+".pub"))
 	gomega.Expect(err).Should(gomega.BeNil())
 	/* #nosec G204 */
 	cmd := exec.Command(
