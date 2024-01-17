@@ -147,8 +147,10 @@ func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network
 	if _, err := c.SetFirewallRule("0.0.0.0/0", fmt.Sprintf("%s-%s", networkName, "default"), networkName, []string{strconv.Itoa(constants.AvalanchegoP2PPort)}); err != nil {
 		return nil, err
 	}
-	if _, err := c.SetFirewallRule(ipAddress, fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort),
-		strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort)}); err != nil {
+	if _, err := c.SetFirewallRule(ipAddress, fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")), networkName, []string{
+		strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort),
+		strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
+	}); err != nil {
 		return nil, err
 	}
 
@@ -431,8 +433,10 @@ func (c *GcpCloud) AddFirewall(monitoringHostPublicIP, networkName, projectName 
 	if !firewallExists {
 		allowedFirewall := compute.FirewallAllowed{
 			IPProtocol: "tcp",
-			Ports: []string{strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
-				strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort)},
+			Ports: []string{
+				strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
+				strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
+			},
 		}
 
 		firewall := compute.Firewall{
