@@ -52,6 +52,10 @@ func NodeDevnet(numNodes int) string {
 	fmt.Println("About to run: " + cmd.String())
 	output, err := cmd.Output()
 	gomega.Expect(err).Should(gomega.BeNil())
+	fmt.Println("---------------->")
+	fmt.Println(string(output))
+	fmt.Println(err)
+	fmt.Println("---------------->")
 	return string(output)
 }
 
