@@ -557,6 +557,7 @@ func createClusterNodeConfig(network models.Network, cloudConfigMap models.Cloud
 			SecurityGroup: monitorCloudConfig.SecurityGroup,
 			ElasticIP:     publicIP,
 			CloudService:  cloudService,
+			UseStaticIP:   useStaticIP,
 		}
 		if err := app.CreateNodeCloudConfigFile(monitorCloudConfig.InstanceIDs[0], &nodeConfig); err != nil {
 			return err
