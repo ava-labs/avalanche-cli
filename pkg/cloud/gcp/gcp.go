@@ -431,7 +431,8 @@ func (c *GcpCloud) AddFirewall(monitoringHostPublicIP, networkName, projectName 
 	if !firewallExists {
 		allowedFirewall := compute.FirewallAllowed{
 			IPProtocol: "tcp",
-			Ports:      []string{strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort)},
+			Ports: []string{strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
+				strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort)},
 		}
 
 		firewall := compute.Firewall{
