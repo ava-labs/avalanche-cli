@@ -21,7 +21,7 @@ import (
 
 const e2eKeyPairName = "runner-avalanche-cli-keypair"
 
-func createKeyPair() string {
+func createKeyPair() {
 	home, err := os.UserHomeDir()
 	gomega.Expect(err).Should(gomega.BeNil())
 	privateKeyPath := filepath.Join(home, ".ssh", e2eKeyPairName)
@@ -36,6 +36,7 @@ func createKeyPair() string {
 	pub, err := ssh.NewPublicKey(&privateKey.PublicKey)
 	gomega.Expect(err).Should(gomega.BeNil())
 	err = os.WriteFile(pubKeyPath, ssh.MarshalAuthorizedKey(pub), 0600)
+	gomega.Expect(err).Should(gomega.BeNil())
 }
 
 func NodeCreate(network string, numNodes int) string {
