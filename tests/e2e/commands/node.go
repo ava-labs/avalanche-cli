@@ -36,7 +36,7 @@ func createKeyPair() {
 	gomega.Expect(err).Should(gomega.BeNil())
 	pub, err := ssh.NewPublicKey(&privateKey.PublicKey)
 	gomega.Expect(err).Should(gomega.BeNil())
-	err = os.WriteFile(pubKeyPath, ssh.MarshalAuthorizedKey(pub), 0600)
+	err = os.WriteFile(pubKeyPath, ssh.MarshalAuthorizedKey(pub), 0o600)
 	gomega.Expect(err).Should(gomega.BeNil())
 }
 
