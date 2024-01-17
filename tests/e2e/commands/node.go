@@ -26,7 +26,7 @@ func createKeyPair() {
 	gomega.Expect(err).Should(gomega.BeNil())
 	privateKeyPath := filepath.Join(home, ".ssh", e2eKeyPairName)
 	pubKeyPath := filepath.Join(home, ".ssh", e2eKeyPairName+".pub")
-	privateKey, err := rsa.GenerateKey(rand.Reader, 1024)
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	gomega.Expect(err).Should(gomega.BeNil())
 	privateKeyFile, err := os.Create(privateKeyPath)
 	gomega.Expect(err).Should(gomega.BeNil())
