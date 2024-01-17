@@ -68,8 +68,10 @@ func NodeCreate(network string, numNodes int) string {
 	cmd.Env = os.Environ()
 	fmt.Println("About to run: " + cmd.String())
 	output, err := cmd.Output()
+	fmt.Println("---------------->")
 	fmt.Println(string(output))
 	fmt.Println(err)
+	fmt.Println("---------------->")
 	gomega.Expect(err).Should(gomega.BeNil())
 	return string(output)
 }
@@ -91,11 +93,11 @@ func NodeDevnet(numNodes int) string {
 	cmd.Env = os.Environ()
 	fmt.Println("About to run: " + cmd.String())
 	output, err := cmd.Output()
-	gomega.Expect(err).Should(gomega.BeNil())
 	fmt.Println("---------------->")
 	fmt.Println(string(output))
 	fmt.Println(err)
 	fmt.Println("---------------->")
+	gomega.Expect(err).Should(gomega.BeNil())
 	return string(output)
 }
 
@@ -108,6 +110,10 @@ func NodeStatus() string {
 		constants.E2EClusterName,
 	)
 	output, err := cmd.Output()
+	fmt.Println("---------------->")
+	fmt.Println(string(output))
+	fmt.Println(err)
+	fmt.Println("---------------->")
 	gomega.Expect(err).Should(gomega.BeNil())
 	return string(output)
 }
@@ -124,6 +130,10 @@ func NodeSSH(name, command string) string {
 	cmd.Env = os.Environ()
 	fmt.Println("About to run: " + cmd.String())
 	output, err := cmd.Output()
+	fmt.Println("---------------->")
+	fmt.Println(string(output))
+	fmt.Println(err)
+	fmt.Println("---------------->")
 	gomega.Expect(err).Should(gomega.BeNil())
 	return string(output)
 }
@@ -148,6 +158,10 @@ func NodeList() string {
 		"list",
 	)
 	output, err := cmd.Output()
+	fmt.Println("---------------->")
+	fmt.Println(string(output))
+	fmt.Println(err)
+	fmt.Println("---------------->")
 	gomega.Expect(err).Should(gomega.BeNil())
 	return string(output)
 }
