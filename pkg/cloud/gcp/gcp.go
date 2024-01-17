@@ -147,7 +147,8 @@ func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network
 	if _, err := c.SetFirewallRule("0.0.0.0/0", fmt.Sprintf("%s-%s", networkName, "default"), networkName, []string{strconv.Itoa(constants.AvalanchegoP2PPort)}); err != nil {
 		return nil, err
 	}
-	if _, err := c.SetFirewallRule(ipAddress, fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)}); err != nil {
+	if _, err := c.SetFirewallRule(ipAddress, fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort),
+		strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort)}); err != nil {
 		return nil, err
 	}
 
@@ -156,7 +157,7 @@ func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network
 
 // SetFirewallRule creates a new firewall rule in GCP
 func (c *GcpCloud) SetFirewallRule(ipAddress, firewallName, networkName string, ports []string) (*compute.Firewall, error) {
-	if strings.Contains(ipAddress, "/") {
+	if strings.Contains(ipAddress, "/") && ipAddress != "0.0.0.0/0" {
 		ipAddress = fmt.Sprintf("%s/32", ipAddress) // add netmask /32 if missing
 	}
 	firewall := &compute.Firewall{
@@ -325,7 +326,7 @@ func (c *GcpCloud) GetUbuntuImageID() (string, error) {
 }
 
 // CheckFirewallExists checks that firewall firewallName exists in GCP project projectName
-func (c *GcpCloud) CheckFirewallExists(firewallName string) (bool, error) {
+func (c *GcpCloud) CheckFirewallExists(firewallName string, checkMonitoring bool) (bool, error) {
 	firewallListCall := c.gcpClient.Firewalls.List(c.projectID)
 	firewallList, err := firewallListCall.Do()
 	if err != nil {
@@ -333,6 +334,13 @@ func (c *GcpCloud) CheckFirewallExists(firewallName string) (bool, error) {
 	}
 	for _, firewall := range firewallList.Items {
 		if firewall.Name == firewallName {
+			if checkMonitoring {
+				for _, allowed := range firewall.Allowed {
+					if !(slices.Contains(allowed.Ports, strconv.Itoa(constants.AvalanchegoGrafanaPort)) && slices.Contains(allowed.Ports, strconv.Itoa(constants.AvalanchegoMonitoringPort))) {
+						return false, nil
+					}
+				}
+			}
 			return true, nil
 		}
 	}
@@ -416,7 +424,7 @@ func (c *GcpCloud) StopGCPNode(nodeConfig models.NodeConfig, clusterName string)
 // AddFirewall adds firewall into an existing project in GCP
 func (c *GcpCloud) AddFirewall(monitoringHostPublicIP, networkName, projectName string) error {
 	firewallName := fmt.Sprintf("%s-%s-monitoring", networkName, strings.ReplaceAll(monitoringHostPublicIP, ".", ""))
-	firewallExists, err := c.CheckFirewallExists(firewallName)
+	firewallExists, err := c.CheckFirewallExists(firewallName, true)
 	if err != nil {
 		return err
 	}
