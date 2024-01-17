@@ -29,6 +29,7 @@ func createKeyPair() {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 1024)
 	gomega.Expect(err).Should(gomega.BeNil())
 	privateKeyFile, err := os.Create(privateKeyPath)
+	gomega.Expect(err).Should(gomega.BeNil())
 	defer privateKeyFile.Close()
 	privateKeyPEM := &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privateKey)}
 	err = pem.Encode(privateKeyFile, privateKeyPEM)
