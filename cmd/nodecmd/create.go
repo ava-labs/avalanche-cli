@@ -259,9 +259,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			return err
 		}
 		if separateMonitoringInstance && existingMonitoringInstance == "" {
-			//monitoringEc2SvcMap[monitoringHostRegion] = ec2SvcMap[monitoringHostRegion]
 			monitoringCloudConfig, err := createGCPInstance(usr, gcpClient, nodeType, []int{1}, []string{monitoringHostRegion}, imageID, clusterName, true)
-			//monitoringCloudConfig, err := createAWSInstances(monitoringEc2SvcMap, nodeType, map[string]int{monitoringHostRegion: 1}, []string{monitoringHostRegion}, ami, usr, true)
 			if err != nil {
 				return err
 			}
