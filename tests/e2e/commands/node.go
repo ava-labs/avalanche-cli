@@ -17,6 +17,8 @@ const e2eKeyPairName = "runner-avalanche-cli-keypair"
 
 func createKeyPair() string {
 	/* #nosec G204 */
+	_, err := exec.Command("mkdir", "-p", "~/.ssh").Output()
+	gomega.Expect(err).Should(gomega.BeNil())
 	cmd := exec.Command(
 		"ssh-keygen",
 		"-t rsa",
