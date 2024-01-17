@@ -13,7 +13,7 @@ import (
 	"github.com/onsi/gomega"
 )
 
-const e2eKeyPairName = "e2e"
+const e2eKeyPairName = "runner-avalanche-cli-keypair"
 
 func CreateKeyPair() string {
 	/* #nosec G204 */
@@ -51,7 +51,6 @@ func NodeCreate(network string, numNodes int) string {
 		"--num-nodes="+strconv.Itoa(numNodes),
 		"--"+network,
 		"--node-type=docker",
-		"--alternative-key-pair-name="+e2eKeyPairName,
 	)
 	cmd.Env = os.Environ()
 	fmt.Println("About to run: " + cmd.String())
