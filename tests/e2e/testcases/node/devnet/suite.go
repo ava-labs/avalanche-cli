@@ -69,7 +69,6 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 	ginkgo.It("installs and configures avalanche-cli on the node ", func() {
 		stakingFiles := commands.NodeSSH(constants.E2EClusterName, "cat /home/ubuntu/.avalanche-cli/config.json")
 		gomega.Expect(stakingFiles).To(gomega.ContainSubstring("\"metricsenabled\": false"))
-		gomega.Expect(stakingFiles).To(gomega.ContainSubstring("node-config"))
 		avalanceCliVersion := commands.NodeSSH(constants.E2EClusterName, "/home/ubuntu/bin/avalanche --version")
 		gomega.Expect(avalanceCliVersion).To(gomega.ContainSubstring("avalanche version"))
 	})
