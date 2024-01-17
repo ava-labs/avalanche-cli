@@ -13,7 +13,32 @@ import (
 	"github.com/onsi/gomega"
 )
 
+const e2eKeyPairName = "e2e"
+
+func CreateKeyPair() string {
+	/* #nosec G204 */
+	cmd := exec.Command(
+		"ssh-keygen",
+		"-t rsa",
+		"-C",
+		"ubuntu",
+		"-b",
+		"2048",
+		"-f ~/.ssh/"+e2eKeyPairName,
+		"-q",
+		"-P \"\"",
+	)
+	cmd.Env = os.Environ()
+	fmt.Println("About to run: " + cmd.String())
+	output, err := cmd.Output()
+	fmt.Println(string(output))
+	fmt.Println(err)
+	gomega.Expect(err).Should(gomega.BeNil())
+	return string(output)
+}
+
 func NodeCreate(network string, numNodes int) string {
+	CreateKeyPair()
 	/* #nosec G204 */
 	cmd := exec.Command(
 		CLIBinary,
@@ -26,6 +51,7 @@ func NodeCreate(network string, numNodes int) string {
 		"--num-nodes="+strconv.Itoa(numNodes),
 		"--"+network,
 		"--node-type=docker",
+		"--alternative-key-pair-name="+e2eKeyPairName,
 	)
 	cmd.Env = os.Environ()
 	fmt.Println("About to run: " + cmd.String())
