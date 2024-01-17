@@ -42,6 +42,14 @@ func createKeyPair() {
 
 func NodeCreate(network string, numNodes int) string {
 	createKeyPair()
+	home, err := os.UserHomeDir()
+	gomega.Expect(err).Should(gomega.BeNil())
+	privKey, err := os.Open(filepath.Join(home, ".ssh", e2eKeyPairName))
+	fmt.Print(privKey)
+	gomega.Expect(err).Should(gomega.BeNil())
+	pubKey, err := os.Open(filepath.Join(home, ".ssh", e2eKeyPairName+".pub"))
+	fmt.Print(pubKey)
+	gomega.Expect(err).Should(gomega.BeNil())
 	/* #nosec G204 */
 	cmd := exec.Command(
 		CLIBinary,
