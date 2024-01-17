@@ -30,6 +30,8 @@ func NodeCreate(network string, numNodes int) string {
 	cmd.Env = os.Environ()
 	fmt.Println("About to run: " + cmd.String())
 	output, err := cmd.Output()
+	fmt.Println(string(output))
+	fmt.Println(err)
 	gomega.Expect(err).Should(gomega.BeNil())
 	return string(output)
 }
