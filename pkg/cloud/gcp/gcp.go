@@ -425,6 +425,7 @@ func (c *GcpCloud) ListRegions() []string {
 
 // ListZonesInRegion returns a list of zones in a specific region for a given project ID.
 func (c *GcpCloud) ListZonesInRegion(region string) ([]string, error) {
+	const gcpRegionAPI = "https://www.googleapis.com/compute/v1/projects/%s/regions/%s"
 	zoneListCall := c.gcpClient.Zones.List(c.projectID)
 	zoneList, err := zoneListCall.Do()
 	if err != nil {
@@ -432,7 +433,7 @@ func (c *GcpCloud) ListZonesInRegion(region string) ([]string, error) {
 	}
 	zones := []string{}
 	for _, zone := range zoneList.Items {
-		if zone.Region == fmt.Sprintf("https://www.googleapis.com/compute/v1/projects/%s/regions/%s", c.projectID, region) {
+		if zone.Region == fmt.Sprintf(gcpRegionAPI, c.projectID, region) {
 			zones = append(zones, zone.Name)
 		}
 	}
