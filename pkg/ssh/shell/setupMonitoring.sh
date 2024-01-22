@@ -8,6 +8,6 @@ chmod 755 monitoring-installer.sh
 #name:TASK [install Grafana]
 ./monitoring-installer.sh --2
 #name:TASK [set up node_exporter]
-shell: ./monitoring-installer.sh --3
+./monitoring-installer.sh --3
 #name:TASK [set up dashboardst]
-shell: ./monitoring-installer.sh --4
+./monitoring-installer.sh --4

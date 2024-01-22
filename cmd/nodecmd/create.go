@@ -222,7 +222,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 				return err
 			}
 		}
-		if !useStaticIP {
+		if !useStaticIP && separateMonitoringInstance {
 			monitoringPublicIPMap, err := monitoringEc2SvcMap[monitoringHostRegion].GetInstancePublicIPs(monitoringNodeConfig.InstanceIDs)
 			if err != nil {
 				return err
@@ -277,8 +277,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		gcpProjectName = projectName
 		gcpCredentialFilepath = credentialFilepath
 	}
-
-	if err = createClusterNodeConfig(network, cloudConfigMap, monitoringNodeConfig, monitoringHostRegion, clusterName, cloudService); err != nil {
+	if err = createClusterNodeConfig(network, cloudConfigMap, monitoringNodeConfig, monitoringHostRegion, clusterName, cloudService, separateMonitoringInstance); err != nil {
 		return err
 	}
 	if cloudService == constants.GCPCloudService {
@@ -295,21 +294,24 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err = ansible.CreateAnsibleHostInventory(inventoryPath, "", cloudService, publicIPMap, cloudConfigMap); err != nil {
 		return err
 	}
-	monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
-	if separateMonitoringInstance && existingMonitoringInstance == "" {
-		if err = ansible.CreateAnsibleHostInventory(monitoringInventoryPath, monitoringNodeConfig.CertFilePath, cloudService, map[string]string{monitoringNodeConfig.InstanceIDs[0]: monitoringNodeConfig.PublicIPs[0]}, nil); err != nil {
+	monitoringInventoryPath := ""
+	var monitoringHosts []*models.Host
+	if separateMonitoringInstance {
+		monitoringInventoryPath = filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
+		if existingMonitoringInstance == "" {
+			if err = ansible.CreateAnsibleHostInventory(monitoringInventoryPath, monitoringNodeConfig.CertFilePath, cloudService, map[string]string{monitoringNodeConfig.InstanceIDs[0]: monitoringNodeConfig.PublicIPs[0]}, nil); err != nil {
+				return err
+			}
+		}
+		monitoringHosts, err = ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
+		if err != nil {
+			return err
+		}
+		if err := updateAnsibleMonitoringPublicIP(clusterName, monitoringNodeConfig.InstanceIDs[0]); err != nil {
 			return err
 		}
 	}
-	monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
-	if err != nil {
-		return err
-	}
-
 	if err := updateAnsiblePublicIPs(clusterName); err != nil {
-		return err
-	}
-	if err := updateAnsibleMonitoringPublicIP(clusterName, monitoringNodeConfig.InstanceIDs[0]); err != nil {
 		return err
 	}
 	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
@@ -467,7 +469,11 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if wgResults.HasErrors() {
 		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
 	} else {
-		printResults(cloudConfigMap, publicIPMap, ansibleHostIDs, monitoringNodeConfig.PublicIPs[0])
+		monitoringPublicIP := ""
+		if separateMonitoringInstance {
+			monitoringPublicIP = monitoringNodeConfig.PublicIPs[0]
+		}
+		printResults(cloudConfigMap, publicIPMap, ansibleHostIDs, monitoringPublicIP)
 		ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	}
 	return nil
@@ -475,7 +481,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 
 // createClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
 // also creates cluster config in .avalanche-cli/nodes storing various key pair and security group info for all clusters
-func createClusterNodeConfig(network models.Network, cloudConfigMap models.CloudConfig, monitorCloudConfig models.RegionConfig, monitoringHostRegion, clusterName, cloudService string) error {
+func createClusterNodeConfig(network models.Network, cloudConfigMap models.CloudConfig, monitorCloudConfig models.RegionConfig, monitoringHostRegion, clusterName, cloudService string, separateMonitoringInstance bool) error {
 	for region, cloudConfig := range cloudConfigMap {
 		for i := range cloudConfig.InstanceIDs {
 			publicIP := ""
@@ -501,28 +507,30 @@ func createClusterNodeConfig(network models.Network, cloudConfigMap models.Cloud
 				return err
 			}
 		}
-		publicIP := ""
-		if useStaticIP {
-			publicIP = monitorCloudConfig.PublicIPs[0]
-		}
-		nodeConfig := models.NodeConfig{
-			NodeID:        monitorCloudConfig.InstanceIDs[0],
-			Region:        monitoringHostRegion,
-			AMI:           monitorCloudConfig.ImageID,
-			KeyPair:       monitorCloudConfig.KeyPair,
-			CertPath:      monitorCloudConfig.CertFilePath,
-			SecurityGroup: monitorCloudConfig.SecurityGroup,
-			ElasticIP:     publicIP,
-			CloudService:  cloudService,
-		}
-		if err := app.CreateNodeCloudConfigFile(monitorCloudConfig.InstanceIDs[0], &nodeConfig); err != nil {
-			return err
-		}
-		if err := addNodeToClustersConfig(network, monitorCloudConfig.InstanceIDs[0], clusterName, true); err != nil {
-			return err
-		}
-		if err := updateKeyPairClustersConfig(nodeConfig); err != nil {
-			return err
+		if separateMonitoringInstance {
+			publicIP := ""
+			if useStaticIP {
+				publicIP = monitorCloudConfig.PublicIPs[0]
+			}
+			nodeConfig := models.NodeConfig{
+				NodeID:        monitorCloudConfig.InstanceIDs[0],
+				Region:        monitoringHostRegion,
+				AMI:           monitorCloudConfig.ImageID,
+				KeyPair:       monitorCloudConfig.KeyPair,
+				CertPath:      monitorCloudConfig.CertFilePath,
+				SecurityGroup: monitorCloudConfig.SecurityGroup,
+				ElasticIP:     publicIP,
+				CloudService:  cloudService,
+			}
+			if err := app.CreateNodeCloudConfigFile(monitorCloudConfig.InstanceIDs[0], &nodeConfig); err != nil {
+				return err
+			}
+			if err := addNodeToClustersConfig(network, monitorCloudConfig.InstanceIDs[0], clusterName, true); err != nil {
+				return err
+			}
+			if err := updateKeyPairClustersConfig(nodeConfig); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -909,6 +917,12 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser(utils.GetSSHConnectionString(publicIP, cloudConfig.CertFilePath))
 			ux.Logger.PrintToUser("")
+			if setUpMonitoring && !separateMonitoringInstance {
+				ux.Logger.PrintToUser("To view monitoring dashboard for this node, visit the following link in your browser: ")
+				ux.Logger.PrintToUser(fmt.Sprintf("http://%s:3000/dashboards", publicIP))
+				ux.Logger.PrintToUser("Log in with username: admin, password: admin")
+				ux.Logger.PrintToUser("")
+			}
 			ux.Logger.PrintToUser("======================================")
 		}
 	}

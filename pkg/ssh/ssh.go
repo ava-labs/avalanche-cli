@@ -189,7 +189,7 @@ func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath s
 
 func RunSSHSetupMonitoring(host *models.Host) error {
 	return RunOverSSH(
-		"Setup  Monitoring",
+		"Setup Monitoring",
 		host,
 		constants.SSHScriptTimeout,
 		"shell/setupMonitoring.sh",
