@@ -145,6 +145,7 @@ const (
 	SSHTCPPort                                   = 22
 	AvalanchegoAPIPort                           = 9650
 	AvalanchegoP2PPort                           = 9651
+	AvalanchegoGrafanaPort                       = 3000
 	CloudServerStorageSize                       = 1000
 	OutboundPort                                 = 0
 	SetupCLIFromSourceBranch                     = "main"
@@ -175,29 +176,35 @@ const (
 	OldMetricsConfigFileName     = ".avalanche-cli/config"
 	DefaultConfigFileName        = ".avalanche-cli/config.json"
 
-	AWSCloudService              = "Amazon Web Services"
-	GCPCloudService              = "Google Cloud Platform"
-	AWSDefaultInstanceType       = "c5.2xlarge"
-	GCPDefaultInstanceType       = "e2-standard-8"
-	AnsibleSSHUser               = "ubuntu"
-	AWSNodeAnsiblePrefix         = "aws_node"
-	GCPNodeAnsiblePrefix         = "gcp_node"
-	CustomVMDir                  = "vms"
-	GCPStaticIPPrefix            = "static-ip"
-	AvaLabsOrg                   = "ava-labs"
-	AvalancheGoRepoName          = "avalanchego"
-	SubnetEVMRepoName            = "subnet-evm"
-	CliRepoName                  = "avalanche-cli"
-	SubnetEVMReleaseURL          = "https://github.com/ava-labs/subnet-evm/releases/download/%s/%s"
-	SubnetEVMArchive             = "subnet-evm_%s_linux_amd64.tar.gz"
-	CloudNodeConfigBasePath      = "/home/ubuntu/.avalanchego/"
-	CloudNodeSubnetEvmBinaryPath = "/home/ubuntu/.avalanchego/plugins/%s"
-	CloudNodeStakingPath         = "/home/ubuntu/.avalanchego/staking/"
-	CloudNodeConfigPath          = "/home/ubuntu/.avalanchego/configs/"
-	CloudNodeCLIConfigBasePath   = "/home/ubuntu/.avalanche-cli/"
-
-	AvalancheGoInstallDir = "avalanchego"
-	SubnetEVMInstallDir   = "subnet-evm"
+	AWSCloudService               = "Amazon Web Services"
+	GCPCloudService               = "Google Cloud Platform"
+	AWSDefaultInstanceType        = "c5.2xlarge"
+	GCPDefaultInstanceType        = "e2-standard-8"
+	AnsibleSSHUser                = "ubuntu"
+	AWSNodeAnsiblePrefix          = "aws_node"
+	GCPNodeAnsiblePrefix          = "gcp_node"
+	CustomVMDir                   = "vms"
+	GCPStaticIPPrefix             = "static-ip"
+	AvaLabsOrg                    = "ava-labs"
+	AvalancheGoRepoName           = "avalanchego"
+	SubnetEVMRepoName             = "subnet-evm"
+	CliRepoName                   = "avalanche-cli"
+	SubnetEVMReleaseURL           = "https://github.com/ava-labs/subnet-evm/releases/download/%s/%s"
+	SubnetEVMArchive              = "subnet-evm_%s_linux_amd64.tar.gz"
+	CloudNodeConfigBasePath       = "/home/ubuntu/.avalanchego/"
+	CloudNodeSubnetEvmBinaryPath  = "/home/ubuntu/.avalanchego/plugins/%s"
+	CloudNodeStakingPath          = "/home/ubuntu/.avalanchego/staking/"
+	CloudNodeConfigPath           = "/home/ubuntu/.avalanchego/configs/"
+	CloudNodeCLIConfigBasePath    = "/home/ubuntu/.avalanche-cli/"
+	AvalanchegoMonitoringPort     = 9090
+	AvalanchegoMachineMetricsPort = 9100
+	MonitoringScriptFile          = "monitoring-separate-installer.sh"
+	MonitoringDir                 = "monitoring"
+	DashboardsDir                 = "dashboards"
+	NodeConfigJSONFile            = "node.json"
+	IPAddressSuffix               = "/32"
+	AvalancheGoInstallDir         = "avalanchego"
+	SubnetEVMInstallDir           = "subnet-evm"
 
 	SubnetEVMBin = "subnet-evm"
 

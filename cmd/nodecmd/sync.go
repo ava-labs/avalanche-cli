@@ -37,6 +37,20 @@ You can check the subnet bootstrap status by calling avalanche node status <clus
 	return cmd
 }
 
+func updateAnsibleMonitoringPublicIP(clusterName, monitoringHostID string) error {
+	nodesWoEIP := getNodesWoEIPInAnsibleInventory([]string{monitoringHostID})
+	if len(nodesWoEIP) > 0 {
+		publicIP, err := getPublicIPForNodesWoEIP(nodesWoEIP)
+		if err != nil {
+			return err
+		}
+		if err = ansible.UpdateInventoryHostPublicIP(filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir), publicIP); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func syncSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	subnetName := args[1]
