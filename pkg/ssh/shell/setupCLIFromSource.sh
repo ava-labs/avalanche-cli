@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 export PATH=$PATH:~/go/bin
 cd ~
 rm -rf avalanche-cli

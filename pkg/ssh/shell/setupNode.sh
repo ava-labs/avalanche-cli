@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 #name:TASK [update apt data and install dependencies] 
 DEBIAN_FRONTEND=noninteractive sudo apt-get -y update
 DEBIAN_FRONTEND=noninteractive sudo apt-get -y install wget curl git
