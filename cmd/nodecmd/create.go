@@ -300,7 +300,11 @@ func createNodes(_ *cobra.Command, args []string) error {
 				}
 			}
 			if separateMonitoringInstance {
-				if err = gcpClient.AddFirewall(monitoringNodeConfig.PublicIPs[0], fmt.Sprintf("%s-network", usr.Username+constants.AvalancheCLISuffix), projectName); err != nil {
+				networkName := fmt.Sprintf("%s-network", usr.Username+constants.AvalancheCLISuffix)
+				firewallName := fmt.Sprintf("%s-%s-monitoring", networkName, strings.ReplaceAll(monitoringNodeConfig.PublicIPs[0], ".", ""))
+				ports := []string{strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
+					strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort)}
+				if err = gcpClient.AddFirewall(monitoringNodeConfig.PublicIPs[0], networkName, projectName, firewallName, ports, true); err != nil {
 					return err
 				}
 			}

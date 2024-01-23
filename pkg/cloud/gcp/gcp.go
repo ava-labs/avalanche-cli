@@ -232,10 +232,8 @@ func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, s
 	eg.SetLimit(parallelism)
 	for i := 0; i < numNodes; i++ {
 		currentIndex := i
-		var cloudDiskSize int64
-		if !forMonitoring {
-			cloudDiskSize = 1000
-		} else {
+		cloudDiskSize := 1000
+		if forMonitoring {
 			cloudDiskSize = 10
 		}
 		eg.Go(func() error {
@@ -261,7 +259,7 @@ func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, s
 				Disks: []*compute.AttachedDisk{
 					{
 						InitializeParams: &compute.AttachedDiskInitializeParams{
-							DiskSizeGb:  cloudDiskSize,
+							DiskSizeGb:  int64(cloudDiskSize),
 							SourceImage: fmt.Sprintf("projects/%s/global/images/%s", "ubuntu-os-cloud", ami),
 						},
 						Boot:       true, // Set this if it's the boot disk
@@ -424,26 +422,21 @@ func (c *GcpCloud) StopGCPNode(nodeConfig models.NodeConfig, clusterName string)
 }
 
 // AddFirewall adds firewall into an existing project in GCP
-func (c *GcpCloud) AddFirewall(monitoringHostPublicIP, networkName, projectName string) error {
-	firewallName := fmt.Sprintf("%s-%s-monitoring", networkName, strings.ReplaceAll(monitoringHostPublicIP, ".", ""))
-	firewallExists, err := c.CheckFirewallExists(firewallName, true)
+func (c *GcpCloud) AddFirewall(publicIP, networkName, projectName, firewallName string, ports []string, checkMonitoring bool) error {
+	firewallExists, err := c.CheckFirewallExists(firewallName, checkMonitoring)
 	if err != nil {
 		return err
 	}
 	if !firewallExists {
 		allowedFirewall := compute.FirewallAllowed{
 			IPProtocol: "tcp",
-			Ports: []string{
-				strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
-				strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
-			},
+			Ports:      ports,
 		}
-
 		firewall := compute.Firewall{
 			Name:         firewallName,
 			Allowed:      []*compute.FirewallAllowed{&allowedFirewall},
 			Network:      fmt.Sprintf("global/networks/%s", networkName),
-			SourceRanges: []string{monitoringHostPublicIP + constants.IPAddressSuffix},
+			SourceRanges: []string{publicIP + constants.IPAddressSuffix},
 		}
 		instancesStopCall := c.gcpClient.Firewalls.Insert(projectName, &firewall)
 		if _, err = instancesStopCall.Do(); err != nil {
