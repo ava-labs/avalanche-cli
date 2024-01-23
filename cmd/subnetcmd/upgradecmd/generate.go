@@ -300,7 +300,7 @@ func promptFeeManagerParams(precompiles *[]params.PrecompileUpgrade, date time.T
 	var feeConfig *commontype.FeeConfig
 
 	if yes {
-		chainConfig, _, err := vm.GetFeeConfig(params.ChainConfig{}, app)
+		chainConfig, _, err := vm.GetFeeConfig(params.ChainConfig{}, app, false)
 		if err != nil {
 			return err
 		}
