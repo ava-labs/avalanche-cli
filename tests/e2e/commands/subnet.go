@@ -341,6 +341,7 @@ func SimulateMainnetDeploy(
 			SubnetCmd,
 			"deploy",
 			"--mainnet",
+			"--ledger", // not automatically set for simulations on local network
 			"--threshold",
 			"1",
 			"--same-control-key",
@@ -379,6 +380,7 @@ func SimulateMultisigMainnetDeploy(
 			SubnetCmd,
 			"deploy",
 			"--mainnet",
+			"--ledger", // not automatically set for simulations on local network
 			"--control-keys",
 			strings.Join(subnetControlAddrs, ","),
 			"--subnet-auth-keys",
@@ -392,6 +394,53 @@ func SimulateMultisigMainnetDeploy(
 		},
 		true,
 		errorIsExpected,
+	)
+}
+
+// simulates multisig mainnet add validator execution path on a local network
+/* #nosec G204 */
+func SimulateMultisigMainnetAddValidator(
+	subnetName string,
+	nodeID string,
+	start string,
+	period string,
+	weight string,
+	authAddrs []string,
+	txPath string,
+) string {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// enable simulation of public network execution paths on a local network
+	err = os.Setenv(constants.SimulatePublicNetwork, "true")
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	return utils.ExecCommand(
+		CLIBinary,
+		[]string{
+			SubnetCmd,
+			"addValidator",
+			"--mainnet",
+			"--ledger", // not automatically set for simulations on local network
+			"--nodeID",
+			nodeID,
+			"--start-time",
+			start,
+			"--staking-period",
+			period,
+			"--weight",
+			weight,
+			"--subnet-auth-keys",
+			strings.Join(authAddrs, ","),
+			"--output-tx-path",
+			txPath,
+			subnetName,
+			"--" + constants.SkipUpdateFlag,
+		},
+		true,
+		false,
 	)
 }
 
@@ -664,6 +713,7 @@ func SimulateMainnetAddValidator(
 			SubnetCmd,
 			"addValidator",
 			"--mainnet",
+			"--ledger", // not automatically set for simulations on local network
 			"--nodeID",
 			nodeID,
 			"--start-time",
