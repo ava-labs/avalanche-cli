@@ -313,12 +313,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if err := updateAnsibleMonitoringPublicIP(clusterName, monitoringNodeConfig.InstanceIDs[0]); err != nil {
-			return err
-		}
-	}
-	if err := updateAnsiblePublicIPs(clusterName); err != nil {
-		return err
 	}
 	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
 	if err != nil {

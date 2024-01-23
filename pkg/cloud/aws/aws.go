@@ -36,12 +36,25 @@ type AwsCloud struct {
 
 // NewAwsCloud creates an AWS cloud
 func NewAwsCloud(awsProfile, region string) (*AwsCloud, error) {
-	ctx := context.Background()
-	// Load session from shared config
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion(region),
-		config.WithSharedConfigProfile(awsProfile),
+	var (
+		cfg aws.Config
+		err error
 	)
+	ctx := context.Background()
+	if os.Getenv("AWS_ACCESS_KEY_ID") != "" {
+		// Load session from env variables
+		cfg, err = config.LoadDefaultConfig(
+			ctx,
+			config.WithRegion(region),
+		)
+	} else {
+		// Load session from profile in config file
+		cfg, err = config.LoadDefaultConfig(
+			ctx,
+			config.WithRegion(region),
+			config.WithSharedConfigProfile(awsProfile),
+		)
+	}
 	if err != nil {
 		return nil, err
 	}

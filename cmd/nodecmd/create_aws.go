@@ -11,7 +11,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"golang.org/x/exp/maps"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -50,6 +49,10 @@ func printNoCredentialsOutput(awsProfile string) {
 	ux.Logger.PrintToUser("More info can be found at https://docs.aws.amazon.com/sdkref/latest/guide/file-format.html#file-format-creds")
 	ux.Logger.PrintToUser("Also you can set environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
 	ux.Logger.PrintToUser("Please use https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html#envvars-set for more details")
+}
+
+func isExpiredCredentialError(err error) bool {
+	return strings.Contains(err.Error(), "RequestExpired: Request has expired")
 }
 
 func printExpiredCredentialsOutput(awsProfile string) {
@@ -121,7 +124,7 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 		}
 		amiMap[region], err = ec2SvcMap[region].GetUbuntuAMIID()
 		if err != nil {
-			if strings.Contains(err.Error(), "RequestExpired: Request has expired") {
+			if isExpiredCredentialError(err) {
 				printExpiredCredentialsOutput(awsProfile)
 			}
 			return nil, nil, nil, err
@@ -275,7 +278,11 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			if err != nil {
 				return nil, nil, nil, nil, err
 			}
-			elasticIPs[region] = maps.Values(instanceEIPMap)
+			regionElasticIPs := []string{}
+			for _, instanceID := range instanceIDs[region] {
+				regionElasticIPs = append(regionElasticIPs, instanceEIPMap[instanceID])
+			}
+			elasticIPs[region] = regionElasticIPs
 		}
 	}
 	ux.Logger.PrintToUser("New EC2 instance(s) successfully created in AWS!")

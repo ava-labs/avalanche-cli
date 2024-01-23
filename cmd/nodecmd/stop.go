@@ -126,7 +126,7 @@ func stopNodes(_ *cobra.Command, args []string) error {
 				lastRegion = nodeConfig.Region
 			}
 			if err = ec2Svc.StopAWSNode(nodeConfig, clusterName); err != nil {
-				if strings.Contains(err.Error(), "RequestExpired: Request has expired") {
+				if isExpiredCredentialError(err) {
 					ux.Logger.PrintToUser("")
 					printExpiredCredentialsOutput(awsProfile)
 					return nil

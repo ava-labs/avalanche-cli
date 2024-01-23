@@ -142,7 +142,7 @@ func GetHostMapfromAnsibleInventory(inventoryDirPath string) (map[string]*models
 // UpdateInventoryHostPublicIP first maps existing ansible inventory host file content
 // then it deletes the inventory file and regenerates a new ansible inventory file where it will fetch public IP
 // of nodes without elastic IP and update its value in the new ansible inventory file
-func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]string) error {
+func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWithDynamicIP map[string]string) error {
 	inventory, err := GetHostMapfromAnsibleInventory(inventoryDirPath)
 	if err != nil {
 		return err
@@ -160,13 +160,13 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]
 		if err != nil {
 			return err
 		}
-		_, ok := nodesWoEIP[nodeID]
+		_, ok := nodesWithDynamicIP[nodeID]
 		if !ok {
 			if _, err = inventoryFile.WriteString(ansibleHostContent.GetAnsibleInventoryRecord() + "\n"); err != nil {
 				return err
 			}
 		} else {
-			ansibleHostContent.IP = nodesWoEIP[nodeID]
+			ansibleHostContent.IP = nodesWithDynamicIP[nodeID]
 			if _, err = inventoryFile.WriteString(ansibleHostContent.GetAnsibleInventoryRecord() + "\n"); err != nil {
 				return err
 			}
