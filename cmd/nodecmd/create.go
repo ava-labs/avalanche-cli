@@ -62,6 +62,7 @@ var (
 	cmdLineGCPProjectName           string
 	cmdLineAlternativeKeyPairName   string
 	setUpMonitoring                 bool
+	skipMonitoring                  bool
 )
 
 func newCreateCmd() *cobra.Command {
@@ -102,7 +103,9 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
 	cmd.Flags().BoolVar(&createOnFuji, "fuji", false, "create node/s in Fuji Network")
 	cmd.Flags().BoolVar(&createDevnet, "devnet", false, "create node/s into a new Devnet")
+	cmd.Flags().BoolVar(&sameMonitoringInstance, "same-monitoring-instance", false, "host monitoring for a cloud servers on the same instance")
 	cmd.Flags().BoolVar(&separateMonitoringInstance, "separate-monitoring-instance", false, "host monitoring for all cloud servers on a separate instance")
+	cmd.Flags().BoolVar(&skipMonitoring, "skip-monitoring", false, "don't set up monitoring in created nodes")
 	return cmd
 }
 
@@ -189,9 +192,11 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if existingMonitoringInstance == "" {
 			monitoringHostRegion = regions[0]
 		}
-		setUpMonitoring, separateMonitoringInstance, err = promptSetUpMonitoring()
-		if err != nil {
-			return err
+		if !skipMonitoring {
+			setUpMonitoring, separateMonitoringInstance, err = promptSetUpMonitoring()
+			if err != nil {
+				return err
+			}
 		}
 		cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodesMap, regions, ami, usr, false)
 		if err != nil {
@@ -256,9 +261,11 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if existingMonitoringInstance == "" {
 			monitoringHostRegion = zones[0]
 		}
-		setUpMonitoring, separateMonitoringInstance, err = promptSetUpMonitoring()
-		if err != nil {
-			return err
+		if !skipMonitoring {
+			setUpMonitoring, separateMonitoringInstance, err = promptSetUpMonitoring()
+			if err != nil {
+				return err
+			}
 		}
 		cloudConfigMap, err = createGCPInstance(usr, gcpClient, nodeType, numNodes, zones, imageID, clusterName, false)
 		if err != nil {
@@ -519,6 +526,9 @@ func createNodes(_ *cobra.Command, args []string) error {
 func promptSetUpMonitoring() (bool, bool, error) {
 	var err error
 	if !separateMonitoringInstance && existingMonitoringInstance == "" {
+		if sameMonitoringInstance {
+			return true, false, nil
+		}
 		setUpMonitoring, err = app.Prompt.CaptureYesNo("Do you want to set up monitoring for your instances? (This enables you to monitor validator and machine metrics)")
 		if err != nil {
 			return false, false, err
@@ -531,7 +541,7 @@ func promptSetUpMonitoring() (bool, bool, error) {
 		}
 		return setUpMonitoring, separateMonitoringInstance, nil
 	}
-	return false, false, nil
+	return setUpMonitoring, separateMonitoringInstance, nil
 }
 
 // createClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
