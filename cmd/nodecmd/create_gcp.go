@@ -190,10 +190,13 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 			return nil, nil, "", "", err
 		}
 		if !firewallExists {
-			_, err := gcpClient.SetFirewallRule(userIPAddress, firewallName, networkName, []string{
-				strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort),
-				strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
-			})
+			_, err := gcpClient.SetFirewallRule(
+				userIPAddress,
+				firewallName,
+				networkName,
+				[]string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort),
+					strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
+				})
 			if err != nil {
 				return nil, nil, "", "", err
 			}
@@ -236,7 +239,14 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	}
 	ux.Logger.PrintToUser("Waiting for GCE instance(s) to be provisioned...")
 	for i, zone := range zones {
-		_, err := gcpClient.SetupInstances(zone, networkName, string(sshPublicKey), ami, publicIP[zone], nodeName[zone], numNodes[i], instanceType, forMonitoring)
+		_, err := gcpClient.SetupInstances(zone,
+			networkName,
+			string(sshPublicKey),
+			ami, nodeName[zone],
+			instanceType,
+			publicIP[zone],
+			numNodes[i],
+			forMonitoring)
 		if err != nil {
 			return nil, nil, "", "", err
 		}

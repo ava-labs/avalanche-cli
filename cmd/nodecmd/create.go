@@ -313,7 +313,13 @@ func createNodes(_ *cobra.Command, args []string) error {
 					strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
 					strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
 				}
-				if err = gcpClient.AddFirewall(monitoringNodeConfig.PublicIPs[0], networkName, projectName, firewallName, ports, true); err != nil {
+				if err = gcpClient.AddFirewall(
+					monitoringNodeConfig.PublicIPs[0],
+					networkName,
+					projectName,
+					firewallName,
+					ports,
+					true); err != nil {
 					return err
 				}
 			}

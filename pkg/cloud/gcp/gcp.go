@@ -144,13 +144,19 @@ func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network
 	}
 
 	// Create firewall rules
-	if _, err := c.SetFirewallRule("0.0.0.0/0", fmt.Sprintf("%s-%s", networkName, "default"), networkName, []string{strconv.Itoa(constants.AvalanchegoP2PPort)}); err != nil {
+	if _, err := c.SetFirewallRule("0.0.0.0/0",
+		fmt.Sprintf("%s-%s", networkName, "default"),
+		networkName,
+		[]string{strconv.Itoa(constants.AvalanchegoP2PPort)}); err != nil {
 		return nil, err
 	}
-	if _, err := c.SetFirewallRule(ipAddress, fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")), networkName, []string{
-		strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort),
-		strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
-	}); err != nil {
+	if _, err := c.SetFirewallRule(ipAddress,
+		fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")),
+		networkName,
+		[]string{
+			strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort),
+			strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
+		}); err != nil {
 		return nil, err
 	}
 
@@ -159,7 +165,7 @@ func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network
 
 // SetFirewallRule creates a new firewall rule in GCP
 func (c *GcpCloud) SetFirewallRule(ipAddress, firewallName, networkName string, ports []string) (*compute.Firewall, error) {
-	if strings.Contains(ipAddress, "/") && ipAddress != "0.0.0.0/0" {
+	if !strings.Contains(ipAddress, "/") {
 		ipAddress = fmt.Sprintf("%s/32", ipAddress) // add netmask /32 if missing
 	}
 	firewall := &compute.Firewall{
@@ -218,7 +224,17 @@ func (c *GcpCloud) SetPublicIP(zone, nodeName string, numNodes int) ([]string, e
 }
 
 // SetupInstances creates GCP instances
-func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, staticIP []string, instancePrefix string, numNodes int, instanceType string, forMonitoring bool) ([]*compute.Instance, error) {
+func (c *GcpCloud) SetupInstances(
+	zone,
+	networkName,
+	sshPublicKey,
+	ami,
+	instancePrefix,
+	instanceType string,
+	staticIP []string,
+	numNodes int,
+	forMonitoring bool,
+) ([]*compute.Instance, error) {
 	parallelism := 8
 	if len(staticIP) > 0 && len(staticIP) != numNodes {
 		return nil, fmt.Errorf("len(staticIPName) != numNodes")
@@ -232,9 +248,9 @@ func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, s
 	eg.SetLimit(parallelism)
 	for i := 0; i < numNodes; i++ {
 		currentIndex := i
-		cloudDiskSize := 1000
+		cloudDiskSize := constants.CloudServerStorageSize
 		if forMonitoring {
-			cloudDiskSize = 10
+			cloudDiskSize = constants.MonitoringCloudServerStorageSize
 		}
 		eg.Go(func() error {
 			instanceName := fmt.Sprintf("%s-%d", instancePrefix, currentIndex)
