@@ -147,6 +147,7 @@ const (
 	AvalanchegoP2PPort                           = 9651
 	AvalanchegoGrafanaPort                       = 3000
 	CloudServerStorageSize                       = 1000
+	MonitoringCloudServerStorageSize             = 10
 	OutboundPort                                 = 0
 	SetupCLIFromSourceBranch                     = "main"
 	// Set this one to true while testing changes that alter CLI execution on cloud nodes
