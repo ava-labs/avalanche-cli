@@ -33,7 +33,7 @@ func TestGetAllocationCustomUnits(t *testing.T) {
 	mockPrompt.On("CapturePositiveBigInt", mock.Anything).Return(airdropInputAmount, nil)
 	mockPrompt.On("CaptureNoYes", mock.Anything).Return(false, nil)
 
-	alloc, direction, err := getEVMAllocation(app)
+	alloc, direction, err := getEVMAllocation(app, false)
 	require.NoError(err)
 	require.Equal(direction, statemachine.Forward)
 
@@ -63,7 +63,7 @@ func TestMultipleAirdropsSameAddress(t *testing.T) {
 	mockPrompt.On("CapturePositiveBigInt", mock.Anything).Return(airdropInputAmount2, nil).Once().NotBefore(captureInt)
 	mockPrompt.On("CaptureNoYes", mock.Anything).Return(false, nil).Once().NotBefore(captureNoYes)
 
-	alloc, direction, err := getEVMAllocation(app)
+	alloc, direction, err := getEVMAllocation(app, false)
 	require.NoError(err)
 	require.Equal(direction, statemachine.Forward)
 
