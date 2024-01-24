@@ -251,6 +251,7 @@ func promptNativeMintParams(precompiles *[]params.PrecompileUpgrade, date time.T
 		subnetevmutils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
+		nil,
 		initialMint,
 	)
 	upgrade := params.PrecompileUpgrade{
@@ -275,6 +276,7 @@ func promptRewardManagerParams(precompiles *[]params.PrecompileUpgrade, date tim
 		subnetevmutils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
+		nil,
 		initialConfig,
 	)
 
@@ -311,6 +313,7 @@ func promptFeeManagerParams(precompiles *[]params.PrecompileUpgrade, date time.T
 		subnetevmutils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
+		nil,
 		feeConfig,
 	)
 	upgrade := params.PrecompileUpgrade{
@@ -330,6 +333,7 @@ func promptContractAllowListParams(precompiles *[]params.PrecompileUpgrade, date
 		subnetevmutils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
+		nil,
 	)
 	upgrade := params.PrecompileUpgrade{
 		Config: config,
@@ -348,6 +352,7 @@ func promptTxAllowListParams(precompiles *[]params.PrecompileUpgrade, date time.
 		subnetevmutils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
+		nil,
 	)
 	upgrade := params.PrecompileUpgrade{
 		Config: config,
