@@ -255,7 +255,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	for i, zone := range zones {
 		_, err := gcpClient.SetupInstances(zone,
 			networkName,
-			string(sshPublicKey),
+			sshPublicKey,
 			ami, nodeName[zone],
 			instanceType,
 			publicIP[zone],
