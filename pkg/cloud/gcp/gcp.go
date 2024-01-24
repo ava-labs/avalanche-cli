@@ -215,7 +215,7 @@ func (c *GcpCloud) SetPublicIP(zone, nodeName string, numNodes int) ([]string, e
 }
 
 // SetupInstances creates GCP instances
-func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, staticIP []string, instancePrefix string, numNodes int, instanceType string) ([]*compute.Instance, error) {
+func (c *GcpCloud) SetupInstances(cliDefaultName, zone, networkName, sshPublicKey, ami string, staticIP []string, instancePrefix string, numNodes int, instanceType string) ([]*compute.Instance, error) {
 	parallelism := 8
 	if len(staticIP) > 0 && len(staticIP) != numNodes {
 		return nil, fmt.Errorf("len(staticIPName) != numNodes")
@@ -263,7 +263,7 @@ func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, s
 					AutomaticRestart: &automaticRestart,
 				},
 				Labels: map[string]string{
-					"name":       "avalanche",
+					"name":       cliDefaultName,
 					"managed-by": "avalanche-cli",
 				},
 			}

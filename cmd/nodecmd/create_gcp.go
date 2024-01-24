@@ -210,7 +210,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	}
 	ux.Logger.PrintToUser("Waiting for GCE instance(s) to be provisioned...")
 	for i, zone := range zones {
-		_, err := gcpClient.SetupInstances(zone, networkName, string(sshPublicKey), ami, publicIP[zone], nodeName[zone], numNodes[i], instanceType)
+		_, err := gcpClient.SetupInstances(cliDefaultName, zone, networkName, string(sshPublicKey), ami, publicIP[zone], nodeName[zone], numNodes[i], instanceType)
 		if err != nil {
 			return nil, nil, "", "", err
 		}
