@@ -52,7 +52,7 @@ func whitelistIP(_ *cobra.Command, args []string) error {
 	} else {
 		userIPAddress, err = utils.GetUserIPAddress()
 		if err != nil {
-			return fmt.Errorf("Failed to get user IP address")
+			return fmt.Errorf("failed to get user IP address")
 		}
 		ux.Logger.PrintToUser("No IP provided. Detected your IP address as %s.", userIPAddress)
 	}
@@ -113,7 +113,7 @@ func whitelistIP(_ *cobra.Command, args []string) error {
 			ipInTCP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.SSHTCPPort)
 			ipInHTTP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
 			if ipInTCP {
-				ux.Logger.PrintToUser("IP %s is already whitelisted in %s cloud region %s for port %s. Skipping...", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region, constants.SSHTCPPort)
+				ux.Logger.PrintToUser("IP %s is already whitelisted in %s cloud region %s for ssh access. Skipping...", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region)
 			} else {
 				if err := ec2Svc.AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", userIPAddress, constants.SSHTCPPort); err != nil {
 					ux.Logger.PrintToUser("Failed to whitelist IP %s in %s cloud region %s for ssh access", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region)
@@ -121,7 +121,7 @@ func whitelistIP(_ *cobra.Command, args []string) error {
 				}
 			}
 			if ipInHTTP {
-				ux.Logger.PrintToUser("IP %s is already whitelisted in %s cloud region %s for port %s. Skipping...", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region, constants.AvalanchegoAPIPort)
+				ux.Logger.PrintToUser("IP %s is already whitelisted in %s cloud region %s for http access. Skipping...", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region)
 			} else {
 				if err := ec2Svc.AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", userIPAddress, constants.AvalanchegoAPIPort); err != nil {
 					ux.Logger.PrintToUser("Failed to whitelist IP %s in %s cloud region %s for http access", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region)
