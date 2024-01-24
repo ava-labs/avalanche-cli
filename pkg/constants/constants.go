@@ -164,7 +164,7 @@ const (
 	AnsibleInventoryFlag               = "-i"
 	AnsibleExtraArgsIdentitiesOnlyFlag = "--ssh-extra-args='-o IdentitiesOnly=yes'"
 	AnsibleSSHShellParams              = "-o IdentitiesOnly=yes -o StrictHostKeyChecking=no"
-	AnsibleSSHInventoryParams          = "-o StrictHostKeyChecking=no"
+	AnsibleSSHUseAgentParams           = "-o StrictHostKeyChecking=no"
 	AnsibleExtraVarsFlag               = "--extra-vars"
 
 	ConfigAPMCredentialsFileKey  = "credentials-file"

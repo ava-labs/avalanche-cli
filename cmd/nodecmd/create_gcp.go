@@ -160,7 +160,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	if !certInSSHDir {
+	if !useSSHAgent && !certInSSHDir {
 		ux.Logger.PrintToUser("Creating new SSH key pair %s in GCP", sshKeyPath)
 		ux.Logger.PrintToUser("For more information regarding SSH key pair in GCP, please head to https://cloud.google.com/compute/docs/connect/create-ssh-keys")
 		_, err = exec.Command("ssh-keygen", "-t", "rsa", "-f", sshKeyPath, "-C", "ubuntu", "-b", "2048").Output()
@@ -237,15 +237,25 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 			}
 		}
 	}
-	sshPublicKey, err := os.ReadFile(fmt.Sprintf("%s.pub", sshKeyPath))
-	if err != nil {
-		return nil, nil, "", "", err
+	sshPublicKey := ""
+	if useSSHAgent {
+		sshPublicKey, err = utils.ReadSSHAgentIdentityPublicKey(sshIdentity)
+		if err != nil {
+			return nil, nil, "", "", err
+		}
+	} else {
+		sshPublicKeyBytes, err := os.ReadFile(fmt.Sprintf("%s.pub", sshKeyPath))
+		if err != nil {
+			return nil, nil, "", "", err
+		}
+		sshPublicKey = string(sshPublicKeyBytes)
 	}
+
 	ux.Logger.PrintToUser("Waiting for GCE instance(s) to be provisioned...")
 	for i, zone := range zones {
 		_, err := gcpClient.SetupInstances(zone,
 			networkName,
-			string(sshPublicKey),
+			sshPublicKey,
 			ami, nodeName[zone],
 			instanceType,
 			publicIP[zone],
@@ -263,9 +273,12 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 		}
 	}
 	ux.Logger.PrintToUser("New Compute instance(s) successfully created in GCP!")
-	sshCertPath, err := app.GetSSHCertFilePath(fmt.Sprintf("%s-keypair", cliDefaultName))
-	if err != nil {
-		return nil, nil, "", "", err
+	sshCertPath := ""
+	if !useSSHAgent {
+		sshCertPath, err = app.GetSSHCertFilePath(fmt.Sprintf("%s-keypair", cliDefaultName))
+		if err != nil {
+			return nil, nil, "", "", err
+		}
 	}
 	return instanceIDs, publicIP, sshCertPath, keyPairName, nil
 }

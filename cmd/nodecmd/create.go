@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -61,6 +62,8 @@ var (
 	cmdLineGCPCredentialsPath       string
 	cmdLineGCPProjectName           string
 	cmdLineAlternativeKeyPairName   string
+	useSSHAgent                     bool
+	sshIdentity                     string
 	setUpMonitoring                 bool
 	skipMonitoring                  bool
 )
@@ -103,6 +106,8 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
 	cmd.Flags().BoolVar(&createOnFuji, "fuji", false, "create node/s in Fuji Network")
 	cmd.Flags().BoolVar(&createDevnet, "devnet", false, "create node/s into a new Devnet")
+	cmd.Flags().BoolVar(&useSSHAgent, "use-ssh-agent", false, "use ssh agent(ex: Yubikey) for ssh auth")
+	cmd.Flags().StringVar(&sshIdentity, "ssh-agent-identity", "", "use given ssh identity(only for ssh agent). If not set, default will be used.")
 	cmd.Flags().BoolVar(&sameMonitoringInstance, "same-monitoring-instance", false, "host monitoring for a cloud servers on the same instance")
 	cmd.Flags().BoolVar(&separateMonitoringInstance, "separate-monitoring-instance", false, "host monitoring for all cloud servers on a separate instance")
 	cmd.Flags().BoolVar(&skipMonitoring, "skip-monitoring", false, "don't set up monitoring in created nodes")
@@ -128,6 +133,12 @@ func preCreateChecks() error {
 				return fmt.Errorf("number of nodes per region must be greater than 0")
 			}
 		}
+	}
+	if sshIdentity != "" && !useSSHAgent {
+		return fmt.Errorf("could not use ssh identity without using ssh agent")
+	}
+	if useSSHAgent && !utils.IsSSHAgentAvailable() {
+		return fmt.Errorf("ssh agent is not available")
 	}
 	return nil
 }
@@ -174,6 +185,13 @@ func createNodes(_ *cobra.Command, args []string) error {
 	publicIPMap := map[string]string{}
 	gcpProjectName := ""
 	gcpCredentialFilepath := ""
+	// set ssh-Key
+	if useSSHAgent && sshIdentity == "" {
+		sshIdentity, err = setSSHIdentity()
+		if err != nil {
+			return err
+		}
+	}
 	monitoringHostRegion := ""
 	monitoringNodeConfig := models.RegionConfig{}
 	existingMonitoringInstance, err = getExistingMonitoringInstance(clusterName)
@@ -936,7 +954,7 @@ func setCloudInstanceType(cloudService string) (string, error) {
 		nodeTypeOption3 = "n2-standard-8"
 	}
 	if nodeType == "" {
-		defaultStr := "(default)"
+		defaultStr := "[default] (recommended)"
 		nodeTypeStr, err := app.Prompt.CaptureList(
 			"Instance type to use",
 			[]string{fmt.Sprintf("%s %s", defaultNodeType, defaultStr), nodeTypeOption2, nodeTypeOption3, customNodeType},
@@ -1102,4 +1120,27 @@ func getRegionsNodeNum(cloudName string) (
 			return nodes, nil
 		}
 	}
+}
+
+func setSSHIdentity() (string, error) {
+	const yubikeyMark = " [YubiKey] (recommended)"
+	const yubikeyPattern = `cardno:(\d+(_\d+)*)`
+	sshIdentities, err := utils.ListSSHAgentIdentities()
+	if err != nil {
+		return "", err
+	}
+	yubikeyRegexp := regexp.MustCompile(yubikeyPattern)
+	sshIdentities = utils.Map(sshIdentities, func(id string) string {
+		if len(yubikeyRegexp.FindStringSubmatch(id)) > 0 {
+			return fmt.Sprintf("%s%s", id, yubikeyMark)
+		}
+		return id
+	})
+	sshIdentity, err := app.Prompt.CaptureList(
+		"Which SSH identity do you want to use?", sshIdentities,
+	)
+	if err != nil {
+		return "", err
+	}
+	return strings.ReplaceAll(sshIdentity, yubikeyMark, ""), nil
 }
