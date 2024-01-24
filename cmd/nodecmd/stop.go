@@ -102,11 +102,19 @@ func stopNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	nodesToStop := clusterNodes
+	monitoringNode, err := getClusterMonitoringNode(clusterName)
+	if err != nil {
+		return err
+	}
+	if monitoringNode != "" {
+		nodesToStop = append(nodesToStop, monitoringNode)
+	}
 	nodeErrors := map[string]error{}
 	lastRegion := ""
 	var ec2Svc *awsAPI.AwsCloud
 	var gcpCloud *gcpAPI.GcpCloud
-	for _, node := range clusterNodes {
+	for _, node := range nodesToStop {
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
 		if err != nil {
 			nodeErrors[node] = err
@@ -179,6 +187,21 @@ func stopNodes(_ *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("All nodes in cluster %s are successfully stopped!", clusterName)
 	}
 	return removeClustersConfigFiles(clusterName)
+}
+
+func getClusterMonitoringNode(clusterName string) (string, error) {
+	clustersConfig := models.ClustersConfig{}
+	if app.ClustersConfigExists() {
+		var err error
+		clustersConfig, err = app.LoadClustersConfig()
+		if err != nil {
+			return "", err
+		}
+	}
+	if _, ok := clustersConfig.Clusters[clusterName]; !ok {
+		return "", fmt.Errorf("cluster %q does not exist", clusterName)
+	}
+	return clustersConfig.Clusters[clusterName].MonitoringInstance, nil
 }
 
 func checkCluster(clusterName string) error {
