@@ -39,6 +39,8 @@ var (
 	useEwoq                      bool
 	useLedger                    bool
 	useStaticIP                  bool
+	sameMonitoringInstance       bool
+	separateMonitoringInstance   bool
 	awsProfile                   string
 	ledgerAddresses              []string
 	weight                       uint64

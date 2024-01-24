@@ -7,6 +7,14 @@ import (
 	"path/filepath"
 )
 
+func DirectoryExists(dirName string) bool {
+	info, err := os.Stat(dirName)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return info.IsDir()
+}
+
 // FileExists checks if a file exists.
 func FileExists(filename string) bool {
 	info, err := os.Stat(filename)

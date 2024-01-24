@@ -21,7 +21,15 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesisPath string, subnetEVMVersion string) ([]byte, *models.Sidecar, error) {
+func CreateEvmSubnetConfig(
+	app *application.Avalanche,
+	subnetName string,
+	genesisPath string,
+	subnetEVMVersion string,
+	subnetEVMChainID uint64,
+	subnetEVMTokenName string,
+	useSubnetEVMDefaults bool,
+) ([]byte, *models.Sidecar, error) {
 	var (
 		genesisBytes []byte
 		sc           *models.Sidecar
@@ -29,7 +37,7 @@ func CreateEvmSubnetConfig(app *application.Avalanche, subnetName string, genesi
 	)
 
 	if genesisPath == "" {
-		genesisBytes, sc, err = createEvmGenesis(app, subnetName, subnetEVMVersion)
+		genesisBytes, sc, err = createEvmGenesis(app, subnetName, subnetEVMVersion, subnetEVMChainID, subnetEVMTokenName, useSubnetEVMDefaults)
 		if err != nil {
 			return nil, &models.Sidecar{}, err
 		}
@@ -67,6 +75,9 @@ func createEvmGenesis(
 	app *application.Avalanche,
 	subnetName string,
 	subnetEVMVersion string,
+	subnetEVMChainID uint64,
+	subnetEVMTokenName string,
+	useSubnetEVMDefaults bool,
 ) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating subnet %s", subnetName)
 
@@ -98,13 +109,13 @@ func createEvmGenesis(
 	for subnetEvmState.Running() {
 		switch subnetEvmState.CurrentState() {
 		case descriptorsState:
-			chainID, tokenName, vmVersion, direction, err = getDescriptors(app, subnetEVMVersion)
+			chainID, tokenName, vmVersion, direction, err = getDescriptors(app, subnetEVMVersion, subnetEVMChainID, subnetEVMTokenName)
 		case feeState:
-			*conf, direction, err = GetFeeConfig(*conf, app)
+			*conf, direction, err = GetFeeConfig(*conf, app, useSubnetEVMDefaults)
 		case airdropState:
-			allocation, direction, err = getEVMAllocation(app)
+			allocation, direction, err = getEVMAllocation(app, useSubnetEVMDefaults)
 		case precompilesState:
-			*conf, direction, err = getPrecompiles(*conf, app)
+			*conf, direction, err = getPrecompiles(*conf, app, useSubnetEVMDefaults)
 		default:
 			err = errors.New("invalid creation stage")
 		}
@@ -183,6 +194,6 @@ func ensureAdminsHaveBalance(admins []common.Address, alloc core.GenesisAlloc) e
 }
 
 // In own function to facilitate testing
-func getEVMAllocation(app *application.Avalanche) (core.GenesisAlloc, statemachine.StateDirection, error) {
-	return getAllocation(app, defaultEvmAirdropAmount, oneAvax, "Amount to airdrop (in AVAX units)")
+func getEVMAllocation(app *application.Avalanche, useDefaults bool) (core.GenesisAlloc, statemachine.StateDirection, error) {
+	return getAllocation(app, defaultEvmAirdropAmount, oneAvax, "Amount to airdrop (in AVAX units)", useDefaults)
 }

@@ -7,9 +7,12 @@ import (
 	"embed"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"text/template"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -17,16 +20,19 @@ import (
 )
 
 type scriptInputs struct {
-	AvalancheGoVersion   string
-	SubnetExportFileName string
-	SubnetName           string
-	GoVersion            string
-	CliBranch            string
-	IsDevNet             bool
-	NetworkFlag          string
-	SubnetEVMBinaryPath  string
-	SubnetEVMReleaseURL  string
-	SubnetEVMArchive     string
+	AvalancheGoVersion      string
+	SubnetExportFileName    string
+	SubnetName              string
+	GoVersion               string
+	CliBranch               string
+	IsDevNet                bool
+	NetworkFlag             string
+	SubnetEVMBinaryPath     string
+	SubnetEVMReleaseURL     string
+	SubnetEVMArchive        string
+	MonitoringDashboardPath string
+	AvalancheGoPorts        string
+	MachinePorts            string
 }
 
 //go:embed shell/*.sh
@@ -103,6 +109,17 @@ func RunSSHSetupNode(host *models.Host, configPath, avalancheGoVersion string, i
 	)
 }
 
+// RunSSHRestartNode runs script to restart avalanchego
+func RunSSHRestartNode(host *models.Host) error {
+	return RunOverSSH(
+		"Restart Avalanchego",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/restartNode.sh",
+		scriptInputs{},
+	)
+}
+
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
 func RunSSHUpgradeAvalanchego(host *models.Host, avalancheGoVersion string) error {
 	return RunOverSSH(
@@ -144,6 +161,104 @@ func RunSSHUpgradeSubnetEVM(host *models.Host, subnetEVMBinaryPath string) error
 		constants.SSHScriptTimeout,
 		"shell/upgradeSubnetEVM.sh",
 		scriptInputs{SubnetEVMBinaryPath: subnetEVMBinaryPath},
+	)
+}
+
+func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath string) error {
+	if !utils.DirectoryExists(monitoringDashboardPath) {
+		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
+	}
+	if err := host.MkdirAll("/home/ubuntu/dashboards", constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	dashboards, err := os.ReadDir(monitoringDashboardPath)
+	if err != nil {
+		return err
+	}
+	for _, dashboard := range dashboards {
+		if err := host.Upload(
+			filepath.Join(monitoringDashboardPath, dashboard.Name()),
+			filepath.Join("/home/ubuntu/dashboards", dashboard.Name()),
+			constants.SSHFileOpsTimeout,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func RunSSHSetupMonitoring(host *models.Host) error {
+	return RunOverSSH(
+		"Setup Monitoring",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/setupMonitoring.sh",
+		scriptInputs{},
+	)
+}
+
+func RunSSHSetupMachineMetrics(host *models.Host) error {
+	return RunOverSSH(
+		"Setup Machine Metrics",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/setupMachineMetrics.sh",
+		scriptInputs{},
+	)
+}
+
+func RunSSHSetupSeparateMonitoring(host *models.Host, monitoringDashboardPath, avalancheGoPorts, machinePorts string) error {
+	if err := host.Upload(
+		monitoringDashboardPath,
+		fmt.Sprintf("/home/ubuntu/%s", filepath.Base(monitoringDashboardPath)),
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
+	}
+	return RunOverSSH(
+		"Setup Separate Monitoring",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/setupSeparateMonitoring.sh",
+		scriptInputs{
+			AvalancheGoPorts: avalancheGoPorts,
+			MachinePorts:     machinePorts,
+		},
+	)
+}
+
+func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePorts string) error {
+	return RunOverSSH(
+		"Update Prometheus Config",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/updatePrometheusConfig.sh",
+		scriptInputs{
+			AvalancheGoPorts: avalancheGoPorts,
+			MachinePorts:     machinePorts,
+		},
+	)
+}
+
+func RunSSHDownloadNodeMonitoringConfig(host *models.Host, nodeInstanceDirPath string) error {
+	return host.Download(
+		filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName),
+		filepath.Join(nodeInstanceDirPath, constants.NodeFileName),
+		constants.SSHFileOpsTimeout,
+	)
+}
+
+func RunSSHUploadNodeMonitoringConfig(host *models.Host, nodeInstanceDirPath string) error {
+	if err := host.MkdirAll(
+		constants.CloudNodeConfigPath,
+		constants.SSHDirOpsTimeout,
+	); err != nil {
+		return err
+	}
+	return host.Upload(
+		filepath.Join(nodeInstanceDirPath, constants.NodeFileName),
+		filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName),
+		constants.SSHFileOpsTimeout,
 	)
 }
 
@@ -229,8 +344,7 @@ func RunSSHExportSubnet(host *models.Host, exportPath, cloudServerSubnetPath str
 	)
 }
 
-// RunSSHExportSubnet exports deployed Subnet from local machine to cloud server
-// targets a specific host ansibleHostID in ansible inventory file
+// RunSSHTrackSubnet enables tracking of specified subnet
 func RunSSHTrackSubnet(host *models.Host, subnetName, importPath, networkFlag string) error {
 	return RunOverSSH(
 		"Track Subnet",
