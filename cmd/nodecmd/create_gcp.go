@@ -195,9 +195,12 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 				firewallName,
 				networkName,
 				[]string{
-					strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort),
-					strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
-				})
+					strconv.Itoa(constants.SSHTCPPort),
+					strconv.Itoa(constants.AvalanchegoAPIPort),
+					strconv.Itoa(constants.AvalanchegoMonitoringPort),
+					strconv.Itoa(constants.AvalanchegoGrafanaPort),
+				},
+			)
 			if err != nil {
 				return nil, nil, "", "", err
 			}
