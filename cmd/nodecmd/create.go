@@ -153,10 +153,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if cloudService != constants.GCPCloudService && cmdLineGCPProjectName != "" {
 		return fmt.Errorf("set to use GCP project but cloud option is not GCP")
 	}
-	usr, err := user.Current()
-	if err != nil {
-		return err
-	}
 	cloudConfigMap := models.CloudConfig{}
 	publicIPMap := map[string]string{}
 	gcpProjectName := ""
@@ -170,7 +166,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodesMap, regions, ami, usr)
+		cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodesMap, regions, ami)
 		if err != nil {
 			return err
 		}
@@ -745,4 +741,13 @@ func getRegionsNodeNum(cloudName string) (
 			return nodes, nil
 		}
 	}
+}
+
+// defaultAvalancheCLIPrefix returns the default Avalanche CLI prefix.
+func defaultAvalancheCLIPrefix(region string) string {
+	usr, err := user.Current()
+	if err != nil {
+		return constants.AnsibleSSHUser + region + constants.AvalancheCLISuffix
+	}
+	return usr.Username + "-" + region + constants.AvalancheCLISuffix
 }

@@ -8,7 +8,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"regexp"
 )
 
 // GetUserIPAddress retrieves the IP address of the user.
@@ -44,9 +43,6 @@ func GetUserIPAddress() (string, error) {
 	return "", errors.New("no IP address found")
 }
 
-func IsValideIP(ipStr string) bool {
-	// Define a regular expression pattern for IPv4 address
-	ipPattern := regexp.MustCompile(`^(\d{1,3}\.){3}\d{1,3}$`)
-	// Check if the string matches the IPv4 pattern
-	return ipPattern.MatchString(ipStr)
+func IsValidIP(ipStr string) bool {
+	return net.ParseIP(ipStr) != nil
 }

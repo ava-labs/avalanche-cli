@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"os/user"
 	"strconv"
 	"strings"
 	"time"
@@ -244,7 +243,7 @@ func createGCPInstance(
 		numNodes,
 		zones,
 		imageID,
-		defaultAvalancheCLIPrefix(),
+		defaultAvalancheCLIPrefix(""),
 	)
 	if err != nil {
 		ux.Logger.PrintToUser("Failed to create GCP cloud server")
@@ -280,7 +279,7 @@ func createGCPInstance(
 			InstanceIDs:   instanceIDs[zone],
 			PublicIPs:     elasticIPs[zone],
 			KeyPair:       keyPairName,
-			SecurityGroup: fmt.Sprintf("%s-network", defaultAvalancheCLIPrefix()),
+			SecurityGroup: fmt.Sprintf("%s-network", defaultAvalancheCLIPrefix("")),
 			CertFilePath:  certFilePath,
 			ImageID:       imageID,
 		}
@@ -304,12 +303,4 @@ func updateClustersConfigGCPKeyFilepath(projectName, serviceAccountKeyFilepath s
 		clustersConfig.GCPConfig.ServiceAccFilePath = serviceAccountKeyFilepath
 	}
 	return app.WriteClustersConfigFile(&clustersConfig)
-}
-
-func defaultAvalancheCLIPrefix() string {
-	usr, err := user.Current()
-	if err != nil {
-		return constants.AnsibleSSHUser + constants.AvalancheCLISuffix
-	}
-	return usr.Username + constants.AvalancheCLISuffix
 }

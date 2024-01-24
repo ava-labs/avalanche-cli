@@ -111,15 +111,6 @@ func (c *GcpCloud) waitForOperation(operation *compute.Operation) error {
 	}
 }
 
-// SetExistingNetwork uses existing network in GCP
-func (c *GcpCloud) GetExistingNetwork(networkName string) (*compute.Network, error) {
-	network, err := c.gcpClient.Networks.Get(c.projectID, networkName).Do()
-	if err != nil {
-		return nil, fmt.Errorf("error getting network %s: %w", networkName, err)
-	}
-	return network, nil
-}
-
 // SetNetwork creates a new network in GCP
 func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network, error) {
 	insertOp, err := c.gcpClient.Networks.Insert(c.projectID, &compute.Network{

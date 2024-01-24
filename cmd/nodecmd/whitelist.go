@@ -13,12 +13,17 @@ import (
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/pingcap/errors"
 	"github.com/spf13/cobra"
 )
+
+type regionSecurityGroup struct {
+	cloud         string
+	region        string
+	securityGroup string
+}
 
 func newWhitelistCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -37,39 +42,22 @@ all nodes in the cluster via ssh or http.`,
 
 func whitelistIP(_ *cobra.Command, args []string) error {
 	var err error
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return err
-		}
-	}
-	if len(clustersConfig.Clusters) == 0 {
-		ux.Logger.PrintToUser("There are no clusters defined.")
-		return nil
-	}
 	clusterName := args[0]
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-
 	userIPAddress := ""
 	if len(args) > 1 {
 		userIPAddress = args[1]
 	} else {
 		userIPAddress, err = utils.GetUserIPAddress()
 		if err != nil {
-			ux.Logger.PrintToUser("Failed to get user IP address")
+			return fmt.Errorf("Failed to get user IP address")
 		}
 		ux.Logger.PrintToUser("No IP provided. Detected your IP address as %s.", userIPAddress)
 	}
-	if !utils.IsValideIP(userIPAddress) {
+	if !utils.IsValidIP(userIPAddress) {
 		return fmt.Errorf("invalid IP address: %s", userIPAddress)
-	}
-	type regionSecurityGroup struct {
-		cloud         string
-		region        string
-		securityGroup string
 	}
 	cloudSecurityGroupList := []regionSecurityGroup{}
 	clusterNodes, err := getClusterNodes(clusterName)
@@ -80,6 +68,7 @@ func whitelistIP(_ *cobra.Command, args []string) error {
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to parse node %s due to %s", node, err.Error())
+			return err
 		}
 		if slices.Contains(cloudSecurityGroupList, regionSecurityGroup{
 			cloud:         nodeConfig.CloudService,
@@ -96,7 +85,7 @@ func whitelistIP(_ *cobra.Command, args []string) error {
 	}
 	if len(cloudSecurityGroupList) == 0 {
 		ux.Logger.PrintToUser("No nodes found in cluster %s", clusterName)
-		return nil
+		return fmt.Errorf("no nodes found in cluster %s", clusterName)
 	}
 
 	// GCP doesn't have regions  so we need to reduce it to only list of security groups
@@ -123,9 +112,8 @@ func whitelistIP(_ *cobra.Command, args []string) error {
 			}
 			ipInTCP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.SSHTCPPort)
 			ipInHTTP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
-			var alreadyWhitelisted bool
 			if ipInTCP {
-				alreadyWhitelisted = true
+				ux.Logger.PrintToUser("IP %s is already whitelisted in %s cloud region %s for port %s. Skipping...", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region, constants.SSHTCPPort)
 			} else {
 				if err := ec2Svc.AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", userIPAddress, constants.SSHTCPPort); err != nil {
 					ux.Logger.PrintToUser("Failed to whitelist IP %s in %s cloud region %s for ssh access", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region)
@@ -133,20 +121,17 @@ func whitelistIP(_ *cobra.Command, args []string) error {
 				}
 			}
 			if ipInHTTP {
-				alreadyWhitelisted = true
+				ux.Logger.PrintToUser("IP %s is already whitelisted in %s cloud region %s for port %s. Skipping...", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region, constants.AvalanchegoAPIPort)
 			} else {
 				if err := ec2Svc.AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", userIPAddress, constants.AvalanchegoAPIPort); err != nil {
 					ux.Logger.PrintToUser("Failed to whitelist IP %s in %s cloud region %s for http access", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region)
 					return err
 				}
 			}
-			if alreadyWhitelisted {
-				ux.Logger.PrintToUser("IP %s is already whitelisted in %s cloud region %s. Skipping...", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region)
-			}
 		}
 	}
 	if len(gcpSGList) > 0 {
-		networkName := fmt.Sprintf("%s-network", defaultAvalancheCLIPrefix())
+		networkName := fmt.Sprintf("%s-network", defaultAvalancheCLIPrefix(""))
 		gcpClient, projectName, _, err := getGCPCloudCredentials()
 		if err != nil {
 			return err
@@ -156,14 +141,14 @@ func whitelistIP(_ *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.PrintToUser("Whitelisting IP %s in %s cloud", userIPAddress, constants.GCPCloudService)
-		_, err = gcpCloud.SetFirewallRule(userIPAddress, fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(userIPAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)})
-		if err != nil && errors.IsAlreadyExists(err) {
-			ux.Logger.PrintToUser("IP %s is already whitelisted in %s cloud. Skipping...", userIPAddress, constants.GCPCloudService)
-			return nil
-		}
-		if err != nil {
-			ux.Logger.PrintToUser("Failed to whitelist IP %s in %s cloud", userIPAddress, constants.GCPCloudService)
-			return err
+		if _, err = gcpCloud.SetFirewallRule(userIPAddress, fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(userIPAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)}); err != nil {
+			if errors.IsAlreadyExists(err) {
+				ux.Logger.PrintToUser("IP %s is already whitelisted in %s cloud. Skipping...", userIPAddress, constants.GCPCloudService)
+				return nil
+			} else {
+				ux.Logger.PrintToUser("Failed to whitelist IP %s in %s cloud", userIPAddress, constants.GCPCloudService)
+				return err
+			}
 		}
 	}
 	return nil

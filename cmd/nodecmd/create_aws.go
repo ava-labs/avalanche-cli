@@ -5,7 +5,6 @@ package nodecmd
 import (
 	"fmt"
 	"os/exec"
-	"os/user"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -269,14 +268,13 @@ func createAWSInstances(
 	nodeType string,
 	numNodes map[string]int,
 	regions []string,
-	ami map[string]string,
-	usr *user.User) (
+	ami map[string]string) (
 	models.CloudConfig, error,
 ) {
 	regionConf := map[string]models.RegionConfig{}
 
 	for _, region := range regions {
-		prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
+		prefix := defaultAvalancheCLIPrefix(region)
 		regionConf[region] = models.RegionConfig{
 			Prefix:            prefix,
 			ImageID:           ami[region],
