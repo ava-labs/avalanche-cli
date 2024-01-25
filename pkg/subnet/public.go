@@ -109,6 +109,59 @@ func (d *PublicDeployer) AddValidator(
 	return false, tx, remainingSubnetAuthKeys, nil
 }
 
+// change subnet owner for [subnetID]
+//   - creates a transfer subnet ownership tx
+//   - sets the change output owner to be a wallet address (if not, it may go to any other subnet auth address)
+//   - signs the tx with the wallet as the owner of fee outputs and a possible subnet auth key
+//   - if partially signed, returns the tx so that it can later on be signed by the rest of the subnet auth keys
+//   - if fully signed, issues it
+func (d *PublicDeployer) TransferSubnetOwnership(
+	controlKeys []string,
+	subnetAuthKeysStrs []string,
+	subnetID ids.ID,
+	newControlKeys []string,
+    newThreshold uint32,
+) (bool, *txs.Tx, []string, error) {
+	wallet, err := d.loadWallet(subnetID)
+	if err != nil {
+		return false, nil, nil, err
+	}
+	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
+	if err != nil {
+		return false, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
+	}
+	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "TransferSubnetOwnership transaction")
+
+	tx, err := d.createTransferSubnetOwnershipTx(
+        subnetAuthKeys,
+        subnetID,
+        newControlKeys,
+        newThreshold,
+        wallet,
+    )
+	if err != nil {
+		return false, nil, nil, err
+	}
+
+	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
+	if err != nil {
+		return false, nil, nil, err
+	}
+	isFullySigned := len(remainingSubnetAuthKeys) == 0
+
+	if isFullySigned {
+		id, err := d.Commit(tx)
+		if err != nil {
+			return false, nil, nil, err
+		}
+		ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", id)
+		return true, nil, nil, nil
+	}
+
+	ux.Logger.PrintToUser("Partial tx created")
+	return false, tx, remainingSubnetAuthKeys, nil
+}
+
 func (d *PublicDeployer) CreateAssetTx(
 	subnetID ids.ID,
 	tokenName string,
@@ -520,6 +573,40 @@ func (d *PublicDeployer) createBlockchainTx(
 		vmID,
 		fxIDs,
 		chainName,
+		options...,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error building tx: %w", err)
+	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	// sign with current wallet
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return nil, fmt.Errorf("error signing tx: %w", err)
+	}
+	return &tx, nil
+}
+
+func (d *PublicDeployer) createTransferSubnetOwnershipTx(
+	subnetAuthKeys []ids.ShortID,
+	subnetID ids.ID,
+    controlKeys []string,
+    threshold uint32,
+	wallet primary.Wallet,
+) (*txs.Tx, error) {
+	options := d.getMultisigTxOptions(subnetAuthKeys)
+	addrs, err := address.ParseToIDs(controlKeys)
+	if err != nil {
+		return nil, fmt.Errorf("failure parsing control keys: %w", err)
+	}
+	owner := &secp256k1fx.OutputOwners{
+		Addrs:     addrs,
+		Threshold: threshold,
+		Locktime:  0,
+	}
+	// create tx
+	unsignedTx, err := wallet.P().Builder().NewTransferSubnetOwnershipTx(
+		subnetID,
+        owner,
 		options...,
 	)
 	if err != nil {

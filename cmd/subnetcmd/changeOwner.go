@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 )
@@ -172,27 +173,30 @@ func changeOwner(_ *cobra.Command, args []string) error {
 	fmt.Println(controlKeys)
 	fmt.Println(threshold)
 
-	/*
-		deployer := subnet.NewPublicDeployer(app, kc, network)
-		isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidator(controlKeys, subnetAuthKeys, subnetID, nodeID, selectedWeight, start, selectedDuration)
-		if err != nil {
-			return err
-		}
-		if !isFullySigned {
-			if err := SaveNotFullySignedTx(
-				"Add Validator",
-				tx,
-				subnetName,
-				subnetAuthKeys,
-				remainingSubnetAuthKeys,
-				outputTxPath,
-				false,
-			); err != nil {
-				return err
-			}
-		}
+    deployer := subnet.NewPublicDeployer(app, kc, network)
+    isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.TransferSubnetOwnership(
+        currentControlKeys,
+        subnetAuthKeys,
+        subnetID,
+        controlKeys,
+        threshold,
+    )
+    if err != nil {
+        return err
+    }
+    if !isFullySigned {
+        if err := SaveNotFullySignedTx(
+            "Transfer Subnet Ownership",
+            tx,
+            subnetName,
+            subnetAuthKeys,
+            remainingSubnetAuthKeys,
+            outputTxPath,
+            false,
+        ); err != nil {
+            return err
+        }
+    }
 
-		return err
-	*/
-	return nil
+    return err
 }
