@@ -217,12 +217,12 @@ func configureMinterList(app *application.Avalanche) (nativeminter.Config, bool,
 	return config, cancelled, nil
 }
 
-func configureWarp() (warp.Config, error) {
+func configureWarp() warp.Config {
 	config := warp.Config{}
 	config.Upgrade = precompileconfig.Upgrade{
 		BlockTimestamp: utils.NewUint64(0),
 	}
-	return config, nil
+	return config
 }
 
 func configureFeeConfigAllowList(app *application.Avalanche) (feemanager.Config, bool, error) {
@@ -264,10 +264,7 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche, useDe
 	error,
 ) {
 	if useDefaults {
-		warpConfig, err := configureWarp()
-		if err != nil {
-			return config, statemachine.Stop, err
-		}
+		warpConfig := configureWarp()
 		config.GenesisPrecompiles[warp.ConfigKey] = &warpConfig
 		return config, statemachine.Forward, nil
 	}
@@ -370,10 +367,7 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche, useDe
 				}
 			}
 		case Warp:
-			warpConfig, err := configureWarp()
-			if err != nil {
-				return config, statemachine.Stop, err
-			}
+			warpConfig := configureWarp()
 			config.GenesisPrecompiles[warp.ConfigKey] = &warpConfig
 			remainingPrecompiles, err = removePrecompile(remainingPrecompiles, Warp)
 			if err != nil {
