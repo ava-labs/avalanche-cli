@@ -37,7 +37,13 @@ func getAllocation(
 	defaultAirdropAmount string,
 	multiplier *big.Int,
 	captureAmountLabel string,
+	useDefaults bool,
 ) (core.GenesisAlloc, statemachine.StateDirection, error) {
+	if useDefaults {
+		alloc, err := getDefaultAllocation(defaultAirdropAmount)
+		return alloc, statemachine.Forward, err
+	}
+
 	allocation := core.GenesisAlloc{}
 
 	airdropType, err := app.Prompt.CaptureList(
