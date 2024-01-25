@@ -900,7 +900,7 @@ func promptOwners(
 		}
 		if cancelled {
 			ux.Logger.PrintToUser("User cancelled. No subnet deployed")
-			return nil, 0, fmt.Errorf("User cancelled operation")
+			return nil, 0, fmt.Errorf("user cancelled operation")
 		}
 	}
 	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
