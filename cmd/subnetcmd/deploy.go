@@ -496,7 +496,14 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	isFullySigned, blockchainID, tx, remainingSubnetAuthKeys, err := deployer.DeployBlockchain(controlKeys, subnetAuthKeys, subnetID, chain, chainGenesis)
+	isFullySigned, blockchainID, tx, remainingSubnetAuthKeys, err := deployer.DeployBlockchain(
+		controlKeys,
+		subnetAuthKeys,
+		subnetID,
+		transferSubnetOwnershipTxID,
+		chain,
+		chainGenesis,
+	)
 	if err != nil {
 		ux.Logger.PrintToUser(logging.Red.Wrap(
 			fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),

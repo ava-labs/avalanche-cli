@@ -389,7 +389,14 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser("Your subnet auth keys for issue transform subnet tx: %s", subnetAuthKeys)
 
-	isFullySigned, txID, tx, remainingSubnetAuthKeys, err := deployer.TransformSubnetTx(controlKeys, subnetAuthKeys, elasticSubnetConfig, subnetID, assetID)
+	isFullySigned, txID, tx, remainingSubnetAuthKeys, err := deployer.TransformSubnetTx(
+		controlKeys,
+		subnetAuthKeys,
+		elasticSubnetConfig,
+		subnetID,
+		transferSubnetOwnershipTxID,
+		assetID,
+	)
 	if err != nil {
 		return err
 	}
