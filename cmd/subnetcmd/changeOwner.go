@@ -129,43 +129,15 @@ func changeOwner(_ *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser("Your subnet auth keys for add validator tx creation: %s", subnetAuthKeys)
 
-    // accept only one control keys specification
-    if len(controlKeys) > 0 && sameControlKey {
-        return errMutuallyExlusiveControlKeys
-    }
-    // use first fee-paying key as control key
-    if sameControlKey {
-        kcKeys, err := kc.PChainFormattedStrAddresses()
-        if err != nil {
-            return err
-        }
-        if len(kcKeys) == 0 {
-            return fmt.Errorf("no keys found on keychain")
-        }
-        controlKeys = kcKeys[:1]
-    }
-    // prompt for control keys
-    if controlKeys == nil {
-        var cancelled bool
-        controlKeys, cancelled, err = getControlKeys(kc)
-        if err != nil {
-            return err
-        }
-        if cancelled {
-            ux.Logger.PrintToUser("User cancelled. No operation made")
-            return nil
-        }
-    }
-    ux.Logger.PrintToUser("Your new Subnet's control keys: %s", controlKeys)
-    // validate and prompt for threshold
-    if int(threshold) > len(controlKeys) {
-        return fmt.Errorf("given threshold is greater than number of control keys")
-    }
-    if threshold == 0 {
-        threshold, err = getThreshold(len(controlKeys))
-        if err != nil {
-            return err
-        }
+    controlKeys, threshold, err = promptOwners(
+        kc,
+        controlKeys,
+        sameControlKey,
+        threshold,
+        nil,
+    )
+    if err != nil {
+        return err
     }
 
 	fmt.Println(currentControlKeys)
