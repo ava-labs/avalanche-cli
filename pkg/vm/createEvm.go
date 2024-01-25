@@ -84,6 +84,9 @@ func createEvmGenesis(
 	genesis := core.Genesis{}
 	conf := params.SubnetEVMDefaultChainConfig
 
+	// set non nil durango start block height 0
+	conf.MandatoryNetworkUpgrades = params.LocalNetworkUpgrades
+
 	const (
 		descriptorsState = "descriptors"
 		feeState         = "fee"
