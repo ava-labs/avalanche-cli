@@ -66,7 +66,7 @@ var (
 	sshIdentity                     string
 	setUpMonitoring                 bool
 	skipMonitoring                  bool
-	devnetNumRPCNodes               int
+	devnetNumAPINodes               int
 )
 
 func newCreateCmd() *cobra.Command {
@@ -112,7 +112,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().BoolVar(&sameMonitoringInstance, "same-monitoring-instance", false, "host monitoring for a cloud servers on the same instance")
 	cmd.Flags().BoolVar(&separateMonitoringInstance, "separate-monitoring-instance", false, "host monitoring for all cloud servers on a separate instance")
 	cmd.Flags().BoolVar(&skipMonitoring, "skip-monitoring", false, "don't set up monitoring in created nodes")
-	cmd.Flags().IntVar(&devnetNumRPCNodes, "devnet-api-nodes", 1, "number of API nodes(nodes without stake) to create in the new Devnet")
+	cmd.Flags().IntVar(&devnetNumAPINodes, "devnet-api-nodes", 0, "number of API nodes(nodes without stake) to create in the new Devnet")
 	return cmd
 }
 
@@ -142,7 +142,7 @@ func preCreateChecks() error {
 	if useSSHAgent && !utils.IsSSHAgentAvailable() {
 		return fmt.Errorf("ssh agent is not available")
 	}
-	if devnetNumRPCNodes > 0 && !createDevnet {
+	if devnetNumAPINodes > 0 && !createDevnet {
 		return fmt.Errorf("api nodes can only be created in devnet")
 	}
 	return nil
@@ -189,7 +189,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	// for devnet add nonstake api nodes for each region with stake
 	if createDevnet {
 		numNodes = utils.Map(numNodes, func(n int) int {
-			return n + devnetNumRPCNodes
+			return n + devnetNumAPINodes
 		})
 	}
 	cloudConfigMap := models.CloudConfig{}
@@ -275,7 +275,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 				}
 			}
 			// split publicIPMap to between stake and non-stake(api) nodes
-			_, apiNodeIDs := utils.SplitSliceAt(currentRegionConfig.InstanceIDs, len(currentRegionConfig.InstanceIDs)-devnetNumRPCNodes)
+			_, apiNodeIDs := utils.SplitSliceAt(currentRegionConfig.InstanceIDs, len(currentRegionConfig.InstanceIDs)-devnetNumAPINodes)
 			currentRegionConfig.APIInstanceIDs = apiNodeIDs
 			for _, node := range currentRegionConfig.APIInstanceIDs {
 				apiNodeIPMap[node] = publicIPMap[node]
@@ -346,7 +346,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 				}
 			}
 			// split publicIPMap to between stake and non-stake(rpc) nodes
-			_, apiNodes := utils.SplitSliceAt(currentRegionConfig.InstanceIDs, len(currentRegionConfig.InstanceIDs)-devnetNumRPCNodes)
+			_, apiNodes := utils.SplitSliceAt(currentRegionConfig.InstanceIDs, len(currentRegionConfig.InstanceIDs)-devnetNumAPINodes)
 			currentRegionConfig.APIInstanceIDs = apiNodes
 			for _, node := range currentRegionConfig.APIInstanceIDs {
 				apiNodeIPMap[node] = publicIPMap[node]
@@ -1029,9 +1029,9 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 			publicIP = publicIPMap[instanceID]
 			ux.Logger.PrintToUser("======================================")
 			if slices.Contains(cloudConfig.APIInstanceIDs, instanceID) {
-				ux.Logger.PrintToUser("API node %s details: ", ansibleHostIDs[i])
+				ux.Logger.PrintToUser("node(api) %s details: ", ansibleHostIDs[i])
 			} else {
-				ux.Logger.PrintToUser("Stake node %s details: ", ansibleHostIDs[i])
+				ux.Logger.PrintToUser("node %s details: ", ansibleHostIDs[i])
 			}
 			ux.Logger.PrintToUser("Cloud Instance ID: %s", instanceID)
 			ux.Logger.PrintToUser("Public IP: %s", publicIP)

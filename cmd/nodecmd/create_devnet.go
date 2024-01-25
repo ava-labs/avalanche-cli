@@ -189,17 +189,17 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 	}
 	walletAddrStr := k.X()[0]
 
-	// exclude RPC nodes from genesis file generation as they will have no stake
-	hostsRPC := utils.Filter(hosts, func(h *models.Host) bool {
+	// exclude API nodes from genesis file generation as they will have no stake
+	hostsAPI := utils.Filter(hosts, func(h *models.Host) bool {
 		return slices.Contains(maps.Keys(apiNodeIPMap), h.GetCloudID())
 	})
-	hostsWithoutRPC := utils.Filter(hosts, func(h *models.Host) bool {
+	hostsWithoutAPI := utils.Filter(hosts, func(h *models.Host) bool {
 		return !slices.Contains(maps.Keys(apiNodeIPMap), h.GetCloudID())
 	})
-	hostsWithoutRPCIDs := utils.Map(hostsWithoutRPC, func(h *models.Host) string { return h.NodeID })
+	hostsWithoutAPIIDs := utils.Map(hostsWithoutAPI, func(h *models.Host) string { return h.NodeID })
 
 	// create genesis file at each node dir
-	genesisBytes, err := generateCustomGenesis(network.ID, walletAddrStr, stakingAddrStr, hostsWithoutRPC)
+	genesisBytes, err := generateCustomGenesis(network.ID, walletAddrStr, stakingAddrStr, hostsWithoutAPI)
 	if err != nil {
 		return err
 	}
@@ -207,7 +207,8 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 	// create avalanchego conf node.json at each node dir
 	bootstrapIPs := []string{}
 	bootstrapIDs := []string{}
-	for _, host := range append(hostsWithoutRPC, hostsRPC...) {
+	// append makes sure that hostsWithoutAPI i.e. validators are proccessed first and API nodes will have full list of validators to bootstrap
+	for _, host := range append(hostsWithoutAPI, hostsAPI...) {
 		confMap := map[string]interface{}{}
 		confMap[config.HTTPHostKey] = ""
 		confMap[config.PublicIPKey] = host.IP
@@ -225,7 +226,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 		if err := os.WriteFile(filepath.Join(app.GetNodeInstanceDirPath(host.GetCloudID()), "node.json"), confBytes, constants.WriteReadReadPerms); err != nil {
 			return err
 		}
-		if slices.Contains(hostsWithoutRPCIDs, host.NodeID) {
+		if slices.Contains(hostsWithoutAPIIDs, host.NodeID) {
 			nodeID, err := getNodeID(app.GetNodeInstanceDirPath(host.GetCloudID()))
 			if err != nil {
 				return err
