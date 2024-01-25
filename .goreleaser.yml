@@ -36,12 +36,14 @@ builds:
 dockers:
   - image_templates:
     - 'avaplatform/avalanche-cli:{{ .Tag }}-amd64'
+    dockerfile: "{{ .Env.DOCKERFILE }}"
     use: buildx
     build_flag_templates:
     - "--pull"
     - "--platform=linux/amd64"
   - image_templates:
     - 'avaplatform/avalanche-cli:{{ .Tag }}-arm64'
+    dockerfile: "{{ .Env.DOCKERFILE }}"
     use: buildx
     build_flag_templates:
     - "--pull"

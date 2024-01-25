@@ -52,6 +52,7 @@ var (
 	subnetIDStr              string
 	mainnetChainID           uint32
 	skipCreatePrompt         bool
+	avagoBinaryPath          string
 
 	errMutuallyExlusiveNetworks = errors.New("--local, --fuji/--testnet, --mainnet are mutually exclusive")
 
@@ -98,7 +99,8 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "deploy into given subnet id")
-	cmd.Flags().Uint32Var(&mainnetChainID, "mainnet-chain-id", 0, "use given ChainID for mainnet deployment")
+	cmd.Flags().Uint32Var(&mainnetChainID, "mainnet-chain-id", 0, "use different ChainID for mainnet deployment")
+	cmd.Flags().StringVar(&avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
 	return cmd
 }
 
@@ -358,7 +360,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		var vmBin string
 		switch sidecar.VM {
 		case models.SubnetEvm:
-			vmBin, err = binutils.SetupSubnetEVM(app, sidecar.VMVersion)
+			_, vmBin, err = binutils.SetupSubnetEVM(app, sidecar.VMVersion)
 			if err != nil {
 				return fmt.Errorf("failed to install subnet-evm: %w", err)
 			}
@@ -370,12 +372,15 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 		// check if selected version matches what is currently running
 		nc := localnetworkinterface.NewStatusChecker()
-		userProvidedAvagoVersion, err = CheckForInvalidDeployAndGetAvagoVersion(nc, sidecar.RPCVersion)
+		avagoVersion, err := CheckForInvalidDeployAndGetAvagoVersion(nc, sidecar.RPCVersion)
 		if err != nil {
 			return err
 		}
+		if avagoBinaryPath == "" {
+			userProvidedAvagoVersion = avagoVersion
+		}
 
-		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, vmBin)
+		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin)
 		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
 		if err != nil {
 			if deployer.BackendStartedHere() {

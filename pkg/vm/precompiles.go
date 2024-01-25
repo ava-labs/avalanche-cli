@@ -246,11 +246,15 @@ func removePrecompile(arr []string, s string) ([]string, error) {
 	return arr, errors.New("string not in array")
 }
 
-func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (
+func getPrecompiles(config params.ChainConfig, app *application.Avalanche, useDefaults bool) (
 	params.ChainConfig,
 	statemachine.StateDirection,
 	error,
 ) {
+	if useDefaults {
+		return config, statemachine.Forward, nil
+	}
+
 	const cancel = "Cancel"
 
 	first := true
