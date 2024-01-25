@@ -319,7 +319,10 @@ func createNodes(_ *cobra.Command, args []string) error {
 				}
 			}
 			if separateMonitoringInstance {
-				networkName := defaultAvalancheCLIPrefix("")
+				networkName, err := defaultAvalancheCLIPrefix("")
+				if err != nil {
+					return err
+				}
 				firewallName := fmt.Sprintf("%s-%s-monitoring", networkName, strings.ReplaceAll(monitoringNodeConfig.PublicIPs[0], ".", ""))
 				ports := []string{
 					strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
@@ -1108,10 +1111,10 @@ func setSSHIdentity() (string, error) {
 }
 
 // defaultAvalancheCLIPrefix returns the default Avalanche CLI prefix.
-func defaultAvalancheCLIPrefix(region string) string {
+func defaultAvalancheCLIPrefix(region string) (string, error) {
 	usr, err := user.Current()
 	if err != nil {
-		return constants.AnsibleSSHUser + region + constants.AvalancheCLISuffix
+		return "", err
 	}
-	return usr.Username + "-" + region + constants.AvalancheCLISuffix
+	return usr.Username + "-" + region + constants.AvalancheCLISuffix, nil
 }

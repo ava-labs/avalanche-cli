@@ -291,13 +291,17 @@ func createGCPInstance(
 	clusterName string,
 	forMonitoring bool,
 ) (models.CloudConfig, error) {
+	prefix, err := defaultAvalancheCLIPrefix("")
+	if err != nil {
+		return models.CloudConfig{}, err
+	}
 	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(
 		gcpClient,
 		instanceType,
 		numNodes,
 		zones,
 		imageID,
-		defaultAvalancheCLIPrefix(""),
+		prefix,
 		forMonitoring,
 	)
 	if err != nil {
@@ -334,7 +338,7 @@ func createGCPInstance(
 			InstanceIDs:   instanceIDs[zone],
 			PublicIPs:     elasticIPs[zone],
 			KeyPair:       keyPairName,
-			SecurityGroup: fmt.Sprintf("%s-network", defaultAvalancheCLIPrefix("")),
+			SecurityGroup: fmt.Sprintf("%s-network", prefix),
 			CertFilePath:  certFilePath,
 			ImageID:       imageID,
 		}

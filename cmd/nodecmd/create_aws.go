@@ -353,7 +353,10 @@ func createAWSInstances(
 ) {
 	regionConf := map[string]models.RegionConfig{}
 	for _, region := range regions {
-		prefix := defaultAvalancheCLIPrefix(region)
+		prefix, err := defaultAvalancheCLIPrefix(region)
+		if err != nil {
+			return models.CloudConfig{}, err
+		}
 		regionConf[region] = models.RegionConfig{
 			Prefix:            prefix,
 			ImageID:           ami[region],

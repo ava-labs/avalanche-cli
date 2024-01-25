@@ -131,7 +131,11 @@ func whitelistIP(_ *cobra.Command, args []string) error {
 		}
 	}
 	if len(gcpSGList) > 0 {
-		networkName := fmt.Sprintf("%s-network", defaultAvalancheCLIPrefix(""))
+		prefix, err := defaultAvalancheCLIPrefix("")
+		if err != nil {
+			return err
+		}
+		networkName := fmt.Sprintf("%s-network", prefix)
 		gcpClient, projectName, _, err := getGCPCloudCredentials()
 		if err != nil {
 			return err
