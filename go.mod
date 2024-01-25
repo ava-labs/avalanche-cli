@@ -2,12 +2,10 @@ module github.com/ava-labs/avalanche-cli
 
 go 1.20
 
-replace github.com/ava-labs/avalanchego => ../avalanchego/
-
 require (
 	github.com/ava-labs/apm v0.0.4
-	github.com/ava-labs/avalanche-network-runner v1.7.4-rc.0
-	github.com/ava-labs/avalanchego v1.10.18
+	github.com/ava-labs/avalanche-network-runner v1.7.5-0.20240125080705-6305f8843001
+	github.com/ava-labs/avalanchego v1.10.19-legacy-upgrade-times.0.20240124223315-b39ac98e2910
 	github.com/ava-labs/coreth v0.12.10-wip-bloom-metrics
 	github.com/ava-labs/subnet-evm v0.5.11
 	github.com/aws/aws-sdk-go-v2 v1.24.0
@@ -119,7 +117,6 @@ require (
 	github.com/hashicorp/go-bexpr v0.1.10 // indirect
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/holiman/big v0.0.0-20221017200358-a027dc42d04e // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
 	github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c // indirect
 	github.com/huin/goupnp v1.0.3 // indirect
