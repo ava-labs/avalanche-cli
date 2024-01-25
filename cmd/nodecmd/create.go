@@ -210,14 +210,14 @@ func createNodes(_ *cobra.Command, args []string) error {
 				return err
 			}
 		}
-		cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodesMap, regions, ami, usr, false)
+		cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodesMap, regions, ami, false)
 		if err != nil {
 			return err
 		}
 		monitoringEc2SvcMap := make(map[string]*awsAPI.AwsCloud)
 		if separateMonitoringInstance && existingMonitoringInstance == "" {
 			monitoringEc2SvcMap[monitoringHostRegion] = ec2SvcMap[monitoringHostRegion]
-			monitoringCloudConfig, err := createAWSInstances(monitoringEc2SvcMap, nodeType, map[string]int{monitoringHostRegion: 1}, []string{monitoringHostRegion}, ami, usr, true)
+			monitoringCloudConfig, err := createAWSInstances(monitoringEc2SvcMap, nodeType, map[string]int{monitoringHostRegion: 1}, []string{monitoringHostRegion}, ami, true)
 			if err != nil {
 				return err
 			}
@@ -319,7 +319,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 				}
 			}
 			if separateMonitoringInstance {
-				networkName := fmt.Sprintf("%s-network", usr.Username+constants.AvalancheCLISuffix)
+				networkName := defaultAvalancheCLIPrefix("")
 				firewallName := fmt.Sprintf("%s-%s-monitoring", networkName, strings.ReplaceAll(monitoringNodeConfig.PublicIPs[0], ".", ""))
 				ports := []string{
 					strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
