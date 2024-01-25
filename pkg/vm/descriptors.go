@@ -14,12 +14,18 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
-func getChainID(app *application.Avalanche) (*big.Int, error) {
+func getChainID(app *application.Avalanche, subnetEVMChainID uint64) (*big.Int, error) {
+	if subnetEVMChainID != 0 {
+		return new(big.Int).SetUint64(subnetEVMChainID), nil
+	}
 	ux.Logger.PrintToUser("Enter your subnet's ChainId. It can be any positive integer.")
 	return app.Prompt.CapturePositiveBigInt("ChainId")
 }
 
-func getTokenName(app *application.Avalanche) (string, error) {
+func getTokenName(app *application.Avalanche, subnetEVMTokenName string) (string, error) {
+	if subnetEVMTokenName != "" {
+		return subnetEVMTokenName, nil
+	}
 	ux.Logger.PrintToUser("Select a symbol for your subnet's native token")
 	tokenName, err := app.Prompt.CaptureString("Token symbol")
 	if err != nil {
@@ -105,19 +111,24 @@ func askForVMVersion(
 	return version, statemachine.Forward, nil
 }
 
-func getDescriptors(app *application.Avalanche, subnetEVMVersion string) (
+func getDescriptors(
+	app *application.Avalanche,
+	subnetEVMVersion string,
+	subnetEVMChainID uint64,
+	subnetEVMTokenName string,
+) (
 	*big.Int,
 	string,
 	string,
 	statemachine.StateDirection,
 	error,
 ) {
-	chainID, err := getChainID(app)
+	chainID, err := getChainID(app, subnetEVMChainID)
 	if err != nil {
 		return nil, "", "", statemachine.Stop, err
 	}
 
-	tokenName, err := getTokenName(app)
+	tokenName, err := getTokenName(app, subnetEVMTokenName)
 	if err != nil {
 		return nil, "", "", statemachine.Stop, err
 	}

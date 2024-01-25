@@ -9,36 +9,37 @@ import (
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
-func getNodesWoEIPInAnsibleInventory(clusterNodes []string) []models.NodeConfig {
-	nodesWoEIP := []models.NodeConfig{}
+func getNodesWithDynamicIP(clusterNodes []string) ([]models.NodeConfig, error) {
+	nodesWithDynamicIP := []models.NodeConfig{}
 	for _, node := range clusterNodes {
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
 		if err != nil {
-			continue
+			return nil, err
 		}
-		if nodeConfig.ElasticIP == "" {
-			nodesWoEIP = append(nodesWoEIP, nodeConfig)
+		if !nodeConfig.UseStaticIP {
+			nodesWithDynamicIP = append(nodesWithDynamicIP, nodeConfig)
 		}
 	}
-	return nodesWoEIP
+	return nodesWithDynamicIP, nil
 }
 
-func getPublicIPForNodesWoEIP(nodesWoEIP []models.NodeConfig) (map[string]string, error) {
-	lastRegion := ""
-	var ec2Svc *awsAPI.AwsCloud
-	var err error
+func getPublicIPsForNodesWithDynamicIP(nodesWithDynamicIP []models.NodeConfig) (map[string]string, error) {
 	publicIPMap := make(map[string]string)
-	var gcpCloud *gcpAPI.GcpCloud
-	ux.Logger.PrintToUser("Getting Public IPs for nodes without static IPs ...")
-	for _, node := range nodesWoEIP {
+	var (
+		err        error
+		lastRegion string
+		ec2Svc     *awsAPI.AwsCloud
+		gcpCloud   *gcpAPI.GcpCloud
+	)
+	ux.Logger.PrintToUser("Getting Public IP(s) for node(s) with dynamic IP ...")
+	for _, node := range nodesWithDynamicIP {
 		if lastRegion == "" || node.Region != lastRegion {
 			if node.CloudService == "" || node.CloudService == constants.AWSCloudService {
 				ec2Svc, err = awsAPI.NewAwsCloud(awsProfile, node.Region)
@@ -49,7 +50,6 @@ func getPublicIPForNodesWoEIP(nodesWoEIP []models.NodeConfig) (map[string]string
 			lastRegion = node.Region
 		}
 		var publicIP map[string]string
-		var err error
 		if node.CloudService == constants.GCPCloudService {
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
 				return nil, fmt.Errorf("cloud access is required")
@@ -71,6 +71,10 @@ func getPublicIPForNodesWoEIP(nodesWoEIP []models.NodeConfig) (map[string]string
 		} else {
 			publicIP, err = ec2Svc.GetInstancePublicIPs([]string{node.NodeID})
 			if err != nil {
+				if isExpiredCredentialError(err) {
+					ux.Logger.PrintToUser("")
+					printExpiredCredentialsOutput(awsProfile)
+				}
 				return nil, err
 			}
 		}
@@ -79,21 +83,49 @@ func getPublicIPForNodesWoEIP(nodesWoEIP []models.NodeConfig) (map[string]string
 	return publicIPMap, nil
 }
 
-func updateAnsiblePublicIPs(clusterName string) error {
+// update public IPs
+// - in ansible inventory file
+// - in host config file
+func updatePublicIPs(clusterName string) error {
 	clusterNodes, err := getClusterNodes(clusterName)
 	if err != nil {
 		return err
 	}
-	nodesWoEIP := getNodesWoEIPInAnsibleInventory(clusterNodes)
-	if len(nodesWoEIP) > 0 {
-		publicIP, err := getPublicIPForNodesWoEIP(nodesWoEIP)
+	nodesWithDynamicIP, err := getNodesWithDynamicIP(clusterNodes)
+	if err != nil {
+		return err
+	}
+	if len(nodesWithDynamicIP) > 0 {
+		nodeIDs := utils.Map(nodesWithDynamicIP, func(c models.NodeConfig) string { return c.NodeID })
+		ux.Logger.PrintToUser("Nodes with dynamic IPs in cluster: %s", nodeIDs)
+		publicIPMap, err := getPublicIPsForNodesWithDynamicIP(nodesWithDynamicIP)
 		if err != nil {
 			return err
 		}
-		err = ansible.UpdateInventoryHostPublicIP(app.GetAnsibleInventoryDirPath(clusterName), publicIP)
-		if err != nil {
+		changed := 0
+		for _, node := range nodesWithDynamicIP {
+			if node.ElasticIP != publicIPMap[node.NodeID] {
+				ux.Logger.PrintToUser("Updating IP information from %s to %s for node %s",
+					node.ElasticIP,
+					publicIPMap[node.NodeID],
+					node.NodeID,
+				)
+				changed++
+			}
+			node.ElasticIP = publicIPMap[node.NodeID]
+			if err := app.CreateNodeCloudConfigFile(node.NodeID, &node); err != nil { //nolint:gosec
+				return err
+			}
+		}
+		if changed == 0 {
+			ux.Logger.PrintToUser("No changes to IPs detected")
+			return nil
+		}
+		if err = ansible.UpdateInventoryHostPublicIP(app.GetAnsibleInventoryDirPath(clusterName), publicIPMap); err != nil {
 			return err
 		}
+	} else {
+		ux.Logger.PrintToUser("No nodes with dynamic IPs in cluster")
 	}
 	return nil
 }
