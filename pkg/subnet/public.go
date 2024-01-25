@@ -102,7 +102,7 @@ func (d *PublicDeployer) AddValidator(
 			return false, nil, nil, err
 		}
 		ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", id)
-		return true, nil, nil, nil
+		return true, tx, nil, nil
 	}
 
 	ux.Logger.PrintToUser("Partial tx created")
@@ -119,10 +119,11 @@ func (d *PublicDeployer) TransferSubnetOwnership(
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
+	transferSubnetOwnershipTxID ids.ID,
 	newControlKeys []string,
-    newThreshold uint32,
+	newThreshold uint32,
 ) (bool, *txs.Tx, []string, error) {
-	wallet, err := d.loadWallet(subnetID)
+	wallet, err := d.loadWallet(subnetID, transferSubnetOwnershipTxID)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -133,12 +134,12 @@ func (d *PublicDeployer) TransferSubnetOwnership(
 	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "TransferSubnetOwnership transaction")
 
 	tx, err := d.createTransferSubnetOwnershipTx(
-        subnetAuthKeys,
-        subnetID,
-        newControlKeys,
-        newThreshold,
-        wallet,
-    )
+		subnetAuthKeys,
+		subnetID,
+		newControlKeys,
+		newThreshold,
+		wallet,
+	)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -155,7 +156,7 @@ func (d *PublicDeployer) TransferSubnetOwnership(
 			return false, nil, nil, err
 		}
 		ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", id)
-		return true, nil, nil, nil
+		return true, tx, nil, nil
 	}
 
 	ux.Logger.PrintToUser("Partial tx created")
@@ -341,7 +342,7 @@ func (d *PublicDeployer) RemoveValidator(
 			return false, nil, nil, err
 		}
 		ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", id)
-		return true, nil, nil, nil
+		return true, tx, nil, nil
 	}
 
 	ux.Logger.PrintToUser("Partial tx created")
@@ -589,8 +590,8 @@ func (d *PublicDeployer) createBlockchainTx(
 func (d *PublicDeployer) createTransferSubnetOwnershipTx(
 	subnetAuthKeys []ids.ShortID,
 	subnetID ids.ID,
-    controlKeys []string,
-    threshold uint32,
+	controlKeys []string,
+	threshold uint32,
 	wallet primary.Wallet,
 ) (*txs.Tx, error) {
 	options := d.getMultisigTxOptions(subnetAuthKeys)
@@ -606,7 +607,7 @@ func (d *PublicDeployer) createTransferSubnetOwnershipTx(
 	// create tx
 	unsignedTx, err := wallet.P().Builder().NewTransferSubnetOwnershipTx(
 		subnetID,
-        owner,
+		owner,
 		options...,
 	)
 	if err != nil {

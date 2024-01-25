@@ -8,10 +8,10 @@ import (
 )
 
 type NetworkData struct {
-	SubnetID     ids.ID
-	TransferSubnetOwnershipTxID     ids.ID
-	BlockchainID ids.ID
-	RPCVersion   int
+	SubnetID                    ids.ID
+	TransferSubnetOwnershipTxID ids.ID
+	BlockchainID                ids.ID
+	RPCVersion                  int
 }
 
 type PermissionlessValidators struct {

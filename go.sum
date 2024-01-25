@@ -77,6 +77,8 @@ github.com/ava-labs/avalanchego v1.10.19-legacy-upgrade-times.0.20240124223315-b
 github.com/ava-labs/avalanchego v1.10.19-legacy-upgrade-times.0.20240124223315-b39ac98e2910/go.mod h1:bxbOXEYGnwz0K6uPsiB56Ig3pQbBfi4P8NOLtRNhNgw=
 github.com/ava-labs/avalanchego v1.10.19-legacy-upgrade-times.0.20240125091341-4ae90f7bca2f h1:cwmmLucASw6/39K0VjvX7twkza8lDFbxBbmn1tCRN0Y=
 github.com/ava-labs/avalanchego v1.10.19-legacy-upgrade-times.0.20240125091341-4ae90f7bca2f/go.mod h1:bxbOXEYGnwz0K6uPsiB56Ig3pQbBfi4P8NOLtRNhNgw=
+github.com/ava-labs/avalanchego v1.10.19-legacy-upgrade-times.0.20240125122037-a9bc73ad40f6 h1:Ml/+D5OZnMpeHbVPsa/N3+AJX1T2G8159TpjjobfGNU=
+github.com/ava-labs/avalanchego v1.10.19-legacy-upgrade-times.0.20240125122037-a9bc73ad40f6/go.mod h1:bxbOXEYGnwz0K6uPsiB56Ig3pQbBfi4P8NOLtRNhNgw=
 github.com/ava-labs/coreth v0.12.10-wip-bloom-metrics h1:uSISbdHpLVlTkwUUqVonMgdX91ePbgP/qJ7iHup9xS4=
 github.com/ava-labs/coreth v0.12.10-wip-bloom-metrics/go.mod h1:bw3pxnF+IBw5SoxAKujUiZPbPimieJHPd9fQWZZ/MOM=
 github.com/ava-labs/ledger-avalanche/go v0.0.0-20231102202641-ae2ebdaeac34 h1:mg9Uw6oZFJKytJxgxnl3uxZOs/SB8CVHg6Io4Tf99Zc=
