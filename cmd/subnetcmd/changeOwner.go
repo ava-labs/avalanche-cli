@@ -100,8 +100,9 @@ func changeOwner(_ *cobra.Command, args []string) error {
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
+	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
 
-	currentControlKeys, currentThreshold, err := txutils.GetOwners(network, subnetID)
+	currentControlKeys, currentThreshold, err := txutils.GetOwners(network, subnetID, transferSubnetOwnershipTxID)
 	if err != nil {
 		return err
 	}

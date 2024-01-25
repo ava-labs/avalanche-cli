@@ -78,7 +78,7 @@ func IsCreateChainTx(tx *txs.Tx) bool {
 	return ok
 }
 
-func GetOwners(network models.Network, subnetID ids.ID) ([]string, uint32, error) {
+func GetOwners(network models.Network, subnetID ids.ID, transferSubnetOwnershipTxID ids.ID) ([]string, uint32, error) {
 	pClient := platformvm.NewClient(network.Endpoint)
 	ctx := context.Background()
 	txBytes, err := pClient.GetTx(ctx, subnetID)

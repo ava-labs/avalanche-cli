@@ -399,7 +399,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// from here on we are assuming a public deploy
 
 	createSubnet := true
-	var subnetID ids.ID
+	var subnetID, transferSubnetOwnershipTxID ids.ID
 	if subnetIDStr != "" {
 		subnetID, err = ids.FromString(subnetIDStr)
 		if err != nil {
@@ -411,6 +411,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if ok {
 			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
 				subnetID = model.SubnetID
+                transferSubnetOwnershipTxID = model.TransferSubnetOwnershipTxID
 				createSubnet = false
 			}
 		}
@@ -451,7 +452,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser(logging.Green.Wrap(
 			fmt.Sprintf("Deploying into pre-existent subnet ID %s", subnetID.String()),
 		))
-		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
+		controlKeys, threshold, err = txutils.GetOwners(network, subnetID, transferSubnetOwnershipTxID)
 		if err != nil {
 			return err
 		}
@@ -489,7 +490,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		// get the control keys in the same order as the tx
-		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
+		controlKeys, threshold, err = txutils.GetOwners(network, subnetID, ids.Empty)
 		if err != nil {
 			return err
 		}
