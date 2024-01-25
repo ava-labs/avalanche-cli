@@ -99,10 +99,10 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 	amiMap := map[string]string{}
 	numNodesMap := map[string]int{}
 	// verify regions are valid
-	if validRegions, err := checkRegions(maps.Keys(finalRegions)); err != nil {
+	if invalidRegions, err := checkRegions(maps.Keys(finalRegions)); err != nil {
 		return nil, nil, nil, err
-	} else if !validRegions {
-		return nil, nil, nil, fmt.Errorf("invalid regions %s provided for %s", maps.Keys(finalRegions), constants.AWSCloudService)
+	} else if len(invalidRegions) > 0 {
+		return nil, nil, nil, fmt.Errorf("invalid regions %s provided for %s", invalidRegions, constants.AWSCloudService)
 	}
 	for region := range finalRegions {
 		var err error
@@ -351,20 +351,22 @@ func addCertToSSH(certName string) error {
 }
 
 // checkRegions checks if the given regions are available in AWS.
-func checkRegions(regions []string) (bool, error) {
+// It returns list of invalid regions and error if any
+func checkRegions(regions []string) ([]string, error) {
 	const regionCheckerRegion = "us-east-1"
-	regionChecker, err := getAWSCloudCredentials(awsProfile, regionCheckerRegion)
+	invalidRegions := []string{}
+	awsCloudRegionChecker, err := getAWSCloudCredentials(awsProfile, regionCheckerRegion)
 	if err != nil {
-		return false, err
+		return invalidRegions, err
 	}
-	availableRegions, err := regionChecker.ListRegions()
+	availableRegions, err := awsCloudRegionChecker.ListRegions()
 	if err != nil {
-		return false, err
+		return invalidRegions, err
 	}
 	for _, region := range regions {
 		if !slices.Contains(availableRegions, region) {
-			return false, nil
+			invalidRegions = append(invalidRegions, region)
 		}
 	}
-	return true, nil
+	return invalidRegions, nil
 }

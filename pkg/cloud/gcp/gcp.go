@@ -27,6 +27,7 @@ const (
 	opScopeZone   = "zone"
 	opScopeRegion = "region"
 	opScopeGlobal = "global"
+	gcpRegionAPI  = "https://www.googleapis.com/compute/v1/projects/%s/regions/%s"
 )
 
 var ErrNodeNotFoundToBeRunning = errors.New("node not found to be running")
@@ -425,7 +426,6 @@ func (c *GcpCloud) ListRegions() []string {
 
 // ListZonesInRegion returns a list of zones in a specific region for a given project ID.
 func (c *GcpCloud) ListZonesInRegion(region string) ([]string, error) {
-	const gcpRegionAPI = "https://www.googleapis.com/compute/v1/projects/%s/regions/%s"
 	zoneListCall := c.gcpClient.Zones.List(c.projectID)
 	zoneList, err := zoneListCall.Do()
 	if err != nil {
