@@ -89,13 +89,11 @@ func whitelistIP(_ *cobra.Command, args []string) error {
 	}
 
 	// GCP doesn't have regions  so we need to reduce it to only list of security groups
-	gcpSGList := []string{}
+	gcpSGFound := false
 	// whitelist IP
 	for _, cloudSecurityGroup := range cloudSecurityGroupList {
 		if cloudSecurityGroup.cloud == constants.GCPCloudService {
-			if !slices.Contains(gcpSGList, cloudSecurityGroup.securityGroup) {
-				gcpSGList = append(gcpSGList, cloudSecurityGroup.securityGroup)
-			}
+			gcpSGFound = true
 			continue
 		}
 		ux.Logger.PrintToUser("Whitelisting IP %s in %s cloud region %s", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region)
@@ -130,7 +128,7 @@ func whitelistIP(_ *cobra.Command, args []string) error {
 			}
 		}
 	}
-	if len(gcpSGList) > 0 {
+	if gcpSGFound {
 		prefix, err := defaultAvalancheCLIPrefix("")
 		if err != nil {
 			return err
