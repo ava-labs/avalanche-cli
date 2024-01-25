@@ -78,6 +78,11 @@ func IsCreateChainTx(tx *txs.Tx) bool {
 	return ok
 }
 
+func IsTransferSubnetOwnershipTx(tx *txs.Tx) bool {
+	_, ok := tx.Unsigned.(*txs.TransferSubnetOwnershipTx)
+	return ok
+}
+
 func GetOwners(network models.Network, subnetID ids.ID, transferSubnetOwnershipTxID ids.ID) ([]string, uint32, error) {
 	pClient := platformvm.NewClient(network.Endpoint)
 	ctx := context.Background()

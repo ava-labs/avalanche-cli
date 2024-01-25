@@ -393,7 +393,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		flags := make(map[string]string)
 		flags[constants.Network] = network.Name()
 		metrics.HandleTracking(cmd, app, flags)
-		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
+		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, ids.Empty, blockchainID)
 	}
 
 	// from here on we are assuming a public deploy
@@ -529,7 +529,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
-	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
+	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, transferSubnetOwnershipTxID, blockchainID)
 }
 
 func getControlKeys(kc *keychain.Keychain) ([]string, bool, error) {
