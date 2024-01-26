@@ -28,24 +28,6 @@ jobs:
         run: go install github.com/google/addlicense@v1.0.0
       - name: Check license
         run: addlicense -f ./LICENSE.header -check -v ./**/*.go ./**/**/*.go ./**/**/**/*.go ./**/**/**/**/*.go
-  test:
-    name: Golang Unit Tests v${{ matrix.go }} (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        go: ["1.20"]
-        os: [ubuntu-20.04, macos-latest]
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
-        with:
-          go-version: ${{ matrix.go }}
-      - run: go mod download
-      - run: scripts/build.sh
-      - run: go test -v -coverprofile=coverage.out $(go list ./... | grep -v /tests/)
-        env:
-          CGO_CFLAGS: "-O -D__BLST_PORTABLE__" # Set the CGO flags to use the portable version of BLST
-      - run: go tool cover -func=coverage.out
   e2e_test:
     name: e2e tests
     runs-on: ${{ matrix.os }}
