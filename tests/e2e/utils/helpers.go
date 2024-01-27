@@ -537,6 +537,13 @@ func RunLedgerSim(
 		fmt.Println(err)
 	}
 
+	// close if previous one failed
+	select {
+	case <-ledgerSimReadyCh:
+	default:
+		close(ledgerSimReadyCh)
+	}
+
 	close(ledgerSimEndCh)
 
 	return err
