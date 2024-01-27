@@ -28,7 +28,7 @@ if (process.argv[3] != undefined) {
 const options = {
   ...DEFAULT_START_OPTIONS,
   custom: `-s "${appSeed}"`,
-  startDelay: 60000,
+  startDelay: 90000,
   logging: true,
 }
 
