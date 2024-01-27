@@ -157,10 +157,16 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	}
 	network := clustersConfig.Clusters[clusterName].Network
 
-	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
+	cluster := models.ClusterConfig{}
+	var ok bool
+	if cluster, ok = clustersConfig.Clusters[clusterName]; !ok {
+		return fmt.Errorf("cluster %s does not exist", clusterName)
+	}
+	hosts := cluster.GetValidatorHosts(allHosts) // exlude api nodes
 	if len(validators) != 0 {
 		hosts, err = filterHosts(hosts, validators)
 		if err != nil {
