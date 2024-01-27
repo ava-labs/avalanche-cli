@@ -29,6 +29,7 @@ const options = {
   ...DEFAULT_START_OPTIONS,
   custom: `-s "${appSeed}"`,
   startDelay: 300000,
+  logging: true,
 }
 
 async function main() {
