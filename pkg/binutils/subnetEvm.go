@@ -10,14 +10,14 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
-func SetupSubnetEVM(app *application.Avalanche, subnetEVMVersion string) (string, error) {
+func SetupSubnetEVM(app *application.Avalanche, subnetEVMVersion string) (string, string, error) {
 	// Check if already installed
 	binDir := app.GetSubnetEVMBinDir()
 	subDir := filepath.Join(binDir, subnetEVMBinPrefix+subnetEVMVersion)
 
 	installer := NewInstaller()
 	downloader := NewSubnetEVMDownloader()
-	vmDir, err := InstallBinary(
+	version, vmDir, err := InstallBinary(
 		app,
 		subnetEVMVersion,
 		binDir,
@@ -28,5 +28,5 @@ func SetupSubnetEVM(app *application.Avalanche, subnetEVMVersion string) (string
 		downloader,
 		installer,
 	)
-	return filepath.Join(vmDir, constants.SubnetEVMBin), err
+	return version, filepath.Join(vmDir, constants.SubnetEVMBin), err
 }

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 export PATH=$PATH:~/go/bin:~/.cargo/bin
 /home/ubuntu/bin/avalanche subnet import file {{ .SubnetExportFileName }} --force
 sudo systemctl stop avalanchego
