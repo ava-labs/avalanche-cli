@@ -69,6 +69,7 @@ jobs:
             "\\[Upgrade local network\\]",
             "\\[Node create\\]",
             "\\[Node devnet\\]",
+            "\\[Docker\\]",
           ]
         os: [ubuntu-latest, macos-latest]
         exclude:
@@ -76,6 +77,8 @@ jobs:
             suite: "\\[Node create\\]"
           - os: macos-latest
             suite: "\\[Node devnet\\]"
+          - os: macos-latest
+            suite: "\\[Docker\\]"
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
