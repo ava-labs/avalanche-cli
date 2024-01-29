@@ -161,9 +161,8 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	cluster := models.ClusterConfig{}
-	var ok bool
-	if cluster, ok = clustersConfig.Clusters[clusterName]; !ok {
+	cluster, ok := clustersConfig.Clusters[clusterName]
+	if !ok {
 		return fmt.Errorf("cluster %s does not exist", clusterName)
 	}
 	hosts := cluster.GetValidatorHosts(allHosts) // exlude api nodes
