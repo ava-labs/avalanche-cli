@@ -253,10 +253,19 @@ func waitForHealthyCluster(
 ) error {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Waiting for node(s) in cluster %s to be healthy...", clusterName)
-	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {
 		return err
 	}
+	cluster, ok := clustersConfig.Clusters[clusterName]
+	if !ok {
+		return fmt.Errorf("cluster %s does not exist", clusterName)
+	}
+	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	hosts := cluster.GetValidatorHosts(allHosts) // exlude api nodes
 	defer disconnectHosts(hosts)
 	startTime := time.Now()
 	for {
@@ -291,10 +300,19 @@ func waitForClusterSubnetStatus(
 ) error {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Waiting for node(s) in cluster %s to be %s subnet %s...", clusterName, strings.ToLower(targetStatus.String()), subnetName)
-	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {
 		return err
 	}
+	cluster, ok := clustersConfig.Clusters[clusterName]
+	if !ok {
+		return fmt.Errorf("cluster %s does not exist", clusterName)
+	}
+	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	hosts := cluster.GetValidatorHosts(allHosts) // exlude api nodes
 	if len(validators) != 0 {
 		hosts, err = filterHosts(hosts, validators)
 		if err != nil {
