@@ -36,12 +36,25 @@ type AwsCloud struct {
 
 // NewAwsCloud creates an AWS cloud
 func NewAwsCloud(awsProfile, region string) (*AwsCloud, error) {
-	ctx := context.Background()
-	// Load session from shared config
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion(region),
-		config.WithSharedConfigProfile(awsProfile),
+	var (
+		cfg aws.Config
+		err error
 	)
+	ctx := context.Background()
+	if os.Getenv("AWS_ACCESS_KEY_ID") != "" {
+		// Load session from env variables
+		cfg, err = config.LoadDefaultConfig(
+			ctx,
+			config.WithRegion(region),
+		)
+	} else {
+		// Load session from profile in config file
+		cfg, err = config.LoadDefaultConfig(
+			ctx,
+			config.WithRegion(region),
+			config.WithSharedConfigProfile(awsProfile),
+		)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +143,13 @@ func (c *AwsCloud) AddSecurityGroupRule(groupID, direction, protocol, ip string,
 }
 
 // CreateEC2Instances creates EC2 instances
-func (c *AwsCloud) CreateEC2Instances(count int, amiID, instanceType, keyName, securityGroupID string) ([]string, error) {
+func (c *AwsCloud) CreateEC2Instances(count int, amiID, instanceType, keyName, securityGroupID string, forMonitoring bool) ([]string, error) {
+	var diskVolumeSize int32
+	if forMonitoring {
+		diskVolumeSize = constants.MonitoringCloudServerStorageSize
+	} else {
+		diskVolumeSize = constants.CloudServerStorageSize
+	}
 	runResult, err := c.ec2Client.RunInstances(c.ctx, &ec2.RunInstancesInput{
 		ImageId:          aws.String(amiID),
 		InstanceType:     types.InstanceType(instanceType),
@@ -142,7 +161,7 @@ func (c *AwsCloud) CreateEC2Instances(count int, amiID, instanceType, keyName, s
 			{
 				DeviceName: aws.String("/dev/sda1"), // ubuntu ami disk name
 				Ebs: &types.EbsBlockDevice{
-					VolumeSize: aws.Int32(1000),
+					VolumeSize: aws.Int32(diskVolumeSize),
 				},
 			},
 		},
@@ -336,6 +355,26 @@ func (c *AwsCloud) CreateAndDownloadKeyPair(keyName string, privateKeyFilePath s
 	return nil
 }
 
+// UploadSSHIdentityKeyPair uploads a key pair from ssh-agent identity to the AWS cloud.
+func (c *AwsCloud) UploadSSHIdentityKeyPair(keyName string, identity string) error {
+	identityValid, err := utils.IsSSHAgentIdentityValid(identity)
+	if err != nil {
+		return err
+	}
+	if !identityValid {
+		return fmt.Errorf("ssh-agent identity: %s not found", identity)
+	}
+	publicKeyMaterial, err := utils.ReadSSHAgentIdentityPublicKey(identity)
+	if err != nil {
+		return err
+	}
+	_, err = c.ec2Client.ImportKeyPair(c.ctx, &ec2.ImportKeyPairInput{
+		KeyName:           aws.String(keyName),
+		PublicKeyMaterial: []byte(publicKeyMaterial),
+	})
+	return err
+}
+
 // SetupSecurityGroup sets up a security group for the AwsCloud instance.
 func (c *AwsCloud) SetupSecurityGroup(ipAddress, securityGroupName string) (string, error) {
 	sgID, err := c.CreateSecurityGroup(securityGroupName, "Allow SSH, AVAX HTTP outbound traffic")
@@ -345,8 +384,13 @@ func (c *AwsCloud) SetupSecurityGroup(ipAddress, securityGroupName string) (stri
 	if err := c.AddSecurityGroupRule(sgID, "ingress", "tcp", ipAddress, constants.SSHTCPPort); err != nil {
 		return "", err
 	}
-
 	if err := c.AddSecurityGroupRule(sgID, "ingress", "tcp", ipAddress, constants.AvalanchegoAPIPort); err != nil {
+		return "", err
+	}
+	if err := c.AddSecurityGroupRule(sgID, "ingress", "tcp", ipAddress, constants.AvalanchegoMonitoringPort); err != nil {
+		return "", err
+	}
+	if err := c.AddSecurityGroupRule(sgID, "ingress", "tcp", ipAddress, constants.AvalanchegoGrafanaPort); err != nil {
 		return "", err
 	}
 	if err := c.AddSecurityGroupRule(sgID, "ingress", "tcp", "0.0.0.0/0", constants.AvalanchegoP2PPort); err != nil {

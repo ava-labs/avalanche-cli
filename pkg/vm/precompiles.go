@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/subnet-evm/precompile/contracts/nativeminter"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/rewardmanager"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
+	"github.com/ava-labs/subnet-evm/precompile/contracts/warp"
 	"github.com/ava-labs/subnet-evm/precompile/precompileconfig"
 	"github.com/ava-labs/subnet-evm/utils"
 	"github.com/ethereum/go-ethereum/common"
@@ -30,6 +31,7 @@ const (
 	TxAllowList       = "Transaction Allow List"
 	FeeManager        = "Manage Fee Settings"
 	RewardManager     = "RewardManagerConfig"
+	Warp              = "Warp"
 )
 
 func PrecompileToUpgradeString(p Precompile) string {
@@ -44,6 +46,8 @@ func PrecompileToUpgradeString(p Precompile) string {
 		return "feeManagerConfig"
 	case RewardManager:
 		return "rewardManagerConfig"
+	case Warp:
+		return "warpConfig"
 	default:
 		return ""
 	}
@@ -213,6 +217,14 @@ func configureMinterList(app *application.Avalanche) (nativeminter.Config, bool,
 	return config, cancelled, nil
 }
 
+func configureWarp() warp.Config {
+	config := warp.Config{}
+	config.Upgrade = precompileconfig.Upgrade{
+		BlockTimestamp: utils.NewUint64(0),
+	}
+	return config
+}
+
 func configureFeeConfigAllowList(app *application.Avalanche) (feemanager.Config, bool, error) {
 	config := feemanager.Config{}
 	adminPrompt := "Configure fee manager allow list"
@@ -246,16 +258,22 @@ func removePrecompile(arr []string, s string) ([]string, error) {
 	return arr, errors.New("string not in array")
 }
 
-func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (
+func getPrecompiles(config params.ChainConfig, app *application.Avalanche, useDefaults bool) (
 	params.ChainConfig,
 	statemachine.StateDirection,
 	error,
 ) {
+	if useDefaults {
+		warpConfig := configureWarp()
+		config.GenesisPrecompiles[warp.ConfigKey] = &warpConfig
+		return config, statemachine.Forward, nil
+	}
+
 	const cancel = "Cancel"
 
 	first := true
 
-	remainingPrecompiles := []string{NativeMint, ContractAllowList, TxAllowList, FeeManager, RewardManager, cancel}
+	remainingPrecompiles := []string{NativeMint, ContractAllowList, TxAllowList, FeeManager, RewardManager, Warp, cancel}
 
 	for {
 		firstStr := "Advanced: Would you like to add a custom precompile to modify the EVM?"
@@ -347,6 +365,13 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche) (
 				if err != nil {
 					return config, statemachine.Stop, err
 				}
+			}
+		case Warp:
+			warpConfig := configureWarp()
+			config.GenesisPrecompiles[warp.ConfigKey] = &warpConfig
+			remainingPrecompiles, err = removePrecompile(remainingPrecompiles, Warp)
+			if err != nil {
+				return config, statemachine.Stop, err
 			}
 
 		case cancel:

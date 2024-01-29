@@ -8,8 +8,9 @@ type GCPConfig struct {
 }
 
 type ClusterConfig struct {
-	Nodes   []string
-	Network Network
+	Nodes              []string
+	Network            Network
+	MonitoringInstance string // instance ID of the separate monitoring instance (if any)
 }
 
 type ClustersConfig struct {

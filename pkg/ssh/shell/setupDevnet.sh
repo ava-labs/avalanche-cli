@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 #name:TASK [stop node]
 {{if .IsE2E}}
 sudo pkill avalanchego || echo "avalanchego not running"

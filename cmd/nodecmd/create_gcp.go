@@ -131,6 +131,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	zones []string,
 	ami,
 	cliDefaultName string,
+	forMonitoring bool,
 ) (map[string][]string, map[string][]string, string, string, error) {
 	keyPairName := fmt.Sprintf("%s-keypair", cliDefaultName)
 	sshKeyPath, err := app.GetSSHCertFilePath(keyPairName)
@@ -138,12 +139,16 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 		return nil, nil, "", "", err
 	}
 	networkName := fmt.Sprintf("%s-network", cliDefaultName)
-	ux.Logger.PrintToUser("Creating new VM instance(s) on Google Compute Engine...")
+	if !forMonitoring {
+		ux.Logger.PrintToUser("Creating new VM instance(s) on Google Compute Engine...")
+	} else {
+		ux.Logger.PrintToUser("Creating separate monitoring VM instance(s) on Google Compute Engine...")
+	}
 	certInSSHDir, err := app.CheckCertInSSHDir(fmt.Sprintf("%s-keypair.pub", cliDefaultName))
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	if !certInSSHDir {
+	if !useSSHAgent && !certInSSHDir {
 		ux.Logger.PrintToUser("Creating new SSH key pair %s in GCP", sshKeyPath)
 		ux.Logger.PrintToUser("For more information regarding SSH key pair in GCP, please head to https://cloud.google.com/compute/docs/connect/create-ssh-keys")
 		_, err = exec.Command("ssh-keygen", "-t", "rsa", "-f", sshKeyPath, "-C", "ubuntu", "-b", "2048").Output()
@@ -168,14 +173,42 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	} else {
 		ux.Logger.PrintToUser("Using existing network %s in GCP", networkName)
 		firewallName := fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(userIPAddress, ".", ""))
-		firewallExists, err := gcpClient.CheckFirewallExists(firewallName)
+		firewallExists, err := gcpClient.CheckFirewallExists(firewallName, false)
 		if err != nil {
 			return nil, nil, "", "", err
 		}
 		if !firewallExists {
-			_, err := gcpClient.SetFirewallRule(userIPAddress, firewallName, networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)})
+			_, err := gcpClient.SetFirewallRule(
+				userIPAddress,
+				firewallName,
+				networkName,
+				[]string{
+					strconv.Itoa(constants.SSHTCPPort),
+					strconv.Itoa(constants.AvalanchegoAPIPort),
+					strconv.Itoa(constants.AvalanchegoMonitoringPort),
+					strconv.Itoa(constants.AvalanchegoGrafanaPort),
+				},
+			)
 			if err != nil {
 				return nil, nil, "", "", err
+			}
+		} else {
+			firewallMonitoringName := fmt.Sprintf("%s-monitoring", firewallName)
+			// check that firewallName contains the monitoring ports
+			firewallContainsMonitoringPorts, err := gcpClient.CheckFirewallExists(firewallName, true)
+			if err != nil {
+				return nil, nil, "", "", err
+			}
+			// check that the separate monitoring firewall doesn't exist
+			firewallExists, err = gcpClient.CheckFirewallExists(firewallMonitoringName, false)
+			if err != nil {
+				return nil, nil, "", "", err
+			}
+			if !firewallContainsMonitoringPorts && !firewallExists {
+				_, err := gcpClient.SetFirewallRule(userIPAddress, firewallName, networkName, []string{strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort)})
+				if err != nil {
+					return nil, nil, "", "", err
+				}
 			}
 		}
 	}
@@ -192,13 +225,30 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 			}
 		}
 	}
-	sshPublicKey, err := os.ReadFile(fmt.Sprintf("%s.pub", sshKeyPath))
-	if err != nil {
-		return nil, nil, "", "", err
+	sshPublicKey := ""
+	if useSSHAgent {
+		sshPublicKey, err = utils.ReadSSHAgentIdentityPublicKey(sshIdentity)
+		if err != nil {
+			return nil, nil, "", "", err
+		}
+	} else {
+		sshPublicKeyBytes, err := os.ReadFile(fmt.Sprintf("%s.pub", sshKeyPath))
+		if err != nil {
+			return nil, nil, "", "", err
+		}
+		sshPublicKey = string(sshPublicKeyBytes)
 	}
+
 	ux.Logger.PrintToUser("Waiting for GCE instance(s) to be provisioned...")
 	for i, zone := range zones {
-		_, err := gcpClient.SetupInstances(zone, networkName, string(sshPublicKey), ami, publicIP[zone], nodeName[zone], numNodes[i], instanceType)
+		_, err := gcpClient.SetupInstances(zone,
+			networkName,
+			sshPublicKey,
+			ami, nodeName[zone],
+			instanceType,
+			publicIP[zone],
+			numNodes[i],
+			forMonitoring)
 		if err != nil {
 			return nil, nil, "", "", err
 		}
@@ -211,9 +261,12 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 		}
 	}
 	ux.Logger.PrintToUser("New Compute instance(s) successfully created in GCP!")
-	sshCertPath, err := app.GetSSHCertFilePath(fmt.Sprintf("%s-keypair", cliDefaultName))
-	if err != nil {
-		return nil, nil, "", "", err
+	sshCertPath := ""
+	if !useSSHAgent {
+		sshCertPath, err = app.GetSSHCertFilePath(fmt.Sprintf("%s-keypair", cliDefaultName))
+		if err != nil {
+			return nil, nil, "", "", err
+		}
 	}
 	return instanceIDs, publicIP, sshCertPath, keyPairName, nil
 }
@@ -226,6 +279,7 @@ func createGCPInstance(
 	zones []string,
 	imageID string,
 	clusterName string,
+	forMonitoring bool,
 ) (models.CloudConfig, error) {
 	defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(
@@ -235,6 +289,7 @@ func createGCPInstance(
 		zones,
 		imageID,
 		defaultAvalancheCLIPrefix,
+		forMonitoring,
 	)
 	if err != nil {
 		ux.Logger.PrintToUser("Failed to create GCP cloud server")

@@ -18,7 +18,7 @@ import (
 
 // CreateAnsibleHostInventory creates inventory file for ansible
 // specifies the ip address of the cloud server and the corresponding ssh cert path for the cloud server
-func CreateAnsibleHostInventory(inventoryDirPath string, cloudConfigMap models.CloudConfig, cloudService string, publicIPMap map[string]string) error {
+func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService string, publicIPMap map[string]string, cloudConfigMap models.CloudConfig) error {
 	if err := os.MkdirAll(inventoryDirPath, os.ModePerm); err != nil {
 		return err
 	}
@@ -28,22 +28,41 @@ func CreateAnsibleHostInventory(inventoryDirPath string, cloudConfigMap models.C
 		return err
 	}
 	defer inventoryFile.Close()
-	for _, cloudConfig := range cloudConfigMap {
-		for _, instanceID := range cloudConfig.InstanceIDs {
+	if cloudConfigMap != nil {
+		for _, cloudConfig := range cloudConfigMap {
+			for _, instanceID := range cloudConfig.InstanceIDs {
+				ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, instanceID)
+				if err != nil {
+					return err
+				}
+				if err = writeToInventoryFile(inventoryFile, ansibleInstanceID, publicIPMap[instanceID], cloudConfig.CertFilePath); err != nil {
+					return err
+				}
+			}
+		}
+	} else {
+		for instanceID := range publicIPMap {
 			ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, instanceID)
 			if err != nil {
 				return err
 			}
-			inventoryContent := ansibleInstanceID
-			inventoryContent += " ansible_host="
-			inventoryContent += publicIPMap[instanceID]
-			inventoryContent += " ansible_user=ubuntu"
-			inventoryContent += fmt.Sprintf(" ansible_ssh_private_key_file=%s", cloudConfig.CertFilePath)
-			inventoryContent += fmt.Sprintf(" ansible_ssh_common_args='%s'", constants.AnsibleSSHInventoryParams)
-			if _, err = inventoryFile.WriteString(inventoryContent + "\n"); err != nil {
+			if err = writeToInventoryFile(inventoryFile, ansibleInstanceID, publicIPMap[instanceID], certFilePath); err != nil {
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+func writeToInventoryFile(inventoryFile *os.File, ansibleInstanceID, publicIP, certFilePath string) error {
+	inventoryContent := ansibleInstanceID
+	inventoryContent += " ansible_host="
+	inventoryContent += publicIP
+	inventoryContent += " ansible_user=ubuntu"
+	inventoryContent += fmt.Sprintf(" ansible_ssh_private_key_file=%s", certFilePath)
+	inventoryContent += fmt.Sprintf(" ansible_ssh_common_args='%s'", constants.AnsibleSSHUseAgentParams)
+	if _, err := inventoryFile.WriteString(inventoryContent + "\n"); err != nil {
+		return err
 	}
 	return nil
 }
@@ -123,7 +142,7 @@ func GetHostMapfromAnsibleInventory(inventoryDirPath string) (map[string]*models
 // UpdateInventoryHostPublicIP first maps existing ansible inventory host file content
 // then it deletes the inventory file and regenerates a new ansible inventory file where it will fetch public IP
 // of nodes without elastic IP and update its value in the new ansible inventory file
-func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]string) error {
+func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWithDynamicIP map[string]string) error {
 	inventory, err := GetHostMapfromAnsibleInventory(inventoryDirPath)
 	if err != nil {
 		return err
@@ -141,13 +160,13 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWoEIP map[string]
 		if err != nil {
 			return err
 		}
-		_, ok := nodesWoEIP[nodeID]
+		_, ok := nodesWithDynamicIP[nodeID]
 		if !ok {
 			if _, err = inventoryFile.WriteString(ansibleHostContent.GetAnsibleInventoryRecord() + "\n"); err != nil {
 				return err
 			}
 		} else {
-			ansibleHostContent.IP = nodesWoEIP[nodeID]
+			ansibleHostContent.IP = nodesWithDynamicIP[nodeID]
 			if _, err = inventoryFile.WriteString(ansibleHostContent.GetAnsibleInventoryRecord() + "\n"); err != nil {
 				return err
 			}
