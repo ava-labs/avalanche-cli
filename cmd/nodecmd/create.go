@@ -197,7 +197,47 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if !utils.IsE2E() {
+	if utils.IsE2E() {
+		// override cloudConfig for E2E testing
+		defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
+		keyPairName := fmt.Sprintf("%s-keypair", defaultAvalancheCLIPrefix)
+		certPath, err := app.GetSSHCertFilePath(keyPairName)
+		dockerNumNodes := utils.Sum(numNodes)
+		dockerHostIDs := utils.GenerateDockerHostIDs(dockerNumNodes)
+		if err != nil {
+			return err
+		}
+		cloudConfigMap = models.CloudConfig{
+			"docker": {
+				InstanceIDs:       dockerHostIDs,
+				PublicIPs:         utils.GenerateDockerHostIPs(dockerNumNodes),
+				KeyPair:           keyPairName,
+				SecurityGroup:     "docker",
+				CertFilePath:      certPath,
+				ImageID:           "docker",
+				Prefix:            "docker",
+				CertName:          "docker",
+				SecurityGroupName: "docker",
+				NumNodes:          dockerNumNodes,
+				InstanceType:      "docker",
+			},
+		}
+		for i, ip := range cloudConfigMap["docker"].PublicIPs {
+			publicIPMap[dockerHostIDs[i]] = ip
+			// no api nodes for E2E testing
+		}
+		pubKeyString, err := os.ReadFile(fmt.Sprintf("%s.pub", certPath))
+		if err != nil {
+			return err
+		}
+		dockerComposeFile, err := utils.SaveDockerComposeFile(constants.E2EDockerComposeFile, len(dockerHostIDs), "focal", strings.TrimSuffix(string(pubKeyString), "\n"))
+		if err != nil {
+			return err
+		}
+		if err := utils.StartDockerCompose(dockerComposeFile); err != nil {
+			return err
+		}
+	} else {
 		if cloudService == constants.AWSCloudService { // Get AWS Credential, region and AMI
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 				return fmt.Errorf("cloud access is required")
@@ -345,47 +385,8 @@ func createNodes(_ *cobra.Command, args []string) error {
 			gcpProjectName = projectName
 			gcpCredentialFilepath = credentialFilepath
 		}
-	} else {
-		// override cloudConfig for E2E testing
-		defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
-		keyPairName := fmt.Sprintf("%s-keypair", defaultAvalancheCLIPrefix)
-		certPath, err := app.GetSSHCertFilePath(keyPairName)
-		dockerNumNodes := utils.Sum(numNodes)
-		dockerHostIDs := utils.GenerateDockerHostIDs(dockerNumNodes)
-		if err != nil {
-			return err
-		}
-		cloudConfigMap = models.CloudConfig{
-			"docker": {
-				InstanceIDs:       dockerHostIDs,
-				PublicIPs:         utils.GenerateDockerHostIPs(dockerNumNodes),
-				KeyPair:           keyPairName,
-				SecurityGroup:     "docker",
-				CertFilePath:      certPath,
-				ImageID:           "docker",
-				Prefix:            "docker",
-				CertName:          "docker",
-				SecurityGroupName: "docker",
-				NumNodes:          dockerNumNodes,
-				InstanceType:      "docker",
-			},
-		}
-		for i, ip := range cloudConfigMap["docker"].PublicIPs {
-			publicIPMap[dockerHostIDs[i]] = ip
-			// no api nodes for E2E testing
-		}
-		pubKeyString, err := os.ReadFile(fmt.Sprintf("%s.pub", certPath))
-		if err != nil {
-			return err
-		}
-		dockerComposeFile, err := utils.SaveDockerComposeFile(constants.E2EDockerComposeFile, len(dockerHostIDs), "focal", strings.TrimSuffix(string(pubKeyString), "\n"))
-		if err != nil {
-			return err
-		}
-		if err := utils.StartDockerCompose(dockerComposeFile); err != nil {
-			return err
-		}
 	}
+
 	if err = CreateClusterNodeConfig(network, cloudConfigMap, monitoringNodeConfig, monitoringHostRegion, clusterName, cloudService, separateMonitoringInstance); err != nil {
 		return err
 	}
