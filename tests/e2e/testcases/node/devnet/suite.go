@@ -35,7 +35,7 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 	})
 	ginkgo.It("installs and runs avalanchego", func() {
 		avalancegoVersion := commands.NodeSSH(constants.E2EClusterName, "/home/ubuntu/avalanche-node/avalanchego --version")
-		gomega.Expect(avalancegoVersion).To(gomega.ContainSubstring("avalanche/"))
+		gomega.Expect(avalancegoVersion).To(gomega.ContainSubstring("avalanchego/"))
 		gomega.Expect(avalancegoVersion).To(gomega.ContainSubstring("[database="))
 		gomega.Expect(avalancegoVersion).To(gomega.ContainSubstring("rpcchainvm="))
 		gomega.Expect(avalancegoVersion).To(gomega.ContainSubstring("go="))

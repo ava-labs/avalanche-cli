@@ -147,6 +147,7 @@ func NodeUpgrade() string {
 		CLIBinary,
 		"node",
 		"upgrade",
+		constants.E2EClusterName,
 	)
 	output, err := cmd.Output()
 	fmt.Println("---------------->")
