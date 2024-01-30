@@ -226,6 +226,26 @@ func createNodes(_ *cobra.Command, args []string) error {
 			publicIPMap[dockerHostIDs[i]] = ip
 			// no api nodes for E2E testing
 		}
+		if separateMonitoringInstance {
+			monitoringDockerHostID := utils.GenerateDockerHostIDs(1)
+			dockerHostIDs = append(dockerHostIDs, monitoringDockerHostID[0])
+			monitoringCloudConfig := models.CloudConfig{
+				"monitoringDocker": {
+					InstanceIDs:       monitoringDockerHostID,
+					PublicIPs:         utils.GenerateDockerHostIPs(1),
+					KeyPair:           keyPairName,
+					SecurityGroup:     "docker",
+					CertFilePath:      certPath,
+					ImageID:           "docker",
+					Prefix:            "docker",
+					CertName:          "docker",
+					SecurityGroupName: "docker",
+					NumNodes:          1,
+					InstanceType:      "docker",
+				},
+			}
+			monitoringNodeConfig = monitoringCloudConfig["monitoringDocker"]
+		}
 		pubKeyString, err := os.ReadFile(fmt.Sprintf("%s.pub", certPath))
 		if err != nil {
 			return err
