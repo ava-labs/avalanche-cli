@@ -510,10 +510,10 @@ func RunLedgerSim(
 		line, err := reader.ReadString('\n')
 		for err == nil {
 			line = strings.TrimSpace(line)
-			if line == "SIMULATED LEDGER DEV READY" {
+			if strings.Contains(line, "SIMULATED LEDGER DEV READY") {
 				close(ledgerSimReadyCh)
 			}
-			if line == "PRESS ENTER TO END SIMULATOR" {
+			if strings.Contains(line, "PRESS ENTER TO END SIMULATOR") {
 				<-interactionEndCh
 				_, _ = io.WriteString(stdinPipe, "\n")
 			}
@@ -535,6 +535,13 @@ func RunLedgerSim(
 	err = cmd.Wait()
 	if err != nil {
 		fmt.Println(err)
+	}
+
+	// close if previous one failed
+	select {
+	case <-ledgerSimReadyCh:
+	default:
+		close(ledgerSimReadyCh)
 	}
 
 	close(ledgerSimEndCh)
