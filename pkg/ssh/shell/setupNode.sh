@@ -2,7 +2,7 @@
 set -e
 {{if .IsE2E }}
 #name:TASK [disable systemctl]
-cp -vf /usr/bin/true /usr/local/sbin/systemctl
+sudo cp -vf /usr/bin/true /usr/local/sbin/systemctl
 {{end}}
 #name:TASK [update apt data and install dependencies] 
 DEBIAN_FRONTEND=noninteractive sudo apt-get -y update

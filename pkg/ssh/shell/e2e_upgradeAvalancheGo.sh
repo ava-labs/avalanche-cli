@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 #name:TASK [disable systemctl]
-cp -vf /usr/bin/true /usr/local/sbin/systemctl
+sudo cp -vf /usr/bin/true /usr/local/sbin/systemctl
 #name:TASK [stop node - stop avalanchego]
 sudo pkill avalanchego || echo "avalanchego not running"
 #name:TASK [upgrade avalanchego version]
