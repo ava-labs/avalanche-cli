@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -120,8 +121,13 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		output := commands.NodeUpgrade()
 		fmt.Println(output)
 		gomega.Expect(output).To(gomega.ContainSubstring("Upgrading Avalanche Go"))
+		latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+			constants.AvaLabsOrg,
+			constants.AvalancheGoRepoName,
+		))
+		gomega.Expect(err).Should(gomega.BeNil())
 		avalancegoVersion := commands.NodeSSH(constants.E2EClusterName, "/home/ubuntu/avalanche-node/avalanchego --version")
 		gomega.Expect(avalancegoVersion).To(gomega.ContainSubstring("go="))
-		gomega.Expect(avalancegoVersion).To(gomega.ContainSubstring("avalanchego/" + commands.GetLatestAvagoVersionFromGithub()))
+		gomega.Expect(avalancegoVersion).To(gomega.ContainSubstring("avalanchego/" + latestAvagoVersion))
 	})
 })
