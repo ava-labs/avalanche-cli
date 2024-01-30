@@ -24,11 +24,10 @@ func NodeCreate(network, version string, numNodes int) string {
 	_, err = os.Open(filepath.Join(home, ".ssh", e2eKeyPairName+".pub"))
 	gomega.Expect(err).Should(gomega.BeNil())
 	cmdVersion := "--latest-avalanchego-version=true"
-	if version != "latest" || version != "" {
+	if version != "latest" && version != "" {
 		cmdVersion = "--custom-avalanchego-version=" + version
 	}
 	/* #nosec G204 */
-
 	cmd := exec.Command(
 		CLIBinary,
 		"node",
