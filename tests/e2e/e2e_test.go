@@ -40,11 +40,4 @@ var _ = ginkgo.BeforeSuite(func() {
 	out, err := cmd.CombinedOutput()
 	fmt.Println(string(out))
 	gomega.Expect(err).Should(gomega.BeNil())
-	// check if dockerfile can be built
-	/*if utils.E2EDocker() {
-		cmd = exec.Command("make", "docker-e2e-build")
-		out, err = cmd.CombinedOutput()
-		fmt.Println(string(out))
-		gomega.Expect(err).Should(gomega.BeNil())
-	}*/
 })

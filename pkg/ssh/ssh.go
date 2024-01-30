@@ -134,11 +134,20 @@ func RunSSHRestartNode(host *models.Host) error {
 
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
 func RunSSHUpgradeAvalanchego(host *models.Host, avalancheGoVersion string) error {
+	if utils.IsE2E() && utils.E2EDocker() {
+		return RunOverSSH(
+			"E2E Upgrade Avalanchego",
+			host,
+			constants.SSHScriptTimeout,
+			"shell/e2e_startNode.sh",
+			scriptInputs{},
+		)
+	}
 	return RunOverSSH(
 		"Upgrade Avalanchego",
 		host,
 		constants.SSHScriptTimeout,
-		"shell/upgradeAvalancheGo.sh",
+		"shell/e2e_upgradeAvalancheGo.sh",
 		scriptInputs{AvalancheGoVersion: avalancheGoVersion},
 	)
 }

@@ -6,21 +6,30 @@ package root
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
+const (
+	avalanchegoVersion = "v1.10.18"
+	network            = "fuji"
+	numNodes           = 1
+)
+
 var (
 	hostName string
 	NodeID   string
+	app      *application.Avalanche
 )
 
 var _ = ginkgo.Describe("[Node create]", func() {
 	ginkgo.It("can create a node", func() {
-		output := commands.NodeCreate("fuji", 1)
+		output := commands.NodeCreate(network, avalanchegoVersion, numNodes)
 		fmt.Println(output)
 		gomega.Expect(output).To(gomega.ContainSubstring("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 		// parse hostName
@@ -33,18 +42,32 @@ var _ = ginkgo.Describe("[Node create]", func() {
 			ginkgo.Fail("failed to parse hostName and NodeID")
 		}
 	})
+	ginkgo.It("creates cluster config", func() {
+		clustersConfig, err := app.LoadClustersConfig()
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(clustersConfig.Clusters).To(gomega.HaveLen(1))
+		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Network).To(gomega.Equal(network))
+		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Nodes).To(gomega.HaveLen(numNodes))
+	})
+	ginkgo.It("creates node config", func() {
+		fmt.Println("HostName: ", hostName)
+		nodeConfig, err := app.LoadClusterNodeConfig(hostName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(nodeConfig.NodeID).To(gomega.Equal(hostName))
+	})
 	ginkgo.It("installs and runs avalanchego", func() {
-		avalancegoVersion := commands.NodeSSH(constants.E2EClusterName, "/home/ubuntu/avalanche-node/avalanchego --version")
-		gomega.Expect(avalancegoVersion).To(gomega.ContainSubstring("avalanche/"))
-		gomega.Expect(avalancegoVersion).To(gomega.ContainSubstring("[database="))
-		gomega.Expect(avalancegoVersion).To(gomega.ContainSubstring("rpcchainvm="))
-		gomega.Expect(avalancegoVersion).To(gomega.ContainSubstring("go="))
 		avalancegoProcess := commands.NodeSSH(constants.E2EClusterName, "ps -elf")
 		gomega.Expect(avalancegoProcess).To(gomega.ContainSubstring("/home/ubuntu/avalanche-node/avalanchego"))
 	})
+	ginkgo.It("installs latest version of avalanchego", func() {
+		avalanchegoVersionClean := strings.TrimPrefix(avalanchegoVersion, "v")
+		avalancegoVersion := commands.NodeSSH(constants.E2EClusterName, "/home/ubuntu/avalanche-node/avalanchego --version")
+		gomega.Expect(avalancegoVersion).To(gomega.ContainSubstring("go="))
+		gomega.Expect(avalancegoVersion).To(gomega.ContainSubstring("avalanchego/" + avalanchegoVersionClean))
+	})
 	ginkgo.It("configured avalanchego", func() {
 		avalancegoConfig := commands.NodeSSH(constants.E2EClusterName, "cat /home/ubuntu/.avalanchego/configs/node.json")
-		gomega.Expect(avalancegoConfig).To(gomega.ContainSubstring("\"network-id\": \"fuji\""))
+		gomega.Expect(avalancegoConfig).To(gomega.ContainSubstring("\"network-id\": \"" + network + "\""))
 		gomega.Expect(avalancegoConfig).To(gomega.ContainSubstring("public-ip"))
 		avalancegoConfigCChain := commands.NodeSSH(constants.E2EClusterName, "cat /home/ubuntu/.avalanchego/configs/chains/C/config.json")
 		gomega.Expect(avalancegoConfigCChain).To(gomega.ContainSubstring("\"state-sync-enabled\": true"))
@@ -92,5 +115,13 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		gomega.Expect(logs).To(gomega.ContainSubstring("initializing database"))
 		gomega.Expect(logs).To(gomega.ContainSubstring("creating proposervm wrapper"))
 		gomega.Expect(logs).To(gomega.ContainSubstring("check started passing"))
+	})
+	ginkgo.It("can upgrade the nodes", func() {
+		output := commands.NodeUpgrade()
+		fmt.Println(output)
+		gomega.Expect(output).To(gomega.ContainSubstring("Upgrading Avalanche Go"))
+		avalancegoVersion := commands.NodeSSH(constants.E2EClusterName, "/home/ubuntu/avalanche-node/avalanchego --version")
+		gomega.Expect(avalancegoVersion).To(gomega.ContainSubstring("go="))
+		gomega.Expect(avalancegoVersion).To(gomega.ContainSubstring("avalanchego/" + commands.GetLatestAvagoVersionFromGithub()))
 	})
 })
