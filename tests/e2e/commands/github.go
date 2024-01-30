@@ -10,10 +10,10 @@ import (
 	"github.com/onsi/gomega"
 )
 
-const avalanchegoReleaseUrl = "https://api.github.com/repos/ava-labs/avalanchego/releases/latest"
+const avalanchegoReleaseURL = "https://api.github.com/repos/ava-labs/avalanchego/releases/latest"
 
 func GetLatestAvagoVersionFromGithub() string {
-	response, err := http.Get(avalanchegoReleaseUrl)
+	response, err := http.Get(avalanchegoReleaseURL)
 	gomega.Expect(err).Should(gomega.BeNil())
 	defer response.Body.Close()
 	gomega.Expect(response.StatusCode).Should(gomega.BeEquivalentTo(http.StatusOK))
