@@ -140,7 +140,7 @@ func RunSSHUpgradeAvalanchego(host *models.Host, avalancheGoVersion string) erro
 			host,
 			constants.SSHScriptTimeout,
 			"shell/e2e_upgradeAvalancheGo.sh",
-			scriptInputs{},
+			scriptInputs{AvalancheGoVersion: avalancheGoVersion},
 		)
 	}
 	return RunOverSSH(
