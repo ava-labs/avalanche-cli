@@ -12,7 +12,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
@@ -30,7 +29,6 @@ const (
 var (
 	hostName string
 	NodeID   string
-	app      *application.Avalanche
 )
 
 var _ = ginkgo.Describe("[Node create]", func() {
