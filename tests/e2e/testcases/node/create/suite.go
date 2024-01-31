@@ -4,12 +4,17 @@
 package root
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"os/user"
+	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -43,7 +48,14 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		}
 	})
 	ginkgo.It("creates cluster config", func() {
-		clustersConfig, err := app.LoadClustersConfig()
+		usr, err := user.Current()
+		gomega.Expect(err).Should(gomega.BeNil())
+		homeDir := usr.HomeDir
+		relativePath := "/.avalanche-cli/nodes/cluster_config.json"
+		content, err := os.ReadFile(filepath.Join(homeDir, relativePath))
+		gomega.Expect(err).Should(gomega.BeNil())
+		clustersConfig := models.ClustersConfig{}
+		err = json.Unmarshal(content, &clustersConfig)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(clustersConfig.Clusters).To(gomega.HaveLen(1))
 		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Network).To(gomega.Equal(network))

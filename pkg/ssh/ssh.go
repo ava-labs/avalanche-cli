@@ -139,7 +139,7 @@ func RunSSHUpgradeAvalanchego(host *models.Host, avalancheGoVersion string) erro
 			"E2E Upgrade Avalanchego",
 			host,
 			constants.SSHScriptTimeout,
-			"shell/e2e_startNode.sh",
+			"shell/e2e_upgradeAvalancheGo.sh",
 			scriptInputs{},
 		)
 	}
@@ -147,7 +147,7 @@ func RunSSHUpgradeAvalanchego(host *models.Host, avalancheGoVersion string) erro
 		"Upgrade Avalanchego",
 		host,
 		constants.SSHScriptTimeout,
-		"shell/e2e_upgradeAvalancheGo.sh",
+		"shell/upgradeAvalancheGo.sh",
 		scriptInputs{AvalancheGoVersion: avalancheGoVersion},
 	)
 }
