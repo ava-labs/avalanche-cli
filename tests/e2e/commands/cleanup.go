@@ -46,6 +46,6 @@ func DeleteE2ECluster() {
 	clustersConfig.Clusters[constants.E2EClusterName] = models.ClusterConfig{}
 	content, err = json.Marshal(clustersConfig)
 	gomega.Expect(err).Should(gomega.BeNil())
-	err = os.WriteFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.ClustersConfigFileName), content, 0o644)
+	err = os.WriteFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.ClustersConfigFileName), content, 0o600)
 	gomega.Expect(err).Should(gomega.BeNil())
 }
