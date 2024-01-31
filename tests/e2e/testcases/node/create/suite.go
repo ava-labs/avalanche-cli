@@ -32,6 +32,11 @@ var (
 )
 
 var _ = ginkgo.Describe("[Node create]", func() {
+	_ = ginkgo.AfterSuite(func() {
+		commands.DeleteNode(hostName)
+		commands.DeleteE2ECluster()
+		commands.DeleteE2EInventory()
+	})
 	ginkgo.It("can create a node", func() {
 		output := commands.NodeCreate(network, avalanchegoVersion, numNodes)
 		fmt.Println(output)
@@ -50,8 +55,8 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		usr, err := user.Current()
 		gomega.Expect(err).Should(gomega.BeNil())
 		homeDir := usr.HomeDir
-		relativePath := ".avalanche-cli/nodes/cluster_config.json"
-		content, err := os.ReadFile(filepath.Join(homeDir, relativePath))
+		relativePath := "nodes"
+		content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.ClustersConfigFileName))
 		gomega.Expect(err).Should(gomega.BeNil())
 		clustersConfig := models.ClustersConfig{}
 		err = json.Unmarshal(content, &clustersConfig)
@@ -65,8 +70,8 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		usr, err := user.Current()
 		gomega.Expect(err).Should(gomega.BeNil())
 		homeDir := usr.HomeDir
-		relativePath := ".avalanche-cli/nodes"
-		content, err := os.ReadFile(filepath.Join(homeDir, relativePath, hostName, "node_cloud_config.json"))
+		relativePath := "nodes"
+		content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, hostName, "node_cloud_config.json"))
 		gomega.Expect(err).Should(gomega.BeNil())
 		nodeCloudConfig := models.NodeConfig{}
 		err = json.Unmarshal(content, &nodeCloudConfig)
