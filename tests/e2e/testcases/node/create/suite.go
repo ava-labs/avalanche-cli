@@ -132,7 +132,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		output := commands.NodeUpgrade()
 		fmt.Println(output)
 		gomega.Expect(output).To(gomega.ContainSubstring("Upgrading Avalanche Go"))
-		latestAvagoVersion := commands.GetLatestAvagoVersionFromGithub()
+		latestAvagoVersion := strings.TrimPrefix(commands.GetLatestAvagoVersionFromGithub(), "v")
 		avalanchegoVersion := commands.NodeSSH(constants.E2EClusterName, "/home/ubuntu/avalanche-node/avalanchego --version")
 		gomega.Expect(avalanchegoVersion).To(gomega.ContainSubstring("go="))
 		gomega.Expect(avalanchegoVersion).To(gomega.ContainSubstring("avalanchego/" + latestAvagoVersion))
