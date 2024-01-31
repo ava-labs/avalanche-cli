@@ -18,13 +18,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 const (
 	avalanchegoVersion = "v1.10.18"
 	network            = "fuji"
+	networkCapitalized = "Fuji"
 	numNodes           = 1
 )
 
@@ -60,7 +59,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		err = json.Unmarshal(content, &clustersConfig)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(clustersConfig.Clusters).To(gomega.HaveLen(1))
-		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Network.Kind.String()).To(gomega.Equal(cases.Title(language.English, cases.Compact).String(network)))
+		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Network.Kind.String()).To(gomega.Equal(networkCapitalized))
 		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Nodes).To(gomega.HaveLen(numNodes))
 	})
 	ginkgo.It("creates node config", func() {
@@ -107,7 +106,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		gomega.Expect(output).To(gomega.ContainSubstring(constants.E2ENetworkPrefix))
 		gomega.Expect(output).To(gomega.ContainSubstring(hostName))
 		gomega.Expect(output).To(gomega.ContainSubstring(NodeID))
-		gomega.Expect(output).To(gomega.ContainSubstring(cases.Title(language.English, cases.Compact).String(network)))
+		gomega.Expect(output).To(gomega.ContainSubstring(networkCapitalized))
 	})
 	ginkgo.It("can ssh to a created node", func() {
 		output := commands.NodeSSH(constants.E2EClusterName, "echo hello")
@@ -116,7 +115,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 	ginkgo.It("can list created nodes", func() {
 		output := commands.NodeList()
 		fmt.Println(output)
-		gomega.Expect(output).To(gomega.ContainSubstring(cases.Title(language.English, cases.Compact).String(network)))
+		gomega.Expect(output).To(gomega.ContainSubstring(networkCapitalized))
 		gomega.Expect(output).To(gomega.ContainSubstring("docker1"))
 		gomega.Expect(output).To(gomega.ContainSubstring("NodeID"))
 		gomega.Expect(output).To(gomega.ContainSubstring(constants.E2ENetworkPrefix))
