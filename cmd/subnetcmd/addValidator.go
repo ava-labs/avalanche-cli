@@ -166,9 +166,8 @@ func CallAddValidator(
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
-	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
 
-	controlKeys, threshold, err := txutils.GetOwners(network, subnetID, transferSubnetOwnershipTxID)
+	controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
 	}
@@ -233,7 +232,6 @@ func CallAddValidator(
 		controlKeys,
 		subnetAuthKeys,
 		subnetID,
-		transferSubnetOwnershipTxID,
 		nodeID,
 		selectedWeight,
 		start,

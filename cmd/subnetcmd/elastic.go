@@ -359,9 +359,7 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("Skipping ImportTx...")
 	}
 
-	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
-
-	controlKeys, threshold, err := txutils.GetOwners(network, subnetID, transferSubnetOwnershipTxID)
+	controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
 	}
@@ -394,7 +392,6 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 		subnetAuthKeys,
 		elasticSubnetConfig,
 		subnetID,
-		transferSubnetOwnershipTxID,
 		assetID,
 	)
 	if err != nil {

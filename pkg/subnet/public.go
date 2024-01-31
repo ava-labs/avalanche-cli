@@ -61,13 +61,12 @@ func (d *PublicDeployer) AddValidator(
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
-	transferSubnetOwnershipTxID ids.ID,
 	nodeID ids.NodeID,
 	weight uint64,
 	startTime time.Time,
 	duration time.Duration,
 ) (bool, *txs.Tx, []string, error) {
-	wallet, err := d.loadWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -120,11 +119,10 @@ func (d *PublicDeployer) TransferSubnetOwnership(
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
-	transferSubnetOwnershipTxID ids.ID,
 	newControlKeys []string,
 	newThreshold uint32,
 ) (bool, *txs.Tx, []string, error) {
-	wallet, err := d.loadWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -265,10 +263,9 @@ func (d *PublicDeployer) TransformSubnetTx(
 	subnetAuthKeysStrs []string,
 	elasticSubnetConfig models.ElasticSubnetConfig,
 	subnetID ids.ID,
-	transferSubnetOwnershipTxID ids.ID,
 	subnetAssetID ids.ID,
 ) (bool, ids.ID, *txs.Tx, []string, error) {
-	wallet, err := d.loadWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}
@@ -314,10 +311,9 @@ func (d *PublicDeployer) RemoveValidator(
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
-	transferSubnetOwnershipTxID ids.ID,
 	nodeID ids.NodeID,
 ) (bool, *txs.Tx, []string, error) {
-	wallet, err := d.loadWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -429,13 +425,12 @@ func (d *PublicDeployer) DeployBlockchain(
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
-	transferSubnetOwnershipTxID ids.ID,
 	chain string,
 	genesis []byte,
 ) (bool, ids.ID, *txs.Tx, []string, error) {
 	ux.Logger.PrintToUser("Now creating blockchain...")
 
-	wallet, err := d.loadWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}

@@ -393,13 +393,13 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		flags := make(map[string]string)
 		flags[constants.Network] = network.Name()
 		metrics.HandleTracking(cmd, app, flags)
-		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, ids.Empty, blockchainID)
+		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
 	}
 
 	// from here on we are assuming a public deploy
 
 	createSubnet := true
-	var subnetID, transferSubnetOwnershipTxID ids.ID
+	var subnetID ids.ID
 	if subnetIDStr != "" {
 		subnetID, err = ids.FromString(subnetIDStr)
 		if err != nil {
@@ -411,7 +411,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if ok {
 			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
 				subnetID = model.SubnetID
-				transferSubnetOwnershipTxID = model.TransferSubnetOwnershipTxID
 				createSubnet = false
 			}
 		}
@@ -452,7 +451,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser(logging.Green.Wrap(
 			fmt.Sprintf("Deploying into pre-existent subnet ID %s", subnetID.String()),
 		))
-		controlKeys, threshold, err = txutils.GetOwners(network, subnetID, transferSubnetOwnershipTxID)
+		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
 		if err != nil {
 			return err
 		}
@@ -490,7 +489,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		// get the control keys in the same order as the tx
-		controlKeys, threshold, err = txutils.GetOwners(network, subnetID, ids.Empty)
+		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
 		if err != nil {
 			return err
 		}
@@ -500,7 +499,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		controlKeys,
 		subnetAuthKeys,
 		subnetID,
-		transferSubnetOwnershipTxID,
 		chain,
 		chainGenesis,
 	)
@@ -536,7 +534,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
-	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, transferSubnetOwnershipTxID, blockchainID)
+	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
 }
 
 func getControlKeys(kc *keychain.Keychain) ([]string, bool, error) {
