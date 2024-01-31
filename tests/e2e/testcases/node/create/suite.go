@@ -60,7 +60,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		err = json.Unmarshal(content, &clustersConfig)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(clustersConfig.Clusters).To(gomega.HaveLen(1))
-		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Network).To(gomega.Equal(cases.Title(language.English, cases.Compact).String(network)))
+		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Network.Kind.String()).To(gomega.Equal(cases.Title(language.English, cases.Compact).String(network)))
 		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Nodes).To(gomega.HaveLen(numNodes))
 	})
 	ginkgo.It("creates node config", func() {
