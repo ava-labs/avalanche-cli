@@ -311,12 +311,17 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	network := clustersConfig.Clusters[clusterName].Network
 
-	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
+	cluster, ok := clustersConfig.Clusters[clusterName]
+	if !ok {
+		return fmt.Errorf("cluster %s does not exist", clusterName)
+	}
+	network := clustersConfig.Clusters[clusterName].Network
+	hosts := cluster.GetValidatorHosts(allHosts) // exlude api nodes
 	defer disconnectHosts(hosts)
 
 	fee := network.GenesisParams().AddPrimaryNetworkValidatorFee * uint64(len(hosts))

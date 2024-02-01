@@ -190,3 +190,14 @@ func Unique(slice []string) []string {
 func ContainsIgnoreCase(s, substr string) bool {
 	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }
+
+// SplitSliceAt splits a slice at the given index and returns two new slices.func SplitSliceAt[T any](slice []T, index int) ([]T, []T) {
+func SplitSliceAt[T any](slice []T, index int) ([]T, []T) {
+	if index < 0 || index >= len(slice) {
+		return slice, nil
+	}
+	if index == 0 {
+		return nil, slice
+	}
+	return slice[:index], slice[index:]
+}
