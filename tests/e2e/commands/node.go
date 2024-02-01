@@ -51,6 +51,42 @@ func NodeCreate(network, version string, numNodes int) string {
 	return string(output)
 }
 
+func NodeCreateWithMonitoring(network, version string, numNodes int) string {
+	home, err := os.UserHomeDir()
+	gomega.Expect(err).Should(gomega.BeNil())
+	_, err = os.Open(filepath.Join(home, ".ssh", e2eKeyPairName))
+	gomega.Expect(err).Should(gomega.BeNil())
+	_, err = os.Open(filepath.Join(home, ".ssh", e2eKeyPairName+".pub"))
+	gomega.Expect(err).Should(gomega.BeNil())
+	cmdVersion := "--latest-avalanchego-version=true"
+	if version != "latest" && version != "" {
+		cmdVersion = "--custom-avalanchego-version=" + version
+	}
+	/* #nosec G204 */
+	cmd := exec.Command(
+		CLIBinary,
+		"node",
+		"create",
+		constants.E2EClusterName,
+		"--use-static-ip=false",
+		cmdVersion,
+		"--separate-monitoring-instance=true",
+		"--region=local",
+		"--num-nodes="+strconv.Itoa(numNodes),
+		"--"+network,
+		"--node-type=docker",
+	)
+	cmd.Env = os.Environ()
+	fmt.Println("About to run: " + cmd.String())
+	output, err := cmd.Output()
+	fmt.Println("---------------->")
+	fmt.Println(string(output))
+	fmt.Println(err)
+	fmt.Println("---------------->")
+	gomega.Expect(err).Should(gomega.BeNil())
+	return string(output)
+}
+
 func NodeDevnet(numNodes int) string {
 	/* #nosec G204 */
 	cmd := exec.Command(
