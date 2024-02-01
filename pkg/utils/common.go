@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"os/exec"
 	"os/user"
@@ -200,4 +201,24 @@ func SplitSliceAt[T any](slice []T, index int) ([]T, []T) {
 		return nil, slice
 	}
 	return slice[:index], slice[index:]
+}
+
+// RandomString generates a random string of the specified length.
+func RandomString(length int) string {
+	randG := rand.New(rand.NewSource(time.Now().UnixNano())) // #nosec G404
+	chars := "abcdefghijklmnopqrstuvwxyz"
+	result := make([]byte, length)
+	for i := 0; i < length; i++ {
+		result[i] = chars[randG.Intn(len(chars))]
+	}
+	return string(result)
+}
+
+// Sum calculates the sum of all the elements in the given slice of integers.
+func Sum(s []int) int {
+	sum := 0
+	for _, v := range s {
+		sum += v
+	}
+	return sum
 }

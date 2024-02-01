@@ -267,4 +267,10 @@ const (
 	DefaultConfirmTxTimeout = 20 * time.Second
 
 	PayTxsFeesMsg = "pay transaction fees"
+
+	// E2E
+	E2ENetworkPrefix     = "172.18.0"
+	E2EClusterName       = "e2e"
+	E2EDocker            = "docker"
+	E2EDockerComposeFile = "/tmp/avalanche-cli-docker-compose.yml"
 )

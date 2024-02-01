@@ -108,7 +108,7 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	if err := migrations.RunMigrations(app); err != nil {
 		return err
 	}
-	if os.Getenv("RUN_E2E") == "" && !app.Conf.ConfigFileExists() && !utils.FileExists(utils.UserHomePath(constants.OldMetricsConfigFileName)) && metrics.CheckCommandIsNotCompletion(cmd) {
+	if utils.IsE2E() && !app.Conf.ConfigFileExists() && !utils.FileExists(utils.UserHomePath(constants.OldMetricsConfigFileName)) && metrics.CheckCommandIsNotCompletion(cmd) {
 		err = metrics.HandleUserMetricsPreference(app)
 		if err != nil {
 			return err
@@ -312,6 +312,7 @@ func Execute() {
 	rootCmd := NewRootCmd()
 	err := rootCmd.Execute()
 	if err != nil {
+		fmt.Println(err)
 		os.Exit(1)
 	}
 }

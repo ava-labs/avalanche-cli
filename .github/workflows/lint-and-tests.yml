@@ -67,8 +67,18 @@ jobs:
             "\\[Upgrade expect network failure\\]",
             "\\[Upgrade public network\\]",
             "\\[Upgrade local network\\]",
+            "\\[Node create\\]",
+            "\\[Node devnet\\]",
+            "\\[Docker\\]",
           ]
         os: [ubuntu-latest, macos-latest]
+        exclude:
+          - os: macos-latest
+            suite: "\\[Node create\\]"
+          - os: macos-latest
+            suite: "\\[Node devnet\\]"
+          - os: macos-latest
+            suite: "\\[Docker\\]"
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
@@ -100,6 +110,15 @@ jobs:
           brew install docker
           colima start
           sudo ln -s ~/.colima/default/docker.sock /var/run/docker.sock
+      - name: generate ssh token for e2e tests
+        run: |
+          mkdir -p ~/.ssh && ssh-keygen -b 2048 -t rsa -f ~/.ssh/runner-avalanche-cli-keypair -q -N ""
+          echo "E2E_SSH_PUB_KEY<<EOF" >> $GITHUB_ENV
+          cat ~/.ssh/runner-avalanche-cli-keypair >> $GITHUB_ENV 
+          echo "EOF" >> $GITHUB_ENV
+      - uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ env.E2E_SSH_PUB_KEY }}   
       - name: Run e2e tests
         shell: bash
         run: AVALANCHE_CLI_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} LEDGER_SIM=true scripts/run.e2e.sh --filter "${{ matrix.suite }}"
