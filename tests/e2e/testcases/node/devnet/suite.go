@@ -98,6 +98,6 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 	ginkgo.It("can cleanup", func() {
 		commands.DeleteE2EInventory()
 		commands.DeleteE2ECluster()
-		commands.DeleteNode(NodeID)
+		commands.DeleteNode(hostName)
 	})
 })
