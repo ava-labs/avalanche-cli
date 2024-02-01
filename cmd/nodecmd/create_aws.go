@@ -5,7 +5,6 @@ package nodecmd
 import (
 	"fmt"
 	"os/exec"
-	"os/user"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -146,7 +145,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		ux.Logger.PrintToUser("Creating separate monitoring EC2 instance(s) on AWS...")
 	}
 
-	userIPAddress, err := getIPAddress()
+	userIPAddress, err := utils.GetUserIPAddress()
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -349,13 +348,15 @@ func createAWSInstances(
 	numNodes map[string]int,
 	regions []string,
 	ami map[string]string,
-	usr *user.User,
 	forMonitoring bool) (
 	models.CloudConfig, error,
 ) {
 	regionConf := map[string]models.RegionConfig{}
 	for _, region := range regions {
-		prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
+		prefix, err := defaultAvalancheCLIPrefix(region)
+		if err != nil {
+			return models.CloudConfig{}, err
+		}
 		regionConf[region] = models.RegionConfig{
 			Prefix:            prefix,
 			ImageID:           ami[region],

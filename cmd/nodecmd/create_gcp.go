@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"os/user"
 	"strconv"
 	"strings"
 	"time"
@@ -173,7 +172,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	userIPAddress, err := getIPAddress()
+	userIPAddress, err := utils.GetUserIPAddress()
 	if err != nil {
 		return nil, nil, "", "", err
 	}
@@ -284,7 +283,6 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 }
 
 func createGCPInstance(
-	usr *user.User,
 	gcpClient *gcpAPI.GcpCloud,
 	instanceType string,
 	numNodes []int,
@@ -293,14 +291,17 @@ func createGCPInstance(
 	clusterName string,
 	forMonitoring bool,
 ) (models.CloudConfig, error) {
-	defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
+	prefix, err := defaultAvalancheCLIPrefix("")
+	if err != nil {
+		return models.CloudConfig{}, err
+	}
 	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(
 		gcpClient,
 		instanceType,
 		numNodes,
 		zones,
 		imageID,
-		defaultAvalancheCLIPrefix,
+		prefix,
 		forMonitoring,
 	)
 	if err != nil {
@@ -337,7 +338,7 @@ func createGCPInstance(
 			InstanceIDs:   instanceIDs[zone],
 			PublicIPs:     elasticIPs[zone],
 			KeyPair:       keyPairName,
-			SecurityGroup: fmt.Sprintf("%s-network", defaultAvalancheCLIPrefix),
+			SecurityGroup: fmt.Sprintf("%s-network", prefix),
 			CertFilePath:  certFilePath,
 			ImageID:       imageID,
 		}
