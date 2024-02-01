@@ -94,3 +94,34 @@ func TestUnique(t *testing.T) {
 		}
 	}
 }
+
+func TestSplitSliceAt(t *testing.T) {
+	// Test case 1: Split at index 2
+	intSlice := []int{1, 2, 3, 4, 5}
+	firstPart, secondPart := SplitSliceAt(intSlice, 2)
+	expectedFirstPart := []int{1, 2}
+	expectedSecondPart := []int{3, 4, 5}
+	if !reflect.DeepEqual(firstPart, expectedFirstPart) {
+		t.Errorf("Expected first part %v, but got %v", expectedFirstPart, firstPart)
+	}
+	if !reflect.DeepEqual(secondPart, expectedSecondPart) {
+		t.Errorf("Expected second part %v, but got %v", expectedSecondPart, secondPart)
+	}
+	// Test case 2: Split at index 0
+	firstPart, secondPart = SplitSliceAt(intSlice, 0)
+	if firstPart != nil {
+		t.Errorf("Expected first part nil, but got %v", firstPart)
+	}
+	if !reflect.DeepEqual(secondPart, intSlice) {
+		t.Errorf("Expected second part %v, but got %v", intSlice, secondPart)
+	}
+
+	// Test case 3: Split at index out of bounds
+	firstPart, secondPart = SplitSliceAt(intSlice, 10)
+	if !reflect.DeepEqual(firstPart, intSlice) {
+		t.Errorf("Expected first part %v, but got %v", intSlice, firstPart)
+	}
+	if secondPart != nil {
+		t.Errorf("Expected second part nil, but got %v", secondPart)
+	}
+}

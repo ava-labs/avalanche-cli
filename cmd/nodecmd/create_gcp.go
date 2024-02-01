@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"os/user"
 	"strconv"
 	"strings"
 
+	"golang.org/x/exp/slices"
+
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"golang.org/x/exp/maps"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
@@ -93,42 +93,54 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 	return computeService, gcpProjectName, gcpCredentialsPath, err
 }
 
-func getGCPConfig() (*gcpAPI.GcpCloud, []string, []int, string, string, string, error) {
-	finalZones := map[string]int{}
+func getGCPConfig() (*gcpAPI.GcpCloud, map[string]int, string, string, string, error) {
+	finalRegions := map[string]int{}
 	switch {
 	case len(numNodes) != len(utils.Unique(cmdLineRegion)):
-		return nil, nil, nil, "", "", "", errors.New("number of regions and number of nodes must be equal. Please make sure list of regions is unique")
+		return nil, nil, "", "", "", errors.New("number of regions and number of nodes must be equal. Please make sure list of regions is unique")
 	case len(cmdLineRegion) == 0 && len(numNodes) == 0:
 		var err error
-		finalZones, err = getRegionsNodeNum(constants.GCPCloudService)
+		finalRegions, err = getRegionsNodeNum(constants.GCPCloudService)
 		if err != nil {
-			return nil, nil, nil, "", "", "", err
+			return nil, nil, "", "", "", err
 		}
 	default:
 		for i, region := range cmdLineRegion {
-			finalZones[region] = numNodes[i]
+			finalRegions[region] = numNodes[i]
 		}
 	}
 	gcpClient, projectName, gcpCredentialFilePath, err := getGCPCloudCredentials()
 	if err != nil {
-		return nil, nil, nil, "", "", "", err
+		return nil, nil, "", "", "", err
 	}
 	gcpCloud, err := gcpAPI.NewGcpCloud(gcpClient, projectName, context.Background())
 	if err != nil {
-		return nil, nil, nil, "", "", "", err
+		return nil, nil, "", "", "", err
+	}
+	finalZones := map[string]int{}
+	// verify regions are valid and place in random zones per region
+	for region, numNodes := range finalRegions {
+		if !slices.Contains(gcpCloud.ListRegions(), region) {
+			return nil, nil, "", "", "", fmt.Errorf("invalid region %s", region)
+		} else {
+			finalZone, err := gcpCloud.GetRandomZone(region)
+			if err != nil {
+				return nil, nil, "", "", "", err
+			}
+			finalZones[finalZone] = numNodes
+		}
 	}
 	imageID, err := gcpCloud.GetUbuntuImageID()
 	if err != nil {
-		return nil, nil, nil, "", "", "", err
+		return nil, nil, "", "", "", err
 	}
-	return gcpCloud, maps.Keys(finalZones), maps.Values(finalZones), imageID, gcpCredentialFilePath, projectName, nil
+	return gcpCloud, finalZones, imageID, gcpCredentialFilePath, projectName, nil
 }
 
 // createGCEInstances creates Google Compute Engine VM instances
 func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	instanceType string,
-	numNodes []int,
-	zones []string,
+	numNodesMap map[string]int,
 	ami,
 	cliDefaultName string,
 	forMonitoring bool,
@@ -161,7 +173,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	userIPAddress, err := getIPAddress()
+	userIPAddress, err := utils.GetUserIPAddress()
 	if err != nil {
 		return nil, nil, "", "", err
 	}
@@ -213,13 +225,13 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 		}
 	}
 	nodeName := map[string]string{}
-	for _, zone := range zones {
+	for zone := range numNodesMap {
 		nodeName[zone] = utils.RandomString(5)
 	}
 	publicIP := map[string][]string{}
 	if useStaticIP {
-		for i, zone := range zones {
-			publicIP[zone], err = gcpClient.SetPublicIP(zone, nodeName[zone], numNodes[i])
+		for zone, numNodes := range numNodesMap {
+			publicIP[zone], err = gcpClient.SetPublicIP(zone, nodeName[zone], numNodes)
 			if err != nil {
 				return nil, nil, "", "", err
 			}
@@ -240,23 +252,26 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	}
 
 	ux.Logger.PrintToUser("Waiting for GCE instance(s) to be provisioned...")
-	for i, zone := range zones {
-		_, err := gcpClient.SetupInstances(zone,
+	for zone, numNodes := range numNodesMap {
+		_, err := gcpClient.SetupInstances(
+			cliDefaultName,
+			zone,
 			networkName,
 			sshPublicKey,
-			ami, nodeName[zone],
+			ami,
+			nodeName[zone],
 			instanceType,
 			publicIP[zone],
-			numNodes[i],
+			numNodes,
 			forMonitoring)
 		if err != nil {
 			return nil, nil, "", "", err
 		}
 	}
 	instanceIDs := map[string][]string{}
-	for z, zone := range zones {
+	for zone, numNodes := range numNodesMap {
 		instanceIDs[zone] = []string{}
-		for i := 0; i < numNodes[z]; i++ {
+		for i := 0; i < numNodes; i++ {
 			instanceIDs[zone] = append(instanceIDs[zone], fmt.Sprintf("%s-%s", nodeName[zone], strconv.Itoa(i)))
 		}
 	}
@@ -272,23 +287,23 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 }
 
 func createGCPInstance(
-	usr *user.User,
 	gcpClient *gcpAPI.GcpCloud,
 	instanceType string,
-	numNodes []int,
-	zones []string,
+	numNodesMap map[string]int,
 	imageID string,
 	clusterName string,
 	forMonitoring bool,
 ) (models.CloudConfig, error) {
-	defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
+	prefix, err := defaultAvalancheCLIPrefix("")
+	if err != nil {
+		return models.CloudConfig{}, err
+	}
 	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(
 		gcpClient,
 		instanceType,
-		numNodes,
-		zones,
+		numNodesMap,
 		imageID,
-		defaultAvalancheCLIPrefix,
+		prefix,
 		forMonitoring,
 	)
 	if err != nil {
@@ -320,12 +335,12 @@ func createGCPInstance(
 		return models.CloudConfig{}, err
 	}
 	ccm := models.CloudConfig{}
-	for _, zone := range zones {
+	for zone := range numNodesMap {
 		ccm[zone] = models.RegionConfig{
 			InstanceIDs:   instanceIDs[zone],
 			PublicIPs:     elasticIPs[zone],
 			KeyPair:       keyPairName,
-			SecurityGroup: fmt.Sprintf("%s-network", defaultAvalancheCLIPrefix),
+			SecurityGroup: fmt.Sprintf("%s-network", prefix),
 			CertFilePath:  certFilePath,
 			ImageID:       imageID,
 		}
