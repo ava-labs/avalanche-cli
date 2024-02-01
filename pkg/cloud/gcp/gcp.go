@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/exp/rand"
+
 	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
 
@@ -25,6 +27,7 @@ const (
 	opScopeZone   = "zone"
 	opScopeRegion = "region"
 	opScopeGlobal = "global"
+	gcpRegionAPI  = "https://www.googleapis.com/compute/v1/projects/%s/regions/%s"
 )
 
 var ErrNodeNotFoundToBeRunning = errors.New("node not found to be running")
@@ -450,6 +453,49 @@ func (c *GcpCloud) AddFirewall(publicIP, networkName, projectName, firewallName 
 		}
 	}
 	return nil
+}
+
+// ListRegions returns a list of regions for the GcpCloud instance.
+func (c *GcpCloud) ListRegions() []string {
+	regionListCall := c.gcpClient.Regions.List(c.projectID)
+	regionList, err := regionListCall.Do()
+	if err != nil {
+		return nil
+	}
+	regions := []string{}
+	for _, region := range regionList.Items {
+		regions = append(regions, region.Name)
+	}
+	return regions
+}
+
+// ListZonesInRegion returns a list of zones in a specific region for a given project ID.
+func (c *GcpCloud) ListZonesInRegion(region string) ([]string, error) {
+	zoneListCall := c.gcpClient.Zones.List(c.projectID)
+	zoneList, err := zoneListCall.Do()
+	if err != nil {
+		return nil, err
+	}
+	zones := []string{}
+	for _, zone := range zoneList.Items {
+		if zone.Region == fmt.Sprintf(gcpRegionAPI, c.projectID, region) {
+			zones = append(zones, zone.Name)
+		}
+	}
+	return zones, nil
+}
+
+// GetRandomZone returns a random zone in the specified region.
+func (c *GcpCloud) GetRandomZone(region string) (string, error) {
+	rand.Seed(uint64(time.Now().UnixNano()))
+	zones, err := c.ListZonesInRegion(region)
+	if err != nil {
+		return "", fmt.Errorf("error listing zones: %w", err)
+	}
+	if len(zones) == 0 {
+		return "", fmt.Errorf("no zones found in region %s", region)
+	}
+	return zones[rand.Intn(len(zones))], nil
 }
 
 // zoneToRegion returns region from zone

@@ -10,6 +10,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -112,8 +114,15 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 	ec2SvcMap := map[string]*awsAPI.AwsCloud{}
 	amiMap := map[string]string{}
 	numNodesMap := map[string]int{}
+	// verify regions are valid
+	if invalidRegions, err := checkRegions(maps.Keys(finalRegions)); err != nil {
+		return nil, nil, nil, err
+	} else if len(invalidRegions) > 0 {
+		return nil, nil, nil, fmt.Errorf("invalid regions %s provided for %s", invalidRegions, constants.AWSCloudService)
+	}
 	for region := range finalRegions {
 		var err error
+
 		ec2SvcMap[region], err = getAWSCloudCredentials(awsProfile, region)
 		if err != nil {
 			if !strings.Contains(err.Error(), "cloud access is required") {
@@ -419,4 +428,25 @@ func addCertToSSH(certName string) error {
 	cmd := exec.Command("ssh-add", certFilePath)
 	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	return cmd.Run()
+}
+
+// checkRegions checks if the given regions are available in AWS.
+// It returns list of invalid regions and error if any
+func checkRegions(regions []string) ([]string, error) {
+	const regionCheckerRegion = "us-east-1"
+	invalidRegions := []string{}
+	awsCloudRegionChecker, err := getAWSCloudCredentials(awsProfile, regionCheckerRegion)
+	if err != nil {
+		return invalidRegions, err
+	}
+	availableRegions, err := awsCloudRegionChecker.ListRegions()
+	if err != nil {
+		return invalidRegions, err
+	}
+	for _, region := range regions {
+		if !slices.Contains(availableRegions, region) {
+			invalidRegions = append(invalidRegions, region)
+		}
+	}
+	return invalidRegions, nil
 }

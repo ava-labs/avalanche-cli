@@ -454,6 +454,19 @@ func (c *AwsCloud) GetUbuntuAMIID() (string, error) {
 	return *amiID, nil
 }
 
+// ListRegions returns a list of all AWS regions.
+func (c *AwsCloud) ListRegions() ([]string, error) {
+	regions, err := c.ec2Client.DescribeRegions(c.ctx, &ec2.DescribeRegionsInput{})
+	if err != nil {
+		return nil, err
+	}
+	regionList := []string{}
+	for _, region := range regions.Regions {
+		regionList = append(regionList, *region.RegionName)
+	}
+	return regionList, nil
+}
+
 // isEIPQuotaExceededError checks if the error is related to exceeding the quota for Elastic IP addresses.
 func isEIPQuotaExceededError(err error) bool {
 	// You may need to adjust this function based on the actual error messages returned by AWS
