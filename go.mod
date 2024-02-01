@@ -5,8 +5,8 @@ go 1.20
 require (
 	github.com/ava-labs/apm v0.0.4
 	github.com/ava-labs/avalanche-network-runner v1.7.5-0.20240124213748-f804bbde896f
-	github.com/ava-labs/avalanchego v1.10.18
-	github.com/ava-labs/coreth v0.12.10-rc.5
+	github.com/ava-labs/avalanchego v1.10.19
+	github.com/ava-labs/coreth v0.12.11-rc.2
 	github.com/ava-labs/subnet-evm v0.5.11
 	github.com/aws/aws-sdk-go-v2 v1.24.1
 	github.com/aws/aws-sdk-go-v2/config v1.26.6
@@ -159,7 +159,6 @@ require (
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/skeema/knownhosts v1.2.1 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
-	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/status-im/keycard-go v0.2.0 // indirect
