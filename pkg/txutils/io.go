@@ -13,7 +13,7 @@ import (
 // saves a given [tx] to [txPath]
 func SaveToDisk(tx *txs.Tx, txPath string, forceOverwrite bool) error {
 	// Serialize the signed tx
-	txBytes, err := txs.Codec.Marshal(txs.Version, tx)
+	txBytes, err := txs.Codec.Marshal(txs.CodecVersion, tx)
 	if err != nil {
 		return fmt.Errorf("couldn't marshal signed tx: %w", err)
 	}

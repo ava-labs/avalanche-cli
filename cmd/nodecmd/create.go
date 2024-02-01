@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"net"
-	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -182,10 +180,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if cloudService != constants.GCPCloudService && cmdLineGCPProjectName != "" {
 		return fmt.Errorf("set to use GCP project but cloud option is not GCP")
 	}
-	usr, err := user.Current()
-	if err != nil {
-		return err
-	}
 	// for devnet add nonstake api nodes for each region with stake
 	if createDevnet {
 		numNodes = utils.Map(numNodes, func(n int) int {
@@ -228,14 +222,14 @@ func createNodes(_ *cobra.Command, args []string) error {
 				return err
 			}
 		}
-		cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodesMap, regions, ami, usr, false)
+		cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodesMap, regions, ami, false)
 		if err != nil {
 			return err
 		}
 		monitoringEc2SvcMap := make(map[string]*awsAPI.AwsCloud)
 		if separateMonitoringInstance && existingMonitoringInstance == "" {
 			monitoringEc2SvcMap[monitoringHostRegion] = ec2SvcMap[monitoringHostRegion]
-			monitoringCloudConfig, err := createAWSInstances(monitoringEc2SvcMap, nodeType, map[string]int{monitoringHostRegion: 1}, []string{monitoringHostRegion}, ami, usr, true)
+			monitoringCloudConfig, err := createAWSInstances(monitoringEc2SvcMap, nodeType, map[string]int{monitoringHostRegion: 1}, []string{monitoringHostRegion}, ami, true)
 			if err != nil {
 				return err
 			}
@@ -292,12 +286,12 @@ func createNodes(_ *cobra.Command, args []string) error {
 			return fmt.Errorf("cloud access is required")
 		}
 		// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
-		gcpClient, zones, numNodes, imageID, credentialFilepath, projectName, err := getGCPConfig()
+		gcpClient, numNodesMap, imageID, credentialFilepath, projectName, err := getGCPConfig()
 		if err != nil {
 			return err
 		}
 		if existingMonitoringInstance == "" {
-			monitoringHostRegion = zones[0]
+			monitoringHostRegion = maps.Keys(numNodesMap)[0]
 		}
 		if !skipMonitoring {
 			setUpMonitoring, separateMonitoringInstance, err = promptSetUpMonitoring()
@@ -305,16 +299,16 @@ func createNodes(_ *cobra.Command, args []string) error {
 				return err
 			}
 		}
-		cloudConfigMap, err = createGCPInstance(usr, gcpClient, nodeType, numNodes, zones, imageID, clusterName, false)
+		cloudConfigMap, err = createGCPInstance(gcpClient, nodeType, numNodesMap, imageID, clusterName, false)
 		if err != nil {
 			return err
 		}
 		if separateMonitoringInstance && existingMonitoringInstance == "" {
-			monitoringCloudConfig, err := createGCPInstance(usr, gcpClient, nodeType, []int{1}, []string{monitoringHostRegion}, imageID, clusterName, true)
+			monitoringCloudConfig, err := createGCPInstance(gcpClient, nodeType, map[string]int{monitoringHostRegion: 1}, imageID, clusterName, true)
 			if err != nil {
 				return err
 			}
-			monitoringNodeConfig = monitoringCloudConfig[zones[0]]
+			monitoringNodeConfig = monitoringCloudConfig[monitoringHostRegion]
 		}
 		if existingMonitoringInstance != "" {
 			separateMonitoringInstance = true
@@ -330,7 +324,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 			monitoringNodeConfig.PublicIPs = []string{monitoringPublicIPMap[monitoringNodeConfig.InstanceIDs[0]]}
 		}
-		for _, zone := range zones {
+		for zone := range numNodesMap {
 			currentRegionConfig := cloudConfigMap[zone]
 			if !useStaticIP {
 				tmpIPMap, err := gcpClient.GetInstancePublicIPs(zone, currentRegionConfig.InstanceIDs)
@@ -353,7 +347,10 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 			cloudConfigMap[zone] = currentRegionConfig
 			if separateMonitoringInstance {
-				networkName := fmt.Sprintf("%s-network", usr.Username+constants.AvalancheCLISuffix)
+				networkName, err := defaultAvalancheCLIPrefix("")
+				if err != nil {
+					return err
+				}
 				firewallName := fmt.Sprintf("%s-%s-monitoring", networkName, strings.ReplaceAll(monitoringNodeConfig.PublicIPs[0], ".", ""))
 				ports := []string{
 					strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
@@ -830,38 +827,6 @@ func provideStakingCertAndKey(host *models.Host) error {
 	return ssh.RunSSHUploadStakingFiles(host, keyPath)
 }
 
-func getIPAddress() (string, error) {
-	resp, err := http.Get("https://api.ipify.org?format=json")
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", errors.New("HTTP request failed")
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return "", err
-	}
-
-	ipAddress, ok := result["ip"].(string)
-	if ok {
-		if net.ParseIP(ipAddress) == nil {
-			return "", errors.New("invalid IP address")
-		}
-		return ipAddress, nil
-	}
-
-	return "", errors.New("no IP address found")
-}
-
 // getAvalancheGoVersion asks users whether they want to install the newest Avalanche Go version
 // or if they want to use the newest Avalanche Go Version that is still compatible with Subnet EVM
 // version of their choice
@@ -1124,8 +1089,8 @@ func getRegionsNodeNum(cloudName string) (
 			locationsListURL: "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html",
 		},
 		constants.GCPCloudService: {
-			defaultLocations: []string{"us-east1-b", "us-central1-c", "us-west1-b"},
-			locationName:     "Google Zone",
+			defaultLocations: []string{"us-east1", "us-central1", "us-west1"},
+			locationName:     "Google Region",
 			locationsListURL: "https://cloud.google.com/compute/docs/regions-zones/",
 		},
 	}
@@ -1193,4 +1158,13 @@ func setSSHIdentity() (string, error) {
 		return "", err
 	}
 	return strings.ReplaceAll(sshIdentity, yubikeyMark, ""), nil
+}
+
+// defaultAvalancheCLIPrefix returns the default Avalanche CLI prefix.
+func defaultAvalancheCLIPrefix(region string) (string, error) {
+	usr, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	return usr.Username + "-" + region + constants.AvalancheCLISuffix, nil
 }
