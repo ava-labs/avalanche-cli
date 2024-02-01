@@ -32,11 +32,6 @@ var (
 )
 
 var _ = ginkgo.Describe("[Node create]", func() {
-	_ = ginkgo.AfterSuite(func() {
-		commands.DeleteNode(hostName)
-		commands.DeleteE2ECluster()
-		commands.DeleteE2EInventory()
-	})
 	ginkgo.It("can create a node", func() {
 		output := commands.NodeCreate(network, avalanchegoVersion, numNodes)
 		fmt.Println(output)
@@ -150,5 +145,10 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		avalanchegoVersion := commands.NodeSSH(constants.E2EClusterName, "/home/ubuntu/avalanche-node/avalanchego --version")
 		gomega.Expect(avalanchegoVersion).To(gomega.ContainSubstring("go="))
 		gomega.Expect(avalanchegoVersion).To(gomega.ContainSubstring("avalanchego/" + latestAvagoVersion))
+	})
+	ginkgo.It("can cleanup", func() {
+		commands.DeleteE2EInventory()
+		commands.DeleteE2ECluster()
+		commands.DeleteNode(NodeID)
 	})
 })

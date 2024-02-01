@@ -95,4 +95,9 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 		gomega.Expect(output).To(gomega.ContainSubstring("NodeID"))
 		gomega.Expect(output).To(gomega.ContainSubstring(constants.E2ENetworkPrefix))
 	})
+	ginkgo.It("can cleanup", func() {
+		commands.DeleteE2EInventory()
+		commands.DeleteE2ECluster()
+		commands.DeleteNode(NodeID)
+	})
 })
