@@ -146,9 +146,9 @@ func (c *AwsCloud) AddSecurityGroupRule(groupID, direction, protocol, ip string,
 func (c *AwsCloud) CreateEC2Instances(count int, amiID, instanceType, keyName, securityGroupID string, forMonitoring bool) ([]string, error) {
 	var diskVolumeSize int32
 	if forMonitoring {
-		diskVolumeSize = 8
+		diskVolumeSize = constants.MonitoringCloudServerStorageSize
 	} else {
-		diskVolumeSize = 1000
+		diskVolumeSize = constants.CloudServerStorageSize
 	}
 	runResult, err := c.ec2Client.RunInstances(c.ctx, &ec2.RunInstancesInput{
 		ImageId:          aws.String(amiID),
