@@ -268,6 +268,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		}
 		sshCertPath[region] = privKey
 		if instanceIDs[region], err = ec2Svc[region].CreateEC2Instances(
+			regionConf[region].Prefix,
 			regionConf[region].NumNodes,
 			regionConf[region].ImageID,
 			regionConf[region].InstanceType,
@@ -284,7 +285,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		if useStaticIP {
 			publicIPs := []string{}
 			for count := 0; count < regionConf[region].NumNodes; count++ {
-				allocationID, publicIP, err := ec2Svc[region].CreateEIP()
+				allocationID, publicIP, err := ec2Svc[region].CreateEIP(regionConf[region].Prefix)
 				if err != nil {
 					return nil, nil, nil, nil, err
 				}

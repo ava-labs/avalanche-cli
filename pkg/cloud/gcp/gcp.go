@@ -218,6 +218,7 @@ func (c *GcpCloud) SetPublicIP(zone, nodeName string, numNodes int) ([]string, e
 
 // SetupInstances creates GCP instances
 func (c *GcpCloud) SetupInstances(
+	cliDefaultName,
 	zone,
 	networkName,
 	sshPublicKey,
@@ -277,6 +278,10 @@ func (c *GcpCloud) SetupInstances(
 				},
 				Scheduling: &compute.Scheduling{
 					AutomaticRestart: &automaticRestart,
+				},
+				Labels: map[string]string{
+					"name":       cliDefaultName,
+					"managed-by": "avalanche-cli",
 				},
 			}
 			if staticIP != nil {
