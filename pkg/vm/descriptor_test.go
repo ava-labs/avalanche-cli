@@ -32,7 +32,7 @@ func Test_getChainId(t *testing.T) {
 
 	mockPrompt.On("CaptureString", mock.Anything).Return(testToken, nil)
 
-	token, err := getTokenName(app)
+	token, err := getTokenName(app, "")
 	require.NoError(err)
 	require.Equal(testToken, token)
 }
@@ -46,6 +46,6 @@ func Test_getChainId_Err(t *testing.T) {
 	testErr := errors.New("Bad prompt")
 	mockPrompt.On("CaptureString", mock.Anything).Return("", testErr)
 
-	_, err := getTokenName(app)
+	_, err := getTokenName(app, "")
 	require.ErrorIs(testErr, err)
 }

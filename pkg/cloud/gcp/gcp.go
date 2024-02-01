@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/exp/rand"
+
 	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
 
@@ -25,6 +27,7 @@ const (
 	opScopeZone   = "zone"
 	opScopeRegion = "region"
 	opScopeGlobal = "global"
+	gcpRegionAPI  = "https://www.googleapis.com/compute/v1/projects/%s/regions/%s"
 )
 
 var ErrNodeNotFoundToBeRunning = errors.New("node not found to be running")
@@ -88,11 +91,9 @@ func (c *GcpCloud) waitForOperation(operation *compute.Operation) error {
 		default:
 			return fmt.Errorf("unknown operation scope: %s", scope)
 		}
-
 		if err != nil {
 			return fmt.Errorf("error getting operation status: %w", err)
 		}
-
 		// Check if the operation has completed
 		if getOperation.Status == "DONE" {
 			if getOperation.Error != nil {
@@ -108,17 +109,9 @@ func (c *GcpCloud) waitForOperation(operation *compute.Operation) error {
 		case <-c.ctx.Done():
 			return fmt.Errorf("operation canceled")
 		case <-time.After(1 * time.Second):
+			// Continue
 		}
 	}
-}
-
-// SetExistingNetwork uses existing network in GCP
-func (c *GcpCloud) SetExistingNetwork(networkName string) (*compute.Network, error) {
-	network, err := c.gcpClient.Networks.Get(c.projectID, networkName).Do()
-	if err != nil {
-		return nil, fmt.Errorf("error getting network %s: %w", networkName, err)
-	}
-	return network, nil
 }
 
 // SetNetwork creates a new network in GCP
@@ -144,10 +137,19 @@ func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network
 	}
 
 	// Create firewall rules
-	if _, err := c.SetFirewallRule("0.0.0.0/0", fmt.Sprintf("%s-%s", networkName, "default"), networkName, []string{strconv.Itoa(constants.AvalanchegoP2PPort)}); err != nil {
+	if _, err := c.SetFirewallRule("0.0.0.0/0",
+		fmt.Sprintf("%s-%s", networkName, "default"),
+		networkName,
+		[]string{strconv.Itoa(constants.AvalanchegoP2PPort)}); err != nil {
 		return nil, err
 	}
-	if _, err := c.SetFirewallRule(ipAddress, fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)}); err != nil {
+	if _, err := c.SetFirewallRule(ipAddress,
+		fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")),
+		networkName,
+		[]string{
+			strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort),
+			strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
+		}); err != nil {
 		return nil, err
 	}
 
@@ -156,7 +158,7 @@ func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network
 
 // SetFirewallRule creates a new firewall rule in GCP
 func (c *GcpCloud) SetFirewallRule(ipAddress, firewallName, networkName string, ports []string) (*compute.Firewall, error) {
-	if strings.Contains(ipAddress, "/") {
+	if !strings.Contains(ipAddress, "/") {
 		ipAddress = fmt.Sprintf("%s/32", ipAddress) // add netmask /32 if missing
 	}
 	firewall := &compute.Firewall{
@@ -215,7 +217,18 @@ func (c *GcpCloud) SetPublicIP(zone, nodeName string, numNodes int) ([]string, e
 }
 
 // SetupInstances creates GCP instances
-func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, staticIP []string, instancePrefix string, numNodes int, instanceType string) ([]*compute.Instance, error) {
+func (c *GcpCloud) SetupInstances(
+	cliDefaultName,
+	zone,
+	networkName,
+	sshPublicKey,
+	ami,
+	instancePrefix,
+	instanceType string,
+	staticIP []string,
+	numNodes int,
+	forMonitoring bool,
+) ([]*compute.Instance, error) {
 	parallelism := 8
 	if len(staticIP) > 0 && len(staticIP) != numNodes {
 		return nil, fmt.Errorf("len(staticIPName) != numNodes")
@@ -229,6 +242,10 @@ func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, s
 	eg.SetLimit(parallelism)
 	for i := 0; i < numNodes; i++ {
 		currentIndex := i
+		cloudDiskSize := constants.CloudServerStorageSize
+		if forMonitoring {
+			cloudDiskSize = constants.MonitoringCloudServerStorageSize
+		}
 		eg.Go(func() error {
 			instanceName := fmt.Sprintf("%s-%d", instancePrefix, currentIndex)
 			instance := &compute.Instance{
@@ -252,7 +269,7 @@ func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, s
 				Disks: []*compute.AttachedDisk{
 					{
 						InitializeParams: &compute.AttachedDiskInitializeParams{
-							DiskSizeGb:  1000,
+							DiskSizeGb:  int64(cloudDiskSize),
 							SourceImage: fmt.Sprintf("projects/%s/global/images/%s", "ubuntu-os-cloud", ami),
 						},
 						Boot:       true, // Set this if it's the boot disk
@@ -261,6 +278,10 @@ func (c *GcpCloud) SetupInstances(zone, networkName, sshPublicKey, ami string, s
 				},
 				Scheduling: &compute.Scheduling{
 					AutomaticRestart: &automaticRestart,
+				},
+				Labels: map[string]string{
+					"name":       cliDefaultName,
+					"managed-by": "avalanche-cli",
 				},
 			}
 			if staticIP != nil {
@@ -319,7 +340,7 @@ func (c *GcpCloud) GetUbuntuImageID() (string, error) {
 }
 
 // CheckFirewallExists checks that firewall firewallName exists in GCP project projectName
-func (c *GcpCloud) CheckFirewallExists(firewallName string) (bool, error) {
+func (c *GcpCloud) CheckFirewallExists(firewallName string, checkMonitoring bool) (bool, error) {
 	firewallListCall := c.gcpClient.Firewalls.List(c.projectID)
 	firewallList, err := firewallListCall.Do()
 	if err != nil {
@@ -327,6 +348,13 @@ func (c *GcpCloud) CheckFirewallExists(firewallName string) (bool, error) {
 	}
 	for _, firewall := range firewallList.Items {
 		if firewall.Name == firewallName {
+			if checkMonitoring {
+				for _, allowed := range firewall.Allowed {
+					if !(slices.Contains(allowed.Ports, strconv.Itoa(constants.AvalanchegoGrafanaPort)) && slices.Contains(allowed.Ports, strconv.Itoa(constants.AvalanchegoMonitoringPort))) {
+						return false, nil
+					}
+				}
+			}
 			return true, nil
 		}
 	}
@@ -405,6 +433,74 @@ func (c *GcpCloud) StopGCPNode(nodeConfig models.NodeConfig, clusterName string)
 		}
 	}
 	return nil
+}
+
+// AddFirewall adds firewall into an existing project in GCP
+func (c *GcpCloud) AddFirewall(publicIP, networkName, projectName, firewallName string, ports []string, checkMonitoring bool) error {
+	firewallExists, err := c.CheckFirewallExists(firewallName, checkMonitoring)
+	if err != nil {
+		return err
+	}
+	if !firewallExists {
+		allowedFirewall := compute.FirewallAllowed{
+			IPProtocol: "tcp",
+			Ports:      ports,
+		}
+		firewall := compute.Firewall{
+			Name:         firewallName,
+			Allowed:      []*compute.FirewallAllowed{&allowedFirewall},
+			Network:      fmt.Sprintf("global/networks/%s", networkName),
+			SourceRanges: []string{publicIP + constants.IPAddressSuffix},
+		}
+		instancesStopCall := c.gcpClient.Firewalls.Insert(projectName, &firewall)
+		if _, err = instancesStopCall.Do(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ListRegions returns a list of regions for the GcpCloud instance.
+func (c *GcpCloud) ListRegions() []string {
+	regionListCall := c.gcpClient.Regions.List(c.projectID)
+	regionList, err := regionListCall.Do()
+	if err != nil {
+		return nil
+	}
+	regions := []string{}
+	for _, region := range regionList.Items {
+		regions = append(regions, region.Name)
+	}
+	return regions
+}
+
+// ListZonesInRegion returns a list of zones in a specific region for a given project ID.
+func (c *GcpCloud) ListZonesInRegion(region string) ([]string, error) {
+	zoneListCall := c.gcpClient.Zones.List(c.projectID)
+	zoneList, err := zoneListCall.Do()
+	if err != nil {
+		return nil, err
+	}
+	zones := []string{}
+	for _, zone := range zoneList.Items {
+		if zone.Region == fmt.Sprintf(gcpRegionAPI, c.projectID, region) {
+			zones = append(zones, zone.Name)
+		}
+	}
+	return zones, nil
+}
+
+// GetRandomZone returns a random zone in the specified region.
+func (c *GcpCloud) GetRandomZone(region string) (string, error) {
+	rand.Seed(uint64(time.Now().UnixNano()))
+	zones, err := c.ListZonesInRegion(region)
+	if err != nil {
+		return "", fmt.Errorf("error listing zones: %w", err)
+	}
+	if len(zones) == 0 {
+		return "", fmt.Errorf("no zones found in region %s", region)
+	}
+	return zones[rand.Intn(len(zones))], nil
 }
 
 // zoneToRegion returns region from zone

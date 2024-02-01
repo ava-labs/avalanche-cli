@@ -8,10 +8,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+
 	"github.com/ava-labs/apm/apm"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -139,8 +142,16 @@ func (app *Avalanche) GetNodeInstanceDirPath(nodeName string) string {
 	return filepath.Join(app.GetNodesDir(), nodeName)
 }
 
+func (app *Avalanche) GetNodeInstanceAvaGoConfigDirPath(nodeName string) string {
+	return filepath.Join(app.GetAnsibleDir(), nodeName)
+}
+
 func (app *Avalanche) GetAnsibleDir() string {
 	return filepath.Join(app.GetNodesDir(), constants.AnsibleDir)
+}
+
+func (app *Avalanche) GetMonitoringDir() string {
+	return filepath.Join(app.GetNodesDir(), constants.MonitoringDir)
 }
 
 func (app *Avalanche) CreateAnsibleDir() error {
@@ -684,6 +695,61 @@ func (app *Avalanche) CheckCertInSSHDir(certName string) (bool, error) {
 	return true, nil
 }
 
+func (app *Avalanche) CreateMonitoringDir() error {
+	monitoringDir := app.GetMonitoringDir()
+	if !utils.DirectoryExists(monitoringDir) {
+		err := os.MkdirAll(monitoringDir, constants.DefaultPerms755)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (app *Avalanche) CreateMonitoringDashboardDir() error {
+	monitoringDashboardDir := app.GetMonitoringDashboardDir()
+	if !utils.DirectoryExists(monitoringDashboardDir) {
+		err := os.MkdirAll(monitoringDashboardDir, constants.DefaultPerms755)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (app *Avalanche) GetAnsibleInventoryDirPath(clusterName string) string {
 	return filepath.Join(app.GetNodesDir(), constants.AnsibleInventoryDir, clusterName)
+}
+
+// CreateAnsibleNodeConfigDir creates the ansible node config directory specific for nodeID inside .avalanche-cli
+func (app *Avalanche) CreateAnsibleNodeConfigDir(nodeID string) error {
+	return os.MkdirAll(filepath.Join(app.GetAnsibleDir(), nodeID), constants.DefaultPerms755)
+}
+
+func (app *Avalanche) GetNodeConfigJSONFile(nodeID string) string {
+	return filepath.Join(app.GetAnsibleDir(), nodeID, constants.NodeConfigJSONFile)
+}
+
+func (app *Avalanche) GetMonitoringScriptFile() string {
+	return filepath.Join(app.GetMonitoringDir(), constants.MonitoringScriptFile)
+}
+
+func (app *Avalanche) GetMonitoringDashboardDir() string {
+	return filepath.Join(app.GetMonitoringDir(), constants.DashboardsDir)
+}
+
+func (app *Avalanche) SetupMonitoringEnv() error {
+	err := os.RemoveAll(app.GetMonitoringDir())
+	if err != nil {
+		return err
+	}
+	err = app.CreateMonitoringDir()
+	if err != nil {
+		return err
+	}
+	err = app.CreateMonitoringDashboardDir()
+	if err != nil {
+		return err
+	}
+	return monitoring.Setup(app.GetMonitoringDir())
 }

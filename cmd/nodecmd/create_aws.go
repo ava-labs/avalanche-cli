@@ -5,13 +5,13 @@ package nodecmd
 import (
 	"fmt"
 	"os/exec"
-	"os/user"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -52,6 +52,10 @@ func printNoCredentialsOutput(awsProfile string) {
 	ux.Logger.PrintToUser("Please use https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html#envvars-set for more details")
 }
 
+func isExpiredCredentialError(err error) bool {
+	return strings.Contains(err.Error(), "RequestExpired: Request has expired")
+}
+
 func printExpiredCredentialsOutput(awsProfile string) {
 	ux.Logger.PrintToUser("AWS credentials expired")
 	ux.Logger.PrintToUser("Please update your environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
@@ -78,6 +82,19 @@ func promptKeyPairName(ec2 *awsAPI.AwsCloud) (string, error) {
 	return newKeyPairName, nil
 }
 
+func getAWSMonitoringEC2Svc(awsProfile, monitoringRegion string) (map[string]*awsAPI.AwsCloud, error) {
+	ec2SvcMap := map[string]*awsAPI.AwsCloud{}
+	var err error
+	ec2SvcMap[monitoringRegion], err = getAWSCloudCredentials(awsProfile, monitoringRegion)
+	if err != nil {
+		if !strings.Contains(err.Error(), "cloud access is required") {
+			printNoCredentialsOutput(awsProfile)
+		}
+		return nil, err
+	}
+	return ec2SvcMap, nil
+}
+
 func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[string]string, map[string]int, error) {
 	finalRegions := map[string]int{}
 	switch {
@@ -97,8 +114,15 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 	ec2SvcMap := map[string]*awsAPI.AwsCloud{}
 	amiMap := map[string]string{}
 	numNodesMap := map[string]int{}
+	// verify regions are valid
+	if invalidRegions, err := checkRegions(maps.Keys(finalRegions)); err != nil {
+		return nil, nil, nil, err
+	} else if len(invalidRegions) > 0 {
+		return nil, nil, nil, fmt.Errorf("invalid regions %s provided for %s", invalidRegions, constants.AWSCloudService)
+	}
 	for region := range finalRegions {
 		var err error
+
 		ec2SvcMap[region], err = getAWSCloudCredentials(awsProfile, region)
 		if err != nil {
 			if !strings.Contains(err.Error(), "cloud access is required") {
@@ -108,7 +132,7 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 		}
 		amiMap[region], err = ec2SvcMap[region].GetUbuntuAMIID()
 		if err != nil {
-			if strings.Contains(err.Error(), "RequestExpired: Request has expired") {
+			if isExpiredCredentialError(err) {
 				printExpiredCredentialsOutput(awsProfile)
 			}
 			return nil, nil, nil, err
@@ -122,9 +146,15 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	regions []string,
 	regionConf map[string]models.RegionConfig,
+	forMonitoring bool,
 ) (map[string][]string, map[string][]string, map[string]string, map[string]string, error) {
-	ux.Logger.PrintToUser("Creating new EC2 instance(s) on AWS...")
-	userIPAddress, err := getIPAddress()
+	if !forMonitoring {
+		ux.Logger.PrintToUser("Creating new EC2 instance(s) on AWS...")
+	} else {
+		ux.Logger.PrintToUser("Creating separate monitoring EC2 instance(s) on AWS...")
+	}
+
+	userIPAddress, err := utils.GetUserIPAddress()
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -139,26 +169,29 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			return nil, nil, nil, nil, err
 		}
 		certInSSHDir, err := app.CheckCertInSSHDir(regionConf[region].CertName)
+		if useSSHAgent {
+			certInSSHDir = true // if using ssh agent, we consider that we have a cert on hand
+		}
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
-		certName := regionConf[region].CertName
+		sgID := ""
 		keyPairName[region] = regionConf[region].Prefix
 		securityGroupName := regionConf[region].SecurityGroupName
-		privKey, err := app.GetSSHCertFilePath(certName)
-		sgID := ""
+		privKey, err := app.GetSSHCertFilePath(regionConf[region].CertName)
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
 		if !keyPairExists {
-			if err != nil {
-				return nil, nil, nil, nil, err
-			}
-			if !certInSSHDir {
-				ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s in AWS[%s]", keyPairName, region))
-				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
+			switch {
+			case useSSHAgent:
+				ux.Logger.PrintToUser("Using ssh agent identity %s to create key pair %s in AWS[%s]", sshIdentity, keyPairName[region], region)
+				if err := ec2Svc[region].UploadSSHIdentityKeyPair(regionConf[region].Prefix, sshIdentity); err != nil {
 					return nil, nil, nil, nil, err
 				}
-			} else {
-				ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists on your .ssh directory but not on AWS", regionConf[region].Prefix))
-				ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in AWS[%s]", regionConf[region].Prefix, region))
+			case !useSSHAgent && certInSSHDir:
+				ux.Logger.PrintToUser("Default Key Pair named %s already exists on your .ssh directory but not on AWS", regionConf[region].Prefix)
+				ux.Logger.PrintToUser("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in AWS[%s]", regionConf[region].Prefix, region)
 				keyPairName[region], err = promptKeyPairName(ec2Svc[region])
 				if err != nil {
 					return nil, nil, nil, nil, err
@@ -166,14 +199,24 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
 					return nil, nil, nil, nil, err
 				}
+			case !useSSHAgent && !certInSSHDir:
+				ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s in AWS[%s]", keyPairName, region))
+				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
+					return nil, nil, nil, nil, err
+				}
 			}
 		} else {
-			if certInSSHDir {
-				ux.Logger.PrintToUser(fmt.Sprintf("Using existing key pair %s in AWS[%s]", keyPairName[region], region))
+			// keypair exists
+			switch {
+			case useSSHAgent:
+				ux.Logger.PrintToUser("Using existing key pair %s in AWS[%s] via ssh-agent", keyPairName[region], region)
 				useExistingKeyPair[region] = true
-			} else {
-				ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists in AWS[%s]", keyPairName[region], region))
-				ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName))
+			case !useSSHAgent && certInSSHDir:
+				ux.Logger.PrintToUser("Using existing key pair %s in AWS[%s]", keyPairName[region], region)
+				useExistingKeyPair[region] = true
+			case !useSSHAgent && !certInSSHDir:
+				ux.Logger.PrintToUser("Default Key Pair named %s already exists in AWS[%s]", keyPairName[region], region)
+				ux.Logger.PrintToUser("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName)
 				keyPairName[region], err = promptKeyPairName(ec2Svc[region])
 				if err != nil {
 					return nil, nil, nil, nil, err
@@ -199,6 +242,8 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			ux.Logger.PrintToUser(fmt.Sprintf("Using existing security group %s in AWS[%s]", securityGroupName, region))
 			ipInTCP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.SSHTCPPort)
 			ipInHTTP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
+			ipInMonitoring := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoMonitoringPort)
+			ipInGrafana := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoGrafanaPort)
 
 			if !ipInTCP {
 				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress, constants.SSHTCPPort); err != nil {
@@ -210,14 +255,26 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 					return nil, nil, nil, nil, err
 				}
 			}
+			if !ipInMonitoring {
+				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress, constants.AvalanchegoMonitoringPort); err != nil {
+					return nil, nil, nil, nil, err
+				}
+			}
+			if !ipInGrafana {
+				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress, constants.AvalanchegoGrafanaPort); err != nil {
+					return nil, nil, nil, nil, err
+				}
+			}
 		}
 		sshCertPath[region] = privKey
 		if instanceIDs[region], err = ec2Svc[region].CreateEC2Instances(
+			regionConf[region].Prefix,
 			regionConf[region].NumNodes,
 			regionConf[region].ImageID,
 			regionConf[region].InstanceType,
 			keyPairName[region],
 			sgID,
+			forMonitoring,
 		); err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -228,7 +285,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		if useStaticIP {
 			publicIPs := []string{}
 			for count := 0; count < regionConf[region].NumNodes; count++ {
-				allocationID, publicIP, err := ec2Svc[region].CreateEIP()
+				allocationID, publicIP, err := ec2Svc[region].CreateEIP(regionConf[region].Prefix)
 				if err != nil {
 					return nil, nil, nil, nil, err
 				}
@@ -243,25 +300,56 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			if err != nil {
 				return nil, nil, nil, nil, err
 			}
-			elasticIPs[region] = maps.Values(instanceEIPMap)
+			regionElasticIPs := []string{}
+			for _, instanceID := range instanceIDs[region] {
+				regionElasticIPs = append(regionElasticIPs, instanceEIPMap[instanceID])
+			}
+			elasticIPs[region] = regionElasticIPs
 		}
 	}
 	ux.Logger.PrintToUser("New EC2 instance(s) successfully created in AWS!")
 	for _, region := range regions {
-		if !useExistingKeyPair[region] {
+		if !useExistingKeyPair[region] && !useSSHAgent {
 			// takes the cert file downloaded from AWS and moves it to .ssh directory
 			err = addCertToSSH(regionConf[region].CertName)
 			if err != nil {
 				return nil, nil, nil, nil, err
 			}
 		}
-		sshCertPath[region], err = app.GetSSHCertFilePath(regionConf[region].CertName)
-		if err != nil {
-			return nil, nil, nil, nil, err
+		if useSSHAgent {
+			sshCertPath[region] = ""
+		} else {
+			sshCertPath[region], err = app.GetSSHCertFilePath(regionConf[region].CertName)
+			if err != nil {
+				return nil, nil, nil, nil, err
+			}
 		}
 	}
 	// instanceIDs, elasticIPs, certFilePath, keyPairName, err
 	return instanceIDs, elasticIPs, sshCertPath, keyPairName, nil
+}
+
+func AddMonitoringSecurityGroupRule(ec2Svc map[string]*awsAPI.AwsCloud, monitoringHostPublicIP, securityGroupName, region string) error {
+	securityGroupExists, sg, err := ec2Svc[region].CheckSecurityGroupExists(securityGroupName)
+	if err != nil {
+		return err
+	}
+	if !securityGroupExists {
+		return fmt.Errorf("security group %s doesn't exist in region %s", securityGroupName, region)
+	}
+	metricsPortInSG := awsAPI.CheckUserIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoMachineMetricsPort)
+	apiPortInSG := awsAPI.CheckUserIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoAPIPort)
+	if !metricsPortInSG {
+		if err = ec2Svc[region].AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoMachineMetricsPort); err != nil {
+			return err
+		}
+	}
+	if !apiPortInSG {
+		if err = ec2Svc[region].AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoAPIPort); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func createAWSInstances(
@@ -270,13 +358,15 @@ func createAWSInstances(
 	numNodes map[string]int,
 	regions []string,
 	ami map[string]string,
-	usr *user.User) (
+	forMonitoring bool) (
 	models.CloudConfig, error,
 ) {
 	regionConf := map[string]models.RegionConfig{}
-
 	for _, region := range regions {
-		prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
+		prefix, err := defaultAvalancheCLIPrefix(region)
+		if err != nil {
+			return models.CloudConfig{}, err
+		}
 		regionConf[region] = models.RegionConfig{
 			Prefix:            prefix,
 			ImageID:           ami[region],
@@ -286,9 +376,8 @@ func createAWSInstances(
 			InstanceType:      nodeType,
 		}
 	}
-
 	// Create new EC2 instances
-	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(ec2Svc, regions, regionConf)
+	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(ec2Svc, regions, regionConf, forMonitoring)
 	if err != nil {
 		if err.Error() == constants.EIPLimitErr {
 			ux.Logger.PrintToUser("Failed to create AWS cloud server(s), please try creating again in a different region")
@@ -340,4 +429,25 @@ func addCertToSSH(certName string) error {
 	cmd := exec.Command("ssh-add", certFilePath)
 	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	return cmd.Run()
+}
+
+// checkRegions checks if the given regions are available in AWS.
+// It returns list of invalid regions and error if any
+func checkRegions(regions []string) ([]string, error) {
+	const regionCheckerRegion = "us-east-1"
+	invalidRegions := []string{}
+	awsCloudRegionChecker, err := getAWSCloudCredentials(awsProfile, regionCheckerRegion)
+	if err != nil {
+		return invalidRegions, err
+	}
+	availableRegions, err := awsCloudRegionChecker.ListRegions()
+	if err != nil {
+		return invalidRegions, err
+	}
+	for _, region := range regions {
+		if !slices.Contains(availableRegions, region) {
+			invalidRegions = append(invalidRegions, region)
+		}
+	}
+	return invalidRegions, nil
 }
