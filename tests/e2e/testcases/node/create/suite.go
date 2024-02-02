@@ -6,16 +6,17 @@ package root
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
-	ginkgo "github.com/onsi/ginkgo/v2"
-	"github.com/onsi/gomega"
 	"os"
 	"os/user"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
+	ginkgo "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 )
 
 const (
