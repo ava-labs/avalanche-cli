@@ -248,9 +248,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if separateMonitoringInstance {
 			monitoringDockerHostID := utils.GenerateDockerHostIDs(1)
 			dockerHostIDs = append(dockerHostIDs, monitoringDockerHostID[0])
-			//separateMonitoringInstanceIP := utils.GenerateDockerHostIPs(1)
-			fmt.Printf("created separateMonitoringInstanceIP %s \n", monitoringHostIP)
-			fmt.Printf("created monitoring dockerHostIDs %s \n", monitoringDockerHostID)
 			monitoringCloudConfig := models.CloudConfig{
 				"monitoringDocker": {
 					InstanceIDs:       monitoringDockerHostID,
@@ -679,12 +676,10 @@ func CreateClusterNodeConfig(network models.Network, cloudConfigMap models.Cloud
 			}
 		}
 		if separateMonitoringInstance {
-			fmt.Printf("docker monitorCloudConfig  %s \n", monitorCloudConfig)
 			publicIP := ""
 			if useStaticIP {
 				publicIP = monitorCloudConfig.PublicIPs[0]
 			}
-			fmt.Printf("docker monitoring host ip %s \n", publicIP)
 			nodeConfig := models.NodeConfig{
 				NodeID:        monitorCloudConfig.InstanceIDs[0],
 				Region:        monitoringHostRegion,
