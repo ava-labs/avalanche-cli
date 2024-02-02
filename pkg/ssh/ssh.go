@@ -262,6 +262,7 @@ func RunSSHSetupSeparateMonitoring(host *models.Host, monitoringDashboardPath, a
 		scriptInputs{
 			AvalancheGoPorts: avalancheGoPorts,
 			MachinePorts:     machinePorts,
+			IsE2E:            utils.IsE2E(),
 		},
 	)
 }
