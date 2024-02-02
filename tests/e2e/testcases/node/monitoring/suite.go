@@ -30,7 +30,7 @@ var (
 	NodeID   string
 )
 
-var _ = ginkgo.Describe("[Node monitoring]", func() {
+var _ = ginkgo.Describe("[Node create]", func() {
 	ginkgo.It("can create a node", func() {
 		output := commands.NodeCreateWithMonitoring(network, avalanchegoVersion, numNodes)
 		fmt.Println(output)

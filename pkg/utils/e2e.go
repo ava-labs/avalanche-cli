@@ -94,6 +94,7 @@ func SaveDockerComposeFile(fileName string, nodes int, ubuntuVersion string, ssh
 	)
 	if fileName != "" {
 		tmpFile, err = os.Create(fileName)
+		fmt.Printf("creating file name docker %s \n", fileName)
 		if err != nil {
 			return "", fmt.Errorf("error creating file %s: %w", fileName, err)
 		}
