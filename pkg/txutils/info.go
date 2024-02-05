@@ -29,6 +29,8 @@ func GetNetwork(tx *txs.Tx) (models.Network, error) {
 		networkID = unsignedTx.NetworkID
 	case *txs.AddPermissionlessValidatorTx:
 		networkID = unsignedTx.NetworkID
+	case *txs.TransferSubnetOwnershipTx:
+		networkID = unsignedTx.NetworkID
 	default:
 		return models.UndefinedNetwork, fmt.Errorf("unexpected unsigned tx type %T", unsignedTx)
 	}
@@ -53,6 +55,8 @@ func GetSubnetID(tx *txs.Tx) (ids.ID, error) {
 	case *txs.TransformSubnetTx:
 		subnetID = unsignedTx.Subnet
 	case *txs.AddPermissionlessValidatorTx:
+		subnetID = unsignedTx.Subnet
+	case *txs.TransferSubnetOwnershipTx:
 		subnetID = unsignedTx.Subnet
 	default:
 		return ids.Empty, fmt.Errorf("unexpected unsigned tx type %T", unsignedTx)
