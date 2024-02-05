@@ -14,6 +14,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
@@ -58,6 +59,9 @@ func saveMetricsConfig(app *application.Avalanche, metricsEnabled bool) error {
 }
 
 func HandleUserMetricsPreference(app *application.Avalanche) error {
+	if utils.IsE2E() {
+		return saveMetricsConfig(app, false)
+	}
 	PrintMetricsOptOutPrompt()
 	txt := "Press [Enter] to opt-in, or opt out by choosing 'No'"
 	yes, err := app.Prompt.CaptureYesNo(txt)
@@ -96,7 +100,7 @@ func CheckCommandIsNotCompletion(cmd *cobra.Command) bool {
 }
 
 func TrackMetrics(command *cobra.Command, flags map[string]string) {
-	if telemetryToken == "" || os.Getenv("RUN_E2E") != "" {
+	if telemetryToken == "" || utils.IsE2E() {
 		return
 	}
 

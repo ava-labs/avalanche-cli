@@ -54,7 +54,6 @@ const (
 	SSHFileOpsTimeout     = 30 * time.Second
 	SSHPOSTTimeout        = 10 * time.Second
 	SSHSleepBetweenChecks = 1 * time.Second
-	SSHScriptLogFilter    = "_AvalancheCLI_LOG_"
 	SSHShell              = "/bin/bash"
 
 	SimulatePublicNetwork = "SIMULATE_PUBLIC_NETWORK"
@@ -147,7 +146,7 @@ const (
 	AvalanchegoP2PPort                           = 9651
 	AvalanchegoGrafanaPort                       = 3000
 	CloudServerStorageSize                       = 1000
-	MonitoringCloudServerStorageSize             = 10
+	MonitoringCloudServerStorageSize             = 50
 	OutboundPort                                 = 0
 	SetupCLIFromSourceBranch                     = "main"
 	// Set this one to true while testing changes that alter CLI execution on cloud nodes
@@ -164,7 +163,7 @@ const (
 	AnsibleInventoryFlag               = "-i"
 	AnsibleExtraArgsIdentitiesOnlyFlag = "--ssh-extra-args='-o IdentitiesOnly=yes'"
 	AnsibleSSHShellParams              = "-o IdentitiesOnly=yes -o StrictHostKeyChecking=no"
-	AnsibleSSHInventoryParams          = "-o StrictHostKeyChecking=no"
+	AnsibleSSHUseAgentParams           = "-o StrictHostKeyChecking=no"
 	AnsibleExtraVarsFlag               = "--extra-vars"
 
 	ConfigAPMCredentialsFileKey  = "credentials-file"
@@ -268,4 +267,10 @@ const (
 	DefaultConfirmTxTimeout = 20 * time.Second
 
 	PayTxsFeesMsg = "pay transaction fees"
+
+	// E2E
+	E2ENetworkPrefix     = "172.18.0"
+	E2EClusterName       = "e2e"
+	E2EDocker            = "docker"
+	E2EDockerComposeFile = "/tmp/avalanche-cli-docker-compose.yml"
 )
