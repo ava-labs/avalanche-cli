@@ -143,7 +143,7 @@ func (c *AwsCloud) AddSecurityGroupRule(groupID, direction, protocol, ip string,
 }
 
 // CreateEC2Instances creates EC2 instances
-func (c *AwsCloud) CreateEC2Instances(count int, amiID, instanceType, keyName, securityGroupID string, forMonitoring bool) ([]string, error) {
+func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceType, keyName, securityGroupID string, forMonitoring bool) ([]string, error) {
 	var diskVolumeSize int32
 	if forMonitoring {
 		diskVolumeSize = constants.MonitoringCloudServerStorageSize
@@ -162,6 +162,21 @@ func (c *AwsCloud) CreateEC2Instances(count int, amiID, instanceType, keyName, s
 				DeviceName: aws.String("/dev/sda1"), // ubuntu ami disk name
 				Ebs: &types.EbsBlockDevice{
 					VolumeSize: aws.Int32(diskVolumeSize),
+				},
+			},
+		},
+		TagSpecifications: []types.TagSpecification{
+			{
+				ResourceType: types.ResourceTypeInstance,
+				Tags: []types.Tag{
+					{
+						Key:   aws.String("Name"),
+						Value: aws.String(prefix),
+					},
+					{
+						Key:   aws.String("Managed-By"),
+						Value: aws.String("avalanche-cli"),
+					},
 				},
 			},
 		},
@@ -317,8 +332,24 @@ func (c *AwsCloud) StopInstance(instanceID, publicIP string, releasePublicIP boo
 }
 
 // CreateEIP creates an Elastic IP address.
-func (c *AwsCloud) CreateEIP() (string, string, error) {
-	if addr, err := c.ec2Client.AllocateAddress(c.ctx, &ec2.AllocateAddressInput{}); err != nil {
+func (c *AwsCloud) CreateEIP(prefix string) (string, string, error) {
+	if addr, err := c.ec2Client.AllocateAddress(c.ctx, &ec2.AllocateAddressInput{
+		TagSpecifications: []types.TagSpecification{
+			{
+				ResourceType: types.ResourceTypeElasticIp,
+				Tags: []types.Tag{
+					{
+						Key:   aws.String("Name"),
+						Value: aws.String(prefix),
+					},
+					{
+						Key:   aws.String("Managed-By"),
+						Value: aws.String("avalanche-cli"),
+					},
+				},
+			},
+		},
+	}); err != nil {
 		if isEIPQuotaExceededError(err) {
 			return "", "", fmt.Errorf("elastic IP quota exceeded: %w", err)
 		}
@@ -452,6 +483,19 @@ func (c *AwsCloud) GetUbuntuAMIID() (string, error) {
 	// get image with the latest creation date
 	amiID := images.Images[0].ImageId
 	return *amiID, nil
+}
+
+// ListRegions returns a list of all AWS regions.
+func (c *AwsCloud) ListRegions() ([]string, error) {
+	regions, err := c.ec2Client.DescribeRegions(c.ctx, &ec2.DescribeRegionsInput{})
+	if err != nil {
+		return nil, err
+	}
+	regionList := []string{}
+	for _, region := range regions.Regions {
+		regionList = append(regionList, *region.RegionName)
+	}
+	return regionList, nil
 }
 
 // isEIPQuotaExceededError checks if the error is related to exceeding the quota for Elastic IP addresses.

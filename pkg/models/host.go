@@ -274,17 +274,29 @@ func HostCloudIDToAnsibleID(cloudService string, hostCloudID string) (string, er
 		return fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, hostCloudID), nil
 	case constants.AWSCloudService:
 		return fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, hostCloudID), nil
+	case constants.E2EDocker:
+		return fmt.Sprintf("%s_%s", constants.E2EDocker, hostCloudID), nil
 	}
 	return "", fmt.Errorf("unknown cloud service %s", cloudService)
 }
 
+// HostAnsibleIDToCloudID converts a host Ansible ID to a cloud ID.
 func HostAnsibleIDToCloudID(hostAnsibleID string) (string, string, error) {
-	if strings.HasPrefix(hostAnsibleID, constants.AWSNodeAnsiblePrefix) {
-		return constants.AWSCloudService, strings.TrimPrefix(hostAnsibleID, constants.AWSNodeAnsiblePrefix+"_"), nil
-	} else if strings.HasPrefix(hostAnsibleID, constants.GCPNodeAnsiblePrefix) {
-		return constants.GCPCloudService, strings.TrimPrefix(hostAnsibleID, constants.GCPNodeAnsiblePrefix+"_"), nil
+	var cloudService, cloudIDPrefix string
+	switch {
+	case strings.HasPrefix(hostAnsibleID, constants.AWSNodeAnsiblePrefix):
+		cloudService = constants.AWSCloudService
+		cloudIDPrefix = strings.TrimPrefix(hostAnsibleID, constants.AWSNodeAnsiblePrefix+"_")
+	case strings.HasPrefix(hostAnsibleID, constants.GCPNodeAnsiblePrefix):
+		cloudService = constants.GCPCloudService
+		cloudIDPrefix = strings.TrimPrefix(hostAnsibleID, constants.GCPNodeAnsiblePrefix+"_")
+	case strings.HasPrefix(hostAnsibleID, constants.E2EDocker):
+		cloudService = constants.E2EDocker
+		cloudIDPrefix = strings.TrimPrefix(hostAnsibleID, constants.E2EDocker+"_")
+	default:
+		return "", "", fmt.Errorf("unknown cloud service prefix in %s", hostAnsibleID)
 	}
-	return "", "", fmt.Errorf("unknown cloud service prefix in %s", hostAnsibleID)
+	return cloudService, cloudIDPrefix, nil
 }
 
 // WaitForSSHPort waits for the SSH port to become available on the host.
@@ -304,6 +316,9 @@ func (h *Host) WaitForSSHPort(timeout time.Duration) error {
 
 // WaitForSSHShell waits for the SSH shell to be available on the host within the specified timeout.
 func (h *Host) WaitForSSHShell(timeout time.Duration) error {
+	if h.IP == "" {
+		return fmt.Errorf("host IP is empty")
+	}
 	start := time.Now()
 	if err := h.WaitForSSHPort(timeout); err != nil {
 		return err

@@ -54,7 +54,6 @@ const (
 	SSHFileOpsTimeout     = 30 * time.Second
 	SSHPOSTTimeout        = 10 * time.Second
 	SSHSleepBetweenChecks = 1 * time.Second
-	SSHScriptLogFilter    = "_AvalancheCLI_LOG_"
 	SSHShell              = "/bin/bash"
 
 	SimulatePublicNetwork = "SIMULATE_PUBLIC_NETWORK"
@@ -268,4 +267,10 @@ const (
 	DefaultConfirmTxTimeout = 20 * time.Second
 
 	PayTxsFeesMsg = "pay transaction fees"
+
+	// E2E
+	E2ENetworkPrefix     = "172.18.0"
+	E2EClusterName       = "e2e"
+	E2EDocker            = "docker"
+	E2EDockerComposeFile = "/tmp/avalanche-cli-docker-compose.yml"
 )
