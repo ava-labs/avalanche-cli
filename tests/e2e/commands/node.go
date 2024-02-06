@@ -5,12 +5,13 @@ package commands
 
 import (
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/onsi/gomega"
