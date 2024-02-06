@@ -393,13 +393,13 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		flags := make(map[string]string)
 		flags[constants.Network] = network.Name()
 		metrics.HandleTracking(cmd, app, flags)
-		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
+		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, ids.Empty, blockchainID)
 	}
 
 	// from here on we are assuming a public deploy
 
 	createSubnet := true
-	var subnetID ids.ID
+	var subnetID, transferSubnetOwnershipTxID ids.ID
 	if subnetIDStr != "" {
 		subnetID, err = ids.FromString(subnetIDStr)
 		if err != nil {
@@ -411,6 +411,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if ok {
 			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
 				subnetID = model.SubnetID
+				transferSubnetOwnershipTxID = model.TransferSubnetOwnershipTxID
 				createSubnet = false
 			}
 		}
@@ -437,52 +438,21 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	network.HandlePublicNetworkSimulation()
 
 	if createSubnet {
-		// accept only one control keys specification
-		if len(controlKeys) > 0 && sameControlKey {
-			return errMutuallyExlusiveControlKeys
-		}
-		// use first fee-paying key as control key
-		if sameControlKey {
-			kcKeys, err := kc.PChainFormattedStrAddresses()
-			if err != nil {
-				return err
-			}
-			if len(kcKeys) == 0 {
-				return fmt.Errorf("no keys found on keychain")
-			}
-			controlKeys = kcKeys[:1]
-		}
-		// prompt for control keys
-		if controlKeys == nil {
-			var cancelled bool
-			controlKeys, cancelled, err = getControlKeys(kc)
-			if err != nil {
-				return err
-			}
-			if cancelled {
-				ux.Logger.PrintToUser("User cancelled. No subnet deployed")
-				return nil
-			}
-		}
-		ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
-		// validate and prompt for threshold
-		if threshold == 0 && subnetAuthKeys != nil {
-			threshold = uint32(len(subnetAuthKeys))
-		}
-		if int(threshold) > len(controlKeys) {
-			return fmt.Errorf("given threshold is greater than number of control keys")
-		}
-		if threshold == 0 {
-			threshold, err = getThreshold(len(controlKeys))
-			if err != nil {
-				return err
-			}
+		controlKeys, threshold, err = promptOwners(
+			kc,
+			controlKeys,
+			sameControlKey,
+			threshold,
+			subnetAuthKeys,
+		)
+		if err != nil {
+			return err
 		}
 	} else {
 		ux.Logger.PrintToUser(logging.Green.Wrap(
 			fmt.Sprintf("Deploying into pre-existent subnet ID %s", subnetID.String()),
 		))
-		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
+		controlKeys, threshold, err = txutils.GetOwners(network, subnetID, transferSubnetOwnershipTxID)
 		if err != nil {
 			return err
 		}
@@ -520,13 +490,20 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		// get the control keys in the same order as the tx
-		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
+		controlKeys, threshold, err = txutils.GetOwners(network, subnetID, ids.Empty)
 		if err != nil {
 			return err
 		}
 	}
 
-	isFullySigned, blockchainID, tx, remainingSubnetAuthKeys, err := deployer.DeployBlockchain(controlKeys, subnetAuthKeys, subnetID, chain, chainGenesis)
+	isFullySigned, blockchainID, tx, remainingSubnetAuthKeys, err := deployer.DeployBlockchain(
+		controlKeys,
+		subnetAuthKeys,
+		subnetID,
+		transferSubnetOwnershipTxID,
+		chain,
+		chainGenesis,
+	)
 	if err != nil {
 		ux.Logger.PrintToUser(logging.Red.Wrap(
 			fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
@@ -559,7 +536,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
-	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID)
+	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, transferSubnetOwnershipTxID, blockchainID)
 }
 
 func getControlKeys(kc *keychain.Keychain) ([]string, bool, error) {
@@ -889,4 +866,56 @@ func hasSubnetEVMGenesis(subnetName string) (bool, error) {
 		return false, nil
 	}
 	return true, nil
+}
+
+func promptOwners(
+	kc *keychain.Keychain,
+	controlKeys []string,
+	sameControlKey bool,
+	threshold uint32,
+	subnetAuthKeys []string,
+) ([]string, uint32, error) {
+	var err error
+	// accept only one control keys specification
+	if len(controlKeys) > 0 && sameControlKey {
+		return nil, 0, errMutuallyExlusiveControlKeys
+	}
+	// use first fee-paying key as control key
+	if sameControlKey {
+		kcKeys, err := kc.PChainFormattedStrAddresses()
+		if err != nil {
+			return nil, 0, err
+		}
+		if len(kcKeys) == 0 {
+			return nil, 0, fmt.Errorf("no keys found on keychain")
+		}
+		controlKeys = kcKeys[:1]
+	}
+	// prompt for control keys
+	if controlKeys == nil {
+		var cancelled bool
+		controlKeys, cancelled, err = getControlKeys(kc)
+		if err != nil {
+			return nil, 0, err
+		}
+		if cancelled {
+			ux.Logger.PrintToUser("User cancelled. No subnet deployed")
+			return nil, 0, fmt.Errorf("user cancelled operation")
+		}
+	}
+	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
+	// validate and prompt for threshold
+	if threshold == 0 && subnetAuthKeys != nil {
+		threshold = uint32(len(subnetAuthKeys))
+	}
+	if threshold > uint32(len(controlKeys)) {
+		return nil, 0, fmt.Errorf("given threshold is greater than number of control keys")
+	}
+	if threshold == 0 {
+		threshold, err = getThreshold(len(controlKeys))
+		if err != nil {
+			return nil, 0, err
+		}
+	}
+	return controlKeys, threshold, nil
 }

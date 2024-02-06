@@ -30,6 +30,8 @@ func GetNetwork(tx *txs.Tx) (models.Network, error) {
 		networkID = unsignedTx.NetworkID
 	case *txs.AddPermissionlessValidatorTx:
 		networkID = unsignedTx.NetworkID
+	case *txs.TransferSubnetOwnershipTx:
+		networkID = unsignedTx.NetworkID
 	default:
 		return models.UndefinedNetwork, fmt.Errorf("unexpected unsigned tx type %T", unsignedTx)
 	}
@@ -55,6 +57,8 @@ func GetSubnetID(tx *txs.Tx) (ids.ID, error) {
 		subnetID = unsignedTx.Subnet
 	case *txs.AddPermissionlessValidatorTx:
 		subnetID = unsignedTx.Subnet
+	case *txs.TransferSubnetOwnershipTx:
+		subnetID = unsignedTx.Subnet
 	default:
 		return ids.Empty, fmt.Errorf("unexpected unsigned tx type %T", unsignedTx)
 	}
@@ -78,24 +82,53 @@ func IsCreateChainTx(tx *txs.Tx) bool {
 	return ok
 }
 
-func GetOwners(network models.Network, subnetID ids.ID) ([]string, uint32, error) {
+func IsTransferSubnetOwnershipTx(tx *txs.Tx) bool {
+	_, ok := tx.Unsigned.(*txs.TransferSubnetOwnershipTx)
+	return ok
+}
+
+func GetOwners(network models.Network, subnetID ids.ID, transferSubnetOwnershipTxID ids.ID) ([]string, uint32, error) {
 	pClient := platformvm.NewClient(network.Endpoint)
 	ctx := context.Background()
-	txBytes, err := pClient.GetTx(ctx, subnetID)
-	if err != nil {
-		return nil, 0, fmt.Errorf("subnet tx %s query error: %w", subnetID, err)
-	}
-	var tx txs.Tx
-	if _, err := txs.Codec.Unmarshal(txBytes, &tx); err != nil {
-		return nil, 0, fmt.Errorf("couldn't unmarshal tx %s: %w", subnetID, err)
-	}
-	createSubnetTx, ok := tx.Unsigned.(*txs.CreateSubnetTx)
-	if !ok {
-		return nil, 0, fmt.Errorf("got unexpected type %T for subnet tx %s", tx.Unsigned, subnetID)
-	}
-	owner, ok := createSubnetTx.Owner.(*secp256k1fx.OutputOwners)
-	if !ok {
-		return nil, 0, fmt.Errorf("got unexpected type %T for subnet owners tx %s", createSubnetTx.Owner, subnetID)
+	var owner *secp256k1fx.OutputOwners
+	if transferSubnetOwnershipTxID != ids.Empty {
+		txBytes, err := pClient.GetTx(ctx, transferSubnetOwnershipTxID)
+		if err != nil {
+			return nil, 0, fmt.Errorf("tx %s query error: %w", transferSubnetOwnershipTxID, err)
+		}
+		var tx txs.Tx
+		if _, err := txs.Codec.Unmarshal(txBytes, &tx); err != nil {
+			return nil, 0, fmt.Errorf("couldn't unmarshal tx %s: %w", transferSubnetOwnershipTxID, err)
+		}
+		transferSubnetOwnershipTx, ok := tx.Unsigned.(*txs.TransferSubnetOwnershipTx)
+		if !ok {
+			return nil, 0, fmt.Errorf("got unexpected type %T for tx %s", tx.Unsigned, transferSubnetOwnershipTxID)
+		}
+		owner, ok = transferSubnetOwnershipTx.Owner.(*secp256k1fx.OutputOwners)
+		if !ok {
+			return nil, 0, fmt.Errorf(
+				"got unexpected type %T for subnet owners tx %s",
+				transferSubnetOwnershipTx.Owner,
+				transferSubnetOwnershipTxID,
+			)
+		}
+	} else {
+		txBytes, err := pClient.GetTx(ctx, subnetID)
+		if err != nil {
+			return nil, 0, fmt.Errorf("subnet tx %s query error: %w", subnetID, err)
+		}
+		var tx txs.Tx
+		if _, err := txs.Codec.Unmarshal(txBytes, &tx); err != nil {
+			return nil, 0, fmt.Errorf("couldn't unmarshal tx %s: %w", subnetID, err)
+		}
+		createSubnetTx, ok := tx.Unsigned.(*txs.CreateSubnetTx)
+		if !ok {
+			return nil, 0, fmt.Errorf("got unexpected type %T for subnet tx %s", tx.Unsigned, subnetID)
+		}
+		owner, ok = createSubnetTx.Owner.(*secp256k1fx.OutputOwners)
+		if !ok {
+			return nil, 0, fmt.Errorf("got unexpected type %T for subnet owners tx %s", createSubnetTx.Owner, subnetID)
+		}
 	}
 	controlKeys := owner.Addrs
 	threshold := owner.Threshold
