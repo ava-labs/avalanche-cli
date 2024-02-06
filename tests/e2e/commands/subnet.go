@@ -225,6 +225,11 @@ func DeploySubnetLocallyWithArgs(subnetName string, version string, confPath str
 	if confPath != "" {
 		cmdArgs = append(cmdArgs, "--config", confPath)
 	}
+	// in case we want to use specific avago for local tests
+	debugAvalanchegoPath := os.Getenv(constants.E2EDebugAvalanchegoPath)
+	if debugAvalanchegoPath != "" {
+		cmdArgs = append(cmdArgs, "--avalanchego-path", debugAvalanchegoPath)
+	}
 	cmd := exec.Command(CLIBinary, cmdArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -257,6 +262,11 @@ func DeploySubnetLocallyWithArgsAndOutput(subnetName string, version string, con
 	}
 	if confPath != "" {
 		cmdArgs = append(cmdArgs, "--config", confPath)
+	}
+	// in case we want to use specific avago for local tests
+	debugAvalanchegoPath := os.Getenv(constants.E2EDebugAvalanchegoPath)
+	if debugAvalanchegoPath != "" {
+		cmdArgs = append(cmdArgs, "--avalanchego-path", debugAvalanchegoPath)
 	}
 	cmd := exec.Command(CLIBinary, cmdArgs...)
 	return cmd.CombinedOutput()
