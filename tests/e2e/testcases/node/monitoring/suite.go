@@ -6,7 +6,6 @@ package root
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -97,7 +96,7 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		type PrometheusConfig struct {
 			ScrapeConfigs []ScrapeConfig `yaml:"scrape_configs"`
 		}
-		data, err := ioutil.ReadFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, monitoringHostID, constants.NodePrometheusConfigFileName))
+		data, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, monitoringHostID, constants.NodePrometheusConfigFileName))
 		gomega.Expect(err).Should(gomega.BeNil())
 		var prometheusConfig PrometheusConfig
 		err = yaml.Unmarshal(data, &prometheusConfig)
