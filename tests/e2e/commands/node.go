@@ -5,6 +5,8 @@ package commands
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -192,4 +194,8 @@ func NodeUpgrade() string {
 	fmt.Println("---------------->")
 	gomega.Expect(err).Should(gomega.BeNil())
 	return string(output)
+}
+
+func DownloadPrometheusConfig(host *models.Host, nodeDirPath string) error {
+	return ssh.RunSSHDownloadNodePrometheusConfig(host, nodeDirPath)
 }
