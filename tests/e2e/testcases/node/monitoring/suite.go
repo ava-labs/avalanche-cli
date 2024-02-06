@@ -35,6 +35,8 @@ var (
 	NodeID           string
 	monitoringHostID string
 	createdHosts     []*models.Host
+	// host names without docker prefix
+	createdHostsFormatted []string
 )
 
 var _ = ginkgo.Describe("[Node monitoring]", func() {
@@ -66,8 +68,11 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Network.Kind.String()).To(gomega.Equal(networkCapitalized))
 		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Nodes).To(gomega.HaveLen(numNodes))
 		monitoringHostID = clustersConfig.Clusters[constants.E2EClusterName].MonitoringInstance
+		for _, host := range clustersConfig.Clusters[constants.E2EClusterName].Nodes {
+			createdHostsFormatted = append(createdHostsFormatted, host)
+		}
 	})
-	ginkgo.It("checks prometheus config", func() {
+	ginkgo.It("checks prometheus config in monitoring host", func() {
 		usr, err := user.Current()
 		gomega.Expect(err).Should(gomega.BeNil())
 		homeDir := usr.HomeDir
@@ -101,12 +106,14 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		err = yaml.Unmarshal(data, &prometheusConfig)
 		gomega.Expect(err).Should(gomega.BeNil())
 		scrapeConfig := prometheusConfig.ScrapeConfigs
+		avalancheGoJob := "avalanchego"
+		avalancheGoMachineJob := "avalanchego-machine"
 		for _, newConfig := range scrapeConfig {
-			if newConfig.JobName == "avalanchego" || newConfig.JobName == "avalanchego-machine" {
+			if newConfig.JobName == avalancheGoJob || newConfig.JobName == avalancheGoMachineJob {
 				targets := newConfig.StaticConfigs
 				dockerTarget := targets[0]
 				gomega.Expect(len(dockerTarget.Targets)).To(gomega.Equal(numNodes))
-				if newConfig.JobName == "avalanchego" {
+				if newConfig.JobName == avalancheGoJob {
 					for _, host := range hostavalancheGoPorts {
 						gomega.Expect(slices.Contains(dockerTarget.Targets, host)).To(gomega.Equal(true))
 					}
@@ -207,6 +214,9 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 	ginkgo.It("can cleanup", func() {
 		commands.DeleteE2EInventory()
 		commands.DeleteE2ECluster()
-		commands.DeleteNode(hostName)
+		for _, host := range createdHostsFormatted {
+			commands.DeleteNode(host)
+		}
+		commands.DeleteNode(monitoringHostID)
 	})
 })
