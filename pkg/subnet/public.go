@@ -165,13 +165,12 @@ func (d *PublicDeployer) TransferSubnetOwnership(
 }
 
 func (d *PublicDeployer) CreateAssetTx(
-	subnetID ids.ID,
 	tokenName string,
 	tokenSymbol string,
 	denomination byte,
 	initialState map[uint32][]verify.State,
 ) (ids.ID, error) {
-	wallet, err := d.loadWallet(subnetID)
+	wallet, err := d.loadWallet()
 	if err != nil {
 		return ids.Empty, err
 	}
@@ -213,12 +212,11 @@ func (d *PublicDeployer) CreateAssetTx(
 }
 
 func (d *PublicDeployer) ExportToPChainTx(
-	subnetID ids.ID,
 	subnetAssetID ids.ID,
 	owner *secp256k1fx.OutputOwners,
 	assetAmount uint64,
 ) (ids.ID, error) {
-	wallet, err := d.loadWallet(subnetID)
+	wallet, err := d.loadWallet()
 	if err != nil {
 		return ids.Empty, err
 	}
@@ -239,10 +237,9 @@ func (d *PublicDeployer) ExportToPChainTx(
 }
 
 func (d *PublicDeployer) ImportFromXChain(
-	subnetID ids.ID,
 	owner *secp256k1fx.OutputOwners,
 ) (ids.ID, error) {
-	wallet, err := d.loadWallet(subnetID)
+	wallet, err := d.loadWallet()
 	if err != nil {
 		return ids.Empty, err
 	}
