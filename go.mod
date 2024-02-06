@@ -4,9 +4,9 @@ go 1.20
 
 require (
 	github.com/ava-labs/apm v0.0.4
-	github.com/ava-labs/avalanche-network-runner v1.7.5-0.20240125151352-02d3bf3b8750
-	github.com/ava-labs/avalanchego v1.10.19-legacy-upgrade-times.0.20240125122037-a9bc73ad40f6
-	github.com/ava-labs/coreth v0.12.10-wip-bloom-metrics
+	github.com/ava-labs/avalanche-network-runner v1.7.5-0.20240205180533-8b809e26ddd8
+	github.com/ava-labs/avalanchego v1.11.0-rc.1
+	github.com/ava-labs/coreth v0.12.11-rc.2
 	github.com/ava-labs/subnet-evm v0.5.11
 	github.com/aws/aws-sdk-go-v2 v1.24.1
 	github.com/aws/aws-sdk-go-v2/config v1.26.6
