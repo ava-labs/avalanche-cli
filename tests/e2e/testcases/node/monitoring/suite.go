@@ -28,6 +28,7 @@ const (
 	network            = "fuji"
 	networkCapitalized = "Fuji"
 	numNodes           = 2
+	relativePath       = "nodes"
 )
 
 var (
@@ -58,7 +59,6 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		usr, err := user.Current()
 		gomega.Expect(err).Should(gomega.BeNil())
 		homeDir := usr.HomeDir
-		relativePath := "nodes"
 		content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.ClustersConfigFileName))
 		gomega.Expect(err).Should(gomega.BeNil())
 		clustersConfig := models.ClustersConfig{}
@@ -76,7 +76,6 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		usr, err := user.Current()
 		gomega.Expect(err).Should(gomega.BeNil())
 		homeDir := usr.HomeDir
-		relativePath := "nodes"
 		monitoringHost, err := ansible.GetInventoryFromAnsibleInventoryFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.AnsibleInventoryDir, "e2e", "monitoring"))
 		gomega.Expect(err).Should(gomega.BeNil())
 		err = commands.DownloadPrometheusConfig(monitoringHost[0], filepath.Join(homeDir, constants.BaseDirName, relativePath, monitoringHostID))
@@ -130,7 +129,6 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		usr, err := user.Current()
 		gomega.Expect(err).Should(gomega.BeNil())
 		homeDir := usr.HomeDir
-		relativePath := "nodes"
 		content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, hostName, "node_cloud_config.json"))
 		gomega.Expect(err).Should(gomega.BeNil())
 		nodeCloudConfig := models.NodeConfig{}
