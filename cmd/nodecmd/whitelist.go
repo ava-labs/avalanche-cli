@@ -27,7 +27,7 @@ type regionSecurityGroup struct {
 
 func newWhitelistCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "whitelist <clusterName> [IP] ",
+		Use:   "whitelist <clusterName> [IP]",
 		Short: "(ALPHA Warning) Whitelist IP for access to all nodes in a cluster",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
