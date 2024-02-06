@@ -6,6 +6,13 @@ package root
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"os/user"
+	"path/filepath"
+	"regexp"
+	"strings"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -14,12 +21,6 @@ import (
 	"github.com/onsi/gomega"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
-	"io/ioutil"
-	"os"
-	"os/user"
-	"path/filepath"
-	"regexp"
-	"strings"
 )
 
 const (
