@@ -26,6 +26,7 @@ type scriptInputs struct {
 	GoVersion               string
 	CliBranch               string
 	IsDevNet                bool
+	IsE2E                   bool
 	NetworkFlag             string
 	SubnetEVMBinaryPath     string
 	SubnetEVMReleaseURL     string
@@ -97,9 +98,20 @@ func RunSSHSetupNode(host *models.Host, configPath, avalancheGoVersion string, i
 		host,
 		constants.SSHScriptTimeout,
 		"shell/setupNode.sh",
-		scriptInputs{AvalancheGoVersion: avalancheGoVersion, IsDevNet: isDevNet},
+		scriptInputs{AvalancheGoVersion: avalancheGoVersion, IsDevNet: isDevNet, IsE2E: utils.IsE2E()},
 	); err != nil {
 		return err
+	}
+	if utils.IsE2E() && utils.E2EDocker() {
+		if err := RunOverSSH(
+			"E2E Start Avalanchego",
+			host,
+			constants.SSHScriptTimeout,
+			"shell/e2e_startNode.sh",
+			scriptInputs{},
+		); err != nil {
+			return err
+		}
 	}
 	// name: copy metrics config to cloud server
 	return host.Upload(
@@ -122,6 +134,15 @@ func RunSSHRestartNode(host *models.Host) error {
 
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
 func RunSSHUpgradeAvalanchego(host *models.Host, avalancheGoVersion string) error {
+	if utils.IsE2E() && utils.E2EDocker() {
+		return RunOverSSH(
+			"E2E Upgrade Avalanchego",
+			host,
+			constants.SSHScriptTimeout,
+			"shell/e2e_upgradeAvalancheGo.sh",
+			scriptInputs{AvalancheGoVersion: avalancheGoVersion},
+		)
+	}
 	return RunOverSSH(
 		"Upgrade Avalanchego",
 		host,
@@ -133,6 +154,15 @@ func RunSSHUpgradeAvalanchego(host *models.Host, avalancheGoVersion string) erro
 
 // RunSSHStartNode runs script to start avalanchego
 func RunSSHStartNode(host *models.Host) error {
+	if utils.IsE2E() && utils.E2EDocker() {
+		return RunOverSSH(
+			"E2E Start Avalanchego",
+			host,
+			constants.SSHScriptTimeout,
+			"shell/e2e_startNode.sh",
+			scriptInputs{},
+		)
+	}
 	return RunOverSSH(
 		"Start Avalanchego",
 		host,
@@ -144,6 +174,15 @@ func RunSSHStartNode(host *models.Host) error {
 
 // RunSSHStopNode runs script to stop avalanchego
 func RunSSHStopNode(host *models.Host) error {
+	if utils.IsE2E() && utils.E2EDocker() {
+		return RunOverSSH(
+			"E2E Stop Avalanchego",
+			host,
+			constants.SSHScriptTimeout,
+			"shell/e2e_stopNode.sh",
+			scriptInputs{},
+		)
+	}
 	return RunOverSSH(
 		"Stop Avalanchego",
 		host,
@@ -301,7 +340,7 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 		host,
 		constants.SSHScriptTimeout,
 		"shell/setupDevnet.sh",
-		scriptInputs{},
+		scriptInputs{IsE2E: utils.IsE2E()},
 	)
 }
 

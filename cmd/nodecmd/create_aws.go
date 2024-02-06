@@ -5,12 +5,13 @@ package nodecmd
 import (
 	"fmt"
 	"os/exec"
-	"os/user"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -113,8 +114,15 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 	ec2SvcMap := map[string]*awsAPI.AwsCloud{}
 	amiMap := map[string]string{}
 	numNodesMap := map[string]int{}
+	// verify regions are valid
+	if invalidRegions, err := checkRegions(maps.Keys(finalRegions)); err != nil {
+		return nil, nil, nil, err
+	} else if len(invalidRegions) > 0 {
+		return nil, nil, nil, fmt.Errorf("invalid regions %s provided for %s", invalidRegions, constants.AWSCloudService)
+	}
 	for region := range finalRegions {
 		var err error
+
 		ec2SvcMap[region], err = getAWSCloudCredentials(awsProfile, region)
 		if err != nil {
 			if !strings.Contains(err.Error(), "cloud access is required") {
@@ -146,7 +154,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		ux.Logger.PrintToUser("Creating separate monitoring EC2 instance(s) on AWS...")
 	}
 
-	userIPAddress, err := getIPAddress()
+	userIPAddress, err := utils.GetUserIPAddress()
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -161,26 +169,29 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			return nil, nil, nil, nil, err
 		}
 		certInSSHDir, err := app.CheckCertInSSHDir(regionConf[region].CertName)
+		if useSSHAgent {
+			certInSSHDir = true // if using ssh agent, we consider that we have a cert on hand
+		}
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
-		certName := regionConf[region].CertName
+		sgID := ""
 		keyPairName[region] = regionConf[region].Prefix
 		securityGroupName := regionConf[region].SecurityGroupName
-		privKey, err := app.GetSSHCertFilePath(certName)
-		sgID := ""
+		privKey, err := app.GetSSHCertFilePath(regionConf[region].CertName)
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
 		if !keyPairExists {
-			if err != nil {
-				return nil, nil, nil, nil, err
-			}
-			if !certInSSHDir {
-				ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s in AWS[%s]", keyPairName, region))
-				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
+			switch {
+			case useSSHAgent:
+				ux.Logger.PrintToUser("Using ssh agent identity %s to create key pair %s in AWS[%s]", sshIdentity, keyPairName[region], region)
+				if err := ec2Svc[region].UploadSSHIdentityKeyPair(regionConf[region].Prefix, sshIdentity); err != nil {
 					return nil, nil, nil, nil, err
 				}
-			} else {
-				ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists on your .ssh directory but not on AWS", regionConf[region].Prefix))
-				ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in AWS[%s]", regionConf[region].Prefix, region))
+			case !useSSHAgent && certInSSHDir:
+				ux.Logger.PrintToUser("Default Key Pair named %s already exists on your .ssh directory but not on AWS", regionConf[region].Prefix)
+				ux.Logger.PrintToUser("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in AWS[%s]", regionConf[region].Prefix, region)
 				keyPairName[region], err = promptKeyPairName(ec2Svc[region])
 				if err != nil {
 					return nil, nil, nil, nil, err
@@ -188,14 +199,24 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
 					return nil, nil, nil, nil, err
 				}
+			case !useSSHAgent && !certInSSHDir:
+				ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s in AWS[%s]", keyPairName, region))
+				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
+					return nil, nil, nil, nil, err
+				}
 			}
 		} else {
-			if certInSSHDir {
-				ux.Logger.PrintToUser(fmt.Sprintf("Using existing key pair %s in AWS[%s]", keyPairName[region], region))
+			// keypair exists
+			switch {
+			case useSSHAgent:
+				ux.Logger.PrintToUser("Using existing key pair %s in AWS[%s] via ssh-agent", keyPairName[region], region)
 				useExistingKeyPair[region] = true
-			} else {
-				ux.Logger.PrintToUser(fmt.Sprintf("Default Key Pair named %s already exists in AWS[%s]", keyPairName[region], region))
-				ux.Logger.PrintToUser(fmt.Sprintf("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName))
+			case !useSSHAgent && certInSSHDir:
+				ux.Logger.PrintToUser("Using existing key pair %s in AWS[%s]", keyPairName[region], region)
+				useExistingKeyPair[region] = true
+			case !useSSHAgent && !certInSSHDir:
+				ux.Logger.PrintToUser("Default Key Pair named %s already exists in AWS[%s]", keyPairName[region], region)
+				ux.Logger.PrintToUser("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName)
 				keyPairName[region], err = promptKeyPairName(ec2Svc[region])
 				if err != nil {
 					return nil, nil, nil, nil, err
@@ -247,6 +268,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		}
 		sshCertPath[region] = privKey
 		if instanceIDs[region], err = ec2Svc[region].CreateEC2Instances(
+			regionConf[region].Prefix,
 			regionConf[region].NumNodes,
 			regionConf[region].ImageID,
 			regionConf[region].InstanceType,
@@ -263,7 +285,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		if useStaticIP {
 			publicIPs := []string{}
 			for count := 0; count < regionConf[region].NumNodes; count++ {
-				allocationID, publicIP, err := ec2Svc[region].CreateEIP()
+				allocationID, publicIP, err := ec2Svc[region].CreateEIP(regionConf[region].Prefix)
 				if err != nil {
 					return nil, nil, nil, nil, err
 				}
@@ -287,16 +309,20 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	}
 	ux.Logger.PrintToUser("New EC2 instance(s) successfully created in AWS!")
 	for _, region := range regions {
-		if !useExistingKeyPair[region] {
+		if !useExistingKeyPair[region] && !useSSHAgent {
 			// takes the cert file downloaded from AWS and moves it to .ssh directory
 			err = addCertToSSH(regionConf[region].CertName)
 			if err != nil {
 				return nil, nil, nil, nil, err
 			}
 		}
-		sshCertPath[region], err = app.GetSSHCertFilePath(regionConf[region].CertName)
-		if err != nil {
-			return nil, nil, nil, nil, err
+		if useSSHAgent {
+			sshCertPath[region] = ""
+		} else {
+			sshCertPath[region], err = app.GetSSHCertFilePath(regionConf[region].CertName)
+			if err != nil {
+				return nil, nil, nil, nil, err
+			}
 		}
 	}
 	// instanceIDs, elasticIPs, certFilePath, keyPairName, err
@@ -332,13 +358,15 @@ func createAWSInstances(
 	numNodes map[string]int,
 	regions []string,
 	ami map[string]string,
-	usr *user.User,
 	forMonitoring bool) (
 	models.CloudConfig, error,
 ) {
 	regionConf := map[string]models.RegionConfig{}
 	for _, region := range regions {
-		prefix := usr.Username + "-" + region + constants.AvalancheCLISuffix
+		prefix, err := defaultAvalancheCLIPrefix(region)
+		if err != nil {
+			return models.CloudConfig{}, err
+		}
 		regionConf[region] = models.RegionConfig{
 			Prefix:            prefix,
 			ImageID:           ami[region],
@@ -401,4 +429,25 @@ func addCertToSSH(certName string) error {
 	cmd := exec.Command("ssh-add", certFilePath)
 	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	return cmd.Run()
+}
+
+// checkRegions checks if the given regions are available in AWS.
+// It returns list of invalid regions and error if any
+func checkRegions(regions []string) ([]string, error) {
+	const regionCheckerRegion = "us-east-1"
+	invalidRegions := []string{}
+	awsCloudRegionChecker, err := getAWSCloudCredentials(awsProfile, regionCheckerRegion)
+	if err != nil {
+		return invalidRegions, err
+	}
+	availableRegions, err := awsCloudRegionChecker.ListRegions()
+	if err != nil {
+		return invalidRegions, err
+	}
+	for _, region := range regions {
+		if !slices.Contains(availableRegions, region) {
+			invalidRegions = append(invalidRegions, region)
+		}
+	}
+	return invalidRegions, nil
 }

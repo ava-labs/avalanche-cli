@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/exp/slices"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
@@ -24,6 +26,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 	coreth_params "github.com/ava-labs/coreth/params"
+	"golang.org/x/exp/maps"
 )
 
 // difference between unlock schedule locktime and startime in original genesis
@@ -144,7 +147,7 @@ func generateCustomGenesis(
 	return json.MarshalIndent(genesisMap, "", " ")
 }
 
-func setupDevnet(clusterName string, hosts []*models.Host) error {
+func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[string]string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
@@ -157,20 +160,18 @@ func setupDevnet(clusterName string, hosts []*models.Host) error {
 	if err != nil {
 		return err
 	}
-	cloudHostIDs, err := utils.MapWithError(ansibleHostIDs, func(s string) (string, error) { _, o, err := models.HostAnsibleIDToCloudID(s); return o, err })
-	if err != nil {
-		return err
-	}
-	nodeIDs, err := utils.MapWithError(cloudHostIDs, func(s string) (string, error) {
-		n, err := getNodeID(app.GetNodeInstanceDirPath(s))
-		return n.String(), err
-	})
 	if err != nil {
 		return err
 	}
 
 	// set devnet network
-	network := models.NewDevnetNetwork(ansibleHosts[ansibleHostIDs[0]].IP, 9650)
+	networkEndpoint := ""
+	if len(apiNodeIPMap) > 0 {
+		networkEndpoint = maps.Values(apiNodeIPMap)[0]
+	} else {
+		networkEndpoint = ansibleHosts[ansibleHostIDs[0]].IP
+	}
+	network := models.NewDevnetNetwork(networkEndpoint, constants.AvalanchegoAPIPort)
 	ux.Logger.PrintToUser("Devnet Network Id: %d", network.ID)
 	ux.Logger.PrintToUser("Devnet Endpoint: %s", network.Endpoint)
 
@@ -188,39 +189,50 @@ func setupDevnet(clusterName string, hosts []*models.Host) error {
 	}
 	walletAddrStr := k.X()[0]
 
+	// exclude API nodes from genesis file generation as they will have no stake
+	hostsAPI := utils.Filter(hosts, func(h *models.Host) bool {
+		return slices.Contains(maps.Keys(apiNodeIPMap), h.GetCloudID())
+	})
+	hostsWithoutAPI := utils.Filter(hosts, func(h *models.Host) bool {
+		return !slices.Contains(maps.Keys(apiNodeIPMap), h.GetCloudID())
+	})
+	hostsWithoutAPIIDs := utils.Map(hostsWithoutAPI, func(h *models.Host) string { return h.NodeID })
+
 	// create genesis file at each node dir
-	genesisBytes, err := generateCustomGenesis(network.ID, walletAddrStr, stakingAddrStr, hosts)
+	genesisBytes, err := generateCustomGenesis(network.ID, walletAddrStr, stakingAddrStr, hostsWithoutAPI)
 	if err != nil {
 		return err
-	}
-	for _, cloudHostID := range cloudHostIDs {
-		outFile := filepath.Join(app.GetNodeInstanceDirPath(cloudHostID), "genesis.json")
-		if err := os.WriteFile(outFile, genesisBytes, constants.WriteReadReadPerms); err != nil {
-			return err
-		}
 	}
 
 	// create avalanchego conf node.json at each node dir
 	bootstrapIPs := []string{}
 	bootstrapIDs := []string{}
-	for i, ansibleHostID := range ansibleHostIDs {
-		cloudHostID := cloudHostIDs[i]
+	// append makes sure that hostsWithoutAPI i.e. validators are proccessed first and API nodes will have full list of validators to bootstrap
+	for _, host := range append(hostsWithoutAPI, hostsAPI...) {
 		confMap := map[string]interface{}{}
 		confMap[config.HTTPHostKey] = ""
-		confMap[config.PublicIPKey] = ansibleHosts[ansibleHostID].IP
+		confMap[config.PublicIPKey] = host.IP
 		confMap[config.NetworkNameKey] = fmt.Sprintf("network-%d", network.ID)
 		confMap[config.BootstrapIDsKey] = strings.Join(bootstrapIDs, ",")
 		confMap[config.BootstrapIPsKey] = strings.Join(bootstrapIPs, ",")
-		confMap[config.GenesisFileKey] = "/home/ubuntu/.avalanchego/configs/genesis.json"
-		bootstrapIDs = append(bootstrapIDs, nodeIDs[i])
-		bootstrapIPs = append(bootstrapIPs, ansibleHosts[ansibleHostID].IP+":9651")
+		confMap[config.GenesisFileKey] = filepath.Join(constants.CloudNodeConfigPath, "genesis.json")
 		confBytes, err := json.MarshalIndent(confMap, "", " ")
 		if err != nil {
 			return err
 		}
-		outFile := filepath.Join(app.GetNodeInstanceDirPath(cloudHostID), "node.json")
-		if err := os.WriteFile(outFile, confBytes, constants.WriteReadReadPerms); err != nil {
+		if err := os.WriteFile(filepath.Join(app.GetNodeInstanceDirPath(host.GetCloudID()), "genesis.json"), genesisBytes, constants.WriteReadReadPerms); err != nil {
 			return err
+		}
+		if err := os.WriteFile(filepath.Join(app.GetNodeInstanceDirPath(host.GetCloudID()), "node.json"), confBytes, constants.WriteReadReadPerms); err != nil {
+			return err
+		}
+		if slices.Contains(hostsWithoutAPIIDs, host.NodeID) {
+			nodeID, err := getNodeID(app.GetNodeInstanceDirPath(host.GetCloudID()))
+			if err != nil {
+				return err
+			}
+			bootstrapIDs = append(bootstrapIDs, nodeID.String())
+			bootstrapIPs = append(bootstrapIPs, fmt.Sprintf("%s:9651", host.IP))
 		}
 	}
 	// update node/s genesis + conf and start
@@ -257,8 +269,9 @@ func setupDevnet(clusterName string, hosts []*models.Host) error {
 	}
 	clusterConfig := clustersConfig.Clusters[clusterName]
 	clustersConfig.Clusters[clusterName] = models.ClusterConfig{
-		Network: network,
-		Nodes:   clusterConfig.Nodes,
+		Network:  network,
+		Nodes:    clusterConfig.Nodes,
+		APINodes: utils.Map(hostsAPI, func(h *models.Host) string { return h.NodeID }),
 	}
 	return app.WriteClustersConfigFile(&clustersConfig)
 }
