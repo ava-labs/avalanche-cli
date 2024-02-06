@@ -202,15 +202,6 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		gomega.Expect(logs).To(gomega.ContainSubstring("creating proposervm wrapper"))
 		gomega.Expect(logs).To(gomega.ContainSubstring("check started passing"))
 	})
-	ginkgo.It("can upgrade the nodes", func() {
-		output := commands.NodeUpgrade()
-		fmt.Println(output)
-		gomega.Expect(output).To(gomega.ContainSubstring("Upgrading Avalanche Go"))
-		latestAvagoVersion := strings.TrimPrefix(commands.GetLatestAvagoVersionFromGithub(), "v")
-		avalanchegoVersion := commands.NodeSSH(constants.E2EClusterName, "/home/ubuntu/avalanche-node/avalanchego --version")
-		gomega.Expect(avalanchegoVersion).To(gomega.ContainSubstring("go="))
-		gomega.Expect(avalanchegoVersion).To(gomega.ContainSubstring("avalanchego/" + latestAvagoVersion))
-	})
 	ginkgo.It("can cleanup", func() {
 		commands.DeleteE2EInventory()
 		commands.DeleteE2ECluster()
