@@ -137,7 +137,6 @@ func signTx(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println(remainingSubnetAuthKeys)
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 	if err := deployer.Sign(
 		tx,
