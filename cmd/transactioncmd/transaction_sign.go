@@ -137,8 +137,14 @@ func signTx(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	fmt.Println(remainingSubnetAuthKeys)
 	deployer := subnet.NewPublicDeployer(app, kc, network)
-	if err := deployer.Sign(tx, remainingSubnetAuthKeys, subnetID); err != nil {
+	if err := deployer.Sign(
+		tx,
+		remainingSubnetAuthKeys,
+		subnetID,
+		transferSubnetOwnershipTxID,
+	); err != nil {
 		if errors.Is(err, subnet.ErrNoSubnetAuthKeysInWallet) {
 			ux.Logger.PrintToUser("There are no required subnet auth keys present in the wallet")
 			ux.Logger.PrintToUser("")

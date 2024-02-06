@@ -497,9 +497,10 @@ func (d *PublicDeployer) Commit(
 func (d *PublicDeployer) Sign(
 	tx *txs.Tx,
 	subnetAuthKeysStrs []string,
-	subnet ids.ID,
+	subnetID ids.ID,
+	transferSubnetOwnershipTxID ids.ID,
 ) error {
-	wallet, err := d.loadWallet(subnet)
+	wallet, err := d.loadWallet(subnetID, transferSubnetOwnershipTxID)
 	if err != nil {
 		return err
 	}
