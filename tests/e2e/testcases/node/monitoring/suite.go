@@ -68,9 +68,7 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Network.Kind.String()).To(gomega.Equal(networkCapitalized))
 		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Nodes).To(gomega.HaveLen(numNodes))
 		monitoringHostID = clustersConfig.Clusters[constants.E2EClusterName].MonitoringInstance
-		for _, host := range clustersConfig.Clusters[constants.E2EClusterName].Nodes {
-			createdHostsFormatted = append(createdHostsFormatted, host)
-		}
+		createdHostsFormatted = append(createdHostsFormatted, clustersConfig.Clusters[constants.E2EClusterName].Nodes...)
 	})
 	ginkgo.It("checks prometheus config in monitoring host", func() {
 		usr, err := user.Current()
