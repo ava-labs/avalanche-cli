@@ -273,5 +273,5 @@ const (
 	E2EClusterName          = "e2e"
 	E2EDocker               = "docker"
 	E2EDockerComposeFile    = "/tmp/avalanche-cli-docker-compose.yml"
-	E2EDebugAvalanchegoPath = ""
+	E2EDebugAvalanchegoPath = "E2E_AVALANCHEGO_PATH"
 )
