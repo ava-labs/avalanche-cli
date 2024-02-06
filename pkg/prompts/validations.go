@@ -193,6 +193,68 @@ func getPChainValidationFunc(network models.Network) func(string) error {
 	}
 }
 
+func validateXChainAddress(input string) (string, error) {
+	chainID, hrp, _, err := address.Parse(input)
+	if err != nil {
+		return "", err
+	}
+
+	if chainID != "X" {
+		return "", errors.New("this is not a XChain address")
+	}
+	return hrp, nil
+}
+
+func validateXChainFujiAddress(input string) error {
+	hrp, err := validateXChainAddress(input)
+	if err != nil {
+		return err
+	}
+	if hrp != avagoconstants.FujiHRP {
+		return errors.New("this is not a fuji address")
+	}
+	return nil
+}
+
+func validateXChainMainAddress(input string) error {
+	hrp, err := validateXChainAddress(input)
+	if err != nil {
+		return err
+	}
+	if hrp != avagoconstants.MainnetHRP {
+		return errors.New("this is not a mainnet address")
+	}
+	return nil
+}
+
+func validateXChainLocalAddress(input string) error {
+	hrp, err := validateXChainAddress(input)
+	if err != nil {
+		return err
+	}
+	// ANR uses the `custom` HRP for local networks,
+	// but the `local` HRP also exists...
+	if hrp != avagoconstants.LocalHRP && hrp != avagoconstants.FallbackHRP {
+		return errors.New("this is not a local nor custom address")
+	}
+	return nil
+}
+
+func getXChainValidationFunc(network models.Network) func(string) error {
+	switch network.Kind {
+	case models.Fuji:
+		return validateXChainFujiAddress
+	case models.Mainnet:
+		return validateXChainMainAddress
+	case models.Local:
+		return validateXChainLocalAddress
+	default:
+		return func(string) error {
+			return errors.New("unsupported network")
+		}
+	}
+}
+
 func validateID(input string) error {
 	_, err := ids.FromString(input)
 	return err

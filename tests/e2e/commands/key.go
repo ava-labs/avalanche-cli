@@ -131,6 +131,7 @@ func KeyTransferSend(keyName string, targetAddr string, amount string) (string, 
 		targetAddr,
 		"--amount",
 		amount,
+		"--fund-p-chain",
 		"--force",
 		"--" + constants.SkipUpdateFlag,
 	}
