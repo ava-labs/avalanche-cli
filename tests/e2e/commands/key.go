@@ -153,6 +153,7 @@ func KeyTransferReceive(keyName string, amount string, recoveryStep string) (str
 		"--receive",
 		"--amount",
 		amount,
+		"--fund-p-chain",
 		"--force",
 		"--receive-recovery-step",
 		recoveryStep,
