@@ -99,6 +99,7 @@ type Prompter interface {
 	CaptureFloat(promptStr string, validator func(float64) error) (float64, error)
 	CaptureUint64Compare(promptStr string, comparators []Comparator) (uint64, error)
 	CapturePChainAddress(promptStr string, network models.Network) (string, error)
+	CaptureXChainAddress(promptStr string, network models.Network) (string, error)
 	CaptureFutureDate(promptStr string, minDate time.Time) (time.Time, error)
 	ChooseKeyOrLedger(goal string) (bool, error)
 }
@@ -417,6 +418,15 @@ func (*realPrompter) CapturePChainAddress(promptStr string, network models.Netwo
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: getPChainValidationFunc(network),
+	}
+
+	return prompt.Run()
+}
+
+func (*realPrompter) CaptureXChainAddress(promptStr string, network models.Network) (string, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: getXChainValidationFunc(network),
 	}
 
 	return prompt.Run()

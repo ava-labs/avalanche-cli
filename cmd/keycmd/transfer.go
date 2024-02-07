@@ -49,6 +49,8 @@ var (
 	receiverAddrStr     string
 	amountFlt           float64
 	receiveRecoveryStep uint64
+	PToX                bool
+	PToP                bool
 )
 
 func newTransferCmd() *cobra.Command {
@@ -60,6 +62,18 @@ func newTransferCmd() *cobra.Command {
 		Args:         cobra.ExactArgs(0),
 		SilenceUsage: true,
 	}
+	cmd.Flags().BoolVar(
+		&PToX,
+		"fund-x-chain",
+		false,
+		"fund X-Chain account on target",
+	)
+	cmd.Flags().BoolVar(
+		&PToP,
+		"fund-p-chain",
+		false,
+		"fund P-Chain account on target",
+	)
 	cmd.Flags().BoolVarP(
 		&force,
 		forceFlag,
@@ -192,6 +206,21 @@ func transferF(*cobra.Command, []string) error {
 		}
 	}
 
+	if !PToP && !PToX {
+		option, err := app.Prompt.CaptureList(
+			"Destination Chain",
+			[]string{"P-Chain", "X-Chain"},
+		)
+		if err != nil {
+			return err
+		}
+		if option == "P-Chain" {
+			PToP = true
+		} else {
+			PToX = true
+		}
+	}
+
 	if keyName == "" && ledgerIndex == wrongLedgerIndexVal {
 		var useLedger bool
 		goalStr := ""
@@ -256,9 +285,16 @@ func transferF(*cobra.Command, []string) error {
 	var receiverAddr ids.ShortID
 	if send {
 		if receiverAddrStr == "" {
-			receiverAddrStr, err = app.Prompt.CapturePChainAddress("Receiver address", network)
-			if err != nil {
-				return err
+			if PToP {
+				receiverAddrStr, err = app.Prompt.CapturePChainAddress("Receiver address", network)
+				if err != nil {
+					return err
+				}
+			} else {
+				receiverAddrStr, err = app.Prompt.CaptureXChainAddress("Receiver address", network)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		receiverAddr, err = address.ParseToID(receiverAddrStr)
@@ -285,7 +321,11 @@ func transferF(*cobra.Command, []string) error {
 			return fmt.Errorf("sender addr is the same as receiver addr")
 		}
 		ux.Logger.PrintToUser("- send %.9f AVAX from %s to target address %s", float64(amount)/float64(units.Avax), addrStr, receiverAddrStr)
-		ux.Logger.PrintToUser("- take a fee of %.9f AVAX from source address %s", float64(4*fee)/float64(units.Avax), addrStr)
+		totalFee := 4 * fee
+		if PToX {
+			totalFee = 2 * fee
+		}
+		ux.Logger.PrintToUser("- take a fee of %.9f AVAX from source address %s", float64(totalFee)/float64(units.Avax), addrStr)
 	} else {
 		ux.Logger.PrintToUser("- receive %.9f AVAX at target address %s", float64(amount)/float64(units.Avax), receiverAddrStr)
 	}
@@ -320,10 +360,14 @@ func transferF(*cobra.Command, []string) error {
 		if err != nil {
 			return err
 		}
+		amountPlusFee := amount + fee*3
+		if PToX {
+			amountPlusFee = amount + fee
+		}
 		output := &avax.TransferableOutput{
 			Asset: avax.Asset{ID: wallet.P().AVAXAssetID()},
 			Out: &secp256k1fx.TransferOutput{
-				Amt:          amount + fee*3,
+				Amt:          amountPlusFee,
 				OutputOwners: to,
 			},
 		}
@@ -405,6 +449,10 @@ func transferF(*cobra.Command, []string) error {
 				}
 				ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
 				return err
+			}
+
+			if PToX {
+				return nil
 			}
 
 			time.Sleep(2 * time.Second)
