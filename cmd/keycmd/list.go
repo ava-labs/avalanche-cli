@@ -111,7 +111,7 @@ keys or for the ledger addresses associated to certain indices.`,
 	cmd.Flags().BoolVar(
 		&xchain,
 		xchainFlag,
-		false,
+		true,
 		"list X-Chain addresses",
 	)
 	cmd.Flags().BoolVarP(
