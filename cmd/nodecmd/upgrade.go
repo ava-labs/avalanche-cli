@@ -75,7 +75,7 @@ func upgrade(_ *cobra.Command, args []string) error {
 			subnetEVMArchive := fmt.Sprintf(constants.SubnetEVMArchive, subnetEVMVersionToUpgradeToWoPrefix)
 			subnetEVMReleaseURL := fmt.Sprintf(constants.SubnetEVMReleaseURL, upgradeInfo.SubnetEVMVersion, subnetEVMArchive)
 			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, fmt.Sprintf("Upgrading SubnetEVM to version %s...", upgradeInfo.SubnetEVMVersion)))
-			if err := getNewSubnetEVMRelease(host, subnetEVMReleaseURL, subnetEVMArchive, upgradeInfo.SubnetEVMVersion); err != nil {
+			if err := getNewSubnetEVMRelease(host, subnetEVMReleaseURL, subnetEVMArchive); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
@@ -85,7 +85,7 @@ func upgrade(_ *cobra.Command, args []string) error {
 			}
 			for _, vmID := range upgradeInfo.SubnetEVMIDsToUpgrade {
 				subnetEVMBinaryPath := fmt.Sprintf(constants.CloudNodeSubnetEvmBinaryPath, vmID)
-				if err := upgradeSubnetEVM(host, subnetEVMBinaryPath, upgradeInfo.SubnetEVMVersion); err != nil {
+				if err := upgradeSubnetEVM(host, subnetEVMBinaryPath); err != nil {
 					ux.SpinFailWithError(spinner, "", err)
 					return err
 				}
@@ -220,13 +220,10 @@ func upgradeAvalancheGo(
 func upgradeSubnetEVM(
 	host *models.Host,
 	subnetEVMBinaryPath string,
-	subnetEVMVersion string,
 ) error {
 	if err := ssh.RunSSHUpgradeSubnetEVM(host, subnetEVMBinaryPath); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Successfully upgraded SubnetEVM version of node %s!", host.NodeID)
-	ux.Logger.PrintToUser("======================================")
 	return nil
 }
 
@@ -234,14 +231,10 @@ func getNewSubnetEVMRelease(
 	host *models.Host,
 	subnetEVMReleaseURL string,
 	subnetEVMArchive string,
-	subnetEVMVersion string,
 ) error {
-	ux.Logger.PrintToUser("Getting new SubnetEVM version %s ...", subnetEVMVersion)
 	if err := ssh.RunSSHGetNewSubnetEVMRelease(host, subnetEVMReleaseURL, subnetEVMArchive); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Successfully downloaded SubnetEVM version for node %s!", host.NodeID)
-	ux.Logger.PrintToUser("======================================")
 	return nil
 }
 

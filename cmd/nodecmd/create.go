@@ -449,7 +449,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	spinSession := ux.NewUserSpinner()
-	defer spinSession.End()
 	for _, host := range hosts {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
@@ -477,16 +476,14 @@ func createNodes(_ *cobra.Command, args []string) error {
 					return
 				}
 				ux.SpinComplete(spinner)
-			} else {
-				if setUpMonitoring {
-					spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup node"))
-					if err := ssh.RunSSHSetupMonitoring(host); err != nil {
-						nodeResults.AddResult(host.NodeID, nil, err)
-						ux.SpinFailWithError(spinner, "", err)
-						return
-					}
-					ux.SpinComplete(spinner)
+			} else if setUpMonitoring {
+				spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup node"))
+				if err := ssh.RunSSHSetupMonitoring(host); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
 				}
+				ux.SpinComplete(spinner)
 			}
 			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Build Env"))
 			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
@@ -584,6 +581,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}(&wgResults, host)
 		}
 		wg.Wait()
+		spinSession.End()
 		for _, node := range hosts {
 			if wgResults.HasNodeIDWithError(node.NodeID) {
 				ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
