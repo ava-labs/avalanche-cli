@@ -199,9 +199,9 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(exists).Should(gomega.BeTrue())
 
-		isPendingValidator, err := utils.IsNodeInPendingValidator(subnetName, nodeIDs[0])
+		isValidator, err := utils.IsNodeInValidators(subnetName, nodeIDs[0])
 		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
+		gomega.Expect(isValidator).Should(gomega.BeTrue())
 
 		_, err = commands.RemoveValidator(subnetName, nodeIDs[1])
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -212,9 +212,9 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(exists).Should(gomega.BeTrue())
 
-		isPendingValidator, err = utils.IsNodeInPendingValidator(subnetName, nodeIDs[1])
+		isValidator, err = utils.IsNodeInValidators(subnetName, nodeIDs[1])
 		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
+		gomega.Expect(isValidator).Should(gomega.BeTrue())
 
 		_, err = commands.AddPermissionlessDelegator(subnetName, nodeIDs[1], delegateAmount, delegateDuration)
 		gomega.Expect(err).Should(gomega.BeNil())
