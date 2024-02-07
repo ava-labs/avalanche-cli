@@ -153,7 +153,6 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	} else {
 		ux.Logger.PrintToUser("Creating separate monitoring EC2 instance(s) on AWS...")
 	}
-
 	userIPAddress, err := utils.GetUserIPAddress()
 	if err != nil {
 		return nil, nil, nil, nil, err
@@ -278,10 +277,14 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		); err != nil {
 			return nil, nil, nil, nil, err
 		}
-		ux.Logger.PrintToUser(fmt.Sprintf("Waiting for EC2 instances in AWS[%s] to be provisioned...", region))
+		spinSession := ux.NewUserSpinner()
+		spinner := spinSession.SpinToUser("Waiting for EC2 instances in AWS[%s] to be provisioned...", region)
 		if err := ec2Svc[region].WaitForEC2Instances(instanceIDs[region]); err != nil {
+			ux.SpinFailWithError(spinner, "", err)
 			return nil, nil, nil, nil, err
 		}
+		ux.SpinComplete(spinner)
+		spinSession.End()
 		if useStaticIP {
 			publicIPs := []string{}
 			for count := 0; count < regionConf[region].NumNodes; count++ {

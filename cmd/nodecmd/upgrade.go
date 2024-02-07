@@ -59,31 +59,42 @@ func upgrade(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	spinSession := ux.NewUserSpinner()
+	defer spinSession.End()
 	for host, upgradeInfo := range toUpgradeNodesMap {
 		if upgradeInfo.AvalancheGoVersion != "" {
+			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, fmt.Sprintf("Upgrading avalanchego to version %s...", upgradeInfo.AvalancheGoVersion)))
 			if err := upgradeAvalancheGo(host, upgradeInfo.AvalancheGoVersion); err != nil {
+				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
+			ux.SpinComplete(spinner)
 		}
 		if upgradeInfo.SubnetEVMVersion != "" {
 			subnetEVMVersionToUpgradeToWoPrefix := strings.TrimPrefix(upgradeInfo.SubnetEVMVersion, "v")
 			subnetEVMArchive := fmt.Sprintf(constants.SubnetEVMArchive, subnetEVMVersionToUpgradeToWoPrefix)
 			subnetEVMReleaseURL := fmt.Sprintf(constants.SubnetEVMReleaseURL, upgradeInfo.SubnetEVMVersion, subnetEVMArchive)
+			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, fmt.Sprintf("Upgrading SubnetEVM to version %s...", upgradeInfo.SubnetEVMVersion)))
 			if err := getNewSubnetEVMRelease(host, subnetEVMReleaseURL, subnetEVMArchive, upgradeInfo.SubnetEVMVersion); err != nil {
+				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
 			if err := ssh.RunSSHStopNode(host); err != nil {
+				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
 			for _, vmID := range upgradeInfo.SubnetEVMIDsToUpgrade {
 				subnetEVMBinaryPath := fmt.Sprintf(constants.CloudNodeSubnetEvmBinaryPath, vmID)
 				if err := upgradeSubnetEVM(host, subnetEVMBinaryPath, upgradeInfo.SubnetEVMVersion); err != nil {
+					ux.SpinFailWithError(spinner, "", err)
 					return err
 				}
 			}
 			if err := ssh.RunSSHStartNode(host); err != nil {
+				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
+			ux.SpinComplete(spinner)
 		}
 	}
 	return nil
@@ -200,12 +211,9 @@ func upgradeAvalancheGo(
 	host *models.Host,
 	avaGoVersionToUpdateTo string,
 ) error {
-	ux.Logger.PrintToUser("Upgrading Avalanche Go version of node %s to version %s ...", host.NodeID, avaGoVersionToUpdateTo)
 	if err := ssh.RunSSHUpgradeAvalanchego(host, avaGoVersionToUpdateTo); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Successfully upgraded Avalanche Go version of node %s!", host.NodeID)
-	ux.Logger.PrintToUser("======================================")
 	return nil
 }
 
@@ -214,7 +222,6 @@ func upgradeSubnetEVM(
 	subnetEVMBinaryPath string,
 	subnetEVMVersion string,
 ) error {
-	ux.Logger.PrintToUser("Upgrading SubnetEVM version of node %s to version %s ...", host.NodeID, subnetEVMVersion)
 	if err := ssh.RunSSHUpgradeSubnetEVM(host, subnetEVMBinaryPath); err != nil {
 		return err
 	}

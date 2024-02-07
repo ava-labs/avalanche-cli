@@ -10,34 +10,49 @@ import (
 	"github.com/chelnak/ysmrr/pkg/colors"
 )
 
-var Spinner ysmrr.SpinnerManager
+var Spinner *UserSpinner
 
 type UserSpinner struct {
 	spinner ysmrr.SpinnerManager
 }
 
-func NewUserSpinner() {
-	if Spinner == nil {
-		Spinner = ysmrr.NewSpinnerManager(
-			ysmrr.WithAnimation(animations.Dots),
-			ysmrr.WithSpinnerColor(colors.FgHiBlue),
-		)
-		Spinner.Start()
-	}
+func newSpinner() ysmrr.SpinnerManager {
+	return ysmrr.NewSpinnerManager(
+		ysmrr.WithAnimation(animations.Dots),
+		ysmrr.WithSpinnerColor(colors.FgHiBlue),
+	)
 }
 
-// SpinToUser adds spinner to the screen
+func NewUserSpinner() *UserSpinner {
+	spinner := newSpinner()
+	Spinner = &UserSpinner{spinner: spinner}
+	return Spinner
+}
+
+func (us *UserSpinner) Start() {
+	us.spinner.Start()
+}
+
+func (us *UserSpinner) End() {
+	us.spinner.Stop()
+}
+
 func (us *UserSpinner) SpinToUser(msg string, args ...interface{}) *ysmrr.Spinner {
 	formattedMsg := fmt.Sprintf(msg, args...)
-	return us.spinner.AddSpinner(formattedMsg)
+	sp := us.spinner.AddSpinner(formattedMsg)
+	us.spinner.Start()
+	return sp
 }
 
-func (us *UserSpinner) FailWithError(s *ysmrr.Spinner, err error) {
-	s.UpdateMessage(s.GetMessage() + " err: " + err.Error())
+func SpinFailWithError(s *ysmrr.Spinner, txt string, err error) {
+	if txt == "" {
+		s.UpdateMessage(fmt.Sprintf("%s err:%v", s.GetMessage(), err))
+	} else {
+		s.UpdateMessage(fmt.Sprintf("%s txt:%s err:%v", s.GetMessage(), txt, err))
+	}
 	s.Error()
 }
 
-func (us *UserSpinner) Done(s *ysmrr.Spinner) {
-	us.spinner.Stop()
-	us.spinner = nil
+func SpinComplete(s *ysmrr.Spinner) {
+	s.Complete()
 }

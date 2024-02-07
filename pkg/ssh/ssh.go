@@ -16,7 +16,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
 type scriptInputs struct {
@@ -40,9 +39,6 @@ type scriptInputs struct {
 var script embed.FS
 
 // scriptLog formats the given line of a script log with the provided nodeID.
-func scriptLog(nodeID string, line string) string {
-	return fmt.Sprintf("[%s] %s", nodeID, line)
-}
 
 // RunOverSSH runs provided script path over ssh.
 // This script can be template as it will be rendered using scriptInputs vars
@@ -57,7 +53,6 @@ func RunOverSSH(
 	if err != nil {
 		return err
 	}
-
 	var script bytes.Buffer
 	t, err := template.New(scriptDesc).Parse(string(shellScript))
 	if err != nil {
@@ -67,9 +62,8 @@ func RunOverSSH(
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser(scriptLog(host.NodeID, scriptDesc))
-	if s, err := host.Command(script.String(), nil, timeout); err != nil {
-		fmt.Println(string(s))
+
+	if _, err := host.Command(script.String(), nil, timeout); err != nil {
 		return err
 	}
 	return nil

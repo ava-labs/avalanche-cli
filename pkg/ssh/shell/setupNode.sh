@@ -5,8 +5,8 @@ set -e
 sudo cp -vf /usr/bin/true /usr/local/sbin/systemctl
 {{end}}
 #name:TASK [update apt data and install dependencies] 
-DEBIAN_FRONTEND=noninteractive sudo apt-get -y update
-DEBIAN_FRONTEND=noninteractive sudo apt-get -y install wget curl git
+DEBIAN_FRONTEND=noninteractive sudo apt-get -y update -o DPkg::Lock::Timeout=120
+DEBIAN_FRONTEND=noninteractive sudo apt-get -y install -o DPkg::Lock::Timeout=120 wget curl git 
 #name:TASK [create .avalanche-cli .avalanchego dirs]
 mkdir -p .avalanche-cli .avalanchego/staking
 #name:TASK [get avalanche go script]

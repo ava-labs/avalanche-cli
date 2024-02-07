@@ -222,3 +222,7 @@ func Sum(s []int) int {
 	}
 	return sum
 }
+
+func ScriptLog(nodeID string, line string) string {
+	return fmt.Sprintf("[%s] %s", nodeID, line)
+}
