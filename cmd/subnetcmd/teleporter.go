@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os/exec"
 	"strings"
+	"strconv"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -24,6 +25,7 @@ const (
 	teleporterMessengerDeployerTxURL = teleporterReleaseURL + "/TeleporterMessenger_Deployment_Transaction_" + teleporterVersion + ".txt"
 	cChainRpcURL = constants.LocalAPIEndpoint + "/ext/bc/C/rpc"
 	prefundedEwoqPrivateKey = "0x56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
+	teleporterMessengerDeployerRequiredBalance = uint64(10000000000000000000) // 10 eth
 )
 
 // avalanche subnet teleporter
@@ -41,11 +43,13 @@ func newTeleporterCmd() *cobra.Command {
 }
 
 func deployTeleporter(cmd *cobra.Command, args []string) error {
+	// get target teleporter messenger contract address
 	teleporterMessengerContractAddressBytes, err := download(teleporterMessengerContractAddressURL)
 	if err != nil {
 		return err
 	}
 	teleporterMessengerContractAddress := string(teleporterMessengerContractAddressBytes)
+	// check if contract is already deployed
 	teleporterMessengerAlreadyDeployed, err := contractAlreadyDeployed(cChainRpcURL, teleporterMessengerContractAddress)
 	if err != nil {
 		return err
@@ -55,19 +59,46 @@ func deployTeleporter(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	fmt.Printf("DEPLOYING TELEPORTER MESSENGER INTO RPC %s CONTRACT ADDRESS %s\n", cChainRpcURL, teleporterMessengerContractAddress)
-	return nil
+	// get teleporter deployer address
+	teleporterMessengerDeployerAddressBytes, err := download(teleporterMessengerDeployerAddressURL)
+	if err != nil {
+		return err
+	}
+	teleporterMessengerDeployerAddress := string(teleporterMessengerDeployerAddressBytes)
+	// get teleporter deployer balance
+	teleporterMessengerDeployerBalance, err := getAddressBalance(cChainRpcURL, teleporterMessengerDeployerAddress)
+	if err != nil {
+		return err
+	}
+	if teleporterMessengerDeployerBalance < teleporterMessengerDeployerRequiredBalance {
+		fmt.Printf(
+			"TELEPORTER MESSENGER DEPLOYER %s AT RPC %s HAS NOT ENOUGH BALANCE %d, EXPECTED %d\n",
+			teleporterMessengerDeployerAddress,
+			cChainRpcURL,
+			teleporterMessengerDeployerBalance,
+			teleporterMessengerDeployerRequiredBalance,
+		)
+		toFund := teleporterMessengerDeployerRequiredBalance - teleporterMessengerDeployerBalance
+		err := fundAddress(
+			cChainRpcURL,
+			prefundedEwoqPrivateKey,
+			teleporterMessengerDeployerAddress,
+			toFund,
+		)
+		if err != nil {
+			return err
+		}
+	}
 
-	teleporterMessengerDeployerAddress, err := download(teleporterMessengerDeployerAddressURL)
+	teleporterMessengerDeployerTxBytes, err := download(teleporterMessengerDeployerTxURL)
 	if err != nil {
 		return err
 	}
-	fmt.Println("(", string(teleporterMessengerDeployerAddress), ")")
-	return nil
-	teleporterMessengerDeployerTx, err := download(teleporterMessengerDeployerTxURL)
+	teleporterMessengerDeployerTx := string(teleporterMessengerDeployerTxBytes)
+	err = issueTx(cChainRpcURL, teleporterMessengerDeployerTx)
 	if err != nil {
 		return err
 	}
-	_ = teleporterMessengerDeployerTx
 	return nil
 }
 
@@ -96,13 +127,101 @@ func getContractBytecode(rpcURL string, contractAddress string) (string, error) 
 		if errBuf.String() != "" {
 			fmt.Println(errBuf.String())
 		}
-		return "", fmt.Errorf("could get contract %s bytecode from rpc %s: %w", contractAddress, rpcURL, err)
+		return "", fmt.Errorf("couldn't get contract %s bytecode from rpc %s: %w", contractAddress, rpcURL, err)
 	}
 	if errBuf.String() != "" {
 		fmt.Println(errBuf.String())
 	}
 	return strings.TrimSpace(outBuf.String()), nil
 }
+
+func getAddressBalance(rpcURL string, address string) (uint64, error) {
+	// TODO: don't use forge for this
+	cmd := exec.Command(
+		"cast",
+		"balance",
+		"--rpc-url",
+		rpcURL,
+		address,
+	)
+	outBuf, errBuf:= utils.SetupRealtimeCLIOutput(cmd, false, false)
+	if err := cmd.Run(); err != nil {
+		if outBuf.String() != "" {
+			fmt.Println(outBuf.String())
+		}
+		if errBuf.String() != "" {
+			fmt.Println(errBuf.String())
+		}
+		return 0, fmt.Errorf("couldn't get address %s balance from rpc %s: %w", address, rpcURL, err)
+	}
+	if errBuf.String() != "" {
+		fmt.Println(errBuf.String())
+	}
+	balanceStr := strings.TrimSpace(outBuf.String())
+	balance, err := strconv.ParseUint(balanceStr, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("couldn't parse address %s balance %s from rpc %s: %w", address, balanceStr, rpcURL, err)
+	}
+	return balance, nil
+}
+
+func fundAddress(rpcURL string, sourceAddressPrivateKey string, targetAddress string, amount uint64) error {
+	// TODO: don't use forge for this
+	cmd := exec.Command(
+		"cast",
+		"send",
+		"--rpc-url",
+		rpcURL,
+		"--private-key",
+		sourceAddressPrivateKey,
+		"--value",
+		fmt.Sprint(amount),
+		targetAddress,
+	)
+	outBuf, errBuf:= utils.SetupRealtimeCLIOutput(cmd, false, false)
+	if err := cmd.Run(); err != nil {
+		if outBuf.String() != "" {
+			fmt.Println(outBuf.String())
+		}
+		if errBuf.String() != "" {
+			fmt.Println(errBuf.String())
+		}
+		return fmt.Errorf("couldn't fund address %s balance from rpc %s: %w", targetAddress, rpcURL, err)
+	}
+	if errBuf.String() != "" {
+		fmt.Println(errBuf.String())
+	}
+	return nil
+}
+
+func issueTx(rpcURL string, tx string) error {
+	// TODO: don't use forge for this
+	cmd := exec.Command(
+		"cast",
+		"publish",
+		"--rpc-url",
+		rpcURL,
+		tx,
+	)
+	outBuf, errBuf:= utils.SetupRealtimeCLIOutput(cmd, false, false)
+	if err := cmd.Run(); err != nil {
+		if outBuf.String() != "" {
+			fmt.Println(outBuf.String())
+		}
+		if errBuf.String() != "" {
+			fmt.Println(errBuf.String())
+		}
+		return fmt.Errorf("couldn't issue tx into rpc %s: %w", rpcURL, err)
+	}
+	if outBuf.String() != "" {
+		fmt.Println(outBuf.String())
+	}
+	if errBuf.String() != "" {
+		fmt.Println(errBuf.String())
+	}
+	return nil
+}
+
 
 func download(url string) ([]byte, error) {
 	resp, err := http.Get(url)
