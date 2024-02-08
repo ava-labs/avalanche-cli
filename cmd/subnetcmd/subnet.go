@@ -72,5 +72,7 @@ manage your Subnet configurations and live deployments.`,
 	cmd.AddCommand(newAddPermissionlessDelegatorCmd())
 	// subnet changeOwner
 	cmd.AddCommand(newChangeOwnerCmd())
+	// subnet teleporter
+	cmd.AddCommand(newTeleporterCmd())
 	return cmd
 }
