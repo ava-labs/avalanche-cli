@@ -90,7 +90,7 @@ install_prometheus() {
   echo "Installing..."
   id -u prometheus &>/dev/null || sudo useradd -M -r -s /bin/false prometheus
   sudo mkdir -p /etc/prometheus /var/lib/prometheus
-  sudo apt-get install -y apt-transport-https gnupg2
+  sudo apt-get install -y apt-transport-https gnupg2 -o DPkg::Lock::Timeout=120
   cd prometheus
   sudo cp {prometheus,promtool} /usr/local/bin/
   sudo chown prometheus:prometheus /usr/local/bin/{prometheus,promtool}

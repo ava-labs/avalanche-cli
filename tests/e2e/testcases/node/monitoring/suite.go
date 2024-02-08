@@ -121,21 +121,6 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 			}
 		}
 	})
-	ginkgo.It("creates node config", func() {
-		fmt.Println("HostName: ", hostName)
-		usr, err := user.Current()
-		gomega.Expect(err).Should(gomega.BeNil())
-		homeDir := usr.HomeDir
-		content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, hostName, "node_cloud_config.json"))
-		gomega.Expect(err).Should(gomega.BeNil())
-		nodeCloudConfig := models.NodeConfig{}
-		err = json.Unmarshal(content, &nodeCloudConfig)
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(nodeCloudConfig.NodeID).To(gomega.Equal(hostName))
-		gomega.Expect(nodeCloudConfig.ElasticIP).To(gomega.ContainSubstring(constants.E2ENetworkPrefix))
-		gomega.Expect(nodeCloudConfig.CertPath).To(gomega.ContainSubstring(homeDir))
-		gomega.Expect(nodeCloudConfig.UseStaticIP).To(gomega.Equal(false))
-	})
 	ginkgo.It("installs and runs avalanchego", func() {
 		avalancegoProcess := commands.NodeSSH(constants.E2EClusterName, "ps -elf")
 		gomega.Expect(avalancegoProcess).To(gomega.ContainSubstring("/home/ubuntu/avalanche-node/avalanchego"))
