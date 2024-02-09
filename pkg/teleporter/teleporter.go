@@ -104,6 +104,7 @@ func DeployRegistry(subnetName string, rpcURL string, prefundedPrivateKey string
 	if err != nil {
 		return "", err
 	}
+	defer client.Close()
 	signer, err := evm.GetSigner(client, prefundedPrivateKey)
 	if err != nil {
 		return "", err

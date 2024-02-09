@@ -170,7 +170,6 @@ func GetSigner(client ethclient.Client, prefundedPrivateKeyStr string) (*bind.Tr
 	if err != nil {
 		return nil, err
 	}
-	client.Close()
 	return bind.NewKeyedTransactorWithChainID(prefundedPrivateKey, chainID)
 }
 
