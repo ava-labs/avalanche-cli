@@ -36,7 +36,7 @@ func deployTeleporter(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("Teleporter has already been deployed to c-chain")
 		return nil
 	}
-	if err := teleporter.DeployTeleporter(cChainRpcURL, prefundedEwoqPrivateKey); err != nil {
+	if err := teleporter.DeployTeleporter("c-chain", cChainRpcURL, prefundedEwoqPrivateKey); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Teleporter successfully deployed to c-chain")

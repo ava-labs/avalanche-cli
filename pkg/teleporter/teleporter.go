@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
 const (
@@ -27,7 +27,8 @@ const (
 	teleporterMessengerDeployerRequiredBalance = uint64(10000000000000000000) // 10 eth
 )
 
-func DeployTeleporter(rpcURL string, prefundedPrivateKey string) error {
+func DeployTeleporter(subnetName string, rpcURL string, prefundedPrivateKey string) error {
+	ux.Logger.PrintToUser("Deploying Teleporter into %s", subnetName)
 	// get target teleporter messenger contract address
 	teleporterMessengerContractAddress, err := downloadStr(teleporterMessengerContractAddressURL)
 	if err != nil {
@@ -39,10 +40,8 @@ func DeployTeleporter(rpcURL string, prefundedPrivateKey string) error {
 		return err
 	}
 	if teleporterMessengerAlreadyDeployed {
-		ux.Logger.PrintToUser("TELEPORTER MESSENGER ALREADY DEPLOYED TO RPC %s CONTRACT ADDRESS %s", rpcURL, teleporterMessengerContractAddress)
 		return nil
 	}
-	ux.Logger.PrintToUser("DEPLOYING TELEPORTER MESSENGER INTO RPC %s CONTRACT ADDRESS %s", rpcURL, teleporterMessengerContractAddress)
 	// get teleporter deployer address
 	teleporterMessengerDeployerAddress, err := downloadStr(teleporterMessengerDeployerAddressURL)
 	if err != nil {
@@ -54,13 +53,6 @@ func DeployTeleporter(rpcURL string, prefundedPrivateKey string) error {
 		return err
 	}
 	if teleporterMessengerDeployerBalance < teleporterMessengerDeployerRequiredBalance {
-		ux.Logger.PrintToUser(
-			"TELEPORTER MESSENGER DEPLOYER %s AT RPC %s HAS NOT ENOUGH BALANCE %d, EXPECTED %d",
-			teleporterMessengerDeployerAddress,
-			rpcURL,
-			teleporterMessengerDeployerBalance,
-			teleporterMessengerDeployerRequiredBalance,
-		)
 		toFund := teleporterMessengerDeployerRequiredBalance - teleporterMessengerDeployerBalance
 		err := fundAddress(
 			rpcURL,
@@ -72,7 +64,6 @@ func DeployTeleporter(rpcURL string, prefundedPrivateKey string) error {
 			return err
 		}
 	}
-
 	teleporterMessengerDeployerTx, err := downloadStr(teleporterMessengerDeployerTxURL)
 	if err != nil {
 		return err
@@ -202,9 +193,6 @@ func issueTx(rpcURL string, tx string) error {
 			fmt.Println(errBuf.String())
 		}
 		return fmt.Errorf("couldn't issue tx into rpc %s: %w", rpcURL, err)
-	}
-	if outBuf.String() != "" {
-		fmt.Println(outBuf.String())
 	}
 	if errBuf.String() != "" {
 		fmt.Println(errBuf.String())
