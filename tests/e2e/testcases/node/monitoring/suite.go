@@ -6,6 +6,7 @@ package root
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -19,7 +20,6 @@ import (
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"golang.org/x/exp/slices"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -75,7 +75,8 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		homeDir := usr.HomeDir
 		monitoringHost, err := ansible.GetInventoryFromAnsibleInventoryFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.AnsibleInventoryDir, "e2e", "monitoring"))
 		gomega.Expect(err).Should(gomega.BeNil())
-		err = commands.DownloadPrometheusConfig(monitoringHost[0], filepath.Join(homeDir, constants.BaseDirName, relativePath, monitoringHostID))
+		gomega.Expect(monitoringHost).To(gomega.HaveLen(1))
+		err = ssh.RunSSHDownloadNodePrometheusConfig(monitoringHost[0], filepath.Join(homeDir, constants.BaseDirName, relativePath, monitoringHostID))
 		gomega.Expect(err).Should(gomega.BeNil())
 		createdDockerHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.AnsibleInventoryDir, "e2e"))
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -86,21 +87,7 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 			hostavalancheGoPorts = append(hostavalancheGoPorts, fmt.Sprintf("%s:9650", host.IP))
 			hostMachinePorts = append(hostMachinePorts, fmt.Sprintf("%s:9100", host.IP))
 		}
-		type StaticConfig struct {
-			Targets []string `yaml:"targets"`
-		}
-		type ScrapeConfig struct {
-			JobName       string         `yaml:"job_name"`
-			StaticConfigs []StaticConfig `yaml:"static_configs"`
-		}
-		type PrometheusConfig struct {
-			ScrapeConfigs []ScrapeConfig `yaml:"scrape_configs"`
-		}
-		data, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, monitoringHostID, constants.NodePrometheusConfigFileName))
-		gomega.Expect(err).Should(gomega.BeNil())
-		var prometheusConfig PrometheusConfig
-		err = yaml.Unmarshal(data, &prometheusConfig)
-		gomega.Expect(err).Should(gomega.BeNil())
+		prometheusConfig := commands.ParsePrometheusYamlConfig(filepath.Join(homeDir, constants.BaseDirName, relativePath, monitoringHostID, constants.NodePrometheusConfigFileName))
 		scrapeConfig := prometheusConfig.ScrapeConfigs
 		avalancheGoJob := "avalanchego"
 		avalancheGoMachineJob := "avalanchego-machine"

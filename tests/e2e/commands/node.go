@@ -5,13 +5,11 @@ package commands
 
 import (
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
-
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/onsi/gomega"
@@ -197,6 +195,24 @@ func NodeUpgrade() string {
 	return string(output)
 }
 
-func DownloadPrometheusConfig(host *models.Host, nodeDirPath string) error {
-	return ssh.RunSSHDownloadNodePrometheusConfig(host, nodeDirPath)
+type StaticConfig struct {
+	Targets []string `yaml:"targets"`
+}
+type ScrapeConfig struct {
+	JobName       string         `yaml:"job_name"`
+	StaticConfigs []StaticConfig `yaml:"static_configs"`
+}
+type PrometheusConfig struct {
+	ScrapeConfigs []ScrapeConfig `yaml:"scrape_configs"`
+}
+
+// ParsePrometheusYamlConfig parses prometheus config YAML file installed in separate monitoring
+// host in /etc/prometheus/prometheus.yml
+func ParsePrometheusYamlConfig(filePath string) PrometheusConfig {
+	data, err := os.ReadFile(filePath)
+	gomega.Expect(err).Should(gomega.BeNil())
+	var prometheusConfig PrometheusConfig
+	err = yaml.Unmarshal(data, &prometheusConfig)
+	gomega.Expect(err).Should(gomega.BeNil())
+	return prometheusConfig
 }
