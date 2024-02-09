@@ -28,6 +28,20 @@ const (
 )
 
 func DeployTeleporter(subnetName string, rpcURL string, prefundedPrivateKey string) error {
+	if b, err := TeleporterAlreadyDeployed(rpcURL); err != nil {
+		return err
+	} else if b {
+		ux.Logger.PrintToUser("Teleporter has already been deployed to %s", subnetName)
+		return nil
+	}
+	if err := deployTeleporter(subnetName, rpcURL, prefundedPrivateKey); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Teleporter successfully deployed to %s", subnetName)
+	return nil
+}
+
+func deployTeleporter(subnetName string, rpcURL string, prefundedPrivateKey string) error {
 	ux.Logger.PrintToUser("Deploying Teleporter into %s", subnetName)
 	// get target teleporter messenger contract address
 	teleporterMessengerContractAddress, err := downloadStr(teleporterMessengerContractAddressURL)
