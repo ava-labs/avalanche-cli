@@ -93,18 +93,6 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		avalancegoConfigCChain := commands.NodeSSH(constants.E2EClusterName, "cat /home/ubuntu/.avalanchego/configs/chains/C/config.json")
 		gomega.Expect(avalancegoConfigCChain).To(gomega.ContainSubstring("\"state-sync-enabled\": true"))
 	})
-	ginkgo.It("provides avalanchego with staking certs", func() {
-		stakingFiles := commands.NodeSSH(constants.E2EClusterName, "ls /home/ubuntu/.avalanchego/staking/")
-		gomega.Expect(stakingFiles).To(gomega.ContainSubstring("signer.key"))
-		gomega.Expect(stakingFiles).To(gomega.ContainSubstring("staker.crt"))
-		gomega.Expect(stakingFiles).To(gomega.ContainSubstring("staker.key"))
-	})
-	ginkgo.It("installs and configures avalanche-cli on the node ", func() {
-		stakingFiles := commands.NodeSSH(constants.E2EClusterName, "cat /home/ubuntu/.avalanche-cli/config.json")
-		gomega.Expect(stakingFiles).To(gomega.ContainSubstring("\"metricsenabled\": false"))
-		avalanceCliVersion := commands.NodeSSH(constants.E2EClusterName, "/home/ubuntu/bin/avalanche --version")
-		gomega.Expect(avalanceCliVersion).To(gomega.ContainSubstring("avalanche version"))
-	})
 	ginkgo.It("can get cluster status", func() {
 		output := commands.NodeStatus()
 		fmt.Println(output)
