@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
+	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
 	"github.com/ethereum/go-ethereum/crypto"
 
@@ -171,4 +172,19 @@ func GetSigner(client ethclient.Client, prefundedPrivateKeyStr string) (*bind.Tr
 	}
 	client.Close()
 	return bind.NewKeyedTransactorWithChainID(prefundedPrivateKey, chainID)
+}
+
+func WaitForTransaction(
+	client ethclient.Client,
+	tx *types.Transaction,
+) (*types.Receipt, bool, error) {
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+
+	receipt, err := bind.WaitMined(ctx, client, tx)
+	if err != nil {
+		return nil, false, err
+	}
+
+	return receipt, receipt.Status == types.ReceiptStatusSuccessful, nil
 }

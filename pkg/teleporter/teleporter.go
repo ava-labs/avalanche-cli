@@ -23,11 +23,11 @@ const (
 	teleporterMessengerDeployerRequiredBalance = uint64(10000000000000000000) // 10 eth
 )
 
-func DeployRegistry(subnetName string, rpcURL string, prefundedPrivateKeyStr string) error {
+func DeployRegistry(subnetName string, rpcURL string, prefundedPrivateKeyStr string) (common.Address, error) {
 	// get constructor input
 	teleporterMessengerContractAddressStr, err := utils.DownloadStr(teleporterMessengerContractAddressURL)
 	if err != nil {
-		return err
+		return common.Address{}, err
 	}
 	teleporterMessengerContractAddress := common.HexToAddress(teleporterMessengerContractAddressStr)
 	teleporterRegistryConstructorInput := []teleporterRegistry.ProtocolRegistryEntry{
@@ -38,19 +38,24 @@ func DeployRegistry(subnetName string, rpcURL string, prefundedPrivateKeyStr str
 	}
 	client, err := evm.GetClient(rpcURL)
 	if err != nil {
-		return err
+		return common.Address{}, err
 	}
 	signer, err := evm.GetSigner(client, prefundedPrivateKeyStr)
 	if err != nil {
-		return err
+		return common.Address{}, err
 	}
 	teleporterRegistryAddress, tx, _, err := teleporterRegistry.DeployTeleporterRegistry(signer, client, teleporterRegistryConstructorInput)
 	if err != nil {
-		return err
+		return common.Address{}, err
 	}
-	fmt.Println(teleporterRegistryAddress)
-	fmt.Println(tx)
-	return nil
+	_, success, err := evm.WaitForTransaction(client, tx)
+	if err != nil {
+		return common.Address{}, err
+	}
+	if !success {
+		return common.Address{}, fmt.Errorf("failed receipt status deploying teleporter registry")
+	}
+	return teleporterRegistryAddress, nil
 }
 
 func DeployMessenger(subnetName string, rpcURL string, prefundedPrivateKey string) error {
