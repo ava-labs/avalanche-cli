@@ -24,5 +24,6 @@ func newTeleporterCmd() *cobra.Command {
 }
 
 func deployTeleporter(cmd *cobra.Command, args []string) error {
-	return teleporter.DeployTeleporter("c-chain", constants.CChainRpcURL, constants.PrefundedEwoqPrivateKey)
+	err := teleporter.DeployTeleporter("c-chain", constants.CChainRpcURL, constants.PrefundedEwoqPrivateKey)
+	return err
 }

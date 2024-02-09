@@ -3,7 +3,6 @@
 package teleporter
 
 import (
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -16,8 +15,6 @@ const (
 	teleporterMessengerContractAddressURL      = teleporterReleaseURL + "/TeleporterMessenger_Contract_Address_" + teleporterVersion + ".txt"
 	teleporterMessengerDeployerAddressURL      = teleporterReleaseURL + "/TeleporterMessenger_Deployer_Address_" + teleporterVersion + ".txt"
 	teleporterMessengerDeployerTxURL           = teleporterReleaseURL + "/TeleporterMessenger_Deployment_Transaction_" + teleporterVersion + ".txt"
-	cChainRpcURL                               = constants.LocalAPIEndpoint + "/ext/bc/C/rpc"
-	prefundedEwoqPrivateKey                    = "0x56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027"
 	teleporterMessengerDeployerRequiredBalance = uint64(10000000000000000000) // 10 eth
 )
 
@@ -28,14 +25,6 @@ func DeployTeleporter(subnetName string, rpcURL string, prefundedPrivateKey stri
 		ux.Logger.PrintToUser("Teleporter has already been deployed to %s", subnetName)
 		return nil
 	}
-	if err := deployTeleporter(subnetName, rpcURL, prefundedPrivateKey); err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("Teleporter successfully deployed to %s", subnetName)
-	return nil
-}
-
-func deployTeleporter(subnetName string, rpcURL string, prefundedPrivateKey string) error {
 	ux.Logger.PrintToUser("Deploying Teleporter into %s", subnetName)
 	// get target teleporter messenger contract address
 	teleporterMessengerContractAddress, err := utils.DownloadStr(teleporterMessengerContractAddressURL)
@@ -76,10 +65,10 @@ func deployTeleporter(subnetName string, rpcURL string, prefundedPrivateKey stri
 	if err != nil {
 		return err
 	}
-	err = evm.IssueTx(rpcURL, teleporterMessengerDeployerTx)
-	if err != nil {
+	if err := evm.IssueTx(rpcURL, teleporterMessengerDeployerTx); err != nil {
 		return err
 	}
+	ux.Logger.PrintToUser("Teleporter successfully deployed to %s", subnetName)
 	return nil
 }
 
