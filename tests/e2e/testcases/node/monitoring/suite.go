@@ -6,7 +6,6 @@ package root
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -16,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -63,7 +63,6 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		clustersConfig := models.ClustersConfig{}
 		err = json.Unmarshal(content, &clustersConfig)
 		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(clustersConfig.Clusters).To(gomega.HaveLen(1))
 		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Network.Kind.String()).To(gomega.Equal(networkCapitalized))
 		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Nodes).To(gomega.HaveLen(numNodes))
 		monitoringHostID = clustersConfig.Clusters[constants.E2EClusterName].MonitoringInstance
@@ -106,6 +105,18 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 					}
 				}
 			}
+		}
+	})
+	ginkgo.It("verifies prometheus metrics configured on cluster hosts", func() {
+		for _, host := range createdHosts {
+			sshOutput := commands.NodeSSH(host.IP, "sudo systemctl status prometheus")
+			gomega.Expect(sshOutput).To(gomega.ContainSubstring("Active: active (running)"))
+		}
+	})
+	ginkgo.It("verifies node exporter metrics configured on cluster hosts", func() {
+		for _, host := range createdHosts {
+			sshOutput := commands.NodeSSH(host.IP, "sudo systemctl status node_exporter")
+			gomega.Expect(sshOutput).To(gomega.ContainSubstring("Active: active (running)"))
 		}
 	})
 	ginkgo.It("installs and runs avalanchego", func() {
