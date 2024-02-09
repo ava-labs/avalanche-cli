@@ -27,6 +27,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/server"
@@ -544,6 +545,17 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 
 	endpoint := GetFirstEndpoint(clusterInfo, chain)
+	endpointRpcURL := endpoint[strings.LastIndex(endpoint, "http"):]
+
+	fmt.Println()
+	if err := teleporter.DeployTeleporter("c-chain", constants.CChainRpcURL, constants.PrefundedEwoqPrivateKey); err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+
+	fmt.Println()
+	if err := teleporter.DeployTeleporter(chain, endpointRpcURL, constants.PrefundedEwoqPrivateKey); err != nil {
+		return ids.Empty, ids.Empty, err
+	}
 
 	fmt.Println()
 	ux.Logger.PrintToUser("Blockchain ready to use. Local network node endpoints:")
