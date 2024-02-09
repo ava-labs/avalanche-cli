@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
@@ -28,35 +29,33 @@ const (
 
 func DeployTeleporter(rpcURL string, prefundedPrivateKey string) error {
 	// get target teleporter messenger contract address
-	teleporterMessengerContractAddressBytes, err := download(teleporterMessengerContractAddressURL)
+	teleporterMessengerContractAddress, err := downloadStr(teleporterMessengerContractAddressURL)
 	if err != nil {
 		return err
 	}
-	teleporterMessengerContractAddress := string(teleporterMessengerContractAddressBytes)
 	// check if contract is already deployed
 	teleporterMessengerAlreadyDeployed, err := contractAlreadyDeployed(rpcURL, teleporterMessengerContractAddress)
 	if err != nil {
 		return err
 	}
 	if teleporterMessengerAlreadyDeployed {
-		fmt.Printf("TELEPORTER MESSENGER ALREADY DEPLOYED TO RPC %s CONTRACT ADDRESS %s", rpcURL, teleporterMessengerContractAddress)
+		ux.Logger.PrintToUser("TELEPORTER MESSENGER ALREADY DEPLOYED TO RPC %s CONTRACT ADDRESS %s", rpcURL, teleporterMessengerContractAddress)
 		return nil
 	}
-	fmt.Printf("DEPLOYING TELEPORTER MESSENGER INTO RPC %s CONTRACT ADDRESS %s\n", rpcURL, teleporterMessengerContractAddress)
+	ux.Logger.PrintToUser("DEPLOYING TELEPORTER MESSENGER INTO RPC %s CONTRACT ADDRESS %s", rpcURL, teleporterMessengerContractAddress)
 	// get teleporter deployer address
-	teleporterMessengerDeployerAddressBytes, err := download(teleporterMessengerDeployerAddressURL)
+	teleporterMessengerDeployerAddress, err := downloadStr(teleporterMessengerDeployerAddressURL)
 	if err != nil {
 		return err
 	}
-	teleporterMessengerDeployerAddress := string(teleporterMessengerDeployerAddressBytes)
 	// get teleporter deployer balance
 	teleporterMessengerDeployerBalance, err := getAddressBalance(rpcURL, teleporterMessengerDeployerAddress)
 	if err != nil {
 		return err
 	}
 	if teleporterMessengerDeployerBalance < teleporterMessengerDeployerRequiredBalance {
-		fmt.Printf(
-			"TELEPORTER MESSENGER DEPLOYER %s AT RPC %s HAS NOT ENOUGH BALANCE %d, EXPECTED %d\n",
+		ux.Logger.PrintToUser(
+			"TELEPORTER MESSENGER DEPLOYER %s AT RPC %s HAS NOT ENOUGH BALANCE %d, EXPECTED %d",
 			teleporterMessengerDeployerAddress,
 			rpcURL,
 			teleporterMessengerDeployerBalance,
@@ -74,16 +73,23 @@ func DeployTeleporter(rpcURL string, prefundedPrivateKey string) error {
 		}
 	}
 
-	teleporterMessengerDeployerTxBytes, err := download(teleporterMessengerDeployerTxURL)
+	teleporterMessengerDeployerTx, err := downloadStr(teleporterMessengerDeployerTxURL)
 	if err != nil {
 		return err
 	}
-	teleporterMessengerDeployerTx := string(teleporterMessengerDeployerTxBytes)
 	err = issueTx(rpcURL, teleporterMessengerDeployerTx)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func TeleporterAlreadyDeployed(rpcURL string) (bool, error) {
+	teleporterMessengerContractAddress, err := downloadStr(teleporterMessengerContractAddressURL)
+	if err != nil {
+		return false, err
+	}
+	return contractAlreadyDeployed(rpcURL, teleporterMessengerContractAddress)
 }
 
 func contractAlreadyDeployed(rpcURL string, contractAddress string) (bool, error) {
@@ -220,4 +226,9 @@ func download(url string) ([]byte, error) {
 		return nil, fmt.Errorf("failed downloading $s: %w", url, err)
 	}
 	return bs, nil
+}
+
+func downloadStr(url string) (string, error) {
+	bs, err := download(url)
+	return string(bs), err
 }
