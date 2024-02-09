@@ -548,12 +548,12 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	endpointRpcURL := endpoint[strings.LastIndex(endpoint, "http"):]
 
 	fmt.Println()
-	if err := teleporter.DeployTeleporter("c-chain", constants.CChainRpcURL, constants.PrefundedEwoqPrivateKey); err != nil {
+	if err := teleporter.DeployMessenger("c-chain", constants.CChainRpcURL, constants.PrefundedEwoqPrivateKey); err != nil {
 		return ids.Empty, ids.Empty, err
 	}
 
 	fmt.Println()
-	if err := teleporter.DeployTeleporter(chain, endpointRpcURL, constants.PrefundedEwoqPrivateKey); err != nil {
+	if err := teleporter.DeployMessenger(chain, endpointRpcURL, constants.PrefundedEwoqPrivateKey); err != nil {
 		return ids.Empty, ids.Empty, err
 	}
 
