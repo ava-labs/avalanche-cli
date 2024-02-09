@@ -33,7 +33,7 @@ var (
 
 var _ = ginkgo.Describe("[Node create]", func() {
 	ginkgo.It("can create a node", func() {
-		output := commands.NodeCreate(network, avalanchegoVersion, numNodes)
+		output := commands.NodeCreate(network, avalanchegoVersion, numNodes, false)
 		fmt.Println(output)
 		gomega.Expect(output).To(gomega.ContainSubstring("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 		// parse hostName
