@@ -9,6 +9,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
+	"github.com/ava-labs/subnet-evm/ethclient"
+	"github.com/ethereum/go-ethereum/crypto"
+
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
 
@@ -147,4 +151,24 @@ func checkStatus(title string, jsonOutput string) error {
 		return fmt.Errorf("%s: incorrect status code %s, at json response %s", title, status, jsonOutput)
 	}
 	return nil
+}
+
+func GetClient(rpcURL string) (ethclient.Client, error) {
+	return ethclient.Dial(rpcURL)
+}
+
+func GetSigner(client ethclient.Client, prefundedPrivateKeyStr string) (*bind.TransactOpts, error) {
+	prefundedPrivateKeyStr = strings.TrimPrefix(prefundedPrivateKeyStr, "0x")
+	prefundedPrivateKey, err := crypto.HexToECDSA(prefundedPrivateKeyStr)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	chainID, err := client.ChainID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	client.Close()
+	return bind.NewKeyedTransactorWithChainID(prefundedPrivateKey, chainID)
 }

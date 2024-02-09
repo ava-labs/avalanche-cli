@@ -5,16 +5,12 @@ package teleporter
 import (
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
-	"github.com/ava-labs/subnet-evm/ethclient"
 	teleporterRegistry "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/upgrades/TeleporterRegistry"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const (
@@ -40,23 +36,11 @@ func DeployRegistry(subnetName string, rpcURL string, prefundedPrivateKeyStr str
 			ProtocolAddress: teleporterMessengerContractAddress,
 		},
 	}
-	// get signer
-	prefundedPrivateKeyStr = strings.TrimPrefix(prefundedPrivateKeyStr, "0x")
-	prefundedPrivateKey, err := crypto.HexToECDSA(prefundedPrivateKeyStr)
+	client, err := evm.GetClient(rpcURL)
 	if err != nil {
 		return err
 	}
-	client, err := ethclient.Dial(rpcURL)
-	if err != nil {
-		return err
-	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	chainID, err := client.ChainID(ctx)
-	if err != nil {
-		return err
-	}
-	signer, err := bind.NewKeyedTransactorWithChainID(prefundedPrivateKey, chainID)
+	signer, err := evm.GetSigner(client, prefundedPrivateKeyStr)
 	if err != nil {
 		return err
 	}
