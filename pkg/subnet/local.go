@@ -547,14 +547,24 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	endpoint := GetFirstEndpoint(clusterInfo, chain)
 	endpointRpcURL := endpoint[strings.LastIndex(endpoint, "http"):]
 
-	fmt.Println()
-	if err := teleporter.DeployMessenger("c-chain", constants.CChainRpcURL, constants.PrefundedEwoqPrivateKey); err != nil {
-		return ids.Empty, ids.Empty, err
-	}
+	deployTeleporter := true
 
-	fmt.Println()
-	if err := teleporter.DeployMessenger(chain, endpointRpcURL, constants.PrefundedEwoqPrivateKey); err != nil {
-		return ids.Empty, ids.Empty, err
+	var (
+		cChainTeleporterMessengerAddr string
+		cChainTeleporterRegistryAddr  string
+		chainTeleporterMessengerAddr  string
+		chainTeleporterRegistryAddr   string
+	)
+
+	if deployTeleporter {
+		fmt.Println()
+		if cChainTeleporterMessengerAddr, cChainTeleporterRegistryAddr, err = teleporter.Deploy("c-chain", constants.CChainRpcURL, constants.PrefundedEwoqPrivateKey); err != nil {
+			return ids.Empty, ids.Empty, err
+		}
+		fmt.Println()
+		if chainTeleporterMessengerAddr, chainTeleporterRegistryAddr, err = teleporter.Deploy(chain, endpointRpcURL, constants.PrefundedEwoqPrivateKey); err != nil {
+			return ids.Empty, ids.Empty, err
+		}
 	}
 
 	fmt.Println()
@@ -564,6 +574,12 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	ux.Logger.PrintToUser("Browser Extension connection details (any node URL from above works):")
 	ux.Logger.PrintToUser("RPC URL:          %s", endpoint[strings.LastIndex(endpoint, "http"):])
+	if deployTeleporter {
+		ux.Logger.PrintToUser("C-Chain Teleporter Messenger Address: %s", cChainTeleporterMessengerAddr)
+		ux.Logger.PrintToUser("C-Chain Teleporter Registry Address: %s", cChainTeleporterRegistryAddr)
+		ux.Logger.PrintToUser("%s Teleporter Messenger Address: %s", chain, chainTeleporterMessengerAddr)
+		ux.Logger.PrintToUser("%s Teleporter Registry Address: %s", chain, chainTeleporterRegistryAddr)
+	}
 
 	if sc.VM == models.SubnetEvm {
 		if err := d.printExtraEvmInfo(chain, chainGenesis); err != nil {
