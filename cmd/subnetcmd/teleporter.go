@@ -5,6 +5,7 @@ package subnetcmd
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/spf13/cobra"
 )
@@ -29,5 +30,15 @@ func newTeleporterCmd() *cobra.Command {
 }
 
 func deployTeleporter(cmd *cobra.Command, args []string) error {
-	return teleporter.DeployTeleporter(cChainRpcURL, prefundedEwoqPrivateKey)
+	if b, err := teleporter.TeleporterAlreadyDeployed(cChainRpcURL); err != nil {
+		return err
+	} else if b {
+		ux.Logger.PrintToUser("Teleporter has already been deployed to c-chain")
+		return nil
+	}
+	if err := teleporter.DeployTeleporter(cChainRpcURL, prefundedEwoqPrivateKey); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Teleporter successfully deployed to c-chain")
+	return nil
 }
