@@ -5,11 +5,12 @@ package commands
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/onsi/gomega"
