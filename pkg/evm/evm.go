@@ -5,8 +5,8 @@ package evm
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os/exec"
-	"strconv"
 	"strings"
 
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
@@ -50,7 +50,7 @@ func GetContractBytecode(rpcURL string, contractAddress string) (string, error) 
 	return strings.TrimSpace(outBuf.String()), nil
 }
 
-func GetAddressBalance(rpcURL string, address string) (uint64, error) {
+func GetAddressBalance(rpcURL string, address string) (*big.Int, error) {
 	// TODO: don't use forge for this
 	cmd := exec.Command(
 		"cast",
@@ -67,20 +67,20 @@ func GetAddressBalance(rpcURL string, address string) (uint64, error) {
 		if errBuf.String() != "" {
 			fmt.Println(errBuf.String())
 		}
-		return 0, fmt.Errorf("couldn't get address %s balance from rpc %s: %w", address, rpcURL, err)
+		return big.NewInt(0), fmt.Errorf("couldn't get address %s balance from rpc %s: %w", address, rpcURL, err)
 	}
 	if errBuf.String() != "" {
 		fmt.Println(errBuf.String())
 	}
 	balanceStr := strings.TrimSpace(outBuf.String())
-	balance, err := strconv.ParseUint(balanceStr, 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("couldn't parse address %s balance %s from rpc %s: %w", address, balanceStr, rpcURL, err)
+	balance, ok := new(big.Int).SetString(balanceStr, 10)
+	if !ok {
+		return big.NewInt(0), fmt.Errorf("couldn't parse address %s balance %s from rpc %s", address, balanceStr, rpcURL)
 	}
 	return balance, nil
 }
 
-func FundAddress(rpcURL string, sourceAddressPrivateKey string, targetAddress string, amount uint64) error {
+func FundAddress(rpcURL string, sourceAddressPrivateKey string, targetAddress string, amount *big.Int) error {
 	// TODO: don't use forge for this
 	cmd := exec.Command(
 		"cast",
@@ -91,7 +91,7 @@ func FundAddress(rpcURL string, sourceAddressPrivateKey string, targetAddress st
 		"--private-key",
 		sourceAddressPrivateKey,
 		"--value",
-		fmt.Sprint(amount),
+		amount.String(),
 		targetAddress,
 	)
 	outBuf, errBuf := utils.SetupRealtimeCLIOutput(cmd, false, false)

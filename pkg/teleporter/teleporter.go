@@ -16,15 +16,18 @@ import (
 const (
 	// TODO: use latest version
 	// TODO: use abi without any download
-	teleporterVersion                          = "v0.1.0"
-	teleporterReleaseURL                       = "https://github.com/ava-labs/teleporter/releases/download/" + teleporterVersion + "/"
-	teleporterMessengerContractAddressURL      = teleporterReleaseURL + "/TeleporterMessenger_Contract_Address_" + teleporterVersion + ".txt"
-	teleporterMessengerDeployerAddressURL      = teleporterReleaseURL + "/TeleporterMessenger_Deployer_Address_" + teleporterVersion + ".txt"
-	teleporterMessengerDeployerTxURL           = teleporterReleaseURL + "/TeleporterMessenger_Deployment_Transaction_" + teleporterVersion + ".txt"
-	teleporterMessengerDeployerRequiredBalance = uint64(10000000000000000000) // 10 eth
-	teleporterRelayerPrivateKey                = "C2CE4E001B7585F543982A01FBC537CFF261A672FA8BD1FAFC08A207098FE2DE"
-	teleporterRelayerAddress                   = "0xA100fF48a37cab9f87c8b5Da933DA46ea1a5fb80"
-	teleporterRelayerRequiredBalance           = uint64(10000000000000000000) // 500 eth TODO 
+	teleporterVersion                     = "v0.1.0"
+	teleporterReleaseURL                  = "https://github.com/ava-labs/teleporter/releases/download/" + teleporterVersion + "/"
+	teleporterMessengerContractAddressURL = teleporterReleaseURL + "/TeleporterMessenger_Contract_Address_" + teleporterVersion + ".txt"
+	teleporterMessengerDeployerAddressURL = teleporterReleaseURL + "/TeleporterMessenger_Deployer_Address_" + teleporterVersion + ".txt"
+	teleporterMessengerDeployerTxURL      = teleporterReleaseURL + "/TeleporterMessenger_Deployment_Transaction_" + teleporterVersion + ".txt"
+	teleporterRelayerPrivateKey           = "C2CE4E001B7585F543982A01FBC537CFF261A672FA8BD1FAFC08A207098FE2DE"
+	teleporterRelayerAddress              = "0xA100fF48a37cab9f87c8b5Da933DA46ea1a5fb80"
+)
+
+var (
+	teleporterMessengerDeployerRequiredBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(10))  // 10 AVAX
+	teleporterRelayerRequiredBalance           = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(500)) // 500 AVAX
 )
 
 func Deploy(
@@ -71,8 +74,8 @@ func DeployMessenger(subnetName string, rpcURL string, prefundedPrivateKey strin
 	if err != nil {
 		return "", err
 	}
-	if teleporterMessengerDeployerBalance < teleporterMessengerDeployerRequiredBalance {
-		toFund := teleporterMessengerDeployerRequiredBalance - teleporterMessengerDeployerBalance
+	if teleporterMessengerDeployerBalance.Cmp(teleporterMessengerDeployerRequiredBalance) < 0 {
+		toFund := big.NewInt(0).Sub(teleporterMessengerDeployerRequiredBalance, teleporterMessengerDeployerBalance)
 		err := evm.FundAddress(
 			rpcURL,
 			prefundedPrivateKey,
@@ -137,8 +140,8 @@ func FundRelayer(rpcURL string, prefundedPrivateKey string) error {
 	if err != nil {
 		return err
 	}
-	if teleporterRelayerBalance < teleporterRelayerRequiredBalance {
-		toFund := teleporterRelayerRequiredBalance - teleporterRelayerBalance
+	if teleporterRelayerBalance.Cmp(teleporterRelayerRequiredBalance) < 0 {
+		toFund := big.NewInt(0).Sub(teleporterRelayerRequiredBalance, teleporterRelayerBalance)
 		err := evm.FundAddress(
 			rpcURL,
 			prefundedPrivateKey,
