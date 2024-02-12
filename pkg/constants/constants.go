@@ -25,6 +25,7 @@ const (
 	SidecarSuffix                = SuffixSeparator + SidecarFileName
 	GenesisSuffix                = SuffixSeparator + GenesisFileName
 	NodeFileName                 = "node.json"
+	NodePrometheusConfigFileName = "prometheus.yml"
 	NodeCloudConfigFileName      = "node_cloud_config.json"
 	AnsibleDir                   = "ansible"
 	AnsibleHostInventoryFileName = "hosts"
@@ -195,6 +196,7 @@ const (
 	CloudNodeSubnetEvmBinaryPath  = "/home/ubuntu/.avalanchego/plugins/%s"
 	CloudNodeStakingPath          = "/home/ubuntu/.avalanchego/staking/"
 	CloudNodeConfigPath           = "/home/ubuntu/.avalanchego/configs/"
+	CloudNodePrometheusConfigPath = "/etc/prometheus/prometheus.yml"
 	CloudNodeCLIConfigBasePath    = "/home/ubuntu/.avalanche-cli/"
 	AvalanchegoMonitoringPort     = 9090
 	AvalanchegoMachineMetricsPort = 9100

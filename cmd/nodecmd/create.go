@@ -213,6 +213,15 @@ func createNodes(_ *cobra.Command, args []string) error {
 		keyPairName := fmt.Sprintf("%s-keypair", defaultAvalancheCLIPrefix)
 		certPath, err := app.GetSSHCertFilePath(keyPairName)
 		dockerNumNodes := utils.Sum(numNodes)
+		var dockerNodesPublicIPs []string
+		var monitoringHostIP string
+		if separateMonitoringInstance {
+			generatedPublicIPs := utils.GenerateDockerHostIPs(dockerNumNodes + 1)
+			monitoringHostIP = generatedPublicIPs[len(generatedPublicIPs)-1]
+			dockerNodesPublicIPs = generatedPublicIPs[:len(generatedPublicIPs)-1]
+		} else {
+			dockerNodesPublicIPs = utils.GenerateDockerHostIPs(dockerNumNodes)
+		}
 		dockerHostIDs := utils.GenerateDockerHostIDs(dockerNumNodes)
 		if err != nil {
 			return err
@@ -220,7 +229,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		cloudConfigMap = models.CloudConfig{
 			"docker": {
 				InstanceIDs:       dockerHostIDs,
-				PublicIPs:         utils.GenerateDockerHostIPs(dockerNumNodes),
+				PublicIPs:         dockerNodesPublicIPs,
 				KeyPair:           keyPairName,
 				SecurityGroup:     "docker",
 				CertFilePath:      certPath,
@@ -235,6 +244,26 @@ func createNodes(_ *cobra.Command, args []string) error {
 		for i, ip := range cloudConfigMap["docker"].PublicIPs {
 			publicIPMap[dockerHostIDs[i]] = ip
 			// no api nodes for E2E testing
+		}
+		if separateMonitoringInstance {
+			monitoringDockerHostID := utils.GenerateDockerHostIDs(1)
+			dockerHostIDs = append(dockerHostIDs, monitoringDockerHostID[0])
+			monitoringCloudConfig := models.CloudConfig{
+				"monitoringDocker": {
+					InstanceIDs:       monitoringDockerHostID,
+					PublicIPs:         []string{monitoringHostIP},
+					KeyPair:           keyPairName,
+					SecurityGroup:     "docker",
+					CertFilePath:      certPath,
+					ImageID:           "docker",
+					Prefix:            "docker",
+					CertName:          "docker",
+					SecurityGroupName: "docker",
+					NumNodes:          1,
+					InstanceType:      "docker",
+				},
+			}
+			monitoringNodeConfig = monitoringCloudConfig["monitoringDocker"]
 		}
 		pubKeyString, err := os.ReadFile(fmt.Sprintf("%s.pub", certPath))
 		if err != nil {
@@ -520,6 +549,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			if err := ssh.RunSSHCopyMonitoringDashboards(monitoringHost, app.GetMonitoringDashboardDir()+"/"); err != nil {
 				return err
 			}
+
 			if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost, app.GetMonitoringScriptFile(), strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
 				return err
 			}
@@ -618,7 +648,7 @@ func promptSetUpMonitoring() (bool, bool, error) {
 	return setUpMonitoring, separateMonitoringInstance, nil
 }
 
-// reateClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
+// CreateClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
 // also creates cluster config in .avalanche-cli/nodes storing various key pair and security group info for all clusters
 func CreateClusterNodeConfig(network models.Network, cloudConfigMap models.CloudConfig, monitorCloudConfig models.RegionConfig, monitoringHostRegion, clusterName, cloudService string, separateMonitoringInstance bool) error {
 	for region, cloudConfig := range cloudConfigMap {

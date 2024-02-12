@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+{{if .IsE2E }}
+#name:TASK [disable systemctl]
+sudo cp -vf /usr/bin/true /usr/local/sbin/systemctl
+{{end}}
 #name:TASK [modify permission for monitoring script]
 chmod 755 monitoring-separate-installer.sh
 #name:TASK [set up Prometheus]

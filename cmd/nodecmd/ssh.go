@@ -73,10 +73,7 @@ func sshNode(_ *cobra.Command, args []string) error {
 		} else {
 			// try to detect nodeID
 			for clusterName := range clustersConfig.Clusters {
-				clusterHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
-				if err != nil {
-					return err
-				}
+				clusterHosts, _ := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 				selectedHost := utils.Filter(clusterHosts, func(h *models.Host) bool {
 					_, cloudHostID, _ := models.HostAnsibleIDToCloudID(h.NodeID)
 					hostNodeID, _ := getNodeID(app.GetNodeInstanceDirPath(cloudHostID))
