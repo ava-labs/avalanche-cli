@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -e
 #name:TASK [install gcc if not available]
+sudo apt-get -y update
 gcc --version || DEBIAN_FRONTEND=noninteractive sudo apt-get -y install gcc
 #name:TASK [install go]
 install_go() {
