@@ -59,29 +59,13 @@ func whitelistIP(_ *cobra.Command, args []string) error {
 	if !utils.IsValidIP(userIPAddress) {
 		return fmt.Errorf("invalid IP address: %s", userIPAddress)
 	}
-	cloudSecurityGroupList := []regionSecurityGroup{}
 	clusterNodes, err := getClusterNodes(clusterName)
 	if err != nil {
 		return err
 	}
-	for _, node := range clusterNodes {
-		nodeConfig, err := app.LoadClusterNodeConfig(node)
-		if err != nil {
-			ux.Logger.PrintToUser("Failed to parse node %s due to %s", node, err.Error())
-			return err
-		}
-		if slices.Contains(cloudSecurityGroupList, regionSecurityGroup{
-			cloud:         nodeConfig.CloudService,
-			region:        nodeConfig.Region,
-			securityGroup: nodeConfig.SecurityGroup,
-		}) {
-			continue
-		}
-		cloudSecurityGroupList = append(cloudSecurityGroupList, regionSecurityGroup{
-			cloud:         nodeConfig.CloudService,
-			region:        nodeConfig.Region,
-			securityGroup: nodeConfig.SecurityGroup,
-		})
+	cloudSecurityGroupList, err := getCloudSecurityGroupList(clusterNodes)
+	if err != nil {
+		return err
 	}
 	if len(cloudSecurityGroupList) == 0 {
 		ux.Logger.PrintToUser("No nodes found in cluster %s", clusterName)
@@ -154,4 +138,30 @@ func whitelistIP(_ *cobra.Command, args []string) error {
 		}
 	}
 	return nil
+}
+
+// getCloudSecurityGroupList returns a list of cloud security groups for a given cluster nodes
+func getCloudSecurityGroupList(clusterNodes []string) ([]regionSecurityGroup, error) {
+	cloudSecurityGroupList := []regionSecurityGroup{}
+	for _, node := range clusterNodes {
+
+		nodeConfig, err := app.LoadClusterNodeConfig(node)
+		if err != nil {
+			ux.Logger.PrintToUser("Failed to parse node %s due to %s", node, err.Error())
+			return nil, err
+		}
+		if slices.Contains(cloudSecurityGroupList, regionSecurityGroup{
+			cloud:         nodeConfig.CloudService,
+			region:        nodeConfig.Region,
+			securityGroup: nodeConfig.SecurityGroup,
+		}) {
+			continue
+		}
+		cloudSecurityGroupList = append(cloudSecurityGroupList, regionSecurityGroup{
+			cloud:         nodeConfig.CloudService,
+			region:        nodeConfig.Region,
+			securityGroup: nodeConfig.SecurityGroup,
+		})
+	}
+	return cloudSecurityGroupList, nil
 }

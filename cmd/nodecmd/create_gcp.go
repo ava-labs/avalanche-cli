@@ -21,6 +21,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
@@ -364,4 +365,27 @@ func updateClustersConfigGCPKeyFilepath(projectName, serviceAccountKeyFilepath s
 		clustersConfig.GCPConfig.ServiceAccFilePath = serviceAccountKeyFilepath
 	}
 	return app.WriteClustersConfigFile(&clustersConfig)
+}
+
+func grantAccessToPublicIPViaFirewall(gcpClient *gcp.GcpCloud, projectName string, publicIP string, label string) error {
+	prefix, err := defaultAvalancheCLIPrefix("")
+	if err != nil {
+		return err
+	}
+	networkName := fmt.Sprintf("%s-network", prefix)
+	firewallName := fmt.Sprintf("%s-%s-%s", networkName, strings.ReplaceAll(publicIP, ".", ""), label)
+	ports := []string{
+		strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
+		strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
+	}
+	if err = gcpClient.AddFirewall(
+		publicIP,
+		networkName,
+		projectName,
+		firewallName,
+		ports,
+		true); err != nil {
+		return err
+	}
+	return nil
 }

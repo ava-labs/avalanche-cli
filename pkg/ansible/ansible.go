@@ -58,7 +58,7 @@ func writeToInventoryFile(inventoryFile *os.File, ansibleInstanceID, publicIP, c
 	inventoryContent := ansibleInstanceID
 	inventoryContent += " ansible_host="
 	inventoryContent += publicIP
-	inventoryContent += " ansible_user=ubuntu"
+	inventoryContent += " ansible_user=" + constants.AnsibleSSHUser
 	inventoryContent += fmt.Sprintf(" ansible_ssh_private_key_file=%s", certFilePath)
 	inventoryContent += fmt.Sprintf(" ansible_ssh_common_args='%s'", constants.AnsibleSSHUseAgentParams)
 	if _, err := inventoryFile.WriteString(inventoryContent + "\n"); err != nil {

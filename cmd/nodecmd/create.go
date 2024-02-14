@@ -341,7 +341,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 					}
 				}
 				if separateMonitoringInstance {
-					if err = AddMonitoringSecurityGroupRule(ec2SvcMap, monitoringNodeConfig.PublicIPs[0], cloudConfigMap[region].SecurityGroup, region); err != nil {
+					if err = grantAccessToPublicIPViaSecurityGroup(ec2SvcMap[region], monitoringNodeConfig.PublicIPs[0], cloudConfigMap[region].SecurityGroup, region); err != nil {
 						return err
 					}
 				}
@@ -404,23 +404,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 					}
 				}
 				if separateMonitoringInstance {
-					prefix, err := defaultAvalancheCLIPrefix("")
-					if err != nil {
-						return err
-					}
-					networkName := fmt.Sprintf("%s-network", prefix)
-					firewallName := fmt.Sprintf("%s-%s-monitoring", networkName, strings.ReplaceAll(monitoringNodeConfig.PublicIPs[0], ".", ""))
-					ports := []string{
-						strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
-						strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
-					}
-					if err = gcpClient.AddFirewall(
-						monitoringNodeConfig.PublicIPs[0],
-						networkName,
-						projectName,
-						firewallName,
-						ports,
-						true); err != nil {
+					if err = grantAccessToPublicIPViaFirewall(gcpClient, projectName, monitoringNodeConfig.PublicIPs[0], "monitoring"); err != nil {
 						return err
 					}
 				}
