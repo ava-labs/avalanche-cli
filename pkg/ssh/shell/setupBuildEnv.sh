@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -e
 #name:TASK [install gcc if not available]
+hostname
+uname -a
+pwd
+ls -l
+ls -l /.dockerenv || echo NO DOCKER ENV FOUND
 gcc --version || DEBIAN_FRONTEND=noninteractive sudo apt-get -y install gcc
 #name:TASK [install go]
 install_go() {

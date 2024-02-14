@@ -37,6 +37,7 @@ var (
 	evmDefaults         bool
 	useLatestEvmVersion bool
 	useRepo             bool
+	teleporterReady     bool
 
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
@@ -78,6 +79,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch")
 	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
 	cmd.Flags().BoolVar(&useRepo, "from-github-repo", false, "generate custom VM binary from github repository")
+	cmd.Flags().BoolVar(&teleporterReady, "teleporter", false, "generate a teleporter-ready vm")
 	return cmd
 }
 
@@ -201,6 +203,13 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		}
 	default:
 		return errors.New("not implemented")
+	}
+
+	if !teleporterReady {
+		teleporterReady, err = app.Prompt.CaptureYesNo("Do you want the subnet to be Teleporter Ready?")
+		if err != nil {
+			return err
+		}
 	}
 
 	if err = app.WriteGenesisFile(subnetName, genesisBytes); err != nil {
