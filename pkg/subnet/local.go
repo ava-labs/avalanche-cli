@@ -4,6 +4,7 @@ package subnet
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,6 +23,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
@@ -547,15 +549,22 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	endpoint := GetFirstEndpoint(clusterInfo, chain)
 	endpointRpcURL := endpoint[strings.LastIndex(endpoint, "http"):]
 
-	deployTeleporter := true
-
-	if deployTeleporter {
+	if sc.TeleporterReady {
 		fmt.Println()
-		if _, _, err = teleporter.Deploy("c-chain", constants.CChainRpcURL, constants.PrefundedEwoqPrivateKey); err != nil {
+		k, err := key.LoadEwoq(constants.LocalNetworkID)
+		if err != nil {
+			return ids.Empty, ids.Empty, err
+		}
+		privKeyStr := "0x" + hex.EncodeToString(k.Raw())
+		if _, _, err = teleporter.Deploy("c-chain", constants.CChainRpcURL, privKeyStr); err != nil {
 			return ids.Empty, ids.Empty, err
 		}
 		fmt.Println()
-		if _, _, err = teleporter.Deploy(chain, endpointRpcURL, constants.PrefundedEwoqPrivateKey); err != nil {
+		ux.Logger.PrintToUser("Loading %s key", sc.TeleporterKey)
+		keyPath := d.app.GetKeyPath(sc.TeleporterKey)
+		k, err = key.LoadSoft(constants.LocalNetworkID, keyPath)
+		privKeyStr = "0x" + hex.EncodeToString(k.Raw())
+		if _, _, err = teleporter.Deploy(chain, endpointRpcURL, privKeyStr); err != nil {
 			return ids.Empty, ids.Empty, err
 		}
 	}
