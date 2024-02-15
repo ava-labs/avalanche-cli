@@ -550,13 +550,14 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	endpointRpcURL := endpoint[strings.LastIndex(endpoint, "http"):]
 
 	if sc.TeleporterReady {
+		td := teleporter.Deployer{}
 		fmt.Println()
 		k, err := key.LoadEwoq(constants.LocalNetworkID)
 		if err != nil {
 			return ids.Empty, ids.Empty, err
 		}
 		privKeyStr := "0x" + hex.EncodeToString(k.Raw())
-		if _, _, err = teleporter.Deploy("c-chain", constants.CChainRpcURL, privKeyStr); err != nil {
+		if _, _, err = td.Deploy(sc.TeleporterVersion, "c-chain", constants.CChainRpcURL, privKeyStr); err != nil {
 			return ids.Empty, ids.Empty, err
 		}
 		fmt.Println()
@@ -564,7 +565,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		keyPath := d.app.GetKeyPath(sc.TeleporterKey)
 		k, err = key.LoadSoft(constants.LocalNetworkID, keyPath)
 		privKeyStr = "0x" + hex.EncodeToString(k.Raw())
-		if _, _, err = teleporter.Deploy(chain, endpointRpcURL, privKeyStr); err != nil {
+		if _, _, err = td.Deploy(sc.TeleporterVersion, chain, endpointRpcURL, privKeyStr); err != nil {
 			return ids.Empty, ids.Empty, err
 		}
 	}

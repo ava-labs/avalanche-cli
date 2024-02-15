@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
@@ -233,13 +234,26 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		if err := k.Save(keyPath); err != nil {
 			return err
 		}
-		sc.TeleporterReady = true
-		sc.TeleporterKey = teleporterKeyName
 		ux.Logger.PrintToUser("  (address, balance) = (%s, %v)", k.C(), teleporter.TeleporterPrefundedAddressBalance)
 		genesisBytes, err = addSubnetEVMGenesisPrefundedAddress(genesisBytes, k.C(), teleporter.TeleporterPrefundedAddressBalance.String())
 		if err != nil {
 			return err
 		}
+		// lets' use latest versions for teleporter contract and default awm relayer
+		teleporterVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.TeleporterRepoName))
+		if err != nil {
+			return err
+		}
+		awmRelayerVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.AWMRelayerRepoName))
+		if err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("using latest teleporter version (%s)", teleporterVersion)
+		ux.Logger.PrintToUser("using latest awm-relater version (%s)", awmRelayerVersion)
+		sc.TeleporterReady = true
+		sc.TeleporterKey = teleporterKeyName
+		sc.TeleporterVersion = teleporterVersion
+		sc.AWMRelayerVersion = awmRelayerVersion
 	}
 
 	if err = app.WriteGenesisFile(subnetName, genesisBytes); err != nil {
