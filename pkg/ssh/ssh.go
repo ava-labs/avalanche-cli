@@ -34,6 +34,8 @@ type scriptInputs struct {
 	MonitoringDashboardPath string
 	AvalancheGoPorts        string
 	MachinePorts            string
+	LoadTestScriptPath      string
+	LoadTestScriptArgs      string
 }
 
 //go:embed shell/*.sh
@@ -472,4 +474,33 @@ func RunSSHSubnetSyncStatus(host *models.Host, blockchainID string) ([]byte, err
 	// Craft and send the HTTP POST request
 	requestBody := fmt.Sprintf("{\"jsonrpc\":\"2.0\", \"id\":1,\"method\" :\"platform.getBlockchainStatus\", \"params\": {\"blockchainID\":\"%s\"}}", blockchainID)
 	return PostOverSSH(host, "/ext/bc/P", requestBody)
+}
+
+// RunSSHSetupLoadTest runs uploads loadest script and sets up load test
+func RunSSHSetupLoadTest(host *models.Host, loadTestScriptPath string) (string, error) {
+	cloudServerLoadTestScriptPath := filepath.Join("/home/ubuntu", fmt.Sprintf("loadtest-%s", fmt.Sprintf("loadtest-%s", utils.RandomString(8))))
+	if err := host.Upload(
+		loadTestScriptPath,
+		cloudServerLoadTestScriptPath,
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return "", err
+	}
+	return cloudServerLoadTestScriptPath, RunOverSSH(
+		"Setup Load Test",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/setupLoadTest.sh",
+		scriptInputs{LoadTestScriptPath: cloudServerLoadTestScriptPath},
+	)
+}
+
+func RunSSHStartLoadTest(host *models.Host, ltScript, ltArgs string) error {
+	return RunOverSSH(
+		"Setup Load Test",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/startLoadTest.sh",
+		scriptInputs{LoadTestScriptPath: ltScript, LoadTestScriptArgs: ltArgs},
+	)
 }

@@ -8,7 +8,9 @@ import (
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
 
@@ -65,7 +67,7 @@ func preLoadTestChecks(clusterName string) error {
 		return err
 	}
 	if len(clusterNodes) == 0 {
-		return fmt.Errorf("no nodes found for loadtesting in the cluster &s", clusterName)
+		return fmt.Errorf("no nodes found for loadtesting in the cluster %s", clusterName)
 	}
 	return nil
 }
@@ -131,7 +133,7 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		loadTestNodeConfig = loadTestCloudConfig[loadTestRegion]
-		//get loadtest public IP
+		// get loadtest public IP
 		loadTestPublicIPMap, err := loadTestEc2SvcMap[loadTestRegion].GetInstancePublicIPs(loadTestNodeConfig.InstanceIDs)
 		if err != nil {
 			return err
@@ -169,7 +171,7 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 
 	// deploy loadtest script
 	ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, loadTestNodeConfig.InstanceIDs[0])
-	loadtestHost := models.Host{
+	loadTestHost := models.Host{
 		NodeID:            ansibleInstanceID,
 		IP:                loadTestNodeConfig.PublicIPs[0],
 		SSHUser:           constants.AnsibleSSHUser,
@@ -177,7 +179,24 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 		SSHCommonArgs:     constants.AnsibleSSHUseAgentParams,
 	}
 
-	failedHosts := waitForHosts([]*models.Host{&loadtestHost})
+	failedHosts := waitForHosts([]*models.Host{&loadTestHost})
+	if failedHosts.Len() > 0 {
+		for _, result := range failedHosts.GetResults() {
+			ux.Logger.PrintToUser("Loadtest instance %s failed to provision with error %s. Please check instance logs for more information", result.NodeID, result.Err)
+		}
+		return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
+	}
+	ux.Logger.PrintToUser("Loadtest instance %s provisioned successfully", loadTestHost.NodeID)
+	// run loadtest script
+	ltScript := ""
+	if ltScript, err = ssh.RunSSHSetupLoadTest(&loadTestHost, loadTestScriptPath); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Loadtest instance %s ready", loadTestHost.NodeID)
+	if err := ssh.RunSSHStartLoadTest(&loadTestHost, ltScript, loadTestScriptArgs); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Loadtest instance %s is done", loadTestHost.NodeID)
 
 	return nil
 }
