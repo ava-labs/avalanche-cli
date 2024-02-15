@@ -44,6 +44,7 @@ type Sidecar struct {
 	CustomVMBranch      string
 	CustomVMBuildScript string
 	TeleporterReady     bool
+	TeleporterKey       string
 	// SubnetEVM based VM's only
 	SubnetEVMMainnetChainID uint
 }

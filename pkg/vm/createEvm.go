@@ -42,7 +42,7 @@ func CreateEvmSubnetConfig(
 			return nil, &models.Sidecar{}, err
 		}
 	} else {
-		ux.Logger.PrintToUser("Importing genesis")
+		ux.Logger.PrintToUser("importing genesis for subnet %s", subnetName)
 		genesisBytes, err = os.ReadFile(genesisPath)
 		if err != nil {
 			return nil, &models.Sidecar{}, err
@@ -79,7 +79,7 @@ func createEvmGenesis(
 	subnetEVMTokenName string,
 	useSubnetEVMDefaults bool,
 ) ([]byte, *models.Sidecar, error) {
-	ux.Logger.PrintToUser("creating subnet %s", subnetName)
+	ux.Logger.PrintToUser("creating genesis for subnet %s", subnetName)
 
 	genesis := core.Genesis{}
 	conf := params.SubnetEVMDefaultChainConfig

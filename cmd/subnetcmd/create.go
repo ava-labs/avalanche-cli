@@ -13,7 +13,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/spf13/cobra"
@@ -210,6 +213,21 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+	}
+	if teleporterReady {
+		teleporterKeyName := subnetName + "-teleporter-" + utils.RandomString(5)
+		ux.Logger.PrintToUser("generating stored key %q for teleporter deploys", teleporterKeyName)
+		k, err := key.NewSoft(0)
+		if err != nil {
+			return err
+		}
+		keyPath := app.GetKeyPath(teleporterKeyName)
+		if err := k.Save(keyPath); err != nil {
+			return err
+		}
+		sc.TeleporterReady = true
+		sc.TeleporterKey = teleporterKeyName
+		ux.Logger.PrintToUser("  (address, balance) = (%s, %v)", k.C(), teleporter.TeleporterPrefundedAddressBalance)
 	}
 
 	if err = app.WriteGenesisFile(subnetName, genesisBytes); err != nil {

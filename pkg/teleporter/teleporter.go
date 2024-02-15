@@ -28,6 +28,7 @@ const (
 var (
 	teleporterMessengerDeployerRequiredBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(10))  // 10 AVAX
 	teleporterRelayerRequiredBalance           = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(500)) // 500 AVAX
+	TeleporterPrefundedAddressBalance          = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(600)) // 600 AVAX
 )
 
 func Deploy(
