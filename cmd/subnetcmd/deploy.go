@@ -868,6 +868,17 @@ func hasSubnetEVMGenesis(subnetName string) (bool, error) {
 	return true, nil
 }
 
+func jsonIsSubnetEVMGenesis(jsonBytes []byte) (bool, error) {
+	genesis, err := app.LoadEvmGenesisFromJson(jsonBytes)
+	if err != nil {
+		return false, nil
+	}
+	if err := genesis.Verify(); err != nil {
+		return false, nil
+	}
+	return true, nil
+}
+
 func promptOwners(
 	kc *keychain.Keychain,
 	controlKeys []string,
