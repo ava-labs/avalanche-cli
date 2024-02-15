@@ -5,7 +5,13 @@ package teleporter
 import (
 	"fmt"
 	"math/big"
+	"path/filepath"
+	"runtime"
+	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -175,4 +181,50 @@ func (t *Deployer) FundRelayer(rpcURL string, prefundedPrivateKey string) error 
 		}
 	}
 	return nil
+}
+
+func DeployAWMRelayer(app *application.Avalanche, version string) error {
+	binPath, err := installAWMRelayer(app, version)
+	fmt.Println(binPath)
+	return err
+}
+
+func installAWMRelayer(app *application.Avalanche, version string) (string, error) {
+	awmRelayerBinDir := app.GetAWMRelayerBinDir()
+	binDir := filepath.Join(awmRelayerBinDir, version)
+	binPath := filepath.Join(binDir, constants.AWMRelayerBin)
+	if utils.IsExecutable(binPath) {
+		ux.Logger.PrintToUser("AWM-Relayer %s is already installed", version)
+		return binPath, nil
+	}
+	ux.Logger.PrintToUser("installing AWM-Relayer %s", version)
+	url, err := getAWMRelayerURL(version)
+	if err != nil {
+		return "", err
+	}
+	bs, err := utils.Download(url)
+	if err != nil {
+		return "", err
+	}
+	if err := binutils.InstallArchive("tar.gz", bs, binDir); err != nil {
+		return "", err
+	}
+	return binPath, nil
+}
+
+func getAWMRelayerURL(version string) (string, error) {
+	goarch, goos := runtime.GOARCH, runtime.GOOS
+	if goos != "linux" && goos != "darwin" {
+		return "", fmt.Errorf("OS not supported: %s", goos)
+	}
+	trimmedVersion := strings.TrimPrefix(version, "v")
+	return fmt.Sprintf(
+		"https://github.com/%s/%s/releases/download/%s/awm-relayer_%s_%s_%s.tar.gz",
+		constants.AvaLabsOrg,
+		constants.AWMRelayerRepoName,
+		version,
+		trimmedVersion,
+		goos,
+		goarch,
+	), nil
 }

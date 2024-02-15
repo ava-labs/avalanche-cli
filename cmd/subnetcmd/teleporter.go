@@ -3,7 +3,6 @@
 package subnetcmd
 
 import (
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 
 	"github.com/spf13/cobra"
@@ -24,12 +23,5 @@ func newTeleporterCmd() *cobra.Command {
 }
 
 func deployTeleporter(cmd *cobra.Command, args []string) error {
-	td := teleporter.Deployer{}
-	teleporterMessengerAddress, teleporterRegistryAddress, err := td.Deploy("v0.1.0", "c-chain", constants.CChainRpcURL, constants.PrefundedEwoqPrivateKey)
-	if err != nil {
-		return err
-	}
-	_ = teleporterMessengerAddress
-	_ = teleporterRegistryAddress
-	return nil
+	return teleporter.DeployAWMRelayer(app, "v0.2.12")
 }

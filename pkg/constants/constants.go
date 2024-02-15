@@ -207,6 +207,8 @@ const (
 	IPAddressSuffix               = "/32"
 	AvalancheGoInstallDir         = "avalanchego"
 	SubnetEVMInstallDir           = "subnet-evm"
+	AWMRelayerInstallDir          = "awm-relayer"
+	AWMRelayerBin                 = "awm-relayer"
 
 	SubnetEVMBin = "subnet-evm"
 
