@@ -568,6 +568,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		if _, _, err = td.Deploy(sc.TeleporterVersion, chain, endpointRpcURL, privKeyStr); err != nil {
 			return ids.Empty, ids.Empty, err
 		}
+		fmt.Println()
 		if err := teleporter.DeployAWMRelayer(d.app, sc.AWMRelayerVersion); err != nil {
 			return ids.Empty, ids.Empty, err
 		}
