@@ -209,6 +209,7 @@ const (
 	SubnetEVMInstallDir           = "subnet-evm"
 	AWMRelayerInstallDir          = "awm-relayer"
 	AWMRelayerBin                 = "awm-relayer"
+	AWMRelayerConfigFilename      = "awm-relayer-config.json"
 
 	SubnetEVMBin = "subnet-evm"
 
