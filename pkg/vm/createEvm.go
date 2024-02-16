@@ -27,6 +27,7 @@ func CreateEvmSubnetConfig(
 	subnetName string,
 	genesisPath string,
 	subnetEVMVersion string,
+	getRPCVersionFromBinary bool,
 	subnetEVMChainID uint64,
 	subnetEVMTokenName string,
 	useSubnetEVMDefaults bool,
@@ -35,15 +36,23 @@ func CreateEvmSubnetConfig(
 		genesisBytes []byte
 		sc           *models.Sidecar
 		err          error
+		rpcVersion   int
 	)
 
-	_, vmBin, err := binutils.SetupSubnetEVM(app, subnetEVMVersion)
-	if err != nil {
-		return nil, &models.Sidecar{}, fmt.Errorf("failed to install subnet-evm: %w", err)
-	}
-	rpcVersion, err := GetVMBinaryProtocolVersion(vmBin)
-	if err != nil {
-		return nil, &models.Sidecar{}, fmt.Errorf("unable to get RPC version: %w", err)
+	if getRPCVersionFromBinary {
+		_, vmBin, err := binutils.SetupSubnetEVM(app, subnetEVMVersion)
+		if err != nil {
+			return nil, &models.Sidecar{}, fmt.Errorf("failed to install subnet-evm: %w", err)
+		}
+		rpcVersion, err = GetVMBinaryProtocolVersion(vmBin)
+		if err != nil {
+			return nil, &models.Sidecar{}, fmt.Errorf("unable to get RPC version: %w", err)
+		}
+	} else {
+		rpcVersion, err = GetRPCProtocolVersion(app, models.SubnetEvm, subnetEVMVersion)
+		if err != nil {
+			return nil, &models.Sidecar{}, err
+		}
 	}
 
 	if genesisPath == "" {
