@@ -22,6 +22,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+var versionComments = map[string]string{
+	"v0.6.0-fuji": " (recommended for fuji durango)",
+}
+
 func CreateEvmSubnetConfig(
 	app *application.Avalanche,
 	subnetName string,
@@ -263,11 +267,11 @@ func askForVMVersion(
 		return "", err
 	}
 
-	const (
-		useLatestRelease    = "Use latest release version"
-		useLatestPreRelease = "Use latest pre-release version"
-		useCustom           = "Specify custom version"
-	)
+	fmt.Println(latestPreReleaseVersion)
+	useCustom := "Specify custom version"
+	useLatestRelease := "Use latest release version" + versionComments[latestReleaseVersion]
+	useLatestPreRelease := "Use latest pre-release version" + versionComments[latestPreReleaseVersion]
+
 	defaultPrompt := fmt.Sprintf("What version of %s would you like?", vmName)
 
 	versionOptions := []string{useLatestRelease, useCustom}
