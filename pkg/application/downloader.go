@@ -22,6 +22,7 @@ const githubVersionTagName = "tag_name"
 type Downloader interface {
 	Download(url string) ([]byte, error)
 	GetLatestReleaseVersion(releaseURL string) (string, error)
+	GetLatestPreReleaseVersion(org, repo string) (string, error)
 	GetAllReleasesForRepo(org, repo string) ([]string, error)
 }
 
@@ -42,6 +43,18 @@ func (downloader) Download(url string) ([]byte, error) {
 	}
 
 	return io.ReadAll(resp.Body)
+}
+
+// GetLatestPreReleaseVersion returns the latest available pre release version from github
+func (d downloader) GetLatestPreReleaseVersion(org, repo string) (string, error) {
+	releases, err := d.GetAllReleasesForRepo(org, repo)
+	if err != nil {
+		return "", err
+	}
+	if len(releases) == 0 {
+		return "", fmt.Errorf("no releases found for org %s repo %s", org, repo)
+	}
+	return releases[0], nil
 }
 
 func (d downloader) GetAllReleasesForRepo(org, repo string) ([]string, error) {
@@ -94,7 +107,7 @@ func (downloader) doAPIRequest(url, token string) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
-// GetLatestReleaseVersion returns the latest available version from github
+// GetLatestReleaseVersion returns the latest available release version from github
 func (d downloader) GetLatestReleaseVersion(releaseURL string) (string, error) {
 	// TODO: Question if there is a less error prone (= simpler) way to install latest avalanchego
 	// Maybe the binary package manager should also allow the actual avalanchego binary for download

@@ -51,6 +51,14 @@ func getVMVersion(
 		if err != nil {
 			return "", err
 		}
+	} else if vmVersion == "pre-release" {
+		vmVersion, err = app.Downloader.GetLatestPreReleaseVersion(
+			constants.AvaLabsOrg,
+			repoName,
+		)
+		if err != nil {
+			return "", err
+		}
 	} else if vmVersion == "" {
 		vmVersion, _, err = askForVMVersion(app, vmName, repoName, addGoBackOption)
 		if err != nil {
@@ -66,13 +74,26 @@ func askForVMVersion(
 	repoName string,
 	addGoBackOption bool,
 ) (string, statemachine.StateDirection, error) {
+	latestReleaseVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+		constants.AvaLabsOrg,
+		repoName,
+	))
+	latestPreReleaseVersion, err := app.Downloader.GetLatestPreReleaseVersion(
+		constants.AvaLabsOrg,
+		repoName,
+	)
+
 	const (
-		useLatest = "Use latest version"
-		useCustom = "Specify custom version"
+		useLatestRelease    = "Use latest release version"
+		useLatestPreRelease = "Use latest pre-release version"
+		useCustom           = "Specify custom version"
 	)
 	defaultPrompt := fmt.Sprintf("What version of %s would you like?", vmName)
 
-	versionOptions := []string{useLatest, useCustom}
+	versionOptions := []string{useLatestRelease, useCustom}
+	if latestPreReleaseVersion != latestReleaseVersion {
+		versionOptions = []string{useLatestPreRelease, useLatestRelease, useCustom}
+	}
 	if addGoBackOption {
 		versionOptions = append(versionOptions, goBackMsg)
 	}
@@ -89,13 +110,12 @@ func askForVMVersion(
 		return "", statemachine.Backward, err
 	}
 
-	if versionOption == useLatest {
-		// Get and return latest version
-		version, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
-			constants.AvaLabsOrg,
-			repoName,
-		))
-		return version, statemachine.Forward, err
+	if versionOption == useLatestPreRelease {
+		return latestPreReleaseVersion, statemachine.Forward, err
+	}
+
+	if versionOption == useLatestRelease {
+		return latestReleaseVersion, statemachine.Forward, err
 	}
 
 	// prompt for version
@@ -113,7 +133,6 @@ func askForVMVersion(
 
 func getDescriptors(
 	app *application.Avalanche,
-	subnetEVMVersion string,
 	subnetEVMChainID uint64,
 	subnetEVMTokenName string,
 ) (

@@ -21,22 +21,24 @@ import (
 )
 
 const (
-	forceFlag = "force"
-	latest    = "latest"
+	forceFlag  = "force"
+	latest     = "latest"
+	preRelease = "pre-release"
 )
 
 var (
-	forceCreate         bool
-	useSubnetEvm        bool
-	genesisFile         string
-	vmFile              string
-	useCustom           bool
-	evmVersion          string
-	evmChainID          uint64
-	evmToken            string
-	evmDefaults         bool
-	useLatestEvmVersion bool
-	useRepo             bool
+	forceCreate                    bool
+	useSubnetEvm                   bool
+	genesisFile                    string
+	vmFile                         string
+	useCustom                      bool
+	evmVersion                     string
+	evmChainID                     uint64
+	evmToken                       string
+	evmDefaults                    bool
+	useLatestReleasedEvmVersion    bool
+	useLatestPreReleasedEvmVersion bool
+	useRepo                        bool
 
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
@@ -70,7 +72,8 @@ configuration, pass the -f flag.`,
 	cmd.Flags().StringVar(&evmToken, "evm-token", "", "token name to use with Subnet-EVM")
 	cmd.Flags().BoolVar(&evmDefaults, "evm-defaults", false, "use default settings for fees/airdrop/precompiles with Subnet-EVM")
 	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
-	cmd.Flags().BoolVar(&useLatestEvmVersion, latest, false, "use latest Subnet-EVM version, takes precedence over --vm-version")
+	cmd.Flags().BoolVar(&useLatestPreReleasedEvmVersion, preRelease, false, "use latest Subnet-EVM pre-released version, takes precedence over --vm-version")
+	cmd.Flags().BoolVar(&useLatestReleasedEvmVersion, latest, false, "use latest Subnet-EVM released version, takes precedence over --vm-version")
 	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
 	cmd.Flags().StringVar(&vmFile, "vm", "", "file path of custom vm to use. alias to custom-vm-path")
 	cmd.Flags().StringVar(&vmFile, "custom-vm-path", "", "file path of custom vm to use")
@@ -92,7 +95,8 @@ func CallCreate(
 	evmChainIDParam uint64,
 	evmTokenParam string,
 	evmDefaultsParam bool,
-	useLatestEvmVersionParam bool,
+	useLatestReleasedEvmVersionParam bool,
+	useLatestPreReleasedEvmVersionParam bool,
 	customVMRepoURLParam string,
 	customVMBranchParam string,
 	customVMBuildScriptParam string,
@@ -104,7 +108,8 @@ func CallCreate(
 	evmChainID = evmChainIDParam
 	evmToken = evmTokenParam
 	evmDefaults = evmDefaultsParam
-	useLatestEvmVersion = useLatestEvmVersionParam
+	useLatestReleasedEvmVersion = useLatestReleasedEvmVersionParam
+	useLatestPreReleasedEvmVersion = useLatestPreReleasedEvmVersionParam
 	useCustom = useCustomParam
 	customVMRepoURL = customVMRepoURLParam
 	customVMBranch = customVMBranchParam
@@ -171,11 +176,15 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		err          error
 	)
 
-	if useLatestEvmVersion {
+	if useLatestReleasedEvmVersion {
 		evmVersion = latest
 	}
 
-	if evmVersion != latest && evmVersion != "" && !semver.IsValid(evmVersion) {
+	if useLatestPreReleasedEvmVersion {
+		evmVersion = preRelease
+	}
+
+	if evmVersion != latest && evmVersion != preRelease && evmVersion != "" && !semver.IsValid(evmVersion) {
 		return fmt.Errorf("invalid version string, should be semantic version (ex: v1.1.1): %s", evmVersion)
 	}
 

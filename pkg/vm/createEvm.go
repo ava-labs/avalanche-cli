@@ -131,7 +131,7 @@ func createEvmGenesis(
 	for subnetEvmState.Running() {
 		switch subnetEvmState.CurrentState() {
 		case descriptorsState:
-			chainID, tokenName, direction, err = getDescriptors(app, subnetEVMVersion, subnetEVMChainID, subnetEVMTokenName)
+			chainID, tokenName, direction, err = getDescriptors(app, subnetEVMChainID, subnetEVMTokenName)
 		case feeState:
 			*conf, direction, err = GetFeeConfig(*conf, app, useSubnetEVMDefaults)
 		case airdropState:
