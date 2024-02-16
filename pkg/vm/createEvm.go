@@ -39,7 +39,7 @@ func CreateEvmSubnetConfig(
 		rpcVersion   int
 	)
 
-	subnetEVMVersion, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion, false)
+	subnetEVMVersion, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion)
 	if err != nil {
 		return nil, &models.Sidecar{}, err
 	}
@@ -68,11 +68,6 @@ func CreateEvmSubnetConfig(
 	} else {
 		ux.Logger.PrintToUser("Importing genesis")
 		genesisBytes, err = os.ReadFile(genesisPath)
-		if err != nil {
-			return nil, &models.Sidecar{}, err
-		}
-
-		subnetEVMVersion, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion, false)
 		if err != nil {
 			return nil, &models.Sidecar{}, err
 		}
@@ -213,4 +208,98 @@ func ensureAdminsHaveBalance(admins []common.Address, alloc core.GenesisAlloc) e
 // In own function to facilitate testing
 func getEVMAllocation(app *application.Avalanche, useDefaults bool) (core.GenesisAlloc, statemachine.StateDirection, error) {
 	return getAllocation(app, defaultEvmAirdropAmount, oneAvax, "Amount to airdrop (in AVAX units)", useDefaults)
+}
+
+func getVMVersion(
+	app *application.Avalanche,
+	vmName string,
+	repoName string,
+	vmVersion string,
+) (string, error) {
+	var err error
+	switch vmVersion {
+	case "latest":
+		vmVersion, err = app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+			constants.AvaLabsOrg,
+			repoName,
+		))
+		if err != nil {
+			return "", err
+		}
+	case "pre-release":
+		vmVersion, err = app.Downloader.GetLatestPreReleaseVersion(
+			constants.AvaLabsOrg,
+			repoName,
+		)
+		if err != nil {
+			return "", err
+		}
+	case "":
+		vmVersion, err = askForVMVersion(app, vmName, repoName)
+		if err != nil {
+			return "", err
+		}
+	}
+	return vmVersion, nil
+}
+
+func askForVMVersion(
+	app *application.Avalanche,
+	vmName string,
+	repoName string,
+) (string, error) {
+	latestReleaseVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+		constants.AvaLabsOrg,
+		repoName,
+	))
+	if err != nil {
+		return "", err
+	}
+	latestPreReleaseVersion, err := app.Downloader.GetLatestPreReleaseVersion(
+		constants.AvaLabsOrg,
+		repoName,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	const (
+		useLatestRelease    = "Use latest release version"
+		useLatestPreRelease = "Use latest pre-release version"
+		useCustom           = "Specify custom version"
+	)
+	defaultPrompt := fmt.Sprintf("What version of %s would you like?", vmName)
+
+	versionOptions := []string{useLatestRelease, useCustom}
+	if latestPreReleaseVersion != latestReleaseVersion {
+		versionOptions = []string{useLatestPreRelease, useLatestRelease, useCustom}
+	}
+
+	versionOption, err := app.Prompt.CaptureList(
+		defaultPrompt,
+		versionOptions,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	if versionOption == useLatestPreRelease {
+		return latestPreReleaseVersion, err
+	}
+
+	if versionOption == useLatestRelease {
+		return latestReleaseVersion, err
+	}
+
+	// prompt for version
+	versions, err := app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName)
+	if err != nil {
+		return "", err
+	}
+	version, err := app.Prompt.CaptureList("Pick the version for this VM", versions)
+	if err != nil {
+		return "", err
+	}
+
+	return version, nil
 }
