@@ -119,24 +119,18 @@ func getDescriptors(
 ) (
 	*big.Int,
 	string,
-	string,
 	statemachine.StateDirection,
 	error,
 ) {
 	chainID, err := getChainID(app, subnetEVMChainID)
 	if err != nil {
-		return nil, "", "", statemachine.Stop, err
+		return nil, "", statemachine.Stop, err
 	}
 
 	tokenName, err := getTokenName(app, subnetEVMTokenName)
 	if err != nil {
-		return nil, "", "", statemachine.Stop, err
+		return nil, "", statemachine.Stop, err
 	}
 
-	subnetEVMVersion, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion, false)
-	if err != nil {
-		return nil, "", "", statemachine.Stop, err
-	}
-
-	return chainID, tokenName, subnetEVMVersion, statemachine.Forward, nil
+	return chainID, tokenName, statemachine.Forward, nil
 }

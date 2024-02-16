@@ -39,6 +39,11 @@ func CreateEvmSubnetConfig(
 		rpcVersion   int
 	)
 
+	subnetEVMVersion, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion, false)
+	if err != nil {
+		return nil, &models.Sidecar{}, err
+	}
+
 	if getRPCVersionFromBinary {
 		_, vmBin, err := binutils.SetupSubnetEVM(app, subnetEVMVersion)
 		if err != nil {
@@ -112,7 +117,6 @@ func createEvmGenesis(
 	var (
 		chainID    *big.Int
 		tokenName  string
-		vmVersion  string
 		allocation core.GenesisAlloc
 		direction  statemachine.StateDirection
 		err        error
@@ -127,7 +131,7 @@ func createEvmGenesis(
 	for subnetEvmState.Running() {
 		switch subnetEvmState.CurrentState() {
 		case descriptorsState:
-			chainID, tokenName, vmVersion, direction, err = getDescriptors(app, subnetEVMVersion, subnetEVMChainID, subnetEVMTokenName)
+			chainID, tokenName, direction, err = getDescriptors(app, subnetEVMVersion, subnetEVMChainID, subnetEVMTokenName)
 		case feeState:
 			*conf, direction, err = GetFeeConfig(*conf, app, useSubnetEVMDefaults)
 		case airdropState:
@@ -181,7 +185,7 @@ func createEvmGenesis(
 	sc := &models.Sidecar{
 		Name:       subnetName,
 		VM:         models.SubnetEvm,
-		VMVersion:  vmVersion,
+		VMVersion:  subnetEVMVersion,
 		RPCVersion: rpcVersion,
 		Subnet:     subnetName,
 		TokenName:  tokenName,
