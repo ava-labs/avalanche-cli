@@ -10,6 +10,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 
@@ -42,6 +43,7 @@ var (
 
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
+	errMutuallyExlusiveVersionOptions = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
 )
 
 // avalanche subnet create
@@ -155,6 +157,10 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 
 	if moreThanOneVMSelected() {
 		return errors.New("too many VMs selected. Provide at most one VM selection flag")
+	}
+
+	if !flags.EnsureMutuallyExclusive([]bool{useLatestReleasedEvmVersion, useLatestPreReleasedEvmVersion, evmVersion != ""}) {
+		return errMutuallyExlusiveVersionOptions
 	}
 
 	subnetType := getVMFromFlag()
