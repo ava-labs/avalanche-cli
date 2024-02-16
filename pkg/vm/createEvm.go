@@ -11,6 +11,7 @@ import (
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
@@ -36,8 +37,17 @@ func CreateEvmSubnetConfig(
 		err          error
 	)
 
+	_, vmBin, err := binutils.SetupSubnetEVM(app, subnetEVMVersion)
+	if err != nil {
+		return nil, &models.Sidecar{}, fmt.Errorf("failed to install subnet-evm: %w", err)
+	}
+	rpcVersion, err := GetVMBinaryProtocolVersion(vmBin)
+	if err != nil {
+		return nil, &models.Sidecar{}, fmt.Errorf("unable to get RPC version: %w", err)
+	}
+
 	if genesisPath == "" {
-		genesisBytes, sc, err = createEvmGenesis(app, subnetName, subnetEVMVersion, subnetEVMChainID, subnetEVMTokenName, useSubnetEVMDefaults)
+		genesisBytes, sc, err = createEvmGenesis(app, subnetName, subnetEVMVersion, rpcVersion, subnetEVMChainID, subnetEVMTokenName, useSubnetEVMDefaults)
 		if err != nil {
 			return nil, &models.Sidecar{}, err
 		}
@@ -49,11 +59,6 @@ func CreateEvmSubnetConfig(
 		}
 
 		subnetEVMVersion, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion, false)
-		if err != nil {
-			return nil, &models.Sidecar{}, err
-		}
-
-		rpcVersion, err := GetRPCProtocolVersion(app, models.SubnetEvm, subnetEVMVersion)
 		if err != nil {
 			return nil, &models.Sidecar{}, err
 		}
@@ -75,6 +80,7 @@ func createEvmGenesis(
 	app *application.Avalanche,
 	subnetName string,
 	subnetEVMVersion string,
+	rpcVersion int,
 	subnetEVMChainID uint64,
 	subnetEVMTokenName string,
 	useSubnetEVMDefaults bool,
@@ -161,11 +167,6 @@ func createEvmGenesis(
 	err = json.Indent(&prettyJSON, jsonBytes, "", "    ")
 	if err != nil {
 		return nil, nil, err
-	}
-
-	rpcVersion, err := GetRPCProtocolVersion(app, models.SubnetEvm, vmVersion)
-	if err != nil {
-		return nil, &models.Sidecar{}, err
 	}
 
 	sc := &models.Sidecar{
