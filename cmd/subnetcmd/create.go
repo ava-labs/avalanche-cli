@@ -181,7 +181,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 
 	switch subnetType {
 	case models.SubnetEvm:
-		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(app, subnetName, genesisFile, evmVersion, evmChainID, evmToken, evmDefaults)
+		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(app, subnetName, genesisFile, evmVersion, true, evmChainID, evmToken, evmDefaults)
 		if err != nil {
 			return err
 		}
