@@ -116,7 +116,7 @@ func (t *Deployer) DeployMessenger(version string, subnetName string, rpcURL str
 	if err := evm.IssueTx(rpcURL, t.teleporterMessengerDeployerTx); err != nil {
 		return "", err
 	}
-	ux.Logger.PrintToUser("Teleporter Messenger successfully deployed to %s", subnetName)
+	ux.Logger.PrintToUser("Teleporter Messenger successfully deployed to %s (%s)", subnetName, t.teleporterMessengerContractAddress)
 	return t.teleporterMessengerContractAddress, nil
 }
 
@@ -149,6 +149,6 @@ func (t *Deployer) DeployRegistry(version string, subnetName string, rpcURL stri
 	if !success {
 		return "", fmt.Errorf("failed receipt status deploying teleporter registry")
 	}
-	ux.Logger.PrintToUser("Teleporter Registry successfully deployed to %s", subnetName)
+	ux.Logger.PrintToUser("Teleporter Registry successfully deployed to %s (%s)", subnetName, teleporterRegistryAddress)
 	return teleporterRegistryAddress.String(), nil
 }

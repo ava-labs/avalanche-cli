@@ -249,7 +249,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.PrintToUser("using latest teleporter version (%s)", teleporterVersion)
-		ux.Logger.PrintToUser("using latest awm-relater version (%s)", awmRelayerVersion)
+		ux.Logger.PrintToUser("using latest awm-relayer version (%s)", awmRelayerVersion)
 		sc.TeleporterReady = true
 		sc.TeleporterKey = teleporterKeyName
 		sc.TeleporterVersion = teleporterVersion
