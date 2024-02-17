@@ -3,13 +3,10 @@
 package subnetcmd
 
 import (
-	"fmt"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 
 	"github.com/spf13/cobra"
@@ -56,32 +53,32 @@ Blockchain ready to use. Local network node endpoints:
 +-------+-----+-------------------------------------------------------------------------------------+--------------------------------------+
 */
 
-func getCChainBlockchainID(endpoint string) (ids.ID, error) {
+func getSubnetInfos(endpoint string, registryMap map[string]string) ([]teleporter.AWMRelayerSubnetInfo, error) {
+	subnetsInfo := []teleporter.AWMRelayerSubnetInfo{}
 	pClient := platformvm.NewClient(endpoint)
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	blockChains, err := pClient.GetBlockchains(ctx)
 	if err != nil {
-		return ids.Empty, err
+		return nil, err
 	}
-	var chainID ids.ID
 	for _, chain := range blockChains {
-		fmt.Println(chain.Name, chain.ID, chain.SubnetID)
-		if chain.Name == "C-Chain" {
-			chainID = chain.ID
+		if chain.Name == "X-Chain" {
+			continue
 		}
+		subnetsInfo = append(subnetsInfo, teleporter.AWMRelayerSubnetInfo{
+			SubnetID:                  chain.SubnetID.String(),
+			BlockchainID:              chain.ID.String(),
+			TeleporterRegistryAddress: registryMap[chain.Name],
+		})
 	}
-	if chainID == ids.Empty {
-		return ids.Empty, fmt.Errorf("C-Chain not found on network blockchains")
-	}
-	return chainID, nil
+	return subnetsInfo, nil
 }
 
 func deployTeleporter(cmd *cobra.Command, args []string) error {
-	fmt.Println(getCChainBlockchainID(constants.LocalAPIEndpoint))
-	subnetsInfo := []teleporter.SubnetInfo{
-		{},
-		{},
+	subnetsInfo, err := getSubnetInfos(constants.LocalAPIEndpoint, map[string]string{})
+	if err != nil {
+		return err
 	}
-	return teleporter.DeployAWMRelayer(app, "v0.2.12", models.LocalNetwork, subnetsInfo)
+	return teleporter.DeployAWMRelayer(app, "v0.2.12", models.LocalNetwork, subnetsInfo, "0xF7cBd95f1355f0d8d659864b92e2e9fbfaB786f7")
 }
