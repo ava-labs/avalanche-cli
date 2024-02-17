@@ -232,75 +232,90 @@ func getAWMRelayerURL(version string) (string, error) {
 	), nil
 }
 
+type SubnetInfo struct {
+	/*
+	   SubnetID            ids.ID
+	   BlockchainID        ids.ID
+	   NodeURIs            []string
+	   WSClient            ethclient.Client
+	   RPCClient           ethclient.Client
+	   EVMChainID          *big.Int
+	   TeleporterRegistry  *teleporterregistry.TeleporterRegistry
+	   TeleporterMessenger *teleportermessenger.TeleporterMessenger
+	   // TeleporterRegistryAddress is unique across subnets.
+	   TeleporterRegistryAddress common.Address
+	*/
+}
+
 // Constructs a relayer config with all subnets as sources and destinations
 func createAWMRelayerConfig(
-	subnetsInfo []interfaces.SubnetTestInfo,
-	teleporterContractAddress common.Address,
-	fundedAddress common.Address,
-	relayerKey *ecdsa.PrivateKey,
+	logLevel string,
+	storageLocation string,
+	networkID uint32,
+	pChainEndpoint string,
+	subnetsInfo []SubnetInfo,
+	//teleporterContractAddress common.Address,
+	//fundedAddress common.Address,
+	//relayerKey *ecdsa.PrivateKey,
 ) config.Config {
-	log.Info(
-		"Setting up relayer config",
-	)
-	// Construct the config values for each subnet
 	sources := make([]*config.SourceSubnet, len(subnetsInfo))
 	destinations := make([]*config.DestinationSubnet, len(subnetsInfo))
-	for i, subnetInfo := range subnetsInfo {
-		host, port, err := teleporterTestUtils.GetURIHostAndPort(subnetInfo.NodeURIs[0])
-		Expect(err).Should(BeNil())
+	/*
+		for i, subnetInfo := range subnetsInfo {
+			host, port, err := teleporterTestUtils.GetURIHostAndPort(subnetInfo.NodeURIs[0])
+			Expect(err).Should(BeNil())
 
-		sources[i] = &config.SourceSubnet{
-			SubnetID:          subnetInfo.SubnetID.String(),
-			BlockchainID:      subnetInfo.BlockchainID.String(),
-			VM:                config.EVM.String(),
-			EncryptConnection: false,
-			APINodeHost:       host,
-			APINodePort:       port,
-			MessageContracts: map[string]config.MessageProtocolConfig{
-				teleporterContractAddress.Hex(): {
-					MessageFormat: config.TELEPORTER.String(),
-					Settings: map[string]interface{}{
-						"reward-address": fundedAddress.Hex(),
+			sources[i] = &config.SourceSubnet{
+				SubnetID:          subnetInfo.SubnetID.String(),
+				BlockchainID:      subnetInfo.BlockchainID.String(),
+				VM:                config.EVM.String(),
+				EncryptConnection: false,
+				APINodeHost:       host,
+				APINodePort:       port,
+				MessageContracts: map[string]config.MessageProtocolConfig{
+					teleporterContractAddress.Hex(): {
+						MessageFormat: config.TELEPORTER.String(),
+						Settings: map[string]interface{}{
+							"reward-address": fundedAddress.Hex(),
+						},
+					},
+					offchainregistry.OffChainRegistrySourceAddress.Hex(): {
+						MessageFormat: config.OFF_CHAIN_REGISTRY.String(),
+						Settings: map[string]interface{}{
+							"teleporter-registry-address": subnetInfo.TeleporterRegistryAddress.Hex(),
+						},
 					},
 				},
-				offchainregistry.OffChainRegistrySourceAddress.Hex(): {
-					MessageFormat: config.OFF_CHAIN_REGISTRY.String(),
-					Settings: map[string]interface{}{
-						"teleporter-registry-address": subnetInfo.TeleporterRegistryAddress.Hex(),
-					},
-				},
-			},
-		}
+			}
 
-		destinations[i] = &config.DestinationSubnet{
-			SubnetID:          subnetInfo.SubnetID.String(),
-			BlockchainID:      subnetInfo.BlockchainID.String(),
-			VM:                config.EVM.String(),
-			EncryptConnection: false,
-			APINodeHost:       host,
-			APINodePort:       port,
-			AccountPrivateKey: hex.EncodeToString(relayerKey.D.Bytes()),
-		}
+			destinations[i] = &config.DestinationSubnet{
+				SubnetID:          subnetInfo.SubnetID.String(),
+				BlockchainID:      subnetInfo.BlockchainID.String(),
+				VM:                config.EVM.String(),
+				EncryptConnection: false,
+				APINodeHost:       host,
+				APINodePort:       port,
+				AccountPrivateKey: hex.EncodeToString(relayerKey.D.Bytes()),
+			}
 
-		log.Info(
-			"Creating relayer config for subnet",
-			"subnetID", subnetInfo.SubnetID.String(),
-			"blockchainID", subnetInfo.BlockchainID.String(),
-			"host", host,
-			"port", port,
-		)
-	}
+			log.Info(
+				"Creating relayer config for subnet",
+				"subnetID", subnetInfo.SubnetID.String(),
+				"blockchainID", subnetInfo.BlockchainID.String(),
+				"host", host,
+				"port", port,
+			)
+		}
+	*/
 
 	return config.Config{
-		LogLevel: logging.Info.LowerString(),
-		// TODO: There's currently a bug in ANR v1.7.4-rc.0 that specifies the network ID as 0. We should change this back to constants.DefaultNetworkID once fixed.
-		NetworkID:           0,
-		PChainAPIURL:        subnetsInfo[0].NodeURIs[0],
+		LogLevel:            logLevel,
+		NetworkID:           networkID,
+		PChainAPIURL:        pChainEndpoint,
 		EncryptConnection:   false,
-		StorageLocation:     RelayerStorageLocation(),
+		StorageLocation:     storageLocation,
 		ProcessMissedBlocks: false,
 		SourceSubnets:       sources,
 		DestinationSubnets:  destinations,
 	}
 }
-

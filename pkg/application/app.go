@@ -102,6 +102,10 @@ func (app *Avalanche) GetAWMRelayerBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.AWMRelayerInstallDir)
 }
 
+func (app *Avalanche) GetAWMRelayerStorageDir() string {
+	return filepath.Join(app.GetRunDir(), constants.AWMRelayerStorageDir)
+}
+
 func (app *Avalanche) GetAWMRelayerConfigPath() string {
 	return filepath.Join(app.GetRunDir(), constants.AWMRelayerConfigFilename)
 }

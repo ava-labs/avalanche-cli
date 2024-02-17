@@ -85,7 +85,8 @@ func createEvmGenesis(
 	conf := params.SubnetEVMDefaultChainConfig
 
 	// set non nil durango start block height 0
-	conf.MandatoryNetworkUpgrades = params.LocalNetworkUpgrades
+	// TODO: check if needed to set on subnet deploy to a specific network
+	conf.MandatoryNetworkUpgrades = params.GetMandatoryNetworkUpgrades(constants.LocalNetworkID)
 
 	const (
 		descriptorsState = "descriptors"
