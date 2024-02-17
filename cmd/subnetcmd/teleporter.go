@@ -24,5 +24,9 @@ func newTeleporterCmd() *cobra.Command {
 }
 
 func deployTeleporter(cmd *cobra.Command, args []string) error {
-	return teleporter.DeployAWMRelayer(app, "v0.2.12", models.LocalNetwork)
+	subnetsInfo := []teleporter.SubnetInfo{
+		{},
+		{},
+	}
+	return teleporter.DeployAWMRelayer(app, "v0.2.12", models.LocalNetwork, subnetsInfo)
 }
