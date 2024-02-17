@@ -3,6 +3,7 @@
 package subnetcmd
 
 import (
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 
 	"github.com/spf13/cobra"
@@ -23,5 +24,5 @@ func newTeleporterCmd() *cobra.Command {
 }
 
 func deployTeleporter(cmd *cobra.Command, args []string) error {
-	return teleporter.DeployAWMRelayer(app, "v0.2.12")
+	return teleporter.DeployAWMRelayer(app, "v0.2.12", models.LocalNetwork)
 }

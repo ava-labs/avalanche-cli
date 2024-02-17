@@ -550,9 +550,10 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	endpointRpcURL := endpoint[strings.LastIndex(endpoint, "http"):]
 
 	if sc.TeleporterReady {
+		network := models.LocalNetwork
 		td := teleporter.Deployer{}
 		fmt.Println()
-		k, err := key.LoadEwoq(constants.LocalNetworkID)
+		k, err := key.LoadEwoq(network.ID)
 		if err != nil {
 			return ids.Empty, ids.Empty, err
 		}
@@ -563,13 +564,13 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		fmt.Println()
 		ux.Logger.PrintToUser("Loading %s key", sc.TeleporterKey)
 		keyPath := d.app.GetKeyPath(sc.TeleporterKey)
-		k, err = key.LoadSoft(constants.LocalNetworkID, keyPath)
+		k, err = key.LoadSoft(network.ID, keyPath)
 		privKeyStr = "0x" + hex.EncodeToString(k.Raw())
 		if _, _, err = td.Deploy(sc.TeleporterVersion, chain, endpointRpcURL, privKeyStr); err != nil {
 			return ids.Empty, ids.Empty, err
 		}
 		fmt.Println()
-		if err := teleporter.DeployAWMRelayer(d.app, sc.AWMRelayerVersion); err != nil {
+		if err := teleporter.DeployAWMRelayer(d.app, sc.AWMRelayerVersion, network); err != nil {
 			return ids.Empty, ids.Empty, err
 		}
 	}
