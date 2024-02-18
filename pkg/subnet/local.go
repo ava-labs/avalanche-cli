@@ -414,6 +414,14 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 	d.app.Log.Debug("this VM will get ID", zap.String("vm-id", chainVMID.String()))
 
+	// cleanup if neeeded in the case relayer is registered to current blockchains
+	if err := teleporter.RelayerCleanup(
+		d.app.GetAWMRelayerRunPath(),
+		d.app.GetAWMRelayerStorageDir(),
+	); err != nil {
+		return ids.Empty, ids.Empty, err
+	}
+
 	if networkBooted && needsRestart {
 		ux.Logger.PrintToUser("Restarting the network...")
 		if _, err := cli.Stop(ctx); err != nil {

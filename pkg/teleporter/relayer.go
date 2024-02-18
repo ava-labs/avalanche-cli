@@ -140,10 +140,9 @@ func saveRelayerRunFile(runFilePath string, pid int) error {
 func installRelayer(binDir, version string) (string, error) {
 	binPath := filepath.Join(binDir, version, constants.AWMRelayerBin)
 	if utils.IsExecutable(binPath) {
-		ux.Logger.PrintToUser("AWM-Relayer %s is already installed", version)
 		return binPath, nil
 	}
-	ux.Logger.PrintToUser("installing AWM-Relayer %s", version)
+	ux.Logger.PrintToUser("Installing AWM-Relayer %s", version)
 	url, err := getRelayerURL(version)
 	if err != nil {
 		return "", err
@@ -163,6 +162,8 @@ func executeRelayer(binPath string, configPath string, logFile string) (int, err
 	if err != nil {
 		return 0, err
 	}
+
+	ux.Logger.PrintToUser("Executing AWM-Relayer...")
 
 	cmd := exec.Command(binPath, "--config-file", configPath)
 	cmd.Stdout = logWriter
