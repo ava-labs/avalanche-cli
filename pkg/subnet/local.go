@@ -552,24 +552,59 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	if sc.TeleporterReady {
 		network := models.LocalNetwork
 		td := teleporter.Deployer{}
+		// deploy C-Chain
 		fmt.Println()
 		k, err := key.LoadEwoq(network.ID)
 		if err != nil {
 			return ids.Empty, ids.Empty, err
 		}
 		privKeyStr := "0x" + hex.EncodeToString(k.Raw())
-		if _, _, err = td.Deploy(sc.TeleporterVersion, "c-chain", constants.CChainRpcURL, privKeyStr); err != nil {
+		messengerAddress, registryAddress, err := td.Deploy(sc.TeleporterVersion, "c-chain", constants.CChainRpcURL, privKeyStr)
+		if err != nil {
 			return ids.Empty, ids.Empty, err
 		}
+		subnetID, blockchainID, err := GetChainIDs(constants.LocalAPIEndpoint, "C-Chain")
+		if err != nil {
+			return ids.Empty, ids.Empty, err
+		}
+		if err = teleporter.UpdateRelayerConfig(
+			d.app.GetAWMRelayerConfigPath(),
+			d.app.GetAWMRelayerStorageDir(),
+			network,
+			subnetID,
+			blockchainID,
+			messengerAddress,
+			registryAddress,
+		); err != nil {
+			return ids.Empty, ids.Empty, err
+		}
+		// deploy current blockchain
 		fmt.Println()
 		ux.Logger.PrintToUser("Loading %s key", sc.TeleporterKey)
 		keyPath := d.app.GetKeyPath(sc.TeleporterKey)
 		k, err = key.LoadSoft(network.ID, keyPath)
 		privKeyStr = "0x" + hex.EncodeToString(k.Raw())
-		if _, _, err = td.Deploy(sc.TeleporterVersion, chain, endpointRpcURL, privKeyStr); err != nil {
+		messengerAddress, registryAddress, err = td.Deploy(sc.TeleporterVersion, chain, endpointRpcURL, privKeyStr)
+		if err != nil {
+			return ids.Empty, ids.Empty, err
+		}
+		subnetID, blockchainID, err = GetChainIDs(constants.LocalAPIEndpoint, chain)
+		if err != nil {
+			return ids.Empty, ids.Empty, err
+		}
+		if err = teleporter.UpdateRelayerConfig(
+			d.app.GetAWMRelayerConfigPath(),
+			d.app.GetAWMRelayerStorageDir(),
+			network,
+			subnetID,
+			blockchainID,
+			messengerAddress,
+			registryAddress,
+		); err != nil {
 			return ids.Empty, ids.Empty, err
 		}
 		fmt.Println()
+		// start relayer
 		if err := teleporter.DeployRelayer(d.app.GetAWMRelayerBinDir(), sc.AWMRelayerVersion); err != nil {
 			return ids.Empty, ids.Empty, err
 		}
