@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -100,6 +101,13 @@ func RelayerCleanup(runFilePath string, storageDir string) error {
 	}
 	proc, err := os.FindProcess(rf.Pid)
 	if err != nil {
+		// so much expected after a reboot
+		if err := os.Remove(runFilePath); err != nil {
+			return fmt.Errorf("failed removing relayer run file %s: %w", runFilePath, err)
+		}
+		return nil
+	}
+	if err := proc.Signal(syscall.Signal(0)); err != nil {
 		// so much expected after a reboot
 		if err := os.Remove(runFilePath); err != nil {
 			return fmt.Errorf("failed removing relayer run file %s: %w", runFilePath, err)
