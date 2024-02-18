@@ -605,7 +605,14 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 		fmt.Println()
 		// start relayer
-		if err := teleporter.DeployRelayer(d.app.GetAWMRelayerBinDir(), sc.AWMRelayerVersion); err != nil {
+		if err := teleporter.DeployRelayer(
+			d.app.GetAWMRelayerBinDir(),
+			sc.AWMRelayerVersion,
+			d.app.GetAWMRelayerConfigPath(),
+			d.app.GetAWMRelayerLogPath(),
+			d.app.GetAWMRelayerRunPath(),
+			d.app.GetAWMRelayerStorageDir(),
+		); err != nil {
 			return ids.Empty, ids.Empty, err
 		}
 	}

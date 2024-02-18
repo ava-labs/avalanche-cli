@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -56,13 +57,74 @@ func FundRelayer(
 	return nil
 }
 
+type relayerRunFile struct {
+	Pid int `json:"pid"`
+}
+
 func DeployRelayer(
 	version string,
 	binDir string,
+	configPath string,
+	logFilePath string,
+	runFilePath string,
+	storageDir string,
 ) error {
-	_, err := installRelayer(version, binDir)
+	if err := relayerCleanup(runFilePath, storageDir); err != nil {
+		return err
+	}
+	binPath, err := installRelayer(version, binDir)
 	if err != nil {
 		return err
+	}
+	pid, err := executeRelayer(binPath, configPath, logFilePath)
+	if err != nil {
+		return err
+	}
+	return saveRelayerRunFile(runFilePath, pid)
+}
+
+func relayerCleanup(runFilePath string, storageDir string) error {
+	if err := os.RemoveAll(storageDir); err != nil {
+		return err
+	}
+	if !utils.FileExists(runFilePath) {
+		return nil
+	}
+	bs, err := os.ReadFile(runFilePath)
+	if err != nil {
+		return err
+	}
+	rf := relayerRunFile{}
+	if err := json.Unmarshal(bs, &rf); err != nil {
+		return err
+	}
+	proc, err := os.FindProcess(rf.Pid)
+	if err != nil {
+		// so much expected after a reboot
+		if err := os.Remove(runFilePath); err != nil {
+			return fmt.Errorf("failed removing relayer run file %s: %w", runFilePath, err)
+		}
+		return nil
+	}
+	if err := proc.Signal(os.Interrupt); err != nil {
+		return fmt.Errorf("failed killing relayer process with pid %d: %w", rf.Pid, err)
+	}
+	if err := os.Remove(runFilePath); err != nil {
+		return fmt.Errorf("failed removing relayer run file %s: %w", runFilePath, err)
+	}
+	return nil
+}
+
+func saveRelayerRunFile(runFilePath string, pid int) error {
+	rf := relayerRunFile{
+		Pid: pid,
+	}
+	bs, err := json.Marshal(&rf)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(runFilePath, bs, constants.WriteReadReadPerms); err != nil {
+		return fmt.Errorf("could not write awm relater run file to %s: %w", err)
 	}
 	return nil
 }
@@ -86,6 +148,22 @@ func installRelayer(binDir, version string) (string, error) {
 		return "", err
 	}
 	return binPath, nil
+}
+
+func executeRelayer(binPath string, configPath string, logFile string) (int, error) {
+	logWriter, err := os.Create(logFile)
+	if err != nil {
+		return 0, err
+	}
+
+	cmd := exec.Command(binPath, "--config-file", configPath)
+	cmd.Stdout = logWriter
+	cmd.Stderr = logWriter
+	if err := cmd.Start(); err != nil {
+		return 0, err
+	}
+
+	return cmd.Process.Pid, nil
 }
 
 func getRelayerURL(version string) (string, error) {

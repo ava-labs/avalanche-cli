@@ -211,6 +211,8 @@ const (
 	AWMRelayerBin                 = "awm-relayer"
 	AWMRelayerConfigFilename      = "awm-relayer-config.json"
 	AWMRelayerStorageDir          = "awm-relayer-storage"
+	AWMRelayerLogFilename         = "awm-relayer.log"
+	AWMRelayerRunFilename         = "awm-relayer-process.json"
 
 	SubnetEVMBin = "subnet-evm"
 
