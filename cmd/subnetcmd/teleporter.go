@@ -28,46 +28,20 @@ func newTeleporterCmd() *cobra.Command {
 	return cmd
 }
 
-func getSubnetInfos(endpoint string, registryMap map[string]string) ([]teleporter.RelayerSubnetInfo, error) {
-	subnetsInfo := []teleporter.RelayerSubnetInfo{}
+func getChainIDs(endpoint string, chainName string) (string, string, error) {
 	pClient := platformvm.NewClient(endpoint)
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	blockChains, err := pClient.GetBlockchains(ctx)
 	if err != nil {
-		return nil, err
+		return "", "", err
 	}
 	for _, chain := range blockChains {
-		if chain.Name == "X-Chain" {
-			continue
-		}
-		subnetsInfo = append(subnetsInfo, teleporter.RelayerSubnetInfo{
-			SubnetID:                  chain.SubnetID.String(),
-			BlockchainID:              chain.ID.String(),
-			TeleporterRegistryAddress: registryMap[chain.Name],
-		})
-	}
-	return subnetsInfo, nil
-}
-
-func getCChainSubnetInfo(endpoint string, teleporterRegistryAddress string) (*teleporter.RelayerSubnetInfo, error) {
-	pClient := platformvm.NewClient(endpoint)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	blockChains, err := pClient.GetBlockchains(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, chain := range blockChains {
-		if chain.Name == "C-Chain" {
-			return &teleporter.RelayerSubnetInfo{
-				SubnetID:                  chain.SubnetID.String(),
-				BlockchainID:              chain.ID.String(),
-				TeleporterRegistryAddress: teleporterRegistryAddress,
-			}, nil
+		if chain.Name == chainName {
+			return chain.SubnetID.String(), chain.ID.String(), nil
 		}
 	}
-	return nil, fmt.Errorf("C-Chain not found on primary network blockchains")
+	return "", "", fmt.Errorf("%s not found on primary network blockchains", chainName)
 }
 
 func deployTeleporter(cmd *cobra.Command, args []string) error {
@@ -76,14 +50,39 @@ func deployTeleporter(cmd *cobra.Command, args []string) error {
 		"C-Chain": "0x17aB05351fC94a1a67Bf3f56DdbB941aE6c63E25",
 		"pp1":     "0xcb65EF152B10ae00500EfDC7E4CD20358e64b233",
 	}
-	cChainSubnetInfo, err := getCChainSubnetInfo(constants.LocalAPIEndpoint, registryMap["C-Chain"])
+	subnetID, blockchainID, err := getChainIDs(constants.LocalAPIEndpoint, "C-Chain")
 	if err != nil {
 		return err
 	}
-	_ = cChainSubnetInfo
-	subnetsInfo, err := getSubnetInfos(constants.LocalAPIEndpoint, registryMap)
+	teleporterRegistryAddress := registryMap["C-Chain"]
+	err = teleporter.UpdateRelayerConfig(
+		app.GetAWMRelayerConfigPath(),
+		app.GetAWMRelayerStorageDir(),
+		models.LocalNetwork,
+		subnetID,
+		blockchainID,
+		teleporterContractAddress,
+		teleporterRegistryAddress,
+	)
 	if err != nil {
 		return err
 	}
-	return teleporter.DeployRelayer(app, "v0.2.12", models.LocalNetwork, subnetsInfo, teleporterContractAddress)
+	subnetID, blockchainID, err = getChainIDs(constants.LocalAPIEndpoint, "pp1")
+	if err != nil {
+		return err
+	}
+	teleporterRegistryAddress = registryMap["pp1"]
+	err = teleporter.UpdateRelayerConfig(
+		app.GetAWMRelayerConfigPath(),
+		app.GetAWMRelayerStorageDir(),
+		models.LocalNetwork,
+		subnetID,
+		blockchainID,
+		teleporterContractAddress,
+		teleporterRegistryAddress,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
 }

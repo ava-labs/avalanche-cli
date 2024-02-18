@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
@@ -58,44 +57,18 @@ func FundRelayer(
 }
 
 func DeployRelayer(
-	app *application.Avalanche,
 	version string,
-	network models.Network,
-	subnetsInfo []RelayerSubnetInfo,
-	teleporterContractAddress string,
+	binDir string,
 ) error {
-	binPath, err := installRelayer(app, version)
+	_, err := installRelayer(version, binDir)
 	if err != nil {
-		return err
-	}
-	_ = binPath
-	awmRelayerConfig, err := createRelayerConfig(
-		logging.Info.LowerString(),
-		app.GetAWMRelayerStorageDir(),
-		network.ID,
-		network.Endpoint,
-		subnetsInfo,
-		teleporterContractAddress,
-		teleporterRelayerAddress,
-		teleporterRelayerPrivateKey,
-	)
-	if err != nil {
-		return err
-	}
-	bs, err := json.MarshalIndent(awmRelayerConfig, "", "  ")
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(app.GetAWMRelayerConfigPath(), bs, constants.WriteReadReadPerms); err != nil {
 		return err
 	}
 	return nil
 }
 
-func installRelayer(app *application.Avalanche, version string) (string, error) {
-	awmRelayerBinDir := app.GetAWMRelayerBinDir()
-	binDir := filepath.Join(awmRelayerBinDir, version)
-	binPath := filepath.Join(binDir, constants.AWMRelayerBin)
+func installRelayer(binDir, version string) (string, error) {
+	binPath := filepath.Join(binDir, version, constants.AWMRelayerBin)
 	if utils.IsExecutable(binPath) {
 		ux.Logger.PrintToUser("AWM-Relayer %s is already installed", version)
 		return binPath, nil
@@ -132,10 +105,137 @@ func getRelayerURL(version string) (string, error) {
 	), nil
 }
 
-type RelayerSubnetInfo struct {
-	SubnetID                  string
-	BlockchainID              string
-	TeleporterRegistryAddress string
+func UpdateRelayerConfig(
+	relayerConfigPath string,
+	relayerStorageDir string,
+	network models.Network,
+	subnetID string,
+	blockchainID string,
+	teleporterContractAddress string,
+	teleporterRegistryAddress string,
+) error {
+	awmRelayerConfig := config.Config{}
+	if utils.FileExists(relayerConfigPath) {
+		bs, err := os.ReadFile(relayerConfigPath)
+		if err != nil {
+			return err
+		}
+		if err := json.Unmarshal(bs, &awmRelayerConfig); err != nil {
+			return err
+		}
+	} else {
+		awmRelayerConfig = createRelayerConfig(
+			logging.Info.LowerString(),
+			relayerStorageDir,
+			network.ID,
+			network.Endpoint,
+		)
+	}
+	host, port, err := getURIHostAndPort(network.Endpoint)
+	if err != nil {
+		return err
+	}
+	addChainToRelayerConfig(
+		&awmRelayerConfig,
+		host,
+		port,
+		subnetID,
+		blockchainID,
+		teleporterContractAddress,
+		teleporterRegistryAddress,
+		teleporterRelayerAddress,
+		teleporterRelayerPrivateKey,
+	)
+	bs, err := json.MarshalIndent(awmRelayerConfig, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(relayerConfigPath, bs, constants.WriteReadReadPerms); err != nil {
+		return err
+	}
+	return nil
+}
+
+func createRelayerConfig(
+	logLevel string,
+	storageLocation string,
+	networkID uint32,
+	endpoint string,
+) config.Config {
+	return config.Config{
+		LogLevel:            logLevel,
+		NetworkID:           networkID,
+		PChainAPIURL:        endpoint,
+		EncryptConnection:   false,
+		StorageLocation:     storageLocation,
+		ProcessMissedBlocks: false,
+		SourceSubnets:       []*config.SourceSubnet{},
+		DestinationSubnets:  []*config.DestinationSubnet{},
+	}
+}
+
+func addChainToRelayerConfig(
+	relayerConfig *config.Config,
+	host string,
+	port uint32,
+	subnetID string,
+	blockchainID string,
+	teleporterContractAddress string,
+	teleporterRegistryAddress string,
+	relayerRewardAddress string,
+	relayerFundedAddressKey string,
+) {
+	source := &config.SourceSubnet{
+		SubnetID:          subnetID,
+		BlockchainID:      blockchainID,
+		VM:                config.EVM.String(),
+		EncryptConnection: false,
+		APINodeHost:       host,
+		APINodePort:       port,
+		MessageContracts: map[string]config.MessageProtocolConfig{
+			teleporterContractAddress: {
+				MessageFormat: config.TELEPORTER.String(),
+				Settings: map[string]interface{}{
+					"reward-address": relayerRewardAddress,
+				},
+			},
+			offchainregistry.OffChainRegistrySourceAddress.Hex(): {
+				MessageFormat: config.OFF_CHAIN_REGISTRY.String(),
+				Settings: map[string]interface{}{
+					"teleporter-registry-address": teleporterRegistryAddress,
+				},
+			},
+		},
+	}
+	destination := &config.DestinationSubnet{
+		SubnetID:          subnetID,
+		BlockchainID:      blockchainID,
+		VM:                config.EVM.String(),
+		EncryptConnection: false,
+		APINodeHost:       host,
+		APINodePort:       port,
+		AccountPrivateKey: relayerFundedAddressKey,
+	}
+	sources := relayerConfig.SourceSubnets
+	found := false
+	for _, s := range sources {
+		if s.BlockchainID == source.BlockchainID {
+			found = true
+		}
+	}
+	if !found {
+		relayerConfig.SourceSubnets = append(sources, source)
+	}
+	destinations := relayerConfig.DestinationSubnets
+	found = false
+	for _, d := range destinations {
+		if d.BlockchainID == destination.BlockchainID {
+			found = true
+		}
+	}
+	if !found {
+		relayerConfig.DestinationSubnets = append(destinations, destination)
+	}
 }
 
 // Get the host and port from a URI. The URI should be in the format http://host:port or https://host:port or host:port
@@ -152,66 +252,4 @@ func getURIHostAndPort(uri string) (string, uint32, error) {
 		return "", 0, fmt.Errorf("failed to parse port from %s: %w", uri, err)
 	}
 	return hostAndPort[0], uint32(port), nil
-}
-
-// Constructs a relayer config with all subnets as sources and destinations
-func createRelayerConfig(
-	logLevel string,
-	storageLocation string,
-	networkID uint32,
-	endpoint string,
-	subnetsInfo []RelayerSubnetInfo,
-	teleporterContractAddress string,
-	relayerRewardAddress string,
-	relayerFundedAddressKey string,
-) (config.Config, error) {
-	host, port, err := getURIHostAndPort(endpoint)
-	if err != nil {
-		return config.Config{}, err
-	}
-	sources := make([]*config.SourceSubnet, len(subnetsInfo))
-	destinations := make([]*config.DestinationSubnet, len(subnetsInfo))
-	for i, subnetInfo := range subnetsInfo {
-		sources[i] = &config.SourceSubnet{
-			SubnetID:          subnetInfo.SubnetID,
-			BlockchainID:      subnetInfo.BlockchainID,
-			VM:                config.EVM.String(),
-			EncryptConnection: false,
-			APINodeHost:       host,
-			APINodePort:       port,
-			MessageContracts: map[string]config.MessageProtocolConfig{
-				teleporterContractAddress: {
-					MessageFormat: config.TELEPORTER.String(),
-					Settings: map[string]interface{}{
-						"reward-address": relayerRewardAddress,
-					},
-				},
-				offchainregistry.OffChainRegistrySourceAddress.Hex(): {
-					MessageFormat: config.OFF_CHAIN_REGISTRY.String(),
-					Settings: map[string]interface{}{
-						"teleporter-registry-address": subnetInfo.TeleporterRegistryAddress,
-					},
-				},
-			},
-		}
-		destinations[i] = &config.DestinationSubnet{
-			SubnetID:          subnetInfo.SubnetID,
-			BlockchainID:      subnetInfo.BlockchainID,
-			VM:                config.EVM.String(),
-			EncryptConnection: false,
-			APINodeHost:       host,
-			APINodePort:       port,
-			AccountPrivateKey: relayerFundedAddressKey,
-		}
-	}
-	return config.Config{
-		LogLevel:            logLevel,
-		NetworkID:           networkID,
-		PChainAPIURL:        endpoint,
-		EncryptConnection:   false,
-		StorageLocation:     storageLocation,
-		ProcessMissedBlocks: false,
-		SourceSubnets:       sources,
-		DestinationSubnets:  destinations,
-	}, nil
 }
