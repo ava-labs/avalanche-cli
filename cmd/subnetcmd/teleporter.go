@@ -3,13 +3,10 @@
 package subnetcmd
 
 import (
-	"fmt"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
 
 	"github.com/spf13/cobra"
 )
@@ -28,29 +25,13 @@ func newTeleporterCmd() *cobra.Command {
 	return cmd
 }
 
-func getChainIDs(endpoint string, chainName string) (string, string, error) {
-	pClient := platformvm.NewClient(endpoint)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	blockChains, err := pClient.GetBlockchains(ctx)
-	if err != nil {
-		return "", "", err
-	}
-	for _, chain := range blockChains {
-		if chain.Name == chainName {
-			return chain.SubnetID.String(), chain.ID.String(), nil
-		}
-	}
-	return "", "", fmt.Errorf("%s not found on primary network blockchains", chainName)
-}
-
 func deployTeleporter(cmd *cobra.Command, args []string) error {
 	teleporterContractAddress := "0xF7cBd95f1355f0d8d659864b92e2e9fbfaB786f7"
 	registryMap := map[string]string{
 		"C-Chain": "0x17aB05351fC94a1a67Bf3f56DdbB941aE6c63E25",
 		"pp1":     "0xcb65EF152B10ae00500EfDC7E4CD20358e64b233",
 	}
-	subnetID, blockchainID, err := getChainIDs(constants.LocalAPIEndpoint, "C-Chain")
+	subnetID, blockchainID, err := subnet.GetChainIDs(constants.LocalAPIEndpoint, "C-Chain")
 	if err != nil {
 		return err
 	}
@@ -67,7 +48,7 @@ func deployTeleporter(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	subnetID, blockchainID, err = getChainIDs(constants.LocalAPIEndpoint, "pp1")
+	subnetID, blockchainID, err = subnet.GetChainIDs(constants.LocalAPIEndpoint, "pp1")
 	if err != nil {
 		return err
 	}

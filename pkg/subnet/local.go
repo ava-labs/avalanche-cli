@@ -1002,3 +1002,19 @@ func CheckNodeIsInSubnetValidators(subnetID ids.ID, nodeID string) (bool, error)
 	}
 	return false, nil
 }
+
+func GetChainIDs(endpoint string, chainName string) (string, string, error) {
+	pClient := platformvm.NewClient(endpoint)
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	blockChains, err := pClient.GetBlockchains(ctx)
+	if err != nil {
+		return "", "", err
+	}
+	for _, chain := range blockChains {
+		if chain.Name == chainName {
+			return chain.SubnetID.String(), chain.ID.String(), nil
+		}
+	}
+	return "", "", fmt.Errorf("%s not found on primary network blockchains", chainName)
+}
