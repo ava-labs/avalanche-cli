@@ -79,7 +79,7 @@ func (t *Deployer) Deploy(
 	if err != nil {
 		return "", "", err
 	}
-	if err := FundAWMRelayer(rpcURL, prefundedPrivateKey); err != nil {
+	if err := FundRelayer(rpcURL, prefundedPrivateKey); err != nil {
 		return "", "", err
 	}
 	return messengerAddress, registryAddress, nil

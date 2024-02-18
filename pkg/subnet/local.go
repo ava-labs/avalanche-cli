@@ -570,7 +570,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			return ids.Empty, ids.Empty, err
 		}
 		fmt.Println()
-		if err := teleporter.DeployAWMRelayer(d.app, sc.AWMRelayerVersion, network, nil, "pepe"); err != nil {
+		if err := teleporter.DeployRelayer(d.app, sc.AWMRelayerVersion, network, nil, "pepe"); err != nil {
 			return ids.Empty, ids.Empty, err
 		}
 	}

@@ -3,6 +3,8 @@
 package subnetcmd
 
 import (
+	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
@@ -26,35 +28,8 @@ func newTeleporterCmd() *cobra.Command {
 	return cmd
 }
 
-/*
-Loading EWOQ key
-Teleporter Messenger successfully deployed to c-chain (0xF7cBd95f1355f0d8d659864b92e2e9fbfaB786f7)
-Teleporter Registry successfully deployed to c-chain (0x17aB05351fC94a1a67Bf3f56DdbB941aE6c63E25)
-
-Loading pp1-teleporter-thexl key
-Teleporter Messenger successfully deployed to pp1 (0xF7cBd95f1355f0d8d659864b92e2e9fbfaB786f7)
-Teleporter Registry successfully deployed to pp1 (0xcb65EF152B10ae00500EfDC7E4CD20358e64b233)
-
-AWM-Relayer v0.2.12 is already installed
-
-Blockchain ready to use. Local network node endpoints:
-+-------+-----+-------------------------------------------------------------------------------------+--------------------------------------+
-| NODE  | VM  |                                         URL                                         |              ALIAS URL               |
-+-------+-----+-------------------------------------------------------------------------------------+--------------------------------------+
-| node1 | pp1 | http://127.0.0.1:9650/ext/bc/2iH9UhEo9JhV68VhkNQ7kbp3vhTLaGBs8JbLBy4QkMtbZveNCe/rpc | http://127.0.0.1:9650/ext/bc/pp1/rpc |
-+-------+-----+-------------------------------------------------------------------------------------+--------------------------------------+
-| node2 | pp1 | http://127.0.0.1:9652/ext/bc/2iH9UhEo9JhV68VhkNQ7kbp3vhTLaGBs8JbLBy4QkMtbZveNCe/rpc | http://127.0.0.1:9652/ext/bc/pp1/rpc |
-+-------+-----+-------------------------------------------------------------------------------------+--------------------------------------+
-| node3 | pp1 | http://127.0.0.1:9654/ext/bc/2iH9UhEo9JhV68VhkNQ7kbp3vhTLaGBs8JbLBy4QkMtbZveNCe/rpc | http://127.0.0.1:9654/ext/bc/pp1/rpc |
-+-------+-----+-------------------------------------------------------------------------------------+--------------------------------------+
-| node4 | pp1 | http://127.0.0.1:9656/ext/bc/2iH9UhEo9JhV68VhkNQ7kbp3vhTLaGBs8JbLBy4QkMtbZveNCe/rpc | http://127.0.0.1:9656/ext/bc/pp1/rpc |
-+-------+-----+-------------------------------------------------------------------------------------+--------------------------------------+
-| node5 | pp1 | http://127.0.0.1:9658/ext/bc/2iH9UhEo9JhV68VhkNQ7kbp3vhTLaGBs8JbLBy4QkMtbZveNCe/rpc | http://127.0.0.1:9658/ext/bc/pp1/rpc |
-+-------+-----+-------------------------------------------------------------------------------------+--------------------------------------+
-*/
-
-func getSubnetInfos(endpoint string, registryMap map[string]string) ([]teleporter.AWMRelayerSubnetInfo, error) {
-	subnetsInfo := []teleporter.AWMRelayerSubnetInfo{}
+func getSubnetInfos(endpoint string, registryMap map[string]string) ([]teleporter.RelayerSubnetInfo, error) {
+	subnetsInfo := []teleporter.RelayerSubnetInfo{}
 	pClient := platformvm.NewClient(endpoint)
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
@@ -66,7 +41,7 @@ func getSubnetInfos(endpoint string, registryMap map[string]string) ([]teleporte
 		if chain.Name == "X-Chain" {
 			continue
 		}
-		subnetsInfo = append(subnetsInfo, teleporter.AWMRelayerSubnetInfo{
+		subnetsInfo = append(subnetsInfo, teleporter.RelayerSubnetInfo{
 			SubnetID:                  chain.SubnetID.String(),
 			BlockchainID:              chain.ID.String(),
 			TeleporterRegistryAddress: registryMap[chain.Name],
@@ -75,10 +50,40 @@ func getSubnetInfos(endpoint string, registryMap map[string]string) ([]teleporte
 	return subnetsInfo, nil
 }
 
+func getCChainSubnetInfo(endpoint string, teleporterRegistryAddress string) (*teleporter.RelayerSubnetInfo, error) {
+	pClient := platformvm.NewClient(endpoint)
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	blockChains, err := pClient.GetBlockchains(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, chain := range blockChains {
+		if chain.Name == "C-Chain" {
+			return &teleporter.RelayerSubnetInfo{
+				SubnetID:                  chain.SubnetID.String(),
+				BlockchainID:              chain.ID.String(),
+				TeleporterRegistryAddress: teleporterRegistryAddress,
+			}, nil
+		}
+	}
+	return nil, fmt.Errorf("C-Chain not found on primary network blockchains")
+}
+
 func deployTeleporter(cmd *cobra.Command, args []string) error {
-	subnetsInfo, err := getSubnetInfos(constants.LocalAPIEndpoint, map[string]string{})
+	teleporterContractAddress := "0xF7cBd95f1355f0d8d659864b92e2e9fbfaB786f7"
+	registryMap := map[string]string{
+		"C-Chain": "0x17aB05351fC94a1a67Bf3f56DdbB941aE6c63E25",
+		"pp1":     "0xcb65EF152B10ae00500EfDC7E4CD20358e64b233",
+	}
+	cChainSubnetInfo, err := getCChainSubnetInfo(constants.LocalAPIEndpoint, registryMap["C-Chain"])
 	if err != nil {
 		return err
 	}
-	return teleporter.DeployAWMRelayer(app, "v0.2.12", models.LocalNetwork, subnetsInfo, "0xF7cBd95f1355f0d8d659864b92e2e9fbfaB786f7")
+	_ = cChainSubnetInfo
+	subnetsInfo, err := getSubnetInfos(constants.LocalAPIEndpoint, registryMap)
+	if err != nil {
+		return err
+	}
+	return teleporter.DeployRelayer(app, "v0.2.12", models.LocalNetwork, subnetsInfo, teleporterContractAddress)
 }
