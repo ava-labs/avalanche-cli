@@ -8,6 +8,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/local"
@@ -50,7 +51,14 @@ func StopNetwork(*cobra.Command, []string) error {
 		ux.Logger.PrintToUser("Server shutdown gracefully")
 	}
 
-	return err
+	if err := teleporter.RelayerCleanup(
+		app.GetAWMRelayerRunPath(),
+		app.GetAWMRelayerStorageDir(),
+	); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func saveNetwork() error {

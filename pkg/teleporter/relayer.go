@@ -69,7 +69,7 @@ func DeployRelayer(
 	runFilePath string,
 	storageDir string,
 ) error {
-	if err := relayerCleanup(runFilePath, storageDir); err != nil {
+	if err := RelayerCleanup(runFilePath, storageDir); err != nil {
 		return err
 	}
 	binPath, err := installRelayer(version, binDir)
@@ -83,7 +83,7 @@ func DeployRelayer(
 	return saveRelayerRunFile(runFilePath, pid)
 }
 
-func relayerCleanup(runFilePath string, storageDir string) error {
+func RelayerCleanup(runFilePath string, storageDir string) error {
 	if err := os.RemoveAll(storageDir); err != nil {
 		return err
 	}
