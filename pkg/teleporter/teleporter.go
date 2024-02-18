@@ -71,9 +71,12 @@ func (t *Deployer) Deploy(
 	rpcURL string,
 	prefundedPrivateKey string,
 ) (string, string, error) {
-	messengerAddress, err := t.DeployMessenger(version, subnetName, rpcURL, prefundedPrivateKey)
+	alreadyDeployed, messengerAddress, err := t.DeployMessenger(version, subnetName, rpcURL, prefundedPrivateKey)
 	if err != nil {
 		return "", "", err
+	}
+	if alreadyDeployed {
+		return messengerAddress, "", nil
 	}
 	registryAddress, err := t.DeployRegistry(version, subnetName, rpcURL, prefundedPrivateKey)
 	if err != nil {
@@ -85,21 +88,21 @@ func (t *Deployer) Deploy(
 	return messengerAddress, registryAddress, nil
 }
 
-func (t *Deployer) DeployMessenger(version string, subnetName string, rpcURL string, prefundedPrivateKey string) (string, error) {
+func (t *Deployer) DeployMessenger(version string, subnetName string, rpcURL string, prefundedPrivateKey string) (bool, string, error) {
 	t.downloadAssets(version)
 	// check if contract is already deployed
 	teleporterMessengerAlreadyDeployed, err := evm.ContractAlreadyDeployed(rpcURL, t.teleporterMessengerContractAddress)
 	if err != nil {
-		return "", err
+		return false, "", err
 	}
 	if teleporterMessengerAlreadyDeployed {
 		ux.Logger.PrintToUser("Teleporter Messenger has already been deployed to %s", subnetName)
-		return t.teleporterMessengerContractAddress, nil
+		return true, t.teleporterMessengerContractAddress, nil
 	}
 	// get teleporter deployer balance
 	teleporterMessengerDeployerBalance, err := evm.GetAddressBalance(rpcURL, t.teleporterMessengerDeployerAddress)
 	if err != nil {
-		return "", err
+		return false, "", err
 	}
 	if teleporterMessengerDeployerBalance.Cmp(teleporterMessengerDeployerRequiredBalance) < 0 {
 		toFund := big.NewInt(0).Sub(teleporterMessengerDeployerRequiredBalance, teleporterMessengerDeployerBalance)
@@ -110,14 +113,14 @@ func (t *Deployer) DeployMessenger(version string, subnetName string, rpcURL str
 			toFund,
 		)
 		if err != nil {
-			return "", err
+			return false, "", err
 		}
 	}
 	if err := evm.IssueTx(rpcURL, t.teleporterMessengerDeployerTx); err != nil {
-		return "", err
+		return false, "", err
 	}
 	ux.Logger.PrintToUser("Teleporter Messenger successfully deployed to %s (%s)", subnetName, t.teleporterMessengerContractAddress)
-	return t.teleporterMessengerContractAddress, nil
+	return false, t.teleporterMessengerContractAddress, nil
 }
 
 func (t *Deployer) DeployRegistry(version string, subnetName string, rpcURL string, prefundedPrivateKey string) (string, error) {
