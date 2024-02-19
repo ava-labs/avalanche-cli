@@ -21,6 +21,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
@@ -37,34 +38,32 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-const (
-	avalancheGoReferenceChoiceLatest = "latest"
-	avalancheGoReferenceChoiceSubnet = "subnet"
-	avalancheGoReferenceChoiceCustom = "custom"
-)
-
 var (
-	createOnFuji                    bool
-	createDevnet                    bool
-	createOnMainnet                 bool
-	useAWS                          bool
-	useGCP                          bool
-	cmdLineRegion                   []string
-	authorizeAccess                 bool
-	numNodes                        []int
-	nodeType                        string
-	existingMonitoringInstance      string
-	useLatestAvalanchegoVersion     bool
-	useCustomAvalanchegoVersion     string
-	useAvalanchegoVersionFromSubnet string
-	cmdLineGCPCredentialsPath       string
-	cmdLineGCPProjectName           string
-	cmdLineAlternativeKeyPairName   string
-	useSSHAgent                     bool
-	sshIdentity                     string
-	setUpMonitoring                 bool
-	skipMonitoring                  bool
-	devnetNumAPINodes               int
+	createOnFuji                          bool
+	createDevnet                          bool
+	createOnMainnet                       bool
+	useAWS                                bool
+	useGCP                                bool
+	cmdLineRegion                         []string
+	authorizeAccess                       bool
+	numNodes                              []int
+	nodeType                              string
+	existingMonitoringInstance            string
+	useLatestAvalanchegoReleaseVersion    bool
+	useLatestAvalanchegoPreReleaseVersion bool
+	useCustomAvalanchegoVersion           string
+	useAvalanchegoVersionFromSubnet       string
+	cmdLineGCPCredentialsPath             string
+	cmdLineGCPProjectName                 string
+	cmdLineAlternativeKeyPairName         string
+	useSSHAgent                           bool
+	sshIdentity                           string
+	setUpMonitoring                       bool
+	skipMonitoring                        bool
+	devnetNumAPINodes                     int
+	versionComments                       = map[string]string{
+		"v1.11.0-fuji": " (recommended for fuji durango)",
+	}
 )
 
 func newCreateCmd() *cobra.Command {
@@ -96,7 +95,8 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to create cloud resources")
 	cmd.Flags().IntSliceVar(&numNodes, "num-nodes", []int{}, "number of nodes to create per region(s). Use comma to separate multiple numbers for each region in the same order as --region flag")
 	cmd.Flags().StringVar(&nodeType, "node-type", "", "cloud instance type. Use 'default' to use recommended default instance type")
-	cmd.Flags().BoolVar(&useLatestAvalanchegoVersion, "latest-avalanchego-version", false, "install latest avalanchego version on node/s")
+	cmd.Flags().BoolVar(&useLatestAvalanchegoReleaseVersion, "latest-avalanchego-version", false, "install latest avalanchego release version on node/s")
+	cmd.Flags().BoolVar(&useLatestAvalanchegoPreReleaseVersion, "latest-avalanchego-pre-release-version", false, "install latest avalanchego pre-release version on node/s")
 	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
 	cmd.Flags().StringVar(&useAvalanchegoVersionFromSubnet, "avalanchego-version-from-subnet", "", "install latest avalanchego version, that is compatible with the given subnet, on node/s")
 	cmd.Flags().StringVar(&cmdLineGCPCredentialsPath, "gcp-credentials", "", "use given GCP credentials")
@@ -115,8 +115,8 @@ will apply to all nodes in the cluster`,
 }
 
 func preCreateChecks() error {
-	if !flags.EnsureMutuallyExclusive([]bool{useLatestAvalanchegoVersion, useAvalanchegoVersionFromSubnet != "", useCustomAvalanchegoVersion != ""}) {
-		return fmt.Errorf("latest avalanchego version, custom avalanchego version and avalanchego version based on given subnet, are mutually exclusive options")
+	if !flags.EnsureMutuallyExclusive([]bool{useLatestAvalanchegoReleaseVersion, useLatestAvalanchegoPreReleaseVersion, useAvalanchegoVersionFromSubnet != "", useCustomAvalanchegoVersion != ""}) {
+		return fmt.Errorf("latest avalanchego released version, latest avalanchego pre-released version, custom avalanchego version and avalanchego version based on given subnet, are mutually exclusive options")
 	}
 	if useAWS && useGCP {
 		return fmt.Errorf("could not use both AWS and GCP cloud options")
@@ -164,6 +164,10 @@ func createNodes(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	avalancheGoVersion, err := getAvalancheGoVersion()
+	if err != nil {
+		return err
+	}
 	cloudService, err := setCloudService()
 	if err != nil {
 		return err
@@ -440,10 +444,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	avalancheGoVersion, err := getAvalancheGoVersion()
-	if err != nil {
-		return err
-	}
 	if err = ansible.CreateAnsibleHostInventory(inventoryPath, "", cloudService, publicIPMap, cloudConfigMap); err != nil {
 		return err
 	}
@@ -892,41 +892,45 @@ func provideStakingCertAndKey(host *models.Host) error {
 // or if they want to use the newest Avalanche Go Version that is still compatible with Subnet EVM
 // version of their choice
 func getAvalancheGoVersion() (string, error) {
-	version := ""
-	subnet := ""
-	if useLatestAvalanchegoVersion { //nolint: gocritic
-		version = "latest"
-	} else if useCustomAvalanchegoVersion != "" {
+	latestReleaseVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+		constants.AvaLabsOrg,
+		constants.AvalancheGoRepoName,
+	))
+	if err != nil {
+		return "", err
+	}
+	latestPreReleaseVersion, err := app.Downloader.GetLatestPreReleaseVersion(
+		constants.AvaLabsOrg,
+		constants.AvalancheGoRepoName,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	if !useLatestAvalanchegoReleaseVersion && !useLatestAvalanchegoPreReleaseVersion && useCustomAvalanchegoVersion == "" && useAvalanchegoVersionFromSubnet == "" {
+		err := promptAvalancheGoVersionChoice(latestReleaseVersion, latestPreReleaseVersion)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	var version string
+	switch {
+	case useLatestAvalanchegoReleaseVersion:
+		version = latestReleaseVersion
+	case useLatestAvalanchegoPreReleaseVersion:
+		version = latestPreReleaseVersion
+	case useCustomAvalanchegoVersion != "":
 		if !semver.IsValid(useCustomAvalanchegoVersion) {
 			return "", errors.New("custom avalanchego version must be a legal semantic version (ex: v1.1.1)")
 		}
 		version = useCustomAvalanchegoVersion
-	} else if useAvalanchegoVersionFromSubnet != "" {
-		subnet = useAvalanchegoVersionFromSubnet
-	} else {
-		choice, subnetChoice, err := promptAvalancheGoReferenceChoice()
+	case useAvalanchegoVersionFromSubnet != "":
+		sc, err := app.LoadSidecar(useAvalanchegoVersionFromSubnet)
 		if err != nil {
 			return "", err
 		}
-		switch choice {
-		case avalancheGoReferenceChoiceLatest:
-			version = "latest"
-		case avalancheGoReferenceChoiceCustom:
-			customVersion, err := app.Prompt.CaptureVersion("Which version of AvalancheGo would you like to install? (Use format v1.10.13)")
-			if err != nil {
-				return "", err
-			}
-			version = customVersion
-		case avalancheGoReferenceChoiceSubnet:
-			subnet = subnetChoice
-		}
-	}
-	if subnet != "" {
-		sc, err := app.LoadSidecar(subnet)
-		if err != nil {
-			return "", err
-		}
-		version, err = GetLatestAvagoVersionForRPC(sc.RPCVersion)
+		version, err = GetLatestAvagoVersionForRPC(sc.RPCVersion, latestPreReleaseVersion)
 		if err != nil {
 			return "", err
 		}
@@ -934,45 +938,62 @@ func getAvalancheGoVersion() (string, error) {
 	return version, nil
 }
 
-func GetLatestAvagoVersionForRPC(configuredRPCVersion int) (string, error) {
+func GetLatestAvagoVersionForRPC(configuredRPCVersion int, latestPreReleaseVersion string) (string, error) {
 	desiredAvagoVersion, err := vm.GetLatestAvalancheGoByProtocolVersion(
 		app, configuredRPCVersion, constants.AvalancheGoCompatibilityURL)
+	if err == vm.ErrNoAvagoVersion {
+		ux.Logger.PrintToUser("No Avago version found for subnet. Defaulting to latest pre-release version")
+		return latestPreReleaseVersion, nil
+	}
 	if err != nil {
 		return "", err
 	}
 	return desiredAvagoVersion, nil
 }
 
-// promptAvalancheGoReferenceChoice returns user's choice of either using the latest Avalanche Go
+// promptAvalancheGoVersionChoice sets flags for either using the latest Avalanche Go
 // version or using the latest Avalanche Go version that is still compatible with the subnet that user
 // wants the cloud server to track
-func promptAvalancheGoReferenceChoice() (string, string, error) {
-	defaultVersion := "Use latest Avalanche Go Version"
+func promptAvalancheGoVersionChoice(latestReleaseVersion string, latestPreReleaseVersion string) error {
+	latestReleaseVersionOption := "Use latest Avalanche Go Release Version" + versionComments[latestReleaseVersion]
+	latestPreReleaseVersionOption := "Use latest Avalanche Go Pre-release Version" + versionComments[latestPreReleaseVersion]
+	subnetBasedVersionOption := "Use the deployed Subnet's VM version that the node will be validating"
+	customOption := "Custom"
+
 	txt := "What version of Avalanche Go would you like to install in the node?"
-	versionOptions := []string{defaultVersion, "Use the deployed Subnet's VM version that the node will be validating", "Custom"}
+	versionOptions := []string{latestReleaseVersionOption, subnetBasedVersionOption, customOption}
+	if latestPreReleaseVersion != latestReleaseVersion {
+		versionOptions = []string{latestPreReleaseVersionOption, latestReleaseVersionOption, subnetBasedVersionOption, customOption}
+	}
 	versionOption, err := app.Prompt.CaptureList(txt, versionOptions)
 	if err != nil {
-		return "", "", err
+		return err
 	}
 
 	switch versionOption {
-	case defaultVersion:
-		return avalancheGoReferenceChoiceLatest, "", nil
-	case "Custom":
-		return avalancheGoReferenceChoiceCustom, "", nil
+	case latestReleaseVersionOption:
+		useLatestAvalanchegoReleaseVersion = true
+	case latestPreReleaseVersionOption:
+		useLatestAvalanchegoPreReleaseVersion = true
+	case customOption:
+		useCustomAvalanchegoVersion, err = app.Prompt.CaptureVersion("Which version of AvalancheGo would you like to install? (Use format v1.10.13)")
+		if err != nil {
+			return err
+		}
 	default:
 		for {
-			subnetName, err := app.Prompt.CaptureString("Which Subnet would you like to use to choose the avalanche go version?")
+			useAvalanchegoVersionFromSubnet, err = app.Prompt.CaptureString("Which Subnet would you like to use to choose the avalanche go version?")
 			if err != nil {
-				return "", "", err
+				return err
 			}
-			_, err = subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName})
+			_, err = subnetcmd.ValidateSubnetNameAndGetChains([]string{useAvalanchegoVersionFromSubnet})
 			if err == nil {
-				return avalancheGoReferenceChoiceSubnet, subnetName, nil
+				break
 			}
-			ux.Logger.PrintToUser(fmt.Sprintf("no subnet named %s found", subnetName))
+			ux.Logger.PrintToUser(fmt.Sprintf("no subnet named %s found", useAvalanchegoVersionFromSubnet))
 		}
 	}
+	return nil
 }
 
 func setCloudService() (string, error) {
