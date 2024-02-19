@@ -557,6 +557,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	endpoint := GetFirstEndpoint(clusterInfo, chain)
 	endpointRpcURL := endpoint[strings.LastIndex(endpoint, "http"):]
 
+	var teleporterKeyAddress string
 	if sc.TeleporterReady {
 		network := models.LocalNetwork
 		td := teleporter.Deployer{}
@@ -591,6 +592,10 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		ux.Logger.PrintToUser("Loading %s key", sc.TeleporterKey)
 		keyPath := d.app.GetKeyPath(sc.TeleporterKey)
 		k, err = key.LoadSoft(network.ID, keyPath)
+		if err != nil {
+			return ids.Empty, ids.Empty, err
+		}
+		teleporterKeyAddress = k.C()
 		privKeyStr = "0x" + hex.EncodeToString(k.Raw())
 		messengerAddress, registryAddress, err = td.Deploy(sc.TeleporterVersion, chain, endpointRpcURL, privKeyStr)
 		if err != nil {
@@ -633,7 +638,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	ux.Logger.PrintToUser("RPC URL:          %s", endpoint[strings.LastIndex(endpoint, "http"):])
 
 	if sc.VM == models.SubnetEvm {
-		if err := d.printExtraEvmInfo(chain, chainGenesis); err != nil {
+		if err := d.printExtraEvmInfo(chain, chainGenesis, teleporterKeyAddress); err != nil {
 			// not supposed to happen due to genesis pre validation
 			return ids.Empty, ids.Empty, nil
 		}
@@ -650,7 +655,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	return subnetID, blockchainID, nil
 }
 
-func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte) error {
+func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte, teleporterKeyAddress string) error {
 	var evmGenesis core.Genesis
 	if err := json.Unmarshal(chainGenesis, &evmGenesis); err != nil {
 		return fmt.Errorf("failed to unmarshall genesis: %w", err)
@@ -660,7 +665,7 @@ func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte) err
 		formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
 		if address == vm.PrefundedEwoqAddress {
 			ux.Logger.PrintToUser("Funded address:   %s with %s (10^18) - private key: %s", address, formattedAmount.String(), vm.PrefundedEwoqPrivate)
-		} else {
+		} else if address.Hex() != teleporterKeyAddress {
 			ux.Logger.PrintToUser("Funded address:   %s with %s", address, formattedAmount.String())
 		}
 	}

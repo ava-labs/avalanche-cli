@@ -224,17 +224,25 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		if !isSubnetEVMGenesis {
 			return fmt.Errorf("teleporter is not supported yet for non Subnet-EVM virtual machines")
 		}
-		teleporterKeyName := subnetName + "-teleporter-" + utils.RandomString(5)
-		ux.Logger.PrintToUser("generating stored key %q for teleporter deploys", teleporterKeyName)
-		k, err := key.NewSoft(0)
-		if err != nil {
-			return err
+		keyPath := app.GetKeyPath(constants.TeleporterKeyName)
+		var k *key.SoftKey
+		if utils.FileExists(keyPath) {
+			ux.Logger.PrintToUser("loading stored key %q for teleporter deploys", constants.TeleporterKeyName)
+			k, err = key.LoadSoft(models.LocalNetwork.ID, keyPath)
+			if err != nil {
+				return err
+			}
+		} else {
+			ux.Logger.PrintToUser("generating stored key %q for teleporter deploys", constants.TeleporterKeyName)
+			k, err = key.NewSoft(0)
+			if err != nil {
+				return err
+			}
+			if err := k.Save(keyPath); err != nil {
+				return err
+			}
 		}
-		keyPath := app.GetKeyPath(teleporterKeyName)
-		if err := k.Save(keyPath); err != nil {
-			return err
-		}
-		ux.Logger.PrintToUser("  (address, balance) = (%s, %v)", k.C(), teleporter.TeleporterPrefundedAddressBalance)
+		ux.Logger.PrintToUser("  (evm address, genesis balance) = (%s, %v)", k.C(), teleporter.TeleporterPrefundedAddressBalance)
 		genesisBytes, err = addSubnetEVMGenesisPrefundedAddress(genesisBytes, k.C(), teleporter.TeleporterPrefundedAddressBalance.String())
 		if err != nil {
 			return err
@@ -246,7 +254,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		}
 		ux.Logger.PrintToUser("using latest teleporter version (%s)", teleporterVersion)
 		sc.TeleporterReady = true
-		sc.TeleporterKey = teleporterKeyName
+		sc.TeleporterKey = constants.TeleporterKeyName
 		sc.TeleporterVersion = teleporterVersion
 	}
 
