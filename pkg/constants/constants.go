@@ -214,6 +214,9 @@ const (
 	AWMRelayerLogFilename         = "awm-relayer.log"
 	AWMRelayerRunFilename         = "awm-relayer-process.json"
 
+	TeleporterKeyName             = "cli-teleporter-deployer"
+	AWMRelayerKeyName             = "cli-awm-relayer"
+
 	SubnetEVMBin = "subnet-evm"
 
 	DefaultNodeRunURL = "http://127.0.0.1:9650"

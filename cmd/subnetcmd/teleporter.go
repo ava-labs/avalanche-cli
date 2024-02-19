@@ -25,7 +25,6 @@ func newTeleporterCmd() *cobra.Command {
 func deployTeleporter(cmd *cobra.Command, args []string) error {
 	if err := teleporter.DeployRelayer(
 		app.GetAWMRelayerBinDir(),
-		"v0.2.12",
 		app.GetAWMRelayerConfigPath(),
 		app.GetAWMRelayerLogPath(),
 		app.GetAWMRelayerRunPath(),

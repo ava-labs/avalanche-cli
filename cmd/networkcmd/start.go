@@ -5,7 +5,6 @@ package networkcmd
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"path"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -20,7 +19,6 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/server"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/spf13/cobra"
-	"golang.org/x/mod/semver"
 )
 
 var (
@@ -154,22 +152,8 @@ func StartNetwork(*cobra.Command, []string) error {
 
 	if utils.FileExists(app.GetAWMRelayerConfigPath()) {
 		fmt.Println("")
-		versions := []string{}
-		fileInfos, err := ioutil.ReadDir(app.GetAWMRelayerBinDir())
-		if err != nil {
-			return err
-		}
-		for _, fileInfo := range fileInfos {
-			versions = append(versions, fileInfo.Name())
-		}
-		if len(versions) == 0 {
-			return fmt.Errorf("no relayer versions available")
-		}
-		semver.Sort(versions)
-		version := versions[len(versions)-1]
 		if err := teleporter.DeployRelayer(
 			app.GetAWMRelayerBinDir(),
-			version,
 			app.GetAWMRelayerConfigPath(),
 			app.GetAWMRelayerLogPath(),
 			app.GetAWMRelayerRunPath(),

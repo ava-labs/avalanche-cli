@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -63,7 +64,6 @@ type relayerRunFile struct {
 }
 
 func DeployRelayer(
-	version string,
 	binDir string,
 	configPath string,
 	logFilePath string,
@@ -73,7 +73,14 @@ func DeployRelayer(
 	if err := RelayerCleanup(runFilePath, storageDir); err != nil {
 		return err
 	}
-	binPath, err := installRelayer(version, binDir)
+	downloader := application.NewDownloader()
+	version, err := downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.AWMRelayerRepoName))
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("using latest awm-relayer version (%s)", version)
+	versionBinDir := filepath.Join(binDir, version)
+	binPath, err := installRelayer(versionBinDir, version)
 	if err != nil {
 		return err
 	}
@@ -138,7 +145,7 @@ func saveRelayerRunFile(runFilePath string, pid int) error {
 }
 
 func installRelayer(binDir, version string) (string, error) {
-	binPath := filepath.Join(binDir, version, constants.AWMRelayerBin)
+	binPath := filepath.Join(binDir, constants.AWMRelayerBin)
 	if utils.IsExecutable(binPath) {
 		return binPath, nil
 	}

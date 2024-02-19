@@ -615,7 +615,6 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		// start relayer
 		if err := teleporter.DeployRelayer(
 			d.app.GetAWMRelayerBinDir(),
-			sc.AWMRelayerVersion,
 			d.app.GetAWMRelayerConfigPath(),
 			d.app.GetAWMRelayerLogPath(),
 			d.app.GetAWMRelayerRunPath(),
