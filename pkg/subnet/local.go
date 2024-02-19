@@ -561,6 +561,11 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	if sc.TeleporterReady {
 		network := models.LocalNetwork
 		td := teleporter.Deployer{}
+		// get relayer address info
+		relayerAddress, relayerPrivateKey, err := teleporter.GetRelayerKeyInfo(d.app.GetKeyDir())
+		if err != nil {
+			return ids.Empty, ids.Empty, err
+		}
 		// deploy C-Chain
 		fmt.Println()
 		k, err := key.LoadEwoq(network.ID)
@@ -579,6 +584,8 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		if err = teleporter.UpdateRelayerConfig(
 			d.app.GetAWMRelayerConfigPath(),
 			d.app.GetAWMRelayerStorageDir(),
+			relayerAddress,
+			relayerPrivateKey,
 			network,
 			subnetID,
 			blockchainID,
@@ -608,6 +615,8 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		if err = teleporter.UpdateRelayerConfig(
 			d.app.GetAWMRelayerConfigPath(),
 			d.app.GetAWMRelayerStorageDir(),
+			relayerAddress,
+			relayerPrivateKey,
 			network,
 			subnetID,
 			blockchainID,
@@ -617,6 +626,10 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			return ids.Empty, ids.Empty, err
 		}
 		fmt.Println()
+		// fund relayer on current blockchain
+		if err := teleporter.FundRelayer(endpointRpcURL, privKeyStr, relayerAddress); err != nil {
+			return ids.Empty, ids.Empty, err
+		}
 		// start relayer
 		if err := teleporter.DeployRelayer(
 			d.app.GetAWMRelayerBinDir(),

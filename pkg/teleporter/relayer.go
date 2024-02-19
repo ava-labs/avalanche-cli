@@ -1,8 +1,9 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2022, Ava Labs, Inc. All rights reserved
 // See the file LICENSE for licensing terms.
 package teleporter
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -18,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -26,18 +28,37 @@ import (
 	offchainregistry "github.com/ava-labs/awm-relayer/messages/off-chain-registry"
 )
 
-const (
-	teleporterRelayerPrivateKey = "C2CE4E001B7585F543982A01FBC537CFF261A672FA8BD1FAFC08A207098FE2DE"
-	teleporterRelayerAddress    = "0xA100fF48a37cab9f87c8b5Da933DA46ea1a5fb80"
-)
+var teleporterRelayerRequiredBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(500)) // 500 AVAX
 
-var (
-	teleporterRelayerRequiredBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(500)) // 500 AVAX
-)
+func GetRelayerKeyInfo(keyDir string) (string, string, error) {
+	keyPath := filepath.Join(keyDir, constants.AWMRelayerKeyName)
+	var (
+		k   *key.SoftKey
+		err error
+	)
+	if utils.FileExists(keyPath) {
+		ux.Logger.PrintToUser("loading stored key %q for relayer ops", constants.AWMRelayerKeyName)
+		k, err = key.LoadSoft(models.LocalNetwork.ID, keyPath)
+		if err != nil {
+			return "", "", err
+		}
+	} else {
+		ux.Logger.PrintToUser("generating stored key %q for relayer ops", constants.AWMRelayerKeyName)
+		k, err = key.NewSoft(0)
+		if err != nil {
+			return "", "", err
+		}
+		if err := k.Save(keyPath); err != nil {
+			return "", "", err
+		}
+	}
+	return k.C(), hex.EncodeToString(k.Raw()), nil
+}
 
 func FundRelayer(
 	rpcURL string,
 	prefundedPrivateKey string,
+	teleporterRelayerAddress string,
 ) error {
 	// get teleporter relayer balance
 	teleporterRelayerBalance, err := evm.GetAddressBalance(rpcURL, teleporterRelayerAddress)
@@ -202,6 +223,8 @@ func getRelayerURL(version string) (string, error) {
 func UpdateRelayerConfig(
 	relayerConfigPath string,
 	relayerStorageDir string,
+	relayerAddress string,
+	relayerPrivateKey string,
 	network models.Network,
 	subnetID string,
 	blockchainID string,
@@ -237,8 +260,8 @@ func UpdateRelayerConfig(
 		blockchainID,
 		teleporterContractAddress,
 		teleporterRegistryAddress,
-		teleporterRelayerAddress,
-		teleporterRelayerPrivateKey,
+		relayerAddress,
+		relayerPrivateKey,
 	)
 	bs, err := json.MarshalIndent(awmRelayerConfig, "", "  ")
 	if err != nil {
