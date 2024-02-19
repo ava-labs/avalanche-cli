@@ -562,7 +562,8 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		network := models.LocalNetwork
 		td := teleporter.Deployer{}
 		// get relayer address info
-		relayerAddress, relayerPrivateKey, err := teleporter.GetRelayerKeyInfo(d.app.GetKeyDir())
+		fmt.Println()
+		relayerAddress, relayerPrivateKey, err := teleporter.GetRelayerKeyInfo(d.app.GetKeyPath(constants.AWMRelayerKeyName))
 		if err != nil {
 			return ids.Empty, ids.Empty, err
 		}

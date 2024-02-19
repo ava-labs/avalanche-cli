@@ -48,6 +48,7 @@ var (
 	xchain        bool
 	useNanoAvax   bool
 	ledgerIndices []uint
+	blockchainID  string
 )
 
 // avalanche subnet list
@@ -128,12 +129,19 @@ keys or for the ledger addresses associated to certain indices.`,
 		[]uint{},
 		"list ledger addresses for the given indices",
 	)
+	cmd.Flags().StringVar(
+		&blockchainID,
+		"blockchainID",
+		"",
+		"provide balance information for the given blockchain ID or blockchain alias (Subnet-evm only)",
+	)
 	return cmd
 }
 
-func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool) (
+func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool, blockchainID string) (
 	map[models.Network]platformvm.Client,
 	map[models.Network]avm.Client,
+	map[models.Network]ethclient.Client,
 	map[models.Network]ethclient.Client,
 	error,
 ) {
@@ -141,6 +149,7 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 	xClients := map[models.Network]avm.Client{}
 	pClients := map[models.Network]platformvm.Client{}
 	cClients := map[models.Network]ethclient.Client{}
+	evmClients := map[models.Network]ethclient.Client{}
 	for _, network := range networks {
 		if pchain {
 			pClients[network] = platformvm.NewClient(network.Endpoint)
@@ -151,11 +160,17 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 		if cchain {
 			cClients[network], err = ethclient.Dial(network.CChainEndpoint())
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, nil, nil, err
+			}
+		}
+		if blockchainID != "" {
+			evmClients[network], err = ethclient.Dial(network.BlockchainEndpoint(blockchainID))
+			if err != nil {
+				return nil, nil, nil, nil, err
 			}
 		}
 	}
-	return pClients, xClients, cClients, nil
+	return pClients, xClients, cClients, evmClients, nil
 }
 
 type addressInfo struct {
@@ -197,7 +212,7 @@ func listKeys(*cobra.Command, []string) error {
 		cchain = false
 		xchain = false
 	}
-	pClients, xClients, cClients, err := getClients(networks, pchain, cchain, xchain)
+	pClients, xClients, cClients, evmClients, err := getClients(networks, pchain, cchain, xchain, blockchainID)
 	if err != nil {
 		return err
 	}
@@ -211,7 +226,7 @@ func listKeys(*cobra.Command, []string) error {
 			return err
 		}
 	} else {
-		addrInfos, err = getStoredKeysInfo(pClients, xClients, cClients, networks, pchain, cchain, xchain)
+		addrInfos, err = getStoredKeysInfo(pClients, xClients, cClients, evmClients, networks, pchain, cchain, xchain)
 		if err != nil {
 			return err
 		}
@@ -224,6 +239,7 @@ func getStoredKeysInfo(
 	pClients map[models.Network]platformvm.Client,
 	xClients map[models.Network]avm.Client,
 	cClients map[models.Network]ethclient.Client,
+	evmClients map[models.Network]ethclient.Client,
 	networks []models.Network,
 	pchain bool,
 	cchain bool,
@@ -233,15 +249,16 @@ func getStoredKeysInfo(
 	if err != nil {
 		return nil, err
 	}
-	keyPaths := make([]string, len(files))
-	for i, f := range files {
+	keyPaths := []string{}
+	for _, f := range files {
 		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
-			keyPaths[i] = filepath.Join(app.GetKeyDir(), f.Name())
+			keyPaths = append(keyPaths, filepath.Join(app.GetKeyDir(), f.Name()))
 		}
 	}
 	addrInfos := []addressInfo{}
 	for _, keyPath := range keyPaths {
-		keyAddrInfos, err := getStoredKeyInfo(pClients, xClients, cClients, networks, keyPath, pchain, cchain, xchain)
+		fmt.Println("hola", keyPath)
+		keyAddrInfos, err := getStoredKeyInfo(pClients, xClients, cClients, evmClients, networks, keyPath, pchain, cchain, xchain)
 		if err != nil {
 			return nil, err
 		}
@@ -254,6 +271,7 @@ func getStoredKeyInfo(
 	pClients map[models.Network]platformvm.Client,
 	xClients map[models.Network]avm.Client,
 	cClients map[models.Network]ethclient.Client,
+	evmClients map[models.Network]ethclient.Client,
 	networks []models.Network,
 	keyPath string,
 	pchain bool,
@@ -267,9 +285,17 @@ func getStoredKeyInfo(
 		if err != nil {
 			return nil, err
 		}
+		if evmClients != nil {
+			cChainAddr := sk.C()
+			addrInfo, err := getEvmBasedChainAddrInfo("Subnet-Evm", evmClients, network, cChainAddr, "stored", keyName)
+			if err != nil {
+				return nil, err
+			}
+			addrInfos = append(addrInfos, addrInfo)
+		}
 		if cchain {
 			cChainAddr := sk.C()
-			addrInfo, err := getCChainAddrInfo(cClients, network, cChainAddr, "stored", keyName)
+			addrInfo, err := getEvmBasedChainAddrInfo("C-Chain", cClients, network, cChainAddr, "stored", keyName)
 			if err != nil {
 				return nil, err
 			}
@@ -402,7 +428,8 @@ func getXChainAddrInfo(
 	}, nil
 }
 
-func getCChainAddrInfo(
+func getEvmBasedChainAddrInfo(
+	chainName string,
 	cClients map[models.Network]ethclient.Client,
 	network models.Network,
 	cChainAddr string,
@@ -419,7 +446,7 @@ func getCChainAddrInfo(
 	return addressInfo{
 		kind:    kind,
 		name:    name,
-		chain:   "C-Chain (Ethereum hex format)",
+		chain:   fmt.Sprintf("%s (Ethereum hex format)", chainName),
 		address: cChainAddr,
 		balance: cChainBalance,
 		network: network.Name(),

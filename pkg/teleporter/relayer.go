@@ -30,20 +30,19 @@ import (
 
 var teleporterRelayerRequiredBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(500)) // 500 AVAX
 
-func GetRelayerKeyInfo(keyDir string) (string, string, error) {
-	keyPath := filepath.Join(keyDir, constants.AWMRelayerKeyName)
+func GetRelayerKeyInfo(keyPath string) (string, string, error) {
 	var (
 		k   *key.SoftKey
 		err error
 	)
 	if utils.FileExists(keyPath) {
-		ux.Logger.PrintToUser("loading stored key %q for relayer ops", constants.AWMRelayerKeyName)
+		ux.Logger.PrintToUser("Loading stored key %q for relayer ops", constants.AWMRelayerKeyName)
 		k, err = key.LoadSoft(models.LocalNetwork.ID, keyPath)
 		if err != nil {
 			return "", "", err
 		}
 	} else {
-		ux.Logger.PrintToUser("generating stored key %q for relayer ops", constants.AWMRelayerKeyName)
+		ux.Logger.PrintToUser("Generating stored key %q for relayer ops", constants.AWMRelayerKeyName)
 		k, err = key.NewSoft(0)
 		if err != nil {
 			return "", "", err

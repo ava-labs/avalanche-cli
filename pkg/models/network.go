@@ -95,7 +95,11 @@ func (n Network) Name() string {
 }
 
 func (n Network) CChainEndpoint() string {
-	return fmt.Sprintf("%s/ext/bc/%s/rpc", n.Endpoint, "C")
+	return n.BlockchainEndpoint("C")
+}
+
+func (n Network) BlockchainEndpoint(blockchainID string) string {
+	return fmt.Sprintf("%s/ext/bc/%s/rpc", n.Endpoint, blockchainID)
 }
 
 func (n Network) NetworkIDFlagValue() string {
