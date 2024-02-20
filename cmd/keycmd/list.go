@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -48,7 +49,7 @@ var (
 	xchain        bool
 	useNanoAvax   bool
 	ledgerIndices []uint
-	blockchainID  string
+	subnetName    string
 )
 
 // avalanche subnet list
@@ -130,15 +131,15 @@ keys or for the ledger addresses associated to certain indices.`,
 		"list ledger addresses for the given indices",
 	)
 	cmd.Flags().StringVar(
-		&blockchainID,
-		"blockchainID",
+		&subnetName,
+		"subnet",
 		"",
-		"provide balance information for the given blockchain ID or blockchain alias (Subnet-evm only)",
+		"provide balance information for the given subnet (Subnet-Evm based only)",
 	)
 	return cmd
 }
 
-func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool, blockchainID string) (
+func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool, subnetName string) (
 	map[models.Network]platformvm.Client,
 	map[models.Network]avm.Client,
 	map[models.Network]ethclient.Client,
@@ -163,10 +164,27 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 				return nil, nil, nil, nil, err
 			}
 		}
-		if blockchainID != "" {
-			evmClients[network], err = ethclient.Dial(network.BlockchainEndpoint(blockchainID))
+		if subnetName != "" {
+			_, err = subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName})
 			if err != nil {
 				return nil, nil, nil, nil, err
+			}
+			b, err := subnetcmd.HasSubnetEVMGenesis(subnetName)
+			if err != nil {
+				return nil, nil, nil, nil, err
+			}
+			if b {
+				sc, err := app.LoadSidecar(subnetName)
+				if err != nil {
+					return nil, nil, nil, nil, err
+				}
+				chainID := sc.Networks[network.Name()].BlockchainID
+				if chainID != ids.Empty {
+					evmClients[network], err = ethclient.Dial(network.BlockchainEndpoint(chainID.String()))
+					if err != nil {
+						return nil, nil, nil, nil, err
+					}
+				}
 			}
 		}
 	}
@@ -212,7 +230,7 @@ func listKeys(*cobra.Command, []string) error {
 		cchain = false
 		xchain = false
 	}
-	pClients, xClients, cClients, evmClients, err := getClients(networks, pchain, cchain, xchain, blockchainID)
+	pClients, xClients, cClients, evmClients, err := getClients(networks, pchain, cchain, xchain, subnetName)
 	if err != nil {
 		return err
 	}
@@ -257,7 +275,6 @@ func getStoredKeysInfo(
 	}
 	addrInfos := []addressInfo{}
 	for _, keyPath := range keyPaths {
-		fmt.Println("hola", keyPath)
 		keyAddrInfos, err := getStoredKeyInfo(pClients, xClients, cClients, evmClients, networks, keyPath, pchain, cchain, xchain)
 		if err != nil {
 			return nil, err
@@ -285,15 +302,15 @@ func getStoredKeyInfo(
 		if err != nil {
 			return nil, err
 		}
-		if evmClients != nil {
-			cChainAddr := sk.C()
-			addrInfo, err := getEvmBasedChainAddrInfo("Subnet-Evm", evmClients, network, cChainAddr, "stored", keyName)
+		if _, ok := evmClients[network]; ok {
+			evmAddr := sk.C()
+			addrInfo, err := getEvmBasedChainAddrInfo("Evm", evmClients, network, evmAddr, "stored", keyName)
 			if err != nil {
 				return nil, err
 			}
 			addrInfos = append(addrInfos, addrInfo)
 		}
-		if cchain {
+		if _, ok := cClients[network]; ok {
 			cChainAddr := sk.C()
 			addrInfo, err := getEvmBasedChainAddrInfo("C-Chain", cClients, network, cChainAddr, "stored", keyName)
 			if err != nil {
@@ -301,7 +318,7 @@ func getStoredKeyInfo(
 			}
 			addrInfos = append(addrInfos, addrInfo)
 		}
-		if pchain {
+		if _, ok := pClients[network]; ok {
 			pChainAddrs := sk.P()
 			for _, pChainAddr := range pChainAddrs {
 				addrInfo, err := getPChainAddrInfo(pClients, network, pChainAddr, "stored", keyName)
@@ -311,7 +328,7 @@ func getStoredKeyInfo(
 				addrInfos = append(addrInfos, addrInfo)
 			}
 		}
-		if xchain {
+		if _, ok := xClients[network]; ok {
 			xChainAddrs := sk.X()
 			for _, xChainAddr := range xChainAddrs {
 				addrInfo, err := getXChainAddrInfo(xClients, network, xChainAddr, "stored", keyName)
