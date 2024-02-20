@@ -244,7 +244,7 @@ func listKeys(*cobra.Command, []string) error {
 			return err
 		}
 	} else {
-		addrInfos, err = getStoredKeysInfo(pClients, xClients, cClients, evmClients, networks, pchain, cchain, xchain)
+		addrInfos, err = getStoredKeysInfo(pClients, xClients, cClients, evmClients, networks)
 		if err != nil {
 			return err
 		}
@@ -259,9 +259,6 @@ func getStoredKeysInfo(
 	cClients map[models.Network]ethclient.Client,
 	evmClients map[models.Network]ethclient.Client,
 	networks []models.Network,
-	pchain bool,
-	cchain bool,
-	xchain bool,
 ) ([]addressInfo, error) {
 	files, err := os.ReadDir(app.GetKeyDir())
 	if err != nil {
@@ -275,7 +272,7 @@ func getStoredKeysInfo(
 	}
 	addrInfos := []addressInfo{}
 	for _, keyPath := range keyPaths {
-		keyAddrInfos, err := getStoredKeyInfo(pClients, xClients, cClients, evmClients, networks, keyPath, pchain, cchain, xchain)
+		keyAddrInfos, err := getStoredKeyInfo(pClients, xClients, cClients, evmClients, networks, keyPath)
 		if err != nil {
 			return nil, err
 		}
@@ -291,9 +288,6 @@ func getStoredKeyInfo(
 	evmClients map[models.Network]ethclient.Client,
 	networks []models.Network,
 	keyPath string,
-	pchain bool,
-	cchain bool,
-	xchain bool,
 ) ([]addressInfo, error) {
 	addrInfos := []addressInfo{}
 	for _, network := range networks {
