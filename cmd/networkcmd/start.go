@@ -5,7 +5,7 @@ package networkcmd
 import (
 	"context"
 	"fmt"
-	"path"
+	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -107,7 +107,7 @@ func StartNetwork(*cobra.Command, []string) error {
 	}
 	ux.Logger.PrintToUser(startMsg)
 
-	outputDirPrefix := path.Join(app.GetRunDir(), "network")
+	outputDirPrefix := filepath.Join(app.GetRunDir(), "network")
 	outputDir, err := anrutils.MkDirWithTimestamp(outputDirPrefix)
 	if err != nil {
 		return err
@@ -150,11 +150,16 @@ func StartNetwork(*cobra.Command, []string) error {
 		ux.PrintTableEndpoints(resp.ClusterInfo)
 	}
 
-	if utils.FileExists(app.GetAWMRelayerConfigPath()) {
+	relayerStoredConfigPath := filepath.Join(app.GetAWMRelayerSnapshotConfsDir(), snapshotName+".json")
+	if utils.FileExists(relayerStoredConfigPath) {
+		relayerConfigPath := app.GetAWMRelayerConfigPath()
+		if err := binutils.CopyFile(relayerStoredConfigPath, relayerConfigPath); err != nil {
+			return err
+		}
 		fmt.Println("")
 		if err := teleporter.DeployRelayer(
 			app.GetAWMRelayerBinDir(),
-			app.GetAWMRelayerConfigPath(),
+			relayerConfigPath,
 			app.GetAWMRelayerLogPath(),
 			app.GetAWMRelayerRunPath(),
 			app.GetAWMRelayerStorageDir(),

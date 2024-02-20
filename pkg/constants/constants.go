@@ -217,6 +217,8 @@ const (
 	AWMRelayerLogFilename         = "awm-relayer.log"
 	AWMRelayerRunFilename         = "awm-relayer-process.json"
 
+	AWMRelayerSnapshotConfsDir = "relayer-confs"
+
 	TeleporterKeyName = "cli-teleporter-deployer"
 	AWMRelayerKeyName = "cli-awm-relayer"
 

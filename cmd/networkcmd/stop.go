@@ -5,6 +5,8 @@ package networkcmd
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -41,6 +43,17 @@ func StopNetwork(*cobra.Command, []string) error {
 	if err := saveNetwork(); errors.Is(err, binutils.ErrGRPCTimeout) {
 		// no server to kill
 		return nil
+	}
+
+	relayerConfigPath := app.GetAWMRelayerConfigPath()
+	if utils.FileExists(relayerConfigPath) {
+		relayerStoredConfigPath := filepath.Join(app.GetAWMRelayerSnapshotConfsDir(), snapshotName+".json")
+		if err := os.MkdirAll(filepath.Dir(relayerStoredConfigPath), constants.DefaultPerms755); err != nil {
+			return err
+		}
+		if err := os.Rename(relayerConfigPath, relayerStoredConfigPath); err != nil {
+			return fmt.Errorf("couldn't store relayer conf from %s into %s", relayerConfigPath, relayerStoredConfigPath)
+		}
 	}
 
 	var err error
