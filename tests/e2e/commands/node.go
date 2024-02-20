@@ -10,13 +10,15 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/onsi/gomega"
 )
 
 const e2eKeyPairName = "runner-avalanche-cli-keypair"
 
-func NodeCreate(network, version string, numNodes int) string {
+func NodeCreate(network, version string, numNodes int, separateMonitoring bool) string {
 	home, err := os.UserHomeDir()
 	gomega.Expect(err).Should(gomega.BeNil())
 	_, err = os.Open(filepath.Join(home, ".ssh", e2eKeyPairName))
@@ -35,6 +37,7 @@ func NodeCreate(network, version string, numNodes int) string {
 		constants.E2EClusterName,
 		"--use-static-ip=false",
 		cmdVersion,
+		"--separate-monitoring-instance="+strconv.FormatBool(separateMonitoring),
 		"--region=local",
 		"--num-nodes="+strconv.Itoa(numNodes),
 		"--"+network,
@@ -156,4 +159,26 @@ func NodeUpgrade() string {
 	fmt.Println("---------------->")
 	gomega.Expect(err).Should(gomega.BeNil())
 	return string(output)
+}
+
+type StaticConfig struct {
+	Targets []string `yaml:"targets"`
+}
+type ScrapeConfig struct {
+	JobName       string         `yaml:"job_name"`
+	StaticConfigs []StaticConfig `yaml:"static_configs"`
+}
+type PrometheusConfig struct {
+	ScrapeConfigs []ScrapeConfig `yaml:"scrape_configs"`
+}
+
+// ParsePrometheusYamlConfig parses prometheus config YAML file installed in separate monitoring
+// host in /etc/prometheus/prometheus.yml
+func ParsePrometheusYamlConfig(filePath string) PrometheusConfig {
+	data, err := os.ReadFile(filePath)
+	gomega.Expect(err).Should(gomega.BeNil())
+	var prometheusConfig PrometheusConfig
+	err = yaml.Unmarshal(data, &prometheusConfig)
+	gomega.Expect(err).Should(gomega.BeNil())
+	return prometheusConfig
 }

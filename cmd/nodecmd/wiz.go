@@ -33,22 +33,23 @@ const (
 )
 
 var (
-	forceSubnetCreate   bool
-	subnetGenesisFile   string
-	useEvmSubnet        bool
-	useCustomSubnet     bool
-	evmVersion          string
-	evmChainID          uint64
-	evmToken            string
-	evmDefaults         bool
-	useLatestEvmVersion bool
-	customVMRepoURL     string
-	customVMBranch      string
-	customVMBuildScript string
-	nodeConf            string
-	subnetConf          string
-	chainConf           string
-	validators          []string
+	forceSubnetCreate              bool
+	subnetGenesisFile              string
+	useEvmSubnet                   bool
+	useCustomSubnet                bool
+	evmVersion                     string
+	evmChainID                     uint64
+	evmToken                       string
+	evmDefaults                    bool
+	useLatestEvmReleasedVersion    bool
+	useLatestEvmPreReleasedVersion bool
+	customVMRepoURL                string
+	customVMBranch                 string
+	customVMBuildScript            string
+	nodeConf                       string
+	subnetConf                     string
+	chainConf                      string
+	validators                     []string
 )
 
 func newWizCmd() *cobra.Command {
@@ -84,7 +85,8 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().Uint64Var(&evmChainID, "evm-chain-id", 0, "chain ID to use with Subnet-EVM")
 	cmd.Flags().StringVar(&evmToken, "evm-token", "", "token name to use with Subnet-EVM")
 	cmd.Flags().BoolVar(&evmDefaults, "evm-defaults", false, "use default settings for fees/airdrop/precompiles with Subnet-EVM")
-	cmd.Flags().BoolVar(&useLatestEvmVersion, "latest-evm-version", false, "use latest Subnet-EVM version")
+	cmd.Flags().BoolVar(&useLatestEvmReleasedVersion, "latest-evm-version", false, "use latest Subnet-EVM released version")
+	cmd.Flags().BoolVar(&useLatestEvmPreReleasedVersion, "latest-pre-released-evm-version", false, "use latest Subnet-EVM pre-released version")
 	cmd.Flags().StringVar(&customVMRepoURL, "custom-vm-repo-url", "", "custom vm repository url")
 	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch")
 	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
@@ -93,7 +95,8 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&chainConf, "chain-config", "", "path to the chain configuration for subnet")
 	cmd.Flags().BoolVar(&useSSHAgent, "use-ssh-agent", false, "use ssh agent for ssh")
 	cmd.Flags().StringVar(&sshIdentity, "ssh-agent-identity", "", "use given ssh identity(only for ssh agent). If not set, default will be used.")
-	cmd.Flags().BoolVar(&useLatestAvalanchegoVersion, "latest-avalanchego", false, "install latest avalanchego version on node/s")
+	cmd.Flags().BoolVar(&useLatestAvalanchegoReleaseVersion, "latest-avalanchego-version", false, "install latest avalanchego release version on node/s")
+	cmd.Flags().BoolVar(&useLatestAvalanchegoPreReleaseVersion, "latest-avalanchego-pre-release-version", false, "install latest avalanchego pre-release version on node/s")
 	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "avalanchego-version", "", "install given avalanchego version on node/s")
 	cmd.Flags().StringSliceVar(&validators, "validators", []string{}, "deploy subnet into given comma separated list of validators. defaults to all cluster nodes")
 	cmd.Flags().BoolVar(&sameMonitoringInstance, "same-monitoring-instance", false, "host monitoring for a cloud servers on the same instance")
@@ -140,7 +143,8 @@ func wiz(cmd *cobra.Command, args []string) error {
 			evmChainID,
 			evmToken,
 			evmDefaults,
-			useLatestEvmVersion,
+			useLatestEvmReleasedVersion,
+			useLatestEvmPreReleasedVersion,
 			customVMRepoURL,
 			customVMBranch,
 			customVMBuildScript,

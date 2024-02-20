@@ -320,7 +320,6 @@ func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
 		return err
 	}
 	var vmBin string
-	var rpcVersion int
 	switch sc.VM {
 	// download the binary and prepare to copy it
 	case models.SubnetEvm:
@@ -328,21 +327,17 @@ func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
 		if err != nil {
 			return fmt.Errorf("failed to install subnet-evm: %w", err)
 		}
-
-		rpcVersion, err = vm.GetRPCProtocolVersion(app, models.SubnetEvm, targetVersion)
-		if err != nil {
-			return fmt.Errorf("unable to get RPC version: %w", err)
-		}
 	case models.CustomVM:
 		// get the path to the already copied binary
 		vmBin = binutils.SetupCustomBin(app, sc.Name)
 
-		rpcVersion, err = vm.GetVMBinaryProtocolVersion(vmBin)
-		if err != nil {
-			return fmt.Errorf("unable to get RPC version: %w", err)
-		}
 	default:
 		return errors.New("unknown VM type " + string(sc.VM))
+	}
+
+	rpcVersion, err := vm.GetVMBinaryProtocolVersion(vmBin)
+	if err != nil {
+		return fmt.Errorf("unable to get RPC version: %w", err)
 	}
 
 	// Update the binary in the plugin directory

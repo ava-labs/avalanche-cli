@@ -12,28 +12,36 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	"golang.org/x/exp/slices"
 )
 
 const (
 	avalanchegoVersion = "v1.10.18"
 	network            = "fuji"
 	networkCapitalized = "Fuji"
-	numNodes           = 1
+	numNodes           = 2
+	relativePath       = "nodes"
 )
 
 var (
-	hostName string
-	NodeID   string
+	hostName         string
+	NodeID           string
+	monitoringHostID string
+	createdHosts     []*models.Host
+	// host names without docker prefix
+	createdHostsFormatted []string
 )
 
-var _ = ginkgo.Describe("[Node create]", func() {
+var _ = ginkgo.Describe("[Node monitoring]", func() {
 	ginkgo.It("can create a node", func() {
-		output := commands.NodeCreate(network, avalanchegoVersion, numNodes, false)
+		output := commands.NodeCreate(network, avalanchegoVersion, numNodes, true)
 		fmt.Println(output)
 		gomega.Expect(output).To(gomega.ContainSubstring("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 		// parse hostName
@@ -50,31 +58,66 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		usr, err := user.Current()
 		gomega.Expect(err).Should(gomega.BeNil())
 		homeDir := usr.HomeDir
-		relativePath := "nodes"
 		content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.ClustersConfigFileName))
 		gomega.Expect(err).Should(gomega.BeNil())
 		clustersConfig := models.ClustersConfig{}
 		err = json.Unmarshal(content, &clustersConfig)
 		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(clustersConfig.Clusters).To(gomega.HaveLen(1))
 		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Network.Kind.String()).To(gomega.Equal(networkCapitalized))
 		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Nodes).To(gomega.HaveLen(numNodes))
+		monitoringHostID = clustersConfig.Clusters[constants.E2EClusterName].MonitoringInstance
+		createdHostsFormatted = append(createdHostsFormatted, clustersConfig.Clusters[constants.E2EClusterName].Nodes...)
 	})
-	ginkgo.It("creates node config", func() {
-		fmt.Println("HostName: ", hostName)
+	ginkgo.It("checks prometheus config in monitoring host", func() {
 		usr, err := user.Current()
 		gomega.Expect(err).Should(gomega.BeNil())
 		homeDir := usr.HomeDir
-		relativePath := "nodes"
-		content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, hostName, "node_cloud_config.json"))
+		monitoringHost, err := ansible.GetInventoryFromAnsibleInventoryFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.AnsibleInventoryDir, "e2e", "monitoring"))
 		gomega.Expect(err).Should(gomega.BeNil())
-		nodeCloudConfig := models.NodeConfig{}
-		err = json.Unmarshal(content, &nodeCloudConfig)
+		gomega.Expect(monitoringHost).To(gomega.HaveLen(1))
+		err = ssh.RunSSHDownloadNodePrometheusConfig(monitoringHost[0], filepath.Join(homeDir, constants.BaseDirName, relativePath, monitoringHostID))
 		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(nodeCloudConfig.NodeID).To(gomega.Equal(hostName))
-		gomega.Expect(nodeCloudConfig.ElasticIP).To(gomega.ContainSubstring(constants.E2ENetworkPrefix))
-		gomega.Expect(nodeCloudConfig.CertPath).To(gomega.ContainSubstring(homeDir))
-		gomega.Expect(nodeCloudConfig.UseStaticIP).To(gomega.Equal(false))
+		createdDockerHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.AnsibleInventoryDir, "e2e"))
+		gomega.Expect(err).Should(gomega.BeNil())
+		createdHosts = createdDockerHosts
+		hostavalancheGoPorts := []string{}
+		hostMachinePorts := []string{}
+		for _, host := range createdHosts {
+			hostavalancheGoPorts = append(hostavalancheGoPorts, fmt.Sprintf("%s:9650", host.IP))
+			hostMachinePorts = append(hostMachinePorts, fmt.Sprintf("%s:9100", host.IP))
+		}
+		prometheusConfig := commands.ParsePrometheusYamlConfig(filepath.Join(homeDir, constants.BaseDirName, relativePath, monitoringHostID, constants.NodePrometheusConfigFileName))
+		scrapeConfig := prometheusConfig.ScrapeConfigs
+		avalancheGoJob := "avalanchego"
+		avalancheGoMachineJob := "avalanchego-machine"
+		for _, newConfig := range scrapeConfig {
+			if newConfig.JobName == avalancheGoJob || newConfig.JobName == avalancheGoMachineJob {
+				targets := newConfig.StaticConfigs
+				dockerTarget := targets[0]
+				gomega.Expect(len(dockerTarget.Targets)).To(gomega.Equal(numNodes))
+				if newConfig.JobName == avalancheGoJob {
+					for _, host := range hostavalancheGoPorts {
+						gomega.Expect(slices.Contains(dockerTarget.Targets, host)).To(gomega.Equal(true))
+					}
+				} else {
+					for _, host := range hostMachinePorts {
+						gomega.Expect(slices.Contains(dockerTarget.Targets, host)).To(gomega.Equal(true))
+					}
+				}
+			}
+		}
+	})
+	ginkgo.It("verifies prometheus metrics configured on cluster hosts", func() {
+		for _, host := range createdHosts {
+			sshOutput := commands.NodeSSH(host.IP, "sudo systemctl status prometheus")
+			gomega.Expect(sshOutput).To(gomega.ContainSubstring("Active: active (running)"))
+		}
+	})
+	ginkgo.It("verifies node exporter metrics configured on cluster hosts", func() {
+		for _, host := range createdHosts {
+			sshOutput := commands.NodeSSH(host.IP, "sudo systemctl status node_exporter")
+			gomega.Expect(sshOutput).To(gomega.ContainSubstring("Active: active (running)"))
+		}
 	})
 	ginkgo.It("installs and runs avalanchego", func() {
 		avalancegoProcess := commands.NodeSSH(constants.E2EClusterName, "ps -elf")
@@ -92,6 +135,18 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		gomega.Expect(avalancegoConfig).To(gomega.ContainSubstring("public-ip"))
 		avalancegoConfigCChain := commands.NodeSSH(constants.E2EClusterName, "cat /home/ubuntu/.avalanchego/configs/chains/C/config.json")
 		gomega.Expect(avalancegoConfigCChain).To(gomega.ContainSubstring("\"state-sync-enabled\": true"))
+	})
+	ginkgo.It("provides avalanchego with staking certs", func() {
+		stakingFiles := commands.NodeSSH(constants.E2EClusterName, "ls /home/ubuntu/.avalanchego/staking/")
+		gomega.Expect(stakingFiles).To(gomega.ContainSubstring("signer.key"))
+		gomega.Expect(stakingFiles).To(gomega.ContainSubstring("staker.crt"))
+		gomega.Expect(stakingFiles).To(gomega.ContainSubstring("staker.key"))
+	})
+	ginkgo.It("installs and configures avalanche-cli on the node ", func() {
+		stakingFiles := commands.NodeSSH(constants.E2EClusterName, "cat /home/ubuntu/.avalanche-cli/config.json")
+		gomega.Expect(stakingFiles).To(gomega.ContainSubstring("\"metricsenabled\": false"))
+		avalanceCliVersion := commands.NodeSSH(constants.E2EClusterName, "/home/ubuntu/bin/avalanche --version")
+		gomega.Expect(avalanceCliVersion).To(gomega.ContainSubstring("avalanche version"))
 	})
 	ginkgo.It("can get cluster status", func() {
 		output := commands.NodeStatus()
@@ -125,18 +180,12 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		gomega.Expect(logs).To(gomega.ContainSubstring("creating proposervm wrapper"))
 		gomega.Expect(logs).To(gomega.ContainSubstring("check started passing"))
 	})
-	ginkgo.It("can upgrade the nodes", func() {
-		output := commands.NodeUpgrade()
-		fmt.Println(output)
-		gomega.Expect(output).To(gomega.ContainSubstring("Upgrading Avalanche Go"))
-		latestAvagoVersion := strings.TrimPrefix(commands.GetLatestAvagoVersionFromGithub(), "v")
-		avalanchegoVersion := commands.NodeSSH(constants.E2EClusterName, "/home/ubuntu/avalanche-node/avalanchego --version")
-		gomega.Expect(avalanchegoVersion).To(gomega.ContainSubstring("go="))
-		gomega.Expect(avalanchegoVersion).To(gomega.ContainSubstring("avalanchego/" + latestAvagoVersion))
-	})
 	ginkgo.It("can cleanup", func() {
 		commands.DeleteE2EInventory()
 		commands.DeleteE2ECluster()
-		commands.DeleteNode(hostName)
+		for _, host := range createdHostsFormatted {
+			commands.DeleteNode(host)
+		}
+		commands.DeleteNode(monitoringHostID)
 	})
 })
