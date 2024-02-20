@@ -955,23 +955,19 @@ func GetSubnetValidators(subnetID ids.ID) ([]platformvm.ClientPermissionlessVali
 	return pClient.GetCurrentValidators(ctx, subnetID, nil)
 }
 
-func CheckNodeIsInSubnetPendingValidators(subnetID ids.ID, nodeID string) (bool, error) {
+func CheckNodeIsInSubnetValidators(subnetID ids.ID, nodeID string) (bool, error) {
 	api := constants.LocalAPIEndpoint
 	pClient := platformvm.NewClient(api)
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 
-	pVals, _, err := pClient.GetPendingValidators(ctx, subnetID, nil)
+	vals, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
 	if err != nil {
 		return false, err
 	}
-	for _, iv := range pVals {
-		if v, ok := iv.(map[string]interface{}); ok {
-			// strictly this is not needed, as we are providing the nodeID as param
-			// just a double check
-			if v["nodeID"] == nodeID {
-				return true, nil
-			}
+	for _, v := range vals {
+		if v.NodeID.String() == nodeID {
+			return true, nil
 		}
 	}
 	return false, nil

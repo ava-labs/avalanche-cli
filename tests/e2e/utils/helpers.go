@@ -994,13 +994,13 @@ func GetCurrentSupply(subnetName string) error {
 	return subnet.GetCurrentSupply(subnetID)
 }
 
-func IsNodeInPendingValidator(subnetName string, nodeID string) (bool, error) {
+func IsNodeInValidators(subnetName string, nodeID string) (bool, error) {
 	sc, err := getSideCar(subnetName)
 	if err != nil {
 		return false, err
 	}
 	subnetID := sc.Networks[models.Local.String()].SubnetID
-	return subnet.CheckNodeIsInSubnetPendingValidators(subnetID, nodeID)
+	return subnet.CheckNodeIsInSubnetValidators(subnetID, nodeID)
 }
 
 func CheckAllNodesAreCurrentValidators(subnetName string) (bool, error) {

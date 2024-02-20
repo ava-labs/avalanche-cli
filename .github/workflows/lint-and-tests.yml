@@ -79,6 +79,8 @@ jobs:
             suite: "\\[Node devnet\\]"
           - os: macos-latest
             suite: "\\[Docker\\]"
+          - os: macos-latest
+            suite: "\\[Public Subnet\\]"
     steps:
       - name: Git checkout
         uses: actions/checkout@v3

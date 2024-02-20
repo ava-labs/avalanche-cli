@@ -175,7 +175,7 @@ func getNodesUpgradeInfo(hosts []*models.Host) (map[*models.Host]nodeUpgradeInfo
 					nodeUpgradeInfo.SubnetEVMIDsToUpgrade = append(nodeUpgradeInfo.SubnetEVMIDsToUpgrade, vmName)
 				}
 				// find the highest version of avalanche go that is still compatible with current highest rpc
-				avalancheGoVersionToUpdateTo, err = GetLatestAvagoVersionForRPC(rpcVersion)
+				avalancheGoVersionToUpdateTo, err = GetLatestAvagoVersionForRPC(rpcVersion, latestAvagoVersion)
 				if err != nil {
 					nodeErrors[hostID] = err
 					continue

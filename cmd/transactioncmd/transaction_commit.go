@@ -57,8 +57,9 @@ func commitTx(_ *cobra.Command, args []string) error {
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
+	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
 
-	controlKeys, _, err := txutils.GetOwners(network, subnetID)
+	controlKeys, _, err := txutils.GetOwners(network, subnetID, transferSubnetOwnershipTxID)
 	if err != nil {
 		return err
 	}
@@ -91,7 +92,13 @@ func commitTx(_ *cobra.Command, args []string) error {
 		if err := subnetcmd.PrintDeployResults(subnetName, subnetID, txID); err != nil {
 			return err
 		}
-		return app.UpdateSidecarNetworks(&sc, network, subnetID, txID)
+		return app.UpdateSidecarNetworks(&sc, network, subnetID, transferSubnetOwnershipTxID, txID)
+	}
+	if txutils.IsTransferSubnetOwnershipTx(tx) {
+		networkData := sc.Networks[network.Name()]
+		networkData.TransferSubnetOwnershipTxID = txID
+		sc.Networks[network.Name()] = networkData
+		return app.UpdateSidecar(&sc)
 	}
 	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID)
 

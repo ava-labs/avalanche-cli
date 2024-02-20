@@ -131,8 +131,9 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
+	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
 
-	controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
+	controlKeys, threshold, err := txutils.GetOwners(network, subnetID, transferSubnetOwnershipTxID)
 	if err != nil {
 		return err
 	}
@@ -187,7 +188,13 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to remove the specified validator...")
 
 	deployer := subnet.NewPublicDeployer(app, kc, network)
-	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.RemoveValidator(controlKeys, subnetAuthKeys, subnetID, nodeID)
+	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.RemoveValidator(
+		controlKeys,
+		subnetAuthKeys,
+		subnetID,
+		transferSubnetOwnershipTxID,
+		nodeID,
+	)
 	if err != nil {
 		return err
 	}

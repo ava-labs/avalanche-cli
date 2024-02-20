@@ -25,6 +25,7 @@ const (
 	SidecarSuffix                = SuffixSeparator + SidecarFileName
 	GenesisSuffix                = SuffixSeparator + GenesisFileName
 	NodeFileName                 = "node.json"
+	NodePrometheusConfigFileName = "prometheus.yml"
 	NodeCloudConfigFileName      = "node_cloud_config.json"
 	AnsibleDir                   = "ansible"
 	AnsibleHostInventoryFileName = "hosts"
@@ -195,6 +196,7 @@ const (
 	CloudNodeSubnetEvmBinaryPath  = "/home/ubuntu/.avalanchego/plugins/%s"
 	CloudNodeStakingPath          = "/home/ubuntu/.avalanchego/staking/"
 	CloudNodeConfigPath           = "/home/ubuntu/.avalanchego/configs/"
+	CloudNodePrometheusConfigPath = "/etc/prometheus/prometheus.yml"
 	CloudNodeCLIConfigBasePath    = "/home/ubuntu/.avalanche-cli/"
 	AvalanchegoMonitoringPort     = 9090
 	AvalanchegoMachineMetricsPort = 9100
@@ -269,8 +271,9 @@ const (
 	PayTxsFeesMsg = "pay transaction fees"
 
 	// E2E
-	E2ENetworkPrefix     = "172.18.0"
-	E2EClusterName       = "e2e"
-	E2EDocker            = "docker"
-	E2EDockerComposeFile = "/tmp/avalanche-cli-docker-compose.yml"
+	E2ENetworkPrefix        = "172.18.0"
+	E2EClusterName          = "e2e"
+	E2EDocker               = "docker"
+	E2EDockerComposeFile    = "/tmp/avalanche-cli-docker-compose.yml"
+	E2EDebugAvalanchegoPath = "E2E_AVALANCHEGO_PATH"
 )

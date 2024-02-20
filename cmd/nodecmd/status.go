@@ -101,7 +101,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			} else {
-				if avalancheGoVersion, err := parseAvalancheGoOutput(resp); err != nil {
+				if avalancheGoVersion, _, err := parseAvalancheGoOutput(resp); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 				} else {
 					nodeResults.AddResult(host.NodeID, avalancheGoVersion, err)

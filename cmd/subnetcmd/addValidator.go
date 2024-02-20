@@ -166,8 +166,9 @@ func CallAddValidator(
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
+	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
 
-	controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
+	controlKeys, threshold, err := txutils.GetOwners(network, subnetID, transferSubnetOwnershipTxID)
 	if err != nil {
 		return err
 	}
@@ -228,7 +229,16 @@ func CallAddValidator(
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
 	deployer := subnet.NewPublicDeployer(app, kc, network)
-	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidator(controlKeys, subnetAuthKeys, subnetID, nodeID, selectedWeight, start, selectedDuration)
+	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidator(
+		controlKeys,
+		subnetAuthKeys,
+		subnetID,
+		transferSubnetOwnershipTxID,
+		nodeID,
+		selectedWeight,
+		start,
+		selectedDuration,
+	)
 	if err != nil {
 		return err
 	}

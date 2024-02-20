@@ -11,6 +11,7 @@ import (
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
@@ -21,11 +22,16 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+var versionComments = map[string]string{
+	"v0.6.0-fuji": " (recommended for fuji durango)",
+}
+
 func CreateEvmSubnetConfig(
 	app *application.Avalanche,
 	subnetName string,
 	genesisPath string,
 	subnetEVMVersion string,
+	getRPCVersionFromBinary bool,
 	subnetEVMChainID uint64,
 	subnetEVMTokenName string,
 	useSubnetEVMDefaults bool,
@@ -34,26 +40,38 @@ func CreateEvmSubnetConfig(
 		genesisBytes []byte
 		sc           *models.Sidecar
 		err          error
+		rpcVersion   int
 	)
 
+	subnetEVMVersion, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion)
+	if err != nil {
+		return nil, &models.Sidecar{}, err
+	}
+
+	if getRPCVersionFromBinary {
+		_, vmBin, err := binutils.SetupSubnetEVM(app, subnetEVMVersion)
+		if err != nil {
+			return nil, &models.Sidecar{}, fmt.Errorf("failed to install subnet-evm: %w", err)
+		}
+		rpcVersion, err = GetVMBinaryProtocolVersion(vmBin)
+		if err != nil {
+			return nil, &models.Sidecar{}, fmt.Errorf("unable to get RPC version: %w", err)
+		}
+	} else {
+		rpcVersion, err = GetRPCProtocolVersion(app, models.SubnetEvm, subnetEVMVersion)
+		if err != nil {
+			return nil, &models.Sidecar{}, err
+		}
+	}
+
 	if genesisPath == "" {
-		genesisBytes, sc, err = createEvmGenesis(app, subnetName, subnetEVMVersion, subnetEVMChainID, subnetEVMTokenName, useSubnetEVMDefaults)
+		genesisBytes, sc, err = createEvmGenesis(app, subnetName, subnetEVMVersion, rpcVersion, subnetEVMChainID, subnetEVMTokenName, useSubnetEVMDefaults)
 		if err != nil {
 			return nil, &models.Sidecar{}, err
 		}
 	} else {
 		ux.Logger.PrintToUser("Importing genesis")
 		genesisBytes, err = os.ReadFile(genesisPath)
-		if err != nil {
-			return nil, &models.Sidecar{}, err
-		}
-
-		subnetEVMVersion, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion, false)
-		if err != nil {
-			return nil, &models.Sidecar{}, err
-		}
-
-		rpcVersion, err := GetRPCProtocolVersion(app, models.SubnetEvm, subnetEVMVersion)
 		if err != nil {
 			return nil, &models.Sidecar{}, err
 		}
@@ -75,6 +93,7 @@ func createEvmGenesis(
 	app *application.Avalanche,
 	subnetName string,
 	subnetEVMVersion string,
+	rpcVersion int,
 	subnetEVMChainID uint64,
 	subnetEVMTokenName string,
 	useSubnetEVMDefaults bool,
@@ -97,7 +116,6 @@ func createEvmGenesis(
 	var (
 		chainID    *big.Int
 		tokenName  string
-		vmVersion  string
 		allocation core.GenesisAlloc
 		direction  statemachine.StateDirection
 		err        error
@@ -112,7 +130,7 @@ func createEvmGenesis(
 	for subnetEvmState.Running() {
 		switch subnetEvmState.CurrentState() {
 		case descriptorsState:
-			chainID, tokenName, vmVersion, direction, err = getDescriptors(app, subnetEVMVersion, subnetEVMChainID, subnetEVMTokenName)
+			chainID, tokenName, direction, err = getDescriptors(app, subnetEVMChainID, subnetEVMTokenName)
 		case feeState:
 			*conf, direction, err = GetFeeConfig(*conf, app, useSubnetEVMDefaults)
 		case airdropState:
@@ -163,15 +181,10 @@ func createEvmGenesis(
 		return nil, nil, err
 	}
 
-	rpcVersion, err := GetRPCProtocolVersion(app, models.SubnetEvm, vmVersion)
-	if err != nil {
-		return nil, &models.Sidecar{}, err
-	}
-
 	sc := &models.Sidecar{
 		Name:       subnetName,
 		VM:         models.SubnetEvm,
-		VMVersion:  vmVersion,
+		VMVersion:  subnetEVMVersion,
 		RPCVersion: rpcVersion,
 		Subnet:     subnetName,
 		TokenName:  tokenName,
@@ -199,4 +212,98 @@ func ensureAdminsHaveBalance(admins []common.Address, alloc core.GenesisAlloc) e
 // In own function to facilitate testing
 func getEVMAllocation(app *application.Avalanche, useDefaults bool) (core.GenesisAlloc, statemachine.StateDirection, error) {
 	return getAllocation(app, defaultEvmAirdropAmount, oneAvax, "Amount to airdrop (in AVAX units)", useDefaults)
+}
+
+func getVMVersion(
+	app *application.Avalanche,
+	vmName string,
+	repoName string,
+	vmVersion string,
+) (string, error) {
+	var err error
+	switch vmVersion {
+	case "latest":
+		vmVersion, err = app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+			constants.AvaLabsOrg,
+			repoName,
+		))
+		if err != nil {
+			return "", err
+		}
+	case "pre-release":
+		vmVersion, err = app.Downloader.GetLatestPreReleaseVersion(
+			constants.AvaLabsOrg,
+			repoName,
+		)
+		if err != nil {
+			return "", err
+		}
+	case "":
+		vmVersion, err = askForVMVersion(app, vmName, repoName)
+		if err != nil {
+			return "", err
+		}
+	}
+	return vmVersion, nil
+}
+
+func askForVMVersion(
+	app *application.Avalanche,
+	vmName string,
+	repoName string,
+) (string, error) {
+	latestReleaseVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+		constants.AvaLabsOrg,
+		repoName,
+	))
+	if err != nil {
+		return "", err
+	}
+	latestPreReleaseVersion, err := app.Downloader.GetLatestPreReleaseVersion(
+		constants.AvaLabsOrg,
+		repoName,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Println(latestPreReleaseVersion)
+	useCustom := "Specify custom version"
+	useLatestRelease := "Use latest release version" + versionComments[latestReleaseVersion]
+	useLatestPreRelease := "Use latest pre-release version" + versionComments[latestPreReleaseVersion]
+
+	defaultPrompt := fmt.Sprintf("What version of %s would you like?", vmName)
+
+	versionOptions := []string{useLatestRelease, useCustom}
+	if latestPreReleaseVersion != latestReleaseVersion {
+		versionOptions = []string{useLatestPreRelease, useLatestRelease, useCustom}
+	}
+
+	versionOption, err := app.Prompt.CaptureList(
+		defaultPrompt,
+		versionOptions,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	if versionOption == useLatestPreRelease {
+		return latestPreReleaseVersion, err
+	}
+
+	if versionOption == useLatestRelease {
+		return latestReleaseVersion, err
+	}
+
+	// prompt for version
+	versions, err := app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName)
+	if err != nil {
+		return "", err
+	}
+	version, err := app.Prompt.CaptureList("Pick the version for this VM", versions)
+	if err != nil {
+		return "", err
+	}
+
+	return version, nil
 }

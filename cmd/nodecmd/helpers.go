@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -14,9 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
-
-	"golang.org/x/exp/slices"
+	"github.com/ava-labs/avalanchego/api/info"
 )
 
 func checkHostsAreHealthy(hosts []*models.Host) ([]string, error) {
@@ -108,12 +105,8 @@ func parseBootstrappedOutput(byteValue []byte) (bool, error) {
 }
 
 func checkAvalancheGoVersionCompatible(hosts []*models.Host, subnetName string) ([]string, error) {
-	ux.Logger.PrintToUser("Checking compatibility of node(s) avalanche go version with Subnet EVM RPC of subnet %s ...", subnetName)
+	ux.Logger.PrintToUser("Checking compatibility of node(s) avalanche go RPC protocol version with Subnet EVM RPC of subnet %s ...", subnetName)
 	sc, err := app.LoadSidecar(subnetName)
-	if err != nil {
-		return nil, err
-	}
-	compatibleVersions, err := checkForCompatibleAvagoVersion(sc.RPCVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -127,55 +120,47 @@ func checkAvalancheGoVersionCompatible(hosts []*models.Host, subnetName string) 
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			} else {
-				if avalancheGoVersion, err := parseAvalancheGoOutput(resp); err != nil {
+				if _, rpcVersion, err := parseAvalancheGoOutput(resp); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 				} else {
-					nodeResults.AddResult(host.NodeID, avalancheGoVersion, err)
+					nodeResults.AddResult(host.NodeID, rpcVersion, err)
 				}
 			}
 		}(&wgResults, host)
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
-		return nil, fmt.Errorf("failed to get avalanchego version for node(s) %s", wgResults.GetErrorHostMap())
+		return nil, fmt.Errorf("failed to get rpc protocol version for node(s) %s", wgResults.GetErrorHostMap())
 	}
 	incompatibleNodes := []string{}
-	for nodeID, avalancheGoVersion := range wgResults.GetResultMap() {
-		if !slices.Contains(compatibleVersions, fmt.Sprintf("%v", avalancheGoVersion)) {
+	for nodeID, rpcVersionI := range wgResults.GetResultMap() {
+		rpcVersion := rpcVersionI.(uint32)
+		if rpcVersion != uint32(sc.RPCVersion) {
 			incompatibleNodes = append(incompatibleNodes, nodeID)
 		}
 	}
 	if len(incompatibleNodes) > 0 {
-		ux.Logger.PrintToUser(fmt.Sprintf("Compatible Avalanche Go versions are %s", strings.Join(compatibleVersions, ", ")))
+		ux.Logger.PrintToUser(fmt.Sprintf("Compatible Avalanche Go RPC version is %d", sc.RPCVersion))
 	}
 	return incompatibleNodes, nil
 }
 
-func parseAvalancheGoOutput(byteValue []byte) (string, error) {
-	var result map[string]interface{}
-	if err := json.Unmarshal(byteValue, &result); err != nil {
-		return "", err
+func parseAvalancheGoOutput(byteValue []byte) (string, uint32, error) {
+	reply := map[string]interface{}{}
+	if err := json.Unmarshal(byteValue, &reply); err != nil {
+		return "", 0, err
 	}
-	nodeIDInterface, ok := result["result"].(map[string]interface{})
-	if ok {
-		vmVersions, ok := nodeIDInterface["vmVersions"].(map[string]interface{})
-		if ok {
-			avalancheGoVersion, ok := vmVersions["platform"].(string)
-			if ok {
-				return avalancheGoVersion, nil
-			}
-		}
-	}
-	return "", nil
-}
-
-func checkForCompatibleAvagoVersion(configuredRPCVersion int) ([]string, error) {
-	compatibleAvagoVersions, err := vm.GetAvailableAvalancheGoVersions(
-		app, configuredRPCVersion, constants.AvalancheGoCompatibilityURL)
+	resultMap := reply["result"]
+	resultJSON, err := json.Marshal(resultMap)
 	if err != nil {
-		return nil, err
+		return "", 0, err
 	}
-	return compatibleAvagoVersions, nil
+
+	nodeVersionReply := info.GetNodeVersionReply{}
+	if err := json.Unmarshal(resultJSON, &nodeVersionReply); err != nil {
+		return "", 0, err
+	}
+	return nodeVersionReply.VMVersions["platform"], uint32(nodeVersionReply.RPCProtocolVersion), nil
 }
 
 func disconnectHosts(hosts []*models.Host) {
