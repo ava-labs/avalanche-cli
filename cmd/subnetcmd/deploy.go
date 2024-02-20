@@ -318,7 +318,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	isEVMGenesis, err := hasSubnetEVMGenesis(chain)
+	isEVMGenesis, err := HasSubnetEVMGenesis(chain)
 	if err != nil {
 		return err
 	}
@@ -853,7 +853,7 @@ func CheckForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.Statu
 	return desiredAvagoVersion, nil
 }
 
-func hasSubnetEVMGenesis(subnetName string) (bool, error) {
+func HasSubnetEVMGenesis(subnetName string) (bool, error) {
 	if _, err := app.LoadRawGenesis(subnetName); err != nil {
 		return false, err
 	}
