@@ -238,15 +238,20 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 	// update node/s genesis + conf and start
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
+	spinSession := ux.NewUserSpinner()
+	defer spinSession.End()
 	for _, host := range hosts {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
+			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup devnet"))
 			keyPath := filepath.Join(app.GetNodesDir(), host.GetCloudID())
 			if err := ssh.RunSSHSetupDevNet(host, keyPath); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
+				ux.SpinFailWithError(spinner, "", err)
 				return
 			}
+			ux.SpinComplete(spinner)
 		}(&wgResults, host)
 	}
 	wg.Wait()
