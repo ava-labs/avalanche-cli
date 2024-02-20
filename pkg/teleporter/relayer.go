@@ -159,7 +159,7 @@ func saveRelayerRunFile(runFilePath string, pid int) error {
 		return err
 	}
 	if err := os.WriteFile(runFilePath, bs, constants.WriteReadReadPerms); err != nil {
-		return fmt.Errorf("could not write awm relater run file to %s: %w", err)
+		return fmt.Errorf("could not write awm relater run file to %s: %w", runFilePath, err)
 	}
 	return nil
 }

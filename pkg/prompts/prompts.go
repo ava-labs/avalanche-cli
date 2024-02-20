@@ -76,6 +76,7 @@ type Prompter interface {
 	CaptureYesNo(promptStr string) (bool, error)
 	CaptureNoYes(promptStr string) (bool, error)
 	CaptureList(promptStr string, options []string) (string, error)
+	CaptureListWithSize(promptStr string, options []string, size int) (string, error)
 	CaptureString(promptStr string) (string, error)
 	CaptureValidatedString(promptStr string, validator func(string) error) (string, error)
 	CaptureURL(promptStr string) (string, error)
@@ -500,6 +501,19 @@ func (*realPrompter) CaptureList(promptStr string, options []string) (string, er
 	prompt := promptui.Select{
 		Label: promptStr,
 		Items: options,
+	}
+	_, listDecision, err := prompt.Run()
+	if err != nil {
+		return "", err
+	}
+	return listDecision, nil
+}
+
+func (*realPrompter) CaptureListWithSize(promptStr string, options []string, size int) (string, error) {
+	prompt := promptui.Select{
+		Label: promptStr,
+		Items: options,
+		Size:  size,
 	}
 	_, listDecision, err := prompt.Run()
 	if err != nil {

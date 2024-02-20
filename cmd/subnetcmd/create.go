@@ -89,7 +89,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch")
 	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
 	cmd.Flags().BoolVar(&useRepo, "from-github-repo", false, "generate custom VM binary from github repository")
-	cmd.Flags().BoolVar(&teleporterReady, "teleporter", false, "generate a teleporter-ready vm")
+	cmd.Flags().BoolVar(&teleporterReady, "teleporter", true, "generate a teleporter-ready vm")
 	return cmd
 }
 
@@ -203,7 +203,17 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 
 	switch subnetType {
 	case models.SubnetEvm:
-		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(app, subnetName, genesisFile, evmVersion, true, evmChainID, evmToken, evmDefaults)
+		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(
+			app,
+			subnetName,
+			genesisFile,
+			evmVersion,
+			true,
+			evmChainID,
+			evmToken,
+			evmDefaults,
+			teleporterReady,
+		)
 		if err != nil {
 			return err
 		}
@@ -225,12 +235,6 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return errors.New("not implemented")
 	}
 
-	if !teleporterReady {
-		teleporterReady, err = app.Prompt.CaptureYesNo("Do you want the subnet to be Teleporter Ready?")
-		if err != nil {
-			return err
-		}
-	}
 	if teleporterReady {
 		isSubnetEVMGenesis, err := jsonIsSubnetEVMGenesis(genesisBytes)
 		if err != nil {

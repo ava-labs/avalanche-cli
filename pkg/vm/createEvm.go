@@ -35,6 +35,7 @@ func CreateEvmSubnetConfig(
 	subnetEVMChainID uint64,
 	subnetEVMTokenName string,
 	useSubnetEVMDefaults bool,
+	teleporterReady bool,
 ) ([]byte, *models.Sidecar, error) {
 	var (
 		genesisBytes []byte
@@ -65,7 +66,16 @@ func CreateEvmSubnetConfig(
 	}
 
 	if genesisPath == "" {
-		genesisBytes, sc, err = createEvmGenesis(app, subnetName, subnetEVMVersion, rpcVersion, subnetEVMChainID, subnetEVMTokenName, useSubnetEVMDefaults)
+		genesisBytes, sc, err = createEvmGenesis(
+			app,
+			subnetName,
+			subnetEVMVersion,
+			rpcVersion,
+			subnetEVMChainID,
+			subnetEVMTokenName,
+			useSubnetEVMDefaults,
+			teleporterReady,
+		)
 		if err != nil {
 			return nil, &models.Sidecar{}, err
 		}
@@ -97,6 +107,7 @@ func createEvmGenesis(
 	subnetEVMChainID uint64,
 	subnetEVMTokenName string,
 	useSubnetEVMDefaults bool,
+	teleporterReady bool,
 ) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating genesis for subnet %s", subnetName)
 
@@ -137,7 +148,7 @@ func createEvmGenesis(
 		case airdropState:
 			allocation, direction, err = getEVMAllocation(app, useSubnetEVMDefaults)
 		case precompilesState:
-			*conf, direction, err = getPrecompiles(*conf, app, useSubnetEVMDefaults)
+			*conf, direction, err = getPrecompiles(*conf, app, useSubnetEVMDefaults, teleporterReady)
 		default:
 			err = errors.New("invalid creation stage")
 		}
