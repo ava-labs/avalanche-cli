@@ -381,7 +381,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 
 		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin)
-		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
+		subnetID, blockchainID, teleporterMessengerAddress, teleporterRegistryAddress, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
 		if err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {
@@ -393,7 +393,15 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		flags := make(map[string]string)
 		flags[constants.Network] = network.Name()
 		metrics.HandleTracking(cmd, app, flags)
-		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, ids.Empty, blockchainID)
+		return app.UpdateSidecarNetworks(
+			&sidecar,
+			network,
+			subnetID,
+			ids.Empty,
+			blockchainID,
+			teleporterMessengerAddress,
+			teleporterRegistryAddress,
+		)
 	}
 
 	// from here on we are assuming a public deploy
@@ -536,7 +544,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
-	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, transferSubnetOwnershipTxID, blockchainID)
+	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, transferSubnetOwnershipTxID, blockchainID, "", "")
 }
 
 func getControlKeys(kc *keychain.Keychain) ([]string, bool, error) {

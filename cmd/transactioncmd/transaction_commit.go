@@ -89,10 +89,11 @@ func commitTx(_ *cobra.Command, args []string) error {
 	}
 
 	if txutils.IsCreateChainTx(tx) {
+		// TODO: teleporter for multisig
 		if err := subnetcmd.PrintDeployResults(subnetName, subnetID, txID); err != nil {
 			return err
 		}
-		return app.UpdateSidecarNetworks(&sc, network, subnetID, transferSubnetOwnershipTxID, txID)
+		return app.UpdateSidecarNetworks(&sc, network, subnetID, transferSubnetOwnershipTxID, txID, "", "")
 	}
 	if txutils.IsTransferSubnetOwnershipTx(tx) {
 		networkData := sc.Networks[network.Name()]

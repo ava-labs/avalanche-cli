@@ -95,9 +95,9 @@ type setDefaultSnapshotFunc func(string, bool, string, bool) (bool, error)
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
-func (d *LocalDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, error) {
+func (d *LocalDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, string, string, error) {
 	if err := d.StartServer(); err != nil {
-		return ids.Empty, ids.Empty, err
+		return ids.Empty, ids.Empty, "", "", err
 	}
 	return d.doDeploy(chain, chainGenesis, genesisPath)
 }
@@ -365,10 +365,10 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 //   - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
 //   - waits completion of operation
 //   - show status
-func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, error) {
+func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string) (ids.ID, ids.ID, string, string, error) {
 	needsRestart, avalancheGoBinPath, err := d.SetupLocalEnv()
 	if err != nil {
-		return ids.Empty, ids.Empty, err
+		return ids.Empty, ids.Empty, "", "", err
 	}
 
 	backendLogFile, err := binutils.GetBackendLogFile(d.app)
@@ -380,7 +380,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	cli, err := d.getClientFunc()
 	if err != nil {
-		return ids.Empty, ids.Empty, fmt.Errorf("error creating gRPC Client: %w", err)
+		return ids.Empty, ids.Empty, "", "", fmt.Errorf("error creating gRPC Client: %w", err)
 	}
 	defer cli.Close()
 
@@ -392,7 +392,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	// loading sidecar before it's needed so we catch any error early
 	sc, err := d.app.LoadSidecar(chain)
 	if err != nil {
-		return ids.Empty, ids.Empty, fmt.Errorf("failed to load sidecar: %w", err)
+		return ids.Empty, ids.Empty, "", "", fmt.Errorf("failed to load sidecar: %w", err)
 	}
 
 	// check for network status
@@ -402,7 +402,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	if err != nil {
 		if !server.IsServerError(err, server.ErrNotBootstrapped) {
 			utils.FindErrorLogs(rootDir, backendLogDir)
-			return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
+			return ids.Empty, ids.Empty, "", "", fmt.Errorf("failed to query network health: %w", err)
 		} else {
 			networkBooted = false
 		}
@@ -410,7 +410,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	chainVMID, err := anrutils.VMID(chain)
 	if err != nil {
-		return ids.Empty, ids.Empty, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
+		return ids.Empty, ids.Empty, "", "", fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
 	d.app.Log.Debug("this VM will get ID", zap.String("vm-id", chainVMID.String()))
 
@@ -419,16 +419,16 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		d.app.GetAWMRelayerRunPath(),
 		d.app.GetAWMRelayerStorageDir(),
 	); err != nil {
-		return ids.Empty, ids.Empty, err
+		return ids.Empty, ids.Empty, "", "", err
 	}
 
 	if networkBooted && needsRestart {
 		ux.Logger.PrintToUser("Restarting the network...")
 		if _, err := cli.Stop(ctx); err != nil {
-			return ids.Empty, ids.Empty, fmt.Errorf("failed to stop network: %w", err)
+			return ids.Empty, ids.Empty, "", "", fmt.Errorf("failed to stop network: %w", err)
 		}
 		if err := d.app.ResetPluginsDir(); err != nil {
-			return ids.Empty, ids.Empty, fmt.Errorf("failed to reset plugins dir: %w", err)
+			return ids.Empty, ids.Empty, "", "", fmt.Errorf("failed to reset plugins dir: %w", err)
 		}
 		networkBooted = false
 	}
@@ -436,7 +436,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	if !networkBooted {
 		if err := d.startNetwork(ctx, cli, avalancheGoBinPath, runDir); err != nil {
 			utils.FindErrorLogs(rootDir, backendLogDir)
-			return ids.Empty, ids.Empty, err
+			return ids.Empty, ids.Empty, "", "", err
 		}
 	}
 
@@ -444,13 +444,13 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	statusChecker := localnetworkinterface.NewStatusChecker()
 	_, avagoRPCVersion, _, err := statusChecker.GetCurrentNetworkVersion()
 	if err != nil {
-		return ids.Empty, ids.Empty, err
+		return ids.Empty, ids.Empty, "", "", err
 	}
 	if avagoRPCVersion != sc.RPCVersion {
 		if !networkBooted {
 			_, _ = cli.Stop(ctx)
 		}
-		return ids.Empty, ids.Empty, fmt.Errorf(
+		return ids.Empty, ids.Empty, "", "", fmt.Errorf(
 			"the avalanchego deployment uses rpc version %d but your subnet has version %d and is not compatible",
 			avagoRPCVersion,
 			sc.RPCVersion,
@@ -461,13 +461,13 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	clusterInfo, err = WaitForHealthy(ctx, cli)
 	if err != nil {
 		utils.FindErrorLogs(clusterInfo.GetRootDataDir(), backendLogDir)
-		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
+		return ids.Empty, ids.Empty, "", "", fmt.Errorf("failed to query network health: %w", err)
 	}
 	rootDir = clusterInfo.GetRootDataDir()
 
 	if alreadyDeployed(chainVMID, clusterInfo) {
 		ux.Logger.PrintToUser("Subnet %s has already been deployed", chain)
-		return ids.Empty, ids.Empty, nil
+		return ids.Empty, ids.Empty, "", "", nil
 	}
 
 	numBlockchains := len(clusterInfo.CustomChains)
@@ -481,7 +481,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	// so we get incremental selection
 	sort.Strings(subnetIDs)
 	if len(subnetIDs) == 0 {
-		return ids.Empty, ids.Empty, errors.New("the network has not preloaded subnet IDs")
+		return ids.Empty, ids.Empty, "", "", errors.New("the network has not preloaded subnet IDs")
 	}
 	subnetIDStr := subnetIDs[numBlockchains%len(subnetIDs)]
 
@@ -507,7 +507,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	// install the plugin binary for the new VM
 	if err := d.installPlugin(chainVMID, d.vmBin); err != nil {
-		return ids.Empty, ids.Empty, err
+		return ids.Empty, ids.Empty, "", "", err
 	}
 
 	fmt.Println()
@@ -538,7 +538,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		if pluginRemoveErr != nil {
 			ux.Logger.PrintToUser("Failed to remove plugin binary: %s", pluginRemoveErr)
 		}
-		return ids.Empty, ids.Empty, fmt.Errorf("failed to deploy blockchain: %w", err)
+		return ids.Empty, ids.Empty, "", "", fmt.Errorf("failed to deploy blockchain: %w", err)
 	}
 	rootDir = clusterInfo.GetRootDataDir()
 
@@ -551,13 +551,17 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		if pluginRemoveErr != nil {
 			ux.Logger.PrintToUser("Failed to remove plugin binary: %s", pluginRemoveErr)
 		}
-		return ids.Empty, ids.Empty, fmt.Errorf("failed to query network health: %w", err)
+		return ids.Empty, ids.Empty, "", "", fmt.Errorf("failed to query network health: %w", err)
 	}
 
 	endpoint := GetFirstEndpoint(clusterInfo, chain)
 	endpointRpcURL := endpoint[strings.LastIndex(endpoint, "http"):]
 
-	var teleporterKeyAddress string
+	var (
+		teleporterKeyAddress       string
+		teleporterMessengerAddress string
+		teleporterRegistryAddress  string
+	)
 	if sc.TeleporterReady {
 		network := models.LocalNetwork
 		td := teleporter.Deployer{}
@@ -565,22 +569,22 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		fmt.Println()
 		relayerAddress, relayerPrivateKey, err := teleporter.GetRelayerKeyInfo(d.app.GetKeyPath(constants.AWMRelayerKeyName))
 		if err != nil {
-			return ids.Empty, ids.Empty, err
+			return ids.Empty, ids.Empty, "", "", err
 		}
 		// deploy C-Chain
 		fmt.Println()
 		k, err := key.LoadEwoq(network.ID)
 		if err != nil {
-			return ids.Empty, ids.Empty, err
+			return ids.Empty, ids.Empty, "", "", err
 		}
 		privKeyStr := "0x" + hex.EncodeToString(k.Raw())
-		messengerAddress, registryAddress, err := td.Deploy(d.app.GetTeleporterBinDir(), sc.TeleporterVersion, "c-chain", constants.CChainRpcURL, privKeyStr)
+		cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress, err := td.Deploy(d.app.GetTeleporterBinDir(), sc.TeleporterVersion, "c-chain", constants.CChainRpcURL, privKeyStr)
 		if err != nil {
-			return ids.Empty, ids.Empty, err
+			return ids.Empty, ids.Empty, "", "", err
 		}
 		subnetID, blockchainID, err := GetChainIDs(constants.LocalAPIEndpoint, "C-Chain")
 		if err != nil {
-			return ids.Empty, ids.Empty, err
+			return ids.Empty, ids.Empty, "", "", err
 		}
 		if err = teleporter.UpdateRelayerConfig(
 			d.app.GetAWMRelayerConfigPath(),
@@ -590,10 +594,10 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			network,
 			subnetID,
 			blockchainID,
-			messengerAddress,
-			registryAddress,
+			cchainTeleporterMessengerAddress,
+			cchainTeleporterRegistryAddress,
 		); err != nil {
-			return ids.Empty, ids.Empty, err
+			return ids.Empty, ids.Empty, "", "", err
 		}
 		// deploy current blockchain
 		fmt.Println()
@@ -601,17 +605,17 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		keyPath := d.app.GetKeyPath(sc.TeleporterKey)
 		k, err = key.LoadSoft(network.ID, keyPath)
 		if err != nil {
-			return ids.Empty, ids.Empty, err
+			return ids.Empty, ids.Empty, "", "", err
 		}
 		teleporterKeyAddress = k.C()
 		privKeyStr = "0x" + hex.EncodeToString(k.Raw())
-		messengerAddress, registryAddress, err = td.Deploy(d.app.GetTeleporterBinDir(), sc.TeleporterVersion, chain, endpointRpcURL, privKeyStr)
+		teleporterMessengerAddress, teleporterRegistryAddress, err = td.Deploy(d.app.GetTeleporterBinDir(), sc.TeleporterVersion, chain, endpointRpcURL, privKeyStr)
 		if err != nil {
-			return ids.Empty, ids.Empty, err
+			return ids.Empty, ids.Empty, "", "", err
 		}
 		subnetID, blockchainID, err = GetChainIDs(constants.LocalAPIEndpoint, chain)
 		if err != nil {
-			return ids.Empty, ids.Empty, err
+			return ids.Empty, ids.Empty, "", "", err
 		}
 		if err = teleporter.UpdateRelayerConfig(
 			d.app.GetAWMRelayerConfigPath(),
@@ -621,15 +625,15 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			network,
 			subnetID,
 			blockchainID,
-			messengerAddress,
-			registryAddress,
+			teleporterMessengerAddress,
+			teleporterRegistryAddress,
 		); err != nil {
-			return ids.Empty, ids.Empty, err
+			return ids.Empty, ids.Empty, "", "", err
 		}
 		fmt.Println()
 		// fund relayer on current blockchain
 		if err := teleporter.FundRelayer(endpointRpcURL, privKeyStr, relayerAddress); err != nil {
-			return ids.Empty, ids.Empty, err
+			return ids.Empty, ids.Empty, "", "", err
 		}
 		// start relayer
 		if err := teleporter.DeployRelayer(
@@ -639,7 +643,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			d.app.GetAWMRelayerRunPath(),
 			d.app.GetAWMRelayerStorageDir(),
 		); err != nil {
-			return ids.Empty, ids.Empty, err
+			return ids.Empty, ids.Empty, "", "", err
 		}
 	}
 
@@ -654,7 +658,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	if sc.VM == models.SubnetEvm {
 		if err := d.printExtraEvmInfo(chain, chainGenesis, teleporterKeyAddress); err != nil {
 			// not supposed to happen due to genesis pre validation
-			return ids.Empty, ids.Empty, nil
+			return ids.Empty, ids.Empty, "", "", nil
 		}
 	}
 
@@ -666,7 +670,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			blockchainID, _ = ids.FromString(info.ChainId)
 		}
 	}
-	return subnetID, blockchainID, nil
+	return subnetID, blockchainID, teleporterMessengerAddress, teleporterRegistryAddress, nil
 }
 
 func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte, teleporterKeyAddress string) error {

@@ -12,6 +12,8 @@ type NetworkData struct {
 	TransferSubnetOwnershipTxID ids.ID
 	BlockchainID                ids.ID
 	RPCVersion                  int
+	TeleporterMessengerAddress  string
+	TeleporterRegistryAddress   string
 }
 
 type PermissionlessValidators struct {
