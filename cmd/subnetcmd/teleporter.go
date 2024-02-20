@@ -23,13 +23,19 @@ func newTeleporterCmd() *cobra.Command {
 }
 
 func deployTeleporter(cmd *cobra.Command, args []string) error {
-	if err := teleporter.DeployRelayer(
-		app.GetAWMRelayerBinDir(),
-		app.GetAWMRelayerConfigPath(),
-		app.GetAWMRelayerLogPath(),
-		app.GetAWMRelayerRunPath(),
-		app.GetAWMRelayerStorageDir(),
-	); err != nil {
+	/*
+		if err := teleporter.DeployRelayer(
+			app.GetAWMRelayerBinDir(),
+			app.GetAWMRelayerConfigPath(),
+			app.GetAWMRelayerLogPath(),
+			app.GetAWMRelayerRunPath(),
+			app.GetAWMRelayerStorageDir(),
+		); err != nil {
+			return err
+		}
+	*/
+	d := teleporter.Deployer{}
+	if err := d.DownloadAssets(app.GetTeleporterBinDir(), "v0.2.0"); err != nil {
 		return err
 	}
 	return nil

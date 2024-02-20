@@ -574,7 +574,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			return ids.Empty, ids.Empty, err
 		}
 		privKeyStr := "0x" + hex.EncodeToString(k.Raw())
-		messengerAddress, registryAddress, err := td.Deploy(sc.TeleporterVersion, "c-chain", constants.CChainRpcURL, privKeyStr)
+		messengerAddress, registryAddress, err := td.Deploy(d.app.GetTeleporterBinDir(), sc.TeleporterVersion, "c-chain", constants.CChainRpcURL, privKeyStr)
 		if err != nil {
 			return ids.Empty, ids.Empty, err
 		}
@@ -605,7 +605,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 		teleporterKeyAddress = k.C()
 		privKeyStr = "0x" + hex.EncodeToString(k.Raw())
-		messengerAddress, registryAddress, err = td.Deploy(sc.TeleporterVersion, chain, endpointRpcURL, privKeyStr)
+		messengerAddress, registryAddress, err = td.Deploy(d.app.GetTeleporterBinDir(), sc.TeleporterVersion, chain, endpointRpcURL, privKeyStr)
 		if err != nil {
 			return ids.Empty, ids.Empty, err
 		}

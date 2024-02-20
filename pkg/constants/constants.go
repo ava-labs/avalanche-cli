@@ -210,6 +210,7 @@ const (
 	AvalancheGoInstallDir         = "avalanchego"
 	SubnetEVMInstallDir           = "subnet-evm"
 	AWMRelayerInstallDir          = "awm-relayer"
+	TeleporterInstallDir          = "teleporter"
 	AWMRelayerBin                 = "awm-relayer"
 	AWMRelayerConfigFilename      = "awm-relayer-config.json"
 	AWMRelayerStorageDir          = "awm-relayer-storage"

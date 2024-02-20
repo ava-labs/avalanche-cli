@@ -98,6 +98,10 @@ func (app *Avalanche) GetAvalanchegoBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.AvalancheGoInstallDir)
 }
 
+func (app *Avalanche) GetTeleporterBinDir() string {
+	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.TeleporterInstallDir)
+}
+
 func (app *Avalanche) GetAWMRelayerBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.AWMRelayerInstallDir)
 }
