@@ -161,7 +161,7 @@ func (t *Deployer) DeployMessenger(
 	if teleporterMessengerDeployerBalance.Cmp(teleporterMessengerDeployerRequiredBalance) < 0 {
 		toFund := big.NewInt(0).Sub(teleporterMessengerDeployerRequiredBalance, teleporterMessengerDeployerBalance)
 		err := evm.FundAddress(
-			rpcURL,
+			client,
 			prefundedPrivateKey,
 			t.teleporterMessengerDeployerAddress,
 			toFund,

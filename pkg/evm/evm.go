@@ -18,7 +18,16 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-func ContractAlreadyDeployed(client ethclient.Client, contractAddress string) (bool, error) {
+const (
+	BaseFeeFactor               = 2
+	MaxPriorityFeePerGas        = 2500000000 // 2.5 gwei
+	NativeTransferGas    uint64 = 21_000
+)
+
+func ContractAlreadyDeployed(
+	client ethclient.Client,
+	contractAddress string,
+) (bool, error) {
 	bs, err := GetContractBytecode(client, contractAddress)
 	if err != nil {
 		return false, err
@@ -26,48 +35,98 @@ func ContractAlreadyDeployed(client ethclient.Client, contractAddress string) (b
 	return len(bs) != 0, nil
 }
 
-func GetContractBytecode(client ethclient.Client, contractAddressStr string) ([]byte, error) {
+func GetContractBytecode(
+	client ethclient.Client,
+	contractAddressStr string,
+) ([]byte, error) {
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	contractAddress := common.HexToAddress(contractAddressStr)
 	return client.CodeAt(ctx, contractAddress, nil)
 }
 
-func GetAddressBalance(client ethclient.Client, addressStr string) (*big.Int, error) {
+func GetAddressBalance(
+	client ethclient.Client,
+	addressStr string,
+) (*big.Int, error) {
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	address := common.HexToAddress(addressStr)
 	return client.BalanceAt(ctx, address, nil)
 }
 
-func FundAddress(rpcURL string, sourceAddressPrivateKey string, targetAddress string, amount *big.Int) error {
-	// TODO: don't use forge for this
-	cmd := exec.Command(
-		"cast",
-		"send",
-		"--json",
-		"--rpc-url",
-		rpcURL,
-		"--private-key",
-		sourceAddressPrivateKey,
-		"--value",
-		amount.String(),
-		targetAddress,
-	)
-	outBuf, errBuf := utils.SetupRealtimeCLIOutput(cmd, false, false)
-	if err := cmd.Run(); err != nil {
-		if outBuf.String() != "" {
-			fmt.Println(outBuf.String())
-		}
-		if errBuf.String() != "" {
-			fmt.Println(errBuf.String())
-		}
-		return fmt.Errorf("couldn't fund address %s balance from rpc %s: %w", targetAddress, rpcURL, err)
+// Returns the gasFeeCap, gasTipCap, and nonce the be used when constructing a transaction from address
+func CalculateTxParams(
+	client ethclient.Client,
+	addressStr string,
+) (*big.Int, *big.Int, uint64, error) {
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	address := common.HexToAddress(addressStr)
+	baseFee, err := client.EstimateBaseFee(ctx)
+	if err != nil {
+		return nil, nil, 0, err
 	}
-	if errBuf.String() != "" {
-		fmt.Println(errBuf.String())
+	gasTipCap, err := client.SuggestGasTipCap(ctx)
+	if err != nil {
+		return nil, nil, 0, err
 	}
-	return checkStatus("evm.FundAddress", outBuf.String())
+	nonce, err := client.NonceAt(ctx, address, nil)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	gasFeeCap := baseFee.Mul(baseFee, big.NewInt(BaseFeeFactor))
+	gasFeeCap.Add(gasFeeCap, big.NewInt(MaxPriorityFeePerGas))
+	return gasFeeCap, gasTipCap, nonce, nil
+}
+
+func FundAddress(
+	client ethclient.Client,
+	sourceAddressPrivateKeyStr string,
+	targetAddressStr string,
+	amount *big.Int,
+) error {
+	sourceAddressPrivateKey, err := crypto.HexToECDSA(sourceAddressPrivateKeyStr)
+	if err != nil {
+		return err
+	}
+	sourceAddress := crypto.PubkeyToAddress(sourceAddressPrivateKey.PublicKey)
+	gasFeeCap, gasTipCap, nonce, err := CalculateTxParams(client, sourceAddress.Hex())
+	if err != nil {
+		return err
+	}
+	targetAddress := common.HexToAddress(targetAddressStr)
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	chainID, err := client.ChainID(ctx)
+	if err != nil {
+		return err
+	}
+	tx := types.NewTx(&types.DynamicFeeTx{
+		ChainID:   chainID,
+		Nonce:     nonce,
+		To:        &targetAddress,
+		Gas:       NativeTransferGas,
+		GasFeeCap: gasFeeCap,
+		GasTipCap: gasTipCap,
+		Value:     amount,
+	})
+	txSigner := types.LatestSignerForChainID(chainID)
+	signedTx, err := types.SignTx(tx, txSigner, sourceAddressPrivateKey)
+	if err != nil {
+		return err
+	}
+	if err := client.SendTransaction(ctx, signedTx); err != nil {
+		return err
+	}
+	_, b, err := WaitForTransaction(client, signedTx)
+	if err != nil {
+		return err
+	}
+	if !b {
+		return fmt.Errorf("failure funding %s from %s amount %d", targetAddressStr, sourceAddress.Hex(), amount)
+	}
+	return nil
 }
 
 func IssueTx(rpcURL string, tx string) error {

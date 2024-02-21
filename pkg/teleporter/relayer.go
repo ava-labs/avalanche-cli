@@ -71,7 +71,7 @@ func FundRelayer(
 	if teleporterRelayerBalance.Cmp(teleporterRelayerRequiredBalance) < 0 {
 		toFund := big.NewInt(0).Sub(teleporterRelayerRequiredBalance, teleporterRelayerBalance)
 		err := evm.FundAddress(
-			rpcURL,
+			client,
 			prefundedPrivateKey,
 			teleporterRelayerAddress,
 			toFund,
