@@ -531,11 +531,13 @@ func createNodes(_ *cobra.Command, args []string) error {
 		}(&wgResults, host)
 	}
 	wg.Wait()
+	spinSession.End()
 	ansibleHostIDs, err := utils.MapWithError(cloudConfigMap.GetAllInstanceIDs(), func(s string) (string, error) { return models.HostCloudIDToAnsibleID(cloudService, s) })
 	if err != nil {
 		return err
 	}
 	if separateMonitoringInstance {
+		spinSession := ux.NewUserSpinner()
 		if len(monitoringHosts) != 1 {
 			return fmt.Errorf("expected only one monitoring host, found %d", len(monitoringHosts))
 		}
@@ -576,6 +578,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 			ux.SpinComplete(spinner)
 		}
+		spinSession.End()
 		for _, ansibleNodeID := range ansibleHostIDs {
 			if err = app.CreateAnsibleNodeConfigDir(ansibleNodeID); err != nil {
 				return err
@@ -619,7 +622,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 		}
 	}
-	spinSession.End()
 	ux.Logger.PrintToUser("======================================")
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
