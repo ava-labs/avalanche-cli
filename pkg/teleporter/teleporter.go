@@ -117,19 +117,19 @@ func (t *Deployer) Deploy(
 	subnetName string,
 	rpcURL string,
 	prefundedPrivateKey string,
-) (string, string, error) {
+) (bool, string, string, error) {
 	alreadyDeployed, messengerAddress, err := t.DeployMessenger(teleporterInstallDir, version, subnetName, rpcURL, prefundedPrivateKey)
 	if err != nil {
-		return "", "", err
+		return false, "", "", err
 	}
 	if alreadyDeployed {
-		return messengerAddress, "", nil
+		return true, messengerAddress, "", nil
 	}
 	registryAddress, err := t.DeployRegistry(teleporterInstallDir, version, subnetName, rpcURL, prefundedPrivateKey)
 	if err != nil {
-		return "", "", err
+		return false, "", "", err
 	}
-	return messengerAddress, registryAddress, nil
+	return false, messengerAddress, registryAddress, nil
 }
 
 func (t *Deployer) DeployMessenger(

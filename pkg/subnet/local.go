@@ -578,26 +578,40 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			return ids.Empty, ids.Empty, "", "", err
 		}
 		privKeyStr := "0x" + hex.EncodeToString(k.Raw())
-		cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress, err := td.Deploy(d.app.GetTeleporterBinDir(), sc.TeleporterVersion, "c-chain", constants.CChainRpcURL, privKeyStr)
+		alreadyDeployed, cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress, err := td.Deploy(d.app.GetTeleporterBinDir(), sc.TeleporterVersion, "c-chain", constants.CChainRpcURL, privKeyStr)
 		if err != nil {
 			return ids.Empty, ids.Empty, "", "", err
 		}
-		subnetID, blockchainID, err := GetChainIDs(constants.LocalAPIEndpoint, "C-Chain")
-		if err != nil {
-			return ids.Empty, ids.Empty, "", "", err
-		}
-		if err = teleporter.UpdateRelayerConfig(
-			d.app.GetAWMRelayerConfigPath(),
-			d.app.GetAWMRelayerStorageDir(),
-			relayerAddress,
-			relayerPrivateKey,
-			network,
-			subnetID,
-			blockchainID,
-			cchainTeleporterMessengerAddress,
-			cchainTeleporterRegistryAddress,
-		); err != nil {
-			return ids.Empty, ids.Empty, "", "", err
+		if !alreadyDeployed {
+			subnetID, blockchainID, err := GetChainIDs(constants.LocalAPIEndpoint, "C-Chain")
+			if err != nil {
+				return ids.Empty, ids.Empty, "", "", err
+			}
+			if err = teleporter.UpdateRelayerConfig(
+				d.app.GetAWMRelayerConfigPath(),
+				d.app.GetAWMRelayerStorageDir(),
+				relayerAddress,
+				relayerPrivateKey,
+				network,
+				subnetID,
+				blockchainID,
+				cchainTeleporterMessengerAddress,
+				cchainTeleporterRegistryAddress,
+			); err != nil {
+				return ids.Empty, ids.Empty, "", "", err
+			}
+			extraLocalNetworkDataPath := d.app.GetExtraLocalNetworkDataPath()
+			extraLocalNetworkData := ExtraLocalNetworkData{
+				CChainTeleporterMessengerAddress: cchainTeleporterMessengerAddress,
+				CChainTTeleporterRegistryAddress: cchainTeleporterRegistryAddress,
+			}
+			bs, err := json.Marshal(&extraLocalNetworkData)
+			if err != nil {
+				return ids.Empty, ids.Empty, "", "", err
+			}
+			if err := os.WriteFile(extraLocalNetworkDataPath, bs, constants.WriteReadReadPerms); err != nil {
+				return ids.Empty, ids.Empty, "", "", fmt.Errorf("could not extra local network data file to %s: %w", extraLocalNetworkDataPath, err)
+			}
 		}
 		// deploy current blockchain
 		fmt.Println()
@@ -609,11 +623,11 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 		teleporterKeyAddress = k.C()
 		privKeyStr = "0x" + hex.EncodeToString(k.Raw())
-		teleporterMessengerAddress, teleporterRegistryAddress, err = td.Deploy(d.app.GetTeleporterBinDir(), sc.TeleporterVersion, chain, endpointRpcURL, privKeyStr)
+		_, teleporterMessengerAddress, teleporterRegistryAddress, err = td.Deploy(d.app.GetTeleporterBinDir(), sc.TeleporterVersion, chain, endpointRpcURL, privKeyStr)
 		if err != nil {
 			return ids.Empty, ids.Empty, "", "", err
 		}
-		subnetID, blockchainID, err = GetChainIDs(constants.LocalAPIEndpoint, chain)
+		subnetID, blockchainID, err := GetChainIDs(constants.LocalAPIEndpoint, chain)
 		if err != nil {
 			return ids.Empty, ids.Empty, "", "", err
 		}
@@ -1089,4 +1103,9 @@ func GetChainIDs(endpoint string, chainName string) (string, string, error) {
 		}
 	}
 	return "", "", fmt.Errorf("%s not found on primary network blockchains", chainName)
+}
+
+type ExtraLocalNetworkData struct {
+	CChainTeleporterMessengerAddress string
+	CChainTTeleporterRegistryAddress string
 }

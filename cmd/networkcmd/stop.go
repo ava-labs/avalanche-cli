@@ -56,6 +56,17 @@ func StopNetwork(*cobra.Command, []string) error {
 		}
 	}
 
+	extraLocalNetworkDataPath := app.GetExtraLocalNetworkDataPath()
+	if utils.FileExists(extraLocalNetworkDataPath) {
+		storedExtraLocalNetowkrDataPath := filepath.Join(app.GetExtraLocalNetworkSnapshotsDir(), snapshotName+".json")
+		if err := os.MkdirAll(filepath.Dir(storedExtraLocalNetowkrDataPath), constants.DefaultPerms755); err != nil {
+			return err
+		}
+		if err := os.Rename(extraLocalNetworkDataPath, storedExtraLocalNetowkrDataPath); err != nil {
+			return fmt.Errorf("couldn't store extra local network data from %s into %s", extraLocalNetworkDataPath, storedExtraLocalNetowkrDataPath)
+		}
+	}
+
 	var err error
 	if err = binutils.KillgRPCServerProcess(app); err != nil {
 		app.Log.Warn("failed killing server process", zap.Error(err))
