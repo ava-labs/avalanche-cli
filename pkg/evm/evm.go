@@ -4,7 +4,6 @@ package evm
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
