@@ -145,6 +145,10 @@ func (t *Deployer) DeployMessenger(
 	if err != nil {
 		return false, "", err
 	}
+	rpcClient, err := evm.GetRpcClient(rpcURL)
+	if err != nil {
+		return false, "", err
+	}
 	teleporterMessengerAlreadyDeployed, err := evm.ContractAlreadyDeployed(client, t.teleporterMessengerContractAddress)
 	if err != nil {
 		return false, "", err
@@ -170,7 +174,7 @@ func (t *Deployer) DeployMessenger(
 			return false, "", err
 		}
 	}
-	if err := evm.IssueTx(rpcURL, t.teleporterMessengerDeployerTx); err != nil {
+	if err := evm.IssueTx(rpcClient, t.teleporterMessengerDeployerTx); err != nil {
 		return false, "", err
 	}
 	ux.Logger.PrintToUser("Teleporter Messenger successfully deployed to %s (%s)", subnetName, t.teleporterMessengerContractAddress)

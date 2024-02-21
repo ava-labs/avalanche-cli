@@ -3,15 +3,16 @@
 package evm
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"os/exec"
 	"strings"
 
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
+	"github.com/ava-labs/subnet-evm/rpc"
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -129,29 +130,14 @@ func FundAddress(
 	return nil
 }
 
-func IssueTx(rpcURL string, tx string) error {
-	// TODO: don't use forge for this
-	cmd := exec.Command(
-		"cast",
-		"publish",
-		"--rpc-url",
-		rpcURL,
-		tx,
-	)
-	outBuf, errBuf := utils.SetupRealtimeCLIOutput(cmd, false, false)
-	if err := cmd.Run(); err != nil {
-		if outBuf.String() != "" {
-			fmt.Println(outBuf.String())
-		}
-		if errBuf.String() != "" {
-			fmt.Println(errBuf.String())
-		}
-		return fmt.Errorf("couldn't issue tx into rpc %s: %w", rpcURL, err)
-	}
-	if errBuf.String() != "" {
-		fmt.Println(errBuf.String())
-	}
-	return checkStatus("evm.IssueTx", outBuf.String())
+func IssueTx(
+	client *rpc.Client,
+	tx string,
+) error {
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+
+	return client.CallContext(ctx, nil, "eth_sendRawTransaction", tx)
 }
 
 func checkStatus(title string, jsonOutput string) error {
@@ -175,6 +161,10 @@ func checkStatus(title string, jsonOutput string) error {
 
 func GetClient(rpcURL string) (ethclient.Client, error) {
 	return ethclient.Dial(rpcURL)
+}
+
+func GetRpcClient(rpcURL string) (*rpc.Client, error) {
+	return rpc.DialContext(context.Background(), rpcURL)
 }
 
 func GetSigner(client ethclient.Client, prefundedPrivateKeyStr string) (*bind.TransactOpts, error) {
