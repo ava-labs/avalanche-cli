@@ -48,6 +48,12 @@ func (ul *UserLog) GreenCheckmarkToUser(msg string, args ...interface{}) {
 	ul.PrintToUser(green(checkmark)+" "+msg, args...)
 }
 
+func (ul *UserLog) RedXToUser(msg string, args ...interface{}) {
+	xmark := "\u2717" // Unicode for X symbol
+	red := color.New(color.FgHiRed).SprintFunc()
+	ul.PrintToUser(red(xmark)+" "+msg, args...)
+}
+
 // PrintWait does some dot printing to entertain the user
 func PrintWait(cancel chan struct{}) {
 	for {
