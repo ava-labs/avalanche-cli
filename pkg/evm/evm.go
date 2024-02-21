@@ -140,25 +140,6 @@ func IssueTx(
 	return client.CallContext(ctx, nil, "eth_sendRawTransaction", tx)
 }
 
-func checkStatus(title string, jsonOutput string) error {
-	var jsonMap map[string]interface{}
-	if err := json.Unmarshal([]byte(jsonOutput), &jsonMap); err != nil {
-		return fmt.Errorf("%s: could not parse json output %s: %w", title, jsonOutput, err)
-	}
-	statusI, ok := jsonMap["status"]
-	if !ok {
-		return fmt.Errorf("%s: status field not found on json response %s", title, jsonOutput)
-	}
-	status, ok := statusI.(string)
-	if !ok {
-		return fmt.Errorf("%s: status field expected to have type string, found %T, at json response %s", title, statusI, jsonOutput)
-	}
-	if status != "0x1" {
-		return fmt.Errorf("%s: incorrect status code %s, at json response %s", title, status, jsonOutput)
-	}
-	return nil
-}
-
 func GetClient(rpcURL string) (ethclient.Client, error) {
 	return ethclient.Dial(rpcURL)
 }
