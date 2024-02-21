@@ -10,7 +10,7 @@ require (
 	github.com/ava-labs/subnet-evm v0.5.11
 	github.com/aws/aws-sdk-go-v2 v1.25.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.1
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.148.0
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.148.1
 	github.com/chelnak/ysmrr v0.3.0
 	github.com/docker/docker v25.0.3+incompatible
 	github.com/ethereum/go-ethereum v1.12.0
