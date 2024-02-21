@@ -64,7 +64,7 @@ func RunOverSSH(
 	}
 
 	if output, err := host.Command(script.String(), nil, timeout); err != nil {
-		return fmt.Errorf("got error: %w for %s: %s", err, scriptDesc, string(output))
+		return fmt.Errorf("%w: %s", err, string(output))
 	}
 	return nil
 }
