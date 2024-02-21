@@ -106,6 +106,7 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("cluster nodes %s\n", clusterNodes)
 	cloudSecurityGroupList, err := getCloudSecurityGroupList(clusterNodes)
 	if err != nil {
 		return err
