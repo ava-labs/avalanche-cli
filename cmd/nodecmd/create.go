@@ -906,7 +906,7 @@ func provideStakingCertAndKey(host *models.Host) error {
 		ux.Logger.PrintToUser("Failed to generate staking keys for host %s", instanceID)
 		return err
 	} else {
-		ux.Logger.PrintToUser("Generated staking keys for host %s[%s] ", instanceID, nodeID.String())
+		ux.Logger.GreenCheckmarkToUser("Generated staking keys for host %s[%s] ", instanceID, nodeID.String())
 	}
 	return ssh.RunSSHUploadStakingFiles(host, keyPath)
 }

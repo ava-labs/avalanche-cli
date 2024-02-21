@@ -40,6 +40,17 @@ func (ul *UserLog) PrintToUser(msg string, args ...interface{}) {
 	ul.log.Info(formattedMsg)
 }
 
+// GreenCheckmarkToUser prints a green checkmark to the user before the message
+func (ul *UserLog) GreenCheckmarkToUser(msg string, args ...interface{}) {
+	checkmark := "\u2713" // Unicode for checkmark symbol
+	// ANSI escape code for green color
+	green := "\033[32m"
+	// ANSI escape code to reset color
+	reset := "\033[0m"
+
+	ul.PrintToUser(green+checkmark+reset+" "+msg, args...)
+}
+
 // PrintWait does some dot printing to entertain the user
 func PrintWait(cancel chan struct{}) {
 	for {
