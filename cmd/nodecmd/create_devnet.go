@@ -239,7 +239,6 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	spinSession := ux.NewUserSpinner()
-	defer spinSession.End()
 	for _, host := range hosts {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
@@ -255,6 +254,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 		}(&wgResults, host)
 	}
 	wg.Wait()
+	spinSession.End()
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
 			ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
