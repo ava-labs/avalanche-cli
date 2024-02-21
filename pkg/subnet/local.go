@@ -577,7 +577,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		if err != nil {
 			return ids.Empty, ids.Empty, "", "", err
 		}
-		privKeyStr := "0x" + hex.EncodeToString(k.Raw())
+		privKeyStr := hex.EncodeToString(k.Raw())
 		alreadyDeployed, cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress, err := td.Deploy(d.app.GetTeleporterBinDir(), sc.TeleporterVersion, "c-chain", constants.CChainRpcURL, privKeyStr)
 		if err != nil {
 			return ids.Empty, ids.Empty, "", "", err
@@ -598,6 +598,9 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 				cchainTeleporterMessengerAddress,
 				cchainTeleporterRegistryAddress,
 			); err != nil {
+				return ids.Empty, ids.Empty, "", "", err
+			}
+			if err := teleporter.FundRelayer(constants.CChainRpcURL, privKeyStr, relayerAddress); err != nil {
 				return ids.Empty, ids.Empty, "", "", err
 			}
 			extraLocalNetworkDataPath := d.app.GetExtraLocalNetworkDataPath()
@@ -622,7 +625,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			return ids.Empty, ids.Empty, "", "", err
 		}
 		teleporterKeyAddress = k.C()
-		privKeyStr = "0x" + hex.EncodeToString(k.Raw())
+		privKeyStr = hex.EncodeToString(k.Raw())
 		_, teleporterMessengerAddress, teleporterRegistryAddress, err = td.Deploy(d.app.GetTeleporterBinDir(), sc.TeleporterVersion, chain, endpointRpcURL, privKeyStr)
 		if err != nil {
 			return ids.Empty, ids.Empty, "", "", err
