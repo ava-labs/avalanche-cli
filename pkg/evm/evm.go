@@ -3,7 +3,6 @@
 package evm
 
 import (
-	"context"
 	"fmt"
 	"math/big"
 	"strings"
@@ -11,7 +10,6 @@ import (
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
-	"github.com/ava-labs/subnet-evm/rpc"
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -130,21 +128,30 @@ func FundAddress(
 }
 
 func IssueTx(
-	client *rpc.Client,
-	tx string,
+	client ethclient.Client,
+	txStr string,
 ) error {
+	tx := new(types.Transaction)
+	if err := tx.UnmarshalBinary(common.FromHex(txStr)); err != nil {
+		return err
+	}
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
-
-	return client.CallContext(ctx, nil, "eth_sendRawTransaction", tx)
+	if err := client.SendTransaction(ctx, tx); err != nil {
+		return err
+	}
+	_, b, err := WaitForTransaction(client, tx)
+	if err != nil {
+		return err
+	}
+	if !b {
+		return fmt.Errorf("failure sending tx")
+	}
+	return nil
 }
 
 func GetClient(rpcURL string) (ethclient.Client, error) {
 	return ethclient.Dial(rpcURL)
-}
-
-func GetRpcClient(rpcURL string) (*rpc.Client, error) {
-	return rpc.DialContext(context.Background(), rpcURL)
 }
 
 func GetSigner(client ethclient.Client, prefundedPrivateKeyStr string) (*bind.TransactOpts, error) {
