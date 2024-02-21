@@ -1157,7 +1157,7 @@ func waitForHosts(hosts []*models.Host) *models.NodeResults {
 		createdWaitGroup.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer createdWaitGroup.Done()
-			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Waiting for bootstrap"))
+			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Waiting for instance response"))
 			if err := host.WaitForSSHShell(constants.SSHServerStartTimeout); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
