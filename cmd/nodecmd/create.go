@@ -1151,7 +1151,6 @@ func waitForHosts(hosts []*models.Host) *models.NodeResults {
 	hostErrors := models.NodeResults{}
 	createdWaitGroup := sync.WaitGroup{}
 	spinSession := ux.NewUserSpinner()
-	defer spinSession.End()
 	for _, host := range hosts {
 		createdWaitGroup.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
@@ -1166,6 +1165,7 @@ func waitForHosts(hosts []*models.Host) *models.NodeResults {
 		}(&hostErrors, host)
 	}
 	createdWaitGroup.Wait()
+	spinSession.End()
 	return &hostErrors
 }
 
