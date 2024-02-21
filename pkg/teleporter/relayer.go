@@ -60,7 +60,11 @@ func FundRelayer(
 	teleporterRelayerAddress string,
 ) error {
 	// get teleporter relayer balance
-	teleporterRelayerBalance, err := evm.GetAddressBalance(rpcURL, teleporterRelayerAddress)
+	client, err := evm.GetClient(rpcURL)
+	if err != nil {
+		return err
+	}
+	teleporterRelayerBalance, err := evm.GetAddressBalance(client, teleporterRelayerAddress)
 	if err != nil {
 		return err
 	}

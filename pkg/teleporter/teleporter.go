@@ -141,7 +141,11 @@ func (t *Deployer) DeployMessenger(
 ) (bool, string, error) {
 	t.DownloadAssets(teleporterInstallDir, version)
 	// check if contract is already deployed
-	teleporterMessengerAlreadyDeployed, err := evm.ContractAlreadyDeployed(rpcURL, t.teleporterMessengerContractAddress)
+	client, err := evm.GetClient(rpcURL)
+	if err != nil {
+		return false, "", err
+	}
+	teleporterMessengerAlreadyDeployed, err := evm.ContractAlreadyDeployed(client, t.teleporterMessengerContractAddress)
 	if err != nil {
 		return false, "", err
 	}
@@ -150,7 +154,7 @@ func (t *Deployer) DeployMessenger(
 		return true, t.teleporterMessengerContractAddress, nil
 	}
 	// get teleporter deployer balance
-	teleporterMessengerDeployerBalance, err := evm.GetAddressBalance(rpcURL, t.teleporterMessengerDeployerAddress)
+	teleporterMessengerDeployerBalance, err := evm.GetAddressBalance(client, t.teleporterMessengerDeployerAddress)
 	if err != nil {
 		return false, "", err
 	}

@@ -15,69 +15,29 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ethereum/go-ethereum/common"
 )
 
-func ContractAlreadyDeployed(rpcURL string, contractAddress string) (bool, error) {
-	bytecode, err := GetContractBytecode(rpcURL, contractAddress)
+func ContractAlreadyDeployed(client ethclient.Client, contractAddress string) (bool, error) {
+	bs, err := GetContractBytecode(client, contractAddress)
 	if err != nil {
 		return false, err
 	}
-	return bytecode != "0x", nil
+	return len(bs) != 0, nil
 }
 
-func GetContractBytecode(rpcURL string, contractAddress string) (string, error) {
-	// TODO: don't use forge for this
-	cmd := exec.Command(
-		"cast",
-		"code",
-		"--rpc-url",
-		rpcURL,
-		contractAddress,
-	)
-	outBuf, errBuf := utils.SetupRealtimeCLIOutput(cmd, false, false)
-	if err := cmd.Run(); err != nil {
-		if outBuf.String() != "" {
-			fmt.Println(outBuf.String())
-		}
-		if errBuf.String() != "" {
-			fmt.Println(errBuf.String())
-		}
-		return "", fmt.Errorf("couldn't get contract %s bytecode from rpc %s: %w", contractAddress, rpcURL, err)
-	}
-	if errBuf.String() != "" {
-		fmt.Println(errBuf.String())
-	}
-	return strings.TrimSpace(outBuf.String()), nil
+func GetContractBytecode(client ethclient.Client, contractAddressStr string) ([]byte, error) {
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	contractAddress := common.HexToAddress(contractAddressStr)
+	return client.CodeAt(ctx, contractAddress, nil)
 }
 
-func GetAddressBalance(rpcURL string, address string) (*big.Int, error) {
-	// TODO: don't use forge for this
-	cmd := exec.Command(
-		"cast",
-		"balance",
-		"--rpc-url",
-		rpcURL,
-		address,
-	)
-	outBuf, errBuf := utils.SetupRealtimeCLIOutput(cmd, false, false)
-	if err := cmd.Run(); err != nil {
-		if outBuf.String() != "" {
-			fmt.Println(outBuf.String())
-		}
-		if errBuf.String() != "" {
-			fmt.Println(errBuf.String())
-		}
-		return big.NewInt(0), fmt.Errorf("couldn't get address %s balance from rpc %s: %w", address, rpcURL, err)
-	}
-	if errBuf.String() != "" {
-		fmt.Println(errBuf.String())
-	}
-	balanceStr := strings.TrimSpace(outBuf.String())
-	balance, ok := new(big.Int).SetString(balanceStr, 10)
-	if !ok {
-		return big.NewInt(0), fmt.Errorf("couldn't parse address %s balance %s from rpc %s", address, balanceStr, rpcURL)
-	}
-	return balance, nil
+func GetAddressBalance(client ethclient.Client, addressStr string) (*big.Int, error) {
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	address := common.HexToAddress(addressStr)
+	return client.BalanceAt(ctx, address, nil)
 }
 
 func FundAddress(rpcURL string, sourceAddressPrivateKey string, targetAddress string, amount *big.Int) error {

@@ -3,7 +3,10 @@
 package subnetcmd
 
 import (
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
+	"fmt"
+
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 
 	"github.com/spf13/cobra"
 )
@@ -23,20 +26,8 @@ func newTeleporterCmd() *cobra.Command {
 }
 
 func deployTeleporter(cmd *cobra.Command, args []string) error {
-	/*
-		if err := teleporter.DeployRelayer(
-			app.GetAWMRelayerBinDir(),
-			app.GetAWMRelayerConfigPath(),
-			app.GetAWMRelayerLogPath(),
-			app.GetAWMRelayerRunPath(),
-			app.GetAWMRelayerStorageDir(),
-		); err != nil {
-			return err
-		}
-	*/
-	d := teleporter.Deployer{}
-	if err := d.DownloadAssets(app.GetTeleporterBinDir(), "v0.2.0"); err != nil {
-		return err
-	}
+	url := models.LocalNetwork.CChainEndpoint()
+	client, _ := evm.GetClient(url)
+	fmt.Println(evm.GetAddressBalance(client, "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"))
 	return nil
 }
