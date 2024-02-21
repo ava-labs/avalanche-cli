@@ -611,7 +611,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}(&wgResults, host)
 		}
 		wg.Wait()
-		spinSession.End()
+
 		for _, node := range hosts {
 			if wgResults.HasNodeIDWithError(node.NodeID) {
 				ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
@@ -619,6 +619,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 		}
 	}
+	spinSession.End()
 	ux.Logger.PrintToUser("======================================")
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
