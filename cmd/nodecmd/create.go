@@ -531,7 +531,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 		}(&wgResults, host)
 	}
 	wg.Wait()
-	spinSession.Stop()
 	ansibleHostIDs, err := utils.MapWithError(cloudConfigMap.GetAllInstanceIDs(), func(s string) (string, error) { return models.HostCloudIDToAnsibleID(cloudService, s) })
 	if err != nil {
 		return err
@@ -622,8 +621,8 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 		}
 		ux.SpinComplete(spinner)
-		spinSession.Stop()
 	}
+	spinSession.Stop()
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
 			ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
