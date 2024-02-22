@@ -537,6 +537,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if separateMonitoringInstance {
+		spinSession := ux.NewUserSpinner()
 		if len(monitoringHosts) != 1 {
 			return fmt.Errorf("expected only one monitoring host, found %d", len(monitoringHosts))
 		}
@@ -577,7 +578,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 			ux.SpinComplete(spinner)
 		}
-		spinSession.Stop()
+
 		for _, ansibleNodeID := range ansibleHostIDs {
 			if err = app.CreateAnsibleNodeConfigDir(ansibleNodeID); err != nil {
 				return err
@@ -586,6 +587,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		// download node configs
 		wg := sync.WaitGroup{}
 		wgResults := models.NodeResults{}
+		spinner := spinSession.SpinToUser("Configure monitoring agents")
 		for _, host := range hosts {
 			wg.Add(1)
 			go func(nodeResults *models.NodeResults, host *models.Host) {
@@ -613,28 +615,23 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}(&wgResults, host)
 		}
 		wg.Wait()
-
 		for _, node := range hosts {
 			if wgResults.HasNodeIDWithError(node.NodeID) {
-				ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
+				ux.SpinFailWithError(spinner, node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
 				return fmt.Errorf("node %s failed to setup with error: %w", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
 			}
 		}
+		ux.SpinComplete(spinner)
+		spinSession.Stop()
 	}
-	ux.Logger.PrintToUser("======================================")
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
 			ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
-		} else {
-			ux.Logger.PrintToUser("Node %s is CREATED", node.NodeID)
+			return fmt.Errorf("node %s failed to setup with error: %w", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
 		}
 	}
 
 	if network.Kind == models.Devnet {
-		ux.Logger.PrintToUser("======================================")
-		ux.Logger.PrintToUser("Setting up Devnet ...")
-		ux.Logger.PrintToUser("======================================")
-		spinSession.Stop()
 		if err := setupDevnet(clusterName, hosts, apiNodeIPMap); err != nil {
 			return err
 		}

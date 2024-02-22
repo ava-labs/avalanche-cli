@@ -172,8 +172,6 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 		networkEndpoint = ansibleHosts[ansibleHostIDs[0]].IP
 	}
 	network := models.NewDevnetNetwork(networkEndpoint, constants.AvalanchegoAPIPort)
-	ux.Logger.PrintToUser("Devnet Network Id: %d", network.ID)
-	ux.Logger.PrintToUser("Devnet Endpoint: %s", network.Endpoint)
 
 	// get random staking key for devnet genesis
 	k, err := key.NewSoft(network.ID)
@@ -264,7 +262,10 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 	if wgResults.HasErrors() {
 		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
 	}
-
+	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintToUser("Devnet Network Id: %d", network.ID)
+	ux.Logger.PrintToUser("Devnet Endpoint: %s", network.Endpoint)
+	ux.Logger.PrintToUser("======================================")
 	// update cluster config with network information
 	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {
