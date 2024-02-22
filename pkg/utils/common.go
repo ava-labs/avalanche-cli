@@ -235,7 +235,7 @@ func Download(url string) ([]byte, error) {
 	defer resp.Body.Close()
 	bs, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed downloading $s: %w", url, err)
+		return nil, fmt.Errorf("failed downloading %s: %w", url, err)
 	}
 	return bs, nil
 }

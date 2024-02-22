@@ -466,7 +466,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	rootDir = clusterInfo.GetRootDataDir()
 
 	if alreadyDeployed(chainVMID, clusterInfo) {
-		return ids.Empty, ids.Empty, "", "", fmt.Errorf("Subnet %s has already been deployed", chain)
+		return ids.Empty, ids.Empty, "", "", fmt.Errorf("subnet %s has already been deployed", chain)
 	}
 
 	numBlockchains := len(clusterInfo.CustomChains)
@@ -554,7 +554,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 
 	endpoint := GetFirstEndpoint(clusterInfo, chain)
-	endpointRpcURL := endpoint[strings.LastIndex(endpoint, "http"):]
+	endpointRPCURL := endpoint[strings.LastIndex(endpoint, "http"):]
 
 	var (
 		teleporterKeyAddress       string
@@ -635,7 +635,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 		teleporterKeyAddress = k.C()
 		privKeyStr = hex.EncodeToString(k.Raw())
-		_, teleporterMessengerAddress, teleporterRegistryAddress, err = td.Deploy(d.app.GetTeleporterBinDir(), sc.TeleporterVersion, chain, endpointRpcURL, privKeyStr)
+		_, teleporterMessengerAddress, teleporterRegistryAddress, err = td.Deploy(d.app.GetTeleporterBinDir(), sc.TeleporterVersion, chain, endpointRPCURL, privKeyStr)
 		if err != nil {
 			return ids.Empty, ids.Empty, "", "", err
 		}
@@ -658,7 +658,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 		fmt.Println()
 		// fund relayer on current blockchain
-		if err := teleporter.FundRelayer(endpointRpcURL, privKeyStr, relayerAddress); err != nil {
+		if err := teleporter.FundRelayer(endpointRPCURL, privKeyStr, relayerAddress); err != nil {
 			return ids.Empty, ids.Empty, "", "", err
 		}
 		// start relayer

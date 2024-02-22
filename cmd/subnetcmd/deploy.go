@@ -887,12 +887,12 @@ func HasSubnetEVMGenesis(subnetName string) (bool, error) {
 }
 
 func jsonIsSubnetEVMGenesis(jsonBytes []byte) (bool, error) {
-	genesis, err := app.LoadEvmGenesisFromJson(jsonBytes)
+	genesis, err := app.LoadEvmGenesisFromJSON(jsonBytes)
 	if err != nil {
-		return false, nil
+		return false, err
 	}
 	if err := genesis.Verify(); err != nil {
-		return false, nil
+		return false, err
 	}
 	return true, nil
 }

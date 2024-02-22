@@ -399,10 +399,10 @@ func (app *Avalanche) LoadEvmGenesis(subnetName string) (core.Genesis, error) {
 	if err != nil {
 		return core.Genesis{}, err
 	}
-	return app.LoadEvmGenesisFromJson(jsonBytes)
+	return app.LoadEvmGenesisFromJSON(jsonBytes)
 }
 
-func (app *Avalanche) LoadEvmGenesisFromJson(jsonBytes []byte) (core.Genesis, error) {
+func (*Avalanche) LoadEvmGenesisFromJSON(jsonBytes []byte) (core.Genesis, error) {
 	var gen core.Genesis
 	err := json.Unmarshal(jsonBytes, &gen)
 	return gen, err

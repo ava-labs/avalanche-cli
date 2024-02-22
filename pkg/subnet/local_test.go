@@ -140,7 +140,7 @@ func TestDeployToLocal(t *testing.T) {
 	err = os.WriteFile(testSidecar.Name(), []byte(sidecar), constants.DefaultPerms755)
 	require.NoError(err)
 	// test actual deploy
-	s, b, err := testDeployer.DeployToLocalNetwork(testChainName, []byte(genesis), testGenesis.Name())
+	s, b, _, _, err := testDeployer.DeployToLocalNetwork(testChainName, []byte(genesis), testGenesis.Name())
 	require.NoError(err)
 	require.Equal(testSubnetID2, s.String())
 	require.Equal(testBlockChainID2, b.String())

@@ -56,6 +56,9 @@ func (t *Deployer) DownloadAssets(
 		var teleporterMessengerContractAddressBytes []byte
 		if utils.FileExists(teleporterMessengerContractAddressPath) {
 			teleporterMessengerContractAddressBytes, err = os.ReadFile(teleporterMessengerContractAddressPath)
+			if err != nil {
+				return err
+			}
 		} else {
 			// get target teleporter messenger contract address
 			teleporterMessengerContractAddressBytes, err = utils.Download(teleporterMessengerContractAddressURL)
@@ -75,6 +78,9 @@ func (t *Deployer) DownloadAssets(
 		var teleporterMessengerDeployerAddressBytes []byte
 		if utils.FileExists(teleporterMessengerDeployerAddressPath) {
 			teleporterMessengerDeployerAddressBytes, err = os.ReadFile(teleporterMessengerDeployerAddressPath)
+			if err != nil {
+				return err
+			}
 		} else {
 			// get teleporter deployer address
 			teleporterMessengerDeployerAddressBytes, err = utils.Download(teleporterMessengerDeployerAddressURL)
@@ -94,6 +100,9 @@ func (t *Deployer) DownloadAssets(
 		var teleporterMessengerDeployerTxBytes []byte
 		if utils.FileExists(teleporterMessengerDeployerTxPath) {
 			teleporterMessengerDeployerTxBytes, err = os.ReadFile(teleporterMessengerDeployerTxPath)
+			if err != nil {
+				return err
+			}
 		} else {
 			teleporterMessengerDeployerTxBytes, err = utils.Download(teleporterMessengerDeployerTxURL)
 			if err != nil {
@@ -139,7 +148,9 @@ func (t *Deployer) DeployMessenger(
 	rpcURL string,
 	prefundedPrivateKey string,
 ) (bool, string, error) {
-	t.DownloadAssets(teleporterInstallDir, version)
+	if err := t.DownloadAssets(teleporterInstallDir, version); err != nil {
+		return false, "", err
+	}
 	// check if contract is already deployed
 	client, err := evm.GetClient(rpcURL)
 	if err != nil {
@@ -184,7 +195,9 @@ func (t *Deployer) DeployRegistry(
 	rpcURL string,
 	prefundedPrivateKey string,
 ) (string, error) {
-	t.DownloadAssets(teleporterInstallDir, version)
+	if err := t.DownloadAssets(teleporterInstallDir, version); err != nil {
+		return "", err
+	}
 	teleporterMessengerContractAddress := common.HexToAddress(t.teleporterMessengerContractAddress)
 	teleporterRegistryConstructorInput := []teleporterRegistry.ProtocolRegistryEntry{
 		{

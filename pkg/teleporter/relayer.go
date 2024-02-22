@@ -344,7 +344,8 @@ func addChainToRelayerConfig(
 		}
 	}
 	if !found {
-		relayerConfig.SourceSubnets = append(sources, source)
+		sources = append(sources, source)
+		relayerConfig.SourceSubnets = sources
 	}
 	destinations := relayerConfig.DestinationSubnets
 	found = false
@@ -354,7 +355,8 @@ func addChainToRelayerConfig(
 		}
 	}
 	if !found {
-		relayerConfig.DestinationSubnets = append(destinations, destination)
+		destinations = append(destinations, destination)
+		relayerConfig.DestinationSubnets = destinations
 	}
 }
 
