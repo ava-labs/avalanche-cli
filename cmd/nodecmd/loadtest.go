@@ -4,7 +4,6 @@ package nodecmd
 
 import (
 	"fmt"
-
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -35,7 +34,7 @@ After loadtest is done it will deliver generated reports if any along with loadt
 	}
 	cmd.Flags().BoolVar(&useAWS, "aws", false, "create loadtest node in AWS cloud")
 	cmd.Flags().BoolVar(&useGCP, "gcp", false, "create loadtest in GCP cloud")
-	cmd.Flags().StringVar(&nodeType, "node-type", "", "cloud instance type for loadtest script. Use 'default' to use recommended default instance type")
+	cmd.Flags().StringVar(&nodeType, "node-type", "default", "cloud instance type for loadtest script")
 	cmd.Flags().StringVar(&loadTestScriptPath, "loadtest-script-path", "", "loadtest script path")
 	cmd.Flags().StringVar(&loadTestScriptArgs, "loadtest-script-args", "", "loadtest script arguments")
 	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to create cloud resources")
@@ -77,15 +76,15 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	clustersConfig, err := app.LoadClustersConfig()
 	loadTestNodeConfig := models.RegionConfig{}
 	loadTestCloudConfig := models.CloudConfig{}
-	if err != nil {
-		return err
-	}
+
 	if clustersConfig.Clusters[clusterName].Network.Kind != models.Devnet {
 		return fmt.Errorf("node loadtest command can be applied to devnet clusters only")
 	}
+
 	if loadTestScriptPath == "" {
 		loadTestScriptPath = "loadtest.sh"
 	}
+
 	// set ssh-Key
 	if useSSHAgent && sshIdentity == "" {
 		sshIdentity, err = setSSHIdentity()
@@ -94,69 +93,108 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	cloudService, err := setCloudService()
-	if err != nil {
-		return err
-	}
-	nodeType, err = setCloudInstanceType(cloudService)
-	if err != nil {
-		return err
-	}
 	clusterNodes, err := getClusterNodes(clusterName)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("cluster nodes %s\n", clusterNodes)
+
+	existingSeparateInstance, err = getExistingMonitoringInstance(clusterName)
+	if err != nil {
+		return err
+	}
+	cloudService := ""
+	if existingSeparateInstance != "" {
+		separateNodeConfig, err := app.LoadClusterNodeConfig(existingSeparateInstance)
+		if err != nil {
+			return err
+		}
+		cloudService = separateNodeConfig.CloudService
+	} else {
+		ux.Logger.PrintToUser("Creating a separate instance to run load test...")
+		cloudService, err = setCloudService()
+		if err != nil {
+			return err
+		}
+		nodeType, err = setCloudInstanceType(cloudService)
+		if err != nil {
+			return err
+		}
+	}
+	separateHostRegion := ""
+
+	//loadTestRegion := filteredSGList[0].region
+	// create loadtest cloud server
 	cloudSecurityGroupList, err := getCloudSecurityGroupList(clusterNodes)
 	if err != nil {
 		return err
 	}
+	fmt.Printf("cloudSecurityGroupList %s \n", cloudSecurityGroupList)
 	// we only support endpoint in the same cluster
 	filteredSGList := utils.Filter(cloudSecurityGroupList, func(sg regionSecurityGroup) bool { return sg.cloud == cloudService })
 	if len(filteredSGList) == 0 {
 		return fmt.Errorf("no endpoint found in the  %s", cloudService)
 	}
-	loadTestRegion := filteredSGList[0].region
-	// create loadtest cloud server
-	if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(cloudService) != nil) {
-		return fmt.Errorf("cloud access is required")
-	}
+	fmt.Printf("filteredSGList %s \n", filteredSGList)
 	if cloudService == constants.AWSCloudService {
-		ec2SvcMap, ami, _, err := getAWSCloudConfig(awsProfile)
-		if err != nil {
-			return err
-		}
+		//ec2SvcMap, ami, _, err := getAWSCloudConfig(awsProfile)
+		//if err != nil {
+		//	return err
+		//}
+
 		loadTestEc2SvcMap := make(map[string]*awsAPI.AwsCloud)
-		loadTestEc2SvcMap[loadTestRegion] = ec2SvcMap[loadTestRegion]
-		loadTestCloudConfig, err = createAWSInstances(loadTestEc2SvcMap, nodeType, map[string]int{loadTestRegion: 1}, []string{loadTestRegion}, ami, true)
+		//regions := maps.Keys(ec2SvcMap)
+		existingSeparateInstance, err = getExistingMonitoringInstance(clusterName)
 		if err != nil {
 			return err
 		}
-		loadTestNodeConfig = loadTestCloudConfig[loadTestRegion]
-		// get loadtest public IP
-		loadTestPublicIPMap, err := loadTestEc2SvcMap[loadTestRegion].GetInstancePublicIPs(loadTestNodeConfig.InstanceIDs)
-		if err != nil {
-			return err
-		}
-		loadTestNodeConfig.PublicIPs = []string{loadTestPublicIPMap[loadTestNodeConfig.InstanceIDs[0]]}
-		for _, sg := range filteredSGList {
-			if err = grantAccessToPublicIPViaSecurityGroup(ec2SvcMap[sg.region], loadTestNodeConfig.PublicIPs[0], sg.securityGroup, sg.region); err != nil {
+		if existingSeparateInstance == "" {
+			//fmt.Printf("we creating new instance \n")
+			//separateHostRegion = regions[0]
+			//loadTestEc2SvcMap[separateHostRegion] = ec2SvcMap[separateHostRegion]
+			//loadTestCloudConfig, err = createAWSInstances(loadTestEc2SvcMap, nodeType, map[string]int{separateHostRegion: 1}, []string{separateHostRegion}, ami, true)
+			//if err != nil {
+			//	return err
+			//}
+			//loadTestNodeConfig = loadTestCloudConfig[separateHostRegion]
+		} else {
+			fmt.Printf("not creating a new separate instance \n")
+			loadTestNodeConfig, separateHostRegion, err = getNodeCloudConfig(existingSeparateInstance)
+			if err != nil {
 				return err
 			}
+			loadTestEc2SvcMap, err = getAWSMonitoringEC2Svc(awsProfile, separateHostRegion)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("loadTestEc2SvcMap %s \n", loadTestEc2SvcMap)
 		}
-
-		// whitelist access from loadtest node to cluster nodes
+		if !useStaticIP {
+			// get loadtest public
+			loadTestPublicIPMap, err := loadTestEc2SvcMap[separateHostRegion].GetInstancePublicIPs(loadTestNodeConfig.InstanceIDs)
+			if err != nil {
+				return err
+			}
+			loadTestNodeConfig.PublicIPs = []string{loadTestPublicIPMap[loadTestNodeConfig.InstanceIDs[0]]}
+		}
+		if existingSeparateInstance == "" {
+			for _, sg := range filteredSGList {
+				// TODO: need to fix this with ec2svcmap
+				if err = grantAccessToPublicIPViaSecurityGroup(loadTestEc2SvcMap[sg.region], loadTestNodeConfig.PublicIPs[0], sg.securityGroup, sg.region); err != nil {
+					return err
+				}
+			}
+		}
 	} else if cloudService == constants.GCPCloudService {
 		// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
 		gcpClient, _, imageID, _, _, err := getGCPConfig()
 		if err != nil {
 			return err
 		}
-		loadTestCloudConfig, err = createGCPInstance(gcpClient, nodeType, map[string]int{loadTestRegion: 1}, imageID, clusterName, true)
+		loadTestCloudConfig, err = createGCPInstance(gcpClient, nodeType, map[string]int{separateHostRegion: 1}, imageID, clusterName, true)
 		if err != nil {
 			return err
 		}
-		loadTestNodeConfig = loadTestCloudConfig[loadTestRegion]
+		loadTestNodeConfig = loadTestCloudConfig[separateHostRegion]
 		//loadTestPublicIPMap, err := gcpClient.GetInstancePublicIPs(loadTestRegion, loadTestNodeConfig.InstanceIDs)
 		//if err != nil {
 		//	return err
@@ -168,25 +206,25 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	} else {
 		return fmt.Errorf("cloud service %s is not supported", cloudService)
 	}
-
-	// deploy loadtest script
-	ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, loadTestNodeConfig.InstanceIDs[0])
-	loadTestHost := models.Host{
-		NodeID:            ansibleInstanceID,
-		IP:                loadTestNodeConfig.PublicIPs[0],
-		SSHUser:           constants.AnsibleSSHUser,
-		SSHPrivateKeyPath: loadTestCloudConfig[loadTestRegion].CertFilePath,
-		SSHCommonArgs:     constants.AnsibleSSHUseAgentParams,
-	}
-
-	failedHosts := waitForHosts([]*models.Host{&loadTestHost})
-	if failedHosts.Len() > 0 {
-		for _, result := range failedHosts.GetResults() {
-			ux.Logger.PrintToUser("Loadtest instance %s failed to provision with error %s. Please check instance logs for more information", result.NodeID, result.Err)
-		}
-		return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
-	}
-	ux.Logger.PrintToUser("Loadtest instance %s provisioned successfully", loadTestHost.NodeID)
+	//
+	//// deploy loadtest script
+	//ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, loadTestNodeConfig.InstanceIDs[0])
+	//loadTestHost := models.Host{
+	//	NodeID:            ansibleInstanceID,
+	//	IP:                loadTestNodeConfig.PublicIPs[0],
+	//	SSHUser:           constants.AnsibleSSHUser,
+	//	SSHPrivateKeyPath: loadTestCloudConfig[separateHostRegion].CertFilePath,
+	//	SSHCommonArgs:     constants.AnsibleSSHUseAgentParams,
+	//}
+	//
+	//failedHosts := waitForHosts([]*models.Host{&loadTestHost})
+	//if failedHosts.Len() > 0 {
+	//	for _, result := range failedHosts.GetResults() {
+	//		ux.Logger.PrintToUser("Loadtest instance %s failed to provision with error %s. Please check instance logs for more information", result.NodeID, result.Err)
+	//	}
+	//	return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
+	//}
+	//ux.Logger.PrintToUser("Loadtest instance %s provisioned successfully", loadTestHost.NodeID)
 	// run loadtest script
 	//ltScript := ""
 	//if ltScript, err = ssh.RunSSHSetupLoadTest(&loadTestHost, loadTestScriptPath); err != nil {
@@ -196,7 +234,7 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	//if err := ssh.RunSSHStartLoadTest(&loadTestHost, ltScript, loadTestScriptArgs); err != nil {
 	//	return err
 	//}
-	ux.Logger.PrintToUser("Loadtest instance %s is done", loadTestHost.NodeID)
+	//ux.Logger.PrintToUser("Loadtest instance %s is done", loadTestHost.NodeID)
 
 	return nil
 }

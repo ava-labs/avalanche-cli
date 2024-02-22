@@ -48,6 +48,7 @@ var (
 	authorizeAccess                       bool
 	numNodes                              []int
 	nodeType                              string
+	existingSeparateInstance              string
 	existingMonitoringInstance            string
 	useLatestAvalanchegoReleaseVersion    bool
 	useLatestAvalanchegoPreReleaseVersion bool

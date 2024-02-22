@@ -160,7 +160,6 @@ func whitelistIP(_ *cobra.Command, args []string) error {
 func getCloudSecurityGroupList(clusterNodes []string) ([]regionSecurityGroup, error) {
 	cloudSecurityGroupList := []regionSecurityGroup{}
 	for _, node := range clusterNodes {
-
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to parse node %s due to %s", node, err.Error())
