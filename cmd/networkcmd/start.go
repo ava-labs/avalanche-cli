@@ -27,7 +27,10 @@ var (
 	avagoBinaryPath          string
 )
 
-const latest = "latest"
+const (
+	latest  = "latest"
+	jsonExt = ".json"
+)
 
 func newStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -150,7 +153,7 @@ func StartNetwork(*cobra.Command, []string) error {
 		ux.PrintTableEndpoints(resp.ClusterInfo)
 	}
 
-	relayerStoredConfigPath := filepath.Join(app.GetAWMRelayerSnapshotConfsDir(), snapshotName+".json")
+	relayerStoredConfigPath := filepath.Join(app.GetAWMRelayerSnapshotConfsDir(), snapshotName+jsonExt)
 	if utils.FileExists(relayerStoredConfigPath) {
 		relayerConfigPath := app.GetAWMRelayerConfigPath()
 		if err := binutils.CopyFile(relayerStoredConfigPath, relayerConfigPath); err != nil {
@@ -168,7 +171,7 @@ func StartNetwork(*cobra.Command, []string) error {
 		}
 	}
 
-	storedExtraLocalNetowkrDataPath := filepath.Join(app.GetExtraLocalNetworkSnapshotsDir(), snapshotName+".json")
+	storedExtraLocalNetowkrDataPath := filepath.Join(app.GetExtraLocalNetworkSnapshotsDir(), snapshotName+jsonExt)
 	if utils.FileExists(storedExtraLocalNetowkrDataPath) {
 		extraLocalNetworkDataPath := app.GetExtraLocalNetworkDataPath()
 		if err := binutils.CopyFile(storedExtraLocalNetowkrDataPath, extraLocalNetworkDataPath); err != nil {
