@@ -827,7 +827,7 @@ func CheckForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.Statu
 		return "", err
 	}
 
-	desiredAvagoVersion := userProvidedAvagoVersion
+	desiredAvagoVersion := strings.Split(userProvidedAvagoVersion, "-")[0]
 
 	// RPC Version was made available in the info API in avalanchego version v1.9.2. For prior versions,
 	// we will need to skip this check.
@@ -846,7 +846,7 @@ func CheckForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.Statu
 				)
 			}
 			desiredAvagoVersion = runningAvagoVersion
-		} else if runningAvagoVersion != userProvidedAvagoVersion {
+		} else if runningAvagoVersion != desiredAvagoVersion {
 			// user wants a specific version
 			return "", errors.New("incompatible avalanchego version selected")
 		}
@@ -854,6 +854,16 @@ func CheckForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.Statu
 		// find latest avago version for this rpc version
 		desiredAvagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(
 			app, configuredRPCVersion, constants.AvalancheGoCompatibilityURL)
+		if err == vm.ErrNoAvagoVersion {
+			latestPreReleaseVersion, err := app.Downloader.GetLatestPreReleaseVersion(
+				constants.AvaLabsOrg,
+				constants.AvalancheGoRepoName,
+			)
+			if err != nil {
+				return "", err
+			}
+			return latestPreReleaseVersion, nil
+		}
 		if err != nil {
 			return "", err
 		}

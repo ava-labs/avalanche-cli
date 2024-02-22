@@ -466,8 +466,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	rootDir = clusterInfo.GetRootDataDir()
 
 	if alreadyDeployed(chainVMID, clusterInfo) {
-		ux.Logger.PrintToUser("Subnet %s has already been deployed", chain)
-		return ids.Empty, ids.Empty, "", "", nil
+		return ids.Empty, ids.Empty, "", "", fmt.Errorf("Subnet %s has already been deployed", chain)
 	}
 
 	numBlockchains := len(clusterInfo.CustomChains)

@@ -5,7 +5,6 @@ package evm
 import (
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
@@ -155,7 +154,6 @@ func GetClient(rpcURL string) (ethclient.Client, error) {
 }
 
 func GetSigner(client ethclient.Client, prefundedPrivateKeyStr string) (*bind.TransactOpts, error) {
-	prefundedPrivateKeyStr = strings.TrimPrefix(prefundedPrivateKeyStr, "0x")
 	prefundedPrivateKey, err := crypto.HexToECDSA(prefundedPrivateKeyStr)
 	if err != nil {
 		return nil, err
