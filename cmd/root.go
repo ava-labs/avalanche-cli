@@ -38,8 +38,7 @@ import (
 )
 
 var (
-	app *application.Avalanche
-
+	app       *application.Avalanche
 	logLevel  string
 	Version   = ""
 	cfgFile   string

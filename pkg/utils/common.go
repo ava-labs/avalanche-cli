@@ -244,3 +244,7 @@ func DownloadStr(url string) (string, error) {
 	bs, err := Download(url)
 	return string(bs), err
 }
+
+func ScriptLog(nodeID string, line string) string {
+	return fmt.Sprintf("[%s] %s", nodeID, line)
+}

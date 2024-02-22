@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -e
 #name:TASK [install gcc if not available]
-sudo apt-get -y update
-gcc --version || DEBIAN_FRONTEND=noninteractive sudo apt-get -y install gcc
+sudo apt-get -y -o DPkg::Lock::Timeout=120 update
+gcc --version || DEBIAN_FRONTEND=noninteractive sudo apt-get -y -o DPkg::Lock::Timeout=120 install gcc
 #name:TASK [install go]
 install_go() {
   GOFILE=go{{ .GoVersion }}.linux-amd64.tar.gz

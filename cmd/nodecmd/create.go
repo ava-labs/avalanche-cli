@@ -477,6 +477,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
+	spinSession := ux.NewUserSpinner()
 	for _, host := range hosts {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
@@ -489,31 +490,44 @@ func createNodes(_ *cobra.Command, args []string) error {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
+			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup node"))
 			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), avalancheGoVersion, network.Kind == models.Devnet); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
+				ux.SpinFailWithError(spinner, "", err)
 				return
 			}
+			ux.SpinComplete(spinner)
 			if separateMonitoringInstance {
+				spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup node"))
 				if err := ssh.RunSSHSetupMachineMetrics(host); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
 					return
 				}
-			} else {
-				if setUpMonitoring {
-					if err := ssh.RunSSHSetupMonitoring(host); err != nil {
-						nodeResults.AddResult(host.NodeID, nil, err)
-						return
-					}
+				ux.SpinComplete(spinner)
+			} else if setUpMonitoring {
+				spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup node"))
+				if err := ssh.RunSSHSetupMonitoring(host); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
 				}
+				ux.SpinComplete(spinner)
 			}
+			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Build Env"))
 			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
+				ux.SpinFailWithError(spinner, "", err)
 				return
 			}
+			ux.SpinComplete(spinner)
+			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Avalanche-CLI"))
 			if err := ssh.RunSSHSetupCLIFromSource(host, constants.SetupCLIFromSourceBranch); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
+				ux.SpinFailWithError(spinner, "", err)
 				return
 			}
+			ux.SpinComplete(spinner)
 		}(&wgResults, host)
 	}
 	wg.Wait()
@@ -539,20 +553,28 @@ func createNodes(_ *cobra.Command, args []string) error {
 			machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
 		}
 		if existingMonitoringInstance != "" {
+			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Setup monitoring"))
 			if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
+				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
+			ux.SpinComplete(spinner)
 		} else {
+			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Setup monitoring"))
 			if err = app.SetupMonitoringEnv(); err != nil {
+				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
 			if err := ssh.RunSSHCopyMonitoringDashboards(monitoringHost, app.GetMonitoringDashboardDir()+"/"); err != nil {
+				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
 
 			if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost, app.GetMonitoringScriptFile(), strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
+				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
+			ux.SpinComplete(spinner)
 		}
 		for _, ansibleNodeID := range ansibleHostIDs {
 			if err = app.CreateAnsibleNodeConfigDir(ansibleNodeID); err != nil {
@@ -589,6 +611,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}(&wgResults, host)
 		}
 		wg.Wait()
+		spinSession.End()
 		for _, node := range hosts {
 			if wgResults.HasNodeIDWithError(node.NodeID) {
 				ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
@@ -599,9 +622,9 @@ func createNodes(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("======================================")
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
-			ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
+			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
 		} else {
-			ux.Logger.PrintToUser("Node %s is CREATED", node.NodeID)
+			ux.Logger.GreenCheckmarkToUser("Node %s is CREATED", node.NodeID)
 		}
 	}
 
@@ -883,7 +906,7 @@ func provideStakingCertAndKey(host *models.Host) error {
 		ux.Logger.PrintToUser("Failed to generate staking keys for host %s", instanceID)
 		return err
 	} else {
-		ux.Logger.PrintToUser("Generated staking keys for host %s[%s] ", instanceID, nodeID.String())
+		ux.Logger.GreenCheckmarkToUser("Generated staking keys for host %s[%s] ", instanceID, nodeID.String())
 	}
 	return ssh.RunSSHUploadStakingFiles(host, keyPath)
 }
@@ -1126,14 +1149,19 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 func waitForHosts(hosts []*models.Host) *models.NodeResults {
 	hostErrors := models.NodeResults{}
 	createdWaitGroup := sync.WaitGroup{}
+	spinSession := ux.NewUserSpinner()
+	defer spinSession.End()
 	for _, host := range hosts {
 		createdWaitGroup.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer createdWaitGroup.Done()
+			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Waiting for bootstrap"))
 			if err := host.WaitForSSHShell(constants.SSHServerStartTimeout); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
+				ux.SpinFailWithError(spinner, "", err)
 				return
 			}
+			ux.SpinComplete(spinner)
 		}(&hostErrors, host)
 	}
 	createdWaitGroup.Wait()

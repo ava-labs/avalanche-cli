@@ -323,6 +323,7 @@ func (h *Host) WaitForSSHShell(timeout time.Duration) error {
 	if err := h.WaitForSSHPort(timeout); err != nil {
 		return err
 	}
+
 	deadline := start.Add(timeout)
 	for {
 		if time.Now().After(deadline) {
