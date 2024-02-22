@@ -222,7 +222,7 @@ func promptNativeMintParams(precompiles *[]params.PrecompileUpgrade, date time.T
 		_, cancel, err := prompts.CaptureListDecision(
 			app.Prompt,
 			"How would you like to distribute your funds",
-			func(s string) (string, error) {
+			func(_ string) (string, error) {
 				addr, err := app.Prompt.CaptureAddress("Address to airdrop to")
 				if err != nil {
 					return "", err

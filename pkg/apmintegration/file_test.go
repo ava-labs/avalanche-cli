@@ -174,7 +174,7 @@ func TestGetSubnets(t *testing.T) {
 
 			// Create subnet files
 			for _, subnet := range tt.subnetNames {
-				subnetFile := filepath.Join(subnetPath, subnet+".yaml")
+				subnetFile := filepath.Join(subnetPath, subnet+yamlExt)
 				err = os.WriteFile(subnetFile, []byte(testSubnetYaml), constants.DefaultPerms755)
 				require.NoError(err)
 			}
@@ -203,7 +203,7 @@ func TestLoadSubnetFile_Success(t *testing.T) {
 	require.NoError(err)
 
 	// Create subnet files
-	subnetFile := filepath.Join(subnetPath, subnet1+".yaml")
+	subnetFile := filepath.Join(subnetPath, subnet1+yamlExt)
 	err = os.WriteFile(subnetFile, []byte(testSubnetYaml), constants.DefaultPerms755)
 	require.NoError(err)
 
@@ -233,7 +233,7 @@ func TestLoadSubnetFile_BadKey(t *testing.T) {
 	require.NoError(err)
 
 	// Create subnet files
-	subnetFile := filepath.Join(subnetPath, subnet1+".yaml")
+	subnetFile := filepath.Join(subnetPath, subnet1+yamlExt)
 	err = os.WriteFile(subnetFile, []byte(testSubnetYaml), constants.DefaultPerms755)
 	require.NoError(err)
 
@@ -253,7 +253,7 @@ func TestGetVMsInSubnet(t *testing.T) {
 	require.NoError(err)
 
 	// Create subnet files
-	subnetFile := filepath.Join(subnetPath, subnet1+".yaml")
+	subnetFile := filepath.Join(subnetPath, subnet1+yamlExt)
 	err = os.WriteFile(subnetFile, []byte(testSubnetYaml), constants.DefaultPerms755)
 	require.NoError(err)
 
@@ -276,7 +276,7 @@ func TestLoadVMFile(t *testing.T) {
 	require.NoError(err)
 
 	// Create subnet files
-	vmFile := filepath.Join(vmPath, vm+".yaml")
+	vmFile := filepath.Join(vmPath, vm+yamlExt)
 	err = os.WriteFile(vmFile, []byte(testVMYaml), constants.DefaultPerms755)
 	require.NoError(err)
 

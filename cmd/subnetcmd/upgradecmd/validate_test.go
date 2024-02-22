@@ -98,7 +98,7 @@ func TestEarliestTimestamp(t *testing.T) {
 
 	require := require.New(t)
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(_ *testing.T) {
 			upgrades, err := getAllUpgrades(tt.upgradesFile)
 			require.NoError(err)
 			earliest, err := getEarliestUpcomingTimestamp(upgrades)
@@ -170,7 +170,7 @@ func TestUpgradeBytesValidation(t *testing.T) {
 	skipPrompting := false
 	require := require.New(t)
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(_ *testing.T) {
 			_, err := validateUpgradeBytes(tt.upgradesFile, nil, skipPrompting)
 			require.ErrorIs(err, tt.expectedErr)
 		})
@@ -255,7 +255,7 @@ func TestLockFile(t *testing.T) {
 	skipPrompting := false
 	require := require.New(t)
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(_ *testing.T) {
 			_, err := validateUpgradeBytes(tt.upgradesFile, tt.lockFile, skipPrompting)
 			require.ErrorIs(err, tt.expectedErr)
 		})

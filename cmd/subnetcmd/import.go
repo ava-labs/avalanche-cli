@@ -18,7 +18,7 @@ func newImportCmd() *cobra.Command {
 This command supports importing from a file created on another computer,
 or importing from subnets running public networks
 (e.g. created manually or with the deprecated subnet-cli)`,
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
 			err := cmd.Help()
 			if err != nil {
 				fmt.Println(err)

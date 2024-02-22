@@ -353,7 +353,7 @@ func TestGetVersionMapping(t *testing.T) {
 	}
 
 	for i, tc := range testContexts {
-		t.Run(tc.name, func(tt *testing.T) {
+		t.Run(tc.name, func(_ *testing.T) {
 			// run the function, but use the testMapper,
 			// so that we can set the currentContext
 			mapping, err := m.getVersionMapping(tc)

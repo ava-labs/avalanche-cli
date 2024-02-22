@@ -23,7 +23,7 @@ but these keys are NOT suitable to use in production environments. DO NOT use
 these keys on Mainnet.
 
 To get started, use the key create command.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
 			err := cmd.Help()
 			if err != nil {
 				fmt.Println(err)

@@ -130,7 +130,7 @@ func TestAtMostOneNetworkSelected(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(_ *testing.T) {
 			useConfig = tt.useConfig
 			useLocal = tt.useLocal
 			useFuji = tt.useFuji
@@ -217,7 +217,7 @@ func TestAtMostOneVersionSelected(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(_ *testing.T) {
 			useLatest = tt.useLatest
 			targetVersion = tt.version
 			binaryPathArg = tt.binary
@@ -270,7 +270,7 @@ func TestAtMostOneAutomationSelected(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(_ *testing.T) {
 			useManual = tt.useManual
 			pluginDir = tt.pluginDir
 
