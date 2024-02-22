@@ -52,7 +52,7 @@ func whitelistSSH(_ *cobra.Command, args []string) error {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
-			ux.Logger.GreenCheckmarkToUser("Whitelisted SSH public key for node %s", host.NodeID)
+			ux.Logger.GreenCheckmarkToUser(utils.ScriptLog(host.NodeID, "Whitelisted SSH public key for node %s"))
 		}(&wgResults, host)
 	}
 	wg.Wait()
