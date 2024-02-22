@@ -108,10 +108,10 @@ func (n Network) BlockchainEndpoint(blockchainID string) string {
 }
 
 func (n Network) BlockchainWSEndpoint(blockchainID string) string {
-	trimmedUri := n.Endpoint
-	trimmedUri = strings.TrimPrefix(trimmedUri, "http://")
-	trimmedUri = strings.TrimPrefix(trimmedUri, "https://")
-	return fmt.Sprintf("ws://%s/ext/bc/%s/ws", trimmedUri, blockchainID)
+	trimmedURI := n.Endpoint
+	trimmedURI = strings.TrimPrefix(trimmedURI, "http://")
+	trimmedURI = strings.TrimPrefix(trimmedURI, "https://")
+	return fmt.Sprintf("ws://%s/ext/bc/%s/ws", trimmedURI, blockchainID)
 }
 
 func (n Network) NetworkIDFlagValue() string {

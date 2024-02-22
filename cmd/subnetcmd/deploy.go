@@ -827,7 +827,7 @@ func CheckForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.Statu
 		return "", err
 	}
 
-	desiredAvagoVersion := strings.Split(userProvidedAvagoVersion, "-")[0]
+	desiredAvagoVersion := userProvidedAvagoVersion
 
 	// RPC Version was made available in the info API in avalanchego version v1.9.2. For prior versions,
 	// we will need to skip this check.
@@ -846,7 +846,7 @@ func CheckForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.Statu
 				)
 			}
 			desiredAvagoVersion = runningAvagoVersion
-		} else if runningAvagoVersion != desiredAvagoVersion {
+		} else if runningAvagoVersion != strings.Split(userProvidedAvagoVersion, "-")[0] {
 			// user wants a specific version
 			return "", errors.New("incompatible avalanchego version selected")
 		}

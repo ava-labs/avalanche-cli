@@ -577,7 +577,13 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			return ids.Empty, ids.Empty, "", "", err
 		}
 		privKeyStr := hex.EncodeToString(k.Raw())
-		alreadyDeployed, cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress, err := td.Deploy(d.app.GetTeleporterBinDir(), sc.TeleporterVersion, "c-chain", constants.CChainRpcURL, privKeyStr)
+		alreadyDeployed, cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress, err := td.Deploy(
+			d.app.GetTeleporterBinDir(),
+			sc.TeleporterVersion,
+			"c-chain",
+			network.CChainEndpoint(),
+			privKeyStr,
+		)
 		if err != nil {
 			return ids.Empty, ids.Empty, "", "", err
 		}
@@ -599,7 +605,11 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			); err != nil {
 				return ids.Empty, ids.Empty, "", "", err
 			}
-			if err := teleporter.FundRelayer(constants.CChainRpcURL, privKeyStr, relayerAddress); err != nil {
+			if err := teleporter.FundRelayer(
+				network.CChainEndpoint(),
+				privKeyStr,
+				relayerAddress,
+			); err != nil {
 				return ids.Empty, ids.Empty, "", "", err
 			}
 			extraLocalNetworkDataPath := d.app.GetExtraLocalNetworkDataPath()

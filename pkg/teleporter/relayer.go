@@ -360,10 +360,10 @@ func addChainToRelayerConfig(
 
 // Get the host and port from a URI. The URI should be in the format http://host:port or https://host:port or host:port
 func getURIHostAndPort(uri string) (string, uint32, error) {
-	trimmedUri := uri
-	trimmedUri = strings.TrimPrefix(trimmedUri, "http://")
-	trimmedUri = strings.TrimPrefix(trimmedUri, "https://")
-	hostAndPort := strings.Split(trimmedUri, ":")
+	trimmedURI := uri
+	trimmedURI = strings.TrimPrefix(trimmedURI, "http://")
+	trimmedURI = strings.TrimPrefix(trimmedURI, "https://")
+	hostAndPort := strings.Split(trimmedURI, ":")
 	if len(hostAndPort) != 2 {
 		return "", 0, fmt.Errorf("expected only host and port fields in %s", uri)
 	}
