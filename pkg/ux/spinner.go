@@ -14,6 +14,7 @@ var Spinner *UserSpinner
 
 type UserSpinner struct {
 	spinner ysmrr.SpinnerManager
+	stopped bool
 }
 
 func newSpinner() ysmrr.SpinnerManager {
@@ -25,22 +26,26 @@ func newSpinner() ysmrr.SpinnerManager {
 
 func NewUserSpinner() *UserSpinner {
 	spinner := newSpinner()
-	Spinner = &UserSpinner{spinner: spinner}
+	Spinner = &UserSpinner{spinner: spinner, stopped: true}
 	return Spinner
 }
 
 func (us *UserSpinner) Start() {
-	us.spinner.Start()
+	if us.stopped {
+		us.spinner.Start()
+	}
 }
 
 func (us *UserSpinner) Stop() {
-	us.spinner.Stop()
+	if !us.stopped {
+		us.spinner.Stop()
+	}
 }
 
 func (us *UserSpinner) SpinToUser(msg string, args ...interface{}) *ysmrr.Spinner {
 	formattedMsg := fmt.Sprintf(msg, args...)
 	sp := us.spinner.AddSpinner(formattedMsg)
-	us.spinner.Start()
+	us.Start()
 	return sp
 }
 
