@@ -147,7 +147,7 @@ func generateCustomGenesis(
 	return json.MarshalIndent(genesisMap, "", " ")
 }
 
-func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[string]string) error {
+func setupDevnet(spinSession *ux.UserSpinner, clusterName string, hosts []*models.Host, apiNodeIPMap map[string]string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
@@ -236,12 +236,11 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 	// update node/s genesis + conf and start
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
-	spinSessionDev := ux.NewUserSpinner()
 	for _, host := range hosts {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			spinner := spinSessionDev.SpinToUser(utils.ScriptLog(host.NodeID, "Setup devnet"))
+			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup devnet"))
 			keyPath := filepath.Join(app.GetNodesDir(), host.GetCloudID())
 			if err := ssh.RunSSHSetupDevNet(host, keyPath); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
@@ -252,7 +251,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 		}(&wgResults, host)
 	}
 	wg.Wait()
-	spinSessionDev.Stop()
+	spinSession.Stop()
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
 			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])

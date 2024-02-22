@@ -622,18 +622,14 @@ func createNodes(_ *cobra.Command, args []string) error {
 		}
 		ux.SpinComplete(spinner)
 	}
-	spinSession.Stop()
+	if network.Kind == models.Devnet {
+		if err := setupDevnet(spinSession, clusterName, hosts, apiNodeIPMap); err != nil {
+			return err
+		}
+	}
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
 			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
-		} else {
-			ux.Logger.GreenCheckmarkToUser("Node %s is CREATED", node.NodeID)
-		}
-	}
-
-	if network.Kind == models.Devnet {
-		if err := setupDevnet(clusterName, hosts, apiNodeIPMap); err != nil {
-			return err
 		}
 	}
 
