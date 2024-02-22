@@ -471,25 +471,19 @@ func RunSSHSubnetSyncStatus(host *models.Host, blockchainID string) ([]byte, err
 // RunSSHWhitelistPubKey downloads the authorized_keys file from the specified host, appends the provided sshPubKey to it, and uploads the file back to the host.
 func RunSSHWhitelistPubKey(host *models.Host, sshPubKey string) error {
 	const sshAuthFile = "/home/ubuntu/.ssh/authorized_keys"
-	tmpfile, err := os.CreateTemp("", "runSSHWhitelistPubKey")
+	tmpName := filepath.Join(os.TempDir(), utils.RandomString(10))
+	defer os.Remove(tmpName)
+	if err := host.Download(sshAuthFile, tmpName, constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	// write ssh public key
+	tmpFile, err := os.OpenFile(tmpName, os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
 	}
-	defer os.Remove(tmpfile.Name())
-	if err := host.Download(sshAuthFile, tmpfile.Name(), constants.SSHFileOpsTimeout); err != nil {
+	if _, err := tmpFile.WriteString(sshPubKey + "\n"); err != nil {
 		return err
 	}
-	//write ssh public key
-	if _, err := tmpfile.WriteString(sshPubKey + "\n"); err != nil {
-		return err
-	}
-	tmpfile.Close()
-	if err := host.Upload(tmpfile.Name(), sshAuthFile, constants.SSHFileOpsTimeout); err != nil {
-		return err
-	}
-	//make sure proper permissions are set to the file
-	if _, err := host.Command("chmod 600 "+sshAuthFile, nil, constants.SSHFileOpsTimeout); err != nil {
-		return err
-	}
-	return nil
+	tmpFile.Close()
+	return host.Upload(tmpFile.Name(), sshAuthFile, constants.SSHFileOpsTimeout)
 }

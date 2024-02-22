@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
 
@@ -50,18 +51,14 @@ func whitelistSSH(_ *cobra.Command, args []string) error {
 			if err := ssh.RunSSHWhitelistPubKey(host, sshPubKey); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
-			} else {
-				if avalancheGoVersion, _, err := parseAvalancheGoOutput(resp); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-				} else {
-					nodeResults.AddResult(host.NodeID, avalancheGoVersion, err)
-				}
 			}
+			ux.Logger.GreenCheckmarkToUser("Whitelisted SSH public key for node %s", host.NodeID)
 		}(&wgResults, host)
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
-		return fmt.Errorf("failed to get avalanchego version for node(s) %s", wgResults.GetErrorHostMap())
+		ux.Logger.RedXToUser("Failed to whitelist SSH public key for node(s) %s", wgResults.GetErrorHostMap())
+		return fmt.Errorf("failed to whitelist SSH public key for node(s) %s", wgResults.GetErrorHostMap())
 	}
 	return nil
 }
