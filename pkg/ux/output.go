@@ -14,6 +14,7 @@ import (
 
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/fatih/color"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -38,6 +39,19 @@ func (ul *UserLog) PrintToUser(msg string, args ...interface{}) {
 	formattedMsg := fmt.Sprintf(msg, args...)
 	fmt.Fprintln(ul.writer, formattedMsg)
 	ul.log.Info(formattedMsg)
+}
+
+// GreenCheckmarkToUser prints a green checkmark to the user before the message
+func (ul *UserLog) GreenCheckmarkToUser(msg string, args ...interface{}) {
+	checkmark := "\u2713" // Unicode for checkmark symbol
+	green := color.New(color.FgHiGreen).SprintFunc()
+	ul.PrintToUser(green(checkmark)+" "+msg, args...)
+}
+
+func (ul *UserLog) RedXToUser(msg string, args ...interface{}) {
+	xmark := "\u2717" // Unicode for X symbol
+	red := color.New(color.FgHiRed).SprintFunc()
+	ul.PrintToUser(red(xmark)+" "+msg, args...)
 }
 
 // PrintWait does some dot printing to entertain the user
