@@ -45,7 +45,8 @@ func (us *UserSpinner) Stop() {
 func (us *UserSpinner) SpinToUser(msg string, args ...interface{}) *ysmrr.Spinner {
 	formattedMsg := fmt.Sprintf(msg, args...)
 	sp := us.spinner.AddSpinner(formattedMsg)
-	us.Start()
+	us.stopped = false
+	us.spinner.Start()
 	return sp
 }
 
