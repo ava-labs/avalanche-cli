@@ -284,7 +284,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			return nil, nil, nil, nil, err
 		}
 		ux.SpinComplete(spinner)
-		spinSession.End()
+		spinSession.Stop()
 		if useStaticIP {
 			publicIPs := []string{}
 			for count := 0; count < regionConf[region].NumNodes; count++ {

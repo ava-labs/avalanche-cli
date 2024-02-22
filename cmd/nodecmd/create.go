@@ -498,7 +498,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 			ux.SpinComplete(spinner)
 			if separateMonitoringInstance {
-				spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup node"))
+				spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup node"))
 				if err := ssh.RunSSHSetupMachineMetrics(host); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
@@ -506,7 +506,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 				}
 				ux.SpinComplete(spinner)
 			} else if setUpMonitoring {
-				spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup node"))
+				spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup node"))
 				if err := ssh.RunSSHSetupMonitoring(host); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
@@ -531,13 +531,12 @@ func createNodes(_ *cobra.Command, args []string) error {
 		}(&wgResults, host)
 	}
 	wg.Wait()
-	spinSession.End()
+	spinSession.Stop()
 	ansibleHostIDs, err := utils.MapWithError(cloudConfigMap.GetAllInstanceIDs(), func(s string) (string, error) { return models.HostCloudIDToAnsibleID(cloudService, s) })
 	if err != nil {
 		return err
 	}
 	if separateMonitoringInstance {
-		spinSession := ux.NewUserSpinner()
 		if len(monitoringHosts) != 1 {
 			return fmt.Errorf("expected only one monitoring host, found %d", len(monitoringHosts))
 		}
@@ -578,7 +577,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 			ux.SpinComplete(spinner)
 		}
-		spinSession.End()
+		spinSession.Stop()
 		for _, ansibleNodeID := range ansibleHostIDs {
 			if err = app.CreateAnsibleNodeConfigDir(ansibleNodeID); err != nil {
 				return err
@@ -635,6 +634,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("======================================")
 		ux.Logger.PrintToUser("Setting up Devnet ...")
 		ux.Logger.PrintToUser("======================================")
+		spinSession.Stop()
 		if err := setupDevnet(clusterName, hosts, apiNodeIPMap); err != nil {
 			return err
 		}
@@ -1167,7 +1167,7 @@ func waitForHosts(hosts []*models.Host) *models.NodeResults {
 		}(&hostErrors, host)
 	}
 	createdWaitGroup.Wait()
-	spinSession.End()
+	spinSession.Stop()
 	return &hostErrors
 }
 

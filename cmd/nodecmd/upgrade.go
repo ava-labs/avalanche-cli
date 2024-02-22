@@ -96,7 +96,7 @@ func upgrade(_ *cobra.Command, args []string) error {
 			ux.SpinComplete(spinner)
 		}
 	}
-	spinSession.End()
+	spinSession.Stop()
 	return nil
 }
 

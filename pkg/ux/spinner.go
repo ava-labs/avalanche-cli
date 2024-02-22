@@ -33,7 +33,7 @@ func (us *UserSpinner) Start() {
 	us.spinner.Start()
 }
 
-func (us *UserSpinner) End() {
+func (us *UserSpinner) Stop() {
 	us.spinner.Stop()
 }
 
