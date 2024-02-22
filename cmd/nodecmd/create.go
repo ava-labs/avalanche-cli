@@ -1104,6 +1104,7 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 			ux.Logger.PrintToUser("")
 		}
 		ux.Logger.PrintToUser("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", cloudConfig.CertFilePath)
+		ux.Logger.PrintToUser("")
 		for i, instanceID := range cloudConfig.InstanceIDs {
 			publicIP := ""
 			publicIP = publicIPMap[instanceID]
@@ -1122,7 +1123,6 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 			ux.Logger.PrintToUser("To ssh to node, run: ")
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser(utils.GetSSHConnectionString(publicIP, cloudConfig.CertFilePath))
-			ux.Logger.PrintToUser("")
 			if setUpMonitoring && !separateMonitoringInstance {
 				ux.Logger.PrintToUser("To view monitoring dashboard for this node, visit the following link in your browser: ")
 				ux.Logger.PrintToUser(fmt.Sprintf("http://%s:3000/dashboards", publicIP))
@@ -1130,6 +1130,7 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 				ux.Logger.PrintToUser("")
 			}
 			ux.Logger.PrintToUser("======================================")
+			ux.Logger.PrintToUser("")
 		}
 	}
 	if separateMonitoringInstance {
