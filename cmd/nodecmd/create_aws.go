@@ -278,7 +278,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			return nil, nil, nil, nil, err
 		}
 		spinSession := ux.NewUserSpinner()
-		spinner := spinSession.SpinToUser("Waiting for EC2 instances in AWS[%s] to be provisioned...", region)
+		spinner := spinSession.SpinToUser("Waiting for EC2 instance(s) in AWS[%s] to be provisioned...", region)
 		if err := ec2Svc[region].WaitForEC2Instances(instanceIDs[region]); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
 			return nil, nil, nil, nil, err

@@ -250,9 +250,9 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 		}
 		sshPublicKey = string(sshPublicKeyBytes)
 	}
-
-	ux.Logger.PrintToUser("Waiting for GCE instance(s) to be provisioned...")
+	spinSession := ux.NewUserSpinner()
 	for zone, numNodes := range numNodesMap {
+		spinner := spinSession.SpinToUser("Waiting for instance(s) in GCP[%s] to be provisioned...", zone)
 		_, err := gcpClient.SetupInstances(
 			cliDefaultName,
 			zone,
@@ -265,9 +265,12 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 			numNodes,
 			forMonitoring)
 		if err != nil {
+			ux.SpinFailWithError(spinner, "", err)
 			return nil, nil, "", "", err
 		}
+		ux.SpinComplete(spinner)
 	}
+	spinSession.Stop()
 	instanceIDs := map[string][]string{}
 	for zone, numNodes := range numNodesMap {
 		instanceIDs[zone] = []string{}
