@@ -17,7 +17,7 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 		Use:   "config",
 		Short: "Modify configuration for Avalanche-CLI",
 		Long:  `Customize configuration for Avalanche-CLI`,
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
 			err := cmd.Help()
 			if err != nil {
 				fmt.Println(err)

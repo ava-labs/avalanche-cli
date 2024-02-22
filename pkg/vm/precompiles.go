@@ -130,7 +130,7 @@ func configureContractAllowList(app *application.Avalanche) (deployerallowlist.C
 	adminPrompt := "Configure contract deployment admin allow list"
 	enabledPrompt := "Configure contract deployment enabled addresses list"
 	info := "\nThis precompile restricts who has the ability to deploy contracts " +
-		"on your subnet.\nFor more information visit " +
+		"on your subnet.\nFor more information visit " + //nolint:goconst
 		"https://docs.avax.network/subnets/customize-a-subnet/#restricting-smart-contract-deployers\n\n"
 
 	admins, enabled, cancelled, err := getAdminAndEnabledAddresses(adminPrompt, enabledPrompt, info, app)

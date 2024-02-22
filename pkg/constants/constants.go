@@ -85,25 +85,27 @@ const (
 
 	CurrentBootstrapNamePath = "currentBootstrapName.txt"
 
+	AssetsDir = "assets/"
+
 	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
-	BootstrapSnapshotLocalPath   = "assets/" + BootstrapSnapshotArchiveName
+	BootstrapSnapshotLocalPath   = AssetsDir + BootstrapSnapshotArchiveName
 	BootstrapSnapshotURL         = BootstrapSnapshotRawBranch + BootstrapSnapshotLocalPath
-	BootstrapSnapshotSHA256URL   = BootstrapSnapshotRawBranch + "assets/sha256sum.txt"
+	BootstrapSnapshotSHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sum.txt"
 
 	BootstrapSnapshotSingleNodeArchiveName = "bootstrapSnapshotSingleNode.tar.gz"
-	BootstrapSnapshotSingleNodeLocalPath   = "assets/" + BootstrapSnapshotSingleNodeArchiveName
+	BootstrapSnapshotSingleNodeLocalPath   = AssetsDir + BootstrapSnapshotSingleNodeArchiveName
 	BootstrapSnapshotSingleNodeURL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodeLocalPath
-	BootstrapSnapshotSingleNodeSHA256URL   = BootstrapSnapshotRawBranch + "assets/sha256sumSingleNode.txt"
+	BootstrapSnapshotSingleNodeSHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.txt"
 
 	BootstrapSnapshotPreCortina17ArchiveName = "bootstrapSnapshot.PreCortina17.tar.gz"
-	BootstrapSnapshotPreCortina17LocalPath   = "assets/" + BootstrapSnapshotPreCortina17ArchiveName
+	BootstrapSnapshotPreCortina17LocalPath   = AssetsDir + BootstrapSnapshotPreCortina17ArchiveName
 	BootstrapSnapshotPreCortina17URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotPreCortina17LocalPath
-	BootstrapSnapshotPreCortina17SHA256URL   = BootstrapSnapshotRawBranch + "assets/sha256sum.PreCortina17.txt"
+	BootstrapSnapshotPreCortina17SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sum.PreCortina17.txt"
 
 	BootstrapSnapshotSingleNodePreCortina17ArchiveName = "bootstrapSnapshotSingleNode.PreCortina17.tar.gz"
-	BootstrapSnapshotSingleNodePreCortina17LocalPath   = "assets/" + BootstrapSnapshotSingleNodePreCortina17ArchiveName
+	BootstrapSnapshotSingleNodePreCortina17LocalPath   = AssetsDir + BootstrapSnapshotSingleNodePreCortina17ArchiveName
 	BootstrapSnapshotSingleNodePreCortina17URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreCortina17LocalPath
-	BootstrapSnapshotSingleNodePreCortina17SHA256URL   = BootstrapSnapshotRawBranch + "assets/sha256sumSingleNode.PreCortina17.txt"
+	BootstrapSnapshotSingleNodePreCortina17SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.PreCortina17.txt"
 
 	CliInstallationURL      = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
 	ExpectedCliInstallErr   = "resource temporarily unavailable"

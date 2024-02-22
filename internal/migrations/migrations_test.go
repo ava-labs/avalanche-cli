@@ -46,7 +46,7 @@ func TestRunMigrations(t *testing.T) {
 			name:      "migration fail",
 			shouldErr: true,
 			migs: map[int]migrationFunc{
-				0: func(app *application.Avalanche, r *migrationRunner) error {
+				0: func(_ *application.Avalanche, _ *migrationRunner) error {
 					return errors.New("bogus fail")
 				},
 			},
@@ -56,7 +56,7 @@ func TestRunMigrations(t *testing.T) {
 			name:      "1 mig, apply",
 			shouldErr: false,
 			migs: map[int]migrationFunc{
-				0: func(app *application.Avalanche, r *migrationRunner) error {
+				0: func(_ *application.Avalanche, r *migrationRunner) error {
 					r.printMigrationMessage()
 					return nil
 				},
@@ -67,11 +67,11 @@ func TestRunMigrations(t *testing.T) {
 			name:      "2 mig, apply both",
 			shouldErr: false,
 			migs: map[int]migrationFunc{
-				0: func(app *application.Avalanche, r *migrationRunner) error {
+				0: func(_ *application.Avalanche, r *migrationRunner) error {
 					r.printMigrationMessage()
 					return nil
 				},
-				1: func(app *application.Avalanche, r *migrationRunner) error {
+				1: func(_ *application.Avalanche, r *migrationRunner) error {
 					r.printMigrationMessage()
 					return nil
 				},
@@ -82,10 +82,10 @@ func TestRunMigrations(t *testing.T) {
 			name:      "2 mig, apply 1",
 			shouldErr: false,
 			migs: map[int]migrationFunc{
-				0: func(app *application.Avalanche, r *migrationRunner) error {
+				0: func(_ *application.Avalanche, _ *migrationRunner) error {
 					return nil
 				},
-				1: func(app *application.Avalanche, r *migrationRunner) error {
+				1: func(_ *application.Avalanche, r *migrationRunner) error {
 					r.printMigrationMessage()
 					return nil
 				},
@@ -96,10 +96,10 @@ func TestRunMigrations(t *testing.T) {
 			name:      "2 mig, first one fails",
 			shouldErr: true,
 			migs: map[int]migrationFunc{
-				0: func(app *application.Avalanche, r *migrationRunner) error {
+				0: func(_ *application.Avalanche, _ *migrationRunner) error {
 					return errors.New("bogus fail")
 				},
-				1: func(app *application.Avalanche, r *migrationRunner) error {
+				1: func(_ *application.Avalanche, r *migrationRunner) error {
 					r.printMigrationMessage()
 					return nil
 				},
@@ -110,11 +110,11 @@ func TestRunMigrations(t *testing.T) {
 			name:      "2 mig, apply 1, second one fails",
 			shouldErr: true,
 			migs: map[int]migrationFunc{
-				0: func(app *application.Avalanche, r *migrationRunner) error {
+				0: func(_ *application.Avalanche, r *migrationRunner) error {
 					r.printMigrationMessage()
 					return nil
 				},
-				1: func(app *application.Avalanche, r *migrationRunner) error {
+				1: func(_ *application.Avalanche, _ *migrationRunner) error {
 					return errors.New("bogus fail")
 				},
 			},

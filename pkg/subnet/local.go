@@ -602,7 +602,7 @@ func (d *LocalDeployer) SetupLocalEnv() (bool, string, error) {
 	if d.avagoBinaryPath != "" {
 		avalancheGoBinPath = d.avagoBinaryPath
 		// get avago version from binary
-		out, err := exec.Command(avalancheGoBinPath, "--"+config.VersionKey).Output() //nolint
+		out, err := exec.Command(avalancheGoBinPath, "--"+config.VersionKey).Output()
 		if err != nil {
 			return false, "", err
 		}

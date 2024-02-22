@@ -150,7 +150,7 @@ func TestGetLatestAvagoVersion(t *testing.T) {
 	require := setupTest(t)
 
 	testVersion := "v1.99.9999"
-	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		resp := fmt.Sprintf(`{"some":"unimportant","fake":"data","tag_name":"%s","tag_name_was":"what we are interested in"}`, testVersion)
 		_, err := w.Write([]byte(resp))
 		require.NoError(err)
