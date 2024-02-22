@@ -252,6 +252,7 @@ func setupDevnet(spinSession *ux.UserSpinner, clusterName string, hosts []*model
 	}
 	wg.Wait()
 	spinSession.Stop()
+	ux.Logger.PrintToUser("======================================")
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
 			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
