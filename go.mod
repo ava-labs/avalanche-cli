@@ -1,13 +1,13 @@
 module github.com/ava-labs/avalanche-cli
 
-go 1.20
+go 1.21
 
 require (
 	github.com/ava-labs/apm v0.0.4
-	github.com/ava-labs/avalanche-network-runner v1.7.5
-	github.com/ava-labs/avalanchego v1.11.0-rc.1
+	github.com/ava-labs/avalanche-network-runner v1.7.6
+	github.com/ava-labs/avalanchego v1.11.0
 	github.com/ava-labs/awm-relayer v0.2.12
-	github.com/ava-labs/coreth v0.12.11-rc.3
+	github.com/ava-labs/coreth v0.13.0-rc.0
 	github.com/ava-labs/subnet-evm v0.6.0-fuji
 	github.com/ava-labs/teleporter v0.2.0
 	github.com/aws/aws-sdk-go-v2 v1.25.0

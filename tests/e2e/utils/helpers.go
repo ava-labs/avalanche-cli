@@ -480,7 +480,7 @@ func RunLedgerSim(
 	ledgerSimEndCh chan struct{},
 	showStdout bool,
 ) error {
-	cmd := exec.Command( //nolint:gosec
+	cmd := exec.Command(
 		"ts-node",
 		basicLedgerSimScript,
 		fmt.Sprintf("%d", iters),

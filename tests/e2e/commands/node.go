@@ -44,7 +44,7 @@ func NodeCreate(network, version string, numNodes int, separateMonitoring bool) 
 		"--node-type=docker",
 	)
 	cmd.Env = os.Environ()
-	fmt.Println("About to run: " + cmd.String())
+	fmt.Println("About to run: " + cmd.String()) //nolint:goconst
 	output, err := cmd.Output()
 	fmt.Println("---------------->")
 	fmt.Println(string(output))

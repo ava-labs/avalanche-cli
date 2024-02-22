@@ -22,7 +22,7 @@ validators on Avalanche Network.
 To get started, use the node create command wizard to walk through the
 configuration to make your node a primary validator on Avalanche public network. You can use the 
 rest of the commands to maintain your node and make your node a Subnet Validator.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
 			err := cmd.Help()
 			if err != nil {
 				fmt.Println(err)
