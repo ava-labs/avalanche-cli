@@ -1091,9 +1091,10 @@ func setCloudInstanceType(cloudService string) (string, error) {
 }
 
 func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]string, ansibleHostIDs []string, monitoringHostIP string) {
-	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintToUser(" 											 ")
+	ux.Logger.PrintToUser("==============================================")
 	ux.Logger.PrintToUser("AVALANCHE NODE(S) SUCCESSFULLY SET UP!")
-	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintToUser("==============================================")
 	ux.Logger.PrintToUser("Please wait until the node(s) are successfully bootstrapped to run further commands on the node(s)")
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Here are the details of the set up node(s): ")
