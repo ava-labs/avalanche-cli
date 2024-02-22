@@ -625,8 +625,9 @@ func createNodes(_ *cobra.Command, args []string) error {
 	spinSession.Stop()
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
-			ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
-			return fmt.Errorf("node %s failed to setup with error: %w", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
+			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
+		} else {
+			ux.Logger.GreenCheckmarkToUser("Node %s is CREATED", node.NodeID)
 		}
 	}
 
@@ -905,7 +906,7 @@ func provideStakingCertAndKey(host *models.Host) error {
 		ux.Logger.PrintToUser("Failed to generate staking keys for host %s", instanceID)
 		return err
 	} else {
-		ux.Logger.PrintToUser("Generated staking keys for host %s[%s] ", instanceID, nodeID.String())
+		ux.Logger.GreenCheckmarkToUser("Generated staking keys for host %s[%s] ", instanceID, nodeID.String())
 	}
 	return ssh.RunSSHUploadStakingFiles(host, keyPath)
 }
