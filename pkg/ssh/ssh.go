@@ -467,3 +467,29 @@ func RunSSHSubnetSyncStatus(host *models.Host, blockchainID string) ([]byte, err
 	requestBody := fmt.Sprintf("{\"jsonrpc\":\"2.0\", \"id\":1,\"method\" :\"platform.getBlockchainStatus\", \"params\": {\"blockchainID\":\"%s\"}}", blockchainID)
 	return PostOverSSH(host, "/ext/bc/P", requestBody)
 }
+
+// RunSSHWhitelistPubKey downloads the authorized_keys file from the specified host, appends the provided sshPubKey to it, and uploads the file back to the host.
+func RunSSHWhitelistPubKey(host *models.Host, sshPubKey string) error {
+	const sshAuthFile = "/home/ubuntu/.ssh/authorized_keys"
+	tmpfile, err := os.CreateTemp("", "runSSHWhitelistPubKey")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmpfile.Name())
+	if err := host.Download(sshAuthFile, tmpfile.Name(), constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	//write ssh public key
+	if _, err := tmpfile.WriteString(sshPubKey + "\n"); err != nil {
+		return err
+	}
+	tmpfile.Close()
+	if err := host.Upload(tmpfile.Name(), sshAuthFile, constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	//make sure proper permissions are set to the file
+	if _, err := host.Command("chmod 600 "+sshAuthFile, nil, constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	return nil
+}
