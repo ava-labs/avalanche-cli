@@ -172,8 +172,6 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 		networkEndpoint = ansibleHosts[ansibleHostIDs[0]].IP
 	}
 	network := models.NewDevnetNetwork(networkEndpoint, constants.AvalanchegoAPIPort)
-	ux.Logger.PrintToUser("Devnet Network Id: %d", network.ID)
-	ux.Logger.PrintToUser("Devnet Endpoint: %s", network.Endpoint)
 
 	// get random staking key for devnet genesis
 	k, err := key.NewSoft(network.ID)
@@ -238,35 +236,41 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 	// update node/s genesis + conf and start
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
-	spinSession := ux.NewUserSpinner()
-	defer spinSession.End()
 	for _, host := range hosts {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup devnet"))
+
 			keyPath := filepath.Join(app.GetNodesDir(), host.GetCloudID())
 			if err := ssh.RunSSHSetupDevNet(host, keyPath); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
-				ux.SpinFailWithError(spinner, "", err)
+				ux.Logger.RedXToUser(utils.ScriptLog(host.NodeID, "Setup devnet err: %v", err))
 				return
 			}
-			ux.SpinComplete(spinner)
+			ux.Logger.GreenCheckmarkToUser(utils.ScriptLog(host.NodeID, "Setup devnet"))
 		}(&wgResults, host)
 	}
 	wg.Wait()
+	ux.Logger.PrintToUser("==============================================")
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
 			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
 		} else {
-			ux.Logger.GreenCheckmarkToUser("Node %s is SETUP as devnet", node.NodeID)
+			nodeID, err := getNodeID(app.GetNodeInstanceDirPath(node.GetCloudID()))
+			if err != nil {
+				return err
+			}
+			ux.Logger.GreenCheckmarkToUser("Node %s[%s] is SETUP as devnet", node.GetCloudID(), nodeID)
 		}
 	}
 	// stop execution if at least one node failed
 	if wgResults.HasErrors() {
 		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
 	}
-
+	ux.Logger.PrintToUser("==============================================")
+	ux.Logger.PrintToUser("Devnet Network Id: %d", network.ID)
+	ux.Logger.PrintToUser("Devnet Endpoint: %s", network.Endpoint)
+	ux.Logger.PrintToUser("==============================================")
 	// update cluster config with network information
 	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {
