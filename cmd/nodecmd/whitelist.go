@@ -19,7 +19,7 @@ func newWhitelistCmd() *cobra.Command {
 	return cmd
 }
 
-func whitelist(_ *cobra.Command, args []string) error {
+func whitelist(_ *cobra.Command, _ []string) error {
 	ux.Logger.PrintToUser("This command is depricated. Please use node whitelist-ip command instead.")
 	return nil
 }
