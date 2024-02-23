@@ -260,7 +260,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 			if err != nil {
 				return err
 			}
-			ux.Logger.GreenCheckmarkToUser("Node %s[%s] is SETUP as devnet", node.NodeID, nodeID)
+			ux.Logger.GreenCheckmarkToUser("Node %s[%s] is SETUP as devnet", node.GetCloudID(), nodeID)
 		}
 	}
 	// stop execution if at least one node failed

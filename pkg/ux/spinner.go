@@ -15,6 +15,7 @@ import (
 
 type UserSpinner struct {
 	spinner ysmrr.SpinnerManager
+	started bool
 	mutex   sync.Mutex
 }
 
@@ -34,12 +35,6 @@ func NewUserSpinner() *UserSpinner {
 	return spinner
 }
 
-func (us *UserSpinner) Start() {
-	us.mutex.Lock()
-	us.spinner.Start()
-	us.mutex.Unlock()
-}
-
 func (us *UserSpinner) Stop() {
 	us.mutex.Lock()
 	us.spinner.Stop()
@@ -47,10 +42,13 @@ func (us *UserSpinner) Stop() {
 }
 
 func (us *UserSpinner) SpinToUser(msg string, args ...interface{}) *ysmrr.Spinner {
-	us.mutex.Lock()
 	formattedMsg := fmt.Sprintf(msg, args...)
 	sp := us.spinner.AddSpinner(formattedMsg)
-	us.spinner.Start()
+	us.mutex.Lock()
+	if !us.started {
+		us.spinner.Start()
+		us.started = true
+	}
 	us.mutex.Unlock()
 	return sp
 }
