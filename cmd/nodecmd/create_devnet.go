@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -24,6 +25,7 @@ import (
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/utils/formatting"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 	coreth_params "github.com/ava-labs/coreth/params"
 	"golang.org/x/exp/maps"
@@ -172,8 +174,9 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 		networkEndpoint = ansibleHosts[ansibleHostIDs[0]].IP
 	}
 	network := models.NewDevnetNetwork(networkEndpoint, constants.AvalanchegoAPIPort)
-	ux.Logger.PrintToUser("Devnet Network Id: %d", network.ID)
-	ux.Logger.PrintToUser("Devnet Endpoint: %s", network.Endpoint)
+
+	ux.Logger.PrintToUser("Devnet Network Id: %s", logging.Green.Wrap(strconv.FormatUint(uint64(network.ID), 10)))
+	ux.Logger.PrintToUser("Devnet Endpoint: %s", logging.Green.Wrap(network.Endpoint))
 
 	// get random staking key for devnet genesis
 	k, err := key.NewSoft(network.ID)

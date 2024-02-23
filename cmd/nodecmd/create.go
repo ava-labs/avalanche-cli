@@ -27,6 +27,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 
@@ -1092,56 +1093,52 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 	ux.Logger.PrintToUser("AVALANCHE NODE(S) SUCCESSFULLY SET UP!")
 	ux.Logger.PrintToUser("======================================")
 	ux.Logger.PrintToUser("Please wait until the node(s) are successfully bootstrapped to run further commands on the node(s)")
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Here are the details of the set up node(s): ")
+	ux.Logger.PrintToUser("You can check status of the node(s) using %s command", logging.Blue.Wrap("avalanche node status"))
+	ux.Logger.PrintToUser("Please use %s command to ssh into the node(s)", logging.Blue.Wrap("avalanche node ssh"))
 	for region, cloudConfig := range cloudConfigMap {
-		ux.Logger.PrintToUser("Region: [%s] ", region)
+		ux.Logger.PrintToUser("Region: [%s] ", logging.Blue.Wrap(region))
 		if len(cloudConfig.APIInstanceIDs) > 0 {
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser("======================================")
-			ux.Logger.PrintToUser("API Endpoint(s) for region [%s]: ", region)
+			ux.Logger.PrintToUser("API Endpoint(s) for region [%s]: ", logging.Blue.Wrap(region))
 			for _, apiNode := range cloudConfig.APIInstanceIDs {
-				ux.Logger.PrintToUser("    http://%s:9650", publicIPMap[apiNode])
+				ux.Logger.PrintToUser(logging.Green.Wrap(fmt.Sprintf("    http://%s:9650", publicIPMap[apiNode])))
 			}
 			ux.Logger.PrintToUser("======================================")
 			ux.Logger.PrintToUser("")
 		}
 		ux.Logger.PrintToUser("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", cloudConfig.CertFilePath)
-		for i, instanceID := range cloudConfig.InstanceIDs {
+		for _, instanceID := range cloudConfig.InstanceIDs {
+			nodeID, _ := getNodeID(app.GetNodeInstanceDirPath(instanceID))
 			publicIP := ""
 			publicIP = publicIPMap[instanceID]
 			ux.Logger.PrintToUser("======================================")
 			if slices.Contains(cloudConfig.APIInstanceIDs, instanceID) {
-				ux.Logger.PrintToUser("node(api) %s details: ", ansibleHostIDs[i])
+				ux.Logger.PrintToUser("%s|node(api) %s[%s]: %s", logging.Blue.Wrap(region), instanceID, logging.Green.Wrap(nodeID.String()), publicIP)
 			} else {
-				ux.Logger.PrintToUser("node %s details: ", ansibleHostIDs[i])
+				ux.Logger.PrintToUser("%s|node      %s[%s]: %s", logging.Blue.Wrap(region), instanceID, logging.Green.Wrap(nodeID.String()), publicIP)
 			}
-			ux.Logger.PrintToUser("Cloud Instance ID: %s", instanceID)
-			ux.Logger.PrintToUser("Public IP: %s", publicIP)
-			ux.Logger.PrintToUser("Cloud Region: %s", region)
 			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser("staker.crt and staker.key are stored at %s. If anything happens to your node or the machine node runs on, these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID))
-			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser("To ssh to node, run: ")
-			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser(utils.GetSSHConnectionString(publicIP, cloudConfig.CertFilePath))
-			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("staker.crt and staker.key are stored at %s. Please keep them safe, as these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID))
+
 			if setUpMonitoring && !separateMonitoringInstance {
-				ux.Logger.PrintToUser("To view monitoring dashboard for this node, visit the following link in your browser: ")
-				ux.Logger.PrintToUser(fmt.Sprintf("http://%s:3000/dashboards", publicIP))
-				ux.Logger.PrintToUser("Log in with username: admin, password: admin")
-				ux.Logger.PrintToUser("")
+				getMonitoringHint(publicIP)
 			}
 			ux.Logger.PrintToUser("======================================")
 		}
 	}
 	if separateMonitoringInstance {
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("To view unified node monitoring dashboard, visit the following link in your browser: ")
-		ux.Logger.PrintToUser(fmt.Sprintf("http://%s:3000/dashboards", monitoringHostIP))
-		ux.Logger.PrintToUser("Log in with username: admin, password: admin")
-		ux.Logger.PrintToUser("")
+		getMonitoringHint(monitoringHostIP)
 	}
+	ux.Logger.PrintToUser("")
+}
+
+// getMonitoringHint prints the monitoring help message including the link to the monitoring dashboard
+func getMonitoringHint(monitoringHostIP string) {
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("To view unified node monitoring dashboard, visit the following link in your browser: ")
+	ux.Logger.PrintToUser(logging.Green.Wrap(fmt.Sprintf("http://%s:3000/dashboards", monitoringHostIP)))
+	ux.Logger.PrintToUser("Log in with username: admin, password: admin")
 	ux.Logger.PrintToUser("")
 }
 
