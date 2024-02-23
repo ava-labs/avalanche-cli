@@ -484,6 +484,8 @@ func RunSSHWhitelistPubKey(host *models.Host, sshPubKey string) error {
 	if _, err := tmpFile.WriteString(sshPubKey + "\n"); err != nil {
 		return err
 	}
-	tmpFile.Close()
+	if err := tmpFile.Close(); err != nil {
+		return err
+	}
 	return host.Upload(tmpFile.Name(), sshAuthFile, constants.SSHFileOpsTimeout)
 }
