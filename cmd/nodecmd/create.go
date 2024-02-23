@@ -622,8 +622,9 @@ func createNodes(_ *cobra.Command, args []string) error {
 		}
 		ux.SpinComplete(spinner)
 	}
+	spinSession.Stop()
 	if network.Kind == models.Devnet {
-		if err := setupDevnet(spinSession, clusterName, hosts, apiNodeIPMap); err != nil {
+		if err := setupDevnet(clusterName, hosts, apiNodeIPMap); err != nil {
 			return err
 		}
 	}
