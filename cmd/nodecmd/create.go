@@ -1093,14 +1093,15 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 	ux.Logger.PrintToUser("AVALANCHE NODE(S) SUCCESSFULLY SET UP!")
 	ux.Logger.PrintToUser("======================================")
 	ux.Logger.PrintToUser("Please wait until the node(s) are successfully bootstrapped to run further commands on the node(s)")
-	ux.Logger.PrintToUser("You can check status of the node(s) using %s command", logging.Blue.Wrap("avalanche node status"))
-	ux.Logger.PrintToUser("Please use %s command to ssh into the node(s)", logging.Blue.Wrap("avalanche node ssh"))
+	ux.Logger.PrintToUser("You can check status of the node(s) using %s command", logging.LightBlue.Wrap("avalanche node status"))
+	ux.Logger.PrintToUser("Please use %s command to ssh into the node(s)", logging.LightBlue.Wrap("avalanche node ssh"))
+	ux.Logger.PrintToUser(" ")
 	for region, cloudConfig := range cloudConfigMap {
-		ux.Logger.PrintToUser("Region: [%s] ", logging.Blue.Wrap(region))
+		ux.Logger.PrintToUser("Region: [%s] ", logging.LightBlue.Wrap(region))
 		if len(cloudConfig.APIInstanceIDs) > 0 {
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser("======================================")
-			ux.Logger.PrintToUser("API Endpoint(s) for region [%s]: ", logging.Blue.Wrap(region))
+			ux.Logger.PrintToUser("API Endpoint(s) for region [%s]: ", logging.LightBlue.Wrap(region))
 			for _, apiNode := range cloudConfig.APIInstanceIDs {
 				ux.Logger.PrintToUser(logging.Green.Wrap(fmt.Sprintf("    http://%s:9650", publicIPMap[apiNode])))
 			}
@@ -1112,11 +1113,12 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 			nodeID, _ := getNodeID(app.GetNodeInstanceDirPath(instanceID))
 			publicIP := ""
 			publicIP = publicIPMap[instanceID]
+			ux.Logger.PrintToUser(" ")
 			ux.Logger.PrintToUser("======================================")
 			if slices.Contains(cloudConfig.APIInstanceIDs, instanceID) {
-				ux.Logger.PrintToUser("%s|node(api) %s[%s]: %s", logging.Blue.Wrap(region), instanceID, logging.Green.Wrap(nodeID.String()), publicIP)
+				ux.Logger.PrintToUser("%s|node(api) %s[%s]: %s", logging.LightBlue.Wrap(region), instanceID, logging.Green.Wrap(nodeID.String()), publicIP)
 			} else {
-				ux.Logger.PrintToUser("%s|node      %s[%s]: %s", logging.Blue.Wrap(region), instanceID, logging.Green.Wrap(nodeID.String()), publicIP)
+				ux.Logger.PrintToUser("%s|node %s[%s]: %s", logging.LightBlue.Wrap(region), instanceID, logging.Green.Wrap(nodeID.String()), publicIP)
 			}
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser("staker.crt and staker.key are stored at %s. Please keep them safe, as these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID))
