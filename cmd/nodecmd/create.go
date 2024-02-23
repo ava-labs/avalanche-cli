@@ -498,7 +498,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 			ux.SpinComplete(spinner)
 			if separateMonitoringInstance {
-				spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup node"))
+				spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Machine Metrics"))
 				if err := ssh.RunSSHSetupMachineMetrics(host); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
@@ -506,7 +506,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 				}
 				ux.SpinComplete(spinner)
 			} else if setUpMonitoring {
-				spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup node"))
+				spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Monitoring"))
 				if err := ssh.RunSSHSetupMonitoring(host); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
