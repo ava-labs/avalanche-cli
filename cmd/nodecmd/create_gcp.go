@@ -278,7 +278,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 			instanceIDs[zone] = append(instanceIDs[zone], fmt.Sprintf("%s-%s", nodeName[zone], strconv.Itoa(i)))
 		}
 	}
-	ux.Logger.PrintToUser("New Compute instance(s) successfully created in GCP!")
+	ux.Logger.GreenCheckmarkToUser("New Compute instance(s) successfully created in GCP!")
 	sshCertPath := ""
 	if !useSSHAgent {
 		sshCertPath, err = app.GetSSHCertFilePath(fmt.Sprintf("%s-keypair", cliDefaultName))

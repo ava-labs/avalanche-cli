@@ -251,22 +251,26 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 		}(&wgResults, host)
 	}
 	wg.Wait()
-	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintToUser("==============================================")
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
 			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
 		} else {
-			ux.Logger.GreenCheckmarkToUser("Node %s is SETUP as devnet", node.NodeID)
+			nodeID, err := getNodeID(app.GetNodeInstanceDirPath(node.GetCloudID()))
+			if err != nil {
+				return err
+			}
+			ux.Logger.GreenCheckmarkToUser("Node %s[%s] is SETUP as devnet", node.NodeID, nodeID)
 		}
 	}
 	// stop execution if at least one node failed
 	if wgResults.HasErrors() {
 		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
 	}
-	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintToUser("==============================================")
 	ux.Logger.PrintToUser("Devnet Network Id: %d", network.ID)
 	ux.Logger.PrintToUser("Devnet Endpoint: %s", network.Endpoint)
-	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintToUser("==============================================")
 	// update cluster config with network information
 	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {

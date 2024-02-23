@@ -536,7 +536,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if separateMonitoringInstance {
-		spinSession := ux.NewUserSpinner()
 		if len(monitoringHosts) != 1 {
 			return fmt.Errorf("expected only one monitoring host, found %d", len(monitoringHosts))
 		}

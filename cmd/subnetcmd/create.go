@@ -232,7 +232,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("Successfully created subnet configuration")
+	ux.Logger.GreenCheckmarkToUser("Successfully created subnet configuration")
 	return nil
 }
 
