@@ -1115,9 +1115,9 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 			publicIP = publicIPMap[instanceID]
 			ux.Logger.PrintToUser("======================================")
 			if slices.Contains(cloudConfig.APIInstanceIDs, instanceID) {
-				ux.Logger.PrintToUser("%s|Node(api) %s[%s]: %s", logging.LightBlue.Wrap(region), instanceID, logging.Green.Wrap(nodeID.String()), publicIP)
+				ux.Logger.PrintToUser("%s|Node(api) %s[%s] ip:%s", logging.LightBlue.Wrap(region), instanceID, logging.Green.Wrap(nodeID.String()), publicIP)
 			} else {
-				ux.Logger.PrintToUser("%s|Node %s[%s]: %s", logging.LightBlue.Wrap(region), instanceID, logging.Green.Wrap(nodeID.String()), publicIP)
+				ux.Logger.PrintToUser("%s|Node %s[%s] ip:%s", logging.LightBlue.Wrap(region), instanceID, logging.Green.Wrap(nodeID.String()), publicIP)
 			}
 			ux.Logger.PrintToUser("staker.crt and staker.key are stored at %s. Please keep them safe, as these files can be used to fully recreate your node.", logging.LightBlue.Wrap(app.GetNodeInstanceDirPath(instanceID)))
 
