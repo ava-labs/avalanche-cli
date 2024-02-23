@@ -1,12 +1,12 @@
 module github.com/ava-labs/avalanche-cli
 
-go 1.20
+go 1.21
 
 require (
 	github.com/ava-labs/apm v0.0.4
-	github.com/ava-labs/avalanche-network-runner v1.7.5
-	github.com/ava-labs/avalanchego v1.11.0-rc.1
-	github.com/ava-labs/coreth v0.12.11-rc.2
+	github.com/ava-labs/avalanche-network-runner v1.7.6
+	github.com/ava-labs/avalanchego v1.11.0
+	github.com/ava-labs/coreth v0.13.0-rc.0
 	github.com/ava-labs/subnet-evm v0.5.11
 	github.com/aws/aws-sdk-go-v2 v1.25.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.1
@@ -14,6 +14,7 @@ require (
 	github.com/chelnak/ysmrr v0.3.0
 	github.com/docker/docker v25.0.3+incompatible
 	github.com/ethereum/go-ethereum v1.12.0
+	github.com/fatih/color v1.16.0
 	github.com/go-git/go-git/v5 v5.11.0
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/manifoldco/promptui v0.9.0
@@ -85,7 +86,6 @@ require (
 	github.com/dlclark/regexp2 v1.7.0 // indirect
 	github.com/dop251/goja v0.0.0-20230605162241-28ee0ee714f3 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
-	github.com/fatih/color v1.16.0 // indirect
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08 // indirect

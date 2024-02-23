@@ -109,7 +109,7 @@ func sshHosts(hosts []*models.Host, cmd string) error {
 				defer wg.Done()
 				splitCmdLine := strings.Split(utils.GetSSHConnectionString(host.IP, host.SSHPrivateKeyPath), " ")
 				splitCmdLine = append(splitCmdLine, cmd)
-				cmd := exec.Command(splitCmdLine[0], splitCmdLine[1:]...) //nolint: gosec
+				cmd := exec.Command(splitCmdLine[0], splitCmdLine[1:]...)
 				cmd.Env = os.Environ()
 				outBuf, errBuf := utils.SetupRealtimeCLIOutput(cmd, false, false)
 				if !isParallel {
@@ -144,7 +144,7 @@ func sshHosts(hosts []*models.Host, cmd string) error {
 		default:
 			selectedHost := hosts[0]
 			splitCmdLine := strings.Split(utils.GetSSHConnectionString(selectedHost.IP, selectedHost.SSHPrivateKeyPath), " ")
-			cmd := exec.Command(splitCmdLine[0], splitCmdLine[1:]...) //nolint: gosec
+			cmd := exec.Command(splitCmdLine[0], splitCmdLine[1:]...)
 			cmd.Env = os.Environ()
 			cmd.Stdin = os.Stdin
 			cmd.Stdout = os.Stdout

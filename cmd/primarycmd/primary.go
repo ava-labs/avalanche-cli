@@ -18,7 +18,7 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 		Short: "Interact with the Primary Network",
 		Long: `The primary command suite provides a collection of tools for interacting with the
 Primary Network`,
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
 			err := cmd.Help()
 			if err != nil {
 				fmt.Println(err)

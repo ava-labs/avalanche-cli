@@ -94,7 +94,7 @@ linters-settings:
       - name: useless-break
         disabled: false
   staticcheck:
-    go: "1.20"
+    go: "1.21.7"
     # https://staticcheck.io/docs/options#checks
     checks:
       - "all"
@@ -104,9 +104,12 @@ linters-settings:
   gosec:
     excludes:
       - G107 # https://securego.io/docs/rules/g107.html
+      - G204
   depguard:
-    list-type: blacklist
-    packages-with-error-message:
-      - io/ioutil: 'io/ioutil is deprecated. Use package io or os instead.'
-      - github.com/stretchr/testify/assert: 'github.com/stretchr/testify/require should be used instead.'
-    include-go-root: true
+    rules:
+      packages:
+        deny:
+          - pkg: "io/ioutil"
+            desc: io/ioutil is deprecated. Use package io or os instead.
+          - pkg: "github.com/stretchr/testify/assert"
+            desc: github.com/stretchr/testify/require should be used instead.
