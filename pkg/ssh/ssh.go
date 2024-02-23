@@ -33,6 +33,9 @@ type scriptInputs struct {
 	MonitoringDashboardPath string
 	AvalancheGoPorts        string
 	MachinePorts            string
+	LoadTestRepo            string
+	LoadTestPath            string
+	LoadTestCommand         string
 }
 
 //go:embed shell/*.sh
@@ -416,6 +419,18 @@ func RunSSHSetupBuildEnv(host *models.Host) error {
 		constants.SSHScriptTimeout,
 		"shell/setupBuildEnv.sh",
 		scriptInputs{GoVersion: constants.BuildEnvGolangVersion},
+	)
+}
+
+// RunSSHSetupLoadTest downloads load test repo, build the load test binary and runs user
+// provided load test command
+func RunSSHSetupLoadTest(host *models.Host, loadTestRepo, loadTestPath, loadTestCommand string) error {
+	return RunOverSSH(
+		"Setup Load Test",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/setupLoadtest.sh",
+		scriptInputs{LoadTestRepo: loadTestRepo, LoadTestPath: loadTestPath, LoadTestCommand: loadTestCommand},
 	)
 }
 

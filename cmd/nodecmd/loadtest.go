@@ -4,17 +4,25 @@ package nodecmd
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
+	"path/filepath"
 )
 
 var (
 	loadTestScriptPath string
 	loadTestScriptArgs string
+	loadTestRepoURL    string
+	loadTestBuildCmd   string
+	loadTestCmd        string
 )
 
 func newLoadTestCmd() *cobra.Command {
@@ -235,6 +243,58 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	//	return err
 	//}
 	//ux.Logger.PrintToUser("Loadtest instance %s is done", loadTestHost.NodeID)
+	var monitoringHosts []*models.Host
+	monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
+	if existingMonitoringInstance == "" {
+		if err = ansible.CreateAnsibleHostInventory(monitoringInventoryPath, loadTestNodeConfig.CertFilePath, cloudService, map[string]string{loadTestNodeConfig.InstanceIDs[0]: loadTestNodeConfig.PublicIPs[0]}, nil); err != nil {
+			return err
+		}
+	}
+	monitoringHosts, err = ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
+	if err != nil {
+		return err
+	}
+	if err := GetLoadTestScript(app); err != nil {
+		return err
+	}
+	if err := ssh.RunSSHSetupLoadTest(monitoringHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestCmd); err != nil {
+		return err
+	}
+	return nil
+}
 
+// func GetLoadTestScript(app *application.Avalanche, loadTestRepoURL, loadTestBuildCmd, loadTestCmd string) (string, string, string, error) {
+func GetLoadTestScript(app *application.Avalanche) error {
+	var err error
+	if loadTestRepoURL != "" {
+		ux.Logger.PrintToUser("Checking source code repository URL %s", loadTestRepoURL)
+		if err := prompts.ValidateURL(loadTestRepoURL); err != nil {
+			ux.Logger.PrintToUser("Invalid repository url %s: %s", loadTestRepoURL, err)
+			loadTestRepoURL = ""
+		}
+	}
+	if loadTestRepoURL == "" {
+		loadTestRepoURL, err = app.Prompt.CaptureURL("Source code repository URL")
+		if err != nil {
+			return err
+		}
+	}
+	if loadTestBuildCmd == "" {
+		loadTestCmd, err = app.Prompt.CaptureString("What is the build command?")
+		if err != nil {
+			fmt.Printf("we have error here %s \n", err)
+			return err
+		}
+	}
+	if loadTestCmd == "" {
+		loadTestCmd, err = app.Prompt.CaptureString("What is the load test command?")
+		if err != nil {
+			fmt.Printf("we have error here loadTestCmd %s \n", err)
+			return err
+		}
+	}
+	//sc.CustomVMRepoURL = customVMRepoURL
+	//sc.CustomVMBranch = customVMBranch
+	//sc.CustomVMBuildScript = customVMBuildScript
 	return nil
 }
