@@ -144,6 +144,24 @@ func NodeList() string {
 	return string(output)
 }
 
+func NodeWhitelistSSH(sshPubKey string) string {
+	/* #nosec G204 */
+	cmd := exec.Command(
+		CLIBinary,
+		"node",
+		"whitelist-ssh",
+		constants.E2EClusterName,
+		"\""+sshPubKey+"\"",
+	)
+	output, err := cmd.Output()
+	fmt.Println("---------------->")
+	fmt.Println(string(output))
+	fmt.Println(err)
+	fmt.Println("---------------->")
+	gomega.Expect(err).Should(gomega.BeNil())
+	return string(output)
+}
+
 func NodeUpgrade() string {
 	/* #nosec G204 */
 	cmd := exec.Command(
