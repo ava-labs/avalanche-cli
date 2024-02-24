@@ -5,12 +5,11 @@ package teleportercmd
 import (
 	"fmt"
 	"strings"
-    "os"
-    "encoding/json"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
@@ -62,55 +61,62 @@ func msg(cmd *cobra.Command, args []string) error {
 	subnetName1 := strings.ToLower(args[0])
 	subnetName2 := strings.ToLower(args[1])
 
-	chainID1, _, err := getSubnetParams(network, subnetName1)
+	chainID1, messengerAddress1, key1, err := getSubnetParams(network, subnetName1)
 	if err != nil {
 		return err
 	}
-	chainID2, _, err := getSubnetParams(network, subnetName2)
+	chainID2, messengerAddress2, key2, err := getSubnetParams(network, subnetName2)
 	if err != nil {
 		return err
 	}
 
 	fmt.Println(chainID1)
 	fmt.Println(chainID2)
+    _ = key1
+    _ = key2
+
+    if messengerAddress1 != messengerAddress2 {
+        fmt.Println("different teleporter messenger addresses among subnets: %s vs %s", messengerAddress1, messengerAddress2)
+    }
 
 	return nil
 }
 
-func getSubnetParams(network models.Network, subnetName string) (ids.ID, string, error) {
-    var (
-        chainID ids.ID
-        err error
-        teleporterMessengerAddress string
-    )
+func getSubnetParams(network models.Network, subnetName string) (ids.ID, string, *key.SoftKey, error) {
+	var (
+		chainID                    ids.ID
+		err                        error
+		teleporterMessengerAddress string
+        k *key.SoftKey
+	)
+	k, err = key.LoadEwoq(network.ID)
+	if err != nil {
+        return ids.Empty, "", nil, err
+	}
 	if subnetName == "c-chain" || subnetName == "cchain" {
-        chainID, err = getChainID(network.Endpoint, "C")
-        if network.Kind == models.Local {
-            bs, err := os.ReadFile(app.GetExtraLocalNetworkDataPath())
-            if err != nil { 
-                return ids.Empty, "", err
-            }
-			extraLocalNetworkData := subnet.ExtraLocalNetworkData{}
-			if err := json.Unmarshal(bs, &extraLocalNetworkData); err != nil {
-                return ids.Empty, "", err
+		chainID, err = getChainID(network.Endpoint, "C")
+		if network.Kind == models.Local {
+			extraLocalNetworkData, err := subnet.GetExtraLocalNetworkData(app)
+			if err != nil {
+				return ids.Empty, "", nil, err
 			}
-            teleporterMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
-        }
+			teleporterMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
+		}
 	} else {
-        sc, err := app.LoadSidecar(subnetName)
-        if err != nil {
-            return ids.Empty, "", err
-        }
-        chainID = sc.Networks[network.Name()].BlockchainID
-	    teleporterMessengerAddress = sc.Networks[network.Name()].TeleporterMessengerAddress
-    }
-    if chainID == ids.Empty {
-        return ids.Empty, "", fmt.Errorf("chainID for subnet %s not found on network %s", subnetName, network.Name())
-    }
-    if teleporterMessengerAddress == "" {
-        return ids.Empty, "", fmt.Errorf("teleporter messenger address for subnet %s not found on network %s", subnetName, network.Name())
-    }
-	return chainID, teleporterMessengerAddress, err
+		sc, err := app.LoadSidecar(subnetName)
+		if err != nil {
+			return ids.Empty, "", nil, err
+		}
+		chainID = sc.Networks[network.Name()].BlockchainID
+		teleporterMessengerAddress = sc.Networks[network.Name()].TeleporterMessengerAddress
+	}
+	if chainID == ids.Empty {
+		return ids.Empty, "", nil, fmt.Errorf("chainID for subnet %s not found on network %s", subnetName, network.Name())
+	}
+	if teleporterMessengerAddress == "" {
+		return ids.Empty, "", nil, fmt.Errorf("teleporter messenger address for subnet %s not found on network %s", subnetName, network.Name())
+	}
+	return chainID, teleporterMessengerAddress, k, err
 }
 
 func getChainID(endpoint string, chainName string) (ids.ID, error) {
