@@ -5,8 +5,11 @@ package teleportercmd
 import (
 	"fmt"
 	"strings"
+    "os"
+    "encoding/json"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -56,14 +59,14 @@ func msg(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	subnet1 := strings.ToLower(args[0])
-	subnet2 := strings.ToLower(args[1])
+	subnetName1 := strings.ToLower(args[0])
+	subnetName2 := strings.ToLower(args[1])
 
-	chainID1, err := getSubnetParams(network, subnet1)
+	chainID1, _, err := getSubnetParams(network, subnetName1)
 	if err != nil {
 		return err
 	}
-	chainID2, err := getSubnetParams(network, subnet2)
+	chainID2, _, err := getSubnetParams(network, subnetName2)
 	if err != nil {
 		return err
 	}
@@ -74,20 +77,40 @@ func msg(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func getSubnetParams(network models.Network, subnet string) (ids.ID, error) {
-	if subnet == "c-chain" || subnet == "cchain" {
-	    return getChainID(network.Endpoint, "C")
-	}
-
-	sc, err := app.LoadSidecar(subnet)
-	if err != nil {
-		return ids.Empty, err
-	}
-    chainID := sc.Networks[network.Name()].BlockchainID
-	if chainID == ids.Empty {
-		return ids.Empty, fmt.Errorf("chainID for subnet %s not found on network %s", subnet, network.Name())
-	}
-	return chainID, err
+func getSubnetParams(network models.Network, subnetName string) (ids.ID, string, error) {
+    var (
+        chainID ids.ID
+        err error
+        teleporterMessengerAddress string
+    )
+	if subnetName == "c-chain" || subnetName == "cchain" {
+        chainID, err = getChainID(network.Endpoint, "C")
+        if network.Kind == models.Local {
+            bs, err := os.ReadFile(app.GetExtraLocalNetworkDataPath())
+            if err != nil { 
+                return ids.Empty, "", err
+            }
+			extraLocalNetworkData := subnet.ExtraLocalNetworkData{}
+			if err := json.Unmarshal(bs, &extraLocalNetworkData); err != nil {
+                return ids.Empty, "", err
+			}
+            teleporterMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
+        }
+	} else {
+        sc, err := app.LoadSidecar(subnetName)
+        if err != nil {
+            return ids.Empty, "", err
+        }
+        chainID = sc.Networks[network.Name()].BlockchainID
+	    teleporterMessengerAddress = sc.Networks[network.Name()].TeleporterMessengerAddress
+    }
+    if chainID == ids.Empty {
+        return ids.Empty, "", fmt.Errorf("chainID for subnet %s not found on network %s", subnetName, network.Name())
+    }
+    if teleporterMessengerAddress == "" {
+        return ids.Empty, "", fmt.Errorf("teleporter messenger address for subnet %s not found on network %s", subnetName, network.Name())
+    }
+	return chainID, teleporterMessengerAddress, err
 }
 
 func getChainID(endpoint string, chainName string) (ids.ID, error) {
