@@ -21,6 +21,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/keycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/transactioncmd"
 	"github.com/ava-labs/avalanche-cli/cmd/updatecmd"
 	"github.com/ava-labs/avalanche-cli/internal/migrations"
@@ -87,6 +88,10 @@ in with avalanche subnet create myNewSubnet.`,
 
 	// add node command
 	rootCmd.AddCommand(nodecmd.NewCmd(app))
+
+	// add teleporter command
+	rootCmd.AddCommand(teleportercmd.NewCmd(app))
+
 	return rootCmd
 }
 
