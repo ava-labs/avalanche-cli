@@ -76,18 +76,14 @@ func msg(cmd *cobra.Command, args []string) error {
 
 func getSubnetParams(network models.Network, subnet string) (ids.ID, error) {
 	if subnet == "c-chain" || subnet == "cchain" {
-		subnet = "C"
+	    return getChainID(network.Endpoint, "C")
 	}
 
-	chainID, err := getChainID(network.Endpoint, subnet)
-	if err == nil {
-		return chainID, err
-	}
 	sc, err := app.LoadSidecar(subnet)
 	if err != nil {
 		return ids.Empty, err
 	}
-	chainID = sc.Networks[network.Name()].BlockchainID
+    chainID := sc.Networks[network.Name()].BlockchainID
 	if chainID == ids.Empty {
 		return ids.Empty, fmt.Errorf("chainID for subnet %s not found on network %s", subnet, network.Name())
 	}
