@@ -89,10 +89,6 @@ func getSubnetParams(network models.Network, subnetName string) (ids.ID, string,
 		teleporterMessengerAddress string
         k *key.SoftKey
 	)
-	k, err = key.LoadEwoq(network.ID)
-	if err != nil {
-        return ids.Empty, "", nil, err
-	}
 	if subnetName == "c-chain" || subnetName == "cchain" {
 		chainID, err = getChainID(network.Endpoint, "C")
 		if network.Kind == models.Local {
@@ -101,6 +97,10 @@ func getSubnetParams(network models.Network, subnetName string) (ids.ID, string,
 				return ids.Empty, "", nil, err
 			}
 			teleporterMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
+            k, err = key.LoadEwoq(network.ID)
+            if err != nil {
+                return ids.Empty, "", nil, err
+            }
 		}
 	} else {
 		sc, err := app.LoadSidecar(subnetName)
@@ -109,6 +109,11 @@ func getSubnetParams(network models.Network, subnetName string) (ids.ID, string,
 		}
 		chainID = sc.Networks[network.Name()].BlockchainID
 		teleporterMessengerAddress = sc.Networks[network.Name()].TeleporterMessengerAddress
+		keyPath := app.GetKeyPath(sc.TeleporterKey)
+		k, err = key.LoadSoft(network.ID, keyPath)
+		if err != nil {
+			return ids.Empty, "", nil, err
+		}
 	}
 	if chainID == ids.Empty {
 		return ids.Empty, "", nil, fmt.Errorf("chainID for subnet %s not found on network %s", subnetName, network.Name())

@@ -1123,13 +1123,13 @@ type ExtraLocalNetworkData struct {
 }
 
 func GetExtraLocalNetworkData(app *application.Avalanche) (*ExtraLocalNetworkData, error) {
-    bs, err := os.ReadFile(app.GetExtraLocalNetworkDataPath())
-    if err != nil { 
-        return nil, err
-    }
-    extraLocalNetworkData := ExtraLocalNetworkData{}
-    if err := json.Unmarshal(bs, &extraLocalNetworkData); err != nil {
-        return nil, err
-    }
-    return &extraLocalNetworkData, nil
+	bs, err := os.ReadFile(app.GetExtraLocalNetworkDataPath())
+	if err != nil {
+		return nil, err
+	}
+	extraLocalNetworkData := ExtraLocalNetworkData{}
+	if err := json.Unmarshal(bs, &extraLocalNetworkData); err != nil {
+		return nil, err
+	}
+	return &extraLocalNetworkData, nil
 }
