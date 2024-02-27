@@ -45,10 +45,12 @@ func NewHostConnection(h *Host, port uint) (*goph.Client, error) {
 		auth goph.Auth
 		err  error
 	)
+
 	if h.SSHPrivateKeyPath == "" {
 		auth, err = goph.UseAgent()
 	} else {
 		auth, err = goph.Key(h.SSHPrivateKeyPath, "")
+
 	}
 	if err != nil {
 		return nil, err
