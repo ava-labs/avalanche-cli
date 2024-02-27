@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 )
@@ -340,5 +342,68 @@ func (h *Host) WaitForSSHShell(timeout time.Duration) error {
 			}
 		}
 		time.Sleep(constants.SSHSleepBetweenChecks)
+	}
+}
+
+// StreamSSHCommand streams the execution of an SSH command on the host.
+func (h *Host) StreamSSHCommand(command string) error {
+	if !h.Connected() {
+		if err := h.Connect(); err != nil {
+			return err
+		}
+	}
+
+	session, err := h.Connection.NewSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	stdout, err := session.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	stderr, err := session.StderrPipe()
+	if err != nil {
+		return err
+	}
+
+	if err := session.Run(command); err != nil {
+		return err
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go streamOutput(ctx, stdout)
+	go streamOutput(ctx, stderr)
+
+	// Wait for the command to finish or for cancellation
+	done := make(chan error, 1)
+	go func() {
+		done <- session.Wait()
+	}()
+
+	select {
+	case <-ctx.Done():
+		session.Close()
+		<-done
+		return ctx.Err()
+	case err := <-done:
+		return err
+	}
+}
+
+func streamOutput(ctx context.Context, output io.Reader) {
+	buf := make([]byte, 1024)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			n, err := output.Read(buf)
+			if err != nil {
+				return
+			}
+			ux.Logger.PrintToUser(string(buf[:n]))
+		}
 	}
 }
