@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 	"time"
 
@@ -33,6 +34,7 @@ type scriptInputs struct {
 	MonitoringDashboardPath string
 	AvalancheGoPorts        string
 	MachinePorts            string
+	LoadTestRepoDir         string
 	LoadTestRepo            string
 	LoadTestPath            string
 	LoadTestCommand         string
@@ -425,12 +427,15 @@ func RunSSHSetupBuildEnv(host *models.Host) error {
 // RunSSHSetupLoadTest downloads load test repo, build the load test binary and runs user
 // provided load test command
 func RunSSHSetupLoadTest(host *models.Host, loadTestRepo, loadTestPath, loadTestCommand string) error {
+	loadTestRepoPaths := strings.Split(loadTestRepo, "/")
+	// remove .git
+	loadTestRepoDir := strings.Split(loadTestRepoPaths[len(loadTestRepoPaths)-1], ".")
 	return RunOverSSH(
 		"Setup Load Test",
 		host,
 		constants.SSHScriptTimeout,
 		"shell/setupLoadtest.sh",
-		scriptInputs{LoadTestRepo: loadTestRepo, LoadTestPath: loadTestPath, LoadTestCommand: loadTestCommand},
+		scriptInputs{LoadTestRepoDir: loadTestRepoDir[0], LoadTestRepo: loadTestRepo, LoadTestPath: loadTestPath, LoadTestCommand: loadTestCommand},
 	)
 }
 

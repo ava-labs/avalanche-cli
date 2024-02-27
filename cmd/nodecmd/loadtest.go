@@ -245,7 +245,7 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	//ux.Logger.PrintToUser("Loadtest instance %s is done", loadTestHost.NodeID)
 	var monitoringHosts []*models.Host
 	monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
-	if existingMonitoringInstance == "" {
+	if existingSeparateInstance == "" {
 		if err = ansible.CreateAnsibleHostInventory(monitoringInventoryPath, loadTestNodeConfig.CertFilePath, cloudService, map[string]string{loadTestNodeConfig.InstanceIDs[0]: loadTestNodeConfig.PublicIPs[0]}, nil); err != nil {
 			return err
 		}
@@ -254,9 +254,18 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	//TODO: uncomment
 	if err := GetLoadTestScript(app); err != nil {
 		return err
 	}
+
+	//if err := ssh.RunSSHSetupLoadTest(monitoringHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestCmd); err != nil {
+	//	return err
+	//}
+	//loadTestRepoURL = "https://github.com/sukantoraymond/subnet-evm.git"
+	//loadTestBuildCmd = "cd /home/ubuntu/subnet-evm/cmd/simulator; go build -o ./simulator main/*.go"
+	//loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://3.213.57.75:9650/ext/bc/YFykrbK6dmLuec3BtrkV7bmpiS81BB2oC9XDHQv2D8qkTuy7o/rpc\" > log.txt"
 	if err := ssh.RunSSHSetupLoadTest(monitoringHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestCmd); err != nil {
 		return err
 	}
