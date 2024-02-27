@@ -482,7 +482,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			if err := host.Connect(); err != nil {
+			if err := host.Connect(0); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
