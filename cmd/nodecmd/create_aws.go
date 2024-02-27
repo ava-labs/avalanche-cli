@@ -101,7 +101,6 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 	case len(numNodes) != len(utils.Unique(cmdLineRegion)):
 		return nil, nil, nil, fmt.Errorf("number of nodes and regions should be the same")
 	case len(cmdLineRegion) == 0 && len(numNodes) == 0:
-		fmt.Printf("we here getRegionsNodeNum \n")
 		var err error
 		finalRegions, err = getRegionsNodeNum(constants.AWSCloudService)
 		if err != nil {
@@ -123,7 +122,6 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 	}
 	for region := range finalRegions {
 		var err error
-		fmt.Printf("we here getAWSCloudCredentials \n")
 		ec2SvcMap[region], err = getAWSCloudCredentials(awsProfile, region)
 		if err != nil {
 			if !strings.Contains(err.Error(), "cloud access is required") {

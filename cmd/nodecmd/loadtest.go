@@ -81,13 +81,15 @@ func preLoadTestChecks(clusterName string) error {
 func createLoadTest(cmd *cobra.Command, args []string) error {
 	clusterName := args[0]
 	preLoadTestChecks(clusterName)
-	clustersConfig, err := app.LoadClustersConfig()
+	// TODO: uncomment this
+	//clustersConfig, err := app.LoadClustersConfig()
 	loadTestNodeConfig := models.RegionConfig{}
 	loadTestCloudConfig := models.CloudConfig{}
-
-	if clustersConfig.Clusters[clusterName].Network.Kind != models.Devnet {
-		return fmt.Errorf("node loadtest command can be applied to devnet clusters only")
-	}
+	// TODO: delete this
+	var err error
+	//if clustersConfig.Clusters[clusterName].Network.Kind != models.Devnet {
+	//	return fmt.Errorf("node loadtest command can be applied to devnet clusters only")
+	//}
 
 	if loadTestScriptPath == "" {
 		loadTestScriptPath = "loadtest.sh"
@@ -110,6 +112,7 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	cloudService := ""
 	if existingSeparateInstance != "" {
 		separateNodeConfig, err := app.LoadClusterNodeConfig(existingSeparateInstance)
@@ -131,7 +134,6 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	separateHostRegion := ""
 
 	//loadTestRegion := filteredSGList[0].region
-	// create loadtest cloud server
 	cloudSecurityGroupList, err := getCloudSecurityGroupList(clusterNodes)
 	if err != nil {
 		return err
@@ -148,7 +150,7 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 		//if err != nil {
 		//	return err
 		//}
-
+		//fmt.Printf("ec2SvcMap %s \n", ec2SvcMap)
 		loadTestEc2SvcMap := make(map[string]*awsAPI.AwsCloud)
 		//regions := maps.Keys(ec2SvcMap)
 		existingSeparateInstance, err = getExistingMonitoringInstance(clusterName)
@@ -165,7 +167,6 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 			//}
 			//loadTestNodeConfig = loadTestCloudConfig[separateHostRegion]
 		} else {
-			fmt.Printf("not creating a new separate instance \n")
 			loadTestNodeConfig, separateHostRegion, err = getNodeCloudConfig(existingSeparateInstance)
 			if err != nil {
 				return err
@@ -174,7 +175,6 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			fmt.Printf("loadTestEc2SvcMap %s \n", loadTestEc2SvcMap)
 		}
 		if !useStaticIP {
 			// get loadtest public
@@ -243,30 +243,31 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	//	return err
 	//}
 	//ux.Logger.PrintToUser("Loadtest instance %s is done", loadTestHost.NodeID)
-	var monitoringHosts []*models.Host
-	monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
+	var separateHosts []*models.Host
+	separateHostInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
 	if existingSeparateInstance == "" {
-		if err = ansible.CreateAnsibleHostInventory(monitoringInventoryPath, loadTestNodeConfig.CertFilePath, cloudService, map[string]string{loadTestNodeConfig.InstanceIDs[0]: loadTestNodeConfig.PublicIPs[0]}, nil); err != nil {
+		if err = ansible.CreateAnsibleHostInventory(separateHostInventoryPath, loadTestNodeConfig.CertFilePath, cloudService, map[string]string{loadTestNodeConfig.InstanceIDs[0]: loadTestNodeConfig.PublicIPs[0]}, nil); err != nil {
 			return err
 		}
 	}
-	monitoringHosts, err = ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
+	separateHosts, err = ansible.GetInventoryFromAnsibleInventoryFile(separateHostInventoryPath)
 	if err != nil {
 		return err
 	}
 
 	//TODO: uncomment
-	if err := GetLoadTestScript(app); err != nil {
-		return err
-	}
+	//if err := GetLoadTestScript(app); err != nil {
+	//	return err
+	//}
 
 	//if err := ssh.RunSSHSetupLoadTest(monitoringHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestCmd); err != nil {
 	//	return err
 	//}
-	//loadTestRepoURL = "https://github.com/sukantoraymond/subnet-evm.git"
-	//loadTestBuildCmd = "cd /home/ubuntu/subnet-evm/cmd/simulator; go build -o ./simulator main/*.go"
+	loadTestRepoURL = "https://github.com/sukantoraymond/subnet-evm.git"
+	loadTestBuildCmd = "cd /home/ubuntu/subnet-evm/cmd/simulator; go build -o ./simulator main/*.go"
 	//loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://3.213.57.75:9650/ext/bc/YFykrbK6dmLuec3BtrkV7bmpiS81BB2oC9XDHQv2D8qkTuy7o/rpc\" > log.txt"
-	if err := ssh.RunSSHSetupLoadTest(monitoringHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestCmd); err != nil {
+	loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://3.213.57.75:9650/ext/bc/YFykrbK6dmLuec3BtrkV7bmpiS81BB2oC9XDHQv2D8qkTuy7o/rpc\""
+	if err := ssh.RunSSHSetupLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestCmd); err != nil {
 		return err
 	}
 	return nil

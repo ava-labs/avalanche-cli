@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 )
@@ -35,7 +37,10 @@ type Host struct {
 	Connection        *goph.Client
 }
 
-func NewHostConnection(h *Host) (*goph.Client, error) {
+func NewHostConnection(h *Host, port uint) (*goph.Client, error) {
+	if port == 0 {
+		port = constants.SSHTCPPort
+	}
 	var (
 		auth goph.Auth
 		err  error
@@ -51,7 +56,7 @@ func NewHostConnection(h *Host) (*goph.Client, error) {
 	cl, err := goph.NewConn(&goph.Config{
 		User:    h.SSHUser,
 		Addr:    h.IP,
-		Port:    constants.SSHTCPPort,
+		Port:    port,
 		Auth:    auth,
 		Timeout: sshConnectionTimeout,
 		// #nosec G106
@@ -70,13 +75,16 @@ func (h *Host) GetCloudID() string {
 }
 
 // Connect starts a new SSH connection with the provided private key.
-func (h *Host) Connect() error {
+func (h *Host) Connect(port uint) error {
+	if port == 0 {
+		port = constants.SSHTCPPort
+	}
 	if h.Connection != nil {
 		return nil
 	}
 	var err error
 	for i := 0; h.Connection == nil && i < sshConnectionRetries; i++ {
-		h.Connection, err = NewHostConnection(h)
+		h.Connection, err = NewHostConnection(h, port)
 	}
 	if err != nil {
 		return fmt.Errorf("failed to connect to host %s: %w", h.IP, err)
@@ -99,7 +107,7 @@ func (h *Host) Disconnect() error {
 // Upload uploads a local file to a remote file on the host.
 func (h *Host) Upload(localFile string, remoteFile string, timeout time.Duration) error {
 	if !h.Connected() {
-		if err := h.Connect(); err != nil {
+		if err := h.Connect(0); err != nil {
 			return err
 		}
 	}
@@ -119,7 +127,7 @@ func (h *Host) Upload(localFile string, remoteFile string, timeout time.Duration
 // Download downloads a file from the remote server to the local machine.
 func (h *Host) Download(remoteFile string, localFile string, timeout time.Duration) error {
 	if !h.Connected() {
-		if err := h.Connect(); err != nil {
+		if err := h.Connect(0); err != nil {
 			return err
 		}
 	}
@@ -142,7 +150,7 @@ func (h *Host) Download(remoteFile string, localFile string, timeout time.Durati
 // MkdirAll creates a folder on the remote server.
 func (h *Host) MkdirAll(remoteDir string, timeout time.Duration) error {
 	if !h.Connected() {
-		if err := h.Connect(); err != nil {
+		if err := h.Connect(0); err != nil {
 			return err
 		}
 	}
@@ -163,7 +171,7 @@ func (h *Host) MkdirAll(remoteDir string, timeout time.Duration) error {
 // Does not support timeouts on the operation.
 func (h *Host) UntimedMkdirAll(remoteDir string) error {
 	if !h.Connected() {
-		if err := h.Connect(); err != nil {
+		if err := h.Connect(0); err != nil {
 			return err
 		}
 	}
@@ -178,7 +186,7 @@ func (h *Host) UntimedMkdirAll(remoteDir string) error {
 // Command executes a shell command on a remote host.
 func (h *Host) Command(script string, env []string, timeout time.Duration) ([]byte, error) {
 	if !h.Connected() {
-		if err := h.Connect(); err != nil {
+		if err := h.Connect(0); err != nil {
 			return nil, err
 		}
 	}
@@ -197,7 +205,7 @@ func (h *Host) Command(script string, env []string, timeout time.Duration) ([]by
 // Forward forwards the TCP connection to a remote address.
 func (h *Host) Forward(httpRequest string, timeout time.Duration) ([]byte, error) {
 	if !h.Connected() {
-		if err := h.Connect(); err != nil {
+		if err := h.Connect(0); err != nil {
 			return nil, err
 		}
 	}
@@ -222,7 +230,7 @@ func (h *Host) Forward(httpRequest string, timeout time.Duration) ([]byte, error
 // Does not support timeouts on the operation.
 func (h *Host) UntimedForward(httpRequest string) ([]byte, error) {
 	if !h.Connected() {
-		if err := h.Connect(); err != nil {
+		if err := h.Connect(0); err != nil {
 			return nil, err
 		}
 	}
@@ -300,14 +308,17 @@ func HostAnsibleIDToCloudID(hostAnsibleID string) (string, string, error) {
 }
 
 // WaitForSSHPort waits for the SSH port to become available on the host.
-func (h *Host) WaitForSSHPort(timeout time.Duration) error {
+func (h *Host) WaitForSSHPort(port uint, timeout time.Duration) error {
+	if port == 0 {
+		port = constants.SSHTCPPort
+	}
 	start := time.Now()
 	deadline := start.Add(timeout)
 	for {
 		if time.Now().After(deadline) {
-			return fmt.Errorf("timeout: SSH port %d on host %s is not available after %vs", constants.SSHTCPPort, h.IP, timeout.Seconds())
+			return fmt.Errorf("timeout: SSH port %d on host %s is not available after %vs", port, h.IP, timeout.Seconds())
 		}
-		if _, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", h.IP, constants.SSHTCPPort), time.Second); err == nil {
+		if _, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", h.IP, port), time.Second); err == nil {
 			return nil
 		}
 		time.Sleep(constants.SSHSleepBetweenChecks)
@@ -320,7 +331,7 @@ func (h *Host) WaitForSSHShell(timeout time.Duration) error {
 		return fmt.Errorf("host IP is empty")
 	}
 	start := time.Now()
-	if err := h.WaitForSSHPort(timeout); err != nil {
+	if err := h.WaitForSSHPort(constants.SSHTCPPort, timeout); err != nil {
 		return err
 	}
 
@@ -329,7 +340,7 @@ func (h *Host) WaitForSSHShell(timeout time.Duration) error {
 		if time.Now().After(deadline) {
 			return fmt.Errorf("timeout: SSH shell on host %s is not available after %ds", h.IP, int(timeout.Seconds()))
 		}
-		if err := h.Connect(); err != nil {
+		if err := h.Connect(0); err != nil {
 			time.Sleep(constants.SSHSleepBetweenChecks)
 			continue
 		}
@@ -340,5 +351,75 @@ func (h *Host) WaitForSSHShell(timeout time.Duration) error {
 			}
 		}
 		time.Sleep(constants.SSHSleepBetweenChecks)
+	}
+}
+
+// StreamSSHCommand streams the execution of an SSH command on the host.
+func (h *Host) StreamSSHCommand(command string, env []string, timeout time.Duration) error {
+	if !h.Connected() {
+		if err := h.Connect(0); err != nil {
+			return err
+		}
+	}
+
+	session, err := h.Connection.NewSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	stdout, err := session.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	stderr, err := session.StderrPipe()
+	if err != nil {
+		return err
+	}
+	for _, item := range env {
+		env = strings.Split(item, "=")
+		if len(env) == 2 {
+			session.Setenv(env[0], env[1])
+		} else {
+			return fmt.Errorf("invalid env variable %s", item)
+		}
+	}
+	if err := session.Run(command); err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	go streamOutput(ctx, stdout)
+	go streamOutput(ctx, stderr)
+
+	// Wait for the command to finish or for cancellation
+	done := make(chan error, 1)
+	go func() {
+		done <- session.Wait()
+	}()
+
+	select {
+	case <-ctx.Done():
+		session.Close()
+		<-done
+		return ctx.Err()
+	case err := <-done:
+		return err
+	}
+}
+
+func streamOutput(ctx context.Context, output io.Reader) {
+	buf := make([]byte, 1024)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			n, err := output.Read(buf)
+			if err != nil {
+				return
+			}
+			ux.Logger.PrintToUser(string(buf[:n]))
+		}
 	}
 }
