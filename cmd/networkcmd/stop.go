@@ -47,7 +47,7 @@ func StopNetwork(*cobra.Command, []string) error {
 
 	relayerConfigPath := app.GetAWMRelayerConfigPath()
 	if utils.FileExists(relayerConfigPath) {
-		relayerStoredConfigPath := filepath.Join(app.GetAWMRelayerSnapshotConfsDir(), snapshotName+".json")
+		relayerStoredConfigPath := filepath.Join(app.GetAWMRelayerSnapshotConfsDir(), snapshotName+jsonExt)
 		if err := os.MkdirAll(filepath.Dir(relayerStoredConfigPath), constants.DefaultPerms755); err != nil {
 			return err
 		}
@@ -58,7 +58,7 @@ func StopNetwork(*cobra.Command, []string) error {
 
 	extraLocalNetworkDataPath := app.GetExtraLocalNetworkDataPath()
 	if utils.FileExists(extraLocalNetworkDataPath) {
-		storedExtraLocalNetowkrDataPath := filepath.Join(app.GetExtraLocalNetworkSnapshotsDir(), snapshotName+".json")
+		storedExtraLocalNetowkrDataPath := filepath.Join(app.GetExtraLocalNetworkSnapshotsDir(), snapshotName+jsonExt)
 		if err := os.MkdirAll(filepath.Dir(storedExtraLocalNetowkrDataPath), constants.DefaultPerms755); err != nil {
 			return err
 		}

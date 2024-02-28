@@ -381,7 +381,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 
 		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin)
-		subnetID, blockchainID, teleporterMessengerAddress, teleporterRegistryAddress, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
+		deployInfo, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
 		if err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {
@@ -396,11 +396,11 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return app.UpdateSidecarNetworks(
 			&sidecar,
 			network,
-			subnetID,
+			deployInfo.SubnetID,
 			ids.Empty,
-			blockchainID,
-			teleporterMessengerAddress,
-			teleporterRegistryAddress,
+			deployInfo.BlockchainID,
+			deployInfo.TeleporterMessengerAddress,
+			deployInfo.TeleporterRegistryAddress,
 		)
 	}
 
