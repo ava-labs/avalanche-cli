@@ -3,11 +3,13 @@ package models
 import (
 	"crypto/x509"
 	"encoding/pem"
+	"io/ioutil"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	oos "github.com/okteto/remote/pkg/os"
 	ossh "github.com/okteto/remote/pkg/ssh"
 	"github.com/stretchr/testify/require"
@@ -167,6 +169,38 @@ func hostRunTest(t *testing.T) {
 	if err := host.MkdirAll("/tmp/test", time.Second); err != nil {
 		t.Fatal(err)
 	}
+	assert.DirExists("/tmp/test")
+	if err := host.StreamSSHCommand("sleep 1 && ls /tmp/test", nil, 10*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	//test  upload
+	randomString := utils.RandomString(20)
+	remoteFile := "/tmp/test/upload-unittest"
+	tmpFile, err := ioutil.TempFile("", "upload-unittest")
+	assert.NoError(err)
+	defer os.Remove(tmpFile.Name())
+	_, err = tmpFile.Write([]byte(randomString))
+	assert.NoError(err)
+	tmpFile.Close()
+	if err := host.Upload(tmpFile.Name(), remoteFile, 1*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	assert.FileExists(remoteFile)
+	content, err := os.ReadFile(remoteFile)
+	assert.NoError(err)
+	assert.Equal(randomString, string(content))
+
+	//test download
+	localFile := "/tmp/download-unittest"
+	if err := host.Download(remoteFile, localFile, 1*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	assert.NoError(err)
+	assert.FileExists(localFile)
+	content, err = os.ReadFile(remoteFile)
+	assert.NoError(err)
+	assert.Equal(randomString, string(content))
+
 	//bad connection
 	if err := brokenHost.Connect(sshPort); err == nil {
 		t.Fatal(err)
