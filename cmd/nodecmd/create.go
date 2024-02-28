@@ -356,7 +356,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 				return fmt.Errorf("cloud access is required")
 			}
 			// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
-			gcpClient, numNodesMap, imageID, credentialFilepath, projectName, err := getGCPConfig()
+			gcpClient, numNodesMap, imageID, credentialFilepath, projectName, err := getGCPConfig(false)
 			if err != nil {
 				return err
 			}
