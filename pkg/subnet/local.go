@@ -516,7 +516,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		return nil, err
 	}
 
-	fmt.Println()
+	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Deploying Blockchain. Wait until network acknowledges...")
 
 	// create a new blockchain on the already started network, associated to
@@ -572,13 +572,13 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		network := models.LocalNetwork
 		td := teleporter.Deployer{}
 		// get relayer address info
-		fmt.Println()
+		ux.Logger.PrintToUser("")
 		relayerAddress, relayerPrivateKey, err := teleporter.GetRelayerKeyInfo(d.app.GetKeyPath(constants.AWMRelayerKeyName))
 		if err != nil {
 			return nil, err
 		}
 		// deploy C-Chain
-		fmt.Println()
+		ux.Logger.PrintToUser("")
 		k, err := key.LoadEwoq(network.ID)
 		if err != nil {
 			return nil, err
@@ -633,7 +633,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			}
 		}
 		// deploy current blockchain
-		fmt.Println()
+		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("Loading %s key", sc.TeleporterKey)
 		keyPath := d.app.GetKeyPath(sc.TeleporterKey)
 		k, err = key.LoadSoft(network.ID, keyPath)
@@ -663,7 +663,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		); err != nil {
 			return nil, err
 		}
-		fmt.Println()
+		ux.Logger.PrintToUser("")
 		// fund relayer on current blockchain
 		if err := teleporter.FundRelayer(endpointRPCURL, privKeyStr, relayerAddress); err != nil {
 			return nil, err
@@ -680,10 +680,10 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 	}
 
-	fmt.Println()
+	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Blockchain ready to use. Local network node endpoints:")
 	ux.PrintTableEndpoints(clusterInfo)
-	fmt.Println()
+	ux.Logger.PrintToUser("")
 
 	ux.Logger.PrintToUser("Browser Extension connection details (any node URL from above works):")
 	ux.Logger.PrintToUser("RPC URL:          %s", endpoint[strings.LastIndex(endpoint, "http"):])
@@ -1027,7 +1027,7 @@ func (d *LocalDeployer) startNetwork(
 		loadSnapshotOpts = append(loadSnapshotOpts, client.WithGlobalNodeConfig(configStr))
 	}
 
-	fmt.Println()
+	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 	resp, err := cli.LoadSnapshot(
 		ctx,
