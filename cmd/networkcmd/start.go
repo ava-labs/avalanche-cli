@@ -148,7 +148,7 @@ func StartNetwork(*cobra.Command, []string) error {
 	ux.Logger.PrintToUser("Network ready to use.")
 
 	if subnet.HasEndpoints(resp.ClusterInfo) {
-		fmt.Println()
+		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("Local network node endpoints:")
 		ux.PrintTableEndpoints(resp.ClusterInfo)
 	}
@@ -159,7 +159,7 @@ func StartNetwork(*cobra.Command, []string) error {
 		if err := binutils.CopyFile(relayerStoredConfigPath, relayerConfigPath); err != nil {
 			return err
 		}
-		fmt.Println("")
+		ux.Logger.PrintToUser("")
 		if err := teleporter.DeployRelayer(
 			app.GetAWMRelayerBinDir(),
 			relayerConfigPath,

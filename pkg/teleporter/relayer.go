@@ -132,26 +132,29 @@ func RelayerCleanup(runFilePath string, storageDir string) error {
 	}
 	proc, err := os.FindProcess(rf.Pid)
 	if err != nil {
-		// so much expected after a reboot
-		if err := os.Remove(runFilePath); err != nil {
-			return fmt.Errorf("failed removing relayer run file %s: %w", runFilePath, err)
-		}
-		return nil
+		// after a reboot without network cleanup, it is expected that the file pid will exist but the process not
+		return removeRelayerRunFile(runFilePath)
 	}
 	if err := proc.Signal(syscall.Signal(0)); err != nil {
-		// so much expected after a reboot
-		if err := os.Remove(runFilePath); err != nil {
-			return fmt.Errorf("failed removing relayer run file %s: %w", runFilePath, err)
-		}
-		return nil
+		// after a reboot without network cleanup, it is expected that the file pid will exist but the process not
+		// sometimes FindProcess returns without error, but Signal 0 will surely fail if the process doesn't exist
+		return removeRelayerRunFile(runFilePath)
 	}
 	if err := proc.Signal(os.Interrupt); err != nil {
-		return fmt.Errorf("failed killing relayer process with pid %d: %w", rf.Pid, err)
+		ux.Logger.PrintToUser("failed trying to kill awm relayer with SIGINT. Using SIGKILL instead")
+		if err := proc.Signal(os.Kill); err != nil {
+			return fmt.Errorf("failed killing relayer process with pid %d: %w", rf.Pid, err)
+		}
 	}
-	if err := os.Remove(runFilePath); err != nil {
-		return fmt.Errorf("failed removing relayer run file %s: %w", runFilePath, err)
+	return removeRelayerRunFile(runFilePath)
+}
+
+func removeRelayerRunFile(runFilePath string) error {
+	err := os.Remove(runFilePath)
+	if err != nil {
+		err = fmt.Errorf("failed removing relayer run file %s: %w", runFilePath, err)
 	}
-	return nil
+	return err
 }
 
 func saveRelayerRunFile(runFilePath string, pid int) error {

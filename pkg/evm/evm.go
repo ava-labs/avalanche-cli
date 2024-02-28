@@ -25,11 +25,11 @@ func ContractAlreadyDeployed(
 	client ethclient.Client,
 	contractAddress string,
 ) (bool, error) {
-	bs, err := GetContractBytecode(client, contractAddress)
-	if err != nil {
+	if bs, err := GetContractBytecode(client, contractAddress); err != nil {
 		return false, err
+	} else {
+		return len(bs) != 0, nil
 	}
-	return len(bs) != 0, nil
 }
 
 func GetContractBytecode(
@@ -116,11 +116,9 @@ func FundAddress(
 	if err := client.SendTransaction(ctx, signedTx); err != nil {
 		return err
 	}
-	_, b, err := WaitForTransaction(client, signedTx)
-	if err != nil {
+	if _, b, err := WaitForTransaction(client, signedTx); err != nil {
 		return err
-	}
-	if !b {
+	} else if !b {
 		return fmt.Errorf("failure funding %s from %s amount %d", targetAddressStr, sourceAddress.Hex(), amount)
 	}
 	return nil
@@ -139,11 +137,9 @@ func IssueTx(
 	if err := client.SendTransaction(ctx, tx); err != nil {
 		return err
 	}
-	_, b, err := WaitForTransaction(client, tx)
-	if err != nil {
+	if _, b, err := WaitForTransaction(client, tx); err != nil {
 		return err
-	}
-	if !b {
+	} else if !b {
 		return fmt.Errorf("failure sending tx")
 	}
 	return nil

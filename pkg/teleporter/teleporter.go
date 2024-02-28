@@ -152,13 +152,12 @@ func (t *Deployer) DeployMessenger(
 	}
 	if teleporterMessengerDeployerBalance.Cmp(teleporterMessengerDeployerRequiredBalance) < 0 {
 		toFund := big.NewInt(0).Sub(teleporterMessengerDeployerRequiredBalance, teleporterMessengerDeployerBalance)
-		err := evm.FundAddress(
+		if err := evm.FundAddress(
 			client,
 			prefundedPrivateKey,
 			t.teleporterMessengerDeployerAddress,
 			toFund,
-		)
-		if err != nil {
+		); err != nil {
 			return false, "", err
 		}
 	}
