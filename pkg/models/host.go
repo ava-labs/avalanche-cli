@@ -192,7 +192,7 @@ func (h *Host) Command(script string, env []string, timeout time.Duration) ([]by
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	cmd, err := h.Connection.CommandContext(ctx, constants.SSHShell, script)
+	cmd, err := h.Connection.CommandContext(ctx, "", script)
 	if err != nil {
 		return nil, err
 	}

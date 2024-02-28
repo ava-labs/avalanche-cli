@@ -201,6 +201,11 @@ func hostRunTest(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(randomString, string(content))
 
+	if _, err := host.Command("touch /tmp/test/streamtest", nil, 10*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	assert.FileExists("/tmp/test/streamtest")
+
 	// bad connection
 	if err := brokenHost.Connect(sshPort); err == nil {
 		t.Fatal(err)
