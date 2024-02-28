@@ -4,13 +4,13 @@ package nodecmd
 
 import (
 	"fmt"
+	"golang.org/x/exp/maps"
 	"os/exec"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
@@ -95,16 +95,24 @@ func getAWSMonitoringEC2Svc(awsProfile, monitoringRegion string) (map[string]*aw
 	return ec2SvcMap, nil
 }
 
-func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[string]string, map[string]int, error) {
+func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []string) (map[string]*awsAPI.AwsCloud, map[string]string, map[string]int, error) {
 	finalRegions := map[string]int{}
 	switch {
 	case len(numNodes) != len(utils.Unique(cmdLineRegion)):
 		return nil, nil, nil, fmt.Errorf("number of nodes and regions should be the same")
 	case len(cmdLineRegion) == 0 && len(numNodes) == 0:
 		var err error
-		finalRegions, err = getRegionsNodeNum(constants.AWSCloudService)
-		if err != nil {
-			return nil, nil, nil, err
+		if singleNode {
+			selectedRegion, err := getSeparateHostNodeParam(constants.AWSCloudService)
+			finalRegions = map[string]int{selectedRegion: 1}
+			if err != nil {
+				return nil, nil, nil, err
+			}
+		} else {
+			finalRegions, err = getRegionsNodeNum(constants.AWSCloudService)
+			if err != nil {
+				return nil, nil, nil, err
+			}
 		}
 	default:
 		for i, region := range cmdLineRegion {
@@ -122,12 +130,24 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 	}
 	for region := range finalRegions {
 		var err error
-		ec2SvcMap[region], err = getAWSCloudCredentials(awsProfile, region)
-		if err != nil {
-			if !strings.Contains(err.Error(), "cloud access is required") {
-				printNoCredentialsOutput(awsProfile)
+		if singleNode {
+			for _, clusterRegion := range clusterSgRegions {
+				ec2SvcMap[clusterRegion], err = getAWSCloudCredentials(awsProfile, clusterRegion)
+				if err != nil {
+					if !strings.Contains(err.Error(), "cloud access is required") {
+						printNoCredentialsOutput(awsProfile)
+					}
+					return nil, nil, nil, err
+				}
 			}
-			return nil, nil, nil, err
+		} else {
+			ec2SvcMap[region], err = getAWSCloudCredentials(awsProfile, region)
+			if err != nil {
+				if !strings.Contains(err.Error(), "cloud access is required") {
+					printNoCredentialsOutput(awsProfile)
+				}
+				return nil, nil, nil, err
+			}
 		}
 		amiMap[region], err = ec2SvcMap[region].GetUbuntuAMIID()
 		if err != nil {

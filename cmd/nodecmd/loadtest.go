@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
 	"path/filepath"
 )
 
@@ -126,6 +127,7 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		nodeType = "default"
 		nodeType, err = setCloudInstanceType(cloudService)
 		if err != nil {
 			return err
@@ -133,7 +135,6 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	}
 	separateHostRegion := ""
 
-	//loadTestRegion := filteredSGList[0].region
 	cloudSecurityGroupList, err := getCloudSecurityGroupList(clusterNodes)
 	if err != nil {
 		return err
@@ -144,28 +145,29 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	if len(filteredSGList) == 0 {
 		return fmt.Errorf("no endpoint found in the  %s", cloudService)
 	}
-	fmt.Printf("filteredSGList %s \n", filteredSGList)
+	sgRegions := []string{}
+	for index, _ := range filteredSGList {
+		sgRegions = append(sgRegions, filteredSGList[index].region)
+	}
 	if cloudService == constants.AWSCloudService {
-		//ec2SvcMap, ami, _, err := getAWSCloudConfig(awsProfile)
-		//if err != nil {
-		//	return err
-		//}
-		//fmt.Printf("ec2SvcMap %s \n", ec2SvcMap)
+		ec2SvcMap, ami, _, err := getAWSCloudConfig(awsProfile, true, sgRegions)
+		if err != nil {
+			return err
+		}
 		loadTestEc2SvcMap := make(map[string]*awsAPI.AwsCloud)
-		//regions := maps.Keys(ec2SvcMap)
+		regions := maps.Keys(ec2SvcMap)
 		existingSeparateInstance, err = getExistingMonitoringInstance(clusterName)
 		if err != nil {
 			return err
 		}
 		if existingSeparateInstance == "" {
-			//fmt.Printf("we creating new instance \n")
-			//separateHostRegion = regions[0]
-			//loadTestEc2SvcMap[separateHostRegion] = ec2SvcMap[separateHostRegion]
-			//loadTestCloudConfig, err = createAWSInstances(loadTestEc2SvcMap, nodeType, map[string]int{separateHostRegion: 1}, []string{separateHostRegion}, ami, true)
-			//if err != nil {
-			//	return err
-			//}
-			//loadTestNodeConfig = loadTestCloudConfig[separateHostRegion]
+			separateHostRegion = regions[0]
+			loadTestEc2SvcMap[separateHostRegion] = ec2SvcMap[separateHostRegion]
+			loadTestCloudConfig, err = createAWSInstances(loadTestEc2SvcMap, nodeType, map[string]int{separateHostRegion: 1}, []string{separateHostRegion}, ami, true)
+			if err != nil {
+				return err
+			}
+			loadTestNodeConfig = loadTestCloudConfig[separateHostRegion]
 		} else {
 			loadTestNodeConfig, separateHostRegion, err = getNodeCloudConfig(existingSeparateInstance)
 			if err != nil {
@@ -186,8 +188,7 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 		}
 		if existingSeparateInstance == "" {
 			for _, sg := range filteredSGList {
-				// TODO: need to fix this with ec2svcmap
-				if err = grantAccessToPublicIPViaSecurityGroup(loadTestEc2SvcMap[sg.region], loadTestNodeConfig.PublicIPs[0], sg.securityGroup, sg.region); err != nil {
+				if err = grantAccessToPublicIPViaSecurityGroup(ec2SvcMap[sg.region], loadTestNodeConfig.PublicIPs[0], sg.securityGroup, sg.region); err != nil {
 					return err
 				}
 			}

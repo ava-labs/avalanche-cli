@@ -286,7 +286,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 				return fmt.Errorf("cloud access is required")
 			}
-			ec2SvcMap, ami, numNodesMap, err := getAWSCloudConfig(awsProfile)
+			ec2SvcMap, ami, numNodesMap, err := getAWSCloudConfig(awsProfile, false, nil)
 			regions := maps.Keys(ec2SvcMap)
 			if err != nil {
 				return err
@@ -1187,6 +1187,50 @@ func requestCloudAuth(cloudName string) error {
 		return fmt.Errorf("user did not give authorization to Avalanche-CLI to access %s account", cloudName)
 	}
 	return nil
+}
+
+func getSeparateHostNodeParam(cloudName string) (
+	string,
+	error,
+) {
+	type CloudPrompt struct {
+		defaultLocations []string
+		locationName     string
+		locationsListURL string
+	}
+
+	supportedClouds := map[string]CloudPrompt{
+		constants.AWSCloudService: {
+			defaultLocations: []string{"us-east-1", "us-east-2", "us-west-1", "us-west-2"},
+			locationName:     "AWS Region",
+			locationsListURL: "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html",
+		},
+		constants.GCPCloudService: {
+			defaultLocations: []string{"us-east1", "us-central1", "us-west1"},
+			locationName:     "Google Region",
+			locationsListURL: "https://cloud.google.com/compute/docs/regions-zones/",
+		},
+	}
+
+	if _, ok := supportedClouds[cloudName]; !ok {
+		return "", fmt.Errorf("cloud %s is not supported", cloudName)
+	}
+
+	awsCustomRegion := fmt.Sprintf("Choose custom %s (list of %ss available at %s)", supportedClouds[cloudName].locationName, supportedClouds[cloudName].locationName, supportedClouds[cloudName].locationsListURL)
+	userRegion, err := app.Prompt.CaptureList(
+		fmt.Sprintf("Which %s do you want to set up your separate node in?", supportedClouds[cloudName].locationName),
+		append(supportedClouds[cloudName].defaultLocations, awsCustomRegion),
+	)
+	if err != nil {
+		return "", err
+	}
+	if userRegion == awsCustomRegion {
+		userRegion, err = app.Prompt.CaptureString(fmt.Sprintf("Which %s do you want to set up your node in?", supportedClouds[cloudName].locationName))
+		if err != nil {
+			return "", err
+		}
+	}
+	return userRegion, nil
 }
 
 func getRegionsNodeNum(cloudName string) (
