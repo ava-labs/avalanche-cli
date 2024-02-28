@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -34,7 +35,7 @@ var (
 // avalanche teleporter msg
 func newMsgCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "msg [subnet1Name] [subnet2Name] [message]",
+		Use:          "msg [sourceSubnetName] [destinationSubnetName] [messageContent]",
 		Short:        "Sends and wait reception for a teleporter msg between two subnets",
 		Long:         `Sends and wait reception for a teleporter msg between two subnets.`,
 		SilenceUsage: true,
@@ -68,44 +69,50 @@ func msg(cmd *cobra.Command, args []string) error {
 	destSubnetName := strings.ToLower(args[1])
 	message := args[2]
 
-	sourceChainID, sourceMessengerAddressStr, sourceKey, err := getSubnetParams(network, sourceSubnetName)
+	sourceChainID, sourceMessengerAddress, sourceKey, err := getSubnetParams(network, sourceSubnetName)
 	if err != nil {
 		return err
 	}
-	destChainID, destMessengerAddressStr, _, err := getSubnetParams(network, destSubnetName)
+	destChainID, destMessengerAddress, _, err := getSubnetParams(network, destSubnetName)
 	if err != nil {
 		return err
 	}
 
-	if sourceMessengerAddressStr != destMessengerAddressStr {
-		fmt.Println("different teleporter messenger addresses among subnets: %s vs %s", sourceMessengerAddressStr, destMessengerAddressStr)
+	if sourceMessengerAddress != destMessengerAddress {
+		fmt.Println("different teleporter messenger addresses among subnets: %s vs %s", sourceMessengerAddress, destMessengerAddress)
 	}
 
-	// subscribe to get new heads from destination
-	destinationWebSocketClient, err := evm.GetClient(network.BlockchainWSEndpoint(destChainID.String()))
-	if err != nil {
-		return err
-	}
-	destinationHeadsCh := make(chan *types.Header, 10)
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
-	destinationHeadsSubscription, err := destinationWebSocketClient.SubscribeNewHead(ctx, destinationHeadsCh)
-	if err != nil {
-		return err
-	}
-	defer destinationHeadsSubscription.Unsubscribe()
 
-	// send tx to the teleporter contract at the source
+	// get clients + messengers
 	sourceClient, err := evm.GetClient(network.BlockchainEndpoint(sourceChainID.String()))
 	if err != nil {
 		return err
 	}
-	sourceSigner, err := evm.GetSigner(sourceClient, hex.EncodeToString(sourceKey.Raw()))
+	sourceMessenger, err := teleportermessenger.NewTeleporterMessenger(common.HexToAddress(sourceMessengerAddress), sourceClient)
 	if err != nil {
 		return err
 	}
-	sourceMessengerAddress := common.HexToAddress(sourceMessengerAddressStr)
-	sourceMessenger, err := teleportermessenger.NewTeleporterMessenger(sourceMessengerAddress, sourceClient)
+	destWebSocketClient, err := evm.GetClient(network.BlockchainWSEndpoint(destChainID.String()))
+	if err != nil {
+		return err
+	}
+	destMessenger, err := teleportermessenger.NewTeleporterMessenger(common.HexToAddress(destMessengerAddress), destWebSocketClient)
+	if err != nil {
+		return err
+	}
+
+	// subscribe to get new heads from destination
+	destHeadsCh := make(chan *types.Header, 10)
+	destHeadsSubscription, err := destWebSocketClient.SubscribeNewHead(ctx, destHeadsCh)
+	if err != nil {
+		return err
+	}
+	defer destHeadsSubscription.Unsubscribe()
+
+	// send tx to the teleporter contract at the source
+	sourceSigner, err := evm.GetSigner(sourceClient, hex.EncodeToString(sourceKey.Raw()))
 	if err != nil {
 		return err
 	}
@@ -125,24 +132,59 @@ func msg(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	receipt, b, err := evm.WaitForTransaction(sourceClient, tx)
+	sourceReceipt, b, err := evm.WaitForTransaction(sourceClient, tx)
 	if err != nil {
 		return err
 	}
 	if !b {
-		return fmt.Errorf("receipt status is not ReceiptStatusSuccessful")
+		return fmt.Errorf("source receipt status is not ReceiptStatusSuccessful")
 	}
-	sourceEvent, err := evm.GetEventFromLogs(receipt.Logs, sourceMessenger.ParseSendCrossChainMessage)
+	sourceEvent, err := evm.GetEventFromLogs(sourceReceipt.Logs, sourceMessenger.ParseSendCrossChainMessage)
 	if err != nil {
 		return err
 	}
-	fmt.Println(hex.EncodeToString(sourceEvent.MessageID[:]))
-	fmt.Println(string(sourceEvent.Message.Message) == message)
-	fmt.Println(ids.ID(sourceEvent.DestinationBlockchainID[:]) == destChainID)
+
+	if destChainID != ids.ID(sourceEvent.DestinationBlockchainID[:]) {
+		return fmt.Errorf("invalid destination blockchain id at source event, expected %s, got %s", destChainID, ids.ID(sourceEvent.DestinationBlockchainID[:]))
+	}
+	if message != string(sourceEvent.Message.Message) {
+		return fmt.Errorf("invalid message content at source event, expected %s, got %s", message, string(sourceEvent.Message.Message))
+	}
 
 	// receive and process head from destination
-        head := <-destinationHeadsCh
+        head := <-destHeadsCh
         blockNumber := head.Number
+        block, err := destWebSocketClient.BlockByNumber(ctx, blockNumber)
+        if err != nil {
+	       return err
+        }
+	if len(block.Transactions()) != 1 {
+		return fmt.Errorf("expected to have only one transaction on new block at destination")
+	}
+	destReceipt, err := destWebSocketClient.TransactionReceipt(ctx, block.Transactions()[0].Hash())
+	if err != nil {
+		return err
+	}
+        if destReceipt.Status != types.ReceiptStatusSuccessful {
+		return fmt.Errorf("dest receipt status is not ReceiptStatusSuccessful")
+	}
+        destEvent, err := evm.GetEventFromLogs(destReceipt.Logs, destMessenger.ParseReceiveCrossChainMessage)
+	if err != nil {
+		return err
+	}
+
+	if sourceChainID != ids.ID(destEvent.SourceBlockchainID[:]) {
+		return fmt.Errorf("invalid source blockchain id at dest event, expected %s, got %s", sourceChainID, ids.ID(destEvent.SourceBlockchainID[:]))
+	}
+	if message != string(destEvent.Message.Message) {
+		return fmt.Errorf("invalid message content at source event, expected %s, got %s", message, string(destEvent.Message.Message))
+	}
+	if sourceEvent.MessageID != destEvent.MessageID {
+		return fmt.Errorf("unexpected difference between message ID at source and dest events: %s vs %s", hex.EncodeToString(sourceEvent.MessageID[:]), hex.EncodeToString(destEvent.MessageID[:]))
+	}
+
+	ux.Logger.PrintToUser("Message successfully delivered to source subnet and received at destination subnet!")
+
 
 	return nil
 }
