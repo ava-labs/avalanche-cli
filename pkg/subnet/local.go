@@ -1121,10 +1121,8 @@ func GetChainIDs(endpoint string, chainName string) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	for _, chain := range blockChains {
-		if chain.Name == chainName {
-			return chain.SubnetID.String(), chain.ID.String(), nil
-		}
+	if chain := utils.Find(blockChains, func(e platformvm.APIBlockchain) bool { return e.Name == chainName }); chain != nil {
+		return chain.SubnetID.String(), chain.ID.String(), nil
 	}
 	return "", "", fmt.Errorf("%s not found on primary network blockchains", chainName)
 }

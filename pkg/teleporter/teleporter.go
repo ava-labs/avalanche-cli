@@ -115,11 +115,11 @@ func (t *Deployer) Deploy(
 	if alreadyDeployed {
 		return true, messengerAddress, "", nil
 	}
-	registryAddress, err := t.DeployRegistry(teleporterInstallDir, version, subnetName, rpcURL, prefundedPrivateKey)
-	if err != nil {
+	if registryAddress, err := t.DeployRegistry(teleporterInstallDir, version, subnetName, rpcURL, prefundedPrivateKey); err != nil {
 		return false, "", "", err
+	} else {
+		return false, messengerAddress, registryAddress, nil
 	}
-	return false, messengerAddress, registryAddress, nil
 }
 
 func (t *Deployer) DeployMessenger(
@@ -137,11 +137,9 @@ func (t *Deployer) DeployMessenger(
 	if err != nil {
 		return false, "", err
 	}
-	teleporterMessengerAlreadyDeployed, err := evm.ContractAlreadyDeployed(client, t.teleporterMessengerContractAddress)
-	if err != nil {
+	if teleporterMessengerAlreadyDeployed, err := evm.ContractAlreadyDeployed(client, t.teleporterMessengerContractAddress); err != nil {
 		return false, "", err
-	}
-	if teleporterMessengerAlreadyDeployed {
+	} else if teleporterMessengerAlreadyDeployed {
 		ux.Logger.PrintToUser("Teleporter Messenger has already been deployed to %s", subnetName)
 		return true, t.teleporterMessengerContractAddress, nil
 	}
@@ -198,11 +196,9 @@ func (t *Deployer) DeployRegistry(
 	if err != nil {
 		return "", err
 	}
-	_, success, err := evm.WaitForTransaction(client, tx)
-	if err != nil {
+	if _, success, err := evm.WaitForTransaction(client, tx); err != nil {
 		return "", err
-	}
-	if !success {
+	} else if !success {
 		return "", fmt.Errorf("failed receipt status deploying teleporter registry")
 	}
 	ux.Logger.PrintToUser("Teleporter Registry successfully deployed to %s (%s)", subnetName, teleporterRegistryAddress)

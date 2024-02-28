@@ -85,6 +85,24 @@ func GetRealFilePath(path string) string {
 	return path
 }
 
+func Any[T any](input []T, f func(T) bool) bool {
+	for _, e := range input {
+		if f(e) {
+			return true
+		}
+	}
+	return false
+}
+
+func Find[T any](input []T, f func(T) bool) *T {
+	for _, e := range input {
+		if f(e) {
+			return &e
+		}
+	}
+	return nil
+}
+
 func Filter[T any](input []T, f func(T) bool) []T {
 	output := make([]T, 0, len(input))
 	for _, e := range input {
