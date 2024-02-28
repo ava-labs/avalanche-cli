@@ -5,14 +5,19 @@ package teleportercmd
 import (
 	"fmt"
 	"strings"
+	"encoding/hex"
+	"math/big"
 
+	teleportermessenger "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/TeleporterMessenger"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/spf13/cobra"
 )
@@ -58,26 +63,61 @@ func msg(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	subnetName1 := strings.ToLower(args[0])
-	subnetName2 := strings.ToLower(args[1])
+	sourceSubnetName := strings.ToLower(args[0])
+	destSubnetName := strings.ToLower(args[1])
 
-	chainID1, messengerAddress1, key1, err := getSubnetParams(network, subnetName1)
+	sourceChainID, sourceMessengerAddressStr, sourceKey, err := getSubnetParams(network, sourceSubnetName)
 	if err != nil {
 		return err
 	}
-	chainID2, messengerAddress2, key2, err := getSubnetParams(network, subnetName2)
+	destChainID, destMessengerAddressStr, _, err := getSubnetParams(network, destSubnetName)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(chainID1)
-	fmt.Println(chainID2)
-    _ = key1
-    _ = key2
+	if sourceMessengerAddressStr != destMessengerAddressStr {
+		fmt.Println("different teleporter messenger addresses among subnets: %s vs %s", sourceMessengerAddressStr, destMessengerAddressStr)
+	}
 
-    if messengerAddress1 != messengerAddress2 {
-        fmt.Println("different teleporter messenger addresses among subnets: %s vs %s", messengerAddress1, messengerAddress2)
-    }
+	sourceClient, err := evm.GetClient(network.BlockchainEndpoint(sourceChainID.String()))
+	if err != nil {
+		return err
+	}
+	sourceSigner, err := evm.GetSigner(sourceClient, hex.EncodeToString(sourceKey.Raw()))
+	if err != nil {
+		return err
+	}
+	sourceMessengerAddress := common.HexToAddress(sourceMessengerAddressStr)
+	sourceMessenger, err := teleportermessenger.NewTeleporterMessenger(sourceMessengerAddress, sourceClient)
+	if err != nil {
+		return err
+	}
+	sourceAddress := common.HexToAddress(sourceKey.C())
+
+	// send tx to the source teleporter contract
+        msgInput := teleportermessenger.TeleporterMessageInput{
+                DestinationBlockchainID: destChainID,
+                DestinationAddress:      sourceAddress,
+                FeeInfo: teleportermessenger.TeleporterFeeInfo{
+                        FeeTokenAddress: sourceAddress,
+                        Amount:          big.NewInt(0),                         
+                },
+                RequiredGasLimit:        big.NewInt(1),
+                AllowedRelayerAddresses: []common.Address{},
+                Message:                 []byte{11, 1, 2, 3, 4, 11},
+        }
+	tx, err := sourceMessenger.SendCrossChainMessage(sourceSigner, msgInput)
+	if err != nil {
+		return err
+	}
+	receipt, b, err := evm.WaitForTransaction(sourceClient, tx)
+	if err != nil {
+		return err
+	}
+	if !b {
+		return fmt.Errorf("receipt status is not ReceiptStatusSuccessful")
+	}
+	_ = receipt
 
 	return nil
 }
@@ -87,7 +127,7 @@ func getSubnetParams(network models.Network, subnetName string) (ids.ID, string,
 		chainID                    ids.ID
 		err                        error
 		teleporterMessengerAddress string
-        k *key.SoftKey
+		k                          *key.SoftKey
 	)
 	if subnetName == "c-chain" || subnetName == "cchain" {
 		chainID, err = getChainID(network.Endpoint, "C")
@@ -97,10 +137,10 @@ func getSubnetParams(network models.Network, subnetName string) (ids.ID, string,
 				return ids.Empty, "", nil, err
 			}
 			teleporterMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
-            k, err = key.LoadEwoq(network.ID)
-            if err != nil {
-                return ids.Empty, "", nil, err
-            }
+			k, err = key.LoadEwoq(network.ID)
+			if err != nil {
+				return ids.Empty, "", nil, err
+			}
 		}
 	} else {
 		sc, err := app.LoadSidecar(subnetName)
