@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -82,6 +83,24 @@ func GetRealFilePath(path string) string {
 		path = strings.Replace(path, "~", usr.HomeDir, 1)
 	}
 	return path
+}
+
+func Any[T any](input []T, f func(T) bool) bool {
+	for _, e := range input {
+		if f(e) {
+			return true
+		}
+	}
+	return false
+}
+
+func Find[T any](input []T, f func(T) bool) *T {
+	for _, e := range input {
+		if f(e) {
+			return &e
+		}
+	}
+	return nil
 }
 
 func Filter[T any](input []T, f func(T) bool) []T {
@@ -245,6 +264,18 @@ func DownloadStr(url string) (string, error) {
 	return string(bs), err
 }
 
-func ScriptLog(nodeID string, line string) string {
-	return fmt.Sprintf("[%s] %s", nodeID, line)
+func DownloadWithTee(url string, path string) ([]byte, error) {
+	bs, err := Download(url)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), constants.DefaultPerms755); err != nil {
+		return nil, err
+	}
+	return bs, os.WriteFile(path, bs, constants.WriteReadReadPerms)
+}
+
+func ScriptLog(nodeID string, msg string, args ...interface{}) string {
+	formattedMsg := fmt.Sprintf(msg, args...)
+	return fmt.Sprintf("[%s] %s", nodeID, formattedMsg)
 }

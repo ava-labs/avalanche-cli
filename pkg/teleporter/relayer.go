@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"net"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -132,26 +134,29 @@ func RelayerCleanup(runFilePath string, storageDir string) error {
 	}
 	proc, err := os.FindProcess(rf.Pid)
 	if err != nil {
-		// so much expected after a reboot
-		if err := os.Remove(runFilePath); err != nil {
-			return fmt.Errorf("failed removing relayer run file %s: %w", runFilePath, err)
-		}
-		return nil
+		// after a reboot without network cleanup, it is expected that the file pid will exist but the process not
+		return removeRelayerRunFile(runFilePath)
 	}
 	if err := proc.Signal(syscall.Signal(0)); err != nil {
-		// so much expected after a reboot
-		if err := os.Remove(runFilePath); err != nil {
-			return fmt.Errorf("failed removing relayer run file %s: %w", runFilePath, err)
-		}
-		return nil
+		// after a reboot without network cleanup, it is expected that the file pid will exist but the process not
+		// sometimes FindProcess returns without error, but Signal 0 will surely fail if the process doesn't exist
+		return removeRelayerRunFile(runFilePath)
 	}
 	if err := proc.Signal(os.Interrupt); err != nil {
-		return fmt.Errorf("failed killing relayer process with pid %d: %w", rf.Pid, err)
+		ux.Logger.PrintToUser("failed trying to kill awm relayer with SIGINT. Using SIGKILL instead")
+		if err := proc.Signal(os.Kill); err != nil {
+			return fmt.Errorf("failed killing relayer process with pid %d: %w", rf.Pid, err)
+		}
 	}
-	if err := os.Remove(runFilePath); err != nil {
-		return fmt.Errorf("failed removing relayer run file %s: %w", runFilePath, err)
+	return removeRelayerRunFile(runFilePath)
+}
+
+func removeRelayerRunFile(runFilePath string) error {
+	err := os.Remove(runFilePath)
+	if err != nil {
+		err = fmt.Errorf("failed removing relayer run file %s: %w", runFilePath, err)
 	}
-	return nil
+	return err
 }
 
 func saveRelayerRunFile(runFilePath string, pid int) error {
@@ -336,42 +341,27 @@ func addChainToRelayerConfig(
 		APINodePort:       port,
 		AccountPrivateKey: relayerFundedAddressKey,
 	}
-	sources := relayerConfig.SourceSubnets
-	found := false
-	for _, s := range sources {
-		if s.BlockchainID == source.BlockchainID {
-			found = true
-		}
+	if !utils.Any(relayerConfig.SourceSubnets, func(s *config.SourceSubnet) bool { return s.BlockchainID == blockchainID }) {
+		relayerConfig.SourceSubnets = append(relayerConfig.SourceSubnets, source)
 	}
-	if !found {
-		sources = append(sources, source)
-		relayerConfig.SourceSubnets = sources
-	}
-	destinations := relayerConfig.DestinationSubnets
-	found = false
-	for _, d := range destinations {
-		if d.BlockchainID == destination.BlockchainID {
-			found = true
-		}
-	}
-	if !found {
-		destinations = append(destinations, destination)
-		relayerConfig.DestinationSubnets = destinations
+	if !utils.Any(relayerConfig.DestinationSubnets, func(s *config.DestinationSubnet) bool { return s.BlockchainID == blockchainID }) {
+		relayerConfig.DestinationSubnets = append(relayerConfig.DestinationSubnets, destination)
 	}
 }
 
 // Get the host and port from a URI. The URI should be in the format http://host:port or https://host:port or host:port
 func getURIHostAndPort(uri string) (string, uint32, error) {
-	trimmedURI := uri
-	trimmedURI = strings.TrimPrefix(trimmedURI, "http://")
-	trimmedURI = strings.TrimPrefix(trimmedURI, "https://")
-	hostAndPort := strings.Split(trimmedURI, ":")
-	if len(hostAndPort) != 2 {
-		return "", 0, fmt.Errorf("expected only host and port fields in %s", uri)
-	}
-	port, err := strconv.ParseUint(hostAndPort[1], 10, 32)
+	u, err := url.Parse(uri)
 	if err != nil {
-		return "", 0, fmt.Errorf("failed to parse port from %s: %w", uri, err)
+		return "", 0, fmt.Errorf("failed to parse uri %s: %w", uri, err)
 	}
-	return hostAndPort[0], uint32(port), nil
+	host, portStr, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to split host/port at uri %s: %w", uri, err)
+	}
+	port, err := strconv.ParseUint(portStr, 10, 32)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to convert port to uint at uri %s: %w", uri, err)
+	}
+	return host, uint32(port), nil
 }

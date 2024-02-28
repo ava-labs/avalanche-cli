@@ -236,11 +236,9 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	if teleporterReady {
-		isSubnetEVMGenesis, err := jsonIsSubnetEVMGenesis(genesisBytes)
-		if err != nil {
+		if isSubnetEVMGenesis, err := jsonIsSubnetEVMGenesis(genesisBytes); err != nil {
 			return err
-		}
-		if !isSubnetEVMGenesis {
+		} else if !isSubnetEVMGenesis {
 			return fmt.Errorf("teleporter is not supported yet for non Subnet-EVM virtual machines")
 		}
 		keyPath := app.GetKeyPath(constants.TeleporterKeyName)
@@ -266,7 +264,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		// lets' use latest versions for teleporter contract and default awm relayer
+		// let's use latest versions for teleporter contract
 		teleporterVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.TeleporterRepoName))
 		if err != nil {
 			return err
@@ -291,7 +289,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("Successfully created subnet configuration")
+	ux.Logger.GreenCheckmarkToUser("Successfully created subnet configuration")
 	return nil
 }
 
