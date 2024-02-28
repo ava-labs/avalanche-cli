@@ -442,7 +442,7 @@ func RunSSHSetupLoadTest(host *models.Host, loadTestRepo, loadTestPath, loadTest
 		host,
 		constants.SSHScriptTimeout,
 		"shell/setupLoadtest.sh",
-		scriptInputs{LoadTestRepoDir: loadTestRepoDir[0], LoadTestRepo: loadTestRepo, LoadTestPath: loadTestPath, LoadTestCommand: loadTestCommand},
+		scriptInputs{GoVersion: constants.BuildEnvGolangVersion, LoadTestRepoDir: loadTestRepoDir[0], LoadTestRepo: loadTestRepo, LoadTestPath: loadTestPath, LoadTestCommand: loadTestCommand},
 	)
 }
 
