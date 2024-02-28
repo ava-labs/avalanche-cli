@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -33,12 +34,12 @@ var (
 // avalanche teleporter msg
 func newMsgCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "msg [subnet1Name] [subnet2Name]",
+		Use:          "msg [subnet1Name] [subnet2Name] [message]",
 		Short:        "Sends and wait reception for a teleporter msg between two subnets",
 		Long:         `Sends and wait reception for a teleporter msg between two subnets.`,
 		SilenceUsage: true,
 		RunE:         msg,
-		Args:         cobra.ExactArgs(2),
+		Args:         cobra.ExactArgs(3),
 	}
 	cmd.Flags().StringVar(&endpoint, "endpoint", "", "use the given endpoint for network operations")
 	cmd.Flags().BoolVarP(&useLocal, "local", "l", false, "operate on a local network")
@@ -65,6 +66,7 @@ func msg(cmd *cobra.Command, args []string) error {
 
 	sourceSubnetName := strings.ToLower(args[0])
 	destSubnetName := strings.ToLower(args[1])
+	message := args[2]
 
 	sourceChainID, sourceMessengerAddressStr, sourceKey, err := getSubnetParams(network, sourceSubnetName)
 	if err != nil {
@@ -79,6 +81,21 @@ func msg(cmd *cobra.Command, args []string) error {
 		fmt.Println("different teleporter messenger addresses among subnets: %s vs %s", sourceMessengerAddressStr, destMessengerAddressStr)
 	}
 
+	// subscribe to get new heads from destination
+	destinationWebSocketClient, err := evm.GetClient(network.BlockchainWSEndpoint(destChainID.String()))
+	if err != nil {
+		return err
+	}
+	destinationHeadsCh := make(chan *types.Header, 10)
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	destinationHeadsSubscription, err := destinationWebSocketClient.SubscribeNewHead(ctx, destinationHeadsCh)
+	if err != nil {
+		return err
+	}
+	defer destinationHeadsSubscription.Unsubscribe()
+
+	// send tx to the teleporter contract at the source
 	sourceClient, err := evm.GetClient(network.BlockchainEndpoint(sourceChainID.String()))
 	if err != nil {
 		return err
@@ -93,8 +110,6 @@ func msg(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	sourceAddress := common.HexToAddress(sourceKey.C())
-
-	// send tx to the source teleporter contract
         msgInput := teleportermessenger.TeleporterMessageInput{
                 DestinationBlockchainID: destChainID,
                 DestinationAddress:      sourceAddress,
@@ -104,7 +119,7 @@ func msg(cmd *cobra.Command, args []string) error {
                 },
                 RequiredGasLimit:        big.NewInt(1),
                 AllowedRelayerAddresses: []common.Address{},
-                Message:                 []byte{11, 1, 2, 3, 4, 11},
+                Message:                 []byte(message),
         }
 	tx, err := sourceMessenger.SendCrossChainMessage(sourceSigner, msgInput)
 	if err != nil {
@@ -117,7 +132,17 @@ func msg(cmd *cobra.Command, args []string) error {
 	if !b {
 		return fmt.Errorf("receipt status is not ReceiptStatusSuccessful")
 	}
-	_ = receipt
+	sourceEvent, err := evm.GetEventFromLogs(receipt.Logs, sourceMessenger.ParseSendCrossChainMessage)
+	if err != nil {
+		return err
+	}
+	fmt.Println(hex.EncodeToString(sourceEvent.MessageID[:]))
+	fmt.Println(string(sourceEvent.Message.Message) == message)
+	fmt.Println(ids.ID(sourceEvent.DestinationBlockchainID[:]) == destChainID)
+
+	// receive and process head from destination
+        head := <-destinationHeadsCh
+        blockNumber := head.Number
 
 	return nil
 }
