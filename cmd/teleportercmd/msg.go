@@ -3,22 +3,24 @@
 package teleportercmd
 
 import (
-	"fmt"
-	"strings"
+	"context"
 	"encoding/hex"
+	"fmt"
 	"math/big"
+	"strings"
+	"time"
 
-	teleportermessenger "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/TeleporterMessenger"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/subnet-evm/core/types"
+	teleportermessenger "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/TeleporterMessenger"
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/spf13/cobra"
@@ -51,7 +53,7 @@ func newMsgCmd() *cobra.Command {
 	return cmd
 }
 
-func msg(cmd *cobra.Command, args []string) error {
+func msg(_ *cobra.Command, args []string) error {
 	network, err := subnetcmd.GetNetworkFromCmdLineFlags(
 		useLocal,
 		useDevnet,
@@ -79,10 +81,10 @@ func msg(cmd *cobra.Command, args []string) error {
 	}
 
 	if sourceMessengerAddress != destMessengerAddress {
-		fmt.Println("different teleporter messenger addresses among subnets: %s vs %s", sourceMessengerAddress, destMessengerAddress)
+		return fmt.Errorf("different teleporter messenger addresses among subnets: %s vs %s", sourceMessengerAddress, destMessengerAddress)
 	}
 
-	ctx, cancel := utils.GetAPIContext()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
 	// get clients + messengers
@@ -117,17 +119,18 @@ func msg(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	sourceAddress := common.HexToAddress(sourceKey.C())
-        msgInput := teleportermessenger.TeleporterMessageInput{
-                DestinationBlockchainID: destChainID,
-                DestinationAddress:      sourceAddress,
-                FeeInfo: teleportermessenger.TeleporterFeeInfo{
-                        FeeTokenAddress: sourceAddress,
-                        Amount:          big.NewInt(0),                         
-                },
-                RequiredGasLimit:        big.NewInt(1),
-                AllowedRelayerAddresses: []common.Address{},
-                Message:                 []byte(message),
-        }
+	msgInput := teleportermessenger.TeleporterMessageInput{
+		DestinationBlockchainID: destChainID,
+		DestinationAddress:      sourceAddress,
+		FeeInfo: teleportermessenger.TeleporterFeeInfo{
+			FeeTokenAddress: sourceAddress,
+			Amount:          big.NewInt(0),
+		},
+		RequiredGasLimit:        big.NewInt(1),
+		AllowedRelayerAddresses: []common.Address{},
+		Message:                 []byte(message),
+	}
+	ux.Logger.PrintToUser("Delivering message %q to source subnet %q", message, sourceSubnetName)
 	tx, err := sourceMessenger.SendCrossChainMessage(sourceSigner, msgInput)
 	if err != nil {
 		return err
@@ -152,12 +155,18 @@ func msg(cmd *cobra.Command, args []string) error {
 	}
 
 	// receive and process head from destination
-        head := <-destHeadsCh
-        blockNumber := head.Number
-        block, err := destWebSocketClient.BlockByNumber(ctx, blockNumber)
-        if err != nil {
-	       return err
-        }
+	ux.Logger.PrintToUser("Waiting for message to be received at destination subnet subnet %q", destSubnetName)
+	var head *types.Header
+	select {
+	case head = <-destHeadsCh:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	blockNumber := head.Number
+	block, err := destWebSocketClient.BlockByNumber(ctx, blockNumber)
+	if err != nil {
+		return err
+	}
 	if len(block.Transactions()) != 1 {
 		return fmt.Errorf("expected to have only one transaction on new block at destination")
 	}
@@ -165,10 +174,10 @@ func msg(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-        if destReceipt.Status != types.ReceiptStatusSuccessful {
+	if destReceipt.Status != types.ReceiptStatusSuccessful {
 		return fmt.Errorf("dest receipt status is not ReceiptStatusSuccessful")
 	}
-        destEvent, err := evm.GetEventFromLogs(destReceipt.Logs, destMessenger.ParseReceiveCrossChainMessage)
+	destEvent, err := evm.GetEventFromLogs(destReceipt.Logs, destMessenger.ParseReceiveCrossChainMessage)
 	if err != nil {
 		return err
 	}
@@ -183,8 +192,7 @@ func msg(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unexpected difference between message ID at source and dest events: %s vs %s", hex.EncodeToString(sourceEvent.MessageID[:]), hex.EncodeToString(destEvent.MessageID[:]))
 	}
 
-	ux.Logger.PrintToUser("Message successfully delivered to source subnet and received at destination subnet!")
-
+	ux.Logger.PrintToUser("Message successfully Teleported!")
 
 	return nil
 }
