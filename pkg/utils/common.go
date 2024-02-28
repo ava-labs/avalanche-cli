@@ -275,6 +275,7 @@ func DownloadWithTee(url string, path string) ([]byte, error) {
 	return bs, os.WriteFile(path, bs, constants.WriteReadReadPerms)
 }
 
-func ScriptLog(nodeID string, line string) string {
-	return fmt.Sprintf("[%s] %s", nodeID, line)
+func ScriptLog(nodeID string, msg string, args ...interface{}) string {
+	formattedMsg := fmt.Sprintf(msg, args...)
+	return fmt.Sprintf("[%s] %s", nodeID, formattedMsg)
 }

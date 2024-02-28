@@ -278,13 +278,13 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			return nil, nil, nil, nil, err
 		}
 		spinSession := ux.NewUserSpinner()
-		spinner := spinSession.SpinToUser("Waiting for EC2 instances in AWS[%s] to be provisioned...", region)
+		spinner := spinSession.SpinToUser("Waiting for EC2 instance(s) in AWS[%s] to be provisioned...", region)
 		if err := ec2Svc[region].WaitForEC2Instances(instanceIDs[region]); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
 			return nil, nil, nil, nil, err
 		}
 		ux.SpinComplete(spinner)
-		spinSession.End()
+		spinSession.Stop()
 		if useStaticIP {
 			publicIPs := []string{}
 			for count := 0; count < regionConf[region].NumNodes; count++ {
@@ -310,7 +310,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			elasticIPs[region] = regionElasticIPs
 		}
 	}
-	ux.Logger.PrintToUser("New EC2 instance(s) successfully created in AWS!")
+	ux.Logger.GreenCheckmarkToUser("New EC2 instance(s) successfully created in AWS!")
 	for _, region := range regions {
 		if !useExistingKeyPair[region] && !useSSHAgent {
 			// takes the cert file downloaded from AWS and moves it to .ssh directory
