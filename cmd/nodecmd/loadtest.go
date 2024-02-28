@@ -286,7 +286,7 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	loadTestRepoURL = "https://github.com/sukantoraymond/subnet-evm.git"
 	loadTestBuildCmd = "cd /home/ubuntu/subnet-evm/cmd/simulator; go build -o ./simulator main/*.go"
 	//loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://3.213.57.75:9650/ext/bc/YFykrbK6dmLuec3BtrkV7bmpiS81BB2oC9XDHQv2D8qkTuy7o/rpc\" > log.txt"
-	loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://54.89.255.134:9650/ext/2jzXd3HYtEg8DuMaYnBDtB9URHdQv2pnBrR2cZnBzMAjWHr6RZ/rpc\""
+	loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://50.16.124.0:9650/ext/bc/2jzXd3HYtEg8DuMaYnBDtB9URHdQv2pnBrR2cZnBzMAjWHr6RZ/rpc\""
 	if err := ssh.RunSSHSetupLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestCmd); err != nil {
 		return err
 	}
