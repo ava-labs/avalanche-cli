@@ -9,6 +9,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
+	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -96,7 +97,6 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	if loadTestScriptPath == "" {
 		loadTestScriptPath = "loadtest.sh"
 	}
-
 	// set ssh-Key
 	if useSSHAgent && sshIdentity == "" {
 		sshIdentity, err = setSSHIdentity()
@@ -104,17 +104,14 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-
 	clusterNodes, err := getClusterNodes(clusterName)
 	if err != nil {
 		return err
 	}
-
 	existingSeparateInstance, err = getExistingMonitoringInstance(clusterName)
 	if err != nil {
 		return err
 	}
-
 	cloudService := ""
 	if existingSeparateInstance != "" {
 		separateNodeConfig, err := app.LoadClusterNodeConfig(existingSeparateInstance)
@@ -135,12 +132,10 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 		}
 	}
 	separateHostRegion := ""
-
 	cloudSecurityGroupList, err := getCloudSecurityGroupList(clusterNodes)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("cloudSecurityGroupList %s \n", cloudSecurityGroupList)
 	// we only support endpoint in the same cluster
 	filteredSGList := utils.Filter(cloudSecurityGroupList, func(sg regionSecurityGroup) bool { return sg.cloud == cloudService })
 	if len(filteredSGList) == 0 {
@@ -150,14 +145,14 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	for index, _ := range filteredSGList {
 		sgRegions = append(sgRegions, filteredSGList[index].region)
 	}
+	existingSeparateInstance, err = getExistingMonitoringInstance(clusterName)
+	if err != nil {
+		return err
+	}
 	if cloudService == constants.AWSCloudService {
 		var ec2SvcMap map[string]*awsAPI.AwsCloud
 		var ami map[string]string
 		loadTestEc2SvcMap := make(map[string]*awsAPI.AwsCloud)
-		existingSeparateInstance, err = getExistingMonitoringInstance(clusterName)
-		if err != nil {
-			return err
-		}
 		if existingSeparateInstance == "" {
 			ec2SvcMap, ami, _, err = getAWSCloudConfig(awsProfile, true, sgRegions)
 			if err != nil {
@@ -197,24 +192,45 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 			}
 		}
 	} else if cloudService == constants.GCPCloudService {
-		// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
-		gcpClient, _, imageID, _, _, err := getGCPConfig()
-		if err != nil {
-			return err
+		var gcpClient *gcpAPI.GcpCloud
+		var gcpRegions map[string]int
+		var imageID string
+		var projectName string
+		if existingSeparateInstance == "" {
+			// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
+			gcpClient, gcpRegions, imageID, _, projectName, err = getGCPConfig(true)
+			if err != nil {
+				return err
+			}
+			regions := maps.Keys(gcpRegions)
+			separateHostRegion = regions[0]
+			loadTestCloudConfig, err = createGCPInstance(gcpClient, nodeType, map[string]int{separateHostRegion: 1}, imageID, clusterName, true)
+			if err != nil {
+				return err
+			}
+			loadTestNodeConfig = loadTestCloudConfig[separateHostRegion]
+		} else {
+			_, projectName, _, err = getGCPCloudCredentials()
+			if err != nil {
+				return err
+			}
+			loadTestNodeConfig, separateHostRegion, err = getNodeCloudConfig(existingSeparateInstance)
+			if err != nil {
+				return err
+			}
 		}
-		loadTestCloudConfig, err = createGCPInstance(gcpClient, nodeType, map[string]int{separateHostRegion: 1}, imageID, clusterName, true)
-		if err != nil {
-			return err
+		if !useStaticIP {
+			loadTestPublicIPMap, err := gcpClient.GetInstancePublicIPs(separateHostRegion, loadTestNodeConfig.InstanceIDs)
+			if err != nil {
+				return err
+			}
+			loadTestNodeConfig.PublicIPs = []string{loadTestPublicIPMap[loadTestNodeConfig.InstanceIDs[0]]}
 		}
-		loadTestNodeConfig = loadTestCloudConfig[separateHostRegion]
-		//loadTestPublicIPMap, err := gcpClient.GetInstancePublicIPs(loadTestRegion, loadTestNodeConfig.InstanceIDs)
-		//if err != nil {
-		//	return err
-		//}
-		//loadTestNodeConfig.PublicIPs = []string{loadTestPublicIPMap[loadTestNodeConfig.InstanceIDs[0]]}
-		//if err = grantAccessToPublicIPViaFirewall(gcpClient, projectName, loadTestNodeConfig.PublicIPs[0], "loadtest"); err != nil {
-		//	return err
-		//}
+		if existingSeparateInstance == "" {
+			if err = grantAccessToPublicIPViaFirewall(gcpClient, projectName, loadTestNodeConfig.PublicIPs[0], "loadtest"); err != nil {
+				return err
+			}
+		}
 	} else {
 		return fmt.Errorf("cloud service %s is not supported", cloudService)
 	}
@@ -296,14 +312,12 @@ func GetLoadTestScript(app *application.Avalanche) error {
 	if loadTestBuildCmd == "" {
 		loadTestCmd, err = app.Prompt.CaptureString("What is the build command?")
 		if err != nil {
-			fmt.Printf("we have error here %s \n", err)
 			return err
 		}
 	}
 	if loadTestCmd == "" {
 		loadTestCmd, err = app.Prompt.CaptureString("What is the load test command?")
 		if err != nil {
-			fmt.Printf("we have error here loadTestCmd %s \n", err)
 			return err
 		}
 	}

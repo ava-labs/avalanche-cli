@@ -385,14 +385,16 @@ func (h *Host) StreamSSHCommand(command string, env []string, timeout time.Durat
 			return err
 		}
 	}
-	cmdErr := make(chan error, 1)
-	go func() { // Run the command in a goroutine
-		cmdErr <- session.Run(command)
-	}()
+	//prepare streams
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	go streamOutput(ctx, stdout)
 	go streamOutput(ctx, stderr)
+
+	cmdErr := make(chan error, 1)
+	go func() {
+		cmdErr <- session.Run(command)
+	}()
 
 	select {
 	case <-ctx.Done():
@@ -412,12 +414,10 @@ func streamOutput(ctx context.Context, output io.Reader) {
 	for {
 		select {
 		case <-ctx.Done():
-			fmt.Println("context done")
 			return
 		default:
 			n, err := output.Read(buf)
-			if err != nil {
-				fmt.Println(err)
+			if err != nil && err != io.EOF {
 				return
 			}
 			fmt.Println(string(buf[:n]))

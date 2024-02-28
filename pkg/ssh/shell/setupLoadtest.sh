@@ -5,7 +5,6 @@ git -C {{ .LoadTestRepoDir }} pull || git clone {{ .LoadTestRepo }}
 # install gcc
 echo "ensuring that gcc is installed ..."
 gcc --version || DEBIAN_FRONTEND=noninteractive sudo apt-get -y -o DPkg::Lock::Timeout=120 install gcc
-#name:TASK [install go]
 # install go
 echo "ensuring that go is installed ..."
 install_go() {
