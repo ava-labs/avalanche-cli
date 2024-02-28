@@ -150,17 +150,19 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 		sgRegions = append(sgRegions, filteredSGList[index].region)
 	}
 	if cloudService == constants.AWSCloudService {
-		ec2SvcMap, ami, _, err := getAWSCloudConfig(awsProfile, true, sgRegions)
-		if err != nil {
-			return err
-		}
+		var ec2SvcMap map[string]*awsAPI.AwsCloud
+		var ami map[string]string
 		loadTestEc2SvcMap := make(map[string]*awsAPI.AwsCloud)
-		regions := maps.Keys(ec2SvcMap)
 		existingSeparateInstance, err = getExistingMonitoringInstance(clusterName)
 		if err != nil {
 			return err
 		}
 		if existingSeparateInstance == "" {
+			ec2SvcMap, ami, _, err = getAWSCloudConfig(awsProfile, true, sgRegions)
+			if err != nil {
+				return err
+			}
+			regions := maps.Keys(ec2SvcMap)
 			separateHostRegion = regions[0]
 			loadTestEc2SvcMap[separateHostRegion] = ec2SvcMap[separateHostRegion]
 			loadTestCloudConfig, err = createAWSInstances(loadTestEc2SvcMap, nodeType, map[string]int{separateHostRegion: 1}, []string{separateHostRegion}, ami, true)

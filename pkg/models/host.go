@@ -17,7 +17,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 )
@@ -45,6 +44,7 @@ func NewHostConnection(h *Host, port uint) (*goph.Client, error) {
 		auth goph.Auth
 		err  error
 	)
+
 	if h.SSHPrivateKeyPath == "" {
 		auth, err = goph.UseAgent()
 	} else {
@@ -377,35 +377,34 @@ func (h *Host) StreamSSHCommand(command string, env []string, timeout time.Durat
 		return err
 	}
 	for _, item := range env {
-		env = strings.Split(item, "=")
-		if len(env) == 2 {
-			session.Setenv(env[0], env[1])
-		} else {
+		envPair := strings.SplitN(item, "=", 2)
+		if len(envPair) != 2 {
 			return fmt.Errorf("invalid env variable %s", item)
 		}
+		if err := session.Setenv(envPair[0], envPair[1]); err != nil {
+			return err
+		}
 	}
-	if err := session.Run(command); err != nil {
-		return err
-	}
+	cmdErr := make(chan error, 1)
+	go func() { // Run the command in a goroutine
+		cmdErr <- session.Run(command)
+	}()
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	go streamOutput(ctx, stdout)
 	go streamOutput(ctx, stderr)
 
-	// Wait for the command to finish or for cancellation
-	done := make(chan error, 1)
-	go func() {
-		done <- session.Wait()
-	}()
-
 	select {
 	case <-ctx.Done():
-		session.Close()
-		<-done
+		// Context cancelled, return error if command execution didn't complete
 		return ctx.Err()
-	case err := <-done:
-		return err
+	case err := <-cmdErr:
+		// Command execution finished, return any error encountered
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func streamOutput(ctx context.Context, output io.Reader) {
@@ -413,13 +412,15 @@ func streamOutput(ctx context.Context, output io.Reader) {
 	for {
 		select {
 		case <-ctx.Done():
+			fmt.Println("context done")
 			return
 		default:
 			n, err := output.Read(buf)
 			if err != nil {
+				fmt.Println(err)
 				return
 			}
-			ux.Logger.PrintToUser(string(buf[:n]))
+			fmt.Println(string(buf[:n]))
 		}
 	}
 }
