@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -243,6 +244,17 @@ func Download(url string) ([]byte, error) {
 func DownloadStr(url string) (string, error) {
 	bs, err := Download(url)
 	return string(bs), err
+}
+
+func DownloadWithTee(url string, path string) ([]byte, error) {
+	bs, err := Download(url)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), constants.DefaultPerms755); err != nil {
+		return nil, err
+	}
+	return bs, os.WriteFile(path, bs, constants.WriteReadReadPerms)
 }
 
 func ScriptLog(nodeID string, line string) string {

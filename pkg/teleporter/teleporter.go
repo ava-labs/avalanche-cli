@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -61,14 +60,8 @@ func (t *Deployer) DownloadAssets(
 			}
 		} else {
 			// get target teleporter messenger contract address
-			teleporterMessengerContractAddressBytes, err = utils.Download(teleporterMessengerContractAddressURL)
+			teleporterMessengerContractAddressBytes, err = utils.DownloadWithTee(teleporterMessengerContractAddressURL, teleporterMessengerContractAddressPath)
 			if err != nil {
-				return err
-			}
-			if err := os.MkdirAll(binDir, constants.DefaultPerms755); err != nil {
-				return err
-			}
-			if err := os.WriteFile(teleporterMessengerContractAddressPath, teleporterMessengerContractAddressBytes, constants.WriteReadReadPerms); err != nil {
 				return err
 			}
 		}
@@ -83,14 +76,8 @@ func (t *Deployer) DownloadAssets(
 			}
 		} else {
 			// get teleporter deployer address
-			teleporterMessengerDeployerAddressBytes, err = utils.Download(teleporterMessengerDeployerAddressURL)
+			teleporterMessengerDeployerAddressBytes, err = utils.DownloadWithTee(teleporterMessengerDeployerAddressURL, teleporterMessengerDeployerAddressPath)
 			if err != nil {
-				return err
-			}
-			if err := os.MkdirAll(binDir, constants.DefaultPerms755); err != nil {
-				return err
-			}
-			if err := os.WriteFile(teleporterMessengerDeployerAddressPath, teleporterMessengerDeployerAddressBytes, constants.WriteReadReadPerms); err != nil {
 				return err
 			}
 		}
@@ -104,14 +91,8 @@ func (t *Deployer) DownloadAssets(
 				return err
 			}
 		} else {
-			teleporterMessengerDeployerTxBytes, err = utils.Download(teleporterMessengerDeployerTxURL)
+			teleporterMessengerDeployerTxBytes, err = utils.DownloadWithTee(teleporterMessengerDeployerTxURL, teleporterMessengerDeployerTxPath)
 			if err != nil {
-				return err
-			}
-			if err := os.MkdirAll(binDir, constants.DefaultPerms755); err != nil {
-				return err
-			}
-			if err := os.WriteFile(teleporterMessengerDeployerTxPath, teleporterMessengerDeployerTxBytes, constants.WriteReadReadPerms); err != nil {
 				return err
 			}
 		}
