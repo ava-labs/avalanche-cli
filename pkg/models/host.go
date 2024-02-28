@@ -388,8 +388,7 @@ func (h *Host) StreamSSHCommand(command string, env []string, timeout time.Durat
 	//prepare streams
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	go streamOutput(ctx, stdout)
-	go streamOutput(ctx, stderr)
+	go streamOutput(ctx, io.MultiReader(stdout, stderr))
 
 	cmdErr := make(chan error, 1)
 	go func() {
@@ -420,7 +419,9 @@ func streamOutput(ctx context.Context, output io.Reader) {
 			if err != nil && err != io.EOF {
 				return
 			}
-			fmt.Println(string(buf[:n]))
+			if n > 0 {
+				fmt.Println(string(buf[:n]))
+			}
 		}
 	}
 }
