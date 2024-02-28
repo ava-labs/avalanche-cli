@@ -49,7 +49,6 @@ func NewHostConnection(h *Host, port uint) (*goph.Client, error) {
 		auth, err = goph.UseAgent()
 	} else {
 		auth, err = goph.Key(h.SSHPrivateKeyPath, "")
-
 	}
 	if err != nil {
 		return nil, err
@@ -382,7 +381,9 @@ func (h *Host) StreamSSHCommand(command string, env []string, timeout time.Durat
 		if len(envPair) != 2 {
 			return fmt.Errorf("invalid env variable %s", item)
 		}
-		session.Setenv(envPair[0], envPair[1])
+		if err := session.Setenv(envPair[0], envPair[1]); err != nil {
+			return err
+		}
 	}
 	cmdErr := make(chan error, 1)
 	go func() { // Run the command in a goroutine

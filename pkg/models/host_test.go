@@ -3,7 +3,6 @@ package models
 import (
 	"crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -88,14 +87,14 @@ func TestHost(t *testing.T) {
 
 func hostRunTest(t *testing.T) {
 	assert := require.New(t)
-	//prepare ssh keys
+	// prepare ssh keys
 	privKey, err := os.CreateTemp("", "unit-test-ssh-private-key")
 	assert.NoError(err)
 	defer os.Remove(privKey.Name())
 	if _, err := privKey.Write(privateBytes); err != nil {
 		t.Fatal(err)
 	}
-	privKey.Close()
+	assert.NoError(privKey.Close())
 
 	block, _ := pem.Decode(privateBytes)
 	assert.NotNil(block)
@@ -112,7 +111,7 @@ func hostRunTest(t *testing.T) {
 	defer os.Remove(pubKey.Name())
 	err = pem.Encode(pubKey, publicKeyPEM)
 	assert.NoError(err)
-	pubKey.Close()
+	assert.NoError(pubKey.Close())
 
 	publicKeyBytes, err := os.ReadFile(pubKey.Name())
 	assert.NoError(err)
@@ -128,7 +127,7 @@ func hostRunTest(t *testing.T) {
 	assert.NoError(err)
 	_, err = authKey.Write(ssh.MarshalAuthorizedKey(sshPublicKey))
 	assert.NoError(err)
-	authKey.Close()
+	assert.NoError(authKey.Close())
 
 	brokenKey, err := os.CreateTemp("", "unit-test-ssh-broken-key")
 	assert.NoError(err)
@@ -136,9 +135,10 @@ func hostRunTest(t *testing.T) {
 	if _, err := brokenKey.Write(brokenBytes); err != nil {
 		t.Fatal(err)
 	}
-	brokenKey.Close()
+	assert.NoError(brokenKey.Close())
 
-	startSSHServer(sshPort, authKey.Name(), t)
+	err = startSSHServer(sshPort, authKey.Name(), t)
+	assert.NoError(err)
 	defer stopSSHServer()
 
 	host := &Host{
@@ -155,7 +155,7 @@ func hostRunTest(t *testing.T) {
 		SSHUser:           constants.AnsibleSSHUser,
 		SSHCommonArgs:     constants.AnsibleSSHUseAgentParams,
 	}
-	//good connection
+	// good connection
 	if err := host.WaitForSSHPort(sshPort, 10*time.Second); err != nil {
 		t.Fatal(err)
 	}
@@ -173,15 +173,15 @@ func hostRunTest(t *testing.T) {
 	if err := host.StreamSSHCommand("sleep 1 && ls /tmp/test", nil, 10*time.Second); err != nil {
 		t.Fatal(err)
 	}
-	//test  upload
+	// test  upload
 	randomString := utils.RandomString(20)
 	remoteFile := "/tmp/test/upload-unittest"
-	tmpFile, err := ioutil.TempFile("", "upload-unittest")
+	tmpFile, err := os.CreateTemp("", "upload-unittest")
 	assert.NoError(err)
 	defer os.Remove(tmpFile.Name())
 	_, err = tmpFile.Write([]byte(randomString))
 	assert.NoError(err)
-	tmpFile.Close()
+	assert.NoError(tmpFile.Close())
 	if err := host.Upload(tmpFile.Name(), remoteFile, 1*time.Second); err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func hostRunTest(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(randomString, string(content))
 
-	//test download
+	// test download
 	localFile := "/tmp/download-unittest"
 	if err := host.Download(remoteFile, localFile, 1*time.Second); err != nil {
 		t.Fatal(err)
@@ -201,7 +201,7 @@ func hostRunTest(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(randomString, string(content))
 
-	//bad connection
+	// bad connection
 	if err := brokenHost.Connect(sshPort); err == nil {
 		t.Fatal(err)
 	}
