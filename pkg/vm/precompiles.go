@@ -258,14 +258,22 @@ func removePrecompile(arr []string, s string) ([]string, error) {
 	return arr, errors.New("string not in array")
 }
 
-func getPrecompiles(config params.ChainConfig, app *application.Avalanche, useDefaults bool) (
+func getPrecompiles(
+	config params.ChainConfig,
+	app *application.Avalanche,
+	useDefaults bool,
+	teleporter bool,
+) (
 	params.ChainConfig,
 	statemachine.StateDirection,
 	error,
 ) {
-	if useDefaults {
+	if useDefaults || teleporter {
 		warpConfig := configureWarp()
 		config.GenesisPrecompiles[warp.ConfigKey] = &warpConfig
+	}
+
+	if useDefaults {
 		return config, statemachine.Forward, nil
 	}
 
@@ -273,7 +281,10 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche, useDe
 
 	first := true
 
-	remainingPrecompiles := []string{NativeMint, ContractAllowList, TxAllowList, FeeManager, RewardManager, Warp, cancel}
+	remainingPrecompiles := []string{Warp, NativeMint, ContractAllowList, TxAllowList, FeeManager, RewardManager, cancel}
+	if teleporter {
+		remainingPrecompiles = []string{NativeMint, ContractAllowList, TxAllowList, FeeManager, RewardManager, cancel}
+	}
 
 	for {
 		firstStr := "Advanced: Would you like to add a custom precompile to modify the EVM?"
@@ -297,9 +308,10 @@ func getPrecompiles(config params.ChainConfig, app *application.Avalanche, useDe
 			return config, statemachine.Backward, nil
 		}
 
-		precompileDecision, err := app.Prompt.CaptureList(
+		precompileDecision, err := app.Prompt.CaptureListWithSize(
 			"Choose precompile",
 			remainingPrecompiles,
+			len(remainingPrecompiles),
 		)
 		if err != nil {
 			return config, statemachine.Stop, err

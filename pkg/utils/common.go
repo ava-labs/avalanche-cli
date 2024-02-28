@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -81,6 +83,24 @@ func GetRealFilePath(path string) string {
 		path = strings.Replace(path, "~", usr.HomeDir, 1)
 	}
 	return path
+}
+
+func Any[T any](input []T, f func(T) bool) bool {
+	for _, e := range input {
+		if f(e) {
+			return true
+		}
+	}
+	return false
+}
+
+func Find[T any](input []T, f func(T) bool) *T {
+	for _, e := range input {
+		if f(e) {
+			return &e
+		}
+	}
+	return nil
 }
 
 func Filter[T any](input []T, f func(T) bool) []T {
@@ -221,6 +241,38 @@ func Sum(s []int) int {
 		sum += v
 	}
 	return sum
+}
+
+func Download(url string) ([]byte, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed downloading %s: %w", url, err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed downloading %s: unexpected http status code: %d", url, resp.StatusCode)
+	}
+	defer resp.Body.Close()
+	bs, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed downloading %s: %w", url, err)
+	}
+	return bs, nil
+}
+
+func DownloadStr(url string) (string, error) {
+	bs, err := Download(url)
+	return string(bs), err
+}
+
+func DownloadWithTee(url string, path string) ([]byte, error) {
+	bs, err := Download(url)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), constants.DefaultPerms755); err != nil {
+		return nil, err
+	}
+	return bs, os.WriteFile(path, bs, constants.WriteReadReadPerms)
 }
 
 func ScriptLog(nodeID string, msg string, args ...interface{}) string {

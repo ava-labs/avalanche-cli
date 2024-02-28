@@ -161,7 +161,7 @@ func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 			networkErr:      nil,
 			desiredRPC:      19,
 			desiredVersion:  testLatestAvagoVersion,
-			expectError:     true,
+			expectError:     false,
 			expectedVersion: testAvagoVersion1,
 			compatData:      nil,
 			compatError:     errors.New("no compat"),
@@ -194,6 +194,7 @@ func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 			mockDownloader := &mocks.Downloader{}
 			mockDownloader.On("Download", mock.Anything).Return(tt.compatData, nil)
 			mockDownloader.On("GetLatestReleaseVersion", mock.Anything).Return(tt.expectedVersion, nil)
+			mockDownloader.On("GetLatestPreReleaseVersion", mock.Anything, mock.Anything).Return(tt.expectedVersion, nil)
 
 			app = application.New()
 			app.Log = logging.NoLog{}
