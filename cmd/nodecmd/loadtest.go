@@ -233,7 +233,11 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	} else {
 		return fmt.Errorf("cloud service %s is not supported", cloudService)
 	}
-
+	if existingSeparateInstance == "" {
+		if err := saveExternalHostConfig(loadTestNodeConfig, separateHostRegion, cloudService, clusterName); err != nil {
+			return err
+		}
+	}
 	var separateHosts []*models.Host
 	separateHostInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
 	if existingSeparateInstance == "" {
