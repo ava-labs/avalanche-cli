@@ -14,7 +14,7 @@ var app *application.Avalanche
 // avalanche primary
 func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "primary",
+		Use:   "primary ",
 		Short: "Interact with the Primary Network",
 		Long: `The primary command suite provides a collection of tools for interacting with the
 Primary Network`,
