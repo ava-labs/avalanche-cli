@@ -293,7 +293,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			true,
 		)
 		toMatch := "(?s).+Not enough funds in the first (?s).+ indices of Ledger(?s).+Error: not enough funds on ledger(?s).+"
-		matched, err := regexp.MatchString(toMatch, s)
+		matched, err := regexp.MatchString(toMatch, removeLineCleanChars(s))
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
@@ -315,7 +315,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		toMatch = "(?s).+Ledger addresses:(?s).+  " + ledger1Addr + "(?s).+Subnet has been created with ID(?s).+" + //nolint:goconst
 			"0 of 2 required Blockchain Creation signatures have been signed\\. Saving tx to disk to enable remaining signing\\.(?s).+" +
 			"Addresses remaining to sign the tx\\s+" + ledger2Addr + "(?s).+" + ledger3Addr + "(?s).+" //nolint:goconst
-		matched, err = regexp.MatchString(toMatch, s)
+		matched, err = regexp.MatchString(toMatch, removeLineCleanChars(s))
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
@@ -328,7 +328,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		toMatch = "(?s).*0 of 2 required signatures have been signed\\.(?s).+" +
 			"Addresses remaining to sign the tx\\s+" + ledger2Addr + "(?s).+" + ledger3Addr + "(?s).+" +
 			"(?s).+Error: tx is not fully signed(?s).+" //nolint:goconst
-		matched, err = regexp.MatchString(toMatch, s)
+		matched, err = regexp.MatchString(toMatch, removeLineCleanChars(s))
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
@@ -340,7 +340,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		)
 		toMatch = "(?s).+Ledger addresses:(?s).+  " + ledger1Addr + "(?s).+There are no required subnet auth keys present in the wallet(?s).+" +
 			"Expected one of:\\s+" + ledger2Addr + "(?s).+" + ledger3Addr + "(?s).+Error: no remaining signer address present in wallet.*"
-		matched, err = regexp.MatchString(toMatch, s)
+		matched, err = regexp.MatchString(toMatch, removeLineCleanChars(s))
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
@@ -357,7 +357,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		toMatch = "(?s).*0 of 2 required signatures have been signed\\.(?s).+" +
 			"Addresses remaining to sign the tx\\s+" + ledger2Addr + "(?s).+" + ledger3Addr + "(?s).+" +
 			"(?s).+Error: tx is not fully signed(?s).+"
-		matched, err = regexp.MatchString(toMatch, s)
+		matched, err = regexp.MatchString(toMatch, removeLineCleanChars(s))
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
@@ -370,7 +370,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		)
 		toMatch = "(?s).+Ledger addresses:(?s).+  " + ledger2Addr + "(?s).+1 of 2 required Tx signatures have been signed\\.(?s).+" +
 			"Addresses remaining to sign the tx\\s+" + ledger3Addr + ".*"
-		matched, err = regexp.MatchString(toMatch, s)
+		matched, err = regexp.MatchString(toMatch, removeLineCleanChars(s))
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
@@ -382,7 +382,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		)
 		toMatch = "(?s).+Ledger addresses:(?s).+  " + ledger2Addr + "(?s).+There are no required subnet auth keys present in the wallet(?s).+" +
 			"Expected one of:\\s+" + ledger3Addr + "(?s).+Error: no remaining signer address present in wallet.*"
-		matched, err = regexp.MatchString(toMatch, s)
+		matched, err = regexp.MatchString(toMatch, removeLineCleanChars(s))
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
@@ -399,7 +399,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		toMatch = "(?s).*1 of 2 required signatures have been signed\\.(?s).+" +
 			"Addresses remaining to sign the tx\\s+" + ledger3Addr +
 			"(?s).+Error: tx is not fully signed(?s).+"
-		matched, err = regexp.MatchString(toMatch, s)
+		matched, err = regexp.MatchString(toMatch, removeLineCleanChars(s))
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
@@ -411,7 +411,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			false,
 		)
 		toMatch = "(?s).+Ledger addresses:(?s).+  " + ledger3Addr + "(?s).+Tx is fully signed, and ready to be committed(?s).+"
-		matched, err = regexp.MatchString(toMatch, s)
+		matched, err = regexp.MatchString(toMatch, removeLineCleanChars(s))
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
@@ -422,7 +422,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			true,
 		)
 		toMatch = "(?s).*Tx is fully signed, and ready to be committed(?s).+Error: tx is already fully signed"
-		matched, err = regexp.MatchString(toMatch, s)
+		matched, err = regexp.MatchString(toMatch, removeLineCleanChars(s))
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
@@ -437,7 +437,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			false,
 		)
 		toMatch = "(?s).+DEPLOYMENT RESULTS(?s).+Blockchain ID(?s).+"
-		matched, err = regexp.MatchString(toMatch, s)
+		matched, err = regexp.MatchString(toMatch, removeLineCleanChars(s))
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
@@ -448,8 +448,13 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			true,
 		)
 		toMatch = "(?s).*Error: error issuing tx with ID(?s).+: failed to decode client response: couldn't issue tx: failed to read consumed(?s).+"
-		matched, err = regexp.MatchString(toMatch, s)
+		matched, err = regexp.MatchString(toMatch, removeLineCleanChars(s))
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 	})
 })
+
+func removeLineCleanChars(s string) string {
+	re := regexp.MustCompile(`\r\x1b\[K`)
+	return re.ReplaceAllString(s, "")
+}
