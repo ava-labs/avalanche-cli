@@ -385,7 +385,7 @@ func (h *Host) StreamSSHCommand(command string, env []string, timeout time.Durat
 			return err
 		}
 	}
-	//prepare streams
+	// prepare streams
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	go streamOutput(ctx, io.MultiReader(stdout, stderr))
