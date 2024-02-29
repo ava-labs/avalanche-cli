@@ -292,6 +292,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			txPath,
 			true,
 		)
+		s = strings.ReplaceAll(s, "\r\033[K", "")
 		toMatch := "(?s).+Not enough funds in the first .+ indices of Ledger.+Error: not enough funds on ledger.+"
 		matched, err := regexp.MatchString(toMatch, s)
 		gomega.Expect(err).Should(gomega.BeNil())
