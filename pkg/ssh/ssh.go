@@ -430,13 +430,6 @@ func RunSSHSetupLoadTest(host *models.Host, loadTestRepo, loadTestPath, loadTest
 	loadTestRepoPaths := strings.Split(loadTestRepo, "/")
 	// remove .git
 	loadTestRepoDir := strings.Split(loadTestRepoPaths[len(loadTestRepoPaths)-1], ".")
-	//return RunOverSSH(
-	//	"Setup Load Test",
-	//	host,
-	//	constants.SSHScriptTimeout,
-	//	"shell/setupLoadtest.sh",
-	//	scriptInputs{LoadTestRepoDir: loadTestRepoDir[0], LoadTestRepo: loadTestRepo, LoadTestPath: loadTestPath, LoadTestCommand: loadTestCommand},
-	//)
 	return StreamOverSSH(
 		"Setup Load Test",
 		host,

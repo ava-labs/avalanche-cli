@@ -701,32 +701,36 @@ func CreateClusterNodeConfig(network models.Network, cloudConfigMap models.Cloud
 			}
 		}
 		if separateMonitoringInstance {
-			publicIP := ""
-			if useStaticIP {
-				publicIP = monitorCloudConfig.PublicIPs[0]
-			}
-			nodeConfig := models.NodeConfig{
-				NodeID:        monitorCloudConfig.InstanceIDs[0],
-				Region:        monitoringHostRegion,
-				AMI:           monitorCloudConfig.ImageID,
-				KeyPair:       monitorCloudConfig.KeyPair,
-				CertPath:      monitorCloudConfig.CertFilePath,
-				SecurityGroup: monitorCloudConfig.SecurityGroup,
-				ElasticIP:     publicIP,
-				CloudService:  cloudService,
-			}
-			if err := app.CreateNodeCloudConfigFile(monitorCloudConfig.InstanceIDs[0], &nodeConfig); err != nil {
-				return err
-			}
-			if err := addNodeToClustersConfig(network, monitorCloudConfig.InstanceIDs[0], clusterName, false, true); err != nil {
-				return err
-			}
-			if err := updateKeyPairClustersConfig(nodeConfig); err != nil {
+			if err := saveExternalHostConfig(monitorCloudConfig, monitoringHostRegion, cloudService, clusterName); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+func saveExternalHostConfig(externalHostConfig models.RegionConfig, hostRegion, cloudService, clusterName string) error {
+	publicIP := ""
+	if useStaticIP {
+		publicIP = externalHostConfig.PublicIPs[0]
+	}
+	nodeConfig := models.NodeConfig{
+		NodeID:        externalHostConfig.InstanceIDs[0],
+		Region:        hostRegion,
+		AMI:           externalHostConfig.ImageID,
+		KeyPair:       externalHostConfig.KeyPair,
+		CertPath:      externalHostConfig.CertFilePath,
+		SecurityGroup: externalHostConfig.SecurityGroup,
+		ElasticIP:     publicIP,
+		CloudService:  cloudService,
+	}
+	if err := app.CreateNodeCloudConfigFile(externalHostConfig.InstanceIDs[0], &nodeConfig); err != nil {
+		return err
+	}
+	if err := addNodeToClustersConfig(models.UndefinedNetwork, externalHostConfig.InstanceIDs[0], clusterName, false, true); err != nil {
+		return err
+	}
+	return updateKeyPairClustersConfig(nodeConfig)
 }
 
 func addHTTPHostToConfigFile(filePath string) error {
@@ -815,6 +819,9 @@ func addNodeToClustersConfig(network models.Network, nodeID, clusterName string,
 		clustersConfig.Clusters = make(map[string]models.ClusterConfig)
 	}
 	if _, ok := clustersConfig.Clusters[clusterName]; !ok {
+		if isMonitoringInstance {
+			return fmt.Errorf("cluster %s is not found in cluster_config.json", clusterName)
+		}
 		clustersConfig.Clusters[clusterName] = models.ClusterConfig{
 			Network:  network,
 			Nodes:    []string{},
@@ -834,8 +841,9 @@ func addNodeToClustersConfig(network models.Network, nodeID, clusterName string,
 			APINodes: apiNodes,
 		}
 	} else {
+		currentNetwork := clustersConfig.Clusters[clusterName].Network
 		clustersConfig.Clusters[clusterName] = models.ClusterConfig{
-			Network:            network,
+			Network:            currentNetwork,
 			Nodes:              nodes,
 			APINodes:           apiNodes,
 			MonitoringInstance: nodeID,

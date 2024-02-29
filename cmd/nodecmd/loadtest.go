@@ -234,35 +234,11 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	} else {
 		return fmt.Errorf("cloud service %s is not supported", cloudService)
 	}
-	//
-	//// deploy loadtest script
-	//ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, loadTestNodeConfig.InstanceIDs[0])
-	//loadTestHost := models.Host{
-	//	NodeID:            ansibleInstanceID,
-	//	IP:                loadTestNodeConfig.PublicIPs[0],
-	//	SSHUser:           constants.AnsibleSSHUser,
-	//	SSHPrivateKeyPath: loadTestCloudConfig[separateHostRegion].CertFilePath,
-	//	SSHCommonArgs:     constants.AnsibleSSHUseAgentParams,
-	//}
-	//
-	//failedHosts := waitForHosts([]*models.Host{&loadTestHost})
-	//if failedHosts.Len() > 0 {
-	//	for _, result := range failedHosts.GetResults() {
-	//		ux.Logger.PrintToUser("Loadtest instance %s failed to provision with error %s. Please check instance logs for more information", result.NodeID, result.Err)
-	//	}
-	//	return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
-	//}
-	//ux.Logger.PrintToUser("Loadtest instance %s provisioned successfully", loadTestHost.NodeID)
-	// run loadtest script
-	//ltScript := ""
-	//if ltScript, err = ssh.RunSSHSetupLoadTest(&loadTestHost, loadTestScriptPath); err != nil {
-	//	return err
-	//}
-	//ux.Logger.PrintToUser("Loadtest instance %s ready", loadTestHost.NodeID)
-	//if err := ssh.RunSSHStartLoadTest(&loadTestHost, ltScript, loadTestScriptArgs); err != nil {
-	//	return err
-	//}
-	//ux.Logger.PrintToUser("Loadtest instance %s is done", loadTestHost.NodeID)
+	if existingSeparateInstance == "" {
+		if err := saveExternalHostConfig(loadTestNodeConfig, separateHostRegion, cloudService, clusterName); err != nil {
+			return err
+		}
+	}
 	var separateHosts []*models.Host
 	separateHostInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
 	if existingSeparateInstance == "" {
@@ -283,10 +259,21 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	//if err := ssh.RunSSHSetupLoadTest(monitoringHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestCmd); err != nil {
 	//	return err
 	//}
+	// waiting for all nodes to become accessible
+	failedHosts := waitForHosts(separateHosts)
+	if failedHosts.Len() > 0 {
+		for _, result := range failedHosts.GetResults() {
+			ux.Logger.PrintToUser("Instance %s failed to provision with error %s. Please check instance logs for more information", result.NodeID, result.Err)
+		}
+		return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
+	}
+	ux.Logger.PrintToUser("Separate instance %s provisioned successfully", separateHosts[0].NodeID)
 	loadTestRepoURL = "https://github.com/sukantoraymond/subnet-evm.git"
 	loadTestBuildCmd = "cd /home/ubuntu/subnet-evm/cmd/simulator; go build -o ./simulator main/*.go"
 	//loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://3.213.57.75:9650/ext/bc/YFykrbK6dmLuec3BtrkV7bmpiS81BB2oC9XDHQv2D8qkTuy7o/rpc\" > log.txt"
-	loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://50.16.124.0:9650/ext/bc/2jzXd3HYtEg8DuMaYnBDtB9URHdQv2pnBrR2cZnBzMAjWHr6RZ/rpc\""
+	//loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://3.213.57.75:9650/ext/bc/YFykrbK6dmLuec3BtrkV7bmpiS81BB2oC9XDHQv2D8qkTuy7o/rpc\""
+	loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://34.23.208.211:9650/ext/bc/2Cgy1PT7tbb6vtr68rsEHqBEt6WdKYhQmJsWqHcUqeAhjtBzMs/rpc\""
+	//loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://52.8.198.135:9650/ext/bc/AzoaFqJiftX1kebuyE4L3jzixeP5uW7fET1Ra1qdqjmK9zz4p/rpc\""
 	if err := ssh.RunSSHSetupLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestCmd); err != nil {
 		return err
 	}
