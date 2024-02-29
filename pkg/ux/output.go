@@ -36,7 +36,7 @@ func NewUserLog(log logging.Logger, userwriter io.Writer) {
 
 // PrintToUser prints msg directly on the screen, but also to log file
 func (ul *UserLog) PrintToUser(msg string, args ...interface{}) {
-	//fmt.Print("\r\033[K") // Clear the line from the cursor position to the end
+	fmt.Print("\r\033[K") // Clear the line from the cursor position to the end
 	formattedMsg := fmt.Sprintf(msg, args...)
 	fmt.Fprintln(ul.Writer, formattedMsg)
 	ul.log.Info(formattedMsg)
