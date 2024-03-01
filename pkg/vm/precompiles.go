@@ -6,6 +6,7 @@ package vm
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -220,7 +221,7 @@ func configureMinterList(app *application.Avalanche) (nativeminter.Config, bool,
 func configureWarp() warp.Config {
 	config := warp.Config{}
 	config.Upgrade = precompileconfig.Upgrade{
-		BlockTimestamp: utils.NewUint64(0),
+		BlockTimestamp: utils.NewUint64(uint64(time.Now().Unix())),
 	}
 	return config
 }
