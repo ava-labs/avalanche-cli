@@ -452,9 +452,9 @@ func RunSSHBuildLoadTest(host *models.Host, loadTestRepo, loadTestPath string) e
 	)
 }
 
-func RunSSHSetupLoadTest(host *models.Host, loadTestCommand string) error {
+func RunSSHRunLoadTest(host *models.Host, loadTestCommand string) error {
 	return StreamOverSSH(
-		"Setup Load Test",
+		"Run Load Test",
 		host,
 		constants.SSHScriptTimeout,
 		"shell/setupLoadtest.sh",
