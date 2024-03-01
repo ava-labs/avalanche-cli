@@ -259,21 +259,30 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	//	return err
 	//}
 	// waiting for all nodes to become accessible
-	failedHosts := waitForHosts(separateHosts)
-	if failedHosts.Len() > 0 {
-		for _, result := range failedHosts.GetResults() {
-			ux.Logger.PrintToUser("Instance %s failed to provision with error %s. Please check instance logs for more information", result.NodeID, result.Err)
+	if existingSeparateInstance == "" {
+		failedHosts := waitForHosts(separateHosts)
+		if failedHosts.Len() > 0 {
+			for _, result := range failedHosts.GetResults() {
+				ux.Logger.PrintToUser("Instance %s failed to provision with error %s. Please check instance logs for more information", result.NodeID, result.Err)
+			}
+			return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
 		}
-		return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
+		ux.Logger.PrintToUser("Separate instance %s provisioned successfully", separateHosts[0].NodeID)
 	}
-	ux.Logger.PrintToUser("Separate instance %s provisioned successfully", separateHosts[0].NodeID)
 	loadTestRepoURL = "https://github.com/sukantoraymond/subnet-evm.git"
 	loadTestBuildCmd = "cd /home/ubuntu/subnet-evm/cmd/simulator; go build -o ./simulator main/*.go"
 	//loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://3.213.57.75:9650/ext/bc/YFykrbK6dmLuec3BtrkV7bmpiS81BB2oC9XDHQv2D8qkTuy7o/rpc\" > log.txt"
 	//loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://3.213.57.75:9650/ext/bc/YFykrbK6dmLuec3BtrkV7bmpiS81BB2oC9XDHQv2D8qkTuy7o/rpc\""
-	loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://34.23.208.211:9650/ext/bc/2Cgy1PT7tbb6vtr68rsEHqBEt6WdKYhQmJsWqHcUqeAhjtBzMs/rpc\""
+	//loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://34.23.208.211:9650/ext/bc/2Cgy1PT7tbb6vtr68rsEHqBEt6WdKYhQmJsWqHcUqeAhjtBzMs/rpc\""
 	//loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://52.8.198.135:9650/ext/bc/AzoaFqJiftX1kebuyE4L3jzixeP5uW7fET1Ra1qdqjmK9zz4p/rpc\""
-	if err := ssh.RunSSHSetupLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestCmd); err != nil {
+	//if err := ssh.RunSSHSetupLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestCmd); err != nil {
+	//	return err
+	//}
+	loadTestCmd = "cd /home/ubuntu/subnet-evm/cmd/simulator; ./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://52.8.198.135:9650/ext/bc/AzoaFqJiftX1kebuyE4L3jzixeP5uW7fET1Ra1qdqjmK9zz4p/rpc\""
+	//if err := ssh.RunSSHBuildLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd); err != nil {
+	//	return err
+	//}
+	if err := ssh.RunSSHSetupLoadTest(separateHosts[0], loadTestCmd); err != nil {
 		return err
 	}
 	return nil
