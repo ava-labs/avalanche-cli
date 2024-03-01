@@ -388,7 +388,7 @@ func (h *Host) StreamSSHCommand(command string, env []string, timeout time.Durat
 	//prepare streams
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	go streamOutput(ctx, io.MultiReader(stdout, stderr))
+	go streamOutput(cancel, io.MultiReader(stderr, stdout))
 
 	cmdErr := make(chan error, 1)
 	go func() {
@@ -408,20 +408,13 @@ func (h *Host) StreamSSHCommand(command string, env []string, timeout time.Durat
 	return nil
 }
 
-func streamOutput(ctx context.Context, output io.Reader) {
-	buf := make([]byte, 1024)
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			n, err := output.Read(buf)
-			if err != nil && err != io.EOF {
-				return
-			}
-			if n > 0 {
-				fmt.Println(string(buf[:n]))
-			}
-		}
+func streamOutput(cancel context.CancelFunc, output io.Reader) {
+	scanner := bufio.NewScanner(output)
+	for scanner.Scan() {
+		fmt.Println(scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Printf("Error reading from output: %v\n", err)
+		cancel()
 	}
 }
