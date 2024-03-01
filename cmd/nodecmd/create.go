@@ -281,7 +281,8 @@ func createNodes(_ *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		if cloudService == constants.AWSCloudService { // Get AWS Credential, region and AMI
+		if cloudService == constants.AWSCloudService {
+			fmt.Printf("not using e2e \n") // Get AWS Credential, region and AMI
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 				return fmt.Errorf("cloud access is required")
 			}
@@ -560,6 +561,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 			ux.SpinComplete(spinner)
 		} else {
+			fmt.Printf("updating prometheus config here \n")
 			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Setup monitoring"))
 			if err = app.SetupMonitoringEnv(); err != nil {
 				ux.SpinFailWithError(spinner, "", err)

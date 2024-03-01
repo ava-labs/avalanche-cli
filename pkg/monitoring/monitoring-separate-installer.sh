@@ -85,12 +85,12 @@ install_prometheus() {
   fi
   echo "Attempting to download: $promFileName"
   wget -nv --show-progress -O prometheus.tar.gz "$promFileName"
-  mkdir -p prometheus
+  mkdir prometheus
   tar xvf prometheus.tar.gz -C prometheus --strip-components=1
   echo "Installing..."
   id -u prometheus &>/dev/null || sudo useradd -M -r -s /bin/false prometheus
   sudo mkdir -p /etc/prometheus /var/lib/prometheus
-  sudo apt-get install -y apt-transport-https gnupg2 -o DPkg::Lock::Timeout=120
+  sudo apt-get install -y apt-transport-https
   cd prometheus
   sudo cp {prometheus,promtool} /usr/local/bin/
   sudo chown prometheus:prometheus /usr/local/bin/{prometheus,promtool}
