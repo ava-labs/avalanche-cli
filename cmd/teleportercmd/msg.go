@@ -162,6 +162,14 @@ func msg(_ *cobra.Command, args []string) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+	if sourceChainID == destChainID {
+		// we have another block
+		select {
+		case head = <-destHeadsCh:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 	blockNumber := head.Number
 	block, err := destWebSocketClient.BlockByNumber(ctx, blockNumber)
 	if err != nil {
