@@ -283,7 +283,7 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 	//if err := ssh.RunSSHBuildLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd); err != nil {
 	//	return err
 	//}
-	if err := ssh.RunSSHSetupLoadTest(separateHosts[0], loadTestCmd); err != nil {
+	if err := ssh.RunSSHRunLoadTest(separateHosts[0], loadTestCmd); err != nil {
 		return err
 	}
 	return nil
