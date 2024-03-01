@@ -67,8 +67,8 @@ func msg(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	sourceSubnetName := strings.ToLower(args[0])
-	destSubnetName := strings.ToLower(args[1])
+	sourceSubnetName := args[0]
+	destSubnetName := args[1]
 	message := args[2]
 
 	sourceChainID, sourceMessengerAddress, sourceKey, err := getSubnetParams(network, sourceSubnetName)
@@ -204,7 +204,7 @@ func getSubnetParams(network models.Network, subnetName string) (ids.ID, string,
 		teleporterMessengerAddress string
 		k                          *key.SoftKey
 	)
-	if subnetName == "c-chain" || subnetName == "cchain" {
+	if strings.ToLower(subnetName) == "c-chain" || strings.ToLower(subnetName) == "cchain" {
 		chainID, err = getChainID(network.Endpoint, "C")
 		if network.Kind == models.Local {
 			extraLocalNetworkData, err := subnet.GetExtraLocalNetworkData(app)
