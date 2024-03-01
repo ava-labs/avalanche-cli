@@ -38,8 +38,8 @@ var (
 func newMsgCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "msg [sourceSubnetName] [destinationSubnetName] [messageContent]",
-		Short:        "Sends and wait reception for a teleporter msg between two subnets",
-		Long:         `Sends and wait reception for a teleporter msg between two subnets.`,
+		Short:        "Verifies exchange of teleporter message between two subnets",
+		Long:         `Sends and wait reception for a teleporter msg between two subnets (Currently only for local network).`,
 		SilenceUsage: true,
 		RunE:         msg,
 		Args:         cobra.ExactArgs(3),
