@@ -117,11 +117,11 @@ func whitelistIP(_ *cobra.Command, args []string) error {
 func GrantAccessToIPinAWS(awsProfile string, region string, sgName string, userIPAddress string) error {
 	ec2Svc, err := awsAPI.NewAwsCloud(awsProfile, region)
 	if err != nil {
-		return fmt.Errorf("failed to establish connection to %s cloud region %s with err: %v", constants.AWSCloudService, region, err)
+		return fmt.Errorf("failed to establish connection to %s cloud region %s with err: %w", constants.AWSCloudService, region, err)
 	}
 	securityGroupExists, sg, err := ec2Svc.CheckSecurityGroupExists(sgName)
 	if err != nil || !securityGroupExists {
-		return fmt.Errorf("can't find security group %s in %s cloud region %s with err: %v", sg, constants.AWSCloudService, region, err)
+		return fmt.Errorf("can't find security group %s in %s cloud region %s with err: %w", sg, constants.AWSCloudService, region, err)
 	}
 	ipInTCP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.SSHTCPPort)
 	ipInHTTP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
@@ -129,14 +129,14 @@ func GrantAccessToIPinAWS(awsProfile string, region string, sgName string, userI
 		ux.Logger.PrintToUser("IP %s is already whitelisted in %s cloud region %s for ssh access. Skipping...", userIPAddress, constants.AWSCloudService, region)
 	} else {
 		if err := ec2Svc.AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", userIPAddress, constants.SSHTCPPort); err != nil {
-			return fmt.Errorf("failed to whitelist IP %s in %s cloud region %s for ssh access with err: %v", userIPAddress, constants.AWSCloudService, region, err)
+			return fmt.Errorf("failed to whitelist IP %s in %s cloud region %s for ssh access with err: %w", userIPAddress, constants.AWSCloudService, region, err)
 		}
 	}
 	if ipInHTTP {
 		ux.Logger.PrintToUser("IP %s is already whitelisted in %s cloud region %s for http access. Skipping...", userIPAddress, constants.AWSCloudService, region)
 	} else {
 		if err := ec2Svc.AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", userIPAddress, constants.AvalanchegoAPIPort); err != nil {
-			return fmt.Errorf("failed to whitelist IP %s in %s cloud region %s for http access with err: %v", userIPAddress, constants.AWSCloudService, region, err)
+			return fmt.Errorf("failed to whitelist IP %s in %s cloud region %s for http access with err: %w", userIPAddress, constants.AWSCloudService, region, err)
 		}
 	}
 	return nil
@@ -161,7 +161,7 @@ func GrantAccessToIPinGCP(userIPAddress string) error {
 		if errors.IsAlreadyExists(err) {
 			return fmt.Errorf("IP %s is already whitelisted in %s cloud. Skipping...", userIPAddress, constants.GCPCloudService)
 		} else {
-			return fmt.Errorf("failed to whitelist IP %s in %s cloud with err: %v", userIPAddress, constants.GCPCloudService, err)
+			return fmt.Errorf("failed to whitelist IP %s in %s cloud with err: %w", userIPAddress, constants.GCPCloudService, err)
 		}
 	}
 	return nil

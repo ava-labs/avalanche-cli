@@ -24,9 +24,9 @@ func newWhitelistCmd(injectedApp *application.Avalanche) *cobra.Command {
 		},
 	}
 	app = injectedApp
-	//whitelist ip
+	// whitelist ip
 	cmd.AddCommand(newWhitelistIPCmd())
-	//whitelist pubkey
+	// whitelist pubkey
 	cmd.AddCommand(newWhitelistSSHCmd())
 	return cmd
 }
