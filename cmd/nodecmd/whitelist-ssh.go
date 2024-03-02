@@ -17,11 +17,11 @@ import (
 
 func newWhitelistSSHCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "whitelist-ssh <clusterName> \"<sshPubKey>\"",
+		Use:   "ssh <clusterName> \"<sshPubKey>\"",
 		Short: "(ALPHA Warning) Whitelist SSH public key for SSH access to all nodes in a cluster",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
-The node whitelist-ssh command adds SSH public key to all nodes in the cluster `,
+The node whitelist ssh command adds SSH public key to all nodes in the cluster `,
 		SilenceUsage: true,
 		Args:         cobra.MinimumNArgs(2),
 		RunE:         whitelistSSH,

@@ -9,8 +9,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var app *application.Avalanche
-
 // avalanche subnet
 func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
@@ -50,12 +48,8 @@ rest of the commands to maintain your node and make your node a Subnet Validator
 	cmd.AddCommand(newUpgradeCmd())
 	// node ssh
 	cmd.AddCommand(newSSHCmd())
-	// node whitelist depricated
-	cmd.AddCommand(newWhitelistCmd())
-	// node whitelist-ip
-	cmd.AddCommand(newWhitelistIPCmd())
-	// node whitelist-pubkey
-	cmd.AddCommand(newWhitelistSSHCmd())
+	// node whitelist
+	cmd.AddCommand(newWhitelistCmd(app))
 	// node refresh-ips
 	cmd.AddCommand(newRefreshIPsCmd())
 	return cmd

@@ -3,23 +3,30 @@
 package nodecmd
 
 import (
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"fmt"
+
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/spf13/cobra"
 )
 
-func newWhitelistCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:          "whitelist <clusterName> [IP]",
-		Short:        "(DEPRICATED) Please use node whitelist-ip command instead.",
-		Long:         `(DEPRICATED) Please use node whitelist-ip command instead.`,
-		SilenceUsage: true,
-		Args:         cobra.MinimumNArgs(1),
-		RunE:         whitelist,
-	}
-	return cmd
-}
+var app *application.Avalanche
 
-func whitelist(_ *cobra.Command, _ []string) error {
-	ux.Logger.PrintToUser("This command is depricated. Please use node whitelist-ip command instead.")
-	return nil
+func newWhitelistCmd(injectedApp *application.Avalanche) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "whitelist",
+		Short: "(ALPHA Warning) Grant access to the cluster ",
+		Long:  `(ALPHA Warning) The whitelist command suite provides a collection of tools for granting access to the cluster.`,
+		Run: func(cmd *cobra.Command, _ []string) {
+			err := cmd.Help()
+			if err != nil {
+				fmt.Println(err)
+			}
+		},
+	}
+	app = injectedApp
+	//whitelist ip
+	cmd.AddCommand(newWhitelistIPCmd())
+	//whitelist pubkey
+	cmd.AddCommand(newWhitelistSSHCmd())
+	return cmd
 }

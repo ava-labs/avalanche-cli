@@ -27,11 +27,11 @@ type regionSecurityGroup struct {
 
 func newWhitelistIPCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "whitelist-ip <clusterName> [IP]",
+		Use:   "ip <clusterName> [IP]",
 		Short: "(ALPHA Warning) Whitelist IP for access to all nodes in a cluster",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
-The node whitelist-ip command adds IP to cloud security access rules allowing it to access
+The node whitelist ip command adds IP to cloud security access rules allowing it to access
 all nodes in the cluster via ssh or http.`,
 		SilenceUsage: true,
 		Args:         cobra.MinimumNArgs(1),
