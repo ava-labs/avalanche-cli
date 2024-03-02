@@ -121,7 +121,7 @@ func GrantAccessToIPinAWS(awsProfile string, region string, sgName string, userI
 	}
 	securityGroupExists, sg, err := ec2Svc.CheckSecurityGroupExists(sgName)
 	if err != nil || !securityGroupExists {
-		return fmt.Errorf("can't find security group %s in %s cloud region %s with err: %w", sg, constants.AWSCloudService, region, err)
+		return fmt.Errorf("can't find security group %s in %s cloud region %s with err: %w", sgName, constants.AWSCloudService, region, err)
 	}
 	ipInTCP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.SSHTCPPort)
 	ipInHTTP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
@@ -159,7 +159,7 @@ func GrantAccessToIPinGCP(userIPAddress string) error {
 	ux.Logger.PrintToUser("Whitelisting IP %s in %s cloud", userIPAddress, constants.GCPCloudService)
 	if _, err = gcpCloud.SetFirewallRule(userIPAddress, fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(userIPAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)}); err != nil {
 		if errors.IsAlreadyExists(err) {
-			return fmt.Errorf("IP %s is already whitelisted in %s cloud. Skipping...", userIPAddress, constants.GCPCloudService)
+			return fmt.Errorf("IP %s is already whitelisted in %s cloud. Skipping... ", userIPAddress, constants.GCPCloudService)
 		} else {
 			return fmt.Errorf("failed to whitelist IP %s in %s cloud with err: %w", userIPAddress, constants.GCPCloudService, err)
 		}
