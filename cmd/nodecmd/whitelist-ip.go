@@ -98,59 +98,70 @@ func whitelistIP(_ *cobra.Command, args []string) error {
 		}
 		ux.Logger.PrintToUser("Whitelisting IP %s in %s cloud region %s", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region)
 		if cloudSecurityGroup.cloud == "" || cloudSecurityGroup.cloud == constants.AWSCloudService {
-			ec2Svc, err := awsAPI.NewAwsCloud(awsProfile, cloudSecurityGroup.region)
-			if err != nil {
-				ux.Logger.PrintToUser("Failed to establish connection to %s cloud region %s", cloudSecurityGroup.cloud, cloudSecurityGroup.region)
-				return err
-			}
-			securityGroupExists, sg, err := ec2Svc.CheckSecurityGroupExists(cloudSecurityGroup.securityGroup)
-			if err != nil || !securityGroupExists {
-				ux.Logger.PrintToUser("Can't find security group %s in %s cloud region %s", cloudSecurityGroup.securityGroup, cloudSecurityGroup.cloud, cloudSecurityGroup.region)
-				return err
-			}
-			ipInTCP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.SSHTCPPort)
-			ipInHTTP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
-			if ipInTCP {
-				ux.Logger.PrintToUser("IP %s is already whitelisted in %s cloud region %s for ssh access. Skipping...", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region)
-			} else {
-				if err := ec2Svc.AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", userIPAddress, constants.SSHTCPPort); err != nil {
-					ux.Logger.PrintToUser("Failed to whitelist IP %s in %s cloud region %s for ssh access", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region)
-					return err
-				}
-			}
-			if ipInHTTP {
-				ux.Logger.PrintToUser("IP %s is already whitelisted in %s cloud region %s for http access. Skipping...", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region)
-			} else {
-				if err := ec2Svc.AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", userIPAddress, constants.AvalanchegoAPIPort); err != nil {
-					ux.Logger.PrintToUser("Failed to whitelist IP %s in %s cloud region %s for http access", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region)
+			if cloudSecurityGroup.cloud == "" || cloudSecurityGroup.cloud == constants.AWSCloudService {
+				if err := GrantAccessToIPinAWS(awsProfile, cloudSecurityGroup.region, cloudSecurityGroup.securityGroup, userIPAddress); err != nil {
 					return err
 				}
 			}
 		}
 	}
 	if gcpSGFound {
-		prefix, err := defaultAvalancheCLIPrefix("")
-		if err != nil {
-			return err
-		}
-		networkName := fmt.Sprintf("%s-network", prefix)
-		gcpClient, projectName, _, err := getGCPCloudCredentials()
-		if err != nil {
-			return err
-		}
-		gcpCloud, err := gcpAPI.NewGcpCloud(gcpClient, projectName, context.Background())
-		if err != nil {
-			return err
-		}
 		ux.Logger.PrintToUser("Whitelisting IP %s in %s cloud", userIPAddress, constants.GCPCloudService)
-		if _, err = gcpCloud.SetFirewallRule(userIPAddress, fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(userIPAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)}); err != nil {
-			if errors.IsAlreadyExists(err) {
-				ux.Logger.PrintToUser("IP %s is already whitelisted in %s cloud. Skipping...", userIPAddress, constants.GCPCloudService)
-				return nil
-			} else {
-				ux.Logger.PrintToUser("Failed to whitelist IP %s in %s cloud", userIPAddress, constants.GCPCloudService)
-				return err
-			}
+		if err := GrantAccessToIPinGCP(userIPAddress); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func GrantAccessToIPinAWS(awsProfile string, region string, sgName string, userIPAddress string) error {
+	ec2Svc, err := awsAPI.NewAwsCloud(awsProfile, region)
+	if err != nil {
+		return fmt.Errorf("failed to establish connection to %s cloud region %s with err: %v", constants.AWSCloudService, region, err)
+	}
+	securityGroupExists, sg, err := ec2Svc.CheckSecurityGroupExists(sgName)
+	if err != nil || !securityGroupExists {
+		return fmt.Errorf("can't find security group %s in %s cloud region %s with err: %v", sg, constants.AWSCloudService, region, err)
+	}
+	ipInTCP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.SSHTCPPort)
+	ipInHTTP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
+	if ipInTCP {
+		ux.Logger.PrintToUser("IP %s is already whitelisted in %s cloud region %s for ssh access. Skipping...", userIPAddress, constants.AWSCloudService, region)
+	} else {
+		if err := ec2Svc.AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", userIPAddress, constants.SSHTCPPort); err != nil {
+			return fmt.Errorf("failed to whitelist IP %s in %s cloud region %s for ssh access with err: %v", userIPAddress, constants.AWSCloudService, region, err)
+		}
+	}
+	if ipInHTTP {
+		ux.Logger.PrintToUser("IP %s is already whitelisted in %s cloud region %s for http access. Skipping...", userIPAddress, constants.AWSCloudService, region)
+	} else {
+		if err := ec2Svc.AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", userIPAddress, constants.AvalanchegoAPIPort); err != nil {
+			return fmt.Errorf("failed to whitelist IP %s in %s cloud region %s for http access with err: %v", userIPAddress, constants.AWSCloudService, region, err)
+		}
+	}
+	return nil
+}
+
+func GrantAccessToIPinGCP(userIPAddress string) error {
+	prefix, err := defaultAvalancheCLIPrefix("")
+	if err != nil {
+		return err
+	}
+	networkName := fmt.Sprintf("%s-network", prefix)
+	gcpClient, projectName, _, err := getGCPCloudCredentials()
+	if err != nil {
+		return err
+	}
+	gcpCloud, err := gcpAPI.NewGcpCloud(gcpClient, projectName, context.Background())
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Whitelisting IP %s in %s cloud", userIPAddress, constants.GCPCloudService)
+	if _, err = gcpCloud.SetFirewallRule(userIPAddress, fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(userIPAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)}); err != nil {
+		if errors.IsAlreadyExists(err) {
+			return fmt.Errorf("IP %s is already whitelisted in %s cloud. Skipping...", userIPAddress, constants.GCPCloudService)
+		} else {
+			return fmt.Errorf("failed to whitelist IP %s in %s cloud with err: %v", userIPAddress, constants.GCPCloudService, err)
 		}
 	}
 	return nil
