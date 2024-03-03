@@ -191,7 +191,7 @@ func printPrecompileTable(genesis core.Genesis) {
 	fmt.Print(art)
 
 	table := tablewriter.NewWriter(os.Stdout)
-	header := []string{"Precompile", "Admin", "Enabled"}
+	header := []string{"Precompile", "Admin Addresses", "Enabled Addresses"}
 	table.SetHeader(header)
 	table.SetAutoMergeCellsByColumnIndex([]int{0, 1, 2})
 	table.SetRowLine(true)
@@ -200,7 +200,7 @@ func printPrecompileTable(genesis core.Genesis) {
 
 	// Warp
 	if genesis.Config.GenesisPrecompiles[warp.ConfigKey] != nil {
-		table.Append([]string{"Warp", "", ""})
+		table.Append([]string{"Warp", "n/a", "n/a"})
 		precompileSet = true
 	}
 
