@@ -410,6 +410,7 @@ func (h *Host) StreamSSHCommand(command string, env []string, timeout time.Durat
 	if err := session.Run(command); err != nil {
 		return fmt.Errorf("failed to run command %s: %w", command, err)
 	}
+	wg.Wait()
 	return nil
 }
 
