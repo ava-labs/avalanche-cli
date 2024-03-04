@@ -291,14 +291,7 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	oldConfig := utils.UserHomePath(constants.OldConfigFileName)
 	oldMetricsConfig := utils.UserHomePath(constants.OldMetricsConfigFileName)
-	if utils.FileExists(oldConfig) || utils.FileExists(oldMetricsConfig) {
-		ux.Logger.PrintToUser("-----------------------------------------------------------------------")
-		ux.Logger.PrintToUser("WARNING: Old configuration file was found in %s and/or %s", oldConfig, oldMetricsConfig)
-		ux.Logger.PrintToUser("Please run `avalanche config migrate` to migrate it to new default location %s", cfgFile)
-		ux.Logger.PrintToUser("-----------------------------------------------------------------------")
-	}
 	if cfgFile == "" {
 		cfgFile = utils.UserHomePath(constants.DefaultConfigFileName)
 	}
