@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -385,36 +386,34 @@ func (h *Host) StreamSSHCommand(command string, env []string, timeout time.Durat
 			return err
 		}
 	}
-	//prepare streams
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	go streamOutput(cancel, io.MultiReader(stderr, stdout))
+	// Use a WaitGroup to synchronize goroutines
+	var wg sync.WaitGroup
+	wg.Add(2)
 
-	cmdErr := make(chan error, 1)
 	go func() {
-		cmdErr <- session.Run(command)
+		defer wg.Done()
+		if err := consumeOutput(stdout); err != nil {
+			fmt.Printf("Error reading stdout: %v\n", err)
+		}
 	}()
 
-	select {
-	case <-ctx.Done():
-		// Context cancelled, return error if command execution didn't complete
-		return ctx.Err()
-	case err := <-cmdErr:
-		// Command execution finished, return any error encountered
-		if err != nil {
-			return err
+	go func() {
+		defer wg.Done()
+		if err := consumeOutput(stderr); err != nil {
+			fmt.Printf("Error reading stderr: %v\n", err)
 		}
+	}()
+
+	if err := session.Run(command); err != nil {
+		return fmt.Errorf("failed to run command %s: %w", command, err)
 	}
 	return nil
 }
 
-func streamOutput(cancel context.CancelFunc, output io.Reader) {
+func consumeOutput(output io.Reader) error {
 	scanner := bufio.NewScanner(output)
 	for scanner.Scan() {
 		fmt.Println(scanner.Text())
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Printf("Error reading from output: %v\n", err)
-		cancel()
-	}
+	return scanner.Err()
 }
