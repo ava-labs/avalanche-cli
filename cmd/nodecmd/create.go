@@ -1134,9 +1134,11 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 // getMonitoringHint prints the monitoring help message including the link to the monitoring dashboard
 func getMonitoringHint(monitoringHostIP string) {
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("To view unified node monitoring dashboard, visit the following link in your browser: ")
+	ux.Logger.PrintLineSeparator()
+	ux.Logger.PrintToUser("To view unified node %s, visit the following link in your browser: ", logging.LightBlue.Wrap("monitoring dashboard"))
 	ux.Logger.PrintToUser(logging.Green.Wrap(fmt.Sprintf("http://%s:3000/dashboards", monitoringHostIP)))
 	ux.Logger.PrintToUser("Log in with username: admin, password: admin")
+	ux.Logger.PrintLineSeparator()
 	ux.Logger.PrintToUser("")
 }
 
