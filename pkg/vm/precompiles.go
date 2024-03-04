@@ -219,7 +219,9 @@ func configureMinterList(app *application.Avalanche) (nativeminter.Config, bool,
 }
 
 func configureWarp() warp.Config {
-	config := warp.Config{}
+	config := warp.Config{
+		QuorumNumerator: warp.WarpDefaultQuorumNumerator,
+	}
 	config.Upgrade = precompileconfig.Upgrade{
 		BlockTimestamp: utils.NewUint64(uint64(time.Now().Unix())),
 	}
