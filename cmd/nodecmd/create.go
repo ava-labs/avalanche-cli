@@ -642,7 +642,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if separateMonitoringInstance {
 			monitoringPublicIP = monitoringNodeConfig.PublicIPs[0]
 		}
-		printResults(cloudConfigMap, publicIPMap, ansibleHostIDs, monitoringPublicIP)
+		printResults(cloudConfigMap, publicIPMap, monitoringPublicIP)
 		ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
 	}
 	return nil
@@ -1085,7 +1085,7 @@ func setCloudInstanceType(cloudService string) (string, error) {
 	return nodeType, nil
 }
 
-func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]string, ansibleHostIDs []string, monitoringHostIP string) {
+func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]string, monitoringHostIP string) {
 	ux.Logger.PrintToUser(" 											 ")
 	ux.Logger.PrintToUser("==============================================")
 	ux.Logger.PrintToUser("AVALANCHE NODE(S) SUCCESSFULLY SET UP!")
