@@ -279,7 +279,6 @@ func askForVMVersion(
 		return "", err
 	}
 
-	fmt.Println(latestPreReleaseVersion)
 	useCustom := "Specify custom version"
 	useLatestRelease := "Use latest release version" + versionComments[latestReleaseVersion]
 	useLatestPreRelease := "Use latest pre-release version" + versionComments[latestPreReleaseVersion]
