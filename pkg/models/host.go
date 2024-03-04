@@ -420,7 +420,7 @@ func consumeOutput(ctx context.Context, output io.Reader) error {
 		// Check if the context is done
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil
 		default:
 		}
 	}
