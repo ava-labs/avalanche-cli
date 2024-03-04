@@ -89,7 +89,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	ux.Logger.PrintToUser("Getting avalanchego version of node(s)")
+	ux.Logger.PrintToUser("Getting avalanchego version of node(s)...")
 
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
@@ -231,10 +231,10 @@ func printOutput(
 		if len(subnetSyncedHosts) == 0 {
 			status = "validators of"
 		}
-		ux.Logger.PrintToUser("All nodes in cluster %s are %s Subnet %s", clusterName, status, subnetName)
+		ux.Logger.PrintToUser("All nodes in cluster %s are %s Subnet %s", logging.LightBlue.Wrap(clusterName), status, subnetName)
 	}
 	ux.Logger.PrintToUser("")
-	tit := fmt.Sprintf("STATUS FOR CLUSTER: %s", clusterName)
+	tit := fmt.Sprintf("STATUS FOR CLUSTER:%s", logging.LightBlue.Wrap(clusterName))
 	ux.Logger.PrintToUser(tit)
 	ux.Logger.PrintToUser(strings.Repeat("=", len(tit)))
 	ux.Logger.PrintToUser("")
@@ -256,7 +256,7 @@ func printOutput(
 		}
 		row := []string{
 			hostIDs[i],
-			nodeIDs[i],
+			logging.Green.Wrap(nodeIDs[i]),
 			ansibleHosts[ansibleHostID].IP,
 			clustersConfig.Clusters[clusterName].Network.Name(),
 			avagoVersions[ansibleHostID],
