@@ -281,7 +281,8 @@ func createNodes(_ *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		if cloudService == constants.AWSCloudService { // Get AWS Credential, region and AMI
+		if cloudService == constants.AWSCloudService {
+			// Get AWS Credential, region and AMI
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 				return fmt.Errorf("cloud access is required")
 			}
