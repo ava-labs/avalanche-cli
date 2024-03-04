@@ -363,6 +363,9 @@ func (h *Host) StreamSSHCommand(command string, env []string, timeout time.Durat
 		}
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
 	session, err := h.Connection.NewSession()
 	if err != nil {
 		return err
@@ -392,14 +395,14 @@ func (h *Host) StreamSSHCommand(command string, env []string, timeout time.Durat
 
 	go func() {
 		defer wg.Done()
-		if err := consumeOutput(stdout); err != nil {
+		if err := consumeOutput(ctx, stdout); err != nil {
 			fmt.Printf("Error reading stdout: %v\n", err)
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
-		if err := consumeOutput(stderr); err != nil {
+		if err := consumeOutput(ctx, stderr); err != nil {
 			fmt.Printf("Error reading stderr: %v\n", err)
 		}
 	}()
@@ -410,10 +413,16 @@ func (h *Host) StreamSSHCommand(command string, env []string, timeout time.Durat
 	return nil
 }
 
-func consumeOutput(output io.Reader) error {
+func consumeOutput(ctx context.Context, output io.Reader) error {
 	scanner := bufio.NewScanner(output)
 	for scanner.Scan() {
 		fmt.Println(scanner.Text())
+		// Check if the context is done
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
 	}
 	return scanner.Err()
 }
