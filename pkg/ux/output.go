@@ -55,6 +55,10 @@ func (ul *UserLog) RedXToUser(msg string, args ...interface{}) {
 	ul.PrintToUser(red(xmark)+" "+msg, args...)
 }
 
+func (ul *UserLog) PrintLineSeparator() {
+	ul.PrintToUser("==============================================")
+}
+
 // PrintWait does some dot printing to entertain the user
 func PrintWait(cancel chan struct{}) {
 	for {

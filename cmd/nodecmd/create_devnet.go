@@ -175,9 +175,6 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 	}
 	network := models.NewDevnetNetwork(networkEndpoint, constants.AvalanchegoAPIPort)
 
-	ux.Logger.PrintToUser("Devnet Network Id: %s", logging.Green.Wrap(strconv.FormatUint(uint64(network.ID), 10)))
-	ux.Logger.PrintToUser("Devnet Endpoint: %s", logging.Green.Wrap(network.Endpoint))
-
 	// get random staking key for devnet genesis
 	k, err := key.NewSoft(network.ID)
 	if err != nil {
@@ -256,7 +253,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 		}(&wgResults, host)
 	}
 	wg.Wait()
-	ux.Logger.PrintToUser("==============================================")
+	ux.Logger.PrintLineSeparator()
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
 			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
@@ -272,10 +269,10 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 	if wgResults.HasErrors() {
 		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
 	}
-	ux.Logger.PrintToUser("==============================================")
-	ux.Logger.PrintToUser("Devnet Network Id: %d", network.ID)
-	ux.Logger.PrintToUser("Devnet Endpoint: %s", network.Endpoint)
-	ux.Logger.PrintToUser("==============================================")
+	ux.Logger.PrintLineSeparator()
+	ux.Logger.PrintToUser("Devnet Network Id: %s", logging.Green.Wrap(strconv.FormatUint(uint64(network.ID), 10)))
+	ux.Logger.PrintToUser("Devnet Endpoint: %s", logging.Green.Wrap(network.Endpoint))
+	ux.Logger.PrintLineSeparator()
 	// update cluster config with network information
 	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {
