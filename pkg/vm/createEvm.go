@@ -35,6 +35,7 @@ func CreateEvmSubnetConfig(
 	subnetEVMChainID uint64,
 	subnetEVMTokenName string,
 	useSubnetEVMDefaults bool,
+	teleporterReady bool,
 ) ([]byte, *models.Sidecar, error) {
 	var (
 		genesisBytes []byte
@@ -65,12 +66,21 @@ func CreateEvmSubnetConfig(
 	}
 
 	if genesisPath == "" {
-		genesisBytes, sc, err = createEvmGenesis(app, subnetName, subnetEVMVersion, rpcVersion, subnetEVMChainID, subnetEVMTokenName, useSubnetEVMDefaults)
+		genesisBytes, sc, err = createEvmGenesis(
+			app,
+			subnetName,
+			subnetEVMVersion,
+			rpcVersion,
+			subnetEVMChainID,
+			subnetEVMTokenName,
+			useSubnetEVMDefaults,
+			teleporterReady,
+		)
 		if err != nil {
 			return nil, &models.Sidecar{}, err
 		}
 	} else {
-		ux.Logger.PrintToUser("Importing genesis")
+		ux.Logger.PrintToUser("importing genesis for subnet %s", subnetName)
 		genesisBytes, err = os.ReadFile(genesisPath)
 		if err != nil {
 			return nil, &models.Sidecar{}, err
@@ -97,14 +107,16 @@ func createEvmGenesis(
 	subnetEVMChainID uint64,
 	subnetEVMTokenName string,
 	useSubnetEVMDefaults bool,
+	teleporterReady bool,
 ) ([]byte, *models.Sidecar, error) {
-	ux.Logger.PrintToUser("creating subnet %s", subnetName)
+	ux.Logger.PrintToUser("creating genesis for subnet %s", subnetName)
 
 	genesis := core.Genesis{}
 	conf := params.SubnetEVMDefaultChainConfig
 
 	// set non nil durango start block height 0
-	conf.MandatoryNetworkUpgrades = params.LocalNetworkUpgrades
+	// TODO: check if needed to set on subnet deploy to a specific network
+	conf.MandatoryNetworkUpgrades = params.GetMandatoryNetworkUpgrades(constants.LocalNetworkID)
 
 	const (
 		descriptorsState = "descriptors"
@@ -136,7 +148,7 @@ func createEvmGenesis(
 		case airdropState:
 			allocation, direction, err = getEVMAllocation(app, useSubnetEVMDefaults)
 		case precompilesState:
-			*conf, direction, err = getPrecompiles(*conf, app, useSubnetEVMDefaults)
+			*conf, direction, err = getPrecompiles(*conf, app, useSubnetEVMDefaults, teleporterReady)
 		default:
 			err = errors.New("invalid creation stage")
 		}

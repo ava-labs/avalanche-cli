@@ -282,7 +282,8 @@ func createNodes(_ *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		if cloudService == constants.AWSCloudService { // Get AWS Credential, region and AMI
+		if cloudService == constants.AWSCloudService {
+			// Get AWS Credential, region and AMI
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 				return fmt.Errorf("cloud access is required")
 			}
@@ -499,7 +500,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 			ux.SpinComplete(spinner)
 			if separateMonitoringInstance {
-				spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup node"))
+				spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Machine Metrics"))
 				if err := ssh.RunSSHSetupMachineMetrics(host); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
@@ -507,7 +508,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 				}
 				ux.SpinComplete(spinner)
 			} else if setUpMonitoring {
-				spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup node"))
+				spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Monitoring"))
 				if err := ssh.RunSSHSetupMonitoring(host); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
@@ -577,6 +578,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 			ux.SpinComplete(spinner)
 		}
+
 		for _, ansibleNodeID := range ansibleHostIDs {
 			if err = app.CreateAnsibleNodeConfigDir(ansibleNodeID); err != nil {
 				return err
@@ -585,6 +587,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		// download node configs
 		wg := sync.WaitGroup{}
 		wgResults := models.NodeResults{}
+		spinner := spinSession.SpinToUser("Configure monitoring agents")
 		for _, host := range hosts {
 			wg.Add(1)
 			go func(nodeResults *models.NodeResults, host *models.Host) {
@@ -612,29 +615,23 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}(&wgResults, host)
 		}
 		wg.Wait()
-		spinSession.End()
 		for _, node := range hosts {
 			if wgResults.HasNodeIDWithError(node.NodeID) {
-				ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
+				ux.SpinFailWithError(spinner, node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
 				return fmt.Errorf("node %s failed to setup with error: %w", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
 			}
 		}
+		ux.SpinComplete(spinner)
 	}
-	ux.Logger.PrintToUser("======================================")
+	spinSession.Stop()
+	if network.Kind == models.Devnet {
+		if err := setupDevnet(clusterName, hosts, apiNodeIPMap); err != nil {
+			return err
+		}
+	}
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
 			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
-		} else {
-			ux.Logger.GreenCheckmarkToUser("Node %s is CREATED", node.NodeID)
-		}
-	}
-
-	if network.Kind == models.Devnet {
-		ux.Logger.PrintToUser("======================================")
-		ux.Logger.PrintToUser("Setting up Devnet ...")
-		ux.Logger.PrintToUser("======================================")
-		if err := setupDevnet(clusterName, hosts, apiNodeIPMap); err != nil {
-			return err
 		}
 	}
 
@@ -1089,9 +1086,10 @@ func setCloudInstanceType(cloudService string) (string, error) {
 }
 
 func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]string, ansibleHostIDs []string, monitoringHostIP string) {
-	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintToUser(" 											 ")
+	ux.Logger.PrintToUser("==============================================")
 	ux.Logger.PrintToUser("AVALANCHE NODE(S) SUCCESSFULLY SET UP!")
-	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintToUser("==============================================")
 	ux.Logger.PrintToUser("Please wait until the node(s) are successfully bootstrapped to run further commands on the node(s)")
 	ux.Logger.PrintToUser("You can check status of the node(s) using %s command", logging.LightBlue.Wrap("avalanche node status"))
 	ux.Logger.PrintToUser("Please use %s command to ssh into the node(s)", logging.LightBlue.Wrap("avalanche node ssh"))
@@ -1125,6 +1123,7 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 				getMonitoringHint(publicIP)
 			}
 			ux.Logger.PrintToUser("======================================")
+			ux.Logger.PrintToUser("")
 		}
 	}
 	if separateMonitoringInstance {
@@ -1147,12 +1146,11 @@ func waitForHosts(hosts []*models.Host) *models.NodeResults {
 	hostErrors := models.NodeResults{}
 	createdWaitGroup := sync.WaitGroup{}
 	spinSession := ux.NewUserSpinner()
-	defer spinSession.End()
 	for _, host := range hosts {
 		createdWaitGroup.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer createdWaitGroup.Done()
-			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Waiting for bootstrap"))
+			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Waiting for instance response"))
 			if err := host.WaitForSSHShell(constants.SSHServerStartTimeout); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
@@ -1162,6 +1160,7 @@ func waitForHosts(hosts []*models.Host) *models.NodeResults {
 		}(&hostErrors, host)
 	}
 	createdWaitGroup.Wait()
+	spinSession.Stop()
 	return &hostErrors
 }
 

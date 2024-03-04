@@ -366,6 +366,34 @@ func (_m *Prompter) CaptureList(promptStr string, options []string) (string, err
 	return r0, r1
 }
 
+// CaptureListWithSize provides a mock function with given fields: promptStr, options, size
+func (_m *Prompter) CaptureListWithSize(promptStr string, options []string, size int) (string, error) {
+	ret := _m.Called(promptStr, options, size)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CaptureListWithSize")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, []string, int) (string, error)); ok {
+		return rf(promptStr, options, size)
+	}
+	if rf, ok := ret.Get(0).(func(string, []string, int) string); ok {
+		r0 = rf(promptStr, options, size)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(string, []string, int) error); ok {
+		r1 = rf(promptStr, options, size)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // CaptureMainnetDuration provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureMainnetDuration(promptStr string) (time.Duration, error) {
 	ret := _m.Called(promptStr)

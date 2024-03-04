@@ -4,43 +4,52 @@ package ux
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"sync"
 
 	"github.com/chelnak/ysmrr"
 	"github.com/chelnak/ysmrr/pkg/animations"
 	"github.com/chelnak/ysmrr/pkg/colors"
 )
 
-var Spinner *UserSpinner
-
 type UserSpinner struct {
 	spinner ysmrr.SpinnerManager
+	started bool
+	mutex   sync.Mutex
 }
 
-func newSpinner() ysmrr.SpinnerManager {
+func newSpinner(writer io.Writer) ysmrr.SpinnerManager {
+	if writer == nil {
+		writer = os.Stdout
+	}
 	return ysmrr.NewSpinnerManager(
 		ysmrr.WithAnimation(animations.Dots),
 		ysmrr.WithSpinnerColor(colors.FgHiBlue),
+		ysmrr.WithWriter(writer),
 	)
 }
 
 func NewUserSpinner() *UserSpinner {
-	spinner := newSpinner()
-	Spinner = &UserSpinner{spinner: spinner}
-	return Spinner
+	spinner := &UserSpinner{spinner: newSpinner(nil), mutex: sync.Mutex{}}
+	return spinner
 }
 
-func (us *UserSpinner) Start() {
-	us.spinner.Start()
-}
-
-func (us *UserSpinner) End() {
+func (us *UserSpinner) Stop() {
+	us.mutex.Lock()
 	us.spinner.Stop()
+	us.mutex.Unlock()
 }
 
 func (us *UserSpinner) SpinToUser(msg string, args ...interface{}) *ysmrr.Spinner {
 	formattedMsg := fmt.Sprintf(msg, args...)
 	sp := us.spinner.AddSpinner(formattedMsg)
-	us.spinner.Start()
+	us.mutex.Lock()
+	if !us.started {
+		us.spinner.Start()
+		us.started = true
+	}
+	us.mutex.Unlock()
 	return sp
 }
 

@@ -21,6 +21,7 @@ import (
 	"github.com/ava-labs/subnet-evm/precompile/contracts/nativeminter"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/rewardmanager"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
+	"github.com/ava-labs/subnet-evm/precompile/contracts/warp"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
@@ -101,6 +102,12 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 		}
 		if data.BlockchainID != ids.Empty {
 			table.Append([]string{fmt.Sprintf("%s BlockchainID", net), data.BlockchainID.String()})
+		}
+		if data.TeleporterMessengerAddress != "" {
+			table.Append([]string{fmt.Sprintf("%s Teleporter Messenger Address", net), data.TeleporterMessengerAddress})
+		}
+		if data.TeleporterRegistryAddress != "" {
+			table.Append([]string{fmt.Sprintf("%s Teleporter Registry Address", net), data.TeleporterRegistryAddress})
 		}
 	}
 	table.Render()
@@ -184,12 +191,18 @@ func printPrecompileTable(genesis core.Genesis) {
 	fmt.Print(art)
 
 	table := tablewriter.NewWriter(os.Stdout)
-	header := []string{"Precompile", "Admin", "Enabled"}
+	header := []string{"Precompile", "Admin Addresses", "Enabled Addresses"}
 	table.SetHeader(header)
 	table.SetAutoMergeCellsByColumnIndex([]int{0, 1, 2})
 	table.SetRowLine(true)
 
 	precompileSet := false
+
+	// Warp
+	if genesis.Config.GenesisPrecompiles[warp.ConfigKey] != nil {
+		table.Append([]string{"Warp", "n/a", "n/a"})
+		precompileSet = true
+	}
 
 	// Native Minting
 	if genesis.Config.GenesisPrecompiles[nativeminter.ConfigKey] != nil {

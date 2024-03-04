@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/cb58"
 	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
@@ -157,7 +156,6 @@ func LoadSoft(networkID uint32, keyPath string) (*SoftKey, error) {
 }
 
 func LoadEwoq(networkID uint32) (*SoftKey, error) {
-	ux.Logger.PrintToUser("Loading EWOQ key")
 	return LoadSoftFromBytes(networkID, ewoqKeyBytes)
 }
 
