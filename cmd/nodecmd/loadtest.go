@@ -137,14 +137,15 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("no endpoint found in the  %s", cloudService)
 	}
 	sgRegions := []string{}
-	for index, _ := range filteredSGList {
+	for index := range filteredSGList {
 		sgRegions = append(sgRegions, filteredSGList[index].region)
 	}
 	existingSeparateInstance, err = getExistingMonitoringInstance(clusterName)
 	if err != nil {
 		return err
 	}
-	if cloudService == constants.AWSCloudService {
+	switch cloudService {
+	case constants.AWSCloudService:
 		var ec2SvcMap map[string]*awsAPI.AwsCloud
 		var ami map[string]string
 		loadTestEc2SvcMap := make(map[string]*awsAPI.AwsCloud)
@@ -186,7 +187,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 				}
 			}
 		}
-	} else if cloudService == constants.GCPCloudService {
+	case constants.GCPCloudService:
 		var gcpClient *gcpAPI.GcpCloud
 		var gcpRegions map[string]int
 		var imageID string
@@ -226,7 +227,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 				return err
 			}
 		}
-	} else {
+	default:
 		return fmt.Errorf("cloud service %s is not supported", cloudService)
 	}
 	if existingSeparateInstance == "" {
