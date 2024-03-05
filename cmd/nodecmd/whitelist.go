@@ -30,7 +30,7 @@ var (
 	userPubKey    string
 )
 
-func newWhitelistCmd(injectedApp *application.Avalanche) *cobra.Command {
+func newWhitelistCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "whitelist <clusterName> --ip <IP> --ssh \"<sshPubKey>\"",
 		Short: "(ALPHA Warning) Grant access to the cluster ",
