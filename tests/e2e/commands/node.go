@@ -114,8 +114,8 @@ func NodeWhitelistSSH(sshPubKey string) string {
 		CLIBinary,
 		"node",
 		"whitelist",
-		"ssh",
 		constants.E2EClusterName,
+		"--ssh",
 		"\""+sshPubKey+"\"",
 	)
 	return runCmd(cmd)
