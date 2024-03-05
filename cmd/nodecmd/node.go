@@ -49,7 +49,7 @@ rest of the commands to maintain your node and make your node a Subnet Validator
 	// node ssh
 	cmd.AddCommand(newSSHCmd())
 	// node whitelist
-	cmd.AddCommand(newWhitelistCmd(app))
+	cmd.AddCommand(newWhitelistCmd())
 	// node refresh-ips
 	cmd.AddCommand(newRefreshIPsCmd())
 	return cmd
