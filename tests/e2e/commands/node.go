@@ -43,14 +43,7 @@ func NodeCreate(network, version string, numNodes int, separateMonitoring bool) 
 		"--"+network,
 		"--node-type=docker",
 	)
-	cmd.Env = os.Environ()
-	fmt.Println("About to run: " + cmd.String()) //nolint:goconst
-	output, err := cmd.Output()
-	fmt.Println("---------------->")
-	fmt.Println(string(output))
-	fmt.Println("---------------->")
-	gomega.Expect(err).Should(gomega.BeNil())
-	return string(output)
+	return runCmd(cmd)
 }
 
 func NodeDevnet(numNodes int) string {
@@ -67,14 +60,7 @@ func NodeDevnet(numNodes int) string {
 		"--devnet",
 		"--node-type=docker",
 	)
-	cmd.Env = os.Environ()
-	fmt.Println("About to run: " + cmd.String())
-	output, err := cmd.Output()
-	fmt.Println("---------------->")
-	fmt.Println(string(output))
-	fmt.Println("---------------->")
-	gomega.Expect(err).Should(gomega.BeNil())
-	return string(output)
+	return runCmd(cmd)
 }
 
 func NodeStatus() string {
@@ -85,12 +71,7 @@ func NodeStatus() string {
 		"status",
 		constants.E2EClusterName,
 	)
-	output, err := cmd.Output()
-	fmt.Println("---------------->")
-	fmt.Println(string(output))
-	fmt.Println("---------------->")
-	gomega.Expect(err).Should(gomega.BeNil())
-	return string(output)
+	return runCmd(cmd)
 }
 
 func NodeSSH(name, command string) string {
@@ -102,14 +83,7 @@ func NodeSSH(name, command string) string {
 		name,
 		command,
 	)
-	cmd.Env = os.Environ()
-	fmt.Println("About to run: " + cmd.String())
-	output, err := cmd.Output()
-	fmt.Println("---------------->")
-	fmt.Println(string(output))
-	fmt.Println("---------------->")
-	gomega.Expect(err).Should(gomega.BeNil())
-	return string(output)
+	return runCmd(cmd)
 }
 
 func ConfigMetrics() {
@@ -131,12 +105,7 @@ func NodeList() string {
 		"node",
 		"list",
 	)
-	output, err := cmd.Output()
-	fmt.Println("---------------->")
-	fmt.Println(string(output))
-	fmt.Println("---------------->")
-	gomega.Expect(err).Should(gomega.BeNil())
-	return string(output)
+	return runCmd(cmd)
 }
 
 func NodeWhitelistSSH(sshPubKey string) string {
@@ -149,12 +118,7 @@ func NodeWhitelistSSH(sshPubKey string) string {
 		constants.E2EClusterName,
 		"\""+sshPubKey+"\"",
 	)
-	output, err := cmd.Output()
-	fmt.Println("---------------->")
-	fmt.Println(string(output))
-	fmt.Println("---------------->")
-	gomega.Expect(err).Should(gomega.BeNil())
-	return string(output)
+	return runCmd(cmd)
 }
 
 func NodeUpgrade() string {
@@ -165,12 +129,7 @@ func NodeUpgrade() string {
 		"upgrade",
 		constants.E2EClusterName,
 	)
-	output, err := cmd.Output()
-	fmt.Println("---------------->")
-	fmt.Println(string(output))
-	fmt.Println("---------------->")
-	gomega.Expect(err).Should(gomega.BeNil())
-	return string(output)
+	return runCmd(cmd)
 }
 
 type StaticConfig struct {
@@ -193,4 +152,15 @@ func ParsePrometheusYamlConfig(filePath string) PrometheusConfig {
 	err = yaml.Unmarshal(data, &prometheusConfig)
 	gomega.Expect(err).Should(gomega.BeNil())
 	return prometheusConfig
+}
+
+func runCmd(cmd *exec.Cmd) string {
+	cmd.Env = os.Environ()
+	fmt.Println("About to run: " + cmd.String())
+	output, err := cmd.Output()
+	fmt.Println("---------------->")
+	fmt.Println(string(output))
+	fmt.Println("---------------->")
+	gomega.Expect(err).Should(gomega.BeNil())
+	return string(output)
 }
