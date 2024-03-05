@@ -81,11 +81,13 @@ func preLoadTestChecks(clusterName string) error {
 	return nil
 }
 
-func createLoadTest(cmd *cobra.Command, args []string) error {
+func createLoadTest(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	preLoadTestChecks(clusterName)
-	loadTestNodeConfig := models.RegionConfig{}
-	loadTestCloudConfig := models.CloudConfig{}
+	if err := preLoadTestChecks(clusterName); err != nil {
+		return err
+	}
+	var loadTestNodeConfig models.RegionConfig
+	var loadTestCloudConfig models.CloudConfig
 	var err error
 	if loadTestScriptPath == "" {
 		loadTestScriptPath = "loadtest.sh"
