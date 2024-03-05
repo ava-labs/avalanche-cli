@@ -1052,10 +1052,10 @@ func setCloudInstanceType(cloudService string) (string, error) {
 		return constants.E2EDocker, nil
 	}
 	switch { // backwards compatibility
-	case nodeType == "default" && cloudService == constants.AWSCloudService:
+	case nodeType == constants.DefaultNodeType && cloudService == constants.AWSCloudService:
 		nodeType = constants.AWSDefaultInstanceType
 		return nodeType, nil
-	case nodeType == "default" && cloudService == constants.GCPCloudService:
+	case nodeType == constants.DefaultNodeType && cloudService == constants.GCPCloudService:
 		nodeType = constants.GCPDefaultInstanceType
 		return nodeType, nil
 	}
