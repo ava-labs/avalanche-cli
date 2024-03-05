@@ -98,7 +98,7 @@ func addNodeAsSubnetValidator(
 		return err
 	}
 	ux.Logger.PrintToUser("Node %s successfully added as Subnet validator! (%d / %d)", nodeID, currentNodeIndex+1, nodeCount)
-	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintLineSeparator()
 	return nil
 }
 

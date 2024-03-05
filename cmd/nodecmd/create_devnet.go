@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -24,6 +25,7 @@ import (
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/utils/formatting"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 	coreth_params "github.com/ava-labs/coreth/params"
 	"golang.org/x/exp/maps"
@@ -251,7 +253,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 		}(&wgResults, host)
 	}
 	wg.Wait()
-	ux.Logger.PrintToUser("==============================================")
+	ux.Logger.PrintLineSeparator()
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
 			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
@@ -267,10 +269,10 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 	if wgResults.HasErrors() {
 		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
 	}
-	ux.Logger.PrintToUser("==============================================")
-	ux.Logger.PrintToUser("Devnet Network Id: %d", network.ID)
-	ux.Logger.PrintToUser("Devnet Endpoint: %s", network.Endpoint)
-	ux.Logger.PrintToUser("==============================================")
+	ux.Logger.PrintLineSeparator()
+	ux.Logger.PrintToUser("Devnet Network Id: %s", logging.Green.Wrap(strconv.FormatUint(uint64(network.ID), 10)))
+	ux.Logger.PrintToUser("Devnet Endpoint: %s", logging.Green.Wrap(network.Endpoint))
+	ux.Logger.PrintLineSeparator()
 	// update cluster config with network information
 	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {
