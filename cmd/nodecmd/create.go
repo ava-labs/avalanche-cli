@@ -1092,7 +1092,7 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 	ux.Logger.PrintLineSeparator()
 	ux.Logger.PrintToUser("Please wait until the node(s) are successfully bootstrapped to run further commands on the node(s)")
 	ux.Logger.PrintToUser("You can check status of the node(s) using %s command", logging.LightBlue.Wrap("avalanche node status"))
-	ux.Logger.PrintToUser("Please use %s to ssh into the node(s)", logging.LightBlue.Wrap("avalanche node ssh"))
+	ux.Logger.PrintToUser("Please use %s to ssh into the node(s). More details: %s", logging.LightBlue.Wrap("avalanche node ssh"), "https://docs.avax.network/tooling/cli-create-nodes/node-ssh")
 
 	for region, cloudConfig := range cloudConfigMap {
 		ux.Logger.PrintToUser(" ")
@@ -1114,9 +1114,9 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 			publicIP := ""
 			publicIP = publicIPMap[instanceID]
 			if slices.Contains(cloudConfig.APIInstanceIDs, instanceID) {
-				ux.Logger.PrintToUser("%s Node(api) %s[%s]|ip:%s", logging.Green.Wrap(">"), instanceID, logging.Green.Wrap(nodeID.String()), publicIP)
+				ux.Logger.PrintToUser("%s [API] Cloud Instance ID: %s | Public IP:%s | %s", logging.Green.Wrap(">"), instanceID, publicIP, logging.Green.Wrap(nodeID.String()))
 			} else {
-				ux.Logger.PrintToUser("%s Node %s[%s]|ip:%s", logging.Green.Wrap(">"), instanceID, logging.Green.Wrap(nodeID.String()), publicIP)
+				ux.Logger.PrintToUser("%s Cloud Instance ID: %s | Public IP:%s | %s ", logging.Green.Wrap(">"), instanceID, publicIP, logging.Green.Wrap(nodeID.String()))
 			}
 			ux.Logger.PrintToUser("staker.crt and staker.key are stored at %s. Please keep them safe, as these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID))
 
