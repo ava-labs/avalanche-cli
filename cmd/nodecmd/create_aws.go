@@ -385,7 +385,6 @@ func grantAccessToPublicIPViaSecurityGroup(ec2Svc *awsAPI.AwsCloud, publicIP, se
 	}
 	metricsPortInSG := awsAPI.CheckUserIPInSg(&sg, publicIP, constants.AvalanchegoMachineMetricsPort)
 	apiPortInSG := awsAPI.CheckUserIPInSg(&sg, publicIP, constants.AvalanchegoAPIPort)
-	//sshPortInSG := awsAPI.CheckUserIPInSg(&sg, publicIP, constants.SSHTCPPort)
 	if !metricsPortInSG {
 		if err = ec2Svc.AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", publicIP+constants.IPAddressSuffix, constants.AvalanchegoMachineMetricsPort); err != nil {
 			return err
@@ -396,11 +395,6 @@ func grantAccessToPublicIPViaSecurityGroup(ec2Svc *awsAPI.AwsCloud, publicIP, se
 			return err
 		}
 	}
-	//if !sshPortInSG {
-	//	if err = ec2Svc.AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", publicIP+constants.IPAddressSuffix, constants.SSHTCPPort); err != nil {
-	//		return err
-	//	}
-	//}
 	return nil
 }
 
