@@ -4,9 +4,10 @@ package nodecmd
 
 import (
 	"fmt"
-	"golang.org/x/exp/maps"
 	"os/exec"
 	"strings"
+
+	"golang.org/x/exp/maps"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
