@@ -424,30 +424,15 @@ func RunSSHSetupBuildEnv(host *models.Host) error {
 	)
 }
 
-// RunSSHSetupLoadTest downloads load test repo, build the load test binary and runs user
-// provided load test command
-//
-//	func RunSSHSetupLoadTest(host *models.Host, loadTestRepo, loadTestPath, loadTestCommand string) error {
-//		loadTestRepoPaths := strings.Split(loadTestRepo, "/")
-//		// remove .git
-//		loadTestRepoDir := strings.Split(loadTestRepoPaths[len(loadTestRepoPaths)-1], ".")
-//		return StreamOverSSH(
-//			"Setup Load Test",
-//			host,
-//			constants.SSHScriptTimeout,
-//			"shell/setupLoadtest.sh",
-//			scriptInputs{GoVersion: constants.BuildEnvGolangVersion, LoadTestRepoDir: loadTestRepoDir[0], LoadTestRepo: loadTestRepo, LoadTestPath: loadTestPath, LoadTestCommand: loadTestCommand},
-//		)
-//	}
 func RunSSHBuildLoadTest(host *models.Host, loadTestRepo, loadTestPath string) error {
 	loadTestRepoPaths := strings.Split(loadTestRepo, "/")
 	// remove .git
 	loadTestRepoDir := strings.Split(loadTestRepoPaths[len(loadTestRepoPaths)-1], ".")
-	return StreamOverSSH(
+	return RunOverSSH(
 		"Build Load Test",
 		host,
 		constants.SSHScriptTimeout,
-		"shell/buildLoadtest.sh",
+		"shell/buildLoadTest.sh",
 		scriptInputs{GoVersion: constants.BuildEnvGolangVersion, LoadTestRepoDir: loadTestRepoDir[0], LoadTestRepo: loadTestRepo, LoadTestPath: loadTestPath},
 	)
 }
@@ -457,7 +442,7 @@ func RunSSHRunLoadTest(host *models.Host, loadTestCommand string) error {
 		"Run Load Test",
 		host,
 		constants.SSHScriptTimeout,
-		"shell/setupLoadtest.sh",
+		"shell/runLoadTest.sh",
 		scriptInputs{GoVersion: constants.BuildEnvGolangVersion, LoadTestCommand: loadTestCommand},
 	)
 }

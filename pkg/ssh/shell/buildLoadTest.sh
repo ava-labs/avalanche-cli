@@ -11,4 +11,4 @@ go version || sudo snap install go --classic
 echo "building load test binary ..."
 # run load test build command
 eval {{ .LoadTestPath }}
-echo "successfully built load test binary ..."
+echo "successfully built load test binary!"

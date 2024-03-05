@@ -84,16 +84,9 @@ func preLoadTestChecks(clusterName string) error {
 func createLoadTest(cmd *cobra.Command, args []string) error {
 	clusterName := args[0]
 	preLoadTestChecks(clusterName)
-	// TODO: uncomment this
-	//clustersConfig, err := app.LoadClustersConfig()
 	loadTestNodeConfig := models.RegionConfig{}
 	loadTestCloudConfig := models.CloudConfig{}
-	// TODO: delete this
 	var err error
-	//if clustersConfig.Clusters[clusterName].Network.Kind != models.Devnet {
-	//	return fmt.Errorf("node loadtest command can be applied to devnet clusters only")
-	//}
-
 	if loadTestScriptPath == "" {
 		loadTestScriptPath = "loadtest.sh"
 	}
@@ -251,14 +244,10 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	//TODO: uncomment
-	//if err := GetLoadTestScript(app); err != nil {
-	//	return err
-	//}
+	if err := GetLoadTestScript(app); err != nil {
+		return err
+	}
 
-	//if err := ssh.RunSSHSetupLoadTest(monitoringHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestCmd); err != nil {
-	//	return err
-	//}
 	// waiting for all nodes to become accessible
 	if existingSeparateInstance == "" {
 		failedHosts := waitForHosts(separateHosts)
@@ -270,26 +259,15 @@ func createLoadTest(cmd *cobra.Command, args []string) error {
 		}
 		ux.Logger.PrintToUser("Separate instance %s provisioned successfully", separateHosts[0].NodeID)
 	}
-	loadTestRepoURL = "https://github.com/sukantoraymond/subnet-evm.git"
-	loadTestBuildCmd = "cd /home/ubuntu/subnet-evm/cmd/simulator; go build -o ./simulator main/*.go"
-	//loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://3.213.57.75:9650/ext/bc/YFykrbK6dmLuec3BtrkV7bmpiS81BB2oC9XDHQv2D8qkTuy7o/rpc\" > log.txt"
-	//loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://3.213.57.75:9650/ext/bc/YFykrbK6dmLuec3BtrkV7bmpiS81BB2oC9XDHQv2D8qkTuy7o/rpc\""
-	//loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://34.23.208.211:9650/ext/bc/2Cgy1PT7tbb6vtr68rsEHqBEt6WdKYhQmJsWqHcUqeAhjtBzMs/rpc\""
-	//loadTestCmd = "./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://52.8.198.135:9650/ext/bc/AzoaFqJiftX1kebuyE4L3jzixeP5uW7fET1Ra1qdqjmK9zz4p/rpc\""
-	//if err := ssh.RunSSHSetupLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestCmd); err != nil {
-	//	return err
-	//}
-	loadTestCmd = "cd /home/ubuntu/subnet-evm/cmd/simulator; ./simulator --timeout=1m --workers=1 --max-fee-cap=300 --max-tip-cap=10 --txs-per-worker=50 --endpoints=\"http://52.8.198.135:9650/ext/bc/AzoaFqJiftX1kebuyE4L3jzixeP5uW7fET1Ra1qdqjmK9zz4p/rpc\""
-	//if err := ssh.RunSSHBuildLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd); err != nil {
-	//	return err
-	//}
+	if err := ssh.RunSSHBuildLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd); err != nil {
+		return err
+	}
 	if err := ssh.RunSSHRunLoadTest(separateHosts[0], loadTestCmd); err != nil {
 		return err
 	}
 	return nil
 }
 
-// func GetLoadTestScript(app *application.Avalanche, loadTestRepoURL, loadTestBuildCmd, loadTestCmd string) (string, string, string, error) {
 func GetLoadTestScript(app *application.Avalanche) error {
 	var err error
 	if loadTestRepoURL != "" {
@@ -317,8 +295,5 @@ func GetLoadTestScript(app *application.Avalanche) error {
 			return err
 		}
 	}
-	//sc.CustomVMRepoURL = customVMRepoURL
-	//sc.CustomVMBranch = customVMBranch
-	//sc.CustomVMBuildScript = customVMBuildScript
 	return nil
 }
