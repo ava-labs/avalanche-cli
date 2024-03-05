@@ -32,7 +32,7 @@ var (
 
 func newWhitelistCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "whitelist <clusterName> --ip <IP> --ssh \"<sshPubKey>\"",
+		Use:   "whitelist <clusterName> [--ip <IP>] [--ssh \"<sshPubKey>\"]",
 		Short: "(ALPHA Warning) Grant access to the cluster ",
 		Long: `(ALPHA Warning) The whitelist command suite provides a collection of tools for granting access to the cluster.
 
