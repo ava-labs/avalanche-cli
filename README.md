@@ -26,6 +26,10 @@ export PATH=~/bin:$PATH
 
 To add it to your path permanently, add an export command to your shell initialization script (ex: .bashrc).
 
+### Dev Container & Codespace
+
+To get started easily, we provide a Dev Container specification, that can be used using GitHub Codespace or locally using Docker and VS Code. [Dev Containers](https://code.visualstudio.com/docs/devcontainers/containers) are a concept that utilizes containerization to create consistent and isolated development environment. You can run them directly on Github by clicking **Code**, switching to the **Codespaces** tab and clicking **Create codespace on main**. Alternatively, you can run them locally with the extensions for [VS Code](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) or other code editors.
+
 ### Installing in Custom Location
 
 To download the binary into a specific directory, run:
