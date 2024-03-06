@@ -56,7 +56,10 @@ func sshNode(_ *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		// provide ssh connection string for all clusters
 		for clusterName, clusterConfig := range clustersConfig.Clusters {
-			return printClusterConnectionString(clusterName, clusterConfig.Network.Name())
+			err := printClusterConnectionString(clusterName, clusterConfig.Network.Name())
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	} else {
@@ -71,16 +74,30 @@ func sshNode(_ *cobra.Command, args []string) error {
 				if err != nil {
 					return err
 				}
+				monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterNameOrNodeID), constants.MonitoringDir)
+				if utils.DirectoryExists(monitoringInventoryPath) {
+					monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
+					if err != nil {
+						return err
+					}
+					clusterHosts = append(clusterHosts, monitoringHosts...)
+				}
 				return sshHosts(clusterHosts, cmd)
 			}
 		} else {
 			// try to detect nodeID
 			for clusterName := range clustersConfig.Clusters {
-				clusterHosts, _ := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+				clusterHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+				if err != nil {
+					return err
+				}
 				monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
 				if utils.DirectoryExists(monitoringInventoryPath) {
-					monitoringHosts, _ := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
-					copy(clusterHosts, monitoringHosts)
+					monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
+					if err != nil {
+						return err
+					}
+					clusterHosts = append(clusterHosts, monitoringHosts...)
 				}
 				selectedHost := utils.Filter(clusterHosts, func(h *models.Host) bool {
 					_, cloudHostID, _ := models.HostAnsibleIDToCloudID(h.NodeID)
@@ -113,6 +130,7 @@ func sshHosts(hosts []*models.Host, cmd string) error {
 				if !isParallel {
 					nowExecutingMutex.Lock()
 					defer nowExecutingMutex.Unlock()
+					ux.Logger.PrintToUser("[%s]", host.GetCloudID())
 				}
 				defer wg.Done()
 				splitCmdLine := strings.Split(utils.GetSSHConnectionString(host.IP, host.SSHPrivateKeyPath), " ")
@@ -172,6 +190,14 @@ func printClusterConnectionString(clusterName string, networkName string) error 
 	clusterHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
+	}
+	monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
+	if utils.DirectoryExists(monitoringInventoryPath) {
+		monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
+		if err != nil {
+			return err
+		}
+		clusterHosts = append(clusterHosts, monitoringHosts...)
 	}
 	for _, host := range clusterHosts {
 		ux.Logger.PrintToUser(utils.GetSSHConnectionString(host.IP, host.SSHPrivateKeyPath))
