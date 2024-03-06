@@ -47,7 +47,7 @@ var (
 	useGCP                                bool
 	cmdLineRegion                         []string
 	authorizeAccess                       bool
-	numNodes                              []int
+	numValidatorsNodes                    []int
 	nodeType                              string
 	existingMonitoringInstance            string
 	useLatestAvalanchegoReleaseVersion    bool
@@ -61,7 +61,7 @@ var (
 	sshIdentity                           string
 	setUpMonitoring                       bool
 	skipMonitoring                        bool
-	devnetNumAPINodes                     []int
+	numAPINodes                           []int
 	versionComments                       = map[string]string{
 		"v1.11.0-fuji": " (recommended for fuji durango)",
 	}
@@ -94,7 +94,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().BoolVar(&useGCP, "gcp", false, "create node/s in GCP cloud")
 	cmd.Flags().StringSliceVar(&cmdLineRegion, "region", []string{}, "create node(s) in given region(s). Use comma to separate multiple regions")
 	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to create cloud resources")
-	cmd.Flags().IntSliceVar(&numNodes, "num-nodes", []int{}, "number of nodes to create per region(s). Use comma to separate multiple numbers for each region in the same order as --region flag")
+	cmd.Flags().IntSliceVar(&numValidatorsNodes, "num-validators", []int{}, "number of nodes to create per region(s). Use comma to separate multiple numbers for each region in the same order as --region flag")
 	cmd.Flags().StringVar(&nodeType, "node-type", "", "cloud instance type. Use 'default' to use recommended default instance type")
 	cmd.Flags().BoolVar(&useLatestAvalanchegoReleaseVersion, "latest-avalanchego-version", false, "install latest avalanchego release version on node/s")
 	cmd.Flags().BoolVar(&useLatestAvalanchegoPreReleaseVersion, "latest-avalanchego-pre-release-version", false, "install latest avalanchego pre-release version on node/s")
@@ -111,7 +111,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().BoolVar(&sameMonitoringInstance, "same-monitoring-instance", false, "host monitoring for a cloud servers on the same instance")
 	cmd.Flags().BoolVar(&separateMonitoringInstance, "separate-monitoring-instance", false, "host monitoring for all cloud servers on a separate instance")
 	cmd.Flags().BoolVar(&skipMonitoring, "skip-monitoring", false, "don't set up monitoring in created nodes")
-	cmd.Flags().IntSliceVar(&devnetNumAPINodes, "devnet-api-nodes", []int{}, "number of API nodes(nodes without stake) to create in the new Devnet")
+	cmd.Flags().IntSliceVar(&numAPINodes, "num-apis", []int{}, "number of API nodes(nodes without stake) to create in the new Devnet")
 	return cmd
 }
 
@@ -125,11 +125,11 @@ func preCreateChecks() error {
 	if !useAWS && awsProfile != constants.AWSDefaultCredential {
 		return fmt.Errorf("could not use AWS profile for non AWS cloud option")
 	}
-	if len(utils.Unique(cmdLineRegion)) != len(numNodes) {
+	if len(utils.Unique(cmdLineRegion)) != len(numValidatorsNodes) {
 		return fmt.Errorf("number of regions and number of nodes must be equal. Please make sure list of regions is unique")
 	}
-	if len(numNodes) > 0 {
-		for _, num := range numNodes {
+	if len(numValidatorsNodes) > 0 {
+		for _, num := range numValidatorsNodes {
 			if num <= 0 {
 				return fmt.Errorf("number of nodes per region must be greater than 0")
 			}
@@ -141,14 +141,14 @@ func preCreateChecks() error {
 	if useSSHAgent && !utils.IsSSHAgentAvailable() {
 		return fmt.Errorf("ssh agent is not available")
 	}
-	if len(devnetNumAPINodes) > 0 && !createDevnet {
+	if len(numAPINodes) > 0 && !createDevnet {
 		return fmt.Errorf("api nodes can only be created in devnet")
 	}
-	if createDevnet && len(devnetNumAPINodes) != len(numNodes) {
+	if createDevnet && len(numAPINodes) != len(numValidatorsNodes) {
 		return fmt.Errorf("number of API nodes and number of nodes must be equal")
 	}
-	if len(devnetNumAPINodes) > 0 {
-		for _, num := range numNodes {
+	if len(numAPINodes) > 0 {
+		for _, num := range numValidatorsNodes {
 			if num <= 0 {
 				return fmt.Errorf("number of API nodes per region must be greater than 0")
 			}
@@ -197,8 +197,8 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 	// for devnet add nonstake api nodes for each region with stake
 	if createDevnet {
-		for i, num := range devnetNumAPINodes {
-			numNodes[i] += num
+		for i, num := range numAPINodes {
+			numValidatorsNodes[i] += num
 		}
 	}
 	cloudConfigMap := models.CloudConfig{}
@@ -228,7 +228,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 		keyPairName := fmt.Sprintf("%s-keypair", defaultAvalancheCLIPrefix)
 		certPath, err := app.GetSSHCertFilePath(keyPairName)
-		dockerNumNodes := utils.Sum(numNodes)
+		dockerNumNodes := utils.Sum(numValidatorsNodes)
 		var dockerNodesPublicIPs []string
 		var monitoringHostIP string
 		if separateMonitoringInstance {
@@ -261,7 +261,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		for i, ip := range currentRegionConfig.PublicIPs {
 			publicIPMap[dockerHostIDs[i]] = ip
 		}
-		_, apiNodeIDs := utils.SplitSliceAt(currentRegionConfig.InstanceIDs, len(currentRegionConfig.InstanceIDs)-devnetNumAPINodes[0])
+		_, apiNodeIDs := utils.SplitSliceAt(currentRegionConfig.InstanceIDs, len(currentRegionConfig.InstanceIDs)-numAPINodes[0])
 		currentRegionConfig.APIInstanceIDs = apiNodeIDs
 		for _, node := range currentRegionConfig.APIInstanceIDs {
 			apiNodeIPMap[node] = publicIPMap[node]

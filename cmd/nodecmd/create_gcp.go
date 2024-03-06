@@ -96,9 +96,9 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 func getGCPConfig() (*gcpAPI.GcpCloud, map[string]NumNodes, string, string, string, error) {
 	finalRegions := map[string]NumNodes{}
 	switch {
-	case len(numNodes) != len(utils.Unique(cmdLineRegion)):
+	case len(numValidatorsNodes) != len(utils.Unique(cmdLineRegion)):
 		return nil, nil, "", "", "", errors.New("number of regions and number of nodes must be equal. Please make sure list of regions is unique")
-	case len(cmdLineRegion) == 0 && len(numNodes) == 0:
+	case len(cmdLineRegion) == 0 && len(numValidatorsNodes) == 0:
 		var err error
 		finalRegions, err = getRegionsNodeNum(constants.GCPCloudService)
 		if err != nil {
@@ -106,7 +106,7 @@ func getGCPConfig() (*gcpAPI.GcpCloud, map[string]NumNodes, string, string, stri
 		}
 	default:
 		for i, region := range cmdLineRegion {
-			finalRegions[region] = NumNodes{numNodes[i], devnetNumAPINodes[i]}
+			finalRegions[region] = NumNodes{numValidatorsNodes[i], numAPINodes[i]}
 		}
 	}
 	gcpClient, projectName, gcpCredentialFilePath, err := getGCPCloudCredentials()

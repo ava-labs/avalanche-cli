@@ -98,13 +98,13 @@ func getAWSMonitoringEC2Svc(awsProfile, monitoringRegion string) (map[string]*aw
 func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[string]string, map[string]NumNodes, error) {
 	finalRegions := map[string]NumNodes{}
 	switch {
-	case len(numNodes) != len(utils.Unique(cmdLineRegion)):
+	case len(numValidatorsNodes) != len(utils.Unique(cmdLineRegion)):
 		return nil, nil, nil, fmt.Errorf("number of nodes and regions should be the same")
-	case createDevnet && len(devnetNumAPINodes) != len(utils.Unique(cmdLineRegion)):
+	case createDevnet && len(numAPINodes) != len(utils.Unique(cmdLineRegion)):
 		return nil, nil, nil, fmt.Errorf("number of api nodes and regions should be the same")
-	case createDevnet && len(devnetNumAPINodes) != len(numNodes):
+	case createDevnet && len(numAPINodes) != len(numValidatorsNodes):
 		return nil, nil, nil, fmt.Errorf("number of api nodes and validator nodes should be the same")
-	case len(cmdLineRegion) == 0 && len(numNodes) == 0 && len(devnetNumAPINodes) == 0:
+	case len(cmdLineRegion) == 0 && len(numValidatorsNodes) == 0 && len(numAPINodes) == 0:
 		var err error
 		finalRegions, err = getRegionsNodeNum(constants.AWSCloudService)
 		if err != nil {
@@ -112,7 +112,7 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 		}
 	default:
 		for i, region := range cmdLineRegion {
-			finalRegions[region] = NumNodes{numNodes[i], devnetNumAPINodes[i]}
+			finalRegions[region] = NumNodes{numValidatorsNodes[i], numAPINodes[i]}
 		}
 	}
 	ec2SvcMap := map[string]*awsAPI.AwsCloud{}
