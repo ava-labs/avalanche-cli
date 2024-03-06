@@ -38,7 +38,7 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 		// parse hostName
 		re := regexp.MustCompile(`Generated staking keys for host (\S+)\[NodeID-(\S+)\]`)
 		matches := re.FindAllStringSubmatch(output, -1)
-		//expect 2 nodes 1 validator and 1 api node
+		// expect 2 nodes 1 validator and 1 api node
 		gomega.Expect(len(matches)).To(gomega.Equal(NumNodes + NumAPINodes))
 		gomega.Expect(NumAPINodes + NumNodes).To(gomega.Equal(2)) // 1 validator and 1 api node or logic of the test is wrong
 		match := matches[0]                                       // validator node
@@ -100,7 +100,7 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 		gomega.Expect(genesisFile).To(gomega.ContainSubstring("\"rewardAddress\": \"X-custom"))
 		gomega.Expect(genesisFile).To(gomega.ContainSubstring("\"startTime\":"))
 		gomega.Expect(genesisFile).To(gomega.ContainSubstring("\"networkID\": 1338,"))
-		//make sure there is no API node in the genesis
+		// make sure there is no API node in the genesis
 		gomega.Expect(genesisFile).To(gomega.Not(gomega.ContainSubstring(apiNodeID)))
 	})
 	ginkgo.It("installs and configures avalanche-cli on the node ", func() {
@@ -118,6 +118,8 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 		gomega.Expect(output).To(gomega.ContainSubstring(constants.E2ENetworkPrefix))
 		gomega.Expect(output).To(gomega.ContainSubstring(hostName))
 		gomega.Expect(output).To(gomega.ContainSubstring(NodeID))
+		gomega.Expect(output).To(gomega.ContainSubstring(apiHostName))
+		gomega.Expect(output).To(gomega.ContainSubstring(apiNodeID))
 		gomega.Expect(output).To(gomega.ContainSubstring("Devnet"))
 	})
 	ginkgo.It("can ssh to a created node", func() {
