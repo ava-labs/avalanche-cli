@@ -55,27 +55,19 @@ func list(_ *cobra.Command, _ []string) error {
 				return err
 			}
 			nodeIDStr := "----------------------------------------"
-			funcs := []string{}
-			if clusterConf.MonitoringInstance != cloudID {
+			if clusterConf.IsAvalancheGoHost(cloudID) {
 				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
 				if err != nil {
 					return err
 				}
 				nodeIDStr = nodeID.String()
-				if clusterConf.IsAPIHost(cloudID) {
-					funcs = append(funcs, "API")
-				} else {
-					funcs = append(funcs, "Node")
-				}
 			}
-			if nodeConfig.IsMonitor {
-				funcs = append(funcs, "Monitor")
+			roles := clusterConf.GetHostRoles(nodeConfig)
+			rolesStr := strings.Join(roles, ",")
+			if rolesStr != "" {
+				rolesStr = " [" + rolesStr + "]"
 			}
-			funcDesc := strings.Join(funcs, ",")
-			if funcDesc != "" {
-				funcDesc = " [" + funcDesc + "]"
-			}
-			ux.Logger.PrintToUser(fmt.Sprintf("  Node %s (%s) %s%s", cloudID, nodeIDStr, nodeConfig.ElasticIP, funcDesc))
+			ux.Logger.PrintToUser(fmt.Sprintf("  Node %s (%s) %s%s", cloudID, nodeIDStr, nodeConfig.ElasticIP, rolesStr))
 		}
 	}
 	return nil

@@ -56,3 +56,18 @@ func (cc *ClusterConfig) GetCloudIDs() []string {
 	}
 	return r
 }
+
+func (cc *ClusterConfig) GetHostRoles(nodeConf NodeConfig) []string {
+	roles := []string{}
+	if cc.IsAvalancheGoHost(nodeConf.NodeID) {
+		if cc.IsAPIHost(nodeConf.NodeID) {
+			roles = append(roles, "API")
+		} else {
+			roles = append(roles, "Node")
+		}
+	}
+	if nodeConf.IsMonitor {
+		roles = append(roles, "Monitor")
+	}
+	return roles
+}

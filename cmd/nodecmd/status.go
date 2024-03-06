@@ -244,12 +244,12 @@ func printOutput(
 	table.SetHeader(header)
 	table.SetRowLine(true)
 	for i, cloudID := range cloudIDs {
-		nodeTypes := []string{}
 		boostrappedStatus := ""
 		healthyStatus := ""
 		nodeIDStr := ""
 		avagoVersion := ""
-		if clusterConf.MonitoringInstance != cloudID {
+		roles := clusterConf.GetHostRoles(nodeConfigs[i])
+		if clusterConf.IsAvalancheGoHost(cloudID) {
 			boostrappedStatus = logging.Green.Wrap("BOOTSTRAPPED")
 			if slices.Contains(notBootstrappedHosts, cloudID) {
 				boostrappedStatus = logging.Red.Wrap("NOT_BOOTSTRAPPED")
@@ -258,23 +258,15 @@ func printOutput(
 			if slices.Contains(notHealthyHosts, cloudID) {
 				healthyStatus = logging.Red.Wrap("UNHEALTHY")
 			}
-			if clusterConf.IsAPIHost(cloudID) {
-				nodeTypes = append(nodeTypes, "API")
-			} else {
-				nodeTypes = append(nodeTypes, "NODE")
-			}
 			nodeIDStr = nodeIDs[i]
 			avagoVersion = avagoVersions[cloudID]
-		}
-		if nodeConfigs[i].IsMonitor {
-			nodeTypes = append(nodeTypes, "MONITOR")
 		}
 		row := []string{
 			cloudID,
 			logging.Green.Wrap(nodeIDStr),
 			nodeConfigs[i].ElasticIP,
 			clusterConf.Network.Name(),
-			strings.Join(nodeTypes, ","),
+			strings.Join(roles, ","),
 			avagoVersion,
 			boostrappedStatus,
 			healthyStatus,
