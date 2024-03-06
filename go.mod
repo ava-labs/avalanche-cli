@@ -10,7 +10,7 @@ require (
 	github.com/ava-labs/coreth v0.13.0-rc.0
 	github.com/ava-labs/subnet-evm v0.6.1
 	github.com/ava-labs/teleporter v1.0.0
-	github.com/aws/aws-sdk-go-v2 v1.25.0
+	github.com/aws/aws-sdk-go-v2 v1.25.2
 	github.com/aws/aws-sdk-go-v2/config v1.27.1
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.148.1
 	github.com/chelnak/ysmrr v0.3.0
@@ -67,7 +67,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.19.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.22.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.27.1 // indirect
-	github.com/aws/smithy-go v1.20.0 // indirect
+	github.com/aws/smithy-go v1.20.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.3 // indirect
