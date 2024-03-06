@@ -16,9 +16,13 @@ import (
 	"github.com/onsi/gomega"
 )
 
-const e2eKeyPairName = "runner-avalanche-cli-keypair"
+const (
+	e2eKeyPairName = "runner-avalanche-cli-keypair"
+	ExpectFail     = false
+	ExpectSuccess  = true
+)
 
-func NodeCreate(network, version string, numNodes int, separateMonitoring bool, numAPINodes int) string {
+func NodeCreate(network, version string, numNodes int, separateMonitoring bool, numAPINodes int, expectSuccess bool) string {
 	home, err := os.UserHomeDir()
 	gomega.Expect(err).Should(gomega.BeNil())
 	_, err = os.Open(filepath.Join(home, ".ssh", e2eKeyPairName))
@@ -51,7 +55,12 @@ func NodeCreate(network, version string, numNodes int, separateMonitoring bool, 
 	fmt.Println(string(output))
 	fmt.Println(err)
 	fmt.Println("---------------->")
-	gomega.Expect(err).Should(gomega.BeNil())
+	if expectSuccess {
+		gomega.Expect(err).Should(gomega.BeNil())
+	} else {
+		gomega.Expect(err).Should(gomega.Not(gomega.BeNil()))
+	}
+
 	return string(output)
 }
 
