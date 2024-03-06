@@ -82,7 +82,7 @@ func list(_ *cobra.Command, _ []string) error {
 			if err != nil {
 				return err
 			}
-			nodeIDStr := "........................................"
+			nodeIDStr := "----------------------------------------"
 			if clusterConf.MonitoringInstance != cloudHostID {
 				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudHostID))
 				if err != nil {

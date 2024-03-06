@@ -5,11 +5,13 @@ package nodecmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -185,13 +187,32 @@ func statusNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	clusterConf := clustersConfig.Clusters[clusterName]
 	ansibleHosts, err := ansible.GetHostMapfromAnsibleInventory(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
+	var monitoringAnsibleHosts map[string]*models.Host
+	monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
+	if utils.DirectoryExists(monitoringInventoryPath) {
+		monitoringAnsibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(monitoringInventoryPath)
+		if err != nil {
+			return err
+		}
+		monitoringAnsibleHosts, err = ansible.GetHostMapfromAnsibleInventory(monitoringInventoryPath)
+		if err != nil {
+			return err
+		}
+		for _, id := range monitoringAnsibleHostIDs {
+			_, ok := ansibleHosts[id]
+			if !ok {
+				ansibleHosts[id] = monitoringAnsibleHosts[id]
+				ansibleHostIDs = append(ansibleHostIDs, id)
+			}
+		}
+	}
 	printOutput(
-		clustersConfig,
-		hostIDs,
+		clusterConf,
 		ansibleHostIDs,
 		ansibleHosts,
 		nodeIDs,
@@ -203,13 +224,13 @@ func statusNode(_ *cobra.Command, args []string) error {
 		subnetValidatingNodes,
 		clusterName,
 		subnetName,
+		monitoringAnsibleHosts,
 	)
 	return nil
 }
 
 func printOutput(
-	clustersConfig models.ClustersConfig,
-	hostIDs []string,
+	clusterConf models.ClusterConfig,
 	ansibleHostIDs []string,
 	ansibleHosts map[string]*models.Host,
 	nodeIDs []string,
@@ -221,6 +242,7 @@ func printOutput(
 	subnetValidatingHosts []string,
 	clusterName string,
 	subnetName string,
+	monitoringAnsibleHosts map[string]*models.Host,
 ) {
 	if subnetName == "" && len(notBootstrappedHosts) == 0 {
 		ux.Logger.PrintToUser("All nodes in cluster %s are bootstrapped to Primary Network!", clusterName)
@@ -246,36 +268,55 @@ func printOutput(
 	table.SetHeader(header)
 	table.SetRowLine(true)
 	for i, ansibleHostID := range ansibleHostIDs {
-		boostrappedStatus := logging.Green.Wrap("BOOTSTRAPPED")
-		if slices.Contains(notBootstrappedHosts, ansibleHostID) {
-			boostrappedStatus = logging.Red.Wrap("NOT_BOOTSTRAPPED")
-		}
-		healthyStatus := logging.Green.Wrap("OK")
-		if slices.Contains(notHealthyHosts, ansibleHostID) {
-			healthyStatus = logging.Red.Wrap("UNHEALTHY")
-		}
-		clusterConf := clustersConfig.Clusters[clusterName]
-		nodeType := "NODE"
-		if clusterConf.IsAPIHost(ansibleHosts[ansibleHostID]) {
-			nodeType = "API"
+		host := ansibleHosts[ansibleHostID]
+		nodeTypes := []string{}
+		boostrappedStatus := ""
+		healthyStatus := ""
+		nodeIDStr := ""
+		avagoVersion := ""
+		if clusterConf.MonitoringInstance == host.GetCloudID() {
+			nodeTypes = append(nodeTypes, "MONITOR")
+		} else {
+			boostrappedStatus = logging.Green.Wrap("BOOTSTRAPPED")
+			if slices.Contains(notBootstrappedHosts, ansibleHostID) {
+				boostrappedStatus = logging.Red.Wrap("NOT_BOOTSTRAPPED")
+			}
+			healthyStatus = logging.Green.Wrap("OK")
+			if slices.Contains(notHealthyHosts, ansibleHostID) {
+				healthyStatus = logging.Red.Wrap("UNHEALTHY")
+			}
+			if clusterConf.IsAPIHost(ansibleHosts[ansibleHostID]) {
+				nodeTypes = append(nodeTypes, "API")
+			} else {
+				nodeTypes = append(nodeTypes, "NODE")
+			}
+			_, ok := monitoringAnsibleHosts[ansibleHostID]
+			if ok {
+				nodeTypes = append(nodeTypes, "MONITOR")
+			}
+			nodeIDStr = nodeIDs[i]
+			avagoVersion = avagoVersions[ansibleHostID]
 		}
 		row := []string{
-			hostIDs[i],
-			logging.Green.Wrap(nodeIDs[i]),
-			ansibleHosts[ansibleHostID].IP,
+			host.GetCloudID(),
+			logging.Green.Wrap(nodeIDStr),
+			host.IP,
 			clusterConf.Network.Name(),
-			nodeType,
-			avagoVersions[ansibleHostID],
+			strings.Join(nodeTypes, ","),
+			avagoVersion,
 			boostrappedStatus,
 			healthyStatus,
 		}
 		if subnetName != "" {
-			syncedStatus := logging.Red.Wrap("NOT_BOOTSTRAPPED")
-			if slices.Contains(subnetSyncedHosts, ansibleHostID) {
-				syncedStatus = logging.Green.Wrap("SYNCED")
-			}
-			if slices.Contains(subnetValidatingHosts, ansibleHostID) {
-				syncedStatus = logging.Green.Wrap("VALIDATING")
+			syncedStatus := ""
+			if clusterConf.MonitoringInstance != host.GetCloudID() {
+				syncedStatus = logging.Red.Wrap("NOT_BOOTSTRAPPED")
+				if slices.Contains(subnetSyncedHosts, ansibleHostID) {
+					syncedStatus = logging.Green.Wrap("SYNCED")
+				}
+				if slices.Contains(subnetValidatingHosts, ansibleHostID) {
+					syncedStatus = logging.Green.Wrap("VALIDATING")
+				}
 			}
 			row = append(row, syncedStatus)
 		}
