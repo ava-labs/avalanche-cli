@@ -279,10 +279,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 		return err
 	}
 	clusterConfig := clustersConfig.Clusters[clusterName]
-	clustersConfig.Clusters[clusterName] = models.ClusterConfig{
-		Network:  network,
-		Nodes:    clusterConfig.Nodes,
-		APINodes: utils.Map(hostsAPI, func(h *models.Host) string { return h.NodeID }),
-	}
+	clusterConfig.Network = network
+	clustersConfig.Clusters[clusterName] = clusterConfig
 	return app.WriteClustersConfigFile(&clustersConfig)
 }

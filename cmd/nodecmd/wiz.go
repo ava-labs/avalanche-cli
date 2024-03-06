@@ -116,10 +116,6 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	clustersConfig, err := app.LoadClustersConfig()
-	if err != nil {
-		return err
-	}
 	if clusterAlreadyExists {
 		if err := checkClusterIsADevnet(clusterName); err != nil {
 			return err
@@ -182,6 +178,10 @@ func wiz(cmd *cobra.Command, args []string) error {
 	// check all validators are found
 	if len(validators) != 0 {
 		allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+		if err != nil {
+			return err
+		}
+		clustersConfig, err := app.LoadClustersConfig()
 		if err != nil {
 			return err
 		}
