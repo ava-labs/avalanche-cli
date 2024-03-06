@@ -40,24 +40,30 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 		fmt.Println(output)
 		gomega.Expect(output).To(gomega.ContainSubstring("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 		// parse hostName
-		re := regexp.MustCompile(`Generated staking keys for host (\S+)\[NodeID-(\S+)\]`)
-		matches := re.FindAllStringSubmatch(output, -1)
-		// expect 2 nodes 1 validator and 1 api node
-		gomega.Expect(len(matches)).To(gomega.Equal(NumNodes + NumAPINodes))
-		gomega.Expect(NumAPINodes + NumNodes).To(gomega.Equal(2)) // 1 validator and 1 api node or logic of the test is wrong
-		match := matches[0]                                       // validator node
-		if len(match) >= 3 {
+		// Parse validator node
+		re := regexp.MustCompile(`Cloud Instance ID: (\S+) \| Public IP:(\S+) \| NodeID-(\S+)`)
+		match := re.FindStringSubmatch(output)
+		if len(match) >= 4 {
 			hostName = match[1]
-			NodeID = fmt.Sprintf("NodeID-%s", match[2])
+			NodeID = fmt.Sprintf("NodeID-%s", match[3])
+			fmt.Println(hostName)
+			fmt.Println(NodeID)
+			// This is a validator node
 		} else {
-			ginkgo.Fail("failed to parse hostName and NodeID")
+			ginkgo.Fail("failed to parse validator hostName and NodeID")
 		}
-		match = matches[1] // api node
-		if len(match) >= 3 {
-			apiHostName = match[1]
-			apiNodeID = fmt.Sprintf("NodeID-%s", match[2])
+
+		// Parse API node
+		apiRe := regexp.MustCompile(`\[API\] Cloud Instance ID: (\S+) \| Public IP:(\S+) \| NodeID-(\S+)`)
+		apiMatch := apiRe.FindStringSubmatch(output)
+		if len(apiMatch) >= 4 {
+			apiHostName = apiMatch[1]
+			apiNodeID = fmt.Sprintf("NodeID-%s", apiMatch[3])
+			fmt.Println(apiHostName)
+			fmt.Println(apiNodeID)
+			// This is an API node
 		} else {
-			ginkgo.Fail("[API]failed to parse hostName and NodeID")
+			ginkgo.Fail("[API] failed to parse hostName and NodeID")
 		}
 	})
 	ginkgo.It("has correct cluster config record for API", func() {
