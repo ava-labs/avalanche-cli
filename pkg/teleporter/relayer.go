@@ -252,7 +252,6 @@ func UpdateRelayerConfig(
 		awmRelayerConfig = createRelayerConfig(
 			logging.Info.LowerString(),
 			relayerStorageDir,
-			network.ID,
 			network.Endpoint,
 		)
 	}
@@ -284,18 +283,16 @@ func UpdateRelayerConfig(
 func createRelayerConfig(
 	logLevel string,
 	storageLocation string,
-	networkID uint32,
 	endpoint string,
 ) config.Config {
 	return config.Config{
-		LogLevel:            logLevel,
-		NetworkID:           networkID,
-		PChainAPIURL:        endpoint,
-		EncryptConnection:   false,
-		StorageLocation:     storageLocation,
-		ProcessMissedBlocks: false,
-		SourceSubnets:       []*config.SourceSubnet{},
-		DestinationSubnets:  []*config.DestinationSubnet{},
+		LogLevel:               logLevel,
+		PChainAPIURL:           endpoint,
+		InfoAPIURL:             endpoint,
+		StorageLocation:        storageLocation,
+		ProcessMissedBlocks:    false,
+		SourceBlockchains:      []*config.SourceBlockchain{},
+		DestinationBlockchains: []*config.DestinationBlockchain{},
 	}
 }
 
@@ -310,13 +307,12 @@ func addChainToRelayerConfig(
 	relayerRewardAddress string,
 	relayerFundedAddressKey string,
 ) {
-	source := &config.SourceSubnet{
-		SubnetID:          subnetID,
-		BlockchainID:      blockchainID,
-		VM:                config.EVM.String(),
-		EncryptConnection: false,
-		APINodeHost:       host,
-		APINodePort:       port,
+	source := &config.SourceBlockchain{
+		SubnetID:     subnetID,
+		BlockchainID: blockchainID,
+		VM:           config.EVM.String(),
+		RPCEndpoint:  fmt.Sprintf("http://%s:%d/ext/bc/%s/rpc", host, port, blockchainID),
+		WSEndpoint:   fmt.Sprintf("ws://%s:%d/ext/bc/%s/ws", host, port, blockchainID),
 		MessageContracts: map[string]config.MessageProtocolConfig{
 			teleporterContractAddress: {
 				MessageFormat: config.TELEPORTER.String(),
@@ -332,20 +328,18 @@ func addChainToRelayerConfig(
 			},
 		},
 	}
-	destination := &config.DestinationSubnet{
+	destination := &config.DestinationBlockchain{
 		SubnetID:          subnetID,
 		BlockchainID:      blockchainID,
 		VM:                config.EVM.String(),
-		EncryptConnection: false,
-		APINodeHost:       host,
-		APINodePort:       port,
+		RPCEndpoint:       fmt.Sprintf("http://%s:%d/ext/bc/%s/rpc", host, port, blockchainID),
 		AccountPrivateKey: relayerFundedAddressKey,
 	}
-	if !utils.Any(relayerConfig.SourceSubnets, func(s *config.SourceSubnet) bool { return s.BlockchainID == blockchainID }) {
-		relayerConfig.SourceSubnets = append(relayerConfig.SourceSubnets, source)
+	if !utils.Any(relayerConfig.SourceBlockchains, func(s *config.SourceBlockchain) bool { return s.BlockchainID == blockchainID }) {
+		relayerConfig.SourceBlockchains = append(relayerConfig.SourceBlockchains, source)
 	}
-	if !utils.Any(relayerConfig.DestinationSubnets, func(s *config.DestinationSubnet) bool { return s.BlockchainID == blockchainID }) {
-		relayerConfig.DestinationSubnets = append(relayerConfig.DestinationSubnets, destination)
+	if !utils.Any(relayerConfig.DestinationBlockchains, func(s *config.DestinationBlockchain) bool { return s.BlockchainID == blockchainID }) {
+		relayerConfig.DestinationBlockchains = append(relayerConfig.DestinationBlockchains, destination)
 	}
 }
 
