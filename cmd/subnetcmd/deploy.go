@@ -886,15 +886,15 @@ func HasSubnetEVMGenesis(subnetName string) (bool, error) {
 	return true, nil
 }
 
-func jsonIsSubnetEVMGenesis(jsonBytes []byte) (bool, error) {
+func jsonIsSubnetEVMGenesis(jsonBytes []byte) bool {
 	genesis, err := app.LoadEvmGenesisFromJSON(jsonBytes)
 	if err != nil {
-		return false, err
+		return false
 	}
 	if err := genesis.Verify(); err != nil {
-		return false, err
+		return false
 	}
-	return true, nil
+	return true
 }
 
 func promptOwners(

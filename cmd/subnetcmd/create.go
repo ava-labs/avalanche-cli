@@ -236,9 +236,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	if teleporterReady {
-		if isSubnetEVMGenesis, err := jsonIsSubnetEVMGenesis(genesisBytes); err != nil {
-			return err
-		} else if !isSubnetEVMGenesis {
+		if isSubnetEVMGenesis := jsonIsSubnetEVMGenesis(genesisBytes); !isSubnetEVMGenesis {
 			return fmt.Errorf("teleporter is not supported yet for non Subnet-EVM virtual machines")
 		}
 		keyPath := app.GetKeyPath(constants.TeleporterKeyName)
