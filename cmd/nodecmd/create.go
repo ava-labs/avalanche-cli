@@ -1261,7 +1261,7 @@ func getRegionsNodeNum(cloudName string) (
 				return nil, err
 			}
 		}
-		var numAPINodes uint32
+		numAPINodes := uint32(0)
 		numNodes, err := app.Prompt.CaptureUint32(fmt.Sprintf("How many nodes do you want to set up in %s %s?", userRegion, supportedClouds[cloudName].locationName))
 		if err != nil {
 			return nil, err
