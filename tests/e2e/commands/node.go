@@ -16,9 +16,13 @@ import (
 	"github.com/onsi/gomega"
 )
 
-const e2eKeyPairName = "runner-avalanche-cli-keypair"
+const (
+	e2eKeyPairName = "runner-avalanche-cli-keypair"
+	ExpectFail     = false
+	ExpectSuccess  = true
+)
 
-func NodeCreate(network, version string, numNodes int, separateMonitoring bool) string {
+func NodeCreate(network, version string, numNodes int, separateMonitoring bool, numAPINodes int, expectSuccess bool) string {
 	home, err := os.UserHomeDir()
 	gomega.Expect(err).Should(gomega.BeNil())
 	_, err = os.Open(filepath.Join(home, ".ssh", e2eKeyPairName))
@@ -42,19 +46,25 @@ func NodeCreate(network, version string, numNodes int, separateMonitoring bool) 
 		"--num-nodes="+strconv.Itoa(numNodes),
 		"--"+network,
 		"--node-type=docker",
+		"--devnet-api-nodes="+strconv.Itoa(numAPINodes),
 	)
 	cmd.Env = os.Environ()
 	fmt.Println("About to run: " + cmd.String()) //nolint:goconst
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	fmt.Println("---------------->")
 	fmt.Println(string(output))
 	fmt.Println(err)
 	fmt.Println("---------------->")
-	gomega.Expect(err).Should(gomega.BeNil())
+	if expectSuccess {
+		gomega.Expect(err).Should(gomega.BeNil())
+	} else {
+		gomega.Expect(err).Should(gomega.Not(gomega.BeNil()))
+	}
+
 	return string(output)
 }
 
-func NodeDevnet(numNodes int) string {
+func NodeDevnet(numNodes int, numAPINodes int) string {
 	/* #nosec G204 */
 	cmd := exec.Command(
 		CLIBinary,
@@ -65,6 +75,7 @@ func NodeDevnet(numNodes int) string {
 		"--latest-avalanchego-version=true",
 		"--region=local",
 		"--num-nodes="+strconv.Itoa(numNodes),
+		"--devnet-api-nodes="+strconv.Itoa(numAPINodes),
 		"--devnet",
 		"--node-type=docker",
 	)
