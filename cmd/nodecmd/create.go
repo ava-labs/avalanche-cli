@@ -175,6 +175,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	createDevnet = network.Kind == models.Devnet // set createDevnet to true if network is devnet for further use
 	avalancheGoVersion, err := getAvalancheGoVersion()
 	if err != nil {
 		return err
