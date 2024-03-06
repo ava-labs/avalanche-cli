@@ -236,41 +236,40 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	if teleporterReady {
-		if isSubnetEVMGenesis := jsonIsSubnetEVMGenesis(genesisBytes); !isSubnetEVMGenesis {
-			return fmt.Errorf("teleporter is not supported yet for non Subnet-EVM virtual machines")
-		}
-		keyPath := app.GetKeyPath(constants.TeleporterKeyName)
-		var k *key.SoftKey
-		if utils.FileExists(keyPath) {
-			ux.Logger.PrintToUser("loading stored key %q for teleporter deploys", constants.TeleporterKeyName)
-			k, err = key.LoadSoft(models.LocalNetwork.ID, keyPath)
+		if isSubnetEVMGenesis := jsonIsSubnetEVMGenesis(genesisBytes); isSubnetEVMGenesis {
+			keyPath := app.GetKeyPath(constants.TeleporterKeyName)
+			var k *key.SoftKey
+			if utils.FileExists(keyPath) {
+				ux.Logger.PrintToUser("loading stored key %q for teleporter deploys", constants.TeleporterKeyName)
+				k, err = key.LoadSoft(models.LocalNetwork.ID, keyPath)
+				if err != nil {
+					return err
+				}
+			} else {
+				ux.Logger.PrintToUser("generating stored key %q for teleporter deploys", constants.TeleporterKeyName)
+				k, err = key.NewSoft(0)
+				if err != nil {
+					return err
+				}
+				if err := k.Save(keyPath); err != nil {
+					return err
+				}
+			}
+			ux.Logger.PrintToUser("  (evm address, genesis balance) = (%s, %v)", k.C(), teleporter.TeleporterPrefundedAddressBalance)
+			genesisBytes, err = addSubnetEVMGenesisPrefundedAddress(genesisBytes, k.C(), teleporter.TeleporterPrefundedAddressBalance.String())
 			if err != nil {
 				return err
 			}
-		} else {
-			ux.Logger.PrintToUser("generating stored key %q for teleporter deploys", constants.TeleporterKeyName)
-			k, err = key.NewSoft(0)
+			// let's use latest versions for teleporter contract
+			teleporterVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.TeleporterRepoName))
 			if err != nil {
 				return err
 			}
-			if err := k.Save(keyPath); err != nil {
-				return err
-			}
+			ux.Logger.PrintToUser("using latest teleporter version (%s)", teleporterVersion)
+			sc.TeleporterReady = true
+			sc.TeleporterKey = constants.TeleporterKeyName
+			sc.TeleporterVersion = teleporterVersion
 		}
-		ux.Logger.PrintToUser("  (evm address, genesis balance) = (%s, %v)", k.C(), teleporter.TeleporterPrefundedAddressBalance)
-		genesisBytes, err = addSubnetEVMGenesisPrefundedAddress(genesisBytes, k.C(), teleporter.TeleporterPrefundedAddressBalance.String())
-		if err != nil {
-			return err
-		}
-		// let's use latest versions for teleporter contract
-		teleporterVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.TeleporterRepoName))
-		if err != nil {
-			return err
-		}
-		ux.Logger.PrintToUser("using latest teleporter version (%s)", teleporterVersion)
-		sc.TeleporterReady = true
-		sc.TeleporterKey = constants.TeleporterKeyName
-		sc.TeleporterVersion = teleporterVersion
 	}
 
 	if err = app.WriteGenesisFile(subnetName, genesisBytes); err != nil {
