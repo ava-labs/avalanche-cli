@@ -817,8 +817,8 @@ func getNodeCloudConfig(node string) (models.RegionConfig, string, error) {
 
 func addNodeToClustersConfig(network models.Network, nodeID, clusterName string, isAPIInstance bool, isMonitoringInstance bool) error {
 	clustersConfig := models.ClustersConfig{}
-	var err error
 	if app.ClustersConfigExists() {
+		var err error
 		clustersConfig, err = app.LoadClustersConfig()
 		if err != nil {
 			return err
@@ -827,34 +827,17 @@ func addNodeToClustersConfig(network models.Network, nodeID, clusterName string,
 	if clustersConfig.Clusters == nil {
 		clustersConfig.Clusters = make(map[string]models.ClusterConfig)
 	}
-	if _, ok := clustersConfig.Clusters[clusterName]; !ok {
-		clustersConfig.Clusters[clusterName] = models.ClusterConfig{
-			Network:  network,
-			Nodes:    []string{},
-			APINodes: []string{},
-		}
-	}
-	nodes := clustersConfig.Clusters[clusterName].Nodes
-	apiNodes := clustersConfig.Clusters[clusterName].APINodes
-	if isAPIInstance {
-		apiNodes = append(apiNodes, nodeID)
-	}
-	if !isMonitoringInstance {
-		// monitoring instance will always be last in the loop, so no need to set monitoring instance here
-		clustersConfig.Clusters[clusterName] = models.ClusterConfig{
-			Network:  network,
-			Nodes:    append(nodes, nodeID),
-			APINodes: apiNodes,
-		}
+	clusterConfig := clustersConfig.Clusters[clusterName]
+	clusterConfig.Network = network
+	if isMonitoringInstance {
+		clusterConfig.MonitoringInstance = nodeID
 	} else {
-		clustersConfig.Clusters[clusterName] = models.ClusterConfig{
-			Network:            network,
-			Nodes:              nodes,
-			APINodes:           apiNodes,
-			MonitoringInstance: nodeID,
-		}
+		clusterConfig.Nodes = append(clusterConfig.Nodes, nodeID)
 	}
-
+	if isAPIInstance {
+		clusterConfig.APINodes = append(clusterConfig.APINodes, nodeID)
+	}
+	clustersConfig.Clusters[clusterName] = clusterConfig
 	return app.WriteClustersConfigFile(&clustersConfig)
 }
 

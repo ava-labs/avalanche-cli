@@ -4,9 +4,13 @@ package nodecmd
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/spf13/cobra"
@@ -52,20 +56,52 @@ func list(_ *cobra.Command, _ []string) error {
 		if err != nil {
 			return err
 		}
+
+		var monitoringAnsibleHosts map[string]*models.Host
+		monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
+		if utils.DirectoryExists(monitoringInventoryPath) {
+			monitoringAnsibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(monitoringInventoryPath)
+			if err != nil {
+				return err
+			}
+			monitoringAnsibleHosts, err = ansible.GetHostMapfromAnsibleInventory(monitoringInventoryPath)
+			if err != nil {
+				return err
+			}
+			for _, id := range monitoringAnsibleHostIDs {
+				_, ok := ansibleHosts[id]
+				if !ok {
+					ansibleHosts[id] = monitoringAnsibleHosts[id]
+					ansibleHostIDs = append(ansibleHostIDs, id)
+				}
+			}
+		}
+
 		for _, ansibleHostID := range ansibleHostIDs {
 			_, cloudHostID, err := models.HostAnsibleIDToCloudID(ansibleHostID)
 			if err != nil {
 				return err
 			}
-			nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudHostID))
-			if err != nil {
-				return err
+			nodeIDStr := "........................................"
+			if clusterConf.MonitoringInstance != cloudHostID {
+				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudHostID))
+				if err != nil {
+					return err
+				}
+				nodeIDStr = nodeID.String()
 			}
-			funcDesc := ""
+			funcs := []string{}
 			if clusterConf.IsAPIHost(ansibleHosts[ansibleHostID]) {
-				funcDesc = " [API]"
+				funcs = append(funcs, "API")
 			}
-			ux.Logger.PrintToUser(fmt.Sprintf("  Node %s (%s) %s%s", cloudHostID, nodeID.String(), ansibleHosts[ansibleHostID].IP, funcDesc))
+			if _, ok := monitoringAnsibleHosts[ansibleHostID]; ok {
+				funcs = append(funcs, "MONITOR")
+			}
+			funcDesc := strings.Join(funcs, ",")
+			if funcDesc != "" {
+				funcDesc = " [" + funcDesc + "]"
+			}
+			ux.Logger.PrintToUser(fmt.Sprintf("  Node %s (%s) %s%s", cloudHostID, nodeIDStr, ansibleHosts[ansibleHostID].IP, funcDesc))
 		}
 	}
 	return nil

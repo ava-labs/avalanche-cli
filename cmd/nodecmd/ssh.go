@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -75,6 +77,11 @@ func sshNode(_ *cobra.Command, args []string) error {
 			// try to detect nodeID
 			for clusterName := range clustersConfig.Clusters {
 				clusterHosts, _ := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+				monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
+				if utils.DirectoryExists(monitoringInventoryPath) {
+					monitoringHosts, _ := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
+					copy(clusterHosts, monitoringHosts)
+				}
 				selectedHost := utils.Filter(clusterHosts, func(h *models.Host) bool {
 					_, cloudHostID, _ := models.HostAnsibleIDToCloudID(h.NodeID)
 					hostNodeID, _ := getNodeID(app.GetNodeInstanceDirPath(cloudHostID))

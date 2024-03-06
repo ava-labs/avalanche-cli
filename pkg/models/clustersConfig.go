@@ -37,10 +37,10 @@ func (cc *ClusterConfig) GetAPIHosts(hosts []*Host) []*Host {
 // GetValidatorNodes returns the validator nodes from the ClusterConfig.
 func (cc *ClusterConfig) GetValidatorHosts(hosts []*Host) []*Host {
 	return utils.Filter(hosts, func(h *Host) bool {
-		return !slices.Contains(cc.APINodes, h.NodeID)
+		return !slices.Contains(cc.APINodes, h.GetCloudID())
 	})
 }
 
 func (cc *ClusterConfig) IsAPIHost(h *Host) bool {
-	return slices.Contains(cc.APINodes, h.NodeID)
+	return slices.Contains(cc.APINodes, h.GetCloudID())
 }
