@@ -54,7 +54,7 @@ func NodeCreate(network, version string, numNodes int, separateMonitoring bool) 
 	return string(output)
 }
 
-func NodeDevnet(numNodes int) string {
+func NodeDevnet(numNodes int, numAPINodes int) string {
 	/* #nosec G204 */
 	cmd := exec.Command(
 		CLIBinary,
@@ -65,6 +65,7 @@ func NodeDevnet(numNodes int) string {
 		"--latest-avalanchego-version=true",
 		"--region=local",
 		"--num-nodes="+strconv.Itoa(numNodes),
+		"--devnet-api-nodes="+strconv.Itoa(numAPINodes),
 		"--devnet",
 		"--node-type=docker",
 	)

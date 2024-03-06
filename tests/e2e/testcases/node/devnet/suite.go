@@ -4,34 +4,69 @@
 package root
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"os/user"
+	"path/filepath"
 	"regexp"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
 var (
-	hostName string
-	NodeID   string
+	hostName    string
+	NodeID      string
+	apiHostName string
+	apiNodeID   string
+)
+
+const (
+	NumNodes    = 1
+	NumAPINodes = 1
 )
 
 var _ = ginkgo.Describe("[Node devnet]", func() {
 	ginkgo.It("can create a node", func() {
-		output := commands.NodeDevnet(1)
+		output := commands.NodeDevnet(NumNodes, NumAPINodes)
 		fmt.Println(output)
 		gomega.Expect(output).To(gomega.ContainSubstring("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 		// parse hostName
 		re := regexp.MustCompile(`Generated staking keys for host (\S+)\[NodeID-(\S+)\]`)
-		match := re.FindStringSubmatch(output)
+		matches := re.FindAllStringSubmatch(output, -1)
+		//expect 2 nodes 1 validator and 1 api node
+		gomega.Expect(len(matches)).To(gomega.Equal(NumNodes + NumAPINodes))
+		gomega.Expect(NumAPINodes + NumNodes).To(gomega.Equal(2)) // 1 validator and 1 api node or logic of the test is wrong
+		match := matches[0]                                       // validator node
 		if len(match) >= 3 {
 			hostName = match[1]
 			NodeID = fmt.Sprintf("NodeID-%s", match[2])
 		} else {
 			ginkgo.Fail("failed to parse hostName and NodeID")
 		}
+		match = matches[1] // api node
+		if len(match) >= 3 {
+			apiHostName = match[1]
+			apiNodeID = fmt.Sprintf("NodeID-%s", match[2])
+		} else {
+			ginkgo.Fail("[API]failed to parse hostName and NodeID")
+		}
+	})
+	ginkgo.It("has correct cluster config record for API", func() {
+		usr, err := user.Current()
+		gomega.Expect(err).Should(gomega.BeNil())
+		homeDir := usr.HomeDir
+		relativePath := "nodes"
+		content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.ClustersConfigFileName))
+		gomega.Expect(err).Should(gomega.BeNil())
+		clustersConfig := models.ClustersConfig{}
+		err = json.Unmarshal(content, &clustersConfig)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].APINodes).To(gomega.HaveLen(NumAPINodes))
 	})
 	ginkgo.It("installs and runs avalanchego", func() {
 		avalancegoVersion := commands.NodeSSH(constants.E2EClusterName, "/home/ubuntu/avalanche-node/avalanchego --version")
@@ -65,6 +100,8 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 		gomega.Expect(genesisFile).To(gomega.ContainSubstring("\"rewardAddress\": \"X-custom"))
 		gomega.Expect(genesisFile).To(gomega.ContainSubstring("\"startTime\":"))
 		gomega.Expect(genesisFile).To(gomega.ContainSubstring("\"networkID\": 1338,"))
+		//make sure there is no API node in the genesis
+		gomega.Expect(genesisFile).To(gomega.Not(gomega.ContainSubstring(apiNodeID)))
 	})
 	ginkgo.It("installs and configures avalanche-cli on the node ", func() {
 		stakingFiles := commands.NodeSSH(constants.E2EClusterName, "cat /home/ubuntu/.avalanche-cli/config.json")
