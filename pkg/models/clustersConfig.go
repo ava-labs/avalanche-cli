@@ -44,3 +44,15 @@ func (cc *ClusterConfig) GetValidatorHosts(hosts []*Host) []*Host {
 func (cc *ClusterConfig) IsAPIHost(hostCloudID string) bool {
 	return slices.Contains(cc.APINodes, hostCloudID)
 }
+
+func (cc *ClusterConfig) IsAvalancheGoHost(hostCloudID string) bool {
+	return slices.Contains(cc.Nodes, hostCloudID)
+}
+
+func (cc *ClusterConfig) GetCloudIDs() []string {
+	r := cc.Nodes
+	if cc.MonitoringInstance != "" {
+		r = append(r, cc.MonitoringInstance)
+	}
+	return r
+}

@@ -51,14 +51,23 @@ func statusNode(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	ansibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {
 		return err
 	}
-	hostIDs, err := utils.MapWithError(ansibleHostIDs, func(s string) (string, error) { _, o, err := models.HostAnsibleIDToCloudID(s); return o, err })
-	if err != nil {
-		return err
+	clusterConf := clustersConfig.Clusters[clusterName]
+	var blockchainID ids.ID
+	if subnetName != "" {
+		sc, err := app.LoadSidecar(subnetName)
+		if err != nil {
+			return err
+		}
+		blockchainID = sc.Networks[clusterConf.Network.Name()].BlockchainID
+		if blockchainID == ids.Empty {
+			return ErrNoBlockchainID
+		}
 	}
+	hostIDs := utils.Filter(clusterConf.GetCloudIDs(), clusterConf.IsAvalancheGoHost)
 	nodeIDs, err := utils.MapWithError(hostIDs, func(s string) (string, error) {
 		n, err := getNodeID(app.GetNodeInstanceDirPath(s))
 		return n.String(), err
@@ -122,19 +131,6 @@ func statusNode(_ *cobra.Command, args []string) error {
 	subnetSyncedNodes := []string{}
 	subnetValidatingNodes := []string{}
 	if subnetName != "" {
-		clustersConfig, err := app.LoadClustersConfig()
-		if err != nil {
-			return err
-		}
-		network := clustersConfig.Clusters[clusterName].Network
-		sc, err := app.LoadSidecar(subnetName)
-		if err != nil {
-			return err
-		}
-		blockchainID := sc.Networks[network.Name()].BlockchainID
-		if blockchainID == ids.Empty {
-			return ErrNoBlockchainID
-		}
 		hostsToCheckSyncStatus := []string{}
 		for _, hostID := range hostIDs {
 			if slices.Contains(notBootstrappedNodes, hostID) {
@@ -181,11 +177,6 @@ func statusNode(_ *cobra.Command, args []string) error {
 			}
 		}
 	}
-	clustersConfig, err := app.LoadClustersConfig()
-	if err != nil {
-		return err
-	}
-	clusterConf := clustersConfig.Clusters[clusterName]
 	if clusterConf.MonitoringInstance != "" {
 		hostIDs = append(hostIDs, clusterConf.MonitoringInstance)
 		nodeIDs = append(nodeIDs, "")

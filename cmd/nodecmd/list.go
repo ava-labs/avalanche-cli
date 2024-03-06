@@ -4,13 +4,14 @@ package nodecmd
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
 )
 
 func newListCmd() *cobra.Command {
@@ -40,33 +41,28 @@ func list(_ *cobra.Command, _ []string) error {
 	if len(clustersConfig.Clusters) == 0 {
 		ux.Logger.PrintToUser("There are no clusters defined.")
 	}
-	for clusterName, clusterConf := range clustersConfig.Clusters {
+	clusterNames := maps.Keys(clustersConfig.Clusters)
+	sort.Strings(clusterNames)
+	for _, clusterName := range clusterNames {
+		clusterConf := clustersConfig.Clusters[clusterName]
 		ux.Logger.PrintToUser("Cluster %q (%s)", clusterName, clusterConf.Network.Name())
 		if err := checkCluster(clusterName); err != nil {
 			return err
 		}
-		ansibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
-		if err != nil {
-			return err
-		}
-		for _, ansibleHostID := range ansibleHostIDs {
-			_, cloudHostID, err := models.HostAnsibleIDToCloudID(ansibleHostID)
-			if err != nil {
-				return err
-			}
-			nodeConfig, err := app.LoadClusterNodeConfig(cloudHostID)
+		for _, cloudID := range clusterConf.GetCloudIDs() {
+			nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
 			if err != nil {
 				return err
 			}
 			nodeIDStr := "----------------------------------------"
 			funcs := []string{}
-			if clusterConf.MonitoringInstance != cloudHostID {
-				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudHostID))
+			if clusterConf.MonitoringInstance != cloudID {
+				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
 				if err != nil {
 					return err
 				}
 				nodeIDStr = nodeID.String()
-				if clusterConf.IsAPIHost(cloudHostID) {
+				if clusterConf.IsAPIHost(cloudID) {
 					funcs = append(funcs, "API")
 				} else {
 					funcs = append(funcs, "Node")
@@ -79,7 +75,7 @@ func list(_ *cobra.Command, _ []string) error {
 			if funcDesc != "" {
 				funcDesc = " [" + funcDesc + "]"
 			}
-			ux.Logger.PrintToUser(fmt.Sprintf("  Node %s (%s) %s%s", cloudHostID, nodeIDStr, nodeConfig.ElasticIP, funcDesc))
+			ux.Logger.PrintToUser(fmt.Sprintf("  Node %s (%s) %s%s", cloudID, nodeIDStr, nodeConfig.ElasticIP, funcDesc))
 		}
 	}
 	return nil
