@@ -46,7 +46,7 @@ func NodeCreate(network, version string, numNodes int, separateMonitoring bool, 
 		"--num-validators="+strconv.Itoa(numNodes),
 		"--"+network,
 		"--node-type=docker",
-		"--num-apis"+strconv.Itoa(numAPINodes),
+		"--num-apis="+strconv.Itoa(numAPINodes),
 	)
 	cmd.Env = os.Environ()
 	fmt.Println("About to run: " + cmd.String()) //nolint:goconst
@@ -75,7 +75,7 @@ func NodeDevnet(numNodes int, numAPINodes int) string {
 		"--latest-avalanchego-version=true",
 		"--region=local",
 		"--num-validators="+strconv.Itoa(numNodes),
-		"--num-apis"+strconv.Itoa(numAPINodes),
+		"--num-apis="+strconv.Itoa(numAPINodes),
 		"--devnet",
 		"--node-type=docker",
 	)
