@@ -21,6 +21,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/keycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/transactioncmd"
 	"github.com/ava-labs/avalanche-cli/cmd/updatecmd"
 	"github.com/ava-labs/avalanche-cli/internal/migrations"
@@ -87,6 +88,10 @@ in with avalanche subnet create myNewSubnet.`,
 
 	// add node command
 	rootCmd.AddCommand(nodecmd.NewCmd(app))
+
+	// add teleporter command
+	rootCmd.AddCommand(teleportercmd.NewCmd(app))
+
 	return rootCmd
 }
 
@@ -286,14 +291,7 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	oldConfig := utils.UserHomePath(constants.OldConfigFileName)
 	oldMetricsConfig := utils.UserHomePath(constants.OldMetricsConfigFileName)
-	if utils.FileExists(oldConfig) || utils.FileExists(oldMetricsConfig) {
-		ux.Logger.PrintToUser("-----------------------------------------------------------------------")
-		ux.Logger.PrintToUser("WARNING: Old configuration file was found in %s and/or %s", oldConfig, oldMetricsConfig)
-		ux.Logger.PrintToUser("Please run `avalanche config migrate` to migrate it to new default location %s", cfgFile)
-		ux.Logger.PrintToUser("-----------------------------------------------------------------------")
-	}
 	if cfgFile == "" {
 		cfgFile = utils.UserHomePath(constants.DefaultConfigFileName)
 	}

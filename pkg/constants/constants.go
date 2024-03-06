@@ -107,6 +107,9 @@ const (
 	BootstrapSnapshotSingleNodePreCortina17URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreCortina17LocalPath
 	BootstrapSnapshotSingleNodePreCortina17SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.PreCortina17.txt"
 
+	ExtraLocalNetworkDataFilename     = "extra-local-network-data.json"
+	ExtraLocalNetworkDataSnapshotsDir = "extra-local-network-data"
+
 	CliInstallationURL      = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
 	ExpectedCliInstallErr   = "resource temporarily unavailable"
 	EIPLimitErr             = "AddressLimitExceeded"
@@ -192,6 +195,8 @@ const (
 	AvalancheGoRepoName           = "avalanchego"
 	SubnetEVMRepoName             = "subnet-evm"
 	CliRepoName                   = "avalanche-cli"
+	TeleporterRepoName            = "teleporter"
+	AWMRelayerRepoName            = "awm-relayer"
 	SubnetEVMReleaseURL           = "https://github.com/ava-labs/subnet-evm/releases/download/%s/%s"
 	SubnetEVMArchive              = "subnet-evm_%s_linux_amd64.tar.gz"
 	CloudNodeConfigBasePath       = "/home/ubuntu/.avalanchego/"
@@ -209,6 +214,18 @@ const (
 	IPAddressSuffix               = "/32"
 	AvalancheGoInstallDir         = "avalanchego"
 	SubnetEVMInstallDir           = "subnet-evm"
+	AWMRelayerInstallDir          = "awm-relayer"
+	TeleporterInstallDir          = "teleporter"
+	AWMRelayerBin                 = "awm-relayer"
+	AWMRelayerConfigFilename      = "awm-relayer-config.json"
+	AWMRelayerStorageDir          = "awm-relayer-storage"
+	AWMRelayerLogFilename         = "awm-relayer.log"
+	AWMRelayerRunFilename         = "awm-relayer-process.json"
+
+	AWMRelayerSnapshotConfsDir = "relayer-confs"
+
+	TeleporterKeyName = "cli-teleporter-deployer"
+	AWMRelayerKeyName = "cli-awm-relayer"
 
 	SubnetEVMBin = "subnet-evm"
 

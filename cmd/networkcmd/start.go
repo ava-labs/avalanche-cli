@@ -5,12 +5,13 @@ package networkcmd
 import (
 	"context"
 	"fmt"
-	"path"
+	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
@@ -26,7 +27,10 @@ var (
 	avagoBinaryPath          string
 )
 
-const latest = "latest"
+const (
+	latest  = "latest"
+	jsonExt = ".json"
+)
 
 func newStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -106,7 +110,7 @@ func StartNetwork(*cobra.Command, []string) error {
 	}
 	ux.Logger.PrintToUser(startMsg)
 
-	outputDirPrefix := path.Join(app.GetRunDir(), "network")
+	outputDirPrefix := filepath.Join(app.GetRunDir(), "network")
 	outputDir, err := anrutils.MkDirWithTimestamp(outputDirPrefix)
 	if err != nil {
 		return err
@@ -144,9 +148,35 @@ func StartNetwork(*cobra.Command, []string) error {
 	ux.Logger.PrintToUser("Network ready to use.")
 
 	if subnet.HasEndpoints(resp.ClusterInfo) {
-		fmt.Println()
+		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("Local network node endpoints:")
 		ux.PrintTableEndpoints(resp.ClusterInfo)
+	}
+
+	relayerStoredConfigPath := filepath.Join(app.GetAWMRelayerSnapshotConfsDir(), snapshotName+jsonExt)
+	if utils.FileExists(relayerStoredConfigPath) {
+		relayerConfigPath := app.GetAWMRelayerConfigPath()
+		if err := binutils.CopyFile(relayerStoredConfigPath, relayerConfigPath); err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("")
+		if err := teleporter.DeployRelayer(
+			app.GetAWMRelayerBinDir(),
+			relayerConfigPath,
+			app.GetAWMRelayerLogPath(),
+			app.GetAWMRelayerRunPath(),
+			app.GetAWMRelayerStorageDir(),
+		); err != nil {
+			return err
+		}
+	}
+
+	storedExtraLocalNetowkrDataPath := filepath.Join(app.GetExtraLocalNetworkSnapshotsDir(), snapshotName+jsonExt)
+	if utils.FileExists(storedExtraLocalNetowkrDataPath) {
+		extraLocalNetworkDataPath := app.GetExtraLocalNetworkDataPath()
+		if err := binutils.CopyFile(storedExtraLocalNetowkrDataPath, extraLocalNetworkDataPath); err != nil {
+			return err
+		}
 	}
 
 	return nil

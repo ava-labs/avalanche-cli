@@ -17,7 +17,7 @@ import (
 )
 
 func checkHostsAreHealthy(hosts []*models.Host) ([]string, error) {
-	ux.Logger.PrintToUser("Checking if node(s) are healthy ...")
+	ux.Logger.PrintToUser("Checking if node(s) are healthy...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
@@ -61,7 +61,7 @@ func parseHealthyOutput(byteValue []byte) (bool, error) {
 }
 
 func checkHostsAreBootstrapped(hosts []*models.Host) ([]string, error) {
-	ux.Logger.PrintToUser("Checking if node(s) are bootstrapped to Primary Network ...")
+	ux.Logger.PrintToUser("Checking if node(s) are bootstrapped to Primary Network...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {

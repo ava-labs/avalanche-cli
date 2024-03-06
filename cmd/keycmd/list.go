@@ -298,7 +298,7 @@ func getStoredKeyInfo(
 		}
 		if _, ok := evmClients[network]; ok {
 			evmAddr := sk.C()
-			addrInfo, err := getEvmBasedChainAddrInfo("Evm", evmClients, network, evmAddr, "stored", keyName)
+			addrInfo, err := getEvmBasedChainAddrInfo(subnetName, evmClients, network, evmAddr, "stored", keyName)
 			if err != nil {
 				return nil, err
 			}

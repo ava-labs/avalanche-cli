@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -147,4 +148,9 @@ func GenerateDockerHostIPs(numNodes int) []string {
 		ips = append(ips, fmt.Sprintf("%s.%d", constants.E2ENetworkPrefix, i+1))
 	}
 	return ips
+}
+
+func RemoveLineCleanChars(s string) string {
+	re := regexp.MustCompile(`\r\x1b\[K`)
+	return re.ReplaceAllString(s, "")
 }

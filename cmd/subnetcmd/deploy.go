@@ -381,7 +381,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 
 		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin)
-		subnetID, blockchainID, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
+		deployInfo, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath)
 		if err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {
@@ -393,7 +393,15 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		flags := make(map[string]string)
 		flags[constants.Network] = network.Name()
 		metrics.HandleTracking(cmd, app, flags)
-		return app.UpdateSidecarNetworks(&sidecar, network, subnetID, ids.Empty, blockchainID)
+		return app.UpdateSidecarNetworks(
+			&sidecar,
+			network,
+			deployInfo.SubnetID,
+			ids.Empty,
+			deployInfo.BlockchainID,
+			deployInfo.TeleporterMessengerAddress,
+			deployInfo.TeleporterRegistryAddress,
+		)
 	}
 
 	// from here on we are assuming a public deploy
@@ -536,7 +544,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
-	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, transferSubnetOwnershipTxID, blockchainID)
+	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, transferSubnetOwnershipTxID, blockchainID, "", "")
 }
 
 func getControlKeys(kc *keychain.Keychain) ([]string, bool, error) {
@@ -838,7 +846,7 @@ func CheckForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.Statu
 				)
 			}
 			desiredAvagoVersion = runningAvagoVersion
-		} else if runningAvagoVersion != userProvidedAvagoVersion {
+		} else if runningAvagoVersion != strings.Split(userProvidedAvagoVersion, "-")[0] {
 			// user wants a specific version
 			return "", errors.New("incompatible avalanchego version selected")
 		}
@@ -846,6 +854,16 @@ func CheckForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.Statu
 		// find latest avago version for this rpc version
 		desiredAvagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(
 			app, configuredRPCVersion, constants.AvalancheGoCompatibilityURL)
+		if err == vm.ErrNoAvagoVersion {
+			latestPreReleaseVersion, err := app.Downloader.GetLatestPreReleaseVersion(
+				constants.AvaLabsOrg,
+				constants.AvalancheGoRepoName,
+			)
+			if err != nil {
+				return "", err
+			}
+			return latestPreReleaseVersion, nil
+		}
 		if err != nil {
 			return "", err
 		}
@@ -866,6 +884,17 @@ func HasSubnetEVMGenesis(subnetName string) (bool, error) {
 		return false, nil
 	}
 	return true, nil
+}
+
+func jsonIsSubnetEVMGenesis(jsonBytes []byte) bool {
+	genesis, err := app.LoadEvmGenesisFromJSON(jsonBytes)
+	if err != nil {
+		return false
+	}
+	if err := genesis.Verify(); err != nil {
+		return false
+	}
+	return true
 }
 
 func promptOwners(

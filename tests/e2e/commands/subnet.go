@@ -38,7 +38,16 @@ func CreateSubnetEvmConfigWithVersion(subnetName string, genesisPath string, ver
 	gomega.Expect(exists).Should(gomega.BeFalse())
 
 	// Create config
-	cmdArgs := []string{SubnetCmd, "create", "--genesis", genesisPath, "--evm", subnetName, "--" + constants.SkipUpdateFlag}
+	cmdArgs := []string{
+		SubnetCmd,
+		"create",
+		"--genesis",
+		genesisPath,
+		"--evm",
+		subnetName,
+		"--" + constants.SkipUpdateFlag,
+		"--teleporter=false",
+	}
 	if version == "" {
 		cmdArgs = append(cmdArgs, "--latest")
 	} else {
@@ -118,6 +127,7 @@ func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) 
 		"--custom-vm-path",
 		vmPath,
 		"--"+constants.SkipUpdateFlag,
+		"--teleporter=false",
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {

@@ -16,9 +16,13 @@ import (
 	"github.com/onsi/gomega"
 )
 
-const e2eKeyPairName = "runner-avalanche-cli-keypair"
+const (
+	e2eKeyPairName = "runner-avalanche-cli-keypair"
+	ExpectFail     = false
+	ExpectSuccess  = true
+)
 
-func NodeCreate(network, version string, numNodes int, separateMonitoring bool) string {
+func NodeCreate(network, version string, numNodes int, separateMonitoring bool, numAPINodes int, expectSuccess bool) string {
 	home, err := os.UserHomeDir()
 	gomega.Expect(err).Should(gomega.BeNil())
 	_, err = os.Open(filepath.Join(home, ".ssh", e2eKeyPairName))
@@ -42,11 +46,12 @@ func NodeCreate(network, version string, numNodes int, separateMonitoring bool) 
 		"--num-nodes="+strconv.Itoa(numNodes),
 		"--"+network,
 		"--node-type=docker",
+		"--devnet-api-nodes="+strconv.Itoa(numAPINodes),
 	)
-	return runCmd(cmd)
+	return runCmd(cmd, expectSuccess)
 }
 
-func NodeDevnet(numNodes int) string {
+func NodeDevnet(numNodes int, numAPINodes int) string {
 	/* #nosec G204 */
 	cmd := exec.Command(
 		CLIBinary,
@@ -57,10 +62,11 @@ func NodeDevnet(numNodes int) string {
 		"--latest-avalanchego-version=true",
 		"--region=local",
 		"--num-nodes="+strconv.Itoa(numNodes),
+		"--devnet-api-nodes="+strconv.Itoa(numAPINodes),
 		"--devnet",
 		"--node-type=docker",
 	)
-	return runCmd(cmd)
+	return runCmd(cmd, ExpectSuccess)
 }
 
 func NodeStatus() string {
@@ -71,7 +77,7 @@ func NodeStatus() string {
 		"status",
 		constants.E2EClusterName,
 	)
-	return runCmd(cmd)
+	return runCmd(cmd, ExpectSuccess)
 }
 
 func NodeSSH(name, command string) string {
@@ -83,7 +89,7 @@ func NodeSSH(name, command string) string {
 		name,
 		command,
 	)
-	return runCmd(cmd)
+	return runCmd(cmd, ExpectSuccess)
 }
 
 func ConfigMetrics() {
@@ -105,7 +111,7 @@ func NodeList() string {
 		"node",
 		"list",
 	)
-	return runCmd(cmd)
+	return runCmd(cmd, ExpectSuccess)
 }
 
 func NodeWhitelistSSH(sshPubKey string) string {
@@ -118,7 +124,7 @@ func NodeWhitelistSSH(sshPubKey string) string {
 		"--ssh",
 		"\""+sshPubKey+"\"",
 	)
-	return runCmd(cmd)
+	return runCmd(cmd, ExpectSuccess)
 }
 
 func NodeUpgrade() string {
@@ -129,7 +135,7 @@ func NodeUpgrade() string {
 		"upgrade",
 		constants.E2EClusterName,
 	)
-	return runCmd(cmd)
+	return runCmd(cmd, ExpectSuccess)
 }
 
 type StaticConfig struct {
@@ -154,13 +160,18 @@ func ParsePrometheusYamlConfig(filePath string) PrometheusConfig {
 	return prometheusConfig
 }
 
-func runCmd(cmd *exec.Cmd) string {
+func runCmd(cmd *exec.Cmd, expectSuccess bool) string {
 	cmd.Env = os.Environ()
-	fmt.Println("About to run: " + cmd.String())
-	output, err := cmd.Output()
+	fmt.Println("About to run: " + cmd.String()) //nolint:goconst
+	output, err := cmd.CombinedOutput()
 	fmt.Println("---------------->")
 	fmt.Println(string(output))
+	fmt.Println(err)
 	fmt.Println("---------------->")
-	gomega.Expect(err).Should(gomega.BeNil())
+	if expectSuccess {
+		gomega.Expect(err).Should(gomega.BeNil())
+	} else {
+		gomega.Expect(err).Should(gomega.Not(gomega.BeNil()))
+	}
 	return string(output)
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -160,7 +161,7 @@ func sshHosts(hosts []*models.Host, cmd string) error {
 }
 
 func printClusterConnectionString(clusterName string, networkName string) error {
-	ux.Logger.PrintToUser("Cluster %q (%s)", clusterName, networkName)
+	ux.Logger.PrintToUser("Cluster: %s (%s)", logging.LightBlue.Wrap(clusterName), logging.Green.Wrap(networkName))
 	clusterHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err

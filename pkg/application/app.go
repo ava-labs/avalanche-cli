@@ -98,6 +98,42 @@ func (app *Avalanche) GetAvalanchegoBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.AvalancheGoInstallDir)
 }
 
+func (app *Avalanche) GetTeleporterBinDir() string {
+	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.TeleporterInstallDir)
+}
+
+func (app *Avalanche) GetAWMRelayerBinDir() string {
+	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.AWMRelayerInstallDir)
+}
+
+func (app *Avalanche) GetAWMRelayerStorageDir() string {
+	return filepath.Join(app.GetRunDir(), constants.AWMRelayerStorageDir)
+}
+
+func (app *Avalanche) GetAWMRelayerConfigPath() string {
+	return filepath.Join(app.GetRunDir(), constants.AWMRelayerConfigFilename)
+}
+
+func (app *Avalanche) GetAWMRelayerLogPath() string {
+	return filepath.Join(app.GetRunDir(), constants.AWMRelayerLogFilename)
+}
+
+func (app *Avalanche) GetAWMRelayerRunPath() string {
+	return filepath.Join(app.GetRunDir(), constants.AWMRelayerRunFilename)
+}
+
+func (app *Avalanche) GetAWMRelayerSnapshotConfsDir() string {
+	return filepath.Join(app.GetSnapshotsDir(), constants.AWMRelayerSnapshotConfsDir)
+}
+
+func (app *Avalanche) GetExtraLocalNetworkDataPath() string {
+	return filepath.Join(app.GetRunDir(), constants.ExtraLocalNetworkDataFilename)
+}
+
+func (app *Avalanche) GetExtraLocalNetworkSnapshotsDir() string {
+	return filepath.Join(app.GetSnapshotsDir(), constants.ExtraLocalNetworkDataSnapshotsDir)
+}
+
 func (app *Avalanche) GetSubnetEVMBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.SubnetEVMInstallDir)
 }
@@ -363,9 +399,12 @@ func (app *Avalanche) LoadEvmGenesis(subnetName string) (core.Genesis, error) {
 	if err != nil {
 		return core.Genesis{}, err
 	}
+	return app.LoadEvmGenesisFromJSON(jsonBytes)
+}
 
+func (*Avalanche) LoadEvmGenesisFromJSON(jsonBytes []byte) (core.Genesis, error) {
 	var gen core.Genesis
-	err = json.Unmarshal(jsonBytes, &gen)
+	err := json.Unmarshal(jsonBytes, &gen)
 	return gen, err
 }
 
@@ -444,6 +483,8 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	subnetID ids.ID,
 	transferSubnetOwnershipTxID ids.ID,
 	blockchainID ids.ID,
+	teleporterMessengerAddress string,
+	teleporterRegistryAddress string,
 ) error {
 	if sc.Networks == nil {
 		sc.Networks = make(map[string]models.NetworkData)
@@ -453,6 +494,8 @@ func (app *Avalanche) UpdateSidecarNetworks(
 		TransferSubnetOwnershipTxID: transferSubnetOwnershipTxID,
 		BlockchainID:                blockchainID,
 		RPCVersion:                  sc.RPCVersion,
+		TeleporterMessengerAddress:  teleporterMessengerAddress,
+		TeleporterRegistryAddress:   teleporterRegistryAddress,
 	}
 	if err := app.UpdateSidecar(sc); err != nil {
 		return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)

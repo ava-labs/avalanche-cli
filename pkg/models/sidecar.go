@@ -12,6 +12,8 @@ type NetworkData struct {
 	TransferSubnetOwnershipTxID ids.ID
 	BlockchainID                ids.ID
 	RPCVersion                  int
+	TeleporterMessengerAddress  string
+	TeleporterRegistryAddress   string
 }
 
 type PermissionlessValidators struct {
@@ -43,6 +45,10 @@ type Sidecar struct {
 	CustomVMRepoURL     string
 	CustomVMBranch      string
 	CustomVMBuildScript string
+	// Teleporter related
+	TeleporterReady   bool
+	TeleporterKey     string
+	TeleporterVersion string
 	// SubnetEVM based VM's only
 	SubnetEVMMainnetChainID uint
 }
