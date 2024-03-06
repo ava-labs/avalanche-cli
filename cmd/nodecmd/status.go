@@ -234,9 +234,9 @@ func printOutput(
 		ux.Logger.PrintToUser("All nodes in cluster %s are %s Subnet %s", logging.LightBlue.Wrap(clusterName), status, subnetName)
 	}
 	ux.Logger.PrintToUser("")
-	tit := fmt.Sprintf("STATUS FOR CLUSTER:%s", logging.LightBlue.Wrap(clusterName))
+	tit := fmt.Sprintf("STATUS FOR CLUSTER: %s", logging.LightBlue.Wrap(clusterName))
 	ux.Logger.PrintToUser(tit)
-	ux.Logger.PrintToUser(strings.Repeat("=", len(tit)))
+	ux.Logger.PrintToUser(strings.Repeat("=", len(removeColors(tit))))
 	ux.Logger.PrintToUser("")
 	header := []string{"Cloud ID", "Node ID", "IP", "Network", "Avago Version", "Primary Network", "Healthy"}
 	if subnetName != "" {
@@ -276,4 +276,32 @@ func printOutput(
 		table.Append(row)
 	}
 	table.Render()
+}
+
+func removeColors(s string) string {
+	codes := []logging.Color{
+		logging.Black,
+		logging.DarkGray,
+		logging.Red,
+		logging.LightRed,
+		logging.Green,
+		logging.LightGreen,
+		logging.Orange,
+		logging.Yellow,
+		logging.Blue,
+		logging.LightBlue,
+		logging.Purple,
+		logging.LightPurple,
+		logging.Cyan,
+		logging.LightCyan,
+		logging.LightGray,
+		logging.White,
+		logging.Reset,
+		logging.Bold,
+		logging.Reverse,
+	}
+	for _, c := range codes {
+		s = strings.ReplaceAll(s, string(c), "")
+	}
+	return s
 }
