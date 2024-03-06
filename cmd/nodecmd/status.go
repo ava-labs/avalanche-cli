@@ -255,7 +255,7 @@ func printOutput(
 			healthyStatus = logging.Red.Wrap("UNHEALTHY")
 		}
 		clusterConf := clustersConfig.Clusters[clusterName]
-		nodeType := "ANC"
+		nodeType := "NODE"
 		if clusterConf.IsAPIHost(ansibleHosts[ansibleHostID]) {
 			nodeType = "API"
 		}
