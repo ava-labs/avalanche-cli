@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	"github.com/pborman/ansi"
 )
 
 var (
@@ -34,16 +35,19 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 	ginkgo.It("can't create a fuji node with devnet api", func() {
 		output := commands.NodeCreate("fuji", "", 1, false, 1, commands.ExpectFail)
 		fmt.Println(output)
+		gomega.Expect(output).To(gomega.ContainSubstring("Error: api nodes can only be created in devnet"))
 	})
 	ginkgo.It("can create a node", func() {
-		output := commands.NodeDevnet(NumNodes, NumAPINodes)
+		outputB, err := ansi.Strip([]byte(commands.NodeDevnet(NumNodes, NumAPINodes)))
+		gomega.Expect(err).Should(gomega.BeNil())
+		output := string(outputB)
 		fmt.Println(output)
 		gomega.Expect(output).To(gomega.ContainSubstring("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 		// parse hostName
 		// Parse validator node
 		re := regexp.MustCompile(`Cloud Instance ID: (\S+) \| Public IP:(\S+) \| NodeID-(\S+)`)
 		match := re.FindStringSubmatch(output)
-		if len(match) >= 4 {
+		if len(match) >= 3 {
 			hostName = match[1]
 			NodeID = fmt.Sprintf("NodeID-%s", match[3])
 			fmt.Println(hostName)
@@ -56,7 +60,7 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 		// Parse API node
 		apiRe := regexp.MustCompile(`\[API\] Cloud Instance ID: (\S+) \| Public IP:(\S+) \| NodeID-(\S+)`)
 		apiMatch := apiRe.FindStringSubmatch(output)
-		if len(apiMatch) >= 4 {
+		if len(apiMatch) >= 3 {
 			apiHostName = apiMatch[1]
 			apiNodeID = fmt.Sprintf("NodeID-%s", apiMatch[3])
 			fmt.Println(apiHostName)

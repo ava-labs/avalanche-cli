@@ -50,7 +50,7 @@ func NodeCreate(network, version string, numNodes int, separateMonitoring bool, 
 	)
 	cmd.Env = os.Environ()
 	fmt.Println("About to run: " + cmd.String()) //nolint:goconst
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	fmt.Println("---------------->")
 	fmt.Println(string(output))
 	fmt.Println(err)
