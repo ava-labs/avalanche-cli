@@ -1249,6 +1249,9 @@ func getRegionsNodeNum(cloudName string) (
 		if err != nil {
 			return nil, err
 		}
+		if createDevnet {
+			numNodes += uint32(devnetNumAPINodes)
+		}
 		if numNodes > uint32(math.MaxInt32) {
 			return nil, fmt.Errorf("number of nodes exceeds the range of a signed 32-bit integer")
 		}
