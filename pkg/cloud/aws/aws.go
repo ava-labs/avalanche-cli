@@ -310,7 +310,7 @@ func (c *AwsCloud) StopInstance(instanceID, publicIP string, releasePublicIP boo
 	}
 	if releasePublicIP {
 		if publicIP == "" {
-			ux.Logger.PrintToUser("Unabled to remove public IP for instannce %s: undefined", instanceID)
+			ux.Logger.RedXToUser("Unabled to remove public IP for instannce %s: undefined", instanceID)
 		} else {
 			describeAddressInput := &ec2.DescribeAddressesInput{
 				Filters: []types.Filter{
