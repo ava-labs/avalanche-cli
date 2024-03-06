@@ -259,12 +259,11 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		}
 		ux.Logger.PrintToUser("Separate instance %s provisioned successfully", separateHosts[0].NodeID)
 	}
-	ux.Logger.PrintToUser("Building load test binary ...")
+	ux.Logger.PrintToUser("Setting up load test environment ...")
 	if err := ssh.RunSSHBuildLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Successfully built load test binary!")
-	ux.Logger.PrintToUser("Running load test ...")
+	ux.Logger.PrintToUser("Successfully set up load test environment!")
 	if err := ssh.RunSSHRunLoadTest(separateHosts[0], loadTestCmd); err != nil {
 		return err
 	}
