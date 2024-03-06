@@ -756,9 +756,9 @@ func saveExternalHostConfig(externalHostConfig models.RegionConfig, hostRegion, 
 		KeyPair:       externalHostConfig.KeyPair,
 		CertPath:      externalHostConfig.CertFilePath,
 		SecurityGroup: externalHostConfig.SecurityGroup,
-		ElasticIP:     publicIP,
+		ElasticIP:     externalHostConfig.PublicIPs[0],
 		CloudService:  cloudService,
-    UseStaticIP:   useStaticIP,
+		UseStaticIP:   useStaticIP,
 		IsMonitor:     true,
 	}
 	if err := app.CreateNodeCloudConfigFile(externalHostConfig.InstanceIDs[0], &nodeConfig); err != nil {
