@@ -18,7 +18,7 @@ import (
 
 const e2eKeyPairName = "runner-avalanche-cli-keypair"
 
-func NodeCreate(network, version string, numNodes int, separateMonitoring bool) string {
+func NodeCreate(network, version string, numNodes int, separateMonitoring bool, numAPINodes int) string {
 	home, err := os.UserHomeDir()
 	gomega.Expect(err).Should(gomega.BeNil())
 	_, err = os.Open(filepath.Join(home, ".ssh", e2eKeyPairName))
@@ -42,6 +42,7 @@ func NodeCreate(network, version string, numNodes int, separateMonitoring bool) 
 		"--num-nodes="+strconv.Itoa(numNodes),
 		"--"+network,
 		"--node-type=docker",
+		"--devnet-api-nodes="+strconv.Itoa(numAPINodes),
 	)
 	cmd.Env = os.Environ()
 	fmt.Println("About to run: " + cmd.String()) //nolint:goconst

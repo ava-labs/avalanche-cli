@@ -31,6 +31,11 @@ const (
 )
 
 var _ = ginkgo.Describe("[Node devnet]", func() {
+	ginkgo.It("can't create a fuji node with devnet api", func() {
+		output := commands.NodeCreate("fuji", "", 1, false, 1)
+		fmt.Println(output)
+		gomega.Expect(output).To(gomega.ContainSubstring("Error: api nodes can only be created in devnet"))
+	})
 	ginkgo.It("can create a node", func() {
 		output := commands.NodeDevnet(NumNodes, NumAPINodes)
 		fmt.Println(output)
