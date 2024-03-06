@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
 	"github.com/olekukonko/tablewriter"
+	"github.com/pborman/ansi"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 )
@@ -290,29 +291,9 @@ func printOutput(
 }
 
 func removeColors(s string) string {
-	codes := []logging.Color{
-		logging.Black,
-		logging.DarkGray,
-		logging.Red,
-		logging.LightRed,
-		logging.Green,
-		logging.LightGreen,
-		logging.Orange,
-		logging.Yellow,
-		logging.Blue,
-		logging.LightBlue,
-		logging.Purple,
-		logging.LightPurple,
-		logging.Cyan,
-		logging.LightCyan,
-		logging.LightGray,
-		logging.White,
-		logging.Reset,
-		logging.Bold,
-		logging.Reverse,
+	bs, err := ansi.Strip([]byte(s))
+	if err != nil {
+		return s
 	}
-	for _, c := range codes {
-		s = strings.ReplaceAll(s, string(c), "")
-	}
-	return s
+	return string(bs)
 }
