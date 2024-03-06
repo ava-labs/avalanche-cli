@@ -109,6 +109,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 	}
 	cloudService := ""
 	if existingSeparateInstance != "" {
+		ux.Logger.PrintToUser("Will be using cloud instance %s to run load test...", existingSeparateInstance)
 		separateNodeConfig, err := app.LoadClusterNodeConfig(existingSeparateInstance)
 		if err != nil {
 			return err
@@ -139,10 +140,6 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 	sgRegions := []string{}
 	for index := range filteredSGList {
 		sgRegions = append(sgRegions, filteredSGList[index].region)
-	}
-	existingSeparateInstance, err = getExistingMonitoringInstance(clusterName)
-	if err != nil {
-		return err
 	}
 	switch cloudService {
 	case constants.AWSCloudService:
@@ -262,12 +259,16 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		}
 		ux.Logger.PrintToUser("Separate instance %s provisioned successfully", separateHosts[0].NodeID)
 	}
+	ux.Logger.PrintToUser("Building load test binary ...")
 	if err := ssh.RunSSHBuildLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd); err != nil {
 		return err
 	}
+	ux.Logger.PrintToUser("Successfully built load test binary!")
+	ux.Logger.PrintToUser("Running load test ...")
 	if err := ssh.RunSSHRunLoadTest(separateHosts[0], loadTestCmd); err != nil {
 		return err
 	}
+	ux.Logger.PrintToUser("Load test successfully run!")
 	return nil
 }
 
@@ -287,7 +288,7 @@ func GetLoadTestScript(app *application.Avalanche) error {
 		}
 	}
 	if loadTestBuildCmd == "" {
-		loadTestCmd, err = app.Prompt.CaptureString("What is the build command?")
+		loadTestBuildCmd, err = app.Prompt.CaptureString("What is the build command?")
 		if err != nil {
 			return err
 		}
