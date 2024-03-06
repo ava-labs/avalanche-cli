@@ -102,7 +102,7 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().BoolVar(&sameMonitoringInstance, "same-monitoring-instance", false, "host monitoring for a cloud servers on the same instance")
 	cmd.Flags().BoolVar(&separateMonitoringInstance, "separate-monitoring-instance", false, "host monitoring for all cloud servers on a separate instance")
 	cmd.Flags().BoolVar(&skipMonitoring, "skip-monitoring", false, "don't set up monitoring in created nodes")
-	cmd.Flags().IntVar(&devnetNumAPINodes, "devnet-api-nodes", 0, "number of API nodes(nodes without stake) to create in the new Devnet")
+	cmd.Flags().IntSliceVar(&devnetNumAPINodes, "devnet-api-nodes", []int{}, "number of API nodes(nodes without stake) to create in the new Devnet")
 	return cmd
 }
 
