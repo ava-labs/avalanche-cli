@@ -452,7 +452,16 @@ func createNodes(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	if err = CreateClusterNodeConfig(network, cloudConfigMap, monitoringNodeConfig, monitoringHostRegion, clusterName, cloudService, separateMonitoringInstance); err != nil {
+	if err = CreateClusterNodeConfig(
+		network,
+		cloudConfigMap,
+		monitoringNodeConfig,
+		monitoringHostRegion,
+		clusterName,
+		cloudService,
+		separateMonitoringInstance,
+		setUpMonitoring,
+	); err != nil {
 		return err
 	}
 	if cloudService == constants.GCPCloudService {
@@ -687,7 +696,16 @@ func promptSetUpMonitoring() (bool, bool, error) {
 
 // CreateClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
 // also creates cluster config in .avalanche-cli/nodes storing various key pair and security group info for all clusters
-func CreateClusterNodeConfig(network models.Network, cloudConfigMap models.CloudConfig, monitorCloudConfig models.RegionConfig, monitoringHostRegion, clusterName, cloudService string, separateMonitoringInstance bool) error {
+func CreateClusterNodeConfig(
+	network models.Network,
+	cloudConfigMap models.CloudConfig,
+	monitorCloudConfig models.RegionConfig,
+	monitoringHostRegion,
+	clusterName,
+	cloudService string,
+	separateMonitoringInstance bool,
+	setUpMonitoring bool,
+) error {
 	for region, cloudConfig := range cloudConfigMap {
 		for i := range cloudConfig.InstanceIDs {
 			publicIP := ""
@@ -704,6 +722,7 @@ func CreateClusterNodeConfig(network models.Network, cloudConfigMap models.Cloud
 				ElasticIP:     publicIP,
 				CloudService:  cloudService,
 				UseStaticIP:   useStaticIP,
+				IsMonitor:     setUpMonitoring,
 			}
 			err := app.CreateNodeCloudConfigFile(cloudConfig.InstanceIDs[i], &nodeConfig)
 			if err != nil {
@@ -727,6 +746,8 @@ func CreateClusterNodeConfig(network models.Network, cloudConfigMap models.Cloud
 				SecurityGroup: monitorCloudConfig.SecurityGroup,
 				ElasticIP:     publicIP,
 				CloudService:  cloudService,
+				UseStaticIP:   useStaticIP,
+				IsMonitor:     true,
 			}
 			if err := app.CreateNodeCloudConfigFile(monitorCloudConfig.InstanceIDs[0], &nodeConfig); err != nil {
 				return err
