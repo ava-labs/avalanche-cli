@@ -309,23 +309,27 @@ func (c *AwsCloud) StopInstance(instanceID, publicIP string, releasePublicIP boo
 		return err
 	}
 	if releasePublicIP {
-		describeAddressInput := &ec2.DescribeAddressesInput{
-			Filters: []types.Filter{
-				{Name: aws.String("public-ip"), Values: []string{publicIP}},
-			},
-		}
-		addressOutput, err := c.ec2Client.DescribeAddresses(c.ctx, describeAddressInput)
-		if err != nil {
-			return err
-		}
-		if len(addressOutput.Addresses) == 0 {
-			return ErrNoAddressFound
-		}
-		releaseAddressInput := &ec2.ReleaseAddressInput{
-			AllocationId: aws.String(*addressOutput.Addresses[0].AllocationId),
-		}
-		if _, err = c.ec2Client.ReleaseAddress(c.ctx, releaseAddressInput); err != nil {
-			return err
+		if publicIP == "" {
+			ux.Logger.PrintToUser("Unabled to remove public IP for instannce %s: undefined", instanceID)
+		} else {
+			describeAddressInput := &ec2.DescribeAddressesInput{
+				Filters: []types.Filter{
+					{Name: aws.String("public-ip"), Values: []string{publicIP}},
+				},
+			}
+			addressOutput, err := c.ec2Client.DescribeAddresses(c.ctx, describeAddressInput)
+			if err != nil {
+				return err
+			}
+			if len(addressOutput.Addresses) == 0 {
+				return ErrNoAddressFound
+			}
+			releaseAddressInput := &ec2.ReleaseAddressInput{
+				AllocationId: aws.String(*addressOutput.Addresses[0].AllocationId),
+			}
+			if _, err = c.ec2Client.ReleaseAddress(c.ctx, releaseAddressInput); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

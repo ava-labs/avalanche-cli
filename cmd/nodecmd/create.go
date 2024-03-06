@@ -733,10 +733,6 @@ func CreateClusterNodeConfig(
 			}
 		}
 		if separateMonitoringInstance {
-			publicIP := ""
-			if useStaticIP {
-				publicIP = monitorCloudConfig.PublicIPs[0]
-			}
 			nodeConfig := models.NodeConfig{
 				NodeID:        monitorCloudConfig.InstanceIDs[0],
 				Region:        monitoringHostRegion,
@@ -744,7 +740,7 @@ func CreateClusterNodeConfig(
 				KeyPair:       monitorCloudConfig.KeyPair,
 				CertPath:      monitorCloudConfig.CertFilePath,
 				SecurityGroup: monitorCloudConfig.SecurityGroup,
-				ElasticIP:     publicIP,
+				ElasticIP:     monitorCloudConfig.PublicIPs[0],
 				CloudService:  cloudService,
 				UseStaticIP:   useStaticIP,
 				IsMonitor:     true,
@@ -1196,7 +1192,7 @@ func requestCloudAuth(cloudName string) error {
 	if err != nil {
 		return err
 	}
-	if err := app.Conf.SetConfigValue(constants.ConfigAutorizeCloudAccessKey, yes); err != nil {
+	if err := app.Conf.SetConfigValue(constants.ConfigAuthorizeCloudAccessKey, yes); err != nil {
 		return err
 	}
 	if !yes {

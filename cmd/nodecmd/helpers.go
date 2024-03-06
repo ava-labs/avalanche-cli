@@ -170,5 +170,5 @@ func disconnectHosts(hosts []*models.Host) {
 }
 
 func authorizedAccessFromSettings() bool {
-	return app.Conf.GetConfigBoolValue(constants.ConfigAutorizeCloudAccessKey)
+	return app.Conf.GetConfigBoolValue(constants.ConfigAuthorizeCloudAccessKey)
 }

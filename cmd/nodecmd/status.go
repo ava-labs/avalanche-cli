@@ -141,7 +141,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 		}
 		if len(hostsToCheckSyncStatus) != 0 {
 			ux.Logger.PrintToUser("Getting subnet sync status of node(s)")
-			hostsToCheck := utils.Filter(hosts, func(h *models.Host) bool { return slices.Contains(hostsToCheckSyncStatus, h.NodeID) })
+			hostsToCheck := utils.Filter(hosts, func(h *models.Host) bool { return slices.Contains(hostsToCheckSyncStatus, h.GetCloudID()) })
 			wg := sync.WaitGroup{}
 			wgResults := models.NodeResults{}
 			for _, host := range hostsToCheck {
