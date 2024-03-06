@@ -246,10 +246,16 @@ func createNodes(_ *cobra.Command, args []string) error {
 				InstanceType:      "docker",
 			},
 		}
-		for i, ip := range cloudConfigMap["docker"].PublicIPs {
+		currentRegionConfig := cloudConfigMap["docker"]
+		for i, ip := range currentRegionConfig.PublicIPs {
 			publicIPMap[dockerHostIDs[i]] = ip
-			// no api nodes for E2E testing
 		}
+		_, apiNodeIDs := utils.SplitSliceAt(currentRegionConfig.InstanceIDs, len(currentRegionConfig.InstanceIDs)-devnetNumAPINodes)
+		currentRegionConfig.APIInstanceIDs = apiNodeIDs
+		for _, node := range currentRegionConfig.APIInstanceIDs {
+			apiNodeIPMap[node] = publicIPMap[node]
+		}
+		cloudConfigMap["docker"] = currentRegionConfig
 		if separateMonitoringInstance {
 			monitoringDockerHostID := utils.GenerateDockerHostIDs(1)
 			dockerHostIDs = append(dockerHostIDs, monitoringDockerHostID[0])
