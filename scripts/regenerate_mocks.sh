@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # NOTE: This script can only generate mocks from interfaces inside this repository.
