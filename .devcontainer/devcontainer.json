@@ -1,0 +1,13 @@
+// For format details, see https://aka.ms/devcontainer.json.
+{
+	"name": "Avalanche-CLI Dev Container",
+
+	"image": "golang:latest",
+	"runArgs": ["--network=host"],
+
+	"remoteEnv": {
+		"PATH": "${containerEnv:PATH}:${containerWorkspaceFolder}/bin"
+	},
+	
+	"postCreateCommand": "scripts/build.sh"
+}

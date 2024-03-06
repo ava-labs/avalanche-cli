@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
 	"github.com/olekukonko/tablewriter"
+	"github.com/pborman/ansi"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 )
@@ -51,14 +52,23 @@ func statusNode(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	ansibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
+	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {
 		return err
 	}
-	hostIDs, err := utils.MapWithError(ansibleHostIDs, func(s string) (string, error) { _, o, err := models.HostAnsibleIDToCloudID(s); return o, err })
-	if err != nil {
-		return err
+	clusterConf := clustersConfig.Clusters[clusterName]
+	var blockchainID ids.ID
+	if subnetName != "" {
+		sc, err := app.LoadSidecar(subnetName)
+		if err != nil {
+			return err
+		}
+		blockchainID = sc.Networks[clusterConf.Network.Name()].BlockchainID
+		if blockchainID == ids.Empty {
+			return ErrNoBlockchainID
+		}
 	}
+	hostIDs := utils.Filter(clusterConf.GetCloudIDs(), clusterConf.IsAvalancheGoHost)
 	nodeIDs, err := utils.MapWithError(hostIDs, func(s string) (string, error) {
 		n, err := getNodeID(app.GetNodeInstanceDirPath(s))
 		return n.String(), err
@@ -84,12 +94,13 @@ func statusNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	ux.Logger.PrintToUser("Checking if node(s) are healthy...")
 	notHealthyNodes, err := checkHostsAreHealthy(hosts)
 	if err != nil {
 		return err
 	}
 
-	ux.Logger.PrintToUser("Getting avalanchego version of node(s)")
+	ux.Logger.PrintToUser("Getting avalanchego version of node(s)...")
 
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
@@ -98,13 +109,13 @@ func statusNode(_ *cobra.Command, args []string) error {
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
 			if resp, err := ssh.RunSSHCheckAvalancheGoVersion(host); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
+				nodeResults.AddResult(host.GetCloudID(), nil, err)
 				return
 			} else {
 				if avalancheGoVersion, _, err := parseAvalancheGoOutput(resp); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
+					nodeResults.AddResult(host.GetCloudID(), nil, err)
 				} else {
-					nodeResults.AddResult(host.NodeID, avalancheGoVersion, err)
+					nodeResults.AddResult(host.GetCloudID(), avalancheGoVersion, err)
 				}
 			}
 		}(&wgResults, host)
@@ -113,39 +124,26 @@ func statusNode(_ *cobra.Command, args []string) error {
 	if wgResults.HasErrors() {
 		return fmt.Errorf("failed to get avalanchego version for node(s) %s", wgResults.GetErrorHostMap())
 	}
-	avalanchegoVersionForNode := map[string]string{}
+	avagoVersions := map[string]string{}
 	for nodeID, avalanchegoVersion := range wgResults.GetResultMap() {
-		avalanchegoVersionForNode[nodeID] = fmt.Sprintf("%v", avalanchegoVersion)
+		avagoVersions[nodeID] = fmt.Sprintf("%v", avalanchegoVersion)
 	}
 
 	notSyncedNodes := []string{}
 	subnetSyncedNodes := []string{}
 	subnetValidatingNodes := []string{}
 	if subnetName != "" {
-		clustersConfig, err := app.LoadClustersConfig()
-		if err != nil {
-			return err
-		}
-		network := clustersConfig.Clusters[clusterName].Network
-		sc, err := app.LoadSidecar(subnetName)
-		if err != nil {
-			return err
-		}
-		blockchainID := sc.Networks[network.Name()].BlockchainID
-		if blockchainID == ids.Empty {
-			return ErrNoBlockchainID
-		}
 		hostsToCheckSyncStatus := []string{}
-		for _, ansibleHostID := range ansibleHostIDs {
-			if slices.Contains(notBootstrappedNodes, ansibleHostID) {
-				notSyncedNodes = append(notSyncedNodes, ansibleHostID)
+		for _, hostID := range hostIDs {
+			if slices.Contains(notBootstrappedNodes, hostID) {
+				notSyncedNodes = append(notSyncedNodes, hostID)
 			} else {
-				hostsToCheckSyncStatus = append(hostsToCheckSyncStatus, ansibleHostID)
+				hostsToCheckSyncStatus = append(hostsToCheckSyncStatus, hostID)
 			}
 		}
 		if len(hostsToCheckSyncStatus) != 0 {
 			ux.Logger.PrintToUser("Getting subnet sync status of node(s)")
-			hostsToCheck := utils.Filter(hosts, func(h *models.Host) bool { return slices.Contains(hostsToCheckSyncStatus, h.NodeID) })
+			hostsToCheck := utils.Filter(hosts, func(h *models.Host) bool { return slices.Contains(hostsToCheckSyncStatus, h.GetCloudID()) })
 			wg := sync.WaitGroup{}
 			wgResults := models.NodeResults{}
 			for _, host := range hostsToCheck {
@@ -153,14 +151,14 @@ func statusNode(_ *cobra.Command, args []string) error {
 				go func(nodeResults *models.NodeResults, host *models.Host) {
 					defer wg.Done()
 					if syncstatus, err := ssh.RunSSHSubnetSyncStatus(host, blockchainID.String()); err != nil {
-						nodeResults.AddResult(host.NodeID, nil, err)
+						nodeResults.AddResult(host.GetCloudID(), nil, err)
 						return
 					} else {
 						if subnetSyncStatus, err := parseSubnetSyncOutput(syncstatus); err != nil {
-							nodeResults.AddResult(host.NodeID, nil, err)
+							nodeResults.AddResult(host.GetCloudID(), nil, err)
 							return
 						} else {
-							nodeResults.AddResult(host.NodeID, subnetSyncStatus, err)
+							nodeResults.AddResult(host.GetCloudID(), subnetSyncStatus, err)
 						}
 					}
 				}(&wgResults, host)
@@ -181,21 +179,23 @@ func statusNode(_ *cobra.Command, args []string) error {
 			}
 		}
 	}
-	clustersConfig, err := app.LoadClustersConfig()
-	if err != nil {
-		return err
+	if clusterConf.MonitoringInstance != "" {
+		hostIDs = append(hostIDs, clusterConf.MonitoringInstance)
+		nodeIDs = append(nodeIDs, "")
 	}
-	ansibleHosts, err := ansible.GetHostMapfromAnsibleInventory(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return err
+	nodeConfigs := []models.NodeConfig{}
+	for _, hostID := range hostIDs {
+		nodeConfig, err := app.LoadClusterNodeConfig(hostID)
+		if err != nil {
+			return err
+		}
+		nodeConfigs = append(nodeConfigs, nodeConfig)
 	}
 	printOutput(
-		clustersConfig,
+		clusterConf,
 		hostIDs,
-		ansibleHostIDs,
-		ansibleHosts,
 		nodeIDs,
-		avalanchegoVersionForNode,
+		avagoVersions,
 		notHealthyNodes,
 		notBootstrappedNodes,
 		notSyncedNodes,
@@ -203,15 +203,14 @@ func statusNode(_ *cobra.Command, args []string) error {
 		subnetValidatingNodes,
 		clusterName,
 		subnetName,
+		nodeConfigs,
 	)
 	return nil
 }
 
 func printOutput(
-	clustersConfig models.ClustersConfig,
-	hostIDs []string,
-	ansibleHostIDs []string,
-	ansibleHosts map[string]*models.Host,
+	clusterConf models.ClusterConfig,
+	cloudIDs []string,
 	nodeIDs []string,
 	avagoVersions map[string]string,
 	notHealthyHosts []string,
@@ -221,6 +220,7 @@ func printOutput(
 	subnetValidatingHosts []string,
 	clusterName string,
 	subnetName string,
+	nodeConfigs []models.NodeConfig,
 ) {
 	if subnetName == "" && len(notBootstrappedHosts) == 0 {
 		ux.Logger.PrintToUser("All nodes in cluster %s are bootstrapped to Primary Network!", clusterName)
@@ -231,49 +231,70 @@ func printOutput(
 		if len(subnetSyncedHosts) == 0 {
 			status = "validators of"
 		}
-		ux.Logger.PrintToUser("All nodes in cluster %s are %s Subnet %s", clusterName, status, subnetName)
+		ux.Logger.PrintToUser("All nodes in cluster %s are %s Subnet %s", logging.LightBlue.Wrap(clusterName), status, subnetName)
 	}
 	ux.Logger.PrintToUser("")
-	tit := fmt.Sprintf("STATUS FOR CLUSTER: %s", clusterName)
+	tit := fmt.Sprintf("STATUS FOR CLUSTER: %s", logging.LightBlue.Wrap(clusterName))
 	ux.Logger.PrintToUser(tit)
-	ux.Logger.PrintToUser(strings.Repeat("=", len(tit)))
+	ux.Logger.PrintToUser(strings.Repeat("=", len(removeColors(tit))))
 	ux.Logger.PrintToUser("")
-	header := []string{"Cloud ID", "Node ID", "IP", "Network", "Avago Version", "Primary Network", "Healthy"}
+	header := []string{"Cloud ID", "Node ID", "IP", "Network", "Role", "Avago Version", "Primary Network", "Healthy"}
 	if subnetName != "" {
 		header = append(header, "Subnet "+subnetName)
 	}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetRowLine(true)
-	for i, ansibleHostID := range ansibleHostIDs {
-		boostrappedStatus := logging.Green.Wrap("BOOTSTRAPPED")
-		if slices.Contains(notBootstrappedHosts, ansibleHostID) {
-			boostrappedStatus = logging.Red.Wrap("NOT_BOOTSTRAPPED")
-		}
-		healthyStatus := logging.Green.Wrap("OK")
-		if slices.Contains(notHealthyHosts, ansibleHostID) {
-			healthyStatus = logging.Red.Wrap("UNHEALTHY")
+	for i, cloudID := range cloudIDs {
+		boostrappedStatus := ""
+		healthyStatus := ""
+		nodeIDStr := ""
+		avagoVersion := ""
+		roles := clusterConf.GetHostRoles(nodeConfigs[i])
+		if clusterConf.IsAvalancheGoHost(cloudID) {
+			boostrappedStatus = logging.Green.Wrap("BOOTSTRAPPED")
+			if slices.Contains(notBootstrappedHosts, cloudID) {
+				boostrappedStatus = logging.Red.Wrap("NOT_BOOTSTRAPPED")
+			}
+			healthyStatus = logging.Green.Wrap("OK")
+			if slices.Contains(notHealthyHosts, cloudID) {
+				healthyStatus = logging.Red.Wrap("UNHEALTHY")
+			}
+			nodeIDStr = nodeIDs[i]
+			avagoVersion = avagoVersions[cloudID]
 		}
 		row := []string{
-			hostIDs[i],
-			nodeIDs[i],
-			ansibleHosts[ansibleHostID].IP,
-			clustersConfig.Clusters[clusterName].Network.Name(),
-			avagoVersions[ansibleHostID],
+			cloudID,
+			logging.Green.Wrap(nodeIDStr),
+			nodeConfigs[i].ElasticIP,
+			clusterConf.Network.Name(),
+			strings.Join(roles, ","),
+			avagoVersion,
 			boostrappedStatus,
 			healthyStatus,
 		}
 		if subnetName != "" {
-			syncedStatus := logging.Red.Wrap("NOT_BOOTSTRAPPED")
-			if slices.Contains(subnetSyncedHosts, ansibleHostID) {
-				syncedStatus = logging.Green.Wrap("SYNCED")
-			}
-			if slices.Contains(subnetValidatingHosts, ansibleHostID) {
-				syncedStatus = logging.Green.Wrap("VALIDATING")
+			syncedStatus := ""
+			if clusterConf.MonitoringInstance != cloudID {
+				syncedStatus = logging.Red.Wrap("NOT_BOOTSTRAPPED")
+				if slices.Contains(subnetSyncedHosts, cloudID) {
+					syncedStatus = logging.Green.Wrap("SYNCED")
+				}
+				if slices.Contains(subnetValidatingHosts, cloudID) {
+					syncedStatus = logging.Green.Wrap("VALIDATING")
+				}
 			}
 			row = append(row, syncedStatus)
 		}
 		table.Append(row)
 	}
 	table.Render()
+}
+
+func removeColors(s string) string {
+	bs, err := ansi.Strip([]byte(s))
+	if err != nil {
+		return s
+	}
+	return string(bs)
 }

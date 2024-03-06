@@ -3,6 +3,7 @@
 package subnetcmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -14,7 +15,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/spf13/cobra"
@@ -40,6 +45,7 @@ var (
 	useLatestReleasedEvmVersion    bool
 	useLatestPreReleasedEvmVersion bool
 	useRepo                        bool
+	teleporterReady                bool
 
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
@@ -83,6 +89,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch")
 	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
 	cmd.Flags().BoolVar(&useRepo, "from-github-repo", false, "generate custom VM binary from github repository")
+	cmd.Flags().BoolVar(&teleporterReady, "teleporter", true, "generate a teleporter-ready vm")
 	return cmd
 }
 
@@ -196,7 +203,17 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 
 	switch subnetType {
 	case models.SubnetEvm:
-		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(app, subnetName, genesisFile, evmVersion, true, evmChainID, evmToken, evmDefaults)
+		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(
+			app,
+			subnetName,
+			genesisFile,
+			evmVersion,
+			true,
+			evmChainID,
+			evmToken,
+			evmDefaults,
+			teleporterReady,
+		)
 		if err != nil {
 			return err
 		}
@@ -218,6 +235,43 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return errors.New("not implemented")
 	}
 
+	if teleporterReady {
+		if isSubnetEVMGenesis := jsonIsSubnetEVMGenesis(genesisBytes); isSubnetEVMGenesis {
+			keyPath := app.GetKeyPath(constants.TeleporterKeyName)
+			var k *key.SoftKey
+			if utils.FileExists(keyPath) {
+				ux.Logger.PrintToUser("loading stored key %q for teleporter deploys", constants.TeleporterKeyName)
+				k, err = key.LoadSoft(models.LocalNetwork.ID, keyPath)
+				if err != nil {
+					return err
+				}
+			} else {
+				ux.Logger.PrintToUser("generating stored key %q for teleporter deploys", constants.TeleporterKeyName)
+				k, err = key.NewSoft(0)
+				if err != nil {
+					return err
+				}
+				if err := k.Save(keyPath); err != nil {
+					return err
+				}
+			}
+			ux.Logger.PrintToUser("  (evm address, genesis balance) = (%s, %v)", k.C(), teleporter.TeleporterPrefundedAddressBalance)
+			genesisBytes, err = addSubnetEVMGenesisPrefundedAddress(genesisBytes, k.C(), teleporter.TeleporterPrefundedAddressBalance.String())
+			if err != nil {
+				return err
+			}
+			// let's use latest versions for teleporter contract
+			teleporterVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.TeleporterRepoName))
+			if err != nil {
+				return err
+			}
+			ux.Logger.PrintToUser("using latest teleporter version (%s)", teleporterVersion)
+			sc.TeleporterReady = true
+			sc.TeleporterKey = constants.TeleporterKeyName
+			sc.TeleporterVersion = teleporterVersion
+		}
+	}
+
 	if err = app.WriteGenesisFile(subnetName, genesisBytes); err != nil {
 		return err
 	}
@@ -232,8 +286,29 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("Successfully created subnet configuration")
+	ux.Logger.GreenCheckmarkToUser("Successfully created subnet configuration")
 	return nil
+}
+
+func addSubnetEVMGenesisPrefundedAddress(genesisBytes []byte, address string, balance string) ([]byte, error) {
+	var genesisMap map[string]interface{}
+	if err := json.Unmarshal(genesisBytes, &genesisMap); err != nil {
+		return nil, err
+	}
+	allocI, ok := genesisMap["alloc"]
+	if !ok {
+		return nil, fmt.Errorf("alloc field not found on genesis")
+	}
+	alloc, ok := allocI.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("expected genesis alloc field to be map[string]interface, found %T", allocI)
+	}
+	trimmedAddress := strings.TrimPrefix(address, "0x")
+	alloc[trimmedAddress] = map[string]interface{}{
+		"balance": balance,
+	}
+	genesisMap["alloc"] = alloc
+	return json.MarshalIndent(genesisMap, "", "  ")
 }
 
 func sendMetrics(cmd *cobra.Command, repoName, subnetName string) error {

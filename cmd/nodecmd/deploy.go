@@ -49,6 +49,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer disconnectHosts(hosts)
+	ux.Logger.PrintToUser("Checking if node(s) are healthy...")
 	notHealthyNodes, err := checkHostsAreHealthy(hosts)
 	if err != nil {
 		return err

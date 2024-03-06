@@ -140,17 +140,17 @@ func TestDeployToLocal(t *testing.T) {
 	err = os.WriteFile(testSidecar.Name(), []byte(sidecar), constants.DefaultPerms755)
 	require.NoError(err)
 	// test actual deploy
-	s, b, err := testDeployer.DeployToLocalNetwork(testChainName, []byte(genesis), testGenesis.Name())
+	deployInfo, err := testDeployer.DeployToLocalNetwork(testChainName, []byte(genesis), testGenesis.Name())
 	require.NoError(err)
-	require.Equal(testSubnetID2, s.String())
-	require.Equal(testBlockChainID2, b.String())
+	require.Equal(testSubnetID2, deployInfo.SubnetID.String())
+	require.Equal(testBlockChainID2, deployInfo.BlockchainID.String())
 }
 
 func TestGetLatestAvagoVersion(t *testing.T) {
 	require := setupTest(t)
 
 	testVersion := "v1.99.9999"
-	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		resp := fmt.Sprintf(`{"some":"unimportant","fake":"data","tag_name":"%s","tag_name_was":"what we are interested in"}`, testVersion)
 		_, err := w.Write([]byte(resp))
 		require.NoError(err)

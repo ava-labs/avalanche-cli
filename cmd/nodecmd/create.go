@@ -27,6 +27,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 
@@ -246,10 +247,16 @@ func createNodes(_ *cobra.Command, args []string) error {
 				InstanceType:      "docker",
 			},
 		}
-		for i, ip := range cloudConfigMap["docker"].PublicIPs {
+		currentRegionConfig := cloudConfigMap["docker"]
+		for i, ip := range currentRegionConfig.PublicIPs {
 			publicIPMap[dockerHostIDs[i]] = ip
-			// no api nodes for E2E testing
 		}
+		_, apiNodeIDs := utils.SplitSliceAt(currentRegionConfig.InstanceIDs, len(currentRegionConfig.InstanceIDs)-devnetNumAPINodes)
+		currentRegionConfig.APIInstanceIDs = apiNodeIDs
+		for _, node := range currentRegionConfig.APIInstanceIDs {
+			apiNodeIPMap[node] = publicIPMap[node]
+		}
+		cloudConfigMap["docker"] = currentRegionConfig
 		if separateMonitoringInstance {
 			monitoringDockerHostID := utils.GenerateDockerHostIDs(1)
 			dockerHostIDs = append(dockerHostIDs, monitoringDockerHostID[0])
@@ -282,7 +289,8 @@ func createNodes(_ *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		if cloudService == constants.AWSCloudService { // Get AWS Credential, region and AMI
+		if cloudService == constants.AWSCloudService {
+			// Get AWS Credential, region and AMI
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 				return fmt.Errorf("cloud access is required")
 			}
@@ -332,8 +340,9 @@ func createNodes(_ *cobra.Command, args []string) error {
 				monitoringNodeConfig.PublicIPs = []string{monitoringPublicIPMap[monitoringNodeConfig.InstanceIDs[0]]}
 			}
 			for _, region := range regions {
+				currentRegionConfig := cloudConfigMap[region]
 				if !useStaticIP {
-					tmpIPMap, err := ec2SvcMap[region].GetInstancePublicIPs(cloudConfigMap[region].InstanceIDs)
+					tmpIPMap, err := ec2SvcMap[region].GetInstancePublicIPs(currentRegionConfig.InstanceIDs)
 					if err != nil {
 						return err
 					}
@@ -341,12 +350,19 @@ func createNodes(_ *cobra.Command, args []string) error {
 						publicIPMap[node] = ip
 					}
 				} else {
-					for i, node := range cloudConfigMap[region].InstanceIDs {
-						publicIPMap[node] = cloudConfigMap[region].PublicIPs[i]
+					for i, node := range currentRegionConfig.InstanceIDs {
+						publicIPMap[node] = currentRegionConfig.PublicIPs[i]
 					}
 				}
+				// split publicIPMap to between stake and non-stake(api) nodes
+				_, apiNodeIDs := utils.SplitSliceAt(currentRegionConfig.InstanceIDs, len(currentRegionConfig.InstanceIDs)-devnetNumAPINodes)
+				currentRegionConfig.APIInstanceIDs = apiNodeIDs
+				for _, node := range currentRegionConfig.APIInstanceIDs {
+					apiNodeIPMap[node] = publicIPMap[node]
+				}
+				cloudConfigMap[region] = currentRegionConfig
 				if separateMonitoringInstance {
-					if err = AddMonitoringSecurityGroupRule(ec2SvcMap, monitoringNodeConfig.PublicIPs[0], cloudConfigMap[region].SecurityGroup, region); err != nil {
+					if err = AddMonitoringSecurityGroupRule(ec2SvcMap, monitoringNodeConfig.PublicIPs[0], currentRegionConfig.SecurityGroup, region); err != nil {
 						return err
 					}
 				}
@@ -395,8 +411,9 @@ func createNodes(_ *cobra.Command, args []string) error {
 				monitoringNodeConfig.PublicIPs = []string{monitoringPublicIPMap[monitoringNodeConfig.InstanceIDs[0]]}
 			}
 			for zone := range numNodesMap {
+				currentRegionConfig := cloudConfigMap[zone]
 				if !useStaticIP {
-					tmpIPMap, err := gcpClient.GetInstancePublicIPs(zone, cloudConfigMap[zone].InstanceIDs)
+					tmpIPMap, err := gcpClient.GetInstancePublicIPs(zone, currentRegionConfig.InstanceIDs)
 					if err != nil {
 						return err
 					}
@@ -404,10 +421,17 @@ func createNodes(_ *cobra.Command, args []string) error {
 						publicIPMap[node] = ip
 					}
 				} else {
-					for i, node := range cloudConfigMap[zone].InstanceIDs {
-						publicIPMap[node] = cloudConfigMap[zone].PublicIPs[i]
+					for i, node := range currentRegionConfig.InstanceIDs {
+						publicIPMap[node] = currentRegionConfig.PublicIPs[i]
 					}
 				}
+				// split publicIPMap to between stake and non-stake(api) nodes
+				_, apiNodeIDs := utils.SplitSliceAt(currentRegionConfig.InstanceIDs, len(currentRegionConfig.InstanceIDs)-devnetNumAPINodes)
+				currentRegionConfig.APIInstanceIDs = apiNodeIDs
+				for _, node := range currentRegionConfig.APIInstanceIDs {
+					apiNodeIPMap[node] = publicIPMap[node]
+				}
+				cloudConfigMap[zone] = currentRegionConfig
 				if separateMonitoringInstance {
 					prefix, err := defaultAvalancheCLIPrefix("")
 					if err != nil {
@@ -435,7 +459,16 @@ func createNodes(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	if err = CreateClusterNodeConfig(network, cloudConfigMap, monitoringNodeConfig, monitoringHostRegion, clusterName, cloudService, separateMonitoringInstance); err != nil {
+	if err = CreateClusterNodeConfig(
+		network,
+		cloudConfigMap,
+		monitoringNodeConfig,
+		monitoringHostRegion,
+		clusterName,
+		cloudService,
+		separateMonitoringInstance,
+		setUpMonitoring,
+	); err != nil {
 		return err
 	}
 	if cloudService == constants.GCPCloudService {
@@ -475,7 +508,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
 	}
-	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s) ...")
+	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s)...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	spinSession := ux.NewUserSpinner()
@@ -499,7 +532,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 			ux.SpinComplete(spinner)
 			if separateMonitoringInstance {
-				spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup node"))
+				spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Machine Metrics"))
 				if err := ssh.RunSSHSetupMachineMetrics(host); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
@@ -507,7 +540,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 				}
 				ux.SpinComplete(spinner)
 			} else if setUpMonitoring {
-				spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup node"))
+				spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Monitoring"))
 				if err := ssh.RunSSHSetupMonitoring(host); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
@@ -577,6 +610,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}
 			ux.SpinComplete(spinner)
 		}
+
 		for _, ansibleNodeID := range ansibleHostIDs {
 			if err = app.CreateAnsibleNodeConfigDir(ansibleNodeID); err != nil {
 				return err
@@ -585,6 +619,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		// download node configs
 		wg := sync.WaitGroup{}
 		wgResults := models.NodeResults{}
+		spinner := spinSession.SpinToUser("Configure monitoring agents")
 		for _, host := range hosts {
 			wg.Add(1)
 			go func(nodeResults *models.NodeResults, host *models.Host) {
@@ -612,29 +647,23 @@ func createNodes(_ *cobra.Command, args []string) error {
 			}(&wgResults, host)
 		}
 		wg.Wait()
-		spinSession.End()
 		for _, node := range hosts {
 			if wgResults.HasNodeIDWithError(node.NodeID) {
-				ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
+				ux.SpinFailWithError(spinner, node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
 				return fmt.Errorf("node %s failed to setup with error: %w", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
 			}
 		}
+		ux.SpinComplete(spinner)
 	}
-	ux.Logger.PrintToUser("======================================")
-	for _, node := range hosts {
-		if wgResults.HasNodeIDWithError(node.NodeID) {
-			ux.Logger.PrintToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
-		} else {
-			ux.Logger.PrintToUser("Node %s is CREATED", node.NodeID)
-		}
-	}
-
+	spinSession.Stop()
 	if network.Kind == models.Devnet {
-		ux.Logger.PrintToUser("======================================")
-		ux.Logger.PrintToUser("Setting up Devnet ...")
-		ux.Logger.PrintToUser("======================================")
 		if err := setupDevnet(clusterName, hosts, apiNodeIPMap); err != nil {
 			return err
+		}
+	}
+	for _, node := range hosts {
+		if wgResults.HasNodeIDWithError(node.NodeID) {
+			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
 		}
 	}
 
@@ -645,8 +674,8 @@ func createNodes(_ *cobra.Command, args []string) error {
 		if separateMonitoringInstance {
 			monitoringPublicIP = monitoringNodeConfig.PublicIPs[0]
 		}
-		printResults(cloudConfigMap, publicIPMap, ansibleHostIDs, monitoringPublicIP)
-		ux.Logger.PrintToUser("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!")
+		printResults(cloudConfigMap, publicIPMap, monitoringPublicIP)
+		ux.Logger.PrintToUser(logging.Green.Wrap("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 	}
 	return nil
 }
@@ -674,7 +703,16 @@ func promptSetUpMonitoring() (bool, bool, error) {
 
 // CreateClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
 // also creates cluster config in .avalanche-cli/nodes storing various key pair and security group info for all clusters
-func CreateClusterNodeConfig(network models.Network, cloudConfigMap models.CloudConfig, monitorCloudConfig models.RegionConfig, monitoringHostRegion, clusterName, cloudService string, separateMonitoringInstance bool) error {
+func CreateClusterNodeConfig(
+	network models.Network,
+	cloudConfigMap models.CloudConfig,
+	monitorCloudConfig models.RegionConfig,
+	monitoringHostRegion,
+	clusterName,
+	cloudService string,
+	separateMonitoringInstance bool,
+	setUpMonitoring bool,
+) error {
 	for region, cloudConfig := range cloudConfigMap {
 		for i := range cloudConfig.InstanceIDs {
 			publicIP := ""
@@ -691,6 +729,7 @@ func CreateClusterNodeConfig(network models.Network, cloudConfigMap models.Cloud
 				ElasticIP:     publicIP,
 				CloudService:  cloudService,
 				UseStaticIP:   useStaticIP,
+				IsMonitor:     setUpMonitoring,
 			}
 			err := app.CreateNodeCloudConfigFile(cloudConfig.InstanceIDs[i], &nodeConfig)
 			if err != nil {
@@ -710,10 +749,6 @@ func CreateClusterNodeConfig(network models.Network, cloudConfigMap models.Cloud
 }
 
 func saveExternalHostConfig(externalHostConfig models.RegionConfig, hostRegion, cloudService, clusterName string) error {
-	publicIP := ""
-	if useStaticIP {
-		publicIP = externalHostConfig.PublicIPs[0]
-	}
 	nodeConfig := models.NodeConfig{
 		NodeID:        externalHostConfig.InstanceIDs[0],
 		Region:        hostRegion,
@@ -723,6 +758,8 @@ func saveExternalHostConfig(externalHostConfig models.RegionConfig, hostRegion, 
 		SecurityGroup: externalHostConfig.SecurityGroup,
 		ElasticIP:     publicIP,
 		CloudService:  cloudService,
+    UseStaticIP:   useStaticIP,
+		IsMonitor:     true,
 	}
 	if err := app.CreateNodeCloudConfigFile(externalHostConfig.InstanceIDs[0], &nodeConfig); err != nil {
 		return err
@@ -808,8 +845,8 @@ func getNodeCloudConfig(node string) (models.RegionConfig, string, error) {
 
 func addNodeToClustersConfig(network models.Network, nodeID, clusterName string, isAPIInstance bool, isMonitoringInstance bool) error {
 	clustersConfig := models.ClustersConfig{}
-	var err error
 	if app.ClustersConfigExists() {
+		var err error
 		clustersConfig, err = app.LoadClustersConfig()
 		if err != nil {
 			return err
@@ -818,38 +855,17 @@ func addNodeToClustersConfig(network models.Network, nodeID, clusterName string,
 	if clustersConfig.Clusters == nil {
 		clustersConfig.Clusters = make(map[string]models.ClusterConfig)
 	}
-	if _, ok := clustersConfig.Clusters[clusterName]; !ok {
-		if isMonitoringInstance {
-			return fmt.Errorf("cluster %s is not found in cluster_config.json", clusterName)
-		}
-		clustersConfig.Clusters[clusterName] = models.ClusterConfig{
-			Network:  network,
-			Nodes:    []string{},
-			APINodes: []string{},
-		}
-	}
-	nodes := clustersConfig.Clusters[clusterName].Nodes
-	apiNodes := clustersConfig.Clusters[clusterName].APINodes
-	if isAPIInstance {
-		apiNodes = append(apiNodes, nodeID)
-	}
-	if !isMonitoringInstance {
-		// monitoring instance will always be last in the loop, so no need to set monitoring instance here
-		clustersConfig.Clusters[clusterName] = models.ClusterConfig{
-			Network:  network,
-			Nodes:    append(nodes, nodeID),
-			APINodes: apiNodes,
-		}
+	clusterConfig := clustersConfig.Clusters[clusterName]
+	clusterConfig.Network = network
+	if isMonitoringInstance {
+		clusterConfig.MonitoringInstance = nodeID
 	} else {
-		currentNetwork := clustersConfig.Clusters[clusterName].Network
-		clustersConfig.Clusters[clusterName] = models.ClusterConfig{
-			Network:            currentNetwork,
-			Nodes:              nodes,
-			APINodes:           apiNodes,
-			MonitoringInstance: nodeID,
-		}
+		clusterConfig.Nodes = append(clusterConfig.Nodes, nodeID)
 	}
-
+	if isAPIInstance {
+		clusterConfig.APINodes = append(clusterConfig.APINodes, nodeID)
+	}
+	clustersConfig.Clusters[clusterName] = clusterConfig
 	return app.WriteClustersConfigFile(&clustersConfig)
 }
 
@@ -915,7 +931,7 @@ func provideStakingCertAndKey(host *models.Host) error {
 		ux.Logger.PrintToUser("Failed to generate staking keys for host %s", instanceID)
 		return err
 	} else {
-		ux.Logger.PrintToUser("Generated staking keys for host %s[%s] ", instanceID, nodeID.String())
+		ux.Logger.GreenCheckmarkToUser("Generated staking keys for host %s[%s] ", instanceID, nodeID.String())
 	}
 	return ssh.RunSSHUploadStakingFiles(host, keyPath)
 }
@@ -1096,61 +1112,60 @@ func setCloudInstanceType(cloudService string) (string, error) {
 	return nodeType, nil
 }
 
-func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]string, ansibleHostIDs []string, monitoringHostIP string) {
-	ux.Logger.PrintToUser("======================================")
+func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]string, monitoringHostIP string) {
+	ux.Logger.PrintToUser(" 											 ")
+	ux.Logger.PrintLineSeparator()
 	ux.Logger.PrintToUser("AVALANCHE NODE(S) SUCCESSFULLY SET UP!")
-	ux.Logger.PrintToUser("======================================")
+	ux.Logger.PrintLineSeparator()
 	ux.Logger.PrintToUser("Please wait until the node(s) are successfully bootstrapped to run further commands on the node(s)")
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Here are the details of the set up node(s): ")
+	ux.Logger.PrintToUser("You can check status of the node(s) using %s command", logging.LightBlue.Wrap("avalanche node status"))
+	ux.Logger.PrintToUser("Please use %s to ssh into the node(s). More details: %s", logging.LightBlue.Wrap("avalanche node ssh"), "https://docs.avax.network/tooling/cli-create-nodes/node-ssh")
+
 	for region, cloudConfig := range cloudConfigMap {
-		ux.Logger.PrintToUser("Region: [%s] ", region)
+		ux.Logger.PrintToUser(" ")
+		ux.Logger.PrintToUser("Region: [%s] ", logging.LightBlue.Wrap(region))
+		ux.Logger.PrintToUser(" ")
 		if len(cloudConfig.APIInstanceIDs) > 0 {
-			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser("======================================")
-			ux.Logger.PrintToUser("API Endpoint(s) for region [%s]: ", region)
+			ux.Logger.PrintLineSeparator()
+			ux.Logger.PrintToUser("API Endpoint(s) for region [%s]: ", logging.LightBlue.Wrap(region))
 			for _, apiNode := range cloudConfig.APIInstanceIDs {
-				ux.Logger.PrintToUser("    http://%s:9650", publicIPMap[apiNode])
+				ux.Logger.PrintToUser(logging.Green.Wrap(fmt.Sprintf("    http://%s:9650", publicIPMap[apiNode])))
 			}
-			ux.Logger.PrintToUser("======================================")
+			ux.Logger.PrintLineSeparator()
 			ux.Logger.PrintToUser("")
 		}
 		ux.Logger.PrintToUser("Don't delete or replace your ssh private key file at %s as you won't be able to access your cloud server without it", cloudConfig.CertFilePath)
-		for i, instanceID := range cloudConfig.InstanceIDs {
+		ux.Logger.PrintLineSeparator()
+		for _, instanceID := range cloudConfig.InstanceIDs {
+			nodeID, _ := getNodeID(app.GetNodeInstanceDirPath(instanceID))
 			publicIP := ""
 			publicIP = publicIPMap[instanceID]
-			ux.Logger.PrintToUser("======================================")
 			if slices.Contains(cloudConfig.APIInstanceIDs, instanceID) {
-				ux.Logger.PrintToUser("node(api) %s details: ", ansibleHostIDs[i])
+				ux.Logger.PrintToUser("%s [API] Cloud Instance ID: %s | Public IP:%s | %s", logging.Green.Wrap(">"), instanceID, publicIP, logging.Green.Wrap(nodeID.String()))
 			} else {
-				ux.Logger.PrintToUser("node %s details: ", ansibleHostIDs[i])
+				ux.Logger.PrintToUser("%s Cloud Instance ID: %s | Public IP:%s | %s ", logging.Green.Wrap(">"), instanceID, publicIP, logging.Green.Wrap(nodeID.String()))
 			}
-			ux.Logger.PrintToUser("Cloud Instance ID: %s", instanceID)
-			ux.Logger.PrintToUser("Public IP: %s", publicIP)
-			ux.Logger.PrintToUser("Cloud Region: %s", region)
-			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser("staker.crt and staker.key are stored at %s. If anything happens to your node or the machine node runs on, these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID))
-			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser("To ssh to node, run: ")
-			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser(utils.GetSSHConnectionString(publicIP, cloudConfig.CertFilePath))
-			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("staker.crt, staker.key and signer.key are stored at %s. Please keep them safe, as these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID))
+
 			if setUpMonitoring && !separateMonitoringInstance {
-				ux.Logger.PrintToUser("To view monitoring dashboard for this node, visit the following link in your browser: ")
-				ux.Logger.PrintToUser(fmt.Sprintf("http://%s:3000/dashboards", publicIP))
-				ux.Logger.PrintToUser("Log in with username: admin, password: admin")
-				ux.Logger.PrintToUser("")
+				getMonitoringHint(publicIP)
 			}
-			ux.Logger.PrintToUser("======================================")
+			ux.Logger.PrintLineSeparator()
 		}
 	}
 	if separateMonitoringInstance {
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("To view unified node monitoring dashboard, visit the following link in your browser: ")
-		ux.Logger.PrintToUser(fmt.Sprintf("http://%s:3000/dashboards", monitoringHostIP))
-		ux.Logger.PrintToUser("Log in with username: admin, password: admin")
-		ux.Logger.PrintToUser("")
+		getMonitoringHint(monitoringHostIP)
 	}
+}
+
+// getMonitoringHint prints the monitoring help message including the link to the monitoring dashboard
+func getMonitoringHint(monitoringHostIP string) {
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintLineSeparator()
+	ux.Logger.PrintToUser("To view unified node %s, visit the following link in your browser: ", logging.LightBlue.Wrap("monitoring dashboard"))
+	ux.Logger.PrintToUser(logging.Green.Wrap(fmt.Sprintf("http://%s:3000/dashboards", monitoringHostIP)))
+	ux.Logger.PrintToUser("Log in with username: admin, password: admin")
+	ux.Logger.PrintLineSeparator()
 	ux.Logger.PrintToUser("")
 }
 
@@ -1159,12 +1174,11 @@ func waitForHosts(hosts []*models.Host) *models.NodeResults {
 	hostErrors := models.NodeResults{}
 	createdWaitGroup := sync.WaitGroup{}
 	spinSession := ux.NewUserSpinner()
-	defer spinSession.End()
 	for _, host := range hosts {
 		createdWaitGroup.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer createdWaitGroup.Done()
-			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Waiting for bootstrap"))
+			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Waiting for instance response"))
 			if err := host.WaitForSSHShell(constants.SSHServerStartTimeout); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
@@ -1174,6 +1188,7 @@ func waitForHosts(hosts []*models.Host) *models.NodeResults {
 		}(&hostErrors, host)
 	}
 	createdWaitGroup.Wait()
+	spinSession.Stop()
 	return &hostErrors
 }
 
@@ -1188,7 +1203,7 @@ func requestCloudAuth(cloudName string) error {
 	if err != nil {
 		return err
 	}
-	if err := app.Conf.SetConfigValue(constants.ConfigAutorizeCloudAccessKey, yes); err != nil {
+	if err := app.Conf.SetConfigValue(constants.ConfigAuthorizeCloudAccessKey, yes); err != nil {
 		return err
 	}
 	if !yes {
@@ -1288,6 +1303,9 @@ func getRegionsNodeNum(cloudName string) (
 		numNodes, err := app.Prompt.CaptureUint32(fmt.Sprintf("How many nodes do you want to set up in %s %s?", userRegion, supportedClouds[cloudName].locationName))
 		if err != nil {
 			return nil, err
+		}
+		if createDevnet {
+			numNodes += uint32(devnetNumAPINodes)
 		}
 		if numNodes > uint32(math.MaxInt32) {
 			return nil, fmt.Errorf("number of nodes exceeds the range of a signed 32-bit integer")

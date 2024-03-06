@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package transactioncmd
+package teleportercmd
 
 import (
 	"fmt"
@@ -11,12 +11,13 @@ import (
 
 var app *application.Avalanche
 
-// avalanche subnet vm
+// avalanche subnet
 func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "transaction",
-		Short: "Sign and execute specific transactions",
-		Long:  `The transaction command suite provides all of the utilities required to sign multisig transactions.`,
+		Use:   "teleporter",
+		Short: "Interact with teleporter-enabled subnets",
+		Long: `The teleporter command suite provides a collection of tools for interacting
+with Teleporter-Enabled Subnets.`,
 		Run: func(cmd *cobra.Command, _ []string) {
 			err := cmd.Help()
 			if err != nil {
@@ -25,9 +26,7 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 		},
 	}
 	app = injectedApp
-	// subnet upgrade vm
-	cmd.AddCommand(newTransactionSignCmd())
-	// subnet upgrade generate
-	cmd.AddCommand(newTransactionCommitCmd())
+	// teleporter msg
+	cmd.AddCommand(newMsgCmd())
 	return cmd
 }

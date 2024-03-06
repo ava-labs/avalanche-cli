@@ -85,25 +85,30 @@ const (
 
 	CurrentBootstrapNamePath = "currentBootstrapName.txt"
 
+	AssetsDir = "assets/"
+
 	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
-	BootstrapSnapshotLocalPath   = "assets/" + BootstrapSnapshotArchiveName
+	BootstrapSnapshotLocalPath   = AssetsDir + BootstrapSnapshotArchiveName
 	BootstrapSnapshotURL         = BootstrapSnapshotRawBranch + BootstrapSnapshotLocalPath
-	BootstrapSnapshotSHA256URL   = BootstrapSnapshotRawBranch + "assets/sha256sum.txt"
+	BootstrapSnapshotSHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sum.txt"
 
 	BootstrapSnapshotSingleNodeArchiveName = "bootstrapSnapshotSingleNode.tar.gz"
-	BootstrapSnapshotSingleNodeLocalPath   = "assets/" + BootstrapSnapshotSingleNodeArchiveName
+	BootstrapSnapshotSingleNodeLocalPath   = AssetsDir + BootstrapSnapshotSingleNodeArchiveName
 	BootstrapSnapshotSingleNodeURL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodeLocalPath
-	BootstrapSnapshotSingleNodeSHA256URL   = BootstrapSnapshotRawBranch + "assets/sha256sumSingleNode.txt"
+	BootstrapSnapshotSingleNodeSHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.txt"
 
 	BootstrapSnapshotPreCortina17ArchiveName = "bootstrapSnapshot.PreCortina17.tar.gz"
-	BootstrapSnapshotPreCortina17LocalPath   = "assets/" + BootstrapSnapshotPreCortina17ArchiveName
+	BootstrapSnapshotPreCortina17LocalPath   = AssetsDir + BootstrapSnapshotPreCortina17ArchiveName
 	BootstrapSnapshotPreCortina17URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotPreCortina17LocalPath
-	BootstrapSnapshotPreCortina17SHA256URL   = BootstrapSnapshotRawBranch + "assets/sha256sum.PreCortina17.txt"
+	BootstrapSnapshotPreCortina17SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sum.PreCortina17.txt"
 
 	BootstrapSnapshotSingleNodePreCortina17ArchiveName = "bootstrapSnapshotSingleNode.PreCortina17.tar.gz"
-	BootstrapSnapshotSingleNodePreCortina17LocalPath   = "assets/" + BootstrapSnapshotSingleNodePreCortina17ArchiveName
+	BootstrapSnapshotSingleNodePreCortina17LocalPath   = AssetsDir + BootstrapSnapshotSingleNodePreCortina17ArchiveName
 	BootstrapSnapshotSingleNodePreCortina17URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreCortina17LocalPath
-	BootstrapSnapshotSingleNodePreCortina17SHA256URL   = BootstrapSnapshotRawBranch + "assets/sha256sumSingleNode.PreCortina17.txt"
+	BootstrapSnapshotSingleNodePreCortina17SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.PreCortina17.txt"
+
+	ExtraLocalNetworkDataFilename     = "extra-local-network-data.json"
+	ExtraLocalNetworkDataSnapshotsDir = "extra-local-network-data"
 
 	CliInstallationURL      = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
 	ExpectedCliInstallErr   = "resource temporarily unavailable"
@@ -171,7 +176,7 @@ const (
 	ConfigAPMAdminAPIEndpointKey  = "admin-api-endpoint"
 	ConfigNodeConfigKey           = "node-config"
 	ConfigMetricsEnabledKey       = "MetricsEnabled"
-	ConfigAutorizeCloudAccessKey  = "AutorizeCloudAccess"
+	ConfigAuthorizeCloudAccessKey = "AuthorizeCloudAccess"
 	ConfigSingleNodeEnabledKey    = "SingleNodeEnabled"
 	OldConfigFileName             = ".avalanche-cli.json"
 	OldMetricsConfigFileName      = ".avalanche-cli/config"
@@ -190,6 +195,8 @@ const (
 	AvalancheGoRepoName           = "avalanchego"
 	SubnetEVMRepoName             = "subnet-evm"
 	CliRepoName                   = "avalanche-cli"
+	TeleporterRepoName            = "teleporter"
+	AWMRelayerRepoName            = "awm-relayer"
 	SubnetEVMReleaseURL           = "https://github.com/ava-labs/subnet-evm/releases/download/%s/%s"
 	SubnetEVMArchive              = "subnet-evm_%s_linux_amd64.tar.gz"
 	CloudNodeConfigBasePath       = "/home/ubuntu/.avalanchego/"
@@ -207,6 +214,18 @@ const (
 	IPAddressSuffix               = "/32"
 	AvalancheGoInstallDir         = "avalanchego"
 	SubnetEVMInstallDir           = "subnet-evm"
+	AWMRelayerInstallDir          = "awm-relayer"
+	TeleporterInstallDir          = "teleporter"
+	AWMRelayerBin                 = "awm-relayer"
+	AWMRelayerConfigFilename      = "awm-relayer-config.json"
+	AWMRelayerStorageDir          = "awm-relayer-storage"
+	AWMRelayerLogFilename         = "awm-relayer.log"
+	AWMRelayerRunFilename         = "awm-relayer-process.json"
+
+	AWMRelayerSnapshotConfsDir = "relayer-confs"
+
+	TeleporterKeyName = "cli-teleporter-deployer"
+	AWMRelayerKeyName = "cli-awm-relayer"
 
 	SubnetEVMBin = "subnet-evm"
 

@@ -17,7 +17,6 @@ import (
 )
 
 func checkHostsAreHealthy(hosts []*models.Host) ([]string, error) {
-	ux.Logger.PrintToUser("Checking if node(s) are healthy ...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
@@ -25,13 +24,13 @@ func checkHostsAreHealthy(hosts []*models.Host) ([]string, error) {
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
 			if resp, err := ssh.RunSSHCheckHealthy(host); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
+				nodeResults.AddResult(host.GetCloudID(), nil, err)
 				return
 			} else {
 				if isHealthy, err := parseHealthyOutput(resp); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
+					nodeResults.AddResult(host.GetCloudID(), nil, err)
 				} else {
-					nodeResults.AddResult(host.NodeID, isHealthy, err)
+					nodeResults.AddResult(host.GetCloudID(), isHealthy, err)
 				}
 			}
 		}(&wgResults, host)
@@ -61,7 +60,7 @@ func parseHealthyOutput(byteValue []byte) (bool, error) {
 }
 
 func checkHostsAreBootstrapped(hosts []*models.Host) ([]string, error) {
-	ux.Logger.PrintToUser("Checking if node(s) are bootstrapped to Primary Network ...")
+	ux.Logger.PrintToUser("Checking if node(s) are bootstrapped to Primary Network...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
@@ -69,13 +68,13 @@ func checkHostsAreBootstrapped(hosts []*models.Host) ([]string, error) {
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
 			if resp, err := ssh.RunSSHCheckBootstrapped(host); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
+				nodeResults.AddResult(host.GetCloudID(), nil, err)
 				return
 			} else {
 				if isBootstrapped, err := parseBootstrappedOutput(resp); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
+					nodeResults.AddResult(host.GetCloudID(), nil, err)
 				} else {
-					nodeResults.AddResult(host.NodeID, isBootstrapped, err)
+					nodeResults.AddResult(host.GetCloudID(), isBootstrapped, err)
 				}
 			}
 		}(&wgResults, host)
@@ -117,13 +116,13 @@ func checkAvalancheGoVersionCompatible(hosts []*models.Host, subnetName string) 
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
 			if resp, err := ssh.RunSSHCheckAvalancheGoVersion(host); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
+				nodeResults.AddResult(host.GetCloudID(), nil, err)
 				return
 			} else {
 				if _, rpcVersion, err := parseAvalancheGoOutput(resp); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
+					nodeResults.AddResult(host.GetCloudID(), nil, err)
 				} else {
-					nodeResults.AddResult(host.NodeID, rpcVersion, err)
+					nodeResults.AddResult(host.GetCloudID(), rpcVersion, err)
 				}
 			}
 		}(&wgResults, host)
@@ -170,5 +169,5 @@ func disconnectHosts(hosts []*models.Host) {
 }
 
 func authorizedAccessFromSettings() bool {
-	return app.Conf.GetConfigBoolValue(constants.ConfigAutorizeCloudAccessKey)
+	return app.Conf.GetConfigBoolValue(constants.ConfigAuthorizeCloudAccessKey)
 }

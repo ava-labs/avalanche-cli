@@ -242,6 +242,7 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
 
 		deployOutput := commands.DeploySubnetLocally(subnetName)
+		fmt.Println(deployOutput)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -249,7 +250,9 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
 
-		deployOutput = commands.DeploySubnetLocally(subnetName)
+		out, err := commands.DeploySubnetLocallyWithArgsAndOutput(subnetName, "", "")
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		deployOutput = string(out)
 		rpcs, err = utils.ParseRPCsFromOutput(deployOutput)
 		if err == nil {
 			fmt.Println(deployOutput)

@@ -7,7 +7,7 @@ on:
   pull_request:
 
 env:
-  GO_VERSION: "1.20"
+  GO_VERSION: "1.21.7"
 
 jobs:
   lint:
@@ -21,7 +21,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.52
+          version: v1.56.2
           working-directory: .
           args: --timeout 5m
       - name: Install license check
@@ -33,7 +33,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        go: ["1.20"]
+        go: ["1.21.7"]
         os: [ubuntu-20.04, macos-latest]
     steps:
       - uses: actions/checkout@v3

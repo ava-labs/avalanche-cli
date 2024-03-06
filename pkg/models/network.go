@@ -5,6 +5,7 @@ package models
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/genesis"
@@ -98,8 +99,19 @@ func (n Network) CChainEndpoint() string {
 	return n.BlockchainEndpoint("C")
 }
 
+func (n Network) CChainWSEndpoint() string {
+	return n.BlockchainWSEndpoint("C")
+}
+
 func (n Network) BlockchainEndpoint(blockchainID string) string {
 	return fmt.Sprintf("%s/ext/bc/%s/rpc", n.Endpoint, blockchainID)
+}
+
+func (n Network) BlockchainWSEndpoint(blockchainID string) string {
+	trimmedURI := n.Endpoint
+	trimmedURI = strings.TrimPrefix(trimmedURI, "http://")
+	trimmedURI = strings.TrimPrefix(trimmedURI, "https://")
+	return fmt.Sprintf("ws://%s/ext/bc/%s/ws", trimmedURI, blockchainID)
 }
 
 func (n Network) NetworkIDFlagValue() string {

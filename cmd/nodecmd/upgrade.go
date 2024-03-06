@@ -60,7 +60,6 @@ func upgrade(_ *cobra.Command, args []string) error {
 		return err
 	}
 	spinSession := ux.NewUserSpinner()
-	defer spinSession.End()
 	for host, upgradeInfo := range toUpgradeNodesMap {
 		if upgradeInfo.AvalancheGoVersion != "" {
 			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, fmt.Sprintf("Upgrading avalanchego to version %s...", upgradeInfo.AvalancheGoVersion)))
@@ -97,6 +96,7 @@ func upgrade(_ *cobra.Command, args []string) error {
 			ux.SpinComplete(spinner)
 		}
 	}
+	spinSession.Stop()
 	return nil
 }
 

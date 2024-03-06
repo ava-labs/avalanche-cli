@@ -13,6 +13,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const yamlExt = ".yaml"
+
 func GetRepos(app *application.Avalanche) ([]string, error) {
 	repositoryDir := filepath.Join(app.ApmDir, "repositories")
 	orgs, err := os.ReadDir(repositoryDir)
@@ -65,7 +67,7 @@ func LoadSubnetFile(app *application.Avalanche, subnetKey string) (types.Subnet,
 		return types.Subnet{}, err
 	}
 
-	subnetYamlPath := filepath.Join(app.ApmDir, "repositories", repoAlias, "subnets", subnetName+".yaml")
+	subnetYamlPath := filepath.Join(app.ApmDir, "repositories", repoAlias, "subnets", subnetName+yamlExt)
 	var subnetWrapper SubnetWrapper
 
 	subnetYamlBytes, err := os.ReadFile(subnetYamlPath)
@@ -91,7 +93,7 @@ func getVMsInSubnet(app *application.Avalanche, subnetKey string) ([]string, err
 }
 
 func LoadVMFile(app *application.Avalanche, repo, vm string) (types.VM, error) {
-	vmYamlPath := filepath.Join(app.ApmDir, "repositories", repo, "vms", vm+".yaml")
+	vmYamlPath := filepath.Join(app.ApmDir, "repositories", repo, "vms", vm+yamlExt)
 	var vmWrapper VMWrapper
 
 	vmYamlBytes, err := os.ReadFile(vmYamlPath)

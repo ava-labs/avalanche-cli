@@ -18,7 +18,7 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 		Short: "Upgrade your Subnets",
 		Long: `The subnet upgrade command suite provides a collection of tools for
 updating your developmental and deployed Subnets.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
 			err := cmd.Help()
 			if err != nil {
 				fmt.Println(err)

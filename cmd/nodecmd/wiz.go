@@ -116,10 +116,6 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	clustersConfig, err := app.LoadClustersConfig()
-	if err != nil {
-		return err
-	}
 	if clusterAlreadyExists {
 		if err := checkClusterIsADevnet(clusterName); err != nil {
 			return err
@@ -182,6 +178,10 @@ func wiz(cmd *cobra.Command, args []string) error {
 	// check all validators are found
 	if len(validators) != 0 {
 		allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+		if err != nil {
+			return err
+		}
+		clustersConfig, err := app.LoadClustersConfig()
 		if err != nil {
 			return err
 		}
@@ -272,18 +272,25 @@ func waitForHealthyCluster(
 	hosts := cluster.GetValidatorHosts(allHosts) // exlude api nodes
 	defer disconnectHosts(hosts)
 	startTime := time.Now()
+	spinSession := ux.NewUserSpinner()
+	spinner := spinSession.SpinToUser("Checking if node(s) are healthy...")
 	for {
 		notHealthyNodes, err := checkHostsAreHealthy(hosts)
 		if err != nil {
+			ux.SpinFailWithError(spinner, "", err)
 			return err
 		}
 		if len(notHealthyNodes) == 0 {
-			ux.Logger.PrintToUser("Nodes healthy after %d seconds", uint32(time.Since(startTime).Seconds()))
+			ux.SpinComplete(spinner)
+			spinSession.Stop()
+			ux.Logger.GreenCheckmarkToUser("Nodes healthy after %d seconds", uint32(time.Since(startTime).Seconds()))
 			return nil
 		}
 		if time.Since(startTime) > timeout {
+			ux.SpinFailWithError(spinner, "", fmt.Errorf("cluster not healthy after %d seconds", uint32(timeout.Seconds())))
+			spinSession.Stop()
 			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser("Unhealthy Nodes")
+			ux.Logger.RedXToUser("Unhealthy Nodes")
 			for _, failedNode := range notHealthyNodes {
 				ux.Logger.PrintToUser("  " + failedNode)
 			}

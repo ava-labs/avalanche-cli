@@ -68,8 +68,8 @@ func RunOverSSH(
 		return err
 	}
 
-	if _, err := host.Command(script.String(), nil, timeout); err != nil {
-		return err
+	if output, err := host.Command(script.String(), nil, timeout); err != nil {
+		return fmt.Errorf("%w: %s", err, string(output))
 	}
 	return nil
 }

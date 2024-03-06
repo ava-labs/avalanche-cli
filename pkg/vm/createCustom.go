@@ -174,7 +174,7 @@ func BuildCustomVM(
 	}
 
 	// get branch from repo
-	cmd := exec.Command("git", "clone", "--single-branch", "-b", sc.CustomVMBranch, sc.CustomVMRepoURL, repoDir) //nolint:gosec
+	cmd := exec.Command("git", "clone", "--single-branch", "-b", sc.CustomVMBranch, sc.CustomVMRepoURL, repoDir)
 	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("could not clone git branch %s of repository %s: %w", sc.CustomVMBranch, sc.CustomVMRepoURL, err)
@@ -184,7 +184,7 @@ func BuildCustomVM(
 	_ = os.RemoveAll(vmPath)
 
 	// build
-	cmd = exec.Command(sc.CustomVMBuildScript, vmPath) //nolint:gosec
+	cmd = exec.Command(sc.CustomVMBuildScript, vmPath)
 	cmd.Dir = repoDir
 	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	if err := cmd.Run(); err != nil {

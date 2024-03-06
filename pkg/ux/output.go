@@ -14,6 +14,7 @@ import (
 
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/fatih/color"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -21,23 +22,41 @@ var Logger *UserLog
 
 type UserLog struct {
 	log    logging.Logger
-	writer io.Writer
+	Writer io.Writer
 }
 
 func NewUserLog(log logging.Logger, userwriter io.Writer) {
 	if Logger == nil {
 		Logger = &UserLog{
 			log:    log,
-			writer: userwriter,
+			Writer: userwriter,
 		}
 	}
 }
 
 // PrintToUser prints msg directly on the screen, but also to log file
 func (ul *UserLog) PrintToUser(msg string, args ...interface{}) {
+	fmt.Print("\r\033[K") // Clear the line from the cursor position to the end
 	formattedMsg := fmt.Sprintf(msg, args...)
-	fmt.Fprintln(ul.writer, formattedMsg)
+	fmt.Fprintln(ul.Writer, formattedMsg)
 	ul.log.Info(formattedMsg)
+}
+
+// GreenCheckmarkToUser prints a green checkmark to the user before the message
+func (ul *UserLog) GreenCheckmarkToUser(msg string, args ...interface{}) {
+	checkmark := "\u2713" // Unicode for checkmark symbol
+	green := color.New(color.FgHiGreen).SprintFunc()
+	ul.PrintToUser(green(checkmark)+" "+msg, args...)
+}
+
+func (ul *UserLog) RedXToUser(msg string, args ...interface{}) {
+	xmark := "\u2717" // Unicode for X symbol
+	red := color.New(color.FgHiRed).SprintFunc()
+	ul.PrintToUser(red(xmark)+" "+msg, args...)
+}
+
+func (ul *UserLog) PrintLineSeparator() {
+	ul.PrintToUser("==============================================")
 }
 
 // PrintWait does some dot printing to entertain the user
