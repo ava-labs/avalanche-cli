@@ -238,7 +238,7 @@ func printOutput(
 	ux.Logger.PrintToUser(tit)
 	ux.Logger.PrintToUser(strings.Repeat("=", len(removeColors(tit))))
 	ux.Logger.PrintToUser("")
-	header := []string{"Cloud ID", "Node ID", "IP", "Network", "Avago Version", "Primary Network", "Healthy"}
+	header := []string{"Cloud ID", "Node ID", "IP", "Network", "Role", "Avago Version", "Primary Network", "Healthy"}
 	if subnetName != "" {
 		header = append(header, "Subnet "+subnetName)
 	}
@@ -254,11 +254,17 @@ func printOutput(
 		if slices.Contains(notHealthyHosts, ansibleHostID) {
 			healthyStatus = logging.Red.Wrap("UNHEALTHY")
 		}
+		clusterConf := clustersConfig.Clusters[clusterName]
+		nodeType := "ANC"
+		if clusterConf.IsAPIHost(ansibleHosts[ansibleHostID]) {
+			nodeType = "API"
+		}
 		row := []string{
 			hostIDs[i],
 			logging.Green.Wrap(nodeIDs[i]),
 			ansibleHosts[ansibleHostID].IP,
-			clustersConfig.Clusters[clusterName].Network.Name(),
+			clusterConf.Network.Name(),
+			nodeType,
 			avagoVersions[ansibleHostID],
 			boostrappedStatus,
 			healthyStatus,

@@ -63,7 +63,7 @@ func list(_ *cobra.Command, _ []string) error {
 			}
 			funcDesc := ""
 			if clusterConf.IsAPIHost(ansibleHosts[ansibleHostID]) {
-				funcDesc = " [ API ]"
+				funcDesc = " [API]"
 			}
 			ux.Logger.PrintToUser(fmt.Sprintf("  Node %s (%s) %s%s", cloudHostID, nodeID.String(), ansibleHosts[ansibleHostID].IP, funcDesc))
 		}
