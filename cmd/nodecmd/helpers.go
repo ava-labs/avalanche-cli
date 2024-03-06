@@ -17,7 +17,6 @@ import (
 )
 
 func checkHostsAreHealthy(hosts []*models.Host) ([]string, error) {
-	ux.Logger.PrintToUser("Checking if node(s) are healthy...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {

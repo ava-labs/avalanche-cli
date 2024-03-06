@@ -94,6 +94,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	ux.Logger.PrintToUser("Checking if node(s) are healthy...")
 	notHealthyNodes, err := checkHostsAreHealthy(hosts)
 	if err != nil {
 		return err
