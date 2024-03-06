@@ -445,6 +445,9 @@ func checkRegions(regions []string) ([]string, error) {
 	}
 	availableRegions, err := awsCloudRegionChecker.ListRegions()
 	if err != nil {
+		if isExpiredCredentialError(err) {
+			printExpiredCredentialsOutput(awsProfile)
+		}
 		return invalidRegions, err
 	}
 	for _, region := range regions {
