@@ -333,8 +333,9 @@ func createNodes(_ *cobra.Command, args []string) error {
 				monitoringNodeConfig.PublicIPs = []string{monitoringPublicIPMap[monitoringNodeConfig.InstanceIDs[0]]}
 			}
 			for _, region := range regions {
+				currentRegionConfig := cloudConfigMap[region]
 				if !useStaticIP {
-					tmpIPMap, err := ec2SvcMap[region].GetInstancePublicIPs(cloudConfigMap[region].InstanceIDs)
+					tmpIPMap, err := ec2SvcMap[region].GetInstancePublicIPs(currentRegionConfig.InstanceIDs)
 					if err != nil {
 						return err
 					}
@@ -342,12 +343,19 @@ func createNodes(_ *cobra.Command, args []string) error {
 						publicIPMap[node] = ip
 					}
 				} else {
-					for i, node := range cloudConfigMap[region].InstanceIDs {
-						publicIPMap[node] = cloudConfigMap[region].PublicIPs[i]
+					for i, node := range currentRegionConfig.InstanceIDs {
+						publicIPMap[node] = currentRegionConfig.PublicIPs[i]
 					}
 				}
+				// split publicIPMap to between stake and non-stake(api) nodes
+				_, apiNodeIDs := utils.SplitSliceAt(currentRegionConfig.InstanceIDs, len(currentRegionConfig.InstanceIDs)-devnetNumAPINodes)
+				currentRegionConfig.APIInstanceIDs = apiNodeIDs
+				for _, node := range currentRegionConfig.APIInstanceIDs {
+					apiNodeIPMap[node] = publicIPMap[node]
+				}
+				cloudConfigMap[region] = currentRegionConfig
 				if separateMonitoringInstance {
-					if err = AddMonitoringSecurityGroupRule(ec2SvcMap, monitoringNodeConfig.PublicIPs[0], cloudConfigMap[region].SecurityGroup, region); err != nil {
+					if err = AddMonitoringSecurityGroupRule(ec2SvcMap, monitoringNodeConfig.PublicIPs[0], currentRegionConfig.SecurityGroup, region); err != nil {
 						return err
 					}
 				}
@@ -396,8 +404,9 @@ func createNodes(_ *cobra.Command, args []string) error {
 				monitoringNodeConfig.PublicIPs = []string{monitoringPublicIPMap[monitoringNodeConfig.InstanceIDs[0]]}
 			}
 			for zone := range numNodesMap {
+				currentRegionConfig := cloudConfigMap[zone]
 				if !useStaticIP {
-					tmpIPMap, err := gcpClient.GetInstancePublicIPs(zone, cloudConfigMap[zone].InstanceIDs)
+					tmpIPMap, err := gcpClient.GetInstancePublicIPs(zone, currentRegionConfig.InstanceIDs)
 					if err != nil {
 						return err
 					}
@@ -405,10 +414,17 @@ func createNodes(_ *cobra.Command, args []string) error {
 						publicIPMap[node] = ip
 					}
 				} else {
-					for i, node := range cloudConfigMap[zone].InstanceIDs {
-						publicIPMap[node] = cloudConfigMap[zone].PublicIPs[i]
+					for i, node := range currentRegionConfig.InstanceIDs {
+						publicIPMap[node] = currentRegionConfig.PublicIPs[i]
 					}
 				}
+				// split publicIPMap to between stake and non-stake(api) nodes
+				_, apiNodeIDs := utils.SplitSliceAt(currentRegionConfig.InstanceIDs, len(currentRegionConfig.InstanceIDs)-devnetNumAPINodes)
+				currentRegionConfig.APIInstanceIDs = apiNodeIDs
+				for _, node := range currentRegionConfig.APIInstanceIDs {
+					apiNodeIPMap[node] = publicIPMap[node]
+				}
+				cloudConfigMap[zone] = currentRegionConfig
 				if separateMonitoringInstance {
 					prefix, err := defaultAvalancheCLIPrefix("")
 					if err != nil {
