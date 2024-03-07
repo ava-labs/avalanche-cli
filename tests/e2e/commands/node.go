@@ -33,6 +33,10 @@ func NodeCreate(network, version string, numNodes int, separateMonitoring bool, 
 	if version != "latest" && version != "" {
 		cmdVersion = "--custom-avalanchego-version=" + version
 	}
+	cmdAPI := ""
+	if numAPINodes > 0 {
+		cmdAPI = "--num-apis=" + strconv.Itoa(numAPINodes)
+	}
 	/* #nosec G204 */
 	cmd := exec.Command(
 		CLIBinary,
@@ -43,12 +47,27 @@ func NodeCreate(network, version string, numNodes int, separateMonitoring bool, 
 		cmdVersion,
 		"--separate-monitoring-instance="+strconv.FormatBool(separateMonitoring),
 		"--region=local",
-		"--num-nodes="+strconv.Itoa(numNodes),
+		"--num-validators="+strconv.Itoa(numNodes),
 		"--"+network,
 		"--node-type=docker",
-		"--devnet-api-nodes="+strconv.Itoa(numAPINodes),
 	)
-	return runCmd(cmd, expectSuccess)
+	if cmdAPI != "" {
+		cmd.Args = append(cmd.Args, cmdAPI)
+	}
+	cmd.Env = os.Environ()
+	fmt.Println("About to run: " + cmd.String()) //nolint:goconst
+	output, err := cmd.CombinedOutput()
+	fmt.Println("---------------->")
+	fmt.Println(string(output))
+	fmt.Println(err)
+	fmt.Println("---------------->")
+	if expectSuccess {
+		gomega.Expect(err).Should(gomega.BeNil())
+	} else {
+		gomega.Expect(err).Should(gomega.Not(gomega.BeNil()))
+	}
+
+	return string(output)
 }
 
 func NodeDevnet(numNodes int, numAPINodes int) string {
@@ -61,8 +80,8 @@ func NodeDevnet(numNodes int, numAPINodes int) string {
 		"--use-static-ip=false",
 		"--latest-avalanchego-version=true",
 		"--region=local",
-		"--num-nodes="+strconv.Itoa(numNodes),
-		"--devnet-api-nodes="+strconv.Itoa(numAPINodes),
+		"--num-validators="+strconv.Itoa(numNodes),
+		"--num-apis="+strconv.Itoa(numAPINodes),
 		"--devnet",
 		"--node-type=docker",
 	)
