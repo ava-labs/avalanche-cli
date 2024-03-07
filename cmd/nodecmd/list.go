@@ -4,12 +4,14 @@ package nodecmd
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
 )
 
 func newListCmd() *cobra.Command {
@@ -39,29 +41,33 @@ func list(_ *cobra.Command, _ []string) error {
 	if len(clustersConfig.Clusters) == 0 {
 		ux.Logger.PrintToUser("There are no clusters defined.")
 	}
-	for clusterName, clusterConf := range clustersConfig.Clusters {
+	clusterNames := maps.Keys(clustersConfig.Clusters)
+	sort.Strings(clusterNames)
+	for _, clusterName := range clusterNames {
+		clusterConf := clustersConfig.Clusters[clusterName]
 		ux.Logger.PrintToUser("Cluster %q (%s)", clusterName, clusterConf.Network.Name())
 		if err := checkCluster(clusterName); err != nil {
 			return err
 		}
-		ansibleHostIDs, err := ansible.GetAnsibleHostsFromInventory(app.GetAnsibleInventoryDirPath(clusterName))
-		if err != nil {
-			return err
-		}
-		ansibleHosts, err := ansible.GetHostMapfromAnsibleInventory(app.GetAnsibleInventoryDirPath(clusterName))
-		if err != nil {
-			return err
-		}
-		for _, ansibleHostID := range ansibleHostIDs {
-			_, cloudHostID, err := models.HostAnsibleIDToCloudID(ansibleHostID)
+		for _, cloudID := range clusterConf.GetCloudIDs() {
+			nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
 			if err != nil {
 				return err
 			}
-			nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudHostID))
-			if err != nil {
-				return err
+			nodeIDStr := "----------------------------------------"
+			if clusterConf.IsAvalancheGoHost(cloudID) {
+				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
+				if err != nil {
+					return err
+				}
+				nodeIDStr = nodeID.String()
 			}
-			ux.Logger.PrintToUser(fmt.Sprintf("  Node %s (%s) %s", cloudHostID, nodeID.String(), ansibleHosts[ansibleHostID].IP))
+			roles := clusterConf.GetHostRoles(nodeConfig)
+			rolesStr := strings.Join(roles, ",")
+			if rolesStr != "" {
+				rolesStr = " [" + rolesStr + "]"
+			}
+			ux.Logger.PrintToUser(fmt.Sprintf("  Node %s (%s) %s%s", cloudID, nodeIDStr, nodeConfig.ElasticIP, rolesStr))
 		}
 	}
 	return nil

@@ -469,7 +469,16 @@ func createNodes(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	if err = CreateClusterNodeConfig(network, cloudConfigMap, monitoringNodeConfig, monitoringHostRegion, clusterName, cloudService, separateMonitoringInstance); err != nil {
+	if err = CreateClusterNodeConfig(
+		network,
+		cloudConfigMap,
+		monitoringNodeConfig,
+		monitoringHostRegion,
+		clusterName,
+		cloudService,
+		separateMonitoringInstance,
+		setUpMonitoring,
+	); err != nil {
 		return err
 	}
 	if cloudService == constants.GCPCloudService {
@@ -704,7 +713,16 @@ func promptSetUpMonitoring() (bool, bool, error) {
 
 // CreateClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
 // also creates cluster config in .avalanche-cli/nodes storing various key pair and security group info for all clusters
-func CreateClusterNodeConfig(network models.Network, cloudConfigMap models.CloudConfig, monitorCloudConfig models.RegionConfig, monitoringHostRegion, clusterName, cloudService string, separateMonitoringInstance bool) error {
+func CreateClusterNodeConfig(
+	network models.Network,
+	cloudConfigMap models.CloudConfig,
+	monitorCloudConfig models.RegionConfig,
+	monitoringHostRegion,
+	clusterName,
+	cloudService string,
+	separateMonitoringInstance bool,
+	setUpMonitoring bool,
+) error {
 	for region, cloudConfig := range cloudConfigMap {
 		for i := range cloudConfig.InstanceIDs {
 			publicIP := ""
@@ -721,6 +739,7 @@ func CreateClusterNodeConfig(network models.Network, cloudConfigMap models.Cloud
 				ElasticIP:     publicIP,
 				CloudService:  cloudService,
 				UseStaticIP:   useStaticIP,
+				IsMonitor:     setUpMonitoring,
 			}
 			err := app.CreateNodeCloudConfigFile(cloudConfig.InstanceIDs[i], &nodeConfig)
 			if err != nil {
@@ -731,10 +750,6 @@ func CreateClusterNodeConfig(network models.Network, cloudConfigMap models.Cloud
 			}
 		}
 		if separateMonitoringInstance {
-			publicIP := ""
-			if useStaticIP {
-				publicIP = monitorCloudConfig.PublicIPs[0]
-			}
 			nodeConfig := models.NodeConfig{
 				NodeID:        monitorCloudConfig.InstanceIDs[0],
 				Region:        monitoringHostRegion,
@@ -742,8 +757,10 @@ func CreateClusterNodeConfig(network models.Network, cloudConfigMap models.Cloud
 				KeyPair:       monitorCloudConfig.KeyPair,
 				CertPath:      monitorCloudConfig.CertFilePath,
 				SecurityGroup: monitorCloudConfig.SecurityGroup,
-				ElasticIP:     publicIP,
+				ElasticIP:     monitorCloudConfig.PublicIPs[0],
 				CloudService:  cloudService,
+				UseStaticIP:   useStaticIP,
+				IsMonitor:     true,
 			}
 			if err := app.CreateNodeCloudConfigFile(monitorCloudConfig.InstanceIDs[0], &nodeConfig); err != nil {
 				return err
@@ -834,8 +851,8 @@ func getNodeCloudConfig(node string) (models.RegionConfig, string, error) {
 
 func addNodeToClustersConfig(network models.Network, nodeID, clusterName string, isAPIInstance bool, isMonitoringInstance bool) error {
 	clustersConfig := models.ClustersConfig{}
-	var err error
 	if app.ClustersConfigExists() {
+		var err error
 		clustersConfig, err = app.LoadClustersConfig()
 		if err != nil {
 			return err
@@ -844,34 +861,17 @@ func addNodeToClustersConfig(network models.Network, nodeID, clusterName string,
 	if clustersConfig.Clusters == nil {
 		clustersConfig.Clusters = make(map[string]models.ClusterConfig)
 	}
-	if _, ok := clustersConfig.Clusters[clusterName]; !ok {
-		clustersConfig.Clusters[clusterName] = models.ClusterConfig{
-			Network:  network,
-			Nodes:    []string{},
-			APINodes: []string{},
-		}
-	}
-	nodes := clustersConfig.Clusters[clusterName].Nodes
-	apiNodes := clustersConfig.Clusters[clusterName].APINodes
-	if isAPIInstance {
-		apiNodes = append(apiNodes, nodeID)
-	}
-	if !isMonitoringInstance {
-		// monitoring instance will always be last in the loop, so no need to set monitoring instance here
-		clustersConfig.Clusters[clusterName] = models.ClusterConfig{
-			Network:  network,
-			Nodes:    append(nodes, nodeID),
-			APINodes: apiNodes,
-		}
+	clusterConfig := clustersConfig.Clusters[clusterName]
+	clusterConfig.Network = network
+	if isMonitoringInstance {
+		clusterConfig.MonitoringInstance = nodeID
 	} else {
-		clustersConfig.Clusters[clusterName] = models.ClusterConfig{
-			Network:            network,
-			Nodes:              nodes,
-			APINodes:           apiNodes,
-			MonitoringInstance: nodeID,
-		}
+		clusterConfig.Nodes = append(clusterConfig.Nodes, nodeID)
 	}
-
+	if isAPIInstance {
+		clusterConfig.APINodes = append(clusterConfig.APINodes, nodeID)
+	}
+	clustersConfig.Clusters[clusterName] = clusterConfig
 	return app.WriteClustersConfigFile(&clustersConfig)
 }
 
@@ -1209,7 +1209,7 @@ func requestCloudAuth(cloudName string) error {
 	if err != nil {
 		return err
 	}
-	if err := app.Conf.SetConfigValue(constants.ConfigAutorizeCloudAccessKey, yes); err != nil {
+	if err := app.Conf.SetConfigValue(constants.ConfigAuthorizeCloudAccessKey, yes); err != nil {
 		return err
 	}
 	if !yes {

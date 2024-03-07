@@ -55,6 +55,7 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 	if len(notBootstrappedNodes) > 0 {
 		return fmt.Errorf("node(s) %s are not bootstrapped yet, please try again later", notBootstrappedNodes)
 	}
+	ux.Logger.PrintToUser("Checking if node(s) are healthy...")
 	notHealthyNodes, err := checkHostsAreHealthy(hosts)
 	if err != nil {
 		return err

@@ -37,6 +37,37 @@ func (cc *ClusterConfig) GetAPIHosts(hosts []*Host) []*Host {
 // GetValidatorNodes returns the validator nodes from the ClusterConfig.
 func (cc *ClusterConfig) GetValidatorHosts(hosts []*Host) []*Host {
 	return utils.Filter(hosts, func(h *Host) bool {
-		return !slices.Contains(cc.APINodes, h.NodeID)
+		return !slices.Contains(cc.APINodes, h.GetCloudID())
 	})
+}
+
+func (cc *ClusterConfig) IsAPIHost(hostCloudID string) bool {
+	return slices.Contains(cc.APINodes, hostCloudID)
+}
+
+func (cc *ClusterConfig) IsAvalancheGoHost(hostCloudID string) bool {
+	return slices.Contains(cc.Nodes, hostCloudID)
+}
+
+func (cc *ClusterConfig) GetCloudIDs() []string {
+	r := cc.Nodes
+	if cc.MonitoringInstance != "" {
+		r = append(r, cc.MonitoringInstance)
+	}
+	return r
+}
+
+func (cc *ClusterConfig) GetHostRoles(nodeConf NodeConfig) []string {
+	roles := []string{}
+	if cc.IsAvalancheGoHost(nodeConf.NodeID) {
+		if cc.IsAPIHost(nodeConf.NodeID) {
+			roles = append(roles, "API")
+		} else {
+			roles = append(roles, "Node")
+		}
+	}
+	if nodeConf.IsMonitor {
+		roles = append(roles, "Monitor")
+	}
+	return roles
 }
