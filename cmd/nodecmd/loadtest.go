@@ -150,7 +150,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 			regions := maps.Keys(ec2SvcMap)
 			separateHostRegion = regions[0]
 			loadTestEc2SvcMap[separateHostRegion] = ec2SvcMap[separateHostRegion]
-			loadTestCloudConfig, err = createAWSInstances(loadTestEc2SvcMap, nodeType, map[string]int{separateHostRegion: 1}, []string{separateHostRegion}, ami, true)
+			loadTestCloudConfig, err = createAWSInstances(loadTestEc2SvcMap, nodeType, map[string]NumNodes{separateHostRegion: {1, 0}}, []string{separateHostRegion}, ami, true)
 			if err != nil {
 				return err
 			}
@@ -182,7 +182,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		}
 	case constants.GCPCloudService:
 		var gcpClient *gcpAPI.GcpCloud
-		var gcpRegions map[string]int
+		var gcpRegions map[string]NumNodes
 		var imageID string
 		var projectName string
 		if existingSeparateInstance == "" {
@@ -193,7 +193,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 			}
 			regions := maps.Keys(gcpRegions)
 			separateHostRegion = regions[0]
-			loadTestCloudConfig, err = createGCPInstance(gcpClient, nodeType, map[string]int{separateHostRegion: 1}, imageID, clusterName, true)
+			loadTestCloudConfig, err = createGCPInstance(gcpClient, nodeType, map[string]NumNodes{separateHostRegion: {1, 0}}, imageID, clusterName, true)
 			if err != nil {
 				return err
 			}

@@ -93,7 +93,6 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 	return computeService, gcpProjectName, gcpCredentialsPath, err
 }
 
-
 func getGCPConfig(singleNode bool) (*gcpAPI.GcpCloud, map[string]NumNodes, string, string, string, error) {
 	finalRegions := map[string]NumNodes{}
 	switch {
@@ -103,7 +102,7 @@ func getGCPConfig(singleNode bool) (*gcpAPI.GcpCloud, map[string]NumNodes, strin
 		var err error
 		if singleNode {
 			selectedRegion, err := getSeparateHostNodeParam(constants.GCPCloudService)
-			finalRegions = map[string]int{selectedRegion: 1}
+			finalRegions = map[string]NumNodes{selectedRegion: NumNodes{1, 0}}
 			if err != nil {
 				return nil, nil, "", "", "", err
 			}

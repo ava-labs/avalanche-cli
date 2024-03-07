@@ -72,35 +72,6 @@ func RunOverSSH(
 	return nil
 }
 
-// RunOverSSH runs provided script path over ssh.
-// This script can be template as it will be rendered using scriptInputs vars
-func StreamOverSSH(
-	scriptDesc string,
-	host *models.Host,
-	timeout time.Duration,
-	scriptPath string,
-	templateVars scriptInputs,
-) error {
-	shellScript, err := script.ReadFile(scriptPath)
-	if err != nil {
-		return err
-	}
-	var script bytes.Buffer
-	t, err := template.New(scriptDesc).Parse(string(shellScript))
-	if err != nil {
-		return err
-	}
-	err = t.Execute(&script, templateVars)
-	if err != nil {
-		return err
-	}
-
-	if err := host.StreamSSHCommand(script.String(), nil, timeout); err != nil {
-		return err
-	}
-	return nil
-}
-
 func PostOverSSH(host *models.Host, path string, requestBody string) ([]byte, error) {
 	if path == "" {
 		path = "/ext/info"
