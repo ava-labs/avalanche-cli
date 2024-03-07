@@ -21,11 +21,9 @@ import (
 )
 
 var (
-	loadTestScriptPath string
-	loadTestScriptArgs string
-	loadTestRepoURL    string
-	loadTestBuildCmd   string
-	loadTestCmd        string
+	loadTestRepoURL  string
+	loadTestBuildCmd string
+	loadTestCmd      string
 )
 
 func newLoadTestCmd() *cobra.Command {
@@ -46,12 +44,13 @@ After loadtest is done it will deliver generated reports if any along with loadt
 	cmd.Flags().BoolVar(&useAWS, "aws", false, "create loadtest node in AWS cloud")
 	cmd.Flags().BoolVar(&useGCP, "gcp", false, "create loadtest in GCP cloud")
 	cmd.Flags().StringVar(&nodeType, "node-type", "default", "cloud instance type for loadtest script")
-	cmd.Flags().StringVar(&loadTestScriptPath, "loadtest-script-path", "", "loadtest script path")
-	cmd.Flags().StringVar(&loadTestScriptArgs, "loadtest-script-args", "", "loadtest script arguments")
 	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to create cloud resources")
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
 	cmd.Flags().BoolVar(&useSSHAgent, "use-ssh-agent", false, "use ssh agent(ex: Yubikey) for ssh auth")
 	cmd.Flags().StringVar(&sshIdentity, "ssh-agent-identity", "", "use given ssh identity(only for ssh agent). If not set, default will be used")
+	cmd.Flags().StringVar(&loadTestRepoURL, "loadTestRepoURL", "", "load test repo url to use")
+	cmd.Flags().StringVar(&loadTestBuildCmd, "loadTestBuildCmd", "", "command to build load test binary")
+	cmd.Flags().StringVar(&loadTestCmd, "loadTestCmd", "", "command to run load test")
 	return cmd
 }
 
@@ -89,9 +88,6 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 	var loadTestNodeConfig models.RegionConfig
 	var loadTestCloudConfig models.CloudConfig
 	var err error
-	if loadTestScriptPath == "" {
-		loadTestScriptPath = "loadtest.sh"
-	}
 	// set ssh-Key
 	if useSSHAgent && sshIdentity == "" {
 		sshIdentity, err = setSSHIdentity()
