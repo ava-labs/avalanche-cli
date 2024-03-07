@@ -53,7 +53,7 @@ func IsE2E() bool {
 	return os.Getenv("RUN_E2E") != ""
 }
 
-// E2EDocker checks if the "RUN_E2E_DOCKER" environment variable is set.
+// E2EDocker checks if docker and docker-compose are available.
 func E2EDocker() bool {
 	cmd := exec.Command("docker-compose", "--version")
 	cmd.Env = os.Environ()

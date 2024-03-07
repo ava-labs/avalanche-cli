@@ -16,6 +16,16 @@ import (
 	"github.com/ava-labs/avalanchego/api/info"
 )
 
+// NumNodes is a struct to hold number of nodes with and without stake
+type NumNodes struct {
+	numValidators int // with stake
+	numAPI        int // without stake
+}
+
+func (n NumNodes) All() int {
+	return n.numValidators + n.numAPI
+}
+
 func checkHostsAreHealthy(hosts []*models.Host) ([]string, error) {
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
