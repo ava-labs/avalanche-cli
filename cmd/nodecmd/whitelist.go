@@ -56,7 +56,7 @@ type regionSecurityGroup struct {
 	securityGroup string
 }
 
-func whitelist(cmd *cobra.Command, args []string) error {
+func whitelist(_ *cobra.Command, args []string) error {
 	var err error
 	clusterName := args[0]
 	if err := checkCluster(clusterName); err != nil {
