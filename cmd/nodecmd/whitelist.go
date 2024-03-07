@@ -101,7 +101,7 @@ func whitelist(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid IP address: %s", userIPAddress)
 	}
 	if userIPAddress != "" {
-		ux.Logger.GreenCheckmarkToUser("Whitelisting IP: %s", userIPAddress)
+		ux.Logger.GreenCheckmarkToUser("Whitelisting IP: %s", logging.LightBlue.Wrap(userIPAddress))
 		cloudSecurityGroupList := []regionSecurityGroup{}
 		clusterNodes, err := getClusterNodes(clusterName)
 		if err != nil {
