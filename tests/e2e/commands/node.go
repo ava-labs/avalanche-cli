@@ -162,7 +162,7 @@ func ParsePrometheusYamlConfig(filePath string) PrometheusConfig {
 
 func runCmd(cmd *exec.Cmd, expectSuccess bool) string {
 	cmd.Env = os.Environ()
-	fmt.Println("About to run: " + cmd.String()) //nolint:goconst
+	fmt.Println("About to run: " + cmd.String())
 	output, err := cmd.CombinedOutput()
 	fmt.Println("---------------->")
 	fmt.Println(string(output))
