@@ -196,11 +196,6 @@ func createNodes(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("set to use GCP project but cloud option is not GCP")
 	}
 	// for devnet add nonstake api nodes for each region with stake
-	if createDevnet {
-		for i, num := range numAPINodes {
-			numValidatorsNodes[i] += num
-		}
-	}
 	cloudConfigMap := models.CloudConfig{}
 	publicIPMap := map[string]string{}
 	apiNodeIPMap := map[string]string{}
@@ -228,6 +223,11 @@ func createNodes(_ *cobra.Command, args []string) error {
 		defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 		keyPairName := fmt.Sprintf("%s-keypair", defaultAvalancheCLIPrefix)
 		certPath, err := app.GetSSHCertFilePath(keyPairName)
+		if createDevnet {
+			for i, num := range numAPINodes {
+				numValidatorsNodes[i] += num
+			}
+		}
 		dockerNumNodes := utils.Sum(numValidatorsNodes)
 		var dockerNodesPublicIPs []string
 		var monitoringHostIP string
@@ -261,7 +261,10 @@ func createNodes(_ *cobra.Command, args []string) error {
 		for i, ip := range currentRegionConfig.PublicIPs {
 			publicIPMap[dockerHostIDs[i]] = ip
 		}
-		_, apiNodeIDs := utils.SplitSliceAt(currentRegionConfig.InstanceIDs, len(currentRegionConfig.InstanceIDs)-numAPINodes[0])
+		apiNodeIDs := []string{}
+		if len(numAPINodes) > 0 {
+			_, apiNodeIDs = utils.SplitSliceAt(currentRegionConfig.InstanceIDs, len(currentRegionConfig.InstanceIDs)-numAPINodes[0])
+		}
 		currentRegionConfig.APIInstanceIDs = apiNodeIDs
 		for _, node := range currentRegionConfig.APIInstanceIDs {
 			apiNodeIPMap[node] = publicIPMap[node]

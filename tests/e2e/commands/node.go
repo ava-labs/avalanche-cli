@@ -33,6 +33,10 @@ func NodeCreate(network, version string, numNodes int, separateMonitoring bool, 
 	if version != "latest" && version != "" {
 		cmdVersion = "--custom-avalanchego-version=" + version
 	}
+	cmdAPI := ""
+	if numAPINodes > 0 {
+		cmdAPI = "--num-apis=" + strconv.Itoa(numAPINodes)
+	}
 	/* #nosec G204 */
 	cmd := exec.Command(
 		CLIBinary,
@@ -46,10 +50,8 @@ func NodeCreate(network, version string, numNodes int, separateMonitoring bool, 
 		"--num-validators="+strconv.Itoa(numNodes),
 		"--"+network,
 		"--node-type=docker",
+		cmdAPI,
 	)
-	if numAPINodes > 0 {
-		cmd.Args = append(cmd.Args, "--num-apis="+strconv.Itoa(numAPINodes))
-	}
 	cmd.Env = os.Environ()
 	fmt.Println("About to run: " + cmd.String()) //nolint:goconst
 	output, err := cmd.CombinedOutput()
