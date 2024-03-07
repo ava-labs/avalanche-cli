@@ -95,6 +95,7 @@ func whitelist(cmd *cobra.Command, args []string) error {
 		if userIPAddress == "" {
 			return nil // if only ssh key is provided, no need to whitelist IP
 		}
+		ux.Logger.PrintLineSeparator()
 	}
 	if userIPAddress != "" && !utils.IsValidIP(userIPAddress) {
 		return fmt.Errorf("invalid IP address: %s", userIPAddress)
