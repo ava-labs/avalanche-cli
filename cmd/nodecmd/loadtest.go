@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 )
@@ -279,6 +280,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 	}
 	spinSession.Stop()
 	ux.Logger.GreenCheckmarkToUser("Load test environment is ready!")
+	ux.Logger.PrintToUser("%s Running load test", logging.Green.Wrap(">"))
 	if err := ssh.RunSSHRunLoadTest(separateHosts[0], loadTestCmd); err != nil {
 		return err
 	}
