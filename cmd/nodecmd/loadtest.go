@@ -265,7 +265,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 	ux.SpinComplete(spinner)
 	if existingSeparateInstance != "" {
 		spinner = spinSession.SpinToUser(utils.ScriptLog(separateHosts[0].NodeID, "Update monirtoring configuration ..."))
-		//provision prometheus scraping for LT for existing monitoring instance
+		// provision prometheus scraping for LT for existing monitoring instance
 		avalancheGoPorts, machinePorts, err := getPrometheusTargets(clusterName)
 		if err != nil {
 			ux.SpinFailWithError(spinner, "", err)
