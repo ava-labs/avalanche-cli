@@ -5,6 +5,7 @@ package nodecmd
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -255,11 +256,29 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		}
 		ux.Logger.PrintToUser("Separate instance %s provisioned successfully", separateHosts[0].NodeID)
 	}
-	ux.Logger.PrintToUser("Setting up load test environment ...")
+	spinSession := ux.NewUserSpinner()
+	spinner := spinSession.SpinToUser(utils.ScriptLog(separateHosts[0].NodeID, "Setting up load test environment ..."))
 	if err := ssh.RunSSHBuildLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd); err != nil {
+		ux.SpinFailWithError(spinner, "", err)
 		return err
 	}
-	ux.Logger.PrintToUser("Successfully set up load test environment!")
+	ux.SpinComplete(spinner)
+	if existingSeparateInstance != "" {
+		spinner = spinSession.SpinToUser(utils.ScriptLog(separateHosts[0].NodeID, "Update monirtoring configuration ..."))
+		//provision prometheus scraping for LT for existing monitoring instance
+		avalancheGoPorts, machinePorts, err := getPrometheusTargets(clusterName)
+		if err != nil {
+			ux.SpinFailWithError(spinner, "", err)
+			return err
+		}
+		if err := ssh.RunSSHUpdatePrometheusConfig(separateHosts[0], strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
+			ux.SpinFailWithError(spinner, "", err)
+			return err
+		}
+		ux.SpinComplete(spinner)
+	}
+	spinSession.Stop()
+	ux.Logger.GreenCheckmarkToUser("Load test environment is ready!")
 	if err := ssh.RunSSHRunLoadTest(separateHosts[0], loadTestCmd); err != nil {
 		return err
 	}

@@ -576,15 +576,9 @@ func createNodes(_ *cobra.Command, args []string) error {
 		monitoringHost := monitoringHosts[0]
 		// remove monitoring host from created hosts list
 		hosts = utils.Filter(hosts, func(h *models.Host) bool { return h.NodeID != monitoringHost.NodeID })
-		avalancheGoPorts := []string{}
-		machinePorts := []string{}
-		inventoryHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+		avalancheGoPorts, machinePorts, err := getPrometheusTargets(clusterName)
 		if err != nil {
 			return err
-		}
-		for _, host := range inventoryHosts {
-			avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoAPIPort)))
-			machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
 		}
 		if existingMonitoringInstance != "" {
 			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Setup monitoring"))
@@ -604,7 +598,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 				return err
 			}
 
-			if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost, app.GetMonitoringScriptFile(), strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
+			if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost, app.GetMonitoringDashboardDir()+"/", strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
@@ -1357,4 +1351,18 @@ func defaultAvalancheCLIPrefix(region string) (string, error) {
 		return usr.Username + constants.AvalancheCLISuffix, nil
 	}
 	return usr.Username + "-" + region + constants.AvalancheCLISuffix, nil
+}
+
+func getPrometheusTargets(clusterName string) ([]string, []string, error) {
+	avalancheGoPorts := []string{}
+	machinePorts := []string{}
+	inventoryHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return avalancheGoPorts, machinePorts, err
+	}
+	for _, host := range inventoryHosts {
+		avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoAPIPort)))
+		machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
+	}
+	return avalancheGoPorts, machinePorts, err
 }
