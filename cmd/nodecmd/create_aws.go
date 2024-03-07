@@ -95,12 +95,16 @@ func getAWSMonitoringEC2Svc(awsProfile, monitoringRegion string) (map[string]*aw
 	return ec2SvcMap, nil
 }
 
-func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[string]string, map[string]int, error) {
-	finalRegions := map[string]int{}
+func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[string]string, map[string]NumNodes, error) {
+	finalRegions := map[string]NumNodes{}
 	switch {
-	case len(numNodes) != len(utils.Unique(cmdLineRegion)):
+	case len(numValidatorsNodes) != len(utils.Unique(cmdLineRegion)):
 		return nil, nil, nil, fmt.Errorf("number of nodes and regions should be the same")
-	case len(cmdLineRegion) == 0 && len(numNodes) == 0:
+	case createDevnet && len(numAPINodes) != len(utils.Unique(cmdLineRegion)):
+		return nil, nil, nil, fmt.Errorf("number of api nodes and regions should be the same")
+	case createDevnet && len(numAPINodes) != len(numValidatorsNodes):
+		return nil, nil, nil, fmt.Errorf("number of api nodes and validator nodes should be the same")
+	case len(cmdLineRegion) == 0 && len(numValidatorsNodes) == 0 && len(numAPINodes) == 0:
 		var err error
 		finalRegions, err = getRegionsNodeNum(constants.AWSCloudService)
 		if err != nil {
@@ -108,12 +112,12 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 		}
 	default:
 		for i, region := range cmdLineRegion {
-			finalRegions[region] = numNodes[i]
+			finalRegions[region] = NumNodes{numValidatorsNodes[i], numAPINodes[i]}
 		}
 	}
 	ec2SvcMap := map[string]*awsAPI.AwsCloud{}
 	amiMap := map[string]string{}
-	numNodesMap := map[string]int{}
+	numNodesMap := map[string]NumNodes{}
 	// verify regions are valid
 	if invalidRegions, err := checkRegions(maps.Keys(finalRegions)); err != nil {
 		return nil, nil, nil, err
@@ -358,7 +362,7 @@ func AddMonitoringSecurityGroupRule(ec2Svc map[string]*awsAPI.AwsCloud, monitori
 func createAWSInstances(
 	ec2Svc map[string]*awsAPI.AwsCloud,
 	nodeType string,
-	numNodes map[string]int,
+	numNodes map[string]NumNodes,
 	regions []string,
 	ami map[string]string,
 	forMonitoring bool) (
@@ -375,7 +379,7 @@ func createAWSInstances(
 			ImageID:           ami[region],
 			CertName:          prefix + "-" + region + constants.CertSuffix,
 			SecurityGroupName: prefix + "-" + region + constants.AWSSecurityGroupSuffix,
-			NumNodes:          numNodes[region],
+			NumNodes:          numNodes[region].All(),
 			InstanceType:      nodeType,
 		}
 	}
