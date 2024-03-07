@@ -3,6 +3,7 @@
 package utils
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -278,4 +279,17 @@ func DownloadWithTee(url string, path string) ([]byte, error) {
 func ScriptLog(nodeID string, msg string, args ...interface{}) string {
 	formattedMsg := fmt.Sprintf(msg, args...)
 	return fmt.Sprintf("[%s] %s", nodeID, formattedMsg)
+}
+
+// ReadLongString reads a long string from the user input.
+func ReadLongString(msg string, args ...interface{}) (string, error) {
+	fmt.Println(fmt.Sprintf(msg, args...))
+	reader := bufio.NewReader(os.Stdin)
+	longString, err := reader.ReadString('\n')
+	if err != nil {
+		return "", err
+	}
+	// Remove newline character at the end
+	longString = strings.TrimSuffix(longString, "\n")
+	return longString, nil
 }

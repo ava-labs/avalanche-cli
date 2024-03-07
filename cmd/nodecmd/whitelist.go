@@ -62,6 +62,29 @@ func whitelist(cmd *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
+	if userIPAddress == "" && userPubKey == "" {
+		// prompt for ssh key
+		userPubKey, err = utils.ReadLongString("Enter SSH public key to whitelist (leave empty to skip):")
+		if err != nil {
+			return err
+		}
+		// prompt for IP
+		detectedIPAddress, err := utils.GetUserIPAddress()
+		if err != nil {
+			return fmt.Errorf("failed to get user IP address")
+		}
+		ux.Logger.PrintToUser("Detected your IP address as: %s", logging.LightBlue.Wrap(detectedIPAddress))
+		userIPAddress, err = app.Prompt.CaptureStringAllowEmpty(fmt.Sprintf("Enter IP address to whitelist (Also you can press Enter to use %s or S to skip)", logging.LightBlue.Wrap(detectedIPAddress)))
+		if err != nil {
+			return err
+		}
+		if userIPAddress == "" {
+			userIPAddress = detectedIPAddress
+		}
+		if strings.ToLower(userIPAddress) == "s" {
+			userIPAddress = ""
+		}
+	}
 	if userPubKey != "" {
 		if !utils.IsSSHPubKey(userPubKey) {
 			return fmt.Errorf("invalid SSH public key: %s", userPubKey)
@@ -69,70 +92,66 @@ func whitelist(cmd *cobra.Command, args []string) error {
 		if err := whitelistSSHPubKey(clusterName, userPubKey); err != nil {
 			return err
 		}
-		if !cmd.Flags().Lookup("ip").Changed {
+		if userIPAddress == "" {
 			return nil // if only ssh key is provided, no need to whitelist IP
 		}
 	}
-	if userIPAddress == "" {
-		userIPAddress, err = utils.GetUserIPAddress()
-		if err != nil {
-			return fmt.Errorf("failed to get user IP address")
-		}
-		ux.Logger.PrintToUser("No IP provided. Detected your IP address: %s", logging.LightBlue.Wrap(userIPAddress))
-	}
-	if !utils.IsValidIP(userIPAddress) {
+	if userIPAddress != "" && !utils.IsValidIP(userIPAddress) {
 		return fmt.Errorf("invalid IP address: %s", userIPAddress)
 	}
-	cloudSecurityGroupList := []regionSecurityGroup{}
-	clusterNodes, err := getClusterNodes(clusterName)
-	if err != nil {
-		return err
-	}
-	for _, node := range clusterNodes {
-		nodeConfig, err := app.LoadClusterNodeConfig(node)
+	if userIPAddress != "" {
+		ux.Logger.GreenCheckmarkToUser("Whitelisting IP: %s", userIPAddress)
+		cloudSecurityGroupList := []regionSecurityGroup{}
+		clusterNodes, err := getClusterNodes(clusterName)
 		if err != nil {
-			ux.Logger.PrintToUser("Failed to parse node %s due to %s", node, err.Error())
 			return err
 		}
-		if slices.Contains(cloudSecurityGroupList, regionSecurityGroup{
-			cloud:         nodeConfig.CloudService,
-			region:        nodeConfig.Region,
-			securityGroup: nodeConfig.SecurityGroup,
-		}) {
-			continue
+		for _, node := range clusterNodes {
+			nodeConfig, err := app.LoadClusterNodeConfig(node)
+			if err != nil {
+				ux.Logger.PrintToUser("Failed to parse node %s due to %s", node, err.Error())
+				return err
+			}
+			if slices.Contains(cloudSecurityGroupList, regionSecurityGroup{
+				cloud:         nodeConfig.CloudService,
+				region:        nodeConfig.Region,
+				securityGroup: nodeConfig.SecurityGroup,
+			}) {
+				continue
+			}
+			cloudSecurityGroupList = append(cloudSecurityGroupList, regionSecurityGroup{
+				cloud:         nodeConfig.CloudService,
+				region:        nodeConfig.Region,
+				securityGroup: nodeConfig.SecurityGroup,
+			})
 		}
-		cloudSecurityGroupList = append(cloudSecurityGroupList, regionSecurityGroup{
-			cloud:         nodeConfig.CloudService,
-			region:        nodeConfig.Region,
-			securityGroup: nodeConfig.SecurityGroup,
-		})
-	}
-	if len(cloudSecurityGroupList) == 0 {
-		ux.Logger.RedXToUser("No nodes found in cluster %s", clusterName)
-		return fmt.Errorf("no nodes found in cluster %s", clusterName)
-	}
+		if len(cloudSecurityGroupList) == 0 {
+			ux.Logger.RedXToUser("No nodes found in cluster %s", clusterName)
+			return fmt.Errorf("no nodes found in cluster %s", clusterName)
+		}
 
-	// GCP doesn't have regions  so we need to reduce it to only list of security groups
-	gcpSGFound := false
-	// whitelist IP
-	for _, cloudSecurityGroup := range cloudSecurityGroupList {
-		if cloudSecurityGroup.cloud == constants.GCPCloudService {
-			gcpSGFound = true
-			continue
-		}
-		ux.Logger.GreenCheckmarkToUser("Whitelisting IP %s in %s cloud region %s", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region)
-		if cloudSecurityGroup.cloud == "" || cloudSecurityGroup.cloud == constants.AWSCloudService {
+		// GCP doesn't have regions  so we need to reduce it to only list of security groups
+		gcpSGFound := false
+		// whitelist IP
+		for _, cloudSecurityGroup := range cloudSecurityGroupList {
+			if cloudSecurityGroup.cloud == constants.GCPCloudService {
+				gcpSGFound = true
+				continue
+			}
+			ux.Logger.GreenCheckmarkToUser("Whitelisting IP %s in %s cloud region %s", userIPAddress, cloudSecurityGroup.cloud, cloudSecurityGroup.region)
 			if cloudSecurityGroup.cloud == "" || cloudSecurityGroup.cloud == constants.AWSCloudService {
-				if err := GrantAccessToIPinAWS(awsProfile, cloudSecurityGroup.region, cloudSecurityGroup.securityGroup, userIPAddress); err != nil {
-					return err
+				if cloudSecurityGroup.cloud == "" || cloudSecurityGroup.cloud == constants.AWSCloudService {
+					if err := GrantAccessToIPinAWS(awsProfile, cloudSecurityGroup.region, cloudSecurityGroup.securityGroup, userIPAddress); err != nil {
+						return err
+					}
 				}
 			}
 		}
-	}
-	if gcpSGFound {
-		ux.Logger.GreenCheckmarkToUser("Whitelisting IP %s in %s cloud", userIPAddress, constants.GCPCloudService)
-		if err := GrantAccessToIPinGCP(userIPAddress); err != nil {
-			return err
+		if gcpSGFound {
+			ux.Logger.GreenCheckmarkToUser("Whitelisting IP %s in %s cloud", userIPAddress, constants.GCPCloudService)
+			if err := GrantAccessToIPinGCP(userIPAddress); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

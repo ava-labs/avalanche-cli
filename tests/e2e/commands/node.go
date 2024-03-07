@@ -55,7 +55,7 @@ func NodeCreate(network, version string, numNodes int, separateMonitoring bool, 
 		cmd.Args = append(cmd.Args, cmdAPI)
 	}
 	cmd.Env = os.Environ()
-	fmt.Println("About to run: " + cmd.String()) //nolint:goconst
+	fmt.Println("About to run: " + cmd.String())
 	output, err := cmd.CombinedOutput()
 	fmt.Println("---------------->")
 	fmt.Println(string(output))
@@ -179,7 +179,7 @@ func ParsePrometheusYamlConfig(filePath string) PrometheusConfig {
 	return prometheusConfig
 }
 
-func runCmd(cmd *exec.Cmd, expectSuccess bool) string {
+func runCmd(cmd *exec.Cmd, expectSuccess bool) string { //nolint:all
 	cmd.Env = os.Environ()
 	fmt.Println("About to run: " + cmd.String())
 	output, err := cmd.CombinedOutput()
