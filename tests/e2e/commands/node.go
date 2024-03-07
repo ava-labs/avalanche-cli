@@ -46,8 +46,10 @@ func NodeCreate(network, version string, numNodes int, separateMonitoring bool, 
 		"--num-validators="+strconv.Itoa(numNodes),
 		"--"+network,
 		"--node-type=docker",
-		"--num-apis="+strconv.Itoa(numAPINodes),
 	)
+	if numAPINodes > 0 {
+		cmd.Args = append(cmd.Args, "--num-apis="+strconv.Itoa(numAPINodes))
+	}
 	cmd.Env = os.Environ()
 	fmt.Println("About to run: " + cmd.String()) //nolint:goconst
 	output, err := cmd.CombinedOutput()
