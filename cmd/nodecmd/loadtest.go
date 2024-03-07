@@ -257,14 +257,14 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("Separate instance %s provisioned successfully", separateHosts[0].NodeID)
 	}
 	spinSession := ux.NewUserSpinner()
-	spinner := spinSession.SpinToUser(utils.ScriptLog(separateHosts[0].NodeID, "Setting up load test environment ..."))
+	spinner := spinSession.SpinToUser(utils.ScriptLog(separateHosts[0].NodeID, "Setting up load test environment"))
 	if err := ssh.RunSSHBuildLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd); err != nil {
 		ux.SpinFailWithError(spinner, "", err)
 		return err
 	}
 	ux.SpinComplete(spinner)
 	if existingSeparateInstance != "" {
-		spinner = spinSession.SpinToUser(utils.ScriptLog(separateHosts[0].NodeID, "Update monirtoring configuration ..."))
+		spinner = spinSession.SpinToUser(utils.ScriptLog(separateHosts[0].NodeID, "Updating monirtoring configuration"))
 		// provision prometheus scraping for LT for existing monitoring instance
 		avalancheGoPorts, machinePorts, err := getPrometheusTargets(clusterName)
 		if err != nil {

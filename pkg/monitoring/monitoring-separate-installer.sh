@@ -195,7 +195,7 @@ update_exporter() {
       echo "          alias: 'avalanchego-loadtest'"
     }>>prometheus.yml
     sudo cp prometheus.yml /etc/prometheus/
-    sudo systemctl restart prometheus
+    sudo service prometheus reload
     echo
     echo "Done!"
 }
