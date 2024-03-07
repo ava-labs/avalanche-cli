@@ -126,7 +126,7 @@ func preCreateChecks() error {
 		return fmt.Errorf("could not use AWS profile for non AWS cloud option")
 	}
 	if len(utils.Unique(cmdLineRegion)) != len(numValidatorsNodes) {
-		return fmt.Errorf("number of regions and number of nodes must be equal. Please make sure list of regions is unique")
+		return fmt.Errorf("regions provided is not consistent with number of nodes provided. Please make sure list of regions is unique")
 	}
 	if len(numValidatorsNodes) > 0 {
 		for _, num := range numValidatorsNodes {
@@ -142,10 +142,10 @@ func preCreateChecks() error {
 		return fmt.Errorf("ssh agent is not available")
 	}
 	if len(numAPINodes) > 0 && !createDevnet {
-		return fmt.Errorf("api nodes can only be created in devnet")
+		return fmt.Errorf("API nodes can only be created in Devnet")
 	}
 	if createDevnet && len(numAPINodes) != len(numValidatorsNodes) {
-		return fmt.Errorf("number of API nodes and number of nodes must be equal")
+		return fmt.Errorf("API nodes and Validator nodes must be deployed to same number of regions")
 	}
 	if len(numAPINodes) > 0 {
 		for _, num := range numValidatorsNodes {
