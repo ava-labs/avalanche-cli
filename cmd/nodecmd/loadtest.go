@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -13,7 +14,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
@@ -240,9 +240,9 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := GetLoadTestScript(app); err != nil {
-		return err
-	}
+	//if err := GetLoadTestScript(app); err != nil {
+	//	return err
+	//}
 
 	// waiting for all nodes to become accessible
 	if existingSeparateInstance == "" {
@@ -255,15 +255,20 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		}
 		ux.Logger.PrintToUser("Separate instance %s provisioned successfully", separateHosts[0].NodeID)
 	}
-	ux.Logger.PrintToUser("Setting up load test environment ...")
-	if err := ssh.RunSSHBuildLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd); err != nil {
+	//ux.Logger.PrintToUser("Setting up load test environment ...")
+	//if err := ssh.RunSSHBuildLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd); err != nil {
+	//	return err
+	//}
+	//ux.Logger.PrintToUser("Successfully set up load test environment!")
+	//if err := ssh.RunSSHRunLoadTest(separateHosts[0], loadTestCmd); err != nil {
+	//	return err
+	//}
+	//ux.Logger.PrintToUser("Load test successfully run!")
+
+	if err := ssh.RunSSHCopyYAMLFile(separateHosts[0], "/Users/raymondsukanto/Desktop/env.yaml"); err != nil {
+		fmt.Printf("we have error here %s \n", err)
 		return err
 	}
-	ux.Logger.PrintToUser("Successfully set up load test environment!")
-	if err := ssh.RunSSHRunLoadTest(separateHosts[0], loadTestCmd); err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("Load test successfully run!")
 	return nil
 }
 
