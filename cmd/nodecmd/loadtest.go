@@ -338,9 +338,6 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 	}
 	validatorCount := 0
 	apiNodeCount := 0
-	envVars := []string{}
-	envVarsValues := []string{}
-	envMap := make(map[string]string)
 	for _, cloudID := range clusterConf.GetCloudIDs() {
 		validatorIPEnvPrefix := "IP_VALIDATOR_"
 		validatorCloudIDEnvPrefix := "CLOUD_ID_VALIDATOR_"
@@ -368,16 +365,12 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 			clusterInfoMap[validatorIPEnvPrefix] = nodeConfig.ElasticIP
 			clusterInfoMap[validatorCloudIDEnvPrefix] = cloudID
 			clusterInfoMap[validatorNodeIDEnvPrefix] = nodeIDStr
-			envVars = append(envVars, validatorIPEnvPrefix)
-			envVarsValues = append(envVarsValues, nodeConfig.ElasticIP)
-			envMap[validatorIPEnvPrefix] = nodeConfig.ElasticIP
 			validatorCount += 1
 		case "API":
 			apiIPEnvPrefix += strconv.Itoa(apiNodeCount)
 			apiCloudIDEnvPrefix += strconv.Itoa(apiNodeCount)
 			clusterInfoMap[apiIPEnvPrefix] = nodeConfig.ElasticIP
 			clusterInfoMap[apiCloudIDEnvPrefix] = cloudID
-			envMap[apiIPEnvPrefix] = nodeConfig.ElasticIP
 			apiNodeCount += 1
 		default:
 		}
