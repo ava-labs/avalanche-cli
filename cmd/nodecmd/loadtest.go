@@ -5,6 +5,10 @@ package nodecmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
@@ -19,9 +23,6 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
-	"os"
-	"path/filepath"
-	"strconv"
 )
 
 var (
@@ -282,6 +283,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 
 	return nil
 }
+
 func getDeployedSubnetInfo() (string, string, error) {
 	sidecarFile := filepath.Join(app.GetSubnetDir(), subnetName, constants.SidecarFileName)
 	var sidecar models.Sidecar
