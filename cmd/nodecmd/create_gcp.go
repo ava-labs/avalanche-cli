@@ -102,7 +102,7 @@ func getGCPConfig(singleNode bool) (*gcpAPI.GcpCloud, map[string]NumNodes, strin
 		var err error
 		if singleNode {
 			selectedRegion, err := getSeparateHostNodeParam(constants.GCPCloudService)
-			finalRegions = map[string]NumNodes{selectedRegion: NumNodes{1, 0}}
+			finalRegions = map[string]NumNodes{selectedRegion: {1, 0}}
 			if err != nil {
 				return nil, nil, "", "", "", err
 			}
