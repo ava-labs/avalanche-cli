@@ -4,5 +4,6 @@ echo "running load test ..."
 while read -r key val; do
 	eval "export $key=${val}"
 done < <(yq '.[] | key + " " + .' clusterInfo.yaml)
+echo {{ .LoadTestCommand }}
 # run load test command
 eval {{ .LoadTestCommand }}

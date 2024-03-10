@@ -275,6 +275,10 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		fmt.Printf("we have error here %s \n", err)
 		return err
 	}
+	ux.Logger.PrintToUser("Setting up load test environment ...")
+	if err := ssh.RunSSHBuildLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd); err != nil {
+		return err
+	}
 	ux.Logger.PrintToUser("Successfully set up load test environment!")
 	if err := ssh.RunSSHRunLoadTest(separateHosts[0], loadTestCmd); err != nil {
 		return err
