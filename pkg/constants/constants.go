@@ -190,6 +190,7 @@ const (
 	AWSNodeAnsiblePrefix          = "aws_node"
 	GCPNodeAnsiblePrefix          = "gcp_node"
 	CustomVMDir                   = "vms"
+	ClusterYAMLFileName           = "clusterInfo.yaml"
 	GCPStaticIPPrefix             = "static-ip"
 	AvaLabsOrg                    = "ava-labs"
 	AvalancheGoRepoName           = "avalanchego"

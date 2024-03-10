@@ -3,10 +3,8 @@
 package nodecmd
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/ssh"
-	"path/filepath"
-
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
@@ -14,10 +12,16 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
+	"gopkg.in/yaml.v3"
+	"os"
+	"path/filepath"
+	"strconv"
 )
 
 var (
@@ -28,7 +32,7 @@ var (
 
 func newLoadTestCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "loadtest [clusterName]",
+		Use:   "loadtest [clusterName] [subnetName]",
 		Short: "(ALPHA Warning) Start loadtest for existing devnet cluster",
 		Long: `(ALPHA Warning) This command is currently in experimental mode. 
 
@@ -38,7 +42,7 @@ Loadtest script will be run in ubuntu user home directory with the provided argu
 After loadtest is done it will deliver generated reports if any along with loadtest logs before terminating used cloud server.`,
 
 		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
+		Args:         cobra.ExactArgs(2),
 		RunE:         createLoadTest,
 	}
 	cmd.Flags().BoolVar(&useAWS, "aws", false, "create loadtest node in AWS cloud")
@@ -82,6 +86,7 @@ func preLoadTestChecks(clusterName string) error {
 
 func createLoadTest(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
+	subnetName = args[1]
 	if err := preLoadTestChecks(clusterName); err != nil {
 		return err
 	}
@@ -240,9 +245,9 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	//if err := GetLoadTestScript(app); err != nil {
-	//	return err
-	//}
+	if err := GetLoadTestScript(app); err != nil {
+		return err
+	}
 
 	// waiting for all nodes to become accessible
 	if existingSeparateInstance == "" {
@@ -255,21 +260,132 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		}
 		ux.Logger.PrintToUser("Separate instance %s provisioned successfully", separateHosts[0].NodeID)
 	}
-	//ux.Logger.PrintToUser("Setting up load test environment ...")
-	//if err := ssh.RunSSHBuildLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd); err != nil {
-	//	return err
-	//}
-	//ux.Logger.PrintToUser("Successfully set up load test environment!")
-	//if err := ssh.RunSSHRunLoadTest(separateHosts[0], loadTestCmd); err != nil {
-	//	return err
-	//}
-	//ux.Logger.PrintToUser("Load test successfully run!")
 
-	if err := ssh.RunSSHCopyYAMLFile(separateHosts[0], "/Users/raymondsukanto/Desktop/env.yaml"); err != nil {
+	subnetID, chainID, err := getDeployedSubnetInfo()
+	if err != nil {
+		return err
+	}
+
+	if err := createClusterYAMLFile(clusterName, subnetID, chainID, separateHosts[0]); err != nil {
+		return err
+	}
+
+	if err := ssh.RunSSHCopyYAMLFile(separateHosts[0], app.GetClusterYAMLFilePath(clusterName)); err != nil {
 		fmt.Printf("we have error here %s \n", err)
 		return err
 	}
+	ux.Logger.PrintToUser("Successfully set up load test environment!")
+	if err := ssh.RunSSHRunLoadTest(separateHosts[0], loadTestCmd); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Load test successfully run!")
+
 	return nil
+}
+func getDeployedSubnetInfo() (string, string, error) {
+	sidecarFile := filepath.Join(app.GetSubnetDir(), subnetName, constants.SidecarFileName)
+	var sidecar models.Sidecar
+	if _, err := os.Stat(sidecarFile); err == nil {
+		// read in sidecar file
+		jsonBytes, err := os.ReadFile(sidecarFile)
+		if err != nil {
+			return "", "", fmt.Errorf("failed reading file %s: %w", sidecarFile, err)
+		}
+		err = json.Unmarshal(jsonBytes, &sidecar)
+		if err != nil {
+			return "", "", fmt.Errorf("failed unmarshaling file %s: %w", sidecarFile, err)
+		}
+	}
+	if sidecar.Networks != nil {
+		model, ok := sidecar.Networks["Devnet"]
+		if ok {
+			if model.SubnetID != ids.Empty && model.BlockchainID != ids.Empty {
+				return model.SubnetID.String(), model.BlockchainID.String(), nil
+			}
+		}
+	}
+	return "", "", fmt.Errorf("unable to find deployed Devnet info at cluster_config.json")
+}
+
+func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *models.Host) error {
+	clusterYAMLFilePath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.ClusterYAMLFileName)
+	if _, err := os.Stat(clusterYAMLFilePath); err == nil {
+		if err = os.Remove(clusterYAMLFilePath); err != nil {
+			return err
+		}
+	}
+	yamlFile, err := os.OpenFile(clusterYAMLFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, constants.WriteReadReadPerms)
+	if err != nil {
+		return err
+	}
+	defer yamlFile.Close()
+
+	enc := yaml.NewEncoder(yamlFile)
+
+	clusterInfoMap := make(map[string]string)
+	clustersConfig := models.ClustersConfig{}
+	if app.ClustersConfigExists() {
+		clustersConfig, err = app.LoadClustersConfig()
+		if err != nil {
+			return err
+		}
+	}
+	clusterConf := clustersConfig.Clusters[clusterName]
+	if err := checkCluster(clusterName); err != nil {
+		return err
+	}
+	validatorCount := 0
+	apiNodeCount := 0
+	envVars := []string{}
+	envVarsValues := []string{}
+	envMap := make(map[string]string)
+	for _, cloudID := range clusterConf.GetCloudIDs() {
+		validatorIPEnvPrefix := "IP_VALIDATOR_"
+		validatorCloudIDEnvPrefix := "CLOUD_ID_VALIDATOR_"
+		validatorNodeIDEnvPrefix := "NODE_ID_VALIDATOR_"
+		apiIPEnvPrefix := "IP_API_"
+		apiCloudIDEnvPrefix := "CLOUD_ID_API_"
+		nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
+		if err != nil {
+			return err
+		}
+		nodeIDStr := ""
+		if clusterConf.IsAvalancheGoHost(cloudID) {
+			nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
+			if err != nil {
+				return err
+			}
+			nodeIDStr = nodeID.String()
+		}
+		roles := clusterConf.GetHostRoles(nodeConfig)
+		switch roles[0] {
+		case "Node":
+			validatorIPEnvPrefix += strconv.Itoa(validatorCount)
+			validatorCloudIDEnvPrefix += strconv.Itoa(validatorCount)
+			validatorNodeIDEnvPrefix += strconv.Itoa(validatorCount)
+			clusterInfoMap[validatorIPEnvPrefix] = nodeConfig.ElasticIP
+			clusterInfoMap[validatorCloudIDEnvPrefix] = cloudID
+			clusterInfoMap[validatorNodeIDEnvPrefix] = nodeIDStr
+			envVars = append(envVars, validatorIPEnvPrefix)
+			envVarsValues = append(envVarsValues, nodeConfig.ElasticIP)
+			envMap[validatorIPEnvPrefix] = nodeConfig.ElasticIP
+			validatorCount += 1
+		case "API":
+			apiIPEnvPrefix += strconv.Itoa(apiNodeCount)
+			apiCloudIDEnvPrefix += strconv.Itoa(apiNodeCount)
+			clusterInfoMap[apiIPEnvPrefix] = nodeConfig.ElasticIP
+			clusterInfoMap[apiCloudIDEnvPrefix] = cloudID
+			envMap[apiIPEnvPrefix] = nodeConfig.ElasticIP
+			apiNodeCount += 1
+		default:
+		}
+
+	}
+	clusterInfoMap["SUBNET_ID"] = subnetID
+	clusterInfoMap["CHAIN_ID"] = chainID
+	clusterInfoMap["IP_MONITORING"] = separateHost.IP
+	clusterInfoMap["CLOUD_ID_MONITORING"] = separateHost.GetCloudID()
+	return enc.Encode(clusterInfoMap)
 }
 
 func GetLoadTestScript(app *application.Avalanche) error {
