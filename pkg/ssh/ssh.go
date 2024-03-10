@@ -225,7 +225,7 @@ func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath s
 
 func RunSSHCopyYAMLFile(host *models.Host, yamlFilePath string) error {
 	if err := host.Upload(
-		filepath.Join(yamlFilePath),
+		yamlFilePath,
 		fmt.Sprintf("/home/ubuntu/%s", filepath.Base(yamlFilePath)),
 		constants.SSHFileOpsTimeout,
 	); err != nil {

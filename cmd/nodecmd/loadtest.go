@@ -378,7 +378,6 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 			apiNodeCount += 1
 		default:
 		}
-
 	}
 	clusterInfoMap["SUBNET_ID"] = subnetID
 	clusterInfoMap["CHAIN_ID"] = chainID
