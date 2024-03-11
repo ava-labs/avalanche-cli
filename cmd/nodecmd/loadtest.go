@@ -31,11 +31,11 @@ var (
 )
 
 type clusterInfo struct {
-	API        []nodeInfo
-	Validators []nodeInfo
-	Monitoring nodeInfo
-	ChainID    string `yaml:"CHAIN_ID,omitempty"`
-	SubnetID   string `yaml:"SUBNET_ID,omitempty"`
+	API        []nodeInfo `yaml:"API,omitempty"`
+	Validators []nodeInfo `yaml:"VALIDATORS,omitempty"`
+	Monitoring nodeInfo   `yaml:"MONITORING,omitempty"`
+	ChainID    string     `yaml:"CHAIN_ID,omitempty"`
+	SubnetID   string     `yaml:"SUBNET_ID,omitempty"`
 }
 type nodeInfo struct {
 	CloudID string `yaml:"CLOUD_ID,omitempty"`
