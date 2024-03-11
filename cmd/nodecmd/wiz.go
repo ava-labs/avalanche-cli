@@ -4,12 +4,13 @@ package nodecmd
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -17,7 +18,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
 	"github.com/spf13/cobra"
@@ -248,16 +248,16 @@ func wiz(cmd *cobra.Command, args []string) error {
 	} else {
 		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is successfully created and is now validating subnet %s!"), clusterName, subnetName)
 	}
-	return deployClusterYAMLFile(clusterName)
+	return deployClusterYAMLFile(clusterName, subnetName)
 }
 
-func deployClusterYAMLFile(clusterName string) error {
+func deployClusterYAMLFile(clusterName, subnetName string) error {
 	separateHostInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
 	separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(separateHostInventoryPath)
 	if err != nil {
 		return err
 	}
-	subnetID, chainID, err := getDeployedSubnetInfo()
+	subnetID, chainID, err := getDeployedSubnetInfo(subnetName)
 	if err != nil {
 		return err
 	}

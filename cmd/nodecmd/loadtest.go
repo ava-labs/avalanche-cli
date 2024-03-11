@@ -262,7 +262,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("Separate instance %s provisioned successfully", separateHosts[0].NodeID)
 	}
 
-	subnetID, chainID, err := getDeployedSubnetInfo()
+	subnetID, chainID, err := getDeployedSubnetInfo(subnetName)
 	if err != nil {
 		return err
 	}
@@ -287,7 +287,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func getDeployedSubnetInfo() (string, string, error) {
+func getDeployedSubnetInfo(subnetName string) (string, string, error) {
 	sidecarFile := filepath.Join(app.GetSubnetDir(), subnetName, constants.SidecarFileName)
 	var sidecar models.Sidecar
 	if _, err := os.Stat(sidecarFile); err == nil {
@@ -306,7 +306,12 @@ func getDeployedSubnetInfo() (string, string, error) {
 		if ok {
 			if model.SubnetID != ids.Empty && model.BlockchainID != ids.Empty {
 				return model.SubnetID.String(), model.BlockchainID.String(), nil
+			} else {
+				fmt.Printf("can't find approopriate ids \n")
 			}
+		} else {
+			fmt.Printf("can't find devnet \n")
+
 		}
 	}
 	return "", "", fmt.Errorf("unable to find deployed Devnet info at cluster_config.json")
