@@ -5,6 +5,9 @@ package nodecmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
@@ -19,8 +22,6 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
-	"os"
-	"path/filepath"
 )
 
 var (
