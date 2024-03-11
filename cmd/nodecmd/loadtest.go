@@ -32,7 +32,7 @@ var (
 
 type clusterInfo struct {
 	API        []nodeInfo `yaml:"API,omitempty"`
-	Validators []nodeInfo `yaml:"VALIDATORS,omitempty"`
+	Validator  []nodeInfo `yaml:"VALIDATOR,omitempty"`
 	Monitoring nodeInfo   `yaml:"MONITORING,omitempty"`
 	ChainID    string     `yaml:"CHAIN_ID,omitempty"`
 	SubnetID   string     `yaml:"SUBNET_ID,omitempty"`
