@@ -248,7 +248,13 @@ func wiz(cmd *cobra.Command, args []string) error {
 	} else {
 		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is successfully created and is now validating subnet %s!"), clusterName, subnetName)
 	}
-	return deployClusterYAMLFile(clusterName, subnetName)
+
+	if err = deployClusterYAMLFile(clusterName, subnetName); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Successfully deployed cluster information YAML file to external host!")
+	ux.Logger.PrintToUser("Cluster information YAML file can be found at /home/ubuntu/clusterInfo.yaml at external host")
+	return nil
 }
 
 func deployClusterYAMLFile(clusterName, subnetName string) error {
@@ -264,6 +270,7 @@ func deployClusterYAMLFile(clusterName, subnetName string) error {
 	if err := createClusterYAMLFile(clusterName, subnetID, chainID, separateHosts[0]); err != nil {
 		return err
 	}
+	ux.Logger.PrintToUser("Deploying cluster information YAML file to external host %s", separateHosts[0].GetCloudID())
 	return ssh.RunSSHCopyYAMLFile(separateHosts[0], app.GetClusterYAMLFilePath(clusterName))
 }
 
