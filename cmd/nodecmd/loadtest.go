@@ -367,7 +367,7 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 		}
 		roles := clusterConf.GetHostRoles(nodeConfig)
 		switch roles[0] {
-		case "Node":
+		case "Validator":
 			validatorNode := nodeInfo{
 				CloudID: cloudID,
 				NodeID:  nodeIDStr,
