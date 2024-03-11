@@ -272,7 +272,6 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 	}
 
 	if err := ssh.RunSSHCopyYAMLFile(separateHosts[0], app.GetClusterYAMLFilePath(clusterName)); err != nil {
-		fmt.Printf("we have error here %s \n", err)
 		return err
 	}
 	ux.Logger.PrintToUser("Setting up load test environment ...")

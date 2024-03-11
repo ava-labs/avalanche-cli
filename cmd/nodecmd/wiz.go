@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -247,7 +248,23 @@ func wiz(cmd *cobra.Command, args []string) error {
 	} else {
 		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is successfully created and is now validating subnet %s!"), clusterName, subnetName)
 	}
-	return nil
+	return deployClusterYAMLFile(clusterName)
+}
+
+func deployClusterYAMLFile(clusterName string) error {
+	separateHostInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
+	separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(separateHostInventoryPath)
+	if err != nil {
+		return err
+	}
+	subnetID, chainID, err := getDeployedSubnetInfo()
+	if err != nil {
+		return err
+	}
+	if err := createClusterYAMLFile(clusterName, subnetID, chainID, separateHosts[0]); err != nil {
+		return err
+	}
+	return ssh.RunSSHCopyYAMLFile(separateHosts[0], app.GetClusterYAMLFilePath(clusterName))
 }
 
 func waitForHealthyCluster(
