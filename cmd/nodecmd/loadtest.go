@@ -5,10 +5,6 @@ package nodecmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strconv"
-
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
@@ -23,6 +19,8 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
+	"os"
+	"path/filepath"
 )
 
 var (
@@ -30,6 +28,20 @@ var (
 	loadTestBuildCmd string
 	loadTestCmd      string
 )
+
+type clusterInfo struct {
+	API        []nodeInfo
+	Validators []nodeInfo
+	Monitoring nodeInfo
+	ChainID    string `yaml:"CHAIN_ID,omitempty"`
+	SubnetID   string `yaml:"SUBNET_ID,omitempty"`
+}
+type nodeInfo struct {
+	CloudID string `yaml:"CLOUD_ID,omitempty"`
+	NodeID  string `yaml:"NODE_ID,omitempty"`
+	IP      string `yaml:"IP,omitempty"`
+	Region  string `yaml:"REGION,omitempty"`
+}
 
 func newLoadTestCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -282,8 +294,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 	if err := ssh.RunSSHRunLoadTest(separateHosts[0], loadTestCmd); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Load test successfully run!")
-
+	ux.Logger.PrintToUser("Successfully run load test!")
 	return nil
 }
 
@@ -306,12 +317,7 @@ func getDeployedSubnetInfo(subnetName string) (string, string, error) {
 		if ok {
 			if model.SubnetID != ids.Empty && model.BlockchainID != ids.Empty {
 				return model.SubnetID.String(), model.BlockchainID.String(), nil
-			} else {
-				fmt.Printf("can't find approopriate ids \n")
 			}
-		} else {
-			fmt.Printf("can't find devnet \n")
-
 		}
 	}
 	return "", "", fmt.Errorf("unable to find deployed Devnet info at cluster_config.json")
@@ -332,7 +338,6 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 
 	enc := yaml.NewEncoder(yamlFile)
 
-	clusterInfoMap := make(map[string]string)
 	clustersConfig := models.ClustersConfig{}
 	if app.ClustersConfigExists() {
 		clustersConfig, err = app.LoadClustersConfig()
@@ -344,14 +349,9 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	validatorCount := 0
-	apiNodeCount := 0
+	var apiNodes []nodeInfo
+	var validatorNodes []nodeInfo
 	for _, cloudID := range clusterConf.GetCloudIDs() {
-		validatorIPEnvPrefix := "IP_VALIDATOR_"
-		validatorCloudIDEnvPrefix := "CLOUD_ID_VALIDATOR_"
-		validatorNodeIDEnvPrefix := "NODE_ID_VALIDATOR_"
-		apiIPEnvPrefix := "IP_API_"
-		apiCloudIDEnvPrefix := "CLOUD_ID_API_"
 		nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
 		if err != nil {
 			return err
@@ -367,27 +367,40 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 		roles := clusterConf.GetHostRoles(nodeConfig)
 		switch roles[0] {
 		case "Node":
-			validatorIPEnvPrefix += strconv.Itoa(validatorCount)
-			validatorCloudIDEnvPrefix += strconv.Itoa(validatorCount)
-			validatorNodeIDEnvPrefix += strconv.Itoa(validatorCount)
-			clusterInfoMap[validatorIPEnvPrefix] = nodeConfig.ElasticIP
-			clusterInfoMap[validatorCloudIDEnvPrefix] = cloudID
-			clusterInfoMap[validatorNodeIDEnvPrefix] = nodeIDStr
-			validatorCount += 1
+			validatorNode := nodeInfo{
+				CloudID: cloudID,
+				NodeID:  nodeIDStr,
+				IP:      nodeConfig.ElasticIP,
+				Region:  nodeConfig.Region,
+			}
+			validatorNodes = append(validatorNodes, validatorNode)
 		case "API":
-			apiIPEnvPrefix += strconv.Itoa(apiNodeCount)
-			apiCloudIDEnvPrefix += strconv.Itoa(apiNodeCount)
-			clusterInfoMap[apiIPEnvPrefix] = nodeConfig.ElasticIP
-			clusterInfoMap[apiCloudIDEnvPrefix] = cloudID
-			apiNodeCount += 1
+			apiNode := nodeInfo{
+				CloudID: cloudID,
+				IP:      nodeConfig.ElasticIP,
+				Region:  nodeConfig.Region,
+			}
+			apiNodes = append(apiNodes, apiNode)
 		default:
 		}
 	}
-	clusterInfoMap["SUBNET_ID"] = subnetID
-	clusterInfoMap["CHAIN_ID"] = chainID
-	clusterInfoMap["IP_MONITORING"] = separateHost.IP
-	clusterInfoMap["CLOUD_ID_MONITORING"] = separateHost.GetCloudID()
-	return enc.Encode(clusterInfoMap)
+	_, separateHostRegion, err := getNodeCloudConfig(separateHost.GetCloudID())
+	if err != nil {
+		return err
+	}
+	separateHostInfo := nodeInfo{
+		IP:      separateHost.IP,
+		CloudID: separateHost.GetCloudID(),
+		Region:  separateHostRegion,
+	}
+	clusterInfoYAML := clusterInfo{
+		Validators: validatorNodes,
+		API:        apiNodes,
+		Monitoring: separateHostInfo,
+		SubnetID:   subnetID,
+		ChainID:    chainID,
+	}
+	return enc.Encode(clusterInfoYAML)
 }
 
 func GetLoadTestScript(app *application.Avalanche) error {
