@@ -9,8 +9,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var app *application.Avalanche
-
 // avalanche subnet
 func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{

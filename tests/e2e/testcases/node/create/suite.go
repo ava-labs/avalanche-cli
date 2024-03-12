@@ -134,6 +134,13 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		gomega.Expect(avalanchegoVersion).To(gomega.ContainSubstring("go="))
 		gomega.Expect(avalanchegoVersion).To(gomega.ContainSubstring("avalanchego/" + latestAvagoVersion))
 	})
+	ginkgo.It("can whitelist ssh", func() {
+		output := commands.NodeWhitelistSSH("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC test@localhost")
+		fmt.Println(output)
+		gomega.Expect(output).To(gomega.ContainSubstring("Whitelisted SSH public key"))
+		authorizedFile := commands.NodeSSH(constants.E2EClusterName, "cat /home/ubuntu/.ssh/authorized_keys")
+		gomega.Expect(authorizedFile).To(gomega.ContainSubstring("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC test@localhost"))
+	})
 	ginkgo.It("can cleanup", func() {
 		commands.DeleteE2EInventory()
 		commands.DeleteE2ECluster()
