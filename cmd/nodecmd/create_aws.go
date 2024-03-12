@@ -397,8 +397,8 @@ func createAWSInstances(
 		for region, regionInstanceID := range instanceIDs {
 			for _, instanceID := range regionInstanceID {
 				ux.Logger.PrintToUser(fmt.Sprintf("Destroying AWS cloud server %s...", instanceID))
-				if stopErr := ec2Svc[region].DestroyInstance(instanceID, "", true); stopErr != nil {
-					failedNodes[instanceID] = stopErr
+				if destroyErr := ec2Svc[region].DestroyInstance(instanceID, "", true); destroyErr != nil {
+					failedNodes[instanceID] = destroyErr
 				}
 				ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s destroyed", instanceID))
 			}

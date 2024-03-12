@@ -320,8 +320,8 @@ func createGCPInstance(
 					NodeID: instanceID,
 					Region: zone,
 				}
-				if stopErr := gcpClient.DestroyGCPNode(nodeConfig, clusterName); err != nil {
-					failedNodes[instanceID] = stopErr
+				if destroyErr := gcpClient.DestroyGCPNode(nodeConfig, clusterName); destroyErr != nil {
+					failedNodes[instanceID] = destroyErr
 					continue
 				}
 				ux.Logger.PrintToUser(fmt.Sprintf("GCP cloud server instance %s destroyed in %s zone", instanceID, zone))
