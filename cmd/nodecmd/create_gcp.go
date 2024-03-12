@@ -320,7 +320,7 @@ func createGCPInstance(
 					NodeID: instanceID,
 					Region: zone,
 				}
-				if stopErr := gcpClient.StopGCPNode(nodeConfig, clusterName); err != nil {
+				if stopErr := gcpClient.TerminateGCPNode(nodeConfig, clusterName); err != nil {
 					failedNodes[instanceID] = stopErr
 					continue
 				}

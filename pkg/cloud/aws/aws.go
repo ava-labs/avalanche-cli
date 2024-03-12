@@ -286,8 +286,8 @@ func (c *AwsCloud) checkInstanceIsRunning(nodeID string) (bool, error) {
 	return false, nil
 }
 
-// StopAWSNode stops an EC2 instance with the given ID.
-func (c *AwsCloud) StopAWSNode(nodeConfig models.NodeConfig, clusterName string) error {
+// TerminateAWSNode terminates an EC2 instance with the given ID.
+func (c *AwsCloud) TerminateAWSNode(nodeConfig models.NodeConfig, clusterName string) error {
 	isRunning, err := c.checkInstanceIsRunning(nodeConfig.NodeID)
 	if err != nil {
 		ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", nodeConfig.NodeID, err.Error()))
@@ -296,16 +296,16 @@ func (c *AwsCloud) StopAWSNode(nodeConfig models.NodeConfig, clusterName string)
 	if !isRunning {
 		return fmt.Errorf("%w: instance %s, cluster %s", ErrNodeNotFoundToBeRunning, nodeConfig.NodeID, clusterName)
 	}
-	ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
-	return c.StopInstance(nodeConfig.NodeID, nodeConfig.ElasticIP, nodeConfig.UseStaticIP)
+	ux.Logger.PrintToUser(fmt.Sprintf("Terminating node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
+	return c.TerminateInstance(nodeConfig.NodeID, nodeConfig.ElasticIP, nodeConfig.UseStaticIP)
 }
 
-// StopInstance stops an EC2 instance with the given ID.
-func (c *AwsCloud) StopInstance(instanceID, publicIP string, releasePublicIP bool) error {
-	input := &ec2.StopInstancesInput{
+// TerminateInstance stops an EC2 instance with the given ID.
+func (c *AwsCloud) TerminateInstance(instanceID, publicIP string, releasePublicIP bool) error {
+	input := &ec2.TerminateInstancesInput{
 		InstanceIds: []string{instanceID},
 	}
-	if _, err := c.ec2Client.StopInstances(c.ctx, input); err != nil {
+	if _, err := c.ec2Client.TerminateInstances(c.ctx, input); err != nil {
 		return err
 	}
 	if releasePublicIP {
