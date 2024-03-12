@@ -5,6 +5,7 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
@@ -20,6 +21,8 @@ import (
 
 	"github.com/spf13/cobra"
 )
+
+var authorizeRemove bool
 
 func newTerminateCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -40,11 +43,34 @@ If there is a static IP address attached, it will be released.`,
 	return cmd
 }
 
+func removeNodeFromClustersConfig(clusterName string) error {
+	clustersConfig := models.ClustersConfig{}
+	var err error
+	if app.ClustersConfigExists() {
+		clustersConfig, err = app.LoadClustersConfig()
+		if err != nil {
+			return err
+		}
+	}
+	if clustersConfig.Clusters != nil {
+		delete(clustersConfig.Clusters, clusterName)
+	}
+	return app.WriteClustersConfigFile(&clustersConfig)
+}
+
+func removeDeletedNodeDirectory(clusterName string) error {
+	return os.RemoveAll(app.GetNodeInstanceDirPath(clusterName))
+}
+
+func removeClusterInventoryDir(clusterName string) error {
+	return os.RemoveAll(app.GetAnsibleInventoryDirPath(clusterName))
+}
+
 func getDeleteConfigConfirmation() error {
 	if authorizeRemove {
 		return nil
 	}
-	ux.Logger.PrintToUser("Please note that if your node(s) are validating a Subnet, stopping them could cause Subnet instability and it is irreversible")
+	ux.Logger.PrintToUser("Please note that if your node(s) are validating a Subnet, terminating them could cause Subnet instability and it is irreversible")
 	confirm := "Running this command will delete all stored files associated with your cloud server. Do you want to proceed? " +
 		fmt.Sprintf("Stored files can be found at %s", app.GetNodesDir())
 	yes, err := app.Prompt.CaptureYesNo(confirm)
@@ -52,9 +78,16 @@ func getDeleteConfigConfirmation() error {
 		return err
 	}
 	if !yes {
-		return errors.New("abort avalanche stop node command")
+		return errors.New("abort avalanche node terminate command")
 	}
 	return nil
+}
+
+func removeClustersConfigFiles(clusterName string) error {
+	if err := removeClusterInventoryDir(clusterName); err != nil {
+		return err
+	}
+	return removeNodeFromClustersConfig(clusterName)
 }
 
 func terminateNodes(_ *cobra.Command, args []string) error {
@@ -100,7 +133,7 @@ func terminateNodes(_ *cobra.Command, args []string) error {
 				}
 				lastRegion = nodeConfig.Region
 			}
-			if err = ec2Svc.StopAWSNode(nodeConfig, clusterName); err != nil {
+			if err = ec2Svc.TerminateAWSNode(nodeConfig, clusterName); err != nil {
 				if isExpiredCredentialError(err) {
 					ux.Logger.PrintToUser("")
 					printExpiredCredentialsOutput(awsProfile)
@@ -126,7 +159,7 @@ func terminateNodes(_ *cobra.Command, args []string) error {
 					return err
 				}
 			}
-			if err = gcpCloud.StopGCPNode(nodeConfig, clusterName); err != nil {
+			if err = gcpCloud.TerminateGCPNode(nodeConfig, clusterName); err != nil {
 				if !errors.Is(err, gcpAPI.ErrNodeNotFoundToBeRunning) {
 					nodeErrors[node] = err
 					continue
@@ -134,7 +167,7 @@ func terminateNodes(_ *cobra.Command, args []string) error {
 				ux.Logger.PrintToUser("node %s is already stopped", nodeConfig.NodeID)
 			}
 		}
-		ux.Logger.PrintToUser("Node instance %s in cluster %s successfully stopped!", nodeConfig.NodeID, clusterName)
+		ux.Logger.PrintToUser("Node instance %s in cluster %s successfully terminated!", nodeConfig.NodeID, clusterName)
 		if err := removeDeletedNodeDirectory(node); err != nil {
 			ux.Logger.PrintToUser("Failed to delete node config for node %s due to %s", node, err.Error())
 			return err
@@ -151,7 +184,7 @@ func terminateNodes(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("failed to stop node(s) %s", maps.Keys(nodeErrors))
 	} else {
-		ux.Logger.PrintToUser("All nodes in cluster %s are successfully stopped!", clusterName)
+		ux.Logger.PrintToUser("All nodes in cluster %s are successfully terminated!", clusterName)
 	}
 	return removeClustersConfigFiles(clusterName)
 }

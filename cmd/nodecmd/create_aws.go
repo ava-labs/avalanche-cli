@@ -392,12 +392,12 @@ func createAWSInstances(
 			ux.Logger.PrintToUser("Failed to create AWS cloud server(s) with error: %s", err.Error())
 		}
 		// we stop created instances so that user doesn't pay for unused EC2 instances
-		ux.Logger.PrintToUser("Stopping all created AWS instances due to error to prevent charge for unused AWS instances...")
+		ux.Logger.PrintToUser("Terminating all created AWS instances due to error to prevent charge for unused AWS instances...")
 		failedNodes := map[string]error{}
 		for region, regionInstanceID := range instanceIDs {
 			for _, instanceID := range regionInstanceID {
 				ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s...", instanceID))
-				if stopErr := ec2Svc[region].StopInstance(instanceID, "", true); stopErr != nil {
+				if stopErr := ec2Svc[region].TerminateInstance(instanceID, "", true); stopErr != nil {
 					failedNodes[instanceID] = stopErr
 				}
 				ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s stopped", instanceID))
