@@ -395,7 +395,7 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 		Region:  separateHostRegion,
 	}
 	clusterInfoYAML := clusterInfo{
-		Validators: validatorNodes,
+		Validator:  validatorNodes,
 		API:        apiNodes,
 		Monitoring: separateHostInfo,
 		SubnetID:   subnetID,
