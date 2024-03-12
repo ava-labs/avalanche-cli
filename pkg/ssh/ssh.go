@@ -424,16 +424,26 @@ func RunSSHSetupBuildEnv(host *models.Host) error {
 	)
 }
 
-func RunSSHBuildLoadTest(host *models.Host, loadTestRepo, loadTestPath string) error {
+func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath string) error {
 	loadTestRepoPaths := strings.Split(loadTestRepo, "/")
 	// remove .git
 	loadTestRepoDir := strings.Split(loadTestRepoPaths[len(loadTestRepoPaths)-1], ".")
-	return RunOverSSH(
+	return StreamOverSSH(
 		"Build Load Test",
 		host,
 		constants.SSHScriptTimeout,
 		"shell/buildLoadTest.sh",
-		scriptInputs{GoVersion: constants.BuildEnvGolangVersion, LoadTestRepoDir: loadTestRepoDir[0], LoadTestRepo: loadTestRepo, LoadTestPath: loadTestPath},
+		scriptInputs{LoadTestRepoDir: loadTestRepoDir[0], LoadTestRepo: loadTestRepo, LoadTestPath: loadTestPath},
+	)
+}
+
+func RunSSHBuildLoadTestDeps(host *models.Host) error {
+	return RunOverSSH(
+		"Build Load Test",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/buildLoadTestDeps.sh",
+		scriptInputs{GoVersion: constants.BuildEnvGolangVersion},
 	)
 }
 
