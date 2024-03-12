@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -25,9 +26,11 @@ import (
 )
 
 var (
-	loadTestRepoURL  string
-	loadTestBuildCmd string
-	loadTestCmd      string
+	loadTestRepoURL    string
+	loadTestBuildCmd   string
+	loadTestCmd        string
+	loadTestRepoCommit string
+	repoDirName        string
 )
 
 type clusterInfo struct {
@@ -288,7 +291,11 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Setting up load test environment ...")
-	if err := ssh.RunSSHBuildLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd); err != nil {
+	checkoutCommit := false
+	if loadTestRepoCommit != "" {
+		checkoutCommit = true
+	}
+	if err := ssh.RunSSHBuildLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestRepoCommit, repoDirName, checkoutCommit); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Successfully set up load test environment!")
@@ -404,10 +411,32 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 	return enc.Encode(clusterInfoYAML)
 }
 
+func getGitCommit(gitRepoURL string) string {
+	if strings.Contains(gitRepoURL, "/commit/") {
+		splitURL := strings.Split(gitRepoURL, "/")
+		commitID := splitURL[len(splitURL)-1]
+		return commitID
+	}
+	return ""
+}
+
+func getRepoFromCommitURL(gitRepoURL string) string {
+	splitURL := strings.Split(gitRepoURL, "/")
+	splitURLWOCommit := splitURL[:len(splitURL)-2]
+	repoDirName = splitURLWOCommit[len(splitURLWOCommit)-1]
+	gitRepo := strings.Join(splitURLWOCommit[:], "/")
+	gitRepo += ".git"
+	return gitRepo
+}
+
 func GetLoadTestScript(app *application.Avalanche) error {
 	var err error
 	if loadTestRepoURL != "" {
 		ux.Logger.PrintToUser("Checking source code repository URL %s", loadTestRepoURL)
+		loadTestRepoCommit = getGitCommit(loadTestRepoURL)
+		if loadTestRepoCommit != "" {
+			loadTestRepoURL = getRepoFromCommitURL(loadTestRepoURL)
+		}
 		if err := prompts.ValidateURL(loadTestRepoURL); err != nil {
 			ux.Logger.PrintToUser("Invalid repository url %s: %s", loadTestRepoURL, err)
 			loadTestRepoURL = ""
@@ -417,6 +446,10 @@ func GetLoadTestScript(app *application.Avalanche) error {
 		loadTestRepoURL, err = app.Prompt.CaptureURL("Source code repository URL")
 		if err != nil {
 			return err
+		}
+		loadTestRepoCommit = getGitCommit(loadTestRepoURL)
+		if loadTestRepoCommit != "" {
+			loadTestRepoURL = getRepoFromCommitURL(loadTestRepoURL)
 		}
 	}
 	if loadTestBuildCmd == "" {

@@ -38,6 +38,9 @@ type scriptInputs struct {
 	LoadTestRepo            string
 	LoadTestPath            string
 	LoadTestCommand         string
+	LoadTestGitCommit       string
+	RepoDirName             string
+	CheckoutCommit          bool
 }
 
 //go:embed shell/*.sh
@@ -433,16 +436,19 @@ func RunSSHSetupBuildEnv(host *models.Host) error {
 	)
 }
 
-func RunSSHBuildLoadTest(host *models.Host, loadTestRepo, loadTestPath string) error {
+func RunSSHBuildLoadTest(host *models.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName string, checkoutCommit bool) error {
 	loadTestRepoPaths := strings.Split(loadTestRepo, "/")
 	// remove .git
 	loadTestRepoDir := strings.Split(loadTestRepoPaths[len(loadTestRepoPaths)-1], ".")
+	fmt.Printf("RunSSHBuildLoadTest loadTestGitCommit %s \n", loadTestGitCommit)
 	return StreamOverSSH(
 		"Build Load Test",
 		host,
 		constants.SSHScriptTimeout,
 		"shell/buildLoadTest.sh",
-		scriptInputs{GoVersion: constants.BuildEnvGolangVersion, LoadTestRepoDir: loadTestRepoDir[0], LoadTestRepo: loadTestRepo, LoadTestPath: loadTestPath},
+		scriptInputs{GoVersion: constants.BuildEnvGolangVersion, LoadTestRepoDir: loadTestRepoDir[0],
+			LoadTestRepo: loadTestRepo, LoadTestPath: loadTestPath, LoadTestGitCommit: loadTestGitCommit,
+			RepoDirName: repoDirName, CheckoutCommit: checkoutCommit},
 	)
 }
 

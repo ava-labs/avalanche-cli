@@ -2,6 +2,9 @@
 # get most updated load test repo
 echo "getting load test repo ..."
 git -C {{ .LoadTestRepoDir }} pull || git clone {{ .LoadTestRepo }}
+{{if .CheckoutCommit }}
+cd {{ .RepoDirName}}; git checkout {{ .LoadTestGitCommit}}
+{{end}}
 # install gcc
 echo "ensuring that gcc is installed ..."
 gcc --version || DEBIAN_FRONTEND=noninteractive sudo apt-get -y -o DPkg::Lock::Timeout=120 install gcc
