@@ -311,8 +311,8 @@ func createGCPInstance(
 	)
 	if err != nil {
 		ux.Logger.PrintToUser("Failed to create GCP cloud server")
-		// we stop created instances so that user doesn't pay for unused GCP instances
-		ux.Logger.PrintToUser("Stopping all created GCP instances due to error to prevent charge for unused GCP instances...")
+		// we destroy created instances so that user doesn't pay for unused GCP instances
+		ux.Logger.PrintToUser("Destroying all created GCP instances due to error to prevent charge for unused GCP instances...")
 		failedNodes := map[string]error{}
 		for zone, zoneInstances := range instanceIDs {
 			for _, instanceID := range zoneInstances {
@@ -320,20 +320,20 @@ func createGCPInstance(
 					NodeID: instanceID,
 					Region: zone,
 				}
-				if stopErr := gcpClient.TerminateGCPNode(nodeConfig, clusterName); err != nil {
-					failedNodes[instanceID] = stopErr
+				if destroyErr := gcpClient.DestroyGCPNode(nodeConfig, clusterName); destroyErr != nil {
+					failedNodes[instanceID] = destroyErr
 					continue
 				}
-				ux.Logger.PrintToUser(fmt.Sprintf("GCP cloud server instance %s stopped in %s zone", instanceID, zone))
+				ux.Logger.PrintToUser(fmt.Sprintf("GCP cloud server instance %s destroyed in %s zone", instanceID, zone))
 			}
 		}
 		if len(failedNodes) > 0 {
 			ux.Logger.PrintToUser("Failed nodes: ")
 			for node, err := range failedNodes {
-				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err))
+				ux.Logger.PrintToUser(fmt.Sprintf("Failed to destroy node %s due to %s", node, err))
 			}
-			ux.Logger.PrintToUser("Stop the above instance(s) on GCP console to prevent charges")
-			return models.CloudConfig{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)
+			ux.Logger.PrintToUser("Destroy the above instance(s) on GCP console to prevent charges")
+			return models.CloudConfig{}, fmt.Errorf("failed to destroy node(s) %s", failedNodes)
 		}
 		return models.CloudConfig{}, err
 	}

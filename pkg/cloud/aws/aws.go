@@ -286,22 +286,22 @@ func (c *AwsCloud) checkInstanceIsRunning(nodeID string) (bool, error) {
 	return false, nil
 }
 
-// TerminateAWSNode terminates an EC2 instance with the given ID.
-func (c *AwsCloud) TerminateAWSNode(nodeConfig models.NodeConfig, clusterName string) error {
+// DestroyAWSNode terminates an EC2 instance with the given ID.
+func (c *AwsCloud) DestroyAWSNode(nodeConfig models.NodeConfig, clusterName string) error {
 	isRunning, err := c.checkInstanceIsRunning(nodeConfig.NodeID)
 	if err != nil {
-		ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", nodeConfig.NodeID, err.Error()))
+		ux.Logger.PrintToUser(fmt.Sprintf("Failed to destroy node %s due to %s", nodeConfig.NodeID, err.Error()))
 		return err
 	}
 	if !isRunning {
 		return fmt.Errorf("%w: instance %s, cluster %s", ErrNodeNotFoundToBeRunning, nodeConfig.NodeID, clusterName)
 	}
 	ux.Logger.PrintToUser(fmt.Sprintf("Terminating node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
-	return c.TerminateInstance(nodeConfig.NodeID, nodeConfig.ElasticIP, nodeConfig.UseStaticIP)
+	return c.DestroyInstance(nodeConfig.NodeID, nodeConfig.ElasticIP, nodeConfig.UseStaticIP)
 }
 
-// TerminateInstance stops an EC2 instance with the given ID.
-func (c *AwsCloud) TerminateInstance(instanceID, publicIP string, releasePublicIP bool) error {
+// DestroyInstance terminates an EC2 instance with the given ID.
+func (c *AwsCloud) DestroyInstance(instanceID, publicIP string, releasePublicIP bool) error {
 	input := &ec2.TerminateInstancesInput{
 		InstanceIds: []string{instanceID},
 	}
@@ -310,7 +310,7 @@ func (c *AwsCloud) TerminateInstance(instanceID, publicIP string, releasePublicI
 	}
 	if releasePublicIP {
 		if publicIP == "" {
-			ux.Logger.RedXToUser("Unabled to remove public IP for instannce %s: undefined", instanceID)
+			ux.Logger.RedXToUser("Unable to remove public IP for instance %s: undefined", instanceID)
 		} else {
 			describeAddressInput := &ec2.DescribeAddressesInput{
 				Filters: []types.Filter{

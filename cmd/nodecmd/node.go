@@ -34,8 +34,8 @@ rest of the commands to maintain your node and make your node a Subnet Validator
 	cmd.AddCommand(NewValidateCmd())
 	// node sync cluster --subnet subnetName
 	cmd.AddCommand(newSyncCmd())
-	// node terminate
-	cmd.AddCommand(newTerminateCmd())
+	// node destroy
+	cmd.AddCommand(newDestroyCmd())
 	// node status cluster
 	cmd.AddCommand(newStatusCmd())
 	// node list

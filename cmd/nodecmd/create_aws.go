@@ -391,25 +391,25 @@ func createAWSInstances(
 		} else {
 			ux.Logger.PrintToUser("Failed to create AWS cloud server(s) with error: %s", err.Error())
 		}
-		// we stop created instances so that user doesn't pay for unused EC2 instances
-		ux.Logger.PrintToUser("Terminating all created AWS instances due to error to prevent charge for unused AWS instances...")
+		// we destroy created instances so that user doesn't pay for unused EC2 instances
+		ux.Logger.PrintToUser("Destroying all created AWS instances due to error to prevent charge for unused AWS instances...")
 		failedNodes := map[string]error{}
 		for region, regionInstanceID := range instanceIDs {
 			for _, instanceID := range regionInstanceID {
-				ux.Logger.PrintToUser(fmt.Sprintf("Stopping AWS cloud server %s...", instanceID))
-				if stopErr := ec2Svc[region].TerminateInstance(instanceID, "", true); stopErr != nil {
-					failedNodes[instanceID] = stopErr
+				ux.Logger.PrintToUser(fmt.Sprintf("Destroying AWS cloud server %s...", instanceID))
+				if destroyErr := ec2Svc[region].DestroyInstance(instanceID, "", true); destroyErr != nil {
+					failedNodes[instanceID] = destroyErr
 				}
-				ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s stopped", instanceID))
+				ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s destroyed", instanceID))
 			}
 		}
 		if len(failedNodes) > 0 {
 			ux.Logger.PrintToUser("Failed nodes: ")
 			for node, err := range failedNodes {
-				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err))
+				ux.Logger.PrintToUser(fmt.Sprintf("Failed to destroy node %s due to %s", node, err))
 			}
-			ux.Logger.PrintToUser("Stop the above instance(s) on AWS console to prevent charges")
-			return models.CloudConfig{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)
+			ux.Logger.PrintToUser("Destroy the above instance(s) on AWS console to prevent charges")
+			return models.CloudConfig{}, fmt.Errorf("failed to destroy node(s) %s", failedNodes)
 		}
 		return models.CloudConfig{}, err
 	}
