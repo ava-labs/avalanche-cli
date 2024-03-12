@@ -11,6 +11,8 @@ const (
 	WriteReadReadPerms     = 0o644
 	WriteReadUserOnlyPerms = 0o600
 
+	UbuntuVersionLTS = "20.04"
+
 	BaseDirName = ".avalanche-cli"
 	LogDir      = "logs"
 

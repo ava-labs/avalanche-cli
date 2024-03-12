@@ -464,15 +464,16 @@ func (c *AwsCloud) CheckKeyPairExists(kpName string) (bool, error) {
 }
 
 // GetUbuntuAMIID returns the ID of the latest Ubuntu Amazon Machine Image (AMI).
-func (c *AwsCloud) GetUbuntuAMIID(arch string) (string, error) {
+func (c *AwsCloud) GetUbuntuAMIID(arch string, ubuntuVerLTS string) (string, error) {
 	if !utils.ArchSupported(arch) {
 		return "", fmt.Errorf("unsupported architecture: %s", arch)
 	}
-	descriptionFilterValue := fmt.Sprintf("Canonical, Ubuntu, 20.04 LTS, %s*", arch)
+	descriptionFilterValue := fmt.Sprintf("Canonical, Ubuntu, %s LTS", ubuntuVerLTS)
 	imageInput := &ec2.DescribeImagesInput{
 		Filters: []types.Filter{
 			{Name: aws.String("root-device-type"), Values: []string{"ebs"}},
 			{Name: aws.String("description"), Values: []string{descriptionFilterValue}},
+			{Name: aws.String("architecture"), Values: []string{arch}},
 		},
 		Owners: []string{"self", "amazon"},
 	}

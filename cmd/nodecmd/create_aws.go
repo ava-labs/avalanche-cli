@@ -138,7 +138,7 @@ func getAWSCloudConfig(awsProfile string, instanceType string) (map[string]*awsA
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		amiMap[region], err = ec2SvcMap[region].GetUbuntuAMIID(arch)
+		amiMap[region], err = ec2SvcMap[region].GetUbuntuAMIID(arch, constants.UbuntuVersionLTS)
 		if err != nil {
 			if isExpiredCredentialError(err) {
 				printExpiredCredentialsOutput(awsProfile)
