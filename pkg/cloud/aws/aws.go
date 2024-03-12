@@ -464,8 +464,11 @@ func (c *AwsCloud) CheckKeyPairExists(kpName string) (bool, error) {
 }
 
 // GetUbuntuAMIID returns the ID of the latest Ubuntu Amazon Machine Image (AMI).
-func (c *AwsCloud) GetUbuntuAMIID() (string, error) {
-	descriptionFilterValue := "Canonical, Ubuntu, 20.04 LTS, amd64*"
+func (c *AwsCloud) GetUbuntuAMIID(arch string) (string, error) {
+	if !utils.ArchSupported(arch) {
+		return "", fmt.Errorf("unsupported architecture: %s", arch)
+	}
+	descriptionFilterValue := fmt.Sprintf("Canonical, Ubuntu, 20.04 LTS, %s*", arch)
 	imageInput := &ec2.DescribeImagesInput{
 		Filters: []types.Filter{
 			{Name: aws.String("root-device-type"), Values: []string{"ebs"}},
@@ -506,4 +509,18 @@ func (c *AwsCloud) ListRegions() ([]string, error) {
 func isEIPQuotaExceededError(err error) bool {
 	// You may need to adjust this function based on the actual error messages returned by AWS
 	return err != nil && (utils.ContainsIgnoreCase(err.Error(), "limit exceeded") || utils.ContainsIgnoreCase(err.Error(), "elastic ip address limit exceeded"))
+}
+
+// GetInstanceTypeArch returns the architecture of the given instance type.
+func (c *AwsCloud) GetInstanceTypeArch(instanceType string) (string, error) {
+	archOutput, err := c.ec2Client.DescribeInstanceTypes(c.ctx, &ec2.DescribeInstanceTypesInput{
+		InstanceTypes: []types.InstanceType{types.InstanceType(instanceType)},
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(archOutput.InstanceTypes) == 0 {
+		return "", fmt.Errorf("no instance type found for %s", instanceType)
+	}
+	return string(archOutput.InstanceTypes[0].ProcessorInfo.SupportedArchitectures[0]), nil
 }

@@ -307,7 +307,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 				return fmt.Errorf("cloud access is required")
 			}
-			ec2SvcMap, ami, numNodesMap, err := getAWSCloudConfig(awsProfile)
+			ec2SvcMap, ami, numNodesMap, err := getAWSCloudConfig(awsProfile, nodeType)
 			regions := maps.Keys(ec2SvcMap)
 			if err != nil {
 				return err
