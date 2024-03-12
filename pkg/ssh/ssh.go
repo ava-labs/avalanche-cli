@@ -440,7 +440,6 @@ func RunSSHBuildLoadTest(host *models.Host, loadTestRepo, loadTestPath, loadTest
 	loadTestRepoPaths := strings.Split(loadTestRepo, "/")
 	// remove .git
 	loadTestRepoDir := strings.Split(loadTestRepoPaths[len(loadTestRepoPaths)-1], ".")
-	fmt.Printf("RunSSHBuildLoadTest loadTestGitCommit %s \n", loadTestGitCommit)
 	return StreamOverSSH(
 		"Build Load Test",
 		host,
