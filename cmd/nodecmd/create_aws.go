@@ -9,8 +9,6 @@ import (
 
 	"golang.org/x/exp/maps"
 
-	"golang.org/x/exp/maps"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"

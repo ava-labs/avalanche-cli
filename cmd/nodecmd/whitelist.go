@@ -266,28 +266,3 @@ func getCloudSecurityGroupList(clusterNodes []string) ([]regionSecurityGroup, er
 	}
 	return cloudSecurityGroupList, nil
 }
-
-// getCloudSecurityGroupList returns a list of cloud security groups for a given cluster nodes
-func getCloudSecurityGroupList(clusterNodes []string) ([]regionSecurityGroup, error) {
-	cloudSecurityGroupList := []regionSecurityGroup{}
-	for _, node := range clusterNodes {
-		nodeConfig, err := app.LoadClusterNodeConfig(node)
-		if err != nil {
-			ux.Logger.PrintToUser("Failed to parse node %s due to %s", node, err.Error())
-			return nil, err
-		}
-		if slices.Contains(cloudSecurityGroupList, regionSecurityGroup{
-			cloud:         nodeConfig.CloudService,
-			region:        nodeConfig.Region,
-			securityGroup: nodeConfig.SecurityGroup,
-		}) {
-			continue
-		}
-		cloudSecurityGroupList = append(cloudSecurityGroupList, regionSecurityGroup{
-			cloud:         nodeConfig.CloudService,
-			region:        nodeConfig.Region,
-			securityGroup: nodeConfig.SecurityGroup,
-		})
-	}
-	return cloudSecurityGroupList, nil
-}

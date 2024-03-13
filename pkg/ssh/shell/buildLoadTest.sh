@@ -2,7 +2,7 @@
 # get most updated load test repo
 echo "getting load test repo ..."
 git -C {{ .LoadTestRepoDir }} pull || git clone {{ .LoadTestRepo }}
-echo "building load test binary ..."
-# run load test build command
-eval {{ .LoadTestPath }}
+{{if .CheckoutCommit }}
+cd {{ .RepoDirName}}; git checkout {{ .LoadTestGitCommit}}
+{{end}}
 echo "successfully built load test binary!"

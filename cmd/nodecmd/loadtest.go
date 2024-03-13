@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -19,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 	"gopkg.in/yaml.v3"
@@ -279,6 +281,13 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		}
 		ux.Logger.PrintToUser("Separate instance %s provisioned successfully", separateHosts[0].NodeID)
 	}
+	spinSession := ux.NewUserSpinner()
+	spinner := spinSession.SpinToUser(utils.ScriptLog(separateHosts[0].NodeID, "Setting up load test environment"))
+	if err := ssh.RunSSHBuildLoadTestDeps(separateHosts[0]); err != nil {
+		ux.SpinFailWithError(spinner, "", err)
+		return err
+	}
+	ux.SpinComplete(spinner)
 
 	subnetID, chainID, err := getDeployedSubnetInfo(subnetName)
 	if err != nil {
@@ -292,19 +301,36 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 	if err := ssh.RunSSHCopyYAMLFile(separateHosts[0], app.GetClusterYAMLFilePath(clusterName)); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Setting up load test environment ...")
 	checkoutCommit := false
 	if loadTestRepoCommit != "" {
 		checkoutCommit = true
 	}
-	if err := ssh.RunSSHBuildLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestRepoCommit, repoDirName, checkoutCommit); err != nil {
+	if existingSeparateInstance != "" {
+		spinner = spinSession.SpinToUser(utils.ScriptLog(separateHosts[0].NodeID, "Updating monirtoring configuration"))
+		// provision prometheus scraping for LT for existing monitoring instance
+		avalancheGoPorts, machinePorts, err := getPrometheusTargets(clusterName)
+		if err != nil {
+			ux.SpinFailWithError(spinner, "", err)
+			return err
+		}
+		if err := ssh.RunSSHUpdatePrometheusConfig(separateHosts[0], strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
+			ux.SpinFailWithError(spinner, "", err)
+			return err
+		}
+		ux.SpinComplete(spinner)
+	}
+	spinSession.Stop()
+	ux.Logger.GreenCheckmarkToUser("Load test environment is ready!")
+	ux.Logger.PrintToUser("%s Building load test code", logging.Green.Wrap(">"))
+	if err := ssh.RunSSHBuildLoadTestCode(separateHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestRepoCommit, repoDirName, checkoutCommit); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Successfully set up load test environment!")
+
+	ux.Logger.PrintToUser("%s Running load test", logging.Green.Wrap(">"))
 	if err := ssh.RunSSHRunLoadTest(separateHosts[0], loadTestCmd); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Successfully run load test!")
+	ux.Logger.PrintToUser("Load test successfully run!")
 	return nil
 }
 
