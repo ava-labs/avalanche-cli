@@ -139,7 +139,7 @@ func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []st
 	}
 	for region := range finalRegions {
 		var err error
-    if singleNode {
+		if singleNode {
 			for _, clusterRegion := range clusterSgRegions {
 				ec2SvcMap[clusterRegion], err = getAWSCloudCredentials(awsProfile, clusterRegion)
 				if err != nil {
