@@ -595,7 +595,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			return err
 		}
 		if existingMonitoringInstance != "" {
-			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Setup monitoring"))
+			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Update monitoring configuration"))
 			if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
@@ -611,8 +611,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
-
-			if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost, app.GetMonitoringDashboardDir()+"/", strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
+			if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost, filepath.Join(app.GetMonitoringDir(), constants.MonitoringScriptFile), strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}

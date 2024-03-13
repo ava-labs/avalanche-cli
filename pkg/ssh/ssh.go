@@ -257,10 +257,11 @@ func RunSSHSetupMachineMetrics(host *models.Host) error {
 	)
 }
 
-func RunSSHSetupSeparateMonitoring(host *models.Host, monitoringDashboardPath, avalancheGoPorts, machinePorts string) error {
+func RunSSHSetupSeparateMonitoring(host *models.Host, monitoringScriptPath, avalancheGoPorts, machinePorts string) error {
+	remotePath := fmt.Sprintf("/home/ubuntu/%s", constants.MonitoringScriptFile)
 	if err := host.Upload(
-		monitoringDashboardPath,
-		fmt.Sprintf("/home/ubuntu/%s", filepath.Base(monitoringDashboardPath)),
+		monitoringScriptPath,
+		remotePath,
 		constants.SSHFileOpsTimeout,
 	); err != nil {
 		return err
