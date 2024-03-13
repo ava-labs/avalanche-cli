@@ -109,7 +109,7 @@ func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []st
 		var err error
 		if singleNode {
 			selectedRegion, err := getSeparateHostNodeParam(constants.AWSCloudService)
-			finalRegions = map[string]NumNodes{selectedRegion: NumNodes{1, 0}}
+			finalRegions = map[string]NumNodes{selectedRegion: {1, 0}}
 			if err != nil {
 				return nil, nil, nil, err
 			}

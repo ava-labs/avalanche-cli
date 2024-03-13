@@ -279,3 +279,28 @@ func ScriptLog(nodeID string, msg string, args ...interface{}) string {
 	formattedMsg := fmt.Sprintf(msg, args...)
 	return fmt.Sprintf("[%s] %s", nodeID, formattedMsg)
 }
+
+// GetRepoFromCommitURL takes a Git repository URL that contains commit ID and returns the cloneable
+// Git Repo URL (ends in .git) and the repo directory name
+func GetRepoFromCommitURL(gitRepoURL string) (string, string) {
+	splitURL := strings.Split(gitRepoURL, "/")
+	if len(splitURL) > 2 {
+		splitURLWOCommit := splitURL[:len(splitURL)-2]
+		gitRepo := strings.Join(splitURLWOCommit, "/")
+		gitRepo += constants.GitExtension
+		return gitRepo, splitURLWOCommit[len(splitURLWOCommit)-1]
+	}
+	return "", ""
+}
+
+// GetGitCommit takes a Git repository URL that contains commit ID and returns the commit ID
+func GetGitCommit(gitRepoURL string) string {
+	if strings.Contains(gitRepoURL, "/commit/") {
+		splitURL := strings.Split(gitRepoURL, "/")
+		if len(splitURL) > 0 {
+			commitID := splitURL[len(splitURL)-1]
+			return commitID
+		}
+	}
+	return ""
+}

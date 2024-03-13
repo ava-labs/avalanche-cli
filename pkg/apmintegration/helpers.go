@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"path"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
 func removeSlashes(str string) string {
@@ -38,7 +40,7 @@ func getGitRepo(gitURL *url.URL) (string, error) {
 		return "", errors.New("invalid url format, unable to find repo name: " + gitURL.Path)
 	}
 
-	return strings.TrimSuffix(repo, gitExtension), nil
+	return strings.TrimSuffix(repo, constants.GitExtension), nil
 }
 
 func getAlias(url *url.URL) (string, error) {

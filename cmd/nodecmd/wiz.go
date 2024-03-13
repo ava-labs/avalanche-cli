@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanchego/utils/logging"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -16,7 +18,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
 	"github.com/spf13/cobra"
@@ -247,7 +248,27 @@ func wiz(cmd *cobra.Command, args []string) error {
 	} else {
 		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is successfully created and is now validating subnet %s!"), clusterName, subnetName)
 	}
+
+	if err = deployClusterYAMLFile(clusterName, subnetName); err != nil {
+		return err
+	}
+	ux.Logger.GreenCheckmarkToUser("Cluster information YAML file can be found at /home/ubuntu/clusterInfo.yaml at external host")
 	return nil
+}
+
+func deployClusterYAMLFile(clusterName, subnetName string) error {
+	separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetMonitoringInventoryDir(clusterName))
+	if err != nil {
+		return err
+	}
+	subnetID, chainID, err := getDeployedSubnetInfo(subnetName)
+	if err != nil {
+		return err
+	}
+	if err := createClusterYAMLFile(clusterName, subnetID, chainID, separateHosts[0]); err != nil {
+		return err
+	}
+	return ssh.RunSSHCopyYAMLFile(separateHosts[0], app.GetClusterYAMLFilePath(clusterName))
 }
 
 func waitForHealthyCluster(
