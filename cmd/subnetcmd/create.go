@@ -241,7 +241,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			var k *key.SoftKey
 			if utils.FileExists(keyPath) {
 				ux.Logger.PrintToUser("loading stored key %q for teleporter deploys", constants.TeleporterKeyName)
-				k, err = key.LoadSoft(models.LocalNetwork.ID, keyPath)
+				k, err = key.LoadSoft(models.NewLocalNetwork().ID, keyPath)
 				if err != nil {
 					return err
 				}

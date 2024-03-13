@@ -9,13 +9,15 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
-	"github.com/ava-labs/avalanchego/utils/logging"
-
+	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/set"
@@ -113,7 +115,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if len(args) > 1 {
 		subnetName = args[1]
 	}
-	clusterAlreadyExists, err := clusterExists(clusterName)
+	clusterAlreadyExists, err := app.ClusterExists(clusterName)
 	if err != nil {
 		return err
 	}
@@ -162,7 +164,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 
 	if !clusterAlreadyExists {
-		createDevnet = true
+		globalNetworkFlags.UseDevnet = true
 		useAvalanchegoVersionFromSubnet = subnetName
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Creating the devnet..."))
@@ -173,7 +175,6 @@ func wiz(cmd *cobra.Command, args []string) error {
 	} else {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Adding subnet into existing devnet %s..."), clusterName)
-		ux.Logger.PrintToUser("")
 	}
 
 	// check all validators are found
@@ -226,7 +227,11 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	blockchainID := sc.Networks[models.Devnet.String()].BlockchainID
+	network, err := app.GetClusterNetwork(clusterName)
+	if err != nil {
+		return err
+	}
+	blockchainID := sc.Networks[network.Name()].BlockchainID
 	if blockchainID == ids.Empty {
 		return ErrNoBlockchainID
 	}
@@ -242,6 +247,23 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Validating, validateCheckTimeout, validateCheckPoolTime); err != nil {
 		return err
 	}
+
+	isEVMGenesis, err := subnetcmd.HasSubnetEVMGenesis(subnetName)
+	if err != nil {
+		return err
+	}
+	if sc.TeleporterReady && isEVMGenesis {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(logging.Green.Wrap("Setting up teleporter on subnet"))
+		ux.Logger.PrintToUser("")
+		flags := networkoptions.NetworkFlags{
+			ClusterName: clusterName,
+		}
+		if err := teleportercmd.CallDeploy(subnetName, flags); err != nil {
+			return err
+		}
+	}
+
 	ux.Logger.PrintToUser("")
 	if clusterAlreadyExists {
 		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is now validating subnet %s"), clusterName, subnetName)
@@ -249,26 +271,40 @@ func wiz(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is successfully created and is now validating subnet %s!"), clusterName, subnetName)
 	}
 
-	if err = deployClusterYAMLFile(clusterName, subnetName); err != nil {
+	b, err := deployClusterYAMLFile(clusterName, subnetName)
+	if err != nil {
 		return err
 	}
-	ux.Logger.GreenCheckmarkToUser("Cluster information YAML file can be found at /home/ubuntu/clusterInfo.yaml at external host")
+	if b {
+		ux.Logger.GreenCheckmarkToUser("Cluster information YAML file can be found at /home/ubuntu/clusterInfo.yaml at external host")
+	}
 	return nil
 }
 
-func deployClusterYAMLFile(clusterName, subnetName string) error {
-	separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetMonitoringInventoryDir(clusterName))
+// TODO: made this to work if there is no monitoring node
+func deployClusterYAMLFile(clusterName, subnetName string) (bool, error) {
+	var separateHost *models.Host
+	monitoringInventoryFile := app.GetMonitoringInventoryDir(clusterName)
+	if utils.FileExists(monitoringInventoryFile) {
+		separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetMonitoringInventoryDir(clusterName))
+		if err != nil {
+			return false, err
+		}
+		if len(separateHosts) > 0 {
+			separateHost = separateHosts[0]
+		}
+	}
+	if separateHost == nil {
+		return false, nil
+	}
+	subnetID, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
 	if err != nil {
-		return err
+		return false, err
 	}
-	subnetID, chainID, err := getDeployedSubnetInfo(subnetName)
-	if err != nil {
-		return err
+	if err := createClusterYAMLFile(clusterName, subnetID, chainID, separateHost); err != nil {
+		return false, err
 	}
-	if err := createClusterYAMLFile(clusterName, subnetID, chainID, separateHosts[0]); err != nil {
-		return err
-	}
-	return ssh.RunSSHCopyYAMLFile(separateHosts[0], app.GetClusterYAMLFilePath(clusterName))
+	return true, ssh.RunSSHCopyYAMLFile(separateHost, app.GetClusterYAMLFilePath(clusterName))
 }
 
 func waitForHealthyCluster(
@@ -400,7 +436,7 @@ func waitForClusterSubnetStatus(
 }
 
 func checkClusterIsADevnet(clusterName string) error {
-	exists, err := clusterExists(clusterName)
+	exists, err := app.ClusterExists(clusterName)
 	if err != nil {
 		return err
 	}

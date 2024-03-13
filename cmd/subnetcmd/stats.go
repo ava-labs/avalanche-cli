@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
@@ -21,6 +21,8 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
+
+var statsSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Fuji, networkoptions.Mainnet}
 
 // avalanche subnet stats
 func newStatsCmd() *cobra.Command {
@@ -32,36 +34,20 @@ func newStatsCmd() *cobra.Command {
 		RunE:         stats,
 		SilenceUsage: true,
 	}
-	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "print stats on `fuji` (alias for `testnet`)")
-	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "print stats on `testnet` (alias for `fuji`)")
-	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "print stats on `mainnet`")
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, statsSupportedNetworkOptions)
 	return cmd
 }
 
 func stats(_ *cobra.Command, args []string) error {
-	network := models.UndefinedNetwork
-	switch {
-	case deployTestnet:
-		network = models.FujiNetwork
-	case deployMainnet:
-		network = models.MainnetNetwork
-	}
-
-	if network.Kind == models.Undefined {
-		networkStr, err := app.Prompt.CaptureList(
-			"Choose a network from which you want to get the statistics (this command only supports public networks)",
-			[]string{models.Fuji.String(), models.Mainnet.String()},
-		)
-		if err != nil {
-			return err
-		}
-		// flag provided
-		networkStr = strings.Title(networkStr)
-		// as we are allowing a flag, we need to check if a supported network has been provided
-		if !(networkStr == models.Fuji.String() || networkStr == models.Mainnet.String()) {
-			return errors.New("unsupported network")
-		}
-		network = models.NetworkFromString(networkStr)
+	network, err := networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		globalNetworkFlags,
+		false,
+		statsSupportedNetworkOptions,
+		"",
+	)
+	if err != nil {
+		return err
 	}
 
 	chains, err := ValidateSubnetNameAndGetChains(args)

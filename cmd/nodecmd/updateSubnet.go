@@ -115,6 +115,9 @@ func doUpdateSubnet(
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
+			if err := ssh.RunSSHUploadClustersConfig(host, app.GetClustersConfigPath()); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+			}
 			if err := ssh.RunSSHUpdateSubnet(host, subnetName, subnetExportPath); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return

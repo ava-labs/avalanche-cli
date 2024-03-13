@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -18,11 +18,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	validatorsLocal   bool
-	validatorsTestnet bool
-	validatorsMainnet bool
-)
+var validatorsSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Cluster, networkoptions.Devnet}
 
 // avalanche subnet validators
 func newValidatorsCmd() *cobra.Command {
@@ -35,42 +31,26 @@ severarl statistics about them.`,
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 	}
-	cmd.Flags().BoolVarP(&validatorsLocal, "local", "l", false, "deploy to a local network")
-	cmd.Flags().BoolVarP(&validatorsTestnet, "testnet", "t", false, "deploy to testnet (alias to `fuji`)")
-	cmd.Flags().BoolVarP(&validatorsTestnet, "fuji", "f", false, "deploy to fuji (alias to `testnet`")
-	cmd.Flags().BoolVarP(&validatorsMainnet, "mainnet", "m", false, "deploy to mainnet")
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, validatorsSupportedNetworkOptions)
 	return cmd
 }
 
 func printValidators(_ *cobra.Command, args []string) error {
-	if !flags.EnsureMutuallyExclusive([]bool{validatorsLocal, validatorsTestnet, validatorsMainnet}) {
-		return errMutuallyExlusiveNetworks
-	}
+	subnetName := args[0]
 
-	network := models.UndefinedNetwork
-	switch {
-	case validatorsLocal:
-		network = models.LocalNetwork
-	case validatorsTestnet:
-		network = models.FujiNetwork
-	case validatorsMainnet:
-		network = models.MainnetNetwork
-	}
-
-	if network.Kind == models.Undefined {
-		// no flag was set, prompt user
-		networkStr, err := app.Prompt.CaptureList(
-			"Choose a network to list validators from",
-			[]string{models.Local.String(), models.Fuji.String(), models.Mainnet.String()},
-		)
-		if err != nil {
-			return err
-		}
-		network = models.NetworkFromString(networkStr)
+	network, err := networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		globalNetworkFlags,
+		false,
+		validatorsSupportedNetworkOptions,
+		subnetName,
+	)
+	if err != nil {
+		return err
 	}
 
 	// get the subnetID
-	sc, err := app.LoadSidecar(args[0])
+	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
 	}

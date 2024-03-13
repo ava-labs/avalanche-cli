@@ -16,12 +16,15 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
 
-// avalanche subnet deploy
+var addPermissionlessDelegatorSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji, networkoptions.Mainnet}
+
+// avalanche subnet addPermissionlessDelegator
 func newAddPermissionlessDelegatorCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "addPermissionlessDelegator [subnetName]",
@@ -46,17 +49,15 @@ these prompts by providing the values with flags.`,
 		RunE:         addPermissionlessDelegator,
 		Args:         cobra.ExactArgs(1),
 	}
+
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, addPermissionlessDelegatorSupportedNetworkOptions)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
+	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
+	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to delegate to")
-	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "join on `fuji` (alias for `testnet`)")
-	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
-	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
-	cmd.Flags().BoolVar(&deployLocal, "local", false, "join on `local`")
 	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "amount of tokens to stake")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "start time that delegator starts delegating")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long delegator should delegate for after start time")
-	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
-	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 
 	return cmd
 }
@@ -72,14 +73,12 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	network, err := GetNetworkFromCmdLineFlags(
-		deployLocal,
-		false,
-		deployTestnet,
-		deployMainnet,
-		"",
+	network, err := networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		globalNetworkFlags,
 		true,
-		[]models.NetworkKind{models.Local, models.Fuji, models.Mainnet},
+		addPermissionlessDelegatorSupportedNetworkOptions,
+		"",
 	)
 	if err != nil {
 		return err

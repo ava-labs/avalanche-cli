@@ -31,10 +31,6 @@ import (
 )
 
 var (
-	deployDevnet                 bool
-	deployTestnet                bool
-	deployMainnet                bool
-	endpoint                     string
 	keyName                      string
 	useEwoq                      bool
 	useLedger                    bool
@@ -65,11 +61,6 @@ Network.`,
 		Args:         cobra.ExactArgs(1),
 		RunE:         validatePrimaryNetwork,
 	}
-
-	cmd.Flags().BoolVarP(&deployDevnet, "devnet", "d", false, "set up validator in devnet")
-	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "set up validator in testnet (alias to `fuji`)")
-	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "set up validator in fuji (alias to `testnet`")
-	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "set up validator in mainnet")
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
@@ -307,21 +298,17 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	clustersConfig, err := app.LoadClustersConfig()
+	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return err
 	}
+	network := clusterConfig.Network
 
 	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
-	cluster, ok := clustersConfig.Clusters[clusterName]
-	if !ok {
-		return fmt.Errorf("cluster %s does not exist", clusterName)
-	}
-	network := clustersConfig.Clusters[clusterName].Network
-	hosts := cluster.GetValidatorHosts(allHosts) // exlude api nodes
+	hosts := clusterConfig.GetValidatorHosts(allHosts) // exlude api nodes
 	defer disconnectHosts(hosts)
 
 	fee := network.GenesisParams().AddPrimaryNetworkValidatorFee * uint64(len(hosts))
