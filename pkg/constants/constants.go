@@ -158,7 +158,7 @@ const (
 	// Set this one to true while testing changes that alter CLI execution on cloud nodes
 	// Disable it for releases to save cluster creation time
 	EnableSetupCLIFromSource           = true
-	SetupCLIFromSourceBranch           = "relayer-install"
+	SetupCLIFromSourceBranch           = "network-options"
 	BuildEnvGolangVersion              = "1.21.1"
 	IsHealthyJSONFile                  = "isHealthy.json"
 	IsBootstrappedJSONFile             = "isBootstrapped.json"
