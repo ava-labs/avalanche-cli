@@ -286,10 +286,9 @@ func GetRepoFromCommitURL(gitRepoURL string) (string, string) {
 	splitURL := strings.Split(gitRepoURL, "/")
 	if len(splitURL) > 2 {
 		splitURLWOCommit := splitURL[:len(splitURL)-2]
-		gitRepo := strings.Join(splitURLWOCommit[:], "/")
+		gitRepo := strings.Join(splitURLWOCommit, "/")
 		gitRepo += constants.GitExtension
 		return gitRepo, splitURLWOCommit[len(splitURLWOCommit)-1]
-
 	}
 	return "", ""
 }
