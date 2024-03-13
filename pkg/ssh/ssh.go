@@ -490,10 +490,14 @@ func RunSSHSetupCLIFromSource(host *models.Host, cliBranch string) error {
 	if !constants.EnableSetupCLIFromSource {
 		return nil
 	}
+	timeout := constants.SSHScriptTimeout
+	if utils.IsE2E() && utils.E2EDocker() {
+		timeout = 10 * time.Minute
+	}
 	return RunOverSSH(
 		"Setup CLI From Source",
 		host,
-		constants.SSHCLIFromSourceTimeout,
+		timeout,
 		"shell/setupCLIFromSource.sh",
 		scriptInputs{CliBranch: cliBranch},
 	)
