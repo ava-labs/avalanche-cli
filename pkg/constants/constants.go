@@ -285,6 +285,7 @@ const (
 	LastFileName                 = ".last_actions.json"
 	APIRole                      = "API"
 	ValidatorRole                = "Validator"
+	MonitorRole                  = "Monitor"
 	DefaultWalletCreationTimeout = 5 * time.Second
 
 	DefaultConfirmTxTimeout = 20 * time.Second
