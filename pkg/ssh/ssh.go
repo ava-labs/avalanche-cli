@@ -451,9 +451,11 @@ func RunSSHBuildLoadTest(host *models.Host, loadTestRepo, loadTestPath, loadTest
 		host,
 		constants.SSHScriptTimeout,
 		"shell/buildLoadTest.sh",
-		scriptInputs{GoVersion: constants.BuildEnvGolangVersion, LoadTestRepoDir: loadTestRepoDir[0],
+		scriptInputs{
+			GoVersion: constants.BuildEnvGolangVersion, LoadTestRepoDir: loadTestRepoDir[0],
 			LoadTestRepo: loadTestRepo, LoadTestPath: loadTestPath, LoadTestGitCommit: loadTestGitCommit,
-			RepoDirName: repoDirName, CheckoutCommit: checkoutCommit},
+			RepoDirName: repoDirName, CheckoutCommit: checkoutCommit,
+		},
 	)
 }
 

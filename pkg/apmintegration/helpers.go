@@ -6,10 +6,11 @@ package apmintegration
 import (
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"net/url"
 	"path"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
 func removeSlashes(str string) string {
