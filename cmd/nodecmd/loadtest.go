@@ -167,7 +167,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		var ami map[string]string
 		loadTestEc2SvcMap := make(map[string]*awsAPI.AwsCloud)
 		if existingSeparateInstance == "" {
-			ec2SvcMap, ami, _, err = getAWSCloudConfig(awsProfile, true, sgRegions)
+			ec2SvcMap, ami, _, err = getAWSCloudConfig(awsProfile, true, sgRegions, nodeType)
 			if err != nil {
 				return err
 			}
