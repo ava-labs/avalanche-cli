@@ -199,23 +199,17 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 
 	// search for AWM Relayer node
-	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	AWMRelayerHost, err := getAWMRelayerHost(clusterName)
 	if err != nil {
 		return err
 	}
-	for _, host := range hosts {
-		fmt.Printf("%#v\n", host)
-	}
-	monitoringInventoryFile := app.GetMonitoringInventoryDir(clusterName)
-	if utils.FileExists(monitoringInventoryFile) {
-		hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryFile)
+	if AWMRelayerHost == nil {
+		AWMRelayerHost, err = chooseAWMRelayerHost(clusterName)
 		if err != nil {
 			return err
 		}
-		for _, host := range hosts {
-			fmt.Printf("%#v\n", host)
-		}
 	}
+	fmt.Printf("%#v\n", AWMRelayerHost)
 	return nil
 
 	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
@@ -301,23 +295,70 @@ func wiz(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func getHostWithCloudID(clusterName string, cloudID string) (*models.Host, error) {
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return nil, err
+	}
+	monitoringInventoryFile := app.GetMonitoringInventoryDir(clusterName)
+	if utils.FileExists(monitoringInventoryFile) {
+		monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryFile)
+		if err != nil {
+			return nil, err
+		}
+		hosts = append(hosts, monitoringHosts...)
+	}
+	for _, host := range hosts {
+		if host.GetCloudID() == cloudID {
+			return host, nil
+		}
+	}
+	return nil, nil
+}
+
 func getAWMRelayerHost(clusterName string) (*models.Host, error) {
 	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	hasRelayer := false
+	relayerCloudID := ""
 	for _, cloudID := range clusterConfig.GetCloudIDs() {
 		nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if nodeConfig.IsAWMRelayer {
-			hasRelayer = true
+			relayerCloudID = nodeConfig.NodeID
 		}
-		fmt.Printf("%#v\n", nodeConfig.NodeID)
 	}
-	fmt.Println(hasRelayer)r
+	return getHostWithCloudID(clusterName, relayerCloudID)
+}
+
+func chooseAWMRelayerHost(clusterName string) (*models.Host, error) {
+	// first look up for separate monitoring host
+	monitoringInventoryFile := app.GetMonitoringInventoryDir(clusterName)
+	if utils.FileExists(monitoringInventoryFile) {
+		monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryFile)
+		if err != nil {
+			return nil, err
+		}
+		if len(monitoringHosts) > 0 {
+			return monitoringHosts[0], nil
+		}
+	}
+	// then look up for API nodes
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	if len(clusterConfig.APINodes) > 0 {
+		return getHostWithCloudID(clusterName, clusterConfig.APINodes[0])
+	}
+	// finally go for other hosts
+	if len(clusterConfig.Nodes) > 0 {
+		return getHostWithCloudID(clusterName, clusterConfig.Nodes[0])
+	}
+	return nil, fmt.Errorf("no hosts found on cluster")
 }
 
 // TODO: made this to work if there is no monitoring node
