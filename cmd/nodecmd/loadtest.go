@@ -25,9 +25,11 @@ import (
 )
 
 var (
-	loadTestRepoURL  string
-	loadTestBuildCmd string
-	loadTestCmd      string
+	loadTestRepoURL    string
+	loadTestBuildCmd   string
+	loadTestCmd        string
+	loadTestRepoCommit string
+	repoDirName        string
 )
 
 type clusterInfo struct {
@@ -291,7 +293,11 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Setting up load test environment ...")
-	if err := ssh.RunSSHBuildLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd); err != nil {
+	checkoutCommit := false
+	if loadTestRepoCommit != "" {
+		checkoutCommit = true
+	}
+	if err := ssh.RunSSHBuildLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestRepoCommit, repoDirName, checkoutCommit); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Successfully set up load test environment!")
@@ -424,6 +430,10 @@ func GetLoadTestScript(app *application.Avalanche) error {
 		if err != nil {
 			return err
 		}
+	}
+	loadTestRepoCommit = utils.GetGitCommit(loadTestRepoURL)
+	if loadTestRepoCommit != "" {
+		loadTestRepoURL, repoDirName = utils.GetRepoFromCommitURL(loadTestRepoURL)
 	}
 	if loadTestBuildCmd == "" {
 		loadTestBuildCmd, err = app.Prompt.CaptureString("What is the build command?")
