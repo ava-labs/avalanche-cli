@@ -38,12 +38,13 @@ type scriptInputs struct {
 	LoadTestRepo            string
 	LoadTestPath            string
 	LoadTestCommand         string
+	LoadTestGitCommit       string
+	RepoDirName             string
+	CheckoutCommit          bool
 }
 
 //go:embed shell/*.sh
 var script embed.FS
-
-// scriptLog formats the given line of a script log with the provided nodeID.
 
 // RunOverSSH runs provided script path over ssh.
 // This script can be template as it will be rendered using scriptInputs vars
@@ -221,6 +222,17 @@ func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath s
 		); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func RunSSHCopyYAMLFile(host *models.Host, yamlFilePath string) error {
+	if err := host.Upload(
+		yamlFilePath,
+		fmt.Sprintf("/home/ubuntu/%s", filepath.Base(yamlFilePath)),
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
 	}
 	return nil
 }
@@ -424,16 +436,23 @@ func RunSSHSetupBuildEnv(host *models.Host) error {
 	)
 }
 
-func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath string) error {
+func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName string, checkoutCommit bool) error {
 	loadTestRepoPaths := strings.Split(loadTestRepo, "/")
+	if len(loadTestRepoPaths) == 0 {
+		return fmt.Errorf("incorrect load test Repo URL format")
+	}
 	// remove .git
 	loadTestRepoDir := strings.Split(loadTestRepoPaths[len(loadTestRepoPaths)-1], ".")
+	if len(loadTestRepoDir) == 0 {
+		return fmt.Errorf("incorrect load test Repo URL format")
+	}
 	return StreamOverSSH(
 		"Build Load Test",
 		host,
 		constants.SSHScriptTimeout,
 		"shell/buildLoadTest.sh",
-		scriptInputs{LoadTestRepoDir: loadTestRepoDir[0], LoadTestRepo: loadTestRepo, LoadTestPath: loadTestPath},
+		scriptInputs{LoadTestRepoDir: loadTestRepoDir[0], LoadTestRepo: loadTestRepo, LoadTestPath: loadTestPath, LoadTestGitCommit: loadTestGitCommit,
+			RepoDirName: repoDirName, CheckoutCommit: checkoutCommit},
 	)
 }
 
@@ -533,4 +552,26 @@ func StreamOverSSH(
 		return err
 	}
 	return nil
+}
+
+// RunSSHWhitelistPubKey downloads the authorized_keys file from the specified host, appends the provided sshPubKey to it, and uploads the file back to the host.
+func RunSSHWhitelistPubKey(host *models.Host, sshPubKey string) error {
+	const sshAuthFile = "/home/ubuntu/.ssh/authorized_keys"
+	tmpName := filepath.Join(os.TempDir(), utils.RandomString(10))
+	defer os.Remove(tmpName)
+	if err := host.Download(sshAuthFile, tmpName, constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	// write ssh public key
+	tmpFile, err := os.OpenFile(tmpName, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	if _, err := tmpFile.WriteString(sshPubKey + "\n"); err != nil {
+		return err
+	}
+	if err := tmpFile.Close(); err != nil {
+		return err
+	}
+	return host.Upload(tmpFile.Name(), sshAuthFile, constants.SSHFileOpsTimeout)
 }

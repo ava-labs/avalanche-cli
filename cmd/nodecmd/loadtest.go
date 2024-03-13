@@ -3,9 +3,10 @@
 package nodecmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -17,20 +18,37 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
+	"gopkg.in/yaml.v3"
 )
 
 var (
-	loadTestRepoURL  string
-	loadTestBuildCmd string
-	loadTestCmd      string
+	loadTestRepoURL    string
+	loadTestBuildCmd   string
+	loadTestCmd        string
+	loadTestRepoCommit string
+	repoDirName        string
 )
+
+type clusterInfo struct {
+	API        []nodeInfo `yaml:"API,omitempty"`
+	Validator  []nodeInfo `yaml:"VALIDATOR,omitempty"`
+	Monitoring nodeInfo   `yaml:"MONITORING,omitempty"`
+	ChainID    string     `yaml:"CHAIN_ID,omitempty"`
+	SubnetID   string     `yaml:"SUBNET_ID,omitempty"`
+}
+type nodeInfo struct {
+	CloudID string `yaml:"CLOUD_ID,omitempty"`
+	NodeID  string `yaml:"NODE_ID,omitempty"`
+	IP      string `yaml:"IP,omitempty"`
+	Region  string `yaml:"REGION,omitempty"`
+}
 
 func newLoadTestCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "loadtest [clusterName]",
+		Use:   "loadtest [clusterName] [subnetName]",
 		Short: "(ALPHA Warning) Start loadtest for existing devnet cluster",
 		Long: `(ALPHA Warning) This command is currently in experimental mode. 
 
@@ -40,7 +58,7 @@ Loadtest script will be run in ubuntu user home directory with the provided argu
 After loadtest is done it will deliver generated reports if any along with loadtest logs before terminating used cloud server.`,
 
 		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
+		Args:         cobra.ExactArgs(2),
 		RunE:         createLoadTest,
 	}
 	cmd.Flags().BoolVar(&useAWS, "aws", false, "create loadtest node in AWS cloud")
@@ -84,6 +102,10 @@ func preLoadTestChecks(clusterName string) error {
 
 func createLoadTest(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
+	subnetName = args[1]
+	if !app.SidecarExists(subnetName) {
+		return fmt.Errorf("subnet %s doesn't exist, please create it first", subnetName)
+	}
 	if err := preLoadTestChecks(clusterName); err != nil {
 		return err
 	}
@@ -152,7 +174,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 			regions := maps.Keys(ec2SvcMap)
 			separateHostRegion = regions[0]
 			loadTestEc2SvcMap[separateHostRegion] = ec2SvcMap[separateHostRegion]
-			loadTestCloudConfig, err = createAWSInstances(loadTestEc2SvcMap, nodeType, map[string]int{separateHostRegion: 1}, []string{separateHostRegion}, ami, true)
+			loadTestCloudConfig, err = createAWSInstances(loadTestEc2SvcMap, nodeType, map[string]NumNodes{separateHostRegion: {1, 0}}, []string{separateHostRegion}, ami, true)
 			if err != nil {
 				return err
 			}
@@ -184,7 +206,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		}
 	case constants.GCPCloudService:
 		var gcpClient *gcpAPI.GcpCloud
-		var gcpRegions map[string]int
+		var gcpRegions map[string]NumNodes
 		var imageID string
 		var projectName string
 		if existingSeparateInstance == "" {
@@ -195,7 +217,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 			}
 			regions := maps.Keys(gcpRegions)
 			separateHostRegion = regions[0]
-			loadTestCloudConfig, err = createGCPInstance(gcpClient, nodeType, map[string]int{separateHostRegion: 1}, imageID, clusterName, true)
+			loadTestCloudConfig, err = createGCPInstance(gcpClient, nodeType, map[string]NumNodes{separateHostRegion: {1, 0}}, imageID, clusterName, true)
 			if err != nil {
 				return err
 			}
@@ -257,40 +279,141 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		}
 		ux.Logger.PrintToUser("Separate instance %s provisioned successfully", separateHosts[0].NodeID)
 	}
-	spinSession := ux.NewUserSpinner()
-	spinner := spinSession.SpinToUser(utils.ScriptLog(separateHosts[0].NodeID, "Setting up load test environment"))
-	if err := ssh.RunSSHBuildLoadTestDeps(separateHosts[0]); err != nil {
-		ux.SpinFailWithError(spinner, "", err)
-		return err
-	}
-	ux.SpinComplete(spinner)
-	if existingSeparateInstance != "" {
-		spinner = spinSession.SpinToUser(utils.ScriptLog(separateHosts[0].NodeID, "Updating monirtoring configuration"))
-		// provision prometheus scraping for LT for existing monitoring instance
-		avalancheGoPorts, machinePorts, err := getPrometheusTargets(clusterName)
-		if err != nil {
-			ux.SpinFailWithError(spinner, "", err)
-			return err
-		}
-		if err := ssh.RunSSHUpdatePrometheusConfig(separateHosts[0], strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
-			ux.SpinFailWithError(spinner, "", err)
-			return err
-		}
-		ux.SpinComplete(spinner)
-	}
-	spinSession.Stop()
-	ux.Logger.GreenCheckmarkToUser("Load test environment is ready!")
-	ux.Logger.PrintToUser("%s Building load test code", logging.Green.Wrap(">"))
-	if err := ssh.RunSSHBuildLoadTestCode(separateHosts[0], loadTestRepoURL, loadTestBuildCmd); err != nil {
+
+	subnetID, chainID, err := getDeployedSubnetInfo(subnetName)
+	if err != nil {
 		return err
 	}
 
-	ux.Logger.PrintToUser("%s Running load test", logging.Green.Wrap(">"))
+	if err := createClusterYAMLFile(clusterName, subnetID, chainID, separateHosts[0]); err != nil {
+		return err
+	}
+
+	if err := ssh.RunSSHCopyYAMLFile(separateHosts[0], app.GetClusterYAMLFilePath(clusterName)); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Setting up load test environment ...")
+	checkoutCommit := false
+	if loadTestRepoCommit != "" {
+		checkoutCommit = true
+	}
+	if err := ssh.RunSSHBuildLoadTest(separateHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestRepoCommit, repoDirName, checkoutCommit); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Successfully set up load test environment!")
 	if err := ssh.RunSSHRunLoadTest(separateHosts[0], loadTestCmd); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Load test successfully run!")
+	ux.Logger.PrintToUser("Successfully run load test!")
 	return nil
+}
+
+func getDeployedSubnetInfo(subnetName string) (string, string, error) {
+	sidecarFile := filepath.Join(app.GetSubnetDir(), subnetName, constants.SidecarFileName)
+	var sidecar models.Sidecar
+	if _, err := os.Stat(sidecarFile); err == nil {
+		// read in sidecar file
+		jsonBytes, err := os.ReadFile(sidecarFile)
+		if err != nil {
+			return "", "", fmt.Errorf("failed reading file %s: %w", sidecarFile, err)
+		}
+		err = json.Unmarshal(jsonBytes, &sidecar)
+		if err != nil {
+			return "", "", fmt.Errorf("failed unmarshaling file %s: %w", sidecarFile, err)
+		}
+	}
+	if sidecar.Networks != nil {
+		model, ok := sidecar.Networks["Devnet"]
+		if ok {
+			if model.SubnetID != ids.Empty && model.BlockchainID != ids.Empty {
+				return model.SubnetID.String(), model.BlockchainID.String(), nil
+			}
+		}
+	}
+	return "", "", fmt.Errorf("unable to find deployed Devnet info, please call avalanche node devnet deploy <subnetName> <clusterName> first")
+}
+
+func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *models.Host) error {
+	clusterYAMLFilePath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.ClusterYAMLFileName)
+	if utils.FileExists(clusterYAMLFilePath) {
+		if err := os.Remove(clusterYAMLFilePath); err != nil {
+			return err
+		}
+	}
+	yamlFile, err := os.OpenFile(clusterYAMLFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, constants.WriteReadReadPerms)
+	if err != nil {
+		return err
+	}
+	defer yamlFile.Close()
+
+	enc := yaml.NewEncoder(yamlFile)
+
+	clustersConfig := models.ClustersConfig{}
+	if app.ClustersConfigExists() {
+		clustersConfig, err = app.LoadClustersConfig()
+		if err != nil {
+			return err
+		}
+	}
+	clusterConf := clustersConfig.Clusters[clusterName]
+	if err := checkCluster(clusterName); err != nil {
+		return err
+	}
+	var apiNodes []nodeInfo
+	var validatorNodes []nodeInfo
+	for _, cloudID := range clusterConf.GetCloudIDs() {
+		nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
+		if err != nil {
+			return err
+		}
+		nodeIDStr := ""
+		if clusterConf.IsAvalancheGoHost(cloudID) {
+			nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
+			if err != nil {
+				return err
+			}
+			nodeIDStr = nodeID.String()
+		}
+		roles := clusterConf.GetHostRoles(nodeConfig)
+		if len(roles) == 0 {
+			return fmt.Errorf("incorrect node config file at %s", app.GetNodeConfigPath(cloudID))
+		}
+		switch roles[0] {
+		case constants.ValidatorRole:
+			validatorNode := nodeInfo{
+				CloudID: cloudID,
+				NodeID:  nodeIDStr,
+				IP:      nodeConfig.ElasticIP,
+				Region:  nodeConfig.Region,
+			}
+			validatorNodes = append(validatorNodes, validatorNode)
+		case constants.APIRole:
+			apiNode := nodeInfo{
+				CloudID: cloudID,
+				IP:      nodeConfig.ElasticIP,
+				Region:  nodeConfig.Region,
+			}
+			apiNodes = append(apiNodes, apiNode)
+		default:
+		}
+	}
+	_, separateHostRegion, err := getNodeCloudConfig(separateHost.GetCloudID())
+	if err != nil {
+		return err
+	}
+	separateHostInfo := nodeInfo{
+		IP:      separateHost.IP,
+		CloudID: separateHost.GetCloudID(),
+		Region:  separateHostRegion,
+	}
+	clusterInfoYAML := clusterInfo{
+		Validator:  validatorNodes,
+		API:        apiNodes,
+		Monitoring: separateHostInfo,
+		SubnetID:   subnetID,
+		ChainID:    chainID,
+	}
+	return enc.Encode(clusterInfoYAML)
 }
 
 func GetLoadTestScript(app *application.Avalanche) error {
@@ -307,6 +430,10 @@ func GetLoadTestScript(app *application.Avalanche) error {
 		if err != nil {
 			return err
 		}
+	}
+	loadTestRepoCommit = utils.GetGitCommit(loadTestRepoURL)
+	if loadTestRepoCommit != "" {
+		loadTestRepoURL, repoDirName = utils.GetRepoFromCommitURL(loadTestRepoURL)
 	}
 	if loadTestBuildCmd == "" {
 		loadTestBuildCmd, err = app.Prompt.CaptureString("What is the build command?")

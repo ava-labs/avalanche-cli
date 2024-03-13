@@ -17,5 +17,5 @@ WORKDIR /
 
 # Copy the executables into the container
 COPY --from=builder /build/bin/avalanche .
-RUN ls -la ./avalanche
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 ENTRYPOINT [ "./avalanche" ]

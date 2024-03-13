@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Run with ./scripts/build.sh <optional_version>
 TELEMETRY_TOKEN=""

@@ -93,16 +93,16 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 	return computeService, gcpProjectName, gcpCredentialsPath, err
 }
 
-func getGCPConfig(singleNode bool) (*gcpAPI.GcpCloud, map[string]int, string, string, string, error) {
-	finalRegions := map[string]int{}
+func getGCPConfig(singleNode bool) (*gcpAPI.GcpCloud, map[string]NumNodes, string, string, string, error) {
+	finalRegions := map[string]NumNodes{}
 	switch {
-	case len(numNodes) != len(utils.Unique(cmdLineRegion)):
+	case len(numValidatorsNodes) != len(utils.Unique(cmdLineRegion)):
 		return nil, nil, "", "", "", errors.New("number of regions and number of nodes must be equal. Please make sure list of regions is unique")
-	case len(cmdLineRegion) == 0 && len(numNodes) == 0:
+	case len(cmdLineRegion) == 0 && len(numValidatorsNodes) == 0:
 		var err error
 		if singleNode {
 			selectedRegion, err := getSeparateHostNodeParam(constants.GCPCloudService)
-			finalRegions = map[string]int{selectedRegion: 1}
+			finalRegions = map[string]NumNodes{selectedRegion: {1, 0}}
 			if err != nil {
 				return nil, nil, "", "", "", err
 			}
@@ -114,7 +114,7 @@ func getGCPConfig(singleNode bool) (*gcpAPI.GcpCloud, map[string]int, string, st
 		}
 	default:
 		for i, region := range cmdLineRegion {
-			finalRegions[region] = numNodes[i]
+			finalRegions[region] = NumNodes{numValidatorsNodes[i], numAPINodes[i]}
 		}
 	}
 	gcpClient, projectName, gcpCredentialFilePath, err := getGCPCloudCredentials()
@@ -125,7 +125,7 @@ func getGCPConfig(singleNode bool) (*gcpAPI.GcpCloud, map[string]int, string, st
 	if err != nil {
 		return nil, nil, "", "", "", err
 	}
-	finalZones := map[string]int{}
+	finalZones := map[string]NumNodes{}
 	// verify regions are valid and place in random zones per region
 	for region, numNodes := range finalRegions {
 		if !slices.Contains(gcpCloud.ListRegions(), region) {
@@ -148,7 +148,7 @@ func getGCPConfig(singleNode bool) (*gcpAPI.GcpCloud, map[string]int, string, st
 // createGCEInstances creates Google Compute Engine VM instances
 func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	instanceType string,
-	numNodesMap map[string]int,
+	numNodesMap map[string]NumNodes,
 	ami,
 	cliDefaultName string,
 	forMonitoring bool,
@@ -239,7 +239,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	publicIP := map[string][]string{}
 	if useStaticIP {
 		for zone, numNodes := range numNodesMap {
-			publicIP[zone], err = gcpClient.SetPublicIP(zone, nodeName[zone], numNodes)
+			publicIP[zone], err = gcpClient.SetPublicIP(zone, nodeName[zone], numNodes.All())
 			if err != nil {
 				return nil, nil, "", "", err
 			}
@@ -270,7 +270,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 			nodeName[zone],
 			instanceType,
 			publicIP[zone],
-			numNodes,
+			numNodes.All(),
 			forMonitoring)
 		if err != nil {
 			ux.SpinFailWithError(spinner, "", err)
@@ -282,7 +282,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	instanceIDs := map[string][]string{}
 	for zone, numNodes := range numNodesMap {
 		instanceIDs[zone] = []string{}
-		for i := 0; i < numNodes; i++ {
+		for i := 0; i < numNodes.All(); i++ {
 			instanceIDs[zone] = append(instanceIDs[zone], fmt.Sprintf("%s-%s", nodeName[zone], strconv.Itoa(i)))
 		}
 	}
@@ -300,7 +300,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 func createGCPInstance(
 	gcpClient *gcpAPI.GcpCloud,
 	instanceType string,
-	numNodesMap map[string]int,
+	numNodesMap map[string]NumNodes,
 	imageID string,
 	clusterName string,
 	forMonitoring bool,
@@ -319,8 +319,8 @@ func createGCPInstance(
 	)
 	if err != nil {
 		ux.Logger.PrintToUser("Failed to create GCP cloud server")
-		// we stop created instances so that user doesn't pay for unused GCP instances
-		ux.Logger.PrintToUser("Stopping all created GCP instances due to error to prevent charge for unused GCP instances...")
+		// we destroy created instances so that user doesn't pay for unused GCP instances
+		ux.Logger.PrintToUser("Destroying all created GCP instances due to error to prevent charge for unused GCP instances...")
 		failedNodes := map[string]error{}
 		for zone, zoneInstances := range instanceIDs {
 			for _, instanceID := range zoneInstances {
@@ -328,20 +328,20 @@ func createGCPInstance(
 					NodeID: instanceID,
 					Region: zone,
 				}
-				if stopErr := gcpClient.StopGCPNode(nodeConfig, clusterName); err != nil {
-					failedNodes[instanceID] = stopErr
+				if destroyErr := gcpClient.DestroyGCPNode(nodeConfig, clusterName); destroyErr != nil {
+					failedNodes[instanceID] = destroyErr
 					continue
 				}
-				ux.Logger.PrintToUser(fmt.Sprintf("GCP cloud server instance %s stopped in %s zone", instanceID, zone))
+				ux.Logger.PrintToUser(fmt.Sprintf("GCP cloud server instance %s destroyed in %s zone", instanceID, zone))
 			}
 		}
 		if len(failedNodes) > 0 {
 			ux.Logger.PrintToUser("Failed nodes: ")
 			for node, err := range failedNodes {
-				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err))
+				ux.Logger.PrintToUser(fmt.Sprintf("Failed to destroy node %s due to %s", node, err))
 			}
-			ux.Logger.PrintToUser("Stop the above instance(s) on GCP console to prevent charges")
-			return models.CloudConfig{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)
+			ux.Logger.PrintToUser("Destroy the above instance(s) on GCP console to prevent charges")
+			return models.CloudConfig{}, fmt.Errorf("failed to destroy node(s) %s", failedNodes)
 		}
 		return models.CloudConfig{}, err
 	}

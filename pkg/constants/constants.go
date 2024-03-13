@@ -190,6 +190,7 @@ const (
 	AWSNodeAnsiblePrefix          = "aws_node"
 	GCPNodeAnsiblePrefix          = "gcp_node"
 	CustomVMDir                   = "vms"
+	ClusterYAMLFileName           = "clusterInfo.yaml"
 	GCPStaticIPPrefix             = "static-ip"
 	AvaLabsOrg                    = "ava-labs"
 	AvalancheGoRepoName           = "avalanchego"
@@ -278,11 +279,12 @@ const (
 
 	PluginDir = "plugins"
 
-	Network        = "network"
-	MultiSig       = "multi-sig"
-	SkipUpdateFlag = "skip-update-check"
-	LastFileName   = ".last_actions.json"
-
+	Network                      = "network"
+	MultiSig                     = "multi-sig"
+	SkipUpdateFlag               = "skip-update-check"
+	LastFileName                 = ".last_actions.json"
+	APIRole                      = "API"
+	ValidatorRole                = "Validator"
 	DefaultWalletCreationTimeout = 5 * time.Second
 
 	DefaultConfirmTxTimeout = 20 * time.Second
@@ -295,4 +297,5 @@ const (
 	E2EDocker               = "docker"
 	E2EDockerComposeFile    = "/tmp/avalanche-cli-docker-compose.yml"
 	E2EDebugAvalanchegoPath = "E2E_AVALANCHEGO_PATH"
+	GitExtension            = ".git"
 )

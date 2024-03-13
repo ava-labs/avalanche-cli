@@ -286,31 +286,31 @@ func (c *AwsCloud) checkInstanceIsRunning(nodeID string) (bool, error) {
 	return false, nil
 }
 
-// StopAWSNode stops an EC2 instance with the given ID.
-func (c *AwsCloud) StopAWSNode(nodeConfig models.NodeConfig, clusterName string) error {
+// DestroyAWSNode terminates an EC2 instance with the given ID.
+func (c *AwsCloud) DestroyAWSNode(nodeConfig models.NodeConfig, clusterName string) error {
 	isRunning, err := c.checkInstanceIsRunning(nodeConfig.NodeID)
 	if err != nil {
-		ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", nodeConfig.NodeID, err.Error()))
+		ux.Logger.PrintToUser(fmt.Sprintf("Failed to destroy node %s due to %s", nodeConfig.NodeID, err.Error()))
 		return err
 	}
 	if !isRunning {
 		return fmt.Errorf("%w: instance %s, cluster %s", ErrNodeNotFoundToBeRunning, nodeConfig.NodeID, clusterName)
 	}
-	ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
-	return c.StopInstance(nodeConfig.NodeID, nodeConfig.ElasticIP, nodeConfig.UseStaticIP)
+	ux.Logger.PrintToUser(fmt.Sprintf("Terminating node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
+	return c.DestroyInstance(nodeConfig.NodeID, nodeConfig.ElasticIP, nodeConfig.UseStaticIP)
 }
 
-// StopInstance stops an EC2 instance with the given ID.
-func (c *AwsCloud) StopInstance(instanceID, publicIP string, releasePublicIP bool) error {
-	input := &ec2.StopInstancesInput{
+// DestroyInstance terminates an EC2 instance with the given ID.
+func (c *AwsCloud) DestroyInstance(instanceID, publicIP string, releasePublicIP bool) error {
+	input := &ec2.TerminateInstancesInput{
 		InstanceIds: []string{instanceID},
 	}
-	if _, err := c.ec2Client.StopInstances(c.ctx, input); err != nil {
+	if _, err := c.ec2Client.TerminateInstances(c.ctx, input); err != nil {
 		return err
 	}
 	if releasePublicIP {
 		if publicIP == "" {
-			ux.Logger.RedXToUser("Unabled to remove public IP for instannce %s: undefined", instanceID)
+			ux.Logger.RedXToUser("Unable to remove public IP for instance %s: undefined", instanceID)
 		} else {
 			describeAddressInput := &ec2.DescribeAddressesInput{
 				Filters: []types.Filter{
