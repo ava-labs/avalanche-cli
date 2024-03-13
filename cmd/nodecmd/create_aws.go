@@ -112,7 +112,11 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 		}
 	default:
 		for i, region := range cmdLineRegion {
-			finalRegions[region] = NumNodes{numValidatorsNodes[i], numAPINodes[i]}
+			if createDevnet {
+				finalRegions[region] = NumNodes{numValidatorsNodes[i], numAPINodes[i]}
+			} else {
+				finalRegions[region] = NumNodes{numValidatorsNodes[i], 0}
+			}
 		}
 	}
 	ec2SvcMap := map[string]*awsAPI.AwsCloud{}
@@ -126,7 +130,6 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 	}
 	for region := range finalRegions {
 		var err error
-
 		ec2SvcMap[region], err = getAWSCloudCredentials(awsProfile, region)
 		if err != nil {
 			if !strings.Contains(err.Error(), "cloud access is required") {
