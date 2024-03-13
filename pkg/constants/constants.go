@@ -279,11 +279,12 @@ const (
 
 	PluginDir = "plugins"
 
-	Network        = "network"
-	MultiSig       = "multi-sig"
-	SkipUpdateFlag = "skip-update-check"
-	LastFileName   = ".last_actions.json"
-
+	Network                      = "network"
+	MultiSig                     = "multi-sig"
+	SkipUpdateFlag               = "skip-update-check"
+	LastFileName                 = ".last_actions.json"
+	APIRole                      = "API"
+	ValidatorRole                = "Validator"
 	DefaultWalletCreationTimeout = 5 * time.Second
 
 	DefaultConfirmTxTimeout = 20 * time.Second

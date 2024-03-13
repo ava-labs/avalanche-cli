@@ -101,6 +101,9 @@ func preLoadTestChecks(clusterName string) error {
 func createLoadTest(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	subnetName = args[1]
+	if !app.SidecarExists(subnetName) {
+		return fmt.Errorf("subnet %s doesn't exist, please create it first", subnetName)
+	}
 	if err := preLoadTestChecks(clusterName); err != nil {
 		return err
 	}
@@ -321,13 +324,13 @@ func getDeployedSubnetInfo(subnetName string) (string, string, error) {
 			}
 		}
 	}
-	return "", "", fmt.Errorf("unable to find deployed Devnet info at cluster_config.json")
+	return "", "", fmt.Errorf("unable to find deployed Devnet info, please call avalanche node devnet deploy <subnetName> <clusterName> first")
 }
 
 func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *models.Host) error {
 	clusterYAMLFilePath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.ClusterYAMLFileName)
-	if _, err := os.Stat(clusterYAMLFilePath); err == nil {
-		if err = os.Remove(clusterYAMLFilePath); err != nil {
+	if utils.FileExists(clusterYAMLFilePath) {
+		if err := os.Remove(clusterYAMLFilePath); err != nil {
 			return err
 		}
 	}
@@ -366,8 +369,11 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 			nodeIDStr = nodeID.String()
 		}
 		roles := clusterConf.GetHostRoles(nodeConfig)
+		if len(roles) == 0 {
+			return fmt.Errorf("incorrect node config file at %s", app.GetNodeConfigPath(cloudID))
+		}
 		switch roles[0] {
-		case "Validator":
+		case constants.ValidatorRole:
 			validatorNode := nodeInfo{
 				CloudID: cloudID,
 				NodeID:  nodeIDStr,
@@ -375,7 +381,7 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 				Region:  nodeConfig.Region,
 			}
 			validatorNodes = append(validatorNodes, validatorNode)
-		case "API":
+		case constants.APIRole:
 			apiNode := nodeInfo{
 				CloudID: cloudID,
 				IP:      nodeConfig.ElasticIP,
