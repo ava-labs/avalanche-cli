@@ -546,6 +546,7 @@ func StreamOverSSH(
 	}
 	return nil
 }
+
 // RunSSHWhitelistPubKey downloads the authorized_keys file from the specified host, appends the provided sshPubKey to it, and uploads the file back to the host.
 func RunSSHWhitelistPubKey(host *models.Host, sshPubKey string) error {
 	const sshAuthFile = "/home/ubuntu/.ssh/authorized_keys"

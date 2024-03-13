@@ -50,6 +50,7 @@ var (
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
 	errMutuallyExlusiveVersionOptions = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
+	errMutuallyVMConfigOptions        = errors.New("specifying --genesis flag disables SubnetEVM config flags --evm-chain-id,--evm-token,--evm-defaults")
 )
 
 // avalanche subnet create
@@ -168,6 +169,10 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 
 	if !flags.EnsureMutuallyExclusive([]bool{useLatestReleasedEvmVersion, useLatestPreReleasedEvmVersion, evmVersion != ""}) {
 		return errMutuallyExlusiveVersionOptions
+	}
+
+	if genesisFile != "" && (evmChainID != 0 || evmToken != "" || evmDefaults) {
+		return errMutuallyVMConfigOptions
 	}
 
 	subnetType := getVMFromFlag()
