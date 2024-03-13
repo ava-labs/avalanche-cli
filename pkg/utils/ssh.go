@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"regexp"
+	"strings"
 
 	"golang.org/x/exp/slices"
 
@@ -85,4 +87,17 @@ func ReadSSHAgentIdentityPublicKey(identityName string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("identity %s can't be read", identityName)
+}
+
+// IsSSHPubKey checks if the given string is a valid SSH public key.
+func IsSSHPubKey(pubkey string) bool {
+	key := strings.Trim(pubkey, "\"'")
+	// Regular expression pattern to match SSH public key
+	pattern := `^(ssh-rsa|ssh-ed25519|ecdsa-sha2-nistp256)\s[A-Za-z0-9+/]+[=]{0,3}(\s+[^\s]+)?$`
+
+	// Compile the regular expression
+	regex := regexp.MustCompile(pattern)
+
+	// Check if the key matches the pattern
+	return regex.MatchString(key)
 }

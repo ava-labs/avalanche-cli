@@ -24,18 +24,18 @@ import (
 
 var authorizeRemove bool
 
-func newStopCmd() *cobra.Command {
+func newDestroyCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "stop [clusterName]",
-		Short: "(ALPHA Warning) Stop all nodes in a cluster",
+		Use:   "destroy [clusterName]",
+		Short: "(ALPHA Warning) Destroys all nodes in a cluster",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
-The node stop command stops a running node in cloud server
+The node destroy command terminates all running nodes in cloud server and deletes all storage disks.
 
-Note that a stopped node may still incur cloud server storage fees.`,
+If there is a static IP address attached, it will be released.`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
-		RunE:         stopNodes,
+		RunE:         destroyNodes,
 	}
 	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to release cloud resources")
 	cmd.Flags().BoolVar(&authorizeRemove, "authorize-remove", false, "authorize CLI to remove all local files related to cloud nodes")
@@ -70,7 +70,7 @@ func getDeleteConfigConfirmation() error {
 	if authorizeRemove {
 		return nil
 	}
-	ux.Logger.PrintToUser("Please note that if your node(s) are validating a Subnet, stopping them could cause Subnet instability and it is irreversible")
+	ux.Logger.PrintToUser("Please note that if your node(s) are validating a Subnet, destroying them could cause Subnet instability and it is irreversible")
 	confirm := "Running this command will delete all stored files associated with your cloud server. Do you want to proceed? " +
 		fmt.Sprintf("Stored files can be found at %s", app.GetNodesDir())
 	yes, err := app.Prompt.CaptureYesNo(confirm)
@@ -78,7 +78,7 @@ func getDeleteConfigConfirmation() error {
 		return err
 	}
 	if !yes {
-		return errors.New("abort avalanche stop node command")
+		return errors.New("abort avalanche node destroy command")
 	}
 	return nil
 }
@@ -90,7 +90,7 @@ func removeClustersConfigFiles(clusterName string) error {
 	return removeNodeFromClustersConfig(clusterName)
 }
 
-func stopNodes(_ *cobra.Command, args []string) error {
+func destroyNodes(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	if err := checkCluster(clusterName); err != nil {
 		return err
@@ -118,7 +118,7 @@ func stopNodes(_ *cobra.Command, args []string) error {
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
 		if err != nil {
 			nodeErrors[node] = err
-			ux.Logger.PrintToUser("Failed to stop node %s due to %s", node, err.Error())
+			ux.Logger.PrintToUser("Failed to destroy node %s due to %s", node, err.Error())
 			continue
 		}
 		if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
@@ -133,7 +133,7 @@ func stopNodes(_ *cobra.Command, args []string) error {
 				}
 				lastRegion = nodeConfig.Region
 			}
-			if err = ec2Svc.StopAWSNode(nodeConfig, clusterName); err != nil {
+			if err = ec2Svc.DestroyAWSNode(nodeConfig, clusterName); err != nil {
 				if isExpiredCredentialError(err) {
 					ux.Logger.PrintToUser("")
 					printExpiredCredentialsOutput(awsProfile)
@@ -143,7 +143,7 @@ func stopNodes(_ *cobra.Command, args []string) error {
 					nodeErrors[node] = err
 					continue
 				}
-				ux.Logger.PrintToUser("node %s is already stopped", nodeConfig.NodeID)
+				ux.Logger.PrintToUser("node %s is already destroyed", nodeConfig.NodeID)
 			}
 		} else {
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
@@ -159,15 +159,15 @@ func stopNodes(_ *cobra.Command, args []string) error {
 					return err
 				}
 			}
-			if err = gcpCloud.StopGCPNode(nodeConfig, clusterName); err != nil {
+			if err = gcpCloud.DestroyGCPNode(nodeConfig, clusterName); err != nil {
 				if !errors.Is(err, gcpAPI.ErrNodeNotFoundToBeRunning) {
 					nodeErrors[node] = err
 					continue
 				}
-				ux.Logger.PrintToUser("node %s is already stopped", nodeConfig.NodeID)
+				ux.Logger.PrintToUser("node %s is already destroyed", nodeConfig.NodeID)
 			}
 		}
-		ux.Logger.PrintToUser("Node instance %s in cluster %s successfully stopped!", nodeConfig.NodeID, clusterName)
+		ux.Logger.PrintToUser("Node instance %s in cluster %s successfully destroyed!", nodeConfig.NodeID, clusterName)
 		if err := removeDeletedNodeDirectory(node); err != nil {
 			ux.Logger.PrintToUser("Failed to delete node config for node %s due to %s", node, err.Error())
 			return err
@@ -177,14 +177,14 @@ func stopNodes(_ *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("Failed nodes: ")
 		for node, nodeErr := range nodeErrors {
 			if strings.Contains(nodeErr.Error(), constants.ErrReleasingGCPStaticIP) {
-				ux.Logger.PrintToUser("Node is stopped, but failed to release static ip address for node %s due to %s", node, nodeErr)
+				ux.Logger.PrintToUser("Node is destroyed, but failed to release static ip address for node %s due to %s", node, nodeErr)
 			} else {
-				ux.Logger.PrintToUser("Failed to stop node %s due to %s", node, nodeErr)
+				ux.Logger.PrintToUser("Failed to destroy node %s due to %s", node, nodeErr)
 			}
 		}
-		return fmt.Errorf("failed to stop node(s) %s", maps.Keys(nodeErrors))
+		return fmt.Errorf("failed to destroy node(s) %s", maps.Keys(nodeErrors))
 	} else {
-		ux.Logger.PrintToUser("All nodes in cluster %s are successfully stopped!", clusterName)
+		ux.Logger.PrintToUser("All nodes in cluster %s are successfully destroyed!", clusterName)
 	}
 	return removeClustersConfigFiles(clusterName)
 }

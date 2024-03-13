@@ -174,10 +174,29 @@ func BuildCustomVM(
 	}
 
 	// get branch from repo
-	cmd := exec.Command("git", "clone", "--single-branch", "-b", sc.CustomVMBranch, sc.CustomVMRepoURL, repoDir)
+	cmd := exec.Command("git", "init", "-q")
+	cmd.Dir = repoDir
 	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("could not clone git branch %s of repository %s: %w", sc.CustomVMBranch, sc.CustomVMRepoURL, err)
+		return fmt.Errorf("could not init git directory on %s: %w", repoDir, err)
+	}
+	cmd = exec.Command("git", "remote", "add", "origin", sc.CustomVMRepoURL)
+	cmd.Dir = repoDir
+	utils.SetupRealtimeCLIOutput(cmd, true, true)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("could not add origin %s on git: %w", sc.CustomVMRepoURL, err)
+	}
+	cmd = exec.Command("git", "fetch", "--depth", "1", "origin", sc.CustomVMBranch, "-q")
+	cmd.Dir = repoDir
+	utils.SetupRealtimeCLIOutput(cmd, true, true)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("could not fetch git branch/commit %s of repository %s: %w", sc.CustomVMBranch, sc.CustomVMRepoURL, err)
+	}
+	cmd = exec.Command("git", "checkout", sc.CustomVMBranch)
+	cmd.Dir = repoDir
+	utils.SetupRealtimeCLIOutput(cmd, true, true)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("could not checkout git branch %s of repository %s: %w", sc.CustomVMBranch, sc.CustomVMRepoURL, err)
 	}
 
 	vmPath := app.GetCustomVMPath(sc.Name)
