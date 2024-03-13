@@ -5,8 +5,8 @@ package models
 import (
 	"golang.org/x/exp/slices"
 
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
 
 type GCPConfig struct {
