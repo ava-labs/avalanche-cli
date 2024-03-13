@@ -683,7 +683,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 }
 
 func promptSetUpMonitoring() (bool, error) {
-	monitoringInstance, err := app.Prompt.CaptureYesNo("Do you want to set up a cloud instance to host monitoring? (This requires addtional cloud instance and may incur additional cost)")
+	monitoringInstance, err := app.Prompt.CaptureYesNo("Do you want to set up a cloud instance to host monitoring? (This requires additional cloud instance and may incur additional cost)")
 	if err != nil {
 		return false, err
 	}
