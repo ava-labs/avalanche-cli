@@ -7,10 +7,11 @@ import (
 	"os/exec"
 	"strings"
 
+	"golang.org/x/exp/maps"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
@@ -95,7 +96,7 @@ func getAWSMonitoringEC2Svc(awsProfile, monitoringRegion string) (map[string]*aw
 	return ec2SvcMap, nil
 }
 
-func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[string]string, map[string]NumNodes, error) {
+func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []string) (map[string]*awsAPI.AwsCloud, map[string]string, map[string]NumNodes, error) {
 	finalRegions := map[string]NumNodes{}
 	switch {
 	case len(numValidatorsNodes) != len(utils.Unique(cmdLineRegion)):
@@ -106,9 +107,17 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 		return nil, nil, nil, fmt.Errorf("number of api nodes and validator nodes should be the same")
 	case len(cmdLineRegion) == 0 && len(numValidatorsNodes) == 0 && len(numAPINodes) == 0:
 		var err error
-		finalRegions, err = getRegionsNodeNum(constants.AWSCloudService)
-		if err != nil {
-			return nil, nil, nil, err
+		if singleNode {
+			selectedRegion, err := getSeparateHostNodeParam(constants.AWSCloudService)
+			finalRegions = map[string]NumNodes{selectedRegion: {1, 0}}
+			if err != nil {
+				return nil, nil, nil, err
+			}
+		} else {
+			finalRegions, err = getRegionsNodeNum(constants.AWSCloudService)
+			if err != nil {
+				return nil, nil, nil, err
+			}
 		}
 	default:
 		for i, region := range cmdLineRegion {
@@ -130,12 +139,24 @@ func getAWSCloudConfig(awsProfile string) (map[string]*awsAPI.AwsCloud, map[stri
 	}
 	for region := range finalRegions {
 		var err error
-		ec2SvcMap[region], err = getAWSCloudCredentials(awsProfile, region)
-		if err != nil {
-			if !strings.Contains(err.Error(), "cloud access is required") {
-				printNoCredentialsOutput(awsProfile)
+    if singleNode {
+			for _, clusterRegion := range clusterSgRegions {
+				ec2SvcMap[clusterRegion], err = getAWSCloudCredentials(awsProfile, clusterRegion)
+				if err != nil {
+					if !strings.Contains(err.Error(), "cloud access is required") {
+						printNoCredentialsOutput(awsProfile)
+					}
+					return nil, nil, nil, err
+				}
 			}
-			return nil, nil, nil, err
+		} else {
+			ec2SvcMap[region], err = getAWSCloudCredentials(awsProfile, region)
+			if err != nil {
+				if !strings.Contains(err.Error(), "cloud access is required") {
+					printNoCredentialsOutput(awsProfile)
+				}
+				return nil, nil, nil, err
+			}
 		}
 		amiMap[region], err = ec2SvcMap[region].GetUbuntuAMIID()
 		if err != nil {
@@ -356,6 +377,29 @@ func AddMonitoringSecurityGroupRule(ec2Svc map[string]*awsAPI.AwsCloud, monitori
 	}
 	if !apiPortInSG {
 		if err = ec2Svc[region].AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoAPIPort); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func grantAccessToPublicIPViaSecurityGroup(ec2Svc *awsAPI.AwsCloud, publicIP, securityGroupName, region string) error {
+	securityGroupExists, sg, err := ec2Svc.CheckSecurityGroupExists(securityGroupName)
+	if err != nil {
+		return err
+	}
+	if !securityGroupExists {
+		return fmt.Errorf("security group %s doesn't exist in region %s", securityGroupName, region)
+	}
+	metricsPortInSG := awsAPI.CheckUserIPInSg(&sg, publicIP, constants.AvalanchegoMachineMetricsPort)
+	apiPortInSG := awsAPI.CheckUserIPInSg(&sg, publicIP, constants.AvalanchegoAPIPort)
+	if !metricsPortInSG {
+		if err = ec2Svc.AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", publicIP+constants.IPAddressSuffix, constants.AvalanchegoMachineMetricsPort); err != nil {
+			return err
+		}
+	}
+	if !apiPortInSG {
+		if err = ec2Svc.AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", publicIP+constants.IPAddressSuffix, constants.AvalanchegoAPIPort); err != nil {
 			return err
 		}
 	}

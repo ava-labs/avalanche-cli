@@ -63,7 +63,7 @@ func (cc *ClusterConfig) GetHostRoles(nodeConf NodeConfig) []string {
 		if cc.IsAPIHost(nodeConf.NodeID) {
 			roles = append(roles, "API")
 		} else {
-			roles = append(roles, "Node")
+			roles = append(roles, "Validator")
 		}
 	}
 	if nodeConf.IsMonitor {

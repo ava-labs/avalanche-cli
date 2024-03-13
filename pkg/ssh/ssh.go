@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 	"time"
 
@@ -33,6 +34,13 @@ type scriptInputs struct {
 	MonitoringDashboardPath string
 	AvalancheGoPorts        string
 	MachinePorts            string
+	LoadTestRepoDir         string
+	LoadTestRepo            string
+	LoadTestPath            string
+	LoadTestCommand         string
+	LoadTestGitCommit       string
+	RepoDirName             string
+	CheckoutCommit          bool
 }
 
 //go:embed shell/*.sh
@@ -63,35 +71,6 @@ func RunOverSSH(
 
 	if output, err := host.Command(script.String(), nil, timeout); err != nil {
 		return fmt.Errorf("%w: %s", err, string(output))
-	}
-	return nil
-}
-
-// RunOverSSH runs provided script path over ssh.
-// This script can be template as it will be rendered using scriptInputs vars
-func StreamOverSSH(
-	scriptDesc string,
-	host *models.Host,
-	timeout time.Duration,
-	scriptPath string,
-	templateVars scriptInputs,
-) error {
-	shellScript, err := script.ReadFile(scriptPath)
-	if err != nil {
-		return err
-	}
-	var script bytes.Buffer
-	t, err := template.New(scriptDesc).Parse(string(shellScript))
-	if err != nil {
-		return err
-	}
-	err = t.Execute(&script, templateVars)
-	if err != nil {
-		return err
-	}
-
-	if err := host.StreamSSHCommand(script.String(), nil, timeout); err != nil {
-		return err
 	}
 	return nil
 }
@@ -243,6 +222,17 @@ func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath s
 		); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func RunSSHCopyYAMLFile(host *models.Host, yamlFilePath string) error {
+	if err := host.Upload(
+		yamlFilePath,
+		fmt.Sprintf("/home/ubuntu/%s", filepath.Base(yamlFilePath)),
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
 	}
 	return nil
 }
@@ -446,6 +436,39 @@ func RunSSHSetupBuildEnv(host *models.Host) error {
 	)
 }
 
+func RunSSHBuildLoadTest(host *models.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName string, checkoutCommit bool) error {
+	loadTestRepoPaths := strings.Split(loadTestRepo, "/")
+	if len(loadTestRepoPaths) == 0 {
+		return fmt.Errorf("incorrect load test Repo URL format")
+	}
+	// remove .git
+	loadTestRepoDir := strings.Split(loadTestRepoPaths[len(loadTestRepoPaths)-1], ".")
+	if len(loadTestRepoDir) == 0 {
+		return fmt.Errorf("incorrect load test Repo URL format")
+	}
+	return StreamOverSSH(
+		"Build Load Test",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/buildLoadTest.sh",
+		scriptInputs{
+			GoVersion: constants.BuildEnvGolangVersion, LoadTestRepoDir: loadTestRepoDir[0],
+			LoadTestRepo: loadTestRepo, LoadTestPath: loadTestPath, LoadTestGitCommit: loadTestGitCommit,
+			RepoDirName: repoDirName, CheckoutCommit: checkoutCommit,
+		},
+	)
+}
+
+func RunSSHRunLoadTest(host *models.Host, loadTestCommand string) error {
+	return StreamOverSSH(
+		"Run Load Test",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/runLoadTest.sh",
+		scriptInputs{GoVersion: constants.BuildEnvGolangVersion, LoadTestCommand: loadTestCommand},
+	)
+}
+
 // RunSSHSetupCLIFromSource installs any CLI branch from source
 func RunSSHSetupCLIFromSource(host *models.Host, cliBranch string) error {
 	if !constants.EnableSetupCLIFromSource {
@@ -495,6 +518,34 @@ func RunSSHSubnetSyncStatus(host *models.Host, blockchainID string) ([]byte, err
 	return PostOverSSH(host, "/ext/bc/P", requestBody)
 }
 
+// StreamOverSSH runs provided script path over ssh.
+// This script can be template as it will be rendered using scriptInputs vars
+func StreamOverSSH(
+	scriptDesc string,
+	host *models.Host,
+	timeout time.Duration,
+	scriptPath string,
+	templateVars scriptInputs,
+) error {
+	shellScript, err := script.ReadFile(scriptPath)
+	if err != nil {
+		return err
+	}
+	var script bytes.Buffer
+	t, err := template.New(scriptDesc).Parse(string(shellScript))
+	if err != nil {
+		return err
+	}
+	err = t.Execute(&script, templateVars)
+	if err != nil {
+		return err
+	}
+
+	if err := host.StreamSSHCommand(script.String(), nil, timeout); err != nil {
+		return err
+	}
+	return nil
+}
 // RunSSHWhitelistPubKey downloads the authorized_keys file from the specified host, appends the provided sshPubKey to it, and uploads the file back to the host.
 func RunSSHWhitelistPubKey(host *models.Host, sshPubKey string) error {
 	const sshAuthFile = "/home/ubuntu/.ssh/authorized_keys"
