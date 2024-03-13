@@ -493,7 +493,7 @@ func RunSSHSetupCLIFromSource(host *models.Host, cliBranch string) error {
 	return RunOverSSH(
 		"Setup CLI From Source",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHCLIFromSourceTimeout,
 		"shell/setupCLIFromSource.sh",
 		scriptInputs{CliBranch: cliBranch},
 	)
