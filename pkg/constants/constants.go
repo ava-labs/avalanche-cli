@@ -296,4 +296,5 @@ const (
 	E2EDocker               = "docker"
 	E2EDockerComposeFile    = "/tmp/avalanche-cli-docker-compose.yml"
 	E2EDebugAvalanchegoPath = "E2E_AVALANCHEGO_PATH"
+	GitExtension            = ".git"
 )

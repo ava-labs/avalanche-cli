@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -411,32 +410,10 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 	return enc.Encode(clusterInfoYAML)
 }
 
-func getGitCommit(gitRepoURL string) string {
-	if strings.Contains(gitRepoURL, "/commit/") {
-		splitURL := strings.Split(gitRepoURL, "/")
-		commitID := splitURL[len(splitURL)-1]
-		return commitID
-	}
-	return ""
-}
-
-func getRepoFromCommitURL(gitRepoURL string) string {
-	splitURL := strings.Split(gitRepoURL, "/")
-	splitURLWOCommit := splitURL[:len(splitURL)-2]
-	repoDirName = splitURLWOCommit[len(splitURLWOCommit)-1]
-	gitRepo := strings.Join(splitURLWOCommit[:], "/")
-	gitRepo += ".git"
-	return gitRepo
-}
-
 func GetLoadTestScript(app *application.Avalanche) error {
 	var err error
 	if loadTestRepoURL != "" {
 		ux.Logger.PrintToUser("Checking source code repository URL %s", loadTestRepoURL)
-		loadTestRepoCommit = getGitCommit(loadTestRepoURL)
-		if loadTestRepoCommit != "" {
-			loadTestRepoURL = getRepoFromCommitURL(loadTestRepoURL)
-		}
 		if err := prompts.ValidateURL(loadTestRepoURL); err != nil {
 			ux.Logger.PrintToUser("Invalid repository url %s: %s", loadTestRepoURL, err)
 			loadTestRepoURL = ""
@@ -447,10 +424,10 @@ func GetLoadTestScript(app *application.Avalanche) error {
 		if err != nil {
 			return err
 		}
-		loadTestRepoCommit = getGitCommit(loadTestRepoURL)
-		if loadTestRepoCommit != "" {
-			loadTestRepoURL = getRepoFromCommitURL(loadTestRepoURL)
-		}
+	}
+	loadTestRepoCommit = utils.GetGitCommit(loadTestRepoURL)
+	if loadTestRepoCommit != "" {
+		loadTestRepoURL, repoDirName = utils.GetRepoFromCommitURL(loadTestRepoURL)
 	}
 	if loadTestBuildCmd == "" {
 		loadTestBuildCmd, err = app.Prompt.CaptureString("What is the build command?")

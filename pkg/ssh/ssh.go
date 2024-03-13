@@ -438,8 +438,14 @@ func RunSSHSetupBuildEnv(host *models.Host) error {
 
 func RunSSHBuildLoadTest(host *models.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName string, checkoutCommit bool) error {
 	loadTestRepoPaths := strings.Split(loadTestRepo, "/")
+	if len(loadTestRepoPaths) == 0 {
+		return fmt.Errorf("incorrect load test Repo URL format")
+	}
 	// remove .git
 	loadTestRepoDir := strings.Split(loadTestRepoPaths[len(loadTestRepoPaths)-1], ".")
+	if len(loadTestRepoDir) == 0 {
+		return fmt.Errorf("incorrect load test Repo URL format")
+	}
 	return StreamOverSSH(
 		"Build Load Test",
 		host,
