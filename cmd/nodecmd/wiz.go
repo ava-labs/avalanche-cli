@@ -198,6 +198,26 @@ func wiz(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// search for AWM Relayer node
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	for _, host := range hosts {
+		fmt.Printf("%#v\n", host)
+	}
+	monitoringInventoryFile := app.GetMonitoringInventoryDir(clusterName)
+	if utils.FileExists(monitoringInventoryFile) {
+		hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryFile)
+		if err != nil {
+			return err
+		}
+		for _, host := range hosts {
+			fmt.Printf("%#v\n", host)
+		}
+	}
+	return nil
+
 	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err
 	}
@@ -281,12 +301,31 @@ func wiz(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func getAWMRelayerHost(clusterName string) (*models.Host, error) {
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return err
+	}
+	hasRelayer := false
+	for _, cloudID := range clusterConfig.GetCloudIDs() {
+		nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
+		if err != nil {
+			return err
+		}
+		if nodeConfig.IsAWMRelayer {
+			hasRelayer = true
+		}
+		fmt.Printf("%#v\n", nodeConfig.NodeID)
+	}
+	fmt.Println(hasRelayer)r
+}
+
 // TODO: made this to work if there is no monitoring node
 func deployClusterYAMLFile(clusterName, subnetName string) (bool, error) {
 	var separateHost *models.Host
 	monitoringInventoryFile := app.GetMonitoringInventoryDir(clusterName)
 	if utils.FileExists(monitoringInventoryFile) {
-		separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetMonitoringInventoryDir(clusterName))
+		separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryFile)
 		if err != nil {
 			return false, err
 		}
