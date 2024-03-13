@@ -190,6 +190,10 @@ func (app *Avalanche) GetMonitoringDir() string {
 	return filepath.Join(app.GetNodesDir(), constants.MonitoringDir)
 }
 
+func (app *Avalanche) GetMonitoringInventoryDir(clusterName string) string {
+	return filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
+}
+
 func (app *Avalanche) CreateAnsibleDir() error {
 	ansibleDir := app.GetAnsibleDir()
 	if _, err := os.Stat(ansibleDir); os.IsNotExist(err) {
@@ -777,6 +781,10 @@ func (app *Avalanche) GetNodeConfigJSONFile(nodeID string) string {
 
 func (app *Avalanche) GetMonitoringScriptFile() string {
 	return filepath.Join(app.GetMonitoringDir(), constants.MonitoringScriptFile)
+}
+
+func (app *Avalanche) GetClusterYAMLFilePath(clusterName string) string {
+	return filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.ClusterYAMLFileName)
 }
 
 func (app *Avalanche) GetMonitoringDashboardDir() string {

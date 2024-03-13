@@ -93,16 +93,24 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 	return computeService, gcpProjectName, gcpCredentialsPath, err
 }
 
-func getGCPConfig() (*gcpAPI.GcpCloud, map[string]NumNodes, string, string, string, error) {
+func getGCPConfig(singleNode bool) (*gcpAPI.GcpCloud, map[string]NumNodes, string, string, string, error) {
 	finalRegions := map[string]NumNodes{}
 	switch {
 	case len(numValidatorsNodes) != len(utils.Unique(cmdLineRegion)):
 		return nil, nil, "", "", "", errors.New("number of regions and number of nodes must be equal. Please make sure list of regions is unique")
 	case len(cmdLineRegion) == 0 && len(numValidatorsNodes) == 0:
 		var err error
-		finalRegions, err = getRegionsNodeNum(constants.GCPCloudService)
-		if err != nil {
-			return nil, nil, "", "", "", err
+		if singleNode {
+			selectedRegion, err := getSeparateHostNodeParam(constants.GCPCloudService)
+			finalRegions = map[string]NumNodes{selectedRegion: {1, 0}}
+			if err != nil {
+				return nil, nil, "", "", "", err
+			}
+		} else {
+			finalRegions, err = getRegionsNodeNum(constants.GCPCloudService)
+			if err != nil {
+				return nil, nil, "", "", "", err
+			}
 		}
 	default:
 		for i, region := range cmdLineRegion {
@@ -367,4 +375,27 @@ func updateClustersConfigGCPKeyFilepath(projectName, serviceAccountKeyFilepath s
 		clustersConfig.GCPConfig.ServiceAccFilePath = serviceAccountKeyFilepath
 	}
 	return app.WriteClustersConfigFile(&clustersConfig)
+}
+
+func grantAccessToPublicIPViaFirewall(gcpClient *gcpAPI.GcpCloud, projectName string, publicIP string, label string) error {
+	prefix, err := defaultAvalancheCLIPrefix("")
+	if err != nil {
+		return err
+	}
+	networkName := fmt.Sprintf("%s-network", prefix)
+	firewallName := fmt.Sprintf("%s-%s-%s", networkName, strings.ReplaceAll(publicIP, ".", ""), label)
+	ports := []string{
+		strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
+		strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
+	}
+	if err = gcpClient.AddFirewall(
+		publicIP,
+		networkName,
+		projectName,
+		firewallName,
+		ports,
+		true); err != nil {
+		return err
+	}
+	return nil
 }
