@@ -4,10 +4,12 @@ package networkoptions
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -106,6 +108,13 @@ func GetSupportedNetworkOptionsForSubnet(
 		for networkName := range sc.Networks {
 			if strings.HasPrefix(networkName, networkOption.String()) {
 				isInSidecar = true
+			}
+			if os.Getenv(constants.SimulatePublicNetwork) != "" {
+				if strings.HasPrefix(networkName, Local.String()) {
+					if networkOption == Fuji || networkOption == Mainnet {
+						isInSidecar = true
+					}
+				}
 			}
 		}
 		if isInSidecar {

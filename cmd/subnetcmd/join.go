@@ -35,7 +35,7 @@ const ewoqPChainAddr = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 
 var (
 	joinAllSupportedNetworkOptions        = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Devnet, networkoptions.Cluster}
-	joinNonElasticSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Devnet, networkoptions.Cluster}
+	joinNonElasticSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Devnet, networkoptions.Cluster}
 	joinElasticSupportedNetworkOptions    = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji}
 
 	// path to avalanchego config file
