@@ -6,4 +6,4 @@ install_rust() {
   echo >> ~/.bashrc
   echo export PATH=\$PATH:~/.cargo/bin >> ~/.bashrc
 }
-cargo version || sem -j 4 install_rust
+cargo version || install_rust
