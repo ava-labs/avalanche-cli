@@ -199,6 +199,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	/*
 	// search for AWM Relayer node
 	awmRelayerHost, err := getAWMRelayerHost(clusterName)
 	if err != nil {
@@ -212,6 +213,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Printf("%#v\n", awmRelayerHost)
 	return nil
+	*/
 
 	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err

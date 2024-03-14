@@ -14,11 +14,17 @@ type GCPConfig struct {
 	ServiceAccFilePath string // location of GCP service account key file path
 }
 
+type ExtraNetworkData struct {
+	CChainTeleporterMessengerAddress string
+	CChainTeleporterRegistryAddress  string
+}
+
 type ClusterConfig struct {
 	Nodes              []string
 	APINodes           []string
 	Network            Network
 	MonitoringInstance string // instance ID of the separate monitoring instance (if any)
+	ExtraNetworkData   ExtraNetworkData
 }
 
 type ClustersConfig struct {

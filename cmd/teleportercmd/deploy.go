@@ -106,6 +106,19 @@ func CallDeploy(subnetName string, flags networkoptions.NetworkFlags) error {
 				}
 			}
 		}
+		if network.ClusterName != "" {
+			clusterConfig, err := app.GetClusterConfig(network.ClusterName)
+			if err != nil {
+				return err
+			}
+			clusterConfig.ExtraNetworkData = models.ExtraNetworkData{
+				CChainTeleporterMessengerAddress: teleporterMessengerAddress,
+				CChainTeleporterRegistryAddress:  teleporterRegistryAddress,
+			}
+			if err := app.SetClusterConfig(network.ClusterName, clusterConfig); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

@@ -850,6 +850,15 @@ func (app *Avalanche) GetClusterConfig(clusterName string) (models.ClusterConfig
 	return clusterConfig, nil
 }
 
+func (app *Avalanche) SetClusterConfig(clusterName string, clusterConfig models.ClusterConfig) error {
+	clustersConfig, err := app.LoadClustersConfig()
+	if err != nil {
+		return err
+	}
+	clustersConfig.Clusters[clusterName] = clusterConfig
+	return app.WriteClustersConfigFile(&clustersConfig)
+}
+
 func (app *Avalanche) GetClusterNetwork(clusterName string) (models.Network, error) {
 	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
