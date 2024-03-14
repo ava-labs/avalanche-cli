@@ -283,20 +283,24 @@ func ScriptLog(nodeID string, msg string, args ...interface{}) string {
 
 // GetRepoFromCommitURL takes a Git repository URL that contains commit ID and returns the cloneable
 // Git Repo URL (ends in .git) and the repo directory name
+// Example: https://github.com/ava-labs/hypersdk/pull/772/commits/b88acfb370f5aeb83a000aece2d72f28154410a5
+// Should return https://github.com/ava-labs/hypersdk
 func GetRepoFromCommitURL(gitRepoURL string) (string, string) {
 	splitURL := strings.Split(gitRepoURL, "/")
-	if len(splitURL) > 2 {
-		splitURLWOCommit := splitURL[:len(splitURL)-2]
+	if len(splitURL) > 4 {
+		// get first five members of splitURL because it will be [ https, ' ', github.com, ava-labs, hypersdk]
+		splitURLWOCommit := splitURL[:5]
 		gitRepo := strings.Join(splitURLWOCommit, "/")
-		gitRepo += constants.GitExtension
-		return gitRepo, splitURLWOCommit[len(splitURLWOCommit)-1]
+		return gitRepo, splitURLWOCommit[4]
 	}
 	return "", ""
 }
 
 // GetGitCommit takes a Git repository URL that contains commit ID and returns the commit ID
+// Example: https://github.com/ava-labs/hypersdk/pull/772/commits/b88acfb370f5aeb83a000aece2d72f28154410a5
+// Should return b88acfb370f5aeb83a000aece2d72f28154410a5
 func GetGitCommit(gitRepoURL string) string {
-	if strings.Contains(gitRepoURL, "/commit/") {
+	if strings.Contains(gitRepoURL, "/commit") {
 		splitURL := strings.Split(gitRepoURL, "/")
 		if len(splitURL) > 0 {
 			commitID := splitURL[len(splitURL)-1]

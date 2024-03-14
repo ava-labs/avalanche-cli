@@ -301,10 +301,10 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Successfully set up load test environment!")
-	if err := ssh.RunSSHRunLoadTest(separateHosts[0], loadTestCmd); err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("Successfully run load test!")
+	//if err := ssh.RunSSHRunLoadTest(separateHosts[0], loadTestCmd); err != nil {
+	//	return err
+	//}
+	//ux.Logger.PrintToUser("Successfully run load test!")
 	return nil
 }
 
