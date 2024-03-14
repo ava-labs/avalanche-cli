@@ -626,7 +626,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		// download node configs
 		wg := sync.WaitGroup{}
 		wgResults := models.NodeResults{}
-		spinner := spinSession.SpinToUser("Configure monitoring agents")
+		spinner := spinSession.SpinToUser("Configure Monitoring Agents")
 		for _, host := range hosts {
 			wg.Add(1)
 			go func(nodeResults *models.NodeResults, host *models.Host) {
