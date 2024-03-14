@@ -283,7 +283,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 	}
 	spinSession := ux.NewUserSpinner()
 	spinner := spinSession.SpinToUser(utils.ScriptLog(separateHosts[0].NodeID, "Setting up load test environment"))
-	if err := ssh.RunSSHBuildLoadTestDeps(separateHosts[0]); err != nil {
+	if err := ssh.RunSSHBuildLoadTestDependencies(separateHosts[0]); err != nil {
 		ux.SpinFailWithError(spinner, "", err)
 		return err
 	}

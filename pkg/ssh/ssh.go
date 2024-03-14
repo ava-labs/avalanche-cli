@@ -458,7 +458,7 @@ func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath, load
 	)
 }
 
-func RunSSHBuildLoadTestDeps(host *models.Host) error {
+func RunSSHBuildLoadTestDependencies(host *models.Host) error {
 	return RunOverSSH(
 		"Build Load Test",
 		host,
