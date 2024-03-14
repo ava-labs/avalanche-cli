@@ -258,10 +258,11 @@ func RunSSHSetupMachineMetrics(host *models.Host) error {
 	)
 }
 
-func RunSSHSetupSeparateMonitoring(host *models.Host, monitoringDashboardPath, avalancheGoPorts, machinePorts string) error {
+func RunSSHSetupSeparateMonitoring(host *models.Host, monitoringScriptPath, avalancheGoPorts, machinePorts string) error {
+	remotePath := fmt.Sprintf("/home/ubuntu/%s", constants.MonitoringScriptFile)
 	if err := host.Upload(
-		monitoringDashboardPath,
-		fmt.Sprintf("/home/ubuntu/%s", filepath.Base(monitoringDashboardPath)),
+		monitoringScriptPath,
+		remotePath,
 		constants.SSHFileOpsTimeout,
 	); err != nil {
 		return err
@@ -437,7 +438,7 @@ func RunSSHSetupBuildEnv(host *models.Host) error {
 	)
 }
 
-func RunSSHBuildLoadTest(host *models.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName string, checkoutCommit bool) error {
+func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName string, checkoutCommit bool) error {
 	loadTestRepoPaths := strings.Split(loadTestRepo, "/")
 	if len(loadTestRepoPaths) == 0 {
 		return fmt.Errorf("incorrect load test Repo URL format")
@@ -453,10 +454,20 @@ func RunSSHBuildLoadTest(host *models.Host, loadTestRepo, loadTestPath, loadTest
 		constants.SSHScriptTimeout,
 		"shell/buildLoadTest.sh",
 		scriptInputs{
-			GoVersion: constants.BuildEnvGolangVersion, LoadTestRepoDir: loadTestRepoDir[0],
-			LoadTestRepo: loadTestRepo, LoadTestPath: loadTestPath, LoadTestGitCommit: loadTestGitCommit,
+			LoadTestRepoDir: loadTestRepoDir[0],
+			LoadTestRepo:    loadTestRepo, LoadTestPath: loadTestPath, LoadTestGitCommit: loadTestGitCommit,
 			RepoDirName: repoDirName, CheckoutCommit: checkoutCommit,
 		},
+	)
+}
+
+func RunSSHBuildLoadTestDependencies(host *models.Host) error {
+	return RunOverSSH(
+		"Build Load Test",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/buildLoadTestDeps.sh",
+		scriptInputs{GoVersion: constants.BuildEnvGolangVersion},
 	)
 }
 

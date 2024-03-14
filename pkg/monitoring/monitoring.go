@@ -53,6 +53,7 @@ func WriteMonitoringScript(monitoringDir string) error {
 	if err != nil {
 		return err
 	}
+	defer monitoringScriptFile.Close()
 	_, err = monitoringScriptFile.Write(monitoringScript)
 	return err
 }
