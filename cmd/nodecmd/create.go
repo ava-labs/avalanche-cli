@@ -604,11 +604,11 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
-			if err := ssh.RunSSHCopyMonitoringDashboards(monitoringHost, app.GetMonitoringDashboardDir()+"/"); err != nil {
+			if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
-			if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost); err != nil {
+			if err := ssh.RunSSHCopyMonitoringDashboards(monitoringHost, app.GetMonitoringDashboardDir()+"/"); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}

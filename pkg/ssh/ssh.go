@@ -204,7 +204,7 @@ func RunSSHUpgradeSubnetEVM(host *models.Host, subnetEVMBinaryPath string) error
 }
 
 func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath string) error {
-	//TODO: download dashboards from github instead
+	// TODO: download dashboards from github instead
 	remoteDashboardsPath := "/home/ubuntu/dashboards"
 	if !utils.DirectoryExists(monitoringDashboardPath) {
 		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
