@@ -223,6 +223,11 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if existingMonitoringInstance == "" && !cmd.Flags().Changed(addMonitoringFlag) {
+		if addMonitoring, err = promptSetUpMonitoring(); err != nil {
+			return err
+		}
+	}
 	if utils.IsE2E() {
 		usr, err := user.Current()
 		if err != nil {
@@ -324,11 +329,6 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			if existingMonitoringInstance == "" {
 				monitoringHostRegion = regions[0]
 			}
-			if !cmd.Flags().Changed(addMonitoringFlag) {
-				if addMonitoring, err = promptSetUpMonitoring(); err != nil {
-					return err
-				}
-			}
 			cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodesMap, regions, ami, false)
 			if err != nil {
 				return err
@@ -399,11 +399,6 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			}
 			if existingMonitoringInstance == "" {
 				monitoringHostRegion = maps.Keys(numNodesMap)[0]
-			}
-			if !cmd.Flags().Changed(addMonitoringFlag) {
-				if addMonitoring, err = promptSetUpMonitoring(); err != nil {
-					return err
-				}
 			}
 			cloudConfigMap, err = createGCPInstance(gcpClient, nodeType, numNodesMap, imageID, clusterName, false)
 			if err != nil {
