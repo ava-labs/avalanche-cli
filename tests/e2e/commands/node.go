@@ -78,6 +78,7 @@ func NodeDevnet(numNodes int, numAPINodes int) string {
 		"create",
 		constants.E2EClusterName,
 		"--use-static-ip=false",
+		"--with-prometheus=false",
 		"--latest-avalanchego-version=true",
 		"--region=local",
 		"--num-validators="+strconv.Itoa(numNodes),
