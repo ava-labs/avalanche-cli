@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -272,40 +274,42 @@ func wiz(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is successfully created and is now validating subnet %s!"), clusterName, subnetName)
 	}
 
-	b, err := deployClusterYAMLFile(clusterName, subnetName)
-	if err != nil {
+	err := deployClusterYAMLFile(clusterName, subnetName); err != nil {
 		return err
-	}
-	if b {
-		ux.Logger.GreenCheckmarkToUser("Cluster information YAML file can be found at /home/ubuntu/clusterInfo.yaml at external host")
 	}
 	return nil
 }
 
-// TODO: made this to work if there is no monitoring node
-func deployClusterYAMLFile(clusterName, subnetName string) (bool, error) {
-	var separateHost *models.Host
-	monitoringInventoryFile := app.GetMonitoringInventoryDir(clusterName)
-	if utils.FileExists(monitoringInventoryFile) {
-		separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetMonitoringInventoryDir(clusterName))
+func deployClusterYAMLFile(clusterName, subnetName string) error {
+	var separateHosts []*models.Host
+	var err error
+	monitoringInventoryDir := app.GetMonitoringInventoryDir(clusterName)
+	if utils.FileExists(monitoringInventoryDir) {
+		separateHosts, err = ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryDir)
 		if err != nil {
-			return false, err
-		}
-		if len(separateHosts) > 0 {
-			separateHost = separateHosts[0]
+			return err
 		}
 	}
-	if separateHost == nil {
-		return false, nil
-	}
-	subnetID, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
+	subnetID, chainID, err := getDeployedSubnetInfo(subnetName)
 	if err != nil {
-		return false, err
+		return err
 	}
-	if err := createClusterYAMLFile(clusterName, subnetID, chainID, separateHost); err != nil {
-		return false, err
+	var externalHost *models.Host
+	if len(separateHosts) > 0 {
+		externalHost = separateHosts[0]
 	}
-	return true, ssh.RunSSHCopyYAMLFile(separateHost, app.GetClusterYAMLFilePath(clusterName))
+	if err = createClusterYAMLFile(clusterName, subnetID, chainID, externalHost); err != nil {
+		return err
+	}
+	ux.Logger.GreenCheckmarkToUser("Cluster information YAML file can be found at %s at local host", app.GetClusterYAMLFilePath(clusterName))
+	// deploy YAML file to external host, if it exists
+	if len(separateHosts) > 0 {
+		if err = ssh.RunSSHCopyYAMLFile(separateHosts[0], app.GetClusterYAMLFilePath(clusterName)); err != nil {
+			return err
+		}
+		ux.Logger.GreenCheckmarkToUser("Cluster information YAML file can be found at /home/ubuntu/clusterInfo.yaml at external host")
+	}
+	return nil
 }
 
 func waitForHealthyCluster(
