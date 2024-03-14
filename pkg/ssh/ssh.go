@@ -440,7 +440,6 @@ func RunSSHSetupBuildEnv(host *models.Host) error {
 		return err
 	}
 	eg := &errgroup.Group{}
-	eg.SetLimit(2)
 	eg.Go(func() error {
 		return RunOverSSH(
 			"Install Go",
