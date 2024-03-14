@@ -149,8 +149,8 @@ func TestGetGitCommit(t *testing.T) {
 }
 
 func TestAddQuotes(t *testing.T) {
-	input := []string{"", "b", "orange banana"}
-	expected := []string{"''", "'b'", "'orange banana'"}
+	input := []string{"", "b", "orange banana", "'apple'", "'a", "b'"}
+	expected := []string{"''", "'b'", "'orange banana'", "'apple'", "'a'", "'b'"}
 	output := AddQuotes(input)
 
 	if !reflect.DeepEqual(output, expected) {

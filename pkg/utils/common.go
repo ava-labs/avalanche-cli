@@ -332,6 +332,18 @@ func ArchSupported(arch string) bool {
 // AddQuotes adds single quotes to each string in the given slice.
 func AddQuotes(s []string) []string {
 	return Map(s, func(item string) string {
-		return fmt.Sprintf("'%s'", item)
+		if item == "" {
+			return "''"
+		}
+		if !strings.HasPrefix(item, "'") {
+			item = fmt.Sprintf("'%s", item)
+		}
+		if !strings.HasSuffix(item, "'") {
+			item = fmt.Sprintf("%s'", item)
+		}
+		if !strings.HasPrefix(item, "'") && !strings.HasSuffix(item, "'") {
+			item = fmt.Sprintf("'%s'", item)
+		}
+		return item
 	})
 }
