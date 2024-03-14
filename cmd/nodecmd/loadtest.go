@@ -423,14 +423,17 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 		default:
 		}
 	}
-	_, separateHostRegion, err := getNodeCloudConfig(separateHost.GetCloudID())
-	if err != nil {
-		return err
-	}
-	separateHostInfo := nodeInfo{
-		IP:      separateHost.IP,
-		CloudID: separateHost.GetCloudID(),
-		Region:  separateHostRegion,
+	var separateHostInfo nodeInfo
+	if separateHost != nil {
+		_, separateHostRegion, err := getNodeCloudConfig(separateHost.GetCloudID())
+		if err != nil {
+			return err
+		}
+		separateHostInfo = nodeInfo{
+			IP:      separateHost.IP,
+			CloudID: separateHost.GetCloudID(),
+			Region:  separateHostRegion,
+		}
 	}
 	clusterInfoYAML := clusterInfo{
 		Validator:  validatorNodes,

@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
@@ -253,23 +255,39 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err = deployClusterYAMLFile(clusterName, subnetName); err != nil {
 		return err
 	}
-	ux.Logger.GreenCheckmarkToUser("Cluster information YAML file can be found at /home/ubuntu/clusterInfo.yaml at external host")
 	return nil
 }
 
 func deployClusterYAMLFile(clusterName, subnetName string) error {
-	separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetMonitoringInventoryDir(clusterName))
-	if err != nil {
-		return err
+	var separateHosts []*models.Host
+	var err error
+	monitoringInventoryDir := app.GetMonitoringInventoryDir(clusterName)
+	if utils.FileExists(monitoringInventoryDir) {
+		separateHosts, err = ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryDir)
+		if err != nil {
+			return err
+		}
 	}
 	subnetID, chainID, err := getDeployedSubnetInfo(subnetName)
 	if err != nil {
 		return err
 	}
-	if err := createClusterYAMLFile(clusterName, subnetID, chainID, separateHosts[0]); err != nil {
+	var externalHost *models.Host
+	if len(separateHosts) > 0 {
+		externalHost = separateHosts[0]
+	}
+	if err = createClusterYAMLFile(clusterName, subnetID, chainID, externalHost); err != nil {
 		return err
 	}
-	return ssh.RunSSHCopyYAMLFile(separateHosts[0], app.GetClusterYAMLFilePath(clusterName))
+	ux.Logger.GreenCheckmarkToUser("Cluster information YAML file can be found at %s at local host", app.GetClusterYAMLFilePath(clusterName))
+	// deploy YAML file to external host, if it exists
+	if len(separateHosts) > 0 {
+		if err = ssh.RunSSHCopyYAMLFile(separateHosts[0], app.GetClusterYAMLFilePath(clusterName)); err != nil {
+			return err
+		}
+		ux.Logger.GreenCheckmarkToUser("Cluster information YAML file can be found at /home/ubuntu/clusterInfo.yaml at external host")
+	}
+	return nil
 }
 
 func waitForHealthyCluster(
