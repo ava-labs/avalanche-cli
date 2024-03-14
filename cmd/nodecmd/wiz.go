@@ -199,7 +199,6 @@ func wiz(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	/*
 	// search for AWM Relayer node
 	awmRelayerHost, err := getAWMRelayerHost(clusterName)
 	if err != nil {
@@ -210,10 +209,11 @@ func wiz(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		if err := setAWMRelayerHost(awmRelayerHost); err != nil {
+			return err
+		}
 	}
-	fmt.Printf("%#v\n", awmRelayerHost)
 	return nil
-	*/
 
 	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err
@@ -335,6 +335,21 @@ func getAWMRelayerHost(clusterName string) (*models.Host, error) {
 		}
 	}
 	return getHostWithCloudID(clusterName, relayerCloudID)
+}
+
+func setAWMRelayerHost(host *models.Host) error {
+	cloudID := host.GetCloudID()
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("configuring AWM RElayer on host %s", cloudID)
+	nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
+	if err != nil {
+		return err
+	}
+	if err := ssh.RunSSHSetupAWMRelayerService(host); err != nil {
+		return err
+	}
+	nodeConfig.IsAWMRelayer = true
+	return app.CreateNodeCloudConfigFile(cloudID, &nodeConfig)
 }
 
 func chooseAWMRelayerHost(clusterName string) (*models.Host, error) {
