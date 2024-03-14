@@ -287,7 +287,10 @@ const (
 	APIRole                      = "API"
 	ValidatorRole                = "Validator"
 	MonitorRole                  = "Monitor"
+<<<<<<< HEAD
 	AWMRelayerRole               = "Relayer"
+=======
+>>>>>>> main
 	DefaultWalletCreationTimeout = 5 * time.Second
 
 	DefaultConfirmTxTimeout = 20 * time.Second
