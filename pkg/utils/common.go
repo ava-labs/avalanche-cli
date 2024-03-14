@@ -20,6 +20,8 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"golang.org/x/exp/slices"
 )
 
 func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr bool) (*bytes.Buffer, *bytes.Buffer) {
@@ -317,4 +319,12 @@ func ReadLongString(msg string, args ...interface{}) (string, error) {
 	// Remove newline character at the end
 	longString = strings.TrimSuffix(longString, "\n")
 	return longString, nil
+}
+
+func SupportedAvagoArch() []string {
+	return []string{string(types.ArchitectureTypeArm64), string(types.ArchitectureTypeX8664)}
+}
+
+func ArchSupported(arch string) bool {
+	return slices.Contains(SupportedAvagoArch(), arch)
 }
