@@ -72,8 +72,8 @@ func GenerateConfig(configPath string, configDesc string, templateVars configInp
 
 func WritePrometheusConfig(filePath string, avalancheGoPorts []string, machinePorts []string) error {
 	config, err := GenerateConfig("configs/prometheus.yml", "Prometheus Config", configInputs{
-		AvalancheGoPorts: strings.Join(utils.AddQuotes(avalancheGoPorts), ","),
-		MachinePorts:     strings.Join(utils.AddQuotes(machinePorts), ","),
+		AvalancheGoPorts: strings.Join(utils.AddSingleQuotes(avalancheGoPorts), ","),
+		MachinePorts:     strings.Join(utils.AddSingleQuotes(machinePorts), ","),
 	})
 	if err != nil {
 		return err

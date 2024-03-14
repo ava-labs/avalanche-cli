@@ -329,8 +329,8 @@ func ArchSupported(arch string) bool {
 	return slices.Contains(SupportedAvagoArch(), arch)
 }
 
-// AddQuotes adds single quotes to each string in the given slice.
-func AddQuotes(s []string) []string {
+// AddSingleQuotes adds single quotes to each string in the given slice.
+func AddSingleQuotes(s []string) []string {
 	return Map(s, func(item string) string {
 		if item == "" {
 			return "''"

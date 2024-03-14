@@ -148,12 +148,12 @@ func TestGetGitCommit(t *testing.T) {
 	}
 }
 
-func TestAddQuotes(t *testing.T) {
+func TestAddSingleQuotes(t *testing.T) {
 	input := []string{"", "b", "orange banana", "'apple'", "'a", "b'"}
 	expected := []string{"''", "'b'", "'orange banana'", "'apple'", "'a'", "'b'"}
-	output := AddQuotes(input)
+	output := AddSingleQuotes(input)
 
 	if !reflect.DeepEqual(output, expected) {
-		t.Errorf("AddQuotes(%v) = %v, expected %v", input, output, expected)
+		t.Errorf("AddSingleQuotes(%v) = %v, expected %v", input, output, expected)
 	}
 }
