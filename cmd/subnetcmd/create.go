@@ -127,6 +127,13 @@ func CallCreate(
 	return createSubnetConfig(cmd, []string{subnetName})
 }
 
+func detectVMTypeFromFlags() {
+	// assumes custom
+	if customVMRepoURL != "" || customVMBranch != "" || customVMBuildScript != "" {
+		useCustom = true
+	}
+}
+
 func moreThanOneVMSelected() bool {
 	vmVars := []bool{useSubnetEvm, useCustom}
 	firstSelect := false
@@ -162,6 +169,8 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	if err := checkInvalidSubnetNames(subnetName); err != nil {
 		return fmt.Errorf("subnet name %q is invalid: %w", subnetName, err)
 	}
+
+	detectVMTypeFromFlags()
 
 	if moreThanOneVMSelected() {
 		return errors.New("too many VMs selected. Provide at most one VM selection flag")
