@@ -208,7 +208,6 @@ const (
 	CloudNodeCLIConfigBasePath    = "/home/ubuntu/.avalanche-cli/"
 	AvalanchegoMonitoringPort     = 9090
 	AvalanchegoMachineMetricsPort = 9100
-	MonitoringScriptFile          = "monitoring-separate-installer.sh"
 	MonitoringDir                 = "monitoring"
 	DashboardsDir                 = "dashboards"
 	NodeConfigJSONFile            = "node.json"

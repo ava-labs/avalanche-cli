@@ -318,3 +318,10 @@ func ReadLongString(msg string, args ...interface{}) (string, error) {
 	longString = strings.TrimSuffix(longString, "\n")
 	return longString, nil
 }
+
+// AddQuotes adds single quotes to each string in the given slice.
+func AddQuotes(s []string) []string {
+	return Map(s, func(item string) string {
+		return fmt.Sprintf("'%s'", item)
+	})
+}

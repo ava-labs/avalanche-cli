@@ -13,6 +13,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -32,8 +33,6 @@ type scriptInputs struct {
 	SubnetEVMReleaseURL     string
 	SubnetEVMArchive        string
 	MonitoringDashboardPath string
-	AvalancheGoPorts        string
-	MachinePorts            string
 	LoadTestRepoDir         string
 	LoadTestRepo            string
 	LoadTestPath            string
@@ -237,16 +236,6 @@ func RunSSHCopyYAMLFile(host *models.Host, yamlFilePath string) error {
 	return nil
 }
 
-func RunSSHSetupMonitoring(host *models.Host) error {
-	return RunOverSSH(
-		"Setup Monitoring",
-		host,
-		constants.SSHScriptTimeout,
-		"shell/setupMonitoring.sh",
-		scriptInputs{},
-	)
-}
-
 func RunSSHSetupMachineMetrics(host *models.Host) error {
 	return RunOverSSH(
 		"Setup Machine Metrics",
@@ -257,37 +246,41 @@ func RunSSHSetupMachineMetrics(host *models.Host) error {
 	)
 }
 
-func RunSSHSetupSeparateMonitoring(host *models.Host, monitoringDashboardPath, avalancheGoPorts, machinePorts string) error {
+func RunSSHSetupSeparateMonitoring(host *models.Host) error {
+	return RunOverSSH(
+		"Setup Prometheus and Grafana",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/setupMonitoring.sh",
+		scriptInputs{
+			IsE2E: utils.IsE2E(),
+		},
+	)
+}
+
+func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePorts []string) error {
+	const CloudNodePrometheusConfigTemp = "/tmp/prometheus.yml"
+	promConfig, err := os.CreateTemp("", "prometheus")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(promConfig.Name())
+	if err := monitoring.WritePrometheusConfig(promConfig.Name(), avalancheGoPorts, machinePorts); err != nil {
+		return err
+	}
 	if err := host.Upload(
-		monitoringDashboardPath,
-		fmt.Sprintf("/home/ubuntu/%s", filepath.Base(monitoringDashboardPath)),
+		promConfig.Name(),
+		CloudNodePrometheusConfigTemp,
 		constants.SSHFileOpsTimeout,
 	); err != nil {
 		return err
 	}
 	return RunOverSSH(
-		"Setup Separate Monitoring",
-		host,
-		constants.SSHScriptTimeout,
-		"shell/setupSeparateMonitoring.sh",
-		scriptInputs{
-			AvalancheGoPorts: avalancheGoPorts,
-			MachinePorts:     machinePorts,
-			IsE2E:            utils.IsE2E(),
-		},
-	)
-}
-
-func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePorts string) error {
-	return RunOverSSH(
 		"Update Prometheus Config",
 		host,
 		constants.SSHScriptTimeout,
 		"shell/updatePrometheusConfig.sh",
-		scriptInputs{
-			AvalancheGoPorts: avalancheGoPorts,
-			MachinePorts:     machinePorts,
-		},
+		scriptInputs{},
 	)
 }
 

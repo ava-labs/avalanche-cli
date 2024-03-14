@@ -40,7 +40,7 @@ import (
 )
 
 const (
-	addMonitoringFlag = "add-monitoring"
+	addMonitoringFlag = "with-prometheus"
 )
 
 var (
@@ -112,7 +112,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().BoolVar(&createDevnet, "devnet", false, "create node/s into a new Devnet")
 	cmd.Flags().BoolVar(&useSSHAgent, "use-ssh-agent", false, "use ssh agent(ex: Yubikey) for ssh auth")
 	cmd.Flags().StringVar(&sshIdentity, "ssh-agent-identity", "", "use given ssh identity(only for ssh agent). If not set, default will be used")
-	cmd.Flags().BoolVar(&addMonitoring, addMonitoringFlag, false, " set up Prometheus monitoring for created nodes. Please note that this option creates a separate monitoring instance and incures additional cost")
+	cmd.Flags().BoolVar(&addMonitoring, addMonitoringFlag, false, "set up Prometheus monitoring for created nodes. This option creates a separate monitoring cloud instance and incures additional cost")
 	cmd.Flags().IntSliceVar(&numAPINodes, "num-apis", []int{}, "number of API nodes(nodes without stake) to create in the new Devnet")
 	return cmd
 }
@@ -317,7 +317,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			if existingMonitoringInstance == "" {
 				monitoringHostRegion = regions[0]
 			}
-			if cmd.Flags().Changed(addMonitoringFlag) {
+			if !cmd.Flags().Changed(addMonitoringFlag) {
 				if addMonitoring, err = promptSetUpMonitoring(); err != nil {
 					return err
 				}
@@ -393,7 +393,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			if existingMonitoringInstance == "" {
 				monitoringHostRegion = maps.Keys(numNodesMap)[0]
 			}
-			if cmd.Flags().Changed(addMonitoringFlag) {
+			if !cmd.Flags().Changed(addMonitoringFlag) {
 				if addMonitoring, err = promptSetUpMonitoring(); err != nil {
 					return err
 				}
@@ -591,14 +591,14 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
 		}
 		if existingMonitoringInstance != "" {
-			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Setup monitoring"))
-			if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
+			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Update Monitoring Targets"))
+			if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
 			ux.SpinComplete(spinner)
 		} else {
-			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Setup monitoring"))
+			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Setup Prometheus Monitoring and Grafana"))
 			if err = app.SetupMonitoringEnv(); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
@@ -607,8 +607,11 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
-
-			if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost, app.GetMonitoringScriptFile(), strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
+			if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost); err != nil {
+				ux.SpinFailWithError(spinner, "", err)
+				return err
+			}
+			if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
@@ -685,7 +688,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 }
 
 func promptSetUpMonitoring() (bool, error) {
-	monitoringInstance, err := app.Prompt.CaptureYesNo("Do you want to set up a cloud instance to host monitoring? (This requires additional cloud instance and may incur additional cost)")
+	monitoringInstance, err := app.Prompt.CaptureYesNo("Do you want to set up Prometheus monitoring? (This requires additional cloud instance and may incur additional cost)")
 	if err != nil {
 		return false, err
 	}

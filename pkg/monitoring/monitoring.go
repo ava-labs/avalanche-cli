@@ -4,24 +4,29 @@
 package monitoring
 
 import (
+	"bytes"
 	"embed"
 	"os"
 	"path/filepath"
+	"strings"
+	"text/template"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
+
+type configInputs struct {
+	AvalancheGoPorts string
+	MachinePorts     string
+}
 
 //go:embed dashboards/*
 var dashboards embed.FS
 
-//go:embed monitoring-separate-installer.sh
-var monitoringScript []byte
+//go:embed configs/*
+var configs embed.FS
 
 func Setup(monitoringDir string) error {
-	err := WriteMonitoringScript(monitoringDir)
-	if err != nil {
-		return err
-	}
 	return WriteMonitoringJSONFiles(monitoringDir)
 }
 
@@ -48,11 +53,30 @@ func WriteMonitoringJSONFiles(monitoringDir string) error {
 	return nil
 }
 
-func WriteMonitoringScript(monitoringDir string) error {
-	monitoringScriptFile, err := os.Create(filepath.Join(monitoringDir, constants.MonitoringScriptFile))
+func GenerateConfig(configPath string, configDesc string, templateVars configInputs) (string, error) {
+	configTemplate, err := configs.ReadFile(configPath)
+	if err != nil {
+		return "", err
+	}
+	var config bytes.Buffer
+	t, err := template.New(configDesc).Parse(string(configTemplate))
+	if err != nil {
+		return "", err
+	}
+	err = t.Execute(&config, templateVars)
+	if err != nil {
+		return "", err
+	}
+	return config.String(), nil
+}
+
+func WritePrometheusConfig(filePath string, avalancheGoPorts []string, machinePorts []string) error {
+	config, err := GenerateConfig("configs/prometheus.yml", "Prometheus Config", configInputs{
+		AvalancheGoPorts: strings.Join(utils.AddQuotes(avalancheGoPorts), ","),
+		MachinePorts:     strings.Join(utils.AddQuotes(machinePorts), ","),
+	})
 	if err != nil {
 		return err
 	}
-	_, err = monitoringScriptFile.Write(monitoringScript)
-	return err
+	return os.WriteFile(filePath, []byte(config), constants.WriteReadReadPerms)
 }

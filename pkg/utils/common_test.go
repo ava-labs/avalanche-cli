@@ -147,3 +147,13 @@ func TestGetGitCommit(t *testing.T) {
 		t.Errorf("Expected %v, but got %v", expected1, commitID)
 	}
 }
+
+func TestAddQuotes(t *testing.T) {
+	input := []string{"", "b", "orange banana"}
+	expected := []string{"''", "'b'", "'orange banana'"}
+	output := AddQuotes(input)
+
+	if !reflect.DeepEqual(output, expected) {
+		t.Errorf("AddQuotes(%v) = %v, expected %v", input, output, expected)
+	}
+}
