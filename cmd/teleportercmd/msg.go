@@ -200,7 +200,7 @@ func msg(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func getSubnetParams(network models.Network, subnetName string) (ids.ID, ids.ID, string, string, *key.SoftKey, error) { //nolint:unparam
+func getSubnetParams(network models.Network, subnetName string) (ids.ID, ids.ID, string, string, *key.SoftKey, error) {
 	var (
 		subnetID                   ids.ID
 		chainID                    ids.ID

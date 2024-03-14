@@ -200,17 +200,17 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 
 	// search for AWM Relayer node
-	AWMRelayerHost, err := getAWMRelayerHost(clusterName)
+	awmRelayerHost, err := getAWMRelayerHost(clusterName)
 	if err != nil {
 		return err
 	}
-	if AWMRelayerHost == nil {
-		AWMRelayerHost, err = chooseAWMRelayerHost(clusterName)
+	if awmRelayerHost == nil {
+		awmRelayerHost, err = chooseAWMRelayerHost(clusterName)
 		if err != nil {
 			return err
 		}
 	}
-	fmt.Printf("%#v\n", AWMRelayerHost)
+	fmt.Printf("%#v\n", awmRelayerHost)
 	return nil
 
 	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
