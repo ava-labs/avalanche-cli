@@ -12,7 +12,7 @@ require (
 	github.com/ava-labs/teleporter v1.0.0
 	github.com/aws/aws-sdk-go-v2 v1.25.3
 	github.com/aws/aws-sdk-go-v2/config v1.27.7
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.149.4
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.150.1
 	github.com/chelnak/ysmrr v0.4.0
 	github.com/docker/docker v25.0.3+incompatible
 	github.com/ethereum/go-ethereum v1.12.0
@@ -37,8 +37,8 @@ require (
 	golang.org/x/crypto v0.21.0
 	golang.org/x/exp v0.0.0-20231127185646-65229373498e
 	golang.org/x/mod v0.16.0
-	golang.org/x/net v0.21.0
-	golang.org/x/oauth2 v0.17.0
+	golang.org/x/net v0.22.0
+	golang.org/x/oauth2 v0.18.0
 	golang.org/x/sync v0.6.0
 	golang.org/x/text v0.14.0
 	google.golang.org/api v0.153.0

@@ -59,6 +59,7 @@ var (
 	useLatestAvalanchegoPreReleaseVersion bool
 	useCustomAvalanchegoVersion           string
 	useAvalanchegoVersionFromSubnet       string
+	remoteCLIVersion                      string
 	cmdLineGCPCredentialsPath             string
 	cmdLineGCPProjectName                 string
 	cmdLineAlternativeKeyPairName         string
@@ -104,6 +105,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().BoolVar(&useLatestAvalanchegoPreReleaseVersion, "latest-avalanchego-pre-release-version", false, "install latest avalanchego pre-release version on node/s")
 	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
 	cmd.Flags().StringVar(&useAvalanchegoVersionFromSubnet, "avalanchego-version-from-subnet", "", "install latest avalanchego version, that is compatible with the given subnet, on node/s")
+	cmd.Flags().StringVar(&remoteCLIVersion, "remote-cli-version", "", "install given CLI version on remote nodes. defaults to latest CLI release")
 	cmd.Flags().StringVar(&cmdLineGCPCredentialsPath, "gcp-credentials", "", "use given GCP credentials")
 	cmd.Flags().StringVar(&cmdLineGCPProjectName, "gcp-project", "", "use given GCP project")
 	cmd.Flags().StringVar(&cmdLineAlternativeKeyPairName, "alternative-key-pair-name", "", "key pair name to use if default one generates conflicts")
@@ -154,6 +156,11 @@ func preCreateChecks() error {
 			if num <= 0 {
 				return fmt.Errorf("number of API nodes per region must be greater than 0")
 			}
+		}
+	}
+	if remoteCLIVersion != "" {
+		if !semver.IsValid(remoteCLIVersion) {
+			return fmt.Errorf("invalid semantic version for CLI on hosts")
 		}
 	}
 	return nil
@@ -309,7 +316,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 				return fmt.Errorf("cloud access is required")
 			}
-			ec2SvcMap, ami, numNodesMap, err := getAWSCloudConfig(awsProfile, false, nil)
+			ec2SvcMap, ami, numNodesMap, err := getAWSCloudConfig(awsProfile, false, nil, nodeType)
 			regions := maps.Keys(ec2SvcMap)
 			if err != nil {
 				return err
@@ -536,8 +543,8 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
-			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Node"))
-			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), avalancheGoVersion, network.Kind == models.Devnet); err != nil {
+			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup node"))
+			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), avalancheGoVersion, remoteCLIVersion, network.Kind == models.Devnet); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return
@@ -580,15 +587,9 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		monitoringHost := monitoringHosts[0]
 		// remove monitoring host from created hosts list
 		hosts = utils.Filter(hosts, func(h *models.Host) bool { return h.NodeID != monitoringHost.NodeID })
-		avalancheGoPorts := []string{}
-		machinePorts := []string{}
-		inventoryHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+		avalancheGoPorts, machinePorts, err := getPrometheusTargets(clusterName)
 		if err != nil {
 			return err
-		}
-		for _, host := range inventoryHosts {
-			avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoAPIPort)))
-			machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
 		}
 		if existingMonitoringInstance != "" {
 			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Update Monitoring Targets"))
@@ -1350,4 +1351,18 @@ func defaultAvalancheCLIPrefix(region string) (string, error) {
 		return usr.Username + constants.AvalancheCLISuffix, nil
 	}
 	return usr.Username + "-" + region + constants.AvalancheCLISuffix, nil
+}
+
+func getPrometheusTargets(clusterName string) ([]string, []string, error) {
+	avalancheGoPorts := []string{}
+	machinePorts := []string{}
+	inventoryHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return avalancheGoPorts, machinePorts, err
+	}
+	for _, host := range inventoryHosts {
+		avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoAPIPort)))
+		machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
+	}
+	return avalancheGoPorts, machinePorts, err
 }

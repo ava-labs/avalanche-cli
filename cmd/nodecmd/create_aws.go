@@ -96,7 +96,7 @@ func getAWSMonitoringEC2Svc(awsProfile, monitoringRegion string) (map[string]*aw
 	return ec2SvcMap, nil
 }
 
-func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []string) (map[string]*awsAPI.AwsCloud, map[string]string, map[string]NumNodes, error) {
+func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []string, instanceType string) (map[string]*awsAPI.AwsCloud, map[string]string, map[string]NumNodes, error) {
 	finalRegions := map[string]NumNodes{}
 	switch {
 	case len(numValidatorsNodes) != len(utils.Unique(cmdLineRegion)):
@@ -158,7 +158,11 @@ func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []st
 				return nil, nil, nil, err
 			}
 		}
-		amiMap[region], err = ec2SvcMap[region].GetUbuntuAMIID()
+		arch, err := ec2SvcMap[region].GetInstanceTypeArch(instanceType)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		amiMap[region], err = ec2SvcMap[region].GetUbuntuAMIID(arch, constants.UbuntuVersionLTS)
 		if err != nil {
 			if isExpiredCredentialError(err) {
 				printExpiredCredentialsOutput(awsProfile)

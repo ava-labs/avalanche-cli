@@ -22,6 +22,7 @@ import (
 
 type scriptInputs struct {
 	AvalancheGoVersion      string
+	CLIVersion              string
 	SubnetExportFileName    string
 	SubnetName              string
 	GoVersion               string
@@ -91,13 +92,13 @@ func PostOverSSH(host *models.Host, path string, requestBody string) ([]byte, er
 }
 
 // RunSSHSetupNode runs script to setup node
-func RunSSHSetupNode(host *models.Host, configPath, avalancheGoVersion string, isDevNet bool) error {
+func RunSSHSetupNode(host *models.Host, configPath, avalancheGoVersion string, cliVersion string, isDevNet bool) error {
 	if err := RunOverSSH(
 		"Setup Node",
 		host,
 		constants.SSHScriptTimeout,
 		"shell/setupNode.sh",
-		scriptInputs{AvalancheGoVersion: avalancheGoVersion, IsDevNet: isDevNet, IsE2E: utils.IsE2E()},
+		scriptInputs{AvalancheGoVersion: avalancheGoVersion, CLIVersion: cliVersion, IsDevNet: isDevNet, IsE2E: utils.IsE2E()},
 	); err != nil {
 		return err
 	}
@@ -437,7 +438,7 @@ func RunSSHSetupBuildEnv(host *models.Host) error {
 	)
 }
 
-func RunSSHBuildLoadTest(host *models.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName string, checkoutCommit bool) error {
+func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName string, checkoutCommit bool) error {
 	loadTestRepoPaths := strings.Split(loadTestRepo, "/")
 	if len(loadTestRepoPaths) == 0 {
 		return fmt.Errorf("incorrect load test Repo URL format")
@@ -453,10 +454,20 @@ func RunSSHBuildLoadTest(host *models.Host, loadTestRepo, loadTestPath, loadTest
 		constants.SSHScriptTimeout,
 		"shell/buildLoadTest.sh",
 		scriptInputs{
-			GoVersion: constants.BuildEnvGolangVersion, LoadTestRepoDir: loadTestRepoDir[0],
-			LoadTestRepo: loadTestRepo, LoadTestPath: loadTestPath, LoadTestGitCommit: loadTestGitCommit,
+			LoadTestRepoDir: loadTestRepoDir[0],
+			LoadTestRepo:    loadTestRepo, LoadTestPath: loadTestPath, LoadTestGitCommit: loadTestGitCommit,
 			RepoDirName: repoDirName, CheckoutCommit: checkoutCommit,
 		},
+	)
+}
+
+func RunSSHBuildLoadTestDependencies(host *models.Host) error {
+	return RunOverSSH(
+		"Build Load Test",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/buildLoadTestDeps.sh",
+		scriptInputs{GoVersion: constants.BuildEnvGolangVersion},
 	)
 }
 
