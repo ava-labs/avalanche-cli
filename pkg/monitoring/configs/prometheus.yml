@@ -38,7 +38,7 @@ scrape_configs:
     metrics_path: '/ext/metrics'
     static_configs:
     # - targets: ['54.90.66.11:9650','3.86.189.93:9650','52.201.219.62:9650']
-      - targets: [{{ .AvagoPorts }}]
+      - targets: [{{ .AvalancheGoPorts }}]
   - job_name: 'avalanchego-machine'
     static_configs:
     # - targets: ['54.90.66.11:9100','3.86.189.93:9100','52.201.219.62:9100'] 
