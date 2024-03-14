@@ -338,17 +338,17 @@ func waitForHealthyCluster(
 	for {
 		notHealthyNodes, err := checkHostsAreHealthy(hosts)
 		if err != nil {
-			ux.SpinFailWithError(spinner, "", err)
+			spinSession.SpinFailWithError(spinner, "", err)
 			return err
 		}
 		if len(notHealthyNodes) == 0 {
-			ux.SpinComplete(spinner)
+			spinSession.SpinComplete(spinner)
 			spinSession.Stop()
 			ux.Logger.GreenCheckmarkToUser("Nodes healthy after %d seconds", uint32(time.Since(startTime).Seconds()))
 			return nil
 		}
 		if time.Since(startTime) > timeout {
-			ux.SpinFailWithError(spinner, "", fmt.Errorf("cluster not healthy after %d seconds", uint32(timeout.Seconds())))
+			spinSession.SpinFailWithError(spinner, "", fmt.Errorf("cluster not healthy after %d seconds", uint32(timeout.Seconds())))
 			spinSession.Stop()
 			ux.Logger.PrintToUser("")
 			ux.Logger.RedXToUser("Unhealthy Nodes")

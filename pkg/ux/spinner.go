@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/chelnak/ysmrr"
 	"github.com/chelnak/ysmrr/pkg/animations"
@@ -14,9 +15,10 @@ import (
 )
 
 type UserSpinner struct {
-	spinner ysmrr.SpinnerManager
-	started bool
-	mutex   sync.Mutex
+	spinner    ysmrr.SpinnerManager
+	started    bool
+	mutex      sync.Mutex
+	startTimes map[*ysmrr.Spinner]time.Time
 }
 
 func newSpinner(writer io.Writer) ysmrr.SpinnerManager {
@@ -31,7 +33,11 @@ func newSpinner(writer io.Writer) ysmrr.SpinnerManager {
 }
 
 func NewUserSpinner() *UserSpinner {
-	spinner := &UserSpinner{spinner: newSpinner(nil), mutex: sync.Mutex{}}
+	spinner := &UserSpinner{
+		spinner:    newSpinner(nil),
+		mutex:      sync.Mutex{},
+		startTimes: make(map[*ysmrr.Spinner]time.Time),
+	}
 	return spinner
 }
 
@@ -50,21 +56,31 @@ func (us *UserSpinner) SpinToUser(msg string, args ...interface{}) *ysmrr.Spinne
 		us.spinner.Start()
 		us.started = true
 	}
+	us.startTimes[sp] = time.Now()
 	us.mutex.Unlock()
 	return sp
 }
 
-func SpinFailWithError(s *ysmrr.Spinner, txt string, err error) {
+func (us *UserSpinner) SpinFailWithError(s *ysmrr.Spinner, txt string, err error) {
+	elapsed := 0 * time.Second
+	if startTime, ok := us.startTimes[s]; ok {
+		elapsed = time.Since(startTime)
+	}
 	if txt == "" {
-		s.UpdateMessage(fmt.Sprintf("%s err:%v", s.GetMessage(), err))
+		s.UpdateMessage(fmt.Sprintf("%s err:%v [%.1fs]", s.GetMessage(), err, float64(elapsed.Seconds())))
 	} else {
-		s.UpdateMessage(fmt.Sprintf("%s txt:%s err:%v", s.GetMessage(), txt, err))
+		s.UpdateMessage(fmt.Sprintf("%s txt:%s err:%v [%.1fs]", s.GetMessage(), txt, err, float64(elapsed.Seconds())))
 	}
 	s.Error()
 	Logger.log.Info(s.GetMessage() + " [Spinner Err]")
 }
 
-func SpinComplete(s *ysmrr.Spinner) {
+func (us *UserSpinner) SpinComplete(s *ysmrr.Spinner) {
+	elapsed := 0 * time.Second
+	if startTime, ok := us.startTimes[s]; ok {
+		elapsed = time.Since(startTime)
+	}
+	s.UpdateMessage(fmt.Sprintf("%s [%.1fs]", s.GetMessage(), float64(elapsed.Seconds())))
 	s.Complete()
 	Logger.log.Info(s.GetMessage() + " [Spinner Complete]")
 }

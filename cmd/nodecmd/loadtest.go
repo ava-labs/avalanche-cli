@@ -283,10 +283,10 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 	spinSession := ux.NewUserSpinner()
 	spinner := spinSession.SpinToUser(utils.ScriptLog(separateHosts[0].NodeID, "Setting up load test environment"))
 	if err := ssh.RunSSHBuildLoadTestDependencies(separateHosts[0]); err != nil {
-		ux.SpinFailWithError(spinner, "", err)
+		spinSession.SpinFailWithError(spinner, "", err)
 		return err
 	}
-	ux.SpinComplete(spinner)
+	spinSession.SpinComplete(spinner)
 
 	subnetID, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
 	if err != nil {
@@ -309,14 +309,14 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		// provision prometheus scraping for LT for existing monitoring instance
 		avalancheGoPorts, machinePorts, err := getPrometheusTargets(clusterName)
 		if err != nil {
-			ux.SpinFailWithError(spinner, "", err)
+			spinSession.SpinFailWithError(spinner, "", err)
 			return err
 		}
 		if err := ssh.RunSSHUpdatePrometheusConfig(separateHosts[0], strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
-			ux.SpinFailWithError(spinner, "", err)
+			spinSession.SpinFailWithError(spinner, "", err)
 			return err
 		}
-		ux.SpinComplete(spinner)
+		spinSession.SpinComplete(spinner)
 	}
 	spinSession.Stop()
 	ux.Logger.GreenCheckmarkToUser("Load test environment is ready!")

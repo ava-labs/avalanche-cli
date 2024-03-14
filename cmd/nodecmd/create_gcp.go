@@ -273,10 +273,10 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 			numNodes.All(),
 			forMonitoring)
 		if err != nil {
-			ux.SpinFailWithError(spinner, "", err)
+			spinSession.SpinFailWithError(spinner, "", err)
 			return nil, nil, "", "", err
 		}
-		ux.SpinComplete(spinner)
+		spinSession.SpinComplete(spinner)
 	}
 	spinSession.Stop()
 	instanceIDs := map[string][]string{}
