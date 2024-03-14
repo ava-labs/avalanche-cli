@@ -5,4 +5,5 @@ git -C {{ .LoadTestRepoDir }} pull || git clone {{ .LoadTestRepo }}
 {{if .CheckoutCommit }}
 cd {{ .RepoDirName}}; git checkout {{ .LoadTestGitCommit}}
 {{end}}
+eval {{ .LoadTestPath }}
 echo "successfully built load test binary!"
