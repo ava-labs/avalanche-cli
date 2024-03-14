@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -429,13 +430,36 @@ func RunSSHUpdateSubnet(host *models.Host, subnetName, importPath string) error 
 
 // RunSSHSetupBuildEnv installs gcc, golang, rust and etc
 func RunSSHSetupBuildEnv(host *models.Host) error {
-	return RunOverSSH(
+	if err := RunOverSSH(
 		"Setup Build Env",
 		host,
 		constants.SSHScriptTimeout,
 		"shell/setupBuildEnv.sh",
-		scriptInputs{GoVersion: constants.BuildEnvGolangVersion},
-	)
+		scriptInputs{},
+	); err != nil {
+		return err
+	}
+	eg := &errgroup.Group{}
+	eg.SetLimit(2)
+	eg.Go(func() error {
+		return RunOverSSH(
+			"Install Go",
+			host,
+			constants.SSHScriptTimeout,
+			"shell/setupBuildEnvGo.sh",
+			scriptInputs{GoVersion: constants.BuildEnvGolangVersion},
+		)
+	})
+	eg.Go(func() error {
+		return RunOverSSH(
+			"Install Rust",
+			host,
+			constants.SSHScriptTimeout,
+			"shell/setupBuildEnvRust.sh",
+			scriptInputs{},
+		)
+	})
+	return eg.Wait()
 }
 
 func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName string, checkoutCommit bool) error {

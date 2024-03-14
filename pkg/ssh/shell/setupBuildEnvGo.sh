@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -e
+#name:TASK [install go]
+install_go() {
+  GOFILE=go{{ .GoVersion }}.linux-amd64.tar.gz
+  cd ~
+  sudo rm -rf $GOFILE go
+  wget -nv https://go.dev/dl/$GOFILE
+  tar xfz $GOFILE
+  echo >> ~/.bashrc
+  echo export PATH=\$PATH:~/go/bin:~/bin >> ~/.bashrc
+  echo export CGO_ENABLED=1 >> ~/.bashrc
+}
+go version || install_go
