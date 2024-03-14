@@ -41,12 +41,6 @@ You can check the subnet sync status by calling avalanche node status <clusterNa
 		RunE:         validateSubnet,
 	}
 
-	cmd.Flags().StringVar(&endpoint, "endpoint", "", "use the given endpoint for network operations")
-	cmd.Flags().BoolVarP(&deployDevnet, "devnet", "d", false, "set up validator in devnet")
-	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "set up validator in testnet (alias to `fuji`)")
-	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "set up validator in fuji (alias to `testnet`")
-	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "set up validator in mainnet")
-
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
@@ -151,21 +145,17 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	clustersConfig, err := app.LoadClustersConfig()
+	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return err
 	}
-	network := clustersConfig.Clusters[clusterName].Network
+	network := clusterConfig.Network
 
 	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
-	cluster, ok := clustersConfig.Clusters[clusterName]
-	if !ok {
-		return fmt.Errorf("cluster %s does not exist", clusterName)
-	}
-	hosts := cluster.GetValidatorHosts(allHosts) // exlude api nodes
+	hosts := clusterConfig.GetValidatorHosts(allHosts) // exlude api nodes
 	if len(validators) != 0 {
 		hosts, err = filterHosts(hosts, validators)
 		if err != nil {

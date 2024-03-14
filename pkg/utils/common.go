@@ -283,6 +283,15 @@ func ScriptLog(nodeID string, msg string, args ...interface{}) string {
 	return fmt.Sprintf("[%s] %s", nodeID, formattedMsg)
 }
 
+func GetIndexInSlice[T comparable](list []T, element T) (int, error) {
+	for i, val := range list {
+		if val == element {
+			return i, nil
+		}
+	}
+	return 0, fmt.Errorf("element not found")
+}
+
 // GetRepoFromCommitURL takes a Git repository URL that contains commit ID and returns the cloneable
 // Git Repo URL (ends in .git) and the repo directory name
 // Example: https://github.com/ava-labs/hypersdk/pull/772/commits/b88acfb370f5aeb83a000aece2d72f28154410a5

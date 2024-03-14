@@ -3,7 +3,6 @@
 package nodecmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -289,7 +288,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 	}
 	ux.SpinComplete(spinner)
 
-	subnetID, chainID, err := getDeployedSubnetInfo(subnetName)
+	subnetID, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
 	if err != nil {
 		return err
 	}
@@ -334,29 +333,25 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func getDeployedSubnetInfo(subnetName string) (string, string, error) {
-	sidecarFile := filepath.Join(app.GetSubnetDir(), subnetName, constants.SidecarFileName)
-	var sidecar models.Sidecar
-	if _, err := os.Stat(sidecarFile); err == nil {
-		// read in sidecar file
-		jsonBytes, err := os.ReadFile(sidecarFile)
-		if err != nil {
-			return "", "", fmt.Errorf("failed reading file %s: %w", sidecarFile, err)
-		}
-		err = json.Unmarshal(jsonBytes, &sidecar)
-		if err != nil {
-			return "", "", fmt.Errorf("failed unmarshaling file %s: %w", sidecarFile, err)
-		}
+func getDeployedSubnetInfo(clusterName string, subnetName string) (string, string, error) {
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return "", "", err
 	}
-	if sidecar.Networks != nil {
-		model, ok := sidecar.Networks["Devnet"]
+	network, err := app.GetClusterNetwork(clusterName)
+	if err != nil {
+		return "", "", err
+	}
+
+	if sc.Networks != nil {
+		model, ok := sc.Networks[network.Name()]
 		if ok {
 			if model.SubnetID != ids.Empty && model.BlockchainID != ids.Empty {
 				return model.SubnetID.String(), model.BlockchainID.String(), nil
 			}
 		}
 	}
-	return "", "", fmt.Errorf("unable to find deployed Devnet info, please call avalanche node devnet deploy <subnetName> <clusterName> first")
+	return "", "", fmt.Errorf("unable to find deployed Cluster info, please call avalanche subnet deploy <subnetName> --cluster <clusterName> first")
 }
 
 func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *models.Host) error {
@@ -374,14 +369,10 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 
 	enc := yaml.NewEncoder(yamlFile)
 
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return err
-		}
+	clusterConf, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return err
 	}
-	clusterConf := clustersConfig.Clusters[clusterName]
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
@@ -455,7 +446,7 @@ func GetLoadTestScript(app *application.Avalanche) error {
 		}
 	}
 	if loadTestRepoURL == "" {
-		loadTestRepoURL, err = app.Prompt.CaptureURL("Source code repository URL")
+		loadTestRepoURL, err = app.Prompt.CaptureURL("Source code repository URL", true)
 		if err != nil {
 			return err
 		}

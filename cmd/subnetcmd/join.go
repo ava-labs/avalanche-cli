@@ -10,12 +10,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/plugins"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -34,6 +34,10 @@ import (
 const ewoqPChainAddr = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 
 var (
+	joinAllSupportedNetworkOptions        = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Devnet, networkoptions.Cluster}
+	joinNonElasticSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Devnet, networkoptions.Cluster}
+	joinElasticSupportedNetworkOptions    = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji}
+
 	// path to avalanchego config file
 	avagoConfigPath string
 	// path to avalanchego plugin dir
@@ -49,11 +53,10 @@ var (
 	// for permissionless subnet only: how much subnet native token will be staked in the validator
 	stakeAmount uint64
 
-	errNoBlockchainID                     = errors.New("failed to find the blockchain ID for this subnet, has it been deployed/created on this network?")
-	errMutuallyExlusiveNetworksWithDevnet = errors.New("--local, --devnet, --fuji (resp. --testnet) and --mainnet are mutually exclusive")
+	errNoBlockchainID = errors.New("failed to find the blockchain ID for this subnet, has it been deployed/created on this network?")
 )
 
-// avalanche subnet deploy
+// avalanche subnet join
 func newJoinCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "join [subnetName]",
@@ -72,17 +75,14 @@ you provide the --avalanchego-config flag, this command attempts to edit the con
 at that path.
 
 This command currently only supports Subnets deployed on the Fuji Testnet and Mainnet.`,
-		RunE: joinCmd,
-		Args: cobra.ExactArgs(1),
+		SilenceUsage: true,
+		RunE:         joinCmd,
+		Args:         cobra.ExactArgs(1),
 	}
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, joinAllSupportedNetworkOptions)
 	cmd.Flags().StringVar(&avagoConfigPath, "avalanchego-config", "", "file path of the avalanchego config file")
 	cmd.Flags().StringVar(&pluginDir, "plugin-dir", "", "file path of avalanchego's plugin directory")
 	cmd.Flags().StringVar(&dataDir, "data-dir", "", "path of avalanchego's data dir directory")
-	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "join on `fuji` (alias for `testnet`)")
-	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
-	cmd.Flags().BoolVar(&deployLocal, "local", false, "join on `local` (for elastic subnet only)")
-	cmd.Flags().BoolVar(&deployDevnet, "devnet", false, "join on `devnet`")
-	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "join on `mainnet`")
 	cmd.Flags().BoolVar(&printManual, "print", false, "if true, print the manual config without prompting")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to check")
 	cmd.Flags().BoolVar(&forceWrite, "force-write", false, "if true, skip to prompt to overwrite the config file")
@@ -113,46 +113,21 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if !flags.EnsureMutuallyExclusive([]bool{deployMainnet, deployTestnet, deployLocal, deployDevnet}) {
-		return errMutuallyExlusiveNetworksWithDevnet
+	var supportedNetworkOptions []networkoptions.NetworkOption
+	if joinElastic {
+		supportedNetworkOptions = joinElasticSupportedNetworkOptions
+	} else {
+		supportedNetworkOptions = joinNonElasticSupportedNetworkOptions
 	}
-
-	network := models.UndefinedNetwork
-	switch {
-	case deployLocal:
-		network = models.LocalNetwork
-	case deployDevnet:
-		network = models.DevnetNetwork
-	case deployTestnet:
-		network = models.FujiNetwork
-	case deployMainnet:
-		network = models.MainnetNetwork
-	}
-
-	if network.Kind == models.Undefined {
-		if joinElastic {
-			selectedNetwork, err := promptNetworkElastic(sc, "Which network is the elastic subnet that the node wants to join on?")
-			if err != nil {
-				return err
-			}
-			switch selectedNetwork {
-			case localDeployment:
-				network = models.LocalNetwork
-			case fujiDeployment:
-				network = models.FujiNetwork
-			case mainnetDeployment:
-				return errors.New("joining elastic subnet is not yet supported on Mainnet")
-			}
-		} else {
-			networkStr, err := app.Prompt.CaptureList(
-				"Choose a network to validate on (this command only supports public networks)",
-				[]string{models.Fuji.String(), models.Mainnet.String()},
-			)
-			if err != nil {
-				return err
-			}
-			network = models.NetworkFromString(networkStr)
-		}
+	network, err := networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		globalNetworkFlags,
+		false,
+		supportedNetworkOptions,
+		subnetName,
+	)
+	if err != nil {
+		return err
 	}
 
 	if joinElastic {
@@ -491,7 +466,7 @@ func handleValidatorJoinElasticSubnetLocal(sc models.Sidecar, network models.Net
 		return err
 	}
 	printAddPermissionlessValOutput(txID, nodeID, network, start, endTime, stakedTokenAmount)
-	if err = app.UpdateSidecarPermissionlessValidator(&sc, models.LocalNetwork, nodeID.String(), txID); err != nil {
+	if err = app.UpdateSidecarPermissionlessValidator(&sc, models.NewLocalNetwork(), nodeID.String(), txID); err != nil {
 		return fmt.Errorf("joining permissionless subnet was successful, but failed to update sidecar: %w", err)
 	}
 	return nil

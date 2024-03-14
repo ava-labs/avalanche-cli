@@ -918,7 +918,7 @@ func SimulateGetSubnetStatsFuji(subnetName, subnetID string) string {
 	// add the subnet ID to the `fuji` section so that the `stats` command
 	// can find it (as this is a simulation with a `local` network,
 	// it got written in to the `local` network section)
-	err = utils.AddSubnetIDToSidecar(subnetName, models.FujiNetwork, subnetID)
+	err = utils.AddSubnetIDToSidecar(subnetName, models.NewFujiNetwork(), subnetID)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// run stats
 	cmd := exec.Command(

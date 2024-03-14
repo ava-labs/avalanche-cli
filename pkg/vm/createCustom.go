@@ -109,7 +109,7 @@ func SetCustomVMSourceCodeFields(app *application.Avalanche, sc *models.Sidecar,
 		}
 	}
 	if customVMRepoURL == "" {
-		customVMRepoURL, err = app.Prompt.CaptureURL("Source code repository URL")
+		customVMRepoURL, err = app.Prompt.CaptureURL("Source code repository URL", true)
 		if err != nil {
 			return err
 		}

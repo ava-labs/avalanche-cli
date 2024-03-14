@@ -22,6 +22,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
@@ -40,9 +41,8 @@ import (
 )
 
 var (
-	createOnFuji                          bool
-	createDevnet                          bool
-	createOnMainnet                       bool
+	createSupportedNetworkOptions         = []networkoptions.NetworkOption{networkoptions.Fuji, networkoptions.Devnet}
+	globalNetworkFlags                    networkoptions.NetworkFlags
 	useAWS                                bool
 	useGCP                                bool
 	cmdLineRegion                         []string
@@ -91,6 +91,7 @@ will apply to all nodes in the cluster`,
 		Args:         cobra.ExactArgs(1),
 		RunE:         createNodes,
 	}
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, createSupportedNetworkOptions)
 	cmd.Flags().BoolVar(&useStaticIP, "use-static-ip", true, "attach static Public IP on cloud servers")
 	cmd.Flags().BoolVar(&useAWS, "aws", false, "create node/s in AWS cloud")
 	cmd.Flags().BoolVar(&useGCP, "gcp", false, "create node/s in GCP cloud")
@@ -107,8 +108,6 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().StringVar(&cmdLineGCPProjectName, "gcp-project", "", "use given GCP project")
 	cmd.Flags().StringVar(&cmdLineAlternativeKeyPairName, "alternative-key-pair-name", "", "key pair name to use if default one generates conflicts")
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
-	cmd.Flags().BoolVar(&createOnFuji, "fuji", false, "create node/s in Fuji Network")
-	cmd.Flags().BoolVar(&createDevnet, "devnet", false, "create node/s into a new Devnet")
 	cmd.Flags().BoolVar(&useSSHAgent, "use-ssh-agent", false, "use ssh agent(ex: Yubikey) for ssh auth")
 	cmd.Flags().StringVar(&sshIdentity, "ssh-agent-identity", "", "use given ssh identity(only for ssh agent). If not set, default will be used")
 	cmd.Flags().BoolVar(&sameMonitoringInstance, "same-monitoring-instance", false, "host monitoring for a cloud servers on the same instance")
@@ -144,10 +143,10 @@ func preCreateChecks() error {
 	if useSSHAgent && !utils.IsSSHAgentAvailable() {
 		return fmt.Errorf("ssh agent is not available")
 	}
-	if len(numAPINodes) > 0 && !createDevnet {
+	if len(numAPINodes) > 0 && !globalNetworkFlags.UseDevnet {
 		return fmt.Errorf("API nodes can only be created in Devnet")
 	}
-	if createDevnet && len(numAPINodes) != len(numValidatorsNodes) {
+	if globalNetworkFlags.UseDevnet && len(numAPINodes) != len(numValidatorsNodes) {
 		return fmt.Errorf("API nodes and Validator nodes must be deployed to same number of regions")
 	}
 	if len(numAPINodes) > 0 {
@@ -170,20 +169,19 @@ func createNodes(_ *cobra.Command, args []string) error {
 		return err
 	}
 	clusterName := args[0]
-	network, err := subnetcmd.GetNetworkFromCmdLineFlags(
+	network, err := networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		globalNetworkFlags,
 		false,
-		createDevnet,
-		createOnFuji,
-		createOnMainnet,
+		createSupportedNetworkOptions,
 		"",
-		false,
-		[]models.NetworkKind{models.Fuji, models.Devnet},
 	)
 	if err != nil {
 		return err
 	}
+	network = models.NewNetworkFromCluster(network, clusterName)
 
-	createDevnet = network.Kind == models.Devnet // set createDevnet to true if network is devnet for further use
+	globalNetworkFlags.UseDevnet = network.Kind == models.Devnet // set globalNetworkFlags.UseDevnet to true if network is devnet for further use
 	avalancheGoVersion, err := getAvalancheGoVersion()
 	if err != nil {
 		return err
@@ -231,7 +229,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 		keyPairName := fmt.Sprintf("%s-keypair", defaultAvalancheCLIPrefix)
 		certPath, err := app.GetSSHCertFilePath(keyPairName)
-		if createDevnet {
+		if globalNetworkFlags.UseDevnet {
 			for i, num := range numAPINodes {
 				numValidatorsNodes[i] += num
 			}
@@ -1319,7 +1317,7 @@ func getRegionsNodeNum(cloudName string) (
 		if err != nil {
 			return nil, err
 		}
-		if createDevnet {
+		if globalNetworkFlags.UseDevnet {
 			numAPINodes, err = app.Prompt.CaptureUint32(fmt.Sprintf("How many API nodes (nodes without stake) do you want to set up in %s %s?", userRegion, supportedClouds[cloudName].locationName))
 			if err != nil {
 				return nil, err

@@ -4,6 +4,7 @@ package networkcmd
 
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/server"
@@ -26,7 +27,9 @@ network is running and some basic stats about the network.`,
 func networkStatus(*cobra.Command, []string) error {
 	ux.Logger.PrintToUser("Requesting network status...")
 
-	cli, err := binutils.NewGRPCClient()
+	cli, err := binutils.NewGRPCClient(
+		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+	)
 	if err != nil {
 		return err
 	}
