@@ -17,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
@@ -274,7 +273,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is successfully created and is now validating subnet %s!"), clusterName, subnetName)
 	}
 
-	err := deployClusterYAMLFile(clusterName, subnetName); err != nil {
+	if err := deployClusterYAMLFile(clusterName, subnetName); err != nil {
 		return err
 	}
 	return nil
@@ -290,7 +289,7 @@ func deployClusterYAMLFile(clusterName, subnetName string) error {
 			return err
 		}
 	}
-	subnetID, chainID, err := getDeployedSubnetInfo(subnetName)
+	subnetID, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
 	if err != nil {
 		return err
 	}
