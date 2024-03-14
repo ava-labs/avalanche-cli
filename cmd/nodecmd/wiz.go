@@ -4,10 +4,11 @@ package nodecmd
 
 import (
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanchego/utils/logging"
