@@ -21,7 +21,7 @@ wget -nd -m https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/script
 #name:TASK [modify permissions]
 chmod 755 install.sh
 #name:TASK [run install script]
-./install.sh -n
+./install.sh -n {{ .CLIVersion }}
 {{if .IsDevNet}}
 #name:TASK [stop avalanchego in case of devnet]
 {{if .IsE2E }}

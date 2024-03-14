@@ -3,6 +3,7 @@
 package subnetcmd
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math"
 	"math/big"
@@ -79,6 +80,7 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 	table.SetHeader(header)
 	table.SetRowLine(true)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
+	table.SetAutoMergeCellsByColumnIndex([]int{0})
 
 	table.Append([]string{"Subnet Name", sc.Subnet})
 	table.Append([]string{"ChainID", genesis.Config.ChainID.String()})
@@ -101,7 +103,9 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 			table.Append([]string{fmt.Sprintf("%s SubnetID", net), data.SubnetID.String()})
 		}
 		if data.BlockchainID != ids.Empty {
+			hexEncoding := "0x" + hex.EncodeToString(data.BlockchainID[:])
 			table.Append([]string{fmt.Sprintf("%s BlockchainID", net), data.BlockchainID.String()})
+			table.Append([]string{fmt.Sprintf("%s BlockchainID", net), hexEncoding})
 		}
 		if data.TeleporterMessengerAddress != "" {
 			table.Append([]string{fmt.Sprintf("%s Teleporter Messenger Address", net), data.TeleporterMessengerAddress})
