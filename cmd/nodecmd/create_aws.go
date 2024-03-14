@@ -312,10 +312,10 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		spinSession := ux.NewUserSpinner()
 		spinner := spinSession.SpinToUser("Waiting for EC2 instance(s) in AWS[%s] to be provisioned...", region)
 		if err := ec2Svc[region].WaitForEC2Instances(instanceIDs[region]); err != nil {
-			ux.SpinFailWithError(spinner, "", err)
+			spinSession.SpinFailWithError(spinner, "", err)
 			return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
 		}
-		ux.SpinComplete(spinner)
+		spinSession.SpinComplete(spinner)
 		spinSession.Stop()
 		if useStaticIP {
 			publicIPs := []string{}
