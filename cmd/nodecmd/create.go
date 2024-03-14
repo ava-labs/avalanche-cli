@@ -55,6 +55,7 @@ var (
 	useLatestAvalanchegoPreReleaseVersion bool
 	useCustomAvalanchegoVersion           string
 	useAvalanchegoVersionFromSubnet       string
+	remoteCliVersion                      string
 	cmdLineGCPCredentialsPath             string
 	cmdLineGCPProjectName                 string
 	cmdLineAlternativeKeyPairName         string
@@ -101,6 +102,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().BoolVar(&useLatestAvalanchegoPreReleaseVersion, "latest-avalanchego-pre-release-version", false, "install latest avalanchego pre-release version on node/s")
 	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
 	cmd.Flags().StringVar(&useAvalanchegoVersionFromSubnet, "avalanchego-version-from-subnet", "", "install latest avalanchego version, that is compatible with the given subnet, on node/s")
+	cmd.Flags().StringVar(&remoteCliVersion, "remote-cli-version", "", "install given CLI version on remote nodes. defaults to latest CLI release")
 	cmd.Flags().StringVar(&cmdLineGCPCredentialsPath, "gcp-credentials", "", "use given GCP credentials")
 	cmd.Flags().StringVar(&cmdLineGCPProjectName, "gcp-project", "", "use given GCP project")
 	cmd.Flags().StringVar(&cmdLineAlternativeKeyPairName, "alternative-key-pair-name", "", "key pair name to use if default one generates conflicts")
@@ -539,7 +541,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 				return
 			}
 			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup node"))
-			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), avalancheGoVersion, network.Kind == models.Devnet); err != nil {
+			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), avalancheGoVersion, remoteCliVersion, network.Kind == models.Devnet); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return

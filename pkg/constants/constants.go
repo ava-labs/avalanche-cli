@@ -156,8 +156,8 @@ const (
 	OutboundPort                                 = 0
 	// Set this one to true while testing changes that alter CLI execution on cloud nodes
 	// Disable it for releases to save cluster creation time
-	EnableSetupCLIFromSource           = true
-	SetupCLIFromSourceBranch           = "fix-vm-create"
+	EnableSetupCLIFromSource           = false
+	SetupCLIFromSourceBranch           = "main"
 	BuildEnvGolangVersion              = "1.21.1"
 	IsHealthyJSONFile                  = "isHealthy.json"
 	IsBootstrappedJSONFile             = "isBootstrapped.json"
