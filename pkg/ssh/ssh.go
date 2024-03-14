@@ -268,7 +268,7 @@ func RunSSHSetupSeparateMonitoring(host *models.Host) error {
 }
 
 func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePorts []string) error {
-	const CloudNodePrometheusConfigTemp = "/tmp/prometheus.yml"
+	const cloudNodePrometheusConfigTemp = "/tmp/prometheus.yml"
 	promConfig, err := os.CreateTemp("", "prometheus")
 	if err != nil {
 		return err
@@ -279,7 +279,7 @@ func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePo
 	}
 	if err := host.Upload(
 		promConfig.Name(),
-		CloudNodePrometheusConfigTemp,
+		cloudNodePrometheusConfigTemp,
 		constants.SSHFileOpsTimeout,
 	); err != nil {
 		return err
