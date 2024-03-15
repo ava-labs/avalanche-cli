@@ -209,6 +209,13 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("Deploying the subnet"))
+	ux.Logger.PrintToUser("")
+	if err := deploySubnet(cmd, []string{clusterName, subnetName}); err != nil {
+		return err
+	}
+
 	isEVMGenesis, err := subnetcmd.HasSubnetEVMGenesis(subnetName)
 	if err != nil {
 		return err
@@ -243,13 +250,6 @@ func wiz(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
-	}
-
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Deploying the subnet"))
-	ux.Logger.PrintToUser("")
-	if err := deploySubnet(cmd, []string{clusterName, subnetName}); err != nil {
-		return err
 	}
 
 	ux.Logger.PrintToUser("")
