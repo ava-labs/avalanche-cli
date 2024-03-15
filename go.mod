@@ -12,7 +12,7 @@ require (
 	github.com/ava-labs/teleporter v1.0.0
 	github.com/aws/aws-sdk-go-v2 v1.25.3
 	github.com/aws/aws-sdk-go-v2/config v1.27.7
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.150.1
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.151.0
 	github.com/chelnak/ysmrr v0.4.0
 	github.com/docker/docker v25.0.4+incompatible
 	github.com/ethereum/go-ethereum v1.12.0
