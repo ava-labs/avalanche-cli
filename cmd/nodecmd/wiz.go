@@ -199,6 +199,16 @@ func wiz(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
+		return err
+	}
+
+	if subnetName == "" {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s has been created!"), clusterName)
+		return nil
+	}
+
 	isEVMGenesis, err := subnetcmd.HasSubnetEVMGenesis(subnetName)
 	if err != nil {
 		return err
@@ -209,9 +219,11 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	var awmRelayerHost *models.Host
+
 	if sc.TeleporterReady && isEVMGenesis {
 		// get or set AWM Relayer host and configure/stop service
-		awmRelayerHost, err := getAWMRelayerHost(clusterName)
+		awmRelayerHost, err = getAWMRelayerHost(clusterName)
 		if err != nil {
 			return err
 		}
@@ -224,26 +236,13 @@ func wiz(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		} else {
-			ux.Logger.PrintToUser("stopping AWM Relayer Service")
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser(logging.Green.Wrap("Stopping AWM Relayer Service"))
+			ux.Logger.PrintToUser("")
 			if err := ssh.RunSSHStopAWMRelayerService(awmRelayerHost); err != nil {
 				return err
 			}
 		}
-		if err := updateAWMRelayerHostConfig(awmRelayerHost, subnetName, clusterName); err != nil {
-			return err
-		}
-	}
-
-
-	return nil
-
-	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
-		return err
-	}
-	if subnetName == "" {
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s has been created!"), clusterName)
-		return nil
 	}
 
 	ux.Logger.PrintToUser("")
@@ -291,6 +290,12 @@ func wiz(cmd *cobra.Command, args []string) error {
 			ClusterName: clusterName,
 		}
 		if err := teleportercmd.CallDeploy(subnetName, flags); err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(logging.Green.Wrap("Starting AWM Relayer Service"))
+		ux.Logger.PrintToUser("")
+		if err := updateAWMRelayerHostConfig(awmRelayerHost, subnetName, clusterName); err != nil {
 			return err
 		}
 	}
