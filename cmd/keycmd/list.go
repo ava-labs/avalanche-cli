@@ -38,7 +38,7 @@ const (
 
 var (
 	globalNetworkFlags          networkoptions.NetworkFlags
-	listSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Mainnet, networkoptions.Fuji, networkoptions.Local}
+	listSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Mainnet, networkoptions.Fuji, networkoptions.Local, networkoptions.Cluster}
 	all                         bool
 	pchain                      bool
 	cchain                      bool
@@ -181,13 +181,20 @@ func listKeys(*cobra.Command, []string) error {
 	if globalNetworkFlags.UseMainnet || all {
 		networks = append(networks, models.NewMainnetNetwork())
 	}
+	if globalNetworkFlags.ClusterName != "" {
+		network, err := app.GetClusterNetwork(globalNetworkFlags.ClusterName)
+		if err != nil {
+			return err
+		}
+		networks = append(networks, network)
+	}
 	if len(networks) == 0 {
 		network, err := networkoptions.GetNetworkFromCmdLineFlags(
 			app,
 			networkoptions.NetworkFlags{},
 			false,
 			listSupportedNetworkOptions,
-			"",
+			subnetName,
 		)
 		if err != nil {
 			return err
