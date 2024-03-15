@@ -34,11 +34,11 @@ var (
 )
 
 type clusterInfo struct {
-	API        []nodeInfo `yaml:"API,omitempty"`
-	Validator  []nodeInfo `yaml:"VALIDATOR,omitempty"`
-	Monitoring nodeInfo   `yaml:"MONITORING,omitempty"`
-	ChainID    string     `yaml:"CHAIN_ID,omitempty"`
-	SubnetID   string     `yaml:"SUBNET_ID,omitempty"`
+	API       []nodeInfo `yaml:"API,omitempty"`
+	Validator []nodeInfo `yaml:"VALIDATOR,omitempty"`
+	Loadtest  nodeInfo   `yaml:"LOADTEST,omitempty"`
+	ChainID   string     `yaml:"CHAIN_ID,omitempty"`
+	SubnetID  string     `yaml:"SUBNET_ID,omitempty"`
 }
 type nodeInfo struct {
 	CloudID string `yaml:"CLOUD_ID,omitempty"`
@@ -126,26 +126,8 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		return err
 	}
 	cloudService := ""
-	//if existingSeparateInstance != "" {
-	//	ux.Logger.PrintToUser("Will be using cloud instance %s to run load test...", existingSeparateInstance)
-	//	separateNodeConfig, err := app.LoadClusterNodeConfig(existingSeparateInstance)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	cloudService = separateNodeConfig.CloudService
-	//} else {
-	//	ux.Logger.PrintToUser("Creating a separate instance to run load test...")
-	//	cloudService, err = setCloudService()
-	//	if err != nil {
-	//		return err
-	//	}
-	//	nodeType = "default"
-	//	nodeType, err = setCloudInstanceType(cloudService)
-	//	if err != nil {
-	//		return err
-	//	}
-	//}
 	ux.Logger.PrintToUser("Creating a separate instance to run load test...")
+	useStaticIP = false
 	cloudService, err = setCloudService()
 	if err != nil {
 		return err
@@ -171,59 +153,29 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 	}
 	var ec2SvcMap map[string]*awsAPI.AwsCloud
 	var gcpClient *gcpAPI.GcpCloud
+	var hostCloudID string
 	switch cloudService {
 	case constants.AWSCloudService:
 		var ami map[string]string
-		//if existingSeparateInstance == "" {
-		//	ec2SvcMap, ami, _, err = getAWSCloudConfig(awsProfile, true, sgRegions, nodeType)
-		//	if err != nil {
-		//		return err
-		//	}
-		//	regions := maps.Keys(ec2SvcMap)
-		//	separateHostRegion = regions[0]
-		//	loadTestEc2SvcMap[separateHostRegion] = ec2SvcMap[separateHostRegion]
-		//	loadTestCloudConfig, err = createAWSInstances(loadTestEc2SvcMap, nodeType, map[string]NumNodes{separateHostRegion: {1, 0}}, []string{separateHostRegion}, ami, true)
-		//	if err != nil {
-		//		return err
-		//	}
-		//	loadTestNodeConfig = loadTestCloudConfig[separateHostRegion]
-		//} else {
-		//	loadTestNodeConfig, separateHostRegion, err = getNodeCloudConfig(existingSeparateInstance)
-		//	if err != nil {
-		//		return err
-		//	}
-		//	loadTestEc2SvcMap, err = getAWSMonitoringEC2Svc(awsProfile, separateHostRegion)
-		//	if err != nil {
-		//		return err
-		//	}
-		//}
-		//separateHostRegion = loadTestHostRegion
 		ec2SvcMap, ami, _, err = getAWSCloudConfig(awsProfile, true, sgRegions, nodeType)
 		if err != nil {
 			return err
 		}
 		regions := maps.Keys(ec2SvcMap)
 		separateHostRegion = regions[0]
-		//loadTestEc2SvcMap[separateHostRegion] = ec2SvcMap[separateHostRegion]
 		// defaults to not using static IP as host is going to be terminated immediately after load test
-		useStaticIP = false
 		loadTestCloudConfig, err = createAWSInstances(ec2SvcMap, nodeType, map[string]NumNodes{separateHostRegion: {1, 0}}, []string{separateHostRegion}, ami, true)
 		if err != nil {
 			return err
 		}
 		loadTestNodeConfig = loadTestCloudConfig[separateHostRegion]
+		hostCloudID = loadTestNodeConfig.InstanceIDs[0]
+		fmt.Printf("obtained %s \n", hostCloudID)
 		loadTestPublicIPMap, err := ec2SvcMap[separateHostRegion].GetInstancePublicIPs(loadTestNodeConfig.InstanceIDs)
 		if err != nil {
 			return err
 		}
 		loadTestNodeConfig.PublicIPs = []string{loadTestPublicIPMap[loadTestNodeConfig.InstanceIDs[0]]}
-		//if existingSeparateInstance == "" {
-		//	for _, sg := range filteredSGList {
-		//		if err = grantAccessToPublicIPViaSecurityGroup(ec2SvcMap[sg.region], loadTestNodeConfig.PublicIPs[0], sg.securityGroup, sg.region); err != nil {
-		//			return err
-		//		}
-		//	}
-		//}
 		for _, sg := range filteredSGList {
 			if err = grantAccessToPublicIPViaSecurityGroup(ec2SvcMap[sg.region], loadTestNodeConfig.PublicIPs[0], sg.securityGroup, sg.region); err != nil {
 				return err
@@ -271,93 +223,19 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 	default:
 		return fmt.Errorf("cloud service %s is not supported", cloudService)
 	}
-	//if existingSeparateInstance == "" {
-	//	if err := saveExternalHostConfig(loadTestNodeConfig, separateHostRegion, cloudService, clusterName); err != nil {
-	//		return err
-	//	}
-	//}
-	var separateHosts []*models.Host
-	separateHostInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.LoadTestDir)
-	//if existingSeparateInstance == "" {
-	//	if err = ansible.CreateAnsibleHostInventory(separateHostInventoryPath, loadTestNodeConfig.CertFilePath, cloudService, map[string]string{loadTestNodeConfig.InstanceIDs[0]: loadTestNodeConfig.PublicIPs[0]}, nil); err != nil {
-	//		return err
-	//	}
-	//}
-	if err = ansible.CreateAnsibleHostInventory(separateHostInventoryPath, loadTestNodeConfig.CertFilePath, cloudService, map[string]string{loadTestNodeConfig.InstanceIDs[0]: loadTestNodeConfig.PublicIPs[0]}, nil); err != nil {
-		return err
+	err = handleLoadTestAfterHostCreation(clusterName, loadTestNodeConfig.CertFilePath, cloudService, map[string]string{loadTestNodeConfig.InstanceIDs[0]: loadTestNodeConfig.PublicIPs[0]})
+	ux.Logger.PrintToUser("Destroying load test host %s ...", hostCloudID)
+	destroyErr := destroyNode(hostCloudID, ec2SvcMap[separateHostRegion], gcpClient)
+	if destroyErr != nil {
+		ux.Logger.RedXToUser("Failed to delete load test host %s due to %s, please delete it manually to prevent charge for unused cloud instance", hostCloudID, destroyErr.Error())
+	} else {
+		ux.Logger.PrintToUser("Successfully destroyed load test host %s", hostCloudID)
 	}
-	separateHosts, err = ansible.GetInventoryFromAnsibleInventoryFile(separateHostInventoryPath)
-	if err != nil {
-		return err
-	}
+	return err
+}
 
-	if err := GetLoadTestScript(app); err != nil {
-		return err
-	}
+func deleteLoadTestHost() {
 
-	// waiting for all nodes to become accessible
-	//if existingSeparateInstance == "" {
-	failedHosts := waitForHosts(separateHosts)
-	if failedHosts.Len() > 0 {
-		for _, result := range failedHosts.GetResults() {
-			ux.Logger.PrintToUser("Instance %s failed to provision with error %s. Please check instance logs for more information", result.NodeID, result.Err)
-		}
-		return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
-	}
-	ux.Logger.PrintToUser("Separate instance %s provisioned successfully", separateHosts[0].NodeID)
-	//}
-	spinSession := ux.NewUserSpinner()
-	spinner := spinSession.SpinToUser(utils.ScriptLog(separateHosts[0].NodeID, "Setting up load test environment"))
-	if err := ssh.RunSSHBuildLoadTestDependencies(separateHosts[0]); err != nil {
-		ux.SpinFailWithError(spinner, "", err)
-		return err
-	}
-	ux.SpinComplete(spinner)
-
-	subnetID, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
-	if err != nil {
-		return err
-	}
-
-	if err := createClusterYAMLFile(clusterName, subnetID, chainID, separateHosts[0]); err != nil {
-		return err
-	}
-
-	if err := ssh.RunSSHCopyYAMLFile(separateHosts[0], app.GetClusterYAMLFilePath(clusterName)); err != nil {
-		return err
-	}
-
-	//checkoutCommit := false
-	//if loadTestRepoCommit != "" {
-	//	checkoutCommit = true
-	//}
-	//if existingSeparateInstance != "" {
-	//	spinner = spinSession.SpinToUser(utils.ScriptLog(separateHosts[0].NodeID, "Updating monirtoring configuration"))
-	//	// provision prometheus scraping for LT for existing monitoring instance
-	//	avalancheGoPorts, machinePorts, err := getPrometheusTargets(clusterName)
-	//	if err != nil {
-	//		ux.SpinFailWithError(spinner, "", err)
-	//		return err
-	//	}
-	//	if err := ssh.RunSSHUpdatePrometheusConfig(separateHosts[0], strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
-	//		ux.SpinFailWithError(spinner, "", err)
-	//		return err
-	//	}
-	//	ux.SpinComplete(spinner)
-	//}
-	spinSession.Stop()
-	ux.Logger.GreenCheckmarkToUser("Load test environment is ready!")
-	ux.Logger.PrintToUser("%s Building load test code", logging.Green.Wrap(">"))
-	//if err := ssh.RunSSHBuildLoadTestCode(separateHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestRepoCommit, repoDirName, checkoutCommit); err != nil {
-	//	return err
-	//}
-	//
-	//ux.Logger.PrintToUser("%s Running load test", logging.Green.Wrap(">"))
-	//if err := ssh.RunSSHRunLoadTest(separateHosts[0], loadTestCmd); err != nil {
-	//	return err
-	//}
-	//ux.Logger.PrintToUser("Load test successfully run!")
-	return destroyNode(separateHosts[0].GetCloudID(), ec2SvcMap[separateHostRegion], gcpClient)
 }
 
 func getDeployedSubnetInfo(clusterName string, subnetName string) (string, string, error) {
@@ -381,28 +259,22 @@ func getDeployedSubnetInfo(clusterName string, subnetName string) (string, strin
 	return "", "", fmt.Errorf("unable to find deployed Cluster info, please call avalanche subnet deploy <subnetName> --cluster <clusterName> first")
 }
 
-func handleLoadTestAfterHostCreation() error {
-	var separateHosts []*models.Host
-	separateHostInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.LoadTestDir)
-	//if existingSeparateInstance == "" {
-	//	if err = ansible.CreateAnsibleHostInventory(separateHostInventoryPath, loadTestNodeConfig.CertFilePath, cloudService, map[string]string{loadTestNodeConfig.InstanceIDs[0]: loadTestNodeConfig.PublicIPs[0]}, nil); err != nil {
-	//		return err
-	//	}
+func handleLoadTestAfterHostCreation(clusterName, hostCertFilePath, cloudService string, publicIPMap map[string]string) error {
+	//if err := saveExternalHostConfig(loadTestNodeConfig, separateHostRegion, cloudService, clusterName); err != nil {
+	//	return err
 	//}
-	if err = ansible.CreateAnsibleHostInventory(separateHostInventoryPath, loadTestNodeConfig.CertFilePath, cloudService, map[string]string{loadTestNodeConfig.InstanceIDs[0]: loadTestNodeConfig.PublicIPs[0]}, nil); err != nil {
+	separateHostInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.LoadTestDir)
+	if err := ansible.CreateAnsibleHostInventory(separateHostInventoryPath, hostCertFilePath, cloudService, publicIPMap, nil); err != nil {
 		return err
 	}
-	separateHosts, err = ansible.GetInventoryFromAnsibleInventoryFile(separateHostInventoryPath)
+	separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(separateHostInventoryPath)
 	if err != nil {
 		return err
 	}
-
-	if err := GetLoadTestScript(app); err != nil {
+	if err = GetLoadTestScript(app); err != nil {
 		return err
 	}
-
 	// waiting for all nodes to become accessible
-	//if existingSeparateInstance == "" {
 	failedHosts := waitForHosts(separateHosts)
 	if failedHosts.Len() > 0 {
 		for _, result := range failedHosts.GetResults() {
@@ -411,7 +283,6 @@ func handleLoadTestAfterHostCreation() error {
 		return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
 	}
 	ux.Logger.PrintToUser("Separate instance %s provisioned successfully", separateHosts[0].NodeID)
-	//}
 	spinSession := ux.NewUserSpinner()
 	spinner := spinSession.SpinToUser(utils.ScriptLog(separateHosts[0].NodeID, "Setting up load test environment"))
 	if err := ssh.RunSSHBuildLoadTestDependencies(separateHosts[0]); err != nil {
@@ -433,36 +304,34 @@ func handleLoadTestAfterHostCreation() error {
 		return err
 	}
 
-	//checkoutCommit := false
-	//if loadTestRepoCommit != "" {
-	//	checkoutCommit = true
+	checkoutCommit := false
+	if loadTestRepoCommit != "" {
+		checkoutCommit = true
+	}
+	spinner = spinSession.SpinToUser(utils.ScriptLog(separateHosts[0].NodeID, "Updating monirtoring configuration"))
+	// provision prometheus scraping for LT for existing monitoring instance
+	//avalancheGoPorts, machinePorts, err := getPrometheusTargets(clusterName)
+	//if err != nil {
+	//	ux.SpinFailWithError(spinner, "", err)
+	//	return err
 	//}
-	//if existingSeparateInstance != "" {
-	//	spinner = spinSession.SpinToUser(utils.ScriptLog(separateHosts[0].NodeID, "Updating monirtoring configuration"))
-	//	// provision prometheus scraping for LT for existing monitoring instance
-	//	avalancheGoPorts, machinePorts, err := getPrometheusTargets(clusterName)
-	//	if err != nil {
-	//		ux.SpinFailWithError(spinner, "", err)
-	//		return err
-	//	}
-	//	if err := ssh.RunSSHUpdatePrometheusConfig(separateHosts[0], strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
-	//		ux.SpinFailWithError(spinner, "", err)
-	//		return err
-	//	}
-	//	ux.SpinComplete(spinner)
+	//if err := ssh.RunSSHUpdatePrometheusConfig(separateHosts[0], strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
+	//	ux.SpinFailWithError(spinner, "", err)
+	//	return err
 	//}
+	ux.SpinComplete(spinner)
 	spinSession.Stop()
 	ux.Logger.GreenCheckmarkToUser("Load test environment is ready!")
 	ux.Logger.PrintToUser("%s Building load test code", logging.Green.Wrap(">"))
-	//if err := ssh.RunSSHBuildLoadTestCode(separateHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestRepoCommit, repoDirName, checkoutCommit); err != nil {
-	//	return err
-	//}
-	//
-	//ux.Logger.PrintToUser("%s Running load test", logging.Green.Wrap(">"))
-	//if err := ssh.RunSSHRunLoadTest(separateHosts[0], loadTestCmd); err != nil {
-	//	return err
-	//}
-	//ux.Logger.PrintToUser("Load test successfully run!")
+	if err := ssh.RunSSHBuildLoadTestCode(separateHosts[0], loadTestRepoURL, loadTestBuildCmd, loadTestRepoCommit, repoDirName, checkoutCommit); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("%s Running load test", logging.Green.Wrap(">"))
+	if err := ssh.RunSSHRunLoadTest(separateHosts[0], loadTestCmd); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Load test successfully run!")
+	return nil
 }
 func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *models.Host) error {
 	clusterYAMLFilePath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.ClusterYAMLFileName)
@@ -537,11 +406,11 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 		}
 	}
 	clusterInfoYAML := clusterInfo{
-		Validator:  validatorNodes,
-		API:        apiNodes,
-		Monitoring: separateHostInfo,
-		SubnetID:   subnetID,
-		ChainID:    chainID,
+		Validator: validatorNodes,
+		API:       apiNodes,
+		Loadtest:  separateHostInfo,
+		SubnetID:  subnetID,
+		ChainID:   chainID,
 	}
 	return enc.Encode(clusterInfoYAML)
 }
