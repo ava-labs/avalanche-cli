@@ -287,16 +287,25 @@ func (c *AwsCloud) checkInstanceIsRunning(nodeID string) (bool, error) {
 }
 
 // DestroyAWSNode terminates an EC2 instance with the given ID.
-func (c *AwsCloud) DestroyAWSNode(nodeConfig models.NodeConfig, clusterName string) error {
+// If singleNode is set to true, this means that the node is a temporary part of the cluster
+// (e.g. a load test node)
+func (c *AwsCloud) DestroyAWSNode(nodeConfig models.NodeConfig, clusterName string, singleNode bool) error {
 	isRunning, err := c.checkInstanceIsRunning(nodeConfig.NodeID)
 	if err != nil {
 		ux.Logger.PrintToUser(fmt.Sprintf("Failed to destroy node %s due to %s", nodeConfig.NodeID, err.Error()))
 		return err
 	}
 	if !isRunning {
+		if singleNode {
+			return fmt.Errorf("%w: instance %s", ErrNodeNotFoundToBeRunning, nodeConfig.NodeID)
+		}
 		return fmt.Errorf("%w: instance %s, cluster %s", ErrNodeNotFoundToBeRunning, nodeConfig.NodeID, clusterName)
 	}
-	ux.Logger.PrintToUser(fmt.Sprintf("Terminating node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
+	if singleNode {
+		ux.Logger.PrintToUser(fmt.Sprintf("Terminating node instance %s...", nodeConfig.NodeID))
+	} else {
+		ux.Logger.PrintToUser(fmt.Sprintf("Terminating node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
+	}
 	return c.DestroyInstance(nodeConfig.NodeID, nodeConfig.ElasticIP, nodeConfig.UseStaticIP)
 }
 

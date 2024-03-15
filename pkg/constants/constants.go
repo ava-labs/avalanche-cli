@@ -213,6 +213,7 @@ const (
 	AvalanchegoMachineMetricsPort = 9100
 	MonitoringScriptFile          = "monitoring-separate-installer.sh"
 	MonitoringDir                 = "monitoring"
+	LoadTestDir                   = "loadtest"
 	DashboardsDir                 = "dashboards"
 	NodeConfigJSONFile            = "node.json"
 	IPAddressSuffix               = "/32"

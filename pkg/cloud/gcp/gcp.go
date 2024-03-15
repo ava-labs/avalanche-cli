@@ -410,15 +410,24 @@ func (c *GcpCloud) checkInstanceIsRunning(zone, nodeID string) (bool, error) {
 }
 
 // DestroyGCPNode terminates GCP node in GCP
-func (c *GcpCloud) DestroyGCPNode(nodeConfig models.NodeConfig, clusterName string) error {
+// If singleNode is set to true, this means that the node is a temporary part of the cluster
+// (e.g. a load test node)
+func (c *GcpCloud) DestroyGCPNode(nodeConfig models.NodeConfig, clusterName string, singleNode bool) error {
 	isRunning, err := c.checkInstanceIsRunning(nodeConfig.Region, nodeConfig.NodeID)
 	if err != nil {
 		return err
 	}
 	if !isRunning {
+		if singleNode {
+			return fmt.Errorf("%w: instance %s", ErrNodeNotFoundToBeRunning, nodeConfig.NodeID)
+		}
 		return fmt.Errorf("%w: instance %s, cluster %s", ErrNodeNotFoundToBeRunning, nodeConfig.NodeID, clusterName)
 	}
-	ux.Logger.PrintToUser(fmt.Sprintf("Destroying node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
+	if singleNode {
+		ux.Logger.PrintToUser(fmt.Sprintf("Destroying node instance %s", nodeConfig.NodeID))
+	} else {
+		ux.Logger.PrintToUser(fmt.Sprintf("Destroying node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
+	}
 	instancesStopCall := c.gcpClient.Instances.Delete(c.projectID, nodeConfig.Region, nodeConfig.NodeID)
 	if _, err = instancesStopCall.Do(); err != nil {
 		return err

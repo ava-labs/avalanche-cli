@@ -133,7 +133,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 				}
 				lastRegion = nodeConfig.Region
 			}
-			if err = ec2Svc.DestroyAWSNode(nodeConfig, clusterName); err != nil {
+			if err = ec2Svc.DestroyAWSNode(nodeConfig, clusterName, false); err != nil {
 				if isExpiredCredentialError(err) {
 					ux.Logger.PrintToUser("")
 					printExpiredCredentialsOutput(awsProfile)
@@ -159,7 +159,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 					return err
 				}
 			}
-			if err = gcpCloud.DestroyGCPNode(nodeConfig, clusterName); err != nil {
+			if err = gcpCloud.DestroyGCPNode(nodeConfig, clusterName, false); err != nil {
 				if !errors.Is(err, gcpAPI.ErrNodeNotFoundToBeRunning) {
 					nodeErrors[node] = err
 					continue

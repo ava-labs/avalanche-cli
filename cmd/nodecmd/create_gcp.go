@@ -328,7 +328,7 @@ func createGCPInstance(
 					NodeID: instanceID,
 					Region: zone,
 				}
-				if destroyErr := gcpClient.DestroyGCPNode(nodeConfig, clusterName); destroyErr != nil {
+				if destroyErr := gcpClient.DestroyGCPNode(nodeConfig, clusterName, false); destroyErr != nil {
 					failedNodes[instanceID] = destroyErr
 					continue
 				}
