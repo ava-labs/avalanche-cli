@@ -4,9 +4,10 @@ package nodecmd
 
 import (
 	"fmt"
-	"golang.org/x/exp/slices"
 	"os"
 	"path/filepath"
+
+	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
