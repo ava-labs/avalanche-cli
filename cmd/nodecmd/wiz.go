@@ -213,7 +213,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	if err := updateAWMRelayerHostConfig(awmRelayerHost, subnetName); err != nil {
+	if err := updateAWMRelayerHostConfig(awmRelayerHost, subnetName, clusterName); err != nil {
 		return err
 	}
 	return nil
@@ -337,13 +337,16 @@ func setAWMRelayerHost(host *models.Host) error {
 	return app.CreateNodeCloudConfigFile(cloudID, &nodeConfig)
 }
 
-func updateAWMRelayerHostConfig(host *models.Host, subnetName string) error {
+func updateAWMRelayerHostConfig(host *models.Host, subnetName string, clusterName string) error {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("setting AWM Relayer on host %s to relay subnet %s", host.GetCloudID(), subnetName)
 	if err := ssh.RunSSHUploadClustersConfig(host, app.GetClustersConfigPath()); err != nil {
 		return err
 	}
 	if err := ssh.RunSSHUploadSubnetSidecar(host, app.GetSidecarPath(subnetName), subnetName); err != nil {
+		return err
+	}
+	if err := ssh.RunSSHAddSubnetToAWMRelayerService(host, subnetName, clusterName); err != nil {
 		return err
 	}
 	return nil
