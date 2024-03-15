@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -312,7 +311,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 			ux.SpinFailWithError(spinner, "", err)
 			return err
 		}
-		if err := ssh.RunSSHUpdatePrometheusConfig(separateHosts[0], strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
+		if err := ssh.RunSSHUpdatePrometheusConfig(separateHosts[0], avalancheGoPorts, machinePorts); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
 			return err
 		}
