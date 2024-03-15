@@ -72,8 +72,11 @@ func (app *Avalanche) GetRunDir() string {
 	return filepath.Join(app.baseDir, constants.RunDir)
 }
 
-func (app *Avalanche) GetServicesDir() string {
-	return filepath.Join(app.baseDir, constants.ServicesDir)
+func (app *Avalanche) GetServicesDir(baseDir string) string {
+	if baseDir == "" {
+		baseDir = app.baseDir
+	}
+	return filepath.Join(baseDir, constants.ServicesDir)
 }
 
 func (app *Avalanche) GetCustomVMDir() string {
@@ -119,10 +122,6 @@ func (app *Avalanche) GetAWMRelayerConfigPath() string {
 	return filepath.Join(app.GetRunDir(), constants.AWMRelayerConfigFilename)
 }
 
-func (app *Avalanche) GetAWMRelayerClusterConfigPath(clusterName string) string {
-	return filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.AWMRelayerConfigFilename)
-}
-
 func (app *Avalanche) GetAWMRelayerLogPath() string {
 	return filepath.Join(app.GetRunDir(), constants.AWMRelayerLogFilename)
 }
@@ -135,16 +134,16 @@ func (app *Avalanche) GetAWMRelayerSnapshotConfsDir() string {
 	return filepath.Join(app.GetSnapshotsDir(), constants.AWMRelayerSnapshotConfsDir)
 }
 
-func (app *Avalanche) GetAWMRelayerServiceDir() string {
-	return filepath.Join(app.GetServicesDir(), constants.AWMRelayerInstallDir)
+func (app *Avalanche) GetAWMRelayerServiceDir(baseDir string) string {
+	return filepath.Join(app.GetServicesDir(baseDir), constants.AWMRelayerInstallDir)
 }
 
-func (app *Avalanche) GetAWMRelayerServiceConfigPath() string {
-	return filepath.Join(app.GetAWMRelayerServiceDir(), constants.AWMRelayerConfigFilename)
+func (app *Avalanche) GetAWMRelayerServiceConfigPath(baseDir string) string {
+	return filepath.Join(app.GetAWMRelayerServiceDir(baseDir), constants.AWMRelayerConfigFilename)
 }
 
-func (app *Avalanche) GetAWMRelayerServiceStorageDir() string {
-	return filepath.Join(app.GetAWMRelayerServiceDir(), constants.AWMRelayerStorageDir)
+func (app *Avalanche) GetAWMRelayerServiceStorageDir(baseDir string) string {
+	return filepath.Join(app.GetAWMRelayerServiceDir(baseDir), constants.AWMRelayerStorageDir)
 }
 
 func (app *Avalanche) GetExtraLocalNetworkDataPath() string {

@@ -145,17 +145,6 @@ func RunSSHSetupAWMRelayerService(host *models.Host) error {
 	)
 }
 
-func RunSSHAddSubnetToAWMRelayerService(host *models.Host, subnetName string, clusterName string) error {
-	return RunOverSSH(
-		"Update AWM Relayer Service Configuration",
-		host,
-		constants.SSHScriptTimeout,
-		"shell/addSubnetToRelayerService.sh",
-		scriptInputs{SubnetName: subnetName, ClusterName: clusterName},
-	)
-}
-
-
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
 func RunSSHUpgradeAvalanchego(host *models.Host, avalancheGoVersion string) error {
 	if utils.IsE2E() && utils.E2EDocker() {
@@ -331,6 +320,18 @@ func RunSSHDownloadNodeMonitoringConfig(host *models.Host, nodeInstanceDirPath s
 	)
 }
 
+func RunSSHUploadNodeAWMRelayerConfig(host *models.Host, nodeInstanceDirPath string) error {
+	cloudAWMRelayerConfigDir := filepath.Join(constants.CloudNodeCLIConfigBasePath, constants.ServicesDir, constants.AWMRelayerInstallDir)
+	if err := host.MkdirAll(cloudAWMRelayerConfigDir, constants.SSHDirOpsTimeout); err != nil {
+		return err
+	}
+	return host.Upload(
+		filepath.Join(nodeInstanceDirPath, constants.ServicesDir, constants.AWMRelayerInstallDir, constants.AWMRelayerConfigFilename),
+		filepath.Join(cloudAWMRelayerConfigDir, constants.AWMRelayerConfigFilename),
+		constants.SSHFileOpsTimeout,
+	)
+}
+
 func RunSSHUploadNodeMonitoringConfig(host *models.Host, nodeInstanceDirPath string) error {
 	if err := host.MkdirAll(
 		constants.CloudNodeConfigPath,
@@ -385,22 +386,6 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 		constants.SSHScriptTimeout,
 		"shell/setupDevnet.sh",
 		scriptInputs{IsE2E: utils.IsE2E()},
-	)
-}
-
-func RunSSHUploadSubnetSidecar(host *models.Host, localSubnetSidecarPath string, subnetName string) error {
-	remoteNodesDir := filepath.Join(constants.CloudNodeCLIConfigBasePath, constants.SubnetDir, subnetName)
-	if err := host.MkdirAll(
-		remoteNodesDir,
-		constants.SSHDirOpsTimeout,
-	); err != nil {
-		return err
-	}
-	remoteSubnetSidecarPath := filepath.Join(remoteNodesDir, constants.SidecarFileName)
-	return host.Upload(
-		localSubnetSidecarPath,
-		remoteSubnetSidecarPath,
-		constants.SSHFileOpsTimeout,
 	)
 }
 

@@ -340,13 +340,16 @@ func setAWMRelayerHost(host *models.Host) error {
 func updateAWMRelayerHostConfig(host *models.Host, subnetName string, clusterName string) error {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("setting AWM Relayer on host %s to relay subnet %s", host.GetCloudID(), subnetName)
-	if err := ssh.RunSSHUploadClustersConfig(host, app.GetClustersConfigPath()); err != nil {
+	flags := teleportercmd.AddSubnetToRelayerServiceFlags{
+		Network: networkoptions.NetworkFlags{
+			ClusterName: clusterName,
+		},
+		CloudNodeID: host.GetCloudID(),
+	}
+	if err := teleportercmd.CallAddSubnetToRelayerService(subnetName, flags); err != nil {
 		return err
 	}
-	if err := ssh.RunSSHUploadSubnetSidecar(host, app.GetSidecarPath(subnetName), subnetName); err != nil {
-		return err
-	}
-	if err := ssh.RunSSHAddSubnetToAWMRelayerService(host, subnetName, clusterName); err != nil {
+	if err := ssh.RunSSHUploadNodeAWMRelayerConfig(host, app.GetNodeInstanceDirPath(host.GetCloudID())); err != nil {
 		return err
 	}
 	return nil

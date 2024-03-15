@@ -3,14 +3,26 @@
 package teleportercmd
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/spf13/cobra"
 )
 
-var addSubnetToRelayerServiceSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Devnet}
+type AddSubnetToRelayerServiceFlags struct {
+	Network     networkoptions.NetworkFlags
+	CloudNodeID string
+}
+
+var (
+	addSubnetToRelayerServiceSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Devnet}
+	addSubnetToRelayerServiceFlags                   AddSubnetToRelayerServiceFlags
+)
 
 // avalanche teleporter relayer addSubnetToService
 func newAddSubnetToRelayerServiceCmd() *cobra.Command {
@@ -22,16 +34,19 @@ func newAddSubnetToRelayerServiceCmd() *cobra.Command {
 		RunE:         addSubnetToRelayerService,
 		Args:         cobra.ExactArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, addSubnetToRelayerServiceSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &addSubnetToRelayerServiceFlags.Network, true, addSubnetToRelayerServiceSupportedNetworkOptions)
+	cmd.Flags().StringVar(&addSubnetToRelayerServiceFlags.CloudNodeID, "cloud-node-id", "", "generate a config to be used on given cloud node")
 	return cmd
 }
 
 func addSubnetToRelayerService(_ *cobra.Command, args []string) error {
-	subnetName := args[0]
+	return CallAddSubnetToRelayerService(args[0], addSubnetToRelayerServiceFlags)
+}
 
+func CallAddSubnetToRelayerService(subnetName string, flags AddSubnetToRelayerServiceFlags) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
-		globalNetworkFlags,
+		flags.Network,
 		true,
 		addSubnetToRelayerServiceSupportedNetworkOptions,
 		subnetName,
@@ -50,9 +65,22 @@ func addSubnetToRelayerService(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	configBasePath := ""
+	storageBasePath := ""
+	if flags.CloudNodeID != "" {
+		storageBasePath = constants.CloudNodeCLIConfigBasePath
+		configBasePath = app.GetNodeInstanceDirPath(flags.CloudNodeID)
+	}
+
+	configPath := app.GetAWMRelayerServiceConfigPath(configBasePath)
+	if err := os.MkdirAll(filepath.Dir(configPath), constants.DefaultPerms755); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("updating configuration file %s", configPath)
+
 	if err = teleporter.UpdateRelayerConfig(
-		app.GetAWMRelayerServiceConfigPath(),
-		app.GetAWMRelayerServiceStorageDir(),
+		configPath,
+		app.GetAWMRelayerServiceStorageDir(storageBasePath),
 		relayerAddress,
 		relayerPrivateKey,
 		network,
@@ -70,8 +98,8 @@ func addSubnetToRelayerService(_ *cobra.Command, args []string) error {
 	}
 
 	if err = teleporter.UpdateRelayerConfig(
-		app.GetAWMRelayerServiceConfigPath(),
-		app.GetAWMRelayerServiceStorageDir(),
+		configPath,
+		app.GetAWMRelayerServiceStorageDir(storageBasePath),
 		relayerAddress,
 		relayerPrivateKey,
 		network,
