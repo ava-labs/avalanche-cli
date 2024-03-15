@@ -145,6 +145,28 @@ func RunSSHSetupAWMRelayerService(host *models.Host) error {
 	)
 }
 
+// RunSSHStartAWMRelayerService runs script to start an AWM Relayer Service
+func RunSSHStartAWMRelayerService(host *models.Host) error {
+	return RunOverSSH(
+		"Starts AWM Relayer Service",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/startRelayerService.sh",
+		scriptInputs{},
+	)
+}
+
+// RunSSHStopAWMRelayerService runs script to start an AWM Relayer Service
+func RunSSHStopAWMRelayerService(host *models.Host) error {
+	return RunOverSSH(
+		"Stops AWM Relayer Service",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/stopRelayerService.sh",
+		scriptInputs{},
+	)
+}
+
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
 func RunSSHUpgradeAvalanchego(host *models.Host, avalancheGoVersion string) error {
 	if utils.IsE2E() && utils.E2EDocker() {

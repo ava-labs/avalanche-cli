@@ -34,10 +34,6 @@ func getSubnetParams(network models.Network, subnetName string) (ids.ID, ids.ID,
 			}
 			teleporterMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
 			teleporterRegistryAddress = extraLocalNetworkData.CChainTeleporterRegistryAddress
-			k, err = key.LoadEwoq(network.ID)
-			if err != nil {
-				return ids.Empty, ids.Empty, "", "", nil, err
-			}
 		} else if network.ClusterName != "" {
 			clusterConfig, err := app.GetClusterConfig(network.ClusterName)
 			if err != nil {
@@ -45,6 +41,10 @@ func getSubnetParams(network models.Network, subnetName string) (ids.ID, ids.ID,
 			}
 			teleporterMessengerAddress = clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress
 			teleporterRegistryAddress = clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress
+		}
+		k, err = key.LoadEwoq(network.ID)
+		if err != nil {
+			return ids.Empty, ids.Empty, "", "", nil, err
 		}
 	} else {
 		sc, err := app.LoadSidecar(subnetName)

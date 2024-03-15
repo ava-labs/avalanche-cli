@@ -199,23 +199,42 @@ func wiz(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// search for AWM Relayer node
-	awmRelayerHost, err := getAWMRelayerHost(clusterName)
+	isEVMGenesis, err := subnetcmd.HasSubnetEVMGenesis(subnetName)
 	if err != nil {
 		return err
 	}
-	if awmRelayerHost == nil {
-		awmRelayerHost, err = chooseAWMRelayerHost(clusterName)
+
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
+	}
+
+	if sc.TeleporterReady && isEVMGenesis {
+		// get or set AWM Relayer host and configure/stop service
+		awmRelayerHost, err := getAWMRelayerHost(clusterName)
 		if err != nil {
 			return err
 		}
-		if err := setAWMRelayerHost(awmRelayerHost); err != nil {
+		if awmRelayerHost == nil {
+			awmRelayerHost, err = chooseAWMRelayerHost(clusterName)
+			if err != nil {
+				return err
+			}
+			if err := setAWMRelayerHost(awmRelayerHost); err != nil {
+				return err
+			}
+		} else {
+			ux.Logger.PrintToUser("stopping AWM Relayer Service")
+			if err := ssh.RunSSHStopAWMRelayerService(awmRelayerHost); err != nil {
+				return err
+			}
+		}
+		if err := updateAWMRelayerHostConfig(awmRelayerHost, subnetName, clusterName); err != nil {
 			return err
 		}
 	}
-	if err := updateAWMRelayerHostConfig(awmRelayerHost, subnetName, clusterName); err != nil {
-		return err
-	}
+
+
 	return nil
 
 	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
@@ -243,10 +262,6 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err
 	}
-	sc, err := app.LoadSidecar(subnetName)
-	if err != nil {
-		return err
-	}
 	network, err := app.GetClusterNetwork(clusterName)
 	if err != nil {
 		return err
@@ -268,10 +283,6 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	isEVMGenesis, err := subnetcmd.HasSubnetEVMGenesis(subnetName)
-	if err != nil {
-		return err
-	}
 	if sc.TeleporterReady && isEVMGenesis {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Setting up teleporter on subnet"))
@@ -352,7 +363,7 @@ func updateAWMRelayerHostConfig(host *models.Host, subnetName string, clusterNam
 	if err := ssh.RunSSHUploadNodeAWMRelayerConfig(host, app.GetNodeInstanceDirPath(host.GetCloudID())); err != nil {
 		return err
 	}
-	return nil
+	return ssh.RunSSHStartAWMRelayerService(host)
 }
 
 func getAWMRelayerHost(clusterName string) (*models.Host, error) {
