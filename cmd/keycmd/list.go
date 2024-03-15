@@ -32,6 +32,7 @@ const (
 	pchainFlag        = "pchain"
 	cchainFlag        = "cchain"
 	xchainFlag        = "xchain"
+	chainsFlag        = "chains"
 	ledgerIndicesFlag = "ledger"
 	useNanoAvaxFlag   = "use-nano-avax"
 )
@@ -43,6 +44,7 @@ var (
 	pchain                      bool
 	cchain                      bool
 	xchain                      bool
+	chains                      string
 	useNanoAvax                 bool
 	ledgerIndices               []uint
 	subnetName                  string
@@ -104,6 +106,12 @@ keys or for the ledger addresses associated to certain indices.`,
 		"subnet",
 		"",
 		"provide balance information for the given subnet (Subnet-Evm based only)",
+	)
+	cmd.Flags().StringVar(
+		&chains,
+		chainsFlag,
+		"pxc",
+		"short way to specify which chains to show information about (p=show p-chain, x=show x-chain, c=show c-chain). defaults to pxc",
 	)
 	return cmd
 }
@@ -200,6 +208,15 @@ func listKeys(*cobra.Command, []string) error {
 			return err
 		}
 		networks = append(networks, network)
+	}
+	if !strings.Contains(chains, "p") {
+		pchain = false
+	}
+	if !strings.Contains(chains, "x") {
+		xchain = false
+	}
+	if !strings.Contains(chains, "c") {
+		cchain = false
 	}
 	queryLedger := len(ledgerIndices) > 0
 	if queryLedger {
