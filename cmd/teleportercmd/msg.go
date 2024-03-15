@@ -174,7 +174,7 @@ func msg(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if destReceipt.Status != types.ReceiptStatusSuccessful {
-		return fmt.Errorf("dest receipt status is not ReceiptStatusSuccessful")
+		return fmt.Errorf("dest receipt status for tx %s is not ReceiptStatusSuccessful", block.Transactions()[0].Hash())
 	}
 	destEvent, err := evm.GetEventFromLogs(destReceipt.Logs, destMessenger.ParseReceiveCrossChainMessage)
 	if err != nil {
