@@ -8,6 +8,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
@@ -78,11 +79,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
 	}
 
-	deployLocal := false
-	deployDevnet := true
-	deployTestnet := false
-	deployMainnet := false
-	endpoint := clustersConfig.Clusters[clusterName].Network.Endpoint
+	networkFlags := networkoptions.NetworkFlags{
+		ClusterName: clusterName,
+	}
 	keyNameParam := ""
 	useLedgerParam := false
 	useEwoqParam := true
@@ -91,11 +90,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	if err := subnetcmd.CallDeploy(
 		cmd,
 		subnetName,
-		deployLocal,
-		deployDevnet,
-		deployTestnet,
-		deployMainnet,
-		endpoint,
+		networkFlags,
 		keyNameParam,
 		useLedgerParam,
 		useEwoqParam,

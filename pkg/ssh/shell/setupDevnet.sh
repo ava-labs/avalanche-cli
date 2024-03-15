@@ -4,6 +4,7 @@ set -e
 {{if .IsE2E}}
 sudo pkill avalanchego || echo "avalanchego not running"
 {{else}}
+sudo systemctl daemon-reload
 sudo systemctl stop avalanchego
 {{end}}
 #name:TASK [remove previous avalanchego db and logs]

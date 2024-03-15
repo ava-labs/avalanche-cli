@@ -52,11 +52,10 @@ func statusNode(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	clustersConfig, err := app.LoadClustersConfig()
+	clusterConf, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return err
 	}
-	clusterConf := clustersConfig.Clusters[clusterName]
 	var blockchainID ids.ID
 	if subnetName != "" {
 		sc, err := app.LoadSidecar(subnetName)
@@ -267,7 +266,7 @@ func printOutput(
 			cloudID,
 			logging.Green.Wrap(nodeIDStr),
 			nodeConfigs[i].ElasticIP,
-			clusterConf.Network.Name(),
+			clusterConf.Network.Kind.String(),
 			strings.Join(roles, ","),
 			avagoVersion,
 			boostrappedStatus,

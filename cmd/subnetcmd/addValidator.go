@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
@@ -22,6 +23,8 @@ import (
 )
 
 var (
+	addValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Devnet, networkoptions.Fuji, networkoptions.Mainnet}
+
 	nodeIDStr              string
 	weight                 uint64
 	startTimeStr           string
@@ -37,7 +40,7 @@ var (
 	errMutuallyExclusiveWeightOptions   = errors.New("--use-default-validator-params and --weight are mutually exclusive")
 )
 
-// avalanche subnet deploy
+// avalanche subnet addValidator
 func newAddValidatorCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "addValidator [subnetName]",
@@ -56,6 +59,8 @@ Testnet or Mainnet.`,
 		RunE:         addValidator,
 		Args:         cobra.ExactArgs(1),
 	}
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, addValidatorSupportedNetworkOptions)
+
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
 	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
@@ -68,12 +73,6 @@ Testnet or Mainnet.`,
 
 	cmd.Flags().BoolVar(&defaultValidatorParams, "default-validator-params", false, "use default weight/start/duration params for subnet validator")
 
-	cmd.Flags().StringVar(&endpoint, "endpoint", "", "use the given endpoint for network operations")
-	cmd.Flags().BoolVar(&deployLocal, "local", false, "add subnet validator on `local`")
-	cmd.Flags().BoolVar(&deployDevnet, "devnet", false, "add subnet validator on `devnet`")
-	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "add subnet validator on `fuji` (alias for `testnet`)")
-	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "add subnet validator on `testnet` (alias for `fuji`)")
-	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "add subnet validator on `mainnet`")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate add validator tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the add validator tx")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
@@ -83,14 +82,12 @@ Testnet or Mainnet.`,
 }
 
 func addValidator(_ *cobra.Command, args []string) error {
-	network, err := GetNetworkFromCmdLineFlags(
-		deployLocal,
-		deployDevnet,
-		deployTestnet,
-		deployMainnet,
-		endpoint,
+	network, err := networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		globalNetworkFlags,
 		true,
-		[]models.NetworkKind{models.Local, models.Devnet, models.Fuji, models.Mainnet},
+		addValidatorSupportedNetworkOptions,
+		"",
 	)
 	if err != nil {
 		return err

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanchego/ids"
 
@@ -25,20 +26,20 @@ import (
 )
 
 var (
-	validateTestnet              bool
-	validateMainnet              bool
-	keyName                      string
-	useLedger                    bool
-	ledgerAddresses              []string
-	nodeIDStr                    string
-	weight                       uint64
-	delegationFee                uint32
-	startTimeStr                 string
-	duration                     time.Duration
-	publicKey                    string
-	pop                          string
-	ErrMutuallyExlusiveKeyLedger = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
-	ErrStoredKeyOnMainnet        = errors.New("--key is not available for mainnet operations")
+	globalNetworkFlags                  networkoptions.NetworkFlags
+	addValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Fuji, networkoptions.Mainnet}
+	keyName                             string
+	useLedger                           bool
+	ledgerAddresses                     []string
+	nodeIDStr                           string
+	weight                              uint64
+	delegationFee                       uint32
+	startTimeStr                        string
+	duration                            time.Duration
+	publicKey                           string
+	pop                                 string
+	ErrMutuallyExlusiveKeyLedger        = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
+	ErrStoredKeyOnMainnet               = errors.New("--key is not available for mainnet operations")
 )
 
 type jsonProofOfPossession struct {
@@ -57,14 +58,12 @@ in the Primary Network`,
 		RunE:         addValidator,
 		Args:         cobra.ExactArgs(0),
 	}
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, addValidatorSupportedNetworkOptions)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
 	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
-	cmd.Flags().BoolVar(&validateTestnet, "fuji", false, "join on `fuji` (alias for `testnet`)")
-	cmd.Flags().BoolVar(&validateTestnet, "testnet", false, "join on `testnet` (alias for `fuji`)")
-	cmd.Flags().BoolVar(&validateMainnet, "mainnet", false, "join on `mainnet`")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().StringVar(&publicKey, "public-key", "", "set the BLS public key of the validator to add")
@@ -118,21 +117,15 @@ func addValidator(_ *cobra.Command, _ []string) error {
 		err    error
 	)
 
-	var network models.Network
-	switch {
-	case validateTestnet:
-		network = models.FujiNetwork
-	case validateMainnet:
-		network = models.MainnetNetwork
-	default:
-		networkStr, err := app.Prompt.CaptureList(
-			"Choose a network to add validator to.",
-			[]string{models.Fuji.String(), models.Mainnet.String()},
-		)
-		if err != nil {
-			return err
-		}
-		network = models.NetworkFromString(networkStr)
+	network, err := networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		globalNetworkFlags,
+		false,
+		addValidatorSupportedNetworkOptions,
+		"",
+	)
+	if err != nil {
+		return err
 	}
 
 	if len(ledgerAddresses) > 0 {

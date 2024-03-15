@@ -45,7 +45,7 @@ func list(_ *cobra.Command, _ []string) error {
 	sort.Strings(clusterNames)
 	for _, clusterName := range clusterNames {
 		clusterConf := clustersConfig.Clusters[clusterName]
-		ux.Logger.PrintToUser("Cluster %q (%s)", clusterName, clusterConf.Network.Name())
+		ux.Logger.PrintToUser("Cluster %q (%s)", clusterName, clusterConf.Network.Kind.String())
 		if err := checkCluster(clusterName); err != nil {
 			return err
 		}

@@ -56,7 +56,7 @@ func sshNode(_ *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		// provide ssh connection string for all clusters
 		for clusterName, clusterConfig := range clustersConfig.Clusters {
-			err := printClusterConnectionString(clusterName, clusterConfig.Network.Name())
+			err := printClusterConnectionString(clusterName, clusterConfig.Network.Kind.String())
 			if err != nil {
 				return err
 			}
@@ -68,7 +68,7 @@ func sshNode(_ *cobra.Command, args []string) error {
 		if err := checkCluster(clusterNameOrNodeID); err == nil {
 			// clusterName detected
 			if len(args[1:]) == 0 {
-				return printClusterConnectionString(clusterNameOrNodeID, clustersConfig.Clusters[clusterNameOrNodeID].Network.Name())
+				return printClusterConnectionString(clusterNameOrNodeID, clustersConfig.Clusters[clusterNameOrNodeID].Network.Kind.String())
 			} else {
 				clusterHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterNameOrNodeID))
 				if err != nil {

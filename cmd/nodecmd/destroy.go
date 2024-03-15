@@ -227,16 +227,3 @@ func getClusterNodes(clusterName string) ([]string, error) {
 	}
 	return clusterNodes, nil
 }
-
-func clusterExists(clusterName string) (bool, error) {
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		var err error
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return false, err
-		}
-	}
-	_, ok := clustersConfig.Clusters[clusterName]
-	return ok, nil
-}

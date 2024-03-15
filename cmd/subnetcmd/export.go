@@ -86,7 +86,7 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 				}
 			}
 			if customVMRepoURL == "" {
-				customVMRepoURL, err = app.Prompt.CaptureURL("Source code repository URL")
+				customVMRepoURL, err = app.Prompt.CaptureURL("Source code repository URL", true)
 				if err != nil {
 					return err
 				}

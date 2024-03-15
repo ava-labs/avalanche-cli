@@ -9,6 +9,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
@@ -22,17 +23,18 @@ import (
 )
 
 var (
-	genesisFilePath string
-	blockchainIDstr string
-	nodeURL         string
+	importPublicSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Fuji, networkoptions.Mainnet}
+	genesisFilePath                     string
+	blockchainIDstr                     string
+	nodeURL                             string
 )
 
-// avalanche subnet import
-func newImportFromNetworkCmd() *cobra.Command {
+// avalanche subnet import public
+func newImportPublicCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "public [subnetPath]",
 		Short:        "Import an existing subnet config from running subnets on a public network",
-		RunE:         importRunningSubnet,
+		RunE:         importPublic,
 		SilenceUsage: true,
 		Args:         cobra.MaximumNArgs(1),
 		Long: `The subnet import public command imports a Subnet configuration from a running network.
@@ -42,17 +44,15 @@ doesn't overwrite an existing Subnet with the same name. To allow overwrites, pr
 flag.`,
 	}
 
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, importPublicSupportedNetworkOptions)
+
 	cmd.Flags().StringVar(&nodeURL, "node-url", "", "[optional] URL of an already running subnet validator")
 
-	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "import from `fuji` (alias for `testnet`)")
-	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "import from `testnet` (alias for `fuji`)")
-	cmd.Flags().BoolVar(&deployMainnet, "mainnet", false, "import from `mainnet`")
 	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "import a subnet-evm")
 	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
-	cmd.Flags().BoolVarP(
+	cmd.Flags().BoolVar(
 		&overwriteImport,
 		"force",
-		"f",
 		false,
 		"overwrite the existing configuration if one exists",
 	)
@@ -71,26 +71,16 @@ flag.`,
 	return cmd
 }
 
-func importRunningSubnet(*cobra.Command, []string) error {
-	var err error
-
-	network := models.UndefinedNetwork
-	switch {
-	case deployTestnet:
-		network = models.FujiNetwork
-	case deployMainnet:
-		network = models.MainnetNetwork
-	}
-
-	if network.Kind == models.Undefined {
-		networkStr, err := app.Prompt.CaptureList(
-			"Choose a network to import from",
-			[]string{models.Fuji.String(), models.Mainnet.String()},
-		)
-		if err != nil {
-			return err
-		}
-		network = models.NetworkFromString(networkStr)
+func importPublic(*cobra.Command, []string) error {
+	network, err := networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		globalNetworkFlags,
+		false,
+		importPublicSupportedNetworkOptions,
+		"",
+	)
+	if err != nil {
+		return err
 	}
 
 	if genesisFilePath == "" {

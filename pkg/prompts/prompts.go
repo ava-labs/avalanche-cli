@@ -14,6 +14,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ethereum/go-ethereum/common"
@@ -79,7 +80,7 @@ type Prompter interface {
 	CaptureListWithSize(promptStr string, options []string, size int) (string, error)
 	CaptureString(promptStr string) (string, error)
 	CaptureValidatedString(promptStr string, validator func(string) error) (string, error)
-	CaptureURL(promptStr string) (string, error)
+	CaptureURL(promptStr string, validateConnection bool) (string, error)
 	CaptureRepoBranch(promptStr string, repo string) (string, error)
 	CaptureRepoFile(promptStr string, repo string, branch string) (string, error)
 	CaptureGitURL(promptStr string) (*url.URL, error)
@@ -549,9 +550,8 @@ func (*realPrompter) CaptureStringAllowEmpty(promptStr string) (string, error) {
 	return str, nil
 }
 
-func (*realPrompter) CaptureURL(promptStr string) (string, error) {
+func (*realPrompter) CaptureURL(promptStr string, validateConnection bool) (string, error) {
 	for {
-		var err error
 		prompt := promptui.Prompt{
 			Label:    promptStr,
 			Validate: validateURLFormat,
@@ -560,7 +560,10 @@ func (*realPrompter) CaptureURL(promptStr string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		if err = ValidateURL(str); err == nil {
+		if !validateConnection {
+			return str, nil
+		}
+		if err := ValidateURL(str); err == nil {
 			return str, nil
 		}
 		ux.Logger.PrintToUser("Invalid URL: %s", err)
@@ -736,15 +739,6 @@ func contains[T comparable](list []T, element T) bool {
 	return false
 }
 
-func getIndexInSlice[T comparable](list []T, element T) (int, error) {
-	for i, val := range list {
-		if val == element {
-			return i, nil
-		}
-	}
-	return 0, fmt.Errorf("element not found")
-}
-
 // check subnet authorization criteria:
 // - [subnetAuthKeys] satisfy subnet's [threshold]
 // - [subnetAuthKeys] is a subset of subnet's [controlKeys]
@@ -785,7 +779,7 @@ func GetSubnetAuthKeys(prompt Prompter, walletKeys []string, controlKeys []strin
 		if slices.Contains(controlKeys, walletKey) {
 			ux.Logger.PrintToUser("Adding wallet key %s to the tx subnet auth keys as it is a subnet control key", walletKey)
 			subnetAuthKeys = append(subnetAuthKeys, walletKey)
-			index, err := getIndexInSlice(filteredControlKeys, walletKey)
+			index, err := utils.GetIndexInSlice(filteredControlKeys, walletKey)
 			if err != nil {
 				return nil, err
 			}
@@ -800,7 +794,7 @@ func GetSubnetAuthKeys(prompt Prompter, walletKeys []string, controlKeys []strin
 		if err != nil {
 			return nil, err
 		}
-		index, err := getIndexInSlice(filteredControlKeys, subnetAuthKey)
+		index, err := utils.GetIndexInSlice(filteredControlKeys, subnetAuthKey)
 		if err != nil {
 			return nil, err
 		}

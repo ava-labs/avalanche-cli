@@ -366,6 +366,22 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 	)
 }
 
+func RunSSHUploadClustersConfig(host *models.Host, localClustersConfigPath string) error {
+	remoteNodesDir := filepath.Join(constants.CloudNodeCLIConfigBasePath, constants.NodesDir)
+	if err := host.MkdirAll(
+		remoteNodesDir,
+		constants.SSHDirOpsTimeout,
+	); err != nil {
+		return err
+	}
+	remoteClustersConfigPath := filepath.Join(remoteNodesDir, constants.ClustersConfigFileName)
+	return host.Upload(
+		localClustersConfigPath,
+		remoteClustersConfigPath,
+		constants.SSHFileOpsTimeout,
+	)
+}
+
 // RunSSHUploadStakingFiles uploads staking files to a remote host via SSH.
 func RunSSHUploadStakingFiles(host *models.Host, nodeInstanceDirPath string) error {
 	if err := host.MkdirAll(
@@ -486,10 +502,14 @@ func RunSSHSetupCLIFromSource(host *models.Host, cliBranch string) error {
 	if !constants.EnableSetupCLIFromSource {
 		return nil
 	}
+	timeout := constants.SSHScriptTimeout
+	if utils.IsE2E() && utils.E2EDocker() {
+		timeout = 10 * time.Minute
+	}
 	return RunOverSSH(
 		"Setup CLI From Source",
 		host,
-		constants.SSHScriptTimeout,
+		timeout,
 		"shell/setupCLIFromSource.sh",
 		scriptInputs{CliBranch: cliBranch},
 	)
