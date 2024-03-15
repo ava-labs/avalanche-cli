@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
+	"golang.org/x/exp/slices"
 	"os"
 	"path/filepath"
 
@@ -30,14 +31,15 @@ var (
 	loadTestCmd        string
 	loadTestRepoCommit string
 	repoDirName        string
+	loadTestHostRegion string
 )
 
 type clusterInfo struct {
-	API        []nodeInfo `yaml:"API,omitempty"`
-	Validator  []nodeInfo `yaml:"VALIDATOR,omitempty"`
-	Monitoring nodeInfo   `yaml:"MONITORING,omitempty"`
-	ChainID    string     `yaml:"CHAIN_ID,omitempty"`
-	SubnetID   string     `yaml:"SUBNET_ID,omitempty"`
+	API       []nodeInfo `yaml:"API,omitempty"`
+	Validator []nodeInfo `yaml:"VALIDATOR,omitempty"`
+	LoadTest  nodeInfo   `yaml:"LOADTEST,omitempty"`
+	ChainID   string     `yaml:"CHAIN_ID,omitempty"`
+	SubnetID  string     `yaml:"SUBNET_ID,omitempty"`
 }
 type nodeInfo struct {
 	CloudID string `yaml:"CLOUD_ID,omitempty"`
@@ -63,7 +65,7 @@ After loadtest is done it will deliver generated reports if any along with loadt
 	}
 	cmd.Flags().BoolVar(&useAWS, "aws", false, "create loadtest node in AWS cloud")
 	cmd.Flags().BoolVar(&useGCP, "gcp", false, "create loadtest in GCP cloud")
-	cmd.Flags().StringVar(&nodeType, "node-type", "default", "cloud instance type for loadtest script")
+	cmd.Flags().StringVar(&nodeType, "node-type", "", "cloud instance type for loadtest script")
 	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to create cloud resources")
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
 	cmd.Flags().BoolVar(&useSSHAgent, "use-ssh-agent", false, "use ssh agent(ex: Yubikey) for ssh auth")
@@ -71,6 +73,7 @@ After loadtest is done it will deliver generated reports if any along with loadt
 	cmd.Flags().StringVar(&loadTestRepoURL, "loadTestRepoURL", "", "load test repo url to use")
 	cmd.Flags().StringVar(&loadTestBuildCmd, "loadTestBuildCmd", "", "command to build load test binary")
 	cmd.Flags().StringVar(&loadTestCmd, "loadTestCmd", "", "command to run load test")
+	cmd.Flags().StringVar(&loadTestHostRegion, "region", "", "create load test node in a given region")
 	return cmd
 }
 
@@ -123,7 +126,7 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	existingSeparateInstance, err = getExistingMonitoringInstance(clusterName)
+	existingSeparateInstance, err = getExistingLoadTestInstance(clusterName)
 	if err != nil {
 		return err
 	}
@@ -141,7 +144,6 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		nodeType = "default"
 		nodeType, err = setCloudInstanceType(cloudService)
 		if err != nil {
 			return err
@@ -161,6 +163,9 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 	for index := range filteredSGList {
 		sgRegions = append(sgRegions, filteredSGList[index].region)
 	}
+	if !slices.Contains(sgRegions, loadTestHostRegion) {
+		sgRegions = append(sgRegions, loadTestHostRegion)
+	}
 	switch cloudService {
 	case constants.AWSCloudService:
 		var ec2SvcMap map[string]*awsAPI.AwsCloud
@@ -171,8 +176,8 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			regions := maps.Keys(ec2SvcMap)
-			separateHostRegion = regions[0]
+			//regions := maps.Keys(ec2SvcMap)
+			separateHostRegion = loadTestHostRegion
 			loadTestEc2SvcMap[separateHostRegion] = ec2SvcMap[separateHostRegion]
 			loadTestCloudConfig, err = createAWSInstances(loadTestEc2SvcMap, nodeType, map[string]NumNodes{separateHostRegion: {1, 0}}, []string{separateHostRegion}, ami, true)
 			if err != nil {
@@ -248,12 +253,12 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("cloud service %s is not supported", cloudService)
 	}
 	if existingSeparateInstance == "" {
-		if err := saveExternalHostConfig(loadTestNodeConfig, separateHostRegion, cloudService, clusterName); err != nil {
+		if err := saveExternalHostConfig(loadTestNodeConfig, separateHostRegion, cloudService, clusterName, constants.LoadTestRole); err != nil {
 			return err
 		}
 	}
 	var separateHosts []*models.Host
-	separateHostInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
+	separateHostInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.LoadTestDir)
 	if existingSeparateInstance == "" {
 		if err = ansible.CreateAnsibleHostInventory(separateHostInventoryPath, loadTestNodeConfig.CertFilePath, cloudService, map[string]string{loadTestNodeConfig.InstanceIDs[0]: loadTestNodeConfig.PublicIPs[0]}, nil); err != nil {
 			return err
@@ -426,11 +431,11 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 		}
 	}
 	clusterInfoYAML := clusterInfo{
-		Validator:  validatorNodes,
-		API:        apiNodes,
-		Monitoring: separateHostInfo,
-		SubnetID:   subnetID,
-		ChainID:    chainID,
+		Validator: validatorNodes,
+		API:       apiNodes,
+		LoadTest:  separateHostInfo,
+		SubnetID:  subnetID,
+		ChainID:   chainID,
 	}
 	return enc.Encode(clusterInfoYAML)
 }
@@ -467,4 +472,19 @@ func GetLoadTestScript(app *application.Avalanche) error {
 		}
 	}
 	return nil
+}
+
+func getExistingLoadTestInstance(clusterName string) (string, error) {
+	if app.ClustersConfigExists() {
+		clustersConfig, err := app.LoadClustersConfig()
+		if err != nil {
+			return "", err
+		}
+		if _, ok := clustersConfig.Clusters[clusterName]; ok {
+			if clustersConfig.Clusters[clusterName].LoadTestInstance != "" {
+				return clustersConfig.Clusters[clusterName].LoadTestInstance, nil
+			}
+		}
+	}
+	return "", nil
 }

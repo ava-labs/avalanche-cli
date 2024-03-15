@@ -722,12 +722,12 @@ func CreateClusterNodeConfig(
 			if err != nil {
 				return err
 			}
-			if err = addNodeToClustersConfig(network, cloudConfig.InstanceIDs[i], clusterName, slices.Contains(cloudConfig.APIInstanceIDs, cloudConfig.InstanceIDs[i]), false); err != nil {
+			if err = addNodeToClustersConfig(network, cloudConfig.InstanceIDs[i], clusterName, slices.Contains(cloudConfig.APIInstanceIDs, cloudConfig.InstanceIDs[i]), false, ""); err != nil {
 				return err
 			}
 		}
 		if addMonitoring {
-			if err := saveExternalHostConfig(monitorCloudConfig, monitoringHostRegion, cloudService, clusterName); err != nil {
+			if err := saveExternalHostConfig(monitorCloudConfig, monitoringHostRegion, cloudService, clusterName, constants.MonitorRole); err != nil {
 				return err
 			}
 		}
@@ -735,7 +735,15 @@ func CreateClusterNodeConfig(
 	return nil
 }
 
-func saveExternalHostConfig(externalHostConfig models.RegionConfig, hostRegion, cloudService, clusterName string) error {
+func saveExternalHostConfig(externalHostConfig models.RegionConfig, hostRegion, cloudService, clusterName, externalHostRole string) error {
+	IsMonitoring := false
+	IsLoadTest := false
+	switch externalHostRole {
+	case constants.LoadTestRole:
+		IsLoadTest = true
+	case constants.MonitorRole:
+		IsMonitoring = true
+	}
 	nodeConfig := models.NodeConfig{
 		NodeID:        externalHostConfig.InstanceIDs[0],
 		Region:        hostRegion,
@@ -746,12 +754,13 @@ func saveExternalHostConfig(externalHostConfig models.RegionConfig, hostRegion, 
 		ElasticIP:     externalHostConfig.PublicIPs[0],
 		CloudService:  cloudService,
 		UseStaticIP:   useStaticIP,
-		IsMonitor:     true,
+		IsMonitor:     IsMonitoring,
+		IsLoadTest:    IsLoadTest,
 	}
 	if err := app.CreateNodeCloudConfigFile(externalHostConfig.InstanceIDs[0], &nodeConfig); err != nil {
 		return err
 	}
-	if err := addNodeToClustersConfig(models.UndefinedNetwork, externalHostConfig.InstanceIDs[0], clusterName, false, true); err != nil {
+	if err := addNodeToClustersConfig(models.UndefinedNetwork, externalHostConfig.InstanceIDs[0], clusterName, false, true, externalHostRole); err != nil {
 		return err
 	}
 	return updateKeyPairClustersConfig(nodeConfig)
@@ -830,7 +839,7 @@ func getNodeCloudConfig(node string) (models.RegionConfig, string, error) {
 	}, config.Region, nil
 }
 
-func addNodeToClustersConfig(network models.Network, nodeID, clusterName string, isAPIInstance bool, isMonitoringInstance bool) error {
+func addNodeToClustersConfig(network models.Network, nodeID, clusterName string, isAPIInstance bool, isExternalHost bool, nodeRole string) error {
 	clustersConfig := models.ClustersConfig{}
 	if app.ClustersConfigExists() {
 		var err error
@@ -844,8 +853,13 @@ func addNodeToClustersConfig(network models.Network, nodeID, clusterName string,
 	}
 	clusterConfig := clustersConfig.Clusters[clusterName]
 	clusterConfig.Network = network
-	if isMonitoringInstance {
-		clusterConfig.MonitoringInstance = nodeID
+	if isExternalHost {
+		switch nodeRole {
+		case constants.MonitorRole:
+			clusterConfig.MonitoringInstance = nodeID
+		case constants.LoadTestRole:
+			clusterConfig.LoadTestInstance = nodeID
+		}
 	} else {
 		clusterConfig.Nodes = append(clusterConfig.Nodes, nodeID)
 	}

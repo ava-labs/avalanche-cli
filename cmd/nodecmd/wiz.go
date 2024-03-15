@@ -280,9 +280,9 @@ func wiz(cmd *cobra.Command, args []string) error {
 func deployClusterYAMLFile(clusterName, subnetName string) error {
 	var separateHosts []*models.Host
 	var err error
-	monitoringInventoryDir := app.GetMonitoringInventoryDir(clusterName)
-	if utils.FileExists(monitoringInventoryDir) {
-		separateHosts, err = ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryDir)
+	loadTestInventoryDir := app.GetLoadTestInventoryDir(clusterName)
+	if utils.FileExists(loadTestInventoryDir) {
+		separateHosts, err = ansible.GetInventoryFromAnsibleInventoryFile(loadTestInventoryDir)
 		if err != nil {
 			return err
 		}
