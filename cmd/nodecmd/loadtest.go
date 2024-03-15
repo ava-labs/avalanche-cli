@@ -176,7 +176,6 @@ func createLoadTest(_ *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			//regions := maps.Keys(ec2SvcMap)
 			separateHostRegion = loadTestHostRegion
 			loadTestEc2SvcMap[separateHostRegion] = ec2SvcMap[separateHostRegion]
 			loadTestCloudConfig, err = createAWSInstances(loadTestEc2SvcMap, nodeType, map[string]NumNodes{separateHostRegion: {1, 0}}, []string{separateHostRegion}, ami, true)
