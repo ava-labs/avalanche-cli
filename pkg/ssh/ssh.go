@@ -24,6 +24,7 @@ type scriptInputs struct {
 	CLIVersion              string
 	SubnetExportFileName    string
 	SubnetName              string
+	ClusterName             string
 	GoVersion               string
 	CliBranch               string
 	IsDevNet                bool
@@ -143,6 +144,17 @@ func RunSSHSetupAWMRelayerService(host *models.Host) error {
 		scriptInputs{},
 	)
 }
+
+func RunSSHAddSubnetToAWMRelayerService(host *models.Host, subnetName string, clusterName string) error {
+	return RunOverSSH(
+		"Update AWM Relayer Service Configuration",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/addSubnetToRelayerService.sh",
+		scriptInputs{SubnetName: subnetName, ClusterName: clusterName},
+	)
+}
+
 
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
 func RunSSHUpgradeAvalanchego(host *models.Host, avalancheGoVersion string) error {
@@ -373,6 +385,22 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 		constants.SSHScriptTimeout,
 		"shell/setupDevnet.sh",
 		scriptInputs{IsE2E: utils.IsE2E()},
+	)
+}
+
+func RunSSHUploadSubnetSidecar(host *models.Host, localSubnetSidecarPath string, subnetName string) error {
+	remoteNodesDir := filepath.Join(constants.CloudNodeCLIConfigBasePath, constants.SubnetDir, subnetName)
+	if err := host.MkdirAll(
+		remoteNodesDir,
+		constants.SSHDirOpsTimeout,
+	); err != nil {
+		return err
+	}
+	remoteSubnetSidecarPath := filepath.Join(remoteNodesDir, constants.SidecarFileName)
+	return host.Upload(
+		localSubnetSidecarPath,
+		remoteSubnetSidecarPath,
+		constants.SSHFileOpsTimeout,
 	)
 }
 

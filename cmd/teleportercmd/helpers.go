@@ -38,6 +38,13 @@ func getSubnetParams(network models.Network, subnetName string) (ids.ID, ids.ID,
 			if err != nil {
 				return ids.Empty, ids.Empty, "", "", nil, err
 			}
+		} else if network.ClusterName != "" {
+			clusterConfig, err := app.GetClusterConfig(network.ClusterName)
+			if err != nil {
+				return ids.Empty, ids.Empty, "", "", nil, err
+			}
+			teleporterMessengerAddress = clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress
+			teleporterRegistryAddress = clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress
 		}
 	} else {
 		sc, err := app.LoadSidecar(subnetName)

@@ -213,7 +213,9 @@ func wiz(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	fmt.Println(app.GetAWMRelayerClusterConfigPath(clusterName))
+	if err := updateAWMRelayerHostConfig(awmRelayerHost, subnetName); err != nil {
+		return err
+	}
 	return nil
 
 	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
@@ -320,6 +322,33 @@ func getHostWithCloudID(clusterName string, cloudID string) (*models.Host, error
 	return nil, nil
 }
 
+func setAWMRelayerHost(host *models.Host) error {
+	cloudID := host.GetCloudID()
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("configuring AWM RElayer on host %s", cloudID)
+	nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
+	if err != nil {
+		return err
+	}
+	if err := ssh.RunSSHSetupAWMRelayerService(host); err != nil {
+		return err
+	}
+	nodeConfig.IsAWMRelayer = true
+	return app.CreateNodeCloudConfigFile(cloudID, &nodeConfig)
+}
+
+func updateAWMRelayerHostConfig(host *models.Host, subnetName string) error {
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("setting AWM Relayer on host %s to relay subnet %s", host.GetCloudID(), subnetName)
+	if err := ssh.RunSSHUploadClustersConfig(host, app.GetClustersConfigPath()); err != nil {
+		return err
+	}
+	if err := ssh.RunSSHUploadSubnetSidecar(host, app.GetSidecarPath(subnetName), subnetName); err != nil {
+		return err
+	}
+	return nil
+}
+
 func getAWMRelayerHost(clusterName string) (*models.Host, error) {
 	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
@@ -336,21 +365,6 @@ func getAWMRelayerHost(clusterName string) (*models.Host, error) {
 		}
 	}
 	return getHostWithCloudID(clusterName, relayerCloudID)
-}
-
-func setAWMRelayerHost(host *models.Host) error {
-	cloudID := host.GetCloudID()
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("configuring AWM RElayer on host %s", cloudID)
-	nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
-	if err != nil {
-		return err
-	}
-	if err := ssh.RunSSHSetupAWMRelayerService(host); err != nil {
-		return err
-	}
-	nodeConfig.IsAWMRelayer = true
-	return app.CreateNodeCloudConfigFile(cloudID, &nodeConfig)
 }
 
 func chooseAWMRelayerHost(clusterName string) (*models.Host, error) {
