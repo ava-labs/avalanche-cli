@@ -41,7 +41,7 @@ import (
 )
 
 const (
-	addMonitoringFlag = "with-prometheus"
+	enableMonitoringFlag = "enable-monitoring"
 )
 
 var (
@@ -113,7 +113,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
 	cmd.Flags().BoolVar(&useSSHAgent, "use-ssh-agent", false, "use ssh agent(ex: Yubikey) for ssh auth")
 	cmd.Flags().StringVar(&sshIdentity, "ssh-agent-identity", "", "use given ssh identity(only for ssh agent). If not set, default will be used")
-	cmd.Flags().BoolVar(&addMonitoring, addMonitoringFlag, false, "set up Prometheus monitoring for created nodes. This option creates a separate monitoring cloud instance and incures additional cost")
+	cmd.Flags().BoolVar(&addMonitoring, enableMonitoringFlag, false, "set up Prometheus monitoring for created nodes. This option creates a separate monitoring cloud instance and incures additional cost")
 	cmd.Flags().IntSliceVar(&numAPINodes, "num-apis", []int{}, "number of API nodes(nodes without stake) to create in the new Devnet")
 	return cmd
 }
@@ -221,7 +221,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if existingMonitoringInstance == "" && !cmd.Flags().Changed(addMonitoringFlag) {
+	if existingMonitoringInstance == "" && !cmd.Flags().Changed(enableMonitoringFlag) {
 		if addMonitoring, err = promptSetUpMonitoring(); err != nil {
 			return err
 		}
@@ -592,7 +592,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			}
 			ux.SpinComplete(spinner)
 		} else {
-			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Setup Prometheus Monitoring and Grafana"))
+			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Setup Monitoring"))
 			if err = app.SetupMonitoringEnv(); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
@@ -682,7 +682,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 }
 
 func promptSetUpMonitoring() (bool, error) {
-	monitoringInstance, err := app.Prompt.CaptureYesNo("Do you want to set up Prometheus monitoring? (This requires additional cloud instance and may incur additional cost)")
+	monitoringInstance, err := app.Prompt.CaptureYesNo("Do you want to set up monitoring? (This requires additional cloud instance and may incur additional cost)")
 	if err != nil {
 		return false, err
 	}
