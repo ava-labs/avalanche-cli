@@ -736,13 +736,13 @@ func CreateClusterNodeConfig(
 }
 
 func saveExternalHostConfig(externalHostConfig models.RegionConfig, hostRegion, cloudService, clusterName, externalHostRole string) error {
-	IsMonitoring := false
-	IsLoadTest := false
+	isMonitoring := false
+	isLoadTest := false
 	switch externalHostRole {
 	case constants.LoadTestRole:
-		IsLoadTest = true
+		isLoadTest = true
 	case constants.MonitorRole:
-		IsMonitoring = true
+		isMonitoring = true
 	}
 	nodeConfig := models.NodeConfig{
 		NodeID:        externalHostConfig.InstanceIDs[0],
@@ -754,8 +754,8 @@ func saveExternalHostConfig(externalHostConfig models.RegionConfig, hostRegion, 
 		ElasticIP:     externalHostConfig.PublicIPs[0],
 		CloudService:  cloudService,
 		UseStaticIP:   useStaticIP,
-		IsMonitor:     IsMonitoring,
-		IsLoadTest:    IsLoadTest,
+		IsMonitor:     isMonitoring,
+		IsLoadTest:    isLoadTest,
 	}
 	if err := app.CreateNodeCloudConfigFile(externalHostConfig.InstanceIDs[0], &nodeConfig); err != nil {
 		return err
