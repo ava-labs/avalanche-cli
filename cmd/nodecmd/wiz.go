@@ -213,6 +213,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
+	fmt.Println(app.GetAWMRelayerClusterConfigPath(clusterName))
 	return nil
 
 	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {

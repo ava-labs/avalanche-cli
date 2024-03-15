@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var addSubnetToRelayerServiceSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Devnet, networkoptions.Fuji, networkoptions.Mainnet}
+var addSubnetToRelayerServiceSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Devnet}
 
 // avalanche teleporter relayer addSubnetToService
 func newAddSubnetToRelayerServiceCmd() *cobra.Command {
@@ -27,18 +27,18 @@ func newAddSubnetToRelayerServiceCmd() *cobra.Command {
 }
 
 func addSubnetToRelayerService(_ *cobra.Command, args []string) error {
+	subnetName := args[0]
+
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		globalNetworkFlags,
 		true,
 		addSubnetToRelayerServiceSupportedNetworkOptions,
-		"",
+		subnetName,
 	)
 	if err != nil {
 		return err
 	}
-
-	subnetName := args[0]
 
 	relayerAddress, relayerPrivateKey, err := teleporter.GetRelayerKeyInfo(app.GetKeyPath(constants.AWMRelayerKeyName))
 	if err != nil {
@@ -52,7 +52,7 @@ func addSubnetToRelayerService(_ *cobra.Command, args []string) error {
 
 	if err = teleporter.UpdateRelayerConfig(
 		app.GetAWMRelayerServiceConfigPath(),
-		app.GetAWMRelayerStorageDir(),
+		app.GetAWMRelayerServiceStorageDir(),
 		relayerAddress,
 		relayerPrivateKey,
 		network,
@@ -71,7 +71,7 @@ func addSubnetToRelayerService(_ *cobra.Command, args []string) error {
 
 	if err = teleporter.UpdateRelayerConfig(
 		app.GetAWMRelayerServiceConfigPath(),
-		app.GetAWMRelayerStorageDir(),
+		app.GetAWMRelayerServiceStorageDir(),
 		relayerAddress,
 		relayerPrivateKey,
 		network,

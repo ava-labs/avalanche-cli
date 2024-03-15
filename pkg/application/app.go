@@ -119,6 +119,10 @@ func (app *Avalanche) GetAWMRelayerConfigPath() string {
 	return filepath.Join(app.GetRunDir(), constants.AWMRelayerConfigFilename)
 }
 
+func (app *Avalanche) GetAWMRelayerClusterConfigPath(clusterName string) string {
+	return filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.AWMRelayerConfigFilename)
+}
+
 func (app *Avalanche) GetAWMRelayerLogPath() string {
 	return filepath.Join(app.GetRunDir(), constants.AWMRelayerLogFilename)
 }
@@ -137,6 +141,10 @@ func (app *Avalanche) GetAWMRelayerServiceDir() string {
 
 func (app *Avalanche) GetAWMRelayerServiceConfigPath() string {
 	return filepath.Join(app.GetAWMRelayerServiceDir(), constants.AWMRelayerConfigFilename)
+}
+
+func (app *Avalanche) GetAWMRelayerServiceStorageDir() string {
+	return filepath.Join(app.GetAWMRelayerServiceDir(), constants.AWMRelayerStorageDir)
 }
 
 func (app *Avalanche) GetExtraLocalNetworkDataPath() string {
