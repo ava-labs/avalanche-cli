@@ -792,10 +792,6 @@ func (app *Avalanche) GetNodeConfigJSONFile(nodeID string) string {
 	return filepath.Join(app.GetAnsibleDir(), nodeID, constants.NodeConfigJSONFile)
 }
 
-func (app *Avalanche) GetMonitoringScriptFile() string {
-	return filepath.Join(app.GetMonitoringDir(), constants.MonitoringScriptFile)
-}
-
 func (app *Avalanche) GetClusterYAMLFilePath(clusterName string) string {
 	return filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.ClusterYAMLFileName)
 }
