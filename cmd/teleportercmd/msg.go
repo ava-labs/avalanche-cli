@@ -121,7 +121,7 @@ func msg(_ *cobra.Command, args []string) error {
 		AllowedRelayerAddresses: []common.Address{},
 		Message:                 []byte(message),
 	}
-	ux.Logger.PrintToUser("Delivering message %q from source subnet %q", message, sourceSubnetName)
+	ux.Logger.PrintToUser("Delivering message %q from source subnet %q (%s)", message, sourceSubnetName, sourceChainID)
 	tx, err := sourceMessenger.SendCrossChainMessage(sourceSigner, msgInput)
 	if err != nil {
 		return err
@@ -146,7 +146,7 @@ func msg(_ *cobra.Command, args []string) error {
 	}
 
 	// receive and process head from destination
-	ux.Logger.PrintToUser("Waiting for message to be received on destination subnet %q", destSubnetName)
+	ux.Logger.PrintToUser("Waiting for message to be received on destination subnet %q (%s)", destSubnetName, destChainID)
 	var head *types.Header
 	select {
 	case head = <-destHeadsCh:
