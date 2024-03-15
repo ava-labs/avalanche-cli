@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
 	"github.com/ethereum/go-ethereum/crypto"
+	subnetEvmUtils "github.com/ava-labs/subnet-evm/tests/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ethereum/go-ethereum/common"
@@ -123,6 +124,29 @@ func FundAddress(
 	}
 	return nil
 }
+
+func ActivateProposerVM(
+	client ethclient.Client,
+	privateKeyStr string,
+) error {
+	privateKey, err := crypto.HexToECDSA(privateKeyStr)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	chainID, err := client.ChainID(ctx)
+	if err != nil {
+		return err
+	}
+	return subnetEvmUtils.IssueTxsToActivateProposerVMFork(
+		ctx,
+		chainID,
+		privateKey,
+		client,
+	)
+}
+
 
 func IssueTx(
 	client ethclient.Client,
