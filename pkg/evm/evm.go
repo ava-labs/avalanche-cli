@@ -226,3 +226,24 @@ func GetTrace(rpcURL string, txID string) (map[string]interface{}, error) {
 	err = client.CallContext(ctx, &result, "debug_traceTransaction", txID, map[string]string{"tracer": "callTracer"})
 	return result, err
 }
+
+func SetupProposerVM(
+	endpoint string,
+	privKeyStr string,
+) error {
+	client, err := GetClient(endpoint)
+	if err != nil {
+		return fmt.Errorf("failure connecting to %s: %w", endpoint, err)
+	}
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	chainID, err := client.ChainID(ctx)
+	if err != nil {
+		return err
+	}
+	privKey, err := crypto.HexToECDSA(privKeyStr)
+	if err != nil {
+		return err
+	}
+	return subnetEvmUtils.IssueTxsToActivateProposerVMFork(ctx, chainID, privKey, client)
+}
