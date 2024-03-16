@@ -101,6 +101,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 
 func CallDeploy(
 	cmd *cobra.Command,
+	subnetOnlyParam bool,
 	subnetName string,
 	networkFlags networkoptions.NetworkFlags,
 	keyNameParam string,
@@ -108,6 +109,7 @@ func CallDeploy(
 	useEwoqParam bool,
 	sameControlKeyParam bool,
 ) error {
+	subnetOnly = subnetOnlyParam
 	globalNetworkFlags = networkFlags
 	sameControlKey = sameControlKeyParam
 	keyName = keyNameParam

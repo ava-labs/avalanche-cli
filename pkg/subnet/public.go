@@ -40,6 +40,7 @@ type PublicDeployer struct {
 	kc      *keychain.Keychain
 	network models.Network
 	app     *application.Avalanche
+	wallet  primary.Wallet
 }
 
 func NewPublicDeployer(app *application.Avalanche, kc *keychain.Keychain, network models.Network) *PublicDeployer {
@@ -58,6 +59,7 @@ func NewPublicDeployer(app *application.Avalanche, kc *keychain.Keychain, networ
 //   - if partially signed, returns the tx so that it can later on be signed by the rest of the subnet auth keys
 //   - if fully signed, issues it
 func (d *PublicDeployer) AddValidator(
+	justIssueTx bool,
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
@@ -67,7 +69,7 @@ func (d *PublicDeployer) AddValidator(
 	startTime time.Time,
 	duration time.Duration,
 ) (bool, *txs.Tx, []string, error) {
-	wallet, err := d.loadWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadCacheWallet(subnetID, transferSubnetOwnershipTxID)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -98,7 +100,7 @@ func (d *PublicDeployer) AddValidator(
 	isFullySigned := len(remainingSubnetAuthKeys) == 0
 
 	if isFullySigned {
-		id, err := d.Commit(tx)
+		id, err := d.Commit(tx, justIssueTx)
 		if err != nil {
 			return false, nil, nil, err
 		}
@@ -124,7 +126,7 @@ func (d *PublicDeployer) TransferSubnetOwnership(
 	newControlKeys []string,
 	newThreshold uint32,
 ) (bool, *txs.Tx, []string, error) {
-	wallet, err := d.loadWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadCacheWallet(subnetID, transferSubnetOwnershipTxID)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -152,7 +154,7 @@ func (d *PublicDeployer) TransferSubnetOwnership(
 	isFullySigned := len(remainingSubnetAuthKeys) == 0
 
 	if isFullySigned {
-		id, err := d.Commit(tx)
+		id, err := d.Commit(tx, false)
 		if err != nil {
 			return false, nil, nil, err
 		}
@@ -265,7 +267,7 @@ func (d *PublicDeployer) TransformSubnetTx(
 	transferSubnetOwnershipTxID ids.ID,
 	subnetAssetID ids.ID,
 ) (bool, ids.ID, *txs.Tx, []string, error) {
-	wallet, err := d.loadWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadCacheWallet(subnetID, transferSubnetOwnershipTxID)
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}
@@ -287,7 +289,7 @@ func (d *PublicDeployer) TransformSubnetTx(
 	isFullySigned := len(remainingSubnetAuthKeys) == 0
 
 	if isFullySigned {
-		txID, err := d.Commit(tx)
+		txID, err := d.Commit(tx, false)
 		if err != nil {
 			return false, ids.Empty, nil, nil, err
 		}
@@ -314,7 +316,7 @@ func (d *PublicDeployer) RemoveValidator(
 	transferSubnetOwnershipTxID ids.ID,
 	nodeID ids.NodeID,
 ) (bool, *txs.Tx, []string, error) {
-	wallet, err := d.loadWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadCacheWallet(subnetID, transferSubnetOwnershipTxID)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -337,7 +339,7 @@ func (d *PublicDeployer) RemoveValidator(
 	isFullySigned := len(remainingSubnetAuthKeys) == 0
 
 	if isFullySigned {
-		id, err := d.Commit(tx)
+		id, err := d.Commit(tx, false)
 		if err != nil {
 			return false, nil, nil, err
 		}
@@ -432,7 +434,7 @@ func (d *PublicDeployer) DeployBlockchain(
 ) (bool, ids.ID, *txs.Tx, []string, error) {
 	ux.Logger.PrintToUser("Now creating blockchain...")
 
-	wallet, err := d.loadWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadCacheWallet(subnetID, transferSubnetOwnershipTxID)
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}
@@ -462,7 +464,7 @@ func (d *PublicDeployer) DeployBlockchain(
 
 	id := ids.Empty
 	if isFullySigned {
-		id, err = d.Commit(tx)
+		id, err = d.Commit(tx, false)
 		if err != nil {
 			return false, ids.Empty, nil, nil, err
 		}
@@ -473,14 +475,19 @@ func (d *PublicDeployer) DeployBlockchain(
 
 func (d *PublicDeployer) Commit(
 	tx *txs.Tx,
+	justIssueTx bool,
 ) (ids.ID, error) {
-	wallet, err := d.loadWallet()
+	wallet, err := d.loadCacheWallet()
 	if err != nil {
 		return ids.Empty, err
 	}
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
-	err = wallet.P().IssueTx(tx, common.WithContext(ctx))
+	options := []common.Option{common.WithContext(ctx)}
+	if justIssueTx {
+		options = append(options, common.WithAssumeDecided())
+	}
+	err = wallet.P().IssueTx(tx, options...)
 	if err != nil {
 		if ctx.Err() != nil {
 			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
@@ -539,6 +546,14 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error
 		return nil, err
 	}
 	return wallet, nil
+}
+
+func (d *PublicDeployer) loadCacheWallet(preloadTxs ...ids.ID) (primary.Wallet, error) {
+	var err error
+	if d.wallet == nil {
+		d.wallet, err = d.loadWallet(preloadTxs...)
+	}
+	return d.wallet, err
 }
 
 func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []ids.ShortID) []common.Option {

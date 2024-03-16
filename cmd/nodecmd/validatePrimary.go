@@ -46,7 +46,8 @@ var (
 	useCustomDuration            bool
 	ErrMutuallyExlusiveKeyLedger = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet        = errors.New("--key is not available for mainnet operations")
-	ErrNoBlockchainID            = errors.New("failed to find the blockchain ID for this subnet, has it been deployed/created on this network?")
+	errNoBlockchainID            = errors.New("failed to find the blockchain ID for this subnet, has it been deployed/created on this network?")
+	errNoSubnetID                = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 )
 
 func newValidatePrimaryCmd() *cobra.Command {
@@ -253,7 +254,6 @@ func getNodeIDs(hosts []*models.Host) (map[string]string, map[string]error) {
 			failedNodes[host.NodeID] = err
 			continue
 		}
-		ux.Logger.PrintToUser("Avalanche node id for host %s is %s", host.NodeID, nodeID)
 		nodeIDMap[host.NodeID] = nodeID.String()
 	}
 	return nodeIDMap, failedNodes

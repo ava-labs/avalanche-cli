@@ -64,7 +64,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 		}
 		blockchainID = sc.Networks[clusterConf.Network.Name()].BlockchainID
 		if blockchainID == ids.Empty {
-			return ErrNoBlockchainID
+			return errNoBlockchainID
 		}
 	}
 	hostIDs := utils.Filter(clusterConf.GetCloudIDs(), clusterConf.IsAvalancheGoHost)

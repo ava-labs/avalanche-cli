@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -210,18 +211,58 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Deploying the subnet"))
+	ux.Logger.PrintToUser(logging.Green.Wrap("Checking subnet compatibility"))
 	ux.Logger.PrintToUser("")
+	if err := checkRPCCompatibility(clusterName, subnetName); err != nil {
+		return err
+	}
+
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("Creating the subnet"))
+	ux.Logger.PrintToUser("")
+	subnetOnly = true
+	avoidChecks = true
 	if err := deploySubnet(cmd, []string{clusterName, subnetName}); err != nil {
 		return err
 	}
+
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("Adding nodes as subnet validators"))
+	ux.Logger.PrintToUser("")
+	avoidSubnetValidationChecks = true
+	justIssueTx = true
+	if err := validateSubnet(cmd, []string{clusterName, subnetName}); err != nil {
+		return err
+	}
+
+	network, err := app.GetClusterNetwork(clusterName)
+	if err != nil {
+		return err
+	}
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
+	}
+	subnetID := sc.Networks[network.Name()].SubnetID
+	if subnetID == ids.Empty {
+		return errNoSubnetID
+	}
+
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("Waiting for nodes to be validating the subnet"))
+	ux.Logger.PrintToUser("")
+	if err := waitForSubnetValidators(network, clusterName, subnetID, validateCheckTimeout, validateCheckPoolTime); err != nil {
+		return err
+	}
+
+	return nil
 
 	isEVMGenesis, err := subnetcmd.HasSubnetEVMGenesis(subnetName)
 	if err != nil {
 		return err
 	}
 
-	sc, err := app.LoadSidecar(subnetName)
+	sc, err = app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
 	}
@@ -261,21 +302,11 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err
 	}
-	network, err := app.GetClusterNetwork(clusterName)
-	if err != nil {
-		return err
-	}
 	blockchainID := sc.Networks[network.Name()].BlockchainID
 	if blockchainID == ids.Empty {
-		return ErrNoBlockchainID
+		return errNoBlockchainID
 	}
 	if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Syncing, syncCheckTimeout, syncCheckPoolTime); err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Adding nodes as subnet validators"))
-	ux.Logger.PrintToUser("")
-	if err := validateSubnet(cmd, []string{clusterName, subnetName}); err != nil {
 		return err
 	}
 	if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Validating, validateCheckTimeout, validateCheckPoolTime); err != nil {
@@ -444,6 +475,29 @@ func deployClusterYAMLFile(clusterName, subnetName string) error {
 	return nil
 }
 
+func checkRPCCompatibility(
+	clusterName string,
+	subnetName string,
+) error {
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return err
+	}
+	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	hosts := clusterConfig.GetValidatorHosts(allHosts) // exlude api nodes
+	if len(validators) != 0 {
+		hosts, err = filterHosts(hosts, validators)
+		if err != nil {
+			return err
+		}
+	}
+	defer disconnectHosts(hosts)
+	return checkAvalancheGoVersionCompatibleWithMsg(hosts, subnetName)
+}
+
 func waitForHealthyCluster(
 	clusterName string,
 	timeout time.Duration,
@@ -490,6 +544,71 @@ func waitForHealthyCluster(
 			}
 			ux.Logger.PrintToUser("")
 			return fmt.Errorf("cluster not healthy after %d seconds", uint32(timeout.Seconds()))
+		}
+		time.Sleep(poolTime)
+	}
+}
+
+func waitForSubnetValidators(
+	network models.Network,
+	clusterName string,
+	subnetID ids.ID,
+	timeout time.Duration,
+	poolTime time.Duration,
+) error {
+	ux.Logger.PrintToUser("Waiting for node(s) in cluster %s to be validators of subnet ID %s...", clusterName, subnetID)
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return err
+	}
+	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	hosts := clusterConfig.GetValidatorHosts(allHosts) // exlude api nodes
+	if len(validators) != 0 {
+		hosts, err = filterHosts(hosts, validators)
+		if err != nil {
+			return err
+		}
+	}
+	defer disconnectHosts(hosts)
+	nodeIDMap, failedNodesMap := getNodeIDs(hosts)
+	startTime := time.Now()
+	for {
+		failedNodes := []string{}
+		for _, host := range hosts {
+			nodeIDStr, b := nodeIDMap[host.NodeID]
+			if !b {
+				err, b := failedNodesMap[host.NodeID]
+				if !b {
+					return fmt.Errorf("expected to found an error for non mapped node")
+				}
+				return err
+			}
+			nodeID, err := ids.NodeIDFromString(nodeIDStr)
+			if err != nil {
+				return err
+			}
+			isValidator, err := subnet.IsSubnetValidator(subnetID, nodeID, network)
+			if err != nil {
+				return err
+			}
+			if !isValidator {
+				failedNodes = append(failedNodes, host.GetCloudID())
+			}
+		}
+		if len(failedNodes) == 0 {
+			ux.Logger.PrintToUser("Nodes validating subnet ID %s after %d seconds", subnetID, uint32(time.Since(startTime).Seconds()))
+			return nil
+		}
+		if time.Since(startTime) > timeout {
+			ux.Logger.PrintToUser("Nodes not validating subnet ID %sf", subnetID)
+			for _, failedNode := range failedNodes {
+				ux.Logger.PrintToUser("  " + failedNode)
+			}
+			ux.Logger.PrintToUser("")
+			return fmt.Errorf("cluster %s not validating subnet ID %s after %d seconds", clusterName, subnetID, uint32(timeout.Seconds()))
 		}
 		time.Sleep(poolTime)
 	}
