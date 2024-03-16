@@ -218,9 +218,8 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Creating the subnet"))
+	ux.Logger.PrintToUser(logging.Green.Wrap("Creating the blockchain"))
 	ux.Logger.PrintToUser("")
-	subnetOnly = true
 	avoidChecks = true
 	if err := deploySubnet(cmd, []string{clusterName, subnetName}); err != nil {
 		return err
@@ -252,19 +251,6 @@ func wiz(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser(logging.Green.Wrap("Waiting for nodes to be validating the subnet"))
 	ux.Logger.PrintToUser("")
 	if err := waitForSubnetValidators(network, clusterName, subnetID, validateCheckTimeout, validateCheckPoolTime); err != nil {
-		return err
-	}
-
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Creating the blockchain"))
-	ux.Logger.PrintToUser("")
-	subnetOnly = false
-	if err := deploySubnet(cmd, []string{clusterName, subnetName}); err != nil {
-		return err
-	}
-	// reload sidecar with updated blockchain ID
-	sc, err = app.LoadSidecar(subnetName)
-	if err != nil {
 		return err
 	}
 
