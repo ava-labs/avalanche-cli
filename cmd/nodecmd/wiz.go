@@ -255,20 +255,25 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return nil
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("Creating the blockchain"))
+	ux.Logger.PrintToUser("")
+	subnetOnly = false
+	if err := deploySubnet(cmd, []string{clusterName, subnetName}); err != nil {
+		return err
+	}
+	// reload sidecar with updated blockchain ID
+	sc, err = app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
+	}
 
 	isEVMGenesis, err := subnetcmd.HasSubnetEVMGenesis(subnetName)
 	if err != nil {
 		return err
 	}
 
-	sc, err = app.LoadSidecar(subnetName)
-	if err != nil {
-		return err
-	}
-
 	var awmRelayerHost *models.Host
-
 	if sc.TeleporterReady && isEVMGenesis {
 		// get or set AWM Relayer host and configure/stop service
 		awmRelayerHost, err = getAWMRelayerHost(clusterName)
@@ -305,9 +310,6 @@ func wiz(cmd *cobra.Command, args []string) error {
 	blockchainID := sc.Networks[network.Name()].BlockchainID
 	if blockchainID == ids.Empty {
 		return errNoBlockchainID
-	}
-	if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Syncing, syncCheckTimeout, syncCheckPoolTime); err != nil {
-		return err
 	}
 	if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Validating, validateCheckTimeout, validateCheckPoolTime); err != nil {
 		return err

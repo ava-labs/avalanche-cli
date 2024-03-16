@@ -438,7 +438,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		ux.Logger.PrintToUser(logging.Green.Wrap(
+		ux.Logger.PrintToUser(logging.Blue.Wrap(
 			fmt.Sprintf("Deploying into pre-existent subnet ID %s", subnetID.String()),
 		))
 		controlKeys, threshold, err = txutils.GetOwners(network, subnetID, transferSubnetOwnershipTxID)

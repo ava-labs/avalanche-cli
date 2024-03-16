@@ -33,6 +33,7 @@ You can check the subnet bootstrap status by calling avalanche node status <clus
 	}
 
 	cmd.Flags().StringSliceVar(&validators, "validators", []string{}, "sync subnet into given comma separated list of validators. defaults to all cluster nodes")
+	cmd.Flags().BoolVar(&avoidChecks, "no-checks", false, "do not check for bootstrapped/healthy status or rpc compatibility of nodes against subnet")
 
 	return cmd
 }
@@ -57,14 +58,16 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 		}
 	}
 	defer disconnectHosts(hosts)
-	if err := checkHostsAreBootstrappedWithMsg(hosts); err != nil {
-		return err
-	}
-	if err := checkHostsAreHealthyWithMsg(hosts); err != nil {
-		return err
-	}
-	if err := checkAvalancheGoVersionCompatibleWithMsg(hosts, subnetName); err != nil {
-		return err
+	if !avoidChecks {
+		if err := checkHostsAreBootstrappedWithMsg(hosts); err != nil {
+			return err
+		}
+		if err := checkHostsAreHealthyWithMsg(hosts); err != nil {
+			return err
+		}
+		if err := checkAvalancheGoVersionCompatibleWithMsg(hosts, subnetName); err != nil {
+			return err
+		}
 	}
 	untrackedNodes, err := trackSubnet(hosts, clusterName, subnetName)
 	if err != nil {
