@@ -291,7 +291,6 @@ func wiz(cmd *cobra.Command, args []string) error {
 		} else {
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser(logging.Green.Wrap("Stopping AWM Relayer Service"))
-			ux.Logger.PrintToUser("")
 			if err := ssh.RunSSHStopAWMRelayerService(awmRelayerHost); err != nil {
 				return err
 			}
@@ -339,6 +338,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	} else {
 		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is successfully created and is now validating subnet %s!"), clusterName, subnetName)
 	}
+	ux.Logger.PrintToUser("")
 
 	if err := deployClusterYAMLFile(clusterName, subnetName); err != nil {
 		return err
@@ -383,7 +383,6 @@ func setAWMRelayerHost(host *models.Host) error {
 }
 
 func updateAWMRelayerHostConfig(host *models.Host, subnetName string, clusterName string) error {
-	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("setting AWM Relayer on host %s to relay subnet %s", host.GetCloudID(), subnetName)
 	flags := teleportercmd.AddSubnetToRelayerServiceFlags{
 		Network: networkoptions.NetworkFlags{
