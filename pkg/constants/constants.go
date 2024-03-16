@@ -161,7 +161,7 @@ const (
 	// Disable it for releases to save cluster creation time
 	EnableSetupCLIFromSource           = true
 	SetupCLIFromSourceBranch           = "relayer-on-devnet"
-	BuildEnvGolangVersion              = "1.21.1"
+	BuildEnvGolangVersion              = "1.22.1"
 	IsHealthyJSONFile                  = "isHealthy.json"
 	IsBootstrappedJSONFile             = "isBootstrapped.json"
 	AvalancheGoVersionJSONFile         = "avalancheGoVersion.json"
