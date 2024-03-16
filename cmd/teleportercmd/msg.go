@@ -131,7 +131,18 @@ func msg(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if !b {
-		return fmt.Errorf("source receipt status is not ReceiptStatusSuccessful")
+		txHash := tx.Hash().String()
+		ux.Logger.PrintToUser("error: source receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
+		trace, err := evm.GetTrace(network.BlockchainEndpoint(sourceChainID.String()), txHash)
+		if err != nil {
+			ux.Logger.PrintToUser("error obtaining tx trace: %s", err)
+			ux.Logger.PrintToUser("")
+		} else {
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("trace: %#v", trace)
+			ux.Logger.PrintToUser("")
+		}
+		return fmt.Errorf("source receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
 	}
 	sourceEvent, err := evm.GetEventFromLogs(sourceReceipt.Logs, sourceMessenger.ParseSendCrossChainMessage)
 	if err != nil {
@@ -174,7 +185,18 @@ func msg(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if destReceipt.Status != types.ReceiptStatusSuccessful {
-		return fmt.Errorf("dest receipt status for tx %s is not ReceiptStatusSuccessful", block.Transactions()[0].Hash())
+		txHash := block.Transactions()[0].Hash().String()
+		ux.Logger.PrintToUser("error: dest receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
+		trace, err := evm.GetTrace(network.BlockchainEndpoint(destChainID.String()), txHash)
+		if err != nil {
+			ux.Logger.PrintToUser("error obtaining tx trace: %s", err)
+			ux.Logger.PrintToUser("")
+		} else {
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("trace: %#v", trace)
+			ux.Logger.PrintToUser("")
+		}
+		return fmt.Errorf("dest receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
 	}
 	destEvent, err := evm.GetEventFromLogs(destReceipt.Logs, destMessenger.ParseReceiveCrossChainMessage)
 	if err != nil {

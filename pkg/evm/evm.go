@@ -9,8 +9,9 @@ import (
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ava-labs/subnet-evm/rpc"
 	subnetEvmUtils "github.com/ava-labs/subnet-evm/tests/utils"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ethereum/go-ethereum/common"
@@ -147,7 +148,6 @@ func ActivateProposerVM(
 	)
 }
 
-
 func IssueTx(
 	client ethclient.Client,
 	txStr string,
@@ -213,4 +213,16 @@ func GetEventFromLogs[T any](logs []*types.Log, parser func(log types.Log) (T, e
 		}
 	}
 	return *new(T), fmt.Errorf("failed to find %T event in receipt logs", *new(T))
+}
+
+func GetTrace(rpcURL string, txID string) (map[string]interface{}, error) {
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	client, err := rpc.DialContext(ctx, rpcURL)
+	if err != nil {
+		return nil, err
+	}
+	var result map[string]interface{}
+	err = client.CallContext(ctx, &result, "debug_traceTransaction", txID, map[string]string{"tracer": "callTracer"})
+	return result, err
 }
