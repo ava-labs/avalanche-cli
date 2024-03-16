@@ -87,6 +87,7 @@ func GetMinStakingAmount(network models.Network) (uint64, error) {
 }
 
 func joinAsPrimaryNetworkValidator(
+	deployer *subnet.PublicDeployer,
 	network models.Network,
 	kc *keychain.Keychain,
 	nodeID ids.NodeID,
@@ -118,7 +119,6 @@ func joinAsPrimaryNetworkValidator(
 	}
 
 	recipientAddr := kc.Addresses().List()[0]
-	deployer := subnet.NewPublicDeployer(app, kc, network)
 	PrintNodeJoinPrimaryNetworkOutput(nodeID, weight, network, start)
 	// we set the starting time for node to be a Primary Network Validator to be in 1 minute
 	// we use min delegation fee as default
@@ -271,6 +271,7 @@ func checkNodeIsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Networ
 // addNodeAsPrimaryNetworkValidator returns bool if node is added as primary network validator
 // as it impacts the output in adding node as subnet validator in the next steps
 func addNodeAsPrimaryNetworkValidator(
+	deployer *subnet.PublicDeployer,
 	network models.Network,
 	kc *keychain.Keychain,
 	nodeID ids.NodeID,
@@ -283,7 +284,7 @@ func addNodeAsPrimaryNetworkValidator(
 	}
 	if !isValidator {
 		signingKeyPath := app.GetNodeBLSSecretKeyPath(instanceID)
-		if err = joinAsPrimaryNetworkValidator(network, kc, nodeID, nodeIndex, signingKeyPath, true); err != nil {
+		if err = joinAsPrimaryNetworkValidator(deployer, network, kc, nodeID, nodeIndex, signingKeyPath, true); err != nil {
 			return false, err
 		}
 		ux.Logger.PrintToUser(fmt.Sprintf("Node %s successfully added as Primary Network validator!", nodeID.String()))
@@ -326,6 +327,8 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	deployer := subnet.NewPublicDeployer(app, kc, network)
+
 	notBootstrappedNodes, err := checkHostsAreBootstrapped(hosts)
 	if err != nil {
 		return err
@@ -367,7 +370,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 			nodeErrors[host.NodeID] = err
 			continue
 		}
-		_, err = addNodeAsPrimaryNetworkValidator(network, kc, nodeID, i, clusterNodeID)
+		_, err = addNodeAsPrimaryNetworkValidator(deployer, network, kc, nodeID, i, clusterNodeID)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host.NodeID, err)
 			nodeErrors[host.NodeID] = err
