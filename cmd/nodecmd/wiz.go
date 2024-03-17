@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -300,6 +301,13 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("Updating Proporser VMs"))
+	ux.Logger.PrintToUser("")
+	if err := UpdateProposerVMs(network); err != nil {
+		return err
+	}
+
 	if sc.TeleporterReady && isEVMGenesis {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Setting up teleporter on subnet"))
@@ -330,6 +338,37 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	return nil
+}
+
+func UpdateProposerVMs(
+	network models.Network,
+) error {
+	clusterConfig, err := app.GetClusterConfig(network.ClusterName)
+	if err != nil {
+		return err
+	}
+	for _, deployedSubnetName := range clusterConfig.Subnets {
+		deployedSubnetIsEVMGenesis, err := subnetcmd.HasSubnetEVMGenesis(deployedSubnetName)
+		if err != nil {
+			return err
+		}
+		deployedSubnetSc, err := app.LoadSidecar(deployedSubnetName)
+		if err != nil {
+			return err
+		}
+		if deployedSubnetSc.TeleporterReady && deployedSubnetIsEVMGenesis {
+			ux.Logger.PrintToUser("updating proposerVM on %s", deployedSubnetName)
+			blockchainID := deployedSubnetSc.Networks[network.Name()].BlockchainID
+			if blockchainID == ids.Empty {
+				return errNoBlockchainID
+			}
+			if err := teleporter.SetProposerVM(app, network, blockchainID.String(), deployedSubnetSc.TeleporterKey); err != nil {
+				return err
+			}
+		}
+	}
+	ux.Logger.PrintToUser("updating proposerVM on c-chain")
+	return teleporter.SetProposerVM(app, network, "C", "")
 }
 
 func getHostWithCloudID(clusterName string, cloudID string) (*models.Host, error) {

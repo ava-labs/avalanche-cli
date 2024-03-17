@@ -25,6 +25,7 @@ type ClusterConfig struct {
 	Network            Network
 	MonitoringInstance string // instance ID of the separate monitoring instance (if any)
 	ExtraNetworkData   ExtraNetworkData
+	Subnets            []string
 }
 
 type ClustersConfig struct {
