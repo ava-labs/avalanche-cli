@@ -8,9 +8,11 @@ import (
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
@@ -19,14 +21,12 @@ import (
 )
 
 const art = `
-  _____      _                              _   _      _                      _      _____
- |  __ \    (_)                            | \ | |    | |                    | |    |  __ \
- | |__) | __ _ _ __ ___   __ _ _ __ _   _  |  \| | ___| |___      _____  _ __| | __ | |__) |_ _ _ __ __ _ _ __ ___  ___
- |  ___/ '__| | '_   _ \ / _  | '__| | | | | .   |/ _ \ __\ \ /\ / / _ \| '__| |/ / |  ___/ _  | '__/ _  | '_   _ \/ __|
- | |   | |  | | | | | | | (_| | |  | |_| | | |\  |  __/ |_ \ V  V / (_) | |  |   <  | |  | (_| | | | (_| | | | | | \__ \
- |_|   |_|  |_|_| |_| |_|\__,_|_|   \__, | |_| \_|\___|\__| \_/\_/ \___/|_|  |_|\_\ |_|   \__,_|_|  \__,_|_| |_| |_|___/
-                                     __/ |
-                                    |___/
+   _____       _____ _           _         _____
+  / ____|     / ____| |         (_)       |  __ \
+ | |   ______| |    | |__   __ _ _ _ __   | |__) |_ _ _ __ __ _ _ __ ___  ___ 
+ | |  |______| |    | '_ \ / _  | | '_ \  |  ___/ _  | '__/ _  | '_   _ \/ __|
+ | |____     | |____| | | | (_| | | | | | | |  | (_| | | | (_| | | | | | \__ \
+  \_____|     \_____|_| |_|\__,_|_|_| |_| |_|   \__,_|_|  \__,_|_| |_| |_|___/
 `
 
 var describeSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster}
@@ -92,18 +92,35 @@ func describe(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+	k, err := key.LoadEwoq(network.ID)
+	if err != nil {
+		return err
+	}
+	address := k.C()
+	privKey := hex.EncodeToString(k.Raw())
+	balance, err := evm.GetAddressBalance(client, address)
+	if err != nil {
+		return err
+	}
+	fmt.Println(balance)
+	fmt.Println(balance.Uint64())
+	balanceStr := fmt.Sprintf("%.9f", float64(balance.Uint64())/float64(units.Avax))
 	table := tablewriter.NewWriter(os.Stdout)
 	header := []string{"Parameter", "Value"}
 	table.SetHeader(header)
 	table.SetRowLine(true)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
-	table.Append([]string{"C-Chain RPC URL", rpcURL})
-	table.Append([]string{"C-Chain EVM Chain ID", fmt.Sprint(evmChainID)})
-	table.Append([]string{"C-Chain BlockchainID", blockchainID.String()})
-	table.Append([]string{"C-Chain BlockchainID", blockchainIDHexEncoding})
-	table.Append([]string{"C-Chain Teleporter Messenger Address", teleporterMessengerAddress})
-	table.Append([]string{"C-Chain Teleporter Registry Address", teleporterRegistryAddress})
+	table.Append([]string{"RPC URL", rpcURL})
+	table.Append([]string{"EVM Chain ID", fmt.Sprint(evmChainID)})
+	table.Append([]string{"TOKEN SYMBOL", "AVAX"})
+	table.Append([]string{"Address", address})
+	table.Append([]string{"Balance", balanceStr})
+	table.Append([]string{"Private Key", privKey})
+	table.Append([]string{"Teleporter Messenger Address", teleporterMessengerAddress})
+	table.Append([]string{"Teleporter Registry Address", teleporterRegistryAddress})
+	table.Append([]string{"BlockchainID", blockchainID.String()})
+	table.Append([]string{"BlockchainID", blockchainIDHexEncoding})
 	table.Render()
 	return nil
 }
