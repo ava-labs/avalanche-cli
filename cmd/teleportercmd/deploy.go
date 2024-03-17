@@ -101,10 +101,8 @@ func CallDeploy(subnetName string, flags networkoptions.NetworkFlags) error {
 		}
 		if !alreadyDeployed {
 			if network.Kind == models.Local {
-				if !alreadyDeployed {
-					if err := subnet.WriteExtraLocalNetworkData(app, teleporterMessengerAddress, teleporterRegistryAddress); err != nil {
-						return err
-					}
+				if err := subnet.WriteExtraLocalNetworkData(app, teleporterMessengerAddress, teleporterRegistryAddress); err != nil {
+					return err
 				}
 			}
 			if network.ClusterName != "" {
