@@ -99,24 +99,26 @@ func CallDeploy(subnetName string, flags networkoptions.NetworkFlags) error {
 		if err != nil {
 			return err
 		}
-		if network.Kind == models.Local {
-			if !alreadyDeployed {
-				if err := subnet.WriteExtraLocalNetworkData(app, teleporterMessengerAddress, teleporterRegistryAddress); err != nil {
-					return err
+		if !alreadyDeployed {
+			if network.Kind == models.Local {
+				if !alreadyDeployed {
+					if err := subnet.WriteExtraLocalNetworkData(app, teleporterMessengerAddress, teleporterRegistryAddress); err != nil {
+						return err
+					}
 				}
 			}
-		}
-		if network.ClusterName != "" {
-			clusterConfig, err := app.GetClusterConfig(network.ClusterName)
-			if err != nil {
-				return err
-			}
-			clusterConfig.ExtraNetworkData = models.ExtraNetworkData{
-				CChainTeleporterMessengerAddress: teleporterMessengerAddress,
-				CChainTeleporterRegistryAddress:  teleporterRegistryAddress,
-			}
-			if err := app.SetClusterConfig(network.ClusterName, clusterConfig); err != nil {
-				return err
+			if network.ClusterName != "" {
+				clusterConfig, err := app.GetClusterConfig(network.ClusterName)
+				if err != nil {
+					return err
+				}
+				clusterConfig.ExtraNetworkData = models.ExtraNetworkData{
+					CChainTeleporterMessengerAddress: teleporterMessengerAddress,
+					CChainTeleporterRegistryAddress:  teleporterRegistryAddress,
+				}
+				if err := app.SetClusterConfig(network.ClusterName, clusterConfig); err != nil {
+					return err
+				}
 			}
 		}
 	}
