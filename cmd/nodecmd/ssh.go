@@ -156,13 +156,6 @@ func sshHosts(hosts []*models.Host, cmd string, clusterConf models.ClusterConfig
 				if !isParallel {
 					nowExecutingMutex.Lock()
 					defer nowExecutingMutex.Unlock()
-					//if argIsClusterName {
-					//	if err := printNodeInfo(host, clusterConf); err != nil {
-					//		ux.Logger.PrintToUser("Error getting node %s info due to : %s", host.GetCloudID(), err)
-					//	}
-					//} else {
-					//	ux.Logger.PrintToUser("[%s]", host.GetCloudID())
-					//}
 					if err := printNodeInfo(host, clusterConf, ""); err != nil {
 						ux.Logger.PrintToUser("Error getting node %s info due to : %s", host.GetCloudID(), err)
 					}
