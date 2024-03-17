@@ -5,6 +5,7 @@ package primarycmd
 import (
 	"encoding/hex"
 	"fmt"
+	"math/big"
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
@@ -12,9 +13,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/units"
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
@@ -102,8 +103,7 @@ func describe(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(balance)
-	fmt.Println(balance.Uint64())
+	balance = balance.Div(balance, big.NewInt(int64(units.Avax)))
 	balanceStr := fmt.Sprintf("%.9f", float64(balance.Uint64())/float64(units.Avax))
 	table := tablewriter.NewWriter(os.Stdout)
 	header := []string{"Parameter", "Value"}
@@ -117,10 +117,10 @@ func describe(_ *cobra.Command, _ []string) error {
 	table.Append([]string{"Address", address})
 	table.Append([]string{"Balance", balanceStr})
 	table.Append([]string{"Private Key", privKey})
-	table.Append([]string{"Teleporter Messenger Address", teleporterMessengerAddress})
-	table.Append([]string{"Teleporter Registry Address", teleporterRegistryAddress})
 	table.Append([]string{"BlockchainID", blockchainID.String()})
 	table.Append([]string{"BlockchainID", blockchainIDHexEncoding})
+	table.Append([]string{"Teleporter Messenger Address", teleporterMessengerAddress})
+	table.Append([]string{"Teleporter Registry Address", teleporterRegistryAddress})
 	table.Render()
 	return nil
 }
