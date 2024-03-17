@@ -5,8 +5,11 @@ package primarycmd
 import (
 	"os"
 	"fmt"
+	"encoding/hex"
 
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -73,12 +76,32 @@ func describe(_ *cobra.Command, _ []string) error {
 		teleporterMessengerAddress = clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress
 		teleporterRegistryAddress = clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress
 	}
+	blockchainID, err := subnet.GetChainID(network, "C")
+	if err != nil {
+		return err
+	}
+	blockchainIDHexEncoding := "0x" + hex.EncodeToString(blockchainID[:])
+	rpcURL := network.CChainEndpoint()
+	client, err := evm.GetClient(rpcURL)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	evmChainID, err := client.ChainID(ctx)
+	if err != nil {
+		return err
+	}
 	table := tablewriter.NewWriter(os.Stdout)
 	header := []string{"Parameter", "Value"}
 	table.SetHeader(header)
 	table.SetRowLine(true)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
+	table.Append([]string{"C-Chain RPC URL", rpcURL})
+	table.Append([]string{"C-Chain EVM Chain ID", fmt.Sprint(evmChainID)})
+	table.Append([]string{"C-Chain BlockchainID", blockchainID.String()})
+	table.Append([]string{"C-Chain BlockchainID", blockchainIDHexEncoding})
 	table.Append([]string{"C-Chain Teleporter Messenger Address", teleporterMessengerAddress})
 	table.Append([]string{"C-Chain Teleporter Registry Address", teleporterRegistryAddress})
 	table.Render()
