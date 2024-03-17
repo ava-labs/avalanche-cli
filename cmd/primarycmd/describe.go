@@ -3,15 +3,15 @@
 package primarycmd
 
 import (
-	"os"
-	"fmt"
 	"encoding/hex"
+	"fmt"
+	"os"
 
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/olekukonko/tablewriter"
