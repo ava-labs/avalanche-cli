@@ -3,11 +3,15 @@
 package primarycmd
 
 import (
+	"os"
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
+	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
 
@@ -49,7 +53,34 @@ func describe(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	_ = network
 	fmt.Println(logging.LightBlue.Wrap(art))
+	var (
+		teleporterMessengerAddress string
+		teleporterRegistryAddress  string
+	)
+	if network.Kind == models.Local {
+		extraLocalNetworkData, err := subnet.GetExtraLocalNetworkData(app)
+		if err != nil {
+			return err
+		}
+		teleporterMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
+		teleporterRegistryAddress = extraLocalNetworkData.CChainTeleporterRegistryAddress
+	} else if network.ClusterName != "" {
+		clusterConfig, err := app.GetClusterConfig(network.ClusterName)
+		if err != nil {
+			return err
+		}
+		teleporterMessengerAddress = clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress
+		teleporterRegistryAddress = clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress
+	}
+	table := tablewriter.NewWriter(os.Stdout)
+	header := []string{"Parameter", "Value"}
+	table.SetHeader(header)
+	table.SetRowLine(true)
+	table.SetAlignment(tablewriter.ALIGN_LEFT)
+	table.SetAutoMergeCellsByColumnIndex([]int{0})
+	table.Append([]string{"C-Chain Teleporter Messenger Address", teleporterMessengerAddress})
+	table.Append([]string{"C-Chain Teleporter Registry Address", teleporterRegistryAddress})
+	table.Render()
 	return nil
 }
