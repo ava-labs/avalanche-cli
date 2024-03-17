@@ -127,21 +127,6 @@ func (t *Deployer) Deploy(
 	}
 }
 
-func (t *Deployer) AlreadyDeployed(
-	teleporterInstallDir string,
-	version string,
-	rpcURL string,
-) (bool, error) {
-	if err := t.DownloadAssets(teleporterInstallDir, version); err != nil {
-		return false, err
-	}
-	client, err := evm.GetClient(rpcURL)
-	if err != nil {
-		return false, fmt.Errorf("failure connecting to %s: %w", rpcURL, err)
-	}
-	return evm.ContractAlreadyDeployed(client, t.teleporterMessengerContractAddress)
-}
-
 func (t *Deployer) DeployMessenger(
 	teleporterInstallDir string,
 	version string,
@@ -275,38 +260,17 @@ func DeployAndFundRelayer(
 	}
 	endpoint := network.BlockchainEndpoint(blockchainID)
 	td := Deployer{}
-	// check
-	alreadyDeployed, err := td.AlreadyDeployed(
+	alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := td.Deploy(
 		app.GetTeleporterBinDir(),
 		teleporterVersion,
+		subnetName,
 		endpoint,
+		privKeyStr,
 	)
 	if err != nil {
 		return false, "", "", err
 	}
-	var (
-		teleporterMessengerAddress string
-		teleporterRegistryAddress  string
-	)
 	if !alreadyDeployed {
-		/*
-			// set proposer VM
-			wsEndpoint := network.BlockchainWSEndpoint(blockchainID)
-			if err := evm.SetupProposerVM(wsEndpoint, privKeyStr); err != nil {
-				return false, "", "", err
-			}
-		*/
-		// deploy
-		_, teleporterMessengerAddress, teleporterRegistryAddress, err = td.Deploy(
-			app.GetTeleporterBinDir(),
-			teleporterVersion,
-			subnetName,
-			endpoint,
-			privKeyStr,
-		)
-		if err != nil {
-			return false, "", "", err
-		}
 		// get relayer address
 		relayerAddress, _, err := GetRelayerKeyInfo(app.GetKeyPath(constants.AWMRelayerKeyName))
 		if err != nil {
@@ -320,8 +284,6 @@ func DeployAndFundRelayer(
 		); err != nil {
 			return false, "", "", err
 		}
-	} else {
-		teleporterMessengerAddress = td.teleporterMessengerContractAddress
 	}
 	return alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err
 }

@@ -301,11 +301,15 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Updating Proporser VMs"))
-	ux.Logger.PrintToUser("")
-	if err := UpdateProposerVMs(network); err != nil {
+	if b, err := hasTeleporterDeploys(clusterName); err != nil {
 		return err
+	} else if b {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(logging.Green.Wrap("Updating Proporser VMs"))
+		ux.Logger.PrintToUser("")
+		if err := updateProposerVMs(network); err != nil {
+			return err
+		}
 	}
 
 	if sc.TeleporterReady && isEVMGenesis {
@@ -340,7 +344,30 @@ func wiz(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func UpdateProposerVMs(
+func hasTeleporterDeploys(
+	clusterName string,
+) (bool, error) {
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return false, err
+	}
+	for _, deployedSubnetName := range clusterConfig.Subnets {
+		deployedSubnetIsEVMGenesis, err := subnetcmd.HasSubnetEVMGenesis(deployedSubnetName)
+		if err != nil {
+			return false, err
+		}
+		deployedSubnetSc, err := app.LoadSidecar(deployedSubnetName)
+		if err != nil {
+			return false, err
+		}
+		if deployedSubnetSc.TeleporterReady && deployedSubnetIsEVMGenesis {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func updateProposerVMs(
 	network models.Network,
 ) error {
 	clusterConfig, err := app.GetClusterConfig(network.ClusterName)
