@@ -1,0 +1,43 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+- url: http://{{ .IP }}:3100/loki/api/v1/push
+  tenant_id: avalanche
+
+scrape_configs:
+- job_name: system
+  static_configs:
+  - job_name: avalanchego
+    static_configs:
+    - targets:
+        - localhost
+      labels:
+        job: c-chain
+        __path__: /home/ubuntu/.avalanchego/logs/C.log
+    - targets:
+        - localhost
+      labels:
+        job: p-chain
+        __path__: /home/ubuntu/.avalanchego/logs/P.log
+    - targets:
+        - localhost
+      labels:
+        job: x-chain
+        __path__: /home/ubuntu/.avalanchego/logs/X.log
+    - targets:
+        - localhost
+      labels:
+        job: main
+        __path__: /home/ubuntu/.avalanchego/logs/main.log
+  - job_name: avalanchego-loadtest
+    static_configs:
+    - targets:
+        - localhost
+      labels:
+        job: loadtest
+        __path__: /home/ubuntu/loadtest-logs/*.log
