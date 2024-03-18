@@ -24,7 +24,7 @@ require (
 	github.com/okteto/remote v0.0.0-20210428052247-99de42c04148
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo/v2 v2.16.0
-	github.com/onsi/gomega v1.31.1
+	github.com/onsi/gomega v1.32.0
 	github.com/pborman/ansi v1.0.0
 	github.com/pingcap/errors v0.11.4
 	github.com/posthog/posthog-go v0.0.0-20221221115252-24dfed35d71a
