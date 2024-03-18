@@ -230,7 +230,6 @@ func wiz(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser(logging.Green.Wrap("Adding nodes as subnet validators"))
 	ux.Logger.PrintToUser("")
 	avoidSubnetValidationChecks = true
-	justIssueTx = true
 	if err := validateSubnet(cmd, []string{clusterName, subnetName}); err != nil {
 		return err
 	}
