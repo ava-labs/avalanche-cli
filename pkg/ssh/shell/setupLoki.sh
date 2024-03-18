@@ -5,5 +5,5 @@
 sudo cp -vf /usr/bin/true /usr/local/sbin/systemctl
 {{end}}
 #name:TASK [install loki]
-sudo apt-get -y -o DPkg::Lock::Timeout=120 install loki promtail
+sudo apt-get -y -o DPkg::Lock::Timeout=120 install loki
 sudo mkdir -p /var/lib/loki && sudo chown -R loki /var/lib/loki

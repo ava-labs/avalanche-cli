@@ -20,6 +20,7 @@ type configInputs struct {
 	AvalancheGoPorts string
 	MachinePorts     string
 	IP               string
+	Port             string
 }
 
 //go:embed dashboards/*
@@ -83,20 +84,23 @@ func WritePrometheusConfig(filePath string, avalancheGoPorts []string, machinePo
 	return os.WriteFile(filePath, []byte(config), constants.WriteReadReadPerms)
 }
 
-func WriteLokiConfig(filePath string) error {
-	config, err := GenerateConfig("configs/loki.yml", "Loki Config", configInputs{})
+func WriteLokiConfig(filePath string, port string) error {
+	config, err := GenerateConfig("configs/loki.yml", "Loki Config", configInputs{
+		Port: port,
+	})
 	if err != nil {
 		return err
 	}
 	return os.WriteFile(filePath, []byte(config), constants.WriteReadReadPerms)
 }
 
-func WritePromtailConfig(filePath string, IP string) error {
+func WritePromtailConfig(filePath string, IP string, port string) error {
 	if !utils.IsValidIP(IP) {
 		return fmt.Errorf("invalid IP address: %s", IP)
 	}
 	config, err := GenerateConfig("configs/promtail.yml", "Promtail Config", configInputs{
-		IP: IP,
+		IP:   IP,
+		Port: port,
 	})
 	if err != nil {
 		return err

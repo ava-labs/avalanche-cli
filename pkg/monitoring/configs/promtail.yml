@@ -5,7 +5,7 @@ positions:
   filename: /tmp/positions.yaml
 
 clients:
-- url: http://{{ .IP }}:23101/loki/api/v1/push
+- url: http://{{ .IP }}:{{ .Port}}/loki/api/v1/push
   tenant_id: avalanche
   headers:
     CF-Access-Client-Id: avalanche
