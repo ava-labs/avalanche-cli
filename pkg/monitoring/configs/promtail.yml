@@ -1,13 +1,14 @@
 server:
-  http_listen_port: 9080
-  grpc_listen_port: 0
+  disable: true
 
 positions:
   filename: /tmp/positions.yaml
 
 clients:
-- url: http://{{ .IP }}:3100/loki/api/v1/push
+- url: http://{{ .IP }}:23101/loki/api/v1/push
   tenant_id: avalanche
+  headers:
+    CF-Access-Client-Id: avalanche
 
 scrape_configs:
 - job_name: system

@@ -6,6 +6,7 @@ package monitoring
 import (
 	"bytes"
 	"embed"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,6 +19,7 @@ import (
 type configInputs struct {
 	AvalancheGoPorts string
 	MachinePorts     string
+	IP               string
 }
 
 //go:embed dashboards/*
@@ -74,6 +76,27 @@ func WritePrometheusConfig(filePath string, avalancheGoPorts []string, machinePo
 	config, err := GenerateConfig("configs/prometheus.yml", "Prometheus Config", configInputs{
 		AvalancheGoPorts: strings.Join(utils.AddSingleQuotes(avalancheGoPorts), ","),
 		MachinePorts:     strings.Join(utils.AddSingleQuotes(machinePorts), ","),
+	})
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filePath, []byte(config), constants.WriteReadReadPerms)
+}
+
+func WriteLokiConfig(filePath string) error {
+	config, err := GenerateConfig("configs/loki.yml", "Loki Config", configInputs{})
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filePath, []byte(config), constants.WriteReadReadPerms)
+}
+
+func WritePromtailConfig(filePath string, IP string) error {
+	if !utils.IsValidIP(IP) {
+		return fmt.Errorf("invalid IP address: %s", IP)
+	}
+	config, err := GenerateConfig("configs/promtail.yml", "Promtail Config", configInputs{
+		IP: IP,
 	})
 	if err != nil {
 		return err

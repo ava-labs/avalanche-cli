@@ -293,6 +293,58 @@ func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePo
 	)
 }
 
+func RunSSHUpdateLokiConfig(host *models.Host) error {
+	const cloudNodeLokiConfigTemp = "/tmp/loki.yml"
+	lokiConfig, err := os.CreateTemp("", "loki")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(lokiConfig.Name())
+	if err := monitoring.WriteLokiConfig(lokiConfig.Name()); err != nil {
+		return err
+	}
+	if err := host.Upload(
+		lokiConfig.Name(),
+		cloudNodeLokiConfigTemp,
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
+	}
+	return RunOverSSH(
+		"Update Loki Config",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/updateLokiConfig.sh",
+		scriptInputs{},
+	)
+}
+
+func RunSSHUpdatePromtailConfig(host *models.Host, IP string) error {
+	const cloudNodePromtailConfigTemp = "/tmp/promtail.yml"
+	promtailConfig, err := os.CreateTemp("", "promtail")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(promtailConfig.Name())
+	if err := monitoring.WritePromtailConfig(promtailConfig.Name(), IP); err != nil {
+		return err
+	}
+	if err := host.Upload(
+		promtailConfig.Name(),
+		cloudNodePromtailConfigTemp,
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
+	}
+	return RunOverSSH(
+		"Update Promtail Config",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/updatePromtailConfig.sh",
+		scriptInputs{},
+	)
+}
+
 func RunSSHDownloadNodePrometheusConfig(host *models.Host, nodeInstanceDirPath string) error {
 	return host.Download(
 		constants.CloudNodePrometheusConfigPath,

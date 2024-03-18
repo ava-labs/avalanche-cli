@@ -1,7 +1,7 @@
 auth_enabled: true
 
 server:
-  http_listen_port: 3100
+  http_listen_port: 23101
   grpc_listen_port: 9096
 
 common:
