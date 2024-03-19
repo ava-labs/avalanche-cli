@@ -157,7 +157,7 @@ func sshHosts(hosts []*models.Host, cmd string, clusterConf models.ClusterConfig
 					nowExecutingMutex.Lock()
 					defer nowExecutingMutex.Unlock()
 					if err := printNodeInfo(host, clusterConf, ""); err != nil {
-						ux.Logger.PrintToUser("Error getting node %s info due to : %s", host.GetCloudID(), err)
+						ux.Logger.RedXToUser("Error getting node %s info due to : %s", host.GetCloudID(), err)
 					}
 				}
 				defer wg.Done()
@@ -188,7 +188,7 @@ func sshHosts(hosts []*models.Host, cmd string, clusterConf models.ClusterConfig
 				for _, host := range hosts {
 					if host.GetCloudID() == hostID {
 						if err := printNodeInfo(host, clusterConf, fmt.Sprintf("%v", result)); err != nil {
-							ux.Logger.PrintToUser("Error getting node %s info due to : %s", host.GetCloudID(), err)
+							ux.Logger.RedXToUser("Error getting node %s info due to : %s", host.GetCloudID(), err)
 						}
 					}
 				}
