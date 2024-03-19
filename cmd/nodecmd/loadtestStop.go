@@ -5,13 +5,14 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
+	"os"
+
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 func newLoadTestStopCmd() *cobra.Command {
@@ -41,7 +42,6 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 	if existingSeparateInstance == "" {
 		return fmt.Errorf("no existing load test instance found in cluster %s", clusterName)
 	}
-	//cloudService := ""
 	nodeConfig, err := app.LoadClusterNodeConfig(existingSeparateInstance)
 	switch nodeConfig.CloudService {
 	case constants.AWSCloudService:
