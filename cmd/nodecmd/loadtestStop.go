@@ -5,7 +5,10 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"os"
+	"path/filepath"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
@@ -31,6 +34,22 @@ separate cloud server created to host the load test.`,
 	return cmd
 }
 
+// getSpecifiedHostFromInventoryFile return host object of specified instanceID from cluster inventory file
+func getSpecifiedHostFromInventoryFile(clusterName, instanceID string) (*models.Host, error) {
+	var currentLoadTestHost *models.Host
+	separateHostInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.LoadTestDir)
+	separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(separateHostInventoryPath)
+	if err != nil {
+		return nil, err
+	}
+	for _, host := range separateHosts {
+		if host.GetCloudID() == instanceID {
+			currentLoadTestHost = host
+		}
+	}
+	return currentLoadTestHost, nil
+}
+
 func stopLoadTest(_ *cobra.Command, args []string) error {
 	loadTestName := args[0]
 	clusterName := args[1]
@@ -44,6 +63,15 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 	}
 	nodeConfig, err := app.LoadClusterNodeConfig(existingSeparateInstance)
 	if err != nil {
+		return err
+	}
+	host, err := getSpecifiedHostFromInventoryFile(clusterName, nodeConfig.NodeID)
+	if err != nil {
+		return err
+	}
+	loadTestResultFileName := fmt.Sprintf("loadtest_%s.txt", loadTestName)
+	// Download the load test result from remote cloud server to local machine
+	if err = ssh.RunSSHDownloadFile(host, fmt.Sprintf("/home/ubuntu/%s", loadTestResultFileName), filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), loadTestResultFileName)); err != nil {
 		return err
 	}
 	switch nodeConfig.CloudService {

@@ -321,21 +321,7 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 	if loadTestRepoCommit != "" {
 		checkoutCommit = true
 	}
-	//if existingSeparateInstance != "" {
-	//	spinner = spinSession.SpinToUser(utils.ScriptLog(currentLoadTestHost[0].NodeID, "Updating monitoring configuration"))
-	//	// provision prometheus scraping for LT for existing monitoring instance
-	//	avalancheGoPorts, machinePorts, err := getPrometheusTargets(clusterName)
-	//	if err != nil {
-	//		ux.SpinFailWithError(spinner, "", err)
-	//		return err
-	//	}
-	//	if err := ssh.RunSSHUpdatePrometheusConfig(currentLoadTestHost[0], avalancheGoPorts, machinePorts); err != nil {
-	//		ux.SpinFailWithError(spinner, "", err)
-	//		return err
-	//	}
-	//	ux.SpinComplete(spinner)
-	//}
-	//spinSession.Stop()
+
 	ux.Logger.GreenCheckmarkToUser("Load test environment is ready!")
 	ux.Logger.PrintToUser("%s Building load test code", logging.Green.Wrap(">"))
 	if err := ssh.RunSSHBuildLoadTestCode(currentLoadTestHost[0], loadTestRepoURL, loadTestBuildCmd, loadTestRepoCommit, repoDirName, loadTestBranch, checkoutCommit); err != nil {
@@ -343,7 +329,7 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("%s Running load test", logging.Green.Wrap(">"))
-	if err := ssh.RunSSHRunLoadTest(currentLoadTestHost[0], loadTestCmd); err != nil {
+	if err := ssh.RunSSHRunLoadTest(currentLoadTestHost[0], loadTestCmd, loadTestName); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Load test successfully run!")
