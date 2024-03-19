@@ -143,7 +143,6 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		gomega.Expect(sshOutput).To(gomega.ContainSubstring("__path__: /home/ubuntu/.avalanchego/logs/X.log"))
 		gomega.Expect(sshOutput).To(gomega.ContainSubstring("__path__: /home/ubuntu/.avalanchego/logs/main.log"))
 		gomega.Expect(sshOutput).To(gomega.ContainSubstring("__path__: /home/ubuntu/loadtest-logs/*.log"))
-
 	})
 	ginkgo.It("verifies correct loki config", func() {
 		usr, err := user.Current()

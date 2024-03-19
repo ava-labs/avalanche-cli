@@ -11,8 +11,6 @@ clients:
     CF-Access-Client-Id: avalanche
 
 scrape_configs:
-- job_name: system
-  static_configs:
   - job_name: avalanchego
     static_configs:
     - targets:
