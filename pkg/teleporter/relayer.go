@@ -131,13 +131,13 @@ func RelayerIsUp(runFilePath string) (bool, int, *os.Process, error) {
 	if err != nil {
 		// after a reboot without network cleanup, it is expected that the file pid will exist but the process not
 		err := removeRelayerRunFile(runFilePath)
-	 	return false, 0, nil, err
+		return false, 0, nil, err
 	}
 	if err := proc.Signal(syscall.Signal(0)); err != nil {
 		// after a reboot without network cleanup, it is expected that the file pid will exist but the process not
 		// sometimes FindProcess returns without error, but Signal 0 will surely fail if the process doesn't exist
-		 err := removeRelayerRunFile(runFilePath)
-		 return false, 0, nil, err
+		err := removeRelayerRunFile(runFilePath)
+		return false, 0, nil, err
 	}
 	return true, rf.Pid, proc, nil
 }
