@@ -43,14 +43,16 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("no existing load test instance found in cluster %s", clusterName)
 	}
 	nodeConfig, err := app.LoadClusterNodeConfig(existingSeparateInstance)
+	if err != nil {
+		return err
+	}
 	switch nodeConfig.CloudService {
 	case constants.AWSCloudService:
-		loadTestEc2SvcMap := make(map[string]*awsAPI.AwsCloud)
 		_, separateHostRegion, err := getNodeCloudConfig(existingSeparateInstance)
 		if err != nil {
 			return err
 		}
-		loadTestEc2SvcMap, err = getAWSMonitoringEC2Svc(awsProfile, separateHostRegion)
+		loadTestEc2SvcMap, err := getAWSMonitoringEC2Svc(awsProfile, separateHostRegion)
 		if err != nil {
 			return err
 		}
