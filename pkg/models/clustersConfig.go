@@ -18,8 +18,8 @@ type ClusterConfig struct {
 	Nodes              []string
 	APINodes           []string
 	Network            Network
-	MonitoringInstance string // instance ID of the separate monitoring instance (if any)
-	LoadTestInstance   string // instance ID of the separate load test instance (if any)
+	MonitoringInstance string            // instance ID of the separate monitoring instance (if any)
+	LoadTestInstance   map[string]string // maps load test name to load test cloud instance ID of the separate load test instance (if any)
 }
 
 type ClustersConfig struct {
