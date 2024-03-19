@@ -5,6 +5,7 @@ package teleportercmd
 import (
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
@@ -13,14 +14,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var stopRelayerNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local}
+var stopRelayerNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster}
 
 // avalanche teleporter relayer stop
 func newStopRelayerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "stop",
 		Short:        "stops AWM relayer",
-		Long:         `Stops AWM relayer on the specified network (Currently only for local network).`,
+		Long:         `Stops AWM relayer on the specified network (Currently only for local network, cluster).`,
 		SilenceUsage: true,
 		RunE:         stopRelayer,
 		Args:         cobra.ExactArgs(0),
@@ -40,7 +41,8 @@ func stopRelayer(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	if network.Kind == models.Local {
+	switch {
+	case network.Kind == models.Local:
 		b, _, _, err := teleporter.RelayerIsUp(
 			app.GetAWMRelayerRunPath(),
 		)
@@ -57,6 +59,8 @@ func stopRelayer(_ *cobra.Command, _ []string) error {
 			return err
 		}
 		ux.Logger.PrintToUser("Local AWM Relayer successfully stopped")
+	case network.ClusterName != "":
+		fmt.Println(node.GetAWMRelayerHost(app, network.ClusterName))
 	}
 	return nil
 }
