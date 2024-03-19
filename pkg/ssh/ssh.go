@@ -294,14 +294,14 @@ func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePo
 	)
 }
 
-func RunSSHUpdateLokiConfig(host *models.Host, port string) error {
+func RunSSHUpdateLokiConfig(host *models.Host, port int) error {
 	const cloudNodeLokiConfigTemp = "/tmp/loki.yml"
 	lokiConfig, err := os.CreateTemp("", "loki")
 	if err != nil {
 		return err
 	}
 	defer os.Remove(lokiConfig.Name())
-	if err := monitoring.WriteLokiConfig(lokiConfig.Name(), port); err != nil {
+	if err := monitoring.WriteLokiConfig(lokiConfig.Name(), strconv.Itoa(port)); err != nil {
 		return err
 	}
 	if err := host.Upload(

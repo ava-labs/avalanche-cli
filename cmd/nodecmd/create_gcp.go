@@ -207,6 +207,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 					strconv.Itoa(constants.AvalanchegoAPIPort),
 					strconv.Itoa(constants.AvalanchegoMonitoringPort),
 					strconv.Itoa(constants.AvalanchegoGrafanaPort),
+					strconv.Itoa(constants.AvalanchegoLokiPort),
 				},
 			)
 			if err != nil {
@@ -225,7 +226,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 				return nil, nil, "", "", err
 			}
 			if !firewallContainsMonitoringPorts && !firewallExists {
-				_, err := gcpClient.SetFirewallRule(userIPAddress, firewallName, networkName, []string{strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort)})
+				_, err := gcpClient.SetFirewallRule(userIPAddress, firewallName, networkName, []string{strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort), strconv.Itoa(constants.AvalanchegoLokiPort)})
 				if err != nil {
 					return nil, nil, "", "", err
 				}
@@ -387,6 +388,7 @@ func grantAccessToPublicIPViaFirewall(gcpClient *gcpAPI.GcpCloud, projectName st
 	ports := []string{
 		strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
 		strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
+		strconv.Itoa(constants.AvalanchegoLokiPort),
 	}
 	if err = gcpClient.AddFirewall(
 		publicIP,

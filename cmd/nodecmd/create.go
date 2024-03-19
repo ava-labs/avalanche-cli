@@ -455,6 +455,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					ports := []string{
 						strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
 						strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
+						strconv.Itoa(constants.AvalanchegoLokiPort),
 					}
 					if err = gcpClient.AddFirewall(
 						monitoringNodeConfig.PublicIPs[0],
@@ -618,6 +619,14 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts); err != nil {
+				ux.SpinFailWithError(spinner, "", err)
+				return err
+			}
+			if err := ssh.RunSSHSetupLoki(monitoringHost); err != nil {
+				ux.SpinFailWithError(spinner, "", err)
+				return err
+			}
+			if err := ssh.RunSSHUpdateLokiConfig(monitoringHost, constants.AvalanchegoLokiPort); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
