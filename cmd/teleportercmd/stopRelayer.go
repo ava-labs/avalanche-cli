@@ -1,0 +1,60 @@
+// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
+package teleportercmd
+
+import (
+	"fmt"
+
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+
+	"github.com/spf13/cobra"
+)
+
+var stopRelayerNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster}
+
+// avalanche teleporter msg
+func newStopRelayerCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:          "stop",
+		Short:        "stops AWM relayer",
+		Long:         `Stops AWM relayer for the specified network (Currently only for local networks and devnet clusters).`,
+		SilenceUsage: true,
+		RunE:         stopRelayer,
+		Args:         cobra.ExactArgs(0),
+	}
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, stopRelayerNetworkOptions)
+	return cmd
+}
+
+func stopRelayer(_ *cobra.Command, args []string) error {
+	network, err := networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		globalNetworkFlags,
+		false,
+		stopRelayerNetworkOptions,
+		"",
+	)
+	if err != nil {
+		return err
+	}
+	if network.Kind == models.Local {
+		b, _, _, err := teleporter.RelayerIsUp(
+			app.GetAWMRelayerRunPath(),
+		)
+		if err != nil {
+			return err
+		}
+		if !b {
+			return fmt.Errorf("There is no CLI-managed local AWM relayer running")
+		}
+		if err := teleporter.RelayerCleanup(
+			app.GetAWMRelayerRunPath(),
+			app.GetAWMRelayerStorageDir(),
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}

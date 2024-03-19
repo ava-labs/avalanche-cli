@@ -115,38 +115,51 @@ func DeployRelayer(
 	return saveRelayerRunFile(runFilePath, pid)
 }
 
-func RelayerCleanup(runFilePath string, storageDir string) error {
-	if err := os.RemoveAll(storageDir); err != nil {
-		return err
-	}
+func RelayerIsUp(runFilePath string) (bool, int, *os.Process, error) {
 	if !utils.FileExists(runFilePath) {
-		return nil
+		return false, 0, nil, nil
 	}
 	bs, err := os.ReadFile(runFilePath)
 	if err != nil {
-		return err
+		return false, 0, nil, err
 	}
 	rf := relayerRunFile{}
 	if err := json.Unmarshal(bs, &rf); err != nil {
-		return err
+		return false, 0, nil, err
 	}
 	proc, err := os.FindProcess(rf.Pid)
 	if err != nil {
 		// after a reboot without network cleanup, it is expected that the file pid will exist but the process not
-		return removeRelayerRunFile(runFilePath)
+		err := removeRelayerRunFile(runFilePath)
+	 	return false, 0, nil, err
 	}
 	if err := proc.Signal(syscall.Signal(0)); err != nil {
 		// after a reboot without network cleanup, it is expected that the file pid will exist but the process not
 		// sometimes FindProcess returns without error, but Signal 0 will surely fail if the process doesn't exist
+		 err := removeRelayerRunFile(runFilePath)
+		 return false, 0, nil, err
+	}
+	return true, rf.Pid, proc, nil
+}
+
+func RelayerCleanup(runFilePath string, storageDir string) error {
+	if err := os.RemoveAll(storageDir); err != nil {
+		return err
+	}
+	b, pid, proc, err := RelayerIsUp(runFilePath)
+	if err != nil {
+		return err
+	}
+	if b {
+		if err := proc.Signal(os.Interrupt); err != nil {
+			ux.Logger.PrintToUser("failed trying to kill awm relayer with SIGINT. Using SIGKILL instead")
+			if err := proc.Signal(os.Kill); err != nil {
+				return fmt.Errorf("failed killing relayer process with pid %d: %w", pid, err)
+			}
+		}
 		return removeRelayerRunFile(runFilePath)
 	}
-	if err := proc.Signal(os.Interrupt); err != nil {
-		ux.Logger.PrintToUser("failed trying to kill awm relayer with SIGINT. Using SIGKILL instead")
-		if err := proc.Signal(os.Kill); err != nil {
-			return fmt.Errorf("failed killing relayer process with pid %d: %w", rf.Pid, err)
-		}
-	}
-	return removeRelayerRunFile(runFilePath)
+	return nil
 }
 
 func removeRelayerRunFile(runFilePath string) error {
