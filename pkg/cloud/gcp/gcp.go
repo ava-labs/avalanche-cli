@@ -409,8 +409,8 @@ func (c *GcpCloud) checkInstanceIsRunning(zone, nodeID string) (bool, error) {
 	return true, nil
 }
 
-// StopGCPNode stops GCP node in GCP
-func (c *GcpCloud) StopGCPNode(nodeConfig models.NodeConfig, clusterName string) error {
+// DestroyGCPNode terminates GCP node in GCP
+func (c *GcpCloud) DestroyGCPNode(nodeConfig models.NodeConfig, clusterName string) error {
 	isRunning, err := c.checkInstanceIsRunning(nodeConfig.Region, nodeConfig.NodeID)
 	if err != nil {
 		return err
@@ -418,8 +418,8 @@ func (c *GcpCloud) StopGCPNode(nodeConfig models.NodeConfig, clusterName string)
 	if !isRunning {
 		return fmt.Errorf("%w: instance %s, cluster %s", ErrNodeNotFoundToBeRunning, nodeConfig.NodeID, clusterName)
 	}
-	ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
-	instancesStopCall := c.gcpClient.Instances.Stop(c.projectID, nodeConfig.Region, nodeConfig.NodeID)
+	ux.Logger.PrintToUser(fmt.Sprintf("Destroying node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
+	instancesStopCall := c.gcpClient.Instances.Delete(c.projectID, nodeConfig.Region, nodeConfig.NodeID)
 	if _, err = instancesStopCall.Do(); err != nil {
 		return err
 	}

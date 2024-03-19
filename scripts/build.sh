@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Run with ./scripts/build.sh <optional_version>
 TELEMETRY_TOKEN=""
@@ -7,10 +7,11 @@ if ! [[ "$0" =~ scripts/build.sh ]]; then
   exit 1
 fi
 
-if [ $# -eq 0 ] ; then
-    VERSION=`cat VERSION`
-else
-    VERSION=$1
+VERSION=`cat VERSION`
+
+BIN=bin/avalanche
+if [ $# -eq 1 ] ; then
+	BIN=$1
 fi
 
 # Check for CGO_ENABLED
@@ -31,4 +32,4 @@ then
 	extra_build_args="-tags ledger_zemu"
 fi
 
-go build -v -ldflags="-X 'github.com/ava-labs/avalanche-cli/cmd.Version=$VERSION' -X github.com/ava-labs/avalanche-cli/pkg/utils.telemetryToken=$TELEMETRY_TOKEN" $extra_build_args -o bin/avalanche
+go build -v -ldflags="-X 'github.com/ava-labs/avalanche-cli/cmd.Version=$VERSION' -X github.com/ava-labs/avalanche-cli/pkg/utils.telemetryToken=$TELEMETRY_TOKEN" $extra_build_args -o $BIN

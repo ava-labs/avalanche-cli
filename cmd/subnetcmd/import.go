@@ -27,7 +27,7 @@ or importing from subnets running public networks
 	}
 	// subnet import file
 	cmd.AddCommand(newImportFileCmd())
-	// subnet import network
-	cmd.AddCommand(newImportFromNetworkCmd())
+	// subnet import public
+	cmd.AddCommand(newImportPublicCmd())
 	return cmd
 }

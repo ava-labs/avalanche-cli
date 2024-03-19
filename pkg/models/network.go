@@ -37,62 +37,70 @@ func (nk NetworkKind) String() string {
 }
 
 type Network struct {
-	Kind     NetworkKind
-	ID       uint32
-	Endpoint string
+	Kind        NetworkKind
+	ID          uint32
+	Endpoint    string
+	ClusterName string
 }
 
-var (
-	UndefinedNetwork = NewNetwork(Undefined, 0, "")
-	LocalNetwork     = NewNetwork(Local, constants.LocalNetworkID, constants.LocalAPIEndpoint)
-	DevnetNetwork    = NewNetwork(Devnet, constants.DevnetNetworkID, constants.DevnetAPIEndpoint)
-	FujiNetwork      = NewNetwork(Fuji, avagoconstants.FujiID, constants.FujiAPIEndpoint)
-	MainnetNetwork   = NewNetwork(Mainnet, avagoconstants.MainnetID, constants.MainnetAPIEndpoint)
-)
+var UndefinedNetwork = Network{}
 
-func NewNetwork(kind NetworkKind, id uint32, endpoint string) Network {
+func NewNetwork(kind NetworkKind, id uint32, endpoint string, clusterName string) Network {
 	return Network{
-		Kind:     kind,
-		ID:       id,
-		Endpoint: endpoint,
+		Kind:        kind,
+		ID:          id,
+		Endpoint:    endpoint,
+		ClusterName: clusterName,
 	}
 }
 
-func NewDevnetNetwork(ip string, port int) Network {
-	endpoint := fmt.Sprintf("http://%s:%d", ip, port)
-	return NewNetwork(Devnet, constants.DevnetNetworkID, endpoint)
+func NewLocalNetwork() Network {
+	return NewNetwork(Local, constants.LocalNetworkID, constants.LocalAPIEndpoint, "")
 }
 
-func NetworkFromString(s string) Network {
-	switch s {
-	case Mainnet.String():
-		return MainnetNetwork
-	case Fuji.String():
-		return FujiNetwork
-	case Local.String():
-		return LocalNetwork
-	case Devnet.String():
-		return DevnetNetwork
+func NewDevnetNetwork(endpoint string, id uint32) Network {
+	if endpoint == "" {
+		endpoint = constants.DevnetAPIEndpoint
 	}
-	return UndefinedNetwork
+	if id == 0 {
+		id = constants.DevnetNetworkID
+	}
+	return NewNetwork(Devnet, id, endpoint, "")
+}
+
+func NewFujiNetwork() Network {
+	return NewNetwork(Fuji, avagoconstants.FujiID, constants.FujiAPIEndpoint, "")
+}
+
+func NewMainnetNetwork() Network {
+	return NewNetwork(Mainnet, avagoconstants.MainnetID, constants.MainnetAPIEndpoint, "")
+}
+
+func NewNetworkFromCluster(n Network, clusterName string) Network {
+	return NewNetwork(n.Kind, n.ID, n.Endpoint, clusterName)
 }
 
 func NetworkFromNetworkID(networkID uint32) Network {
 	switch networkID {
 	case avagoconstants.MainnetID:
-		return MainnetNetwork
+		return NewMainnetNetwork()
 	case avagoconstants.FujiID:
-		return FujiNetwork
+		return NewFujiNetwork()
 	case constants.LocalNetworkID:
-		return LocalNetwork
-	case constants.DevnetNetworkID:
-		return DevnetNetwork
+		return NewLocalNetwork()
 	}
 	return UndefinedNetwork
 }
 
 func (n Network) Name() string {
-	return n.Kind.String()
+	if n.ClusterName != "" {
+		return "Cluster " + n.ClusterName
+	}
+	name := n.Kind.String()
+	if n.Kind == Devnet {
+		name += " " + n.Endpoint
+	}
+	return name
 }
 
 func (n Network) CChainEndpoint() string {

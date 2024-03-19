@@ -9,8 +9,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var app *application.Avalanche
-
 // avalanche subnet
 func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
@@ -36,8 +34,8 @@ rest of the commands to maintain your node and make your node a Subnet Validator
 	cmd.AddCommand(NewValidateCmd())
 	// node sync cluster --subnet subnetName
 	cmd.AddCommand(newSyncCmd())
-	// node stop
-	cmd.AddCommand(newStopCmd())
+	// node destroy
+	cmd.AddCommand(newDestroyCmd())
 	// node status cluster
 	cmd.AddCommand(newStatusCmd())
 	// node list
@@ -54,5 +52,7 @@ rest of the commands to maintain your node and make your node a Subnet Validator
 	cmd.AddCommand(newWhitelistCmd())
 	// node refresh-ips
 	cmd.AddCommand(newRefreshIPsCmd())
+	// node loadtest
+	cmd.AddCommand(newLoadTestCmd())
 	return cmd
 }

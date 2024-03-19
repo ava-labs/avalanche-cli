@@ -8,15 +8,19 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
 	"github.com/spf13/cobra"
@@ -88,7 +92,7 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().BoolVar(&useLatestEvmReleasedVersion, "latest-evm-version", false, "use latest Subnet-EVM released version")
 	cmd.Flags().BoolVar(&useLatestEvmPreReleasedVersion, "latest-pre-released-evm-version", false, "use latest Subnet-EVM pre-released version")
 	cmd.Flags().StringVar(&customVMRepoURL, "custom-vm-repo-url", "", "custom vm repository url")
-	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch")
+	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch or commit")
 	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
 	cmd.Flags().StringVar(&nodeConf, "node-config", "", "path to avalanchego node configuration for subnet")
 	cmd.Flags().StringVar(&subnetConf, "subnet-config", "", "path to the subnet configuration for subnet")
@@ -98,10 +102,9 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().BoolVar(&useLatestAvalanchegoReleaseVersion, "latest-avalanchego-version", false, "install latest avalanchego release version on node/s")
 	cmd.Flags().BoolVar(&useLatestAvalanchegoPreReleaseVersion, "latest-avalanchego-pre-release-version", false, "install latest avalanchego pre-release version on node/s")
 	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "avalanchego-version", "", "install given avalanchego version on node/s")
+	cmd.Flags().StringVar(&remoteCLIVersion, "remote-cli-version", "", "install given CLI version on remote nodes. defaults to latest CLI release")
 	cmd.Flags().StringSliceVar(&validators, "validators", []string{}, "deploy subnet into given comma separated list of validators. defaults to all cluster nodes")
-	cmd.Flags().BoolVar(&sameMonitoringInstance, "same-monitoring-instance", false, "host monitoring for a cloud servers on the same instance")
-	cmd.Flags().BoolVar(&separateMonitoringInstance, "separate-monitoring-instance", false, "host monitoring for all cloud servers on a separate instance")
-	cmd.Flags().BoolVar(&skipMonitoring, "skip-monitoring", false, "don't set up monitoring in created nodes")
+	cmd.Flags().BoolVar(&addMonitoring, enableMonitoringFlag, false, " set up Prometheus monitoring for created nodes. Please note that this option creates a separate monitoring instance and incures additional cost")
 	cmd.Flags().IntSliceVar(&numAPINodes, "num-apis", []int{}, "number of API nodes(nodes without stake) to create in the new Devnet")
 	return cmd
 }
@@ -112,7 +115,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if len(args) > 1 {
 		subnetName = args[1]
 	}
-	clusterAlreadyExists, err := clusterExists(clusterName)
+	clusterAlreadyExists, err := app.ClusterExists(clusterName)
 	if err != nil {
 		return err
 	}
@@ -161,7 +164,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 
 	if !clusterAlreadyExists {
-		createDevnet = true
+		globalNetworkFlags.UseDevnet = true
 		useAvalanchegoVersionFromSubnet = subnetName
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Creating the devnet..."))
@@ -172,7 +175,6 @@ func wiz(cmd *cobra.Command, args []string) error {
 	} else {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Adding subnet into existing devnet %s..."), clusterName)
-		ux.Logger.PrintToUser("")
 	}
 
 	// check all validators are found
@@ -225,7 +227,11 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	blockchainID := sc.Networks[models.Devnet.String()].BlockchainID
+	network, err := app.GetClusterNetwork(clusterName)
+	if err != nil {
+		return err
+	}
+	blockchainID := sc.Networks[network.Name()].BlockchainID
 	if blockchainID == ids.Empty {
 		return ErrNoBlockchainID
 	}
@@ -241,11 +247,64 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Validating, validateCheckTimeout, validateCheckPoolTime); err != nil {
 		return err
 	}
+
+	isEVMGenesis, err := subnetcmd.HasSubnetEVMGenesis(subnetName)
+	if err != nil {
+		return err
+	}
+	if sc.TeleporterReady && isEVMGenesis {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(logging.Green.Wrap("Setting up teleporter on subnet"))
+		ux.Logger.PrintToUser("")
+		flags := networkoptions.NetworkFlags{
+			ClusterName: clusterName,
+		}
+		if err := teleportercmd.CallDeploy(subnetName, flags); err != nil {
+			return err
+		}
+	}
+
 	ux.Logger.PrintToUser("")
 	if clusterAlreadyExists {
 		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is now validating subnet %s"), clusterName, subnetName)
 	} else {
 		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is successfully created and is now validating subnet %s!"), clusterName, subnetName)
+	}
+
+	if err := deployClusterYAMLFile(clusterName, subnetName); err != nil {
+		return err
+	}
+	return nil
+}
+
+func deployClusterYAMLFile(clusterName, subnetName string) error {
+	var separateHosts []*models.Host
+	var err error
+	monitoringInventoryDir := app.GetMonitoringInventoryDir(clusterName)
+	if utils.FileExists(monitoringInventoryDir) {
+		separateHosts, err = ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryDir)
+		if err != nil {
+			return err
+		}
+	}
+	subnetID, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
+	if err != nil {
+		return err
+	}
+	var externalHost *models.Host
+	if len(separateHosts) > 0 {
+		externalHost = separateHosts[0]
+	}
+	if err = createClusterYAMLFile(clusterName, subnetID, chainID, externalHost); err != nil {
+		return err
+	}
+	ux.Logger.GreenCheckmarkToUser("Cluster information YAML file can be found at %s at local host", app.GetClusterYAMLFilePath(clusterName))
+	// deploy YAML file to external host, if it exists
+	if len(separateHosts) > 0 {
+		if err = ssh.RunSSHCopyYAMLFile(separateHosts[0], app.GetClusterYAMLFilePath(clusterName)); err != nil {
+			return err
+		}
+		ux.Logger.GreenCheckmarkToUser("Cluster information YAML file can be found at /home/ubuntu/clusterInfo.yaml at external host")
 	}
 	return nil
 }
@@ -379,7 +438,7 @@ func waitForClusterSubnetStatus(
 }
 
 func checkClusterIsADevnet(clusterName string) error {
-	exists, err := clusterExists(clusterName)
+	exists, err := app.ClusterExists(clusterName)
 	if err != nil {
 		return err
 	}

@@ -93,16 +93,24 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 	return computeService, gcpProjectName, gcpCredentialsPath, err
 }
 
-func getGCPConfig() (*gcpAPI.GcpCloud, map[string]NumNodes, string, string, string, error) {
+func getGCPConfig(singleNode bool) (*gcpAPI.GcpCloud, map[string]NumNodes, string, string, string, error) {
 	finalRegions := map[string]NumNodes{}
 	switch {
 	case len(numValidatorsNodes) != len(utils.Unique(cmdLineRegion)):
 		return nil, nil, "", "", "", errors.New("number of regions and number of nodes must be equal. Please make sure list of regions is unique")
 	case len(cmdLineRegion) == 0 && len(numValidatorsNodes) == 0:
 		var err error
-		finalRegions, err = getRegionsNodeNum(constants.GCPCloudService)
-		if err != nil {
-			return nil, nil, "", "", "", err
+		if singleNode {
+			selectedRegion, err := getSeparateHostNodeParam(constants.GCPCloudService)
+			finalRegions = map[string]NumNodes{selectedRegion: {1, 0}}
+			if err != nil {
+				return nil, nil, "", "", "", err
+			}
+		} else {
+			finalRegions, err = getRegionsNodeNum(constants.GCPCloudService)
+			if err != nil {
+				return nil, nil, "", "", "", err
+			}
 		}
 	default:
 		for i, region := range cmdLineRegion {
@@ -311,8 +319,8 @@ func createGCPInstance(
 	)
 	if err != nil {
 		ux.Logger.PrintToUser("Failed to create GCP cloud server")
-		// we stop created instances so that user doesn't pay for unused GCP instances
-		ux.Logger.PrintToUser("Stopping all created GCP instances due to error to prevent charge for unused GCP instances...")
+		// we destroy created instances so that user doesn't pay for unused GCP instances
+		ux.Logger.PrintToUser("Destroying all created GCP instances due to error to prevent charge for unused GCP instances...")
 		failedNodes := map[string]error{}
 		for zone, zoneInstances := range instanceIDs {
 			for _, instanceID := range zoneInstances {
@@ -320,20 +328,20 @@ func createGCPInstance(
 					NodeID: instanceID,
 					Region: zone,
 				}
-				if stopErr := gcpClient.StopGCPNode(nodeConfig, clusterName); err != nil {
-					failedNodes[instanceID] = stopErr
+				if destroyErr := gcpClient.DestroyGCPNode(nodeConfig, clusterName); destroyErr != nil {
+					failedNodes[instanceID] = destroyErr
 					continue
 				}
-				ux.Logger.PrintToUser(fmt.Sprintf("GCP cloud server instance %s stopped in %s zone", instanceID, zone))
+				ux.Logger.PrintToUser(fmt.Sprintf("GCP cloud server instance %s destroyed in %s zone", instanceID, zone))
 			}
 		}
 		if len(failedNodes) > 0 {
 			ux.Logger.PrintToUser("Failed nodes: ")
 			for node, err := range failedNodes {
-				ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", node, err))
+				ux.Logger.PrintToUser(fmt.Sprintf("Failed to destroy node %s due to %s", node, err))
 			}
-			ux.Logger.PrintToUser("Stop the above instance(s) on GCP console to prevent charges")
-			return models.CloudConfig{}, fmt.Errorf("failed to stop node(s) %s", failedNodes)
+			ux.Logger.PrintToUser("Destroy the above instance(s) on GCP console to prevent charges")
+			return models.CloudConfig{}, fmt.Errorf("failed to destroy node(s) %s", failedNodes)
 		}
 		return models.CloudConfig{}, err
 	}
@@ -367,4 +375,27 @@ func updateClustersConfigGCPKeyFilepath(projectName, serviceAccountKeyFilepath s
 		clustersConfig.GCPConfig.ServiceAccFilePath = serviceAccountKeyFilepath
 	}
 	return app.WriteClustersConfigFile(&clustersConfig)
+}
+
+func grantAccessToPublicIPViaFirewall(gcpClient *gcpAPI.GcpCloud, projectName string, publicIP string, label string) error {
+	prefix, err := defaultAvalancheCLIPrefix("")
+	if err != nil {
+		return err
+	}
+	networkName := fmt.Sprintf("%s-network", prefix)
+	firewallName := fmt.Sprintf("%s-%s-%s", networkName, strings.ReplaceAll(publicIP, ".", ""), label)
+	ports := []string{
+		strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
+		strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
+	}
+	if err = gcpClient.AddFirewall(
+		publicIP,
+		networkName,
+		projectName,
+		firewallName,
+		ports,
+		true); err != nil {
+		return err
+	}
+	return nil
 }

@@ -4,92 +4,61 @@ package subnetcmd
 
 import (
 	"fmt"
-	"strings"
 
-	"github.com/ava-labs/avalanche-cli/cmd/flags"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"golang.org/x/exp/slices"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/spf13/cobra"
 )
 
-func fillNetworkDetails(network *models.Network) error {
-	if network.Endpoint == "" {
-		endpoint, err := app.Prompt.CaptureString(fmt.Sprintf("%s Network Endpoint", network.Name()))
-		if err != nil {
-			return err
+var globalNetworkFlags networkoptions.NetworkFlags
+
+func CreateSubnetFirst(cmd *cobra.Command, subnetName string, skipPrompt bool) error {
+	if !app.SubnetConfigExists(subnetName) {
+		if !skipPrompt {
+			yes, err := app.Prompt.CaptureNoYes(fmt.Sprintf("Subnet %s is not created yet. Do you want to create it first?", subnetName))
+			if err != nil {
+				return err
+			}
+			if !yes {
+				return fmt.Errorf("subnet not available and not being created first")
+			}
 		}
-		network.Endpoint = endpoint
+		return createSubnetConfig(cmd, []string{subnetName})
 	}
 	return nil
 }
 
-func GetNetworkFromCmdLineFlags(
-	useLocal bool,
-	useDevnet bool,
-	useFuji bool,
-	useMainnet bool,
-	endpoint string,
-	askForDevnetEndpoint bool,
-	supportedNetworkKinds []models.NetworkKind,
-) (models.Network, error) {
-	// get network from flags
-	network := models.UndefinedNetwork
-	switch {
-	case useLocal:
-		network = models.LocalNetwork
-	case useDevnet:
-		network = models.DevnetNetwork
-	case useFuji:
-		network = models.FujiNetwork
-	case useMainnet:
-		network = models.MainnetNetwork
-	}
-
-	if endpoint != "" {
-		network.Endpoint = endpoint
-	}
-
-	// no flag was set, prompt user
-	if network.Kind == models.Undefined {
-		networkStr, err := app.Prompt.CaptureList(
-			"Choose a network for the operation",
-			utils.Map(supportedNetworkKinds, func(n models.NetworkKind) string { return n.String() }),
-		)
+func DeploySubnetFirst(cmd *cobra.Command, subnetName string, skipPrompt bool, supportedNetworkOptions []networkoptions.NetworkOption) error {
+	var (
+		doDeploy       bool
+		msg            string
+		errIfNoChoosen error
+	)
+	if !app.SubnetConfigExists(subnetName) {
+		doDeploy = true
+		msg = fmt.Sprintf("Subnet %s is not created yet. Do you want to create it first?", subnetName)
+		errIfNoChoosen = fmt.Errorf("subnet not available and not being created first")
+	} else {
+		filteredSupportedNetworkOptions, _, _, err := networkoptions.GetSupportedNetworkOptionsForSubnet(app, subnetName, supportedNetworkOptions)
 		if err != nil {
-			return models.UndefinedNetwork, err
+			return err
 		}
-		network = models.NetworkFromString(networkStr)
-		if askForDevnetEndpoint {
-			if err := fillNetworkDetails(&network); err != nil {
-				return models.UndefinedNetwork, err
+		if len(filteredSupportedNetworkOptions) == 0 {
+			doDeploy = true
+			msg = fmt.Sprintf("Subnet %s is not deployed yet to a supported network. Do you want to deploy it first?", subnetName)
+			errIfNoChoosen = fmt.Errorf("subnet not deployed and not being deployed first")
+		}
+	}
+	if doDeploy {
+		if !skipPrompt {
+			yes, err := app.Prompt.CaptureNoYes(msg)
+			if err != nil {
+				return err
+			}
+			if !yes {
+				return errIfNoChoosen
 			}
 		}
-		return network, nil
+		return runDeploy(cmd, []string{subnetName}, supportedNetworkOptions)
 	}
-
-	// for err messages
-	networkFlags := map[models.NetworkKind]string{
-		models.Local:   "--local",
-		models.Devnet:  "--devnet",
-		models.Fuji:    "--fuji/--testnet",
-		models.Mainnet: "--mainnet",
-	}
-	supportedNetworksFlags := strings.Join(utils.Map(supportedNetworkKinds, func(n models.NetworkKind) string { return networkFlags[n] }), ", ")
-
-	// unsupported network
-	if !slices.Contains(supportedNetworkKinds, network.Kind) {
-		return models.UndefinedNetwork, fmt.Errorf("network flag %s is not supported. use one of %s", networkFlags[network.Kind], supportedNetworksFlags)
-	}
-
-	// not mutually exclusive flag selection
-	if !flags.EnsureMutuallyExclusive([]bool{useLocal, useDevnet, useFuji, useMainnet}) {
-		return models.UndefinedNetwork, fmt.Errorf("network flags %s are mutually exclusive", supportedNetworksFlags)
-	}
-	if askForDevnetEndpoint {
-		if err := fillNetworkDetails(&network); err != nil {
-			return models.UndefinedNetwork, err
-		}
-	}
-
-	return network, nil
+	return nil
 }

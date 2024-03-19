@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	subnet "github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
@@ -38,13 +39,13 @@ const (
 )
 
 var (
-	transformLocal      bool
-	tokenNameFlag       string
-	tokenSymbolFlag     string
-	useDefaultConfig    bool
-	overrideWarning     bool
-	transformValidators bool
-	denominationFlag    int
+	elasticSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji, networkoptions.Mainnet}
+	tokenNameFlag                  string
+	tokenSymbolFlag                string
+	useDefaultConfig               bool
+	overrideWarning                bool
+	transformValidators            bool
+	denominationFlag               int
 )
 
 // avalanche subnet elastic
@@ -62,9 +63,7 @@ mechanics will work.`,
 		RunE:              transformElasticSubnet,
 		PersistentPostRun: handlePostRun,
 	}
-	cmd.Flags().BoolVarP(&transformLocal, "local", "l", false, "transform a subnet on a local network")
-	cmd.Flags().BoolVar(&deployTestnet, "fuji", false, "remove from `fuji` deployment (alias for `testnet`)")
-	cmd.Flags().BoolVar(&deployTestnet, "testnet", false, "remove from `testnet` deployment (alias for `fuji`)")
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, elasticSupportedNetworkOptions)
 	cmd.Flags().StringVar(&tokenNameFlag, "tokenName", "", "specify the token name")
 	cmd.Flags().StringVar(&tokenSymbolFlag, "tokenSymbol", "", "specify the token symbol")
 	cmd.Flags().BoolVar(&useDefaultConfig, "default", false, "use default elastic subnet config values")
@@ -142,27 +141,11 @@ func importFromXChain(deployer *subnet.PublicDeployer,
 	return deployer.ImportFromXChain(owner)
 }
 
-func promptDeployFirst(cmd *cobra.Command, args []string, prompt string, err error) error {
-	yes, promptErr := app.Prompt.CaptureNoYes(prompt)
-	if promptErr != nil {
-		return promptErr
-	}
-	if !yes {
-		return err
-	}
-	return runDeploy(cmd, args)
-}
-
 func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 	subnetName := args[0]
 
-	if !app.SubnetConfigExists(subnetName) {
-		prompt := fmt.Sprintf("Subnet %s is not created yet. Do you want to create it first?", args[0])
-		err := promptDeployFirst(cmd, args, prompt, errors.New("subnet does not exist"))
-		if err != nil {
-			return err
-		}
-		ux.Logger.PrintToUser("Now transforming subnet ...")
+	if err := DeploySubnetFirst(cmd, subnetName, false, elasticSupportedNetworkOptions); err != nil {
+		return err
 	}
 
 	sc, err := app.LoadSidecar(subnetName)
@@ -170,44 +153,15 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to load sidecar: %w", err)
 	}
 
-	networkOptions := getNetworkOptions(sc)
-	if len(networkOptions) == 0 {
-		prompt := fmt.Sprintf("Subnet %s is not deployed yet. Do you want to deploy it first?", args[0])
-		err := promptDeployFirst(cmd, args, prompt, nil)
-		if err != nil {
-			return err
-		}
-		// need to refresh sidecar if we deployed
-		sc, err = app.LoadSidecar(subnetName)
-		if err != nil {
-			return fmt.Errorf("unable to load sidecar: %w", err)
-		}
-		ux.Logger.PrintToUser("Now transforming subnet ... \n")
-	}
-
-	network := models.UndefinedNetwork
-	switch {
-	case deployTestnet:
-		network = models.FujiNetwork
-	case deployMainnet:
-		network = models.MainnetNetwork
-	case transformLocal:
-		network = models.LocalNetwork
-	}
-
-	if network.Kind == models.Undefined {
-		networkToUpgrade, err := selectNetworkToTransform(sc)
-		if err != nil {
-			return err
-		}
-		switch networkToUpgrade {
-		case localDeployment:
-			network = models.LocalNetwork
-		case fujiDeployment:
-			network = models.FujiNetwork
-		default:
-			return errors.New("elastic subnet transformation is not yet supported on Mainnet")
-		}
+	network, err := networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		globalNetworkFlags,
+		true,
+		elasticSupportedNetworkOptions,
+		subnetName,
+	)
+	if err != nil {
+		return err
 	}
 
 	if outputTxPath != "" {
@@ -467,7 +421,7 @@ func transformElasticSubnetLocal(sc models.Sidecar, subnetName string, tokenName
 	if err = app.CreateElasticSubnetConfig(subnetName, &elasticSubnetConfig); err != nil {
 		return err
 	}
-	if err = app.UpdateSidecarElasticSubnet(&sc, models.LocalNetwork, subnetID, assetID, txID, tokenName, tokenSymbol); err != nil {
+	if err = app.UpdateSidecarElasticSubnet(&sc, models.NewLocalNetwork(), subnetID, assetID, txID, tokenName, tokenSymbol); err != nil {
 		return fmt.Errorf("elastic subnet transformation was successful, but failed to update sidecar: %w", err)
 	}
 
@@ -498,61 +452,6 @@ func transformElasticSubnetLocal(sc models.Sidecar, subnetName string, tokenName
 	flags[constants.Network] = models.Local.String()
 	metrics.HandleTracking(cmd, app, flags)
 	return nil
-}
-
-// select which network to transform to elastic subnet
-func promptNetworkElastic(sc models.Sidecar, prompt string) (string, error) {
-	var networkOptions []string
-	for network := range sc.Networks {
-		switch network {
-		case models.Local.String():
-			networkOptions = append(networkOptions, localDeployment)
-		case models.Fuji.String():
-			networkOptions = append(networkOptions, fujiDeployment)
-		case models.Mainnet.String():
-			networkOptions = append(networkOptions, mainnetDeployment)
-		}
-	}
-
-	if len(networkOptions) == 0 {
-		return "", errors.New("no deployment target available, please first deploy created subnet")
-	}
-
-	selectedDeployment, err := app.Prompt.CaptureList(prompt, networkOptions)
-	if err != nil {
-		return "", err
-	}
-	return selectedDeployment, nil
-}
-
-func getNetworkOptions(sc models.Sidecar) []string {
-	var networkOptions []string
-	for network := range sc.Networks {
-		switch network {
-		case models.Local.String():
-			networkOptions = append(networkOptions, localDeployment)
-		case models.Fuji.String():
-			networkOptions = append(networkOptions, fujiDeployment)
-		case models.Mainnet.String():
-			networkOptions = append(networkOptions, mainnetDeployment)
-		}
-	}
-	return networkOptions
-}
-
-// select which network to transform to elastic subnet
-func selectNetworkToTransform(sc models.Sidecar) (string, error) {
-	networkPrompt := "Which network should transform into an elastic Subnet?"
-	networkOptions := getNetworkOptions(sc)
-	if len(networkOptions) == 0 {
-		return "", errors.New("no deployment target available, please first deploy created subnet")
-	}
-
-	selectedDeployment, err := app.Prompt.CaptureList(networkPrompt, networkOptions)
-	if err != nil {
-		return "", err
-	}
-	return selectedDeployment, nil
 }
 
 func PrintTransformResults(chain string, txID ids.ID, subnetID ids.ID, tokenName string, tokenSymbol string, assetID ids.ID) {
@@ -623,7 +522,7 @@ func checkAllLocalNodesAreCurrentValidators(subnetID ids.ID) error {
 }
 
 func transformValidatorsToPermissionlessLocal(sc models.Sidecar, subnetID ids.ID, subnetName string) error {
-	stakedTokenAmount, err := promptStakeAmount(subnetName, true, models.LocalNetwork)
+	stakedTokenAmount, err := promptStakeAmount(subnetName, true, models.NewLocalNetwork())
 	if err != nil {
 		return err
 	}
@@ -677,7 +576,7 @@ func handleRemoveAndAddValidators(sc models.Sidecar, subnetID ids.ID, validator 
 		return err
 	}
 	ux.Logger.PrintToUser(fmt.Sprintf("%s successfully joined elastic subnet as permissionless validator!", validator.String()))
-	if err = app.UpdateSidecarPermissionlessValidator(&sc, models.LocalNetwork, validator.String(), txID); err != nil {
+	if err = app.UpdateSidecarPermissionlessValidator(&sc, models.NewLocalNetwork(), validator.String(), txID); err != nil {
 		return fmt.Errorf("joining permissionless subnet was successful, but failed to update sidecar: %w", err)
 	}
 	return nil

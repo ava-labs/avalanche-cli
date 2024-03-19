@@ -3,12 +3,17 @@
 package teleporter
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	teleporterRegistry "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/upgrades/TeleporterRegistry"
@@ -135,10 +140,10 @@ func (t *Deployer) DeployMessenger(
 	// check if contract is already deployed
 	client, err := evm.GetClient(rpcURL)
 	if err != nil {
-		return false, "", err
+		return false, "", fmt.Errorf("failure connecting to %s: %w", rpcURL, err)
 	}
 	if teleporterMessengerAlreadyDeployed, err := evm.ContractAlreadyDeployed(client, t.teleporterMessengerContractAddress); err != nil {
-		return false, "", err
+		return false, "", fmt.Errorf("failure making a request to %s: %w", rpcURL, err)
 	} else if teleporterMessengerAlreadyDeployed {
 		ux.Logger.PrintToUser("Teleporter Messenger has already been deployed to %s", subnetName)
 		return true, t.teleporterMessengerContractAddress, nil
@@ -203,4 +208,59 @@ func (t *Deployer) DeployRegistry(
 	}
 	ux.Logger.PrintToUser("Teleporter Registry successfully deployed to %s (%s)", subnetName, teleporterRegistryAddress)
 	return teleporterRegistryAddress.String(), nil
+}
+
+func DeployAndFundRelayer(
+	app *application.Avalanche,
+	teleporterVersion string,
+	network models.Network,
+	subnetName string,
+	blockchainID string,
+	fundedKeyName string,
+) (bool, string, string, error) {
+	// get private key
+	var (
+		err error
+		k   *key.SoftKey
+	)
+	if fundedKeyName == "" {
+		if k, err = key.LoadEwoq(network.ID); err != nil {
+			return false, "", "", err
+		}
+	} else {
+		k, err = key.LoadSoft(network.ID, app.GetKeyPath(fundedKeyName))
+		if err != nil {
+			return false, "", "", err
+		}
+	}
+	privKeyStr := hex.EncodeToString(k.Raw())
+	// deploy
+	endpoint := network.BlockchainEndpoint(blockchainID)
+	td := Deployer{}
+	alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := td.Deploy(
+		app.GetTeleporterBinDir(),
+		teleporterVersion,
+		subnetName,
+		endpoint,
+		privKeyStr,
+	)
+	if err != nil {
+		return false, "", "", err
+	}
+	if !alreadyDeployed {
+		// get relayer address
+		relayerAddress, _, err := GetRelayerKeyInfo(app.GetKeyPath(constants.AWMRelayerKeyName))
+		if err != nil {
+			return false, "", "", err
+		}
+		// fund relayer
+		if err := FundRelayer(
+			endpoint,
+			privKeyStr,
+			relayerAddress,
+		); err != nil {
+			return false, "", "", err
+		}
+	}
+	return alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err
 }

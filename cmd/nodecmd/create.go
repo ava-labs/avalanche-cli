@@ -22,6 +22,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
@@ -39,28 +40,32 @@ import (
 	"golang.org/x/mod/semver"
 )
 
+const (
+	enableMonitoringFlag = "enable-monitoring"
+)
+
 var (
-	createOnFuji                          bool
-	createDevnet                          bool
-	createOnMainnet                       bool
+	createSupportedNetworkOptions         = []networkoptions.NetworkOption{networkoptions.Fuji, networkoptions.Devnet}
+	globalNetworkFlags                    networkoptions.NetworkFlags
 	useAWS                                bool
 	useGCP                                bool
 	cmdLineRegion                         []string
 	authorizeAccess                       bool
 	numValidatorsNodes                    []int
 	nodeType                              string
+	existingSeparateInstance              string
 	existingMonitoringInstance            string
 	useLatestAvalanchegoReleaseVersion    bool
 	useLatestAvalanchegoPreReleaseVersion bool
 	useCustomAvalanchegoVersion           string
 	useAvalanchegoVersionFromSubnet       string
+	remoteCLIVersion                      string
 	cmdLineGCPCredentialsPath             string
 	cmdLineGCPProjectName                 string
 	cmdLineAlternativeKeyPairName         string
+	addMonitoring                         bool
 	useSSHAgent                           bool
 	sshIdentity                           string
-	setUpMonitoring                       bool
-	skipMonitoring                        bool
 	numAPINodes                           []int
 	versionComments                       = map[string]string{
 		"v1.11.0-fuji": " (recommended for fuji durango)",
@@ -89,6 +94,7 @@ will apply to all nodes in the cluster`,
 		Args:         cobra.ExactArgs(1),
 		RunE:         createNodes,
 	}
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, createSupportedNetworkOptions)
 	cmd.Flags().BoolVar(&useStaticIP, "use-static-ip", true, "attach static Public IP on cloud servers")
 	cmd.Flags().BoolVar(&useAWS, "aws", false, "create node/s in AWS cloud")
 	cmd.Flags().BoolVar(&useGCP, "gcp", false, "create node/s in GCP cloud")
@@ -100,17 +106,14 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().BoolVar(&useLatestAvalanchegoPreReleaseVersion, "latest-avalanchego-pre-release-version", false, "install latest avalanchego pre-release version on node/s")
 	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
 	cmd.Flags().StringVar(&useAvalanchegoVersionFromSubnet, "avalanchego-version-from-subnet", "", "install latest avalanchego version, that is compatible with the given subnet, on node/s")
+	cmd.Flags().StringVar(&remoteCLIVersion, "remote-cli-version", "", "install given CLI version on remote nodes. defaults to latest CLI release")
 	cmd.Flags().StringVar(&cmdLineGCPCredentialsPath, "gcp-credentials", "", "use given GCP credentials")
 	cmd.Flags().StringVar(&cmdLineGCPProjectName, "gcp-project", "", "use given GCP project")
 	cmd.Flags().StringVar(&cmdLineAlternativeKeyPairName, "alternative-key-pair-name", "", "key pair name to use if default one generates conflicts")
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
-	cmd.Flags().BoolVar(&createOnFuji, "fuji", false, "create node/s in Fuji Network")
-	cmd.Flags().BoolVar(&createDevnet, "devnet", false, "create node/s into a new Devnet")
 	cmd.Flags().BoolVar(&useSSHAgent, "use-ssh-agent", false, "use ssh agent(ex: Yubikey) for ssh auth")
 	cmd.Flags().StringVar(&sshIdentity, "ssh-agent-identity", "", "use given ssh identity(only for ssh agent). If not set, default will be used")
-	cmd.Flags().BoolVar(&sameMonitoringInstance, "same-monitoring-instance", false, "host monitoring for a cloud servers on the same instance")
-	cmd.Flags().BoolVar(&separateMonitoringInstance, "separate-monitoring-instance", false, "host monitoring for all cloud servers on a separate instance")
-	cmd.Flags().BoolVar(&skipMonitoring, "skip-monitoring", false, "don't set up monitoring in created nodes")
+	cmd.Flags().BoolVar(&addMonitoring, enableMonitoringFlag, false, "set up Prometheus monitoring for created nodes. This option creates a separate monitoring cloud instance and incures additional cost")
 	cmd.Flags().IntSliceVar(&numAPINodes, "num-apis", []int{}, "number of API nodes(nodes without stake) to create in the new Devnet")
 	return cmd
 }
@@ -141,10 +144,10 @@ func preCreateChecks() error {
 	if useSSHAgent && !utils.IsSSHAgentAvailable() {
 		return fmt.Errorf("ssh agent is not available")
 	}
-	if len(numAPINodes) > 0 && !createDevnet {
+	if len(numAPINodes) > 0 && !globalNetworkFlags.UseDevnet {
 		return fmt.Errorf("API nodes can only be created in Devnet")
 	}
-	if createDevnet && len(numAPINodes) != len(numValidatorsNodes) {
+	if globalNetworkFlags.UseDevnet && len(numAPINodes) != len(numValidatorsNodes) {
 		return fmt.Errorf("API nodes and Validator nodes must be deployed to same number of regions")
 	}
 	if len(numAPINodes) > 0 {
@@ -154,28 +157,32 @@ func preCreateChecks() error {
 			}
 		}
 	}
+	if remoteCLIVersion != "" {
+		if !semver.IsValid(remoteCLIVersion) {
+			return fmt.Errorf("invalid semantic version for CLI on hosts")
+		}
+	}
 	return nil
 }
 
-func createNodes(_ *cobra.Command, args []string) error {
+func createNodes(cmd *cobra.Command, args []string) error {
 	if err := preCreateChecks(); err != nil {
 		return err
 	}
 	clusterName := args[0]
-	network, err := subnetcmd.GetNetworkFromCmdLineFlags(
+	network, err := networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		globalNetworkFlags,
 		false,
-		createDevnet,
-		createOnFuji,
-		createOnMainnet,
+		createSupportedNetworkOptions,
 		"",
-		false,
-		[]models.NetworkKind{models.Fuji, models.Devnet},
 	)
 	if err != nil {
 		return err
 	}
+	network = models.NewNetworkFromCluster(network, clusterName)
 
-	createDevnet = network.Kind == models.Devnet // set createDevnet to true if network is devnet for further use
+	globalNetworkFlags.UseDevnet = network.Kind == models.Devnet // set globalNetworkFlags.UseDevnet to true if network is devnet for further use
 	avalancheGoVersion, err := getAvalancheGoVersion()
 	if err != nil {
 		return err
@@ -214,6 +221,11 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if existingMonitoringInstance == "" && !cmd.Flags().Changed(enableMonitoringFlag) {
+		if addMonitoring, err = promptSetUpMonitoring(); err != nil {
+			return err
+		}
+	}
 	if utils.IsE2E() {
 		usr, err := user.Current()
 		if err != nil {
@@ -223,7 +235,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
 		keyPairName := fmt.Sprintf("%s-keypair", defaultAvalancheCLIPrefix)
 		certPath, err := app.GetSSHCertFilePath(keyPairName)
-		if createDevnet {
+		if globalNetworkFlags.UseDevnet {
 			for i, num := range numAPINodes {
 				numValidatorsNodes[i] += num
 			}
@@ -231,7 +243,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		dockerNumNodes := utils.Sum(numValidatorsNodes)
 		var dockerNodesPublicIPs []string
 		var monitoringHostIP string
-		if separateMonitoringInstance {
+		if addMonitoring {
 			generatedPublicIPs := utils.GenerateDockerHostIPs(dockerNumNodes + 1)
 			monitoringHostIP = generatedPublicIPs[len(generatedPublicIPs)-1]
 			dockerNodesPublicIPs = generatedPublicIPs[:len(generatedPublicIPs)-1]
@@ -270,7 +282,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			apiNodeIPMap[node] = publicIPMap[node]
 		}
 		cloudConfigMap["docker"] = currentRegionConfig
-		if separateMonitoringInstance {
+		if addMonitoring {
 			monitoringDockerHostID := utils.GenerateDockerHostIDs(1)
 			dockerHostIDs = append(dockerHostIDs, monitoringDockerHostID[0])
 			monitoringCloudConfig := models.CloudConfig{
@@ -307,7 +319,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 				return fmt.Errorf("cloud access is required")
 			}
-			ec2SvcMap, ami, numNodesMap, err := getAWSCloudConfig(awsProfile)
+			ec2SvcMap, ami, numNodesMap, err := getAWSCloudConfig(awsProfile, false, nil, nodeType)
 			regions := maps.Keys(ec2SvcMap)
 			if err != nil {
 				return err
@@ -315,18 +327,12 @@ func createNodes(_ *cobra.Command, args []string) error {
 			if existingMonitoringInstance == "" {
 				monitoringHostRegion = regions[0]
 			}
-			if !skipMonitoring {
-				setUpMonitoring, separateMonitoringInstance, err = promptSetUpMonitoring()
-				if err != nil {
-					return err
-				}
-			}
 			cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodesMap, regions, ami, false)
 			if err != nil {
 				return err
 			}
 			monitoringEc2SvcMap := make(map[string]*awsAPI.AwsCloud)
-			if separateMonitoringInstance && existingMonitoringInstance == "" {
+			if addMonitoring && existingMonitoringInstance == "" {
 				monitoringEc2SvcMap[monitoringHostRegion] = ec2SvcMap[monitoringHostRegion]
 				monitoringCloudConfig, err := createAWSInstances(monitoringEc2SvcMap, nodeType, map[string]NumNodes{monitoringHostRegion: {1, 0}}, []string{monitoringHostRegion}, ami, true)
 				if err != nil {
@@ -335,7 +341,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 				monitoringNodeConfig = monitoringCloudConfig[regions[0]]
 			}
 			if existingMonitoringInstance != "" {
-				separateMonitoringInstance = true
+				addMonitoring = true
 				monitoringNodeConfig, monitoringHostRegion, err = getNodeCloudConfig(existingMonitoringInstance)
 				if err != nil {
 					return err
@@ -345,7 +351,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 					return err
 				}
 			}
-			if !useStaticIP && separateMonitoringInstance {
+			if !useStaticIP && addMonitoring {
 				monitoringPublicIPMap, err := monitoringEc2SvcMap[monitoringHostRegion].GetInstancePublicIPs(monitoringNodeConfig.InstanceIDs)
 				if err != nil {
 					return err
@@ -374,7 +380,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 					apiNodeIPMap[node] = publicIPMap[node]
 				}
 				cloudConfigMap[region] = currentRegionConfig
-				if separateMonitoringInstance {
+				if addMonitoring {
 					if err = AddMonitoringSecurityGroupRule(ec2SvcMap, monitoringNodeConfig.PublicIPs[0], currentRegionConfig.SecurityGroup, region); err != nil {
 						return err
 					}
@@ -385,24 +391,18 @@ func createNodes(_ *cobra.Command, args []string) error {
 				return fmt.Errorf("cloud access is required")
 			}
 			// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
-			gcpClient, numNodesMap, imageID, credentialFilepath, projectName, err := getGCPConfig()
+			gcpClient, numNodesMap, imageID, credentialFilepath, projectName, err := getGCPConfig(false)
 			if err != nil {
 				return err
 			}
 			if existingMonitoringInstance == "" {
 				monitoringHostRegion = maps.Keys(numNodesMap)[0]
 			}
-			if !skipMonitoring {
-				setUpMonitoring, separateMonitoringInstance, err = promptSetUpMonitoring()
-				if err != nil {
-					return err
-				}
-			}
 			cloudConfigMap, err = createGCPInstance(gcpClient, nodeType, numNodesMap, imageID, clusterName, false)
 			if err != nil {
 				return err
 			}
-			if separateMonitoringInstance && existingMonitoringInstance == "" {
+			if addMonitoring && existingMonitoringInstance == "" {
 				monitoringCloudConfig, err := createGCPInstance(gcpClient, nodeType, map[string]NumNodes{monitoringHostRegion: {1, 0}}, imageID, clusterName, true)
 				if err != nil {
 					return err
@@ -410,13 +410,13 @@ func createNodes(_ *cobra.Command, args []string) error {
 				monitoringNodeConfig = monitoringCloudConfig[monitoringHostRegion]
 			}
 			if existingMonitoringInstance != "" {
-				separateMonitoringInstance = true
+				addMonitoring = true
 				monitoringNodeConfig, monitoringHostRegion, err = getNodeCloudConfig(existingMonitoringInstance)
 				if err != nil {
 					return err
 				}
 			}
-			if !useStaticIP && separateMonitoringInstance {
+			if !useStaticIP && addMonitoring {
 				monitoringPublicIPMap, err := gcpClient.GetInstancePublicIPs(monitoringHostRegion, monitoringNodeConfig.InstanceIDs)
 				if err != nil {
 					return err
@@ -445,7 +445,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 					apiNodeIPMap[node] = publicIPMap[node]
 				}
 				cloudConfigMap[zone] = currentRegionConfig
-				if separateMonitoringInstance {
+				if addMonitoring {
 					prefix, err := defaultAvalancheCLIPrefix("")
 					if err != nil {
 						return err
@@ -479,8 +479,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		monitoringHostRegion,
 		clusterName,
 		cloudService,
-		separateMonitoringInstance,
-		setUpMonitoring,
+		addMonitoring,
 	); err != nil {
 		return err
 	}
@@ -496,7 +495,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 	}
 	monitoringInventoryPath := ""
 	var monitoringHosts []*models.Host
-	if separateMonitoringInstance {
+	if addMonitoring {
 		monitoringInventoryPath = filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
 		if existingMonitoringInstance == "" {
 			if err = ansible.CreateAnsibleHostInventory(monitoringInventoryPath, monitoringNodeConfig.CertFilePath, cloudService, map[string]string{monitoringNodeConfig.InstanceIDs[0]: monitoringNodeConfig.PublicIPs[0]}, nil); err != nil {
@@ -538,23 +537,15 @@ func createNodes(_ *cobra.Command, args []string) error {
 				return
 			}
 			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup node"))
-			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), avalancheGoVersion, network.Kind == models.Devnet); err != nil {
+			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), avalancheGoVersion, remoteCLIVersion, network.Kind == models.Devnet); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return
 			}
 			ux.SpinComplete(spinner)
-			if separateMonitoringInstance {
+			if addMonitoring {
 				spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Machine Metrics"))
 				if err := ssh.RunSSHSetupMachineMetrics(host); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-					ux.SpinFailWithError(spinner, "", err)
-					return
-				}
-				ux.SpinComplete(spinner)
-			} else if setUpMonitoring {
-				spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Monitoring"))
-				if err := ssh.RunSSHSetupMonitoring(host); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
 					return
@@ -582,33 +573,31 @@ func createNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if separateMonitoringInstance {
+	if addMonitoring {
 		if len(monitoringHosts) != 1 {
 			return fmt.Errorf("expected only one monitoring host, found %d", len(monitoringHosts))
 		}
 		monitoringHost := monitoringHosts[0]
 		// remove monitoring host from created hosts list
 		hosts = utils.Filter(hosts, func(h *models.Host) bool { return h.NodeID != monitoringHost.NodeID })
-		avalancheGoPorts := []string{}
-		machinePorts := []string{}
-		inventoryHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+		avalancheGoPorts, machinePorts, err := getPrometheusTargets(clusterName)
 		if err != nil {
 			return err
 		}
-		for _, host := range inventoryHosts {
-			avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoAPIPort)))
-			machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
-		}
 		if existingMonitoringInstance != "" {
-			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Setup monitoring"))
-			if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
+			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Update Monitoring Targets"))
+			if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
 			ux.SpinComplete(spinner)
 		} else {
-			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Setup monitoring"))
+			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Setup Monitoring"))
 			if err = app.SetupMonitoringEnv(); err != nil {
+				ux.SpinFailWithError(spinner, "", err)
+				return err
+			}
+			if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
@@ -616,8 +605,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
-
-			if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost, app.GetMonitoringScriptFile(), strings.Join(avalancheGoPorts, ","), strings.Join(machinePorts, ",")); err != nil {
+			if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
@@ -632,7 +620,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		// download node configs
 		wg := sync.WaitGroup{}
 		wgResults := models.NodeResults{}
-		spinner := spinSession.SpinToUser("Configure monitoring agents")
+		spinner := spinSession.SpinToUser("Configure Monitoring Agents")
 		for _, host := range hosts {
 			wg.Add(1)
 			go func(nodeResults *models.NodeResults, host *models.Host) {
@@ -684,7 +672,7 @@ func createNodes(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
 	} else {
 		monitoringPublicIP := ""
-		if separateMonitoringInstance {
+		if addMonitoring {
 			monitoringPublicIP = monitoringNodeConfig.PublicIPs[0]
 		}
 		printResults(cloudConfigMap, publicIPMap, monitoringPublicIP)
@@ -693,25 +681,12 @@ func createNodes(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func promptSetUpMonitoring() (bool, bool, error) {
-	var err error
-	if !separateMonitoringInstance && existingMonitoringInstance == "" {
-		if sameMonitoringInstance {
-			return true, false, nil
-		}
-		setUpMonitoring, err = app.Prompt.CaptureYesNo("Do you want to set up monitoring for your instances? (This enables you to monitor validator and machine metrics)")
-		if err != nil {
-			return false, false, err
-		}
-		if setUpMonitoring {
-			separateMonitoringInstance, err = app.Prompt.CaptureYesNo("Do you want to set up a separate instance to host monitoring? (This enables you to monitor all your set up instances in one dashboard)")
-			if err != nil {
-				return false, false, err
-			}
-		}
-		return setUpMonitoring, separateMonitoringInstance, nil
+func promptSetUpMonitoring() (bool, error) {
+	monitoringInstance, err := app.Prompt.CaptureYesNo("Do you want to set up monitoring? (This requires additional cloud instance and may incur additional cost)")
+	if err != nil {
+		return false, err
 	}
-	return setUpMonitoring, separateMonitoringInstance, nil
+	return monitoringInstance, nil
 }
 
 // CreateClusterNodeConfig creates node config and save it in .avalanche-cli/nodes/{instanceID}
@@ -723,8 +698,7 @@ func CreateClusterNodeConfig(
 	monitoringHostRegion,
 	clusterName,
 	cloudService string,
-	separateMonitoringInstance bool,
-	setUpMonitoring bool,
+	addMonitoring bool,
 ) error {
 	for region, cloudConfig := range cloudConfigMap {
 		for i := range cloudConfig.InstanceIDs {
@@ -742,7 +716,7 @@ func CreateClusterNodeConfig(
 				ElasticIP:     publicIP,
 				CloudService:  cloudService,
 				UseStaticIP:   useStaticIP,
-				IsMonitor:     setUpMonitoring,
+				IsMonitor:     false,
 			}
 			err := app.CreateNodeCloudConfigFile(cloudConfig.InstanceIDs[i], &nodeConfig)
 			if err != nil {
@@ -752,31 +726,35 @@ func CreateClusterNodeConfig(
 				return err
 			}
 		}
-		if separateMonitoringInstance {
-			nodeConfig := models.NodeConfig{
-				NodeID:        monitorCloudConfig.InstanceIDs[0],
-				Region:        monitoringHostRegion,
-				AMI:           monitorCloudConfig.ImageID,
-				KeyPair:       monitorCloudConfig.KeyPair,
-				CertPath:      monitorCloudConfig.CertFilePath,
-				SecurityGroup: monitorCloudConfig.SecurityGroup,
-				ElasticIP:     monitorCloudConfig.PublicIPs[0],
-				CloudService:  cloudService,
-				UseStaticIP:   useStaticIP,
-				IsMonitor:     true,
-			}
-			if err := app.CreateNodeCloudConfigFile(monitorCloudConfig.InstanceIDs[0], &nodeConfig); err != nil {
-				return err
-			}
-			if err := addNodeToClustersConfig(network, monitorCloudConfig.InstanceIDs[0], clusterName, false, true); err != nil {
-				return err
-			}
-			if err := updateKeyPairClustersConfig(nodeConfig); err != nil {
+		if addMonitoring {
+			if err := saveExternalHostConfig(monitorCloudConfig, monitoringHostRegion, cloudService, clusterName); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+func saveExternalHostConfig(externalHostConfig models.RegionConfig, hostRegion, cloudService, clusterName string) error {
+	nodeConfig := models.NodeConfig{
+		NodeID:        externalHostConfig.InstanceIDs[0],
+		Region:        hostRegion,
+		AMI:           externalHostConfig.ImageID,
+		KeyPair:       externalHostConfig.KeyPair,
+		CertPath:      externalHostConfig.CertFilePath,
+		SecurityGroup: externalHostConfig.SecurityGroup,
+		ElasticIP:     externalHostConfig.PublicIPs[0],
+		CloudService:  cloudService,
+		UseStaticIP:   useStaticIP,
+		IsMonitor:     true,
+	}
+	if err := app.CreateNodeCloudConfigFile(externalHostConfig.InstanceIDs[0], &nodeConfig); err != nil {
+		return err
+	}
+	if err := addNodeToClustersConfig(models.UndefinedNetwork, externalHostConfig.InstanceIDs[0], clusterName, false, true); err != nil {
+		return err
+	}
+	return updateKeyPairClustersConfig(nodeConfig)
 }
 
 func addHTTPHostToConfigFile(filePath string) error {
@@ -1077,10 +1055,10 @@ func setCloudInstanceType(cloudService string) (string, error) {
 		return constants.E2EDocker, nil
 	}
 	switch { // backwards compatibility
-	case nodeType == "default" && cloudService == constants.AWSCloudService:
+	case nodeType == constants.DefaultNodeType && cloudService == constants.AWSCloudService:
 		nodeType = constants.AWSDefaultInstanceType
 		return nodeType, nil
-	case nodeType == "default" && cloudService == constants.GCPCloudService:
+	case nodeType == constants.DefaultNodeType && cloudService == constants.GCPCloudService:
 		nodeType = constants.GCPDefaultInstanceType
 		return nodeType, nil
 	}
@@ -1155,14 +1133,10 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 				ux.Logger.PrintToUser("%s Cloud Instance ID: %s | Public IP:%s | %s ", logging.Green.Wrap(">"), instanceID, publicIP, logging.Green.Wrap(nodeID.String()))
 			}
 			ux.Logger.PrintToUser("staker.crt, staker.key and signer.key are stored at %s. Please keep them safe, as these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID))
-
-			if setUpMonitoring && !separateMonitoringInstance {
-				getMonitoringHint(publicIP)
-			}
 			ux.Logger.PrintLineSeparator()
 		}
 	}
-	if separateMonitoringInstance {
+	if addMonitoring {
 		getMonitoringHint(monitoringHostIP)
 	}
 }
@@ -1221,6 +1195,50 @@ func requestCloudAuth(cloudName string) error {
 	return nil
 }
 
+func getSeparateHostNodeParam(cloudName string) (
+	string,
+	error,
+) {
+	type CloudPrompt struct {
+		defaultLocations []string
+		locationName     string
+		locationsListURL string
+	}
+
+	supportedClouds := map[string]CloudPrompt{
+		constants.AWSCloudService: {
+			defaultLocations: []string{"us-east-1", "us-east-2", "us-west-1", "us-west-2"},
+			locationName:     "AWS Region",
+			locationsListURL: "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html",
+		},
+		constants.GCPCloudService: {
+			defaultLocations: []string{"us-east1", "us-central1", "us-west1"},
+			locationName:     "Google Region",
+			locationsListURL: "https://cloud.google.com/compute/docs/regions-zones/",
+		},
+	}
+
+	if _, ok := supportedClouds[cloudName]; !ok {
+		return "", fmt.Errorf("cloud %s is not supported", cloudName)
+	}
+
+	awsCustomRegion := fmt.Sprintf("Choose custom %s (list of %ss available at %s)", supportedClouds[cloudName].locationName, supportedClouds[cloudName].locationName, supportedClouds[cloudName].locationsListURL)
+	userRegion, err := app.Prompt.CaptureList(
+		fmt.Sprintf("Which %s do you want to set up your separate node in?", supportedClouds[cloudName].locationName),
+		append(supportedClouds[cloudName].defaultLocations, awsCustomRegion),
+	)
+	if err != nil {
+		return "", err
+	}
+	if userRegion == awsCustomRegion {
+		userRegion, err = app.Prompt.CaptureString(fmt.Sprintf("Which %s do you want to set up your node in?", supportedClouds[cloudName].locationName))
+		if err != nil {
+			return "", err
+		}
+	}
+	return userRegion, nil
+}
+
 func getRegionsNodeNum(cloudName string) (
 	map[string]NumNodes,
 	error,
@@ -1270,7 +1288,7 @@ func getRegionsNodeNum(cloudName string) (
 		if err != nil {
 			return nil, err
 		}
-		if createDevnet {
+		if globalNetworkFlags.UseDevnet {
 			numAPINodes, err = app.Prompt.CaptureUint32(fmt.Sprintf("How many API nodes (nodes without stake) do you want to set up in %s %s?", userRegion, supportedClouds[cloudName].locationName))
 			if err != nil {
 				return nil, err
@@ -1326,4 +1344,18 @@ func defaultAvalancheCLIPrefix(region string) (string, error) {
 		return usr.Username + constants.AvalancheCLISuffix, nil
 	}
 	return usr.Username + "-" + region + constants.AvalancheCLISuffix, nil
+}
+
+func getPrometheusTargets(clusterName string) ([]string, []string, error) {
+	avalancheGoPorts := []string{}
+	machinePorts := []string{}
+	inventoryHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return avalancheGoPorts, machinePorts, err
+	}
+	for _, host := range inventoryHosts {
+		avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoAPIPort)))
+		machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
+	}
+	return avalancheGoPorts, machinePorts, err
 }

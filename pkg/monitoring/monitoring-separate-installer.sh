@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Does a multi-step installation of Prometheus, Grafana, node_exporter and Avalanche dashboards
 # Intended for non-technical validators, assumes running on compatible Ubuntu.
 
@@ -187,9 +187,15 @@ update_exporter() {
       echo "      - targets: [$3]"
       echo "        labels:"
       echo "          alias: 'machine'"
+      echo "  - job_name: 'avalanchego-loadtest'"
+      echo "    metrics_path: '/metrics'"
+      echo "    static_configs:"
+      echo "      - targets: ['127.0.0.1:8082']"
+      echo "        labels:"
+      echo "          alias: 'avalanchego-loadtest'"
     }>>prometheus.yml
     sudo cp prometheus.yml /etc/prometheus/
-    sudo systemctl restart prometheus
+    sudo service prometheus reload
     echo
     echo "Done!"
 }

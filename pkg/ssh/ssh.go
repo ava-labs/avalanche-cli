@@ -9,9 +9,11 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -20,6 +22,7 @@ import (
 
 type scriptInputs struct {
 	AvalancheGoVersion      string
+	CLIVersion              string
 	SubnetExportFileName    string
 	SubnetName              string
 	GoVersion               string
@@ -31,8 +34,13 @@ type scriptInputs struct {
 	SubnetEVMReleaseURL     string
 	SubnetEVMArchive        string
 	MonitoringDashboardPath string
-	AvalancheGoPorts        string
-	MachinePorts            string
+	LoadTestRepoDir         string
+	LoadTestRepo            string
+	LoadTestPath            string
+	LoadTestCommand         string
+	LoadTestGitCommit       string
+	RepoDirName             string
+	CheckoutCommit          bool
 }
 
 //go:embed shell/*.sh
@@ -67,35 +75,6 @@ func RunOverSSH(
 	return nil
 }
 
-// RunOverSSH runs provided script path over ssh.
-// This script can be template as it will be rendered using scriptInputs vars
-func StreamOverSSH(
-	scriptDesc string,
-	host *models.Host,
-	timeout time.Duration,
-	scriptPath string,
-	templateVars scriptInputs,
-) error {
-	shellScript, err := script.ReadFile(scriptPath)
-	if err != nil {
-		return err
-	}
-	var script bytes.Buffer
-	t, err := template.New(scriptDesc).Parse(string(shellScript))
-	if err != nil {
-		return err
-	}
-	err = t.Execute(&script, templateVars)
-	if err != nil {
-		return err
-	}
-
-	if err := host.StreamSSHCommand(script.String(), nil, timeout); err != nil {
-		return err
-	}
-	return nil
-}
-
 func PostOverSSH(host *models.Host, path string, requestBody string) ([]byte, error) {
 	if path == "" {
 		path = "/ext/info"
@@ -113,13 +92,13 @@ func PostOverSSH(host *models.Host, path string, requestBody string) ([]byte, er
 }
 
 // RunSSHSetupNode runs script to setup node
-func RunSSHSetupNode(host *models.Host, configPath, avalancheGoVersion string, isDevNet bool) error {
+func RunSSHSetupNode(host *models.Host, configPath, avalancheGoVersion string, cliVersion string, isDevNet bool) error {
 	if err := RunOverSSH(
 		"Setup Node",
 		host,
 		constants.SSHScriptTimeout,
 		"shell/setupNode.sh",
-		scriptInputs{AvalancheGoVersion: avalancheGoVersion, IsDevNet: isDevNet, IsE2E: utils.IsE2E()},
+		scriptInputs{AvalancheGoVersion: avalancheGoVersion, CLIVersion: cliVersion, IsDevNet: isDevNet, IsE2E: utils.IsE2E()},
 	); err != nil {
 		return err
 	}
@@ -225,10 +204,12 @@ func RunSSHUpgradeSubnetEVM(host *models.Host, subnetEVMBinaryPath string) error
 }
 
 func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath string) error {
+	// TODO: download dashboards from github instead
+	remoteDashboardsPath := "/home/ubuntu/dashboards"
 	if !utils.DirectoryExists(monitoringDashboardPath) {
 		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
 	}
-	if err := host.MkdirAll("/home/ubuntu/dashboards", constants.SSHFileOpsTimeout); err != nil {
+	if err := host.MkdirAll(remoteDashboardsPath, constants.SSHFileOpsTimeout); err != nil {
 		return err
 	}
 	dashboards, err := os.ReadDir(monitoringDashboardPath)
@@ -238,23 +219,30 @@ func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath s
 	for _, dashboard := range dashboards {
 		if err := host.Upload(
 			filepath.Join(monitoringDashboardPath, dashboard.Name()),
-			filepath.Join("/home/ubuntu/dashboards", dashboard.Name()),
+			filepath.Join(remoteDashboardsPath, dashboard.Name()),
 			constants.SSHFileOpsTimeout,
 		); err != nil {
 			return err
 		}
 	}
-	return nil
-}
-
-func RunSSHSetupMonitoring(host *models.Host) error {
 	return RunOverSSH(
-		"Setup Monitoring",
+		"Sync Grafana Dashboards",
 		host,
 		constants.SSHScriptTimeout,
-		"shell/setupMonitoring.sh",
+		"shell/updateGrafanaDashboards.sh",
 		scriptInputs{},
 	)
+}
+
+func RunSSHCopyYAMLFile(host *models.Host, yamlFilePath string) error {
+	if err := host.Upload(
+		yamlFilePath,
+		fmt.Sprintf("/home/ubuntu/%s", filepath.Base(yamlFilePath)),
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
+	}
+	return nil
 }
 
 func RunSSHSetupMachineMetrics(host *models.Host) error {
@@ -267,37 +255,41 @@ func RunSSHSetupMachineMetrics(host *models.Host) error {
 	)
 }
 
-func RunSSHSetupSeparateMonitoring(host *models.Host, monitoringDashboardPath, avalancheGoPorts, machinePorts string) error {
+func RunSSHSetupSeparateMonitoring(host *models.Host) error {
+	return RunOverSSH(
+		"Setup Prometheus and Grafana",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/setupMonitoring.sh",
+		scriptInputs{
+			IsE2E: utils.IsE2E(),
+		},
+	)
+}
+
+func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePorts []string) error {
+	const cloudNodePrometheusConfigTemp = "/tmp/prometheus.yml"
+	promConfig, err := os.CreateTemp("", "prometheus")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(promConfig.Name())
+	if err := monitoring.WritePrometheusConfig(promConfig.Name(), avalancheGoPorts, machinePorts); err != nil {
+		return err
+	}
 	if err := host.Upload(
-		monitoringDashboardPath,
-		fmt.Sprintf("/home/ubuntu/%s", filepath.Base(monitoringDashboardPath)),
+		promConfig.Name(),
+		cloudNodePrometheusConfigTemp,
 		constants.SSHFileOpsTimeout,
 	); err != nil {
 		return err
 	}
 	return RunOverSSH(
-		"Setup Separate Monitoring",
-		host,
-		constants.SSHScriptTimeout,
-		"shell/setupSeparateMonitoring.sh",
-		scriptInputs{
-			AvalancheGoPorts: avalancheGoPorts,
-			MachinePorts:     machinePorts,
-			IsE2E:            utils.IsE2E(),
-		},
-	)
-}
-
-func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePorts string) error {
-	return RunOverSSH(
 		"Update Prometheus Config",
 		host,
 		constants.SSHScriptTimeout,
 		"shell/updatePrometheusConfig.sh",
-		scriptInputs{
-			AvalancheGoPorts: avalancheGoPorts,
-			MachinePorts:     machinePorts,
-		},
+		scriptInputs{},
 	)
 }
 
@@ -374,6 +366,22 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 	)
 }
 
+func RunSSHUploadClustersConfig(host *models.Host, localClustersConfigPath string) error {
+	remoteNodesDir := filepath.Join(constants.CloudNodeCLIConfigBasePath, constants.NodesDir)
+	if err := host.MkdirAll(
+		remoteNodesDir,
+		constants.SSHDirOpsTimeout,
+	); err != nil {
+		return err
+	}
+	remoteClustersConfigPath := filepath.Join(remoteNodesDir, constants.ClustersConfigFileName)
+	return host.Upload(
+		localClustersConfigPath,
+		remoteClustersConfigPath,
+		constants.SSHFileOpsTimeout,
+	)
+}
+
 // RunSSHUploadStakingFiles uploads staking files to a remote host via SSH.
 func RunSSHUploadStakingFiles(host *models.Host, nodeInstanceDirPath string) error {
 	if err := host.MkdirAll(
@@ -446,15 +454,62 @@ func RunSSHSetupBuildEnv(host *models.Host) error {
 	)
 }
 
+func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName string, checkoutCommit bool) error {
+	loadTestRepoPaths := strings.Split(loadTestRepo, "/")
+	if len(loadTestRepoPaths) == 0 {
+		return fmt.Errorf("incorrect load test Repo URL format")
+	}
+	// remove .git
+	loadTestRepoDir := strings.Split(loadTestRepoPaths[len(loadTestRepoPaths)-1], ".")
+	if len(loadTestRepoDir) == 0 {
+		return fmt.Errorf("incorrect load test Repo URL format")
+	}
+	return StreamOverSSH(
+		"Build Load Test",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/buildLoadTest.sh",
+		scriptInputs{
+			LoadTestRepoDir: loadTestRepoDir[0],
+			LoadTestRepo:    loadTestRepo, LoadTestPath: loadTestPath, LoadTestGitCommit: loadTestGitCommit,
+			RepoDirName: repoDirName, CheckoutCommit: checkoutCommit,
+		},
+	)
+}
+
+func RunSSHBuildLoadTestDependencies(host *models.Host) error {
+	return RunOverSSH(
+		"Build Load Test",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/buildLoadTestDeps.sh",
+		scriptInputs{GoVersion: constants.BuildEnvGolangVersion},
+	)
+}
+
+func RunSSHRunLoadTest(host *models.Host, loadTestCommand string) error {
+	return StreamOverSSH(
+		"Run Load Test",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/runLoadTest.sh",
+		scriptInputs{GoVersion: constants.BuildEnvGolangVersion, LoadTestCommand: loadTestCommand},
+	)
+}
+
 // RunSSHSetupCLIFromSource installs any CLI branch from source
 func RunSSHSetupCLIFromSource(host *models.Host, cliBranch string) error {
 	if !constants.EnableSetupCLIFromSource {
 		return nil
 	}
+	timeout := constants.SSHScriptTimeout
+	if utils.IsE2E() && utils.E2EDocker() {
+		timeout = 10 * time.Minute
+	}
 	return RunOverSSH(
 		"Setup CLI From Source",
 		host,
-		constants.SSHScriptTimeout,
+		timeout,
 		"shell/setupCLIFromSource.sh",
 		scriptInputs{CliBranch: cliBranch},
 	)
@@ -493,4 +548,55 @@ func RunSSHSubnetSyncStatus(host *models.Host, blockchainID string) ([]byte, err
 	// Craft and send the HTTP POST request
 	requestBody := fmt.Sprintf("{\"jsonrpc\":\"2.0\", \"id\":1,\"method\" :\"platform.getBlockchainStatus\", \"params\": {\"blockchainID\":\"%s\"}}", blockchainID)
 	return PostOverSSH(host, "/ext/bc/P", requestBody)
+}
+
+// StreamOverSSH runs provided script path over ssh.
+// This script can be template as it will be rendered using scriptInputs vars
+func StreamOverSSH(
+	scriptDesc string,
+	host *models.Host,
+	timeout time.Duration,
+	scriptPath string,
+	templateVars scriptInputs,
+) error {
+	shellScript, err := script.ReadFile(scriptPath)
+	if err != nil {
+		return err
+	}
+	var script bytes.Buffer
+	t, err := template.New(scriptDesc).Parse(string(shellScript))
+	if err != nil {
+		return err
+	}
+	err = t.Execute(&script, templateVars)
+	if err != nil {
+		return err
+	}
+
+	if err := host.StreamSSHCommand(script.String(), nil, timeout); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RunSSHWhitelistPubKey downloads the authorized_keys file from the specified host, appends the provided sshPubKey to it, and uploads the file back to the host.
+func RunSSHWhitelistPubKey(host *models.Host, sshPubKey string) error {
+	const sshAuthFile = "/home/ubuntu/.ssh/authorized_keys"
+	tmpName := filepath.Join(os.TempDir(), utils.RandomString(10))
+	defer os.Remove(tmpName)
+	if err := host.Download(sshAuthFile, tmpName, constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	// write ssh public key
+	tmpFile, err := os.OpenFile(tmpName, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	if _, err := tmpFile.WriteString(sshPubKey + "\n"); err != nil {
+		return err
+	}
+	if err := tmpFile.Close(); err != nil {
+		return err
+	}
+	return host.Upload(tmpFile.Name(), sshAuthFile, constants.SSHFileOpsTimeout)
 }

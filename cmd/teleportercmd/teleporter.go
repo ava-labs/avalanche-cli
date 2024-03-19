@@ -11,7 +11,7 @@ import (
 
 var app *application.Avalanche
 
-// avalanche subnet
+// avalanche teleporter
 func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "teleporter",
@@ -28,5 +28,7 @@ with Teleporter-Enabled Subnets.`,
 	app = injectedApp
 	// teleporter msg
 	cmd.AddCommand(newMsgCmd())
+	// teleporter deploy
+	cmd.AddCommand(newDeployCmd())
 	return cmd
 }

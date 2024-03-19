@@ -50,6 +50,7 @@ var (
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
 	errMutuallyExlusiveVersionOptions = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
+	errMutuallyVMConfigOptions        = errors.New("specifying --genesis flag disables SubnetEVM config flags --evm-chain-id,--evm-token,--evm-defaults")
 )
 
 // avalanche subnet create
@@ -86,7 +87,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().StringVar(&vmFile, "vm", "", "file path of custom vm to use. alias to custom-vm-path")
 	cmd.Flags().StringVar(&vmFile, "custom-vm-path", "", "file path of custom vm to use")
 	cmd.Flags().StringVar(&customVMRepoURL, "custom-vm-repo-url", "", "custom vm repository url")
-	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch")
+	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch or commit")
 	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
 	cmd.Flags().BoolVar(&useRepo, "from-github-repo", false, "generate custom VM binary from github repository")
 	cmd.Flags().BoolVar(&teleporterReady, "teleporter", true, "generate a teleporter-ready vm")
@@ -126,6 +127,13 @@ func CallCreate(
 	return createSubnetConfig(cmd, []string{subnetName})
 }
 
+func detectVMTypeFromFlags() {
+	// assumes custom
+	if customVMRepoURL != "" || customVMBranch != "" || customVMBuildScript != "" {
+		useCustom = true
+	}
+}
+
 func moreThanOneVMSelected() bool {
 	vmVars := []bool{useSubnetEvm, useCustom}
 	firstSelect := false
@@ -162,12 +170,18 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("subnet name %q is invalid: %w", subnetName, err)
 	}
 
+	detectVMTypeFromFlags()
+
 	if moreThanOneVMSelected() {
 		return errors.New("too many VMs selected. Provide at most one VM selection flag")
 	}
 
 	if !flags.EnsureMutuallyExclusive([]bool{useLatestReleasedEvmVersion, useLatestPreReleasedEvmVersion, evmVersion != ""}) {
 		return errMutuallyExlusiveVersionOptions
+	}
+
+	if genesisFile != "" && (evmChainID != 0 || evmToken != "" || evmDefaults) {
+		return errMutuallyVMConfigOptions
 	}
 
 	subnetType := getVMFromFlag()
@@ -241,7 +255,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			var k *key.SoftKey
 			if utils.FileExists(keyPath) {
 				ux.Logger.PrintToUser("loading stored key %q for teleporter deploys", constants.TeleporterKeyName)
-				k, err = key.LoadSoft(models.LocalNetwork.ID, keyPath)
+				k, err = key.LoadSoft(models.NewLocalNetwork().ID, keyPath)
 				if err != nil {
 					return err
 				}

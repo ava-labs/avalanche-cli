@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
@@ -33,12 +34,9 @@ import (
 	"golang.org/x/mod/semver"
 )
 
+var deploySupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Devnet}
+
 var (
-	deployLocal              bool
-	deployDevnet             bool
-	deployTestnet            bool
-	deployMainnet            bool
-	endpoint                 string
 	sameControlKey           bool
 	keyName                  string
 	threshold                uint32
@@ -53,13 +51,11 @@ var (
 	mainnetChainID           uint32
 	skipCreatePrompt         bool
 	avagoBinaryPath          string
-
-	errMutuallyExlusiveNetworks = errors.New("--local, --fuji/--testnet, --mainnet are mutually exclusive")
+	skipLocalTeleporter      bool
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
-
-	ErrMutuallyExlusiveKeyLedger = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
-	ErrStoredKeyOnMainnet        = errors.New("key --key is not available for mainnet operations")
+	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
+	ErrStoredKeyOnMainnet          = errors.New("key --key is not available for mainnet operations")
 )
 
 // avalanche subnet deploy
@@ -82,12 +78,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 		PersistentPostRun: handlePostRun,
 		Args:              cobra.ExactArgs(1),
 	}
-	cmd.Flags().StringVar(&endpoint, "endpoint", "", "use the given endpoint for network operations")
-	cmd.Flags().BoolVarP(&deployLocal, "local", "l", false, "deploy to a local network")
-	cmd.Flags().BoolVar(&deployDevnet, "devnet", false, "deploy to a devnet network")
-	cmd.Flags().BoolVarP(&deployTestnet, "testnet", "t", false, "deploy to testnet (alias to `fuji`)")
-	cmd.Flags().BoolVarP(&deployTestnet, "fuji", "f", false, "deploy to fuji (alias to `testnet`")
-	cmd.Flags().BoolVarP(&deployMainnet, "mainnet", "m", false, "deploy to mainnet")
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, deploySupportedNetworkOptions)
 	cmd.Flags().StringVar(&userProvidedAvagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet deploy only]")
 	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use the fee-paying key as control key")
@@ -101,27 +92,20 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "deploy into given subnet id")
 	cmd.Flags().Uint32Var(&mainnetChainID, "mainnet-chain-id", 0, "use different ChainID for mainnet deployment")
 	cmd.Flags().StringVar(&avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
+	cmd.Flags().BoolVar(&skipLocalTeleporter, "skip-local-teleporter", false, "skip local teleporter deploy to a local network")
 	return cmd
 }
 
 func CallDeploy(
 	cmd *cobra.Command,
 	subnetName string,
-	deployLocalParam bool,
-	deployDevnetParam bool,
-	deployTestnetParam bool,
-	deployMainnetParam bool,
-	endpointParam string,
+	networkFlags networkoptions.NetworkFlags,
 	keyNameParam string,
 	useLedgerParam bool,
 	useEwoqParam bool,
 	sameControlKeyParam bool,
 ) error {
-	deployLocal = deployLocalParam
-	deployTestnet = deployTestnetParam
-	deployMainnet = deployMainnetParam
-	deployDevnet = deployDevnetParam
-	endpoint = endpointParam
+	globalNetworkFlags = networkFlags
 	sameControlKey = sameControlKeyParam
 	keyName = keyNameParam
 	useLedger = useLedgerParam
@@ -178,8 +162,9 @@ func checkSubnetEVMDefaultAddressNotInAlloc(network models.Network, chain string
 	return nil
 }
 
-func runDeploy(cmd *cobra.Command, args []string) error {
+func runDeploy(cmd *cobra.Command, args []string, supportedNetworkOptions []networkoptions.NetworkOption) error {
 	skipCreatePrompt = true
+	deploySupportedNetworkOptions = supportedNetworkOptions
 	return deploySubnet(cmd, args)
 }
 
@@ -263,29 +248,15 @@ func getSubnetEVMMainnetChainID(sc *models.Sidecar, subnetName string) error {
 
 // deploySubnet is the cobra command run for deploying subnets
 func deploySubnet(cmd *cobra.Command, args []string) error {
+	subnetName := args[0]
+
+	if err := CreateSubnetFirst(cmd, subnetName, skipCreatePrompt); err != nil {
+		return err
+	}
+
 	chains, err := ValidateSubnetNameAndGetChains(args)
 	if err != nil {
-		if !strings.Contains(err.Error(), "Invalid subnet") {
-			return err
-		}
-		if !skipCreatePrompt {
-			yes, promptErr := app.Prompt.CaptureNoYes(fmt.Sprintf("Subnet %s is not found. Do you want to create it first?", args[0]))
-			if promptErr != nil {
-				return promptErr
-			}
-			if !yes {
-				return err
-			}
-		}
-		createErr := createSubnetConfig(cmd, args)
-		if createErr != nil {
-			return createErr
-		}
-		chains, err = ValidateSubnetNameAndGetChains(args)
-		if err != nil {
-			return err
-		}
-		ux.Logger.PrintToUser("Now deploying subnet %s", chains[0])
+		return err
 	}
 
 	chain := chains[0]
@@ -305,14 +276,12 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	network, err := GetNetworkFromCmdLineFlags(
-		deployLocal,
-		deployDevnet,
-		deployTestnet,
-		deployMainnet,
-		endpoint,
+	network, err := networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		globalNetworkFlags,
 		true,
-		[]models.NetworkKind{models.Local, models.Devnet, models.Fuji, models.Mainnet},
+		deploySupportedNetworkOptions,
+		"",
 	)
 	if err != nil {
 		return err
@@ -381,7 +350,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 
 		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin)
-		deployInfo, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath, subnetIDStr)
+		deployInfo, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath, skipLocalTeleporter, subnetIDStr)
 		if err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {
@@ -826,7 +795,6 @@ func CheckForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.Statu
 	if err != nil {
 		return "", err
 	}
-
 	desiredAvagoVersion := userProvidedAvagoVersion
 
 	// RPC Version was made available in the info API in avalanchego version v1.9.2. For prior versions,

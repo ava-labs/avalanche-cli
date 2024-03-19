@@ -11,12 +11,15 @@ const (
 	WriteReadReadPerms     = 0o644
 	WriteReadUserOnlyPerms = 0o600
 
+	UbuntuVersionLTS = "20.04"
+
 	BaseDirName = ".avalanche-cli"
 	LogDir      = "logs"
 
 	ServerRunFile      = "gRPCserver.run"
 	AvalancheCliBinDir = "bin"
 	RunDir             = "runs"
+	ServicesDir        = "services"
 
 	SuffixSeparator              = "_"
 	SidecarFileName              = "sidecar.json"
@@ -154,10 +157,10 @@ const (
 	CloudServerStorageSize                       = 1000
 	MonitoringCloudServerStorageSize             = 50
 	OutboundPort                                 = 0
-	SetupCLIFromSourceBranch                     = "main"
 	// Set this one to true while testing changes that alter CLI execution on cloud nodes
 	// Disable it for releases to save cluster creation time
 	EnableSetupCLIFromSource           = false
+	SetupCLIFromSourceBranch           = "main"
 	BuildEnvGolangVersion              = "1.21.1"
 	IsHealthyJSONFile                  = "isHealthy.json"
 	IsBootstrappedJSONFile             = "isBootstrapped.json"
@@ -181,7 +184,7 @@ const (
 	OldConfigFileName             = ".avalanche-cli.json"
 	OldMetricsConfigFileName      = ".avalanche-cli/config"
 	DefaultConfigFileName         = ".avalanche-cli/config.json"
-
+	DefaultNodeType               = "default"
 	AWSCloudService               = "Amazon Web Services"
 	GCPCloudService               = "Google Cloud Platform"
 	AWSDefaultInstanceType        = "c5.2xlarge"
@@ -190,6 +193,7 @@ const (
 	AWSNodeAnsiblePrefix          = "aws_node"
 	GCPNodeAnsiblePrefix          = "gcp_node"
 	CustomVMDir                   = "vms"
+	ClusterYAMLFileName           = "clusterInfo.yaml"
 	GCPStaticIPPrefix             = "static-ip"
 	AvaLabsOrg                    = "ava-labs"
 	AvalancheGoRepoName           = "avalanchego"
@@ -207,7 +211,6 @@ const (
 	CloudNodeCLIConfigBasePath    = "/home/ubuntu/.avalanche-cli/"
 	AvalanchegoMonitoringPort     = 9090
 	AvalanchegoMachineMetricsPort = 9100
-	MonitoringScriptFile          = "monitoring-separate-installer.sh"
 	MonitoringDir                 = "monitoring"
 	DashboardsDir                 = "dashboards"
 	NodeConfigJSONFile            = "node.json"
@@ -278,11 +281,13 @@ const (
 
 	PluginDir = "plugins"
 
-	Network        = "network"
-	MultiSig       = "multi-sig"
-	SkipUpdateFlag = "skip-update-check"
-	LastFileName   = ".last_actions.json"
-
+	Network                      = "network"
+	MultiSig                     = "multi-sig"
+	SkipUpdateFlag               = "skip-update-check"
+	LastFileName                 = ".last_actions.json"
+	APIRole                      = "API"
+	ValidatorRole                = "Validator"
+	MonitorRole                  = "Monitor"
 	DefaultWalletCreationTimeout = 5 * time.Second
 
 	DefaultConfirmTxTimeout = 20 * time.Second
@@ -295,4 +300,5 @@ const (
 	E2EDocker               = "docker"
 	E2EDockerComposeFile    = "/tmp/avalanche-cli-docker-compose.yml"
 	E2EDebugAvalanchegoPath = "E2E_AVALANCHEGO_PATH"
+	GitExtension            = ".git"
 )

@@ -5,6 +5,7 @@ package models
 import (
 	"golang.org/x/exp/slices"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
 
@@ -61,13 +62,13 @@ func (cc *ClusterConfig) GetHostRoles(nodeConf NodeConfig) []string {
 	roles := []string{}
 	if cc.IsAvalancheGoHost(nodeConf.NodeID) {
 		if cc.IsAPIHost(nodeConf.NodeID) {
-			roles = append(roles, "API")
+			roles = append(roles, constants.APIRole)
 		} else {
-			roles = append(roles, "Node")
+			roles = append(roles, constants.ValidatorRole)
 		}
 	}
 	if nodeConf.IsMonitor {
-		roles = append(roles, "Monitor")
+		roles = append(roles, constants.MonitorRole)
 	}
 	return roles
 }

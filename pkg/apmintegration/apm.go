@@ -14,8 +14,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
-const gitExtension = ".git"
-
 // Returns alias
 func AddRepo(app *application.Avalanche, repoURL *url.URL, branch string) (string, error) {
 	alias, err := getAlias(repoURL)
@@ -30,8 +28,8 @@ func AddRepo(app *application.Avalanche, repoURL *url.URL, branch string) (strin
 
 	repoStr := repoURL.String()
 
-	if path.Ext(repoStr) != gitExtension {
-		repoStr += gitExtension
+	if path.Ext(repoStr) != constants.GitExtension {
+		repoStr += constants.GitExtension
 	}
 
 	fmt.Println("Installing repo")

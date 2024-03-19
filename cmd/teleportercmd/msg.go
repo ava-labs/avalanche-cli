@@ -10,14 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/subnet-evm/core/types"
 	teleportermessenger "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/TeleporterMessenger"
@@ -27,11 +25,8 @@ import (
 )
 
 var (
-	useLocal   bool
-	useDevnet  bool
-	useFuji    bool
-	useMainnet bool
-	endpoint   string
+	msgSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Devnet}
+	globalNetworkFlags         networkoptions.NetworkFlags
 )
 
 // avalanche teleporter msg
@@ -44,38 +39,38 @@ func newMsgCmd() *cobra.Command {
 		RunE:         msg,
 		Args:         cobra.ExactArgs(3),
 	}
-	cmd.Flags().StringVar(&endpoint, "endpoint", "", "use the given endpoint for network operations")
-	cmd.Flags().BoolVarP(&useLocal, "local", "l", false, "operate on a local network")
-	cmd.Flags().BoolVar(&useDevnet, "devnet", false, "operate on a devnet network")
-	cmd.Flags().BoolVarP(&useFuji, "testnet", "t", false, "operate on testnet (alias to `fuji`)")
-	cmd.Flags().BoolVarP(&useFuji, "fuji", "f", false, "operate on fuji (alias to `testnet`")
-	cmd.Flags().BoolVarP(&useMainnet, "mainnet", "m", false, "operate on mainnet")
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, msgSupportedNetworkOptions)
 	return cmd
 }
 
 func msg(_ *cobra.Command, args []string) error {
-	network, err := subnetcmd.GetNetworkFromCmdLineFlags(
-		useLocal,
-		useDevnet,
-		useFuji,
-		useMainnet,
-		"",
-		false,
-		[]models.NetworkKind{models.Local},
+	sourceSubnetName := args[0]
+	destSubnetName := args[1]
+	message := args[2]
+
+	subnetNameToGetNetworkFrom := ""
+	if !isCChain(sourceSubnetName) {
+		subnetNameToGetNetworkFrom = sourceSubnetName
+	}
+	if !isCChain(destSubnetName) {
+		subnetNameToGetNetworkFrom = destSubnetName
+	}
+	network, err := networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		globalNetworkFlags,
+		true,
+		msgSupportedNetworkOptions,
+		subnetNameToGetNetworkFrom,
 	)
 	if err != nil {
 		return err
 	}
 
-	sourceSubnetName := args[0]
-	destSubnetName := args[1]
-	message := args[2]
-
-	sourceChainID, sourceMessengerAddress, sourceKey, err := getSubnetParams(network, sourceSubnetName)
+	_, sourceChainID, sourceMessengerAddress, _, sourceKey, err := getSubnetParams(network, sourceSubnetName)
 	if err != nil {
 		return err
 	}
-	destChainID, destMessengerAddress, _, err := getSubnetParams(network, destSubnetName)
+	_, destChainID, destMessengerAddress, _, _, err := getSubnetParams(network, destSubnetName)
 	if err != nil {
 		return err
 	}
@@ -130,7 +125,7 @@ func msg(_ *cobra.Command, args []string) error {
 		AllowedRelayerAddresses: []common.Address{},
 		Message:                 []byte(message),
 	}
-	ux.Logger.PrintToUser("Delivering message %q to source subnet %q", message, sourceSubnetName)
+	ux.Logger.PrintToUser("Delivering message %q from source subnet %q", message, sourceSubnetName)
 	tx, err := sourceMessenger.SendCrossChainMessage(sourceSigner, msgInput)
 	if err != nil {
 		return err
@@ -155,7 +150,7 @@ func msg(_ *cobra.Command, args []string) error {
 	}
 
 	// receive and process head from destination
-	ux.Logger.PrintToUser("Waiting for message to be received at destination subnet subnet %q", destSubnetName)
+	ux.Logger.PrintToUser("Waiting for message to be received on destination subnet %q", destSubnetName)
 	var head *types.Header
 	select {
 	case head = <-destHeadsCh:
@@ -205,51 +200,57 @@ func msg(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func getSubnetParams(network models.Network, subnetName string) (ids.ID, string, *key.SoftKey, error) {
+func getSubnetParams(network models.Network, subnetName string) (ids.ID, ids.ID, string, string, *key.SoftKey, error) { //nolint:unparam
 	var (
+		subnetID                   ids.ID
 		chainID                    ids.ID
 		err                        error
 		teleporterMessengerAddress string
+		teleporterRegistryAddress  string
 		k                          *key.SoftKey
 	)
-	if strings.ToLower(subnetName) == "c-chain" || strings.ToLower(subnetName) == "cchain" {
-		chainID, err = getChainID(network.Endpoint, "C")
+	if isCChain(subnetName) {
+		subnetID = ids.Empty
+		chainID, err = subnet.GetChainID(network, "C")
+		if err != nil {
+			return ids.Empty, ids.Empty, "", "", nil, err
+		}
 		if network.Kind == models.Local {
 			extraLocalNetworkData, err := subnet.GetExtraLocalNetworkData(app)
 			if err != nil {
-				return ids.Empty, "", nil, err
+				return ids.Empty, ids.Empty, "", "", nil, err
 			}
 			teleporterMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
+			teleporterRegistryAddress = extraLocalNetworkData.CChainTeleporterRegistryAddress
 			k, err = key.LoadEwoq(network.ID)
 			if err != nil {
-				return ids.Empty, "", nil, err
+				return ids.Empty, ids.Empty, "", "", nil, err
 			}
 		}
 	} else {
 		sc, err := app.LoadSidecar(subnetName)
 		if err != nil {
-			return ids.Empty, "", nil, err
+			return ids.Empty, ids.Empty, "", "", nil, err
 		}
+		subnetID = sc.Networks[network.Name()].SubnetID
 		chainID = sc.Networks[network.Name()].BlockchainID
 		teleporterMessengerAddress = sc.Networks[network.Name()].TeleporterMessengerAddress
+		teleporterRegistryAddress = sc.Networks[network.Name()].TeleporterRegistryAddress
 		keyPath := app.GetKeyPath(sc.TeleporterKey)
 		k, err = key.LoadSoft(network.ID, keyPath)
 		if err != nil {
-			return ids.Empty, "", nil, err
+			return ids.Empty, ids.Empty, "", "", nil, err
 		}
 	}
 	if chainID == ids.Empty {
-		return ids.Empty, "", nil, fmt.Errorf("chainID for subnet %s not found on network %s", subnetName, network.Name())
+		return ids.Empty, ids.Empty, "", "", nil, fmt.Errorf("chainID for subnet %s not found on network %s", subnetName, network.Name())
 	}
 	if teleporterMessengerAddress == "" {
-		return ids.Empty, "", nil, fmt.Errorf("teleporter messenger address for subnet %s not found on network %s", subnetName, network.Name())
+		return ids.Empty, ids.Empty, "", "", nil, fmt.Errorf("teleporter messenger address for subnet %s not found on network %s", subnetName, network.Name())
 	}
-	return chainID, teleporterMessengerAddress, k, err
+	return subnetID, chainID, teleporterMessengerAddress, teleporterRegistryAddress, k, nil
 }
 
-func getChainID(endpoint string, chainName string) (ids.ID, error) {
-	client := info.NewClient(endpoint)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	return client.GetBlockchainID(ctx, chainName)
+func isCChain(subnetName string) bool {
+	return strings.ToLower(subnetName) == "c-chain" || strings.ToLower(subnetName) == "cchain"
 }

@@ -286,31 +286,31 @@ func (c *AwsCloud) checkInstanceIsRunning(nodeID string) (bool, error) {
 	return false, nil
 }
 
-// StopAWSNode stops an EC2 instance with the given ID.
-func (c *AwsCloud) StopAWSNode(nodeConfig models.NodeConfig, clusterName string) error {
+// DestroyAWSNode terminates an EC2 instance with the given ID.
+func (c *AwsCloud) DestroyAWSNode(nodeConfig models.NodeConfig, clusterName string) error {
 	isRunning, err := c.checkInstanceIsRunning(nodeConfig.NodeID)
 	if err != nil {
-		ux.Logger.PrintToUser(fmt.Sprintf("Failed to stop node %s due to %s", nodeConfig.NodeID, err.Error()))
+		ux.Logger.PrintToUser(fmt.Sprintf("Failed to destroy node %s due to %s", nodeConfig.NodeID, err.Error()))
 		return err
 	}
 	if !isRunning {
 		return fmt.Errorf("%w: instance %s, cluster %s", ErrNodeNotFoundToBeRunning, nodeConfig.NodeID, clusterName)
 	}
-	ux.Logger.PrintToUser(fmt.Sprintf("Stopping node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
-	return c.StopInstance(nodeConfig.NodeID, nodeConfig.ElasticIP, nodeConfig.UseStaticIP)
+	ux.Logger.PrintToUser(fmt.Sprintf("Terminating node instance %s in cluster %s...", nodeConfig.NodeID, clusterName))
+	return c.DestroyInstance(nodeConfig.NodeID, nodeConfig.ElasticIP, nodeConfig.UseStaticIP)
 }
 
-// StopInstance stops an EC2 instance with the given ID.
-func (c *AwsCloud) StopInstance(instanceID, publicIP string, releasePublicIP bool) error {
-	input := &ec2.StopInstancesInput{
+// DestroyInstance terminates an EC2 instance with the given ID.
+func (c *AwsCloud) DestroyInstance(instanceID, publicIP string, releasePublicIP bool) error {
+	input := &ec2.TerminateInstancesInput{
 		InstanceIds: []string{instanceID},
 	}
-	if _, err := c.ec2Client.StopInstances(c.ctx, input); err != nil {
+	if _, err := c.ec2Client.TerminateInstances(c.ctx, input); err != nil {
 		return err
 	}
 	if releasePublicIP {
 		if publicIP == "" {
-			ux.Logger.RedXToUser("Unabled to remove public IP for instannce %s: undefined", instanceID)
+			ux.Logger.RedXToUser("Unable to remove public IP for instance %s: undefined", instanceID)
 		} else {
 			describeAddressInput := &ec2.DescribeAddressesInput{
 				Filters: []types.Filter{
@@ -464,12 +464,16 @@ func (c *AwsCloud) CheckKeyPairExists(kpName string) (bool, error) {
 }
 
 // GetUbuntuAMIID returns the ID of the latest Ubuntu Amazon Machine Image (AMI).
-func (c *AwsCloud) GetUbuntuAMIID() (string, error) {
-	descriptionFilterValue := "Canonical, Ubuntu, 20.04 LTS, amd64*"
+func (c *AwsCloud) GetUbuntuAMIID(arch string, ubuntuVerLTS string) (string, error) {
+	if !utils.ArchSupported(arch) {
+		return "", fmt.Errorf("unsupported architecture: %s", arch)
+	}
+	descriptionFilterValue := fmt.Sprintf("Canonical, Ubuntu, %s LTS*", ubuntuVerLTS)
 	imageInput := &ec2.DescribeImagesInput{
 		Filters: []types.Filter{
 			{Name: aws.String("root-device-type"), Values: []string{"ebs"}},
 			{Name: aws.String("description"), Values: []string{descriptionFilterValue}},
+			{Name: aws.String("architecture"), Values: []string{arch}},
 		},
 		Owners: []string{"self", "amazon"},
 	}
@@ -506,4 +510,18 @@ func (c *AwsCloud) ListRegions() ([]string, error) {
 func isEIPQuotaExceededError(err error) bool {
 	// You may need to adjust this function based on the actual error messages returned by AWS
 	return err != nil && (utils.ContainsIgnoreCase(err.Error(), "limit exceeded") || utils.ContainsIgnoreCase(err.Error(), "elastic ip address limit exceeded"))
+}
+
+// GetInstanceTypeArch returns the architecture of the given instance type.
+func (c *AwsCloud) GetInstanceTypeArch(instanceType string) (string, error) {
+	archOutput, err := c.ec2Client.DescribeInstanceTypes(c.ctx, &ec2.DescribeInstanceTypesInput{
+		InstanceTypes: []types.InstanceType{types.InstanceType(instanceType)},
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(archOutput.InstanceTypes) == 0 {
+		return "", fmt.Errorf("no instance type found for %s", instanceType)
+	}
+	return string(archOutput.InstanceTypes[0].ProcessorInfo.SupportedArchitectures[0]), nil
 }

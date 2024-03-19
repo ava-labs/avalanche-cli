@@ -58,8 +58,6 @@ manage your Subnet configurations and live deployments.`,
 	cmd.AddCommand(newStatsCmd())
 	// subnet configure
 	cmd.AddCommand(newConfigureCmd())
-	// subnet import-running
-	cmd.AddCommand(newImportFromNetworkCmd())
 	// subnet VMID
 	cmd.AddCommand(vmidCmd())
 	// subnet removeValidator

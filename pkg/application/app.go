@@ -8,17 +8,18 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
-
 	"github.com/ava-labs/apm/apm"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
+
+	"golang.org/x/exp/maps"
 )
 
 type Avalanche struct {
@@ -69,6 +70,10 @@ func (app *Avalanche) GetReposDir() string {
 
 func (app *Avalanche) GetRunDir() string {
 	return filepath.Join(app.baseDir, constants.RunDir)
+}
+
+func (app *Avalanche) GetServicesDir() string {
+	return filepath.Join(app.baseDir, constants.ServicesDir)
 }
 
 func (app *Avalanche) GetCustomVMDir() string {
@@ -124,6 +129,14 @@ func (app *Avalanche) GetAWMRelayerRunPath() string {
 
 func (app *Avalanche) GetAWMRelayerSnapshotConfsDir() string {
 	return filepath.Join(app.GetSnapshotsDir(), constants.AWMRelayerSnapshotConfsDir)
+}
+
+func (app *Avalanche) GetAWMRelayerServiceDir() string {
+	return filepath.Join(app.GetServicesDir(), constants.AWMRelayerInstallDir)
+}
+
+func (app *Avalanche) GetAWMRelayerServiceConfigPath() string {
+	return filepath.Join(app.GetAWMRelayerServiceDir(), constants.AWMRelayerConfigFilename)
 }
 
 func (app *Avalanche) GetExtraLocalNetworkDataPath() string {
@@ -188,6 +201,10 @@ func (app *Avalanche) GetAnsibleDir() string {
 
 func (app *Avalanche) GetMonitoringDir() string {
 	return filepath.Join(app.GetNodesDir(), constants.MonitoringDir)
+}
+
+func (app *Avalanche) GetMonitoringInventoryDir(clusterName string) string {
+	return filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
 }
 
 func (app *Avalanche) CreateAnsibleDir() error {
@@ -688,7 +705,7 @@ func (app *Avalanche) LoadClustersConfig() (models.ClustersConfig, error) {
 		for clusterName, nodes := range clustersConfigV0.Clusters {
 			clustersConfig.Clusters[clusterName] = models.ClusterConfig{
 				Nodes:   nodes,
-				Network: models.FujiNetwork,
+				Network: models.NewFujiNetwork(),
 			}
 		}
 		return clustersConfig, err
@@ -775,8 +792,8 @@ func (app *Avalanche) GetNodeConfigJSONFile(nodeID string) string {
 	return filepath.Join(app.GetAnsibleDir(), nodeID, constants.NodeConfigJSONFile)
 }
 
-func (app *Avalanche) GetMonitoringScriptFile() string {
-	return filepath.Join(app.GetMonitoringDir(), constants.MonitoringScriptFile)
+func (app *Avalanche) GetClusterYAMLFilePath(clusterName string) string {
+	return filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.ClusterYAMLFileName)
 }
 
 func (app *Avalanche) GetMonitoringDashboardDir() string {
@@ -797,4 +814,53 @@ func (app *Avalanche) SetupMonitoringEnv() error {
 		return err
 	}
 	return monitoring.Setup(app.GetMonitoringDir())
+}
+
+func (app *Avalanche) ClusterExists(clusterName string) (bool, error) {
+	clustersConfig := models.ClustersConfig{}
+	if app.ClustersConfigExists() {
+		var err error
+		clustersConfig, err = app.LoadClustersConfig()
+		if err != nil {
+			return false, err
+		}
+	}
+	_, ok := clustersConfig.Clusters[clusterName]
+	return ok, nil
+}
+
+func (app *Avalanche) GetClusterConfig(clusterName string) (models.ClusterConfig, error) {
+	exists, err := app.ClusterExists(clusterName)
+	if err != nil {
+		return models.ClusterConfig{}, err
+	}
+	if !exists {
+		return models.ClusterConfig{}, fmt.Errorf("cluster %q does not exists", clusterName)
+	}
+	clustersConfig, err := app.LoadClustersConfig()
+	if err != nil {
+		return models.ClusterConfig{}, err
+	}
+	clusterConfig := clustersConfig.Clusters[clusterName]
+	clusterConfig.Network = models.NewNetworkFromCluster(clusterConfig.Network, clusterName)
+	return clusterConfig, nil
+}
+
+func (app *Avalanche) GetClusterNetwork(clusterName string) (models.Network, error) {
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return models.UndefinedNetwork, err
+	}
+	return clusterConfig.Network, nil
+}
+
+func (app *Avalanche) ListClusterNames() ([]string, error) {
+	if !app.ClustersConfigExists() {
+		return []string{}, nil
+	}
+	clustersConfig, err := app.LoadClustersConfig()
+	if err != nil {
+		return []string{}, err
+	}
+	return maps.Keys(clustersConfig.Clusters), nil
 }

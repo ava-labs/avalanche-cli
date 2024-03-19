@@ -3,6 +3,7 @@
 package utils
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -19,6 +20,8 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"golang.org/x/exp/slices"
 )
 
 func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr bool) (*bytes.Buffer, *bytes.Buffer) {
@@ -278,4 +281,82 @@ func DownloadWithTee(url string, path string) ([]byte, error) {
 func ScriptLog(nodeID string, msg string, args ...interface{}) string {
 	formattedMsg := fmt.Sprintf(msg, args...)
 	return fmt.Sprintf("[%s] %s", nodeID, formattedMsg)
+}
+
+func GetIndexInSlice[T comparable](list []T, element T) (int, error) {
+	for i, val := range list {
+		if val == element {
+			return i, nil
+		}
+	}
+	return 0, fmt.Errorf("element not found")
+}
+
+// GetRepoFromCommitURL takes a Git repository URL that contains commit ID and returns the cloneable
+// Git Repo URL (ends in .git) and the repo directory name
+// Example: https://github.com/ava-labs/hypersdk/pull/772/commits/b88acfb370f5aeb83a000aece2d72f28154410a5
+// Should return https://github.com/ava-labs/hypersdk
+func GetRepoFromCommitURL(gitRepoURL string) (string, string) {
+	splitURL := strings.Split(gitRepoURL, "/")
+	if len(splitURL) > 4 {
+		// get first five members of splitURL because it will be [ https, ' ', github.com, ava-labs, hypersdk]
+		splitURLWOCommit := splitURL[:5]
+		gitRepo := strings.Join(splitURLWOCommit, "/")
+		return gitRepo, splitURLWOCommit[4]
+	}
+	return "", ""
+}
+
+// GetGitCommit takes a Git repository URL that contains commit ID and returns the commit ID
+// Example: https://github.com/ava-labs/hypersdk/pull/772/commits/b88acfb370f5aeb83a000aece2d72f28154410a5
+// Should return b88acfb370f5aeb83a000aece2d72f28154410a5
+func GetGitCommit(gitRepoURL string) string {
+	if strings.Contains(gitRepoURL, "/commit") {
+		splitURL := strings.Split(gitRepoURL, "/")
+		if len(splitURL) > 0 {
+			commitID := splitURL[len(splitURL)-1]
+			return commitID
+		}
+	}
+	return ""
+}
+
+// ReadLongString reads a long string from the user input.
+func ReadLongString(msg string, args ...interface{}) (string, error) {
+	fmt.Println(fmt.Sprintf(msg, args...))
+	reader := bufio.NewReader(os.Stdin)
+	longString, err := reader.ReadString('\n')
+	if err != nil {
+		return "", err
+	}
+	// Remove newline character at the end
+	longString = strings.TrimSuffix(longString, "\n")
+	return longString, nil
+}
+
+func SupportedAvagoArch() []string {
+	return []string{string(types.ArchitectureTypeArm64), string(types.ArchitectureTypeX8664)}
+}
+
+func ArchSupported(arch string) bool {
+	return slices.Contains(SupportedAvagoArch(), arch)
+}
+
+// AddSingleQuotes adds single quotes to each string in the given slice.
+func AddSingleQuotes(s []string) []string {
+	return Map(s, func(item string) string {
+		if item == "" {
+			return "''"
+		}
+		if !strings.HasPrefix(item, "'") {
+			item = fmt.Sprintf("'%s", item)
+		}
+		if !strings.HasSuffix(item, "'") {
+			item = fmt.Sprintf("%s'", item)
+		}
+		if !strings.HasPrefix(item, "'") && !strings.HasSuffix(item, "'") {
+			item = fmt.Sprintf("'%s'", item)
+		}
+		return item
+	})
 }

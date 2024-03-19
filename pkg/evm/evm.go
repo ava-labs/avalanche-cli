@@ -146,7 +146,9 @@ func IssueTx(
 }
 
 func GetClient(rpcURL string) (ethclient.Client, error) {
-	return ethclient.Dial(rpcURL)
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	return ethclient.DialContext(ctx, rpcURL)
 }
 
 func GetSigner(client ethclient.Client, prefundedPrivateKeyStr string) (*bind.TransactOpts, error) {

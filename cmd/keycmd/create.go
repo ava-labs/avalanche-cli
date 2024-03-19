@@ -53,7 +53,7 @@ func createKey(_ *cobra.Command, args []string) error {
 		}
 		keyPath := app.GetKeyPath(keyName)
 		ux.Logger.PrintToUser("Key loaded")
-		networks := []models.Network{models.FujiNetwork, models.MainnetNetwork}
+		networks := []models.Network{models.NewFujiNetwork(), models.NewMainnetNetwork()}
 		pchain := true
 		cchain := true
 		xchain := true

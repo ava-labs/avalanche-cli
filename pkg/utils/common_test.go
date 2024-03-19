@@ -125,3 +125,49 @@ func TestSplitSliceAt(t *testing.T) {
 		t.Errorf("Expected second part nil, but got %v", secondPart)
 	}
 }
+
+// TestGetRepoFromCommitURL tests GetRepoFromCommitURL
+func TestGetRepoFromCommitURL(t *testing.T) {
+	expected1 := "https://github.com/sukantoraymond/subnet-evm"
+	expected2 := "subnet-evm"
+	gitRepo, dirName := GetRepoFromCommitURL("https://github.com/sukantoraymond/subnet-evm/commit/29979c9c38f15a8e2af1db3102a0b70e03c91ab2")
+	if !reflect.DeepEqual(gitRepo, expected1) {
+		t.Errorf("Expected %v, but got %v", expected1, gitRepo)
+	}
+	if !reflect.DeepEqual(dirName, expected2) {
+		t.Errorf("Expected %v, but got %v", expected2, dirName)
+	}
+	expected1 = "https://github.com/ava-labs/hypersdk"
+	expected2 = "hypersdk"
+	gitRepo, dirName = GetRepoFromCommitURL("https://github.com/ava-labs/hypersdk/pull/772/commits/b88acfb370f5aeb83a000aece2d72f28154410a5")
+	if !reflect.DeepEqual(gitRepo, expected1) {
+		t.Errorf("Expected %v, but got %v", expected1, gitRepo)
+	}
+	if !reflect.DeepEqual(dirName, expected2) {
+		t.Errorf("Expected %v, but got %v", expected2, dirName)
+	}
+}
+
+// TestGetGitCommit tests GetGitCommit
+func TestGetGitCommit(t *testing.T) {
+	expected1 := "29979c9c38f15a8e2af1db3102a0b70e03c91ab2"
+	commitID := GetGitCommit("https://github.com/sukantoraymond/subnet-evm/commit/29979c9c38f15a8e2af1db3102a0b70e03c91ab2")
+	if !reflect.DeepEqual(commitID, expected1) {
+		t.Errorf("Expected %v, but got %v", expected1, commitID)
+	}
+	expected1 = "b88acfb370f5aeb83a000aece2d72f28154410a5"
+	commitID = GetGitCommit("https://github.com/ava-labs/hypersdk/pull/772/commits/b88acfb370f5aeb83a000aece2d72f28154410a5")
+	if !reflect.DeepEqual(commitID, expected1) {
+		t.Errorf("Expected %v, but got %v", expected1, commitID)
+	}
+}
+
+func TestAddSingleQuotes(t *testing.T) {
+	input := []string{"", "b", "orange banana", "'apple'", "'a", "b'"}
+	expected := []string{"''", "'b'", "'orange banana'", "'apple'", "'a'", "'b'"}
+	output := AddSingleQuotes(input)
+
+	if !reflect.DeepEqual(output, expected) {
+		t.Errorf("AddSingleQuotes(%v) = %v, expected %v", input, output, expected)
+	}
+}

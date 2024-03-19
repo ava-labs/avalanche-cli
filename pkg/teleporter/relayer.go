@@ -38,13 +38,11 @@ func GetRelayerKeyInfo(keyPath string) (string, string, error) {
 		err error
 	)
 	if utils.FileExists(keyPath) {
-		ux.Logger.PrintToUser("Loading stored key %q for relayer ops", constants.AWMRelayerKeyName)
-		k, err = key.LoadSoft(models.LocalNetwork.ID, keyPath)
+		k, err = key.LoadSoft(models.NewLocalNetwork().ID, keyPath)
 		if err != nil {
 			return "", "", err
 		}
 	} else {
-		ux.Logger.PrintToUser("Generating stored key %q for relayer ops", constants.AWMRelayerKeyName)
 		k, err = key.NewSoft(0)
 		if err != nil {
 			return "", "", err
@@ -171,6 +169,17 @@ func saveRelayerRunFile(runFilePath string, pid int) error {
 		return fmt.Errorf("could not write awm relater run file to %s: %w", runFilePath, err)
 	}
 	return nil
+}
+
+func InstallRelayer(binDir string) (string, error) {
+	downloader := application.NewDownloader()
+	version, err := downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.AWMRelayerRepoName))
+	if err != nil {
+		return "", err
+	}
+	ux.Logger.PrintToUser("using latest awm-relayer version (%s)", version)
+	versionBinDir := filepath.Join(binDir, version)
+	return installRelayer(versionBinDir, version)
 }
 
 func installRelayer(binDir, version string) (string, error) {
