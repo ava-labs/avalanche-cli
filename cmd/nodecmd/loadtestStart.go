@@ -455,9 +455,6 @@ func GetLoadTestScript(app *application.Avalanche) error {
 		}
 	}
 	loadTestRepoCommit = utils.GetGitCommit(loadTestRepoURL)
-	//if loadTestRepoCommit != "" {
-	//	loadTestRepoURL, repoDirName = utils.GetRepoFromCommitURL(loadTestRepoURL)
-	//}
 	loadTestRepoURL, repoDirName = utils.GetRepoFromCommitURL(loadTestRepoURL)
 	if loadTestBuildCmd == "" {
 		loadTestBuildCmd, err = app.Prompt.CaptureString("What is the build command?")
