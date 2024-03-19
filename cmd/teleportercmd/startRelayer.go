@@ -7,13 +7,15 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/spf13/cobra"
 )
 
-var startRelayerNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local}
+var startRelayerNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster}
 
 // avalanche teleporter relayer start
 func newStartRelayerCmd() *cobra.Command {
@@ -40,7 +42,8 @@ func startRelayer(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	if network.Kind == models.Local {
+	switch {
+	case network.Kind == models.Local:
 		b, _, _, err := teleporter.RelayerIsUp(
 			app.GetAWMRelayerRunPath(),
 		)
@@ -61,6 +64,15 @@ func startRelayer(_ *cobra.Command, _ []string) error {
 		}
 		ux.Logger.PrintToUser("Local AWM Relayer successfully started")
 		ux.Logger.PrintToUser("Logs can be found at %s", app.GetAWMRelayerLogPath())
+	case network.ClusterName != "":
+		host, err := node.GetAWMRelayerHost(app, network.ClusterName)
+		if err != nil {
+			return err
+		}
+		if err := ssh.RunSSHStartAWMRelayerService(host); err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("Remote AWM Relayer on %s successfully started", host.GetCloudID())
 	}
 	return nil
 }

@@ -5,9 +5,10 @@ package teleportercmd
 import (
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
@@ -60,7 +61,14 @@ func stopRelayer(_ *cobra.Command, _ []string) error {
 		}
 		ux.Logger.PrintToUser("Local AWM Relayer successfully stopped")
 	case network.ClusterName != "":
-		fmt.Println(node.GetAWMRelayerHost(app, network.ClusterName))
+		host, err := node.GetAWMRelayerHost(app, network.ClusterName)
+		if err != nil {
+			return err
+		}
+		if err := ssh.RunSSHStopAWMRelayerService(host); err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("Remote AWM Relayer on %s successfully stopped", host.GetCloudID())
 	}
 	return nil
 }
