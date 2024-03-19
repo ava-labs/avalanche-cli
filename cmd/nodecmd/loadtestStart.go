@@ -4,10 +4,11 @@ package nodecmd
 
 import (
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/ssh"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"os"
 	"path/filepath"
+
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
+	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"golang.org/x/exp/slices"
 
@@ -285,7 +286,7 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	//waiting for all nodes to become accessible
+	// waiting for all nodes to become accessible
 	if existingSeparateInstance == "" {
 		failedHosts := waitForHosts(currentLoadTestHost)
 		if failedHosts.Len() > 0 {
