@@ -5,6 +5,7 @@ package subnet
 import (
 	"context"
 	"encoding/json"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -666,7 +667,11 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	ux.Logger.PrintToUser("RPC URL:          %s", endpoint[strings.LastIndex(endpoint, "http"):])
 
 	if sc.VM == models.SubnetEvm {
-		if err := d.printExtraEvmInfo(chain, chainGenesis, teleporterKeyAddress); err != nil {
+		subnetAirdropAddress, subnetAirdropPrivKey, err := getSubnetAidropKeyInfo(d.app, chain)
+		if err != nil {
+			ux.Logger.PrintToUser("failure loading subnet airdrop info: %s", err)
+		}
+		if err := d.printExtraEvmInfo(chain, chainGenesis, teleporterKeyAddress, subnetAirdropAddress, subnetAirdropPrivKey); err != nil {
 			// not supposed to happen due to genesis pre validation
 			return nil, nil
 		}
@@ -688,7 +693,13 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}, nil
 }
 
-func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte, teleporterKeyAddress string) error {
+func (d *LocalDeployer) printExtraEvmInfo(
+	chain string,
+	chainGenesis []byte,
+	teleporterKeyAddress string,
+	subnetAirdropAddress string,
+	subnetAirdropPrivKey string,
+) error {
 	var evmGenesis core.Genesis
 	if err := json.Unmarshal(chainGenesis, &evmGenesis); err != nil {
 		return fmt.Errorf("failed to unmarshall genesis: %w", err)
@@ -698,6 +709,8 @@ func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte, tel
 		formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
 		if address == vm.PrefundedEwoqAddress {
 			ux.Logger.PrintToUser("Funded address:   %s with %s (10^18) - private key: %s", address, formattedAmount.String(), vm.PrefundedEwoqPrivate)
+		} else if address.Hex() == subnetAirdropAddress {
+			ux.Logger.PrintToUser("Funded address:   %s with %s (10^18) - private key: %s", address, formattedAmount.String(), subnetAirdropPrivKey)
 		} else if address.Hex() != teleporterKeyAddress {
 			ux.Logger.PrintToUser("Funded address:   %s with %s", address, formattedAmount.String())
 		}
@@ -1139,4 +1152,17 @@ func GetChainIDs(network models.Network, chainName string) (string, string, erro
 		return chain.SubnetID.String(), chain.ID.String(), nil
 	}
 	return "", "", fmt.Errorf("%s not found on primary network blockchains", chainName)
+}
+
+func getSubnetAidropKeyInfo(app *application.Avalanche, subnetName string) (string, string, error) {
+	keyName := vm.GetSubnetAirdropKeyName(subnetName)
+	keyPath := app.GetKeyPath(keyName)
+	if utils.FileExists(keyPath) {
+		k, err := key.LoadSoft(models.NewLocalNetwork().ID, keyPath)
+		if err != nil {
+			return "", "", err
+		}
+		return k.C(), hex.EncodeToString(k.Raw()), nil
+	}
+	return "", "", nil
 }

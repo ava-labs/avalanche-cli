@@ -24,8 +24,12 @@ const (
 	extendAirdrop = "Would you like to airdrop more tokens?"
 )
 
+func GetSubnetAirdropKeyName(subnetName string) string {
+	return "subnet_" + subnetName + "_airdrop"
+}
+
 func getNewAllocation(app *application.Avalanche, subnetName string, defaultAirdropAmount string) (core.GenesisAlloc, error) {
-	keyName := "subnet_" + subnetName + "_airdrop"
+	keyName := GetSubnetAirdropKeyName(subnetName)
 	keyPath := app.GetKeyPath(keyName)
 	var (
 		k   *key.SoftKey

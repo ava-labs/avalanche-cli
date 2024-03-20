@@ -12,6 +12,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
@@ -151,7 +152,7 @@ func printGasTable(genesis core.Genesis) {
 	table.Render()
 }
 
-func printAirdropTable(genesis core.Genesis) {
+func printAirdropTable(genesis core.Genesis, sc models.Sidecar) error {
 	const art = `
           _         _
     /\   (_)       | |
@@ -163,22 +164,39 @@ func printAirdropTable(genesis core.Genesis) {
                                |_|
 `
 	fmt.Print(art)
+	teleporterKeyAddress := ""
+	if sc.TeleporterReady {
+		k, err := key.LoadSoft(models.NewLocalNetwork().ID, app.GetKeyPath(sc.TeleporterKey))
+		if err != nil {
+			return err
+		}
+		teleporterKeyAddress = k.C()
+	}
 	if len(genesis.Alloc) > 0 {
 		table := tablewriter.NewWriter(os.Stdout)
-		header := []string{"Address", "Airdrop Amount (10^18)", "Airdrop Amount (wei)"}
+		header := []string{"Description", "Key", "Address", "Airdrop Amount (10^18)", "Airdrop Amount (wei)", "Private Key"}
 		table.SetHeader(header)
 		table.SetRowLine(true)
 
 		for address := range genesis.Alloc {
 			amount := genesis.Alloc[address].Balance
 			formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
-			table.Append([]string{address.Hex(), formattedAmount.String(), amount.String()})
+			description := ""
+			keyName := ""
+			if address.Hex() == teleporterKeyAddress {
+				description = fmt.Sprintf("Teleporter deploys")
+				keyName = sc.TeleporterKey
+			} else {
+				description = "Main funded account"
+			}
+			table.Append([]string{description, keyName, address.Hex(), formattedAmount.String(), amount.String()})
 		}
 
 		table.Render()
 	} else {
 		fmt.Printf("No airdrops allocated")
 	}
+	return nil
 }
 
 func printPrecompileTable(genesis core.Genesis) {
@@ -284,7 +302,7 @@ func describeSubnetEvmGenesis(sc models.Sidecar) error {
 	// Write gas table
 	printGasTable(genesis)
 	// fmt.Printf("\n\n")
-	printAirdropTable(genesis)
+	printAirdropTable(genesis, sc)
 	printPrecompileTable(genesis)
 	return nil
 }
