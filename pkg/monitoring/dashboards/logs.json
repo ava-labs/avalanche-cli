@@ -92,7 +92,7 @@
             "uid": "P8E80F9AEF21F6940"
           },
           "editorMode": "code",
-          "expr": "sum by (job) (rate({job=\"$app\",host=\"$host\",nodeID=\"$nodeID\"} |= \"$search\" [$__interval]))",
+          "expr": "sum by (job) (rate({job=~\"$app\",host=~\"$host\",nodeID=~\"$nodeID\"} |= \"$search\" [$__interval]))",
           "legendFormat": "",
           "queryType": "range",
           "refId": "A"
@@ -131,7 +131,7 @@
             "uid": "P8E80F9AEF21F6940"
           },
           "editorMode": "code",
-          "expr": "{job=\"$app\",host=\"$host\",nodeID=\"$nodeID\"} |= \"$search\" | logfmt",
+          "expr": "{job=~\"$app\",host=~\"$host\",nodeID=~\"$nodeID\"} |= \"$search\" | logfmt",
           "hide": false,
           "legendFormat": "",
           "queryType": "range",
@@ -151,10 +151,15 @@
   "templating": {
     "list": [
       {
+        "allValue": ".*",
         "current": {
           "selected": true,
-          "text": "nrfjp-0",
-          "value": "nrfjp-0"
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": {
           "type": "loki",
@@ -162,9 +167,9 @@
         },
         "definition": "",
         "hide": 0,
-        "includeAll": false,
+        "includeAll": true,
         "label": "Host",
-        "multi": false,
+        "multi": true,
         "name": "host",
         "options": [],
         "query": {
@@ -173,17 +178,22 @@
           "stream": "",
           "type": 1
         },
-        "refresh": 1,
+        "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
         "sort": 0,
         "type": "query"
       },
       {
+        "allValue": ".*",
         "current": {
           "selected": true,
-          "text": "NodeID-PsMNdMmdA9T4sHHimmt5GPNW286Z2EPqQ",
-          "value": "NodeID-PsMNdMmdA9T4sHHimmt5GPNW286Z2EPqQ"
+          "text": [
+            "NodeID-PsMNdMmdA9T4sHHimmt5GPNW286Z2EPqQ"
+          ],
+          "value": [
+            "NodeID-PsMNdMmdA9T4sHHimmt5GPNW286Z2EPqQ"
+          ]
         },
         "datasource": {
           "type": "loki",
@@ -191,9 +201,9 @@
         },
         "definition": "",
         "hide": 0,
-        "includeAll": false,
+        "includeAll": true,
         "label": "NodeID",
-        "multi": false,
+        "multi": true,
         "name": "nodeID",
         "options": [],
         "query": {
@@ -202,17 +212,22 @@
           "stream": "",
           "type": 1
         },
-        "refresh": 1,
+        "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
         "sort": 0,
         "type": "query"
       },
       {
+        "allValue": ".*",
         "current": {
           "selected": true,
-          "text": "p-chain",
-          "value": "p-chain"
+          "text": [
+            "x-chain"
+          ],
+          "value": [
+            "x-chain"
+          ]
         },
         "datasource": {
           "type": "loki",
@@ -220,13 +235,13 @@
         },
         "definition": "label_values(job)",
         "hide": 0,
-        "includeAll": false,
+        "includeAll": true,
         "label": "Label",
-        "multi": false,
+        "multi": true,
         "name": "app",
         "options": [],
         "query": "label_values(job)",
-        "refresh": 1,
+        "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
         "sort": 0,
@@ -278,6 +293,6 @@
   "timezone": "",
   "title": "Avalanche Logs",
   "uid": "sadlil-loki-apps-dashboard",
-  "version": 2,
+  "version": 6,
   "weekStart": ""
 }
