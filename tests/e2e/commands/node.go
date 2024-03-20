@@ -112,8 +112,8 @@ func NodeSSH(name, command string) string {
 		command,
 	)
 	multilineText := runCmd(cmd, ExpectSuccess)
-	//filter out additional output
-	pattern := `\[Node docker.*?\(NodeID-[^\s]+\)` // Matches strings starting with '[Node docker' and containing '(NodeID-' followed by non-space characters
+	// filter out additional output
+	pattern := `\[Node docker.*?\(NodeID-[^\s]+\)`
 	re := regexp.MustCompile(pattern)
 
 	lines := strings.Split(multilineText, "\n")
