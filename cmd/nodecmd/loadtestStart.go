@@ -74,11 +74,11 @@ The command will then run the load test binary based on the provided load test r
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
 	cmd.Flags().BoolVar(&useSSHAgent, "use-ssh-agent", false, "use ssh agent(ex: Yubikey) for ssh auth")
 	cmd.Flags().StringVar(&sshIdentity, "ssh-agent-identity", "", "use given ssh identity(only for ssh agent). If not set, default will be used")
-	cmd.Flags().StringVar(&loadTestRepoURL, "loadTestRepoURL", "", "load test repo url to use")
-	cmd.Flags().StringVar(&loadTestBuildCmd, "loadTestBuildCmd", "", "command to build load test binary")
-	cmd.Flags().StringVar(&loadTestCmd, "loadTestCmd", "", "command to run load test")
+	cmd.Flags().StringVar(&loadTestRepoURL, "load-test-repo", "", "load test repo url to use")
+	cmd.Flags().StringVar(&loadTestBuildCmd, "load-test-build-cmd", "", "command to build load test binary")
+	cmd.Flags().StringVar(&loadTestCmd, "load-test-cmd", "", "command to run load test")
 	cmd.Flags().StringVar(&loadTestHostRegion, "region", "", "create load test node in a given region")
-	cmd.Flags().StringVar(&loadTestBranch, "loadTestBranch", "", "load test branch or commit")
+	cmd.Flags().StringVar(&loadTestBranch, "load-test-branch", "", "load test branch or commit")
 	return cmd
 }
 
@@ -118,9 +118,15 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 	if err := preLoadTestChecks(clusterName); err != nil {
 		return err
 	}
+	loadTestExists, err := checkLoadTestExists(clusterName, loadTestName)
+	if err != nil {
+		return err
+	}
+	if loadTestExists {
+		return fmt.Errorf("load test %s already exists, please destroy it first", loadTestName)
+	}
 	var loadTestNodeConfig models.RegionConfig
 	var loadTestCloudConfig models.CloudConfig
-	var err error
 	// set ssh-Key
 	if useSSHAgent && sshIdentity == "" {
 		sshIdentity, err = setSSHIdentity()
@@ -297,13 +303,10 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 		}
 		ux.Logger.PrintToUser("Separate instance %s provisioned successfully", currentLoadTestHost[0].NodeID)
 	}
-	spinSession := ux.NewUserSpinner()
-	spinner := spinSession.SpinToUser(utils.ScriptLog(currentLoadTestHost[0].NodeID, "Setting up load test environment"))
+	ux.Logger.PrintToUser("Setting up load test environment")
 	if err := ssh.RunSSHBuildLoadTestDependencies(currentLoadTestHost[0]); err != nil {
-		ux.SpinFailWithError(spinner, "", err)
 		return err
 	}
-	ux.SpinComplete(spinner)
 
 	subnetID, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
 	if err != nil {
@@ -455,6 +458,15 @@ func GetLoadTestScript(app *application.Avalanche) error {
 		}
 	}
 	loadTestRepoCommit = utils.GetGitCommit(loadTestRepoURL)
+	if loadTestRepoCommit != "" {
+		loadTestBranch = loadTestRepoCommit
+	}
+	if loadTestBranch == "" {
+		loadTestBranch, err = app.Prompt.CaptureString("Which branch / commit of the load test repository do you want to use?")
+		if err != nil {
+			return err
+		}
+	}
 	loadTestRepoURL, repoDirName = utils.GetRepoFromCommitURL(loadTestRepoURL)
 	if loadTestBuildCmd == "" {
 		loadTestBuildCmd, err = app.Prompt.CaptureString("What is the build command?")

@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"golang.org/x/exp/maps"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 
@@ -19,6 +21,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var loadTestsToStop []string
+
 func newLoadTestStopCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stop [clusterName]",
@@ -29,9 +33,10 @@ The node loadtest stop command stops load testing for an existing devnet cluster
 separate cloud server created to host the load test.`,
 
 		SilenceUsage: true,
-		Args:         cobra.ExactArgs(2),
+		Args:         cobra.ExactArgs(1),
 		RunE:         stopLoadTest,
 	}
+	cmd.Flags().StringSliceVar(&loadTestsToStop, "load-test", []string{}, "stop specified load test node(s). Use comma to separate multiple load test instance names")
 	return cmd
 }
 
@@ -51,54 +56,98 @@ func getSpecifiedHostFromInventoryFile(clusterName, instanceID string) (*models.
 	return currentLoadTestHost, nil
 }
 
+func getLoadTestInstancesInCluster(clusterName string) ([]string, error) {
+	clustersConfig := models.ClustersConfig{}
+	if app.ClustersConfigExists() {
+		var err error
+		clustersConfig, err = app.LoadClustersConfig()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if _, ok := clustersConfig.Clusters[clusterName]; !ok {
+		return nil, fmt.Errorf("cluster %s doesn't exist", clusterName)
+	}
+	if clustersConfig.Clusters[clusterName].LoadTestInstance != nil {
+		return maps.Keys(clustersConfig.Clusters[clusterName].LoadTestInstance), nil
+	}
+	return nil, fmt.Errorf("no load test instances found")
+}
+
+func checkLoadTestExists(clusterName, loadTestName string) (bool, error) {
+	clustersConfig := models.ClustersConfig{}
+	if app.ClustersConfigExists() {
+		var err error
+		clustersConfig, err = app.LoadClustersConfig()
+		if err != nil {
+			return false, err
+		}
+	}
+	if _, ok := clustersConfig.Clusters[clusterName]; !ok {
+		return false, fmt.Errorf("cluster %s doesn't exist", clusterName)
+	}
+	if clustersConfig.Clusters[clusterName].LoadTestInstance != nil {
+		_, ok := clustersConfig.Clusters[clusterName].LoadTestInstance[loadTestName]
+		return ok, nil
+	}
+	return false, nil
+}
+
 func stopLoadTest(_ *cobra.Command, args []string) error {
-	loadTestName := args[0]
-	clusterName := args[1]
+	clusterName := args[0]
 	var err error
-	existingSeparateInstance, err = getExistingLoadTestInstance(clusterName, loadTestName)
-	if err != nil {
-		return err
-	}
-	if existingSeparateInstance == "" {
-		return fmt.Errorf("no existing load test instance found in cluster %s", clusterName)
-	}
-	nodeConfig, err := app.LoadClusterNodeConfig(existingSeparateInstance)
-	if err != nil {
-		return err
-	}
-	host, err := getSpecifiedHostFromInventoryFile(clusterName, nodeConfig.NodeID)
-	if err != nil {
-		return err
-	}
-	loadTestResultFileName := fmt.Sprintf("loadtest_%s.txt", loadTestName)
-	// Download the load test result from remote cloud server to local machine
-	if err = ssh.RunSSHDownloadFile(host, fmt.Sprintf("/home/ubuntu/%s", loadTestResultFileName), filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), loadTestResultFileName)); err != nil {
-		return err
-	}
-	switch nodeConfig.CloudService {
-	case constants.AWSCloudService:
-		_, separateHostRegion, err := getNodeCloudConfig(existingSeparateInstance)
+	if len(loadTestsToStop) == 0 {
+		loadTestsToStop, err = getLoadTestInstancesInCluster(clusterName)
 		if err != nil {
 			return err
 		}
-		loadTestEc2SvcMap, err := getAWSMonitoringEC2Svc(awsProfile, separateHostRegion)
+	}
+	for _, loadTestName := range loadTestsToStop {
+		existingSeparateInstance, err = getExistingLoadTestInstance(clusterName, loadTestName)
 		if err != nil {
 			return err
 		}
-		if err = destroyNode(existingSeparateInstance, clusterName, loadTestName, loadTestEc2SvcMap[separateHostRegion], nil); err != nil {
-			return err
+		if existingSeparateInstance == "" {
+			return fmt.Errorf("no existing load test instance found in cluster %s", clusterName)
 		}
-	case constants.GCPCloudService:
-		var gcpClient *gcpAPI.GcpCloud
-		gcpClient, _, _, _, _, err = getGCPConfig(true)
+		nodeConfig, err := app.LoadClusterNodeConfig(existingSeparateInstance)
 		if err != nil {
 			return err
 		}
-		if err = destroyNode(existingSeparateInstance, clusterName, loadTestName, nil, gcpClient); err != nil {
+		host, err := getSpecifiedHostFromInventoryFile(clusterName, nodeConfig.NodeID)
+		if err != nil {
 			return err
 		}
-	default:
-		return fmt.Errorf("cloud service %s is not supported", nodeConfig.CloudService)
+		loadTestResultFileName := fmt.Sprintf("loadtest_%s.txt", loadTestName)
+		// Download the load test result from remote cloud server to local machine
+		if err = ssh.RunSSHDownloadFile(host, fmt.Sprintf("/home/ubuntu/%s", loadTestResultFileName), filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), loadTestResultFileName)); err != nil {
+			return err
+		}
+		switch nodeConfig.CloudService {
+		case constants.AWSCloudService:
+			_, separateHostRegion, err := getNodeCloudConfig(existingSeparateInstance)
+			if err != nil {
+				return err
+			}
+			loadTestEc2SvcMap, err := getAWSMonitoringEC2Svc(awsProfile, separateHostRegion)
+			if err != nil {
+				return err
+			}
+			if err = destroyNode(existingSeparateInstance, clusterName, loadTestName, loadTestEc2SvcMap[separateHostRegion], nil); err != nil {
+				return err
+			}
+		case constants.GCPCloudService:
+			var gcpClient *gcpAPI.GcpCloud
+			gcpClient, _, _, _, _, err = getGCPConfig(true)
+			if err != nil {
+				return err
+			}
+			if err = destroyNode(existingSeparateInstance, clusterName, loadTestName, nil, gcpClient); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("cloud service %s is not supported", nodeConfig.CloudService)
+		}
 	}
 	return nil
 }
@@ -106,7 +155,7 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 func destroyNode(node, clusterName, loadTestName string, ec2Svc *awsAPI.AwsCloud, gcpClient *gcpAPI.GcpCloud) error {
 	nodeConfig, err := app.LoadClusterNodeConfig(node)
 	if err != nil {
-		ux.Logger.PrintToUser("Failed to destroy node %s", node)
+		ux.Logger.RedXToUser("Failed to destroy node %s", node)
 		return err
 	}
 	if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
@@ -135,13 +184,13 @@ func destroyNode(node, clusterName, loadTestName string, ec2Svc *awsAPI.AwsCloud
 			ux.Logger.PrintToUser("node %s is already destroyed", nodeConfig.NodeID)
 		}
 	}
-	ux.Logger.PrintToUser("Node instance %s successfully destroyed!", nodeConfig.NodeID)
+	ux.Logger.GreenCheckmarkToUser("Node instance %s successfully destroyed!", nodeConfig.NodeID)
 	if err := removeDeletedNodeDirectory(node); err != nil {
-		ux.Logger.PrintToUser("Failed to delete node config for node %s due to %s", node, err.Error())
+		ux.Logger.RedXToUser("Failed to delete node config for node %s due to %s", node, err.Error())
 		return err
 	}
 	if err := removeLoadTestNodeFromClustersConfig(clusterName, loadTestName); err != nil {
-		ux.Logger.PrintToUser("Failed to delete node config for node %s due to %s", node, err.Error())
+		ux.Logger.RedXToUser("Failed to delete node config for node %s due to %s", node, err.Error())
 		return err
 	}
 	return removeLoadTestInventoryDir(clusterName)

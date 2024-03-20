@@ -211,10 +211,6 @@ func (app *Avalanche) GetLoadTestInventoryDir(clusterName string) string {
 	return filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.LoadTestDir)
 }
 
-func (app *Avalanche) GetLoadTestInstanceDir(clusterName, loadTestName string) string {
-	return filepath.Join(app.GetLoadTestInventoryDir(clusterName), loadTestName)
-}
-
 func (app *Avalanche) CreateAnsibleDir() error {
 	ansibleDir := app.GetAnsibleDir()
 	if _, err := os.Stat(ansibleDir); os.IsNotExist(err) {
@@ -338,12 +334,6 @@ func (app *Avalanche) WriteNetworkUpgradesFile(subnetName string, bs []byte) err
 func (app *Avalanche) GenesisExists(subnetName string) bool {
 	genesisPath := app.GetGenesisPath(subnetName)
 	_, err := os.Stat(genesisPath)
-	return err == nil
-}
-
-func (app *Avalanche) LoadTestInstanceExists(clusterName, loadTestName string) bool {
-	loadTestPath := app.GetLoadTestInstanceDir(clusterName, loadTestName)
-	_, err := os.Stat(loadTestPath)
 	return err == nil
 }
 

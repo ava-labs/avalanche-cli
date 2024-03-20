@@ -739,14 +739,8 @@ func CreateClusterNodeConfig(
 // into existing cluster_config.json and creates new node_config.json file for the instance
 // load test instances are given name of loadTestName in argument
 func saveExternalHostConfig(externalHostConfig models.RegionConfig, hostRegion, cloudService, clusterName, externalHostRole, loadTestName string) error {
-	isMonitoring := false
-	isLoadTest := false
-	switch externalHostRole {
-	case constants.LoadTestRole:
-		isLoadTest = true
-	case constants.MonitorRole:
-		isMonitoring = true
-	}
+	isLoadTest := externalHostRole == constants.LoadTestRole
+	isMonitoring := externalHostRole == constants.MonitorRole
 	nodeConfig := models.NodeConfig{
 		NodeID:        externalHostConfig.InstanceIDs[0],
 		Region:        hostRegion,
