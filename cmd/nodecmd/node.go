@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// avalanche subnet
+// avalanche node
 func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "node",
@@ -53,6 +53,6 @@ rest of the commands to maintain your node and make your node a Subnet Validator
 	// node refresh-ips
 	cmd.AddCommand(newRefreshIPsCmd())
 	// node loadtest
-	cmd.AddCommand(newLoadTestCmd())
+	cmd.AddCommand(NewLoadTestCmd())
 	return cmd
 }

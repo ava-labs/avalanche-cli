@@ -82,7 +82,7 @@ func sshNode(_ *cobra.Command, args []string) error {
 					}
 					clusterHosts = append(clusterHosts, monitoringHosts...)
 				}
-				return sshHosts(clusterHosts, cmd)
+				return sshHosts(clusterHosts, cmd, clustersConfig.Clusters[clusterNameOrNodeID])
 			}
 		} else {
 			// try to detect nodeID
@@ -110,7 +110,7 @@ func sshNode(_ *cobra.Command, args []string) error {
 				case len(selectedHost) > 2:
 					return fmt.Errorf("more then 1 node found for %s", clusterNameOrNodeID)
 				default:
-					return sshHosts(selectedHost, cmd)
+					return sshHosts(selectedHost, cmd, clustersConfig.Clusters[clusterName])
 				}
 			}
 		}
@@ -118,7 +118,29 @@ func sshNode(_ *cobra.Command, args []string) error {
 	}
 }
 
-func sshHosts(hosts []*models.Host, cmd string) error {
+func printNodeInfo(host *models.Host, clusterConf models.ClusterConfig, result string) error {
+	nodeConfig, err := app.LoadClusterNodeConfig(host.GetCloudID())
+	if err != nil {
+		return err
+	}
+	nodeIDStr := "----------------------------------------"
+	if clusterConf.IsAvalancheGoHost(host.GetCloudID()) {
+		nodeID, err := getNodeID(app.GetNodeInstanceDirPath(host.GetCloudID()))
+		if err != nil {
+			return err
+		}
+		nodeIDStr = nodeID.String()
+	}
+	roles := clusterConf.GetHostRoles(nodeConfig)
+	rolesStr := strings.Join(roles, ",")
+	if rolesStr != "" {
+		rolesStr = " [" + rolesStr + "]"
+	}
+	ux.Logger.PrintToUser("  [Node %s (%s) %s%s] %s", host.GetCloudID(), nodeIDStr, nodeConfig.ElasticIP, rolesStr, result)
+	return nil
+}
+
+func sshHosts(hosts []*models.Host, cmd string, clusterConf models.ClusterConfig) error {
 	if cmd != "" {
 		// execute cmd
 		wg := sync.WaitGroup{}
@@ -130,7 +152,9 @@ func sshHosts(hosts []*models.Host, cmd string) error {
 				if !isParallel {
 					nowExecutingMutex.Lock()
 					defer nowExecutingMutex.Unlock()
-					ux.Logger.PrintToUser("[%s]", host.GetCloudID())
+					if err := printNodeInfo(host, clusterConf, ""); err != nil {
+						ux.Logger.RedXToUser("Error getting node %s info due to : %s", host.GetCloudID(), err)
+					}
 				}
 				defer wg.Done()
 				splitCmdLine := strings.Split(utils.GetSSHConnectionString(host.IP, host.SSHPrivateKeyPath), " ")
@@ -157,7 +181,13 @@ func sshHosts(hosts []*models.Host, cmd string) error {
 		}
 		if isParallel {
 			for hostID, result := range wgResults.GetResultMap() {
-				ux.Logger.PrintToUser("[%s] %s", hostID, fmt.Sprintf("%v", result))
+				for _, host := range hosts {
+					if host.GetCloudID() == hostID {
+						if err := printNodeInfo(host, clusterConf, fmt.Sprintf("%v", result)); err != nil {
+							ux.Logger.RedXToUser("Error getting node %s info due to : %s", host.GetCloudID(), err)
+						}
+					}
+				}
 			}
 		}
 	} else {

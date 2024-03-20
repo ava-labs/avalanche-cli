@@ -108,11 +108,16 @@ func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []st
 	case len(cmdLineRegion) == 0 && len(numValidatorsNodes) == 0 && len(numAPINodes) == 0:
 		var err error
 		if singleNode {
-			selectedRegion, err := getSeparateHostNodeParam(constants.AWSCloudService)
-			finalRegions = map[string]NumNodes{selectedRegion: {1, 0}}
-			if err != nil {
-				return nil, nil, nil, err
+			selectedRegion := ""
+			if loadTestHostRegion != "" {
+				selectedRegion = loadTestHostRegion
+			} else {
+				selectedRegion, err = getSeparateHostNodeParam(constants.AWSCloudService)
+				if err != nil {
+					return nil, nil, nil, err
+				}
 			}
+			finalRegions = map[string]NumNodes{selectedRegion: {1, 0}}
 		} else {
 			finalRegions, err = getRegionsNodeNum(constants.AWSCloudService)
 			if err != nil {
