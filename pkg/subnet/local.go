@@ -643,7 +643,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		); err != nil {
 			return nil, err
 		}
-		if sc.DeployRelayer {
+		if sc.RunRelayer {
 			ux.Logger.PrintToUser("")
 			// start relayer
 			if err := teleporter.DeployRelayer(

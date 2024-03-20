@@ -46,6 +46,8 @@ var (
 	useLatestPreReleasedEvmVersion bool
 	useRepo                        bool
 	teleporterReady                bool
+	runRelayer                     bool
+	useWarp                        bool
 
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
@@ -90,7 +92,9 @@ configuration, pass the -f flag.`,
 	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch or commit")
 	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
 	cmd.Flags().BoolVar(&useRepo, "from-github-repo", false, "generate custom VM binary from github repository")
-	cmd.Flags().BoolVar(&teleporterReady, "teleporter", true, "generate a teleporter-ready vm")
+	cmd.Flags().BoolVar(&useWarp, "warp", true, "generate a vm with warp support (needed for teleporter)")
+	cmd.Flags().BoolVar(&teleporterReady, "teleporter", false, "generate a teleporter-ready vm")
+	cmd.Flags().BoolVar(&runRelayer, "run-relayer", false, "run AWM relayer when deploying the vm")
 	return cmd
 }
 
@@ -226,7 +230,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			evmChainID,
 			evmToken,
 			evmDefaults,
-			teleporterReady,
+			useWarp,
 		)
 		if err != nil {
 			return err
@@ -249,8 +253,29 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return errors.New("not implemented")
 	}
 
-	if teleporterReady {
-		if isSubnetEVMGenesis := jsonIsSubnetEVMGenesis(genesisBytes); isSubnetEVMGenesis {
+	if isSubnetEVMGenesis := jsonIsSubnetEVMGenesis(genesisBytes); isSubnetEVMGenesis {
+		if !cmd.Flags().Lookup("teleporter").Changed && !teleporterReady {
+			yes, err := app.Prompt.CaptureYesNo("Would you like to enable Teleporter on your VM?")
+			if err != nil {
+				return err
+			}
+			if yes {
+				teleporterReady = true
+			}
+		}
+		if teleporterReady && !useWarp {
+			return fmt.Errorf("warp should be enabled for teleporter to work")
+		}
+		if teleporterReady {
+			if !cmd.Flags().Lookup("run-relayer").Changed && !runRelayer {
+				yes, err := app.Prompt.CaptureYesNo("Would you like to run AMW Relayer when deploying your VM?")
+				if err != nil {
+					return err
+				}
+				if yes {
+					runRelayer = true
+				}
+			}
 			keyPath := app.GetKeyPath(constants.TeleporterKeyName)
 			var k *key.SoftKey
 			if utils.FileExists(keyPath) {
@@ -283,6 +308,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			sc.TeleporterReady = true
 			sc.TeleporterKey = constants.TeleporterKeyName
 			sc.TeleporterVersion = teleporterVersion
+			sc.RunRelayer = runRelayer
 		}
 	}
 

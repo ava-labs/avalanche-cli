@@ -49,7 +49,7 @@ type Sidecar struct {
 	TeleporterReady   bool
 	TeleporterKey     string
 	TeleporterVersion string
-	DeployRelayer     bool
+	RunRelayer        bool
 	// SubnetEVM based VM's only
 	SubnetEVMMainnetChainID uint
 }
