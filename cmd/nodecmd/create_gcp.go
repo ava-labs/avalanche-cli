@@ -231,7 +231,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 				return nil, nil, "", "", err
 			}
 			if !firewallExists {
-				_, err := gcpClient.SetFirewallRule("0.0.0.0", firewallLoggingName, networkName, []string{strconv.Itoa(constants.AvalanchegoLokiPort)})
+				_, err := gcpClient.SetFirewallRule("0.0.0.0/0", firewallLoggingName, networkName, []string{strconv.Itoa(constants.AvalanchegoLokiPort)})
 				if err != nil {
 					return nil, nil, "", "", err
 				}
