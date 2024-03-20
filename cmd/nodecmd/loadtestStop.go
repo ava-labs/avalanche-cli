@@ -5,6 +5,7 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"os"
 	"path/filepath"
 
@@ -102,6 +103,12 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
+	separateHostInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.LoadTestDir)
+	separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(separateHostInventoryPath)
+	if err != nil {
+		return err
+	}
+	var removedLoadTestHosts []*models.Host
 	for _, loadTestName := range loadTestsToStop {
 		existingSeparateInstance, err = getExistingLoadTestInstance(clusterName, loadTestName)
 		if err != nil {
@@ -114,14 +121,15 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		host, err := getSpecifiedHostFromInventoryFile(clusterName, nodeConfig.NodeID)
-		if err != nil {
-			return err
+		hosts := utils.Filter(separateHosts, func(h *models.Host) bool { return h.GetCloudID() == nodeConfig.NodeID })
+		if len(hosts) == 0 {
+			return fmt.Errorf("host %s is not found in hosts inventory file", nodeConfig.NodeID)
 		}
+		host := hosts[0]
 		loadTestResultFileName := fmt.Sprintf("loadtest_%s.txt", loadTestName)
 		// Download the load test result from remote cloud server to local machine
 		if err = ssh.RunSSHDownloadFile(host, fmt.Sprintf("/home/ubuntu/%s", loadTestResultFileName), filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), loadTestResultFileName)); err != nil {
-			return err
+			ux.Logger.RedXToUser("Unable to download load test result %s to local machine due to %s", loadTestResultFileName, err.Error())
 		}
 		switch nodeConfig.CloudService {
 		case constants.AWSCloudService:
@@ -148,10 +156,35 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 		default:
 			return fmt.Errorf("cloud service %s is not supported", nodeConfig.CloudService)
 		}
+		removedLoadTestHosts = append(removedLoadTestHosts, host)
+	}
+	return updateLoadTestInventory(separateHosts, removedLoadTestHosts, clusterName, separateHostInventoryPath)
+}
+
+func updateLoadTestInventory(separateHosts, removedLoadTestHosts []*models.Host, clusterName, separateHostInventoryPath string) error {
+	var remainingLoadTestHosts []*models.Host
+	for _, loadTestHost := range separateHosts {
+		hosts := utils.Filter(removedLoadTestHosts, func(h *models.Host) bool { return h.IP == loadTestHost.IP })
+		if len(hosts) == 0 {
+			remainingLoadTestHosts = append(remainingLoadTestHosts, loadTestHost)
+		}
+	}
+	if err := removeLoadTestInventoryDir(clusterName); err != nil {
+		return err
+	}
+	if len(remainingLoadTestHosts) > 0 {
+		for _, loadTestHost := range remainingLoadTestHosts {
+			nodeConfig, err := app.LoadClusterNodeConfig(loadTestHost.GetCloudID())
+			if err != nil {
+				return err
+			}
+			if err = ansible.CreateAnsibleHostInventory(separateHostInventoryPath, loadTestHost.SSHPrivateKeyPath, nodeConfig.CloudService, map[string]string{nodeConfig.NodeID: nodeConfig.ElasticIP}, nil); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
-
 func destroyNode(node, clusterName, loadTestName string, ec2Svc *awsAPI.AwsCloud, gcpClient *gcpAPI.GcpCloud) error {
 	nodeConfig, err := app.LoadClusterNodeConfig(node)
 	if err != nil {
@@ -193,7 +226,7 @@ func destroyNode(node, clusterName, loadTestName string, ec2Svc *awsAPI.AwsCloud
 		ux.Logger.RedXToUser("Failed to delete node config for node %s due to %s", node, err.Error())
 		return err
 	}
-	return removeLoadTestInventoryDir(clusterName)
+	return nil
 }
 
 func removeLoadTestNodeFromClustersConfig(clusterName, loadTestName string) error {
