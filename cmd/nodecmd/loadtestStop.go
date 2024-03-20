@@ -5,9 +5,10 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"os"
 	"path/filepath"
+
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"golang.org/x/exp/maps"
 
@@ -185,6 +186,7 @@ func updateLoadTestInventory(separateHosts, removedLoadTestHosts []*models.Host,
 	}
 	return nil
 }
+
 func destroyNode(node, clusterName, loadTestName string, ec2Svc *awsAPI.AwsCloud, gcpClient *gcpAPI.GcpCloud) error {
 	nodeConfig, err := app.LoadClusterNodeConfig(node)
 	if err != nil {
