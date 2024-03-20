@@ -37,6 +37,7 @@ func TestE2e(t *testing.T) {
 }
 
 var _ = ginkgo.BeforeSuite(func() {
+	format.MaxLength = 40000
 	cmd := exec.Command("./scripts/build.sh")
 	out, err := cmd.CombinedOutput()
 	fmt.Println(string(out))
