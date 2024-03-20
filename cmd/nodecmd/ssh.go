@@ -136,11 +136,7 @@ func printNodeInfo(host *models.Host, clusterConf models.ClusterConfig, result s
 	if rolesStr != "" {
 		rolesStr = " [" + rolesStr + "]"
 	}
-	if result != "" {
-		ux.Logger.PrintToUser("  [Node %s (%s) %s%s] %s", host.GetCloudID(), nodeIDStr, nodeConfig.ElasticIP, rolesStr, result)
-	} else {
-		ux.Logger.PrintToUser("  Node %s (%s) %s%s", host.GetCloudID(), nodeIDStr, nodeConfig.ElasticIP, rolesStr)
-	}
+	ux.Logger.PrintToUser("  [Node %s (%s) %s%s] %s", host.GetCloudID(), nodeIDStr, nodeConfig.ElasticIP, rolesStr, result)
 	return nil
 }
 

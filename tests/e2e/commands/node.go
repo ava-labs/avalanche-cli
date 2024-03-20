@@ -8,7 +8,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -109,7 +111,21 @@ func NodeSSH(name, command string) string {
 		name,
 		command,
 	)
-	return runCmd(cmd, ExpectSuccess)
+	multilineText := runCmd(cmd, ExpectSuccess)
+	//filter out additional output
+	pattern := `\[Node docker.*?\(NodeID-[^\s]+\)` // Matches strings starting with '[Node docker' and containing '(NodeID-' followed by non-space characters
+	re := regexp.MustCompile(pattern)
+
+	lines := strings.Split(multilineText, "\n")
+	var output []string
+	for _, line := range lines {
+		if re.MatchString(line) {
+			continue
+		} else {
+			output = append(output, line)
+		}
+	}
+	return strings.Join(output, "\n")
 }
 
 func ConfigMetrics() {
