@@ -212,6 +212,7 @@ const (
 	AvalanchegoMonitoringPort     = 9090
 	AvalanchegoMachineMetricsPort = 9100
 	MonitoringDir                 = "monitoring"
+	LoadTestDir                   = "loadtest"
 	DashboardsDir                 = "dashboards"
 	NodeConfigJSONFile            = "node.json"
 	IPAddressSuffix               = "/32"
@@ -288,6 +289,7 @@ const (
 	APIRole                      = "API"
 	ValidatorRole                = "Validator"
 	MonitorRole                  = "Monitor"
+	LoadTestRole                 = "LoadTest"
 	DefaultWalletCreationTimeout = 5 * time.Second
 
 	DefaultConfirmTxTimeout = 20 * time.Second

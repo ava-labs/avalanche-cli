@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 	"text/template"
 	"time"
 
@@ -38,9 +37,10 @@ type scriptInputs struct {
 	LoadTestRepo            string
 	LoadTestPath            string
 	LoadTestCommand         string
+	LoadTestBranch          string
 	LoadTestGitCommit       string
-	RepoDirName             string
 	CheckoutCommit          bool
+	LoadTestResultFile      string
 }
 
 //go:embed shell/*.sh
@@ -454,25 +454,16 @@ func RunSSHSetupBuildEnv(host *models.Host) error {
 	)
 }
 
-func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName string, checkoutCommit bool) error {
-	loadTestRepoPaths := strings.Split(loadTestRepo, "/")
-	if len(loadTestRepoPaths) == 0 {
-		return fmt.Errorf("incorrect load test Repo URL format")
-	}
-	// remove .git
-	loadTestRepoDir := strings.Split(loadTestRepoPaths[len(loadTestRepoPaths)-1], ".")
-	if len(loadTestRepoDir) == 0 {
-		return fmt.Errorf("incorrect load test Repo URL format")
-	}
+func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName, loadTestBranch string, checkoutCommit bool) error {
 	return StreamOverSSH(
 		"Build Load Test",
 		host,
 		constants.SSHScriptTimeout,
 		"shell/buildLoadTest.sh",
 		scriptInputs{
-			LoadTestRepoDir: loadTestRepoDir[0],
+			LoadTestRepoDir: repoDirName,
 			LoadTestRepo:    loadTestRepo, LoadTestPath: loadTestPath, LoadTestGitCommit: loadTestGitCommit,
-			RepoDirName: repoDirName, CheckoutCommit: checkoutCommit,
+			CheckoutCommit: checkoutCommit, LoadTestBranch: loadTestBranch,
 		},
 	)
 }
@@ -487,13 +478,13 @@ func RunSSHBuildLoadTestDependencies(host *models.Host) error {
 	)
 }
 
-func RunSSHRunLoadTest(host *models.Host, loadTestCommand string) error {
-	return StreamOverSSH(
+func RunSSHRunLoadTest(host *models.Host, loadTestCommand, loadTestName string) error {
+	return RunOverSSH(
 		"Run Load Test",
 		host,
 		constants.SSHScriptTimeout,
 		"shell/runLoadTest.sh",
-		scriptInputs{GoVersion: constants.BuildEnvGolangVersion, LoadTestCommand: loadTestCommand},
+		scriptInputs{GoVersion: constants.BuildEnvGolangVersion, LoadTestCommand: loadTestCommand, LoadTestResultFile: fmt.Sprintf("/home/ubuntu/loadtest_%s.txt", loadTestName)},
 	)
 }
 
@@ -599,4 +590,9 @@ func RunSSHWhitelistPubKey(host *models.Host, sshPubKey string) error {
 		return err
 	}
 	return host.Upload(tmpFile.Name(), sshAuthFile, constants.SSHFileOpsTimeout)
+}
+
+// RunSSHDownloadFile downloads specified file from the specified host
+func RunSSHDownloadFile(host *models.Host, filePath string, localFilePath string) error {
+	return host.Download(filePath, localFilePath, constants.SSHFileOpsTimeout)
 }
