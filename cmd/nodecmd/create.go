@@ -1312,8 +1312,16 @@ func getRegionsNodeNum(cloudName string) (
 			return nil, fmt.Errorf("number of nodes exceeds the range of a signed 32-bit integer")
 		}
 		nodes[userRegion] = NumNodes{int(numNodes), int(numAPINodes)}
-
-		currentInput := utils.Map(maps.Keys(nodes), func(region string) string { return fmt.Sprintf("[%s]:%d", region, nodes[region]) })
+		var currentInput []string
+		if globalNetworkFlags.UseDevnet {
+			currentInput = utils.Map(maps.Keys(nodes), func(region string) string {
+				return fmt.Sprintf("[%s]: %d validator(s) %d api(s)", region, nodes[region].numValidators, nodes[region].numAPI)
+			})
+		} else {
+			currentInput = utils.Map(maps.Keys(nodes), func(region string) string {
+				return fmt.Sprintf("[%s]: %d validator(s)", region, nodes[region].numValidators)
+			})
+		}
 		ux.Logger.PrintToUser("Current selection: " + strings.Join(currentInput, " "))
 		yes, err := app.Prompt.CaptureNoYes(additionalRegionPrompt)
 		if err != nil {
