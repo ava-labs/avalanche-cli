@@ -302,10 +302,11 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	} else if b {
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Updating Proporser VMs"))
+		ux.Logger.PrintToUser(logging.Green.Wrap("Updating Proposer VMs"))
 		ux.Logger.PrintToUser("")
 		if err := updateProposerVMs(network); err != nil {
-			return err
+			// not going to consider fatal, as teleporter messaging will be working fine after a failed first msg
+			ux.Logger.PrintToUser(logging.Yellow.Wrap("failure setting proposer: %s"), err)
 		}
 	}
 
