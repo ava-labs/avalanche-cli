@@ -10,4 +10,4 @@ echo "deb https://apt.grafana.com stable main" | sudo tee /etc/apt/sources.list.
 sudo apt-get -y -o DPkg::Lock::Timeout=120 update
 #name:TASK [install promtail]
 sudo apt-get -y -o DPkg::Lock::Timeout=120 install promtail
-
+sudo usermod -a -G ubuntu promtail
