@@ -1397,7 +1397,7 @@ func defaultAvalancheCLIPrefix(region string) (string, error) {
 }
 
 func getPrometheusTargets(clusterName string) ([]string, []string, []string, error) {
-	const LoadTestPort = 8082
+	const loadTestPort = 8082
 	avalancheGoPorts := []string{}
 	machinePorts := []string{}
 	ltPorts := []string{}
@@ -1414,7 +1414,7 @@ func getPrometheusTargets(clusterName string) ([]string, []string, []string, err
 		return avalancheGoPorts, machinePorts, ltPorts, err
 	}
 	for _, host := range separateHosts {
-		ltPorts = append(ltPorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(LoadTestPort)))
+		ltPorts = append(ltPorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(loadTestPort)))
 	}
 	return avalancheGoPorts, machinePorts, ltPorts, nil
 }

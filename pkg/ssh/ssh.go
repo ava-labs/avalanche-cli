@@ -347,7 +347,7 @@ func RunSSHUpdatePromtailConfig(host *models.Host, ip string, port int, cloudID 
 		return err
 	}
 	defer os.Remove(promtailConfig.Name())
-	//get NodeID
+	// get NodeID
 	if err := monitoring.WritePromtailConfig(promtailConfig.Name(), ip, strconv.Itoa(port), cloudID, nodeID); err != nil {
 		return err
 	}
