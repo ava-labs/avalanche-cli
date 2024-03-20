@@ -21,6 +21,8 @@ type configInputs struct {
 	MachinePorts     string
 	IP               string
 	Port             string
+	Host             string
+	NodeID           string
 }
 
 //go:embed dashboards/*
@@ -94,13 +96,15 @@ func WriteLokiConfig(filePath string, port string) error {
 	return os.WriteFile(filePath, []byte(config), constants.WriteReadReadPerms)
 }
 
-func WritePromtailConfig(filePath string, ip string, port string) error {
+func WritePromtailConfig(filePath string, ip string, port string, host string, nodeID string) error {
 	if !utils.IsValidIP(ip) {
 		return fmt.Errorf("invalid IP address: %s", ip)
 	}
 	config, err := GenerateConfig("configs/promtail.yml", "Promtail Config", configInputs{
-		IP:   ip,
-		Port: port,
+		IP:     ip,
+		Port:   port,
+		Host:   host,
+		NodeID: nodeID,
 	})
 	if err != nil {
 		return err

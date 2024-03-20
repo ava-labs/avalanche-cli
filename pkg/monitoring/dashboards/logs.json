@@ -21,7 +21,7 @@
   "fiscalYearStartMonth": 0,
   "gnetId": 13639,
   "graphTooltip": 0,
-  "id": 10,
+  "id": 9,
   "links": [],
   "panels": [
     {
@@ -92,7 +92,7 @@
             "uid": "P8E80F9AEF21F6940"
           },
           "editorMode": "code",
-          "expr": "sum by (job) (rate({job=\"$app\"} |= \"$search\" [$__interval]))",
+          "expr": "sum by (job) (rate({job=\"$app\",host=\"$host\",nodeID=\"$nodeID\"} |= \"$search\" [$__interval]))",
           "legendFormat": "",
           "queryType": "range",
           "refId": "A"
@@ -130,9 +130,11 @@
             "type": "loki",
             "uid": "P8E80F9AEF21F6940"
           },
-          "expr": "{job=\"$app\"} |= \"$search\" | logfmt",
+          "editorMode": "code",
+          "expr": "{job=\"$app\",host=\"$host\",nodeID=\"$nodeID\"} |= \"$search\" | logfmt",
           "hide": false,
           "legendFormat": "",
+          "queryType": "range",
           "refId": "A"
         }
       ],
@@ -151,8 +153,66 @@
       {
         "current": {
           "selected": true,
-          "text": "x-chain",
-          "value": "x-chain"
+          "text": "nrfjp-0",
+          "value": "nrfjp-0"
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "definition": "",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Host",
+        "multi": false,
+        "name": "host",
+        "options": [],
+        "query": {
+          "label": "host",
+          "refId": "LokiVariableQueryEditor-VariableQuery",
+          "stream": "",
+          "type": 1
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "NodeID-PsMNdMmdA9T4sHHimmt5GPNW286Z2EPqQ",
+          "value": "NodeID-PsMNdMmdA9T4sHHimmt5GPNW286Z2EPqQ"
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "definition": "",
+        "hide": 0,
+        "includeAll": false,
+        "label": "NodeID",
+        "multi": false,
+        "name": "nodeID",
+        "options": [],
+        "query": {
+          "label": "nodeID",
+          "refId": "LokiVariableQueryEditor-VariableQuery",
+          "stream": "",
+          "type": 1
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "p-chain",
+          "value": "p-chain"
         },
         "datasource": {
           "type": "loki",
@@ -218,6 +278,6 @@
   "timezone": "",
   "title": "Avalanche Logs",
   "uid": "sadlil-loki-apps-dashboard",
-  "version": 5,
+  "version": 2,
   "weekStart": ""
 }

@@ -20,21 +20,29 @@ scrape_configs:
         - localhost
       labels:
         job: c-chain
+        host: {{ .Host }}
+        nodeID: {{ .NodeID }}
         __path__: /home/ubuntu/.avalanchego/logs/C.log
     - targets:
         - localhost
       labels:
         job: p-chain
+        host: {{ .Host }}
+        nodeID: {{ .NodeID }}
         __path__: /home/ubuntu/.avalanchego/logs/P.log
     - targets:
         - localhost
       labels:
         job: x-chain
+        host: {{ .Host }}
+        nodeID: {{ .NodeID }}
         __path__: /home/ubuntu/.avalanchego/logs/X.log
     - targets:
         - localhost
       labels:
         job: main
+        host: {{ .Host }}
+        nodeID: {{ .NodeID }}
         __path__: /home/ubuntu/.avalanchego/logs/main.log
   - job_name: avalanchego-loadtest
     static_configs:
@@ -42,4 +50,6 @@ scrape_configs:
         - localhost
       labels:
         job: loadtest
+        host: {{ .Host }}
+        nodeID: {{ .NodeID }}
         __path__: /home/ubuntu/loadtest-logs/*.log
