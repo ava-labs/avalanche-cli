@@ -105,9 +105,7 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "avalanchego-version", "", "install given avalanchego version on node/s")
 	cmd.Flags().StringVar(&remoteCLIVersion, "remote-cli-version", "", "install given CLI version on remote nodes. defaults to latest CLI release")
 	cmd.Flags().StringSliceVar(&validators, "validators", []string{}, "deploy subnet into given comma separated list of validators. defaults to all cluster nodes")
-	cmd.Flags().BoolVar(&sameMonitoringInstance, "same-monitoring-instance", false, "host monitoring for a cloud servers on the same instance")
-	cmd.Flags().BoolVar(&separateMonitoringInstance, "separate-monitoring-instance", false, "host monitoring for all cloud servers on a separate instance")
-	cmd.Flags().BoolVar(&skipMonitoring, "skip-monitoring", false, "don't set up monitoring in created nodes")
+	cmd.Flags().BoolVar(&addMonitoring, enableMonitoringFlag, false, " set up Prometheus monitoring for created nodes. Please note that this option creates a separate monitoring instance and incures additional cost")
 	cmd.Flags().IntSliceVar(&numAPINodes, "num-apis", []int{}, "number of API nodes(nodes without stake) to create in the new Devnet")
 	return cmd
 }
@@ -498,9 +496,9 @@ func chooseAWMRelayerHost(clusterName string) (*models.Host, error) {
 func deployClusterYAMLFile(clusterName, subnetName string) error {
 	var separateHosts []*models.Host
 	var err error
-	monitoringInventoryDir := app.GetMonitoringInventoryDir(clusterName)
-	if utils.FileExists(monitoringInventoryDir) {
-		separateHosts, err = ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryDir)
+	loadTestInventoryDir := app.GetLoadTestInventoryDir(clusterName)
+	if utils.FileExists(loadTestInventoryDir) {
+		separateHosts, err = ansible.GetInventoryFromAnsibleInventoryFile(loadTestInventoryDir)
 		if err != nil {
 			return err
 		}

@@ -24,6 +24,7 @@ type ClusterConfig struct {
 	APINodes           []string
 	Network            Network
 	MonitoringInstance string // instance ID of the separate monitoring instance (if any)
+	LoadTestInstance   map[string]string // maps load test name to load test cloud instance ID of the separate load test instance (if any)
 	ExtraNetworkData   ExtraNetworkData
 	Subnets            []string
 }

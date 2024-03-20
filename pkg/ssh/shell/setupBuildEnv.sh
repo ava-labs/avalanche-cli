@@ -5,7 +5,12 @@ sudo apt-get -y -o DPkg::Lock::Timeout=120 update
 gcc --version || DEBIAN_FRONTEND=noninteractive sudo apt-get -y -o DPkg::Lock::Timeout=120 install gcc
 #name:TASK [install go]
 install_go() {
-  GOFILE=go{{ .GoVersion }}.linux-amd64.tar.gz
+  local GOFILE
+  if [[ "$(uname -m)" == "aarch64" ]]; then
+    GOFILE="go{{ .GoVersion }}.linux-arm64.tar.gz"
+  else
+    GOFILE="go{{ .GoVersion }}.linux-amd64.tar.gz"
+  fi
   cd ~
   sudo rm -rf $GOFILE go
   wget -nv https://go.dev/dl/$GOFILE
@@ -15,10 +20,3 @@ install_go() {
   echo export CGO_ENABLED=1 >> ~/.bashrc
 }
 go version || install_go
-#name:TASK [install rust]
-install_rust() {
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s - -y
-  echo >> ~/.bashrc
-  echo export PATH=\$PATH:~/.cargo/bin >> ~/.bashrc
-}
-cargo version || install_rust

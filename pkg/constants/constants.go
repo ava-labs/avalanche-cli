@@ -211,8 +211,8 @@ const (
 	CloudNodeCLIConfigBasePath    = "/home/ubuntu/.avalanche-cli/"
 	AvalanchegoMonitoringPort     = 9090
 	AvalanchegoMachineMetricsPort = 9100
-	MonitoringScriptFile          = "monitoring-separate-installer.sh"
 	MonitoringDir                 = "monitoring"
+	LoadTestDir                   = "loadtest"
 	DashboardsDir                 = "dashboards"
 	NodeConfigJSONFile            = "node.json"
 	IPAddressSuffix               = "/32"
@@ -290,6 +290,7 @@ const (
 	ValidatorRole                = "Validator"
 	MonitorRole                  = "Monitor"
 	AWMRelayerRole               = "Relayer"
+	LoadTestRole                 = "LoadTest"
 	DefaultWalletCreationTimeout = 5 * time.Second
 
 	DefaultConfirmTxTimeout = 20 * time.Second

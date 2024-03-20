@@ -9,10 +9,10 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 	"text/template"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -34,15 +34,14 @@ type scriptInputs struct {
 	SubnetEVMReleaseURL     string
 	SubnetEVMArchive        string
 	MonitoringDashboardPath string
-	AvalancheGoPorts        string
-	MachinePorts            string
 	LoadTestRepoDir         string
 	LoadTestRepo            string
 	LoadTestPath            string
 	LoadTestCommand         string
+	LoadTestBranch          string
 	LoadTestGitCommit       string
-	RepoDirName             string
 	CheckoutCommit          bool
+	LoadTestResultFile      string
 }
 
 //go:embed shell/*.sh
@@ -239,10 +238,12 @@ func RunSSHUpgradeSubnetEVM(host *models.Host, subnetEVMBinaryPath string) error
 }
 
 func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath string) error {
+	// TODO: download dashboards from github instead
+	remoteDashboardsPath := "/home/ubuntu/dashboards"
 	if !utils.DirectoryExists(monitoringDashboardPath) {
 		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
 	}
-	if err := host.MkdirAll("/home/ubuntu/dashboards", constants.SSHFileOpsTimeout); err != nil {
+	if err := host.MkdirAll(remoteDashboardsPath, constants.SSHFileOpsTimeout); err != nil {
 		return err
 	}
 	dashboards, err := os.ReadDir(monitoringDashboardPath)
@@ -252,13 +253,19 @@ func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath s
 	for _, dashboard := range dashboards {
 		if err := host.Upload(
 			filepath.Join(monitoringDashboardPath, dashboard.Name()),
-			filepath.Join("/home/ubuntu/dashboards", dashboard.Name()),
+			filepath.Join(remoteDashboardsPath, dashboard.Name()),
 			constants.SSHFileOpsTimeout,
 		); err != nil {
 			return err
 		}
 	}
-	return nil
+	return RunOverSSH(
+		"Sync Grafana Dashboards",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/updateGrafanaDashboards.sh",
+		scriptInputs{},
+	)
 }
 
 func RunSSHCopyYAMLFile(host *models.Host, yamlFilePath string) error {
@@ -272,16 +279,6 @@ func RunSSHCopyYAMLFile(host *models.Host, yamlFilePath string) error {
 	return nil
 }
 
-func RunSSHSetupMonitoring(host *models.Host) error {
-	return RunOverSSH(
-		"Setup Monitoring",
-		host,
-		constants.SSHScriptTimeout,
-		"shell/setupMonitoring.sh",
-		scriptInputs{},
-	)
-}
-
 func RunSSHSetupMachineMetrics(host *models.Host) error {
 	return RunOverSSH(
 		"Setup Machine Metrics",
@@ -292,38 +289,41 @@ func RunSSHSetupMachineMetrics(host *models.Host) error {
 	)
 }
 
-func RunSSHSetupSeparateMonitoring(host *models.Host, monitoringScriptPath, avalancheGoPorts, machinePorts string) error {
-	remotePath := fmt.Sprintf("/home/ubuntu/%s", constants.MonitoringScriptFile)
+func RunSSHSetupSeparateMonitoring(host *models.Host) error {
+	return RunOverSSH(
+		"Setup Prometheus and Grafana",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/setupMonitoring.sh",
+		scriptInputs{
+			IsE2E: utils.IsE2E(),
+		},
+	)
+}
+
+func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePorts []string) error {
+	const cloudNodePrometheusConfigTemp = "/tmp/prometheus.yml"
+	promConfig, err := os.CreateTemp("", "prometheus")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(promConfig.Name())
+	if err := monitoring.WritePrometheusConfig(promConfig.Name(), avalancheGoPorts, machinePorts); err != nil {
+		return err
+	}
 	if err := host.Upload(
-		monitoringScriptPath,
-		remotePath,
+		promConfig.Name(),
+		cloudNodePrometheusConfigTemp,
 		constants.SSHFileOpsTimeout,
 	); err != nil {
 		return err
 	}
 	return RunOverSSH(
-		"Setup Separate Monitoring",
-		host,
-		constants.SSHScriptTimeout,
-		"shell/setupSeparateMonitoring.sh",
-		scriptInputs{
-			AvalancheGoPorts: avalancheGoPorts,
-			MachinePorts:     machinePorts,
-			IsE2E:            utils.IsE2E(),
-		},
-	)
-}
-
-func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePorts string) error {
-	return RunOverSSH(
 		"Update Prometheus Config",
 		host,
 		constants.SSHScriptTimeout,
 		"shell/updatePrometheusConfig.sh",
-		scriptInputs{
-			AvalancheGoPorts: avalancheGoPorts,
-			MachinePorts:     machinePorts,
-		},
+		scriptInputs{},
 	)
 }
 
@@ -500,25 +500,16 @@ func RunSSHSetupBuildEnv(host *models.Host) error {
 	)
 }
 
-func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName string, checkoutCommit bool) error {
-	loadTestRepoPaths := strings.Split(loadTestRepo, "/")
-	if len(loadTestRepoPaths) == 0 {
-		return fmt.Errorf("incorrect load test Repo URL format")
-	}
-	// remove .git
-	loadTestRepoDir := strings.Split(loadTestRepoPaths[len(loadTestRepoPaths)-1], ".")
-	if len(loadTestRepoDir) == 0 {
-		return fmt.Errorf("incorrect load test Repo URL format")
-	}
+func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName, loadTestBranch string, checkoutCommit bool) error {
 	return StreamOverSSH(
 		"Build Load Test",
 		host,
 		constants.SSHScriptTimeout,
 		"shell/buildLoadTest.sh",
 		scriptInputs{
-			LoadTestRepoDir: loadTestRepoDir[0],
+			LoadTestRepoDir: repoDirName,
 			LoadTestRepo:    loadTestRepo, LoadTestPath: loadTestPath, LoadTestGitCommit: loadTestGitCommit,
-			RepoDirName: repoDirName, CheckoutCommit: checkoutCommit,
+			CheckoutCommit: checkoutCommit, LoadTestBranch: loadTestBranch,
 		},
 	)
 }
@@ -533,13 +524,13 @@ func RunSSHBuildLoadTestDependencies(host *models.Host) error {
 	)
 }
 
-func RunSSHRunLoadTest(host *models.Host, loadTestCommand string) error {
-	return StreamOverSSH(
+func RunSSHRunLoadTest(host *models.Host, loadTestCommand, loadTestName string) error {
+	return RunOverSSH(
 		"Run Load Test",
 		host,
 		constants.SSHScriptTimeout,
 		"shell/runLoadTest.sh",
-		scriptInputs{GoVersion: constants.BuildEnvGolangVersion, LoadTestCommand: loadTestCommand},
+		scriptInputs{GoVersion: constants.BuildEnvGolangVersion, LoadTestCommand: loadTestCommand, LoadTestResultFile: fmt.Sprintf("/home/ubuntu/loadtest_%s.txt", loadTestName)},
 	)
 }
 
@@ -645,4 +636,9 @@ func RunSSHWhitelistPubKey(host *models.Host, sshPubKey string) error {
 		return err
 	}
 	return host.Upload(tmpFile.Name(), sshAuthFile, constants.SSHFileOpsTimeout)
+}
+
+// RunSSHDownloadFile downloads specified file from the specified host
+func RunSSHDownloadFile(host *models.Host, filePath string, localFilePath string) error {
+	return host.Download(filePath, localFilePath, constants.SSHFileOpsTimeout)
 }
