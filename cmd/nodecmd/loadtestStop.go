@@ -42,22 +42,6 @@ separate cloud server created to host the load test.`,
 	return cmd
 }
 
-// getSpecifiedHostFromInventoryFile return host object of specified instanceID from cluster inventory file
-func getSpecifiedHostFromInventoryFile(clusterName, instanceID string) (*models.Host, error) {
-	var currentLoadTestHost *models.Host
-	separateHostInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.LoadTestDir)
-	separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(separateHostInventoryPath)
-	if err != nil {
-		return nil, err
-	}
-	for _, host := range separateHosts {
-		if host.GetCloudID() == instanceID {
-			currentLoadTestHost = host
-		}
-	}
-	return currentLoadTestHost, nil
-}
-
 func getLoadTestInstancesInCluster(clusterName string) ([]string, error) {
 	clustersConfig := models.ClustersConfig{}
 	if app.ClustersConfigExists() {
