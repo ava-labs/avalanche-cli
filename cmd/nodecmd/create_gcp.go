@@ -207,7 +207,6 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 					strconv.Itoa(constants.AvalanchegoAPIPort),
 					strconv.Itoa(constants.AvalanchegoMonitoringPort),
 					strconv.Itoa(constants.AvalanchegoGrafanaPort),
-					strconv.Itoa(constants.AvalanchegoLokiPort),
 				},
 			)
 			if err != nil {
@@ -226,7 +225,24 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 				return nil, nil, "", "", err
 			}
 			if !firewallContainsMonitoringPorts && !firewallExists {
-				_, err := gcpClient.SetFirewallRule(userIPAddress, firewallName, networkName, []string{strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort), strconv.Itoa(constants.AvalanchegoLokiPort)})
+				_, err := gcpClient.SetFirewallRule(userIPAddress, firewallName, networkName, []string{strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort)})
+				if err != nil {
+					return nil, nil, "", "", err
+				}
+			}
+			firewallLoggingName := fmt.Sprintf("%s-logging", firewallName)
+			// check that firewallName contains the monitoring ports
+			firewallContainsLoggingPorts, err := gcpClient.CheckFirewallExists(firewallName, true)
+			if err != nil {
+				return nil, nil, "", "", err
+			}
+			// check that the separate monitoring firewall doesn't exist
+			firewallExists, err = gcpClient.CheckFirewallExists(firewallLoggingName, false)
+			if err != nil {
+				return nil, nil, "", "", err
+			}
+			if !firewallContainsLoggingPorts && !firewallExists {
+				_, err := gcpClient.SetFirewallRule("0.0.0.0", firewallName, networkName, []string{strconv.Itoa(constants.AvalanchegoLokiPort)})
 				if err != nil {
 					return nil, nil, "", "", err
 				}

@@ -94,12 +94,12 @@ func WriteLokiConfig(filePath string, port string) error {
 	return os.WriteFile(filePath, []byte(config), constants.WriteReadReadPerms)
 }
 
-func WritePromtailConfig(filePath string, IP string, port string) error {
-	if !utils.IsValidIP(IP) {
-		return fmt.Errorf("invalid IP address: %s", IP)
+func WritePromtailConfig(filePath string, ip string, port string) error {
+	if !utils.IsValidIP(ip) {
+		return fmt.Errorf("invalid IP address: %s", ip)
 	}
 	config, err := GenerateConfig("configs/promtail.yml", "Promtail Config", configInputs{
-		IP:   IP,
+		IP:   ip,
 		Port: port,
 	})
 	if err != nil {

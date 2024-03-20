@@ -140,7 +140,7 @@ func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network
 	if _, err := c.SetFirewallRule("0.0.0.0/0",
 		fmt.Sprintf("%s-%s", networkName, "default"),
 		networkName,
-		[]string{strconv.Itoa(constants.AvalanchegoP2PPort)}); err != nil {
+		[]string{strconv.Itoa(constants.AvalanchegoP2PPort), strconv.Itoa(constants.AvalanchegoLokiPort)}); err != nil {
 		return nil, err
 	}
 	if _, err := c.SetFirewallRule(ipAddress,
@@ -149,7 +149,6 @@ func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network
 		[]string{
 			strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort),
 			strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
-			strconv.Itoa(constants.AvalanchegoLokiPort),
 		}); err != nil {
 		return nil, err
 	}

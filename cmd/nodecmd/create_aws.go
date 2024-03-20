@@ -275,7 +275,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			ipInHTTP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
 			ipInMonitoring := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoMonitoringPort)
 			ipInGrafana := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoGrafanaPort)
-			ipInLoki := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoLokiPort)
+			ipInLoki := awsAPI.CheckUserIPInSg(&sg, "0.0.0.0", constants.AvalanchegoLokiPort)
 
 			if !ipInTCP {
 				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress, constants.SSHTCPPort); err != nil {
