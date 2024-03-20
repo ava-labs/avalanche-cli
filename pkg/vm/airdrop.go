@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	newAirdrop    = "Airdrop 1 million tokens to a fresh subnet address (stored key)"
+	newAirdrop    = "Airdrop 1 million tokens to a newly generate address (stored key)"
 	ewoqAirdrop   = "Airdrop 1 million tokens to the default ewoq address (do not use in production)"
 	customAirdrop = "Customize your airdrop"
 	extendAirdrop = "Would you like to airdrop more tokens?"
@@ -45,7 +45,7 @@ func getNewAllocation(app *application.Avalanche, subnetName string, defaultAird
 			return core.GenesisAlloc{}, err
 		}
 	}
-	ux.Logger.PrintToUser("configuring airdrop to key %s with address: %s", keyName, k.C())
+	ux.Logger.PrintToUser("configuring airdrop to stored key %q with address %s", keyName, k.C())
 	allocation := core.GenesisAlloc{}
 	defaultAmount, ok := new(big.Int).SetString(defaultAirdropAmount, 10)
 	if !ok {
