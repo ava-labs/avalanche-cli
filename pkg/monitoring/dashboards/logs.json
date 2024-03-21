@@ -21,7 +21,7 @@
   "fiscalYearStartMonth": 0,
   "gnetId": 13639,
   "graphTooltip": 0,
-  "id": 9,
+  "id": 6,
   "links": [],
   "panels": [
     {
@@ -151,7 +151,7 @@
   "templating": {
     "list": [
       {
-        "allValue": ".*",
+        "allValue": ".+",
         "current": {
           "selected": true,
           "text": [
@@ -185,14 +185,14 @@
         "type": "query"
       },
       {
-        "allValue": ".*",
+        "allValue": ".+",
         "current": {
           "selected": true,
           "text": [
-            "NodeID-PsMNdMmdA9T4sHHimmt5GPNW286Z2EPqQ"
+            "All"
           ],
           "value": [
-            "NodeID-PsMNdMmdA9T4sHHimmt5GPNW286Z2EPqQ"
+            "$__all"
           ]
         },
         "datasource": {
@@ -219,14 +219,14 @@
         "type": "query"
       },
       {
-        "allValue": ".*",
+        "allValue": ".+",
         "current": {
           "selected": true,
           "text": [
-            "x-chain"
+            "All"
           ],
           "value": [
-            "x-chain"
+            "$__all"
           ]
         },
         "datasource": {
@@ -293,6 +293,6 @@
   "timezone": "",
   "title": "Avalanche Logs",
   "uid": "sadlil-loki-apps-dashboard",
-  "version": 6,
+  "version": 1,
   "weekStart": ""
 }
