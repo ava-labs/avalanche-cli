@@ -113,8 +113,14 @@ func getGCPConfig(singleNode bool) (*gcpAPI.GcpCloud, map[string]NumNodes, strin
 			}
 		}
 	default:
-		for i, region := range cmdLineRegion {
-			finalRegions[region] = NumNodes{numValidatorsNodes[i], numAPINodes[i]}
+		if globalNetworkFlags.UseDevnet {
+			for i, region := range cmdLineRegion {
+				finalRegions[region] = NumNodes{numValidatorsNodes[i], numAPINodes[i]}
+			}
+		} else {
+			for i, region := range cmdLineRegion {
+				finalRegions[region] = NumNodes{numValidatorsNodes[i], 0}
+			}
 		}
 	}
 	gcpClient, projectName, gcpCredentialFilePath, err := getGCPCloudCredentials()
