@@ -6,6 +6,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd"
 )
 
+
 func main() {
 	cmd.Execute()
 }
