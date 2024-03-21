@@ -14,6 +14,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -55,6 +56,7 @@ func RunOverSSH(
 	scriptPath string,
 	templateVars scriptInputs,
 ) error {
+	startTime := time.Now()
 	shellScript, err := script.ReadFile(scriptPath)
 	if err != nil {
 		return err
@@ -72,6 +74,8 @@ func RunOverSSH(
 	if output, err := host.Command(script.String(), nil, timeout); err != nil {
 		return fmt.Errorf("%w: %s", err, string(output))
 	}
+	executionTime := time.Since(startTime)
+	ux.Logger.Info("RunOverSSH[%s]%s took %s with err: %v", host.NodeID, scriptDesc, executionTime, err)
 	return nil
 }
 
