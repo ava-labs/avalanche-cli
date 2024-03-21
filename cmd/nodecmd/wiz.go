@@ -242,7 +242,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
-		return errNoSubnetID
+		return ErrNoSubnetID
 	}
 
 	ux.Logger.PrintToUser("")
@@ -292,7 +292,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 	blockchainID := sc.Networks[network.Name()].BlockchainID
 	if blockchainID == ids.Empty {
-		return errNoBlockchainID
+		return ErrNoBlockchainID
 	}
 	if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Validating, validateCheckTimeout, validateCheckPoolTime); err != nil {
 		return err
@@ -385,7 +385,7 @@ func updateProposerVMs(
 			ux.Logger.PrintToUser("updating proposerVM on %s", deployedSubnetName)
 			blockchainID := deployedSubnetSc.Networks[network.Name()].BlockchainID
 			if blockchainID == ids.Empty {
-				return errNoBlockchainID
+				return ErrNoBlockchainID
 			}
 			if err := teleporter.SetProposerVM(app, network, blockchainID.String(), deployedSubnetSc.TeleporterKey); err != nil {
 				return err
@@ -546,7 +546,7 @@ func checkRPCCompatibility(
 		}
 	}
 	defer disconnectHosts(hosts)
-	return checkAvalancheGoVersionCompatibleWithMsg(hosts, subnetName)
+	return checkHostsAreRPCCompatible(hosts, subnetName)
 }
 
 func waitForHealthyCluster(
@@ -574,12 +574,12 @@ func waitForHealthyCluster(
 	spinSession := ux.NewUserSpinner()
 	spinner := spinSession.SpinToUser("Checking if node(s) are healthy...")
 	for {
-		notHealthyNodes, err := checkHostsAreHealthy(hosts)
+		unhealthyNodes, err := getUnhealthyNodes(hosts)
 		if err != nil {
 			ux.SpinFailWithError(spinner, "", err)
 			return err
 		}
-		if len(notHealthyNodes) == 0 {
+		if len(unhealthyNodes) == 0 {
 			ux.SpinComplete(spinner)
 			spinSession.Stop()
 			ux.Logger.GreenCheckmarkToUser("Nodes healthy after %d seconds", uint32(time.Since(startTime).Seconds()))
@@ -590,7 +590,7 @@ func waitForHealthyCluster(
 			spinSession.Stop()
 			ux.Logger.PrintToUser("")
 			ux.Logger.RedXToUser("Unhealthy Nodes")
-			for _, failedNode := range notHealthyNodes {
+			for _, failedNode := range unhealthyNodes {
 				ux.Logger.PrintToUser("  " + failedNode)
 			}
 			ux.Logger.PrintToUser("")

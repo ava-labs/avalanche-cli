@@ -64,7 +64,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 		}
 		blockchainID = sc.Networks[clusterConf.Network.Name()].BlockchainID
 		if blockchainID == ids.Empty {
-			return errNoBlockchainID
+			return ErrNoBlockchainID
 		}
 	}
 	hostIDs := utils.Filter(clusterConf.GetCloudIDs(), clusterConf.IsAvalancheGoHost)
@@ -88,13 +88,13 @@ func statusNode(_ *cobra.Command, args []string) error {
 	}
 	defer disconnectHosts(hosts)
 
-	notBootstrappedNodes, err := checkHostsAreBootstrapped(hosts)
+	notBootstrappedNodes, err := getNotBootstrappedNodes(hosts)
 	if err != nil {
 		return err
 	}
 
 	ux.Logger.PrintToUser("Checking if node(s) are healthy...")
-	notHealthyNodes, err := checkHostsAreHealthy(hosts)
+	unhealthyNodes, err := getUnhealthyNodes(hosts)
 	if err != nil {
 		return err
 	}
@@ -195,7 +195,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 		hostIDs,
 		nodeIDs,
 		avagoVersions,
-		notHealthyNodes,
+		unhealthyNodes,
 		notBootstrappedNodes,
 		notSyncedNodes,
 		subnetSyncedNodes,
@@ -212,7 +212,7 @@ func printOutput(
 	cloudIDs []string,
 	nodeIDs []string,
 	avagoVersions map[string]string,
-	notHealthyHosts []string,
+	unhealthyHosts []string,
 	notBootstrappedHosts []string,
 	notSyncedHosts []string,
 	subnetSyncedHosts []string,
@@ -256,7 +256,7 @@ func printOutput(
 				boostrappedStatus = logging.Red.Wrap("NOT_BOOTSTRAPPED")
 			}
 			healthyStatus = logging.Green.Wrap("OK")
-			if slices.Contains(notHealthyHosts, cloudID) {
+			if slices.Contains(unhealthyHosts, cloudID) {
 				healthyStatus = logging.Red.Wrap("UNHEALTHY")
 			}
 			nodeIDStr = nodeIDs[i]
