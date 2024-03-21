@@ -102,11 +102,11 @@ type DeployInfo struct {
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
-func (d *LocalDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, genesisPath string, skipTeleporter bool) (*DeployInfo, error) {
+func (d *LocalDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, genesisPath string, skipTeleporter bool, subnetIDStr string) (*DeployInfo, error) {
 	if err := d.StartServer(); err != nil {
 		return nil, err
 	}
-	return d.doDeploy(chain, chainGenesis, genesisPath, skipTeleporter)
+	return d.doDeploy(chain, chainGenesis, genesisPath, skipTeleporter, subnetIDStr)
 }
 
 func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string, maxSupply uint64) (ids.ID, error) {
@@ -372,7 +372,7 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 //   - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
 //   - waits completion of operation
 //   - show status
-func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string, skipTeleporter bool) (*DeployInfo, error) {
+func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string, skipTeleporter bool, subnetIDStr string) (*DeployInfo, error) {
 	needsRestart, avalancheGoBinPath, err := d.SetupLocalEnv()
 	if err != nil {
 		return nil, err
@@ -489,7 +489,11 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	if len(subnetIDs) == 0 {
 		return nil, errors.New("the network has not preloaded subnet IDs")
 	}
-	subnetIDStr := subnetIDs[numBlockchains%len(subnetIDs)]
+
+	// If not set via argument, deploy to the next available subnet
+	if subnetIDStr == "" {
+		subnetIDStr = subnetIDs[numBlockchains%len(subnetIDs)]
+	}
 
 	// if a chainConfig has been configured
 	var (
