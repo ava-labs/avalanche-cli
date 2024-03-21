@@ -5,4 +5,3 @@ gcc --version || DEBIAN_FRONTEND=noninteractive sudo apt-get -y -o DPkg::Lock::T
 # install go
 echo "ensuring that go is installed ..."
 go version || sudo snap install go --classic
-mkdir -p /home/ubuntu/loadtest-logs/

@@ -52,4 +52,4 @@ scrape_configs:
         job: loadtest
         host: {{ .Host }}
         nodeID: {{ .NodeID }}
-        __path__: /home/ubuntu/loadtest-logs/*.log
+        __path__: /home/ubuntu/loadtest_*.txt
