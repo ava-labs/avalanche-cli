@@ -516,3 +516,39 @@ func zoneToRegion(zone string) string {
 func isIPLimitExceededError(err error) bool {
 	return strings.Contains(err.Error(), "IP address quota exceeded") || strings.Contains(err.Error(), "Insufficient IP addresses")
 }
+
+// ListAttachedVolumes returns a list of attached volumes to the instance excluding the boot volume
+func (c *GcpCloud) ListAttachedVolumes(instanceID string, zone string) ([]string, error) {
+	instance, err := c.gcpClient.Instances.Get(c.projectID, zone, instanceID).Do()
+	if err != nil {
+		return nil, err
+	}
+	var volumeIDs []string
+	for _, disk := range instance.Disks {
+		if !disk.Boot {
+			volumeIDs = append(volumeIDs, disk.Source)
+		}
+	}
+	return volumeIDs, nil
+}
+
+// ResizeVolume resizes the volume to the new size
+func (c *GcpCloud) ResizeVolume(volumeID string, zone string, newSizeGb int64) error {
+	disk, err := c.gcpClient.Disks.Get(c.projectID, zone, volumeID).Do()
+	if err != nil {
+		return err
+	}
+	if disk.SizeGb < newSizeGb {
+		return fmt.Errorf("new size %d must be greater than the current size %d", newSizeGb, disk.SizeGb)
+	} else {
+		disk.SizeGb = newSizeGb
+		operation, err := c.gcpClient.Disks.Resize(c.projectID, zone, volumeID, &compute.DisksResizeRequest{SizeGb: newSizeGb}).Do()
+		if err != nil {
+			return err
+		}
+		if err := c.waitForOperation(operation); err != nil {
+			return err
+		}
+	}
+	return nil
+}

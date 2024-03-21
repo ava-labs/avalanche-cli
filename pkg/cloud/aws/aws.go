@@ -576,3 +576,66 @@ func (c *AwsCloud) GetInstanceTypeArch(instanceType string) (string, error) {
 	}
 	return string(archOutput.InstanceTypes[0].ProcessorInfo.SupportedArchitectures[0]), nil
 }
+
+// ListAttachedVolumes returns a list of volume IDs attached to the given instance excluding the root volume.
+func (c *AwsCloud) ListAttachedVolumes(instanceID string) ([]string, error) {
+	describeInstanceOutput, err := c.ec2Client.DescribeInstances(c.ctx, &ec2.DescribeInstancesInput{
+		InstanceIds: []string{instanceID},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(describeInstanceOutput.Reservations) == 0 || len(describeInstanceOutput.Reservations[0].Instances) == 0 {
+		return nil, fmt.Errorf("instance with ID %s not found", instanceID)
+	}
+	rootDeviceName := describeInstanceOutput.Reservations[0].Instances[0].RootDeviceName
+
+	volumeOutput, err := c.ec2Client.DescribeVolumes(c.ctx, &ec2.DescribeVolumesInput{
+		Filters: []types.Filter{
+			{
+				Name:   aws.String("attachment.instance-id"),
+				Values: []string{instanceID},
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	volumeIDs := []string{}
+	for _, volume := range volumeOutput.Volumes {
+		if volume.Attachments != nil && len(volume.Attachments) > 0 && *volume.Attachments[0].Device != *rootDeviceName {
+			volumeIDs = append(volumeIDs, *volume.VolumeId)
+		}
+	}
+	return volumeIDs, nil
+}
+
+// ResizeVolume resizes the given volume to the new size.
+func (c *AwsCloud) ResizeVolume(volumeID string, newSizeInGB int32) error {
+	volumeOutput, err := c.ec2Client.DescribeVolumes(c.ctx, &ec2.DescribeVolumesInput{
+		VolumeIds: []string{volumeID},
+	})
+	if err != nil {
+		return err
+	}
+	if volumeOutput != nil && len(volumeOutput.Volumes) == 0 {
+		return fmt.Errorf("volume with ID %s not found", volumeID)
+	}
+
+	currentSize := *volumeOutput.Volumes[0].Size
+
+	if currentSize < newSizeInGB {
+		// Resize the volume
+		_, err := c.ec2Client.ModifyVolume(c.ctx, &ec2.ModifyVolumeInput{
+			Size:     &newSizeInGB,
+			VolumeId: volumeOutput.Volumes[0].VolumeId,
+		})
+		if err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("new size %d must be greater than the current size %d", newSizeInGB, currentSize)
+	}
+	return nil
+}
