@@ -11,9 +11,11 @@ import (
 	"strconv"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/subnet-evm/core"
@@ -165,16 +167,22 @@ func printAirdropTable(genesis core.Genesis, sc models.Sidecar) error {
 `
 	fmt.Print(art)
 	teleporterKeyAddress := ""
+	teleporterPrivKey := ""
 	if sc.TeleporterReady {
 		k, err := key.LoadSoft(models.NewLocalNetwork().ID, app.GetKeyPath(sc.TeleporterKey))
 		if err != nil {
 			return err
 		}
 		teleporterKeyAddress = k.C()
+		teleporterPrivKey = hex.EncodeToString(k.Raw())
+	}
+	subnetAirdropKeyName, subnetAirdropAddress, subnetAirdropPrivKey, err := subnet.GetSubnetAirdropKeyInfo(app, sc.Name)
+	if err != nil {
+		return err
 	}
 	if len(genesis.Alloc) > 0 {
 		table := tablewriter.NewWriter(os.Stdout)
-		header := []string{"Description", "Key", "Address", "Airdrop Amount (10^18)", "Airdrop Amount (wei)", "Private Key"}
+		header := []string{"Description", "Address", "Airdrop Amount (10^18)", "Airdrop Amount (wei)", "Private Key"}
 		table.SetHeader(header)
 		table.SetRowLine(true)
 
@@ -182,14 +190,19 @@ func printAirdropTable(genesis core.Genesis, sc models.Sidecar) error {
 			amount := genesis.Alloc[address].Balance
 			formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
 			description := ""
-			keyName := ""
-			if address.Hex() == teleporterKeyAddress {
-				description = fmt.Sprintf("Teleporter deploys")
-				keyName = sc.TeleporterKey
-			} else {
-				description = "Main funded account"
+			privKey := ""
+			switch address.Hex() {
+			case teleporterKeyAddress:
+				description = fmt.Sprintf("Teleporter deploys %s", sc.TeleporterKey)
+				privKey = teleporterPrivKey
+			case subnetAirdropAddress:
+				description = fmt.Sprintf("Main funded account %s", subnetAirdropKeyName)
+				privKey = subnetAirdropPrivKey
+			case vm.PrefundedEwoqAddress.Hex():
+				description = "Main funded account EWOQ"
+				privKey = vm.PrefundedEwoqPrivate
 			}
-			table.Append([]string{description, keyName, address.Hex(), formattedAmount.String(), amount.String()})
+			table.Append([]string{description, address.Hex(), formattedAmount.String(), amount.String(), privKey})
 		}
 
 		table.Render()
@@ -302,7 +315,9 @@ func describeSubnetEvmGenesis(sc models.Sidecar) error {
 	// Write gas table
 	printGasTable(genesis)
 	// fmt.Printf("\n\n")
-	printAirdropTable(genesis, sc)
+	if err := printAirdropTable(genesis, sc); err != nil {
+		return err
+	}
 	printPrecompileTable(genesis)
 	return nil
 }

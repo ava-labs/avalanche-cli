@@ -4,8 +4,8 @@ package subnet
 
 import (
 	"context"
-	"encoding/json"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -667,7 +667,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	ux.Logger.PrintToUser("RPC URL:          %s", endpoint[strings.LastIndex(endpoint, "http"):])
 
 	if sc.VM == models.SubnetEvm {
-		subnetAirdropAddress, subnetAirdropPrivKey, err := getSubnetAidropKeyInfo(d.app, chain)
+		_, subnetAirdropAddress, subnetAirdropPrivKey, err := GetSubnetAirdropKeyInfo(d.app, chain)
 		if err != nil {
 			ux.Logger.PrintToUser("failure loading subnet airdrop info: %s", err)
 		}
@@ -707,11 +707,12 @@ func (d *LocalDeployer) printExtraEvmInfo(
 	for address := range evmGenesis.Alloc {
 		amount := evmGenesis.Alloc[address].Balance
 		formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
-		if address == vm.PrefundedEwoqAddress {
+		switch address.Hex() {
+		case vm.PrefundedEwoqAddress.Hex():
 			ux.Logger.PrintToUser("Funded address:   %s with %s (10^18) - private key: %s", address, formattedAmount.String(), vm.PrefundedEwoqPrivate)
-		} else if address.Hex() == subnetAirdropAddress {
+		case subnetAirdropAddress:
 			ux.Logger.PrintToUser("Funded address:   %s with %s (10^18) - private key: %s", address, formattedAmount.String(), subnetAirdropPrivKey)
-		} else if address.Hex() != teleporterKeyAddress {
+		case teleporterKeyAddress:
 			ux.Logger.PrintToUser("Funded address:   %s with %s", address, formattedAmount.String())
 		}
 	}
@@ -1154,15 +1155,15 @@ func GetChainIDs(network models.Network, chainName string) (string, string, erro
 	return "", "", fmt.Errorf("%s not found on primary network blockchains", chainName)
 }
 
-func getSubnetAidropKeyInfo(app *application.Avalanche, subnetName string) (string, string, error) {
+func GetSubnetAirdropKeyInfo(app *application.Avalanche, subnetName string) (string, string, string, error) {
 	keyName := vm.GetSubnetAirdropKeyName(subnetName)
 	keyPath := app.GetKeyPath(keyName)
 	if utils.FileExists(keyPath) {
 		k, err := key.LoadSoft(models.NewLocalNetwork().ID, keyPath)
 		if err != nil {
-			return "", "", err
+			return "", "", "", err
 		}
-		return k.C(), hex.EncodeToString(k.Raw()), nil
+		return keyName, k.C(), hex.EncodeToString(k.Raw()), nil
 	}
-	return "", "", nil
+	return "", "", "", nil
 }
