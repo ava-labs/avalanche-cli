@@ -336,6 +336,14 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser("")
 
+	if addMonitoring {
+		// no need to check for error, as it's ok not to have monitoring host
+		monitoringHosts, _ := ansible.GetInventoryFromAnsibleInventoryFile(app.GetMonitoringInventoryDir(clusterName))
+		if len(monitoringHosts) > 0 {
+			getMonitoringHint(monitoringHosts[0].IP)
+		}
+	}
+
 	if err := deployClusterYAMLFile(clusterName, subnetName); err != nil {
 		return err
 	}
