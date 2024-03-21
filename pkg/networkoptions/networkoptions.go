@@ -277,6 +277,12 @@ func GetNetworkFromCmdLineFlags(
 		}
 	}
 
+	if subnetName != "" && networkFlags.ClusterName != "" {
+		if _, err := utils.GetIndexInSlice(scClusterNames, networkFlags.ClusterName); err != nil {
+			return models.UndefinedNetwork, fmt.Errorf("subnet %s has not been deployed to cluster %s", subnetName, networkFlags.ClusterName)
+		}
+	}
+
 	network := models.UndefinedNetwork
 	switch networkOption {
 	case Local:

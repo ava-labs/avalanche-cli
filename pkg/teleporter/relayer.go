@@ -264,7 +264,7 @@ func UpdateRelayerConfig(
 			network.Endpoint,
 		)
 	}
-	host, port, err := getURIHostAndPort(network.Endpoint)
+	host, port, err := GetURIHostAndPort(network.Endpoint)
 	if err != nil {
 		return err
 	}
@@ -353,7 +353,7 @@ func addChainToRelayerConfig(
 }
 
 // Get the host and port from a URI. The URI should be in the format http://host:port or https://host:port or host:port
-func getURIHostAndPort(uri string) (string, uint32, error) {
+func GetURIHostAndPort(uri string) (string, uint32, error) {
 	u, err := url.Parse(uri)
 	if err != nil {
 		return "", 0, fmt.Errorf("failed to parse uri %s: %w", uri, err)

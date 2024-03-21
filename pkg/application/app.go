@@ -72,8 +72,11 @@ func (app *Avalanche) GetRunDir() string {
 	return filepath.Join(app.baseDir, constants.RunDir)
 }
 
-func (app *Avalanche) GetServicesDir() string {
-	return filepath.Join(app.baseDir, constants.ServicesDir)
+func (app *Avalanche) GetServicesDir(baseDir string) string {
+	if baseDir == "" {
+		baseDir = app.baseDir
+	}
+	return filepath.Join(baseDir, constants.ServicesDir)
 }
 
 func (app *Avalanche) GetCustomVMDir() string {
@@ -131,12 +134,16 @@ func (app *Avalanche) GetAWMRelayerSnapshotConfsDir() string {
 	return filepath.Join(app.GetSnapshotsDir(), constants.AWMRelayerSnapshotConfsDir)
 }
 
-func (app *Avalanche) GetAWMRelayerServiceDir() string {
-	return filepath.Join(app.GetServicesDir(), constants.AWMRelayerInstallDir)
+func (app *Avalanche) GetAWMRelayerServiceDir(baseDir string) string {
+	return filepath.Join(app.GetServicesDir(baseDir), constants.AWMRelayerInstallDir)
 }
 
-func (app *Avalanche) GetAWMRelayerServiceConfigPath() string {
-	return filepath.Join(app.GetAWMRelayerServiceDir(), constants.AWMRelayerConfigFilename)
+func (app *Avalanche) GetAWMRelayerServiceConfigPath(baseDir string) string {
+	return filepath.Join(app.GetAWMRelayerServiceDir(baseDir), constants.AWMRelayerConfigFilename)
+}
+
+func (app *Avalanche) GetAWMRelayerServiceStorageDir(baseDir string) string {
+	return filepath.Join(app.GetAWMRelayerServiceDir(baseDir), constants.AWMRelayerStorageDir)
 }
 
 func (app *Avalanche) GetExtraLocalNetworkDataPath() string {
@@ -205,6 +212,10 @@ func (app *Avalanche) GetMonitoringDir() string {
 
 func (app *Avalanche) GetMonitoringInventoryDir(clusterName string) string {
 	return filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
+}
+
+func (app *Avalanche) GetLoadTestInventoryDir(clusterName string) string {
+	return filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.LoadTestDir)
 }
 
 func (app *Avalanche) CreateAnsibleDir() error {
@@ -844,6 +855,15 @@ func (app *Avalanche) GetClusterConfig(clusterName string) (models.ClusterConfig
 	clusterConfig := clustersConfig.Clusters[clusterName]
 	clusterConfig.Network = models.NewNetworkFromCluster(clusterConfig.Network, clusterName)
 	return clusterConfig, nil
+}
+
+func (app *Avalanche) SetClusterConfig(clusterName string, clusterConfig models.ClusterConfig) error {
+	clustersConfig, err := app.LoadClustersConfig()
+	if err != nil {
+		return err
+	}
+	clustersConfig.Clusters[clusterName] = clusterConfig
+	return app.WriteClustersConfigFile(&clustersConfig)
 }
 
 func (app *Avalanche) GetClusterNetwork(clusterName string) (models.Network, error) {

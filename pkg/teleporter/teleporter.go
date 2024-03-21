@@ -210,6 +210,42 @@ func (t *Deployer) DeployRegistry(
 	return teleporterRegistryAddress.String(), nil
 }
 
+func getPrivateKey(
+	app *application.Avalanche,
+	network models.Network,
+	keyName string,
+) (string, error) {
+	var (
+		err error
+		k   *key.SoftKey
+	)
+	if keyName == "" {
+		if k, err = key.LoadEwoq(network.ID); err != nil {
+			return "", err
+		}
+	} else {
+		k, err = key.LoadSoft(network.ID, app.GetKeyPath(keyName))
+		if err != nil {
+			return "", err
+		}
+	}
+	return hex.EncodeToString(k.Raw()), nil
+}
+
+func SetProposerVM(
+	app *application.Avalanche,
+	network models.Network,
+	blockchainID string,
+	fundedKeyName string,
+) error {
+	privKeyStr, err := getPrivateKey(app, network, fundedKeyName)
+	if err != nil {
+		return err
+	}
+	wsEndpoint := network.BlockchainWSEndpoint(blockchainID)
+	return evm.SetupProposerVM(wsEndpoint, privKeyStr)
+}
+
 func DeployAndFundRelayer(
 	app *application.Avalanche,
 	teleporterVersion string,
@@ -218,23 +254,10 @@ func DeployAndFundRelayer(
 	blockchainID string,
 	fundedKeyName string,
 ) (bool, string, string, error) {
-	// get private key
-	var (
-		err error
-		k   *key.SoftKey
-	)
-	if fundedKeyName == "" {
-		if k, err = key.LoadEwoq(network.ID); err != nil {
-			return false, "", "", err
-		}
-	} else {
-		k, err = key.LoadSoft(network.ID, app.GetKeyPath(fundedKeyName))
-		if err != nil {
-			return false, "", "", err
-		}
+	privKeyStr, err := getPrivateKey(app, network, fundedKeyName)
+	if err != nil {
+		return false, "", "", err
 	}
-	privKeyStr := hex.EncodeToString(k.Raw())
-	// deploy
 	endpoint := network.BlockchainEndpoint(blockchainID)
 	td := Deployer{}
 	alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := td.Deploy(

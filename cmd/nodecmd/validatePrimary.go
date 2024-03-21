@@ -45,6 +45,7 @@ var (
 	ErrMutuallyExlusiveKeyLedger = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet        = errors.New("--key is not available for mainnet operations")
 	ErrNoBlockchainID            = errors.New("failed to find the blockchain ID for this subnet, has it been deployed/created on this network?")
+	ErrNoSubnetID                = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 )
 
 func newValidatePrimaryCmd() *cobra.Command {
@@ -84,6 +85,7 @@ func GetMinStakingAmount(network models.Network) (uint64, error) {
 }
 
 func joinAsPrimaryNetworkValidator(
+	deployer *subnet.PublicDeployer,
 	network models.Network,
 	kc *keychain.Keychain,
 	nodeID ids.NodeID,
@@ -115,7 +117,6 @@ func joinAsPrimaryNetworkValidator(
 	}
 
 	recipientAddr := kc.Addresses().List()[0]
-	deployer := subnet.NewPublicDeployer(app, kc, network)
 	PrintNodeJoinPrimaryNetworkOutput(nodeID, weight, network, start)
 	// we set the starting time for node to be a Primary Network Validator to be in 1 minute
 	// we use min delegation fee as default
@@ -251,7 +252,6 @@ func getNodeIDs(hosts []*models.Host) (map[string]string, map[string]error) {
 			failedNodes[host.NodeID] = err
 			continue
 		}
-		ux.Logger.PrintToUser("Avalanche node id for host %s is %s", host.NodeID, nodeID)
 		nodeIDMap[host.NodeID] = nodeID.String()
 	}
 	return nodeIDMap, failedNodes
@@ -269,6 +269,7 @@ func checkNodeIsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Networ
 // addNodeAsPrimaryNetworkValidator returns bool if node is added as primary network validator
 // as it impacts the output in adding node as subnet validator in the next steps
 func addNodeAsPrimaryNetworkValidator(
+	deployer *subnet.PublicDeployer,
 	network models.Network,
 	kc *keychain.Keychain,
 	nodeID ids.NodeID,
@@ -281,7 +282,7 @@ func addNodeAsPrimaryNetworkValidator(
 	}
 	if !isValidator {
 		signingKeyPath := app.GetNodeBLSSecretKeyPath(instanceID)
-		if err = joinAsPrimaryNetworkValidator(network, kc, nodeID, nodeIndex, signingKeyPath, true); err != nil {
+		if err = joinAsPrimaryNetworkValidator(deployer, network, kc, nodeID, nodeIndex, signingKeyPath, true); err != nil {
 			return false, err
 		}
 		ux.Logger.PrintToUser(fmt.Sprintf("Node %s successfully added as Primary Network validator!", nodeID.String()))
@@ -324,21 +325,15 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	notBootstrappedNodes, err := checkHostsAreBootstrapped(hosts)
-	if err != nil {
+	deployer := subnet.NewPublicDeployer(app, kc, network)
+
+	if err := checkHostsAreBootstrapped(hosts); err != nil {
 		return err
 	}
-	if len(notBootstrappedNodes) > 0 {
-		return fmt.Errorf("node(s) %s are not bootstrapped yet, please try again later", notBootstrappedNodes)
-	}
-	ux.Logger.PrintToUser("Checking if node(s) are healthy...")
-	notHealthyNodes, err := checkHostsAreHealthy(hosts)
-	if err != nil {
+	if err := checkHostsAreHealthy(hosts); err != nil {
 		return err
 	}
-	if len(notHealthyNodes) > 0 {
-		return fmt.Errorf("node(s) %s are not healthy, please fix the issue and again", notHealthyNodes)
-	}
+
 	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
 	nodeIDMap, failedNodesMap := getNodeIDs(hosts)
 	nodeErrors := map[string]error{}
@@ -365,7 +360,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 			nodeErrors[host.NodeID] = err
 			continue
 		}
-		_, err = addNodeAsPrimaryNetworkValidator(network, kc, nodeID, i, clusterNodeID)
+		_, err = addNodeAsPrimaryNetworkValidator(deployer, network, kc, nodeID, i, clusterNodeID)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host.NodeID, err)
 			nodeErrors[host.NodeID] = err

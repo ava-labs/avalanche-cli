@@ -726,12 +726,12 @@ func CreateClusterNodeConfig(
 			if err != nil {
 				return err
 			}
-			if err = addNodeToClustersConfig(network, cloudConfig.InstanceIDs[i], clusterName, slices.Contains(cloudConfig.APIInstanceIDs, cloudConfig.InstanceIDs[i]), false); err != nil {
+			if err = addNodeToClustersConfig(network, cloudConfig.InstanceIDs[i], clusterName, slices.Contains(cloudConfig.APIInstanceIDs, cloudConfig.InstanceIDs[i]), false, "", ""); err != nil {
 				return err
 			}
 		}
 		if addMonitoring {
-			if err := saveExternalHostConfig(monitorCloudConfig, monitoringHostRegion, cloudService, clusterName); err != nil {
+			if err := saveExternalHostConfig(monitorCloudConfig, monitoringHostRegion, cloudService, clusterName, constants.MonitorRole, ""); err != nil {
 				return err
 			}
 		}
@@ -739,7 +739,12 @@ func CreateClusterNodeConfig(
 	return nil
 }
 
-func saveExternalHostConfig(externalHostConfig models.RegionConfig, hostRegion, cloudService, clusterName string) error {
+// saveExternalHostConfig saves externally created instance (monitoring or load test instance)
+// into existing cluster_config.json and creates new node_config.json file for the instance
+// load test instances are given name of loadTestName in argument
+func saveExternalHostConfig(externalHostConfig models.RegionConfig, hostRegion, cloudService, clusterName, externalHostRole, loadTestName string) error {
+	isLoadTest := externalHostRole == constants.LoadTestRole
+	isMonitoring := externalHostRole == constants.MonitorRole
 	nodeConfig := models.NodeConfig{
 		NodeID:        externalHostConfig.InstanceIDs[0],
 		Region:        hostRegion,
@@ -750,12 +755,13 @@ func saveExternalHostConfig(externalHostConfig models.RegionConfig, hostRegion, 
 		ElasticIP:     externalHostConfig.PublicIPs[0],
 		CloudService:  cloudService,
 		UseStaticIP:   useStaticIP,
-		IsMonitor:     true,
+		IsMonitor:     isMonitoring,
+		IsLoadTest:    isLoadTest,
 	}
 	if err := app.CreateNodeCloudConfigFile(externalHostConfig.InstanceIDs[0], &nodeConfig); err != nil {
 		return err
 	}
-	if err := addNodeToClustersConfig(models.UndefinedNetwork, externalHostConfig.InstanceIDs[0], clusterName, false, true); err != nil {
+	if err := addNodeToClustersConfig(models.UndefinedNetwork, externalHostConfig.InstanceIDs[0], clusterName, false, true, externalHostRole, loadTestName); err != nil {
 		return err
 	}
 	return updateKeyPairClustersConfig(nodeConfig)
@@ -834,7 +840,7 @@ func getNodeCloudConfig(node string) (models.RegionConfig, string, error) {
 	}, config.Region, nil
 }
 
-func addNodeToClustersConfig(network models.Network, nodeID, clusterName string, isAPIInstance bool, isMonitoringInstance bool) error {
+func addNodeToClustersConfig(network models.Network, nodeID, clusterName string, isAPIInstance bool, isExternalHost bool, nodeRole, loadTestName string) error {
 	clustersConfig := models.ClustersConfig{}
 	if app.ClustersConfigExists() {
 		var err error
@@ -848,8 +854,16 @@ func addNodeToClustersConfig(network models.Network, nodeID, clusterName string,
 	}
 	clusterConfig := clustersConfig.Clusters[clusterName]
 	clusterConfig.Network = network
-	if isMonitoringInstance {
-		clusterConfig.MonitoringInstance = nodeID
+	if clusterConfig.LoadTestInstance == nil {
+		clusterConfig.LoadTestInstance = make(map[string]string)
+	}
+	if isExternalHost {
+		switch nodeRole {
+		case constants.MonitorRole:
+			clusterConfig.MonitoringInstance = nodeID
+		case constants.LoadTestRole:
+			clusterConfig.LoadTestInstance[loadTestName] = nodeID
+		}
 	} else {
 		clusterConfig.Nodes = append(clusterConfig.Nodes, nodeID)
 	}
@@ -1302,8 +1316,16 @@ func getRegionsNodeNum(cloudName string) (
 			return nil, fmt.Errorf("number of nodes exceeds the range of a signed 32-bit integer")
 		}
 		nodes[userRegion] = NumNodes{int(numNodes), int(numAPINodes)}
-
-		currentInput := utils.Map(maps.Keys(nodes), func(region string) string { return fmt.Sprintf("[%s]:%d", region, nodes[region]) })
+		var currentInput []string
+		if globalNetworkFlags.UseDevnet {
+			currentInput = utils.Map(maps.Keys(nodes), func(region string) string {
+				return fmt.Sprintf("[%s]: %d validator(s) %d api(s)", region, nodes[region].numValidators, nodes[region].numAPI)
+			})
+		} else {
+			currentInput = utils.Map(maps.Keys(nodes), func(region string) string {
+				return fmt.Sprintf("[%s]: %d validator(s)", region, nodes[region].numValidators)
+			})
+		}
 		ux.Logger.PrintToUser("Current selection: " + strings.Join(currentInput, " "))
 		yes, err := app.Prompt.CaptureNoYes(additionalRegionPrompt)
 		if err != nil {

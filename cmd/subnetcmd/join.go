@@ -52,8 +52,6 @@ var (
 	joinElastic bool
 	// for permissionless subnet only: how much subnet native token will be staked in the validator
 	stakeAmount uint64
-
-	errNoBlockchainID = errors.New("failed to find the blockchain ID for this subnet, has it been deployed/created on this network?")
 )
 
 // avalanche subnet join
@@ -294,10 +292,6 @@ func writeAvagoChainConfigFiles(
 	}
 	subnetIDStr := subnetID.String()
 	blockchainID := sc.Networks[network.Name()].BlockchainID
-	if blockchainID == ids.Empty {
-		return errNoBlockchainID
-	}
-	blockchainIDStr := blockchainID.String()
 
 	configsPath := filepath.Join(dataDir, "configs")
 
@@ -318,8 +312,8 @@ func writeAvagoChainConfigFiles(
 		_ = os.RemoveAll(subnetConfigPath)
 	}
 
-	if app.ChainConfigExists(subnetName) || app.NetworkUpgradeExists(subnetName) {
-		chainConfigsPath := filepath.Join(configsPath, "chains", blockchainIDStr)
+	if blockchainID != ids.Empty && app.ChainConfigExists(subnetName) || app.NetworkUpgradeExists(subnetName) {
+		chainConfigsPath := filepath.Join(configsPath, "chains", blockchainID.String())
 		if err := os.MkdirAll(chainConfigsPath, constants.DefaultPerms755); err != nil {
 			return err
 		}

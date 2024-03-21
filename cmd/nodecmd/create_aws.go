@@ -108,11 +108,16 @@ func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []st
 	case len(cmdLineRegion) == 0 && len(numValidatorsNodes) == 0 && len(numAPINodes) == 0:
 		var err error
 		if singleNode {
-			selectedRegion, err := getSeparateHostNodeParam(constants.AWSCloudService)
-			finalRegions = map[string]NumNodes{selectedRegion: {1, 0}}
-			if err != nil {
-				return nil, nil, nil, err
+			selectedRegion := ""
+			if loadTestHostRegion != "" {
+				selectedRegion = loadTestHostRegion
+			} else {
+				selectedRegion, err = getSeparateHostNodeParam(constants.AWSCloudService)
+				if err != nil {
+					return nil, nil, nil, err
+				}
 			}
+			finalRegions = map[string]NumNodes{selectedRegion: {1, 0}}
 		} else {
 			finalRegions, err = getRegionsNodeNum(constants.AWSCloudService)
 			if err != nil {
@@ -381,6 +386,29 @@ func AddMonitoringSecurityGroupRule(ec2Svc map[string]*awsAPI.AwsCloud, monitori
 	}
 	if !apiPortInSG {
 		if err = ec2Svc[region].AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoAPIPort); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func deleteMonitoringSecurityGroupRule(ec2Svc *awsAPI.AwsCloud, monitoringHostPublicIP, securityGroupName, region string) error {
+	securityGroupExists, sg, err := ec2Svc.CheckSecurityGroupExists(securityGroupName)
+	if err != nil {
+		return err
+	}
+	if !securityGroupExists {
+		return fmt.Errorf("security group %s doesn't exist in region %s", securityGroupName, region)
+	}
+	metricsPortInSG := awsAPI.CheckUserIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoMachineMetricsPort)
+	apiPortInSG := awsAPI.CheckUserIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoAPIPort)
+	if metricsPortInSG {
+		if err = ec2Svc.DeleteSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoMachineMetricsPort); err != nil {
+			return err
+		}
+	}
+	if apiPortInSG {
+		if err = ec2Svc.DeleteSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoAPIPort); err != nil {
 			return err
 		}
 	}

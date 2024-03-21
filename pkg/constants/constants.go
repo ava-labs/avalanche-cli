@@ -159,9 +159,9 @@ const (
 	OutboundPort                                 = 0
 	// Set this one to true while testing changes that alter CLI execution on cloud nodes
 	// Disable it for releases to save cluster creation time
-	EnableSetupCLIFromSource           = false
-	SetupCLIFromSourceBranch           = "main"
-	BuildEnvGolangVersion              = "1.21.1"
+	EnableSetupCLIFromSource           = true
+	SetupCLIFromSourceBranch           = "relayer-on-devnet"
+	BuildEnvGolangVersion              = "1.22.1"
 	IsHealthyJSONFile                  = "isHealthy.json"
 	IsBootstrappedJSONFile             = "isBootstrapped.json"
 	AvalancheGoVersionJSONFile         = "avalancheGoVersion.json"
@@ -212,6 +212,7 @@ const (
 	AvalanchegoMonitoringPort     = 9090
 	AvalanchegoMachineMetricsPort = 9100
 	MonitoringDir                 = "monitoring"
+	LoadTestDir                   = "loadtest"
 	DashboardsDir                 = "dashboards"
 	NodeConfigJSONFile            = "node.json"
 	IPAddressSuffix               = "/32"
@@ -288,6 +289,8 @@ const (
 	APIRole                      = "API"
 	ValidatorRole                = "Validator"
 	MonitorRole                  = "Monitor"
+	AWMRelayerRole               = "Relayer"
+	LoadTestRole                 = "LoadTest"
 	DefaultWalletCreationTimeout = 5 * time.Second
 
 	DefaultConfirmTxTimeout = 20 * time.Second

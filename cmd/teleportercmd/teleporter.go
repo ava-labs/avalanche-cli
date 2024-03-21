@@ -30,5 +30,7 @@ with Teleporter-Enabled Subnets.`,
 	cmd.AddCommand(newMsgCmd())
 	// teleporter deploy
 	cmd.AddCommand(newDeployCmd())
+	// teleporter relayer
+	cmd.AddCommand(newRelayerCmd())
 	return cmd
 }
