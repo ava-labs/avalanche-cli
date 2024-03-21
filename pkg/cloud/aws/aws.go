@@ -142,6 +142,54 @@ func (c *AwsCloud) AddSecurityGroupRule(groupID, direction, protocol, ip string,
 	return nil
 }
 
+// DeleteSecurityGroupRule removes a rule from the given security group
+func (c *AwsCloud) DeleteSecurityGroupRule(groupID, direction, protocol, ip string, port int32) error {
+	if !strings.Contains(ip, "/") {
+		ip = fmt.Sprintf("%s/32", ip) // add netmask /32 if missing
+	}
+	switch direction {
+	case "ingress":
+		if _, err := c.ec2Client.RevokeSecurityGroupIngress(c.ctx, &ec2.RevokeSecurityGroupIngressInput{
+			GroupId: aws.String(groupID),
+			IpPermissions: []types.IpPermission{
+				{
+					IpProtocol: aws.String(protocol),
+					FromPort:   aws.Int32(port),
+					ToPort:     aws.Int32(port),
+					IpRanges: []types.IpRange{
+						{
+							CidrIp: aws.String(ip),
+						},
+					},
+				},
+			},
+		}); err != nil {
+			return err
+		}
+	case "egress":
+		if _, err := c.ec2Client.RevokeSecurityGroupEgress(c.ctx, &ec2.RevokeSecurityGroupEgressInput{
+			GroupId: aws.String(groupID),
+			IpPermissions: []types.IpPermission{
+				{
+					IpProtocol: aws.String(protocol),
+					FromPort:   aws.Int32(port),
+					ToPort:     aws.Int32(port),
+					IpRanges: []types.IpRange{
+						{
+							CidrIp: aws.String(ip),
+						},
+					},
+				},
+			},
+		}); err != nil {
+			return err
+		}
+	default:
+		return errors.New("invalid direction")
+	}
+	return nil
+}
+
 // CreateEC2Instances creates EC2 instances
 func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceType, keyName, securityGroupID string, forMonitoring bool) ([]string, error) {
 	var diskVolumeSize int32

@@ -392,6 +392,31 @@ func AddMonitoringSecurityGroupRule(ec2Svc map[string]*awsAPI.AwsCloud, monitori
 	return nil
 }
 
+func deleteMonitoringSecurityGroupRule(ec2Svc map[string]*awsAPI.AwsCloud, monitoringHostPublicIP, securityGroupName, region string) error {
+	securityGroupExists, sg, err := ec2Svc[region].CheckSecurityGroupExists(securityGroupName)
+	if err != nil {
+		return err
+	}
+	if !securityGroupExists {
+		return fmt.Errorf("security group %s doesn't exist in region %s", securityGroupName, region)
+	}
+	metricsPortInSG := awsAPI.CheckUserIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoMachineMetricsPort)
+	apiPortInSG := awsAPI.CheckUserIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoAPIPort)
+	if metricsPortInSG {
+		if err = ec2Svc[region].DeleteSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoMachineMetricsPort); err != nil {
+			return err
+		}
+		fmt.Printf("successfully deleted %s, port %s \n", monitoringHostPublicIP, constants.AvalanchegoMachineMetricsPort)
+	}
+	if apiPortInSG {
+		if err = ec2Svc[region].DeleteSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoAPIPort); err != nil {
+			return err
+		}
+		fmt.Printf("successfully deleted %s, port %s \n", monitoringHostPublicIP, constants.AvalanchegoAPIPort)
+	}
+	return nil
+}
+
 func grantAccessToPublicIPViaSecurityGroup(ec2Svc *awsAPI.AwsCloud, publicIP, securityGroupName, region string) error {
 	securityGroupExists, sg, err := ec2Svc.CheckSecurityGroupExists(securityGroupName)
 	if err != nil {
