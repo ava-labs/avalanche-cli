@@ -455,6 +455,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					ports := []string{
 						strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
 						strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
+						strconv.Itoa(constants.AvalanchegoLokiPort),
 					}
 					if err = gcpClient.AddFirewall(
 						monitoringNodeConfig.PublicIPs[0],
@@ -496,7 +497,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	monitoringInventoryPath := ""
 	var monitoringHosts []*models.Host
 	if addMonitoring {
-		monitoringInventoryPath = filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
+		monitoringInventoryPath = app.GetMonitoringInventoryDir(clusterName)
 		if existingMonitoringInstance == "" {
 			if err = ansible.CreateAnsibleHostInventory(monitoringInventoryPath, monitoringNodeConfig.CertFilePath, cloudService, map[string]string{monitoringNodeConfig.InstanceIDs[0]: monitoringNodeConfig.PublicIPs[0]}, nil); err != nil {
 				return err
@@ -551,6 +552,25 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					return
 				}
 				ux.SpinComplete(spinner)
+				spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Machine Logging"))
+				if err := ssh.RunSSHSetupPromtail(host); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				cloudID := host.GetCloudID()
+				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
+				if err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				if err = ssh.RunSSHUpdatePromtailConfig(host, monitoringNodeConfig.PublicIPs[0], constants.AvalanchegoLokiPort, cloudID, nodeID.String()); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				ux.SpinComplete(spinner)
 			}
 			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Build Env"))
 			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
@@ -580,13 +600,13 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		monitoringHost := monitoringHosts[0]
 		// remove monitoring host from created hosts list
 		hosts = utils.Filter(hosts, func(h *models.Host) bool { return h.NodeID != monitoringHost.NodeID })
-		avalancheGoPorts, machinePorts, err := getPrometheusTargets(clusterName)
+		avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
 		if err != nil {
 			return err
 		}
 		if existingMonitoringInstance != "" {
 			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Update Monitoring Targets"))
-			if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts); err != nil {
+			if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts, ltPorts); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
@@ -605,7 +625,15 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
-			if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts); err != nil {
+			if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts, ltPorts); err != nil {
+				ux.SpinFailWithError(spinner, "", err)
+				return err
+			}
+			if err := ssh.RunSSHSetupLoki(monitoringHost); err != nil {
+				ux.SpinFailWithError(spinner, "", err)
+				return err
+			}
+			if err := ssh.RunSSHUpdateLokiConfig(monitoringHost, constants.AvalanchegoLokiPort); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
@@ -1368,16 +1396,23 @@ func defaultAvalancheCLIPrefix(region string) (string, error) {
 	return usr.Username + "-" + region + constants.AvalancheCLISuffix, nil
 }
 
-func getPrometheusTargets(clusterName string) ([]string, []string, error) {
+func getPrometheusTargets(clusterName string) ([]string, []string, []string, error) {
+	const loadTestPort = 8082
 	avalancheGoPorts := []string{}
 	machinePorts := []string{}
+	ltPorts := []string{}
 	inventoryHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
-		return avalancheGoPorts, machinePorts, err
+		return avalancheGoPorts, machinePorts, ltPorts, err
 	}
 	for _, host := range inventoryHosts {
 		avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoAPIPort)))
 		machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
 	}
-	return avalancheGoPorts, machinePorts, err
+	// no need to check error here as it's ok to have no load test instances
+	separateHosts, _ := ansible.GetInventoryFromAnsibleInventoryFile(app.GetLoadTestInventoryDir(clusterName))
+	for _, host := range separateHosts {
+		ltPorts = append(ltPorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(loadTestPort)))
+	}
+	return avalancheGoPorts, machinePorts, ltPorts, nil
 }

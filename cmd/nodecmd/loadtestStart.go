@@ -272,7 +272,7 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 	var separateHosts []*models.Host
 	// separateHosts contains only current load test host defined in the command
 	var currentLoadTestHost []*models.Host
-	separateHostInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.LoadTestDir)
+	separateHostInventoryPath := app.GetLoadTestInventoryDir(clusterName)
 	if existingSeparateInstance == "" {
 		if err = ansible.CreateAnsibleHostInventory(separateHostInventoryPath, loadTestNodeConfig.CertFilePath, cloudService, map[string]string{loadTestNodeConfig.InstanceIDs[0]: loadTestNodeConfig.PublicIPs[0]}, nil); err != nil {
 			return err
@@ -306,6 +306,26 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Setting up load test environment")
 	if err := ssh.RunSSHBuildLoadTestDependencies(currentLoadTestHost[0]); err != nil {
 		return err
+	}
+	monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
+	monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
+	if err != nil {
+		return err
+	}
+	if len(monitoringHosts) > 0 {
+		if err := ssh.RunSSHSetupPromtail(currentLoadTestHost[0]); err != nil {
+			return err
+		}
+		if err := ssh.RunSSHUpdatePromtailConfig(currentLoadTestHost[0], monitoringHosts[0].IP, constants.AvalanchegoLokiPort, currentLoadTestHost[0].GetCloudID(), "NodeID-Loadtest"); err != nil {
+			return err
+		}
+		avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
+		if err != nil {
+			return err
+		}
+		if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHosts[0], avalancheGoPorts, machinePorts, ltPorts); err != nil {
+			return err
+		}
 	}
 
 	subnetID, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
