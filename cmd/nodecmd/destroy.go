@@ -145,6 +145,10 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 				}
 				ux.Logger.PrintToUser("node %s is already destroyed", nodeConfig.NodeID)
 			}
+			if err = deleteMonitoringSecurityGroupRule(ec2Svc, nodeConfig.ElasticIP, nodeConfig.SecurityGroup, nodeConfig.Region); err != nil {
+				ux.Logger.RedXToUser("unable to delete IP address %s from security group %s in region %s due to %s, please delete it manually",
+					nodeConfig.ElasticIP, nodeConfig.SecurityGroup, nodeConfig.Region, err.Error())
+			}
 		} else {
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
 				return fmt.Errorf("cloud access is required")
