@@ -11,3 +11,4 @@ sudo apt-get -y -o DPkg::Lock::Timeout=120 update
 #name:TASK [install promtail]
 sudo apt-get -y -o DPkg::Lock::Timeout=120 install promtail
 sudo usermod -a -G ubuntu promtail
+sudo chmod g+x /home/ubuntu/.avalanchego/logs || true
