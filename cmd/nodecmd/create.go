@@ -525,6 +525,60 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	spinSession := ux.NewUserSpinner()
+	// setup monitoring in parrallel with node setup
+	avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
+	if err != nil {
+		return err
+	}
+	if addMonitoring {
+		if len(monitoringHosts) != 1 {
+			return fmt.Errorf("expected only one monitoring host, found %d", len(monitoringHosts))
+		}
+		monitoringHost := monitoringHosts[0]
+		if existingMonitoringInstance == "" {
+			// setup new monitoring host
+			wg.Add(1)
+			go func(nodeResults *models.NodeResults, monitoringHost *models.Host) {
+				defer wg.Done()
+				if err := monitoringHost.Connect(0); err != nil {
+					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
+					return
+				}
+				spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Setup Monitoring"))
+				if err = app.SetupMonitoringEnv(); err != nil {
+					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost); err != nil {
+					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				if err := ssh.RunSSHCopyMonitoringDashboards(monitoringHost, app.GetMonitoringDashboardDir()+"/"); err != nil {
+					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts, ltPorts); err != nil {
+					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				if err := ssh.RunSSHSetupLoki(monitoringHost); err != nil {
+					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				if err := ssh.RunSSHUpdateLokiConfig(monitoringHost, constants.AvalanchegoLokiPort); err != nil {
+					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				ux.SpinComplete(spinner)
+			}(&wgResults, monitoringHost)
+		}
+	}
 	for _, host := range hosts {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
@@ -594,16 +648,9 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if addMonitoring {
-		if len(monitoringHosts) != 1 {
-			return fmt.Errorf("expected only one monitoring host, found %d", len(monitoringHosts))
-		}
 		monitoringHost := monitoringHosts[0]
 		// remove monitoring host from created hosts list
 		hosts = utils.Filter(hosts, func(h *models.Host) bool { return h.NodeID != monitoringHost.NodeID })
-		avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
-		if err != nil {
-			return err
-		}
 		if existingMonitoringInstance != "" {
 			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Update Monitoring Targets"))
 			if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts, ltPorts); err != nil {
@@ -611,35 +658,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			ux.SpinComplete(spinner)
-		} else {
-			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Setup Monitoring"))
-			if err = app.SetupMonitoringEnv(); err != nil {
-				ux.SpinFailWithError(spinner, "", err)
-				return err
-			}
-			if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost); err != nil {
-				ux.SpinFailWithError(spinner, "", err)
-				return err
-			}
-			if err := ssh.RunSSHCopyMonitoringDashboards(monitoringHost, app.GetMonitoringDashboardDir()+"/"); err != nil {
-				ux.SpinFailWithError(spinner, "", err)
-				return err
-			}
-			if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts, ltPorts); err != nil {
-				ux.SpinFailWithError(spinner, "", err)
-				return err
-			}
-			if err := ssh.RunSSHSetupLoki(monitoringHost); err != nil {
-				ux.SpinFailWithError(spinner, "", err)
-				return err
-			}
-			if err := ssh.RunSSHUpdateLokiConfig(monitoringHost, constants.AvalanchegoLokiPort); err != nil {
-				ux.SpinFailWithError(spinner, "", err)
-				return err
-			}
-			ux.SpinComplete(spinner)
 		}
-
 		for _, ansibleNodeID := range ansibleHostIDs {
 			if err = app.CreateAnsibleNodeConfigDir(ansibleNodeID); err != nil {
 				return err
