@@ -406,13 +406,11 @@ func deleteMonitoringSecurityGroupRule(ec2Svc map[string]*awsAPI.AwsCloud, monit
 		if err = ec2Svc[region].DeleteSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoMachineMetricsPort); err != nil {
 			return err
 		}
-		fmt.Printf("successfully deleted %s, port %s \n", monitoringHostPublicIP, constants.AvalanchegoMachineMetricsPort)
 	}
 	if apiPortInSG {
 		if err = ec2Svc[region].DeleteSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoAPIPort); err != nil {
 			return err
 		}
-		fmt.Printf("successfully deleted %s, port %s \n", monitoringHostPublicIP, constants.AvalanchegoAPIPort)
 	}
 	return nil
 }
