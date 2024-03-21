@@ -24,6 +24,7 @@ type scriptInputs struct {
 	CLIVersion              string
 	SubnetExportFileName    string
 	SubnetName              string
+	ClusterName             string
 	GoVersion               string
 	CliBranch               string
 	IsDevNet                bool
@@ -128,6 +129,39 @@ func RunSSHRestartNode(host *models.Host) error {
 		host,
 		constants.SSHScriptTimeout,
 		"shell/restartNode.sh",
+		scriptInputs{},
+	)
+}
+
+// RunSSHSetupAWMRelayerService runs script to set up an AWM Relayer Service
+func RunSSHSetupAWMRelayerService(host *models.Host) error {
+	return RunOverSSH(
+		"Setup AWM Relayer Service",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/setupRelayerService.sh",
+		scriptInputs{},
+	)
+}
+
+// RunSSHStartAWMRelayerService runs script to start an AWM Relayer Service
+func RunSSHStartAWMRelayerService(host *models.Host) error {
+	return RunOverSSH(
+		"Starts AWM Relayer Service",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/startRelayerService.sh",
+		scriptInputs{},
+	)
+}
+
+// RunSSHStopAWMRelayerService runs script to start an AWM Relayer Service
+func RunSSHStopAWMRelayerService(host *models.Host) error {
+	return RunOverSSH(
+		"Stops AWM Relayer Service",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/stopRelayerService.sh",
 		scriptInputs{},
 	)
 }
@@ -305,6 +339,18 @@ func RunSSHDownloadNodeMonitoringConfig(host *models.Host, nodeInstanceDirPath s
 	return host.Download(
 		filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName),
 		filepath.Join(nodeInstanceDirPath, constants.NodeFileName),
+		constants.SSHFileOpsTimeout,
+	)
+}
+
+func RunSSHUploadNodeAWMRelayerConfig(host *models.Host, nodeInstanceDirPath string) error {
+	cloudAWMRelayerConfigDir := filepath.Join(constants.CloudNodeCLIConfigBasePath, constants.ServicesDir, constants.AWMRelayerInstallDir)
+	if err := host.MkdirAll(cloudAWMRelayerConfigDir, constants.SSHDirOpsTimeout); err != nil {
+		return err
+	}
+	return host.Upload(
+		filepath.Join(nodeInstanceDirPath, constants.ServicesDir, constants.AWMRelayerInstallDir, constants.AWMRelayerConfigFilename),
+		filepath.Join(cloudAWMRelayerConfigDir, constants.AWMRelayerConfigFilename),
 		constants.SSHFileOpsTimeout,
 	)
 }

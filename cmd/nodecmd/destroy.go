@@ -22,7 +22,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var authorizeRemove bool
+var (
+	authorizeRemove bool
+	authorizeAll    bool
+)
 
 func newDestroyCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -39,6 +42,7 @@ If there is a static IP address attached, it will be released.`,
 	}
 	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to release cloud resources")
 	cmd.Flags().BoolVar(&authorizeRemove, "authorize-remove", false, "authorize CLI to remove all local files related to cloud nodes")
+	cmd.Flags().BoolVarP(&authorizeAll, "authorize-all", "y", false, "authorize all CLI requests")
 
 	return cmd
 }
@@ -94,6 +98,10 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	if err := checkCluster(clusterName); err != nil {
 		return err
+	}
+	if authorizeAll {
+		authorizeAccess = true
+		authorizeRemove = true
 	}
 	if err := getDeleteConfigConfirmation(); err != nil {
 		return err

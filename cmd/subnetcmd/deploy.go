@@ -22,6 +22,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
@@ -52,10 +53,12 @@ var (
 	skipCreatePrompt         bool
 	avagoBinaryPath          string
 	skipLocalTeleporter      bool
+	subnetOnly               bool
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet          = errors.New("key --key is not available for mainnet operations")
+	errMutuallyExlusiveSubnetFlags = errors.New("--subnet-only and --subnet-id are mutually exclusive")
 )
 
 // avalanche subnet deploy
@@ -89,15 +92,17 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet deploy only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
-	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "deploy into given subnet id")
+	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "do not create a subnet, deploy the blockchain into the given subnet id")
 	cmd.Flags().Uint32Var(&mainnetChainID, "mainnet-chain-id", 0, "use different ChainID for mainnet deployment")
 	cmd.Flags().StringVar(&avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
 	cmd.Flags().BoolVar(&skipLocalTeleporter, "skip-local-teleporter", false, "skip local teleporter deploy to a local network")
+	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "only create a subnet")
 	return cmd
 }
 
 func CallDeploy(
 	cmd *cobra.Command,
+	subnetOnlyParam bool,
 	subnetName string,
 	networkFlags networkoptions.NetworkFlags,
 	keyNameParam string,
@@ -105,6 +110,7 @@ func CallDeploy(
 	useEwoqParam bool,
 	sameControlKeyParam bool,
 ) error {
+	subnetOnly = subnetOnlyParam
 	globalNetworkFlags = networkFlags
 	sameControlKey = sameControlKeyParam
 	keyName = keyNameParam
@@ -374,6 +380,9 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	// from here on we are assuming a public deploy
+	if subnetOnly && subnetIDStr != "" {
+		return errMutuallyExlusiveSubnetFlags
+	}
 
 	createSubnet := true
 	var subnetID, transferSubnetOwnershipTxID ids.ID
@@ -383,7 +392,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		createSubnet = false
-	} else if sidecar.Networks != nil {
+	} else if !subnetOnly && sidecar.Networks != nil {
 		model, ok := sidecar.Networks[network.Name()]
 		if ok {
 			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
@@ -394,10 +403,14 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	fee := network.GenesisParams().CreateBlockchainTxFee
+	fee := uint64(0)
+	if !subnetOnly {
+		fee += network.GenesisParams().CreateBlockchainTxFee
+	}
 	if createSubnet {
 		fee += network.GenesisParams().CreateSubnetTxFee
 	}
+
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
 		constants.PayTxsFeesMsg,
@@ -426,7 +439,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		ux.Logger.PrintToUser(logging.Green.Wrap(
+		ux.Logger.PrintToUser(logging.Blue.Wrap(
 			fmt.Sprintf("Deploying into pre-existent subnet ID %s", subnetID.String()),
 		))
 		controlKeys, threshold, err = txutils.GetOwners(network, subnetID, transferSubnetOwnershipTxID)
@@ -473,21 +486,31 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	isFullySigned, blockchainID, tx, remainingSubnetAuthKeys, err := deployer.DeployBlockchain(
-		controlKeys,
-		subnetAuthKeys,
-		subnetID,
-		transferSubnetOwnershipTxID,
-		chain,
-		chainGenesis,
+	var (
+		savePartialTx           bool
+		blockchainID            ids.ID
+		tx                      *txs.Tx
+		remainingSubnetAuthKeys []string
+		isFullySigned           bool
 	)
-	if err != nil {
-		ux.Logger.PrintToUser(logging.Red.Wrap(
-			fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
-		))
-	}
 
-	savePartialTx := !isFullySigned && err == nil
+	if !subnetOnly {
+		isFullySigned, blockchainID, tx, remainingSubnetAuthKeys, err = deployer.DeployBlockchain(
+			controlKeys,
+			subnetAuthKeys,
+			subnetID,
+			transferSubnetOwnershipTxID,
+			chain,
+			chainGenesis,
+		)
+		if err != nil {
+			ux.Logger.PrintToUser(logging.Red.Wrap(
+				fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
+			))
+		}
+
+		savePartialTx = !isFullySigned && err == nil
+	}
 
 	if err := PrintDeployResults(chain, subnetID, blockchainID); err != nil {
 		return err
@@ -504,6 +527,21 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			false,
 		); err != nil {
 			return err
+		}
+	}
+
+	if isFullySigned {
+		if network.ClusterName != "" {
+			clusterConfig, err := app.GetClusterConfig(network.ClusterName)
+			if err != nil {
+				return err
+			}
+			if _, err := utils.GetIndexInSlice(clusterConfig.Subnets, subnetName); err != nil {
+				clusterConfig.Subnets = append(clusterConfig.Subnets, subnetName)
+			}
+			if err := app.SetClusterConfig(network.ClusterName, clusterConfig); err != nil {
+				return err
+			}
 		}
 	}
 

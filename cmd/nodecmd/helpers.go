@@ -26,7 +26,7 @@ func (n NumNodes) All() int {
 	return n.numValidators + n.numAPI
 }
 
-func checkHostsAreHealthy(hosts []*models.Host) ([]string, error) {
+func getUnhealthyNodes(hosts []*models.Host) ([]string, error) {
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
@@ -69,7 +69,7 @@ func parseHealthyOutput(byteValue []byte) (bool, error) {
 	return false, fmt.Errorf("unable to parse node healthy status")
 }
 
-func checkHostsAreBootstrapped(hosts []*models.Host) ([]string, error) {
+func getNotBootstrappedNodes(hosts []*models.Host) ([]string, error) {
 	ux.Logger.PrintToUser("Checking if node(s) are bootstrapped to Primary Network...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
@@ -113,7 +113,7 @@ func parseBootstrappedOutput(byteValue []byte) (bool, error) {
 	return false, errors.New("unable to parse node bootstrap status")
 }
 
-func checkAvalancheGoVersionCompatible(hosts []*models.Host, subnetName string) ([]string, error) {
+func getRPCIncompatibleNodes(hosts []*models.Host, subnetName string) ([]string, error) {
 	ux.Logger.PrintToUser("Checking compatibility of node(s) avalanche go RPC protocol version with Subnet EVM RPC of subnet %s ...", subnetName)
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
@@ -180,4 +180,51 @@ func disconnectHosts(hosts []*models.Host) {
 
 func authorizedAccessFromSettings() bool {
 	return app.Conf.GetConfigBoolValue(constants.ConfigAuthorizeCloudAccessKey)
+}
+
+func checkHostsAreRPCCompatible(hosts []*models.Host, subnetName string) error {
+	incompatibleNodes, err := getRPCIncompatibleNodes(hosts, subnetName)
+	if err != nil {
+		return err
+	}
+	if len(incompatibleNodes) > 0 {
+		sc, err := app.LoadSidecar(subnetName)
+		if err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("Either modify your Avalanche Go version or modify your VM version")
+		ux.Logger.PrintToUser("To modify your Avalanche Go version: https://docs.avax.network/nodes/maintain/upgrade-your-avalanchego-node")
+		switch sc.VM {
+		case models.SubnetEvm:
+			ux.Logger.PrintToUser("To modify your Subnet-EVM version: https://docs.avax.network/build/subnet/upgrade/upgrade-subnet-vm")
+		case models.CustomVM:
+			ux.Logger.PrintToUser("To modify your Custom VM binary: avalanche subnet upgrade vm %s --config", subnetName)
+		}
+		ux.Logger.PrintToUser("Yoy can use \"avalanche node upgrade\" to upgrade Avalanche Go and/or Subnet-EVM to their latest versions")
+		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
+	}
+	return nil
+}
+
+func checkHostsAreHealthy(hosts []*models.Host) error {
+	ux.Logger.PrintToUser("Checking if node(s) are healthy...")
+	unhealthyNodes, err := getUnhealthyNodes(hosts)
+	if err != nil {
+		return err
+	}
+	if len(unhealthyNodes) > 0 {
+		return fmt.Errorf("node(s) %s are not healthy, please check the issue and try again later", unhealthyNodes)
+	}
+	return nil
+}
+
+func checkHostsAreBootstrapped(hosts []*models.Host) error {
+	notBootstrappedNodes, err := getNotBootstrappedNodes(hosts)
+	if err != nil {
+		return err
+	}
+	if len(notBootstrappedNodes) > 0 {
+		return fmt.Errorf("node(s) %s are not bootstrapped yet, please try again later", notBootstrappedNodes)
+	}
+	return nil
 }

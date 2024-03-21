@@ -13,6 +13,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	subnetOnly  bool
+	avoidChecks bool
+)
+
 func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy [clusterName] [subnetName]",
@@ -26,6 +31,8 @@ It saves the deploy info both locally and remotely.
 		Args:         cobra.ExactArgs(2),
 		RunE:         deploySubnet,
 	}
+	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "only create a subnet")
+	cmd.Flags().BoolVar(&avoidChecks, "no-checks", false, "do not check for healthy status or rpc compatibility of nodes against subnet")
 	return cmd
 }
 
@@ -50,35 +57,14 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer disconnectHosts(hosts)
-	ux.Logger.PrintToUser("Checking if node(s) are healthy...")
-	notHealthyNodes, err := checkHostsAreHealthy(hosts)
-	if err != nil {
-		return err
-	}
-	if len(notHealthyNodes) > 0 {
-		return fmt.Errorf("node(s) %s are not healthy yet, please try again later", notHealthyNodes)
-	}
-	incompatibleNodes, err := checkAvalancheGoVersionCompatible(hosts, subnetName)
-	if err != nil {
-		return err
-	}
-	if len(incompatibleNodes) > 0 {
-		sc, err := app.LoadSidecar(subnetName)
-		if err != nil {
+	if !avoidChecks {
+		if err := checkHostsAreHealthy(hosts); err != nil {
 			return err
 		}
-		ux.Logger.PrintToUser("Either modify your Avalanche Go version or modify your VM version")
-		ux.Logger.PrintToUser("To modify your Avalanche Go version: https://docs.avax.network/nodes/maintain/upgrade-your-avalanchego-node")
-		switch sc.VM {
-		case models.SubnetEvm:
-			ux.Logger.PrintToUser("To modify your Subnet-EVM version: https://docs.avax.network/build/subnet/upgrade/upgrade-subnet-vm")
-		case models.CustomVM:
-			ux.Logger.PrintToUser("To modify your Custom VM binary: avalanche subnet upgrade vm %s --config", subnetName)
+		if err := checkHostsAreRPCCompatible(hosts, subnetName); err != nil {
+			return err
 		}
-		ux.Logger.PrintToUser("Yoy can use \"avalanche node upgrade\" to upgrade Avalanche Go and/or Subnet-EVM to their latest versions")
-		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
 	}
-
 	networkFlags := networkoptions.NetworkFlags{
 		ClusterName: clusterName,
 	}
@@ -89,6 +75,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	if err := subnetcmd.CallDeploy(
 		cmd,
+		subnetOnly,
 		subnetName,
 		networkFlags,
 		keyNameParam,
@@ -98,6 +85,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Subnet successfully deployed into devnet!")
+	if subnetOnly {
+		ux.Logger.PrintToUser("Subnet successfully created!")
+	} else {
+		ux.Logger.PrintToUser("Blockchain successfully created!")
+	}
 	return nil
 }

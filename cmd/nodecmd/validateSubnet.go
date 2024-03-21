@@ -17,10 +17,16 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
+)
+
+var (
+	avoidSubnetValidationChecks bool
+	justIssueTx                 bool
 )
 
 func newValidateSubnetCmd() *cobra.Command {
@@ -53,6 +59,10 @@ You can check the subnet sync status by calling avalanche node status <clusterNa
 
 	cmd.Flags().StringSliceVar(&validators, "validators", []string{}, "validate subnet for the given comma separated list of validators. defaults to all cluster nodes")
 
+	cmd.Flags().BoolVar(&avoidSubnetValidationChecks, "no-validation-checks", false, "do not check if subnet is already synced or validated")
+	cmd.Flags().BoolVar(&avoidChecks, "no-checks", false, "do not check for bootstrapped status or healthy status")
+	cmd.Flags().BoolVar(&justIssueTx, "just-issue-tx", false, "just issue the add validator tx, without waiting for its acceptance")
+
 	return cmd
 }
 
@@ -72,6 +82,7 @@ func parseSubnetSyncOutput(byteValue []byte) (string, error) {
 }
 
 func addNodeAsSubnetValidator(
+	deployer *subnet.PublicDeployer,
 	network models.Network,
 	kc *keychain.Keychain,
 	useLedger bool,
@@ -82,12 +93,14 @@ func addNodeAsSubnetValidator(
 ) error {
 	ux.Logger.PrintToUser("Adding the node as a Subnet Validator...")
 	if err := subnetcmd.CallAddValidator(
+		deployer,
 		network,
 		kc,
 		useLedger,
 		subnetName,
 		nodeID,
 		defaultValidatorParams,
+		justIssueTx,
 	); err != nil {
 		return err
 	}
@@ -196,32 +209,32 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if err := subnetcmd.UpdateKeychainWithSubnetControlKeys(kc, network, subnetName); err != nil {
+		return err
+	}
 
-	notBootstrappedNodes, err := checkHostsAreBootstrapped(hosts)
-	if err != nil {
-		return err
-	}
-	if len(notBootstrappedNodes) > 0 {
-		return fmt.Errorf("node(s) %s are not bootstrapped yet, please try again later", notBootstrappedNodes)
-	}
-	ux.Logger.PrintToUser("Checking if node(s) are healthy...")
-	notHealthyNodes, err := checkHostsAreHealthy(hosts)
-	if err != nil {
-		return err
-	}
-	if len(notHealthyNodes) > 0 {
-		return fmt.Errorf("node(s) %s are not healthy, please fix the issue and again", notHealthyNodes)
+	deployer := subnet.NewPublicDeployer(app, kc, network)
+
+	if !avoidChecks {
+		if err := checkHostsAreBootstrapped(hosts); err != nil {
+			return err
+		}
+		if err := checkHostsAreHealthy(hosts); err != nil {
+			return err
+		}
 	}
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
 	}
-	blockchainID := sc.Networks[network.Name()].BlockchainID
-	if blockchainID == ids.Empty {
-		return ErrNoBlockchainID
+	var blockchainID ids.ID
+	if !avoidSubnetValidationChecks {
+		blockchainID := sc.Networks[network.Name()].BlockchainID
+		if blockchainID == ids.Empty {
+			return ErrNoBlockchainID
+		}
 	}
 	nodeErrors := map[string]error{}
-	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
 	for i, host := range hosts {
 		nodeIDStr, b := nodeIDMap[host.NodeID]
 		if !b {
@@ -239,25 +252,27 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			nodeErrors[host.NodeID] = err
 			continue
 		}
-		// we have to check if node is synced to subnet before adding the node as a validator
-		subnetSyncStatus, err := getNodeSubnetSyncStatus(host, blockchainID.String())
-		if err != nil {
-			ux.Logger.PrintToUser("Failed to get subnet sync status for node %s", host.NodeID)
-			nodeErrors[host.NodeID] = err
-			continue
-		}
-		if subnetSyncStatus != status.Syncing.String() {
-			if subnetSyncStatus == status.Validating.String() {
-				ux.Logger.PrintToUser("Failed to add node %s as subnet validator as node is already a subnet validator", host.NodeID)
-				nodeErrors[host.NodeID] = errors.New("node is already a subnet validator")
-			} else {
-				ux.Logger.PrintToUser("Failed to add node %s as subnet validator as node is not synced to subnet yet", host.NodeID)
-				nodeErrors[host.NodeID] = errors.New("node is not synced to subnet yet, please try again later")
+		if !avoidSubnetValidationChecks {
+			// we have to check if node is synced to subnet before adding the node as a validator
+			subnetSyncStatus, err := getNodeSubnetSyncStatus(host, blockchainID.String())
+			if err != nil {
+				ux.Logger.PrintToUser("Failed to get subnet sync status for node %s", host.NodeID)
+				nodeErrors[host.NodeID] = err
+				continue
 			}
-			continue
+			if subnetSyncStatus != status.Syncing.String() {
+				if subnetSyncStatus == status.Validating.String() {
+					ux.Logger.PrintToUser("Failed to add node %s as subnet validator as node is already a subnet validator", host.NodeID)
+					nodeErrors[host.NodeID] = errors.New("node is already a subnet validator")
+				} else {
+					ux.Logger.PrintToUser("Failed to add node %s as subnet validator as node is not synced to subnet yet", host.NodeID)
+					nodeErrors[host.NodeID] = errors.New("node is not synced to subnet yet, please try again later")
+				}
+				continue
+			}
 		}
 		clusterNodeID := host.GetCloudID()
-		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(network, kc, nodeID, i, clusterNodeID)
+		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(deployer, network, kc, nodeID, i, clusterNodeID)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host.NodeID, err.Error())
 			nodeErrors[host.NodeID] = err
@@ -270,7 +285,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 				continue
 			}
 		}
-		err = addNodeAsSubnetValidator(network, kc, useLedger, nodeIDStr, subnetName, i, len(hosts))
+		err = addNodeAsSubnetValidator(deployer, network, kc, useLedger, nodeIDStr, subnetName, i, len(hosts))
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host.NodeID, err.Error())
 			nodeErrors[host.NodeID] = err

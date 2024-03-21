@@ -5,7 +5,11 @@ package subnetcmd
 import (
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/txutils"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 )
 
@@ -59,6 +63,31 @@ func DeploySubnetFirst(cmd *cobra.Command, subnetName string, skipPrompt bool, s
 			}
 		}
 		return runDeploy(cmd, []string{subnetName}, supportedNetworkOptions)
+	}
+	return nil
+}
+
+func UpdateKeychainWithSubnetControlKeys(
+	kc *keychain.Keychain,
+	network models.Network,
+	subnetName string,
+) error {
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
+	}
+	subnetID := sc.Networks[network.Name()].SubnetID
+	if subnetID == ids.Empty {
+		return errNoSubnetID
+	}
+	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
+	controlKeys, _, err := txutils.GetOwners(network, subnetID, transferSubnetOwnershipTxID)
+	if err != nil {
+		return err
+	}
+	// add control keys to the keychain whenever possible
+	if err := kc.AddAddresses(controlKeys); err != nil {
+		return err
 	}
 	return nil
 }
