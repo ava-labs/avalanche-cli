@@ -303,7 +303,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 				}
 			}
 			if !ipInLoki {
-				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress, constants.AvalanchegoLokiPort); err != nil {
+				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", "0.0.0.0", constants.AvalanchegoLokiPort); err != nil {
 					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
 				}
 			}

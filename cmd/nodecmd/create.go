@@ -1409,10 +1409,8 @@ func getPrometheusTargets(clusterName string) ([]string, []string, []string, err
 		avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoAPIPort)))
 		machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
 	}
-	separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetLoadTestInventoryDir(clusterName))
-	if err != nil {
-		return avalancheGoPorts, machinePorts, ltPorts, err
-	}
+	//no need to check error here as it's ok to have no load test instances
+	separateHosts, _ := ansible.GetInventoryFromAnsibleInventoryFile(app.GetLoadTestInventoryDir(clusterName))
 	for _, host := range separateHosts {
 		ltPorts = append(ltPorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(loadTestPort)))
 	}
