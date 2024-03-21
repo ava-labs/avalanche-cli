@@ -525,7 +525,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	spinSession := ux.NewUserSpinner()
-	// setup monitoring in parrallel with node setup
+	// setup monitoring in parallel with node setup
 	avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
 	if err != nil {
 		return err
