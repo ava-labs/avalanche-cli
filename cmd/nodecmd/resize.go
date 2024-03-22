@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -45,12 +46,14 @@ func preResizeChecks() error {
 	if nodeType == "" && diskSize == "" {
 		return fmt.Errorf("at least one of the flags --node-type or --disk-size must be provided")
 	}
-	if !strings.HasSuffix(diskSize, "Gb") {
+	if diskSize != "" && !strings.HasSuffix(diskSize, "Gb") {
 		return fmt.Errorf("disk-size must be in Gb")
 	}
-	diskSizeGb := strings.TrimSuffix(diskSize, "Gb")
-	if _, err := strconv.Atoi(diskSizeGb); err != nil {
-		return fmt.Errorf("disk-size must be an integer")
+	if diskSize != "" {
+		diskSizeGb := strings.TrimSuffix(diskSize, "Gb")
+		if _, err := strconv.Atoi(diskSizeGb); err != nil {
+			return fmt.Errorf("disk-size must be an integer")
+		}
 	}
 	return nil
 }
@@ -75,11 +78,17 @@ func resize(_ *cobra.Command, args []string) error {
 		return node != monitoringNode
 	})
 
+	if nodeType != "" {
+		ux.Logger.PrintLineSeparator()
+		ux.Logger.PrintToUser("Node performance may be impacted during resizing")
+		ux.Logger.PrintToUser("Please note that instances will be restarted during resizing.")
+		ux.Logger.PrintToUser("This operation may take some time to complete. Thank you for your patience.")
+	}
+
 	if diskSize != "" {
 		ux.Logger.PrintLineSeparator()
 		ux.Logger.PrintToUser("Disk performance may be impacted during resizing")
 		ux.Logger.PrintToUser("Please ensure that the cluster is not under heavy load.")
-		ux.Logger.PrintLineSeparator()
 	}
 
 	for _, node := range nodesToResize {
@@ -101,13 +110,11 @@ func resize(_ *cobra.Command, args []string) error {
 		spinSession := ux.NewUserSpinner()
 		// resize node and disk. If error occurs, log it and continue to next host
 		if nodeType != "" {
+			spinner := spinSession.SpinToUser(utils.ScriptLog(nodeConfig.NodeID, "Resizing Instance Type"))
 			if err := resizeNode(nodeConfig); err != nil {
-				if isExpiredCredentialError(err) {
-					ux.Logger.PrintToUser("")
-					printExpiredCredentialsOutput(awsProfile)
-					return nil
-				}
-				ux.Logger.RedXToUser("Failed to resize node size %s: %v", nodeConfig.NodeID, err)
+				ux.SpinFailWithError(spinner, "", err)
+			} else {
+				ux.SpinComplete(spinner)
 			}
 		}
 		if diskSize != "" {
@@ -128,6 +135,9 @@ func resize(_ *cobra.Command, args []string) error {
 
 // resizeDisk resizes the disk size of the node
 func resizeDisk(nodeConfig models.NodeConfig, diskSize int) error {
+	if diskSize > math.MaxInt32 {
+		return fmt.Errorf("disk size exceeds maximum supported value")
+	}
 	switch nodeConfig.CloudService {
 	case "", constants.AWSCloudService:
 		ec2Svc, err := awsAPI.NewAwsCloud(awsProfile, nodeConfig.Region)
@@ -152,6 +162,9 @@ func resizeDisk(nodeConfig models.NodeConfig, diskSize int) error {
 		if err != nil {
 			return err
 		}
+		if diskSize > math.MaxInt64 {
+			return fmt.Errorf("disk size exceeds maximum supported value")
+		}
 		return gcpCloud.ResizeVolume(rootVolume, nodeConfig.Region, int64(diskSize))
 	default:
 		return fmt.Errorf("cloud service %s is not supported", nodeConfig.CloudService)
@@ -166,8 +179,12 @@ func resizeNode(nodeConfig models.NodeConfig) error {
 		if err != nil {
 			return err
 		}
-		if isSupported, err := ec2Svc.IsInstanceTypeSupported(nodeType); err != nil || !isSupported {
-			return fmt.Errorf("instance type %s is not supported with err: %w", nodeType, err)
+		isSupported, err := ec2Svc.IsInstanceTypeSupported(nodeType)
+		if err != nil {
+			return err
+		}
+		if !isSupported {
+			return fmt.Errorf("instance type %s is not supported", nodeType)
 		}
 		return ec2Svc.ChangeInstanceType(nodeConfig.NodeID, nodeType)
 	case constants.GCPCloudService:
@@ -179,8 +196,12 @@ func resizeNode(nodeConfig models.NodeConfig) error {
 		if err != nil {
 			return err
 		}
-		if isSupported, err := gcpCloud.IsInstanceTypeSupported(nodeType, nodeConfig.Region); err != nil || !isSupported {
-			return fmt.Errorf("instance type %s is not supported with err: %w", nodeType, err)
+		isSupported, err := gcpCloud.IsInstanceTypeSupported(nodeType, nodeConfig.Region)
+		if err != nil {
+			return err
+		}
+		if !isSupported {
+			return fmt.Errorf("instance type %s is not supported", nodeType)
 		}
 		return gcpCloud.ChangeInstanceType(nodeConfig.NodeID, nodeConfig.Region, nodeType)
 	default:

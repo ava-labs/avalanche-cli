@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"golang.org/x/exp/slices"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
@@ -329,7 +330,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		}
 		spinSession := ux.NewUserSpinner()
 		spinner := spinSession.SpinToUser("Waiting for EC2 instance(s) in AWS[%s] to be provisioned...", region)
-		if err := ec2Svc[region].WaitForEC2Instances(instanceIDs[region]); err != nil {
+		if err := ec2Svc[region].WaitForEC2Instances(instanceIDs[region], types.InstanceStateNameRunning); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
 			return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
 		}

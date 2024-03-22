@@ -247,7 +247,7 @@ func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceT
 }
 
 // WaitForEC2Instances waits for the EC2 instances to be running
-func (c *AwsCloud) WaitForEC2Instances(nodeIDs []string) error {
+func (c *AwsCloud) WaitForEC2Instances(nodeIDs []string, state types.InstanceStateName) error {
 	instanceInput := &ec2.DescribeInstancesInput{
 		InstanceIds: nodeIDs,
 	}
@@ -264,22 +264,22 @@ func (c *AwsCloud) WaitForEC2Instances(nodeIDs []string) error {
 		}
 
 		// Check if all instances are in the 'running' state
-		allRunning := true
+		allInDesiredState := true
 		for _, reservation := range result.Reservations {
 			for _, instance := range reservation.Instances {
-				if instance.State.Name != "running" {
-					allRunning = false
+				if instance.State.Name != state {
+					allInDesiredState = false
 					break
 				}
 			}
 		}
-		if allRunning {
+		if allInDesiredState {
 			return nil
 		}
 		// If not all instances are running, wait and retry
 		time.Sleep(delay)
 	}
-	return fmt.Errorf("timeout waiting for instances to be running")
+	return fmt.Errorf("timeout waiting for instances to be in %s state", state)
 }
 
 // GetInstancePublicIPs returns a map from instance ID to public IP
@@ -685,10 +685,28 @@ func (c *AwsCloud) WaitForVolumeModificationState(volumeID string, targetState s
 
 // ChangeInstanceType resizes the given instance to the new instance type.
 func (c *AwsCloud) ChangeInstanceType(instanceID, instanceType string) error {
+	// check if old and new instance types are the same
+	resp, err := c.ec2Client.DescribeInstances(c.ctx, &ec2.DescribeInstancesInput{
+		InstanceIds: []string{instanceID},
+	})
+	if err != nil {
+		return err
+	}
+	if len(resp.Reservations) == 0 || len(resp.Reservations[0].Instances) == 0 {
+		return fmt.Errorf("instance not found")
+	}
+	currentInstanceType := resp.Reservations[0].Instances[0].InstanceType
+	if currentInstanceType == types.InstanceType(instanceType) {
+		return fmt.Errorf("instance %s is already of type %s", instanceID, instanceType)
+	}
+
 	// stop the instance
 	if _, err := c.ec2Client.StopInstances(c.ctx, &ec2.StopInstancesInput{
 		InstanceIds: []string{instanceID},
 	}); err != nil {
+		return err
+	}
+	if err := c.WaitForEC2Instances([]string{instanceID}, types.InstanceStateNameStopped); err != nil {
 		return err
 	}
 	// update the instance type

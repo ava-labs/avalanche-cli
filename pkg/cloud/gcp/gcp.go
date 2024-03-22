@@ -563,12 +563,43 @@ func (c *GcpCloud) ResizeVolume(volumeID string, zone string, newSizeGb int64) e
 
 // ChangeInstanceType changes the instance type of the instance on-the-fly
 func (c *GcpCloud) ChangeInstanceType(instanceID, zone, machineType string) error {
-	// gcp resizes instances without reboot
-	if _, err := c.gcpClient.Instances.SetMachineType(c.projectID, zone, instanceID, &compute.InstancesSetMachineTypeRequest{
-		MachineType: fmt.Sprintf("zones/%s/machineTypes/%s", zone, machineType),
-	}).Do(); err != nil {
+	// check if new and current machine types are the same
+	instance, err := c.gcpClient.Instances.Get(c.projectID, zone, instanceID).Do()
+	if err != nil {
 		return err
 	}
+	currentMachineType := instance.MachineType
+
+	if strings.HasSuffix(currentMachineType, fmt.Sprintf("zones/%s/machineTypes/%s", zone, machineType)) {
+		return fmt.Errorf("instance %s is already of type %s", instanceID, machineType)
+	}
+	// stop the instance
+	op, err := c.gcpClient.Instances.Stop(c.projectID, zone, instanceID).Do()
+	if err != nil {
+		return err
+	}
+	if err := c.waitForOperation(op); err != nil {
+		return err
+	}
+	// update the machine type
+	op, err = c.gcpClient.Instances.SetMachineType(c.projectID, zone, instanceID, &compute.InstancesSetMachineTypeRequest{
+		MachineType: fmt.Sprintf("zones/%s/machineTypes/%s", zone, machineType),
+	}).Do()
+	if err != nil {
+		return err
+	}
+	if err := c.waitForOperation(op); err != nil {
+		return err
+	}
+	// start the instance
+	op, err = c.gcpClient.Instances.Start(c.projectID, zone, instanceID).Do()
+	if err != nil {
+		return err
+	}
+	if err := c.waitForOperation(op); err != nil {
+		return err
+	}
+
 	return nil
 }
 
