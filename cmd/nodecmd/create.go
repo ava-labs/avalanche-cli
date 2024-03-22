@@ -516,7 +516,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	// waiting for all nodes to become accessible
 	checkHosts := hosts
 	if addMonitoring && len(monitoringHosts) > 0 {
-		checkHosts = append(hosts, monitoringHosts[0])
+		checkHosts = append(checkHosts, monitoringHosts[0])
 	}
 	failedHosts := waitForHosts(checkHosts)
 	if failedHosts.Len() > 0 {
