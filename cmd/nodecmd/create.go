@@ -514,7 +514,11 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	}
 	hosts := utils.Filter(allHosts, func(h *models.Host) bool { return slices.Contains(cloudConfigMap.GetAllInstanceIDs(), h.GetCloudID()) })
 	// waiting for all nodes to become accessible
-	failedHosts := waitForHosts(hosts)
+	checkHosts := hosts
+	if addMonitoring && len(monitoringHosts) > 0 {
+		checkHosts = append(checkHosts, monitoringHosts[0])
+	}
+	failedHosts := waitForHosts(checkHosts)
 	if failedHosts.Len() > 0 {
 		for _, result := range failedHosts.GetResults() {
 			ux.Logger.PrintToUser("Instance %s failed to provision with error %s. Please check instance logs for more information", result.NodeID, result.Err)
@@ -896,7 +900,10 @@ func addNodeToClustersConfig(network models.Network, nodeID, clusterName string,
 		clustersConfig.Clusters = make(map[string]models.ClusterConfig)
 	}
 	clusterConfig := clustersConfig.Clusters[clusterName]
-	clusterConfig.Network = network
+	// if supplied network in argument is empty, don't change current cluster network in cluster_config.json
+	if network != models.UndefinedNetwork {
+		clusterConfig.Network = network
+	}
 	if clusterConfig.LoadTestInstance == nil {
 		clusterConfig.LoadTestInstance = make(map[string]string)
 	}
