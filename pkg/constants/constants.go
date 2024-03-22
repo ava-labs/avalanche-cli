@@ -160,7 +160,7 @@ const (
 	// Set this one to true while testing changes that alter CLI execution on cloud nodes
 	// Disable it for releases to save cluster creation time
 	EnableSetupCLIFromSource           = false
-	SetupCLIFromSourceBranch           = ""
+	SetupCLIFromSourceBranch           = "main"
 	BuildEnvGolangVersion              = "1.22.1"
 	IsHealthyJSONFile                  = "isHealthy.json"
 	IsBootstrappedJSONFile             = "isBootstrapped.json"
