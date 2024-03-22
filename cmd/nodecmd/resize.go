@@ -45,6 +45,9 @@ func preResizeChecks() error {
 	if nodeType == "" && diskSize == "" {
 		return fmt.Errorf("at least one of the flags --node-type or --disk-size must be provided")
 	}
+	if !strings.HasSuffix(diskSize, "Gi") {
+		return fmt.Errorf("disk-size must be in Gi")
+	}
 	diskSizeGi := strings.TrimSuffix(diskSize, "Gi")
 	if _, err := strconv.Atoi(diskSizeGi); err != nil {
 		return fmt.Errorf("disk-size must be an integer")
