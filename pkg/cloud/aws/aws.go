@@ -654,6 +654,32 @@ func (c *AwsCloud) ResizeVolume(volumeID string, newSizeInGB int32) error {
 			return err
 		}
 	}
+
+	return c.WaitForVolumeModificationState(volumeID, "optimizing", 30*time.Second)
+}
+
+// WaitForVolumeModificationState waits for the specified modification state of the volume.
+func (c *AwsCloud) WaitForVolumeModificationState(volumeID string, targetState string, timeout time.Duration) error {
+	startTime := time.Now()
+	for {
+		modificationOutput, err := c.ec2Client.DescribeVolumesModifications(c.ctx, &ec2.DescribeVolumesModificationsInput{
+			VolumeIds: []string{volumeID},
+		})
+		if err != nil {
+			return err
+		}
+		if len(modificationOutput.VolumesModifications) == 0 {
+			return fmt.Errorf("volume modification with ID %s not found", volumeID)
+		}
+		modificationState := modificationOutput.VolumesModifications[0].ModificationState
+		if modificationState == types.VolumeModificationState(targetState) {
+			break
+		}
+		if time.Since(startTime) > timeout {
+			return fmt.Errorf("timeout waiting for volume modification state to be %s", targetState)
+		}
+		time.Sleep(2 * time.Second)
+	}
 	return nil
 }
 

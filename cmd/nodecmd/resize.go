@@ -75,6 +75,13 @@ func resize(_ *cobra.Command, args []string) error {
 		return node != monitoringNode
 	})
 
+	if diskSize != "" {
+		ux.Logger.PrintLineSeparator()
+		ux.Logger.PrintToUser("Disk performance may be impacted during resizing")
+		ux.Logger.PrintToUser("Please ensure that the cluster is not under heavy load.")
+		ux.Logger.PrintLineSeparator()
+	}
+
 	for _, node := range nodesToResize {
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
 		if err != nil {
@@ -91,6 +98,7 @@ func resize(_ *cobra.Command, args []string) error {
 		if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(nodeConfig.CloudService) != nil) {
 			return fmt.Errorf("cloud access is required")
 		}
+		spinSession := ux.NewUserSpinner()
 		// resize node and disk. If error occurs, log it and continue to next host
 		if nodeType != "" {
 			if err := resizeNode(nodeConfig); err != nil {
@@ -103,15 +111,17 @@ func resize(_ *cobra.Command, args []string) error {
 			}
 		}
 		if diskSize != "" {
+			spinner := spinSession.SpinToUser(utils.ScriptLog(nodeConfig.NodeID, "Resizing Disk"))
 			diskSizeGb, _ := strconv.Atoi(strings.TrimSuffix(diskSize, "Gb"))
 			if err := resizeDisk(nodeConfig, diskSizeGb); err != nil {
-				ux.Logger.RedXToUser("Failed to resize disk size %s: %v", nodeConfig.NodeID, err)
+				ux.SpinFailWithError(spinner, "", err)
 			} else if err := ssh.RunSSHUpsizeRootDisk(host); err != nil {
-				ux.Logger.RedXToUser("Failed to resize root disk on node %s: %v", nodeConfig.NodeID, err)
+				ux.SpinFailWithError(spinner, "", err)
 			} else {
-				ux.Logger.GreenCheckmarkToUser("Successfully resized disk size %s", nodeConfig.NodeID)
+				ux.SpinComplete(spinner)
 			}
 		}
+		spinSession.Stop()
 	}
 	return nil
 }

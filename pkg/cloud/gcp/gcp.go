@@ -526,10 +526,19 @@ func (c *GcpCloud) GetRootVolumeID(instanceID string, zone string) (string, erro
 	}
 	for _, disk := range instance.Disks {
 		if disk.Boot {
-			return disk.Source, nil
+			return extractDiskIDFromURL(disk.Source), nil
 		}
 	}
 	return "", fmt.Errorf("no root volume found for instance %s", instanceID)
+}
+
+// extractDiskIDFromURL extracts the disk ID from the disk URL
+func extractDiskIDFromURL(url string) string {
+	parts := strings.Split(url, "/")
+	if len(parts) > 0 {
+		return parts[len(parts)-1]
+	}
+	return url
 }
 
 // ResizeVolume resizes the volume to the new size
@@ -538,10 +547,9 @@ func (c *GcpCloud) ResizeVolume(volumeID string, zone string, newSizeGb int64) e
 	if err != nil {
 		return err
 	}
-	if disk.SizeGb < newSizeGb {
+	if disk.SizeGb > newSizeGb {
 		return fmt.Errorf("new size %dGb must be greater than the current size %dGb", newSizeGb, disk.SizeGb)
 	} else {
-		disk.SizeGb = newSizeGb
 		operation, err := c.gcpClient.Disks.Resize(c.projectID, zone, volumeID, &compute.DisksResizeRequest{SizeGb: newSizeGb}).Do()
 		if err != nil {
 			return err
