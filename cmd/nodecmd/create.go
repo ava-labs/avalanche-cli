@@ -163,7 +163,7 @@ func preCreateChecks() error {
 			return fmt.Errorf("invalid semantic version for CLI on hosts")
 		}
 	}
-	if customGrafanaDashboardPath != "" && !utils.FileExists(customGrafanaDashboardPath) {
+	if customGrafanaDashboardPath != "" && !utils.FileExists(utils.ExpandHome(customGrafanaDashboardPath)) {
 		return fmt.Errorf("custom grafana dashboard file does not exist")
 	}
 	return nil

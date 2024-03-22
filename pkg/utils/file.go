@@ -46,6 +46,15 @@ func UserHomePath(filePath ...string) string {
 	return filepath.Join(fullPath...)
 }
 
+// expandHome expands ~ symbol to home directory
+func ExpandHome(path string) string {
+	if len(path) > 0 && path[0] == '~' {
+		home, _ := os.UserHomeDir()
+		path = filepath.Join(home, path[1:])
+	}
+	return path
+}
+
 // FileCopy copies a file from src to dst.
 func FileCopy(src string, dst string) error {
 	if !FileExists(src) {

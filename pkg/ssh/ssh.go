@@ -248,8 +248,8 @@ func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath s
 	if !utils.DirectoryExists(monitoringDashboardPath) {
 		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
 	}
-	if customGrafanaDasboardPath != "" && utils.FileExists(customGrafanaDasboardPath) {
-		if err := utils.FileCopy(customGrafanaDasboardPath, filepath.Join(monitoringDashboardPath, "custom.json")); err != nil {
+	if customGrafanaDasboardPath != "" && utils.FileExists(utils.ExpandHome(customGrafanaDasboardPath)) {
+		if err := utils.FileCopy(utils.ExpandHome(customGrafanaDasboardPath), filepath.Join(monitoringDashboardPath, "custom.json")); err != nil {
 			return err
 		}
 	}
