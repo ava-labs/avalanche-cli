@@ -5,6 +5,7 @@ package nodecmd
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
@@ -35,7 +36,7 @@ change amount of CPU, memory and disk space available for the cluster nodes.
 		RunE:         resize,
 	}
 	cmd.Flags().StringVar(&nodeType, "node-type", "", "Node type to resize (e.g. t3.2xlarge)")
-	cmd.Flags().StringVar(&diskSize, "disk-size", "", "Disk size to resize in Gb (e.g. 100Gb)")
+	cmd.Flags().StringVar(&diskSize, "disk-size", "", "Disk size to resize in Gb (e.g. 1000Gi)")
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
 	return cmd
 }
@@ -44,7 +45,8 @@ func preResizeChecks() error {
 	if nodeType == "" && diskSize == "" {
 		return fmt.Errorf("at least one of the flags --node-type or --disk-size must be provided")
 	}
-	if _, err := strconv.Atoi(diskSize); err != nil {
+	diskSizeGi := strings.TrimSuffix(diskSize, "Gi")
+	if _, err := strconv.Atoi(diskSizeGi); err != nil {
 		return fmt.Errorf("disk-size must be an integer")
 	}
 	return nil
@@ -98,8 +100,8 @@ func resize(_ *cobra.Command, args []string) error {
 			}
 		}
 		if diskSize != "" {
-			diskSizeGb, _ := strconv.Atoi(diskSize)
-			if err := resizeDisk(nodeConfig, diskSizeGb); err != nil {
+			diskSizeGi, _ := strconv.Atoi(strings.TrimSuffix(diskSize, "Gi"))
+			if err := resizeDisk(nodeConfig, diskSizeGi); err != nil {
 				ux.Logger.RedXToUser("Failed to resize disk size %s: %v", nodeConfig.NodeID, err)
 			} else if err := ssh.RunSSHUpsizeRootDisk(host); err != nil {
 				ux.Logger.RedXToUser("Failed to resize root disk on node %s: %v", nodeConfig.NodeID, err)
