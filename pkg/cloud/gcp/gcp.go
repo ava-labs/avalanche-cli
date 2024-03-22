@@ -518,18 +518,17 @@ func isIPLimitExceededError(err error) bool {
 }
 
 // ListAttachedVolumes returns a list of attached volumes to the instance excluding the boot volume
-func (c *GcpCloud) ListAttachedVolumes(instanceID string, zone string) ([]string, error) {
+func (c *GcpCloud) GetRootVolumeID(instanceID string, zone string) (string, error) {
 	instance, err := c.gcpClient.Instances.Get(c.projectID, zone, instanceID).Do()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	var volumeIDs []string
 	for _, disk := range instance.Disks {
-		if !disk.Boot {
-			volumeIDs = append(volumeIDs, disk.Source)
+		if disk.Boot {
+			return disk.Source, nil
 		}
 	}
-	return volumeIDs, nil
+	return "", fmt.Errorf("no root volume found for instance %s", instanceID)
 }
 
 // ResizeVolume resizes the volume to the new size
@@ -549,6 +548,17 @@ func (c *GcpCloud) ResizeVolume(volumeID string, zone string, newSizeGb int64) e
 		if err := c.waitForOperation(operation); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// ChangeInstanceType changes the instance type of the instance on-the-fly
+func (c *GcpCloud) ChangeInstanceType(instanceID, zone, machineType string) error {
+	// gcp resize instances without reboot
+	if _, err := c.gcpClient.Instances.SetMachineType(c.projectID, zone, instanceID, &compute.InstancesSetMachineTypeRequest{
+		MachineType: fmt.Sprintf("zones/%s/machineTypes/%s", zone, machineType),
+	}).Do(); err != nil {
+		return err
 	}
 	return nil
 }

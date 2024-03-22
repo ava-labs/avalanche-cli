@@ -720,3 +720,13 @@ func RunSSHWhitelistPubKey(host *models.Host, sshPubKey string) error {
 func RunSSHDownloadFile(host *models.Host, filePath string, localFilePath string) error {
 	return host.Download(filePath, localFilePath, constants.SSHFileOpsTimeout)
 }
+
+func RunSSHUpsizeRootDisk(host *models.Host) error {
+	return RunOverSSH(
+		"Upsize Disk",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/upsizeRootDisk.sh",
+		scriptInputs{},
+	)
+}

@@ -577,16 +577,16 @@ func (c *AwsCloud) GetInstanceTypeArch(instanceType string) (string, error) {
 	return string(archOutput.InstanceTypes[0].ProcessorInfo.SupportedArchitectures[0]), nil
 }
 
-// ListAttachedVolumes returns a list of volume IDs attached to the given instance excluding the root volume.
-func (c *AwsCloud) ListAttachedVolumes(instanceID string) ([]string, error) {
+// GetRootVolume returns a volume IDs attached to the given which is used as a root volume
+func (c *AwsCloud) GetRootVolumeID(instanceID string) (string, error) {
 	describeInstanceOutput, err := c.ec2Client.DescribeInstances(c.ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: []string{instanceID},
 	})
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	if len(describeInstanceOutput.Reservations) == 0 || len(describeInstanceOutput.Reservations[0].Instances) == 0 {
-		return nil, fmt.Errorf("instance with ID %s not found", instanceID)
+		return "", fmt.Errorf("instance with ID %s not found", instanceID)
 	}
 	rootDeviceName := describeInstanceOutput.Reservations[0].Instances[0].RootDeviceName
 
@@ -596,19 +596,19 @@ func (c *AwsCloud) ListAttachedVolumes(instanceID string) ([]string, error) {
 				Name:   aws.String("attachment.instance-id"),
 				Values: []string{instanceID},
 			},
+			{
+				Name:   aws.String("attachment.device"),
+				Values: []string{*rootDeviceName},
+			},
 		},
 	})
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-
-	volumeIDs := []string{}
-	for _, volume := range volumeOutput.Volumes {
-		if volume.Attachments != nil && len(volume.Attachments) > 0 && *volume.Attachments[0].Device != *rootDeviceName {
-			volumeIDs = append(volumeIDs, *volume.VolumeId)
-		}
+	if len(volumeOutput.Volumes) == 0 {
+		return "", fmt.Errorf("root volume not found for instance with ID %s", instanceID)
 	}
-	return volumeIDs, nil
+	return *volumeOutput.Volumes[0].VolumeId, nil
 }
 
 // ResizeVolume resizes the given volume to the new size.
@@ -625,17 +625,41 @@ func (c *AwsCloud) ResizeVolume(volumeID string, newSizeInGB int32) error {
 
 	currentSize := *volumeOutput.Volumes[0].Size
 
-	if currentSize < newSizeInGB {
-		// Resize the volume
-		_, err := c.ec2Client.ModifyVolume(c.ctx, &ec2.ModifyVolumeInput{
+	if currentSize > newSizeInGB {
+		return fmt.Errorf("new size %d must be greater than the current size %d", newSizeInGB, currentSize)
+	} else {
+		if _, err := c.ec2Client.ModifyVolume(c.ctx, &ec2.ModifyVolumeInput{
 			Size:     &newSizeInGB,
 			VolumeId: volumeOutput.Volumes[0].VolumeId,
-		})
-		if err != nil {
+		}); err != nil {
 			return err
 		}
-	} else {
-		return fmt.Errorf("new size %d must be greater than the current size %d", newSizeInGB, currentSize)
+	}
+	return nil
+}
+
+// ChangeInstanceType resizes the given instance to the new instance type.
+func (c *AwsCloud) ChangeInstanceType(instanceID, instanceType string) error {
+	// stop the instance
+	if _, err := c.ec2Client.StopInstances(c.ctx, &ec2.StopInstancesInput{
+		InstanceIds: []string{instanceID},
+	}); err != nil {
+		return err
+	}
+	// update the instance type
+	if _, err := c.ec2Client.ModifyInstanceAttribute(c.ctx, &ec2.ModifyInstanceAttributeInput{
+		InstanceId: aws.String(instanceID),
+		InstanceType: &types.AttributeValue{
+			Value: aws.String(instanceType),
+		},
+	}); err != nil {
+		return err
+	}
+	// start the instance
+	if _, err := c.ec2Client.StartInstances(c.ctx, &ec2.StartInstancesInput{
+		InstanceIds: []string{instanceID},
+	}); err != nil {
+		return err
 	}
 	return nil
 }
