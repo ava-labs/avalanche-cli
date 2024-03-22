@@ -580,14 +580,20 @@ func (c *AwsCloud) GetInstanceTypeArch(instanceType string) (string, error) {
 
 // IsInstanceTypeSupported checks if the given instance type is supported by the AWS cloud.
 func (c *AwsCloud) IsInstanceTypeSupported(instanceType string) (bool, error) {
-	instanceTypesOutput, err := c.ec2Client.DescribeInstanceTypes(c.ctx, &ec2.DescribeInstanceTypesInput{})
-	if err != nil {
-		return false, err
+	var supportedInstanceTypes []string
+	paginator := ec2.NewDescribeInstanceTypesPaginator(c.ec2Client, &ec2.DescribeInstanceTypesInput{})
+
+	for paginator.HasMorePages() {
+		output, err := paginator.NextPage(c.ctx)
+		if err != nil {
+			return false, err
+		}
+
+		for _, it := range output.InstanceTypes {
+			supportedInstanceTypes = append(supportedInstanceTypes, string(it.InstanceType))
+		}
 	}
-	instanceTypes := utils.Map(instanceTypesOutput.InstanceTypes, func(instanceType types.InstanceTypeInfo) string {
-		return string(instanceType.InstanceType)
-	})
-	return slices.Contains(instanceTypes, instanceType), nil
+	return slices.Contains(supportedInstanceTypes, instanceType), nil
 }
 
 // GetRootVolume returns a volume IDs attached to the given which is used as a root volume
@@ -639,7 +645,7 @@ func (c *AwsCloud) ResizeVolume(volumeID string, newSizeInGB int32) error {
 	currentSize := *volumeOutput.Volumes[0].Size
 
 	if currentSize > newSizeInGB {
-		return fmt.Errorf("new size %d must be greater than the current size %d", newSizeInGB, currentSize)
+		return fmt.Errorf("new size %dGb must be greater than the current size %dGb", newSizeInGB, currentSize)
 	} else {
 		if _, err := c.ec2Client.ModifyVolume(c.ctx, &ec2.ModifyVolumeInput{
 			Size:     &newSizeInGB,

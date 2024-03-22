@@ -539,7 +539,7 @@ func (c *GcpCloud) ResizeVolume(volumeID string, zone string, newSizeGb int64) e
 		return err
 	}
 	if disk.SizeGb < newSizeGb {
-		return fmt.Errorf("new size %d must be greater than the current size %d", newSizeGb, disk.SizeGb)
+		return fmt.Errorf("new size %dGb must be greater than the current size %dGb", newSizeGb, disk.SizeGb)
 	} else {
 		disk.SizeGb = newSizeGb
 		operation, err := c.gcpClient.Disks.Resize(c.projectID, zone, volumeID, &compute.DisksResizeRequest{SizeGb: newSizeGb}).Do()

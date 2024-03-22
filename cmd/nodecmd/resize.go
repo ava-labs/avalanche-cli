@@ -36,7 +36,7 @@ change amount of CPU, memory and disk space available for the cluster nodes.
 		RunE:         resize,
 	}
 	cmd.Flags().StringVar(&nodeType, "node-type", "", "Node type to resize (e.g. t3.2xlarge)")
-	cmd.Flags().StringVar(&diskSize, "disk-size", "", "Disk size to resize in Gb (e.g. 1000Gi)")
+	cmd.Flags().StringVar(&diskSize, "disk-size", "", "Disk size to resize in Gb (e.g. 1000Gb)")
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
 	return cmd
 }
@@ -45,11 +45,11 @@ func preResizeChecks() error {
 	if nodeType == "" && diskSize == "" {
 		return fmt.Errorf("at least one of the flags --node-type or --disk-size must be provided")
 	}
-	if !strings.HasSuffix(diskSize, "Gi") {
-		return fmt.Errorf("disk-size must be in Gi")
+	if !strings.HasSuffix(diskSize, "Gb") {
+		return fmt.Errorf("disk-size must be in Gb")
 	}
-	diskSizeGi := strings.TrimSuffix(diskSize, "Gi")
-	if _, err := strconv.Atoi(diskSizeGi); err != nil {
+	diskSizeGb := strings.TrimSuffix(diskSize, "Gb")
+	if _, err := strconv.Atoi(diskSizeGb); err != nil {
 		return fmt.Errorf("disk-size must be an integer")
 	}
 	return nil
@@ -103,8 +103,8 @@ func resize(_ *cobra.Command, args []string) error {
 			}
 		}
 		if diskSize != "" {
-			diskSizeGi, _ := strconv.Atoi(strings.TrimSuffix(diskSize, "Gi"))
-			if err := resizeDisk(nodeConfig, diskSizeGi); err != nil {
+			diskSizeGb, _ := strconv.Atoi(strings.TrimSuffix(diskSize, "Gb"))
+			if err := resizeDisk(nodeConfig, diskSizeGb); err != nil {
 				ux.Logger.RedXToUser("Failed to resize disk size %s: %v", nodeConfig.NodeID, err)
 			} else if err := ssh.RunSSHUpsizeRootDisk(host); err != nil {
 				ux.Logger.RedXToUser("Failed to resize root disk on node %s: %v", nodeConfig.NodeID, err)
