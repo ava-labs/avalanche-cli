@@ -896,7 +896,10 @@ func addNodeToClustersConfig(network models.Network, nodeID, clusterName string,
 		clustersConfig.Clusters = make(map[string]models.ClusterConfig)
 	}
 	clusterConfig := clustersConfig.Clusters[clusterName]
-	clusterConfig.Network = network
+	// if supplied network in argument is empty, don't change current cluster network in cluster_config.json
+	if network != models.UndefinedNetwork {
+		clusterConfig.Network = network
+	}
 	if clusterConfig.LoadTestInstance == nil {
 		clusterConfig.LoadTestInstance = make(map[string]string)
 	}
