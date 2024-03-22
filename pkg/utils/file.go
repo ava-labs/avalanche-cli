@@ -3,8 +3,11 @@
 package utils
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
 func DirectoryExists(dirName string) bool {
@@ -41,4 +44,16 @@ func UserHomePath(filePath ...string) string {
 	}
 	fullPath := append([]string{home}, filePath...)
 	return filepath.Join(fullPath...)
+}
+
+// FileCopy copies a file from src to dst.
+func FileCopy(src string, dst string) error {
+	if !FileExists(src) {
+		return fmt.Errorf("source file does not exist")
+	}
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, constants.WriteReadReadPerms)
 }

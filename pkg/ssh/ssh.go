@@ -242,11 +242,16 @@ func RunSSHUpgradeSubnetEVM(host *models.Host, subnetEVMBinaryPath string) error
 	)
 }
 
-func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath string) error {
+func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath string, customGrafanaDasboardPath string) error {
 	// TODO: download dashboards from github instead
 	remoteDashboardsPath := "/home/ubuntu/dashboards"
 	if !utils.DirectoryExists(monitoringDashboardPath) {
 		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
+	}
+	if customGrafanaDasboardPath != "" && utils.FileExists(customGrafanaDasboardPath) {
+		if err := utils.FileCopy(customGrafanaDasboardPath, filepath.Join(monitoringDashboardPath, "custom.json")); err != nil {
+			return err
+		}
 	}
 	if err := host.MkdirAll(remoteDashboardsPath, constants.SSHFileOpsTimeout); err != nil {
 		return err

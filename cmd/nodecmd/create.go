@@ -115,6 +115,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().StringVar(&sshIdentity, "ssh-agent-identity", "", "use given ssh identity(only for ssh agent). If not set, default will be used")
 	cmd.Flags().BoolVar(&addMonitoring, enableMonitoringFlag, false, "set up Prometheus monitoring for created nodes. This option creates a separate monitoring cloud instance and incures additional cost")
 	cmd.Flags().IntSliceVar(&numAPINodes, "num-apis", []int{}, "number of API nodes(nodes without stake) to create in the new Devnet")
+	cmd.Flags().StringVar(&customGrafanaDashboardPath, "add-grafana-dashboard", "", "path to additional grafana dashboard json file")
 	return cmd
 }
 
@@ -161,6 +162,9 @@ func preCreateChecks() error {
 		if !semver.IsValid(remoteCLIVersion) {
 			return fmt.Errorf("invalid semantic version for CLI on hosts")
 		}
+	}
+	if customGrafanaDashboardPath != "" && !utils.FileExists(customGrafanaDashboardPath) {
+		return fmt.Errorf("custom grafana dashboard file does not exist")
 	}
 	return nil
 }
@@ -559,7 +563,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					ux.SpinFailWithError(spinner, "", err)
 					return
 				}
-				if err := ssh.RunSSHCopyMonitoringDashboards(monitoringHost, app.GetMonitoringDashboardDir()+"/"); err != nil {
+				if err := ssh.RunSSHCopyMonitoringDashboards(monitoringHost, app.GetMonitoringDashboardDir()+"/", customGrafanaDashboardPath); err != nil {
 					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
 					return
