@@ -174,6 +174,13 @@ func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []st
 			}
 			return nil, nil, nil, err
 		}
+		isSupported, err := ec2SvcMap[region].IsInstanceTypeSupported(instanceType)
+		if err != nil {
+			return nil, nil, nil, err
+		} else if !isSupported {
+			return nil, nil, nil, fmt.Errorf("instance type %s is not supported in region %s", instanceType, region)
+		}
+
 		numNodesMap[region] = finalRegions[region]
 	}
 	return ec2SvcMap, amiMap, numNodesMap, nil

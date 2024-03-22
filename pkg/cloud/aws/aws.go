@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -575,6 +576,18 @@ func (c *AwsCloud) GetInstanceTypeArch(instanceType string) (string, error) {
 		return "", fmt.Errorf("no instance type found for %s", instanceType)
 	}
 	return string(archOutput.InstanceTypes[0].ProcessorInfo.SupportedArchitectures[0]), nil
+}
+
+// IsInstanceTypeSupported checks if the given instance type is supported by the AWS cloud.
+func (c *AwsCloud) IsInstanceTypeSupported(instanceType string) (bool, error) {
+	instanceTypesOutput, err := c.ec2Client.DescribeInstanceTypes(c.ctx, &ec2.DescribeInstanceTypesInput{})
+	if err != nil {
+		return false, err
+	}
+	instanceTypes := utils.Map(instanceTypesOutput.InstanceTypes, func(instanceType types.InstanceTypeInfo) string {
+		return string(instanceType.InstanceType)
+	})
+	return slices.Contains(instanceTypes, instanceType), nil
 }
 
 // GetRootVolume returns a volume IDs attached to the given which is used as a root volume

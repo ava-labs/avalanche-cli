@@ -321,6 +321,14 @@ func createGCPInstance(
 	if err != nil {
 		return models.CloudConfig{}, err
 	}
+	for zone := range numNodesMap {
+		isSupported, err := gcpClient.IsInstanceTypeSupported(instanceType, zone)
+		if err != nil {
+			return models.CloudConfig{}, err
+		} else if !isSupported {
+			return models.CloudConfig{}, fmt.Errorf("instance type %s is not supported in %s zone", instanceType, zone)
+		}
+	}
 	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createGCEInstances(
 		gcpClient,
 		instanceType,

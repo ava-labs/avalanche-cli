@@ -20,6 +20,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
@@ -554,11 +555,23 @@ func (c *GcpCloud) ResizeVolume(volumeID string, zone string, newSizeGb int64) e
 
 // ChangeInstanceType changes the instance type of the instance on-the-fly
 func (c *GcpCloud) ChangeInstanceType(instanceID, zone, machineType string) error {
-	// gcp resize instances without reboot
+	// gcp resizes instances without reboot
 	if _, err := c.gcpClient.Instances.SetMachineType(c.projectID, zone, instanceID, &compute.InstancesSetMachineTypeRequest{
 		MachineType: fmt.Sprintf("zones/%s/machineTypes/%s", zone, machineType),
 	}).Do(); err != nil {
 		return err
 	}
 	return nil
+}
+
+// IsInstanceTypeSupported checks if the machine type is supported in the zone
+func (c *GcpCloud) IsInstanceTypeSupported(machineType string, zone string) (bool, error) {
+	machineTypes, err := c.gcpClient.MachineTypes.List(c.projectID, zone).Do()
+	if err != nil {
+		return false, err
+	}
+	supportedMachineTypes := utils.Map(machineTypes.Items, func(mt *compute.MachineType) string {
+		return mt.Name
+	})
+	return slices.Contains(supportedMachineTypes, machineType), nil
 }

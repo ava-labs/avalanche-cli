@@ -151,6 +151,9 @@ func resizeNode(nodeConfig models.NodeConfig) error {
 		if err != nil {
 			return err
 		}
+		if isSupported, err := ec2Svc.IsInstanceTypeSupported(nodeType); err != nil || !isSupported {
+			return fmt.Errorf("instance type %s is not supported with err: %w", nodeType, err)
+		}
 		return ec2Svc.ChangeInstanceType(nodeConfig.NodeID, nodeType)
 	case constants.GCPCloudService:
 		gcpClient, projectName, _, err := getGCPCloudCredentials()
@@ -160,6 +163,9 @@ func resizeNode(nodeConfig models.NodeConfig) error {
 		gcpCloud, err := gcpAPI.NewGcpCloud(gcpClient, projectName, context.Background())
 		if err != nil {
 			return err
+		}
+		if isSupported, err := gcpCloud.IsInstanceTypeSupported(nodeType, nodeConfig.Region); err != nil || !isSupported {
+			return fmt.Errorf("instance type %s is not supported with err: %w", nodeType, err)
 		}
 		return gcpCloud.ChangeInstanceType(nodeConfig.NodeID, nodeConfig.Region, nodeType)
 	default:
